@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月之神殿 | 月读空间</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 1rem 2rem;
+            background: rgba(26, 10, 46, 0.9); backdrop-filter: blur(10px); z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(224, 212, 252, 0.2);
+        }
+        nav .logo { font-size: 1.5rem; color: #e0d4fc; text-decoration: none; font-weight: bold; }
+        nav ul { display: flex; list-style: none; gap: 2rem; }
+        nav a { color: #c4b8e8; text-decoration: none; transition: color 0.3s; }
+        nav a:hover, nav a.active { color: #e0d4fc; text-shadow: 0 0 10px rgba(224, 212, 252, 0.5); }
+        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .star { position: absolute; background: white; border-radius: 50%; animation: twinkle 2s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .container { position: relative; z-index: 10; min-height: 100vh; padding: 6rem 2rem 2rem; max-width: 1000px; margin: 0 auto; }
+        .page-title { font-size: 3rem; color: #e0d4fc; text-align: center; margin-bottom: 2rem; text-shadow: 0 0 20px rgba(224, 212, 252, 0.5); }
+        .content { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 3rem; margin-bottom: 2rem; }
+        .content h2 { color: #e0d4fc; margin-bottom: 1.5rem; font-size: 1.8rem; border-bottom: 1px solid rgba(224, 212, 252, 0.3); padding-bottom: 0.5rem; }
+        .content p { color: #c4b8e8; line-height: 2; margin-bottom: 1rem; font-size: 1.05rem; }
+        .legend-box { background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2)); border-radius: 15px; padding: 2rem; margin: 2rem 0; border: 1px solid rgba(224, 212, 252, 0.3); }
+        .legend-box h3 { color: #e0d4fc; margin-bottom: 1rem; font-size: 1.4rem; }
+        .timeline { position: relative; padding-left: 2rem; margin: 2rem 0; }
+        .timeline::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(to bottom, #667eea, #764ba2); border-radius: 3px; }
+        .timeline-item { position: relative; margin-bottom: 2rem; padding-left: 1.5rem; }
+        .timeline-item::before { content: '🌙'; position: absolute; left: -2rem; font-size: 1.2rem; }
+        .timeline-item h4 { color: #e0d4fc; margin-bottom: 0.5rem; }
+        .timeline-item p { color: #b8a8e8; line-height: 1.8; }
+        .quote { font-style: italic; color: #d4c8f8; text-align: center; padding: 2rem; border-left: 4px solid #667eea; border-right: 4px solid #764ba2; margin: 2rem 0; background: rgba(102, 126, 234, 0.1); border-radius: 10px; }
+        .footer { position: fixed; bottom: 1rem; color: rgba(224, 212, 252, 0.5); font-size: 0.85rem; z-index: 10; width: 100%; text-align: center; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">🌙 月读空间</a>
+        <ul>
+            <li><a href="index.html">首页</a></li>
+            <li><a href="shrine.html" class="active">月之神殿</a></li>
+            <li><a href="gallery.html">时空回廊</a></li>
+            <li><a href="message.html">星语留言板</a></li>
+        </ul>
+    </nav>
+
+    <div class="stars" id="stars"></div>
+
+    <div class="container">
+        <h1 class="page-title">🏛️ 月之神殿</h1>
+
+        <div class="content">
+            <h2>辉夜姬的传说</h2>
+            <p>在遥远的古代，月亮上存在着一个神秘而古老的文明——月之都。那里居住着拥有永恒生命的月之民，他们掌握着超越时空的力量。</p>
+            <p>辉夜姬，作为月之公主，因犯下禁忌之罪而被贬至地球，在竹林中被一位老竹取翁发现并抚养长大。她在地球上度过了十五年的光阴，最终在满月之夜回到了月都。</p>
+            
+            <div class="legend-box">
+                <h3>✨ 月读空间的秘密</h3>
+                <p>月读空间是连接地球与月都的神秘领域，只有被选中的人才能进入。这里时间流逝缓慢，空间无限延伸，是辉夜姬曾经驻足的地方。</p>
+            </div>
+
+            <h2>时空年表</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <h4>远古时代</h4>
+                    <p>月都文明达到鼎盛，月之民掌握着操控时空的力量</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>辉夜姬降世</h4>
+                    <p>因触犯禁忌，辉夜姬被贬至地球，在竹林中诞生</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>十五年人间</h4>
+                    <p>辉夜姬在地球上成长，拒绝了五位贵族的求婚</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>满月归月</h4>
+                    <p>在八月十五的满月之夜，辉夜姬身穿羽衣返回月都</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>永恒守望</h4>
+                    <p>辉夜姬在月都继续守护着月读空间，等待着有缘人的到来</p>
+                </div>
+            </div>
+
+            <div class="quote">
+                "月华如水洗尘世，时空如梦亦如幻。<br>
+                千年一瞬终有时，唯有思念永不变。"
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">月读空间 © 2024 | 月之神殿</div>
+
+    <script>
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 150; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.width = Math.random() * 3 + 1 + 'px';
+            star.style.height = star.style.width;
+            star.style.animationDelay = Math.random() * 2 + 's';
+            starsContainer.appendChild(star);
+        }
+    </script>
+</body>
+</html>

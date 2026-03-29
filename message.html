@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星语留言板 | 月读空间</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 1rem 2rem;
+            background: rgba(26, 10, 46, 0.9); backdrop-filter: blur(10px); z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(224, 212, 252, 0.2);
+        }
+        nav .logo { font-size: 1.5rem; color: #e0d4fc; text-decoration: none; font-weight: bold; }
+        nav ul { display: flex; list-style: none; gap: 2rem; }
+        nav a { color: #c4b8e8; text-decoration: none; transition: color 0.3s; }
+        nav a:hover, nav a.active { color: #e0d4fc; text-shadow: 0 0 10px rgba(224, 212, 252, 0.5); }
+        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .star { position: absolute; background: white; border-radius: 50%; animation: twinkle 2s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .container { position: relative; z-index: 10; min-height: 100vh; padding: 6rem 2rem 2rem; max-width: 800px; margin: 0 auto; }
+        .page-title { font-size: 3rem; color: #e0d4fc; text-align: center; margin-bottom: 1rem; text-shadow: 0 0 20px rgba(224, 212, 252, 0.5); }
+        .page-subtitle { text-align: center; color: #b8a8e8; margin-bottom: 3rem; font-size: 1.2rem; }
+        
+        .message-form {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; color: #e0d4fc; margin-bottom: 0.5rem; font-size: 1rem; }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(224, 212, 252, 0.3);
+            border-radius: 10px;
+            color: #e0d4fc;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .form-group textarea { min-height: 120px; resize: vertical; }
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .messages-list { margin-top: 2rem; }
+        .message-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            animation: messageAppear 0.5s;
+        }
+        @keyframes messageAppear {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .message-author { color: #e0d4fc; font-weight: bold; font-size: 1.1rem; }
+        .message-date { color: #b8a8e8; font-size: 0.85rem; }
+        .message-content { color: #c4b8e8; line-height: 1.8; }
+        .empty-message { text-align: center; color: #b8a8e8; padding: 3rem; font-style: italic; }
+        
+        .footer { position: fixed; bottom: 1rem; color: rgba(224, 212, 252, 0.5); font-size: 0.85rem; z-index: 10; width: 100%; text-align: center; }
+        
+        .notification {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 2000;
+            display: none;
+            animation: slideDown 0.3s;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">🌙 月读空间</a>
+        <ul>
+            <li><a href="index.html">首页</a></li>
+            <li><a href="shrine.html">月之神殿</a></li>
+            <li><a href="gallery.html">时空回廊</a></li>
+            <li><a href="message.html" class="active">星语留言板</a></li>
+        </ul>
+    </nav>
+
+    <div class="stars" id="stars"></div>
+    <div class="notification" id="notification">✨ 留言已发送至星空！</div>
+
+    <div class="container">
+        <h1 class="page-title">💫 星语留言板</h1>
+        <p class="page-subtitle">留下你的心声 · 让星辰传递你的思念</p>
+
+        <div class="message-form">
+            <div class="form-group">
+                <label for="name">你的名字</label>
+                <input type="text" id="name" placeholder="如何称呼你？">
+            </div>
+            <div class="form-group">
+                <label for="message">想说的话</label>
+                <textarea id="message" placeholder="写下你想对辉夜姬说的话，或是你的心愿..."></textarea>
+            </div>
+            <button class="submit-btn" onclick="submitMessage()">🌟 发送至星空</button>
+        </div>
+
+        <div class="messages-list" id="messagesList">
+            <div class="empty-message">暂无留言，成为第一个留下星语的人吧 ✨</div>
+        </div>
+    </div>
+
+    <div class="footer">月读空间 © 2024 | 星语留言板</div>
+
+    <script>
+        // 星空
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 150; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.width = Math.random() * 3 + 1 + 'px';
+            star.style.height = star.style.width;
+            star.style.animationDelay = Math.random() * 2 + 's';
+            starsContainer.appendChild(star);
+        }
+
+        // 留言功能
+        let messages = JSON.parse(localStorage.getItem('moonMessages') || '[]');
+
+        function renderMessages() {
+            const list = document.getElementById('messagesList');
+            if (messages.length === 0) {
+                list.innerHTML = '<div class="empty-message">暂无留言，成为第一个留下星语的人吧 ✨</div>';
+                return;
+            }
+            list.innerHTML = messages.map((msg, index) => `
+                <div class="message-card">
+                    <div class="message-header">
+                        <span class="message-author">🌙 ${escapeHtml(msg.name)}</span>
+                        <span class="message-date">${msg.date}</span>
+                    </div>
+                    <div class="message-content">${escapeHtml(msg.message)}</div>
+                </div>
+            `).reverse().join('');
+        }
+
+        function submitMessage() {
+            const nameInput = document.getElementById('name');
+            const messageInput = document.getElementById('message');
+            const name = nameInput.value.trim();
+            const message = messageInput.value.trim();
+
+            if (!name || !message) {
+                alert('请填写名字和留言内容哦 🌙');
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = now.toLocaleString('zh-CN', { 
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            messages.push({ name, message, date: dateStr, timestamp: now.getTime() });
+            localStorage.setItem('moonMessages', JSON.stringify(messages));
+
+            nameInput.value = '';
+            messageInput.value = '';
+            renderMessages();
+
+            // 显示通知
+            const notification = document.getElementById('notification');
+            notification.style.display = 'block';
+            setTimeout(() => { notification.style.display = 'none'; }, 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        renderMessages();
+    </script>
+</body>
+</html>

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月読空間 - 中枢大厅</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sakura-pink: #ffb7c5;
+            --deep-pink: #ff6b9d;
+            --purple: #c44569;
+            --dark-bg: #1a1025;
+            --night-blue: #0f1724;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 40%, #0f1724 100%);
+            font-family: 'Noto Sans JP', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* 樱花背景 */
+        #sakuraContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .sakura {
+            position: absolute;
+            background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%);
+            border-radius: 50% 0 50% 0;
+            will-change: transform, opacity;
+        }
+        
+        /* 导航栏 */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.2rem 2rem;
+            background: rgba(26,16,37,0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,107,157,0.15);
+        }
+        nav .logo {
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, #fff, #ffb7c5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 500;
+            letter-spacing: 0.3rem;
+            text-decoration: none;
+        }
+        nav .nav-right { display: flex; align-items: center; gap: 1rem; }
+        nav .user-info {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255,107,157,0.1);
+            border: 1px solid rgba(255,107,157,0.2);
+            border-radius: 20px;
+            color: #ffb7c5;
+            font-size: 0.8rem;
+        }
+        nav .user-info.show { display: flex; }
+        nav .logout-btn {
+            padding: 0.3rem 0.8rem;
+            background: rgba(255,107,157,0.15);
+            border: 1px solid rgba(255,107,157,0.3);
+            border-radius: 15px;
+            color: #ff6b9d;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        nav .login-btn {
+            padding: 0.5rem 1.5rem;
+            background: rgba(255,107,157,0.1);
+            color: #ffb7c5;
+            border: 1px solid rgba(255,107,157,0.25);
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+        
+        /* 主容器 */
+        .hub-container {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 8rem 2rem 2rem;
+        }
+        
+        /* 标题区域 */
+        .title-area {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .hub-title {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #fff 0%, #ffb7c5 50%, #ff6b9d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 300;
+            letter-spacing: 0.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 40px rgba(255,107,157,0.3);
+        }
+        
+        .hub-subtitle {
+            color: rgba(255,183,197,0.5);
+            font-size: 0.85rem;
+            letter-spacing: 0.3rem;
+            font-weight: 300;
+        }
+        
+        /* 场景列表 */
+        .scenes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            max-width: 480px;
+            width: 100%;
+        }
+        
+        .scene-item {
+            position: relative;
+            padding: 1.2rem 1.5rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,107,157,0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            overflow: hidden;
+        }
+        
+        .scene-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(180deg, #ffb7c5, #ff6b9d);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        
+        .scene-item:hover {
+            background: rgba(255,107,157,0.06);
+            border-color: rgba(255,107,157,0.3);
+            transform: translateX(6px);
+        }
+        
+        .scene-item:hover::before {
+            opacity: 1;
+        }
+        
+        .scene-icon {
+            font-size: 1.5rem;
+            min-width: 2rem;
+            text-align: center;
+            opacity: 0.9;
+        }
+        
+        .scene-content { flex: 1; }
+        
+        .scene-name {
+            color: rgba(255,183,197,0.9);
+            font-size: 0.95rem;
+            font-weight: 400;
+            letter-spacing: 0.1rem;
+            margin-bottom: 0.2rem;
+        }
+        
+        .scene-desc {
+            color: rgba(255,183,197,0.4);
+            font-size: 0.75rem;
+            font-weight: 300;
+        }
+        
+        .scene-arrow {
+            color: rgba(255,107,157,0.3);
+            font-size: 1rem;
+            transition: all 0.4s;
+        }
+        
+        .scene-item:hover .scene-arrow {
+            transform: translateX(4px);
+            color: rgba(255,107,157,0.7);
+        }
+        
+        /* 分隔线 */
+        .scene-divider {
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255,107,157,0.15), 
+                transparent);
+            margin: 0.3rem 0;
+        }
+        
+        /* 竹枝彩蛋 */
+        .bamboo {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            font-size: 1.8rem;
+            cursor: pointer;
+            opacity: 0.4;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+        .bamboo:hover { opacity: 1; transform: scale(1.15); }
+        
+        /* 页脚 */
+        .footer {
+            position: fixed;
+            bottom: 1rem;
+            color: rgba(255,255,255,0.25);
+            font-size: 0.65rem;
+            letter-spacing: 0.15rem;
+            z-index: 10;
+            width: 100%;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .scenes-list { max-width: 100%; padding: 0 1rem; }
+            .hub-title { font-size: 2rem; letter-spacing: 0.3rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sakuraContainer"></div>
+    
+    <nav>
+        <a href="access.html" class="logo">月読空間</a>
+        <div class="nav-right">
+            <div class="user-info" id="userInfo">
+                <span id="usernameDisplay"></span>
+                <button class="logout-btn" onclick="logout()">終了</button>
+            </div>
+            <a href="login.html" class="login-btn" id="loginBtn">ログイン</a>
+        </div>
+    </nav>
+    
+    <div class="hub-container">
+        <div class="title-area">
+            <h1 class="hub-title">ツクヨミ</h1>
+            <p class="hub-subtitle">夢と希望の空間</p>
+        </div>
+        
+        <div class="scenes-list">
+            <a href="stage.html" class="scene-item">
+                <div class="scene-icon">🎤</div>
+                <div class="scene-content">
+                    <div class="scene-name">メインステージ</div>
+                    <div class="scene-desc">ライブ・ブログ</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <a href="arena.html" class="scene-item">
+                <div class="scene-icon">⚔️</div>
+                <div class="scene-content">
+                    <div class="scene-name">アリーナ</div>
+                    <div class="scene-desc">プロジェクト</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <a href="room.html" class="scene-item">
+                <div class="scene-icon">🏠</div>
+                <div class="scene-content">
+                    <div class="scene-name">プライベートルーム</div>
+                    <div class="scene-desc">プロフィール</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <a href="plaza.html" class="scene-item">
+                <div class="scene-icon">💬</div>
+                <div class="scene-content">
+                    <div class="scene-name">月読プラザ</div>
+                    <div class="scene-desc">メッセージ</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <div class="scene-divider"></div>
+            
+            <a href="terminal.html" class="scene-item">
+                <div class="scene-icon">⚙️</div>
+                <div class="scene-content">
+                    <div class="scene-name">ターミナル</div>
+                    <div class="scene-desc">管理</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <a href="reality.html" class="scene-item">
+                <div class="scene-icon">🌍</div>
+                <div class="scene-content">
+                    <div class="scene-name">リアル</div>
+                    <div class="scene-desc">連絡先</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+        </div>
+    </div>
+    
+    <div class="bamboo" id="bamboo">🎋</div>
+    <div class="footer">© 超かぐや姫！風</div>
+    
+    <script>
+        // 樱花背景
+        const sakuraContainer = document.getElementById('sakuraContainer');
+        const sakuras = [];
+        
+        function createSakura() {
+            const el = document.createElement('div');
+            el.className = 'sakura';
+            const size = Math.random() * 6 + 5;
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+            el.style.left = (Math.random() * 100) + '%';
+            sakuraContainer.appendChild(el);
+            return {
+                el: el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50,
+                vy: Math.random() * 0.4 + 0.3,
+                angle: Math.random() * Math.PI * 2,
+                angleSpeed: Math.random() * 0.015 + 0.008,
+                swayRadius: Math.random() * 15 + 8,
+                rot: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 0.8,
+                flip: Math.random() > 0.5 ? 1 : -1,
+                opacity: Math.random() * 0.2 + 0.75
+            };
+        }
+        
+        for (let i = 0; i < 35; i++) {
+            const s = createSakura();
+            s.y = Math.random() * window.innerHeight;
+            sakuras.push(s);
+        }
+        
+        function animate() {
+            sakuras.forEach(s => {
+                s.y += s.vy;
+                s.angle += s.angleSpeed;
+                s.x = Math.sin(s.angle) * s.swayRadius * s.flip;
+                s.rot += s.rotSpeed;
+                let alpha = s.opacity;
+                if (s.y < 50) alpha = s.opacity * (s.y / 50);
+                else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50);
+                s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`;
+                s.el.style.opacity = alpha;
+                if (s.y > window.innerHeight + 30) {
+                    s.y = -30 - Math.random() * 50;
+                    s.x = 0;
+                    s.angle = Math.random() * Math.PI * 2;
+                    s.flip = Math.random() > 0.5 ? 1 : -1;
+                }
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+        
+        document.getElementById('bamboo').addEventListener('click', () => {
+            alert('🎋 竹取物語\n\n昔々、竹取の翁が竹林で光る赤ちゃんを見つけました...\n\n（OK を押して続ける）');
+        });
+        
+        function checkLoginStatus() {
+            const t = localStorage.getItem('tsukuyomi_token');
+            const u = localStorage.getItem('tsukuyomi_user');
+            const i = document.getElementById('userInfo');
+            const l = document.getElementById('loginBtn');
+            const d = document.getElementById('usernameDisplay');
+            
+            if (t && u) {
+                try {
+                    const user = JSON.parse(u);
+                    i.classList.add('show');
+                    l.style.display = 'none';
+                    d.textContent = user.username;
+                    if (user.role === 'admin') {
+                        const a = document.querySelector('a[href="terminal.html"]');
+                        if (a) {
+                            a.querySelector('.scene-name').textContent = '管理ターミナル';
+                            a.querySelector('.scene-desc').textContent = '管理者用';
+                        }
+                    }
+                } catch (e) {}
+            }
+        }
+        
+        function logout() {
+            if (confirm('ログアウトしますか？')) {
+                localStorage.removeItem('tsukuyomi_token');
+                localStorage.removeItem('tsukuyomi_user');
+                location.reload();
+            }
+        }
+        
+        checkLoginStatus();
+    </script>
+</body>
+</html>

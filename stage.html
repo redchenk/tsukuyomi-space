@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主舞台 | 虚拟演唱会场馆 - 月读空间</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0f0f2a 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* 导航栏 */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: rgba(10, 10, 26, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(138, 118, 255, 0.2);
+        }
+        
+        nav .logo {
+            font-size: 1.5rem;
+            color: #e0d4fc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        
+        nav a {
+            color: #c4b8e8;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        nav a:hover, nav a.active {
+            color: #e0d4fc;
+        }
+        
+        /* 星空 */
+        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .star { position: absolute; background: white; border-radius: 50%; animation: twinkle 2s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        /* 主内容 */
+        .container {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            padding: 6rem 2rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .page-title {
+            font-size: 2.5rem;
+            color: #e0d4fc;
+            text-align: center;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 20px rgba(138, 118, 255, 0.8);
+        }
+        
+        .page-subtitle {
+            text-align: center;
+            color: #b8a8e8;
+            margin-bottom: 3rem;
+        }
+        
+        /* 文章列表 */
+        .articles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+        
+        .article-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(138, 118, 255, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .article-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(138, 118, 255, 0.3);
+            border-color: rgba(138, 118, 255, 0.6);
+        }
+        
+        .article-card .meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: #b8a8e8;
+        }
+        
+        .article-card .meta span {
+            background: rgba(138, 118, 255, 0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+        }
+        
+        .article-card h3 {
+            color: #e0d4fc;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .article-card p {
+            color: #c4b8e8;
+            line-height: 1.8;
+            margin-bottom: 1.5rem;
+        }
+        
+        .article-card .read-more {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            background: linear-gradient(135deg, rgba(138, 118, 255, 0.3), rgba(100, 80, 200, 0.3));
+            color: #e0d4fc;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .article-card .read-more:hover {
+            background: linear-gradient(135deg, rgba(138, 118, 255, 0.5), rgba(100, 80, 200, 0.5));
+            box-shadow: 0 0 20px rgba(138, 118, 255, 0.4);
+        }
+        
+        .loading {
+            text-align: center;
+            color: #b8a8e8;
+            padding: 3rem;
+            font-size: 1.2rem;
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 1rem;
+            color: rgba(184, 168, 232, 0.5);
+            font-size: 0.85rem;
+            z-index: 10;
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="stars" id="stars"></div>
+    
+    <nav>
+        <a href="hub.html" class="logo">🌙 月読空間</a>
+        <ul>
+            <li><a href="hub.html">返回枢纽</a></li>
+            <li><a href="stage.html" class="active">主舞台</a></li>
+            <li><a href="arena.html">格斗竞技场</a></li>
+            <li><a href="plaza.html">月读广场</a></li>
+        </ul>
+    </nav>
+    
+    <div class="container">
+        <h1 class="page-title">🎤 主舞台 · 虚拟演唱会场馆</h1>
+        <p class="page-subtitle">Welcome to the space where dreams and hopes meet</p>
+        
+        <div class="articles-grid" id="articlesGrid">
+            <div class="loading">正在加载演出曲目...</div>
+        </div>
+    </div>
+    
+    <div class="footer">© 2024 Tsukuyomi Space | 主舞台</div>
+    
+    <script>
+        // 星空背景
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 150; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.width = Math.random() * 3 + 1 + 'px';
+            star.style.height = star.style.width;
+            star.style.animationDelay = Math.random() * 2 + 's';
+            starsContainer.appendChild(star);
+        }
+        
+        // API 配置
+        const API_BASE = 'http://47.97.0.122:3000/api';
+        
+        // 加载文章
+        async function loadArticles() {
+            const grid = document.getElementById('articlesGrid');
+            
+            try {
+                const response = await fetch(`${API_BASE}/articles`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    grid.innerHTML = result.data.map(article => `
+                        <div class="article-card">
+                            <div class="meta">
+                                <span>📅 ${article.publishDate}</span>
+                                <span>⏱️ ${article.readTime}</span>
+                                <span>🏷️ ${article.category}</span>
+                            </div>
+                            <h3>${article.title}</h3>
+                            <p>${article.excerpt}</p>
+                            <a href="#" class="read-more" onclick="alert('文章详情页开发中...'); return false;">查看详情 →</a>
+                        </div>
+                    `).join('');
+                } else {
+                    grid.innerHTML = '<div class="loading">暂无演出曲目</div>';
+                }
+            } catch (error) {
+                console.error('加载文章失败:', error);
+                grid.innerHTML = '<div class="loading">加载失败，请稍后重试</div>';
+            }
+        }
+        
+        loadArticles();
+    </script>
+</body>
+</html>

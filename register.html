@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新規登録 | 月読空間</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary-pink: #ff6b9d; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { min-height: 100vh; background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%); font-family: 'Noto Sans JP', sans-serif; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
+        #sakuraContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .sakura { position: absolute; background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%); border-radius: 50% 0 50% 0; will-change: transform, opacity; }
+        .moon { position: fixed; top: 10%; right: 15%; width: 100px; height: 100px; background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95), rgba(248,249,250,0.8)); border-radius: 50%; box-shadow: 0 0 40px rgba(255,107,157,0.4); z-index: 1; animation: moonFloat 6s ease-in-out infinite; }
+        @keyframes moonFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        .register-container { position: relative; z-index: 10; background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,107,157,0.3); border-radius: 20px; padding: 3rem; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.6s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .logo { text-align: center; margin-bottom: 2rem; }
+        .logo h1 { font-size: 2rem; background: linear-gradient(135deg, #fff, #ffb7c5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 700; margin-bottom: 0.5rem; }
+        .logo p { color: rgba(255,183,197,0.8); font-size: 0.9rem; font-weight: 300; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; color: #ffb7c5; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; }
+        .form-group input { width: 100%; padding: 0.9rem 1.2rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,107,157,0.3); border-radius: 10px; color: #fff; font-size: 1rem; transition: all 0.3s; }
+        .form-group input:focus { outline: none; border-color: rgba(255,107,157,0.6); box-shadow: 0 0 20px rgba(255,107,157,0.2); }
+        .form-group input::placeholder { color: rgba(255,183,197,0.4); }
+        .submit-btn { width: 100%; padding: 1rem; background: rgba(255,107,157,0.2); color: #ffb7c5; border: 1px solid rgba(255,107,157,0.5); border-radius: 10px; font-size: 1.05rem; cursor: pointer; transition: all 0.3s; font-weight: 500; letter-spacing: 0.05rem; }
+        .submit-btn:hover { background: rgba(255,107,157,0.3); box-shadow: 0 0 30px rgba(255,107,157,0.3); transform: translateY(-2px); }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .links { margin-top: 1.5rem; text-align: center; }
+        .links a { color: rgba(255,183,197,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
+        .links a:hover { color: #ffb7c5; }
+        .error-message, .success-message { padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; display: none; font-size: 0.9rem; }
+        .error-message { background: rgba(255,100,100,0.1); border: 1px solid rgba(255,100,100,0.3); color: #ff6b6b; }
+        .success-message { background: rgba(100,255,150,0.1); border: 1px solid rgba(100,255,150,0.3); color: #6bff9e; }
+        .back-btn { position: fixed; top: 2rem; left: 2rem; color: rgba(255,183,197,0.7); text-decoration: none; font-size: 0.9rem; transition: all 0.3s; z-index: 100; }
+        .back-btn:hover { color: #ffb7c5; }
+        @media (max-width: 768px) { .register-container { margin: 2rem; padding: 2rem; } .moon { width: 60px; height: 60px; } }
+    </style>
+</head>
+<body>
+    <div id="sakuraContainer"></div>
+    <div class="moon"></div>
+    <a href="login.html" class="back-btn">← ログインへ戻る</a>
+    
+    <div class="register-container">
+        <div class="logo">
+            <h1>🌙 新規登録</h1>
+            <p>アカウントを作成</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+        
+        <form id="registerForm" onsubmit="return false;">
+            <div class="form-group">
+                <label for="username">ユーザー名</label>
+                <input type="text" id="username" placeholder="3-20 文字" required minlength="3" maxlength="20" autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">メールアドレス</label>
+                <input type="email" id="email" placeholder="your@email.com" required autocomplete="email">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">パスワード</label>
+                <input type="password" id="password" placeholder="6 文字以上" required minlength="6" autocomplete="new-password">
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">パスワード（確認）</label>
+                <input type="password" id="confirmPassword" placeholder="もう一度入力" required autocomplete="new-password">
+            </div>
+            
+            <button type="submit" class="submit-btn" id="submitBtn">登録する</button>
+        </form>
+        
+        <div class="links">
+            既にアカウントをお持ちの方？<a href="login.html">ログイン</a>
+        </div>
+    </div>
+    
+    <script>
+        // 樱花背景
+        const sakuraContainer = document.getElementById('sakuraContainer');
+        const sakuras = [];
+        
+        function createSakura() {
+            const el = document.createElement('div');
+            el.className = 'sakura';
+            const size = Math.random() * 6 + 5;
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+            el.style.left = (Math.random() * 100) + '%';
+            sakuraContainer.appendChild(el);
+            
+            return {
+                el: el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50,
+                vy: Math.random() * 0.4 + 0.3,
+                angle: Math.random() * Math.PI * 2,
+                angleSpeed: Math.random() * 0.015 + 0.008,
+                swayRadius: Math.random() * 15 + 8,
+                rot: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 0.8,
+                flip: Math.random() > 0.5 ? 1 : -1,
+                opacity: Math.random() * 0.2 + 0.75
+            };
+        }
+        
+        for (let i = 0; i < 35; i++) {
+            const s = createSakura();
+            s.y = Math.random() * window.innerHeight;
+            sakuras.push(s);
+        }
+        
+        function animate() {
+            sakuras.forEach(s => {
+                s.y += s.vy;
+                s.angle += s.angleSpeed;
+                s.x = Math.sin(s.angle) * s.swayRadius * s.flip;
+                s.rot += s.rotSpeed;
+                let alpha = s.opacity;
+                if (s.y < 50) alpha = s.opacity * (s.y / 50);
+                else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50);
+                s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`;
+                s.el.style.opacity = alpha;
+                if (s.y > window.innerHeight + 30) {
+                    s.y = -30 - Math.random() * 50;
+                    s.x = 0;
+                    s.angle = Math.random() * Math.PI * 2;
+                    s.flip = Math.random() > 0.5 ? 1 : -1;
+                }
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+        
+        // 注册逻辑
+        const API_BASE = 'http://47.97.0.122:3000/api';
+        
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const submitBtn = document.getElementById('submitBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const successMessage = document.getElementById('successMessage');
+            
+            if (password !== confirmPassword) {
+                errorMessage.textContent = 'パスワードが一致しません';
+                errorMessage.style.display = 'block';
+                successMessage.style.display = 'none';
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = '登録中...';
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            
+            try {
+                const response = await fetch(API_BASE + '/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    localStorage.setItem('tsukuyomi_token', result.data.token);
+                    localStorage.setItem('tsukuyomi_user', JSON.stringify(result.data.user));
+                    
+                    successMessage.textContent = '登録完了！リダイレクト中...';
+                    successMessage.style.display = 'block';
+                    submitBtn.textContent = '✓ 登録完了';
+                    
+                    setTimeout(() => {
+                        window.location.href = 'hub.html';
+                    }, 1500);
+                } else {
+                    throw new Error(result.message || '登録失敗');
+                }
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = '登録する';
+            }
+        });
+    </script>
+</body>
+</html>

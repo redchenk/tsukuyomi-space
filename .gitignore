@@ -1,0 +1,47 @@
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Media files (optional - uncomment if you don't want to commit large media files)
+# *.mp4
+# *.mov
+# *.avi
+
+# Backup files
+*.bak
+*.backup

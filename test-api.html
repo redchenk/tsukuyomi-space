@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 测试 | 月读空间</title>
+    <style>
+        body {
+            background: #0a0a1a;
+            color: #e0d4fc;
+            font-family: monospace;
+            padding: 2rem;
+            line-height: 1.8;
+        }
+        .test-item {
+            background: rgba(138, 118, 255, 0.1);
+            border: 1px solid rgba(138, 118, 255, 0.3);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+        }
+        .success { color: #1dd1a1; }
+        .error { color: #ff6b6b; }
+        .pending { color: #feca57; }
+        pre {
+            background: rgba(0,0,0,0.3);
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            background: rgba(138, 118, 255, 0.3);
+            color: #e0d4fc;
+            border: 1px solid rgba(138, 118, 255, 0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        button:hover {
+            background: rgba(138, 118, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <h1>🌙 月读空间 API 测试</h1>
+    <p>此页面用于测试前后端连接是否正常</p>
+    
+    <div class="test-item">
+        <h3>测试 1: 健康检查</h3>
+        <div id="health-result">状态：<span class="pending">等待测试...</span></div>
+        <button onclick="testHealth()">运行测试</button>
+    </div>
+    
+    <div class="test-item">
+        <h3>测试 2: 登录 API</h3>
+        <div id="login-result">状态：<span class="pending">等待测试...</span></div>
+        <button onclick="testLogin()">运行测试</button>
+    </div>
+    
+    <div class="test-item">
+        <h3>测试 3: 获取文章列表</h3>
+        <div id="articles-result">状态：<span class="pending">等待测试...</span></div>
+        <button onclick="testArticles()">运行测试</button>
+    </div>
+    
+    <div class="test-item">
+        <h3>LocalStorage 状态</h3>
+        <div id="storage-result">检查中...</div>
+        <button onclick="clearStorage()">清除缓存</button>
+    </div>
+    
+    <div class="test-item">
+        <h3>控制台日志</h3>
+        <pre id="logs"></pre>
+    </div>
+    
+    <div class="test-item">
+        <h3>快速链接</h3>
+        <p><a href="login.html" style="color: #8a76ff;">→ 登录页面</a></p>
+        <p><a href="register.html" style="color: #8a76ff;">→ 注册页面</a></p>
+        <p><a href="hub.html" style="color: #8a76ff;">→ 中枢大厅</a></p>
+    </div>
+
+    <script>
+        const API_BASE = 'http://47.97.0.122:3000/api';
+        const logs = document.getElementById('logs');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#1dd1a1' : '#8a76ff';
+            logs.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            console.log(message);
+        }
+        
+        async function testHealth() {
+            const result = document.getElementById('health-result');
+            result.innerHTML = '状态：<span class="pending">测试中...</span>';
+            log('开始健康检查测试...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    result.innerHTML = '状态：<span class="success">✅ 成功</span> - ' + data.message;
+                    log('健康检查通过', 'success');
+                } else {
+                    throw new Error('API 返回异常状态');
+                }
+            } catch (error) {
+                result.innerHTML = '状态：<span class="error">❌ 失败</span> - ' + error.message;
+                log('健康检查失败：' + error.message, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            const result = document.getElementById('login-result');
+            result.innerHTML = '状态：<span class="pending">测试中...</span>';
+            log('开始登录 API 测试...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        username: 'admin', 
+                        password: 'admin123' 
+                    })
+                });
+                
+                log('响应状态：' + response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                log('响应数据：' + JSON.stringify(data).substring(0, 100) + '...');
+                
+                if (data.success) {
+                    localStorage.setItem('tsukuyomi_token', data.data.token);
+                    localStorage.setItem('tsukuyomi_user', JSON.stringify(data.data.user));
+                    result.innerHTML = '状态：<span class="success">✅ 成功</span> - 登录成功，Token 已保存';
+                    log('登录测试通过，Token 已保存', 'success');
+                } else {
+                    throw new Error(data.message || '登录失败');
+                }
+            } catch (error) {
+                result.innerHTML = '状态：<span class="error">❌ 失败</span> - ' + error.message;
+                log('登录测试失败：' + error.message, 'error');
+            }
+        }
+        
+        async function testArticles() {
+            const result = document.getElementById('articles-result');
+            result.innerHTML = '状态：<span class="pending">测试中...</span>';
+            log('开始获取文章列表测试...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/articles`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.innerHTML = `状态：<span class="success">✅ 成功</span> - 获取到 ${data.data.length} 篇文章`;
+                    log('文章列表获取成功', 'success');
+                } else {
+                    throw new Error('API 返回失败');
+                }
+            } catch (error) {
+                result.innerHTML = '状态：<span class="error">❌ 失败</span> - ' + error.message;
+                log('文章列表获取失败：' + error.message, 'error');
+            }
+        }
+        
+        function checkStorage() {
+            const storage = document.getElementById('storage-result');
+            const token = localStorage.getItem('tsukuyomi_token');
+            const user = localStorage.getItem('tsukuyomi_user');
+            
+            let html = '';
+            if (token) {
+                html += '<div style="color: #1dd1a1">✅ Token: 存在</div>';
+                try {
+                    const userData = JSON.parse(user);
+                    html += `<div style="color: #1dd1a1">✅ 用户：${userData.username} (${userData.role})</div>`;
+                } catch(e) {}
+            } else {
+                html += '<div style="color: #feca57">⚠️ 未登录状态</div>';
+            }
+            storage.innerHTML = html;
+        }
+        
+        function clearStorage() {
+            localStorage.removeItem('tsukuyomi_token');
+            localStorage.removeItem('tsukuyomi_user');
+            checkStorage();
+            log('LocalStorage 已清除');
+            alert('缓存已清除！');
+        }
+        
+        // 页面加载时检查
+        checkStorage();
+        log('页面加载完成，API_BASE: ' + API_BASE);
+    </script>
+</body>
+</html>
