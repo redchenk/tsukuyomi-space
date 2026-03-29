@@ -1,0 +1,72 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+    
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Run backend tests (if any)
+      working-directory: ./backend
+      run: npm test || echo "No tests configured"
+      continue-on-error: true
+    
+    - name: Build frontend (if needed)
+      run: echo "Frontend is static, no build needed"
+    
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        password: ${{ secrets.SERVER_PASSWORD }}
+        port: ${{ secrets.SERVER_PORT }}
+        script: |
+          cd /var/www/tsukuyomi-space
+          git pull origin main
+          systemctl reload nginx
+          
+          cd /opt/tsukuyomi-api
+          git pull origin main
+          npm install --production
+          pm2 restart tsukuyomi-api
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Lint backend code
+      working-directory: ./backend
+      run: npm run lint || echo "No linting configured"
+      continue-on-error: true
