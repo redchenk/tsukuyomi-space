@@ -12,7 +12,9 @@ const JWT_SECRET = 'tsukuyomi_space_secret_key_2024_change_in_production';
 
 // 中间件
 app.use(cors());
-app.use(express.json());
+// 增加请求体大小限制到 10MB（支持封面图片上传）
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // 初始化数据库
 const dbPath = path.join(__dirname, 'tsukuyomi.db');
@@ -375,69 +377,52 @@ app.post('/api/articles', authenticateToken, (req, res) => {
             return res.status(400).json({ success: false, message: 'タイトルを入力してください' });
         }
         
-        // 简单的分类验证
-        const validCategories = ['公告', '传说', '技术', '其他'];
-        let finalCategory = category;
-        
-        if (!finalCategory || !validCategories.includes(finalCategory)) {
-            finalCategory = '其他';
+        // 权限检查：只有管理员可以发布公告
+        if (category === '公告') {
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: '公告は管理者のみ投稿できます。他のカテゴリを選択してください。' 
+                });
+            }
         }
         
-        // 权限检查：只有管理员可以发布公告
-        if (finalCategory === '公告' && req.user.role !== 'admin') {
-            return res.status(403).json({ 
-                success: false, 
-                message: '公告は管理者のみ投稿できます' 
-            });
+        // 普通用户的默认分类
+        let finalCategory = category;
+        if (!finalCategory) {
+            finalCategory = req.user.role === 'admin' ? '公告' : '其他';
         }
         
         console.log('最終カテゴリ:', finalCategory);
         
         const tagsJson = JSON.stringify(tags || []);
         const publishDate = new Date().toISOString().split('T')[0];
+        const coverImageBase64 = cover_image || null;
         
-        // 尝试插入封面图片（如果数据库支持）
-        try {
-            const result = db.prepare(`
-                INSERT INTO articles (title, excerpt, content, category, tags, author_id, publish_date, read_time, cover_image)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(title, excerpt || '', content || '', finalCategory, tagsJson, req.user.id, publishDate, read_time || '5 min', cover_image || null);
-            
-            const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(result.lastInsertRowid);
-            console.log('記事作成成功 ID:', result.lastInsertRowid);
-            
-            res.status(201).json({ 
-                success: true, 
-                message: '投稿が完了しました',
-                data: newArticle 
-            });
-        } catch (dbError) {
-            // 如果不支持 cover_image 字段，尝试不使用该字段
-            console.log('cover_image 字段不存在，使用备用方案');
-            const result = db.prepare(`
-                INSERT INTO articles (title, excerpt, content, category, tags, author_id, publish_date, read_time)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(title, excerpt || '', content || '', finalCategory, tagsJson, req.user.id, publishDate, read_time || '5 min');
-            
-            const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(result.lastInsertRowid);
-            console.log('記事作成成功 ID:', result.lastInsertRowid);
-            
-            res.status(201).json({ 
-                success: true, 
-                message: '投稿が完了しました',
-                data: newArticle 
-            });
-        }
+        const result = db.prepare(`
+            INSERT INTO articles (title, excerpt, content, category, tags, author_id, publish_date, read_time, cover_image)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(title, excerpt || '', content || '', finalCategory, tagsJson, req.user.id, publishDate, read_time || '5 min', coverImageBase64);
+        
+        const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(result.lastInsertRowid);
+        
+        console.log('記事作成成功 ID:', result.lastInsertRowid);
+        
+        res.status(201).json({ 
+            success: true, 
+            message: '投稿が完了しました',
+            data: newArticle 
+        });
     } catch (error) {
-        console.error('記事作成エラー:', error.message);
-        res.status(500).json({ success: false, message: 'エラー：' + error.message });
+        console.error('記事作成エラー:', error);
+        res.status(500).json({ success: false, message: 'サーバーエラーが発生しました' });
     }
 });
 
 // 更新文章
 app.put('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
-        const { title, excerpt, content, category, tags, read_time } = req.body;
+        const { title, excerpt, content, category, tags, read_time, cover_image } = req.body;
         
         const stmt = db.prepare(`
             UPDATE articles 

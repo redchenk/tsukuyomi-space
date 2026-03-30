@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>月读空间 - 中枢大厅</title>
+    <title data-i18n="hub_title">月读空间 - 中枢大厅</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -18,12 +18,14 @@
         
         body {
             min-height: 100vh;
-            background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 40%, #0f1724 100%);
+            /* 使用《超かぐや姫！》场景图作为背景 */
+            background: linear-gradient(180deg, rgba(45,31,61,0.7) 0%, rgba(26,16,37,0.8) 40%, rgba(15,23,36,0.9) 100%),
+                        url('tsukuyomi-bg.png') center center / cover no-repeat fixed;
             font-family: 'Noto Sans JP', sans-serif;
             overflow-x: hidden;
         }
         
-        /* 樱花背景 */
+        /* 樱花背景容器 */
         #sakuraContainer {
             position: fixed;
             top: 0;
@@ -46,13 +48,13 @@
             top: 0;
             width: 100%;
             padding: 1.2rem 2rem;
-            background: rgba(26,16,37,0.8);
+            background: rgba(26,16,37,0.95);
             backdrop-filter: blur(10px);
             z-index: 1000;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255,107,157,0.15);
+            border-bottom: 1px solid rgba(255,107,157,0.2);
         }
         nav .logo {
             font-size: 1.3rem;
@@ -69,7 +71,7 @@
         .lang-switcher {
             display: flex;
             gap: 0.5rem;
-            background: rgba(255,107,157,0.15);
+            background: rgba(255,107,157,0.2);
             padding: 0.3rem 0.8rem;
             border-radius: 20px;
             border: 1px solid rgba(255,107,157,0.3);
@@ -79,14 +81,15 @@
             background: transparent;
             border: 1px solid rgba(255,183,197,0.3);
             border-radius: 20px;
-            color: rgba(255,183,197,0.6);
+            color: rgba(255,183,197,0.75);
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             transition: all 0.3s;
             font-family: 'Noto Sans JP', sans-serif;
+            white-space: nowrap;
         }
         .lang-btn:hover {
-            background: rgba(255,107,157,0.15);
+            background: rgba(255,107,157,0.2);
             border-color: rgba(255,107,157,0.5);
             color: #ffb7c5;
         }
@@ -94,7 +97,7 @@
             background: rgba(255,107,157,0.25);
             border-color: rgba(255,107,157,0.6);
             color: #ffb7c5;
-            font-weight: 500;
+            font-weight: 600;
         }
         
         nav .user-info {
@@ -231,6 +234,7 @@
             color: rgba(255,183,197,0.4);
             font-size: 0.75rem;
             font-weight: 300;
+            white-space: pre-line;
         }
         
         .scene-arrow {
@@ -286,10 +290,11 @@
     </style>
 </head>
 <body>
+    <!-- 樱花背景容器 -->
     <div id="sakuraContainer"></div>
     
     <nav>
-        <a href="access.html" class="logo">月读空间</a>
+        <a href="access.html" class="logo" data-i18n="space_name">月读空间</a>
         <div class="nav-right">
             <div class="user-info" id="userInfo">
                 <span id="usernameDisplay"></span>
@@ -298,7 +303,7 @@
             <a href="login.html" class="login-btn" id="loginBtn" data-i18n="login">登录</a>
             <!-- 语言切换器 -->
             <div class="lang-switcher">
-                <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+                <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh')">中文</button>
                 <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
             </div>
         </div>
@@ -306,8 +311,8 @@
     
     <div class="hub-container">
         <div class="title-area">
-            <h1 class="hub-title">ツクヨミ</h1>
-            <p class="hub-subtitle">夢と希望の空間</p>
+            <h1 class="hub-title" data-i18n="hub_title">中枢大厅</h1>
+            <p class="hub-subtitle" data-i18n="hub_subtitle">夢と希望が交わる場所</p>
         </div>
         
         <div class="scenes-list">
@@ -315,7 +320,8 @@
                 <div class="scene-icon">🎤</div>
                 <div class="scene-content">
                     <div class="scene-name" data-i18n="scene_main_stage">主舞台</div>
-                    <div class="scene-desc" data-i18n="scene_main_stage_desc">演唱会场馆\n博客文章</div>
+                    <div class="scene-desc" data-i18n="scene_main_stage_desc">演唱会场馆
+博客文章</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -324,7 +330,8 @@
                 <div class="scene-icon">⚔️</div>
                 <div class="scene-content">
                     <div class="scene-name" data-i18n="scene_arena">竞技场</div>
-                    <div class="scene-desc" data-i18n="scene_arena_desc">格斗游戏区\n项目展示</div>
+                    <div class="scene-desc" data-i18n="scene_arena_desc">格斗游戏区
+项目展示</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -333,7 +340,8 @@
                 <div class="scene-icon">🏠</div>
                 <div class="scene-content">
                     <div class="scene-name" data-i18n="scene_room">私人居所</div>
-                    <div class="scene-desc" data-i18n="scene_room_desc">个人虚拟房间\n关于我/技能树</div>
+                    <div class="scene-desc" data-i18n="scene_room_desc">个人虚拟房间
+关于我/技能树</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -342,7 +350,8 @@
                 <div class="scene-icon">💬</div>
                 <div class="scene-content">
                     <div class="scene-name" data-i18n="scene_plaza">月读广场</div>
-                    <div class="scene-desc" data-i18n="scene_plaza_desc">公共社交区\n留言板/访客互动</div>
+                    <div class="scene-desc" data-i18n="scene_plaza_desc">公共社交区
+留言板/访客互动</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -353,7 +362,8 @@
                 <div class="scene-icon">⚙️</div>
                 <div class="scene-content">
                     <div class="scene-name" data-i18n="scene_terminal">数据终端</div>
-                    <div class="scene-desc" data-i18n="scene_terminal_desc">后台管理系统\n仅管理员可见</div>
+                    <div class="scene-desc" data-i18n="scene_terminal_desc">后台管理系统
+仅管理员可见</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -370,105 +380,107 @@
     </div>
     
     <div class="bamboo" id="bamboo">🎋</div>
-    <div class="footer">© 超かぐや姫！風</div>
+    <div class="footer" data-i18n="footer">© 超かぐや姫！風</div>
     
     <script src="i18n.js"></script>
     <script>
-        // 初始化语言
+        // 初始化语言和用户状态
         document.addEventListener('DOMContentLoaded', function() {
             initLanguage();
+            checkUserStatus();
+            initSakura();
         });
         
-        // 樱花背景
-        const sakuraContainer = document.getElementById('sakuraContainer');
-        const sakuras = [];
-        
-        function createSakura() {
-            const el = document.createElement('div');
-            el.className = 'sakura';
-            const size = Math.random() * 6 + 5;
-            el.style.width = size + 'px';
-            el.style.height = size + 'px';
-            el.style.left = (Math.random() * 100) + '%';
-            sakuraContainer.appendChild(el);
-            return {
-                el: el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50,
-                vy: Math.random() * 0.4 + 0.3,
-                angle: Math.random() * Math.PI * 2,
-                angleSpeed: Math.random() * 0.015 + 0.008,
-                swayRadius: Math.random() * 15 + 8,
-                rot: Math.random() * 360,
-                rotSpeed: (Math.random() - 0.5) * 0.8,
-                flip: Math.random() > 0.5 ? 1 : -1,
-                opacity: Math.random() * 0.2 + 0.75
-            };
-        }
-        
-        for (let i = 0; i < 35; i++) {
-            const s = createSakura();
-            s.y = Math.random() * window.innerHeight;
-            sakuras.push(s);
-        }
-        
-        function animate() {
-            sakuras.forEach(s => {
-                s.y += s.vy;
-                s.angle += s.angleSpeed;
-                s.x = Math.sin(s.angle) * s.swayRadius * s.flip;
-                s.rot += s.rotSpeed;
-                let alpha = s.opacity;
-                if (s.y < 50) alpha = s.opacity * (s.y / 50);
-                else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50);
-                s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`;
-                s.el.style.opacity = alpha;
-                if (s.y > window.innerHeight + 30) {
-                    s.y = -30 - Math.random() * 50;
-                    s.x = 0;
-                    s.angle = Math.random() * Math.PI * 2;
-                    s.flip = Math.random() > 0.5 ? 1 : -1;
-                }
-            });
-            requestAnimationFrame(animate);
-        }
-        animate();
-        
-        document.getElementById('bamboo').addEventListener('click', () => {
-            alert('🎋 竹取物語\n\n昔々、竹取の翁が竹林で光る赤ちゃんを見つけました...\n\n（OK を押して続ける）');
-        });
-        
-        function checkLoginStatus() {
-            const t = localStorage.getItem('tsukuyomi_token');
-            const u = localStorage.getItem('tsukuyomi_user');
-            const i = document.getElementById('userInfo');
-            const l = document.getElementById('loginBtn');
-            const d = document.getElementById('usernameDisplay');
+        // 检查用户登录状态
+        function checkUserStatus() {
+            const token = localStorage.getItem('tsukuyomi_token');
+            const userStr = localStorage.getItem('tsukuyomi_user');
             
-            if (t && u) {
+            if (token && userStr) {
                 try {
-                    const user = JSON.parse(u);
-                    i.classList.add('show');
-                    l.style.display = 'none';
-                    d.textContent = user.username;
-                    if (user.role === 'admin') {
-                        const a = document.querySelector('a[href="terminal.html"]');
-                        if (a) {
-                            a.querySelector('.scene-name').textContent = '管理ターミナル';
-                            a.querySelector('.scene-desc').textContent = '管理者用';
-                        }
-                    }
-                } catch (e) {}
+                    const user = JSON.parse(userStr);
+                    document.getElementById('usernameDisplay').textContent = user.username || user.email;
+                    document.getElementById('userInfo').classList.add('show');
+                    document.getElementById('loginBtn').style.display = 'none';
+                } catch (e) {
+                    console.error('解析用户信息失败:', e);
+                }
             }
         }
         
+        // 退出登录
         function logout() {
-            if (confirm('ログアウトしますか？')) {
-                localStorage.removeItem('tsukuyomi_token');
-                localStorage.removeItem('tsukuyomi_user');
-                location.reload();
-            }
+            localStorage.removeItem('tsukuyomi_token');
+            localStorage.removeItem('tsukuyomi_user');
+            window.location.reload();
         }
         
-        checkLoginStatus();
+        // 樱花背景动画
+        function initSakura() {
+            const sakuraContainer = document.getElementById('sakuraContainer');
+            const sakuras = [];
+            
+            function createSakura() {
+                const el = document.createElement('div');
+                el.className = 'sakura';
+                const size = Math.random() * 6 + 5;
+                el.style.width = size + 'px';
+                el.style.height = size + 'px';
+                el.style.left = (Math.random() * 100) + '%';
+                sakuraContainer.appendChild(el);
+                return {
+                    el: el,
+                    x: 0,
+                    y: -Math.random() * window.innerHeight * 0.5 - 50,
+                    vy: Math.random() * 0.4 + 0.3,
+                    angle: Math.random() * Math.PI * 2,
+                    angleSpeed: Math.random() * 0.015 + 0.008,
+                    swayRadius: Math.random() * 15 + 8,
+                    rot: Math.random() * 360,
+                    rotSpeed: (Math.random() - 0.5) * 0.8,
+                    flip: Math.random() > 0.5 ? 1 : -1,
+                    opacity: Math.random() * 0.2 + 0.75
+                };
+            }
+            
+            // 创建 50 片樱花
+            for (let i = 0; i < 50; i++) {
+                const s = createSakura();
+                s.y = Math.random() * window.innerHeight;
+                sakuras.push(s);
+            }
+            
+            function animate() {
+                sakuras.forEach(s => {
+                    s.y += s.vy;
+                    s.angle += s.angleSpeed;
+                    s.x = Math.sin(s.angle) * s.swayRadius * s.flip;
+                    s.rot += s.rotSpeed;
+                    
+                    let alpha = s.opacity;
+                    if (s.y < 50) alpha = s.opacity * (s.y / 50);
+                    else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50);
+                    
+                    s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`;
+                    s.el.style.opacity = alpha;
+                    
+                    if (s.y > window.innerHeight + 30) {
+                        s.y = -30 - Math.random() * 50;
+                        s.x = 0;
+                        s.angle = Math.random() * Math.PI * 2;
+                        s.flip = Math.random() > 0.5 ? 1 : -1;
+                    }
+                });
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+        
+        // 竹枝彩蛋
+        document.getElementById('bamboo').addEventListener('click', function() {
+            alert('🎋 竹枝彩蛋：ありがとう！');
+        });
     </script>
 </body>
 </html>
