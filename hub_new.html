@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="hub_title">中枢大厅 | 月读空间</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root{--sakura-pink:#ffb7c5;--deep-pink:#ff6b9d}
+        *{margin:0;padding:0;box-sizing:border-box}
+        
+        /* 月读空间背景 */
+        body{min-height:100vh;font-family:'Noto Sans JP',sans-serif;overflow-x:hidden}
+        .tsukuyomi-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;background:radial-gradient(ellipse at top,#1a1a3a 0%,#0a0a1a 100%)}
+        .moon{position:absolute;top:15%;left:50%;transform:translateX(-50%);width:80px;height:80px;background:radial-gradient(circle at 35% 35%,rgba(255,255,255,0.95),rgba(200,220,255,0.8),rgba(100,150,255,0.6));border-radius:50%;box-shadow:0 0 60px rgba(255,255,255,0.6),0 0 120px rgba(255,255,255,0.4),0 0 180px rgba(138,118,255,0.3);animation:moonGlow 4s ease-in-out infinite}
+        @keyframes moonGlow{0%,100%{box-shadow:0 0 60px rgba(255,255,255,0.6),0 0 120px rgba(255,255,255,0.4),0 0 180px rgba(138,118,255,0.3)}50%{box-shadow:0 0 80px rgba(255,255,255,0.8),0 0 160px rgba(255,255,255,0.6),0 0 240px rgba(138,118,255,0.5)}}
+        .stars{position:absolute;top:0;left:0;width:100%;height:100%;background-image:radial-gradient(2px 2px at 20% 30%,white,transparent),radial-gradient(2px 2px at 60% 70%,white,transparent),radial-gradient(1px 1px at 50% 50%,white,transparent);background-size:200% 200%;animation:starsTwinkle 3s ease-in-out infinite;opacity:0.8}
+        @keyframes starsTwinkle{0%,100%{opacity:0.8}50%{opacity:1}}
+        .floating-island{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:120%;height:60%;background:linear-gradient(180deg,transparent 0%,rgba(26,16,37,0.8) 40%,rgba(10,10,26,0.95) 100%);clip-path:ellipse(70% 100% at 50% 100%)}
+        .waterfall{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:80%;height:50%;background:linear-gradient(180deg,rgba(255,255,255,0.1) 0%,rgba(255,255,255,0.05) 50%,transparent 100%);clip-path:polygon(20% 0%,80% 0%,75% 100%,25% 100%);animation:waterfallFlow 2s linear infinite}
+        @keyframes waterfallFlow{0%{background-position:0 0}100%{background-position:0 100%}}
+        .clouds{position:absolute;bottom:20%;left:0;width:100%;height:30%;background:radial-gradient(ellipse at 30% 50%,rgba(255,255,255,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 50%,rgba(255,255,255,0.08) 0%,transparent 50%);animation:cloudsMove 20s linear infinite}
+        @keyframes cloudsMove{0%{transform:translateX(-10%)}100%{transform:translateX(10%)}}
+        
+        /* 导航栏 */
+        nav{position:fixed;top:0;left:0;width:100%;height:60px;background:rgba(26,16,37,0.95);backdrop-filter:blur(10px);z-index:1000;display:flex;justify-content:space-between;align-items:center;padding:0 2rem;border-bottom:1px solid rgba(255,107,157,0.2)}
+        nav .logo{font-size:1.3rem;background:linear-gradient(135deg,#fff,#ffb7c5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;font-weight:500}
+        nav .nav-right{display:flex;align-items:center;gap:0.5rem}
+        nav .nav-right a{color:rgba(255,183,197,0.8);text-decoration:none;font-size:0.9rem;padding:0.4rem 0.8rem;border-radius:15px;transition:all 0.3s}
+        nav .nav-right a:hover{color:#ffb7c5;background:rgba(255,107,157,0.15)}
+        
+        /* 语言切换器 */
+        .lang-switcher{display:inline-flex;align-items:center;gap:0.4rem;background:rgba(255,107,157,0.15);padding:0.25rem 0.6rem;border-radius:20px;border:1px solid rgba(255,107,157,0.3)}
+        .lang-switcher .lang-btn{padding:0.2rem 0.6rem;background:transparent;border:1px solid rgba(255,183,197,0.25);border-radius:15px;color:rgba(255,183,197,0.75);cursor:pointer;font-size:0.72rem;transition:all 0.25s;white-space:nowrap}
+        .lang-switcher .lang-btn:hover{background:rgba(255,107,157,0.2);border-color:rgba(255,107,157,0.4)}
+        .lang-switcher .lang-btn.active{background:rgba(255,107,157,0.25);border-color:rgba(255,107,157,0.5);color:#ffb7c5;font-weight:600}
+        
+        /* 主容器 */
+        .hub-container{position:relative;z-index:10;min-height:100vh;padding:80px 2rem 2rem;max-width:1000px;margin:0 auto;display:flex;flex-direction:column;justify-content:center}
+        
+        /* 标题区 */
+        .title-area{text-align:center;margin-bottom:3rem}
+        .hub-title{font-size:2.5rem;background:linear-gradient(135deg,#fff,#ffb7c5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:0.5rem;letter-spacing:0.3rem}
+        .hub-subtitle{color:rgba(255,183,197,0.6);font-size:0.9rem;letter-spacing:0.2rem}
+        
+        /* 场景列表 */
+        .scenes-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem}
+        .scene-item{background:rgba(255,255,255,0.03);border:1px solid rgba(255,107,157,0.15);border-radius:8px;padding:1.5rem;text-decoration:none;transition:all 0.3s;display:flex;align-items:center;gap:1rem}
+        .scene-item:hover{transform:translateX(8px);border-color:rgba(255,107,157,0.3);background:rgba(255,107,157,0.08)}
+        .scene-icon{font-size:2.5rem;min-width:60px;text-align:center}
+        .scene-content{flex:1}
+        .scene-name{color:rgba(255,183,197,0.95);font-size:1.1rem;margin-bottom:0.3rem;font-weight:500}
+        .scene-desc{color:rgba(255,183,197,0.6);font-size:0.85rem;line-height:1.5;white-space:pre-line}
+        .scene-arrow{color:rgba(255,107,157,0.4);font-size:1.2rem;transition:all 0.3s}
+        .scene-item:hover .scene-arrow{color:rgba(255,107,157,0.8);transform:translateX(4px)}
+        
+        /* 分隔线 */
+        .scene-divider{grid-column:1/-1;height:1px;background:rgba(255,107,157,0.15);margin:0.5rem 0}
+        
+        /* 页脚 */
+        .footer{position:fixed;bottom:1rem;color:rgba(255,255,255,0.3);font-size:0.65rem;width:100%;text-align:center;letter-spacing:0.1rem}
+        
+        /* 樱花 */
+        .sakura{position:absolute;background:linear-gradient(135deg,#ffb7c5,#ff6b9d);border-radius:50% 0 50% 0;pointer-events:none;opacity:0.6}
+        @keyframes sakuraFall{0%{transform:translateY(-10vh) translateX(0) rotate(0deg);opacity:0}10%{opacity:0.6}100%{transform:translateY(110vh) translateX(100px) rotate(720deg);opacity:0}}
+        
+        /* 移动端适配 */
+        @media(max-width:768px){
+            nav{padding:0 1rem;height:50px}
+            nav .nav-right{gap:0.3rem}
+            nav .nav-right a{font-size:0.8rem;padding:0.3rem 0.5rem}
+            .lang-switcher{padding:0.2rem 0.5rem}
+            .lang-switcher .lang-btn{font-size:0.68rem;padding:0.15rem 0.5rem}
+            .hub-container{padding:70px 1rem 1rem}
+            .scenes-list{grid-template-columns:1fr}
+            .hub-title{font-size:2rem}
+        }
+    </style>
+</head>
+<body>
+    <div class="tsukuyomi-bg">
+        <div class="moon"></div>
+        <div class="stars"></div>
+        <div class="floating-island"></div>
+        <div class="waterfall"></div>
+        <div class="clouds"></div>
+    </div>
+    <div id="sakuraContainer"></div>
+    
+    <nav>
+        <a href="access.html" class="logo" data-i18n="space_name">月读空间</a>
+        <div class="nav-right">
+            <a href="access.html" data-i18n="access_btn">接入</a>
+            <a href="stage.html" data-i18n="nav_stage">主舞台</a>
+            <a href="arena.html" data-i18n="nav_arena">竞技场</a>
+            <div class="lang-switcher">
+                <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+                <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="hub-container">
+        <div class="title-area">
+            <h1 class="hub-title" data-i18n="hub_title">中枢大厅</h1>
+            <p class="hub-subtitle" data-i18n="hub_subtitle">梦想与希望交汇之地</p>
+        </div>
+        
+        <div class="scenes-list">
+            <a href="stage.html" class="scene-item">
+                <div class="scene-icon">🎤</div>
+                <div class="scene-content">
+                    <div class="scene-name" data-i18n="scene_main_stage">主舞台</div>
+                    <div class="scene-desc" data-i18n="scene_main_stage_desc">演唱会场馆&#10;博客文章</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <a href="arena.html" class="scene-item">
+                <div class="scene-icon">⚔️</div>
+                <div class="scene-content">
+                    <div class="scene-name" data-i18n="scene_arena">竞技场</div>
+                    <div class="scene-desc" data-i18n="scene_arena_desc">格斗游戏区&#10;项目展示</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <a href="room.html" class="scene-item">
+                <div class="scene-icon">🏠</div>
+                <div class="scene-content">
+                    <div class="scene-name" data-i18n="scene_room">私人居所</div>
+                    <div class="scene-desc" data-i18n="scene_room_desc">个人虚拟房间&#10;关于我/技能树</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <a href="plaza.html" class="scene-item">
+                <div class="scene-icon">💬</div>
+                <div class="scene-content">
+                    <div class="scene-name" data-i18n="scene_plaza">月读广场</div>
+                    <div class="scene-desc" data-i18n="scene_plaza_desc">公共社交区&#10;留言板/访客互动</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <div class="scene-divider"></div>
+            
+            <a href="terminal.html" class="scene-item">
+                <div class="scene-icon">⚙️</div>
+                <div class="scene-content">
+                    <div class="scene-name" data-i18n="scene_terminal">数据终端</div>
+                    <div class="scene-desc" data-i18n="scene_terminal_desc">后台管理系统&#10;仅管理员可见</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+            
+            <a href="reality.html" class="scene-item">
+                <div class="scene-icon">🌍</div>
+                <div class="scene-content">
+                    <div class="scene-name" data-i18n="scene_reality">现实锚点</div>
+                    <div class="scene-desc" data-i18n="scene_reality_desc">返回现实世界&#10;联系方式</div>
+                </div>
+                <div class="scene-arrow">→</div>
+            </a>
+        </div>
+    </div>
+    
+    <div class="footer" data-i18n="footer">© 超かぐや姫！風</div>
+    
+    <script src="i18n.js"></script>
+    <script>
+        // 樱花背景
+        const sakuraContainer=document.getElementById('sakuraContainer');
+        for(let i=0;i<30;i++){
+            const el=document.createElement('div');
+            el.className='sakura';
+            const size=Math.random()*8+6;
+            el.style.width=size+'px';
+            el.style.height=size+'px';
+            el.style.left=(Math.random()*100)+'%';
+            el.style.top=(-Math.random()*100)+'px';
+            el.style.animation=`sakuraFall ${Math.random()*5+10}s linear ${Math.random()*5}s infinite`;
+            sakuraContainer.appendChild(el);
+        }
+        
+        // 用户状态
+        function checkLoginStatus(){
+            const token=localStorage.getItem('tsukuyomi_token');
+            const userStr=localStorage.getItem('tsukuyomi_user');
+            const userInfo=document.getElementById('userInfo');
+            const loginBtn=document.getElementById('loginBtn');
+            const usernameDisplay=document.getElementById('usernameDisplay');
+            if(token&&userStr){
+                try{
+                    const user=JSON.parse(userStr);
+                    userInfo.classList.add('show');
+                    loginBtn.style.display='none';
+                    usernameDisplay.textContent=user.username;
+                    if(user.role==='admin'){
+                        const adminLink=document.querySelector('a[href="terminal.html"]');
+                        if(adminLink){
+                            adminLink.style.opacity='1';
+                        }
+                    }
+                }catch(e){}
+            }
+        }
+        function logout(){
+            if(confirm('确定要退出登录吗？')){
+                localStorage.removeItem('tsukuyomi_token');
+                localStorage.removeItem('tsukuyomi_user');
+                location.reload();
+            }
+        }
+        checkLoginStatus();
+    </script>
+</body>
+</html>

@@ -17,12 +17,27 @@
             z-index: 1001;
             display: flex;
             gap: 0.5rem;
-            background: rgba(26,16,37,0.9);
+            background: rgba(26,16,37,0.95);
             backdrop-filter: blur(10px);
-            padding: 0.5rem;
-            border-radius: 25px;
-            border: 1px solid rgba(255,107,157,0.3);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255,107,157,0.4);
+        }
+        .lang-btn {
+            padding: 0.3rem 0.8rem;
+            background: transparent;
+            border: 1px solid rgba(255,183,197,0.3);
+            border-radius: 15px;
+            color: rgba(255,183,197,0.7);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        .lang-btn.active {
+            background: rgba(255,107,157,0.3);
+            border-color: rgba(255,107,157,0.6);
+            color: #ffb7c5;
+            font-weight: 500;
         }
         .lang-btn {
             padding: 0.4rem 1rem;
@@ -140,7 +155,7 @@
             <p class="subtitle" data-i18n="editor_subtitle">创建新文章</p>
         </div>
         <div id="editorContainer">
-            <div class="login-notice" data-i18n="loading">ログインチェック中...</div>
+            <div class="login-notice" data-i18n="loading">加载中...</div>
         </div>
     </div>
     <div class="footer">© 超かぐや姫！風</div>

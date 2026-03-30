@@ -67,18 +67,12 @@
         
         /* 语言切换器 */
         .lang-switcher {
-            position: fixed;
-            top: 1.5rem;
-            right: 2rem;
-            z-index: 1001;
             display: flex;
             gap: 0.5rem;
-            background: rgba(26,16,37,0.9);
-            backdrop-filter: blur(10px);
-            padding: 0.5rem;
-            border-radius: 25px;
+            background: rgba(255,107,157,0.15);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
             border: 1px solid rgba(255,107,157,0.3);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
         .lang-btn {
             padding: 0.4rem 1rem;
@@ -302,14 +296,13 @@
                 <button class="logout-btn" onclick="logout()" data-i18n="logout">退出</button>
             </div>
             <a href="login.html" class="login-btn" id="loginBtn" data-i18n="login">登录</a>
+            <!-- 语言切换器 -->
+            <div class="lang-switcher">
+                <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+                <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
+            </div>
         </div>
     </nav>
-    
-    <!-- 语言切换器 -->
-    <div class="lang-switcher">
-        <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
-        <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
-    </div>
     
     <div class="hub-container">
         <div class="title-area">
@@ -321,8 +314,8 @@
             <a href="stage.html" class="scene-item">
                 <div class="scene-icon">🎤</div>
                 <div class="scene-content">
-                    <div class="scene-name">メインステージ</div>
-                    <div class="scene-desc">ライブ・ブログ</div>
+                    <div class="scene-name" data-i18n="scene_main_stage">主舞台</div>
+                    <div class="scene-desc" data-i18n="scene_main_stage_desc">演唱会场馆\n博客文章</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -330,8 +323,8 @@
             <a href="arena.html" class="scene-item">
                 <div class="scene-icon">⚔️</div>
                 <div class="scene-content">
-                    <div class="scene-name">アリーナ</div>
-                    <div class="scene-desc">プロジェクト</div>
+                    <div class="scene-name" data-i18n="scene_arena">竞技场</div>
+                    <div class="scene-desc" data-i18n="scene_arena_desc">格斗游戏区\n项目展示</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -339,8 +332,8 @@
             <a href="room.html" class="scene-item">
                 <div class="scene-icon">🏠</div>
                 <div class="scene-content">
-                    <div class="scene-name">プライベートルーム</div>
-                    <div class="scene-desc">プロフィール</div>
+                    <div class="scene-name" data-i18n="scene_room">私人居所</div>
+                    <div class="scene-desc" data-i18n="scene_room_desc">个人虚拟房间\n关于我/技能树</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -348,8 +341,8 @@
             <a href="plaza.html" class="scene-item">
                 <div class="scene-icon">💬</div>
                 <div class="scene-content">
-                    <div class="scene-name">月読プラザ</div>
-                    <div class="scene-desc">メッセージ</div>
+                    <div class="scene-name" data-i18n="scene_plaza">月读广场</div>
+                    <div class="scene-desc" data-i18n="scene_plaza_desc">公共社交区\n留言板/访客互动</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -359,8 +352,8 @@
             <a href="terminal.html" class="scene-item">
                 <div class="scene-icon">⚙️</div>
                 <div class="scene-content">
-                    <div class="scene-name">ターミナル</div>
-                    <div class="scene-desc">管理</div>
+                    <div class="scene-name" data-i18n="scene_terminal">数据终端</div>
+                    <div class="scene-desc" data-i18n="scene_terminal_desc">后台管理系统\n仅管理员可见</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>

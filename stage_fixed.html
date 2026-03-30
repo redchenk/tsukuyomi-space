@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="stage_title">主舞台 | 月读空间</title>
+    <title>主舞台 | 月读空间</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root{--sakura-pink:#ffb7c5;--deep-pink:#ff6b9d;--dark-bg:#1a1025}
@@ -49,11 +49,11 @@
 </head>
 <body>
     <nav>
-        <a href="hub.html" class="logo" data-i18n="space_name">月读空间</a>
+        <a href="hub.html" class="logo">月读空间</a>
         <div class="nav-right">
-            <a href="hub.html" data-i18n="nav_hub">中枢大厅</a>
-            <a href="stage.html" class="active" data-i18n="nav_stage">主舞台</a>
-            <a href="arena.html" data-i18n="nav_arena">竞技场</a>
+            <a href="hub.html">中枢大厅</a>
+            <a href="stage.html" class="active">主舞台</a>
+            <a href="arena.html">竞技场</a>
             <div class="lang-switcher">
                 <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh')">中文</button>
                 <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
@@ -62,29 +62,30 @@
     </nav>
     <div class="container">
         <div class="header">
-            <h1 class="title" data-i18n="stage_title">主舞台</h1>
-            <p class="subtitle" data-i18n="stage_subtitle">演唱会场馆 | 博客文章</p>
+            <h1 class="title">主舞台</h1>
+            <p class="subtitle">演唱会场馆 | 博客文章</p>
         </div>
         <div class="controls">
             <div class="search-box">
-                <input type="text" id="searchInput" data-i18n="search_placeholder" placeholder="搜索文章...">
+                <input type="text" id="searchInput" placeholder="搜索文章...">
             </div>
-            <a href="editor.html" class="btn" data-i18n="new_post">✏️ 新建投稿</a>
+            <a href="editor.html" class="btn">✏️ 新建投稿</a>
         </div>
         <div class="filters" id="filters">
-            <button class="filter-btn active" data-category="all" data-i18n="filter_all">全部</button>
-            <button class="filter-btn" data-category="公告" data-i18n="filter_announcement">公告</button>
-            <button class="filter-btn" data-category="传说" data-i18n="filter_legend">传说</button>
-            <button class="filter-btn" data-category="技术" data-i18n="filter_technology">技术</button>
-            <button class="filter-btn" data-category="其他" data-i18n="filter_other">其他</button>
+            <button class="filter-btn active" data-category="all">全部</button>
+            <button class="filter-btn" data-category="公告">公告</button>
+            <button class="filter-btn" data-category="传说">传说</button>
+            <button class="filter-btn" data-category="技术">技术</button>
+            <button class="filter-btn" data-category="其他">其他</button>
         </div>
         <div class="articles-list" id="articlesList">
-            <div class="loading" data-i18n="loading">加载中...</div>
+            <div style="text-align:center;padding:3rem;color:rgba(255,183,197,0.5);">加载中...</div>
         </div>
     </div>
-    <div class="footer" data-i18n="footer">© 超かぐや姫！風</div>
+    <div class="footer">© 超かぐや姫！風</div>
     <script src="i18n.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded',function(){initLanguage();});
         const API_BASE='http://47.97.0.122:3000/api';
         let allArticles=[];
         let currentCategory='all';
@@ -98,10 +99,10 @@
                     allArticles=result.data;
                     renderArticles();
                 }else{
-                    list.innerHTML='<div style="text-align:center;padding:3rem;color:rgba(255,183,197,0.5);" data-i18n="load_failed">加载失败</div>';
+                    list.innerHTML='<div style="text-align:center;padding:3rem;color:rgba(255,183,197,0.5);">加载失败</div>';
                 }
             }catch(error){
-                list.innerHTML='<div style="text-align:center;padding:3rem;color:rgba(255,183,197,0.5);" data-i18n="load_failed">加载失败</div>';
+                list.innerHTML='<div style="text-align:center;padding:3rem;color:rgba(255,183,197,0.5);">加载失败</div>';
             }
         }
         function renderArticles(){
@@ -113,7 +114,7 @@
                 filtered=filtered.filter(a=>a.title.toLowerCase().includes(query)||a.excerpt.toLowerCase().includes(query));
             }
             if(filtered.length===0){
-                list.innerHTML='<div style="text-align:center;padding:3rem;color:rgba(255,183,197,0.5);" data-i18n="no_articles">暂无文章</div>';
+                list.innerHTML='<div style="text-align:center;padding:3rem;color:rgba(255,183,197,0.5);">暂无文章</div>';
                 return;
             }
             list.innerHTML=filtered.map(article=>`

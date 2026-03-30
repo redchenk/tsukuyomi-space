@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="stage_title">主舞台 | 月读空间</title>
+    <title>主舞台 | 月读空间</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root{--sakura-pink:#ffb7c5;--deep-pink:#ff6b9d;--dark-bg:#1a1025}
@@ -79,12 +79,13 @@
             <button class="filter-btn" data-category="其他" data-i18n="filter_other">其他</button>
         </div>
         <div class="articles-list" id="articlesList">
-            <div class="loading" data-i18n="loading">加载中...</div>
+            <div style="text-align:center;padding:3rem;color:rgba(255,183,197,0.5);" data-i18n="loading">加载中...</div>
         </div>
     </div>
     <div class="footer" data-i18n="footer">© 超かぐや姫！風</div>
     <script src="i18n.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded',function(){initLanguage();});
         const API_BASE='http://47.97.0.122:3000/api';
         let allArticles=[];
         let currentCategory='all';

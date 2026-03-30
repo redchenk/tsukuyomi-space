@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="editor_title">新建投稿 | 月读空间</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root{--sakura-pink:#ffb7c5;--deep-pink:#ff6b9d;--dark-bg:#1a1025}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{min-height:100vh;background:linear-gradient(180deg,#2d1f3d 0%,#1a1025 50%,#0f1724 100%);font-family:'Noto Sans JP',sans-serif;overflow-x:hidden}
+        nav{position:fixed;top:0;width:100%;padding:1rem 2rem;background:rgba(26,16,37,0.95);backdrop-filter:blur(10px);z-index:1000;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,107,157,0.2)}
+        nav .logo{font-size:1.3rem;background:linear-gradient(135deg,#fff,#ffb7c5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;font-weight:500}
+        nav .nav-right{display:flex;align-items:center;gap:0.8rem}
+        nav a{color:rgba(255,183,197,0.8);text-decoration:none;font-size:0.9rem;padding:0.4rem 0.8rem;border-radius:15px;transition:all 0.3s}
+        nav a:hover{color:#ffb7c5;background:rgba(255,107,157,0.15)}
+        .lang-switcher{display:flex;gap:0.4rem;background:rgba(255,107,157,0.2);padding:0.3rem 0.6rem;border-radius:20px;border:1px solid rgba(255,107,157,0.4);margin-left:0.5rem}
+        .lang-btn{padding:0.25rem 0.7rem;background:transparent;border:1px solid rgba(255,183,197,0.3);border-radius:15px;color:rgba(255,183,197,0.8);cursor:pointer;font-size:0.75rem;transition:all 0.3s;white-space:nowrap}
+        .lang-btn:hover{background:rgba(255,107,157,0.25);border-color:rgba(255,107,157,0.5)}
+        .lang-btn.active{background:rgba(255,107,157,0.3);border-color:rgba(255,107,157,0.6);color:#ffb7c5;font-weight:600}
+        .container{position:relative;z-index:10;min-height:100vh;padding:7rem 2rem 2rem;max-width:800px;margin:0 auto}
+        .header{text-align:center;margin-bottom:2rem}
+        .title{font-size:2rem;background:linear-gradient(135deg,#fff,#ffb7c5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:0.5rem}
+        .subtitle{color:rgba(255,183,197,0.6);font-size:0.85rem}
+        .editor-form{background:rgba(255,255,255,0.03);border:1px solid rgba(255,107,157,0.15);border-radius:8px;padding:2rem}
+        .form-group{margin-bottom:1.5rem}
+        .form-group label{display:block;color:rgba(255,183,197,0.9);margin-bottom:0.5rem;font-size:0.9rem;font-weight:500}
+        .form-group input,.form-group select,.form-group textarea{width:100%;padding:0.9rem 1.2rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,107,157,0.2);border-radius:6px;color:rgba(255,183,197,0.9);font-size:0.9rem;transition:all 0.3s}
+        .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:rgba(255,107,157,0.4);box-shadow:0 0 20px rgba(255,107,157,0.1)}
+        .form-group input::placeholder,.form-group textarea::placeholder{color:rgba(255,183,197,0.4)}
+        .form-group textarea{min-height:300px;resize:vertical;line-height:1.8}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+        .help-text{font-size:0.8rem;color:rgba(255,183,197,0.5);margin-top:0.5rem;line-height:1.6}
+        .btn-group{display:flex;gap:1rem;margin-top:2rem}
+        .btn{padding:1rem 2rem;border:none;border-radius:6px;cursor:pointer;font-size:0.95rem;transition:all 0.3s;text-decoration:none;display:inline-block;text-align:center}
+        .btn-primary{background:rgba(255,107,157,0.2);color:#ffb7c5;border:1px solid rgba(255,107,157,0.3)}
+        .btn-primary:hover{background:rgba(255,107,157,0.3);transform:translateY(-2px)}
+        .btn-secondary{background:rgba(255,255,255,0.05);color:rgba(255,183,197,0.7);border:1px solid rgba(255,183,197,0.2)}
+        .btn-secondary:hover{background:rgba(255,255,255,0.08)}
+        .btn:disabled{opacity:0.5;cursor:not-allowed}
+        .message{padding:1rem;border-radius:6px;margin-bottom:1.5rem;text-align:center;display:none}
+        .message.success{background:rgba(100,255,150,0.1);border:1px solid rgba(100,255,150,0.3);color:#6bff9e}
+        .message.error{background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.3);color:#ff6b6b}
+        .footer{position:fixed;bottom:1rem;color:rgba(255,255,255,0.3);font-size:0.65rem;width:100%;text-align:center;letter-spacing:0.1rem}
+        @media(max-width:768px){nav{padding:0.8rem 1rem}nav .nav-right{gap:0.5rem}nav a{font-size:0.8rem;padding:0.3rem 0.6rem}.lang-switcher{padding:0.2rem 0.5rem}.lang-btn{font-size:0.7rem;padding:0.2rem 0.5rem}.form-row{grid-template-columns:1fr}.container{padding:6rem 1rem 1rem}.btn-group{flex-direction:column}}
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="hub.html" class="logo" data-i18n="space_name">月读空间</a>
+        <div class="nav-right">
+            <a href="hub.html" data-i18n="nav_hub">中枢大厅</a>
+            <a href="stage.html" data-i18n="nav_stage">主舞台</a>
+            <div class="lang-switcher">
+                <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+                <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="header">
+            <h1 class="title" data-i18n="editor_title">新建投稿</h1>
+            <p class="subtitle" data-i18n="editor_subtitle">创建新文章</p>
+        </div>
+        <form class="editor-form" id="editorForm">
+            <div class="message" id="message"></div>
+            <div class="form-group">
+                <label for="title" data-i18n="field_title">标题 *</label>
+                <input type="text" id="title" data-i18n="field_title_placeholder" placeholder="输入文章标题" required>
+            </div>
+            <div class="form-group">
+                <label data-i18n="field_cover">文章封面图片</label>
+                <div style="display:flex;gap:1rem;align-items:center;margin-top:0.5rem">
+                    <input type="file" id="cover" accept="image/*" style="flex:1">
+                    <button type="button" class="btn btn-secondary" onclick="removeCover()" data-i18n="field_cover_remove">删除</button>
+                </div>
+                <div class="help-text" data-i18n="field_cover_hint">推荐：1200x630px，JPG 或 PNG 格式</div>
+                <div id="coverPreview" style="margin-top:1rem;display:none">
+                    <img id="previewImg" src="" alt="封面预览" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid rgba(255,107,157,0.2)">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="category" data-i18n="field_category">分类 *</label>
+                    <select id="category" required>
+                        <option value="" data-i18n="field_category_select">请选择分类</option>
+                        <option value="公告" data-i18n="field_category_announcement">公告（仅管理员）</option>
+                        <option value="传说" data-i18n="field_category_legend">传说</option>
+                        <option value="技术" data-i18n="field_category_technology">技术</option>
+                        <option value="其他" data-i18n="field_category_other">其他</option>
+                    </select>
+                    <div class="help-text" data-i18n="field_category_hint">※ 公告仅管理员可发布</div>
+                </div>
+                <div class="form-group">
+                    <label for="read_time" data-i18n="field_read_time">阅读时间</label>
+                    <input type="text" id="read_time" data-i18n="field_read_time_placeholder" placeholder="例：5 min" value="5 min">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="excerpt" data-i18n="field_excerpt">摘要 *</label>
+                <textarea id="excerpt" data-i18n="field_excerpt_placeholder" placeholder="文章摘要（200 字以内）" required></textarea>
+                <div class="help-text" data-i18n="field_excerpt_hint">请输入文章摘要</div>
+            </div>
+            <div class="form-group">
+                <label for="content" data-i18n="field_content">正文 *</label>
+                <textarea id="content" data-i18n="field_content_placeholder" placeholder="输入文章内容..." required></textarea>
+                <div class="help-text" data-i18n="field_content_hint">格式支持：## 标题 1 / ### 标题 2 / - 列表项 / > 引用 / `代码`</div>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary" id="submitBtn" data-i18n="btn_submit">投稿</button>
+                <a href="stage.html" class="btn btn-secondary" data-i18n="cancel">取消</a>
+            </div>
+        </form>
+    </div>
+    <div class="footer" data-i18n="footer">© 超かぐや姫！風</div>
+    <script src="i18n.js"></script>
+    <script>
+        const API_BASE='http://47.97.0.122:3000/api';
+        let coverFile=null;
+        document.addEventListener('DOMContentLoaded',function(){
+            initLanguage();
+            document.getElementById('editorForm').addEventListener('submit',handleSubmit);
+            document.getElementById('cover').addEventListener('change',handleCoverSelect);
+        });
+        function handleCoverSelect(e){
+            const file=e.target.files[0];
+            if(!file)return;
+            if(!file.type.startsWith('image/')){showMessage('请选择图片文件','error');return;}
+            if(file.size>5*1024*1024){showMessage('图片大小请不超过 5MB','error');return;}
+            coverFile=file;
+            const reader=new FileReader();
+            reader.onload=function(e){document.getElementById('previewImg').src=e.target.result;document.getElementById('coverPreview').style.display='block';};
+            reader.readAsDataURL(file);
+        }
+        function removeCover(){
+            coverFile=null;
+            document.getElementById('cover').value='';
+            document.getElementById('coverPreview').style.display='none';
+            document.getElementById('previewImg').src='';
+        }
+        function showMessage(text,type){
+            const el=document.getElementById('message');
+            el.className='message '+type;
+            el.textContent=text;
+            el.style.display='block';
+            setTimeout(()=>{el.style.display='none';},5000);
+        }
+        async function handleSubmit(e){
+            e.preventDefault();
+            const title=document.getElementById('title').value;
+            const category=document.getElementById('category').value;
+            const excerpt=document.getElementById('excerpt').value;
+            const content=document.getElementById('content').value;
+            const readTime=document.getElementById('read_time').value;
+            const submitBtn=document.getElementById('submitBtn');
+            if(!title||!category||!excerpt||!content){showMessage('请填写所有必填项','error');return;}
+            submitBtn.disabled=true;
+            submitBtn.textContent='投稿中...';
+            try{
+                const token=localStorage.getItem('tsukuyomi_token');
+                const articleData={title,category,excerpt,content,read_time:readTime||'5 min',tags:[],cover_image:null};
+                if(coverFile){
+                    const base64=await new Promise((resolve,reject)=>{
+                        const reader=new FileReader();
+                        reader.readAsDataURL(coverFile);
+                        reader.onload=()=>resolve(reader.result);
+                        reader.onerror=error=>reject(error);
+                    });
+                    articleData.cover_image=base64;
+                }
+                const response=await fetch(API_BASE+'/articles',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+                    body:JSON.stringify(articleData)
+                });
+                const result=await response.json();
+                if(result.success){
+                    showMessage('投稿成功！正在跳转...','success');
+                    setTimeout(()=>{window.location.href='stage.html';},1500);
+                }else{
+                    throw new Error(result.message||'投稿失败');
+                }
+            }catch(error){
+                showMessage(error.message||'投稿失败','error');
+                submitBtn.disabled=false;
+                submitBtn.textContent='投稿';
+            }
+        }
+    </script>
+</body>
+</html>

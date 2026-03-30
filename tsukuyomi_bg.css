@@ -1,0 +1,173 @@
+/* 月读空间背景 - 浮空大陆 */
+.tsukuyomi-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: 
+        /* 星空 */
+        radial-gradient(ellipse at top, #1a1a3a 0%, #0a0a1a 100%),
+        /* 星云效果 */
+        radial-gradient(ellipse at 20% 30%, rgba(138, 118, 255, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(255, 107, 157, 0.1) 0%, transparent 50%);
+    overflow: hidden;
+}
+
+/* 月亮 */
+.tsukuyomi-bg .moon {
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle at 35% 35%, 
+        rgba(255, 255, 255, 0.95),
+        rgba(200, 220, 255, 0.8),
+        rgba(100, 150, 255, 0.6));
+    border-radius: 50%;
+    box-shadow: 
+        0 0 60px rgba(255, 255, 255, 0.6),
+        0 0 120px rgba(255, 255, 255, 0.4),
+        0 0 180px rgba(138, 118, 255, 0.3);
+    animation: moonGlow 4s ease-in-out infinite;
+}
+
+@keyframes moonGlow {
+    0%, 100% {
+        box-shadow: 
+            0 0 60px rgba(255, 255, 255, 0.6),
+            0 0 120px rgba(255, 255, 255, 0.4),
+            0 0 180px rgba(138, 118, 255, 0.3);
+    }
+    50% {
+        box-shadow: 
+            0 0 80px rgba(255, 255, 255, 0.8),
+            0 0 160px rgba(255, 255, 255, 0.6),
+            0 0 240px rgba(138, 118, 255, 0.5);
+    }
+}
+
+/* 星星 */
+.tsukuyomi-bg .stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(2px 2px at 20% 30%, white, transparent),
+        radial-gradient(2px 2px at 60% 70%, white, transparent),
+        radial-gradient(1px 1px at 50% 50%, white, transparent),
+        radial-gradient(1px 1px at 80% 10%, white, transparent),
+        radial-gradient(2px 2px at 90% 60%, white, transparent),
+        radial-gradient(1px 1px at 33% 80%, white, transparent),
+        radial-gradient(1px 1px at 15% 90%, white, transparent);
+    background-size: 200% 200%;
+    animation: starsTwinkle 3s ease-in-out infinite;
+    opacity: 0.8;
+}
+
+@keyframes starsTwinkle {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
+/* 浮空大陆剪影 */
+.tsukuyomi-bg .floating-island {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120%;
+    height: 60%;
+    background: 
+        /* 大陆边缘 */
+        linear-gradient(180deg, 
+            transparent 0%,
+            rgba(26, 16, 37, 0.8) 40%,
+            rgba(10, 10, 26, 0.95) 100%);
+    clip-path: ellipse(70% 100% at 50% 100%);
+}
+
+/* 瀑布效果 */
+.tsukuyomi-bg .waterfall {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 50%;
+    background: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        transparent 100%);
+    clip-path: polygon(
+        20% 0%, 80% 0%,
+        75% 100%, 25% 100%
+    );
+    animation: waterfallFlow 2s linear infinite;
+}
+
+@keyframes waterfallFlow {
+    0% {
+        background-position: 0 0;
+    }
+    100% {
+        background-position: 0 100%;
+    }
+}
+
+/* 云雾效果 */
+.tsukuyomi-bg .clouds {
+    position: absolute;
+    bottom: 20%;
+    left: 0;
+    width: 100%;
+    height: 30%;
+    background: 
+        radial-gradient(ellipse at 30% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+    animation: cloudsMove 20s linear infinite;
+}
+
+@keyframes cloudsMove {
+    0% {
+        transform: translateX(-10%);
+    }
+    100% {
+        transform: translateX(10%);
+    }
+}
+
+/* 流星效果 */
+.tsukuyomi-bg .meteor {
+    position: absolute;
+    top: 20%;
+    left: 80%;
+    width: 100px;
+    height: 2px;
+    background: linear-gradient(90deg, 
+        transparent,
+        rgba(255, 255, 255, 0.8),
+        transparent);
+    transform: rotate(-45deg);
+    animation: meteorFall 3s ease-in-out infinite;
+    opacity: 0;
+}
+
+@keyframes meteorFall {
+    0% {
+        transform: translate(0, 0) rotate(-45deg);
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-200px, 200px) rotate(-45deg);
+        opacity: 0;
+    }
+}

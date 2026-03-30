@@ -62,6 +62,34 @@
         .error-message, .success-message { padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; display: none; font-size: 0.9rem; }
         .error-message { background: rgba(255,100,100,0.1); border: 1px solid rgba(255,100,100,0.3); color: #ff6b6b; }
         .success-message { background: rgba(100,255,150,0.1); border: 1px solid rgba(100,255,150,0.3); color: #6bff9e; }
+        .lang-switcher {
+            position: fixed;
+            top: 1.5rem;
+            right: 2rem;
+            z-index: 1001;
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(26,16,37,0.9);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem;
+            border-radius: 25px;
+            border: 1px solid rgba(255,107,157,0.3);
+        }
+        .lang-btn {
+            padding: 0.4rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(255,183,197,0.3);
+            border-radius: 20px;
+            color: rgba(255,183,197,0.6);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        .lang-btn.active {
+            background: rgba(255,107,157,0.25);
+            color: #ffb7c5;
+        }
+        
         .back-btn { position: fixed; top: 2rem; left: 2rem; color: rgba(255,183,197,0.7); text-decoration: none; font-size: 0.9rem; transition: all 0.3s; z-index: 100; }
         .back-btn:hover { color: #ffb7c5; }
         @media (max-width: 768px) { .login-container { margin: 2rem; padding: 2rem; } .moon { width: 60px; height: 60px; } }
@@ -70,11 +98,11 @@
 <body>
     <div id="sakuraContainer"></div>
     <div class="moon"></div>
-    <a href="hub.html" class="back-btn" data-i18n="return">← 戻る</a>
+    <a href="hub.html" class="back-btn" data-i18n="return">← 返回</a>
     
     <!-- 语言切换器 -->
     <div class="lang-switcher">
-        <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+        <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh')">中文</button>
         <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
     </div>
     
