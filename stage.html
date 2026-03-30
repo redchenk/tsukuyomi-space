@@ -71,6 +71,44 @@
         }
         nav a:hover, nav a.active { color: #ffb7c5; }
         
+        /* 语言切换器 */
+        .lang-switcher {
+            position: fixed;
+            top: 1.5rem;
+            right: 2rem;
+            z-index: 1001;
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(26,16,37,0.9);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem;
+            border-radius: 25px;
+            border: 1px solid rgba(255,107,157,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .lang-btn {
+            padding: 0.4rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(255,183,197,0.3);
+            border-radius: 20px;
+            color: rgba(255,183,197,0.6);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        .lang-btn:hover {
+            background: rgba(255,107,157,0.15);
+            border-color: rgba(255,107,157,0.5);
+            color: #ffb7c5;
+        }
+        .lang-btn.active {
+            background: rgba(255,107,157,0.25);
+            border-color: rgba(255,107,157,0.6);
+            color: #ffb7c5;
+            font-weight: 500;
+        }
+        
         /* 主容器 */
         .container {
             position: relative;
@@ -311,33 +349,39 @@
     <div id="sakuraContainer"></div>
     
     <nav>
-        <a href="hub.html" class="logo">月読空間</a>
+        <a href="hub.html" class="logo">月读空间</a>
         <div class="nav-right">
-            <a href="hub.html">戻る</a>
-            <a href="stage.html" class="active">ステージ</a>
-            <a href="arena.html">アリーナ</a>
+            <a href="hub.html" data-i18n="nav_hub">中枢大厅</a>
+            <a href="stage.html" class="active" data-i18n="nav_stage">主舞台</a>
+            <a href="arena.html" data-i18n="nav_arena">竞技场</a>
         </div>
     </nav>
     
+    <!-- 语言切换器 -->
+    <div class="lang-switcher">
+        <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+        <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
+    </div>
+    
     <div class="container">
         <div class="header">
-            <h1 class="title">メインステージ</h1>
-            <p class="subtitle">ライブ・ブログ記事</p>
+            <h1 class="title" data-i18n="stage_title">主舞台</h1>
+            <p class="subtitle" data-i18n="stage_subtitle">演唱会场馆 | 博客文章</p>
         </div>
         
         <div class="controls">
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="記事を検索...">
+                <input type="text" id="searchInput" data-i18n="search_placeholder" placeholder="搜索文章...">
             </div>
-            <a href="editor.html" class="btn btn-primary">✏️ 新規投稿</a>
+            <a href="editor.html" class="btn btn-primary" data-i18n="new_post">✏️ 新建投稿</a>
         </div>
         
         <div class="filters" id="filters">
-            <button class="filter-btn active" data-category="all">すべて</button>
-            <button class="filter-btn" data-category="公告">公告</button>
-            <button class="filter-btn" data-category="传说">伝説</button>
-            <button class="filter-btn" data-category="技术">技術</button>
-            <button class="filter-btn" data-category="其他">その他</button>
+            <button class="filter-btn active" data-category="all" data-i18n="filter_all">全部</button>
+            <button class="filter-btn" data-category="公告" data-i18n="filter_announcement">公告</button>
+            <button class="filter-btn" data-category="传说" data-i18n="filter_legend">传说</button>
+            <button class="filter-btn" data-category="技术" data-i18n="filter_technology">技术</button>
+            <button class="filter-btn" data-category="其他" data-i18n="filter_other">其他</button>
         </div>
         
         <div class="articles-list" id="articlesList">
@@ -347,7 +391,13 @@
     
     <div class="footer">© 超かぐや姫！風</div>
     
+    <script src="i18n.js"></script>
     <script>
+        // 初始化语言
+        document.addEventListener('DOMContentLoaded', function() {
+            initLanguage();
+        });
+        
         // 樱花背景
         const sakuraContainer = document.getElementById('sakuraContainer');
         const sakuras = [];
