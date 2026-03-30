@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>新規投稿 | 月読空間</title>
+    <title>新建投稿 | 月读空间</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root { --sakura-pink: #ffb7c5; --deep-pink: #ff6b9d; --dark-bg: #1a1025; }
@@ -136,8 +136,8 @@
     </div>
     <div class="container">
         <div class="header">
-            <h1 class="title" data-i18n="editor_title">新規投稿</h1>
-            <p class="subtitle" data-i18n="editor_subtitle">新しい記事を作成</p>
+            <h1 class="title" data-i18n="editor_title">新建投稿</h1>
+            <p class="subtitle" data-i18n="editor_subtitle">创建新文章</p>
         </div>
         <div id="editorContainer">
             <div class="login-notice" data-i18n="loading">ログインチェック中...</div>
@@ -218,50 +218,50 @@
                 <form class="editor-form" id="editorForm">
                     <div class="message" id="message"></div>
                     <div class="form-group">
-                        <label for="title" data-i18n="field_title">タイトル *</label>
-                        <input type="text" id="title" required data-i18n="field_title_placeholder" placeholder="記事のタイトルを入力">
+                        <label for="title" data-i18n="field_title">标题 *</label>
+                        <input type="text" id="title" required data-i18n="field_title_placeholder" placeholder="输入文章标题">
                     </div>
                     <div class="form-group">
-                        <label for="cover" data-i18n="field_cover">記事カバー画像</label>
+                        <label for="cover" data-i18n="field_cover">文章封面图片</label>
                         <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
                             <input type="file" id="cover" accept="image/*" style="flex: 1;">
-                            <button type="button" class="btn btn-secondary" onclick="removeCover()" style="padding: 0.5rem 1rem; font-size: 0.85rem;" data-i18n="field_cover_remove">削除</button>
+                            <button type="button" class="btn btn-secondary" onclick="removeCover()" style="padding: 0.5rem 1rem; font-size: 0.85rem;" data-i18n="field_cover_remove">删除</button>
                         </div>
-                        <div class="help-text" data-i18n="field_cover_hint">推奨：1200x630px、JPG または PNG 形式</div>
+                        <div class="help-text" data-i18n="field_cover_hint">推荐：1200x630px，JPG 或 PNG 格式</div>
                         <div id="coverPreview" style="margin-top: 1rem; display: none;">
-                            <img id="previewImg" src="" alt="カバープレビュー" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid rgba(255,107,157,0.2);">
+                            <img id="previewImg" src="" alt="封面预览" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid rgba(255,107,157,0.2);">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="category" data-i18n="field_category">カテゴリー *</label>
+                            <label for="category" data-i18n="field_category">分类 *</label>
                             <select id="category" required>
-                                <option value="" data-i18n="field_category_select">選択してください</option>
-                                ${isAdmin ? '<option value="公告" data-i18n="field_category_announcement">公告（管理者限定）</option>' : ''}
-                                <option value="传说" data-i18n="field_category_legend">伝説</option>
-                                <option value="技术" data-i18n="field_category_technology">技術</option>
-                                <option value="其他" data-i18n="field_category_other">その他</option>
+                                <option value="" data-i18n="field_category_select">请选择分类</option>
+                                ${isAdmin ? '<option value="公告" data-i18n="field_category_announcement">公告（仅管理员）</option>' : ''}
+                                <option value="传说" data-i18n="field_category_legend">传说</option>
+                                <option value="技术" data-i18n="field_category_technology">技术</option>
+                                <option value="其他" data-i18n="field_category_other">其他</option>
                             </select>
-                            ${!isAdmin ? '<div class="help-text" data-i18n="field_category_hint">※ 公告は管理者のみ投稿できます</div>' : ''}
+                            ${!isAdmin ? '<div class="help-text" data-i18n="field_category_hint">※ 公告仅管理员可发布</div>' : ''}
                         </div>
                         <div class="form-group">
-                            <label for="read_time" data-i18n="field_read_time">閱讀時間</label>
+                            <label for="read_time" data-i18n="field_read_time">阅读时间</label>
                             <input type="text" id="read_time" data-i18n="field_read_time_placeholder" placeholder="例：5 min" value="5 min">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="excerpt" data-i18n="field_excerpt">抜粋 *</label>
-                        <textarea id="excerpt" required data-i18n="field_excerpt_placeholder" placeholder="記事の概要（200 文字以内）" style="min-height: 100px;"></textarea>
-                        <div class="help-text" data-i18n="field_excerpt_hint">記事の概要を入力してください</div>
+                        <label for="excerpt" data-i18n="field_excerpt">摘要 *</label>
+                        <textarea id="excerpt" required data-i18n="field_excerpt_placeholder" placeholder="文章摘要（200 字以内）" style="min-height: 100px;"></textarea>
+                        <div class="help-text" data-i18n="field_excerpt_hint">请输入文章摘要</div>
                     </div>
                     <div class="form-group">
-                        <label for="content" data-i18n="field_content">本文 *</label>
-                        <textarea id="content" required data-i18n="field_content_placeholder" placeholder="記事の内容を入力..." style="min-height: 400px;"></textarea>
-                        <div class="help-text" data-i18n="field_content_hint">書式サポート：<br>## 見出し 1<br>### 見出し 2<br>- リスト項目<br>> 引用<br>\`コード\`</div>
+                        <label for="content" data-i18n="field_content">正文 *</label>
+                        <textarea id="content" required data-i18n="field_content_placeholder" placeholder="输入文章内容..." style="min-height: 400px;"></textarea>
+                        <div class="help-text" data-i18n="field_content_hint">格式支持：<br>## 标题 1<br>### 标题 2<br>- 列表项<br>> 引用<br>\`代码\`</div>
                     </div>
                     <div class="btn-group">
-                        <button type="submit" class="btn btn-primary" id="submitBtn" data-i18n="btn_submit">投稿する</button>
-                        <a href="stage.html" class="btn btn-secondary" data-i18n="cancel">キャンセル</a>
+                        <button type="submit" class="btn btn-primary" id="submitBtn" data-i18n="btn_submit">投稿</button>
+                        <a href="stage.html" class="btn btn-secondary" data-i18n="cancel">取消</a>
                     </div>
                 </form>
             `;

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ログイン | 月読空間</title>
+    <title>登录 | 月读空间</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root { --primary-pink: #ff6b9d; --dark-bg: #1a1025; }
@@ -80,8 +80,8 @@
     
     <div class="login-container">
         <div class="logo">
-            <h1 data-i18n="login_title">🌙 ログイン</h1>
-            <p data-i18n="login_subtitle">月読空間にようこそ</p>
+            <h1 data-i18n="login_title">🌙 登录</h1>
+            <p data-i18n="login_subtitle">月读空间欢迎您</p>
         </div>
         
         <div class="error-message" id="errorMessage"></div>
@@ -89,22 +89,22 @@
         
         <form id="loginForm" onsubmit="return false;">
             <div class="form-group">
-                <label for="username" data-i18n="field_username">ユーザー名 / メール</label>
-                <input type="text" id="username" data-i18n="field_username_placeholder" placeholder="ユーザー名またはメールアドレス" required autocomplete="username">
+                <label for="username" data-i18n="field_username">用户名</label>
+                <input type="text" id="username" data-i18n="field_username_placeholder" placeholder="请输入用户名" required autocomplete="username">
             </div>
             
             <div class="form-group">
-                <label for="password" data-i18n="field_password">パスワード</label>
-                <input type="password" id="password" data-i18n="field_password_placeholder" placeholder="パスワード" required autocomplete="current-password">
+                <label for="password" data-i18n="field_password">密码</label>
+                <input type="password" id="password" data-i18n="field_password_placeholder" placeholder="请输入密码" required autocomplete="current-password">
             </div>
             
-            <button type="submit" class="submit-btn" id="submitBtn" data-i18n="btn_login">ログイン</button>
+            <button type="submit" class="submit-btn" id="submitBtn" data-i18n="btn_login">登录</button>
         </form>
         
         <div class="links">
-            <a href="register.html" data-i18n="register">新規登録</a>
+            <a href="register.html" data-i18n="register">注册</a>
             <span class="divider">|</span>
-            <a href="hub.html" data-i18n="back_to_hub">スキップ</a>
+            <a href="hub.html" data-i18n="back_to_hub">跳过</a>
         </div>
     </div>
     
