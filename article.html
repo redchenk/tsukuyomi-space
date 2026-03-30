@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>記事詳細 | 月読空間</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sakura-pink: #ffb7c5;
+            --deep-pink: #ff6b9d;
+            --dark-bg: #1a1025;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%);
+            font-family: 'Noto Sans JP', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.8;
+        }
+        
+        #sakuraContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .sakura {
+            position: absolute;
+            background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%);
+            border-radius: 50% 0 50% 0;
+            will-change: transform, opacity;
+        }
+        
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.2rem 2rem;
+            background: rgba(26,16,37,0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,107,157,0.15);
+        }
+        nav .logo {
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, #fff, #ffb7c5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 500;
+            letter-spacing: 0.2rem;
+            text-decoration: none;
+        }
+        nav .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+        nav a {
+            color: rgba(255,183,197,0.7);
+            text-decoration: none;
+            transition: color 0.3s;
+            font-size: 0.9rem;
+        }
+        nav a:hover { color: #ffb7c5; }
+        
+        .container {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            padding: 8rem 2rem 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: rgba(255,183,197,0.6);
+            text-decoration: none;
+            margin-bottom: 2rem;
+            transition: color 0.3s;
+        }
+        
+        .back-link:hover {
+            color: #ffb7c5;
+        }
+        
+        .article-header {
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid rgba(255,107,157,0.15);
+        }
+        
+        .article-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .tag {
+            padding: 0.3rem 0.8rem;
+            background: rgba(255,107,157,0.15);
+            border-radius: 15px;
+            font-size: 0.75rem;
+            color: rgba(255,183,197,0.9);
+        }
+        
+        .meta-info {
+            font-size: 0.8rem;
+            color: rgba(255,183,197,0.5);
+        }
+        
+        .article-title {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #fff 0%, #ffb7c5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 500;
+            line-height: 1.4;
+            margin-bottom: 1rem;
+        }
+        
+        .article-content {
+            color: rgba(255,183,197,0.8);
+            font-size: 1.05rem;
+            line-height: 2;
+        }
+        
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+        
+        .article-content h2 {
+            color: rgba(255,183,197,0.9);
+            font-size: 1.6rem;
+            margin: 2.5rem 0 1rem;
+            font-weight: 400;
+        }
+        
+        .article-content h3 {
+            color: rgba(255,183,197,0.85);
+            font-size: 1.3rem;
+            margin: 2rem 0 0.8rem;
+            font-weight: 400;
+        }
+        
+        .article-content ul,
+        .article-content ol {
+            margin: 1rem 0 1rem 2rem;
+        }
+        
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .article-content code {
+            background: rgba(255,107,157,0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: rgba(255,183,197,0.9);
+        }
+        
+        .article-content pre {
+            background: rgba(0,0,0,0.3);
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border: 1px solid rgba(255,107,157,0.1);
+        }
+        
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+        }
+        
+        .article-content blockquote {
+            border-left: 3px solid rgba(255,107,157,0.4);
+            padding-left: 1.5rem;
+            margin: 1.5rem 0;
+            color: rgba(255,183,197,0.7);
+            font-style: italic;
+        }
+        
+        .article-footer {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255,107,157,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .view-count {
+            font-size: 0.85rem;
+            color: rgba(255,183,197,0.5);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 4rem;
+            color: rgba(255,183,197,0.4);
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 1rem;
+            color: rgba(255,255,255,0.25);
+            font-size: 0.65rem;
+            letter-spacing: 0.15rem;
+            z-index: 10;
+            width: 100%;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .article-title { font-size: 1.7rem; }
+            .container { padding: 7rem 1.5rem 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sakuraContainer"></div>
+    
+    <nav>
+        <a href="hub.html" class="logo">月読空間</a>
+        <div class="nav-right">
+            <a href="hub.html">戻る</a>
+            <a href="stage.html">ステージ</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <a href="stage.html" class="back-link">← 一覧に戻る</a>
+        
+        <div id="articleContent">
+            <div class="loading">読み込み中...</div>
+        </div>
+    </div>
+    
+    <div class="footer">© 超かぐや姫！風</div>
+    
+    <script>
+        // 樱花背景
+        const sakuraContainer = document.getElementById('sakuraContainer');
+        for (let i = 0; i < 35; i++) {
+            const el = document.createElement('div');
+            el.className = 'sakura';
+            const size = Math.random() * 6 + 5;
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+            el.style.left = (Math.random() * 100) + '%';
+            sakuraContainer.appendChild(el);
+        }
+        
+        const sakuras = [];
+        function createSakura() {
+            const el = document.createElement('div');
+            el.className = 'sakura';
+            const size = Math.random() * 6 + 5;
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+            el.style.left = (Math.random() * 100) + '%';
+            sakuraContainer.appendChild(el);
+            return {
+                el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50,
+                vy: Math.random() * 0.4 + 0.3,
+                angle: Math.random() * Math.PI * 2,
+                angleSpeed: Math.random() * 0.015 + 0.008,
+                swayRadius: Math.random() * 15 + 8,
+                rot: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 0.8,
+                flip: Math.random() > 0.5 ? 1 : -1,
+                opacity: Math.random() * 0.2 + 0.75
+            };
+        }
+        for (let i = 0; i < 35; i++) {
+            const s = createSakura();
+            s.y = Math.random() * window.innerHeight;
+            sakuras.push(s);
+        }
+        function animate() {
+            sakuras.forEach(s => {
+                s.y += s.vy;
+                s.angle += s.angleSpeed;
+                s.x = Math.sin(s.angle) * s.swayRadius * s.flip;
+                s.rot += s.rotSpeed;
+                let alpha = s.opacity;
+                if (s.y < 50) alpha = s.opacity * (s.y / 50);
+                else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50);
+                s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`;
+                s.el.style.opacity = alpha;
+                if (s.y > window.innerHeight + 30) {
+                    s.y = -30 - Math.random() * 50;
+                    s.x = 0;
+                    s.angle = Math.random() * Math.PI * 2;
+                    s.flip = Math.random() > 0.5 ? 1 : -1;
+                }
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+        
+        // 加载文章
+        const API_BASE = 'http://47.97.0.122:3000/api';
+        
+        async function loadArticle() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            
+            if (!id) {
+                document.getElementById('articleContent').innerHTML = 
+                    '<div class="loading">記事が見つかりません</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/articles/${id}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderArticle(result.data);
+                } else {
+                    document.getElementById('articleContent').innerHTML = 
+                        '<div class="loading">記事が見つかりません</div>';
+                }
+            } catch (error) {
+                console.error('加载失败:', error);
+                document.getElementById('articleContent').innerHTML = 
+                    '<div class="loading">エラーが発生しました</div>';
+            }
+        }
+        
+        function renderArticle(article) {
+            document.title = `${article.title} | 月読空間`;
+            
+            document.getElementById('articleContent').innerHTML = `
+                ${article.cover_image ? `
+                    <div style="margin-bottom: 2rem; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3);">
+                        <img src="${article.cover_image}" alt="カバー画像" style="width: 100%; max-height: 500px; object-fit: cover; display: block;">
+                    </div>
+                ` : ''}
+                
+                <div class="article-header">
+                    <div class="article-meta">
+                        <span class="tag">${article.category}</span>
+                        <span class="meta-info">📅 ${article.publish_date}</span>
+                        <span class="meta-info">⏱️ ${article.read_time}</span>
+                        ${article.author_username ? `<span class="meta-info">👤 ${article.author_username}</span>` : ''}
+                    </div>
+                    <h1 class="article-title">${article.title}</h1>
+                </div>
+                
+                <div class="article-content">
+                    ${formatContent(article.content)}
+                </div>
+                
+                <div class="article-footer">
+                    <span class="view-count">👁️ ${article.view_count || 0} views</span>
+                </div>
+            `;
+        }
+        
+        function formatContent(content) {
+            if (!content) return '<p>内容がありません</p>';
+            
+            // 简单的 Markdown 格式转换
+            return content
+                .split('\n')
+                .map(p => {
+                    if (p.startsWith('## ')) {
+                        return `<h2>${p.substring(3)}</h2>`;
+                    } else if (p.startsWith('### ')) {
+                        return `<h3>${p.substring(4)}</h3>`;
+                    } else if (p.startsWith('- ') || p.startsWith('* ')) {
+                        return `<li>${p.substring(2)}</li>`;
+                    } else if (p.startsWith('> ')) {
+                        return `<blockquote>${p.substring(2)}</blockquote>`;
+                    } else if (p.trim()) {
+                        return `<p>${p}</p>`;
+                    }
+                    return '';
+                })
+                .join('');
+        }
+        
+        loadArticle();
+    </script>
+</body>
+</html>

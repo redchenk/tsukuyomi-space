@@ -1,0 +1,68 @@
+#!/bin/bash
+# 语言切换功能部署说明
+
+## 已创建文件
+- i18n.js - 语言配置文件（中日双语）
+
+## 已修改文件
+- editor.html - 添加语言切换器
+- login.html - 添加语言切换器
+
+## 使用方法
+
+### 1. 手动上传文件到服务器
+```bash
+# 上传语言配置文件
+scp i18n.js root@112.124.111.228:/var/www/html/
+
+# 上传修改后的页面
+scp editor.html root@112.124.111.228:/var/www/html/
+scp login.html root@112.124.111.228:/var/www/html/
+```
+
+### 2. 在页面中引入
+```html
+<script src="i18n.js"></script>
+<script>
+    // 初始化语言（在页面加载时调用）
+    initLanguage();
+</script>
+```
+
+### 3. 使用 data-i18n 属性
+```html
+<h1 data-i18n="login_title">ログイン</h1>
+<button data-i18n="btn_login">登录</button>
+<input placeholder="请输入用户名" data-i18n="field_username_placeholder">
+```
+
+### 4. 语言切换器组件
+```html
+<div class="lang-switcher">
+    <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+    <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
+</div>
+```
+
+## 支持的语言
+- zh (中文) - 默认
+- ja (日本語)
+
+## 扩展其他语言
+在 i18n.js 中添加新的语言对象：
+```javascript
+const i18n = {
+    zh: { ... },
+    ja: { ... },
+    en: {  // 添加英语
+        'login': 'Login',
+        'register': 'Register',
+        ...
+    }
+};
+```
+
+然后在切换器中添加按钮：
+```html
+<button class="lang-btn" data-lang="en" onclick="setLanguage('en')">English</button>
+```

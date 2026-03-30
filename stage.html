@@ -1,16 +1,42 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>主舞台 | 虚拟演唱会场馆 - 月读空间</title>
+    <title>メインステージ | 月読空間</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --sakura-pink: #ffb7c5;
+            --deep-pink: #ff6b9d;
+            --purple: #c44569;
+            --dark-bg: #1a1025;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0f0f2a 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%);
+            font-family: 'Noto Sans JP', sans-serif;
             overflow-x: hidden;
+        }
+        
+        /* 樱花背景 */
+        #sakuraContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .sakura {
+            position: absolute;
+            background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%);
+            border-radius: 50% 0 50% 0;
+            will-change: transform, opacity;
         }
         
         /* 导航栏 */
@@ -18,221 +44,451 @@
             position: fixed;
             top: 0;
             width: 100%;
-            padding: 1rem 2rem;
-            background: rgba(10, 10, 26, 0.9);
+            padding: 1.2rem 2rem;
+            background: rgba(26,16,37,0.8);
             backdrop-filter: blur(10px);
             z-index: 1000;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(138, 118, 255, 0.2);
+            border-bottom: 1px solid rgba(255,107,157,0.15);
         }
-        
         nav .logo {
-            font-size: 1.5rem;
-            color: #e0d4fc;
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, #fff, #ffb7c5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 500;
+            letter-spacing: 0.2rem;
             text-decoration: none;
-            font-weight: bold;
         }
-        
-        nav ul {
-            display: flex;
-            list-style: none;
-            gap: 2rem;
-        }
-        
+        nav .nav-right { display: flex; align-items: center; gap: 1.5rem; }
         nav a {
-            color: #c4b8e8;
+            color: rgba(255,183,197,0.7);
             text-decoration: none;
             transition: color 0.3s;
+            font-size: 0.9rem;
         }
+        nav a:hover, nav a.active { color: #ffb7c5; }
         
-        nav a:hover, nav a.active {
-            color: #e0d4fc;
-        }
-        
-        /* 星空 */
-        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
-        .star { position: absolute; background: white; border-radius: 50%; animation: twinkle 2s infinite; }
-        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-        
-        /* 主内容 */
+        /* 主容器 */
         .container {
             position: relative;
             z-index: 10;
             min-height: 100vh;
-            padding: 6rem 2rem 2rem;
-            max-width: 1200px;
+            padding: 8rem 2rem 2rem;
+            max-width: 1000px;
             margin: 0 auto;
         }
         
-        .page-title {
-            font-size: 2.5rem;
-            color: #e0d4fc;
+        /* 标题区 */
+        .header {
             text-align: center;
-            margin-bottom: 1rem;
-            text-shadow: 0 0 20px rgba(138, 118, 255, 0.8);
-        }
-        
-        .page-subtitle {
-            text-align: center;
-            color: #b8a8e8;
             margin-bottom: 3rem;
         }
         
-        /* 文章列表 */
-        .articles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 2rem;
+        .title {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #fff 0%, #ffb7c5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 300;
+            letter-spacing: 0.3rem;
+            margin-bottom: 0.5rem;
         }
         
-        .article-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(138, 118, 255, 0.3);
-            border-radius: 15px;
-            padding: 2rem;
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-        
-        .article-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 40px rgba(138, 118, 255, 0.3);
-            border-color: rgba(138, 118, 255, 0.6);
-        }
-        
-        .article-card .meta {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
+        .subtitle {
+            color: rgba(255,183,197,0.5);
             font-size: 0.85rem;
-            color: #b8a8e8;
+            letter-spacing: 0.2rem;
         }
         
-        .article-card .meta span {
-            background: rgba(138, 118, 255, 0.2);
-            padding: 0.25rem 0.75rem;
-            border-radius: 15px;
+        /* 控制栏 */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            gap: 1rem;
+            flex-wrap: wrap;
         }
         
-        .article-card h3 {
-            color: #e0d4fc;
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
+        .search-box {
+            flex: 1;
+            min-width: 200px;
         }
         
-        .article-card p {
-            color: #c4b8e8;
-            line-height: 1.8;
-            margin-bottom: 1.5rem;
+        .search-box input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,107,157,0.15);
+            border-radius: 6px;
+            color: rgba(255,183,197,0.9);
+            font-size: 0.9rem;
         }
         
-        .article-card .read-more {
-            display: inline-block;
-            padding: 0.5rem 1.5rem;
-            background: linear-gradient(135deg, rgba(138, 118, 255, 0.3), rgba(100, 80, 200, 0.3));
-            color: #e0d4fc;
-            border-radius: 25px;
+        .search-box input:focus {
+            outline: none;
+            border-color: rgba(255,107,157,0.3);
+        }
+        
+        .search-box input::placeholder {
+            color: rgba(255,183,197,0.4);
+        }
+        
+        .btn {
+            padding: 0.7rem 1.5rem;
+            background: rgba(255,107,157,0.15);
+            border: 1px solid rgba(255,107,157,0.3);
+            border-radius: 6px;
+            color: #ffb7c5;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
             text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            background: rgba(255,107,157,0.25);
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary {
+            background: rgba(255,107,157,0.25);
+            border-color: rgba(255,107,157,0.5);
+        }
+        
+        /* 筛选按钮 */
+        .filters {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,107,157,0.1);
+            border-radius: 20px;
+            color: rgba(255,183,197,0.6);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85rem;
+        }
+        
+        .filter-btn:hover, .filter-btn.active {
+            background: rgba(255,107,157,0.1);
+            border-color: rgba(255,107,157,0.3);
+            color: #ffb7c5;
+        }
+        
+        /* 文章列表 */
+        .articles-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .article-item {
+            position: relative;
+            padding: 1.5rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,107,157,0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+        }
+        
+        .article-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(180deg, #ffb7c5, #ff6b9d);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        
+        .article-item:hover {
+            background: rgba(255,107,157,0.06);
+            border-color: rgba(255,107,157,0.25);
+            transform: translateX(6px);
+        }
+        
+        .article-item:hover::before {
+            opacity: 1;
+        }
+        
+        .article-meta {
+            display: flex;
+            gap: 0.8rem;
+            margin-bottom: 0.8rem;
+            flex-wrap: wrap;
+        }
+        
+        .tag {
+            padding: 0.25rem 0.7rem;
+            background: rgba(255,107,157,0.15);
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: rgba(255,183,197,0.9);
+        }
+        
+        .date {
+            font-size: 0.75rem;
+            color: rgba(255,183,197,0.4);
+        }
+        
+        .article-title {
+            font-size: 1.2rem;
+            color: rgba(255,183,197,0.95);
+            margin-bottom: 0.5rem;
+            font-weight: 400;
+        }
+        
+        .article-excerpt {
+            color: rgba(255,183,197,0.5);
+            line-height: 1.6;
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+        }
+        
+        .article-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 0.8rem;
+            border-top: 1px solid rgba(255,107,157,0.08);
+        }
+        
+        .read-time {
+            font-size: 0.8rem;
+            color: rgba(255,183,197,0.4);
+        }
+        
+        .arrow {
+            color: rgba(255,107,157,0.3);
             transition: all 0.3s;
         }
         
-        .article-card .read-more:hover {
-            background: linear-gradient(135deg, rgba(138, 118, 255, 0.5), rgba(100, 80, 200, 0.5));
-            box-shadow: 0 0 20px rgba(138, 118, 255, 0.4);
+        .article-item:hover .arrow {
+            color: rgba(255,107,157,0.7);
+            transform: translateX(4px);
         }
         
+        /* 加载状态 */
         .loading {
             text-align: center;
-            color: #b8a8e8;
             padding: 3rem;
-            font-size: 1.2rem;
+            color: rgba(255,183,197,0.4);
         }
         
+        /* 页脚 */
         .footer {
             position: fixed;
             bottom: 1rem;
-            color: rgba(184, 168, 232, 0.5);
-            font-size: 0.85rem;
+            color: rgba(255,255,255,0.25);
+            font-size: 0.65rem;
+            letter-spacing: 0.15rem;
             z-index: 10;
             width: 100%;
             text-align: center;
         }
+        
+        @media (max-width: 768px) {
+            .controls { flex-direction: column; }
+            .search-box { min-width: 100%; }
+            .title { font-size: 1.7rem; }
+        }
     </style>
 </head>
 <body>
-    <div class="stars" id="stars"></div>
+    <div id="sakuraContainer"></div>
     
     <nav>
-        <a href="hub.html" class="logo">🌙 月読空間</a>
-        <ul>
-            <li><a href="hub.html">返回枢纽</a></li>
-            <li><a href="stage.html" class="active">主舞台</a></li>
-            <li><a href="arena.html">格斗竞技场</a></li>
-            <li><a href="plaza.html">月读广场</a></li>
-        </ul>
+        <a href="hub.html" class="logo">月読空間</a>
+        <div class="nav-right">
+            <a href="hub.html">戻る</a>
+            <a href="stage.html" class="active">ステージ</a>
+            <a href="arena.html">アリーナ</a>
+        </div>
     </nav>
     
     <div class="container">
-        <h1 class="page-title">🎤 主舞台 · 虚拟演唱会场馆</h1>
-        <p class="page-subtitle">Welcome to the space where dreams and hopes meet</p>
+        <div class="header">
+            <h1 class="title">メインステージ</h1>
+            <p class="subtitle">ライブ・ブログ記事</p>
+        </div>
         
-        <div class="articles-grid" id="articlesGrid">
-            <div class="loading">正在加载演出曲目...</div>
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="記事を検索...">
+            </div>
+            <a href="editor.html" class="btn btn-primary">✏️ 新規投稿</a>
+        </div>
+        
+        <div class="filters" id="filters">
+            <button class="filter-btn active" data-category="all">すべて</button>
+            <button class="filter-btn" data-category="公告">公告</button>
+            <button class="filter-btn" data-category="传说">伝説</button>
+            <button class="filter-btn" data-category="技术">技術</button>
+            <button class="filter-btn" data-category="其他">その他</button>
+        </div>
+        
+        <div class="articles-list" id="articlesList">
+            <div class="loading">読み込み中...</div>
         </div>
     </div>
     
-    <div class="footer">© 2024 Tsukuyomi Space | 主舞台</div>
+    <div class="footer">© 超かぐや姫！風</div>
     
     <script>
-        // 星空背景
-        const starsContainer = document.getElementById('stars');
-        for (let i = 0; i < 150; i++) {
-            const star = document.createElement('div');
-            star.className = 'star';
-            star.style.left = Math.random() * 100 + '%';
-            star.style.top = Math.random() * 100 + '%';
-            star.style.width = Math.random() * 3 + 1 + 'px';
-            star.style.height = star.style.width;
-            star.style.animationDelay = Math.random() * 2 + 's';
-            starsContainer.appendChild(star);
+        // 樱花背景
+        const sakuraContainer = document.getElementById('sakuraContainer');
+        const sakuras = [];
+        
+        function createSakura() {
+            const el = document.createElement('div');
+            el.className = 'sakura';
+            const size = Math.random() * 6 + 5;
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+            el.style.left = (Math.random() * 100) + '%';
+            sakuraContainer.appendChild(el);
+            return {
+                el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50,
+                vy: Math.random() * 0.4 + 0.3,
+                angle: Math.random() * Math.PI * 2,
+                angleSpeed: Math.random() * 0.015 + 0.008,
+                swayRadius: Math.random() * 15 + 8,
+                rot: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 0.8,
+                flip: Math.random() > 0.5 ? 1 : -1,
+                opacity: Math.random() * 0.2 + 0.75
+            };
         }
         
-        // API 配置
+        for (let i = 0; i < 35; i++) {
+            const s = createSakura();
+            s.y = Math.random() * window.innerHeight;
+            sakuras.push(s);
+        }
+        
+        function animate() {
+            sakuras.forEach(s => {
+                s.y += s.vy;
+                s.angle += s.angleSpeed;
+                s.x = Math.sin(s.angle) * s.swayRadius * s.flip;
+                s.rot += s.rotSpeed;
+                let alpha = s.opacity;
+                if (s.y < 50) alpha = s.opacity * (s.y / 50);
+                else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50);
+                s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`;
+                s.el.style.opacity = alpha;
+                if (s.y > window.innerHeight + 30) {
+                    s.y = -30 - Math.random() * 50;
+                    s.x = 0;
+                    s.angle = Math.random() * Math.PI * 2;
+                    s.flip = Math.random() > 0.5 ? 1 : -1;
+                }
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+        
+        // API 和状态
         const API_BASE = 'http://47.97.0.122:3000/api';
+        let allArticles = [];
+        let currentCategory = 'all';
+        let searchQuery = '';
         
         // 加载文章
         async function loadArticles() {
-            const grid = document.getElementById('articlesGrid');
+            const list = document.getElementById('articlesList');
             
             try {
                 const response = await fetch(`${API_BASE}/articles`);
                 const result = await response.json();
                 
                 if (result.success) {
-                    grid.innerHTML = result.data.map(article => `
-                        <div class="article-card">
-                            <div class="meta">
-                                <span>📅 ${article.publishDate}</span>
-                                <span>⏱️ ${article.readTime}</span>
-                                <span>🏷️ ${article.category}</span>
-                            </div>
-                            <h3>${article.title}</h3>
-                            <p>${article.excerpt}</p>
-                            <a href="#" class="read-more" onclick="alert('文章详情页开发中...'); return false;">查看详情 →</a>
-                        </div>
-                    `).join('');
+                    allArticles = result.data;
+                    renderArticles();
                 } else {
-                    grid.innerHTML = '<div class="loading">暂无演出曲目</div>';
+                    list.innerHTML = '<div class="loading">読み込み失敗</div>';
                 }
             } catch (error) {
-                console.error('加载文章失败:', error);
-                grid.innerHTML = '<div class="loading">加载失败，请稍后重试</div>';
+                console.error('加载失败:', error);
+                list.innerHTML = '<div class="loading">エラーが発生しました</div>';
             }
         }
         
+        // 渲染文章
+        function renderArticles() {
+            const list = document.getElementById('articlesList');
+            
+            let filtered = allArticles;
+            
+            if (currentCategory !== 'all') {
+                filtered = filtered.filter(a => a.category === currentCategory);
+            }
+            
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                filtered = filtered.filter(a => 
+                    a.title.toLowerCase().includes(query) ||
+                    a.excerpt.toLowerCase().includes(query)
+                );
+            }
+            
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="loading">該当する記事がありません</div>';
+                return;
+            }
+            
+            list.innerHTML = filtered.map(article => `
+                <a href="article.html?id=${article.id}" class="article-item">
+                    ${article.cover_image ? `
+                        <div style="margin-bottom: 1rem; border-radius: 6px; overflow: hidden; background: rgba(0,0,0,0.2);">
+                            <img src="${article.cover_image}" alt="カバー画像" style="width: 100%; height: 180px; object-fit: cover; display: block;">
+                        </div>
+                    ` : ''}
+                    <div class="article-meta">
+                        <span class="tag">${article.category}</span>
+                        <span class="date">${article.publish_date}</span>
+                        ${article.author_username ? `<span class="tag" style="background:rgba(255,255,255,0.1)">👤 ${article.author_username}</span>` : ''}
+                    </div>
+                    <h3 class="article-title">${article.title}</h3>
+                    <p class="article-excerpt">${article.excerpt}</p>
+                    <div class="article-footer">
+                        <span class="read-time">⏱️ ${article.read_time}</span>
+                        <span class="arrow">→</span>
+                    </div>
+                </a>
+            `).join('');
+        }
+        
+        // 筛选功能
+        document.getElementById('filters').addEventListener('click', (e) => {
+            if (e.target.classList.contains('filter-btn')) {
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                currentCategory = e.target.dataset.category;
+                renderArticles();
+            }
+        });
+        
+        // 搜索功能
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderArticles();
+        });
+        
+        // 页面加载
         loadArticles();
     </script>
 </body>

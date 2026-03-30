@@ -44,6 +44,7 @@ db.exec(`
         publish_date TEXT,
         read_time TEXT DEFAULT '5 min',
         view_count INTEGER DEFAULT 0,
+        cover_image TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (author_id) REFERENCES users(id)
@@ -128,21 +129,25 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// 获取文章列表
+// 获取文章列表（带作者信息和封面）
 app.get('/api/articles', (req, res) => {
     try {
-        const { category, page = 1, limit = 10 } = req.query;
+        const { category, page = 1, limit = 100 } = req.query;
         const offset = (page - 1) * limit;
         
-        let query = 'SELECT * FROM articles';
+        let query = `
+            SELECT a.*, u.username as author_username 
+            FROM articles a 
+            LEFT JOIN users u ON a.author_id = u.id
+        `;
         let countQuery = 'SELECT COUNT(*) as total FROM articles';
         
         if (category) {
-            query += ` WHERE category = ?`;
+            query += ` WHERE a.category = ?`;
             countQuery += ` WHERE category = ?`;
         }
         
-        query += ` ORDER BY publish_date DESC LIMIT ? OFFSET ?`;
+        query += ` ORDER BY a.publish_date DESC LIMIT ? OFFSET ?`;
         
         const countStmt = db.prepare(countQuery);
         const stmt = db.prepare(query);
@@ -176,7 +181,7 @@ app.get('/api/articles', (req, res) => {
         });
     } catch (error) {
         console.error('获取文章失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: 'サーバーエラー' });
     }
 });
 
@@ -357,33 +362,75 @@ app.post('/api/messages', authenticateToken, (req, res) => {
 
 // ===== 管理员 API =====
 
-// 创建文章
-app.post('/api/articles', authenticateToken, requireAdmin, (req, res) => {
+// 创建文章 - 所有注册用户都可以发帖
+app.post('/api/articles', authenticateToken, (req, res) => {
     try {
-        const { title, excerpt, content, category, tags, read_time } = req.body;
+        const { title, excerpt, content, category, tags, read_time, cover_image } = req.body;
+        
+        console.log('=== 記事作成リクエスト ===');
+        console.log('ユーザー:', req.user.username, '役割:', req.user.role);
+        console.log('カテゴリ:', category);
         
         if (!title) {
-            return res.status(400).json({ success: false, message: '文章标题不能为空' });
+            return res.status(400).json({ success: false, message: 'タイトルを入力してください' });
         }
+        
+        // 简单的分类验证
+        const validCategories = ['公告', '传说', '技术', '其他'];
+        let finalCategory = category;
+        
+        if (!finalCategory || !validCategories.includes(finalCategory)) {
+            finalCategory = '其他';
+        }
+        
+        // 权限检查：只有管理员可以发布公告
+        if (finalCategory === '公告' && req.user.role !== 'admin') {
+            return res.status(403).json({ 
+                success: false, 
+                message: '公告は管理者のみ投稿できます' 
+            });
+        }
+        
+        console.log('最終カテゴリ:', finalCategory);
         
         const tagsJson = JSON.stringify(tags || []);
         const publishDate = new Date().toISOString().split('T')[0];
         
-        const result = db.prepare(`
-            INSERT INTO articles (title, excerpt, content, category, tags, author_id, publish_date, read_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(title, excerpt || '', content || '', category || '公告', tagsJson, req.user.id, publishDate, read_time || '5 min');
-        
-        const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(result.lastInsertRowid);
-        
-        res.status(201).json({ 
-            success: true, 
-            message: '文章创建成功',
-            data: newArticle 
-        });
+        // 尝试插入封面图片（如果数据库支持）
+        try {
+            const result = db.prepare(`
+                INSERT INTO articles (title, excerpt, content, category, tags, author_id, publish_date, read_time, cover_image)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(title, excerpt || '', content || '', finalCategory, tagsJson, req.user.id, publishDate, read_time || '5 min', cover_image || null);
+            
+            const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(result.lastInsertRowid);
+            console.log('記事作成成功 ID:', result.lastInsertRowid);
+            
+            res.status(201).json({ 
+                success: true, 
+                message: '投稿が完了しました',
+                data: newArticle 
+            });
+        } catch (dbError) {
+            // 如果不支持 cover_image 字段，尝试不使用该字段
+            console.log('cover_image 字段不存在，使用备用方案');
+            const result = db.prepare(`
+                INSERT INTO articles (title, excerpt, content, category, tags, author_id, publish_date, read_time)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(title, excerpt || '', content || '', finalCategory, tagsJson, req.user.id, publishDate, read_time || '5 min');
+            
+            const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(result.lastInsertRowid);
+            console.log('記事作成成功 ID:', result.lastInsertRowid);
+            
+            res.status(201).json({ 
+                success: true, 
+                message: '投稿が完了しました',
+                data: newArticle 
+            });
+        }
     } catch (error) {
-        console.error('创建文章失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('記事作成エラー:', error.message);
+        res.status(500).json({ success: false, message: 'エラー：' + error.message });
     }
 });
 

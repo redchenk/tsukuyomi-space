@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新規投稿 | 月読空間</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sakura-pink: #ffb7c5; --deep-pink: #ff6b9d; --dark-bg: #1a1025; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* 语言切换器 */
+        .lang-switcher {
+            position: fixed;
+            top: 1.5rem;
+            right: 2rem;
+            z-index: 1001;
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(26,16,37,0.9);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem;
+            border-radius: 25px;
+            border: 1px solid rgba(255,107,157,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .lang-btn {
+            padding: 0.4rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(255,183,197,0.3);
+            border-radius: 20px;
+            color: rgba(255,183,197,0.6);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        .lang-btn:hover {
+            background: rgba(255,107,157,0.15);
+            border-color: rgba(255,107,157,0.5);
+            color: #ffb7c5;
+        }
+        .lang-btn.active {
+            background: rgba(255,107,157,0.25);
+            border-color: rgba(255,107,157,0.6);
+            color: #ffb7c5;
+            font-weight: 500;
+        }
+        
+        /* 语言切换器 */
+        .lang-switcher {
+            position: fixed;
+            top: 1.5rem;
+            right: 2rem;
+            z-index: 1001;
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(26,16,37,0.8);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem;
+            border-radius: 25px;
+            border: 1px solid rgba(255,107,157,0.2);
+        }
+        .lang-btn {
+            padding: 0.4rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(255,183,197,0.3);
+            border-radius: 20px;
+            color: rgba(255,183,197,0.6);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        .lang-btn:hover {
+            background: rgba(255,107,157,0.15);
+            border-color: rgba(255,107,157,0.4);
+            color: #ffb7c5;
+        }
+        .lang-btn.active {
+            background: rgba(255,107,157,0.25);
+            border-color: rgba(255,107,157,0.5);
+            color: #ffb7c5;
+        }
+        body { min-height: 100vh; background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%); font-family: 'Noto Sans JP', sans-serif; overflow-x: hidden; }
+        #sakuraContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .sakura { position: absolute; background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%); border-radius: 50% 0 50% 0; will-change: transform, opacity; }
+        nav { position: fixed; top: 0; width: 100%; padding: 1.2rem 2rem; background: rgba(26,16,37,0.8); backdrop-filter: blur(10px); z-index: 1000; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,107,157,0.15); }
+        nav .logo { font-size: 1.3rem; background: linear-gradient(135deg, #fff, #ffb7c5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 500; letter-spacing: 0.2rem; text-decoration: none; }
+        nav .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+        nav a { color: rgba(255,183,197,0.7); text-decoration: none; transition: color 0.3s; font-size: 0.9rem; }
+        nav a:hover { color: #ffb7c5; }
+        .container { position: relative; z-index: 10; min-height: 100vh; padding: 8rem 2rem 2rem; max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 2rem; }
+        .title { font-size: 2rem; background: linear-gradient(135deg, #fff 0%, #ffb7c5 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 300; letter-spacing: 0.3rem; margin-bottom: 0.5rem; }
+        .subtitle { color: rgba(255,183,197,0.5); font-size: 0.85rem; letter-spacing: 0.2rem; }
+        .editor-form { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,107,157,0.1); border-radius: 8px; padding: 2rem; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; color: rgba(255,183,197,0.8); margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.9rem 1.2rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,107,157,0.15); border-radius: 6px; color: rgba(255,183,197,0.9); font-size: 1rem; font-family: 'Noto Sans JP', sans-serif; transition: all 0.3s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: rgba(255,107,157,0.4); box-shadow: 0 0 20px rgba(255,107,157,0.1); }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255,183,197,0.3); }
+        .form-group textarea { min-height: 300px; resize: vertical; line-height: 1.8; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .help-text { font-size: 0.8rem; color: rgba(255,183,197,0.4); margin-top: 0.5rem; }
+        .btn-group { display: flex; gap: 1rem; margin-top: 2rem; }
+        .btn { padding: 1rem 2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: all 0.3s; text-decoration: none; display: inline-block; }
+        .btn-primary { background: rgba(255,107,157,0.25); color: #ffb7c5; border: 1px solid rgba(255,107,157,0.4); }
+        .btn-primary:hover { background: rgba(255,107,157,0.35); transform: translateY(-2px); }
+        .btn-secondary { background: rgba(255,255,255,0.05); color: rgba(255,183,197,0.7); border: 1px solid rgba(255,183,197,0.2); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.08); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .message { padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; display: none; }
+        .message.success { background: rgba(100,255,150,0.1); border: 1px solid rgba(100,255,150,0.3); color: #6bff9e; }
+        .message.error { background: rgba(255,100,100,0.1); border: 1px solid rgba(255,100,100,0.3); color: #ff6b6b; }
+        .login-notice { text-align: center; padding: 4rem 2rem; color: rgba(255,183,197,0.5); }
+        .login-notice a { color: #ffb7c5; text-decoration: none; }
+        .footer { position: fixed; bottom: 1rem; color: rgba(255,255,255,0.25); font-size: 0.65rem; letter-spacing: 0.15rem; z-index: 10; width: 100%; text-align: center; }
+        @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } .title { font-size: 1.7rem; } .btn-group { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <div id="sakuraContainer"></div>
+    <nav>
+        <a href="hub.html" class="logo">月読空間</a>
+        <div class="nav-right">
+            <a href="hub.html" data-i18n="return">戻る</a>
+            <a href="stage.html" data-i18n="nav_main_stage">ステージ</a>
+        </div>
+    </nav>
+    
+    <!-- 语言切换器 -->
+    <div class="lang-switcher">
+        <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+        <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
+    </div>
+    <div class="container">
+        <div class="header">
+            <h1 class="title" data-i18n="editor_title">新規投稿</h1>
+            <p class="subtitle" data-i18n="editor_subtitle">新しい記事を作成</p>
+        </div>
+        <div id="editorContainer">
+            <div class="login-notice" data-i18n="loading">ログインチェック中...</div>
+        </div>
+    </div>
+    <div class="footer">© 超かぐや姫！風</div>
+    <script src="i18n.js"></script>
+    <script>
+        const API_BASE = 'http://47.97.0.122:3000/api';
+        
+        // 确保语言初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initLanguage();
+        });
+        
+        // 樱花背景
+        const sakuraContainer = document.getElementById('sakuraContainer');
+        const sakuras = [];
+        function createSakura() {
+            const el = document.createElement('div');
+            el.className = 'sakura';
+            const size = Math.random() * 6 + 5;
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+            el.style.left = (Math.random() * 100) + '%';
+            sakuraContainer.appendChild(el);
+            return { el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50, vy: Math.random() * 0.4 + 0.3, angle: Math.random() * Math.PI * 2, angleSpeed: Math.random() * 0.015 + 0.008, swayRadius: Math.random() * 15 + 8, rot: Math.random() * 360, rotSpeed: (Math.random() - 0.5) * 0.8, flip: Math.random() > 0.5 ? 1 : -1, opacity: Math.random() * 0.2 + 0.75 };
+        }
+        for (let i = 0; i < 35; i++) { const s = createSakura(); s.y = Math.random() * window.innerHeight; sakuras.push(s); }
+        function animate() { sakuras.forEach(s => { s.y += s.vy; s.angle += s.angleSpeed; s.x = Math.sin(s.angle) * s.swayRadius * s.flip; s.rot += s.rotSpeed; let alpha = s.opacity; if (s.y < 50) alpha = s.opacity * (s.y / 50); else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50); s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`; s.el.style.opacity = alpha; if (s.y > window.innerHeight + 30) { s.y = -30 - Math.random() * 50; s.x = 0; s.angle = Math.random() * Math.PI * 2; s.flip = Math.random() > 0.5 ? 1 : -1; } }); requestAnimationFrame(animate); }
+        animate();
+        
+        // 检查登录状态
+        console.log('=== エディター権限チェック ===');
+        const token = localStorage.getItem('tsukuyomi_token');
+        const userStr = localStorage.getItem('tsukuyomi_user');
+        
+        console.log('Token:', token ? '存在します (長さ：' + (token ? token.length : 0) + ')' : '存在しません');
+        console.log('User:', userStr ? userStr.substring(0, 100) + '...' : '存在しません');
+        
+        if (!token || !userStr) {
+            console.log('ログインが必要と判断');
+            document.getElementById('editorContainer').innerHTML = `
+                <div class="login-notice">
+                    ログインが必要です。<br><br>
+                    <a href="login.html" class="btn btn-primary">ログインページへ</a>
+                </div>
+            `;
+        } else {
+            let user;
+            try {
+                user = JSON.parse(userStr);
+                console.log('ユーザー解析成功:', user.username, '役割:', user.role);
+                
+                if (!user.username || !user.role) {
+                    throw new Error('ユーザーデータが不完全');
+                }
+                
+                renderEditor(user);
+            } catch (e) {
+                console.error('ユーザー解析エラー:', e);
+                localStorage.removeItem('tsukuyomi_token');
+                localStorage.removeItem('tsukuyomi_user');
+                document.getElementById('editorContainer').innerHTML = `
+                    <div class="login-notice">
+                        セッションが無効です。再度ログインしてください。<br><br>
+                        <a href="login.html" class="btn btn-primary">ログインページへ</a>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderEditor(user) {
+            const isAdmin = user.role === 'admin';
+            console.log('エディター表示 - 管理者:', isAdmin);
+            
+            document.getElementById('editorContainer').innerHTML = `
+                <form class="editor-form" id="editorForm">
+                    <div class="message" id="message"></div>
+                    <div class="form-group">
+                        <label for="title" data-i18n="field_title">タイトル *</label>
+                        <input type="text" id="title" required data-i18n="field_title_placeholder" placeholder="記事のタイトルを入力">
+                    </div>
+                    <div class="form-group">
+                        <label for="cover" data-i18n="field_cover">記事カバー画像</label>
+                        <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
+                            <input type="file" id="cover" accept="image/*" style="flex: 1;">
+                            <button type="button" class="btn btn-secondary" onclick="removeCover()" style="padding: 0.5rem 1rem; font-size: 0.85rem;" data-i18n="field_cover_remove">削除</button>
+                        </div>
+                        <div class="help-text" data-i18n="field_cover_hint">推奨：1200x630px、JPG または PNG 形式</div>
+                        <div id="coverPreview" style="margin-top: 1rem; display: none;">
+                            <img id="previewImg" src="" alt="カバープレビュー" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid rgba(255,107,157,0.2);">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="category" data-i18n="field_category">カテゴリー *</label>
+                            <select id="category" required>
+                                <option value="" data-i18n="field_category_select">選択してください</option>
+                                ${isAdmin ? '<option value="公告" data-i18n="field_category_announcement">公告（管理者限定）</option>' : ''}
+                                <option value="传说" data-i18n="field_category_legend">伝説</option>
+                                <option value="技术" data-i18n="field_category_technology">技術</option>
+                                <option value="其他" data-i18n="field_category_other">その他</option>
+                            </select>
+                            ${!isAdmin ? '<div class="help-text" data-i18n="field_category_hint">※ 公告は管理者のみ投稿できます</div>' : ''}
+                        </div>
+                        <div class="form-group">
+                            <label for="read_time" data-i18n="field_read_time">閱讀時間</label>
+                            <input type="text" id="read_time" data-i18n="field_read_time_placeholder" placeholder="例：5 min" value="5 min">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="excerpt" data-i18n="field_excerpt">抜粋 *</label>
+                        <textarea id="excerpt" required data-i18n="field_excerpt_placeholder" placeholder="記事の概要（200 文字以内）" style="min-height: 100px;"></textarea>
+                        <div class="help-text" data-i18n="field_excerpt_hint">記事の概要を入力してください</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="content" data-i18n="field_content">本文 *</label>
+                        <textarea id="content" required data-i18n="field_content_placeholder" placeholder="記事の内容を入力..." style="min-height: 400px;"></textarea>
+                        <div class="help-text" data-i18n="field_content_hint">書式サポート：<br>## 見出し 1<br>### 見出し 2<br>- リスト項目<br>> 引用<br>\`コード\`</div>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary" id="submitBtn" data-i18n="btn_submit">投稿する</button>
+                        <a href="stage.html" class="btn btn-secondary" data-i18n="cancel">キャンセル</a>
+                    </div>
+                </form>
+            `;
+            
+            document.getElementById('editorForm').addEventListener('submit', handleSubmit);
+            document.getElementById('cover').addEventListener('change', handleCoverSelect);
+        }
+        
+        let coverFile = null;
+        
+        function handleCoverSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { showMessage('画像ファイルを選択してください', 'error'); return; }
+            if (file.size > 5 * 1024 * 1024) { showMessage('画像サイズは 5MB 以下にしてください', 'error'); return; }
+            coverFile = file;
+            const reader = new FileReader();
+            reader.onload = function(e) { document.getElementById('previewImg').src = e.target.result; document.getElementById('coverPreview').style.display = 'block'; };
+            reader.readAsDataURL(file);
+        }
+        
+        function removeCover() { coverFile = null; document.getElementById('cover').value = ''; document.getElementById('coverPreview').style.display = 'none'; document.getElementById('previewImg').src = ''; }
+        
+        function showMessage(text, type) { const messageEl = document.getElementById('message'); messageEl.className = `message ${type}`; messageEl.textContent = text; messageEl.style.display = 'block'; setTimeout(() => { messageEl.style.display = 'none'; }, 5000); }
+        
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('title').value;
+            const category = document.getElementById('category').value;
+            const excerpt = document.getElementById('excerpt').value;
+            const content = document.getElementById('content').value;
+            const readTime = document.getElementById('read_time').value;
+            const messageEl = document.getElementById('message');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (!title || !category || !excerpt || !content) { showMessage('すべての必須項目を入力してください', 'error'); return; }
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = '投稿中...';
+            
+            try {
+                const token = localStorage.getItem('tsukuyomi_token');
+                console.log('投稿開始 - Token 長さ:', token ? token.length : 0);
+                
+                const articleData = { title, category, excerpt, content, read_time: readTime || '5 min', tags: [], cover_image: null };
+                
+                if (coverFile) {
+                    const base64 = await fileToBase64(coverFile);
+                    articleData.cover_image = base64;
+                }
+                
+                console.log('API リクエスト送信:', API_BASE + '/articles');
+                
+                const response = await fetch(`${API_BASE}/articles`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(articleData)
+                });
+                
+                console.log('レスポンス状態:', response.status);
+                const result = await response.json();
+                console.log('レスポンスデータ:', result);
+                
+                if (result.success) {
+                    showMessage('投稿が完了しました！ステージへ戻ります...', 'success');
+                    setTimeout(() => { window.location.href = 'stage.html'; }, 1500);
+                } else {
+                    throw new Error(result.message || '投稿に失敗しました');
+                }
+            } catch (error) {
+                console.error('投稿エラー:', error);
+                showMessage(error.message || 'エラーが発生しました', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '投稿する';
+            }
+        }
+        
+        function fileToBase64(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve(reader.result); reader.onerror = error => reject(error); }); }
+    </script>
+</body>
+</html>

@@ -8,6 +8,35 @@
     <style>
         :root { --primary-pink: #ff6b9d; --dark-bg: #1a1025; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        .lang-switcher {
+            position: fixed;
+            top: 1.5rem;
+            right: 2rem;
+            z-index: 1001;
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(26,16,37,0.8);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem;
+            border-radius: 25px;
+            border: 1px solid rgba(255,107,157,0.2);
+        }
+        .lang-btn {
+            padding: 0.4rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(255,183,197,0.3);
+            border-radius: 20px;
+            color: rgba(255,183,197,0.6);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        .lang-btn:hover, .lang-btn.active {
+            background: rgba(255,107,157,0.25);
+            border-color: rgba(255,107,157,0.5);
+            color: #ffb7c5;
+        }
         body { min-height: 100vh; background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%); font-family: 'Noto Sans JP', sans-serif; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
         #sakuraContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
         .sakura { position: absolute; background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%); border-radius: 50% 0 50% 0; will-change: transform, opacity; }
@@ -41,12 +70,18 @@
 <body>
     <div id="sakuraContainer"></div>
     <div class="moon"></div>
-    <a href="hub.html" class="back-btn">← 戻る</a>
+    <a href="hub.html" class="back-btn" data-i18n="return">← 戻る</a>
+    
+    <!-- 语言切换器 -->
+    <div class="lang-switcher">
+        <button class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+        <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
+    </div>
     
     <div class="login-container">
         <div class="logo">
-            <h1>🌙 ログイン</h1>
-            <p>月読空間にようこそ</p>
+            <h1 data-i18n="login_title">🌙 ログイン</h1>
+            <p data-i18n="login_subtitle">月読空間にようこそ</p>
         </div>
         
         <div class="error-message" id="errorMessage"></div>
@@ -54,26 +89,30 @@
         
         <form id="loginForm" onsubmit="return false;">
             <div class="form-group">
-                <label for="username">ユーザー名 / メール</label>
-                <input type="text" id="username" placeholder="ユーザー名またはメールアドレス" required autocomplete="username">
+                <label for="username" data-i18n="field_username">ユーザー名 / メール</label>
+                <input type="text" id="username" data-i18n="field_username_placeholder" placeholder="ユーザー名またはメールアドレス" required autocomplete="username">
             </div>
             
             <div class="form-group">
-                <label for="password">パスワード</label>
-                <input type="password" id="password" placeholder="パスワード" required autocomplete="current-password">
+                <label for="password" data-i18n="field_password">パスワード</label>
+                <input type="password" id="password" data-i18n="field_password_placeholder" placeholder="パスワード" required autocomplete="current-password">
             </div>
             
-            <button type="submit" class="submit-btn" id="submitBtn">ログイン</button>
+            <button type="submit" class="submit-btn" id="submitBtn" data-i18n="btn_login">ログイン</button>
         </form>
         
         <div class="links">
-            <a href="register.html">新規登録</a>
+            <a href="register.html" data-i18n="register">新規登録</a>
             <span class="divider">|</span>
-            <a href="hub.html">スキップ</a>
+            <a href="hub.html" data-i18n="back_to_hub">スキップ</a>
         </div>
     </div>
     
+    <script src="i18n.js"></script>
     <script>
+        // 初始化语言
+        initLanguage();
+        
         // 樱花背景
         const sakuraContainer = document.getElementById('sakuraContainer');
         const sakuras = [];
