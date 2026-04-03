@@ -2,7 +2,7 @@
 
 ## 基础信息
 
-**基础 URL:** `http://47.97.0.122:3000/api`
+**基础 URL:** `http://localhost:3000/api`（开发环境）
 
 **认证方式:** JWT Bearer Token
 
@@ -755,19 +755,6 @@ Content-Type: application/json
 ```
 
 ⚠️ **重要**: 首次登录后请修改默认密码！
-
----
-
-## 服务器部署
-
-### 后端服务器
-- IP: 47.97.0.122
-- 端口：3000
-- 路径：/root/tsukuyomi-space/backend
-
-### 前端服务器
-- IP: 112.124.111.228
-- 路径：/var/www/html
 
 ---
 

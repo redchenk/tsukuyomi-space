@@ -348,7 +348,7 @@ Authorization: Bearer <your_jwt_token>
 
 ### 基础地址
 - 开发环境：`http://localhost:3000/api`
-- 生产环境：`https://112.124.111.228/api`
+- 生产环境：根据你的部署地址配置
 
 ### 公开 API
 
@@ -613,7 +613,6 @@ sudo ufw enable
 
 - **GitHub**: [@redchenk](https://github.com/redchenk)
 - **项目地址**: https://github.com/redchenk/tsukuyomi-space
-- **在线演示**: https://112.124.111.228
 
 ---
 
