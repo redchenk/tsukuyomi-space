@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户中心 | 月读空间</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sakura-pink: #ffb7c5; --deep-pink: #ff6b9d; --dark-bg: #1a1025; --night-blue: #0f1724; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { min-height: 100vh; background: linear-gradient(180deg, var(--dark-bg) 0%, var(--night-blue) 100%); font-family: 'Noto Sans JP', sans-serif; overflow: hidden; }
+        #sakuraContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .sakura { position: absolute; background: linear-gradient(135deg, var(--sakura-pink) 0%, var(--deep-pink) 100%); border-radius: 50% 0 50% 0; opacity: 0.6; }
+        nav { position: fixed; top: 0; width: 100%; padding: 1.2rem 2rem; background: rgba(26,16,37,0.95); backdrop-filter: blur(10px); z-index: 1000; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,107,157,0.2); }
+        nav .logo { font-size: 1.3rem; background: linear-gradient(135deg, #fff, var(--sakura-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 500; letter-spacing: 0.3rem; text-decoration: none; color: var(--sakura-pink); }
+        nav .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+        nav a { color: rgba(255,183,197,0.8); text-decoration: none; font-size: 0.9rem; padding: 0.4rem 0.8rem; border-radius: 15px; transition: all 0.3s; }
+        nav a:hover, nav a.active { color: var(--sakura-pink); background: rgba(255,107,157,0.15); }
+        .container { position: relative; z-index: 10; min-height: 100vh; padding: 6rem 2rem 2rem; max-width: 1000px; margin: 0 auto; }
+        .user-header { text-align: center; margin-bottom: 2rem; }
+        .avatar-upload { position: relative; width: 120px; height: 120px; margin: 0 auto 1rem; border-radius: 50%; overflow: hidden; border: 3px solid var(--sakura-pink); cursor: pointer; }
+        .avatar-upload img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-upload:hover::after { content: '📷 更换头像'; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.8rem; }
+        .username { font-size: 1.5rem; color: var(--sakura-pink); margin-bottom: 0.5rem; }
+        .user-email { color: rgba(255,183,197,0.6); font-size: 0.9rem; }
+        .tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,107,157,0.3); padding-bottom: 1rem; }
+        .tab-btn { padding: 0.6rem 1.5rem; background: transparent; border: 1px solid rgba(255,183,197,0.3); border-radius: 20px; color: rgba(255,183,197,0.7); cursor: pointer; transition: all 0.3s; }
+        .tab-btn:hover, .tab-btn.active { background: rgba(255,107,157,0.2); border-color: var(--sakura-pink); color: var(--sakura-pink); }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; color: var(--sakura-pink); margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .form-group input, .form-group textarea { width: 100%; padding: 0.9rem 1.2rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,183,197,0.3); border-radius: 8px; color: var(--sakura-pink); font-size: 1rem; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--sakura-pink); box-shadow: 0 0 20px rgba(255,183,197,0.2); }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .btn { padding: 0.8rem 2rem; background: rgba(255,107,157,0.2); border: 1px solid var(--sakura-pink); border-radius: 8px; color: var(--sakura-pink); cursor: pointer; transition: all 0.3s; font-size: 1rem; }
+        .btn:hover { background: rgba(255,107,157,0.3); transform: translateY(-2px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .message { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; }
+        .message.success { background: rgba(100,255,150,0.1); border: 1px solid rgba(100,255,150,0.3); color: #6bff9e; }
+        .message.error { background: rgba(255,100,100,0.1); border: 1px solid rgba(255,100,100,0.3); color: #ff6b6b; }
+        .article-list { background: rgba(255,255,255,0.03); border-radius: 12px; overflow: hidden; }
+        .article-item { padding: 1.5rem; border-bottom: 1px solid rgba(255,183,197,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .article-item:last-child { border-bottom: none; }
+        .article-info h3 { color: var(--sakura-pink); font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .article-meta { font-size: 0.85rem; color: rgba(255,183,197,0.5); }
+        .article-actions { display: flex; gap: 0.5rem; }
+        .article-actions button { padding: 0.4rem 1rem; font-size: 0.85rem; }
+        .login-notice { text-align: center; padding: 4rem 2rem; color: rgba(255,183,197,0.5); }
+        .login-notice a { color: var(--sakura-pink); text-decoration: none; }
+        .footer { position: fixed; bottom: 1rem; width: 100%; text-align: center; color: rgba(255,255,255,0.3); font-size: 0.65rem; z-index: 10; }
+        .empty-state { text-align: center; padding: 3rem; color: rgba(255,183,197,0.5); }
+        @media (max-width: 768px) { .tabs { flex-wrap: wrap; } .article-item { flex-direction: column; gap: 1rem; align-items: flex-start; } }
+    </style>
+</head>
+<body>
+    <div id="sakuraContainer"></div>
+    <nav>
+        <a href="hub.html" class="logo">月读空间</a>
+        <div class="nav-right">
+            <a href="hub.html">中枢大厅</a>
+            <a href="stage.html">主舞台</a>
+            <a href="room.html">私人居所</a>
+            <a href="user-center.html" class="active">用户中心</a>
+        </div>
+    </nav>
+    <div class="container">
+        <div id="loginNotice" class="login-notice">
+            ログインが必要です。<br><br>
+            <a href="login.html" class="btn">ログインページへ</a>
+        </div>
+        <div id="userContent" style="display: none;">
+            <div class="user-header">
+                <div class="avatar-upload" onclick="document.getElementById('avatarInput').click()">
+                    <img id="avatarDisplay" src="" alt="头像">
+                    <input type="file" id="avatarInput" accept="image/*" style="display: none;" onchange="uploadAvatar(event)">
+                </div>
+                <h1 class="username" id="usernameDisplay"></h1>
+                <p class="user-email" id="emailDisplay"></p>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('profile')">个人资料</button>
+                <button class="tab-btn" onclick="showTab('articles')">我的文章</button>
+                <button class="tab-btn" onclick="showTab('security')">账户安全</button>
+            </div>
+            <div class="panel active" id="profilePanel">
+                <div class="message success" id="profileMsg"></div>
+                <div class="form-group">
+                    <label>个人简介</label>
+                    <textarea id="bioInput" placeholder="介绍一下自己吧..." onchange="updateProfile()"></textarea>
+                </div>
+                <button class="btn" onclick="updateProfile()">保存资料</button>
+            </div>
+            <div class="panel" id="articlesPanel">
+                <div class="article-list" id="articleList">
+                    <div class="empty-state">加载中...</div>
+                </div>
+            </div>
+            <div class="panel" id="securityPanel">
+                <div class="message success" id="passwordMsg"></div>
+                <div class="message error" id="passwordErrMsg"></div>
+                <div class="form-group">
+                    <label>当前密码</label>
+                    <input type="password" id="currentPassword" placeholder="请输入当前密码">
+                </div>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" id="newPassword" placeholder="请输入新密码">
+                </div>
+                <div class="form-group">
+                    <label>确认新密码</label>
+                    <input type="password" id="confirmPassword" placeholder="请再次输入新密码">
+                </div>
+                <button class="btn" onclick="changePassword()">修改密码</button>
+            </div>
+        </div>
+    </div>
+    <div class="footer">© 月读空间 | Tsukuyomi Space</div>
+
+    <script>
+        const API_BASE = 'http://47.97.0.122:3000/api';
+        let authToken = null;
+        let userInfo = null;
+
+        // 樱花特效
+        function initSakura() {
+            const container = document.getElementById('sakuraContainer');
+            for (let i = 0; i < 30; i++) {
+                const sakura = document.createElement('div');
+                sakura.className = 'sakura';
+                sakura.style.left = Math.random() * 100 + '%';
+                sakura.style.width = Math.random() * 10 + 5 + 'px';
+                sakura.style.height = sakura.style.width;
+                sakura.style.animation = `fall ${Math.random() * 3 + 4}s linear forwards`;
+                container.appendChild(sakura);
+            }
+        }
+        const style = document.createElement('style');
+        style.textContent = `@keyframes fall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }`;
+        document.head.appendChild(style);
+
+        // 检查登录状态
+        function checkAuth() {
+            authToken = localStorage.getItem('tsukuyomi_token');
+            const userStr = localStorage.getItem('tsukuyomi_user');
+
+            if (!authToken || !userStr) {
+                document.getElementById('loginNotice').style.display = 'block';
+                document.getElementById('userContent').style.display = 'none';
+                return false;
+            }
+
+            try {
+                userInfo = JSON.parse(userStr);
+                document.getElementById('loginNotice').style.display = 'none';
+                document.getElementById('userContent').style.display = 'block';
+                loadUserProfile();
+                return true;
+            } catch (e) {
+                localStorage.removeItem('tsukuyomi_token');
+                localStorage.removeItem('tsukuyomi_user');
+                return false;
+            }
+        }
+
+        // 加载用户资料
+        async function loadUserProfile() {
+            try {
+                const res = await fetch(API_BASE + '/user/profile', {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    userInfo = result.data;
+                    document.getElementById('usernameDisplay').textContent = userInfo.username;
+                    document.getElementById('emailDisplay').textContent = userInfo.email;
+                    document.getElementById('bioInput').value = userInfo.bio || '';
+
+                    if (userInfo.avatar) {
+                        document.getElementById('avatarDisplay').src = userInfo.avatar;
+                    } else {
+                        // 默认头像
+                        document.getElementById('avatarDisplay').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%23ffb7c5"/><text x="50" y="60" text-anchor="middle" font-size="40" fill="%231a1025">🌙</text></svg>';
+                    }
+
+                    loadUserArticles();
+                }
+            } catch (error) {
+                console.error('加载用户资料失败:', error);
+            }
+        }
+
+        // 上传头像
+        async function uploadAvatar(event) {
+            const file = event.target.files[0];
+            if (!file || !file.type.startsWith('image/')) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    // 压缩图片
+                    const compressedBase64 = await compressImage(file, 400, 400, 0.8);
+
+                    const res = await fetch(API_BASE + '/user/avatar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify({ avatar: compressedBase64 })
+                    });
+                    const result = await res.json();
+
+                    if (result.success) {
+                        document.getElementById('avatarDisplay').src = compressedBase64;
+                        alert('🌸 头像已更新');
+                    } else {
+                        alert('❌ ' + result.message);
+                    }
+                } catch (error) {
+                    console.error('上传头像失败:', error);
+                    alert('❌ 上传失败，请重试');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 压缩图片
+        function compressImage(file, maxWidth = 400, maxHeight = 400, quality = 0.8) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width, height = img.height;
+
+                        if (width > maxWidth) {
+                            height = height * (maxWidth / width);
+                            width = maxWidth;
+                        }
+                        if (height > maxHeight) {
+                            width = width * (maxHeight / height);
+                            height = maxHeight;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 更新个人资料
+        async function updateProfile() {
+            const bio = document.getElementById('bioInput').value.trim();
+            const msgEl = document.getElementById('profileMsg');
+
+            try {
+                const res = await fetch(API_BASE + '/user/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ bio })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    msgEl.textContent = '🌸 资料已保存';
+                    msgEl.className = 'message success';
+                    msgEl.style.display = 'block';
+                    setTimeout(() => msgEl.style.display = 'none', 3000);
+                } else {
+                    msgEl.textContent = '❌ ' + result.message;
+                    msgEl.className = 'message error';
+                    msgEl.style.display = 'block';
+                }
+            } catch (error) {
+                msgEl.textContent = '❌ 保存失败';
+                msgEl.className = 'message error';
+                msgEl.style.display = 'block';
+            }
+        }
+
+        // 加载用户文章
+        async function loadUserArticles() {
+            try {
+                const res = await fetch(API_BASE + '/user/articles', {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const result = await res.json();
+
+                const listEl = document.getElementById('articleList');
+                if (result.success && result.data && result.data.length > 0) {
+                    listEl.innerHTML = result.data.map(article => `
+                        <div class="article-item">
+                            <div class="article-info">
+                                <h3>${escapeHtml(article.title)}</h3>
+                                <div class="article-meta">
+                                    ${article.category} · 阅读 ${article.view_count || 0} · ${new Date(article.created_at).toLocaleDateString('zh-CN')}
+                                </div>
+                            </div>
+                            <div class="article-actions">
+                                <button class="btn" onclick="editArticle(${article.id})">编辑</button>
+                                <button class="btn" style="background:rgba(255,100,100,0.2);border-color:#ff6464;color:#ff6464" onclick="deleteArticle(${article.id})">删除</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.innerHTML = '<div class="empty-state">还没有投稿文章<br><a href="editor.html" class="btn" style="margin-top:1rem">投稿第一篇文章</a></div>';
+                }
+            } catch (error) {
+                console.error('加载文章失败:', error);
+            }
+        }
+
+        // 编辑文章
+        function editArticle(id) {
+            window.location.href = 'editor.html?id=' + id;
+        }
+
+        // 删除文章
+        async function deleteArticle(id) {
+            if (!confirm('确定要删除这篇文章吗？')) return;
+
+            try {
+                const res = await fetch(API_BASE + '/user/articles/' + id, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    alert('🌸 文章已删除');
+                    loadUserArticles();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                alert('❌ 删除失败');
+            }
+        }
+
+        // 修改密码
+        async function changePassword() {
+            const currentPwd = document.getElementById('currentPassword').value;
+            const newPwd = document.getElementById('newPassword').value;
+            const confirmPwd = document.getElementById('confirmPassword').value;
+            const msgEl = document.getElementById('passwordMsg');
+            const errMsgEl = document.getElementById('passwordErrMsg');
+
+            if (!currentPwd || !newPwd || !confirmPwd) {
+                errMsgEl.textContent = '❌ 请填写所有字段';
+                errMsgEl.style.display = 'block';
+                return;
+            }
+
+            if (newPwd !== confirmPwd) {
+                errMsgEl.textContent = '❌ 两次输入的新密码不一致';
+                errMsgEl.style.display = 'block';
+                return;
+            }
+
+            if (newPwd.length < 6) {
+                errMsgEl.textContent = '❌ 密码长度至少 6 位';
+                errMsgEl.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch(API_BASE + '/user/password', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    msgEl.textContent = '🌸 密码已修改';
+                    msgEl.className = 'message success';
+                    msgEl.style.display = 'block';
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                    setTimeout(() => msgEl.style.display = 'none', 3000);
+                } else {
+                    errMsgEl.textContent = '❌ ' + result.message;
+                    errMsgEl.style.display = 'block';
+                }
+            } catch (error) {
+                errMsgEl.textContent = '❌ 修改失败';
+                errMsgEl.style.display = 'block';
+            }
+        }
+
+        // 切换标签页
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Panel').classList.add('active');
+        }
+
+        // HTML 转义
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initSakura();
+            checkAuth();
+        });
+    </script>
+</body>
+</html>

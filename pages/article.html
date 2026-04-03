@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="article_title">文章详情 | 月读空间</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sakura-pink: #ffb7c5;
+            --deep-pink: #ff6b9d;
+            --purple: #c44569;
+            --dark-bg: #1a1025;
+            --night-blue: #0f1724;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(180deg, rgba(45,31,61,0.7) 0%, rgba(26,16,37,0.8) 40%, rgba(15,23,36,0.9) 100%),
+                        url('../assets/images/tsukuyomi-bg.png') center center / cover no-repeat fixed;
+            font-family: 'Noto Sans JP', sans-serif;
+            overflow-x: hidden;
+            padding-top: 80px;
+        }
+
+        #sakuraContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .sakura {
+            position: absolute;
+            background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%);
+            border-radius: 50% 0 50% 0;
+        }
+
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.2rem 2rem;
+            background: rgba(26,16,37,0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,107,157,0.2);
+        }
+        nav .logo {
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, #fff, #ffb7c5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+        nav .nav-right { display: flex; align-items: center; gap: 1rem; }
+        nav .nav-right a {
+            color: rgba(255,183,197,0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        nav .nav-right a:hover { color: #ffb7c5; }
+
+        .lang-switcher {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(255,107,157,0.2);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255,107,157,0.3);
+        }
+        .lang-btn {
+            padding: 0.4rem 1rem;
+            background: transparent;
+            border: 1px solid rgba(255,183,197,0.3);
+            border-radius: 20px;
+            color: rgba(255,183,197,0.75);
+            cursor: pointer;
+            font-size: 0.78rem;
+            transition: all 0.3s;
+        }
+        .lang-btn.active {
+            background: rgba(255,107,157,0.25);
+            border-color: rgba(255,107,157,0.6);
+            color: #ffb7c5;
+            font-weight: 600;
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 2rem;
+            padding: 0.6rem 1.2rem;
+            background: rgba(255,107,157,0.2);
+            color: #ffb7c5;
+            border: 1px solid rgba(255,107,157,0.3);
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        .back-btn:hover {
+            background: rgba(255,107,157,0.3);
+            transform: translateX(-5px);
+        }
+
+        .article-header {
+            margin-bottom: 2rem;
+        }
+        .article-header h1 {
+            font-size: 2rem;
+            color: #fff;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff, #ffb7c5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .article-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            color: rgba(255,183,197,0.7);
+            font-size: 0.85rem;
+        }
+        .tag {
+            padding: 0.3rem 0.8rem;
+            background: rgba(255,107,157,0.15);
+            border: 1px solid rgba(255,107,157,0.3);
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+
+        .article-cover {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            max-height: 400px;
+            object-fit: cover;
+        }
+
+        .article-content {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,107,157,0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            color: rgba(255,255,255,0.9);
+            line-height: 1.8;
+        }
+        .article-content h2 {
+            color: #ffb7c5;
+            font-size: 1.5rem;
+            margin: 1.5rem 0 1rem;
+        }
+        .article-content h3 {
+            color: #ff6b9d;
+            font-size: 1.2rem;
+            margin: 1.2rem 0 0.8rem;
+        }
+        .article-content p {
+            margin-bottom: 1rem;
+        }
+        .article-content blockquote {
+            border-left: 3px solid rgba(255,107,157,0.5);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: rgba(255,183,197,0.8);
+            font-style: italic;
+        }
+        .article-content code {
+            background: rgba(0,0,0,0.3);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .article-content pre {
+            background: rgba(0,0,0,0.4);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .article-content pre code {
+            background: transparent;
+            padding: 0;
+        }
+        .article-content ul, .article-content ol {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: rgba(255,183,197,0.6);
+            font-size: 1.1rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: rgba(255,255,255,0.3);
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .article-header h1 { font-size: 1.5rem; }
+            .article-content { padding: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sakuraContainer"></div>
+
+    <nav>
+        <a href="hub.html" class="logo" data-i18n="space_name">月读空间</a>
+        <div class="nav-right">
+            <a href="hub.html" data-i18n="nav_hub">中枢大厅</a>
+            <a href="stage.html" data-i18n="nav_stage">主舞台</a>
+            <div class="lang-switcher">
+                <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh'); return false;">中文</button>
+                <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja'); return false;">日本語</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="stage.html" class="back-btn">← 返回列表</a>
+
+        <div id="articleContainer">
+            <div class="loading" data-i18n="loading">加载中...</div>
+        </div>
+    </div>
+
+    <div class="footer" data-i18n="footer">© 超かぐや姫！風</div>
+
+    <script src="i18n.js"></script>
+    <script>
+        const API_BASE = 'http://47.97.0.122:3000/api';
+        const articleId = new URLSearchParams(window.location.search).get('id');
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initLanguage();
+            loadArticle();
+            initSakura();
+        });
+
+        async function loadArticle() {
+            const container = document.getElementById('articleContainer');
+
+            if (!articleId) {
+                container.innerHTML = '<div class="loading">文章 ID 不存在</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE + '/articles/' + articleId);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const article = result.data;
+                    container.innerHTML = `
+                        <div class="article-header">
+                            <h1>${article.title}</h1>
+                            <div class="article-meta">
+                                <span>📅 ${article.publish_date || article.created_at}</span>
+                                <span>👤 ${article.author_username || 'admin'}</span>
+                                <span>⏱️ ${article.read_time || '5 min'}</span>
+                                <span class="tag">${article.category}</span>
+                            </div>
+                        </div>
+                        ${article.cover_image ? `<img src="${article.cover_image}" alt="封面" class="article-cover">` : ''}
+                        <div class="article-content">${formatContent(article.content)}</div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="loading">文章不存在</div>';
+                }
+            } catch (error) {
+                console.error('加载文章失败:', error);
+                container.innerHTML = '<div class="loading">加载失败，请稍后重试</div>';
+            }
+        }
+
+        function formatContent(content) {
+            if (!content) return '';
+
+            let html = content;
+            html = html.replace(/## (.*?)(\n|$)/g, '<h2>$1</h2>');
+            html = html.replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>');
+            html = html.replace(/> (.*?)(\n|$)/g, '<blockquote>$1</blockquote>');
+            html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
+        }
+
+        function initSakura() {
+            const sakuraContainer = document.getElementById('sakuraContainer');
+            const sakuras = [];
+
+            function createSakura() {
+                const el = document.createElement('div');
+                el.className = 'sakura';
+                const size = Math.random() * 6 + 5;
+                el.style.width = size + 'px';
+                el.style.height = size + 'px';
+                el.style.left = (Math.random() * 100) + '%';
+                sakuraContainer.appendChild(el);
+                return {
+                    el: el,
+                    x: 0,
+                    y: -Math.random() * window.innerHeight * 0.5 - 50,
+                    vy: Math.random() * 0.4 + 0.3,
+                    angle: Math.random() * Math.PI * 2,
+                    angleSpeed: Math.random() * 0.015 + 0.008,
+                    swayRadius: Math.random() * 15 + 8,
+                    rot: Math.random() * 360,
+                    rotSpeed: (Math.random() - 0.5) * 0.8,
+                    flip: Math.random() > 0.5 ? 1 : -1,
+                    opacity: Math.random() * 0.2 + 0.75
+                };
+            }
+
+            for (let i = 0; i < 35; i++) {
+                const s = createSakura();
+                s.y = Math.random() * window.innerHeight;
+                sakuras.push(s);
+            }
+
+            function animate() {
+                sakuras.forEach(s => {
+                    s.y += s.vy;
+                    s.angle += s.angleSpeed;
+                    s.rot += s.rotSpeed;
+                    s.el.style.transform = `
+                        translate(
+                            ${Math.sin(s.angle) * s.swayRadius}px,
+                            ${s.y}px
+                        )
+                        rotate(${s.rot}deg)
+                    `;
+                    s.el.style.opacity = s.opacity;
+
+                    if (s.y > window.innerHeight) {
+                        s.y = -50;
+                        s.x = Math.random() * window.innerWidth;
+                    }
+                });
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+    </script>
+</body>
+</html>

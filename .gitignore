@@ -1,0 +1,101 @@
+# Large Media Files
+*.mp4
+*.mov
+*.avi
+*.zip
+*.rar
+*.7z
+
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+*.lnk
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+*.lnk
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Large Media Files (optional - uncomment if needed)
+# *.mp4
+# *.mov
+# *.avi
+# *.zip
+
+# Backup files
+*.bak
+*.backup

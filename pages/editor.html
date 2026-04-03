@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="editor_title">新建投稿 | 月读空间</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sakura-pink: #ffb7c5; --deep-pink: #ff6b9d; --dark-bg: #1a1025; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        .lang-switcher {
+            position: fixed;
+            top: 5.5rem;
+            right: 2rem;
+            z-index: 999;
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(26,16,37,0.9);
+            backdrop-filter: blur(10px);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255,107,157,0.3);
+        }
+        .lang-btn {
+            padding: 0.35rem 0.85rem;
+            background: transparent;
+            border: 1px solid rgba(255,183,197,0.3);
+            border-radius: 15px;
+            color: rgba(255,183,197,0.75);
+            cursor: pointer;
+            font-size: 0.78rem;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .lang-btn:hover { background: rgba(255,107,157,0.2); border-color: rgba(255,107,157,0.5); color: #ffb7c5; }
+        .lang-btn.active { background: rgba(255,107,157,0.25); border-color: rgba(255,107,157,0.6); color: #ffb7c5; font-weight: 600; }
+        
+        body { min-height: 100vh; background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%); font-family: 'Noto Sans JP', sans-serif; overflow-x: hidden; }
+        #sakuraContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .sakura { position: absolute; background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%); border-radius: 50% 0 50% 0; will-change: transform, opacity; }
+        nav { position: fixed; top: 0; width: 100%; padding: 1.2rem 2rem; background: rgba(26,16,37,0.95); backdrop-filter: blur(10px); z-index: 1000; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,107,157,0.2); }
+        nav .logo { font-size: 1.3rem; background: linear-gradient(135deg, #fff, #ffb7c5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 500; letter-spacing: 0.2rem; text-decoration: none; }
+        nav .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+        nav a { color: rgba(255,183,197,0.8); text-decoration: none; transition: color 0.3s; font-size: 0.9rem; }
+        nav a:hover { color: #ffb7c5; }
+        .container { position: relative; z-index: 10; min-height: 100vh; padding: 8rem 2rem 2rem; max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 2rem; }
+        .title { font-size: 2rem; background: linear-gradient(135deg, #fff 0%, #ffb7c5 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 300; letter-spacing: 0.3rem; margin-bottom: 0.5rem; }
+        .subtitle { color: rgba(255,183,197,0.5); font-size: 0.85rem; letter-spacing: 0.2rem; }
+        .editor-form { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,107,157,0.1); border-radius: 8px; padding: 2rem; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; color: rgba(255,183,197,0.8); margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.9rem 1.2rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,107,157,0.15); border-radius: 6px; color: rgba(255,183,197,0.9); font-size: 1rem; font-family: 'Noto Sans JP', sans-serif; transition: all 0.3s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: rgba(255,107,157,0.4); box-shadow: 0 0 20px rgba(255,107,157,0.1); }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255,183,197,0.3); }
+        .form-group textarea { min-height: 300px; resize: vertical; line-height: 1.8; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .help-text { font-size: 0.8rem; color: rgba(255,183,197,0.4); margin-top: 0.5rem; }
+        .btn-group { display: flex; gap: 1rem; margin-top: 2rem; }
+        .btn { padding: 1rem 2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: all 0.3s; text-decoration: none; display: inline-block; }
+        .btn-primary { background: rgba(255,107,157,0.25); color: #ffb7c5; border: 1px solid rgba(255,107,157,0.4); }
+        .btn-primary:hover { background: rgba(255,107,157,0.35); transform: translateY(-2px); }
+        .btn-secondary { background: rgba(255,255,255,0.05); color: rgba(255,183,197,0.7); border: 1px solid rgba(255,183,197,0.2); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.08); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .message { padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; display: none; }
+        .message.success { background: rgba(100,255,150,0.1); border: 1px solid rgba(100,255,150,0.3); color: #6bff9e; }
+        .message.error { background: rgba(255,100,100,0.1); border: 1px solid rgba(255,100,100,0.3); color: #ff6b6b; }
+        .login-notice { text-align: center; padding: 4rem 2rem; color: rgba(255,183,197,0.5); }
+        .login-notice a { color: #ffb7c5; text-decoration: none; }
+        .footer { position: fixed; bottom: 1rem; color: rgba(255,255,255,0.25); font-size: 0.65rem; letter-spacing: 0.15rem; z-index: 10; width: 100%; text-align: center; }
+        
+        /* 封面图片上传 */
+        .cover-upload {
+            border: 2px dashed rgba(255,107,157,0.3);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            background: rgba(255,255,255,0.02);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        .cover-upload:hover { border-color: rgba(255,107,157,0.6); background: rgba(255,107,157,0.05); }
+        .cover-upload.has-image { border-style: solid; border-color: rgba(255,107,157,0.4); }
+        .cover-upload input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .cover-preview { max-width: 100%; max-height: 300px; border-radius: 6px; margin-top: 1rem; display: none; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .cover-preview.show { display: block; }
+        .cover-placeholder { color: rgba(255,183,197,0.5); font-size: 0.9rem; }
+        .cover-placeholder .icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+        .cover-remove { position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(255,100,100,0.8); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s; }
+        .cover-remove:hover { background: rgba(255,100,100,1); transform: scale(1.1); }
+        .cover-upload.has-image .cover-remove { display: flex; }
+        .cover-info { font-size: 0.8rem; color: rgba(255,183,197,0.6); margin-top: 0.5rem; }
+        .compress-notice { font-size: 0.75rem; color: rgba(255,183,197,0.5); margin-top: 0.3rem; }
+        
+        @media (max-width: 768px) { 
+            .form-row { grid-template-columns: 1fr; } 
+            .title { font-size: 1.7rem; } 
+            .btn-group { flex-direction: column; }
+            .lang-switcher { top: 4.5rem; right: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sakuraContainer"></div>
+    <nav>
+        <a href="hub.html" class="logo" data-i18n="space_name">月読空間</a>
+        <div class="nav-right">
+            <a href="stage.html" data-i18n="nav_stage">ステージ</a>
+            <a href="hub.html" data-i18n="return">戻る</a>
+        </div>
+    </nav>
+    
+    <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+        <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1 class="title" data-i18n="editor_title">新建投稿</h1>
+            <p class="subtitle" data-i18n="editor_subtitle">创建新文章</p>
+        </div>
+        <div id="editorContainer">
+            <div class="login-notice" data-i18n="loading">加载中...</div>
+        </div>
+    </div>
+    <div class="footer">© 超かぐや姫！風</div>
+    <script src="i18n.js"></script>
+    <script>
+        const API_BASE = 'http://47.97.0.122:3000/api';
+        let coverImageBase64 = null;
+        let coverImageSize = 0;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initLanguage();
+            checkAuth();
+        });
+        
+        // 樱花背景
+        const sakuraContainer = document.getElementById('sakuraContainer');
+
+        // 加载文章进行编辑
+        // HTML 转义
+        function escapeHtml(str) {
+            if (!str) return "";
+            return str.replace(/"/g, "\&quot;").replace(/\&/g, "\&amp;").replace(/</g, "\&lt;").replace(/>/g, "\&gt;");
+        }
+
+        function showError(msg) {
+            const el = document.getElementById("errorMsg");
+            if (el) { el.textContent = msg; el.style.display = "block";
+                const successEl = document.getElementById("successMsg");
+                if (successEl) successEl.style.display = "none";
+            }
+        }
+
+        async function loadArticleForEdit(articleId, token, user) {
+            try {
+                // 根据 token 类型和用户角色选择 API
+                let url;
+                const adminToken = localStorage.getItem('admin_token');
+                const adminUserStr = localStorage.getItem('admin_user');
+
+                // 只有 admin token 存在且用户角色是 admin 时才使用 admin API
+                if (adminToken && adminUserStr) {
+                    try {
+                        const adminUser = JSON.parse(adminUserStr);
+                        if (adminUser.role === 'admin') {
+                            url = API_BASE + '/admin/articles/' + articleId;
+                        } else {
+                            url = API_BASE + '/user/articles/' + articleId;
+                        }
+                    } catch (e) {
+                        url = API_BASE + '/user/articles/' + articleId;
+                    }
+                } else {
+                    url = API_BASE + '/user/articles/' + articleId;
+                }
+
+                const res = await fetch(url, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const result = await res.json();
+
+                if (result.success && result.data) {
+                    const article = result.data;
+                    renderEditorForm(article, user);
+                } else {
+                    showError('加载文章失败：' + (result.message || '未知错误'));
+                }
+            } catch (error) {
+                console.error('加载文章失败:', error);
+                showError('网络错误');
+            }
+        }
+
+        function renderEditorForm(article, user) {
+            document.getElementById('editorContainer').innerHTML = `
+                <form class="editor-form" id="editorForm" onsubmit="handleSubmit(event)">
+                    <div class="message success" id="successMsg"></div>
+                    <div class="message error" id="errorMsg"></div>
+
+                    <div class="form-group">
+                        <label data-i18n="field_cover">文章封面图片（自动压缩）</label>
+                        <div class="cover-upload" id="coverUpload">
+                            <input type="file" id="coverInput" accept="image/*" onchange="handleCoverUpload(event)">
+                            <div class="cover-placeholder" id="coverPlaceholder">
+                                <span class="icon">🖼️</span>
+                                <span>点击或拖拽上传图片</span>
+                                <div class="help-text">推荐：1200x630px，JPG 或 PNG 格式</div>
+                            </div>
+                            <img class="cover-preview" id="coverPreview" alt="封面预览">
+                            <button type="button" class="cover-remove" onclick="removeCover(event)">×</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label data-i18n="field_title">标题</label>
+                        <input type="text" id="title" data-i18n="field_title_placeholder" placeholder="输入文章标题" required value="${escapeHtml(article.title || '')}">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label data-i18n="field_category">分类</label>
+                            <select id="category" required>
+                                <option value="" data-i18n="field_category_select">请选择分类</option>
+                                <option value="公告" data-i18n="field_category_announcement">公告（仅管理员）</option>
+                                <option value="传说" data-i18n="field_category_legend">传说</option>
+                                <option value="技术" data-i18n="field_category_technology">技术</option>
+                                <option value="其他" data-i18n="field_category_other">其他</option>
+                            </select>
+                            <div class="help-text" data-i18n="field_category_hint">※ 公告仅管理员可发布</div>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="field_read_time">阅读时间</label>
+                            <input type="text" id="readTime" data-i18n="field_read_time_placeholder" placeholder="例：5 min" required value="${escapeHtml(article.read_time || '')}">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label data-i18n="field_excerpt">摘要</label>
+                        <textarea id="excerpt" data-i18n="field_excerpt_placeholder" placeholder="文章摘要（200 字以内）" maxlength="200" required>${escapeHtml(article.excerpt || '')}</textarea>
+                        <div class="help-text" data-i18n="field_excerpt_hint">请输入文章摘要</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label data-i18n="field_content">正文</label>
+                        <textarea id="content" data-i18n="field_content_placeholder" placeholder="输入文章内容..." style="min-height:400px" required>${escapeHtml(article.content || '')}</textarea>
+                        <div class="help-text" data-i18n="field_content_hint">格式支持：## 标题 1 / ### 标题 2 / - 列表项 / > 引用 / \`代码\`</div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary" id="submitBtn" data-i18n="btn_update">保存修改</button>
+                        <a href="javascript:history.back()" class="btn btn-secondary" data-i18n="cancel">取消</a>
+                    </div>
+                </form>
+            `;
+
+            // 设置分类
+            document.getElementById('category').value = article.category || '';
+
+            // 设置封面
+            if (article.cover_image) {
+                const preview = document.getElementById('coverPreview');
+                const placeholder = document.getElementById('coverPlaceholder');
+                const upload = document.getElementById('coverUpload');
+                preview.src = article.cover_image;
+                preview.classList.add('show');
+                placeholder.style.display = 'none';
+                upload.classList.add('has-image');
+                coverImageBase64 = article.cover_image;
+            }
+        }
+
+        const sakuras = [];
+        function createSakura() {
+            const el = document.createElement('div');
+            el.className = 'sakura';
+            const size = Math.random() * 6 + 5;
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+            el.style.left = (Math.random() * 100) + '%';
+            sakuraContainer.appendChild(el);
+            return { el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50, vy: Math.random() * 0.4 + 0.3, angle: Math.random() * Math.PI * 2, angleSpeed: Math.random() * 0.015 + 0.008, swayRadius: Math.random() * 15 + 8, rot: Math.random() * 360, rotSpeed: (Math.random() - 0.5) * 0.8, flip: Math.random() > 0.5 ? 1 : -1, opacity: Math.random() * 0.2 + 0.75 };
+        }
+        for (let i = 0; i < 35; i++) { const s = createSakura(); s.y = Math.random() * window.innerHeight; sakuras.push(s); }
+        function animate() { sakuras.forEach(s => { s.y += s.vy; s.angle += s.angleSpeed; s.x = Math.sin(s.angle) * s.swayRadius * s.flip; s.rot += s.rotSpeed; let alpha = s.opacity; if (s.y < 50) alpha = s.opacity * (s.y / 50); else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50); s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`; s.el.style.opacity = alpha; if (s.y > window.innerHeight + 30) { s.y = -30 - Math.random() * 50; s.x = 0; s.angle = Math.random() * Math.PI * 2; s.flip = Math.random() > 0.5 ? 1 : -1; } }); requestAnimationFrame(animate); }
+        animate();
+        
+        function checkAuth() {
+            // 支持两种 token：admin_token（终端）或 tsukuyomi_token（用户端）
+            let token = localStorage.getItem('admin_token');
+            let userStr = localStorage.getItem('admin_user');
+
+            if (!token || !userStr) {
+                token = localStorage.getItem('tsukuyomi_token');
+                userStr = localStorage.getItem('tsukuyomi_user');
+            }
+
+            if (!token || !userStr) {
+                // 未登录，跳转到登录页面并带上重定向参数
+                window.location.href = 'login.html?redirect=editor.html';
+                return;
+            }
+
+            try {
+                const user = JSON.parse(userStr);
+
+                let editingArticleId = null;
+
+                // 检查是否有文章 ID 参数（编辑模式）
+                const urlParams = new URLSearchParams(window.location.search);
+                const articleId = urlParams.get('id');
+                console.log('[editor] 文章 ID:', articleId);
+
+                if (articleId) {
+                    editingArticleId = articleId;
+                    loadArticleForEdit(articleId, token, user);
+                    return;
+                }
+                document.getElementById('editorContainer').innerHTML = `
+                    <form class="editor-form" id="editorForm" onsubmit="handleSubmit(event)">
+                        <div class="message success" id="successMsg"></div>
+                        <div class="message error" id="errorMsg"></div>
+                        
+                        <div class="form-group">
+                            <label data-i18n="field_cover">文章封面图片（自动压缩）</label>
+                            <div class="cover-upload" id="coverUpload">
+                                <input type="file" id="coverInput" accept="image/*" onchange="handleCoverUpload(event)">
+                                <div class="cover-placeholder" id="coverPlaceholder">
+                                    <span class="icon">🖼️</span>
+                                    <span>点击或拖拽上传图片</span>
+                                    <div class="help-text">推荐：1200x630px，JPG 或 PNG 格式</div>
+                                </div>
+                                <img class="cover-preview" id="coverPreview" alt="封面预览">
+                                <button type="button" class="cover-remove" onclick="removeCover(event)">×</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label data-i18n="field_title">标题</label>
+                            <input type="text" id="title" data-i18n="field_title_placeholder" placeholder="输入文章标题" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label data-i18n="field_category">分类</label>
+                                <select id="category" required>
+                                    <option value="" data-i18n="field_category_select">请选择分类</option>
+                                    <option value="公告" data-i18n="field_category_announcement">公告（仅管理员）</option>
+                                    <option value="传说" data-i18n="field_category_legend">传说</option>
+                                    <option value="技术" data-i18n="field_category_technology">技术</option>
+                                    <option value="其他" data-i18n="field_category_other">其他</option>
+                                </select>
+                                <div class="help-text" data-i18n="field_category_hint">※ 公告仅管理员可发布</div>
+                            </div>
+                            <div class="form-group">
+                                <label data-i18n="field_read_time">阅读时间</label>
+                                <input type="text" id="readTime" data-i18n="field_read_time_placeholder" placeholder="例：5 min" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label data-i18n="field_excerpt">摘要</label>
+                            <textarea id="excerpt" data-i18n="field_excerpt_placeholder" placeholder="文章摘要（200 字以内）" maxlength="200" required></textarea>
+                            <div class="help-text" data-i18n="field_excerpt_hint">请输入文章摘要</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label data-i18n="field_content">正文</label>
+                            <textarea id="content" data-i18n="field_content_placeholder" placeholder="输入文章内容..." style="min-height:400px" required></textarea>
+                            <div class="help-text" data-i18n="field_content_hint">格式支持：## 标题 1 / ### 标题 2 / - 列表项 / > 引用 / \`代码\`</div>
+                        </div>
+                        
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary" data-i18n="btn_submit">投稿</button>
+                            <a href="stage.html" class="btn btn-secondary" data-i18n="cancel">取消</a>
+                        </div>
+                    </form>
+                `;
+            } catch (e) {
+                console.error('解析用户信息失败:', e);
+                document.getElementById('editorContainer').innerHTML = `
+                    <div class="login-notice">
+                        セッションエラー。<br><br>
+                        <a href="login.html" class="btn btn-primary">再ログイン</a>
+                    </div>
+                `;
+            }
+        }
+        
+        // 压缩图片
+        function compressImage(file, maxWidth = 1200, maxHeight = 630, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        // 计算缩放比例
+                        if (width > maxWidth) {
+                            height = height * (maxWidth / width);
+                            width = maxWidth;
+                        }
+                        if (height > maxHeight) {
+                            width = width * (maxHeight / height);
+                            height = maxHeight;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // 压缩为 JPEG
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                        resolve(compressedDataUrl);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        // 处理封面图片上传
+        async function handleCoverUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.type.startsWith('image/')) {
+                showError('请选择图片文件');
+                return;
+            }
+            
+            const upload = document.getElementById('coverUpload');
+            
+            try {
+                // 压缩图片
+                coverImageBase64 = await compressImage(file, 1200, 630, 0.7);
+                coverImageSize = Math.round(coverImageBase64.length * 3 / 4);
+                
+                const preview = document.getElementById('coverPreview');
+                const placeholder = document.getElementById('coverPlaceholder');
+                
+                preview.src = coverImageBase64;
+                preview.classList.add('show');
+                placeholder.style.display = 'none';
+                upload.classList.add('has-image');
+            } catch (error) {
+                console.error('图片压缩失败:', error);
+                showError('图片处理失败，请重试');
+            }
+        }
+        
+        function removeCover(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            coverImageBase64 = null;
+            coverImageSize = 0;
+            document.getElementById('coverInput').value = '';
+            document.getElementById('coverPreview').src = '';
+            document.getElementById('coverPreview').classList.remove('show');
+            document.getElementById('coverPlaceholder').style.display = 'block';
+            document.getElementById('coverUpload').classList.remove('has-image');
+        }
+        
+        async function handleSubmit(e) {
+            e.preventDefault();
+            // 支持两种 token
+            let token = localStorage.getItem('admin_token');
+            if (!token) {
+                token = localStorage.getItem('tsukuyomi_token');
+            }
+            const title = document.getElementById('title').value.trim();
+            const category = document.getElementById('category').value;
+            const readTime = document.getElementById('readTime').value.trim();
+            const excerpt = document.getElementById('excerpt').value.trim();
+            const content = document.getElementById('content').value.trim();
+
+            if (!title || !category || !readTime || !excerpt || !content) {
+                showError('请填写所有必填项');
+                return;
+            }
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+
+            // 检查是否是编辑模式
+            const urlParams = new URLSearchParams(window.location.search);
+            const articleId = urlParams.get('id');
+
+            if (articleId) {
+                submitBtn.textContent = '保存中...';
+            } else {
+                submitBtn.textContent = '投稿中...';
+            }
+
+            try {
+                const requestBody = { title, category, read_time: readTime, excerpt, content };
+
+                if (coverImageBase64) {
+                    requestBody.cover_image = coverImageBase64;
+                    console.log('封面大小:', (coverImageSize / 1024).toFixed(1), 'KB');
+                }
+
+                let url = API_BASE + '/articles';
+                let method = 'POST';
+                let successMsg = '投稿成功！正在跳转...';
+
+                if (articleId) {
+                    // 编辑模式：根据 token 类型选择 API
+                    if (localStorage.getItem('admin_token')) {
+                        url = API_BASE + '/admin/articles/' + articleId;
+                    } else {
+                        url = API_BASE + '/user/articles/' + articleId;
+                    }
+                    method = 'PUT';
+                    successMsg = '修改已保存！正在跳转...';
+                }
+
+                console.log('发送请求...', method, url);
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showSuccess(successMsg);
+                    setTimeout(() => window.location.href = articleId ? 'terminal.html' : 'stage.html', 1500);
+                } else {
+                    showError(result.message || result.error || '投稿失败');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = articleId ? '保存修改' : '投稿';
+                }
+            } catch (error) {
+                console.error('投稿失败:', error);
+                showError('网络错误，请检查连接');
+                submitBtn.disabled = false;
+                submitBtn.textContent = articleId ? '保存修改' : '投稿';
+            }
+        }
+
+        function showSuccess(msg) {
+            const el = document.getElementById('successMsg');
+            el.textContent = msg;
+            el.style.display = 'block';
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

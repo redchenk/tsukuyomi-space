@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月読空間 | Tsukuyomi Space</title>
+    <meta http-equiv="refresh" content="0;url=pages/access.html">
+    <script>
+        window.location.href = 'pages/access.html';
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: rgba(26, 10, 46, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 183, 197, 0.2);
+            z-index: 1000;
+        }
+        .logo {
+            font-size: 1.5rem;
+            color: #ffb7c5;
+            text-decoration: none;
+            letter-spacing: 0.3rem;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            gap: 2rem;
+            padding: 2rem;
+        }
+        .loading {
+            color: #ffb7c5;
+            font-size: 1.2rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .redirect-link {
+            color: #fff;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            border: 1px solid #ffb7c5;
+            border-radius: 25px;
+            transition: all 0.3s;
+        }
+        .redirect-link:hover {
+            background: rgba(255, 183, 197, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#" class="logo">🌙 月读空间</a>
+    </nav>
+    <div class="container">
+        <div class="loading">正在进入月读空间...</div>
+        <a href="pages/access.html" class="redirect-link">如果页面没有自动跳转，请点击这里</a>
+    </div>
+</body>
+</html>

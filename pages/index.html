@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月読空間 | Tsukuyomi Space</title>
+    <meta http-equiv="refresh" content="0;url=access.html">
+    <script>
+        window.location.href = 'access.html';
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        /* 导航栏 */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: rgba(26, 10, 46, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(224, 212, 252, 0.2);
+        }
+        nav .logo {
+            font-size: 1.5rem;
+            color: #e0d4fc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        nav a {
+            color: #c4b8e8;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        nav a:hover, nav a.active {
+            color: #e0d4fc;
+            text-shadow: 0 0 10px rgba(224, 212, 252, 0.5);
+        }
+        /* 星空 */
+        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .star { position: absolute; background: white; border-radius: 50%; animation: twinkle 2s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        /* 月亮 */
+        .moon {
+            position: fixed; top: 15%; right: 15%; width: 100px; height: 100px;
+            background: radial-gradient(circle at 30% 30%, #f5f5f5, #d4d4d4, #a8a8a8);
+            border-radius: 50%;
+            box-shadow: 0 0 60px rgba(255, 255, 255, 0.3);
+            z-index: 1;
+        }
+        /* 主内容 */
+        .container {
+            position: relative; z-index: 10; min-height: 100vh;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 6rem 2rem 2rem;
+        }
+        .title {
+            font-size: 5rem; color: #e0d4fc;
+            text-shadow: 0 0 30px rgba(224, 212, 252, 0.6);
+            margin-bottom: 1rem; text-align: center;
+            animation: titleFloat 3s infinite;
+        }
+        @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        .subtitle { font-size: 1.3rem; color: #b8a8e8; text-align: center; margin-bottom: 3rem; opacity: 0.9; }
+        .cards {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem; max-width: 1200px; width: 100%; margin-top: 2rem;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(224, 212, 252, 0.2);
+        }
+        .card-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .card h3 { color: #e0d4fc; margin-bottom: 0.5rem; font-size: 1.5rem; }
+        .card p { color: #c4b8e8; line-height: 1.6; }
+        .card a {
+            display: inline-block; margin-top: 1rem; padding: 0.7rem 1.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; text-decoration: none; border-radius: 25px;
+            transition: transform 0.3s;
+        }
+        .card a:hover { transform: scale(1.05); }
+        /* 花瓣 */
+        .petal {
+            position: fixed; background: linear-gradient(45deg, #e0d4fc, #b8a8e8);
+            border-radius: 50% 0 50% 0; animation: fall linear infinite; opacity: 0.6;
+        }
+        @keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }
+        .footer { position: fixed; bottom: 1rem; color: rgba(224, 212, 252, 0.5); font-size: 0.85rem; z-index: 10; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">🌙 月读空间</a>
+        <ul>
+            <li><a href="index.html" class="active">首页</a></li>
+            <li><a href="shrine.html">月之神殿</a></li>
+            <li><a href="gallery.html">时空回廊</a></li>
+            <li><a href="message.html">星语留言板</a></li>
+        </ul>
+    </nav>
+
+    <div class="stars" id="stars"></div>
+    <div class="moon"></div>
+
+    <div class="container">
+        <h1 class="title">月读空间</h1>
+        <p class="subtitle">Moon Reader Space | 超越时空的幻境 · 欢迎来到永恒的月之领域</p>
+
+        <div class="cards">
+            <div class="card">
+                <div class="card-icon">🏛️</div>
+                <h3>月之神殿</h3>
+                <p>探索神秘的月之神殿，了解辉夜姬的传说与月读空间的起源</p>
+                <a href="shrine.html">进入神殿</a>
+            </div>
+            <div class="card">
+                <div class="card-icon">✨</div>
+                <h3>时空回廊</h3>
+                <p>穿越时空的画廊，欣赏梦幻般的月景与星空</p>
+                <a href="gallery.html">浏览回廊</a>
+            </div>
+            <div class="card">
+                <div class="card-icon">💫</div>
+                <h3>星语留言板</h3>
+                <p>留下你的心声，让星辰传递你的思念</p>
+                <a href="message.html">写下留言</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">月读空间 © 2024 | 超时空幻境</div>
+
+    <script>
+        // 星空
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 200; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.width = Math.random() * 3 + 1 + 'px';
+            star.style.height = star.style.width;
+            star.style.animationDelay = Math.random() * 2 + 's';
+            starsContainer.appendChild(star);
+        }
+        // 花瓣
+        function createPetal() {
+            const petal = document.createElement('div');
+            petal.className = 'petal';
+            petal.style.left = Math.random() * 100 + '%';
+            petal.style.top = '-20px';
+            petal.style.width = Math.random() * 10 + 5 + 'px';
+            petal.style.height = petal.style.width;
+            petal.style.animationDuration = Math.random() * 5 + 5 + 's';
+            document.body.appendChild(petal);
+            setTimeout(() => petal.remove(), 10000);
+        }
+        setInterval(createPetal, 500);
+    </script>
+</body>
+</html>
