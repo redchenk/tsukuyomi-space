@@ -486,6 +486,9 @@ app.get('/api/stats', (req, res) => {
 // ===== LLM 聊天 API (兼容 OpenAI 格式) =====
 const LLM_API_KEY = process.env.LLM_API_KEY || '';
 const LLM_API_URL = process.env.LLM_API_URL || '';
+const TTS_API_KEY = process.env.TTS_API_KEY || '';
+const TTS_API_URL = process.env.TTS_API_URL || '';
+const TTS_VOICE = process.env.TTS_VOICE || '';
 
 app.post('/api/chat', async (req, res) => {
     try {
@@ -636,6 +639,77 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
+// ===== TTS API (兼容 OpenAI 格式) =====
+
+app.post('/api/tts', async (req, res) => {
+    try {
+        const { text, apiKey, apiUrl, voice, model } = req.body;
+
+        if (!text) {
+            return res.status(400).json({ success: false, message: '文本内容不能为空' });
+        }
+
+        // 使用前端传入的配置或服务器环境变量
+        const useApiKey = apiKey || TTS_API_KEY;
+        let useApiUrl = apiUrl || TTS_API_URL || 'https://api.openai.com/v1/audio/speech';
+        const useVoice = voice || TTS_VOICE || 'alloy';
+        const useModel = model || 'tts-1';
+
+        // 如果没有配置 TTS API，返回错误提示
+        if (!useApiKey) {
+            return res.status(400).json({
+                success: false,
+                message: 'TTS API 未配置，请设置 TTS_API_KEY 环境变量或在请求中传入 apiKey'
+            });
+        }
+
+        console.log('调用 TTS API:', {
+            url: useApiUrl,
+            model: useModel,
+            voice: useVoice
+        });
+
+        // 调用 TTS API (OpenAI 兼容格式)
+        const response = await fetch(useApiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${useApiKey}`
+            },
+            body: JSON.stringify({
+                model: useModel,
+                input: text,
+                voice: useVoice,
+                response_format: 'mp3',
+                speed: 1.0
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('TTS API 错误:', {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+            });
+            throw new Error(`TTS API 请求失败 (${response.status}): ${errorText.substring(0, 200)}`);
+        }
+
+        // 返回音频二进制数据
+        const audioBuffer = await response.arrayBuffer();
+
+        res.set('Content-Type', 'audio/mpeg');
+        res.set('Content-Length', audioBuffer.byteLength);
+        res.send(Buffer.from(audioBuffer));
+    } catch (error) {
+        console.error('TTS API 错误:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'TTS 服务暂时不可用，请稍后再试'
+        });
+    }
+});
+
 // 启动服务器
 app.listen(PORT, '0.0.0.0', () => {
     console.log('🌙 Tsukuyomi Space API Server running on port', PORT);
@@ -643,6 +717,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('📚 Articles API: http://localhost:' + PORT + '/api/articles');
     console.log('🔐 Auth API: http://localhost:' + PORT + '/api/auth/login');
     console.log('💬 Chat API: http://localhost:' + PORT + '/api/chat');
+    console.log('🔊 TTS API: http://localhost:' + PORT + '/api/tts');
     console.log('💾 Database:', dbPath);
 });
 

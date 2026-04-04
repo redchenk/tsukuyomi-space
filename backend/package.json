@@ -1,6 +1,6 @@
 {
   "name": "tsukuyomi-space-api",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "Tsukuyomi Space Backend API Server",
   "main": "server.js",
   "scripts": {
@@ -15,7 +15,7 @@
     "better-sqlite3": "^9.4.3",
     "uuid": "^9.0.0"
   },
-  "keywords": ["tsukuyomi", "api", "backend"],
-  "author": "",
+  "keywords": ["tsukuyomi", "api", "backend", "tts"],
+  "author": "redchenk",
   "license": "MIT"
 }

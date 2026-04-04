@@ -26,6 +26,7 @@ Content-Type: application/json
 8. [系统配置](#系统配置)
 9. [统计数据](#统计数据)
 10. [LLM 聊天](#llm 聊天)
+11. [TTS 语音](#tts 语音)
 
 ---
 
@@ -721,6 +722,80 @@ Content-Type: application/json
 **注意:**
 - 未配置 `apiKey` 时返回预设回复
 - 支持阿里云百炼、OpenAI 等兼容 API
+
+---
+
+## TTS 语音
+
+### 文本转语音
+
+**请求:**
+```http
+POST /api/tts
+Content-Type: application/json
+
+{
+    "text": "你好呀！我是月读空间的虚拟助手～",
+    "apiKey": "sk-xxx",
+    "apiUrl": "https://api.openai.com/v1/audio/speech",
+    "voice": "alloy",
+    "model": "tts-1"
+}
+```
+
+**参数:**
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| text | string | 是 | 要转换的文本 |
+| apiKey | string | 否 | TTS API Key |
+| apiUrl | string | 否 | TTS API 端点 |
+| voice | string | 否 | 语音名称，默认 "alloy" |
+| model | string | 否 | 模型名称，默认 "tts-1" |
+
+**响应:**
+- 成功：返回 MP3 音频二进制数据 (`Content-Type: audio/mpeg`)
+- 失败：返回 JSON 错误信息
+
+```json
+{
+    "success": false,
+    "message": "TTS API 未配置，请设置 TTS_API_KEY 环境变量或在请求中传入 apiKey"
+}
+```
+
+**使用示例 (前端):**
+```javascript
+// 获取音频并播放
+const response = await fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        text: '你好呀！',
+        apiKey: 'sk-xxx',
+        voice: 'alloy'
+    })
+});
+
+if (response.ok) {
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.play();
+}
+```
+
+**支持的服务商:**
+- OpenAI TTS API
+- 阿里云百炼 TTS
+- 其他兼容 OpenAI 格式的 TTS 服务
+
+**推荐语音 (OpenAI):**
+- `alloy` - 中性温和
+- `echo` - 男性沉稳
+- `fable` - 女性温暖
+- `onyx` - 男性低沉
+- `nova` - 女性明亮
+- `shimmer` - 女性柔和
 
 ---
 
