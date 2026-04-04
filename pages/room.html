@@ -154,19 +154,10 @@
     </div>
     <div class="footer">© 月读空间 | Live2D by AIRI Project | Model by 雪熊企划</div>
 
-    <!-- Live2D Libraries (airi 项目方案) -->
+    <!-- 使用 airi 项目相同的库 -->
     <script src="/lib/live2dcubismcore.min.js"></script>
     <script src="/lib/pixi.min.js"></script>
-    <script src="/lib/pixi-live2d-display-cubism4.js"></script>
-
-    <script>
-        // 按照 airi 项目方式注册 Ticker
-        if (PIXI.live2d && PIXI.live2d.Live2DModel && PIXI.Ticker) {
-            PIXI.live2d.Live2DModel.registerTicker(PIXI.Ticker);
-            PIXI.extensions.add(PIXI.TickerPlugin);
-            console.log('Live2D Ticker registered (airi approach)');
-        }
-    </script>
+    <script src="/lib/pixi-live2d-display-cubism4.min.js"></script>
 
     <script>
         // ==================== 樱花效果 ====================
@@ -265,7 +256,7 @@
         function loadNote() { document.getElementById('noteContent').value = localStorage.getItem('roomNote') || ''; }
         function saveNote() { localStorage.setItem('roomNote', document.getElementById('noteContent').value); alert('便签已保存'); }
 
-        // ==================== Live2D 模型加载 (airi 项目方案) ====================
+        // ==================== Live2D 模型加载 (使用 airi 项目方案 - Cubism4) ====================
         let app = null;
         let live2dModel = null;
 
@@ -276,7 +267,6 @@
                 console.log('PIXI:', typeof PIXI !== 'undefined' ? 'loaded' : 'not loaded');
                 console.log('PIXI.live2d:', PIXI && PIXI.live2d ? 'loaded' : 'not loaded');
                 console.log('PIXI.live2d.Live2DModel:', PIXI && PIXI.live2d && typeof PIXI.live2d.Live2DModel);
-                console.log('PIXI.live2d.Live2DFactory:', PIXI && PIXI.live2d && typeof PIXI.live2d.Live2DFactory);
 
                 const modelPath = '../models/【雪熊企划】八千代辉夜姬/八千代辉夜姬.model3.json';
                 console.log('模型路径:', modelPath);
@@ -301,12 +291,11 @@
                     backgroundAlpha: 0
                 });
 
-                // 按照 airi 项目方式：使用 new Live2DModel() + Live2DFactory.setupLive2DModel()
-                console.log('开始创建 Live2DModel 实例...');
-                const model = new PIXI.live2d.Live2DModel();
-                console.log('Live2DModel 实例创建成功，开始 setup...');
-
-                await PIXI.live2d.Live2DFactory.setupLive2DModel(model, { url: modelPath }, { autoInteract: false });
+                // 使用 Live2DModel.from() 直接加载
+                console.log('开始加载 Live2DModel...');
+                const model = await PIXI.live2d.Live2DModel.from(modelPath, {
+                    autoInteract: false
+                });
                 console.log('模型加载成功:', model);
 
                 // 设置模型
