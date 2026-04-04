@@ -183,10 +183,10 @@
     </div>
     <div class="footer">© 月读空间 | Live2D by AIRI Project | Model by 雪熊企划</div>
 
-    <!-- 使用 airi 项目相同的库 -->
-    <script src="/lib/live2dcubismcore.min.js"></script>
+    <!-- Live2D 库 - 使用 Cubism 4 支持 -->
     <script src="/lib/pixi.min.js"></script>
-    <script src="/lib/pixi-live2d-display.min.js"></script>
+    <script src="/lib/live2dcubismcore.min.js"></script>
+    <script src="/lib/pixi-live2d-display-cubism4.min.js"></script>
 
     <script>
         // ==================== 樱花效果 ====================
@@ -285,7 +285,7 @@
         function loadNote() { document.getElementById('noteContent').value = localStorage.getItem('roomNote') || ''; }
         function saveNote() { localStorage.setItem('roomNote', document.getElementById('noteContent').value); alert('便签已保存'); }
 
-        // ==================== Live2D 模型加载 (使用 airi 项目方案 - Cubism4) ====================
+        // ==================== Live2D 模型加载 (使用 Cubism4) ====================
         let app = null;
         let live2dModel = null;
 
@@ -295,7 +295,7 @@
                 console.log('Live2DCubismCore:', typeof Live2DCubismCore !== 'undefined' ? 'loaded' : 'not loaded');
                 console.log('PIXI:', typeof PIXI !== 'undefined' ? 'loaded' : 'not loaded');
                 console.log('PIXI.live2d:', PIXI && PIXI.live2d ? 'loaded' : 'not loaded');
-                console.log('PIXI.live2d.Live2DModel:', PIXI && PIXI.live2d && typeof PIXI.live2d.Live2DModel);
+                console.log('Live2DModel:', typeof Live2DModel);
 
                 const modelPath = '../models/【雪熊企划】八千代辉夜姬/八千代辉夜姬.model3.json';
                 console.log('模型路径:', modelPath);
@@ -303,8 +303,11 @@
                 if (typeof PIXI === 'undefined') {
                     throw new Error('PIXI.js 未加载');
                 }
-                if (!PIXI.live2d) {
-                    throw new Error('PIXI.live2d 未加载');
+
+                // 检查 Live2DModel 的存在形式
+                const Live2DModelClass = PIXI.live2d?.Live2DModel || window.Live2DModel;
+                if (!Live2DModelClass) {
+                    throw new Error('Live2DModel 未找到，请检查库的加载顺序');
                 }
 
                 // 创建 PIXI 应用
@@ -322,7 +325,7 @@
 
                 // 使用 Live2DModel.from() 直接加载
                 console.log('开始加载 Live2DModel...');
-                const model = await PIXI.live2d.Live2DModel.from(modelPath, {
+                const model = await Live2DModelClass.from(modelPath, {
                     autoInteract: false
                 });
                 console.log('模型加载成功:', model);
