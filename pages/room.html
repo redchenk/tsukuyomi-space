@@ -147,12 +147,11 @@
                     <div style="display: flex; gap: 0.3rem; margin-top: 0.3rem; flex-wrap: wrap;">
                         <button class="panel-btn" onclick="setTTSPreset('xiaomi')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">小米 MiMo</button>
                         <button class="panel-btn" onclick="setTTSPreset('openai')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">OpenAI</button>
-                        <button class="panel-btn" onclick="setTTSPreset('azure')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">Azure TTS</button>
                     </div>
                 </div>
                 <div style="margin-bottom: 0.5rem;">
                     <label style="font-size: 0.75rem;">API 端点</label>
-                    <input type="text" id="ttsApiUrl" placeholder="https://api.xiaomimimo.com/v1/audio/speech" style="font-size: 0.75rem;">
+                    <input type="text" id="ttsApiUrl" placeholder="https://platform.xiaomimimo.com/v1/audio/speech" style="font-size: 0.75rem;">
                 </div>
                 <div style="margin-bottom: 0.5rem;">
                     <label style="font-size: 0.75rem;">API Key</label>
@@ -183,7 +182,7 @@
     </div>
     <div class="footer">© 月读空间 | Live2D by AIRI Project | Model by 雪熊企划</div>
 
-    <!-- Live2D 库 - 使用 Cubism 4 支持 -->
+    <!-- Live2D 库 -->
     <script src="/lib/pixi.min.js"></script>
     <script src="/lib/live2dcubismcore.min.js"></script>
     <script src="/lib/pixi-live2d-display-cubism4.min.js"></script>
@@ -285,7 +284,7 @@
         function loadNote() { document.getElementById('noteContent').value = localStorage.getItem('roomNote') || ''; }
         function saveNote() { localStorage.setItem('roomNote', document.getElementById('noteContent').value); alert('便签已保存'); }
 
-        // ==================== Live2D 模型加载 (使用 Cubism4) ====================
+        // ==================== Live2D 模型加载 (使用 airi 项目方案 - Cubism4) ====================
         let app = null;
         let live2dModel = null;
 
@@ -295,7 +294,7 @@
                 console.log('Live2DCubismCore:', typeof Live2DCubismCore !== 'undefined' ? 'loaded' : 'not loaded');
                 console.log('PIXI:', typeof PIXI !== 'undefined' ? 'loaded' : 'not loaded');
                 console.log('PIXI.live2d:', PIXI && PIXI.live2d ? 'loaded' : 'not loaded');
-                console.log('Live2DModel:', typeof Live2DModel);
+                console.log('PIXI.live2d.Live2DModel:', PIXI && PIXI.live2d && typeof PIXI.live2d.Live2DModel);
 
                 const modelPath = '../models/【雪熊企划】八千代辉夜姬/八千代辉夜姬.model3.json';
                 console.log('模型路径:', modelPath);
@@ -303,11 +302,8 @@
                 if (typeof PIXI === 'undefined') {
                     throw new Error('PIXI.js 未加载');
                 }
-
-                // 检查 Live2DModel 的存在形式
-                const Live2DModelClass = PIXI.live2d?.Live2DModel || window.Live2DModel;
-                if (!Live2DModelClass) {
-                    throw new Error('Live2DModel 未找到，请检查库的加载顺序');
+                if (!PIXI.live2d) {
+                    throw new Error('PIXI.live2d 未加载');
                 }
 
                 // 创建 PIXI 应用
@@ -325,7 +321,7 @@
 
                 // 使用 Live2DModel.from() 直接加载
                 console.log('开始加载 Live2DModel...');
-                const model = await Live2DModelClass.from(modelPath, {
+                const model = await PIXI.live2d.Live2DModel.from(modelPath, {
                     autoInteract: false
                 });
                 console.log('模型加载成功:', model);
@@ -439,8 +435,6 @@
             if (llmSettings.apiUrl) document.getElementById('llmApiUrl').value = llmSettings.apiUrl;
             if (llmSettings.apiKey) document.getElementById('llmApiKey').value = llmSettings.apiKey;
             if (llmSettings.model) document.getElementById('llmModel').value = llmSettings.model;
-            // 加载 TTS 设置
-            loadTTSSettings();
         }
 
         function appendChatMessage(role, content) {
@@ -604,11 +598,6 @@
                     apiUrl: 'https://api.openai.com/v1/audio/speech',
                     model: 'tts-1',
                     voice: 'alloy'
-                },
-                azure: {
-                    apiUrl: 'https://api.azure.com/tts',
-                    model: 'azure-tts',
-                    voice: 'zh-CN-XiaoxiaoNeural'
                 }
             };
             const preset = presets[provider];
@@ -616,7 +605,7 @@
                 document.getElementById('ttsApiUrl').value = preset.apiUrl;
                 document.getElementById('ttsModel').value = preset.model;
                 document.getElementById('ttsVoice').value = preset.voice;
-                appendChatMessage('system', `✅ 已选择 ${provider === 'xiaomi' ? '小米 MiMo' : provider === 'openai' ? 'OpenAI' : 'Azure'} TTS 预设，请填写 API Key 后保存`);
+                appendChatMessage('system', `✅ 已选择 ${provider === 'xiaomi' ? '小米 MiMo' : 'OpenAI'} TTS 预设，请填写 API Key 后保存`);
             }
         }
 
@@ -667,34 +656,8 @@
             }
         }
 
-        // 发送聊天后自动朗读回复（可选功能）
-        async function speakText(text) {
-            const ttsSettings = JSON.parse(localStorage.getItem('roomTTSSettings')) || {};
-            if (!ttsSettings.apiKey || !text) return;
-
-            try {
-                const response = await fetch('http://47.97.0.122:3000/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        text: text,
-                        apiKey: ttsSettings.apiKey,
-                        apiUrl: ttsSettings.apiUrl,
-                        voice: ttsSettings.voice,
-                        model: ttsSettings.model
-                    })
-                });
-
-                if (response.ok) {
-                    const audioBlob = await response.blob();
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-                }
-            } catch (error) {
-                console.error('语音播放失败:', error);
-            }
-        }
+        // 初始化时加载 TTS 设置
+        loadTTSSettings();
     </script>
 </body>
 </html>
