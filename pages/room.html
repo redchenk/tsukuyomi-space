@@ -311,7 +311,10 @@
 
                 // 设置模型
                 app.stage.addChild(model);
-                model.anchor.set(0.5, 0.5);
+
+                // Live2DModel 使用 pivot 而不是 anchor，或者直接使用 position 调整
+                // model.anchor.set(0.5, 0.5);
+                model.pivot.set(model.width / 2, model.height / 2);
 
                 // 加载保存的模型设置
                 const modelSettings = JSON.parse(localStorage.getItem('roomModelSettings')) || { scale: 0.13, xOffset: 0, yOffset: 0 };
