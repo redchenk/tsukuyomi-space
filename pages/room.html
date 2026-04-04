@@ -158,22 +158,24 @@
     <script src="/lib/live2dcubismcore-v5.min.js"></script>
     <script src="/lib/pixi7-full.js"></script>
     <script>
-        // 为 naari-cubism5 提供 pixi.js 模块支持
-        if (typeof require !== 'undefined') {
-            require.modules = require.modules || {};
-            require.modules['pixi.js'] = { exports: PIXI };
-        } else {
-            window.define = function(name, deps, factory) {
-                if (typeof name === 'function') {
-                    factory = name;
-                    deps = [];
-                }
-                factory(PIXI, PIXI);
-            };
-            window.define.amd = true;
-        }
+        // 为 naari-cubism5 提供 CommonJS 环境模拟
+        window.module = { exports: {} };
+        window.exports = window.module.exports;
+        window.require = function(id) {
+            if (id === 'pixi.js') {
+                return PIXI;
+            }
+            return {};
+        };
     </script>
     <script src="/lib/naari-cubism5.js"></script>
+    <script>
+        // 确保 PIXI.live2d 正确暴露
+        if (window.module.exports && window.module.exports.live2d) {
+            PIXI.live2d = window.module.exports.live2d;
+        }
+        console.log('PIXI.live2d loaded:', !!PIXI.live2d);
+    </script>
 
     <script>
         // ==================== 樱花效果 ====================
