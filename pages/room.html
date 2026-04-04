@@ -154,10 +154,10 @@
     </div>
     <div class="footer">© 月读空间 | Live2D by AIRI Project | Model by 雪熊企划</div>
 
-    <!-- Live2D Libraries (airi 项目方案：PIXI v6 + pixi-live2d-display cubism4) -->
+    <!-- Live2D Libraries -->
     <script src="/lib/live2dcubismcore.min.js"></script>
     <script src="/lib/pixi.min.js"></script>
-    <script src="/lib/pixi-live2d-display-cubism4.min.js"></script>
+    <script src="/lib/pixi-live2d-display.min.js"></script>
 
     <script>
         // ==================== 樱花效果 ====================
@@ -292,12 +292,11 @@
                     backgroundAlpha: 0
                 });
 
-                // 使用 airi 项目方式：Live2DFactory.setupLive2DModel
-                console.log('开始创建 Live2DModel 实例...');
-                const model = new PIXI.live2d.Live2DModel();
-                console.log('Live2DModel 实例创建成功，开始 setup...');
-
-                await PIXI.live2d.Live2DFactory.setupLive2DModel(model, { url: modelPath }, { autoInteract: false });
+                // 使用 airi 项目方式：直接用 from() 方法加载
+                console.log('开始加载 Live2DModel...');
+                const model = await PIXI.live2d.Live2DModel.from(modelPath, {
+                    autoInteract: false
+                });
                 console.log('模型加载成功:', model);
 
                 // 设置模型
