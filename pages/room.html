@@ -140,34 +140,6 @@
                 <button class="panel-btn" onclick="saveLLMSettings()" style="margin-top: 0.3rem;">保存 API 设置</button>
                 <button class="panel-btn" onclick="testLLMConnection()" style="margin-top: 0.3rem;">测试连接</button>
             </div>
-            <div style="margin-top: 0.8rem; border-top: 1px solid rgba(255,183,197,0.2); padding-top: 0.8rem;">
-                <div style="margin-bottom: 0.5rem; font-weight: 500; color: var(--deep-pink);">🔊 TTS 语音设置</div>
-                <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">快捷预设</label>
-                    <div style="display: flex; gap: 0.3rem; margin-top: 0.3rem; flex-wrap: wrap;">
-                        <button class="panel-btn" onclick="setTTSPreset('xiaomi')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">小米 MiMo</button>
-                        <button class="panel-btn" onclick="setTTSPreset('openai')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">OpenAI</button>
-                    </div>
-                </div>
-                <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">API 端点</label>
-                    <input type="text" id="ttsApiUrl" placeholder="https://platform.xiaomimimo.com/v1/audio/speech" style="font-size: 0.75rem;">
-                </div>
-                <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">API Key</label>
-                    <input type="password" id="ttsApiKey" placeholder="sk-..." style="font-size: 0.75rem;">
-                </div>
-                <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">语音名称</label>
-                    <input type="text" id="ttsVoice" placeholder="default" style="font-size: 0.75rem;">
-                </div>
-                <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">模型名称</label>
-                    <input type="text" id="ttsModel" placeholder="mimo-v2-tts" style="font-size: 0.75rem;">
-                </div>
-                <button class="panel-btn" onclick="saveTTSSettings()" style="margin-top: 0.3rem;">保存 TTS 设置</button>
-                <button class="panel-btn" onclick="testTTSConnection()" style="margin-top: 0.3rem;">🔊 测试语音</button>
-            </div>
         </div>
     </div>
     <div class="draggable-panel" id="chatPanel" style="top: 200px; right: 300px; left: auto; width: 350px;">
@@ -182,9 +154,9 @@
     </div>
     <div class="footer">© 月读空间 | Live2D by AIRI Project | Model by 雪熊企划</div>
 
-    <!-- Live2D 库 -->
-    <script src="/lib/pixi.min.js"></script>
+    <!-- 使用 airi 项目相同的库 (PIXI v7 + pixi-live2d-display cubism4) -->
     <script src="/lib/live2dcubismcore.min.js"></script>
+    <script src="/lib/pixi7.min.js"></script>
     <script src="/lib/pixi-live2d-display-cubism4.min.js"></script>
 
     <script>
@@ -305,6 +277,14 @@
                 if (!PIXI.live2d) {
                     throw new Error('PIXI.live2d 未加载');
                 }
+
+                // 按照 airi 项目方式注册 Ticker
+                console.log('注册 Ticker...');
+                const { Live2DModel } = PIXI.live2d;
+                const { Ticker } = PIXI;
+                Live2DModel.registerTicker(Ticker);
+                PIXI.extensions.add(PIXI.TickerPlugin);
+                console.log('Ticker 注册完成');
 
                 // 创建 PIXI 应用
                 const canvas = document.getElementById('live2d-canvas');
@@ -577,87 +557,6 @@
                 appendChatMessage('system', '❌ 网络错误，请稍后再试');
             }
         }
-
-        // ==================== TTS 语音功能 ====================
-        function loadTTSSettings() {
-            const ttsSettings = JSON.parse(localStorage.getItem('roomTTSSettings')) || {};
-            if (ttsSettings.apiUrl) document.getElementById('ttsApiUrl').value = ttsSettings.apiUrl;
-            if (ttsSettings.apiKey) document.getElementById('ttsApiKey').value = ttsSettings.apiKey;
-            if (ttsSettings.voice) document.getElementById('ttsVoice').value = ttsSettings.voice;
-            if (ttsSettings.model) document.getElementById('ttsModel').value = ttsSettings.model;
-        }
-
-        function setTTSPreset(provider) {
-            const presets = {
-                xiaomi: {
-                    apiUrl: 'https://platform.xiaomimimo.com/v1/audio/speech',
-                    model: 'mimo-v2-tts',
-                    voice: 'default'
-                },
-                openai: {
-                    apiUrl: 'https://api.openai.com/v1/audio/speech',
-                    model: 'tts-1',
-                    voice: 'alloy'
-                }
-            };
-            const preset = presets[provider];
-            if (preset) {
-                document.getElementById('ttsApiUrl').value = preset.apiUrl;
-                document.getElementById('ttsModel').value = preset.model;
-                document.getElementById('ttsVoice').value = preset.voice;
-                appendChatMessage('system', `✅ 已选择 ${provider === 'xiaomi' ? '小米 MiMo' : 'OpenAI'} TTS 预设，请填写 API Key 后保存`);
-            }
-        }
-
-        function saveTTSSettings() {
-            const settings = {
-                apiUrl: document.getElementById('ttsApiUrl').value.trim(),
-                apiKey: document.getElementById('ttsApiKey').value.trim(),
-                voice: document.getElementById('ttsVoice').value.trim(),
-                model: document.getElementById('ttsModel').value.trim()
-            };
-            localStorage.setItem('roomTTSSettings', JSON.stringify(settings));
-            appendChatMessage('system', '✅ TTS 设置已保存');
-        }
-
-        async function testTTSConnection() {
-            const ttsSettings = JSON.parse(localStorage.getItem('roomTTSSettings')) || {};
-            if (!ttsSettings.apiKey) {
-                appendChatMessage('system', '❌ 请填写 TTS API Key');
-                return;
-            }
-            appendChatMessage('system', '🔄 正在测试 TTS 连接...');
-            try {
-                const response = await fetch('http://47.97.0.122:3000/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        text: '你好，我是辉夜姬，很高兴见到你。',
-                        apiKey: ttsSettings.apiKey,
-                        apiUrl: ttsSettings.apiUrl || 'https://platform.xiaomimimo.com/v1/audio/speech',
-                        voice: ttsSettings.voice || 'default',
-                        model: ttsSettings.model || 'mimo-v2-tts'
-                    })
-                });
-
-                if (response.ok) {
-                    const audioBlob = await response.blob();
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const audio = new Audio(audioUrl);
-                    appendChatMessage('system', '✅ TTS 连接成功！正在播放测试语音...');
-                    audio.play();
-                } else {
-                    const error = await response.json();
-                    appendChatMessage('system', '❌ ' + (error.message || '测试失败'));
-                }
-            } catch (error) {
-                console.error('TTS 测试失败:', error);
-                appendChatMessage('system', '❌ 连接失败：' + error.message);
-            }
-        }
-
-        // 初始化时加载 TTS 设置
-        loadTTSSettings();
     </script>
 </body>
 </html>
