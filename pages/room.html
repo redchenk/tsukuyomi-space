@@ -160,28 +160,11 @@
     <script>
         // 设置 pixi_js 供 naari-cubism5 使用
         window.pixi_js = PIXI;
-
-        // 为 naari-cubism5 提供 CommonJS 环境模拟
-        window.module = { exports: {} };
-        window.exports = window.module.exports;
-        window.require = function(id) {
-            if (id === 'pixi.js') {
-                return PIXI;
-            }
-            return {};
-        };
     </script>
     <script src="/lib/naari-cubism5.js"></script>
     <script>
-        // 确保 PIXI.live2d 正确暴露
-        console.log('module.exports keys:', Object.keys(window.module.exports || {}));
-        if (window.module.exports && window.module.exports.Live2DModel) {
-            if (!PIXI.live2d) PIXI.live2d = {};
-            PIXI.live2d.Live2DModel = window.module.exports.Live2DModel;
-            PIXI.live2d.Live2DFactory = window.module.exports.Live2DFactory;
-            PIXI.live2d.MotionPriority = window.module.exports.MotionPriority;
-        }
-        console.log('PIXI.live2d loaded:', !!PIXI.live2d);
+        // naari-cubism5 直接导出到 PIXI.live2d
+        console.log('PIXI.live2d keys:', Object.keys(PIXI.live2d || {}));
         console.log('PIXI.live2d.Live2DModel:', typeof (PIXI.live2d && PIXI.live2d.Live2DModel));
     </script>
 
