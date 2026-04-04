@@ -157,6 +157,22 @@
     <!-- Cubism 5 库 (PIXI 7 + naari-cubism5) -->
     <script src="/lib/live2dcubismcore-v5.min.js"></script>
     <script src="/lib/pixi7-full.js"></script>
+    <script>
+        // 为 naari-cubism5 提供 pixi.js 模块支持
+        if (typeof require !== 'undefined') {
+            require.modules = require.modules || {};
+            require.modules['pixi.js'] = { exports: PIXI };
+        } else {
+            window.define = function(name, deps, factory) {
+                if (typeof name === 'function') {
+                    factory = name;
+                    deps = [];
+                }
+                factory(PIXI, PIXI);
+            };
+            window.define.amd = true;
+        }
+    </script>
     <script src="/lib/naari-cubism5.js"></script>
 
     <script>
