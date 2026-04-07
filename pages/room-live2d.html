@@ -1,0 +1,71 @@
+/**
+ * Integration wrapper for TsukimiYachiyo Live2D in room.html
+ */
+
+(function() {
+  'use strict';
+
+  // Wait for DOM and scripts to load
+  function init() {
+    // Check if required scripts are loaded
+    if (typeof Live2DCubismCore === 'undefined') {
+      console.error('Live2DCubismCore not loaded');
+      return;
+    }
+    if (typeof LAppDelegate === 'undefined') {
+      console.error('LAppDelegate not loaded');
+      return;
+    }
+
+    // Get canvas container
+    const container = document.getElementById('live2d-container');
+    if (!container) {
+      console.error('live2d-container not found');
+      return;
+    }
+
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    canvas.id = 'live2d-canvas';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    container.appendChild(canvas);
+
+    // Set canvas size
+    const width = container.clientWidth || 600;
+    const height = container.clientHeight || 700;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Initialize LAppDelegate
+    const delegate = LAppDelegate.getInstance();
+    if (!delegate.initialize(canvas)) {
+      console.error('Failed to initialize LAppDelegate');
+      return;
+    }
+
+    // Store reference for external access
+    window.lAppDelegate = delegate;
+
+    // Hide loading overlay when model is ready
+    const checkReady = setInterval(function() {
+      const live2dManager = delegate.getLive2DManager();
+      if (live2dManager && live2dManager._models.size > 0) {
+        clearInterval(checkReady);
+        document.getElementById('loadingOverlay').style.display = 'none';
+        console.log('Live2D model ready');
+      }
+    }, 100);
+
+    // Start render loop
+    delegate.run();
+
+    console.log('TsukimiYachiyo Live2D initialized');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

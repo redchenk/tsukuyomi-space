@@ -97,7 +97,7 @@
             <div style="margin-bottom: 0.8rem;"><label><input type="checkbox" id="sakuraToggle" checked onchange="toggleSakura()"> 樱花特效</label></div>
             <div style="margin-bottom: 0.8rem;">
                 <label>模型大小</label>
-                <input type="range" id="modelScaleInput" min="5" max="30" value="13" onchange="updateModelSettings()">
+                <input type="range" id="modelScaleInput" min="5" max="200" value="13" onchange="updateModelSettings()">
                 <span id="modelScaleValue">13%</span>
             </div>
             <div style="margin-bottom: 0.8rem;">
@@ -154,14 +154,9 @@
     </div>
     <div class="footer">© 月读空间 | Live2D by AIRI Project | Model by 雪熊企划</div>
 
-    <!-- Cubism 5 库 (PIXI 7 + naari-cubism5) -->
-    <script src="/lib/live2dcubismcore-v5.min.js"></script>
-    <script src="/lib/pixi7-full.js"></script>
-    <script src="/lib/eventemitter3.min.js"></script>
-    <script>
-        // 设置 pixi_js 供 naari-cubism5 使用
-        window.pixi_js = PIXI;
-    </script>
+    <!-- Cubism 5 库 -->
+    <script src="/lib/live2dcubismcore.js"></script>
+    <script src="/lib/bundled/live2d-room.iife.js"></script>
     <script src="/lib/naari-cubism5.js"></script>
     <script>
         // 验证加载
@@ -370,7 +365,7 @@
             initPanelPositions();
             loadProfile();
             loadNote();
-            loadLive2DModel();
+            // loadLive2DModel(); // Disabled: TsukimiYachiyo Live2D handles initialization
             loadChatHistory();
         });
 
@@ -384,12 +379,12 @@
             document.getElementById('modelXValue').textContent = xOffset;
             document.getElementById('modelYValue').textContent = yOffset;
 
-            if (window.live2dModel && window.live2dApp) {
-                window.live2dModel.position.set(window.live2dApp.screen.width / 2 + xOffset, window.live2dApp.screen.height * 0.8 + yOffset);
-                window.live2dModel.scale.set(scale);
-            }
-
             localStorage.setItem('roomModelSettings', JSON.stringify({ scale, xOffset, yOffset }));
+
+            // Apply settings to Live2D model
+            if (typeof setLive2DModelSettings === 'function') {
+                setLive2DModelSettings(scale, xOffset, yOffset);
+            }
         }
 
         function resetModelSettings() {
