@@ -312,7 +312,7 @@
                 model.pivot.set(model.width / 2, model.height / 2);
 
                 // 加载保存的模型设置
-                const modelSettings = JSON.parse(localStorage.getItem('roomModelSettings')) || { scale: 0.1, xOffset: 0, yOffset: 0 };
+                const modelSettings = JSON.parse(localStorage.getItem('roomModelSettings')) || { scale: 0.15, xOffset: 0, yOffset: 0 };
                 model.position.set(app.screen.width / 2 + modelSettings.xOffset, app.screen.height * 0.8 + modelSettings.yOffset);
                 model.scale.set(modelSettings.scale);
 
