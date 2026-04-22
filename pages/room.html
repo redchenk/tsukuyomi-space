@@ -17,9 +17,9 @@
         nav .nav-right { display: flex; align-items: center; gap: 1rem; }
         nav a { color: rgba(255,183,197,0.8); text-decoration: none; font-size: 0.9rem; padding: 0.4rem 0.8rem; border-radius: 15px; transition: all 0.3s; }
         nav a:hover, nav a.active { color: var(--sakura-pink); background: rgba(255,107,157,0.15); }
-        .room-container { position: relative; z-index: 10; min-height: 100vh; padding: 6rem 2rem 2rem; display: flex; justify-content: center; align-items: center; }
-        #live2d-container { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 600px; height: 700px; z-index: 1; }
-        #live2d-canvas { width: 100%; height: 100%; }
+        .room-container { position: relative; z-index: 1; min-height: 100vh; padding: 6rem 2rem 2rem; display: flex; justify-content: center; align-items: center; }
+        #live2d-container { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 600px; height: 700px; pointer-events: auto; z-index: 5; background: transparent; }
+        #live2d-canvas { width: 100%; height: 100%; display: block; background: transparent; }
         .draggable-panel { position: absolute; background: rgba(26, 16, 37, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 183, 197, 0.3); border-radius: 12px; padding: 1rem; min-width: 200px; max-width: 300px; box-shadow: 0 4px 20px rgba(255, 107, 157, 0.2); cursor: move; z-index: 100; user-select: none; }
         .draggable-panel.dragging { opacity: 0.8; box-shadow: 0 8px 30px rgba(255, 107, 157, 0.4); }
         .draggable-panel .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255, 183, 197, 0.2); cursor: grab; }
@@ -115,6 +115,33 @@
                 <button class="panel-btn" onclick="resetPanels()">重置面板位置</button>
             </div>
             <div style="margin-top: 0.8rem; border-top: 1px solid rgba(255,183,197,0.2); padding-top: 0.8rem;">
+                <div style="margin-bottom: 0.5rem; font-weight: 500; color: var(--deep-pink);">🎤 TTS 语音设置</div>
+                <div style="margin-bottom: 0.5rem;">
+                    <label><input type="checkbox" id="ttsEnabled" onchange="saveTTSSettings()"> 启用语音合成</label>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <label style="font-size: 0.75rem;">TTS Provider</label>
+                    <select id="ttsProvider" onchange="saveTTSSettings()" style="width: 100%; padding: 0.4rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,183,197,0.2); border-radius: 6px; color: var(--sakura-pink); font-size: 0.75rem;">
+                        <option value="mimo">MiMo-V2-TTS (小米)</option>
+                        <option value="openai">OpenAI TTS</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <label style="font-size: 0.75rem;">TTS API 端点</label>
+                    <input type="text" id="ttsApiUrl" placeholder="https://api.xiaomimimo.com/v1/chat/completions" style="font-size: 0.75rem;">
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <label style="font-size: 0.75rem;">TTS API Key</label>
+                    <input type="password" id="ttsApiKey" placeholder="sk-..." style="font-size: 0.75rem;">
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <label style="font-size: 0.75rem;">音色</label>
+                    <input type="text" id="ttsVoice" placeholder="mimo_default" style="font-size: 0.75rem;">
+                </div>
+                <button class="panel-btn" onclick="saveTTSSettings()" style="margin-top: 0.3rem;">保存 TTS 设置</button>
+                <button class="panel-btn" onclick="testTTS()" style="margin-top: 0.3rem;">测试语音</button>
+            </div>
+            <div style="margin-top: 0.8rem; border-top: 1px solid rgba(255,183,197,0.2); padding-top: 0.8rem;">
                 <div style="margin-bottom: 0.5rem; font-weight: 500; color: var(--deep-pink);">💬 LLM API 设置</div>
                 <div style="margin-bottom: 0.5rem;">
                     <label style="font-size: 0.75rem;">快捷预设</label>
@@ -154,18 +181,13 @@
     </div>
     <div class="footer">© 月读空间 | Live2D by AIRI Project | Model by 雪熊企划</div>
 
-    <!-- PIXI.js 和 Live2D 库 -->
-    <script src="/lib/pixi7.min.js"></script>
-    <script src="/lib/eventemitter3.min.js"></script>
-    <script src="/lib/live2dcubismcore.js"></script>
-    <script src="/lib/bundled/live2d-room.iife.js"></script>
-    <script src="/lib/pixi-live2d-display-cubism4.min.js"></script>
-    <script src="/lib/naari-cubism5.js"></script>
+    <!-- Live2D 库 (直接 WebGL 渲染) -->
+    <script src="/lib/live2dcubismcore-v5.min.js"></script>
+    <script src="/lib/live2d-core.js"></script>
     <script>
         // 验证加载
-        console.log('PIXI.live2d keys:', Object.keys(PIXI.live2d || {}));
-        console.log('PIXI.live2d.Live2DModel:', typeof (PIXI.live2d && PIXI.live2d.Live2DModel));
-        console.log('PIXI.live2d.Live2DFactory:', typeof (PIXI.live2d && PIXI.live2d.Live2DFactory));
+        console.log('Live2DCubismCore:', typeof Live2DCubismCore);
+        console.log('LAppModel:', typeof LAppModel);
     </script>
 
     <script>
@@ -265,91 +287,65 @@
         function loadNote() { document.getElementById('noteContent').value = localStorage.getItem('roomNote') || ''; }
         function saveNote() { localStorage.setItem('roomNote', document.getElementById('noteContent').value); alert('便签已保存'); }
 
-        // ==================== Live2D 模型加载 (使用 airi 项目方案 - Cubism4) ====================
-        let app = null;
+        // ==================== Live2D 模型加载 (直接 WebGL) ====================
         let live2dModel = null;
 
         async function loadLive2DModel() {
             try {
                 console.log('=== Live2D 模型加载开始 ===');
                 console.log('Live2DCubismCore:', typeof Live2DCubismCore !== 'undefined' ? 'loaded' : 'not loaded');
-                console.log('PIXI:', typeof PIXI !== 'undefined' ? 'loaded' : 'not loaded');
-                console.log('PIXI.live2d:', PIXI && PIXI.live2d ? 'loaded' : 'not loaded');
-                console.log('PIXI.live2d.Live2DModel:', PIXI && PIXI.live2d && typeof PIXI.live2d.Live2DModel);
+                console.log('LAppModel:', typeof LAppModel !== 'undefined' ? 'loaded' : 'not loaded');
 
-                const modelPath = '../models/【雪熊企划】八千代辉夜姬/八千代辉夜姬.model3.json';
-                console.log('模型路径:', modelPath);
+                const modelDir = '../models/【雪熊企划】八千代辉夜姬/';
+                const modelFile = '八千代辉夜姬.model3.json';
+                console.log('模型目录:', modelDir);
+                console.log('模型文件:', modelFile);
 
-                if (typeof PIXI === 'undefined') {
-                    throw new Error('PIXI.js 未加载');
-                }
-                if (!PIXI.live2d) {
-                    throw new Error('PIXI.live2d 未加载');
+                if (typeof Live2DCubismCore === 'undefined') {
+                    throw new Error('Live2DCubismCore 未加载');
                 }
 
-                // 创建 PIXI 应用
+                // 获取 canvas
                 const canvas = document.getElementById('live2d-canvas');
                 const container = document.getElementById('live2d-container');
 
-                app = new PIXI.Application({
-                    view: canvas,
-                    autoStart: true,
-                    width: container.clientWidth || 600,
-                    height: container.clientHeight || 700,
-                    transparent: true,
-                    backgroundAlpha: 0
+                console.log('Canvas element:', canvas);
+                console.log('Container dimensions:', container.clientWidth, 'x', container.clientHeight);
+
+                // 设置 canvas 尺寸
+                canvas.width = container.clientWidth || 600;
+                canvas.height = container.clientHeight || 700;
+                console.log('Canvas size set to:', canvas.width, 'x', canvas.height);
+
+                // 获取 WebGL context
+                const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+                if (!gl) {
+                    throw new Error('无法获取 WebGL context');
+                }
+                console.log('WebGL context:', gl);
+
+                // 创建 Live2D 模型
+                live2dModel = new LAppModel(gl, canvas);
+
+                // 加载模型
+                live2dModel.load(modelDir, modelFile, function(model) {
+                    console.log('模型加载成功:', model);
+                    console.log('=== 模型加载完成 ===');
+                    document.getElementById('loadingOverlay').style.display = 'none';
                 });
 
-                // 使用 Live2DModel.from() 直接加载
-                console.log('开始加载 Live2DModel...');
-                const model = await PIXI.live2d.Live2DModel.from(modelPath, {
-                    autoInteract: false
-                });
-                console.log('模型加载成功:', model);
-
-                // 设置模型
-                app.stage.addChild(model);
-
-                // Live2DModel 使用 pivot 而不是 anchor，或者直接使用 position 调整
-                // model.anchor.set(0.5, 0.5);
-                model.pivot.set(model.width / 2, model.height / 2);
-
-                // 加载保存的模型设置
-                const modelSettings = JSON.parse(localStorage.getItem('roomModelSettings')) || { scale: 0.15, xOffset: 0, yOffset: 0 };
-                model.position.set(app.screen.width / 2 + modelSettings.xOffset, app.screen.height * 0.8 + modelSettings.yOffset);
-                model.scale.set(modelSettings.scale);
-
-                // 更新 UI 显示
-                document.getElementById('modelScaleInput').value = modelSettings.scale * 100;
-                document.getElementById('modelScaleValue').textContent = Math.round(modelSettings.scale * 100) + '%';
-                document.getElementById('modelXInput').value = modelSettings.xOffset;
-                document.getElementById('modelXValue').textContent = modelSettings.xOffset;
-                document.getElementById('modelYInput').value = modelSettings.yOffset;
-                document.getElementById('modelYValue').textContent = modelSettings.yOffset;
-
-                // 保存模型引用以便后续更新
-                window.live2dModel = model;
-                window.live2dApp = app;
-
-                console.log('模型已添加到舞台');
-                console.log('internalModel:', model.internalModel ? 'exists' : 'not exists');
-                console.log('coreModel:', model.internalModel?.coreModel ? 'exists' : 'not exists');
-
-                // 鼠标跟随
-                canvas.addEventListener('mousemove', (e) => {
-                    const rect = canvas.getBoundingClientRect();
-                    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-                    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-
-                    if (model.internalModel && model.internalModel.coreModel) {
-                        model.internalModel.coreModel.setParameterValueById('ParamAngleX', x * 30);
-                        model.internalModel.coreModel.setParameterValueById('ParamAngleY', y * 30);
+                // 启动渲染循环
+                window.live2dRenderLoop = function(timestamp) {
+                    if (live2dModel && live2dModel._initialized) {
+                        live2dModel.update(0.016); // ~60fps
+                        live2dModel.draw();
                     }
-                });
+                    requestAnimationFrame(window.live2dRenderLoop);
+                };
+                requestAnimationFrame(window.live2dRenderLoop);
 
-                // 隐藏加载遮罩
-                document.getElementById('loadingOverlay').style.display = 'none';
-                console.log('=== 模型加载完成 ===');
+                // 保存模型引用
+                window.live2dModel = live2dModel;
 
             } catch (error) {
                 console.error('Live2D error:', error);
@@ -368,7 +364,7 @@
             initPanelPositions();
             loadProfile();
             loadNote();
-            // loadLive2DModel(); // Disabled: TsukimiYachiyo Live2D handles initialization
+            loadLive2DModel(); // 使用 PIXI.live2d 加载模型
             loadChatHistory();
         });
 
@@ -406,6 +402,19 @@
 
         // ==================== LLM 聊天功能 ====================
         let chatConversation = [];
+        let ttsAudioCache = new Map(); // Cache TTS audio by text
+        let referenceAudioData = null; // Store reference audio for voice cloning
+
+        // 动态获取后端 API 地址（从当前页面 URL 推断）
+        function getApiBaseUrl() {
+            const currentHost = window.location.origin;
+            // 如果从 38.76.173.139 访问，则使用相同地址
+            if (currentHost.includes('38.76.173.139')) {
+                return currentHost;
+            }
+            // 默认使用本地测试地址
+            return 'http://47.97.0.122:3000';
+        }
 
         function loadChatHistory() {
             chatConversation = JSON.parse(localStorage.getItem('roomChatHistory')) || [];
@@ -419,6 +428,15 @@
             if (llmSettings.apiUrl) document.getElementById('llmApiUrl').value = llmSettings.apiUrl;
             if (llmSettings.apiKey) document.getElementById('llmApiKey').value = llmSettings.apiKey;
             if (llmSettings.model) document.getElementById('llmModel').value = llmSettings.model;
+            // 加载 TTS 设置
+            const ttsSettings = JSON.parse(localStorage.getItem('roomTTSSettings')) || {};
+            if (ttsSettings.enabled) document.getElementById('ttsEnabled').checked = ttsSettings.enabled;
+            if (ttsSettings.provider) document.getElementById('ttsProvider').value = ttsSettings.provider;
+            if (ttsSettings.apiUrl) document.getElementById('ttsApiUrl').value = ttsSettings.apiUrl;
+            if (ttsSettings.apiKey) document.getElementById('ttsApiKey').value = ttsSettings.apiKey;
+            if (ttsSettings.voice) document.getElementById('ttsVoice').value = ttsSettings.voice;
+            // 预加载参考音频
+            loadReferenceAudio();
         }
 
         function appendChatMessage(role, content) {
@@ -486,7 +504,7 @@
             }
             appendChatMessage('system', '🔄 正在测试连接...');
             try {
-                const response = await fetch('http://47.97.0.122:3000/api/chat', {
+                const response = await fetch(getApiBaseUrl() + '/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -529,7 +547,7 @@
             const llmSettings = JSON.parse(localStorage.getItem('roomLLMSettings')) || {};
 
             try {
-                const response = await fetch('http://47.97.0.122:3000/api/chat', {
+                const response = await fetch(getApiBaseUrl() + '/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -553,12 +571,194 @@
                         chatConversation = chatConversation.slice(-20);
                     }
                     localStorage.setItem('roomChatHistory', JSON.stringify(chatConversation));
+                    // 触发 TTS 语音合成
+                    playTTS(reply);
                 } else {
                     appendChatMessage('system', '❌ ' + (result.message || '发送失败'));
                 }
             } catch (error) {
                 console.error('聊天失败:', error);
                 appendChatMessage('system', '❌ 网络错误，请稍后再试');
+            }
+        }
+
+        // ==================== TTS 语音合成功能 ====================
+        function loadReferenceAudio() {
+            // 从服务器加载参考音频用于音色克隆
+            const audioPath = getApiBaseUrl() + '/assets/audio/voice-clone-sample.wav';
+            fetch(audioPath)
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    }
+                    throw new Error('参考音频加载失败');
+                })
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        referenceAudioData = reader.result; // data:audio/wav;base64,...
+                        console.log('参考音频已加载');
+                    };
+                    reader.readAsDataURL(blob);
+                })
+                .catch(err => {
+                    console.log('参考音频不可用，将使用默认音色:', err.message);
+                });
+        }
+
+        function saveTTSSettings() {
+            const settings = {
+                enabled: document.getElementById('ttsEnabled').checked,
+                provider: document.getElementById('ttsProvider').value,
+                apiUrl: document.getElementById('ttsApiUrl').value.trim(),
+                apiKey: document.getElementById('ttsApiKey').value.trim(),
+                voice: document.getElementById('ttsVoice').value.trim()
+            };
+            localStorage.setItem('roomTTSSettings', JSON.stringify(settings));
+            appendChatMessage('system', '✅ TTS 设置已保存');
+        }
+
+        async function testTTS() {
+            const settings = {
+                enabled: document.getElementById('ttsEnabled').checked,
+                provider: document.getElementById('ttsProvider').value,
+                apiUrl: document.getElementById('ttsApiUrl').value.trim(),
+                apiKey: document.getElementById('ttsApiKey').value.trim(),
+                voice: document.getElementById('ttsVoice').value.trim()
+            };
+            if (!settings.apiKey) {
+                appendChatMessage('system', '❌ 请填写 TTS API Key');
+                return;
+            }
+            appendChatMessage('system', '🎤 正在测试 TTS...');
+            try {
+                const audioBuffer = await generateTTS('你好，我叫八千代，月读空间的管理员', settings);
+                if (audioBuffer) {
+                    playAudio(audioBuffer);
+                    appendChatMessage('system', '✅ TTS 测试成功');
+                } else {
+                    appendChatMessage('system', '❌ TTS 生成失败');
+                }
+            } catch (error) {
+                appendChatMessage('system', '❌ TTS 测试失败：' + error.message);
+            }
+        }
+
+        async function generateTTS(text, settings) {
+            const useProvider = settings.provider || 'mimo';
+            const useApiKey = settings.apiKey;
+            const useApiUrl = settings.apiUrl || (useProvider === 'mimo' ? 'https://api.xiaomimimo.com/v1/chat/completions' : 'https://api.openai.com/v1/audio/speech');
+            const useVoice = settings.voice || (useProvider === 'mimo' ? 'mimo_default' : 'alloy');
+            const useModel = useProvider === 'mimo' ? 'mimo-v2-tts' : 'tts-1';
+
+            // 检查缓存
+            const cacheKey = `${useProvider}:${useVoice}:${text}`;
+            if (ttsAudioCache.has(cacheKey)) {
+                console.log('TTS 缓存命中');
+                return ttsAudioCache.get(cacheKey);
+            }
+
+            try {
+                const requestBody = {};
+
+                if (useProvider === 'mimo') {
+                    // MiMo-V2-TTS API 格式
+                    const messages = [
+                        { role: 'user', content: '你好' },
+                        { role: 'assistant', content: text }
+                    ];
+
+                    requestBody.body = JSON.stringify({
+                        model: useModel,
+                        messages: messages,
+                        modalities: ['audio'],
+                        audio: {
+                            format: 'wav',
+                            voice: useVoice
+                        }
+                    });
+
+                    // 如果有参考音频，添加到请求中
+                    if (referenceAudioData) {
+                        const bodyObj = JSON.parse(requestBody.body);
+                        bodyObj.audio.prompt_audio = referenceAudioData;
+                        requestBody.body = JSON.stringify(bodyObj);
+                    }
+
+                    requestBody.headers = {
+                        'Content-Type': 'application/json',
+                        'api-key': useApiKey
+                    };
+                } else {
+                    // OpenAI TTS API 格式
+                    requestBody.body = JSON.stringify({
+                        model: useModel,
+                        input: text,
+                        voice: useVoice,
+                        response_format: 'wav'
+                    });
+                    requestBody.headers = {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${useApiKey}`
+                    };
+                }
+
+                const response = await fetch(getApiBaseUrl() + '/api/tts', {
+                    method: 'POST',
+                    headers: requestBody.headers,
+                    body: requestBody.body
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const audioBuffer = await response.arrayBuffer();
+                ttsAudioCache.set(cacheKey, audioBuffer);
+                return audioBuffer;
+
+            } catch (error) {
+                console.error('TTS 生成失败:', error);
+                throw error;
+            }
+        }
+
+        function playAudio(audioBuffer) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext.decodeAudioData(audioBuffer, (decodedData) => {
+                const source = audioContext.createBufferSource();
+                source.buffer = decodedData;
+                source.connect(audioContext.destination);
+                source.start(0);
+            }, (error) => {
+                console.error('音频解码失败:', error);
+            });
+        }
+
+        async function playTTS(text) {
+            const ttsEnabled = document.getElementById('ttsEnabled').checked;
+            if (!ttsEnabled) return;
+
+            const settings = {
+                enabled: true,
+                provider: document.getElementById('ttsProvider').value,
+                apiUrl: document.getElementById('ttsApiUrl').value.trim(),
+                apiKey: document.getElementById('ttsApiKey').value.trim(),
+                voice: document.getElementById('ttsVoice').value.trim()
+            };
+
+            if (!settings.apiKey || !settings.apiUrl) {
+                console.log('TTS 设置不完整，跳过语音合成');
+                return;
+            }
+
+            try {
+                const audioBuffer = await generateTTS(text, settings);
+                if (audioBuffer) {
+                    playAudio(audioBuffer);
+                }
+            } catch (error) {
+                console.error('TTS 播放失败:', error);
             }
         }
     </script>
