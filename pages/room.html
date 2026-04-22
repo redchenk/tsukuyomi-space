@@ -181,9 +181,9 @@
     </div>
     <div class="footer">© 月读空间 | Live2D by AIRI Project | Model by 雪熊企划</div>
 
-    <!-- Live2D 库 (直接 WebGL 渲染) -->
-    <script src="/lib/live2dcubismcore-v5.min.js"></script>
-    <script src="/lib/live2d-core.js"></script>
+    <!-- PIXI.js 7 for Live2D rendering -->
+    <script src="/lib/pixi7.min.js"></script>
+    <script src="/lib/pixi-live2d-display.min.js"></script>
     <script>
         // 验证加载
         console.log('Live2DCubismCore:', typeof Live2DCubismCore);
@@ -287,65 +287,80 @@
         function loadNote() { document.getElementById('noteContent').value = localStorage.getItem('roomNote') || ''; }
         function saveNote() { localStorage.setItem('roomNote', document.getElementById('noteContent').value); alert('便签已保存'); }
 
-        // ==================== Live2D 模型加载 (直接 WebGL) ====================
+        // ==================== Live2D 模型加载 (PIXI.js + pixi-live2d-display) ====================
         let live2dModel = null;
+        let live2dApp = null;
 
         async function loadLive2DModel() {
             try {
                 console.log('=== Live2D 模型加载开始 ===');
-                console.log('Live2DCubismCore:', typeof Live2DCubismCore !== 'undefined' ? 'loaded' : 'not loaded');
-                console.log('LAppModel:', typeof LAppModel !== 'undefined' ? 'loaded' : 'not loaded');
 
                 const modelDir = '/models/tsukimi-yachiyo/';
                 const modelFile = 'tsukimi-yachiyo.model3.json';
-                console.log('模型目录:', modelDir);
-                console.log('模型文件:', modelFile);
 
-                if (typeof Live2DCubismCore === 'undefined') {
-                    throw new Error('Live2DCubismCore 未加载');
+                // 等待 PIXI 和 Live2D 库加载
+                if (typeof PIXI === 'undefined') {
+                    throw new Error('PIXI 未加载');
                 }
+                console.log('PIXI version:', PIXI.VERSION);
 
-                // 获取 canvas
-                const canvas = document.getElementById('live2d-canvas');
+                // 获取容器
                 const container = document.getElementById('live2d-container');
 
-                console.log('Canvas element:', canvas);
-                console.log('Container dimensions:', container.clientWidth, 'x', container.clientHeight);
+                // 创建 PIXI 应用
+                const width = container.clientWidth || 600;
+                const height = container.clientHeight || 700;
 
-                // 设置 canvas 尺寸
-                canvas.width = container.clientWidth || 600;
-                canvas.height = container.clientHeight || 700;
-                console.log('Canvas size set to:', canvas.width, 'x', canvas.height);
-
-                // 获取 WebGL context
-                const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-                if (!gl) {
-                    throw new Error('无法获取 WebGL context');
-                }
-                console.log('WebGL context:', gl);
-
-                // 创建 Live2D 模型
-                live2dModel = new LAppModel(gl, canvas);
-
-                // 加载模型
-                live2dModel.load(modelDir, modelFile, function(model) {
-                    console.log('模型加载成功:', model);
-                    console.log('=== 模型加载完成 ===');
-                    document.getElementById('loadingOverlay').style.display = 'none';
+                live2dApp = new PIXI.Application();
+                await live2dApp.init({
+                    width: width,
+                    height: height,
+                    backgroundColor: 0x000000,
+                    transparent: true,
+                    autoDensity: true,
+                    resolution: window.devicePixelRatio || 1
                 });
 
-                // 启动渲染循环
-                window.live2dRenderLoop = function(timestamp) {
-                    if (live2dModel && live2dModel._initialized) {
-                        live2dModel.update(0.016); // ~60fps
-                        live2dModel.draw();
-                    }
-                    requestAnimationFrame(window.live2dRenderLoop);
-                };
-                requestAnimationFrame(window.live2dRenderLoop);
+                // 添加 canvas 到容器
+                container.appendChild(live2dApp.canvas);
+                console.log('PIXI canvas added, size:', width, 'x', height);
 
-                // 保存模型引用
-                window.live2dModel = live2dModel;
+                // 使用 PIXI Live2D 加载模型
+                const model = await PIXI.live2d.Live2DModel.from(modelDir + modelFile, {
+                    autoInteract: true,
+                    backend: 'webgl',
+                    modelDirectory: modelDir
+                });
+
+                console.log('Live2D model loaded:', model);
+
+                // 设置模型位置和缩放
+                model.anchor.set(0.5, 0.8);
+                model.position.set(width / 2, height);
+                model.scale.set(0.15);
+
+                // 添加到舞台
+                live2dApp.stage.addChild(model);
+
+                // 启用交互
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // 点击交互
+                model.on('pointerdown', () => {
+                    console.log('Model clicked');
+                });
+
+                // 保存引用
+                live2dModel = model;
+                window.live2dModel = model;
+                window.live2dApp = live2dApp;
+
+                console.log('=== 模型加载完成 ===');
+                document.getElementById('loadingOverlay').style.display = 'none';
+
+                // 隐藏原始 canvas
+                document.getElementById('live2d-canvas').style.display = 'none';
 
             } catch (error) {
                 console.error('Live2D error:', error);
@@ -358,6 +373,15 @@
                     </div>`;
             }
         }
+
+        // 模型设置控制
+        window.setLive2DModelSettings = function(scale, xOffset, yOffset) {
+            if (live2dModel) {
+                live2dModel.scale.set(scale);
+                live2dModel.position.x = (live2dApp?.screen.width || 600) / 2 + xOffset;
+                live2dModel.position.y = (live2dApp?.screen.height || 700) + yOffset;
+            }
+        };
 
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', () => {
