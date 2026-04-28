@@ -186,7 +186,7 @@
         }
 
         applyToneMapping() {
-            this.canvas.style.filter = 'none';
+            this.canvas.style.filter = 'brightness(0.92) contrast(0.92) saturate(0.96)';
             this.canvas.style.webkitFilter = this.canvas.style.filter;
         }
 
