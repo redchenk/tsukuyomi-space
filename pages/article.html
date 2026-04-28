@@ -200,6 +200,108 @@
             background: transparent;
             padding: 0;
         }
+
+        /* 评论区样式 */
+        .comments-section {
+            margin-top: 2rem;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,107,157,0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .comments-title {
+            font-size: 1.2rem;
+            color: var(--sakura-pink);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .comment-form {
+            margin-bottom: 1.5rem;
+        }
+        .comment-input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,183,197,0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            min-height: 80px;
+        }
+        .comment-input:focus {
+            outline: none;
+            border-color: var(--sakura-pink);
+            box-shadow: 0 0 10px rgba(255,183,197,0.2);
+        }
+        .comment-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0.8rem;
+        }
+        .btn-comment {
+            padding: 0.6rem 1.5rem;
+            background: rgba(255,107,157,0.2);
+            border: 1px solid var(--sakura-pink);
+            border-radius: 8px;
+            color: var(--sakura-pink);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        .btn-comment:hover {
+            background: rgba(255,107,157,0.3);
+            box-shadow: 0 0 15px rgba(255,183,197,0.3);
+        }
+        .comment-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .comment-item {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,183,197,0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .comment-author {
+            color: var(--sakura-pink);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .comment-date {
+            color: rgba(255,183,197,0.4);
+            font-size: 0.7rem;
+        }
+        .comment-content {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .login-prompt {
+            text-align: center;
+            padding: 2rem;
+            color: rgba(255,183,197,0.6);
+        }
+        .login-prompt a {
+            color: var(--sakura-pink);
+            text-decoration: none;
+        }
+        .login-prompt a:hover {
+            text-decoration: underline;
+        }
+
         .article-content ul, .article-content ol {
             margin: 1rem 0;
             padding-left: 1.5rem;
@@ -256,7 +358,7 @@
 
     <script src="i18n.js"></script>
     <script>
-        const API_BASE = 'http://47.97.0.122:3000/api';
+        const API_BASE = '/api';
         const articleId = new URLSearchParams(window.location.search).get('id');
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -291,7 +393,17 @@
                         </div>
                         ${article.cover_image ? `<img src="${article.cover_image}" alt="封面" class="article-cover">` : ''}
                         <div class="article-content">${formatContent(article.content)}</div>
+
+                        <div class="comments-section">
+                            <h2 class="comments-title">💬 评论</h2>
+                            <div id="commentFormContainer"></div>
+                            <div class="comment-list" id="commentList"></div>
+                        </div>
                     `;
+
+                    // 初始化评论表单
+                    initCommentForm();
+                    loadComments();
                 } else {
                     container.innerHTML = '<div class="loading">文章不存在</div>';
                 }
@@ -369,6 +481,199 @@
                 requestAnimationFrame(animate);
             }
             animate();
+        }
+
+        function checkLogin() {
+            const token = localStorage.getItem('tsukuyomi_token');
+            const user = localStorage.getItem('tsukuyomi_user');
+            return !!(token && user);
+        }
+
+        function getToken() {
+            return localStorage.getItem('tsukuyomi_token');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function loadComments() {
+            const list = document.getElementById('commentList');
+            try {
+                const res = await fetch('/api/messages?article_id=' + articleId);
+                const result = await res.json();
+                if (result.success && result.data) {
+                    const topLevelComments = result.data.filter(m => !m.parent_id);
+                    if (topLevelComments.length === 0) {
+                        list.innerHTML = '<div style="text-align:center;padding:2rem;color:rgba(255,183,197,0.5);">暂无评论，快来发布第一条吧！</div>';
+                        return;
+                    }
+                    list.innerHTML = topLevelComments.map(c => renderComment(c, result.data)).join('');
+                }
+            } catch (error) {
+                console.error('加载评论失败:', error);
+                list.innerHTML = '<div style="text-align:center;padding:2rem;color:rgba(255,183,197,0.5);">加载失败</div>';
+            }
+        }
+
+        function renderComment(comment, allComments) {
+            const replies = allComments.filter(r => r.parent_id === comment.id);
+            const liked = localStorage.getItem('liked_' + comment.id) === '1';
+            const date = new Date(comment.created_at).toLocaleString('zh-CN');
+            return `
+                <div class="comment-item" id="comment-${comment.id}">
+                    <div class="comment-header">
+                        <span class="comment-author">${escapeHtml(comment.author)}</span>
+                        <span class="comment-date">${date}</span>
+                    </div>
+                    <div class="comment-content">${escapeHtml(comment.content)}</div>
+                    <div style="display:flex;gap:1rem;margin-top:0.8rem;">
+                        <button class="btn-comment" style="padding:0.4rem 1rem;font-size:0.8rem;" onclick="likeComment(${comment.id})">
+                            🤍 <span class="like-count">${comment.like_count || 0}</span>
+                        </button>
+                        <button class="btn-comment" style="padding:0.4rem 1rem;font-size:0.8rem;" onclick="toggleReplyForm(${comment.id})">
+                            💬 回复
+                        </button>
+                    </div>
+                    <div class="reply-form" id="reply-form-${comment.id}" style="display:none;margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid rgba(255,183,197,0.1);">
+                        <textarea class="comment-input" id="reply-input-${comment.id}" style="min-height:60px;font-size:0.85rem;"></textarea>
+                        <div class="comment-actions" style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                            <button class="btn-comment" style="padding:0.5rem 1rem;font-size:0.8rem;" onclick="submitReply(${comment.id})">发布回复</button>
+                            <button class="btn-comment" style="padding:0.5rem 1rem;font-size:0.8rem;background:transparent;" onclick="toggleReplyForm(${comment.id})">取消</button>
+                        </div>
+                    </div>
+                    ${replies.length > 0 ? `<div style="margin-top:0.8rem;padding-left:1rem;border-left:2px solid rgba(255,183,197,0.15);">${replies.map(r => renderReply(r)).join('')}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function renderReply(reply) {
+            const date = new Date(reply.created_at).toLocaleString('zh-CN');
+            return `
+                <div class="comment-item" style="margin-bottom:0.5rem;">
+                    <div class="comment-header">
+                        <span class="comment-author">${escapeHtml(reply.author)}</span>
+                        <span class="comment-date">${date}</span>
+                    </div>
+                    <div class="comment-content">${escapeHtml(reply.content)}</div>
+                </div>
+            `;
+        }
+
+        async function submitComment() {
+            if (!checkLogin()) {
+                alert('请先登录！');
+                window.location.href = 'login.html';
+                return;
+            }
+            const input = document.getElementById('commentInput');
+            const content = input.value.trim();
+            if (!content) {
+                alert('评论内容不能为空');
+                return;
+            }
+            try {
+                const res = await fetch('/api/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                    body: JSON.stringify({ content, article_id: articleId })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    input.value = '';
+                    loadComments();
+                } else {
+                    alert(result.message || '发布失败');
+                }
+            } catch (error) {
+                console.error('发布评论失败:', error);
+                alert('网络错误');
+            }
+        }
+
+        function initCommentForm() {
+            const container = document.getElementById('commentFormContainer');
+            if (checkLogin()) {
+                container.innerHTML = `
+                    <div class="comment-form">
+                        <textarea class="comment-input" id="commentInput" placeholder="写下你的评论..."></textarea>
+                        <div class="comment-actions">
+                            <button class="btn-comment" onclick="submitComment()">发布评论</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="login-prompt">
+                        <div style="margin-bottom:1rem;">🔐 登录后才能发表评论</div>
+                        <a href="login.html" class="btn-comment">去登录</a>
+                    </div>
+                `;
+            }
+        }
+
+        function toggleReplyForm(commentId) {
+            const form = document.getElementById('reply-form-' + commentId);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function submitReply(commentId) {
+            if (!checkLogin()) {
+                alert('请先登录！');
+                return;
+            }
+            const input = document.getElementById('reply-input-' + commentId);
+            const content = input.value.trim();
+            if (!content) {
+                alert('回复内容不能为空');
+                return;
+            }
+            try {
+                const res = await fetch('/api/messages/' + commentId + '/reply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                    body: JSON.stringify({ content })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    loadComments();
+                } else {
+                    alert(result.message || '回复失败');
+                }
+            } catch (error) {
+                console.error('回复失败:', error);
+                alert('网络错误');
+            }
+        }
+
+        async function likeComment(commentId) {
+            if (!checkLogin()) {
+                alert('请先登录！');
+                window.location.href = 'login.html';
+                return;
+            }
+            if (localStorage.getItem('liked_' + commentId) === '1') {
+                alert('已点赞');
+                return;
+            }
+            try {
+                const res = await fetch('/api/messages/' + commentId + '/like', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + getToken() }
+                });
+                const result = await res.json();
+                if (result.success) {
+                    localStorage.setItem('liked_' + commentId, '1');
+                    loadComments();
+                } else {
+                    alert(result.message || '点赞失败');
+                }
+            } catch (error) {
+                console.error('点赞失败:', error);
+                alert('网络错误');
+            }
         }
     </script>
 </body>

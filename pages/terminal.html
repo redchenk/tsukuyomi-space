@@ -215,7 +215,7 @@
     </div>
     
     <script>
-        const API_BASE = 'http://47.97.0.122:3000/api';
+        const API_BASE = '/api';
         let authToken = null;
         let selectedArticles = new Set();
         let currentPage = 1;
@@ -373,7 +373,7 @@
                 tr.innerHTML = `
                     <td class="checkbox-cell"><input type="checkbox" data-id="${a.id}"></td>
                     <td>${a.id}</td>
-                    <td>${escapeHtml(a.title)}</td>
+                    <td><a href="article.html?id=${a.id}" target="_blank" style="color:var(--sakura-pink);text-decoration:underline;">${escapeHtml(a.title)}</a></td>
                     <td>${a.category}</td>
                     <td>${a.view_count || 0}</td>
                     <td>${a.status === 'published' ? '<span style="color:var(--sakura-pink)">已发布</span>' : '<span style="color:#999">已下架</span>'}</td>
@@ -535,8 +535,54 @@
             } catch (error) { console.error(error); }
         }
         
-        function approveMessage(id) { alert('🌸 通过留言 ID: ' + id); }
-        function deleteMessage(id) { if(confirm('确定删除？')) alert('🌸 删除留言 ID: ' + id); }
+        async function approveMessage(id) {
+            const msgEl = document.getElementById('messageMessage');
+            msgEl.style.display = 'block';
+            try {
+                const res = await fetch(API_BASE + '/admin/messages/' + id + '/approve', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const result = await res.json();
+                if (result.success) {
+                    msgEl.className = 'message success';
+                    msgEl.textContent = '🌸 留言已通过';
+                    loadMessages();
+                    loadDashboard();
+                } else {
+                    msgEl.className = 'message error';
+                    msgEl.textContent = '❌ ' + (result.message || '操作失败');
+                }
+            } catch (error) {
+                msgEl.className = 'message error';
+                msgEl.textContent = '❌ 操作失败：' + error.message;
+            }
+        }
+
+        async function deleteMessage(id) {
+            if (!confirm('确定删除这条留言吗？')) return;
+            const msgEl = document.getElementById('messageMessage');
+            msgEl.style.display = 'block';
+            try {
+                const res = await fetch(API_BASE + '/admin/messages/' + id, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const result = await res.json();
+                if (result.success) {
+                    msgEl.className = 'message success';
+                    msgEl.textContent = '🌸 留言已删除';
+                    loadMessages();
+                    loadDashboard();
+                } else {
+                    msgEl.className = 'message error';
+                    msgEl.textContent = '❌ ' + (result.message || '删除失败');
+                }
+            } catch (error) {
+                msgEl.className = 'message error';
+                msgEl.textContent = '❌ 删除失败：' + error.message;
+            }
+        }
         
         function loadLinks() {
             document.getElementById('linksTable').innerHTML = `<tr><td>GitHub</td><td><a href="https://github.com" style="color:var(--sakura-pink)">github.com</a></td><td><span style="color:var(--sakura-pink)">启用</span></td><td><button class="action-btn">编辑</button> <button class="action-btn danger">删除</button></td></tr>`;
@@ -606,11 +652,19 @@
             }
         }
         
-        function loadAnalytics() {
-            document.getElementById('analyticsToday').textContent = Math.floor(Math.random() * 1000);
-            document.getElementById('analyticsWeek').textContent = Math.floor(Math.random() * 5000);
-            document.getElementById('analyticsMonth').textContent = Math.floor(Math.random() * 20000);
-            document.getElementById('analyticsTotal').textContent = Math.floor(Math.random() * 100000);
+        async function loadAnalytics() {
+            try {
+                const res = await fetch(API_BASE + '/admin/analytics', { headers: { 'Authorization': 'Bearer ' + authToken } });
+                const result = await res.json();
+                if (result.success) {
+                    document.getElementById('analyticsToday').textContent = result.data.todayViews || 0;
+                    document.getElementById('analyticsWeek').textContent = result.data.weekViews || 0;
+                    document.getElementById('analyticsMonth').textContent = result.data.monthViews || 0;
+                    document.getElementById('analyticsTotal').textContent = result.data.totalViews || 0;
+                }
+            } catch (error) {
+                console.error('Analytics error:', error);
+            }
         }
         
         function loadSettings() {

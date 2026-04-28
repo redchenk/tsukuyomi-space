@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月读广场 | 月读空间</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sakura-pink: #ffb7c5; --deep-pink: #ff6b9d; --dark-bg: #1a1025; --night-blue: #0f1724; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(180deg, rgba(45,31,61,0.7) 0%, rgba(26,16,37,0.8) 40%, rgba(15,23,36,0.9) 100%),
+                        url('../assets/images/tsukuyomi-bg.png') center center / cover no-repeat fixed;
+            font-family: 'Noto Sans JP', sans-serif;
+            overflow-x: hidden;
+        }
+        #sakuraContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .sakura { position: absolute; background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%); border-radius: 50% 0 50% 0; }
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 1.2rem 2rem;
+            background: rgba(26,16,37,0.95); backdrop-filter: blur(10px); z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,107,157,0.2);
+        }
+        nav .logo { font-size: 1.3rem; background: linear-gradient(135deg, #fff, #ffb7c5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 500; letter-spacing: 0.3rem; text-decoration: none; color: var(--sakura-pink); }
+        nav .nav-right { display: flex; align-items: center; gap: 1rem; }
+        nav a { color: rgba(255,183,197,0.8); text-decoration: none; font-size: 0.9rem; padding: 0.4rem 0.8rem; border-radius: 15px; transition: all 0.3s; }
+        nav a:hover, nav a.active { color: var(--sakura-pink); background: rgba(255,107,157,0.15); }
+        .plaza-container { position: relative; z-index: 10; min-height: 100vh; padding: 8rem 2rem 2rem; max-width: 1400px; margin: 0 auto; }
+        .plaza-header { text-align: center; margin-bottom: 2rem; }
+        .plaza-title { font-size: 2.5rem; background: linear-gradient(135deg, #fff 0%, #ffb7c5 50%, #ff6b9d 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 300; letter-spacing: 0.5rem; margin-bottom: 0.5rem; }
+        .plaza-subtitle { color: rgba(255,183,197,0.5); font-size: 0.85rem; letter-spacing: 0.3rem; }
+        .visitor-stats { display: flex; justify-content: center; gap: 2rem; margin-bottom: 3rem; flex-wrap: wrap; }
+        .stat-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,183,197,0.2); border-radius: 12px; padding: 1.5rem 2rem; text-align: center; min-width: 140px; }
+        .stat-value { font-size: 2rem; font-weight: 700; background: linear-gradient(135deg, var(--sakura-pink), var(--deep-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-label { color: rgba(255,183,197,0.6); font-size: 0.75rem; margin-top: 0.5rem; letter-spacing: 0.1rem; }
+        .plaza-content { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; }
+        .message-wall-section, .friends-section { background: rgba(26,16,37,0.6); border: 1px solid rgba(255,183,197,0.15); border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(10px); }
+        .section-title { color: var(--sakura-pink); font-size: 1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .friends-grid { display: flex; flex-direction: column; gap: 0.8rem; }
+        .friend-card { display: flex; align-items: center; gap: 1rem; padding: 0.8rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,183,197,0.1); border-radius: 10px; transition: all 0.3s; text-decoration: none; }
+        .friend-card:hover { background: rgba(255,107,157,0.08); border-color: rgba(255,183,197,0.3); transform: translateX(5px); }
+        .friend-avatar { width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, var(--sakura-pink), var(--deep-pink)); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+        .friend-info { flex: 1; min-width: 0; }
+        .friend-name { color: var(--sakura-pink); font-size: 0.85rem; font-weight: 500; margin-bottom: 0.2rem; }
+        .friend-desc { color: rgba(255,183,197,0.5); font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .friend-link { color: rgba(255,183,197,0.3); font-size: 1.1rem; transition: color 0.3s; }
+        .friend-card:hover .friend-link { color: var(--sakura-pink); }
+
+        /* 留言墙样式 */
+        .message-form { margin-bottom: 1.5rem; }
+        .message-input { width: 100%; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,183,197,0.2); border-radius: 8px; color: #fff; font-family: inherit; font-size: 0.9rem; resize: vertical; min-height: 80px; }
+        .message-input:focus { outline: none; border-color: var(--sakura-pink); box-shadow: 0 0 10px rgba(255,183,197,0.2); }
+        .message-actions { display: flex; justify-content: flex-end; margin-top: 0.8rem; }
+        .btn-submit { padding: 0.6rem 1.5rem; background: rgba(255,107,157,0.2); border: 1px solid var(--sakura-pink); border-radius: 8px; color: var(--sakura-pink); cursor: pointer; font-size: 0.85rem; transition: all 0.3s; }
+        .btn-submit:hover { background: rgba(255,107,157,0.3); box-shadow: 0 0 15px rgba(255,183,197,0.3); }
+
+        .messages-list { max-height: 600px; overflow-y: auto; }
+        .message-item { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,183,197,0.1); border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+        .message-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .message-author { color: var(--sakura-pink); font-size: 0.85rem; font-weight: 500; }
+        .message-date { color: rgba(255,183,197,0.4); font-size: 0.7rem; }
+        .message-content { color: rgba(255,255,255,0.85); font-size: 0.9rem; line-height: 1.6; margin-bottom: 0.8rem; white-space: pre-wrap; }
+        .message-footer { display: flex; gap: 1rem; align-items: center; }
+        .message-action { background: none; border: none; color: rgba(255,183,197,0.5); cursor: pointer; font-size: 0.75rem; padding: 0.3rem 0.6rem; border-radius: 6px; transition: all 0.3s; }
+        .message-action:hover { background: rgba(255,183,197,0.1); color: var(--sakura-pink); }
+        .message-action.liked { color: var(--deep-pink); }
+        .like-count { font-size: 0.75rem; color: rgba(255,183,197,0.6); }
+
+        .reply-form { margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,183,197,0.1); display: none; }
+        .reply-form.show { display: block; }
+        .reply-input { width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,183,197,0.15); border-radius: 6px; color: #fff; font-family: inherit; font-size: 0.85rem; resize: vertical; min-height: 60px; margin-bottom: 0.5rem; }
+        .reply-actions { display: flex; gap: 0.5rem; }
+        .btn-cancel { padding: 0.5rem 1rem; background: transparent; border: 1px solid rgba(255,183,197,0.3); border-radius: 6px; color: rgba(255,183,197,0.7); cursor: pointer; font-size: 0.75rem; }
+
+        .replies-list { margin-top: 0.8rem; padding-left: 1rem; border-left: 2px solid rgba(255,183,197,0.15); }
+        .reply-item { background: rgba(255,255,255,0.01); border-radius: 8px; padding: 0.8rem; margin-bottom: 0.5rem; }
+
+        .login-prompt { text-align: center; padding: 2rem; color: rgba(255,183,197,0.6); }
+        .login-prompt a { color: var(--sakura-pink); text-decoration: none; }
+        .login-prompt a:hover { text-decoration: underline; }
+
+        .footer { position: fixed; bottom: 1rem; width: 100%; text-align: center; color: rgba(255,255,255,0.25); font-size: 0.65rem; letter-spacing: 0.15rem; z-index: 10; }
+        @media (max-width: 900px) { .plaza-content { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div id="sakuraContainer"></div>
+    <nav>
+        <a href="hub.html" class="logo">月读空间</a>
+        <div class="nav-right">
+            <a href="hub.html">中枢大厅</a>
+            <a href="stage.html">主舞台</a>
+            <a href="room.html">私人居所</a>
+            <a href="plaza.html" class="active">月读广场</a>
+            <a href="terminal.html">数据终端</a>
+        </div>
+    </nav>
+    <div class="plaza-container">
+        <div class="plaza-header">
+            <h1 class="plaza-title">月读广场</h1>
+            <p class="plaza-subtitle">Tsukuyomi Plaza - 访客互动区</p>
+        </div>
+        <div class="visitor-stats">
+            <div class="stat-card"><div class="stat-value" id="totalVisitors">-</div><div class="stat-label">累计访客</div></div>
+            <div class="stat-card"><div class="stat-value" id="todayVisitors">-</div><div class="stat-label">今日访客</div></div>
+            <div class="stat-card"><div class="stat-value" id="totalMessages">-</div><div class="stat-label">留言数量</div></div>
+        </div>
+        <div class="plaza-content">
+            <div class="message-wall-section">
+                <h2 class="section-title">🌙 月读留言墙</h2>
+                <div class="message-form" id="messageFormContainer">
+                    <textarea class="message-input" id="messageInput" placeholder="写下你的留言..."></textarea>
+                    <div class="message-actions"><button class="btn-submit" onclick="submitMessage()">发布留言</button></div>
+                </div>
+                <div class="messages-list" id="messagesList"></div>
+            </div>
+            <div class="friends-section">
+                <h2 class="section-title">🤝 常驻访客</h2>
+                <div class="friends-grid" id="friendsGrid"></div>
+            </div>
+        </div>
+    </div>
+    <div class="footer">© 月读空间 | Tsukuyomi Space</div>
+    <script>
+        function initSakura() {
+            const container = document.getElementById('sakuraContainer'), sakuras = [];
+            function createSakura() {
+                const el = document.createElement('div'); el.className = 'sakura';
+                const size = Math.random() * 6 + 5; el.style.width = size + 'px'; el.style.height = size + 'px';
+                el.style.left = (Math.random() * 100) + '%'; container.appendChild(el);
+                return { el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50, vy: Math.random() * 0.4 + 0.3 };
+            }
+            for (let i = 0; i < 40; i++) { const s = createSakura(); s.y = Math.random() * window.innerHeight; sakuras.push(s); }
+            function animate() {
+                sakuras.forEach(s => { s.y += s.vy; if (s.y > window.innerHeight + 30) s.y = -30; s.el.style.transform = `translate(${s.x}px, ${s.y}px)`; });
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats'); const result = await res.json();
+                if (result.success && result.data) {
+                    document.getElementById('totalVisitors').textContent = (result.data.articles || 0) * 10 + (result.data.users || 0) * 5;
+                    document.getElementById('todayVisitors').textContent = Math.floor((result.data.uptime || 0) / 3600) || '-';
+                    document.getElementById('totalMessages').textContent = result.data.messages || 0;
+                }
+            } catch (e) { console.error(e); }
+        }
+        function checkLogin() {
+            const token = localStorage.getItem('tsukuyomi_token');
+            const user = localStorage.getItem('tsukuyomi_user');
+            return !!(token && user);
+        }
+        function getUser() { return JSON.parse(localStorage.getItem('tsukuyomi_user') || '{}'); }
+        function getToken() { return localStorage.getItem('tsukuyomi_token'); }
+        async function loadMessages() {
+            const list = document.getElementById('messagesList');
+            try {
+                const res = await fetch('/api/messages'); const result = await res.json();
+                if (result.success && result.data) {
+                    const topLevelMessages = result.data.filter(m => !m.parent_id);
+                    if (topLevelMessages.length === 0) {
+                        list.innerHTML = '<div style="text-align:center;padding:2rem;color:rgba(255,183,197,0.5);">暂无留言，快来发布第一条吧！</div>';
+                        return;
+                    }
+                    list.innerHTML = topLevelMessages.map(m => renderMessage(m, result.data)).join('');
+                }
+            } catch (e) { console.error(e); list.innerHTML = '<div style="text-align:center;padding:2rem;color:rgba(255,183,197,0.5);">加载失败</div>'; }
+        }
+        function renderMessage(msg, allMessages) {
+            const replies = allMessages.filter(r => r.parent_id === msg.id);
+            const liked = localStorage.getItem('liked_' + msg.id) === '1';
+            const date = new Date(msg.created_at).toLocaleString('zh-CN');
+            return `
+                <div class="message-item" id="msg-${msg.id}">
+                    <div class="message-header"><span class="message-author">${escapeHtml(msg.author)}</span><span class="message-date">${date}</span></div>
+                    <div class="message-content">${escapeHtml(msg.content)}</div>
+                    <div class="message-footer">
+                        <button class="message-action ${liked ? 'liked' : ''}" onclick="likeMessage(${msg.id})">🤍 <span class="like-count">${msg.like_count || 0}</span></button>
+                        <button class="message-action" onclick="toggleReplyForm(${msg.id})">💬 回复</button>
+                    </div>
+                    <div class="reply-form" id="reply-form-${msg.id}">
+                        <textarea class="reply-input" id="reply-input-${msg.id}" placeholder="写下你的回复..."></textarea>
+                        <div class="reply-actions">
+                            <button class="btn-submit" onclick="submitReply(${msg.id})">发布回复</button>
+                            <button class="btn-cancel" onclick="toggleReplyForm(${msg.id})">取消</button>
+                        </div>
+                    </div>
+                    ${replies.length > 0 ? `<div class="replies-list">${replies.map(r => renderReply(r)).join('')}</div>` : ''}
+                </div>`;
+        }
+        function renderReply(msg) {
+            const date = new Date(msg.created_at).toLocaleString('zh-CN');
+            return `<div class="reply-item"><div class="message-header"><span class="message-author">${escapeHtml(msg.author)}</span><span class="message-date">${date}</span></div><div class="message-content">${escapeHtml(msg.content)}</div></div>`;
+        }
+        function escapeHtml(text) {
+            const div = document.createElement('div'); div.textContent = text; return div.innerHTML;
+        }
+        async function submitMessage() {
+            if (!checkLogin()) { alert('请先登录！'); window.location.href = 'login.html'; return; }
+            const input = document.getElementById('messageInput'); const content = input.value.trim();
+            if (!content) { alert('留言内容不能为空'); return; }
+            try {
+                const res = await fetch('/api/messages', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                    body: JSON.stringify({ content })
+                });
+                const result = await res.json();
+                if (result.success) { input.value = ''; loadMessages(); loadStats(); }
+                else { alert(result.message || '发布失败'); }
+            } catch (e) { alert('网络错误'); }
+        }
+        function toggleReplyForm(msgId) {
+            const form = document.getElementById('reply-form-' + msgId);
+            form.classList.toggle('show');
+        }
+        async function submitReply(msgId) {
+            if (!checkLogin()) { alert('请先登录！'); return; }
+            const input = document.getElementById('reply-input-' + msgId); const content = input.value.trim();
+            if (!content) { alert('回复内容不能为空'); return; }
+            try {
+                const res = await fetch('/api/messages/' + msgId + '/reply', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                    body: JSON.stringify({ content })
+                });
+                const result = await res.json();
+                if (result.success) { loadMessages(); }
+                else { alert(result.message || '回复失败'); }
+            } catch (e) { alert('网络错误'); }
+        }
+        async function likeMessage(msgId) {
+            if (!checkLogin()) { alert('请先登录！'); window.location.href = 'login.html'; return; }
+            if (localStorage.getItem('liked_' + msgId) === '1') { alert('已点赞'); return; }
+            try {
+                const res = await fetch('/api/messages/' + msgId + '/like', {
+                    method: 'POST', headers: { 'Authorization': 'Bearer ' + getToken() }
+                });
+                const result = await res.json();
+                if (result.success) {
+                    localStorage.setItem('liked_' + msgId, '1');
+                    loadMessages();
+                } else { alert(result.message || '点赞失败'); }
+            } catch (e) { alert('网络错误'); }
+        }
+        async function loadFriends() {
+            const grid = document.getElementById('friendsGrid');
+            const defaultFriends = [
+                { name: '月读空间官方', desc: 'プロジェクト公式サイト', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '🌙' },
+                { name: '辉夜姬博客', desc: 'かぐや姫のブログ', url: 'stage.html', avatar: '🎌' },
+                { name: '技术分享', desc: 'テクノロジー共有', url: 'hub.html', avatar: '💻' },
+                { name: '友链申请', desc: 'リンク申請', url: 'terminal.html', avatar: '🔗' }
+            ];
+            grid.innerHTML = defaultFriends.map(f => `<a href="${f.url}" class="friend-card"><div class="friend-avatar">${f.avatar}</div><div class="friend-info"><div class="friend-name">${f.name}</div><div class="friend-desc">${f.desc}</div></div><div class="friend-link">↗</div></a>`).join('');
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            initSakura(); loadStats(); loadMessages(); loadFriends();
+            if (!checkLogin()) {
+                document.getElementById('messageFormContainer').innerHTML = '<div class="login-prompt"><div style="margin-bottom:1rem;">🔐 登录后才能发布留言</div><a href="login.html" class="btn-submit">去登录</a></div>';
+            }
+        });
+    </script>
+</body>
+</html>

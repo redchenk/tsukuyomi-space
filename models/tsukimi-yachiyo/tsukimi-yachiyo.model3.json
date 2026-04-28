@@ -1,0 +1,27 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "tsukimi-yachiyo.moc3",
+    "Textures": [
+      "textures/texture_00.webp",
+      "textures/texture_01.webp"
+    ],
+    "Physics": "tsukimi-yachiyo.physics3.json"
+  },
+  "Groups": [
+    {
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": [
+        "ParamEyeLOpen",
+        "ParamEyeROpen"
+      ]
+    },
+    {
+      "Target": "Parameter",
+      "Name": "LipSync",
+      "Ids": []
+    }
+  ],
+  "HitAreas": []
+}

@@ -37,6 +37,15 @@ try {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
+
+    // 数据库迁移：为 messages 表添加新列
+    const tableInfo = db.pragma("table_info('messages')");
+    const columns = tableInfo.map(col => col.name);
+    if (!columns.includes('author')) db.exec("ALTER TABLE messages ADD COLUMN author TEXT DEFAULT '匿名'");
+    if (!columns.includes('status')) db.exec("ALTER TABLE messages ADD COLUMN status TEXT DEFAULT 'approved'");
+    if (!columns.includes('parent_id')) db.exec("ALTER TABLE messages ADD COLUMN parent_id INTEGER");
+    if (!columns.includes('like_count')) db.exec("ALTER TABLE messages ADD COLUMN like_count INTEGER DEFAULT 0");
+    if (!columns.includes('article_id')) db.exec("ALTER TABLE messages ADD COLUMN article_id INTEGER");
     
     // 友链表
     db.exec(`
@@ -118,6 +127,9 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// 登录之后的所有管理接口都需要先解析 JWT，再检查管理员权限。
+router.use(authenticateToken);
+
 // 获取统计数据
 router.get('/stats', requireAdmin, (req, res) => {
     try {
@@ -160,6 +172,59 @@ router.get('/stats', requireAdmin, (req, res) => {
     }
 });
 
+// 获取访问统计数据
+router.get('/analytics', requireAdmin, (req, res) => {
+    try {
+        let todayViews = 0;
+        let weekViews = 0;
+        let monthViews = 0;
+        let totalEvents = 0;
+
+        try {
+            const row = db.prepare(`
+                SELECT
+                    SUM(CASE WHEN date(created_at) = date('now', 'localtime') THEN 1 ELSE 0 END) AS today,
+                    SUM(CASE WHEN created_at >= datetime('now', '-7 days') THEN 1 ELSE 0 END) AS week,
+                    SUM(CASE WHEN created_at >= datetime('now', '-30 days') THEN 1 ELSE 0 END) AS month,
+                    COUNT(*) AS total
+                FROM stats
+                WHERE event_type = 'view'
+            `).get();
+            todayViews = row?.today || 0;
+            weekViews = row?.week || 0;
+            monthViews = row?.month || 0;
+            totalEvents = row?.total || 0;
+        } catch (_) {}
+
+        const articles = db.prepare('SELECT COUNT(*) as count, COALESCE(SUM(view_count), 0) as views FROM articles').get();
+        const articleCount = articles?.count || 0;
+        const articleViews = articles?.views || 0;
+        const messageCount = db.prepare('SELECT COUNT(*) as count FROM messages').get().count || 0;
+        const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count || 0;
+
+        const totalViews = Math.max(totalEvents, articleViews);
+        if (!weekViews && totalViews) weekViews = totalViews;
+        if (!monthViews && totalViews) monthViews = totalViews;
+
+        res.json({
+            success: true,
+            data: {
+                todayViews,
+                weekViews,
+                monthViews,
+                totalViews,
+                articleViews,
+                articles: articleCount,
+                messages: messageCount,
+                users: userCount
+            }
+        });
+    } catch (error) {
+        console.error('获取访问统计错误:', error);
+        res.status(500).json({ success: false, message: '服务器错误：' + error.message });
+    }
+});
+
 // 获取文章列表
 router.get('/articles', requireAdmin, (req, res) => {
     try {
@@ -192,13 +257,20 @@ router.get('/articles/:id', requireAdmin, (req, res) => {
 // 更新文章
 router.put('/articles/:id', requireAdmin, (req, res) => {
     try {
-        const { title, content, category, status } = req.body;
+        const { title, excerpt, content, category, status, read_time, cover_image } = req.body;
         
         db.prepare(`
             UPDATE articles 
-            SET title = ?, content = ?, category = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+            SET title = ?,
+                excerpt = ?,
+                content = ?,
+                category = ?,
+                status = ?,
+                read_time = COALESCE(?, read_time),
+                cover_image = COALESCE(?, cover_image),
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        `).run(title, content, category, status || 'published', req.params.id);
+        `).run(title, excerpt || '', content || '', category || '随笔', status || 'published', read_time || null, cover_image || null, req.params.id);
         
         res.json({ success: true, message: '文章已更新' });
     } catch (error) {
@@ -237,7 +309,7 @@ router.get('/messages', requireAdmin, (req, res) => {
     try {
         // 从数据库查询真实数据（适配现有表结构）
         const messages = db.prepare(`
-            SELECT id, COALESCE(author, '匿名') as username, content, 'approved' as status, created_at
+            SELECT id, COALESCE(author, '匿名') as username, content, COALESCE(status, 'approved') as status, created_at
             FROM messages
             ORDER BY created_at DESC
         `).all() || [];

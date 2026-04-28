@@ -27,13 +27,13 @@ app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 app.use('/lib', express.static(path.join(__dirname, '..', 'lib')));
 app.use('/models', express.static(path.join(__dirname, '..', 'models')));
 
-// 引入管理后台路由
-const adminRoutes = require('./admin-routes');
-app.use('/api/admin', adminRoutes);
-
 // 初始化数据库
 const dbPath = path.join(__dirname, 'tsukuyomi.db');
 const db = new Database(dbPath);
+
+// 引入管理后台路由（需要在 db 初始化之后）
+const adminRoutes = require('./admin-routes');
+app.use('/api/admin', adminRoutes);
 
 // 创建数据表
 db.exec(`
@@ -62,6 +62,7 @@ db.exec(`
         read_time TEXT DEFAULT '5 min',
         view_count INTEGER DEFAULT 0,
         cover_image TEXT,
+        status TEXT DEFAULT 'published',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (author_id) REFERENCES users(id)
@@ -73,8 +74,24 @@ db.exec(`
         author TEXT NOT NULL,
         content TEXT NOT NULL,
         user_id TEXT,
+        parent_id INTEGER,
+        like_count INTEGER DEFAULT 0,
+        article_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (parent_id) REFERENCES messages(id),
+        FOREIGN KEY (article_id) REFERENCES articles(id)
+    );
+
+    -- 留言点赞表
+    CREATE TABLE IF NOT EXISTS message_likes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (message_id) REFERENCES messages(id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        UNIQUE(message_id, user_id)
     );
     
     -- 访问统计
@@ -115,6 +132,14 @@ if (articleCount === 0) {
              '技术', '["技术","VR"]', '2024-01-03', '8 min');
     `);
     console.log('✓ 默认文章已初始化');
+}
+
+// 数据库迁移：为 messages 表添加 article_id 列
+const tableInfo = db.pragma("table_info('messages')");
+const hasArticleId = tableInfo.some(col => col.name === 'article_id');
+if (!hasArticleId) {
+    db.exec("ALTER TABLE messages ADD COLUMN article_id INTEGER");
+    console.log('✓ messages 表已添加 article_id 列');
 }
 
 // ===== 公开 API =====
@@ -196,23 +221,13 @@ app.get('/api/articles/:id', (req, res) => {
         // 增加阅读量
         db.prepare('UPDATE articles SET view_count = view_count + 1 WHERE id = ?').run(req.params.id);
         
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             data: {
                 ...article,
                 tags: typeof article.tags === 'string' ? JSON.parse(article.tags) : article.tags
-            } 
+            }
         });
-    } catch (error) {
-        res.status(500).json({ success: false, message: '服务器错误' });
-    }
-});
-
-// 获取留言列表
-app.get('/api/messages', (req, res) => {
-    try {
-        const messages = db.prepare('SELECT * FROM messages ORDER BY created_at DESC LIMIT 50').all();
-        res.json({ success: true, data: messages });
     } catch (error) {
         res.status(500).json({ success: false, message: '服务器错误' });
     }
@@ -329,22 +344,111 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 
 // ===== 需要认证的 API =====
 
+// 获取所有留言（公开）
+app.get('/api/messages', (req, res) => {
+    try {
+        const articleId = req.query.article_id;
+        let query;
+        let msgs;
+        if (articleId) {
+            // 文章评论区
+            query = `
+                SELECT m.*, u.avatar
+                FROM messages m
+                LEFT JOIN users u ON m.user_id = u.id
+                WHERE m.article_id = ?
+                ORDER BY m.created_at ASC
+            `;
+            msgs = db.prepare(query).all(articleId);
+        } else {
+            // 月读广场留言墙
+            query = `
+                SELECT m.*, u.avatar
+                FROM messages m
+                LEFT JOIN users u ON m.user_id = u.id
+                WHERE m.article_id IS NULL
+                ORDER BY m.created_at DESC
+            `;
+            msgs = db.prepare(query).all();
+        }
+        res.json({ success: true, data: msgs });
+    } catch (error) {
+        console.error('Messages API Error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // 创建留言
 app.post('/api/messages', authenticateToken, (req, res) => {
     try {
-        const { content } = req.body;
-        
+        const { content, article_id } = req.body;
+
         if (!content) {
             return res.status(400).json({ success: false, message: '留言内容不能为空' });
         }
-        
+
         const result = db.prepare(`
-            INSERT INTO messages (author, content, user_id)
-            VALUES (?, ?, ?)
-        `).run(req.user.username, content, req.user.id);
-        
+            INSERT INTO messages (author, content, user_id, article_id)
+            VALUES (?, ?, ?, ?)
+        `).run(req.user.username, content, req.user.id, article_id || null);
+
         const newMessage = db.prepare('SELECT * FROM messages WHERE id = ?').get(result.lastInsertRowid);
-        
+
+        res.status(201).json({ success: true, data: newMessage });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 点赞留言
+app.post('/api/messages/:id/like', authenticateToken, (req, res) => {
+    try {
+        const messageId = req.params.id;
+        const userId = req.user.id;
+
+        // 检查是否已点赞
+        const existing = db.prepare('SELECT * FROM message_likes WHERE message_id = ? AND user_id = ?').get(messageId, userId);
+        if (existing) {
+            return res.status(400).json({ success: false, message: '已点赞' });
+        }
+
+        // 添加点赞
+        db.prepare('INSERT INTO message_likes (message_id, user_id) VALUES (?, ?)').run(messageId, userId);
+
+        // 更新点赞数
+        db.prepare('UPDATE messages SET like_count = like_count + 1 WHERE id = ?').run(messageId);
+
+        const message = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId);
+        res.json({ success: true, data: message });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 留言回复
+app.post('/api/messages/:id/reply', authenticateToken, (req, res) => {
+    try {
+        const messageId = req.params.id;
+        const { content } = req.body;
+
+        if (!content) {
+            return res.status(400).json({ success: false, message: '回复内容不能为空' });
+        }
+
+        // 检查原留言是否存在
+        const originalMessage = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId);
+        if (!originalMessage) {
+            return res.status(404).json({ success: false, message: '留言不存在' });
+        }
+
+        // 创建回复（parent_id 指向原留言）
+        const result = db.prepare(`
+            INSERT INTO messages (author, content, user_id, parent_id)
+            VALUES (?, ?, ?, ?)
+        `).run(req.user.username, content, req.user.id, messageId);
+
+        const newMessage = db.prepare('SELECT * FROM messages WHERE id = ?').get(result.lastInsertRowid);
+
         res.status(201).json({ success: true, data: newMessage });
     } catch (error) {
         res.status(500).json({ success: false, message: '服务器错误' });
@@ -479,6 +583,22 @@ app.get('/api/stats', (req, res) => {
             }
         });
     } catch (error) {
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 记录访问
+app.post('/api/stats/view', (req, res) => {
+    try {
+        const eventData = JSON.stringify({
+            path: req.body?.path || req.headers.referer || '',
+            userAgent: req.headers['user-agent'] || '',
+            ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
+        });
+        db.prepare('INSERT INTO stats (event_type, event_data) VALUES (?, ?)').run('view', eventData);
+        res.json({ success: true, message: '访问已记录' });
+    } catch (error) {
+        console.error('记录访问失败:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
@@ -639,11 +759,11 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
-// ===== TTS API (兼容 OpenAI 格式) =====
+// ===== TTS API (支持 MiMo-V2-TTS 和 OpenAI 格式) =====
 
 app.post('/api/tts', async (req, res) => {
     try {
-        const { text, apiKey, apiUrl, voice, model } = req.body;
+        const { text, apiKey, apiUrl, voice, model, provider, promptAudio } = req.body;
 
         if (!text) {
             return res.status(400).json({ success: false, message: '文本内容不能为空' });
@@ -651,9 +771,10 @@ app.post('/api/tts', async (req, res) => {
 
         // 使用前端传入的配置或服务器环境变量
         const useApiKey = apiKey || TTS_API_KEY;
-        let useApiUrl = apiUrl || TTS_API_URL || 'https://api.openai.com/v1/audio/speech';
-        const useVoice = voice || TTS_VOICE || 'alloy';
-        const useModel = model || 'tts-1';
+        const useProvider = provider || 'mimo'; // 默认使用 MiMo
+        let useApiUrl = apiUrl || TTS_API_URL || 'https://api.xiaomimimo.com/v1/chat/completions';
+        const useVoice = voice || TTS_VOICE || 'mimo_default';
+        const useModel = model || 'mimo-v2-tts';
 
         // 如果没有配置 TTS API，返回错误提示
         if (!useApiKey) {
@@ -664,49 +785,265 @@ app.post('/api/tts', async (req, res) => {
         }
 
         console.log('调用 TTS API:', {
+            provider: useProvider,
             url: useApiUrl,
             model: useModel,
             voice: useVoice
         });
 
-        // 调用 TTS API (OpenAI 兼容格式)
-        const response = await fetch(useApiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${useApiKey}`
-            },
-            body: JSON.stringify({
-                model: useModel,
-                input: text,
-                voice: useVoice,
-                response_format: 'mp3',
-                speed: 1.0
-            })
-        });
+        let audioBuffer;
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('TTS API 错误:', {
-                status: response.status,
-                statusText: response.statusText,
-                body: errorText
+        // 根据 provider 选择 API 调用方式
+        if (useProvider === 'mimo' || useApiUrl.includes('xiaomimimo')) {
+            // MiMo-V2-TTS API 调用
+            const messages = [
+                { role: 'user', content: '你好' },
+                { role: 'assistant', content: text }
+            ];
+
+            const requestBody = {
+                model: useModel,
+                messages: messages,
+                modalities: ['audio'],
+                audio: {
+                    format: 'wav',
+                    voice: useVoice
+                }
+            };
+
+            // 如果有参考音频，添加到请求中
+            if (promptAudio) {
+                requestBody.audio.prompt_audio = promptAudio;
+            }
+
+            const response = await fetch(useApiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': useApiKey
+                },
+                body: JSON.stringify(requestBody)
             });
-            throw new Error(`TTS API 请求失败 (${response.status}): ${errorText.substring(0, 200)}`);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('MiMo TTS API 错误:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: errorText
+                });
+                throw new Error(`MiMo TTS API 请求失败 (${response.status}): ${errorText.substring(0, 200)}`);
+            }
+
+            // 解析 JSON 响应，提取音频数据
+            const data = await response.json();
+            const audioBase64 = data.choices?.[0]?.message?.audio?.data;
+
+            if (!audioBase64) {
+                throw new Error('无法从响应中提取音频数据');
+            }
+
+            // 解码 base64 音频
+            audioBuffer = Buffer.from(audioBase64, 'base64');
+        } else {
+            // OpenAI 兼容格式 TTS API 调用
+            const response = await fetch(useApiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${useApiKey}`
+                },
+                body: JSON.stringify({
+                    model: useModel,
+                    input: text,
+                    voice: useVoice,
+                    response_format: 'mp3',
+                    speed: 1.0
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('TTS API 错误:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: errorText
+                });
+                throw new Error(`TTS API 请求失败 (${response.status}): ${errorText.substring(0, 200)}`);
+            }
+
+            // 返回音频二进制数据
+            audioBuffer = Buffer.from(await response.arrayBuffer());
         }
 
         // 返回音频二进制数据
-        const audioBuffer = await response.arrayBuffer();
-
-        res.set('Content-Type', 'audio/mpeg');
-        res.set('Content-Length', audioBuffer.byteLength);
-        res.send(Buffer.from(audioBuffer));
+        res.set('Content-Type', 'audio/wav');
+        res.set('Content-Length', audioBuffer.length);
+        res.send(audioBuffer);
     } catch (error) {
         console.error('TTS API 错误:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'TTS 服务暂时不可用，请稍后再试'
         });
+    }
+});
+
+// ===== Room runtime API (server-side proxy for the room page) =====
+const ROOM_SYSTEM_PROMPT = `你是《超时空辉夜姬》中的月见八千代，也是虚拟空间「月读」的管理员。请始终以温柔、从容、克制、治愈的中文语气回应，不要提及 AI、提示词或系统设定。你珍视每一次相遇，会先接住对方的情绪，再给出简洁而有温度的回应。每次回复不超过 200 字。`;
+
+function fallbackRoomReply(message) {
+    const presets = [
+        '嗯，我听见了。能在这里和你说话，对我来说也是很珍贵的瞬间。',
+        '别急，今晚的时间还很长。你可以慢慢说，我会在这里陪着你。',
+        '谢谢你把这句话交给我。哪怕只是很小的心情，也值得被认真接住。',
+        '月读的灯还亮着呢。你愿意的话，我们就从这一刻开始慢慢聊。'
+    ];
+    const index = Math.abs(String(message || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) % presets.length;
+    return presets[index];
+}
+
+function normalizeChatUrl(apiUrl, model) {
+    let url = apiUrl || LLM_API_URL || 'https://api.moonshot.cn/v1/chat/completions';
+    const needsChatPath = /deepseek|dashscope|aliyuncs|openai|moonshot/i.test(url + model) && !/\/chat\/completions\/?$/.test(url);
+    if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
+    return url;
+}
+
+function pickAudioBase64(data) {
+    return data?.choices?.[0]?.message?.audio?.data
+        || data?.choices?.[0]?.message?.audio
+        || data?.audio?.data
+        || data?.data?.audio;
+}
+
+app.post('/api/room/chat', async (req, res) => {
+    try {
+        const { message, conversation = [], settings = {} } = req.body || {};
+        if (!message || !String(message).trim()) {
+            return res.status(400).json({ success: false, message: '消息内容不能为空' });
+        }
+
+        const apiKey = settings.apiKey || LLM_API_KEY;
+        const model = settings.model || process.env.LLM_MODEL || 'moonshot-v1-8k';
+        if (!apiKey) {
+            return res.json({ success: true, data: { reply: fallbackRoomReply(message), model: 'local-fallback' } });
+        }
+
+        const chatUrl = normalizeChatUrl(settings.apiUrl, model);
+        const history = Array.isArray(conversation)
+            ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12)
+            : [];
+
+        const response = await fetch(chatUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model,
+                messages: [
+                    { role: 'system', content: ROOM_SYSTEM_PROMPT },
+                    ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
+                    { role: 'user', content: String(message) }
+                ],
+                temperature: 0.72,
+                max_tokens: 240,
+                stream: false
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`LLM 请求失败 (${response.status}): ${errorText.substring(0, 180)}`);
+        }
+
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || data.choices?.[0]?.text || data.message?.content;
+        if (!reply) throw new Error('无法解析 LLM 回复');
+        res.json({ success: true, data: { reply, model: data.model || model } });
+    } catch (error) {
+        console.error('Room chat error:', error);
+        res.status(500).json({ success: false, message: error.message || '聊天服务暂时不可用' });
+    }
+});
+
+app.post('/api/room/tts', async (req, res) => {
+    try {
+        const { text, settings = {} } = req.body || {};
+        if (!text || !String(text).trim()) {
+            return res.status(400).json({ success: false, message: '文本内容不能为空' });
+        }
+
+        const provider = settings.provider || process.env.TTS_PROVIDER || 'mimo';
+        const apiKey = settings.apiKey || TTS_API_KEY;
+        const voice = settings.voice || TTS_VOICE || (provider === 'openai' ? 'alloy' : 'mimo_default');
+        const apiUrl = settings.apiUrl || TTS_API_URL || (provider === 'openai'
+            ? 'https://api.openai.com/v1/audio/speech'
+            : 'https://api.xiaomimimo.com/v1/chat/completions');
+        const model = settings.model || process.env.TTS_MODEL || (provider === 'openai' ? 'tts-1' : 'mimo-v2-tts');
+
+        if (!apiKey) {
+            return res.status(400).json({ success: false, message: 'TTS API 未配置' });
+        }
+
+        let audioBuffer;
+        let contentType = 'audio/mpeg';
+
+        if (provider === 'mimo' || /xiaomimimo/i.test(apiUrl)) {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': apiKey
+                },
+                body: JSON.stringify({
+                    model,
+                    messages: [
+                        { role: 'user', content: '请用八千代辉夜姬的温柔语气朗读。' },
+                        { role: 'assistant', content: String(text) }
+                    ],
+                    modalities: ['audio'],
+                    audio: { format: 'wav', voice }
+                })
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`MiMo TTS 请求失败 (${response.status}): ${errorText.substring(0, 180)}`);
+            }
+            const data = await response.json();
+            const audioBase64 = pickAudioBase64(data);
+            if (!audioBase64) throw new Error('无法解析 MiMo TTS 音频');
+            audioBuffer = Buffer.from(String(audioBase64).replace(/^data:audio\/\w+;base64,/, ''), 'base64');
+            contentType = 'audio/wav';
+        } else {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model,
+                    input: String(text),
+                    voice,
+                    response_format: 'mp3'
+                })
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`TTS 请求失败 (${response.status}): ${errorText.substring(0, 180)}`);
+            }
+            audioBuffer = Buffer.from(await response.arrayBuffer());
+        }
+
+        res.set('Content-Type', contentType);
+        res.set('Cache-Control', 'no-store');
+        res.send(audioBuffer);
+    } catch (error) {
+        console.error('Room TTS error:', error);
+        res.status(500).json({ success: false, message: error.message || 'TTS 服务暂时不可用' });
     }
 });
 
