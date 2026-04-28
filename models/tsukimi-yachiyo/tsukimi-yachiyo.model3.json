@@ -3,8 +3,8 @@
   "FileReferences": {
     "Moc": "tsukimi-yachiyo.moc3",
     "Textures": [
-      "textures/texture_00.webp",
-      "textures/texture_01.webp"
+      "【雪熊企划】八千代辉夜姬/八千代辉夜姬.8192/texture_00.png",
+      "【雪熊企划】八千代辉夜姬/八千代辉夜姬.8192/texture_01.png"
     ],
     "Physics": "tsukimi-yachiyo.physics3.json"
   },
