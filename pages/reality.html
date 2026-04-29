@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>现实锚点 | 月读空间</title>
+    <link rel="stylesheet" href="../assets/css/site-theme.css">
+    <style>
+        :root {
+            --reality-bg: #0b0d14;
+            --reality-panel: rgba(18, 16, 25, 0.78);
+            --reality-panel-strong: rgba(10, 12, 18, 0.86);
+            --reality-line: rgba(255, 225, 235, 0.18);
+            --reality-line-strong: rgba(255, 183, 197, 0.34);
+            --reality-text: rgba(255, 255, 255, 0.92);
+            --reality-muted: rgba(238, 226, 232, 0.64);
+            --reality-pink: #ffb7c5;
+            --reality-gold: #f7d774;
+            --reality-blue: #9ed8ff;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                linear-gradient(180deg, rgba(7, 8, 13, 0.44), rgba(9, 10, 16, 0.9) 72%),
+                url("../assets/images/tsukuyomi-bg.png") center / cover no-repeat fixed !important;
+            color: var(--reality-text);
+            overflow-x: hidden;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            background:
+                linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+            background-size: 64px 64px;
+            mask-image: linear-gradient(180deg, transparent, #000 18%, #000 70%, transparent);
+        }
+
+        .reality-shell {
+            position: relative;
+            z-index: 5;
+            min-height: 100vh;
+        }
+
+        .reality-main {
+            width: min(1120px, calc(100% - 2rem));
+            margin: 0 auto;
+            padding: 7.2rem 0 4rem;
+        }
+
+        .hero {
+            min-height: clamp(440px, 74vh, 720px);
+            display: grid;
+            align-content: center;
+            gap: 2rem;
+            padding-bottom: 4rem;
+        }
+
+        .hero-kicker {
+            width: fit-content;
+            padding: 0.42rem 0.7rem;
+            border: 1px solid var(--reality-line);
+            border-radius: 8px;
+            color: var(--reality-blue);
+            background: rgba(10, 12, 18, 0.46);
+            font-size: 0.82rem;
+        }
+
+        .hero h1 {
+            max-width: 760px;
+            margin: 0;
+            font-size: clamp(2.6rem, 8vw, 6.5rem);
+            line-height: 0.94;
+            color: #fff;
+            text-shadow: 0 24px 60px rgba(0, 0, 0, 0.52);
+        }
+
+        .hero-copy {
+            max-width: 690px;
+            color: var(--reality-muted);
+            font-size: clamp(1rem, 1.8vw, 1.18rem);
+            line-height: 1.9;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .reality-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0 1rem;
+            border: 1px solid var(--reality-line-strong);
+            border-radius: 8px;
+            background: rgba(255, 183, 197, 0.14);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .reality-btn.secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--reality-pink);
+        }
+
+        .section {
+            padding: 3.4rem 0;
+            border-top: 1px solid var(--reality-line);
+        }
+
+        .section-head {
+            display: grid;
+            grid-template-columns: minmax(180px, 0.34fr) 1fr;
+            gap: 2rem;
+            margin-bottom: 1.6rem;
+        }
+
+        .eyebrow {
+            color: var(--reality-gold);
+            font-size: 0.78rem;
+            letter-spacing: 0.12rem;
+            text-transform: uppercase;
+        }
+
+        .section h2 {
+            margin: 0;
+            color: #fff;
+            font-size: clamp(1.6rem, 3.2vw, 2.45rem);
+        }
+
+        .section-lead {
+            margin: 0.65rem 0 0;
+            max-width: 760px;
+            color: var(--reality-muted);
+            line-height: 1.85;
+        }
+
+        .contact-grid,
+        .policy-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.9rem;
+        }
+
+        .reality-card {
+            min-height: 172px;
+            padding: 1.15rem;
+            border: 1px solid var(--reality-line);
+            border-radius: 8px;
+            background: var(--reality-panel);
+            backdrop-filter: blur(14px);
+        }
+
+        .reality-card h3 {
+            margin: 0 0 0.65rem;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .reality-card p,
+        .reality-card li {
+            color: var(--reality-muted);
+            line-height: 1.75;
+            font-size: 0.93rem;
+        }
+
+        .reality-card p {
+            margin: 0;
+        }
+
+        .reality-card a {
+            color: var(--reality-pink);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 183, 197, 0.35);
+        }
+
+        .policy-list {
+            display: grid;
+            gap: 0.75rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .policy-list li {
+            padding-left: 0.9rem;
+            border-left: 2px solid rgba(255, 183, 197, 0.34);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow: hidden;
+            border: 1px solid var(--reality-line);
+            border-radius: 8px;
+            background: var(--reality-panel-strong);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--reality-line);
+            text-align: left;
+            vertical-align: top;
+            line-height: 1.65;
+        }
+
+        .data-table th {
+            color: #fff;
+            font-size: 0.88rem;
+            background: rgba(255, 255, 255, 0.045);
+        }
+
+        .data-table td {
+            color: var(--reality-muted);
+            font-size: 0.92rem;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .statement {
+            padding: 1.25rem;
+            border: 1px solid var(--reality-line);
+            border-radius: 8px;
+            background: rgba(10, 12, 18, 0.72);
+            color: var(--reality-muted);
+            line-height: 1.85;
+        }
+
+        .statement strong {
+            color: #fff;
+        }
+
+        .reality-footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 2rem 0 0;
+            color: rgba(255, 225, 235, 0.45);
+            font-size: 0.82rem;
+        }
+
+        @media (max-width: 860px) {
+            .reality-main {
+                padding-top: 2rem;
+            }
+
+            .section-head,
+            .contact-grid,
+            .policy-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                min-height: auto;
+                padding: 4rem 0 3rem;
+            }
+
+            .data-table,
+            .data-table tbody,
+            .data-table tr,
+            .data-table th,
+            .data-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .data-table thead {
+                display: none;
+            }
+
+            .data-table td {
+                border-bottom: 0;
+                padding: 0.35rem 1rem;
+            }
+
+            .data-table td:first-child {
+                padding-top: 1rem;
+                color: #fff;
+                font-weight: 700;
+            }
+
+            .data-table td:last-child {
+                padding-bottom: 1rem;
+                border-bottom: 1px solid var(--reality-line);
+            }
+
+            .reality-footer {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="reality-shell">
+        <nav>
+            <a href="hub" class="logo">月读空间</a>
+            <div class="nav-right">
+                <a href="hub">中枢大厅</a>
+                <a href="stage">主舞台</a>
+                <a href="arena">竞技场</a>
+                <a href="room">私人居所</a>
+                <a href="plaza">月读广场</a>
+                <a href="reality" class="active">现实锚点</a>
+            </div>
+        </nav>
+
+        <main class="reality-main">
+            <section class="hero" aria-labelledby="reality-title">
+                <div class="hero-kicker">Reality Anchor / 摘下眼镜</div>
+                <h1 id="reality-title">现实锚点</h1>
+                <p class="hero-copy">
+                    当虚拟空间的光退到屏幕后，仍需要一个可以确认、联系、说明边界的现实入口。
+                    这里收纳月读空间的联系方式、隐私声明、用户数据说明与站点责任边界。
+                </p>
+                <div class="hero-actions">
+                    <a class="reality-btn" href="#contact">查看联系方式</a>
+                    <a class="reality-btn secondary" href="#privacy">阅读隐私声明</a>
+                </div>
+            </section>
+
+            <section class="section" id="contact">
+                <div class="section-head">
+                    <div class="eyebrow">Contact</div>
+                    <div>
+                        <h2>联系方式</h2>
+                        <p class="section-lead">如果你需要反馈问题、申请删除内容、讨论友链或报告安全风险，请优先使用下面这些可追踪的渠道。</p>
+                    </div>
+                </div>
+                <div class="contact-grid">
+                    <article class="reality-card">
+                        <h3>项目仓库</h3>
+                        <p>
+                            GitHub 仓库：
+                            <a href="https://github.com/redchenk/tsukuyomi-space" target="_blank" rel="noopener noreferrer">redchenk/tsukuyomi-space</a>。
+                            适合提交功能建议、缺陷反馈和代码相关问题。
+                        </p>
+                    </article>
+                    <article class="reality-card">
+                        <h3>问题反馈</h3>
+                        <p>
+                            推荐通过
+                            <a href="https://github.com/redchenk/tsukuyomi-space/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>
+                            描述页面路径、复现步骤、浏览器环境和截图。
+                        </p>
+                    </article>
+                    <article class="reality-card">
+                        <h3>站内互动</h3>
+                        <p>
+                            普通留言、友链交流和访客互动可前往
+                            <a href="plaza">月读广场</a>。登录后的账号资料可在
+                            <a href="user-center">用户中心</a> 查看。
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section" id="privacy">
+                <div class="section-head">
+                    <div class="eyebrow">Privacy</div>
+                    <div>
+                        <h2>隐私声明</h2>
+                        <p class="section-lead">月读空间是个人网站。站点只为注册、登录、内容发布、留言互动、访问统计和 Live2D 房间体验处理必要数据。</p>
+                    </div>
+                </div>
+                <table class="data-table" aria-label="月读空间数据处理说明">
+                    <thead>
+                        <tr>
+                            <th>数据类型</th>
+                            <th>使用目的</th>
+                            <th>保存位置与说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>账号信息</td>
+                            <td>用于注册、登录、用户中心展示与权限判断。</td>
+                            <td>包括用户名、邮箱、加密后的密码、角色与创建时间。密码不会以明文保存。</td>
+                        </tr>
+                        <tr>
+                            <td>文章与留言</td>
+                            <td>用于展示投稿、评论、留言审核和站内互动。</td>
+                            <td>公开发布的内容可能被其他访客看到；后台保留审核、管理和删除能力。</td>
+                        </tr>
+                        <tr>
+                            <td>访问统计</td>
+                            <td>用于了解页面访问趋势、维护站点稳定性。</td>
+                            <td>以站点统计数据为主，不用于广告画像或跨站追踪。</td>
+                        </tr>
+                        <tr>
+                            <td>房间本地设置</td>
+                            <td>用于保存 Live2D 房间的模型位置、聊天历史、LLM/TTS 配置等个人体验设置。</td>
+                            <td>这类数据主要保存在你的浏览器 localStorage 中。清理浏览器站点数据会删除它们。</td>
+                        </tr>
+                        <tr>
+                            <td>第三方接口配置</td>
+                            <td>用于用户自行配置房间聊天或语音服务。</td>
+                            <td>请不要在公共设备保存 API Key。站点不会主动将你的密钥写入公开页面。</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="section">
+                <div class="section-head">
+                    <div class="eyebrow">Rights</div>
+                    <div>
+                        <h2>用户权利与处理方式</h2>
+                        <p class="section-lead">如果你希望访问、更正或删除与自己相关的内容，请通过上方联系方式提交请求，并尽量说明账号、页面链接和需要处理的范围。</p>
+                    </div>
+                </div>
+                <div class="policy-grid">
+                    <article class="reality-card">
+                        <h3>访问与更正</h3>
+                        <ul class="policy-list">
+                            <li>登录后可在用户中心查看基础账号信息。</li>
+                            <li>发现公开内容有误时，可以提供链接申请更正。</li>
+                        </ul>
+                    </article>
+                    <article class="reality-card">
+                        <h3>删除与撤回</h3>
+                        <ul class="policy-list">
+                            <li>你可以申请删除自己发布的留言、投稿或账号相关数据。</li>
+                            <li>浏览器本地房间设置可通过清理站点数据自行删除。</li>
+                        </ul>
+                    </article>
+                    <article class="reality-card">
+                        <h3>安全报告</h3>
+                        <ul class="policy-list">
+                            <li>如发现 XSS、越权、敏感信息泄露等风险，请通过 GitHub Issues 或仓库联系方式报告。</li>
+                            <li>报告时请避免公开真实密钥、密码、令牌和他人隐私。</li>
+                        </ul>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="section-head">
+                    <div class="eyebrow">Notice</div>
+                    <div>
+                        <h2>责任边界</h2>
+                        <p class="section-lead">月读空间包含虚拟角色、用户生成内容和可选第三方接口能力。现实边界写在这里，方便每位访客理解站点如何工作。</p>
+                    </div>
+                </div>
+                <div class="statement">
+                    <p>
+                        <strong>虚拟角色内容：</strong>Live2D 房间中的对话与语音体验可能来自用户配置的模型或第三方服务，内容仅用于互动体验，不构成专业建议。
+                    </p>
+                    <p>
+                        <strong>外部链接：</strong>站点可能包含 GitHub、友链或用户提交链接。访问外部网站时，请阅读对方的隐私与安全政策。
+                    </p>
+                    <p>
+                        <strong>声明更新：</strong>本页会随着站点功能变化进行调整。最近更新日期：2026-04-29。
+                    </p>
+                </div>
+            </section>
+
+            <div class="reality-footer">
+                <span>月读空间 Reality Anchor</span>
+                <span><a class="reality-btn secondary" href="hub">返回中枢大厅</a></span>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
