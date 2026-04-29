@@ -50,6 +50,10 @@ const db = new Database(dbPath);
 const adminRoutes = require('./admin-routes');
 app.use('/api/admin', adminRoutes);
 
+// 用户中心路由
+const userRoutes = require('./user-routes');
+app.use('/api/user', userRoutes);
+
 // 创建数据表
 db.exec(`
     -- 用户表
