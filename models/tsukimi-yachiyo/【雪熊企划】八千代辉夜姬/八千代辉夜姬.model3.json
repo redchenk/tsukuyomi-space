@@ -3,8 +3,8 @@
 	"FileReferences": {
 		"Moc": "八千代辉夜姬.moc3",
 		"Textures": [
-			"八千代辉夜姬.8192/texture_00.png",
-			"八千代辉夜姬.8192/texture_01.png"
+			"八千代辉夜姬.8192/texture_00.webp",
+			"八千代辉夜姬.8192/texture_01.webp"
 		],
 		"Physics": "八千代辉夜姬.physics3.json",
 		"DisplayInfo": "八千代辉夜姬.cdi3.json"
