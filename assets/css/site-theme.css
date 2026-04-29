@@ -1,0 +1,280 @@
+/*
+ * Tsukuyomi Space shared UI polish.
+ * Loaded after page-local styles so common layout, navigation, forms and cards
+ * stay consistent across the hand-built static pages.
+ */
+:root {
+    --tsuki-pink: #ffb7c5;
+    --tsuki-pink-strong: #ff6b9d;
+    --tsuki-gold: #f7d774;
+    --tsuki-bg: #0d101a;
+    --tsuki-bg-deep: #080a12;
+    --tsuki-panel: rgba(18, 14, 29, 0.76);
+    --tsuki-panel-strong: rgba(24, 18, 38, 0.92);
+    --tsuki-line: rgba(255, 183, 197, 0.18);
+    --tsuki-line-strong: rgba(255, 183, 197, 0.34);
+    --tsuki-text: rgba(255, 255, 255, 0.9);
+    --tsuki-muted: rgba(255, 225, 235, 0.62);
+    --tsuki-soft: rgba(255, 255, 255, 0.055);
+    --tsuki-radius: 8px;
+    --tsuki-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+    --tsuki-font: "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Arial, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+    background: var(--tsuki-bg-deep);
+}
+
+body {
+    color: var(--tsuki-text) !important;
+    font-family: var(--tsuki-font) !important;
+    background:
+        linear-gradient(180deg, rgba(45, 31, 61, 0.70) 0%, rgba(26, 16, 37, 0.86) 42%, rgba(15, 23, 36, 0.98) 100%),
+        url('../images/tsukuyomi-bg.png') center center / cover no-repeat fixed !important;
+    letter-spacing: 0 !important;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(circle at 12% 16%, rgba(255, 183, 197, 0.14), transparent 24%),
+        radial-gradient(circle at 82% 18%, rgba(247, 215, 116, 0.09), transparent 22%),
+        radial-gradient(circle at 78% 86%, rgba(99, 213, 255, 0.08), transparent 24%);
+}
+
+body > * {
+    position: relative;
+}
+
+nav {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    min-height: 58px !important;
+    padding: 0.9rem 2rem !important;
+    background: rgba(14, 10, 23, 0.92) !important;
+    backdrop-filter: blur(12px) !important;
+    border-bottom: 1px solid rgba(255, 107, 157, 0.2) !important;
+    z-index: 1000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1rem !important;
+}
+
+nav .logo {
+    color: var(--tsuki-pink) !important;
+    background: linear-gradient(135deg, #fff, var(--tsuki-pink)) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.14rem !important;
+    text-decoration: none !important;
+    white-space: nowrap !important;
+}
+
+nav .nav-right {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0.42rem !important;
+    flex-wrap: wrap !important;
+}
+
+nav a,
+nav .nav-right a {
+    color: rgba(255, 225, 235, 0.78) !important;
+    text-decoration: none !important;
+    font-size: 0.88rem !important;
+    line-height: 1 !important;
+    padding: 0.46rem 0.72rem !important;
+    border-radius: var(--tsuki-radius) !important;
+    transition: background 0.2s, color 0.2s, border-color 0.2s !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+nav a:hover,
+nav a.active,
+nav .nav-right a:hover,
+nav .nav-right a.active {
+    color: #fff !important;
+    background: rgba(255, 107, 157, 0.16) !important;
+}
+
+.container,
+.plaza-container,
+.hub-container,
+.room-container,
+.page,
+main {
+    position: relative;
+    z-index: 5;
+}
+
+.container,
+.plaza-container {
+    padding-top: max(7rem, 88px) !important;
+}
+
+.panel,
+.stat-card,
+.message-item,
+.message-card,
+.friend-card,
+.article-item,
+.article-list,
+.login-container,
+.form-container,
+.message-wall-section,
+.friends-section,
+.profile-hero,
+.login-notice,
+.terminal-section,
+.card,
+.scene-item {
+    border-radius: var(--tsuki-radius) !important;
+    border-color: var(--tsuki-line) !important;
+    box-shadow: var(--tsuki-shadow);
+}
+
+.panel,
+.message-wall-section,
+.friends-section,
+.login-container,
+.form-container,
+.terminal-section {
+    background: var(--tsuki-panel) !important;
+    backdrop-filter: blur(14px) !important;
+}
+
+button,
+.btn,
+.primary-btn,
+.ghost-btn,
+.submit-btn,
+.action-btn,
+.tab-btn,
+.filter-btn,
+.lang-btn,
+.btn-submit,
+.message-action,
+.icon-btn {
+    border-radius: var(--tsuki-radius) !important;
+    font-family: var(--tsuki-font) !important;
+    letter-spacing: 0 !important;
+}
+
+.btn,
+.primary-btn,
+.submit-btn,
+.btn-submit {
+    background: rgba(255, 107, 157, 0.22) !important;
+    border: 1px solid rgba(255, 183, 197, 0.36) !important;
+    color: #fff !important;
+}
+
+.btn:hover,
+.primary-btn:hover,
+.submit-btn:hover,
+.btn-submit:hover,
+.action-btn:hover,
+.tab-btn:hover,
+.filter-btn:hover,
+.lang-btn:hover,
+.icon-btn:hover {
+    background: rgba(255, 107, 157, 0.28) !important;
+    border-color: var(--tsuki-line-strong) !important;
+    transform: translateY(-1px);
+}
+
+input,
+textarea,
+select {
+    border-radius: var(--tsuki-radius) !important;
+    border: 1px solid rgba(255, 183, 197, 0.2) !important;
+    background: rgba(8, 8, 16, 0.52) !important;
+    color: #fff !important;
+    font-family: var(--tsuki-font) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: rgba(255, 225, 235, 0.42) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none !important;
+    border-color: rgba(255, 183, 197, 0.52) !important;
+    box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.08) !important;
+}
+
+.title,
+.hub-title,
+.plaza-title,
+.username,
+h1 {
+    letter-spacing: 0.08rem !important;
+}
+
+.footer {
+    color: rgba(255, 225, 235, 0.36) !important;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 183, 197, 0.25);
+    border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 183, 197, 0.42);
+}
+
+@media (max-width: 900px) {
+    nav {
+        position: sticky !important;
+        padding: 0.78rem 1rem !important;
+        align-items: flex-start !important;
+    }
+
+    nav .logo {
+        font-size: 1rem !important;
+        letter-spacing: 0.08rem !important;
+    }
+
+    nav .nav-right {
+        gap: 0.2rem !important;
+    }
+
+    nav a,
+    nav .nav-right a {
+        font-size: 0.76rem !important;
+        padding: 0.36rem 0.44rem !important;
+    }
+
+    .container,
+    .plaza-container {
+        padding-top: 1.2rem !important;
+    }
+}
