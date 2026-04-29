@@ -57,14 +57,14 @@
 </head>
 <body>
     <nav>
-        <a href="hub.html" class="logo" data-i18n="space_name">月读空间</a>
+        <a href="hub" class="logo" data-i18n="space_name">月读空间</a>
         <div class="nav-right">
-            <a href="hub.html" data-i18n="nav_hub">中枢大厅</a>
-            <a href="stage.html" class="active" data-i18n="nav_stage">主舞台</a>
-            <a href="arena.html" data-i18n="nav_arena">竞技场</a>
+            <a href="hub" data-i18n="nav_hub">中枢大厅</a>
+            <a href="stage" class="active" data-i18n="nav_stage">主舞台</a>
+            <a href="arena" data-i18n="nav_arena">竞技场</a>
             <span id="userDisplay" style="color:var(--sakura-pink);font-size:0.85rem;display:none;"></span>
-            <a href="user-center.html" id="userCenterLink" style="display:none;color:var(--sakura-pink);">用户中心</a>
-            <a href="login.html" id="loginLink" data-i18n="login">登录</a>
+            <a href="user-center" id="userCenterLink" style="display:none;color:var(--sakura-pink);">用户中心</a>
+            <a href="login" id="loginLink" data-i18n="login">登录</a>
             <button id="logoutBtn" onclick="handleLogout()" style="display:none;background:transparent;border:1px solid rgba(255,183,197,0.3);border-radius:15px;color:rgba(255,183,197,0.8);padding:0.4rem 0.8rem;cursor:pointer;font-size:0.85rem;">退出</button>
             <div class="lang-switcher">
                 <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh'); return false;">中文</button>
@@ -81,7 +81,7 @@
             <div class="search-box">
                 <input type="text" id="searchInput" data-i18n="search_placeholder" placeholder="搜索文章...">
             </div>
-            <a href="editor.html" class="btn" data-i18n="new_post" onclick="checkEditorAuth(event)">✏️ 新建投稿</a>
+            <a href="editor" class="btn" data-i18n="new_post" onclick="checkEditorAuth(event)">✏️ 新建投稿</a>
         </div>
         <div class="filters" id="filters">
             <button class="filter-btn active" data-category="all" data-i18n="filter_all">全部</button>
@@ -146,7 +146,7 @@
             if (!token || !userStr) {
                 event.preventDefault();
                 alert('请先登录后再投稿文章！\n\n请点击导航栏的"登录"按钮进行登录。');
-                window.location.href = 'login.html';
+                window.location.href = 'login';
                 return false;
             }
         }
@@ -181,7 +181,7 @@
                 return;
             }
             list.innerHTML=filtered.map(article=>`
-                <a href="article.html?id=${article.id}" class="article-item">
+                <a href="article?id=${article.id}" class="article-item">
                     <div class="article-content">
                         <div class="article-meta">
                             <span class="tag">${article.category}</span>

@@ -193,7 +193,7 @@
                     <div class="toolbar">
                         <div>
                             <button class="action-btn" onclick="loadUsers()">🔄 刷新</button>
-                            <a href="register.html" target="_blank" class="action-btn" style="text-decoration:none;display:inline-block;">➕ 邀请注册</a>
+                            <a href="register" target="_blank" class="action-btn" style="text-decoration:none;display:inline-block;">➕ 邀请注册</a>
                         </div>
                     </div>
                     <table class="data-table">
@@ -373,7 +373,7 @@
                 tr.innerHTML = `
                     <td class="checkbox-cell"><input type="checkbox" data-id="${a.id}"></td>
                     <td>${a.id}</td>
-                    <td><a href="article.html?id=${a.id}" target="_blank" style="color:var(--sakura-pink);text-decoration:underline;">${escapeHtml(a.title)}</a></td>
+                    <td><a href="article?id=${a.id}" target="_blank" style="color:var(--sakura-pink);text-decoration:underline;">${escapeHtml(a.title)}</a></td>
                     <td>${a.category}</td>
                     <td>${a.view_count || 0}</td>
                     <td>${a.status === 'published' ? '<span style="color:var(--sakura-pink)">已发布</span>' : '<span style="color:#999">已下架</span>'}</td>
@@ -503,14 +503,14 @@
             } catch (error) { alert('删除失败：' + error.message); }
         }
         
-        // 关键修复：跳转到 editor.html
+        // 关键修复：跳转到 editor
         function showArticleEditor() {
-            window.location.href = 'editor.html';
+            window.location.href = 'editor';
         }
         
-        // 关键修复：编辑文章跳转到 editor.html?id=xxx
+        // 关键修复：编辑文章跳转到 editor?id=xxx
         function editArticle(id) {
-            window.location.href = 'editor.html?id=' + id;
+            window.location.href = 'editor?id=' + id;
         }
         
         async function loadMessages() {

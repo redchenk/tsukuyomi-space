@@ -106,10 +106,10 @@
 <body>
     <div id="sakuraContainer"></div>
     <nav>
-        <a href="hub.html" class="logo" data-i18n="space_name">月読空間</a>
+        <a href="hub" class="logo" data-i18n="space_name">月読空間</a>
         <div class="nav-right">
-            <a href="stage.html" data-i18n="nav_stage">ステージ</a>
-            <a href="hub.html" data-i18n="return">戻る</a>
+            <a href="stage" data-i18n="nav_stage">ステージ</a>
+            <a href="hub" data-i18n="return">戻る</a>
         </div>
     </nav>
     
@@ -302,7 +302,7 @@
 
             if (!token || !userStr) {
                 // 未登录，跳转到登录页面并带上重定向参数
-                window.location.href = 'login.html?redirect=editor.html';
+                window.location.href = 'login?redirect=editor';
                 return;
             }
 
@@ -377,7 +377,7 @@
                         
                         <div class="btn-group">
                             <button type="submit" class="btn btn-primary" data-i18n="btn_submit">投稿</button>
-                            <a href="stage.html" class="btn btn-secondary" data-i18n="cancel">取消</a>
+                            <a href="stage" class="btn btn-secondary" data-i18n="cancel">取消</a>
                         </div>
                     </form>
                 `;
@@ -386,7 +386,7 @@
                 document.getElementById('editorContainer').innerHTML = `
                     <div class="login-notice">
                         セッションエラー。<br><br>
-                        <a href="login.html" class="btn btn-primary">再ログイン</a>
+                        <a href="login" class="btn btn-primary">再ログイン</a>
                     </div>
                 `;
             }
@@ -540,7 +540,7 @@
                 const result = await response.json();
                 if (result.success) {
                     showSuccess(successMsg);
-                    setTimeout(() => window.location.href = articleId ? 'terminal.html' : 'stage.html', 1500);
+                    setTimeout(() => window.location.href = articleId ? 'terminal' : 'stage', 1500);
                 } else {
                     showError(result.message || result.error || '投稿失败');
                     submitBtn.disabled = false;

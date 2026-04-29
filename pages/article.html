@@ -335,10 +335,10 @@
     <div id="sakuraContainer"></div>
 
     <nav>
-        <a href="hub.html" class="logo" data-i18n="space_name">月读空间</a>
+        <a href="hub" class="logo" data-i18n="space_name">月读空间</a>
         <div class="nav-right">
-            <a href="hub.html" data-i18n="nav_hub">中枢大厅</a>
-            <a href="stage.html" data-i18n="nav_stage">主舞台</a>
+            <a href="hub" data-i18n="nav_hub">中枢大厅</a>
+            <a href="stage" data-i18n="nav_stage">主舞台</a>
             <div class="lang-switcher">
                 <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh'); return false;">中文</button>
                 <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja'); return false;">日本語</button>
@@ -347,7 +347,7 @@
     </nav>
 
     <div class="container">
-        <a href="stage.html" class="back-btn">← 返回列表</a>
+        <a href="stage" class="back-btn">← 返回列表</a>
 
         <div id="articleContainer">
             <div class="loading" data-i18n="loading">加载中...</div>
@@ -565,7 +565,7 @@
         async function submitComment() {
             if (!checkLogin()) {
                 alert('请先登录！');
-                window.location.href = 'login.html';
+                window.location.href = 'login';
                 return;
             }
             const input = document.getElementById('commentInput');
@@ -608,7 +608,7 @@
                 container.innerHTML = `
                     <div class="login-prompt">
                         <div style="margin-bottom:1rem;">🔐 登录后才能发表评论</div>
-                        <a href="login.html" class="btn-comment">去登录</a>
+                        <a href="login" class="btn-comment">去登录</a>
                     </div>
                 `;
             }
@@ -651,7 +651,7 @@
         async function likeComment(commentId) {
             if (!checkLogin()) {
                 alert('请先登录！');
-                window.location.href = 'login.html';
+                window.location.href = 'login';
                 return;
             }
             if (localStorage.getItem('liked_' + commentId) === '1') {

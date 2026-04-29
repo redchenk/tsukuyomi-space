@@ -44,7 +44,7 @@
 <body>
     <div id="sakuraContainer"></div>
     <div class="moon"></div>
-    <a href="login.html" class="back-btn">← <span data-i18n="back">返回</span></a>
+    <a href="login" class="back-btn">← <span data-i18n="back">返回</span></a>
     
     <div class="lang-switcher">
         <button class="lang-btn active" onclick="setLanguage('zh')">中文</button>
@@ -82,7 +82,7 @@
         
         <div class="links">
             <span data-i18n="have_account">已有账号？</span>
-            <a href="login.html" data-i18n="login_link">立即登录</a>
+            <a href="login" data-i18n="login_link">立即登录</a>
         </div>
     </div>
     
@@ -224,7 +224,7 @@
                     successMsg.textContent = i18n[currentLang].register_success;
                     successMsg.style.display = 'block';
                     setTimeout(() => {
-                        window.location.href = 'login.html';
+                        window.location.href = 'login';
                     }, 1500);
                 } else {
                     errorMsg.textContent = i18n[currentLang].register_failed + (result.message || '未知错误');

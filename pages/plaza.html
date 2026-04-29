@@ -89,13 +89,13 @@
 <body>
     <div id="sakuraContainer"></div>
     <nav>
-        <a href="hub.html" class="logo">月读空间</a>
+        <a href="hub" class="logo">月读空间</a>
         <div class="nav-right">
-            <a href="hub.html">中枢大厅</a>
-            <a href="stage.html">主舞台</a>
-            <a href="room.html">私人居所</a>
-            <a href="plaza.html" class="active">月读广场</a>
-            <a href="terminal.html">数据终端</a>
+            <a href="hub">中枢大厅</a>
+            <a href="stage">主舞台</a>
+            <a href="room">私人居所</a>
+            <a href="plaza" class="active">月读广场</a>
+            <a href="terminal">数据终端</a>
         </div>
     </nav>
     <div class="plaza-container">
@@ -201,7 +201,7 @@
             const div = document.createElement('div'); div.textContent = text; return div.innerHTML;
         }
         async function submitMessage() {
-            if (!checkLogin()) { alert('请先登录！'); window.location.href = 'login.html'; return; }
+            if (!checkLogin()) { alert('请先登录！'); window.location.href = 'login'; return; }
             const input = document.getElementById('messageInput'); const content = input.value.trim();
             if (!content) { alert('留言内容不能为空'); return; }
             try {
@@ -233,7 +233,7 @@
             } catch (e) { alert('网络错误'); }
         }
         async function likeMessage(msgId) {
-            if (!checkLogin()) { alert('请先登录！'); window.location.href = 'login.html'; return; }
+            if (!checkLogin()) { alert('请先登录！'); window.location.href = 'login'; return; }
             if (localStorage.getItem('liked_' + msgId) === '1') { alert('已点赞'); return; }
             try {
                 const res = await fetch('/api/messages/' + msgId + '/like', {
@@ -250,16 +250,16 @@
             const grid = document.getElementById('friendsGrid');
             const defaultFriends = [
                 { name: '月读空间官方', desc: 'プロジェクト公式サイト', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '🌙' },
-                { name: '辉夜姬博客', desc: 'かぐや姫のブログ', url: 'stage.html', avatar: '🎌' },
-                { name: '技术分享', desc: 'テクノロジー共有', url: 'hub.html', avatar: '💻' },
-                { name: '友链申请', desc: 'リンク申請', url: 'terminal.html', avatar: '🔗' }
+                { name: '辉夜姬博客', desc: 'かぐや姫のブログ', url: 'stage', avatar: '🎌' },
+                { name: '技术分享', desc: 'テクノロジー共有', url: 'hub', avatar: '💻' },
+                { name: '友链申请', desc: 'リンク申請', url: 'terminal', avatar: '🔗' }
             ];
             grid.innerHTML = defaultFriends.map(f => `<a href="${f.url}" class="friend-card"><div class="friend-avatar">${f.avatar}</div><div class="friend-info"><div class="friend-name">${f.name}</div><div class="friend-desc">${f.desc}</div></div><div class="friend-link">↗</div></a>`).join('');
         }
         document.addEventListener('DOMContentLoaded', function() {
             initSakura(); loadStats(); loadMessages(); loadFriends();
             if (!checkLogin()) {
-                document.getElementById('messageFormContainer').innerHTML = '<div class="login-prompt"><div style="margin-bottom:1rem;">🔐 登录后才能发布留言</div><a href="login.html" class="btn-submit">去登录</a></div>';
+                document.getElementById('messageFormContainer').innerHTML = '<div class="login-prompt"><div style="margin-bottom:1rem;">🔐 登录后才能发布留言</div><a href="login" class="btn-submit">去登录</a></div>';
             }
         });
     </script>

@@ -44,7 +44,7 @@
 <body>
     <div id="sakuraContainer"></div>
     <div class="moon"></div>
-    <a href="hub.html" class="back-btn">← <span data-i18n="back">返回</span></a>
+    <a href="hub" class="back-btn">← <span data-i18n="back">返回</span></a>
     
     <div class="lang-switcher">
         <button class="lang-btn active" onclick="setLanguage('zh')">中文</button>
@@ -74,7 +74,7 @@
         
         <div class="links">
             <span data-i18n="no_account">还没有账号？</span>
-            <a href="register.html" data-i18n="register_link">立即注册</a>
+            <a href="register" data-i18n="register_link">立即注册</a>
         </div>
     </div>
     
@@ -205,7 +205,7 @@
 
                     // 获取重定向 URL
                     const urlParams = new URLSearchParams(window.location.search);
-                    const redirect = urlParams.get('redirect') || 'hub.html';
+                    const redirect = urlParams.get('redirect') || 'hub';
 
                     setTimeout(() => {
                         window.location.href = redirect;

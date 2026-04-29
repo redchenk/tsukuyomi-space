@@ -56,18 +56,18 @@
 <body>
     <div id="sakuraContainer"></div>
     <nav>
-        <a href="hub.html" class="logo">月读空间</a>
+        <a href="hub" class="logo">月读空间</a>
         <div class="nav-right">
-            <a href="hub.html">中枢大厅</a>
-            <a href="stage.html">主舞台</a>
-            <a href="room.html">私人居所</a>
-            <a href="user-center.html" class="active">用户中心</a>
+            <a href="hub">中枢大厅</a>
+            <a href="stage">主舞台</a>
+            <a href="room">私人居所</a>
+            <a href="user-center" class="active">用户中心</a>
         </div>
     </nav>
     <div class="container">
         <div id="loginNotice" class="login-notice">
             ログインが必要です。<br><br>
-            <a href="login.html" class="btn">ログインページへ</a>
+            <a href="login" class="btn">ログインページへ</a>
         </div>
         <div id="userContent" style="display: none;">
             <div class="user-header">
@@ -317,7 +317,7 @@
                         </div>
                     `).join('');
                 } else {
-                    listEl.innerHTML = '<div class="empty-state">还没有投稿文章<br><a href="editor.html" class="btn" style="margin-top:1rem">投稿第一篇文章</a></div>';
+                    listEl.innerHTML = '<div class="empty-state">还没有投稿文章<br><a href="editor" class="btn" style="margin-top:1rem">投稿第一篇文章</a></div>';
                 }
             } catch (error) {
                 console.error('加载文章失败:', error);
@@ -326,7 +326,7 @@
 
         // 编辑文章
         function editArticle(id) {
-            window.location.href = 'editor.html?id=' + id;
+            window.location.href = 'editor?id=' + id;
         }
 
         // 删除文章

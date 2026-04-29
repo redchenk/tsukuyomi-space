@@ -27,6 +27,21 @@ app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 app.use('/lib', express.static(path.join(__dirname, '..', 'lib')));
 app.use('/models', express.static(path.join(__dirname, '..', 'models')));
 
+// Allow clean URLs such as /pages/hub to serve /pages/hub.html.
+app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    if (req.path.startsWith('/api') || path.extname(req.path)) return next();
+
+    const publicRoot = path.resolve(__dirname, '..');
+    const resolvedHtmlPath = path.resolve(publicRoot, '.' + req.path + '.html');
+
+    if (resolvedHtmlPath.startsWith(publicRoot + path.sep) && fs.existsSync(resolvedHtmlPath)) {
+        return res.sendFile(resolvedHtmlPath);
+    }
+
+    next();
+});
+
 // 初始化数据库
 const dbPath = path.join(__dirname, 'tsukuyomi.db');
 const db = new Database(dbPath);

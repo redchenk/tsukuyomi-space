@@ -30,9 +30,9 @@ npm start
 默认服务地址：
 
 - 网站首页：`http://localhost:3000/`
-- 中枢大厅：`http://localhost:3000/pages/hub.html`
-- 私人居所：`http://localhost:3000/pages/room.html`
-- 数据终端：`http://localhost:3000/pages/terminal.html`
+- 中枢大厅：`http://localhost:3000/pages/hub`
+- 私人居所：`http://localhost:3000/pages/room`
+- 数据终端：`http://localhost:3000/pages/terminal`
 - 健康检查：`http://localhost:3000/api/health`
 
 ## 项目结构
@@ -54,13 +54,14 @@ tsukuyomi-space/
 | 页面 | 路径 | 用途 |
 | --- | --- | --- |
 | 接入页 | `/` | 站点入口 |
-| 中枢大厅 | `/pages/hub.html` | 主导航 |
-| 主舞台 | `/pages/stage.html` | 文章列表 |
-| 文章详情 | `/pages/article.html` | 阅读文章 |
-| 编辑器 | `/pages/editor.html` | 编辑文章 |
-| 私人居所 | `/pages/room.html` | Live2D 房间与聊天 |
-| 数据终端 | `/pages/terminal.html` | 后台管理 |
-| 用户中心 | `/pages/user-center.html` | 用户资料 |
+| 中枢大厅 | `/pages/hub` | 主导航 |
+| 主舞台 | `/pages/stage` | 文章列表 |
+| KASSEN 竞技场 | `/pages/arena` | 3v3 涨粉对抗游戏 |
+| 文章详情 | `/pages/article` | 阅读文章 |
+| 编辑器 | `/pages/editor` | 编辑文章 |
+| 私人居所 | `/pages/room` | Live2D 房间与聊天 |
+| 数据终端 | `/pages/terminal` | 后台管理 |
+| 用户中心 | `/pages/user-center` | 用户资料 |
 
 ## API 概览
 
