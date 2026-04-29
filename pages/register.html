@@ -26,6 +26,9 @@
         .form-group input { width: 100%; padding: 0.9rem 1.2rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,107,157,0.3); border-radius: 10px; color: #fff; font-size: 1rem; transition: all 0.3s; }
         .form-group input:focus { outline: none; border-color: rgba(255,107,157,0.6); box-shadow: 0 0 20px rgba(255,107,157,0.2); }
         .form-group input::placeholder { color: rgba(255,183,197,0.4); }
+        .code-row { display: grid; grid-template-columns: 1fr auto; gap: 0.6rem; }
+        .code-btn { padding: 0 0.9rem; border: 1px solid rgba(255,107,157,0.45); border-radius: 10px; background: rgba(255,107,157,0.14); color: #ffb7c5; cursor: pointer; white-space: nowrap; }
+        .code-btn:disabled { opacity: 0.58; cursor: not-allowed; }
         .submit-btn { width: 100%; padding: 1rem; background: rgba(255,107,157,0.2); color: #ffb7c5; border: 1px solid rgba(255,107,157,0.5); border-radius: 10px; font-size: 1.05rem; cursor: pointer; transition: all 0.3s; font-weight: 500; letter-spacing: 0.05rem; }
         .submit-btn:hover { background: rgba(255,107,157,0.3); box-shadow: 0 0 30px rgba(255,107,157,0.3); transform: translateY(-2px); }
         .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -67,7 +70,14 @@
             </div>
             <div class="form-group">
                 <label data-i18n="email">邮箱</label>
-                <input type="email" id="email" required data-i18n-placeholder="email_placeholder" placeholder="请输入邮箱">
+                <div class="code-row">
+                    <input type="email" id="email" required data-i18n-placeholder="email_placeholder" placeholder="请输入邮箱">
+                    <button type="button" id="sendRegisterCodeBtn" class="code-btn" data-i18n="send_code">发送验证码</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label data-i18n="email_code">邮箱验证码</label>
+                <input type="text" id="emailCode" required inputmode="numeric" maxlength="6" data-i18n-placeholder="email_code_placeholder" placeholder="请输入 6 位验证码">
             </div>
             <div class="form-group">
                 <label data-i18n="password">密码</label>
@@ -97,6 +107,11 @@
                 username_placeholder: '请输入用户名',
                 email: '邮箱',
                 email_placeholder: '请输入邮箱',
+                email_code: '邮箱验证码',
+                email_code_placeholder: '请输入 6 位验证码',
+                send_code: '发送验证码',
+                code_sent: '验证码已发送，请查收邮箱',
+                code_failed: '验证码发送失败：',
                 password: '密码',
                 password_placeholder: '请输入密码',
                 confirm_password: '确认密码',
@@ -116,6 +131,11 @@
                 username_placeholder: 'ユーザー名を入力してください',
                 email: 'メールアドレス',
                 email_placeholder: 'メールアドレスを入力してください',
+                email_code: 'メール認証コード',
+                email_code_placeholder: '6桁の認証コードを入力してください',
+                send_code: 'コード送信',
+                code_sent: '認証コードを送信しました',
+                code_failed: 'コード送信失敗：',
                 password: 'パスワード',
                 password_placeholder: 'パスワードを入力してください',
                 confirm_password: 'パスワード（確認）',
@@ -166,6 +186,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const savedLang = localStorage.getItem('lang') || 'zh';
             setLanguage(savedLang);
+            document.getElementById('sendRegisterCodeBtn').addEventListener('click', sendRegisterCode);
             initSakura();
         });
         
@@ -192,11 +213,61 @@
             }
             animate();
         }
+
+        function setMessage(type, text) {
+            const errorMsg = document.getElementById('errorMessage');
+            const successMsg = document.getElementById('successMessage');
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            const target = type === 'success' ? successMsg : errorMsg;
+            target.textContent = text;
+            target.style.display = 'block';
+        }
+
+        async function sendRegisterCode() {
+            const email = document.getElementById('email').value.trim();
+            const button = document.getElementById('sendRegisterCodeBtn');
+            if (!email) {
+                setMessage('error', i18n[currentLang].code_failed + i18n[currentLang].email_placeholder);
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const res = await fetch('/api/auth/email-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, purpose: 'register' })
+                });
+                const result = await res.json();
+                if (!result.success) throw new Error(result.message || '未知错误');
+                setMessage('success', i18n[currentLang].code_sent);
+                startCodeCountdown(button);
+            } catch (error) {
+                button.disabled = false;
+                setMessage('error', i18n[currentLang].code_failed + error.message);
+            }
+        }
+
+        function startCodeCountdown(button) {
+            let seconds = 60;
+            const label = i18n[currentLang].send_code;
+            button.textContent = `${seconds}s`;
+            const timer = setInterval(() => {
+                seconds -= 1;
+                button.textContent = seconds > 0 ? `${seconds}s` : label;
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    button.disabled = false;
+                }
+            }, 1000);
+        }
         
         async function handleRegister(e) {
             e.preventDefault();
             const username = document.getElementById('username').value.trim();
             const email = document.getElementById('email').value.trim();
+            const emailCode = document.getElementById('emailCode').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             const errorMsg = document.getElementById('errorMessage');
@@ -216,7 +287,7 @@
                 const res = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password })
+                    body: JSON.stringify({ username, email, password, emailCode })
                 });
                 
                 const result = await res.json();

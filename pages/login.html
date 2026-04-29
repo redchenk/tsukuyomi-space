@@ -26,6 +26,13 @@
         .form-group input { width: 100%; padding: 0.9rem 1.2rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,107,157,0.3); border-radius: 10px; color: #fff; font-size: 1rem; transition: all 0.3s; }
         .form-group input:focus { outline: none; border-color: rgba(255,107,157,0.6); box-shadow: 0 0 20px rgba(255,107,157,0.2); }
         .form-group input::placeholder { color: rgba(255,183,197,0.4); }
+        .login-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.2rem; }
+        .mode-btn, .code-btn { border: 1px solid rgba(255,107,157,0.36); border-radius: 10px; background: rgba(255,255,255,0.05); color: rgba(255,183,197,0.78); cursor: pointer; }
+        .mode-btn { padding: 0.72rem; }
+        .mode-btn.active { background: rgba(255,107,157,0.24); color: #ffb7c5; border-color: rgba(255,107,157,0.58); }
+        .code-row { display: grid; grid-template-columns: 1fr auto; gap: 0.6rem; }
+        .code-btn { padding: 0 0.9rem; white-space: nowrap; }
+        .code-btn:disabled { opacity: 0.58; cursor: not-allowed; }
         .submit-btn { width: 100%; padding: 1rem; background: rgba(255,107,157,0.2); color: #ffb7c5; border: 1px solid rgba(255,107,157,0.5); border-radius: 10px; font-size: 1.05rem; cursor: pointer; transition: all 0.3s; font-weight: 500; letter-spacing: 0.05rem; }
         .submit-btn:hover { background: rgba(255,107,157,0.3); box-shadow: 0 0 30px rgba(255,107,157,0.3); transform: translateY(-2px); }
         .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -61,13 +68,24 @@
         <div id="successMessage" class="success-message"></div>
         
         <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="login-mode">
+                <button type="button" class="mode-btn active" id="passwordModeBtn" data-i18n="password_mode">密码登录</button>
+                <button type="button" class="mode-btn" id="codeModeBtn" data-i18n="code_mode">验证码登录</button>
+            </div>
             <div class="form-group">
                 <label data-i18n="username">用户名</label>
                 <input type="text" id="username" required data-i18n-placeholder="username_placeholder" placeholder="请输入用户名">
             </div>
-            <div class="form-group">
+            <div class="form-group" id="passwordGroup">
                 <label data-i18n="password">密码</label>
                 <input type="password" id="password" required data-i18n-placeholder="password_placeholder" placeholder="请输入密码">
+            </div>
+            <div class="form-group" id="codeGroup" style="display:none;">
+                <label data-i18n="email_code">邮箱验证码</label>
+                <div class="code-row">
+                    <input type="text" id="emailCode" inputmode="numeric" maxlength="6" data-i18n-placeholder="email_code_placeholder" placeholder="请输入 6 位验证码">
+                    <button type="button" id="sendLoginCodeBtn" class="code-btn" data-i18n="send_code">发送验证码</button>
+                </div>
             </div>
             <button type="submit" class="submit-btn" data-i18n="login_btn">登录</button>
         </form>
@@ -86,9 +104,17 @@
                 login_title: '登录',
                 login_subtitle: '月读空间欢迎您',
                 username: '用户名',
-                username_placeholder: '请输入用户名',
+                username_placeholder: '请输入用户名或邮箱',
+                username_placeholder_code: '请输入已注册邮箱',
                 password: '密码',
                 password_placeholder: '请输入密码',
+                password_mode: '密码登录',
+                code_mode: '验证码登录',
+                email_code: '邮箱验证码',
+                email_code_placeholder: '请输入 6 位验证码',
+                send_code: '发送验证码',
+                code_sent: '验证码已发送，请查收邮箱',
+                code_failed: '验证码发送失败：',
                 login_btn: '登录',
                 no_account: '还没有账号？',
                 register_link: '立即注册',
@@ -100,9 +126,17 @@
                 login_title: 'ログイン',
                 login_subtitle: '月読空間にようこそ',
                 username: 'ユーザー名',
-                username_placeholder: 'ユーザー名を入力してください',
+                username_placeholder: 'ユーザー名またはメールを入力してください',
+                username_placeholder_code: '登録済みメールを入力してください',
                 password: 'パスワード',
                 password_placeholder: 'パスワードを入力してください',
+                password_mode: 'パスワード',
+                code_mode: '認証コード',
+                email_code: 'メール認証コード',
+                email_code_placeholder: '6桁の認証コードを入力してください',
+                send_code: 'コード送信',
+                code_sent: '認証コードを送信しました',
+                code_failed: 'コード送信失敗：',
                 login_btn: 'ログイン',
                 no_account: 'アカウントをお持ちでないですか？',
                 register_link: '今すぐ登録',
@@ -112,6 +146,7 @@
         };
         
         let currentLang = 'zh';
+        let loginMethod = 'password';
         
         // 设置语言
         function setLanguage(lang) {
@@ -139,6 +174,7 @@
                     el.placeholder = i18n[lang][key];
                 }
             });
+            updateLoginMode(false);
             
             // 更新页面 lang 属性
             document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'ja';
@@ -148,6 +184,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             const savedLang = localStorage.getItem('lang') || 'zh';
             setLanguage(savedLang);
+            document.getElementById('passwordModeBtn').addEventListener('click', () => setLoginMode('password'));
+            document.getElementById('codeModeBtn').addEventListener('click', () => setLoginMode('code'));
+            document.getElementById('sendLoginCodeBtn').addEventListener('click', sendLoginCode);
             initSakura();
         });
         
@@ -174,11 +213,81 @@
             }
             animate();
         }
+
+        function setMessage(type, text) {
+            const errorMsg = document.getElementById('errorMessage');
+            const successMsg = document.getElementById('successMessage');
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            const target = type === 'success' ? successMsg : errorMsg;
+            target.textContent = text;
+            target.style.display = 'block';
+        }
+
+        function setLoginMode(method) {
+            loginMethod = method;
+            updateLoginMode(true);
+        }
+
+        function updateLoginMode(clearMessages) {
+            const isCode = loginMethod === 'code';
+            document.getElementById('passwordModeBtn')?.classList.toggle('active', !isCode);
+            document.getElementById('codeModeBtn')?.classList.toggle('active', isCode);
+            document.getElementById('passwordGroup').style.display = isCode ? 'none' : 'block';
+            document.getElementById('codeGroup').style.display = isCode ? 'block' : 'none';
+            document.getElementById('password').required = !isCode;
+            document.getElementById('emailCode').required = isCode;
+            document.getElementById('username').placeholder = isCode ? i18n[currentLang].username_placeholder_code : i18n[currentLang].username_placeholder;
+            if (clearMessages) {
+                document.getElementById('errorMessage').style.display = 'none';
+                document.getElementById('successMessage').style.display = 'none';
+            }
+        }
+
+        async function sendLoginCode() {
+            const email = document.getElementById('username').value.trim();
+            const button = document.getElementById('sendLoginCodeBtn');
+            if (!email) {
+                setMessage('error', i18n[currentLang].code_failed + i18n[currentLang].username_placeholder_code);
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const res = await fetch('/api/auth/email-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, purpose: 'login' })
+                });
+                const result = await res.json();
+                if (!result.success) throw new Error(result.message || '未知错误');
+                setMessage('success', i18n[currentLang].code_sent);
+                startCodeCountdown(button);
+            } catch (error) {
+                button.disabled = false;
+                setMessage('error', i18n[currentLang].code_failed + error.message);
+            }
+        }
+
+        function startCodeCountdown(button) {
+            let seconds = 60;
+            const label = i18n[currentLang].send_code;
+            button.textContent = `${seconds}s`;
+            const timer = setInterval(() => {
+                seconds -= 1;
+                button.textContent = seconds > 0 ? `${seconds}s` : label;
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    button.disabled = false;
+                }
+            }, 1000);
+        }
         
         async function handleLogin(e) {
             e.preventDefault();
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
+            const emailCode = document.getElementById('emailCode').value.trim();
             const errorMsg = document.getElementById('errorMessage');
             const successMsg = document.getElementById('successMessage');
             
@@ -189,7 +298,7 @@
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, password, emailCode, loginMethod })
                 });
 
                 const result = await res.json();

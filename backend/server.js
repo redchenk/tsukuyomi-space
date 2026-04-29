@@ -6,6 +6,8 @@ const Database = require('better-sqlite3');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
+const tls = require('tls');
+const crypto = require('crypto');
 
 // 引入统一认证中间件
 const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
@@ -13,6 +15,16 @@ const { authenticateToken, requireAdmin, generateToken } = require('./middleware
 const app = express();
 const PORT = 3000;
 const JWT_SECRET = 'tsukuyomi_space_secret_key_2024_change_in_production';
+const SMTP_CONFIG = {
+    host: process.env.SMTP_HOST || 'smtp.qq.com',
+    port: Number(process.env.SMTP_PORT || 465),
+    secure: (process.env.SMTP_SECURE || 'ssl').toLowerCase() !== 'false',
+    user: process.env.SMTP_USER || '2189561615@qq.com',
+    pass: process.env.SMTP_PASS || '',
+    fromName: process.env.SMTP_FROM_NAME || '月读空间'
+};
+const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
+const EMAIL_CODE_COOLDOWN_MS = 60 * 1000;
 
 // 中间件
 app.use(cors());
@@ -66,6 +78,16 @@ db.exec(`
         avatar TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS email_verification_codes (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        code_hash TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        used_at INTEGER,
+        created_at INTEGER NOT NULL
     );
     
     -- 文章表
@@ -254,14 +276,182 @@ app.get('/api/articles/:id', (req, res) => {
 
 // ===== 用户认证 API =====
 
+function normalizeEmail(email) {
+    return String(email || '').trim().toLowerCase();
+}
+
+function isEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function encodeMimeWord(text) {
+    return `=?UTF-8?B?${Buffer.from(text, 'utf8').toString('base64')}?=`;
+}
+
+function escapeMailText(text) {
+    return String(text || '').replace(/\r?\n/g, '\r\n').replace(/^\./gm, '..');
+}
+
+function createSmtpClient() {
+    const socket = tls.connect({
+        host: SMTP_CONFIG.host,
+        port: SMTP_CONFIG.port,
+        servername: SMTP_CONFIG.host,
+        rejectUnauthorized: true
+    });
+    socket.setEncoding('utf8');
+
+    let buffer = '';
+    const pending = [];
+
+    socket.on('data', (chunk) => {
+        buffer += chunk;
+        let index;
+        while ((index = buffer.indexOf('\n')) >= 0) {
+            const line = buffer.slice(0, index + 1).replace(/\r?\n$/, '');
+            buffer = buffer.slice(index + 1);
+            const waiter = pending[0];
+            if (waiter) waiter.lines.push(line);
+            if (/^\d{3} /.test(line) && waiter) {
+                pending.shift();
+                const code = Number(line.slice(0, 3));
+                if (waiter.expected.includes(code)) {
+                    waiter.resolve(waiter.lines.join('\n'));
+                } else {
+                    waiter.reject(new Error(`SMTP ${code}: ${waiter.lines.join('\n')}`));
+                }
+            }
+        }
+    });
+
+    const read = (expected) => new Promise((resolve, reject) => {
+        pending.push({ expected, lines: [], resolve, reject });
+    });
+
+    const write = async (line, expected = [250]) => {
+        socket.write(`${line}\r\n`);
+        return read(expected);
+    };
+
+    return { socket, read, write };
+}
+
+async function sendVerificationEmail(email, code, purpose) {
+    if (!SMTP_CONFIG.user || !SMTP_CONFIG.pass) {
+        throw new Error('SMTP credentials are not configured');
+    }
+
+    const client = createSmtpClient();
+    const title = purpose === 'login' ? '登录验证码' : '注册验证码';
+    const subject = `月读空间${title}`;
+    const text = [
+        `你的月读空间${title}是：${code}`,
+        '',
+        `验证码将在 ${Math.floor(EMAIL_CODE_TTL_MS / 60000)} 分钟后失效。`,
+        '如果不是你本人操作，请忽略这封邮件。'
+    ].join('\r\n');
+    const message = [
+        `From: ${encodeMimeWord(SMTP_CONFIG.fromName)} <${SMTP_CONFIG.user}>`,
+        `To: <${email}>`,
+        `Subject: ${encodeMimeWord(subject)}`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        escapeMailText(text)
+    ].join('\r\n');
+
+    try {
+        await client.read([220]);
+        await client.write(`EHLO ${SMTP_CONFIG.host}`, [250]);
+        await client.write('AUTH LOGIN', [334]);
+        await client.write(Buffer.from(SMTP_CONFIG.user).toString('base64'), [334]);
+        await client.write(Buffer.from(SMTP_CONFIG.pass).toString('base64'), [235]);
+        await client.write(`MAIL FROM:<${SMTP_CONFIG.user}>`, [250]);
+        await client.write(`RCPT TO:<${email}>`, [250, 251]);
+        await client.write('DATA', [354]);
+        client.socket.write(`${message}\r\n.\r\n`);
+        await client.read([250]);
+        await client.write('QUIT', [221]);
+    } finally {
+        client.socket.end();
+    }
+}
+
+function latestCode(email, purpose) {
+    return db.prepare(`
+        SELECT * FROM email_verification_codes
+        WHERE email = ? AND purpose = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+    `).get(email, purpose);
+}
+
+function consumeVerificationCode(email, purpose, code) {
+    const row = latestCode(email, purpose);
+    const now = Date.now();
+    if (!row || row.used_at || row.expires_at < now) return false;
+    if (!bcrypt.compareSync(String(code || '').trim(), row.code_hash)) return false;
+    db.prepare('UPDATE email_verification_codes SET used_at = ? WHERE id = ?').run(now, row.id);
+    return true;
+}
+
+function issueTokenForUser(user) {
+    return generateToken({ id: user.id, username: user.username, role: user.role }, '7d');
+}
+
+// 发送邮箱验证码
+app.post('/api/auth/email-code', async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body.email);
+        const purpose = req.body.purpose === 'login' ? 'login' : 'register';
+
+        if (!isEmail(email)) {
+            return res.status(400).json({ success: false, message: '请输入有效邮箱' });
+        }
+
+        const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+        if (purpose === 'register' && existingUser) {
+            return res.status(400).json({ success: false, message: '该邮箱已被注册' });
+        }
+        if (purpose === 'login' && !existingUser) {
+            return res.status(404).json({ success: false, message: '该邮箱尚未注册' });
+        }
+
+        const last = latestCode(email, purpose);
+        const now = Date.now();
+        if (last && now - last.created_at < EMAIL_CODE_COOLDOWN_MS) {
+            const wait = Math.ceil((EMAIL_CODE_COOLDOWN_MS - (now - last.created_at)) / 1000);
+            return res.status(429).json({ success: false, message: `请 ${wait} 秒后再发送验证码` });
+        }
+
+        const code = crypto.randomInt(100000, 999999).toString();
+        db.prepare(`
+            INSERT INTO email_verification_codes (id, email, code_hash, purpose, expires_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(uuidv4(), email, bcrypt.hashSync(code, 10), purpose, now + EMAIL_CODE_TTL_MS, now);
+
+        await sendVerificationEmail(email, code, purpose);
+        res.json({ success: true, message: '验证码已发送，请查收邮箱' });
+    } catch (error) {
+        console.error('发送邮箱验证码失败:', error);
+        res.status(500).json({ success: false, message: '验证码发送失败，请稍后重试' });
+    }
+});
+
 // 用户注册
 app.post('/api/auth/register', (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const { username, password, emailCode } = req.body;
+        const email = normalizeEmail(req.body.email);
 
         // 验证输入
-        if (!username || !email || !password) {
+        if (!username || !email || !password || !emailCode) {
             return res.status(400).json({ success: false, message: '请填写所有必填字段' });
+        }
+
+        if (!isEmail(email)) {
+            return res.status(400).json({ success: false, message: '请输入有效邮箱' });
         }
 
         if (password.length < 6) {
@@ -272,6 +462,10 @@ app.post('/api/auth/register', (req, res) => {
         const existingUser = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email);
         if (existingUser) {
             return res.status(400).json({ success: false, message: '用户名或邮箱已被注册' });
+        }
+
+        if (!consumeVerificationCode(email, 'register', emailCode)) {
+            return res.status(400).json({ success: false, message: '邮箱验证码无效或已过期' });
         }
 
         // 创建用户
@@ -303,10 +497,11 @@ app.post('/api/auth/register', (req, res) => {
 // 用户登录
 app.post('/api/auth/login', (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, emailCode } = req.body;
+        const loginMethod = req.body.loginMethod === 'code' ? 'code' : 'password';
 
-        if (!username || !password) {
-            return res.status(400).json({ success: false, message: '请填写用户名和密码' });
+        if (!username) {
+            return res.status(400).json({ success: false, message: '请填写账号信息' });
         }
 
         // 查找用户
@@ -316,15 +511,25 @@ app.post('/api/auth/login', (req, res) => {
             return res.status(401).json({ success: false, message: '用户名或密码错误' });
         }
 
-        // 验证密码
-        const validPassword = bcrypt.compareSync(password, user.password_hash);
-
-        if (!validPassword) {
-            return res.status(401).json({ success: false, message: '用户名或密码错误' });
+        if (loginMethod === 'code') {
+            if (!emailCode) {
+                return res.status(400).json({ success: false, message: '请填写邮箱验证码' });
+            }
+            if (!consumeVerificationCode(normalizeEmail(user.email), 'login', emailCode)) {
+                return res.status(401).json({ success: false, message: '邮箱验证码无效或已过期' });
+            }
+        } else {
+            if (!password) {
+                return res.status(400).json({ success: false, message: '请填写密码' });
+            }
+            const validPassword = bcrypt.compareSync(password, user.password_hash);
+            if (!validPassword) {
+                return res.status(401).json({ success: false, message: '用户名或密码错误' });
+            }
         }
 
         // 生成 JWT (使用统一的 generateToken)
-        const token = generateToken({ id: user.id, username: user.username, role: user.role }, '7d');
+        const token = issueTokenForUser(user);
 
         res.json({
             success: true,
