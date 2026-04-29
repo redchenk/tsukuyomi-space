@@ -60,6 +60,7 @@ tsukuyomi-space/
 | 文章详情 | `/pages/article` | 阅读文章 |
 | 编辑器 | `/pages/editor` | 编辑文章 |
 | 私人居所 | `/pages/room` | Live2D 房间与聊天 |
+| 现实锚点 | `/pages/reality` | 联系方式、隐私声明与站点边界 |
 | 数据终端 | `/pages/terminal` | 后台管理 |
 | 用户中心 | `/pages/user-center` | 用户资料 |
 
