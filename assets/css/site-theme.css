@@ -90,6 +90,7 @@ nav .nav-right {
     justify-content: flex-end !important;
     gap: 0.42rem !important;
     flex-wrap: wrap !important;
+    min-width: 0 !important;
 }
 
 nav a,
@@ -102,6 +103,7 @@ nav .nav-right a {
     border-radius: var(--tsuki-radius) !important;
     transition: background 0.2s, color 0.2s, border-color 0.2s !important;
     -webkit-text-fill-color: currentColor !important;
+    white-space: nowrap !important;
 }
 
 nav a:hover,
@@ -265,6 +267,11 @@ h1 {
 
     nav .nav-right {
         gap: 0.2rem !important;
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        max-width: 100% !important;
+        padding-bottom: 0.15rem !important;
     }
 
     nav a,
