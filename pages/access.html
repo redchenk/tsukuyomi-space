@@ -56,7 +56,7 @@
             z-index: 1;
         }
         
-        /* 樱花层 */
+        /* 游鱼层 */
         #sakuraContainer {
             position: fixed;
             top: 0;
@@ -66,13 +66,6 @@
             pointer-events: none;
             z-index: 2;
         }
-        .sakura {
-            position: absolute;
-            background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%);
-            border-radius: 50% 0 50% 0;
-            will-change: transform, opacity;
-        }
-        
         /* 主容器 */
         .container {
             position: relative;
@@ -223,6 +216,7 @@
     </style>
     <link rel="stylesheet" href="../assets/css/site-theme.css">
     <script defer src="../assets/js/site-nav.js"></script>
+    <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body class="access-page">
     <!-- 视频背景 -->
@@ -233,7 +227,7 @@
     <!-- 渐变遮罩 -->
     <div class="video-overlay"></div>
     
-    <!-- 樱花层 -->
+    <!-- 游鱼层 -->
     <div id="sakuraContainer"></div>
     
     <!-- 主内容 -->
@@ -269,60 +263,12 @@
             document.body.classList.add('no-video');
         });
         
-        // 樱花背景
-        const sakuraContainer = document.getElementById('sakuraContainer');
-        const sakuras = [];
+        // 游鱼背景
+        document.addEventListener('DOMContentLoaded', () => {
+            window.initTsukuyomiAmbientFish({ containerId: 'sakuraContainer' });
+        });
         
-        function createSakura() {
-            const el = document.createElement('div');
-            el.className = 'sakura';
-            const size = Math.random() * 6 + 5;
-            el.style.width = size + 'px';
-            el.style.height = size + 'px';
-            el.style.left = (Math.random() * 100) + '%';
-            sakuraContainer.appendChild(el);
-            return {
-                el: el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50,
-                vy: Math.random() * 0.4 + 0.3,
-                angle: Math.random() * Math.PI * 2,
-                angleSpeed: Math.random() * 0.015 + 0.008,
-                swayRadius: Math.random() * 15 + 8,
-                rot: Math.random() * 360,
-                rotSpeed: (Math.random() - 0.5) * 0.8,
-                flip: Math.random() > 0.5 ? 1 : -1,
-                opacity: Math.random() * 0.2 + 0.75
-            };
-        }
-        
-        for (let i = 0; i < 35; i++) {
-            const s = createSakura();
-            s.y = Math.random() * window.innerHeight;
-            sakuras.push(s);
-        }
-        
-        function animate() {
-            sakuras.forEach(s => {
-                s.y += s.vy;
-                s.angle += s.angleSpeed;
-                s.x = Math.sin(s.angle) * s.swayRadius * s.flip;
-                s.rot += s.rotSpeed;
-                let alpha = s.opacity;
-                if (s.y < 50) alpha = s.opacity * (s.y / 50);
-                else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50);
-                s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`;
-                s.el.style.opacity = alpha;
-                if (s.y > window.innerHeight + 30) {
-                    s.y = -30 - Math.random() * 50;
-                    s.x = 0;
-                    s.angle = Math.random() * Math.PI * 2;
-                    s.flip = Math.random() > 0.5 ? 1 : -1;
-                }
-            });
-            requestAnimationFrame(animate);
-        }
-        animate();
-        
-        // 加载进度条
+        // 加载进度
         function startAccess() {
             const overlay = document.getElementById('vrOverlay');
             const progressEl = document.getElementById('loadingProgress');

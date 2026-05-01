@@ -29,7 +29,7 @@
             overflow-x: hidden;
         }
         
-        /* 樱花背景容器 */
+        /* 游鱼背景容器 */
         #sakuraContainer {
             position: fixed;
             top: 0;
@@ -39,13 +39,6 @@
             pointer-events: none;
             z-index: 0;
         }
-        .sakura {
-            position: absolute;
-            background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%);
-            border-radius: 50% 0 50% 0;
-            will-change: transform, opacity;
-        }
-        
         /* 导航栏 */
         nav {
             position: fixed;
@@ -304,9 +297,10 @@
     </style>
     <link rel="stylesheet" href="../assets/css/site-theme.css">
     <script defer src="../assets/js/site-nav.js"></script>
+    <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body>
-    <!-- 樱花背景容器 -->
+    <!-- 游鱼背景容器 -->
     <div id="sakuraContainer"></div>
     
     <nav>
@@ -375,8 +369,8 @@
             <a href="reality" class="scene-item">
                 <div class="scene-icon">🌍</div>
                 <div class="scene-content">
-                    <div class="scene-name">リアル</div>
-                    <div class="scene-desc">連絡先</div>
+                    <div class="scene-name" data-i18n="scene_reality">リアルワールド</div>
+                    <div class="scene-desc" data-i18n="scene_reality_desc">連絡先</div>
                 </div>
                 <div class="scene-arrow">→</div>
             </a>
@@ -419,66 +413,9 @@
             window.location.reload();
         }
         
-        // 樱花背景动画
+        // 游鱼背景动画
         function initSakura() {
-            const sakuraContainer = document.getElementById('sakuraContainer');
-            const sakuras = [];
-            
-            function createSakura() {
-                const el = document.createElement('div');
-                el.className = 'sakura';
-                const size = Math.random() * 6 + 5;
-                el.style.width = size + 'px';
-                el.style.height = size + 'px';
-                el.style.left = (Math.random() * 100) + '%';
-                sakuraContainer.appendChild(el);
-                return {
-                    el: el,
-                    x: 0,
-                    y: -Math.random() * window.innerHeight * 0.5 - 50,
-                    vy: Math.random() * 0.4 + 0.3,
-                    angle: Math.random() * Math.PI * 2,
-                    angleSpeed: Math.random() * 0.015 + 0.008,
-                    swayRadius: Math.random() * 15 + 8,
-                    rot: Math.random() * 360,
-                    rotSpeed: (Math.random() - 0.5) * 0.8,
-                    flip: Math.random() > 0.5 ? 1 : -1,
-                    opacity: Math.random() * 0.2 + 0.75
-                };
-            }
-            
-            // 创建 50 片樱花
-            for (let i = 0; i < 50; i++) {
-                const s = createSakura();
-                s.y = Math.random() * window.innerHeight;
-                sakuras.push(s);
-            }
-            
-            function animate() {
-                sakuras.forEach(s => {
-                    s.y += s.vy;
-                    s.angle += s.angleSpeed;
-                    s.x = Math.sin(s.angle) * s.swayRadius * s.flip;
-                    s.rot += s.rotSpeed;
-                    
-                    let alpha = s.opacity;
-                    if (s.y < 50) alpha = s.opacity * (s.y / 50);
-                    else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50);
-                    
-                    s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`;
-                    s.el.style.opacity = alpha;
-                    
-                    if (s.y > window.innerHeight + 30) {
-                        s.y = -30 - Math.random() * 50;
-                        s.x = 0;
-                        s.angle = Math.random() * Math.PI * 2;
-                        s.flip = Math.random() > 0.5 ? 1 : -1;
-                    }
-                });
-                requestAnimationFrame(animate);
-            }
-            
-            animate();
+            window.initTsukuyomiAmbientFish({ containerId: 'sakuraContainer' });
         }
         
         // 竹枝彩蛋
