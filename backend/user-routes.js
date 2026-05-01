@@ -2,16 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const Database = require('better-sqlite3');
-const fs = require('fs');
-const config = require('./config');
+const db = require('./db');
 
 const { authenticateToken } = require('./middleware/auth');
 
 // 鍒濆鍖栨暟鎹簱
-const dbPath = config.dbPath;
-const db = new Database(dbPath);
-
 // bio 瀛楁杩佺Щ
 try {
     db.exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''");

@@ -1,11 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const Database = require('better-sqlite3');
+const fs = require('fs');
+const path = require('path');
 const config = require('./config');
+const db = require('./db');
 const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
 
 const router = express.Router();
-const db = new Database(config.dbPath);
 
 function initAdminTables() {
     db.exec(`
@@ -125,6 +126,27 @@ router.post('/login', (req, res) => {
 
 router.use(authenticateToken);
 router.use(requireAdmin);
+
+router.post('/upload-room', (req, res) => {
+    try {
+        if (!config.enableUploadRoom) {
+            return fail(res, 404, 'upload-room endpoint is disabled');
+        }
+
+        const { content } = req.body || {};
+        if (!content) {
+            return fail(res, 400, '缺少文件内容');
+        }
+
+        const targetPath = config.uploadRoomPath;
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+        fs.writeFileSync(targetPath, content, 'utf8');
+        ok(res, null, '操作成功');
+    } catch (error) {
+        console.error('Upload room.html error:', error);
+        fail(res, 500, '服务器错误：' + error.message);
+    }
+});
 
 router.get('/me', (req, res) => {
     ok(res, {

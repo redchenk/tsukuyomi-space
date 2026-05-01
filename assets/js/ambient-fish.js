@@ -6,7 +6,8 @@
         containerId: 'sakuraContainer',
         toggleId: null,
         density: null,
-        enabled: true
+        enabled: true,
+        pauseOnScroll: true
     };
     const COLORS = ['#68f6ff', '#ff6fd8', '#fff36a', '#ffb36b', '#8dffcc', '#8fb7ff'];
 
@@ -25,16 +26,18 @@
         const style = document.createElement('style');
         style.id = STYLE_ID;
         style.textContent = [
-            '.tsukuyomi-ambient-fish { overflow: hidden; }',
+            '.tsukuyomi-ambient-fish { overflow: hidden; contain: layout paint size; isolation: isolate; transform: translateZ(0); backface-visibility: hidden; }',
             '.tsukuyomi-ambient-fish-glow, .tsukuyomi-ambient-fish-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }',
             '.tsukuyomi-ambient-fish-glow {',
             '  background:',
             '    radial-gradient(circle at 45% 45%, rgba(80, 160, 255, 0.12), transparent 32%),',
             '    radial-gradient(circle at 70% 70%, rgba(255, 120, 220, 0.08), transparent 28%);',
             '  opacity: 0.85;',
+            '  transform: translate3d(0, 0, 0);',
+            '  will-change: opacity, transform;',
             '  transition: opacity 0.3s ease;',
             '}',
-            '.tsukuyomi-ambient-fish-canvas { display: block; opacity: 0.92; transition: opacity 0.72s ease; }',
+            '.tsukuyomi-ambient-fish-canvas { display: block; opacity: 0.92; transform: translate3d(0, 0, 0); backface-visibility: hidden; will-change: transform; }',
             '.tsukuyomi-ambient-fish:not(.is-primed) .tsukuyomi-ambient-fish-glow,',
             '.tsukuyomi-ambient-fish:not(.is-primed) .tsukuyomi-ambient-fish-canvas { opacity: 0; }',
             '.tsukuyomi-ambient-fish.is-disabled .tsukuyomi-ambient-fish-glow,',
@@ -225,12 +228,15 @@
             this.lastTime = 0;
             this.animationId = 0;
             this.resizeTimer = 0;
+            this.scrollTimer = 0;
             this.fishes = [];
             this.particles = [];
             this.primed = false;
+            this.scrolling = false;
             this.boundAnimate = (time) => this.animate(time);
             this.boundVisibility = () => this.onVisibilityChange();
             this.boundResize = () => this.onResize();
+            this.boundScroll = () => this.onScroll();
             this.boundReducedMotion = () => this.onReducedMotionChange();
             this.boundToggleChange = null;
             this.toggle = null;
@@ -260,6 +266,7 @@
 
             document.addEventListener('visibilitychange', this.boundVisibility);
             window.addEventListener('resize', this.boundResize, { passive: true });
+            window.addEventListener('scroll', this.boundScroll, { passive: true });
 
             if (window.matchMedia) {
                 this.motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -344,6 +351,8 @@
 
         animate(time) {
             this.animationId = window.requestAnimationFrame(this.boundAnimate);
+            if (this.scrolling) return;
+
             const elapsed = time - this.lastTime;
             if (elapsed < this.frameInterval) return;
 
@@ -380,7 +389,7 @@
         }
 
         start() {
-            if (!this.ctx || this.animationId || !this.enabled || this.reducedMotion || document.hidden) return;
+            if (!this.ctx || this.animationId || !this.enabled || this.reducedMotion || document.hidden || this.scrolling) return;
             this.lastTime = performance.now();
             this.animationId = window.requestAnimationFrame(this.boundAnimate);
             this.container.classList.remove('is-disabled');
@@ -420,12 +429,32 @@
         onResize() {
             window.clearTimeout(this.resizeTimer);
             this.resizeTimer = window.setTimeout(() => {
+                const previousWidth = this.width;
+                const previousHeight = this.height;
                 this.resize();
+
+                // Mobile browser chrome can fire many height-only resize events while scrolling.
+                // Keeping the existing fish field avoids a visible clear/rebuild flash.
+                const heightOnlyJitter = previousWidth === this.width && Math.abs(previousHeight - this.height) <= 96;
+                if (this.scrolling && heightOnlyJitter) return;
+
                 this.rebuild();
                 if (this.enabled && !this.reducedMotion && !document.hidden) {
                     this.start();
                 } else {
                     this.clear();
+                }
+            }, 140);
+        }
+
+        onScroll() {
+            if (!this.options.pauseOnScroll) return;
+            this.scrolling = true;
+            window.clearTimeout(this.scrollTimer);
+            this.scrollTimer = window.setTimeout(() => {
+                this.scrolling = false;
+                if (this.enabled && !this.reducedMotion && !document.hidden) {
+                    this.start();
                 }
             }, 140);
         }
@@ -438,8 +467,10 @@
         destroy() {
             this.stop();
             window.clearTimeout(this.resizeTimer);
+            window.clearTimeout(this.scrollTimer);
             document.removeEventListener('visibilitychange', this.boundVisibility);
             window.removeEventListener('resize', this.boundResize);
+            window.removeEventListener('scroll', this.boundScroll);
             if (this.motionQuery) {
                 if (this.motionQuery.removeEventListener) {
                     this.motionQuery.removeEventListener('change', this.boundReducedMotion);
