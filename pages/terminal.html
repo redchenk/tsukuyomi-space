@@ -3,695 +3,862 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex,nofollow">
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/icon-32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
     <link rel="manifest" href="/site.webmanifest">
     <meta name="theme-color" content="#7edbe8">
-    <title>数据终端 | 月读空间 - 管理后台</title>
+    <title>数据终端 | 月读空间</title>
     <style>
-        :root { --sakura-pink: #ffb7c5; --deep-pink: #ff6b9d; --dark-purple: #1a1025; --night-blue: #0f1724; --terminal-bg: rgba(26, 16, 37, 0.95); }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { min-height: 100vh; background: linear-gradient(180deg, var(--dark-purple) 0%, var(--night-blue) 100%); font-family: 'JetBrains Mono', monospace; color: var(--sakura-pink); overflow-x: hidden; }
-        #sakuraContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
-        .sakura { position: absolute; background: linear-gradient(135deg, var(--sakura-pink) 0%, var(--deep-pink) 100%); border-radius: 50% 0 50% 0; opacity: 0.6; }
-        .login-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 1000; background: rgba(10, 10, 10, 0.9); }
-        .login-box { background: var(--terminal-bg); border: 2px solid var(--sakura-pink); border-radius: 15px; padding: 3rem; width: 100%; max-width: 450px; box-shadow: 0 0 30px rgba(255, 183, 197, 0.3); backdrop-filter: blur(10px); }
-        .login-header { text-align: center; margin-bottom: 2.5rem; }
-        .login-title { font-size: 1.8rem; background: linear-gradient(135deg, var(--sakura-pink), var(--deep-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
-        .login-subtitle { color: var(--sakura-pink); font-size: 0.85rem; opacity: 0.7; }
-        .form-group { margin-bottom: 1.5rem; }
-        .form-group label { display: block; color: var(--sakura-pink); margin-bottom: 0.5rem; }
-        .form-group input { width: 100%; padding: 0.9rem 1.2rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 183, 197, 0.3); border-radius: 8px; color: var(--sakura-pink); font-size: 1rem; }
-        .form-group input:focus { outline: none; border-color: var(--sakura-pink); box-shadow: 0 0 20px rgba(255, 183, 197, 0.3); }
-        .login-btn { width: 100%; padding: 1rem; background: rgba(255, 183, 197, 0.2); border: 2px solid var(--sakura-pink); border-radius: 8px; color: var(--sakura-pink); font-size: 1rem; cursor: pointer; transition: all 0.3s; }
-        .login-btn:hover { background: rgba(255, 183, 197, 0.3); box-shadow: 0 0 25px rgba(255, 183, 197, 0.4); }
-        .terminal-container { display: none; position: relative; z-index: 10; min-height: 100vh; padding: 2rem; }
-        .terminal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; background: var(--terminal-bg); border: 2px solid rgba(255, 183, 197, 0.3); border-radius: 15px; margin-bottom: 2rem; }
-        .terminal-title { font-size: 1.3rem; background: linear-gradient(135deg, var(--sakura-pink), var(--deep-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .terminal-status { display: flex; align-items: center; gap: 0.5rem; }
-        .status-dot { width: 10px; height: 10px; background: var(--sakura-pink); border-radius: 50%; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .main-content { display: grid; grid-template-columns: 280px 1fr; gap: 2rem; }
-        .sidebar { background: var(--terminal-bg); border: 2px solid rgba(255, 183, 197, 0.3); border-radius: 15px; padding: 1.5rem; height: fit-content; }
-        .nav-menu { display: flex; flex-direction: column; gap: 0.5rem; }
-        .nav-item { padding: 1rem 1.2rem; background: rgba(255, 255, 255, 0.03); border: 1px solid transparent; border-radius: 10px; color: var(--sakura-pink); cursor: pointer; transition: all 0.3s; }
-        .nav-item:hover, .nav-item.active { background: rgba(255, 183, 197, 0.1); border-color: var(--sakura-pink); transform: translateX(5px); }
-        .content-area { background: var(--terminal-bg); border: 2px solid rgba(255, 183, 197, 0.3); border-radius: 15px; padding: 2rem; min-height: 600px; }
-        .panel { display: none; }
-        .panel.active { display: block; }
-        .panel-title { font-size: 1.5rem; background: linear-gradient(135deg, var(--sakura-pink), var(--deep-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(255, 183, 197, 0.3); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-        .stat-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 183, 197, 0.3); border-radius: 12px; padding: 2rem; text-align: center; }
-        .stat-card:hover { background: rgba(255, 183, 197, 0.05); border-color: var(--sakura-pink); transform: translateY(-5px); }
-        .stat-value { font-size: 2.5rem; background: linear-gradient(135deg, var(--sakura-pink), var(--deep-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
-        .stat-label { color: var(--sakura-pink); font-size: 0.9rem; opacity: 0.7; margin-top: 0.5rem; }
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 1rem; background: rgba(255, 255, 255, 0.03); border-radius: 10px; }
-        .batch-actions { display: flex; gap: 0.5rem; }
-        .batch-actions.hidden { display: none; }
-        .action-btn { padding: 0.6rem 1.2rem; background: rgba(255, 183, 197, 0.2); border: 1px solid var(--sakura-pink); border-radius: 8px; color: var(--sakura-pink); cursor: pointer; transition: all 0.3s; }
-        .action-btn:hover { background: rgba(255, 183, 197, 0.3); box-shadow: 0 0 15px rgba(255, 183, 197, 0.3); }
-        .action-btn.danger { background: rgba(255, 100, 100, 0.2); border-color: #ff6464; color: #ff6464; }
-        .action-btn.danger:hover { background: rgba(255, 100, 100, 0.3); }
-        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .data-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-        .data-table th, .data-table td { padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255, 183, 197, 0.15); }
-        .data-table th { color: var(--deep-pink); font-weight: 700; }
-        .data-table tr:hover { background: rgba(255, 183, 197, 0.05); }
-        .checkbox-cell { width: 50px; text-align: center; }
-        .checkbox-cell input, .data-table input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--sakura-pink); }
-        .pagination { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 2rem; padding: 1rem; }
-        .pagination button { padding: 0.5rem 1rem; background: rgba(255, 183, 197, 0.2); border: 1px solid var(--sakura-pink); border-radius: 8px; color: var(--sakura-pink); cursor: pointer; }
-        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .pagination span { color: var(--sakura-pink); }
-        .message { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; }
-        .message.success { background: rgba(100, 255, 150, 0.1); border: 1px solid rgba(100, 255, 150, 0.3); color: #6bff9e; }
-        .message.error { background: rgba(255, 100, 100, 0.1); border: 1px solid rgba(255, 100, 100, 0.3); color: #ff6b6b; }
-        @media (max-width: 768px) { .main-content { grid-template-columns: 1fr; } .sidebar { margin-bottom: 1rem; } }
+        :root {
+            --terminal-bg: rgba(11, 12, 18, 0.88);
+            --terminal-panel: rgba(20, 18, 30, 0.84);
+            --terminal-line: rgba(126, 219, 232, 0.24);
+            --terminal-line-hot: rgba(255, 183, 197, 0.42);
+            --terminal-text: rgba(245, 250, 255, 0.92);
+            --terminal-muted: rgba(220, 235, 244, 0.62);
+            --terminal-cyan: #7edbe8;
+            --terminal-pink: #ffb7c5;
+            --terminal-danger: #ff6b7a;
+            --terminal-ok: #8ff0b1;
+            --terminal-warn: #f5d76e;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            color: var(--terminal-text);
+            font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+            background:
+                linear-gradient(180deg, rgba(5, 9, 18, 0.74), rgba(13, 10, 24, 0.96)),
+                url("../assets/images/tsukuyomi-bg.png") center / cover fixed;
+        }
+
+        button, input, textarea {
+            font: inherit;
+        }
+
+        .shell {
+            min-height: 100vh;
+            padding: 24px;
+            background:
+                linear-gradient(rgba(126, 219, 232, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(126, 219, 232, 0.025) 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+
+        .auth-screen {
+            min-height: calc(100vh - 48px);
+            display: grid;
+            place-items: center;
+        }
+
+        .auth-card {
+            width: min(440px, 100%);
+            padding: 28px;
+            border: 1px solid var(--terminal-line-hot);
+            border-radius: 8px;
+            background: var(--terminal-bg);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+            backdrop-filter: blur(14px);
+        }
+
+        .auth-title {
+            margin: 0 0 6px;
+            font-size: 1.45rem;
+            color: var(--terminal-cyan);
+        }
+
+        .auth-subtitle {
+            margin: 0 0 24px;
+            color: var(--terminal-muted);
+            font-size: 0.92rem;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        label {
+            color: var(--terminal-muted);
+            font-size: 0.88rem;
+        }
+
+        input, textarea {
+            width: 100%;
+            border: 1px solid var(--terminal-line);
+            border-radius: 6px;
+            padding: 11px 12px;
+            color: var(--terminal-text);
+            background: rgba(255, 255, 255, 0.055);
+            outline: none;
+        }
+
+        input:focus, textarea:focus {
+            border-color: var(--terminal-cyan);
+            box-shadow: 0 0 0 3px rgba(126, 219, 232, 0.12);
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .app {
+            display: none;
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 18px;
+            padding: 16px 18px;
+            border: 1px solid var(--terminal-line);
+            border-radius: 8px;
+            background: var(--terminal-bg);
+            backdrop-filter: blur(12px);
+        }
+
+        .brand {
+            display: grid;
+            gap: 4px;
+        }
+
+        .brand strong {
+            color: var(--terminal-cyan);
+            font-size: 1.1rem;
+        }
+
+        .brand span, .session {
+            color: var(--terminal-muted);
+            font-size: 0.85rem;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 230px minmax(0, 1fr);
+            gap: 18px;
+        }
+
+        .sidebar, .panel {
+            border: 1px solid var(--terminal-line);
+            border-radius: 8px;
+            background: var(--terminal-bg);
+            backdrop-filter: blur(12px);
+        }
+
+        .sidebar {
+            padding: 12px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .nav-btn {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            padding: 11px 12px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--terminal-text);
+            background: transparent;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            border-color: var(--terminal-line-hot);
+            background: rgba(255, 183, 197, 0.09);
+        }
+
+        .panel {
+            display: none;
+            min-height: 640px;
+            padding: 18px;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .panel-head, .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .panel-title {
+            margin: 0;
+            color: var(--terminal-pink);
+            font-size: 1.25rem;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .card {
+            padding: 18px;
+            border: 1px solid var(--terminal-line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.045);
+        }
+
+        .card strong {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--terminal-muted);
+            font-size: 0.88rem;
+            font-weight: 500;
+        }
+
+        .card span {
+            color: var(--terminal-cyan);
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            border: 1px solid var(--terminal-line);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 780px;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(126, 219, 232, 0.12);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            color: var(--terminal-cyan);
+            font-size: 0.86rem;
+            font-weight: 600;
+            background: rgba(126, 219, 232, 0.055);
+        }
+
+        tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .muted {
+            color: var(--terminal-muted);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 2px 8px;
+            border: 1px solid var(--terminal-line);
+            border-radius: 999px;
+            color: var(--terminal-muted);
+            font-size: 0.78rem;
+        }
+
+        .badge.ok { color: var(--terminal-ok); border-color: rgba(143, 240, 177, 0.42); }
+        .badge.warn { color: var(--terminal-warn); border-color: rgba(245, 215, 110, 0.42); }
+        .badge.hot { color: var(--terminal-pink); border-color: var(--terminal-line-hot); }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .btn {
+            border: 1px solid var(--terminal-line);
+            border-radius: 6px;
+            padding: 9px 12px;
+            color: var(--terminal-text);
+            background: rgba(255, 255, 255, 0.055);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            border-color: var(--terminal-cyan);
+            background: rgba(126, 219, 232, 0.12);
+        }
+
+        .btn.primary {
+            border-color: rgba(126, 219, 232, 0.52);
+            color: var(--terminal-cyan);
+        }
+
+        .btn.danger {
+            border-color: rgba(255, 107, 122, 0.52);
+            color: var(--terminal-danger);
+        }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .message {
+            display: none;
+            margin-bottom: 14px;
+            padding: 11px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--terminal-line);
+            background: rgba(255, 255, 255, 0.055);
+        }
+
+        .message.show { display: block; }
+        .message.error { color: var(--terminal-danger); border-color: rgba(255, 107, 122, 0.46); }
+        .message.success { color: var(--terminal-ok); border-color: rgba(143, 240, 177, 0.46); }
+
+        .empty {
+            padding: 32px;
+            color: var(--terminal-muted);
+            text-align: center;
+        }
+
+        .settings-grid {
+            display: grid;
+            gap: 16px;
+            max-width: 760px;
+        }
+
+        .check-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            color: var(--terminal-muted);
+        }
+
+        .check-row input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--terminal-cyan);
+        }
+
+        @media (max-width: 1000px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { position: static; }
+            .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 640px) {
+            .shell { padding: 12px; }
+            .topbar, .panel-head, .toolbar { align-items: flex-start; flex-direction: column; }
+            .cards { grid-template-columns: 1fr; }
+        }
     </style>
-    <link rel="stylesheet" href="../assets/css/site-theme.css">
-    <script defer src="../assets/js/site-nav.js"></script>
 </head>
 <body>
-    <div id="sakuraContainer"></div>
-    
-    <div class="login-container" id="loginContainer">
-        <div class="login-box">
-            <div class="login-header">
-                <h1 class="login-title">🌙 月读空间</h1>
-                <p class="login-subtitle">TSUKUYOMI SPACE - ADMIN TERMINAL</p>
-            </div>
-            <form id="loginForm" onsubmit="handleLogin(event)">
-                <div class="form-group"><label>用户名</label><input type="text" id="username" required placeholder="请输入用户名"></div>
-                <div class="form-group"><label>密码</label><input type="password" id="password" required placeholder="请输入密码"></div>
-                <button type="submit" class="login-btn">🌸 连接系统</button>
+    <main class="shell">
+        <section class="auth-screen" id="authScreen">
+            <form class="auth-card" id="loginForm" autocomplete="off">
+                <h1 class="auth-title">数据终端</h1>
+                <p class="auth-subtitle">仅管理员可访问。所有操作都会通过服务端权限校验。</p>
+                <div class="message" id="loginMessage"></div>
+                <div class="field">
+                    <label for="username">管理员账号</label>
+                    <input id="username" name="username" autocomplete="username" required>
+                </div>
+                <div class="field">
+                    <label for="password">管理员密码</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required>
+                </div>
+                <button class="btn primary" type="submit" id="loginButton">连接终端</button>
             </form>
-            <div id="loginMessage" class="message" style="margin-top: 1rem;"></div>
-        </div>
-    </div>
-    
-    <div class="terminal-container" id="terminalContainer">
-        <div class="terminal-header">
-            <div class="terminal-title">🌙 月读空间管理系统 v2.0.0</div>
-            <div class="terminal-status"><div class="status-dot"></div><span>系统在线</span><span id="currentTime" style="margin-left: 1rem;"></span></div>
-        </div>
-        
-        <div class="main-content">
-            <div class="sidebar">
-                <div class="nav-menu">
-                    <div class="nav-item active" onclick="showPanel('dashboard')">📊 仪表盘</div>
-                    <div class="nav-item" onclick="showPanel('articles')">📝 文章管理</div>
-                    <div class="nav-item" onclick="showPanel('messages')">💬 留言审核</div>
-                    <div class="nav-item" onclick="showPanel('links')">🔗 友链管理</div>
-                    <div class="nav-item" onclick="showPanel('analytics')">📈 数据统计</div>
-                    <div class="nav-item" onclick="showPanel('users')">👥 用户管理</div>
-                    <div class="nav-item" onclick="showPanel('settings')">⚙️ 系统配置</div>
-                    <div class="nav-item" onclick="handleLogout()" style="margin-top: 2rem; border-color: #ff6464; color: #ff6464;">🚪 断开连接</div>
-                </div>
-            </div>
-            
-            <div class="content-area">
-                <div class="panel active" id="dashboard">
-                    <h2 class="panel-title">📊 系统概览</h2>
-                    <div class="stats-grid">
-                        <div class="stat-card"><div class="stat-value" id="totalArticles">0</div><div class="stat-label">文章总数</div></div>
-                        <div class="stat-card"><div class="stat-value" id="totalMessages">0</div><div class="stat-label">待审核留言</div></div>
-                        <div class="stat-card"><div class="stat-value" id="todayViews">0</div><div class="stat-label">今日访问</div></div>
-                        <div class="stat-card"><div class="stat-value" id="totalViews">0</div><div class="stat-label">总访问量</div></div>
-                    </div>
-                </div>
-                
-                <div class="panel" id="articles">
-                    <h2 class="panel-title">📝 文章管理</h2>
-                    <div id="articleMessage" class="message"></div>
-                    <div class="toolbar">
-                        <div>
-                            <button class="action-btn" onclick="showArticleEditor()">➕ 新建文章</button>
-                            <button class="action-btn" onclick="loadArticles()">🔄 刷新</button>
-                        </div>
-                        <div class="batch-actions hidden" id="batchActions">
-                            <span style="color: var(--sakura-pink); margin-right: 1rem;" id="selectedCount">已选择 0 篇</span>
-                            <button class="action-btn danger" onclick="batchDeleteArticles()">🗑️ 批量删除</button>
-                            <button class="action-btn" onclick="selectAll()">全选</button>
-                            <button class="action-btn" onclick="deselectAll()">取消全选</button>
-                        </div>
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th class="checkbox-cell"><input type="checkbox" id="selectAllCheckbox"></th>
-                                <th>ID</th>
-                                <th>标题</th>
-                                <th>分类</th>
-                                <th>阅读量</th>
-                                <th>状态</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="articlesTable"></tbody>
-                    </table>
-                    <div class="pagination" id="pagination"></div>
-                </div>
-                
-                <div class="panel" id="messages">
-                    <h2 class="panel-title">💬 留言审核</h2>
-                    <div id="messageMessage" class="message"></div>
-                    <table class="data-table">
-                        <thead><tr><th>用户</th><th>内容</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>
-                        <tbody id="messagesTable"></tbody>
-                    </table>
-                </div>
-                
-                <div class="panel" id="links">
-                    <h2 class="panel-title">🔗 友链管理</h2>
-                    <div id="linkMessage" class="message"></div>
-                    <table class="data-table">
-                        <thead><tr><th>网站名称</th><th>URL</th><th>状态</th><th>操作</th></tr></thead>
-                        <tbody id="linksTable"></tbody>
-                    </table>
-                </div>
-                
-                <div class="panel" id="analytics">
-                    <h2 class="panel-title">📈 访问统计</h2>
-                    <div class="stats-grid">
-                        <div class="stat-card"><div class="stat-value" id="analyticsToday">0</div><div class="stat-label">今日访问</div></div>
-                        <div class="stat-card"><div class="stat-value" id="analyticsWeek">0</div><div class="stat-label">本周访问</div></div>
-                        <div class="stat-card"><div class="stat-value" id="analyticsMonth">0</div><div class="stat-label">本月访问</div></div>
-                        <div class="stat-card"><div class="stat-value" id="analyticsTotal">0</div><div class="stat-label">总访问</div></div>
-                    </div>
-                </div>
-                
-                <div class="panel" id="settings">
-                    <h2 class="panel-title">⚙️ 系统配置</h2>
-                    <div id="settingsMessage" class="message"></div>
-                    <form class="editor-form" onsubmit="saveSettings(event)">
-                        <div class="form-group"><label>网站标题</label><input type="text" id="siteTitle" placeholder="月读空间"></div>
-                        <div class="form-group"><label>公告内容</label><textarea id="siteAnnouncement" placeholder="欢迎访问月读空间" style="min-height:100px;width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,183,197,0.3);border-radius:8px;color:var(--sakura-pink);padding:1rem;"></textarea></div>
-                        <div class="form-group"><label><input type="checkbox" id="sakuraEffect" checked style="margin-right:0.5rem;"> 启用樱花特效</label></div>
-                        <div class="form-group"><label><input type="checkbox" id="scanlineEffect" checked style="margin-right:0.5rem;"> 启用扫描线特效</label></div>
-                        <button type="submit" class="action-btn" style="margin-top:1rem;">💾 保存配置</button>
-                    </form>
-                </div>
+        </section>
 
-                <div class="panel" id="users">
-                    <h2 class="panel-title">👥 用户管理</h2>
-                    <div id="userMessage" class="message"></div>
-                    <div class="toolbar">
-                        <div>
-                            <button class="action-btn" onclick="loadUsers()">🔄 刷新</button>
-                            <a href="register" target="_blank" class="action-btn" style="text-decoration:none;display:inline-block;">➕ 邀请注册</a>
+        <section class="app" id="app">
+            <header class="topbar">
+                <div class="brand">
+                    <strong>月读空间管理系统</strong>
+                    <span id="clock">--</span>
+                </div>
+                <div class="btn-row">
+                    <span class="session" id="sessionInfo">未连接</span>
+                    <a class="btn" href="hub">返回大厅</a>
+                    <button class="btn danger" type="button" id="logoutButton">断开连接</button>
+                </div>
+            </header>
+
+            <div class="layout">
+                <aside class="sidebar" aria-label="管理导航">
+                    <button class="nav-btn active" type="button" data-panel="dashboard">概览 <span>01</span></button>
+                    <button class="nav-btn" type="button" data-panel="articles">文章 <span>02</span></button>
+                    <button class="nav-btn" type="button" data-panel="messages">留言 <span>03</span></button>
+                    <button class="nav-btn" type="button" data-panel="users">用户 <span>04</span></button>
+                    <button class="nav-btn" type="button" data-panel="links">友链 <span>05</span></button>
+                    <button class="nav-btn" type="button" data-panel="analytics">统计 <span>06</span></button>
+                    <button class="nav-btn" type="button" data-panel="settings">配置 <span>07</span></button>
+                </aside>
+
+                <div>
+                    <section class="panel active" id="dashboard">
+                        <div class="panel-head">
+                            <h2 class="panel-title">系统概览</h2>
+                            <button class="btn" type="button" data-refresh="dashboard">刷新</button>
                         </div>
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>用户名</th>
-                                <th>邮箱</th>
-                                <th>角色</th>
-                                <th>注册时间</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usersTable"></tbody>
-                    </table>
+                        <div class="cards">
+                            <div class="card"><strong>文章总数</strong><span id="statArticles">0</span></div>
+                            <div class="card"><strong>待审留言</strong><span id="statMessages">0</span></div>
+                            <div class="card"><strong>今日访问</strong><span id="statToday">0</span></div>
+                            <div class="card"><strong>用户总数</strong><span id="statUsers">0</span></div>
+                        </div>
+                    </section>
+
+                    <section class="panel" id="articles">
+                        <div class="panel-head">
+                            <h2 class="panel-title">文章管理</h2>
+                            <div class="btn-row">
+                                <a class="btn primary" href="editor">新建文章</a>
+                                <button class="btn" type="button" data-refresh="articles">刷新</button>
+                            </div>
+                        </div>
+                        <div class="message" id="articleMessage"></div>
+                        <div class="table-wrap"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead><tbody id="articlesBody"></tbody></table></div>
+                    </section>
+
+                    <section class="panel" id="messages">
+                        <div class="panel-head">
+                            <h2 class="panel-title">留言审核</h2>
+                            <button class="btn" type="button" data-refresh="messages">刷新</button>
+                        </div>
+                        <div class="message" id="messageMessage"></div>
+                        <div class="table-wrap"><table><thead><tr><th>作者</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody id="messagesBody"></tbody></table></div>
+                    </section>
+
+                    <section class="panel" id="users">
+                        <div class="panel-head">
+                            <h2 class="panel-title">用户管理</h2>
+                            <button class="btn" type="button" data-refresh="users">刷新</button>
+                        </div>
+                        <div class="message" id="userMessage"></div>
+                        <div class="table-wrap"><table><thead><tr><th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>操作</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+                    </section>
+
+                    <section class="panel" id="links">
+                        <div class="panel-head">
+                            <h2 class="panel-title">友链管理</h2>
+                            <button class="btn" type="button" data-refresh="links">刷新</button>
+                        </div>
+                        <div class="message" id="linkMessage"></div>
+                        <form class="toolbar" id="linkForm">
+                            <input id="linkName" placeholder="站点名称" required>
+                            <input id="linkUrl" placeholder="https://example.com" required>
+                            <button class="btn primary" type="submit">添加友链</button>
+                        </form>
+                        <div class="table-wrap"><table><thead><tr><th>名称</th><th>URL</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody id="linksBody"></tbody></table></div>
+                    </section>
+
+                    <section class="panel" id="analytics">
+                        <div class="panel-head">
+                            <h2 class="panel-title">访问统计</h2>
+                            <button class="btn" type="button" data-refresh="analytics">刷新</button>
+                        </div>
+                        <div class="cards">
+                            <div class="card"><strong>今日访问</strong><span id="analyticsToday">0</span></div>
+                            <div class="card"><strong>7 日访问</strong><span id="analyticsWeek">0</span></div>
+                            <div class="card"><strong>30 日访问</strong><span id="analyticsMonth">0</span></div>
+                            <div class="card"><strong>总访问</strong><span id="analyticsTotal">0</span></div>
+                        </div>
+                    </section>
+
+                    <section class="panel" id="settings">
+                        <div class="panel-head">
+                            <h2 class="panel-title">系统配置</h2>
+                            <button class="btn" type="button" data-refresh="settings">刷新</button>
+                        </div>
+                        <div class="message" id="settingsMessage"></div>
+                        <form class="settings-grid" id="settingsForm">
+                            <div class="field">
+                                <label for="siteTitle">站点标题</label>
+                                <input id="siteTitle" name="siteTitle">
+                            </div>
+                            <div class="field">
+                                <label for="siteAnnouncement">公告内容</label>
+                                <textarea id="siteAnnouncement" name="siteAnnouncement"></textarea>
+                            </div>
+                            <label class="check-row"><input id="sakuraEffect" name="sakuraEffect" type="checkbox"> 启用樱花效果</label>
+                            <label class="check-row"><input id="scanlineEffect" name="scanlineEffect" type="checkbox"> 启用扫描线效果</label>
+                            <div><button class="btn primary" type="submit">保存配置</button></div>
+                        </form>
+                    </section>
                 </div>
             </div>
-        </div>
-    </div>
-    
+        </section>
+    </main>
+
     <script>
-        const API_BASE = '/api';
-        let authToken = null;
-        let selectedArticles = new Set();
-        let currentPage = 1;
-        const pageSize = 50;
-        let allArticles = [];
-        let totalPages = 1;
-        
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('[DEBUG] DOMContentLoaded');
-            updateTime();
-            setInterval(updateTime, 1000);
-            initSakura();
-            checkAuth();
-        });
-        
-        function updateTime() { 
-            const el = document.getElementById('currentTime');
-            if (el) el.textContent = new Date().toLocaleString('zh-CN'); 
+        const API_BASE = '/api/admin';
+        const state = {
+            token: localStorage.getItem('admin_token') || '',
+            admin: null,
+            activePanel: 'dashboard'
+        };
+
+        const loaders = {
+            dashboard: loadDashboard,
+            articles: loadArticles,
+            messages: loadMessages,
+            users: loadUsers,
+            links: loadLinks,
+            analytics: loadAnalytics,
+            settings: loadSettings
+        };
+
+        const $ = id => document.getElementById(id);
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value == null ? '' : String(value);
+            return div.innerHTML;
         }
-        
-        function initSakura() {
-            const container = document.getElementById('sakuraContainer');
-            if (!container) return;
-            const sakuras = [];
-            for (let i = 0; i < 30; i++) {
-                const el = document.createElement('div');
-                el.className = 'sakura';
-                const size = Math.random() * 6 + 5;
-                el.style.width = size + 'px';
-                el.style.height = size + 'px';
-                el.style.left = (Math.random() * 100) + '%';
-                container.appendChild(el);
-                sakuras.push({ el, x: 0, y: -Math.random() * window.innerHeight, vy: Math.random() * 0.4 + 0.3 });
+
+        function formatDate(value) {
+            if (!value) return '未记录';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN');
+        }
+
+        function showMessage(id, text, type = 'success') {
+            const el = $(id);
+            if (!el) return;
+            el.textContent = text;
+            el.className = `message show ${type}`;
+            if (type === 'success') setTimeout(() => el.classList.remove('show'), 2600);
+        }
+
+        function setAuthView(authed) {
+            $('authScreen').style.display = authed ? 'none' : 'grid';
+            $('app').style.display = authed ? 'block' : 'none';
+        }
+
+        async function api(path, options = {}) {
+            const headers = new Headers(options.headers || {});
+            if (!(options.body instanceof FormData) && options.body !== undefined) {
+                headers.set('Content-Type', 'application/json');
             }
-            function animate() {
-                sakuras.forEach(s => {
-                    s.y += s.vy;
-                    if (s.y > window.innerHeight) s.y = -50;
-                    s.el.style.transform = `translate(${s.x}px, ${s.y}px)`;
-                });
-                requestAnimationFrame(animate);
+            if (state.token) headers.set('Authorization', `Bearer ${state.token}`);
+
+            const response = await fetch(API_BASE + path, { ...options, headers });
+            const contentType = response.headers.get('content-type') || '';
+            const raw = await response.text();
+            const result = contentType.includes('application/json') && raw
+                ? JSON.parse(raw)
+                : { success: false, message: raw || `HTTP ${response.status}` };
+
+            if (response.status === 401 || response.status === 403) {
+                logout(false);
+                throw new Error(result.message || '管理员会话已失效');
             }
-            animate();
-        }
-        
-        function checkAuth() {
-            const token = localStorage.getItem('admin_token');
-            if (token) { authToken = token; showTerminal(); loadDashboard(); }
-        }
-        
-        async function handleLogin(e) {
-            e.preventDefault();
-            const msgEl = document.getElementById('loginMessage');
-            msgEl.style.display = 'block';
-            msgEl.className = 'message';
-            msgEl.textContent = '🌸 正在验证...';
-            try {
-                const res = await fetch(API_BASE + '/admin/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: document.getElementById('username').value, password: document.getElementById('password').value })
-                });
-                const result = await res.json();
-                if (result.success) {
-                    authToken = result.data.token;
-                    const adminUser = { username: document.getElementById('username').value, role: 'admin' };
-                    localStorage.setItem('admin_token', authToken);
-                    localStorage.setItem('admin_user', JSON.stringify(adminUser));
-                    msgEl.className = 'message success';
-                    msgEl.textContent = '🌸 登录成功！';
-                    setTimeout(() => { showTerminal(); loadDashboard(); }, 1000);
-                } else {
-                    msgEl.className = 'message error';
-                    msgEl.textContent = '❌ ' + result.message;
-                }
-            } catch (error) {
-                msgEl.className = 'message error';
-                msgEl.textContent = '❌ 连接错误：' + error.message;
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || `HTTP ${response.status}`);
             }
+            return result.data;
         }
-        
-        function showTerminal() {
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('terminalContainer').style.display = 'block';
-        }
-        
-        function handleLogout() {
-            localStorage.removeItem('admin_token');
-            location.reload();
-        }
-        
-        function showPanel(panelId) {
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(panelId).classList.add('active');
-            if (event && event.target) event.target.classList.add('active');
-            if (panelId === 'articles') { currentPage = 1; selectedArticles.clear(); loadArticles(); }
-            if (panelId === 'messages') loadMessages();
-            if (panelId === 'links') loadLinks();
-            if (panelId === 'analytics') loadAnalytics();
-            if (panelId === 'settings') loadSettings();
-            if (panelId === 'users') loadUsers();
-        }
-        
-        async function loadDashboard() {
-            try {
-                const res = await fetch(API_BASE + '/admin/stats', { headers: { 'Authorization': 'Bearer ' + authToken } });
-                const result = await res.json();
-                if (result.success) {
-                    document.getElementById('totalArticles').textContent = result.data.articles || 0;
-                    document.getElementById('totalMessages').textContent = result.data.pendingMessages || 0;
-                    document.getElementById('todayViews').textContent = result.data.todayViews || 0;
-                    document.getElementById('totalViews').textContent = result.data.totalViews || 0;
-                }
-            } catch (error) { console.error('Dashboard error:', error); }
-        }
-        
-        async function loadArticles() {
-            console.log('[DEBUG] loadArticles');
-            selectedArticles.clear();
-            updateBatchActions();
-            
-            try {
-                const res = await fetch(API_BASE + '/admin/articles', { headers: { 'Authorization': 'Bearer ' + authToken } });
-                const result = await res.json();
-                console.log('[DEBUG] articles result:', result);
-                if (result.success && result.data) {
-                    allArticles = result.data;
-                    totalPages = Math.ceil(allArticles.length / pageSize);
-                    renderPage(1);
-                }
-            } catch (error) { console.error('Load articles error:', error); }
-        }
-        
-        function renderPage(page) {
-            console.log('[DEBUG] renderPage:', page);
-            currentPage = page;
-            const start = (page - 1) * pageSize;
-            const end = Math.min(start + pageSize, allArticles.length);
-            const pageArticles = allArticles.slice(start, end);
-            
-            const tbody = document.getElementById('articlesTable');
-            if (!tbody) {
-                console.error('[DEBUG] tbody not found');
+
+        async function verifySession() {
+            if (!state.token) {
+                setAuthView(false);
                 return;
             }
-            
-            // 清空 tbody
-            tbody.innerHTML = '';
-            
-            // 逐行添加
-            pageArticles.forEach(a => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="checkbox-cell"><input type="checkbox" data-id="${a.id}"></td>
-                    <td>${a.id}</td>
-                    <td><a href="article?id=${a.id}" target="_blank" style="color:var(--sakura-pink);text-decoration:underline;">${escapeHtml(a.title)}</a></td>
-                    <td>${a.category}</td>
-                    <td>${a.view_count || 0}</td>
-                    <td>${a.status === 'published' ? '<span style="color:var(--sakura-pink)">已发布</span>' : '<span style="color:#999">已下架</span>'}</td>
-                    <td>
-                        <button class="action-btn" onclick="editArticle(${a.id})">编辑</button>
-                        <button class="action-btn danger" onclick="deleteArticle(${a.id})">删除</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-            
-            console.log('[DEBUG] 渲染完成，行数:', pageArticles.length);
-            
-            // 关键修复：绑定全选事件
-            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-            if (selectAllCheckbox) {
-                selectAllCheckbox.checked = false;
-                // 移除旧事件
-                selectAllCheckbox.removeEventListener('change', handleSelectAll);
-                // 绑定新事件
-                selectAllCheckbox.addEventListener('change', handleSelectAll);
-                console.log('[DEBUG] 全选事件已绑定');
-            }
-            
-            renderPagination();
-            updateBatchActions();
-        }
-        
-        // 全选处理函数
-        function handleSelectAll() {
-            const checkbox = document.getElementById('selectAllCheckbox');
-            if (!checkbox) return;
-            
-            const checked = checkbox.checked;
-            console.log('[DEBUG] handleSelectAll:', checked);
-            
-            // 关键修复：正确的选择器，不需要 tbody
-            const checkboxes = document.querySelectorAll('#articlesTable tr input[type="checkbox"]');
-            console.log('[DEBUG] 复选框数量:', checkboxes.length);
-            
-            checkboxes.forEach(cb => {
-                cb.checked = checked;
-                if (checked) {
-                    selectedArticles.add(parseInt(cb.dataset.id));
-                } else {
-                    selectedArticles.delete(parseInt(cb.dataset.id));
-                }
-            });
-            
-            console.log('[DEBUG] selectedArticles:', selectedArticles);
-            updateBatchActions();
-        }
-        
-        function renderPagination() {
-            const pagination = document.getElementById('pagination');
-            if (!pagination) return;
-            pagination.innerHTML = `
-                <button onclick="changePage(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>
-                <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
-                <span>第 ${currentPage} / ${totalPages} 页（共 ${allArticles.length} 篇）</span>
-                <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>
-                <button onclick="changePage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>末页</button>
-            `;
-        }
-        
-        function changePage(page) {
-            if (page >= 1 && page <= totalPages) {
-                renderPage(page);
-            }
-        }
-        
-        function updateBatchActions() {
-            const batchActions = document.getElementById('batchActions');
-            const selectedCount = document.getElementById('selectedCount');
-            if (!batchActions || !selectedCount) return;
-            
-            if (selectedArticles.size > 0) {
-                batchActions.classList.remove('hidden');
-                selectedCount.textContent = `已选择 ${selectedArticles.size} 篇`;
-            } else {
-                batchActions.classList.add('hidden');
-            }
-        }
-        
-        function selectAll() {
-            console.log('[DEBUG] selectAll');
-            const checkboxes = document.querySelectorAll('#articlesTable tr input[type="checkbox"]');
-            console.log('[DEBUG] selectAll 复选框数量:', checkboxes.length);
-            checkboxes.forEach(cb => {
-                cb.checked = true;
-                selectedArticles.add(parseInt(cb.dataset.id));
-            });
-            updateBatchActions();
-        }
-        
-        function deselectAll() {
-            const checkboxes = document.querySelectorAll('#articlesTable tr input[type="checkbox"]');
-            checkboxes.forEach(cb => cb.checked = false);
-            selectedArticles.clear();
-            updateBatchActions();
-        }
-        
-        async function batchDeleteArticles() {
-            if (selectedArticles.size === 0) return;
-            if (!confirm(`确定要删除选中的 ${selectedArticles.size} 篇文章吗？`)) return;
-            const msgEl = document.getElementById('articleMessage');
-            msgEl.style.display = 'block';
             try {
-                for (const id of selectedArticles) {
-                    await fetch(API_BASE + '/admin/articles/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + authToken } });
-                }
-                msgEl.className = 'message success';
-                msgEl.textContent = `🌸 成功删除 ${selectedArticles.size} 篇文章`;
-                selectedArticles.clear();
-                loadArticles();
+                state.admin = await api('/me');
+                $('sessionInfo').textContent = `${state.admin.username} · ${state.admin.role}`;
+                setAuthView(true);
+                await loadDashboard();
             } catch (error) {
-                msgEl.className = 'message error';
-                msgEl.textContent = '❌ 删除失败：' + error.message;
-            }
-        }
-        
-        async function deleteArticle(id) {
-            if (!confirm('确定要删除这篇文章吗？')) return;
-            try {
-                await fetch(API_BASE + '/admin/articles/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + authToken } });
-                loadArticles();
-            } catch (error) { alert('删除失败：' + error.message); }
-        }
-        
-        // 关键修复：跳转到 editor
-        function showArticleEditor() {
-            window.location.href = 'editor';
-        }
-        
-        // 关键修复：编辑文章跳转到 editor?id=xxx
-        function editArticle(id) {
-            window.location.href = 'editor?id=' + id;
-        }
-        
-        async function loadMessages() {
-            try {
-                const res = await fetch(API_BASE + '/admin/messages', { headers: { 'Authorization': 'Bearer ' + authToken } });
-                const result = await res.json();
-                const tbody = document.getElementById('messagesTable');
-                if (result.success && result.data) {
-                    tbody.innerHTML = result.data.map(m => `
-                        <tr>
-                            <td>${m.username || '匿名'}</td>
-                            <td>${escapeHtml(m.content)}</td>
-                            <td>${new Date(m.created_at).toLocaleString('zh-CN')}</td>
-                            <td>${m.status === 'approved' ? '<span style="color:var(--sakura-pink)">已通过</span>' : '<span style="color:#ffa500">待审核</span>'}</td>
-                            <td>
-                                ${m.status !== 'approved' ? `<button class="action-btn" onclick="approveMessage(${m.id})">通过</button>` : ''}
-                                <button class="action-btn danger" onclick="deleteMessage(${m.id})">删除</button>
-                            </td>
-                        </tr>
-                    `).join('');
-                }
-            } catch (error) { console.error(error); }
-        }
-        
-        async function approveMessage(id) {
-            const msgEl = document.getElementById('messageMessage');
-            msgEl.style.display = 'block';
-            try {
-                const res = await fetch(API_BASE + '/admin/messages/' + id + '/approve', {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + authToken }
-                });
-                const result = await res.json();
-                if (result.success) {
-                    msgEl.className = 'message success';
-                    msgEl.textContent = '🌸 留言已通过';
-                    loadMessages();
-                    loadDashboard();
-                } else {
-                    msgEl.className = 'message error';
-                    msgEl.textContent = '❌ ' + (result.message || '操作失败');
-                }
-            } catch (error) {
-                msgEl.className = 'message error';
-                msgEl.textContent = '❌ 操作失败：' + error.message;
+                setAuthView(false);
+                showMessage('loginMessage', error.message, 'error');
             }
         }
 
-        async function deleteMessage(id) {
-            if (!confirm('确定删除这条留言吗？')) return;
-            const msgEl = document.getElementById('messageMessage');
-            msgEl.style.display = 'block';
+        async function login(event) {
+            event.preventDefault();
+            const button = $('loginButton');
+            button.disabled = true;
             try {
-                const res = await fetch(API_BASE + '/admin/messages/' + id, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': 'Bearer ' + authToken }
+                const response = await fetch(API_BASE + '/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: $('username').value.trim(),
+                        password: $('password').value
+                    })
                 });
-                const result = await res.json();
-                if (result.success) {
-                    msgEl.className = 'message success';
-                    msgEl.textContent = '🌸 留言已删除';
-                    loadMessages();
-                    loadDashboard();
-                } else {
-                    msgEl.className = 'message error';
-                    msgEl.textContent = '❌ ' + (result.message || '删除失败');
-                }
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || '登录失败');
+                state.token = result.data.token;
+                state.admin = result.data.admin;
+                localStorage.setItem('admin_token', state.token);
+                localStorage.setItem('admin_user', JSON.stringify(state.admin));
+                $('password').value = '';
+                $('sessionInfo').textContent = `${state.admin.username} · ${state.admin.role}`;
+                setAuthView(true);
+                await loadDashboard();
             } catch (error) {
-                msgEl.className = 'message error';
-                msgEl.textContent = '❌ 删除失败：' + error.message;
+                showMessage('loginMessage', error.message, 'error');
+            } finally {
+                button.disabled = false;
             }
         }
-        
-        function loadLinks() {
-            document.getElementById('linksTable').innerHTML = `<tr><td>GitHub</td><td><a href="https://github.com" style="color:var(--sakura-pink)">github.com</a></td><td><span style="color:var(--sakura-pink)">启用</span></td><td><button class="action-btn">编辑</button> <button class="action-btn danger">删除</button></td></tr>`;
+
+        function logout(reload = true) {
+            state.token = '';
+            state.admin = null;
+            localStorage.removeItem('admin_token');
+            localStorage.removeItem('admin_user');
+            setAuthView(false);
+            if (reload) location.reload();
+        }
+
+        function switchPanel(panel) {
+            state.activePanel = panel;
+            document.querySelectorAll('.panel').forEach(node => node.classList.toggle('active', node.id === panel));
+            document.querySelectorAll('.nav-btn').forEach(node => node.classList.toggle('active', node.dataset.panel === panel));
+            loaders[panel]?.();
+        }
+
+        function renderRows(tbodyId, rows, emptyText) {
+            const tbody = $(tbodyId);
+            tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="8"><div class="empty">${emptyText}</div></td></tr>`;
+        }
+
+        async function loadDashboard() {
+            const data = await api('/stats');
+            $('statArticles').textContent = data.articles || 0;
+            $('statMessages').textContent = data.pendingMessages || 0;
+            $('statToday').textContent = data.todayViews || 0;
+            $('statUsers').textContent = data.users || 0;
+        }
+
+        async function loadArticles() {
+            try {
+                const articles = await api('/articles');
+                renderRows('articlesBody', articles.map(article => `
+                    <tr>
+                        <td>${article.id}</td>
+                        <td><a class="muted" href="article?id=${article.id}" target="_blank">${escapeHtml(article.title)}</a></td>
+                        <td>${escapeHtml(article.category || '未分类')}</td>
+                        <td>${article.view_count || 0}</td>
+                        <td><span class="badge ${article.status === 'published' ? 'ok' : 'warn'}">${article.status === 'published' ? '已发布' : '草稿'}</span></td>
+                        <td>${formatDate(article.updated_at || article.created_at)}</td>
+                        <td><div class="btn-row">
+                            <a class="btn" href="editor?id=${article.id}">编辑</a>
+                            <button class="btn" type="button" data-action="toggle-article" data-id="${article.id}">切换状态</button>
+                            <button class="btn danger" type="button" data-action="delete-article" data-id="${article.id}">删除</button>
+                        </div></td>
+                    </tr>
+                `), '暂无文章');
+            } catch (error) {
+                showMessage('articleMessage', error.message, 'error');
+            }
+        }
+
+        async function loadMessages() {
+            try {
+                const messages = await api('/messages');
+                renderRows('messagesBody', messages.map(message => `
+                    <tr>
+                        <td>${escapeHtml(message.username)}</td>
+                        <td>${escapeHtml(message.content)}</td>
+                        <td><span class="badge ${message.status === 'approved' ? 'ok' : 'warn'}">${message.status === 'approved' ? '已通过' : '待审核'}</span></td>
+                        <td>${formatDate(message.created_at)}</td>
+                        <td><div class="btn-row">
+                            ${message.status !== 'approved' ? `<button class="btn primary" type="button" data-action="approve-message" data-id="${message.id}">通过</button>` : ''}
+                            <button class="btn danger" type="button" data-action="delete-message" data-id="${message.id}">删除</button>
+                        </div></td>
+                    </tr>
+                `), '暂无留言');
+            } catch (error) {
+                showMessage('messageMessage', error.message, 'error');
+            }
         }
 
         async function loadUsers() {
             try {
-                const res = await fetch(API_BASE + '/admin/users', { headers: { 'Authorization': 'Bearer ' + authToken } });
-                const result = await res.json();
-                const tbody = document.getElementById('usersTable');
-                if (result.success && result.data) {
-                    tbody.innerHTML = result.data.map(u => `
-                        <tr>
-                            <td style="font-family:'JetBrains Mono';font-size:0.85rem;">${u.id.slice(0, 8)}...</td>
-                            <td>${escapeHtml(u.username)}</td>
-                            <td>${escapeHtml(u.email)}</td>
-                            <td><span style="color:${u.role === 'admin' ? 'var(--deep-pink)' : 'var(--sakura-pink)'}">${u.role === 'admin' ? '👑 管理员' : '👤 用户'}</span></td>
-                            <td>${new Date(u.created_at).toLocaleString('zh-CN')}</td>
-                            <td><button class="action-btn danger" onclick="deleteUser('${u.id}')" ${u.username === 'admin' ? 'disabled' : ''}>🗑️ 删除</button></td>
-                        </tr>
-                    `).join('');
-                }
+                const users = await api('/users');
+                renderRows('usersBody', users.map(user => `
+                    <tr>
+                        <td><span class="muted">${escapeHtml(String(user.id).slice(0, 8))}</span></td>
+                        <td>${escapeHtml(user.username)}</td>
+                        <td>${escapeHtml(user.email)}</td>
+                        <td><span class="badge ${user.role === 'admin' ? 'hot' : ''}">${escapeHtml(user.role || 'user')}</span></td>
+                        <td>${formatDate(user.created_at)}</td>
+                        <td><button class="btn danger" type="button" data-action="delete-user" data-id="${escapeHtml(user.id)}" ${user.role === 'admin' ? 'disabled' : ''}>删除</button></td>
+                    </tr>
+                `), '暂无用户');
             } catch (error) {
-                const msgEl = document.getElementById('userMessage');
-                msgEl.style.display = 'block';
-                msgEl.className = 'message error';
-                msgEl.textContent = '❌ 加载用户失败：' + error.message;
+                showMessage('userMessage', error.message, 'error');
             }
         }
 
-        async function deleteUser(id) {
-            if (!confirm('确定要删除用户 ' + id + ' 吗？此操作不可撤销！')) return;
-
-            // 检查是否已登录
-            if (!authToken) {
-                authToken = localStorage.getItem('admin_token');
-                if (!authToken) {
-                    const msgEl = document.getElementById('userMessage');
-                    msgEl.style.display = 'block';
-                    msgEl.className = 'message error';
-                    msgEl.textContent = '❌ 请先登录';
-                    return;
-                }
-            }
-
+        async function loadLinks() {
             try {
-                const res = await fetch(API_BASE + '/admin/users/' + id, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': 'Bearer ' + authToken }
-                });
-                const result = await res.json();
-                const msgEl = document.getElementById('userMessage');
-                msgEl.style.display = 'block';
-                if (result.success) {
-                    msgEl.className = 'message success';
-                    msgEl.textContent = '🌸 用户已删除';
-                    loadUsers();
-                } else {
-                    msgEl.className = 'message error';
-                    msgEl.textContent = '❌ ' + (result.message || '删除失败');
-                }
+                const links = await api('/links');
+                renderRows('linksBody', links.map(link => `
+                    <tr>
+                        <td>${escapeHtml(link.name)}</td>
+                        <td><a class="muted" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.url)}</a></td>
+                        <td><span class="badge ok">${escapeHtml(link.status || 'active')}</span></td>
+                        <td>${formatDate(link.created_at)}</td>
+                        <td><button class="btn danger" type="button" data-action="delete-link" data-id="${link.id}">删除</button></td>
+                    </tr>
+                `), '暂无友链');
             } catch (error) {
-                const msgEl = document.getElementById('userMessage');
-                msgEl.style.display = 'block';
-                msgEl.className = 'message error';
-                msgEl.textContent = '❌ 删除失败：' + error.message;
+                showMessage('linkMessage', error.message, 'error');
             }
         }
-        
+
         async function loadAnalytics() {
+            const data = await api('/analytics');
+            $('analyticsToday').textContent = data.todayViews || 0;
+            $('analyticsWeek').textContent = data.weekViews || 0;
+            $('analyticsMonth').textContent = data.monthViews || 0;
+            $('analyticsTotal').textContent = data.totalViews || 0;
+        }
+
+        async function loadSettings() {
             try {
-                const res = await fetch(API_BASE + '/admin/analytics', { headers: { 'Authorization': 'Bearer ' + authToken } });
-                const result = await res.json();
-                if (result.success) {
-                    document.getElementById('analyticsToday').textContent = result.data.todayViews || 0;
-                    document.getElementById('analyticsWeek').textContent = result.data.weekViews || 0;
-                    document.getElementById('analyticsMonth').textContent = result.data.monthViews || 0;
-                    document.getElementById('analyticsTotal').textContent = result.data.totalViews || 0;
-                }
+                const settings = await api('/settings');
+                $('siteTitle').value = settings.siteTitle || '';
+                $('siteAnnouncement').value = settings.siteAnnouncement || '';
+                $('sakuraEffect').checked = settings.sakuraEffect !== false;
+                $('scanlineEffect').checked = settings.scanlineEffect !== false;
             } catch (error) {
-                console.error('Analytics error:', error);
+                showMessage('settingsMessage', error.message, 'error');
             }
         }
-        
-        function loadSettings() {
-            document.getElementById('siteTitle').value = '月读空间';
-            document.getElementById('siteAnnouncement').value = '欢迎访问月读空间';
+
+        async function handleTableAction(event) {
+            const button = event.target.closest('[data-action]');
+            if (!button || button.disabled) return;
+            const { action, id } = button.dataset;
+            try {
+                if (action === 'toggle-article') {
+                    await api(`/articles/${id}/toggle-status`, { method: 'POST' });
+                    showMessage('articleMessage', '文章状态已更新');
+                    await loadArticles();
+                }
+                if (action === 'delete-article' && confirm('确定删除这篇文章吗？')) {
+                    await api(`/articles/${id}`, { method: 'DELETE' });
+                    showMessage('articleMessage', '文章已删除');
+                    await loadArticles();
+                    await loadDashboard();
+                }
+                if (action === 'approve-message') {
+                    await api(`/messages/${id}/approve`, { method: 'POST' });
+                    showMessage('messageMessage', '留言已通过');
+                    await loadMessages();
+                    await loadDashboard();
+                }
+                if (action === 'delete-message' && confirm('确定删除这条留言吗？')) {
+                    await api(`/messages/${id}`, { method: 'DELETE' });
+                    showMessage('messageMessage', '留言已删除');
+                    await loadMessages();
+                    await loadDashboard();
+                }
+                if (action === 'delete-user' && confirm('确定删除这个用户吗？')) {
+                    await api(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                    showMessage('userMessage', '用户已删除');
+                    await loadUsers();
+                    await loadDashboard();
+                }
+                if (action === 'delete-link' && confirm('确定删除这条友链吗？')) {
+                    await api(`/links/${id}`, { method: 'DELETE' });
+                    showMessage('linkMessage', '友链已删除');
+                    await loadLinks();
+                }
+            } catch (error) {
+                const messageMap = {
+                    'toggle-article': 'articleMessage',
+                    'delete-article': 'articleMessage',
+                    'approve-message': 'messageMessage',
+                    'delete-message': 'messageMessage',
+                    'delete-user': 'userMessage',
+                    'delete-link': 'linkMessage'
+                };
+                showMessage(messageMap[action] || 'loginMessage', error.message, 'error');
+            }
         }
-        
-        function saveSettings(e) {
-            e.preventDefault();
-            const msgEl = document.getElementById('settingsMessage');
-            msgEl.style.display = 'block';
-            msgEl.className = 'message success';
-            msgEl.textContent = '🌸 配置已保存';
-            setTimeout(() => msgEl.style.display = 'none', 3000);
+
+        async function createLink(event) {
+            event.preventDefault();
+            try {
+                await api('/links', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: $('linkName').value.trim(),
+                        url: $('linkUrl').value.trim()
+                    })
+                });
+                event.target.reset();
+                showMessage('linkMessage', '友链已添加');
+                await loadLinks();
+            } catch (error) {
+                showMessage('linkMessage', error.message, 'error');
+            }
         }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text || '';
-            return div.innerHTML;
+
+        async function saveSettings(event) {
+            event.preventDefault();
+            try {
+                await api('/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        siteTitle: $('siteTitle').value.trim(),
+                        siteAnnouncement: $('siteAnnouncement').value.trim(),
+                        sakuraEffect: $('sakuraEffect').checked,
+                        scanlineEffect: $('scanlineEffect').checked
+                    })
+                });
+                showMessage('settingsMessage', '配置已保存');
+            } catch (error) {
+                showMessage('settingsMessage', error.message, 'error');
+            }
         }
+
+        function updateClock() {
+            $('clock').textContent = new Date().toLocaleString('zh-CN');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateClock();
+            setInterval(updateClock, 1000);
+            $('loginForm').addEventListener('submit', login);
+            $('logoutButton').addEventListener('click', () => logout(true));
+            $('linkForm').addEventListener('submit', createLink);
+            $('settingsForm').addEventListener('submit', saveSettings);
+            document.querySelectorAll('.nav-btn').forEach(button => {
+                button.addEventListener('click', () => switchPanel(button.dataset.panel));
+            });
+            document.querySelectorAll('[data-refresh]').forEach(button => {
+                button.addEventListener('click', () => loaders[button.dataset.refresh]?.());
+            });
+            document.addEventListener('click', handleTableAction);
+            verifySession();
+        });
     </script>
 </body>
 </html>
