@@ -1,4 +1,4 @@
-﻿// 鐢ㄦ埛涓績璺敱
+// 鐢ㄦ埛涓績璺敱
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
@@ -45,7 +45,7 @@ router.get('/profile', authenticateToken, (req, res) => {
         });
     } catch (error) {
         console.error('鑾峰彇鐢ㄦ埛璧勬枡澶辫触:', error);
-        es.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
@@ -57,11 +57,10 @@ router.put('/profile', authenticateToken, (req, res) => {
         db.prepare(`
             UPDATE users SET bio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         `).run(bio || '', req.user.id);
-
-        es.json({ success: true, message: '操作成功' });
+        res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('鏇存柊鐢ㄦ埛璧勬枡澶辫触:', error);
-        es.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
@@ -85,7 +84,7 @@ router.post('/avatar', authenticateToken, (req, res) => {
         });
     } catch (error) {
         console.error('涓婁紶澶村儚澶辫触:', error);
-        es.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
@@ -116,11 +115,10 @@ router.put('/password', authenticateToken, (req, res) => {
         db.prepare(`
             UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         `).run(passwordHash, req.user.id);
-
-        es.json({ success: true, message: '操作成功' });
+        res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('淇敼瀵嗙爜澶辫触:', error);
-        es.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
@@ -136,7 +134,7 @@ router.get('/articles', authenticateToken, (req, res) => {
         res.json({ success: true, data: articles });
     } catch (error) {
         console.error('鑾峰彇鐢ㄦ埛鏂囩珷澶辫触:', error);
-        es.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
@@ -157,7 +155,7 @@ router.get('/articles/:id', authenticateToken, (req, res) => {
         res.json({ success: true, data: article });
     } catch (error) {
         console.error('鑾峰彇鏂囩珷澶辫触:', error);
-        es.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
@@ -176,11 +174,10 @@ router.delete('/articles/:id', authenticateToken, (req, res) => {
         }
 
         db.prepare('DELETE FROM articles WHERE id = ?').run(req.params.id);
-
-        es.json({ success: true, message: '操作成功' });
+        res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('鍒犻櫎鏂囩珷澶辫触:', error);
-        es.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
@@ -217,7 +214,7 @@ router.put('/articles/:id', authenticateToken, (req, res) => {
         });
     } catch (error) {
         console.error('鏇存柊鏂囩珷澶辫触:', error);
-        es.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 

@@ -1,7 +1,7 @@
 (function () {
     const MIN_LOADER_MS = 360;
     const NAV_ITEMS = [
-        { key: 'hub', label: '中枢大厅' },
+        { key: 'hub', label: '中央大厅' },
         { key: 'stage', label: '主舞台' },
         { key: 'arena', label: '竞技场' },
         { key: 'room', label: '私人居所' },

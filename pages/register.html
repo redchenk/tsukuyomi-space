@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -10,289 +10,70 @@
     <meta name="theme-color" content="#7edbe8">
     <title>注册 | 月读空间</title>
     <style>
-        :root { --primary-pink: #ff6b9d; --dark-bg: #1a1025; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { min-height: 100vh; background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%); font-family: 'Noto Sans JP', sans-serif; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
-        #sakuraContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
-        .sakura { position: absolute; background: linear-gradient(135deg, #ffb7c5 0%, #ff6b9d 100%); border-radius: 50% 0 50% 0; will-change: transform, opacity; }
-        .moon { position: fixed; top: 10%; right: 15%; width: 100px; height: 100px; background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95), rgba(248,249,250,0.8)); border-radius: 50%; box-shadow: 0 0 40px rgba(255,107,157,0.4); z-index: 1; animation: moonFloat 6s ease-in-out infinite; }
-        @keyframes moonFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-        .register-container { position: relative; z-index: 10; background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,107,157,0.3); border-radius: 20px; padding: 3rem; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.6s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        :root { --panel: rgba(12,17,34,.74); --line: rgba(126,219,232,.22); --text: rgba(255,255,255,.92); --muted: rgba(225,236,246,.68); }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 5.5rem 1.2rem 2rem; overflow: hidden; background: radial-gradient(circle at 78% 16%, rgba(244,207,114,.16), transparent 16rem), linear-gradient(135deg,#0b1020,#14102a 46%,#07121e); color: var(--text); font-family: "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Arial, sans-serif; }
+        #sakuraContainer { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .moon { position: fixed; top: 10%; right: 14%; width: clamp(64px,9vw,116px); aspect-ratio: 1; border-radius: 50%; z-index: 1; background: radial-gradient(circle at 36% 34%, rgba(255,255,255,.96), rgba(244,207,114,.74) 58%, rgba(126,219,232,.22)); box-shadow: 0 0 46px rgba(244,207,114,.36); animation: float 6s ease-in-out infinite; }
+        @keyframes float { 50% { transform: translateY(-14px); } }
+        .back-btn, .lang-switcher, .panel { position: relative; z-index: 5; }
+        .back-btn { position: fixed; top: 1.2rem; left: 1.2rem; color: var(--muted); text-decoration: none; padding: .55rem .75rem; border: 1px solid var(--line); border-radius: 8px; background: rgba(8,13,27,.52); backdrop-filter: blur(14px); }
+        .back-btn:hover, .links a:hover { color: #fff; }
+        .lang-switcher { position: fixed; top: 1.2rem; right: 1.2rem; display: flex; gap: .25rem; padding: .2rem; border: 1px solid var(--line); border-radius: 8px; background: rgba(8,13,27,.52); backdrop-filter: blur(14px); }
+        button { font: inherit; }
+        .lang-btn, .code-btn, .submit-btn { border-radius: 8px; border: 1px solid rgba(126,219,232,.22); background: rgba(8,13,27,.54); color: var(--muted); cursor: pointer; transition: .2s ease; }
+        .lang-btn { min-height: 34px; padding: .42rem .68rem; font-size: .82rem; }
+        .lang-btn.active, .lang-btn:hover, .code-btn:hover { color: #fff; border-color: rgba(126,219,232,.52); background: linear-gradient(135deg, rgba(255,95,150,.28), rgba(126,219,232,.18)); }
+        .panel { width: min(100%, 430px); padding: clamp(2rem,5vw,3rem); border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: 0 24px 60px rgba(0,0,0,.36); backdrop-filter: blur(20px) saturate(1.16); }
         .logo { text-align: center; margin-bottom: 2rem; }
-        .logo h1 { font-size: 2rem; background: linear-gradient(135deg, #fff, #ffb7c5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 700; margin-bottom: 0.5rem; }
-        .logo p { color: rgba(255,183,197,0.8); font-size: 0.9rem; font-weight: 300; }
-        .lang-switcher { position: fixed; top: 2rem; right: 2rem; z-index: 100; display: flex; gap: 0.5rem; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 0.5rem; border-radius: 25px; border: 1px solid rgba(255,107,157,0.3); }
-        .lang-btn { padding: 0.5rem 1rem; background: transparent; border: 1px solid rgba(255,183,197,0.3); border-radius: 20px; color: rgba(255,183,197,0.8); cursor: pointer; transition: all 0.3s; font-size: 0.85rem; }
-        .lang-btn:hover { background: rgba(255,183,197,0.2); }
-        .lang-btn.active { background: rgba(255,107,157,0.3); color: #ffb7c5; border-color: rgba(255,107,157,0.5); }
-        .form-group { margin-bottom: 1.5rem; }
-        .form-group label { display: block; color: #ffb7c5; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; }
-        .form-group input { width: 100%; padding: 0.9rem 1.2rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,107,157,0.3); border-radius: 10px; color: #fff; font-size: 1rem; transition: all 0.3s; }
-        .form-group input:focus { outline: none; border-color: rgba(255,107,157,0.6); box-shadow: 0 0 20px rgba(255,107,157,0.2); }
-        .form-group input::placeholder { color: rgba(255,183,197,0.4); }
-        .code-row { display: grid; grid-template-columns: 1fr auto; gap: 0.6rem; }
-        .code-btn { padding: 0 0.9rem; border: 1px solid rgba(255,107,157,0.45); border-radius: 10px; background: rgba(255,107,157,0.14); color: #ffb7c5; cursor: pointer; white-space: nowrap; }
-        .code-btn:disabled { opacity: 0.58; cursor: not-allowed; }
-        .submit-btn { width: 100%; padding: 1rem; background: rgba(255,107,157,0.2); color: #ffb7c5; border: 1px solid rgba(255,107,157,0.5); border-radius: 10px; font-size: 1.05rem; cursor: pointer; transition: all 0.3s; font-weight: 500; letter-spacing: 0.05rem; }
-        .submit-btn:hover { background: rgba(255,107,157,0.3); box-shadow: 0 0 30px rgba(255,107,157,0.3); transform: translateY(-2px); }
-        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .logo h1 { font-size: 2rem; margin-bottom: .5rem; color: #fff; }
+        .logo p, .links { color: var(--muted); font-size: .92rem; }
+        .form-group { margin-bottom: 1.1rem; }
+        label { display: block; margin-bottom: .45rem; color: var(--text); font-size: .9rem; font-weight: 600; }
+        input { width: 100%; min-height: 46px; padding: .82rem 1rem; border: 1px solid rgba(255,183,197,.22); border-radius: 8px; background: rgba(6,10,22,.56); color: #fff; font: inherit; outline: none; }
+        input::placeholder { color: rgba(225,236,246,.42); }
+        input:focus { border-color: rgba(126,219,232,.54); box-shadow: 0 0 0 3px rgba(126,219,232,.1); }
+        .code-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .6rem; }
+        .code-btn { min-height: 46px; padding: 0 .9rem; white-space: nowrap; }
+        .submit-btn { width: 100%; min-height: 48px; margin-top: .2rem; color: #fff; font-weight: 700; background: linear-gradient(135deg, rgba(255,95,150,.3), rgba(126,219,232,.18)); border-color: rgba(255,173,193,.34); }
+        .submit-btn:hover { transform: translateY(-1px); border-color: rgba(126,219,232,.5); }
+        button:disabled { opacity: .58; cursor: not-allowed; transform: none; }
         .links { margin-top: 1.5rem; text-align: center; }
-        .links a { color: rgba(255,183,197,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
-        .links a:hover { color: #ffb7c5; }
-        .error-message, .success-message { padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; display: none; font-size: 0.9rem; }
-        .error-message { background: rgba(255,100,100,0.1); border: 1px solid rgba(255,100,100,0.3); color: #ff6b6b; }
-        .success-message { background: rgba(100,255,150,0.1); border: 1px solid rgba(100,255,150,0.3); color: #6bff9e; }
-        .back-btn { position: fixed; top: 2rem; left: 2rem; color: rgba(255,183,197,0.7); text-decoration: none; font-size: 0.9rem; transition: all 0.3s; z-index: 100; }
-        .back-btn:hover { color: #ffb7c5; }
-        @media (max-width: 768px) { .register-container { margin: 2rem; padding: 2rem; } .moon { width: 60px; height: 60px; } }
+        .links a { color: rgba(126,219,232,.86); text-decoration: none; }
+        .message { display: none; margin-bottom: 1rem; padding: .82rem; border-radius: 8px; text-align: center; font-size: .9rem; }
+        .error { color: #ff9bab; border: 1px solid rgba(255,95,120,.3); background: rgba(255,95,120,.1); }
+        .success { color: #97f2c1; border: 1px solid rgba(100,255,150,.26); background: rgba(100,255,150,.1); }
+        @media (max-width: 640px) { body { align-items: flex-start; } .code-row { grid-template-columns: 1fr; } }
     </style>
-    <link rel="stylesheet" href="../assets/css/site-theme.css">
-    <script defer src="../assets/js/site-nav.js"></script>
     <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body>
-    <div id="sakuraContainer"></div>
-    <div class="moon"></div>
-    <a href="login" class="back-btn">← <span data-i18n="back">返回</span></a>
-    
-    <div class="lang-switcher">
-        <button class="lang-btn active" onclick="setLanguage('zh')">中文</button>
-        <button class="lang-btn" onclick="setLanguage('ja')">日本語</button>
-    </div>
-    
-    <div class="register-container">
-        <div class="logo">
-            <h1>🌙 <span data-i18n="register_title">注册</span></h1>
-            <p data-i18n="register_subtitle">创建新账号</p>
-        </div>
-        
-        <div id="errorMessage" class="error-message"></div>
-        <div id="successMessage" class="success-message"></div>
-        
-        <form id="registerForm" onsubmit="handleRegister(event)">
-            <div class="form-group">
-                <label data-i18n="username">用户名</label>
-                <input type="text" id="username" required data-i18n-placeholder="username_placeholder" placeholder="请输入用户名">
-            </div>
-            <div class="form-group">
-                <label data-i18n="email">邮箱</label>
-                <div class="code-row">
-                    <input type="email" id="email" required data-i18n-placeholder="email_placeholder" placeholder="请输入邮箱">
-                    <button type="button" id="sendRegisterCodeBtn" class="code-btn" data-i18n="send_code">发送验证码</button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label data-i18n="email_code">邮箱验证码</label>
-                <input type="text" id="emailCode" required inputmode="numeric" maxlength="6" data-i18n-placeholder="email_code_placeholder" placeholder="请输入 6 位验证码">
-            </div>
-            <div class="form-group">
-                <label data-i18n="password">密码</label>
-                <input type="password" id="password" required data-i18n-placeholder="password_placeholder" placeholder="请输入密码" minlength="6">
-            </div>
-            <div class="form-group">
-                <label data-i18n="confirm_password">确认密码</label>
-                <input type="password" id="confirmPassword" required data-i18n-placeholder="confirm_password_placeholder" placeholder="请再次输入密码" minlength="6">
-            </div>
+    <div id="sakuraContainer"></div><div class="moon"></div>
+    <a href="login" class="back-btn"><span data-i18n="back">返回</span></a>
+    <div class="lang-switcher" aria-label="Language"><button type="button" class="lang-btn active" data-lang="zh">中文</button><button type="button" class="lang-btn" data-lang="ja">日本語</button></div>
+    <main class="panel">
+        <div class="logo"><h1><span data-i18n="title">注册</span></h1><p data-i18n="subtitle">创建新的月读空间账号</p></div>
+        <div id="errorMessage" class="message error"></div><div id="successMessage" class="message success"></div>
+        <form id="registerForm">
+            <div class="form-group"><label for="username" data-i18n="username">用户名</label><input type="text" id="username" required data-i18n-placeholder="username_ph" placeholder="请输入用户名"></div>
+            <div class="form-group"><label for="email" data-i18n="email">邮箱</label><div class="code-row"><input type="email" id="email" required data-i18n-placeholder="email_ph" placeholder="请输入邮箱"><button type="button" id="sendRegisterCodeBtn" class="code-btn" data-i18n="send_code">发送验证码</button></div></div>
+            <div class="form-group"><label for="emailCode" data-i18n="email_code">邮箱验证码</label><input type="text" id="emailCode" required inputmode="numeric" maxlength="6" data-i18n-placeholder="code_ph" placeholder="请输入 6 位验证码"></div>
+            <div class="form-group"><label for="password" data-i18n="password">密码</label><input type="password" id="password" required minlength="6" data-i18n-placeholder="password_ph" placeholder="请输入密码"></div>
+            <div class="form-group"><label for="confirmPassword" data-i18n="confirm_password">确认密码</label><input type="password" id="confirmPassword" required minlength="6" data-i18n-placeholder="confirm_ph" placeholder="请再次输入密码"></div>
             <button type="submit" class="submit-btn" data-i18n="register_btn">注册</button>
         </form>
-        
-        <div class="links">
-            <span data-i18n="have_account">已有账号？</span>
-            <a href="login" data-i18n="login_link">立即登录</a>
-        </div>
-    </div>
-    
+        <div class="links"><span data-i18n="have_account">已有账号？</span> <a href="login" data-i18n="login_link">立即登录</a></div>
+    </main>
     <script>
-        // 语言包
-        const i18n = {
-            zh: {
-                back: '返回',
-                register_title: '注册',
-                register_subtitle: '创建新账号',
-                username: '用户名',
-                username_placeholder: '请输入用户名',
-                email: '邮箱',
-                email_placeholder: '请输入邮箱',
-                email_code: '邮箱验证码',
-                email_code_placeholder: '请输入 6 位验证码',
-                send_code: '发送验证码',
-                code_sent: '验证码已发送，请查收邮箱',
-                code_failed: '验证码发送失败：',
-                password: '密码',
-                password_placeholder: '请输入密码',
-                confirm_password: '确认密码',
-                confirm_password_placeholder: '请再次输入密码',
-                register_btn: '注册',
-                have_account: '已有账号？',
-                login_link: '立即登录',
-                register_success: '注册成功！正在跳转...',
-                register_failed: '注册失败：',
-                password_mismatch: '两次输入的密码不一致'
-            },
-            ja: {
-                back: '戻る',
-                register_title: '新規登録',
-                register_subtitle: 'アカウントを作成',
-                username: 'ユーザー名',
-                username_placeholder: 'ユーザー名を入力してください',
-                email: 'メールアドレス',
-                email_placeholder: 'メールアドレスを入力してください',
-                email_code: 'メール認証コード',
-                email_code_placeholder: '6桁の認証コードを入力してください',
-                send_code: 'コード送信',
-                code_sent: '認証コードを送信しました',
-                code_failed: 'コード送信失敗：',
-                password: 'パスワード',
-                password_placeholder: 'パスワードを入力してください',
-                confirm_password: 'パスワード（確認）',
-                confirm_password_placeholder: 'もう一度パスワードを入力してください',
-                register_btn: '登録',
-                have_account: 'アカウントをお持ちですか？',
-                login_link: 'ログイン',
-                register_success: '登録成功！リダイレクト中...',
-                register_failed: '登録失敗：',
-                password_mismatch: 'パスワードが一致しません'
-            }
-        };
-        
-        let currentLang = 'zh';
-        
-        // 设置语言
-        function setLanguage(lang) {
-            currentLang = lang;
-            localStorage.setItem('lang', lang);
-            
-            // 更新按钮状态
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`.lang-btn[onclick="setLanguage('${lang}')"]`).classList.add('active');
-            
-            // 更新文本
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (i18n[lang][key]) {
-                    el.textContent = i18n[lang][key];
-                }
-            });
-            
-            // 更新占位符
-            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-                const key = el.getAttribute('data-i18n-placeholder');
-                if (i18n[lang][key]) {
-                    el.placeholder = i18n[lang][key];
-                }
-            });
-            
-            // 更新页面 lang 属性
-            document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'ja';
-        }
-        
-        // 页面加载时恢复语言
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedLang = localStorage.getItem('lang') || 'zh';
-            setLanguage(savedLang);
-            document.getElementById('sendRegisterCodeBtn').addEventListener('click', sendRegisterCode);
-            initSakura();
-        });
-        
-        function initSakura() {
-            window.initTsukuyomiAmbientFish({ containerId: 'sakuraContainer' });
-        }
-
-        function setMessage(type, text) {
-            const errorMsg = document.getElementById('errorMessage');
-            const successMsg = document.getElementById('successMessage');
-            errorMsg.style.display = 'none';
-            successMsg.style.display = 'none';
-            const target = type === 'success' ? successMsg : errorMsg;
-            target.textContent = text;
-            target.style.display = 'block';
-        }
-
-        async function sendRegisterCode() {
-            const email = document.getElementById('email').value.trim();
-            const button = document.getElementById('sendRegisterCodeBtn');
-            if (!email) {
-                setMessage('error', i18n[currentLang].code_failed + i18n[currentLang].email_placeholder);
-                return;
-            }
-
-            button.disabled = true;
-            try {
-                const res = await fetch('/api/auth/email-code', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, purpose: 'register' })
-                });
-                const result = await res.json();
-                if (!result.success) throw new Error(result.message || '未知错误');
-                setMessage('success', i18n[currentLang].code_sent);
-                startCodeCountdown(button);
-            } catch (error) {
-                button.disabled = false;
-                setMessage('error', i18n[currentLang].code_failed + error.message);
-            }
-        }
-
-        function startCodeCountdown(button) {
-            let seconds = 60;
-            const label = i18n[currentLang].send_code;
-            button.textContent = `${seconds}s`;
-            const timer = setInterval(() => {
-                seconds -= 1;
-                button.textContent = seconds > 0 ? `${seconds}s` : label;
-                if (seconds <= 0) {
-                    clearInterval(timer);
-                    button.disabled = false;
-                }
-            }, 1000);
-        }
-        
-        async function handleRegister(e) {
-            e.preventDefault();
-            const username = document.getElementById('username').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const emailCode = document.getElementById('emailCode').value.trim();
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const errorMsg = document.getElementById('errorMessage');
-            const successMsg = document.getElementById('successMessage');
-            
-            errorMsg.style.display = 'none';
-            successMsg.style.display = 'none';
-            
-            // 验证密码
-            if (password !== confirmPassword) {
-                errorMsg.textContent = i18n[currentLang].password_mismatch;
-                errorMsg.style.display = 'block';
-                return;
-            }
-            
-            try {
-                const res = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password, emailCode })
-                });
-                
-                const result = await res.json();
-                if (result.success) {
-                    successMsg.textContent = i18n[currentLang].register_success;
-                    successMsg.style.display = 'block';
-                    setTimeout(() => {
-                        window.location.href = 'login';
-                    }, 1500);
-                } else {
-                    errorMsg.textContent = i18n[currentLang].register_failed + (result.message || '未知错误');
-                    errorMsg.style.display = 'block';
-                }
-            } catch (error) {
-                errorMsg.textContent = i18n[currentLang].register_failed + error.message;
-                errorMsg.style.display = 'block';
-            }
-        }
+        const i18n={zh:{back:'返回',title:'注册',subtitle:'创建新的月读空间账号',username:'用户名',username_ph:'请输入用户名',email:'邮箱',email_ph:'请输入邮箱',email_code:'邮箱验证码',code_ph:'请输入 6 位验证码',send_code:'发送验证码',code_sent:'验证码已发送，请查看邮箱',code_failed:'验证码发送失败：',password:'密码',password_ph:'请输入密码',confirm_password:'确认密码',confirm_ph:'请再次输入密码',register_btn:'注册',have_account:'已有账号？',login_link:'立即登录',register_success:'注册成功，正在跳转...',register_failed:'注册失败：',password_mismatch:'两次输入的密码不一致',unknown:'未知错误'},ja:{back:'戻る',title:'新規登録',subtitle:'月読空間のアカウントを作成',username:'ユーザー名',username_ph:'ユーザー名を入力',email:'メール',email_ph:'メールを入力',email_code:'メール認証コード',code_ph:'6桁のコードを入力',send_code:'コード送信',code_sent:'認証コードを送信しました',code_failed:'コード送信失敗：',password:'パスワード',password_ph:'パスワードを入力',confirm_password:'パスワード確認',confirm_ph:'もう一度入力してください',register_btn:'登録',have_account:'アカウントをお持ちですか？',login_link:'ログイン',register_success:'登録成功。移動しています...',register_failed:'登録失敗：',password_mismatch:'パスワードが一致しません',unknown:'不明なエラー'}};
+        let currentLang='zh';
+        document.addEventListener('DOMContentLoaded',()=>{window.initTsukuyomiAmbientFish?.({containerId:'sakuraContainer',density:.58}); setLanguage(localStorage.getItem('lang')||'zh'); registerForm.addEventListener('submit',handleRegister); sendRegisterCodeBtn.addEventListener('click',sendRegisterCode); document.querySelectorAll('.lang-btn').forEach(b=>b.addEventListener('click',()=>setLanguage(b.dataset.lang)));});
+        function setLanguage(lang){currentLang=i18n[lang]?lang:'zh'; localStorage.setItem('lang',currentLang); document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.lang===currentLang)); document.querySelectorAll('[data-i18n]').forEach(el=>{const v=i18n[currentLang][el.dataset.i18n]; if(v) el.textContent=v;}); document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{const v=i18n[currentLang][el.dataset.i18nPlaceholder]; if(v) el.placeholder=v;}); document.documentElement.lang=currentLang==='zh'?'zh-CN':'ja';}
+        function msg(type,text){errorMessage.style.display='none'; successMessage.style.display='none'; const el=type==='success'?successMessage:errorMessage; el.textContent=text; el.style.display='block';}
+        async function parseResponse(res){const text=await res.text(); try{return text?JSON.parse(text):{success:false,message:`HTTP ${res.status}`};}catch{return{success:false,message:text.replace(/<[^>]*>/g,'').trim().slice(0,120)||`HTTP ${res.status}`};}}
+        function countdown(button){let s=60,label=i18n[currentLang].send_code; button.textContent=`${s}s`; const t=setInterval(()=>{s-=1; button.textContent=s>0?`${s}s`:label; if(s<=0){clearInterval(t); button.disabled=false;}},1000);}
+        async function sendRegisterCode(){const target=email.value.trim(); if(!target) return msg('error',i18n[currentLang].code_failed+i18n[currentLang].email_ph); sendRegisterCodeBtn.disabled=true; try{const res=await fetch('/api/auth/email-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:target,purpose:'register'})}); const result=await parseResponse(res); if(!result.success) throw new Error(result.message||i18n[currentLang].unknown); msg('success',i18n[currentLang].code_sent); countdown(sendRegisterCodeBtn);}catch(e){sendRegisterCodeBtn.disabled=false; msg('error',i18n[currentLang].code_failed+e.message);}}
+        async function handleRegister(e){e.preventDefault(); if(password.value!==confirmPassword.value) return msg('error',i18n[currentLang].password_mismatch); try{const res=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username.value.trim(),email:email.value.trim(),password:password.value,emailCode:emailCode.value.trim()})}); const result=await parseResponse(res); if(!result.success) throw new Error(result.message||i18n[currentLang].unknown); if(result.data?.token){localStorage.setItem('tsukuyomi_token',result.data.token); localStorage.setItem('tsukuyomi_user',JSON.stringify(result.data.user));} msg('success',i18n[currentLang].register_success); setTimeout(()=>location.href='login',1000);}catch(e){msg('error',i18n[currentLang].register_failed+e.message);}}
     </script>
 </body>
 </html>

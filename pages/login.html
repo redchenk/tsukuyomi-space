@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -10,570 +10,74 @@
     <meta name="theme-color" content="#7edbe8">
     <title>登录 | 月读空间</title>
     <style>
-        :root {
-            --login-panel: rgba(12, 17, 34, 0.72);
-            --login-line: rgba(126, 219, 232, 0.2);
-            --login-text: rgba(255, 255, 255, 0.9);
-            --login-muted: rgba(225, 236, 246, 0.66);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-            padding: 6rem 1.2rem 2rem;
-            background:
-                radial-gradient(circle at 78% 16%, rgba(244, 207, 114, 0.16), transparent 16rem),
-                linear-gradient(135deg, #0b1020 0%, #14102a 46%, #07121e 100%);
-            font-family: "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Arial, sans-serif;
-        }
-
-        #sakuraContainer {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            overflow: hidden;
-        }
-
-        .moon {
-            position: fixed;
-            top: 10%;
-            right: 14%;
-            width: clamp(64px, 9vw, 116px);
-            aspect-ratio: 1;
-            border-radius: 50%;
-            z-index: 1;
-            background: radial-gradient(circle at 36% 34%, rgba(255,255,255,0.96), rgba(244,207,114,0.74) 58%, rgba(126,219,232,0.22));
-            box-shadow: 0 0 46px rgba(244, 207, 114, 0.36);
-            animation: moonFloat 6s ease-in-out infinite;
-        }
-
-        @keyframes moonFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-14px); }
-        }
-
-        .back-btn,
-        .lang-switcher,
-        .login-container {
-            position: relative;
-            z-index: 10;
-        }
-
-        .back-btn {
-            position: fixed;
-            top: 1.5rem;
-            left: 1.5rem;
-            color: var(--login-muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            padding: 0.55rem 0.75rem;
-            border: 1px solid var(--login-line);
-            border-radius: 8px;
-            background: rgba(8, 13, 27, 0.52);
-            backdrop-filter: blur(14px);
-        }
-
-        .back-btn:hover {
-            color: #fff;
-            border-color: rgba(126, 219, 232, 0.46);
-            background: rgba(126, 219, 232, 0.13);
-        }
-
-        .lang-switcher {
-            position: fixed;
-            top: 1.5rem;
-            right: 1.5rem;
-            display: flex;
-            gap: 0.25rem;
-            padding: 0.2rem;
-            border: 1px solid var(--login-line);
-            border-radius: 8px;
-            background: rgba(8, 13, 27, 0.52);
-            backdrop-filter: blur(14px);
-        }
-
-        .lang-btn,
-        .mode-btn,
-        .code-btn,
-        .submit-btn {
-            border-radius: 8px;
-            border: 1px solid rgba(126, 219, 232, 0.2);
-            background: rgba(8, 13, 27, 0.54);
-            color: var(--login-muted);
-            cursor: pointer;
-            font: inherit;
-            transition: background 0.22s ease, border-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
-        }
-
-        .lang-btn {
-            min-height: 34px;
-            padding: 0.42rem 0.68rem;
-            font-size: 0.82rem;
-        }
-
-        .lang-btn:hover,
-        .lang-btn.active,
-        .mode-btn:hover,
-        .mode-btn.active,
-        .code-btn:hover {
-            color: #fff;
-            border-color: rgba(126, 219, 232, 0.5);
-            background: linear-gradient(135deg, rgba(255, 95, 150, 0.28), rgba(126, 219, 232, 0.18));
-        }
-
-        .login-container {
-            width: min(100%, 420px);
-            padding: clamp(2rem, 5vw, 3rem);
-            border: 1px solid var(--login-line);
-            border-radius: 10px;
-            background: var(--login-panel);
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
-            backdrop-filter: blur(20px) saturate(1.16);
-            animation: slideUp 0.52s ease-out;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(24px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .logo {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .logo h1 {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            color: #fff;
-            font-weight: 700;
-        }
-
-        .logo p {
-            color: var(--login-muted);
-            font-size: 0.92rem;
-        }
-
-        .login-mode {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
-            margin-bottom: 1.2rem;
-        }
-
-        .mode-btn {
-            min-height: 42px;
-            padding: 0.72rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.2rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.45rem;
-            color: var(--login-text);
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-
-        .form-group input {
-            width: 100%;
-            min-height: 46px;
-            padding: 0.82rem 1rem;
-            border: 1px solid rgba(255, 183, 197, 0.2);
-            border-radius: 8px;
-            background: rgba(6, 10, 22, 0.56);
-            color: #fff;
-            font: inherit;
-            outline: none;
-        }
-
-        .form-group input::placeholder {
-            color: rgba(225, 236, 246, 0.42);
-        }
-
-        .form-group input:focus {
-            border-color: rgba(126, 219, 232, 0.52);
-            box-shadow: 0 0 0 3px rgba(126, 219, 232, 0.1);
-        }
-
-        .code-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 0.6rem;
-        }
-
-        .code-btn {
-            min-height: 46px;
-            padding: 0 0.9rem;
-            white-space: nowrap;
-        }
-
-        .code-btn:disabled,
-        .submit-btn:disabled {
-            opacity: 0.58;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .submit-btn {
-            width: 100%;
-            min-height: 48px;
-            margin-top: 0.2rem;
-            color: #fff;
-            font-weight: 700;
-            background: linear-gradient(135deg, rgba(255, 95, 150, 0.3), rgba(126, 219, 232, 0.18));
-            border-color: rgba(255, 173, 193, 0.34);
-            box-shadow: 0 10px 28px rgba(5, 8, 18, 0.22);
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-1px);
-            border-color: rgba(126, 219, 232, 0.5);
-            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26), 0 0 18px rgba(126, 219, 232, 0.08);
-        }
-
-        .links {
-            margin-top: 1.5rem;
-            text-align: center;
-            color: var(--login-muted);
-            font-size: 0.9rem;
-        }
-
-        .links a {
-            color: rgba(126, 219, 232, 0.86);
-            text-decoration: none;
-        }
-
-        .links a:hover {
-            color: #fff;
-        }
-
-        .error-message,
-        .success-message {
-            display: none;
-            margin-bottom: 1rem;
-            padding: 0.82rem;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 0.9rem;
-        }
-
-        .error-message {
-            color: #ff9bab;
-            border: 1px solid rgba(255, 95, 120, 0.3);
-            background: rgba(255, 95, 120, 0.1);
-        }
-
-        .success-message {
-            color: #97f2c1;
-            border: 1px solid rgba(100, 255, 150, 0.26);
-            background: rgba(100, 255, 150, 0.1);
-        }
-
-        @media (max-width: 640px) {
-            body {
-                align-items: flex-start;
-                padding-top: 6rem;
-            }
-
-            .back-btn {
-                left: 1rem;
-                top: 1rem;
-            }
-
-            .lang-switcher {
-                right: 1rem;
-                top: 1rem;
-            }
-
-            .code-row {
-                grid-template-columns: 1fr;
-            }
-        }
+        :root { --panel: rgba(12,17,34,.74); --line: rgba(126,219,232,.22); --text: rgba(255,255,255,.92); --muted: rgba(225,236,246,.68); }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 5.5rem 1.2rem 2rem; overflow: hidden; background: radial-gradient(circle at 78% 16%, rgba(244,207,114,.16), transparent 16rem), linear-gradient(135deg,#0b1020,#14102a 46%,#07121e); color: var(--text); font-family: "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Arial, sans-serif; }
+        #sakuraContainer { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .moon { position: fixed; top: 10%; right: 14%; width: clamp(64px,9vw,116px); aspect-ratio: 1; border-radius: 50%; z-index: 1; background: radial-gradient(circle at 36% 34%, rgba(255,255,255,.96), rgba(244,207,114,.74) 58%, rgba(126,219,232,.22)); box-shadow: 0 0 46px rgba(244,207,114,.36); animation: float 6s ease-in-out infinite; }
+        @keyframes float { 50% { transform: translateY(-14px); } }
+        .back-btn, .lang-switcher, .panel { position: relative; z-index: 5; }
+        .back-btn { position: fixed; top: 1.2rem; left: 1.2rem; color: var(--muted); text-decoration: none; padding: .55rem .75rem; border: 1px solid var(--line); border-radius: 8px; background: rgba(8,13,27,.52); backdrop-filter: blur(14px); }
+        .back-btn:hover, .links a:hover { color: #fff; }
+        .lang-switcher { position: fixed; top: 1.2rem; right: 1.2rem; display: flex; gap: .25rem; padding: .2rem; border: 1px solid var(--line); border-radius: 8px; background: rgba(8,13,27,.52); backdrop-filter: blur(14px); }
+        button { font: inherit; }
+        .lang-btn, .mode-btn, .code-btn, .submit-btn { border-radius: 8px; border: 1px solid rgba(126,219,232,.22); background: rgba(8,13,27,.54); color: var(--muted); cursor: pointer; transition: .2s ease; }
+        .lang-btn { min-height: 34px; padding: .42rem .68rem; font-size: .82rem; }
+        .mode-btn { min-height: 42px; padding: .72rem; }
+        .lang-btn.active, .lang-btn:hover, .mode-btn.active, .mode-btn:hover, .code-btn:hover { color: #fff; border-color: rgba(126,219,232,.52); background: linear-gradient(135deg, rgba(255,95,150,.28), rgba(126,219,232,.18)); }
+        .panel { width: min(100%, 420px); padding: clamp(2rem,5vw,3rem); border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: 0 24px 60px rgba(0,0,0,.36); backdrop-filter: blur(20px) saturate(1.16); }
+        .logo { text-align: center; margin-bottom: 2rem; }
+        .logo h1 { font-size: 2rem; margin-bottom: .5rem; color: #fff; }
+        .logo p, .links { color: var(--muted); font-size: .92rem; }
+        .login-mode { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-bottom: 1.2rem; }
+        .form-group { margin-bottom: 1.15rem; }
+        label { display: block; margin-bottom: .45rem; color: var(--text); font-size: .9rem; font-weight: 600; }
+        input { width: 100%; min-height: 46px; padding: .82rem 1rem; border: 1px solid rgba(255,183,197,.22); border-radius: 8px; background: rgba(6,10,22,.56); color: #fff; font: inherit; outline: none; }
+        input::placeholder { color: rgba(225,236,246,.42); }
+        input:focus { border-color: rgba(126,219,232,.54); box-shadow: 0 0 0 3px rgba(126,219,232,.1); }
+        .code-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .6rem; }
+        .code-btn { min-height: 46px; padding: 0 .9rem; white-space: nowrap; }
+        .submit-btn { width: 100%; min-height: 48px; margin-top: .2rem; color: #fff; font-weight: 700; background: linear-gradient(135deg, rgba(255,95,150,.3), rgba(126,219,232,.18)); border-color: rgba(255,173,193,.34); }
+        .submit-btn:hover { transform: translateY(-1px); border-color: rgba(126,219,232,.5); }
+        button:disabled { opacity: .58; cursor: not-allowed; transform: none; }
+        .links { margin-top: 1.5rem; text-align: center; }
+        .links a { color: rgba(126,219,232,.86); text-decoration: none; }
+        .message { display: none; margin-bottom: 1rem; padding: .82rem; border-radius: 8px; text-align: center; font-size: .9rem; }
+        .error { color: #ff9bab; border: 1px solid rgba(255,95,120,.3); background: rgba(255,95,120,.1); }
+        .success { color: #97f2c1; border: 1px solid rgba(100,255,150,.26); background: rgba(100,255,150,.1); }
+        @media (max-width: 640px) { body { align-items: flex-start; } .code-row { grid-template-columns: 1fr; } }
     </style>
-    <link rel="stylesheet" href="../assets/css/site-theme.css">
-    <script defer src="../assets/js/site-nav.js"></script>
     <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body>
-    <div id="sakuraContainer"></div>
-    <div class="moon"></div>
-
-    <a href="hub" class="back-btn">← <span data-i18n="back">返回</span></a>
-
-    <div class="lang-switcher" aria-label="Language">
-        <button type="button" class="lang-btn active" data-lang="zh">中文</button>
-        <button type="button" class="lang-btn" data-lang="ja">日本語</button>
-    </div>
-
-    <main class="login-container">
-        <div class="logo">
-            <h1>月读空间</h1>
-            <p data-i18n="login_subtitle">欢迎回来，请登录你的账号</p>
-        </div>
-
-        <div id="errorMessage" class="error-message"></div>
-        <div id="successMessage" class="success-message"></div>
-
+    <div id="sakuraContainer"></div><div class="moon"></div>
+    <a href="hub" class="back-btn"><span data-i18n="back">返回</span></a>
+    <div class="lang-switcher" aria-label="Language"><button type="button" class="lang-btn active" data-lang="zh">中文</button><button type="button" class="lang-btn" data-lang="ja">日本語</button></div>
+    <main class="panel">
+        <div class="logo"><h1>月读空间</h1><p data-i18n="subtitle">欢迎回来，请登录你的账号</p></div>
+        <div id="errorMessage" class="message error"></div><div id="successMessage" class="message success"></div>
         <form id="loginForm">
-            <div class="login-mode">
-                <button type="button" class="mode-btn active" id="passwordModeBtn" data-i18n="password_mode">密码登录</button>
-                <button type="button" class="mode-btn" id="codeModeBtn" data-i18n="code_mode">验证码登录</button>
-            </div>
-
-            <div class="form-group">
-                <label for="username" data-i18n="username">用户名</label>
-                <input type="text" id="username" required data-i18n-placeholder="username_placeholder" placeholder="请输入用户名或邮箱">
-            </div>
-
-            <div class="form-group" id="passwordGroup">
-                <label for="password" data-i18n="password">密码</label>
-                <input type="password" id="password" required data-i18n-placeholder="password_placeholder" placeholder="请输入密码">
-            </div>
-
-            <div class="form-group" id="codeGroup" style="display:none;">
-                <label for="emailCode" data-i18n="email_code">邮箱验证码</label>
-                <div class="code-row">
-                    <input type="text" id="emailCode" inputmode="numeric" maxlength="6" data-i18n-placeholder="email_code_placeholder" placeholder="请输入 6 位验证码">
-                    <button type="button" id="sendLoginCodeBtn" class="code-btn" data-i18n="send_code">发送验证码</button>
-                </div>
-            </div>
-
+            <div class="login-mode"><button type="button" class="mode-btn active" id="passwordModeBtn" data-i18n="password_mode">密码登录</button><button type="button" class="mode-btn" id="codeModeBtn" data-i18n="code_mode">验证码登录</button></div>
+            <div class="form-group"><label for="username" data-i18n="account">用户名或邮箱</label><input type="text" id="username" required data-i18n-placeholder="account_ph" placeholder="请输入用户名或邮箱"></div>
+            <div class="form-group" id="passwordGroup"><label for="password" data-i18n="password">密码</label><input type="password" id="password" required data-i18n-placeholder="password_ph" placeholder="请输入密码"></div>
+            <div class="form-group" id="codeGroup" style="display:none"><label for="emailCode" data-i18n="email_code">邮箱验证码</label><div class="code-row"><input type="text" id="emailCode" inputmode="numeric" maxlength="6" data-i18n-placeholder="code_ph" placeholder="请输入 6 位验证码"><button type="button" id="sendLoginCodeBtn" class="code-btn" data-i18n="send_code">发送验证码</button></div></div>
             <button type="submit" class="submit-btn" data-i18n="login_btn">登录</button>
         </form>
-
-        <div class="links">
-            <span data-i18n="no_account">还没有账号？</span>
-            <a href="register" data-i18n="register_link">立即注册</a>
-        </div>
+        <div class="links"><span data-i18n="no_account">还没有账号？</span> <a href="register" data-i18n="register_link">立即注册</a></div>
     </main>
-
     <script>
-        const i18n = {
-            zh: {
-                back: '返回',
-                login_subtitle: '欢迎回来，请登录你的账号',
-                username: '用户名',
-                username_placeholder: '请输入用户名或邮箱',
-                username_placeholder_code: '请输入已注册邮箱',
-                password: '密码',
-                password_placeholder: '请输入密码',
-                password_mode: '密码登录',
-                code_mode: '验证码登录',
-                email_code: '邮箱验证码',
-                email_code_placeholder: '请输入 6 位验证码',
-                send_code: '发送验证码',
-                code_sent: '验证码已发送，请查看邮箱',
-                code_failed: '验证码发送失败：',
-                login_btn: '登录',
-                no_account: '还没有账号？',
-                register_link: '立即注册',
-                login_success: '登录成功，正在跳转...',
-                login_failed: '登录失败：',
-                unknown_error: '未知错误'
-            },
-            ja: {
-                back: '戻る',
-                login_subtitle: 'おかえりなさい。アカウントにログインしてください',
-                username: 'ユーザー名',
-                username_placeholder: 'ユーザー名またはメールアドレスを入力',
-                username_placeholder_code: '登録済みメールアドレスを入力',
-                password: 'パスワード',
-                password_placeholder: 'パスワードを入力',
-                password_mode: 'パスワード',
-                code_mode: '認証コード',
-                email_code: 'メール認証コード',
-                email_code_placeholder: '6桁の認証コードを入力',
-                send_code: 'コード送信',
-                code_sent: '認証コードを送信しました。メールをご確認ください',
-                code_failed: 'コード送信に失敗しました：',
-                login_btn: 'ログイン',
-                no_account: 'アカウントをお持ちでないですか？',
-                register_link: '今すぐ登録',
-                login_success: 'ログイン成功。移動しています...',
-                login_failed: 'ログイン失敗：',
-                unknown_error: '不明なエラー'
-            }
-        };
-
-        let currentLang = 'zh';
-        let loginMethod = 'password';
-
-        document.addEventListener('DOMContentLoaded', () => {
-            initFish();
-            initLanguage();
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
-            document.getElementById('passwordModeBtn').addEventListener('click', () => setLoginMode('password'));
-            document.getElementById('codeModeBtn').addEventListener('click', () => setLoginMode('code'));
-            document.getElementById('sendLoginCodeBtn').addEventListener('click', sendLoginCode);
-            document.querySelectorAll('.lang-btn').forEach((button) => {
-                button.addEventListener('click', () => setLanguage(button.dataset.lang));
-            });
-        });
-
-        function initFish() {
-            window.initTsukuyomiAmbientFish?.({
-                containerId: 'sakuraContainer',
-                density: 0.58
-            });
-        }
-
-        function initLanguage() {
-            const savedLang = localStorage.getItem('lang') || 'zh';
-            setLanguage(savedLang);
-        }
-
-        function setLanguage(lang) {
-            currentLang = i18n[lang] ? lang : 'zh';
-            localStorage.setItem('lang', currentLang);
-
-            document.querySelectorAll('.lang-btn').forEach((button) => {
-                button.classList.toggle('active', button.dataset.lang === currentLang);
-            });
-
-            document.querySelectorAll('[data-i18n]').forEach((element) => {
-                const key = element.dataset.i18n;
-                if (i18n[currentLang][key]) element.textContent = i18n[currentLang][key];
-            });
-
-            document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
-                const key = element.dataset.i18nPlaceholder;
-                if (i18n[currentLang][key]) element.placeholder = i18n[currentLang][key];
-            });
-
-            document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'ja';
-            updateLoginMode(false);
-        }
-
-        function setMessage(type, text) {
-            const errorMessage = document.getElementById('errorMessage');
-            const successMessage = document.getElementById('successMessage');
-            errorMessage.style.display = 'none';
-            successMessage.style.display = 'none';
-
-            const target = type === 'success' ? successMessage : errorMessage;
-            target.textContent = text;
-            target.style.display = 'block';
-        }
-
-        function clearMessages() {
-            document.getElementById('errorMessage').style.display = 'none';
-            document.getElementById('successMessage').style.display = 'none';
-        }
-
-        function setLoginMode(method) {
-            loginMethod = method;
-            updateLoginMode(true);
-        }
-
-        function updateLoginMode(clear) {
-            const isCode = loginMethod === 'code';
-            document.getElementById('passwordModeBtn').classList.toggle('active', !isCode);
-            document.getElementById('codeModeBtn').classList.toggle('active', isCode);
-            document.getElementById('passwordGroup').style.display = isCode ? 'none' : 'block';
-            document.getElementById('codeGroup').style.display = isCode ? 'block' : 'none';
-            document.getElementById('password').required = !isCode;
-            document.getElementById('emailCode').required = isCode;
-            document.getElementById('username').placeholder = isCode
-                ? i18n[currentLang].username_placeholder_code
-                : i18n[currentLang].username_placeholder;
-            if (clear) clearMessages();
-        }
-
-        async function parseResponse(response) {
-            const contentType = response.headers.get('content-type') || '';
-            const raw = await response.text();
-            if (contentType.includes('application/json') && raw) return JSON.parse(raw);
-            return {
-                success: false,
-                message: raw ? raw.replace(/<[^>]*>/g, '').trim().slice(0, 120) : `HTTP ${response.status}`
-            };
-        }
-
-        async function sendLoginCode() {
-            const email = document.getElementById('username').value.trim();
-            const button = document.getElementById('sendLoginCodeBtn');
-            if (!email) {
-                setMessage('error', i18n[currentLang].code_failed + i18n[currentLang].username_placeholder_code);
-                return;
-            }
-
-            button.disabled = true;
-            try {
-                const response = await fetch('/api/auth/email-code', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, purpose: 'login' })
-                });
-                const result = await parseResponse(response);
-                if (!result.success) throw new Error(result.message || i18n[currentLang].unknown_error);
-                setMessage('success', i18n[currentLang].code_sent);
-                startCodeCountdown(button);
-            } catch (error) {
-                button.disabled = false;
-                setMessage('error', i18n[currentLang].code_failed + error.message);
-            }
-        }
-
-        function startCodeCountdown(button) {
-            let seconds = 60;
-            const label = i18n[currentLang].send_code;
-            button.textContent = `${seconds}s`;
-            const timer = setInterval(() => {
-                seconds -= 1;
-                button.textContent = seconds > 0 ? `${seconds}s` : label;
-                if (seconds <= 0) {
-                    clearInterval(timer);
-                    button.disabled = false;
-                }
-            }, 1000);
-        }
-
-        async function handleLogin(event) {
-            event.preventDefault();
-            clearMessages();
-
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const emailCode = document.getElementById('emailCode').value.trim();
-
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, emailCode, loginMethod })
-                });
-                const result = await parseResponse(response);
-
-                if (!result.success) {
-                    throw new Error(result.message || i18n[currentLang].unknown_error);
-                }
-
-                localStorage.removeItem('admin_token');
-                localStorage.removeItem('admin_user');
-                localStorage.setItem('tsukuyomi_token', result.data.token);
-                localStorage.setItem('tsukuyomi_user', JSON.stringify(result.data.user));
-                setMessage('success', i18n[currentLang].login_success);
-
-                const urlParams = new URLSearchParams(window.location.search);
-                const redirect = urlParams.get('redirect') || 'hub';
-                setTimeout(() => {
-                    window.location.href = redirect;
-                }, 900);
-            } catch (error) {
-                setMessage('error', i18n[currentLang].login_failed + error.message);
-            }
-        }
+        const i18n={zh:{back:'返回',subtitle:'欢迎回来，请登录你的账号',password_mode:'密码登录',code_mode:'验证码登录',account:'用户名或邮箱',account_ph:'请输入用户名或邮箱',email_ph:'请输入已注册邮箱',password:'密码',password_ph:'请输入密码',email_code:'邮箱验证码',code_ph:'请输入 6 位验证码',send_code:'发送验证码',code_sent:'验证码已发送，请查看邮箱',code_failed:'验证码发送失败：',login_btn:'登录',no_account:'还没有账号？',register_link:'立即注册',login_success:'登录成功，正在跳转...',login_failed:'登录失败：',unknown:'未知错误'},ja:{back:'戻る',subtitle:'おかえりなさい。アカウントにログインしてください',password_mode:'パスワード',code_mode:'認証コード',account:'ユーザー名またはメール',account_ph:'ユーザー名またはメールを入力',email_ph:'登録済みメールを入力',password:'パスワード',password_ph:'パスワードを入力',email_code:'メール認証コード',code_ph:'6桁のコードを入力',send_code:'コード送信',code_sent:'認証コードを送信しました',code_failed:'コード送信失敗：',login_btn:'ログイン',no_account:'アカウントをお持ちでないですか？',register_link:'新規登録',login_success:'ログイン成功。移動しています...',login_failed:'ログイン失敗：',unknown:'不明なエラー'}};
+        let currentLang='zh', loginMethod='password';
+        document.addEventListener('DOMContentLoaded',()=>{window.initTsukuyomiAmbientFish?.({containerId:'sakuraContainer',density:.58}); setLanguage(localStorage.getItem('lang')||'zh'); document.getElementById('loginForm').addEventListener('submit',handleLogin); passwordModeBtn.addEventListener('click',()=>setLoginMode('password')); codeModeBtn.addEventListener('click',()=>setLoginMode('code')); sendLoginCodeBtn.addEventListener('click',sendLoginCode); document.querySelectorAll('.lang-btn').forEach(b=>b.addEventListener('click',()=>setLanguage(b.dataset.lang)));});
+        function setLanguage(lang){currentLang=i18n[lang]?lang:'zh'; localStorage.setItem('lang',currentLang); document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.lang===currentLang)); document.querySelectorAll('[data-i18n]').forEach(el=>{const v=i18n[currentLang][el.dataset.i18n]; if(v) el.textContent=v;}); document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{const v=i18n[currentLang][el.dataset.i18nPlaceholder]; if(v) el.placeholder=v;}); document.documentElement.lang=currentLang==='zh'?'zh-CN':'ja'; updateLoginMode(false);}
+        function msg(type,text){errorMessage.style.display='none'; successMessage.style.display='none'; const el=type==='success'?successMessage:errorMessage; el.textContent=text; el.style.display='block';}
+        function clearMsg(){errorMessage.style.display='none'; successMessage.style.display='none';}
+        function setLoginMode(method){loginMethod=method; updateLoginMode(true);}
+        function updateLoginMode(clear){const isCode=loginMethod==='code'; passwordModeBtn.classList.toggle('active',!isCode); codeModeBtn.classList.toggle('active',isCode); passwordGroup.style.display=isCode?'none':'block'; codeGroup.style.display=isCode?'block':'none'; password.required=!isCode; emailCode.required=isCode; username.placeholder=isCode?i18n[currentLang].email_ph:i18n[currentLang].account_ph; if(clear) clearMsg();}
+        async function parseResponse(res){const text=await res.text(); try{return text?JSON.parse(text):{success:false,message:`HTTP ${res.status}`};}catch{return{success:false,message:text.replace(/<[^>]*>/g,'').trim().slice(0,120)||`HTTP ${res.status}`};}}
+        function countdown(button){let s=60,label=i18n[currentLang].send_code; button.textContent=`${s}s`; const t=setInterval(()=>{s-=1; button.textContent=s>0?`${s}s`:label; if(s<=0){clearInterval(t); button.disabled=false;}},1000);}
+        async function sendLoginCode(){const email=username.value.trim(); if(!email) return msg('error',i18n[currentLang].code_failed+i18n[currentLang].email_ph); sendLoginCodeBtn.disabled=true; try{const res=await fetch('/api/auth/email-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,purpose:'login'})}); const result=await parseResponse(res); if(!result.success) throw new Error(result.message||i18n[currentLang].unknown); msg('success',i18n[currentLang].code_sent); countdown(sendLoginCodeBtn);}catch(e){sendLoginCodeBtn.disabled=false; msg('error',i18n[currentLang].code_failed+e.message);}}
+        async function handleLogin(e){e.preventDefault(); clearMsg(); try{const res=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username.value.trim(),password:password.value,emailCode:emailCode.value.trim(),loginMethod})}); const result=await parseResponse(res); if(!result.success) throw new Error(result.message||i18n[currentLang].unknown); localStorage.removeItem('admin_token'); localStorage.removeItem('admin_user'); localStorage.setItem('tsukuyomi_token',result.data.token); localStorage.setItem('tsukuyomi_user',JSON.stringify(result.data.user)); msg('success',i18n[currentLang].login_success); const redirect=new URLSearchParams(location.search).get('redirect')||'hub'; setTimeout(()=>location.href=redirect,800);}catch(e){msg('error',i18n[currentLang].login_failed+e.message);}}
     </script>
 </body>
 </html>

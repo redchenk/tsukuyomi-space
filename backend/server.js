@@ -118,7 +118,7 @@ db.exec(`
         used_at INTEGER,
         created_at INTEGER NOT NULL
     );
-    
+
     -- 鏂囩珷琛?
     CREATE TABLE IF NOT EXISTS articles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,7 +137,7 @@ db.exec(`
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (author_id) REFERENCES users(id)
     );
-    
+
     -- 鐣欒█琛?
     CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -163,7 +163,7 @@ db.exec(`
         FOREIGN KEY (user_id) REFERENCES users(id),
         UNIQUE(message_id, user_id)
     );
-    
+
     -- 璁块棶缁熻
     CREATE TABLE IF NOT EXISTS stats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -219,8 +219,8 @@ if (!hasArticleId) {
 
 // 鍋ュ悍妫€鏌?
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
         message: 'Tsukuyomi Space API is running',
         timestamp: new Date().toISOString()
     });
@@ -231,27 +231,27 @@ app.get('/api/articles', (req, res) => {
     try {
         const { category, page = 1, limit = 100 } = req.query;
         const offset = (page - 1) * limit;
-        
+
         let query = `
-            SELECT a.*, u.username as author_username 
-            FROM articles a 
+            SELECT a.*, u.username as author_username
+            FROM articles a
             LEFT JOIN users u ON a.author_id = u.id
         `;
         let countQuery = 'SELECT COUNT(*) as total FROM articles';
-        
+
         if (category) {
             query += ` WHERE a.category = ?`;
             countQuery += ` WHERE category = ?`;
         }
-        
+
         query += ` ORDER BY a.publish_date DESC LIMIT ? OFFSET ?`;
-        
+
         const countStmt = db.prepare(countQuery);
         const stmt = db.prepare(query);
-        
+
         let total;
         let articles;
-        
+
         if (category) {
             total = countStmt.get(category);
             articles = stmt.all(category, parseInt(limit), parseInt(offset));
@@ -259,15 +259,15 @@ app.get('/api/articles', (req, res) => {
             total = countStmt.get();
             articles = stmt.all(parseInt(limit), parseInt(offset));
         }
-        
+
         // 瑙ｆ瀽 tags
         articles = articles.map(article => ({
             ...article,
             tags: typeof article.tags === 'string' ? JSON.parse(article.tags) : article.tags
         }));
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             data: articles,
             pagination: {
                 page: parseInt(page),
@@ -286,14 +286,14 @@ app.get('/api/articles', (req, res) => {
 app.get('/api/articles/:id', (req, res) => {
     try {
         const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
-        
+
         if (!article) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }
-        
+
         // 澧炲姞闃呰閲?
         db.prepare('UPDATE articles SET view_count = view_count + 1 WHERE id = ?').run(req.params.id);
-        
+
         res.json({
             success: true,
             data: {
@@ -439,22 +439,22 @@ app.post('/api/auth/email-code', async (req, res) => {
         const purpose = req.body.purpose === 'login' ? 'login' : 'register';
 
         if (!isEmail(email)) {
-            return res.status(400).json({ success: false, message: '请求处理失败' });
+            return res.status(400).json({ success: false, message: '请输入有效邮箱' });
         }
 
         const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
         if (purpose === 'register' && existingUser) {
-            return res.status(400).json({ success: false, message: '请求处理失败' });
+            return res.status(400).json({ success: false, message: '该邮箱已注册' });
         }
         if (purpose === 'login' && !existingUser) {
-            return res.status(404).json({ success: false, message: '请求处理失败' });
+            return res.status(404).json({ success: false, message: '该邮箱尚未注册' });
         }
 
         const last = latestCode(email, purpose);
         const now = Date.now();
         if (last && now - last.created_at < EMAIL_CODE_COOLDOWN_MS) {
             const wait = Math.ceil((EMAIL_CODE_COOLDOWN_MS - (now - last.created_at)) / 1000);
-            return res.status(429).json({ success: false, message: `璇?${wait} 绉掑悗鍐嶅彂閫侀獙璇佺爜` });
+            return res.status(429).json({ success: false, message: `请 ${wait} 秒后再发送验证码` });
         }
 
         const code = crypto.randomInt(100000, 999999).toString();
@@ -464,9 +464,12 @@ app.post('/api/auth/email-code', async (req, res) => {
         `).run(uuidv4(), email, bcrypt.hashSync(code, 10), purpose, now + EMAIL_CODE_TTL_MS, now);
 
         await sendVerificationEmail(email, code, purpose);
-        es.json({ success: true, message: '操作成功' });
+        res.json({ success: true, message: '验证码已发送' });
     } catch (error) {
         console.error('鍙戦€侀偖绠遍獙璇佺爜澶辫触:', error);
+        if (error.message === 'SMTP credentials are not configured') {
+            return res.status(503).json({ success: false, message: '邮件服务未配置，请先设置 SMTP_USER 和 SMTP_PASS' });
+        }
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
@@ -479,25 +482,25 @@ app.post('/api/auth/register', (req, res) => {
 
         // 楠岃瘉杈撳叆
         if (!username || !email || !password || !emailCode) {
-            return res.status(400).json({ success: false, message: '请求处理失败' });
+            return res.status(400).json({ success: false, message: '请完整填写注册信息和验证码' });
         }
 
         if (!isEmail(email)) {
-            return res.status(400).json({ success: false, message: '请求处理失败' });
+            return res.status(400).json({ success: false, message: '请输入有效邮箱' });
         }
 
         if (password.length < 6) {
-            return res.status(400).json({ success: false, message: '请求处理失败' });
+            return res.status(400).json({ success: false, message: '密码至少需要 6 位' });
         }
 
         // 妫€鏌ョ敤鎴锋槸鍚﹀凡瀛樺湪
         const existingUser = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email);
         if (existingUser) {
-            return res.status(400).json({ success: false, message: '鐢ㄦ埛鍚嶆垨閭宸茶娉ㄥ唽' });
+            return res.status(400).json({ success: false, message: '用户名或邮箱已被注册' });
         }
 
         if (!consumeVerificationCode(email, 'register', emailCode)) {
-            return res.status(400).json({ success: false, message: '请求处理失败' });
+            return res.status(400).json({ success: false, message: '验证码无效或已过期' });
         }
 
         // 鍒涘缓鐢ㄦ埛
@@ -514,7 +517,7 @@ app.post('/api/auth/register', (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: '娉ㄥ唽鎴愬姛',
+            message: '注册成功',
             data: {
                 user: { id: userId, username, email, role: 'user' },
                 token
@@ -533,30 +536,30 @@ app.post('/api/auth/login', (req, res) => {
         const loginMethod = req.body.loginMethod === 'code' ? 'code' : 'password';
 
         if (!username) {
-            return res.status(400).json({ success: false, message: '请求处理失败' });
+            return res.status(400).json({ success: false, message: '请输入用户名或邮箱' });
         }
 
         // 鏌ユ壘鐢ㄦ埛
         const user = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(username, username);
 
         if (!user) {
-            return res.status(401).json({ success: false, message: '鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒' });
+            return res.status(401).json({ success: false, message: '用户名或密码错误' });
         }
 
         if (loginMethod === 'code') {
             if (!emailCode) {
-                return res.status(400).json({ success: false, message: '璇峰～鍐欓偖绠遍獙璇佺爜' });
+                return res.status(400).json({ success: false, message: '请填写邮箱验证码' });
             }
             if (!consumeVerificationCode(normalizeEmail(user.email), 'login', emailCode)) {
-                return res.status(401).json({ success: false, message: '请求处理失败' });
+                return res.status(401).json({ success: false, message: '验证码无效或已过期' });
             }
         } else {
             if (!password) {
-                return res.status(400).json({ success: false, message: '请求处理失败' });
+                return res.status(400).json({ success: false, message: '请输入密码' });
             }
             const validPassword = bcrypt.compareSync(password, user.password_hash);
             if (!validPassword) {
-                return res.status(401).json({ success: false, message: '鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒' });
+                return res.status(401).json({ success: false, message: '用户名或密码错误' });
             }
         }
 
@@ -565,7 +568,7 @@ app.post('/api/auth/login', (req, res) => {
 
         res.json({
             success: true,
-            message: '鐧诲綍鎴愬姛',
+            message: '登录成功',
             data: {
                 user: {
                     id: user.id,
@@ -587,11 +590,11 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/auth/me', authenticateToken, (req, res) => {
     try {
         const user = db.prepare('SELECT id, username, email, role, avatar, created_at FROM users WHERE id = ?').get(req.user.id);
-        
+
         if (!user) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }
-        
+
         res.json({ success: true, data: user });
     } catch (error) {
         res.status(500).json({ success: false, message: '服务器错误' });
@@ -717,50 +720,50 @@ app.post('/api/messages/:id/reply', authenticateToken, (req, res) => {
 app.post('/api/articles', authenticateToken, (req, res) => {
     try {
         const { title, excerpt, content, category, tags, read_time, cover_image } = req.body;
-        
+
         console.log('=== 瑷樹簨浣滄垚銉偗銈ㄣ偣銉?===');
         console.log('銉︺兗銈躲兗:', req.user.username, '褰瑰壊:', req.user.role);
         console.log('銈儐銈淬儶:', category);
-        
+
         if (!title) {
             return res.status(400).json({ success: false, message: '请求处理失败' });
         }
-        
+
         // 鏉冮檺妫€鏌ワ細鍙湁绠＄悊鍛樺彲浠ュ彂甯冨叕鍛?
         if (category === '鍏憡') {
             if (req.user.role !== 'admin') {
-                return res.status(403).json({ 
-                    success: false, 
+                return res.status(403).json({
+                    success: false,
                     message: '操作失败'
                 });
             }
         }
-        
+
         // 鏅€氱敤鎴风殑榛樿鍒嗙被
         let finalCategory = category;
         if (!finalCategory) {
             finalCategory = req.user.role === 'admin' ? '鍏憡' : '鍏朵粬';
         }
-        
+
         console.log('鏈€绲傘偒銉嗐偞銉?', finalCategory);
-        
+
         const tagsJson = JSON.stringify(tags || []);
         const publishDate = new Date().toISOString().split('T')[0];
         const coverImageBase64 = cover_image || null;
-        
+
         const result = db.prepare(`
             INSERT INTO articles (title, excerpt, content, category, tags, author_id, publish_date, read_time, cover_image)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(title, excerpt || '', content || '', finalCategory, tagsJson, req.user.id, publishDate, read_time || '5 min', coverImageBase64);
-        
+
         const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(result.lastInsertRowid);
-        
+
         console.log('瑷樹簨浣滄垚鎴愬姛 ID:', result.lastInsertRowid);
-        
-        res.status(201).json({ 
-            success: true, 
+
+        res.status(201).json({
+            success: true,
             message: '操作失败',
-            data: newArticle 
+            data: newArticle
         });
     } catch (error) {
         console.error('瑷樹簨浣滄垚銈ㄣ儵銉?', error);
@@ -772,13 +775,13 @@ app.post('/api/articles', authenticateToken, (req, res) => {
 app.put('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
         const { title, excerpt, content, category, tags, read_time, cover_image } = req.body;
-        
+
         const stmt = db.prepare(`
-            UPDATE articles 
+            UPDATE articles
             SET title = ?, excerpt = ?, content = ?, category = ?, tags = ?, read_time = ?, cover_image = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `);
-        
+
         stmt.run(
             title || req.body.title,
             excerpt || '',
@@ -789,13 +792,13 @@ app.put('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
             cover_image !== undefined ? cover_image : null,
             req.params.id
         );
-        
+
         const updatedArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: '鏂囩珷鏇存柊鎴愬姛',
-            data: updatedArticle 
+            data: updatedArticle
         });
     } catch (error) {
         res.status(500).json({ success: false, message: '服务器错误' });
@@ -806,7 +809,8 @@ app.put('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
 app.delete('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
         db.prepare('DELETE FROM articles WHERE id = ?').run(req.params.id);
-        es.json({ success: true, message: '操作成功' });
+
+        res.json({ success: true, message: '操作成功' });
     } catch (error) {
         res.status(500).json({ success: false, message: '服务器错误' });
     }
@@ -852,7 +856,8 @@ app.post('/api/stats/view', (req, res) => {
             ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
         });
         db.prepare('INSERT INTO stats (event_type, event_data) VALUES (?, ?)').run('view', eventData);
-        es.json({ success: true, message: '操作成功' });
+
+        res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('璁板綍璁块棶澶辫触:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
@@ -1331,7 +1336,8 @@ app.post('/api/admin/upload-room', requireAdmin, (req, res) => {
         fs.mkdirSync(path.dirname(targetPath), { recursive: true });
         fs.writeFileSync(targetPath, content, 'utf8');
 
-        es.json({ success: true, message: '操作成功' });
+
+        res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('涓婁紶 room.html 閿欒:', error);
         res.status(500).json({ success: false, message: '鏈嶅姟鍣ㄩ敊璇細' + error.message });
