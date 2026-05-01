@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "check": "node --check server.js && node --check admin-routes.js && node --check user-routes.js && node --check config.js && node --check middleware/auth.js && node --check middleware/security.js",
+    "test": "npm run check"
   },
   "dependencies": {
     "express": "^4.18.2",

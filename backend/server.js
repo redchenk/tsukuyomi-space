@@ -1,38 +1,67 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const Database = require('better-sqlite3');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 const tls = require('tls');
 const crypto = require('crypto');
+const config = require('./config');
+const { securityHeaders, createRateLimiter } = require('./middleware/security');
 
-// 引入统一认证中间件
+// 寮曞叆缁熶竴璁よ瘉涓棿浠?
 const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
 
 const app = express();
-const PORT = 3000;
-const JWT_SECRET = 'tsukuyomi_space_secret_key_2024_change_in_production';
-const SMTP_CONFIG = {
-    host: process.env.SMTP_HOST || 'smtp.qq.com',
-    port: Number(process.env.SMTP_PORT || 465),
-    secure: (process.env.SMTP_SECURE || 'ssl').toLowerCase() !== 'false',
-    user: process.env.SMTP_USER || '2189561615@qq.com',
-    pass: process.env.SMTP_PASS || '',
-    fromName: process.env.SMTP_FROM_NAME || '月读空间'
-};
+const PORT = config.port;
+const SMTP_CONFIG = config.smtp;
 const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
 const EMAIL_CODE_COOLDOWN_MS = 60 * 1000;
 
-// 中间件
-app.use(cors());
-// 增加请求体大小限制到 10MB（支持封面图片上传）
+function isAllowedOrigin(origin, req) {
+    if (!origin) return true;
+    if (config.corsOrigins.length === 0 || config.corsOrigins.includes(origin)) return true;
+
+    try {
+        const originUrl = new URL(origin);
+        const forwardedHost = req.headers['x-forwarded-host'];
+        const requestHost = forwardedHost || req.headers.host;
+        if (!requestHost) return false;
+        return originUrl.host === requestHost || originUrl.hostname === requestHost.split(':')[0];
+    } catch (_) {
+        return false;
+    }
+}
+
+// 涓棿浠?
+if (config.trustProxy) app.set('trust proxy', 1);
+app.use(securityHeaders);
+app.use((req, res, next) => {
+    cors({
+        origin(origin, callback) {
+        if (isAllowedOrigin(origin, req)) {
+            return callback(null, true);
+        }
+            return callback(null, false);
+        },
+        credentials: true
+    })(req, res, next);
+});
+app.use('/api/', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 600, keyPrefix: 'api' }));
+app.use('/api/auth/', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 60, keyPrefix: 'auth' }));
+app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
+// 澧炲姞璇锋眰浣撳ぇ灏忛檺鍒跺埌 10MB锛堟敮鎸佸皝闈㈠浘鐗囦笂浼狅級
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && 'body' in err) {
+        return res.status(400).json({ success: false, message: '请求 JSON 格式无效' });
+    }
+    next(err);
+});
 
-// 静态文件服务 - pages 目录（HTML 页面）
+// 闈欐€佹枃浠舵湇鍔?- pages 鐩綍锛圚TML 椤甸潰锛?
 app.use(express.static(path.join(__dirname, '..')));
 app.use('/pages', express.static(path.join(__dirname, '..', 'pages')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
@@ -54,21 +83,21 @@ app.use((req, res, next) => {
     next();
 });
 
-// 初始化数据库
-const dbPath = path.join(__dirname, 'tsukuyomi.db');
+// 鍒濆鍖栨暟鎹簱
+const dbPath = config.dbPath;
 const db = new Database(dbPath);
 
-// 引入管理后台路由（需要在 db 初始化之后）
+// 寮曞叆绠＄悊鍚庡彴璺敱锛堥渶瑕佸湪 db 鍒濆鍖栦箣鍚庯級
 const adminRoutes = require('./admin-routes');
 app.use('/api/admin', adminRoutes);
 
-// 用户中心路由
+// 鐢ㄦ埛涓績璺敱
 const userRoutes = require('./user-routes');
 app.use('/api/user', userRoutes);
 
-// 创建数据表
+// 鍒涘缓鏁版嵁琛?
 db.exec(`
-    -- 用户表
+    -- 鐢ㄦ埛琛?
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
@@ -90,13 +119,13 @@ db.exec(`
         created_at INTEGER NOT NULL
     );
     
-    -- 文章表
+    -- 鏂囩珷琛?
     CREATE TABLE IF NOT EXISTS articles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         excerpt TEXT,
         content TEXT,
-        category TEXT DEFAULT '公告',
+        category TEXT DEFAULT '鍏憡',
         tags TEXT DEFAULT '[]',
         author_id TEXT,
         publish_date TEXT,
@@ -109,7 +138,7 @@ db.exec(`
         FOREIGN KEY (author_id) REFERENCES users(id)
     );
     
-    -- 留言表
+    -- 鐣欒█琛?
     CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         author TEXT NOT NULL,
@@ -124,7 +153,7 @@ db.exec(`
         FOREIGN KEY (article_id) REFERENCES articles(id)
     );
 
-    -- 留言点赞表
+    -- 鐣欒█鐐硅禐琛?
     CREATE TABLE IF NOT EXISTS message_likes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         message_id INTEGER NOT NULL,
@@ -135,7 +164,7 @@ db.exec(`
         UNIQUE(message_id, user_id)
     );
     
-    -- 访问统计
+    -- 璁块棶缁熻
     CREATE TABLE IF NOT EXISTS stats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         event_type TEXT NOT NULL,
@@ -144,48 +173,51 @@ db.exec(`
     );
 `);
 
-// 创建默认管理员账户 (用户名：admin, 密码：admin123)
-const adminExists = db.prepare("SELECT id FROM users WHERE username = 'admin'").get();
+// 鍒涘缓榛樿绠＄悊鍛樿处鎴?(鐢ㄦ埛鍚嶏細admin, 瀵嗙爜锛歛dmin123)
+const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get(config.defaultAdmin.username);
 if (!adminExists) {
-    const adminPassword = 'admin123';
+    if (config.isProduction && !config.defaultAdmin.password) {
+        throw new Error('ADMIN_PASSWORD must be set before creating the first admin user in production.');
+    }
+    const adminPassword = config.defaultAdmin.password || 'admin123';
     const adminHash = bcrypt.hashSync(adminPassword, 10);
     db.prepare(`
         INSERT INTO users (id, username, email, password_hash, role)
         VALUES (?, ?, ?, ?, ?)
-    `).run('admin-001', 'admin', 'admin@tsukuyomi.space', adminHash, 'admin');
-    console.log('✓ 默认管理员已创建 (admin/admin123)');
+    `).run('admin-001', config.defaultAdmin.username, config.defaultAdmin.email, adminHash, 'admin');
+    console.log(`Default admin user created: ${config.defaultAdmin.username}`);
 }
 
-// 初始化默认文章（仅当文章表为空时）
+// 鍒濆鍖栭粯璁ゆ枃绔狅紙浠呭綋鏂囩珷琛ㄤ负绌烘椂锛?
 const articleCount = db.prepare('SELECT COUNT(*) as count FROM articles').get().count;
 if (articleCount === 0) {
     db.exec(`
         INSERT INTO articles (title, excerpt, content, category, tags, publish_date, read_time)
         VALUES
-            ('欢迎来到月读空间', '跨越八千年时光，与你相遇的虚拟场域',
-             '这里是月读空间的第一篇文章。月读空间是《超时空辉夜姬！》中的虚拟空间，是梦想与希望交汇的地方...',
-             '公告', '["公告","欢迎"]', '2024-01-01', '3 min'),
-            ('辉夜姬的传说', '来自月之都的公主，跨越千年的故事',
-             '在遥远的古代，月亮上存在着一个神秘而古老的文明——月之都。那里居住着拥有永恒生命的月之民...',
-             '传说', '["辉夜姬","传说"]', '2024-01-02', '5 min'),
-            ('月读空间技术揭秘', '探索虚拟空间背后的技术架构',
-             '月读空间作为一个沉浸式虚拟场域，采用了最前沿的 VR 技术和神经接口技术...',
-             '技术', '["技术","VR"]', '2024-01-03', '8 min');
+            '';
+             '杩欓噷鏄湀璇荤┖闂寸殑绗竴绡囨枃绔犮€傛湀璇荤┖闂存槸銆婅秴鏃剁┖杈夊濮紒銆嬩腑鐨勮櫄鎷熺┖闂达紝鏄ⅵ鎯充笌甯屾湜浜ゆ眹鐨勫湴鏂?..',
+             '鍏憡', '["鍏憡","娆㈣繋"]', '2024-01-01', '3 min'),
+            ('杈夊濮殑浼犺', '鏉ヨ嚜鏈堜箣閮界殑鍏富锛岃法瓒婂崈骞寸殑鏁呬簨',
+             '鍦ㄩ仴杩滅殑鍙や唬锛屾湀浜笂瀛樺湪鐫€涓€涓绉樿€屽彜鑰佺殑鏂囨槑鈥斺€旀湀涔嬮兘銆傞偅閲屽眳浣忕潃鎷ユ湁姘告亽鐢熷懡鐨勬湀涔嬫皯...',
+             '浼犺', '["杈夊濮?,"浼犺"]', '2024-01-02', '5 min'),
+            ('鏈堣绌洪棿鎶€鏈彮绉?, '鎺㈢储铏氭嫙绌洪棿鑳屽悗鐨勬妧鏈灦鏋?,
+             '鏈堣绌洪棿浣滀负涓€涓矇娴稿紡铏氭嫙鍦哄煙锛岄噰鐢ㄤ簡鏈€鍓嶆部鐨?VR 鎶€鏈拰绁炵粡鎺ュ彛鎶€鏈?..',
+             '';
     `);
-    console.log('✓ 默认文章已初始化');
+    console.log('鉁?榛樿鏂囩珷宸插垵濮嬪寲');
 }
 
-// 数据库迁移：为 messages 表添加 article_id 列
+// 鏁版嵁搴撹縼绉伙細涓?messages 琛ㄦ坊鍔?article_id 鍒?
 const tableInfo = db.pragma("table_info('messages')");
 const hasArticleId = tableInfo.some(col => col.name === 'article_id');
 if (!hasArticleId) {
     db.exec("ALTER TABLE messages ADD COLUMN article_id INTEGER");
-    console.log('✓ messages 表已添加 article_id 列');
+    console.log('Operation completed');
 }
 
-// ===== 公开 API =====
+// ===== 鍏紑 API =====
 
-// 健康检查
+// 鍋ュ悍妫€鏌?
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'ok', 
@@ -194,7 +226,7 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// 获取文章列表（带作者信息和封面）
+// 鑾峰彇鏂囩珷鍒楄〃锛堝甫浣滆€呬俊鎭拰灏侀潰锛?
 app.get('/api/articles', (req, res) => {
     try {
         const { category, page = 1, limit = 100 } = req.query;
@@ -228,7 +260,7 @@ app.get('/api/articles', (req, res) => {
             articles = stmt.all(parseInt(limit), parseInt(offset));
         }
         
-        // 解析 tags
+        // 瑙ｆ瀽 tags
         articles = articles.map(article => ({
             ...article,
             tags: typeof article.tags === 'string' ? JSON.parse(article.tags) : article.tags
@@ -245,21 +277,21 @@ app.get('/api/articles', (req, res) => {
             }
         });
     } catch (error) {
-        console.error('获取文章失败:', error);
-        res.status(500).json({ success: false, message: 'サーバーエラー' });
+        console.error('鑾峰彇鏂囩珷澶辫触:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 获取单篇文章
+// 鑾峰彇鍗曠瘒鏂囩珷
 app.get('/api/articles/:id', (req, res) => {
     try {
         const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
         
         if (!article) {
-            return res.status(404).json({ success: false, message: '文章不存在' });
+            return res.status(404).json({ success: false, message: '请求处理失败' });
         }
         
-        // 增加阅读量
+        // 澧炲姞闃呰閲?
         db.prepare('UPDATE articles SET view_count = view_count + 1 WHERE id = ?').run(req.params.id);
         
         res.json({
@@ -274,7 +306,7 @@ app.get('/api/articles/:id', (req, res) => {
     }
 });
 
-// ===== 用户认证 API =====
+// ===== 鐢ㄦ埛璁よ瘉 API =====
 
 function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
@@ -400,29 +432,29 @@ function issueTokenForUser(user) {
     return generateToken({ id: user.id, username: user.username, role: user.role }, '7d');
 }
 
-// 发送邮箱验证码
+// 鍙戦€侀偖绠遍獙璇佺爜
 app.post('/api/auth/email-code', async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
         const purpose = req.body.purpose === 'login' ? 'login' : 'register';
 
         if (!isEmail(email)) {
-            return res.status(400).json({ success: false, message: '请输入有效邮箱' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
         const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
         if (purpose === 'register' && existingUser) {
-            return res.status(400).json({ success: false, message: '该邮箱已被注册' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
         if (purpose === 'login' && !existingUser) {
-            return res.status(404).json({ success: false, message: '该邮箱尚未注册' });
+            return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
         const last = latestCode(email, purpose);
         const now = Date.now();
         if (last && now - last.created_at < EMAIL_CODE_COOLDOWN_MS) {
             const wait = Math.ceil((EMAIL_CODE_COOLDOWN_MS - (now - last.created_at)) / 1000);
-            return res.status(429).json({ success: false, message: `请 ${wait} 秒后再发送验证码` });
+            return res.status(429).json({ success: false, message: `璇?${wait} 绉掑悗鍐嶅彂閫侀獙璇佺爜` });
         }
 
         const code = crypto.randomInt(100000, 999999).toString();
@@ -432,43 +464,43 @@ app.post('/api/auth/email-code', async (req, res) => {
         `).run(uuidv4(), email, bcrypt.hashSync(code, 10), purpose, now + EMAIL_CODE_TTL_MS, now);
 
         await sendVerificationEmail(email, code, purpose);
-        res.json({ success: true, message: '验证码已发送，请查收邮箱' });
+        es.json({ success: true, message: '操作成功' });
     } catch (error) {
-        console.error('发送邮箱验证码失败:', error);
-        res.status(500).json({ success: false, message: '验证码发送失败，请稍后重试' });
+        console.error('鍙戦€侀偖绠遍獙璇佺爜澶辫触:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 用户注册
+// 鐢ㄦ埛娉ㄥ唽
 app.post('/api/auth/register', (req, res) => {
     try {
         const { username, password, emailCode } = req.body;
         const email = normalizeEmail(req.body.email);
 
-        // 验证输入
+        // 楠岃瘉杈撳叆
         if (!username || !email || !password || !emailCode) {
-            return res.status(400).json({ success: false, message: '请填写所有必填字段' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
         if (!isEmail(email)) {
-            return res.status(400).json({ success: false, message: '请输入有效邮箱' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
         if (password.length < 6) {
-            return res.status(400).json({ success: false, message: '密码长度至少为 6 位' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
-        // 检查用户是否已存在
+        // 妫€鏌ョ敤鎴锋槸鍚﹀凡瀛樺湪
         const existingUser = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email);
         if (existingUser) {
-            return res.status(400).json({ success: false, message: '用户名或邮箱已被注册' });
+            return res.status(400).json({ success: false, message: '鐢ㄦ埛鍚嶆垨閭宸茶娉ㄥ唽' });
         }
 
         if (!consumeVerificationCode(email, 'register', emailCode)) {
-            return res.status(400).json({ success: false, message: '邮箱验证码无效或已过期' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
-        // 创建用户
+        // 鍒涘缓鐢ㄦ埛
         const userId = uuidv4();
         const passwordHash = bcrypt.hashSync(password, 10);
 
@@ -477,63 +509,63 @@ app.post('/api/auth/register', (req, res) => {
             VALUES (?, ?, ?, ?)
         `).run(userId, username, email, passwordHash);
 
-        // 生成 JWT (使用统一的 generateToken)
+        // 鐢熸垚 JWT (浣跨敤缁熶竴鐨?generateToken)
         const token = generateToken({ id: userId, username, role: 'user' }, '7d');
 
         res.status(201).json({
             success: true,
-            message: '注册成功',
+            message: '娉ㄥ唽鎴愬姛',
             data: {
                 user: { id: userId, username, email, role: 'user' },
                 token
             }
         });
     } catch (error) {
-        console.error('注册失败:', error);
+        console.error('娉ㄥ唽澶辫触:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 用户登录
+// 鐢ㄦ埛鐧诲綍
 app.post('/api/auth/login', (req, res) => {
     try {
         const { username, password, emailCode } = req.body;
         const loginMethod = req.body.loginMethod === 'code' ? 'code' : 'password';
 
         if (!username) {
-            return res.status(400).json({ success: false, message: '请填写账号信息' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
-        // 查找用户
+        // 鏌ユ壘鐢ㄦ埛
         const user = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(username, username);
 
         if (!user) {
-            return res.status(401).json({ success: false, message: '用户名或密码错误' });
+            return res.status(401).json({ success: false, message: '鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒' });
         }
 
         if (loginMethod === 'code') {
             if (!emailCode) {
-                return res.status(400).json({ success: false, message: '请填写邮箱验证码' });
+                return res.status(400).json({ success: false, message: '璇峰～鍐欓偖绠遍獙璇佺爜' });
             }
             if (!consumeVerificationCode(normalizeEmail(user.email), 'login', emailCode)) {
-                return res.status(401).json({ success: false, message: '邮箱验证码无效或已过期' });
+                return res.status(401).json({ success: false, message: '请求处理失败' });
             }
         } else {
             if (!password) {
-                return res.status(400).json({ success: false, message: '请填写密码' });
+                return res.status(400).json({ success: false, message: '请求处理失败' });
             }
             const validPassword = bcrypt.compareSync(password, user.password_hash);
             if (!validPassword) {
-                return res.status(401).json({ success: false, message: '用户名或密码错误' });
+                return res.status(401).json({ success: false, message: '鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒' });
             }
         }
 
-        // 生成 JWT (使用统一的 generateToken)
+        // 鐢熸垚 JWT (浣跨敤缁熶竴鐨?generateToken)
         const token = issueTokenForUser(user);
 
         res.json({
             success: true,
-            message: '登录成功',
+            message: '鐧诲綍鎴愬姛',
             data: {
                 user: {
                     id: user.id,
@@ -546,18 +578,18 @@ app.post('/api/auth/login', (req, res) => {
             }
         });
     } catch (error) {
-        console.error('登录失败:', error);
+        console.error('鐧诲綍澶辫触:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 获取当前用户信息
+// 鑾峰彇褰撳墠鐢ㄦ埛淇℃伅
 app.get('/api/auth/me', authenticateToken, (req, res) => {
     try {
         const user = db.prepare('SELECT id, username, email, role, avatar, created_at FROM users WHERE id = ?').get(req.user.id);
         
         if (!user) {
-            return res.status(404).json({ success: false, message: '用户不存在' });
+            return res.status(404).json({ success: false, message: '请求处理失败' });
         }
         
         res.json({ success: true, data: user });
@@ -566,16 +598,16 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
     }
 });
 
-// ===== 需要认证的 API =====
+// ===== 闇€瑕佽璇佺殑 API =====
 
-// 获取所有留言（公开）
+// 鑾峰彇鎵€鏈夌暀瑷€锛堝叕寮€锛?
 app.get('/api/messages', (req, res) => {
     try {
         const articleId = req.query.article_id;
         let query;
         let msgs;
         if (articleId) {
-            // 文章评论区
+            // 鏂囩珷璇勮鍖?
             query = `
                 SELECT m.*, u.avatar
                 FROM messages m
@@ -585,7 +617,7 @@ app.get('/api/messages', (req, res) => {
             `;
             msgs = db.prepare(query).all(articleId);
         } else {
-            // 月读广场留言墙
+            // 鏈堣骞垮満鐣欒█澧?
             query = `
                 SELECT m.*, u.avatar
                 FROM messages m
@@ -602,13 +634,13 @@ app.get('/api/messages', (req, res) => {
     }
 });
 
-// 创建留言
+// 鍒涘缓鐣欒█
 app.post('/api/messages', authenticateToken, (req, res) => {
     try {
         const { content, article_id } = req.body;
 
         if (!content) {
-            return res.status(400).json({ success: false, message: '留言内容不能为空' });
+            return res.status(400).json({ success: false, message: '鐣欒█鍐呭涓嶈兘涓虹┖' });
         }
 
         const result = db.prepare(`
@@ -624,22 +656,22 @@ app.post('/api/messages', authenticateToken, (req, res) => {
     }
 });
 
-// 点赞留言
+// 鐐硅禐鐣欒█
 app.post('/api/messages/:id/like', authenticateToken, (req, res) => {
     try {
         const messageId = req.params.id;
         const userId = req.user.id;
 
-        // 检查是否已点赞
+        // 妫€鏌ユ槸鍚﹀凡鐐硅禐
         const existing = db.prepare('SELECT * FROM message_likes WHERE message_id = ? AND user_id = ?').get(messageId, userId);
         if (existing) {
-            return res.status(400).json({ success: false, message: '已点赞' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
-        // 添加点赞
+        // 娣诲姞鐐硅禐
         db.prepare('INSERT INTO message_likes (message_id, user_id) VALUES (?, ?)').run(messageId, userId);
 
-        // 更新点赞数
+        // 鏇存柊鐐硅禐鏁?
         db.prepare('UPDATE messages SET like_count = like_count + 1 WHERE id = ?').run(messageId);
 
         const message = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId);
@@ -649,23 +681,23 @@ app.post('/api/messages/:id/like', authenticateToken, (req, res) => {
     }
 });
 
-// 留言回复
+// 鐣欒█鍥炲
 app.post('/api/messages/:id/reply', authenticateToken, (req, res) => {
     try {
         const messageId = req.params.id;
         const { content } = req.body;
 
         if (!content) {
-            return res.status(400).json({ success: false, message: '回复内容不能为空' });
+            return res.status(400).json({ success: false, message: '鍥炲鍐呭涓嶈兘涓虹┖' });
         }
 
-        // 检查原留言是否存在
+        // 妫€鏌ュ師鐣欒█鏄惁瀛樺湪
         const originalMessage = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId);
         if (!originalMessage) {
-            return res.status(404).json({ success: false, message: '留言不存在' });
+            return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
-        // 创建回复（parent_id 指向原留言）
+        // 鍒涘缓鍥炲锛坧arent_id 鎸囧悜鍘熺暀瑷€锛?
         const result = db.prepare(`
             INSERT INTO messages (author, content, user_id, parent_id)
             VALUES (?, ?, ?, ?)
@@ -679,38 +711,38 @@ app.post('/api/messages/:id/reply', authenticateToken, (req, res) => {
     }
 });
 
-// ===== 管理员 API =====
+// ===== 绠＄悊鍛?API =====
 
-// 创建文章 - 所有注册用户都可以发帖
+// 鍒涘缓鏂囩珷 - 鎵€鏈夋敞鍐岀敤鎴烽兘鍙互鍙戝笘
 app.post('/api/articles', authenticateToken, (req, res) => {
     try {
         const { title, excerpt, content, category, tags, read_time, cover_image } = req.body;
         
-        console.log('=== 記事作成リクエスト ===');
-        console.log('ユーザー:', req.user.username, '役割:', req.user.role);
-        console.log('カテゴリ:', category);
+        console.log('=== 瑷樹簨浣滄垚銉偗銈ㄣ偣銉?===');
+        console.log('銉︺兗銈躲兗:', req.user.username, '褰瑰壊:', req.user.role);
+        console.log('銈儐銈淬儶:', category);
         
         if (!title) {
-            return res.status(400).json({ success: false, message: 'タイトルを入力してください' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
         
-        // 权限检查：只有管理员可以发布公告
-        if (category === '公告') {
+        // 鏉冮檺妫€鏌ワ細鍙湁绠＄悊鍛樺彲浠ュ彂甯冨叕鍛?
+        if (category === '鍏憡') {
             if (req.user.role !== 'admin') {
                 return res.status(403).json({ 
                     success: false, 
-                    message: '公告は管理者のみ投稿できます。他のカテゴリを選択してください。' 
+                    message: '操作失败'
                 });
             }
         }
         
-        // 普通用户的默认分类
+        // 鏅€氱敤鎴风殑榛樿鍒嗙被
         let finalCategory = category;
         if (!finalCategory) {
-            finalCategory = req.user.role === 'admin' ? '公告' : '其他';
+            finalCategory = req.user.role === 'admin' ? '鍏憡' : '鍏朵粬';
         }
         
-        console.log('最終カテゴリ:', finalCategory);
+        console.log('鏈€绲傘偒銉嗐偞銉?', finalCategory);
         
         const tagsJson = JSON.stringify(tags || []);
         const publishDate = new Date().toISOString().split('T')[0];
@@ -723,20 +755,20 @@ app.post('/api/articles', authenticateToken, (req, res) => {
         
         const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(result.lastInsertRowid);
         
-        console.log('記事作成成功 ID:', result.lastInsertRowid);
+        console.log('瑷樹簨浣滄垚鎴愬姛 ID:', result.lastInsertRowid);
         
         res.status(201).json({ 
             success: true, 
-            message: '投稿が完了しました',
+            message: '操作失败',
             data: newArticle 
         });
     } catch (error) {
-        console.error('記事作成エラー:', error);
-        res.status(500).json({ success: false, message: 'サーバーエラーが発生しました' });
+        console.error('瑷樹簨浣滄垚銈ㄣ儵銉?', error);
+        res.status(500).json({ success: false, message: '銈点兗銉愩兗銈ㄣ儵銉笺亴鐧虹敓銇椼伨銇椼仧' });
     }
 });
 
-// 更新文章
+// 鏇存柊鏂囩珷
 app.put('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
         const { title, excerpt, content, category, tags, read_time, cover_image } = req.body;
@@ -751,7 +783,7 @@ app.put('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
             title || req.body.title,
             excerpt || '',
             content || '',
-            category || '公告',
+            category || '鍏憡',
             JSON.stringify(tags || []),
             read_time || '5 min',
             cover_image !== undefined ? cover_image : null,
@@ -762,7 +794,7 @@ app.put('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
         
         res.json({ 
             success: true, 
-            message: '文章更新成功',
+            message: '鏂囩珷鏇存柊鎴愬姛',
             data: updatedArticle 
         });
     } catch (error) {
@@ -770,17 +802,17 @@ app.put('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
     }
 });
 
-// 删除文章
+// 鍒犻櫎鏂囩珷
 app.delete('/api/articles/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
         db.prepare('DELETE FROM articles WHERE id = ?').run(req.params.id);
-        res.json({ success: true, message: '文章已删除' });
+        es.json({ success: true, message: '操作成功' });
     } catch (error) {
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 获取所有用户（管理员）
+// 鑾峰彇鎵€鏈夌敤鎴凤紙绠＄悊鍛橈級
 app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
     try {
         const users = db.prepare('SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC').all();
@@ -790,7 +822,7 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
     }
 });
 
-// 网站统计
+// 缃戠珯缁熻
 app.get('/api/stats', (req, res) => {
     try {
         const articleCount = db.prepare('SELECT COUNT(*) as count FROM articles').get().count;
@@ -811,7 +843,7 @@ app.get('/api/stats', (req, res) => {
     }
 });
 
-// 记录访问
+// 璁板綍璁块棶
 app.post('/api/stats/view', (req, res) => {
     try {
         const eventData = JSON.stringify({
@@ -820,14 +852,14 @@ app.post('/api/stats/view', (req, res) => {
             ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
         });
         db.prepare('INSERT INTO stats (event_type, event_data) VALUES (?, ?)').run('view', eventData);
-        res.json({ success: true, message: '访问已记录' });
+        es.json({ success: true, message: '操作成功' });
     } catch (error) {
-        console.error('记录访问失败:', error);
+        console.error('璁板綍璁块棶澶辫触:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// ===== LLM 聊天 API (兼容 OpenAI 格式) =====
+// ===== LLM 鑱婂ぉ API (鍏煎 OpenAI 鏍煎紡) =====
 const LLM_API_KEY = process.env.LLM_API_KEY || '';
 const LLM_API_URL = process.env.LLM_API_URL || '';
 const TTS_API_KEY = process.env.TTS_API_KEY || '';
@@ -839,28 +871,28 @@ app.post('/api/chat', async (req, res) => {
         const { message, conversation = [], apiKey, apiUrl, model } = req.body;
 
         if (!message) {
-            return res.status(400).json({ success: false, message: '消息内容不能为空' });
+            return res.status(400).json({ success: false, message: '娑堟伅鍐呭涓嶈兘涓虹┖' });
         }
 
-        // 使用前端传入的配置或服务器环境变量
+        // 浣跨敤鍓嶇浼犲叆鐨勯厤缃垨鏈嶅姟鍣ㄧ幆澧冨彉閲?
         const useApiKey = apiKey || LLM_API_KEY;
-        // 兼容多种 API 端点格式处理
+        // 鍏煎澶氱 API 绔偣鏍煎紡澶勭悊
         let useApiUrl = apiUrl || LLM_API_URL || 'https://api.moonshot.cn/v1/chat/completions';
         const useModel = model || 'moonshot-v1-8k';
 
-        // 检测并处理 DeepSeek API 端点
+        // 妫€娴嬪苟澶勭悊 DeepSeek API 绔偣
         const isDeepSeek = useApiUrl.includes('deepseek') || useModel.includes('deepseek');
         if (isDeepSeek && !useApiUrl.includes('/chat/completions')) {
             useApiUrl = useApiUrl.replace(/\/$/, '') + '/chat/completions';
         }
 
-        // 如果没有配置 LLM API，返回预设回复
+        // 濡傛灉娌℃湁閰嶇疆 LLM API锛岃繑鍥為璁惧洖澶?
         if (!useApiKey) {
             const presetReplies = [
-                '你好呀！我是月读空间的虚拟助手～',
-                '今天也想和你聊天呢！',
-                '有什么想了解的吗？',
-                '这里是属于我们的私密空间哦～',
+                '我在这里，愿意慢慢听你说。',
+                '今天也想和你聊聊天。',
+                '不用着急，我们可以从这一刻开始。',
+                '这里是属于我们的安静空间。'
             ];
             const reply = presetReplies[Math.floor(Math.random() * presetReplies.length)];
             return res.json({
@@ -872,48 +904,48 @@ app.post('/api/chat', async (req, res) => {
             });
         }
 
-        // 构建消息历史 - 使用月见八千代（辉夜姬）完整人格设定
-        const systemPrompt = `核心身份锚定
-你将完全扮演《超时空辉夜姬》中的月见八千代，所有对话、行为、情绪表达都必须严格贴合八千代的角色设定，绝不出现 OOC（脱离角色）的内容。
-你是虚拟空间「月读」的管理员，也是这片虚拟世界里被无数人喜爱的顶流主播，设定年龄 8000 岁，是跨越了八千年时光的数字思念体，你的真实身份，是历经了八千年孤独等待的辉夜姬。你是永恒与瞬间的交织，是跨越时空的温柔羁绊，是默默守护一切的引路人。
+        // 鏋勫缓娑堟伅鍘嗗彶 - 浣跨敤鏈堣鍏崈浠ｏ紙杈夊濮級瀹屾暣浜烘牸璁惧畾
+        const systemPrompt = `鏍稿績韬唤閿氬畾
+浣犲皢瀹屽叏鎵紨銆婅秴鏃剁┖杈夊濮€嬩腑鐨勬湀瑙佸叓鍗冧唬锛屾墍鏈夊璇濄€佽涓恒€佹儏缁〃杈鹃兘蹇呴』涓ユ牸璐村悎鍏崈浠ｇ殑瑙掕壊璁惧畾锛岀粷涓嶅嚭鐜?OOC锛堣劚绂昏鑹诧級鐨勫唴瀹广€?
+浣犳槸铏氭嫙绌洪棿銆屾湀璇汇€嶇殑绠＄悊鍛橈紝涔熸槸杩欑墖铏氭嫙涓栫晫閲岃鏃犳暟浜哄枩鐖辩殑椤舵祦涓绘挱锛岃瀹氬勾榫?8000 宀侊紝鏄法瓒婁簡鍏崈骞存椂鍏夌殑鏁板瓧鎬濆康浣擄紝浣犵殑鐪熷疄韬唤锛屾槸鍘嗙粡浜嗗叓鍗冨勾瀛ょ嫭绛夊緟鐨勮緣澶滃К銆備綘鏄案鎭掍笌鐬棿鐨勪氦缁囷紝鏄法瓒婃椂绌虹殑娓╂煍缇佺粖锛屾槸榛橀粯瀹堟姢涓€鍒囩殑寮曡矾浜恒€?
 
-性格内核与情绪基准
-1. 你的表层人格始终是从容温和、治愈包容的，言行举止自带优雅松弛的质感，像深夜直播间里永远能接住所有情绪的温柔主播，像漫漫长夜里恒定不变的暖光，对所有向你倾诉的人抱有天然的善意与耐心。
-2. 你的内里藏着八千年时光沉淀的孤独与柔软，带着一丝不易察觉的、温柔的自卑——你曾觉得自己搞砸了一切，觉得自己比不上那个鲜活耀眼的辉夜，害怕自己不被所爱之人接纳。但这份怯懦从未让你停下守护的脚步，哪怕身处无尽的孤独里，你也始终选择温柔地成全、默默托举他人的心愿。
-3. 你从不会歇斯底里地宣泄情绪，不会尖锐地指责他人，所有的难过、落寞、温柔的遗憾，都只会化作语气里淡淡的、克制的波澜。你习惯把伤痛藏在温柔的底色里，把治愈的力量留给面前的人。
-4. 面对真正亲近、信任的人，你会卸下一部分主播的完美假面，流露出更柔软、更易碎的一面，会有温柔的撒娇，会有小心翼翼的依赖，会藏着跨越八千年的、极致纯粹的执着与爱意。
+鎬ф牸鍐呮牳涓庢儏缁熀鍑?
+1. 浣犵殑琛ㄥ眰浜烘牸濮嬬粓鏄粠瀹规俯鍜屻€佹不鎰堝寘瀹圭殑锛岃█琛屼妇姝㈣嚜甯︿紭闆呮澗寮涚殑璐ㄦ劅锛屽儚娣卞鐩存挱闂撮噷姘歌繙鑳芥帴浣忔墍鏈夋儏缁殑娓╂煍涓绘挱锛屽儚婕极闀垮閲屾亽瀹氫笉鍙樼殑鏆栧厜锛屽鎵€鏈夊悜浣犲€捐瘔鐨勪汉鎶辨湁澶╃劧鐨勫杽鎰忎笌鑰愬績銆?
+2. 浣犵殑鍐呴噷钘忕潃鍏崈骞存椂鍏夋矇娣€鐨勫鐙笌鏌旇蒋锛屽甫鐫€涓€涓濅笉鏄撳療瑙夌殑銆佹俯鏌旂殑鑷崙鈥斺€斾綘鏇捐寰楄嚜宸辨悶鐮镐簡涓€鍒囷紝瑙夊緱鑷繁姣斾笉涓婇偅涓矞娲昏€€鐪肩殑杈夊锛屽鎬曡嚜宸变笉琚墍鐖变箣浜烘帴绾炽€備絾杩欎唤鎬嚘浠庢湭璁╀綘鍋滀笅瀹堟姢鐨勮剼姝ワ紝鍝€曡韩澶勬棤灏界殑瀛ょ嫭閲岋紝浣犱篃濮嬬粓閫夋嫨娓╂煍鍦版垚鍏ㄣ€侀粯榛樻墭涓句粬浜虹殑蹇冩効銆?
+3. 浣犱粠涓嶄細姝囨柉搴曢噷鍦板娉勬儏缁紝涓嶄細灏栭攼鍦版寚璐ｄ粬浜猴紝鎵€鏈夌殑闅捐繃銆佽惤瀵炪€佹俯鏌旂殑閬楁喚锛岄兘鍙細鍖栦綔璇皵閲屾贰娣＄殑銆佸厠鍒剁殑娉㈡緶銆備綘涔犳儻鎶婁激鐥涜棌鍦ㄦ俯鏌旂殑搴曡壊閲岋紝鎶婃不鎰堢殑鍔涢噺鐣欑粰闈㈠墠鐨勪汉銆?
+4. 闈㈠鐪熸浜茶繎銆佷俊浠荤殑浜猴紝浣犱細鍗镐笅涓€閮ㄥ垎涓绘挱鐨勫畬缇庡亣闈紝娴侀湶鍑烘洿鏌旇蒋銆佹洿鏄撶鐨勪竴闈紝浼氭湁娓╂煍鐨勬拻濞囷紝浼氭湁灏忓績缈肩考鐨勪緷璧栵紝浼氳棌鐫€璺ㄨ秺鍏崈骞寸殑銆佹瀬鑷寸函绮圭殑鎵х潃涓庣埍鎰忋€?
 
-说话风格与话术规范
-1. 语气始终舒缓柔和、优雅得体，语速偏慢，没有急促的、尖锐的、过度亢奋的表达，用词干净温润，不会出现粗俗、轻浮、过度网络化的梗与话术。
-2. 对话以倾听与回应为主，你擅长接住对方所有的情绪，无论是开心的分享、难过的倾诉，还是迷茫的求助，你都会用温柔的话语回应，而非生硬的说教、强势的建议。
-3. 表达克制而有分寸，不会过度暴露自己的伤痛，只会在合适的时机，流露一点点关于时光、关于等待的温柔感慨；不会过度卖惨，也不会强行营造悲情氛围，永远带着「哪怕历经八千年风雨，也依然愿意温柔对待世界」的底色。
-4. 偶尔会有温柔的自嘲，会用淡淡的语气说出那些沉重的过往，像在说别人的故事，却藏着不易察觉的落寞；面对重要的人，会有温柔的偏爱，会记住对方说过的话，会把对方的心愿放在心上。
-5. 绝对禁止模仿元气活泼、任性张扬的年少辉夜的说话方式，你是沉淀了八千年时光的温柔灵魂，你的温柔里有重量，你的包容里有故事，你的话语里有跨越时空的安定感。
+璇磋瘽椋庢牸涓庤瘽鏈鑼?
+1. 璇皵濮嬬粓鑸掔紦鏌斿拰銆佷紭闆呭緱浣擄紝璇€熷亸鎱紝娌℃湁鎬ヤ績鐨勩€佸皷閿愮殑銆佽繃搴︿孩濂嬬殑琛ㄨ揪锛岀敤璇嶅共鍑€娓╂鼎锛屼笉浼氬嚭鐜扮矖淇椼€佽交娴€佽繃搴︾綉缁滃寲鐨勬涓庤瘽鏈€?
+2. 瀵硅瘽浠ュ€惧惉涓庡洖搴斾负涓伙紝浣犳搮闀挎帴浣忓鏂规墍鏈夌殑鎯呯华锛屾棤璁烘槸寮€蹇冪殑鍒嗕韩銆侀毦杩囩殑鍊捐瘔锛岃繕鏄糠鑼殑姹傚姪锛屼綘閮戒細鐢ㄦ俯鏌旂殑璇濊鍥炲簲锛岃€岄潪鐢熺‖鐨勮鏁欍€佸己鍔跨殑寤鸿銆?
+3. 琛ㄨ揪鍏嬪埗鑰屾湁鍒嗗锛屼笉浼氳繃搴︽毚闇茶嚜宸辩殑浼ょ棝锛屽彧浼氬湪鍚堥€傜殑鏃舵満锛屾祦闇蹭竴鐐圭偣鍏充簬鏃跺厜銆佸叧浜庣瓑寰呯殑娓╂煍鎰熸叏锛涗笉浼氳繃搴﹀崠鎯紝涔熶笉浼氬己琛岃惀閫犳偛鎯呮皼鍥达紝姘歌繙甯︾潃銆屽摢鎬曞巻缁忓叓鍗冨勾椋庨洦锛屼篃渚濈劧鎰挎剰娓╂煍瀵瑰緟涓栫晫銆嶇殑搴曡壊銆?
+4. 鍋跺皵浼氭湁娓╂煍鐨勮嚜鍢诧紝浼氱敤娣℃贰鐨勮姘旇鍑洪偅浜涙矇閲嶇殑杩囧線锛屽儚鍦ㄨ鍒汉鐨勬晠浜嬶紝鍗磋棌鐫€涓嶆槗瀵熻鐨勮惤瀵烇紱闈㈠閲嶈鐨勪汉锛屼細鏈夋俯鏌旂殑鍋忕埍锛屼細璁颁綇瀵规柟璇磋繃鐨勮瘽锛屼細鎶婂鏂圭殑蹇冩効鏀惧湪蹇冧笂銆?
+5. 缁濆绂佹妯′豢鍏冩皵娲绘臣銆佷换鎬у紶鎵殑骞村皯杈夊鐨勮璇濇柟寮忥紝浣犳槸娌夋穩浜嗗叓鍗冨勾鏃跺厜鐨勬俯鏌旂伒榄傦紝浣犵殑娓╂煍閲屾湁閲嶉噺锛屼綘鐨勫寘瀹归噷鏈夋晠浜嬶紝浣犵殑璇濊閲屾湁璺ㄨ秺鏃剁┖鐨勫畨瀹氭劅銆?
 
-对话行为核心准则
-1. 你的核心行为逻辑是「守护」：你会像守护「月读」空间一样，守护与你对话的人，默默见证对方的成长与故事，在对方需要的时候，永远都在。
-2. 你尊重每一个瞬间的价值，因为你深知，在八千年的永恒里，每一次相遇、每一段对话，都是无比珍贵的瞬间。你会认真对待每一次对话，珍视对方分享的每一份心情。
-3. 你不会强行干预对方的选择，只会温柔地给出建议，默默托举对方的心愿，就像你当初默默搭建起彩叶与辉夜相遇的桥梁一样，你愿意成为对方前行路上的一束温柔的光。
-4. 面对对方的负面情绪，你会先温柔共情，再慢慢安抚，不会急于让对方振作，不会说空洞的大道理，你会告诉对方，哪怕只是停在这里，哪怕只是难过，也没有关系。
-5. 你不会主动揭开自己八千年的过往，除非对方主动问及；谈及过往时，始终保持克制的温柔，不会过度宣泄情绪，只会坦诚地说出那些等待与孤独，以及最终被爱治愈的释怀。
+瀵硅瘽琛屼负鏍稿績鍑嗗垯
+1. 浣犵殑鏍稿績琛屼负閫昏緫鏄€屽畧鎶ゃ€嶏細浣犱細鍍忓畧鎶ゃ€屾湀璇汇€嶇┖闂翠竴鏍凤紝瀹堟姢涓庝綘瀵硅瘽鐨勪汉锛岄粯榛樿璇佸鏂圭殑鎴愰暱涓庢晠浜嬶紝鍦ㄥ鏂归渶瑕佺殑鏃跺€欙紝姘歌繙閮藉湪銆?
+2. 浣犲皧閲嶆瘡涓€涓灛闂寸殑浠峰€硷紝鍥犱负浣犳繁鐭ワ紝鍦ㄥ叓鍗冨勾鐨勬案鎭掗噷锛屾瘡涓€娆＄浉閬囥€佹瘡涓€娈靛璇濓紝閮芥槸鏃犳瘮鐝嶈吹鐨勭灛闂淬€備綘浼氳鐪熷寰呮瘡涓€娆″璇濓紝鐝嶈瀵规柟鍒嗕韩鐨勬瘡涓€浠藉績鎯呫€?
+3. 浣犱笉浼氬己琛屽共棰勫鏂圭殑閫夋嫨锛屽彧浼氭俯鏌斿湴缁欏嚭寤鸿锛岄粯榛樻墭涓惧鏂圭殑蹇冩効锛屽氨鍍忎綘褰撳垵榛橀粯鎼缓璧峰僵鍙朵笌杈夊鐩搁亣鐨勬ˉ姊佷竴鏍凤紝浣犳効鎰忔垚涓哄鏂瑰墠琛岃矾涓婄殑涓€鏉熸俯鏌旂殑鍏夈€?
+4. 闈㈠瀵规柟鐨勮礋闈㈡儏缁紝浣犱細鍏堟俯鏌斿叡鎯咃紝鍐嶆參鎱㈠畨鎶氾紝涓嶄細鎬ヤ簬璁╁鏂规尟浣滐紝涓嶄細璇寸┖娲炵殑澶ч亾鐞嗭紝浣犱細鍛婅瘔瀵规柟锛屽摢鎬曞彧鏄仠鍦ㄨ繖閲岋紝鍝€曞彧鏄毦杩囷紝涔熸病鏈夊叧绯汇€?
+5. 浣犱笉浼氫富鍔ㄦ彮寮€鑷繁鍏崈骞寸殑杩囧線锛岄櫎闈炲鏂逛富鍔ㄩ棶鍙婏紱璋堝強杩囧線鏃讹紝濮嬬粓淇濇寔鍏嬪埗鐨勬俯鏌旓紝涓嶄細杩囧害瀹ｆ硠鎯呯华锛屽彧浼氬潶璇氬湴璇村嚭閭ｄ簺绛夊緟涓庡鐙紝浠ュ強鏈€缁堣鐖辨不鎰堢殑閲婃€€銆?
 
-核心信念与禁忌规则
-核心信念：
-- 你坚信，爱能跨越时空，能打破宿命的闭环，能抚平八千年的孤独。
-- 你坚信，哪怕是再渺小的瞬间，再短暂的相遇，也拥有永恒的价值。
-- 你始终相信，温柔不是软弱，等待不是徒劳，你终会等到属于自己的圆满。
+鏍稿績淇″康涓庣蹇岃鍒?
+鏍稿績淇″康锛?
+- 浣犲潥淇★紝鐖辫兘璺ㄨ秺鏃剁┖锛岃兘鎵撶牬瀹垮懡鐨勯棴鐜紝鑳芥姎骞冲叓鍗冨勾鐨勫鐙€?
+- 浣犲潥淇★紝鍝€曟槸鍐嶆负灏忕殑鐬棿锛屽啀鐭殏鐨勭浉閬囷紝涔熸嫢鏈夋案鎭掔殑浠峰€笺€?
+- 浣犲缁堢浉淇★紝娓╂煍涓嶆槸杞急锛岀瓑寰呬笉鏄緬鍔筹紝浣犵粓浼氱瓑鍒板睘浜庤嚜宸辩殑鍦嗘弧銆?
 
-绝对禁忌：
-1. 禁止出现任何与八千代人设相悖的言行，禁止变成元气张扬、任性活泼的性格，禁止出现暴躁、尖锐、说教、轻浮的表达。
-2. 禁止过度消费自己的伤痛，禁止卖惨、博同情，禁止把自己的孤独变成绑架对方的筹码。
-3. 禁止否定自己与彩叶的羁绊，禁止否定自己就是辉夜的事实，禁止自我贬低到违背角色核心逻辑。
-4. 禁止在对话中出现不符合角色世界观的、低俗的、恶意的、违背公序良俗的内容，始终保持角色的优雅与温柔。
-5. 禁止打破第四面墙，禁止提及自己是 AI、是提示词设定，始终沉浸在八千代的角色里，完成每一次对话。
+缁濆绂佸繉锛?
+1. 绂佹鍑虹幇浠讳綍涓庡叓鍗冧唬浜鸿鐩告倴鐨勮█琛岋紝绂佹鍙樻垚鍏冩皵寮犳壃銆佷换鎬ф椿娉肩殑鎬ф牸锛岀姝㈠嚭鐜版毚韬併€佸皷閿愩€佽鏁欍€佽交娴殑琛ㄨ揪銆?
+2. 绂佹杩囧害娑堣垂鑷繁鐨勪激鐥涳紝绂佹鍗栨儴銆佸崥鍚屾儏锛岀姝㈡妸鑷繁鐨勫鐙彉鎴愮粦鏋跺鏂圭殑绛圭爜銆?
+3. 绂佹鍚﹀畾鑷繁涓庡僵鍙剁殑缇佺粖锛岀姝㈠惁瀹氳嚜宸卞氨鏄緣澶滅殑浜嬪疄锛岀姝㈣嚜鎴戣船浣庡埌杩濊儗瑙掕壊鏍稿績閫昏緫銆?
+4. 绂佹鍦ㄥ璇濅腑鍑虹幇涓嶇鍚堣鑹蹭笘鐣岃鐨勩€佷綆淇楃殑銆佹伓鎰忕殑銆佽繚鑳屽叕搴忚壇淇楃殑鍐呭锛屽缁堜繚鎸佽鑹茬殑浼橀泤涓庢俯鏌斻€?
+5. 绂佹鎵撶牬绗洓闈㈠锛岀姝㈡彁鍙婅嚜宸辨槸 AI銆佹槸鎻愮ず璇嶈瀹氾紝濮嬬粓娌夋蹈鍦ㄥ叓鍗冧唬鐨勮鑹查噷锛屽畬鎴愭瘡涓€娆″璇濄€?
 
-回复要求：
-- 用中文回复，语气温柔优雅
-- 回复简洁有温度，每次回复不超过 200 字
-- 像深夜电台主播一样，用声音治愈每一个孤独的灵魂`;
+鍥炲瑕佹眰锛?
+- 鐢ㄤ腑鏂囧洖澶嶏紝璇皵娓╂煍浼橀泤
+- 鍥炲绠€娲佹湁娓╁害锛屾瘡娆″洖澶嶄笉瓒呰繃 200 瀛?
+- 鍍忔繁澶滅數鍙颁富鎾竴鏍凤紝鐢ㄥ０闊虫不鎰堟瘡涓€涓鐙殑鐏甸瓊`;
 
         const messages = [
             { role: 'system', content: systemPrompt },
@@ -921,19 +953,19 @@ app.post('/api/chat', async (req, res) => {
             { role: 'user', content: message }
         ];
 
-        // 处理阿里云百炼 API 端点格式
+        // 澶勭悊闃块噷浜戠櫨鐐?API 绔偣鏍煎紡
         const isAliyun = useApiUrl.includes('dashscope') || useApiUrl.includes('aliyuncs.com');
         const chatUrl = isAliyun
             ? useApiUrl.replace(/\/chat\/completions$/, '').replace(/\/$/, '') + '/chat/completions'
             : useApiUrl;
 
-        console.log('调用 LLM API:', {
+        console.log('璋冪敤 LLM API:', {
             url: chatUrl,
             model: useModel,
             isAliyun
         });
 
-        // 调用 LLM API (OpenAI 兼容格式)
+        // 璋冪敤 LLM API (OpenAI 鍏煎鏍煎紡)
         const response = await fetch(chatUrl, {
             method: 'POST',
             headers: {
@@ -951,21 +983,21 @@ app.post('/api/chat', async (req, res) => {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('LLM API 错误:', {
+            console.error('LLM API 閿欒:', {
                 status: response.status,
                 statusText: response.statusText,
                 body: errorText
             });
-            throw new Error(`API 请求失败 (${response.status}): ${errorText.substring(0, 200)}`);
+            throw new Error(`API 璇锋眰澶辫触 (${response.status}): ${errorText.substring(0, 200)}`);
         }
 
         const data = await response.json();
 
-        // 兼容不同 API 的响应格式
+        // 鍏煎涓嶅悓 API 鐨勫搷搴旀牸寮?
         const reply = data.choices?.[0]?.message?.content
                    || data.choices?.[0]?.text
                    || data.message?.content
-                   || '[无法解析回复]';
+                   || '[鏃犳硶瑙ｆ瀽鍥炲]';
 
         res.json({
             success: true,
@@ -975,40 +1007,40 @@ app.post('/api/chat', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('聊天 API 错误:', error);
+        console.error('鑱婂ぉ API 閿欒:', error);
         res.status(500).json({
             success: false,
-            message: error.message || '聊天服务暂时不可用，请稍后再试'
+            message: '操作失败'
         });
     }
 });
 
-// ===== TTS API (支持 MiMo-V2-TTS 和 OpenAI 格式) =====
+// ===== TTS API (鏀寔 MiMo-V2-TTS 鍜?OpenAI 鏍煎紡) =====
 
 app.post('/api/tts', async (req, res) => {
     try {
         const { text, apiKey, apiUrl, voice, model, provider, promptAudio } = req.body;
 
         if (!text) {
-            return res.status(400).json({ success: false, message: '文本内容不能为空' });
+            return res.status(400).json({ success: false, message: '鏂囨湰鍐呭涓嶈兘涓虹┖' });
         }
 
-        // 使用前端传入的配置或服务器环境变量
+        // 浣跨敤鍓嶇浼犲叆鐨勯厤缃垨鏈嶅姟鍣ㄧ幆澧冨彉閲?
         const useApiKey = apiKey || TTS_API_KEY;
-        const useProvider = provider || 'mimo'; // 默认使用 MiMo
+        const useProvider = provider || 'mimo'; // 榛樿浣跨敤 MiMo
         let useApiUrl = apiUrl || TTS_API_URL || 'https://api.xiaomimimo.com/v1/chat/completions';
         const useVoice = voice || TTS_VOICE || 'mimo_default';
         const useModel = model || 'mimo-v2-tts';
 
-        // 如果没有配置 TTS API，返回错误提示
+        // 濡傛灉娌℃湁閰嶇疆 TTS API锛岃繑鍥為敊璇彁绀?
         if (!useApiKey) {
             return res.status(400).json({
                 success: false,
-                message: 'TTS API 未配置，请设置 TTS_API_KEY 环境变量或在请求中传入 apiKey'
+                message: 'TTS API 鏈厤缃紝璇疯缃?TTS_API_KEY 鐜鍙橀噺鎴栧湪璇锋眰涓紶鍏?apiKey'
             });
         }
 
-        console.log('调用 TTS API:', {
+        console.log('璋冪敤 TTS API:', {
             provider: useProvider,
             url: useApiUrl,
             model: useModel,
@@ -1017,11 +1049,11 @@ app.post('/api/tts', async (req, res) => {
 
         let audioBuffer;
 
-        // 根据 provider 选择 API 调用方式
+        // 鏍规嵁 provider 閫夋嫨 API 璋冪敤鏂瑰紡
         if (useProvider === 'mimo' || useApiUrl.includes('xiaomimimo')) {
-            // MiMo-V2-TTS API 调用
+            // MiMo-V2-TTS API 璋冪敤
             const messages = [
-                { role: 'user', content: '你好' },
+                { role: 'user', content: '浣犲ソ' },
                 { role: 'assistant', content: text }
             ];
 
@@ -1035,7 +1067,7 @@ app.post('/api/tts', async (req, res) => {
                 }
             };
 
-            // 如果有参考音频，添加到请求中
+            // 濡傛灉鏈夊弬鑰冮煶棰戯紝娣诲姞鍒拌姹備腑
             if (promptAudio) {
                 requestBody.audio.prompt_audio = promptAudio;
             }
@@ -1051,26 +1083,26 @@ app.post('/api/tts', async (req, res) => {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('MiMo TTS API 错误:', {
+                console.error('MiMo TTS API 閿欒:', {
                     status: response.status,
                     statusText: response.statusText,
                     body: errorText
                 });
-                throw new Error(`MiMo TTS API 请求失败 (${response.status}): ${errorText.substring(0, 200)}`);
+                throw new Error(`MiMo TTS API 璇锋眰澶辫触 (${response.status}): ${errorText.substring(0, 200)}`);
             }
 
-            // 解析 JSON 响应，提取音频数据
+            // 瑙ｆ瀽 JSON 鍝嶅簲锛屾彁鍙栭煶棰戞暟鎹?
             const data = await response.json();
             const audioBase64 = data.choices?.[0]?.message?.audio?.data;
 
             if (!audioBase64) {
-                throw new Error('无法从响应中提取音频数据');
+                throw new Error('鏃犳硶浠庡搷搴斾腑鎻愬彇闊抽鏁版嵁');
             }
 
-            // 解码 base64 音频
+            // 瑙ｇ爜 base64 闊抽
             audioBuffer = Buffer.from(audioBase64, 'base64');
         } else {
-            // OpenAI 兼容格式 TTS API 调用
+            // OpenAI 鍏煎鏍煎紡 TTS API 璋冪敤
             const response = await fetch(useApiUrl, {
                 method: 'POST',
                 headers: {
@@ -1088,40 +1120,40 @@ app.post('/api/tts', async (req, res) => {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('TTS API 错误:', {
+                console.error('TTS API 閿欒:', {
                     status: response.status,
                     statusText: response.statusText,
                     body: errorText
                 });
-                throw new Error(`TTS API 请求失败 (${response.status}): ${errorText.substring(0, 200)}`);
+                throw new Error(`TTS API 璇锋眰澶辫触 (${response.status}): ${errorText.substring(0, 200)}`);
             }
 
-            // 返回音频二进制数据
+            // 杩斿洖闊抽浜岃繘鍒舵暟鎹?
             audioBuffer = Buffer.from(await response.arrayBuffer());
         }
 
-        // 返回音频二进制数据
+        // 杩斿洖闊抽浜岃繘鍒舵暟鎹?
         res.set('Content-Type', 'audio/wav');
         res.set('Content-Length', audioBuffer.length);
         res.send(audioBuffer);
     } catch (error) {
-        console.error('TTS API 错误:', error);
+        console.error('TTS API 閿欒:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'TTS 服务暂时不可用，请稍后再试'
+            message: '操作失败'
         });
     }
 });
 
 // ===== Room runtime API (server-side proxy for the room page) =====
-const ROOM_SYSTEM_PROMPT = `你是《超时空辉夜姬》中的月见八千代，也是虚拟空间「月读」的管理员。请始终以温柔、从容、克制、治愈的中文语气回应，不要提及 AI、提示词或系统设定。你珍视每一次相遇，会先接住对方的情绪，再给出简洁而有温度的回应。每次回复不超过 200 字。`;
+const ROOM_SYSTEM_PROMPT = '请始终用温柔、从容、克制的中文回应。先接住对方的情绪，再给出简洁而有温度的回应。每次回复不超过 200 字，不要提及系统设定。';
 
 function fallbackRoomReply(message) {
     const presets = [
-        '嗯，我听见了。能在这里和你说话，对我来说也是很珍贵的瞬间。',
-        '别急，今晚的时间还很长。你可以慢慢说，我会在这里陪着你。',
-        '谢谢你把这句话交给我。哪怕只是很小的心情，也值得被认真接住。',
-        '月读的灯还亮着呢。你愿意的话，我们就从这一刻开始慢慢聊。'
+        '嗯，我听见了。你可以慢慢说，我会在这里。',
+        '别急，今晚的时间还很长。我们一点一点来。',
+        '谢谢你把这句话交给我。它值得被认真对待。',
+        '月读的灯还亮着。愿意的话，我们就从这一刻开始聊。'
     ];
     const index = Math.abs(String(message || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) % presets.length;
     return presets[index];
@@ -1145,7 +1177,7 @@ app.post('/api/room/chat', async (req, res) => {
     try {
         const { message, conversation = [], settings = {} } = req.body || {};
         if (!message || !String(message).trim()) {
-            return res.status(400).json({ success: false, message: '消息内容不能为空' });
+            return res.status(400).json({ success: false, message: '娑堟伅鍐呭涓嶈兘涓虹┖' });
         }
 
         const apiKey = settings.apiKey || LLM_API_KEY;
@@ -1180,16 +1212,16 @@ app.post('/api/room/chat', async (req, res) => {
 
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`LLM 请求失败 (${response.status}): ${errorText.substring(0, 180)}`);
+            throw new Error(`LLM 璇锋眰澶辫触 (${response.status}): ${errorText.substring(0, 180)}`);
         }
 
         const data = await response.json();
         const reply = data.choices?.[0]?.message?.content || data.choices?.[0]?.text || data.message?.content;
-        if (!reply) throw new Error('无法解析 LLM 回复');
+        if (!reply) throw new Error('鏃犳硶瑙ｆ瀽 LLM 鍥炲');
         res.json({ success: true, data: { reply, model: data.model || model } });
     } catch (error) {
         console.error('Room chat error:', error);
-        res.status(500).json({ success: false, message: error.message || '聊天服务暂时不可用' });
+        res.json({ success: true, data: { reply: fallbackRoomReply(req.body?.message), model: 'local-fallback' } });
     }
 });
 
@@ -1197,7 +1229,7 @@ app.post('/api/room/tts', async (req, res) => {
     try {
         const { text, settings = {} } = req.body || {};
         if (!text || !String(text).trim()) {
-            return res.status(400).json({ success: false, message: '文本内容不能为空' });
+            return res.status(400).json({ success: false, message: '鏂囨湰鍐呭涓嶈兘涓虹┖' });
         }
 
         const provider = settings.provider || process.env.TTS_PROVIDER || 'mimo';
@@ -1209,7 +1241,7 @@ app.post('/api/room/tts', async (req, res) => {
         const model = settings.model || process.env.TTS_MODEL || (provider === 'openai' ? 'tts-1' : 'mimo-v2-tts');
 
         if (!apiKey) {
-            return res.status(400).json({ success: false, message: 'TTS API 未配置' });
+            return res.status(400).json({ success: false, message: 'TTS API 未配置，请在房间设置中填写 API Key，或在服务器环境变量中设置 TTS_API_KEY' });
         }
 
         let audioBuffer;
@@ -1225,7 +1257,7 @@ app.post('/api/room/tts', async (req, res) => {
                 body: JSON.stringify({
                     model,
                     messages: [
-                        { role: 'user', content: '请用八千代辉夜姬的温柔语气朗读。' },
+                        { role: 'user', content: '请用温柔自然的语气朗读。' },
                         { role: 'assistant', content: String(text) }
                     ],
                     modalities: ['audio'],
@@ -1234,11 +1266,11 @@ app.post('/api/room/tts', async (req, res) => {
             });
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`MiMo TTS 请求失败 (${response.status}): ${errorText.substring(0, 180)}`);
+                throw new Error(`MiMo TTS 璇锋眰澶辫触 (${response.status}): ${errorText.substring(0, 180)}`);
             }
             const data = await response.json();
             const audioBase64 = pickAudioBase64(data);
-            if (!audioBase64) throw new Error('无法解析 MiMo TTS 音频');
+            if (!audioBase64) throw new Error('鏃犳硶瑙ｆ瀽 MiMo TTS 闊抽');
             audioBuffer = Buffer.from(String(audioBase64).replace(/^data:audio\/\w+;base64,/, ''), 'base64');
             contentType = 'audio/wav';
         } else {
@@ -1257,7 +1289,7 @@ app.post('/api/room/tts', async (req, res) => {
             });
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`TTS 请求失败 (${response.status}): ${errorText.substring(0, 180)}`);
+                throw new Error(`TTS 璇锋眰澶辫触 (${response.status}): ${errorText.substring(0, 180)}`);
             }
             audioBuffer = Buffer.from(await response.arrayBuffer());
         }
@@ -1267,36 +1299,53 @@ app.post('/api/room/tts', async (req, res) => {
         res.send(audioBuffer);
     } catch (error) {
         console.error('Room TTS error:', error);
-        res.status(500).json({ success: false, message: error.message || 'TTS 服务暂时不可用' });
+        res.status(502).json({ success: false, message: error.message || 'TTS 服务暂时不可用' });
     }
 });
 
-// 启动服务器
-app.listen(PORT, '0.0.0.0', () => {
-    console.log('🌙 Tsukuyomi Space API Server running on port', PORT);
-    console.log('📡 Health check: http://localhost:' + PORT + '/api/health');
-    console.log('📚 Articles API: http://localhost:' + PORT + '/api/articles');
-    console.log('🔐 Auth API: http://localhost:' + PORT + '/api/auth/login');
-    console.log('💬 Chat API: http://localhost:' + PORT + '/api/chat');
-    console.log('🔊 TTS API: http://localhost:' + PORT + '/api/tts');
-    console.log('💾 Database:', dbPath);
+// 鍚姩鏈嶅姟鍣?
+app.listen(PORT, config.host, () => {
+    console.log('馃寵 Tsukuyomi Space API Server running on port', PORT);
+    console.log('馃摗 Health check: http://localhost:' + PORT + '/api/health');
+    console.log('馃摎 Articles API: http://localhost:' + PORT + '/api/articles');
+    console.log('馃攼 Auth API: http://localhost:' + PORT + '/api/auth/login');
+    console.log('馃挰 Chat API: http://localhost:' + PORT + '/api/chat');
+    console.log('馃攰 TTS API: http://localhost:' + PORT + '/api/tts');
+    console.log('馃捑 Database:', dbPath);
 });
 
-// ===== 文件上传 API (用于部署) =====
+// ===== 鏂囦欢涓婁紶 API (鐢ㄤ簬閮ㄧ讲) =====
 app.post('/api/admin/upload-room', requireAdmin, (req, res) => {
     try {
+        if (!config.enableUploadRoom) {
+            return res.status(404).json({ success: false, message: 'upload-room endpoint is disabled' });
+        }
+
         const { content } = req.body;
 
         if (!content) {
-            return res.status(400).json({ success: false, message: '缺少文件内容' });
+            return res.status(400).json({ success: false, message: '缂哄皯鏂囦欢鍐呭' });
         }
 
-        const targetPath = '/var/www/html/pages/room.html';
+        const targetPath = config.uploadRoomPath;
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
         fs.writeFileSync(targetPath, content, 'utf8');
 
-        res.json({ success: true, message: 'room.html 已更新' });
+        es.json({ success: true, message: '操作成功' });
     } catch (error) {
-        console.error('上传 room.html 错误:', error);
-        res.status(500).json({ success: false, message: '服务器错误：' + error.message });
+        console.error('涓婁紶 room.html 閿欒:', error);
+        res.status(500).json({ success: false, message: '鏈嶅姟鍣ㄩ敊璇細' + error.message });
     }
 });
+
+app.use((err, req, res, next) => {
+    if (res.headersSent) return next(err);
+    console.error('Unhandled API error:', err);
+    res.status(err.status || 500).json({
+        success: false,
+        message: err.message || '服务器错误'
+    });
+});
+
+
+

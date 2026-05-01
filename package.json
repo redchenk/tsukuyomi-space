@@ -1,12 +1,13 @@
 {
   "name": "tsukuyomi-space",
   "version": "2.1.0",
-  "description": "月读空间 - 跨越八千年时光，与你相遇的虚拟场域",
+  "description": "Tsukuyomi Space personal website and API",
   "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "check": "node --check backend/server.js && node --check backend/admin-routes.js && node --check backend/user-routes.js && node --check backend/config.js && node --check backend/middleware/auth.js && node --check backend/middleware/security.js",
+    "test": "npm run check"
   },
   "keywords": [
     "tsukuyomi",
@@ -23,9 +24,11 @@
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^9.4.3",
     "cors": "^2.8.5",
+    "esbuild": "^0.28.0",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "vite": "^8.0.5"
   },
   "engines": {
     "node": ">=16.0.0"

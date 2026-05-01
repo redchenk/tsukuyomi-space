@@ -1,25 +1,25 @@
-// 用户中心路由
+﻿// 鐢ㄦ埛涓績璺敱
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const path = require('path');
 const Database = require('better-sqlite3');
 const fs = require('fs');
+const config = require('./config');
 
 const { authenticateToken } = require('./middleware/auth');
 
-// 初始化数据库
-const dbPath = path.join(__dirname, 'tsukuyomi.db');
+// 鍒濆鍖栨暟鎹簱
+const dbPath = config.dbPath;
 const db = new Database(dbPath);
 
-// bio 字段迁移
+// bio 瀛楁杩佺Щ
 try {
     db.exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''");
 } catch (e) {
-    console.log('bio 字段已存在');
+    console.log('Operation completed');
 }
 
-// 获取当前用户资料
+// 鑾峰彇褰撳墠鐢ㄦ埛璧勬枡
 router.get('/profile', authenticateToken, (req, res) => {
     try {
         const user = db.prepare(`
@@ -28,7 +28,7 @@ router.get('/profile', authenticateToken, (req, res) => {
         `).get(req.user.id);
 
         if (!user) {
-            return res.status(404).json({ success: false, message: '用户不存在' });
+            return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
         res.json({
@@ -44,12 +44,12 @@ router.get('/profile', authenticateToken, (req, res) => {
             }
         });
     } catch (error) {
-        console.error('获取用户资料失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('鑾峰彇鐢ㄦ埛璧勬枡澶辫触:', error);
+        es.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 更新用户资料
+// 鏇存柊鐢ㄦ埛璧勬枡
 router.put('/profile', authenticateToken, (req, res) => {
     try {
         const { bio } = req.body;
@@ -58,20 +58,20 @@ router.put('/profile', authenticateToken, (req, res) => {
             UPDATE users SET bio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         `).run(bio || '', req.user.id);
 
-        res.json({ success: true, message: '资料已更新' });
+        es.json({ success: true, message: '操作成功' });
     } catch (error) {
-        console.error('更新用户资料失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('鏇存柊鐢ㄦ埛璧勬枡澶辫触:', error);
+        es.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 上传头像
+// 涓婁紶澶村儚
 router.post('/avatar', authenticateToken, (req, res) => {
     try {
         const { avatar } = req.body;
 
         if (!avatar) {
-            return res.status(400).json({ success: false, message: '请提供头像图片' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
         db.prepare(`
@@ -80,51 +80,51 @@ router.post('/avatar', authenticateToken, (req, res) => {
 
         res.json({
             success: true,
-            message: '头像已更新',
+            message: '操作失败',
             data: { avatar }
         });
     } catch (error) {
-        console.error('上传头像失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('涓婁紶澶村儚澶辫触:', error);
+        es.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 修改密码
+// 淇敼瀵嗙爜
 router.put('/password', authenticateToken, (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
 
         if (!currentPassword || !newPassword) {
-            return res.status(400).json({ success: false, message: '请填写所有字段' });
+            return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
-        // 获取当前用户
+        // 鑾峰彇褰撳墠鐢ㄦ埛
         const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
 
         if (!user) {
-            return res.status(404).json({ success: false, message: '用户不存在' });
+            return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
-        // 验证当前密码
+        // 楠岃瘉褰撳墠瀵嗙爜
         const validPassword = bcrypt.compareSync(currentPassword, user.password_hash);
         if (!validPassword) {
-            return res.status(400).json({ success: false, message: '当前密码错误' });
+            return res.status(400).json({ success: false, message: '褰撳墠瀵嗙爜閿欒' });
         }
 
-        // 加密新密码
+        // 鍔犲瘑鏂板瘑鐮?
         const passwordHash = bcrypt.hashSync(newPassword, 10);
         db.prepare(`
             UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         `).run(passwordHash, req.user.id);
 
-        res.json({ success: true, message: '密码已修改' });
+        es.json({ success: true, message: '操作成功' });
     } catch (error) {
-        console.error('修改密码失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('淇敼瀵嗙爜澶辫触:', error);
+        es.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 获取用户的文章列表
+// 鑾峰彇鐢ㄦ埛鐨勬枃绔犲垪琛?
 router.get('/articles', authenticateToken, (req, res) => {
     try {
         const articles = db.prepare(`
@@ -135,56 +135,56 @@ router.get('/articles', authenticateToken, (req, res) => {
 
         res.json({ success: true, data: articles });
     } catch (error) {
-        console.error('获取用户文章失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('鑾峰彇鐢ㄦ埛鏂囩珷澶辫触:', error);
+        es.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 获取用户的单篇文章（用于编辑）
+// 鑾峰彇鐢ㄦ埛鐨勫崟绡囨枃绔狅紙鐢ㄤ簬缂栬緫锛?
 router.get('/articles/:id', authenticateToken, (req, res) => {
     try {
         const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
 
         if (!article) {
-            return res.status(404).json({ success: false, message: '文章不存在' });
+            return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
-        // 检查是否是文章作者或管理员
+        // 妫€鏌ユ槸鍚︽槸鏂囩珷浣滆€呮垨绠＄悊鍛?
         if (article.author_id !== req.user.id && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: '无权限查看此文章' });
+            return res.status(403).json({ success: false, message: '鏃犳潈闄愭煡鐪嬫鏂囩珷' });
         }
 
         res.json({ success: true, data: article });
     } catch (error) {
-        console.error('获取文章失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('鑾峰彇鏂囩珷澶辫触:', error);
+        es.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 删除用户的文章
+// 鍒犻櫎鐢ㄦ埛鐨勬枃绔?
 router.delete('/articles/:id', authenticateToken, (req, res) => {
     try {
         const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
 
         if (!article) {
-            return res.status(404).json({ success: false, message: '文章不存在' });
+            return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
-        // 检查是否是文章作者或管理员
+        // 妫€鏌ユ槸鍚︽槸鏂囩珷浣滆€呮垨绠＄悊鍛?
         if (article.author_id !== req.user.id && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: '无权限删除此文章' });
+            return res.status(403).json({ success: false, message: '鏃犳潈闄愬垹闄ゆ鏂囩珷' });
         }
 
         db.prepare('DELETE FROM articles WHERE id = ?').run(req.params.id);
 
-        res.json({ success: true, message: '文章已删除' });
+        es.json({ success: true, message: '操作成功' });
     } catch (error) {
-        console.error('删除文章失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('鍒犻櫎鏂囩珷澶辫触:', error);
+        es.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 
-// 更新用户的文章
+// 鏇存柊鐢ㄦ埛鐨勬枃绔?
 router.put('/articles/:id', authenticateToken, (req, res) => {
     try {
         const { title, excerpt, content, category, read_time, cover_image } = req.body;
@@ -193,12 +193,12 @@ router.put('/articles/:id', authenticateToken, (req, res) => {
         const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(articleId);
 
         if (!article) {
-            return res.status(404).json({ success: false, message: '文章不存在' });
+            return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
-        // 检查是否是文章作者或管理员
+        // 妫€鏌ユ槸鍚︽槸鏂囩珷浣滆€呮垨绠＄悊鍛?
         if (article.author_id !== req.user.id && req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: '无权限编辑此文章' });
+            return res.status(403).json({ success: false, message: '鏃犳潈闄愮紪杈戞鏂囩珷' });
         }
 
         db.prepare(`
@@ -212,12 +212,12 @@ router.put('/articles/:id', authenticateToken, (req, res) => {
 
         res.json({
             success: true,
-            message: '文章已更新',
+            message: '操作失败',
             data: updatedArticle
         });
     } catch (error) {
-        console.error('更新文章失败:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('鏇存柊鏂囩珷澶辫触:', error);
+        es.status(500).json({ success: false, message: '服务器错误' });
     }
 });
 

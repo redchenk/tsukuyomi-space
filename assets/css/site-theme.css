@@ -39,6 +39,10 @@ body {
     letter-spacing: 0 !important;
 }
 
+body.access-page {
+    background: transparent !important;
+}
+
 body::before {
     content: "";
     position: fixed;
@@ -49,6 +53,10 @@ body::before {
         radial-gradient(circle at 12% 16%, rgba(255, 183, 197, 0.14), transparent 24%),
         radial-gradient(circle at 82% 18%, rgba(247, 215, 116, 0.09), transparent 22%),
         radial-gradient(circle at 78% 86%, rgba(99, 213, 255, 0.08), transparent 24%);
+}
+
+body.access-page::before {
+    content: none;
 }
 
 body > * {

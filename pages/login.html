@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
     <link rel="manifest" href="/site.webmanifest">
     <meta name="theme-color" content="#7edbe8">
-    <title>登录 | 月读空间</title>
+    <title>鐧诲綍 | 鏈堣绌洪棿</title>
     <style>
         :root { --primary-pink: #ff6b9d; --dark-bg: #1a1025; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -57,17 +57,17 @@
 <body>
     <div id="sakuraContainer"></div>
     <div class="moon"></div>
-    <a href="hub" class="back-btn">← <span data-i18n="back">返回</span></a>
+    <a href="hub" class="back-btn">鈫?<span data-i18n="back">杩斿洖</span></a>
     
     <div class="lang-switcher">
-        <button class="lang-btn active" onclick="setLanguage('zh')">中文</button>
-        <button class="lang-btn" onclick="setLanguage('ja')">日本語</button>
+        <button class="lang-btn active" onclick="setLanguage('zh')">涓枃</button>
+        <button class="lang-btn" onclick="setLanguage('ja')">鏃ユ湰瑾?/button>
     </div>
     
     <div class="login-container">
         <div class="logo">
-            <h1>🌙 <span data-i18n="login_title">登录</span></h1>
-            <p data-i18n="login_subtitle">月读空间欢迎您</p>
+            <h1>馃寵 <span data-i18n="login_title">鐧诲綍</span></h1>
+            <p data-i18n="login_subtitle">鏈堣绌洪棿娆㈣繋鎮?/p>
         </div>
         
         <div id="errorMessage" class="error-message"></div>
@@ -75,97 +75,97 @@
         
         <form id="loginForm" onsubmit="handleLogin(event)">
             <div class="login-mode">
-                <button type="button" class="mode-btn active" id="passwordModeBtn" data-i18n="password_mode">密码登录</button>
-                <button type="button" class="mode-btn" id="codeModeBtn" data-i18n="code_mode">验证码登录</button>
+                <button type="button" class="mode-btn active" id="passwordModeBtn" data-i18n="password_mode">瀵嗙爜鐧诲綍</button>
+                <button type="button" class="mode-btn" id="codeModeBtn" data-i18n="code_mode">楠岃瘉鐮佺櫥褰?/button>
             </div>
             <div class="form-group">
-                <label data-i18n="username">用户名</label>
-                <input type="text" id="username" required data-i18n-placeholder="username_placeholder" placeholder="请输入用户名">
+                <label data-i18n="username">鐢ㄦ埛鍚?/label>
+                <input type="text" id="username" required data-i18n-placeholder="username_placeholder" placeholder="璇疯緭鍏ョ敤鎴峰悕">
             </div>
             <div class="form-group" id="passwordGroup">
-                <label data-i18n="password">密码</label>
-                <input type="password" id="password" required data-i18n-placeholder="password_placeholder" placeholder="请输入密码">
+                <label data-i18n="password">瀵嗙爜</label>
+                <input type="password" id="password" required data-i18n-placeholder="password_placeholder" placeholder="璇疯緭鍏ュ瘑鐮?>
             </div>
             <div class="form-group" id="codeGroup" style="display:none;">
-                <label data-i18n="email_code">邮箱验证码</label>
+                <label data-i18n="email_code">閭楠岃瘉鐮?/label>
                 <div class="code-row">
-                    <input type="text" id="emailCode" inputmode="numeric" maxlength="6" data-i18n-placeholder="email_code_placeholder" placeholder="请输入 6 位验证码">
-                    <button type="button" id="sendLoginCodeBtn" class="code-btn" data-i18n="send_code">发送验证码</button>
+                    <input type="text" id="emailCode" inputmode="numeric" maxlength="6" data-i18n-placeholder="email_code_placeholder" placeholder="璇疯緭鍏?6 浣嶉獙璇佺爜">
+                    <button type="button" id="sendLoginCodeBtn" class="code-btn" data-i18n="send_code">鍙戦€侀獙璇佺爜</button>
                 </div>
             </div>
-            <button type="submit" class="submit-btn" data-i18n="login_btn">登录</button>
+            <button type="submit" class="submit-btn" data-i18n="login_btn">鐧诲綍</button>
         </form>
         
         <div class="links">
-            <span data-i18n="no_account">还没有账号？</span>
-            <a href="register" data-i18n="register_link">立即注册</a>
+            <span data-i18n="no_account">杩樻病鏈夎处鍙凤紵</span>
+            <a href="register" data-i18n="register_link">绔嬪嵆娉ㄥ唽</a>
         </div>
     </div>
     
     <script>
-        // 语言包
+        // 璇█鍖?
         const i18n = {
             zh: {
-                back: '返回',
-                login_title: '登录',
-                login_subtitle: '月读空间欢迎您',
-                username: '用户名',
-                username_placeholder: '请输入用户名或邮箱',
-                username_placeholder_code: '请输入已注册邮箱',
-                password: '密码',
-                password_placeholder: '请输入密码',
-                password_mode: '密码登录',
-                code_mode: '验证码登录',
-                email_code: '邮箱验证码',
-                email_code_placeholder: '请输入 6 位验证码',
-                send_code: '发送验证码',
-                code_sent: '验证码已发送，请查收邮箱',
-                code_failed: '验证码发送失败：',
-                login_btn: '登录',
-                no_account: '还没有账号？',
-                register_link: '立即注册',
-                login_success: '登录成功！正在跳转...',
-                login_failed: '登录失败：'
+                back: '杩斿洖',
+                login_title: '鐧诲綍',
+                login_subtitle: '鏈堣绌洪棿娆㈣繋鎮?,
+                username: '鐢ㄦ埛鍚?,
+                username_placeholder: '璇疯緭鍏ョ敤鎴峰悕鎴栭偖绠?,
+                username_placeholder_code: '璇疯緭鍏ュ凡娉ㄥ唽閭',
+                password: '瀵嗙爜',
+                password_placeholder: '璇疯緭鍏ュ瘑鐮?,
+                password_mode: '瀵嗙爜鐧诲綍',
+                code_mode: '楠岃瘉鐮佺櫥褰?,
+                email_code: '閭楠岃瘉鐮?,
+                email_code_placeholder: '璇疯緭鍏?6 浣嶉獙璇佺爜',
+                send_code: '鍙戦€侀獙璇佺爜',
+                code_sent: '楠岃瘉鐮佸凡鍙戦€侊紝璇锋煡鏀堕偖绠?,
+                code_failed: '楠岃瘉鐮佸彂閫佸け璐ワ細',
+                login_btn: '鐧诲綍',
+                no_account: '杩樻病鏈夎处鍙凤紵',
+                register_link: '绔嬪嵆娉ㄥ唽',
+                login_success: '鐧诲綍鎴愬姛锛佹鍦ㄨ烦杞?..',
+                login_failed: '鐧诲綍澶辫触锛?
             },
             ja: {
-                back: '戻る',
-                login_title: 'ログイン',
-                login_subtitle: '月読空間にようこそ',
-                username: 'ユーザー名',
-                username_placeholder: 'ユーザー名またはメールを入力してください',
-                username_placeholder_code: '登録済みメールを入力してください',
-                password: 'パスワード',
-                password_placeholder: 'パスワードを入力してください',
-                password_mode: 'パスワード',
-                code_mode: '認証コード',
-                email_code: 'メール認証コード',
-                email_code_placeholder: '6桁の認証コードを入力してください',
-                send_code: 'コード送信',
-                code_sent: '認証コードを送信しました',
-                code_failed: 'コード送信失敗：',
-                login_btn: 'ログイン',
-                no_account: 'アカウントをお持ちでないですか？',
-                register_link: '今すぐ登録',
-                login_success: 'ログイン成功！リダイレクト中...',
-                login_failed: 'ログイン失敗：'
+                back: '鎴汇倠',
+                login_title: '銉偘銈ゃ兂',
+                login_subtitle: '鏈堣绌洪枔銇倛銇嗐亾銇?,
+                username: '銉︺兗銈躲兗鍚?,
+                username_placeholder: '銉︺兗銈躲兗鍚嶃伨銇熴伅銉°兗銉倰鍏ュ姏銇椼仸銇忋仩銇曘亜',
+                username_placeholder_code: '鐧婚尣娓堛伩銉°兗銉倰鍏ュ姏銇椼仸銇忋仩銇曘亜',
+                password: '銉戙偣銉兗銉?,
+                password_placeholder: '銉戙偣銉兗銉夈倰鍏ュ姏銇椼仸銇忋仩銇曘亜',
+                password_mode: '銉戙偣銉兗銉?,
+                code_mode: '瑾嶈銈炽兗銉?,
+                email_code: '銉°兗銉獚瑷笺偝銉笺儔',
+                email_code_placeholder: '6妗併伄瑾嶈銈炽兗銉夈倰鍏ュ姏銇椼仸銇忋仩銇曘亜',
+                send_code: '銈炽兗銉夐€佷俊',
+                code_sent: '瑾嶈銈炽兗銉夈倰閫佷俊銇椼伨銇椼仧',
+                code_failed: '銈炽兗銉夐€佷俊澶辨晽锛?,
+                login_btn: '銉偘銈ゃ兂',
+                no_account: '銈偒銈︺兂銉堛倰銇婃寔銇°仹銇亜銇с仚銇嬶紵',
+                register_link: '浠娿仚銇愮櫥閷?,
+                login_success: '銉偘銈ゃ兂鎴愬姛锛併儶銉€銈ゃ儸銈儓涓?..',
+                login_failed: '銉偘銈ゃ兂澶辨晽锛?
             }
         };
         
         let currentLang = 'zh';
         let loginMethod = 'password';
         
-        // 设置语言
+        // 璁剧疆璇█
         function setLanguage(lang) {
             currentLang = lang;
             localStorage.setItem('lang', lang);
             
-            // 更新按钮状态
+            // 鏇存柊鎸夐挳鐘舵€?
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             document.querySelector(`.lang-btn[onclick="setLanguage('${lang}')"]`).classList.add('active');
             
-            // 更新文本
+            // 鏇存柊鏂囨湰
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if (i18n[lang][key]) {
@@ -173,7 +173,7 @@
                 }
             });
             
-            // 更新占位符
+            // 鏇存柊鍗犱綅绗?
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.getAttribute('data-i18n-placeholder');
                 if (i18n[lang][key]) {
@@ -182,11 +182,11 @@
             });
             updateLoginMode(false);
             
-            // 更新页面 lang 属性
+            // 鏇存柊椤甸潰 lang 灞炴€?
             document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'ja';
         }
         
-        // 页面加载时恢复语言
+        // 椤甸潰鍔犺浇鏃舵仮澶嶈瑷€
         document.addEventListener('DOMContentLoaded', function() {
             const savedLang = localStorage.getItem('lang') || 'zh';
             setLanguage(savedLang);
@@ -265,8 +265,12 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, purpose: 'login' })
                 });
-                const result = await res.json();
-                if (!result.success) throw new Error(result.message || '未知错误');
+                const contentType = res.headers.get('content-type') || '';
+                const raw = await res.text();
+                const result = contentType.includes('application/json') && raw
+                    ? JSON.parse(raw)
+                    : { success: false, message: raw ? raw.replace(/<[^>]*>/g, '').trim().slice(0, 120) : `HTTP ${res.status}` };
+                if (!result.success) throw new Error(result.message || '鏈煡閿欒');
                 setMessage('success', i18n[currentLang].code_sent);
                 startCodeCountdown(button);
             } catch (error) {
@@ -307,9 +311,13 @@
                     body: JSON.stringify({ username, password, emailCode, loginMethod })
                 });
 
-                const result = await res.json();
+                const contentType = res.headers.get('content-type') || '';
+                const raw = await res.text();
+                const result = contentType.includes('application/json') && raw
+                    ? JSON.parse(raw)
+                    : { success: false, message: raw ? raw.replace(/<[^>]*>/g, '').trim().slice(0, 120) : `HTTP ${res.status}` };
                 if (result.success) {
-                    // 清除旧的 admin token，防止冲突
+                    // 娓呴櫎鏃х殑 admin token锛岄槻姝㈠啿绐?
                     localStorage.removeItem('admin_token');
                     localStorage.removeItem('admin_user');
 
@@ -318,7 +326,7 @@
                     successMsg.textContent = i18n[currentLang].login_success;
                     successMsg.style.display = 'block';
 
-                    // 获取重定向 URL
+                    // 鑾峰彇閲嶅畾鍚?URL
                     const urlParams = new URLSearchParams(window.location.search);
                     const redirect = urlParams.get('redirect') || 'hub';
 
@@ -326,7 +334,7 @@
                         window.location.href = redirect;
                     }, 1500);
                 } else {
-                    errorMsg.textContent = i18n[currentLang].login_failed + (result.message || '未知错误');
+                    errorMsg.textContent = i18n[currentLang].login_failed + (result.message || '鏈煡閿欒');
                     errorMsg.style.display = 'block';
                 }
             } catch (error) {
