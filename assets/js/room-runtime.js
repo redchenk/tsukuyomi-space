@@ -18,7 +18,7 @@
     let chatConversation = [];
     let live2d = null;
     let ttsAudioUrl = null;
-    let sakuraTimer = null;
+    let ambientFish = null;
     let draggedPanel = null;
     let dragOffset = { x: 0, y: 0 };
     let zIndexCounter = 30;
@@ -581,23 +581,11 @@
     }
 
     function initSakura() {
-        const toggle = $('sakuraToggle');
-        const container = $('sakuraContainer');
-        const create = () => {
-            if (!container || toggle?.checked === false) return;
-            const petal = document.createElement('div');
-            petal.className = 'sakura';
-            petal.style.left = `${Math.random() * 100}%`;
-            petal.style.setProperty('--drift', `${(Math.random() - 0.5) * 48}vw`);
-            petal.style.animationDuration = `${5 + Math.random() * 4}s`;
-            petal.style.transform = `rotate(${Math.random() * 180}deg)`;
-            container.appendChild(petal);
-            setTimeout(() => petal.remove(), 9500);
-        };
-        sakuraTimer = setInterval(create, 420);
-        toggle?.addEventListener('change', () => {
-            if (!toggle.checked && container) container.innerHTML = '';
-        });
+        ambientFish = window.initTsukuyomiAmbientFish?.({
+            containerId: 'sakuraContainer',
+            toggleId: 'sakuraToggle',
+            density: 0.48
+        }) || null;
     }
 
     function initPanels() {
@@ -651,24 +639,56 @@
             button.addEventListener('click', () => togglePanel(button.dataset.panelToggle));
         });
         document.querySelectorAll('[data-panel-close]').forEach((button) => {
-            button.addEventListener('click', () => hidePanel(button.dataset.panelClose));
+            button.addEventListener('pointerdown', (event) => {
+                event.stopPropagation();
+            });
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                hidePanel(button.dataset.panelClose);
+            });
         });
         $('resetPanelsBtn')?.addEventListener('click', () => {
             localStorage.removeItem('roomPanelPositions');
             location.reload();
+        });
+        syncPanelButtons();
+    }
+
+    function isPanelVisible(panel) {
+        return Boolean(panel) && !panel.hidden && getComputedStyle(panel).display !== 'none';
+    }
+
+    function updatePanelButton(panelId, visible) {
+        document.querySelectorAll(`[data-panel-toggle="${panelId}"]`).forEach((button) => {
+            button.classList.toggle('is-active', visible);
+            button.setAttribute('aria-pressed', visible ? 'true' : 'false');
+        });
+    }
+
+    function syncPanelButtons() {
+        document.querySelectorAll('[data-panel-toggle]').forEach((button) => {
+            const panelId = button.dataset.panelToggle;
+            updatePanelButton(panelId, isPanelVisible($(panelId)));
         });
     }
 
     function togglePanel(panelId) {
         const panel = $(panelId);
         if (!panel) return;
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        if (panel.style.display !== 'none') panel.style.zIndex = ++zIndexCounter;
+        const nextVisible = !isPanelVisible(panel);
+        panel.hidden = !nextVisible;
+        panel.style.display = nextVisible ? 'block' : 'none';
+        updatePanelButton(panelId, nextVisible);
+        if (nextVisible) panel.style.zIndex = ++zIndexCounter;
     }
 
     function hidePanel(panelId) {
         const panel = $(panelId);
-        if (panel) panel.style.display = 'none';
+        if (!panel) return;
+        panel.hidden = true;
+        panel.style.display = 'none';
+        updatePanelButton(panelId, false);
     }
 
     function initProfileAndNote() {
@@ -896,7 +916,7 @@
     });
 
     window.addEventListener('beforeunload', () => {
-        if (sakuraTimer) clearInterval(sakuraTimer);
+        ambientFish?.destroy?.();
         live2d?.destroy();
     });
 })();

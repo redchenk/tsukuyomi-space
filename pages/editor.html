@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
     <link rel="manifest" href="/site.webmanifest">
     <meta name="theme-color" content="#7edbe8">
-    <title data-i18n="editor_title">新建投稿 | 月读空间</title>
+    <title data-i18n="editor_title">鏂板缓鎶曠 | 鏈堣绌洪棿</title>
     <style>
         :root { --sakura-pink: #ffb7c5; --deep-pink: #ff6b9d; --dark-bg: #1a1025; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -75,7 +75,7 @@
         .login-notice a { color: #ffb7c5; text-decoration: none; }
         .footer { position: fixed; bottom: 1rem; color: rgba(255,255,255,0.25); font-size: 0.65rem; letter-spacing: 0.15rem; z-index: 10; width: 100%; text-align: center; }
         
-        /* 封面图片上传 */
+        /* 灏侀潰鍥剧墖涓婁紶 */
         .cover-upload {
             border: 2px dashed rgba(255,107,157,0.3);
             border-radius: 8px;
@@ -108,32 +108,33 @@
     </style>
     <link rel="stylesheet" href="../assets/css/site-theme.css">
     <script defer src="../assets/js/site-nav.js"></script>
+    <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body>
     <div id="sakuraContainer"></div>
     <nav>
-        <a href="hub" class="logo" data-i18n="space_name">月読空間</a>
+        <a href="hub" class="logo" data-i18n="space_name">鏈堣绌洪枔</a>
         <div class="nav-right">
-            <a href="stage" data-i18n="nav_stage">ステージ</a>
-            <a href="hub" data-i18n="return">戻る</a>
+            <a href="stage" data-i18n="nav_stage">銈广儐銉笺偢</a>
+            <a href="hub" data-i18n="return">鎴汇倠</a>
         </div>
     </nav>
     
     <div class="lang-switcher">
-        <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh')">中文</button>
-        <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">日本語</button>
+        <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh')">涓枃</button>
+        <button class="lang-btn" data-lang="ja" onclick="setLanguage('ja')">鏃ユ湰瑾?/button>
     </div>
     
     <div class="container">
         <div class="header">
-            <h1 class="title" data-i18n="editor_title">新建投稿</h1>
-            <p class="subtitle" data-i18n="editor_subtitle">创建新文章</p>
+            <h1 class="title" data-i18n="editor_title">鏂板缓鎶曠</h1>
+            <p class="subtitle" data-i18n="editor_subtitle">鍒涘缓鏂版枃绔?/p>
         </div>
         <div id="editorContainer">
-            <div class="login-notice" data-i18n="loading">加载中...</div>
+            <div class="login-notice" data-i18n="loading">鍔犺浇涓?..</div>
         </div>
     </div>
-    <div class="footer">© 超かぐや姫！風</div>
+    <div class="footer">漏 瓒呫亱銇愩倓濮紒棰?/div>
     <script src="i18n.js"></script>
     <script>
         const API_BASE = '/api';
@@ -145,11 +146,11 @@
             checkAuth();
         });
         
-        // 樱花背景
+        // 妯辫姳鑳屾櫙
         const sakuraContainer = document.getElementById('sakuraContainer');
 
-        // 加载文章进行编辑
-        // HTML 转义
+        // 鍔犺浇鏂囩珷杩涜缂栬緫
+        // HTML 杞箟
         function escapeHtml(str) {
             if (!str) return "";
             return str.replace(/"/g, "\&quot;").replace(/\&/g, "\&amp;").replace(/</g, "\&lt;").replace(/>/g, "\&gt;");
@@ -165,12 +166,12 @@
 
         async function loadArticleForEdit(articleId, token, user) {
             try {
-                // 根据 token 类型和用户角色选择 API
+                // 鏍规嵁 token 绫诲瀷鍜岀敤鎴疯鑹查€夋嫨 API
                 let url;
                 const adminToken = localStorage.getItem('admin_token');
                 const adminUserStr = localStorage.getItem('admin_user');
 
-                // 只有 admin token 存在且用户角色是 admin 时才使用 admin API
+                // 鍙湁 admin token 瀛樺湪涓旂敤鎴疯鑹叉槸 admin 鏃舵墠浣跨敤 admin API
                 if (adminToken && adminUserStr) {
                     try {
                         const adminUser = JSON.parse(adminUserStr);
@@ -195,11 +196,11 @@
                     const article = result.data;
                     renderEditorForm(article, user);
                 } else {
-                    showError('加载文章失败：' + (result.message || '未知错误'));
+                    showError('鍔犺浇鏂囩珷澶辫触锛? + (result.message || '鏈煡閿欒'));
                 }
             } catch (error) {
-                console.error('加载文章失败:', error);
-                showError('网络错误');
+                console.error('鍔犺浇鏂囩珷澶辫触:', error);
+                showError('缃戠粶閿欒');
             }
         }
 
@@ -210,65 +211,65 @@
                     <div class="message error" id="errorMsg"></div>
 
                     <div class="form-group">
-                        <label data-i18n="field_cover">文章封面图片（自动压缩）</label>
+                        <label data-i18n="field_cover">鏂囩珷灏侀潰鍥剧墖锛堣嚜鍔ㄥ帇缂╋級</label>
                         <div class="cover-upload" id="coverUpload">
                             <input type="file" id="coverInput" accept="image/*" onchange="handleCoverUpload(event)">
                             <div class="cover-placeholder" id="coverPlaceholder">
-                                <span class="icon">🖼️</span>
-                                <span>点击或拖拽上传图片</span>
-                                <div class="help-text">推荐：1200x630px，JPG 或 PNG 格式</div>
+                                <span class="icon">馃柤锔?/span>
+                                <span>鐐瑰嚮鎴栨嫋鎷戒笂浼犲浘鐗?/span>
+                                <div class="help-text">鎺ㄨ崘锛?200x630px锛孞PG 鎴?PNG 鏍煎紡</div>
                             </div>
-                            <img class="cover-preview" id="coverPreview" alt="封面预览">
-                            <button type="button" class="cover-remove" onclick="removeCover(event)">×</button>
+                            <img class="cover-preview" id="coverPreview" alt="灏侀潰棰勮">
+                            <button type="button" class="cover-remove" onclick="removeCover(event)">脳</button>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label data-i18n="field_title">标题</label>
-                        <input type="text" id="title" data-i18n="field_title_placeholder" placeholder="输入文章标题" required value="${escapeHtml(article.title || '')}">
+                        <label data-i18n="field_title">鏍囬</label>
+                        <input type="text" id="title" data-i18n="field_title_placeholder" placeholder="杈撳叆鏂囩珷鏍囬" required value="${escapeHtml(article.title || '')}">
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label data-i18n="field_category">分类</label>
+                            <label data-i18n="field_category">鍒嗙被</label>
                             <select id="category" required>
-                                <option value="" data-i18n="field_category_select">请选择分类</option>
-                                <option value="公告" data-i18n="field_category_announcement">公告（仅管理员）</option>
-                                <option value="传说" data-i18n="field_category_legend">传说</option>
-                                <option value="技术" data-i18n="field_category_technology">技术</option>
-                                <option value="其他" data-i18n="field_category_other">其他</option>
+                                <option value="" data-i18n="field_category_select">璇烽€夋嫨鍒嗙被</option>
+                                <option value="鍏憡" data-i18n="field_category_announcement">鍏憡锛堜粎绠＄悊鍛橈級</option>
+                                <option value="浼犺" data-i18n="field_category_legend">浼犺</option>
+                                <option value="鎶€鏈? data-i18n="field_category_technology">鎶€鏈?/option>
+                                <option value="鍏朵粬" data-i18n="field_category_other">鍏朵粬</option>
                             </select>
-                            <div class="help-text" data-i18n="field_category_hint">※ 公告仅管理员可发布</div>
+                            <div class="help-text" data-i18n="field_category_hint">鈥?鍏憡浠呯鐞嗗憳鍙彂甯?/div>
                         </div>
                         <div class="form-group">
-                            <label data-i18n="field_read_time">阅读时间</label>
-                            <input type="text" id="readTime" data-i18n="field_read_time_placeholder" placeholder="例：5 min" required value="${escapeHtml(article.read_time || '')}">
+                            <label data-i18n="field_read_time">闃呰鏃堕棿</label>
+                            <input type="text" id="readTime" data-i18n="field_read_time_placeholder" placeholder="渚嬶細5 min" required value="${escapeHtml(article.read_time || '')}">
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label data-i18n="field_excerpt">摘要</label>
-                        <textarea id="excerpt" data-i18n="field_excerpt_placeholder" placeholder="文章摘要（200 字以内）" maxlength="200" required>${escapeHtml(article.excerpt || '')}</textarea>
-                        <div class="help-text" data-i18n="field_excerpt_hint">请输入文章摘要</div>
+                        <label data-i18n="field_excerpt">鎽樿</label>
+                        <textarea id="excerpt" data-i18n="field_excerpt_placeholder" placeholder="鏂囩珷鎽樿锛?00 瀛椾互鍐咃級" maxlength="200" required>${escapeHtml(article.excerpt || '')}</textarea>
+                        <div class="help-text" data-i18n="field_excerpt_hint">璇疯緭鍏ユ枃绔犳憳瑕?/div>
                     </div>
 
                     <div class="form-group">
-                        <label data-i18n="field_content">正文</label>
-                        <textarea id="content" data-i18n="field_content_placeholder" placeholder="输入文章内容..." style="min-height:400px" required>${escapeHtml(article.content || '')}</textarea>
-                        <div class="help-text" data-i18n="field_content_hint">格式支持：## 标题 1 / ### 标题 2 / - 列表项 / > 引用 / \`代码\`</div>
+                        <label data-i18n="field_content">姝ｆ枃</label>
+                        <textarea id="content" data-i18n="field_content_placeholder" placeholder="杈撳叆鏂囩珷鍐呭..." style="min-height:400px" required>${escapeHtml(article.content || '')}</textarea>
+                        <div class="help-text" data-i18n="field_content_hint">鏍煎紡鏀寔锛?# 鏍囬 1 / ### 鏍囬 2 / - 鍒楄〃椤?/ > 寮曠敤 / \`浠ｇ爜\`</div>
                     </div>
 
                     <div class="btn-group">
-                        <button type="submit" class="btn btn-primary" id="submitBtn" data-i18n="btn_update">保存修改</button>
-                        <a href="javascript:history.back()" class="btn btn-secondary" data-i18n="cancel">取消</a>
+                        <button type="submit" class="btn btn-primary" id="submitBtn" data-i18n="btn_update">淇濆瓨淇敼</button>
+                        <a href="javascript:history.back()" class="btn btn-secondary" data-i18n="cancel">鍙栨秷</a>
                     </div>
                 </form>
             `;
 
-            // 设置分类
+            // 璁剧疆鍒嗙被
             document.getElementById('category').value = article.category || '';
 
-            // 设置封面
+            // 璁剧疆灏侀潰
             if (article.cover_image) {
                 const preview = document.getElementById('coverPreview');
                 const placeholder = document.getElementById('coverPlaceholder');
@@ -281,23 +282,12 @@
             }
         }
 
-        const sakuras = [];
-        function createSakura() {
-            const el = document.createElement('div');
-            el.className = 'sakura';
-            const size = Math.random() * 6 + 5;
-            el.style.width = size + 'px';
-            el.style.height = size + 'px';
-            el.style.left = (Math.random() * 100) + '%';
-            sakuraContainer.appendChild(el);
-            return { el, x: 0, y: -Math.random() * window.innerHeight * 0.5 - 50, vy: Math.random() * 0.4 + 0.3, angle: Math.random() * Math.PI * 2, angleSpeed: Math.random() * 0.015 + 0.008, swayRadius: Math.random() * 15 + 8, rot: Math.random() * 360, rotSpeed: (Math.random() - 0.5) * 0.8, flip: Math.random() > 0.5 ? 1 : -1, opacity: Math.random() * 0.2 + 0.75 };
-        }
-        for (let i = 0; i < 35; i++) { const s = createSakura(); s.y = Math.random() * window.innerHeight; sakuras.push(s); }
-        function animate() { sakuras.forEach(s => { s.y += s.vy; s.angle += s.angleSpeed; s.x = Math.sin(s.angle) * s.swayRadius * s.flip; s.rot += s.rotSpeed; let alpha = s.opacity; if (s.y < 50) alpha = s.opacity * (s.y / 50); else if (s.y > window.innerHeight - 50) alpha = s.opacity * ((window.innerHeight - s.y) / 50); s.el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg)`; s.el.style.opacity = alpha; if (s.y > window.innerHeight + 30) { s.y = -30 - Math.random() * 50; s.x = 0; s.angle = Math.random() * Math.PI * 2; s.flip = Math.random() > 0.5 ? 1 : -1; } }); requestAnimationFrame(animate); }
-        animate();
+        document.addEventListener('DOMContentLoaded', () => {
+            window.initTsukuyomiAmbientFish({ containerId: 'sakuraContainer' });
+        });
         
         function checkAuth() {
-            // 支持两种 token：admin_token（终端）或 tsukuyomi_token（用户端）
+            // 鏀寔涓ょ token锛歛dmin_token锛堢粓绔級鎴?tsukuyomi_token锛堢敤鎴风锛?
             let token = localStorage.getItem('admin_token');
             let userStr = localStorage.getItem('admin_user');
 
@@ -307,7 +297,7 @@
             }
 
             if (!token || !userStr) {
-                // 未登录，跳转到登录页面并带上重定向参数
+                // 鏈櫥褰曪紝璺宠浆鍒扮櫥褰曢〉闈㈠苟甯︿笂閲嶅畾鍚戝弬鏁?
                 window.location.href = 'login?redirect=editor';
                 return;
             }
@@ -317,10 +307,10 @@
 
                 let editingArticleId = null;
 
-                // 检查是否有文章 ID 参数（编辑模式）
+                // 妫€鏌ユ槸鍚︽湁鏂囩珷 ID 鍙傛暟锛堢紪杈戞ā寮忥級
                 const urlParams = new URLSearchParams(window.location.search);
                 const articleId = urlParams.get('id');
-                console.log('[editor] 文章 ID:', articleId);
+                console.log('[editor] 鏂囩珷 ID:', articleId);
 
                 if (articleId) {
                     editingArticleId = articleId;
@@ -333,72 +323,72 @@
                         <div class="message error" id="errorMsg"></div>
                         
                         <div class="form-group">
-                            <label data-i18n="field_cover">文章封面图片（自动压缩）</label>
+                            <label data-i18n="field_cover">鏂囩珷灏侀潰鍥剧墖锛堣嚜鍔ㄥ帇缂╋級</label>
                             <div class="cover-upload" id="coverUpload">
                                 <input type="file" id="coverInput" accept="image/*" onchange="handleCoverUpload(event)">
                                 <div class="cover-placeholder" id="coverPlaceholder">
-                                    <span class="icon">🖼️</span>
-                                    <span>点击或拖拽上传图片</span>
-                                    <div class="help-text">推荐：1200x630px，JPG 或 PNG 格式</div>
+                                    <span class="icon">馃柤锔?/span>
+                                    <span>鐐瑰嚮鎴栨嫋鎷戒笂浼犲浘鐗?/span>
+                                    <div class="help-text">鎺ㄨ崘锛?200x630px锛孞PG 鎴?PNG 鏍煎紡</div>
                                 </div>
-                                <img class="cover-preview" id="coverPreview" alt="封面预览">
-                                <button type="button" class="cover-remove" onclick="removeCover(event)">×</button>
+                                <img class="cover-preview" id="coverPreview" alt="灏侀潰棰勮">
+                                <button type="button" class="cover-remove" onclick="removeCover(event)">脳</button>
                             </div>
                         </div>
                         
                         <div class="form-group">
-                            <label data-i18n="field_title">标题</label>
-                            <input type="text" id="title" data-i18n="field_title_placeholder" placeholder="输入文章标题" required>
+                            <label data-i18n="field_title">鏍囬</label>
+                            <input type="text" id="title" data-i18n="field_title_placeholder" placeholder="杈撳叆鏂囩珷鏍囬" required>
                         </div>
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label data-i18n="field_category">分类</label>
+                                <label data-i18n="field_category">鍒嗙被</label>
                                 <select id="category" required>
-                                    <option value="" data-i18n="field_category_select">请选择分类</option>
-                                    <option value="公告" data-i18n="field_category_announcement">公告（仅管理员）</option>
-                                    <option value="传说" data-i18n="field_category_legend">传说</option>
-                                    <option value="技术" data-i18n="field_category_technology">技术</option>
-                                    <option value="其他" data-i18n="field_category_other">其他</option>
+                                    <option value="" data-i18n="field_category_select">璇烽€夋嫨鍒嗙被</option>
+                                    <option value="鍏憡" data-i18n="field_category_announcement">鍏憡锛堜粎绠＄悊鍛橈級</option>
+                                    <option value="浼犺" data-i18n="field_category_legend">浼犺</option>
+                                    <option value="鎶€鏈? data-i18n="field_category_technology">鎶€鏈?/option>
+                                    <option value="鍏朵粬" data-i18n="field_category_other">鍏朵粬</option>
                                 </select>
-                                <div class="help-text" data-i18n="field_category_hint">※ 公告仅管理员可发布</div>
+                                <div class="help-text" data-i18n="field_category_hint">鈥?鍏憡浠呯鐞嗗憳鍙彂甯?/div>
                             </div>
                             <div class="form-group">
-                                <label data-i18n="field_read_time">阅读时间</label>
-                                <input type="text" id="readTime" data-i18n="field_read_time_placeholder" placeholder="例：5 min" required>
+                                <label data-i18n="field_read_time">闃呰鏃堕棿</label>
+                                <input type="text" id="readTime" data-i18n="field_read_time_placeholder" placeholder="渚嬶細5 min" required>
                             </div>
                         </div>
                         
                         <div class="form-group">
-                            <label data-i18n="field_excerpt">摘要</label>
-                            <textarea id="excerpt" data-i18n="field_excerpt_placeholder" placeholder="文章摘要（200 字以内）" maxlength="200" required></textarea>
-                            <div class="help-text" data-i18n="field_excerpt_hint">请输入文章摘要</div>
+                            <label data-i18n="field_excerpt">鎽樿</label>
+                            <textarea id="excerpt" data-i18n="field_excerpt_placeholder" placeholder="鏂囩珷鎽樿锛?00 瀛椾互鍐咃級" maxlength="200" required></textarea>
+                            <div class="help-text" data-i18n="field_excerpt_hint">璇疯緭鍏ユ枃绔犳憳瑕?/div>
                         </div>
                         
                         <div class="form-group">
-                            <label data-i18n="field_content">正文</label>
-                            <textarea id="content" data-i18n="field_content_placeholder" placeholder="输入文章内容..." style="min-height:400px" required></textarea>
-                            <div class="help-text" data-i18n="field_content_hint">格式支持：## 标题 1 / ### 标题 2 / - 列表项 / > 引用 / \`代码\`</div>
+                            <label data-i18n="field_content">姝ｆ枃</label>
+                            <textarea id="content" data-i18n="field_content_placeholder" placeholder="杈撳叆鏂囩珷鍐呭..." style="min-height:400px" required></textarea>
+                            <div class="help-text" data-i18n="field_content_hint">鏍煎紡鏀寔锛?# 鏍囬 1 / ### 鏍囬 2 / - 鍒楄〃椤?/ > 寮曠敤 / \`浠ｇ爜\`</div>
                         </div>
                         
                         <div class="btn-group">
-                            <button type="submit" class="btn btn-primary" data-i18n="btn_submit">投稿</button>
-                            <a href="stage" class="btn btn-secondary" data-i18n="cancel">取消</a>
+                            <button type="submit" class="btn btn-primary" data-i18n="btn_submit">鎶曠</button>
+                            <a href="stage" class="btn btn-secondary" data-i18n="cancel">鍙栨秷</a>
                         </div>
                     </form>
                 `;
             } catch (e) {
-                console.error('解析用户信息失败:', e);
+                console.error('瑙ｆ瀽鐢ㄦ埛淇℃伅澶辫触:', e);
                 document.getElementById('editorContainer').innerHTML = `
                     <div class="login-notice">
-                        セッションエラー。<br><br>
-                        <a href="login" class="btn btn-primary">再ログイン</a>
+                        銈汇儍銈枫儳銉炽偍銉┿兗銆?br><br>
+                        <a href="login" class="btn btn-primary">鍐嶃儹銈般偆銉?/a>
                     </div>
                 `;
             }
         }
         
-        // 压缩图片
+        // 鍘嬬缉鍥剧墖
         function compressImage(file, maxWidth = 1200, maxHeight = 630, quality = 0.7) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -409,7 +399,7 @@
                         let width = img.width;
                         let height = img.height;
                         
-                        // 计算缩放比例
+                        // 璁＄畻缂╂斁姣斾緥
                         if (width > maxWidth) {
                             height = height * (maxWidth / width);
                             width = maxWidth;
@@ -424,7 +414,7 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
                         
-                        // 压缩为 JPEG
+                        // 鍘嬬缉涓?JPEG
                         const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
                         resolve(compressedDataUrl);
                     };
@@ -436,20 +426,20 @@
             });
         }
         
-        // 处理封面图片上传
+        // 澶勭悊灏侀潰鍥剧墖涓婁紶
         async function handleCoverUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
             
             if (!file.type.startsWith('image/')) {
-                showError('请选择图片文件');
+                showError('璇烽€夋嫨鍥剧墖鏂囦欢');
                 return;
             }
             
             const upload = document.getElementById('coverUpload');
             
             try {
-                // 压缩图片
+                // 鍘嬬缉鍥剧墖
                 coverImageBase64 = await compressImage(file, 1200, 630, 0.7);
                 coverImageSize = Math.round(coverImageBase64.length * 3 / 4);
                 
@@ -461,8 +451,8 @@
                 placeholder.style.display = 'none';
                 upload.classList.add('has-image');
             } catch (error) {
-                console.error('图片压缩失败:', error);
-                showError('图片处理失败，请重试');
+                console.error('鍥剧墖鍘嬬缉澶辫触:', error);
+                showError('鍥剧墖澶勭悊澶辫触锛岃閲嶈瘯');
             }
         }
         
@@ -481,7 +471,7 @@
         
         async function handleSubmit(e) {
             e.preventDefault();
-            // 支持两种 token
+            // 鏀寔涓ょ token
             let token = localStorage.getItem('admin_token');
             if (!token) {
                 token = localStorage.getItem('tsukuyomi_token');
@@ -493,21 +483,21 @@
             const content = document.getElementById('content').value.trim();
 
             if (!title || !category || !readTime || !excerpt || !content) {
-                showError('请填写所有必填项');
+                showError('璇峰～鍐欐墍鏈夊繀濉」');
                 return;
             }
 
             const submitBtn = e.target.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
 
-            // 检查是否是编辑模式
+            // 妫€鏌ユ槸鍚︽槸缂栬緫妯″紡
             const urlParams = new URLSearchParams(window.location.search);
             const articleId = urlParams.get('id');
 
             if (articleId) {
-                submitBtn.textContent = '保存中...';
+                submitBtn.textContent = '淇濆瓨涓?..';
             } else {
-                submitBtn.textContent = '投稿中...';
+                submitBtn.textContent = '鎶曠涓?..';
             }
 
             try {
@@ -515,25 +505,25 @@
 
                 if (coverImageBase64) {
                     requestBody.cover_image = coverImageBase64;
-                    console.log('封面大小:', (coverImageSize / 1024).toFixed(1), 'KB');
+                    console.log('灏侀潰澶у皬:', (coverImageSize / 1024).toFixed(1), 'KB');
                 }
 
                 let url = API_BASE + '/articles';
                 let method = 'POST';
-                let successMsg = '投稿成功！正在跳转...';
+                let successMsg = '鎶曠鎴愬姛锛佹鍦ㄨ烦杞?..';
 
                 if (articleId) {
-                    // 编辑模式：根据 token 类型选择 API
+                    // 缂栬緫妯″紡锛氭牴鎹?token 绫诲瀷閫夋嫨 API
                     if (localStorage.getItem('admin_token')) {
                         url = API_BASE + '/admin/articles/' + articleId;
                     } else {
                         url = API_BASE + '/user/articles/' + articleId;
                     }
                     method = 'PUT';
-                    successMsg = '修改已保存！正在跳转...';
+                    successMsg = '淇敼宸蹭繚瀛橈紒姝ｅ湪璺宠浆...';
                 }
 
-                console.log('发送请求...', method, url);
+                console.log('鍙戦€佽姹?..', method, url);
                 const response = await fetch(url, {
                     method: method,
                     headers: {
@@ -548,15 +538,15 @@
                     showSuccess(successMsg);
                     setTimeout(() => window.location.href = articleId ? 'terminal' : 'stage', 1500);
                 } else {
-                    showError(result.message || result.error || '投稿失败');
+                    showError(result.message || result.error || '鎶曠澶辫触');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = articleId ? '保存修改' : '投稿';
+                    submitBtn.textContent = articleId ? '淇濆瓨淇敼' : '鎶曠';
                 }
             } catch (error) {
-                console.error('投稿失败:', error);
-                showError('网络错误，请检查连接');
+                console.error('鎶曠澶辫触:', error);
+                showError('缃戠粶閿欒锛岃妫€鏌ヨ繛鎺?);
                 submitBtn.disabled = false;
-                submitBtn.textContent = articleId ? '保存修改' : '投稿';
+                submitBtn.textContent = articleId ? '淇濆瓨淇敼' : '鎶曠';
             }
         }
 

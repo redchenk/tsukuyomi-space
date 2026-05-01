@@ -1,4 +1,5 @@
 (function () {
+    const MIN_LOADER_MS = 360;
     const NAV_ITEMS = [
         { key: 'hub', label: '中枢大厅' },
         { key: 'stage', label: '主舞台' },
@@ -9,6 +10,7 @@
     ];
 
     const HIDDEN_NAV_PAGES = new Set(['access']);
+    const DISABLE_PAGE_LOADER_PAGES = new Set(['access', 'hub', 'room', 'room-live2d', 'room-live2d-simple']);
     const ROUTE_KEYS = new Set(NAV_ITEMS.map((item) => item.key));
     const ACTIVE_ALIASES = {
         article: 'stage',
@@ -37,6 +39,78 @@
         const clean = href.split('#')[0].split('?')[0].replace(/\/+$/g, '');
         const part = clean.split('/').pop().replace(/\.html$/i, '');
         return ROUTE_KEYS.has(part) ? part : '';
+    }
+
+    function pageLoaderEnabled() {
+        return !DISABLE_PAGE_LOADER_PAGES.has(currentPage());
+    }
+
+    function createPageLoader() {
+        if (document.querySelector('.tsuki-page-loader')) return;
+        document.body.classList.add('tsuki-loader-active');
+        document.body.classList.add('tsuki-is-loading');
+
+        const loader = document.createElement('div');
+        loader.className = 'tsuki-page-loader';
+        loader.setAttribute('aria-hidden', 'true');
+        loader.innerHTML = [
+            '<div class="tsuki-page-loader__mark">',
+            '  <div class="tsuki-page-loader__sigil"></div>',
+            '  <div class="tsuki-page-loader__bar"><span></span></div>',
+            '  <div class="tsuki-page-loader__text">TSUKUYOMI SPACE</div>',
+            '</div>'
+        ].join('');
+        document.body.appendChild(loader);
+    }
+
+    function finishPageLoader() {
+        const startedAt = Number(document.body.dataset.tsukiLoaderStarted || Date.now());
+        const delay = Math.max(0, MIN_LOADER_MS - (Date.now() - startedAt));
+        window.setTimeout(() => {
+            document.body.classList.remove('tsuki-is-loading');
+            document.body.classList.add('tsuki-ready');
+        }, delay);
+    }
+
+    function shouldAnimateLink(event, link) {
+        if (!link || event.defaultPrevented) return false;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+        if (link.target && link.target !== '_self') return false;
+        if (link.hasAttribute('download')) return false;
+
+        const href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+            return false;
+        }
+
+        const url = new URL(href, window.location.href);
+        if (url.origin !== window.location.origin) return false;
+        return url.href !== window.location.href;
+    }
+
+    function installPageTransitions() {
+        if (!pageLoaderEnabled()) {
+            return;
+        }
+
+        document.body.dataset.tsukiLoaderStarted = String(Date.now());
+        createPageLoader();
+        document.addEventListener('DOMContentLoaded', finishPageLoader, { once: true });
+
+        window.addEventListener('pageshow', () => {
+            document.body.classList.remove('tsuki-is-leaving');
+            if (document.readyState !== 'loading') finishPageLoader();
+        });
+
+        document.addEventListener('click', (event) => {
+            const link = event.target.closest?.('a');
+            if (!shouldAnimateLink(event, link)) return;
+            event.preventDefault();
+            document.body.classList.add('tsuki-is-leaving');
+            window.setTimeout(() => {
+                window.location.href = link.href;
+            }, 140);
+        });
     }
 
     function createLogo(nav, prefix) {
@@ -110,8 +184,11 @@
     }
 
     if (document.readyState === 'loading') {
+        installPageTransitions();
         document.addEventListener('DOMContentLoaded', ensureNav);
     } else {
+        installPageTransitions();
         ensureNav();
+        finishPageLoader();
     }
 })();

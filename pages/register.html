@@ -49,6 +49,7 @@
     </style>
     <link rel="stylesheet" href="../assets/css/site-theme.css">
     <script defer src="../assets/js/site-nav.js"></script>
+    <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body>
     <div id="sakuraContainer"></div>
@@ -197,27 +198,7 @@
         });
         
         function initSakura() {
-            const container = document.getElementById('sakuraContainer');
-            const sakuras = [];
-            for (let i = 0; i < 30; i++) {
-                const el = document.createElement('div');
-                el.className = 'sakura';
-                const size = Math.random() * 6 + 5;
-                el.style.width = size + 'px';
-                el.style.height = size + 'px';
-                el.style.left = (Math.random() * 100) + '%';
-                container.appendChild(el);
-                sakuras.push({ el, x: 0, y: -Math.random() * window.innerHeight, vy: Math.random() * 0.4 + 0.3 });
-            }
-            function animate() {
-                sakuras.forEach(s => {
-                    s.y += s.vy;
-                    if (s.y > window.innerHeight) s.y = -50;
-                    s.el.style.transform = `translate(${s.x}px, ${s.y}px)`;
-                });
-                requestAnimationFrame(animate);
-            }
-            animate();
+            window.initTsukuyomiAmbientFish({ containerId: 'sakuraContainer' });
         }
 
         function setMessage(type, text) {

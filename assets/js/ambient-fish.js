@@ -34,7 +34,9 @@
             '  opacity: 0.85;',
             '  transition: opacity 0.3s ease;',
             '}',
-            '.tsukuyomi-ambient-fish-canvas { display: block; opacity: 0.96; transition: opacity 0.3s ease; }',
+            '.tsukuyomi-ambient-fish-canvas { display: block; opacity: 0.92; transition: opacity 0.72s ease; }',
+            '.tsukuyomi-ambient-fish:not(.is-primed) .tsukuyomi-ambient-fish-glow,',
+            '.tsukuyomi-ambient-fish:not(.is-primed) .tsukuyomi-ambient-fish-canvas { opacity: 0; }',
             '.tsukuyomi-ambient-fish.is-disabled .tsukuyomi-ambient-fish-glow,',
             '.tsukuyomi-ambient-fish.is-disabled .tsukuyomi-ambient-fish-canvas { opacity: 0; }',
             '@media (prefers-reduced-motion: reduce) {',
@@ -225,6 +227,7 @@
             this.resizeTimer = 0;
             this.fishes = [];
             this.particles = [];
+            this.primed = false;
             this.boundAnimate = (time) => this.animate(time);
             this.boundVisibility = () => this.onVisibilityChange();
             this.boundResize = () => this.onResize();
@@ -359,6 +362,10 @@
             }
 
             this.drawVignette();
+            if (!this.primed) {
+                this.primed = true;
+                this.container.classList.add('is-primed');
+            }
         }
 
         drawVignette() {
@@ -445,7 +452,7 @@
             }
             this.canvas?.remove();
             this.glow?.remove();
-            this.container.classList.remove('tsukuyomi-ambient-fish', 'is-disabled');
+            this.container.classList.remove('tsukuyomi-ambient-fish', 'is-disabled', 'is-primed');
             delete this.container.__tsukuyomiAmbientFish;
         }
     }

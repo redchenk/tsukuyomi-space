@@ -382,6 +382,7 @@
     </style>
     <link rel="stylesheet" href="../assets/css/site-theme.css">
     <script defer src="../assets/js/site-nav.js"></script>
+    <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body>
     <div id="sakuraContainer"></div>
@@ -892,38 +893,7 @@
         }
 
         function initSakura() {
-            const container = document.getElementById('sakuraContainer');
-            const petals = [];
-            for (let i = 0; i < 34; i++) {
-                const el = document.createElement('div');
-                el.className = 'sakura';
-                const size = 5 + Math.random() * 7;
-                el.style.width = size + 'px';
-                el.style.height = size + 'px';
-                container.appendChild(el);
-                petals.push({
-                    el,
-                    x: Math.random() * window.innerWidth,
-                    y: Math.random() * window.innerHeight,
-                    spin: Math.random() * 360,
-                    vx: -0.18 + Math.random() * 0.36,
-                    vy: 0.2 + Math.random() * 0.48
-                });
-            }
-            function tick() {
-                petals.forEach(petal => {
-                    petal.x += petal.vx;
-                    petal.y += petal.vy;
-                    petal.spin += 0.45;
-                    if (petal.y > window.innerHeight + 24) {
-                        petal.y = -24;
-                        petal.x = Math.random() * window.innerWidth;
-                    }
-                    petal.el.style.transform = `translate(${petal.x}px, ${petal.y}px) rotate(${petal.spin}deg)`;
-                });
-                requestAnimationFrame(tick);
-            }
-            tick();
+            window.initTsukuyomiAmbientFish({ containerId: 'sakuraContainer' });
         }
 
         function defaultAvatar(name) {

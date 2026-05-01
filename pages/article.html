@@ -336,6 +336,7 @@
     </style>
     <link rel="stylesheet" href="../assets/css/site-theme.css">
     <script defer src="../assets/js/site-nav.js"></script>
+    <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body>
     <div id="sakuraContainer"></div>
@@ -433,60 +434,7 @@
         }
 
         function initSakura() {
-            const sakuraContainer = document.getElementById('sakuraContainer');
-            const sakuras = [];
-
-            function createSakura() {
-                const el = document.createElement('div');
-                el.className = 'sakura';
-                const size = Math.random() * 6 + 5;
-                el.style.width = size + 'px';
-                el.style.height = size + 'px';
-                el.style.left = (Math.random() * 100) + '%';
-                sakuraContainer.appendChild(el);
-                return {
-                    el: el,
-                    x: 0,
-                    y: -Math.random() * window.innerHeight * 0.5 - 50,
-                    vy: Math.random() * 0.4 + 0.3,
-                    angle: Math.random() * Math.PI * 2,
-                    angleSpeed: Math.random() * 0.015 + 0.008,
-                    swayRadius: Math.random() * 15 + 8,
-                    rot: Math.random() * 360,
-                    rotSpeed: (Math.random() - 0.5) * 0.8,
-                    flip: Math.random() > 0.5 ? 1 : -1,
-                    opacity: Math.random() * 0.2 + 0.75
-                };
-            }
-
-            for (let i = 0; i < 35; i++) {
-                const s = createSakura();
-                s.y = Math.random() * window.innerHeight;
-                sakuras.push(s);
-            }
-
-            function animate() {
-                sakuras.forEach(s => {
-                    s.y += s.vy;
-                    s.angle += s.angleSpeed;
-                    s.rot += s.rotSpeed;
-                    s.el.style.transform = `
-                        translate(
-                            ${Math.sin(s.angle) * s.swayRadius}px,
-                            ${s.y}px
-                        )
-                        rotate(${s.rot}deg)
-                    `;
-                    s.el.style.opacity = s.opacity;
-
-                    if (s.y > window.innerHeight) {
-                        s.y = -50;
-                        s.x = Math.random() * window.innerWidth;
-                    }
-                });
-                requestAnimationFrame(animate);
-            }
-            animate();
+            window.initTsukuyomiAmbientFish({ containerId: 'sakuraContainer' });
         }
 
         function checkLogin() {

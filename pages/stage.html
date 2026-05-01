@@ -12,7 +12,8 @@
     <style>
         :root{--sakura-pink:#ffb7c5;--deep-pink:#ff6b9d;--dark-bg:#1a1025}
         *{margin:0;padding:0;box-sizing:border-box}
-        body{min-height:100vh;background:linear-gradient(180deg,#2d1f3d 0%,#1a1025 50%,#0f1724 100%);font-family:'Noto Sans JP',sans-serif;overflow-x:hidden}
+        body{min-height:100vh;background:linear-gradient(180deg,#2d1f3d 0%,#1a1025 50%,#0f1724 100%);font-family:'Noto Sans JP',sans-serif;overflow-x:hidden;position:relative}
+        #sakuraContainer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
         nav{position:fixed;top:0;left:0;width:100%;padding:1rem 2rem;background:rgba(26,16,37,0.95);backdrop-filter:blur(10px);z-index:1000;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,107,157,0.2)}
         nav .logo{font-size:1.3rem;background:linear-gradient(135deg,#fff,#ffb7c5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;font-weight:500}
         nav .nav-right{display:flex;align-items:center;gap:0.8rem}
@@ -60,8 +61,10 @@
     </style>
     <link rel="stylesheet" href="../assets/css/site-theme.css">
     <script defer src="../assets/js/site-nav.js"></script>
+    <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body>
+    <div id="sakuraContainer"></div>
     <nav>
         <a href="hub" class="logo" data-i18n="space_name">月读空间</a>
         <div class="nav-right">
@@ -110,9 +113,17 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             initLanguage();
+            initStageFish();
             loadArticles();
             checkLoginStatus();
         });
+
+        function initStageFish() {
+            window.initTsukuyomiAmbientFish?.({
+                containerId: 'sakuraContainer',
+                density: 0.78
+            });
+        }
 
         function checkLoginStatus() {
             const token = localStorage.getItem('admin_token') || localStorage.getItem('tsukuyomi_token');

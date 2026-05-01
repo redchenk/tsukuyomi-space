@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
     <link rel="manifest" href="/site.webmanifest">
     <meta name="theme-color" content="#7edbe8">
-    <title>私人居所 | 月读空间</title>
+    <title>缁変椒姹夌仦鍛 | 閺堝牐顕扮粚娲？</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root { --sakura-pink: #ffb7c5; --deep-pink: #ff6b9d; --dark-bg: #1a1025; --night-blue: #0f1724; }
@@ -54,20 +54,21 @@
         .footer { position: fixed; bottom: 1rem; width: 100%; text-align: center; color: rgba(255, 255, 255, 0.3); font-size: 0.65rem; letter-spacing: 0.1rem; z-index: 100; }
     </style>
     <script defer src="assets/js/site-nav.js"></script>
+    <script src="assets/js/ambient-fish.js"></script>
 </head>
 <body>
     <div id="sakuraContainer"></div>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">加载私人居所中...</div>
+        <div class="loading-text">閸旂姾娴囩粔浣锋眽鐏炲懏澧嶆稉?..</div>
     </div>
     <nav>
-        <a href="hub.html" class="logo">月读空间</a>
+        <a href="hub.html" class="logo">閺堝牐顕扮粚娲？</a>
         <div class="nav-right">
-            <a href="hub.html">中枢大厅</a>
-            <a href="stage.html">主舞台</a>
-            <a href="room.html" class="active">私人居所</a>
-            <a href="terminal.html">数据终端</a>
+            <a href="hub.html">娑擃厽鐏戞径褍宸?/a>
+            <a href="stage.html">娑撴槒鍨堕崣?/a>
+            <a href="room.html" class="active">缁変椒姹夌仦鍛</a>
+            <a href="terminal.html">閺佺増宓佺紒鍫㈩伂</a>
         </div>
     </nav>
     <div class="room-container">
@@ -76,63 +77,63 @@
         </div>
     </div>
     <div class="panel-controls">
-        <button class="panel-toggle-btn" onclick="togglePanel('profilePanel')">个人资料</button>
-        <button class="panel-toggle-btn" onclick="togglePanel('notePanel')">便签</button>
-        <button class="panel-toggle-btn" onclick="togglePanel('chatPanel')">💬 聊天</button>
-        <button class="panel-toggle-btn" onclick="togglePanel('settingPanel')">设置</button>
+        <button class="panel-toggle-btn" onclick="togglePanel('profilePanel')">娑擃亙姹夌挧鍕灐</button>
+        <button class="panel-toggle-btn" onclick="togglePanel('notePanel')">娓氳法顒?/button>
+        <button class="panel-toggle-btn" onclick="togglePanel('chatPanel')">棣冩尠 閼卞﹤銇?/button>
+        <button class="panel-toggle-btn" onclick="togglePanel('settingPanel')">鐠佸墽鐤?/button>
     </div>
     <div class="draggable-panel" id="profilePanel" style="top: 150px; left: 50px;">
-        <div class="panel-header"><span class="panel-title">个人资料</span><span class="panel-close" onclick="hidePanel('profilePanel')">&times;</span></div>
+        <div class="panel-header"><span class="panel-title">娑擃亙姹夌挧鍕灐</span><span class="panel-close" onclick="hidePanel('profilePanel')">&times;</span></div>
         <div class="panel-content">
-            <div style="margin-bottom: 0.8rem;"><label>昵称</label><input type="text" id="nicknameInput" placeholder="点击修改昵称" onchange="saveProfile()"></div>
-            <div style="margin-bottom: 0.8rem;"><label>签名</label><textarea id="signatureInput" placeholder="编辑个性签名" onchange="saveProfile()"></textarea></div>
+            <div style="margin-bottom: 0.8rem;"><label>閺勭數袨</label><input type="text" id="nicknameInput" placeholder="閻愮懓鍤穱顔芥暭閺勭數袨" onchange="saveProfile()"></div>
+            <div style="margin-bottom: 0.8rem;"><label>缁涙儳鎮?/label><textarea id="signatureInput" placeholder="缂傛牞绶稉顏呪偓褏顒烽崥? onchange="saveProfile()"></textarea></div>
             <div id="profileDisplay"></div>
         </div>
     </div>
     <div class="draggable-panel" id="notePanel" style="top: 300px; right: 50px; left: auto;">
-        <div class="panel-header"><span class="panel-title">便签</span><span class="panel-close" onclick="hidePanel('notePanel')">&times;</span></div>
+        <div class="panel-header"><span class="panel-title">娓氳法顒?/span><span class="panel-close" onclick="hidePanel('notePanel')">&times;</span></div>
         <div class="panel-content">
-            <textarea id="noteContent" placeholder="写点什么吧..." style="min-height: 120px;"></textarea>
-            <button class="panel-btn" onclick="saveNote()">保存便签</button>
+            <textarea id="noteContent" placeholder="閸愭瑧鍋ｆ禒鈧稊鍫濇儌..." style="min-height: 120px;"></textarea>
+            <button class="panel-btn" onclick="saveNote()">娣囨繂鐡ㄦ笟璺劮</button>
         </div>
     </div>
     <div class="draggable-panel" id="settingPanel" style="top: 450px; left: 50px;">
-        <div class="panel-header"><span class="panel-title">设置</span><span class="panel-close" onclick="hidePanel('settingPanel')">&times;</span></div>
+        <div class="panel-header"><span class="panel-title">鐠佸墽鐤?/span><span class="panel-close" onclick="hidePanel('settingPanel')">&times;</span></div>
         <div class="panel-content scrollable">
-            <div style="margin-bottom: 0.8rem;"><label><input type="checkbox" id="sakuraToggle" checked onchange="toggleSakura()"> 樱花特效</label></div>
+            <div style="margin-bottom: 0.8rem;"><label><input type="checkbox" id="sakuraToggle" checked onchange="toggleSakura()"> 游鱼特效</label></div>
             <div style="margin-bottom: 0.8rem;">
-                <label>模型大小</label>
+                <label>濡€崇€锋径褍鐨?/label>
                 <input type="range" id="modelScaleInput" min="5" max="200" value="13" onchange="updateModelSettings()">
                 <span id="modelScaleValue">13%</span>
             </div>
             <div style="margin-bottom: 0.8rem;">
-                <label>水平位置</label>
+                <label>濮樻潙閽╂担宥囩枂</label>
                 <input type="range" id="modelXInput" min="-300" max="300" value="0" onchange="updateModelSettings()">
                 <span id="modelXValue">0</span>
             </div>
             <div style="margin-bottom: 0.8rem;">
-                <label>垂直位置</label>
+                <label>閸ㄥ倻娲挎担宥囩枂</label>
                 <input type="range" id="modelYInput" min="-200" max="200" value="0" onchange="updateModelSettings()">
                 <span id="modelYValue">0</span>
             </div>
-            <button class="panel-btn" onclick="resetModelSettings()">重置模型设置</button>
+            <button class="panel-btn" onclick="resetModelSettings()">闁插秶鐤嗗Ο鈥崇€风拋鍓х枂</button>
             <div style="margin-top: 0.8rem; border-top: 1px solid rgba(255,183,197,0.2); padding-top: 0.8rem;">
-                <button class="panel-btn" onclick="resetPanels()">重置面板位置</button>
+                <button class="panel-btn" onclick="resetPanels()">闁插秶鐤嗛棃銏℃緲娴ｅ秶鐤?/button>
             </div>
             <div style="margin-top: 0.8rem; border-top: 1px solid rgba(255,183,197,0.2); padding-top: 0.8rem;">
-                <div style="margin-bottom: 0.5rem; font-weight: 500; color: var(--deep-pink);">🎤 TTS 语音设置</div>
+                <div style="margin-bottom: 0.5rem; font-weight: 500; color: var(--deep-pink);">棣冨赋 TTS 鐠囶參鐓剁拋鍓х枂</div>
                 <div style="margin-bottom: 0.5rem;">
-                    <label><input type="checkbox" id="ttsEnabled" onchange="saveTTSSettings()"> 启用语音合成</label>
+                    <label><input type="checkbox" id="ttsEnabled" onchange="saveTTSSettings()"> 閸氼垳鏁ょ拠顓㈢叾閸氬牊鍨?/label>
                 </div>
                 <div style="margin-bottom: 0.5rem;">
                     <label style="font-size: 0.75rem;">TTS Provider</label>
                     <select id="ttsProvider" onchange="saveTTSSettings()" style="width: 100%; padding: 0.4rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,183,197,0.2); border-radius: 6px; color: var(--sakura-pink); font-size: 0.75rem;">
-                        <option value="mimo">MiMo-V2-TTS (小米)</option>
+                        <option value="mimo">MiMo-V2-TTS (鐏忓繒鑳?</option>
                         <option value="openai">OpenAI TTS</option>
                     </select>
                 </div>
                 <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">TTS API 端点</label>
+                    <label style="font-size: 0.75rem;">TTS API 缁旑垳鍋?/label>
                     <input type="text" id="ttsApiUrl" placeholder="https://api.xiaomimimo.com/v1/chat/completions" style="font-size: 0.75rem;">
                 </div>
                 <div style="margin-bottom: 0.5rem;">
@@ -140,25 +141,25 @@
                     <input type="password" id="ttsApiKey" placeholder="sk-..." style="font-size: 0.75rem;">
                 </div>
                 <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">音色</label>
+                    <label style="font-size: 0.75rem;">闂婂疇澹?/label>
                     <input type="text" id="ttsVoice" placeholder="mimo_default" style="font-size: 0.75rem;">
                 </div>
-                <button class="panel-btn" onclick="saveTTSSettings()" style="margin-top: 0.3rem;">保存 TTS 设置</button>
-                <button class="panel-btn" onclick="testTTS()" style="margin-top: 0.3rem;">测试语音</button>
+                <button class="panel-btn" onclick="saveTTSSettings()" style="margin-top: 0.3rem;">娣囨繂鐡?TTS 鐠佸墽鐤?/button>
+                <button class="panel-btn" onclick="testTTS()" style="margin-top: 0.3rem;">濞村鐦拠顓㈢叾</button>
             </div>
             <div style="margin-top: 0.8rem; border-top: 1px solid rgba(255,183,197,0.2); padding-top: 0.8rem;">
-                <div style="margin-bottom: 0.5rem; font-weight: 500; color: var(--deep-pink);">💬 LLM API 设置</div>
+                <div style="margin-bottom: 0.5rem; font-weight: 500; color: var(--deep-pink);">棣冩尠 LLM API 鐠佸墽鐤?/div>
                 <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">快捷预设</label>
+                    <label style="font-size: 0.75rem;">韫囶偅宓庢０鍕啎</label>
                     <div style="display: flex; gap: 0.3rem; margin-top: 0.3rem; flex-wrap: wrap;">
                         <button class="panel-btn" onclick="setLLMPreset('deepseek')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">DeepSeek</button>
-                        <button class="panel-btn" onclick="setLLMPreset('moonshot')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">Kimi 月之暗</button>
+                        <button class="panel-btn" onclick="setLLMPreset('moonshot')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">Kimi 閺堝牅绠ｉ弳?/button>
                         <button class="panel-btn" onclick="setLLMPreset('openai')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">OpenAI</button>
-                        <button class="panel-btn" onclick="setLLMPreset('aliyun')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">阿里百炼</button>
+                        <button class="panel-btn" onclick="setLLMPreset('aliyun')" style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.7rem;">闂冨潡鍣烽惂鍓у仹</button>
                     </div>
                 </div>
                 <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">API 端点</label>
+                    <label style="font-size: 0.75rem;">API 缁旑垳鍋?/label>
                     <input type="text" id="llmApiUrl" placeholder="https://api.openai.com/v1/chat/completions" style="font-size: 0.75rem;">
                 </div>
                 <div style="margin-bottom: 0.5rem;">
@@ -166,25 +167,25 @@
                     <input type="password" id="llmApiKey" placeholder="sk-..." style="font-size: 0.75rem;">
                 </div>
                 <div style="margin-bottom: 0.5rem;">
-                    <label style="font-size: 0.75rem;">模型名称</label>
+                    <label style="font-size: 0.75rem;">濡€崇€烽崥宥囆?/label>
                     <input type="text" id="llmModel" placeholder="gpt-3.5-turbo" style="font-size: 0.75rem;">
                 </div>
-                <button class="panel-btn" onclick="saveLLMSettings()" style="margin-top: 0.3rem;">保存 API 设置</button>
-                <button class="panel-btn" onclick="testLLMConnection()" style="margin-top: 0.3rem;">测试连接</button>
+                <button class="panel-btn" onclick="saveLLMSettings()" style="margin-top: 0.3rem;">娣囨繂鐡?API 鐠佸墽鐤?/button>
+                <button class="panel-btn" onclick="testLLMConnection()" style="margin-top: 0.3rem;">濞村鐦潻鐐村复</button>
             </div>
         </div>
     </div>
     <div class="draggable-panel" id="chatPanel" style="top: 200px; right: 300px; left: auto; width: 350px;">
-        <div class="panel-header"><span class="panel-title">💬 与辉夜姬聊天</span><span class="panel-close" onclick="hidePanel('chatPanel')">&times;</span></div>
+        <div class="panel-header"><span class="panel-title">棣冩尠 娑撳氦绶ｆ径婊冃氶懕濠傘亯</span><span class="panel-close" onclick="hidePanel('chatPanel')">&times;</span></div>
         <div class="panel-content" style="display: flex; flex-direction: column; height: 400px;">
             <div id="chatMessages" style="flex: 1; overflow-y: auto; margin-bottom: 0.8rem; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 6px;"></div>
             <div style="display: flex; gap: 0.5rem;">
-                <input type="text" id="chatInput" placeholder="输入消息..." style="flex: 1; margin: 0;" onkeypress="if(event.keyCode===13) sendChat()">
-                <button class="panel-btn" onclick="sendChat()" style="margin: 0; padding: 0.5rem 1rem;">发送</button>
+                <input type="text" id="chatInput" placeholder="鏉堟挸鍙嗗☉鍫熶紖..." style="flex: 1; margin: 0;" onkeypress="if(event.keyCode===13) sendChat()">
+                <button class="panel-btn" onclick="sendChat()" style="margin: 0; padding: 0.5rem 1rem;">閸欐垿鈧?/button>
             </div>
         </div>
     </div>
-    <div class="footer">© 月读空间 | Live2D by AIRI Project | Model by 雪熊企划</div>
+    <div class="footer">婕?閺堝牐顕扮粚娲？ | Live2D by AIRI Project | Model by 闂嗩亞鍞烘导浣稿灊</div>
 
     <script src="/lib/live2dcubismcore-v5.min.js"></script>
     <script src="/lib/pixi7.min.js"></script>
@@ -192,27 +193,20 @@
     <script src="/lib/naari-cubism5.js"></script>
 
     <script>
-        // ==================== 樱花效果 ====================
-        function createSakura() {
-            const container = document.getElementById('sakuraContainer');
-            const sakura = document.createElement('div');
-            sakura.className = 'sakura';
-            sakura.style.left = Math.random() * 100 + '%';
-            sakura.style.width = Math.random() * 10 + 5 + 'px';
-            sakura.style.height = sakura.style.width;
-            sakura.style.animation = `fall ${Math.random() * 3 + 4}s linear forwards`;
-            container.appendChild(sakura);
-            setTimeout(() => sakura.remove(), 7000);
+        // ==================== 濞撴悂濂旈懗灞炬珯 ====================
+        let roomAmbientFish = null;
+        function initAmbientFish() {
+            roomAmbientFish = window.initTsukuyomiAmbientFish({
+                containerId: 'sakuraContainer',
+                toggleId: 'sakuraToggle',
+                density: 0.72
+            });
         }
-        const style = document.createElement('style');
-        style.textContent = `@keyframes fall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }`;
-        document.head.appendChild(style);
-        setInterval(createSakura, 300);
         function toggleSakura() {
-            document.getElementById('sakuraContainer').style.display = document.getElementById('sakuraToggle').checked ? 'block' : 'none';
+            roomAmbientFish?.setEnabled(document.getElementById('sakuraToggle').checked);
         }
 
-        // ==================== 可拖拽面板 ====================
+        // ==================== 閸欘垱瀚嬮幏浠嬫桨閺?====================
         let draggedPanel = null, dragOffset = { x: 0, y: 0 }, zIndexCounter = 100;
         const panelPositions = JSON.parse(localStorage.getItem('roomPanelPositions')) || {};
 
@@ -264,7 +258,7 @@
         function hidePanel(panelId) { document.getElementById(panelId).style.display = 'none'; }
         function resetPanels() { localStorage.removeItem('roomPanelPositions'); location.reload(); }
 
-        // ==================== 个人资料 ====================
+        // ==================== 娑擃亙姹夌挧鍕灐 ====================
         function loadProfile() {
             const profile = JSON.parse(localStorage.getItem('roomProfile')) || {};
             if (profile.nickname) document.getElementById('nicknameInput').value = profile.nickname;
@@ -284,16 +278,16 @@
             }
         }
 
-        // ==================== 便签 ====================
+        // ==================== 娓氳法顒?====================
         function loadNote() { document.getElementById('noteContent').value = localStorage.getItem('roomNote') || ''; }
-        function saveNote() { localStorage.setItem('roomNote', document.getElementById('noteContent').value); alert('便签已保存'); }
+        function saveNote() { localStorage.setItem('roomNote', document.getElementById('noteContent').value); alert('娓氳法顒峰韫箽鐎?); }
 
-        // ==================== Live2D 模型加载 (使用 live2d-bundle.js) ====================
+        // ==================== Live2D 濡€崇€烽崝鐘烘祰 (娴ｈ法鏁?live2d-bundle.js) ====================
         let live2dModel = null;
 
         async function loadLive2DModel() {
             try {
-                console.log('=== Live2D 模型加载开始 ===');
+                console.log('=== Live2D 濡€崇€烽崝鐘烘祰瀵偓婵?===');
                 console.log('Live2DCubismCore:', typeof Live2DCubismCore !== 'undefined' ? 'loaded' : 'not loaded');
                 console.log('LAppModel:', typeof LAppModel !== 'undefined' ? 'loaded' : 'not loaded');
 
@@ -301,53 +295,53 @@
                 const modelFile = 'tsukimi-yachiyo.model3.json';
 
                 if (typeof Live2DCubismCore === 'undefined') {
-                    throw new Error('Live2DCubismCore 未加载');
+                    throw new Error('Live2DCubismCore 閺堫亜濮炴潪?);
                 }
                 if (typeof LAppModel === 'undefined') {
-                    throw new Error('LAppModel 未加载');
+                    throw new Error('LAppModel 閺堫亜濮炴潪?);
                 }
 
-                // 获取 canvas
+                // 閼惧嘲褰?canvas
                 const canvas = document.getElementById('live2d-canvas');
                 const container = document.getElementById('live2d-container');
 
-                // 设置 canvas 尺寸
+                // 鐠佸墽鐤?canvas 鐏忓搫顕?
                 canvas.width = container.clientWidth || 600;
                 canvas.height = container.clientHeight || 700;
                 console.log('Canvas size:', canvas.width, 'x', canvas.height);
 
-                // 获取 WebGL context
+                // 閼惧嘲褰?WebGL context
                 const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
                 if (!gl) {
-                    throw new Error('无法获取 WebGL context');
+                    throw new Error('閺冪姵纭堕懢宄板絿 WebGL context');
                 }
 
-                // 创建 Live2D 模型
+                // 閸掓稑缂?Live2D 濡€崇€?
                 live2dModel = new LAppModel(gl, canvas);
 
-                // 加载模型
+                // 閸旂姾娴囧Ο鈥崇€?
                 live2dModel.load(modelDir, modelFile, function(model) {
-                    console.log('模型加载成功');
-                    console.log('=== 模型加载完成 ===');
+                    console.log('濡€崇€烽崝鐘烘祰閹存劕濮?);
+                    console.log('=== 濡€崇€烽崝鐘烘祰鐎瑰本鍨?===');
                     document.getElementById('loadingOverlay').style.display = 'none';
                 });
 
-                // 保存模型引用
+                // 娣囨繂鐡ㄥΟ鈥崇€峰鏇犳暏
                 window.live2dModel = live2dModel;
 
             } catch (error) {
                 console.error('Live2D error:', error);
                 document.getElementById('loadingOverlay').innerHTML = `
                     <div style="color: var(--sakura-pink); text-align: center; max-width: 500px; padding: 2rem;">
-                        <div style="font-size: 1.2rem; margin-bottom: 1rem;">⚠️ Live2D 加载失败</div>
+                        <div style="font-size: 1.2rem; margin-bottom: 1rem;">閳跨媴绗?Live2D 閸旂姾娴囨径杈Е</div>
                         <div style="font-size: 0.85rem; opacity: 0.7; margin-bottom: 1rem;">${error.message}</div>
-                        <div style="font-size: 0.8rem; opacity: 0.5;">请检查控制台日志或联系管理员</div>
-                        <button class="panel-btn" onclick="location.reload()" style="margin-top: 1rem;">重试</button>
+                        <div style="font-size: 0.8rem; opacity: 0.5;">鐠囬攱顥呴弻銉﹀付閸掕泛褰撮弮銉ョ箶閹存牞浠堢化鑽ゎ吀閻炲棗鎲?/div>
+                        <button class="panel-btn" onclick="location.reload()" style="margin-top: 1rem;">闁插秷鐦?/button>
                     </div>`;
             }
         }
 
-        // 渲染循环
+        // 濞撳弶鐓嬪顏嗗箚
         window.live2dRenderLoop = function(timestamp) {
             if (live2dModel && live2dModel._initialized) {
                 live2dModel.update(0.016);
@@ -357,7 +351,7 @@
         };
         requestAnimationFrame(window.live2dRenderLoop);
 
-        // 模型设置控制
+        // 濡€崇€风拋鍓х枂閹貉冨煑
         window.setLive2DModelSettings = function(scale, xOffset, yOffset) {
             if (live2dModel && live2dModel._modelMatrix) {
                 // Scale and position are handled by the model matrix
@@ -365,16 +359,17 @@
             }
         };
 
-        // ==================== 初始化 ====================
+        // ==================== 閸掓繂顫愰崠?====================
         document.addEventListener('DOMContentLoaded', () => {
             initPanelPositions();
             loadProfile();
             loadNote();
-            loadLive2DModel(); // 使用 PIXI.live2d 加载模型
+            initAmbientFish();
+            loadLive2DModel(); // 娴ｈ法鏁?PIXI.live2d 閸旂姾娴囧Ο鈥崇€?
             loadChatHistory();
         });
 
-        // ==================== 模型设置 ====================
+        // ==================== 濡€崇€风拋鍓х枂 ====================
         function updateModelSettings() {
             const scale = parseInt(document.getElementById('modelScaleInput').value) / 100;
             const xOffset = parseInt(document.getElementById('modelXInput').value);
@@ -403,42 +398,42 @@
             console.log('Model settings reset');
         }
 
-        // ==================== LLM 聊天功能 ====================
+        // ==================== LLM 閼卞﹤銇夐崝鐔诲厴 ====================
         let chatConversation = [];
         let ttsAudioCache = new Map(); // Cache TTS audio by text
         let referenceAudioData = null; // Store reference audio for voice cloning
 
-        // 动态获取后端 API 地址（从当前页面 URL 推断）
+        // 閸斻劍鈧浇骞忛崣鏍ф倵缁?API 閸︽澘娼冮敍鍫滅矤瑜版挸澧犳い鐢告桨 URL 閹恒劍鏌囬敍?
         function getApiBaseUrl() {
             const currentHost = window.location.origin;
-            // 如果从 38.76.173.139 访问，则使用相同地址
+            // 婵″倹鐏夋禒?38.76.173.139 鐠佸潡妫堕敍灞藉灟娴ｈ法鏁ら惄绋挎倱閸︽澘娼?
             if (currentHost.includes('38.76.173.139')) {
                 return currentHost;
             }
-            // 默认使用本地测试地址
+            // 姒涙顓绘担璺ㄦ暏閺堫剙婀村ù瀣槸閸︽澘娼?
             return 'http://47.97.0.122:3000';
         }
 
         function loadChatHistory() {
             chatConversation = JSON.parse(localStorage.getItem('roomChatHistory')) || [];
             const chatMessages = document.getElementById('chatMessages');
-            chatMessages.innerHTML = '<div class="chat-message system">💫 与辉夜姬的聊天开始</div>';
+            chatMessages.innerHTML = '<div class="chat-message system">棣冩尞 娑撳氦绶ｆ径婊冃氶惃鍕喊婢垛晛绱戞慨?/div>';
             chatConversation.forEach(msg => {
                 appendChatMessage(msg.role, msg.content);
             });
-            // 加载 LLM 设置
+            // 閸旂姾娴?LLM 鐠佸墽鐤?
             const llmSettings = JSON.parse(localStorage.getItem('roomLLMSettings')) || {};
             if (llmSettings.apiUrl) document.getElementById('llmApiUrl').value = llmSettings.apiUrl;
             if (llmSettings.apiKey) document.getElementById('llmApiKey').value = llmSettings.apiKey;
             if (llmSettings.model) document.getElementById('llmModel').value = llmSettings.model;
-            // 加载 TTS 设置
+            // 閸旂姾娴?TTS 鐠佸墽鐤?
             const ttsSettings = JSON.parse(localStorage.getItem('roomTTSSettings')) || {};
             if (ttsSettings.enabled) document.getElementById('ttsEnabled').checked = ttsSettings.enabled;
             if (ttsSettings.provider) document.getElementById('ttsProvider').value = ttsSettings.provider;
             if (ttsSettings.apiUrl) document.getElementById('ttsApiUrl').value = ttsSettings.apiUrl;
             if (ttsSettings.apiKey) document.getElementById('ttsApiKey').value = ttsSettings.apiKey;
             if (ttsSettings.voice) document.getElementById('ttsVoice').value = ttsSettings.voice;
-            // 预加载参考音频
+            // 妫板嫬濮炴潪钘夊棘閼板啴鐓舵０?
             loadReferenceAudio();
         }
 
@@ -446,7 +441,7 @@
             const chatMessages = document.getElementById('chatMessages');
             const msgDiv = document.createElement('div');
             msgDiv.className = `chat-message ${role}`;
-            const roleNames = { user: '你', assistant: '辉夜姬', system: '系统' };
+            const roleNames = { user: '娴?, assistant: '鏉堝顧佹慨?, system: '缁崵绮? };
             msgDiv.innerHTML = `<strong>${roleNames[role] || role}:</strong><br>${escapeHtml(content)}`;
             chatMessages.appendChild(msgDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -465,7 +460,7 @@
                 model: document.getElementById('llmModel').value.trim()
             };
             localStorage.setItem('roomLLMSettings', JSON.stringify(settings));
-            appendChatMessage('system', '✅ API 设置已保存');
+            appendChatMessage('system', '閴?API 鐠佸墽鐤嗗韫箽鐎?);
         }
 
         function setLLMPreset(provider) {
@@ -491,7 +486,7 @@
             if (preset) {
                 document.getElementById('llmApiUrl').value = preset.apiUrl;
                 document.getElementById('llmModel').value = preset.model;
-                appendChatMessage('system', `✅ 已选择 ${provider === 'deepseek' ? 'DeepSeek' : provider === 'moonshot' ? 'Kimi 月之暗面' : provider === 'openai' ? 'OpenAI' : '阿里百炼'} 预设，请填写 API Key 后保存`);
+                appendChatMessage('system', `閴?瀹告煡鈧瀚?${provider === 'deepseek' ? 'DeepSeek' : provider === 'moonshot' ? 'Kimi 閺堝牅绠ｉ弳妤呮桨' : provider === 'openai' ? 'OpenAI' : '闂冨潡鍣烽惂鍓у仹'} 妫板嫯顔曢敍宀冾嚞婵夘偄鍟?API Key 閸氬簼绻氱€涙);
             }
         }
 
@@ -502,16 +497,16 @@
                 model: document.getElementById('llmModel').value.trim()
             };
             if (!settings.apiKey) {
-                appendChatMessage('system', '❌ 请填写 API Key');
+                appendChatMessage('system', '閴?鐠囧嘲锝為崘?API Key');
                 return;
             }
-            appendChatMessage('system', '🔄 正在测试连接...');
+            appendChatMessage('system', '棣冩敡 濮濓絽婀ù瀣槸鏉╃偞甯?..');
             try {
                 const response = await fetch(getApiBaseUrl() + '/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: '你好',
+                        message: '娴ｇ姴銈?,
                         conversation: [],
                         apiKey: settings.apiKey,
                         apiUrl: settings.apiUrl || 'https://api.openai.com/v1/chat/completions',
@@ -520,13 +515,13 @@
                 });
                 const result = await response.json();
                 if (result.success) {
-                    appendChatMessage('system', `✅ 连接成功！模型：${result.data.model}`);
+                    appendChatMessage('system', `閴?鏉╃偞甯撮幋鎰閿涗焦膩閸ㄥ绱?{result.data.model}`);
                     appendChatMessage('assistant', result.data.reply);
                 } else {
-                    appendChatMessage('system', '❌ ' + (result.message || '测试失败'));
+                    appendChatMessage('system', '閴?' + (result.message || '濞村鐦径杈Е'));
                 }
             } catch (error) {
-                appendChatMessage('system', '❌ 连接失败：' + error.message);
+                appendChatMessage('system', '閴?鏉╃偞甯存径杈Е閿? + error.message);
             }
         }
 
@@ -538,15 +533,15 @@
             appendChatMessage('user', message);
             input.value = '';
 
-            // 添加打字提示
+            // 濞ｈ濮為幍鎾崇摟閹绘劗銇?
             const chatMessages = document.getElementById('chatMessages');
             const typingDiv = document.createElement('div');
             typingDiv.className = 'chat-message assistant chat-typing';
-            typingDiv.textContent = '辉夜姬正在输入...';
+            typingDiv.textContent = '鏉堝顧佹慨顒侇劀閸︺劏绶崗?..';
             chatMessages.appendChild(typingDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            // 获取用户配置的 LLM 设置
+            // 閼惧嘲褰囬悽銊﹀煕闁板秶鐤嗛惃?LLM 鐠佸墽鐤?
             const llmSettings = JSON.parse(localStorage.getItem('roomLLMSettings')) || {};
 
             try {
@@ -574,38 +569,38 @@
                         chatConversation = chatConversation.slice(-20);
                     }
                     localStorage.setItem('roomChatHistory', JSON.stringify(chatConversation));
-                    // 触发 TTS 语音合成
+                    // 鐟欙箑褰?TTS 鐠囶參鐓堕崥鍫熷灇
                     playTTS(reply);
                 } else {
-                    appendChatMessage('system', '❌ ' + (result.message || '发送失败'));
+                    appendChatMessage('system', '閴?' + (result.message || '閸欐垿鈧礁銇戠拹?));
                 }
             } catch (error) {
-                console.error('聊天失败:', error);
-                appendChatMessage('system', '❌ 网络错误，请稍后再试');
+                console.error('閼卞﹤銇夋径杈Е:', error);
+                appendChatMessage('system', '閴?缂冩垹绮堕柨娆掝嚖閿涘矁顕粙宥呮倵閸愬秷鐦?);
             }
         }
 
-        // ==================== TTS 语音合成功能 ====================
+        // ==================== TTS 鐠囶參鐓堕崥鍫熷灇閸旂喕鍏?====================
         function loadReferenceAudio() {
-            // 从服务器加载参考音频用于音色克隆
+            // 娴犲孩婀囬崝鈥虫珤閸旂姾娴囬崣鍌濃偓鍐叾妫版垹鏁ゆ禍搴ㄧ叾閼规彃鍘犻梾?
             const audioPath = getApiBaseUrl() + '/assets/audio/voice-clone-sample.wav';
             fetch(audioPath)
                 .then(response => {
                     if (response.ok) {
                         return response.blob();
                     }
-                    throw new Error('参考音频加载失败');
+                    throw new Error('閸欏倽鈧啴鐓舵０鎴濆鏉炶棄銇戠拹?);
                 })
                 .then(blob => {
                     const reader = new FileReader();
                     reader.onload = () => {
                         referenceAudioData = reader.result; // data:audio/wav;base64,...
-                        console.log('参考音频已加载');
+                        console.log('閸欏倽鈧啴鐓舵０鎴濆嚒閸旂姾娴?);
                     };
                     reader.readAsDataURL(blob);
                 })
                 .catch(err => {
-                    console.log('参考音频不可用，将使用默认音色:', err.message);
+                    console.log('閸欏倽鈧啴鐓舵０鎴滅瑝閸欘垳鏁ら敍灞界殺娴ｈ法鏁ゆ妯款吇闂婂疇澹?', err.message);
                 });
         }
 
@@ -618,7 +613,7 @@
                 voice: document.getElementById('ttsVoice').value.trim()
             };
             localStorage.setItem('roomTTSSettings', JSON.stringify(settings));
-            appendChatMessage('system', '✅ TTS 设置已保存');
+            appendChatMessage('system', '閴?TTS 鐠佸墽鐤嗗韫箽鐎?);
         }
 
         async function testTTS() {
@@ -630,20 +625,20 @@
                 voice: document.getElementById('ttsVoice').value.trim()
             };
             if (!settings.apiKey) {
-                appendChatMessage('system', '❌ 请填写 TTS API Key');
+                appendChatMessage('system', '閴?鐠囧嘲锝為崘?TTS API Key');
                 return;
             }
-            appendChatMessage('system', '🎤 正在测试 TTS...');
+            appendChatMessage('system', '棣冨赋 濮濓絽婀ù瀣槸 TTS...');
             try {
-                const audioBuffer = await generateTTS('你好，我叫八千代，月读空间的管理员', settings);
+                const audioBuffer = await generateTTS('娴ｇ姴銈介敍灞惧灉閸欘偄鍙撻崡鍐у敩閿涘本婀€鐠囪崵鈹栭梻瀵告畱缁狅紕鎮婇崨?, settings);
                 if (audioBuffer) {
                     playAudio(audioBuffer);
-                    appendChatMessage('system', '✅ TTS 测试成功');
+                    appendChatMessage('system', '閴?TTS 濞村鐦幋鎰');
                 } else {
-                    appendChatMessage('system', '❌ TTS 生成失败');
+                    appendChatMessage('system', '閴?TTS 閻㈢喐鍨氭径杈Е');
                 }
             } catch (error) {
-                appendChatMessage('system', '❌ TTS 测试失败：' + error.message);
+                appendChatMessage('system', '閴?TTS 濞村鐦径杈Е閿? + error.message);
             }
         }
 
@@ -654,10 +649,10 @@
             const useVoice = settings.voice || (useProvider === 'mimo' ? 'mimo_default' : 'alloy');
             const useModel = useProvider === 'mimo' ? 'mimo-v2-tts' : 'tts-1';
 
-            // 检查缓存
+            // 濡偓閺屻儳绱︾€?
             const cacheKey = `${useProvider}:${useVoice}:${text}`;
             if (ttsAudioCache.has(cacheKey)) {
-                console.log('TTS 缓存命中');
+                console.log('TTS 缂傛挸鐡ㄩ崨鎴掕厬');
                 return ttsAudioCache.get(cacheKey);
             }
 
@@ -665,9 +660,9 @@
                 const requestBody = {};
 
                 if (useProvider === 'mimo') {
-                    // MiMo-V2-TTS API 格式
+                    // MiMo-V2-TTS API 閺嶇厧绱?
                     const messages = [
-                        { role: 'user', content: '你好' },
+                        { role: 'user', content: '娴ｇ姴銈? },
                         { role: 'assistant', content: text }
                     ];
 
@@ -681,7 +676,7 @@
                         }
                     });
 
-                    // 如果有参考音频，添加到请求中
+                    // 婵″倹鐏夐張澶婂棘閼板啴鐓舵０鎴礉濞ｈ濮為崚鎷岊嚞濮瑰倷鑵?
                     if (referenceAudioData) {
                         const bodyObj = JSON.parse(requestBody.body);
                         bodyObj.audio.prompt_audio = referenceAudioData;
@@ -693,7 +688,7 @@
                         'api-key': useApiKey
                     };
                 } else {
-                    // OpenAI TTS API 格式
+                    // OpenAI TTS API 閺嶇厧绱?
                     requestBody.body = JSON.stringify({
                         model: useModel,
                         input: text,
@@ -721,7 +716,7 @@
                 return audioBuffer;
 
             } catch (error) {
-                console.error('TTS 生成失败:', error);
+                console.error('TTS 閻㈢喐鍨氭径杈Е:', error);
                 throw error;
             }
         }
@@ -734,7 +729,7 @@
                 source.connect(audioContext.destination);
                 source.start(0);
             }, (error) => {
-                console.error('音频解码失败:', error);
+                console.error('闂婃娊顣剁憴锝囩垳婢惰精瑙?', error);
             });
         }
 
@@ -751,7 +746,7 @@
             };
 
             if (!settings.apiKey || !settings.apiUrl) {
-                console.log('TTS 设置不完整，跳过语音合成');
+                console.log('TTS 鐠佸墽鐤嗘稉宥呯暚閺佽揪绱濈捄瀹犵箖鐠囶參鐓堕崥鍫熷灇');
                 return;
             }
 
@@ -761,7 +756,7 @@
                     playAudio(audioBuffer);
                 }
             } catch (error) {
-                console.error('TTS 播放失败:', error);
+                console.error('TTS 閹绢厽鏂佹径杈Е:', error);
             }
         }
     </script>

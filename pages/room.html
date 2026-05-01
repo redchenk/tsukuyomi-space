@@ -100,7 +100,7 @@
         .live2d-stage {
             position: fixed;
             inset: 4.6rem 0 0;
-            z-index: 2;
+            z-index: 4;
             pointer-events: none;
         }
 
@@ -112,6 +112,7 @@
             height: min(84vh, 820px);
             transform: translateX(-50%);
             pointer-events: auto;
+            z-index: 6;
         }
 
         #live2d-canvas {
@@ -136,7 +137,7 @@
         #sakuraContainer {
             position: fixed;
             inset: 0;
-            z-index: 3;
+            z-index: 2;
             pointer-events: none;
             overflow: hidden;
         }
@@ -423,6 +424,7 @@
         }
     </style>
     <script defer src="../assets/js/site-nav.js"></script>
+    <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body>
     <div class="room-shell">
@@ -488,7 +490,7 @@
             </div>
             <div class="panel-content scrollable">
                 <div class="field">
-                    <label><input type="checkbox" id="sakuraToggle" checked>樱花特效</label>
+                    <label><input type="checkbox" id="sakuraToggle" checked>游鱼特效</label>
                 </div>
                 <div class="field">
                     <div class="split"><label for="modelScaleInput">模型大小</label><span id="modelScaleValue">100%</span></div>
@@ -598,6 +600,6 @@
     </script>
     <script src="/lib/live2dcubismcore-v5.min.js"></script>
     <script src="/lib/bundled/live2d-room.iife.js"></script>
-    <script src="/assets/js/room-runtime.js?v=20260429-settings1"></script>
+    <script src="/assets/js/room-runtime.js?v=20260501-fish1"></script>
 </body>
 </html>

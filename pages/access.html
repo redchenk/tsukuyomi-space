@@ -56,16 +56,6 @@
             z-index: 1;
         }
         
-        /* 游鱼层 */
-        #sakuraContainer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 2;
-        }
         /* 主容器 */
         .container {
             position: relative;
@@ -216,7 +206,6 @@
     </style>
     <link rel="stylesheet" href="../assets/css/site-theme.css">
     <script defer src="../assets/js/site-nav.js"></script>
-    <script defer src="../assets/js/ambient-fish.js"></script>
 </head>
 <body class="access-page">
     <!-- 视频背景 -->
@@ -226,9 +215,6 @@
     
     <!-- 渐变遮罩 -->
     <div class="video-overlay"></div>
-    
-    <!-- 游鱼层 -->
-    <div id="sakuraContainer"></div>
     
     <!-- 主内容 -->
     <div class="container">
@@ -261,11 +247,6 @@
         video.addEventListener('error', function(e) {
             console.log('视频加载失败，使用后备背景');
             document.body.classList.add('no-video');
-        });
-        
-        // 游鱼背景
-        document.addEventListener('DOMContentLoaded', () => {
-            window.initTsukuyomiAmbientFish({ containerId: 'sakuraContainer' });
         });
         
         // 加载进度
