@@ -765,7 +765,7 @@ button:disabled {
     align-items: start;
 }
 
-.plaza-wall { padding: 1.1rem; }
+.plaza-wall { width: 100%; padding: 1.1rem; }
 .plaza-section-head {
     display: flex;
     align-items: center;

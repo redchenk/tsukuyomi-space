@@ -115,13 +115,13 @@ const i18n = {
         loginToPostDesc: '发布问候、反馈或友链申请都会出现在广场留言墙。',
         noMessages: '还没有匹配的留言',
         noMessagesHint: '换个筛选条件，或者发布第一条广场消息。',
-        connecting: '正在连接广场频道...',
+        plazaConnecting: '正在连接广场频道...',
         plazaJustOpened: '广场刚刚开放，等待第一条动态。',
         msgPublished: '留言已发布',
         replyPublished: '回复已发布',
         alreadyLiked: '你已经喜欢过这条留言',
         likedToast: '已点亮留言',
-        loadFailed: '留言加载失败，请稍后再试',
+        plazaLoadFailed: '留言加载失败，请稍后再试',
         publishFailed: '发布失败',
         replyFailed: '回复失败',
         likeFailed: '点赞失败',
@@ -228,13 +228,13 @@ const i18n = {
         loginToPostDesc: '挨拶、フィードバック、友達リンク申請などが広場に表示されます。',
         noMessages: '一致するメッセージがありません',
         noMessagesHint: 'フィルターを変更するか、最初のメッセージを投稿してください。',
-        connecting: '広場チャンネルに接続中...',
+        plazaConnecting: '広場チャンネルに接続中...',
         plazaJustOpened: '広場は開設されたばかりです。最初の投稿をお待ちしています。',
         msgPublished: 'メッセージを投稿しました',
         replyPublished: '返信を投稿しました',
         alreadyLiked: 'すでにいいねしています',
         likedToast: 'いいねしました',
-        loadFailed: 'メッセージの読み込みに失敗しました',
+        plazaLoadFailed: 'メッセージの読み込みに失敗しました',
         publishFailed: '投稿に失敗しました',
         replyFailed: '返信に失敗しました',
         likeFailed: 'いいねに失敗しました',
@@ -531,14 +531,17 @@ const App = {
                 const result = await parseResponse(res);
                 if (result.success) plaza.messages = Array.isArray(result.data) ? result.data : [];
             } catch (_) {
-                showPlazaToast(t.value.loadFailed);
+                showPlazaToast(t.value.plazaLoadFailed);
             }
         }
 
         async function refreshPlaza() {
             plaza.loading = true;
-            await Promise.all([loadPlazaStats(), loadPlazaMessages()]);
-            plaza.loading = false;
+            try {
+                await Promise.all([loadPlazaStats(), loadPlazaMessages()]);
+            } finally {
+                plaza.loading = false;
+            }
         }
 
         async function plazaSubmitMessage(content) {
@@ -618,10 +621,11 @@ const App = {
             plaza.replyOpen = { ...plaza.replyOpen, [id]: !plaza.replyOpen[id] };
         }
 
+        function isPlazaMessageLiked(id) { try { return localStorage.getItem('liked_' + id) === '1'; } catch (_) { return false; } }
         function plazaInitial(name) { return String(name || '访客').trim().slice(0, 1).toUpperCase(); }
 
         function plazaFormatDate(value) {
-            if (!value) return t.value.connecting;
+            if (!value) return '—';
             return new Date(value).toLocaleString(lang.value === 'zh' ? 'zh-CN' : 'ja-JP', { hour12: false });
         }
 
@@ -836,6 +840,7 @@ const App = {
             plazaFormatNumber,
             plazaFormatRelative,
             plazaFormatUptime,
+            isPlazaMessageLiked,
             plazaInitial,
             plazaLikeMessage,
             plazaMessages,
@@ -1072,7 +1077,7 @@ const App = {
                             <PlazaComposer :t="t" :on-submit="plazaSubmitMessage" />
                         </div>
 
-                        <div v-if="plaza.loading" class="plaza-empty">{{ t.connecting }}</div>
+                        <div v-if="plaza.loading" class="plaza-empty">{{ t.plazaConnecting }}</div>
                         <div v-else-if="!plazaMessages.length" class="plaza-empty">
                             <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">{{ t.noMessages }}</div>
                             <div>{{ t.noMessagesHint }}</div>
@@ -1091,7 +1096,7 @@ const App = {
                                 </div>
                                 <div class="plaza-msg-content">{{ msg.content }}</div>
                                 <div class="plaza-msg-footer">
-                                    <button class="icon-btn" :class="{ liked: localStorage.getItem('liked_' + msg.id) === '1' }" @click="plazaLikeMessage(msg.id)">{{ t.like }} {{ msg.like_count || 0 }}</button>
+                                    <button class="icon-btn" :class="{ liked: isPlazaMessageLiked(msg.id) }" @click="plazaLikeMessage(msg.id)">{{ t.like }} {{ msg.like_count || 0 }}</button>
                                     <button class="icon-btn" @click="plazaToggleReply(msg.id)">{{ t.reply }} {{ (msg.replies || []).length }}</button>
                                     <button class="icon-btn" @click="plazaCopyLink(msg.id)">{{ t.copyLink }}</button>
                                 </div>
@@ -1157,4 +1162,11 @@ const App = {
     `
 };
 
-createApp(App).mount('#app');
+const app = createApp(App);
+app.config.errorHandler = (err, vm, info) => {
+    console.error('Vue error:', err, info);
+};
+app.config.warnHandler = (msg, vm, info) => {
+    console.warn('Vue warn:', msg, info);
+};
+app.mount('#app');
