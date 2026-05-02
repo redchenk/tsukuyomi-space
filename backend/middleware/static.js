@@ -30,7 +30,10 @@ function serveStaticFiles(app) {
 
         const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/plaza', '/reality', '/editor', '/user-center']);
         if (vueRoutes.has(req.path)) {
-            return res.sendFile(path.join(useFrontendDist ? frontendDistRoot : publicRoot, 'index.html'));
+            if (!useFrontendDist) {
+                return res.status(503).send('Frontend build is missing. Run npm run build:web.');
+            }
+            return res.sendFile(path.join(frontendDistRoot, 'index.html'));
         }
 
         next();

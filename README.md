@@ -37,28 +37,29 @@ npm run check
 npm start
 ```
 
-本地默认地址：
+服务器部署地址（3280 端口）：
 
-- 首页：`http://localhost:3000/`
-- 中枢大厅：`http://localhost:3000/pages/hub`
-- 私人居所：`http://localhost:3000/pages/room`
-- 月读广场：`http://localhost:3000/pages/plaza`
-- 数据终端：`http://localhost:3000/pages/terminal`
-- 健康检查：`http://localhost:3000/api/health`
+- 首页：`http://38.76.173.139:3280/`
+- 中枢大厅：`http://38.76.173.139:3280/hub`
+- 私人居所：`http://38.76.173.139:3280/pages/room`
+- 月读广场：`http://38.76.173.139:3280/plaza`
+- 数据终端：`http://38.76.173.139:3280/pages/terminal`
+- 健康检查：`http://38.76.173.139:3280/api/health`
 
 ## 项目结构
 
 ```text
 tsukuyomi-space/
-├── assets/          # 图片、图标、音频、前端脚本等静态资源
+├── assets/          # 图片、图标、音频、样式等静态资源
 ├── backend/         # Express API、SQLite 初始化、路由和中间件
 ├── deploy/          # PM2、Nginx、部署脚本样例
 ├── docs/            # 部署和维护文档
+├── dist/frontend/   # npm run build:web 生成的 Vue 前端产物
 ├── lib/             # Live2D / 前端运行库
 ├── models/          # Live2D 模型资源
-├── pages/           # 页面入口
+├── pages/           # 仍独立运行的静态页面，如 room / article / terminal
+├── src/frontend/    # Vue 3 + Vite 主线前端源码
 ├── .env.example     # 生产环境变量模板
-├── index.html       # 根入口
 └── package.json     # 项目脚本与依赖
 ```
 

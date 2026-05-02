@@ -8,8 +8,7 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@frontend': fileURLToPath(new URL('./src/frontend', import.meta.url)),
-      '@legacy-vue': fileURLToPath(new URL('./assets/js/vue', import.meta.url))
+      '@frontend': fileURLToPath(new URL('./src/frontend', import.meta.url))
     }
   },
   server: {

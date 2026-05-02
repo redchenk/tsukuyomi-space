@@ -42,7 +42,7 @@ module.exports = {
     dbPath: path.resolve(process.env.DB_PATH || path.join(dataDir, 'tsukuyomi.db')),
     corsOrigins: csvEnv('CORS_ORIGINS'),
     trustProxy: boolEnv('TRUST_PROXY', isProduction),
-    enableFrontendDist: boolEnv('ENABLE_FRONTEND_DIST', false),
+    enableFrontendDist: boolEnv('ENABLE_FRONTEND_DIST', true),
     enableUploadRoom: boolEnv('ENABLE_UPLOAD_ROOM', false),
     uploadRoomPath,
     defaultAdmin: {

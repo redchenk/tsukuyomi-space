@@ -17,5 +17,6 @@ if [ ! -f "$ENV_DIR/tsukuyomi-space.env" ]; then
 fi
 
 npm ci --omit=dev
+npm run build:web
 pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 pm2 save

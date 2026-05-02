@@ -1,6 +1,6 @@
 # 部署指南
 
-以下示例面向 Ubuntu/Debian 服务器，应用目录使用 `/var/www/tsukuyomi-space`，API 只监听 `127.0.0.1:3000`，由 Nginx 对外提供访问。
+以下示例面向 Ubuntu/Debian 服务器，应用目录使用 `/var/www/tsukuyomi-space`，API 只监听 `127.0.0.1:3000`，由 Nginx 在 `3280` 端口对外提供访问。
 
 ## 1. 准备服务器
 
@@ -44,6 +44,7 @@ cp deploy/nginx.conf /etc/nginx/sites-available/tsukuyomi-space
 ln -s /etc/nginx/sites-available/tsukuyomi-space /etc/nginx/sites-enabled/tsukuyomi-space
 nginx -t
 systemctl reload nginx
+curl http://38.76.173.139:3280/hub
 ```
 
 上线域名后，建议使用 Certbot 配置 HTTPS，并把 `.env` 里的 `CORS_ORIGINS` 改成 HTTPS 域名。
@@ -54,5 +55,6 @@ systemctl reload nginx
 cd /var/www/tsukuyomi-space
 git pull --ff-only
 npm ci --omit=dev
+npm run build:web
 pm2 reload tsukuyomi-api --update-env
 ```
