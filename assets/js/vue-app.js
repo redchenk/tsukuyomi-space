@@ -7,7 +7,8 @@ const routes = {
     '/login': 'login',
     '/register': 'register',
     '/stage': 'stage',
-    '/plaza': 'plaza'
+    '/plaza': 'plaza',
+    '/reality': 'reality'
 };
 
 const i18n = {
@@ -134,7 +135,32 @@ const i18n = {
         rule2: '友链申请请留下站点名、地址和简短介绍。',
         rule3: '反馈问题时尽量写清页面、操作和现象。',
         unknown: '未知错误',
-        failedPrefix: '请求失败：'
+        failedPrefix: '请求失败：',
+        realityTitle: '现实锚点',
+        realityEyebrow: 'Reality Anchor / 摘下眼镜',
+        realitySubtitle: '当虚拟空间的光退到屏幕后，仍需要一个可以确认、联系、说明边界的现实入口。这里收纳月读空间的联系方式、隐私声明、用户数据说明与站点责任边界。',
+        realityContactTitle: '联系方式',
+        realityContactLead: '如果你需要反馈问题、申请删除内容、讨论友链或报告安全风险，请优先使用下面这些可追踪的渠道。',
+        realityContactRepo: '项目仓库',
+        realityContactRepoDesc: 'GitHub 仓库：适合提交功能建议、缺陷反馈和代码相关问题。',
+        realityContactIssues: '问题反馈',
+        realityContactIssuesDesc: '推荐通过 GitHub Issues 描述页面路径、复现步骤、浏览器环境和截图。',
+        realityContactPlaza: '站内互动',
+        realityContactPlazaDesc: '普通留言、友链交流和访客互动可前往月读广场。登录后的账号资料可在用户中心查看。',
+        realityPrivacyTitle: '隐私声明',
+        realityPrivacyLead: '月读空间是个人网站。站点只为注册、登录、内容发布、留言互动、访问统计和 Live2D 房间体验处理必要数据。',
+        realityRightsTitle: '用户权利与处理方式',
+        realityRightsLead: '如果你希望访问、更正或删除与自己相关的内容，请通过上方联系方式提交请求，并尽量说明账号、页面链接和需要处理的范围。',
+        realityRightsAccess: '访问与更正',
+        realityRightsDelete: '删除与撤回',
+        realityRightsSecurity: '安全报告',
+        realityNoticeTitle: '责任边界',
+        realityNoticeLead: '月读空间包含虚拟角色、用户生成内容和可选第三方接口能力。现实边界写在这里，方便每位访客理解站点如何工作。',
+        realityNoticeVirtual: 'Live2D 房间中的对话与语音体验可能来自用户配置的模型或第三方服务，内容仅用于互动体验，不构成专业建议。',
+        realityNoticeLinks: '站点可能包含 GitHub、友链或用户提交链接。访问外部网站时，请阅读对方的隐私与安全政策。',
+        realityNoticeUpdate: '本页会随着站点功能变化进行调整。最近更新日期：2026-04-29。',
+        realityFooterBack: '返回中枢大厅',
+        realityFooterBrand: '月读空间 Reality Anchor'
     },
     ja: {
         brand: '月読空間',
@@ -259,7 +285,32 @@ const i18n = {
         filterOther: 'その他',
         noArticles: '記事がありません',
         loadFailed: '読み込み失敗',
-        loginRequired: '投稿するにはログインしてください！'
+        loginRequired: '投稿するにはログインしてください！',
+        realityTitle: '現実アンカー',
+        realityEyebrow: 'Reality Anchor / メガネを外す',
+        realitySubtitle: 'バーチャル空間の光がスクリーンの後ろに退いても、確認し、連絡し、境界を説明するための現実の入り口は必要です。ここには月読空間の連絡先、プライバシーポリシー、データ説明、サイトの責任範囲をまとめています。',
+        realityContactTitle: '連絡先',
+        realityContactLead: '問題の報告、コンテンツ削除の申請、友達リンクの相談、セキュリティリスクの報告には、以下の追跡可能なチャンネルをご利用ください。',
+        realityContactRepo: 'プロジェクトリポジトリ',
+        realityContactRepoDesc: 'GitHub リポジトリ：機能提案、バグ報告、コード関連の問題に適しています。',
+        realityContactIssues: '問題報告',
+        realityContactIssuesDesc: 'GitHub Issues でページパス、再現手順、ブラウザ環境、スクリーンショットを説明してください。',
+        realityContactPlaza: 'サイト内交流',
+        realityContactPlazaDesc: '通常のメッセージ、友達リンクの交流、訪問者交流は月読広場へ。ログイン後のアカウント情報はユーザーセンターで確認できます。',
+        realityPrivacyTitle: 'プライバシーポリシー',
+        realityPrivacyLead: '月読空間は個人サイトです。登録、ログイン、コンテンツ公開、メッセージ交流、アクセス統計、Live2D ルーム体験に必要なデータのみを処理します。',
+        realityRightsTitle: 'ユーザーの権利と対応方法',
+        realityRightsLead: 'ご自身に関連するコンテンツのアクセス、修正、削除をご希望の場合は、上記の連絡先からリクエストを送信し、アカウント、ページリンク、対応範囲を明記してください。',
+        realityRightsAccess: 'アクセスと修正',
+        realityRightsDelete: '削除と取り消し',
+        realityRightsSecurity: 'セキュリティ報告',
+        realityNoticeTitle: '責任範囲',
+        realityNoticeLead: '月読空間にはバーチャルキャラクター、ユーザー生成コンテンツ、オプションのサードパーティAPI機能が含まれます。現実の境界をここに記し、訪問者がサイトの仕組みを理解できるようにします。',
+        realityNoticeVirtual: 'Live2D ルームでの会話や音声体験は、ユーザーが設定したモデルやサードパーティサービスによるものであり、インタラクティブ体験のためのものであり、専門的なアドバイスを構成するものではありません。',
+        realityNoticeLinks: 'サイトには GitHub、友達リンク、ユーザー投稿リンクが含まれる場合があります。外部サイトにアクセスする際は、そのサイトのプライバシーとセキュリティポリシーをお読みください。',
+        realityNoticeUpdate: 'このページはサイト機能の変更に伴い更新されます。最終更新日：2026-04-29。',
+        realityFooterBack: '中枢ホールに戻る',
+        realityFooterBrand: '月読空間 Reality Anchor'
     }
 };
 
@@ -390,7 +441,7 @@ const App = {
             { href: '/plaza', icon: '◎', name: t.value.plaza, desc: t.value.plazaDesc },
             { href: '/stage', icon: '▣', name: t.value.stage, desc: t.value.stageDesc },
             { href: '/pages/arena', icon: '△', name: t.value.arena, desc: t.value.arenaDesc },
-            { href: '/pages/reality', icon: '◌', name: t.value.reality, desc: t.value.realityDesc }
+            { href: '/reality', icon: '◌', name: t.value.reality, desc: t.value.realityDesc }
         ]);
 
         // --- stage page ---
@@ -1157,6 +1208,143 @@ const App = {
                 </section>
 
                 <div v-if="plazaToast.visible" class="plaza-toast show">{{ plazaToast.text }}</div>
+            </main>
+
+            <main v-else-if="route === 'reality'" class="page reality-page">
+                <div class="reality-container">
+                    <section class="reality-hero">
+                        <div class="reality-hero-kicker">{{ t.realityEyebrow }}</div>
+                        <h1>{{ t.realityTitle }}</h1>
+                        <p class="reality-hero-copy">{{ t.realitySubtitle }}</p>
+                        <div class="reality-hero-actions">
+                            <a class="reality-btn" href="#contact">{{ t.realityContactTitle }}</a>
+                            <a class="reality-btn secondary" href="#privacy">{{ t.realityPrivacyTitle }}</a>
+                        </div>
+                    </section>
+
+                    <section class="reality-section" id="contact">
+                        <div class="reality-section-head">
+                            <div class="reality-eyebrow">Contact</div>
+                            <div>
+                                <h2>{{ t.realityContactTitle }}</h2>
+                                <p class="reality-section-lead">{{ t.realityContactLead }}</p>
+                            </div>
+                        </div>
+                        <div class="reality-card-grid reality-3col">
+                            <article class="reality-card">
+                                <h3>{{ t.realityContactRepo }}</h3>
+                                <p>{{ t.realityContactRepoDesc }}</p>
+                            </article>
+                            <article class="reality-card">
+                                <h3>{{ t.realityContactIssues }}</h3>
+                                <p>{{ t.realityContactIssuesDesc }}</p>
+                            </article>
+                            <article class="reality-card">
+                                <h3>{{ t.realityContactPlaza }}</h3>
+                                <p>{{ t.realityContactPlazaDesc }}</p>
+                            </article>
+                        </div>
+                    </section>
+
+                    <section class="reality-section" id="privacy">
+                        <div class="reality-section-head">
+                            <div class="reality-eyebrow">Privacy</div>
+                            <div>
+                                <h2>{{ t.realityPrivacyTitle }}</h2>
+                                <p class="reality-section-lead">{{ t.realityPrivacyLead }}</p>
+                            </div>
+                        </div>
+                        <table class="reality-data-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ lang === 'ja' ? 'データ種類' : '数据类型' }}</th>
+                                    <th>{{ lang === 'ja' ? '利用目的' : '使用目的' }}</th>
+                                    <th>{{ lang === 'ja' ? '保存場所と説明' : '保存位置与说明' }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{{ lang === 'ja' ? 'アカウント情報' : '账号信息' }}</td>
+                                    <td>{{ lang === 'ja' ? '登録、ログイン、ユーザーセンター表示、権限制御に使用。' : '用于注册、登录、用户中心展示与权限判断。' }}</td>
+                                    <td>{{ lang === 'ja' ? 'ユーザー名、メール、暗号化パスワード、ロール、作成日時を含みます。パスワードは平文で保存されません。' : '包括用户名、邮箱、加密后的密码、角色与创建时间。密码不会以明文保存。' }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{{ lang === 'ja' ? '記事とメッセージ' : '文章与留言' }}</td>
+                                    <td>{{ lang === 'ja' ? '投稿、コメント、メッセージ審査、サイト内交流の表示に使用。' : '用于展示投稿、评论、留言审核和站内互动。' }}</td>
+                                    <td>{{ lang === 'ja' ? '公開コンテンツは他の訪問者に見られる可能性があります。管理者は審査、管理、削除権限を保持します。' : '公开发布的内容可能被其他访客看到；后台保留审核、管理和删除能力。' }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{{ lang === 'ja' ? 'アクセス統計' : '访问统计' }}</td>
+                                    <td>{{ lang === 'ja' ? 'ページのアクセス傾向を把握し、サイトの安定性を維持するために使用。' : '用于了解页面访问趋势、维护站点稳定性。' }}</td>
+                                    <td>{{ lang === 'ja' ? 'サイト統計データが中心で、広告プロファイリングやクロスサイトトラッキングには使用しません。' : '以站点统计数据为主，不用于广告画像或跨站追踪。' }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{{ lang === 'ja' ? 'ルームローカル設定' : '房间本地设置' }}</td>
+                                    <td>{{ lang === 'ja' ? 'Live2D ルームのモデル位置、チャット履歴、LLM/TTS 設定などの個人体験設定の保存に使用。' : '用于保存 Live2D 房间的模型位置、聊天历史、LLM/TTS 配置等个人体验设置。' }}</td>
+                                    <td>{{ lang === 'ja' ? 'これらのデータは主にブラウザの localStorage に保存されます。ブラウザのサイトデータを消去すると削除されます。' : '这类数据主要保存在你的浏览器 localStorage 中。清理浏览器站点数据会删除它们。' }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{{ lang === 'ja' ? 'サードパーティAPI設定' : '第三方接口配置' }}</td>
+                                    <td>{{ lang === 'ja' ? 'ユーザーがルームのチャットや音声サービスを自分で設定するために使用。' : '用于用户自行配置房间聊天或语音服务。' }}</td>
+                                    <td>{{ lang === 'ja' ? '公共端末でAPIキーを保存しないでください。サイトがあなたのキーを公開ページに書き込むことはありません。' : '请不要在公共设备保存 API Key。站点不会主动将你的密钥写入公开页面。' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="reality-section">
+                        <div class="reality-section-head">
+                            <div class="reality-eyebrow">Rights</div>
+                            <div>
+                                <h2>{{ t.realityRightsTitle }}</h2>
+                                <p class="reality-section-lead">{{ t.realityRightsLead }}</p>
+                            </div>
+                        </div>
+                        <div class="reality-card-grid reality-3col">
+                            <article class="reality-card">
+                                <h3>{{ t.realityRightsAccess }}</h3>
+                                <ul class="reality-policy-list">
+                                    <li>{{ lang === 'ja' ? 'ログイン後、ユーザーセンターで基本アカウント情報を確認できます。' : '登录后可在用户中心查看基础账号信息。' }}</li>
+                                    <li>{{ lang === 'ja' ? '公開コンテンツに誤りを見つけた場合、リンクを提供して修正を申請できます。' : '发现公开内容有误时，可以提供链接申请更正。' }}</li>
+                                </ul>
+                            </article>
+                            <article class="reality-card">
+                                <h3>{{ t.realityRightsDelete }}</h3>
+                                <ul class="reality-policy-list">
+                                    <li>{{ lang === 'ja' ? '自分が投稿したメッセージ、記事、アカウント関連データの削除を申請できます。' : '你可以申请删除自己发布的留言、投稿或账号相关数据。' }}</li>
+                                    <li>{{ lang === 'ja' ? 'ブラウザのローカルルーム設定は、サイトデータを消去することで自分で削除できます。' : '浏览器本地房间设置可通过清理站点数据自行删除。' }}</li>
+                                </ul>
+                            </article>
+                            <article class="reality-card">
+                                <h3>{{ t.realityRightsSecurity }}</h3>
+                                <ul class="reality-policy-list">
+                                    <li>{{ lang === 'ja' ? 'XSS、権限バイパス、機密情報漏洩などのリスクを発見した場合は、GitHub Issues またはリポジトリの連絡先から報告してください。' : '如发现 XSS、越权、敏感信息泄露等风险，请通过 GitHub Issues 或仓库联系方式报告。' }}</li>
+                                    <li>{{ lang === 'ja' ? '報告時に実際のキー、パスワード、トークン、他人のプライバシーを公開しないでください。' : '报告时请避免公开真实密钥、密码、令牌和他人隐私。' }}</li>
+                                </ul>
+                            </article>
+                        </div>
+                    </section>
+
+                    <section class="reality-section">
+                        <div class="reality-section-head">
+                            <div class="reality-eyebrow">Notice</div>
+                            <div>
+                                <h2>{{ t.realityNoticeTitle }}</h2>
+                                <p class="reality-section-lead">{{ t.realityNoticeLead }}</p>
+                            </div>
+                        </div>
+                        <div class="reality-statement">
+                            <p><strong>{{ lang === 'ja' ? 'バーチャルキャラクターコンテンツ：' : '虚拟角色内容：' }}</strong>{{ t.realityNoticeVirtual }}</p>
+                            <p><strong>{{ lang === 'ja' ? '外部リンク：' : '外部链接：' }}</strong>{{ t.realityNoticeLinks }}</p>
+                            <p><strong>{{ lang === 'ja' ? '声明の更新：' : '声明更新：' }}</strong>{{ t.realityNoticeUpdate }}</p>
+                        </div>
+                    </section>
+
+                    <div class="reality-footer">
+                        <span>{{ t.realityFooterBrand }}</span>
+                        <span><a class="reality-btn secondary" href="/hub" @click.prevent="go('/hub')">{{ t.realityFooterBack }}</a></span>
+                    </div>
+                </div>
             </main>
         </div>
     `
