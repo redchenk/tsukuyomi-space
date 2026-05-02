@@ -116,7 +116,7 @@
     function createLogo(nav, prefix) {
         const logo = nav.querySelector('.logo, .room-logo') || document.createElement('a');
         logo.className = 'logo';
-        logo.href = `${prefix}hub`;
+        logo.href = '/hub';
         logo.textContent = '月读空间';
         if (!logo.parentElement) nav.prepend(logo);
         return logo;
@@ -172,7 +172,7 @@
 
         NAV_ITEMS.forEach((item) => {
             const link = document.createElement('a');
-            link.href = `${prefix}${item.key}`;
+            link.href = item.key === 'hub' ? '/hub' : `${prefix}${item.key}`;
             link.textContent = item.label;
             link.dataset.siteNav = item.key;
             if (item.key === active) link.className = 'active';
