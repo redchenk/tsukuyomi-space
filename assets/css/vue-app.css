@@ -241,6 +241,10 @@ a {
 }
 
 .primary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
     min-width: 188px;
     min-height: 50px;
     padding: 0 1.4rem;
@@ -461,6 +465,11 @@ input:focus {
 .user-chip {
     color: rgba(225, 236, 246, 0.84);
     font-size: 0.86rem;
+    text-decoration: none;
+    cursor: pointer;
+}
+.user-chip:hover {
+    color: #fff;
 }
 
 button:disabled {

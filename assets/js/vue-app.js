@@ -1514,7 +1514,7 @@ const App = {
                     <a href="/stage" class="nav-link" :class="{ 'router-link-active': route === 'stage' }" @click.prevent="go('/stage')">{{ t.stage }}</a>
                     <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': route === 'login' }" @click.prevent="go('/login')">{{ t.login }}</a>
                     <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': route === 'register' }" @click.prevent="go('/register')">{{ t.register }}</a>
-                    <span v-if="isAuthed" class="user-chip">{{ user.username || user.email }}</span>
+                    <a v-if="isAuthed" href="/user-center" class="user-chip" @click.prevent="go('/user-center')">{{ user.username || user.email }}</a>
                     <button v-if="isAuthed" class="ghost-btn" type="button" @click="logout">{{ t.logout }}</button>
                     <div class="lang-switcher" aria-label="Language">
                         <button class="lang-btn" :class="{ active: lang === 'zh' }" type="button" @click="setLang('zh')">中文</button>
@@ -2073,7 +2073,7 @@ const App = {
                                     </div>
                                     <div class="form-group">
                                         <label>{{ t.ucBio }}</label>
-                                        <textarea id="ucBioInput" maxlength="300" :placeholder="t.ucBioPlaceholder">{{ ucUser?.bio || '' }}</textarea>
+                                        <textarea id="ucBioInput" maxlength="300" style="min-height:140px;resize:vertical;line-height:1.7;" :placeholder="t.ucBioPlaceholder">{{ ucUser?.bio || '' }}</textarea>
                                         <div class="help-text">{{ ucUser?.bio?.length || 0 }} / 300</div>
                                     </div>
                                     <div>
