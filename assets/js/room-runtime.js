@@ -50,8 +50,10 @@
         const overlay = $('loadingOverlay');
         if (!overlay) return;
         overlay.classList.add('active');
-        $('loadingTitle').textContent = title || '正在加载';
-        $('loadingDetail').textContent = detail || '';
+        const titleNode = $('loadingTitle');
+        const detailNode = $('loadingDetail');
+        if (titleNode) titleNode.textContent = title || '正在加载';
+        if (detailNode) detailNode.textContent = detail || '';
         const spinner = overlay.querySelector('.status-spinner');
         if (spinner) spinner.style.display = failed ? 'none' : 'block';
         if (failed && !overlay.querySelector('[data-reload]')) {
@@ -906,17 +908,35 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function bootRoomRuntime() {
+        if (window.__tsukuyomiRoomRuntimeReady) return;
+        if (!$('live2d-container')) return;
+        window.__tsukuyomiRoomRuntimeReady = true;
         initSakura();
         initPanels();
         initProfileAndNote();
         initChatAndSettings();
         initModelControls();
         bootLive2D();
-    });
+    }
+
+    window.initTsukuyomiRoomRuntime = bootRoomRuntime;
+    window.destroyTsukuyomiRoomRuntime = () => {
+        ambientFish?.destroy?.();
+        live2d?.destroy?.();
+        ambientFish = null;
+        live2d = null;
+        window.__tsukuyomiRoomRuntimeReady = false;
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootRoomRuntime, { once: true });
+    } else {
+        bootRoomRuntime();
+    }
 
     window.addEventListener('beforeunload', () => {
         ambientFish?.destroy?.();
-        live2d?.destroy();
+        live2d?.destroy?.();
     });
 })();

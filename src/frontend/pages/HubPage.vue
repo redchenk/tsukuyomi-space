@@ -8,7 +8,7 @@ const props = defineProps({
 defineEmits(['go']);
 
 const sceneLinks = computed(() => [
-  { href: '/pages/room', name: props.t.room, desc: props.t.roomDesc, spa: false },
+  { href: '/room', name: props.t.room, desc: props.t.roomDesc, spa: true },
   { href: '/plaza', name: props.t.plaza, desc: props.t.plazaDesc, spa: true },
   { href: '/stage', name: props.t.stage, desc: props.t.stageDesc, spa: true },
   { href: '/pages/arena', name: props.t.arena, desc: props.t.arenaDesc, spa: false },

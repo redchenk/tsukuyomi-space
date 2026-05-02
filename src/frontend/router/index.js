@@ -8,6 +8,7 @@ import PlazaPage from '../pages/PlazaPage.vue';
 import RealityPage from '../pages/RealityPage.vue';
 import EditorPage from '../pages/EditorPage.vue';
 import UserCenterPage from '../pages/UserCenterPage.vue';
+import RoomPage from '../pages/RoomPage.vue';
 
 export const routes = [
   { path: '/', name: 'access', component: AccessPage },
@@ -16,6 +17,7 @@ export const routes = [
   { path: '/login', name: 'login', component: LoginPage },
   { path: '/register', name: 'register', component: RegisterPage },
   { path: '/stage', name: 'stage', component: StagePage },
+  { path: '/room', name: 'room', component: RoomPage },
   { path: '/plaza', name: 'plaza', component: PlazaPage },
   { path: '/reality', name: 'reality', component: RealityPage },
   { path: '/editor', name: 'editor', component: EditorPage },

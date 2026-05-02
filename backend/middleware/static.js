@@ -12,6 +12,13 @@ function serveStaticFiles(app) {
         app.use(express.static(frontendDistRoot));
     }
 
+    app.use((req, res, next) => {
+        if ((req.method === 'GET' || req.method === 'HEAD') && (req.path === '/room.html' || req.path === '/pages/room' || req.path === '/pages/room.html')) {
+            return res.redirect(301, '/room');
+        }
+        next();
+    });
+
     app.use(express.static(publicRoot));
     app.use('/pages', express.static(path.join(publicRoot, 'pages')));
     app.use('/assets', express.static(path.join(publicRoot, 'assets')));
@@ -23,17 +30,17 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const resolvedHtmlPath = path.resolve(publicRoot, `.${req.path}.html`);
-        if (resolvedHtmlPath.startsWith(publicRoot + path.sep) && fs.existsSync(resolvedHtmlPath)) {
-            return res.sendFile(resolvedHtmlPath);
-        }
-
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/plaza', '/reality', '/editor', '/user-center']);
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/room', '/plaza', '/reality', '/editor', '/user-center']);
         if (vueRoutes.has(req.path)) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');
             }
             return res.sendFile(path.join(frontendDistRoot, 'index.html'));
+        }
+
+        const resolvedHtmlPath = path.resolve(publicRoot, `.${req.path}.html`);
+        if (resolvedHtmlPath.startsWith(publicRoot + path.sep) && fs.existsSync(resolvedHtmlPath)) {
+            return res.sendFile(resolvedHtmlPath);
         }
 
         next();

@@ -11,6 +11,7 @@ const lang = ref(localStorage.getItem('lang') || 'zh');
 const user = ref(loadStoredUser());
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
+const isImmersiveRoute = computed(() => isAccessRoute.value || route.name === 'room');
 const isAuthed = computed(() => Boolean(user.value));
 
 function loadStoredUser() {
@@ -55,7 +56,7 @@ watch(() => route.fullPath, refreshUser, { immediate: true });
   <AppShell
     :lang="lang"
     :route-name="route.name"
-    :show-chrome="!isAccessRoute"
+    :show-chrome="!isImmersiveRoute"
     :t="t"
     :user="user"
     :is-authed="isAuthed"
