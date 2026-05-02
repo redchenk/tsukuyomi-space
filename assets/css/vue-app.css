@@ -583,7 +583,7 @@ button:disabled {
     text-decoration: none;
     transition: all 0.3s;
     overflow: hidden;
-    min-height: 160px;
+    height: 180px;
 }
 
 .stage-card:hover {
@@ -698,7 +698,7 @@ button:disabled {
 
     .stage-card {
         flex-direction: column;
-        min-height: auto;
+        height: auto;
     }
 
     .stage-card-cover {
