@@ -99,7 +99,7 @@
 .plaza-textarea {
     width: 100%;
     min-height: 92px;
-    resize: vertical;
+    resize: none;
     border: 1px solid rgba(255,183,197,0.18);
     background: rgba(8, 8, 16, 0.52);
     color: #fff;

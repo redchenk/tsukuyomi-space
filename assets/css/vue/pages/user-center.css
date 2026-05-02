@@ -169,6 +169,24 @@
 }
 .uc-search:focus { border-color: rgba(255,183,197,0.45); }
 
+.uc-profile-bio {
+    width: 100%;
+    min-height: 140px;
+    resize: none;
+    border: 1px solid rgba(255,183,197,0.18);
+    background: rgba(8, 8, 16, 0.52);
+    color: #fff;
+    border-radius: 6px;
+    padding: 0.9rem;
+    outline: none;
+    line-height: 1.7;
+    font: inherit;
+}
+
+.uc-profile-bio:focus {
+    border-color: rgba(255,183,197,0.48);
+}
+
 .uc-article-list { display: grid; gap: 0.8rem; }
 .uc-article-item {
     display: grid;

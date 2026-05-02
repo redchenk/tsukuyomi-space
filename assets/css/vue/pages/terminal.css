@@ -164,6 +164,12 @@
     vertical-align: top;
 }
 
+.terminal-table-wrap td:nth-child(2) {
+    max-width: 420px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 .terminal-table-wrap th {
     color: #7edbe8;
     background: rgba(126, 219, 232, 0.055);
@@ -214,7 +220,21 @@
 }
 
 .terminal-settings textarea {
+    width: 100%;
     min-height: 140px;
+    resize: none;
+    border: 1px solid rgba(255,183,197,0.18);
+    background: rgba(8, 8, 16, 0.52);
+    color: #fff;
+    border-radius: 6px;
+    padding: 0.9rem;
+    outline: none;
+    line-height: 1.7;
+    font: inherit;
+}
+
+.terminal-settings textarea:focus {
+    border-color: rgba(255,183,197,0.48);
 }
 
 .terminal-check {

@@ -8,7 +8,10 @@
 }
 
 .article-back {
-    margin-bottom: 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    margin-bottom: 1.4rem;
 }
 
 .article-status,
@@ -120,8 +123,21 @@
 }
 
 .comment-input {
+    width: 100%;
     min-height: 92px;
-    resize: vertical;
+    resize: none;
+    border: 1px solid rgba(255,183,197,0.18);
+    background: rgba(8, 8, 16, 0.52);
+    color: #fff;
+    border-radius: 6px;
+    padding: 0.9rem;
+    outline: none;
+    line-height: 1.7;
+    font: inherit;
+}
+
+.comment-input:focus {
+    border-color: rgba(255,183,197,0.48);
 }
 
 .comment-list,

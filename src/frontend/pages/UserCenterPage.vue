@@ -326,7 +326,7 @@ onMounted(() => {
               </div>
               <div class="form-group">
                 <label>{{ t.ucBio }}</label>
-                <textarea v-model="uc.profileBio" maxlength="300" style="min-height:140px;resize:vertical;line-height:1.7;" :placeholder="t.ucBioPlaceholder"></textarea>
+                <textarea v-model="uc.profileBio" class="uc-profile-bio" maxlength="300" :placeholder="t.ucBioPlaceholder"></textarea>
                 <div class="help-text">{{ uc.profileBio.length || 0 }} / 300</div>
               </div>
               <div>
