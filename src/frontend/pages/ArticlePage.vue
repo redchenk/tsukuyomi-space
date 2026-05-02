@@ -18,7 +18,7 @@ const replyText = reactive({});
 const openReplies = reactive({});
 const session = ref(getSession());
 
-const articleId = computed(() => route.query.id || route.params.id || '');
+const articleId = computed(() => String(route.query.id || route.params.id || ''));
 const topComments = computed(() => comments.value.filter((item) => !item.parent_id));
 
 function formatDate(value) {
@@ -40,10 +40,7 @@ function formatContent(content) {
     .replace(/^## (.*)$/gm, '<h2>$1</h2>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .split(/\n{2,}/)
-    .map((block) => {
-      if (/^<h[23]>/.test(block) || /^<pre>/.test(block)) return block;
-      return `<p>${block.replace(/\n/g, '<br>')}</p>`;
-    })
+    .map((block) => (/^<h[23]>/.test(block) ? block : `<p>${block.replace(/\n/g, '<br>')}</p>`))
     .join('');
 }
 
@@ -51,6 +48,7 @@ async function loadArticle() {
   loading.value = true;
   message.value = '';
   article.value = null;
+
   if (!articleId.value) {
     message.value = '文章 ID 不存在';
     loading.value = false;
@@ -64,7 +62,7 @@ async function loadArticle() {
     article.value = result.data;
     await loadComments();
   } catch (error) {
-    message.value = error.message || props.t.loadFailed;
+    message.value = error.message || props.t.loadFailed || '加载失败';
   } finally {
     loading.value = false;
   }
@@ -98,6 +96,7 @@ async function submitComment() {
     message.value = '评论内容不能为空';
     return;
   }
+
   const response = await fetch('/api/messages', {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -109,6 +108,7 @@ async function submitComment() {
     return;
   }
   commentText.value = '';
+  message.value = '';
   await loadComments();
 }
 
@@ -119,6 +119,7 @@ async function submitReply(commentId) {
     message.value = '回复内容不能为空';
     return;
   }
+
   const response = await fetch(`/api/messages/${commentId}/reply`, {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -131,15 +132,17 @@ async function submitReply(commentId) {
   }
   replyText[commentId] = '';
   openReplies[commentId] = false;
+  message.value = '';
   await loadComments();
 }
 
 async function likeComment(commentId) {
   if (!requireLogin()) return;
   if (localStorage.getItem(`liked_${commentId}`) === '1') {
-    message.value = '已点赞';
+    message.value = '已经点过赞了';
     return;
   }
+
   const response = await fetch(`/api/messages/${commentId}/like`, {
     method: 'POST',
     headers: authHeaders()
@@ -150,6 +153,7 @@ async function likeComment(commentId) {
     return;
   }
   localStorage.setItem(`liked_${commentId}`, '1');
+  message.value = '';
   await loadComments();
 }
 
@@ -203,7 +207,7 @@ watch(articleId, loadArticle);
           <div v-else class="comment-list">
             <article v-for="comment in topComments" :key="comment.id" class="comment-item">
               <div class="comment-header">
-                <strong>{{ comment.author }}</strong>
+                <strong>{{ comment.author || comment.username || '访客' }}</strong>
                 <span>{{ formatDate(comment.created_at) }}</span>
               </div>
               <p>{{ comment.content }}</p>
@@ -222,7 +226,7 @@ watch(articleId, loadArticle);
               <div v-if="repliesFor(comment.id).length" class="reply-list">
                 <div v-for="reply in repliesFor(comment.id)" :key="reply.id" class="comment-item reply-item">
                   <div class="comment-header">
-                    <strong>{{ reply.author }}</strong>
+                    <strong>{{ reply.author || reply.username || '访客' }}</strong>
                     <span>{{ formatDate(reply.created_at) }}</span>
                   </div>
                   <p>{{ reply.content }}</p>

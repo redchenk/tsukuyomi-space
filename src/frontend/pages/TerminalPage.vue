@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive } from 'vue';
+import { computed, onMounted, onUnmounted, reactive } from 'vue';
 
 const emit = defineEmits(['go', 'auth-changed']);
 
@@ -33,6 +33,7 @@ const terminal = reactive({
   settings: { siteTitle: '', siteAnnouncement: '', sakuraEffect: true, scanlineEffect: true }
 });
 
+let clockTimer = 0;
 const authed = computed(() => Boolean(terminal.token && terminal.admin));
 
 function formatDate(value) {
@@ -46,6 +47,15 @@ function showMessage(text, type = 'success') {
   terminal.messageType = type;
 }
 
+async function parseJsonResponse(response) {
+  const text = await response.text();
+  try {
+    return text ? JSON.parse(text) : { success: false, message: `HTTP ${response.status}` };
+  } catch (_) {
+    return { success: false, message: text.replace(/<[^>]*>/g, '').trim() || `HTTP ${response.status}` };
+  }
+}
+
 async function adminApi(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (options.body !== undefined && !(options.body instanceof FormData)) {
@@ -53,18 +63,9 @@ async function adminApi(path, options = {}) {
   }
   if (terminal.token) headers.set('Authorization', `Bearer ${terminal.token}`);
   const response = await fetch(`/api/admin${path}`, { ...options, headers });
-  const result = await parseResponse(response);
+  const result = await parseJsonResponse(response);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
   return result.data;
-}
-
-async function parseResponse(response) {
-  const text = await response.text();
-  try {
-    return text ? JSON.parse(text) : { success: false, message: `HTTP ${response.status}` };
-  } catch (_) {
-    return { success: false, message: text.replace(/<[^>]*>/g, '').trim() || `HTTP ${response.status}` };
-  }
 }
 
 async function verifySession() {
@@ -90,7 +91,7 @@ async function login() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(terminal.login)
     });
-    const result = await parseResponse(response);
+    const result = await parseJsonResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || '登录失败');
     terminal.token = result.data.token;
     terminal.admin = result.data.admin;
@@ -117,6 +118,7 @@ function logout() {
 async function loadPanel(panel = terminal.activePanel) {
   terminal.activePanel = panel;
   terminal.loading = true;
+  terminal.message = '';
   try {
     if (panel === 'dashboard') terminal.stats = { ...terminal.stats, ...(await adminApi('/stats') || {}) };
     if (panel === 'articles') terminal.articles = await adminApi('/articles') || [];
@@ -191,8 +193,12 @@ function updateClock() {
 
 onMounted(() => {
   updateClock();
-  setInterval(updateClock, 1000);
+  clockTimer = window.setInterval(updateClock, 1000);
   verifySession();
+});
+
+onUnmounted(() => {
+  window.clearInterval(clockTimer);
 });
 </script>
 
@@ -216,7 +222,7 @@ onMounted(() => {
           <span>{{ terminal.clock }}</span>
         </div>
         <div class="terminal-session">
-          <span>{{ terminal.admin?.username }} · {{ terminal.admin?.role }}</span>
+          <span>{{ terminal.admin?.username }} / {{ terminal.admin?.role }}</span>
           <button class="ghost-btn" type="button" @click="$emit('go', '/hub')">大厅</button>
           <button class="danger-btn" type="button" @click="logout">断开</button>
         </div>
@@ -257,7 +263,7 @@ onMounted(() => {
           <div v-show="terminal.activePanel === 'messages'">
             <div class="terminal-panel-head"><h2>留言审核</h2><button class="ghost-btn" type="button" @click="loadPanel('messages')">刷新</button></div>
             <div class="terminal-table-wrap"><table><thead><tr><th>作者</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
-              <tr v-for="item in terminal.messages" :key="item.id"><td>{{ item.username }}</td><td>{{ item.content }}</td><td><span class="terminal-badge" :class="item.status === 'approved' ? 'ok' : 'warn'">{{ item.status === 'approved' ? '已通过' : '待审核' }}</span></td><td>{{ formatDate(item.created_at) }}</td><td><div class="terminal-actions"><button v-if="item.status !== 'approved'" class="primary-btn" type="button" @click="approveMessage(item.id)">通过</button><button class="danger-btn" type="button" @click="deleteMessage(item.id)">删除</button></div></td></tr>
+              <tr v-for="item in terminal.messages" :key="item.id"><td>{{ item.username || item.author }}</td><td>{{ item.content }}</td><td><span class="terminal-badge" :class="item.status === 'approved' ? 'ok' : 'warn'">{{ item.status === 'approved' ? '已通过' : '待审核' }}</span></td><td>{{ formatDate(item.created_at) }}</td><td><div class="terminal-actions"><button v-if="item.status !== 'approved'" class="primary-btn" type="button" @click="approveMessage(item.id)">通过</button><button class="danger-btn" type="button" @click="deleteMessage(item.id)">删除</button></div></td></tr>
             </tbody></table></div>
           </div>
 

@@ -27,6 +27,7 @@ function serveStaticFiles(app) {
             ['/reality.html', '/reality'],
             ['/editor.html', '/editor'],
             ['/user-center.html', '/user-center'],
+            ['/arena.html', '/arena'],
             ['/pages/index', '/'],
             ['/pages/index.html', '/'],
             ['/pages/access', '/'],
@@ -49,6 +50,8 @@ function serveStaticFiles(app) {
             ['/pages/editor.html', '/editor'],
             ['/pages/user-center', '/user-center'],
             ['/pages/user-center.html', '/user-center'],
+            ['/pages/arena', '/arena'],
+            ['/pages/arena.html', '/arena'],
             ['/pages/article', '/article'],
             ['/pages/article.html', '/article'],
             ['/article.html', '/article'],
@@ -67,7 +70,6 @@ function serveStaticFiles(app) {
     });
 
     app.use(express.static(publicRoot));
-    app.use('/pages', express.static(path.join(publicRoot, 'pages')));
     app.use('/assets', express.static(path.join(publicRoot, 'assets')));
     app.use('/lib', express.static(path.join(publicRoot, 'lib')));
     app.use('/models', express.static(path.join(publicRoot, 'models')));
@@ -77,17 +79,12 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/plaza', '/reality', '/editor', '/user-center', '/terminal']);
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/plaza', '/reality', '/editor', '/user-center', '/terminal', '/arena']);
         if (vueRoutes.has(req.path)) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');
             }
             return res.sendFile(path.join(frontendDistRoot, 'index.html'));
-        }
-
-        const resolvedHtmlPath = path.resolve(publicRoot, `.${req.path}.html`);
-        if (resolvedHtmlPath.startsWith(publicRoot + path.sep) && fs.existsSync(resolvedHtmlPath)) {
-            return res.sendFile(resolvedHtmlPath);
         }
 
         next();

@@ -11,7 +11,7 @@ const sceneLinks = computed(() => [
   { href: '/room', name: props.t.room, desc: props.t.roomDesc, spa: true },
   { href: '/plaza', name: props.t.plaza, desc: props.t.plazaDesc, spa: true },
   { href: '/stage', name: props.t.stage, desc: props.t.stageDesc, spa: true },
-  { href: '/pages/arena', name: props.t.arena, desc: props.t.arenaDesc, spa: false },
+  { href: '/arena', name: props.t.arena, desc: props.t.arenaDesc, spa: true },
   { href: '/reality', name: props.t.reality, desc: props.t.realityDesc, spa: true }
 ]);
 </script>
