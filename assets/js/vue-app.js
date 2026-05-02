@@ -5,7 +5,8 @@ const routes = {
     '/access': 'access',
     '/hub': 'hub',
     '/login': 'login',
-    '/register': 'register'
+    '/register': 'register',
+    '/stage': 'stage'
 };
 
 const i18n = {
@@ -61,6 +62,18 @@ const i18n = {
         registerSuccess: '注册成功，正在跳转...',
         codeSent: '验证码已发送，请查看邮箱',
         passwordMismatch: '两次输入的密码不一致',
+        stageTitle: '主舞台',
+        stageSubtitle: '博客文章',
+        searchPlaceholder: '搜索文章...',
+        newPost: '✏️ 新建投稿',
+        filterAll: '全部',
+        filterAnnouncement: '公告',
+        filterLegend: '传说',
+        filterTechnology: '技术',
+        filterOther: '其他',
+        noArticles: '暂无文章',
+        loadFailed: '加载失败',
+        loginRequired: '请先登录后再投稿文章！',
         unknown: '未知错误',
         failedPrefix: '请求失败：'
     },
@@ -117,7 +130,19 @@ const i18n = {
         codeSent: '認証コードを送信しました',
         passwordMismatch: 'パスワードが一致しません',
         unknown: '不明なエラー',
-        failedPrefix: 'リクエスト失敗：'
+        failedPrefix: 'リクエスト失敗：',
+        stageTitle: 'メインステージ',
+        stageSubtitle: 'ブログ記事',
+        searchPlaceholder: '記事を検索...',
+        newPost: '✏️ 新規投稿',
+        filterAll: 'すべて',
+        filterAnnouncement: 'お知らせ',
+        filterLegend: '伝説',
+        filterTechnology: '技術',
+        filterOther: 'その他',
+        noArticles: '記事がありません',
+        loadFailed: '読み込み失敗',
+        loginRequired: '投稿するにはログインしてください！'
     }
 };
 
@@ -190,10 +215,69 @@ const App = {
         const sceneLinks = computed(() => [
             { href: '/pages/room', icon: '◇', name: t.value.room, desc: t.value.roomDesc },
             { href: '/pages/plaza', icon: '◎', name: t.value.plaza, desc: t.value.plazaDesc },
-            { href: '/pages/stage', icon: '▣', name: t.value.stage, desc: t.value.stageDesc },
+            { href: '/stage', icon: '▣', name: t.value.stage, desc: t.value.stageDesc },
             { href: '/pages/arena', icon: '△', name: t.value.arena, desc: t.value.arenaDesc },
             { href: '/pages/reality', icon: '◌', name: t.value.reality, desc: t.value.realityDesc }
         ]);
+
+        // --- stage page ---
+        const articles = ref([]);
+        const articlesLoading = ref(true);
+        const stageCategory = ref('all');
+        const stageSearch = ref('');
+        const categories = ['all', '公告', '传说', '技术', '其他'];
+
+        const filteredArticles = computed(() => {
+            let list = articles.value;
+            if (stageCategory.value !== 'all') {
+                list = list.filter(a => a.category === stageCategory.value);
+            }
+            if (stageSearch.value) {
+                const q = stageSearch.value.toLowerCase();
+                list = list.filter(a =>
+                    a.title.toLowerCase().includes(q) ||
+                    (a.excerpt && a.excerpt.toLowerCase().includes(q))
+                );
+            }
+            return list;
+        });
+
+        async function loadArticles() {
+            articlesLoading.value = true;
+            try {
+                const res = await fetch('/api/articles');
+                const result = await parseResponse(res);
+                if (result.success) {
+                    articles.value = result.data;
+                } else {
+                    articles.value = [];
+                }
+            } catch (_) {
+                articles.value = [];
+            } finally {
+                articlesLoading.value = false;
+            }
+        }
+
+        function checkEditorAuth(event) {
+            if (!isAuthed.value) {
+                event.preventDefault();
+                alert(t.value.loginRequired);
+                pushRoute('/login');
+                return false;
+            }
+        }
+
+        function stageCategoryLabel(cat) {
+            const map = {
+                all: t.value.filterAll,
+                '公告': t.value.filterAnnouncement,
+                '传说': t.value.filterLegend,
+                '技术': t.value.filterTechnology,
+                '其他': t.value.filterOther
+            };
+            return map[cat] || cat;
+        }
 
         function setLang(nextLang) {
             lang.value = i18n[nextLang] ? nextLang : 'zh';
@@ -353,18 +437,26 @@ const App = {
                 path.value = normalizePath(location.pathname);
             });
             if (route.value !== 'access') initAmbient();
+            if (route.value === 'stage') loadArticles();
         });
 
         watch(route, (nextRoute) => {
             syncBodyRouteClass(nextRoute);
             if (nextRoute !== 'access') initAmbient();
+            if (nextRoute === 'stage') loadArticles();
         });
 
         return {
             accessLoading,
+            articles,
+            articlesLoading,
+            categories,
+            checkEditorAuth,
+            filteredArticles,
             go,
             isAuthed,
             lang,
+            loadArticles,
             login,
             loginPlaceholder,
             logout,
@@ -372,6 +464,9 @@ const App = {
             route,
             sceneLinks,
             setLang,
+            stageCategory,
+            stageCategoryLabel,
+            stageSearch,
             startAccess,
             submitLogin,
             submitRegister,
@@ -388,6 +483,7 @@ const App = {
                 <a href="/access" class="brand" @click.prevent="go('/access')">{{ t.brand }}</a>
                 <div class="nav-actions">
                     <a href="/hub" class="nav-link" :class="{ 'router-link-active': route === 'hub' }" @click.prevent="go('/hub')">{{ t.hub }}</a>
+                    <a href="/stage" class="nav-link" :class="{ 'router-link-active': route === 'stage' }" @click.prevent="go('/stage')">{{ t.stage }}</a>
                     <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': route === 'login' }" @click.prevent="go('/login')">{{ t.login }}</a>
                     <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': route === 'register' }" @click.prevent="go('/register')">{{ t.register }}</a>
                     <span v-if="isAuthed" class="user-chip">{{ user.username || user.email }}</span>
@@ -497,6 +593,42 @@ const App = {
                     </form>
                     <div class="panel-links">{{ t.haveAccount }} <a href="/login" @click.prevent="go('/login')">{{ t.login }}</a></div>
                 </section>
+            </main>
+
+            <main v-else-if="route === 'stage'" class="page stage-page">
+                <div class="stage-header">
+                    <h1 class="section-title">{{ t.stageTitle }}</h1>
+                    <p class="section-subtitle">{{ t.stageSubtitle }}</p>
+                </div>
+                <div class="stage-controls">
+                    <div class="search-box">
+                        <input type="text" v-model="stageSearch" :placeholder="t.searchPlaceholder">
+                    </div>
+                    <a href="/pages/editor" class="btn stage-new-btn" @click="checkEditorAuth">{{ t.newPost }}</a>
+                </div>
+                <div class="stage-filters">
+                    <button v-for="cat in categories" :key="cat" class="filter-btn" :class="{ active: stageCategory === cat }" @click="stageCategory = cat">{{ stageCategoryLabel(cat) }}</button>
+                </div>
+                <div v-if="articlesLoading" class="stage-status">{{ t.loading }}</div>
+                <div v-else-if="!filteredArticles.length" class="stage-status">{{ t.noArticles }}</div>
+                <div v-else class="stage-list">
+                    <a v-for="article in filteredArticles" :key="article.id" :href="'/pages/article?id=' + article.id" class="stage-card">
+                        <div class="stage-card-body">
+                            <div class="stage-card-meta">
+                                <span class="tag">{{ article.category }}</span>
+                                <span class="tag tag-author">{{ article.author_username || 'admin' }}</span>
+                            </div>
+                            <h3 class="stage-card-title">{{ article.title }}</h3>
+                            <p class="stage-card-excerpt">{{ article.excerpt }}</p>
+                            <div class="stage-card-footer">
+                                <span class="read-time">⏱️ {{ article.read_time }}</span>
+                            </div>
+                        </div>
+                        <div v-if="article.cover_image" class="stage-card-cover">
+                            <img :src="article.cover_image" alt="封面" class="stage-cover-img">
+                        </div>
+                    </a>
+                </div>
             </main>
         </div>
     `
