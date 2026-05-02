@@ -9,7 +9,8 @@ const routes = {
     '/stage': 'stage',
     '/plaza': 'plaza',
     '/reality': 'reality',
-    '/editor': 'editor'
+    '/editor': 'editor',
+    '/user-center': 'userCenter'
 };
 
 const i18n = {
@@ -197,7 +198,73 @@ const i18n = {
         editorSaving: '保存中...',
         editorPublished: '文章发布成功，正在跳转...',
         editorSaved: '文章已更新，正在跳转...',
-        editorSubmitFailed: '提交失败：'
+        editorSubmitFailed: '提交失败：',
+        ucTitle: '用户中心',
+        ucNeedLogin: '需要登录',
+        ucLoginPrompt: '登录后可以管理头像、个人简介、投稿文章和账户安全设置。',
+        ucGoLogin: '前往登录',
+        ucNewPost: '新建投稿',
+        ucViewStage: '查看主舞台',
+        ucRefresh: '刷新资料',
+        ucLogout: '退出登录',
+        ucMyArticles: '我的文章',
+        ucTotalViews: '累计阅读',
+        ucAccountRole: '账户角色',
+        ucJoinDate: '加入时间',
+        ucPostsTotal: '投稿总数',
+        ucArticleViews: '文章访问量',
+        ucPermLevel: '权限等级',
+        ucTsukuyomiJoin: '月读接入日',
+        ucProfile: '个人资料',
+        ucArticlesTab: '我的文章',
+        ucSecurity: '账户安全',
+        ucUsername: '用户名',
+        ucUsernameHint: '用户名当前不可在前台修改。',
+        ucEmail: '邮箱',
+        ucBio: '个人简介',
+        ucBioPlaceholder: '介绍一下自己、创作方向或正在做的项目。',
+        ucSaveProfile: '保存资料',
+        ucSearchArticles: '搜索标题或分类',
+        ucWriteNew: '写新文章',
+        ucNoArticles: '暂无投稿记录',
+        ucNoArticlesHint: '写下第一篇文章，让主舞台亮起来。',
+        ucArticleLoadFailed: '文章加载失败，请稍后重试。',
+        ucProfileLoadFailed: '资料加载失败',
+        ucProfileSaved: '资料已保存',
+        ucProfileSaveFailed: '保存失败',
+        ucAvatarUpdated: '头像已更新',
+        ucAvatarUploadFailed: '头像上传失败',
+        ucAvatarTooBig: '图片过大，请选择 6MB 以下文件',
+        ucSelectImage: '请选择图片文件',
+        ucCurrentPassword: '当前密码',
+        ucCurrentPasswordPh: '请输入当前密码',
+        ucNewPassword: '新密码',
+        ucNewPasswordPh: '至少 6 位',
+        ucConfirmNewPassword: '确认新密码',
+        ucConfirmNewPasswordPh: '再次输入新密码',
+        ucChangePassword: '修改密码',
+        ucSecurityTip: '安全提示',
+        ucSecurityTipText: '建议使用独立密码，并定期更换。退出公共设备前请点击"退出登录"。',
+        ucExitLogin: '退出当前登录',
+        ucPasswordChanged: '密码已修改',
+        ucPasswordMismatch: '两次输入的新密码不一致',
+        ucPasswordTooShort: '新密码长度至少 6 位',
+        ucFillAllPasswordFields: '请填写所有密码字段',
+        ucPasswordChangeFailed: '密码修改失败',
+        ucArticleDeleted: '文章已删除',
+        ucArticleDeleteFailed: '删除失败',
+        ucDeleteConfirm: '确定删除这篇文章吗？此操作不可撤销。',
+        ucView: '查看',
+        ucEdit: '编辑',
+        ucDelete: '删除',
+        ucUntitled: '未命名文章',
+        ucNoBio: '还没有个人简介。',
+        ucUser: '普通用户',
+        ucAdmin: '管理员',
+        ucLoadingArticles: '正在读取投稿记录...',
+        ucChangeAvatar: '更换头像',
+        ucUploadAvatar: '上传头像',
+        ucReading: '阅读'
     },
     ja: {
         brand: '月読空間',
@@ -383,7 +450,73 @@ const i18n = {
         editorSaving: '保存中...',
         editorPublished: '公開しました。移動しています...',
         editorSaved: '保存しました。移動しています...',
-        editorSubmitFailed: '送信失敗：'
+        editorSubmitFailed: '送信失敗：',
+        ucTitle: 'ユーザーセンター',
+        ucNeedLogin: 'ログインが必要です',
+        ucLoginPrompt: 'ログイン後、アバター、プロフィール、投稿記事、アカウントセキュリティを管理できます。',
+        ucGoLogin: 'ログインへ',
+        ucNewPost: '新規投稿',
+        ucViewStage: 'ステージを見る',
+        ucRefresh: '情報を更新',
+        ucLogout: 'ログアウト',
+        ucMyArticles: '自分の記事',
+        ucTotalViews: '総閲覧数',
+        ucAccountRole: 'アカウント権限',
+        ucJoinDate: '参加日',
+        ucPostsTotal: '投稿総数',
+        ucArticleViews: '記事アクセス数',
+        ucPermLevel: '権限レベル',
+        ucTsukuyomiJoin: '月読参加日',
+        ucProfile: 'プロフィール',
+        ucArticlesTab: '自分の記事',
+        ucSecurity: 'セキュリティ',
+        ucUsername: 'ユーザー名',
+        ucUsernameHint: 'ユーザー名は現在フロントエンドから変更できません。',
+        ucEmail: 'メール',
+        ucBio: '自己紹介',
+        ucBioPlaceholder: '自己紹介、創作の方向性、取り組んでいるプロジェクトなど。',
+        ucSaveProfile: 'プロフィールを保存',
+        ucSearchArticles: 'タイトルまたはカテゴリで検索',
+        ucWriteNew: '新規作成',
+        ucNoArticles: '投稿記録がありません',
+        ucNoArticlesHint: '最初の記事を書いて、メインステージを輝かせましょう。',
+        ucArticleLoadFailed: '記事の読み込みに失敗しました',
+        ucProfileLoadFailed: 'プロフィールの読み込みに失敗しました',
+        ucProfileSaved: 'プロフィールを保存しました',
+        ucProfileSaveFailed: '保存に失敗しました',
+        ucAvatarUpdated: 'アバターを更新しました',
+        ucAvatarUploadFailed: 'アバターのアップロードに失敗しました',
+        ucAvatarTooBig: '画像が大きすぎます。6MB以下のファイルを選択してください',
+        ucSelectImage: '画像ファイルを選択してください',
+        ucCurrentPassword: '現在のパスワード',
+        ucCurrentPasswordPh: '現在のパスワードを入力',
+        ucNewPassword: '新しいパスワード',
+        ucNewPasswordPh: '6文字以上',
+        ucConfirmNewPassword: '新しいパスワード（確認）',
+        ucConfirmNewPasswordPh: 'もう一度入力',
+        ucChangePassword: 'パスワードを変更',
+        ucSecurityTip: 'セキュリティのヒント',
+        ucSecurityTipText: '独立したパスワードを使用し、定期的に変更することをお勧めします。公共の端末からは「ログアウト」してください。',
+        ucExitLogin: 'ログアウト',
+        ucPasswordChanged: 'パスワードを変更しました',
+        ucPasswordMismatch: '新しいパスワードが一致しません',
+        ucPasswordTooShort: 'パスワードは6文字以上必要です',
+        ucFillAllPasswordFields: 'すべてのパスワード欄を入力してください',
+        ucPasswordChangeFailed: 'パスワード変更に失敗しました',
+        ucArticleDeleted: '記事を削除しました',
+        ucArticleDeleteFailed: '削除に失敗しました',
+        ucDeleteConfirm: 'この記事を削除してもよろしいですか？この操作は取り消せません。',
+        ucView: '表示',
+        ucEdit: '編集',
+        ucDelete: '削除',
+        ucUntitled: '無題の記事',
+        ucNoBio: 'まだ自己紹介がありません。',
+        ucUser: '一般ユーザー',
+        ucAdmin: '管理者',
+        ucLoadingArticles: '投稿記録を読み込み中...',
+        ucChangeAvatar: 'アバター変更',
+        ucUploadAvatar: 'アバターアップロード',
+        ucReading: '閲覧'
     }
 };
 
@@ -907,6 +1040,218 @@ const App = {
             editor.loading = false;
         }
 
+        // --- user-center page ---
+        const uc = reactive({
+            tab: 'profile',
+            profileMsg: '',
+            profileMsgType: 'error',
+            passwordMsg: '',
+            passwordMsgType: 'error',
+            profileSaving: false,
+            passwordChanging: false,
+            articles: [],
+            articleQuery: '',
+            articleLoading: true,
+            avatarUploading: false
+        });
+
+        const ucToast = reactive({ text: '', visible: false });
+        let ucToastTimer = 0;
+
+        function ucShowToast(text) {
+            ucToast.text = text;
+            ucToast.visible = true;
+            clearTimeout(ucToastTimer);
+            ucToastTimer = setTimeout(() => { ucToast.visible = false; }, 2200);
+        }
+
+        function ucShowMessage(target, type, msg) {
+            target.msg = msg;
+            target.msgType = type;
+            clearTimeout(target._timer);
+            target._timer = setTimeout(() => { target.msg = ''; target.msgType = 'error'; }, 3200);
+        }
+
+        function ucDefaultAvatar(name) {
+            const initial = encodeURIComponent((name || '月').slice(0, 1));
+            return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23ffb7c5'/%3E%3Cstop offset='1' stop-color='%23ff6b9d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='50' fill='url(%23g)'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='42' font-family='Arial' fill='%231a1025'%3E${initial}%3C/text%3E%3C/svg%3E`;
+        }
+
+        const ucUser = ref(null);
+        const ucAvatarSrc = computed(() => ucUser.value?.avatar || ucDefaultAvatar(ucUser.value?.username));
+        const ucRoleText = computed(() => {
+            if (!ucUser.value) return '';
+            return ucUser.value.role === 'admin' ? t.value.ucAdmin : t.value.ucUser;
+        });
+        const ucArticlesCount = computed(() => uc.articles.length.toLocaleString(lang.value === 'zh' ? 'zh-CN' : 'ja-JP'));
+        const ucTotalViews = computed(() => {
+            const total = uc.articles.reduce((sum, a) => sum + Number(a.view_count || 0), 0);
+            return total.toLocaleString(lang.value === 'zh' ? 'zh-CN' : 'ja-JP');
+        });
+        const ucJoinDate = computed(() => {
+            if (!ucUser.value?.created_at) return '-';
+            return new Date(ucUser.value.created_at).toLocaleDateString(lang.value === 'zh' ? 'zh-CN' : 'ja-JP');
+        });
+
+        const ucFilteredArticles = computed(() => {
+            if (!uc.articleQuery) return uc.articles;
+            const q = uc.articleQuery.toLowerCase();
+            return uc.articles.filter(a => `${a.title || ''} ${a.category || ''}`.toLowerCase().includes(q));
+        });
+
+        function ucFormatDate(value) {
+            if (!value) return '-';
+            return new Date(value).toLocaleDateString(lang.value === 'zh' ? 'zh-CN' : 'ja-JP');
+        }
+
+        async function ucLoadProfile() {
+            const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+            if (!token) return;
+            try {
+                const res = await fetch('/api/user/profile', { headers: { Authorization: 'Bearer ' + token } });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.ucProfileLoadFailed);
+                ucUser.value = result.data;
+                localStorage.setItem('tsukuyomi_user', JSON.stringify(result.data));
+            } catch (e) {
+                ucShowToast(e.message || t.value.ucProfileLoadFailed);
+            }
+        }
+
+        async function ucLoadArticles() {
+            uc.articleLoading = true;
+            const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+            if (!token) { uc.articleLoading = false; return; }
+            try {
+                const res = await fetch('/api/user/articles', { headers: { Authorization: 'Bearer ' + token } });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.ucArticleLoadFailed);
+                uc.articles = result.data || [];
+            } catch (e) {
+                uc.articles = [];
+                ucShowToast(e.message || t.value.ucArticleLoadFailed);
+            } finally {
+                uc.articleLoading = false;
+            }
+        }
+
+        async function ucRefresh() {
+            await Promise.all([ucLoadProfile(), ucLoadArticles()]);
+        }
+
+        async function ucSaveProfile() {
+            const bioEl = document.getElementById('ucBioInput');
+            const bio = bioEl?.value?.trim() || '';
+            uc.profileSaving = true;
+            try {
+                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+                const res = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ bio })
+                });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.ucProfileSaveFailed);
+                if (ucUser.value) ucUser.value.bio = bio;
+                localStorage.setItem('tsukuyomi_user', JSON.stringify(ucUser.value));
+                ucShowMessage(uc, 'profile', t.value.ucProfileSaved);
+                ucShowToast(t.value.ucProfileSaved);
+            } catch (e) {
+                ucShowMessage(uc, 'profile', e.message || t.value.ucProfileSaveFailed);
+            } finally {
+                uc.profileSaving = false;
+            }
+        }
+
+        async function ucUploadAvatar(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) return ucShowToast(t.value.ucSelectImage);
+            if (file.size > 6 * 1024 * 1024) return ucShowToast(t.value.ucAvatarTooBig);
+            uc.avatarUploading = true;
+            try {
+                const avatar = await compressImage(file, 420, 420, 0.82);
+                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+                const res = await fetch('/api/user/avatar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ avatar })
+                });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.ucAvatarUploadFailed);
+                if (ucUser.value) ucUser.value.avatar = avatar;
+                localStorage.setItem('tsukuyomi_user', JSON.stringify(ucUser.value));
+                ucShowToast(t.value.ucAvatarUpdated);
+            } catch (err) {
+                ucShowToast(err.message || t.value.ucAvatarUploadFailed);
+            } finally {
+                uc.avatarUploading = false;
+                e.target.value = '';
+            }
+        }
+
+        async function ucChangePassword() {
+            const currentPassword = document.getElementById('ucCurrentPassword')?.value || '';
+            const newPassword = document.getElementById('ucNewPassword')?.value || '';
+            const confirmPassword = document.getElementById('ucConfirmPassword')?.value || '';
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                return ucShowMessage(uc, 'password', t.value.ucFillAllPasswordFields);
+            }
+            if (newPassword !== confirmPassword) {
+                return ucShowMessage(uc, 'password', t.value.ucPasswordMismatch);
+            }
+            if (newPassword.length < 6) {
+                return ucShowMessage(uc, 'password', t.value.ucPasswordTooShort);
+            }
+            uc.passwordChanging = true;
+            try {
+                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+                const res = await fetch('/api/user/password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.ucPasswordChangeFailed);
+                document.getElementById('ucCurrentPassword').value = '';
+                document.getElementById('ucNewPassword').value = '';
+                document.getElementById('ucConfirmPassword').value = '';
+                ucShowMessage(uc, 'password', t.value.ucPasswordChanged);
+                ucShowToast(t.value.ucPasswordChanged);
+            } catch (err) {
+                ucShowMessage(uc, 'password', err.message || t.value.ucPasswordChangeFailed);
+            } finally {
+                uc.passwordChanging = false;
+            }
+        }
+
+        async function ucDeleteArticle(id) {
+            if (!confirm(t.value.ucDeleteConfirm)) return;
+            const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+            try {
+                const res = await fetch(`/api/user/articles/${id}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bearer ' + token }
+                });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.ucArticleDeleteFailed);
+                ucShowToast(t.value.ucArticleDeleted);
+                await ucLoadArticles();
+            } catch (err) {
+                ucShowToast(err.message || t.value.ucArticleDeleteFailed);
+            }
+        }
+
+        function ucEditArticle(id) {
+            pushRoute('/editor?id=' + id);
+        }
+
+        function initUserCenter() {
+            if (isAuthed.value) {
+                ucRefresh();
+            }
+        }
+
         function plazaFormatUptime(seconds) {
             const total = Math.floor(Number(seconds || 0));
             const days = Math.floor(total / 86400);
@@ -1080,6 +1425,7 @@ const App = {
             if (route.value === 'stage') loadArticles();
             if (route.value === 'plaza') refreshPlaza();
             if (route.value === 'editor') initEditor();
+            if (route.value === 'userCenter') initUserCenter();
         });
 
         watch(route, (nextRoute) => {
@@ -1087,6 +1433,7 @@ const App = {
             if (nextRoute === 'stage') loadArticles();
             if (nextRoute === 'plaza') refreshPlaza();
             if (nextRoute === 'editor') initEditor();
+            if (nextRoute === 'userCenter') initUserCenter();
         });
 
         return {
@@ -1137,7 +1484,24 @@ const App = {
             editor,
             handleEditorCoverUpload,
             removeEditorCover,
-            handleEditorSubmit
+            handleEditorSubmit,
+            uc,
+            ucAvatarSrc,
+            ucChangePassword,
+            ucDeleteArticle,
+            ucEditArticle,
+            ucFilteredArticles,
+            ucFormatDate,
+            ucJoinDate,
+            ucRoleText,
+            ucSaveProfile,
+            ucShowMessage,
+            ucShowToast,
+            ucToast,
+            ucTotalViews,
+            ucArticlesCount,
+            ucUploadAvatar,
+            ucUser
         };
     },
     template: `
@@ -1640,6 +2004,157 @@ const App = {
                         </div>
                     </form>
                 </div>
+            </main>
+
+            <main v-else-if="route === 'userCenter'" class="page uc-page">
+                <div v-if="!isAuthed" class="panel uc-login-notice">
+                    <div style="text-align:center;">
+                        <div class="uc-eyebrow">User Center</div>
+                        <h1>{{ t.ucNeedLogin }}</h1>
+                        <p>{{ t.ucLoginPrompt }}</p>
+                        <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.ucGoLogin }}</a>
+                    </div>
+                </div>
+
+                <template v-else>
+                    <section class="uc-hero">
+                        <div class="uc-avatar-block">
+                            <div class="uc-avatar-upload" @click="document.getElementById('ucAvatarInput').click()" :title="t.ucChangeAvatar">
+                                <img :src="ucAvatarSrc" alt="">
+                            </div>
+                            <input type="file" id="ucAvatarInput" accept="image/*" style="display:none;" @change="ucUploadAvatar">
+                            <button class="ghost-btn" @click="document.getElementById('ucAvatarInput').click()">{{ t.ucUploadAvatar }}</button>
+                        </div>
+                        <div class="uc-hero-info">
+                            <div class="uc-role-badge">{{ ucRoleText }}</div>
+                            <h1 class="uc-username">{{ ucUser?.username || '-' }}</h1>
+                            <div class="uc-email">{{ ucUser?.email || '-' }}</div>
+                            <p class="uc-bio-preview">{{ ucUser?.bio || t.ucNoBio }}</p>
+                        </div>
+                        <div class="uc-hero-actions">
+                            <a class="primary-btn" href="/editor" @click.prevent="go('/editor')">{{ t.ucNewPost }}</a>
+                            <a class="ghost-btn" href="/stage" @click.prevent="go('/stage')">{{ t.ucViewStage }}</a>
+                            <button class="ghost-btn" @click="ucRefresh">{{ t.ucRefresh }}</button>
+                            <button class="danger-btn" @click="logout">{{ t.ucLogout }}</button>
+                        </div>
+                    </section>
+
+                    <section class="uc-stats">
+                        <div class="uc-stat-card"><div class="uc-stat-label">{{ t.ucMyArticles }}</div><div class="uc-stat-value">{{ ucArticlesCount }}</div><div class="uc-stat-note">{{ t.ucPostsTotal }}</div></div>
+                        <div class="uc-stat-card"><div class="uc-stat-label">{{ t.ucTotalViews }}</div><div class="uc-stat-value">{{ ucTotalViews }}</div><div class="uc-stat-note">{{ t.ucArticleViews }}</div></div>
+                        <div class="uc-stat-card"><div class="uc-stat-label">{{ t.ucAccountRole }}</div><div class="uc-stat-value">{{ ucRoleText }}</div><div class="uc-stat-note">{{ t.ucPermLevel }}</div></div>
+                        <div class="uc-stat-card"><div class="uc-stat-label">{{ t.ucJoinDate }}</div><div class="uc-stat-value">{{ ucJoinDate }}</div><div class="uc-stat-note">{{ t.ucTsukuyomiJoin }}</div></div>
+                    </section>
+
+                    <section class="uc-layout">
+                        <aside class="panel uc-tabs-panel">
+                            <div class="uc-tabs">
+                                <button class="tab-btn" :class="{ active: uc.tab === 'profile' }" @click="uc.tab = 'profile'">{{ t.ucProfile }} <small>Profile</small></button>
+                                <button class="tab-btn" :class="{ active: uc.tab === 'articles' }" @click="uc.tab = 'articles'">{{ t.ucArticlesTab }} <small>Posts</small></button>
+                                <button class="tab-btn" :class="{ active: uc.tab === 'security' }" @click="uc.tab = 'security'">{{ t.ucSecurity }} <small>Security</small></button>
+                            </div>
+                        </aside>
+
+                        <section class="panel uc-content-panel">
+                            <div v-if="uc.tab === 'profile'">
+                                <div class="uc-section-head">
+                                    <h2 class="uc-section-title"><span>01</span> {{ t.ucProfile }}</h2>
+                                </div>
+                                <div v-if="uc.profileMsg" class="form-message" :class="uc.profileMsgType">{{ uc.profileMsg }}</div>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label>{{ t.ucUsername }}</label>
+                                        <input type="text" disabled :value="ucUser?.username || ''">
+                                        <div class="help-text">{{ t.ucUsernameHint }}</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>{{ t.ucEmail }}</label>
+                                        <input type="email" disabled :value="ucUser?.email || ''">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>{{ t.ucBio }}</label>
+                                        <textarea id="ucBioInput" maxlength="300" :placeholder="t.ucBioPlaceholder">{{ ucUser?.bio || '' }}</textarea>
+                                        <div class="help-text">{{ ucUser?.bio?.length || 0 }} / 300</div>
+                                    </div>
+                                    <div>
+                                        <button class="primary-btn" :disabled="uc.profileSaving" @click="ucSaveProfile">{{ t.ucSaveProfile }}</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="uc.tab === 'articles'">
+                                <div class="uc-section-head">
+                                    <h2 class="uc-section-title"><span>02</span> {{ t.ucArticlesTab }}</h2>
+                                    <div class="uc-article-tools">
+                                        <input class="uc-search" v-model="uc.articleQuery" type="search" :placeholder="t.ucSearchArticles">
+                                        <a class="primary-btn" href="/editor" @click.prevent="go('/editor')">{{ t.ucWriteNew }}</a>
+                                    </div>
+                                </div>
+                                <div v-if="uc.articleLoading" class="uc-empty">{{ t.ucLoadingArticles }}</div>
+                                <div v-else-if="!ucFilteredArticles.length" class="uc-empty">
+                                    <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">{{ t.ucNoArticles }}</div>
+                                    <div style="margin-bottom:1rem;">{{ t.ucNoArticlesHint }}</div>
+                                    <a class="primary-btn" href="/editor" @click.prevent="go('/editor')">{{ t.ucNewPost }}</a>
+                                </div>
+                                <div v-else class="uc-article-list">
+                                    <article v-for="a in ucFilteredArticles" :key="a.id" class="uc-article-item">
+                                        <div>
+                                            <div class="uc-article-title">{{ a.title || t.ucUntitled }}</div>
+                                            <div class="uc-article-meta">
+                                                <span class="uc-status-pill">{{ a.status || 'published' }}</span>
+                                                <span>{{ a.category || '' }}</span>
+                                                <span>{{ t.ucReading }} {{ (a.view_count || 0).toLocaleString() }}</span>
+                                                <span>{{ ucFormatDate(a.created_at) }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="uc-article-actions">
+                                            <a class="icon-btn" :href="'/pages/article?id=' + a.id" target="_blank">{{ t.ucView }}</a>
+                                            <button class="icon-btn" @click="ucEditArticle(a.id)">{{ t.ucEdit }}</button>
+                                            <button class="danger-btn" @click="ucDeleteArticle(a.id)">{{ t.ucDelete }}</button>
+                                        </div>
+                                    </article>
+                                </div>
+                            </div>
+
+                            <div v-if="uc.tab === 'security'">
+                                <div class="uc-section-head">
+                                    <h2 class="uc-section-title"><span>03</span> {{ t.ucSecurity }}</h2>
+                                </div>
+                                <div v-if="uc.passwordMsg" class="form-message" :class="uc.passwordMsgType">{{ uc.passwordMsg }}</div>
+                                <div class="uc-security-grid">
+                                    <div>
+                                        <div class="form-grid">
+                                            <div class="form-group">
+                                                <label>{{ t.ucCurrentPassword }}</label>
+                                                <input type="password" id="ucCurrentPassword" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>{{ t.ucNewPassword }}</label>
+                                                <input type="password" id="ucNewPassword" autocomplete="new-password" :placeholder="t.ucNewPasswordPh">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>{{ t.ucConfirmNewPassword }}</label>
+                                                <input type="password" id="ucConfirmPassword" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
+                                            </div>
+                                            <div>
+                                                <button class="primary-btn" :disabled="uc.passwordChanging" @click="ucChangePassword">{{ t.ucChangePassword }}</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <aside class="uc-security-card">
+                                        <h3>{{ t.ucSecurityTip }}</h3>
+                                        <p>{{ t.ucSecurityTipText }}</p>
+                                        <div style="margin-top:1rem;">
+                                            <button class="danger-btn" @click="logout">{{ t.ucExitLogin }}</button>
+                                        </div>
+                                    </aside>
+                                </div>
+                            </div>
+                        </section>
+                    </section>
+                </template>
+
+                <div v-if="ucToast.visible" class="plaza-toast show">{{ ucToast.text }}</div>
             </main>
         </div>
     `
