@@ -361,7 +361,7 @@ onMounted(() => {
                   </div>
                 </div>
                 <div class="uc-article-actions">
-                  <a class="icon-btn" :href="'/pages/article?id=' + article.id" target="_blank">{{ t.ucView }}</a>
+                  <a class="icon-btn" :href="'/article?id=' + article.id" @click.prevent="go('/article?id=' + article.id)">{{ t.ucView }}</a>
                   <button class="icon-btn" type="button" @click="ucEditArticle(article.id)">{{ t.ucEdit }}</button>
                   <button class="danger-btn" type="button" @click="ucDeleteArticle(article.id)">{{ t.ucDelete }}</button>
                 </div>

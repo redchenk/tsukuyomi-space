@@ -41,9 +41,9 @@ npm start
 
 - 首页：`http://38.76.173.139:3280/`
 - 中枢大厅：`http://38.76.173.139:3280/hub`
-- 私人居所：`http://38.76.173.139:3280/pages/room`
+- 私人居所：`http://38.76.173.139:3280/room`
 - 月读广场：`http://38.76.173.139:3280/plaza`
-- 数据终端：`http://38.76.173.139:3280/pages/terminal`
+- 数据终端：`http://38.76.173.139:3280/terminal`
 - 健康检查：`http://38.76.173.139:3280/api/health`
 
 ## 项目结构
@@ -57,7 +57,6 @@ tsukuyomi-space/
 ├── dist/frontend/   # npm run build:web 生成的 Vue 前端产物
 ├── lib/             # Live2D / 前端运行库
 ├── models/          # Live2D 模型资源
-├── pages/           # 仍独立运行的静态页面，如 room / article / terminal
 ├── src/frontend/    # Vue 3 + Vite 主线前端源码
 ├── .env.example     # 生产环境变量模板
 └── package.json     # 项目脚本与依赖

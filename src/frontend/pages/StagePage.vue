@@ -96,8 +96,9 @@ onMounted(loadArticles);
       <a
         v-for="article in filteredArticles"
         :key="article.id"
-        :href="'/pages/article?id=' + article.id"
+        :href="'/article?id=' + article.id"
         class="stage-card"
+        @click.prevent="$emit('go', '/article?id=' + article.id)"
       >
         <div class="stage-card-body">
           <div class="stage-card-meta">

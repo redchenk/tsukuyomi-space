@@ -1,0 +1,242 @@
+.terminal-page {
+    min-height: 100vh;
+}
+
+.terminal-auth {
+    min-height: calc(100vh - 10rem);
+    display: grid;
+    place-items: center;
+}
+
+.terminal-card,
+.terminal-panel,
+.terminal-sidebar,
+.terminal-topbar {
+    border: 1px solid rgba(126, 219, 232, 0.2);
+    border-radius: 8px;
+    background: rgba(10, 12, 22, 0.76);
+    backdrop-filter: blur(14px);
+}
+
+.terminal-login-card {
+    width: min(100%, 440px);
+    display: grid;
+    gap: 1rem;
+    padding: 1.6rem;
+}
+
+.terminal-login-card h1 {
+    margin: 0;
+    color: #7edbe8;
+}
+
+.terminal-login-card p {
+    margin: 0;
+    color: rgba(225, 236, 246, 0.62);
+}
+
+.terminal-shell {
+    width: min(100%, 1440px);
+    margin: 0 auto;
+}
+
+.terminal-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+.terminal-topbar strong,
+.terminal-panel h2 {
+    color: #7edbe8;
+}
+
+.terminal-topbar span,
+.terminal-session span {
+    color: rgba(225, 236, 246, 0.62);
+    font-size: 0.86rem;
+}
+
+.terminal-session,
+.terminal-actions,
+.terminal-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.terminal-layout {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 1rem;
+}
+
+.terminal-sidebar {
+    position: sticky;
+    top: 1rem;
+    height: fit-content;
+    padding: 0.75rem;
+}
+
+.terminal-nav-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 42px;
+    margin-bottom: 0.35rem;
+    padding: 0 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: rgba(245, 250, 255, 0.9);
+    background: transparent;
+    cursor: pointer;
+}
+
+.terminal-nav-btn:hover,
+.terminal-nav-btn.active {
+    border-color: rgba(255, 183, 197, 0.36);
+    background: rgba(255, 183, 197, 0.08);
+}
+
+.terminal-panel {
+    min-height: 640px;
+    padding: 1rem;
+}
+
+.terminal-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.terminal-panel-head h2 {
+    margin: 0;
+}
+
+.terminal-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+
+.terminal-card {
+    padding: 1rem;
+}
+
+.terminal-card strong {
+    display: block;
+    margin-bottom: 0.6rem;
+    color: rgba(225, 236, 246, 0.62);
+    font-size: 0.86rem;
+}
+
+.terminal-card span {
+    color: #7edbe8;
+    font-size: 2rem;
+    font-weight: 800;
+}
+
+.terminal-table-wrap {
+    overflow: auto;
+    border: 1px solid rgba(126, 219, 232, 0.14);
+    border-radius: 8px;
+}
+
+.terminal-table-wrap table {
+    width: 100%;
+    min-width: 780px;
+    border-collapse: collapse;
+}
+
+.terminal-table-wrap th,
+.terminal-table-wrap td {
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(126, 219, 232, 0.1);
+    color: rgba(245, 250, 255, 0.86);
+    text-align: left;
+    vertical-align: top;
+}
+
+.terminal-table-wrap th {
+    color: #7edbe8;
+    background: rgba(126, 219, 232, 0.055);
+}
+
+.terminal-badge {
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    padding: 0 0.5rem;
+    border: 1px solid rgba(126, 219, 232, 0.24);
+    border-radius: 999px;
+    color: rgba(225, 236, 246, 0.7);
+    font-size: 0.78rem;
+}
+
+.terminal-badge.ok {
+    color: #8ff0b1;
+    border-color: rgba(143, 240, 177, 0.42);
+}
+
+.terminal-badge.warn {
+    color: #f5d76e;
+    border-color: rgba(245, 215, 110, 0.42);
+}
+
+.terminal-badge.hot {
+    color: #ffb7c5;
+    border-color: rgba(255, 183, 197, 0.42);
+}
+
+.terminal-empty {
+    padding: 1rem;
+    color: rgba(225, 236, 246, 0.62);
+}
+
+.terminal-toolbar {
+    margin-bottom: 1rem;
+}
+
+.terminal-toolbar input {
+    flex: 1 1 220px;
+}
+
+.terminal-settings {
+    display: grid;
+    gap: 1rem;
+}
+
+.terminal-settings textarea {
+    min-height: 140px;
+}
+
+.terminal-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.terminal-check input {
+    width: auto;
+}
+
+@media (max-width: 920px) {
+    .terminal-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .terminal-sidebar {
+        position: static;
+    }
+
+    .terminal-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

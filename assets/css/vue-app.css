@@ -4,6 +4,7 @@
 @import url("./vue/pages/hub.css");
 @import url("./vue/forms.css");
 @import url("./vue/pages/stage.css");
+@import url("./vue/pages/article.css");
 @import url("./vue/controls.css");
 @import url("./vue/pages/plaza.css");
 @import url("./vue/responsive.css");
@@ -11,3 +12,4 @@
 @import url("./vue/pages/editor.css");
 @import url("./vue/pages/user-center.css");
 @import url("./vue/pages/room.css");
+@import url("./vue/pages/terminal.css");

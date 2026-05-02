@@ -1,0 +1,162 @@
+.article-page {
+    min-height: 100vh;
+}
+
+.article-shell {
+    width: min(100%, 920px);
+    margin: 0 auto;
+}
+
+.article-back {
+    margin-bottom: 1.2rem;
+}
+
+.article-status,
+.article-empty {
+    padding: 2rem;
+    color: rgba(225, 236, 246, 0.72);
+    text-align: center;
+}
+
+.article-reader {
+    display: grid;
+    gap: 1.4rem;
+}
+
+.article-hero {
+    display: grid;
+    gap: 0.8rem;
+    padding-bottom: 1.4rem;
+    border-bottom: 1px solid rgba(255, 183, 197, 0.18);
+}
+
+.article-kicker {
+    width: fit-content;
+    padding: 0.32rem 0.7rem;
+    border: 1px solid rgba(126, 219, 232, 0.28);
+    border-radius: 999px;
+    color: #7edbe8;
+    font-size: 0.78rem;
+}
+
+.article-hero h1 {
+    margin: 0;
+    color: #fff;
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 500;
+    line-height: 1.08;
+}
+
+.article-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    color: rgba(225, 236, 246, 0.62);
+    font-size: 0.86rem;
+}
+
+.article-cover {
+    width: 100%;
+    max-height: 460px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.article-content,
+.comments-section {
+    border: 1px solid rgba(255, 183, 197, 0.16);
+    border-radius: 8px;
+    background: rgba(10, 12, 22, 0.68);
+    backdrop-filter: blur(14px);
+}
+
+.article-content {
+    padding: clamp(1.2rem, 4vw, 2.2rem);
+    color: rgba(245, 250, 255, 0.9);
+    line-height: 1.9;
+}
+
+.article-content h2,
+.article-content h3 {
+    color: #ffb7c5;
+    line-height: 1.35;
+}
+
+.article-content p,
+.comment-item p {
+    margin: 0 0 1rem;
+}
+
+.article-content code {
+    padding: 0.14rem 0.38rem;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.32);
+}
+
+.comments-section {
+    padding: clamp(1rem, 3vw, 1.5rem);
+}
+
+.comments-head,
+.comment-header,
+.comment-actions,
+.comment-tools,
+.comment-login {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.comments-head h2 {
+    margin: 0;
+    color: #ffb7c5;
+}
+
+.comment-form,
+.comment-login {
+    margin: 1rem 0 1.2rem;
+}
+
+.comment-input {
+    min-height: 92px;
+    resize: vertical;
+}
+
+.comment-list,
+.reply-list {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.comment-item {
+    padding: 1rem;
+    border: 1px solid rgba(126, 219, 232, 0.14);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.comment-header strong {
+    color: #ffb7c5;
+}
+
+.comment-header span {
+    color: rgba(225, 236, 246, 0.48);
+    font-size: 0.78rem;
+}
+
+.comment-tools {
+    justify-content: flex-start;
+}
+
+.reply-form,
+.reply-list {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(255, 183, 197, 0.12);
+}
+
+.reply-item {
+    background: rgba(126, 219, 232, 0.04);
+}

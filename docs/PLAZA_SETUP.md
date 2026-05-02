@@ -30,8 +30,8 @@
 console.log(document.querySelector('[data-name="discussion-repo-id"]')?.value);
 ```
 
-### 4. 修改 plaza.html 配置
-编辑 `/var/www/tsukuyomi-space/pages/plaza.html`，找到 `initGiscus()` 函数：
+### 4. 修改 Vue Plaza 配置
+编辑 `src/frontend/pages/PlazaPage.vue` 中对应的广场配置：
 
 ```javascript
 script.setAttribute('data-repo', 'redchenk/tsukuyomi-space');
@@ -51,12 +51,12 @@ script.setAttribute('data-category-id', '你的 Category ID');  // 替换这里
 ## 🔗 友链配置
 
 ### 方式一：通过管理后台添加
-1. 登录管理后台：`http://youri p:3280/pages/terminal.html`
+1. 登录管理后台：`http://yourip:3280/terminal`
 2. 进入「友链管理」
 3. 添加友链信息
 
 ### 方式二：修改代码
-编辑 `plaza.html` 中的 `loadFriends()` 函数，修改 `defaultFriends` 数组：
+编辑 `src/frontend/pages/PlazaPage.vue` 中的 `friends` 数组：
 
 ```javascript
 const defaultFriends = [
@@ -88,7 +88,7 @@ const defaultFriends = [
 ## 🎨 视觉定制
 
 ### 修改主题色
-编辑 `plaza.html` 的 `:root` CSS 变量：
+编辑 `assets/css/vue/pages/plaza.css` 的相关 CSS 变量：
 
 ```css
 :root {
@@ -103,7 +103,7 @@ const defaultFriends = [
 
 ## 🚀 部署检查清单
 
-- [ ] 上传 plaza.html 到服务器
+- [ ] 运行 `npm run build:web` 并部署 Vue 前端产物
 - [ ] 配置 Giscus Repo ID 和 Category ID
 - [ ] 启用 GitHub Discussions
 - [ ] 测试留言墙是否正常显示
