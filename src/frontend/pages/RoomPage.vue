@@ -4,10 +4,9 @@ import { onBeforeUnmount, onMounted } from 'vue';
 defineEmits(['go']);
 
 const scripts = [
-  '/assets/js/ambient-fish.js?v=20260502-vue-room2',
+  '/assets/js/ambient-fish.js?v=20260502-vue-room3',
   '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260502-vue-room2',
-  '/assets/js/room-runtime.js?v=20260502-vue-room2'
+  '/assets/js/room-runtime.js?v=20260502-vue-room3'
 ];
 
 function loadScript(src, options = {}) {
@@ -38,10 +37,14 @@ function loadScript(src, options = {}) {
 
 onMounted(async () => {
   document.body.classList.add('vue-room-route');
-  window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
+  window.TSUKUYOMI_EXTERNAL_LIVE2D = false;
+  window.LAppDelegate?.releaseInstance?.();
+
+  const container = document.getElementById('live2d-container');
+  container?.querySelectorAll('canvas:not(#live2d-canvas)').forEach((node) => node.remove());
 
   for (const src of scripts) {
-    await loadScript(src, { reload: src.includes('live2d-room.iife.js') });
+    await loadScript(src);
   }
 
   window.initTsukuyomiRoomRuntime?.();
@@ -79,7 +82,9 @@ onBeforeUnmount(() => {
         <p>Live2D Room</p>
         <h1>&#20843;&#21315;&#20195;&#36745;&#22812;&#23020;&#27491;&#22312;&#25151;&#38388;&#37324;&#31561;&#20320;</h1>
       </div>
-      <div id="live2d-container" class="room-live2d-container"></div>
+      <div id="live2d-container" class="room-live2d-container">
+        <canvas id="live2d-canvas" aria-label="Live2D"></canvas>
+      </div>
     </section>
 
     <div class="panel-controls room-dock" aria-label="&#25151;&#38388;&#24037;&#20855;">
