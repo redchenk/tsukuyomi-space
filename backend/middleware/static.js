@@ -22,7 +22,7 @@ function serveStaticFiles(app) {
             return res.sendFile(resolvedHtmlPath);
         }
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage']);
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/plaza']);
         if (vueRoutes.has(req.path)) {
             return res.sendFile(path.join(publicRoot, 'index.html'));
         }

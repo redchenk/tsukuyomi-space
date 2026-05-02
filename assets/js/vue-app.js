@@ -6,7 +6,8 @@ const routes = {
     '/hub': 'hub',
     '/login': 'login',
     '/register': 'register',
-    '/stage': 'stage'
+    '/stage': 'stage',
+    '/plaza': 'plaza'
 };
 
 const i18n = {
@@ -74,6 +75,64 @@ const i18n = {
         noArticles: '暂无文章',
         loadFailed: '加载失败',
         loginRequired: '请先登录后再投稿文章！',
+        plazaTitle: '月读广场',
+        plazaSubtitle: '访客、创作者和路过的观测者在这里交换留言。把它当作月读空间的公共频道：简短问候、友链申请、反馈和灵感都可以落在这里。',
+        plazaEyebrow: 'Tsukuyomi Plaza',
+        channelStatus: '当前频道',
+        channelValue: '公共留言墙',
+        plazaStatusLabel: '广场状态',
+        online: '在线',
+        syncing: '同步中',
+        statsOffline: '统计不可用',
+        statsArticles: '站内文章',
+        statsArticlesNote: '主舞台内容池',
+        statsUsers: '注册访客',
+        statsUsersNote: '已接入月读空间',
+        statsMessages: '广场留言',
+        statsMessagesNote: '包含回复与互动',
+        statsUptime: '服务运行',
+        statsUptimeNote: '后端在线时长',
+        wallTitle: '留言墙',
+        refresh: '刷新',
+        filterLatest: '最新',
+        filterHot: '高赞',
+        filterReplied: '有回复',
+        filterMine: '我的',
+        composerPlaceholder: '写下你的留言...',
+        composerHint: 'Enter 换行，发布后会同步到广场。',
+        publish: '发布留言',
+        publishReply: '发布回复',
+        cancel: '取消',
+        reply: '回复',
+        like: '喜欢',
+        copyLink: '复制链接',
+        linkCopied: '留言链接已复制',
+        guestMode: '访客模式',
+        guestDesc: '当前可以浏览留言。登录后可发布、回复与点赞。',
+        goLogin: '去登录',
+        loggedInDesc: '已接入广场频道。你可以发布留言、回复访客和为留言点赞。',
+        loginToPost: '登录后开放留言终端',
+        loginToPostDesc: '发布问候、反馈或友链申请都会出现在广场留言墙。',
+        noMessages: '还没有匹配的留言',
+        noMessagesHint: '换个筛选条件，或者发布第一条广场消息。',
+        connecting: '正在连接广场频道...',
+        plazaJustOpened: '广场刚刚开放，等待第一条动态。',
+        msgPublished: '留言已发布',
+        replyPublished: '回复已发布',
+        alreadyLiked: '你已经喜欢过这条留言',
+        likedToast: '已点亮留言',
+        loadFailed: '留言加载失败，请稍后再试',
+        publishFailed: '发布失败',
+        replyFailed: '回复失败',
+        likeFailed: '点赞失败',
+        contentRequired: '留言内容不能为空',
+        replyContentRequired: '回复内容不能为空',
+        residents: '常驻访客',
+        activity: '广场动态',
+        rulesTitle: '留言约定',
+        rule1: '保持友好，避免刷屏和敏感信息。',
+        rule2: '友链申请请留下站点名、地址和简短介绍。',
+        rule3: '反馈问题时尽量写清页面、操作和现象。',
         unknown: '未知错误',
         failedPrefix: '请求失败：'
     },
@@ -129,6 +188,64 @@ const i18n = {
         registerSuccess: '登録成功。移動しています...',
         codeSent: '認証コードを送信しました',
         passwordMismatch: 'パスワードが一致しません',
+        plazaTitle: '月読広場',
+        plazaSubtitle: '訪問者、クリエイター、通りすがりの観測者がメッセージを交わす場所です。月読空間のパブリックチャンネルとしてお使いください。',
+        plazaEyebrow: 'Tsukuyomi Plaza',
+        channelStatus: '現在のチャンネル',
+        channelValue: 'パブリック掲示板',
+        plazaStatusLabel: '広場の状態',
+        online: 'オンライン',
+        syncing: '同期中',
+        statsOffline: '統計オフライン',
+        statsArticles: '記事数',
+        statsArticlesNote: 'メインステージのコンテンツ',
+        statsUsers: '登録ユーザー',
+        statsUsersNote: '月読空間に接続済み',
+        statsMessages: '広場のメッセージ',
+        statsMessagesNote: '返信とリアクションを含む',
+        statsUptime: '稼働時間',
+        statsUptimeNote: 'バックエンドの稼働時間',
+        wallTitle: 'メッセージウォール',
+        refresh: '更新',
+        filterLatest: '最新',
+        filterHot: '人気',
+        filterReplied: '返信あり',
+        filterMine: '自分の',
+        composerPlaceholder: 'メッセージを書く...',
+        composerHint: 'Enterで改行、投稿後に広場に同期されます。',
+        publish: '投稿する',
+        publishReply: '返信する',
+        cancel: 'キャンセル',
+        reply: '返信',
+        like: 'いいね',
+        copyLink: 'リンクコピー',
+        linkCopied: 'リンクをコピーしました',
+        guestMode: 'ゲストモード',
+        guestDesc: 'メッセージの閲覧が可能です。ログインすると投稿・返信・いいねができます。',
+        goLogin: 'ログイン',
+        loggedInDesc: '広場チャンネルに接続済みです。メッセージの投稿、返信、いいねができます。',
+        loginToPost: 'ログインして投稿端末を開く',
+        loginToPostDesc: '挨拶、フィードバック、友達リンク申請などが広場に表示されます。',
+        noMessages: '一致するメッセージがありません',
+        noMessagesHint: 'フィルターを変更するか、最初のメッセージを投稿してください。',
+        connecting: '広場チャンネルに接続中...',
+        plazaJustOpened: '広場は開設されたばかりです。最初の投稿をお待ちしています。',
+        msgPublished: 'メッセージを投稿しました',
+        replyPublished: '返信を投稿しました',
+        alreadyLiked: 'すでにいいねしています',
+        likedToast: 'いいねしました',
+        loadFailed: 'メッセージの読み込みに失敗しました',
+        publishFailed: '投稿に失敗しました',
+        replyFailed: '返信に失敗しました',
+        likeFailed: 'いいねに失敗しました',
+        contentRequired: 'メッセージを入力してください',
+        replyContentRequired: '返信内容を入力してください',
+        residents: '常駐メンバー',
+        activity: '広場の動き',
+        rulesTitle: '広場のルール',
+        rule1: '友好的に、スパムや機密情報の投稿はお控えください。',
+        rule2: '友達リンク申請はサイト名、URL、簡単な紹介を添えてください。',
+        rule3: 'フィードバックはページ、操作内容、現象を具体的にお書きください。',
         unknown: '不明なエラー',
         failedPrefix: 'リクエスト失敗：',
         stageTitle: 'メインステージ',
@@ -182,7 +299,63 @@ function countdown(buttonState, label) {
     }, 1000);
 }
 
+const PlazaComposer = {
+    props: ['t', 'onSubmit'],
+    setup(props) {
+        const text = ref('');
+        const charCount = computed(() => `${text.value.length} / 300`);
+        function insert(prefix) { text.value = `${prefix} ${text.value}`.slice(0, 300); }
+        async function submit() {
+            const ok = await props.onSubmit(text.value);
+            if (ok) text.value = '';
+        }
+        return { text, charCount, insert, submit };
+    },
+    template: `
+        <div>
+            <div class="plaza-composer-top">
+                <span>发布一条新的广场留言</span>
+                <span class="plaza-char-count">{{ charCount }}</span>
+            </div>
+            <textarea class="plaza-textarea" v-model="text" maxlength="300" :placeholder="t.composerPlaceholder"></textarea>
+            <div class="plaza-moods">
+                <button class="chip" type="button" @click="insert('【问候】')">问候</button>
+                <button class="chip" type="button" @click="insert('【反馈】')">反馈</button>
+                <button class="chip" type="button" @click="insert('【友链】')">友链</button>
+                <button class="chip" type="button" @click="insert('【灵感】')">灵感</button>
+            </div>
+            <div class="plaza-composer-actions">
+                <span class="plaza-char-count">{{ t.composerHint }}</span>
+                <button class="primary-btn" @click="submit">{{ t.publish }}</button>
+            </div>
+        </div>
+    `
+};
+
+const PlazaReplyForm = {
+    props: ['t', 'msgId', 'onSubmit'],
+    emits: ['cancel'],
+    setup(props, { emit }) {
+        const text = ref('');
+        async function submit() {
+            const ok = await props.onSubmit(props.msgId, text.value);
+            if (ok) text.value = '';
+        }
+        return { text, submit, emit };
+    },
+    template: `
+        <div>
+            <textarea class="plaza-textarea plaza-reply-textarea" v-model="text" maxlength="220" :placeholder="t.replyContentRequired"></textarea>
+            <div class="plaza-msg-footer">
+                <button class="primary-btn" @click="submit">{{ t.publishReply }}</button>
+                <button class="ghost-btn" @click="emit('cancel')">{{ t.cancel }}</button>
+            </div>
+        </div>
+    `
+};
+
 const App = {
+    components: { PlazaComposer, PlazaReplyForm },
     setup() {
         const lang = ref(localStorage.getItem('lang') || 'zh');
         const path = ref(normalizePath(location.pathname));
@@ -214,7 +387,7 @@ const App = {
         const loginPlaceholder = computed(() => login.method === 'code' ? t.value.emailPh : t.value.accountPh);
         const sceneLinks = computed(() => [
             { href: '/pages/room', icon: '◇', name: t.value.room, desc: t.value.roomDesc },
-            { href: '/pages/plaza', icon: '◎', name: t.value.plaza, desc: t.value.plazaDesc },
+            { href: '/plaza', icon: '◎', name: t.value.plaza, desc: t.value.plazaDesc },
             { href: '/stage', icon: '▣', name: t.value.stage, desc: t.value.stageDesc },
             { href: '/pages/arena', icon: '△', name: t.value.arena, desc: t.value.arenaDesc },
             { href: '/pages/reality', icon: '◌', name: t.value.reality, desc: t.value.realityDesc }
@@ -277,6 +450,199 @@ const App = {
                 '其他': t.value.filterOther
             };
             return map[cat] || cat;
+        }
+
+        // --- plaza page ---
+        const plaza = reactive({
+            messages: [],
+            stats: null,
+            filter: 'latest',
+            query: '',
+            loading: false,
+            replyOpen: {}
+        });
+        const plazaToast = reactive({ text: '', visible: false });
+        let plazaToastTimer = 0;
+
+        const friends = [
+            { name: '月读空间官方', desc: '项目仓库与更新记录', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '月' },
+            { name: '辉夜姬博客', desc: '文章、公告与创作札记', url: '/pages/stage', avatar: '文' },
+            { name: 'KASSEN 竞技场', desc: '3v3 涨粉对抗原型', url: '/pages/arena', avatar: '战' },
+            { name: '友链申请', desc: '留下站点信息等待审核', url: '/pages/terminal', avatar: '链' }
+        ];
+
+        const plazaMessages = computed(() => {
+            const all = plaza.messages;
+            const repliesByParent = {};
+            all.forEach(item => {
+                if (!item.parent_id) return;
+                (repliesByParent[item.parent_id] = repliesByParent[item.parent_id] || []).push(item);
+            });
+            let top = all.filter(item => !item.parent_id).map(item => ({
+                ...item,
+                replies: (repliesByParent[item.id] || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+            }));
+            if (plaza.query) {
+                const q = plaza.query.toLowerCase();
+                top = top.filter(item => {
+                    const haystack = `${item.author || ''} ${item.content || ''} ${item.replies.map(r => `${r.author || ''} ${r.content || ''}`).join(' ')}`.toLowerCase();
+                    return haystack.includes(q);
+                });
+            }
+            const currentUsername = user.value?.username;
+            if (plaza.filter === 'hot') {
+                top.sort((a, b) => (b.like_count || 0) - (a.like_count || 0) || new Date(b.created_at) - new Date(a.created_at));
+            } else if (plaza.filter === 'replied') {
+                top = top.filter(item => item.replies.length > 0);
+                top.sort((a, b) => b.replies.length - a.replies.length || new Date(b.created_at) - new Date(a.created_at));
+            } else if (plaza.filter === 'mine') {
+                top = top.filter(item => currentUsername && item.author === currentUsername);
+                top.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            } else {
+                top.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            }
+            return top;
+        });
+
+        const plazaActivity = computed(() => {
+            return [...plaza.messages]
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, 6);
+        });
+
+        function showPlazaToast(text) {
+            plazaToast.text = text;
+            plazaToast.visible = true;
+            clearTimeout(plazaToastTimer);
+            plazaToastTimer = setTimeout(() => { plazaToast.visible = false; }, 2200);
+        }
+
+        async function loadPlazaStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const result = await parseResponse(res);
+                if (result.success) plaza.stats = result.data || {};
+            } catch (_) {}
+        }
+
+        async function loadPlazaMessages() {
+            try {
+                const res = await fetch('/api/messages');
+                const result = await parseResponse(res);
+                if (result.success) plaza.messages = Array.isArray(result.data) ? result.data : [];
+            } catch (_) {
+                showPlazaToast(t.value.loadFailed);
+            }
+        }
+
+        async function refreshPlaza() {
+            plaza.loading = true;
+            await Promise.all([loadPlazaStats(), loadPlazaMessages()]);
+            plaza.loading = false;
+        }
+
+        async function plazaSubmitMessage(content) {
+            if (!isAuthed.value) { pushRoute('/login'); return; }
+            if (!content.trim()) { showPlazaToast(t.value.contentRequired); return; }
+            try {
+                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+                const res = await fetch('/api/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ content: content.trim() })
+                });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.publishFailed);
+                showPlazaToast(t.value.msgPublished);
+                await refreshPlaza();
+                return true;
+            } catch (e) {
+                showPlazaToast(e.message || t.value.publishFailed);
+                return false;
+            }
+        }
+
+        async function plazaSubmitReply(parentId, content) {
+            if (!isAuthed.value) { pushRoute('/login'); return; }
+            if (!content.trim()) { showPlazaToast(t.value.replyContentRequired); return; }
+            try {
+                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+                const res = await fetch(`/api/messages/${parentId}/reply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ content: content.trim() })
+                });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.replyFailed);
+                showPlazaToast(t.value.replyPublished);
+                await refreshPlaza();
+                return true;
+            } catch (e) {
+                showPlazaToast(e.message || t.value.replyFailed);
+                return false;
+            }
+        }
+
+        async function plazaLikeMessage(id) {
+            if (!isAuthed.value) { pushRoute('/login'); return; }
+            if (localStorage.getItem('liked_' + id) === '1') { showPlazaToast(t.value.alreadyLiked); return; }
+            try {
+                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+                const res = await fetch(`/api/messages/${id}/like`, {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + token }
+                });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.likeFailed);
+                localStorage.setItem('liked_' + id, '1');
+                showPlazaToast(t.value.likedToast);
+                await refreshPlaza();
+            } catch (e) {
+                showPlazaToast(e.message || t.value.likeFailed);
+            }
+        }
+
+        async function plazaCopyLink(id) {
+            const url = `${location.origin}/plaza#msg-${id}`;
+            try {
+                await navigator.clipboard.writeText(url);
+                showPlazaToast(t.value.linkCopied);
+            } catch (_) {
+                location.hash = 'msg-' + id;
+                showPlazaToast(t.value.linkCopied);
+            }
+        }
+
+        function plazaToggleReply(id) {
+            if (!isAuthed.value) { pushRoute('/login'); return; }
+            plaza.replyOpen = { ...plaza.replyOpen, [id]: !plaza.replyOpen[id] };
+        }
+
+        function plazaInitial(name) { return String(name || '访客').trim().slice(0, 1).toUpperCase(); }
+
+        function plazaFormatDate(value) {
+            if (!value) return t.value.connecting;
+            return new Date(value).toLocaleString(lang.value === 'zh' ? 'zh-CN' : 'ja-JP', { hour12: false });
+        }
+
+        function plazaFormatRelative(value) {
+            const diff = Math.max(0, Date.now() - new Date(value).getTime());
+            const min = Math.floor(diff / 60000);
+            if (min < 1) return lang.value === 'zh' ? '刚刚' : 'たった今';
+            if (min < 60) return `${min} ${lang.value === 'zh' ? '分钟前' : '分前'}`;
+            const hour = Math.floor(min / 60);
+            if (hour < 24) return `${hour} ${lang.value === 'zh' ? '小时前' : '時間前'}`;
+            return `${Math.floor(hour / 24)} ${lang.value === 'zh' ? '天前' : '日前'}`;
+        }
+
+        function plazaFormatNumber(v) { return Number(v || 0).toLocaleString(lang.value === 'zh' ? 'zh-CN' : 'ja-JP'); }
+
+        function plazaFormatUptime(seconds) {
+            const total = Math.floor(Number(seconds || 0));
+            const days = Math.floor(total / 86400);
+            const hours = Math.floor((total % 86400) / 3600);
+            if (lang.value === 'zh') return days > 0 ? `${days}天${hours}时` : `${hours}时`;
+            return days > 0 ? `${days}日${hours}時間` : `${hours}時間`;
         }
 
         function setLang(nextLang) {
@@ -438,12 +804,14 @@ const App = {
             });
             if (route.value !== 'access') initAmbient();
             if (route.value === 'stage') loadArticles();
+            if (route.value === 'plaza') refreshPlaza();
         });
 
         watch(route, (nextRoute) => {
             syncBodyRouteClass(nextRoute);
             if (nextRoute !== 'access') initAmbient();
             if (nextRoute === 'stage') loadArticles();
+            if (nextRoute === 'plaza') refreshPlaza();
         });
 
         return {
@@ -453,6 +821,7 @@ const App = {
             categories,
             checkEditorAuth,
             filteredArticles,
+            friends,
             go,
             isAuthed,
             lang,
@@ -460,10 +829,26 @@ const App = {
             login,
             loginPlaceholder,
             logout,
+            plaza,
+            plazaActivity,
+            plazaCopyLink,
+            plazaFormatDate,
+            plazaFormatNumber,
+            plazaFormatRelative,
+            plazaFormatUptime,
+            plazaInitial,
+            plazaLikeMessage,
+            plazaMessages,
+            plazaSubmitMessage,
+            plazaSubmitReply,
+            plazaToggleReply,
+            plazaToast,
+            refreshPlaza,
             register,
             route,
             sceneLinks,
             setLang,
+            showPlazaToast,
             stageCategory,
             stageCategoryLabel,
             stageSearch,
@@ -629,6 +1014,144 @@ const App = {
                         </div>
                     </a>
                 </div>
+            </main>
+
+            <main v-else-if="route === 'plaza'" class="page plaza-page">
+                <section class="plaza-hero">
+                    <div class="plaza-hero-main">
+                        <div class="plaza-eyebrow">{{ t.plazaEyebrow }}</div>
+                        <h1 class="plaza-title">{{ t.plazaTitle }}</h1>
+                        <p class="plaza-sub">{{ t.plazaSubtitle }}</p>
+                    </div>
+                    <aside class="plaza-status panel">
+                        <div class="plaza-status-line"><span>{{ t.channelStatus }}</span><span class="plaza-status-value">{{ t.channelValue }}</span></div>
+                        <div class="plaza-status-line"><span>{{ t.plazaStatusLabel }}</span><span class="plaza-status-value">{{ plaza.loading ? t.syncing : t.online }}</span></div>
+                        <div v-if="isAuthed" class="plaza-login-card">
+                            <strong>{{ user.username }}</strong>
+                            <p>{{ t.loggedInDesc }}</p>
+                        </div>
+                        <div v-else class="plaza-login-card">
+                            <strong>{{ t.guestMode }}</strong>
+                            <p>{{ t.guestDesc }}</p>
+                            <div style="margin-top:0.8rem;"><a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.goLogin }}</a></div>
+                        </div>
+                    </aside>
+                </section>
+
+                <section class="plaza-stats">
+                    <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsArticles }}</div><div class="plaza-stat-value">{{ plazaFormatNumber(plaza.stats?.articles || 0) }}</div><div class="plaza-stat-note">{{ t.statsArticlesNote }}</div></div>
+                    <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsUsers }}</div><div class="plaza-stat-value">{{ plazaFormatNumber(plaza.stats?.users || 0) }}</div><div class="plaza-stat-note">{{ t.statsUsersNote }}</div></div>
+                    <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsMessages }}</div><div class="plaza-stat-value">{{ plazaFormatNumber(plaza.stats?.messages || 0) }}</div><div class="plaza-stat-note">{{ t.statsMessagesNote }}</div></div>
+                    <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsUptime }}</div><div class="plaza-stat-value">{{ plazaFormatUptime(plaza.stats?.uptime || 0) }}</div><div class="plaza-stat-note">{{ t.statsUptimeNote }}</div></div>
+                </section>
+
+                <section class="plaza-layout">
+                    <div class="panel plaza-wall">
+                        <div class="plaza-section-head">
+                            <h2 class="plaza-section-title"><span>01</span> {{ t.wallTitle }}</h2>
+                            <div class="plaza-toolbar">
+                                <input class="plaza-search" v-model="plaza.query" type="search" :placeholder="t.searchPlaceholder || '搜索...'">
+                                <button class="ghost-btn" @click="refreshPlaza">{{ t.refresh }}</button>
+                            </div>
+                        </div>
+                        <div class="plaza-filters">
+                            <button class="chip" :class="{ active: plaza.filter === 'latest' }" @click="plaza.filter = 'latest'">{{ t.filterLatest }}</button>
+                            <button class="chip" :class="{ active: plaza.filter === 'hot' }" @click="plaza.filter = 'hot'">{{ t.filterHot }}</button>
+                            <button class="chip" :class="{ active: plaza.filter === 'replied' }" @click="plaza.filter = 'replied'">{{ t.filterReplied }}</button>
+                            <button class="chip" :class="{ active: plaza.filter === 'mine' }" @click="plaza.filter = 'mine'">{{ t.filterMine }}</button>
+                        </div>
+
+                        <div v-if="!isAuthed" class="plaza-composer plaza-composer-locked">
+                            <div class="plaza-empty">
+                                <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">{{ t.loginToPost }}</div>
+                                <div style="margin-bottom:1rem;">{{ t.loginToPostDesc }}</div>
+                                <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.goLogin }}</a>
+                            </div>
+                        </div>
+                        <div v-else class="plaza-composer">
+                            <PlazaComposer :t="t" :on-submit="plazaSubmitMessage" />
+                        </div>
+
+                        <div v-if="plaza.loading" class="plaza-empty">{{ t.connecting }}</div>
+                        <div v-else-if="!plazaMessages.length" class="plaza-empty">
+                            <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">{{ t.noMessages }}</div>
+                            <div>{{ t.noMessagesHint }}</div>
+                        </div>
+                        <div v-else class="plaza-messages">
+                            <article v-for="msg in plazaMessages" :key="msg.id" :id="'msg-' + msg.id" class="plaza-msg-card">
+                                <div class="plaza-msg-meta">
+                                    <div class="plaza-msg-author">
+                                        <div class="plaza-avatar">{{ plazaInitial(msg.author) }}</div>
+                                        <div>
+                                            <div class="plaza-author-name">{{ msg.author || '匿名访客' }}</div>
+                                            <div class="plaza-msg-date">{{ plazaFormatDate(msg.created_at) }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="plaza-msg-date">#{{ msg.id }}</div>
+                                </div>
+                                <div class="plaza-msg-content">{{ msg.content }}</div>
+                                <div class="plaza-msg-footer">
+                                    <button class="icon-btn" :class="{ liked: localStorage.getItem('liked_' + msg.id) === '1' }" @click="plazaLikeMessage(msg.id)">{{ t.like }} {{ msg.like_count || 0 }}</button>
+                                    <button class="icon-btn" @click="plazaToggleReply(msg.id)">{{ t.reply }} {{ (msg.replies || []).length }}</button>
+                                    <button class="icon-btn" @click="plazaCopyLink(msg.id)">{{ t.copyLink }}</button>
+                                </div>
+                                <div v-if="plaza.replyOpen[msg.id]" class="plaza-reply-form">
+                                    <PlazaReplyForm :t="t" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
+                                </div>
+                                <div v-if="(msg.replies || []).length" class="plaza-replies">
+                                    <div v-for="reply in msg.replies" :key="reply.id" class="plaza-reply-card">
+                                        <div class="plaza-msg-meta" style="margin-bottom:0.45rem;">
+                                            <div class="plaza-msg-author">
+                                                <div class="plaza-avatar" style="width:30px;height:30px;font-size:0.78rem;">{{ plazaInitial(reply.author) }}</div>
+                                                <div>
+                                                    <div class="plaza-author-name" style="font-size:0.82rem;">{{ reply.author || '匿名访客' }}</div>
+                                                    <div class="plaza-msg-date">{{ plazaFormatDate(reply.created_at) }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="plaza-msg-content" style="margin-bottom:0;">{{ reply.content }}</div>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+
+                    <aside class="plaza-side">
+                        <div class="panel">
+                            <div class="panel-title">{{ t.residents }} <span>{{ friends.length }}</span></div>
+                            <div class="plaza-friends">
+                                <a v-for="f in friends" :key="f.name" class="plaza-friend-card" :href="f.url">
+                                    <div class="plaza-friend-avatar">{{ f.avatar }}</div>
+                                    <div>
+                                        <div class="plaza-friend-name">{{ f.name }}</div>
+                                        <div class="plaza-friend-desc">{{ f.desc }}</div>
+                                    </div>
+                                    <div style="color:rgba(255,225,235,0.42);">↗</div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-title">{{ t.activity }}</div>
+                            <div class="plaza-activities">
+                                <div v-if="!plazaActivity.length" class="plaza-activity-item"><span class="plaza-dot"></span><span>{{ t.plazaJustOpened }}</span></div>
+                                <div v-for="item in plazaActivity" :key="item.id" class="plaza-activity-item">
+                                    <span class="plaza-dot"></span>
+                                    <span>{{ item.author || '访客' }} {{ item.parent_id ? '回复了留言' : '发布了留言' }} · {{ plazaFormatRelative(item.created_at) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-title">{{ t.rulesTitle }}</div>
+                            <div class="plaza-rules">
+                                <p>{{ t.rule1 }}</p>
+                                <p>{{ t.rule2 }}</p>
+                                <p>{{ t.rule3 }}</p>
+                            </div>
+                        </div>
+                    </aside>
+                </section>
+
+                <div v-if="plazaToast.visible" class="plaza-toast show">{{ plazaToast.text }}</div>
             </main>
         </div>
     `
