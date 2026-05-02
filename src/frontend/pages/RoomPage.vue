@@ -1,14 +1,22 @@
 <script setup>
-import { onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
+
+const props = defineProps({
+  user: { type: Object, default: null }
+});
 
 defineEmits(['go']);
 
 const scripts = [
-  '/assets/js/ambient-fish.js?v=20260502-vue-room5',
+  '/assets/js/ambient-fish.js?v=20260503-vue-room6',
   '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260502-vue-room5',
-  '/assets/js/room-runtime.js?v=20260502-vue-room5'
+  '/lib/bundled/live2d-room.iife.js?v=20260503-vue-room6',
+  '/assets/js/room-runtime.js?v=20260503-vue-room6'
 ];
+
+const roomUserName = computed(() => props.user?.username || props.user?.email || 'Guest');
+const roomUserAvatar = computed(() => props.user?.avatar || '');
+const roomUserInitial = computed(() => roomUserName.value.slice(0, 1).toUpperCase());
 
 function loadScript(src, options = {}) {
   return new Promise((resolve, reject) => {
@@ -40,21 +48,23 @@ onMounted(async () => {
   document.body.classList.add('vue-room-route');
   window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
   window.TSUKUYOMI_LIVE2D_READY = false;
-  window.LAppDelegate?.releaseInstance?.();
+  window.destroyTsukuyomiLive2DRoom?.();
 
   const container = document.getElementById('live2d-container');
   container?.querySelectorAll('canvas:not(#live2d-canvas)').forEach((node) => node.remove());
 
   for (const src of scripts) {
-    await loadScript(src, { reload: src.includes('live2d-room.iife.js') });
+    await loadScript(src);
   }
 
+  window.initTsukuyomiLive2DRoom?.();
   window.initTsukuyomiRoomRuntime?.();
 });
 
 onBeforeUnmount(() => {
   document.body.classList.remove('vue-room-route');
   window.destroyTsukuyomiRoomRuntime?.();
+  window.destroyTsukuyomiLive2DRoom?.();
 });
 </script>
 
@@ -65,9 +75,12 @@ onBeforeUnmount(() => {
 
     <nav class="room-commandbar" aria-label="&#25151;&#38388;&#23548;&#33322;">
       <a class="room-brand" href="/hub" @click.prevent="$emit('go', '/hub')">
-        <span class="room-brand-mark">&#26376;</span>
+        <span class="room-brand-mark room-user-avatar">
+          <img v-if="roomUserAvatar" :src="roomUserAvatar" :alt="roomUserName">
+          <span v-else>{{ roomUserInitial }}</span>
+        </span>
         <span>
-          <strong>&#31169;&#20154;&#23621;&#25152;</strong>
+          <strong>{{ roomUserName }}</strong>
           <small>Tsukimi Yachiyo Room</small>
         </span>
       </a>

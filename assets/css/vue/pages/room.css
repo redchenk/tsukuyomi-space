@@ -61,6 +61,7 @@ body.vue-room-route {
 }
 
 .room-brand-mark {
+    overflow: hidden;
     display: grid;
     place-items: center;
     width: 38px;
@@ -69,6 +70,18 @@ body.vue-room-route {
     border-radius: 50%;
     color: #ffd68b;
     background: rgba(255, 214, 139, 0.1);
+}
+
+.room-user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.room-user-avatar span {
+    font-weight: 800;
+    font-size: 0.86rem;
 }
 
 .room-brand strong,

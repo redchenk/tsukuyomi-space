@@ -64,6 +64,6 @@ watch(() => route.fullPath, refreshUser, { immediate: true });
     @logout="logout"
     @set-lang="setLang"
   >
-    <RouterView :lang="lang" :t="t" @auth-changed="refreshUser" @go="go" />
+    <RouterView :lang="lang" :t="t" :user="user" @auth-changed="refreshUser" @go="go" />
   </AppShell>
 </template>
