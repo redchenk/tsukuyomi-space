@@ -1519,7 +1519,8 @@ button:disabled {
 .uc-tabs .tab-btn.active { color: #fff; background: rgba(255,107,157,0.24); border-color: rgba(255,183,197,0.5); }
 .uc-tabs .tab-btn small { color: rgba(255,225,235,0.42); }
 
-.uc-content-panel { padding: 1.1rem; min-height: 520px; }
+.uc-content-panel { width: 100%; max-width: 100%; padding: 1.1rem; min-height: 520px; }
+.uc-tabs-panel { width: 100%; max-width: 100%; }
 
 .uc-section-head {
     display: flex;
