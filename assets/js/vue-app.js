@@ -1,17 +1,7 @@
-import { createApp, computed, nextTick, onMounted, reactive, ref, watch } from '/assets/vendor/vue.esm-browser.prod.js';
-
-const routes = {
-    '/': 'access',
-    '/access': 'access',
-    '/hub': 'hub',
-    '/login': 'login',
-    '/register': 'register',
-    '/stage': 'stage',
-    '/plaza': 'plaza',
-    '/reality': 'reality',
-    '/editor': 'editor',
-    '/user-center': 'userCenter'
-};
+import { createApp, computed, onMounted, reactive, ref, watch } from '/assets/vendor/vue.esm-browser.prod.js';
+import { routes, normalizePath, pushRoute } from '/assets/js/vue/router.js';
+import { authHeaders, getAuthToken, parseResponse, countdown } from '/assets/js/vue/api.js';
+import { PlazaComposer, PlazaReplyForm } from '/assets/js/vue/components/plaza.js';
 
 const i18n = {
     zh: {
@@ -520,97 +510,6 @@ const i18n = {
     }
 };
 
-function normalizePath(pathname) {
-    return pathname.replace(/\/+$/, '') || '/';
-}
-
-function pushRoute(path) {
-    history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-}
-
-async function parseResponse(response) {
-    const text = await response.text();
-    try {
-        return text ? JSON.parse(text) : { success: false, message: `HTTP ${response.status}` };
-    } catch (_) {
-        return {
-            success: false,
-            message: text.replace(/<[^>]*>/g, '').trim().slice(0, 120) || `HTTP ${response.status}`
-        };
-    }
-}
-
-function countdown(buttonState, label) {
-    buttonState.seconds = 60;
-    const timer = setInterval(() => {
-        buttonState.seconds -= 1;
-        if (buttonState.seconds <= 0) {
-            clearInterval(timer);
-            buttonState.loading = false;
-            buttonState.seconds = 0;
-            buttonState.label = label;
-        } else {
-            buttonState.label = `${buttonState.seconds}s`;
-        }
-    }, 1000);
-}
-
-const PlazaComposer = {
-    props: ['t', 'onSubmit'],
-    setup(props) {
-        const text = ref('');
-        const charCount = computed(() => `${text.value.length} / 300`);
-        function insert(prefix) { text.value = `${prefix} ${text.value}`.slice(0, 300); }
-        async function submit() {
-            const ok = await props.onSubmit(text.value);
-            if (ok) text.value = '';
-        }
-        return { text, charCount, insert, submit };
-    },
-    template: `
-        <div>
-            <div class="plaza-composer-top">
-                <span>发布一条新的广场留言</span>
-                <span class="plaza-char-count">{{ charCount }}</span>
-            </div>
-            <textarea class="plaza-textarea" v-model="text" maxlength="300" :placeholder="t.composerPlaceholder"></textarea>
-            <div class="plaza-moods">
-                <button class="chip" type="button" @click="insert('【问候】')">问候</button>
-                <button class="chip" type="button" @click="insert('【反馈】')">反馈</button>
-                <button class="chip" type="button" @click="insert('【友链】')">友链</button>
-                <button class="chip" type="button" @click="insert('【灵感】')">灵感</button>
-            </div>
-            <div class="plaza-composer-actions">
-                <span class="plaza-char-count">{{ t.composerHint }}</span>
-                <button class="primary-btn" @click="submit">{{ t.publish }}</button>
-            </div>
-        </div>
-    `
-};
-
-const PlazaReplyForm = {
-    props: ['t', 'msgId', 'onSubmit'],
-    emits: ['cancel'],
-    setup(props, { emit }) {
-        const text = ref('');
-        async function submit() {
-            const ok = await props.onSubmit(props.msgId, text.value);
-            if (ok) text.value = '';
-        }
-        return { text, submit, emit };
-    },
-    template: `
-        <div>
-            <textarea class="plaza-textarea plaza-reply-textarea" v-model="text" maxlength="220" :placeholder="t.replyContentRequired"></textarea>
-            <div class="plaza-msg-footer">
-                <button class="primary-btn" @click="submit">{{ t.publishReply }}</button>
-                <button class="ghost-btn" @click="emit('cancel')">{{ t.cancel }}</button>
-            </div>
-        </div>
-    `
-};
-
 const App = {
     components: { PlazaComposer, PlazaReplyForm },
     setup() {
@@ -805,10 +704,9 @@ const App = {
             if (!isAuthed.value) { pushRoute('/login'); return; }
             if (!content.trim()) { showPlazaToast(t.value.contentRequired); return; }
             try {
-                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
                 const res = await fetch('/api/messages', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ content: content.trim() })
                 });
                 const result = await parseResponse(res);
@@ -826,10 +724,9 @@ const App = {
             if (!isAuthed.value) { pushRoute('/login'); return; }
             if (!content.trim()) { showPlazaToast(t.value.replyContentRequired); return; }
             try {
-                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
                 const res = await fetch(`/api/messages/${parentId}/reply`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ content: content.trim() })
                 });
                 const result = await parseResponse(res);
@@ -847,10 +744,9 @@ const App = {
             if (!isAuthed.value) { pushRoute('/login'); return; }
             if (localStorage.getItem('liked_' + id) === '1') { showPlazaToast(t.value.alreadyLiked); return; }
             try {
-                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
                 const res = await fetch(`/api/messages/${id}/like`, {
                     method: 'POST',
-                    headers: { Authorization: 'Bearer ' + token }
+                    headers: authHeaders()
                 });
                 const result = await parseResponse(res);
                 if (!result.success) throw new Error(result.message || t.value.likeFailed);
@@ -906,8 +802,27 @@ const App = {
             message: '',
             messageType: 'error',
             submitting: false,
-            loading: true
+            loading: true,
+            form: {
+                title: '',
+                category: '',
+                readTime: '5 min',
+                excerpt: '',
+                content: ''
+            }
         });
+        const editorCoverInput = ref(null);
+
+        function resetEditorForm(article = null) {
+            editor.currentArticle = article;
+            editor.coverImageBase64 = article?.cover_image || null;
+            editor.coverImageSize = 0;
+            editor.form.title = article?.title || '';
+            editor.form.category = article?.category || '';
+            editor.form.readTime = article?.read_time || '5 min';
+            editor.form.excerpt = article?.excerpt || '';
+            editor.form.content = article?.content || '';
+        }
 
         function editorShowMessage(type, msg) {
             editor.message = msg;
@@ -945,14 +860,6 @@ const App = {
             try {
                 editor.coverImageBase64 = await compressImage(file);
                 editor.coverImageSize = Math.round(editor.coverImageBase64.length * 3 / 4);
-                nextTick(() => {
-                    const preview = document.getElementById('editorCoverPreview');
-                    const placeholder = document.getElementById('editorCoverPlaceholder');
-                    const upload = document.getElementById('editorCoverUpload');
-                    if (preview) { preview.src = editor.coverImageBase64; preview.classList.add('show'); }
-                    if (placeholder) placeholder.style.display = 'none';
-                    if (upload) upload.classList.add('has-image');
-                });
             } catch (_) {
                 editorShowMessage('error', t.value.editorImageFailed);
             }
@@ -961,23 +868,16 @@ const App = {
         function removeEditorCover() {
             editor.coverImageBase64 = null;
             editor.coverImageSize = 0;
-            const input = document.getElementById('editorCoverInput');
-            if (input) input.value = '';
-            const preview = document.getElementById('editorCoverPreview');
-            const placeholder = document.getElementById('editorCoverPlaceholder');
-            const upload = document.getElementById('editorCoverUpload');
-            if (preview) { preview.src = ''; preview.classList.remove('show'); }
-            if (placeholder) placeholder.style.display = 'block';
-            if (upload) upload.classList.remove('has-image');
+            if (editorCoverInput.value) editorCoverInput.value.value = '';
         }
 
         async function handleEditorSubmit(e) {
             e.preventDefault();
-            const title = document.getElementById('editorTitle')?.value?.trim();
-            const category = document.getElementById('editorCategory')?.value;
-            const readTime = document.getElementById('editorReadTime')?.value?.trim();
-            const excerpt = document.getElementById('editorExcerpt')?.value?.trim();
-            const content = document.getElementById('editorContent')?.value?.trim();
+            const title = editor.form.title.trim();
+            const category = editor.form.category;
+            const readTime = editor.form.readTime.trim();
+            const excerpt = editor.form.excerpt.trim();
+            const content = editor.form.content.trim();
             if (!title || !category || !readTime || !excerpt || !content) return editorShowMessage('error', t.value.editorRequired);
 
             editor.submitting = true;
@@ -990,10 +890,9 @@ const App = {
                     url = (session?.admin) ? `/api/admin/articles/${id}` : `/api/user/articles/${id}`;
                     method = 'PUT';
                 }
-                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
                 const res = await fetch(url, {
                     method,
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(body)
                 });
                 const result = await parseResponse(res);
@@ -1008,9 +907,13 @@ const App = {
         }
 
         async function initEditor() {
+            editor.loading = true;
+            editor.message = '';
+            editor.messageType = 'error';
             const session = getSession();
             if (!session) {
                 editor.loading = false;
+                resetEditorForm();
                 return;
             }
             const id = new URLSearchParams(location.search).get('id');
@@ -1020,22 +923,17 @@ const App = {
                     const res = await fetch(url, { headers: { Authorization: 'Bearer ' + session.token } });
                     const result = await parseResponse(res);
                     if (!result.success) throw new Error(result.message || t.value.unknown);
-                    editor.currentArticle = result.data;
-                    if (result.data.cover_image) {
-                        editor.coverImageBase64 = result.data.cover_image;
-                    }
-                    await nextTick();
-                    const catEl = document.getElementById('editorCategory');
-                    if (catEl && result.data.category) {
-                        const validCats = ['公告', '传说', '技术', '其他'];
-                        catEl.value = validCats.includes(result.data.category) ? result.data.category : '其他';
-                    }
+                    const validCats = ['公告', '传说', '技术', '其他'];
+                    resetEditorForm({
+                        ...result.data,
+                        category: validCats.includes(result.data.category) ? result.data.category : '其他'
+                    });
                 } catch (e) {
                     editor.message = t.value.editorLoadFailed + (e.message || t.value.editorNetworkFailed);
                     editor.messageType = 'error';
                 }
             } else {
-                editor.currentArticle = null;
+                resetEditorForm();
             }
             editor.loading = false;
         }
@@ -1052,10 +950,17 @@ const App = {
             articles: [],
             articleQuery: '',
             articleLoading: true,
-            avatarUploading: false
+            avatarUploading: false,
+            profileBio: '',
+            password: {
+                current: '',
+                next: '',
+                confirm: ''
+            }
         });
 
         const ucToast = reactive({ text: '', visible: false });
+        const ucAvatarInput = ref(null);
         let ucToastTimer = 0;
 
         function ucShowToast(text) {
@@ -1065,11 +970,16 @@ const App = {
             ucToastTimer = setTimeout(() => { ucToast.visible = false; }, 2200);
         }
 
-        function ucShowMessage(target, type, msg) {
-            target.msg = msg;
-            target.msgType = type;
-            clearTimeout(target._timer);
-            target._timer = setTimeout(() => { target.msg = ''; target.msgType = 'error'; }, 3200);
+        function ucShowMessage(target, scope, msg, variant = 'error') {
+            const msgKey = `${scope}Msg`;
+            const typeKey = `${scope}MsgType`;
+            target[msgKey] = msg;
+            target[typeKey] = variant;
+            clearTimeout(target[`_${scope}Timer`]);
+            target[`_${scope}Timer`] = setTimeout(() => {
+                target[msgKey] = '';
+                target[typeKey] = 'error';
+            }, 3200);
         }
 
         function ucDefaultAvatar(name) {
@@ -1105,13 +1015,14 @@ const App = {
         }
 
         async function ucLoadProfile() {
-            const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+            const token = getAuthToken();
             if (!token) return;
             try {
-                const res = await fetch('/api/user/profile', { headers: { Authorization: 'Bearer ' + token } });
+                const res = await fetch('/api/user/profile', { headers: authHeaders() });
                 const result = await parseResponse(res);
                 if (!result.success) throw new Error(result.message || t.value.ucProfileLoadFailed);
                 ucUser.value = result.data;
+                uc.profileBio = result.data?.bio || '';
                 localStorage.setItem('tsukuyomi_user', JSON.stringify(result.data));
             } catch (e) {
                 ucShowToast(e.message || t.value.ucProfileLoadFailed);
@@ -1120,10 +1031,10 @@ const App = {
 
         async function ucLoadArticles() {
             uc.articleLoading = true;
-            const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+            const token = getAuthToken();
             if (!token) { uc.articleLoading = false; return; }
             try {
-                const res = await fetch('/api/user/articles', { headers: { Authorization: 'Bearer ' + token } });
+                const res = await fetch('/api/user/articles', { headers: authHeaders() });
                 const result = await parseResponse(res);
                 if (!result.success) throw new Error(result.message || t.value.ucArticleLoadFailed);
                 uc.articles = result.data || [];
@@ -1140,21 +1051,19 @@ const App = {
         }
 
         async function ucSaveProfile() {
-            const bioEl = document.getElementById('ucBioInput');
-            const bio = bioEl?.value?.trim() || '';
+            const bio = uc.profileBio.trim();
             uc.profileSaving = true;
             try {
-                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
                 const res = await fetch('/api/user/profile', {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ bio })
                 });
                 const result = await parseResponse(res);
                 if (!result.success) throw new Error(result.message || t.value.ucProfileSaveFailed);
                 if (ucUser.value) ucUser.value.bio = bio;
                 localStorage.setItem('tsukuyomi_user', JSON.stringify(ucUser.value));
-                ucShowMessage(uc, 'profile', t.value.ucProfileSaved);
+                ucShowMessage(uc, 'profile', t.value.ucProfileSaved, 'success');
                 ucShowToast(t.value.ucProfileSaved);
             } catch (e) {
                 ucShowMessage(uc, 'profile', e.message || t.value.ucProfileSaveFailed);
@@ -1171,10 +1080,9 @@ const App = {
             uc.avatarUploading = true;
             try {
                 const avatar = await compressImage(file, 420, 420, 0.82);
-                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
                 const res = await fetch('/api/user/avatar', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ avatar })
                 });
                 const result = await parseResponse(res);
@@ -1191,9 +1099,9 @@ const App = {
         }
 
         async function ucChangePassword() {
-            const currentPassword = document.getElementById('ucCurrentPassword')?.value || '';
-            const newPassword = document.getElementById('ucNewPassword')?.value || '';
-            const confirmPassword = document.getElementById('ucConfirmPassword')?.value || '';
+            const currentPassword = uc.password.current;
+            const newPassword = uc.password.next;
+            const confirmPassword = uc.password.confirm;
             if (!currentPassword || !newPassword || !confirmPassword) {
                 return ucShowMessage(uc, 'password', t.value.ucFillAllPasswordFields);
             }
@@ -1205,18 +1113,17 @@ const App = {
             }
             uc.passwordChanging = true;
             try {
-                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
                 const res = await fetch('/api/user/password', {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ currentPassword, newPassword })
                 });
                 const result = await parseResponse(res);
                 if (!result.success) throw new Error(result.message || t.value.ucPasswordChangeFailed);
-                document.getElementById('ucCurrentPassword').value = '';
-                document.getElementById('ucNewPassword').value = '';
-                document.getElementById('ucConfirmPassword').value = '';
-                ucShowMessage(uc, 'password', t.value.ucPasswordChanged);
+                uc.password.current = '';
+                uc.password.next = '';
+                uc.password.confirm = '';
+                ucShowMessage(uc, 'password', t.value.ucPasswordChanged, 'success');
                 ucShowToast(t.value.ucPasswordChanged);
             } catch (err) {
                 ucShowMessage(uc, 'password', err.message || t.value.ucPasswordChangeFailed);
@@ -1227,11 +1134,10 @@ const App = {
 
         async function ucDeleteArticle(id) {
             if (!confirm(t.value.ucDeleteConfirm)) return;
-            const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
             try {
                 const res = await fetch(`/api/user/articles/${id}`, {
                     method: 'DELETE',
-                    headers: { Authorization: 'Bearer ' + token }
+                    headers: authHeaders()
                 });
                 const result = await parseResponse(res);
                 if (!result.success) throw new Error(result.message || t.value.ucArticleDeleteFailed);
@@ -1482,10 +1388,12 @@ const App = {
             t,
             user,
             editor,
+            editorCoverInput,
             handleEditorCoverUpload,
             removeEditorCover,
             handleEditorSubmit,
             uc,
+            ucAvatarInput,
             ucAvatarSrc,
             ucChangePassword,
             ucDeleteArticle,
@@ -1954,7 +1862,7 @@ const App = {
                         <div class="form-group">
                             <label>{{ t.editorFieldCover }}</label>
                             <div class="editor-cover-upload" id="editorCoverUpload" :class="{ 'has-image': editor.coverImageBase64 }">
-                                <input type="file" id="editorCoverInput" accept="image/*" @change="handleEditorCoverUpload">
+                                <input ref="editorCoverInput" type="file" id="editorCoverInput" accept="image/*" @change="handleEditorCoverUpload">
                                 <div id="editorCoverPlaceholder">
                                     <strong>{{ t.editorCoverPick }}</strong>
                                     <div class="help-text">{{ t.editorCoverHint }}</div>
@@ -1966,13 +1874,13 @@ const App = {
 
                         <div class="form-group">
                             <label for="editorTitle">{{ t.editorFieldTitle }}</label>
-                            <input type="text" id="editorTitle" required :placeholder="t.editorTitlePh" :value="editor.currentArticle?.title || ''">
+                            <input type="text" id="editorTitle" required :placeholder="t.editorTitlePh" v-model="editor.form.title">
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="editorCategory">{{ t.editorFieldCategory }}</label>
-                                <select id="editorCategory" required>
+                                <select id="editorCategory" required v-model="editor.form.category">
                                     <option value="">{{ t.editorCategorySelect }}</option>
                                     <option value="公告">{{ t.editorCatAnnouncement }}</option>
                                     <option value="传说">{{ t.editorCatLegend }}</option>
@@ -1982,19 +1890,19 @@ const App = {
                             </div>
                             <div class="form-group">
                                 <label for="editorReadTime">{{ t.editorFieldReadTime }}</label>
-                                <input type="text" id="editorReadTime" required :placeholder="t.editorReadTimePh" :value="editor.currentArticle?.read_time || '5 min'">
+                                <input type="text" id="editorReadTime" required :placeholder="t.editorReadTimePh" v-model="editor.form.readTime">
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="editorExcerpt">{{ t.editorFieldExcerpt }}</label>
-                            <textarea id="editorExcerpt" maxlength="200" required :placeholder="t.editorExcerptPh">{{ editor.currentArticle?.excerpt || '' }}</textarea>
+                            <textarea id="editorExcerpt" maxlength="200" required :placeholder="t.editorExcerptPh" v-model="editor.form.excerpt"></textarea>
                             <div class="help-text">{{ t.editorExcerptHint }}</div>
                         </div>
 
                         <div class="form-group">
                             <label for="editorContent">{{ t.editorFieldContent }}</label>
-                            <textarea id="editorContent" required style="min-height:400px" :placeholder="t.editorContentPh">{{ editor.currentArticle?.content || '' }}</textarea>
+                            <textarea id="editorContent" required style="min-height:400px" :placeholder="t.editorContentPh" v-model="editor.form.content"></textarea>
                             <div class="help-text">{{ t.editorContentHint }}</div>
                         </div>
 
@@ -2019,11 +1927,11 @@ const App = {
                 <template v-else>
                     <section class="uc-hero">
                         <div class="uc-avatar-block">
-                            <div class="uc-avatar-upload" @click="document.getElementById('ucAvatarInput').click()" :title="t.ucChangeAvatar">
+                            <div class="uc-avatar-upload" @click="ucAvatarInput?.click()" :title="t.ucChangeAvatar">
                                 <img :src="ucAvatarSrc" alt="">
                             </div>
-                            <input type="file" id="ucAvatarInput" accept="image/*" style="display:none;" @change="ucUploadAvatar">
-                            <button class="ghost-btn" @click="document.getElementById('ucAvatarInput').click()">{{ t.ucUploadAvatar }}</button>
+                            <input ref="ucAvatarInput" type="file" id="ucAvatarInput" accept="image/*" style="display:none;" @change="ucUploadAvatar">
+                            <button class="ghost-btn" @click="ucAvatarInput?.click()">{{ t.ucUploadAvatar }}</button>
                         </div>
                         <div class="uc-hero-info">
                             <div class="uc-role-badge">{{ ucRoleText }}</div>
@@ -2073,8 +1981,8 @@ const App = {
                                     </div>
                                     <div class="form-group">
                                         <label>{{ t.ucBio }}</label>
-                                        <textarea id="ucBioInput" maxlength="300" style="min-height:140px;resize:vertical;line-height:1.7;" :placeholder="t.ucBioPlaceholder">{{ ucUser?.bio || '' }}</textarea>
-                                        <div class="help-text">{{ ucUser?.bio?.length || 0 }} / 300</div>
+                                        <textarea id="ucBioInput" maxlength="300" style="min-height:140px;resize:vertical;line-height:1.7;" :placeholder="t.ucBioPlaceholder" v-model="uc.profileBio"></textarea>
+                                        <div class="help-text">{{ uc.profileBio.length || 0 }} / 300</div>
                                     </div>
                                     <div>
                                         <button class="primary-btn" :disabled="uc.profileSaving" @click="ucSaveProfile">{{ t.ucSaveProfile }}</button>
@@ -2126,15 +2034,15 @@ const App = {
                                         <div class="form-grid">
                                             <div class="form-group">
                                                 <label>{{ t.ucCurrentPassword }}</label>
-                                                <input type="password" id="ucCurrentPassword" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh">
+                                                <input type="password" id="ucCurrentPassword" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh" v-model="uc.password.current">
                                             </div>
                                             <div class="form-group">
                                                 <label>{{ t.ucNewPassword }}</label>
-                                                <input type="password" id="ucNewPassword" autocomplete="new-password" :placeholder="t.ucNewPasswordPh">
+                                                <input type="password" id="ucNewPassword" autocomplete="new-password" :placeholder="t.ucNewPasswordPh" v-model="uc.password.next">
                                             </div>
                                             <div class="form-group">
                                                 <label>{{ t.ucConfirmNewPassword }}</label>
-                                                <input type="password" id="ucConfirmPassword" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
+                                                <input type="password" id="ucConfirmPassword" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh" v-model="uc.password.confirm">
                                             </div>
                                             <div>
                                                 <button class="primary-btn" :disabled="uc.passwordChanging" @click="ucChangePassword">{{ t.ucChangePassword }}</button>
