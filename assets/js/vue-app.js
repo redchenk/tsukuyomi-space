@@ -8,7 +8,8 @@ const routes = {
     '/register': 'register',
     '/stage': 'stage',
     '/plaza': 'plaza',
-    '/reality': 'reality'
+    '/reality': 'reality',
+    '/editor': 'editor'
 };
 
 const i18n = {
@@ -160,7 +161,43 @@ const i18n = {
         realityNoticeLinks: '站点可能包含 GitHub、友链或用户提交链接。访问外部网站时，请阅读对方的隐私与安全政策。',
         realityNoticeUpdate: '本页会随着站点功能变化进行调整。最近更新日期：2026-04-29。',
         realityFooterBack: '返回中枢大厅',
-        realityFooterBrand: '月读空间 Reality Anchor'
+        realityFooterBrand: '月读空间 Reality Anchor',
+        editorTitle: '文章编辑器',
+        editorSubtitle: '写下公告、传说或技术记录',
+        editorFieldCover: '封面图片（可选）',
+        editorCoverPick: '点击或拖入图片作为文章封面',
+        editorCoverHint: '建议 1200 x 630px，支持 JPG / PNG',
+        editorRemove: '×',
+        editorFieldTitle: '标题',
+        editorTitlePh: '请输入文章标题',
+        editorFieldCategory: '分类',
+        editorCategorySelect: '请选择分类',
+        editorCatAnnouncement: '公告',
+        editorCatLegend: '传说',
+        editorCatTechnology: '技术',
+        editorCatOther: '其他',
+        editorFieldReadTime: '阅读时间',
+        editorReadTimePh: '例如 5 min',
+        editorFieldExcerpt: '摘要',
+        editorExcerptPh: '用 200 字以内概括文章',
+        editorExcerptHint: '摘要会显示在文章列表中',
+        editorFieldContent: '正文',
+        editorContentPh: '开始书写正文...',
+        editorContentHint: '支持 Markdown：# 标题、- 列表、> 引用、\`代码\`',
+        editorSubmit: '发布文章',
+        editorUpdate: '保存修改',
+        editorNeedLogin: '请先登录后再使用编辑器。',
+        editorLogin: '前往登录',
+        editorLoadFailed: '文章加载失败：',
+        editorNetworkFailed: '网络请求失败',
+        editorImageOnly: '请选择图片文件',
+        editorImageFailed: '图片处理失败，请换一张图片重试',
+        editorRequired: '请完整填写标题、分类、阅读时间、摘要和正文',
+        editorPublishing: '发布中...',
+        editorSaving: '保存中...',
+        editorPublished: '文章发布成功，正在跳转...',
+        editorSaved: '文章已更新，正在跳转...',
+        editorSubmitFailed: '提交失败：'
     },
     ja: {
         brand: '月読空間',
@@ -310,7 +347,43 @@ const i18n = {
         realityNoticeLinks: 'サイトには GitHub、友達リンク、ユーザー投稿リンクが含まれる場合があります。外部サイトにアクセスする際は、そのサイトのプライバシーとセキュリティポリシーをお読みください。',
         realityNoticeUpdate: 'このページはサイト機能の変更に伴い更新されます。最終更新日：2026-04-29。',
         realityFooterBack: '中枢ホールに戻る',
-        realityFooterBrand: '月読空間 Reality Anchor'
+        realityFooterBrand: '月読空間 Reality Anchor',
+        editorTitle: '記事エディター',
+        editorSubtitle: 'お知らせ、伝説、技術記録を書く',
+        editorFieldCover: 'カバー画像（任意）',
+        editorCoverPick: 'クリックして記事カバーを選択',
+        editorCoverHint: '推奨 1200 x 630px、JPG / PNG 対応',
+        editorRemove: '×',
+        editorFieldTitle: 'タイトル',
+        editorTitlePh: '記事タイトルを入力',
+        editorFieldCategory: 'カテゴリ',
+        editorCategorySelect: 'カテゴリを選択',
+        editorCatAnnouncement: 'お知らせ',
+        editorCatLegend: '伝説',
+        editorCatTechnology: '技術',
+        editorCatOther: 'その他',
+        editorFieldReadTime: '読了時間',
+        editorReadTimePh: '例：5 min',
+        editorFieldExcerpt: '概要',
+        editorExcerptPh: '200字以内で概要を書く',
+        editorExcerptHint: '一覧に表示されます',
+        editorFieldContent: '本文',
+        editorContentPh: '本文を書き始める...',
+        editorContentHint: 'Markdown 対応：# 見出し、- リスト、> 引用、\`コード\`',
+        editorSubmit: '記事を公開',
+        editorUpdate: '変更を保存',
+        editorNeedLogin: 'ログインしてからエディターを使用してください。',
+        editorLogin: 'ログインへ',
+        editorLoadFailed: '記事の読み込みに失敗：',
+        editorNetworkFailed: 'ネットワークエラー',
+        editorImageOnly: '画像ファイルを選択してください',
+        editorImageFailed: '画像処理に失敗しました',
+        editorRequired: '必須項目をすべて入力してください',
+        editorPublishing: '公開中...',
+        editorSaving: '保存中...',
+        editorPublished: '公開しました。移動しています...',
+        editorSaved: '保存しました。移動しています...',
+        editorSubmitFailed: '送信失敗：'
     }
 };
 
@@ -692,6 +765,148 @@ const App = {
 
         function plazaFormatNumber(v) { return Number(v || 0).toLocaleString(lang.value === 'zh' ? 'zh-CN' : 'ja-JP'); }
 
+        // --- editor page ---
+        const editor = reactive({
+            coverImageBase64: null,
+            coverImageSize: 0,
+            currentArticle: null,
+            message: '',
+            messageType: 'error',
+            submitting: false,
+            loading: true
+        });
+
+        function editorShowMessage(type, msg) {
+            editor.message = msg;
+            editor.messageType = type;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function compressImage(file, maxWidth = 1200, maxHeight = 630, quality = 0.72) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let w = img.width, h = img.height;
+                        if (w > maxWidth) { h *= maxWidth / w; w = maxWidth; }
+                        if (h > maxHeight) { w *= maxHeight / h; h = maxHeight; }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.round(w);
+                        canvas.height = Math.round(h);
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleEditorCoverUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) return editorShowMessage('error', t.value.editorImageOnly);
+            try {
+                editor.coverImageBase64 = await compressImage(file);
+                editor.coverImageSize = Math.round(editor.coverImageBase64.length * 3 / 4);
+                nextTick(() => {
+                    const preview = document.getElementById('editorCoverPreview');
+                    const placeholder = document.getElementById('editorCoverPlaceholder');
+                    const upload = document.getElementById('editorCoverUpload');
+                    if (preview) { preview.src = editor.coverImageBase64; preview.classList.add('show'); }
+                    if (placeholder) placeholder.style.display = 'none';
+                    if (upload) upload.classList.add('has-image');
+                });
+            } catch (_) {
+                editorShowMessage('error', t.value.editorImageFailed);
+            }
+        }
+
+        function removeEditorCover() {
+            editor.coverImageBase64 = null;
+            editor.coverImageSize = 0;
+            const input = document.getElementById('editorCoverInput');
+            if (input) input.value = '';
+            const preview = document.getElementById('editorCoverPreview');
+            const placeholder = document.getElementById('editorCoverPlaceholder');
+            const upload = document.getElementById('editorCoverUpload');
+            if (preview) { preview.src = ''; preview.classList.remove('show'); }
+            if (placeholder) placeholder.style.display = 'block';
+            if (upload) upload.classList.remove('has-image');
+        }
+
+        async function handleEditorSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('editorTitle')?.value?.trim();
+            const category = document.getElementById('editorCategory')?.value;
+            const readTime = document.getElementById('editorReadTime')?.value?.trim();
+            const excerpt = document.getElementById('editorExcerpt')?.value?.trim();
+            const content = document.getElementById('editorContent')?.value?.trim();
+            if (!title || !category || !readTime || !excerpt || !content) return editorShowMessage('error', t.value.editorRequired);
+
+            editor.submitting = true;
+            try {
+                const body = { title, category, read_time: readTime, excerpt, content, cover_image: editor.coverImageBase64 };
+                const id = new URLSearchParams(location.search).get('id');
+                let url = '/api/articles', method = 'POST';
+                if (id) {
+                    const session = getSession();
+                    url = (session?.admin) ? `/api/admin/articles/${id}` : `/api/user/articles/${id}`;
+                    method = 'PUT';
+                }
+                const token = localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify(body)
+                });
+                const result = await parseResponse(res);
+                if (!result.success) throw new Error(result.message || t.value.unknown);
+                editorShowMessage('success', id ? t.value.editorSaved : t.value.editorPublished);
+                setTimeout(() => pushRoute(id ? '/stage' : '/stage'), 1000);
+            } catch (err) {
+                editorShowMessage('error', t.value.editorSubmitFailed + (err.message || t.value.editorNetworkFailed));
+            } finally {
+                editor.submitting = false;
+            }
+        }
+
+        async function initEditor() {
+            const session = getSession();
+            if (!session) {
+                editor.loading = false;
+                return;
+            }
+            const id = new URLSearchParams(location.search).get('id');
+            if (id) {
+                try {
+                    const url = session.admin ? `/api/admin/articles/${id}` : `/api/user/articles/${id}`;
+                    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + session.token } });
+                    const result = await parseResponse(res);
+                    if (!result.success) throw new Error(result.message || t.value.unknown);
+                    editor.currentArticle = result.data;
+                    if (result.data.cover_image) {
+                        editor.coverImageBase64 = result.data.cover_image;
+                    }
+                    await nextTick();
+                    const catEl = document.getElementById('editorCategory');
+                    if (catEl && result.data.category) {
+                        const validCats = ['公告', '传说', '技术', '其他'];
+                        catEl.value = validCats.includes(result.data.category) ? result.data.category : '其他';
+                    }
+                } catch (e) {
+                    editor.message = t.value.editorLoadFailed + (e.message || t.value.editorNetworkFailed);
+                    editor.messageType = 'error';
+                }
+            } else {
+                editor.currentArticle = null;
+            }
+            editor.loading = false;
+        }
+
         function plazaFormatUptime(seconds) {
             const total = Math.floor(Number(seconds || 0));
             const days = Math.floor(total / 86400);
@@ -840,6 +1055,17 @@ const App = {
             }
         }
 
+        function getSession() {
+            let token = localStorage.getItem('admin_token'), userStr = localStorage.getItem('admin_user'), admin = true;
+            if (!token || !userStr) {
+                token = localStorage.getItem('tsukuyomi_token');
+                userStr = localStorage.getItem('tsukuyomi_user');
+                admin = false;
+            }
+            if (!token || !userStr) return null;
+            try { return { token, user: JSON.parse(userStr), admin }; } catch (_) { return null; }
+        }
+
         function syncBodyRouteClass(nextRoute) {
             document.body.classList.toggle('vue-access-route', nextRoute === 'access');
         }
@@ -853,12 +1079,14 @@ const App = {
             });
             if (route.value === 'stage') loadArticles();
             if (route.value === 'plaza') refreshPlaza();
+            if (route.value === 'editor') initEditor();
         });
 
         watch(route, (nextRoute) => {
             syncBodyRouteClass(nextRoute);
             if (nextRoute === 'stage') loadArticles();
             if (nextRoute === 'plaza') refreshPlaza();
+            if (nextRoute === 'editor') initEditor();
         });
 
         return {
@@ -905,7 +1133,11 @@ const App = {
             submitRegister,
             sendCode,
             t,
-            user
+            user,
+            editor,
+            handleEditorCoverUpload,
+            removeEditorCover,
+            handleEditorSubmit
         };
     },
     template: `
@@ -1036,7 +1268,7 @@ const App = {
                     <div class="search-box">
                         <input type="text" v-model="stageSearch" :placeholder="t.searchPlaceholder">
                     </div>
-                    <a href="/pages/editor" class="btn stage-new-btn" @click="checkEditorAuth">{{ t.newPost }}</a>
+                    <a href="/editor" class="btn stage-new-btn" @click="checkEditorAuth">{{ t.newPost }}</a>
                 </div>
                 <div class="stage-filters">
                     <button v-for="cat in categories" :key="cat" class="filter-btn" :class="{ active: stageCategory === cat }" @click="stageCategory = cat">{{ stageCategoryLabel(cat) }}</button>
@@ -1335,6 +1567,78 @@ const App = {
                         <span>{{ t.realityFooterBrand }}</span>
                         <span><a class="reality-btn secondary" href="/hub" @click.prevent="go('/hub')">{{ t.realityFooterBack }}</a></span>
                     </div>
+                </div>
+            </main>
+
+            <main v-else-if="route === 'editor'" class="page editor-page">
+                <div class="editor-container">
+                    <div class="editor-header">
+                        <h1 class="section-title">{{ t.editorTitle }}</h1>
+                        <p class="section-subtitle">{{ t.editorSubtitle }}</p>
+                    </div>
+
+                    <div v-if="!isAuthed" class="panel editor-login-notice">
+                        <p>{{ t.editorNeedLogin }}</p>
+                        <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.editorLogin }}</a>
+                    </div>
+
+                    <div v-else-if="editor.loading" class="editor-status">{{ t.loading }}</div>
+
+                    <form v-else class="editor-form panel" @submit="handleEditorSubmit">
+                        <div v-if="editor.message" class="form-message" :class="editor.messageType">{{ editor.message }}</div>
+
+                        <div class="form-group">
+                            <label>{{ t.editorFieldCover }}</label>
+                            <div class="editor-cover-upload" id="editorCoverUpload" :class="{ 'has-image': editor.coverImageBase64 }">
+                                <input type="file" id="editorCoverInput" accept="image/*" @change="handleEditorCoverUpload">
+                                <div id="editorCoverPlaceholder">
+                                    <strong>{{ t.editorCoverPick }}</strong>
+                                    <div class="help-text">{{ t.editorCoverHint }}</div>
+                                </div>
+                                <img v-if="editor.coverImageBase64" class="editor-cover-preview show" id="editorCoverPreview" :src="editor.coverImageBase64" alt="">
+                                <button v-if="editor.coverImageBase64" type="button" class="editor-cover-remove" id="editorCoverRemove" @click="removeEditorCover">{{ t.editorRemove }}</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editorTitle">{{ t.editorFieldTitle }}</label>
+                            <input type="text" id="editorTitle" required :placeholder="t.editorTitlePh" :value="editor.currentArticle?.title || ''">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editorCategory">{{ t.editorFieldCategory }}</label>
+                                <select id="editorCategory" required>
+                                    <option value="">{{ t.editorCategorySelect }}</option>
+                                    <option value="公告">{{ t.editorCatAnnouncement }}</option>
+                                    <option value="传说">{{ t.editorCatLegend }}</option>
+                                    <option value="技术">{{ t.editorCatTechnology }}</option>
+                                    <option value="其他">{{ t.editorCatOther }}</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="editorReadTime">{{ t.editorFieldReadTime }}</label>
+                                <input type="text" id="editorReadTime" required :placeholder="t.editorReadTimePh" :value="editor.currentArticle?.read_time || '5 min'">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editorExcerpt">{{ t.editorFieldExcerpt }}</label>
+                            <textarea id="editorExcerpt" maxlength="200" required :placeholder="t.editorExcerptPh">{{ editor.currentArticle?.excerpt || '' }}</textarea>
+                            <div class="help-text">{{ t.editorExcerptHint }}</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editorContent">{{ t.editorFieldContent }}</label>
+                            <textarea id="editorContent" required style="min-height:400px" :placeholder="t.editorContentPh">{{ editor.currentArticle?.content || '' }}</textarea>
+                            <div class="help-text">{{ t.editorContentHint }}</div>
+                        </div>
+
+                        <div class="btn-group">
+                            <button type="submit" class="primary-btn" :disabled="editor.submitting">{{ editor.submitting ? (editor.currentArticle ? t.editorSaving : t.editorPublishing) : (editor.currentArticle ? t.editorUpdate : t.editorSubmit) }}</button>
+                            <button type="button" class="ghost-btn" @click="history.back()">{{ t.cancel }}</button>
+                        </div>
+                    </form>
                 </div>
             </main>
         </div>
