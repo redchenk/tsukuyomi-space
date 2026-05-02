@@ -840,12 +840,6 @@ const App = {
             }
         }
 
-        function initAmbient() {
-            nextTick(() => {
-                window.initTsukuyomiAmbientFish?.({ containerId: 'ambientLayer', density: 0.58, pauseOnScroll: false });
-            });
-        }
-
         function syncBodyRouteClass(nextRoute) {
             document.body.classList.toggle('vue-access-route', nextRoute === 'access');
         }
@@ -857,14 +851,12 @@ const App = {
             window.addEventListener('popstate', () => {
                 path.value = normalizePath(location.pathname);
             });
-            if (route.value !== 'access') initAmbient();
             if (route.value === 'stage') loadArticles();
             if (route.value === 'plaza') refreshPlaza();
         });
 
         watch(route, (nextRoute) => {
             syncBodyRouteClass(nextRoute);
-            if (nextRoute !== 'access') initAmbient();
             if (nextRoute === 'stage') loadArticles();
             if (nextRoute === 'plaza') refreshPlaza();
         });
@@ -918,10 +910,9 @@ const App = {
     },
     template: `
         <div class="app-shell">
-            <div v-if="route !== 'access'" id="ambientLayer" class="ambient"></div>
             <div v-if="route !== 'access'" class="moon" aria-hidden="true"></div>
             <header v-if="route !== 'access'" class="topbar">
-                <a href="/access" class="brand" @click.prevent="go('/access')">{{ t.brand }}</a>
+                <a href="/hub" class="brand" @click.prevent="go('/hub')">{{ t.brand }}</a>
                 <div class="nav-actions">
                     <a href="/hub" class="nav-link" :class="{ 'router-link-active': route === 'hub' }" @click.prevent="go('/hub')">{{ t.hub }}</a>
                     <a href="/stage" class="nav-link" :class="{ 'router-link-active': route === 'stage' }" @click.prevent="go('/stage')">{{ t.stage }}</a>
