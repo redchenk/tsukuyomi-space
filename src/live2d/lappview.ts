@@ -150,11 +150,13 @@ export class LAppView {
       this._back.setSubdelegate(this._subdelegate);
     };
 
-    textureManager.createTextureFromPngFile(
-      resourcesPath + imageName,
-      false,
-      initBackGroundTexture
-    );
+    if (imageName) {
+      textureManager.createTextureFromPngFile(
+        resourcesPath + imageName,
+        false,
+        initBackGroundTexture
+      );
+    }
 
     // 歯車画像初期化
     imageName = LAppDefine.GearImageName;
@@ -167,11 +169,13 @@ export class LAppView {
       this._gear.setSubdelegate(this._subdelegate);
     };
 
-    textureManager.createTextureFromPngFile(
-      resourcesPath + imageName,
-      false,
-      initGearTexture
-    );
+    if (imageName) {
+      textureManager.createTextureFromPngFile(
+        resourcesPath + imageName,
+        false,
+        initGearTexture
+      );
+    }
 
     // シェーダーを作成
     if (this._programId == null) {
@@ -237,7 +241,7 @@ export class LAppView {
     lapplive2dmanager.onTap(x, y);
 
     // 歯車にタップしたか
-    if (this._gear.isHit(posX, posY)) {
+    if (this._gear && this._gear.isHit(posX, posY)) {
       lapplive2dmanager.nextScene();
     }
   }
