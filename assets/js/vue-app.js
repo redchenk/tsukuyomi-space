@@ -421,7 +421,7 @@ const App = {
 
         function initAmbient() {
             nextTick(() => {
-                window.initTsukuyomiAmbientFish?.({ containerId: 'ambientLayer', density: 0.58 });
+                window.initTsukuyomiAmbientFish?.({ containerId: 'ambientLayer', density: 0.58, pauseOnScroll: false });
             });
         }
 
