@@ -1584,7 +1584,7 @@ const App = {
 
                     <div v-else-if="editor.loading" class="editor-status">{{ t.loading }}</div>
 
-                    <form v-else class="editor-form panel" @submit="handleEditorSubmit">
+                    <form v-else class="editor-form" @submit="handleEditorSubmit">
                         <div v-if="editor.message" class="form-message" :class="editor.messageType">{{ editor.message }}</div>
 
                         <div class="form-group">

@@ -1212,8 +1212,13 @@ button:disabled {
 
 .editor-form {
     width: 100%;
+    max-width: 100%;
     padding: clamp(1.2rem, 3vw, 2rem);
-    backdrop-filter: blur(18px);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(20px) saturate(1.16);
 }
 
 .editor-form .form-group {
