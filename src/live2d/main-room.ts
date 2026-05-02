@@ -92,14 +92,9 @@ function initRoomLive2D() {
     }
   };
 
-  // Hide loading overlay after model starts loading
-  setTimeout(() => {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-      overlay.style.display = 'none';
-      console.log('TsukimiYachiyo Live2D ready');
-    }
-  }, 2000);
+  window.addEventListener('tsukuyomi:live2d-ready', () => {
+    console.log('TsukimiYachiyo Live2D ready');
+  }, { once: true });
 }
 
 // Initialize when DOM is ready

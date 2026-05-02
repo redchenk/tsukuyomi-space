@@ -4,10 +4,10 @@ import { onBeforeUnmount, onMounted } from 'vue';
 defineEmits(['go']);
 
 const scripts = [
-  '/assets/js/ambient-fish.js?v=20260502-vue-room4',
+  '/assets/js/ambient-fish.js?v=20260502-vue-room5',
   '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260502-vue-room4',
-  '/assets/js/room-runtime.js?v=20260502-vue-room4'
+  '/lib/bundled/live2d-room.iife.js?v=20260502-vue-room5',
+  '/assets/js/room-runtime.js?v=20260502-vue-room5'
 ];
 
 function loadScript(src, options = {}) {
@@ -39,6 +39,7 @@ function loadScript(src, options = {}) {
 onMounted(async () => {
   document.body.classList.add('vue-room-route');
   window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
+  window.TSUKUYOMI_LIVE2D_READY = false;
   window.LAppDelegate?.releaseInstance?.();
 
   const container = document.getElementById('live2d-container');
@@ -227,8 +228,9 @@ onBeforeUnmount(() => {
     <div id="loadingOverlay" class="status-layer active" role="status" aria-live="polite">
       <div class="status-box">
         <div class="status-spinner"></div>
-        <div id="loadingTitle" class="status-title">&#27491;&#22312;&#21796;&#37266;&#36745;&#22812;&#23020;</div>
-        <div id="loadingDetail" class="status-detail">&#21152;&#36733; Cubism Core &#19982;&#27169;&#22411;&#36164;&#28304;...</div>
+        <div class="status-progress" aria-hidden="true"><span></span></div>
+        <div id="loadingTitle" class="status-title">SYNCHRONIZING...</div>
+        <div id="loadingDetail" class="status-detail">Loading Cubism Core and model assets...</div>
       </div>
     </div>
   </main>

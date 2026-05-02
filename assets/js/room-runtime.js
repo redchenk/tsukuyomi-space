@@ -22,6 +22,7 @@
     let draggedPanel = null;
     let dragOffset = { x: 0, y: 0 };
     let zIndexCounter = 30;
+    let live2dReadyListener = null;
 
     function $(id) {
         return document.getElementById(id);
@@ -887,6 +888,21 @@
 
     async function bootLive2D() {
         if (window.TSUKUYOMI_EXTERNAL_LIVE2D) {
+            setLoading('SYNCHRONIZING...', 'Loading Cubism Core and model assets...');
+            if (live2dReadyListener) {
+                window.removeEventListener('tsukuyomi:live2d-ready', live2dReadyListener);
+            }
+            live2dReadyListener = () => {
+                hideLoading();
+                appendMessage('system', 'Live2D is ready');
+                live2dReadyListener = null;
+            };
+            window.addEventListener('tsukuyomi:live2d-ready', live2dReadyListener, { once: true });
+            if (window.TSUKUYOMI_LIVE2D_READY) {
+                const readyNow = live2dReadyListener;
+                window.removeEventListener('tsukuyomi:live2d-ready', readyNow);
+                readyNow();
+            }
             live2d = new ExternalCubismRoomModel();
             live2d.init();
             appendMessage('system', 'Live2D 正在由本地 Cubism Framework 渲染');
@@ -922,6 +938,10 @@
 
     window.initTsukuyomiRoomRuntime = bootRoomRuntime;
     window.destroyTsukuyomiRoomRuntime = () => {
+        if (live2dReadyListener) {
+            window.removeEventListener('tsukuyomi:live2d-ready', live2dReadyListener);
+            live2dReadyListener = null;
+        }
         ambientFish?.destroy?.();
         live2d?.destroy?.();
         ambientFish = null;

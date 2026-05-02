@@ -900,6 +900,17 @@ export class LAppModel extends CubismUserModel {
       this.getRenderer().setMvpMatrix(matrix);
 
       this.doDraw();
+      this.notifyRoomReadyOnce();
+    }
+  }
+
+  private notifyRoomReadyOnce(): void {
+    if (this._roomReadyNotified) return;
+    this._roomReadyNotified = true;
+
+    if (typeof window !== 'undefined') {
+      (window as any).TSUKUYOMI_LIVE2D_READY = true;
+      window.dispatchEvent(new CustomEvent('tsukuyomi:live2d-ready'));
     }
   }
 
@@ -982,6 +993,7 @@ export class LAppModel extends CubismUserModel {
     this._textureCount = 0;
     this._motionCount = 0;
     this._allMotionCount = 0;
+    this._roomReadyNotified = false;
     this._wavFileHandler = new LAppWavFileHandler();
     this._consistency = false;
   }
@@ -1013,6 +1025,7 @@ export class LAppModel extends CubismUserModel {
   _textureCount: number; // テクスチャカウント
   _motionCount: number; // モーションデータカウント
   _allMotionCount: number; // モーション総数
+  _roomReadyNotified: boolean;
   _wavFileHandler: LAppWavFileHandler; //wavファイルハンドラ
   _consistency: boolean; // MOC3整合性チェック管理用
 }
