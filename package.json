@@ -6,6 +6,10 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
+    "dev:api": "node backend/server.js",
+    "dev:web": "vite --config vite.frontend.config.js",
+    "build:web": "vite build --config vite.frontend.config.js",
+    "build:live2d": "vite build --config vite.config.js",
     "check": "node --check backend/server.js && node --check backend/app.js && node --check backend/admin-routes.js && node --check backend/user-routes.js && node --check backend/config.js && node --check backend/db/index.js && node --check backend/db/migrations/init.js && node --check backend/middleware/auth.js && node --check backend/middleware/security.js && node --check backend/middleware/static.js && node --check backend/middleware/error.js && node --check backend/services/mailer.js && node --check backend/services/llm.js && node --check backend/services/tts.js && node --check backend/routes/auth.js && node --check backend/routes/articles.js && node --check backend/routes/messages.js && node --check backend/routes/admin.js && node --check backend/routes/chat.js && node --check backend/routes/tts.js && node --check backend/routes/stats.js && node --check backend/routes/room.js && node --check backend/routes/health.js && node --check backend/validators/index.js",
     "test": "npm run check"
   },
@@ -21,6 +25,7 @@
     "url": "https://github.com/redchenk/tsukuyomi-space.git"
   },
   "dependencies": {
+    "@vitejs/plugin-vue": "^6.0.6",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^9.4.3",
     "cors": "^2.8.5",
@@ -28,7 +33,9 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "uuid": "^9.0.0",
-    "vite": "^8.0.5"
+    "vite": "^8.0.5",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
   },
   "engines": {
     "node": ">=16.0.0"

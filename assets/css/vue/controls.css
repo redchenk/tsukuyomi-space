@@ -1,0 +1,28 @@
+/* ---- common chips & icon buttons ---- */
+.chip {
+    padding: 0.45rem 0.72rem;
+    font-size: 0.8rem;
+    background: rgba(255,255,255,0.045);
+    border: 1px solid rgba(255,183,197,0.28);
+    color: var(--sakura-pink, #ffb7c5);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    white-space: nowrap;
+}
+.chip:hover { border-color: rgba(255,183,197,0.52); background: rgba(255,107,157,0.2); }
+.chip.active { background: rgba(255,107,157,0.28); color: #fff; border-color: rgba(255,183,197,0.5); }
+
+.icon-btn {
+    padding: 0.45rem 0.65rem;
+    background: rgba(255,255,255,0.045);
+    border: 1px solid rgba(255,183,197,0.28);
+    color: rgba(255,225,235,0.76);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.icon-btn:hover { border-color: rgba(255,183,197,0.52); background: rgba(255,107,157,0.2); transform: translateY(-1px); }
+.icon-btn.liked { color: #fff; background: rgba(255,107,157,0.24); }
+

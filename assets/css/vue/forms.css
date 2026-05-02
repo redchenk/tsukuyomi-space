@@ -1,0 +1,123 @@
+.panel {
+    width: min(100%, 430px);
+    padding: clamp(1.6rem, 5vw, 2.6rem);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(20px) saturate(1.16);
+}
+
+.panel h1 {
+    margin: 0;
+    color: #fff;
+    text-align: center;
+    font-size: 2rem;
+}
+
+.panel-subtitle {
+    margin: 0.5rem 0 1.6rem;
+    color: var(--muted);
+    text-align: center;
+}
+
+.mode-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: 1rem;
+}
+
+.mode-btn {
+    min-height: 42px;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.42rem;
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0.8rem 0.95rem;
+    border: 1px solid rgba(255, 183, 197, 0.22);
+    border-radius: var(--radius);
+    outline: none;
+    background: rgba(6, 10, 22, 0.56);
+    color: #fff;
+}
+
+input:focus {
+    border-color: rgba(126, 219, 232, 0.54);
+    box-shadow: 0 0 0 3px rgba(126, 219, 232, 0.1);
+}
+
+.code-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.6rem;
+}
+
+.code-btn {
+    padding: 0 0.9rem;
+    white-space: nowrap;
+}
+
+.form-message {
+    margin-bottom: 1rem;
+    padding: 0.78rem;
+    border-radius: var(--radius);
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.form-message.error {
+    color: #ff9bab;
+    border: 1px solid rgba(255, 95, 120, 0.3);
+    background: rgba(255, 95, 120, 0.1);
+}
+
+.form-message.success {
+    color: #97f2c1;
+    border: 1px solid rgba(100, 255, 150, 0.26);
+    background: rgba(100, 255, 150, 0.1);
+}
+
+.panel-links {
+    margin-top: 1.3rem;
+    color: var(--muted);
+    text-align: center;
+}
+
+.panel-links a {
+    color: rgba(126, 219, 232, 0.9);
+    text-decoration: none;
+}
+
+.panel-links a:hover {
+    color: #fff;
+}
+
+.user-chip {
+    color: rgba(225, 236, 246, 0.84);
+    font-size: 0.86rem;
+    text-decoration: none;
+    cursor: pointer;
+}
+.user-chip:hover {
+    color: #fff;
+}
+
+button:disabled {
+    opacity: 0.58;
+    cursor: not-allowed;
+    transform: none;
+}
+

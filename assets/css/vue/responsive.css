@@ -1,0 +1,44 @@
+@media (max-width: 760px) {
+    .topbar {
+        align-items: flex-start;
+    }
+
+    .brand {
+        padding-top: 0.5rem;
+    }
+
+    .scene-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-kicker {
+        letter-spacing: 0.2rem;
+    }
+
+    .code-row {
+        grid-template-columns: 1fr;
+    }
+
+    .stage-card {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .stage-card-cover {
+        width: 100%;
+        height: 200px;
+    }
+
+    .plaza-hero, .plaza-layout { grid-template-columns: 1fr; }
+    .plaza-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .plaza-section-head { align-items: flex-start; flex-direction: column; }
+    .plaza-toolbar { width: 100%; }
+    .plaza-search { width: 100%; }
+    .plaza-title { letter-spacing: 0.08rem; }
+    .plaza-hero-main { padding: 1.25rem; }
+}
+
+@media (max-width: 560px) {
+    .plaza-stats { grid-template-columns: 1fr; }
+}
+

@@ -1,0 +1,115 @@
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    min-height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem clamp(1rem, 4vw, 2rem);
+    border-bottom: 1px solid var(--line);
+    background: rgba(7, 10, 21, 0.78);
+    backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.brand {
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.08rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.nav-actions,
+.lang-switcher,
+.auth-row,
+.mode-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.nav-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.nav-link,
+.ghost-btn,
+.lang-btn,
+.mode-btn,
+.code-btn,
+.primary-btn,
+.scene-card {
+    min-height: 36px;
+    border: 1px solid rgba(126, 219, 232, 0.18);
+    border-radius: var(--radius);
+    color: rgba(225, 236, 246, 0.82);
+    background: rgba(8, 12, 25, 0.42);
+    text-decoration: none;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.nav-link,
+.ghost-btn,
+.lang-btn {
+    padding: 0.48rem 0.72rem;
+    font-size: 0.86rem;
+}
+
+.nav-link:hover,
+.ghost-btn:hover,
+.lang-btn:hover,
+.lang-btn.active,
+.mode-btn.active,
+.mode-btn:hover,
+.code-btn:hover,
+.scene-card:hover {
+    color: #fff;
+    border-color: rgba(126, 219, 232, 0.42);
+    background: rgba(126, 219, 232, 0.12);
+}
+
+.nav-link.router-link-active {
+    color: #fff;
+    border-color: rgba(255, 173, 193, 0.32);
+    background: rgba(255, 95, 150, 0.14);
+}
+
+.ghost-btn,
+.lang-btn,
+.mode-btn,
+.code-btn,
+.primary-btn {
+    cursor: pointer;
+}
+
+.lang-switcher {
+    padding: 0.18rem;
+    border: 1px solid rgba(126, 219, 232, 0.16);
+    border-radius: var(--radius);
+    background: rgba(8, 12, 25, 0.42);
+}
+
+.lang-btn {
+    min-height: 32px;
+    border-color: transparent;
+    background: transparent;
+}
+
+.page {
+    position: relative;
+    z-index: 5;
+    min-height: 100vh;
+    padding: max(6rem, 82px) clamp(1rem, 4vw, 2rem) 2rem;
+}
+
+.center-page {
+    display: grid;
+    place-items: center;
+}
+

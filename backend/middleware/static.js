@@ -5,6 +5,12 @@ const config = require('../config');
 
 function serveStaticFiles(app) {
     const publicRoot = config.projectRoot;
+    const frontendDistRoot = path.join(publicRoot, 'dist', 'frontend');
+    const useFrontendDist = config.enableFrontendDist && fs.existsSync(path.join(frontendDistRoot, 'index.html'));
+
+    if (useFrontendDist) {
+        app.use(express.static(frontendDistRoot));
+    }
 
     app.use(express.static(publicRoot));
     app.use('/pages', express.static(path.join(publicRoot, 'pages')));
@@ -24,7 +30,7 @@ function serveStaticFiles(app) {
 
         const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/plaza', '/reality', '/editor', '/user-center']);
         if (vueRoutes.has(req.path)) {
-            return res.sendFile(path.join(publicRoot, 'index.html'));
+            return res.sendFile(path.join(useFrontendDist ? frontendDistRoot : publicRoot, 'index.html'));
         }
 
         next();

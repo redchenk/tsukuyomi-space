@@ -1,0 +1,81 @@
+.hero {
+    position: relative;
+    z-index: 2;
+    width: min(100%, 920px);
+    text-align: center;
+}
+
+.hero-title {
+    margin: 0;
+    color: #fff;
+    font-size: clamp(3rem, 9vw, 6rem);
+    font-weight: 300;
+    letter-spacing: 0.14rem;
+    text-shadow: 0 0 36px rgba(255, 173, 193, 0.42);
+}
+
+.hero-kicker {
+    margin: 0.8rem 0 0;
+    color: rgba(255, 255, 255, 0.62);
+    letter-spacing: 0.42rem;
+}
+
+.hero-copy {
+    max-width: 640px;
+    margin: 2rem auto 2.8rem;
+    color: rgba(225, 236, 246, 0.76);
+    line-height: 1.9;
+}
+
+.primary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-width: 188px;
+    min-height: 50px;
+    padding: 0 1.4rem;
+    color: #fff;
+    font-weight: 700;
+    background: linear-gradient(135deg, rgba(255,95,150,.32), rgba(126,219,232,.18));
+    border-color: rgba(255, 173, 193, 0.34);
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(126, 219, 232, 0.52);
+}
+
+.loading-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.9);
+}
+
+.loading-box {
+    width: min(80vw, 320px);
+    text-align: center;
+}
+
+.loading-text {
+    margin-bottom: 1.4rem;
+    color: var(--pink);
+    letter-spacing: 0.18rem;
+}
+
+.loading-bar {
+    height: 3px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: rgba(255, 107, 157, 0.2);
+}
+
+.loading-progress {
+    height: 100%;
+    background: linear-gradient(90deg, var(--pink), var(--pink-strong), var(--cyan));
+    box-shadow: 0 0 20px rgba(255, 107, 157, 0.6);
+}
+

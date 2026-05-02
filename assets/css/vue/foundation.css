@@ -1,0 +1,98 @@
+:root {
+    --pink: #ffadc1;
+    --pink-strong: #ff5f96;
+    --cyan: #7edbe8;
+    --gold: #f4cf72;
+    --panel: rgba(12, 17, 34, 0.72);
+    --panel-strong: rgba(7, 10, 21, 0.84);
+    --line: rgba(126, 219, 232, 0.2);
+    --text: rgba(255, 255, 255, 0.92);
+    --muted: rgba(225, 236, 246, 0.68);
+    --radius: 8px;
+    --font: "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Arial, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+    color-scheme: dark;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    color: var(--text);
+    font-family: var(--font);
+    background:
+        linear-gradient(135deg, rgba(10, 15, 31, 0.82), rgba(20, 16, 42, 0.78) 42%, rgba(7, 18, 30, 0.92)),
+        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+    overflow-x: hidden;
+}
+
+body.vue-access-route {
+    background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%);
+    overflow: hidden;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+button,
+a {
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+    min-height: 100vh;
+}
+
+.ambient {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.access-video,
+.access-overlay {
+    position: fixed;
+    inset: 0;
+}
+
+.access-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    opacity: 1;
+    background: linear-gradient(180deg, #2d1f3d 0%, #1a1025 50%, #0f1724 100%);
+}
+
+.access-overlay {
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(45,31,61,0.42) 0%, rgba(26,16,37,0.62) 50%, rgba(15,23,36,0.76) 100%);
+}
+
+.moon {
+    position: fixed;
+    top: 9vh;
+    right: clamp(1.2rem, 10vw, 9rem);
+    width: clamp(64px, 9vw, 118px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    z-index: 1;
+    background: radial-gradient(circle at 36% 34%, rgba(255,255,255,.96), rgba(244,207,114,.74) 58%, rgba(126,219,232,.22));
+    box-shadow: 0 0 46px rgba(244,207,114,.36);
+    animation: moonFloat 6s ease-in-out infinite;
+}
+
+@keyframes moonFloat {
+    50% { transform: translateY(-14px); }
+}
+
