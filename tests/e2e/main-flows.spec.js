@@ -4,7 +4,7 @@ async function loginAsUser(page) {
     await page.goto('/login');
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
-    await page.getByRole('button', { name: '登录' }).click();
+    await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/hub$/);
 }
 
@@ -52,5 +52,5 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
 
     await page.getByRole('button', { name: /用户/ }).click();
     await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible();
-    await expect(page.getByText('e2e-user')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'e2e-user' }).first()).toBeVisible();
 });
