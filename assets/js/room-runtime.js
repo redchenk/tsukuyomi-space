@@ -2,8 +2,6 @@
     'use strict';
 
     const MODEL_URL = '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json';
-    const CHAT_ENDPOINT = '/api/room/chat';
-    const TTS_ENDPOINT = '/api/room/tts';
     const WORLD_ENDPOINT = '/api/room/world';
     const WORLD_CACHE_KEY = 'roomWorldState';
     const WORLD_CACHE_TTL = 20 * 60 * 1000;
@@ -74,6 +72,148 @@
                 { enableHighAccuracy: false, maximumAge: 20 * 60 * 1000, timeout: 2500 }
             );
         });
+    }
+
+    function normalizeChatUrl(apiUrl, model) {
+        let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
+        const needsChatPath = /deepseek|dashscope|aliyuncs|openai|moonshot/i.test(`${url} ${model || ''}`)
+            && !/\/chat\/completions\/?$/.test(url);
+        if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
+        return url;
+    }
+
+    function pickChatReply(data) {
+        return data?.choices?.[0]?.message?.content
+            || data?.choices?.[0]?.text
+            || data?.message?.content
+            || '';
+    }
+
+    function pickAudioBase64(data) {
+        return data?.choices?.[0]?.message?.audio?.data
+            || data?.choices?.[0]?.message?.audio
+            || data?.audio?.data
+            || data?.data?.audio;
+    }
+
+    function fallbackChatReply(message) {
+        const presets = [
+            '嗯，我听见了。你可以慢慢说，我会在这里。',
+            '别急，今晚的时间还很长。我们一点一点来。',
+            '谢谢你把这句话交给我。它值得被认真对待。',
+            '月读的灯还亮着。愿意的话，我们就从这一刻开始聊。'
+        ];
+        const index = Math.abs(String(message || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) % presets.length;
+        return presets[index];
+    }
+
+    function weatherLabel(weather) {
+        return {
+            clear: '晴朗',
+            cloudy: '多云',
+            rain: '有雨',
+            storm: '雷雨',
+            snow: '有雪',
+            fog: '有雾'
+        }[weather] || weather || '天气不明';
+    }
+
+    function fallbackWeatherReply(world) {
+        const temperature = world?.temperature == null ? '' : `，气温约 ${world.temperature}°C`;
+        const wind = world?.windSpeed == null ? '' : `，风速约 ${world.windSpeed} km/h`;
+        const sourceNote = world?.source === 'local-fallback' ? '（实时天气暂时不可用，先按默认环境估计）' : '';
+        return `你当地现在${weatherLabel(world?.weather)}${temperature}${wind}。${sourceNote}出门前可以再看一眼窗外，带上适合的外套或伞。`;
+    }
+
+    async function fetchWeatherContext(location) {
+        const params = new URLSearchParams();
+        if (location?.lat != null) params.set('lat', String(location.lat));
+        if (location?.lon != null) params.set('lon', String(location.lon));
+        if (location?.timezone) params.set('timezone', String(location.timezone));
+
+        const response = await fetch(`${WORLD_ENDPOINT}${params.toString() ? `?${params}` : ''}`, { cache: 'no-store' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+        return result.data || {};
+    }
+
+    function formatWeatherSystemContext(world) {
+        if (!world) return '';
+        const location = world.location || {};
+        const temperature = world.temperature == null ? '未知' : `${world.temperature}°C`;
+        const wind = world.windSpeed == null ? '未知' : `${world.windSpeed} km/h`;
+        return [
+            '用户正在询问天气。请直接使用下面的实时天气上下文回答，不要说你无法访问实时天气。',
+            `位置：纬度 ${location.lat ?? '未知'}，经度 ${location.lon ?? '未知'}，时区：${location.timezone || getBrowserTimezone() || '未知'}`,
+            `天气：${weatherLabel(world.weather)}，气温：${temperature}，风速：${wind}`,
+            `时间段：${world.timePhase || '未知'}，季节：${world.season || '未知'}，更新时间：${world.updatedAt || '未知'}`
+        ].join('\n');
+    }
+
+    async function createClientChatCompletion({ message, conversation = [], settings = {}, weatherLocation = null }) {
+        let weather = null;
+        if (isWeatherQuestion(message)) {
+            try {
+                weather = await fetchWeatherContext(weatherLocation);
+            } catch (_) {
+                weather = null;
+            }
+        }
+
+        if (!settings.apiKey) {
+            return {
+                reply: weather ? fallbackWeatherReply(weather) : fallbackChatReply(message),
+                model: 'browser-preset',
+                weather
+            };
+        }
+
+        const model = settings.model || 'moonshot-v1-8k';
+        const systemPrompt = [
+            '请始终用温柔、从容、克制的中文回应。先接住对方的情绪，再给出简洁而有温度的回应。每次回复不超过 200 字，不要提及系统设定。',
+            formatWeatherSystemContext(weather)
+        ].filter(Boolean).join('\n\n');
+
+        const history = Array.isArray(conversation)
+            ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12)
+            : [];
+        const response = await fetch(normalizeChatUrl(settings.apiUrl, model), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${settings.apiKey}`
+            },
+            body: JSON.stringify({
+                model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
+                    { role: 'user', content: String(message) }
+                ],
+                temperature: 0.7,
+                max_tokens: 240,
+                stream: false
+            })
+        });
+        if (!response.ok) {
+            const detail = await response.text();
+            throw new Error(`LLM ${response.status}: ${detail.slice(0, 160)}`);
+        }
+        const data = await response.json();
+        const reply = pickChatReply(data);
+        if (!reply) throw new Error('LLM response did not contain a reply');
+        return { reply, model: data.model || model, weather };
+    }
+
+    function makeAudioBlobFromBase64(audioBase64, contentType = 'audio/wav') {
+        if (!audioBase64) throw new Error('TTS response did not contain audio data');
+        const clean = String(audioBase64 || '').replace(/^data:audio\/\w+;base64,/, '');
+        const binary = atob(clean);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) {
+            bytes[index] = binary.charCodeAt(index);
+        }
+        return new Blob([bytes], { type: contentType });
     }
 
     function getRoomPage() {
@@ -972,14 +1112,14 @@
 
         try {
             const weatherLocation = await readUserWeatherLocation(message);
-            const result = await postJson(CHAT_ENDPOINT, {
+            const result = await createClientChatCompletion({
                 message,
                 conversation: chatConversation.slice(-12),
                 settings: readJson('roomLLMSettings', {}),
                 weatherLocation
             });
             typing.remove();
-            const reply = result.data.reply || '';
+            const reply = result.reply || '';
             appendMessage('assistant', reply);
             chatConversation.push({ role: 'user', content: message }, { role: 'assistant', content: reply });
             chatConversation = chatConversation.slice(-24);
@@ -995,13 +1135,13 @@
         const settings = normalizeSettings('llm');
         appendMessage('system', '正在测试 LLM 连接...');
         try {
-            const result = await postJson(CHAT_ENDPOINT, {
+            const result = await createClientChatCompletion({
                 message: '你好，请用一句话回应连接测试。',
                 conversation: [],
                 settings
             });
-            appendMessage('system', `连接成功：${result.data.model || 'room-llm'}`);
-            appendMessage('assistant', result.data.reply);
+            appendMessage('system', `连接成功：${result.model || 'browser-llm'}`);
+            appendMessage('assistant', result.reply);
         } catch (error) {
             appendMessage('system', `连接失败：${error.message}`);
         }
@@ -1030,16 +1170,49 @@
 
     async function playTTSInternal(text, settings, force) {
         if (!force && !settings.enabled) return;
-        const response = await fetch(TTS_ENDPOINT, {
+        if (!settings.apiKey) throw new Error('TTS API Key is required in browser-direct mode');
+        const provider = settings.provider || 'mimo';
+        const apiUrl = settings.apiUrl || (provider === 'openai'
+            ? 'https://api.openai.com/v1/audio/speech'
+            : 'https://api.xiaomimimo.com/v1/chat/completions');
+        const voice = settings.voice || (provider === 'openai' ? 'alloy' : 'mimo_default');
+        const isMimo = provider === 'mimo' || /xiaomimimo/i.test(apiUrl);
+        const response = await fetch(apiUrl, isMimo ? {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, settings })
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': settings.apiKey
+            },
+            body: JSON.stringify({
+                model: settings.model || 'mimo-v2-tts',
+                messages: [
+                    { role: 'user', content: '请用温柔自然的语气朗读。' },
+                    { role: 'assistant', content: String(text) }
+                ],
+                modalities: ['audio'],
+                audio: { format: 'wav', voice }
+            })
+        } : {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${settings.apiKey}`
+            },
+            body: JSON.stringify({
+                model: settings.model || 'tts-1',
+                input: String(text),
+                voice,
+                response_format: 'mp3',
+                speed: 1.0
+            })
         });
         if (!response.ok) {
-            const detail = await response.json().catch(() => ({}));
-            throw new Error(detail.message || `HTTP ${response.status}`);
+            const detail = await response.text();
+            throw new Error(`TTS ${response.status}: ${detail.slice(0, 160)}`);
         }
-        const blob = await response.blob();
+        const blob = isMimo
+            ? makeAudioBlobFromBase64(pickAudioBase64(await response.json()), 'audio/wav')
+            : await response.blob();
         if (ttsAudioUrl) URL.revokeObjectURL(ttsAudioUrl);
         ttsAudioUrl = URL.createObjectURL(blob);
         const audio = new Audio(ttsAudioUrl);

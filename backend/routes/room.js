@@ -1,6 +1,4 @@
 const express = require('express');
-const { ROOM_SYSTEM_PROMPT, createChatCompletion, fallbackRoomReply } = require('../services/llm');
-const { synthesizeSpeech } = require('../services/tts');
 
 const router = express.Router();
 
@@ -18,17 +16,6 @@ const WEATHER_CODE_MAP = [
     { codes: [71, 73, 75, 77, 85, 86], weather: 'snow' },
     { codes: [95, 96, 99], weather: 'storm' }
 ];
-
-const WEATHER_LABELS = {
-    clear: '晴朗',
-    cloudy: '多云',
-    rain: '有雨',
-    storm: '雷雨',
-    snow: '有雪',
-    fog: '有雾'
-};
-
-const WEATHER_QUESTION_RE = /天气|气温|温度|下雨|下雪|降雨|降雪|冷不冷|热不热|刮风|风大|weather|temperature|forecast|rain|snow|wind|hot|cold/i;
 
 function getSeason(date = new Date()) {
     const month = date.getMonth() + 1;
@@ -56,37 +43,6 @@ function weatherFromCode(code) {
     const numericCode = Number(code);
     const match = WEATHER_CODE_MAP.find((item) => item.codes.includes(numericCode));
     return match ? match.weather : 'cloudy';
-}
-
-function isWeatherQuestion(message) {
-    return WEATHER_QUESTION_RE.test(String(message || ''));
-}
-
-function formatWeatherContext(world) {
-    const label = WEATHER_LABELS[world.weather] || world.weather || '未知';
-    const temperature = world.temperature == null ? '未知' : `${world.temperature}°C`;
-    const wind = world.windSpeed == null ? '未知' : `${world.windSpeed} km/h`;
-    const location = world.location || {};
-    const hasCoordinates = Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lon));
-    const place = hasCoordinates
-        ? `纬度 ${Number(location.lat).toFixed(4)}，经度 ${Number(location.lon).toFixed(4)}`
-        : '默认位置';
-
-    return [
-        '用户正在询问天气。请直接使用下面的实时天气上下文回答，不要说你无法访问实时天气。',
-        `位置：${place}，时区：${location.timezone || DEFAULT_WEATHER.timezone}`,
-        `天气：${label}，气温：${temperature}，风速：${wind}`,
-        `时间段：${world.timePhase}，季节：${world.season}，更新时间：${world.updatedAt}`,
-        `数据源：${world.source || 'unknown'}${world.reason ? `，备注：${world.reason}` : ''}`
-    ].join('\n');
-}
-
-function fallbackWeatherReply(world) {
-    const label = WEATHER_LABELS[world.weather] || world.weather || '天气不明';
-    const temperature = world.temperature == null ? '' : `，气温约 ${world.temperature}°C`;
-    const wind = world.windSpeed == null ? '' : `，风速约 ${world.windSpeed} km/h`;
-    const sourceNote = world.source === 'local-fallback' ? '（实时天气暂时不可用，先按默认环境估计）' : '';
-    return `你当地现在${label}${temperature}${wind}。${sourceNote}出门前可以再看一眼窗外，带上适合的外套或伞。`;
 }
 
 function fallbackWorld(reason) {
@@ -169,63 +125,17 @@ router.get('/world', async (req, res) => {
 });
 
 router.post('/chat', async (req, res) => {
-    try {
-        const { message, conversation = [], settings = {}, weatherLocation = {} } = req.body || {};
-        if (!message || !String(message).trim()) {
-            return res.status(400).json({ success: false, message: '消息内容不能为空' });
-        }
-
-        let weatherContext = null;
-        let systemPrompt = ROOM_SYSTEM_PROMPT;
-        if (isWeatherQuestion(message)) {
-            const lat = normalizeCoordinate(weatherLocation.lat || process.env.ROOM_WEATHER_LAT, DEFAULT_WEATHER.lat, -90, 90);
-            const lon = normalizeCoordinate(weatherLocation.lon || process.env.ROOM_WEATHER_LON, DEFAULT_WEATHER.lon, -180, 180);
-            const timezone = String(weatherLocation.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
-            weatherContext = await fetchOpenMeteoWorld({ lat, lon, timezone });
-            weatherContext.location = { lat, lon, timezone };
-            systemPrompt = `${ROOM_SYSTEM_PROMPT}\n\n${formatWeatherContext(weatherContext)}`;
-        }
-
-        const data = await createChatCompletion({
-            message,
-            conversation,
-            apiKey: settings.apiKey,
-            apiUrl: settings.apiUrl,
-            model: settings.model,
-            systemPrompt
-        });
-        if (weatherContext && data.model === 'preset') {
-            data.reply = fallbackWeatherReply(weatherContext);
-        }
-        res.json({ success: true, data: weatherContext ? { ...data, weather: weatherContext } : data });
-    } catch (error) {
-        console.error('Room chat error:', error);
-        res.json({ success: true, data: { reply: fallbackRoomReply(req.body?.message), model: 'local-fallback' } });
-    }
+    res.status(410).json({
+        success: false,
+        message: 'Room LLM requests are sent directly from the browser. Server proxying is disabled.'
+    });
 });
 
 router.post('/tts', async (req, res) => {
-    try {
-        const { text, settings = {} } = req.body || {};
-        if (!text || !String(text).trim()) {
-            return res.status(400).json({ success: false, message: '文本内容不能为空' });
-        }
-
-        const { audioBuffer, contentType } = await synthesizeSpeech({
-            text,
-            apiKey: settings.apiKey,
-            apiUrl: settings.apiUrl,
-            voice: settings.voice,
-            model: settings.model,
-            provider: settings.provider
-        });
-        res.set('Content-Type', contentType);
-        res.set('Cache-Control', 'no-store');
-        res.send(audioBuffer);
-    } catch (error) {
-        console.error('Room TTS error:', error);
-        res.status(error.status || 502).json({ success: false, message: error.message || 'TTS 服务暂时不可用' });
-    }
+    res.status(410).json({
+        success: false,
+        message: 'Room TTS requests are sent directly from the browser. Server proxying is disabled.'
+    });
 });
 
 module.exports = router;

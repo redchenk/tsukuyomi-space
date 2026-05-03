@@ -218,7 +218,7 @@ describe('room world API', () => {
         assert.equal(body.data.location.timezone, 'Asia/Hong_Kong');
     });
 
-    it('adds local weather context to room chat weather questions', async () => {
+    it('does not proxy room LLM or TTS requests through the server', async () => {
         const { response, body } = await postJson('/api/room/chat', {
             message: '我这边今天的天气怎么样？',
             conversation: [],
@@ -230,12 +230,16 @@ describe('room world API', () => {
             }
         });
 
-        assert.equal(response.status, 200);
-        assert.equal(body.success, true);
-        assert.equal(body.data.weather.source, 'local-fallback');
-        assert.equal(body.data.weather.location.timezone, 'Asia/Shanghai');
-        assert.equal(body.data.weather.location.lat, 39.9042);
-        assert.match(body.data.reply, /天气|气温|晴朗|多云|有雨|有雪|有雾/);
+        assert.equal(response.status, 410);
+        assert.equal(body.success, false);
+        assert.match(body.message, /browser/i);
+
+        const tts = await postJson('/api/room/tts', {
+            text: 'hello',
+            settings: { apiKey: 'secret' }
+        });
+        assert.equal(tts.response.status, 410);
+        assert.equal(tts.body.success, false);
     });
 });
 
