@@ -6,14 +6,6 @@ const db = require('./db');
 
 const { authenticateToken } = require('./middleware/auth');
 
-// 鍒濆鍖栨暟鎹簱
-// bio 瀛楁杩佺Щ
-try {
-    db.exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''");
-} catch (e) {
-    console.log('Operation completed');
-}
-
 // 鑾峰彇褰撳墠鐢ㄦ埛璧勬枡
 router.get('/profile', authenticateToken, (req, res) => {
     try {

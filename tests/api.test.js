@@ -92,10 +92,15 @@ describe('database initialization', () => {
             ORDER BY name
         `).all().map(row => row.name);
 
-        for (const table of ['users', 'articles', 'messages', 'message_likes', 'admins', 'site_settings']) {
+        for (const table of ['schema_migrations', 'users', 'articles', 'messages', 'message_likes', 'admins', 'site_settings']) {
             assert.ok(tables.includes(table), `${table} table should exist`);
         }
 
+        const expectedVersions = require('../backend/db/migrations/init')
+            .loadMigrations()
+            .map(migration => migration.version);
+        const migrations = db.prepare('SELECT version FROM schema_migrations ORDER BY version').all();
+        assert.deepEqual(migrations.map(row => row.version), expectedVersions);
         assert.ok(db.prepare('SELECT COUNT(*) AS count FROM articles').get().count >= 3);
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('admin').role, 'admin');
     });

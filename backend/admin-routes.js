@@ -6,65 +6,6 @@ const { authenticateToken, requireAdmin, generateToken } = require('./middleware
 
 const router = express.Router();
 
-function initAdminTables() {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS admins (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            role TEXT DEFAULT 'admin',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS friend_links (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            url TEXT NOT NULL,
-            status TEXT DEFAULT 'active',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS site_settings (
-            key TEXT PRIMARY KEY,
-            value TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
-
-    const messageColumns = db.pragma("table_info('messages')").map(col => col.name);
-    if (messageColumns.length) {
-        if (!messageColumns.includes('author')) db.exec("ALTER TABLE messages ADD COLUMN author TEXT DEFAULT '匿名'");
-        if (!messageColumns.includes('status')) db.exec("ALTER TABLE messages ADD COLUMN status TEXT DEFAULT 'approved'");
-        if (!messageColumns.includes('updated_at')) db.exec("ALTER TABLE messages ADD COLUMN updated_at DATETIME");
-    }
-
-    const adminCount = db.prepare('SELECT COUNT(*) AS count FROM admins').get().count;
-    if (adminCount === 0) {
-        if (config.isProduction && !config.defaultAdmin.password) {
-            throw new Error('ADMIN_PASSWORD must be set before creating the first admin account in production.');
-        }
-        db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)')
-            .run(config.defaultAdmin.username, bcrypt.hashSync(config.defaultAdmin.password || 'admin123', 10), 'super_admin');
-        console.log(`Default admin account created: ${config.defaultAdmin.username}`);
-    } else if (config.isProduction && config.defaultAdmin.password) {
-        const defaultAdmin = db.prepare('SELECT id, password_hash FROM admins WHERE username = ?').get(config.defaultAdmin.username);
-        if (defaultAdmin && bcrypt.compareSync('admin123', defaultAdmin.password_hash)) {
-            db.prepare('UPDATE admins SET password_hash = ?, role = ? WHERE id = ?')
-                .run(bcrypt.hashSync(config.defaultAdmin.password, 10), 'super_admin', defaultAdmin.id);
-            console.log(`Default admin password rotated from development fallback: ${config.defaultAdmin.username}`);
-        }
-    }
-
-    const settingsCount = db.prepare('SELECT COUNT(*) AS count FROM site_settings').get().count;
-    if (settingsCount === 0) {
-        const insert = db.prepare('INSERT INTO site_settings (key, value) VALUES (?, ?)');
-        insert.run('siteTitle', '月读空间');
-        insert.run('siteAnnouncement', '欢迎访问月读空间');
-        insert.run('sakuraEffect', 'true');
-        insert.run('scanlineEffect', 'true');
-    }
-}
-
 function ok(res, data = null, message = '操作成功') {
     res.json({ success: true, message, data });
 }
@@ -94,7 +35,6 @@ function adminTokenPayload(admin) {
     };
 }
 
-initAdminTables();
 
 router.post('/login', (req, res) => {
     try {

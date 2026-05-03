@@ -77,6 +77,22 @@ tsukuyomi-space/
 
 复制 `.env.example` 到服务器的 `/etc/tsukuyomi-space/tsukuyomi-space.env`。真实 `.env`、密码、API Key 不应提交到仓库。
 
+## 数据库迁移
+
+启动时会自动执行 `backend/db/migrations/` 下按版本号排序的迁移脚本，并把执行记录写入 `schema_migrations` 表。
+
+新增迁移时使用 `NNN_description.js` 命名，例如 `003_add_article_indexes.js`，并导出：
+
+```js
+module.exports = {
+  version: '003',
+  name: 'add_article_indexes',
+  up(db) {
+    db.exec('CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status)');
+  }
+};
+```
+
 ## 部署
 
 推荐使用 PM2 运行后端，Nginx 处理静态文件并反向代理 `/api/`：

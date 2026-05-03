@@ -1,123 +1,60 @@
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const config = require('../../config');
 const db = require('../index');
 
-function columnNames(tableName) {
-    return db.pragma(`table_info('${tableName}')`).map(col => col.name);
-}
+const MIGRATION_TABLE = 'schema_migrations';
 
-function addColumnIfMissing(tableName, columnName, definition) {
-    const columns = columnNames(tableName);
-    if (columns.length && !columns.includes(columnName)) {
-        db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
-    }
-}
-
-function createCoreTables() {
+function ensureMigrationTable() {
     db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            role TEXT DEFAULT 'user',
-            avatar TEXT DEFAULT '',
-            bio TEXT DEFAULT '',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS email_verification_codes (
-            id TEXT PRIMARY KEY,
-            email TEXT NOT NULL,
-            code_hash TEXT NOT NULL,
-            purpose TEXT NOT NULL,
-            expires_at INTEGER NOT NULL,
-            used_at INTEGER,
-            created_at INTEGER NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS articles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            excerpt TEXT,
-            content TEXT,
-            category TEXT DEFAULT '公告',
-            tags TEXT DEFAULT '[]',
-            author_id TEXT,
-            publish_date TEXT,
-            read_time TEXT DEFAULT '5 min',
-            view_count INTEGER DEFAULT 0,
-            cover_image TEXT,
-            status TEXT DEFAULT 'published',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (author_id) REFERENCES users(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            author TEXT NOT NULL DEFAULT '匿名',
-            content TEXT NOT NULL,
-            user_id TEXT,
-            parent_id INTEGER,
-            like_count INTEGER DEFAULT 0,
-            article_id INTEGER,
-            status TEXT DEFAULT 'approved',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (parent_id) REFERENCES messages(id),
-            FOREIGN KEY (article_id) REFERENCES articles(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS message_likes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            message_id INTEGER NOT NULL,
-            user_id TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (message_id) REFERENCES messages(id),
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            UNIQUE(message_id, user_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS stats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_type TEXT NOT NULL,
-            event_data TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS admins (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            role TEXT DEFAULT 'admin',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS friend_links (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS ${MIGRATION_TABLE} (
+            version TEXT PRIMARY KEY,
             name TEXT NOT NULL,
-            url TEXT NOT NULL,
-            status TEXT DEFAULT 'active',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS site_settings (
-            key TEXT PRIMARY KEY,
-            value TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
 }
 
-function runCompatibilityMigrations() {
-    addColumnIfMissing('users', 'bio', "TEXT DEFAULT ''");
-    addColumnIfMissing('messages', 'article_id', 'INTEGER');
-    addColumnIfMissing('messages', 'author', "TEXT DEFAULT '匿名'");
-    addColumnIfMissing('messages', 'status', "TEXT DEFAULT 'approved'");
-    addColumnIfMissing('messages', 'updated_at', 'DATETIME');
+function loadMigrations() {
+    return fs.readdirSync(__dirname)
+        .filter(file => /^\d+_.+\.js$/.test(file))
+        .sort()
+        .map(file => {
+            const migration = require(path.join(__dirname, file));
+            const version = file.match(/^(\d+)_/)[1];
+            if (!migration || migration.version !== version || typeof migration.up !== 'function') {
+                throw new Error(`Invalid migration module: ${file}`);
+            }
+            return {
+                version,
+                name: migration.name || path.basename(file, '.js'),
+                up: migration.up
+            };
+        });
+}
+
+function runMigrations() {
+    ensureMigrationTable();
+
+    const applied = new Set(
+        db.prepare(`SELECT version FROM ${MIGRATION_TABLE}`).all().map(row => row.version)
+    );
+
+    for (const migration of loadMigrations()) {
+        if (applied.has(migration.version)) continue;
+
+        const applyMigration = db.transaction(() => {
+            migration.up(db);
+            db.prepare(`
+                INSERT INTO ${MIGRATION_TABLE} (version, name)
+                VALUES (?, ?)
+            `).run(migration.version, migration.name);
+        });
+
+        applyMigration();
+        console.log(`Applied database migration ${migration.version}_${migration.name}`);
+    }
 }
 
 function ensureDefaultAdminUser() {
@@ -206,8 +143,7 @@ function seedSiteSettings() {
 }
 
 function initDatabase() {
-    createCoreTables();
-    runCompatibilityMigrations();
+    runMigrations();
     ensureDefaultAdminUser();
     ensureDefaultAdminAccount();
     seedDefaultArticles();
@@ -215,5 +151,7 @@ function initDatabase() {
 }
 
 module.exports = {
-    initDatabase
+    initDatabase,
+    loadMigrations,
+    runMigrations
 };
