@@ -230,3 +230,12 @@ describe('admin API permissions', () => {
         assert.ok(Array.isArray(articles.body.data));
     });
 });
+
+describe('legacy page paths', () => {
+    it('does not redirect removed static page routes', async () => {
+        for (const pathname of ['/room.html', '/article.html?id=1', '/pages/room.html', '/pages/stage']) {
+            const { response } = await request(pathname, { redirect: 'manual' });
+            assert.equal(response.status, 404, `${pathname} should be gone`);
+        }
+    });
+});

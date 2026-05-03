@@ -8,66 +8,17 @@ function serveStaticFiles(app) {
     const frontendDistRoot = path.join(publicRoot, 'dist', 'frontend');
     const useFrontendDist = config.enableFrontendDist && fs.existsSync(path.join(frontendDistRoot, 'index.html'));
 
+    app.use((req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        if (req.path === '/pages' || req.path.startsWith('/pages/') || path.extname(req.path) === '.html') {
+            return res.status(404).send('Not found');
+        }
+        next();
+    });
+
     if (useFrontendDist) {
         app.use(express.static(frontendDistRoot));
     }
-
-    app.use((req, res, next) => {
-        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-
-        const legacyVueRoutes = new Map([
-            ['/index.html', '/'],
-            ['/access.html', '/'],
-            ['/hub.html', '/hub'],
-            ['/login.html', '/login'],
-            ['/register.html', '/register'],
-            ['/stage.html', '/stage'],
-            ['/room.html', '/room'],
-            ['/plaza.html', '/plaza'],
-            ['/reality.html', '/reality'],
-            ['/editor.html', '/editor'],
-            ['/user-center.html', '/user-center'],
-            ['/arena.html', '/arena'],
-            ['/pages/index', '/'],
-            ['/pages/index.html', '/'],
-            ['/pages/access', '/'],
-            ['/pages/access.html', '/'],
-            ['/pages/hub', '/hub'],
-            ['/pages/hub.html', '/hub'],
-            ['/pages/login', '/login'],
-            ['/pages/login.html', '/login'],
-            ['/pages/register', '/register'],
-            ['/pages/register.html', '/register'],
-            ['/pages/stage', '/stage'],
-            ['/pages/stage.html', '/stage'],
-            ['/pages/room', '/room'],
-            ['/pages/room.html', '/room'],
-            ['/pages/plaza', '/plaza'],
-            ['/pages/plaza.html', '/plaza'],
-            ['/pages/reality', '/reality'],
-            ['/pages/reality.html', '/reality'],
-            ['/pages/editor', '/editor'],
-            ['/pages/editor.html', '/editor'],
-            ['/pages/user-center', '/user-center'],
-            ['/pages/user-center.html', '/user-center'],
-            ['/pages/arena', '/arena'],
-            ['/pages/arena.html', '/arena'],
-            ['/pages/article', '/article'],
-            ['/pages/article.html', '/article'],
-            ['/article.html', '/article'],
-            ['/pages/terminal', '/terminal'],
-            ['/pages/terminal.html', '/terminal'],
-            ['/terminal.html', '/terminal']
-        ]);
-
-        const target = legacyVueRoutes.get(req.path);
-        if (target) {
-            const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-            return res.redirect(301, `${target}${query}`);
-        }
-
-        next();
-    });
 
     app.use(express.static(publicRoot));
     app.use('/assets', express.static(path.join(publicRoot, 'assets')));

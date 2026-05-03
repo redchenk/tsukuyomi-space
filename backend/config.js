@@ -27,10 +27,6 @@ if (isProduction && jwtSecret.length < 32) {
 const dataDir = path.resolve(process.env.DATA_DIR || path.join(projectRoot, 'data'));
 fs.mkdirSync(dataDir, { recursive: true });
 
-const uploadRoomPath = process.env.UPLOAD_ROOM_PATH
-    ? path.resolve(process.env.UPLOAD_ROOM_PATH)
-    : path.join(projectRoot, 'pages', 'room.html');
-
 module.exports = {
     projectRoot,
     isProduction,
@@ -43,8 +39,6 @@ module.exports = {
     corsOrigins: csvEnv('CORS_ORIGINS'),
     trustProxy: boolEnv('TRUST_PROXY', isProduction),
     enableFrontendDist: boolEnv('ENABLE_FRONTEND_DIST', true),
-    enableUploadRoom: boolEnv('ENABLE_UPLOAD_ROOM', false),
-    uploadRoomPath,
     defaultAdmin: {
         username: process.env.ADMIN_USERNAME || 'admin',
         email: process.env.ADMIN_EMAIL || 'admin@tsukuyomi.space',

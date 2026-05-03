@@ -94,7 +94,6 @@ bash deploy/deploy.sh
 - 管理员终端所有数据接口都需要管理员 JWT。
 - API 已加入基础安全响应头、CORS 白名单和内存限流。
 - SQLite 默认存放在 `DATA_DIR`，不应提交到 Git。
-- `/api/admin/upload-room` 默认关闭，只有显式设置 `ENABLE_UPLOAD_ROOM=true` 才会启用。
 
 ## License
 
