@@ -120,7 +120,7 @@ async function fetchOpenMeteoWorld({ lat, lon, timezone }) {
         timezone
     });
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2500);
+    const timeout = setTimeout(() => controller.abort(), 6000);
 
     try {
         const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
