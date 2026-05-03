@@ -127,18 +127,10 @@ body.vue-room-route {
     --room-weather-haze: linear-gradient(180deg, rgba(225, 238, 248, 0.22), rgba(12, 17, 28, 0.18));
 }
 
-.room-fish-layer {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-    overflow: hidden;
-    pointer-events: none;
-}
-
 .room-weather-layer {
     position: fixed;
     inset: 0;
-    z-index: 3;
+    z-index: 1;
     overflow: hidden;
     pointer-events: none;
 }

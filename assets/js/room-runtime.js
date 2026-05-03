@@ -21,7 +21,6 @@
     let chatConversation = [];
     let live2d = null;
     let ttsAudioUrl = null;
-    let ambientFish = null;
     let draggedPanel = null;
     let dragOffset = { x: 0, y: 0 };
     let zIndexCounter = 30;
@@ -719,14 +718,6 @@
         }
     }
 
-    function initSakura() {
-        ambientFish = window.initTsukuyomiAmbientFish?.({
-            containerId: 'sakuraContainer',
-            toggleId: 'sakuraToggle',
-            density: 0.48
-        }) || null;
-    }
-
     function initPanels() {
         const positions = readJson('roomPanelPositions', {});
         document.querySelectorAll('.draggable-panel').forEach((panel) => {
@@ -1065,7 +1056,6 @@
         if (!$('live2d-container')) return;
         window.__tsukuyomiRoomRuntimeReady = true;
         initRoomWorld();
-        initSakura();
         initPanels();
         initProfileAndNote();
         initChatAndSettings();
@@ -1079,10 +1069,8 @@
             window.removeEventListener('tsukuyomi:live2d-ready', live2dReadyListener);
             live2dReadyListener = null;
         }
-        ambientFish?.destroy?.();
         live2d?.destroy?.();
         destroyRoomWorld();
-        ambientFish = null;
         live2d = null;
         window.__tsukuyomiRoomRuntimeReady = false;
     };
@@ -1095,7 +1083,6 @@
 
     window.addEventListener('beforeunload', () => {
         destroyRoomWorld();
-        ambientFish?.destroy?.();
         live2d?.destroy?.();
     });
 })();

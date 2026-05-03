@@ -8,10 +8,9 @@ const props = defineProps({
 defineEmits(['go']);
 
 const scripts = [
-  '/assets/js/ambient-fish.js?v=20260503-world1',
   '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260503-world1',
-  '/assets/js/room-runtime.js?v=20260503-world1'
+  '/lib/bundled/live2d-room.iife.js?v=20260503-world2',
+  '/assets/js/room-runtime.js?v=20260503-world2'
 ];
 
 const roomUserName = computed(() => props.user?.username || props.user?.email || 'Guest');
@@ -71,7 +70,6 @@ onBeforeUnmount(() => {
 <template>
   <main class="room-page" aria-label="&#31169;&#20154;&#23621;&#25152;">
     <div class="room-backdrop" aria-hidden="true"></div>
-    <div id="sakuraContainer" class="room-fish-layer" aria-hidden="true"></div>
 
     <nav class="room-commandbar" aria-label="&#25151;&#38388;&#23548;&#33322;">
       <a class="room-brand" href="/hub" @click.prevent="$emit('go', '/hub')">
@@ -157,9 +155,6 @@ onBeforeUnmount(() => {
         <button class="panel-close" type="button" data-panel-close="settingPanel" aria-label="&#20851;&#38381;&#35774;&#32622;">x</button>
       </div>
       <div class="panel-content scrollable">
-        <div class="field room-check">
-          <label><input id="sakuraToggle" type="checkbox" checked> &#28216;&#40060;&#29305;&#25928;</label>
-        </div>
         <div class="field">
           <div class="split"><label for="modelScaleInput">&#27169;&#22411;&#22823;&#23567;</label><span id="modelScaleValue">100%</span></div>
           <input id="modelScaleInput" type="range" min="60" max="160" value="100">
