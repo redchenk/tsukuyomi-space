@@ -13,8 +13,10 @@ router.post('/', async (req, res) => {
         const data = await createChatCompletion({ message, conversation, apiKey, apiUrl, model });
         res.json({ success: true, data });
     } catch (error) {
-        console.error('Chat API error:', error);
         const statusCode = error.statusCode || 500;
+        if (statusCode >= 500) {
+            console.error('Chat API error:', error);
+        }
         res.status(statusCode).json({
             success: false,
             message: statusCode === 500 ? '操作失败' : error.message
