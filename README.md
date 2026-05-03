@@ -47,6 +47,7 @@ npm run dev
 - `npm run dev:api`：只启动 Express API
 - `npm run dev:web`：只启动 Vite 前端
 - `npm test`：执行 Node 语法检查和后端接口测试
+- `npm run test:e2e`：执行 Playwright 端到端主流程测试，需要先构建前端或提供 `E2E_BASE_URL`
 - `npm run build:web`：构建 Vue 前端产物
 
 ## 项目结构
@@ -81,6 +82,8 @@ tsukuyomi-space/
 
 启动时会自动执行 `backend/db/migrations/` 下按版本号排序的迁移脚本，并把执行记录写入 `schema_migrations` 表。
 
+生产部署前必须先备份 SQLite。`deploy/deploy.sh` 会在安装依赖、构建和 PM2 reload 前自动备份 `DB_PATH` 或 `DATA_DIR/tsukuyomi.db` 到 `BACKUP_DIR`，默认目录是 `DATA_DIR/backups`。
+
 新增迁移时使用 `NNN_description.js` 命名，例如 `003_add_article_indexes.js`，并导出：
 
 ```js
@@ -110,6 +113,7 @@ bash deploy/deploy.sh
 - 管理员终端所有数据接口都需要管理员 JWT。
 - API 已加入基础安全响应头、CORS 白名单和内存限流。
 - SQLite 默认存放在 `DATA_DIR`，不应提交到 Git。
+- 权限模型见 [docs/PERMISSIONS.md](docs/PERMISSIONS.md)。
 
 ## License
 
