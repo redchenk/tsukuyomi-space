@@ -17,6 +17,6 @@ export default defineConfig({
       fileName: 'live2d-room'
     },
     outDir: 'lib/bundled',
-    emptyOutDir: true
+    emptyOutDir: false
   }
 })
