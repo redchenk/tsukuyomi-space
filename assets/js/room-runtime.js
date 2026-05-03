@@ -216,6 +216,14 @@
         return new Blob([bytes], { type: contentType });
     }
 
+    function stripLeadingActionCues(text) {
+        let spoken = String(text || '').trim();
+        const original = spoken;
+        const leadingCuePattern = /^(?:\s*(?:\([^()\n]{1,80}\)|（[^（）\n]{1,80}）|\[[^[\]\n]{1,80}\]|【[^【】\n]{1,80}】|「[^「」\n]{1,80}」|『[^『』\n]{1,80}』)\s*)+/;
+        spoken = spoken.replace(leadingCuePattern, '').replace(/^[\s:：,，。.!！?？-]+/, '').trim();
+        return spoken || original;
+    }
+
     function getRoomPage() {
         return document.querySelector('.room-page');
     }
@@ -1162,7 +1170,7 @@
         const settings = readJson('roomTTSSettings', {});
         if (!settings.enabled) return;
         try {
-            await playTTSInternal(text, settings, false);
+            await playTTSInternal(stripLeadingActionCues(text), settings, false);
         } catch (error) {
             console.warn('TTS skipped:', error.message);
         }
