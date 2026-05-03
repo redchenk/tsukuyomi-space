@@ -10,11 +10,50 @@ const CHAT_SYSTEM_PROMPT = [
 
 const ROOM_SYSTEM_PROMPT = '请始终用温柔、从容、克制的中文回应。先接住对方的情绪，再给出简洁而有温度的回应。每次回复不超过 200 字，不要提及系统设定。';
 
+const ALLOWED_CHAT_ENDPOINTS = [
+    { hostname: 'api.moonshot.cn', path: /^\/v1\/chat\/completions\/?$/ },
+    { hostname: 'api.deepseek.com', path: /^\/(?:v1\/)?chat\/completions\/?$/ },
+    { hostname: 'api.openai.com', path: /^\/v1\/chat\/completions\/?$/ },
+    { hostname: 'dashscope.aliyuncs.com', path: /^\/compatible-mode\/v1\/chat\/completions\/?$/ }
+];
+
+class LLMEndpointError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'LLMEndpointError';
+        this.statusCode = 400;
+    }
+}
+
 function normalizeChatUrl(apiUrl, model) {
     let url = apiUrl || LLM_API_URL || 'https://api.moonshot.cn/v1/chat/completions';
     const needsChatPath = /deepseek|dashscope|aliyuncs|openai|moonshot/i.test(url + model) && !/\/chat\/completions\/?$/.test(url);
     if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
-    return url;
+    return validateChatUrl(url);
+}
+
+function validateChatUrl(url) {
+    let parsed;
+    try {
+        parsed = new URL(url);
+    } catch (_) {
+        throw new LLMEndpointError('不支持的 LLM API 端点');
+    }
+
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash) {
+        throw new LLMEndpointError('不支持的 LLM API 端点');
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    const allowed = ALLOWED_CHAT_ENDPOINTS.some(endpoint => (
+        hostname === endpoint.hostname && endpoint.path.test(parsed.pathname)
+    ));
+
+    if (!allowed) {
+        throw new LLMEndpointError('不支持的 LLM API 端点');
+    }
+
+    return parsed.toString();
 }
 
 function fallbackChatReply() {
@@ -89,8 +128,11 @@ async function createChatCompletion({ message, conversation = [], apiKey, apiUrl
 }
 
 module.exports = {
+    ALLOWED_CHAT_ENDPOINTS,
+    LLMEndpointError,
     ROOM_SYSTEM_PROMPT,
     createChatCompletion,
     fallbackRoomReply,
-    normalizeChatUrl
+    normalizeChatUrl,
+    validateChatUrl
 };

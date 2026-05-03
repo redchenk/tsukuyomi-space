@@ -705,7 +705,7 @@ Content-Type: application/json
 | message | string | 是 | 用户消息 |
 | conversation | array | 否 | 对话历史 |
 | apiKey | string | 否 | LLM API Key |
-| apiUrl | string | 否 | LLM API 端点 |
+| apiUrl | string | 否 | LLM API 端点，仅允许 Moonshot、DeepSeek、OpenAI、阿里云百炼兼容端点 |
 | model | string | 否 | 模型名称 |
 
 **响应:**
@@ -721,7 +721,8 @@ Content-Type: application/json
 
 **注意:**
 - 未配置 `apiKey` 时返回预设回复
-- 支持阿里云百炼、OpenAI 等兼容 API
+- 为避免服务器成为任意请求代理，`apiUrl` 会被限制为已支持的 HTTPS chat completions 端点
+- 支持 Moonshot、DeepSeek、OpenAI、阿里云百炼兼容 API
 
 ---
 

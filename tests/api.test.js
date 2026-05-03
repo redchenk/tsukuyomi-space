@@ -21,6 +21,7 @@ process.env.ROOM_WEATHER_OFFLINE = 'true';
 
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
+const { normalizeChatUrl } = require('../backend/services/llm');
 
 let server;
 let baseUrl;
@@ -240,6 +241,38 @@ describe('room world API', () => {
         });
         assert.equal(tts.response.status, 410);
         assert.equal(tts.body.success, false);
+    });
+});
+
+describe('chat API endpoint allowlist', () => {
+    it('normalizes supported provider chat endpoints', () => {
+        assert.equal(
+            normalizeChatUrl('https://api.openai.com/v1', 'gpt-4o-mini'),
+            'https://api.openai.com/v1/chat/completions'
+        );
+        assert.equal(
+            normalizeChatUrl('https://api.deepseek.com', 'deepseek-chat'),
+            'https://api.deepseek.com/chat/completions'
+        );
+    });
+
+    it('rejects arbitrary chat apiUrl values before proxying', async () => {
+        for (const apiUrl of [
+            'http://127.0.0.1:1/latest/meta-data',
+            'https://example.com/chat/completions',
+            'https://api.openai.com/v1/chat/completions?target=http://127.0.0.1'
+        ]) {
+            const { response, body } = await postJson('/api/chat', {
+                message: 'hello',
+                apiKey: 'test-key',
+                apiUrl,
+                model: 'test-model'
+            });
+
+            assert.equal(response.status, 400);
+            assert.equal(body.success, false);
+            assert.match(body.message, /LLM API/);
+        }
     });
 });
 

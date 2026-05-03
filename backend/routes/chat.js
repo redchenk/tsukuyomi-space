@@ -14,7 +14,11 @@ router.post('/', async (req, res) => {
         res.json({ success: true, data });
     } catch (error) {
         console.error('Chat API error:', error);
-        res.status(500).json({ success: false, message: '操作失败' });
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({
+            success: false,
+            message: statusCode === 500 ? '操作失败' : error.message
+        });
     }
 });
 
