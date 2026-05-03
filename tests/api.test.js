@@ -17,6 +17,7 @@ process.env.ADMIN_USERNAME = 'admin';
 process.env.ADMIN_EMAIL = 'admin@example.test';
 process.env.ADMIN_PASSWORD = 'admin-test-password';
 process.env.ENABLE_FRONTEND_DIST = 'false';
+process.env.ROOM_WEATHER_OFFLINE = 'true';
 
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
@@ -201,6 +202,20 @@ describe('messages API', () => {
         }, userToken);
         assert.equal(reply.response.status, 201);
         assert.equal(reply.body.data.parent_id, messageId);
+    });
+});
+
+describe('room world API', () => {
+    it('returns a deterministic world state when weather is offline', async () => {
+        const { response, body } = await request('/api/room/world');
+
+        assert.equal(response.status, 200);
+        assert.equal(body.success, true);
+        assert.equal(body.data.source, 'local-fallback');
+        assert.ok(['clear', 'cloudy', 'rain', 'storm', 'snow', 'fog'].includes(body.data.weather));
+        assert.ok(['dawn', 'day', 'dusk', 'night'].includes(body.data.timePhase));
+        assert.ok(['spring', 'summer', 'autumn', 'winter'].includes(body.data.season));
+        assert.equal(body.data.location.timezone, 'Asia/Hong_Kong');
     });
 });
 

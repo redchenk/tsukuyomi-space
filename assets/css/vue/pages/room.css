@@ -4,6 +4,18 @@ body.vue-room-route {
 }
 
 .room-page {
+    --room-sky-filter: saturate(1) brightness(1);
+    --room-shadow: rgba(8, 9, 20, 0.68);
+    --room-top-shade: rgba(12, 11, 20, 0.18);
+    --room-bottom-shade: rgba(10, 10, 18, 0.68);
+    --room-side-shade: rgba(6, 10, 20, 0.54);
+    --room-halo: rgba(255, 214, 139, 0.18);
+    --room-accent: #ff9aba;
+    --room-accent-rgb: 255, 154, 186;
+    --room-gold: #ffd68b;
+    --room-panel-bg: rgba(13, 13, 24, 0.78);
+    --room-panel-border: rgba(255, 205, 218, 0.22);
+    --room-weather-haze: transparent;
     position: fixed;
     inset: 0;
     z-index: 10;
@@ -11,8 +23,9 @@ body.vue-room-route {
     overflow: hidden;
     color: #fff7fb;
     background:
-        linear-gradient(180deg, rgba(12, 11, 20, 0.18), rgba(10, 10, 18, 0.68)),
+        linear-gradient(180deg, var(--room-top-shade), var(--room-bottom-shade)),
         url("/assets/images/room-bg.png") center / cover no-repeat;
+    transition: background 0.8s ease;
 }
 
 .room-backdrop {
@@ -20,8 +33,98 @@ body.vue-room-route {
     inset: 0;
     pointer-events: none;
     background:
-        radial-gradient(circle at 48% 20%, rgba(255, 214, 139, 0.18), transparent 24rem),
-        linear-gradient(90deg, rgba(6, 10, 20, 0.54), transparent 30%, transparent 70%, rgba(6, 10, 20, 0.58));
+        radial-gradient(circle at 48% 20%, var(--room-halo), transparent 24rem),
+        linear-gradient(90deg, var(--room-side-shade), transparent 30%, transparent 70%, var(--room-side-shade)),
+        var(--room-weather-haze);
+    filter: var(--room-sky-filter);
+    transition: background 0.8s ease, filter 0.8s ease;
+}
+
+.room-page[data-time-phase="dawn"] {
+    --room-top-shade: rgba(54, 37, 56, 0.18);
+    --room-bottom-shade: rgba(23, 18, 33, 0.58);
+    --room-halo: rgba(255, 188, 146, 0.26);
+    --room-accent: #ffb18f;
+    --room-accent-rgb: 255, 177, 143;
+    --room-gold: #ffe1a3;
+}
+
+.room-page[data-time-phase="day"] {
+    --room-sky-filter: saturate(1.06) brightness(1.08);
+    --room-top-shade: rgba(40, 70, 86, 0.12);
+    --room-bottom-shade: rgba(14, 28, 42, 0.46);
+    --room-side-shade: rgba(6, 20, 28, 0.34);
+    --room-halo: rgba(149, 226, 234, 0.18);
+}
+
+.room-page[data-time-phase="dusk"] {
+    --room-top-shade: rgba(70, 38, 54, 0.2);
+    --room-bottom-shade: rgba(25, 13, 28, 0.7);
+    --room-side-shade: rgba(30, 10, 24, 0.56);
+    --room-halo: rgba(255, 129, 133, 0.24);
+    --room-accent: #ff8a93;
+    --room-accent-rgb: 255, 138, 147;
+    --room-gold: #ffc56f;
+}
+
+.room-page[data-time-phase="night"] {
+    --room-sky-filter: saturate(0.9) brightness(0.82);
+    --room-top-shade: rgba(7, 9, 21, 0.32);
+    --room-bottom-shade: rgba(4, 5, 12, 0.78);
+    --room-side-shade: rgba(2, 5, 16, 0.64);
+    --room-halo: rgba(132, 157, 255, 0.18);
+    --room-accent: #b9c4ff;
+    --room-accent-rgb: 185, 196, 255;
+    --room-gold: #d8ddff;
+}
+
+.room-page[data-season="spring"] {
+    --room-accent: #ff9aba;
+    --room-accent-rgb: 255, 154, 186;
+    --room-halo: rgba(255, 174, 204, 0.22);
+}
+
+.room-page[data-season="summer"] {
+    --room-accent: #7edbe8;
+    --room-accent-rgb: 126, 219, 232;
+    --room-halo: rgba(126, 219, 232, 0.22);
+}
+
+.room-page[data-season="autumn"] {
+    --room-accent: #f0bc72;
+    --room-accent-rgb: 240, 188, 114;
+    --room-halo: rgba(240, 188, 114, 0.23);
+}
+
+.room-page[data-season="winter"] {
+    --room-accent: #c6e5ff;
+    --room-accent-rgb: 198, 229, 255;
+    --room-halo: rgba(198, 229, 255, 0.2);
+}
+
+.room-page[data-weather="cloudy"] {
+    --room-sky-filter: saturate(0.88) brightness(0.9);
+    --room-weather-haze: linear-gradient(180deg, rgba(207, 218, 229, 0.12), rgba(13, 15, 26, 0.22));
+}
+
+.room-page[data-weather="fog"] {
+    --room-sky-filter: saturate(0.72) brightness(0.96);
+    --room-weather-haze: linear-gradient(180deg, rgba(224, 231, 238, 0.24), rgba(178, 191, 206, 0.14) 48%, rgba(11, 13, 23, 0.2));
+}
+
+.room-page[data-weather="rain"] {
+    --room-sky-filter: saturate(0.8) brightness(0.82);
+    --room-weather-haze: linear-gradient(180deg, rgba(77, 104, 130, 0.16), rgba(6, 10, 21, 0.34));
+}
+
+.room-page[data-weather="storm"] {
+    --room-sky-filter: saturate(0.68) brightness(0.74);
+    --room-weather-haze: linear-gradient(180deg, rgba(47, 58, 88, 0.28), rgba(4, 5, 13, 0.5));
+}
+
+.room-page[data-weather="snow"] {
+    --room-sky-filter: saturate(0.78) brightness(1);
+    --room-weather-haze: linear-gradient(180deg, rgba(225, 238, 248, 0.22), rgba(12, 17, 28, 0.18));
 }
 
 .room-fish-layer {
@@ -30,6 +133,76 @@ body.vue-room-route {
     z-index: 1;
     overflow: hidden;
     pointer-events: none;
+}
+
+.room-weather-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.room-weather-layer::before,
+.room-weather-layer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.room-weather-layer[data-weather="cloudy"]::before,
+.room-weather-layer[data-weather="fog"]::before {
+    background:
+        linear-gradient(90deg, transparent, rgba(232, 238, 245, 0.12), transparent),
+        linear-gradient(180deg, rgba(232, 238, 245, 0.08), transparent 42%, rgba(232, 238, 245, 0.08));
+    animation: roomMistDrift 28s ease-in-out infinite alternate;
+}
+
+.room-weather-layer[data-weather="fog"]::before {
+    opacity: 0.9;
+    filter: blur(16px);
+}
+
+.room-weather-layer[data-weather="storm"]::after {
+    background: rgba(210, 226, 255, 0);
+    animation: roomLightning 8s steps(1, end) infinite;
+}
+
+.room-weather-particle {
+    position: absolute;
+    left: var(--particle-left);
+    top: -8vh;
+    opacity: var(--particle-opacity);
+    animation-delay: calc(var(--particle-delay) * -1);
+    animation-duration: var(--particle-duration);
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+}
+
+.room-weather-layer[data-weather="rain"] .room-weather-particle,
+.room-weather-layer[data-weather="storm"] .room-weather-particle {
+    width: 1px;
+    height: 58px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, transparent, rgba(188, 218, 255, 0.76));
+    transform: rotate(13deg);
+    animation-name: roomRainFall;
+}
+
+.room-weather-layer[data-weather="storm"] .room-weather-particle {
+    height: 70px;
+    background: linear-gradient(180deg, transparent, rgba(220, 231, 255, 0.9));
+}
+
+.room-weather-layer[data-weather="snow"] .room-weather-particle {
+    width: var(--particle-size);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: rgba(240, 248, 255, 0.88);
+    box-shadow: 0 0 10px rgba(220, 238, 255, 0.36);
+    animation-name: roomSnowFall;
+    animation-timing-function: ease-in-out;
 }
 
 .room-commandbar {
@@ -43,7 +216,7 @@ body.vue-room-route {
     min-height: 68px;
     padding: 0.8rem clamp(1rem, 3vw, 2rem);
     border-bottom: 1px solid rgba(255, 205, 218, 0.22);
-    background: rgba(13, 13, 24, 0.74);
+    background: var(--room-panel-bg);
     backdrop-filter: blur(20px);
 }
 
@@ -68,7 +241,7 @@ body.vue-room-route {
     aspect-ratio: 1;
     border: 1px solid rgba(255, 214, 139, 0.46);
     border-radius: 50%;
-    color: #ffd68b;
+    color: var(--room-gold);
     background: rgba(255, 214, 139, 0.1);
 }
 
@@ -126,8 +299,8 @@ body.vue-room-route {
 .panel-toggle-btn.is-active,
 .panel-btn:hover,
 .panel-close:hover {
-    border-color: rgba(255, 142, 180, 0.64);
-    background: rgba(255, 142, 180, 0.16);
+    border-color: rgba(var(--room-accent-rgb), 0.64);
+    background: rgba(var(--room-accent-rgb), 0.16);
 }
 
 .room-stage {
@@ -147,7 +320,7 @@ body.vue-room-route {
 
 .room-stage-copy p {
     margin: 0 0 0.48rem;
-    color: #ffd68b;
+    color: var(--room-gold);
     font-size: 0.76rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -176,7 +349,7 @@ body.vue-room-route {
     height: 100% !important;
     display: block;
     background: transparent;
-    filter: saturate(0.98) contrast(0.98);
+    filter: saturate(0.98) contrast(0.98) drop-shadow(0 24px 60px var(--room-shadow));
     touch-action: none;
 }
 
@@ -191,9 +364,9 @@ body.vue-room-route {
     flex-direction: row;
     gap: 0.5rem;
     padding: 0.48rem;
-    border: 1px solid rgba(255, 205, 218, 0.2);
+    border: 1px solid var(--room-panel-border);
     border-radius: 8px;
-    background: rgba(13, 13, 24, 0.78);
+    background: var(--room-panel-bg);
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
     backdrop-filter: blur(20px);
     transform: translateX(-50%);
@@ -212,9 +385,9 @@ body.vue-room-route {
     width: min(360px, calc(100vw - 2rem));
     max-width: calc(100vw - 2rem);
     padding: 0.95rem;
-    border: 1px solid rgba(255, 205, 218, 0.22);
+    border: 1px solid var(--room-panel-border);
     border-radius: 8px;
-    background: rgba(13, 13, 24, 0.78);
+    background: var(--room-panel-bg);
     box-shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
     backdrop-filter: blur(22px);
     user-select: none;
@@ -248,7 +421,7 @@ body.vue-room-route {
 }
 
 .panel-title {
-    color: #ff9aba;
+    color: var(--room-accent);
     font-weight: 700;
     font-size: 0.9rem;
 }
@@ -324,7 +497,7 @@ body.vue-room-route {
 
 .room-panel input[type="range"] {
     padding: 0;
-    accent-color: #ff8eb4;
+    accent-color: var(--room-accent);
 }
 
 .room-panel select option {
@@ -358,7 +531,7 @@ body.vue-room-route {
 
 .panel-section-title {
     margin-bottom: 0.62rem;
-    color: #ffd68b;
+    color: var(--room-gold);
     font-size: 0.8rem;
     font-weight: 700;
 }
@@ -412,7 +585,7 @@ body.vue-room-route {
 .chat-role {
     display: block;
     margin-bottom: 0.2rem;
-    color: #ffd68b;
+    color: var(--room-gold);
     font-weight: 700;
     font-size: 0.72rem;
 }
@@ -507,6 +680,29 @@ body.vue-room-route {
 @keyframes roomLoaderBar {
     0% { transform: translateX(-105%); }
     100% { transform: translateX(245%); }
+}
+
+@keyframes roomRainFall {
+    from { transform: translate3d(0, -12vh, 0) rotate(13deg); }
+    to { transform: translate3d(-24px, 118vh, 0) rotate(13deg); }
+}
+
+@keyframes roomSnowFall {
+    0% { transform: translate3d(0, -10vh, 0); }
+    50% { transform: translate3d(var(--particle-drift), 48vh, 0); }
+    100% { transform: translate3d(var(--particle-return), 112vh, 0); }
+}
+
+@keyframes roomMistDrift {
+    from { transform: translateX(-4%); opacity: 0.48; }
+    to { transform: translateX(4%); opacity: 0.78; }
+}
+
+@keyframes roomLightning {
+    0%, 92%, 100% { background: rgba(210, 226, 255, 0); }
+    93% { background: rgba(210, 226, 255, 0.16); }
+    94% { background: rgba(210, 226, 255, 0); }
+    95% { background: rgba(210, 226, 255, 0.1); }
 }
 
 .status-title {

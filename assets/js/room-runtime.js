@@ -4,6 +4,9 @@
     const MODEL_URL = '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json';
     const CHAT_ENDPOINT = '/api/room/chat';
     const TTS_ENDPOINT = '/api/room/tts';
+    const WORLD_ENDPOINT = '/api/room/world';
+    const WORLD_CACHE_KEY = 'roomWorldState';
+    const WORLD_CACHE_TTL = 20 * 60 * 1000;
     const CORE = () => window.Live2DCubismCore;
     const Utils = () => CORE()?.Utils || {};
 
@@ -23,6 +26,7 @@
     let dragOffset = { x: 0, y: 0 };
     let zIndexCounter = 30;
     let live2dReadyListener = null;
+    let worldRefreshTimer = null;
 
     function $(id) {
         return document.getElementById(id);
@@ -39,6 +43,138 @@
 
     function writeJson(key, value) {
         localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function getRoomPage() {
+        return document.querySelector('.room-page');
+    }
+
+    function getTimePhase(date = new Date()) {
+        const hour = date.getHours();
+        if (hour >= 5 && hour < 8) return 'dawn';
+        if (hour >= 8 && hour < 17) return 'day';
+        if (hour >= 17 && hour < 20) return 'dusk';
+        return 'night';
+    }
+
+    function getSeason(date = new Date()) {
+        const month = date.getMonth() + 1;
+        if (month >= 3 && month <= 5) return 'spring';
+        if (month >= 6 && month <= 8) return 'summer';
+        if (month >= 9 && month <= 11) return 'autumn';
+        return 'winter';
+    }
+
+    function normalizeWorld(data = {}) {
+        const now = new Date();
+        const weatherSet = new Set(['clear', 'cloudy', 'rain', 'storm', 'snow', 'fog']);
+        const timeSet = new Set(['dawn', 'day', 'dusk', 'night']);
+        const seasonSet = new Set(['spring', 'summer', 'autumn', 'winter']);
+        const weather = weatherSet.has(data.weather) ? data.weather : 'clear';
+        return {
+            weather,
+            timePhase: timeSet.has(data.timePhase) ? data.timePhase : getTimePhase(now),
+            season: seasonSet.has(data.season) ? data.season : getSeason(now),
+            temperature: Number.isFinite(Number(data.temperature)) ? Number(data.temperature) : null,
+            windSpeed: Number.isFinite(Number(data.windSpeed)) ? Number(data.windSpeed) : null,
+            updatedAt: data.updatedAt || now.toISOString()
+        };
+    }
+
+    function readCachedWorld() {
+        const cached = readJson(WORLD_CACHE_KEY, null);
+        if (!cached || !cached.savedAt || !cached.data) return null;
+        if (Date.now() - cached.savedAt > WORLD_CACHE_TTL) return null;
+        return normalizeWorld(cached.data);
+    }
+
+    function writeCachedWorld(world) {
+        writeJson(WORLD_CACHE_KEY, { savedAt: Date.now(), data: world });
+    }
+
+    function makeWeatherParticle(weather, index) {
+        const particle = document.createElement('span');
+        particle.className = 'room-weather-particle';
+        const left = Math.round(Math.random() * 100);
+        const delay = (Math.random() * 8).toFixed(2);
+        const duration = weather === 'snow'
+            ? (8 + Math.random() * 9).toFixed(2)
+            : (0.7 + Math.random() * 0.8).toFixed(2);
+        particle.style.setProperty('--particle-left', `${left}%`);
+        particle.style.setProperty('--particle-delay', `${delay}s`);
+        particle.style.setProperty('--particle-duration', `${duration}s`);
+        const drift = Math.round((Math.random() - 0.5) * 90);
+        particle.style.setProperty('--particle-drift', `${drift}px`);
+        particle.style.setProperty('--particle-return', `${Math.round(drift * -0.35)}px`);
+        particle.style.setProperty('--particle-size', `${Math.round(2 + Math.random() * 4)}px`);
+        particle.style.setProperty('--particle-opacity', `${(0.34 + Math.random() * 0.36).toFixed(2)}`);
+        particle.style.setProperty('--particle-index', index);
+        return particle;
+    }
+
+    function renderWeatherLayer(page, weather) {
+        page.querySelector('[data-room-weather-layer]')?.remove();
+        if (!['rain', 'storm', 'snow', 'fog', 'cloudy'].includes(weather)) return;
+
+        const layer = document.createElement('div');
+        layer.className = 'room-weather-layer';
+        layer.dataset.roomWeatherLayer = 'true';
+        layer.dataset.weather = weather;
+        layer.setAttribute('aria-hidden', 'true');
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            page.appendChild(layer);
+            return;
+        }
+
+        const count = weather === 'storm' ? 80 : weather === 'rain' ? 62 : weather === 'snow' ? 46 : 0;
+        for (let index = 0; index < count; index += 1) {
+            layer.appendChild(makeWeatherParticle(weather, index));
+        }
+        page.appendChild(layer);
+    }
+
+    function applyRoomWorld(world) {
+        const page = getRoomPage();
+        if (!page) return;
+        const normalized = normalizeWorld(world);
+        page.dataset.timePhase = normalized.timePhase;
+        page.dataset.season = normalized.season;
+        page.dataset.weather = normalized.weather;
+        if (normalized.temperature != null) {
+            page.style.setProperty('--room-temperature', normalized.temperature);
+        }
+        renderWeatherLayer(page, normalized.weather);
+    }
+
+    async function refreshRoomWorld() {
+        try {
+            const response = await fetch(WORLD_ENDPOINT, { cache: 'no-store' });
+            const result = await response.json().catch(() => ({}));
+            const world = normalizeWorld(result.data || {});
+            applyRoomWorld(world);
+            writeCachedWorld(world);
+        } catch (_) {
+            applyRoomWorld(normalizeWorld({}));
+        }
+    }
+
+    function initRoomWorld() {
+        applyRoomWorld(readCachedWorld() || normalizeWorld({}));
+        refreshRoomWorld();
+        clearInterval(worldRefreshTimer);
+        worldRefreshTimer = setInterval(refreshRoomWorld, WORLD_CACHE_TTL);
+    }
+
+    function destroyRoomWorld() {
+        clearInterval(worldRefreshTimer);
+        worldRefreshTimer = null;
+        const page = getRoomPage();
+        if (!page) return;
+        delete page.dataset.timePhase;
+        delete page.dataset.season;
+        delete page.dataset.weather;
+        page.querySelector('[data-room-weather-layer]')?.remove();
     }
 
     function escapeHtml(text) {
@@ -928,6 +1064,7 @@
         if (window.__tsukuyomiRoomRuntimeReady) return;
         if (!$('live2d-container')) return;
         window.__tsukuyomiRoomRuntimeReady = true;
+        initRoomWorld();
         initSakura();
         initPanels();
         initProfileAndNote();
@@ -944,6 +1081,7 @@
         }
         ambientFish?.destroy?.();
         live2d?.destroy?.();
+        destroyRoomWorld();
         ambientFish = null;
         live2d = null;
         window.__tsukuyomiRoomRuntimeReady = false;
@@ -956,6 +1094,7 @@
     }
 
     window.addEventListener('beforeunload', () => {
+        destroyRoomWorld();
         ambientFish?.destroy?.();
         live2d?.destroy?.();
     });

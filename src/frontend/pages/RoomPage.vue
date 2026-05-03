@@ -8,10 +8,10 @@ const props = defineProps({
 defineEmits(['go']);
 
 const scripts = [
-  '/assets/js/ambient-fish.js?v=20260503-vue-room6',
+  '/assets/js/ambient-fish.js?v=20260503-world1',
   '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260503-vue-room6',
-  '/assets/js/room-runtime.js?v=20260503-vue-room6'
+  '/lib/bundled/live2d-room.iife.js?v=20260503-world1',
+  '/assets/js/room-runtime.js?v=20260503-world1'
 ];
 
 const roomUserName = computed(() => props.user?.username || props.user?.email || 'Guest');
