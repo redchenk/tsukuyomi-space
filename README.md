@@ -33,18 +33,21 @@
 
 ```bash
 npm install
-npm run check
-npm start
+npm run dev
 ```
 
-服务器部署地址（3280 端口）：
+开发环境会并行启动 API 和前端：
 
-- 首页：`http://38.76.173.139:3280/`
-- 中枢大厅：`http://38.76.173.139:3280/hub`
-- 私人居所：`http://38.76.173.139:3280/room`
-- 月读广场：`http://38.76.173.139:3280/plaza`
-- 数据终端：`http://38.76.173.139:3280/terminal`
-- 健康检查：`http://38.76.173.139:3280/api/health`
+- 前端开发服务：`http://localhost:5173/`
+- API 服务：`http://localhost:3000/api/health`
+
+常用脚本：
+
+- `npm run dev` / `npm run dev:all`：并行启动后端 API 和 Vite 前端
+- `npm run dev:api`：只启动 Express API
+- `npm run dev:web`：只启动 Vite 前端
+- `npm test`：执行 Node 语法检查和后端接口测试
+- `npm run build:web`：构建 Vue 前端产物
 
 ## 项目结构
 
@@ -69,7 +72,7 @@ tsukuyomi-space/
 - `NODE_ENV=production`
 - `JWT_SECRET`：至少 32 字符，建议用 `openssl rand -base64 48` 生成
 - `ADMIN_PASSWORD`：首次创建或重置管理员时使用
-- `CORS_ORIGINS`：线上域名，例如 `https://yachiyo.redchenk.com`
+- `CORS_ORIGINS`：线上域名，例如 `https://your-domain.example`
 - `DATA_DIR` 或 `DB_PATH`：SQLite 数据库存放路径
 
 复制 `.env.example` 到服务器的 `/etc/tsukuyomi-space/tsukuyomi-space.env`。真实 `.env`、密码、API Key 不应提交到仓库。

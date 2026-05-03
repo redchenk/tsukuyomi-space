@@ -44,7 +44,7 @@ cp deploy/nginx.conf /etc/nginx/sites-available/tsukuyomi-space
 ln -s /etc/nginx/sites-available/tsukuyomi-space /etc/nginx/sites-enabled/tsukuyomi-space
 nginx -t
 systemctl reload nginx
-curl http://38.76.173.139:3280/hub
+curl http://your-domain.example/hub
 ```
 
 上线域名后，建议使用 Certbot 配置 HTTPS，并把 `.env` 里的 `CORS_ORIGINS` 改成 HTTPS 域名。
