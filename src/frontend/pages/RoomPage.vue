@@ -9,8 +9,8 @@ defineEmits(['go']);
 
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260503-world2',
-  '/assets/js/room-runtime.js?v=20260503-world2'
+  '/lib/bundled/live2d-room.iife.js?v=20260503-world3',
+  '/assets/js/room-runtime.js?v=20260503-world3'
 ];
 
 const roomUserName = computed(() => props.user?.username || props.user?.email || 'Guest');
