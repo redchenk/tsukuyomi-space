@@ -1184,7 +1184,7 @@
                 'api-key': settings.apiKey
             },
             body: JSON.stringify({
-                model: settings.model || 'mimo-v2-tts',
+                model: settings.model || 'mino-v2.5-tts',
                 messages: [
                     { role: 'user', content: '请用温柔自然的语气朗读。' },
                     { role: 'assistant', content: String(text) }

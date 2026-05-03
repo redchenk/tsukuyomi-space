@@ -9,8 +9,8 @@ defineEmits(['go']);
 
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260503-client-api1',
-  '/assets/js/room-runtime.js?v=20260503-client-api1'
+  '/lib/bundled/live2d-room.iife.js?v=20260503-tts25',
+  '/assets/js/room-runtime.js?v=20260503-tts25'
 ];
 
 const roomUserName = computed(() => props.user?.username || props.user?.email || 'Guest');
@@ -180,7 +180,7 @@ onBeforeUnmount(() => {
           <div class="field">
             <label for="ttsProvider">TTS Provider</label>
             <select id="ttsProvider">
-              <option value="mimo">MiMo-V2-TTS</option>
+              <option value="mimo">MiNo-V2.5-TTS</option>
               <option value="openai">OpenAI TTS</option>
             </select>
           </div>

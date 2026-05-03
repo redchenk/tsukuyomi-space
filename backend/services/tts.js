@@ -16,7 +16,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
     const useApiUrl = apiUrl || TTS_API_URL || (useProvider === 'openai'
         ? 'https://api.openai.com/v1/audio/speech'
         : 'https://api.xiaomimimo.com/v1/chat/completions');
-    const useModel = model || process.env.TTS_MODEL || (useProvider === 'openai' ? 'tts-1' : 'mimo-v2-tts');
+    const useModel = model || process.env.TTS_MODEL || (useProvider === 'openai' ? 'tts-1' : 'mino-v2.5-tts');
 
     if (!useApiKey) {
         const error = new Error('TTS API 未配置，请设置 TTS_API_KEY 或在请求中传入 apiKey');
