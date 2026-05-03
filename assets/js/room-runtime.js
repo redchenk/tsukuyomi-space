@@ -44,6 +44,38 @@
         localStorage.setItem(key, JSON.stringify(value));
     }
 
+    function isWeatherQuestion(message) {
+        return /天气|气温|温度|下雨|下雪|降雨|降雪|冷不冷|热不热|刮风|风大|weather|temperature|forecast|rain|snow|wind|hot|cold/i.test(String(message || ''));
+    }
+
+    function getBrowserTimezone() {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function readUserWeatherLocation(message) {
+        const timezone = getBrowserTimezone();
+        if (!isWeatherQuestion(message) || !navigator.geolocation) {
+            return Promise.resolve(timezone ? { timezone } : null);
+        }
+
+        return new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => resolve({
+                    lat: position.coords.latitude,
+                    lon: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    timezone
+                }),
+                () => resolve(timezone ? { timezone } : null),
+                { enableHighAccuracy: false, maximumAge: 20 * 60 * 1000, timeout: 2500 }
+            );
+        });
+    }
+
     function getRoomPage() {
         return document.querySelector('.room-page');
     }
@@ -939,10 +971,12 @@
         $('chatMessages')?.appendChild(typing);
 
         try {
+            const weatherLocation = await readUserWeatherLocation(message);
             const result = await postJson(CHAT_ENDPOINT, {
                 message,
                 conversation: chatConversation.slice(-12),
-                settings: readJson('roomLLMSettings', {})
+                settings: readJson('roomLLMSettings', {}),
+                weatherLocation
             });
             typing.remove();
             const reply = result.data.reply || '';

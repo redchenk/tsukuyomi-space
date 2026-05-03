@@ -217,6 +217,26 @@ describe('room world API', () => {
         assert.ok(['spring', 'summer', 'autumn', 'winter'].includes(body.data.season));
         assert.equal(body.data.location.timezone, 'Asia/Hong_Kong');
     });
+
+    it('adds local weather context to room chat weather questions', async () => {
+        const { response, body } = await postJson('/api/room/chat', {
+            message: '我这边今天的天气怎么样？',
+            conversation: [],
+            settings: {},
+            weatherLocation: {
+                lat: 39.9042,
+                lon: 116.4074,
+                timezone: 'Asia/Shanghai'
+            }
+        });
+
+        assert.equal(response.status, 200);
+        assert.equal(body.success, true);
+        assert.equal(body.data.weather.source, 'local-fallback');
+        assert.equal(body.data.weather.location.timezone, 'Asia/Shanghai');
+        assert.equal(body.data.weather.location.lat, 39.9042);
+        assert.match(body.data.reply, /天气|气温|晴朗|多云|有雨|有雪|有雾/);
+    });
 });
 
 describe('admin API permissions', () => {
