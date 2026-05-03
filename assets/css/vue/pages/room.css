@@ -456,6 +456,13 @@ body.vue-room-route {
     gap: 0.45rem;
 }
 
+.field-hint {
+    margin: -0.28rem 0 0.78rem;
+    color: rgba(255, 247, 251, 0.62);
+    font-size: 0.72rem;
+    line-height: 1.55;
+}
+
 .room-panel input,
 .room-panel textarea,
 .room-panel select {

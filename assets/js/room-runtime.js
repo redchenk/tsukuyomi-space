@@ -5,6 +5,11 @@
     const WORLD_ENDPOINT = '/api/room/world';
     const WORLD_CACHE_KEY = 'roomWorldState';
     const WORLD_CACHE_TTL = 20 * 60 * 1000;
+    const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
+    const MEMORY_DB_VERSION = 1;
+    const MEMORY_STORE = 'memories';
+    const MEMORY_VECTOR_SIZE = 96;
+    const MEMORY_MAX_PER_USER = 240;
     const CORE = () => window.Live2DCubismCore;
     const Utils = () => CORE()?.Utils || {};
 
@@ -24,6 +29,7 @@
     let zIndexCounter = 30;
     let live2dReadyListener = null;
     let worldRefreshTimer = null;
+    let memoryDbPromise = null;
 
     function $(id) {
         return document.getElementById(id);
@@ -40,6 +46,209 @@
 
     function writeJson(key, value) {
         localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function requestToPromise(request) {
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('IndexedDB request failed'));
+        });
+    }
+
+    function txToPromise(tx) {
+        return new Promise((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'));
+            tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+        });
+    }
+
+    function openMemoryDb() {
+        if (!('indexedDB' in window)) return Promise.resolve(null);
+        if (memoryDbPromise) return memoryDbPromise;
+        memoryDbPromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open(MEMORY_DB_NAME, MEMORY_DB_VERSION);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                const store = db.objectStoreNames.contains(MEMORY_STORE)
+                    ? request.transaction.objectStore(MEMORY_STORE)
+                    : db.createObjectStore(MEMORY_STORE, { keyPath: 'id' });
+                if (!store.indexNames.contains('userKey')) store.createIndex('userKey', 'userKey', { unique: false });
+                if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
+        }).catch((error) => {
+            console.warn('Room memory disabled:', error.message);
+            return null;
+        });
+        return memoryDbPromise;
+    }
+
+    function memorySettings() {
+        return { enabled: true, ...readJson('roomMemorySettings', {}) };
+    }
+
+    function writeMemorySettings(settings) {
+        writeJson('roomMemorySettings', settings);
+    }
+
+    function ensureGuestMemoryId() {
+        let id = localStorage.getItem('roomMemoryGuestId');
+        if (!id) {
+            id = `guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+            localStorage.setItem('roomMemoryGuestId', id);
+        }
+        return id;
+    }
+
+    function currentVisitor() {
+        const page = getRoomPage();
+        const profile = readJson('roomProfile', {});
+        const rawId = page?.dataset.roomUserId || '';
+        const rawName = page?.dataset.roomUserName || '';
+        return {
+            userKey: rawId ? `user:${rawId}` : `guest:${ensureGuestMemoryId()}`,
+            name: profile.nickname || rawName || 'Guest',
+            signature: profile.signature || ''
+        };
+    }
+
+    function hashString(value) {
+        let hash = 2166136261;
+        for (let index = 0; index < value.length; index += 1) {
+            hash ^= value.charCodeAt(index);
+            hash = Math.imul(hash, 16777619);
+        }
+        return hash >>> 0;
+    }
+
+    function tokenizeMemoryText(text) {
+        const value = String(text || '').toLowerCase();
+        const words = value.match(/[a-z0-9_]+|[\u4e00-\u9fff]/g) || [];
+        const grams = [];
+        for (let index = 0; index < words.length - 1; index += 1) {
+            grams.push(`${words[index]}${words[index + 1]}`);
+        }
+        return words.concat(grams);
+    }
+
+    function makeMemoryEmbedding(text) {
+        const vector = Array(MEMORY_VECTOR_SIZE).fill(0);
+        tokenizeMemoryText(text).forEach((token) => {
+            const hash = hashString(token);
+            const slot = hash % MEMORY_VECTOR_SIZE;
+            vector[slot] += (hash & 1) ? 1 : -1;
+        });
+        const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0)) || 1;
+        return vector.map(value => Number((value / norm).toFixed(6)));
+    }
+
+    function memorySimilarity(a, b) {
+        if (!Array.isArray(a) || !Array.isArray(b)) return 0;
+        let score = 0;
+        for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
+            score += Number(a[index] || 0) * Number(b[index] || 0);
+        }
+        return score;
+    }
+
+    async function getUserMemories(userKey) {
+        const db = await openMemoryDb();
+        if (!db) return [];
+        const tx = db.transaction(MEMORY_STORE, 'readonly');
+        const index = tx.objectStore(MEMORY_STORE).index('userKey');
+        return requestToPromise(index.getAll(IDBKeyRange.only(userKey)));
+    }
+
+    async function putMemory(record) {
+        const db = await openMemoryDb();
+        if (!db) return;
+        const tx = db.transaction(MEMORY_STORE, 'readwrite');
+        tx.objectStore(MEMORY_STORE).put(record);
+        await txToPromise(tx);
+    }
+
+    async function pruneUserMemories(userKey) {
+        const memories = await getUserMemories(userKey);
+        if (memories.length <= MEMORY_MAX_PER_USER) return;
+        const stale = memories
+            .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+            .slice(0, memories.length - MEMORY_MAX_PER_USER);
+        const db = await openMemoryDb();
+        if (!db) return;
+        const tx = db.transaction(MEMORY_STORE, 'readwrite');
+        stale.forEach((item) => tx.objectStore(MEMORY_STORE).delete(item.id));
+        await txToPromise(tx);
+    }
+
+    async function clearCurrentUserMemories() {
+        const visitor = currentVisitor();
+        const memories = await getUserMemories(visitor.userKey);
+        const db = await openMemoryDb();
+        if (!db) return 0;
+        const tx = db.transaction(MEMORY_STORE, 'readwrite');
+        memories.forEach((item) => tx.objectStore(MEMORY_STORE).delete(item.id));
+        await txToPromise(tx);
+        return memories.length;
+    }
+
+    async function buildMemorySystemContext(message) {
+        try {
+            if (!memorySettings().enabled) return '';
+            const visitor = currentVisitor();
+            const memories = await getUserMemories(visitor.userKey);
+            const query = makeMemoryEmbedding(message);
+            const matched = memories
+                .map(item => ({ ...item, score: memorySimilarity(query, item.embedding) }))
+                .filter(item => item.score > 0.08)
+                .sort((a, b) => b.score - a.score || String(b.createdAt).localeCompare(String(a.createdAt)))
+                .slice(0, 5);
+
+            return [
+                '以下是八千代的本地长期记忆。记忆只属于当前用户，不要提及数据库、向量、检索或系统实现。',
+                `当前访客：${visitor.name}${visitor.signature ? `；签名：${visitor.signature}` : ''}`,
+                matched.length ? '相关记忆：' : '当前没有检索到相关旧记忆。',
+                ...matched.map((item, index) => `${index + 1}. ${item.summary}`)
+            ].join('\n');
+        } catch (error) {
+            console.warn('Room memory context skipped:', error.message);
+            return '';
+        }
+    }
+
+    async function rememberConversation(userMessage, assistantReply) {
+        if (!memorySettings().enabled) return;
+        const visitor = currentVisitor();
+        const content = `访客 ${visitor.name}：${userMessage}\n八千代：${assistantReply}`;
+        const summary = content.replace(/\s+/g, ' ').slice(0, 260);
+        await putMemory({
+            id: `${visitor.userKey}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+            userKey: visitor.userKey,
+            visitorName: visitor.name,
+            content,
+            summary,
+            embedding: makeMemoryEmbedding(content),
+            createdAt: new Date().toISOString()
+        });
+        await pruneUserMemories(visitor.userKey);
+        updateMemoryStatus();
+    }
+
+    async function updateMemoryStatus() {
+        const status = $('memoryStatus');
+        if (!status) return;
+        try {
+            if (!memorySettings().enabled) {
+                status.textContent = '记忆外挂已关闭。';
+                return;
+            }
+            const visitor = currentVisitor();
+            const memories = await getUserMemories(visitor.userKey);
+            status.textContent = `当前身份：${visitor.name}；已保存 ${memories.length} 条本地记忆。`;
+        } catch (_) {
+            status.textContent = '当前浏览器不可用本地记忆。';
+        }
     }
 
     function isWeatherQuestion(message) {
@@ -184,8 +393,10 @@
         }
 
         const model = settings.model || 'moonshot-v1-8k';
+        const memoryContext = await buildMemorySystemContext(message);
         const systemPrompt = [
             buildYachiyoPersonaPrompt(),
+            memoryContext,
             formatWeatherSystemContext(weather)
         ].filter(Boolean).join('\n\n');
 
@@ -1072,6 +1283,7 @@
         };
         writeJson('roomProfile', profile);
         renderProfile(profile);
+        updateMemoryStatus();
         appendMessage('system', '资料已保存');
     }
 
@@ -1116,6 +1328,10 @@
         if ($('ttsApiKey')) $('ttsApiKey').value = tts.apiKey || '';
         if ($('ttsVoice')) $('ttsVoice').value = tts.voice || '';
 
+        const memory = memorySettings();
+        if ($('memoryEnabled')) $('memoryEnabled').checked = memory.enabled;
+        updateMemoryStatus();
+
         $('sendChatBtn')?.addEventListener('click', sendChat);
         $('chatInput')?.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') sendChat();
@@ -1130,6 +1346,16 @@
         });
         $('testLLMBtn')?.addEventListener('click', testLLMConnection);
         $('testTTSBtn')?.addEventListener('click', testTTS);
+        $('memoryEnabled')?.addEventListener('change', (event) => {
+            writeMemorySettings({ enabled: Boolean(event.target.checked) });
+            updateMemoryStatus();
+            appendMessage('system', event.target.checked ? '长期记忆已开启' : '长期记忆已关闭');
+        });
+        $('clearMemoryBtn')?.addEventListener('click', async () => {
+            const count = await clearCurrentUserMemories();
+            await updateMemoryStatus();
+            appendMessage('system', `已清空 ${count} 条本地记忆`);
+        });
         document.querySelectorAll('[data-llm-preset]').forEach((button) => {
             button.addEventListener('click', () => {
                 const preset = LLM_PRESETS[button.dataset.llmPreset];
@@ -1184,6 +1410,7 @@
             chatConversation.push({ role: 'user', content: message }, { role: 'assistant', content: reply });
             chatConversation = chatConversation.slice(-24);
             writeJson('roomChatHistory', chatConversation);
+            rememberConversation(message, reply).catch((error) => console.warn('Room memory skipped:', error.message));
         } catch (error) {
             typing.remove();
             appendMessage('system', `发送失败：${error.message}`);

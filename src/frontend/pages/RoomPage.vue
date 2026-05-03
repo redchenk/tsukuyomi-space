@@ -9,11 +9,12 @@ defineEmits(['go']);
 
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260503-tts-button1',
-  '/assets/js/room-runtime.js?v=20260503-tts-button1'
+  '/lib/bundled/live2d-room.iife.js?v=20260503-memory1',
+  '/assets/js/room-runtime.js?v=20260503-memory1'
 ];
 
 const roomUserName = computed(() => props.user?.username || props.user?.email || 'Guest');
+const roomUserId = computed(() => props.user?.id || props.user?.username || props.user?.email || '');
 const roomUserAvatar = computed(() => props.user?.avatar || '');
 const roomUserInitial = computed(() => roomUserName.value.slice(0, 1).toUpperCase());
 
@@ -68,7 +69,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="room-page" aria-label="&#31169;&#20154;&#23621;&#25152;">
+  <main class="room-page" aria-label="&#31169;&#20154;&#23621;&#25152;" :data-room-user-id="roomUserId" :data-room-user-name="roomUserName">
     <div class="room-backdrop" aria-hidden="true"></div>
 
     <nav class="room-commandbar" aria-label="&#25151;&#38388;&#23548;&#33322;">
@@ -228,6 +229,18 @@ onBeforeUnmount(() => {
           <div class="button-row">
             <button id="saveLLMBtn" class="panel-btn" type="button">&#20445;&#23384; API</button>
             <button id="testLLMBtn" class="panel-btn" type="button">&#27979;&#35797;&#36830;&#25509;</button>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-section-title">&#38271;&#26399;&#35760;&#24518;&#22806;&#25346;</div>
+          <div class="field room-check">
+            <label><input id="memoryEnabled" type="checkbox"> &#21551;&#29992;&#26412;&#22320;&#35760;&#24518;&#32593;&#32476;</label>
+          </div>
+          <p class="field-hint">&#35760;&#24518;&#20445;&#23384;&#22312;&#26412;&#26426; IndexedDB&#65292;&#25353;&#29992;&#25143;&#21333;&#29420;&#20998;&#26742;&#65292;&#19981;&#19978;&#20256;&#21040;&#26381;&#21153;&#22120;&#12290;</p>
+          <div id="memoryStatus" class="field-hint"></div>
+          <div class="button-row">
+            <button id="clearMemoryBtn" class="panel-btn" type="button">&#28165;&#31354;&#26412;&#29992;&#25143;&#35760;&#24518;</button>
           </div>
         </div>
       </div>

@@ -114,6 +114,7 @@ bash deploy/deploy.sh
 - API 已加入基础安全响应头、CORS 白名单和内存限流。
 - SQLite 默认存放在 `DATA_DIR`，不应提交到 Git。
 - 权限模型见 [docs/PERMISSIONS.md](docs/PERMISSIONS.md)。
+- Room 长期记忆说明见 [docs/ROOM_MEMORY.md](docs/ROOM_MEMORY.md)。
 
 ## License
 
