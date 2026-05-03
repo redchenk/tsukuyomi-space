@@ -427,9 +427,24 @@
         const chatMessages = $('chatMessages');
         if (!chatMessages) return;
         const roleNames = { user: '你', assistant: '辉夜姬', system: '系统' };
+        const messageText = String(content || '');
         const node = document.createElement('div');
         node.className = `chat-message ${role}`;
-        node.innerHTML = `<span class="chat-role">${roleNames[role] || role}</span>${escapeHtml(content)}`;
+        node.innerHTML = [
+            `<span class="chat-role">${roleNames[role] || role}</span>`,
+            `<div class="chat-content">${escapeHtml(messageText)}</div>`
+        ].join('');
+        if (role === 'assistant') {
+            const actions = document.createElement('div');
+            actions.className = 'chat-message-actions';
+            const ttsButton = document.createElement('button');
+            ttsButton.className = 'chat-tts-btn';
+            ttsButton.type = 'button';
+            ttsButton.textContent = '播放语音';
+            ttsButton.addEventListener('click', () => playTTSFromButton(messageText, ttsButton));
+            actions.appendChild(ttsButton);
+            node.appendChild(actions);
+        }
         chatMessages.appendChild(node);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
@@ -1169,7 +1184,6 @@
             chatConversation.push({ role: 'user', content: message }, { role: 'assistant', content: reply });
             chatConversation = chatConversation.slice(-24);
             writeJson('roomChatHistory', chatConversation);
-            playTTS(reply);
         } catch (error) {
             typing.remove();
             appendMessage('system', `发送失败：${error.message}`);
@@ -1204,13 +1218,31 @@
         }
     }
 
-    async function playTTS(text) {
+    async function playTTSFromButton(text, button) {
         const settings = readJson('roomTTSSettings', {});
-        if (!settings.enabled) return;
+        if (!settings.enabled) {
+            appendMessage('system', '请先在 TTS 设置中启用语音合成');
+            return;
+        }
+        const originalLabel = button?.textContent || '播放语音';
+        if (button) {
+            button.disabled = true;
+            button.textContent = '生成中...';
+        }
         try {
             await playTTSInternal(cleanAssistantReply(text), settings, false);
+            if (button) button.textContent = '播放中';
         } catch (error) {
-            console.warn('TTS skipped:', error.message);
+            appendMessage('system', `TTS 播放失败：${error.message}`);
+            if (button) button.textContent = originalLabel;
+            return;
+        } finally {
+            if (button) {
+                window.setTimeout(() => {
+                    button.disabled = false;
+                    button.textContent = originalLabel;
+                }, 900);
+            }
         }
     }
 
