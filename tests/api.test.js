@@ -26,6 +26,7 @@ const { normalizeChatUrl } = require('../backend/services/llm');
 let server;
 let baseUrl;
 let userToken;
+let managedUserToken;
 let adminToken;
 let staffAdminToken;
 let articleId;
@@ -88,6 +89,7 @@ before(async () => {
         .run('staff-admin', bcrypt.hashSync('staff-test-password', 10), 'admin');
 
     userToken = await login('/api/auth/login', 'normal-user', 'user-test-password');
+    managedUserToken = await login('/api/auth/login', 'managed-user', 'managed-old-password');
     adminToken = await login('/api/admin/login', 'admin', 'admin-test-password');
     staffAdminToken = await login('/api/admin/login', 'staff-admin', 'staff-test-password');
 });
@@ -257,6 +259,53 @@ describe('room world API', () => {
         });
         assert.equal(tts.response.status, 410);
         assert.equal(tts.body.success, false);
+    });
+});
+
+describe('room memory API', () => {
+    it('requires a logged-in user for server-side room memories', async () => {
+        const { response, body } = await request('/api/room/memory/status');
+
+        assert.equal(response.status, 401);
+        assert.equal(body.success, false);
+    });
+
+    it('records, searches, isolates, and clears per-user memories', async () => {
+        const created = await postJson('/api/room/memory', {
+            visitorName: 'normal-user',
+            userMessage: '请记住我喜欢浅蓝色和淡紫色的房间氛围。',
+            assistantReply: '我记住了。下次会把房间的光调得更像浅蓝和淡紫的月色。',
+            metadata: { test: true }
+        }, userToken);
+        assert.equal(created.response.status, 201);
+        assert.match(created.body.data.summary, /浅蓝色/);
+        assert.ok(created.body.data.importance > 0);
+
+        const search = await request('/api/room/memory?q=%E6%B5%85%E8%93%9D%E8%89%B2&limit=3', {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(search.response.status, 200);
+        assert.ok(search.body.data.some(item => item.summary.includes('浅蓝色')));
+
+        const isolated = await request('/api/room/memory?q=%E6%B5%85%E8%93%9D%E8%89%B2', {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(isolated.response.status, 200);
+        assert.equal(isolated.body.data.length, 0);
+
+        const status = await request('/api/room/memory/status', {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(status.response.status, 200);
+        assert.equal(status.body.data.scope, 'per-user');
+        assert.equal(status.body.data.count, 1);
+
+        const cleared = await request('/api/room/memory', {
+            method: 'DELETE',
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(cleared.response.status, 200);
+        assert.equal(cleared.body.data.count, 1);
     });
 });
 

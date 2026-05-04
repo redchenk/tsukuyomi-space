@@ -3,6 +3,7 @@
 
     const MODEL_URL = '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json';
     const WORLD_ENDPOINT = '/api/room/world';
+    const MEMORY_ENDPOINT = '/api/room/memory';
     const WORLD_CACHE_KEY = 'roomWorldState';
     const WORLD_CACHE_TTL = 20 * 60 * 1000;
     const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
@@ -81,6 +82,26 @@
 
     function memorySettings() {
         return { enabled: true, ...readJson('roomMemorySettings', {}) };
+    }
+
+    function roomAuthToken() {
+        return localStorage.getItem('tsukuyomi_token') || '';
+    }
+
+    function canUseServerMemory(visitor = currentVisitor()) {
+        return Boolean(roomAuthToken() && visitor.userKey.startsWith('user:'));
+    }
+
+    async function roomMemoryApi(path = '', options = {}) {
+        const token = roomAuthToken();
+        if (!token) throw new Error('Memory auth token is missing');
+        const headers = new Headers(options.headers || {});
+        if (options.body !== undefined) headers.set('Content-Type', 'application/json');
+        headers.set('Authorization', `Bearer ${token}`);
+        const response = await fetch(`${MEMORY_ENDPOINT}${path}`, { ...options, headers });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) throw new Error(result.message || `Memory HTTP ${response.status}`);
+        return result.data;
     }
 
     function writeMemorySettings(settings) {
@@ -191,6 +212,20 @@
         try {
             if (!memorySettings().enabled) return '';
             const visitor = currentVisitor();
+            if (canUseServerMemory(visitor)) {
+                try {
+                    const params = new URLSearchParams({ q: String(message || ''), limit: '5' });
+                    const matched = await roomMemoryApi(`?${params}`);
+                    return [
+                        '以下是八千代的服务端长期记忆。记忆只属于当前登录用户，不要提及数据库、向量、检索或系统实现。',
+                        `当前访客：${visitor.name}${visitor.signature ? `；签名：${visitor.signature}` : ''}`,
+                        matched.length ? '相关记忆：' : '当前没有检索到相关旧记忆。',
+                        ...matched.map((item, index) => `${index + 1}. ${item.summary}`)
+                    ].join('\n');
+                } catch (error) {
+                    console.warn('Server room memory unavailable, using local memory:', error.message);
+                }
+            }
             const memories = await getUserMemories(visitor.userKey);
             const query = makeMemoryEmbedding(message);
             const matched = memories
@@ -216,6 +251,26 @@
         const visitor = currentVisitor();
         const content = `访客 ${visitor.name}：${userMessage}\n八千代：${assistantReply}`;
         const summary = content.replace(/\s+/g, ' ').slice(0, 260);
+        if (canUseServerMemory(visitor)) {
+            try {
+                await roomMemoryApi('', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        visitorName: visitor.name,
+                        type: 'conversation',
+                        userMessage,
+                        assistantReply,
+                        content,
+                        summary,
+                        metadata: { source: 'room-browser' }
+                    })
+                });
+                updateMemoryStatus();
+                return;
+            } catch (error) {
+                console.warn('Server room memory write failed, using local memory:', error.message);
+            }
+        }
         await putMemory({
             id: `${visitor.userKey}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
             userKey: visitor.userKey,
@@ -238,6 +293,15 @@
                 return;
             }
             const visitor = currentVisitor();
+            if (canUseServerMemory(visitor)) {
+                try {
+                    const stats = await roomMemoryApi('/status');
+                    status.textContent = `当前身份：${visitor.name}；服务端私有记忆 ${stats.count} 条。`;
+                    return;
+                } catch (error) {
+                    console.warn('Server room memory status unavailable:', error.message);
+                }
+            }
             const memories = await getUserMemories(visitor.userKey);
             status.textContent = `当前身份：${visitor.name}；已保存 ${memories.length} 条本地记忆。`;
         } catch (_) {

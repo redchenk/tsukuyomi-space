@@ -55,6 +55,10 @@ const visitorKey = computed(() => {
   }
   return `guest:${id}`;
 });
+const canUseServerMemory = computed(() => Boolean(props.user?.id && localStorage.getItem('tsukuyomi_token')));
+const memoryLocationText = computed(() => canUseServerMemory.value
+  ? '记忆保存在服务端 SQLite 向量记忆库，按登录用户隔离；未登录时自动退回本机 IndexedDB。'
+  : '当前未登录，记忆仅保存在本机 IndexedDB，不上传服务器。');
 
 function readJson(key, fallback) {
   try {
@@ -137,6 +141,15 @@ function txToPromise(tx) {
 
 async function loadMemoryCount() {
   try {
+    if (canUseServerMemory.value) {
+      const response = await fetch('/api/room/memory/status', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('tsukuyomi_token')}` }
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+      memoryCount.value = result.data?.count || 0;
+      return;
+    }
     const db = await openMemoryDb();
     if (!db) return;
     const tx = db.transaction(MEMORY_STORE, 'readonly');
@@ -317,6 +330,17 @@ function saveMemory() {
 
 async function clearMemory() {
   try {
+    if (canUseServerMemory.value) {
+      const response = await fetch('/api/room/memory', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${localStorage.getItem('tsukuyomi_token')}` }
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+      memoryCount.value = 0;
+      showToast(`已清空 ${result.data?.count || 0} 条服务端记忆`);
+      return;
+    }
     const db = await openMemoryDb();
     if (!db) return;
     const tx = db.transaction(MEMORY_STORE, 'readwrite');
@@ -458,8 +482,8 @@ onMounted(loadSettings);
       <article class="room-settings-card">
         <h2>长期记忆</h2>
         <div class="form-grid">
-          <label class="check-row"><input v-model="memory.enabled" type="checkbox"> 启用本地长期记忆</label>
-          <p class="field-hint">记忆保存在本机 IndexedDB，按用户单独分桶，不上传到服务器。当前身份已有 {{ memoryCount }} 条本地记忆。</p>
+          <label class="check-row"><input v-model="memory.enabled" type="checkbox"> 启用长期记忆</label>
+          <p class="field-hint">{{ memoryLocationText }} 当前身份已有 {{ memoryCount }} 条记忆。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveMemory">保存记忆设置</button>
             <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>

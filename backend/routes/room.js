@@ -1,4 +1,6 @@
 const express = require('express');
+const { authenticateToken } = require('../middleware/auth');
+const roomMemory = require('../services/room-memory');
 
 const router = express.Router();
 
@@ -122,6 +124,43 @@ router.get('/world', async (req, res) => {
             location: { lat, lon, timezone }
         }
     });
+});
+
+router.get('/memory/status', authenticateToken, (req, res) => {
+    res.json({
+        success: true,
+        data: {
+            mode: 'server-vector',
+            scope: 'per-user',
+            ...roomMemory.memoryStats(req.user.id)
+        }
+    });
+});
+
+router.get('/memory', authenticateToken, (req, res) => {
+    const query = String(req.query.q || '').trim();
+    const limit = req.query.limit || 8;
+    const memories = query
+        ? roomMemory.searchMemories(req.user.id, query, limit)
+        : roomMemory.listMemories(req.user.id, limit);
+    res.json({ success: true, data: memories });
+});
+
+router.post('/memory', authenticateToken, (req, res) => {
+    try {
+        const memory = roomMemory.recordMemory(req.user.id, req.body || {});
+        res.status(201).json({ success: true, data: memory, message: '记忆已保存' });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.statusCode ? error.message : '无法保存记忆'
+        });
+    }
+});
+
+router.delete('/memory', authenticateToken, (req, res) => {
+    const count = roomMemory.clearMemories(req.user.id);
+    res.json({ success: true, data: { count }, message: '记忆已清空' });
 });
 
 router.post('/chat', async (req, res) => {
