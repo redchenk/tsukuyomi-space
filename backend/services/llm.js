@@ -20,6 +20,7 @@ const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.siliconflow.cn', path: /^\/v1\/chat\/completions\/?$/ },
     { hostname: 'ark.cn-beijing.volces.com', path: /^\/api\/v3\/chat\/completions\/?$/ },
     { hostname: 'api.minimaxi.com', path: /^\/anthropic\/v1\/messages\/?$/ },
+    { hostname: 'api.anthropic.com', path: /^\/v1\/messages\/?$/ },
     { hostname: 'api.groq.com', path: /^\/openai\/v1\/chat\/completions\/?$/ },
     { hostname: 'api.mistral.ai', path: /^\/v1\/chat\/completions\/?$/ },
     { hostname: 'api.together.xyz', path: /^\/v1\/chat\/completions\/?$/ },
@@ -40,6 +41,9 @@ function normalizeChatUrl(apiUrl, model) {
     let url = apiUrl || LLM_API_URL || 'https://api.moonshot.cn/v1/chat/completions';
     if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${model || ''}`)) {
         return validateChatUrl(url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages'));
+    }
+    if (/anthropic/i.test(url + model) && !/\/v1\/messages\/?$/.test(url)) {
+        url = url.replace(/\/$/, '') + '/v1/messages';
     }
     const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(url + model) && !/\/chat\/completions\/?$/.test(url);
     if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
@@ -102,7 +106,11 @@ function pickReply(data) {
 }
 
 function isAnthropicChatUrl(chatUrl, model) {
-    return /\/anthropic\/v1\/messages\/?$|MiniMax-M2/i.test(`${chatUrl || ''} ${model || ''}`);
+    return /\/anthropic\/v1\/messages\/?$|anthropic\.com\/v1\/messages\/?$|MiniMax-M2/i.test(`${chatUrl || ''} ${model || ''}`);
+}
+
+function isMiniMaxAnthropicText(chatUrl, model) {
+    return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages\/?$|MiniMax-M2/i.test(`${chatUrl || ''} ${model || ''}`);
 }
 
 function parseDataUrl(dataUrl = '') {
@@ -111,14 +119,33 @@ function parseDataUrl(dataUrl = '') {
     return { mediaType: match[1], data: match[2] };
 }
 
+function buildAnthropicUserContent(message, image, allowImage) {
+    const text = String(message || (image ? '请描述这张图片。' : ''));
+    if (!image?.dataUrl || !allowImage) return text;
+    const parsed = parseDataUrl(image.dataUrl);
+    if (!parsed) return text;
+    return [
+        { type: 'text', text },
+        {
+            type: 'image',
+            source: {
+                type: 'base64',
+                media_type: parsed.mediaType,
+                data: parsed.data
+            }
+        }
+    ];
+}
+
 function buildChatPayload({ chatUrl, model, systemPrompt, history, message, image }) {
     if (isAnthropicChatUrl(chatUrl, model)) {
+        const allowImage = !isMiniMaxAnthropicText(chatUrl, model);
         return {
             model,
             system: systemPrompt,
             messages: [
                 ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
-                { role: 'user', content: String(message || '') }
+                { role: 'user', content: buildAnthropicUserContent(message, image, allowImage) }
             ],
             temperature: 1,
             max_tokens: 240,

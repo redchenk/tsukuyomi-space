@@ -90,7 +90,7 @@ const storedUser = ref(readStoredUser());
 let toastTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
-const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false });
+const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto' });
 const tts = reactive({
   enabled: false,
   provider: 'mimo',
@@ -219,6 +219,9 @@ function normalizeChatUrl(apiUrl, modelName) {
   if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${modelName || ''}`)) {
     return url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages');
   }
+  if (/anthropic/i.test(`${url} ${modelName || ''}`) && !/\/v1\/messages\/?$/.test(url)) {
+    return url.replace(/\/$/, '') + '/v1/messages';
+  }
   const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|minimax|minimaxi|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${modelName || ''}`)
     && !/\/chat\/completions\/?$/.test(url);
   if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
@@ -236,8 +239,12 @@ function isMiniMaxAnthropic(apiUrl, modelName) {
   return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${apiUrl || ''} ${modelName || ''}`);
 }
 
+function isAnthropicChatApi(apiUrl, modelName) {
+  return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${apiUrl || ''} ${modelName || ''}`);
+}
+
 function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiUrl) {
-  if (isMiniMaxAnthropic(apiUrl, modelName)) {
+  if (isAnthropicChatApi(apiUrl, modelName)) {
     const system = messages.filter(item => item.role === 'system').map(item => String(item.content || '')).join('\n\n');
     return {
       model: modelName || 'MiniMax-M2.7',
@@ -527,7 +534,8 @@ function saveLLM() {
     apiUrl: String(llm.apiUrl || '').trim(),
     apiKey: String(llm.apiKey || '').trim(),
     model: String(llm.model || '').trim(),
-    useProxy: Boolean(llm.useProxy)
+    useProxy: Boolean(llm.useProxy),
+    visionMode: ['auto', 'llm', 'mcp'].includes(llm.visionMode) ? llm.visionMode : 'auto'
   });
   showToast('LLM API 设置已保存');
 }
@@ -545,8 +553,8 @@ async function testLLM() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(llm.useProxy || isMiniMaxAnthropic(llm.apiUrl, llm.model) ? {} : { Authorization: `Bearer ${llm.apiKey}` }),
-        ...(!llm.useProxy && isMiniMaxAnthropic(llm.apiUrl, llm.model) ? { 'x-api-key': llm.apiKey, 'anthropic-version': '2023-06-01' } : {})
+        ...(llm.useProxy || isAnthropicChatApi(llm.apiUrl, llm.model) ? {} : { Authorization: `Bearer ${llm.apiKey}` }),
+        ...(!llm.useProxy && isAnthropicChatApi(llm.apiUrl, llm.model) ? { 'x-api-key': llm.apiKey, 'anthropic-version': '2023-06-01' } : {})
       },
       body: JSON.stringify(llm.useProxy
         ? { message: '请用一句话回复连接测试。', apiKey: llm.apiKey, apiUrl: llm.apiUrl, model: llm.model }
@@ -908,6 +916,11 @@ onMounted(loadSettings);
           <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="https://api.openai.com/v1/chat/completions"></label>
           <label>API Key<input v-model="llm.apiKey" type="password" placeholder="sk-..."></label>
           <label>模型名称<input v-model="llm.model" type="text" placeholder="gpt-4o-mini"></label>
+          <label>图片理解策略<select v-model="llm.visionMode">
+            <option value="auto">自动识别视觉模型</option>
+            <option value="llm">强制发送给 LLM</option>
+            <option value="mcp">使用 MCP understand_image</option>
+          </select></label>
           <label class="check-row"><input v-model="llm.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>
           <p class="field-hint">关闭时由浏览器直连供应商，更保护隐私；开启后请求会经过本站后端，仅允许预设供应商域名，用于处理 CORS 限制。</p>
           <div class="button-row">

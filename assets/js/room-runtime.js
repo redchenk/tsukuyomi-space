@@ -433,6 +433,9 @@
         if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${model || ''}`)) {
             return url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages');
         }
+        if (/anthropic/i.test(`${url} ${model || ''}`) && !/\/v1\/messages\/?$/.test(url)) {
+            return url.replace(/\/$/, '') + '/v1/messages';
+        }
         const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|minimax|minimaxi|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${model || ''}`)
             && !/\/chat\/completions\/?$/.test(url);
         if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
@@ -462,12 +465,16 @@
         return { role: 'assistant', content: pickChatReply(data) };
     }
 
+    function isAnthropicChatApi(apiUrl, model) {
+        return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${apiUrl || ''} ${model || ''}`);
+    }
+
     function isMiniMaxAnthropic(apiUrl, model) {
         return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${apiUrl || ''} ${model || ''}`);
     }
 
     function chatRequestHeaders(settings) {
-        if (isMiniMaxAnthropic(settings.apiUrl, settings.model)) {
+        if (isAnthropicChatApi(settings.apiUrl, settings.model)) {
             return {
                 'Content-Type': 'application/json',
                 'x-api-key': settings.apiKey,
@@ -480,8 +487,36 @@
         };
     }
 
+    function parseDataUrl(dataUrl = '') {
+        const match = String(dataUrl).match(/^data:([^;,]+);base64,(.+)$/);
+        if (!match) return null;
+        return { mediaType: match[1], data: match[2] };
+    }
+
+    function toAnthropicContent(content) {
+        if (!Array.isArray(content)) return String(content || '');
+        return content.map((part) => {
+            if (part?.type === 'text') {
+                return { type: 'text', text: String(part.text || '') };
+            }
+            if (part?.type === 'image_url') {
+                const parsed = parseDataUrl(part.image_url?.url || '');
+                if (!parsed) return null;
+                return {
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: parsed.mediaType,
+                        data: parsed.data
+                    }
+                };
+            }
+            return null;
+        }).filter(Boolean);
+    }
+
     function makeChatRequestBody(model, messages, limit = 240, extra = {}, apiUrl = '') {
-        if (isMiniMaxAnthropic(apiUrl, model)) {
+        if (isAnthropicChatApi(apiUrl, model)) {
             const system = messages
                 .filter(item => item.role === 'system')
                 .map(item => String(item.content || ''))
@@ -491,7 +526,10 @@
                 system,
                 messages: messages
                     .filter(item => item.role !== 'system')
-                    .map(item => ({ role: item.role, content: String(item.content || '') })),
+                    .map(item => ({
+                        role: item.role,
+                        content: isMiniMaxAnthropic(apiUrl, model) ? String(item.content || '') : toAnthropicContent(item.content)
+                    })),
                 max_tokens: limit,
                 temperature: 1,
                 stream: false,
@@ -722,9 +760,12 @@
         return formatMcpToolResult(result);
     }
 
-    function supportsVisionModel(model, apiUrl) {
+    function supportsVisionModel(model, apiUrl, settings = {}) {
+        if (isMiniMaxAnthropic(apiUrl, model)) return false;
+        if (settings.visionMode === 'llm') return true;
+        if (settings.visionMode === 'mcp') return false;
         const target = `${model || ''} ${apiUrl || ''}`;
-        return /vision|vl|gpt-4o|gpt-4\.1|o3|o4|gemini|claude-3|qwen-vl|qwen2\.5-vl|doubao.*vision|glm-4v|moonshot-v1-.*vision/i.test(target);
+        return /vision|multimodal|omni|vl|gpt-4o|gpt-4\.1|o3|o4|gemini|claude-3|claude.*sonnet|claude.*opus|qwen.*vl|qwen.*omni|qwen-vl|qwen2\.5-vl|doubao.*vision|doubao.*seed.*1[.-]6|seed.*vision|glm-4v|glm.*vision|moonshot-v1-.*vision|pixtral|llava|internvl|yi-vision/i.test(target);
     }
 
     async function runMcpToolCalls(settings, toolCalls = []) {
@@ -775,6 +816,17 @@
         }
 
         const mcpSettings = readMcpSettings();
+        const model = settings.model || 'moonshot-v1-8k';
+        const canUseVision = image && supportsVisionModel(model, settings.apiUrl, settings);
+
+        if (image && !canUseVision) {
+            try {
+                const imageReply = await understandImageWithMcp(mcpSettings, image, message);
+                return { reply: imageReply, model: 'mcp-understand-image', weather };
+            } catch (_) {
+                return { reply: fallbackImageReply(message), model: 'browser-preset', weather };
+            }
+        }
         if (settings.useProxy) {
             const result = await postJson('/api/chat', {
                 message: message || (image ? '请看这张图片。' : ''),
@@ -809,7 +861,6 @@
             };
         }
 
-        const model = settings.model || 'moonshot-v1-8k';
         const memoryContext = await buildMemorySystemContext(message);
         const knowledgeContext = buildKnowledgeSystemContext(message);
         const systemPrompt = [
@@ -832,7 +883,6 @@
         if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${settings.apiUrl || ''} ${model || ''}`)) {
             mcpTools = [];
         }
-        const canUseVision = image && supportsVisionModel(model, settings.apiUrl);
         const userMessage = canUseVision ? {
             role: 'user',
             content: [
