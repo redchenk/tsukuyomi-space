@@ -8,9 +8,10 @@ const panels = [
   { id: 'articles', label: '文章', code: '02' },
   { id: 'messages', label: '留言', code: '03' },
   { id: 'users', label: '用户', code: '04' },
-  { id: 'links', label: '友链', code: '05' },
-  { id: 'analytics', label: '统计', code: '06' },
-  { id: 'settings', label: '设置', code: '07' }
+  { id: 'account', label: '账号安全', code: '05' },
+  { id: 'links', label: '友链', code: '06' },
+  { id: 'analytics', label: '统计', code: '07' },
+  { id: 'settings', label: '设置', code: '08' }
 ];
 
 const terminal = reactive({
@@ -28,6 +29,10 @@ const terminal = reactive({
   articles: [],
   messages: [],
   users: [],
+  userSearch: '',
+  roleDrafts: {},
+  passwordDrafts: {},
+  adminPassword: { currentPassword: '', newPassword: '', confirmPassword: '' },
   links: [],
   newLink: { name: '', url: '' },
   settings: { siteTitle: '', siteAnnouncement: '', sakuraEffect: true, scanlineEffect: true }
@@ -35,6 +40,14 @@ const terminal = reactive({
 
 let clockTimer = 0;
 const authed = computed(() => Boolean(terminal.token && terminal.admin));
+const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin');
+const filteredUsers = computed(() => {
+  const keyword = terminal.userSearch.trim().toLowerCase();
+  if (!keyword) return terminal.users;
+  return terminal.users.filter((item) => [item.username, item.email, item.role, item.id].some((value) => String(value || '').toLowerCase().includes(keyword)));
+});
+const pendingMessageCount = computed(() => terminal.messages.filter((item) => item.status !== 'approved').length);
+const publishedArticleCount = computed(() => terminal.articles.filter((item) => item.status === 'published').length);
 
 function formatDate(value) {
   if (!value) return '未记录';
@@ -123,7 +136,11 @@ async function loadPanel(panel = terminal.activePanel) {
     if (panel === 'dashboard') terminal.stats = { ...terminal.stats, ...(await adminApi('/stats') || {}) };
     if (panel === 'articles') terminal.articles = await adminApi('/articles') || [];
     if (panel === 'messages') terminal.messages = await adminApi('/messages') || [];
-    if (panel === 'users') terminal.users = await adminApi('/users') || [];
+    if (panel === 'users') {
+      terminal.users = await adminApi('/users') || [];
+      terminal.roleDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.role || 'user']));
+      terminal.passwordDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, '']));
+    }
     if (panel === 'links') terminal.links = await adminApi('/links') || [];
     if (panel === 'analytics') terminal.analytics = { ...terminal.analytics, ...(await adminApi('/analytics') || {}) };
     if (panel === 'settings') terminal.settings = { ...terminal.settings, ...(await adminApi('/settings') || {}) };
@@ -165,6 +182,49 @@ async function deleteUser(id) {
   await adminApi(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
   showMessage('用户已删除');
   await loadPanel('users');
+}
+
+async function changeUserRole(user) {
+  const role = terminal.roleDrafts[user.id] || 'user';
+  await adminApi(`/users/${encodeURIComponent(user.id)}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role })
+  });
+  showMessage(`用户 ${user.username} 的角色已更新为 ${role}`);
+  await loadPanel('users');
+}
+
+async function resetUserPassword(user) {
+  const password = terminal.passwordDrafts[user.id] || '';
+  if (password.length < 6) {
+    showMessage('用户新密码至少 6 位', 'error');
+    return;
+  }
+  if (!confirm(`确定重置 ${user.username} 的登录密码吗？`)) return;
+  await adminApi(`/users/${encodeURIComponent(user.id)}/password`, {
+    method: 'POST',
+    body: JSON.stringify({ password })
+  });
+  terminal.passwordDrafts[user.id] = '';
+  showMessage(`用户 ${user.username} 的密码已重置`);
+}
+
+async function saveAdminPassword() {
+  if (terminal.adminPassword.newPassword !== terminal.adminPassword.confirmPassword) {
+    showMessage('两次输入的新密码不一致', 'error');
+    return;
+  }
+  await adminApi('/password', {
+    method: 'POST',
+    body: JSON.stringify({
+      currentPassword: terminal.adminPassword.currentPassword,
+      newPassword: terminal.adminPassword.newPassword
+    })
+  });
+  terminal.adminPassword.currentPassword = '';
+  terminal.adminPassword.newPassword = '';
+  terminal.adminPassword.confirmPassword = '';
+  showMessage('管理员密码已更新，请妥善保存新密码');
 }
 
 async function createLink() {
@@ -219,7 +279,7 @@ onUnmounted(() => {
       <header class="terminal-topbar">
         <div>
           <strong>Tsukuyomi Terminal</strong>
-          <span>{{ terminal.clock }}</span>
+          <span>后台管理工作台 · {{ terminal.clock }}</span>
         </div>
         <div class="terminal-session">
           <span>{{ terminal.admin?.username }} / {{ terminal.admin?.role }}</span>
@@ -241,6 +301,14 @@ onUnmounted(() => {
 
           <div v-show="terminal.activePanel === 'dashboard'">
             <div class="terminal-panel-head"><h2>系统总览</h2><button class="ghost-btn" type="button" @click="loadPanel('dashboard')">刷新</button></div>
+            <div class="terminal-hero">
+              <div>
+                <span class="terminal-kicker">CONTROL CENTER</span>
+                <h3>内容、账号和站点状态集中管理</h3>
+                <p>当前会话拥有 {{ terminal.admin?.role }} 权限。敏感操作会在服务端再次校验，不依赖前端显示。</p>
+              </div>
+              <button class="primary-btn" type="button" @click="loadPanel('articles')">进入内容管理</button>
+            </div>
             <div class="terminal-cards">
               <div class="terminal-card"><strong>文章总数</strong><span>{{ terminal.stats.articles || 0 }}</span></div>
               <div class="terminal-card"><strong>待审留言</strong><span>{{ terminal.stats.pendingMessages || 0 }}</span></div>
@@ -251,6 +319,11 @@ onUnmounted(() => {
 
           <div v-show="terminal.activePanel === 'articles'">
             <div class="terminal-panel-head"><h2>文章管理</h2><button class="primary-btn" type="button" @click="$emit('go', '/editor')">新建文章</button></div>
+            <div class="terminal-summary-row">
+              <span>已发布 {{ publishedArticleCount }}</span>
+              <span>草稿 {{ terminal.articles.length - publishedArticleCount }}</span>
+              <span>总阅读 {{ terminal.articles.reduce((sum, item) => sum + Number(item.view_count || 0), 0) }}</span>
+            </div>
             <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in terminal.articles" :key="item.id">
                 <td>{{ item.id }}</td><td><a href="#" @click.prevent="$emit('go', `/article?id=${item.id}`)">{{ item.title }}</a></td><td>{{ item.category || '未分类' }}</td><td>{{ item.view_count || 0 }}</td>
@@ -262,6 +335,11 @@ onUnmounted(() => {
 
           <div v-show="terminal.activePanel === 'messages'">
             <div class="terminal-panel-head"><h2>留言审核</h2><button class="ghost-btn" type="button" @click="loadPanel('messages')">刷新</button></div>
+            <div class="terminal-summary-row">
+              <span>待审核 {{ pendingMessageCount }}</span>
+              <span>已通过 {{ terminal.messages.length - pendingMessageCount }}</span>
+              <span>总留言 {{ terminal.messages.length }}</span>
+            </div>
             <div class="terminal-table-wrap"><table><thead><tr><th>作者</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in terminal.messages" :key="item.id"><td>{{ item.username || item.author }}</td><td>{{ item.content }}</td><td><span class="terminal-badge" :class="item.status === 'approved' ? 'ok' : 'warn'">{{ item.status === 'approved' ? '已通过' : '待审核' }}</span></td><td>{{ formatDate(item.created_at) }}</td><td><div class="terminal-actions"><button v-if="item.status !== 'approved'" class="primary-btn" type="button" @click="approveMessage(item.id)">通过</button><button class="danger-btn" type="button" @click="deleteMessage(item.id)">删除</button></div></td></tr>
             </tbody></table></div>
@@ -269,9 +347,49 @@ onUnmounted(() => {
 
           <div v-show="terminal.activePanel === 'users'">
             <div class="terminal-panel-head"><h2>用户管理</h2><button class="ghost-btn" type="button" @click="loadPanel('users')">刷新</button></div>
-            <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>操作</th></tr></thead><tbody>
-              <tr v-for="item in terminal.users" :key="item.id"><td>{{ String(item.id).slice(0, 8) }}</td><td>{{ item.username }}</td><td>{{ item.email }}</td><td><span class="terminal-badge hot">{{ item.role || 'user' }}</span></td><td>{{ formatDate(item.created_at) }}</td><td><button class="danger-btn" type="button" :disabled="item.role === 'admin'" @click="deleteUser(item.id)">删除</button></td></tr>
+            <div class="terminal-toolbar">
+              <input v-model="terminal.userSearch" placeholder="搜索用户名、邮箱、角色或 ID">
+              <span class="terminal-toolbar-note">仅 super_admin 可修改角色或重置密码</span>
+            </div>
+            <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>用户</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>权限</th><th>密码</th><th>操作</th></tr></thead><tbody>
+              <tr v-for="item in filteredUsers" :key="item.id">
+                <td>{{ String(item.id).slice(0, 8) }}</td>
+                <td><strong>{{ item.username }}</strong><small>{{ item.bio || '未填写简介' }}</small></td>
+                <td>{{ item.email }}</td>
+                <td><span class="terminal-badge hot">{{ item.role || 'user' }}</span></td>
+                <td>{{ formatDate(item.created_at) }}</td>
+                <td>
+                  <select v-model="terminal.roleDrafts[item.id]" :disabled="!canManageAccounts || item.username === 'admin'">
+                    <option value="user">user</option>
+                    <option value="admin">admin</option>
+                  </select>
+                  <button class="ghost-btn compact" type="button" :disabled="!canManageAccounts || terminal.roleDrafts[item.id] === item.role || item.username === 'admin'" @click="changeUserRole(item)">保存</button>
+                </td>
+                <td>
+                  <input v-model="terminal.passwordDrafts[item.id]" type="password" placeholder="新密码">
+                  <button class="ghost-btn compact" type="button" :disabled="!canManageAccounts || !terminal.passwordDrafts[item.id]" @click="resetUserPassword(item)">重置</button>
+                </td>
+                <td><button class="danger-btn" type="button" :disabled="!canManageAccounts || item.role === 'admin' || item.username === 'admin'" @click="deleteUser(item.id)">删除</button></td>
+              </tr>
             </tbody></table></div>
+          </div>
+
+          <div v-show="terminal.activePanel === 'account'">
+            <div class="terminal-panel-head"><h2>账号密码管理</h2><button class="ghost-btn" type="button" @click="loadPanel('account')">刷新</button></div>
+            <div class="terminal-account-grid">
+              <article class="terminal-card terminal-account-card">
+                <strong>当前管理员</strong>
+                <span>{{ terminal.admin?.username }}</span>
+                <p>角色：{{ terminal.admin?.role }}。角色变更、用户密码重置等敏感操作仅 super_admin 开放。</p>
+              </article>
+              <form class="terminal-card terminal-password-card" @submit.prevent="saveAdminPassword">
+                <strong>修改管理员密码</strong>
+                <label>当前密码<input v-model="terminal.adminPassword.currentPassword" type="password" autocomplete="current-password" required></label>
+                <label>新密码<input v-model="terminal.adminPassword.newPassword" type="password" autocomplete="new-password" required></label>
+                <label>确认新密码<input v-model="terminal.adminPassword.confirmPassword" type="password" autocomplete="new-password" required></label>
+                <button class="primary-btn" type="submit">更新密码</button>
+              </form>
+            </div>
           </div>
 
           <div v-show="terminal.activePanel === 'links'">
@@ -296,7 +414,7 @@ onUnmounted(() => {
             <div class="terminal-panel-head"><h2>系统配置</h2><button class="primary-btn" type="submit">保存配置</button></div>
             <label>站点标题<input v-model="terminal.settings.siteTitle"></label>
             <label>公告内容<textarea v-model="terminal.settings.siteAnnouncement"></textarea></label>
-            <label class="terminal-check"><input v-model="terminal.settings.sakuraEffect" type="checkbox"> 启用游鱼效果</label>
+            <label class="terminal-check"><input v-model="terminal.settings.sakuraEffect" type="checkbox"> 启用环境动效</label>
             <label class="terminal-check"><input v-model="terminal.settings.scanlineEffect" type="checkbox"> 启用扫描线效果</label>
           </form>
         </section>

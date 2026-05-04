@@ -27,6 +27,7 @@ let server;
 let baseUrl;
 let userToken;
 let adminToken;
+let staffAdminToken;
 let articleId;
 let messageId;
 
@@ -52,6 +53,14 @@ async function postJson(pathname, body, token) {
     });
 }
 
+async function patchJson(pathname, body, token) {
+    return request(pathname, {
+        method: 'PATCH',
+        headers: jsonHeaders(token),
+        body: JSON.stringify(body)
+    });
+}
+
 async function login(pathname, username, password) {
     const { response, body } = await postJson(pathname, { username, password });
     assert.equal(response.status, 200);
@@ -71,9 +80,16 @@ before(async () => {
         INSERT INTO users (id, username, email, password_hash, role)
         VALUES (?, ?, ?, ?, ?)
     `).run('user-001', 'normal-user', 'normal@example.test', bcrypt.hashSync('user-test-password', 10), 'user');
+    db.prepare(`
+        INSERT INTO users (id, username, email, password_hash, role, bio)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `).run('user-002', 'managed-user', 'managed@example.test', bcrypt.hashSync('managed-old-password', 10), 'user', 'managed test user');
+    db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)')
+        .run('staff-admin', bcrypt.hashSync('staff-test-password', 10), 'admin');
 
     userToken = await login('/api/auth/login', 'normal-user', 'user-test-password');
     adminToken = await login('/api/admin/login', 'admin', 'admin-test-password');
+    staffAdminToken = await login('/api/admin/login', 'staff-admin', 'staff-test-password');
 });
 
 after(async () => {
@@ -340,12 +356,78 @@ describe('admin API permissions', () => {
         });
         assert.equal(me.response.status, 200);
         assert.equal(me.body.data.username, 'admin');
+        assert.equal(me.body.data.role, 'super_admin');
+        assert.ok(me.body.data.id);
 
         const articles = await request('/api/admin/articles', {
             headers: jsonHeaders(adminToken)
         });
         assert.equal(articles.response.status, 200);
         assert.ok(Array.isArray(articles.body.data));
+    });
+
+    it('lets a super admin manage user roles and passwords', async () => {
+        const users = await request('/api/admin/users', {
+            headers: jsonHeaders(adminToken)
+        });
+        assert.equal(users.response.status, 200);
+        const managed = users.body.data.find(item => item.username === 'managed-user');
+        assert.ok(managed);
+        assert.equal(managed.bio, 'managed test user');
+        assert.equal(managed.role, 'user');
+
+        const role = await patchJson(`/api/admin/users/${managed.id}/role`, { role: 'admin' }, adminToken);
+        assert.equal(role.response.status, 200);
+        assert.equal(role.body.data.role, 'admin');
+        assert.equal(db.prepare('SELECT role FROM users WHERE id = ?').get(managed.id).role, 'admin');
+
+        const reset = await postJson(`/api/admin/users/${managed.id}/password`, {
+            password: 'managed-new-password'
+        }, adminToken);
+        assert.equal(reset.response.status, 200);
+
+        const loginWithNewPassword = await postJson('/api/auth/login', {
+            username: 'managed-user',
+            password: 'managed-new-password'
+        });
+        assert.equal(loginWithNewPassword.response.status, 200);
+        assert.equal(loginWithNewPassword.body.data.user.username, 'managed-user');
+    });
+
+    it('prevents non-super admins from changing user permissions or passwords', async () => {
+        const forbiddenRole = await patchJson('/api/admin/users/user-001/role', {
+            role: 'admin'
+        }, staffAdminToken);
+        assert.equal(forbiddenRole.response.status, 403);
+        assert.equal(forbiddenRole.body.success, false);
+
+        const forbiddenPassword = await postJson('/api/admin/users/user-001/password', {
+            password: 'blocked-password'
+        }, staffAdminToken);
+        assert.equal(forbiddenPassword.response.status, 403);
+
+        const forbiddenDelete = await request('/api/admin/users/user-001', {
+            method: 'DELETE',
+            headers: jsonHeaders(staffAdminToken)
+        });
+        assert.equal(forbiddenDelete.response.status, 403);
+    });
+
+    it('allows an admin to change their own terminal password', async () => {
+        const changed = await postJson('/api/admin/password', {
+            currentPassword: 'staff-test-password',
+            newPassword: 'staff-new-password'
+        }, staffAdminToken);
+        assert.equal(changed.response.status, 200);
+
+        const oldPassword = await postJson('/api/admin/login', {
+            username: 'staff-admin',
+            password: 'staff-test-password'
+        });
+        assert.equal(oldPassword.response.status, 401);
+
+        const newPasswordToken = await login('/api/admin/login', 'staff-admin', 'staff-new-password');
+        assert.ok(newPasswordToken);
     });
 });
 

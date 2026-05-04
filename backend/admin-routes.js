@@ -35,6 +35,27 @@ function adminTokenPayload(admin) {
     };
 }
 
+function requireSuperAdminUser(req, res) {
+    if (req.user.role !== 'super_admin') {
+        fail(res, 403, '需要超级管理员权限');
+        return false;
+    }
+    return true;
+}
+
+function sanitizeUser(user) {
+    return {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role || 'user',
+        avatar: user.avatar || '',
+        bio: user.bio || '',
+        created_at: user.created_at,
+        updated_at: user.updated_at
+    };
+}
+
 
 router.post('/login', (req, res) => {
     try {
@@ -67,10 +88,34 @@ router.use(requireAdmin);
 
 router.get('/me', (req, res) => {
     ok(res, {
+        id: req.user.adminId || req.user.id,
         username: req.user.username,
         role: req.user.role,
         scope: req.user.scope || 'admin'
     });
+});
+
+router.post('/password', (req, res) => {
+    try {
+        const adminId = req.user.adminId;
+        const currentPassword = String(req.body?.currentPassword || '');
+        const newPassword = String(req.body?.newPassword || '');
+        if (!adminId) return fail(res, 400, '管理员身份无效');
+        if (!currentPassword || !newPassword) return fail(res, 400, '请填写当前密码和新密码');
+        if (newPassword.length < 8) return fail(res, 400, '新密码至少 8 位');
+
+        const admin = db.prepare('SELECT * FROM admins WHERE id = ?').get(adminId);
+        if (!admin || !bcrypt.compareSync(currentPassword, admin.password_hash)) {
+            return fail(res, 401, '当前密码错误');
+        }
+
+        db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?')
+            .run(bcrypt.hashSync(newPassword, 10), adminId);
+        ok(res, null, '管理员密码已更新');
+    } catch (error) {
+        console.error('Admin password update error:', error);
+        fail(res, 500, '无法更新管理员密码');
+    }
 });
 
 router.get('/stats', (req, res) => {
@@ -271,10 +316,10 @@ router.delete('/messages/:id', (req, res) => {
 router.get('/users', (req, res) => {
     try {
         const users = db.prepare(`
-            SELECT id, username, email, role, created_at, updated_at
+            SELECT id, username, email, role, avatar, bio, created_at, updated_at
             FROM users
             ORDER BY created_at DESC
-        `).all();
+        `).all().map(sanitizeUser);
         ok(res, users);
     } catch (error) {
         console.error('Admin user list error:', error);
@@ -282,8 +327,47 @@ router.get('/users', (req, res) => {
     }
 });
 
+router.patch('/users/:id/role', (req, res) => {
+    try {
+        if (!requireSuperAdminUser(req, res)) return;
+        const userId = String(req.params.id || '').trim();
+        const role = String(req.body?.role || '').trim();
+        if (!userId) return fail(res, 400, '用户 ID 无效');
+        if (!['user', 'admin'].includes(role)) return fail(res, 400, '用户角色无效');
+
+        const user = db.prepare('SELECT username, role FROM users WHERE id = ?').get(userId);
+        if (!user) return fail(res, 404, '用户不存在');
+        if (user.username === config.defaultAdmin.username) return fail(res, 403, '不能修改默认管理员角色');
+
+        db.prepare('UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(role, userId);
+        ok(res, { role }, '用户角色已更新');
+    } catch (error) {
+        console.error('Admin user role update error:', error);
+        fail(res, 500, '无法更新用户角色');
+    }
+});
+
+router.post('/users/:id/password', (req, res) => {
+    try {
+        if (!requireSuperAdminUser(req, res)) return;
+        const userId = String(req.params.id || '').trim();
+        const password = String(req.body?.password || '');
+        if (!userId) return fail(res, 400, '用户 ID 无效');
+        if (password.length < 6) return fail(res, 400, '新密码至少 6 位');
+
+        const result = db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            .run(bcrypt.hashSync(password, 10), userId);
+        if (!result.changes) return fail(res, 404, '用户不存在');
+        ok(res, null, '用户密码已重置');
+    } catch (error) {
+        console.error('Admin user password reset error:', error);
+        fail(res, 500, '无法重置用户密码');
+    }
+});
+
 router.delete('/users/:id', (req, res) => {
     try {
+        if (!requireSuperAdminUser(req, res)) return;
         const userId = String(req.params.id || '').trim();
         if (!userId) return fail(res, 400, '用户 ID 无效');
         const user = db.prepare('SELECT username, role FROM users WHERE id = ?').get(userId);
