@@ -1,20 +1,20 @@
 :root {
-    --pink: #f7a8c8;
-    --pink-strong: #e96ba4;
-    --cyan: #6fcde4;
-    --gold: #efd98f;
-    --lilac: #b9a9f4;
-    --mint: #9bdcc8;
-    --ink: #223048;
-    --ink-soft: rgba(34, 48, 72, 0.72);
-    --panel: rgba(255, 255, 255, 0.58);
-    --panel-strong: rgba(255, 255, 255, 0.72);
-    --line: rgba(126, 172, 220, 0.26);
-    --text: rgba(34, 48, 72, 0.9);
-    --muted: rgba(77, 94, 122, 0.72);
-    --radius: 8px;
-    --glass-shadow: 0 22px 70px rgba(102, 134, 190, 0.22);
-    --float-shadow: 0 18px 42px rgba(97, 130, 190, 0.18);
+    --pink: #f5a6c7;
+    --pink-strong: #df6a9d;
+    --cyan: #66c5df;
+    --gold: #e8d38b;
+    --lilac: #a99bed;
+    --mint: #8ed7c2;
+    --ink: #263244;
+    --ink-soft: #475569;
+    --panel: rgba(255, 255, 255, 0.9);
+    --panel-strong: rgba(255, 255, 255, 0.96);
+    --line: rgba(139, 168, 205, 0.24);
+    --text: #2f3b4f;
+    --muted: #64748b;
+    --radius: 14px;
+    --glass-shadow: 0 18px 48px rgba(86, 112, 160, 0.13);
+    --float-shadow: 0 12px 30px rgba(86, 112, 160, 0.12);
 }
 
 html {
@@ -25,8 +25,10 @@ html {
 body {
     color: var(--text);
     background:
-        linear-gradient(115deg, rgba(255, 255, 255, 0.82), rgba(219, 242, 251, 0.74) 28%, rgba(231, 224, 252, 0.78) 62%, rgba(255, 246, 251, 0.86)),
+        linear-gradient(120deg, rgba(248, 253, 255, 0.94), rgba(229, 246, 252, 0.9) 34%, rgba(239, 235, 255, 0.92) 68%, rgba(255, 249, 252, 0.95)),
         url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
 }
 
 body::before,
@@ -39,66 +41,61 @@ body::after {
 
 body::before {
     z-index: 0;
-    opacity: 0.72;
+    opacity: 0.5;
     background:
-        linear-gradient(100deg, transparent 0 18%, rgba(255, 255, 255, 0.32) 24%, transparent 34% 100%),
-        linear-gradient(140deg, rgba(126, 205, 228, 0.2), transparent 42%, rgba(185, 169, 244, 0.2) 72%, transparent);
-    background-size: 220% 220%, 180% 180%;
-    animation: tsukuyomiSkyDrift 18s ease-in-out infinite alternate;
+        linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, 0.22) 44%, transparent 62% 100%),
+        linear-gradient(145deg, rgba(102, 197, 223, 0.12), transparent 48%, rgba(169, 155, 237, 0.12) 78%, transparent);
+    background-size: 240% 240%, 190% 190%;
+    animation: tsukuyomiSkyDrift 24s ease-in-out infinite alternate;
 }
 
 body::after {
     z-index: 1;
-    opacity: 0.5;
+    opacity: 0.18;
     background-image:
-        linear-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
-    background-size: 46px 46px;
-    mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 76%, transparent);
+        linear-gradient(rgba(255, 255, 255, 0.32) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.28) 1px, transparent 1px);
+    background-size: 52px 52px;
+    mask-image: linear-gradient(to bottom, transparent, #000 24%, #000 72%, transparent);
 }
 
 @keyframes tsukuyomiSkyDrift {
-    from { background-position: 0% 30%, 12% 0%; }
-    to { background-position: 100% 72%, 82% 100%; }
+    from { background-position: 0% 34%, 12% 0%; }
+    to { background-position: 100% 70%, 86% 100%; }
 }
 
 @keyframes pageLiftIn {
-    from { opacity: 0; transform: translateY(14px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes softShimmer {
-    from { transform: translateX(-120%); }
-    to { transform: translateX(120%); }
 }
 
 body.vue-access-route {
     background:
-        linear-gradient(180deg, rgba(245, 251, 255, 0.16), rgba(208, 218, 251, 0.18)),
-        linear-gradient(180deg, #c7eefe 0%, #eee7ff 52%, #fff6fb 100%);
+        linear-gradient(180deg, rgba(246, 252, 255, 0.92), rgba(240, 236, 255, 0.88)),
+        linear-gradient(180deg, #dff6ff 0%, #f0ecff 58%, #fff8fc 100%);
 }
 
 .page {
-    animation: pageLiftIn 0.56s cubic-bezier(.2, .8, .2, 1) both;
+    animation: pageLiftIn 0.46s cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .moon {
-    opacity: 0.72;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(218, 243, 255, 0.84) 48%, rgba(224, 214, 255, 0.78));
-    box-shadow: 0 16px 52px rgba(122, 178, 226, 0.24);
+    opacity: 0.82;
+    background: linear-gradient(145deg, #fff, #e4f8ff 50%, #eee9ff);
+    box-shadow: 0 16px 42px rgba(122, 178, 226, 0.18);
 }
 
 .topbar {
     min-height: 66px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.46);
-    background: rgba(255, 255, 255, 0.54);
-    box-shadow: 0 16px 50px rgba(110, 142, 190, 0.14);
-    backdrop-filter: blur(22px) saturate(1.32);
+    border-bottom: 1px solid rgba(139, 168, 205, 0.18);
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 10px 32px rgba(86, 112, 160, 0.1);
+    backdrop-filter: blur(18px) saturate(1.18);
 }
 
 .brand {
     color: var(--ink);
-    letter-spacing: 0.04rem;
+    letter-spacing: 0.02rem;
 }
 
 .nav-link,
@@ -107,24 +104,25 @@ body.vue-access-route {
 .mode-btn,
 .code-btn,
 .primary-btn,
-.scene-card,
 .stage-new-btn,
 .filter-btn,
 .chip,
 .icon-btn,
 .danger-btn,
-.panel-btn {
-    border-color: rgba(127, 168, 218, 0.26);
-    color: rgba(38, 57, 86, 0.78);
-    background: rgba(255, 255, 255, 0.42);
-    box-shadow: 0 8px 26px rgba(111, 151, 204, 0.1);
-    backdrop-filter: blur(12px) saturate(1.16);
+.panel-btn,
+.terminal-nav-btn {
+    border-color: rgba(139, 168, 205, 0.2);
+    color: var(--ink-soft);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 8px 20px rgba(86, 112, 160, 0.08);
+    backdrop-filter: blur(12px) saturate(1.08);
+    border-radius: 999px;
     transition:
-        transform 0.22s cubic-bezier(.2, .8, .2, 1),
-        border-color 0.22s ease,
-        background 0.22s ease,
-        color 0.22s ease,
-        box-shadow 0.22s ease;
+        transform 0.2s cubic-bezier(.2, .8, .2, 1),
+        border-color 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .nav-link:hover,
@@ -135,7 +133,6 @@ body.vue-access-route {
 .mode-btn:hover,
 .code-btn:hover,
 .primary-btn:hover,
-.scene-card:hover,
 .stage-new-btn:hover,
 .filter-btn:hover,
 .filter-btn.active,
@@ -143,35 +140,52 @@ body.vue-access-route {
 .chip.active,
 .icon-btn:hover,
 .icon-btn.liked,
-.panel-btn:hover {
+.panel-btn:hover,
+.terminal-nav-btn:hover,
+.terminal-nav-btn.active {
     color: var(--ink);
-    border-color: rgba(111, 205, 228, 0.52);
-    background: rgba(255, 255, 255, 0.72);
-    box-shadow: 0 14px 34px rgba(111, 151, 204, 0.18);
-    transform: translateY(-2px);
+    border-color: rgba(102, 197, 223, 0.34);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 12px 28px rgba(86, 112, 160, 0.14);
+    transform: translateY(-1px);
 }
 
-.nav-link.router-link-active {
-    color: var(--ink);
-    border-color: rgba(185, 169, 244, 0.56);
-    background: rgba(238, 232, 255, 0.76);
+.nav-link.router-link-active,
+.terminal-nav-btn.active {
+    color: #32405a;
+    border-color: rgba(169, 155, 237, 0.28);
+    background: linear-gradient(135deg, rgba(231, 247, 253, 0.96), rgba(241, 238, 255, 0.96));
 }
 
 .primary-btn {
     color: #fff;
-    border-color: rgba(107, 188, 220, 0.38);
-    background: linear-gradient(135deg, rgba(111, 205, 228, 0.92), rgba(185, 169, 244, 0.86));
+    border-color: rgba(85, 173, 210, 0.18);
+    background: linear-gradient(135deg, #62bfdb, #a99bed);
+    box-shadow: 0 12px 28px rgba(100, 159, 218, 0.22);
 }
 
 .primary-btn:hover {
     color: #fff;
-    background: linear-gradient(135deg, rgba(100, 194, 225, 0.98), rgba(172, 154, 241, 0.96));
+    background: linear-gradient(135deg, #55b7d5, #9d8ee6);
+    box-shadow: 0 14px 32px rgba(100, 159, 218, 0.28);
+}
+
+.danger-btn {
+    color: #b4466d;
+    background: rgba(255, 242, 247, 0.88);
+}
+
+.danger-btn:hover {
+    color: #9f3159;
+    border-color: rgba(223, 106, 157, 0.3);
+    background: rgba(255, 235, 244, 0.98);
 }
 
 .lang-switcher {
-    border-color: rgba(127, 168, 218, 0.22);
-    background: rgba(255, 255, 255, 0.44);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+    border-color: rgba(139, 168, 205, 0.18);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    border-radius: 999px;
 }
 
 .panel,
@@ -195,10 +209,10 @@ body.vue-access-route {
 .uc-card,
 .user-center-panel,
 .stage-card {
-    border-color: rgba(255, 255, 255, 0.46);
+    border-color: rgba(139, 168, 205, 0.18);
     background: var(--panel);
     box-shadow: var(--glass-shadow);
-    backdrop-filter: blur(24px) saturate(1.24);
+    backdrop-filter: blur(16px) saturate(1.08);
 }
 
 .panel,
@@ -211,34 +225,6 @@ body.vue-access-route {
 .terminal-panel {
     position: relative;
     overflow: hidden;
-}
-
-.panel::before,
-.hub-copy::before,
-.hub-feature::before,
-.hub-grid-wrap::before,
-.plaza-hero-main::before,
-.plaza-status::before,
-.article-reader::before,
-.terminal-panel::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(115deg, transparent 0 26%, rgba(255, 255, 255, 0.36) 42%, transparent 58% 100%);
-    transform: translateX(-120%);
-    animation: softShimmer 7s ease-in-out infinite;
-}
-
-.panel > *,
-.hub-copy > *,
-.hub-feature > *,
-.hub-grid-wrap > *,
-.plaza-hero-main > *,
-.plaza-status > *,
-.article-reader > *,
-.terminal-panel > * {
-    position: relative;
 }
 
 .panel h1,
@@ -269,7 +255,7 @@ body.vue-access-route {
 }
 
 label {
-    color: rgba(34, 48, 72, 0.76);
+    color: #40506a;
 }
 
 input,
@@ -278,15 +264,15 @@ select,
 .room-panel input,
 .room-panel textarea,
 .room-panel select {
-    border-color: rgba(127, 168, 218, 0.28);
+    border-color: rgba(139, 168, 205, 0.24);
     color: var(--ink);
-    background: rgba(255, 255, 255, 0.58);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
 }
 
 input::placeholder,
 textarea::placeholder {
-    color: rgba(78, 96, 126, 0.46);
+    color: #94a3b8;
 }
 
 input:focus,
@@ -294,32 +280,32 @@ textarea:focus,
 select:focus,
 .search-box input:focus,
 .terminal-settings textarea:focus {
-    border-color: rgba(111, 205, 228, 0.68);
-    box-shadow: 0 0 0 4px rgba(111, 205, 228, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    border-color: rgba(102, 197, 223, 0.58);
+    box-shadow: 0 0 0 4px rgba(102, 197, 223, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }
 
 .form-message.error {
-    color: #b3426f;
-    border-color: rgba(233, 107, 164, 0.28);
-    background: rgba(255, 233, 242, 0.7);
+    color: #a33661;
+    border-color: rgba(223, 106, 157, 0.24);
+    background: rgba(255, 240, 246, 0.92);
 }
 
 .form-message.success {
-    color: #28765f;
-    border-color: rgba(84, 190, 157, 0.3);
-    background: rgba(228, 251, 244, 0.74);
+    color: #24715c;
+    border-color: rgba(83, 181, 150, 0.24);
+    background: rgba(231, 250, 244, 0.92);
 }
 
 .hub-copy {
     background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.48), rgba(218, 244, 252, 0.36) 44%, rgba(238, 232, 255, 0.42)),
-        rgba(255, 255, 255, 0.54);
+        linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(231, 247, 253, 0.78) 50%, rgba(243, 240, 255, 0.82)),
+        rgba(255, 255, 255, 0.9);
 }
 
 .hub-feature {
     background:
-        linear-gradient(150deg, rgba(218, 244, 252, 0.62), rgba(238, 232, 255, 0.58) 58%, rgba(255, 246, 251, 0.62)),
-        rgba(255, 255, 255, 0.52);
+        linear-gradient(150deg, rgba(230, 247, 253, 0.92), rgba(243, 240, 255, 0.9) 62%, rgba(255, 248, 252, 0.92)),
+        rgba(255, 255, 255, 0.9);
 }
 
 .hub-kicker,
@@ -328,16 +314,16 @@ select:focus,
 .terminal-card span,
 .terminal-table-wrap th,
 .stage-card-title {
-    color: #5baecc;
+    color: #408eaa;
 }
 
 .hub-status-row span,
 .scene-code,
 .tag,
 .terminal-badge {
-    color: rgba(34, 48, 72, 0.72);
-    border-color: rgba(127, 168, 218, 0.28);
-    background: rgba(255, 255, 255, 0.48);
+    color: #475569;
+    border-color: rgba(139, 168, 205, 0.2);
+    background: rgba(255, 255, 255, 0.8);
 }
 
 .scene-card,
@@ -346,27 +332,37 @@ select:focus,
 .plaza-reply-card,
 .plaza-friend-card,
 .terminal-table-wrap,
-.terminal-nav-btn,
 .room-panel,
 .draggable-panel {
-    border-color: rgba(255, 255, 255, 0.4);
-    background: rgba(255, 255, 255, 0.46);
+    border-color: rgba(139, 168, 205, 0.18);
+    background: rgba(255, 255, 255, 0.88);
     box-shadow: var(--float-shadow);
+}
+
+.scene-card {
+    border-radius: 18px;
+    transition:
+        transform 0.22s cubic-bezier(.2, .8, .2, 1),
+        border-color 0.22s ease,
+        background 0.22s ease,
+        box-shadow 0.22s ease;
 }
 
 .scene-card:hover,
 .stage-card:hover,
 .plaza-msg-card:hover,
 .plaza-friend-card:hover {
-    box-shadow: 0 20px 52px rgba(111, 151, 204, 0.22);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 18px 42px rgba(86, 112, 160, 0.16);
+    transform: translateY(-2px);
 }
 
 .stage-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-3px);
 }
 
 .stage-cover-img {
-    filter: saturate(1.08) brightness(1.04);
+    filter: saturate(1.04) brightness(1.02);
 }
 
 .plaza-msg-content,
@@ -374,32 +370,25 @@ select:focus,
 .comment-item p,
 .terminal-table-wrap th,
 .terminal-table-wrap td {
-    color: rgba(34, 48, 72, 0.82);
+    color: #334155;
 }
 
 .terminal-table-wrap th {
-    background: rgba(226, 245, 252, 0.56);
-}
-
-.terminal-nav-btn:hover,
-.terminal-nav-btn.active {
-    color: var(--ink);
-    border-color: rgba(185, 169, 244, 0.45);
-    background: rgba(238, 232, 255, 0.62);
+    background: rgba(231, 247, 253, 0.78);
 }
 
 .room-page {
-    --room-panel-bg: rgba(255, 255, 255, 0.48);
+    --room-panel-bg: rgba(255, 255, 255, 0.86);
     --room-ink: var(--ink);
 }
 
 .room-commandbar,
 .room-panel,
 .room-dock .panel-toggle-btn {
-    border-color: rgba(255, 255, 255, 0.42);
-    background: rgba(255, 255, 255, 0.42);
+    border-color: rgba(139, 168, 205, 0.18);
+    background: rgba(255, 255, 255, 0.86);
     box-shadow: var(--float-shadow);
-    backdrop-filter: blur(22px) saturate(1.18);
+    backdrop-filter: blur(16px) saturate(1.08);
 }
 
 .room-panel,
@@ -411,27 +400,27 @@ select:focus,
 }
 
 .chat-message.assistant {
-    background: rgba(238, 232, 255, 0.58);
+    background: rgba(243, 240, 255, 0.88);
 }
 
 .chat-message.user {
-    background: rgba(218, 244, 252, 0.62);
+    background: rgba(228, 246, 253, 0.9);
 }
 
 .chat-message.system {
-    color: rgba(77, 94, 122, 0.72);
-    background: rgba(255, 255, 255, 0.48);
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.84);
 }
 
 .status-layer.active {
     background:
-        linear-gradient(135deg, rgba(218, 244, 252, 0.92), rgba(238, 232, 255, 0.88), rgba(255, 246, 251, 0.92));
+        linear-gradient(135deg, rgba(230, 247, 253, 0.96), rgba(243, 240, 255, 0.94), rgba(255, 248, 252, 0.96));
 }
 
 .status-box {
     color: var(--ink);
-    border-color: rgba(255, 255, 255, 0.5);
-    background: rgba(255, 255, 255, 0.62);
+    border-color: rgba(139, 168, 205, 0.18);
+    background: rgba(255, 255, 255, 0.92);
     box-shadow: var(--glass-shadow);
 }
 
