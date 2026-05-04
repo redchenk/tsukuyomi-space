@@ -319,6 +319,92 @@
     font-size: 0.78rem;
 }
 
+.room-test-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.38);
+    backdrop-filter: blur(12px);
+}
+
+.room-test-dialog {
+    width: min(92vw, 520px);
+    border: 1px solid rgba(139, 168, 205, 0.22);
+    border-radius: 16px;
+    padding: 1rem;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 24px 70px rgba(31, 41, 55, 0.2);
+}
+
+.room-test-dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.room-test-dialog h2 {
+    margin: 0.85rem 0 0.45rem;
+    color: var(--ink);
+    font-size: 1.15rem;
+}
+
+.room-test-dialog p {
+    margin: 0;
+    color: var(--text);
+    line-height: 1.7;
+}
+
+.room-test-dialog pre {
+    max-height: 240px;
+    overflow: auto;
+    margin: 0.85rem 0 0;
+    padding: 0.8rem;
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 12px;
+    color: var(--text);
+    background: rgba(248, 250, 252, 0.9);
+    font: 0.84rem/1.6 Consolas, "SFMono-Regular", monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.room-test-status {
+    display: inline-flex;
+    min-height: 30px;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0 0.7rem;
+    color: var(--ink);
+    background: rgba(228, 246, 253, 0.82);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.room-test-status.success {
+    color: #166534;
+    background: rgba(220, 252, 231, 0.9);
+}
+
+.room-test-status.warning {
+    color: #854d0e;
+    background: rgba(254, 249, 195, 0.92);
+}
+
+.room-test-status.error {
+    color: #991b1b;
+    background: rgba(254, 226, 226, 0.94);
+}
+
+.room-test-status.loading {
+    color: #075985;
+    background: rgba(224, 242, 254, 0.94);
+}
+
 html[data-theme="dark"] .room-settings-card input,
 html[data-theme="dark"] .room-settings-card select,
 html[data-theme="dark"] .room-settings-card textarea {
@@ -368,6 +454,17 @@ html[data-theme="dark"] .memory-expand-btn {
 html[data-theme="dark"] .room-settings-card select option {
     color: #eef6ff;
     background: #111827;
+}
+
+html[data-theme="dark"] .room-test-dialog {
+    border-color: rgba(177, 205, 238, 0.18);
+    background: rgba(15, 23, 42, 0.96);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+}
+
+html[data-theme="dark"] .room-test-dialog pre {
+    border-color: rgba(177, 205, 238, 0.16);
+    background: rgba(2, 6, 23, 0.72);
 }
 
 @media (max-width: 860px) {
