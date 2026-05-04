@@ -1,8 +1,42 @@
+.access-page {
+    isolation: isolate;
+    overflow: hidden;
+    min-height: 100vh;
+    min-height: 100svh;
+    padding-top: max(2rem, env(safe-area-inset-top));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    background:
+        linear-gradient(180deg, rgba(246, 252, 255, 0.3), rgba(239, 235, 255, 0.42)),
+        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
+}
+
+.access-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(126, 219, 232, 0.08) 38%, rgba(255, 173, 193, 0.08) 72%),
+        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
+    opacity: 1;
+    transform: scale(1.02);
+}
+
+.access-page.video-ready::before {
+    opacity: 0;
+}
+
+.access-page.video-failed .access-video {
+    opacity: 0;
+}
+
 .hero {
     position: relative;
     z-index: 2;
     width: min(100%, 920px);
     text-align: center;
+    padding: 0 clamp(0.5rem, 3vw, 1rem);
 }
 
 .hero-title {
@@ -77,5 +111,69 @@
     height: 100%;
     background: linear-gradient(90deg, var(--pink), var(--pink-strong), var(--cyan));
     box-shadow: 0 0 20px rgba(255, 107, 157, 0.6);
+}
+
+@media (max-width: 720px) {
+    .access-page {
+        place-items: end center;
+        padding-inline: 1rem;
+        padding-bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 2rem));
+    }
+
+    .access-video {
+        object-position: center center;
+    }
+
+    .access-overlay {
+        background:
+            linear-gradient(180deg, rgba(12, 18, 32, 0.12) 0%, rgba(16, 24, 39, 0.36) 48%, rgba(10, 15, 31, 0.82) 100%);
+    }
+
+    .hero {
+        width: 100%;
+        max-width: 420px;
+        text-align: left;
+    }
+
+    .hero-title {
+        font-size: clamp(2.55rem, 15vw, 4.2rem);
+        line-height: 1.05;
+        letter-spacing: 0;
+        text-shadow: 0 10px 30px rgba(13, 22, 38, 0.42);
+    }
+
+    .hero-kicker {
+        margin-top: 0.7rem;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 0.78rem;
+        letter-spacing: 0.16rem;
+    }
+
+    .hero-copy {
+        margin: 1.2rem 0 1.55rem;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 0.96rem;
+        line-height: 1.75;
+        text-shadow: 0 8px 24px rgba(13, 22, 38, 0.44);
+    }
+
+    .primary-btn {
+        width: 100%;
+        min-height: 52px;
+        background: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.32);
+        box-shadow: 0 14px 34px rgba(12, 18, 32, 0.22);
+        backdrop-filter: blur(16px) saturate(1.18);
+    }
+
+    .loading-box {
+        width: min(86vw, 360px);
+        padding: 1.2rem;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 14px;
+        background: rgba(12, 18, 32, 0.72);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(18px) saturate(1.2);
+    }
 }
 

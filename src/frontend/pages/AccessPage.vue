@@ -1,17 +1,46 @@
 <script setup>
-import { reactive } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 
 defineProps({
   t: { type: Object, required: true }
 });
 
 const emit = defineEmits(['go']);
-const accessVideoSrc = '/assets/video/\u30104K\u29f8\u4e2d\u65e5\u53cc\u8bed\u3011\u8d85\u65f6\u7a7a\u8f89\u591c\u59ec\u300cray \u300d\u5b98\u65b9MV.mp4';
+const accessVideoSrc = '/assets/video/tsukuyomi-mv.mp4';
+const accessPosterSrc = '/assets/images/tsukuyomi-bg.png';
+const videoEl = ref(null);
+const videoState = reactive({
+  ready: false,
+  failed: false
+});
 const loading = reactive({
   active: false,
   progress: 0,
   text: ''
 });
+
+function markVideoReady() {
+  videoState.ready = true;
+  videoState.failed = false;
+}
+
+function markVideoFailed() {
+  videoState.ready = false;
+  videoState.failed = true;
+}
+
+function tryPlayAccessVideo() {
+  const video = videoEl.value;
+  if (!video || videoState.failed) return;
+  video.muted = true;
+  video.playsInline = true;
+  const playPromise = video.play();
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch(() => {
+      markVideoFailed();
+    });
+  }
+}
 
 function startAccess(t) {
   loading.active = true;
@@ -37,11 +66,31 @@ function startAccess(t) {
 
   requestAnimationFrame(tick);
 }
+
+onMounted(() => {
+  requestAnimationFrame(tryPlayAccessVideo);
+});
 </script>
 
 <template>
-  <main class="page center-page access-page">
-    <video class="access-video" autoplay muted loop playsinline aria-hidden="true">
+  <main
+    class="page center-page access-page"
+    :class="{ 'video-ready': videoState.ready, 'video-failed': videoState.failed }"
+  >
+    <video
+      ref="videoEl"
+      class="access-video"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="metadata"
+      :poster="accessPosterSrc"
+      aria-hidden="true"
+      @canplay="markVideoReady"
+      @loadeddata="markVideoReady"
+      @error="markVideoFailed"
+    >
       <source :src="accessVideoSrc" type="video/mp4">
     </video>
     <div class="access-overlay" aria-hidden="true"></div>
