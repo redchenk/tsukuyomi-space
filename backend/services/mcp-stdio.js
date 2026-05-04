@@ -2,38 +2,21 @@ const { spawn } = require('child_process');
 
 const DEFAULT_PROTOCOL_VERSION = '2024-11-05';
 
-function encodeMessage(message) {
-    const body = JSON.stringify(message);
-    return `Content-Length: ${Buffer.byteLength(body, 'utf8')}\r\n\r\n${body}`;
-}
-
 function createMessageParser(onMessage) {
-    let buffer = Buffer.alloc(0);
+    let buffer = '';
 
     return (chunk) => {
-        buffer = Buffer.concat([buffer, chunk]);
-        while (buffer.length) {
-            const headerEnd = buffer.indexOf('\r\n\r\n');
-            if (headerEnd === -1) return;
-
-            const header = buffer.slice(0, headerEnd).toString('utf8');
-            const match = header.match(/content-length:\s*(\d+)/i);
-            if (!match) {
-                buffer = buffer.slice(headerEnd + 4);
-                continue;
-            }
-
-            const length = Number(match[1]);
-            const bodyStart = headerEnd + 4;
-            const bodyEnd = bodyStart + length;
-            if (buffer.length < bodyEnd) return;
-
-            const body = buffer.slice(bodyStart, bodyEnd).toString('utf8');
-            buffer = buffer.slice(bodyEnd);
+        buffer += chunk.toString('utf8');
+        let newlineIndex = buffer.indexOf('\n');
+        while (newlineIndex !== -1) {
+            const line = buffer.slice(0, newlineIndex).trim();
+            buffer = buffer.slice(newlineIndex + 1);
+            newlineIndex = buffer.indexOf('\n');
+            if (!line) continue;
             try {
-                onMessage(JSON.parse(body));
+                onMessage(JSON.parse(line));
             } catch (_) {
-                // Ignore malformed child output and wait for the next framed message.
+                // Ignore malformed child output and wait for the next JSON-RPC line.
             }
         }
     };
@@ -71,7 +54,7 @@ function requestOverStdio({
         }, timeoutMs);
 
         const send = (payload) => {
-            child.stdin.write(encodeMessage(payload));
+            child.stdin.write(`${JSON.stringify(payload)}\n`);
         };
 
         const sendRequest = (requestMethod, requestParams) => {
