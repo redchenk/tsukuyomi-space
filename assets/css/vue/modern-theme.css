@@ -920,6 +920,70 @@ body .page .stage-card {
     background: rgba(255, 255, 255, 0.92);
 }
 
+body .page .plaza-composer,
+body .page .plaza-empty,
+body .page .plaza-login-card,
+body .page .plaza-friend-card,
+body .page .plaza-activity-item,
+body .page .comment-form,
+body .page .comment-login,
+body .page .comment-input,
+body .page .reply-form,
+body .page .reply-list {
+    border-color: rgba(139, 168, 205, 0.18) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+}
+
+body .page .plaza-search,
+body .page .plaza-textarea,
+body .page .comment-input,
+body .page .terminal-settings textarea,
+body .page .editor-form input,
+body .page .editor-form textarea,
+body .page .uc-search,
+body .page .uc-profile-bio {
+    color: var(--text) !important;
+    -webkit-text-fill-color: currentColor !important;
+    border-color: rgba(139, 168, 205, 0.24) !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+body .page .plaza-search::placeholder,
+body .page .plaza-textarea::placeholder,
+body .page .comment-input::placeholder,
+body .page .terminal-settings textarea::placeholder,
+body .page .editor-form input::placeholder,
+body .page .editor-form textarea::placeholder,
+body .page .uc-search::placeholder,
+body .page .uc-profile-bio::placeholder {
+    color: #6b7280 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+body .page .plaza-empty,
+body .page .plaza-empty *,
+body .page .plaza-activity-item,
+body .page .plaza-activity-item *,
+body .page .plaza-login-card strong,
+body .page .plaza-author-name,
+body .page .plaza-msg-content,
+body .page .plaza-reply-card,
+body .page .plaza-reply-card *,
+body .page .comment-header strong,
+body .page .comments-head h2 {
+    color: var(--text) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+body .page .plaza-composer-top,
+body .page .plaza-char-count,
+body .page .plaza-msg-date,
+body .page .comment-header span {
+    color: var(--muted) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
 html[data-theme="dark"] body .page .hub-copy,
 html[data-theme="dark"] body .page .hub-feature,
 html[data-theme="dark"] body .page .hub-grid-wrap,
@@ -952,6 +1016,34 @@ html[data-theme="dark"] body .page .stage-card {
     background: rgba(17, 24, 39, 0.9);
 }
 
+html[data-theme="dark"] body .page .plaza-composer,
+html[data-theme="dark"] body .page .plaza-empty,
+html[data-theme="dark"] body .page .plaza-login-card,
+html[data-theme="dark"] body .page .plaza-friend-card,
+html[data-theme="dark"] body .page .plaza-activity-item,
+html[data-theme="dark"] body .page .comment-form,
+html[data-theme="dark"] body .page .comment-login,
+html[data-theme="dark"] body .page .comment-input,
+html[data-theme="dark"] body .page .reply-form,
+html[data-theme="dark"] body .page .reply-list {
+    border-color: rgba(177, 205, 238, 0.16) !important;
+    background: rgba(17, 24, 39, 0.9) !important;
+}
+
+html[data-theme="dark"] body .page .plaza-search,
+html[data-theme="dark"] body .page .plaza-textarea,
+html[data-theme="dark"] body .page .comment-input,
+html[data-theme="dark"] body .page .terminal-settings textarea,
+html[data-theme="dark"] body .page .editor-form input,
+html[data-theme="dark"] body .page .editor-form textarea,
+html[data-theme="dark"] body .page .uc-search,
+html[data-theme="dark"] body .page .uc-profile-bio {
+    color: var(--text) !important;
+    -webkit-text-fill-color: currentColor !important;
+    border-color: rgba(177, 205, 238, 0.22) !important;
+    background: rgba(15, 23, 42, 0.88) !important;
+}
+
 .room-page {
     --room-panel-bg: rgba(255, 255, 255, 0.86);
     --room-ink: var(--ink);
@@ -982,6 +1074,13 @@ html[data-theme="dark"] body .page .stage-card {
 .status-title,
 .status-detail {
     color: var(--ink);
+}
+
+.room-dock .panel-toggle-btn,
+.room-dock .panel-toggle-btn.is-active,
+.room-dock .panel-toggle-btn:hover {
+    color: var(--ink) !important;
+    -webkit-text-fill-color: currentColor !important;
 }
 
 .room-theme-toggle {
@@ -1072,6 +1171,13 @@ html[data-theme="dark"] .room-brand small,
 html[data-theme="dark"] .field-hint,
 html[data-theme="dark"] .status-detail {
     color: var(--muted);
+}
+
+html[data-theme="dark"] .room-dock .panel-toggle-btn,
+html[data-theme="dark"] .room-dock .panel-toggle-btn.is-active,
+html[data-theme="dark"] .room-dock .panel-toggle-btn:hover {
+    color: var(--text) !important;
+    -webkit-text-fill-color: currentColor !important;
 }
 
 html[data-theme="dark"] .chat-message.assistant {
