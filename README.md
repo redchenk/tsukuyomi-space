@@ -14,8 +14,10 @@
 
 ## 亮点
 
-- 沉浸式站点入口与统一导航
-- Live2D 私人居所，支持 LLM 聊天和 TTS 语音配置
+- 沉浸式站点入口与统一导航，移动端有视频背景和图片兜底
+- Live2D 私人居所，支持浏览器侧 LLM 聊天和 TTS 语音配置
+- Room Agent 化能力：长期记忆、角色知识库、MCP 工具接入、图片理解兜底
+- 角色知识库可在房间设置页管理，用于稳定还原“八千代”的人格、语气和行为边界
 - 文章浏览、详情页、编辑器与后台管理
 - 用户注册、登录、邮箱验证码与 JWT 鉴权
 - 留言广场、点赞、回复与管理员审核
@@ -24,12 +26,15 @@
 
 ## 技术栈
 
-- 前端：HTML5、CSS3、原生 JavaScript、Live2D Cubism
+- 前端：Vue 3、Vite、CSS3、原生 JavaScript、Live2D Cubism
 - 后端：Node.js、Express、better-sqlite3
 - 认证：JWT、bcryptjs
+- 测试：node:test、Playwright
 - 部署：PM2、Nginx、GitHub Actions、SSH
 
 ## 快速开始
+
+需要 Node.js 20 或以上版本。
 
 ```bash
 npm install
@@ -47,6 +52,7 @@ npm run dev
 - `npm run dev:api`：只启动 Express API
 - `npm run dev:web`：只启动 Vite 前端
 - `npm test`：执行 Node 语法检查和后端接口测试
+- `npm run test:api`：执行 auth、articles、messages、admin、room memory、MCP 等接口测试
 - `npm run test:e2e`：执行 Playwright 端到端主流程测试，需要先构建前端或提供 `E2E_BASE_URL`
 - `npm run build:web`：构建 Vue 前端产物
 
@@ -95,6 +101,25 @@ module.exports = {
   }
 };
 ```
+
+## Room / Agent 能力
+
+Room 页面正在向个人 Agent 方向演进，当前能力包括：
+
+- LLM 与 TTS 请求默认从用户浏览器侧发出，减少用户对话和 API Key 经由站点后端转发。
+- 长期记忆按用户隔离：登录用户使用服务端 SQLite 记忆库，未登录访客退回本机 IndexedDB。
+- 房间设置页提供“记忆管理”，默认折叠，展开后可搜索、查看、编辑、删除当前用户的记忆。
+- 角色知识库保存在浏览器 `localStorage`，默认内置八千代身份、人设、说话风格、关系和限制条目，用户可自行新增、编辑、停用或恢复默认。
+- 聊天时会把相关长期记忆、角色知识、天气上下文和可用 MCP 工具一起组织进上下文。
+- MCP 支持自定义 JSON-RPC 端点，以及 MiniMax Token Plan 的站内受限桥接；图片理解在 LLM 不支持多模态时会尝试调用 MCP。
+
+Room 相关设置主要保存在浏览器本地，包括：
+
+- `roomLLMSettings`
+- `roomTTSSettings`
+- `roomMCPSettings`
+- `roomMemorySettings`
+- `roomKnowledgeSettings`
 
 ## 部署
 
