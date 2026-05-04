@@ -180,7 +180,19 @@ function mergeMemoryText(previous, next) {
     return `${a}；${b}`.slice(0, 500);
 }
 
+function tokenOverlapScore(a, b) {
+    const left = new Set(tokenize(a).filter(token => token.length > 1 || /[\u4e00-\u9fff]/.test(token)));
+    const right = new Set(tokenize(b).filter(token => token.length > 1 || /[\u4e00-\u9fff]/.test(token)));
+    if (!left.size || !right.size) return 0;
+    let overlap = 0;
+    left.forEach((token) => {
+        if (right.has(token)) overlap += 1;
+    });
+    return overlap / Math.min(left.size, right.size);
+}
+
 function findMergeTarget(userId, candidate) {
+    const candidateText = `${candidate.summary}\n${candidate.content}`;
     const vector = createEmbedding(`${candidate.summary}\n${candidate.content}`);
     const rows = db.prepare(`
         SELECT * FROM room_memories
@@ -189,8 +201,12 @@ function findMergeTarget(userId, candidate) {
         LIMIT 300
     `).all(userId, candidate.type);
     return rows
-        .map(row => ({ row, score: similarity(vector, parseJson(row.embedding, [])) }))
-        .filter(item => item.score >= 0.62)
+        .map(row => ({
+            row,
+            score: similarity(vector, parseJson(row.embedding, [])),
+            overlap: tokenOverlapScore(candidateText, `${row.summary}\n${row.content}`)
+        }))
+        .filter(item => item.score >= 0.48 || item.overlap >= 0.32)
         .sort((a, b) => b.score - a.score)[0]?.row || null;
 }
 
