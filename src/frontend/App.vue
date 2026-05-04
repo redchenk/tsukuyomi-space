@@ -8,6 +8,7 @@ import AppShell from './layouts/AppShell.vue';
 const route = useRoute();
 const router = useRouter();
 const lang = ref(localStorage.getItem('lang') || 'zh');
+const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'light');
 const user = ref(loadStoredUser());
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
@@ -34,6 +35,16 @@ function setLang(nextLang) {
   document.documentElement.lang = lang.value === 'zh' ? 'zh-CN' : 'ja';
 }
 
+function setTheme(nextTheme) {
+  theme.value = nextTheme === 'dark' ? 'dark' : 'light';
+  localStorage.setItem('tsukuyomi_theme', theme.value);
+  document.documentElement.dataset.theme = theme.value;
+}
+
+function toggleTheme() {
+  setTheme(theme.value === 'dark' ? 'light' : 'dark');
+}
+
 function go(path) {
   router.push(path);
 }
@@ -49,6 +60,7 @@ watch(isAccessRoute, (next) => {
 }, { immediate: true });
 
 watch(lang, setLang, { immediate: true });
+watch(theme, setTheme, { immediate: true });
 watch(() => route.fullPath, refreshUser, { immediate: true });
 </script>
 
@@ -58,11 +70,13 @@ watch(() => route.fullPath, refreshUser, { immediate: true });
     :route-name="route.name"
     :show-chrome="!isImmersiveRoute"
     :t="t"
+    :theme="theme"
     :user="user"
     :is-authed="isAuthed"
     @go="go"
     @logout="logout"
     @set-lang="setLang"
+    @toggle-theme="toggleTheme"
   >
     <RouterView :lang="lang" :t="t" :user="user" @auth-changed="refreshUser" @go="go" />
   </AppShell>

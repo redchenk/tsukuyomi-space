@@ -5,10 +5,11 @@ defineProps({
   routeName: { type: String, default: 'access' },
   showChrome: { type: Boolean, default: true },
   t: { type: Object, required: true },
+  theme: { type: String, default: 'light' },
   user: { type: Object, default: null }
 });
 
-defineEmits(['go', 'logout', 'set-lang']);
+defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
 </script>
 
 <template>
@@ -26,6 +27,16 @@ defineEmits(['go', 'logout', 'set-lang']);
         <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="$emit('go', '/register')">{{ t.register }}</a>
         <a v-if="isAuthed" href="/user-center" class="user-chip" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="$emit('go', '/user-center')">{{ user?.username || user?.email }}</a>
         <button v-if="isAuthed" class="ghost-btn" type="button" @click="$emit('logout')">{{ t.logout }}</button>
+        <button
+          class="theme-toggle"
+          type="button"
+          :aria-label="theme === 'dark' ? '切换浅色主题' : '切换深色主题'"
+          :title="theme === 'dark' ? '浅色主题' : '深色主题'"
+          @click="$emit('toggle-theme')"
+        >
+          <span aria-hidden="true">{{ theme === 'dark' ? '☀' : '☾' }}</span>
+          <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
+        </button>
         <div class="lang-switcher" aria-label="Language">
           <button class="lang-btn" :class="{ active: lang === 'zh' }" type="button" @click="$emit('set-lang', 'zh')">中文</button>
           <button class="lang-btn" :class="{ active: lang === 'ja' }" type="button" @click="$emit('set-lang', 'ja')">日本語</button>
