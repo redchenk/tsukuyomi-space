@@ -22,6 +22,7 @@ const toast = reactive({ text: '', visible: false });
 const memoryCount = ref(0);
 const memoryList = ref([]);
 const memoryLoading = ref(false);
+const storedUser = ref(readStoredUser());
 let toastTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
@@ -48,8 +49,9 @@ const mcp = reactive({
   tools: []
 });
 
+const roomUser = computed(() => storedUser.value || (props.user?.id && localStorage.getItem('tsukuyomi_token') ? props.user : null));
 const visitorKey = computed(() => {
-  if (props.user?.id) return `user:${props.user.id}`;
+  if (roomUser.value?.id) return `user:${roomUser.value.id}`;
   let id = localStorage.getItem('roomMemoryGuestId');
   if (!id) {
     id = `guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -57,7 +59,7 @@ const visitorKey = computed(() => {
   }
   return `guest:${id}`;
 });
-const canUseServerMemory = computed(() => Boolean(props.user?.id && localStorage.getItem('tsukuyomi_token')));
+const canUseServerMemory = computed(() => Boolean(roomUser.value?.id && localStorage.getItem('tsukuyomi_token')));
 const memoryLocationText = computed(() => canUseServerMemory.value
   ? '记忆保存在服务端 SQLite 向量记忆库，按登录用户隔离；未登录时自动退回本机 IndexedDB。'
   : '当前未登录，记忆仅保存在本机 IndexedDB，不上传服务器。');
@@ -70,6 +72,14 @@ const memoryTypeOptions = [
   { value: 'semantic', label: '语义记忆' },
   { value: 'conversation', label: '对话片段' }
 ];
+
+function readStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem('tsukuyomi_user') || 'null');
+  } catch (_) {
+    return null;
+  }
+}
 
 function readJson(key, fallback) {
   try {
@@ -181,6 +191,7 @@ async function loadMemoryCount() {
 }
 
 async function loadServerMemories() {
+  storedUser.value = readStoredUser();
   if (!canUseServerMemory.value) {
     memoryList.value = [];
     return;
@@ -205,6 +216,7 @@ async function loadServerMemories() {
 }
 
 function loadSettings() {
+  storedUser.value = readStoredUser();
   const modelSettings = readJson('roomModelSettings', {});
   model.scale = Math.round(Number(modelSettings.scale || 1) * 100);
   model.xOffset = Number(modelSettings.xOffset || 0);
@@ -372,21 +384,47 @@ function saveMemory() {
   showToast(memory.enabled ? '长期记忆已开启' : '长期记忆已关闭');
 }
 
-function editMemory(item) {
-  memory.expanded[item.id] = true;
+async function openMemoryItem(item) {
+  try {
+    const detail = item.content ? item : await fetchMemoryDetail(item.id);
+    memory.expanded[item.id] = true;
+    const index = memoryList.value.findIndex((entry) => entry.id === item.id);
+    if (index >= 0) memoryList.value[index] = { ...memoryList.value[index], ...detail };
+    return detail;
+  } catch (error) {
+    showToast(`读取原文失败：${error.message}`);
+    return item;
+  }
+}
+
+async function fetchMemoryDetail(id) {
+  const response = await fetch(`/api/room/memory/${encodeURIComponent(id)}`, {
+    headers: memoryAuthHeaders()
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+  return result.data;
+}
+
+async function editMemory(item) {
+  const detail = await openMemoryItem(item);
   memory.editing = {
-    id: item.id,
-    type: item.type || 'conversation',
-    summary: item.summary || '',
-    content: item.content || '',
-    importance: Number(item.importance || 0.5),
-    confidence: Number(item.confidence || 0.8),
-    tags: (item.tags || []).join(', ')
+    id: detail.id,
+    type: detail.type || 'conversation',
+    summary: detail.summary || '',
+    content: detail.content || '',
+    importance: Number(detail.importance || 0.5),
+    confidence: Number(detail.confidence || 0.8),
+    tags: (detail.tags || []).join(', ')
   };
 }
 
-function toggleMemoryContent(item) {
-  memory.expanded[item.id] = !memory.expanded[item.id];
+async function toggleMemoryContent(item) {
+  if (memory.expanded[item.id]) {
+    memory.expanded[item.id] = false;
+    return;
+  }
+  await openMemoryItem(item);
 }
 
 function cancelMemoryEdit() {
@@ -640,7 +678,7 @@ onMounted(loadSettings);
             <button class="memory-expand-btn" type="button" @click="toggleMemoryContent(item)">
               {{ memory.expanded[item.id] ? '收起原文' : '展开原文' }}
             </button>
-            <p v-if="memory.expanded[item.id]">{{ item.content }}</p>
+            <p v-if="memory.expanded[item.id]">{{ item.content || '正在读取原文...' }}</p>
             <div v-if="item.tags?.length" class="memory-tags">
               <span v-for="tag in item.tags" :key="`${item.id}-${tag}`">{{ tag }}</span>
             </div>

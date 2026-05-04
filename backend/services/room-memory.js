@@ -134,14 +134,13 @@ function estimateImportance(text) {
     return Math.min(1, Number(score.toFixed(2)));
 }
 
-function toPublicMemory(row, score = undefined) {
+function toPublicMemory(row, score = undefined, options = {}) {
     const metadata = parseJson(row.metadata || '{}', {});
-    return {
+    const memory = {
         id: row.id,
         visitorName: row.visitor_name || '',
         type: row.memory_type || 'conversation',
         summary: row.summary,
-        content: row.content,
         importance: Number(row.importance || 0),
         confidence: Number(metadata.confidence ?? 0.8),
         tags: uniqueTags(metadata.tags || []),
@@ -151,6 +150,8 @@ function toPublicMemory(row, score = undefined) {
         lastAccessedAt: row.last_accessed_at,
         ...(score == null ? {} : { score: Number(score.toFixed(4)) })
     };
+    if (options.includeContent) memory.content = row.content;
+    return memory;
 }
 
 function buildMemoryCandidate(payload = {}) {
@@ -428,7 +429,7 @@ function listMemories(userId, { limit = 50, type = '', q = '' } = {}) {
 
 function getMemory(userId, id) {
     const row = db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId);
-    return row ? toPublicMemory(row) : null;
+    return row ? toPublicMemory(row, undefined, { includeContent: true }) : null;
 }
 
 function clearMemories(userId) {
@@ -489,6 +490,7 @@ module.exports = {
     recordMemory,
     searchMemories,
     listMemories,
+    getMemory,
     updateMemory,
     deleteMemory,
     clearMemories,

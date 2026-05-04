@@ -13,14 +13,23 @@ defineEmits(['go', 'logout', 'toggle-theme']);
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
   '/lib/bundled/live2d-room.iife.js?v=20260503-memory1',
-  '/assets/js/room-runtime.js?v=20260504-memory2'
+  '/assets/js/room-runtime.js?v=20260504-memory3'
 ];
 
-const roomUserName = computed(() => props.user?.username || props.user?.email || 'Guest');
-const roomUserId = computed(() => props.user?.id || props.user?.username || props.user?.email || '');
-const roomUserAvatar = computed(() => props.user?.avatar || '');
+function readStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem('tsukuyomi_user') || 'null');
+  } catch (_) {
+    return null;
+  }
+}
+
+const roomUser = computed(() => readStoredUser() || (props.user?.id && localStorage.getItem('tsukuyomi_token') ? props.user : null));
+const roomUserName = computed(() => roomUser.value?.username || roomUser.value?.email || 'Guest');
+const roomUserId = computed(() => roomUser.value?.id || roomUser.value?.username || roomUser.value?.email || '');
+const roomUserAvatar = computed(() => roomUser.value?.avatar || '');
 const roomUserInitial = computed(() => roomUserName.value.slice(0, 1).toUpperCase());
-const isAuthed = computed(() => Boolean(props.user));
+const isAuthed = computed(() => Boolean(roomUser.value));
 
 function loadScript(src, options = {}) {
   return new Promise((resolve, reject) => {

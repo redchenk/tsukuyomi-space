@@ -297,6 +297,13 @@ describe('room memory API', () => {
         assert.equal(search.response.status, 200);
         assert.ok(search.body.data.some(item => item.summary.includes('浅蓝色')));
         assert.ok(search.body.data[0].score > 0);
+        assert.equal(Object.prototype.hasOwnProperty.call(search.body.data[0], 'content'), false);
+
+        const detail = await request(`/api/room/memory/${created.body.data.id}`, {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(detail.response.status, 200);
+        assert.match(detail.body.data.content, /浅蓝色/);
 
         const updated = await request(`/api/room/memory/${created.body.data.id}`, {
             method: 'PATCH',

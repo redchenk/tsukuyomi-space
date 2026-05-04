@@ -146,6 +146,12 @@ router.get('/memory', authenticateToken, (req, res) => {
     res.json({ success: true, data: memories });
 });
 
+router.get('/memory/:id', authenticateToken, (req, res) => {
+    const memory = roomMemory.getMemory(req.user.id, String(req.params.id || ''));
+    if (!memory) return res.status(404).json({ success: false, message: '记忆不存在' });
+    res.json({ success: true, data: memory });
+});
+
 router.post('/memory', authenticateToken, async (req, res) => {
     try {
         const result = await roomMemory.recordMemory(req.user.id, req.body || {});

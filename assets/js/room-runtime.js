@@ -120,8 +120,9 @@
     function currentVisitor() {
         const page = getRoomPage();
         const profile = readJson('roomProfile', {});
-        const rawId = page?.dataset.roomUserId || '';
-        const rawName = page?.dataset.roomUserName || '';
+        const storedUser = roomAuthToken() ? readJson('tsukuyomi_user', null) : null;
+        const rawId = storedUser?.id || page?.dataset.roomUserId || '';
+        const rawName = storedUser?.username || storedUser?.email || page?.dataset.roomUserName || '';
         return {
             userKey: rawId ? `user:${rawId}` : `guest:${ensureGuestMemoryId()}`,
             name: profile.nickname || rawName || 'Guest',
