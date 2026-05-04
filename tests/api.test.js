@@ -244,6 +244,47 @@ describe('room world API', () => {
     });
 });
 
+describe('MCP bridge API', () => {
+    it('lists MiniMax Token Plan MCP tools without proxying arbitrary URLs', async () => {
+        const { response, body } = await postJson('/api/mcp/token-plan', {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/list',
+            params: {}
+        });
+
+        assert.equal(response.status, 200);
+        assert.equal(body.jsonrpc, '2.0');
+        assert.equal(body.id, 1);
+        assert.ok(body.result.tools.some(tool => tool.name === 'web_search'));
+        assert.ok(body.result.tools.some(tool => tool.name === 'understand_image'));
+    });
+
+    it('rejects unsupported MCP methods and tools', async () => {
+        const unsupportedMethod = await postJson('/api/mcp/token-plan', {
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'resources/list',
+            params: {}
+        });
+        assert.equal(unsupportedMethod.response.status, 400);
+        assert.equal(unsupportedMethod.body.error.code, -32601);
+
+        const unsupportedTool = await postJson('/api/mcp/token-plan', {
+            jsonrpc: '2.0',
+            id: 3,
+            method: 'tools/call',
+            params: {
+                name: 'fetch_url',
+                arguments: { url: 'https://example.com' },
+                meta: { auth: { api_key: 'test-key' } }
+            }
+        });
+        assert.equal(unsupportedTool.response.status, 400);
+        assert.equal(unsupportedTool.body.error.code, -32602);
+    });
+});
+
 describe('chat API endpoint allowlist', () => {
     it('normalizes supported provider chat endpoints', () => {
         assert.equal(

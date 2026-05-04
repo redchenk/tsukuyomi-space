@@ -14,6 +14,7 @@ const statsRoutes = require('./routes/stats');
 const chatRoutes = require('./routes/chat');
 const ttsRoutes = require('./routes/tts');
 const roomRoutes = require('./routes/room');
+const mcpRoutes = require('./routes/mcp');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./user-routes');
 
@@ -68,6 +69,7 @@ function createApp() {
     app.use('/api/chat', chatRoutes);
     app.use('/api/tts', ttsRoutes);
     app.use('/api/room', roomRoutes);
+    app.use('/api/mcp', mcpRoutes);
     app.use('/api/admin', adminRoutes);
     app.use('/api/user', userRoutes);
 

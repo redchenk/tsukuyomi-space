@@ -178,10 +178,11 @@ function applyMcpProvider(provider) {
     showToast('已应用 MiniMax Mainland MCP 预设，请填写你的 MCP REST 端点和 MiniMax API Key');
   } else if (provider === 'minimax-token-plan') {
     mcp.authHeader = 'Authorization';
+    mcp.endpoint = '/api/mcp/token-plan';
     mcp.apiHost = 'https://api.minimaxi.com';
     mcp.resourceMode = 'url';
     mcp.toolAllowlist = MINIMAX_TOKEN_PLAN_TOOLS;
-    showToast('已应用 MiniMax Token Plan MCP 预设，官方服务需通过 uvx 本地运行并桥接为 HTTP 端点');
+    showToast('已应用 MiniMax Token Plan MCP 站内桥接预设');
   }
 }
 
@@ -489,7 +490,7 @@ onMounted(loadSettings);
             </label>
           </template>
           <label>工具白名单<input v-model="mcp.toolAllowlist" type="text" placeholder="留空允许全部，或用逗号分隔工具名"></label>
-          <p class="field-hint">MCP 请求由浏览器直接发出，端点需要支持 CORS 与 JSON-RPC 的 tools/list、tools/call。MiniMax MCP JS 预设按 REST 模式传 meta.auth；Token Plan MCP 官方文档使用 uvx 本地 stdio，若在网页中使用，需要你自行运行 HTTP/SSE 桥接端点。</p>
+          <p class="field-hint">MCP 请求由浏览器直接发出，端点需要支持 CORS 与 JSON-RPC 的 tools/list、tools/call。MiniMax MCP JS 预设按 REST 模式传 meta.auth；Token Plan MCP 使用本站受限桥接 /api/mcp/token-plan，后端只启动官方 minimax-coding-plan-mcp，不会请求任意地址。</p>
           <div v-if="mcp.tools.length" class="mcp-tool-list">
             <span v-for="tool in mcp.tools" :key="tool.name" class="chip">{{ tool.name }}</span>
           </div>
