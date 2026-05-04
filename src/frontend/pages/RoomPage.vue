@@ -2,11 +2,13 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 
 const props = defineProps({
+  routeName: { type: String, default: 'room' },
   theme: { type: String, default: 'light' },
+  t: { type: Object, required: true },
   user: { type: Object, default: null }
 });
 
-defineEmits(['go', 'toggle-theme']);
+defineEmits(['go', 'logout', 'toggle-theme']);
 
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
@@ -18,6 +20,7 @@ const roomUserName = computed(() => props.user?.username || props.user?.email ||
 const roomUserId = computed(() => props.user?.id || props.user?.username || props.user?.email || '');
 const roomUserAvatar = computed(() => props.user?.avatar || '');
 const roomUserInitial = computed(() => roomUserName.value.slice(0, 1).toUpperCase());
+const isAuthed = computed(() => Boolean(props.user));
 
 function loadScript(src, options = {}) {
   return new Promise((resolve, reject) => {
@@ -73,7 +76,7 @@ onBeforeUnmount(() => {
   <main class="room-page" aria-label="&#31169;&#20154;&#23621;&#25152;" :data-room-user-id="roomUserId" :data-room-user-name="roomUserName">
     <div class="room-backdrop" aria-hidden="true"></div>
 
-    <nav class="room-commandbar" aria-label="&#25151;&#38388;&#23548;&#33322;">
+    <nav class="room-commandbar site-commandbar" aria-label="房间导航">
       <a class="room-brand" href="/hub" @click.prevent="$emit('go', '/hub')">
         <span class="room-brand-mark room-user-avatar">
           <img v-if="roomUserAvatar" :src="roomUserAvatar" :alt="roomUserName">
@@ -84,13 +87,18 @@ onBeforeUnmount(() => {
           <small>Tsukimi Yachiyo Room</small>
         </span>
       </a>
-      <div class="room-nav-links">
-        <a href="/hub" @click.prevent="$emit('go', '/hub')">&#22823;&#21381;</a>
-        <a href="/stage" @click.prevent="$emit('go', '/stage')">&#20027;&#33310;&#21488;</a>
-        <a href="/plaza" @click.prevent="$emit('go', '/plaza')">&#24191;&#22330;</a>
-        <a href="/reality" @click.prevent="$emit('go', '/reality')">&#29616;&#23454;&#38170;&#28857;</a>
+      <div class="room-nav-links site-nav-links">
+        <a href="/hub" :class="{ 'router-link-active': routeName === 'hub' }" @click.prevent="$emit('go', '/hub')">{{ t.hub }}</a>
+        <a href="/room" :class="{ 'router-link-active': routeName === 'room' }" @click.prevent="$emit('go', '/room')">{{ t.room }}</a>
+        <a href="/stage" :class="{ 'router-link-active': routeName === 'stage' }" @click.prevent="$emit('go', '/stage')">{{ t.stage }}</a>
+        <a href="/plaza" :class="{ 'router-link-active': routeName === 'plaza' }" @click.prevent="$emit('go', '/plaza')">{{ t.plaza }}</a>
+        <a href="/reality" :class="{ 'router-link-active': routeName === 'reality' }" @click.prevent="$emit('go', '/reality')">{{ t.reality }}</a>
+        <a v-if="isAuthed" href="/user-center" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="$emit('go', '/user-center')">{{ t.ucTitle }}</a>
+        <a v-if="!isAuthed" href="/login" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="$emit('go', '/login')">{{ t.login }}</a>
+        <a v-if="!isAuthed" href="/register" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="$emit('go', '/register')">{{ t.register }}</a>
+        <button v-if="isAuthed" class="room-nav-button" type="button" @click="$emit('logout')">{{ t.logout }}</button>
         <button
-          class="room-theme-toggle"
+          class="room-theme-toggle room-nav-button"
           type="button"
           :aria-label="theme === 'dark' ? '切换浅色主题' : '切换深色主题'"
           :title="theme === 'dark' ? '浅色主题' : '深色主题'"

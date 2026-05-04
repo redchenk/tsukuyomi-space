@@ -83,8 +83,10 @@ watch(() => route.fullPath, refreshUser, { immediate: true });
       :t="t"
       :theme="theme"
       :user="user"
+      :route-name="route.name"
       @auth-changed="refreshUser"
       @go="go"
+      @logout="logout"
       @toggle-theme="toggleTheme"
     />
   </AppShell>

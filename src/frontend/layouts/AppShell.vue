@@ -15,20 +15,26 @@ defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
 <template>
   <div class="app-shell">
     <div v-if="showChrome" class="moon" aria-hidden="true"></div>
-    <header v-if="showChrome" class="topbar">
-      <a href="/hub" class="brand" @click.prevent="$emit('go', '/hub')">{{ t.brand }}</a>
-      <div class="nav-actions">
+    <header v-if="showChrome" class="topbar site-commandbar">
+      <a href="/hub" class="brand room-brand site-brand" @click.prevent="$emit('go', '/hub')">
+        <span class="room-brand-mark site-brand-mark">{{ String(t.brand || '月').slice(0, 1) }}</span>
+        <span>
+          <strong>{{ t.brand }}</strong>
+          <small>Tsukuyomi Space</small>
+        </span>
+      </a>
+      <div class="nav-actions room-nav-links site-nav-links">
         <a href="/hub" class="nav-link" :class="{ 'router-link-active': routeName === 'hub' }" @click.prevent="$emit('go', '/hub')">{{ t.hub }}</a>
         <a href="/room" class="nav-link" :class="{ 'router-link-active': routeName === 'room' }" @click.prevent="$emit('go', '/room')">{{ t.room }}</a>
         <a href="/stage" class="nav-link" :class="{ 'router-link-active': routeName === 'stage' }" @click.prevent="$emit('go', '/stage')">{{ t.stage }}</a>
         <a href="/plaza" class="nav-link" :class="{ 'router-link-active': routeName === 'plaza' }" @click.prevent="$emit('go', '/plaza')">{{ t.plaza }}</a>
         <a href="/reality" class="nav-link" :class="{ 'router-link-active': routeName === 'reality' }" @click.prevent="$emit('go', '/reality')">{{ t.reality }}</a>
+        <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="$emit('go', '/user-center')">{{ t.ucTitle }}</a>
         <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="$emit('go', '/login')">{{ t.login }}</a>
         <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="$emit('go', '/register')">{{ t.register }}</a>
-        <a v-if="isAuthed" href="/user-center" class="user-chip" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="$emit('go', '/user-center')">{{ user?.username || user?.email }}</a>
-        <button v-if="isAuthed" class="ghost-btn" type="button" @click="$emit('logout')">{{ t.logout }}</button>
+        <button v-if="isAuthed" class="ghost-btn nav-link" type="button" @click="$emit('logout')">{{ t.logout }}</button>
         <button
-          class="theme-toggle"
+          class="theme-toggle nav-link"
           type="button"
           :aria-label="theme === 'dark' ? '切换浅色主题' : '切换深色主题'"
           :title="theme === 'dark' ? '浅色主题' : '深色主题'"

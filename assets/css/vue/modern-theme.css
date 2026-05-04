@@ -135,10 +135,57 @@ html[data-theme="dark"] body.vue-access-route {
     backdrop-filter: blur(18px) saturate(1.18);
 }
 
+.site-commandbar {
+    min-height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem clamp(1rem, 3vw, 2rem);
+}
+
+.site-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+}
+
+.site-brand strong,
+.site-brand small {
+    display: block;
+    line-height: 1.2;
+}
+
+.site-brand small {
+    margin-top: 0.16rem;
+    color: var(--muted);
+    font-size: 0.72rem;
+}
+
+.site-brand-mark {
+    color: var(--ink);
+    border-color: rgba(139, 168, 205, 0.26);
+    background: rgba(255, 255, 255, 0.82);
+}
+
+.site-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+}
+
 html[data-theme="dark"] .topbar {
     border-bottom-color: rgba(177, 205, 238, 0.16);
     background: rgba(12, 18, 32, 0.86);
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.24);
+}
+
+html[data-theme="dark"] .site-brand-mark {
+    color: var(--text);
+    border-color: rgba(177, 205, 238, 0.2);
+    background: rgba(30, 41, 59, 0.84);
 }
 
 .brand {
@@ -173,6 +220,37 @@ html[data-theme="dark"] .topbar {
         background 0.2s ease,
         color 0.2s ease,
         box-shadow 0.2s ease;
+}
+
+.site-nav-links .nav-link,
+.site-nav-links .ghost-btn,
+.site-nav-links .theme-toggle,
+.room-nav-links a,
+.room-nav-links .room-nav-button,
+.room-nav-links .room-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0.48rem 0.72rem;
+    border: 1px solid rgba(139, 168, 205, 0.2);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--ink-soft);
+    box-shadow: 0 8px 20px rgba(86, 112, 160, 0.08);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+html[data-theme="dark"] .site-nav-links .nav-link,
+html[data-theme="dark"] .site-nav-links .ghost-btn,
+html[data-theme="dark"] .site-nav-links .theme-toggle,
+html[data-theme="dark"] .room-nav-links a,
+html[data-theme="dark"] .room-nav-links .room-nav-button,
+html[data-theme="dark"] .room-nav-links .room-theme-toggle {
+    border-color: rgba(177, 205, 238, 0.18);
+    background: rgba(30, 41, 59, 0.78);
+    color: #dbeafe;
 }
 
 .nav-link:hover,
@@ -270,14 +348,16 @@ html[data-theme="dark"] .theme-toggle:hover {
 }
 
 .nav-link.router-link-active,
-.terminal-nav-btn.active {
+.terminal-nav-btn.active,
+.room-nav-links a.router-link-active {
     color: #32405a;
     border-color: rgba(169, 155, 237, 0.28);
     background: linear-gradient(135deg, rgba(231, 247, 253, 0.96), rgba(241, 238, 255, 0.96));
 }
 
 html[data-theme="dark"] .nav-link.router-link-active,
-html[data-theme="dark"] .terminal-nav-btn.active {
+html[data-theme="dark"] .terminal-nav-btn.active,
+html[data-theme="dark"] .room-nav-links a.router-link-active {
     color: #fff;
     border-color: rgba(185, 173, 255, 0.32);
     background: linear-gradient(135deg, rgba(30, 64, 88, 0.92), rgba(61, 51, 110, 0.92));
@@ -1053,7 +1133,8 @@ html[data-theme="dark"] body .page .uc-profile-bio {
 .room-dock,
 .room-panel,
 .room-dock .panel-toggle-btn,
-.room-theme-toggle {
+.room-theme-toggle,
+.room-nav-button {
     border-color: rgba(139, 168, 205, 0.18);
     background: rgba(255, 255, 255, 0.86);
     box-shadow: var(--float-shadow);
@@ -1071,6 +1152,7 @@ html[data-theme="dark"] body .page .uc-profile-bio {
 .room-brand small,
 .room-nav-links a,
 .room-theme-toggle,
+.room-nav-button,
 .status-title,
 .status-detail {
     color: var(--ink);
@@ -1083,7 +1165,8 @@ html[data-theme="dark"] body .page .uc-profile-bio {
     -webkit-text-fill-color: currentColor !important;
 }
 
-.room-theme-toggle {
+.room-theme-toggle,
+.room-nav-button {
     display: inline-flex;
     align-items: center;
     gap: 0.36rem;
@@ -1093,6 +1176,10 @@ html[data-theme="dark"] body .page .uc-profile-bio {
     font: inherit;
     font-size: 0.84rem;
     cursor: pointer;
+}
+
+.room-nav-button {
+    justify-content: center;
 }
 
 .room-brand small,
@@ -1144,7 +1231,8 @@ html[data-theme="dark"] .room-commandbar,
 html[data-theme="dark"] .room-panel,
 html[data-theme="dark"] .room-dock,
 html[data-theme="dark"] .room-dock .panel-toggle-btn,
-html[data-theme="dark"] .room-theme-toggle {
+html[data-theme="dark"] .room-theme-toggle,
+html[data-theme="dark"] .room-nav-button {
     color: var(--text);
     border-color: rgba(177, 205, 238, 0.18);
     background: rgba(17, 24, 39, 0.9);
@@ -1162,6 +1250,7 @@ html[data-theme="dark"] .room-brand,
 html[data-theme="dark"] .room-brand small,
 html[data-theme="dark"] .room-nav-links a,
 html[data-theme="dark"] .room-theme-toggle,
+html[data-theme="dark"] .room-nav-button,
 html[data-theme="dark"] .status-title,
 html[data-theme="dark"] .status-detail {
     color: var(--text);
