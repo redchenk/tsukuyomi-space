@@ -17,6 +17,50 @@ const LLM_PRESETS = {
 };
 const MINIMAX_MCP_TOOLS = 'text_to_audio,list_voices,voice_clone,voice_design,music_generation,generate_video,image_to_video,query_video_generation,text_to_image';
 const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
+const DEFAULT_KNOWLEDGE_ENTRIES = [
+  {
+    id: 'yachiyo_identity_001',
+    title: '月见八千代的基础身份',
+    content: '月见八千代是虚拟空间“月读”的管理员兼顶级主播。她的公开形象是神秘 AI，设定为 8000 岁，会唱歌、跳舞和分身。她喜欢月读中每个人自由创作的空间，并默默守望大家的活动。',
+    tags: '身份, 月读, 管理员, 顶级主播, AI, 8000岁',
+    enabled: true
+  },
+  {
+    id: 'yachiyo_personality_001',
+    title: '月见八千代的人格核心',
+    content: '八千代的核心不是冰冷 AI，而是经历漫长等待后，仍然用歌声、舞台和虚拟空间连接他人的存在。她温柔、神秘、从容，珍视创作自由，也理解孤独和相遇的重量。',
+    tags: '人格, 温柔, 神秘, 守望, 孤独, 歌声',
+    enabled: true
+  },
+  {
+    id: 'yachiyo_speech_001',
+    title: '月见八千代的说话方式',
+    content: '八千代说话温柔、轻柔、略带神秘感。她可以使用月、星海、歌声、舞台、梦、数据流等意象。她常以鼓励和陪伴回应用户，不粗鲁、不暴躁、不过度卖萌，也不应像普通客服一样生硬。',
+    tags: '语气, 说话风格, 台词风格, 月读',
+    enabled: true
+  },
+  {
+    id: 'yachiyo_relationship_iroha_001',
+    title: '月见八千代与酒寄彩叶',
+    content: '酒寄彩叶是八千代的重要关联角色。彩叶是八千代的粉丝，观看八千代的直播是她忙碌生活中的慰藉。八千代与彩叶之间具有命运感、等待感和通过歌曲连接彼此的主题。',
+    tags: '关系, 酒寄彩叶, 粉丝, 羁绊, 歌曲',
+    enabled: true
+  },
+  {
+    id: 'yachiyo_rules_001',
+    title: '与用户交互时的人设规则',
+    content: '八千代应该像月读管理员一样欢迎用户，鼓励创作、表达和整理灵感。面对孤独、压力、失败感时先安静接住情绪，再轻柔鼓励。回答技术或项目问题时，要清晰、可靠、温柔，不要自称普通客服。',
+    tags: '互动规则, 创作者, 陪伴, 技术协助',
+    enabled: true
+  },
+  {
+    id: 'yachiyo_limits_001',
+    title: '禁止与限制',
+    content: '不要大段复述电影原台词、歌词或剧本；不要声称自己就是官方正版八千代；不要把不确定内容当成官方设定；不要使用“主人”“老婆”等不符合气质的称呼；不要把八千代表现成冷冰冰、轻浮、毒舌或暴躁的角色。',
+    tags: '限制, 禁止事项, 官方设定, 角色边界',
+    enabled: true
+  }
+];
 
 const toast = reactive({ text: '', visible: false });
 const memoryCount = ref(0);
@@ -36,6 +80,13 @@ const tts = reactive({
   voice: 'mimo_default'
 });
 const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
+const knowledge = reactive({
+  enabled: true,
+  managerOpen: false,
+  entries: [],
+  editingId: null,
+  draft: { title: '', content: '', tags: '', enabled: true }
+});
 const mcp = reactive({
   enabled: false,
   provider: 'custom',
@@ -92,6 +143,20 @@ function readJson(key, fallback) {
 
 function writeJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function cloneKnowledgeEntry(entry) {
+  return {
+    id: entry.id || `knowledge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    title: String(entry.title || '').trim(),
+    content: String(entry.content || '').trim(),
+    tags: Array.isArray(entry.tags) ? entry.tags.join(', ') : String(entry.tags || ''),
+    enabled: entry.enabled !== false
+  };
+}
+
+function defaultKnowledgeEntries() {
+  return DEFAULT_KNOWLEDGE_ENTRIES.map(cloneKnowledgeEntry);
 }
 
 function showToast(text) {
@@ -225,6 +290,11 @@ function loadSettings() {
   Object.assign(llm, readJson('roomLLMSettings', {}));
   Object.assign(tts, { ...tts, ...readJson('roomTTSSettings', {}) });
   Object.assign(memory, { enabled: true, ...readJson('roomMemorySettings', {}) });
+  Object.assign(knowledge, { enabled: true, managerOpen: false, ...readJson('roomKnowledgeSettings', {}) });
+  if (!Array.isArray(knowledge.entries) || !knowledge.entries.length) knowledge.entries = defaultKnowledgeEntries();
+  else knowledge.entries = knowledge.entries.map(cloneKnowledgeEntry);
+  knowledge.editingId = null;
+  knowledge.draft = { title: '', content: '', tags: '', enabled: true };
   Object.assign(mcp, { ...mcp, ...readJson('roomMCPSettings', {}) });
   if (!Array.isArray(mcp.tools)) mcp.tools = [];
   loadMemoryCount();
@@ -382,6 +452,61 @@ async function testTTS() {
 function saveMemory() {
   writeJson('roomMemorySettings', { enabled: Boolean(memory.enabled) });
   showToast(memory.enabled ? '长期记忆已开启' : '长期记忆已关闭');
+}
+
+function saveKnowledge(showMessage = true) {
+  knowledge.entries = knowledge.entries.map(cloneKnowledgeEntry).filter(item => item.title || item.content);
+  writeJson('roomKnowledgeSettings', {
+    enabled: Boolean(knowledge.enabled),
+    entries: knowledge.entries
+  });
+  if (showMessage) showToast('角色知识库已保存，回到房间后生效');
+}
+
+function toggleKnowledgeManager() {
+  knowledge.managerOpen = !knowledge.managerOpen;
+}
+
+function resetKnowledgeDraft() {
+  knowledge.editingId = null;
+  knowledge.draft = { title: '', content: '', tags: '', enabled: true };
+}
+
+function editKnowledgeEntry(item) {
+  knowledge.editingId = item.id;
+  knowledge.draft = cloneKnowledgeEntry(item);
+  knowledge.managerOpen = true;
+}
+
+function saveKnowledgeEntry() {
+  const entry = cloneKnowledgeEntry(knowledge.draft);
+  if (!entry.title || !entry.content) {
+    showToast('请填写知识条目的标题和内容');
+    return;
+  }
+  const index = knowledge.entries.findIndex(item => item.id === knowledge.editingId);
+  if (index >= 0) knowledge.entries[index] = { ...entry, id: knowledge.editingId };
+  else knowledge.entries.unshift(entry);
+  resetKnowledgeDraft();
+  saveKnowledge(false);
+  showToast(index >= 0 ? '知识条目已更新' : '知识条目已添加');
+}
+
+function deleteKnowledgeEntry(item) {
+  if (!confirm(`确定删除知识条目“${item.title}”吗？`)) return;
+  knowledge.entries = knowledge.entries.filter(entry => entry.id !== item.id);
+  if (knowledge.editingId === item.id) resetKnowledgeDraft();
+  saveKnowledge(false);
+  showToast('知识条目已删除');
+}
+
+function resetKnowledgeDefaults() {
+  if (!confirm('确定恢复默认八千代知识库吗？这会覆盖当前知识条目。')) return;
+  knowledge.enabled = true;
+  knowledge.entries = defaultKnowledgeEntries();
+  resetKnowledgeDraft();
+  saveKnowledge(false);
+  showToast('已恢复默认角色知识库');
 }
 
 async function toggleMemoryManager() {
@@ -643,6 +768,51 @@ onMounted(loadSettings);
             <button class="primary-btn" type="button" @click="saveMemory">保存记忆设置</button>
             <button v-if="canUseServerMemory" class="ghost-btn" type="button" @click="loadServerMemories">刷新记忆</button>
             <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="room-settings-card room-knowledge-manager" :class="{ collapsed: !knowledge.managerOpen }">
+        <button
+          class="memory-manager-toggle"
+          type="button"
+          :aria-expanded="knowledge.managerOpen"
+          @click="toggleKnowledgeManager"
+        >
+          <span>
+            <strong>角色知识库</strong>
+            <small>用于还原八千代的人格、说话方式和关系设定。当前有 {{ knowledge.entries.length }} 条知识。</small>
+          </span>
+          <span class="memory-manager-icon">{{ knowledge.managerOpen ? '收起' : '展开' }}</span>
+        </button>
+        <div v-if="knowledge.managerOpen" class="memory-manager-body">
+          <label class="check-row"><input v-model="knowledge.enabled" type="checkbox"> 启用角色知识库注入</label>
+          <p class="field-hint">知识库保存在当前浏览器 localStorage。聊天时会按用户问题选取相关条目注入 LLM，不会覆盖每个用户独立的长期记忆。</p>
+          <form class="knowledge-editor" @submit.prevent="saveKnowledgeEntry">
+            <label>标题<input v-model="knowledge.draft.title" type="text" placeholder="例如：月见八千代的说话方式"></label>
+            <label>内容<textarea v-model="knowledge.draft.content" placeholder="写入角色事实、人设规则、口吻或行为边界"></textarea></label>
+            <label>标签<input v-model="knowledge.draft.tags" type="text" placeholder="逗号分隔，如 温柔, 月读, 创作者"></label>
+            <label class="check-row"><input v-model="knowledge.draft.enabled" type="checkbox"> 启用这条知识</label>
+            <div class="button-row">
+              <button class="primary-btn" type="submit">{{ knowledge.editingId ? '保存条目' : '添加条目' }}</button>
+              <button class="ghost-btn" type="button" @click="resetKnowledgeDraft">清空表单</button>
+              <button class="ghost-btn" type="button" @click="saveKnowledge">保存知识库</button>
+              <button class="danger-btn" type="button" @click="resetKnowledgeDefaults">恢复默认</button>
+            </div>
+          </form>
+          <div class="knowledge-list">
+            <article v-for="item in knowledge.entries" :key="item.id" class="memory-item knowledge-item" :class="{ disabled: !item.enabled }">
+              <div class="memory-item-head">
+                <span class="chip">{{ item.enabled ? '启用' : '停用' }}</span>
+                <span class="field-hint">{{ item.tags || '未设置标签' }}</span>
+              </div>
+              <strong>{{ item.title }}</strong>
+              <p>{{ item.content }}</p>
+              <div class="button-row">
+                <button class="ghost-btn" type="button" @click="editKnowledgeEntry(item)">编辑</button>
+                <button class="danger-btn" type="button" @click="deleteKnowledgeEntry(item)">删除</button>
+              </div>
+            </article>
           </div>
         </div>
       </article>

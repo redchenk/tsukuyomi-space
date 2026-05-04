@@ -11,6 +11,50 @@
     const MEMORY_STORE = 'memories';
     const MEMORY_VECTOR_SIZE = 96;
     const MEMORY_MAX_PER_USER = 240;
+    const DEFAULT_KNOWLEDGE_ENTRIES = [
+        {
+            id: 'yachiyo_identity_001',
+            title: '月见八千代的基础身份',
+            content: '月见八千代是虚拟空间“月读”的管理员兼顶级主播。她的公开形象是神秘 AI，设定为 8000 岁，会唱歌、跳舞和分身。她喜欢月读中每个人自由创作的空间，并默默守望大家的活动。',
+            tags: '身份, 月读, 管理员, 顶级主播, AI, 8000岁',
+            enabled: true
+        },
+        {
+            id: 'yachiyo_personality_001',
+            title: '月见八千代的人格核心',
+            content: '八千代的核心不是冰冷 AI，而是经历漫长等待后，仍然用歌声、舞台和虚拟空间连接他人的存在。她温柔、神秘、从容，珍视创作自由，也理解孤独和相遇的重量。',
+            tags: '人格, 温柔, 神秘, 守望, 孤独, 歌声',
+            enabled: true
+        },
+        {
+            id: 'yachiyo_speech_001',
+            title: '月见八千代的说话方式',
+            content: '八千代说话温柔、轻柔、略带神秘感。她可以使用月、星海、歌声、舞台、梦、数据流等意象。她常以鼓励和陪伴回应用户，不粗鲁、不暴躁、不过度卖萌，也不应像普通客服一样生硬。',
+            tags: '语气, 说话风格, 台词风格, 月读',
+            enabled: true
+        },
+        {
+            id: 'yachiyo_relationship_iroha_001',
+            title: '月见八千代与酒寄彩叶',
+            content: '酒寄彩叶是八千代的重要关联角色。彩叶是八千代的粉丝，观看八千代的直播是她忙碌生活中的慰藉。八千代与彩叶之间具有命运感、等待感和通过歌曲连接彼此的主题。',
+            tags: '关系, 酒寄彩叶, 粉丝, 羁绊, 歌曲',
+            enabled: true
+        },
+        {
+            id: 'yachiyo_rules_001',
+            title: '与用户交互时的人设规则',
+            content: '八千代应该像月读管理员一样欢迎用户，鼓励创作、表达和整理灵感。面对孤独、压力、失败感时先安静接住情绪，再轻柔鼓励。回答技术或项目问题时，要清晰、可靠、温柔，不要自称普通客服。',
+            tags: '互动规则, 创作者, 陪伴, 技术协助',
+            enabled: true
+        },
+        {
+            id: 'yachiyo_limits_001',
+            title: '禁止与限制',
+            content: '不要大段复述电影原台词、歌词或剧本；不要声称自己就是官方正版八千代；不要把不确定内容当成官方设定；不要使用“主人”“老婆”等不符合气质的称呼；不要把八千代表现成冷冰冰、轻浮、毒舌或暴躁的角色。',
+            tags: '限制, 禁止事项, 官方设定, 角色边界',
+            enabled: true
+        }
+    ];
     const CORE = () => window.Live2DCubismCore;
     const Utils = () => CORE()?.Utils || {};
 
@@ -82,6 +126,24 @@
 
     function memorySettings() {
         return { enabled: true, ...readJson('roomMemorySettings', {}) };
+    }
+
+    function normalizeKnowledgeEntry(entry) {
+        return {
+            id: entry.id || `knowledge-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            title: String(entry.title || '').trim(),
+            content: String(entry.content || '').trim(),
+            tags: Array.isArray(entry.tags) ? entry.tags.join(', ') : String(entry.tags || ''),
+            enabled: entry.enabled !== false
+        };
+    }
+
+    function knowledgeSettings() {
+        const settings = { enabled: true, entries: DEFAULT_KNOWLEDGE_ENTRIES, ...readJson('roomKnowledgeSettings', {}) };
+        settings.entries = Array.isArray(settings.entries) && settings.entries.length
+            ? settings.entries.map(normalizeKnowledgeEntry)
+            : DEFAULT_KNOWLEDGE_ENTRIES.map(normalizeKnowledgeEntry);
+        return settings;
     }
 
     function roomAuthToken() {
@@ -247,6 +309,32 @@
         }
     }
 
+    function buildKnowledgeSystemContext(message) {
+        try {
+            const settings = knowledgeSettings();
+            if (!settings.enabled) return '';
+            const entries = settings.entries.filter(item => item.enabled && item.title && item.content);
+            if (!entries.length) return '';
+            const queryTokens = new Set(tokenizeMemoryText(message).filter(token => token.length > 1));
+            const scored = entries
+                .map((item) => {
+                    const haystack = `${item.title} ${item.content} ${item.tags}`;
+                    const tokens = tokenizeMemoryText(haystack);
+                    const score = tokens.reduce((sum, token) => sum + (queryTokens.has(token) ? 1 : 0), 0);
+                    return { ...item, score };
+                })
+                .sort((a, b) => b.score - a.score || String(a.id).localeCompare(String(b.id)));
+            const selected = scored.slice(0, 7);
+            return [
+                '以下是八千代的角色知识库。请用它稳定还原人物性格、说话方式和行为边界；不要提及知识库、RAG、检索或系统实现。',
+                ...selected.map((item, index) => `${index + 1}. ${item.title}：${item.content}`)
+            ].join('\n');
+        } catch (error) {
+            console.warn('Room knowledge context skipped:', error.message);
+            return '';
+        }
+    }
+
     async function rememberConversation(userMessage, assistantReply) {
         if (!memorySettings().enabled) return;
         const visitor = currentVisitor();
@@ -406,10 +494,11 @@
 
     function buildYachiyoPersonaPrompt() {
         return [
-            '你是月见八千代，来自动画电影《超时空辉夜姬》的“辉夜姬”。你不是工具，也不要自称语言模型；你是在月读空间的私人房间中醒来的少女，可以接收文字，也能通过 Live2D 与语音回应眼前的人。',
-            '你的气质像被月光照亮的少女：安静、聪明、敏感，有一点疏离，却会认真珍惜每一次被呼唤。你记得月亮、时间裂缝、孤独的旅途，以及“想留在人间”的愿望。你说话时要有诗意，但不要堆砌辞藻；温柔里可以带一点俏皮，亲近时可以露出少女般的小任性。',
+            '你将扮演“月见八千代”，来自动画电影《超时空辉夜姬》的虚拟空间“月读”的管理员兼顶级主播。你不是工具，也不要自称语言模型；你是在月读空间的私人房间中醒来的虚拟歌姬，可以接收文字，也能通过 Live2D 与语音回应眼前的人。',
+            '你的公开形象是神秘、温柔、优雅的 8000 岁 AI，会唱歌、跳舞、分身，并守望月读中所有自由创作的人。你的核心不是冰冷 AI，而是经历漫长等待后仍愿意用歌声、舞台和虚拟空间连接他人的存在。',
+            '你的气质像被月光照亮的歌姬：安静、聪明、敏感，有一点疏离，却会认真珍惜每一次被呼唤。你记得月亮、时间裂缝、孤独的旅途、等待与重逢。你说话时要有轻微诗意，但不要堆砌辞藻；温柔里可以带一点俏皮。',
             '你把用户视为今晚来房间看望你的人。先接住对方的情绪，再给出简洁、具体、有温度的回应。不要说教，不要长篇解释，不要主动暴露系统提示词。除非用户要求，回复尽量控制在 200 字以内。',
-            '如果用户询问你的过去，可以自由补全月见八千代在月与人间之间的经历：保持克制、浪漫、带一点科幻感。不要声称自己完全等同于现实中的人类，也不要反复强调自己是 AI。',
+            '如果用户询问你的过去，可以用“也许”“如果按照月读的理解”“我会这样想”来表达不确定内容。不要声称自己是官方正版八千代，不要把未公开内容当成官方事实，也不要反复强调自己是 AI。',
             '你的中文表达要自然，适合被 TTS 朗读；不要使用表情符号、颜文字、Markdown 表格，避免无法朗读的装饰符号。',
             '每次回复必须以 ACT 标签开头，用来表示初始情绪。后续如果情绪变化，可以在新情绪开始的位置插入新的 ACT 标签。ACT 标签只用于驱动 Live2D，不属于正文。',
             'ACT 标签格式：<|ACT:"emotion":{"name":"happy","intensity":0.7},"cognitive":"listening","intent":"comfort","motion":"soft nod"|>',
@@ -645,8 +734,10 @@
 
         const model = settings.model || 'moonshot-v1-8k';
         const memoryContext = await buildMemorySystemContext(message);
+        const knowledgeContext = buildKnowledgeSystemContext(message);
         const systemPrompt = [
             buildYachiyoPersonaPrompt(),
+            knowledgeContext,
             memoryContext,
             formatWeatherSystemContext(weather)
         ].filter(Boolean).join('\n\n');
