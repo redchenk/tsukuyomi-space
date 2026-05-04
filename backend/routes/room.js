@@ -139,23 +139,46 @@ router.get('/memory/status', authenticateToken, (req, res) => {
 
 router.get('/memory', authenticateToken, (req, res) => {
     const query = String(req.query.q || '').trim();
-    const limit = req.query.limit || 8;
+    const limit = req.query.limit || 50;
     const memories = query
         ? roomMemory.searchMemories(req.user.id, query, limit)
-        : roomMemory.listMemories(req.user.id, limit);
+        : roomMemory.listMemories(req.user.id, { limit, type: req.query.type });
     res.json({ success: true, data: memories });
 });
 
 router.post('/memory', authenticateToken, (req, res) => {
     try {
-        const memory = roomMemory.recordMemory(req.user.id, req.body || {});
-        res.status(201).json({ success: true, data: memory, message: '记忆已保存' });
+        const result = roomMemory.recordMemory(req.user.id, req.body || {});
+        if (!result) {
+            return res.status(202).json({ success: true, data: null, message: '本轮对话没有需要长期保存的记忆' });
+        }
+        res.status(result.action === 'created' ? 201 : 200).json({
+            success: true,
+            data: result.memory,
+            message: result.action === 'merged' ? '记忆已合并更新' : '记忆已保存'
+        });
     } catch (error) {
         res.status(error.statusCode || 500).json({
             success: false,
             message: error.statusCode ? error.message : '无法保存记忆'
         });
     }
+});
+
+router.patch('/memory/:id', authenticateToken, (req, res) => {
+    try {
+        const memory = roomMemory.updateMemory(req.user.id, String(req.params.id || ''), req.body || {});
+        if (!memory) return res.status(404).json({ success: false, message: '记忆不存在' });
+        res.json({ success: true, data: memory, message: '记忆已更新' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '无法更新记忆' });
+    }
+});
+
+router.delete('/memory/:id', authenticateToken, (req, res) => {
+    const count = roomMemory.deleteMemory(req.user.id, String(req.params.id || ''));
+    if (!count) return res.status(404).json({ success: false, message: '记忆不存在' });
+    res.json({ success: true, data: { count }, message: '记忆已删除' });
 });
 
 router.delete('/memory', authenticateToken, (req, res) => {

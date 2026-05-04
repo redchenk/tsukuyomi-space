@@ -253,19 +253,17 @@
         const summary = content.replace(/\s+/g, ' ').slice(0, 260);
         if (canUseServerMemory(visitor)) {
             try {
-                await roomMemoryApi('', {
+                const saved = await roomMemoryApi('', {
                     method: 'POST',
                     body: JSON.stringify({
                         visitorName: visitor.name,
-                        type: 'conversation',
                         userMessage,
                         assistantReply,
                         content,
-                        summary,
                         metadata: { source: 'room-browser' }
                     })
                 });
-                updateMemoryStatus();
+                if (saved) updateMemoryStatus();
                 return;
             } catch (error) {
                 console.warn('Server room memory write failed, using local memory:', error.message);

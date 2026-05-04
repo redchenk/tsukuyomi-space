@@ -20,6 +20,8 @@ const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
 
 const toast = reactive({ text: '', visible: false });
 const memoryCount = ref(0);
+const memoryList = ref([]);
+const memoryLoading = ref(false);
 let toastTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
@@ -32,7 +34,7 @@ const tts = reactive({
   model: 'mimo-v2.5-tts',
   voice: 'mimo_default'
 });
-const memory = reactive({ enabled: true });
+const memory = reactive({ enabled: true, query: '', type: '', editing: null });
 const mcp = reactive({
   enabled: false,
   provider: 'custom',
@@ -59,6 +61,15 @@ const canUseServerMemory = computed(() => Boolean(props.user?.id && localStorage
 const memoryLocationText = computed(() => canUseServerMemory.value
   ? '记忆保存在服务端 SQLite 向量记忆库，按登录用户隔离；未登录时自动退回本机 IndexedDB。'
   : '当前未登录，记忆仅保存在本机 IndexedDB，不上传服务器。');
+const memoryTypeOptions = [
+  { value: '', label: '全部类型' },
+  { value: 'profile', label: '用户画像' },
+  { value: 'preference', label: '偏好规则' },
+  { value: 'project', label: '项目记忆' },
+  { value: 'episodic', label: '事件记忆' },
+  { value: 'semantic', label: '语义记忆' },
+  { value: 'conversation', label: '对话片段' }
+];
 
 function readJson(key, fallback) {
   try {
@@ -80,6 +91,14 @@ function showToast(text) {
   toastTimer = setTimeout(() => {
     toast.visible = false;
   }, 2200);
+}
+
+function memoryAuthHeaders(extra = {}) {
+  return { ...extra, Authorization: `Bearer ${localStorage.getItem('tsukuyomi_token') || ''}` };
+}
+
+function memoryTypeLabel(type) {
+  return memoryTypeOptions.find((item) => item.value === type)?.label || type || '未分类';
 }
 
 function normalizeChatUrl(apiUrl, modelName) {
@@ -161,6 +180,30 @@ async function loadMemoryCount() {
   }
 }
 
+async function loadServerMemories() {
+  if (!canUseServerMemory.value) {
+    memoryList.value = [];
+    return;
+  }
+  memoryLoading.value = true;
+  try {
+    const params = new URLSearchParams({ limit: '80' });
+    if (memory.query.trim()) params.set('q', memory.query.trim());
+    if (memory.type && !memory.query.trim()) params.set('type', memory.type);
+    const response = await fetch(`/api/room/memory?${params}`, {
+      headers: memoryAuthHeaders()
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    memoryList.value = Array.isArray(result.data) ? result.data : [];
+    memoryCount.value = memoryList.value.length || memoryCount.value;
+  } catch (error) {
+    showToast(`读取记忆失败：${error.message}`);
+  } finally {
+    memoryLoading.value = false;
+  }
+}
+
 function loadSettings() {
   const modelSettings = readJson('roomModelSettings', {});
   model.scale = Math.round(Number(modelSettings.scale || 1) * 100);
@@ -173,6 +216,7 @@ function loadSettings() {
   Object.assign(mcp, { ...mcp, ...readJson('roomMCPSettings', {}) });
   if (!Array.isArray(mcp.tools)) mcp.tools = [];
   loadMemoryCount();
+  loadServerMemories();
 }
 
 function applyMcpProvider(provider) {
@@ -328,6 +372,64 @@ function saveMemory() {
   showToast(memory.enabled ? '长期记忆已开启' : '长期记忆已关闭');
 }
 
+function editMemory(item) {
+  memory.editing = {
+    id: item.id,
+    type: item.type || 'conversation',
+    summary: item.summary || '',
+    content: item.content || '',
+    importance: Number(item.importance || 0.5),
+    confidence: Number(item.confidence || 0.8),
+    tags: (item.tags || []).join(', ')
+  };
+}
+
+function cancelMemoryEdit() {
+  memory.editing = null;
+}
+
+async function saveMemoryEdit() {
+  if (!memory.editing) return;
+  try {
+    const response = await fetch(`/api/room/memory/${encodeURIComponent(memory.editing.id)}`, {
+      method: 'PATCH',
+      headers: memoryAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        type: memory.editing.type,
+        summary: memory.editing.summary,
+        content: memory.editing.content,
+        importance: Number(memory.editing.importance),
+        confidence: Number(memory.editing.confidence),
+        tags: String(memory.editing.tags || '').split(',').map((item) => item.trim()).filter(Boolean)
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    showToast('记忆已更新');
+    memory.editing = null;
+    await loadServerMemories();
+  } catch (error) {
+    showToast(`保存失败：${error.message}`);
+  }
+}
+
+async function deleteMemoryItem(item) {
+  if (!confirm('确定删除这条长期记忆吗？')) return;
+  try {
+    const response = await fetch(`/api/room/memory/${encodeURIComponent(item.id)}`, {
+      method: 'DELETE',
+      headers: memoryAuthHeaders()
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    showToast('记忆已删除');
+    await loadMemoryCount();
+    await loadServerMemories();
+  } catch (error) {
+    showToast(`删除失败：${error.message}`);
+  }
+}
+
 async function clearMemory() {
   try {
     if (canUseServerMemory.value) {
@@ -338,6 +440,8 @@ async function clearMemory() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
       memoryCount.value = 0;
+      memoryList.value = [];
+      memory.editing = null;
       showToast(`已清空 ${result.data?.count || 0} 条服务端记忆`);
       return;
     }
@@ -486,8 +590,56 @@ onMounted(loadSettings);
           <p class="field-hint">{{ memoryLocationText }} 当前身份已有 {{ memoryCount }} 条记忆。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveMemory">保存记忆设置</button>
+            <button v-if="canUseServerMemory" class="ghost-btn" type="button" @click="loadServerMemories">刷新记忆</button>
             <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>
           </div>
+        </div>
+      </article>
+
+      <article v-if="canUseServerMemory" class="room-settings-card room-memory-manager">
+        <h2>记忆管理</h2>
+        <div class="memory-toolbar">
+          <input v-model="memory.query" type="text" placeholder="搜索记忆内容、偏好或项目">
+          <select v-model="memory.type">
+            <option v-for="item in memoryTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+          </select>
+          <button class="ghost-btn" type="button" @click="loadServerMemories">{{ memoryLoading ? '读取中...' : '检索' }}</button>
+        </div>
+        <form v-if="memory.editing" class="memory-editor" @submit.prevent="saveMemoryEdit">
+          <label>类型
+            <select v-model="memory.editing.type">
+              <option v-for="item in memoryTypeOptions.filter((option) => option.value)" :key="item.value" :value="item.value">{{ item.label }}</option>
+            </select>
+          </label>
+          <label>摘要<input v-model="memory.editing.summary" type="text"></label>
+          <label>内容<textarea v-model="memory.editing.content"></textarea></label>
+          <label>标签<input v-model="memory.editing.tags" type="text" placeholder="逗号分隔"></label>
+          <div class="memory-score-row">
+            <label>重要度 <strong>{{ Number(memory.editing.importance).toFixed(2) }}</strong><input v-model="memory.editing.importance" type="range" min="0" max="1" step="0.05"></label>
+            <label>置信度 <strong>{{ Number(memory.editing.confidence).toFixed(2) }}</strong><input v-model="memory.editing.confidence" type="range" min="0" max="1" step="0.05"></label>
+          </div>
+          <div class="button-row">
+            <button class="primary-btn" type="submit">保存记忆</button>
+            <button class="ghost-btn" type="button" @click="cancelMemoryEdit">取消</button>
+          </div>
+        </form>
+        <div v-if="!memoryList.length" class="field-hint">{{ memoryLoading ? '正在读取记忆...' : '还没有可显示的服务端记忆。' }}</div>
+        <div v-else class="memory-list">
+          <article v-for="item in memoryList" :key="item.id" class="memory-item">
+            <div class="memory-item-head">
+              <span class="chip">{{ memoryTypeLabel(item.type) }}</span>
+              <span class="field-hint">重要度 {{ Number(item.importance || 0).toFixed(2) }} · 置信度 {{ Number(item.confidence || 0).toFixed(2) }}</span>
+            </div>
+            <strong>{{ item.summary }}</strong>
+            <p>{{ item.content }}</p>
+            <div v-if="item.tags?.length" class="memory-tags">
+              <span v-for="tag in item.tags" :key="`${item.id}-${tag}`">{{ tag }}</span>
+            </div>
+            <div class="button-row">
+              <button class="ghost-btn" type="button" @click="editMemory(item)">编辑</button>
+              <button class="danger-btn" type="button" @click="deleteMemoryItem(item)">删除</button>
+            </div>
+          </article>
         </div>
       </article>
 

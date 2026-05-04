@@ -75,7 +75,8 @@
 }
 
 .room-settings-card input,
-.room-settings-card select {
+.room-settings-card select,
+.room-settings-card textarea {
     width: 100%;
     min-height: 44px;
     border: 1px solid rgba(139, 168, 205, 0.24);
@@ -87,9 +88,17 @@
 }
 
 .room-settings-card input:focus,
-.room-settings-card select:focus {
+.room-settings-card select:focus,
+.room-settings-card textarea:focus {
     border-color: rgba(102, 197, 223, 0.62);
     box-shadow: 0 0 0 3px rgba(102, 197, 223, 0.13);
+}
+
+.room-settings-card textarea {
+    min-height: 120px;
+    resize: vertical;
+    font: inherit;
+    line-height: 1.65;
 }
 
 .room-settings-card input[type="range"] {
@@ -132,8 +141,82 @@
     background: rgba(255, 255, 255, 0.52);
 }
 
+.room-memory-manager {
+    grid-column: 1 / -1;
+}
+
+.memory-toolbar,
+.memory-score-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 180px auto;
+    gap: 0.55rem;
+    align-items: center;
+}
+
+.memory-score-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.memory-editor {
+    display: grid;
+    gap: 0.8rem;
+    padding: 0.9rem;
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.58);
+}
+
+.memory-list {
+    display: grid;
+    gap: 0.75rem;
+    max-height: 540px;
+    overflow: auto;
+    padding-right: 0.2rem;
+}
+
+.memory-item {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.9rem;
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.58);
+}
+
+.memory-item-head,
+.memory-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: center;
+}
+
+.memory-item strong {
+    color: var(--ink);
+    line-height: 1.55;
+}
+
+.memory-item p {
+    margin: 0;
+    color: var(--text);
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.memory-tags span {
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    color: var(--muted);
+    background: rgba(228, 246, 253, 0.72);
+    font-size: 0.78rem;
+}
+
 html[data-theme="dark"] .room-settings-card input,
-html[data-theme="dark"] .room-settings-card select {
+html[data-theme="dark"] .room-settings-card select,
+html[data-theme="dark"] .room-settings-card textarea {
     color: var(--text);
     border-color: rgba(177, 205, 238, 0.22);
     background: rgba(15, 23, 42, 0.88);
@@ -142,6 +225,16 @@ html[data-theme="dark"] .room-settings-card select {
 html[data-theme="dark"] .mcp-tool-list {
     border-color: rgba(177, 205, 238, 0.16);
     background: rgba(15, 23, 42, 0.5);
+}
+
+html[data-theme="dark"] .memory-editor,
+html[data-theme="dark"] .memory-item {
+    border-color: rgba(177, 205, 238, 0.16);
+    background: rgba(15, 23, 42, 0.5);
+}
+
+html[data-theme="dark"] .memory-tags span {
+    background: rgba(30, 41, 59, 0.86);
 }
 
 html[data-theme="dark"] .room-settings-card select option {
@@ -156,6 +249,11 @@ html[data-theme="dark"] .room-settings-card select option {
     }
 
     .room-settings-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .memory-toolbar,
+    .memory-score-row {
         grid-template-columns: 1fr;
     }
 }

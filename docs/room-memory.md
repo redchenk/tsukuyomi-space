@@ -8,7 +8,10 @@ Room memory is an optional add-on for Yachiyo's agent flow. It must not block ch
 - Guests use browser-local IndexedDB memory only.
 - Each server memory row is scoped by `user_id`; users cannot read or delete another user's memory.
 - SQLite stores summary, original content, importance, metadata, and a lightweight embedding vector.
-- Search uses cosine similarity over hashed token vectors. This is intentionally dependency-light for the first version and can later be replaced by pgvector, Qdrant, LanceDB, or sqlite-vec behind the same service boundary.
+- Search uses a hybrid score: similarity, importance, recency, access signal, and memory type match.
+- Writes are filtered for long-term value and obvious sensitive content. Similar memories of the same type are merged instead of always appending.
+- The room settings page supports listing, searching, editing, deleting, and clearing the current user's server memories.
+- The lightweight hashed vector implementation is intentionally dependency-light and can later be replaced by pgvector, Qdrant, LanceDB, or sqlite-vec behind the same service boundary.
 
 ## Agent Flow
 
@@ -28,7 +31,6 @@ Room memory is an optional add-on for Yachiyo's agent flow. It must not block ch
 
 ## Next Steps
 
-- Add memory types: `profile`, `preference`, `event`, `task`, `conversation`.
-- Add LLM-based memory extraction so not every conversation is stored as raw conversation memory.
-- Add a memory management UI for reviewing, editing, pinning, exporting, and deleting individual memories.
+- Add LLM-based memory extraction for higher quality candidates than the current rule-based extractor.
 - Add a provider interface for real vector stores.
+- Add pin/export support and optional TTL/decay jobs.

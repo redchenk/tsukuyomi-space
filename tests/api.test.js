@@ -279,13 +279,46 @@ describe('room memory API', () => {
         }, userToken);
         assert.equal(created.response.status, 201);
         assert.match(created.body.data.summary, /浅蓝色/);
+        assert.equal(created.body.data.type, 'preference');
+        assert.ok(created.body.data.tags.includes('preference'));
         assert.ok(created.body.data.importance > 0);
+
+        const merged = await postJson('/api/room/memory', {
+            visitorName: 'normal-user',
+            userMessage: '以后房间主题继续用浅蓝色和淡紫色，我喜欢这种清新的感觉。',
+            assistantReply: '嗯，我会把这种偏好合并到记忆里。'
+        }, userToken);
+        assert.equal(merged.response.status, 200);
+        assert.equal(merged.body.message, '记忆已合并更新');
 
         const search = await request('/api/room/memory?q=%E6%B5%85%E8%93%9D%E8%89%B2&limit=3', {
             headers: jsonHeaders(userToken)
         });
         assert.equal(search.response.status, 200);
         assert.ok(search.body.data.some(item => item.summary.includes('浅蓝色')));
+        assert.ok(search.body.data[0].score > 0);
+
+        const updated = await request(`/api/room/memory/${created.body.data.id}`, {
+            method: 'PATCH',
+            headers: jsonHeaders(userToken),
+            body: JSON.stringify({
+                type: 'project',
+                summary: '用户希望 room 页面保持浅蓝和淡紫的清新氛围。',
+                tags: ['room', 'visual-style'],
+                importance: 0.9,
+                confidence: 0.88
+            })
+        });
+        assert.equal(updated.response.status, 200);
+        assert.equal(updated.body.data.type, 'project');
+        assert.equal(updated.body.data.importance, 0.9);
+        assert.ok(updated.body.data.tags.includes('visual-style'));
+
+        const byType = await request('/api/room/memory?type=project', {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(byType.response.status, 200);
+        assert.ok(byType.body.data.some(item => item.type === 'project'));
 
         const isolated = await request('/api/room/memory?q=%E6%B5%85%E8%93%9D%E8%89%B2', {
             headers: jsonHeaders(managedUserToken)
@@ -299,6 +332,14 @@ describe('room memory API', () => {
         assert.equal(status.response.status, 200);
         assert.equal(status.body.data.scope, 'per-user');
         assert.equal(status.body.data.count, 1);
+        assert.ok(status.body.data.byType.some(item => item.type === 'project' && item.count === 1));
+
+        const ignored = await postJson('/api/room/memory', {
+            userMessage: '我现在有点饿。',
+            assistantReply: '那先吃点东西吧。'
+        }, userToken);
+        assert.equal(ignored.response.status, 202);
+        assert.equal(ignored.body.data, null);
 
         const cleared = await request('/api/room/memory', {
             method: 'DELETE',
