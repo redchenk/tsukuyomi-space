@@ -430,6 +430,9 @@
 
     function normalizeChatUrl(apiUrl, model) {
         let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
+        if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${model || ''}`)) {
+            return url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages');
+        }
         const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|minimax|minimaxi|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${model || ''}`)
             && !/\/chat\/completions\/?$/.test(url);
         if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
@@ -437,6 +440,13 @@
     }
 
     function pickChatReply(data) {
+        if (Array.isArray(data?.content)) {
+            return data.content
+                .filter(block => block?.type === 'text')
+                .map(block => block.text || '')
+                .join('\n')
+                .trim();
+        }
         return data?.choices?.[0]?.message?.content
             || data?.choices?.[0]?.text
             || data?.message?.content
@@ -444,12 +454,32 @@
     }
 
     function pickChatMessage(data) {
+        if (Array.isArray(data?.content)) {
+            return { role: 'assistant', content: pickChatReply(data) };
+        }
         const message = data?.choices?.[0]?.message;
         if (message) return message;
         return { role: 'assistant', content: pickChatReply(data) };
     }
 
     function makeChatRequestBody(model, messages, limit = 240, extra = {}, apiUrl = '') {
+        if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${apiUrl || ''} ${model || ''}`)) {
+            const system = messages
+                .filter(item => item.role === 'system')
+                .map(item => String(item.content || ''))
+                .join('\n\n');
+            return {
+                model,
+                system,
+                messages: messages
+                    .filter(item => item.role !== 'system')
+                    .map(item => ({ role: item.role, content: String(item.content || '') })),
+                max_tokens: limit,
+                temperature: 1,
+                stream: false,
+                ...extra
+            };
+        }
         const body = {
             model,
             messages,
@@ -457,11 +487,7 @@
             stream: false,
             ...extra
         };
-        if (/minimax|minimaxi/i.test(`${model || ''} ${apiUrl || ''}`)) {
-            body.max_completion_tokens = limit;
-        } else {
-            body.max_tokens = limit;
-        }
+        body.max_tokens = limit;
         return body;
     }
 
@@ -766,6 +792,9 @@
             mcpTools = await listMcpTools(mcpSettings);
         } catch (error) {
             console.warn('MCP tools unavailable:', error.message);
+            mcpTools = [];
+        }
+        if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${settings.apiUrl || ''} ${model || ''}`)) {
             mcpTools = [];
         }
         const canUseVision = image && supportsVisionModel(model, settings.apiUrl);
