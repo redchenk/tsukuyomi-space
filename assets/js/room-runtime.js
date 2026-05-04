@@ -291,6 +291,12 @@
             || '';
     }
 
+    function pickChatMessage(data) {
+        const message = data?.choices?.[0]?.message;
+        if (message) return message;
+        return { role: 'assistant', content: pickChatReply(data) };
+    }
+
     function pickAudioBase64(data) {
         return data?.choices?.[0]?.message?.audio?.data
             || data?.choices?.[0]?.message?.audio
@@ -367,6 +373,133 @@
         ].join('\n');
     }
 
+    function readMcpSettings() {
+        const settings = readJson('roomMCPSettings', {});
+        return {
+            enabled: Boolean(settings.enabled),
+            endpoint: String(settings.endpoint || '').trim(),
+            apiKey: String(settings.apiKey || '').trim(),
+            authHeader: String(settings.authHeader || 'Authorization').trim() || 'Authorization',
+            toolAllowlist: String(settings.toolAllowlist || '').trim(),
+            tools: Array.isArray(settings.tools) ? settings.tools : []
+        };
+    }
+
+    function mcpHeaders(settings) {
+        const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+        if (settings.apiKey && settings.authHeader) {
+            headers[settings.authHeader] = /^Bearer\s+/i.test(settings.apiKey) || settings.authHeader.toLowerCase() !== 'authorization'
+                ? settings.apiKey
+                : `Bearer ${settings.apiKey}`;
+        }
+        return headers;
+    }
+
+    async function callMcpRpc(settings, method, params = {}) {
+        if (!settings.endpoint) throw new Error('MCP endpoint is required');
+        const response = await fetch(settings.endpoint, {
+            method: 'POST',
+            headers: mcpHeaders(settings),
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                method,
+                params
+            })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.error) throw new Error(data?.error?.message || `MCP HTTP ${response.status}`);
+        return data.result || data;
+    }
+
+    function allowedMcpToolNames(settings) {
+        const names = String(settings.toolAllowlist || '')
+            .split(',')
+            .map(item => item.trim())
+            .filter(Boolean);
+        return names.length ? new Set(names) : null;
+    }
+
+    async function listMcpTools(settings) {
+        if (!settings.enabled || !settings.endpoint) return [];
+        let tools = settings.tools;
+        if (!tools.length) {
+            const result = await callMcpRpc(settings, 'tools/list');
+            tools = Array.isArray(result.tools) ? result.tools : [];
+        }
+        const allowlist = allowedMcpToolNames(settings);
+        return tools
+            .filter(tool => tool?.name && (!allowlist || allowlist.has(tool.name)))
+            .slice(0, 24)
+            .map(tool => ({
+                type: 'function',
+                function: {
+                    name: tool.name,
+                    description: tool.description || `MCP tool ${tool.name}`,
+                    parameters: tool.inputSchema || tool.input_schema || { type: 'object', properties: {} }
+                }
+            }));
+    }
+
+    function parseToolArguments(value) {
+        if (!value) return {};
+        if (typeof value === 'object') return value;
+        try {
+            return JSON.parse(value);
+        } catch (_) {
+            return {};
+        }
+    }
+
+    function formatMcpToolResult(result) {
+        const content = Array.isArray(result?.content) ? result.content : [];
+        if (content.length) {
+            return content.map((item) => {
+                if (item.type === 'text') return item.text || '';
+                if (item.text) return item.text;
+                return JSON.stringify(item);
+            }).filter(Boolean).join('\n').slice(0, 4000);
+        }
+        return JSON.stringify(result ?? {}).slice(0, 4000);
+    }
+
+    async function runMcpToolCalls(settings, toolCalls = []) {
+        const allowlist = allowedMcpToolNames(settings);
+        const calls = toolCalls.slice(0, 4);
+        const results = [];
+        for (const call of calls) {
+            const fn = call.function || {};
+            const name = fn.name || call.name;
+            if (!name) continue;
+            if (allowlist && !allowlist.has(name)) {
+                results.push({
+                    role: 'tool',
+                    tool_call_id: call.id || name,
+                    content: `MCP tool "${name}" is not in the allowlist.`
+                });
+                continue;
+            }
+            try {
+                const result = await callMcpRpc(settings, 'tools/call', {
+                    name,
+                    arguments: parseToolArguments(fn.arguments || call.arguments)
+                });
+                results.push({
+                    role: 'tool',
+                    tool_call_id: call.id || name,
+                    content: formatMcpToolResult(result)
+                });
+            } catch (error) {
+                results.push({
+                    role: 'tool',
+                    tool_call_id: call.id || name,
+                    content: `MCP tool "${name}" failed: ${error.message}`
+                });
+            }
+        }
+        return results;
+    }
+
     async function createClientChatCompletion({ message, conversation = [], settings = {}, weatherLocation = null }) {
         let weather = null;
         if (isWeatherQuestion(message)) {
@@ -396,30 +529,78 @@
         const history = Array.isArray(conversation)
             ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12)
             : [];
+        const baseMessages = [
+            { role: 'system', content: systemPrompt },
+            ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
+            { role: 'user', content: String(message) }
+        ];
+        const mcpSettings = readMcpSettings();
+        let mcpTools = [];
+        try {
+            mcpTools = await listMcpTools(mcpSettings);
+        } catch (error) {
+            console.warn('MCP tools unavailable:', error.message);
+            mcpTools = [];
+        }
+        const requestBody = {
+            model,
+            messages: baseMessages,
+            temperature: 0.7,
+            max_tokens: 240,
+            stream: false
+        };
+        if (mcpTools.length) {
+            requestBody.tools = mcpTools;
+            requestBody.tool_choice = 'auto';
+        }
         const response = await fetch(normalizeChatUrl(settings.apiUrl, model), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${settings.apiKey}`
             },
-            body: JSON.stringify({
-                model,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
-                    { role: 'user', content: String(message) }
-                ],
-                temperature: 0.7,
-                max_tokens: 240,
-                stream: false
-            })
+            body: JSON.stringify(requestBody)
         });
         if (!response.ok) {
             const detail = await response.text();
             throw new Error(`LLM ${response.status}: ${detail.slice(0, 160)}`);
         }
         const data = await response.json();
-        const reply = pickChatReply(data);
+        const assistantMessage = pickChatMessage(data);
+        if (assistantMessage?.tool_calls?.length && mcpTools.length) {
+            const toolResults = await runMcpToolCalls(mcpSettings, assistantMessage.tool_calls);
+            const finalResponse = await fetch(normalizeChatUrl(settings.apiUrl, model), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${settings.apiKey}`
+                },
+                body: JSON.stringify({
+                    model,
+                    messages: [
+                        ...baseMessages,
+                        {
+                            role: 'assistant',
+                            content: assistantMessage.content || '',
+                            tool_calls: assistantMessage.tool_calls
+                        },
+                        ...toolResults
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 260,
+                    stream: false
+                })
+            });
+            if (!finalResponse.ok) {
+                const detail = await finalResponse.text();
+                throw new Error(`LLM ${finalResponse.status}: ${detail.slice(0, 160)}`);
+            }
+            const finalData = await finalResponse.json();
+            const reply = pickChatReply(finalData);
+            if (!reply) throw new Error('LLM response did not contain a reply');
+            return { reply, model: finalData.model || model, weather, mcpToolsUsed: toolResults.length };
+        }
+        const reply = assistantMessage?.content || pickChatReply(data);
         if (!reply) throw new Error('LLM response did not contain a reply');
         return { reply, model: data.model || model, weather };
     }

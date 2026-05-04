@@ -122,11 +122,26 @@
     line-height: 1.65;
 }
 
+.mcp-tool-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    padding: 0.72rem;
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.52);
+}
+
 html[data-theme="dark"] .room-settings-card input,
 html[data-theme="dark"] .room-settings-card select {
     color: var(--text);
     border-color: rgba(177, 205, 238, 0.22);
     background: rgba(15, 23, 42, 0.88);
+}
+
+html[data-theme="dark"] .mcp-tool-list {
+    border-color: rgba(177, 205, 238, 0.16);
+    background: rgba(15, 23, 42, 0.5);
 }
 
 html[data-theme="dark"] .room-settings-card select option {

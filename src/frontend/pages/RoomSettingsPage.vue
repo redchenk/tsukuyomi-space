@@ -31,6 +31,14 @@ const tts = reactive({
   voice: 'mimo_default'
 });
 const memory = reactive({ enabled: true });
+const mcp = reactive({
+  enabled: false,
+  endpoint: '',
+  apiKey: '',
+  authHeader: 'Authorization',
+  toolAllowlist: '',
+  tools: []
+});
 
 const visitorKey = computed(() => {
   if (props.user?.id) return `user:${props.user.id}`;
@@ -143,6 +151,8 @@ function loadSettings() {
   Object.assign(llm, readJson('roomLLMSettings', {}));
   Object.assign(tts, { ...tts, ...readJson('roomTTSSettings', {}) });
   Object.assign(memory, { enabled: true, ...readJson('roomMemorySettings', {}) });
+  Object.assign(mcp, { ...mcp, ...readJson('roomMCPSettings', {}) });
+  if (!Array.isArray(mcp.tools)) mcp.tools = [];
   loadMemoryCount();
 }
 
@@ -288,6 +298,62 @@ async function clearMemory() {
   }
 }
 
+function makeMcpHeaders() {
+  const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+  const key = String(mcp.apiKey || '').trim();
+  const headerName = String(mcp.authHeader || 'Authorization').trim();
+  if (key && headerName) {
+    headers[headerName] = /^Bearer\s+/i.test(key) || headerName.toLowerCase() !== 'authorization' ? key : `Bearer ${key}`;
+  }
+  return headers;
+}
+
+async function callMcp(method, params = {}) {
+  const endpoint = String(mcp.endpoint || '').trim();
+  if (!endpoint) throw new Error('请先填写 MCP HTTP 端点');
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: makeMcpHeaders(),
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: Date.now(),
+      method,
+      params
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) throw new Error(data?.error?.message || `HTTP ${response.status}`);
+  return data.result || data;
+}
+
+function saveMCP() {
+  writeJson('roomMCPSettings', {
+    enabled: Boolean(mcp.enabled),
+    endpoint: String(mcp.endpoint || '').trim(),
+    apiKey: String(mcp.apiKey || '').trim(),
+    authHeader: String(mcp.authHeader || 'Authorization').trim() || 'Authorization',
+    toolAllowlist: String(mcp.toolAllowlist || '').trim(),
+    tools: Array.isArray(mcp.tools) ? mcp.tools : []
+  });
+  showToast(mcp.enabled ? 'MCP 设置已保存' : 'MCP 已关闭');
+}
+
+async function testMCP() {
+  try {
+    const result = await callMcp('tools/list');
+    const tools = Array.isArray(result.tools) ? result.tools : [];
+    mcp.tools = tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description || '',
+      inputSchema: tool.inputSchema || tool.input_schema || { type: 'object', properties: {} }
+    })).filter((tool) => tool.name);
+    saveMCP();
+    showToast(mcp.tools.length ? `MCP 已连接，发现 ${mcp.tools.length} 个工具` : 'MCP 已连接，但未发现工具');
+  } catch (error) {
+    showToast(`MCP 测试失败：${error.message}`);
+  }
+}
+
 onMounted(loadSettings);
 </script>
 
@@ -297,7 +363,7 @@ onMounted(loadSettings);
       <div>
         <div class="hub-kicker">Room Settings</div>
         <h1 class="section-title">房间设置</h1>
-        <p class="section-subtitle">模型位置、LLM、TTS 和长期记忆都集中在这里管理。保存后回到房间即可使用。</p>
+        <p class="section-subtitle">模型位置、LLM、TTS、长期记忆和 MCP 工具都集中在这里管理。保存后回到房间即可使用。</p>
       </div>
       <div class="room-settings-actions">
         <a class="primary-btn" href="/room" @click.prevent="emit('go', '/room')">返回房间</a>
@@ -360,6 +426,25 @@ onMounted(loadSettings);
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveMemory">保存记忆设置</button>
             <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="room-settings-card">
+        <h2>MCP 工具接入</h2>
+        <div class="form-grid">
+          <label class="check-row"><input v-model="mcp.enabled" type="checkbox"> 允许 LLM 调用 MCP 工具</label>
+          <label>MCP HTTP 端点<input v-model="mcp.endpoint" type="text" placeholder="https://example.com/mcp"></label>
+          <label>鉴权头<input v-model="mcp.authHeader" type="text" placeholder="Authorization"></label>
+          <label>访问密钥<input v-model="mcp.apiKey" type="password" placeholder="Bearer ..."></label>
+          <label>工具白名单<input v-model="mcp.toolAllowlist" type="text" placeholder="留空允许全部，或用逗号分隔工具名"></label>
+          <p class="field-hint">MCP 请求由浏览器直接发出，端点需要支持 CORS 与 JSON-RPC 的 tools/list、tools/call。密钥保存在当前浏览器本地。</p>
+          <div v-if="mcp.tools.length" class="mcp-tool-list">
+            <span v-for="tool in mcp.tools" :key="tool.name" class="chip">{{ tool.name }}</span>
+          </div>
+          <div class="button-row">
+            <button class="primary-btn" type="button" @click="saveMCP">保存 MCP</button>
+            <button class="ghost-btn" type="button" @click="testMCP">测试并发现工具</button>
           </div>
         </div>
       </article>
