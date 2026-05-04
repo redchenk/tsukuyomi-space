@@ -349,6 +349,7 @@
                         userMessage,
                         assistantReply,
                         content,
+                        force: true,
                         metadata: { source: 'room-browser' }
                     })
                 });

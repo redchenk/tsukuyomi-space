@@ -159,6 +159,7 @@ function buildMemoryCandidate(payload = {}) {
     const explicitSummary = cleanText(payload.summary || '', 500);
     const summary = explicitSummary || summarizeMemory({ ...payload, content: rawContent });
     const type = normalizeType(payload.type || inferMemoryType(`${summary}\n${rawContent}`));
+    if (SENSITIVE_PATTERN.test(`${summary}\n${rawContent}`)) return null;
     if (!hasLongTermValue(`${summary}\n${rawContent}`) && !payload.force) return null;
     const importance = Number.isFinite(Number(payload.importance))
         ? Math.max(0, Math.min(1, Number(payload.importance)))

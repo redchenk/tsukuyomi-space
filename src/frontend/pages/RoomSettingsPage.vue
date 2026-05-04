@@ -132,6 +132,7 @@ const visitorKey = computed(() => {
   return `guest:${id}`;
 });
 const canUseServerMemory = computed(() => Boolean(roomUser.value?.id && localStorage.getItem('tsukuyomi_token')));
+const memoryModeLabel = computed(() => canUseServerMemory.value ? '服务端私有记忆' : '本地浏览器记忆');
 const memoryLocationText = computed(() => canUseServerMemory.value
   ? '记忆保存在服务端 SQLite 向量记忆库，按登录用户隔离；未登录时自动退回本机 IndexedDB。'
   : '当前未登录，记忆仅保存在本机 IndexedDB，不上传服务器。');
@@ -444,6 +445,49 @@ async function loadServerMemories() {
   }
 }
 
+async function loadLocalMemories() {
+  memoryLoading.value = true;
+  try {
+    const db = await openMemoryDb();
+    if (!db) {
+      memoryList.value = [];
+      memoryCount.value = 0;
+      return;
+    }
+    const tx = db.transaction(MEMORY_STORE, 'readonly');
+    const index = tx.objectStore(MEMORY_STORE).index('userKey');
+    const records = await requestToPromise(index.getAll(IDBKeyRange.only(visitorKey.value)));
+    const query = memory.query.trim().toLowerCase();
+    const type = memory.type.trim();
+    memoryList.value = records
+      .filter((item) => !type || item.type === type)
+      .filter((item) => {
+        if (!query) return true;
+        return `${item.summary || ''}\n${item.content || ''}\n${item.visitorName || ''}`.toLowerCase().includes(query);
+      })
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+      .slice(0, 80)
+      .map((item) => ({
+        ...item,
+        type: item.type || 'conversation',
+        importance: Number(item.importance ?? 0.5),
+        confidence: Number(item.confidence ?? 0.8),
+        tags: Array.isArray(item.tags) ? item.tags : []
+      }));
+    memoryCount.value = records.length;
+  } catch (error) {
+    showToast(`读取本地记忆失败：${error.message}`);
+  } finally {
+    memoryLoading.value = false;
+  }
+}
+
+async function loadVisibleMemories() {
+  storedUser.value = readStoredUser();
+  if (canUseServerMemory.value) return loadServerMemories();
+  return loadLocalMemories();
+}
+
 function loadSettings() {
   storedUser.value = readStoredUser();
   const modelSettings = readJson('roomModelSettings', {});
@@ -462,7 +506,7 @@ function loadSettings() {
   Object.assign(mcp, { ...mcp, ...readJson('roomMCPSettings', {}) });
   if (!Array.isArray(mcp.tools)) mcp.tools = [];
   loadMemoryCount();
-  loadServerMemories();
+  if (memory.managerOpen) loadVisibleMemories();
 }
 
 function applyMcpProvider(provider) {
@@ -631,6 +675,7 @@ async function testTTS() {
 
 function saveMemory() {
   writeJson('roomMemorySettings', { enabled: Boolean(memory.enabled) });
+  loadMemoryCount();
   showToast(memory.enabled ? '长期记忆已开启' : '长期记忆已关闭');
 }
 
@@ -691,14 +736,14 @@ function resetKnowledgeDefaults() {
 
 async function toggleMemoryManager() {
   memory.managerOpen = !memory.managerOpen;
-  if (memory.managerOpen && canUseServerMemory.value && !memoryList.value.length && !memoryLoading.value) {
-    await loadServerMemories();
+  if (memory.managerOpen && !memoryList.value.length && !memoryLoading.value) {
+    await loadVisibleMemories();
   }
 }
 
 async function openMemoryItem(item) {
   try {
-    const detail = item.content ? item : await fetchMemoryDetail(item.id);
+    const detail = item.content || !canUseServerMemory.value ? item : await fetchMemoryDetail(item.id);
     memory.expanded[item.id] = true;
     const index = memoryList.value.findIndex((entry) => entry.id === item.id);
     if (index >= 0) memoryList.value[index] = { ...memoryList.value[index], ...detail };
@@ -746,6 +791,28 @@ function cancelMemoryEdit() {
 async function saveMemoryEdit() {
   if (!memory.editing) return;
   try {
+    if (!canUseServerMemory.value) {
+      const db = await openMemoryDb();
+      if (!db) throw new Error('IndexedDB 不可用');
+      const existing = memoryList.value.find((item) => item.id === memory.editing.id);
+      if (!existing) throw new Error('记忆不存在');
+      const tx = db.transaction(MEMORY_STORE, 'readwrite');
+      tx.objectStore(MEMORY_STORE).put({
+        ...existing,
+        type: memory.editing.type,
+        summary: memory.editing.summary,
+        content: memory.editing.content,
+        importance: Number(memory.editing.importance),
+        confidence: Number(memory.editing.confidence),
+        tags: String(memory.editing.tags || '').split(',').map((item) => item.trim()).filter(Boolean),
+        updatedAt: new Date().toISOString()
+      });
+      await txToPromise(tx);
+      showToast('本地记忆已更新');
+      memory.editing = null;
+      await loadLocalMemories();
+      return;
+    }
     const response = await fetch(`/api/room/memory/${encodeURIComponent(memory.editing.id)}`, {
       method: 'PATCH',
       headers: memoryAuthHeaders({ 'Content-Type': 'application/json' }),
@@ -762,7 +829,7 @@ async function saveMemoryEdit() {
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     showToast('记忆已更新');
     memory.editing = null;
-    await loadServerMemories();
+    await loadVisibleMemories();
   } catch (error) {
     showToast(`保存失败：${error.message}`);
   }
@@ -771,6 +838,16 @@ async function saveMemoryEdit() {
 async function deleteMemoryItem(item) {
   if (!confirm('确定删除这条长期记忆吗？')) return;
   try {
+    if (!canUseServerMemory.value) {
+      const db = await openMemoryDb();
+      if (!db) throw new Error('IndexedDB 不可用');
+      const tx = db.transaction(MEMORY_STORE, 'readwrite');
+      tx.objectStore(MEMORY_STORE).delete(item.id);
+      await txToPromise(tx);
+      showToast('本地记忆已删除');
+      await loadLocalMemories();
+      return;
+    }
     const response = await fetch(`/api/room/memory/${encodeURIComponent(item.id)}`, {
       method: 'DELETE',
       headers: memoryAuthHeaders()
@@ -779,7 +856,7 @@ async function deleteMemoryItem(item) {
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     showToast('记忆已删除');
     await loadMemoryCount();
-    await loadServerMemories();
+    await loadVisibleMemories();
   } catch (error) {
     showToast(`删除失败：${error.message}`);
   }
@@ -809,6 +886,9 @@ async function clearMemory() {
     records.forEach((record) => tx.objectStore(MEMORY_STORE).delete(record.id));
     await txToPromise(tx);
     memoryCount.value = 0;
+    memoryList.value = [];
+    memory.editing = null;
+    memory.expanded = {};
     showToast(`已清空 ${records.length} 条本地记忆`);
   } catch (error) {
     showToast(`清空失败：${error.message}`);
@@ -983,7 +1063,7 @@ onMounted(loadSettings);
           <p class="field-hint">{{ memoryLocationText }} 当前身份已有 {{ memoryCount }} 条记忆。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveMemory">保存记忆设置</button>
-            <button v-if="canUseServerMemory" class="ghost-btn" type="button" @click="loadServerMemories">刷新记忆</button>
+            <button class="ghost-btn" type="button" @click="loadVisibleMemories">刷新记忆</button>
             <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>
           </div>
         </div>
@@ -1034,7 +1114,7 @@ onMounted(loadSettings);
         </div>
       </article>
 
-      <article v-if="canUseServerMemory" class="room-settings-card room-memory-manager" :class="{ collapsed: !memory.managerOpen }">
+      <article class="room-settings-card room-memory-manager" :class="{ collapsed: !memory.managerOpen }">
         <button
           class="memory-manager-toggle"
           type="button"
@@ -1043,7 +1123,7 @@ onMounted(loadSettings);
         >
           <span>
             <strong>记忆管理</strong>
-            <small>当前身份已有 {{ memoryCount }} 条记忆，展开后可搜索、编辑和删除。</small>
+            <small>{{ memoryModeLabel }}已有 {{ memoryCount }} 条，展开后可搜索、编辑和删除。</small>
           </span>
           <span class="memory-manager-icon">{{ memory.managerOpen ? '收起' : '展开' }}</span>
         </button>
@@ -1053,7 +1133,7 @@ onMounted(loadSettings);
             <select v-model="memory.type">
               <option v-for="item in memoryTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
             </select>
-            <button class="ghost-btn" type="button" @click="loadServerMemories">{{ memoryLoading ? '读取中...' : '检索' }}</button>
+            <button class="ghost-btn" type="button" @click="loadVisibleMemories">{{ memoryLoading ? '读取中...' : '检索' }}</button>
           </div>
           <form v-if="memory.editing" class="memory-editor" @submit.prevent="saveMemoryEdit">
           <label>类型
@@ -1073,7 +1153,7 @@ onMounted(loadSettings);
             <button class="ghost-btn" type="button" @click="cancelMemoryEdit">取消</button>
           </div>
           </form>
-          <div v-if="!memoryList.length" class="field-hint">{{ memoryLoading ? '正在读取记忆...' : '还没有可显示的服务端记忆。' }}</div>
+          <div v-if="!memoryList.length" class="field-hint">{{ memoryLoading ? '正在读取记忆...' : `还没有可显示的${memoryModeLabel}。` }}</div>
           <div v-else class="memory-list">
             <article v-for="item in memoryList" :key="item.id" class="memory-item">
             <div class="memory-item-head">

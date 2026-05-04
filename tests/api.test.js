@@ -348,12 +348,28 @@ describe('room memory API', () => {
         assert.equal(ignored.response.status, 202);
         assert.equal(ignored.body.data, null);
 
+        const forced = await postJson('/api/room/memory', {
+            userMessage: '我现在有点饿。',
+            assistantReply: '那先吃点东西吧。',
+            force: true
+        }, userToken);
+        assert.equal(forced.response.status, 201);
+        assert.equal(forced.body.data.type, 'conversation');
+
+        const sensitive = await postJson('/api/room/memory', {
+            userMessage: '请记住我的 API key 是 sk-secret-test。',
+            assistantReply: '这类敏感信息不应该保存。',
+            force: true
+        }, userToken);
+        assert.equal(sensitive.response.status, 202);
+        assert.equal(sensitive.body.data, null);
+
         const cleared = await request('/api/room/memory', {
             method: 'DELETE',
             headers: jsonHeaders(userToken)
         });
         assert.equal(cleared.response.status, 200);
-        assert.equal(cleared.body.data.count, 1);
+        assert.equal(cleared.body.data.count, 2);
     });
 });
 
