@@ -430,7 +430,7 @@
 
     function normalizeChatUrl(apiUrl, model) {
         let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
-        const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${model || ''}`)
+        const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|minimax|minimaxi|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${model || ''}`)
             && !/\/chat\/completions\/?$/.test(url);
         if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
         return url;
@@ -447,6 +447,22 @@
         const message = data?.choices?.[0]?.message;
         if (message) return message;
         return { role: 'assistant', content: pickChatReply(data) };
+    }
+
+    function makeChatRequestBody(model, messages, limit = 240, extra = {}, apiUrl = '') {
+        const body = {
+            model,
+            messages,
+            temperature: 0.7,
+            stream: false,
+            ...extra
+        };
+        if (/minimax|minimaxi/i.test(`${model || ''} ${apiUrl || ''}`)) {
+            body.max_completion_tokens = limit;
+        } else {
+            body.max_tokens = limit;
+        }
+        return body;
     }
 
     function pickAudioBase64(data) {
@@ -766,13 +782,7 @@
             userMessage
         ];
 
-        const requestBody = {
-            model,
-            messages: requestMessages,
-            temperature: 0.7,
-            max_tokens: 240,
-            stream: false
-        };
+        const requestBody = makeChatRequestBody(model, requestMessages, 240, {}, settings.apiUrl);
         if (mcpTools.length) {
             requestBody.tools = mcpTools;
             requestBody.tool_choice = 'auto';
@@ -824,9 +834,7 @@
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${settings.apiKey}`
                 },
-                body: JSON.stringify({
-                    model,
-                    messages: [
+                body: JSON.stringify(makeChatRequestBody(model, [
                         ...requestMessages,
                         {
                             role: 'assistant',
@@ -834,11 +842,7 @@
                             tool_calls: assistantMessage.tool_calls
                         },
                         ...toolResults
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 260,
-                    stream: false
-                })
+                    ], 260, {}, settings.apiUrl))
             });
             if (!finalResponse.ok) {
                 const detail = await finalResponse.text();
@@ -964,6 +968,7 @@
         return String(text || '')
             .replace(/<\|ACT:[\s\S]*?\|>/g, '')
             .replace(/<\|DELAY:\d+(?:\.\d+)?\|>/g, '')
+            .replace(/<think>[\s\S]*?<\/think>/gi, '')
             .trim();
     }
 

@@ -18,7 +18,7 @@ const LLM_PRESETS = {
   zhipu: { label: '智谱 GLM', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4-flash' },
   siliconflow: { label: 'SiliconFlow', apiUrl: 'https://api.siliconflow.cn/v1/chat/completions', model: 'Qwen/Qwen2.5-7B-Instruct' },
   volcengine: { label: '火山方舟', apiUrl: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions', model: 'doubao-1-5-pro-32k-250115' },
-  minimax: { label: 'MiniMax', apiUrl: 'https://api.minimax.chat/v1/text/chatcompletion_v2', model: 'abab6.5s-chat' },
+  minimax: { label: 'MiniMax', apiUrl: 'https://api.minimaxi.com/v1/chat/completions', model: 'MiniMax-M2.7' },
   groq: { label: 'Groq', apiUrl: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.1-8b-instant' },
   mistral: { label: 'Mistral', apiUrl: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-small-latest' },
   together: { label: 'Together', apiUrl: 'https://api.together.xyz/v1/chat/completions', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
@@ -197,7 +197,7 @@ function memoryTypeLabel(type) {
 
 function normalizeChatUrl(apiUrl, modelName) {
   let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
-  const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${modelName || ''}`)
+  const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|minimax|minimaxi|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${modelName || ''}`)
     && !/\/chat\/completions\/?$/.test(url);
   if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
   return url;
@@ -205,6 +205,20 @@ function normalizeChatUrl(apiUrl, modelName) {
 
 function pickChatReply(data) {
   return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || '';
+}
+
+function makeChatRequestBody(modelName, messages, limit = 240) {
+  const body = {
+    model: modelName || 'moonshot-v1-8k',
+    messages,
+    temperature: 0.4
+  };
+  if (/minimax/i.test(modelName || '') || /minimaxi|api\.minimax/i.test(llm.apiUrl || '')) {
+    body.max_completion_tokens = limit;
+  } else {
+    body.max_tokens = limit;
+  }
+  return body;
 }
 
 function pickAudioBase64(data) {
@@ -492,11 +506,7 @@ async function testLLM() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${llm.apiKey}`
       },
-      body: JSON.stringify({
-        model: llm.model || 'moonshot-v1-8k',
-        messages: [{ role: 'user', content: '请用一句话回复连接测试。' }],
-        temperature: 0.4
-      })
+      body: JSON.stringify(makeChatRequestBody(llm.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120))
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data?.error?.message || `HTTP ${response.status}`);
