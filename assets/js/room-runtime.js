@@ -502,7 +502,7 @@
         const result = await callMcpRpc(settings, 'tools/call', {
             name: 'understand_image',
             arguments: {
-                image_url: image.url || image.dataUrl,
+                image_source: image.url || image.dataUrl,
                 image_data: image.dataUrl,
                 prompt: question || '请描述这张图片，并指出和用户问题相关的内容。'
             }

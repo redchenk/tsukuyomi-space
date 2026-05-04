@@ -135,7 +135,7 @@ onBeforeUnmount(() => {
         <div id="chatImagePreview" class="chat-image-preview" hidden></div>
         <div class="chat-input-row">
           <input id="chatImageInput" type="file" accept="image/*" hidden>
-          <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" title="上传图片" aria-label="上传图片">图</button>
+          <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" title="上传图片" aria-label="上传图片"><span aria-hidden="true">+</span><span>图片</span></button>
           <input id="chatInput" type="text" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;">
           <button id="sendChatBtn" class="panel-btn" type="button">&#21457;&#36865;</button>
         </div>

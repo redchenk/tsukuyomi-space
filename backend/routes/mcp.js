@@ -24,7 +24,7 @@ const TOKEN_PLAN_TOOLS = [
         inputSchema: {
             type: 'object',
             properties: {
-                image_url: { type: 'string', description: 'Public image URL to analyze.' },
+                image_source: { type: 'string', description: 'Public image URL or local file path to analyze.' },
                 image_data: { type: 'string', description: 'Data URL or base64 image data when the MCP server supports inline images.' },
                 prompt: { type: 'string', description: 'Question or analysis prompt about the image.' }
             }
@@ -74,8 +74,14 @@ function imageExtensionFromMime(mime) {
 }
 
 function writeTempImageIfNeeded(args = {}) {
-    if (!String(args.image_url || '').startsWith('data:') && !args.image_data) return { args, cleanup: null };
-    const dataUrl = String(args.image_data || args.image_url || '');
+    if (!String(args.image_source || args.image_url || '').startsWith('data:') && !args.image_data) return {
+        args: {
+            ...args,
+            image_source: args.image_source || args.image_url
+        },
+        cleanup: null
+    };
+    const dataUrl = String(args.image_data || args.image_source || args.image_url || '');
     const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
     if (!match) return { args, cleanup: null };
     const bytes = Buffer.from(match[2], 'base64');
@@ -85,7 +91,7 @@ function writeTempImageIfNeeded(args = {}) {
     return {
         args: {
             ...args,
-            image_url: filePath,
+            image_source: filePath,
             prompt: args.prompt || args.question || '请描述这张图片，并指出和用户问题相关的内容。'
         },
         cleanup: () => fs.rmSync(filePath, { force: true })

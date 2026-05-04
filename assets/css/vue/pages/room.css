@@ -672,8 +672,24 @@ body.vue-room-route {
 }
 
 .chat-attach-btn {
-    min-width: 38px;
-    padding-inline: 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.28rem;
+    min-width: 64px;
+    padding-inline: 0.62rem;
+    white-space: nowrap;
+}
+
+.chat-attach-btn span:first-child {
+    display: grid;
+    place-items: center;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 50%;
+    background: rgba(var(--room-accent-rgb), 0.18);
+    font-weight: 800;
+    line-height: 1;
 }
 
 .status-layer {
