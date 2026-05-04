@@ -319,19 +319,8 @@
     font-size: 0.78rem;
 }
 
-.room-test-dialog-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 80;
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-    background: rgba(15, 23, 42, 0.38);
-    backdrop-filter: blur(12px);
-}
-
-.room-test-dialog {
-    width: min(92vw, 520px);
+.room-test-panel {
+    width: 100%;
     border: 1px solid rgba(139, 168, 205, 0.22);
     border-radius: 16px;
     padding: 1rem;
@@ -347,19 +336,19 @@
     gap: 0.8rem;
 }
 
-.room-test-dialog h2 {
+.room-test-panel h3 {
     margin: 0.85rem 0 0.45rem;
     color: var(--ink);
     font-size: 1.15rem;
 }
 
-.room-test-dialog p {
+.room-test-panel p {
     margin: 0;
     color: var(--text);
     line-height: 1.7;
 }
 
-.room-test-dialog pre {
+.room-test-panel pre {
     max-height: 240px;
     overflow: auto;
     margin: 0.85rem 0 0;
@@ -456,13 +445,13 @@ html[data-theme="dark"] .room-settings-card select option {
     background: #111827;
 }
 
-html[data-theme="dark"] .room-test-dialog {
+html[data-theme="dark"] .room-test-panel {
     border-color: rgba(177, 205, 238, 0.18);
     background: rgba(15, 23, 42, 0.96);
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
 }
 
-html[data-theme="dark"] .room-test-dialog pre {
+html[data-theme="dark"] .room-test-panel pre {
     border-color: rgba(177, 205, 238, 0.16);
     background: rgba(2, 6, 23, 0.72);
 }

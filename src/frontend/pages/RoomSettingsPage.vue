@@ -82,7 +82,7 @@ const DEFAULT_KNOWLEDGE_ENTRIES = [
 ];
 
 const toast = reactive({ text: '', visible: false });
-const testDialog = reactive({ visible: false, status: 'idle', title: '', message: '', detail: '' });
+const testDialog = reactive({ visible: false, target: '', status: 'idle', title: '', message: '', detail: '' });
 const memoryCount = ref(0);
 const memoryList = ref([]);
 const memoryLoading = ref(false);
@@ -188,8 +188,9 @@ function showToast(text) {
   }, 2200);
 }
 
-function openTestDialog(status, title, message, detail = '') {
+function openTestDialog(target, status, title, message, detail = '') {
   testDialog.visible = true;
+  testDialog.target = target;
   testDialog.status = status;
   testDialog.title = title;
   testDialog.message = message;
@@ -198,6 +199,10 @@ function openTestDialog(status, title, message, detail = '') {
 
 function closeTestDialog() {
   testDialog.visible = false;
+}
+
+function testStatusLabel(status) {
+  return status === 'loading' ? '测试中' : status === 'success' ? '成功' : status === 'warning' ? '注意' : '失败';
 }
 
 function memoryAuthHeaders(extra = {}) {
@@ -528,11 +533,11 @@ function saveLLM() {
 async function testLLM() {
   saveLLM();
   if (!llm.apiKey) {
-    openTestDialog('error', 'LLM 连接测试', '请先填写 LLM API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的模型供应商。');
+    openTestDialog('llm', 'error', 'LLM 连接测试', '请先填写 LLM API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的模型供应商。');
     showToast('请先填写 LLM API Key');
     return;
   }
-  openTestDialog('loading', 'LLM 连接测试', '正在请求模型供应商...', `${normalizeChatUrl(llm.apiUrl, llm.model)}\n模型：${llm.model || '未填写'}`);
+  openTestDialog('llm', 'loading', 'LLM 连接测试', '正在请求模型供应商...', `${normalizeChatUrl(llm.apiUrl, llm.model)}\n模型：${llm.model || '未填写'}`);
   try {
     const response = await fetch(normalizeChatUrl(llm.apiUrl, llm.model), {
       method: 'POST',
@@ -546,6 +551,7 @@ async function testLLM() {
     if (!response.ok) throw new Error(data?.error?.message || `HTTP ${response.status}`);
     const reply = pickChatReply(data);
     openTestDialog(
+      'llm',
       reply ? 'success' : 'warning',
       'LLM 连接测试',
       reply ? '连接成功，模型已返回文本。' : '连接成功，但没有解析到文本内容。',
@@ -553,7 +559,7 @@ async function testLLM() {
     );
     showToast(reply ? 'LLM 连接测试成功' : 'LLM 已响应，但未返回文本');
   } catch (error) {
-    openTestDialog('error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
+    openTestDialog('llm', 'error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
     showToast(`LLM 测试失败：${error.message}`);
   }
 }
@@ -573,11 +579,11 @@ function saveTTS() {
 async function testTTS() {
   saveTTS();
   if (!tts.apiKey) {
-    openTestDialog('error', 'TTS 语音测试', '请先填写 TTS API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的语音供应商。');
+    openTestDialog('tts', 'error', 'TTS 语音测试', '请先填写 TTS API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的语音供应商。');
     showToast('请先填写 TTS API Key');
     return;
   }
-  openTestDialog('loading', 'TTS 语音测试', '正在请求语音供应商...', `${tts.apiUrl || defaultTtsUrl(tts.provider)}\nProvider：${tts.provider || 'mimo'}\n模型：${tts.model || '未填写'}\n音色：${tts.voice || '未填写'}`);
+  openTestDialog('tts', 'loading', 'TTS 语音测试', '正在请求语音供应商...', `${tts.apiUrl || defaultTtsUrl(tts.provider)}\nProvider：${tts.provider || 'mimo'}\n模型：${tts.model || '未填写'}\n音色：${tts.voice || '未填写'}`);
   try {
     const request = buildTtsRequest('你好，我是八千代辉夜姬。今晚的月光，也很温柔。', tts);
     const response = await fetch(request.apiUrl, request.options);
@@ -587,10 +593,10 @@ async function testTTS() {
       ? makeAudioBlobFromEncoded(pickAudioBase64(await response.json()), request.jsonAudioType || 'audio/mp3')
       : await response.blob();
     await new Audio(URL.createObjectURL(blob)).play();
-    openTestDialog('success', 'TTS 语音测试', '连接成功，已开始播放测试语音。', `音频类型：${blob.type || contentType || '未知'}\n大小：${blob.size} bytes`);
+    openTestDialog('tts', 'success', 'TTS 语音测试', '连接成功，已开始播放测试语音。', `音频类型：${blob.type || contentType || '未知'}\n大小：${blob.size} bytes`);
     showToast('TTS 测试成功');
   } catch (error) {
-    openTestDialog('error', 'TTS 语音测试', '测试失败。', `${error.message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
+    openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${error.message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
     showToast(`TTS 测试失败：${error.message}`);
   }
 }
@@ -886,6 +892,15 @@ onMounted(loadSettings);
             <button class="primary-btn" type="button" @click="saveLLM">保存 LLM</button>
             <button class="ghost-btn" type="button" @click="testLLM">测试连接</button>
           </div>
+          <section v-if="testDialog.visible && testDialog.target === 'llm'" class="room-test-panel" aria-live="polite">
+            <div class="room-test-dialog-head">
+              <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
+              <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
+            </div>
+            <h3>{{ testDialog.title }}</h3>
+            <p>{{ testDialog.message }}</p>
+            <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
+          </section>
         </div>
       </article>
 
@@ -913,6 +928,15 @@ onMounted(loadSettings);
             <button class="primary-btn" type="button" @click="saveTTS">保存 TTS</button>
             <button class="ghost-btn" type="button" @click="testTTS">测试语音</button>
           </div>
+          <section v-if="testDialog.visible && testDialog.target === 'tts'" class="room-test-panel" aria-live="polite">
+            <div class="room-test-dialog-head">
+              <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
+              <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
+            </div>
+            <h3>{{ testDialog.title }}</h3>
+            <p>{{ testDialog.message }}</p>
+            <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
+          </section>
         </div>
       </article>
 
@@ -1074,18 +1098,6 @@ onMounted(loadSettings);
         </div>
       </article>
     </section>
-
-    <div v-if="testDialog.visible" class="room-test-dialog-backdrop" role="presentation" @click.self="closeTestDialog">
-      <section class="room-test-dialog" role="dialog" aria-modal="true" :aria-labelledby="'room-test-dialog-title'">
-        <div class="room-test-dialog-head">
-          <span class="room-test-status" :class="testDialog.status">{{ testDialog.status === 'loading' ? '测试中' : testDialog.status === 'success' ? '成功' : testDialog.status === 'warning' ? '注意' : '失败' }}</span>
-          <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
-        </div>
-        <h2 id="room-test-dialog-title">{{ testDialog.title }}</h2>
-        <p>{{ testDialog.message }}</p>
-        <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
-      </section>
-    </div>
 
     <div v-if="toast.visible" class="plaza-toast show">{{ toast.text }}</div>
   </main>
