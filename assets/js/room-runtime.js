@@ -430,7 +430,7 @@
 
     function normalizeChatUrl(apiUrl, model) {
         let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
-        const needsChatPath = /deepseek|dashscope|aliyuncs|openai|moonshot/i.test(`${url} ${model || ''}`)
+        const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${model || ''}`)
             && !/\/chat\/completions\/?$/.test(url);
         if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
         return url;
@@ -863,6 +863,93 @@
             bytes[index] = binary.charCodeAt(index);
         }
         return new Blob([bytes], { type: contentType });
+    }
+
+    function makeAudioBlobFromEncoded(value, contentType = 'audio/mp3') {
+        const text = String(value || '').trim();
+        if (/^[0-9a-f]+$/i.test(text) && text.length % 2 === 0) {
+            const bytes = new Uint8Array(text.length / 2);
+            for (let index = 0; index < bytes.length; index += 1) {
+                bytes[index] = parseInt(text.slice(index * 2, index * 2 + 2), 16);
+            }
+            return new Blob([bytes], { type: contentType });
+        }
+        return makeAudioBlobFromBase64(text, contentType);
+    }
+
+    function defaultTtsUrl(provider) {
+        if (provider === 'openai' || provider === 'openai-compatible') return 'https://api.openai.com/v1/audio/speech';
+        if (provider === 'elevenlabs') return 'https://api.elevenlabs.io/v1/text-to-speech';
+        if (provider === 'minimax') return 'https://api.minimax.chat/v1/t2a_v2';
+        return 'https://api.xiaomimimo.com/v1/chat/completions';
+    }
+
+    function buildTtsRequest(text, settings) {
+        const provider = settings.provider || 'mimo';
+        const apiUrl = settings.apiUrl || defaultTtsUrl(provider);
+        const voice = settings.voice || (provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
+        if (provider === 'mimo' || /xiaomimimo/i.test(apiUrl)) {
+            return {
+                apiUrl,
+                jsonAudioType: 'audio/wav',
+                options: {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'api-key': settings.apiKey },
+                    body: JSON.stringify({
+                        model: settings.model || 'mimo-v2.5-tts',
+                        messages: [
+                            { role: 'user', content: '请用温柔自然的语气朗读。' },
+                            { role: 'assistant', content: String(text) }
+                        ],
+                        modalities: ['audio'],
+                        audio: { format: 'wav', voice }
+                    })
+                }
+            };
+        }
+        if (provider === 'elevenlabs') {
+            const baseUrl = apiUrl.replace(/\/$/, '');
+            const finalUrl = /\/text-to-speech\/[^/]+/i.test(baseUrl) ? baseUrl : `${baseUrl}/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`;
+            return {
+                apiUrl: finalUrl,
+                options: {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'xi-api-key': settings.apiKey },
+                    body: JSON.stringify({ text: String(text), model_id: settings.model || 'eleven_multilingual_v2' })
+                }
+            };
+        }
+        if (provider === 'minimax') {
+            return {
+                apiUrl,
+                jsonAudioType: 'audio/mp3',
+                options: {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+                    body: JSON.stringify({
+                        model: settings.model || 'speech-02-hd',
+                        text: String(text),
+                        stream: false,
+                        voice_setting: { voice_id: voice || 'female-shaonv', speed: 1, vol: 1, pitch: 0 },
+                        audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 }
+                    })
+                }
+            };
+        }
+        return {
+            apiUrl,
+            options: {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+                body: JSON.stringify({
+                    model: settings.model || 'tts-1',
+                    input: String(text),
+                    voice,
+                    response_format: 'mp3',
+                    speed: 1.0
+                })
+            }
+        };
     }
 
     function stripLeadingActionCues(text) {
@@ -1839,47 +1926,15 @@
     async function playTTSInternal(text, settings, force) {
         if (!force && !settings.enabled) return;
         if (!settings.apiKey) throw new Error('TTS API Key is required in browser-direct mode');
-        const provider = settings.provider || 'mimo';
-        const apiUrl = settings.apiUrl || (provider === 'openai'
-            ? 'https://api.openai.com/v1/audio/speech'
-            : 'https://api.xiaomimimo.com/v1/chat/completions');
-        const voice = settings.voice || (provider === 'openai' ? 'alloy' : 'mimo_default');
-        const isMimo = provider === 'mimo' || /xiaomimimo/i.test(apiUrl);
-        const response = await fetch(apiUrl, isMimo ? {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'api-key': settings.apiKey
-            },
-            body: JSON.stringify({
-                model: settings.model || 'mimo-v2.5-tts',
-                messages: [
-                    { role: 'user', content: '请用温柔自然的语气朗读。' },
-                    { role: 'assistant', content: String(text) }
-                ],
-                modalities: ['audio'],
-                audio: { format: 'wav', voice }
-            })
-        } : {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${settings.apiKey}`
-            },
-            body: JSON.stringify({
-                model: settings.model || 'tts-1',
-                input: String(text),
-                voice,
-                response_format: 'mp3',
-                speed: 1.0
-            })
-        });
+        const request = buildTtsRequest(text, settings);
+        const response = await fetch(request.apiUrl, request.options);
         if (!response.ok) {
             const detail = await response.text();
             throw new Error(`TTS ${response.status}: ${detail.slice(0, 160)}`);
         }
-        const blob = isMimo
-            ? makeAudioBlobFromBase64(pickAudioBase64(await response.json()), 'audio/wav')
+        const contentType = response.headers.get('content-type') || '';
+        const blob = contentType.includes('application/json') || request.jsonAudioType
+            ? makeAudioBlobFromEncoded(pickAudioBase64(await response.json()), request.jsonAudioType || 'audio/mp3')
             : await response.blob();
         if (ttsAudioUrl) URL.revokeObjectURL(ttsAudioUrl);
         ttsAudioUrl = URL.createObjectURL(blob);

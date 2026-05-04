@@ -10,10 +10,29 @@ const emit = defineEmits(['go']);
 const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
 const MEMORY_STORE = 'memories';
 const LLM_PRESETS = {
-  deepseek: { apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
-  moonshot: { apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k' },
-  openai: { apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
-  aliyun: { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' }
+  openai: { label: 'OpenAI', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
+  openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-4o-mini' },
+  deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
+  moonshot: { label: 'Moonshot', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k' },
+  aliyun: { label: '阿里云百炼', apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' },
+  zhipu: { label: '智谱 GLM', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4-flash' },
+  siliconflow: { label: 'SiliconFlow', apiUrl: 'https://api.siliconflow.cn/v1/chat/completions', model: 'Qwen/Qwen2.5-7B-Instruct' },
+  volcengine: { label: '火山方舟', apiUrl: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions', model: 'doubao-1-5-pro-32k-250115' },
+  minimax: { label: 'MiniMax', apiUrl: 'https://api.minimax.chat/v1/text/chatcompletion_v2', model: 'abab6.5s-chat' },
+  groq: { label: 'Groq', apiUrl: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.1-8b-instant' },
+  mistral: { label: 'Mistral', apiUrl: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-small-latest' },
+  together: { label: 'Together', apiUrl: 'https://api.together.xyz/v1/chat/completions', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
+  perplexity: { label: 'Perplexity', apiUrl: 'https://api.perplexity.ai/chat/completions', model: 'sonar' },
+  xai: { label: 'xAI', apiUrl: 'https://api.x.ai/v1/chat/completions', model: 'grok-3-mini' },
+  gemini: { label: 'Gemini', apiUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-2.0-flash' }
+};
+const TTS_PRESETS = {
+  mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
+  openai: { label: 'OpenAI TTS', provider: 'openai', apiUrl: 'https://api.openai.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
+  openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
+  minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimax.chat/v1/t2a_v2', model: 'speech-02-hd', voice: 'female-shaonv' },
+  elevenlabs: { label: 'ElevenLabs', provider: 'elevenlabs', apiUrl: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2', voice: '21m00Tcm4TlvDq8ikWAM' },
+  custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
 };
 const MINIMAX_MCP_TOOLS = 'text_to_audio,list_voices,voice_clone,voice_design,music_generation,generate_video,image_to_video,query_video_generation,text_to_image';
 const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
@@ -178,7 +197,7 @@ function memoryTypeLabel(type) {
 
 function normalizeChatUrl(apiUrl, modelName) {
   let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
-  const needsChatPath = /deepseek|dashscope|aliyuncs|openai|moonshot/i.test(`${url} ${modelName || ''}`)
+  const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${modelName || ''}`)
     && !/\/chat\/completions\/?$/.test(url);
   if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
   return url;
@@ -200,6 +219,92 @@ function makeAudioBlobFromBase64(base64, type) {
   const bytes = new Uint8Array(raw.length);
   for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
   return new Blob([bytes], { type });
+}
+
+function makeAudioBlobFromEncoded(value, type) {
+  const text = String(value || '').trim();
+  if (/^[0-9a-f]+$/i.test(text) && text.length % 2 === 0) {
+    const bytes = new Uint8Array(text.length / 2);
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = parseInt(text.slice(index * 2, index * 2 + 2), 16);
+    }
+    return new Blob([bytes], { type });
+  }
+  return makeAudioBlobFromBase64(text, type);
+}
+
+function defaultTtsUrl(provider) {
+  if (provider === 'openai' || provider === 'openai-compatible') return 'https://api.openai.com/v1/audio/speech';
+  if (provider === 'elevenlabs') return 'https://api.elevenlabs.io/v1/text-to-speech';
+  if (provider === 'minimax') return 'https://api.minimax.chat/v1/t2a_v2';
+  return 'https://api.xiaomimimo.com/v1/chat/completions';
+}
+
+function buildTtsRequest(text, settings) {
+  const provider = settings.provider || 'mimo';
+  const apiUrl = settings.apiUrl || defaultTtsUrl(provider);
+  const voice = settings.voice || (provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
+  if (provider === 'mimo' || /xiaomimimo/i.test(apiUrl)) {
+    return {
+      apiUrl,
+      jsonAudioType: 'audio/wav',
+      options: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'api-key': settings.apiKey },
+        body: JSON.stringify({
+          model: settings.model || 'mimo-v2.5-tts',
+          messages: [
+            { role: 'user', content: '请用温柔自然的语气朗读。' },
+            { role: 'assistant', content: String(text) }
+          ],
+          modalities: ['audio'],
+          audio: { format: 'wav', voice }
+        })
+      }
+    };
+  }
+  if (provider === 'elevenlabs') {
+    const baseUrl = apiUrl.replace(/\/$/, '');
+    const finalUrl = /\/text-to-speech\/[^/]+/i.test(baseUrl) ? baseUrl : `${baseUrl}/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`;
+    return {
+      apiUrl: finalUrl,
+      options: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'xi-api-key': settings.apiKey },
+        body: JSON.stringify({ text: String(text), model_id: settings.model || 'eleven_multilingual_v2' })
+      }
+    };
+  }
+  if (provider === 'minimax') {
+    return {
+      apiUrl,
+      jsonAudioType: 'audio/mp3',
+      options: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+        body: JSON.stringify({
+          model: settings.model || 'speech-02-hd',
+          text: String(text),
+          stream: false,
+          voice_setting: { voice_id: voice || 'female-shaonv', speed: 1, vol: 1, pitch: 0 },
+          audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 }
+        })
+      }
+    };
+  }
+  return {
+    apiUrl,
+    options: {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+      body: JSON.stringify({
+        model: settings.model || 'tts-1',
+        input: String(text),
+        voice,
+        response_format: 'mp3'
+      })
+    }
+  };
 }
 
 function openMemoryDb() {
@@ -356,6 +461,15 @@ function applyPreset(name) {
   llm.model = preset.model;
 }
 
+function applyTtsPreset(name) {
+  const preset = TTS_PRESETS[name];
+  if (!preset) return;
+  tts.provider = preset.provider;
+  tts.apiUrl = preset.apiUrl;
+  tts.model = preset.model;
+  tts.voice = preset.voice;
+}
+
 function saveLLM() {
   writeJson('roomLLMSettings', {
     apiUrl: String(llm.apiUrl || '').trim(),
@@ -411,36 +525,12 @@ async function testTTS() {
     return;
   }
   try {
-    const provider = tts.provider || 'mimo';
-    const apiUrl = tts.apiUrl || (provider === 'openai'
-      ? 'https://api.openai.com/v1/audio/speech'
-      : 'https://api.xiaomimimo.com/v1/chat/completions');
-    const isMimo = provider === 'mimo' || /xiaomimimo/i.test(apiUrl);
-    const response = await fetch(apiUrl, isMimo ? {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'api-key': tts.apiKey },
-      body: JSON.stringify({
-        model: tts.model || 'mimo-v2.5-tts',
-        messages: [
-          { role: 'user', content: '请用温柔自然的语气朗读。' },
-          { role: 'assistant', content: '你好，我是八千代辉夜姬。今晚的月光，也很温柔。' }
-        ],
-        modalities: ['audio'],
-        audio: { format: 'wav', voice: tts.voice || 'mimo_default' }
-      })
-    } : {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tts.apiKey}` },
-      body: JSON.stringify({
-        model: tts.model || 'tts-1',
-        input: '你好，我是八千代辉夜姬。今晚的月光，也很温柔。',
-        voice: tts.voice || 'alloy',
-        response_format: 'mp3'
-      })
-    });
+    const request = buildTtsRequest('你好，我是八千代辉夜姬。今晚的月光，也很温柔。', tts);
+    const response = await fetch(request.apiUrl, request.options);
     if (!response.ok) throw new Error((await response.text()).slice(0, 160) || `HTTP ${response.status}`);
-    const blob = isMimo
-      ? makeAudioBlobFromBase64(pickAudioBase64(await response.json()), 'audio/wav')
+    const contentType = response.headers.get('content-type') || '';
+    const blob = contentType.includes('application/json') || request.jsonAudioType
+      ? makeAudioBlobFromEncoded(pickAudioBase64(await response.json()), request.jsonAudioType || 'audio/mp3')
       : await response.blob();
     await new Audio(URL.createObjectURL(blob)).play();
     showToast('TTS 测试成功');
@@ -730,7 +820,7 @@ onMounted(loadSettings);
       <article class="room-settings-card">
         <h2>LLM API</h2>
         <div class="button-row preset-row">
-          <button v-for="(_, name) in LLM_PRESETS" :key="name" class="chip" type="button" @click="applyPreset(name)">{{ name }}</button>
+          <button v-for="(preset, name) in LLM_PRESETS" :key="name" class="chip" type="button" @click="applyPreset(name)">{{ preset.label }}</button>
         </div>
         <div class="form-grid">
           <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="https://api.openai.com/v1/chat/completions"></label>
@@ -745,13 +835,24 @@ onMounted(loadSettings);
 
       <article class="room-settings-card">
         <h2>TTS 语音</h2>
+        <div class="button-row preset-row">
+          <button v-for="(preset, name) in TTS_PRESETS" :key="name" class="chip" type="button" @click="applyTtsPreset(name)">{{ preset.label }}</button>
+        </div>
         <div class="form-grid">
           <label class="check-row"><input v-model="tts.enabled" type="checkbox"> 启用语音合成</label>
-          <label>Provider<select v-model="tts.provider"><option value="mimo">MiMo-V2.5-TTS</option><option value="openai">OpenAI TTS</option></select></label>
-          <label>API 端点<input v-model="tts.apiUrl" type="text" placeholder="https://api.xiaomimimo.com/v1/chat/completions"></label>
+          <label>Provider<select v-model="tts.provider">
+            <option value="mimo">MiMo-V2.5-TTS</option>
+            <option value="openai">OpenAI TTS</option>
+            <option value="openai-compatible">OpenAI Compatible</option>
+            <option value="minimax">MiniMax TTS</option>
+            <option value="elevenlabs">ElevenLabs</option>
+            <option value="custom">自定义 OpenAI 兼容</option>
+          </select></label>
+          <label>API 端点<input v-model="tts.apiUrl" type="text" placeholder="https://api.openai.com/v1/audio/speech"></label>
           <label>API Key<input v-model="tts.apiKey" type="password" placeholder="sk-..."></label>
-          <label>模型名称<input v-model="tts.model" type="text" placeholder="mimo-v2.5-tts"></label>
-          <label>音色<input v-model="tts.voice" type="text" placeholder="mimo_default"></label>
+          <label>模型名称<input v-model="tts.model" type="text" placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"></label>
+          <label>音色 / Voice ID<input v-model="tts.voice" type="text" placeholder="alloy / female-shaonv / ElevenLabs voice id"></label>
+          <p class="field-hint">LLM 预设均按 OpenAI-compatible Chat Completions 格式请求。TTS 中 OpenAI Compatible/自定义按 OpenAI Audio Speech 格式请求；ElevenLabs 使用 voice id；MiniMax 使用 t2a_v2 JSON 返回音频。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveTTS">保存 TTS</button>
             <button class="ghost-btn" type="button" @click="testTTS">测试语音</button>
