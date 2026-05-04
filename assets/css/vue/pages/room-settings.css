@@ -145,6 +145,68 @@
     grid-column: 1 / -1;
 }
 
+.room-memory-manager.collapsed {
+    padding-bottom: 1rem;
+}
+
+.memory-manager-toggle {
+    display: flex;
+    width: 100%;
+    min-height: 68px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.54);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.memory-manager-toggle:hover {
+    transform: translateY(-1px);
+    border-color: rgba(102, 197, 223, 0.42);
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.memory-manager-toggle strong,
+.memory-manager-toggle small {
+    display: block;
+}
+
+.memory-manager-toggle strong {
+    color: var(--ink);
+    font-size: 1.05rem;
+}
+
+.memory-manager-toggle small {
+    margin-top: 0.25rem;
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.memory-manager-icon {
+    flex: 0 0 auto;
+    min-width: 56px;
+    border-radius: 999px;
+    padding: 0.34rem 0.68rem;
+    color: var(--ink);
+    background: rgba(228, 246, 253, 0.82);
+    text-align: center;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.memory-manager-body {
+    display: grid;
+    gap: 0.8rem;
+    margin-top: 0.9rem;
+}
+
 .memory-toolbar,
 .memory-score-row {
     display: grid;
@@ -251,6 +313,22 @@ html[data-theme="dark"] .memory-item {
     background: rgba(15, 23, 42, 0.5);
 }
 
+html[data-theme="dark"] .memory-manager-toggle {
+    color: var(--text);
+    border-color: rgba(177, 205, 238, 0.16);
+    background: rgba(15, 23, 42, 0.5);
+}
+
+html[data-theme="dark"] .memory-manager-toggle:hover {
+    border-color: rgba(131, 216, 236, 0.38);
+    background: rgba(15, 23, 42, 0.72);
+}
+
+html[data-theme="dark"] .memory-manager-icon {
+    color: var(--text);
+    background: rgba(30, 41, 59, 0.86);
+}
+
 html[data-theme="dark"] .memory-tags span {
     background: rgba(30, 41, 59, 0.86);
 }
@@ -279,5 +357,10 @@ html[data-theme="dark"] .room-settings-card select option {
     .memory-toolbar,
     .memory-score-row {
         grid-template-columns: 1fr;
+    }
+
+    .memory-manager-toggle {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

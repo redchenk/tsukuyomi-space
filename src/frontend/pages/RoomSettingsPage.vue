@@ -35,7 +35,7 @@ const tts = reactive({
   model: 'mimo-v2.5-tts',
   voice: 'mimo_default'
 });
-const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {} });
+const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
 const mcp = reactive({
   enabled: false,
   provider: 'custom',
@@ -384,6 +384,13 @@ function saveMemory() {
   showToast(memory.enabled ? '长期记忆已开启' : '长期记忆已关闭');
 }
 
+async function toggleMemoryManager() {
+  memory.managerOpen = !memory.managerOpen;
+  if (memory.managerOpen && canUseServerMemory.value && !memoryList.value.length && !memoryLoading.value) {
+    await loadServerMemories();
+  }
+}
+
 async function openMemoryItem(item) {
   try {
     const detail = item.content ? item : await fetchMemoryDetail(item.id);
@@ -640,16 +647,28 @@ onMounted(loadSettings);
         </div>
       </article>
 
-      <article v-if="canUseServerMemory" class="room-settings-card room-memory-manager">
-        <h2>记忆管理</h2>
-        <div class="memory-toolbar">
-          <input v-model="memory.query" type="text" placeholder="搜索记忆内容、偏好或项目">
-          <select v-model="memory.type">
-            <option v-for="item in memoryTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
-          </select>
-          <button class="ghost-btn" type="button" @click="loadServerMemories">{{ memoryLoading ? '读取中...' : '检索' }}</button>
-        </div>
-        <form v-if="memory.editing" class="memory-editor" @submit.prevent="saveMemoryEdit">
+      <article v-if="canUseServerMemory" class="room-settings-card room-memory-manager" :class="{ collapsed: !memory.managerOpen }">
+        <button
+          class="memory-manager-toggle"
+          type="button"
+          :aria-expanded="memory.managerOpen"
+          @click="toggleMemoryManager"
+        >
+          <span>
+            <strong>记忆管理</strong>
+            <small>当前身份已有 {{ memoryCount }} 条记忆，展开后可搜索、编辑和删除。</small>
+          </span>
+          <span class="memory-manager-icon">{{ memory.managerOpen ? '收起' : '展开' }}</span>
+        </button>
+        <div v-if="memory.managerOpen" class="memory-manager-body">
+          <div class="memory-toolbar">
+            <input v-model="memory.query" type="text" placeholder="搜索记忆内容、偏好或项目">
+            <select v-model="memory.type">
+              <option v-for="item in memoryTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+            </select>
+            <button class="ghost-btn" type="button" @click="loadServerMemories">{{ memoryLoading ? '读取中...' : '检索' }}</button>
+          </div>
+          <form v-if="memory.editing" class="memory-editor" @submit.prevent="saveMemoryEdit">
           <label>类型
             <select v-model="memory.editing.type">
               <option v-for="item in memoryTypeOptions.filter((option) => option.value)" :key="item.value" :value="item.value">{{ item.label }}</option>
@@ -666,10 +685,10 @@ onMounted(loadSettings);
             <button class="primary-btn" type="submit">保存记忆</button>
             <button class="ghost-btn" type="button" @click="cancelMemoryEdit">取消</button>
           </div>
-        </form>
-        <div v-if="!memoryList.length" class="field-hint">{{ memoryLoading ? '正在读取记忆...' : '还没有可显示的服务端记忆。' }}</div>
-        <div v-else class="memory-list">
-          <article v-for="item in memoryList" :key="item.id" class="memory-item">
+          </form>
+          <div v-if="!memoryList.length" class="field-hint">{{ memoryLoading ? '正在读取记忆...' : '还没有可显示的服务端记忆。' }}</div>
+          <div v-else class="memory-list">
+            <article v-for="item in memoryList" :key="item.id" class="memory-item">
             <div class="memory-item-head">
               <span class="chip">{{ memoryTypeLabel(item.type) }}</span>
               <span class="field-hint">重要度 {{ Number(item.importance || 0).toFixed(2) }} · 置信度 {{ Number(item.confidence || 0).toFixed(2) }}</span>
@@ -686,7 +705,8 @@ onMounted(loadSettings);
               <button class="ghost-btn" type="button" @click="editMemory(item)">编辑</button>
               <button class="danger-btn" type="button" @click="deleteMemoryItem(item)">删除</button>
             </div>
-          </article>
+            </article>
+          </div>
         </div>
       </article>
 
