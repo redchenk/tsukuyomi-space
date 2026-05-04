@@ -9,6 +9,7 @@ import RealityPage from '../pages/RealityPage.vue';
 import EditorPage from '../pages/EditorPage.vue';
 import UserCenterPage from '../pages/UserCenterPage.vue';
 import RoomPage from '../pages/RoomPage.vue';
+import RoomSettingsPage from '../pages/RoomSettingsPage.vue';
 import ArticlePage from '../pages/ArticlePage.vue';
 import TerminalPage from '../pages/TerminalPage.vue';
 import ArenaPage from '../pages/ArenaPage.vue';
@@ -22,6 +23,7 @@ export const routes = [
   { path: '/stage', name: 'stage', component: StagePage },
   { path: '/article', name: 'article', component: ArticlePage },
   { path: '/room', name: 'room', component: RoomPage },
+  { path: '/room/settings', name: 'roomSettings', component: RoomSettingsPage, alias: '/room-settings' },
   { path: '/plaza', name: 'plaza', component: PlazaPage },
   { path: '/reality', name: 'reality', component: RealityPage },
   { path: '/editor', name: 'editor', component: EditorPage },

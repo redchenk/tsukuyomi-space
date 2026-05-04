@@ -1,0 +1,146 @@
+.room-settings-page {
+    width: min(100%, 1180px);
+    margin: 0 auto;
+}
+
+.room-settings-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: clamp(1.2rem, 3vw, 2rem);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--panel);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(16px) saturate(1.08);
+}
+
+.room-settings-hero .section-title {
+    margin-bottom: 0.45rem;
+}
+
+.room-settings-actions,
+.room-settings-card .button-row,
+.preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.room-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.room-settings-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--panel);
+    box-shadow: var(--float-shadow);
+    backdrop-filter: blur(14px) saturate(1.08);
+}
+
+.room-settings-card h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
+.room-settings-card .form-grid {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.room-settings-card label {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    color: var(--ink);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.room-settings-card label strong {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.room-settings-card input,
+.room-settings-card select {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid rgba(139, 168, 205, 0.24);
+    border-radius: 10px;
+    padding: 0.72rem 0.82rem;
+    outline: none;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.room-settings-card input:focus,
+.room-settings-card select:focus {
+    border-color: rgba(102, 197, 223, 0.62);
+    box-shadow: 0 0 0 3px rgba(102, 197, 223, 0.13);
+}
+
+.room-settings-card input[type="range"] {
+    min-height: 24px;
+    padding: 0;
+    accent-color: var(--cyan);
+    background: transparent;
+}
+
+.room-settings-card select option {
+    color: #172033;
+}
+
+.check-row {
+    display: flex !important;
+    align-items: center;
+    gap: 0.55rem !important;
+}
+
+.check-row input {
+    width: auto;
+    min-height: 0;
+    accent-color: var(--cyan);
+}
+
+.room-settings-card .field-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.84rem;
+    line-height: 1.65;
+}
+
+html[data-theme="dark"] .room-settings-card input,
+html[data-theme="dark"] .room-settings-card select {
+    color: var(--text);
+    border-color: rgba(177, 205, 238, 0.22);
+    background: rgba(15, 23, 42, 0.88);
+}
+
+html[data-theme="dark"] .room-settings-card select option {
+    color: #eef6ff;
+    background: #111827;
+}
+
+@media (max-width: 860px) {
+    .room-settings-hero {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .room-settings-grid {
+        grid-template-columns: 1fr;
+    }
+}

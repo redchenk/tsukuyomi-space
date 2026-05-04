@@ -1,0 +1,370 @@
+<script setup>
+import { computed, onMounted, reactive, ref } from 'vue';
+
+const props = defineProps({
+  user: { type: Object, default: null }
+});
+
+const emit = defineEmits(['go']);
+
+const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
+const MEMORY_STORE = 'memories';
+const LLM_PRESETS = {
+  deepseek: { apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
+  moonshot: { apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k' },
+  openai: { apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
+  aliyun: { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' }
+};
+
+const toast = reactive({ text: '', visible: false });
+const memoryCount = ref(0);
+let toastTimer = 0;
+
+const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
+const llm = reactive({ apiUrl: '', apiKey: '', model: '' });
+const tts = reactive({
+  enabled: false,
+  provider: 'mimo',
+  apiUrl: '',
+  apiKey: '',
+  model: 'mimo-v2.5-tts',
+  voice: 'mimo_default'
+});
+const memory = reactive({ enabled: true });
+
+const visitorKey = computed(() => {
+  if (props.user?.id) return `user:${props.user.id}`;
+  let id = localStorage.getItem('roomMemoryGuestId');
+  if (!id) {
+    id = `guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem('roomMemoryGuestId', id);
+  }
+  return `guest:${id}`;
+});
+
+function readJson(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value == null ? fallback : value;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function writeJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function showToast(text) {
+  toast.text = text;
+  toast.visible = true;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.visible = false;
+  }, 2200);
+}
+
+function normalizeChatUrl(apiUrl, modelName) {
+  let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
+  const needsChatPath = /deepseek|dashscope|aliyuncs|openai|moonshot/i.test(`${url} ${modelName || ''}`)
+    && !/\/chat\/completions\/?$/.test(url);
+  if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
+  return url;
+}
+
+function pickChatReply(data) {
+  return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || '';
+}
+
+function pickAudioBase64(data) {
+  return data?.choices?.[0]?.message?.audio?.data
+    || data?.choices?.[0]?.message?.audio
+    || data?.audio?.data
+    || data?.data?.audio;
+}
+
+function makeAudioBlobFromBase64(base64, type) {
+  const raw = atob(String(base64 || ''));
+  const bytes = new Uint8Array(raw.length);
+  for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
+  return new Blob([bytes], { type });
+}
+
+function openMemoryDb() {
+  if (!('indexedDB' in window)) return Promise.resolve(null);
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(MEMORY_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      const store = db.objectStoreNames.contains(MEMORY_STORE)
+        ? request.transaction.objectStore(MEMORY_STORE)
+        : db.createObjectStore(MEMORY_STORE, { keyPath: 'id' });
+      if (!store.indexNames.contains('userKey')) store.createIndex('userKey', 'userKey', { unique: false });
+      if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
+  });
+}
+
+function requestToPromise(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('IndexedDB request failed'));
+  });
+}
+
+function txToPromise(tx) {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'));
+  });
+}
+
+async function loadMemoryCount() {
+  try {
+    const db = await openMemoryDb();
+    if (!db) return;
+    const tx = db.transaction(MEMORY_STORE, 'readonly');
+    const index = tx.objectStore(MEMORY_STORE).index('userKey');
+    const records = await requestToPromise(index.getAll(IDBKeyRange.only(visitorKey.value)));
+    memoryCount.value = records.length;
+  } catch (_) {
+    memoryCount.value = 0;
+  }
+}
+
+function loadSettings() {
+  const modelSettings = readJson('roomModelSettings', {});
+  model.scale = Math.round(Number(modelSettings.scale || 1) * 100);
+  model.xOffset = Number(modelSettings.xOffset || 0);
+  model.yOffset = Number(modelSettings.yOffset || 0);
+
+  Object.assign(llm, readJson('roomLLMSettings', {}));
+  Object.assign(tts, { ...tts, ...readJson('roomTTSSettings', {}) });
+  Object.assign(memory, { enabled: true, ...readJson('roomMemorySettings', {}) });
+  loadMemoryCount();
+}
+
+function saveModel() {
+  writeJson('roomModelSettings', {
+    scale: Number(model.scale || 100) / 100,
+    xOffset: Number(model.xOffset || 0),
+    yOffset: Number(model.yOffset || 0)
+  });
+  showToast('模型设置已保存，回到房间后生效');
+}
+
+function resetModel() {
+  model.scale = 100;
+  model.xOffset = 0;
+  model.yOffset = 0;
+  saveModel();
+}
+
+function resetPanels() {
+  localStorage.removeItem('roomPanelPositions');
+  showToast('房间浮窗位置已重置');
+}
+
+function applyPreset(name) {
+  const preset = LLM_PRESETS[name];
+  if (!preset) return;
+  llm.apiUrl = preset.apiUrl;
+  llm.model = preset.model;
+}
+
+function saveLLM() {
+  writeJson('roomLLMSettings', {
+    apiUrl: String(llm.apiUrl || '').trim(),
+    apiKey: String(llm.apiKey || '').trim(),
+    model: String(llm.model || '').trim()
+  });
+  showToast('LLM API 设置已保存');
+}
+
+async function testLLM() {
+  saveLLM();
+  if (!llm.apiKey) {
+    showToast('请先填写 LLM API Key');
+    return;
+  }
+  try {
+    const response = await fetch(normalizeChatUrl(llm.apiUrl, llm.model), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${llm.apiKey}`
+      },
+      body: JSON.stringify({
+        model: llm.model || 'moonshot-v1-8k',
+        messages: [{ role: 'user', content: '请用一句话回复连接测试。' }],
+        temperature: 0.4
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error?.message || `HTTP ${response.status}`);
+    showToast(pickChatReply(data) ? 'LLM 连接测试成功' : 'LLM 已响应，但未返回文本');
+  } catch (error) {
+    showToast(`LLM 测试失败：${error.message}`);
+  }
+}
+
+function saveTTS() {
+  writeJson('roomTTSSettings', {
+    enabled: Boolean(tts.enabled),
+    provider: tts.provider || 'mimo',
+    apiUrl: String(tts.apiUrl || '').trim(),
+    apiKey: String(tts.apiKey || '').trim(),
+    model: String(tts.model || '').trim(),
+    voice: String(tts.voice || '').trim()
+  });
+  showToast('TTS 设置已保存');
+}
+
+async function testTTS() {
+  saveTTS();
+  if (!tts.apiKey) {
+    showToast('请先填写 TTS API Key');
+    return;
+  }
+  try {
+    const provider = tts.provider || 'mimo';
+    const apiUrl = tts.apiUrl || (provider === 'openai'
+      ? 'https://api.openai.com/v1/audio/speech'
+      : 'https://api.xiaomimimo.com/v1/chat/completions');
+    const isMimo = provider === 'mimo' || /xiaomimimo/i.test(apiUrl);
+    const response = await fetch(apiUrl, isMimo ? {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': tts.apiKey },
+      body: JSON.stringify({
+        model: tts.model || 'mimo-v2.5-tts',
+        messages: [
+          { role: 'user', content: '请用温柔自然的语气朗读。' },
+          { role: 'assistant', content: '你好，我是八千代辉夜姬。今晚的月光，也很温柔。' }
+        ],
+        modalities: ['audio'],
+        audio: { format: 'wav', voice: tts.voice || 'mimo_default' }
+      })
+    } : {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tts.apiKey}` },
+      body: JSON.stringify({
+        model: tts.model || 'tts-1',
+        input: '你好，我是八千代辉夜姬。今晚的月光，也很温柔。',
+        voice: tts.voice || 'alloy',
+        response_format: 'mp3'
+      })
+    });
+    if (!response.ok) throw new Error((await response.text()).slice(0, 160) || `HTTP ${response.status}`);
+    const blob = isMimo
+      ? makeAudioBlobFromBase64(pickAudioBase64(await response.json()), 'audio/wav')
+      : await response.blob();
+    await new Audio(URL.createObjectURL(blob)).play();
+    showToast('TTS 测试成功');
+  } catch (error) {
+    showToast(`TTS 测试失败：${error.message}`);
+  }
+}
+
+function saveMemory() {
+  writeJson('roomMemorySettings', { enabled: Boolean(memory.enabled) });
+  showToast(memory.enabled ? '长期记忆已开启' : '长期记忆已关闭');
+}
+
+async function clearMemory() {
+  try {
+    const db = await openMemoryDb();
+    if (!db) return;
+    const tx = db.transaction(MEMORY_STORE, 'readwrite');
+    const index = tx.objectStore(MEMORY_STORE).index('userKey');
+    const records = await requestToPromise(index.getAll(IDBKeyRange.only(visitorKey.value)));
+    records.forEach((record) => tx.objectStore(MEMORY_STORE).delete(record.id));
+    await txToPromise(tx);
+    memoryCount.value = 0;
+    showToast(`已清空 ${records.length} 条本地记忆`);
+  } catch (error) {
+    showToast(`清空失败：${error.message}`);
+  }
+}
+
+onMounted(loadSettings);
+</script>
+
+<template>
+  <main class="page room-settings-page">
+    <section class="room-settings-hero">
+      <div>
+        <div class="hub-kicker">Room Settings</div>
+        <h1 class="section-title">房间设置</h1>
+        <p class="section-subtitle">模型位置、LLM、TTS 和长期记忆都集中在这里管理。保存后回到房间即可使用。</p>
+      </div>
+      <div class="room-settings-actions">
+        <a class="primary-btn" href="/room" @click.prevent="emit('go', '/room')">返回房间</a>
+        <button class="ghost-btn" type="button" @click="loadSettings">重新读取</button>
+      </div>
+    </section>
+
+    <section class="room-settings-grid">
+      <article class="room-settings-card">
+        <h2>模型与浮窗</h2>
+        <div class="form-grid">
+          <label>模型大小 <strong>{{ model.scale }}%</strong><input v-model="model.scale" type="range" min="60" max="160"></label>
+          <label>水平位置 <strong>{{ model.xOffset }}</strong><input v-model="model.xOffset" type="range" min="-240" max="240"></label>
+          <label>垂直位置 <strong>{{ model.yOffset }}</strong><input v-model="model.yOffset" type="range" min="-180" max="180"></label>
+          <div class="button-row">
+            <button class="primary-btn" type="button" @click="saveModel">保存模型设置</button>
+            <button class="ghost-btn" type="button" @click="resetModel">重置模型</button>
+            <button class="ghost-btn" type="button" @click="resetPanels">重置浮窗位置</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="room-settings-card">
+        <h2>LLM API</h2>
+        <div class="button-row preset-row">
+          <button v-for="(_, name) in LLM_PRESETS" :key="name" class="chip" type="button" @click="applyPreset(name)">{{ name }}</button>
+        </div>
+        <div class="form-grid">
+          <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="https://api.openai.com/v1/chat/completions"></label>
+          <label>API Key<input v-model="llm.apiKey" type="password" placeholder="sk-..."></label>
+          <label>模型名称<input v-model="llm.model" type="text" placeholder="gpt-4o-mini"></label>
+          <div class="button-row">
+            <button class="primary-btn" type="button" @click="saveLLM">保存 LLM</button>
+            <button class="ghost-btn" type="button" @click="testLLM">测试连接</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="room-settings-card">
+        <h2>TTS 语音</h2>
+        <div class="form-grid">
+          <label class="check-row"><input v-model="tts.enabled" type="checkbox"> 启用语音合成</label>
+          <label>Provider<select v-model="tts.provider"><option value="mimo">MiMo-V2.5-TTS</option><option value="openai">OpenAI TTS</option></select></label>
+          <label>API 端点<input v-model="tts.apiUrl" type="text" placeholder="https://api.xiaomimimo.com/v1/chat/completions"></label>
+          <label>API Key<input v-model="tts.apiKey" type="password" placeholder="sk-..."></label>
+          <label>模型名称<input v-model="tts.model" type="text" placeholder="mimo-v2.5-tts"></label>
+          <label>音色<input v-model="tts.voice" type="text" placeholder="mimo_default"></label>
+          <div class="button-row">
+            <button class="primary-btn" type="button" @click="saveTTS">保存 TTS</button>
+            <button class="ghost-btn" type="button" @click="testTTS">测试语音</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="room-settings-card">
+        <h2>长期记忆</h2>
+        <div class="form-grid">
+          <label class="check-row"><input v-model="memory.enabled" type="checkbox"> 启用本地长期记忆</label>
+          <p class="field-hint">记忆保存在本机 IndexedDB，按用户单独分桶，不上传到服务器。当前身份已有 {{ memoryCount }} 条本地记忆。</p>
+          <div class="button-row">
+            <button class="primary-btn" type="button" @click="saveMemory">保存记忆设置</button>
+            <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <div v-if="toast.visible" class="plaza-toast show">{{ toast.text }}</div>
+  </main>
+</template>

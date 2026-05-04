@@ -393,10 +393,6 @@ body.vue-room-route {
     width: min(410px, calc(100vw - 2rem));
 }
 
-.room-settings-panel {
-    width: min(390px, calc(100vw - 2rem));
-}
-
 .room-panel.dragging {
     opacity: 0.92;
 }

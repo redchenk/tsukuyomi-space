@@ -28,7 +28,7 @@ defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
       </a>
       <div class="nav-actions room-nav-links site-nav-links">
         <a href="/hub" class="nav-link" :class="{ 'router-link-active': routeName === 'hub' }" @click.prevent="$emit('go', '/hub')">{{ t.hub }}</a>
-        <a href="/room" class="nav-link" :class="{ 'router-link-active': routeName === 'room' }" @click.prevent="$emit('go', '/room')">{{ t.room }}</a>
+        <a href="/room" class="nav-link" :class="{ 'router-link-active': routeName === 'room' || routeName === 'roomSettings' }" @click.prevent="$emit('go', '/room')">{{ t.room }}</a>
         <a href="/stage" class="nav-link" :class="{ 'router-link-active': routeName === 'stage' }" @click.prevent="$emit('go', '/stage')">{{ t.stage }}</a>
         <a href="/plaza" class="nav-link" :class="{ 'router-link-active': routeName === 'plaza' }" @click.prevent="$emit('go', '/plaza')">{{ t.plaza }}</a>
         <a href="/reality" class="nav-link" :class="{ 'router-link-active': routeName === 'reality' }" @click.prevent="$emit('go', '/reality')">{{ t.reality }}</a>

@@ -14,13 +14,6 @@
     const Utils = () => CORE()?.Utils || {};
 
     const DEFAULT_MODEL_SETTINGS = { scale: 1, xOffset: 0, yOffset: 0 };
-    const LLM_PRESETS = {
-        deepseek: { apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
-        moonshot: { apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k' },
-        openai: { apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
-        aliyun: { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' }
-    };
-
     let chatConversation = [];
     let live2d = null;
     let ttsAudioUrl = null;
@@ -705,7 +698,6 @@
         }
 
         init() {
-            this.syncControls(this.settings);
             this.applyWhenReady();
         }
 
@@ -716,7 +708,6 @@
                 yOffset: Number(yOffset) || 0
             };
             writeJson('roomModelSettings', this.settings);
-            this.syncControls(this.settings);
             this.applyWhenReady();
         }
 
@@ -728,16 +719,6 @@
             if (this.pendingApply > 30) return;
             this.pendingApply += 1;
             setTimeout(() => this.applyWhenReady(), 100);
-        }
-
-        syncControls(settings = this.settings) {
-            const scale = Math.round(settings.scale * 100);
-            if ($('modelScaleInput')) $('modelScaleInput').value = scale;
-            if ($('modelScaleValue')) $('modelScaleValue').textContent = `${scale}%`;
-            if ($('modelXInput')) $('modelXInput').value = settings.xOffset;
-            if ($('modelXValue')) $('modelXValue').textContent = settings.xOffset;
-            if ($('modelYInput')) $('modelYInput').value = settings.yOffset;
-            if ($('modelYValue')) $('modelYValue').textContent = settings.yOffset;
         }
 
         speak() {
@@ -878,7 +859,6 @@
             this.textures = await Promise.all(texturePaths.map((path) => this.loadTexture(this.baseUrl + path)));
             const saved = readJson('roomModelSettings', DEFAULT_MODEL_SETTINGS);
             this.applySettings(saved.scale, saved.xOffset, saved.yOffset);
-            this.syncControls();
         }
 
         loadTexture(url) {
@@ -1126,17 +1106,6 @@
                 yOffset: Number(yOffset) || 0
             };
             writeJson('roomModelSettings', this.settings);
-            this.syncControls();
-        }
-
-        syncControls() {
-            const scale = Math.round(this.settings.scale * 100);
-            if ($('modelScaleInput')) $('modelScaleInput').value = scale;
-            if ($('modelScaleValue')) $('modelScaleValue').textContent = `${scale}%`;
-            if ($('modelXInput')) $('modelXInput').value = this.settings.xOffset;
-            if ($('modelXValue')) $('modelXValue').textContent = this.settings.xOffset;
-            if ($('modelYInput')) $('modelYInput').value = this.settings.yOffset;
-            if ($('modelYValue')) $('modelYValue').textContent = this.settings.yOffset;
         }
 
         speak(seconds) {
@@ -1219,10 +1188,6 @@
                 hidePanel(button.dataset.panelClose);
             });
         });
-        $('resetPanelsBtn')?.addEventListener('click', () => {
-            localStorage.removeItem('roomPanelPositions');
-            location.reload();
-        });
         syncPanelButtons();
     }
 
@@ -1295,20 +1260,6 @@
         display.innerHTML = `<div><strong>${escapeHtml(nickname)}</strong></div><div>${escapeHtml(signature)}</div>`;
     }
 
-    function normalizeSettings(prefix) {
-        const current = readJson(prefix === 'llm' ? 'roomLLMSettings' : 'roomTTSSettings', {});
-        const fields = prefix === 'llm'
-            ? ['apiUrl', 'apiKey', 'model']
-            : ['enabled', 'provider', 'apiUrl', 'apiKey', 'voice'];
-        fields.forEach((field) => {
-            const id = `${prefix}${field[0].toUpperCase()}${field.slice(1)}`;
-            const el = $(id);
-            if (!el) return;
-            current[field] = el.type === 'checkbox' ? el.checked : el.value.trim();
-        });
-        return current;
-    }
-
     function initChatAndSettings() {
         chatConversation = readJson('roomChatHistory', []);
         const chatMessages = $('chatMessages');
@@ -1316,69 +1267,11 @@
         appendMessage('system', '聊天已准备好');
         chatConversation.forEach((message) => appendMessage(message.role, message.content));
 
-        const llm = readJson('roomLLMSettings', {});
-        if ($('llmApiUrl')) $('llmApiUrl').value = llm.apiUrl || '';
-        if ($('llmApiKey')) $('llmApiKey').value = llm.apiKey || '';
-        if ($('llmModel')) $('llmModel').value = llm.model || '';
-
-        const tts = readJson('roomTTSSettings', {});
-        if ($('ttsEnabled')) $('ttsEnabled').checked = Boolean(tts.enabled);
-        if ($('ttsProvider')) $('ttsProvider').value = tts.provider || 'mimo';
-        if ($('ttsApiUrl')) $('ttsApiUrl').value = tts.apiUrl || '';
-        if ($('ttsApiKey')) $('ttsApiKey').value = tts.apiKey || '';
-        if ($('ttsVoice')) $('ttsVoice').value = tts.voice || '';
-
-        const memory = memorySettings();
-        if ($('memoryEnabled')) $('memoryEnabled').checked = memory.enabled;
         updateMemoryStatus();
 
         $('sendChatBtn')?.addEventListener('click', sendChat);
         $('chatInput')?.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') sendChat();
-        });
-        $('saveLLMBtn')?.addEventListener('click', () => {
-            writeJson('roomLLMSettings', normalizeSettings('llm'));
-            appendMessage('system', 'API 设置已保存');
-        });
-        $('saveTTSBtn')?.addEventListener('click', () => {
-            writeJson('roomTTSSettings', normalizeSettings('tts'));
-            appendMessage('system', 'TTS 设置已保存');
-        });
-        $('testLLMBtn')?.addEventListener('click', testLLMConnection);
-        $('testTTSBtn')?.addEventListener('click', testTTS);
-        $('memoryEnabled')?.addEventListener('change', (event) => {
-            writeMemorySettings({ enabled: Boolean(event.target.checked) });
-            updateMemoryStatus();
-            appendMessage('system', event.target.checked ? '长期记忆已开启' : '长期记忆已关闭');
-        });
-        $('clearMemoryBtn')?.addEventListener('click', async () => {
-            const count = await clearCurrentUserMemories();
-            await updateMemoryStatus();
-            appendMessage('system', `已清空 ${count} 条本地记忆`);
-        });
-        document.querySelectorAll('[data-llm-preset]').forEach((button) => {
-            button.addEventListener('click', () => {
-                const preset = LLM_PRESETS[button.dataset.llmPreset];
-                if (!preset) return;
-                $('llmApiUrl').value = preset.apiUrl;
-                $('llmModel').value = preset.model;
-                appendMessage('system', `已应用 ${button.textContent} 预设`);
-            });
-        });
-    }
-
-    function initModelControls() {
-        const sync = () => {
-            const scale = Number($('modelScaleInput')?.value || 100) / 100;
-            const xOffset = Number($('modelXInput')?.value || 0);
-            const yOffset = Number($('modelYInput')?.value || 0);
-            live2d?.applySettings(scale, xOffset, yOffset);
-        };
-        ['modelScaleInput', 'modelXInput', 'modelYInput'].forEach((id) => {
-            $(id)?.addEventListener('input', sync);
-        });
-        $('resetModelBtn')?.addEventListener('click', () => {
-            live2d?.applySettings(DEFAULT_MODEL_SETTINGS.scale, DEFAULT_MODEL_SETTINGS.xOffset, DEFAULT_MODEL_SETTINGS.yOffset);
         });
     }
 
@@ -1414,34 +1307,6 @@
         } catch (error) {
             typing.remove();
             appendMessage('system', `发送失败：${error.message}`);
-        }
-    }
-
-    async function testLLMConnection() {
-        const settings = normalizeSettings('llm');
-        appendMessage('system', '正在测试 LLM 连接...');
-        try {
-            const result = await createClientChatCompletion({
-                message: '你好，请用一句话回应连接测试。',
-                conversation: [],
-                settings
-            });
-            appendMessage('system', `连接成功：${result.model || 'browser-llm'}`);
-            applyActCuesFromReply(result.reply);
-            appendMessage('assistant', cleanAssistantReply(result.reply));
-        } catch (error) {
-            appendMessage('system', `连接失败：${error.message}`);
-        }
-    }
-
-    async function testTTS() {
-        const settings = normalizeSettings('tts');
-        appendMessage('system', '正在测试 TTS...');
-        try {
-            await playTTSInternal('你好，我是八千代辉夜姬。今晚的月光，也很温柔。', settings, true);
-            appendMessage('system', 'TTS 测试成功');
-        } catch (error) {
-            appendMessage('system', `TTS 测试失败：${error.message}`);
         }
     }
 
@@ -1571,7 +1436,6 @@
         initPanels();
         initProfileAndNote();
         initChatAndSettings();
-        initModelControls();
         bootLive2D();
     }
 
