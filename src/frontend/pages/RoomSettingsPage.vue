@@ -90,14 +90,15 @@ const storedUser = ref(readStoredUser());
 let toastTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
-const llm = reactive({ apiUrl: '', apiKey: '', model: '' });
+const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false });
 const tts = reactive({
   enabled: false,
   provider: 'mimo',
   apiUrl: '',
   apiKey: '',
   model: 'mimo-v2.5-tts',
-  voice: 'mimo_default'
+  voice: 'mimo_default',
+  useProxy: false
 });
 const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
 const knowledge = reactive({
@@ -525,7 +526,8 @@ function saveLLM() {
   writeJson('roomLLMSettings', {
     apiUrl: String(llm.apiUrl || '').trim(),
     apiKey: String(llm.apiKey || '').trim(),
-    model: String(llm.model || '').trim()
+    model: String(llm.model || '').trim(),
+    useProxy: Boolean(llm.useProxy)
   });
   showToast('LLM API 设置已保存');
 }
@@ -537,17 +539,21 @@ async function testLLM() {
     showToast('请先填写 LLM API Key');
     return;
   }
-  openTestDialog('llm', 'loading', 'LLM 连接测试', '正在请求模型供应商...', `${normalizeChatUrl(llm.apiUrl, llm.model)}\n模型：${llm.model || '未填写'}`);
+  openTestDialog('llm', 'loading', 'LLM 连接测试', llm.useProxy ? '正在通过站内受限代理请求模型供应商...' : '正在请求模型供应商...', `${llm.useProxy ? '/api/chat' : normalizeChatUrl(llm.apiUrl, llm.model)}\n模型：${llm.model || '未填写'}`);
   try {
-    const response = await fetch(normalizeChatUrl(llm.apiUrl, llm.model), {
+    const response = await fetch(llm.useProxy ? '/api/chat' : normalizeChatUrl(llm.apiUrl, llm.model), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${llm.apiKey}`
+        ...(llm.useProxy || isMiniMaxAnthropic(llm.apiUrl, llm.model) ? {} : { Authorization: `Bearer ${llm.apiKey}` }),
+        ...(!llm.useProxy && isMiniMaxAnthropic(llm.apiUrl, llm.model) ? { 'x-api-key': llm.apiKey, 'anthropic-version': '2023-06-01' } : {})
       },
-      body: JSON.stringify(makeChatRequestBody(llm.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120, llm.apiUrl))
+      body: JSON.stringify(llm.useProxy
+        ? { message: '请用一句话回复连接测试。', apiKey: llm.apiKey, apiUrl: llm.apiUrl, model: llm.model }
+        : makeChatRequestBody(llm.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120, llm.apiUrl))
     });
-    const data = await response.json().catch(() => ({}));
+    const raw = await response.json().catch(() => ({}));
+    const data = llm.useProxy ? raw.data || raw : raw;
     if (!response.ok) throw new Error(data?.error?.message || `HTTP ${response.status}`);
     const reply = pickChatReply(data);
     openTestDialog(
@@ -571,7 +577,8 @@ function saveTTS() {
     apiUrl: String(tts.apiUrl || '').trim(),
     apiKey: String(tts.apiKey || '').trim(),
     model: String(tts.model || '').trim(),
-    voice: String(tts.voice || '').trim()
+    voice: String(tts.voice || '').trim(),
+    useProxy: Boolean(tts.useProxy)
   });
   showToast('TTS 设置已保存');
 }
@@ -583,10 +590,23 @@ async function testTTS() {
     showToast('请先填写 TTS API Key');
     return;
   }
-  openTestDialog('tts', 'loading', 'TTS 语音测试', '正在请求语音供应商...', `${tts.apiUrl || defaultTtsUrl(tts.provider)}\nProvider：${tts.provider || 'mimo'}\n模型：${tts.model || '未填写'}\n音色：${tts.voice || '未填写'}`);
+  openTestDialog('tts', 'loading', 'TTS 语音测试', tts.useProxy ? '正在通过站内受限代理请求语音供应商...' : '正在请求语音供应商...', `${tts.useProxy ? '/api/tts' : (tts.apiUrl || defaultTtsUrl(tts.provider))}\nProvider：${tts.provider || 'mimo'}\n模型：${tts.model || '未填写'}\n音色：${tts.voice || '未填写'}`);
   try {
     const request = buildTtsRequest('你好，我是八千代辉夜姬。今晚的月光，也很温柔。', tts);
-    const response = await fetch(request.apiUrl, request.options);
+    const response = tts.useProxy
+      ? await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: '你好，我是八千代辉夜姬。今晚的月光，也很温柔。',
+          apiKey: tts.apiKey,
+          apiUrl: tts.apiUrl,
+          provider: tts.provider,
+          model: tts.model,
+          voice: tts.voice
+        })
+      })
+      : await fetch(request.apiUrl, request.options);
     if (!response.ok) throw new Error((await response.text()).slice(0, 160) || `HTTP ${response.status}`);
     const contentType = response.headers.get('content-type') || '';
     const blob = contentType.includes('application/json') || request.jsonAudioType
@@ -888,6 +908,8 @@ onMounted(loadSettings);
           <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="https://api.openai.com/v1/chat/completions"></label>
           <label>API Key<input v-model="llm.apiKey" type="password" placeholder="sk-..."></label>
           <label>模型名称<input v-model="llm.model" type="text" placeholder="gpt-4o-mini"></label>
+          <label class="check-row"><input v-model="llm.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>
+          <p class="field-hint">关闭时由浏览器直连供应商，更保护隐私；开启后请求会经过本站后端，仅允许预设供应商域名，用于处理 CORS 限制。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveLLM">保存 LLM</button>
             <button class="ghost-btn" type="button" @click="testLLM">测试连接</button>
@@ -923,6 +945,7 @@ onMounted(loadSettings);
           <label>API Key<input v-model="tts.apiKey" type="password" placeholder="sk-..."></label>
           <label>模型名称<input v-model="tts.model" type="text" placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"></label>
           <label>音色 / Voice ID<input v-model="tts.voice" type="text" placeholder="alloy / female-shaonv / ElevenLabs voice id"></label>
+          <label class="check-row"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>
           <p class="field-hint">LLM 预设均按 OpenAI-compatible Chat Completions 格式请求。TTS 中 OpenAI Compatible/自定义按 OpenAI Audio Speech 格式请求；ElevenLabs 使用 voice id；MiniMax 使用 t2a_v2 JSON 返回音频。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveTTS">保存 TTS</button>

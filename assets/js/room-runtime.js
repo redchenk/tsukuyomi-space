@@ -462,8 +462,26 @@
         return { role: 'assistant', content: pickChatReply(data) };
     }
 
+    function isMiniMaxAnthropic(apiUrl, model) {
+        return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${apiUrl || ''} ${model || ''}`);
+    }
+
+    function chatRequestHeaders(settings) {
+        if (isMiniMaxAnthropic(settings.apiUrl, settings.model)) {
+            return {
+                'Content-Type': 'application/json',
+                'x-api-key': settings.apiKey,
+                'anthropic-version': '2023-06-01'
+            };
+        }
+        return {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${settings.apiKey}`
+        };
+    }
+
     function makeChatRequestBody(model, messages, limit = 240, extra = {}, apiUrl = '') {
-        if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${apiUrl || ''} ${model || ''}`)) {
+        if (isMiniMaxAnthropic(apiUrl, model)) {
             const system = messages
                 .filter(item => item.role === 'system')
                 .map(item => String(item.content || ''))
@@ -757,6 +775,23 @@
         }
 
         const mcpSettings = readMcpSettings();
+        if (settings.useProxy) {
+            const result = await postJson('/api/chat', {
+                message: message || (image ? '请看这张图片。' : ''),
+                conversation,
+                apiKey: settings.apiKey,
+                apiUrl: settings.apiUrl,
+                model: settings.model,
+                systemPrompt: [
+                    buildYachiyoPersonaPrompt(),
+                    buildKnowledgeSystemContext(message),
+                    await buildMemorySystemContext(message),
+                    formatWeatherSystemContext(weather)
+                ].filter(Boolean).join('\n\n'),
+                image
+            });
+            return { ...(result.data || {}), weather };
+        }
 
         if (!settings.apiKey) {
             if (image) {
@@ -828,10 +863,7 @@
         try {
             response = await fetch(normalizeChatUrl(settings.apiUrl, model), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${settings.apiKey}`
-                },
+                headers: chatRequestHeaders(settings),
                 body: JSON.stringify(requestBody)
             });
         } catch (error) {
@@ -859,10 +891,7 @@
             const toolResults = await runMcpToolCalls(mcpSettings, assistantMessage.tool_calls);
             const finalResponse = await fetch(normalizeChatUrl(settings.apiUrl, model), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${settings.apiKey}`
-                },
+                headers: chatRequestHeaders(settings),
                 body: JSON.stringify(makeChatRequestBody(model, [
                         ...requestMessages,
                         {
@@ -1236,31 +1265,61 @@
         });
     }
 
+    async function attachChatImageFile(file) {
+        if (!file) return;
+        if (!/^image\//.test(file.type)) {
+            appendMessage('system', '请选择图片文件');
+            return;
+        }
+        if (file.size > 4 * 1024 * 1024) {
+            appendMessage('system', '图片不能超过 4MB');
+            return;
+        }
+        pendingImageAttachment = {
+            name: file.name || 'image',
+            type: file.type,
+            size: file.size,
+            dataUrl: await fileToDataUrl(file)
+        };
+        renderImagePreview();
+    }
+
     function initChatImageInput() {
         $('attachImageBtn')?.addEventListener('click', () => $('chatImageInput')?.click());
         $('chatImageInput')?.addEventListener('change', async (event) => {
             const file = event.target.files?.[0];
             if (!file) return;
-            if (!/^image\//.test(file.type)) {
-                appendMessage('system', '请选择图片文件');
-                return;
-            }
-            if (file.size > 4 * 1024 * 1024) {
-                appendMessage('system', '图片不能超过 4MB');
-                event.target.value = '';
-                return;
-            }
             try {
-                pendingImageAttachment = {
-                    name: file.name || 'image',
-                    type: file.type,
-                    size: file.size,
-                    dataUrl: await fileToDataUrl(file)
-                };
-                renderImagePreview();
+                await attachChatImageFile(file);
             } catch (error) {
                 appendMessage('system', `图片读取失败：${error.message}`);
             }
+        });
+        const chatPanel = $('chatPanel');
+        const chatBody = chatPanel?.querySelector('.chat-body');
+        [chatPanel, chatBody, $('chatMessages'), $('chatInput')].filter(Boolean).forEach((target) => {
+            target.addEventListener('dragover', (event) => {
+                if (![...event.dataTransfer?.items || []].some(item => item.kind === 'file')) return;
+                event.preventDefault();
+                chatPanel?.classList.add('image-drag-over');
+            });
+            target.addEventListener('dragleave', (event) => {
+                if (chatPanel && !chatPanel.contains(event.relatedTarget)) {
+                    chatPanel.classList.remove('image-drag-over');
+                }
+            });
+            target.addEventListener('drop', async (event) => {
+                const file = [...event.dataTransfer?.files || []].find(item => /^image\//.test(item.type));
+                if (!file) return;
+                event.preventDefault();
+                chatPanel?.classList.remove('image-drag-over');
+                try {
+                    await attachChatImageFile(file);
+                    appendMessage('system', '图片已添加，输入问题后发送即可。');
+                } catch (error) {
+                    appendMessage('system', `图片读取失败：${error.message}`);
+                }
+            });
         });
     }
 
@@ -1960,6 +2019,31 @@
     async function playTTSInternal(text, settings, force) {
         if (!force && !settings.enabled) return;
         if (!settings.apiKey) throw new Error('TTS API Key is required in browser-direct mode');
+        if (settings.useProxy) {
+            const response = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: String(text),
+                    apiKey: settings.apiKey,
+                    apiUrl: settings.apiUrl,
+                    provider: settings.provider,
+                    model: settings.model,
+                    voice: settings.voice
+                })
+            });
+            if (!response.ok) {
+                const detail = await response.text();
+                throw new Error(`TTS ${response.status}: ${detail.slice(0, 160)}`);
+            }
+            const blob = await response.blob();
+            if (ttsAudioUrl) URL.revokeObjectURL(ttsAudioUrl);
+            ttsAudioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(ttsAudioUrl);
+            audio.onplay = () => live2d?.speak(Math.min(10, Math.max(1, text.length / 6)));
+            await audio.play();
+            return;
+        }
         const request = buildTtsRequest(text, settings);
         const response = await fetch(request.apiUrl, request.options);
         if (!response.ok) {

@@ -5,12 +5,12 @@ const router = express.Router();
 
 router.post('/', async (req, res) => {
     try {
-        const { message, conversation = [], apiKey, apiUrl, model } = req.body;
-        if (!message) {
+        const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image } = req.body;
+        if (!message && !image) {
             return res.status(400).json({ success: false, message: '消息内容不能为空' });
         }
 
-        const data = await createChatCompletion({ message, conversation, apiKey, apiUrl, model });
+        const data = await createChatCompletion({ message, conversation, apiKey, apiUrl, model, systemPrompt, image });
         res.json({ success: true, data });
     } catch (error) {
         const statusCode = error.statusCode || 500;

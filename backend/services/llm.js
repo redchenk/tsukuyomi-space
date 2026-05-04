@@ -14,7 +14,18 @@ const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.moonshot.cn', path: /^\/v1\/chat\/completions\/?$/ },
     { hostname: 'api.deepseek.com', path: /^\/(?:v1\/)?chat\/completions\/?$/ },
     { hostname: 'api.openai.com', path: /^\/v1\/chat\/completions\/?$/ },
-    { hostname: 'dashscope.aliyuncs.com', path: /^\/compatible-mode\/v1\/chat\/completions\/?$/ }
+    { hostname: 'dashscope.aliyuncs.com', path: /^\/compatible-mode\/v1\/chat\/completions\/?$/ },
+    { hostname: 'openrouter.ai', path: /^\/api\/v1\/chat\/completions\/?$/ },
+    { hostname: 'open.bigmodel.cn', path: /^\/api\/paas\/v4\/chat\/completions\/?$/ },
+    { hostname: 'api.siliconflow.cn', path: /^\/v1\/chat\/completions\/?$/ },
+    { hostname: 'ark.cn-beijing.volces.com', path: /^\/api\/v3\/chat\/completions\/?$/ },
+    { hostname: 'api.minimaxi.com', path: /^\/anthropic\/v1\/messages\/?$/ },
+    { hostname: 'api.groq.com', path: /^\/openai\/v1\/chat\/completions\/?$/ },
+    { hostname: 'api.mistral.ai', path: /^\/v1\/chat\/completions\/?$/ },
+    { hostname: 'api.together.xyz', path: /^\/v1\/chat\/completions\/?$/ },
+    { hostname: 'api.perplexity.ai', path: /^\/chat\/completions\/?$/ },
+    { hostname: 'api.x.ai', path: /^\/v1\/chat\/completions\/?$/ },
+    { hostname: 'generativelanguage.googleapis.com', path: /^\/v1beta\/openai\/chat\/completions\/?$/ }
 ];
 
 class LLMEndpointError extends Error {
@@ -27,7 +38,10 @@ class LLMEndpointError extends Error {
 
 function normalizeChatUrl(apiUrl, model) {
     let url = apiUrl || LLM_API_URL || 'https://api.moonshot.cn/v1/chat/completions';
-    const needsChatPath = /deepseek|dashscope|aliyuncs|openai|moonshot/i.test(url + model) && !/\/chat\/completions\/?$/.test(url);
+    if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${model || ''}`)) {
+        return validateChatUrl(url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages'));
+    }
+    const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(url + model) && !/\/chat\/completions\/?$/.test(url);
     if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
     return validateChatUrl(url);
 }
@@ -78,13 +92,73 @@ function fallbackRoomReply(message) {
 }
 
 function pickReply(data) {
+    if (Array.isArray(data.content)) {
+        return data.content.filter(block => block?.type === 'text').map(block => block.text || '').join('\n').trim();
+    }
     return data.choices?.[0]?.message?.content
         || data.choices?.[0]?.text
         || data.message?.content
         || '';
 }
 
-async function createChatCompletion({ message, conversation = [], apiKey, apiUrl, model, systemPrompt = CHAT_SYSTEM_PROMPT }) {
+function isAnthropicChatUrl(chatUrl, model) {
+    return /\/anthropic\/v1\/messages\/?$|MiniMax-M2/i.test(`${chatUrl || ''} ${model || ''}`);
+}
+
+function parseDataUrl(dataUrl = '') {
+    const match = String(dataUrl).match(/^data:([^;,]+);base64,(.+)$/);
+    if (!match) return null;
+    return { mediaType: match[1], data: match[2] };
+}
+
+function buildChatPayload({ chatUrl, model, systemPrompt, history, message, image }) {
+    if (isAnthropicChatUrl(chatUrl, model)) {
+        return {
+            model,
+            system: systemPrompt,
+            messages: [
+                ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
+                { role: 'user', content: String(message || '') }
+            ],
+            temperature: 1,
+            max_tokens: 240,
+            stream: false
+        };
+    }
+    const userContent = image?.dataUrl
+        ? [
+            { type: 'text', text: String(message || '请描述这张图片。') },
+            { type: 'image_url', image_url: { url: image.dataUrl } }
+        ]
+        : String(message || '');
+    return {
+        model,
+        messages: [
+            { role: 'system', content: systemPrompt },
+            ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
+            { role: 'user', content: userContent }
+        ],
+        temperature: 0.7,
+        max_tokens: 240,
+        stream: false
+    };
+}
+
+function chatHeaders(chatUrl, apiKey, model) {
+    if (isAnthropicChatUrl(chatUrl, model)) {
+        return {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01'
+        };
+    }
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+    };
+}
+
+async function createChatCompletion({ message, conversation = [], apiKey, apiUrl, model, systemPrompt = CHAT_SYSTEM_PROMPT, image }) {
     const useApiKey = apiKey || LLM_API_KEY;
     const useModel = model || LLM_MODEL;
 
@@ -99,21 +173,8 @@ async function createChatCompletion({ message, conversation = [], apiKey, apiUrl
 
     const response = await fetch(chatUrl, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${useApiKey}`
-        },
-        body: JSON.stringify({
-            model: useModel,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
-                { role: 'user', content: String(message) }
-            ],
-            temperature: 0.7,
-            max_tokens: 240,
-            stream: false
-        })
+        headers: chatHeaders(chatUrl, useApiKey, useModel),
+        body: JSON.stringify(buildChatPayload({ chatUrl, model: useModel, systemPrompt, history, message, image }))
     });
 
     if (!response.ok) {

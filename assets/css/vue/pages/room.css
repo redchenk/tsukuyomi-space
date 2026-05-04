@@ -393,6 +393,24 @@ body.vue-room-route {
     width: min(410px, calc(100vw - 2rem));
 }
 
+.room-chat-panel.image-drag-over {
+    border-color: rgba(126, 219, 232, 0.72);
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.34), 0 0 0 3px rgba(126, 219, 232, 0.18);
+}
+
+.room-chat-panel.image-drag-over .chat-body::before {
+    content: "松开以上传图片";
+    display: grid;
+    place-items: center;
+    min-height: 42px;
+    margin-bottom: 0.55rem;
+    border: 1px dashed rgba(126, 219, 232, 0.58);
+    border-radius: 8px;
+    color: #e7fbff;
+    background: rgba(126, 219, 232, 0.12);
+    font-weight: 700;
+}
+
 .room-panel.dragging {
     opacity: 0.92;
 }
