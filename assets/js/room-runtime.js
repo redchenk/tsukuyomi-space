@@ -377,9 +377,13 @@
         const settings = readJson('roomMCPSettings', {});
         return {
             enabled: Boolean(settings.enabled),
+            provider: String(settings.provider || 'custom'),
             endpoint: String(settings.endpoint || '').trim(),
             apiKey: String(settings.apiKey || '').trim(),
             authHeader: String(settings.authHeader || 'Authorization').trim() || 'Authorization',
+            apiHost: String(settings.apiHost || '').trim(),
+            basePath: String(settings.basePath || '').trim(),
+            resourceMode: String(settings.resourceMode || 'url').trim() || 'url',
             toolAllowlist: String(settings.toolAllowlist || '').trim(),
             tools: Array.isArray(settings.tools) ? settings.tools : []
         };
@@ -395,6 +399,26 @@
         return headers;
     }
 
+    function isMiniMaxMcp(settings) {
+        return /^minimax/i.test(settings.provider || '');
+    }
+
+    function withMcpProviderMeta(settings, params = {}) {
+        if (!isMiniMaxMcp(settings)) return params;
+        return {
+            ...params,
+            meta: {
+                ...(params.meta || {}),
+                auth: {
+                    api_key: settings.apiKey,
+                    api_host: settings.apiHost || (/mainland/i.test(settings.provider) ? 'https://api.minimax.chat' : 'https://api.minimaxi.chat'),
+                    base_path: settings.basePath || undefined,
+                    resource_mode: settings.resourceMode || 'url'
+                }
+            }
+        };
+    }
+
     async function callMcpRpc(settings, method, params = {}) {
         if (!settings.endpoint) throw new Error('MCP endpoint is required');
         const response = await fetch(settings.endpoint, {
@@ -404,7 +428,7 @@
                 jsonrpc: '2.0',
                 id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 method,
-                params
+                params: withMcpProviderMeta(settings, params)
             })
         });
         const data = await response.json().catch(() => ({}));

@@ -15,6 +15,7 @@ const LLM_PRESETS = {
   openai: { apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
   aliyun: { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' }
 };
+const MINIMAX_MCP_TOOLS = 'text_to_audio,list_voices,voice_clone,voice_design,music_generation,generate_video,image_to_video,query_video_generation,text_to_image';
 
 const toast = reactive({ text: '', visible: false });
 const memoryCount = ref(0);
@@ -33,9 +34,13 @@ const tts = reactive({
 const memory = reactive({ enabled: true });
 const mcp = reactive({
   enabled: false,
+  provider: 'custom',
   endpoint: '',
   apiKey: '',
   authHeader: 'Authorization',
+  apiHost: 'https://api.minimaxi.chat',
+  basePath: '',
+  resourceMode: 'url',
   toolAllowlist: '',
   tools: []
 });
@@ -154,6 +159,23 @@ function loadSettings() {
   Object.assign(mcp, { ...mcp, ...readJson('roomMCPSettings', {}) });
   if (!Array.isArray(mcp.tools)) mcp.tools = [];
   loadMemoryCount();
+}
+
+function applyMcpProvider(provider) {
+  mcp.provider = provider;
+  if (provider === 'minimax-global') {
+    mcp.authHeader = 'Authorization';
+    mcp.apiHost = 'https://api.minimaxi.chat';
+    mcp.resourceMode = 'url';
+    mcp.toolAllowlist = mcp.toolAllowlist || MINIMAX_MCP_TOOLS;
+    showToast('已应用 MiniMax Global MCP 预设，请填写你的 MCP REST 端点和 MiniMax API Key');
+  } else if (provider === 'minimax-mainland') {
+    mcp.authHeader = 'Authorization';
+    mcp.apiHost = 'https://api.minimax.chat';
+    mcp.resourceMode = 'url';
+    mcp.toolAllowlist = mcp.toolAllowlist || MINIMAX_MCP_TOOLS;
+    showToast('已应用 MiniMax Mainland MCP 预设，请填写你的 MCP REST 端点和 MiniMax API Key');
+  }
 }
 
 function saveModel() {
@@ -329,9 +351,13 @@ async function callMcp(method, params = {}) {
 function saveMCP() {
   writeJson('roomMCPSettings', {
     enabled: Boolean(mcp.enabled),
+    provider: String(mcp.provider || 'custom'),
     endpoint: String(mcp.endpoint || '').trim(),
     apiKey: String(mcp.apiKey || '').trim(),
     authHeader: String(mcp.authHeader || 'Authorization').trim() || 'Authorization',
+    apiHost: String(mcp.apiHost || '').trim(),
+    basePath: String(mcp.basePath || '').trim(),
+    resourceMode: String(mcp.resourceMode || 'url').trim() || 'url',
     toolAllowlist: String(mcp.toolAllowlist || '').trim(),
     tools: Array.isArray(mcp.tools) ? mcp.tools : []
   });
@@ -434,11 +460,28 @@ onMounted(loadSettings);
         <h2>MCP 工具接入</h2>
         <div class="form-grid">
           <label class="check-row"><input v-model="mcp.enabled" type="checkbox"> 允许 LLM 调用 MCP 工具</label>
+          <label>提供商
+            <select v-model="mcp.provider" @change="applyMcpProvider(mcp.provider)">
+              <option value="custom">自定义 MCP</option>
+              <option value="minimax-global">MiniMax MCP JS - Global</option>
+              <option value="minimax-mainland">MiniMax MCP JS - Mainland</option>
+            </select>
+          </label>
           <label>MCP HTTP 端点<input v-model="mcp.endpoint" type="text" placeholder="https://example.com/mcp"></label>
           <label>鉴权头<input v-model="mcp.authHeader" type="text" placeholder="Authorization"></label>
           <label>访问密钥<input v-model="mcp.apiKey" type="password" placeholder="Bearer ..."></label>
+          <template v-if="mcp.provider.startsWith('minimax')">
+            <label>MiniMax API Host<input v-model="mcp.apiHost" type="text" placeholder="https://api.minimaxi.chat"></label>
+            <label>输出目录 / Base Path<input v-model="mcp.basePath" type="text" placeholder="可选，留空由 MCP 服务决定"></label>
+            <label>资源模式
+              <select v-model="mcp.resourceMode">
+                <option value="url">url</option>
+                <option value="local">local</option>
+              </select>
+            </label>
+          </template>
           <label>工具白名单<input v-model="mcp.toolAllowlist" type="text" placeholder="留空允许全部，或用逗号分隔工具名"></label>
-          <p class="field-hint">MCP 请求由浏览器直接发出，端点需要支持 CORS 与 JSON-RPC 的 tools/list、tools/call。密钥保存在当前浏览器本地。</p>
+          <p class="field-hint">MCP 请求由浏览器直接发出，端点需要支持 CORS 与 JSON-RPC 的 tools/list、tools/call。MiniMax 预设会按官方 JS MCP 的 REST 模式，把 API Key、API Host、资源模式放进每次请求的 meta.auth。</p>
           <div v-if="mcp.tools.length" class="mcp-tool-list">
             <span v-for="tool in mcp.tools" :key="tool.name" class="chip">{{ tool.name }}</span>
           </div>
