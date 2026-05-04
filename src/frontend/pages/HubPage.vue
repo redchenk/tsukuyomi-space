@@ -11,7 +11,7 @@ const sceneLinks = computed(() => [
   { href: '/room', name: props.t.room, desc: props.t.roomDesc, code: '01', tone: 'pink', spa: true },
   { href: '/plaza', name: props.t.plaza, desc: props.t.plazaDesc, code: '02', tone: 'cyan', spa: true },
   { href: '/stage', name: props.t.stage, desc: props.t.stageDesc, code: '03', tone: 'gold', spa: true },
-  { href: '/arena', name: props.t.arena, desc: props.t.arenaDesc, code: '04', tone: 'violet', spa: true },
+  { href: '/arena/', name: props.t.arena, desc: props.t.arenaDesc, code: '04', tone: 'violet', spa: false },
   { href: '/reality', name: props.t.reality, desc: props.t.realityDesc, code: '05', tone: 'green', spa: true }
 ]);
 

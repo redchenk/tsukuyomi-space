@@ -12,7 +12,6 @@ import RoomPage from '../pages/RoomPage.vue';
 import RoomSettingsPage from '../pages/RoomSettingsPage.vue';
 import ArticlePage from '../pages/ArticlePage.vue';
 import TerminalPage from '../pages/TerminalPage.vue';
-import ArenaPage from '../pages/ArenaPage.vue';
 
 export const routes = [
   { path: '/', name: 'access', component: AccessPage },
@@ -28,8 +27,7 @@ export const routes = [
   { path: '/reality', name: 'reality', component: RealityPage },
   { path: '/editor', name: 'editor', component: EditorPage },
   { path: '/user-center', name: 'userCenter', component: UserCenterPage },
-  { path: '/terminal', name: 'terminal', component: TerminalPage },
-  { path: '/arena', name: 'arena', component: ArenaPage }
+  { path: '/terminal', name: 'terminal', component: TerminalPage }
 ];
 
 export const router = createRouter({

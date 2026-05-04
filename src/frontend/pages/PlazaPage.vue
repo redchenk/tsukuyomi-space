@@ -29,12 +29,12 @@ const isZh = computed(() => props.lang === 'zh');
 const friends = computed(() => isZh.value ? [
   { name: '\u6708\u8bfb\u7a7a\u95f4\u5b98\u65b9', desc: '\u9879\u76ee\u4ed3\u5e93\u4e0e\u66f4\u65b0\u8bb0\u5f55', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '\u6708' },
   { name: '\u8f89\u591c\u59ec\u535a\u5ba2', desc: '\u6587\u7ae0\u3001\u516c\u544a\u4e0e\u521b\u4f5c\u624b\u8bb0', url: '/stage', avatar: '\u6587' },
-  { name: 'KASSEN \u7ade\u6280\u573a', desc: '3v3 \u5bf9\u6297\u539f\u578b', url: '/arena', avatar: '\u6218' },
+  { name: 'KASSEN \u7ade\u6280\u573a', desc: '3v3 \u5bf9\u6297\u539f\u578b', url: '/arena/', avatar: '\u6218', external: true },
   { name: '\u53cb\u94fe\u7533\u8bf7', desc: '\u7559\u4e0b\u7ad9\u70b9\u4fe1\u606f\u7b49\u5f85\u5ba1\u6838', url: '/terminal', avatar: '\u94fe' }
 ] : [
   { name: '\u6708\u8aad\u7a7a\u9593\u516c\u5f0f', desc: '\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u30ea\u30dd\u30b8\u30c8\u30ea\u3068\u66f4\u65b0\u8a18\u9332', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '\u6708' },
   { name: '\u8f1d\u591c\u59eb\u30d6\u30ed\u30b0', desc: '\u8a18\u4e8b\u3001\u304a\u77e5\u3089\u305b\u3001\u5275\u4f5c\u30ce\u30fc\u30c8', url: '/stage', avatar: '\u6587' },
-  { name: 'KASSEN \u30a2\u30ea\u30fc\u30ca', desc: '3v3 \u5bfe\u6226\u30d7\u30ed\u30c8\u30bf\u30a4\u30d7', url: '/arena', avatar: '\u6226' },
+  { name: 'KASSEN \u30a2\u30ea\u30fc\u30ca', desc: '3v3 \u5bfe\u6226\u30d7\u30ed\u30c8\u30bf\u30a4\u30d7', url: '/arena/', avatar: '\u6226', external: true },
   { name: '\u76f8\u4e92\u30ea\u30f3\u30af\u7533\u8acb', desc: '\u30b5\u30a4\u30c8\u60c5\u5831\u3092\u6b8b\u3057\u3066\u5be9\u67fb\u3092\u304a\u5f85\u3061\u304f\u3060\u3055\u3044', url: '/terminal', avatar: '\u30ea' }
 ]);
 
@@ -385,7 +385,7 @@ onMounted(refreshPlaza);
         <div class="panel">
           <div class="panel-title">{{ t.residents }} <span>{{ friends.length }}</span></div>
           <div class="plaza-friends">
-            <a v-for="f in friends" :key="f.name" class="plaza-friend-card" :href="f.url" @click="f.url.startsWith('/') && ($event.preventDefault(), go(f.url))">
+            <a v-for="f in friends" :key="f.name" class="plaza-friend-card" :href="f.url" @click="f.url.startsWith('/') && !f.external && ($event.preventDefault(), go(f.url))">
               <div class="plaza-friend-avatar">{{ f.avatar }}</div>
               <div>
                 <div class="plaza-friend-name">{{ f.name }}</div>
