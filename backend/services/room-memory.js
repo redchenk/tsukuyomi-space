@@ -1,10 +1,12 @@
 const crypto = require('crypto');
 const db = require('../db');
+const { normalizeChatUrl } = require('./llm');
 
 const VECTOR_SIZE = 96;
 const MAX_MEMORIES_PER_USER = Number(process.env.ROOM_MEMORY_MAX_PER_USER || 500);
 const MEMORY_TYPES = new Set(['profile', 'preference', 'project', 'episodic', 'semantic', 'conversation']);
 const SENSITIVE_PATTERN = /(password|api[_-]?key|secret|token|bearer\s+[a-z0-9._-]+|sk-[a-z0-9._-]+|密码|密钥|令牌|身份证|银行卡)/i;
+const LLM_EXTRACTOR_ENABLED = process.env.ROOM_MEMORY_EXTRACTOR === 'llm';
 
 function hashString(value) {
     let hash = 2166136261;
@@ -52,6 +54,16 @@ function parseJson(value, fallback) {
     } catch (_) {
         return fallback;
     }
+}
+
+function parseJsonArrayText(text) {
+    const raw = String(text || '').trim();
+    const json = raw.match(/```json\s*([\s\S]*?)```/i)?.[1]
+        || raw.match(/```\s*([\s\S]*?)```/)?.[1]
+        || raw.match(/\[[\s\S]*\]/)?.[0]
+        || raw;
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) ? parsed : [];
 }
 
 function cleanText(text, limit = 4000) {
@@ -171,6 +183,60 @@ function buildMemoryCandidate(payload = {}) {
     };
 }
 
+async function extractMemoryCandidatesWithLLM(payload = {}) {
+    if (!LLM_EXTRACTOR_ENABLED || !process.env.LLM_API_KEY) return [];
+    const userMessage = cleanText(payload.userMessage || '', 1200);
+    const assistantReply = cleanText(payload.assistantReply || '', 1200);
+    const content = cleanText(payload.content || `用户：${userMessage}\n八千代：${assistantReply}`, 2400);
+    if (!content || SENSITIVE_PATTERN.test(content)) return [];
+
+    const systemPrompt = [
+        '你是长期记忆提取器。只从对话中提取未来可能有用、相对稳定、非敏感的记忆。',
+        '不要保存一次性闲聊、临时情绪、密码、密钥、token、身份证、银行卡等敏感信息。',
+        '输出严格 JSON 数组，不要解释。每项字段：type, summary, content, importance, confidence, tags。',
+        'type 只能是 profile, preference, project, episodic, semantic, conversation。',
+        '如果没有值得长期保存的内容，输出 []。'
+    ].join('\n');
+    const response = await fetch(normalizeChatUrl(process.env.LLM_API_URL, process.env.LLM_MODEL || 'moonshot-v1-8k'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.LLM_API_KEY}`
+        },
+        body: JSON.stringify({
+            model: process.env.LLM_MODEL || 'moonshot-v1-8k',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content }
+            ],
+            temperature: 0.1,
+            max_tokens: 420,
+            stream: false
+        })
+    });
+    if (!response.ok) throw new Error(`Memory extractor LLM ${response.status}`);
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || data.choices?.[0]?.text || '';
+    return parseJsonArrayText(text)
+        .map(item => buildMemoryCandidate({
+            ...payload,
+            type: item.type,
+            summary: item.summary,
+            content: item.content || item.summary,
+            importance: item.importance,
+            confidence: item.confidence,
+            metadata: {
+                ...(payload.metadata || {}),
+                tags: item.tags || [],
+                source: 'llm-extractor'
+            },
+            force: true
+        }))
+        .filter(Boolean)
+        .filter(item => !SENSITIVE_PATTERN.test(`${item.summary}\n${item.content}`))
+        .slice(0, 4);
+}
+
 function mergeMemoryText(previous, next) {
     const a = cleanText(previous, 360);
     const b = cleanText(next, 360);
@@ -286,10 +352,22 @@ function upsertCandidate(userId, candidate) {
     return { memory: getMemory(userId, id), action: 'created' };
 }
 
-function recordMemory(userId, payload = {}) {
-    const candidate = buildMemoryCandidate(payload);
-    if (!candidate) return null;
-    return upsertCandidate(userId, candidate);
+async function recordMemory(userId, payload = {}) {
+    let candidates = [];
+    try {
+        candidates = await extractMemoryCandidatesWithLLM(payload);
+    } catch (error) {
+        console.warn('Room memory LLM extractor fallback:', error.message);
+    }
+    if (!candidates.length) {
+        const fallback = buildMemoryCandidate(payload);
+        if (fallback) candidates = [fallback];
+    }
+    if (!candidates.length) return null;
+    const results = candidates.map(candidate => upsertCandidate(userId, candidate));
+    return results.length === 1
+        ? results[0]
+        : { memory: results.map(item => item.memory), action: results.some(item => item.action === 'merged') ? 'merged' : 'created' };
 }
 
 function searchMemories(userId, query, limit = 5) {

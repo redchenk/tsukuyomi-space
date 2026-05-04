@@ -34,7 +34,7 @@ const tts = reactive({
   model: 'mimo-v2.5-tts',
   voice: 'mimo_default'
 });
-const memory = reactive({ enabled: true, query: '', type: '', editing: null });
+const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {} });
 const mcp = reactive({
   enabled: false,
   provider: 'custom',
@@ -373,6 +373,7 @@ function saveMemory() {
 }
 
 function editMemory(item) {
+  memory.expanded[item.id] = true;
   memory.editing = {
     id: item.id,
     type: item.type || 'conversation',
@@ -382,6 +383,10 @@ function editMemory(item) {
     confidence: Number(item.confidence || 0.8),
     tags: (item.tags || []).join(', ')
   };
+}
+
+function toggleMemoryContent(item) {
+  memory.expanded[item.id] = !memory.expanded[item.id];
 }
 
 function cancelMemoryEdit() {
@@ -442,6 +447,7 @@ async function clearMemory() {
       memoryCount.value = 0;
       memoryList.value = [];
       memory.editing = null;
+      memory.expanded = {};
       showToast(`已清空 ${result.data?.count || 0} 条服务端记忆`);
       return;
     }
@@ -631,7 +637,10 @@ onMounted(loadSettings);
               <span class="field-hint">重要度 {{ Number(item.importance || 0).toFixed(2) }} · 置信度 {{ Number(item.confidence || 0).toFixed(2) }}</span>
             </div>
             <strong>{{ item.summary }}</strong>
-            <p>{{ item.content }}</p>
+            <button class="memory-expand-btn" type="button" @click="toggleMemoryContent(item)">
+              {{ memory.expanded[item.id] ? '收起原文' : '展开原文' }}
+            </button>
+            <p v-if="memory.expanded[item.id]">{{ item.content }}</p>
             <div v-if="item.tags?.length" class="memory-tags">
               <span v-for="tag in item.tags" :key="`${item.id}-${tag}`">{{ tag }}</span>
             </div>

@@ -146,9 +146,9 @@ router.get('/memory', authenticateToken, (req, res) => {
     res.json({ success: true, data: memories });
 });
 
-router.post('/memory', authenticateToken, (req, res) => {
+router.post('/memory', authenticateToken, async (req, res) => {
     try {
-        const result = roomMemory.recordMemory(req.user.id, req.body || {});
+        const result = await roomMemory.recordMemory(req.user.id, req.body || {});
         if (!result) {
             return res.status(202).json({ success: true, data: null, message: '本轮对话没有需要长期保存的记忆' });
         }

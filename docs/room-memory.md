@@ -11,6 +11,8 @@ Room memory is an optional add-on for Yachiyo's agent flow. It must not block ch
 - Search uses a hybrid score: similarity, importance, recency, access signal, and memory type match.
 - Writes are filtered for long-term value and obvious sensitive content. Similar memories of the same type are merged instead of always appending.
 - The room settings page supports listing, searching, editing, deleting, and clearing the current user's server memories.
+- Memory content is collapsed in the settings page by default; users explicitly expand an item to view the original content.
+- Optional LLM extraction can be enabled with `ROOM_MEMORY_EXTRACTOR=llm` plus the existing `LLM_API_KEY`/`LLM_API_URL`/`LLM_MODEL` settings. Without it, the rule-based extractor remains active.
 - The lightweight hashed vector implementation is intentionally dependency-light and can later be replaced by pgvector, Qdrant, LanceDB, or sqlite-vec behind the same service boundary.
 
 ## Agent Flow
@@ -31,6 +33,6 @@ Room memory is an optional add-on for Yachiyo's agent flow. It must not block ch
 
 ## Next Steps
 
-- Add LLM-based memory extraction for higher quality candidates than the current rule-based extractor.
+- Tune the LLM extraction prompt after observing real room conversations.
 - Add a provider interface for real vector stores.
 - Add pin/export support and optional TTL/decay jobs.

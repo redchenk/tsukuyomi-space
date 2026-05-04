@@ -203,6 +203,24 @@
     overflow-wrap: anywhere;
 }
 
+.memory-expand-btn {
+    width: fit-content;
+    min-height: 30px;
+    border: 1px solid rgba(139, 168, 205, 0.2);
+    border-radius: 999px;
+    padding: 0.28rem 0.68rem;
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.62);
+    font: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.memory-expand-btn:hover {
+    border-color: rgba(102, 197, 223, 0.46);
+    background: rgba(228, 246, 253, 0.82);
+}
+
 .memory-tags span {
     display: inline-flex;
     min-height: 24px;
@@ -235,6 +253,12 @@ html[data-theme="dark"] .memory-item {
 
 html[data-theme="dark"] .memory-tags span {
     background: rgba(30, 41, 59, 0.86);
+}
+
+html[data-theme="dark"] .memory-expand-btn {
+    color: var(--text);
+    border-color: rgba(177, 205, 238, 0.18);
+    background: rgba(15, 23, 42, 0.66);
 }
 
 html[data-theme="dark"] .room-settings-card select option {
