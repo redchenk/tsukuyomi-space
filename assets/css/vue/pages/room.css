@@ -589,6 +589,54 @@ body.vue-room-route {
     white-space: pre-wrap;
 }
 
+.chat-image-thumb {
+    display: block;
+    width: min(180px, 100%);
+    max-height: 150px;
+    object-fit: cover;
+    margin-bottom: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 7px;
+}
+
+.chat-image-preview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    margin-bottom: 0.55rem;
+    padding: 0.45rem;
+    border: 1px solid rgba(255, 205, 218, 0.18);
+    border-radius: 7px;
+    color: #fff7fb;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.chat-image-preview[hidden] {
+    display: none !important;
+}
+
+.chat-image-preview img {
+    width: 52px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.chat-image-preview span {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.76rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-image-preview button {
+    min-height: 30px;
+    padding: 0.28rem 0.5rem;
+}
+
 .chat-message-actions {
     display: flex;
     justify-content: flex-start;
@@ -619,8 +667,13 @@ body.vue-room-route {
 
 .chat-input-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 0.48rem;
+}
+
+.chat-attach-btn {
+    min-width: 38px;
+    padding-inline: 0.55rem;
 }
 
 .status-layer {

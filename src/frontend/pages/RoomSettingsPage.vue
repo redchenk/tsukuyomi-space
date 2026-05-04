@@ -165,18 +165,21 @@ function loadSettings() {
 function applyMcpProvider(provider) {
   mcp.provider = provider;
   if (provider === 'minimax-global') {
+    mcp.enabled = true;
     mcp.authHeader = 'Authorization';
     mcp.apiHost = 'https://api.minimaxi.chat';
     mcp.resourceMode = 'url';
     mcp.toolAllowlist = mcp.toolAllowlist || MINIMAX_MCP_TOOLS;
     showToast('已应用 MiniMax Global MCP 预设，请填写你的 MCP REST 端点和 MiniMax API Key');
   } else if (provider === 'minimax-mainland') {
+    mcp.enabled = true;
     mcp.authHeader = 'Authorization';
     mcp.apiHost = 'https://api.minimax.chat';
     mcp.resourceMode = 'url';
     mcp.toolAllowlist = mcp.toolAllowlist || MINIMAX_MCP_TOOLS;
     showToast('已应用 MiniMax Mainland MCP 预设，请填写你的 MCP REST 端点和 MiniMax API Key');
   } else if (provider === 'minimax-token-plan') {
+    mcp.enabled = true;
     mcp.authHeader = 'Authorization';
     mcp.endpoint = '/api/mcp/token-plan';
     mcp.apiHost = 'https://api.minimaxi.com';
@@ -369,7 +372,7 @@ function saveMCP() {
     toolAllowlist: String(mcp.toolAllowlist || '').trim(),
     tools: Array.isArray(mcp.tools) ? mcp.tools : []
   });
-  showToast(mcp.enabled ? 'MCP 设置已保存' : 'MCP 已关闭');
+  showToast(mcp.enabled ? 'MCP 设置已保存并启用' : 'MCP 设置已保存（当前未启用）');
 }
 
 async function testMCP() {

@@ -13,7 +13,7 @@ defineEmits(['go', 'logout', 'toggle-theme']);
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
   '/lib/bundled/live2d-room.iife.js?v=20260503-memory1',
-  '/assets/js/room-runtime.js?v=20260504-mcp1'
+  '/assets/js/room-runtime.js?v=20260504-vision1'
 ];
 
 const roomUserName = computed(() => props.user?.username || props.user?.email || 'Guest');
@@ -132,7 +132,10 @@ onBeforeUnmount(() => {
       </div>
       <div class="panel-content chat-body">
         <div id="chatMessages" class="room-chat-messages"></div>
+        <div id="chatImagePreview" class="chat-image-preview" hidden></div>
         <div class="chat-input-row">
+          <input id="chatImageInput" type="file" accept="image/*" hidden>
+          <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" title="上传图片" aria-label="上传图片">图</button>
           <input id="chatInput" type="text" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;">
           <button id="sendChatBtn" class="panel-btn" type="button">&#21457;&#36865;</button>
         </div>

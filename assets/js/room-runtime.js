@@ -23,6 +23,7 @@
     let live2dReadyListener = null;
     let worldRefreshTimer = null;
     let memoryDbPromise = null;
+    let pendingImageAttachment = null;
 
     function $(id) {
         return document.getElementById(id);
@@ -315,6 +316,13 @@
         return presets[index];
     }
 
+    function fallbackImageReply(message) {
+        const topic = String(message || '').trim();
+        return topic
+            ? `我现在还看不清这张图，但我会先把你的问题记住：${topic}。等多模态模型或图片理解工具可用时，我们再一起仔细看。`
+            : '我现在还看不清这张图。等多模态模型或图片理解工具可用时，我们再一起仔细看。';
+    }
+
     function weatherLabel(weather) {
         return {
             clear: '晴朗',
@@ -487,6 +495,26 @@
         return JSON.stringify(result ?? {}).slice(0, 4000);
     }
 
+    async function understandImageWithMcp(settings, image, question) {
+        if (!settings.enabled || !settings.endpoint || !settings.apiKey) {
+            throw new Error('Image MCP is not configured');
+        }
+        const result = await callMcpRpc(settings, 'tools/call', {
+            name: 'understand_image',
+            arguments: {
+                image_url: image.url || image.dataUrl,
+                image_data: image.dataUrl,
+                prompt: question || '请描述这张图片，并指出和用户问题相关的内容。'
+            }
+        });
+        return formatMcpToolResult(result);
+    }
+
+    function supportsVisionModel(model, apiUrl) {
+        const target = `${model || ''} ${apiUrl || ''}`;
+        return /vision|vl|gpt-4o|gpt-4\.1|o3|o4|gemini|claude-3|qwen-vl|qwen2\.5-vl|doubao.*vision|glm-4v|moonshot-v1-.*vision/i.test(target);
+    }
+
     async function runMcpToolCalls(settings, toolCalls = []) {
         const allowlist = allowedMcpToolNames(settings);
         const calls = toolCalls.slice(0, 4);
@@ -524,7 +552,7 @@
         return results;
     }
 
-    async function createClientChatCompletion({ message, conversation = [], settings = {}, weatherLocation = null }) {
+    async function createClientChatCompletion({ message, conversation = [], settings = {}, weatherLocation = null, image = null }) {
         let weather = null;
         if (isWeatherQuestion(message)) {
             try {
@@ -534,7 +562,17 @@
             }
         }
 
+        const mcpSettings = readMcpSettings();
+
         if (!settings.apiKey) {
+            if (image) {
+                try {
+                    const imageReply = await understandImageWithMcp(mcpSettings, image, message);
+                    return { reply: imageReply, model: 'mcp-understand-image', weather };
+                } catch (_) {
+                    return { reply: fallbackImageReply(message), model: 'browser-preset', weather };
+                }
+            }
             return {
                 reply: weather ? fallbackWeatherReply(weather) : fallbackChatReply(message),
                 model: 'browser-preset',
@@ -553,12 +591,6 @@
         const history = Array.isArray(conversation)
             ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12)
             : [];
-        const baseMessages = [
-            { role: 'system', content: systemPrompt },
-            ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
-            { role: 'user', content: String(message) }
-        ];
-        const mcpSettings = readMcpSettings();
         let mcpTools = [];
         try {
             mcpTools = await listMcpTools(mcpSettings);
@@ -566,9 +598,23 @@
             console.warn('MCP tools unavailable:', error.message);
             mcpTools = [];
         }
+        const canUseVision = image && supportsVisionModel(model, settings.apiUrl);
+        const userMessage = canUseVision ? {
+            role: 'user',
+            content: [
+                { type: 'text', text: String(message || '请描述这张图片。') },
+                { type: 'image_url', image_url: { url: image.dataUrl || image.url } }
+            ]
+        } : { role: 'user', content: String(message) };
+        const requestMessages = [
+            { role: 'system', content: systemPrompt },
+            ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
+            userMessage
+        ];
+
         const requestBody = {
             model,
-            messages: baseMessages,
+            messages: requestMessages,
             temperature: 0.7,
             max_tokens: 240,
             stream: false
@@ -577,14 +623,39 @@
             requestBody.tools = mcpTools;
             requestBody.tool_choice = 'auto';
         }
-        const response = await fetch(normalizeChatUrl(settings.apiUrl, model), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${settings.apiKey}`
-            },
-            body: JSON.stringify(requestBody)
-        });
+        if (image && !canUseVision) {
+            try {
+                const imageReply = await understandImageWithMcp(mcpSettings, image, message);
+                return { reply: imageReply, model: 'mcp-understand-image', weather };
+            } catch (_) {
+                return { reply: fallbackImageReply(message), model: 'browser-preset', weather };
+            }
+        }
+        let response;
+        try {
+            response = await fetch(normalizeChatUrl(settings.apiUrl, model), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${settings.apiKey}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+        } catch (error) {
+            if (!image) throw error;
+            response = null;
+        }
+        if (image && (!canUseVision || !response || !response.ok)) {
+            try {
+                const imageReply = await understandImageWithMcp(mcpSettings, image, message);
+                return { reply: imageReply, model: 'mcp-understand-image', weather };
+            } catch (_) {
+                return { reply: fallbackImageReply(message), model: 'browser-preset', weather };
+            }
+        }
+        if (!response) {
+            throw new Error('LLM request failed');
+        }
         if (!response.ok) {
             const detail = await response.text();
             throw new Error(`LLM ${response.status}: ${detail.slice(0, 160)}`);
@@ -602,7 +673,7 @@
                 body: JSON.stringify({
                     model,
                     messages: [
-                        ...baseMessages,
+                        ...requestMessages,
                         {
                             role: 'assistant',
                             content: assistantMessage.content || '',
@@ -832,7 +903,7 @@
         if (overlay) overlay.classList.remove('active');
     }
 
-    function appendMessage(role, content) {
+    function appendMessage(role, content, options = {}) {
         const chatMessages = $('chatMessages');
         if (!chatMessages) return;
         const roleNames = { user: '你', assistant: '辉夜姬', system: '系统' };
@@ -841,6 +912,7 @@
         node.className = `chat-message ${role}`;
         node.innerHTML = [
             `<span class="chat-role">${roleNames[role] || role}</span>`,
+            options.image?.dataUrl ? `<img class="chat-image-thumb" src="${escapeHtml(options.image.dataUrl)}" alt="${escapeHtml(options.image.name || 'attached image')}">` : '',
             `<div class="chat-content">${escapeHtml(messageText)}</div>`
         ].join('');
         if (role === 'assistant') {
@@ -856,6 +928,65 @@
         }
         chatMessages.appendChild(node);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function renderImagePreview() {
+        const preview = $('chatImagePreview');
+        if (!preview) return;
+        if (!pendingImageAttachment) {
+            preview.hidden = true;
+            preview.innerHTML = '';
+            return;
+        }
+        preview.hidden = false;
+        preview.innerHTML = [
+            `<img src="${escapeHtml(pendingImageAttachment.dataUrl)}" alt="${escapeHtml(pendingImageAttachment.name)}">`,
+            `<span>${escapeHtml(pendingImageAttachment.name)}</span>`,
+            '<button id="clearChatImageBtn" class="panel-btn" type="button">移除</button>'
+        ].join('');
+        $('clearChatImageBtn')?.addEventListener('click', () => {
+            pendingImageAttachment = null;
+            const input = $('chatImageInput');
+            if (input) input.value = '';
+            renderImagePreview();
+        });
+    }
+
+    function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(reader.error || new Error('Image read failed'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function initChatImageInput() {
+        $('attachImageBtn')?.addEventListener('click', () => $('chatImageInput')?.click());
+        $('chatImageInput')?.addEventListener('change', async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            if (!/^image\//.test(file.type)) {
+                appendMessage('system', '请选择图片文件');
+                return;
+            }
+            if (file.size > 4 * 1024 * 1024) {
+                appendMessage('system', '图片不能超过 4MB');
+                event.target.value = '';
+                return;
+            }
+            try {
+                pendingImageAttachment = {
+                    name: file.name || 'image',
+                    type: file.type,
+                    size: file.size,
+                    dataUrl: await fileToDataUrl(file)
+                };
+                renderImagePreview();
+            } catch (error) {
+                appendMessage('system', `图片读取失败：${error.message}`);
+            }
+        });
     }
 
     async function postJson(path, payload) {
@@ -1471,6 +1602,7 @@
         if (chatMessages) chatMessages.innerHTML = '';
         appendMessage('system', '聊天已准备好');
         chatConversation.forEach((message) => appendMessage(message.role, message.content));
+        initChatImageInput();
 
         updateMemoryStatus();
 
@@ -1483,9 +1615,14 @@
     async function sendChat() {
         const input = $('chatInput');
         const message = input?.value.trim() || '';
-        if (!message) return;
-        appendMessage('user', message);
-        input.value = '';
+        const image = pendingImageAttachment;
+        if (!message && !image) return;
+        appendMessage('user', message || '请看这张图片。', { image });
+        if (input) input.value = '';
+        pendingImageAttachment = null;
+        const imageInput = $('chatImageInput');
+        if (imageInput) imageInput.value = '';
+        renderImagePreview();
 
         const typing = document.createElement('div');
         typing.className = 'chat-message assistant';
@@ -1498,17 +1635,19 @@
                 message,
                 conversation: chatConversation.slice(-12),
                 settings: readJson('roomLLMSettings', {}),
-                weatherLocation
+                weatherLocation,
+                image
             });
             typing.remove();
             const rawReply = result.reply || '';
             applyActCuesFromReply(rawReply);
             const reply = cleanAssistantReply(rawReply);
             appendMessage('assistant', reply);
-            chatConversation.push({ role: 'user', content: message }, { role: 'assistant', content: reply });
+            const userContent = image ? `${message || '请看这张图片。'}\n[图片：${image.name}]` : message;
+            chatConversation.push({ role: 'user', content: userContent }, { role: 'assistant', content: reply });
             chatConversation = chatConversation.slice(-24);
             writeJson('roomChatHistory', chatConversation);
-            rememberConversation(message, reply).catch((error) => console.warn('Room memory skipped:', error.message));
+            rememberConversation(userContent, reply).catch((error) => console.warn('Room memory skipped:', error.message));
         } catch (error) {
             typing.remove();
             appendMessage('system', `发送失败：${error.message}`);
