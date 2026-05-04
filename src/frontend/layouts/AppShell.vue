@@ -17,7 +17,10 @@ defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
     <div v-if="showChrome" class="moon" aria-hidden="true"></div>
     <header v-if="showChrome" class="topbar site-commandbar">
       <a href="/hub" class="brand room-brand site-brand" @click.prevent="$emit('go', '/hub')">
-        <span class="room-brand-mark site-brand-mark">{{ String(t.brand || '月').slice(0, 1) }}</span>
+        <span class="room-brand-mark site-brand-mark room-user-avatar">
+          <img v-if="user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
+          <span v-else>{{ String(user?.username || user?.email || t.brand || '月').slice(0, 1).toUpperCase() }}</span>
+        </span>
         <span>
           <strong>{{ t.brand }}</strong>
           <small>Tsukuyomi Space</small>

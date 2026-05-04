@@ -110,6 +110,7 @@ async function ucLoadProfile() {
     ucUser.value = result.data;
     uc.profileBio = result.data?.bio || '';
     updateStoredUser(result.data);
+    emit('auth-changed');
   } catch (error) {
     ucShowToast(error.message || props.t.ucProfileLoadFailed);
   }
@@ -186,6 +187,7 @@ async function ucUploadAvatar(event) {
     if (!result.success) throw new Error(result.message || props.t.ucAvatarUploadFailed);
     if (ucUser.value) ucUser.value.avatar = avatar;
     updateStoredUser(ucUser.value);
+    emit('auth-changed');
     ucShowToast(props.t.ucAvatarUpdated);
   } catch (error) {
     ucShowToast(error.message || props.t.ucAvatarUploadFailed);
