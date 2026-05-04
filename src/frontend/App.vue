@@ -78,6 +78,14 @@ watch(() => route.fullPath, refreshUser, { immediate: true });
     @set-lang="setLang"
     @toggle-theme="toggleTheme"
   >
-    <RouterView :lang="lang" :t="t" :user="user" @auth-changed="refreshUser" @go="go" />
+    <RouterView
+      :lang="lang"
+      :t="t"
+      :theme="theme"
+      :user="user"
+      @auth-changed="refreshUser"
+      @go="go"
+      @toggle-theme="toggleTheme"
+    />
   </AppShell>
 </template>

@@ -596,14 +596,214 @@ html[data-theme="dark"] .terminal-table-wrap th {
     background: rgba(30, 64, 88, 0.72);
 }
 
+.page,
+.page :where(p, li, dd, td, textarea, input, select),
+.terminal-page,
+.terminal-page :where(p, td),
+.article-reader,
+.article-reader :where(p, li),
+.plaza-wall,
+.plaza-wall :where(p, li),
+.reality-hero,
+.reality-card,
+.user-center-panel,
+.uc-card {
+    color: var(--text);
+}
+
+.page :where(h1, h2, h3, h4, h5, h6, strong, th),
+.hub-title,
+.hub-feature-title,
+.scene-title,
+.plaza-msg-author,
+.plaza-friend-name,
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.reality-card h2,
+.reality-statement strong,
+.uc-login-notice h1,
+.uc-username,
+.uc-stat-value,
+.uc-section-title,
+.uc-article-title,
+.uc-security-card h3,
+.terminal-login-card h1,
+.terminal-panel-head h2 {
+    color: var(--ink);
+}
+
+.page :where(small, time),
+.hub-status-row,
+.hub-status-row span,
+.hub-feature-copy,
+.scene-desc,
+.scene-code,
+.article-meta,
+.comment-item time,
+.plaza-msg-meta,
+.plaza-reply-meta,
+.plaza-friend-desc,
+.plaza-rules,
+.reality-copy,
+.reality-card p,
+.reality-data-table td,
+.reality-statement,
+.uc-email,
+.uc-bio-preview,
+.uc-stat-label,
+.uc-stat-note,
+.uc-article-meta,
+.uc-empty,
+.uc-security-card p,
+.terminal-login-card p,
+.terminal-session span,
+.terminal-empty,
+.terminal-card strong {
+    color: var(--muted);
+}
+
+.article-content,
+.article-content p,
+.comment-item p,
+.plaza-msg-content,
+.plaza-reply-content,
+.terminal-table-wrap td,
+.terminal-settings textarea,
+.editor-textarea,
+.editor-input,
+.uc-search {
+    color: var(--text);
+}
+
+.article-card,
+.comment-item,
+.plaza-msg-card,
+.plaza-reply-card,
+.plaza-friend-card,
+.reality-data-table,
+.uc-stat-card,
+.uc-article-card,
+.uc-security-card,
+.editor-panel,
+.terminal-settings textarea {
+    border-color: rgba(139, 168, 205, 0.18);
+    background: rgba(255, 255, 255, 0.88);
+}
+
+html[data-theme="dark"] .page,
+html[data-theme="dark"] .page :where(p, li, dd, td, textarea, input, select),
+html[data-theme="dark"] .terminal-page,
+html[data-theme="dark"] .terminal-page :where(p, td),
+html[data-theme="dark"] .article-reader,
+html[data-theme="dark"] .article-reader :where(p, li),
+html[data-theme="dark"] .plaza-wall,
+html[data-theme="dark"] .plaza-wall :where(p, li),
+html[data-theme="dark"] .reality-hero,
+html[data-theme="dark"] .reality-card,
+html[data-theme="dark"] .user-center-panel,
+html[data-theme="dark"] .uc-card {
+    color: var(--text);
+}
+
+html[data-theme="dark"] .page :where(h1, h2, h3, h4, h5, h6, strong, th),
+html[data-theme="dark"] .hub-title,
+html[data-theme="dark"] .hub-feature-title,
+html[data-theme="dark"] .scene-title,
+html[data-theme="dark"] .plaza-msg-author,
+html[data-theme="dark"] .plaza-friend-name,
+html[data-theme="dark"] .article-content h1,
+html[data-theme="dark"] .article-content h2,
+html[data-theme="dark"] .article-content h3,
+html[data-theme="dark"] .reality-card h2,
+html[data-theme="dark"] .reality-statement strong,
+html[data-theme="dark"] .uc-login-notice h1,
+html[data-theme="dark"] .uc-username,
+html[data-theme="dark"] .uc-stat-value,
+html[data-theme="dark"] .uc-section-title,
+html[data-theme="dark"] .uc-article-title,
+html[data-theme="dark"] .uc-security-card h3,
+html[data-theme="dark"] .terminal-login-card h1,
+html[data-theme="dark"] .terminal-panel-head h2 {
+    color: var(--ink);
+}
+
+html[data-theme="dark"] .page :where(small, time),
+html[data-theme="dark"] .hub-status-row,
+html[data-theme="dark"] .hub-status-row span,
+html[data-theme="dark"] .hub-feature-copy,
+html[data-theme="dark"] .scene-desc,
+html[data-theme="dark"] .scene-code,
+html[data-theme="dark"] .article-meta,
+html[data-theme="dark"] .comment-item time,
+html[data-theme="dark"] .plaza-msg-meta,
+html[data-theme="dark"] .plaza-reply-meta,
+html[data-theme="dark"] .plaza-friend-desc,
+html[data-theme="dark"] .plaza-rules,
+html[data-theme="dark"] .reality-copy,
+html[data-theme="dark"] .reality-card p,
+html[data-theme="dark"] .reality-data-table td,
+html[data-theme="dark"] .reality-statement,
+html[data-theme="dark"] .uc-email,
+html[data-theme="dark"] .uc-bio-preview,
+html[data-theme="dark"] .uc-stat-label,
+html[data-theme="dark"] .uc-stat-note,
+html[data-theme="dark"] .uc-article-meta,
+html[data-theme="dark"] .uc-empty,
+html[data-theme="dark"] .uc-security-card p,
+html[data-theme="dark"] .terminal-login-card p,
+html[data-theme="dark"] .terminal-session span,
+html[data-theme="dark"] .terminal-empty,
+html[data-theme="dark"] .terminal-card strong {
+    color: var(--muted);
+}
+
+html[data-theme="dark"] .article-content,
+html[data-theme="dark"] .article-content p,
+html[data-theme="dark"] .comment-item p,
+html[data-theme="dark"] .plaza-msg-content,
+html[data-theme="dark"] .plaza-reply-content,
+html[data-theme="dark"] .terminal-table-wrap td,
+html[data-theme="dark"] .terminal-settings textarea,
+html[data-theme="dark"] .editor-textarea,
+html[data-theme="dark"] .editor-input,
+html[data-theme="dark"] .uc-search {
+    color: var(--text);
+}
+
+html[data-theme="dark"] .article-card,
+html[data-theme="dark"] .comment-item,
+html[data-theme="dark"] .plaza-msg-card,
+html[data-theme="dark"] .plaza-reply-card,
+html[data-theme="dark"] .plaza-friend-card,
+html[data-theme="dark"] .reality-data-table,
+html[data-theme="dark"] .uc-stat-card,
+html[data-theme="dark"] .uc-article-card,
+html[data-theme="dark"] .uc-security-card,
+html[data-theme="dark"] .editor-panel,
+html[data-theme="dark"] .terminal-settings textarea {
+    border-color: rgba(177, 205, 238, 0.16);
+    background: rgba(17, 24, 39, 0.88);
+}
+
+html[data-theme="dark"] .scene-card:hover,
+html[data-theme="dark"] .stage-card:hover,
+html[data-theme="dark"] .plaza-msg-card:hover,
+html[data-theme="dark"] .plaza-friend-card:hover {
+    background: rgba(30, 41, 59, 0.96);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+}
+
 .room-page {
     --room-panel-bg: rgba(255, 255, 255, 0.86);
     --room-ink: var(--ink);
 }
 
 .room-commandbar,
+.room-dock,
 .room-panel,
-.room-dock .panel-toggle-btn {
+.room-dock .panel-toggle-btn,
+.room-theme-toggle {
     border-color: rgba(139, 168, 205, 0.18);
     background: rgba(255, 255, 255, 0.86);
     box-shadow: var(--float-shadow);
@@ -614,8 +814,34 @@ html[data-theme="dark"] .terminal-table-wrap th {
 .room-panel label,
 .panel-title,
 .chat-message,
-.chat-role {
+.chat-role,
+.panel-content,
+.field-hint,
+.room-brand,
+.room-brand small,
+.room-nav-links a,
+.room-theme-toggle,
+.status-title,
+.status-detail {
     color: var(--ink);
+}
+
+.room-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.36rem;
+    min-height: 36px;
+    padding: 0.48rem 0.7rem;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 0.84rem;
+    cursor: pointer;
+}
+
+.room-brand small,
+.field-hint,
+.status-detail {
+    color: var(--muted);
 }
 
 .chat-message.assistant {
@@ -633,14 +859,86 @@ html[data-theme="dark"] .terminal-table-wrap th {
 
 .status-layer.active {
     background:
-        linear-gradient(135deg, rgba(230, 247, 253, 0.96), rgba(243, 240, 255, 0.94), rgba(255, 248, 252, 0.96));
+        linear-gradient(135deg, rgba(230, 247, 253, 0.94), rgba(243, 240, 255, 0.92), rgba(255, 248, 252, 0.94));
 }
 
 .status-box {
     color: var(--ink);
-    border-color: rgba(139, 168, 205, 0.18);
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: var(--glass-shadow);
+    border: 1px solid rgba(139, 168, 205, 0.22);
+    border-radius: 22px;
+    padding: 1.35rem;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 18px 48px rgba(86, 112, 160, 0.16);
+}
+
+.status-spinner {
+    border-color: rgba(102, 197, 223, 0.55);
+    box-shadow: 0 0 28px rgba(102, 197, 223, 0.22), inset 0 0 22px rgba(169, 155, 237, 0.12);
+}
+
+html[data-theme="dark"] .room-page {
+    --room-panel-bg: rgba(17, 24, 39, 0.9);
+    --room-ink: var(--ink);
+    --room-panel-border: rgba(177, 205, 238, 0.18);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .room-commandbar,
+html[data-theme="dark"] .room-panel,
+html[data-theme="dark"] .room-dock,
+html[data-theme="dark"] .room-dock .panel-toggle-btn,
+html[data-theme="dark"] .room-theme-toggle {
+    color: var(--text);
+    border-color: rgba(177, 205, 238, 0.18);
+    background: rgba(17, 24, 39, 0.9);
+    box-shadow: var(--float-shadow);
+}
+
+html[data-theme="dark"] .room-panel,
+html[data-theme="dark"] .room-panel label,
+html[data-theme="dark"] .panel-title,
+html[data-theme="dark"] .chat-message,
+html[data-theme="dark"] .chat-role,
+html[data-theme="dark"] .panel-content,
+html[data-theme="dark"] .field-hint,
+html[data-theme="dark"] .room-brand,
+html[data-theme="dark"] .room-brand small,
+html[data-theme="dark"] .room-nav-links a,
+html[data-theme="dark"] .room-theme-toggle,
+html[data-theme="dark"] .status-title,
+html[data-theme="dark"] .status-detail {
+    color: var(--text);
+}
+
+html[data-theme="dark"] .room-brand small,
+html[data-theme="dark"] .field-hint,
+html[data-theme="dark"] .status-detail {
+    color: var(--muted);
+}
+
+html[data-theme="dark"] .chat-message.assistant {
+    background: rgba(61, 51, 110, 0.72);
+}
+
+html[data-theme="dark"] .chat-message.user {
+    background: rgba(30, 64, 88, 0.72);
+}
+
+html[data-theme="dark"] .chat-message.system {
+    color: var(--muted);
+    background: rgba(30, 41, 59, 0.84);
+}
+
+html[data-theme="dark"] .status-layer.active {
+    background:
+        linear-gradient(135deg, rgba(11, 18, 32, 0.97), rgba(37, 31, 69, 0.95), rgba(24, 22, 38, 0.97));
+}
+
+html[data-theme="dark"] .status-box {
+    color: var(--text);
+    border-color: rgba(177, 205, 238, 0.18);
+    background: rgba(17, 24, 39, 0.94);
+    box-shadow: 0 22px 58px rgba(0, 0, 0, 0.34);
 }
 
 @media (prefers-reduced-motion: reduce) {

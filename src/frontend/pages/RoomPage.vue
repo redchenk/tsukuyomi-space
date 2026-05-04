@@ -2,10 +2,11 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 
 const props = defineProps({
+  theme: { type: String, default: 'light' },
   user: { type: Object, default: null }
 });
 
-defineEmits(['go']);
+defineEmits(['go', 'toggle-theme']);
 
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
@@ -88,6 +89,16 @@ onBeforeUnmount(() => {
         <a href="/stage" @click.prevent="$emit('go', '/stage')">&#20027;&#33310;&#21488;</a>
         <a href="/plaza" @click.prevent="$emit('go', '/plaza')">&#24191;&#22330;</a>
         <a href="/reality" @click.prevent="$emit('go', '/reality')">&#29616;&#23454;&#38170;&#28857;</a>
+        <button
+          class="room-theme-toggle"
+          type="button"
+          :aria-label="theme === 'dark' ? '切换浅色主题' : '切换深色主题'"
+          :title="theme === 'dark' ? '浅色主题' : '深色主题'"
+          @click="$emit('toggle-theme')"
+        >
+          <span aria-hidden="true">{{ theme === 'dark' ? '☀' : '☾' }}</span>
+          <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
+        </button>
       </div>
     </nav>
 
