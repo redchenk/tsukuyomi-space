@@ -193,6 +193,7 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0.76rem;
     padding: 0 1.15rem 1.15rem;
+    z-index: 2;
 }
 
 .hub-entry,
@@ -203,14 +204,16 @@
 
 .hub-entry {
     min-height: 116px;
+    position: relative;
     display: grid;
-    align-content: start;
-    gap: 0.34rem;
-    padding: 1rem;
+    align-content: end;
+    gap: 0.42rem;
+    overflow: hidden;
+    padding: 0.85rem;
     border: 1px solid rgba(231, 249, 255, 0.14);
     border-radius: 12px;
     color: rgba(239, 247, 255, 0.9);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+    background: rgba(255, 255, 255, 0.07);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
@@ -234,6 +237,48 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
+.hub-entry-cover,
+.hub-entry-shade {
+    position: absolute;
+    inset: 0;
+}
+
+.hub-entry-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.72;
+    transform: scale(1.02);
+    transition: transform 0.28s ease, opacity 0.28s ease;
+}
+
+.hub-entry-shade {
+    background:
+        linear-gradient(180deg, rgba(7, 12, 26, 0.08), rgba(7, 12, 26, 0.38) 42%, rgba(7, 12, 26, 0.86)),
+        radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.18), transparent 38%);
+}
+
+.hub-entry:hover .hub-entry-cover {
+    opacity: 0.86;
+    transform: scale(1.08);
+}
+
+.hub-entry .hub-entry-icon,
+.hub-entry-text {
+    position: relative;
+    z-index: 1;
+}
+
+.hub-entry .hub-entry-icon {
+    background: rgba(9, 15, 32, 0.48);
+    backdrop-filter: blur(10px);
+}
+
+.hub-entry-text {
+    display: grid;
+    gap: 0.16rem;
+}
+
 .hub-entry strong {
     color: #fff;
     font-size: 0.96rem;
@@ -243,6 +288,41 @@
     color: rgba(239, 247, 255, 0.66);
     font-size: 0.78rem;
     line-height: 1.5;
+}
+
+.hub-character {
+    position: absolute;
+    left: clamp(-5rem, -5vw, -2rem);
+    bottom: -1.4rem;
+    z-index: 1;
+    width: min(38vw, 560px);
+    max-width: 52%;
+    min-width: 260px;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border-radius: 0 28px 0 0;
+    margin: 0;
+    pointer-events: none;
+    opacity: 0.96;
+    filter: drop-shadow(0 24px 54px rgba(0, 0, 0, 0.42));
+    mask-image:
+        linear-gradient(90deg, #000 0 76%, transparent 100%),
+        linear-gradient(0deg, #000 0 86%, transparent 100%);
+    mask-composite: intersect;
+    -webkit-mask-image:
+        linear-gradient(90deg, #000 0 76%, transparent 100%),
+        linear-gradient(0deg, #000 0 86%, transparent 100%);
+    -webkit-mask-composite: source-in;
+}
+
+.hub-character img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transform: scaleX(-1);
+    transform-origin: center;
 }
 
 .hub-side-panel {
@@ -464,6 +544,12 @@ html[data-theme="light"] .scene-icon {
     background: rgba(255, 255, 255, 0.66);
 }
 
+html[data-theme="light"] .hub-entry-shade {
+    background:
+        linear-gradient(180deg, rgba(10, 18, 36, 0.02), rgba(10, 18, 36, 0.22) 42%, rgba(10, 18, 36, 0.7)),
+        radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.18), transparent 38%);
+}
+
 @keyframes hubFloat {
     50% { transform: translateY(-10px); }
 }
@@ -494,6 +580,12 @@ html[data-theme="light"] .scene-icon {
 
     .hub-orbit {
         opacity: 0.34;
+    }
+
+    .hub-character {
+        width: 320px;
+        max-width: 52%;
+        opacity: 0.4;
     }
 
     .hub-entry-row {
@@ -555,6 +647,10 @@ html[data-theme="light"] .scene-icon {
 
     .hub-entry {
         min-height: 86px;
+    }
+
+    .hub-character {
+        display: none;
     }
 
     .hub-stat-grid {
