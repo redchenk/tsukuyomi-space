@@ -12,8 +12,18 @@ defineEmits(['go', 'logout', 'toggle-theme']);
 
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260503-memory1',
-  '/assets/js/room-runtime.js?v=20260504-providers1'
+  '/lib/bundled/live2d-room.iife.js?v=20260505-fast1',
+  '/assets/js/room-runtime.js?v=20260505-fast1'
+];
+
+const preloadResources = [
+  { href: '/lib/live2dcubismcore-v5.min.js', as: 'script' },
+  { href: '/lib/bundled/live2d-room.iife.js?v=20260505-fast1', as: 'script' },
+  { href: '/assets/js/room-runtime.js?v=20260505-fast1', as: 'script' },
+  { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json', as: 'fetch', type: 'application/json' },
+  { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' },
+  { href: '/models/tsukimi-yachiyo/textures/texture_00.webp', as: 'image', type: 'image/webp' },
+  { href: '/models/tsukimi-yachiyo/textures/texture_01.webp', as: 'image', type: 'image/webp' }
 ];
 
 function readStoredUser() {
@@ -46,6 +56,7 @@ function loadScript(src, options = {}) {
 
     const script = document.createElement('script');
     script.src = src;
+    script.async = false;
     script.defer = true;
     script.dataset.roomScript = src;
     script.addEventListener('load', () => {
@@ -57,6 +68,22 @@ function loadScript(src, options = {}) {
   });
 }
 
+function preloadRoomResources() {
+  preloadResources.forEach((resource) => {
+    const existing = document.head.querySelector(`link[data-room-preload="${resource.href}"]`);
+    if (existing) return;
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.href = resource.href;
+    link.as = resource.as;
+    link.dataset.roomPreload = resource.href;
+    if (resource.type) link.type = resource.type;
+    if (resource.as === 'fetch') link.crossOrigin = 'anonymous';
+    link.fetchPriority = resource.as === 'image' || resource.as === 'script' ? 'high' : 'auto';
+    document.head.appendChild(link);
+  });
+}
+
 onMounted(async () => {
   document.body.classList.add('vue-room-route');
   window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
@@ -65,6 +92,8 @@ onMounted(async () => {
 
   const container = document.getElementById('live2d-container');
   container?.querySelectorAll('canvas:not(#live2d-canvas)').forEach((node) => node.remove());
+
+  preloadRoomResources();
 
   for (const src of scripts) {
     await loadScript(src);
