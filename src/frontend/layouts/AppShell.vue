@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { ref, watch } from 'vue';
+
+const props = defineProps({
   isAuthed: { type: Boolean, default: false },
   lang: { type: String, required: true },
   routeName: { type: String, default: 'access' },
@@ -10,6 +12,12 @@ defineProps({
 });
 
 defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
+
+const navOpen = ref(false);
+
+watch(() => props.routeName, () => {
+  navOpen.value = false;
+});
 </script>
 
 <template>
@@ -26,16 +34,27 @@ defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
           <small>Tsukuyomi Space</small>
         </span>
       </a>
-      <div class="nav-actions room-nav-links site-nav-links">
-        <a href="/hub" class="nav-link" :class="{ 'router-link-active': routeName === 'hub' }" @click.prevent="$emit('go', '/hub')">{{ t.hub }}</a>
-        <a href="/room" class="nav-link" :class="{ 'router-link-active': routeName === 'room' || routeName === 'roomSettings' }" @click.prevent="$emit('go', '/room')">{{ t.room }}</a>
-        <a href="/stage" class="nav-link" :class="{ 'router-link-active': routeName === 'stage' }" @click.prevent="$emit('go', '/stage')">{{ t.stage }}</a>
-        <a href="/plaza" class="nav-link" :class="{ 'router-link-active': routeName === 'plaza' }" @click.prevent="$emit('go', '/plaza')">{{ t.plaza }}</a>
-        <a href="/reality" class="nav-link" :class="{ 'router-link-active': routeName === 'reality' }" @click.prevent="$emit('go', '/reality')">{{ t.reality }}</a>
-        <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="$emit('go', '/user-center')">{{ t.ucTitle }}</a>
-        <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="$emit('go', '/login')">{{ t.login }}</a>
-        <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="$emit('go', '/register')">{{ t.register }}</a>
-        <button v-if="isAuthed" class="ghost-btn nav-link" type="button" @click="$emit('logout')">{{ t.logout }}</button>
+      <button
+        class="mobile-nav-toggle"
+        type="button"
+        :aria-expanded="navOpen"
+        aria-controls="site-navigation"
+        @click="navOpen = !navOpen"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div id="site-navigation" class="nav-actions room-nav-links site-nav-links" :class="{ open: navOpen }">
+        <a href="/hub" class="nav-link" :class="{ 'router-link-active': routeName === 'hub' }" @click.prevent="navOpen = false; $emit('go', '/hub')">{{ t.hub }}</a>
+        <a href="/room" class="nav-link" :class="{ 'router-link-active': routeName === 'room' || routeName === 'roomSettings' }" @click.prevent="navOpen = false; $emit('go', '/room')">{{ t.room }}</a>
+        <a href="/stage" class="nav-link" :class="{ 'router-link-active': routeName === 'stage' }" @click.prevent="navOpen = false; $emit('go', '/stage')">{{ t.stage }}</a>
+        <a href="/plaza" class="nav-link" :class="{ 'router-link-active': routeName === 'plaza' }" @click.prevent="navOpen = false; $emit('go', '/plaza')">{{ t.plaza }}</a>
+        <a href="/reality" class="nav-link" :class="{ 'router-link-active': routeName === 'reality' }" @click.prevent="navOpen = false; $emit('go', '/reality')">{{ t.reality }}</a>
+        <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">{{ t.ucTitle }}</a>
+        <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="navOpen = false; $emit('go', '/login')">{{ t.login }}</a>
+        <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="navOpen = false; $emit('go', '/register')">{{ t.register }}</a>
+        <button v-if="isAuthed" class="ghost-btn nav-link" type="button" @click="navOpen = false; $emit('logout')">{{ t.logout }}</button>
         <button
           class="theme-toggle nav-link"
           type="button"

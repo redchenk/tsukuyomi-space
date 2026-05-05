@@ -1,14 +1,14 @@
 .hub {
     display: grid;
-    align-content: center;
-    gap: 1.25rem;
+    align-content: start;
+    gap: 1rem;
 }
 
 .hub-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
-    gap: 1rem;
-    width: min(100%, 1040px);
+    grid-template-columns: minmax(0, 1.18fr) minmax(260px, 0.82fr);
+    gap: clamp(0.8rem, 2vw, 1.15rem);
+    width: min(100%, 1120px);
     margin: 0 auto;
 }
 
@@ -23,15 +23,16 @@
 }
 
 .hub-copy {
-    min-height: 310px;
+    min-height: clamp(260px, 38vh, 390px);
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     padding: clamp(1.25rem, 3.4vw, 2.4rem);
     overflow: hidden;
     background:
-        linear-gradient(135deg, rgba(255, 173, 193, 0.12), transparent 36%),
-        linear-gradient(160deg, rgba(7, 10, 21, 0.88), rgba(16, 23, 42, 0.62));
+        radial-gradient(circle at 18% 14%, rgba(126, 219, 232, 0.2), transparent 34%),
+        radial-gradient(circle at 82% 10%, rgba(180, 154, 255, 0.18), transparent 34%),
+        linear-gradient(160deg, rgba(255, 255, 255, 0.84), rgba(236, 247, 255, 0.66));
 }
 
 .hub-kicker {
@@ -49,9 +50,9 @@
 }
 
 .section-title {
-    max-width: 10em;
+    max-width: 9.5em;
     margin: 0;
-    color: #fff;
+    color: var(--ink);
     font-size: clamp(2.35rem, 6vw, 4.4rem);
     font-weight: 700;
     line-height: 1.02;
@@ -84,7 +85,7 @@
 }
 
 .hub-feature {
-    min-height: 310px;
+    min-height: clamp(220px, 38vh, 390px);
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: end;
@@ -93,8 +94,8 @@
     color: inherit;
     text-decoration: none;
     background:
-        linear-gradient(160deg, rgba(255, 95, 150, 0.2), rgba(126, 219, 232, 0.08) 46%, rgba(7, 10, 21, 0.78)),
-        rgba(7, 10, 21, 0.74);
+        radial-gradient(circle at 86% 12%, rgba(255, 173, 193, 0.34), transparent 34%),
+        linear-gradient(160deg, rgba(255, 255, 255, 0.86), rgba(243, 240, 255, 0.7));
     transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
@@ -120,13 +121,13 @@
 
 .hub-feature-title {
     display: block;
-    color: #fff;
+    color: var(--ink);
     font-size: clamp(1.35rem, 3vw, 2rem);
     font-weight: 700;
 }
 
 .hub-grid-wrap {
-    width: min(100%, 1040px);
+    width: min(100%, 1120px);
     margin: 0 auto;
     padding: 1rem;
 }
@@ -141,7 +142,7 @@
 
 .hub-section-head h2 {
     margin: 0;
-    color: #fff;
+    color: var(--ink);
     font-size: 0.98rem;
 }
 
@@ -154,18 +155,19 @@
 .scene-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.72rem;
+    gap: 0.75rem;
 }
 
 .scene-card {
-    min-height: 138px;
+    min-height: 126px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto minmax(0, 1fr);
     gap: 0.72rem;
-    padding: 0.92rem;
+    padding: 0.95rem;
     color: inherit;
-    background: rgba(12, 17, 34, 0.58);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.58);
 }
 
 .scene-card:hover {
@@ -179,8 +181,8 @@
     place-items: center;
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 6px;
-    color: #fff;
-    background: rgba(255, 255, 255, 0.08);
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.58);
     font-size: 0.78rem;
     font-weight: 700;
 }
@@ -192,14 +194,14 @@
 
 .scene-name {
     display: block;
-    color: #fff;
+    color: var(--ink);
     font-weight: 700;
 }
 
 .scene-desc {
     display: block;
     margin-top: 0.28rem;
-    color: rgba(225, 236, 246, 0.62);
+    color: var(--muted);
     font-size: 0.82rem;
     line-height: 1.5;
 }
@@ -215,7 +217,7 @@
 .tone-green { border-color: rgba(128, 222, 178, 0.24); }
 
 .hub-footer-line {
-    width: min(100%, 1040px);
+    width: min(100%, 1120px);
     min-height: 42px;
     display: flex;
     align-items: center;
@@ -230,11 +232,6 @@
         grid-template-columns: 1fr;
     }
 
-    .hub-copy,
-    .hub-feature {
-        min-height: 240px;
-    }
-
     .scene-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -243,21 +240,48 @@
 @media (max-width: 560px) {
     .hub {
         align-content: start;
+        gap: 0.75rem;
     }
 
     .hub-copy,
     .hub-feature,
     .hub-grid-wrap {
-        padding: 0.92rem;
+        padding: 0.9rem;
+        border-radius: 22px;
     }
 
     .hub-copy,
     .hub-feature {
-        min-height: 210px;
+        min-height: auto;
     }
 
     .section-title {
-        font-size: 2.25rem;
+        font-size: clamp(2rem, 13vw, 3.2rem);
+        line-height: 1.04;
+    }
+
+    .section-subtitle {
+        margin-bottom: 1rem;
+        font-size: 0.92rem;
+    }
+
+    .hub-status-row {
+        gap: 0.36rem;
+    }
+
+    .hub-status-row span {
+        min-height: 28px;
+        padding-inline: 0.48rem;
+        font-size: 0.7rem;
+    }
+
+    .hub-feature {
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+    }
+
+    .hub-feature .scene-arrow {
+        display: none;
     }
 
     .hub-section-head,
@@ -268,9 +292,19 @@
 
     .scene-grid {
         grid-template-columns: 1fr;
+        gap: 0.55rem;
     }
 
     .scene-card {
-        min-height: 112px;
+        min-height: 88px;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-rows: 1fr;
+        align-items: center;
+        gap: 0.72rem;
+    }
+
+    .scene-main {
+        grid-column: auto;
+        align-self: center;
     }
 }
