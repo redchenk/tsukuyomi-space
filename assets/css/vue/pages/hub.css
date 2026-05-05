@@ -213,7 +213,7 @@
 .hub-character {
     position: fixed;
     right: clamp(-6.2rem, -5vw, -2.8rem);
-    bottom: clamp(-1.7rem, -1.4vw, -0.7rem);
+    bottom: clamp(3.4rem, 8vh, 6.2rem);
     z-index: 2;
     width: min(39vw, 640px);
     max-width: 50%;
@@ -680,6 +680,7 @@ html[data-theme="light"] .scene-card::after {
         width: 430px;
         max-width: 48%;
         opacity: 0.2;
+        bottom: 2.2rem;
     }
 
     .scene-grid {
