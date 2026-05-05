@@ -48,7 +48,7 @@ const stats = computed(() => [
         </div>
 
         <figure class="hub-character" aria-label="月见八千代">
-          <img src="/assets/images/yachiyo-hub-stand.png" alt="月见八千代">
+          <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代">
         </figure>
       </div>
 
