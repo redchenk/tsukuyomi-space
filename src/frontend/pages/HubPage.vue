@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { parseResponse } from '../api/client';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -7,9 +8,32 @@ const props = defineProps({
 
 defineEmits(['go']);
 
+const latestArticle = ref(null);
+const latestMessage = ref(null);
+
 const sceneLinks = computed(() => [
-  { href: '/plaza', name: props.t.plaza, desc: '交流、分享、发现', code: 'Plaza', icon: '☽', tone: 'cyan', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
-  { href: '/stage', name: props.t.stage, desc: '记录、创作、知识', code: 'Stage', icon: '▤', tone: 'blue', spa: true, image: '/assets/images/room-bg.png' },
+  {
+    href: '/plaza',
+    name: props.t.plaza,
+    desc: latestMessage.value ? String(latestMessage.value.content || '').slice(0, 42) : '交流、分享、发现',
+    code: latestMessage.value?.author || 'Plaza',
+    icon: '☽',
+    tone: 'cyan',
+    spa: true,
+    image: '/assets/images/tsukuyomi-bg.png',
+    label: latestMessage.value ? '最新留言' : 'Plaza'
+  },
+  {
+    href: '/stage',
+    name: latestArticle.value?.title || props.t.stage,
+    desc: latestArticle.value?.excerpt || '记录、创作、知识',
+    code: latestArticle.value?.category || 'Stage',
+    icon: '▤',
+    tone: 'blue',
+    spa: true,
+    image: latestArticle.value?.cover_image || '/assets/images/room-bg.png',
+    label: props.t.stage
+  },
   { href: '/reality', name: props.t.reality, desc: '现实世界连接入口', code: 'Reality', icon: '◎', tone: 'pink', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
   { href: '/arena/', name: props.t.arena, desc: '超时空辉夜姬竞技场', code: 'Arena', icon: '◇', tone: 'gold', spa: false, image: '/assets/images/tsukuyomi-bg.png' }
 ]);
@@ -19,6 +43,32 @@ const stats = computed(() => [
   { label: '月读广场', value: 'OPEN' },
   { label: '竞技场', value: 'LIVE' }
 ]);
+
+async function loadHubPreview() {
+  try {
+    const [articleResponse, messageResponse] = await Promise.all([
+      fetch('/api/articles'),
+      fetch('/api/messages')
+    ]);
+    const [articleResult, messageResult] = await Promise.all([
+      parseResponse(articleResponse),
+      parseResponse(messageResponse)
+    ]);
+    const articles = articleResult.success && Array.isArray(articleResult.data) ? articleResult.data : [];
+    const messages = messageResult.success && Array.isArray(messageResult.data) ? messageResult.data : [];
+
+    latestArticle.value = [...articles]
+      .sort((a, b) => new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0))[0] || null;
+    latestMessage.value = [...messages]
+      .filter((item) => !item.parent_id)
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
+  } catch (_) {
+    latestArticle.value = null;
+    latestMessage.value = null;
+  }
+}
+
+onMounted(loadHubPreview);
 </script>
 
 <template>
@@ -98,6 +148,7 @@ const stats = computed(() => [
           @click="scene.spa && ($event.preventDefault(), $emit('go', scene.href))"
         >
           <span class="scene-icon" aria-hidden="true">{{ scene.icon }}</span>
+          <span v-if="scene.label" class="scene-label">{{ scene.label }}</span>
           <span class="scene-main">
             <span class="scene-name">{{ scene.name }}</span>
             <span class="scene-desc">{{ scene.desc }}</span>

@@ -422,10 +422,33 @@
     backdrop-filter: blur(10px);
 }
 
+.scene-label {
+    position: relative;
+    z-index: 1;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.24rem 0.48rem;
+    overflow: hidden;
+    border: 1px solid rgba(231, 249, 255, 0.16);
+    border-radius: 999px;
+    color: rgba(239, 247, 255, 0.74);
+    background: rgba(9, 15, 32, 0.38);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+}
+
 .scene-name {
     display: block;
     color: #fff;
     font-weight: 800;
+    line-height: 1.25;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .scene-desc {
@@ -434,6 +457,10 @@
     color: rgba(239, 247, 255, 0.64);
     font-size: 0.84rem;
     line-height: 1.48;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
 }
 
 .scene-code {
