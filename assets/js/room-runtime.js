@@ -85,13 +85,13 @@
     function live2dRenderScale() {
         const forced = Number(window.TSUKUYOMI_LIVE2D_RENDER_SCALE || 0);
         if (Number.isFinite(forced) && forced > 0) return Math.max(0.75, Math.min(forced, 2));
-        return Math.min(window.devicePixelRatio || 1, shouldUseMobileModel() ? 1 : 1.35);
+        return Math.min(window.devicePixelRatio || 1, 1);
     }
 
     function live2dFrameInterval() {
         const forcedFps = Number(window.TSUKUYOMI_LIVE2D_MAX_FPS || 0);
         if (Number.isFinite(forcedFps) && forcedFps >= 24) return 1000 / Math.min(forcedFps, 60);
-        return shouldUseMobileModel() ? 1000 / 45 : 1000 / 60;
+        return shouldUseMobileModel() ? 1000 / 30 : 1000 / 45;
     }
 
     function readJson(key, fallback) {
@@ -1197,12 +1197,16 @@
         }
 
         const isMobile = shouldUseMobileModel();
+        if (isMobile) {
+            page.appendChild(layer);
+            return;
+        }
         const count = weather === 'storm'
-            ? (isMobile ? 28 : 56)
+            ? 40
             : weather === 'rain'
-                ? (isMobile ? 24 : 44)
+                ? 32
                 : weather === 'snow'
-                    ? (isMobile ? 18 : 34)
+                    ? 24
                     : 0;
         for (let index = 0; index < count; index += 1) {
             layer.appendChild(makeWeatherParticle(weather, index));

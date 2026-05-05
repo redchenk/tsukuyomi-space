@@ -293,7 +293,7 @@ export class LAppView {
 
     const rawScale = window.devicePixelRatio || 1;
     const isMobileRoom = Boolean((window as any).TSUKUYOMI_ROOM_MOBILE_LIVE2D);
-    return Math.min(rawScale, isMobileRoom ? 1 : 1.35);
+    return Math.min(rawScale, 1);
   }
 
   _touchManager: TouchManager; // タッチマネージャー

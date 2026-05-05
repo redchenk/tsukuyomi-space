@@ -37,7 +37,7 @@ function getTargetFrameInterval(): number {
     return 1000 / Math.min(forcedFps, 60);
   }
 
-  return (window as any).TSUKUYOMI_ROOM_MOBILE_LIVE2D ? 1000 / 45 : 1000 / 60;
+  return (window as any).TSUKUYOMI_ROOM_MOBILE_LIVE2D ? 1000 / 30 : 1000 / 45;
 }
 
 function destroyRoomLive2D(): void {
