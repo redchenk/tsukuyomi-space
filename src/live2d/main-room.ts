@@ -11,6 +11,7 @@ type RoomLive2DState = {
   canvas: HTMLCanvasElement;
   subdelegate: LAppSubdelegate;
   frameId: number;
+  lastFrameAt: number;
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
@@ -28,6 +29,15 @@ function ensureCubismStarted(): void {
   CubismFramework.startUp(option);
   CubismFramework.initialize();
   (window as any).TSUKUYOMI_CUBISM_STARTED = true;
+}
+
+function getTargetFrameInterval(): number {
+  const forcedFps = Number((window as any).TSUKUYOMI_LIVE2D_MAX_FPS || 0);
+  if (Number.isFinite(forcedFps) && forcedFps >= 24) {
+    return 1000 / Math.min(forcedFps, 60);
+  }
+
+  return (window as any).TSUKUYOMI_ROOM_MOBILE_LIVE2D ? 1000 / 45 : 1000 / 60;
 }
 
 function destroyRoomLive2D(): void {
@@ -90,10 +100,15 @@ function initRoomLive2D(): void {
   document.addEventListener('pointerup', onPointerUp, { passive: true });
   document.addEventListener('pointercancel', onPointerUp, { passive: true });
 
-  const run = (): void => {
+  const run = (now: number): void => {
     if (!roomState) return;
-    LAppPal.updateTime();
-    subdelegate.update();
+
+    if (!document.hidden && now - roomState.lastFrameAt >= getTargetFrameInterval()) {
+      roomState.lastFrameAt = now;
+      LAppPal.updateTime();
+      subdelegate.update();
+    }
+
     roomState.frameId = requestAnimationFrame(run);
   };
 
@@ -101,6 +116,7 @@ function initRoomLive2D(): void {
     canvas,
     subdelegate,
     frameId: requestAnimationFrame(run),
+    lastFrameAt: 0,
     onPointerDown,
     onPointerMove,
     onPointerUp

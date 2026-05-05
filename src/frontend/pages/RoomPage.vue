@@ -10,8 +10,8 @@ const props = defineProps({
 
 defineEmits(['go', 'logout', 'toggle-theme']);
 
-const desktopLive2dScript = '/lib/bundled/live2d-room.iife.js?v=20260505-fast1';
-const roomRuntimeScript = '/assets/js/room-runtime.js?v=20260505-mobile1';
+const desktopLive2dScript = '/lib/bundled/live2d-room.iife.js?v=20260506-fps1';
+const roomRuntimeScript = '/assets/js/room-runtime.js?v=20260506-fps1';
 const cubismCoreScript = '/lib/live2dcubismcore-v5.min.js';
 
 const sharedPreloadResources = [
@@ -114,6 +114,8 @@ onMounted(async () => {
   const useMobileLive2D = shouldUseMobileLive2D();
   window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
   window.TSUKUYOMI_ROOM_MOBILE_LIVE2D = useMobileLive2D;
+  window.TSUKUYOMI_LIVE2D_RENDER_SCALE = useMobileLive2D ? 1 : 1.35;
+  window.TSUKUYOMI_LIVE2D_MAX_FPS = useMobileLive2D ? 45 : 60;
   window.TSUKUYOMI_LIVE2D_READY = false;
   window.destroyTsukuyomiLive2DRoom?.();
 

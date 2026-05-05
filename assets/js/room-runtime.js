@@ -82,6 +82,18 @@
         return Boolean(window.TSUKUYOMI_ROOM_MOBILE_LIVE2D || coarse || narrow || (memory && memory <= 4));
     }
 
+    function live2dRenderScale() {
+        const forced = Number(window.TSUKUYOMI_LIVE2D_RENDER_SCALE || 0);
+        if (Number.isFinite(forced) && forced > 0) return Math.max(0.75, Math.min(forced, 2));
+        return Math.min(window.devicePixelRatio || 1, shouldUseMobileModel() ? 1 : 1.35);
+    }
+
+    function live2dFrameInterval() {
+        const forcedFps = Number(window.TSUKUYOMI_LIVE2D_MAX_FPS || 0);
+        if (Number.isFinite(forcedFps) && forcedFps >= 24) return 1000 / Math.min(forcedFps, 60);
+        return shouldUseMobileModel() ? 1000 / 45 : 1000 / 60;
+    }
+
     function readJson(key, fallback) {
         try {
             const value = JSON.parse(localStorage.getItem(key));
@@ -1184,7 +1196,14 @@
             return;
         }
 
-        const count = weather === 'storm' ? 80 : weather === 'rain' ? 62 : weather === 'snow' ? 46 : 0;
+        const isMobile = shouldUseMobileModel();
+        const count = weather === 'storm'
+            ? (isMobile ? 28 : 56)
+            : weather === 'rain'
+                ? (isMobile ? 24 : 44)
+                : weather === 'snow'
+                    ? (isMobile ? 18 : 34)
+                    : 0;
         for (let index = 0; index < count; index += 1) {
             layer.appendChild(makeWeatherParticle(weather, index));
         }
@@ -1481,6 +1500,7 @@
             this.maskUniforms = {};
             this.raf = 0;
             this.lastTime = 0;
+            this.lastFrameAt = 0;
             this.time = 0;
             this.settings = { ...DEFAULT_MODEL_SETTINGS };
             this.pointer = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -1614,7 +1634,7 @@
         }
 
         resize() {
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const dpr = live2dRenderScale();
             const width = Math.max(1, Math.round(this.container.clientWidth * dpr));
             const height = Math.max(1, Math.round(this.container.clientHeight * dpr));
             if (this.canvas.width !== width || this.canvas.height !== height) {
@@ -1632,6 +1652,16 @@
         }
 
         loop(now) {
+            if (document.hidden) {
+                this.raf = requestAnimationFrame((time) => this.loop(time));
+                return;
+            }
+            const interval = live2dFrameInterval();
+            if (now - this.lastFrameAt < interval) {
+                this.raf = requestAnimationFrame((time) => this.loop(time));
+                return;
+            }
+            this.lastFrameAt = now;
             const delta = Math.min(0.05, (now - (this.lastTime || now)) / 1000);
             this.lastTime = now;
             this.update(delta);

@@ -341,8 +341,20 @@ body.vue-room-route {
     height: 100% !important;
     display: block;
     background: transparent;
-    filter: saturate(0.98) contrast(0.98) drop-shadow(0 24px 60px var(--room-shadow));
     touch-action: none;
+    will-change: transform;
+}
+
+.room-live2d-container::after {
+    content: "";
+    position: absolute;
+    inset: 7% 6% 2%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 58%, var(--room-shadow), transparent 68%);
+    filter: blur(26px);
+    opacity: 0.48;
+    pointer-events: none;
 }
 
 .room-dock {
@@ -855,6 +867,11 @@ body.vue-room-route {
         width: 112vw;
         height: 72vh;
         bottom: 4rem;
+    }
+
+    .room-live2d-container::after {
+        opacity: 0.28;
+        filter: blur(18px);
     }
 
     .room-dock {

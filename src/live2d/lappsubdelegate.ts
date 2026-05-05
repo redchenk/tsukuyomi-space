@@ -246,12 +246,24 @@ export class LAppSubdelegate {
    * Resize the canvas to fill the screen.
    */
   private resizeCanvas(): void {
-    this._canvas.width = this._canvas.clientWidth * window.devicePixelRatio;
-    this._canvas.height = this._canvas.clientHeight * window.devicePixelRatio;
+    const renderScale = this.getRenderScale();
+    this._canvas.width = Math.max(1, Math.round(this._canvas.clientWidth * renderScale));
+    this._canvas.height = Math.max(1, Math.round(this._canvas.clientHeight * renderScale));
 
     const gl = this._glManager.getGl();
 
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  }
+
+  private getRenderScale(): number {
+    const rawScale = window.devicePixelRatio || 1;
+    const forcedScale = Number((window as any).TSUKUYOMI_LIVE2D_RENDER_SCALE || 0);
+    if (Number.isFinite(forcedScale) && forcedScale > 0) {
+      return Math.max(0.75, Math.min(forcedScale, 2));
+    }
+
+    const isMobileRoom = Boolean((window as any).TSUKUYOMI_ROOM_MOBILE_LIVE2D);
+    return Math.min(rawScale, isMobileRoom ? 1 : 1.35);
   }
 
   /**
