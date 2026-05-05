@@ -212,11 +212,11 @@
 
 .hub-character {
     position: fixed;
-    right: clamp(-2.4rem, -2vw, -0.9rem);
-    bottom: clamp(-1.5rem, -1vw, -0.5rem);
-    z-index: 4;
-    width: min(34vw, 540px);
-    max-width: 46%;
+    right: clamp(-5.2rem, -4.4vw, -2.4rem);
+    bottom: clamp(-2.6rem, -2vw, -1.2rem);
+    z-index: 2;
+    width: min(32vw, 500px);
+    max-width: 42%;
     min-width: 240px;
     aspect-ratio: 16 / 10;
     overflow: hidden;
@@ -240,8 +240,6 @@
     height: 100%;
     object-fit: cover;
     object-position: center;
-    transform: scaleX(-1);
-    transform-origin: center;
 }
 
 .hub-side-panel {
@@ -338,9 +336,10 @@
 
 .hub-grid-wrap {
     padding: 1rem;
-    width: min(100%, 1040px);
-    margin-right: max(calc((100vw - var(--hub-max)) / 2 + 360px), 19vw);
+    width: min(100%, 980px);
+    margin-right: max(calc((100vw - var(--hub-max)) / 2 + 430px), 24vw);
     margin-left: auto;
+    z-index: 5;
 }
 
 .hub-section-head {
@@ -674,7 +673,7 @@ html[data-theme="light"] .scene-card::after {
     .hub-character {
         width: 320px;
         max-width: 48%;
-        opacity: 0.28;
+        opacity: 0.18;
     }
 
     .scene-grid {
