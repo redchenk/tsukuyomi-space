@@ -341,20 +341,8 @@ body.vue-room-route {
     height: 100% !important;
     display: block;
     background: transparent;
+    filter: saturate(0.98) contrast(0.98) drop-shadow(0 24px 60px var(--room-shadow));
     touch-action: none;
-    will-change: transform;
-}
-
-.room-live2d-container::after {
-    content: "";
-    position: absolute;
-    inset: 7% 6% 2%;
-    z-index: -1;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 58%, var(--room-shadow), transparent 68%);
-    filter: blur(26px);
-    opacity: 0.48;
-    pointer-events: none;
 }
 
 .room-dock {
@@ -845,22 +833,10 @@ body.vue-room-route {
 }
 
 @media (max-width: 820px) {
-    .room-backdrop {
-        filter: none;
-        transition: none;
-    }
-
-    .room-weather-layer::before,
-    .room-weather-layer::after {
-        animation: none;
-        filter: none !important;
-    }
-
     .room-commandbar {
         align-items: flex-start;
         flex-direction: column;
         min-height: 112px;
-        backdrop-filter: none;
     }
 
     .room-nav-links {
@@ -881,16 +857,10 @@ body.vue-room-route {
         bottom: 4rem;
     }
 
-    .room-live2d-container::after {
-        opacity: 0;
-        filter: none;
-    }
-
     .room-dock {
         width: calc(100vw - 1.5rem);
         justify-content: center;
         overflow-x: auto;
-        backdrop-filter: none;
     }
 
     .room-panel {
@@ -899,7 +869,6 @@ body.vue-room-route {
         right: 0.75rem !important;
         top: 7.7rem !important;
         width: auto;
-        backdrop-filter: none;
     }
 
     .chat-body {

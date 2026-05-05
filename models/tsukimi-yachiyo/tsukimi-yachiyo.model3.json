@@ -3,8 +3,8 @@
   "FileReferences": {
     "Moc": "tsukimi-yachiyo.moc3",
     "Textures": [
-      "textures-mobile/texture_00.webp",
-      "textures-mobile/texture_01.webp"
+      "textures/texture_00.webp",
+      "textures/texture_01.webp"
     ],
     "Physics": "tsukimi-yachiyo.physics3.json"
   },

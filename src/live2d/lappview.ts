@@ -191,8 +191,8 @@ export class LAppView {
    */
   public onTouchesBegan(pointX: number, pointY: number): void {
     this._touchManager.touchesBegan(
-      pointX * this.getRenderScale(),
-      pointY * this.getRenderScale()
+      pointX * window.devicePixelRatio,
+      pointY * window.devicePixelRatio
     );
   }
 
@@ -203,9 +203,8 @@ export class LAppView {
    * @param pointY スクリーンY座標
    */
   public onTouchesMoved(pointX: number, pointY: number): void {
-    const renderScale = this.getRenderScale();
-    const posX = pointX * renderScale;
-    const posY = pointY * renderScale;
+    const posX = pointX * window.devicePixelRatio;
+    const posY = pointY * window.devicePixelRatio;
 
     const lapplive2dmanager = this._subdelegate.getLive2DManager();
 
@@ -224,9 +223,8 @@ export class LAppView {
    * @param pointY スクリーンY座標
    */
   public onTouchesEnded(pointX: number, pointY: number): void {
-    const renderScale = this.getRenderScale();
-    const posX = pointX * renderScale;
-    const posY = pointY * renderScale;
+    const posX = pointX * window.devicePixelRatio;
+    const posY = pointY * window.devicePixelRatio;
 
     const lapplive2dmanager = this._subdelegate.getLive2DManager();
 
@@ -283,17 +281,6 @@ export class LAppView {
    */
   public transformScreenY(deviceY: number): number {
     return this._deviceToScreen.transformY(deviceY);
-  }
-
-  private getRenderScale(): number {
-    const forcedScale = Number((window as any).TSUKUYOMI_LIVE2D_RENDER_SCALE || 0);
-    if (Number.isFinite(forcedScale) && forcedScale > 0) {
-      return Math.max(0.75, Math.min(forcedScale, 2));
-    }
-
-    const rawScale = window.devicePixelRatio || 1;
-    const isMobileRoom = Boolean((window as any).TSUKUYOMI_ROOM_MOBILE_LIVE2D);
-    return Math.min(rawScale, 1);
   }
 
   _touchManager: TouchManager; // タッチマネージャー

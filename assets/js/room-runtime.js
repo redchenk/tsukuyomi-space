@@ -2,7 +2,6 @@
     'use strict';
 
     const MODEL_URL = '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json';
-    const MOBILE_MODEL_URL = '/models/tsukimi-yachiyo/tsukimi-yachiyo.mobile.model3.json';
     const WORLD_ENDPOINT = '/api/room/world';
     const MEMORY_ENDPOINT = '/api/room/memory';
     const WORLD_CACHE_KEY = 'roomWorldState';
@@ -73,25 +72,6 @@
 
     function $(id) {
         return document.getElementById(id);
-    }
-
-    function shouldUseMobileModel() {
-        const coarse = window.matchMedia?.('(pointer: coarse)').matches;
-        const narrow = window.matchMedia?.('(max-width: 820px)').matches;
-        const memory = Number(navigator.deviceMemory || 0);
-        return Boolean(window.TSUKUYOMI_ROOM_MOBILE_LIVE2D || coarse || narrow || (memory && memory <= 4));
-    }
-
-    function live2dRenderScale() {
-        const forced = Number(window.TSUKUYOMI_LIVE2D_RENDER_SCALE || 0);
-        if (Number.isFinite(forced) && forced > 0) return Math.max(0.75, Math.min(forced, 2));
-        return Math.min(window.devicePixelRatio || 1, 1);
-    }
-
-    function live2dFrameInterval() {
-        const forcedFps = Number(window.TSUKUYOMI_LIVE2D_MAX_FPS || 0);
-        if (Number.isFinite(forcedFps) && forcedFps >= 24) return 1000 / Math.min(forcedFps, 60);
-        return shouldUseMobileModel() ? 1000 / 30 : 1000 / 45;
     }
 
     function readJson(key, fallback) {
@@ -1196,18 +1176,7 @@
             return;
         }
 
-        const isMobile = shouldUseMobileModel();
-        if (isMobile) {
-            page.appendChild(layer);
-            return;
-        }
-        const count = weather === 'storm'
-            ? 40
-            : weather === 'rain'
-                ? 32
-                : weather === 'snow'
-                    ? 24
-                    : 0;
+        const count = weather === 'storm' ? 80 : weather === 'rain' ? 62 : weather === 'snow' ? 46 : 0;
         for (let index = 0; index < count; index += 1) {
             layer.appendChild(makeWeatherParticle(weather, index));
         }
@@ -1504,7 +1473,6 @@
             this.maskUniforms = {};
             this.raf = 0;
             this.lastTime = 0;
-            this.lastFrameAt = 0;
             this.time = 0;
             this.settings = { ...DEFAULT_MODEL_SETTINGS };
             this.pointer = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -1638,7 +1606,7 @@
         }
 
         resize() {
-            const dpr = live2dRenderScale();
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
             const width = Math.max(1, Math.round(this.container.clientWidth * dpr));
             const height = Math.max(1, Math.round(this.container.clientHeight * dpr));
             if (this.canvas.width !== width || this.canvas.height !== height) {
@@ -1656,16 +1624,6 @@
         }
 
         loop(now) {
-            if (document.hidden) {
-                this.raf = requestAnimationFrame((time) => this.loop(time));
-                return;
-            }
-            const interval = live2dFrameInterval();
-            if (now - this.lastFrameAt < interval) {
-                this.raf = requestAnimationFrame((time) => this.loop(time));
-                return;
-            }
-            this.lastFrameAt = now;
             const delta = Math.min(0.05, (now - (this.lastTime || now)) / 1000);
             this.lastTime = now;
             this.update(delta);
@@ -2183,7 +2141,7 @@
             if (!canvas || !container) throw new Error('Live2D 容器不存在');
             live2d = new RoomLive2DRenderer(canvas, container);
             window.roomLive2DRenderer = live2d;
-            await live2d.init(shouldUseMobileModel() ? MOBILE_MODEL_URL : MODEL_URL);
+            await live2d.init(MODEL_URL);
             hideLoading();
             appendMessage('system', '辉夜姬已经在房间里等你了');
         } catch (error) {
