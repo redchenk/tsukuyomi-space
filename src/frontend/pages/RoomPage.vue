@@ -16,12 +16,12 @@ const cubismCoreScript = '/lib/live2dcubismcore-v5.min.js';
 
 const sharedPreloadResources = [
   { href: cubismCoreScript, as: 'script' },
+  { href: desktopLive2dScript, as: 'script' },
   { href: roomRuntimeScript, as: 'script' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' }
 ];
 
 const desktopPreloadResources = [
-  { href: desktopLive2dScript, as: 'script' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json', as: 'fetch', type: 'application/json' },
   { href: '/models/tsukimi-yachiyo/textures/texture_00.webp', as: 'image', type: 'image/webp' },
   { href: '/models/tsukimi-yachiyo/textures/texture_01.webp', as: 'image', type: 'image/webp' }
@@ -41,9 +41,7 @@ function shouldUseMobileLive2D() {
 }
 
 function live2dScripts(useMobile) {
-  return useMobile
-    ? [cubismCoreScript, roomRuntimeScript]
-    : [cubismCoreScript, desktopLive2dScript, roomRuntimeScript];
+  return [cubismCoreScript, desktopLive2dScript, roomRuntimeScript];
 }
 
 function preloadResources(useMobile) {
@@ -114,20 +112,13 @@ function preloadRoomResources(useMobile) {
 onMounted(async () => {
   document.body.classList.add('vue-room-route');
   const useMobileLive2D = shouldUseMobileLive2D();
-  window.TSUKUYOMI_EXTERNAL_LIVE2D = !useMobileLive2D;
+  window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
   window.TSUKUYOMI_ROOM_MOBILE_LIVE2D = useMobileLive2D;
   window.TSUKUYOMI_LIVE2D_READY = false;
   window.destroyTsukuyomiLive2DRoom?.();
 
   const container = document.getElementById('live2d-container');
   container?.querySelectorAll('canvas:not(#live2d-canvas)').forEach((node) => node.remove());
-  if (useMobileLive2D && container && !document.getElementById('live2d-canvas')) {
-    const canvas = document.createElement('canvas');
-    canvas.id = 'live2d-canvas';
-    canvas.setAttribute('aria-hidden', 'true');
-    container.appendChild(canvas);
-  }
-
   preloadRoomResources(useMobileLive2D);
 
   for (const src of live2dScripts(useMobileLive2D)) {
