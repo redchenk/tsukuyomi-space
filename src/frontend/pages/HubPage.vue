@@ -1,27 +1,33 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
-import { parseResponse } from '../api/client';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { authHeaders, getSession, parseResponse } from '../api/client';
 
 const props = defineProps({
   t: { type: Object, required: true }
 });
 
-defineEmits(['go']);
+const emit = defineEmits(['go']);
 
 const latestArticle = ref(null);
-const latestMessage = ref(null);
+const plazaMessages = ref([]);
+const plazaQuick = reactive({
+  content: '',
+  loading: false,
+  message: ''
+});
 
 const sceneLinks = computed(() => [
   {
     href: '/plaza',
     name: props.t.plaza,
-    desc: latestMessage.value ? String(latestMessage.value.content || '').slice(0, 42) : '交流、分享、发现',
-    code: latestMessage.value?.author || 'Plaza',
+    desc: plazaMessages.value.length ? `${plazaMessages.value.length} 条最近留言` : '交流、分享、发现',
+    code: 'Plaza',
     icon: '☽',
     tone: 'cyan',
     spa: true,
-    image: '/assets/images/tsukuyomi-bg.png',
-    label: latestMessage.value ? '最新留言' : 'Plaza'
+    image: '',
+    label: '快速留言',
+    kind: 'plaza'
   },
   {
     href: '/stage',
@@ -37,6 +43,8 @@ const sceneLinks = computed(() => [
   { href: '/reality', name: props.t.reality, desc: '现实世界连接入口', code: 'Reality', icon: '◎', tone: 'pink', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
   { href: '/arena/', name: props.t.arena, desc: '超时空辉夜姬竞技场', code: 'Arena', icon: '◇', tone: 'gold', spa: false, image: '/assets/images/tsukuyomi-bg.png' }
 ]);
+
+const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
 
 const stats = computed(() => [
   { label: '今日场景', value: sceneLinks.value.length },
@@ -59,12 +67,42 @@ async function loadHubPreview() {
 
     latestArticle.value = [...articles]
       .sort((a, b) => new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0))[0] || null;
-    latestMessage.value = [...messages]
+    plazaMessages.value = [...messages]
       .filter((item) => !item.parent_id)
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   } catch (_) {
     latestArticle.value = null;
-    latestMessage.value = null;
+    plazaMessages.value = [];
+  }
+}
+
+async function submitPlazaQuick() {
+  const content = plazaQuick.content.trim();
+  plazaQuick.message = '';
+  if (!content) {
+    plazaQuick.message = '留言不能为空';
+    return;
+  }
+  if (!getSession()) {
+    emit('go', '/login');
+    return;
+  }
+  plazaQuick.loading = true;
+  try {
+    const response = await fetch('/api/messages', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ content })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '发布失败');
+    plazaQuick.content = '';
+    plazaQuick.message = '已发布';
+    await loadHubPreview();
+  } catch (error) {
+    plazaQuick.message = error.message || '发布失败';
+  } finally {
+    plazaQuick.loading = false;
   }
 }
 
@@ -138,23 +176,39 @@ onMounted(loadHubPreview);
         <span class="hub-online">STATUS: ONLINE</span>
       </div>
       <div class="scene-grid">
-        <a
+        <component
+          :is="scene.kind === 'plaza' ? 'div' : 'a'"
           v-for="scene in sceneLinks"
           :key="scene.href"
           class="scene-card"
-          :class="`tone-${scene.tone}`"
+          :class="[`tone-${scene.tone}`, { 'scene-card-plaza': scene.kind === 'plaza' }]"
           :style="{ '--scene-image': `url(${scene.image})` }"
-          :href="scene.href"
-          @click="scene.spa && ($event.preventDefault(), $emit('go', scene.href))"
+          :href="scene.kind === 'plaza' ? undefined : scene.href"
+          @click="scene.kind !== 'plaza' && scene.spa && ($event.preventDefault(), $emit('go', scene.href))"
         >
           <span class="scene-icon" aria-hidden="true">{{ scene.icon }}</span>
           <span v-if="scene.label" class="scene-label">{{ scene.label }}</span>
-          <span class="scene-main">
+          <span v-if="scene.kind !== 'plaza'" class="scene-main">
             <span class="scene-name">{{ scene.name }}</span>
             <span class="scene-desc">{{ scene.desc }}</span>
           </span>
+          <span v-else class="scene-main plaza-card-body">
+            <button class="scene-name hub-plaza-title" type="button" @click="$emit('go', scene.href)">{{ scene.name }}</button>
+            <span v-if="!plazaPreviewMessages.length" class="scene-desc">还没有留言，写下第一句问候。</span>
+            <span v-else class="hub-plaza-list">
+              <span v-for="msg in plazaPreviewMessages" :key="msg.id" class="hub-plaza-message">
+                <strong>{{ msg.author || '访客' }}</strong>
+                <span>{{ msg.content }}</span>
+              </span>
+            </span>
+            <form class="hub-plaza-form" @submit.prevent="submitPlazaQuick">
+              <input v-model="plazaQuick.content" type="text" placeholder="快速留言...">
+              <button type="submit" :disabled="plazaQuick.loading">{{ plazaQuick.loading ? '发送中' : '发送' }}</button>
+            </form>
+            <span v-if="plazaQuick.message" class="hub-plaza-feedback">{{ plazaQuick.message }}</span>
+          </span>
           <span class="scene-code">{{ scene.code }}</span>
-        </a>
+        </component>
       </div>
     </section>
   </main>

@@ -404,10 +404,23 @@
     transition: transform 0.28s ease, opacity 0.28s ease;
 }
 
+.scene-card-plaza::before {
+    background:
+        linear-gradient(135deg, rgba(14, 24, 46, 0.92), rgba(20, 36, 62, 0.82)),
+        radial-gradient(circle at 16% 12%, rgba(174, 242, 255, 0.2), transparent 32%);
+    opacity: 1;
+}
+
 .scene-card::after {
     background:
         linear-gradient(180deg, rgba(7, 12, 26, 0.06), rgba(7, 12, 26, 0.34) 42%, rgba(7, 12, 26, 0.88)),
         radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.2), transparent 36%);
+}
+
+.scene-card-plaza::after {
+    background:
+        linear-gradient(180deg, rgba(7, 12, 26, 0.12), rgba(7, 12, 26, 0.48)),
+        linear-gradient(90deg, rgba(174, 242, 255, 0.08), transparent 62%);
 }
 
 .scene-card:hover::before {
@@ -451,6 +464,23 @@
     -webkit-box-orient: vertical;
 }
 
+.hub-plaza-title {
+    width: fit-content;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    color: #fff;
+    background: transparent;
+    font: inherit;
+    font-weight: 800;
+    text-align: left;
+    cursor: pointer;
+}
+
+.hub-plaza-title:hover {
+    color: #aef2ff;
+}
+
 .scene-desc {
     display: block;
     margin-top: 0.24rem;
@@ -469,6 +499,76 @@
     color: rgba(239, 247, 255, 0.54);
     font-size: 0.72rem;
     font-weight: 800;
+}
+
+.hub-plaza-list {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+}
+
+.hub-plaza-message {
+    display: grid;
+    gap: 0.08rem;
+    padding: 0.42rem 0.5rem;
+    border: 1px solid rgba(231, 249, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.hub-plaza-message strong {
+    color: rgba(174, 242, 255, 0.9);
+    font-size: 0.72rem;
+}
+
+.hub-plaza-message span {
+    display: -webkit-box;
+    overflow: hidden;
+    color: rgba(239, 247, 255, 0.78);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.hub-plaza-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.38rem;
+    margin-top: 0.54rem;
+}
+
+.hub-plaza-form input,
+.hub-plaza-form button {
+    min-height: 34px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+}
+
+.hub-plaza-form input {
+    min-width: 0;
+    padding: 0 0.58rem;
+    border: 1px solid rgba(231, 249, 255, 0.16);
+    color: #fff;
+    background: rgba(9, 15, 32, 0.46);
+}
+
+.hub-plaza-form button {
+    padding: 0 0.7rem;
+    border: 1px solid rgba(174, 242, 255, 0.24);
+    color: #fff;
+    background: rgba(123, 140, 246, 0.55);
+    cursor: pointer;
+}
+
+.hub-plaza-form button:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.hub-plaza-feedback {
+    color: rgba(239, 247, 255, 0.7);
+    font-size: 0.72rem;
 }
 
 .tone-violet .scene-icon { color: #c9c4ff; }
