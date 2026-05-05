@@ -10,21 +10,48 @@ const props = defineProps({
 
 defineEmits(['go', 'logout', 'toggle-theme']);
 
-const scripts = [
-  '/lib/live2dcubismcore-v5.min.js',
-  '/lib/bundled/live2d-room.iife.js?v=20260505-fast1',
-  '/assets/js/room-runtime.js?v=20260505-fast1'
+const desktopLive2dScript = '/lib/bundled/live2d-room.iife.js?v=20260505-fast1';
+const roomRuntimeScript = '/assets/js/room-runtime.js?v=20260505-mobile1';
+const cubismCoreScript = '/lib/live2dcubismcore-v5.min.js';
+
+const sharedPreloadResources = [
+  { href: cubismCoreScript, as: 'script' },
+  { href: roomRuntimeScript, as: 'script' },
+  { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' }
 ];
 
-const preloadResources = [
-  { href: '/lib/live2dcubismcore-v5.min.js', as: 'script' },
-  { href: '/lib/bundled/live2d-room.iife.js?v=20260505-fast1', as: 'script' },
-  { href: '/assets/js/room-runtime.js?v=20260505-fast1', as: 'script' },
+const desktopPreloadResources = [
+  { href: desktopLive2dScript, as: 'script' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json', as: 'fetch', type: 'application/json' },
-  { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' },
   { href: '/models/tsukimi-yachiyo/textures/texture_00.webp', as: 'image', type: 'image/webp' },
   { href: '/models/tsukimi-yachiyo/textures/texture_01.webp', as: 'image', type: 'image/webp' }
 ];
+
+const mobilePreloadResources = [
+  { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.mobile.model3.json', as: 'fetch', type: 'application/json' },
+  { href: '/models/tsukimi-yachiyo/textures-mobile/texture_00.webp', as: 'image', type: 'image/webp' },
+  { href: '/models/tsukimi-yachiyo/textures-mobile/texture_01.webp', as: 'image', type: 'image/webp' }
+];
+
+function shouldUseMobileLive2D() {
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+  const narrow = window.matchMedia?.('(max-width: 820px)').matches;
+  const memory = Number(navigator.deviceMemory || 0);
+  return Boolean(coarse || narrow || (memory && memory <= 4));
+}
+
+function live2dScripts(useMobile) {
+  return useMobile
+    ? [cubismCoreScript, roomRuntimeScript]
+    : [cubismCoreScript, desktopLive2dScript, roomRuntimeScript];
+}
+
+function preloadResources(useMobile) {
+  return [
+    ...sharedPreloadResources,
+    ...(useMobile ? mobilePreloadResources : desktopPreloadResources)
+  ];
+}
 
 function readStoredUser() {
   try {
@@ -68,8 +95,8 @@ function loadScript(src, options = {}) {
   });
 }
 
-function preloadRoomResources() {
-  preloadResources.forEach((resource) => {
+function preloadRoomResources(useMobile) {
+  preloadResources(useMobile).forEach((resource) => {
     const existing = document.head.querySelector(`link[data-room-preload="${resource.href}"]`);
     if (existing) return;
     const link = document.createElement('link');
@@ -86,16 +113,24 @@ function preloadRoomResources() {
 
 onMounted(async () => {
   document.body.classList.add('vue-room-route');
-  window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
+  const useMobileLive2D = shouldUseMobileLive2D();
+  window.TSUKUYOMI_EXTERNAL_LIVE2D = !useMobileLive2D;
+  window.TSUKUYOMI_ROOM_MOBILE_LIVE2D = useMobileLive2D;
   window.TSUKUYOMI_LIVE2D_READY = false;
   window.destroyTsukuyomiLive2DRoom?.();
 
   const container = document.getElementById('live2d-container');
   container?.querySelectorAll('canvas:not(#live2d-canvas)').forEach((node) => node.remove());
+  if (useMobileLive2D && container && !document.getElementById('live2d-canvas')) {
+    const canvas = document.createElement('canvas');
+    canvas.id = 'live2d-canvas';
+    canvas.setAttribute('aria-hidden', 'true');
+    container.appendChild(canvas);
+  }
 
-  preloadRoomResources();
+  preloadRoomResources(useMobileLive2D);
 
-  for (const src of scripts) {
+  for (const src of live2dScripts(useMobileLive2D)) {
     await loadScript(src);
   }
 

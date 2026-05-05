@@ -2,6 +2,7 @@
     'use strict';
 
     const MODEL_URL = '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json';
+    const MOBILE_MODEL_URL = '/models/tsukimi-yachiyo/tsukimi-yachiyo.mobile.model3.json';
     const WORLD_ENDPOINT = '/api/room/world';
     const MEMORY_ENDPOINT = '/api/room/memory';
     const WORLD_CACHE_KEY = 'roomWorldState';
@@ -72,6 +73,13 @@
 
     function $(id) {
         return document.getElementById(id);
+    }
+
+    function shouldUseMobileModel() {
+        const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+        const narrow = window.matchMedia?.('(max-width: 820px)').matches;
+        const memory = Number(navigator.deviceMemory || 0);
+        return Boolean(window.TSUKUYOMI_ROOM_MOBILE_LIVE2D || coarse || narrow || (memory && memory <= 4));
     }
 
     function readJson(key, fallback) {
@@ -2141,7 +2149,7 @@
             if (!canvas || !container) throw new Error('Live2D 容器不存在');
             live2d = new RoomLive2DRenderer(canvas, container);
             window.roomLive2DRenderer = live2d;
-            await live2d.init(MODEL_URL);
+            await live2d.init(shouldUseMobileModel() ? MOBILE_MODEL_URL : MODEL_URL);
             hideLoading();
             appendMessage('system', '辉夜姬已经在房间里等你了');
         } catch (error) {
