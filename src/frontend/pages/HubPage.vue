@@ -207,7 +207,6 @@ onMounted(loadHubPreview);
             </form>
             <span v-if="plazaQuick.message" class="hub-plaza-feedback">{{ plazaQuick.message }}</span>
           </span>
-          <span class="scene-code">{{ scene.code }}</span>
         </component>
       </div>
     </section>
