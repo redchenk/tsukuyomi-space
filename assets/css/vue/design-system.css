@@ -283,10 +283,22 @@ html[data-theme="light"] .icon-btn {
     background: linear-gradient(135deg, rgba(123, 140, 246, 0.92), rgba(164, 129, 255, 0.82));
 }
 
+.site-commandbar .nav-link.router-link-active {
+    color: var(--moon-text-strong);
+    border-color: var(--moon-border);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+}
+
 html[data-theme="light"] .nav-link.router-link-active,
 html[data-theme="light"] .terminal-nav-btn.active,
 html[data-theme="light"] .room-nav-links a.router-link-active {
     color: #fff;
+}
+
+html[data-theme="light"] .site-commandbar .nav-link.router-link-active {
+    color: var(--moon-text-strong);
+    background: rgba(255, 255, 255, 0.68);
 }
 
 .primary-btn {
