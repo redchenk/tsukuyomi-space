@@ -33,7 +33,7 @@
 .hub-hero-panel {
     min-height: min(68vh, 660px);
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
     isolation: isolate;
 }
 
@@ -188,44 +188,17 @@
     box-shadow: 0 24px 80px rgba(123, 140, 246, 0.28);
 }
 
-.hub-entry-row {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.76rem;
-    padding: 0 1.15rem 1.15rem;
-    z-index: 2;
-}
-
-.hub-entry,
 .scene-card {
     color: inherit;
     text-decoration: none;
 }
 
-.hub-entry {
-    min-height: 116px;
-    position: relative;
-    display: grid;
-    align-content: end;
-    gap: 0.42rem;
-    overflow: hidden;
-    padding: 0.85rem;
-    border: 1px solid rgba(231, 249, 255, 0.14);
-    border-radius: 12px;
-    color: rgba(239, 247, 255, 0.9);
-    background: rgba(255, 255, 255, 0.07);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-}
-
-.hub-entry:hover,
 .scene-card:hover {
     transform: translateY(-3px);
     border-color: rgba(174, 242, 255, 0.35);
     background: rgba(123, 140, 246, 0.16);
 }
 
-.hub-entry-icon,
 .scene-icon {
     width: 36px;
     height: 36px;
@@ -237,80 +210,26 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
-.hub-entry-cover,
-.hub-entry-shade {
-    position: absolute;
-    inset: 0;
-}
-
-.hub-entry-cover {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.72;
-    transform: scale(1.02);
-    transition: transform 0.28s ease, opacity 0.28s ease;
-}
-
-.hub-entry-shade {
-    background:
-        linear-gradient(180deg, rgba(7, 12, 26, 0.08), rgba(7, 12, 26, 0.38) 42%, rgba(7, 12, 26, 0.86)),
-        radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.18), transparent 38%);
-}
-
-.hub-entry:hover .hub-entry-cover {
-    opacity: 0.86;
-    transform: scale(1.08);
-}
-
-.hub-entry .hub-entry-icon,
-.hub-entry-text {
-    position: relative;
-    z-index: 1;
-}
-
-.hub-entry .hub-entry-icon {
-    background: rgba(9, 15, 32, 0.48);
-    backdrop-filter: blur(10px);
-}
-
-.hub-entry-text {
-    display: grid;
-    gap: 0.16rem;
-}
-
-.hub-entry strong {
-    color: #fff;
-    font-size: 0.96rem;
-}
-
-.hub-entry small {
-    color: rgba(239, 247, 255, 0.66);
-    font-size: 0.78rem;
-    line-height: 1.5;
-}
-
 .hub-character {
-    position: absolute;
-    left: clamp(-5rem, -5vw, -2rem);
-    bottom: -1.4rem;
-    z-index: 1;
-    width: min(38vw, 560px);
-    max-width: 52%;
-    min-width: 260px;
+    position: fixed;
+    right: clamp(-2.5rem, -2vw, -1rem);
+    bottom: clamp(-1.5rem, -1vw, -0.5rem);
+    z-index: 4;
+    width: min(30vw, 470px);
+    max-width: 42%;
+    min-width: 240px;
     aspect-ratio: 16 / 10;
     overflow: hidden;
-    border-radius: 0 28px 0 0;
     margin: 0;
     pointer-events: none;
-    opacity: 0.96;
+    opacity: 0.92;
     filter: drop-shadow(0 24px 54px rgba(0, 0, 0, 0.42));
     mask-image:
-        linear-gradient(90deg, #000 0 76%, transparent 100%),
+        linear-gradient(270deg, #000 0 82%, transparent 100%),
         linear-gradient(0deg, #000 0 86%, transparent 100%);
     mask-composite: intersect;
     -webkit-mask-image:
-        linear-gradient(90deg, #000 0 76%, transparent 100%),
+        linear-gradient(270deg, #000 0 82%, transparent 100%),
         linear-gradient(0deg, #000 0 86%, transparent 100%);
     -webkit-mask-composite: source-in;
 }
@@ -443,17 +362,18 @@
 
 .scene-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0.78rem;
 }
 
 .scene-card {
-    min-height: 112px;
+    min-height: 168px;
+    position: relative;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 0.86rem;
-    align-items: center;
-    padding: 0.95rem;
+    align-content: end;
+    gap: 0.45rem;
+    overflow: hidden;
+    padding: 0.9rem;
     border: 1px solid rgba(231, 249, 255, 0.14);
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.07);
@@ -461,8 +381,42 @@
 }
 
 .scene-main {
+    position: relative;
+    z-index: 1;
     display: block;
     min-width: 0;
+}
+
+.scene-card::before,
+.scene-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.scene-card::before {
+    background: var(--scene-image) center / cover no-repeat;
+    opacity: 0.72;
+    transform: scale(1.02);
+    transition: transform 0.28s ease, opacity 0.28s ease;
+}
+
+.scene-card::after {
+    background:
+        linear-gradient(180deg, rgba(7, 12, 26, 0.06), rgba(7, 12, 26, 0.34) 42%, rgba(7, 12, 26, 0.88)),
+        radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.2), transparent 36%);
+}
+
+.scene-card:hover::before {
+    opacity: 0.88;
+    transform: scale(1.08);
+}
+
+.scene-icon {
+    position: relative;
+    z-index: 1;
+    background: rgba(9, 15, 32, 0.48);
+    backdrop-filter: blur(10px);
 }
 
 .scene-name {
@@ -480,6 +434,8 @@
 }
 
 .scene-code {
+    position: relative;
+    z-index: 1;
     color: rgba(239, 247, 255, 0.54);
     font-size: 0.72rem;
     font-weight: 800;
@@ -534,20 +490,18 @@ html[data-theme="light"] .hub-side-card strong {
 }
 
 html[data-theme="light"] .hub-kicker,
-html[data-theme="light"] .hub-entry,
 html[data-theme="light"] .scene-card,
 html[data-theme="light"] .hub-stat-grid div,
 html[data-theme="light"] .hub-side-card,
-html[data-theme="light"] .hub-entry-icon,
 html[data-theme="light"] .scene-icon {
     border-color: rgba(75, 95, 140, 0.14);
     background: rgba(255, 255, 255, 0.66);
 }
 
-html[data-theme="light"] .hub-entry-shade {
+html[data-theme="light"] .scene-card::after {
     background:
-        linear-gradient(180deg, rgba(10, 18, 36, 0.02), rgba(10, 18, 36, 0.22) 42%, rgba(10, 18, 36, 0.7)),
-        radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.18), transparent 38%);
+        linear-gradient(180deg, rgba(10, 18, 36, 0.02), rgba(10, 18, 36, 0.2) 42%, rgba(10, 18, 36, 0.72)),
+        radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.2), transparent 36%);
 }
 
 @keyframes hubFloat {
@@ -584,12 +538,8 @@ html[data-theme="light"] .hub-entry-shade {
 
     .hub-character {
         width: 320px;
-        max-width: 52%;
-        opacity: 0.4;
-    }
-
-    .hub-entry-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-width: 48%;
+        opacity: 0.32;
     }
 
     .scene-grid {
@@ -639,14 +589,9 @@ html[data-theme="light"] .hub-entry-shade {
         justify-content: center;
     }
 
-    .hub-entry-row,
     .scene-grid,
     .hub-side-panel {
         grid-template-columns: 1fr;
-    }
-
-    .hub-entry {
-        min-height: 86px;
     }
 
     .hub-character {

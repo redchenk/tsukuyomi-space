@@ -11,7 +11,7 @@ const sceneLinks = computed(() => [
   { href: '/room', name: props.t.room, desc: '你的专属小屋', code: 'Room', icon: '⌂', tone: 'violet', spa: true, image: '/assets/images/room-bg.png' },
   { href: '/plaza', name: props.t.plaza, desc: '交流、分享、发现', code: 'Plaza', icon: '☽', tone: 'cyan', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
   { href: '/stage', name: props.t.stage, desc: '记录、创作、知识', code: 'Stage', icon: '▤', tone: 'blue', spa: true, image: '/assets/images/room-bg.png' },
-  { href: '/user-center', name: props.t.ucTitle, desc: '个人信息与成长', code: 'User', icon: '◉', tone: 'pink', spa: true, image: '/models/tsukimi-yachiyo/八千代辉夜姬头像1.png' },
+  { href: '/reality', name: props.t.reality, desc: '现实世界连接入口', code: 'Reality', icon: '◎', tone: 'pink', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
   { href: '/arena/', name: props.t.arena, desc: '超时空辉夜姬竞技场', code: 'Arena', icon: '◇', tone: 'gold', spa: false, image: '/assets/images/tsukuyomi-bg.png' }
 ]);
 
@@ -48,31 +48,8 @@ const stats = computed(() => [
         </div>
 
         <figure class="hub-character" aria-label="月见八千代">
-          <img
-            :src="'/assets/images/yachiyo-hub-stand.jpg'"
-            alt="月见八千代"
-            @error="$event.currentTarget.src = '/assets/images/tsukuyomi-bg.png'"
-          >
+          <img src="/assets/images/yachiyo-hub-stand.png" alt="月见八千代">
         </figure>
-
-        <div class="hub-entry-row" aria-label="主要入口">
-          <a
-            v-for="scene in sceneLinks"
-            :key="scene.href"
-            class="hub-entry"
-            :class="`tone-${scene.tone}`"
-            :href="scene.href"
-            @click="scene.spa && ($event.preventDefault(), $emit('go', scene.href))"
-          >
-            <img class="hub-entry-cover" :src="scene.image" :alt="scene.name">
-            <span class="hub-entry-shade"></span>
-            <span class="hub-entry-icon" aria-hidden="true">{{ scene.icon }}</span>
-            <span class="hub-entry-text">
-              <strong>{{ scene.name }}</strong>
-              <small>{{ scene.desc }}</small>
-            </span>
-          </a>
-        </div>
       </div>
 
       <aside class="hub-side-panel">
@@ -116,6 +93,7 @@ const stats = computed(() => [
           :key="scene.href"
           class="scene-card"
           :class="`tone-${scene.tone}`"
+          :style="{ '--scene-image': `url(${scene.image})` }"
           :href="scene.href"
           @click="scene.spa && ($event.preventDefault(), $emit('go', scene.href))"
         >
