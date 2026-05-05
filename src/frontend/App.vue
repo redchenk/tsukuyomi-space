@@ -8,7 +8,7 @@ import AppShell from './layouts/AppShell.vue';
 const route = useRoute();
 const router = useRouter();
 const lang = ref(localStorage.getItem('lang') || 'zh');
-const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'light');
+const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
 const user = ref(loadStoredUser());
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
