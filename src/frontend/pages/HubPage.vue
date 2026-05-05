@@ -49,7 +49,7 @@ const stats = computed(() => [
 
         <figure class="hub-character" aria-label="月见八千代">
           <img
-            src="/assets/images/yachiyo-hub-stand.jpg"
+            :src="'/assets/images/yachiyo-hub-stand.jpg'"
             alt="月见八千代"
             @error="$event.currentTarget.src = '/assets/images/tsukuyomi-bg.png'"
           >
