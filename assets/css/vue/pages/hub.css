@@ -212,11 +212,11 @@
 
 .hub-character {
     position: fixed;
-    right: clamp(-2.5rem, -2vw, -1rem);
+    left: clamp(-1.6rem, -1.2vw, -0.55rem);
     bottom: clamp(-1.5rem, -1vw, -0.5rem);
     z-index: 4;
-    width: min(30vw, 470px);
-    max-width: 42%;
+    width: min(32vw, 500px);
+    max-width: 44%;
     min-width: 240px;
     aspect-ratio: 16 / 10;
     overflow: hidden;
@@ -225,11 +225,11 @@
     opacity: 0.92;
     filter: drop-shadow(0 24px 54px rgba(0, 0, 0, 0.42));
     mask-image:
-        linear-gradient(270deg, #000 0 82%, transparent 100%),
+        linear-gradient(90deg, #000 0 82%, transparent 100%),
         linear-gradient(0deg, #000 0 86%, transparent 100%);
     mask-composite: intersect;
     -webkit-mask-image:
-        linear-gradient(270deg, #000 0 82%, transparent 100%),
+        linear-gradient(90deg, #000 0 82%, transparent 100%),
         linear-gradient(0deg, #000 0 86%, transparent 100%);
     -webkit-mask-composite: source-in;
 }
@@ -362,7 +362,7 @@
 
 .scene-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.78rem;
 }
 

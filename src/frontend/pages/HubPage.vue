@@ -8,7 +8,6 @@ const props = defineProps({
 defineEmits(['go']);
 
 const sceneLinks = computed(() => [
-  { href: '/room', name: props.t.room, desc: '你的专属小屋', code: 'Room', icon: '⌂', tone: 'violet', spa: true, image: '/assets/images/room-bg.png' },
   { href: '/plaza', name: props.t.plaza, desc: '交流、分享、发现', code: 'Plaza', icon: '☽', tone: 'cyan', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
   { href: '/stage', name: props.t.stage, desc: '记录、创作、知识', code: 'Stage', icon: '▤', tone: 'blue', spa: true, image: '/assets/images/room-bg.png' },
   { href: '/reality', name: props.t.reality, desc: '现实世界连接入口', code: 'Reality', icon: '◎', tone: 'pink', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
@@ -18,12 +17,16 @@ const sceneLinks = computed(() => [
 const stats = computed(() => [
   { label: '今日场景', value: sceneLinks.value.length },
   { label: '月读广场', value: 'OPEN' },
-  { label: '私人居所', value: 'LIVE' }
+  { label: '竞技场', value: 'LIVE' }
 ]);
 </script>
 
 <template>
   <main class="page hub">
+    <figure class="hub-character" aria-label="月见八千代">
+      <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代">
+    </figure>
+
     <section class="hub-showcase">
       <div class="hub-hero-panel">
         <div class="hub-hero-copy">
@@ -47,9 +50,6 @@ const stats = computed(() => [
           </div>
         </div>
 
-        <figure class="hub-character" aria-label="月见八千代">
-          <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代">
-        </figure>
       </div>
 
       <aside class="hub-side-panel">
