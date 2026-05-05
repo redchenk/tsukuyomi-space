@@ -1433,6 +1433,79 @@ html[data-theme="dark"] .scene-card {
     }
 }
 
+/* Hub directory layout */
+.hub .hub-copy,
+.hub .hub-feature,
+.hub .hub-grid-wrap,
+.hub .hub-footer-line,
+.hub .scene-card {
+    background: rgba(255, 255, 255, 0.72);
+    border-color: rgba(112, 137, 178, 0.16);
+    box-shadow: 0 18px 54px rgba(64, 82, 124, 0.1);
+}
+
+.hub .hub-feature-link,
+.hub .hub-notes div {
+    background: rgba(255, 255, 255, 0.52);
+}
+
+.hub .hub-feature-link:hover,
+.hub .scene-card:hover {
+    background: rgba(230, 247, 253, 0.72);
+}
+
+.hub .section-title,
+.hub .hub-feature-title,
+.hub .hub-section-head h2,
+.hub .scene-name {
+    color: var(--ink) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+.hub .hub-kicker,
+.hub .hub-status-row span,
+.hub .scene-desc,
+.hub .hub-section-head span,
+.hub .hub-footer-line,
+.hub .hub-notes span,
+.hub .scene-code {
+    color: var(--muted) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+html[data-theme="dark"] .hub .hub-copy,
+html[data-theme="dark"] .hub .hub-feature,
+html[data-theme="dark"] .hub .hub-grid-wrap,
+html[data-theme="dark"] .hub .hub-footer-line,
+html[data-theme="dark"] .hub .scene-card {
+    background: rgba(17, 24, 39, 0.78);
+    border-color: rgba(177, 205, 238, 0.16);
+    box-shadow: 0 22px 62px rgba(0, 0, 0, 0.26);
+}
+
+html[data-theme="dark"] .hub .hub-feature-link,
+html[data-theme="dark"] .hub .hub-notes div {
+    background: rgba(30, 41, 59, 0.62);
+}
+
+html[data-theme="dark"] .hub .section-title,
+html[data-theme="dark"] .hub .hub-feature-title,
+html[data-theme="dark"] .hub .hub-section-head h2,
+html[data-theme="dark"] .hub .scene-name,
+html[data-theme="dark"] .hub .hub-notes strong {
+    color: var(--text) !important;
+}
+
+html[data-theme="dark"] .hub .hub-kicker,
+html[data-theme="dark"] .hub .hub-status-row span,
+html[data-theme="dark"] .hub .scene-desc,
+html[data-theme="dark"] .hub .hub-section-head span,
+html[data-theme="dark"] .hub .hub-footer-line,
+html[data-theme="dark"] .hub .hub-notes span,
+html[data-theme="dark"] .hub .scene-code {
+    color: var(--muted) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
