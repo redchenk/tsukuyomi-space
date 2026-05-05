@@ -465,6 +465,16 @@ html[data-theme="light"] textarea::placeholder {
     }
 }
 
+@media (min-width: 861px) {
+    .topbar.site-commandbar {
+        display: none;
+    }
+
+    .page {
+        padding-top: clamp(1rem, 3vw, 2rem);
+    }
+}
+
 @media (max-width: 460px) {
     .topbar.site-commandbar {
         left: 0.55rem;

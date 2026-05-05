@@ -215,8 +215,8 @@
     right: clamp(-5.2rem, -4.4vw, -2.4rem);
     bottom: clamp(-2.6rem, -2vw, -1.2rem);
     z-index: 2;
-    width: min(29vw, 450px);
-    max-width: 38%;
+    width: min(34vw, 540px);
+    max-width: 44%;
     min-width: 240px;
     aspect-ratio: 16 / 10;
     overflow: hidden;
@@ -374,7 +374,8 @@
     min-height: 255px;
     position: relative;
     display: grid;
-    align-content: end;
+    grid-template-rows: 36px 24px minmax(0, 1fr) auto;
+    align-content: stretch;
     gap: 0.45rem;
     overflow: hidden;
     padding: 0.9rem;
@@ -391,6 +392,7 @@
     z-index: 1;
     display: block;
     min-width: 0;
+    align-self: start;
 }
 
 .scene-card::before,
@@ -675,9 +677,9 @@ html[data-theme="light"] .scene-card::after {
     }
 
     .hub-character {
-        width: 300px;
+        width: 360px;
         max-width: 48%;
-        opacity: 0.14;
+        opacity: 0.16;
     }
 
     .scene-grid {
