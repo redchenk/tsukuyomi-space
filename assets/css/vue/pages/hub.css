@@ -222,16 +222,20 @@
     overflow: hidden;
     margin: 0;
     pointer-events: none;
-    opacity: 0.92;
-    filter: drop-shadow(0 24px 54px rgba(0, 0, 0, 0.42));
+    opacity: 0.88;
+    filter: saturate(1.02) contrast(0.96) drop-shadow(0 24px 54px rgba(0, 0, 0, 0.34));
     mask-image:
-        linear-gradient(270deg, #000 0 82%, transparent 100%),
-        linear-gradient(0deg, #000 0 86%, transparent 100%);
+        linear-gradient(270deg, #000 0 62%, rgba(0, 0, 0, 0.74) 76%, transparent 100%),
+        linear-gradient(90deg, #000 0 72%, rgba(0, 0, 0, 0.58) 86%, transparent 100%),
+        linear-gradient(0deg, #000 0 66%, rgba(0, 0, 0, 0.66) 82%, transparent 100%),
+        radial-gradient(ellipse at 52% 54%, #000 0 52%, rgba(0, 0, 0, 0.72) 70%, transparent 100%);
     mask-composite: intersect;
     -webkit-mask-image:
-        linear-gradient(270deg, #000 0 82%, transparent 100%),
-        linear-gradient(0deg, #000 0 86%, transparent 100%);
-    -webkit-mask-composite: source-in;
+        linear-gradient(270deg, #000 0 62%, rgba(0, 0, 0, 0.74) 76%, transparent 100%),
+        linear-gradient(90deg, #000 0 72%, rgba(0, 0, 0, 0.58) 86%, transparent 100%),
+        linear-gradient(0deg, #000 0 66%, rgba(0, 0, 0, 0.66) 82%, transparent 100%),
+        radial-gradient(ellipse at 52% 54%, #000 0 52%, rgba(0, 0, 0, 0.72) 70%, transparent 100%);
+    -webkit-mask-composite: source-in, source-in, source-in;
 }
 
 .hub-character img {
