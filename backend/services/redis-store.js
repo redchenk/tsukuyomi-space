@@ -1,28 +1,5 @@
-const net = require('net');
-const { URL } = require('url');
+const { createClient } = require('redis');
 const config = require('../config');
-
-function encodeCommand(parts) {
-    return `*${parts.length}\r\n${parts.map(part => {
-        const value = Buffer.from(String(part));
-        return `$${value.length}\r\n${value.toString()}\r\n`;
-    }).join('')}`;
-}
-
-function parseResp(buffer) {
-    const text = buffer.toString();
-    const type = text[0];
-    if (type === '+') return text.slice(1, text.indexOf('\r\n'));
-    if (type === ':') return Number(text.slice(1, text.indexOf('\r\n')));
-    if (type === '-') throw new Error(text.slice(1, text.indexOf('\r\n')));
-    if (type === '$') {
-        const end = text.indexOf('\r\n');
-        const length = Number(text.slice(1, end));
-        if (length < 0) return null;
-        return text.slice(end + 2, end + 2 + length);
-    }
-    return text;
-}
 
 class MemoryStore {
     constructor() {
@@ -91,99 +68,71 @@ class MemoryStore {
 class RedisStore {
     constructor(redisUrl) {
         this.redisUrl = redisUrl;
-        const parsed = new URL(redisUrl);
-        this.host = parsed.hostname || '127.0.0.1';
-        this.port = Number(parsed.port || 6379);
-        this.username = decodeURIComponent(parsed.username || '');
-        this.password = decodeURIComponent(parsed.password || '');
-        this.db = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.slice(1) : '';
+        this.client = null;
+        this.connectPromise = null;
     }
 
     isRedisEnabled() {
         return true;
     }
 
-    async command(parts) {
-        const commands = [];
-        if (this.password) {
-            commands.push(this.username ? ['AUTH', this.username, this.password] : ['AUTH', this.password]);
-        }
-        if (this.db) commands.push(['SELECT', this.db]);
-        commands.push(parts);
-
-        return new Promise((resolve, reject) => {
-            const socket = net.createConnection({ host: this.host, port: this.port });
-            const chunks = [];
-            let settled = false;
-            let idleTimer = null;
-            const finish = () => {
-                if (settled) return;
-                settled = true;
-                clearTimeout(timeout);
-                clearTimeout(idleTimer);
-                socket.destroy();
-                try {
-                    const responses = Buffer.concat(chunks).toString().split(/\r\n(?=[+$:-])/).filter(Boolean);
-                    resolve(parseResp(Buffer.from(responses[responses.length - 1] || '')));
-                } catch (error) {
-                    reject(error);
-                }
-            };
-            const timeout = setTimeout(() => {
-                settled = true;
-                clearTimeout(idleTimer);
-                socket.destroy();
-                reject(new Error('Redis command timeout'));
-            }, config.redis.timeoutMs);
-
-            socket.on('connect', () => {
-                socket.write(commands.map(encodeCommand).join(''));
-            });
-            socket.on('data', (chunk) => {
-                chunks.push(chunk);
-                clearTimeout(idleTimer);
-                idleTimer = setTimeout(finish, 5);
-            });
-            socket.on('error', error => {
-                if (settled) return;
-                settled = true;
-                clearTimeout(timeout);
-                clearTimeout(idleTimer);
-                reject(error);
-            });
-            socket.on('end', () => {
-                finish();
-            });
-            socket.on('close', () => {
-                if (chunks.length > 0) finish();
-            });
+    createClient() {
+        const client = createClient({
+            url: this.redisUrl,
+            socket: {
+                connectTimeout: config.redis.timeoutMs,
+                reconnectStrategy: false
+            }
         });
+        client.on('error', () => {});
+        return client;
+    }
+
+    async getClient() {
+        if (this.client?.isOpen) return this.client;
+        if (!this.client) this.client = this.createClient();
+        if (!this.connectPromise) {
+            this.connectPromise = this.client.connect().catch((error) => {
+                this.client?.destroy?.();
+                this.client = null;
+                throw error;
+            }).finally(() => {
+                this.connectPromise = null;
+            });
+        }
+        await this.connectPromise;
+        return this.client;
+    }
+
+    async useClient(operation) {
+        const client = await this.getClient();
+        return operation(client);
     }
 
     async get(key) {
-        return this.command(['GET', key]);
+        return this.useClient(client => client.get(key));
     }
 
     async set(key, value, ttlSeconds) {
         return ttlSeconds
-            ? this.command(['SET', key, value, 'EX', ttlSeconds])
-            : this.command(['SET', key, value]);
+            ? this.useClient(client => client.set(key, String(value), { EX: ttlSeconds }))
+            : this.useClient(client => client.set(key, String(value)));
     }
 
     async del(key) {
-        return this.command(['DEL', key]);
+        return this.useClient(client => client.del(key));
     }
 
     async incr(key) {
-        return this.command(['INCR', key]);
+        return this.useClient(client => client.incr(key));
     }
 
     async expire(key, ttlSeconds) {
-        return this.command(['EXPIRE', key, ttlSeconds]);
+        return this.useClient(client => client.expire(key, ttlSeconds));
     }
 
     async ttl(key) {
-        return this.command(['TTL', key]);
+        return this.useClient(client => client.ttl(key));
     }
 }
 
