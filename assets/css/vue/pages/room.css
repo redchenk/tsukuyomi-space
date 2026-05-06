@@ -23,7 +23,7 @@ body.vue-room-route {
     --room-glass-bg-strong: rgba(10, 16, 32, 0.66);
     --room-glass-border: rgba(231, 249, 255, 0.16);
     --room-glass-muted: rgba(239, 247, 255, 0.66);
-    --room-glass-shadow: 0 26px 80px rgba(0, 0, 0, 0.28);
+    --room-glass-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
     --room-weather-haze: transparent;
     position: fixed;
     inset: 0;
@@ -256,7 +256,7 @@ body.vue-room-route {
     color: #eff7ff;
     background: var(--room-glass-bg);
     box-shadow: var(--room-glass-shadow);
-    backdrop-filter: blur(18px) saturate(1.12);
+    backdrop-filter: blur(12px) saturate(1.08);
 }
 
 .room-weather-card::before {
@@ -316,7 +316,7 @@ body.vue-room-route {
     background: rgba(9, 15, 32, 0.38);
     text-overflow: ellipsis;
     white-space: nowrap;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(8px);
 }
 
 .room-weather-head strong {
@@ -380,7 +380,7 @@ body.vue-room-route {
     height: 100% !important;
     display: block;
     background: transparent;
-    filter: saturate(0.98) contrast(0.98) drop-shadow(0 24px 60px var(--room-shadow));
+    filter: saturate(0.98) contrast(0.98) drop-shadow(0 14px 32px var(--room-shadow));
     touch-action: none;
 }
 
@@ -399,7 +399,7 @@ body.vue-room-route {
     border-radius: 18px;
     background: var(--room-glass-bg);
     box-shadow: var(--room-glass-shadow);
-    backdrop-filter: blur(18px) saturate(1.12);
+    backdrop-filter: blur(12px) saturate(1.08);
     transform: translateX(-50%);
 }
 
@@ -422,7 +422,8 @@ body.vue-room-route {
     border-radius: 22px;
     background: var(--room-glass-bg);
     box-shadow: var(--room-glass-shadow);
-    backdrop-filter: blur(18px) saturate(1.12);
+    backdrop-filter: blur(12px) saturate(1.08);
+    contain: layout paint;
     user-select: none;
 }
 
