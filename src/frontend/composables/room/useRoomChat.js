@@ -13,9 +13,28 @@ function stripControlTags(text) {
     .trim();
 }
 
+function stripLeadingActionHints(text) {
+  let value = String(text || '').trim();
+  const actionHintPattern = /^(?:\s*(?:[\(（][^()（）\n]{1,100}[\)）]|[\[【][^[\]【】\n]{1,100}[\]】]|\*[^*\n]{1,100}\*|(?:动作|表情|姿态|语气|神态|动作提示)\s*[:：][^\n]{1,140})\s*)+/u;
+  let previous = '';
+  while (value && value !== previous) {
+    previous = value;
+    value = value.replace(actionHintPattern, '').trimStart();
+  }
+  return value.trim();
+}
+
 function cleanReply(text) {
-  const cleaned = stripControlTags(text).replace(/^(?:\s*(?:\([^()\n]{1,80}\)|\[[^[\]\n]{1,80}\])\s*)+/, '').trim();
+  const cleaned = stripLeadingActionHints(stripControlTags(text));
   return cleaned || '\u55ef\uff0c\u6211\u5728\u3002';
+}
+
+function roomSystemPrompt() {
+  return [
+    '你是月见八千代，回复应保持温柔、清澈、带一点神秘感。',
+    '不要把动作提示词、表情提示词或舞台指令直接写进给用户看的正文，例如不要输出“（微笑）”“【轻轻点头】”“动作：靠近”。',
+    '如果确实需要驱动 Live2D 动作，只能使用 <|ACT:动作名|> 这样的控制标签；这些标签会被系统隐藏，正文只保留自然对话。'
+  ].join('\n');
 }
 
 function applyActCues(text) {
@@ -113,6 +132,7 @@ export function useRoomChat({ live2d, world }) {
           apiKey: settings.apiKey,
           apiUrl: settings.apiUrl,
           model: settings.model,
+          systemPrompt: settings.systemPrompt || roomSystemPrompt(),
           image
         });
       } else if (settings.apiKey && settings.apiUrl) {
@@ -122,6 +142,7 @@ export function useRoomChat({ live2d, world }) {
           body: JSON.stringify({
             model: settings.model || 'gpt-4o-mini',
             messages: [
+              { role: 'system', content: settings.systemPrompt || roomSystemPrompt() },
               ...conversation.map((item) => ({ role: item.role, content: String(item.content || '') })),
               { role: 'user', content: message || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : '') }
             ]
