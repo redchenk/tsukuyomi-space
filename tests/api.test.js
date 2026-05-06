@@ -224,6 +224,25 @@ describe('messages API', () => {
     });
 });
 
+describe('stats API', () => {
+    it('records page views and returns public site counters', async () => {
+        const recorded = await postJson('/api/stats/view', { path: '/hub' });
+        assert.equal(recorded.response.status, 200);
+        assert.equal(recorded.body.success, true);
+
+        const { response, body } = await request('/api/stats');
+        assert.equal(response.status, 200);
+        assert.equal(body.success, true);
+        assert.ok(body.data.articles >= 1);
+        assert.ok(body.data.users >= 1);
+        assert.ok(body.data.messages >= 1);
+        assert.ok(body.data.todayViews >= 1);
+        assert.ok(body.data.totalViews >= 1);
+        assert.ok('weekViews' in body.data);
+        assert.ok('articleViews' in body.data);
+    });
+});
+
 describe('room world API', () => {
     it('returns a deterministic world state when weather is offline', async () => {
         const { response, body } = await request('/api/room/world');

@@ -10,6 +10,7 @@ const emit = defineEmits(['go']);
 
 const latestArticle = ref(null);
 const plazaMessages = ref([]);
+const siteStats = ref(null);
 const plazaQuick = reactive({
   content: '',
   loading: false,
@@ -46,21 +47,48 @@ const sceneLinks = computed(() => [
 
 const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
 
+function formatHubNumber(value) {
+  return Number(value || 0).toLocaleString('zh-CN');
+}
+
+function formatHubUptime(seconds = 0) {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  if (days) return `${days}天${hours}时`;
+  return `${hours || 1}小时`;
+}
+
 const stats = computed(() => [
-  { label: '今日场景', value: sceneLinks.value.length },
-  { label: '月读广场', value: 'OPEN' },
-  { label: '竞技场', value: 'LIVE' }
+  { label: '今日访问', value: formatHubNumber(siteStats.value?.todayViews) },
+  { label: '总访问', value: formatHubNumber(siteStats.value?.totalViews) },
+  { label: '注册用户', value: formatHubNumber(siteStats.value?.users) },
+  { label: '站内文章', value: formatHubNumber(siteStats.value?.articles) },
+  { label: '广场留言', value: formatHubNumber(siteStats.value?.messages) },
+  { label: '运行时间', value: siteStats.value?.uptime ? formatHubUptime(siteStats.value.uptime) : '--' }
 ]);
+
+function openScene(scene, event) {
+  if (scene.kind === 'plaza' && event?.target?.closest?.('form, input, textarea, button, a')) return;
+  if (scene.spa) {
+    event?.preventDefault?.();
+    emit('go', scene.href);
+    return;
+  }
+  window.location.href = scene.href;
+}
 
 async function loadHubPreview() {
   try {
-    const [articleResponse, messageResponse] = await Promise.all([
+    const [articleResponse, messageResponse, statsResponse] = await Promise.all([
       fetch('/api/articles'),
-      fetch('/api/messages')
+      fetch('/api/messages'),
+      fetch('/api/stats')
     ]);
-    const [articleResult, messageResult] = await Promise.all([
+    const [articleResult, messageResult, statsResult] = await Promise.all([
       parseResponse(articleResponse),
-      parseResponse(messageResponse)
+      parseResponse(messageResponse),
+      parseResponse(statsResponse)
     ]);
     const articles = articleResult.success && Array.isArray(articleResult.data) ? articleResult.data : [];
     const messages = messageResult.success && Array.isArray(messageResult.data) ? messageResult.data : [];
@@ -70,9 +98,11 @@ async function loadHubPreview() {
     plazaMessages.value = [...messages]
       .filter((item) => !item.parent_id)
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    siteStats.value = statsResult.success ? statsResult.data || null : null;
   } catch (_) {
     latestArticle.value = null;
     plazaMessages.value = [];
+    siteStats.value = null;
   }
 }
 
@@ -142,16 +172,8 @@ onMounted(loadHubPreview);
 
       <aside class="hub-side-panel">
         <div class="hub-side-head">
-          <span>设计系统</span>
-          <small>Design System</small>
-        </div>
-        <div class="hub-palette" aria-label="Color palette">
-          <span style="--swatch:#0b1020"></span>
-          <span style="--swatch:#131a2f"></span>
-          <span style="--swatch:#1e2a44"></span>
-          <span style="--swatch:#7b8cf6"></span>
-          <span style="--swatch:#ff7ac8"></span>
-          <span style="--swatch:#aef2ff"></span>
+          <span>本站统计</span>
+          <small>Site Analytics</small>
         </div>
         <div class="hub-stat-grid">
           <div v-for="item in stats" :key="item.label">
@@ -160,9 +182,9 @@ onMounted(loadHubPreview);
           </div>
         </div>
         <div class="hub-side-card">
-          <span>Assistant Character</span>
-          <strong>月见八千代</strong>
-          <p>以温柔、克制、带一点月光般疏离的方式陪伴访客。</p>
+          <span>Visitor Flow</span>
+          <strong>{{ formatHubNumber(siteStats?.weekViews) }} 次</strong>
+          <p>最近七天访问记录。数据来自站内访问事件与文章阅读量。</p>
         </div>
       </aside>
     </section>
@@ -184,7 +206,11 @@ onMounted(loadHubPreview);
           :class="[`tone-${scene.tone}`, { 'scene-card-plaza': scene.kind === 'plaza' }]"
           :style="{ '--scene-image': `url(${scene.image})` }"
           :href="scene.kind === 'plaza' ? undefined : scene.href"
-          @click="scene.kind !== 'plaza' && scene.spa && ($event.preventDefault(), $emit('go', scene.href))"
+          :role="scene.kind === 'plaza' ? 'link' : undefined"
+          :tabindex="scene.kind === 'plaza' ? 0 : undefined"
+          @click="openScene(scene, $event)"
+          @keydown.enter="openScene(scene, $event)"
+          @keydown.space.prevent="openScene(scene, $event)"
         >
           <span class="scene-icon" aria-hidden="true">{{ scene.icon }}</span>
           <span v-if="scene.label" class="scene-label">{{ scene.label }}</span>
@@ -193,7 +219,7 @@ onMounted(loadHubPreview);
             <span class="scene-desc">{{ scene.desc }}</span>
           </span>
           <span v-else class="scene-main plaza-card-body">
-            <button class="scene-name hub-plaza-title" type="button" @click="$emit('go', scene.href)">{{ scene.name }}</button>
+            <span class="scene-name hub-plaza-title">{{ scene.name }}</span>
             <span v-if="!plazaPreviewMessages.length" class="scene-desc">还没有留言，写下第一句问候。</span>
             <span v-else class="hub-plaza-list">
               <span v-for="msg in plazaPreviewMessages" :key="msg.id" class="hub-plaza-message">
@@ -201,7 +227,7 @@ onMounted(loadHubPreview);
                 <span>{{ msg.content }}</span>
               </span>
             </span>
-            <form class="hub-plaza-form" @submit.prevent="submitPlazaQuick">
+            <form class="hub-plaza-form" @click.stop @keydown.stop @submit.prevent="submitPlazaQuick">
               <input v-model="plazaQuick.content" type="text" placeholder="快速留言...">
               <button type="submit" :disabled="plazaQuick.loading">{{ plazaQuick.loading ? '发送中' : '发送' }}</button>
             </form>

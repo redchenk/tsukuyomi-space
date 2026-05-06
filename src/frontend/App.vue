@@ -62,6 +62,19 @@ watch(isAccessRoute, (next) => {
 watch(lang, setLang, { immediate: true });
 watch(theme, setTheme, { immediate: true });
 watch(() => route.fullPath, refreshUser, { immediate: true });
+watch(() => route.fullPath, (path) => {
+  const payload = JSON.stringify({ path });
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon('/api/stats/view', new Blob([payload], { type: 'application/json' }));
+    return;
+  }
+  fetch('/api/stats/view', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: payload,
+    keepalive: true
+  }).catch(() => {});
+}, { immediate: true });
 </script>
 
 <template>

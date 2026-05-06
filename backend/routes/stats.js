@@ -5,16 +5,28 @@ const router = express.Router();
 
 router.get('/', (req, res) => {
     try {
-        const articleCount = db.prepare('SELECT COUNT(*) AS count FROM articles').get().count;
+        const articles = db.prepare('SELECT COUNT(*) AS count, COALESCE(SUM(view_count), 0) AS views FROM articles').get();
         const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get().count;
         const messageCount = db.prepare('SELECT COUNT(*) AS count FROM messages').get().count;
+        const views = db.prepare(`
+            SELECT
+                SUM(CASE WHEN date(created_at) = date('now', 'localtime') THEN 1 ELSE 0 END) AS today,
+                SUM(CASE WHEN created_at >= datetime('now', '-7 days') THEN 1 ELSE 0 END) AS week,
+                COUNT(*) AS total
+            FROM stats
+            WHERE event_type = 'view'
+        `).get();
 
         res.json({
             success: true,
             data: {
-                articles: articleCount,
+                articles: articles.count || 0,
+                articleViews: articles.views || 0,
                 users: userCount,
                 messages: messageCount,
+                todayViews: views.today || 0,
+                weekViews: views.week || 0,
+                totalViews: Math.max(views.total || 0, articles.views || 0),
                 uptime: process.uptime()
             }
         });

@@ -195,6 +195,10 @@
     text-decoration: none;
 }
 
+.scene-card-plaza {
+    cursor: pointer;
+}
+
 .scene-card:hover {
     transform: translateY(-3px);
     border-color: rgba(174, 242, 255, 0.35);
@@ -292,7 +296,7 @@
 .hub-stat-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.68rem;
+    gap: 0.55rem;
 }
 
 .hub-stat-grid div,
@@ -303,7 +307,7 @@
 }
 
 .hub-stat-grid div {
-    min-height: 76px;
+    min-height: 68px;
     display: grid;
     place-content: center;
     gap: 0.18rem;
@@ -316,7 +320,8 @@
 }
 
 .hub-stat-grid strong {
-    font-size: 1.08rem;
+    font-size: 1rem;
+    word-break: keep-all;
 }
 
 .hub-stat-grid span {
@@ -485,7 +490,6 @@
     font: inherit;
     font-weight: 800;
     text-align: left;
-    cursor: pointer;
 }
 
 .hub-plaza-title:hover {
@@ -547,6 +551,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.38rem;
     margin-top: 0.54rem;
+    cursor: auto;
 }
 
 .hub-plaza-form input,
