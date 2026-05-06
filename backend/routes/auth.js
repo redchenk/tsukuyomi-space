@@ -2,20 +2,15 @@ const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
 const { authenticateToken, generateToken } = require('../middleware/auth');
+const authRepository = require('../repositories/auth-repository');
 const { EMAIL_CODE_TTL_MS, EMAIL_CODE_COOLDOWN_MS, sendVerificationEmail } = require('../services/mailer');
 const { normalizeEmail, isEmail } = require('../validators');
 
 const router = express.Router();
 
 function latestCode(email, purpose) {
-    return db.prepare(`
-        SELECT * FROM email_verification_codes
-        WHERE email = ? AND purpose = ?
-        ORDER BY created_at DESC
-        LIMIT 1
-    `).get(email, purpose);
+    return authRepository.findLatestVerificationCode(email, purpose);
 }
 
 function consumeVerificationCode(email, purpose, code) {
@@ -23,7 +18,7 @@ function consumeVerificationCode(email, purpose, code) {
     const now = Date.now();
     if (!row || row.used_at || row.expires_at < now) return false;
     if (!bcrypt.compareSync(String(code || '').trim(), row.code_hash)) return false;
-    db.prepare('UPDATE email_verification_codes SET used_at = ? WHERE id = ?').run(now, row.id);
+    authRepository.markVerificationCodeUsed(row.id, now);
     return true;
 }
 
@@ -40,7 +35,7 @@ router.post('/email-code', async (req, res) => {
             return res.status(400).json({ success: false, message: '请输入有效邮箱' });
         }
 
-        const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+        const existingUser = authRepository.findUserByEmail(email);
         if (purpose === 'register' && existingUser) {
             return res.status(400).json({ success: false, message: '该邮箱已注册' });
         }
@@ -56,10 +51,14 @@ router.post('/email-code', async (req, res) => {
         }
 
         const code = crypto.randomInt(100000, 999999).toString();
-        db.prepare(`
-            INSERT INTO email_verification_codes (id, email, code_hash, purpose, expires_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `).run(uuidv4(), email, bcrypt.hashSync(code, 10), purpose, now + EMAIL_CODE_TTL_MS, now);
+        authRepository.createVerificationCode({
+            id: uuidv4(),
+            email,
+            codeHash: bcrypt.hashSync(code, 10),
+            purpose,
+            expiresAt: now + EMAIL_CODE_TTL_MS,
+            createdAt: now
+        });
 
         await sendVerificationEmail(email, code, purpose);
         res.json({ success: true, message: '验证码已发送' });
@@ -87,7 +86,7 @@ router.post('/register', (req, res) => {
             return res.status(400).json({ success: false, message: '密码至少需要 6 位' });
         }
 
-        const existingUser = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email);
+        const existingUser = authRepository.findUserByUsernameOrEmailPair(username, email);
         if (existingUser) {
             return res.status(400).json({ success: false, message: '用户名或邮箱已被注册' });
         }
@@ -96,10 +95,7 @@ router.post('/register', (req, res) => {
         }
 
         const userId = uuidv4();
-        db.prepare(`
-            INSERT INTO users (id, username, email, password_hash)
-            VALUES (?, ?, ?, ?)
-        `).run(userId, username, email, bcrypt.hashSync(password, 10));
+        authRepository.createUser({ id: userId, username, email, passwordHash: bcrypt.hashSync(password, 10) });
 
         const token = generateToken({ id: userId, username, role: 'user' }, '7d');
         res.status(201).json({
@@ -125,7 +121,7 @@ router.post('/login', (req, res) => {
             return res.status(400).json({ success: false, message: '请输入用户名或邮箱' });
         }
 
-        const user = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(username, username);
+        const user = authRepository.findUserByUsernameOrEmail(username);
         if (!user) {
             return res.status(401).json({ success: false, message: '用户名或密码错误' });
         }
@@ -168,7 +164,7 @@ router.post('/login', (req, res) => {
 
 router.get('/me', authenticateToken, (req, res) => {
     try {
-        const user = db.prepare('SELECT id, username, email, role, avatar, created_at FROM users WHERE id = ?').get(req.user.id);
+        const user = authRepository.findCurrentUserById(req.user.id);
         if (!user) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }

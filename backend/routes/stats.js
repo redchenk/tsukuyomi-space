@@ -1,21 +1,14 @@
 const express = require('express');
-const db = require('../db');
+const statsRepository = require('../repositories/stats-repository');
 
 const router = express.Router();
 
 router.get('/', (req, res) => {
     try {
-        const articles = db.prepare('SELECT COUNT(*) AS count, COALESCE(SUM(view_count), 0) AS views FROM articles').get();
-        const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get().count;
-        const messageCount = db.prepare('SELECT COUNT(*) AS count FROM messages').get().count;
-        const views = db.prepare(`
-            SELECT
-                SUM(CASE WHEN date(created_at) = date('now', 'localtime') THEN 1 ELSE 0 END) AS today,
-                SUM(CASE WHEN created_at >= datetime('now', '-7 days') THEN 1 ELSE 0 END) AS week,
-                COUNT(*) AS total
-            FROM stats
-            WHERE event_type = 'view'
-        `).get();
+        const articles = statsRepository.articleCounters();
+        const userCount = statsRepository.userCount();
+        const messageCount = statsRepository.messageCount();
+        const views = statsRepository.publicViewCounters();
 
         res.json({
             success: true,
@@ -43,19 +36,11 @@ router.post('/view', (req, res) => {
             userAgent: req.headers['user-agent'] || '',
             ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
         });
-        const duplicate = db.prepare(`
-            SELECT id
-            FROM stats
-            WHERE event_type = 'view'
-              AND event_data = ?
-              AND created_at >= datetime('now', '-5 seconds')
-            ORDER BY id DESC
-            LIMIT 1
-        `).get(eventData);
+        const duplicate = statsRepository.findRecentView(eventData, 5);
         if (duplicate) {
             return res.json({ success: true, message: '操作成功', deduped: true });
         }
-        db.prepare('INSERT INTO stats (event_type, event_data) VALUES (?, ?)').run('view', eventData);
+        statsRepository.recordView(eventData);
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('Record view failed:', error);

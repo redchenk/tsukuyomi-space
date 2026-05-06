@@ -1,6 +1,6 @@
 const express = require('express');
-const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const articleRepository = require('../repositories/article-repository');
 const { parsePositiveInt, safeJsonParse } = require('../validators');
 
 const router = express.Router();
@@ -20,24 +20,8 @@ router.get('/', (req, res) => {
         const limit = parsePositiveInt(req.query.limit, 100);
         const offset = (page - 1) * limit;
 
-        let query = `
-            SELECT a.*, u.username AS author_username
-            FROM articles a
-            LEFT JOIN users u ON a.author_id = u.id
-        `;
-        let countQuery = 'SELECT COUNT(*) AS total FROM articles';
-        const params = [];
-
-        if (category) {
-            query += ' WHERE a.category = ?';
-            countQuery += ' WHERE category = ?';
-            params.push(category);
-        }
-
-        query += ' ORDER BY a.publish_date DESC LIMIT ? OFFSET ?';
-
-        const total = db.prepare(countQuery).get(...params).total;
-        const articles = db.prepare(query).all(...params, limit, offset).map(withParsedTags);
+        const result = articleRepository.listArticles({ category, limit, offset });
+        const articles = result.articles.map(withParsedTags);
 
         res.json({
             success: true,
@@ -45,8 +29,8 @@ router.get('/', (req, res) => {
             pagination: {
                 page,
                 limit,
-                total,
-                totalPages: Math.ceil(total / limit)
+                total: result.total,
+                totalPages: Math.ceil(result.total / limit)
             }
         });
     } catch (error) {
@@ -69,22 +53,17 @@ router.post('/', authenticateToken, (req, res) => {
 
         const finalCategory = category || (req.user.role === 'admin' ? '公告' : '其他');
         const publishDate = new Date().toISOString().split('T')[0];
-        const result = db.prepare(`
-            INSERT INTO articles (title, excerpt, content, category, tags, author_id, publish_date, read_time, cover_image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
+        const newArticle = articleRepository.createArticle({
             title,
-            excerpt || '',
-            content || '',
-            finalCategory,
-            JSON.stringify(tags || []),
-            req.user.id,
+            excerpt,
+            content,
+            category: finalCategory,
+            tags,
+            authorId: req.user.id,
             publishDate,
-            read_time || '5 min',
-            cover_image || null
-        );
-
-        const newArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(result.lastInsertRowid);
+            readTime: read_time,
+            coverImage: cover_image
+        });
         res.status(201).json({ success: true, message: '操作成功', data: newArticle });
     } catch (error) {
         console.error('Create article failed:', error);
@@ -95,12 +74,12 @@ router.post('/', authenticateToken, (req, res) => {
 // 单篇文章读取会顺便累计阅读数。
 router.get('/:id', (req, res) => {
     try {
-        const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
+        const article = articleRepository.findArticleById(req.params.id);
         if (!article) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
-        db.prepare('UPDATE articles SET view_count = view_count + 1 WHERE id = ?').run(req.params.id);
+        articleRepository.incrementArticleViews(req.params.id);
         res.json({ success: true, data: withParsedTags(article) });
     } catch (error) {
         console.error('Get article failed:', error);
@@ -111,22 +90,15 @@ router.get('/:id', (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
         const { title, excerpt, content, category, tags, read_time, cover_image } = req.body;
-        db.prepare(`
-            UPDATE articles
-            SET title = ?, excerpt = ?, content = ?, category = ?, tags = ?, read_time = ?, cover_image = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        `).run(
-            title || req.body.title,
-            excerpt || '',
-            content || '',
-            category || '公告',
-            JSON.stringify(tags || []),
-            read_time || '5 min',
-            cover_image !== undefined ? cover_image : null,
-            req.params.id
-        );
-
-        const updatedArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
+        const updatedArticle = articleRepository.updateArticle(req.params.id, {
+            title: title || req.body.title,
+            excerpt,
+            content,
+            category,
+            tags,
+            readTime: read_time,
+            coverImage: cover_image
+        });
         res.json({ success: true, message: '文章更新成功', data: updatedArticle });
     } catch (error) {
         console.error('Update article failed:', error);
@@ -136,7 +108,7 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
 
 router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
-        db.prepare('DELETE FROM articles WHERE id = ?').run(req.params.id);
+        articleRepository.deleteArticle(req.params.id);
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('Delete article failed:', error);

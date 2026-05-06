@@ -2,17 +2,15 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const db = require('./db');
+const articleRepository = require('./repositories/article-repository');
+const userRepository = require('./repositories/user-repository');
 
 const { authenticateToken } = require('./middleware/auth');
 
 // 鑾峰彇褰撳墠鐢ㄦ埛璧勬枡
 router.get('/profile', authenticateToken, (req, res) => {
     try {
-        const user = db.prepare(`
-            SELECT id, username, email, avatar, bio, role, created_at
-            FROM users WHERE id = ?
-        `).get(req.user.id);
+        const user = userRepository.findProfileById(req.user.id);
 
         if (!user) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
@@ -41,9 +39,7 @@ router.put('/profile', authenticateToken, (req, res) => {
     try {
         const { bio } = req.body;
 
-        db.prepare(`
-            UPDATE users SET bio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-        `).run(bio || '', req.user.id);
+        userRepository.updateBio(req.user.id, bio);
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('鏇存柊鐢ㄦ埛璧勬枡澶辫触:', error);
@@ -60,9 +56,7 @@ router.post('/avatar', authenticateToken, (req, res) => {
             return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
-        db.prepare(`
-            UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-        `).run(avatar, req.user.id);
+        userRepository.updateAvatar(req.user.id, avatar);
 
         res.json({
             success: true,
@@ -85,7 +79,7 @@ router.put('/password', authenticateToken, (req, res) => {
         }
 
         // 鑾峰彇褰撳墠鐢ㄦ埛
-        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+        const user = userRepository.findUserById(req.user.id);
 
         if (!user) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
@@ -99,9 +93,7 @@ router.put('/password', authenticateToken, (req, res) => {
 
         // 鍔犲瘑鏂板瘑鐮?
         const passwordHash = bcrypt.hashSync(newPassword, 10);
-        db.prepare(`
-            UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-        `).run(passwordHash, req.user.id);
+        userRepository.updatePassword(req.user.id, passwordHash);
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('淇敼瀵嗙爜澶辫触:', error);
@@ -112,11 +104,7 @@ router.put('/password', authenticateToken, (req, res) => {
 // 鑾峰彇鐢ㄦ埛鐨勬枃绔犲垪琛?
 router.get('/articles', authenticateToken, (req, res) => {
     try {
-        const articles = db.prepare(`
-            SELECT id, title, category, view_count, status, created_at, updated_at
-            FROM articles WHERE author_id = ?
-            ORDER BY created_at DESC
-        `).all(req.user.id);
+        const articles = articleRepository.listUserArticles(req.user.id);
 
         res.json({ success: true, data: articles });
     } catch (error) {
@@ -128,7 +116,7 @@ router.get('/articles', authenticateToken, (req, res) => {
 // 鑾峰彇鐢ㄦ埛鐨勫崟绡囨枃绔狅紙鐢ㄤ簬缂栬緫锛?
 router.get('/articles/:id', authenticateToken, (req, res) => {
     try {
-        const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
+        const article = articleRepository.findArticleById(req.params.id);
 
         if (!article) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
@@ -149,7 +137,7 @@ router.get('/articles/:id', authenticateToken, (req, res) => {
 // 鍒犻櫎鐢ㄦ埛鐨勬枃绔?
 router.delete('/articles/:id', authenticateToken, (req, res) => {
     try {
-        const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
+        const article = articleRepository.findArticleById(req.params.id);
 
         if (!article) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
@@ -160,7 +148,7 @@ router.delete('/articles/:id', authenticateToken, (req, res) => {
             return res.status(403).json({ success: false, message: '鏃犳潈闄愬垹闄ゆ鏂囩珷' });
         }
 
-        db.prepare('DELETE FROM articles WHERE id = ?').run(req.params.id);
+        articleRepository.deleteArticle(req.params.id);
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('鍒犻櫎鏂囩珷澶辫触:', error);
@@ -174,7 +162,7 @@ router.put('/articles/:id', authenticateToken, (req, res) => {
         const { title, excerpt, content, category, read_time, cover_image } = req.body;
         const articleId = req.params.id;
 
-        const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(articleId);
+        const article = articleRepository.findArticleById(articleId);
 
         if (!article) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
@@ -185,14 +173,14 @@ router.put('/articles/:id', authenticateToken, (req, res) => {
             return res.status(403).json({ success: false, message: '鏃犳潈闄愮紪杈戞鏂囩珷' });
         }
 
-        db.prepare(`
-            UPDATE articles SET
-                title = ?, excerpt = ?, content = ?, category = ?,
-                read_time = ?, cover_image = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        `).run(title, excerpt || '', content || '', category, read_time || '5 min', cover_image || null, articleId);
-
-        const updatedArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(articleId);
+        const updatedArticle = articleRepository.updateUserArticle(articleId, {
+            title,
+            excerpt,
+            content,
+            category,
+            readTime: read_time,
+            coverImage: cover_image
+        });
 
         res.json({
             success: true,
