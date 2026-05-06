@@ -1,4 +1,5 @@
 import { nextTick, ref } from 'vue';
+import { defaultKnowledgeEntries } from '../../constants/room/knowledgeEntries';
 import { readJson, writeJson } from '../../services/room/roomStorage';
 
 function uid() {
@@ -167,10 +168,13 @@ async function fetchRelevantMemories(message) {
 }
 
 function readKnowledgeContext(message) {
-  const settings = readJson('roomKnowledgeSettings', { enabled: true, entries: [] });
-  if (settings.enabled === false || !Array.isArray(settings.entries)) return '';
+  const settings = readJson('roomKnowledgeSettings', null);
+  if (settings?.enabled === false) return '';
+  const sourceEntries = Array.isArray(settings?.entries) && settings.entries.length
+    ? settings.entries
+    : defaultKnowledgeEntries();
   const query = String(message || '').toLowerCase();
-  const entries = settings.entries
+  const entries = sourceEntries
     .filter((item) => item && item.enabled !== false && (item.title || item.content))
     .map((item) => ({ ...item, score: query && `${item.title || ''} ${item.tags || ''} ${item.content || ''}`.toLowerCase().includes(query) ? 2 : 1 }))
     .sort((a, b) => b.score - a.score)
