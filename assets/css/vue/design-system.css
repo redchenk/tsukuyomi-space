@@ -144,6 +144,11 @@ html[data-theme="light"] .site-rail {
     gap: 0.5rem;
 }
 
+.rail-footer {
+    display: grid;
+    gap: 0.5rem;
+}
+
 .rail-link {
     width: 2.35rem;
     height: 2.35rem;
@@ -153,7 +158,14 @@ html[data-theme="light"] .site-rail {
     border: 1px solid transparent;
     border-radius: 12px;
     background: transparent;
+    color: var(--moon-text);
+    font-weight: 800;
+    cursor: pointer;
     transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.rail-theme {
+    font: inherit;
 }
 
 .rail-link:hover,
@@ -167,7 +179,17 @@ html[data-theme="light"] .site-rail {
 html[data-theme="light"] .rail-link:hover,
 html[data-theme="light"] .rail-link.active {
     color: var(--moon-text-strong);
-    background: rgba(123, 140, 246, 0.12);
+    border-color: rgba(75, 95, 140, 0.24);
+    background: rgba(123, 140, 246, 0.14);
+}
+
+html[data-theme="light"] .rail-link {
+    color: #1f2937;
+}
+
+html[data-theme="light"] .rail-theme {
+    color: #1f2937;
+    background: rgba(255, 255, 255, 0.54);
 }
 
 .rail-account img {
@@ -201,6 +223,11 @@ html[data-theme="light"] .rail-link.active {
 
 .site-nav-links {
     gap: 0.42rem;
+}
+
+.nav-icon {
+    color: currentColor;
+    font-weight: 900;
 }
 
 .nav-link,
@@ -299,6 +326,16 @@ html[data-theme="light"] .room-nav-links a.router-link-active {
 html[data-theme="light"] .site-commandbar .nav-link.router-link-active {
     color: var(--moon-text-strong);
     background: rgba(255, 255, 255, 0.68);
+}
+
+html[data-theme="light"] .nav-icon,
+html[data-theme="light"] .scene-icon,
+html[data-theme="light"] .rail-link span {
+    color: #1f2937;
+}
+
+html[data-theme="light"] .rail-mark {
+    color: #fff;
 }
 
 .primary-btn {

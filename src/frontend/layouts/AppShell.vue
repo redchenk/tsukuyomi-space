@@ -54,17 +54,28 @@ watch(() => props.routeName, () => {
           <span aria-hidden="true">{{ item.icon }}</span>
         </a>
       </nav>
-      <a
-        class="rail-link rail-account"
-        :class="{ active: routeName === 'userCenter' || routeName === 'login' }"
-        :href="isAuthed ? '/user-center' : '/login'"
-        :aria-label="accountLabel"
-        :title="accountLabel"
-        @click.prevent="$emit('go', isAuthed ? '/user-center' : '/login')"
-      >
-        <img v-if="user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
-        <span v-else aria-hidden="true">{{ userInitial() }}</span>
-      </a>
+      <div class="rail-footer">
+        <button
+          class="rail-link rail-theme"
+          type="button"
+          :aria-label="theme === 'dark' ? '切换浅色主题' : '切换深色主题'"
+          :title="theme === 'dark' ? '浅色主题' : '深色主题'"
+          @click="$emit('toggle-theme')"
+        >
+          <span aria-hidden="true">{{ theme === 'dark' ? '☀' : '☾' }}</span>
+        </button>
+        <a
+          class="rail-link rail-account"
+          :class="{ active: routeName === 'userCenter' || routeName === 'login' }"
+          :href="isAuthed ? '/user-center' : '/login'"
+          :aria-label="accountLabel"
+          :title="accountLabel"
+          @click.prevent="$emit('go', isAuthed ? '/user-center' : '/login')"
+        >
+          <img v-if="user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
+          <span v-else aria-hidden="true">{{ userInitial() }}</span>
+        </a>
+      </div>
     </aside>
 
     <header v-if="showChrome && routeName !== 'room'" class="topbar site-commandbar">
