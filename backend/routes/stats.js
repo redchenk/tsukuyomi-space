@@ -43,6 +43,18 @@ router.post('/view', (req, res) => {
             userAgent: req.headers['user-agent'] || '',
             ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
         });
+        const duplicate = db.prepare(`
+            SELECT id
+            FROM stats
+            WHERE event_type = 'view'
+              AND event_data = ?
+              AND created_at >= datetime('now', '-5 seconds')
+            ORDER BY id DESC
+            LIMIT 1
+        `).get(eventData);
+        if (duplicate) {
+            return res.json({ success: true, message: '操作成功', deduped: true });
+        }
         db.prepare('INSERT INTO stats (event_type, event_data) VALUES (?, ?)').run('view', eventData);
         res.json({ success: true, message: '操作成功' });
     } catch (error) {

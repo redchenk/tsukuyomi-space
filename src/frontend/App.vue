@@ -14,6 +14,7 @@ const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isImmersiveRoute = computed(() => isAccessRoute.value);
 const isAuthed = computed(() => Boolean(user.value));
+let lastTrackedView = { path: '', time: 0 };
 
 function loadStoredUser() {
   const raw = localStorage.getItem('tsukuyomi_user') || localStorage.getItem('admin_user');
@@ -63,6 +64,9 @@ watch(lang, setLang, { immediate: true });
 watch(theme, setTheme, { immediate: true });
 watch(() => route.fullPath, refreshUser, { immediate: true });
 watch(() => route.fullPath, (path) => {
+  const now = Date.now();
+  if (lastTrackedView.path === path && now - lastTrackedView.time < 5000) return;
+  lastTrackedView = { path, time: now };
   const payload = JSON.stringify({ path });
   if (navigator.sendBeacon) {
     navigator.sendBeacon('/api/stats/view', new Blob([payload], { type: 'application/json' }));

@@ -241,6 +241,19 @@ describe('stats API', () => {
         assert.ok('weekViews' in body.data);
         assert.ok('articleViews' in body.data);
     });
+
+    it('deduplicates repeated view records from the same visitor burst', async () => {
+        const before = await request('/api/stats');
+        const beforeToday = before.body.data.todayViews;
+        const first = await postJson('/api/stats/view', { path: '/room' });
+        const second = await postJson('/api/stats/view', { path: '/room' });
+        assert.equal(first.response.status, 200);
+        assert.equal(second.response.status, 200);
+        assert.equal(second.body.deduped, true);
+
+        const after = await request('/api/stats');
+        assert.equal(after.body.data.todayViews, beforeToday + 1);
+    });
 });
 
 describe('room world API', () => {
