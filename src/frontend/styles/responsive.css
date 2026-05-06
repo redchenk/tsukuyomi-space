@@ -1,0 +1,74 @@
+@media (max-width: 860px) {
+    .room-shell .site-rail {
+        display: grid;
+        top: 0.55rem;
+        left: 0.55rem;
+        bottom: auto;
+        width: 3.35rem;
+        max-height: calc(100vh - 1.1rem);
+        padding: 0.55rem 0.42rem;
+        overflow: auto;
+        border-radius: 16px;
+    }
+
+    .site-rail {
+        display: none;
+    }
+
+    .topbar.site-commandbar {
+        top: 0.7rem;
+        left: 0.7rem;
+        right: 0.7rem;
+        min-height: 58px;
+        border-radius: 16px;
+    }
+
+    .page {
+        padding: 5.2rem 0.9rem 1.35rem;
+    }
+
+    .mobile-nav-toggle {
+        border-color: var(--ts-border);
+        color: var(--ts-text);
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    html[data-theme="light"] .mobile-nav-toggle {
+        color: var(--ts-text);
+        background: rgba(255, 255, 255, 0.68);
+    }
+
+    .nav-actions.site-nav-links {
+        border-color: var(--ts-border);
+        border-radius: var(--ts-radius-lg);
+        background: var(--ts-glass-strong);
+        box-shadow: var(--ts-shadow-md);
+    }
+
+    .nav-actions.site-nav-links .nav-link,
+    .nav-actions.site-nav-links .ghost-btn,
+    .nav-actions.site-nav-links .theme-toggle {
+        border-radius: var(--ts-radius-md);
+    }
+}
+
+@media (min-width: 861px) {
+    .topbar.site-commandbar {
+        display: none;
+    }
+
+    .page {
+        padding-top: clamp(1rem, 3vw, 2rem);
+    }
+}
+
+@media (max-width: 460px) {
+    .topbar.site-commandbar {
+        left: 0.55rem;
+        right: 0.55rem;
+    }
+
+    .page {
+        padding-inline: 0.68rem;
+    }
+}

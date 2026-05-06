@@ -46,6 +46,18 @@
 - 测试：node:test、Playwright
 - 部署：PM2、Nginx、GitHub Actions、SSH
 
+## 设计系统
+
+前端设计系统位于 `src/frontend/styles/`，用于稳定“简约清爽 + 现代感 + 二次元动漫风格”的整体视觉：
+
+- `tokens.css`：色彩、字体、间距、圆角、阴影、动效时长等基础 token
+- `themes.css`：深色 / 浅色主题变量，以及旧变量名兼容映射
+- `components.css`：按钮、卡片、面板、导航、输入框等通用组件样式
+- `animations.css`：全局背景动效、页面入场和动效节奏
+- `responsive.css`：全局移动端断点和导航响应式规则
+
+新增页面优先使用 `--ts-*` 变量；旧的 `--moon-*`、`--panel`、`--radius` 等变量会继续映射到设计系统，便于逐步迁移。
+
 ## 快速开始
 
 需要 Node.js 20 或以上版本。
@@ -83,6 +95,7 @@ tsukuyomi-space/
 ├── lib/             # Live2D / 前端运行库
 ├── models/          # Live2D 模型资源
 ├── src/frontend/    # Vue 3 + Vite 主线前端源码
+│   └── styles/      # 设计系统 token、主题、组件、动画和响应式规则
 ├── tests/           # API 与 Playwright 端到端测试
 ├── .env.example     # 生产环境变量模板
 └── package.json     # 项目脚本与依赖

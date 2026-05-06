@@ -1,0 +1,107 @@
+:root {
+    color-scheme: light;
+    --ts-bg: #edf6ff;
+    --ts-bg-soft: #f4f0ff;
+    --ts-bg-warm: #fff9fd;
+    --ts-surface: rgba(255, 255, 255, 0.78);
+    --ts-surface-strong: rgba(255, 255, 255, 0.92);
+    --ts-card: rgba(255, 255, 255, 0.68);
+    --ts-card-hover: rgba(238, 244, 255, 0.92);
+    --ts-border: rgba(75, 95, 140, 0.16);
+    --ts-border-strong: rgba(123, 140, 246, 0.34);
+    --ts-text: #263044;
+    --ts-text-strong: #111827;
+    --ts-muted: rgba(38, 48, 68, 0.68);
+    --ts-accent: var(--ts-color-lilac-500);
+    --ts-accent-2: var(--ts-color-pink-400);
+    --ts-cyan: #6bd8f0;
+    --ts-glass: rgba(255, 255, 255, 0.74);
+    --ts-glass-strong: rgba(255, 255, 255, 0.9);
+    --ts-focus-ring: 0 0 0 3px rgba(143, 220, 255, 0.26);
+
+    /* Legacy compatibility layer. Prefer --ts-* in new code. */
+    --pink: var(--ts-color-pink-400);
+    --pink-strong: var(--ts-color-pink-600);
+    --cyan: var(--ts-cyan);
+    --gold: var(--ts-color-gold-300);
+    --lilac: var(--ts-color-lilac-500);
+    --mint: var(--ts-color-mint-300);
+    --ink: var(--ts-text-strong);
+    --ink-soft: var(--ts-text);
+    --text: var(--ts-text);
+    --muted: var(--ts-muted);
+    --panel: var(--ts-surface);
+    --panel-strong: var(--ts-surface-strong);
+    --line: var(--ts-border);
+    --radius: var(--ts-radius-md);
+    --glass-shadow: var(--ts-shadow-md);
+    --float-shadow: var(--ts-shadow-sm);
+    --moon-bg: var(--ts-bg);
+    --moon-bg-2: var(--ts-bg-soft);
+    --moon-panel: var(--ts-surface);
+    --moon-panel-strong: var(--ts-surface-strong);
+    --moon-card: var(--ts-card);
+    --moon-card-hover: var(--ts-card-hover);
+    --moon-border: var(--ts-border);
+    --moon-border-strong: var(--ts-border-strong);
+    --moon-text: var(--ts-text);
+    --moon-text-strong: var(--ts-text-strong);
+    --moon-muted: var(--ts-muted);
+    --moon-accent: var(--ts-accent);
+    --moon-accent-2: var(--ts-accent-2);
+    --moon-cyan: var(--ts-cyan);
+    --moon-radius: var(--ts-radius-md);
+    --moon-radius-lg: var(--ts-radius-xl);
+    --moon-shadow: var(--ts-shadow-md);
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --ts-bg: #0b1020;
+    --ts-bg-soft: #131a2f;
+    --ts-bg-warm: #19162b;
+    --ts-surface: rgba(12, 18, 36, 0.72);
+    --ts-surface-strong: rgba(8, 13, 28, 0.86);
+    --ts-card: rgba(255, 255, 255, 0.08);
+    --ts-card-hover: rgba(123, 140, 246, 0.16);
+    --ts-border: rgba(231, 249, 255, 0.16);
+    --ts-border-strong: rgba(174, 242, 255, 0.34);
+    --ts-text: #eff7ff;
+    --ts-text-strong: #ffffff;
+    --ts-muted: rgba(239, 247, 255, 0.66);
+    --ts-accent: #7b8cf6;
+    --ts-accent-2: #ff7ac8;
+    --ts-cyan: #aef2ff;
+    --ts-glass: rgba(8, 13, 28, 0.66);
+    --ts-glass-strong: rgba(8, 13, 28, 0.86);
+    --ts-shadow-md: 0 18px 48px rgba(0, 0, 0, 0.28);
+    --ts-shadow-lg: 0 24px 76px rgba(0, 0, 0, 0.34);
+    --ts-focus-ring: 0 0 0 3px rgba(174, 242, 255, 0.16);
+}
+
+html {
+    min-height: 100%;
+    scroll-behavior: smooth;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    color: var(--ts-text);
+    font-family: var(--ts-font-sans);
+    background:
+        radial-gradient(circle at 50% -8%, rgba(123, 140, 246, 0.18), transparent 36%),
+        radial-gradient(circle at 86% 12%, rgba(255, 122, 200, 0.13), transparent 28%),
+        linear-gradient(135deg, rgba(237, 246, 255, 0.94), rgba(244, 240, 255, 0.91) 48%, rgba(255, 249, 253, 0.96)),
+        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+html[data-theme="dark"] body {
+    background:
+        radial-gradient(circle at 50% -8%, rgba(123, 140, 246, 0.22), transparent 36%),
+        radial-gradient(circle at 86% 12%, rgba(255, 122, 200, 0.18), transparent 28%),
+        linear-gradient(135deg, rgba(6, 10, 22, 0.95), rgba(13, 24, 45, 0.92) 44%, rgba(19, 18, 43, 0.96)),
+        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+}

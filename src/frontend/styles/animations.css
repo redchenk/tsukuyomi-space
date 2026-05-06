@@ -1,0 +1,67 @@
+@keyframes ts-page-lift-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ts-sky-drift {
+    from { background-position: 0% 34%, 12% 0%; }
+    to { background-position: 100% 70%, 86% 100%; }
+}
+
+@keyframes ts-soft-float {
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes ts-spin {
+    to { transform: rotate(360deg); }
+}
+
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
+body::before {
+    z-index: 0;
+    opacity: 0.44;
+    background:
+        linear-gradient(110deg, transparent 0 28%, rgba(255, 255, 255, 0.2) 44%, transparent 62% 100%),
+        linear-gradient(145deg, rgba(102, 197, 223, 0.12), transparent 48%, rgba(169, 155, 237, 0.12) 78%, transparent);
+    background-size: 240% 240%, 190% 190%;
+    animation: ts-sky-drift 24s var(--ts-ease-standard) infinite alternate;
+}
+
+html[data-theme="dark"] body::before {
+    opacity: 0.34;
+    background:
+        linear-gradient(112deg, transparent 0 30%, rgba(131, 216, 236, 0.12) 46%, transparent 64% 100%),
+        linear-gradient(145deg, rgba(131, 216, 236, 0.13), transparent 48%, rgba(185, 173, 255, 0.14) 78%, transparent);
+}
+
+body::after {
+    z-index: 1;
+    opacity: 0.13;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.28) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.24) 1px, transparent 1px);
+    background-size: 68px 68px;
+    mask-image: linear-gradient(to bottom, transparent, #000 24%, #000 72%, transparent);
+}
+
+html[data-theme="dark"] body::after {
+    opacity: 0.1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

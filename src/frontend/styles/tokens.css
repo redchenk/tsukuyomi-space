@@ -1,0 +1,65 @@
+:root {
+    /* Brand palette: clean blue, white glass, soft lilac, anime pink accents. */
+    --ts-color-blue-50: #edf8ff;
+    --ts-color-blue-100: #d8f1ff;
+    --ts-color-blue-300: #8fdcff;
+    --ts-color-blue-500: #56bfe8;
+    --ts-color-blue-700: #2d7fa8;
+    --ts-color-lilac-50: #f5f0ff;
+    --ts-color-lilac-200: #d7c2ff;
+    --ts-color-lilac-500: #9b8cff;
+    --ts-color-lilac-700: #6f62d9;
+    --ts-color-pink-200: #ffd1e8;
+    --ts-color-pink-400: #ff9aba;
+    --ts-color-pink-600: #e85f9b;
+    --ts-color-mint-300: #9ee2cf;
+    --ts-color-gold-300: #f1d98e;
+    --ts-color-ink-950: #0b1020;
+    --ts-color-ink-900: #111827;
+    --ts-color-ink-800: #172033;
+    --ts-color-ink-700: #263044;
+    --ts-color-ink-500: #647086;
+    --ts-color-white: #ffffff;
+
+    --ts-font-sans: "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Arial, sans-serif;
+    --ts-font-serif: "Source Han Serif SC", "Noto Serif SC", "Microsoft YaHei", serif;
+    --ts-font-size-xs: 0.72rem;
+    --ts-font-size-sm: 0.82rem;
+    --ts-font-size-md: 0.94rem;
+    --ts-font-size-lg: 1.08rem;
+    --ts-font-size-xl: 1.36rem;
+    --ts-font-size-2xl: clamp(1.7rem, 4vw, 3.4rem);
+    --ts-line-tight: 1.15;
+    --ts-line-normal: 1.6;
+    --ts-line-loose: 1.85;
+
+    --ts-space-1: 0.25rem;
+    --ts-space-2: 0.5rem;
+    --ts-space-3: 0.75rem;
+    --ts-space-4: 1rem;
+    --ts-space-5: 1.25rem;
+    --ts-space-6: 1.5rem;
+    --ts-space-8: 2rem;
+    --ts-space-10: 2.5rem;
+
+    --ts-radius-xs: 6px;
+    --ts-radius-sm: 8px;
+    --ts-radius-md: 12px;
+    --ts-radius-lg: 18px;
+    --ts-radius-xl: 22px;
+    --ts-radius-pill: 999px;
+
+    --ts-blur-sm: blur(10px) saturate(1.08);
+    --ts-blur-md: blur(18px) saturate(1.12);
+    --ts-blur-lg: blur(22px) saturate(1.18);
+    --ts-shadow-sm: 0 10px 28px rgba(86, 112, 160, 0.12);
+    --ts-shadow-md: 0 18px 48px rgba(86, 112, 160, 0.16);
+    --ts-shadow-lg: 0 24px 76px rgba(0, 0, 0, 0.28);
+    --ts-shadow-accent: 0 14px 38px rgba(123, 140, 246, 0.28);
+
+    --ts-motion-fast: 0.16s;
+    --ts-motion-base: 0.22s;
+    --ts-motion-slow: 0.36s;
+    --ts-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ts-ease-lift: cubic-bezier(0.22, 1, 0.36, 1);
+}
