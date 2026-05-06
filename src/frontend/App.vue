@@ -12,7 +12,7 @@ const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
 const user = ref(loadStoredUser());
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
-const isImmersiveRoute = computed(() => isAccessRoute.value || route.name === 'room');
+const isImmersiveRoute = computed(() => isAccessRoute.value);
 const isAuthed = computed(() => Boolean(user.value));
 
 function loadStoredUser() {

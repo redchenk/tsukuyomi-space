@@ -2,13 +2,10 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 
 const props = defineProps({
-  routeName: { type: String, default: 'room' },
-  theme: { type: String, default: 'light' },
-  t: { type: Object, required: true },
   user: { type: Object, default: null }
 });
 
-defineEmits(['go', 'logout', 'toggle-theme']);
+defineEmits(['go']);
 
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
@@ -37,10 +34,6 @@ function readStoredUser() {
 const roomUser = computed(() => readStoredUser() || (props.user?.id && localStorage.getItem('tsukuyomi_token') ? props.user : null));
 const roomUserName = computed(() => roomUser.value?.username || roomUser.value?.email || 'Guest');
 const roomUserId = computed(() => roomUser.value?.id || roomUser.value?.username || roomUser.value?.email || '');
-const roomUserAvatar = computed(() => roomUser.value?.avatar || '');
-const roomUserInitial = computed(() => roomUserName.value.slice(0, 1).toUpperCase());
-const isAuthed = computed(() => Boolean(roomUser.value));
-
 function loadScript(src, options = {}) {
   return new Promise((resolve, reject) => {
     const existing = document.querySelector(`script[data-room-script="${src}"]`);
@@ -114,40 +107,6 @@ onBeforeUnmount(() => {
   <main class="room-page" aria-label="&#31169;&#20154;&#23621;&#25152;" :data-room-user-id="roomUserId" :data-room-user-name="roomUserName">
     <div class="room-backdrop" aria-hidden="true"></div>
 
-    <nav class="room-commandbar site-commandbar" aria-label="房间导航">
-      <a class="room-brand" href="/hub" @click.prevent="$emit('go', '/hub')">
-        <span class="room-brand-mark room-user-avatar">
-          <img v-if="roomUserAvatar" :src="roomUserAvatar" :alt="roomUserName">
-          <span v-else>{{ roomUserInitial }}</span>
-        </span>
-        <span>
-          <strong>{{ roomUserName }}</strong>
-          <small>Tsukimi Yachiyo Room</small>
-        </span>
-      </a>
-      <div class="room-nav-links site-nav-links">
-        <a href="/hub" :class="{ 'router-link-active': routeName === 'hub' }" @click.prevent="$emit('go', '/hub')">{{ t.hub }}</a>
-        <a href="/room" :class="{ 'router-link-active': routeName === 'room' }" @click.prevent="$emit('go', '/room')">{{ t.room }}</a>
-        <a href="/stage" :class="{ 'router-link-active': routeName === 'stage' }" @click.prevent="$emit('go', '/stage')">{{ t.stage }}</a>
-        <a href="/plaza" :class="{ 'router-link-active': routeName === 'plaza' }" @click.prevent="$emit('go', '/plaza')">{{ t.plaza }}</a>
-        <a href="/reality" :class="{ 'router-link-active': routeName === 'reality' }" @click.prevent="$emit('go', '/reality')">{{ t.reality }}</a>
-        <a v-if="isAuthed" href="/user-center" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="$emit('go', '/user-center')">{{ t.ucTitle }}</a>
-        <a v-if="!isAuthed" href="/login" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="$emit('go', '/login')">{{ t.login }}</a>
-        <a v-if="!isAuthed" href="/register" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="$emit('go', '/register')">{{ t.register }}</a>
-        <button v-if="isAuthed" class="room-nav-button" type="button" @click="$emit('logout')">{{ t.logout }}</button>
-        <button
-          class="room-theme-toggle room-nav-button"
-          type="button"
-          :aria-label="theme === 'dark' ? '切换浅色主题' : '切换深色主题'"
-          :title="theme === 'dark' ? '浅色主题' : '深色主题'"
-          @click="$emit('toggle-theme')"
-        >
-          <span aria-hidden="true">{{ theme === 'dark' ? '☀' : '☾' }}</span>
-          <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
-        </button>
-      </div>
-    </nav>
-
     <section class="room-stage" aria-label="Live2D &#33310;&#21488;">
       <div class="room-stage-copy">
         <p>Live2D Room</p>
@@ -155,6 +114,21 @@ onBeforeUnmount(() => {
       </div>
       <div id="live2d-container" class="room-live2d-container"></div>
     </section>
+
+    <aside class="room-weather-card" aria-label="房间天气">
+      <div class="room-weather-head">
+        <span id="roomWeatherIcon" class="room-weather-icon" aria-hidden="true">☾</span>
+        <div>
+          <small>Room Weather</small>
+          <strong id="roomWeatherLabel">同步中</strong>
+        </div>
+      </div>
+      <div class="room-weather-meta">
+        <span id="roomWeatherTemperature">--°C</span>
+        <span id="roomWeatherWind">风速 --</span>
+      </div>
+      <p id="roomWeatherDetail">正在读取当前时间、季节和天气。</p>
+    </aside>
 
     <div class="panel-controls room-dock" aria-label="&#25151;&#38388;&#24037;&#20855;">
       <button class="panel-toggle-btn" type="button" data-panel-toggle="chatPanel">&#32842;&#22825;</button>

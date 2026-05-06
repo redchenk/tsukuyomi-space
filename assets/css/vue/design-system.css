@@ -420,6 +420,18 @@ html[data-theme="light"] textarea::placeholder {
 }
 
 @media (max-width: 860px) {
+    .room-shell .site-rail {
+        display: grid;
+        top: 0.55rem;
+        left: 0.55rem;
+        bottom: auto;
+        width: 3.35rem;
+        max-height: calc(100vh - 1.1rem);
+        padding: 0.55rem 0.42rem;
+        overflow: auto;
+        border-radius: 16px;
+    }
+
     .site-rail {
         display: none;
     }

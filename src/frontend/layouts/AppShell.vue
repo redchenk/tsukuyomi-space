@@ -36,8 +36,8 @@ watch(() => props.routeName, () => {
 </script>
 
 <template>
-  <div class="app-shell">
-    <div v-if="showChrome" class="moon" aria-hidden="true"></div>
+  <div class="app-shell" :class="{ 'room-shell': routeName === 'room' }">
+    <div v-if="showChrome && routeName !== 'room'" class="moon" aria-hidden="true"></div>
     <aside v-if="showChrome" class="site-rail" aria-label="Quick navigation">
       <a href="/hub" class="rail-mark" :aria-label="t.brand" @click.prevent="$emit('go', '/hub')">✦</a>
       <nav class="rail-nav">
@@ -67,7 +67,7 @@ watch(() => props.routeName, () => {
       </a>
     </aside>
 
-    <header v-if="showChrome" class="topbar site-commandbar">
+    <header v-if="showChrome && routeName !== 'room'" class="topbar site-commandbar">
       <a href="/hub" class="brand room-brand site-brand" @click.prevent="$emit('go', '/hub')">
         <span class="room-brand-mark site-brand-mark room-user-avatar">
           <img v-if="user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">

@@ -584,6 +584,35 @@
         }[weather] || weather || '天气不明';
     }
 
+    function weatherIcon(weather) {
+        return {
+            clear: '☼',
+            cloudy: '☁',
+            rain: '☂',
+            storm: 'ϟ',
+            snow: '❄',
+            fog: '≋'
+        }[weather] || '☾';
+    }
+
+    function timePhaseLabel(phase) {
+        return {
+            dawn: '清晨',
+            day: '白昼',
+            dusk: '黄昏',
+            night: '夜晚'
+        }[phase] || '此刻';
+    }
+
+    function seasonLabel(season) {
+        return {
+            spring: '春',
+            summer: '夏',
+            autumn: '秋',
+            winter: '冬'
+        }[season] || '季节';
+    }
+
     function fallbackWeatherReply(world) {
         const temperature = world?.temperature == null ? '' : `，气温约 ${world.temperature}°C`;
         const wind = world?.windSpeed == null ? '' : `，风速约 ${world.windSpeed} km/h`;
@@ -1126,6 +1155,8 @@
             season: seasonSet.has(data.season) ? data.season : getSeason(now),
             temperature: Number.isFinite(Number(data.temperature)) ? Number(data.temperature) : null,
             windSpeed: Number.isFinite(Number(data.windSpeed)) ? Number(data.windSpeed) : null,
+            source: data.source || 'local',
+            reason: data.reason || '',
             updatedAt: data.updatedAt || now.toISOString()
         };
     }
@@ -1194,6 +1225,23 @@
             page.style.setProperty('--room-temperature', normalized.temperature);
         }
         renderWeatherLayer(page, normalized.weather);
+        updateWeatherCard(normalized);
+    }
+
+    function updateWeatherCard(world) {
+        const label = $('roomWeatherLabel');
+        const icon = $('roomWeatherIcon');
+        const temperature = $('roomWeatherTemperature');
+        const wind = $('roomWeatherWind');
+        const detail = $('roomWeatherDetail');
+        if (label) label.textContent = weatherLabel(world.weather);
+        if (icon) icon.textContent = weatherIcon(world.weather);
+        if (temperature) temperature.textContent = world.temperature == null ? '--°C' : `${Math.round(world.temperature)}°C`;
+        if (wind) wind.textContent = world.windSpeed == null ? '风速 --' : `风速 ${Math.round(world.windSpeed)} km/h`;
+        if (detail) {
+            const source = world.source === 'open-meteo' ? '实时同步' : '本地估计';
+            detail.textContent = `${seasonLabel(world.season)} · ${timePhaseLabel(world.timePhase)} · ${source}`;
+        }
     }
 
     async function refreshRoomWorld() {
