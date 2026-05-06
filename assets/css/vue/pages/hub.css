@@ -1,5 +1,7 @@
 .hub {
     --hub-max: 1420px;
+    --hub-side: 380px;
+    --hub-gap: 1rem;
     display: grid;
     align-content: start;
     gap: 1.15rem;
@@ -13,8 +15,8 @@
 
 .hub-showcase {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, var(--hub-side));
+    gap: var(--hub-gap);
     align-items: stretch;
 }
 
@@ -340,9 +342,9 @@
 
 .hub-grid-wrap {
     padding: 1rem;
-    width: min(100%, 980px);
-    margin-right: max(calc((100vw - var(--hub-max)) / 2 + 430px), 24vw);
-    margin-left: auto;
+    width: min(100%, calc(var(--hub-max) - var(--hub-side) - var(--hub-gap)));
+    margin-left: max(0px, calc((100% - var(--hub-max)) / 2));
+    margin-right: auto;
     z-index: 5;
     background: rgba(10, 16, 32, 0.38);
     backdrop-filter: blur(20px) saturate(1.18);
