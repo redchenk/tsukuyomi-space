@@ -11,6 +11,19 @@
     const MEMORY_STORE = 'memories';
     const MEMORY_VECTOR_SIZE = 96;
     const MEMORY_MAX_PER_USER = 240;
+    const MUSIC_BASE_PATH = '/assets/music';
+    const MUSIC_TRACKS = [
+        { title: 'Remember', file: '01.Remember.flac' },
+        { title: '星降る海', file: '02.星降る海.flac' },
+        { title: '私は、わたしの事が好き。', file: '03.私は、わたしの事が好き。.flac' },
+        { title: 'ワールドイズマイン (かぐや&月見ヤチヨ ver.) [CPK! Remix]', file: '04.ワールドイズマイン (かぐや&月見ヤチヨ ver.) [CPK! Remix].flac' },
+        { title: 'ハッピーシンセサイザ (Cover)', file: '06.ハッピーシンセサイザ (Cover).flac' },
+        { title: '瞬間、シンフォニー。', file: '07.瞬間、シンフォニー。.flac' },
+        { title: 'ray (超かぐや姫！ Version)', file: '09.ray (超かぐや姫！ Version).flac' },
+        { title: 'メルト (かぐや ver.) [CPK! Remix]', file: '10.メルト (かぐや ver.) [CPK! Remix].flac' },
+        { title: 'EX-Otogibanashi', file: 'EX-Otogibanashi.flac' },
+        { title: 'Reply', file: 'Reply.flac' }
+    ];
     const DEFAULT_KNOWLEDGE_ENTRIES = [
         {
             id: 'yachiyo_identity_001',
@@ -70,6 +83,9 @@
     let worldLocationPromise = null;
     let memoryDbPromise = null;
     let pendingImageAttachment = null;
+    let musicAudio = null;
+    let musicTrackIndex = 0;
+    let musicProgressTimer = null;
 
     function $(id) {
         return document.getElementById(id);
@@ -2052,6 +2068,155 @@
         updatePanelButton(panelId, false);
     }
 
+    function musicTrackUrl(track) {
+        return `${MUSIC_BASE_PATH}/${track.file.split('/').map(encodeURIComponent).join('/')}`;
+    }
+
+    function formatMusicTime(seconds) {
+        if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+        const minutes = Math.floor(seconds / 60);
+        const rest = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${minutes}:${rest}`;
+    }
+
+    function musicPalette(index) {
+        const palettes = [
+            ['#aef2ff', '#ff9aba', '#6f7cff'],
+            ['#8fdcff', '#d7c2ff', '#fff2a8'],
+            ['#ffd1e8', '#9be8ff', '#c0b3ff'],
+            ['#ffb4c8', '#a7f4dc', '#6f8cff'],
+            ['#c8f7ff', '#f7c1ff', '#ffe38f']
+        ];
+        return palettes[index % palettes.length];
+    }
+
+    function updateMusicPanel() {
+        const track = MUSIC_TRACKS[musicTrackIndex] || MUSIC_TRACKS[0];
+        if (!track) return;
+        if ($('musicTitle')) $('musicTitle').textContent = track.title;
+        if ($('musicTrackIndex')) $('musicTrackIndex').textContent = `Track ${String(musicTrackIndex + 1).padStart(2, '0')}`;
+        const select = $('musicTrackSelect');
+        if (select) select.value = String(musicTrackIndex);
+        const cover = $('musicCover');
+        if (cover) {
+            const [a, b, c] = musicPalette(musicTrackIndex);
+            cover.style.setProperty('--music-cover-a', a);
+            cover.style.setProperty('--music-cover-b', b);
+            cover.style.setProperty('--music-cover-c', c);
+            cover.setAttribute('aria-label', `${track.title} cover`);
+        }
+        if ($('musicCoverGlyph')) {
+            $('musicCoverGlyph').textContent = track.title.slice(0, 1) || '♪';
+        }
+        if (musicAudio) {
+            const duration = Number.isFinite(musicAudio.duration) ? musicAudio.duration : 0;
+            const current = Number.isFinite(musicAudio.currentTime) ? musicAudio.currentTime : 0;
+            if ($('musicCurrentTime')) $('musicCurrentTime').textContent = formatMusicTime(current);
+            if ($('musicDuration')) $('musicDuration').textContent = formatMusicTime(duration);
+            if ($('musicProgress')) {
+                $('musicProgress').value = duration > 0 ? String(Math.round((current / duration) * 1000)) : '0';
+            }
+            if ($('musicPlayBtn')) $('musicPlayBtn').textContent = musicAudio.paused ? '播放' : '暂停';
+        }
+    }
+
+    function loadMusicTrack(index, options = {}) {
+        if (!MUSIC_TRACKS.length) return;
+        const wasPlaying = musicAudio && !musicAudio.paused;
+        musicTrackIndex = (index + MUSIC_TRACKS.length) % MUSIC_TRACKS.length;
+        localStorage.setItem('roomMusicTrackIndex', String(musicTrackIndex));
+        const track = MUSIC_TRACKS[musicTrackIndex];
+        if (!musicAudio) musicAudio = new Audio();
+        musicAudio.src = musicTrackUrl(track);
+        musicAudio.preload = 'metadata';
+        updateMusicPanel();
+        if (options.play || wasPlaying) {
+            musicAudio.play().catch((error) => appendMessage('system', `音乐播放失败：${error.message}`));
+        }
+    }
+
+    function syncMusicProgress() {
+        updateMusicPanel();
+    }
+
+    function initMusicPlayer() {
+        if (!$('musicPanel') || !MUSIC_TRACKS.length) return;
+        const savedIndex = Number.parseInt(localStorage.getItem('roomMusicTrackIndex') || '0', 10);
+        const savedVolume = Number.parseFloat(localStorage.getItem('roomMusicVolume') || '0.72');
+        musicTrackIndex = Number.isFinite(savedIndex) ? Math.max(0, Math.min(MUSIC_TRACKS.length - 1, savedIndex)) : 0;
+
+        const select = $('musicTrackSelect');
+        if (select && !select.options.length) {
+            MUSIC_TRACKS.forEach((track, index) => {
+                const option = document.createElement('option');
+                option.value = String(index);
+                option.textContent = `${String(index + 1).padStart(2, '0')} · ${track.title}`;
+                select.appendChild(option);
+            });
+        }
+
+        musicAudio = new Audio();
+        musicAudio.volume = Number.isFinite(savedVolume) ? Math.max(0, Math.min(1, savedVolume)) : 0.72;
+        musicAudio.preload = 'metadata';
+        if ($('musicVolume')) $('musicVolume').value = String(musicAudio.volume);
+
+        musicAudio.addEventListener('loadedmetadata', updateMusicPanel);
+        musicAudio.addEventListener('timeupdate', updateMusicPanel);
+        musicAudio.addEventListener('play', () => {
+            updateMusicPanel();
+            clearInterval(musicProgressTimer);
+            musicProgressTimer = setInterval(syncMusicProgress, 500);
+        });
+        musicAudio.addEventListener('pause', () => {
+            updateMusicPanel();
+            clearInterval(musicProgressTimer);
+            musicProgressTimer = null;
+        });
+        musicAudio.addEventListener('ended', () => loadMusicTrack(musicTrackIndex + 1, { play: true }));
+        musicAudio.addEventListener('error', () => {
+            appendMessage('system', '音乐资源暂时不可用，请确认服务器 /assets/music/ 已上传歌曲。');
+            updateMusicPanel();
+        });
+
+        loadMusicTrack(musicTrackIndex);
+
+        $('musicPlayBtn')?.addEventListener('click', () => {
+            if (!musicAudio) return;
+            if (musicAudio.paused) {
+                musicAudio.play().catch((error) => appendMessage('system', `音乐播放失败：${error.message}`));
+            } else {
+                musicAudio.pause();
+            }
+            updateMusicPanel();
+        });
+        $('musicPrevBtn')?.addEventListener('click', () => loadMusicTrack(musicTrackIndex - 1, { play: Boolean(musicAudio && !musicAudio.paused) }));
+        $('musicNextBtn')?.addEventListener('click', () => loadMusicTrack(musicTrackIndex + 1, { play: Boolean(musicAudio && !musicAudio.paused) }));
+        $('musicTrackSelect')?.addEventListener('change', (event) => {
+            const index = Number.parseInt(event.target.value, 10);
+            loadMusicTrack(Number.isFinite(index) ? index : 0, { play: Boolean(musicAudio && !musicAudio.paused) });
+        });
+        $('musicProgress')?.addEventListener('input', (event) => {
+            if (!musicAudio || !Number.isFinite(musicAudio.duration) || musicAudio.duration <= 0) return;
+            musicAudio.currentTime = (Number(event.target.value) / 1000) * musicAudio.duration;
+            updateMusicPanel();
+        });
+        $('musicVolume')?.addEventListener('input', (event) => {
+            if (!musicAudio) return;
+            musicAudio.volume = Math.max(0, Math.min(1, Number(event.target.value)));
+            localStorage.setItem('roomMusicVolume', String(musicAudio.volume));
+        });
+    }
+
+    function destroyMusicPlayer() {
+        clearInterval(musicProgressTimer);
+        musicProgressTimer = null;
+        if (!musicAudio) return;
+        musicAudio.pause();
+        musicAudio.removeAttribute('src');
+        musicAudio.load();
+        musicAudio = null;
+    }
+
     function initProfileAndNote() {
         const profile = readJson('roomProfile', {});
         if ($('nicknameInput')) $('nicknameInput').value = profile.nickname || '';
@@ -2260,6 +2425,7 @@
         window.__tsukuyomiRoomRuntimeReady = true;
         initRoomWorld();
         initPanels();
+        initMusicPlayer();
         initProfileAndNote();
         initChatAndSettings();
         bootLive2D();
@@ -2273,6 +2439,7 @@
         }
         live2d?.destroy?.();
         destroyRoomWorld();
+        destroyMusicPlayer();
         live2d = null;
         window.__tsukuyomiRoomRuntimeReady = false;
     };
@@ -2285,6 +2452,7 @@
 
     window.addEventListener('beforeunload', () => {
         destroyRoomWorld();
+        destroyMusicPlayer();
         live2d?.destroy?.();
     });
 })();

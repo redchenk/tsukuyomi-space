@@ -10,13 +10,13 @@ defineEmits(['go']);
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
   '/lib/bundled/live2d-room.iife.js?v=20260505-fast1',
-  '/assets/js/room-runtime.js?v=20260506-weather1'
+  '/assets/js/room-runtime.js?v=20260506-music1'
 ];
 
 const preloadResources = [
   { href: '/lib/live2dcubismcore-v5.min.js', as: 'script' },
   { href: '/lib/bundled/live2d-room.iife.js?v=20260505-fast1', as: 'script' },
-  { href: '/assets/js/room-runtime.js?v=20260506-weather1', as: 'script' },
+  { href: '/assets/js/room-runtime.js?v=20260506-music1', as: 'script' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json', as: 'fetch', type: 'application/json' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' },
   { href: '/models/tsukimi-yachiyo/textures/texture_00.webp', as: 'image', type: 'image/webp' },
@@ -133,6 +133,7 @@ onBeforeUnmount(() => {
 
     <div class="panel-controls room-dock" aria-label="&#25151;&#38388;&#24037;&#20855;">
       <button class="panel-toggle-btn" type="button" data-panel-toggle="chatPanel">&#32842;&#22825;</button>
+      <button class="panel-toggle-btn" type="button" data-panel-toggle="musicPanel">&#38899;&#20048;</button>
       <button class="panel-toggle-btn" type="button" data-panel-toggle="profilePanel">&#36164;&#26009;</button>
       <button class="panel-toggle-btn" type="button" data-panel-toggle="notePanel">&#20415;&#31614;</button>
       <button class="panel-toggle-btn" type="button" @click="$emit('go', '/room/settings')">&#35774;&#32622;</button>
@@ -152,6 +153,37 @@ onBeforeUnmount(() => {
           <input id="chatInput" type="text" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;">
           <button id="sendChatBtn" class="panel-btn" type="button">&#21457;&#36865;</button>
         </div>
+      </div>
+    </section>
+
+    <section id="musicPanel" class="draggable-panel room-panel room-music-panel" style="top: 12.2rem; left: max(6.2rem, calc(clamp(1rem, 3vw, 2rem) + 5rem));" hidden>
+      <div class="panel-header">
+        <span class="panel-title">&#26376;&#20809;&#25773;&#25918;&#22120;</span>
+        <button class="panel-close" type="button" data-panel-close="musicPanel" aria-label="&#20851;&#38381;&#38899;&#20048;">x</button>
+      </div>
+      <div class="panel-content music-body">
+        <div id="musicCover" class="music-cover" aria-hidden="true">
+          <span id="musicCoverGlyph">♪</span>
+        </div>
+        <div class="music-now">
+          <small id="musicTrackIndex">Track 01</small>
+          <strong id="musicTitle">Remember</strong>
+        </div>
+        <div class="music-progress-row">
+          <span id="musicCurrentTime">0:00</span>
+          <input id="musicProgress" class="music-progress" type="range" min="0" max="1000" value="0" aria-label="&#38899;&#20048;&#36827;&#24230;">
+          <span id="musicDuration">0:00</span>
+        </div>
+        <div class="music-controls">
+          <button id="musicPrevBtn" class="panel-btn music-icon-btn" type="button" aria-label="&#19978;&#19968;&#39318;">‹</button>
+          <button id="musicPlayBtn" class="panel-btn music-play-btn" type="button">&#25773;&#25918;</button>
+          <button id="musicNextBtn" class="panel-btn music-icon-btn" type="button" aria-label="&#19979;&#19968;&#39318;">›</button>
+        </div>
+        <div class="music-volume-row">
+          <span>&#38899;&#37327;</span>
+          <input id="musicVolume" type="range" min="0" max="1" step="0.01" value="0.72" aria-label="&#38899;&#37327;&#35843;&#33410;">
+        </div>
+        <select id="musicTrackSelect" aria-label="&#36873;&#25321;&#27468;&#26354;"></select>
       </div>
     </section>
 
