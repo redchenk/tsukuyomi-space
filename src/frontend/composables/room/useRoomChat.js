@@ -24,8 +24,31 @@ function stripLeadingActionHints(text) {
   return value.trim();
 }
 
+function isActionHint(value) {
+  return /(?:\u52a8\u4f5c|\u8868\u60c5|\u59ff\u6001|\u8bed\u6c14|\u795e\u6001|\u63d0\u793a|\u5fae\u7b11|\u8f7b\u7b11|\u7b11|\u70b9\u5934|\u6447\u5934|\u7728\u773c|\u4f4e\u5934|\u62ac\u5934|\u53f9\u6c14|\u9760\u8fd1|\u6c89\u9ed8|\u505c\u987f|\u51dd\u89c6|\u4f38\u624b|\u6325\u624b|\u6b6a\u5934|\u8138\u7ea2|\u8f7b\u58f0|\u5c0f\u58f0|\u6e29\u67d4\u5730|\u770b\u5411)/u.test(String(value || ''));
+}
+
+function stripActionHints(text) {
+  let value = String(text || '').trim();
+  const leadingActionHintPattern = /^(?:\s*(?:[\(\uFF08][^()\uFF08\uFF09\n]{1,100}[\)\uFF09]|[\[\u3010][^[\]\u3010\u3011\n]{1,100}[\]\u3011]|\*[^*\n]{1,100}\*|(?:\u52a8\u4f5c|\u8868\u60c5|\u59ff\u6001|\u8bed\u6c14|\u795e\u6001|\u52a8\u4f5c\u63d0\u793a)\s*[:\uFF1A][^\n]{1,140})\s*)+/u;
+  let previous = '';
+  while (value && value !== previous) {
+    previous = value;
+    value = value.replace(leadingActionHintPattern, '').trimStart();
+  }
+
+  return value
+    .replace(/(?:^|\n)\s*(?:\u52a8\u4f5c|\u8868\u60c5|\u59ff\u6001|\u8bed\u6c14|\u795e\u6001|\u52a8\u4f5c\u63d0\u793a)\s*[:\uFF1A][^\n]{1,140}(?=\n|$)/gu, '\n')
+    .replace(/[\(\uFF08]([^()\uFF08\uFF09\n]{1,80})[\)\uFF09]/gu, (match, cue) => (isActionHint(cue) ? '' : match))
+    .replace(/[\[\u3010]([^[\]\u3010\u3011\n]{1,80})[\]\u3011]/gu, (match, cue) => (isActionHint(cue) ? '' : match))
+    .replace(/\*([^*\n]{1,80})\*/gu, (match, cue) => (isActionHint(cue) ? '' : match))
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function cleanReply(text) {
-  const cleaned = stripLeadingActionHints(stripControlTags(text));
+  const cleaned = stripActionHints(stripControlTags(text));
   return cleaned || '\u55ef\uff0c\u6211\u5728\u3002';
 }
 
@@ -77,7 +100,10 @@ export function useRoomChat({ live2d, world }) {
   const sending = ref(false);
   const imageAttachment = ref(null);
   const messageListRef = ref(null);
+  const ttsState = ref({ messageId: '', status: 'idle' });
   let ttsUrl = '';
+  let currentAudio = null;
+  let ttsRequestId = 0;
 
   function addMessage(role, content, options = {}) {
     messages.value.push({ id: uid(), role, content: String(content || ''), image: options.image || null, createdAt: Date.now() });
@@ -180,7 +206,19 @@ export function useRoomChat({ live2d, world }) {
     });
   }
 
-  async function playTTS(text) {
+  function stopTTS() {
+    ttsRequestId += 1;
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.onplay = null;
+      currentAudio.onended = null;
+      currentAudio.onerror = null;
+      currentAudio = null;
+    }
+    ttsState.value = { messageId: '', status: 'idle' };
+  }
+
+  async function playTTS(text, messageId = '') {
     const settings = readJson('roomTTSSettings', {});
     if (!settings.enabled) {
       addMessage('system', '\u8bf7\u5148\u5728 TTS \u8bbe\u7f6e\u4e2d\u542f\u7528\u8bed\u97f3\u5408\u6210');
@@ -190,17 +228,43 @@ export function useRoomChat({ live2d, world }) {
       addMessage('system', '\u5f53\u524d Vue \u7248 TTS \u5efa\u8bae\u5148\u5f00\u542f\u670d\u52a1\u5668\u4ee3\u7406\u4ee5\u89c4\u907f CORS');
       return;
     }
-    const response = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...settings, text: cleanReply(text) })
-    });
-    if (!response.ok) throw new Error(`TTS ${response.status}`);
-    if (ttsUrl) URL.revokeObjectURL(ttsUrl);
-    ttsUrl = URL.createObjectURL(await response.blob());
-    const audio = new Audio(ttsUrl);
-    audio.onplay = () => live2d?.speak?.();
-    await audio.play();
+    stopTTS();
+    const requestId = ttsRequestId + 1;
+    ttsRequestId = requestId;
+    ttsState.value = { messageId, status: 'loading' };
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...settings, text: cleanReply(text) })
+      });
+      if (!response.ok) throw new Error(`TTS ${response.status}`);
+      if (requestId !== ttsRequestId) return;
+      if (ttsUrl) URL.revokeObjectURL(ttsUrl);
+      ttsUrl = URL.createObjectURL(await response.blob());
+      if (requestId !== ttsRequestId) {
+        URL.revokeObjectURL(ttsUrl);
+        ttsUrl = '';
+        return;
+      }
+      const audio = new Audio(ttsUrl);
+      currentAudio = audio;
+      audio.onplay = () => {
+        ttsState.value = { messageId, status: 'playing' };
+        live2d?.speak?.();
+      };
+      audio.onended = () => {
+        if (currentAudio === audio) stopTTS();
+      };
+      audio.onerror = () => {
+        if (currentAudio === audio) stopTTS();
+      };
+      await audio.play();
+    } catch (error) {
+      if (requestId !== ttsRequestId) return;
+      stopTTS();
+      addMessage('system', `TTS \u64ad\u653e\u5931\u8d25\uff1a${error.message}`);
+    }
   }
 
   function onDrop(event) {
@@ -211,6 +275,7 @@ export function useRoomChat({ live2d, world }) {
   }
 
   function destroy() {
+    stopTTS();
     if (ttsUrl) URL.revokeObjectURL(ttsUrl);
     ttsUrl = '';
   }
@@ -221,6 +286,7 @@ export function useRoomChat({ live2d, world }) {
     messages,
     input,
     sending,
+    ttsState,
     imageAttachment,
     messageListRef,
     addMessage,
@@ -228,6 +294,7 @@ export function useRoomChat({ live2d, world }) {
     clearImage,
     send,
     playTTS,
+    stopTTS,
     onDrop,
     destroy,
     world

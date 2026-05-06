@@ -9,6 +9,17 @@ defineProps({
 
 const emit = defineEmits(['close', 'focus', 'drag-start']);
 const imageInputRef = ref(null);
+
+function ttsStatus(chat, messageId) {
+  return chat.ttsState.value.messageId === messageId ? chat.ttsState.value.status : 'idle';
+}
+
+function ttsLabel(chat, messageId) {
+  const status = ttsStatus(chat, messageId);
+  if (status === 'loading') return '加载中';
+  if (status === 'playing') return '播放中';
+  return '播放语音';
+}
 </script>
 
 <template>
@@ -28,7 +39,16 @@ const imageInputRef = ref(null);
           <img v-if="message.image?.dataUrl" class="chat-image-thumb" :src="message.image.dataUrl" :alt="message.image.name || 'image'">
           <div class="chat-content">{{ message.content }}</div>
           <div v-if="message.role === 'assistant' && !message.pending" class="chat-message-actions">
-            <button class="chat-tts-btn" type="button" @click="chat.playTTS(message.content)">&#25773;&#25918;&#35821;&#38899;</button>
+            <button
+              class="chat-tts-btn"
+              :class="{ loading: ttsStatus(chat, message.id) === 'loading', playing: ttsStatus(chat, message.id) === 'playing' }"
+              type="button"
+              :disabled="ttsStatus(chat, message.id) === 'loading'"
+              @click="chat.playTTS(message.content, message.id)"
+            >
+              <span v-if="ttsStatus(chat, message.id) === 'loading'" class="chat-tts-spinner" aria-hidden="true"></span>
+              <span>{{ ttsLabel(chat, message.id) }}</span>
+            </button>
           </div>
         </div>
       </div>

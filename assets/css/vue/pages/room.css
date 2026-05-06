@@ -986,6 +986,9 @@ body.vue-room-route {
 }
 
 .chat-tts-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.36rem;
     min-height: 1.8rem;
     padding: 0.3rem 0.62rem;
     border: 1px solid rgba(231, 249, 255, 0.16);
@@ -997,6 +1000,28 @@ body.vue-room-route {
     font-weight: 800;
     cursor: pointer;
     backdrop-filter: blur(10px);
+}
+
+.chat-tts-btn.playing {
+    border-color: rgba(174, 242, 255, 0.48);
+    color: #ffffff;
+    background: rgba(126, 219, 232, 0.2);
+    box-shadow: 0 0 0 1px rgba(174, 242, 255, 0.12), 0 0 18px rgba(126, 219, 232, 0.18);
+}
+
+.chat-tts-spinner {
+    width: 0.72rem;
+    height: 0.72rem;
+    border: 2px solid rgba(239, 247, 255, 0.32);
+    border-top-color: #eff7ff;
+    border-radius: 999px;
+    animation: room-tts-spin 0.72s linear infinite;
+}
+
+@keyframes room-tts-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .chat-tts-btn:hover:not(:disabled) {
