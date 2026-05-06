@@ -1,8 +1,15 @@
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
 const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260505-fast1';
+const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
+const LIVE2D_READY_TIMEOUT = 20000;
 
 let loadingPromise = null;
 let initialized = false;
+let initPromise = null;
+
+if (typeof window !== 'undefined') {
+  window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
+}
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
@@ -51,23 +58,57 @@ export function preloadLive2DResources() {
 
 export async function ensureLive2DScripts() {
   if (!loadingPromise) {
+    window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
     loadingPromise = loadScript(CORE_SCRIPT).then(() => loadScript(ROOM_SCRIPT));
   }
   return loadingPromise;
 }
 
+function waitForLive2DReady() {
+  if (window.TSUKUYOMI_LIVE2D_READY) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      window.removeEventListener(LIVE2D_READY_EVENT, onReady);
+      reject(new Error('Live2D 加载超时，请刷新页面重试'));
+    }, LIVE2D_READY_TIMEOUT);
+
+    function onReady() {
+      window.clearTimeout(timeoutId);
+      resolve();
+    }
+
+    window.addEventListener(LIVE2D_READY_EVENT, onReady, { once: true });
+  });
+}
+
 export async function initLive2DRoom() {
-  await ensureLive2DScripts();
-  window.TSUKUYOMI_LIVE2D_READY = false;
-  if (initialized) window.destroyTsukuyomiLive2DRoom?.();
-  document.getElementById('live2d-container')?.querySelectorAll('canvas').forEach((node) => node.remove());
-  window.initTsukuyomiLive2DRoom?.();
-  initialized = true;
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    await ensureLive2DScripts();
+    window.TSUKUYOMI_LIVE2D_READY = false;
+    if (initialized) window.destroyTsukuyomiLive2DRoom?.();
+    if (typeof window.initTsukuyomiLive2DRoom !== 'function') {
+      throw new Error('Live2D 初始化入口不存在');
+    }
+    const readyPromise = waitForLive2DReady();
+    window.initTsukuyomiLive2DRoom();
+    initialized = true;
+    await readyPromise;
+  })();
+
+  try {
+    await initPromise;
+  } finally {
+    initPromise = null;
+  }
 }
 
 export function destroyLive2DRoom() {
   window.destroyTsukuyomiLive2DRoom?.();
   initialized = false;
+  initPromise = null;
 }
 
 export function speakLive2D() {

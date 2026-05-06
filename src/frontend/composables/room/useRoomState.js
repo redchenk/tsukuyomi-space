@@ -23,9 +23,16 @@ export function useRoomState() {
 
   async function init() {
     loading.active = true;
+    loading.title = 'SYNCHRONIZING...';
+    loading.detail = 'Loading room assets...';
     world.initRoomWorld();
-    await live2d.init();
-    loading.active = false;
+    try {
+      await live2d.init();
+      loading.active = false;
+    } catch (err) {
+      loading.title = 'LIVE2D LOAD FAILED';
+      loading.detail = err?.message || 'Live2D init failed';
+    }
   }
 
   function destroy() {
