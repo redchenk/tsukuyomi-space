@@ -38,6 +38,7 @@ module.exports = {
                 view_count INTEGER DEFAULT 0,
                 cover_image TEXT,
                 status TEXT DEFAULT 'published',
+                pinned_at DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (author_id) REFERENCES users(id)

@@ -48,6 +48,7 @@ const filteredUsers = computed(() => {
 });
 const pendingMessageCount = computed(() => terminal.messages.filter((item) => item.status !== 'approved').length);
 const publishedArticleCount = computed(() => terminal.articles.filter((item) => item.status === 'published').length);
+const pinnedArticleCount = computed(() => terminal.articles.filter((item) => item.pinned_at).length);
 
 function formatDate(value) {
   if (!value) return '未记录';
@@ -154,6 +155,12 @@ async function loadPanel(panel = terminal.activePanel) {
 async function toggleArticle(id) {
   await adminApi(`/articles/${id}/toggle-status`, { method: 'POST' });
   showMessage('文章状态已更新');
+  await loadPanel('articles');
+}
+
+async function toggleArticlePin(item) {
+  await adminApi(`/articles/${item.id}/toggle-pin`, { method: 'POST' });
+  showMessage(item.pinned_at ? '文章已取消置顶' : '文章已置顶');
   await loadPanel('articles');
 }
 
@@ -322,13 +329,16 @@ onUnmounted(() => {
             <div class="terminal-summary-row">
               <span>已发布 {{ publishedArticleCount }}</span>
               <span>草稿 {{ terminal.articles.length - publishedArticleCount }}</span>
+              <span>置顶 {{ pinnedArticleCount }}</span>
               <span>总阅读 {{ terminal.articles.reduce((sum, item) => sum + Number(item.view_count || 0), 0) }}</span>
             </div>
-            <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead><tbody>
+            <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>置顶</th><th>更新时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in terminal.articles" :key="item.id">
                 <td>{{ item.id }}</td><td><a href="#" @click.prevent="$emit('go', `/article?id=${item.id}`)">{{ item.title }}</a></td><td>{{ item.category || '未分类' }}</td><td>{{ item.view_count || 0 }}</td>
-                <td><span class="terminal-badge" :class="item.status === 'published' ? 'ok' : 'warn'">{{ item.status === 'published' ? '已发布' : '草稿' }}</span></td><td>{{ formatDate(item.updated_at || item.created_at) }}</td>
-                <td><div class="terminal-actions"><button class="ghost-btn" type="button" @click="$emit('go', `/editor?id=${item.id}`)">编辑</button><button class="ghost-btn" type="button" @click="toggleArticle(item.id)">切换</button><button class="danger-btn" type="button" @click="deleteArticle(item.id)">删除</button></div></td>
+                <td><span class="terminal-badge" :class="item.status === 'published' ? 'ok' : 'warn'">{{ item.status === 'published' ? '已发布' : '草稿' }}</span></td>
+                <td><span class="terminal-badge" :class="item.pinned_at ? 'hot' : ''">{{ item.pinned_at ? '已置顶' : '普通' }}</span></td>
+                <td>{{ formatDate(item.updated_at || item.created_at) }}</td>
+                <td><div class="terminal-actions"><button class="ghost-btn" type="button" @click="$emit('go', `/editor?id=${item.id}`)">编辑</button><button class="ghost-btn" type="button" @click="toggleArticle(item.id)">切换</button><button class="ghost-btn" type="button" @click="toggleArticlePin(item)">{{ item.pinned_at ? '取消置顶' : '置顶' }}</button><button class="danger-btn" type="button" @click="deleteArticle(item.id)">删除</button></div></td>
               </tr>
             </tbody></table></div>
           </div>

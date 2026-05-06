@@ -14,9 +14,9 @@ function updateAdminPassword(id, passwordHash) {
 
 function listAdminArticles() {
     return db.prepare(`
-        SELECT id, title, category, view_count, status, created_at, updated_at
+        SELECT id, title, category, view_count, status, pinned_at, created_at, updated_at
         FROM articles
-        ORDER BY COALESCE(updated_at, created_at) DESC
+        ORDER BY pinned_at IS NULL, pinned_at DESC, COALESCE(updated_at, created_at) DESC
     `).all();
 }
 
@@ -50,6 +50,14 @@ function toggleArticleStatus(id) {
     const status = article.status === 'published' ? 'draft' : 'published';
     db.prepare('UPDATE articles SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(status, id);
     return status;
+}
+
+function toggleArticlePin(id) {
+    const article = db.prepare('SELECT pinned_at FROM articles WHERE id = ?').get(id);
+    if (!article) return null;
+    const pinnedAt = article.pinned_at ? null : new Date().toISOString();
+    db.prepare('UPDATE articles SET pinned_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(pinnedAt, id);
+    return { pinnedAt };
 }
 
 function listAdminMessages() {
@@ -141,6 +149,7 @@ module.exports = {
     listAdminArticles,
     updateAdminArticle,
     toggleArticleStatus,
+    toggleArticlePin,
     listAdminMessages,
     approveMessage,
     deleteMessage,

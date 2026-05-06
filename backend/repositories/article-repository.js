@@ -15,7 +15,7 @@ function listArticles({ category, limit, offset }) {
         params.push(category);
     }
 
-    query += ' ORDER BY a.publish_date DESC LIMIT ? OFFSET ?';
+    query += ' ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, a.publish_date DESC, a.created_at DESC LIMIT ? OFFSET ?';
 
     return {
         total: db.prepare(countQuery).get(...params).total,
@@ -73,9 +73,9 @@ function deleteArticle(id) {
 
 function listUserArticles(userId) {
     return db.prepare(`
-        SELECT id, title, category, view_count, status, created_at, updated_at
+        SELECT id, title, category, view_count, status, pinned_at, created_at, updated_at
         FROM articles WHERE author_id = ?
-        ORDER BY created_at DESC
+        ORDER BY pinned_at IS NULL, pinned_at DESC, created_at DESC
     `).all(userId);
 }
 

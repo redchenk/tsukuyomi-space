@@ -526,6 +526,28 @@ describe('admin API permissions', () => {
         assert.ok(Array.isArray(articles.body.data));
     });
 
+    it('lets admins pin and unpin articles', async () => {
+        const pinned = await postJson(`/api/admin/articles/${articleId}/toggle-pin`, {}, adminToken);
+        assert.equal(pinned.response.status, 200);
+        assert.ok(pinned.body.data.pinned_at);
+
+        const adminList = await request('/api/admin/articles', {
+            headers: jsonHeaders(adminToken)
+        });
+        assert.equal(adminList.response.status, 200);
+        assert.equal(adminList.body.data[0].id, articleId);
+        assert.ok(adminList.body.data[0].pinned_at);
+
+        const publicList = await request('/api/articles?limit=1');
+        assert.equal(publicList.response.status, 200);
+        assert.equal(publicList.body.data[0].id, articleId);
+        assert.ok(publicList.body.data[0].pinned_at);
+
+        const unpinned = await postJson(`/api/admin/articles/${articleId}/toggle-pin`, {}, adminToken);
+        assert.equal(unpinned.response.status, 200);
+        assert.equal(unpinned.body.data.pinned_at, null);
+    });
+
     it('lets a super admin manage user roles and passwords', async () => {
         const users = await request('/api/admin/users', {
             headers: jsonHeaders(adminToken)

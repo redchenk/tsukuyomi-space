@@ -229,6 +229,19 @@ router.post('/articles/:id/toggle-status', (req, res) => {
     }
 });
 
+router.post('/articles/:id/toggle-pin', (req, res) => {
+    try {
+        const id = asInt(req.params.id);
+        if (!id) return fail(res, 400, '文章 ID 无效');
+        const result = adminRepository.toggleArticlePin(id);
+        if (!result) return fail(res, 404, '文章不存在');
+        ok(res, { pinned_at: result.pinnedAt }, result.pinnedAt ? '文章已置顶' : '文章已取消置顶');
+    } catch (error) {
+        console.error('Admin article pin toggle error:', error);
+        fail(res, 500, '无法切换文章置顶状态');
+    }
+});
+
 router.delete('/articles/:id', (req, res) => {
     try {
         const id = asInt(req.params.id);
