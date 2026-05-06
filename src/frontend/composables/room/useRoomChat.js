@@ -94,6 +94,130 @@ function fallbackReply(message, image) {
   return message ? `\u6211\u542c\u89c1\u4e86\uff1a${message}` : '\u6211\u5728\u8fd9\u91cc\u3002';
 }
 
+function compactText(value, limit = 1200) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, limit);
+}
+
+function mcpToolAllowed(settings, toolName) {
+  const allowlist = String(settings.toolAllowlist || '').split(',').map((item) => item.trim()).filter(Boolean);
+  return !allowlist.length || allowlist.includes(toolName);
+}
+
+function makeMcpHeaders(settings) {
+  const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+  const key = String(settings.apiKey || '').trim();
+  const headerName = String(settings.authHeader || 'Authorization').trim();
+  if (key && headerName) {
+    headers[headerName] = /^Bearer\s+/i.test(key) || headerName.toLowerCase() !== 'authorization' ? key : `Bearer ${key}`;
+  }
+  return headers;
+}
+
+function mcpResultText(result) {
+  if (!result) return '';
+  if (typeof result === 'string') return compactText(result);
+  if (Array.isArray(result.content)) {
+    return compactText(result.content.map((item) => item.text || item.content || '').filter(Boolean).join('\n'));
+  }
+  if (result.structuredContent) return compactText(JSON.stringify(result.structuredContent));
+  if (result.text) return compactText(result.text);
+  return compactText(JSON.stringify(result));
+}
+
+async function callMcpTool(settings, name, args = {}) {
+  if (!settings.enabled || !settings.endpoint || !mcpToolAllowed(settings, name)) return '';
+  const response = await fetch(settings.endpoint, {
+    method: 'POST',
+    headers: makeMcpHeaders(settings),
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: Date.now(),
+      method: 'tools/call',
+      params: {
+        name,
+        arguments: args,
+        meta: {
+          auth: {
+            api_key: settings.apiKey,
+            api_host: settings.apiHost,
+            base_path: settings.basePath,
+            resource_mode: settings.resourceMode || 'url'
+          }
+        }
+      }
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) throw new Error(data?.error?.message || `MCP ${response.status}`);
+  return mcpResultText(data.result || data);
+}
+
+async function fetchRelevantMemories(message) {
+  const memorySettings = readJson('roomMemorySettings', { enabled: true });
+  if (memorySettings.enabled === false) return [];
+  const token = localStorage.getItem('tsukuyomi_token') || '';
+  if (!token || !String(message || '').trim()) return [];
+  const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
+  const response = await fetch(`/api/room/memory?${params}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.success) return [];
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+function readKnowledgeContext(message) {
+  const settings = readJson('roomKnowledgeSettings', { enabled: true, entries: [] });
+  if (settings.enabled === false || !Array.isArray(settings.entries)) return '';
+  const query = String(message || '').toLowerCase();
+  const entries = settings.entries
+    .filter((item) => item && item.enabled !== false && (item.title || item.content))
+    .map((item) => ({ ...item, score: query && `${item.title || ''} ${item.tags || ''} ${item.content || ''}`.toLowerCase().includes(query) ? 2 : 1 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6);
+  if (!entries.length) return '';
+  return [
+    '\u89d2\u8272\u77e5\u8bc6\u5e93\uff1a',
+    ...entries.map((item, index) => `${index + 1}. ${compactText(`${item.title || ''}\uff1a${item.content || ''}`, 260)}`)
+  ].join('\n');
+}
+
+function memoryContext(memories) {
+  if (!memories.length) return '';
+  return [
+    '\u4e0e\u5f53\u524d\u7528\u6237\u76f8\u5173\u7684\u957f\u671f\u8bb0\u5fc6\uff08\u53ea\u5728\u672c\u6b21\u56de\u590d\u4e2d\u4f5c\u4e3a\u80cc\u666f\uff09\uff1a',
+    ...memories.map((item, index) => `${index + 1}. [${item.type || 'memory'}] ${compactText(item.summary || item.content || '', 220)}`)
+  ].join('\n');
+}
+
+function shouldUseWebSearch(message) {
+  return /(\u641c\u7d22|\u67e5\u627e|\u67e5\u4e00\u4e0b|\u6700\u65b0|\u65b0\u95fb|\u7f51\u9875|\u5b98\u7f51|web|search)/i.test(String(message || ''));
+}
+
+async function buildRoomContext(message, image, llmSettings) {
+  const mcpSettings = readJson('roomMCPSettings', {});
+  const context = [readKnowledgeContext(message)];
+  const memories = await fetchRelevantMemories(message).catch(() => []);
+  const memoryText = memoryContext(memories);
+  if (memoryText) context.push(memoryText);
+
+  if (mcpSettings.enabled && mcpSettings.endpoint) {
+    if (image && (llmSettings.visionMode === 'mcp' || llmSettings.visionMode === 'auto')) {
+      const imageText = await callMcpTool(mcpSettings, 'understand_image', {
+        image_data: image.dataUrl,
+        prompt: message || '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\uff0c\u5e76\u6307\u51fa\u548c\u5bf9\u8bdd\u76f8\u5173\u7684\u5185\u5bb9\u3002'
+      }).catch(() => '');
+      if (imageText) context.push(`MCP understand_image \u7ed3\u679c\uff1a\n${imageText}`);
+    }
+    if (!image && shouldUseWebSearch(message)) {
+      const searchText = await callMcpTool(mcpSettings, 'web_search', { query: message }).catch(() => '');
+      if (searchText) context.push(`MCP web_search \u7ed3\u679c\uff1a\n${searchText}`);
+    }
+  }
+
+  return context.filter(Boolean).join('\n\n');
+}
+
 export function useRoomChat({ live2d, world }) {
   const messages = ref([]);
   const input = ref('');
@@ -150,16 +274,21 @@ export function useRoomChat({ live2d, world }) {
     try {
       const settings = readJson('roomLLMSettings', {});
       const conversation = readJson('roomChatHistory', []).slice(-12);
+      const roomContext = await buildRoomContext(message, image, settings);
+      const systemPrompt = [settings.systemPrompt || roomSystemPrompt(), roomContext].filter(Boolean).join('\n\n');
+      const mcpEnhancedMessage = roomContext && image && (settings.visionMode === 'mcp' || settings.visionMode === 'auto')
+        ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n\n\u4e0a\u4e0b\u6587\u5df2\u5305\u542b MCP \u5bf9\u56fe\u7247\u7684\u7406\u89e3\u7ed3\u679c\uff0c\u8bf7\u7ed3\u5408\u5b83\u56de\u7b54\u3002`
+        : message;
       let result;
       if (settings.useProxy) {
         result = await postJson('/api/chat', {
-          message: message || (image ? '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
+          message: mcpEnhancedMessage || (image ? '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
           conversation,
           apiKey: settings.apiKey,
           apiUrl: settings.apiUrl,
           model: settings.model,
-          systemPrompt: settings.systemPrompt || roomSystemPrompt(),
-          image
+          systemPrompt,
+          image: settings.visionMode === 'mcp' ? null : image
         });
       } else if (settings.apiKey && settings.apiUrl) {
         const response = await fetch(settings.apiUrl, {
@@ -168,9 +297,9 @@ export function useRoomChat({ live2d, world }) {
           body: JSON.stringify({
             model: settings.model || 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: settings.systemPrompt || roomSystemPrompt() },
+              { role: 'system', content: systemPrompt },
               ...conversation.map((item) => ({ role: item.role, content: String(item.content || '') })),
-              { role: 'user', content: message || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : '') }
+              { role: 'user', content: mcpEnhancedMessage || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : '') }
             ]
           })
         });
@@ -197,6 +326,8 @@ export function useRoomChat({ live2d, world }) {
   }
 
   async function remember(userMessage, assistantReply) {
+    const memorySettings = readJson('roomMemorySettings', { enabled: true });
+    if (memorySettings.enabled === false) return;
     const token = localStorage.getItem('tsukuyomi_token') || '';
     if (!token) return;
     await fetch('/api/room/memory', {
