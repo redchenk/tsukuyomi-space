@@ -588,6 +588,13 @@ function saveLLM() {
     useProxy: Boolean(llm.useProxy),
     visionMode: ['auto', 'llm', 'mcp'].includes(llm.visionMode) ? llm.visionMode : 'auto'
   });
+  openTestDialog(
+    'llm',
+    llm.apiKey ? 'success' : 'warning',
+    'LLM 设置已保存',
+    llm.apiKey ? 'LLM API 设置已保存到当前浏览器。' : 'LLM API 设置已保存，但还没有填写 API Key。',
+    `端点：${String(llm.apiUrl || '').trim() || '未填写'}\n模型：${String(llm.model || '').trim() || '未填写'}\n请求方式：${llm.useProxy ? '服务器受限代理' : '浏览器直连'}\n图片理解策略：${llm.visionMode || 'auto'}`
+  );
   showToast('LLM API 设置已保存');
 }
 
@@ -639,6 +646,15 @@ function saveTTS() {
     voice: String(tts.voice || '').trim(),
     useProxy: Boolean(tts.useProxy)
   });
+  openTestDialog(
+    'tts',
+    tts.enabled && tts.apiKey ? 'success' : 'warning',
+    'TTS 设置已保存',
+    tts.enabled
+      ? (tts.apiKey ? 'TTS 语音设置已保存到当前浏览器。' : 'TTS 已启用并保存，但还没有填写 API Key。')
+      : 'TTS 设置已保存，当前未启用语音合成。',
+    `Provider：${tts.provider || 'mimo'}\n端点：${String(tts.apiUrl || '').trim() || defaultTtsUrl(tts.provider)}\n模型：${String(tts.model || '').trim() || '未填写'}\n音色：${String(tts.voice || '').trim() || '未填写'}\n请求方式：${tts.useProxy ? '服务器受限代理' : '浏览器直连'}`
+  );
   showToast('TTS 设置已保存');
 }
 
@@ -931,18 +947,29 @@ async function callMcp(method, params = {}) {
 }
 
 function saveMCP() {
+  const endpoint = String(mcp.endpoint || '').trim();
+  const toolAllowlist = String(mcp.toolAllowlist || '').trim();
   writeJson('roomMCPSettings', {
     enabled: Boolean(mcp.enabled),
     provider: String(mcp.provider || 'custom'),
-    endpoint: String(mcp.endpoint || '').trim(),
+    endpoint,
     apiKey: String(mcp.apiKey || '').trim(),
     authHeader: String(mcp.authHeader || 'Authorization').trim() || 'Authorization',
     apiHost: String(mcp.apiHost || '').trim(),
     basePath: String(mcp.basePath || '').trim(),
     resourceMode: String(mcp.resourceMode || 'url').trim() || 'url',
-    toolAllowlist: String(mcp.toolAllowlist || '').trim(),
+    toolAllowlist,
     tools: Array.isArray(mcp.tools) ? mcp.tools : []
   });
+  openTestDialog(
+    'mcp',
+    mcp.enabled && endpoint ? 'success' : 'warning',
+    'MCP 设置已保存',
+    mcp.enabled
+      ? (endpoint ? 'MCP 设置已保存并启用。' : 'MCP 已启用并保存，但还没有填写端点。')
+      : 'MCP 设置已保存，当前未启用。',
+    `Provider：${mcp.provider || 'custom'}\n端点：${endpoint || '未填写'}\n认证头：${String(mcp.authHeader || 'Authorization').trim() || 'Authorization'}\n工具白名单：${toolAllowlist || '允许全部'}\n已发现工具：${Array.isArray(mcp.tools) ? mcp.tools.length : 0}`
+  );
   showToast(mcp.enabled ? 'MCP 设置已保存并启用' : 'MCP 设置已保存（当前未启用）');
 }
 
