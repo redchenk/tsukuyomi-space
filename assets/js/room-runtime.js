@@ -2166,7 +2166,10 @@
             if ($('musicProgress')) {
                 $('musicProgress').value = duration > 0 ? String(Math.round((current / duration) * 1000)) : '0';
             }
-            if ($('musicPlayBtn')) $('musicPlayBtn').textContent = musicAudio.paused ? '播放' : '暂停';
+            if ($('musicPlayBtn')) {
+                $('musicPlayBtn').textContent = musicAudio.paused ? '▶' : 'Ⅱ';
+                $('musicPlayBtn').setAttribute('aria-label', musicAudio.paused ? '播放音乐' : '暂停音乐');
+            }
         }
     }
 
@@ -2253,6 +2256,9 @@
 
         loadMusicTrack(musicTrackIndex);
 
+        document.querySelectorAll('#musicPanel button, #musicPanel input, #musicPanel select').forEach((control) => {
+            control.addEventListener('pointerdown', (event) => event.stopPropagation());
+        });
         $('musicPlayBtn')?.addEventListener('click', () => {
             if (!musicAudio) return;
             if (musicAudio.paused) {
@@ -2264,17 +2270,26 @@
         });
         $('musicPrevBtn')?.addEventListener('click', () => loadMusicTrack(musicTrackIndex - 1, { play: Boolean(musicAudio && !musicAudio.paused) }));
         $('musicNextBtn')?.addEventListener('click', () => loadMusicTrack(musicTrackIndex + 1, { play: Boolean(musicAudio && !musicAudio.paused) }));
-        $('musicVolumeBtn')?.addEventListener('click', (event) => {
+        const toggleMusicDrawer = (event) => {
             event.preventDefault();
             event.stopPropagation();
-            const popover = $('musicVolumePopover');
-            if (!popover) return;
-            popover.hidden = !popover.hidden;
-        });
-        $('musicVolumePopover')?.addEventListener('pointerdown', (event) => event.stopPropagation());
+            const drawer = $('musicDrawer');
+            if (!drawer) return;
+            drawer.hidden = !drawer.hidden;
+            $('musicMenuBtn')?.classList.toggle('is-active', !drawer.hidden);
+            $('musicVolumeBtn')?.classList.toggle('is-active', !drawer.hidden);
+        };
+        $('musicVolumeBtn')?.addEventListener('click', toggleMusicDrawer);
+        $('musicMenuBtn')?.addEventListener('click', toggleMusicDrawer);
+        $('musicDrawer')?.addEventListener('pointerdown', (event) => event.stopPropagation());
         document.addEventListener('pointerdown', (event) => {
-            const menu = event.target?.closest?.('.music-volume-menu');
-            if (!menu && $('musicVolumePopover')) $('musicVolumePopover').hidden = true;
+            const panel = event.target?.closest?.('#musicPanel');
+            const drawer = $('musicDrawer');
+            if (!panel && drawer) {
+                drawer.hidden = true;
+                $('musicMenuBtn')?.classList.remove('is-active');
+                $('musicVolumeBtn')?.classList.remove('is-active');
+            }
         });
         $('musicTrackSelect')?.addEventListener('change', (event) => {
             const index = Number.parseInt(event.target.value, 10);

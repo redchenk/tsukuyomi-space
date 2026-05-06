@@ -448,11 +448,30 @@ body.vue-room-route {
 
 .room-music-panel {
     width: min(300px, calc(100vw - 7.5rem));
+    min-height: 160px;
+    padding: 0;
+    border-radius: 22px;
+    background: rgba(246, 248, 252, 0.78);
+    color: #233047;
 }
 
-.music-body {
+.room-music-panel::before {
+    background:
+        radial-gradient(circle at 12% 8%, rgba(174, 242, 255, 0.2), transparent 34%),
+        radial-gradient(circle at 98% 0%, rgba(255, 122, 200, 0.14), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.18));
+}
+
+.music-card-main {
+    min-height: 126px;
     display: grid;
-    gap: 0.78rem;
+    grid-template-columns: 88px minmax(0, 1fr) 38px;
+    align-items: center;
+    gap: 0.82rem;
+    padding: 0.72rem 0.72rem 0.72rem 0.82rem;
+    margin: 0;
+    border: 0;
+    cursor: grab;
 }
 
 .music-cover {
@@ -460,12 +479,13 @@ body.vue-room-route {
     --music-cover-b: #ff9aba;
     --music-cover-c: #6f7cff;
     position: relative;
-    min-height: 122px;
+    width: 88px;
+    height: 88px;
     display: grid;
     place-items: center;
     overflow: hidden;
     border: 1px solid rgba(231, 249, 255, 0.16);
-    border-radius: 18px;
+    border-radius: 16px;
     background:
         radial-gradient(circle at 26% 18%, color-mix(in srgb, var(--music-cover-a), transparent 12%), transparent 32%),
         radial-gradient(circle at 78% 16%, color-mix(in srgb, var(--music-cover-b), transparent 18%), transparent 34%),
@@ -485,7 +505,7 @@ body.vue-room-route {
 }
 
 .music-cover::before {
-    width: 76px;
+    width: 58px;
     aspect-ratio: 1;
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 50%;
@@ -527,97 +547,154 @@ body.vue-room-route {
     display: none;
 }
 
-.music-now {
+.music-cover-play {
+    position: absolute;
+    left: 50%;
+    bottom: 0.45rem;
+    z-index: 2;
+    width: 32px;
+    height: 32px;
     display: grid;
-    gap: 0.18rem;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.48);
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(20, 24, 36, 0.42);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(12px);
+    transform: translateX(-50%);
+    cursor: pointer;
 }
 
-.music-now small,
-.music-progress-row {
-    color: var(--room-glass-muted);
-    font-size: 0.76rem;
-    font-weight: 800;
+.music-main-info {
+    display: grid;
+    min-width: 0;
+    gap: 0.34rem;
 }
 
-.music-now strong {
+.music-title-row {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    gap: 0.36rem;
+}
+
+.music-title-row strong {
     display: block;
     overflow: hidden;
-    color: #fff;
+    color: #152034;
     font-size: 1rem;
+    font-weight: 900;
     line-height: 1.35;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+.music-title-row span {
+    min-width: 0;
+    overflow: hidden;
+    color: rgba(35, 48, 71, 0.74);
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .music-progress-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    display: block;
+}
+
+.room-panel .music-progress {
+    min-height: 18px;
+    accent-color: #a9d7ff;
+}
+
+.music-meta-row {
+    display: flex;
     align-items: center;
-    gap: 0.58rem;
+    gap: 0.36rem;
+    color: rgba(35, 48, 71, 0.58);
+    font-size: 0.8rem;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
-.music-controls {
-    display: grid;
-    grid-template-columns: 38px minmax(0, 1fr) 38px 38px;
-    gap: 0.5rem;
-}
-
-.music-icon-btn,
-.music-play-btn {
-    min-height: 42px;
-    border-radius: 13px;
-}
-
-.music-icon-btn {
-    padding: 0;
-    font-size: 1.45rem;
-    line-height: 1;
-}
-
-.music-play-btn {
-    color: #101827;
-    background: linear-gradient(135deg, #aef2ff, #ffd1e8);
-}
-
-.music-volume-menu {
-    position: relative;
-}
-
-.music-volume-popover {
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + 0.5rem);
-    z-index: 2;
-    width: 46px;
-    height: 138px;
+.music-mini-btn {
+    width: 28px;
+    height: 28px;
     display: grid;
     place-items: center;
-    padding: 0.72rem 0.45rem;
-    border: 1px solid rgba(231, 249, 255, 0.16);
-    border-radius: 14px;
-    background: var(--room-glass-bg-strong);
-    box-shadow: var(--room-glass-shadow);
-    backdrop-filter: blur(18px) saturate(1.12);
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    color: rgba(35, 48, 71, 0.68);
+    background: transparent;
+    font: inherit;
+    font-weight: 900;
+    cursor: pointer;
 }
 
-.music-volume-popover[hidden] {
+.music-mini-btn:hover,
+.music-mini-btn.is-active {
+    color: #152034;
+    background: rgba(35, 48, 71, 0.08);
+}
+
+.music-close {
+    align-self: start;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(30, 34, 42, 0.56);
+    font-size: 1rem;
+}
+
+.music-drawer {
+    display: grid;
+    gap: 0.58rem;
+    padding: 0 0.82rem 0.82rem;
+}
+
+.music-drawer[hidden] {
     display: none !important;
 }
 
-.music-volume-popover input {
-    width: 106px;
-    min-height: 24px;
-    transform: rotate(-90deg);
-    transform-origin: center;
+.music-volume-inline {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.56rem;
+    color: rgba(35, 48, 71, 0.68);
+    font-size: 0.78rem;
+    font-weight: 900;
 }
 
-.room-panel .music-progress,
-.room-panel .music-volume-popover input {
-    min-height: 26px;
+.music-drawer-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.music-icon-btn {
+    min-height: 34px;
+    border-radius: 12px;
+    color: #152034;
+    background: rgba(255, 255, 255, 0.46);
+    font-size: 1.25rem;
 }
 
 .room-panel #musicTrackSelect {
-    min-height: 40px;
+    min-height: 36px;
+    color: #152034;
+    background: rgba(255, 255, 255, 0.48);
+}
+
+.room-panel .music-volume-inline input {
+    min-height: 24px;
+    accent-color: #89c9ff;
 }
 
 .room-chat-panel.image-drag-over {
@@ -1147,12 +1224,30 @@ body.vue-room-route {
     }
 
     .music-cover {
-        min-height: 108px;
+        width: 72px;
+        height: 72px;
         border-radius: 16px;
     }
 
-    .music-controls {
-        grid-template-columns: 36px minmax(0, 1fr) 36px 36px;
+    .music-card-main {
+        min-height: 104px;
+        grid-template-columns: 72px minmax(0, 1fr) 34px;
+        gap: 0.62rem;
+        padding: 0.58rem;
+    }
+
+    .room-music-panel {
+        min-height: 124px;
+    }
+
+    .music-title-row {
+        display: grid;
+        gap: 0.04rem;
+    }
+
+    .music-meta-row {
+        gap: 0.2rem;
+        font-size: 0.72rem;
     }
 
     .chat-body {
