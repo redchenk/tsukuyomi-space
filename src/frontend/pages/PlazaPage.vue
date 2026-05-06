@@ -250,6 +250,10 @@ function plazaInitial(name) {
   return String(name || fallback.value.visitor).trim().slice(0, 1).toUpperCase();
 }
 
+function plazaAvatarAlt(name) {
+  return `${name || fallback.value.anonymous} avatar`;
+}
+
 function plazaFormatDate(value) {
   if (!value) return '-';
   return new Date(value).toLocaleString(isZh.value ? 'zh-CN' : 'ja-JP', { hour12: false });
@@ -346,7 +350,10 @@ onMounted(refreshPlaza);
           <article v-for="msg in plazaMessages" :id="'msg-' + msg.id" :key="msg.id" class="plaza-msg-card">
             <div class="plaza-msg-meta">
               <div class="plaza-msg-author">
-                <div class="plaza-avatar">{{ plazaInitial(msg.author) }}</div>
+                <div class="plaza-avatar">
+                  <img v-if="msg.avatar" :src="msg.avatar" :alt="plazaAvatarAlt(msg.author)">
+                  <span v-else>{{ plazaInitial(msg.author) }}</span>
+                </div>
                 <div>
                   <div class="plaza-author-name">{{ msg.author || fallback.anonymous }}</div>
                   <div class="plaza-msg-date">{{ plazaFormatDate(msg.created_at) }}</div>
@@ -367,7 +374,10 @@ onMounted(refreshPlaza);
               <div v-for="reply in msg.replies" :key="reply.id" class="plaza-reply-card">
                 <div class="plaza-msg-meta" style="margin-bottom:0.45rem;">
                   <div class="plaza-msg-author">
-                    <div class="plaza-avatar" style="width:30px;height:30px;font-size:0.78rem;">{{ plazaInitial(reply.author) }}</div>
+                    <div class="plaza-avatar small">
+                      <img v-if="reply.avatar" :src="reply.avatar" :alt="plazaAvatarAlt(reply.author)">
+                      <span v-else>{{ plazaInitial(reply.author) }}</span>
+                    </div>
                     <div>
                       <div class="plaza-author-name" style="font-size:0.82rem;">{{ reply.author || fallback.anonymous }}</div>
                       <div class="plaza-msg-date">{{ plazaFormatDate(reply.created_at) }}</div>

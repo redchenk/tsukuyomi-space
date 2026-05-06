@@ -78,9 +78,9 @@ before(async () => {
     baseUrl = `http://127.0.0.1:${address.port}`;
 
     db.prepare(`
-        INSERT INTO users (id, username, email, password_hash, role)
-        VALUES (?, ?, ?, ?, ?)
-    `).run('user-001', 'normal-user', 'normal@example.test', bcrypt.hashSync('user-test-password', 10), 'user');
+        INSERT INTO users (id, username, email, password_hash, role, avatar)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `).run('user-001', 'normal-user', 'normal@example.test', bcrypt.hashSync('user-test-password', 10), 'user', 'data:image/png;base64,test-avatar');
     db.prepare(`
         INSERT INTO users (id, username, email, password_hash, role, bio)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -207,7 +207,9 @@ describe('messages API', () => {
 
         const list = await request(`/api/messages?article_id=${articleId}`);
         assert.equal(list.response.status, 200);
-        assert.ok(list.body.data.some(item => item.id === messageId));
+        const listedMessage = list.body.data.find(item => item.id === messageId);
+        assert.ok(listedMessage);
+        assert.equal(listedMessage.avatar, 'data:image/png;base64,test-avatar');
 
         const liked = await postJson(`/api/messages/${messageId}/like`, {}, userToken);
         assert.equal(liked.response.status, 200);

@@ -158,6 +158,24 @@
     background: linear-gradient(135deg, rgba(255,183,197,0.9), rgba(255,107,157,0.85));
     color: #24101b;
     font-weight: 800;
+    overflow: hidden;
+}
+.plaza-avatar.small {
+    width: 30px;
+    height: 30px;
+    font-size: 0.78rem;
+}
+.plaza-avatar img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+.plaza-avatar span {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
 }
 .plaza-author-name { color: #ffb7c5; font-size: 0.9rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plaza-msg-date { color: rgba(255,225,235,0.42); font-size: 0.74rem; margin-top: 0.12rem; }
