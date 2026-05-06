@@ -38,6 +38,8 @@ const editor = reactive({
 });
 
 const isAuthed = computed(() => Boolean(session.value));
+const canPublishAnnouncement = computed(() => session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role));
+const availableCategories = computed(() => categories.filter((category) => canPublishAnnouncement.value || category.value !== '\u516c\u544a'));
 const currentArticleId = computed(() => route.query.id || '');
 const submitLabel = computed(() => {
   if (editor.submitting) return editor.currentArticle ? props.t.editorSaving : props.t.editorPublishing;
@@ -155,6 +157,7 @@ async function initEditor() {
     }
   } else {
     resetEditorForm();
+    if (!canPublishAnnouncement.value) editor.form.category = '\u5176\u4ed6';
   }
 
   editor.loading = false;
@@ -230,7 +233,7 @@ watch(currentArticleId, initEditor);
             <label for="editorCategory">{{ t.editorFieldCategory }}</label>
             <select id="editorCategory" v-model="editor.form.category" required>
               <option value="">{{ t.editorCategorySelect }}</option>
-              <option v-for="category in categories" :key="category.value" :value="category.value">
+              <option v-for="category in availableCategories" :key="category.value" :value="category.value">
                 {{ t[category.labelKey] }}
               </option>
             </select>

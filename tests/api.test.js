@@ -207,6 +207,20 @@ describe('articles API', () => {
         assert.equal(result.response.status, 403);
         assert.equal(result.body.success, false);
     });
+
+    it('allows an admin token to publish an announcement article', async () => {
+        const result = await postJson('/api/articles', {
+            title: 'Admin Announcement',
+            excerpt: 'Announcement summary',
+            content: 'Announcement content from tests.',
+            category: '\u516c\u544a',
+            read_time: '1 min'
+        }, adminToken);
+
+        assert.equal(result.response.status, 201);
+        assert.equal(result.body.success, true);
+        assert.equal(result.body.data.category, '\u516c\u544a');
+    });
 });
 
 describe('messages API', () => {

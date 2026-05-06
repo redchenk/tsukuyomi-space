@@ -12,6 +12,10 @@ function withParsedTags(article) {
     };
 }
 
+function canPublishAnnouncement(user) {
+    return user?.role === 'admin' || user?.role === 'super_admin';
+}
+
 // 公开文章列表：支持分类和分页，返回作者用户名用于前端展示。
 router.get('/', (req, res) => {
     try {
@@ -47,11 +51,11 @@ router.post('/', authenticateToken, (req, res) => {
             return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
-        if (category === '公告' && req.user.role !== 'admin') {
+        if (category === '公告' && !canPublishAnnouncement(req.user)) {
             return res.status(403).json({ success: false, message: '操作失败' });
         }
 
-        const finalCategory = category || (req.user.role === 'admin' ? '公告' : '其他');
+        const finalCategory = category || (canPublishAnnouncement(req.user) ? '公告' : '其他');
         const publishDate = new Date().toISOString().split('T')[0];
         const newArticle = articleRepository.createArticle({
             title,
