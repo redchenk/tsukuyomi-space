@@ -1149,12 +1149,14 @@
         const timeSet = new Set(['dawn', 'day', 'dusk', 'night']);
         const seasonSet = new Set(['spring', 'summer', 'autumn', 'winter']);
         const weather = weatherSet.has(data.weather) ? data.weather : 'clear';
+        const city = String(data.city || data.location?.city || data.location?.timezone || '').trim();
         return {
             weather,
             timePhase: timeSet.has(data.timePhase) ? data.timePhase : getTimePhase(now),
             season: seasonSet.has(data.season) ? data.season : getSeason(now),
             temperature: Number.isFinite(Number(data.temperature)) ? Number(data.temperature) : null,
             windSpeed: Number.isFinite(Number(data.windSpeed)) ? Number(data.windSpeed) : null,
+            city: city || '月读空间',
             source: data.source || 'local',
             reason: data.reason || '',
             updatedAt: data.updatedAt || now.toISOString()
@@ -1231,11 +1233,13 @@
     function updateWeatherCard(world) {
         const label = $('roomWeatherLabel');
         const icon = $('roomWeatherIcon');
+        const city = $('roomWeatherCity');
         const temperature = $('roomWeatherTemperature');
         const wind = $('roomWeatherWind');
         const detail = $('roomWeatherDetail');
         if (label) label.textContent = weatherLabel(world.weather);
         if (icon) icon.textContent = weatherIcon(world.weather);
+        if (city) city.textContent = world.city || '月读空间';
         if (temperature) temperature.textContent = world.temperature == null ? '--°C' : `${Math.round(world.temperature)}°C`;
         if (wind) wind.textContent = world.windSpeed == null ? '风速 --' : `风速 ${Math.round(world.windSpeed)} km/h`;
         if (detail) {

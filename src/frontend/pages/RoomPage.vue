@@ -119,6 +119,7 @@ onBeforeUnmount(() => {
       <div class="room-weather-head">
         <span id="roomWeatherIcon" class="room-weather-icon" aria-hidden="true">☾</span>
         <div>
+          <small id="roomWeatherCity">城市同步中</small>
           <small>Room Weather</small>
           <strong id="roomWeatherLabel">同步中</strong>
         </div>

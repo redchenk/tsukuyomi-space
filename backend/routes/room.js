@@ -7,7 +7,8 @@ const router = express.Router();
 const DEFAULT_WEATHER = {
     lat: 22.3193,
     lon: 114.1694,
-    timezone: 'Asia/Hong_Kong'
+    timezone: 'Asia/Hong_Kong',
+    city: '香港'
 };
 
 const WEATHER_CODE_MAP = [
@@ -47,7 +48,7 @@ function weatherFromCode(code) {
     return match ? match.weather : 'cloudy';
 }
 
-function fallbackWorld(reason) {
+function fallbackWorld(reason, city = process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city) {
     const now = new Date();
     return {
         weather: 'clear',
@@ -59,16 +60,17 @@ function fallbackWorld(reason) {
         season: getSeason(now),
         source: 'local-fallback',
         reason,
+        city,
         updatedAt: now.toISOString()
     };
 }
 
-async function fetchOpenMeteoWorld({ lat, lon, timezone }) {
+async function fetchOpenMeteoWorld({ lat, lon, timezone, city }) {
     if (process.env.ROOM_WEATHER_OFFLINE === 'true') {
-        return fallbackWorld('offline-mode');
+        return fallbackWorld('offline-mode', city);
     }
     if (typeof fetch !== 'function') {
-        return fallbackWorld('fetch-unavailable');
+        return fallbackWorld('fetch-unavailable', city);
     }
 
     const params = new URLSearchParams({
@@ -86,7 +88,7 @@ async function fetchOpenMeteoWorld({ lat, lon, timezone }) {
             headers: { Accept: 'application/json' }
         });
         if (!response.ok) {
-            return fallbackWorld(`open-meteo-${response.status}`);
+            return fallbackWorld(`open-meteo-${response.status}`, city);
         }
         const payload = await response.json();
         const current = payload.current || {};
@@ -101,10 +103,11 @@ async function fetchOpenMeteoWorld({ lat, lon, timezone }) {
             timePhase: getTimePhase(now),
             season: getSeason(now),
             source: 'open-meteo',
+            city,
             updatedAt: new Date().toISOString()
         };
     } catch (error) {
-        return fallbackWorld(error.name === 'AbortError' ? 'weather-timeout' : 'weather-unavailable');
+        return fallbackWorld(error.name === 'AbortError' ? 'weather-timeout' : 'weather-unavailable', city);
     } finally {
         clearTimeout(timeout);
     }
@@ -114,14 +117,16 @@ router.get('/world', async (req, res) => {
     const lat = normalizeCoordinate(req.query.lat || process.env.ROOM_WEATHER_LAT, DEFAULT_WEATHER.lat, -90, 90);
     const lon = normalizeCoordinate(req.query.lon || process.env.ROOM_WEATHER_LON, DEFAULT_WEATHER.lon, -180, 180);
     const timezone = String(req.query.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
-    const data = await fetchOpenMeteoWorld({ lat, lon, timezone });
+    const city = String(req.query.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city;
+    const data = await fetchOpenMeteoWorld({ lat, lon, timezone, city });
 
     res.set('Cache-Control', 'public, max-age=600');
     res.json({
         success: true,
         data: {
             ...data,
-            location: { lat, lon, timezone }
+            city,
+            location: { lat, lon, timezone, city }
         }
     });
 });
