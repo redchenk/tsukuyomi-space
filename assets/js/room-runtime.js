@@ -2270,26 +2270,32 @@
         });
         $('musicPrevBtn')?.addEventListener('click', () => loadMusicTrack(musicTrackIndex - 1, { play: Boolean(musicAudio && !musicAudio.paused) }));
         $('musicNextBtn')?.addEventListener('click', () => loadMusicTrack(musicTrackIndex + 1, { play: Boolean(musicAudio && !musicAudio.paused) }));
-        const toggleMusicDrawer = (event) => {
+        const closeMusicDrawers = (exceptId = '') => {
+            ['musicVolumeDrawer', 'musicPlaylistDrawer'].forEach((id) => {
+                const drawer = $(id);
+                if (drawer && id !== exceptId) drawer.hidden = true;
+            });
+            $('musicVolumeBtn')?.classList.toggle('is-active', !$('musicVolumeDrawer')?.hidden);
+            $('musicMenuBtn')?.classList.toggle('is-active', !$('musicPlaylistDrawer')?.hidden);
+        };
+        const toggleMusicDrawer = (drawerId, activeButton) => (event) => {
             event.preventDefault();
             event.stopPropagation();
-            const drawer = $('musicDrawer');
+            const drawer = $(drawerId);
             if (!drawer) return;
+            const willOpen = drawer.hidden;
+            closeMusicDrawers(drawerId);
             drawer.hidden = !drawer.hidden;
-            $('musicMenuBtn')?.classList.toggle('is-active', !drawer.hidden);
-            $('musicVolumeBtn')?.classList.toggle('is-active', !drawer.hidden);
+            if (willOpen) drawer.hidden = false;
+            activeButton?.classList.toggle('is-active', !drawer.hidden);
         };
-        $('musicVolumeBtn')?.addEventListener('click', toggleMusicDrawer);
-        $('musicMenuBtn')?.addEventListener('click', toggleMusicDrawer);
-        $('musicDrawer')?.addEventListener('pointerdown', (event) => event.stopPropagation());
+        $('musicVolumeBtn')?.addEventListener('click', toggleMusicDrawer('musicVolumeDrawer', $('musicVolumeBtn')));
+        $('musicMenuBtn')?.addEventListener('click', toggleMusicDrawer('musicPlaylistDrawer', $('musicMenuBtn')));
+        $('musicVolumeDrawer')?.addEventListener('pointerdown', (event) => event.stopPropagation());
+        $('musicPlaylistDrawer')?.addEventListener('pointerdown', (event) => event.stopPropagation());
         document.addEventListener('pointerdown', (event) => {
             const panel = event.target?.closest?.('#musicPanel');
-            const drawer = $('musicDrawer');
-            if (!panel && drawer) {
-                drawer.hidden = true;
-                $('musicMenuBtn')?.classList.remove('is-active');
-                $('musicVolumeBtn')?.classList.remove('is-active');
-            }
+            if (!panel) closeMusicDrawers();
         });
         $('musicTrackSelect')?.addEventListener('change', (event) => {
             const index = Number.parseInt(event.target.value, 10);

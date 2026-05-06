@@ -10,13 +10,13 @@ defineEmits(['go']);
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
   '/lib/bundled/live2d-room.iife.js?v=20260505-fast1',
-  '/assets/js/room-runtime.js?v=20260506-music3'
+  '/assets/js/room-runtime.js?v=20260506-music4'
 ];
 
 const preloadResources = [
   { href: '/lib/live2dcubismcore-v5.min.js', as: 'script' },
   { href: '/lib/bundled/live2d-room.iife.js?v=20260505-fast1', as: 'script' },
-  { href: '/assets/js/room-runtime.js?v=20260506-music3', as: 'script' },
+  { href: '/assets/js/room-runtime.js?v=20260506-music4', as: 'script' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json', as: 'fetch', type: 'application/json' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' },
   { href: '/models/tsukimi-yachiyo/textures/texture_00.webp', as: 'image', type: 'image/webp' },
@@ -174,18 +174,20 @@ onBeforeUnmount(() => {
             <span id="musicCurrentTime">0:00</span>
             <span>/</span>
             <span id="musicDuration">0:00</span>
-            <button id="musicVolumeBtn" class="music-mini-btn" type="button" aria-label="展开音量和播放列表">♪</button>
-            <button id="musicMenuBtn" class="music-mini-btn" type="button" aria-label="展开播放列表和音量">☰</button>
+            <button id="musicVolumeBtn" class="music-mini-btn" type="button" aria-label="展开音量">♪</button>
+            <button id="musicMenuBtn" class="music-mini-btn" type="button" aria-label="展开播放列表">☰</button>
           </div>
         </div>
         <button class="panel-close music-close" type="button" data-panel-close="musicPanel" aria-label="关闭音乐">x</button>
       </div>
-      <div id="musicDrawer" class="music-drawer" hidden>
-        <select id="musicTrackSelect" aria-label="选择歌曲"></select>
+      <div id="musicVolumeDrawer" class="music-drawer music-volume-drawer" hidden>
         <div class="music-volume-inline">
           <span>音量</span>
           <input id="musicVolume" type="range" min="0" max="1" step="0.01" value="0.72" aria-label="音量调节">
         </div>
+      </div>
+      <div id="musicPlaylistDrawer" class="music-drawer music-playlist-drawer" hidden>
+        <select id="musicTrackSelect" aria-label="选择歌曲"></select>
         <div class="music-drawer-actions">
           <button id="musicPrevBtn" class="panel-btn music-icon-btn" type="button" aria-label="上一首">‹</button>
           <button id="musicNextBtn" class="panel-btn music-icon-btn" type="button" aria-label="下一首">›</button>

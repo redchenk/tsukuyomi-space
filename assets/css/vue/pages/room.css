@@ -481,11 +481,13 @@ body.vue-room-route {
     position: relative;
     width: 88px;
     height: 88px;
+    aspect-ratio: 1;
+    flex: 0 0 88px;
     display: grid;
     place-items: center;
     overflow: hidden;
     border: 1px solid rgba(231, 249, 255, 0.16);
-    border-radius: 16px;
+    border-radius: 8px;
     background:
         radial-gradient(circle at 26% 18%, color-mix(in srgb, var(--music-cover-a), transparent 12%), transparent 32%),
         radial-gradient(circle at 78% 16%, color-mix(in srgb, var(--music-cover-b), transparent 18%), transparent 34%),
@@ -656,6 +658,14 @@ body.vue-room-route {
     display: grid;
     gap: 0.58rem;
     padding: 0 0.82rem 0.82rem;
+}
+
+.music-volume-drawer {
+    padding-top: 0.1rem;
+}
+
+.music-playlist-drawer {
+    padding-top: 0.1rem;
 }
 
 .music-drawer[hidden] {
@@ -1226,7 +1236,8 @@ body.vue-room-route {
     .music-cover {
         width: 72px;
         height: 72px;
-        border-radius: 16px;
+        flex-basis: 72px;
+        border-radius: 8px;
     }
 
     .music-card-main {
