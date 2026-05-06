@@ -7,7 +7,6 @@
 
 import { csmVector, iterator } from '@framework/type/csmvector';
 import { LAppGlManager } from './lappglmanager';
-import { resolveLive2DFallbackPath } from './resource-path';
 
 /**
  * テクスチャ管理クラス
@@ -61,24 +60,11 @@ export class LAppTextureManager {
         // WebKitでは同じImageのonloadを再度呼ぶには再インスタンスが必要
         // 詳細：https://stackoverflow.com/a/5024181
         ite.ptr().img = new Image();
-        ite.ptr().img.crossOrigin = 'anonymous';
         ite
           .ptr()
           .img.addEventListener('load', (): void => callback(ite.ptr()), {
             passive: true
           });
-        ite
-          .ptr()
-          .img.addEventListener(
-            'error',
-            (): void => {
-              const fallback = resolveLive2DFallbackPath(fileName);
-              if (fallback && fallback !== fileName) {
-                ite.ptr().img.src = fallback;
-              }
-            },
-            { once: true }
-          );
         ite.ptr().img.src = fileName;
         return;
       }
@@ -86,7 +72,6 @@ export class LAppTextureManager {
 
     // データのオンロードをトリガーにする
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.addEventListener(
       'load',
       (): void => {
@@ -162,16 +147,6 @@ export class LAppTextureManager {
         callback(textureInfo);
       },
       { passive: true }
-    );
-    img.addEventListener(
-      'error',
-      (): void => {
-        const fallback = resolveLive2DFallbackPath(fileName);
-        if (fallback && fallback !== fileName) {
-          img.src = fallback;
-        }
-      },
-      { once: true }
     );
     img.src = fileName;
   }

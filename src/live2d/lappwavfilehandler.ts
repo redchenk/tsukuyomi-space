@@ -5,8 +5,6 @@
  * that can be found at https://www.live2d.com/eula/live2d-open-software-license-agreement_en.html.
  */
 
-import { fetchLive2DResource } from './resource-path';
-
 /** @deprecated この変数は getInstance() が非推奨になったことに伴い、非推奨となりました。 */
 export let s_instance: LAppWavFileHandler = null;
 
@@ -112,7 +110,11 @@ export class LAppWavFileHandler {
       }
 
       // ファイルロード
-      const asyncFileLoad = async () => fetchLive2DResource(filePath);
+      const asyncFileLoad = async () => {
+        return fetch(filePath).then(responce => {
+          return responce.arrayBuffer();
+        });
+      };
 
       const asyncWavFileManager = (async () => {
         this._byteReader._fileByte = await asyncFileLoad();

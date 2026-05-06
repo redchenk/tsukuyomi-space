@@ -1,62 +1,14 @@
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
 const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260505-fast1';
-const LOCAL_LIVE2D_RESOURCE_BASE = '/models/';
-const CDN_LIVE2D_RESOURCE_BASE = normalizeResourceBase(import.meta.env.VITE_LIVE2D_RESOURCE_BASE);
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_READY_TIMEOUT = 20000;
 
 let loadingPromise = null;
 let initialized = false;
 let initPromise = null;
-let resourceBasePromise = null;
 
 if (typeof window !== 'undefined') {
   window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
-  window.TSUKUYOMI_LIVE2D_RESOURCE_BASE = LOCAL_LIVE2D_RESOURCE_BASE;
-}
-
-function normalizeResourceBase(value) {
-  const base = String(value || '').trim();
-  if (!base) return '';
-  return base.endsWith('/') ? base : `${base}/`;
-}
-
-function resourceUrl(base, path) {
-  return `${base}${path.replace(/^\/+/, '')}`;
-}
-
-async function checkResource(url) {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 4500);
-  try {
-    const response = await fetch(url, {
-      method: 'HEAD',
-      cache: 'force-cache',
-      signal: controller.signal
-    });
-    return response.ok;
-  } catch (_) {
-    return false;
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
-}
-
-async function resolveLive2DResourceBase() {
-  if (!resourceBasePromise) {
-    resourceBasePromise = (async () => {
-      if (!CDN_LIVE2D_RESOURCE_BASE) return LOCAL_LIVE2D_RESOURCE_BASE;
-
-      const checks = await Promise.all([
-        checkResource(resourceUrl(CDN_LIVE2D_RESOURCE_BASE, 'tsukimi-yachiyo/tsukimi-yachiyo.model3.json')),
-        checkResource(resourceUrl(CDN_LIVE2D_RESOURCE_BASE, 'tsukimi-yachiyo/tsukimi-yachiyo.moc3'))
-      ]);
-      return checks.every(Boolean) ? CDN_LIVE2D_RESOURCE_BASE : LOCAL_LIVE2D_RESOURCE_BASE;
-    })();
-  }
-  const base = await resourceBasePromise;
-  window.TSUKUYOMI_LIVE2D_RESOURCE_BASE = base;
-  return base;
 }
 
 function loadScript(src) {
@@ -86,11 +38,11 @@ function loadScript(src) {
 }
 
 export function preloadLive2DResources() {
-  resolveLive2DResourceBase().then((base) => [
+  [
     { href: CORE_SCRIPT, as: 'script' },
     { href: ROOM_SCRIPT, as: 'script' },
-    { href: resourceUrl(base, 'tsukimi-yachiyo/tsukimi-yachiyo.model3.json'), as: 'fetch', type: 'application/json' },
-    { href: resourceUrl(base, 'tsukimi-yachiyo/tsukimi-yachiyo.moc3'), as: 'fetch', type: 'application/octet-stream' }
+    { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json', as: 'fetch', type: 'application/json' },
+    { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' }
   ].forEach((resource) => {
     if (document.head.querySelector(`link[data-room-preload="${resource.href}"]`)) return;
     const link = document.createElement('link');
@@ -101,15 +53,13 @@ export function preloadLive2DResources() {
     if (resource.type) link.type = resource.type;
     if (resource.as === 'fetch') link.crossOrigin = 'anonymous';
     document.head.appendChild(link);
-  }));
+  });
 }
 
 export async function ensureLive2DScripts() {
   if (!loadingPromise) {
     window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
-    loadingPromise = resolveLive2DResourceBase()
-      .then(() => loadScript(CORE_SCRIPT))
-      .then(() => loadScript(ROOM_SCRIPT));
+    loadingPromise = loadScript(CORE_SCRIPT).then(() => loadScript(ROOM_SCRIPT));
   }
   return loadingPromise;
 }

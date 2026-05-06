@@ -5,8 +5,6 @@
  * that can be found at https://www.live2d.com/eula/live2d-open-software-license-agreement_en.html.
  */
 
-import { fetchLive2DResource } from './resource-path';
-
 /**
  * プラットフォーム依存機能を抽象化する Cubism Platform Abstraction Layer.
  *
@@ -27,7 +25,8 @@ export class LAppPal {
     filePath: string,
     callback: (arrayBuffer: ArrayBuffer, size: number) => void
   ): void {
-    fetchLive2DResource(filePath)
+    fetch(filePath)
+      .then(response => response.arrayBuffer())
       .then(arrayBuffer => callback(arrayBuffer, arrayBuffer.byteLength));
   }
 
