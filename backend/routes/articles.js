@@ -63,7 +63,7 @@ router.post('/', authenticateToken, (req, res) => {
             content,
             category: finalCategory,
             tags,
-            authorId: req.user.id,
+            authorId: req.user.scope === 'admin' ? null : req.user.id,
             publishDate,
             readTime: read_time,
             coverImage: cover_image
