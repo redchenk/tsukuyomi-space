@@ -463,6 +463,13 @@ body.vue-room-route {
         linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.18));
 }
 
+.room-music-panel > .panel-header {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
 .music-card-main {
     min-height: 126px;
     display: grid;
