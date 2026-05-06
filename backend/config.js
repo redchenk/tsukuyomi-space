@@ -35,6 +35,15 @@ module.exports = {
     jwtSecret,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
     adminJwtExpiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '24h',
+    redis: {
+        url: process.env.REDIS_URL || '',
+        timeoutMs: Number(process.env.REDIS_TIMEOUT_MS || 1200)
+    },
+    emailCodeTtlMs: Number(process.env.EMAIL_CODE_TTL_MS || 10 * 60 * 1000),
+    emailCodeCooldownMs: Number(process.env.EMAIL_CODE_COOLDOWN_MS || 60 * 1000),
+    weatherCacheSeconds: Number(process.env.WEATHER_CACHE_SECONDS || 10 * 60),
+    loginFailureWindowSeconds: Number(process.env.LOGIN_FAILURE_WINDOW_SECONDS || 15 * 60),
+    loginFailureMax: Number(process.env.LOGIN_FAILURE_MAX || 8),
     dbPath: path.resolve(process.env.DB_PATH || path.join(dataDir, 'tsukuyomi.db')),
     corsOrigins: csvEnv('CORS_ORIGINS'),
     trustProxy: boolEnv('TRUST_PROXY', isProduction),

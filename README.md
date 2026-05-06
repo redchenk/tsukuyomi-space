@@ -110,6 +110,7 @@ tsukuyomi-space/
 - `ADMIN_PASSWORD`：首次创建或重置管理员时使用
 - `CORS_ORIGINS`：线上域名，例如 `https://your-domain.example`
 - `DATA_DIR` 或 `DB_PATH`：SQLite 数据库存放路径
+- `REDIS_URL`：可选，例如 `redis://127.0.0.1:6379/0`。配置后验证码、限流、天气缓存、登录失败次数和 token 黑名单会优先使用 Redis；未配置或 Redis 暂不可用时会退回进程内存储。
 
 复制 `.env.example` 到服务器的 `/etc/tsukuyomi-space/tsukuyomi-space.env`。真实 `.env`、密码、API Key 不应提交到仓库。
 
@@ -169,7 +170,7 @@ bash deploy/deploy.sh
 - 生产环境没有强 `JWT_SECRET` 会拒绝启动。
 - 生产环境首次创建管理员时必须提供 `ADMIN_PASSWORD`。
 - 管理员终端所有数据接口都需要管理员 JWT。
-- API 已加入基础安全响应头、CORS 白名单和内存限流。
+- API 已加入基础安全响应头、CORS 白名单和 Redis 优先的限流。
 - SQLite 默认存放在 `DATA_DIR`，不应提交到 Git。
 - 权限模型见 [docs/PERMISSIONS.md](docs/PERMISSIONS.md)。
 - Room 长期记忆说明见 [docs/ROOM_MEMORY.md](docs/ROOM_MEMORY.md)。

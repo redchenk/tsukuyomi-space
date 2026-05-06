@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const config = require('../config');
+const authState = require('../services/auth-state');
 
 function readBearerToken(req) {
     const authHeader = req.headers.authorization || '';
@@ -7,7 +9,7 @@ function readBearerToken(req) {
     return /^Bearer$/i.test(scheme) ? token : null;
 }
 
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
     const token = readBearerToken(req);
 
     if (!token) {
@@ -18,25 +20,31 @@ function authenticateToken(req, res, next) {
         });
     }
 
-    jwt.verify(token, config.jwtSecret, (err, user) => {
-        if (err) {
-            if (err.name === 'TokenExpiredError') {
-                return res.status(401).json({
-                    success: false,
-                    message: '令牌已过期，请重新登录',
-                    code: 'TOKEN_EXPIRED'
-                });
-            }
-            return res.status(403).json({
+    try {
+        if (await authState.isTokenBlacklisted(token)) {
+            return res.status(401).json({
                 success: false,
-                message: '令牌无效',
-                code: 'TOKEN_INVALID'
+                message: '令牌已失效，请重新登录',
+                code: 'TOKEN_REVOKED'
             });
         }
 
-        req.user = user;
+        req.user = jwt.verify(token, config.jwtSecret);
         next();
-    });
+    } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                success: false,
+                message: '令牌已过期，请重新登录',
+                code: 'TOKEN_EXPIRED'
+            });
+        }
+        return res.status(403).json({
+            success: false,
+            message: '令牌无效',
+            code: 'TOKEN_INVALID'
+        });
+    }
 }
 
 function requireAdmin(req, res, next) {
@@ -59,19 +67,23 @@ function requireAdmin(req, res, next) {
     next();
 }
 
-function optionalAuth(req, res, next) {
+async function optionalAuth(req, res, next) {
     const token = readBearerToken(req);
 
     if (!token) return next();
 
-    jwt.verify(token, config.jwtSecret, (err, user) => {
-        if (!err) req.user = user;
-        next();
-    });
+    try {
+        if (!(await authState.isTokenBlacklisted(token))) {
+            req.user = jwt.verify(token, config.jwtSecret);
+        }
+    } catch (_) {
+        // Optional auth deliberately ignores invalid tokens.
+    }
+    next();
 }
 
 function generateToken(payload, expiresIn = config.jwtExpiresIn) {
-    return jwt.sign(payload, config.jwtSecret, { expiresIn });
+    return jwt.sign({ ...payload, jti: payload.jti || crypto.randomUUID() }, config.jwtSecret, { expiresIn });
 }
 
 function verifyToken(token) {
@@ -84,5 +96,6 @@ module.exports = {
     optionalAuth,
     generateToken,
     verifyToken,
+    readBearerToken,
     JWT_SECRET: config.jwtSecret
 };

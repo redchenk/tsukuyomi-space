@@ -4,6 +4,7 @@ const config = require('./config');
 const adminRepository = require('./repositories/admin-repository');
 const articleRepository = require('./repositories/article-repository');
 const statsRepository = require('./repositories/stats-repository');
+const authState = require('./services/auth-state');
 const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
 
 const router = express.Router();
@@ -58,17 +59,23 @@ function sanitizeUser(user) {
     };
 }
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
     try {
         const username = String(req.body?.username || '').trim();
         const password = String(req.body?.password || '');
         if (!username || !password) return fail(res, 400, '请输入管理员账号和密码');
+        const identity = `admin:${username.toLowerCase()}`;
+        if (await authState.loginFailureState(identity) >= config.loginFailureMax) {
+            return fail(res, 429, '登录失败次数过多，请稍后再试');
+        }
 
         const admin = adminRepository.findAdminByUsername(username);
         if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
+            await authState.recordLoginFailure(identity);
             return fail(res, 401, '管理员账号或密码错误');
         }
 
+        await authState.clearLoginFailures(identity);
         const token = generateToken(adminTokenPayload(admin), config.adminJwtExpiresIn);
         ok(res, {
             token,

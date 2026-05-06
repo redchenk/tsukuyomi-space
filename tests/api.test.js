@@ -13,6 +13,7 @@ process.env.PORT = '0';
 process.env.DATA_DIR = dataDir;
 process.env.DB_PATH = path.join(dataDir, 'tsukuyomi.db');
 process.env.JWT_SECRET = 'test-jwt-secret-with-more-than-32-characters';
+process.env.REDIS_URL = '';
 process.env.ADMIN_USERNAME = 'admin';
 process.env.ADMIN_EMAIL = 'admin@example.test';
 process.env.ADMIN_PASSWORD = 'admin-test-password';
@@ -151,6 +152,18 @@ describe('auth API', () => {
 
         assert.equal(response.status, 200);
         assert.equal(body.data.username, 'normal-user');
+    });
+
+    it('blacklists a token after logout', async () => {
+        const token = await login('/api/auth/login', 'normal-user', 'user-test-password');
+        const loggedOut = await postJson('/api/auth/logout', {}, token);
+        assert.equal(loggedOut.response.status, 200);
+
+        const revoked = await request('/api/auth/me', {
+            headers: jsonHeaders(token)
+        });
+        assert.equal(revoked.response.status, 401);
+        assert.equal(revoked.body.code, 'TOKEN_REVOKED');
     });
 });
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const roomMemory = require('../services/room-memory');
+const weatherCache = require('../services/weather-cache');
 
 const router = express.Router();
 
@@ -159,19 +160,28 @@ router.get('/world', async (req, res) => {
     const lon = normalizeCoordinate(req.query.lon || process.env.ROOM_WEATHER_LON, DEFAULT_WEATHER.lon, -180, 180);
     const timezone = String(req.query.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
     const cityFallback = String(req.query.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city;
+    const cacheLocation = { lat, lon, timezone, city: cityFallback };
+    const cached = await weatherCache.getWorld(cacheLocation);
+    if (cached) {
+        res.set('Cache-Control', 'public, max-age=600');
+        return res.json({ success: true, data: { ...cached, cache: 'hit' } });
+    }
+
     const [data, city] = await Promise.all([
         fetchOpenMeteoWorld({ lat, lon, timezone, city: cityFallback }),
         resolveCityName({ lat, lon, fallback: cityFallback })
     ]);
+    const world = {
+        ...data,
+        city,
+        location: { lat, lon, timezone, city }
+    };
+    await weatherCache.setWorld(cacheLocation, world);
 
     res.set('Cache-Control', 'public, max-age=600');
     res.json({
         success: true,
-        data: {
-            ...data,
-            city,
-            location: { lat, lon, timezone, city }
-        }
+        data: world
     });
 });
 

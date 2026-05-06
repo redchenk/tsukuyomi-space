@@ -1,8 +1,8 @@
 const tls = require('tls');
 const config = require('../config');
 
-const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
-const EMAIL_CODE_COOLDOWN_MS = 60 * 1000;
+const EMAIL_CODE_TTL_MS = config.emailCodeTtlMs;
+const EMAIL_CODE_COOLDOWN_MS = config.emailCodeCooldownMs;
 
 function encodeMimeWord(text) {
     return `=?UTF-8?B?${Buffer.from(text, 'utf8').toString('base64')}?=`;

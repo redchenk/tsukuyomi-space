@@ -2,28 +2,28 @@ const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
-const { authenticateToken, generateToken } = require('../middleware/auth');
+const config = require('../config');
+const { authenticateToken, generateToken, readBearerToken } = require('../middleware/auth');
 const authRepository = require('../repositories/auth-repository');
+const authState = require('../services/auth-state');
 const { EMAIL_CODE_TTL_MS, EMAIL_CODE_COOLDOWN_MS, sendVerificationEmail } = require('../services/mailer');
 const { normalizeEmail, isEmail } = require('../validators');
 
 const router = express.Router();
 
-function latestCode(email, purpose) {
-    return authRepository.findLatestVerificationCode(email, purpose);
+function issueTokenForUser(user) {
+    return generateToken({ id: user.id, username: user.username, role: user.role }, '7d');
 }
 
-function consumeVerificationCode(email, purpose, code) {
-    const row = latestCode(email, purpose);
-    const now = Date.now();
-    if (!row || row.used_at || row.expires_at < now) return false;
-    if (!bcrypt.compareSync(String(code || '').trim(), row.code_hash)) return false;
-    authRepository.markVerificationCodeUsed(row.id, now);
+async function rejectLockedLogin(res, identity) {
+    const failures = await authState.loginFailureState(identity);
+    if (failures < config.loginFailureMax) return false;
+    res.status(429).json({ success: false, message: '登录失败次数过多，请稍后再试' });
     return true;
 }
 
-function issueTokenForUser(user) {
-    return generateToken({ id: user.id, username: user.username, role: user.role }, '7d');
+function loginIdentity(value) {
+    return normalizeEmail(value) || String(value || '').trim().toLowerCase();
 }
 
 router.post('/email-code', async (req, res) => {
@@ -43,21 +43,18 @@ router.post('/email-code', async (req, res) => {
             return res.status(404).json({ success: false, message: '该邮箱尚未注册' });
         }
 
-        const last = latestCode(email, purpose);
-        const now = Date.now();
-        if (last && now - last.created_at < EMAIL_CODE_COOLDOWN_MS) {
-            const wait = Math.ceil((EMAIL_CODE_COOLDOWN_MS - (now - last.created_at)) / 1000);
+        const wait = await authState.verificationCooldownTtl(email, purpose);
+        if (wait > 0) {
             return res.status(429).json({ success: false, message: `请 ${wait} 秒后再发送验证码` });
         }
 
         const code = crypto.randomInt(100000, 999999).toString();
-        authRepository.createVerificationCode({
-            id: uuidv4(),
+        await authState.createVerificationCode({
             email,
-            codeHash: bcrypt.hashSync(code, 10),
+            code,
             purpose,
-            expiresAt: now + EMAIL_CODE_TTL_MS,
-            createdAt: now
+            ttlMs: EMAIL_CODE_TTL_MS,
+            cooldownMs: EMAIL_CODE_COOLDOWN_MS
         });
 
         await sendVerificationEmail(email, code, purpose);
@@ -71,7 +68,7 @@ router.post('/email-code', async (req, res) => {
     }
 });
 
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
     try {
         const { username, password, emailCode } = req.body;
         const email = normalizeEmail(req.body.email);
@@ -90,7 +87,7 @@ router.post('/register', (req, res) => {
         if (existingUser) {
             return res.status(400).json({ success: false, message: '用户名或邮箱已被注册' });
         }
-        if (!consumeVerificationCode(email, 'register', emailCode)) {
+        if (!(await authState.consumeVerificationCode(email, 'register', emailCode))) {
             return res.status(400).json({ success: false, message: '验证码无效或已过期' });
         }
 
@@ -112,7 +109,7 @@ router.post('/register', (req, res) => {
     }
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
     try {
         const { username, password, emailCode } = req.body;
         const loginMethod = req.body.loginMethod === 'code' ? 'code' : 'password';
@@ -121,8 +118,12 @@ router.post('/login', (req, res) => {
             return res.status(400).json({ success: false, message: '请输入用户名或邮箱' });
         }
 
+        const identity = loginIdentity(username);
+        if (await rejectLockedLogin(res, identity)) return;
+
         const user = authRepository.findUserByUsernameOrEmail(username);
         if (!user) {
+            await authState.recordLoginFailure(identity);
             return res.status(401).json({ success: false, message: '用户名或密码错误' });
         }
 
@@ -130,7 +131,8 @@ router.post('/login', (req, res) => {
             if (!emailCode) {
                 return res.status(400).json({ success: false, message: '请填写邮箱验证码' });
             }
-            if (!consumeVerificationCode(normalizeEmail(user.email), 'login', emailCode)) {
+            if (!(await authState.consumeVerificationCode(normalizeEmail(user.email), 'login', emailCode))) {
+                await authState.recordLoginFailure(identity);
                 return res.status(401).json({ success: false, message: '验证码无效或已过期' });
             }
         } else {
@@ -138,10 +140,12 @@ router.post('/login', (req, res) => {
                 return res.status(400).json({ success: false, message: '请输入密码' });
             }
             if (!bcrypt.compareSync(password, user.password_hash)) {
+                await authState.recordLoginFailure(identity);
                 return res.status(401).json({ success: false, message: '用户名或密码错误' });
             }
         }
 
+        await authState.clearLoginFailures(identity);
         res.json({
             success: true,
             message: '登录成功',
@@ -160,6 +164,12 @@ router.post('/login', (req, res) => {
         console.error('Login failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
+});
+
+router.post('/logout', authenticateToken, async (req, res) => {
+    const token = readBearerToken(req);
+    if (token) await authState.blacklistToken(token);
+    res.json({ success: true, message: '已退出登录' });
 });
 
 router.get('/me', authenticateToken, (req, res) => {
