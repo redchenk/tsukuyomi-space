@@ -86,6 +86,8 @@
     let musicAudio = null;
     let musicTrackIndex = 0;
     let musicProgressTimer = null;
+    let musicCoverUrl = null;
+    let musicCoverRequestId = 0;
 
     function $(id) {
         return document.getElementById(id);
@@ -2072,6 +2074,54 @@
         return `${MUSIC_BASE_PATH}/${track.file.split('/').map(encodeURIComponent).join('/')}`;
     }
 
+    function readUint24(view, offset) {
+        return (view.getUint8(offset) << 16) | (view.getUint8(offset + 1) << 8) | view.getUint8(offset + 2);
+    }
+
+    function parseFlacPicture(buffer) {
+        const view = new DataView(buffer);
+        if (view.byteLength < 8) return null;
+        if (String.fromCharCode(...new Uint8Array(buffer, 0, 4)) !== 'fLaC') return null;
+        let offset = 4;
+        while (offset + 4 <= view.byteLength) {
+            const blockHeader = view.getUint8(offset);
+            const isLast = Boolean(blockHeader & 0x80);
+            const blockType = blockHeader & 0x7f;
+            const blockLength = readUint24(view, offset + 1);
+            offset += 4;
+            if (offset + blockLength > view.byteLength) return null;
+            if (blockType === 6) {
+                let cursor = offset;
+                if (cursor + 32 > offset + blockLength) return null;
+                cursor += 4;
+                const mimeLength = view.getUint32(cursor); cursor += 4;
+                if (cursor + mimeLength + 4 > offset + blockLength) return null;
+                const mime = new TextDecoder('ascii').decode(new Uint8Array(buffer, cursor, mimeLength)) || 'image/jpeg';
+                cursor += mimeLength;
+                const descriptionLength = view.getUint32(cursor); cursor += 4 + descriptionLength;
+                cursor += 16;
+                if (cursor + 4 > offset + blockLength) return null;
+                const imageLength = view.getUint32(cursor); cursor += 4;
+                if (imageLength <= 0 || cursor + imageLength > offset + blockLength) return null;
+                return new Blob([buffer.slice(cursor, cursor + imageLength)], { type: mime });
+            }
+            offset += blockLength;
+            if (isLast) break;
+        }
+        return null;
+    }
+
+    async function readFlacCover(track, requestId) {
+        const response = await fetch(musicTrackUrl(track), {
+            headers: { Range: 'bytes=0-4194303' },
+            cache: 'force-cache'
+        });
+        if (!response.ok && response.status !== 206) return null;
+        const blob = parseFlacPicture(await response.arrayBuffer());
+        if (!blob || requestId !== musicCoverRequestId) return null;
+        return URL.createObjectURL(blob);
+    }
+
     function formatMusicTime(seconds) {
         if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
         const minutes = Math.floor(seconds / 60);
@@ -2129,9 +2179,32 @@
         if (!musicAudio) musicAudio = new Audio();
         musicAudio.src = musicTrackUrl(track);
         musicAudio.preload = 'metadata';
+        loadMusicCover(track);
         updateMusicPanel();
         if (options.play || wasPlaying) {
             musicAudio.play().catch((error) => appendMessage('system', `音乐播放失败：${error.message}`));
+        }
+    }
+
+    async function loadMusicCover(track) {
+        const requestId = ++musicCoverRequestId;
+        const cover = $('musicCover');
+        if (musicCoverUrl) {
+            URL.revokeObjectURL(musicCoverUrl);
+            musicCoverUrl = null;
+        }
+        cover?.classList.remove('has-cover');
+        if (cover) cover.style.removeProperty('--music-cover-image');
+        try {
+            const nextUrl = await readFlacCover(track, requestId);
+            if (!nextUrl || requestId !== musicCoverRequestId) return;
+            musicCoverUrl = nextUrl;
+            if (cover) {
+                cover.style.setProperty('--music-cover-image', `url("${nextUrl}")`);
+                cover.classList.add('has-cover');
+            }
+        } catch (error) {
+            console.warn('Music cover unavailable:', error.message);
         }
     }
 
@@ -2191,6 +2264,18 @@
         });
         $('musicPrevBtn')?.addEventListener('click', () => loadMusicTrack(musicTrackIndex - 1, { play: Boolean(musicAudio && !musicAudio.paused) }));
         $('musicNextBtn')?.addEventListener('click', () => loadMusicTrack(musicTrackIndex + 1, { play: Boolean(musicAudio && !musicAudio.paused) }));
+        $('musicVolumeBtn')?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const popover = $('musicVolumePopover');
+            if (!popover) return;
+            popover.hidden = !popover.hidden;
+        });
+        $('musicVolumePopover')?.addEventListener('pointerdown', (event) => event.stopPropagation());
+        document.addEventListener('pointerdown', (event) => {
+            const menu = event.target?.closest?.('.music-volume-menu');
+            if (!menu && $('musicVolumePopover')) $('musicVolumePopover').hidden = true;
+        });
         $('musicTrackSelect')?.addEventListener('change', (event) => {
             const index = Number.parseInt(event.target.value, 10);
             loadMusicTrack(Number.isFinite(index) ? index : 0, { play: Boolean(musicAudio && !musicAudio.paused) });
@@ -2215,6 +2300,11 @@
         musicAudio.removeAttribute('src');
         musicAudio.load();
         musicAudio = null;
+        if (musicCoverUrl) {
+            URL.revokeObjectURL(musicCoverUrl);
+            musicCoverUrl = null;
+        }
+        musicCoverRequestId += 1;
     }
 
     function initProfileAndNote() {

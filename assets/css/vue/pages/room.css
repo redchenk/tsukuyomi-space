@@ -447,7 +447,7 @@ body.vue-room-route {
 }
 
 .room-music-panel {
-    width: min(340px, calc(100vw - 2rem));
+    width: min(300px, calc(100vw - 7.5rem));
 }
 
 .music-body {
@@ -460,7 +460,7 @@ body.vue-room-route {
     --music-cover-b: #ff9aba;
     --music-cover-c: #6f7cff;
     position: relative;
-    min-height: 168px;
+    min-height: 122px;
     display: grid;
     place-items: center;
     overflow: hidden;
@@ -473,6 +473,10 @@ body.vue-room-route {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 18px 48px rgba(0, 0, 0, 0.22);
 }
 
+.music-cover.has-cover {
+    background: var(--music-cover-image) center / cover no-repeat;
+}
+
 .music-cover::before,
 .music-cover::after {
     content: "";
@@ -481,7 +485,7 @@ body.vue-room-route {
 }
 
 .music-cover::before {
-    width: 92px;
+    width: 76px;
     aspect-ratio: 1;
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 50%;
@@ -491,11 +495,19 @@ body.vue-room-route {
     box-shadow: 0 0 44px rgba(var(--room-accent-rgb), 0.24);
 }
 
+.music-cover.has-cover::before {
+    display: none;
+}
+
 .music-cover::after {
     inset: 0;
     background:
         linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.14), transparent 46%),
         linear-gradient(180deg, transparent 56%, rgba(4, 8, 18, 0.34));
+}
+
+.music-cover.has-cover::after {
+    background: linear-gradient(180deg, rgba(4, 8, 18, 0.08), rgba(4, 8, 18, 0.38));
 }
 
 .music-cover span {
@@ -511,14 +523,17 @@ body.vue-room-route {
     white-space: nowrap;
 }
 
+.music-cover.has-cover span {
+    display: none;
+}
+
 .music-now {
     display: grid;
     gap: 0.18rem;
 }
 
 .music-now small,
-.music-progress-row,
-.music-volume-row {
+.music-progress-row {
     color: var(--room-glass-muted);
     font-size: 0.76rem;
     font-weight: 800;
@@ -534,21 +549,16 @@ body.vue-room-route {
     white-space: nowrap;
 }
 
-.music-progress-row,
-.music-volume-row {
+.music-progress-row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.58rem;
 }
 
-.music-volume-row {
-    grid-template-columns: auto minmax(0, 1fr);
-}
-
 .music-controls {
     display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    grid-template-columns: 38px minmax(0, 1fr) 38px 38px;
     gap: 0.5rem;
 }
 
@@ -569,8 +579,40 @@ body.vue-room-route {
     background: linear-gradient(135deg, #aef2ff, #ffd1e8);
 }
 
+.music-volume-menu {
+    position: relative;
+}
+
+.music-volume-popover {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 0.5rem);
+    z-index: 2;
+    width: 46px;
+    height: 138px;
+    display: grid;
+    place-items: center;
+    padding: 0.72rem 0.45rem;
+    border: 1px solid rgba(231, 249, 255, 0.16);
+    border-radius: 14px;
+    background: var(--room-glass-bg-strong);
+    box-shadow: var(--room-glass-shadow);
+    backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.music-volume-popover[hidden] {
+    display: none !important;
+}
+
+.music-volume-popover input {
+    width: 106px;
+    min-height: 24px;
+    transform: rotate(-90deg);
+    transform-origin: center;
+}
+
 .room-panel .music-progress,
-.room-panel .music-volume-row input {
+.room-panel .music-volume-popover input {
     min-height: 26px;
 }
 
@@ -1105,12 +1147,12 @@ body.vue-room-route {
     }
 
     .music-cover {
-        min-height: 132px;
+        min-height: 108px;
         border-radius: 16px;
     }
 
     .music-controls {
-        grid-template-columns: 38px minmax(0, 1fr) 38px;
+        grid-template-columns: 36px minmax(0, 1fr) 36px 36px;
     }
 
     .chat-body {

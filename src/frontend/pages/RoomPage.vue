@@ -10,13 +10,13 @@ defineEmits(['go']);
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
   '/lib/bundled/live2d-room.iife.js?v=20260505-fast1',
-  '/assets/js/room-runtime.js?v=20260506-music1'
+  '/assets/js/room-runtime.js?v=20260506-music2'
 ];
 
 const preloadResources = [
   { href: '/lib/live2dcubismcore-v5.min.js', as: 'script' },
   { href: '/lib/bundled/live2d-room.iife.js?v=20260505-fast1', as: 'script' },
-  { href: '/assets/js/room-runtime.js?v=20260506-music1', as: 'script' },
+  { href: '/assets/js/room-runtime.js?v=20260506-music2', as: 'script' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json', as: 'fetch', type: 'application/json' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' },
   { href: '/models/tsukimi-yachiyo/textures/texture_00.webp', as: 'image', type: 'image/webp' },
@@ -162,7 +162,7 @@ onBeforeUnmount(() => {
         <button class="panel-close" type="button" data-panel-close="musicPanel" aria-label="&#20851;&#38381;&#38899;&#20048;">x</button>
       </div>
       <div class="panel-content music-body">
-        <div id="musicCover" class="music-cover" aria-hidden="true">
+        <div id="musicCover" class="music-cover" role="img" aria-label="当前歌曲封面">
           <span id="musicCoverGlyph">♪</span>
         </div>
         <div class="music-now">
@@ -178,10 +178,12 @@ onBeforeUnmount(() => {
           <button id="musicPrevBtn" class="panel-btn music-icon-btn" type="button" aria-label="&#19978;&#19968;&#39318;">‹</button>
           <button id="musicPlayBtn" class="panel-btn music-play-btn" type="button">&#25773;&#25918;</button>
           <button id="musicNextBtn" class="panel-btn music-icon-btn" type="button" aria-label="&#19979;&#19968;&#39318;">›</button>
-        </div>
-        <div class="music-volume-row">
-          <span>&#38899;&#37327;</span>
-          <input id="musicVolume" type="range" min="0" max="1" step="0.01" value="0.72" aria-label="&#38899;&#37327;&#35843;&#33410;">
+          <div class="music-volume-menu">
+            <button id="musicVolumeBtn" class="panel-btn music-icon-btn" type="button" aria-label="&#38899;&#37327;">♪</button>
+            <div id="musicVolumePopover" class="music-volume-popover" hidden>
+              <input id="musicVolume" type="range" min="0" max="1" step="0.01" value="0.72" aria-label="&#38899;&#37327;&#35843;&#33410;">
+            </div>
+          </div>
         </div>
         <select id="musicTrackSelect" aria-label="&#36873;&#25321;&#27468;&#26354;"></select>
       </div>
