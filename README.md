@@ -1,28 +1,42 @@
 # Tsukuyomi Space
 
-一个带 Live2D 私人房间、文章系统、留言广场、用户中心和管理员终端的沉浸式个人网站。
+一个以“月读空间”为主题的沉浸式个人网站，包含 Hub 中枢大厅、Live2D 私人房间、文章舞台、留言广场、用户中心、管理员终端和独立 Arena 游戏入口。
 
 > 预览地址：[https://yachiyo.redchenk.com](https://yachiyo.redchenk.com)
 
-![Tsukuyomi Space](assets/images/tsukuyomi-bg.png)
+![Tsukuyomi Space Hub](assets/images/readme/hub.png)
 
 ## 项目预览
 
-| 入口视觉 | 私人房间 |
+| Hub 中枢大厅 | Live2D 私人房间 |
 | --- | --- |
-| ![月读空间主视觉](assets/images/tsukuyomi-bg.png) | ![Live2D 房间背景](assets/images/room-bg.png) |
+| ![Hub 中枢大厅](assets/images/readme/hub.png) | ![Live2D 私人房间](assets/images/readme/room.png) |
 
 ## 亮点
 
-- 沉浸式站点入口与统一导航，移动端有视频背景和图片兜底
-- Live2D 私人居所，支持浏览器侧 LLM 聊天和 TTS 语音配置
-- Room Agent 化能力：长期记忆、角色知识库、MCP 工具接入、图片理解兜底
+- 日系清新 + 毛玻璃视觉体系，支持深色 / 浅色主题切换和统一侧边导航
+- Hub 中枢大厅展示站点入口、阅读广场快捷留言、主舞台内容预览和本站访问统计
+- Live2D 私人居所，支持天气 / 时间驱动氛围、浏览器侧 LLM 聊天、TTS 语音和音乐播放卡片
+- Room Agent 化能力：长期记忆、角色知识库、MCP 工具接入、图片理解兜底和用户独立记忆
 - 角色知识库可在房间设置页管理，用于稳定还原“八千代”的人格、语气和行为边界
 - 文章浏览、详情页、编辑器与后台管理
 - 用户注册、登录、邮箱验证码与 JWT 鉴权
 - 留言广场、点赞、回复与管理员审核
-- 管理员终端：文章、留言、用户、友链、访问统计和系统配置
+- 管理员终端：文章、留言、用户权限、账号密码、友链、访问统计和系统配置
+- Arena 作为独立游戏仓库部署，并保留原 `/arena` 入口
 - PM2 + Nginx 部署方案，支持生产环境变量和 SQLite 数据目录隔离
+
+## 核心模块
+
+| 模块 | 说明 |
+| --- | --- |
+| Hub | 站点中枢大厅，聚合主要入口、广场动态、文章预览和访问统计 |
+| Room | Live2D 私人房间，包含聊天、资料、便签、天气卡片、音乐卡片和独立设置页 |
+| Stage / Article | 文章列表、详情阅读、编辑器和管理端内容发布流程 |
+| Plaza | 留言广场，支持留言、回复、点赞和管理员审核 |
+| User Center | 用户资料、账号状态和个人访问入口 |
+| Terminal | 管理员终端，管理文章、留言、用户、账号密码、友链、访问统计和系统配置 |
+| Arena | 独立部署的网页游戏入口，主站通过 `/arena` 访问 |
 
 ## 技术栈
 
@@ -55,6 +69,7 @@ npm run dev
 - `npm run test:api`：执行 auth、articles、messages、admin、room memory、MCP 等接口测试
 - `npm run test:e2e`：执行 Playwright 端到端主流程测试，需要先构建前端或提供 `E2E_BASE_URL`
 - `npm run build:web`：构建 Vue 前端产物
+- `npm run build:live2d`：重新构建 Live2D 房间运行时
 
 ## 项目结构
 
@@ -68,6 +83,7 @@ tsukuyomi-space/
 ├── lib/             # Live2D / 前端运行库
 ├── models/          # Live2D 模型资源
 ├── src/frontend/    # Vue 3 + Vite 主线前端源码
+├── tests/           # API 与 Playwright 端到端测试
 ├── .env.example     # 生产环境变量模板
 └── package.json     # 项目脚本与依赖
 ```
@@ -113,6 +129,7 @@ Room 页面正在向个人 Agent 方向演进，当前能力包括：
 - 聊天时会把相关长期记忆、角色知识、天气上下文和可用 MCP 工具一起组织进上下文。
 - MCP 支持自定义 JSON-RPC 端点，以及 MiniMax Token Plan 的站内受限桥接；图片理解在 LLM 不支持多模态时会尝试调用 MCP。
 - Room 音乐播放卡片读取服务器静态目录 `/assets/music/` 下的歌曲文件；音乐资源体积较大，不提交到 Git，部署时单独上传。
+- Room 天气卡片会优先使用用户浏览器定位获取所在地天气，并作为聊天上下文的一部分。
 
 Room 相关设置主要保存在浏览器本地，包括：
 
@@ -121,6 +138,8 @@ Room 相关设置主要保存在浏览器本地，包括：
 - `roomMCPSettings`
 - `roomMemorySettings`
 - `roomKnowledgeSettings`
+- `roomMusicTrackIndex`
+- `roomMusicVolume`
 
 ## 部署
 
