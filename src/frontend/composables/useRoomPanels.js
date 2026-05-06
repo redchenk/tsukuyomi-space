@@ -1,4 +1,4 @@
-import { reactive, ref } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 const panelDefaults = {
   chatPanel: { top: '12.3rem', right: '1.2rem' },
@@ -77,6 +77,7 @@ export function useRoomPanels() {
     };
     bringPanelForward(panelId);
     panel.classList.add('dragging');
+    event.preventDefault();
     event.currentTarget?.setPointerCapture?.(event.pointerId);
   }
 
@@ -89,12 +90,25 @@ export function useRoomPanels() {
     panelPositions[draggingPanel.value.id] = { top: `${y}px`, left: `${x}px`, right: 'auto' };
   }
 
-  function onPointerUp() {
+  function onPointerUp(event) {
     if (!draggingPanel.value) return;
+    event?.preventDefault?.();
     document.getElementById(draggingPanel.value.id)?.classList.remove('dragging');
     persistPanelPositions();
     draggingPanel.value = null;
   }
+
+  onMounted(() => {
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+  });
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerUp);
+  });
 
   return {
     activePanels,
