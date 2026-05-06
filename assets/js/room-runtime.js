@@ -423,8 +423,8 @@
             Seoul: '首尔',
             Singapore: '新加坡',
             Bangkok: '曼谷',
-            New York: 'New York',
-            Los Angeles: 'Los Angeles'
+            'New York': 'New York',
+            'Los Angeles': 'Los Angeles'
         };
         return cityMap[normalized] || normalized || '';
     }

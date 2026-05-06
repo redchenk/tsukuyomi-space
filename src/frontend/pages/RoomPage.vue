@@ -10,13 +10,13 @@ defineEmits(['go']);
 const scripts = [
   '/lib/live2dcubismcore-v5.min.js',
   '/lib/bundled/live2d-room.iife.js?v=20260505-fast1',
-  '/assets/js/room-runtime.js?v=20260505-fast1'
+  '/assets/js/room-runtime.js?v=20260506-weather1'
 ];
 
 const preloadResources = [
   { href: '/lib/live2dcubismcore-v5.min.js', as: 'script' },
   { href: '/lib/bundled/live2d-room.iife.js?v=20260505-fast1', as: 'script' },
-  { href: '/assets/js/room-runtime.js?v=20260505-fast1', as: 'script' },
+  { href: '/assets/js/room-runtime.js?v=20260506-weather1', as: 'script' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json', as: 'fetch', type: 'application/json' },
   { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' },
   { href: '/models/tsukimi-yachiyo/textures/texture_00.webp', as: 'image', type: 'image/webp' },
