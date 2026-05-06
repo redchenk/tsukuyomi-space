@@ -67,6 +67,7 @@
     let zIndexCounter = 30;
     let live2dReadyListener = null;
     let worldRefreshTimer = null;
+    let worldLocationPromise = null;
     let memoryDbPromise = null;
     let pendingImageAttachment = null;
 
@@ -407,6 +408,50 @@
         } catch (_) {
             return '';
         }
+    }
+
+    function cityFromTimezone(timezone = '') {
+        const raw = String(timezone || '').split('/').pop() || '';
+        const normalized = raw.replace(/_/g, ' ').trim();
+        const cityMap = {
+            'Hong Kong': '香港',
+            Shanghai: '上海',
+            Chongqing: '重庆',
+            Urumqi: '乌鲁木齐',
+            Taipei: '台北',
+            Tokyo: '东京',
+            Seoul: '首尔',
+            Singapore: '新加坡',
+            Bangkok: '曼谷',
+            New York: 'New York',
+            Los Angeles: 'Los Angeles'
+        };
+        return cityMap[normalized] || normalized || '';
+    }
+
+    function readRoomWorldLocation() {
+        if (worldLocationPromise) return worldLocationPromise;
+        const timezone = getBrowserTimezone();
+        const city = cityFromTimezone(timezone);
+        if (!navigator.geolocation) {
+            worldLocationPromise = Promise.resolve(timezone ? { timezone, city } : null);
+            return worldLocationPromise;
+        }
+
+        worldLocationPromise = new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => resolve({
+                    lat: position.coords.latitude,
+                    lon: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    timezone,
+                    city
+                }),
+                () => resolve(timezone ? { timezone, city } : null),
+                { enableHighAccuracy: false, maximumAge: 20 * 60 * 1000, timeout: 3000 }
+            );
+        });
+        return worldLocationPromise;
     }
 
     function readUserWeatherLocation(message) {
@@ -1250,7 +1295,13 @@
 
     async function refreshRoomWorld() {
         try {
-            const response = await fetch(WORLD_ENDPOINT, { cache: 'no-store' });
+            const location = await readRoomWorldLocation();
+            const params = new URLSearchParams();
+            if (location?.lat != null) params.set('lat', String(location.lat));
+            if (location?.lon != null) params.set('lon', String(location.lon));
+            if (location?.timezone) params.set('timezone', String(location.timezone));
+            if (location?.city) params.set('city', String(location.city));
+            const response = await fetch(`${WORLD_ENDPOINT}${params.toString() ? `?${params}` : ''}`, { cache: 'no-store' });
             const result = await response.json().catch(() => ({}));
             const world = normalizeWorld(result.data || {});
             applyRoomWorld(world);
@@ -1270,6 +1321,7 @@
     function destroyRoomWorld() {
         clearInterval(worldRefreshTimer);
         worldRefreshTimer = null;
+        worldLocationPromise = null;
         const page = getRoomPage();
         if (!page) return;
         delete page.dataset.timePhase;
@@ -1929,7 +1981,7 @@
         document.addEventListener('pointermove', (event) => {
             if (!draggedPanel) return;
             const x = Math.max(8, Math.min(window.innerWidth - draggedPanel.offsetWidth - 8, event.clientX - dragOffset.x));
-            const y = Math.max(72, Math.min(window.innerHeight - draggedPanel.offsetHeight - 8, event.clientY - dragOffset.y));
+            const y = Math.max(8, Math.min(window.innerHeight - draggedPanel.offsetHeight - 8, event.clientY - dragOffset.y));
             draggedPanel.style.left = `${x}px`;
             draggedPanel.style.top = `${y}px`;
             draggedPanel.style.right = 'auto';

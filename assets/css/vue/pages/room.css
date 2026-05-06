@@ -446,15 +446,6 @@ body.vue-room-route {
     width: min(410px, calc(100vw - 2rem));
 }
 
-#chatPanel {
-    top: 12.3rem !important;
-}
-
-#profilePanel,
-#notePanel {
-    left: max(6.2rem, clamp(1rem, 3vw, 2rem) + 5rem) !important;
-}
-
 .room-chat-panel.image-drag-over {
     border-color: rgba(126, 219, 232, 0.72);
     box-shadow: 0 22px 70px rgba(0, 0, 0, 0.34), 0 0 0 3px rgba(126, 219, 232, 0.18);

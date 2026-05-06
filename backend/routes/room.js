@@ -48,6 +48,47 @@ function weatherFromCode(code) {
     return match ? match.weather : 'cloudy';
 }
 
+async function resolveCityName({ lat, lon, fallback }) {
+    if (process.env.ROOM_WEATHER_REVERSE_OFFLINE === 'true' || typeof fetch !== 'function') {
+        return fallback;
+    }
+
+    const params = new URLSearchParams({
+        format: 'jsonv2',
+        lat: String(lat),
+        lon: String(lon),
+        zoom: '10',
+        addressdetails: '1',
+        'accept-language': 'zh-CN'
+    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, {
+            signal: controller.signal,
+            headers: {
+                Accept: 'application/json',
+                'User-Agent': 'tsukuyomi-space/2.1 room-weather'
+            }
+        });
+        if (!response.ok) return fallback;
+        const payload = await response.json();
+        const address = payload.address || {};
+        return address.city
+            || address.town
+            || address.village
+            || address.county
+            || address.state
+            || payload.name
+            || fallback;
+    } catch (_) {
+        return fallback;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 function fallbackWorld(reason, city = process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city) {
     const now = new Date();
     return {
@@ -117,8 +158,11 @@ router.get('/world', async (req, res) => {
     const lat = normalizeCoordinate(req.query.lat || process.env.ROOM_WEATHER_LAT, DEFAULT_WEATHER.lat, -90, 90);
     const lon = normalizeCoordinate(req.query.lon || process.env.ROOM_WEATHER_LON, DEFAULT_WEATHER.lon, -180, 180);
     const timezone = String(req.query.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
-    const city = String(req.query.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city;
-    const data = await fetchOpenMeteoWorld({ lat, lon, timezone, city });
+    const cityFallback = String(req.query.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city;
+    const [data, city] = await Promise.all([
+        fetchOpenMeteoWorld({ lat, lon, timezone, city: cityFallback }),
+        resolveCityName({ lat, lon, fallback: cityFallback })
+    ]);
 
     res.set('Cache-Control', 'public, max-age=600');
     res.json({

@@ -138,7 +138,7 @@ onBeforeUnmount(() => {
       <button class="panel-toggle-btn" type="button" @click="$emit('go', '/room/settings')">&#35774;&#32622;</button>
     </div>
 
-    <section id="chatPanel" class="draggable-panel room-panel room-chat-panel" style="top: 6.4rem; right: 1.2rem;">
+    <section id="chatPanel" class="draggable-panel room-panel room-chat-panel" style="top: 12.3rem; right: 1.2rem;">
       <div class="panel-header">
         <span class="panel-title">&#19982;&#36745;&#22812;&#23020;&#32842;&#22825;</span>
         <button class="panel-close" type="button" data-panel-close="chatPanel" aria-label="&#20851;&#38381;&#32842;&#22825;">x</button>
@@ -155,7 +155,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section id="profilePanel" class="draggable-panel room-panel" style="top: 6.4rem; left: 1.2rem;" hidden>
+    <section id="profilePanel" class="draggable-panel room-panel" style="top: 6.4rem; left: max(6.2rem, calc(clamp(1rem, 3vw, 2rem) + 5rem));" hidden>
       <div class="panel-header">
         <span class="panel-title">&#20010;&#20154;&#36164;&#26009;</span>
         <button class="panel-close" type="button" data-panel-close="profilePanel" aria-label="&#20851;&#38381;&#36164;&#26009;">x</button>
@@ -174,7 +174,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section id="notePanel" class="draggable-panel room-panel" style="top: 18.2rem; left: 1.2rem;" hidden>
+    <section id="notePanel" class="draggable-panel room-panel" style="top: 18.2rem; left: max(6.2rem, calc(clamp(1rem, 3vw, 2rem) + 5rem));" hidden>
       <div class="panel-header">
         <span class="panel-title">&#20415;&#31614;</span>
         <button class="panel-close" type="button" data-panel-close="notePanel" aria-label="&#20851;&#38381;&#20415;&#31614;">x</button>
