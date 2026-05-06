@@ -51,6 +51,7 @@ backup_sqlite() {
 backup_sqlite
 
 npm ci --omit=dev
+npm run build:live2d
 npm run build:web
 pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 pm2 save

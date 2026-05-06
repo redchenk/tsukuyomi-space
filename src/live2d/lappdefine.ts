@@ -6,6 +6,7 @@
  */
 
 import { LogLevel } from '@framework/live2dcubismframework';
+import { getLive2DResourceBase } from './resource-path';
 
 /**
  * Sample Appで使用する定数
@@ -33,7 +34,7 @@ export const ViewLogicalMaxBottom = -2.0;
 export const ViewLogicalMaxTop = 2.0;
 
 // 相対パス
-export const ResourcesPath = '/models/';
+export const ResourcesPath = getLive2DResourceBase();
 
 // モデルの後ろにある背景の画像ファイル
 export const BackImageName = '';
