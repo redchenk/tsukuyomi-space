@@ -1081,15 +1081,6 @@ onMounted(loadSettings);
             <button class="primary-btn" type="button" @click="saveLLM">保存 LLM</button>
             <button class="ghost-btn" type="button" @click="testLLM">测试连接</button>
           </div>
-          <section v-if="testDialog.visible && testDialog.target === 'llm'" class="room-test-panel" aria-live="polite">
-            <div class="room-test-dialog-head">
-              <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
-              <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
-            </div>
-            <h3>{{ testDialog.title }}</h3>
-            <p>{{ testDialog.message }}</p>
-            <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
-          </section>
         </div>
       </article>
 
@@ -1118,15 +1109,6 @@ onMounted(loadSettings);
             <button class="primary-btn" type="button" @click="saveTTS">保存 TTS</button>
             <button class="ghost-btn" type="button" @click="testTTS">测试语音</button>
           </div>
-          <section v-if="testDialog.visible && testDialog.target === 'tts'" class="room-test-panel" aria-live="polite">
-            <div class="room-test-dialog-head">
-              <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
-              <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
-            </div>
-            <h3>{{ testDialog.title }}</h3>
-            <p>{{ testDialog.message }}</p>
-            <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
-          </section>
         </div>
       </article>
 
@@ -1289,25 +1271,27 @@ onMounted(loadSettings);
       </article>
     </section>
 
-    <div
-      v-if="testDialog.visible"
-      class="room-test-modal"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="testDialog.title || testDialogTargetLabel()"
-      @click.self="closeTestDialog"
-    >
-      <section class="room-test-modal-card">
-        <div class="room-test-dialog-head">
-          <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
-          <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
-        </div>
-        <small class="room-test-target">{{ testDialogTargetLabel() }}</small>
-        <h3>{{ testDialog.title }}</h3>
-        <p>{{ testDialog.message }}</p>
-        <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
-      </section>
-    </div>
+    <Teleport to="body">
+      <div
+        v-if="testDialog.visible"
+        class="room-test-modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="testDialog.title || testDialogTargetLabel()"
+        @click.self="closeTestDialog"
+      >
+        <section class="room-test-modal-card">
+          <div class="room-test-dialog-head">
+            <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
+            <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
+          </div>
+          <small class="room-test-target">{{ testDialogTargetLabel() }}</small>
+          <h3>{{ testDialog.title }}</h3>
+          <p>{{ testDialog.message }}</p>
+          <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
+        </section>
+      </div>
+    </Teleport>
 
     <div v-if="toast.visible" class="plaza-toast show">{{ toast.text }}</div>
   </main>
