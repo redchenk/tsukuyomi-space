@@ -203,6 +203,13 @@ function closeTestDialog() {
   testDialog.visible = false;
 }
 
+function testDialogTargetLabel(target = testDialog.target) {
+  if (target === 'llm') return 'LLM';
+  if (target === 'tts') return 'TTS';
+  if (target === 'mcp') return 'MCP';
+  return '连接测试';
+}
+
 function testStatusLabel(status) {
   return status === 'loading' ? '测试中' : status === 'success' ? '成功' : status === 'warning' ? '注意' : '失败';
 }
@@ -955,6 +962,46 @@ async function testMCP() {
   }
 }
 
+async function testMCPWithDialog() {
+  saveMCP();
+  openTestDialog(
+    'mcp',
+    'loading',
+    'MCP 工具测试',
+    '正在请求 MCP tools/list...',
+    `端点：${mcp.endpoint || '未填写'}\nProvider：${mcp.provider || 'custom'}\n启用状态：${mcp.enabled ? '已启用' : '未启用'}`
+  );
+  try {
+    const result = await callMcp('tools/list');
+    const tools = Array.isArray(result.tools) ? result.tools : [];
+    mcp.tools = tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description || '',
+      inputSchema: tool.inputSchema || tool.input_schema || { type: 'object', properties: {} }
+    })).filter((tool) => tool.name);
+    saveMCP();
+    openTestDialog(
+      'mcp',
+      mcp.tools.length ? 'success' : 'warning',
+      'MCP 工具测试',
+      mcp.tools.length ? `连接成功，发现 ${mcp.tools.length} 个工具。` : 'MCP 已响应，但未发现可用工具。',
+      mcp.tools.length
+        ? mcp.tools.map((tool, index) => `${index + 1}. ${tool.name}${tool.description ? ` - ${tool.description}` : ''}`).join('\n')
+        : JSON.stringify(result, null, 2).slice(0, 800)
+    );
+    showToast(mcp.tools.length ? `MCP 已连接，发现 ${mcp.tools.length} 个工具` : 'MCP 已连接，但未发现工具');
+  } catch (error) {
+    openTestDialog(
+      'mcp',
+      'error',
+      'MCP 工具测试',
+      'MCP 测试失败。',
+      `${error.message}\n\n请确认 MCP 端点可访问、支持 JSON-RPC tools/list，并且如果由浏览器直连则需要允许 CORS。`
+    );
+    showToast(`MCP 测试失败：${error.message}`);
+  }
+}
+
 onMounted(loadSettings);
 </script>
 
@@ -1209,11 +1256,31 @@ onMounted(loadSettings);
           </div>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveMCP">保存 MCP</button>
-            <button class="ghost-btn" type="button" @click="testMCP">测试并发现工具</button>
+            <button class="ghost-btn" type="button" @click="testMCPWithDialog">测试并发现工具</button>
           </div>
         </div>
       </article>
     </section>
+
+    <div
+      v-if="testDialog.visible"
+      class="room-test-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="testDialog.title || testDialogTargetLabel()"
+      @click.self="closeTestDialog"
+    >
+      <section class="room-test-modal-card">
+        <div class="room-test-dialog-head">
+          <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
+          <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
+        </div>
+        <small class="room-test-target">{{ testDialogTargetLabel() }}</small>
+        <h3>{{ testDialog.title }}</h3>
+        <p>{{ testDialog.message }}</p>
+        <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
+      </section>
+    </div>
 
     <div v-if="toast.visible" class="plaza-toast show">{{ toast.text }}</div>
   </main>

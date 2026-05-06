@@ -394,6 +394,65 @@
     background: rgba(224, 242, 254, 0.94);
 }
 
+.room-test-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.42);
+    backdrop-filter: blur(8px);
+}
+
+.room-test-modal-card {
+    width: min(560px, 100%);
+    max-height: min(78vh, 680px);
+    overflow: auto;
+    border: 1px solid rgba(139, 168, 205, 0.26);
+    border-radius: 18px;
+    padding: 1.1rem;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 28px 90px rgba(15, 23, 42, 0.34);
+}
+
+.room-test-target {
+    display: block;
+    margin-top: 0.9rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.room-test-modal-card h3 {
+    margin: 0.35rem 0 0.5rem;
+    color: var(--ink);
+    font-size: 1.18rem;
+}
+
+.room-test-modal-card p {
+    margin: 0;
+    color: var(--text);
+    line-height: 1.75;
+}
+
+.room-test-modal-card pre {
+    max-height: 320px;
+    overflow: auto;
+    margin: 0.9rem 0 0;
+    padding: 0.85rem;
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 12px;
+    color: var(--text);
+    background: rgba(248, 250, 252, 0.96);
+    font: 0.84rem/1.6 Consolas, "SFMono-Regular", monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 html[data-theme="dark"] .room-settings-card input,
 html[data-theme="dark"] .room-settings-card select,
 html[data-theme="dark"] .room-settings-card textarea {
@@ -454,6 +513,17 @@ html[data-theme="dark"] .room-test-panel {
 html[data-theme="dark"] .room-test-panel pre {
     border-color: rgba(177, 205, 238, 0.16);
     background: rgba(2, 6, 23, 0.72);
+}
+
+html[data-theme="dark"] .room-test-modal-card {
+    border-color: rgba(177, 205, 238, 0.18);
+    background: rgba(15, 23, 42, 0.98);
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+}
+
+html[data-theme="dark"] .room-test-modal-card pre {
+    border-color: rgba(177, 205, 238, 0.16);
+    background: rgba(2, 6, 23, 0.8);
 }
 
 @media (max-width: 860px) {
