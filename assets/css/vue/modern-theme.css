@@ -1074,6 +1074,30 @@ body .page .comment-header span {
     -webkit-text-fill-color: currentColor !important;
 }
 
+html[data-theme="light"] body .article-page .article-content {
+    border-color: rgba(139, 168, 205, 0.2);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 252, 255, 0.9));
+    box-shadow: 0 18px 46px rgba(86, 112, 160, 0.12);
+    color: #263348 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+html[data-theme="light"] body .article-page .article-content :where(p, li) {
+    color: #263348 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+html[data-theme="light"] body .article-page .article-content :where(h2, h3) {
+    color: #5266b8 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+html[data-theme="light"] body .article-page .article-content code {
+    color: #4657a8;
+    background: rgba(126, 219, 232, 0.18);
+}
+
 html[data-theme="dark"] body .page .hub-copy,
 html[data-theme="dark"] body .page .hub-feature,
 html[data-theme="dark"] body .page .hub-grid-wrap,
