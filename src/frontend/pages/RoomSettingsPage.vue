@@ -627,7 +627,7 @@ async function testTTS() {
       : await fetch(request.apiUrl, request.options);
     if (!response.ok) throw new Error((await response.text()).slice(0, 160) || `HTTP ${response.status}`);
     const contentType = response.headers.get('content-type') || '';
-    const blob = contentType.includes('application/json') || request.jsonAudioType
+    const blob = contentType.includes('application/json')
       ? makeAudioBlobFromEncoded(pickAudioBase64(await response.json()), request.jsonAudioType || 'audio/mp3')
       : await response.blob();
     await new Audio(URL.createObjectURL(blob)).play();
