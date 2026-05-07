@@ -16,6 +16,7 @@ const isImmersiveRoute = computed(() => isAccessRoute.value);
 const isAuthed = computed(() => Boolean(user.value));
 const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
 const VISIT_POPUP_SEEN_KEY = 'tsukuyomi_visit_popup_seen';
+const VISIT_POPUP_PENDING_KEY = 'tsukuyomi_visit_popup_after_access';
 const visitPopup = ref({
   visible: false,
   title: '',
@@ -55,6 +56,9 @@ function toggleTheme() {
 }
 
 function go(path) {
+  if (isAccessRoute.value && path === '/hub') {
+    sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1');
+  }
   router.push(path);
 }
 
@@ -73,7 +77,8 @@ function makePopupSignature(settings) {
 }
 
 async function loadVisitPopup() {
-  if (route.name === 'terminal') return;
+  if (route.name !== 'hub' || sessionStorage.getItem(VISIT_POPUP_PENDING_KEY) !== '1') return;
+  sessionStorage.removeItem(VISIT_POPUP_PENDING_KEY);
   try {
     const response = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
     const result = await response.json();
@@ -107,8 +112,8 @@ watch(isAccessRoute, (next) => {
 watch(lang, setLang, { immediate: true });
 watch(theme, setTheme, { immediate: true });
 watch(() => route.fullPath, refreshUser, { immediate: true });
+watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
-  loadVisitPopup();
   if (localStorage.getItem(VIEW_RECORDED_KEY) === '1') return;
   localStorage.setItem(VIEW_RECORDED_KEY, '1');
   const payload = JSON.stringify({ path: route.fullPath || '/' });
