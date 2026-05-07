@@ -15,6 +15,14 @@ const isAccessRoute = computed(() => route.name === 'access' || route.name === '
 const isImmersiveRoute = computed(() => isAccessRoute.value);
 const isAuthed = computed(() => Boolean(user.value));
 const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
+const VISIT_POPUP_SEEN_KEY = 'tsukuyomi_visit_popup_seen';
+const visitPopup = ref({
+  visible: false,
+  title: '',
+  content: '',
+  button: '我知道了',
+  signature: ''
+});
 
 function loadStoredUser() {
   const raw = localStorage.getItem('tsukuyomi_user') || localStorage.getItem('admin_user');
@@ -56,6 +64,42 @@ function logout() {
   router.push('/');
 }
 
+function makePopupSignature(settings) {
+  return encodeURIComponent([
+    settings.visitPopupTitle || '',
+    settings.visitPopupContent || '',
+    settings.visitPopupButton || ''
+  ].join('\n'));
+}
+
+async function loadVisitPopup() {
+  if (route.name === 'terminal') return;
+  try {
+    const response = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
+    const result = await response.json();
+    const settings = result?.data || {};
+    const content = String(settings.visitPopupContent || '').trim();
+    const title = String(settings.visitPopupTitle || '').trim();
+    if (settings.visitPopupEnabled !== true || (!title && !content)) return;
+    const signature = makePopupSignature(settings);
+    if (localStorage.getItem(VISIT_POPUP_SEEN_KEY) === signature) return;
+    visitPopup.value = {
+      visible: true,
+      title: title || '月读空间',
+      content,
+      button: String(settings.visitPopupButton || '').trim() || '我知道了',
+      signature
+    };
+  } catch (error) {
+    console.warn('Visit popup settings failed:', error);
+  }
+}
+
+function closeVisitPopup() {
+  localStorage.setItem(VISIT_POPUP_SEEN_KEY, visitPopup.value.signature);
+  visitPopup.value.visible = false;
+}
+
 watch(isAccessRoute, (next) => {
   document.body.classList.toggle('vue-access-route', next);
 }, { immediate: true });
@@ -64,6 +108,7 @@ watch(lang, setLang, { immediate: true });
 watch(theme, setTheme, { immediate: true });
 watch(() => route.fullPath, refreshUser, { immediate: true });
 onMounted(() => {
+  loadVisitPopup();
   if (localStorage.getItem(VIEW_RECORDED_KEY) === '1') return;
   localStorage.setItem(VIEW_RECORDED_KEY, '1');
   const payload = JSON.stringify({ path: route.fullPath || '/' });
@@ -106,4 +151,13 @@ onMounted(() => {
       @toggle-theme="toggleTheme"
     />
   </AppShell>
+
+  <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
+    <section class="visit-popup-card" role="dialog" aria-modal="true" :aria-label="visitPopup.title">
+      <span class="visit-popup-kicker">Tsukuyomi Notice</span>
+      <h2>{{ visitPopup.title }}</h2>
+      <p>{{ visitPopup.content }}</p>
+      <button class="primary-btn" type="button" @click="closeVisitPopup">{{ visitPopup.button }}</button>
+    </section>
+  </div>
 </template>

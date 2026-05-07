@@ -413,6 +413,15 @@ body .page.terminal-page textarea::placeholder {
     font: inherit;
 }
 
+.terminal-settings-block {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-lg);
+    background: var(--ts-card);
+}
+
 .terminal-check {
     display: flex;
     align-items: center;

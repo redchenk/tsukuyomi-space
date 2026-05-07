@@ -140,6 +140,10 @@ function seedSiteSettings() {
     insert.run('siteAnnouncement', '欢迎访问月读空间');
     insert.run('sakuraEffect', 'true');
     insert.run('scanlineEffect', 'true');
+    insert.run('visitPopupEnabled', 'false');
+    insert.run('visitPopupTitle', '欢迎来到月读空间');
+    insert.run('visitPopupContent', '');
+    insert.run('visitPopupButton', '我知道了');
 }
 
 function initDatabase() {

@@ -398,7 +398,7 @@ router.get('/settings', (req, res) => {
 
 router.post('/settings', (req, res) => {
     try {
-        const allowed = ['siteTitle', 'siteAnnouncement', 'sakuraEffect', 'scanlineEffect'];
+        const allowed = ['siteTitle', 'siteAnnouncement', 'sakuraEffect', 'scanlineEffect', 'visitPopupEnabled', 'visitPopupTitle', 'visitPopupContent', 'visitPopupButton'];
         adminRepository.saveSettings(req.body, allowed);
         ok(res, null, '配置已保存');
     } catch (error) {

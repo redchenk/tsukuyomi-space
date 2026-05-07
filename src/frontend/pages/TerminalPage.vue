@@ -35,7 +35,16 @@ const terminal = reactive({
   adminPassword: { currentPassword: '', newPassword: '', confirmPassword: '' },
   links: [],
   newLink: { name: '', url: '' },
-  settings: { siteTitle: '', siteAnnouncement: '', sakuraEffect: true, scanlineEffect: true }
+  settings: {
+    siteTitle: '',
+    siteAnnouncement: '',
+    sakuraEffect: true,
+    scanlineEffect: true,
+    visitPopupEnabled: false,
+    visitPopupTitle: '欢迎来到月读空间',
+    visitPopupContent: '',
+    visitPopupButton: '我知道了'
+  }
 });
 
 let clockTimer = 0;
@@ -424,6 +433,12 @@ onUnmounted(() => {
             <div class="terminal-panel-head"><h2>系统配置</h2><button class="primary-btn" type="submit">保存配置</button></div>
             <label>站点标题<input v-model="terminal.settings.siteTitle"></label>
             <label>公告内容<textarea v-model="terminal.settings.siteAnnouncement"></textarea></label>
+            <div class="terminal-settings-block">
+              <label class="terminal-check"><input v-model="terminal.settings.visitPopupEnabled" type="checkbox"> 启用访问弹窗</label>
+              <label>弹窗标题<input v-model="terminal.settings.visitPopupTitle" placeholder="欢迎来到月读空间"></label>
+              <label>弹窗内容<textarea v-model="terminal.settings.visitPopupContent" placeholder="输入访客进入网站时看到的内容"></textarea></label>
+              <label>按钮文字<input v-model="terminal.settings.visitPopupButton" placeholder="我知道了"></label>
+            </div>
             <label class="terminal-check"><input v-model="terminal.settings.sakuraEffect" type="checkbox"> 启用环境动效</label>
             <label class="terminal-check"><input v-model="terminal.settings.scanlineEffect" type="checkbox"> 启用扫描线效果</label>
           </form>

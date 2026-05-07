@@ -1,0 +1,81 @@
+.visit-popup-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    padding: clamp(1rem, 4vw, 2rem);
+    background: rgba(9, 15, 32, 0.34);
+    backdrop-filter: blur(12px);
+    animation: ts-fade-in var(--ts-motion-normal) var(--ts-ease-standard);
+}
+
+.visit-popup-card {
+    width: min(520px, 100%);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-xl);
+    background: var(--ts-glass-strong);
+    box-shadow: var(--ts-shadow-lg);
+    color: var(--ts-text);
+    padding: clamp(1.25rem, 4vw, 2rem);
+    animation: ts-rise-in var(--ts-motion-slow) var(--ts-ease-standard);
+}
+
+.visit-popup-kicker {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.65rem;
+    padding: 0 0.7rem;
+    border: 1px solid var(--ts-border);
+    border-radius: 999px;
+    color: var(--ts-accent);
+    background: var(--ts-card);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.visit-popup-card h2 {
+    margin: 1rem 0 0.7rem;
+    color: var(--ts-text-strong);
+    font-family: var(--ts-font-serif);
+    font-size: clamp(1.45rem, 5vw, 2.1rem);
+    line-height: 1.2;
+}
+
+.visit-popup-card p {
+    margin: 0 0 1.25rem;
+    color: var(--ts-text);
+    line-height: 1.85;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.visit-popup-card .primary-btn {
+    width: 100%;
+}
+
+@keyframes ts-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes ts-rise-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (max-width: 640px) {
+    .visit-popup-backdrop {
+        align-items: end;
+    }
+
+    .visit-popup-card {
+        border-radius: var(--ts-radius-lg);
+    }
+}
