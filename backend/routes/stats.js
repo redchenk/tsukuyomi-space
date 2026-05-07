@@ -3,6 +3,17 @@ const statsRepository = require('../repositories/stats-repository');
 
 const router = express.Router();
 
+function normalizeIp(value) {
+    return String(value || '')
+        .split(',')[0]
+        .trim()
+        .replace(/^::ffff:/, '') || 'unknown';
+}
+
+function clientIp(req) {
+    return normalizeIp(req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || '');
+}
+
 router.get('/', (req, res) => {
     try {
         const articles = statsRepository.articleCounters();
@@ -19,7 +30,7 @@ router.get('/', (req, res) => {
                 messages: messageCount,
                 todayViews: views.today || 0,
                 weekViews: views.week || 0,
-                totalViews: Math.max(views.total || 0, articles.views || 0),
+                totalViews: views.total || 0,
                 uptime: process.uptime()
             }
         });
@@ -31,15 +42,16 @@ router.get('/', (req, res) => {
 
 router.post('/view', (req, res) => {
     try {
-        const eventData = JSON.stringify({
-            path: req.body?.path || req.headers.referer || '',
-            userAgent: req.headers['user-agent'] || '',
-            ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || ''
-        });
-        const duplicate = statsRepository.findRecentView(eventData, 5);
+        const ip = clientIp(req);
+        const duplicate = statsRepository.findViewByIp(ip);
         if (duplicate) {
             return res.json({ success: true, message: '操作成功', deduped: true });
         }
+        const eventData = JSON.stringify({
+            path: req.body?.path || req.headers.referer || '',
+            userAgent: req.headers['user-agent'] || '',
+            ip
+        });
         statsRepository.recordView(eventData);
         res.json({ success: true, message: '操作成功' });
     } catch (error) {

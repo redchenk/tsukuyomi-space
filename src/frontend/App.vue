@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { clearSession } from './api/client';
 import { i18n } from './i18n';
@@ -14,7 +14,7 @@ const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isImmersiveRoute = computed(() => isAccessRoute.value);
 const isAuthed = computed(() => Boolean(user.value));
-let lastTrackedView = { path: '', time: 0 };
+const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
 
 function loadStoredUser() {
   const raw = localStorage.getItem('tsukuyomi_user') || localStorage.getItem('admin_user');
@@ -63,11 +63,10 @@ watch(isAccessRoute, (next) => {
 watch(lang, setLang, { immediate: true });
 watch(theme, setTheme, { immediate: true });
 watch(() => route.fullPath, refreshUser, { immediate: true });
-watch(() => route.fullPath, (path) => {
-  const now = Date.now();
-  if (lastTrackedView.path === path && now - lastTrackedView.time < 5000) return;
-  lastTrackedView = { path, time: now };
-  const payload = JSON.stringify({ path });
+onMounted(() => {
+  if (localStorage.getItem(VIEW_RECORDED_KEY) === '1') return;
+  localStorage.setItem(VIEW_RECORDED_KEY, '1');
+  const payload = JSON.stringify({ path: route.fullPath || '/' });
   if (navigator.sendBeacon) {
     navigator.sendBeacon('/api/stats/view', new Blob([payload], { type: 'application/json' }));
     return;
@@ -78,7 +77,7 @@ watch(() => route.fullPath, (path) => {
     body: payload,
     keepalive: true
   }).catch(() => {});
-}, { immediate: true });
+});
 </script>
 
 <template>

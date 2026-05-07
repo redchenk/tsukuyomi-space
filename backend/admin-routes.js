@@ -136,7 +136,7 @@ router.get('/stats', (req, res) => {
             articles: articles.count || 0,
             pendingMessages: pendingMessages || 0,
             todayViews: views.today || 0,
-            totalViews: Math.max(views.total || 0, articles.views || 0),
+            totalViews: views.total || 0,
             users: users || 0
         });
     } catch (error) {
@@ -151,7 +151,7 @@ router.get('/analytics', (req, res) => {
         const articles = statsRepository.articleCounters();
         const messages = statsRepository.messageCount();
         const users = statsRepository.userCount();
-        const totalViews = Math.max(views.total || 0, articles.views || 0);
+        const totalViews = views.total || 0;
 
         ok(res, {
             todayViews: views.today || 0,

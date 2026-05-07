@@ -271,11 +271,25 @@ describe('stats API', () => {
         assert.ok('articleViews' in body.data);
     });
 
-    it('deduplicates repeated view records from the same visitor burst', async () => {
+    it('deduplicates repeated view records from the same visitor IP', async () => {
         const before = await request('/api/stats');
         const beforeToday = before.body.data.todayViews;
-        const first = await postJson('/api/stats/view', { path: '/room' });
-        const second = await postJson('/api/stats/view', { path: '/room' });
+        const first = await request('/api/stats/view', {
+            method: 'POST',
+            headers: {
+                ...jsonHeaders(),
+                'x-forwarded-for': '203.0.113.10'
+            },
+            body: JSON.stringify({ path: '/room' })
+        });
+        const second = await request('/api/stats/view', {
+            method: 'POST',
+            headers: {
+                ...jsonHeaders(),
+                'x-forwarded-for': '203.0.113.10'
+            },
+            body: JSON.stringify({ path: '/plaza' })
+        });
         assert.equal(first.response.status, 200);
         assert.equal(second.response.status, 200);
         assert.equal(second.body.deduped, true);
