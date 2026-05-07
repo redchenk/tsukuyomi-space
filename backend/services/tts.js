@@ -48,6 +48,13 @@ function makeAudioBufferFromEncoded(value) {
     return Buffer.from(text, 'base64');
 }
 
+function makeProviderError(provider, status, body) {
+    const detail = String(body || '').replace(/\s+/g, ' ').trim().substring(0, 240);
+    const error = new Error(`${provider} TTS request failed (${status})${detail ? `: ${detail}` : ''}`);
+    error.status = status;
+    return error;
+}
+
 async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio }) {
     const useProvider = provider || process.env.TTS_PROVIDER || 'mimo';
     const useApiKey = apiKey || TTS_API_KEY;
@@ -90,7 +97,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
         });
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`MiMo TTS request failed (${response.status}): ${errorText.substring(0, 200)}`);
+            throw makeProviderError('MiMo', response.status, errorText);
         }
 
         const data = await response.json();
@@ -112,7 +119,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
         });
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`ElevenLabs TTS request failed (${response.status}): ${errorText.substring(0, 200)}`);
+            throw makeProviderError('ElevenLabs', response.status, errorText);
         }
         return {
             audioBuffer: Buffer.from(await response.arrayBuffer()),
@@ -134,7 +141,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
         });
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`MiniMax TTS request failed (${response.status}): ${errorText.substring(0, 200)}`);
+            throw makeProviderError('MiniMax', response.status, errorText);
         }
         const data = await response.json();
         const audioBase64 = pickAudioBase64(data);
@@ -161,7 +168,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
     });
     if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`TTS request failed (${response.status}): ${errorText.substring(0, 200)}`);
+        throw makeProviderError('TTS', response.status, errorText);
     }
 
     return {

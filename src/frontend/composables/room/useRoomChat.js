@@ -373,7 +373,17 @@ export function useRoomChat({ live2d, world }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...settings, text: cleanReply(text) })
       });
-      if (!response.ok) throw new Error(`TTS ${response.status}`);
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        let detail = '';
+        if (contentType.includes('application/json')) {
+          const payload = await response.json().catch(() => null);
+          detail = payload?.message || payload?.error || '';
+        } else {
+          detail = await response.text().catch(() => '');
+        }
+        throw new Error(detail || `TTS ${response.status}`);
+      }
       if (requestId !== ttsRequestId) return;
       if (ttsUrl) URL.revokeObjectURL(ttsUrl);
       ttsUrl = URL.createObjectURL(await response.blob());
