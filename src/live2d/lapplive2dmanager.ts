@@ -14,6 +14,12 @@ import { LAppModel } from './lappmodel';
 import { LAppPal } from './lapppal';
 import { LAppSubdelegate } from './lappsubdelegate';
 
+function prefersLowMemoryModel(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+}
+
 /**
  * サンプルアプリケーションにおいてCubismModelを管理するクラス
  * モデル生成と破棄、タップイベントの処理、モデル切り替えを行う。
@@ -127,8 +133,9 @@ export class LAppLive2DManager {
     // ディレクトリ名とmodel3.jsonの名前を一致させておくこと。
     const model: string = LAppDefine.ModelDir[index];
     const modelPath: string = LAppDefine.ResourcesPath + model + '/';
-    let modelJsonName: string = LAppDefine.ModelDir[index];
-    modelJsonName += '.model3.json';
+    const modelJsonName: string = prefersLowMemoryModel()
+      ? `${LAppDefine.ModelDir[index]}-ios.model3.json`
+      : `${LAppDefine.ModelDir[index]}.model3.json`;
 
     this.releaseAllModel();
     const instance = new LAppModel();
