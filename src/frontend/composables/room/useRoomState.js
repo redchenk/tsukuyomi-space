@@ -32,6 +32,7 @@ export function useRoomState() {
     } catch (err) {
       loading.title = 'LIVE2D LOAD FAILED';
       loading.detail = err?.message || 'Live2D init failed';
+      loading.active = false;
     }
   }
 

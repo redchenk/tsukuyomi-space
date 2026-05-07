@@ -102,6 +102,10 @@ function writeCachedWorld(value) {
   writeJson(WORLD_CACHE_KEY, { savedAt: Date.now(), data: value });
 }
 
+function isMobileViewport() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 820px), (pointer: coarse)').matches;
+}
+
 function browserTimezone() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
@@ -170,7 +174,10 @@ export function useRoomWorld() {
       weatherParticles.value = [];
       return;
     }
-    const count = weather === 'storm' ? 42 : weather === 'rain' ? 34 : 26;
+    const mobile = isMobileViewport();
+    const count = mobile
+      ? (weather === 'storm' ? 16 : weather === 'rain' ? 14 : 12)
+      : (weather === 'storm' ? 42 : weather === 'rain' ? 34 : 26);
     weatherParticles.value = Array.from({ length: count }, (_, index) => ({
       id: `${weather}-${index}`,
       left: Math.round(Math.random() * 100),
