@@ -24,6 +24,7 @@ export class LAppTextureManager {
    * 解放する。
    */
   public release(): void {
+    if (!this._textures || !this._glManager?.getGl()) return;
     for (
       let ite: iterator<TextureInfo> = this._textures.begin();
       ite.notEqual(this._textures.end());
@@ -46,6 +47,7 @@ export class LAppTextureManager {
     usePremultiply: boolean,
     callback: (textureInfo: TextureInfo) => void
   ): void {
+    if (!this._textures || !this._glManager?.getGl()) return;
     // search loaded texture already
     for (
       let ite: iterator<TextureInfo> = this._textures.begin();
@@ -76,6 +78,7 @@ export class LAppTextureManager {
       'load',
       (): void => {
         // テクスチャオブジェクトの作成
+        if (!this._textures || !this._glManager?.getGl()) return;
         const tex: WebGLTexture = this._glManager.getGl().createTexture();
 
         // テクスチャを選択

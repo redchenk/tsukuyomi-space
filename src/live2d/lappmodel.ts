@@ -462,6 +462,7 @@ export class LAppModel extends CubismUserModel {
 
         // ロード完了時に呼び出すコールバック関数
         const onLoad = (textureInfo: TextureInfo): void => {
+          if (!textureInfo || !this._subdelegate || !this.getRenderer()) return;
           this.getRenderer().bindTexture(modelTextureNumber, textureInfo.id);
 
           this._textureCount++;
@@ -473,9 +474,9 @@ export class LAppModel extends CubismUserModel {
         };
 
         // 読み込み
-        this._subdelegate
-          .getTextureManager()
-          .createTextureFromPngFile(texturePath, usePremultiply, onLoad);
+        const textureManager = this._subdelegate?.getTextureManager();
+        if (!textureManager) return;
+        textureManager.createTextureFromPngFile(texturePath, usePremultiply, onLoad);
         this.getRenderer().setIsPremultipliedAlpha(usePremultiply);
       }
 

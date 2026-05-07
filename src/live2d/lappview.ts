@@ -16,6 +16,10 @@ import { TextureInfo } from './lapptexturemanager';
 import { TouchManager } from './touchmanager';
 import { LAppSubdelegate } from './lappsubdelegate';
 
+function live2dPointerPixelRatio(): number {
+  return (window as any).TSUKUYOMI_LIVE2D_DPR || window.devicePixelRatio || 1;
+}
+
 /**
  * 描画クラス。
  */
@@ -190,9 +194,10 @@ export class LAppView {
    * @param pointY スクリーンY座標
    */
   public onTouchesBegan(pointX: number, pointY: number): void {
+    const pixelRatio = live2dPointerPixelRatio();
     this._touchManager.touchesBegan(
-      pointX * window.devicePixelRatio,
-      pointY * window.devicePixelRatio
+      pointX * pixelRatio,
+      pointY * pixelRatio
     );
   }
 
@@ -203,8 +208,9 @@ export class LAppView {
    * @param pointY スクリーンY座標
    */
   public onTouchesMoved(pointX: number, pointY: number): void {
-    const posX = pointX * window.devicePixelRatio;
-    const posY = pointY * window.devicePixelRatio;
+    const pixelRatio = live2dPointerPixelRatio();
+    const posX = pointX * pixelRatio;
+    const posY = pointY * pixelRatio;
 
     const lapplive2dmanager = this._subdelegate.getLive2DManager();
 
@@ -223,8 +229,9 @@ export class LAppView {
    * @param pointY スクリーンY座標
    */
   public onTouchesEnded(pointX: number, pointY: number): void {
-    const posX = pointX * window.devicePixelRatio;
-    const posY = pointY * window.devicePixelRatio;
+    const pixelRatio = live2dPointerPixelRatio();
+    const posX = pointX * pixelRatio;
+    const posY = pointY * pixelRatio;
 
     const lapplive2dmanager = this._subdelegate.getLive2DManager();
 

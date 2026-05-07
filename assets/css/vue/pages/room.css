@@ -376,26 +376,6 @@ body.vue-room-route {
     z-index: 4;
 }
 
-.room-live2d-fallback {
-    position: absolute;
-    left: 50%;
-    bottom: -2vh;
-    z-index: 4;
-    width: min(56vw, 520px);
-    max-height: min(82vh, 760px);
-    transform: translateX(-50%);
-    pointer-events: none;
-    filter: drop-shadow(0 18px 34px var(--room-shadow));
-}
-
-.room-live2d-fallback img {
-    display: block;
-    width: 100%;
-    height: auto;
-    max-height: inherit;
-    object-fit: contain;
-}
-
 .room-live2d-container canvas {
     width: 100% !important;
     height: 100% !important;
@@ -1237,12 +1217,6 @@ body.vue-room-route {
         width: min(96vw, 420px);
         height: min(68dvh, 560px);
         bottom: 4rem;
-    }
-
-    .room-live2d-fallback {
-        width: min(72vw, 340px);
-        max-height: 62dvh;
-        bottom: 4.2rem;
     }
 
     .room-dock {

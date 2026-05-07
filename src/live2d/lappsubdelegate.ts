@@ -12,6 +12,13 @@ import { LAppPal } from './lapppal';
 import { LAppTextureManager } from './lapptexturemanager';
 import { LAppView } from './lappview';
 
+function live2dRenderPixelRatio(): number {
+  const ratio = window.devicePixelRatio || 1;
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  return Math.min(ratio, isIOS ? 1.5 : 2);
+}
+
 /**
  * Canvasに関連する操作を取りまとめるクラス
  */
@@ -246,8 +253,10 @@ export class LAppSubdelegate {
    * Resize the canvas to fill the screen.
    */
   private resizeCanvas(): void {
-    this._canvas.width = this._canvas.clientWidth * window.devicePixelRatio;
-    this._canvas.height = this._canvas.clientHeight * window.devicePixelRatio;
+    const ratio = live2dRenderPixelRatio();
+    (window as any).TSUKUYOMI_LIVE2D_DPR = ratio;
+    this._canvas.width = Math.max(1, Math.round(this._canvas.clientWidth * ratio));
+    this._canvas.height = Math.max(1, Math.round(this._canvas.clientHeight * ratio));
 
     const gl = this._glManager.getGl();
 

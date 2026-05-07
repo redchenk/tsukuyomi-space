@@ -11,9 +11,6 @@ defineProps({
       <h1>&#20843;&#21315;&#20195;&#36745;&#22812;&#23020;&#27491;&#22312;&#25151;&#38388;&#37324;&#31561;&#20320;</h1>
     </div>
     <div id="live2d-container" class="room-live2d-container"></div>
-    <div v-if="live2d.unsupported.value || live2d.error.value" class="room-live2d-fallback" aria-hidden="true">
-      <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="">
-    </div>
     <div v-if="live2d.error.value" class="room-stage-error">{{ live2d.error.value }}</div>
   </section>
 </template>

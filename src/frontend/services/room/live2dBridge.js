@@ -1,5 +1,5 @@
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260505-fast1';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260507-ios-webgl1';
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_READY_TIMEOUT = 20000;
 
