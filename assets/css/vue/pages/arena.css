@@ -1,0 +1,9 @@
+.arena-page h1 {
+    margin: 0;
+    color: var(--ts-text-strong);
+    font-family: var(--ts-font-serif);
+    font-size: clamp(2rem, 7vw, 4.5rem);
+    font-weight: 650;
+    letter-spacing: 0;
+    text-align: center;
+}

@@ -20,7 +20,7 @@ const navItems = computed(() => [
   { path: '/room', key: 'room', label: props.t.room, icon: '☾', active: props.routeName === 'room' || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: '✧', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: '▤', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
-  { path: '/arena/', key: 'arena', label: props.t.arena, icon: '◇', active: false, spa: false },
+  { path: '/arena', key: 'arena', label: props.t.arena, icon: '◇', active: props.routeName === 'arena', spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: '◎', active: props.routeName === 'reality', spa: true }
 ]);
 
