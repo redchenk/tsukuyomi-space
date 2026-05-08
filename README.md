@@ -24,7 +24,7 @@
 - 留言广场、点赞、回复与管理员审核
 - 管理员终端：文章、留言、用户权限、账号密码、友链、访问统计和系统配置
 - Arena 作为独立游戏仓库部署，并保留原 `/arena` 入口
-- PM2 + Nginx 部署方案，支持生产环境变量和 SQLite 数据目录隔离
+- Docker Compose / PM2 + Nginx 部署方案，支持生产环境变量和 SQLite 数据目录隔离
 
 ## 核心模块
 
@@ -44,7 +44,7 @@
 - 后端：Node.js、Express、better-sqlite3
 - 认证：JWT、bcryptjs
 - 测试：node:test、Playwright
-- 部署：PM2、Nginx、GitHub Actions、SSH
+- 部署：Docker Compose、PM2、Nginx、GitHub Actions、SSH
 
 ## 设计系统
 
@@ -91,6 +91,7 @@ tsukuyomi-space/
 ├── backend/         # Express API、SQLite 初始化、路由和中间件
 ├── deploy/          # PM2、Nginx、部署脚本样例
 ├── docs/            # 部署和维护文档
+├── docker-compose.yml # Docker Compose 生产部署入口
 ├── dist/frontend/   # npm run build:web 生成的 Vue 前端产物
 ├── lib/             # Live2D / 前端运行库
 ├── models/          # Live2D 模型资源
@@ -155,9 +156,20 @@ Room 相关设置主要保存在浏览器本地，包括：
 - `roomMusicTrackIndex`
 - `roomMusicVolume`
 
+## Docker 快速部署
+
+```bash
+cp .env.docker.example .env.docker
+# 修改 JWT_SECRET、ADMIN_PASSWORD、CORS_ORIGINS 等生产配置
+docker compose up -d --build
+curl http://127.0.0.1:3280/api/health
+```
+
+Docker 部署会把 SQLite 持久化到 Compose 命名卷 `tsukuyomi-data`，容器内路径为 `/data/tsukuyomi.db`。
+
 ## 部署
 
-推荐使用 PM2 运行后端，Nginx 处理静态文件并反向代理 `/api/`：
+推荐新环境优先使用 Docker Compose；现有服务器也可以继续使用 PM2 运行后端，Nginx 处理静态文件并反向代理 `/api/`：
 
 ```bash
 bash deploy/deploy.sh

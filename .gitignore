@@ -19,6 +19,7 @@ data/
 # Environment
 .env
 .env.local
+.env.docker
 .env.*.local
 
 # Build outputs
@@ -63,6 +64,7 @@ npm-debug.log*
 # Environment
 .env
 .env.local
+.env.docker
 .env.*.local
 
 # Build outputs
