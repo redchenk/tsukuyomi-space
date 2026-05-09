@@ -64,14 +64,40 @@
     .site-music-panel {
         top: 4.95rem;
         right: 0.7rem;
-        width: min(22rem, calc(100vw - 1.4rem));
+        width: min(17.5rem, calc(100vw - 1.4rem));
     }
 
     .room-shell .site-music-handle,
     .room-shell .site-music-panel {
         top: 6.15rem;
         right: 0.7rem;
-        width: min(22rem, calc(100vw - 1.4rem));
+        width: min(17.5rem, calc(100vw - 1.4rem));
+    }
+
+    .room-shell .room-weather-card {
+        top: 0.65rem;
+        left: 4.25rem;
+        right: auto;
+        width: min(245px, calc(100vw - 5rem));
+    }
+
+    .room-panel {
+        left: 4.25rem !important;
+        right: 0.75rem !important;
+        top: auto !important;
+        bottom: 4.95rem !important;
+        width: auto;
+        max-width: none;
+        max-height: calc(100dvh - 6.2rem);
+        border-radius: 18px 18px 14px 14px;
+    }
+
+    .room-chat-panel {
+        width: auto;
+    }
+
+    .room-chat-panel .chat-body {
+        height: min(42dvh, 420px);
     }
 }
 
@@ -106,21 +132,32 @@
     .room-shell .site-music-panel {
         top: 8.8rem;
         right: 0.55rem;
-        width: calc(100vw - 1.1rem);
+        width: min(16.8rem, calc(100vw - 1.1rem));
     }
 
     .room-shell .room-weather-card {
-        top: clamp(1rem, 3vw, 2rem);
+        top: 4.9rem;
+        left: 4.25rem;
+        right: auto;
+        width: min(245px, calc(100vw - 5rem));
     }
 
     .site-music-summary {
-        grid-template-columns: 48px minmax(0, 1fr) 32px 20px;
+        grid-template-columns: 44px minmax(0, 1fr) 32px;
         gap: 0.5rem;
     }
 
     .site-music-cover.music-cover {
-        width: 48px;
-        height: 48px;
-        flex-basis: 48px;
+        width: 44px;
+        height: 44px;
+        flex-basis: 44px;
+    }
+
+    .site-music-summary-main {
+        display: grid;
+    }
+
+    .site-music-meta-row {
+        display: none;
     }
 }
