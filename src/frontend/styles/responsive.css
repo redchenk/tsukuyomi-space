@@ -83,9 +83,9 @@
         height: 2.75rem;
         min-height: 2.75rem;
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.8);
-        color: #233047;
-        box-shadow: 0 10px 28px rgba(92, 116, 160, 0.12);
+        color: var(--ts-text-strong);
+        background: var(--ts-surface-strong);
+        box-shadow: var(--ts-shadow-md);
     }
 
     .room-shell .site-music-panel {
@@ -93,8 +93,8 @@
         right: 4.05rem;
         width: min(17.5rem, calc(100vw - 5rem));
         z-index: 95;
-        background: rgba(255, 255, 255, 0.88);
-        color: #233047;
+        color: var(--ts-text);
+        background: var(--ts-surface-strong);
         transform: translateX(1rem);
     }
 
@@ -140,8 +140,8 @@
 
     .room-chat-panel {
         padding: 0.5rem;
-        background: rgba(255, 255, 255, 0.78);
-        color: #233047;
+        background: var(--ts-surface);
+        color: var(--ts-text);
     }
 
     .room-chat-panel .panel-header {
@@ -154,34 +154,34 @@
     }
 
     .room-chat-panel .panel-title {
-        color: #233047;
+        color: var(--ts-text-strong);
     }
 
     .room-chat-panel .room-chat-messages {
         max-height: 18dvh;
         margin-bottom: 0.45rem;
-        border-color: rgba(35, 48, 71, 0.1);
-        background: rgba(255, 255, 255, 0.48);
+        border-color: var(--ts-border);
+        background: var(--ts-card);
     }
 
     .room-chat-panel .chat-input-row {
         padding: 0.36rem;
-        border: 1px solid rgba(35, 48, 71, 0.1);
+        border: 1px solid var(--ts-border);
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.82);
-        box-shadow: inset 0 1px 8px rgba(35, 48, 71, 0.08);
+        background: var(--ts-surface-strong);
+        box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.08);
     }
 
     .room-chat-panel .chat-input-row input[type="text"] {
         min-height: 2.7rem;
         border: 0;
-        color: #233047;
+        color: var(--ts-text);
         background: transparent;
         box-shadow: none;
     }
 
     .room-chat-panel .chat-input-row input[type="text"]::placeholder {
-        color: rgba(35, 48, 71, 0.42);
+        color: var(--ts-muted);
         font-size: 1.1rem;
     }
 
@@ -216,9 +216,9 @@
         place-items: center;
         padding: 0;
         border-radius: 16px;
-        color: rgba(35, 48, 71, 0.82);
-        background: rgba(255, 255, 255, 0.74);
-        box-shadow: 0 10px 28px rgba(92, 116, 160, 0.12);
+        color: var(--ts-text);
+        background: var(--ts-surface-strong);
+        box-shadow: var(--ts-shadow-md);
         backdrop-filter: blur(12px) saturate(1.06);
     }
 
@@ -228,8 +228,8 @@
     }
 
     .room-shell .panel-toggle-btn.is-active {
-        color: #152034;
-        background: rgba(255, 255, 255, 0.92);
+        color: var(--ts-text-strong);
+        background: var(--ts-card-hover);
     }
 
     .room-shell .dock-icon {
@@ -294,6 +294,8 @@
         top: 8.8rem;
         right: 3.85rem;
         width: min(16.8rem, calc(100vw - 4.45rem));
+        color: var(--ts-text);
+        background: var(--ts-surface-strong);
     }
 
     .room-shell .room-weather-card {
