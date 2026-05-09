@@ -32,6 +32,7 @@ let adminToken;
 let staffAdminToken;
 let articleId;
 let messageId;
+let replyId;
 
 function jsonHeaders(token) {
     return {
@@ -247,13 +248,40 @@ describe('messages API', () => {
 
         const reply = await postJson(`/api/messages/${messageId}/reply`, {
             content: 'A reply from tests'
-        }, userToken);
+        }, managedUserToken);
         assert.equal(reply.response.status, 201);
+        replyId = reply.body.data.id;
         assert.equal(reply.body.data.parent_id, messageId);
         assert.equal(reply.body.data.article_id, articleId);
 
         const listWithReply = await request(`/api/messages?article_id=${articleId}`);
         assert.ok(listWithReply.body.data.some(item => item.id === reply.body.data.id));
+    });
+});
+
+describe('notifications API', () => {
+    it('records replies and likes as inbox notifications', async () => {
+        const liked = await postJson(`/api/messages/${messageId}/like`, {}, managedUserToken);
+        assert.equal(liked.response.status, 200);
+
+        const inbox = await request('/api/user/notifications', {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(inbox.response.status, 200);
+        assert.ok(inbox.body.unread >= 2);
+        assert.ok(inbox.body.data.some(item => item.type === 'reply' && Number(item.related_message_id) === Number(replyId)));
+        assert.ok(inbox.body.data.some(item => item.type === 'like' && Number(item.related_message_id) === Number(messageId)));
+
+        const countBefore = inbox.body.unread;
+        const firstUnread = inbox.body.data.find(item => item.unread);
+        if (firstUnread) {
+            const marked = await postJson(`/api/user/notifications/${firstUnread.id}/read`, {}, userToken);
+            assert.equal(marked.response.status, 200);
+            assert.ok(marked.body.unread <= countBefore - 1);
+        }
+
+        const cleared = await postJson('/api/user/notifications/read-all', {}, userToken);
+        assert.equal(cleared.response.status, 200);
     });
 });
 

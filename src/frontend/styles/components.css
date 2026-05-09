@@ -19,12 +19,18 @@ a {
     min-height: 100vh;
 }
 
+html,
+body,
+#app {
+    min-height: 100%;
+}
+
 body.vue-global-bg-route {
     background:
         radial-gradient(circle at 18% 12%, rgba(174, 242, 255, 0.14), transparent 34%),
         radial-gradient(circle at 84% 18%, rgba(255, 122, 200, 0.12), transparent 30%),
         linear-gradient(125deg, rgba(237, 246, 255, 0.24), rgba(244, 240, 255, 0.32) 48%, rgba(255, 249, 253, 0.36)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+        linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(244, 240, 255, 0.38));
 }
 
 html[data-theme="dark"] body.vue-global-bg-route {
@@ -32,7 +38,7 @@ html[data-theme="dark"] body.vue-global-bg-route {
         radial-gradient(circle at 18% 12%, rgba(174, 242, 255, 0.16), transparent 34%),
         radial-gradient(circle at 84% 18%, rgba(255, 122, 200, 0.14), transparent 30%),
         linear-gradient(125deg, rgba(11, 18, 32, 0.76), rgba(15, 36, 52, 0.68) 38%, rgba(37, 31, 69, 0.72)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+        linear-gradient(180deg, rgba(11, 18, 32, 0.86), rgba(15, 36, 52, 0.64));
 }
 
 .site-global-bg {
@@ -147,6 +153,42 @@ html[data-theme="dark"] .site-global-bg {
     border-color: var(--ts-border);
     background: var(--ts-card-hover);
     transform: translateY(-1px);
+}
+
+.rail-notifications {
+    position: relative;
+}
+
+.rail-badge {
+    position: absolute;
+    top: -0.2rem;
+    right: -0.18rem;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 0.22rem;
+    border-radius: 999px;
+    background: #ff5f96;
+    color: #fff;
+    font: inherit;
+    font-size: 0.62rem;
+    line-height: 1rem;
+    font-style: normal;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(255, 95, 150, 0.32);
+}
+
+.nav-inline-badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.2rem;
+    height: 1.2rem;
+    padding: 0 0.22rem;
+    margin-left: 0.3rem;
+    border-radius: 999px;
+    background: rgba(255, 95, 150, 0.18);
+    color: var(--ts-text-strong);
+    font-size: 0.72rem;
+    line-height: 1;
 }
 
 .rail-account img {

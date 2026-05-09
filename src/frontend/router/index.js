@@ -8,6 +8,7 @@ import PlazaPage from '../pages/PlazaPage.vue';
 import RealityPage from '../pages/RealityPage.vue';
 import EditorPage from '../pages/EditorPage.vue';
 import UserCenterPage from '../pages/UserCenterPage.vue';
+import NotificationsPage from '../pages/NotificationsPage.vue';
 import RoomPage from '../pages/RoomPage.vue';
 import RoomSettingsPage from '../pages/RoomSettingsPage.vue';
 import ArticlePage from '../pages/ArticlePage.vue';
@@ -28,6 +29,7 @@ export const routes = [
   { path: '/reality', name: 'reality', component: RealityPage },
   { path: '/editor', name: 'editor', component: EditorPage },
   { path: '/user-center', name: 'userCenter', component: UserCenterPage },
+  { path: '/notifications', name: 'notifications', component: NotificationsPage },
   { path: '/terminal', name: 'terminal', component: TerminalPage },
   { path: '/arena', name: 'arena', component: ArenaPage, alias: '/arena/' }
 ];

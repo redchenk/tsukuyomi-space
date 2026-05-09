@@ -1,5 +1,6 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { authHeaders, parseResponse } from '../api/client';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 
 const props = defineProps({
@@ -16,15 +17,18 @@ const props = defineProps({
 defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
 
 const navOpen = ref(false);
+const unreadNotifications = ref(0);
+
 const hasGlobalBackground = computed(() => props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
+const showNotifications = computed(() => props.isAuthed);
 
 const navItems = computed(() => [
   { path: '/hub', key: 'hub', label: props.t.hub, icon: '⌂', active: props.routeName === 'hub', spa: true },
-  { path: '/room', key: 'room', label: props.t.room, icon: '☾', active: props.routeName === 'room' || props.routeName === 'roomSettings', spa: true },
-  { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: '✧', active: props.routeName === 'plaza', spa: true },
+  { path: '/room', key: 'room', label: props.t.room, icon: '◐', active: props.routeName === 'room' || props.routeName === 'roomSettings', spa: true },
+  { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: '✦', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: '▤', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
-  { path: '/arena', key: 'arena', label: props.t.arena, icon: '◇', active: props.routeName === 'arena', spa: true },
-  { path: '/reality', key: 'reality', label: props.t.reality, icon: '◎', active: props.routeName === 'reality', spa: true }
+  { path: '/arena', key: 'arena', label: props.t.arena, icon: '◌', active: props.routeName === 'arena', spa: true },
+  { path: '/reality', key: 'reality', label: props.t.reality, icon: '◉', active: props.routeName === 'reality', spa: true }
 ]);
 
 const accountLabel = computed(() => (props.isAuthed ? props.t.ucTitle : props.t.login));
@@ -33,9 +37,28 @@ function userInitial() {
   return String(props.user?.username || props.user?.email || props.t.brand || '月').slice(0, 1).toUpperCase();
 }
 
+async function loadUnreadNotifications() {
+  if (!props.isAuthed) {
+    unreadNotifications.value = 0;
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/user/notifications/unread-count', { headers: authHeaders() });
+    const result = await parseResponse(response);
+    if (result.success) unreadNotifications.value = Number(result.data?.count || 0);
+  } catch (_) {
+    unreadNotifications.value = 0;
+  }
+}
+
 watch(() => props.routeName, () => {
   navOpen.value = false;
+  loadUnreadNotifications();
 });
+
+watch(() => props.isAuthed, loadUnreadNotifications, { immediate: true });
+onMounted(loadUnreadNotifications);
 </script>
 
 <template>
@@ -43,7 +66,7 @@ watch(() => props.routeName, () => {
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && routeName !== 'room'" class="moon" aria-hidden="true"></div>
     <aside v-if="showChrome" class="site-rail" aria-label="Quick navigation">
-      <a href="/hub" class="rail-mark" :aria-label="t.brand" @click.prevent="$emit('go', '/hub')">✦</a>
+      <a href="/hub" class="rail-mark" :aria-label="t.brand" @click.prevent="$emit('go', '/hub')">⌂</a>
       <nav class="rail-nav">
         <a
           v-for="item in navItems"
@@ -60,13 +83,24 @@ watch(() => props.routeName, () => {
       </nav>
       <div class="rail-footer">
         <button
+          v-if="showNotifications"
+          class="rail-link rail-notifications"
+          type="button"
+          :aria-label="`站内信 ${unreadNotifications} 条未读`"
+          :title="`站内信 ${unreadNotifications} 条未读`"
+          @click="$emit('go', '/notifications')"
+        >
+          <span aria-hidden="true">✉</span>
+          <i v-if="unreadNotifications" class="rail-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</i>
+        </button>
+        <button
           class="rail-link rail-theme"
           type="button"
           :aria-label="theme === 'dark' ? '切换浅色主题' : '切换深色主题'"
           :title="theme === 'dark' ? '浅色主题' : '深色主题'"
           @click="$emit('toggle-theme')"
         >
-          <span aria-hidden="true">{{ theme === 'dark' ? '☀' : '☾' }}</span>
+          <span aria-hidden="true">{{ theme === 'dark' ? '☾' : '☀' }}</span>
         </button>
         <a
           class="rail-link rail-account"
@@ -116,6 +150,16 @@ watch(() => props.routeName, () => {
           <span class="nav-icon" aria-hidden="true">{{ item.icon }}</span>
           <span>{{ item.label }}</span>
         </a>
+        <a
+          v-if="showNotifications"
+          href="/notifications"
+          class="nav-link"
+          :class="{ 'router-link-active': routeName === 'notifications' }"
+          @click.prevent="navOpen = false; $emit('go', '/notifications')"
+        >
+          站内信
+          <span v-if="unreadNotifications" class="nav-inline-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
+        </a>
         <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">{{ t.ucTitle }}</a>
         <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="navOpen = false; $emit('go', '/login')">{{ t.login }}</a>
         <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="navOpen = false; $emit('go', '/register')">{{ t.register }}</a>
@@ -127,7 +171,7 @@ watch(() => props.routeName, () => {
           :title="theme === 'dark' ? '浅色主题' : '深色主题'"
           @click="$emit('toggle-theme')"
         >
-          <span aria-hidden="true">{{ theme === 'dark' ? '☀' : '☾' }}</span>
+          <span aria-hidden="true">{{ theme === 'dark' ? '☾' : '☀' }}</span>
           <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
         </button>
         <div class="lang-switcher" aria-label="Language">

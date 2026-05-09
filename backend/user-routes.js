@@ -4,8 +4,57 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const articleRepository = require('./repositories/article-repository');
 const userRepository = require('./repositories/user-repository');
+const notificationRepository = require('./repositories/notification-repository');
 
 const { authenticateToken } = require('./middleware/auth');
+
+router.get('/notifications', authenticateToken, (req, res) => {
+    try {
+        const limit = Math.min(Number.parseInt(req.query.limit, 10) || 50, 100);
+        const offset = Math.max(Number.parseInt(req.query.offset, 10) || 0, 0);
+        const notifications = notificationRepository.listNotifications(req.user.id, { limit, offset });
+        res.json({
+            success: true,
+            data: notifications,
+            unread: notificationRepository.unreadCount(req.user.id)
+        });
+    } catch (error) {
+        console.error('List notifications failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.get('/notifications/unread-count', authenticateToken, (req, res) => {
+    try {
+        res.json({ success: true, data: { count: notificationRepository.unreadCount(req.user.id) } });
+    } catch (error) {
+        console.error('Unread notifications failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.post('/notifications/read-all', authenticateToken, (req, res) => {
+    try {
+        const changed = notificationRepository.markAllRead(req.user.id);
+        res.json({ success: true, data: { changed, count: notificationRepository.unreadCount(req.user.id) } });
+    } catch (error) {
+        console.error('Mark notifications read failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.post('/notifications/:id/read', authenticateToken, (req, res) => {
+    try {
+        const notification = notificationRepository.markNotificationRead(req.params.id, req.user.id);
+        if (!notification) {
+            return res.status(404).json({ success: false, message: '通知不存在' });
+        }
+        res.json({ success: true, data: notification, unread: notificationRepository.unreadCount(req.user.id) });
+    } catch (error) {
+        console.error('Mark notification read failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
 
 // 鑾峰彇褰撳墠鐢ㄦ埛璧勬枡
 router.get('/profile', authenticateToken, (req, res) => {
