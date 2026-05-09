@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { clearSession } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
+import { useRoomMusic } from './composables/room/useRoomMusic';
 
 const route = useRoute();
 const router = useRouter();
@@ -14,6 +15,7 @@ const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isImmersiveRoute = computed(() => isAccessRoute.value);
 const isAuthed = computed(() => Boolean(user.value));
+const music = useRoomMusic();
 const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
 const VISIT_POPUP_SEEN_KEY = 'tsukuyomi_visit_popup_seen';
 const VISIT_POPUP_PENDING_KEY = 'tsukuyomi_visit_popup_after_access';
@@ -105,6 +107,8 @@ function closeVisitPopup() {
   visitPopup.value.visible = false;
 }
 
+provide('siteMusic', music);
+
 watch(isAccessRoute, (next) => {
   document.body.classList.toggle('vue-access-route', next);
 }, { immediate: true });
@@ -139,6 +143,7 @@ onMounted(() => {
     :theme="theme"
     :user="user"
     :is-authed="isAuthed"
+    :music="music"
     @go="go"
     @logout="logout"
     @set-lang="setLang"

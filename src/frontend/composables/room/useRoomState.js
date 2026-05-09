@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onMounted, reactive } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, reactive } from 'vue';
 import { useLive2D } from './useLive2D';
 import { useRoomChat } from './useRoomChat';
 import { useRoomMusic } from './useRoomMusic';
@@ -16,7 +16,8 @@ export function useRoomState() {
   const live2d = useLive2D();
   const panels = useRoomPanels();
   const world = useRoomWorld();
-  const music = useRoomMusic();
+  const sharedMusic = inject('siteMusic', null);
+  const music = sharedMusic || useRoomMusic();
   const profile = useRoomProfile();
   const note = useRoomNote();
   const chat = useRoomChat({ live2d, world });
@@ -39,7 +40,7 @@ export function useRoomState() {
   function destroy() {
     world.destroyRoomWorld();
     chat.destroy();
-    music.destroy();
+    if (!sharedMusic) music.destroy();
     live2d.destroy();
   }
 

@@ -50,6 +50,22 @@
     .nav-actions.site-nav-links .theme-toggle {
         border-radius: var(--ts-radius-md);
     }
+
+    .site-music-drawer {
+        top: 4.95rem;
+        right: 0.7rem;
+        width: min(22rem, calc(100vw - 1.4rem));
+    }
+
+    .room-shell .site-music-drawer {
+        top: 0.55rem;
+        right: 0.55rem;
+        width: min(20rem, calc(100vw - 4.5rem));
+    }
+
+    .room-shell .room-weather-card {
+        top: 6.2rem;
+    }
 }
 
 @media (min-width: 861px) {
@@ -70,5 +86,33 @@
 
     .page {
         padding-inline: 0.68rem;
+    }
+
+    .site-music-drawer,
+    .room-shell .site-music-drawer {
+        top: 4.9rem;
+        right: 0.55rem;
+        width: calc(100vw - 1.1rem);
+    }
+
+    .room-shell .site-music-drawer {
+        top: 4.35rem;
+    }
+
+    .room-shell .room-weather-card {
+        top: 9.55rem;
+        right: 0.55rem;
+        width: calc(100vw - 1.1rem);
+    }
+
+    .site-music-summary {
+        grid-template-columns: 48px minmax(0, 1fr) 32px 20px;
+        gap: 0.5rem;
+    }
+
+    .site-music-cover.music-cover {
+        width: 48px;
+        height: 48px;
+        flex-basis: 48px;
     }
 }

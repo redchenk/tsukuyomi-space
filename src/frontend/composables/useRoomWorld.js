@@ -39,6 +39,7 @@ function normalizeWorld(data = {}) {
   const timeSet = new Set(['dawn', 'day', 'dusk', 'night']);
   const seasonSet = new Set(['spring', 'summer', 'autumn', 'winter']);
   const city = String(data.city || data.location?.city || data.location?.timezone || '').trim();
+  const address = String(data.address || data.location?.address || '').trim();
   return {
     weather: weatherSet.has(data.weather) ? data.weather : 'clear',
     timePhase: timeSet.has(data.timePhase) ? data.timePhase : getTimePhase(now),
@@ -46,6 +47,7 @@ function normalizeWorld(data = {}) {
     temperature: Number.isFinite(Number(data.temperature)) ? Number(data.temperature) : null,
     windSpeed: Number.isFinite(Number(data.windSpeed)) ? Number(data.windSpeed) : null,
     city: city || '\u6708\u8bfb\u7a7a\u95f4',
+    address: address || city || '\u6708\u8bfb\u7a7a\u95f4',
     source: data.source || 'local',
     updatedAt: data.updatedAt || now.toISOString()
   };
@@ -129,6 +131,7 @@ export function useRoomWorld() {
     icon: weatherIcon(world.value.weather),
     label: weatherLabel(world.value.weather),
     city: world.value.city || '\u6708\u8bfb\u7a7a\u95f4',
+    address: world.value.address || world.value.city || '\u6708\u8bfb\u7a7a\u95f4',
     temperature: world.value.temperature == null ? '--\u00b0C' : `${Math.round(world.value.temperature)}\u00b0C`,
     wind: world.value.windSpeed == null ? '\u98ce\u901f --' : `\u98ce\u901f ${Math.round(world.value.windSpeed)} km/h`,
     detail: `${seasonLabel(world.value.season)} \u00b7 ${timePhaseLabel(world.value.timePhase)} \u00b7 ${world.value.source === 'open-meteo' ? '\u5b9e\u65f6\u540c\u6b65' : '\u672c\u5730\u4f30\u8ba1'}`

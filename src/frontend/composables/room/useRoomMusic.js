@@ -57,7 +57,7 @@ export function useRoomMusic() {
   const currentTime = ref(0);
   const volume = ref(Math.max(0, Math.min(1, Number.parseFloat(localStorage.getItem('roomMusicVolume') || '0.72') || 0.72)));
   const coverUrl = ref('');
-  const drawer = reactive({ volume: false, playlist: false });
+  const drawer = reactive({ volume: false, playlist: false, open: false });
   let coverObjectUrl = '';
   let coverRequestId = 0;
 
@@ -121,8 +121,16 @@ export function useRoomMusic() {
   function toggleDrawer(name) {
     drawer[name] = !drawer[name];
     Object.keys(drawer).forEach((key) => {
-      if (key !== name) drawer[key] = false;
+      if (key !== name && key !== 'open') drawer[key] = false;
     });
+  }
+
+  function toggleShell() {
+    drawer.open = !drawer.open;
+    if (!drawer.open) {
+      drawer.volume = false;
+      drawer.playlist = false;
+    }
   }
 
   function destroy() {
@@ -169,6 +177,7 @@ export function useRoomMusic() {
     prev,
     setVolume,
     toggleDrawer,
+    toggleShell,
     destroy
   };
 }

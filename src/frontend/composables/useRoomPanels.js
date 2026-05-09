@@ -2,14 +2,12 @@ import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 const panelDefaults = {
   chatPanel: { top: '12.3rem', right: '1.2rem' },
-  musicPanel: { top: '12.2rem', left: 'max(6.2rem, calc(clamp(1rem, 3vw, 2rem) + 5rem))' },
   profilePanel: { top: '6.4rem', left: 'max(6.2rem, calc(clamp(1rem, 3vw, 2rem) + 5rem))' },
   notePanel: { top: '18.2rem', left: 'max(6.2rem, calc(clamp(1rem, 3vw, 2rem) + 5rem))' }
 };
 
 export const roomPanelButtons = [
   { id: 'chatPanel', label: '\u804a\u5929' },
-  { id: 'musicPanel', label: '\u97f3\u4e50' },
   { id: 'profilePanel', label: '\u8d44\u6599' },
   { id: 'notePanel', label: '\u4fbf\u7b7e' }
 ];
@@ -30,7 +28,6 @@ function writeJson(key, value) {
 export function useRoomPanels() {
   const activePanels = reactive({
     chatPanel: true,
-    musicPanel: false,
     profilePanel: false,
     notePanel: false
   });

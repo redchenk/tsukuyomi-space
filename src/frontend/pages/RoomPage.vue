@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import RoomChatPanel from '../components/room/RoomChatPanel.vue';
 import RoomDock from '../components/room/RoomDock.vue';
 import RoomLoadingOverlay from '../components/room/RoomLoadingOverlay.vue';
-import RoomMusicPanel from '../components/room/RoomMusicPanel.vue';
 import RoomNotePanel from '../components/room/RoomNotePanel.vue';
 import RoomProfilePanel from '../components/room/RoomProfilePanel.vue';
 import RoomStage from '../components/room/RoomStage.vue';
@@ -73,14 +72,6 @@ const roomUserId = computed(() => roomUser.value?.id || roomUser.value?.username
       @close="room.panels.closePanel('chatPanel')"
       @focus="room.panels.bringPanelForward('chatPanel')"
       @drag-start="room.panels.startPanelDrag('chatPanel', $event)"
-    />
-    <RoomMusicPanel
-      v-if="room.panels.activePanels.musicPanel"
-      :music="room.music"
-      :panel-style="room.panels.panelStyle('musicPanel')"
-      @close="room.panels.closePanel('musicPanel')"
-      @focus="room.panels.bringPanelForward('musicPanel')"
-      @drag-start="room.panels.startPanelDrag('musicPanel', $event)"
     />
     <RoomProfilePanel
       v-if="room.panels.activePanels.profilePanel"

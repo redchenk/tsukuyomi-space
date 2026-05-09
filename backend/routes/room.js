@@ -49,16 +49,16 @@ function weatherFromCode(code) {
     return match ? match.weather : 'cloudy';
 }
 
-async function resolveCityName({ lat, lon, fallback }) {
+async function resolveLocationName({ lat, lon, fallback }) {
     if (process.env.ROOM_WEATHER_REVERSE_OFFLINE === 'true' || typeof fetch !== 'function') {
-        return fallback;
+        return { city: fallback, address: fallback };
     }
 
     const params = new URLSearchParams({
         format: 'jsonv2',
         lat: String(lat),
         lon: String(lon),
-        zoom: '10',
+        zoom: '16',
         addressdetails: '1',
         'accept-language': 'zh-CN'
     });
@@ -73,18 +73,22 @@ async function resolveCityName({ lat, lon, fallback }) {
                 'User-Agent': 'tsukuyomi-space/2.1 room-weather'
             }
         });
-        if (!response.ok) return fallback;
+        if (!response.ok) return { city: fallback, address: fallback };
         const payload = await response.json();
         const address = payload.address || {};
-        return address.city
+        const city = address.city
             || address.town
             || address.village
             || address.county
             || address.state
             || payload.name
             || fallback;
+        return {
+            city,
+            address: payload.display_name || payload.name || city
+        };
     } catch (_) {
-        return fallback;
+        return { city: fallback, address: fallback };
     } finally {
         clearTimeout(timeout);
     }
@@ -167,14 +171,15 @@ router.get('/world', async (req, res) => {
         return res.json({ success: true, data: { ...cached, cache: 'hit' } });
     }
 
-    const [data, city] = await Promise.all([
+    const [data, locationName] = await Promise.all([
         fetchOpenMeteoWorld({ lat, lon, timezone, city: cityFallback }),
-        resolveCityName({ lat, lon, fallback: cityFallback })
+        resolveLocationName({ lat, lon, fallback: cityFallback })
     ]);
     const world = {
         ...data,
-        city,
-        location: { lat, lon, timezone, city }
+        city: locationName.city,
+        address: locationName.address,
+        location: { lat, lon, timezone, city: locationName.city, address: locationName.address }
     };
     await weatherCache.setWorld(cacheLocation, world);
 

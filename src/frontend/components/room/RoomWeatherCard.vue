@@ -9,7 +9,7 @@ defineProps({
     <div class="room-weather-head">
       <span id="roomWeatherIcon" class="room-weather-icon" aria-hidden="true">{{ weather.icon }}</span>
       <div>
-        <small id="roomWeatherCity">{{ weather.city }}</small>
+        <small id="roomWeatherCity" :title="weather.address || weather.city">{{ weather.address || weather.city }}</small>
         <small>Room Weather</small>
         <strong id="roomWeatherLabel">{{ weather.label }}</strong>
       </div>

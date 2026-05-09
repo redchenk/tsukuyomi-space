@@ -20,10 +20,6 @@ function serveStaticFiles(app) {
         app.use(express.static(frontendDistRoot));
     }
 
-    app.get('/arena', (req, res) => {
-        res.redirect(302, '/arena/');
-    });
-
     app.use(express.static(publicRoot));
     app.use('/assets', express.static(path.join(publicRoot, 'assets')));
     app.use('/lib', express.static(path.join(publicRoot, 'lib')));
@@ -34,7 +30,7 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/plaza', '/reality', '/editor', '/user-center', '/terminal']);
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/plaza', '/reality', '/editor', '/user-center', '/terminal', '/arena', '/arena/']);
         if (vueRoutes.has(req.path)) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');

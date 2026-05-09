@@ -1,11 +1,13 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 
 const props = defineProps({
   isAuthed: { type: Boolean, default: false },
   lang: { type: String, required: true },
   routeName: { type: String, default: 'access' },
   showChrome: { type: Boolean, default: true },
+  music: { type: Object, default: null },
   t: { type: Object, required: true },
   theme: { type: String, default: 'dark' },
   user: { type: Object, default: null }
@@ -132,6 +134,7 @@ watch(() => props.routeName, () => {
         </div>
       </div>
     </header>
+    <SiteMusicDrawer v-if="showChrome && music" :music="music" />
     <slot></slot>
   </div>
 </template>
