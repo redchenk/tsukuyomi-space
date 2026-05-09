@@ -112,7 +112,7 @@
     text-decoration: none;
     transition: all 0.3s;
     overflow: hidden;
-    height: 180px;
+    min-height: 180px;
 }
 
 .stage-card:hover {
@@ -153,12 +153,16 @@
 .stage-card-title {
     font-size: 1.1rem;
     color: rgba(255, 183, 197, 0.95);
-    margin-bottom: 0.4rem;
+    margin: -0.08rem 0 0.36rem;
+    padding: 0.1rem 0 0.12rem;
     font-weight: 500;
-    line-height: 1.3;
+    line-height: 1.45;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
 }
 
 .stage-card-excerpt {
