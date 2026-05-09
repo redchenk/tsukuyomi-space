@@ -108,9 +108,9 @@
 
     .room-shell .room-weather-card {
         top: 0.65rem;
-        left: 4.25rem;
-        right: auto;
-        width: min(245px, calc(100vw - 5rem));
+        left: auto;
+        right: 0.7rem;
+        width: min(245px, calc(100vw - 1.4rem));
     }
 
     .room-panel {
@@ -126,10 +126,11 @@
     }
 
     .room-chat-panel {
-        left: 0.75rem !important;
-        right: 4.05rem !important;
-        width: auto;
+        left: 50% !important;
+        right: auto !important;
+        width: min(22rem, calc(100vw - 1.5rem));
         max-height: 38dvh;
+        transform: translateX(-50%);
     }
 
     .room-chat-panel .chat-body {
@@ -296,10 +297,10 @@
     }
 
     .room-shell .room-weather-card {
-        top: 4.9rem;
-        left: 4.25rem;
-        right: auto;
-        width: min(245px, calc(100vw - 5rem));
+        top: 0.55rem;
+        left: auto;
+        right: 0.55rem;
+        width: min(225px, calc(100vw - 1.1rem));
     }
 
     .site-music-summary {
@@ -332,8 +333,9 @@
     }
 
     .room-chat-panel {
-        left: 0.55rem !important;
-        right: 3.85rem !important;
-        width: auto;
+        left: 50% !important;
+        right: auto !important;
+        width: min(21rem, calc(100vw - 1.1rem));
+        transform: translateX(-50%);
     }
 }
