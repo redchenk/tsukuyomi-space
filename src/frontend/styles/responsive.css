@@ -67,11 +67,17 @@
         width: min(17.5rem, calc(100vw - 1.4rem));
     }
 
-    .room-shell .site-music-handle,
-    .room-shell .site-music-panel {
+    .room-shell .site-music-handle {
         top: 6.15rem;
         right: 0.7rem;
-        width: min(17.5rem, calc(100vw - 1.4rem));
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+
+    .room-shell .site-music-panel {
+        top: 6.15rem;
+        right: 4.05rem;
+        width: min(17.5rem, calc(100vw - 5rem));
     }
 
     .room-shell .room-weather-card {
@@ -98,6 +104,107 @@
 
     .room-chat-panel .chat-body {
         height: min(42dvh, 420px);
+    }
+
+    .room-chat-panel {
+        padding: 0.72rem;
+        background: rgba(255, 255, 255, 0.78);
+        color: #233047;
+    }
+
+    .room-chat-panel .panel-header {
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.45rem;
+        border-bottom-color: rgba(35, 48, 71, 0.12);
+    }
+
+    .room-chat-panel .panel-title {
+        color: #233047;
+    }
+
+    .room-chat-panel .room-chat-messages {
+        max-height: 28dvh;
+        border-color: rgba(35, 48, 71, 0.1);
+        background: rgba(255, 255, 255, 0.48);
+    }
+
+    .room-chat-panel .chat-input-row {
+        padding: 0.36rem;
+        border: 1px solid rgba(35, 48, 71, 0.1);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: inset 0 1px 8px rgba(35, 48, 71, 0.08);
+    }
+
+    .room-chat-panel .chat-input-row input[type="text"] {
+        min-height: 2.7rem;
+        border: 0;
+        color: #233047;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .room-chat-panel .chat-input-row input[type="text"]::placeholder {
+        color: rgba(35, 48, 71, 0.42);
+        font-size: 1.1rem;
+    }
+
+    .room-chat-panel .chat-input-row .panel-btn {
+        min-height: 2.35rem;
+        border-radius: 999px;
+    }
+
+    .room-shell .room-dock {
+        top: 10rem;
+        right: 0.7rem;
+        bottom: auto;
+        left: auto;
+        width: auto;
+        display: grid;
+        gap: 0.62rem;
+        padding: 0;
+        overflow: visible;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+        transform: none;
+    }
+
+    .room-shell .panel-toggle-btn {
+        width: 2.75rem;
+        min-width: 2.75rem;
+        height: 2.75rem;
+        min-height: 2.75rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border-radius: 16px;
+        color: rgba(35, 48, 71, 0.82);
+        background: rgba(255, 255, 255, 0.74);
+        box-shadow: 0 10px 28px rgba(92, 116, 160, 0.12);
+        backdrop-filter: blur(12px) saturate(1.06);
+    }
+
+    .room-shell .panel-toggle-btn.is-active {
+        color: #152034;
+        background: rgba(255, 255, 255, 0.92);
+    }
+
+    .room-shell .dock-icon {
+        display: block;
+        font-size: 1.32rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .room-shell .dock-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
     }
 }
 
@@ -128,11 +235,17 @@
         right: 0.55rem;
     }
 
-    .room-shell .site-music-handle,
-    .room-shell .site-music-panel {
+    .room-shell .site-music-handle {
         top: 8.8rem;
         right: 0.55rem;
-        width: min(16.8rem, calc(100vw - 1.1rem));
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+
+    .room-shell .site-music-panel {
+        top: 8.8rem;
+        right: 3.85rem;
+        width: min(16.8rem, calc(100vw - 4.45rem));
     }
 
     .room-shell .room-weather-card {
@@ -159,5 +272,10 @@
 
     .site-music-meta-row {
         display: none;
+    }
+
+    .room-shell .room-dock {
+        top: 12.65rem;
+        right: 0.55rem;
     }
 }

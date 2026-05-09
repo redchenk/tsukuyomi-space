@@ -142,6 +142,10 @@ a {
     background: rgba(255, 255, 255, 0.1);
 }
 
+.dock-icon {
+    display: none;
+}
+
 .site-music-drawer {
     position: fixed;
     top: 1rem;

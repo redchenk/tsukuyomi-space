@@ -7,9 +7,9 @@ const panelDefaults = {
 };
 
 export const roomPanelButtons = [
-  { id: 'chatPanel', label: '\u804a\u5929' },
-  { id: 'profilePanel', label: '\u8d44\u6599' },
-  { id: 'notePanel', label: '\u4fbf\u7b7e' }
+  { id: 'chatPanel', label: '\u804a\u5929', icon: '\u2261' },
+  { id: 'profilePanel', label: '\u8d44\u6599', icon: 'i' },
+  { id: 'notePanel', label: '\u4fbf\u7b7e', icon: '\u25a7' }
 ];
 
 function readJson(key, fallback) {

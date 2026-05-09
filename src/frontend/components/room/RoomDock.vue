@@ -17,7 +17,13 @@ const emit = defineEmits(['toggle', 'settings']);
       type="button"
       :aria-pressed="activePanels[button.id] ? 'true' : 'false'"
       @click="emit('toggle', button.id)"
-    >{{ button.label }}</button>
-    <button class="panel-toggle-btn" type="button" @click="emit('settings')">&#35774;&#32622;</button>
+    >
+      <span class="dock-icon" aria-hidden="true">{{ button.icon || button.label.slice(0, 1) }}</span>
+      <span class="dock-label">{{ button.label }}</span>
+    </button>
+    <button class="panel-toggle-btn" type="button" aria-label="设置" @click="emit('settings')">
+      <span class="dock-icon" aria-hidden="true">&#9881;</span>
+      <span class="dock-label">&#35774;&#32622;</span>
+    </button>
   </div>
 </template>
