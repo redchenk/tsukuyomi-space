@@ -15,6 +15,7 @@ const editorCoverInput = ref(null);
 const editorBodyImageInput = ref(null);
 const editorContentInput = ref(null);
 const session = ref(getSession());
+const BODY_IMAGE_SCHEME = 'tsukuyomi-image:';
 
 const categories = [
   { value: '\u516c\u544a', labelKey: 'editorCatAnnouncement' },
@@ -32,6 +33,7 @@ const editor = reactive({
   submitting: false,
   loading: true,
   bodyImageUploading: false,
+  bodyImages: {},
   form: {
     title: '',
     category: '',
@@ -49,7 +51,37 @@ const submitLabel = computed(() => {
   if (editor.submitting) return editor.currentArticle ? props.t.editorSaving : props.t.editorPublishing;
   return editor.currentArticle ? props.t.editorUpdate : props.t.editorSubmit;
 });
-const contentPreview = computed(() => renderMarkdown(editor.form.content));
+const contentPreview = computed(() => renderMarkdown(serializeEditorContent(editor.form.content)));
+
+function createBodyImageId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function registerBodyImage(dataUrl) {
+  const id = createBodyImageId();
+  editor.bodyImages[id] = dataUrl;
+  return id;
+}
+
+function makeBodyImageMarkdown(alt, id) {
+  return `![${alt}](${BODY_IMAGE_SCHEME}${id})`;
+}
+
+function maskEditorContentImages(content) {
+  editor.bodyImages = {};
+  return String(content || '').replace(/!\[([^\]\n]*)\]\((data:image\/(?:png|jpe?g|gif|webp);base64,[^)]+)\)/gi, (_, alt, dataUrl) => {
+    const id = registerBodyImage(dataUrl);
+    return makeBodyImageMarkdown(alt, id);
+  });
+}
+
+function serializeEditorContent(content) {
+  return String(content || '').replace(/!\[([^\]\n]*)\]\(tsukuyomi-image:([^)]+)\)/g, (match, alt, id) => {
+    const dataUrl = editor.bodyImages[id];
+    return dataUrl ? `![${alt}](${dataUrl})` : match;
+  });
+}
 
 function resetEditorForm(article = null) {
   editor.currentArticle = article;
@@ -59,7 +91,7 @@ function resetEditorForm(article = null) {
   editor.form.category = article?.category || '';
   editor.form.readTime = article?.read_time || '5 min';
   editor.form.excerpt = article?.excerpt || '';
-  editor.form.content = article?.content || '';
+  editor.form.content = maskEditorContentImages(article?.content || '');
   if (editorCoverInput.value) editorCoverInput.value.value = '';
 }
 
@@ -158,7 +190,8 @@ async function handleBodyImageUpload(event) {
   try {
     const image = await compressImage(file, { maxWidth: 1400, maxHeight: 1200, quality: 0.78 });
     const alt = file.name.replace(/\.[^.]+$/, '').replace(/[\\[\]\r\n]/g, ' ').trim() || 'article image';
-    replaceContentSelection(`\n![${alt}](${image})\n`, 3, alt.length);
+    const id = registerBodyImage(image);
+    replaceContentSelection(`\n${makeBodyImageMarkdown(alt, id)}\n`, 3, alt.length);
     editor.message = '';
   } catch (_) {
     showMessage('error', props.t.editorImageFailed);
@@ -179,7 +212,7 @@ async function handleEditorSubmit() {
   const category = editor.form.category;
   const readTime = editor.form.readTime.trim();
   const excerpt = editor.form.excerpt.trim();
-  const content = editor.form.content.trim();
+  const content = serializeEditorContent(editor.form.content).trim();
 
   if (!title || !category || !readTime || !excerpt || !content) {
     showMessage('error', props.t.editorRequired);
