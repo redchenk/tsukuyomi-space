@@ -5,21 +5,6 @@
     display: grid;
     align-content: start;
     gap: 1.15rem;
-    isolation: isolate;
-}
-
-.hub::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-        radial-gradient(circle at 18% 12%, rgba(174, 242, 255, 0.18), transparent 34%),
-        radial-gradient(circle at 84% 18%, rgba(255, 122, 200, 0.16), transparent 30%),
-        linear-gradient(180deg, rgba(7, 13, 29, 0.24), rgba(7, 13, 29, 0.7)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
-    filter: saturate(1.04) contrast(1.02);
 }
 
 .hub-showcase,
@@ -626,15 +611,6 @@ body .page.hub .hub-hero-panel::before {
         radial-gradient(circle at 70% 22%, rgba(255, 122, 200, 0.2), transparent 0 20%, transparent 38%),
         linear-gradient(180deg, rgba(7, 13, 29, 0.18), rgba(7, 13, 29, 0.86)),
         url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
-}
-
-html[data-theme="light"] .hub::before {
-    background:
-        radial-gradient(circle at 18% 12%, rgba(174, 242, 255, 0.22), transparent 34%),
-        radial-gradient(circle at 84% 18%, rgba(255, 122, 200, 0.16), transparent 30%),
-        linear-gradient(180deg, rgba(237, 246, 255, 0.2), rgba(237, 246, 255, 0.62)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
-    opacity: 0.82;
 }
 
 html[data-theme="light"] .hub-hero-panel::after {
