@@ -54,17 +54,24 @@
     .site-music-drawer {
         top: 4.95rem;
         right: 0.7rem;
+    }
+
+    .site-music-handle {
+        top: 4.95rem;
+        right: 0.7rem;
+    }
+
+    .site-music-panel {
+        top: 4.95rem;
+        right: 0.7rem;
         width: min(22rem, calc(100vw - 1.4rem));
     }
 
-    .room-shell .site-music-drawer {
-        top: 0.55rem;
-        right: 0.55rem;
-        width: min(20rem, calc(100vw - 4.5rem));
-    }
-
-    .room-shell .room-weather-card {
-        top: 6.2rem;
+    .room-shell .site-music-handle,
+    .room-shell .site-music-panel {
+        top: 6.15rem;
+        right: 0.7rem;
+        width: min(22rem, calc(100vw - 1.4rem));
     }
 }
 
@@ -89,20 +96,21 @@
     }
 
     .site-music-drawer,
-    .room-shell .site-music-drawer {
+    .site-music-handle,
+    .site-music-panel {
         top: 4.9rem;
         right: 0.55rem;
-        width: calc(100vw - 1.1rem);
     }
 
-    .room-shell .site-music-drawer {
-        top: 4.35rem;
+    .room-shell .site-music-handle,
+    .room-shell .site-music-panel {
+        top: 8.8rem;
+        right: 0.55rem;
+        width: calc(100vw - 1.1rem);
     }
 
     .room-shell .room-weather-card {
-        top: 9.55rem;
-        right: 0.55rem;
-        width: calc(100vw - 1.1rem);
+        top: clamp(1rem, 3vw, 2rem);
     }
 
     .site-music-summary {

@@ -6,7 +6,12 @@ defineProps({
 
 <template>
   <div class="site-music-drawer" :class="{ 'is-open': music.drawer.open }">
-    <section class="site-music-shell" aria-label="Music player">
+    <button class="site-music-handle" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
+      <span aria-hidden="true">{{ music.drawer.open ? '⌃' : '⌄' }}</span>
+      <span class="sr-only">{{ music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer' }}</span>
+    </button>
+
+    <section class="site-music-panel" aria-label="Music player">
       <div class="site-music-summary">
         <div
           class="music-cover site-music-cover"
@@ -30,10 +35,6 @@ defineProps({
         </div>
         <button class="site-music-play" type="button" :aria-label="music.playing.value ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
           {{ music.playing.value ? 'Ⅱ' : '▶' }}
-        </button>
-        <button class="site-music-chevron" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
-          <span aria-hidden="true">{{ music.drawer.open ? '⌃' : '⌄' }}</span>
-          <span class="sr-only">{{ music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer' }}</span>
         </button>
       </div>
 
