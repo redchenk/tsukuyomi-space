@@ -59,38 +59,38 @@
     .site-music-handle {
         top: 5.7rem;
         right: 0.7rem;
-        width: 2.85rem;
-        height: 2.85rem;
+        width: 2.55rem;
+        height: 2.55rem;
     }
 
     .site-music-panel {
         top: 9.15rem;
         right: 0.7rem;
-        width: min(22rem, calc(100vw - 1.4rem));
+        width: min(300px, calc(100vw - 1.4rem));
     }
 
     .room-shell .site-music-drawer {
         top: 6.15rem;
         right: 0.7rem;
-        width: 2.85rem;
-        height: 2.85rem;
+        width: 2.55rem;
+        height: 2.55rem;
         z-index: 96;
     }
 
     .room-shell .site-music-handle {
         top: 6.15rem;
         right: 0.7rem;
-        width: 2.85rem;
-        min-width: 2.85rem;
-        height: 2.85rem;
-        min-height: 2.85rem;
+        width: 2.55rem;
+        min-width: 2.55rem;
+        height: 2.55rem;
+        min-height: 2.55rem;
         border-radius: 999px;
     }
 
     .room-shell .site-music-panel {
         top: 9.55rem;
         right: 0.7rem;
-        width: min(22rem, calc(100vw - 1.4rem));
+        width: min(300px, calc(100vw - 1.4rem));
         z-index: 95;
         transform: translateY(-0.35rem);
     }
