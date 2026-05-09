@@ -123,17 +123,17 @@
 
 .stage-card-body {
     flex: 1;
-    padding: 1.2rem;
+    padding: 0.92rem 1.2rem 1rem;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     overflow: hidden;
 }
 
 .stage-card-meta {
     display: flex;
     gap: 0.8rem;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.42rem;
     flex-wrap: wrap;
 }
 
@@ -153,11 +153,11 @@
 .stage-card-title {
     font-size: 1.1rem;
     color: rgba(255, 183, 197, 0.95);
-    min-height: calc(2em * 1.45 + 0.22rem);
-    margin: -0.08rem 0 0.28rem;
+    min-height: calc(2em * 1.38 + 0.22rem);
+    margin: -0.08rem 0 0.2rem;
     padding: 0.1rem 0 0.12rem;
     font-weight: 500;
-    line-height: 1.45;
+    line-height: 1.38;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -168,11 +168,11 @@
 
 .stage-card-excerpt {
     color: rgba(255, 183, 197, 0.6);
-    line-height: 1.36;
-    margin-bottom: 0.45rem;
+    line-height: 1.42;
+    margin-bottom: 0.32rem;
     font-size: 0.85rem;
     display: -webkit-box;
-    -webkit-line-clamp: 1;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -181,8 +181,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: auto;
-    padding-top: 0.5rem;
+    margin-top: 0.16rem;
+    padding-top: 0.28rem;
 }
 
 .read-time {

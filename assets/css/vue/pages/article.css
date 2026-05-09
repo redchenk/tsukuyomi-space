@@ -24,6 +24,9 @@
 .article-reader {
     display: grid;
     gap: 1.4rem;
+    border-radius: 22px;
+    overflow: hidden;
+    padding: clamp(1rem, 3vw, 1.5rem);
 }
 
 .article-hero {
@@ -63,13 +66,13 @@
     max-height: 460px;
     object-fit: cover;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    border-radius: 18px;
 }
 
 .article-content,
 .comments-section {
     border: 1px solid rgba(255, 183, 197, 0.16);
-    border-radius: 8px;
+    border-radius: 18px;
     background: rgba(10, 12, 22, 0.68);
     backdrop-filter: blur(14px);
 }
