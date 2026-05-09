@@ -86,7 +86,7 @@ a {
     width: clamp(64px, 9vw, 118px);
     aspect-ratio: 1;
     border-radius: 50%;
-    z-index: 1;
+    z-index: 3;
     background: radial-gradient(circle at 36% 34%, rgba(255,255,255,.96), rgba(244,207,114,.74) 58%, rgba(126,219,232,.22));
     box-shadow: 0 0 46px rgba(244,207,114,.36);
     animation: moonFloat 6s ease-in-out infinite;

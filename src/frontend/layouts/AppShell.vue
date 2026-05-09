@@ -16,6 +16,7 @@ const props = defineProps({
 defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
 
 const navOpen = ref(false);
+const hasGlobalBackground = computed(() => props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
 
 const navItems = computed(() => [
   { path: '/hub', key: 'hub', label: props.t.hub, icon: '⌂', active: props.routeName === 'hub', spa: true },
@@ -39,7 +40,7 @@ watch(() => props.routeName, () => {
 
 <template>
   <div class="app-shell" :class="{ 'room-shell': routeName === 'room' }">
-    <div v-if="routeName !== 'room'" class="site-global-bg" aria-hidden="true"></div>
+    <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && routeName !== 'room'" class="moon" aria-hidden="true"></div>
     <aside v-if="showChrome" class="site-rail" aria-label="Quick navigation">
       <a href="/hub" class="rail-mark" :aria-label="t.brand" @click.prevent="$emit('go', '/hub')">✦</a>

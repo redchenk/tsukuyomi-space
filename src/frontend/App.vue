@@ -14,6 +14,7 @@ const user = ref(loadStoredUser());
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isImmersiveRoute = computed(() => isAccessRoute.value);
+const hasGlobalBackground = computed(() => !isAccessRoute.value && route.name !== 'room');
 const isAuthed = computed(() => Boolean(user.value));
 const music = useRoomMusic();
 const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
@@ -111,6 +112,10 @@ provide('siteMusic', music);
 
 watch(isAccessRoute, (next) => {
   document.body.classList.toggle('vue-access-route', next);
+}, { immediate: true });
+
+watch(hasGlobalBackground, (next) => {
+  document.body.classList.toggle('vue-global-bg-route', next);
 }, { immediate: true });
 
 watch(lang, setLang, { immediate: true });

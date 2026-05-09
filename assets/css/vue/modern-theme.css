@@ -95,6 +95,11 @@ html[data-theme="dark"] body::after {
     opacity: 0.1;
 }
 
+body.vue-global-bg-route::before,
+body.vue-global-bg-route::after {
+    display: none;
+}
+
 @keyframes tsukuyomiSkyDrift {
     from { background-position: 0% 34%, 12% 0%; }
     to { background-position: 100% 70%, 86% 100%; }
