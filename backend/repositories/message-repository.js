@@ -22,9 +22,9 @@ function listMessages({ articleId } = {}) {
 function createMessage({ author, content, userId, articleId = null, parentId = null }) {
     const result = parentId
         ? db.prepare(`
-            INSERT INTO messages (author, content, user_id, parent_id)
-            VALUES (?, ?, ?, ?)
-        `).run(author, content, userId, parentId)
+            INSERT INTO messages (author, content, user_id, parent_id, article_id)
+            VALUES (?, ?, ?, ?, ?)
+        `).run(author, content, userId, parentId, articleId)
         : db.prepare(`
             INSERT INTO messages (author, content, user_id, article_id)
             VALUES (?, ?, ?, ?)

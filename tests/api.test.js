@@ -250,6 +250,10 @@ describe('messages API', () => {
         }, userToken);
         assert.equal(reply.response.status, 201);
         assert.equal(reply.body.data.parent_id, messageId);
+        assert.equal(reply.body.data.article_id, articleId);
+
+        const listWithReply = await request(`/api/messages?article_id=${articleId}`);
+        assert.ok(listWithReply.body.data.some(item => item.id === reply.body.data.id));
     });
 });
 

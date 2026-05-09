@@ -68,7 +68,8 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
             author: req.user.username,
             content,
             userId: req.user.id,
-            parentId: messageId
+            parentId: messageId,
+            articleId: originalMessage.article_id || null
         });
         res.status(201).json({ success: true, data: newMessage });
     } catch (error) {
