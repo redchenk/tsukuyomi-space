@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
+import { renderMarkdown } from '../utils/markdown';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -11,6 +12,8 @@ const props = defineProps({
 const emit = defineEmits(['go']);
 const route = useRoute();
 const editorCoverInput = ref(null);
+const editorBodyImageInput = ref(null);
+const editorContentInput = ref(null);
 const session = ref(getSession());
 
 const categories = [
@@ -28,6 +31,7 @@ const editor = reactive({
   messageType: 'error',
   submitting: false,
   loading: true,
+  bodyImageUploading: false,
   form: {
     title: '',
     category: '',
@@ -45,6 +49,7 @@ const submitLabel = computed(() => {
   if (editor.submitting) return editor.currentArticle ? props.t.editorSaving : props.t.editorPublishing;
   return editor.currentArticle ? props.t.editorUpdate : props.t.editorSubmit;
 });
+const contentPreview = computed(() => renderMarkdown(editor.form.content));
 
 function resetEditorForm(article = null) {
   editor.currentArticle = article;
@@ -64,6 +69,67 @@ function showMessage(type, msg) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function selectedContentRange() {
+  const input = editorContentInput.value;
+  return {
+    start: input?.selectionStart ?? editor.form.content.length,
+    end: input?.selectionEnd ?? editor.form.content.length
+  };
+}
+
+function replaceContentSelection(markdown, selectOffset = 0, selectLength = 0) {
+  const { start, end } = selectedContentRange();
+  const before = editor.form.content.slice(0, start);
+  const after = editor.form.content.slice(end);
+  editor.form.content = `${before}${markdown}${after}`;
+  requestAnimationFrame(() => {
+    const cursorStart = start + selectOffset;
+    const cursorEnd = selectLength ? cursorStart + selectLength : start + markdown.length;
+    editorContentInput.value?.focus();
+    editorContentInput.value?.setSelectionRange(cursorStart, cursorEnd);
+  });
+}
+
+function wrapContentSelection(before, after = before, placeholder = 'text') {
+  const { start, end } = selectedContentRange();
+  const selected = editor.form.content.slice(start, end) || placeholder;
+  const markdown = `${before}${selected}${after}`;
+  replaceContentSelection(markdown, before.length, selected.length);
+}
+
+function insertMarkdownBlock(prefix, placeholder = '内容') {
+  const { start, end } = selectedContentRange();
+  const selected = editor.form.content.slice(start, end) || placeholder;
+  const needsLeadingBreak = start > 0 && !editor.form.content.slice(0, start).endsWith('\n') ? '\n' : '';
+  const needsTrailingBreak = !editor.form.content.slice(end).startsWith('\n') ? '\n' : '';
+  const markdown = `${needsLeadingBreak}${selected.split('\n').map((line) => `${prefix}${line}`).join('\n')}${needsTrailingBreak}`;
+  replaceContentSelection(markdown, needsLeadingBreak.length + prefix.length, selected.length);
+}
+
+function insertMarkdownTemplate(type) {
+  const actions = {
+    h2: () => insertMarkdownBlock('## ', '小标题'),
+    h3: () => insertMarkdownBlock('### ', '小标题'),
+    bold: () => wrapContentSelection('**', '**', '加粗文字'),
+    italic: () => wrapContentSelection('*', '*', '斜体文字'),
+    quote: () => insertMarkdownBlock('> ', '引用内容'),
+    list: () => insertMarkdownBlock('- ', '列表项'),
+    ordered: () => insertMarkdownBlock('1. ', '列表项'),
+    code: () => {
+      const { start, end } = selectedContentRange();
+      const selected = editor.form.content.slice(start, end);
+      if (selected.includes('\n')) {
+        replaceContentSelection(`\n\`\`\`\n${selected || 'code'}\n\`\`\`\n`, 5, selected.length || 4);
+      } else {
+        wrapContentSelection('`', '`', 'code');
+      }
+    },
+    link: () => replaceContentSelection('[链接文字](https://example.com)', 1, 4),
+    hr: () => replaceContentSelection('\n---\n')
+  };
+  actions[type]?.();
+}
+
 async function handleEditorCoverUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -77,6 +143,28 @@ async function handleEditorCoverUpload(event) {
     editor.coverImageSize = Math.round(editor.coverImageBase64.length * 3 / 4);
   } catch (_) {
     showMessage('error', props.t.editorImageFailed);
+  }
+}
+
+async function handleBodyImageUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showMessage('error', props.t.editorImageOnly);
+    return;
+  }
+
+  editor.bodyImageUploading = true;
+  try {
+    const image = await compressImage(file, { maxWidth: 1400, maxHeight: 1200, quality: 0.78 });
+    const alt = file.name.replace(/\.[^.]+$/, '').replace(/[\\[\]\r\n]/g, ' ').trim() || 'article image';
+    replaceContentSelection(`\n![${alt}](${image})\n`, 3, alt.length);
+    editor.message = '';
+  } catch (_) {
+    showMessage('error', props.t.editorImageFailed);
+  } finally {
+    editor.bodyImageUploading = false;
+    if (editorBodyImageInput.value) editorBodyImageInput.value.value = '';
   }
 }
 
@@ -258,14 +346,50 @@ watch(currentArticleId, initEditor);
 
         <div class="form-group">
           <label for="editorContent">{{ t.editorFieldContent }}</label>
+          <div class="markdown-toolbar" aria-label="Markdown toolbar">
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('h2')">H2</button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('h3')">H3</button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('bold')">B</button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('italic')"><em>I</em></button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('quote')">“”</button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('list')">• List</button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('ordered')">1. List</button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('code')">{ }</button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('link')">Link</button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('hr')">—</button>
+            <button
+              type="button"
+              class="primary-btn markdown-image-btn"
+              :disabled="editor.bodyImageUploading"
+              @click="editorBodyImageInput?.click()"
+            >
+              {{ editor.bodyImageUploading ? '图片处理中...' : '插入图片' }}
+            </button>
+            <input
+              ref="editorBodyImageInput"
+              class="markdown-image-input"
+              type="file"
+              accept="image/*"
+              @change="handleBodyImageUpload"
+            >
+          </div>
           <textarea
             id="editorContent"
+            ref="editorContentInput"
             v-model="editor.form.content"
             required
             style="min-height:400px"
             :placeholder="t.editorContentPh"
           ></textarea>
           <div class="help-text">{{ t.editorContentHint }}</div>
+        </div>
+
+        <div class="form-group">
+          <div class="editor-preview-head">
+            <label>Markdown 预览</label>
+            <span>图片、链接、列表、引用和代码块会按文章页样式渲染</span>
+          </div>
+          <section class="article-content editor-markdown-preview" v-html="contentPreview"></section>
         </div>
 
         <div class="btn-group">

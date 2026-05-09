@@ -80,10 +80,30 @@
     line-height: 1.9;
 }
 
+.article-content h1,
 .article-content h2,
-.article-content h3 {
+.article-content h3,
+.article-content h4 {
     color: #ffb7c5;
     line-height: 1.35;
+    margin: 1.55rem 0 0.85rem;
+}
+
+.article-content h1 {
+    font-size: clamp(1.7rem, 4vw, 2.4rem);
+}
+
+.article-content h2 {
+    font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.article-content h3 {
+    font-size: 1.18rem;
+}
+
+.article-content h4 {
+    color: #aef2ff;
+    font-size: 1rem;
 }
 
 .article-content p,
@@ -91,10 +111,75 @@
     margin: 0 0 1rem;
 }
 
+.article-content a {
+    color: #aef2ff;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+}
+
+.article-content ul,
+.article-content ol {
+    margin: 0 0 1.15rem;
+    padding-left: 1.35rem;
+}
+
+.article-content li + li {
+    margin-top: 0.35rem;
+}
+
+.article-content blockquote {
+    margin: 1.2rem 0;
+    padding: 0.9rem 1rem;
+    border-left: 3px solid rgba(255, 183, 197, 0.72);
+    border-radius: 0 8px 8px 0;
+    color: rgba(245, 250, 255, 0.82);
+    background: rgba(255, 183, 197, 0.08);
+}
+
+.article-content blockquote p {
+    margin-bottom: 0;
+}
+
 .article-content code {
     padding: 0.14rem 0.38rem;
     border-radius: 4px;
     background: rgba(0, 0, 0, 0.32);
+}
+
+.article-content pre {
+    margin: 1.2rem 0;
+    padding: 1rem;
+    border: 1px solid rgba(126, 219, 232, 0.16);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.34);
+    overflow: auto;
+}
+
+.article-content pre code {
+    padding: 0;
+    background: transparent;
+}
+
+.article-content hr {
+    height: 1px;
+    border: 0;
+    margin: 1.6rem 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 183, 197, 0.48), transparent);
+}
+
+.article-content .markdown-image {
+    margin: 1.25rem 0;
+}
+
+.article-content .markdown-image img {
+    display: block;
+    width: 100%;
+    max-height: 680px;
+    object-fit: contain;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(4, 8, 18, 0.2);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
 }
 
 .comments-section {

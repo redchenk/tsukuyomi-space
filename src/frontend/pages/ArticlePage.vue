@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
+import { renderMarkdown } from '../utils/markdown';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -27,21 +28,8 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN');
 }
 
-function escapeHtml(value) {
-  const div = document.createElement('div');
-  div.textContent = value == null ? '' : String(value);
-  return div.innerHTML;
-}
-
 function formatContent(content) {
-  if (!content) return '';
-  return escapeHtml(content)
-    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .split(/\n{2,}/)
-    .map((block) => (/^<h[23]>/.test(block) ? block : `<p>${block.replace(/\n/g, '<br>')}</p>`))
-    .join('');
+  return renderMarkdown(content);
 }
 
 async function loadArticle() {
