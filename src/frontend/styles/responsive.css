@@ -52,54 +52,51 @@
     }
 
     .site-music-drawer {
-        top: 4.95rem;
+        top: 5.7rem;
         right: 0.7rem;
     }
 
     .site-music-handle {
-        top: 4.95rem;
+        top: 5.7rem;
         right: 0.7rem;
+        width: 2.85rem;
+        height: 2.85rem;
     }
 
     .site-music-panel {
-        top: 4.95rem;
+        top: 9.15rem;
         right: 0.7rem;
-        width: min(17.5rem, calc(100vw - 1.4rem));
+        width: min(22rem, calc(100vw - 1.4rem));
     }
 
     .room-shell .site-music-drawer {
         top: 6.15rem;
         right: 0.7rem;
-        width: 2.75rem;
-        height: 2.75rem;
+        width: 2.85rem;
+        height: 2.85rem;
         z-index: 96;
     }
 
     .room-shell .site-music-handle {
         top: 6.15rem;
         right: 0.7rem;
-        width: 2.75rem;
-        min-width: 2.75rem;
-        height: 2.75rem;
-        min-height: 2.75rem;
-        border-radius: 16px;
-        color: var(--ts-text-strong);
-        background: var(--ts-surface-strong);
-        box-shadow: var(--ts-shadow-md);
+        width: 2.85rem;
+        min-width: 2.85rem;
+        height: 2.85rem;
+        min-height: 2.85rem;
+        border-radius: 999px;
     }
 
     .room-shell .site-music-panel {
-        top: 6.15rem;
-        right: 4.05rem;
-        width: min(17.5rem, calc(100vw - 5rem));
+        top: 9.55rem;
+        right: 0.7rem;
+        width: min(22rem, calc(100vw - 1.4rem));
         z-index: 95;
-        color: var(--ts-text);
-        background: var(--ts-surface-strong);
-        transform: translateX(1rem);
+        transform: translateY(-0.35rem);
     }
 
     .room-shell .site-music-drawer.is-open .site-music-panel {
-        transform: translateX(0);
+        transform: translateY(0);
     }
 
     .room-shell .site-music-drawer:not(.is-open) .site-music-panel {

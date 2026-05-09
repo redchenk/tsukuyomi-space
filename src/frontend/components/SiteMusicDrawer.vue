@@ -25,7 +25,8 @@ defineProps({
         <div class="site-music-summary-main">
           <div class="music-title-row site-music-title-row">
             <strong>{{ music.currentTrack.value?.title || 'Remember' }}</strong>
-            <span>Track {{ String(music.trackIndex.value + 1).padStart(2, '0') }}</span>
+            <span class="site-music-space">☾ Tsukuyomi Space</span>
+            <span class="site-music-track-pill">✦ Track {{ String(music.trackIndex.value + 1).padStart(2, '0') }}</span>
           </div>
           <div class="music-meta-row site-music-meta-row">
             <span>{{ music.currentLabel.value }}</span>
@@ -40,20 +41,23 @@ defineProps({
 
       <div v-show="music.drawer.open" class="site-music-body">
         <div class="music-progress-row site-music-progress-row">
+          <span>{{ music.currentLabel.value }}</span>
           <input v-model.number="music.progress.value" class="music-progress site-music-progress" type="range" min="0" max="1000" aria-label="Music progress">
+          <span>{{ music.durationLabel.value }}</span>
         </div>
 
         <div class="site-music-controls">
-          <button class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">&#8592;</button>
-          <button class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">&#8594;</button>
-          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">&#9834;</button>
-          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">&#9776;</button>
+          <button class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">|‹</button>
+          <button class="panel-btn music-icon-btn site-music-main-control" type="button" :aria-label="music.playing.value ? 'Pause music' : 'Play music'" @click="music.togglePlay">♪</button>
+          <button class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">›|</button>
+          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">☷</button>
         </div>
 
-        <div v-if="music.drawer.volume" class="music-drawer site-music-subdrawer site-music-volume-drawer">
+        <div class="music-drawer site-music-subdrawer site-music-volume-drawer">
           <div class="music-volume-inline site-music-volume-inline">
-            <span>音量</span>
+            <span aria-hidden="true">♪</span>
             <input :value="music.volume.value" type="range" min="0" max="1" step="0.01" aria-label="Volume" @input="music.setVolume($event.target.value)">
+            <strong>{{ Math.round(music.volume.value * 100) }}%</strong>
           </div>
         </div>
 
