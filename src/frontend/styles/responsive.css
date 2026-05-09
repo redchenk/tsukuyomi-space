@@ -52,25 +52,25 @@
     }
 
     .site-music-drawer {
-        top: 5.7rem;
+        top: 0.7rem;
         right: 0.7rem;
     }
 
     .site-music-handle {
-        top: 5.7rem;
+        top: 0.7rem;
         right: 0.7rem;
         width: 2.55rem;
         height: 2.55rem;
     }
 
     .site-music-panel {
-        top: 9.15rem;
+        top: 4.55rem;
         right: 0.7rem;
         width: min(300px, calc(100vw - 1.4rem));
     }
 
     .room-shell .site-music-drawer {
-        top: 6.15rem;
+        top: 0.7rem;
         right: 0.7rem;
         width: 2.55rem;
         height: 2.55rem;
@@ -78,7 +78,7 @@
     }
 
     .room-shell .site-music-handle {
-        top: 6.15rem;
+        top: 0.7rem;
         right: 0.7rem;
         width: 2.55rem;
         min-width: 2.55rem;
@@ -88,7 +88,7 @@
     }
 
     .room-shell .site-music-panel {
-        top: 9.55rem;
+        top: 4.55rem;
         right: 0.7rem;
         width: min(300px, calc(100vw - 1.4rem));
         z-index: 95;

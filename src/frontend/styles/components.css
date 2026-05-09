@@ -232,8 +232,8 @@ html[data-theme="dark"] .site-global-bg {
 
 .site-music-drawer {
     position: fixed;
-    top: clamp(4.9rem, 8vh, 6.2rem);
-    right: clamp(1rem, 3vw, 2rem);
+    top: 0.75rem;
+    right: 0.75rem;
     z-index: 82;
     pointer-events: none;
     width: 0;
@@ -241,11 +241,11 @@ html[data-theme="dark"] .site-global-bg {
 
 .site-music-handle {
     position: fixed;
-    top: calc(clamp(4.9rem, 8vh, 6.2rem) + 1.95rem);
-    right: clamp(1rem, 3vw, 2rem);
+    top: 0.75rem;
+    right: 0.75rem;
     z-index: 83;
-    width: 3.35rem;
-    height: 3.35rem;
+    width: 2.75rem;
+    height: 2.75rem;
     display: grid;
     place-items: center;
     padding: 0;
@@ -272,8 +272,8 @@ html[data-theme="dark"] .site-global-bg {
 
 .site-music-panel {
     position: fixed;
-    top: clamp(4.9rem, 8vh, 6.2rem);
-    right: calc(clamp(1rem, 3vw, 2rem) + 4.35rem);
+    top: 4.9rem;
+    right: 0.75rem;
     z-index: 82;
     width: min(300px, calc(100vw - 7.5rem));
     overflow: hidden;
@@ -287,7 +287,7 @@ html[data-theme="dark"] .site-global-bg {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 30px 90px rgba(9, 14, 38, 0.42), 0 0 42px rgba(126, 111, 255, 0.14);
     backdrop-filter: blur(22px) saturate(1.2);
     pointer-events: auto;
-    transform: translateX(calc(100% + 4.25rem));
+    transform: translateX(calc(100% + 0.75rem));
     opacity: 0;
     transition: transform var(--ts-motion-base) var(--ts-ease-lift), opacity var(--ts-motion-base);
 }
