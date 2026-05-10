@@ -510,6 +510,7 @@ export function useRoomChat({ live2d, world }) {
 
   async function playTTS(text, messageId = '') {
     const settings = readJson('roomTTSSettings', {});
+    if (settings.provider === 'gpt-sovits') settings.useProxy = false;
     if (!settings.enabled) {
       addMessage('system', '\u8bf7\u5148\u5728 TTS \u8bbe\u7f6e\u4e2d\u542f\u7528\u8bed\u97f3\u5408\u6210');
       return;

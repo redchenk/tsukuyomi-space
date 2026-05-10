@@ -34,7 +34,6 @@ const TTS_PRESETS = {
   minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimax.chat/v1/t2a_v2', model: 'speech-02-hd', voice: 'female-shaonv' },
   elevenlabs: { label: 'ElevenLabs', provider: 'elevenlabs', apiUrl: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2', voice: '21m00Tcm4TlvDq8ikWAM' },
   gptSovitsLocal: { label: '本机 GPT-SoVITS 直连', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth' },
-  gptSovitsServer: { label: '服务器 GPT-SoVITS', provider: 'gpt-sovits', apiUrl: 'http://127.0.0.1:9880/tts', model: 'auto', voice: '', useProxy: true, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
 };
 const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
@@ -613,6 +612,10 @@ function loadSettings() {
 
   Object.assign(llm, readJson('roomLLMSettings', {}));
   Object.assign(tts, { ...tts, ...readJson('roomTTSSettings', {}) });
+  if (tts.provider === 'gpt-sovits') {
+    tts.useProxy = false;
+    if (!tts.apiUrl || /127\.0\.0\.1/.test(tts.apiUrl)) tts.apiUrl = defaultTtsUrl('gpt-sovits');
+  }
   Object.assign(memory, { enabled: true, ...readJson('roomMemorySettings', {}) });
   Object.assign(knowledge, { enabled: true, managerOpen: false, ...readJson('roomKnowledgeSettings', {}) });
   if (!Array.isArray(knowledge.entries) || !knowledge.entries.length) knowledge.entries = defaultKnowledgeEntries();
@@ -692,6 +695,7 @@ function applyTtsPreset(name) {
   if ('promptLang' in preset) tts.promptLang = preset.promptLang;
   if ('gptWeightPath' in preset) tts.gptWeightPath = preset.gptWeightPath;
   if ('sovitsWeightPath' in preset) tts.sovitsWeightPath = preset.sovitsWeightPath;
+  if (tts.provider === 'gpt-sovits') tts.useProxy = false;
 }
 
 function saveLLM() {
@@ -758,6 +762,7 @@ function saveTTS() {
     tts.refAudioPath = normalizeGptSovitsRefAudioPath(tts.refAudioPath || tts.voice);
     tts.gptWeightPath = String(tts.gptWeightPath || DEFAULT_GPT_SOVITS_GPT_WEIGHT).trim();
     tts.sovitsWeightPath = String(tts.sovitsWeightPath || DEFAULT_GPT_SOVITS_SOVITS_WEIGHT).trim();
+    tts.useProxy = false;
   }
   writeJson('roomTTSSettings', {
     enabled: Boolean(tts.enabled),
@@ -772,7 +777,7 @@ function saveTTS() {
     promptLang: tts.provider === 'gpt-sovits' ? normalizeGptSovitsLang(tts.promptLang, 'ja') : String(tts.promptLang || '').trim(),
     gptWeightPath: String(tts.gptWeightPath || '').trim(),
     sovitsWeightPath: String(tts.sovitsWeightPath || '').trim(),
-    useProxy: Boolean(tts.useProxy)
+    useProxy: tts.provider === 'gpt-sovits' ? false : Boolean(tts.useProxy)
   });
   const localGptSovits = tts.provider === 'gpt-sovits';
   openTestDialog(
@@ -1263,8 +1268,9 @@ onMounted(loadSettings);
             <label>SoVITS 权重路径<input v-model="tts.sovitsWeightPath" type="text" placeholder="SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth"></label>
             <p v-if="gptSovitsPathWarning(tts.refAudioPath)" class="field-hint warning-text">{{ gptSovitsPathWarning(tts.refAudioPath) }}</p>
           </template>
-          <label class="check-row"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>
-          <p class="field-hint">本机 GPT-SoVITS 直连会让浏览器直接播放 http://localhost:9880/tts 生成的音频，请先启动 GPT-SoVITS API。勾选服务器代理时，/api/tts 访问的是网站后端所在机器的 127.0.0.1，不是访客电脑。</p>
+          <label v-if="tts.provider !== 'gpt-sovits'" class="check-row"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>
+          <p class="field-hint" v-if="tts.provider === 'gpt-sovits'">本机 GPT-SoVITS 仅支持浏览器直连 http://localhost:9880/tts。请在访问设备上启动 GPT-SoVITS API，网站服务器不会代为连接 GPT-SoVITS。</p>
+          <p class="field-hint" v-else>关闭时由浏览器直连供应商；开启后请求会经过本站后端，仅允许预设供应商域名，用于处理 CORS 限制。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveTTS">保存 TTS</button>
             <button class="ghost-btn" type="button" @click="testTTS">测试语音</button>
