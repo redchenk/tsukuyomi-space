@@ -53,6 +53,23 @@ function cleanReply(text) {
   return cleaned || '\u55ef\uff0c\u6211\u5728\u3002';
 }
 
+function cleanTtsText(text) {
+  return cleanReply(text)
+    .replace(/(?:^|\n)\s*(?:動作|表情|姿勢|口調|感情|リアクション|しぐさ|ト書き)\s*[:：][^\n]{1,140}(?=\n|$)/gu, '\n')
+    .replace(/[\(\uFF08]([^()\uFF08\uFF09\n]{1,80})[\)\uFF09]/gu, (match, cue) => (
+      /(?:微笑|笑う|うなず|首をかしげ|見つめ|手を振|ため息|囁|近づ|照れ|沈黙|目を伏せ|表情|動作|しぐさ)/u.test(cue) ? '' : match
+    ))
+    .replace(/[\[\u3010]([^[\]\u3010\u3011\n]{1,80})[\]\u3011]/gu, (match, cue) => (
+      /(?:微笑|笑う|うなず|首をかしげ|見つめ|手を振|ため息|囁|近づ|照れ|沈黙|目を伏せ|表情|動作|しぐさ)/u.test(cue) ? '' : match
+    ))
+    .replace(/\*([^*\n]{1,80})\*/gu, (match, cue) => (
+      /(?:微笑|笑う|うなず|首をかしげ|見つめ|手を振|ため息|囁|近づ|照れ|沈黙|目を伏せ|表情|動作|しぐさ)/u.test(cue) ? '' : match
+    ))
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function defaultTtsUrl(provider) {
   if (provider === 'gpt-sovits') return 'http://localhost:9880/tts';
   return '';
@@ -223,6 +240,48 @@ function applyActCues(text) {
 
 function pickReply(data) {
   return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.reply || '';
+}
+
+async function translateForJapaneseTts(text) {
+  const source = cleanTtsText(text);
+  if (!source) return '';
+  const settings = readJson('roomLLMSettings', {});
+  if (!settings.apiKey || !settings.apiUrl) {
+    throw new Error('请先在 Room 设置中配置 LLM，用于把回复翻译成日文后再播放语音。');
+  }
+  const systemPrompt = [
+    '你是给 TTS 使用的日文翻译器。',
+    '把用户提供的文本翻译成自然、适合朗读的日文。',
+    '只输出日文正文，不要解释，不要 Markdown，不要括号里的动作提示，不要舞台提示。',
+    '如果原文含有动作、表情、姿态、语气、旁白提示，请彻底删除，只保留角色真正要说出口的话。'
+  ].join('\n');
+
+  if (settings.useProxy) {
+    const result = await postJson('/api/chat', {
+      message: source,
+      conversation: [],
+      apiKey: settings.apiKey,
+      apiUrl: settings.apiUrl,
+      model: settings.model,
+      systemPrompt
+    });
+    return cleanTtsText(result.reply || '');
+  }
+
+  const response = await fetch(settings.apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+    body: JSON.stringify({
+      model: settings.model || 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: source }
+      ],
+      temperature: 0.2
+    })
+  });
+  if (!response.ok) throw new Error(`日文翻译失败：LLM ${response.status}`);
+  return cleanTtsText(pickReply(await response.json()));
 }
 
 function fileToDataUrl(file) {
@@ -525,10 +584,11 @@ export function useRoomChat({ live2d, world }) {
     ttsRequestId = requestId;
     ttsState.value = { messageId, status: 'loading' };
     try {
-      const ttsText = cleanReply(text);
+      const ttsText = await translateForJapaneseTts(text);
+      if (!ttsText) throw new Error('日文翻译结果为空，已取消语音播放。');
       if (directLocalGptSovits) {
         await ensureGptSovitsWeights(settings);
-        const audio = new Audio(buildGptSovitsAudioUrl(ttsText, settings));
+        const audio = new Audio(buildGptSovitsAudioUrl(ttsText, { ...settings, textLang: 'ja', promptLang: settings.promptLang || 'ja' }));
         currentAudio = audio;
         audio.onplay = () => {
           ttsState.value = { messageId, status: 'playing' };
@@ -547,7 +607,7 @@ export function useRoomChat({ live2d, world }) {
       const response = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...settings, text: ttsText })
+          body: JSON.stringify({ ...settings, text: ttsText, textLang: 'ja', promptLang: settings.promptLang || 'ja' })
         });
       if (!response.ok) {
         const contentType = response.headers.get('content-type') || '';
