@@ -66,13 +66,47 @@ function normalizeLocalGptSovitsUrl(url) {
   return parsed;
 }
 
+function normalizeGptSovitsLang(value, fallback = 'zh') {
+  const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
+  const aliases = {
+    cn: 'zh',
+    'zh-cn': 'zh',
+    'zh-hans': 'zh',
+    chinese: 'zh',
+    mandarin: 'zh',
+    '\u4e2d\u6587': 'zh',
+    '\u6c49\u8bed': 'zh',
+    '\u6f22\u8a9e': 'zh',
+    jp: 'ja',
+    jpn: 'ja',
+    japanese: 'ja',
+    '\u65e5\u8bed': 'ja',
+    '\u65e5\u6587': 'ja',
+    '\u65e5\u672c\u8a9e': 'ja',
+    english: 'en',
+    '\u82f1\u8bed': 'en',
+    '\u82f1\u6587': 'en',
+    cantonese: 'yue',
+    '\u7ca4\u8bed': 'yue',
+    '\u7cb5\u8a9e': 'yue',
+    korean: 'ko',
+    '\u97e9\u8bed': 'ko',
+    '\u97d3\u8a9e': 'ko',
+    '\u81ea\u52a8': 'auto'
+  };
+  const normalized = aliases[raw] || raw || fallback;
+  return ['zh', 'ja', 'en', 'yue', 'ko', 'auto', 'all-zh', 'all-ja', 'all-yue', 'auto-yue'].includes(normalized)
+    ? normalized.replace(/-/g, '_')
+    : fallback;
+}
+
 function buildGptSovitsAudioUrl(text, settings) {
   const url = normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl(settings.provider));
   url.searchParams.set('text', String(text));
-  url.searchParams.set('text_lang', settings.textLang || settings.model || 'zh');
+  url.searchParams.set('text_lang', normalizeGptSovitsLang(settings.textLang || settings.model, 'zh'));
   url.searchParams.set('ref_audio_path', settings.refAudioPath || settings.voice || '');
   url.searchParams.set('prompt_text', settings.promptText || '');
-  url.searchParams.set('prompt_lang', settings.promptLang || 'zh');
+  url.searchParams.set('prompt_lang', normalizeGptSovitsLang(settings.promptLang, 'zh'));
   url.searchParams.set('text_split_method', 'cut5');
   url.searchParams.set('batch_size', '1');
   url.searchParams.set('media_type', 'wav');

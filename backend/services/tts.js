@@ -79,6 +79,40 @@ function makeProviderError(provider, status, body) {
     return error;
 }
 
+function normalizeGptSovitsLang(value, fallback = 'zh') {
+    const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
+    const aliases = {
+        cn: 'zh',
+        'zh-cn': 'zh',
+        'zh-hans': 'zh',
+        chinese: 'zh',
+        mandarin: 'zh',
+        '中文': 'zh',
+        '汉语': 'zh',
+        '漢語': 'zh',
+        jp: 'ja',
+        jpn: 'ja',
+        japanese: 'ja',
+        '日语': 'ja',
+        '日文': 'ja',
+        '日本語': 'ja',
+        english: 'en',
+        '英语': 'en',
+        '英文': 'en',
+        cantonese: 'yue',
+        '粤语': 'yue',
+        '粵語': 'yue',
+        korean: 'ko',
+        '韩语': 'ko',
+        '韓語': 'ko',
+        '自动': 'auto'
+    };
+    const normalized = aliases[raw] || raw || fallback;
+    return ['zh', 'ja', 'en', 'yue', 'ko', 'auto', 'all-zh', 'all-ja', 'all-yue', 'auto-yue'].includes(normalized)
+        ? normalized.replace(/-/g, '_')
+        : fallback;
+}
+
 async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang }) {
     const useProvider = provider || process.env.TTS_PROVIDER || 'mimo';
     const useApiKey = apiKey || TTS_API_KEY;
@@ -113,10 +147,10 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 text: String(text),
-                text_lang: textLang || model || GPT_SOVITS_TEXT_LANG,
+                text_lang: normalizeGptSovitsLang(textLang || model || GPT_SOVITS_TEXT_LANG, 'zh'),
                 ref_audio_path: useRefAudioPath,
                 prompt_text: promptText || promptAudio || GPT_SOVITS_PROMPT_TEXT,
-                prompt_lang: promptLang || GPT_SOVITS_PROMPT_LANG,
+                prompt_lang: normalizeGptSovitsLang(promptLang || GPT_SOVITS_PROMPT_LANG, 'zh'),
                 text_split_method: 'cut5',
                 batch_size: 1,
                 media_type: 'wav',

@@ -37,6 +37,14 @@ const TTS_PRESETS = {
   gptSovitsServer: { label: '服务器 GPT-SoVITS', provider: 'gpt-sovits', apiUrl: 'http://127.0.0.1:9880/tts', model: 'zh', voice: '', useProxy: true, textLang: 'zh', promptLang: 'zh' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
 };
+const GPT_SOVITS_LANGUAGE_OPTIONS = [
+  { value: 'zh', label: '中文 / zh' },
+  { value: 'ja', label: '日语 / ja' },
+  { value: 'en', label: '英语 / en' },
+  { value: 'yue', label: '粤语 / yue' },
+  { value: 'ko', label: '韩语 / ko' },
+  { value: 'auto', label: '自动 / auto' }
+];
 const MINIMAX_MCP_TOOLS = 'text_to_audio,list_voices,voice_clone,voice_design,music_generation,generate_video,image_to_video,query_video_generation,text_to_image';
 const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
 
@@ -265,6 +273,40 @@ function normalizeLocalGptSovitsUrl(url) {
   return parsed;
 }
 
+function normalizeGptSovitsLang(value, fallback = 'zh') {
+  const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
+  const aliases = {
+    cn: 'zh',
+    'zh-cn': 'zh',
+    'zh-hans': 'zh',
+    chinese: 'zh',
+    mandarin: 'zh',
+    '中文': 'zh',
+    '汉语': 'zh',
+    '漢語': 'zh',
+    jp: 'ja',
+    jpn: 'ja',
+    japanese: 'ja',
+    '日语': 'ja',
+    '日文': 'ja',
+    '日本語': 'ja',
+    english: 'en',
+    '英语': 'en',
+    '英文': 'en',
+    cantonese: 'yue',
+    '粤语': 'yue',
+    '粵語': 'yue',
+    korean: 'ko',
+    '韩语': 'ko',
+    '韓語': 'ko',
+    '自动': 'auto'
+  };
+  const normalized = aliases[raw] || raw || fallback;
+  return ['zh', 'ja', 'en', 'yue', 'ko', 'auto', 'all-zh', 'all-ja', 'all-yue', 'auto-yue'].includes(normalized)
+    ? normalized.replace(/-/g, '_')
+    : fallback;
+}
+
 function buildTtsRequest(text, settings) {
   const provider = settings.provider || 'mimo';
   const apiUrl = settings.apiUrl || defaultTtsUrl(provider);
@@ -277,10 +319,10 @@ function buildTtsRequest(text, settings) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: String(text),
-          text_lang: settings.textLang || settings.model || 'zh',
+          text_lang: normalizeGptSovitsLang(settings.textLang || settings.model, 'zh'),
           ref_audio_path: settings.refAudioPath || settings.voice,
           prompt_text: settings.promptText || '',
-          prompt_lang: settings.promptLang || 'zh',
+          prompt_lang: normalizeGptSovitsLang(settings.promptLang, 'zh'),
           text_split_method: 'cut5',
           batch_size: 1,
           media_type: 'wav',
@@ -434,10 +476,10 @@ async function loadServerMemories() {
 function buildGptSovitsAudioUrl(text, settings) {
   const url = normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl(settings.provider));
   url.searchParams.set('text', String(text));
-  url.searchParams.set('text_lang', settings.textLang || settings.model || 'zh');
+  url.searchParams.set('text_lang', normalizeGptSovitsLang(settings.textLang || settings.model, 'zh'));
   url.searchParams.set('ref_audio_path', settings.refAudioPath || settings.voice || '');
   url.searchParams.set('prompt_text', settings.promptText || '');
-  url.searchParams.set('prompt_lang', settings.promptLang || 'zh');
+  url.searchParams.set('prompt_lang', normalizeGptSovitsLang(settings.promptLang, 'zh'));
   url.searchParams.set('text_split_method', 'cut5');
   url.searchParams.set('batch_size', '1');
   url.searchParams.set('media_type', 'wav');
@@ -634,6 +676,11 @@ async function testLLM() {
 }
 
 function saveTTS() {
+  if (tts.provider === 'gpt-sovits') {
+    tts.textLang = normalizeGptSovitsLang(tts.textLang || tts.model, 'zh');
+    tts.promptLang = normalizeGptSovitsLang(tts.promptLang, 'zh');
+    tts.model = tts.textLang;
+  }
   writeJson('roomTTSSettings', {
     enabled: Boolean(tts.enabled),
     provider: tts.provider || 'mimo',
@@ -643,8 +690,8 @@ function saveTTS() {
     voice: String(tts.voice || '').trim(),
     refAudioPath: String(tts.refAudioPath || '').trim(),
     promptText: String(tts.promptText || '').trim(),
-    textLang: String(tts.textLang || '').trim(),
-    promptLang: String(tts.promptLang || '').trim(),
+    textLang: tts.provider === 'gpt-sovits' ? normalizeGptSovitsLang(tts.textLang, 'zh') : String(tts.textLang || '').trim(),
+    promptLang: tts.provider === 'gpt-sovits' ? normalizeGptSovitsLang(tts.promptLang, 'zh') : String(tts.promptLang || '').trim(),
     useProxy: Boolean(tts.useProxy)
   });
   const localGptSovits = tts.provider === 'gpt-sovits';
@@ -690,8 +737,8 @@ async function testTTS() {
           voice: tts.voice,
           refAudioPath: tts.refAudioPath,
           promptText: tts.promptText,
-          textLang: tts.textLang,
-          promptLang: tts.promptLang
+          textLang: normalizeGptSovitsLang(tts.textLang, 'zh'),
+          promptLang: normalizeGptSovitsLang(tts.promptLang, 'zh')
         })
       })
       : await fetch(request.apiUrl, request.options);
@@ -1118,10 +1165,14 @@ onMounted(loadSettings);
           <label>模型名称<input v-model="tts.model" type="text" placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"></label>
           <label>音色 / Voice ID<input v-model="tts.voice" type="text" placeholder="alloy / female-shaonv / ElevenLabs voice id"></label>
           <template v-if="tts.provider === 'gpt-sovits'">
-            <label>文本语言<input v-model="tts.textLang" type="text" placeholder="zh / ja / en / auto"></label>
+            <label>文本语言<select v-model="tts.textLang">
+              <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`text-${option.value}`" :value="option.value">{{ option.label }}</option>
+            </select></label>
             <label>参考音频路径<input v-model="tts.refAudioPath" type="text" placeholder="E:\\visualstudio\\tts\\xxx.wav"></label>
             <label>参考音频文本<input v-model="tts.promptText" type="text" placeholder="参考音频里说的话"></label>
-            <label>参考音频语言<input v-model="tts.promptLang" type="text" placeholder="zh / ja / en"></label>
+            <label>参考音频语言<select v-model="tts.promptLang">
+              <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`prompt-${option.value}`" :value="option.value">{{ option.label }}</option>
+            </select></label>
           </template>
           <label class="check-row"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>
           <p class="field-hint">本机 GPT-SoVITS 直连会让浏览器直接播放 http://localhost:9880/tts 生成的音频，请先启动 GPT-SoVITS API。勾选服务器代理时，/api/tts 访问的是网站后端所在机器的 127.0.0.1，不是访客电脑。</p>
