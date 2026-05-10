@@ -584,9 +584,9 @@ export function useRoomChat({ live2d, world }) {
     ttsRequestId = requestId;
     ttsState.value = { messageId, status: 'loading' };
     try {
-      const ttsText = await translateForJapaneseTts(text);
-      if (!ttsText) throw new Error('日文翻译结果为空，已取消语音播放。');
       if (directLocalGptSovits) {
+        const ttsText = await translateForJapaneseTts(text);
+        if (!ttsText) throw new Error('日文翻译结果为空，已取消语音播放。');
         await ensureGptSovitsWeights(settings);
         const audio = new Audio(buildGptSovitsAudioUrl(ttsText, { ...settings, textLang: 'ja', promptLang: settings.promptLang || 'ja' }));
         currentAudio = audio;
@@ -604,10 +604,12 @@ export function useRoomChat({ live2d, world }) {
         await audio.play();
         return;
       }
+      const ttsText = cleanTtsText(text);
+      if (!ttsText) throw new Error('TTS 文本为空，已取消语音播放。');
       const response = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...settings, text: ttsText, textLang: 'ja', promptLang: settings.promptLang || 'ja' })
+          body: JSON.stringify({ ...settings, text: ttsText, textLang: 'auto' })
         });
       if (!response.ok) {
         const contentType = response.headers.get('content-type') || '';
