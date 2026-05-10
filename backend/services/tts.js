@@ -1,6 +1,11 @@
 const TTS_API_KEY = process.env.TTS_API_KEY || '';
 const TTS_API_URL = process.env.TTS_API_URL || '';
 const TTS_VOICE = process.env.TTS_VOICE || '';
+const GPT_SOVITS_API_URL = process.env.GPT_SOVITS_API_URL || 'http://127.0.0.1:9880/tts';
+const GPT_SOVITS_REF_AUDIO_PATH = process.env.GPT_SOVITS_REF_AUDIO_PATH || '';
+const GPT_SOVITS_PROMPT_TEXT = process.env.GPT_SOVITS_PROMPT_TEXT || '';
+const GPT_SOVITS_TEXT_LANG = process.env.GPT_SOVITS_TEXT_LANG || 'zh';
+const GPT_SOVITS_PROMPT_LANG = process.env.GPT_SOVITS_PROMPT_LANG || 'zh';
 
 const ALLOWED_TTS_ENDPOINTS = [
     { hostname: 'api.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ },
@@ -10,6 +15,11 @@ const ALLOWED_TTS_ENDPOINTS = [
     { hostname: 'api.elevenlabs.io', path: /^\/v1\/text-to-speech(?:\/[^/?#]+)?\/?$/ }
 ];
 
+const ALLOWED_GPT_SOVITS_ENDPOINTS = [
+    { hostname: '127.0.0.1', path: /^\/tts\/?$/ },
+    { hostname: 'localhost', path: /^\/tts\/?$/ }
+];
+
 function pickAudioBase64(data) {
     return data?.choices?.[0]?.message?.audio?.data
         || data?.choices?.[0]?.message?.audio
@@ -17,7 +27,7 @@ function pickAudioBase64(data) {
         || data?.data?.audio;
 }
 
-function validateTtsUrl(url) {
+function validateTtsUrl(url, provider) {
     let parsed;
     try {
         parsed = new URL(url);
@@ -25,6 +35,20 @@ function validateTtsUrl(url) {
         const error = new Error('不支持的 TTS API 端点');
         error.status = 400;
         throw error;
+    }
+    if (provider === 'gpt-sovits') {
+        if (parsed.protocol !== 'http:' || parsed.username || parsed.password || parsed.search || parsed.hash) {
+            const error = new Error('不支持的 GPT-SoVITS API 端点');
+            error.status = 400;
+            throw error;
+        }
+        const allowedLocal = ALLOWED_GPT_SOVITS_ENDPOINTS.some(endpoint => parsed.hostname.toLowerCase() === endpoint.hostname && endpoint.path.test(parsed.pathname));
+        if (!allowedLocal) {
+            const error = new Error('GPT-SoVITS 仅允许访问本机 /tts 端点');
+            error.status = 400;
+            throw error;
+        }
+        return parsed.toString();
     }
     if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash) {
         const error = new Error('不支持的 TTS API 端点');
@@ -55,24 +79,59 @@ function makeProviderError(provider, status, body) {
     return error;
 }
 
-async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio }) {
+async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang }) {
     const useProvider = provider || process.env.TTS_PROVIDER || 'mimo';
     const useApiKey = apiKey || TTS_API_KEY;
-    const useVoice = voice || TTS_VOICE || (useProvider === 'openai' || useProvider === 'openai-compatible' ? 'alloy' : 'mimo_default');
-    const rawApiUrl = apiUrl || TTS_API_URL || (useProvider === 'openai' || useProvider === 'openai-compatible'
+    const useVoice = voice || TTS_VOICE || (useProvider === 'gpt-sovits' ? '' : useProvider === 'openai' || useProvider === 'openai-compatible' ? 'alloy' : 'mimo_default');
+    const rawApiUrl = apiUrl || (useProvider === 'gpt-sovits' ? GPT_SOVITS_API_URL : TTS_API_URL) || (useProvider === 'openai' || useProvider === 'openai-compatible'
         ? 'https://api.openai.com/v1/audio/speech'
         : useProvider === 'minimax'
             ? 'https://api.minimax.chat/v1/t2a_v2'
             : useProvider === 'elevenlabs'
                 ? 'https://api.elevenlabs.io/v1/text-to-speech'
+                : useProvider === 'gpt-sovits'
+                    ? GPT_SOVITS_API_URL
         : 'https://api.xiaomimimo.com/v1/chat/completions');
-    const useApiUrl = validateTtsUrl(rawApiUrl);
+    const useApiUrl = validateTtsUrl(rawApiUrl, useProvider);
     const useModel = model || process.env.TTS_MODEL || (useProvider === 'openai' || useProvider === 'openai-compatible' ? 'tts-1' : useProvider === 'minimax' ? 'speech-02-hd' : useProvider === 'elevenlabs' ? 'eleven_multilingual_v2' : 'mimo-v2.5-tts');
 
-    if (!useApiKey) {
+    if (useProvider !== 'gpt-sovits' && !useApiKey) {
         const error = new Error('TTS API 未配置，请设置 TTS_API_KEY 或在请求中传入 apiKey');
         error.status = 400;
         throw error;
+    }
+
+    if (useProvider === 'gpt-sovits') {
+        const useRefAudioPath = refAudioPath || useVoice || GPT_SOVITS_REF_AUDIO_PATH;
+        if (!useRefAudioPath) {
+            const error = new Error('GPT-SoVITS 需要填写参考音频路径');
+            error.status = 400;
+            throw error;
+        }
+        const response = await fetch(useApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: String(text),
+                text_lang: textLang || model || GPT_SOVITS_TEXT_LANG,
+                ref_audio_path: useRefAudioPath,
+                prompt_text: promptText || promptAudio || GPT_SOVITS_PROMPT_TEXT,
+                prompt_lang: promptLang || GPT_SOVITS_PROMPT_LANG,
+                text_split_method: 'cut5',
+                batch_size: 1,
+                media_type: 'wav',
+                streaming_mode: false,
+                parallel_infer: true
+            })
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw makeProviderError('GPT-SoVITS', response.status, errorText);
+        }
+        return {
+            audioBuffer: Buffer.from(await response.arrayBuffer()),
+            contentType: response.headers.get('content-type') || 'audio/wav'
+        };
     }
 
     if (useProvider === 'mimo' || /xiaomimimo/i.test(useApiUrl)) {

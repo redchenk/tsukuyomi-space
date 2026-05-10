@@ -33,6 +33,7 @@ const TTS_PRESETS = {
   openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
   minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimax.chat/v1/t2a_v2', model: 'speech-02-hd', voice: 'female-shaonv' },
   elevenlabs: { label: 'ElevenLabs', provider: 'elevenlabs', apiUrl: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2', voice: '21m00Tcm4TlvDq8ikWAM' },
+  gptSovits: { label: '本地 GPT-SoVITS', provider: 'gpt-sovits', apiUrl: 'http://127.0.0.1:9880/tts', model: 'zh', voice: '', useProxy: true, textLang: 'zh', promptLang: 'zh' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
 };
 const MINIMAX_MCP_TOOLS = 'text_to_audio,list_voices,voice_clone,voice_design,music_generation,generate_video,image_to_video,query_video_generation,text_to_image';
@@ -55,6 +56,10 @@ const tts = reactive({
   apiKey: '',
   model: 'mimo-v2.5-tts',
   voice: 'mimo_default',
+  refAudioPath: '',
+  promptText: '',
+  textLang: 'zh',
+  promptLang: 'zh',
   useProxy: false
 });
 const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
@@ -247,6 +252,7 @@ function defaultTtsUrl(provider) {
   if (provider === 'openai' || provider === 'openai-compatible') return 'https://api.openai.com/v1/audio/speech';
   if (provider === 'elevenlabs') return 'https://api.elevenlabs.io/v1/text-to-speech';
   if (provider === 'minimax') return 'https://api.minimax.chat/v1/t2a_v2';
+  if (provider === 'gpt-sovits') return 'http://127.0.0.1:9880/tts';
   return 'https://api.xiaomimimo.com/v1/chat/completions';
 }
 
@@ -254,6 +260,27 @@ function buildTtsRequest(text, settings) {
   const provider = settings.provider || 'mimo';
   const apiUrl = settings.apiUrl || defaultTtsUrl(provider);
   const voice = settings.voice || (provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
+  if (provider === 'gpt-sovits') {
+    return {
+      apiUrl,
+      options: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: String(text),
+          text_lang: settings.textLang || settings.model || 'zh',
+          ref_audio_path: settings.refAudioPath || settings.voice,
+          prompt_text: settings.promptText || '',
+          prompt_lang: settings.promptLang || 'zh',
+          text_split_method: 'cut5',
+          batch_size: 1,
+          media_type: 'wav',
+          streaming_mode: false,
+          parallel_infer: true
+        })
+      }
+    };
+  }
   if (provider === 'mimo' || /xiaomimimo/i.test(apiUrl)) {
     return {
       apiUrl,
@@ -521,6 +548,9 @@ function applyTtsPreset(name) {
   tts.apiUrl = preset.apiUrl;
   tts.model = preset.model;
   tts.voice = preset.voice;
+  if ('useProxy' in preset) tts.useProxy = Boolean(preset.useProxy);
+  if ('textLang' in preset) tts.textLang = preset.textLang;
+  if ('promptLang' in preset) tts.promptLang = preset.promptLang;
 }
 
 function saveLLM() {
@@ -587,28 +617,38 @@ function saveTTS() {
     apiKey: String(tts.apiKey || '').trim(),
     model: String(tts.model || '').trim(),
     voice: String(tts.voice || '').trim(),
+    refAudioPath: String(tts.refAudioPath || '').trim(),
+    promptText: String(tts.promptText || '').trim(),
+    textLang: String(tts.textLang || '').trim(),
+    promptLang: String(tts.promptLang || '').trim(),
     useProxy: Boolean(tts.useProxy)
   });
+  const localGptSovits = tts.provider === 'gpt-sovits';
   openTestDialog(
     'tts',
-    tts.enabled && tts.apiKey ? 'success' : 'warning',
+    tts.enabled && (tts.apiKey || localGptSovits) ? 'success' : 'warning',
     'TTS 设置已保存',
     tts.enabled
-      ? (tts.apiKey ? 'TTS 语音设置已保存到当前浏览器。' : 'TTS 已启用并保存，但还没有填写 API Key。')
+      ? (tts.apiKey || localGptSovits ? 'TTS 语音设置已保存到当前浏览器。' : 'TTS 已启用并保存，但还没有填写 API Key。')
       : 'TTS 设置已保存，当前未启用语音合成。',
-    `Provider：${tts.provider || 'mimo'}\n端点：${String(tts.apiUrl || '').trim() || defaultTtsUrl(tts.provider)}\n模型：${String(tts.model || '').trim() || '未填写'}\n音色：${String(tts.voice || '').trim() || '未填写'}\n请求方式：${tts.useProxy ? '服务器受限代理' : '浏览器直连'}`
+    `Provider：${tts.provider || 'mimo'}\n端点：${String(tts.apiUrl || '').trim() || defaultTtsUrl(tts.provider)}\n模型/语言：${String(tts.model || tts.textLang || '').trim() || '未填写'}\n音色/参考音频：${String(tts.voice || tts.refAudioPath || '').trim() || '未填写'}\n请求方式：${tts.useProxy ? '服务器受限代理' : '浏览器直连'}`
   );
   showToast('TTS 设置已保存');
 }
 
 async function testTTS() {
   saveTTS();
-  if (!tts.apiKey) {
+  if (tts.provider === 'gpt-sovits' && !tts.useProxy) {
+    openTestDialog('tts', 'error', 'TTS 语音测试', '本地 GPT-SoVITS 需要开启服务器受限代理。', '浏览器页面不能稳定直连本地 127.0.0.1 服务，请使用 /api/tts 由站内后端桥接。');
+    showToast('请开启服务器受限代理');
+    return;
+  }
+  if (tts.provider !== 'gpt-sovits' && !tts.apiKey) {
     openTestDialog('tts', 'error', 'TTS 语音测试', '请先填写 TTS API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的语音供应商。');
     showToast('请先填写 TTS API Key');
     return;
   }
-  openTestDialog('tts', 'loading', 'TTS 语音测试', tts.useProxy ? '正在通过站内受限代理请求语音供应商...' : '正在请求语音供应商...', `${tts.useProxy ? '/api/tts' : (tts.apiUrl || defaultTtsUrl(tts.provider))}\nProvider：${tts.provider || 'mimo'}\n模型：${tts.model || '未填写'}\n音色：${tts.voice || '未填写'}`);
+  openTestDialog('tts', 'loading', 'TTS 语音测试', tts.useProxy ? '正在通过站内受限代理请求语音供应商...' : '正在请求语音供应商...', `${tts.useProxy ? '/api/tts' : (tts.apiUrl || defaultTtsUrl(tts.provider))}\nProvider：${tts.provider || 'mimo'}\n模型/语言：${tts.model || tts.textLang || '未填写'}\n音色/参考音频：${tts.voice || tts.refAudioPath || '未填写'}`);
   try {
     const request = buildTtsRequest('你好，我是八千代辉夜姬。今晚的月光，也很温柔。', tts);
     const response = tts.useProxy
@@ -621,7 +661,11 @@ async function testTTS() {
           apiUrl: tts.apiUrl,
           provider: tts.provider,
           model: tts.model,
-          voice: tts.voice
+          voice: tts.voice,
+          refAudioPath: tts.refAudioPath,
+          promptText: tts.promptText,
+          textLang: tts.textLang,
+          promptLang: tts.promptLang
         })
       })
       : await fetch(request.apiUrl, request.options);
@@ -1040,14 +1084,21 @@ onMounted(loadSettings);
             <option value="openai-compatible">OpenAI Compatible</option>
             <option value="minimax">MiniMax TTS</option>
             <option value="elevenlabs">ElevenLabs</option>
+            <option value="gpt-sovits">本地 GPT-SoVITS</option>
             <option value="custom">自定义 OpenAI 兼容</option>
           </select></label>
           <label>API 端点<input v-model="tts.apiUrl" type="text" placeholder="https://api.openai.com/v1/audio/speech"></label>
           <label>API Key<input v-model="tts.apiKey" type="password" placeholder="sk-..."></label>
           <label>模型名称<input v-model="tts.model" type="text" placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"></label>
           <label>音色 / Voice ID<input v-model="tts.voice" type="text" placeholder="alloy / female-shaonv / ElevenLabs voice id"></label>
+          <template v-if="tts.provider === 'gpt-sovits'">
+            <label>文本语言<input v-model="tts.textLang" type="text" placeholder="zh / ja / en / auto"></label>
+            <label>参考音频路径<input v-model="tts.refAudioPath" type="text" placeholder="E:\\visualstudio\\tts\\xxx.wav"></label>
+            <label>参考音频文本<input v-model="tts.promptText" type="text" placeholder="参考音频里说的话"></label>
+            <label>参考音频语言<input v-model="tts.promptLang" type="text" placeholder="zh / ja / en"></label>
+          </template>
           <label class="check-row"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>
-          <p class="field-hint">LLM 预设均按 OpenAI-compatible Chat Completions 格式请求。TTS 中 OpenAI Compatible/自定义按 OpenAI Audio Speech 格式请求；ElevenLabs 使用 voice id；MiniMax 使用 t2a_v2 JSON 返回音频。</p>
+          <p class="field-hint">LLM 预设均按 OpenAI-compatible Chat Completions 格式请求。TTS 中 OpenAI Compatible/自定义按 OpenAI Audio Speech 格式请求；ElevenLabs 使用 voice id；MiniMax 使用 t2a_v2 JSON 返回音频。本地 GPT-SoVITS 需要先启动 9880 API，并通过服务器受限代理访问本机 /tts。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveTTS">保存 TTS</button>
             <button class="ghost-btn" type="button" @click="testTTS">测试语音</button>
