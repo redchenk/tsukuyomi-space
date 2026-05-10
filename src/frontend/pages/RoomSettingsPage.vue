@@ -33,10 +33,12 @@ const TTS_PRESETS = {
   openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
   minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimax.chat/v1/t2a_v2', model: 'speech-02-hd', voice: 'female-shaonv' },
   elevenlabs: { label: 'ElevenLabs', provider: 'elevenlabs', apiUrl: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2', voice: '21m00Tcm4TlvDq8ikWAM' },
-  gptSovitsLocal: { label: '本机 GPT-SoVITS 直连', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja' },
-  gptSovitsServer: { label: '服务器 GPT-SoVITS', provider: 'gpt-sovits', apiUrl: 'http://127.0.0.1:9880/tts', model: 'auto', voice: '', useProxy: true, textLang: 'auto', promptLang: 'ja' },
+  gptSovitsLocal: { label: '本机 GPT-SoVITS 直连', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth' },
+  gptSovitsServer: { label: '服务器 GPT-SoVITS', provider: 'gpt-sovits', apiUrl: 'http://127.0.0.1:9880/tts', model: 'auto', voice: '', useProxy: true, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
 };
+const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
+const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth';
 const GPT_SOVITS_LANGUAGE_OPTIONS = [
   { value: 'zh', label: '中文 / zh' },
   { value: 'ja', label: '日语 / ja' },
@@ -69,6 +71,8 @@ const tts = reactive({
   promptText: '',
   textLang: 'auto',
   promptLang: 'ja',
+  gptWeightPath: DEFAULT_GPT_SOVITS_GPT_WEIGHT,
+  sovitsWeightPath: DEFAULT_GPT_SOVITS_SOVITS_WEIGHT,
   useProxy: false
 });
 const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
@@ -273,6 +277,38 @@ function normalizeLocalGptSovitsUrl(url) {
   return parsed;
 }
 
+function buildGptSovitsControlUrl(settings, pathname, params) {
+  const url = normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl('gpt-sovits'));
+  url.pathname = pathname;
+  url.search = '';
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (String(value || '').trim()) url.searchParams.set(key, String(value).trim());
+  });
+  url.searchParams.set('_', String(Date.now()));
+  return url.toString();
+}
+
+function requestLocalGptSovitsControl(url, timeout = 70000) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    const timer = window.setTimeout(() => resolve(false), timeout);
+    const done = () => {
+      window.clearTimeout(timer);
+      resolve(true);
+    };
+    image.onload = done;
+    image.onerror = done;
+    image.src = url;
+  });
+}
+
+async function ensureGptSovitsWeights(settings) {
+  const gptWeightPath = settings.gptWeightPath || DEFAULT_GPT_SOVITS_GPT_WEIGHT;
+  const sovitsWeightPath = settings.sovitsWeightPath || DEFAULT_GPT_SOVITS_SOVITS_WEIGHT;
+  await requestLocalGptSovitsControl(buildGptSovitsControlUrl(settings, '/set_gpt_weights', { weights_path: gptWeightPath }));
+  await requestLocalGptSovitsControl(buildGptSovitsControlUrl(settings, '/set_sovits_weights', { weights_path: sovitsWeightPath }));
+}
+
 function normalizeGptSovitsLang(value, fallback = 'zh') {
   const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
   const aliases = {
@@ -359,7 +395,7 @@ function buildTtsRequest(text, settings) {
           text_lang: resolveGptSovitsTextLang(text, settings),
           ref_audio_path: normalizeGptSovitsRefAudioPath(settings.refAudioPath || settings.voice),
           prompt_text: settings.promptText || '',
-          prompt_lang: normalizeGptSovitsLang(settings.promptLang, 'zh'),
+          prompt_lang: normalizeGptSovitsLang(settings.promptLang, 'ja'),
           text_split_method: 'cut5',
           batch_size: 1,
           media_type: 'wav',
@@ -516,7 +552,7 @@ function buildGptSovitsAudioUrl(text, settings) {
   url.searchParams.set('text_lang', resolveGptSovitsTextLang(text, settings));
   url.searchParams.set('ref_audio_path', normalizeGptSovitsRefAudioPath(settings.refAudioPath || settings.voice));
   url.searchParams.set('prompt_text', settings.promptText || '');
-  url.searchParams.set('prompt_lang', normalizeGptSovitsLang(settings.promptLang, 'zh'));
+  url.searchParams.set('prompt_lang', normalizeGptSovitsLang(settings.promptLang, 'ja'));
   url.searchParams.set('text_split_method', 'cut5');
   url.searchParams.set('batch_size', '1');
   url.searchParams.set('media_type', 'wav');
@@ -654,6 +690,8 @@ function applyTtsPreset(name) {
   if ('useProxy' in preset) tts.useProxy = Boolean(preset.useProxy);
   if ('textLang' in preset) tts.textLang = preset.textLang;
   if ('promptLang' in preset) tts.promptLang = preset.promptLang;
+  if ('gptWeightPath' in preset) tts.gptWeightPath = preset.gptWeightPath;
+  if ('sovitsWeightPath' in preset) tts.sovitsWeightPath = preset.sovitsWeightPath;
 }
 
 function saveLLM() {
@@ -718,6 +756,8 @@ function saveTTS() {
     tts.promptLang = normalizeGptSovitsLang(tts.promptLang, 'ja');
     tts.model = tts.textLang;
     tts.refAudioPath = normalizeGptSovitsRefAudioPath(tts.refAudioPath || tts.voice);
+    tts.gptWeightPath = String(tts.gptWeightPath || DEFAULT_GPT_SOVITS_GPT_WEIGHT).trim();
+    tts.sovitsWeightPath = String(tts.sovitsWeightPath || DEFAULT_GPT_SOVITS_SOVITS_WEIGHT).trim();
   }
   writeJson('roomTTSSettings', {
     enabled: Boolean(tts.enabled),
@@ -730,6 +770,8 @@ function saveTTS() {
     promptText: String(tts.promptText || '').trim(),
     textLang: tts.provider === 'gpt-sovits' ? normalizeGptSovitsLang(tts.textLang, 'auto') : String(tts.textLang || '').trim(),
     promptLang: tts.provider === 'gpt-sovits' ? normalizeGptSovitsLang(tts.promptLang, 'ja') : String(tts.promptLang || '').trim(),
+    gptWeightPath: String(tts.gptWeightPath || '').trim(),
+    sovitsWeightPath: String(tts.sovitsWeightPath || '').trim(),
     useProxy: Boolean(tts.useProxy)
   });
   const localGptSovits = tts.provider === 'gpt-sovits';
@@ -758,6 +800,7 @@ async function testTTS() {
   openTestDialog('tts', 'loading', 'TTS 语音测试', tts.useProxy ? '正在通过站内受限代理请求语音供应商...' : '正在请求语音供应商...', `${tts.useProxy ? '/api/tts' : (tts.apiUrl || defaultTtsUrl(tts.provider))}\nProvider：${tts.provider || 'mimo'}\n模型/语言：${tts.model || tts.textLang || '未填写'}\n音色/参考音频：${tts.voice || tts.refAudioPath || '未填写'}\n测试文本：${testText}`);
   try {
     if (tts.provider === 'gpt-sovits' && !tts.useProxy) {
+      await ensureGptSovitsWeights(tts);
       const audioUrl = buildGptSovitsAudioUrl(testText, tts);
       await new Audio(audioUrl).play();
       openTestDialog('tts', 'success', 'TTS 语音测试', '已直接请求本机 GPT-SoVITS 9880 端口并开始播放。', audioUrl);
@@ -779,7 +822,9 @@ async function testTTS() {
           refAudioPath: tts.refAudioPath,
           promptText: tts.promptText,
           textLang: normalizeGptSovitsLang(tts.textLang, 'auto'),
-          promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja')
+          promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja'),
+          gptWeightPath: tts.gptWeightPath,
+          sovitsWeightPath: tts.sovitsWeightPath
         })
       })
       : await fetch(request.apiUrl, request.options);
@@ -1214,6 +1259,8 @@ onMounted(loadSettings);
             <label>参考音频语言<select v-model="tts.promptLang">
               <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`prompt-${option.value}`" :value="option.value">{{ option.label }}</option>
             </select></label>
+            <label>GPT 权重路径<input v-model="tts.gptWeightPath" type="text" placeholder="GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt"></label>
+            <label>SoVITS 权重路径<input v-model="tts.sovitsWeightPath" type="text" placeholder="SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth"></label>
             <p v-if="gptSovitsPathWarning(tts.refAudioPath)" class="field-hint warning-text">{{ gptSovitsPathWarning(tts.refAudioPath) }}</p>
           </template>
           <label class="check-row"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>

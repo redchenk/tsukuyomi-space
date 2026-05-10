@@ -58,12 +58,47 @@ function defaultTtsUrl(provider) {
   return '';
 }
 
+const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
+const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth';
+
 function normalizeLocalGptSovitsUrl(url) {
   const parsed = new URL(url || defaultTtsUrl('gpt-sovits'));
   if (window.location.protocol === 'https:' && parsed.protocol === 'http:' && parsed.hostname === '127.0.0.1') {
     parsed.hostname = 'localhost';
   }
   return parsed;
+}
+
+function buildGptSovitsControlUrl(settings, pathname, params) {
+  const url = normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl(settings.provider));
+  url.pathname = pathname;
+  url.search = '';
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (String(value || '').trim()) url.searchParams.set(key, String(value).trim());
+  });
+  url.searchParams.set('_', String(Date.now()));
+  return url.toString();
+}
+
+function requestLocalGptSovitsControl(url, timeout = 70000) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    const timer = window.setTimeout(() => resolve(false), timeout);
+    const done = () => {
+      window.clearTimeout(timer);
+      resolve(true);
+    };
+    image.onload = done;
+    image.onerror = done;
+    image.src = url;
+  });
+}
+
+async function ensureGptSovitsWeights(settings) {
+  const gptWeightPath = settings.gptWeightPath || DEFAULT_GPT_SOVITS_GPT_WEIGHT;
+  const sovitsWeightPath = settings.sovitsWeightPath || DEFAULT_GPT_SOVITS_SOVITS_WEIGHT;
+  await requestLocalGptSovitsControl(buildGptSovitsControlUrl(settings, '/set_gpt_weights', { weights_path: gptWeightPath }));
+  await requestLocalGptSovitsControl(buildGptSovitsControlUrl(settings, '/set_sovits_weights', { weights_path: sovitsWeightPath }));
 }
 
 function normalizeGptSovitsLang(value, fallback = 'zh') {
@@ -164,7 +199,7 @@ function buildGptSovitsAudioUrl(text, settings) {
   url.searchParams.set('text_lang', resolveGptSovitsTextLang(speechText, settings));
   url.searchParams.set('ref_audio_path', normalizeGptSovitsRefAudioPath(settings.refAudioPath || settings.voice));
   url.searchParams.set('prompt_text', settings.promptText || '');
-  url.searchParams.set('prompt_lang', normalizeGptSovitsLang(settings.promptLang, 'zh'));
+  url.searchParams.set('prompt_lang', normalizeGptSovitsLang(settings.promptLang, 'ja'));
   url.searchParams.set('text_split_method', pickGptSovitsSplitMethod(speechText));
   url.searchParams.set('batch_size', '1');
   url.searchParams.set('media_type', 'wav');
@@ -491,6 +526,7 @@ export function useRoomChat({ live2d, world }) {
     try {
       const ttsText = cleanReply(text);
       if (directLocalGptSovits) {
+        await ensureGptSovitsWeights(settings);
         const audio = new Audio(buildGptSovitsAudioUrl(ttsText, settings));
         currentAudio = audio;
         audio.onplay = () => {

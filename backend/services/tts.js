@@ -6,6 +6,8 @@ const GPT_SOVITS_REF_AUDIO_PATH = process.env.GPT_SOVITS_REF_AUDIO_PATH || '';
 const GPT_SOVITS_PROMPT_TEXT = process.env.GPT_SOVITS_PROMPT_TEXT || '';
 const GPT_SOVITS_TEXT_LANG = process.env.GPT_SOVITS_TEXT_LANG || 'zh';
 const GPT_SOVITS_PROMPT_LANG = process.env.GPT_SOVITS_PROMPT_LANG || 'zh';
+const GPT_SOVITS_GPT_WEIGHT_PATH = process.env.GPT_SOVITS_GPT_WEIGHT_PATH || 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
+const GPT_SOVITS_SOVITS_WEIGHT_PATH = process.env.GPT_SOVITS_SOVITS_WEIGHT_PATH || 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth';
 
 const ALLOWED_TTS_ENDPOINTS = [
     { hostname: 'api.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ },
@@ -113,7 +115,27 @@ function normalizeGptSovitsLang(value, fallback = 'zh') {
         : fallback;
 }
 
-async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang }) {
+async function loadGptSovitsWeights(baseUrl, gptWeightPath, sovitsWeightPath) {
+    const url = new URL(baseUrl);
+    const gptPath = gptWeightPath || GPT_SOVITS_GPT_WEIGHT_PATH;
+    const sovitsPath = sovitsWeightPath || GPT_SOVITS_SOVITS_WEIGHT_PATH;
+    if (gptPath) {
+        url.pathname = '/set_gpt_weights';
+        url.search = '';
+        url.searchParams.set('weights_path', gptPath);
+        const response = await fetch(url);
+        if (!response.ok) throw makeProviderError('GPT-SoVITS set_gpt_weights', response.status, await response.text());
+    }
+    if (sovitsPath) {
+        url.pathname = '/set_sovits_weights';
+        url.search = '';
+        url.searchParams.set('weights_path', sovitsPath);
+        const response = await fetch(url);
+        if (!response.ok) throw makeProviderError('GPT-SoVITS set_sovits_weights', response.status, await response.text());
+    }
+}
+
+async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang, gptWeightPath, sovitsWeightPath }) {
     const useProvider = provider || process.env.TTS_PROVIDER || 'mimo';
     const useApiKey = apiKey || TTS_API_KEY;
     const useVoice = voice || TTS_VOICE || (useProvider === 'gpt-sovits' ? '' : useProvider === 'openai' || useProvider === 'openai-compatible' ? 'alloy' : 'mimo_default');
@@ -136,6 +158,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
     }
 
     if (useProvider === 'gpt-sovits') {
+        await loadGptSovitsWeights(useApiUrl, gptWeightPath, sovitsWeightPath);
         const useRefAudioPath = refAudioPath || useVoice || GPT_SOVITS_REF_AUDIO_PATH;
         if (!useRefAudioPath) {
             const error = new Error('GPT-SoVITS 需要填写参考音频路径');
