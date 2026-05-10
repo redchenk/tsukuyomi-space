@@ -316,6 +316,32 @@ router.patch('/users/:id/role', (req, res) => {
     }
 });
 
+router.patch('/users/:id/username', (req, res) => {
+    try {
+        if (!requireSuperAdminUser(req, res)) return;
+        const userId = String(req.params.id || '').trim();
+        const username = String(req.body?.username || '').trim();
+        if (!userId) return fail(res, 400, '用户 ID 无效');
+        if (!username) return fail(res, 400, '请输入昵称');
+        if (username.length > 32) return fail(res, 400, '昵称不能超过 32 个字符');
+
+        const user = adminRepository.findUserForAdmin(userId);
+        if (!user) return fail(res, 404, '用户不存在');
+        if (user.username === config.defaultAdmin.username) return fail(res, 403, '不能修改默认管理员昵称');
+
+        const duplicate = adminRepository.findUserByUsername(username);
+        if (duplicate && duplicate.id !== userId) {
+            return fail(res, 409, '该昵称已被占用');
+        }
+
+        adminRepository.updateUserUsername(userId, username);
+        ok(res, { username }, '用户昵称已更新');
+    } catch (error) {
+        console.error('Admin user username update error:', error);
+        fail(res, 500, '无法更新用户昵称');
+    }
+});
+
 router.post('/users/:id/password', (req, res) => {
     try {
         if (!requireSuperAdminUser(req, res)) return;

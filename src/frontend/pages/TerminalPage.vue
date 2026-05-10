@@ -30,6 +30,7 @@ const terminal = reactive({
   messages: [],
   users: [],
   userSearch: '',
+  usernameDrafts: {},
   roleDrafts: {},
   passwordDrafts: {},
   adminPassword: { currentPassword: '', newPassword: '', confirmPassword: '' },
@@ -148,6 +149,7 @@ async function loadPanel(panel = terminal.activePanel) {
     if (panel === 'messages') terminal.messages = await adminApi('/messages') || [];
     if (panel === 'users') {
       terminal.users = await adminApi('/users') || [];
+      terminal.usernameDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.username || '']));
       terminal.roleDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.role || 'user']));
       terminal.passwordDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, '']));
     }
@@ -207,6 +209,20 @@ async function changeUserRole(user) {
     body: JSON.stringify({ role })
   });
   showMessage(`用户 ${user.username} 的角色已更新为 ${role}`);
+  await loadPanel('users');
+}
+
+async function changeUserUsername(user) {
+  const username = String(terminal.usernameDrafts[user.id] || '').trim();
+  if (!username) {
+    showMessage('请输入昵称', 'error');
+    return;
+  }
+  await adminApi(`/users/${encodeURIComponent(user.id)}/username`, {
+    method: 'PATCH',
+    body: JSON.stringify({ username })
+  });
+  showMessage(`用户 ${user.username} 的昵称已更新为 ${username}`);
   await loadPanel('users');
 }
 
@@ -373,7 +389,14 @@ onUnmounted(() => {
             <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>用户</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>权限</th><th>密码</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in filteredUsers" :key="item.id">
                 <td>{{ String(item.id).slice(0, 8) }}</td>
-                <td><strong>{{ item.username }}</strong><small>{{ item.bio || '未填写简介' }}</small></td>
+                <td>
+                  <strong>{{ item.username }}</strong>
+                  <small>{{ item.bio || '未填写简介' }}</small>
+                  <div v-if="canManageAccounts && item.username !== 'admin'" class="terminal-inline-edit">
+                    <input v-model="terminal.usernameDrafts[item.id]" type="text" maxlength="32" placeholder="编辑昵称">
+                    <button class="ghost-btn compact" type="button" :disabled="!terminal.usernameDrafts[item.id] || terminal.usernameDrafts[item.id] === item.username || item.username === 'admin'" @click="changeUserUsername(item)">保存昵称</button>
+                  </div>
+                </td>
                 <td>{{ item.email }}</td>
                 <td><span class="terminal-badge hot">{{ item.role || 'user' }}</span></td>
                 <td>{{ formatDate(item.created_at) }}</td>

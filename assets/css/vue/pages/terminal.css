@@ -271,6 +271,19 @@ body .page.terminal-page .terminal-table-wrap td {
     display: block;
 }
 
+.terminal-inline-edit {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 0.45rem;
+}
+
+.terminal-inline-edit input {
+    flex: 1 1 170px;
+    min-width: 150px;
+}
+
 body .page.terminal-page .terminal-table-wrap th {
     color: var(--ink);
     background: rgba(228, 246, 253, 0.58);

@@ -92,8 +92,16 @@ function findUserForAdmin(id) {
     return db.prepare('SELECT username, role FROM users WHERE id = ?').get(id);
 }
 
+function findUserByUsername(username) {
+    return db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+}
+
 function updateUserRole(id, role) {
     return db.prepare('UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(role, id).changes;
+}
+
+function updateUserUsername(id, username) {
+    return db.prepare('UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(username, id).changes;
 }
 
 function resetUserPassword(id, passwordHash) {
@@ -155,7 +163,9 @@ module.exports = {
     deleteMessage,
     listUsers,
     findUserForAdmin,
+    findUserByUsername,
     updateUserRole,
+    updateUserUsername,
     resetUserPassword,
     deleteUser,
     listLinks,
