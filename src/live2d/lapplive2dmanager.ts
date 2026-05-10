@@ -46,6 +46,41 @@ export class LAppLive2DManager {
   }
 
   /**
+   * 指定表情
+   */
+  public setExpression(expressionId: string): void {
+    const model: LAppModel = this._models.at(0);
+    if (model && expressionId) {
+      model.setExpression(expressionId);
+    }
+  }
+
+  /**
+   * 随机表情
+   */
+  public setRandomExpression(): void {
+    const model: LAppModel = this._models.at(0);
+    if (model) {
+      model.setRandomExpression();
+    }
+  }
+
+  /**
+   * 身体点击动作
+   */
+  public startTapBodyMotion(): void {
+    const model: LAppModel = this._models.at(0);
+    if (model) {
+      model.startRandomMotion(
+        LAppDefine.MotionGroupTapBody,
+        LAppDefine.PriorityNormal,
+        this.finishedMotion,
+        this.beganMotion
+      );
+    }
+  }
+
+  /**
    * 画面をタップした時の処理
    *
    * @param x 画面のX座標
@@ -64,17 +99,12 @@ export class LAppLive2DManager {
       if (LAppDefine.DebugLogEnable) {
         LAppPal.printMessage(`[APP]hit area: [${LAppDefine.HitAreaNameHead}]`);
       }
-      model.setRandomExpression();
+      this.setRandomExpression();
     } else if (model.hitTest(LAppDefine.HitAreaNameBody, x, y)) {
       if (LAppDefine.DebugLogEnable) {
         LAppPal.printMessage(`[APP]hit area: [${LAppDefine.HitAreaNameBody}]`);
       }
-      model.startRandomMotion(
-        LAppDefine.MotionGroupTapBody,
-        LAppDefine.PriorityNormal,
-        this.finishedMotion,
-        this.beganMotion
-      );
+      this.startTapBodyMotion();
     }
   }
 

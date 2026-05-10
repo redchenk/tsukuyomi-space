@@ -6,6 +6,12 @@
       "textures/ios/texture_00.webp",
       "textures/ios/texture_01.webp"
     ],
+    "Expressions": [
+      { "Name": "smile", "File": "expression_smile.exp3.json" },
+      { "Name": "bsmile", "File": "expression_bsmile.exp3.json" },
+      { "Name": "namida", "File": "expression_namida.exp3.json" },
+      { "Name": "tears", "File": "expression_tears.exp3.json" }
+    ],
     "Physics": "tsukimi-yachiyo.physics3.json"
   },
   "Groups": [

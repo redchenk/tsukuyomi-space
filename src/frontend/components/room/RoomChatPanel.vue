@@ -44,7 +44,7 @@ function ttsLabel(chat, messageId) {
               :class="{ loading: ttsStatus(chat, message.id) === 'loading', playing: ttsStatus(chat, message.id) === 'playing' }"
               type="button"
               :disabled="ttsStatus(chat, message.id) === 'loading'"
-              @click="chat.playTTS(message.content, message.id)"
+              @click="chat.playTTS(message.speechText || message.content, message.id)"
             >
               <span v-if="ttsStatus(chat, message.id) === 'loading'" class="chat-tts-spinner" aria-hidden="true"></span>
               <span>{{ ttsLabel(chat, message.id) }}</span>

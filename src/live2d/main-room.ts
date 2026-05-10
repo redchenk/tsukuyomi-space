@@ -14,6 +14,7 @@ type RoomLive2DState = {
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
+  onRoomAct: (event: Event) => void;
 };
 
 let roomState: RoomLive2DState | null = null;
@@ -38,6 +39,7 @@ function destroyRoomLive2D(): void {
   document.removeEventListener('pointermove', roomState.onPointerMove);
   document.removeEventListener('pointerup', roomState.onPointerUp);
   document.removeEventListener('pointercancel', roomState.onPointerUp);
+  window.removeEventListener('tsukuyomi:room-act', roomState.onRoomAct);
 
   roomState.subdelegate.release();
   roomState.canvas.remove();
@@ -84,11 +86,27 @@ function initRoomLive2D(): void {
   const onPointerUp = (event: PointerEvent): void => {
     subdelegate.onPointEnded(event.pageX, event.pageY);
   };
+  const onRoomAct = (event: Event): void => {
+    const detail = ((event as CustomEvent).detail || {}) as {
+      expression?: string;
+      motion?: string;
+    };
+    const manager = subdelegate.getLive2DManager();
+    if (!manager) return;
+
+    if (detail.expression) {
+      manager.setExpression(detail.expression);
+    }
+    if (['tap_body', 'body_tap', 'tapbody'].includes(String(detail.motion || '').toLowerCase())) {
+      manager.startTapBodyMotion();
+    }
+  };
 
   document.addEventListener('pointerdown', onPointerDown, { passive: true });
   document.addEventListener('pointermove', onPointerMove, { passive: true });
   document.addEventListener('pointerup', onPointerUp, { passive: true });
   document.addEventListener('pointercancel', onPointerUp, { passive: true });
+  window.addEventListener('tsukuyomi:room-act', onRoomAct);
 
   const run = (): void => {
     if (!roomState) return;
@@ -103,7 +121,8 @@ function initRoomLive2D(): void {
     frameId: requestAnimationFrame(run),
     onPointerDown,
     onPointerMove,
-    onPointerUp
+    onPointerUp,
+    onRoomAct
   };
 
   (window as any).setLive2DModelSettings = function(

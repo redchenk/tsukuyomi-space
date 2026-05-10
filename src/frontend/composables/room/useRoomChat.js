@@ -70,6 +70,73 @@ function cleanTtsText(text) {
     .trim();
 }
 
+const LIVE2D_EXPRESSION_ALIASES = {
+  smile: 'smile',
+  happy: 'smile',
+  joy: 'smile',
+  cheerful: 'smile',
+  blush: 'bsmile',
+  shy: 'bsmile',
+  embarrassed: 'bsmile',
+  playful: 'bsmile',
+  bsmile: 'bsmile',
+  angry: 'bsmile',
+  annoyed: 'bsmile',
+  namida: 'namida',
+  sad: 'namida',
+  sorrow: 'namida',
+  tears: 'tears',
+  crying: 'tears',
+  cry: 'tears'
+};
+
+function normalizeLive2DExpression(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return LIVE2D_EXPRESSION_ALIASES[key] || '';
+}
+
+function extractJsonObject(text) {
+  const value = String(text || '').trim();
+  if (!value) return null;
+  const fenced = value.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fenced) return fenced[1].trim();
+  const start = value.indexOf('{');
+  const end = value.lastIndexOf('}');
+  if (start >= 0 && end > start) return value.slice(start, end + 1).trim();
+  return null;
+}
+
+function normalizeLive2DIntent(input) {
+  if (!input || typeof input !== 'object') return null;
+  const rawExpression = input.expression || input.expressionId || input.face || input.mood || input.emotion || '';
+  const expression = normalizeLive2DExpression(rawExpression);
+  const motion = String(input.motion || input.action || '').trim().toLowerCase().replace(/\s+/g, '_');
+  const normalizedMotion = motion && motion !== 'none' ? motion : '';
+  if (!expression && !normalizedMotion) return null;
+  return {
+    emotion: String(input.emotion || input.mood || '').trim() || null,
+    expression: expression || null,
+    motion: normalizedMotion || null,
+    intensity: Number.isFinite(Number(input.intensity)) ? Number(input.intensity) : null
+  };
+}
+
+function parseAssistantPayload(rawText) {
+  const raw = String(rawText || '').trim();
+  const jsonText = extractJsonObject(raw);
+  if (jsonText) {
+    try {
+      const data = JSON.parse(jsonText);
+      const reply = cleanReply(data.reply || data.text || data.message || '');
+      const live2d = normalizeLive2DIntent(data.live2d || data.pose || data.act || data);
+      return { reply, live2d };
+    } catch (_) {
+      // fall through to plain text handling
+    }
+  }
+  return { reply: cleanReply(raw), live2d: null };
+}
+
 function defaultTtsUrl(provider) {
   if (provider === 'gpt-sovits') return 'http://localhost:9880/tts';
   return '';
@@ -228,14 +295,18 @@ function buildGptSovitsAudioUrl(text, settings) {
 function roomSystemPrompt() {
   return [
     '你是月见八千代，回复应保持温柔、清澈、带一点神秘感。',
-    '不要把动作提示词、表情提示词或舞台指令直接写进给用户看的正文，例如不要输出“（微笑）”“【轻轻点头】”“动作：靠近”。',
-    '如果确实需要驱动 Live2D 动作，只能使用 <|ACT:动作名|> 这样的控制标签；这些标签会被系统隐藏，正文只保留自然对话。'
+    '请严格只返回 JSON 对象，不要输出 Markdown、代码块或额外解释。',
+    '返回格式必须是：{"reply":"给用户看的正文","live2d":{"emotion":"happy","expression":"smile","motion":"none","intensity":0.6}}。',
+    'reply 只允许放自然对话正文，不能包含动作提示词、表情提示词、括号说明、舞台指令或标签。',
+    'live2d 是可选控制信息；当前系统会优先使用 expression 控制表情，motion 仅作为未来扩展。',
+    'emotion 可选值：happy、shy、sad、crying、angry、neutral。',
+    'expression 可用值仅限 smile、bsmile、namida、tears、none；无法判断时返回 none 或省略 live2d。'
   ].join('\n');
 }
 
-function applyActCues(text) {
-  const tags = String(text || '').match(/<\|(?:ACT:[\s\S]*?|DELAY:\d+(?:\.\d+)?)\|>/g) || [];
-  if (tags.length) window.dispatchEvent(new CustomEvent('tsukuyomi:room-act', { detail: { tags } }));
+function applyRoomAct(live2d) {
+  if (!live2d) return;
+  window.dispatchEvent(new CustomEvent('tsukuyomi:room-act', { detail: live2d }));
 }
 
 function pickReply(data) {
@@ -448,7 +519,15 @@ export function useRoomChat({ live2d, world }) {
   let ttsRequestId = 0;
 
   function addMessage(role, content, options = {}) {
-    messages.value.push({ id: uid(), role, content: String(content || ''), image: options.image || null, createdAt: Date.now() });
+    messages.value.push({
+      id: uid(),
+      role,
+      content: String(content || ''),
+      speechText: String(options.speechText || content || ''),
+      image: options.image || null,
+      live2d: options.live2d || null,
+      createdAt: Date.now()
+    });
     nextTick(() => {
       if (messageListRef.value) messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
     });
@@ -526,11 +605,11 @@ export function useRoomChat({ live2d, world }) {
       } else {
         result = { reply: fallbackReply(message, image) };
       }
-      const raw = result.reply || fallbackReply(message, image);
-      applyActCues(raw);
-      const reply = cleanReply(raw);
+      const structured = parseAssistantPayload(result.reply || fallbackReply(message, image));
+      const reply = structured.reply || fallbackReply(message, image);
+      applyRoomAct(structured.live2d);
       messages.value = messages.value.filter((item) => item.id !== typingId);
-      addMessage('assistant', reply);
+      addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d });
       const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
       const nextHistory = [...conversation, { role: 'user', content: userContent }, { role: 'assistant', content: reply }].slice(-24);
       writeJson('roomChatHistory', nextHistory);
