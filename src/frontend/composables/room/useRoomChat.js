@@ -54,30 +54,23 @@ function cleanReply(text) {
 }
 
 function defaultTtsUrl(provider) {
-  if (provider === 'gpt-sovits') return 'http://127.0.0.1:3288/tts';
+  if (provider === 'gpt-sovits') return 'http://127.0.0.1:9880/tts';
   return '';
 }
 
-function buildGptSovitsRequest(text, settings) {
-  return {
-    apiUrl: settings.apiUrl || defaultTtsUrl(settings.provider),
-    options: {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: String(text),
-        text_lang: settings.textLang || settings.model || 'zh',
-        ref_audio_path: settings.refAudioPath || settings.voice,
-        prompt_text: settings.promptText || '',
-        prompt_lang: settings.promptLang || 'zh',
-        text_split_method: 'cut5',
-        batch_size: 1,
-        media_type: 'wav',
-        streaming_mode: false,
-        parallel_infer: true
-      })
-    }
-  };
+function buildGptSovitsAudioUrl(text, settings) {
+  const url = new URL(settings.apiUrl || defaultTtsUrl(settings.provider));
+  url.searchParams.set('text', String(text));
+  url.searchParams.set('text_lang', settings.textLang || settings.model || 'zh');
+  url.searchParams.set('ref_audio_path', settings.refAudioPath || settings.voice || '');
+  url.searchParams.set('prompt_text', settings.promptText || '');
+  url.searchParams.set('prompt_lang', settings.promptLang || 'zh');
+  url.searchParams.set('text_split_method', 'cut5');
+  url.searchParams.set('batch_size', '1');
+  url.searchParams.set('media_type', 'wav');
+  url.searchParams.set('streaming_mode', 'false');
+  url.searchParams.set('parallel_infer', 'true');
+  return url.toString();
 }
 
 function roomSystemPrompt() {
@@ -397,10 +390,24 @@ export function useRoomChat({ live2d, world }) {
     ttsState.value = { messageId, status: 'loading' };
     try {
       const ttsText = cleanReply(text);
-      const directRequest = directLocalGptSovits ? buildGptSovitsRequest(ttsText, settings) : null;
-      const response = directRequest
-        ? await fetch(directRequest.apiUrl, directRequest.options)
-        : await fetch('/api/tts', {
+      if (directLocalGptSovits) {
+        const audio = new Audio(buildGptSovitsAudioUrl(ttsText, settings));
+        currentAudio = audio;
+        audio.onplay = () => {
+          ttsState.value = { messageId, status: 'playing' };
+          live2d?.speak?.();
+        };
+        audio.onended = () => {
+          if (currentAudio === audio) stopTTS();
+        };
+        audio.onerror = () => {
+          if (currentAudio === audio) stopTTS();
+          addMessage('system', 'TTS 播放失败：无法直接访问本机 GPT-SoVITS 9880 端口，请确认 API 已启动且浏览器允许访问本机服务。');
+        };
+        await audio.play();
+        return;
+      }
+      const response = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...settings, text: ttsText })
