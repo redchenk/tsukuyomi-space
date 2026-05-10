@@ -53,6 +53,33 @@ function cleanReply(text) {
   return cleaned || '\u55ef\uff0c\u6211\u5728\u3002';
 }
 
+function defaultTtsUrl(provider) {
+  if (provider === 'gpt-sovits') return 'http://127.0.0.1:3288/tts';
+  return '';
+}
+
+function buildGptSovitsRequest(text, settings) {
+  return {
+    apiUrl: settings.apiUrl || defaultTtsUrl(settings.provider),
+    options: {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: String(text),
+        text_lang: settings.textLang || settings.model || 'zh',
+        ref_audio_path: settings.refAudioPath || settings.voice,
+        prompt_text: settings.promptText || '',
+        prompt_lang: settings.promptLang || 'zh',
+        text_split_method: 'cut5',
+        batch_size: 1,
+        media_type: 'wav',
+        streaming_mode: false,
+        parallel_infer: true
+      })
+    }
+  };
+}
+
 function roomSystemPrompt() {
   return [
     '你是月见八千代，回复应保持温柔、清澈、带一点神秘感。',
@@ -359,7 +386,8 @@ export function useRoomChat({ live2d, world }) {
       addMessage('system', '\u8bf7\u5148\u5728 TTS \u8bbe\u7f6e\u4e2d\u542f\u7528\u8bed\u97f3\u5408\u6210');
       return;
     }
-    if (!settings.useProxy) {
+    const directLocalGptSovits = settings.provider === 'gpt-sovits' && !settings.useProxy;
+    if (!settings.useProxy && !directLocalGptSovits) {
       addMessage('system', '\u5f53\u524d Vue \u7248 TTS \u5efa\u8bae\u5148\u5f00\u542f\u670d\u52a1\u5668\u4ee3\u7406\u4ee5\u89c4\u907f CORS');
       return;
     }
@@ -368,11 +396,15 @@ export function useRoomChat({ live2d, world }) {
     ttsRequestId = requestId;
     ttsState.value = { messageId, status: 'loading' };
     try {
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...settings, text: cleanReply(text) })
-      });
+      const ttsText = cleanReply(text);
+      const directRequest = directLocalGptSovits ? buildGptSovitsRequest(ttsText, settings) : null;
+      const response = directRequest
+        ? await fetch(directRequest.apiUrl, directRequest.options)
+        : await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...settings, text: ttsText })
+        });
       if (!response.ok) {
         const contentType = response.headers.get('content-type') || '';
         let detail = '';
