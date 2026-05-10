@@ -131,6 +131,14 @@
     line-height: 1.65;
 }
 
+.room-settings-card .warning-text {
+    color: var(--text);
+    background: color-mix(in srgb, var(--warning, #f5a524) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warning, #f5a524) 32%, transparent);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.7rem;
+}
+
 .mcp-tool-list {
     display: flex;
     flex-wrap: wrap;

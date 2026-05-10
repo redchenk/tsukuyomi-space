@@ -100,14 +100,72 @@ function normalizeGptSovitsLang(value, fallback = 'zh') {
     : fallback;
 }
 
+function detectGptSovitsTextLang(text) {
+  const value = String(text || '');
+  if (/[\u3040-\u30ff]/u.test(value)) return 'ja';
+  if (/[\uac00-\ud7af]/u.test(value)) return 'ko';
+  if (/[\u4e00-\u9fff]/u.test(value)) return 'zh';
+  return 'en';
+}
+
+function resolveGptSovitsTextLang(text, settings) {
+  const configured = normalizeGptSovitsLang(settings.textLang || settings.model, 'auto');
+  return configured === 'auto' ? detectGptSovitsTextLang(text) : configured;
+}
+
+function normalizeGptSovitsRefAudioPath(value) {
+  const path = String(value || '').trim();
+  if (/月见八千代|月見八千代|ai配音训练|超时空辉夜姬/.test(path)) {
+    return 'E:\\visualstudio\\tts\\reference\\yachiyo_ref_ja.wav';
+  }
+  return path;
+}
+
+function compactSpeechText(text) {
+  return String(text || '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, '')
+    .replace(/[，。！？、,.!?~～…—\-"'“”‘’()[\]{}<>《》【】]/g, '')
+    .trim();
+}
+
+function prepareGptSovitsText(text) {
+  const raw = String(text || '').trim();
+  const compact = compactSpeechText(raw);
+  const shortReplies = {
+    '\u55ef': '\u55ef\uff0c\u6211\u5728\u3002',
+    '\u6069': '\u55ef\uff0c\u6211\u5728\u3002',
+    '\u5509': '\u55ef\uff0c\u6211\u5728\u542c\u3002',
+    '\u563f': '\u563f\uff0c\u6211\u5728\u3002',
+    '\u55e8': '\u55e8\uff0c\u6211\u5728\u3002',
+    '\u54c8': '\u54c8\uff0c\u6211\u5728\u3002',
+    '\u54e6': '\u54e6\uff0c\u6211\u77e5\u9053\u4e86\u3002',
+    '\u5662': '\u54e6\uff0c\u6211\u77e5\u9053\u4e86\u3002',
+    '\u554a': '\u554a\uff0c\u6211\u5728\u542c\u3002',
+    '\u8bf6': '\u8bf6\uff0c\u6211\u5728\u542c\u3002',
+    '\u6b38': '\u8bf6\uff0c\u6211\u5728\u542c\u3002',
+    '\u597d': '\u597d\u7684\u3002',
+    '\u884c': '\u597d\u7684\u3002',
+    '\u662f': '\u662f\u7684\u3002'
+  };
+  if (shortReplies[compact]) return shortReplies[compact];
+  if (compact.length > 0 && compact.length <= 2) return `${compact}\uff0c\u6211\u5728\u3002`;
+  return raw || '\u55ef\uff0c\u6211\u5728\u3002';
+}
+
+function pickGptSovitsSplitMethod(text) {
+  return compactSpeechText(text).length <= 4 ? 'cut0' : 'cut5';
+}
+
 function buildGptSovitsAudioUrl(text, settings) {
   const url = normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl(settings.provider));
-  url.searchParams.set('text', String(text));
-  url.searchParams.set('text_lang', normalizeGptSovitsLang(settings.textLang || settings.model, 'zh'));
-  url.searchParams.set('ref_audio_path', settings.refAudioPath || settings.voice || '');
+  const speechText = prepareGptSovitsText(text);
+  url.searchParams.set('text', speechText);
+  url.searchParams.set('text_lang', resolveGptSovitsTextLang(speechText, settings));
+  url.searchParams.set('ref_audio_path', normalizeGptSovitsRefAudioPath(settings.refAudioPath || settings.voice));
   url.searchParams.set('prompt_text', settings.promptText || '');
   url.searchParams.set('prompt_lang', normalizeGptSovitsLang(settings.promptLang, 'zh'));
-  url.searchParams.set('text_split_method', 'cut5');
+  url.searchParams.set('text_split_method', pickGptSovitsSplitMethod(speechText));
   url.searchParams.set('batch_size', '1');
   url.searchParams.set('media_type', 'wav');
   url.searchParams.set('streaming_mode', 'false');
