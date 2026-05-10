@@ -7,6 +7,7 @@
       "textures/texture_01.webp"
     ],
     "Expressions": [
+      { "Name": "neutral", "File": "expression_neutral.exp3.json" },
       { "Name": "smile", "File": "expression_smile.exp3.json" },
       { "Name": "bsmile", "File": "expression_bsmile.exp3.json" },
       { "Name": "namida", "File": "expression_namida.exp3.json" },

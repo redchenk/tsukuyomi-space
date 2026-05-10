@@ -25,11 +25,32 @@ function prefersLowMemoryModel(): boolean {
  * モデル生成と破棄、タップイベントの処理、モデル切り替えを行う。
  */
 export class LAppLive2DManager {
+  private _expressionResetTimer: number | null = null;
+
   /**
    * 現在のシーンで保持しているすべてのモデルを解放する
    */
   private releaseAllModel(): void {
+    this.clearExpressionResetTimer();
     this._models.clear();
+  }
+
+  private clearExpressionResetTimer(): void {
+    if (this._expressionResetTimer != null) {
+      window.clearTimeout(this._expressionResetTimer);
+      this._expressionResetTimer = null;
+    }
+  }
+
+  private scheduleNeutralExpressionReset(): void {
+    this.clearExpressionResetTimer();
+    this._expressionResetTimer = window.setTimeout(() => {
+      this._expressionResetTimer = null;
+      const model: LAppModel = this._models.at(0);
+      if (model) {
+        model.setExpression('neutral');
+      }
+    }, 5000);
   }
 
   /**
@@ -52,6 +73,11 @@ export class LAppLive2DManager {
     const model: LAppModel = this._models.at(0);
     if (model && expressionId) {
       model.setExpression(expressionId);
+      if (expressionId === 'neutral') {
+        this.clearExpressionResetTimer();
+      } else {
+        this.scheduleNeutralExpressionReset();
+      }
     }
   }
 
@@ -62,6 +88,7 @@ export class LAppLive2DManager {
     const model: LAppModel = this._models.at(0);
     if (model) {
       model.setRandomExpression();
+      this.scheduleNeutralExpressionReset();
     }
   }
 
