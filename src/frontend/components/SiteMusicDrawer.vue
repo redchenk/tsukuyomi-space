@@ -47,15 +47,15 @@ defineProps({
         </div>
 
         <div class="site-music-controls">
-          <button class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">|‹</button>
-          <button class="panel-btn music-icon-btn site-music-main-control" type="button" :aria-label="music.playing.value ? 'Pause music' : 'Play music'" @click="music.togglePlay">♪</button>
-          <button class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">›|</button>
-          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">☷</button>
+          <button class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">&#8592;</button>
+          <button class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">&#8594;</button>
+          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">&#9834;</button>
+          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">&#9776;</button>
         </div>
 
-        <div class="music-drawer site-music-subdrawer site-music-volume-drawer">
+        <div v-if="music.drawer.volume" class="music-drawer site-music-subdrawer site-music-volume-drawer">
           <div class="music-volume-inline site-music-volume-inline">
-            <span aria-hidden="true">♪</span>
+            <span aria-hidden="true">&#38899;</span>
             <input :value="music.volume.value" type="range" min="0" max="1" step="0.01" aria-label="Volume" @input="music.setVolume($event.target.value)">
             <strong>{{ Math.round(music.volume.value * 100) }}%</strong>
           </div>
