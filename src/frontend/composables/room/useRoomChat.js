@@ -75,6 +75,13 @@ const LIVE2D_EXPRESSION_ALIASES = {
   happy: 'smile',
   joy: 'smile',
   cheerful: 'smile',
+  '\u5f00\u5fc3': 'smile',
+  '\u9ad8\u5174': 'smile',
+  '\u6109\u5feb': 'smile',
+  '\u5fae\u7b11': 'smile',
+  '\u7b11': 'smile',
+  '\u512a\u3057\u3044': 'smile',
+  '\u5b09\u3057\u3044': 'smile',
   blush: 'bsmile',
   shy: 'bsmile',
   embarrassed: 'bsmile',
@@ -82,12 +89,28 @@ const LIVE2D_EXPRESSION_ALIASES = {
   bsmile: 'bsmile',
   angry: 'bsmile',
   annoyed: 'bsmile',
+  '\u5bb3\u7f9e': 'bsmile',
+  '\u8138\u7ea2': 'bsmile',
+  '\u8c03\u76ae': 'bsmile',
+  '\u751f\u6c14': 'bsmile',
+  '\u6124\u6012': 'bsmile',
+  '\u7167\u308c': 'bsmile',
   namida: 'namida',
   sad: 'namida',
   sorrow: 'namida',
+  '\u96be\u8fc7': 'namida',
+  '\u60b2\u4f24': 'namida',
+  '\u4f24\u5fc3': 'namida',
+  '\u6cea': 'namida',
+  '\u60b2\u3057\u3044': 'namida',
   tears: 'tears',
   crying: 'tears',
-  cry: 'tears'
+  cry: 'tears',
+  '\u54ed': 'tears',
+  '\u54ed\u6ce3': 'tears',
+  '\u6d41\u6cea': 'tears',
+  '\u5927\u54ed': 'tears',
+  '\u6ce3\u304f': 'tears'
 };
 
 function normalizeLive2DExpression(value) {
@@ -121,6 +144,20 @@ function normalizeLive2DIntent(input) {
   };
 }
 
+function inferLive2DIntent(text) {
+  const value = String(text || '').toLowerCase();
+  const matchers = [
+    { expression: 'tears', pattern: /(\u5927\u54ed|\u54ed\u6ce3|\u6d41\u6cea|\u5d29\u6e83|crying|tears|\u6ce3\u304f)/u, emotion: 'crying' },
+    { expression: 'namida', pattern: /(\u96be\u8fc7|\u60b2\u4f24|\u4f24\u5fc3|\u5bc2\u5bde|\u6cea|sad|sorrow|\u60b2\u3057\u3044)/u, emotion: 'sad' },
+    { expression: 'bsmile', pattern: /(\u5bb3\u7f9e|\u8138\u7ea2|\u8c03\u76ae|\u751f\u6c14|\u6124\u6012|shy|blush|angry|annoyed|\u7167\u308c)/u, emotion: 'shy' },
+    { expression: 'smile', pattern: /(\u5f00\u5fc3|\u9ad8\u5174|\u6109\u5feb|\u5fae\u7b11|\u7b11|happy|smile|joy|\u5b09\u3057\u3044|\u512a\u3057\u3044)/u, emotion: 'happy' }
+  ];
+  const matched = matchers.find((item) => item.pattern.test(value));
+  return matched
+    ? { emotion: matched.emotion, expression: matched.expression, motion: null, intensity: 0.5 }
+    : null;
+}
+
 function parseAssistantPayload(rawText) {
   const raw = String(rawText || '').trim();
   const jsonText = extractJsonObject(raw);
@@ -128,13 +165,14 @@ function parseAssistantPayload(rawText) {
     try {
       const data = JSON.parse(jsonText);
       const reply = cleanReply(data.reply || data.text || data.message || '');
-      const live2d = normalizeLive2DIntent(data.live2d || data.pose || data.act || data);
+      const live2d = normalizeLive2DIntent(data.live2d || data.pose || data.act || data) || inferLive2DIntent(reply);
       return { reply, live2d };
     } catch (_) {
       // fall through to plain text handling
     }
   }
-  return { reply: cleanReply(raw), live2d: null };
+  const reply = cleanReply(raw);
+  return { reply, live2d: inferLive2DIntent(reply) };
 }
 
 function defaultTtsUrl(provider) {
