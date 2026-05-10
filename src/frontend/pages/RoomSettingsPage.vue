@@ -260,6 +260,24 @@ function makeAudioBlobFromEncoded(value, type) {
   return makeAudioBlobFromBase64(text, type);
 }
 
+function detectTtsLanguage(text, textLang) {
+  const configured = normalizeGptSovitsLang(textLang, '');
+  if (configured && configured !== 'auto') return configured;
+  const value = String(text || '');
+  if (/[\u3040-\u30ff]/u.test(value)) return 'ja';
+  if (/[\uac00-\ud7af]/u.test(value)) return 'ko';
+  if (/[\u4e00-\u9fff]/u.test(value)) return 'zh';
+  return 'en';
+}
+
+function ttsReadInstruction(text, textLang) {
+  const lang = detectTtsLanguage(text, textLang);
+  if (lang === 'ja') return '以下の日本語テキストだけを、月見八千代らしい柔らかく自然な声で朗読してください。説明、翻訳、括弧内の動作指示、舞台指示は読まないでください。';
+  if (lang === 'en') return 'Read only the following English text in a soft, natural voice. Do not read explanations, translations, action cues, or stage directions.';
+  if (lang === 'ko') return '다음 한국어 텍스트만 부드럽고 자연스러운 목소리로 읽어 주세요. 설명, 번역, 괄호 안의 동작 지시나 무대 지시는 읽지 마세요.';
+  return '只朗读下面的文本，语气温柔自然。不要读解释、翻译、括号里的动作提示或舞台提示。';
+}
+
 function defaultTtsUrl(provider) {
   if (provider === 'openai' || provider === 'openai-compatible') return 'https://api.openai.com/v1/audio/speech';
   if (provider === 'elevenlabs') return 'https://api.elevenlabs.io/v1/text-to-speech';
@@ -414,7 +432,7 @@ function buildTtsRequest(text, settings) {
         body: JSON.stringify({
           model: settings.model || 'mimo-v2.5-tts',
           messages: [
-            { role: 'user', content: '请用温柔自然的语气朗读。' },
+            { role: 'user', content: ttsReadInstruction(text, settings.textLang) },
             { role: 'assistant', content: String(text) }
           ],
           modalities: ['audio'],
