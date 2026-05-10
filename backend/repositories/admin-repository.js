@@ -101,7 +101,14 @@ function updateUserRole(id, role) {
 }
 
 function updateUserUsername(id, username) {
-    return db.prepare('UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(username, id).changes;
+    const tx = db.transaction(() => {
+        const user = db.prepare('SELECT username FROM users WHERE id = ?').get(id);
+        if (!user) return 0;
+        const changes = db.prepare('UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(username, id).changes;
+        db.prepare('UPDATE messages SET author = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(username, id);
+        return changes;
+    });
+    return tx();
 }
 
 function resetUserPassword(id, passwordHash) {

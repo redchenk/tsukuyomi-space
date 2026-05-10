@@ -3,14 +3,34 @@ const db = require('../db');
 function listMessages({ articleId } = {}) {
     const query = articleId
         ? `
-            SELECT m.*, u.avatar
+            SELECT m.id,
+                   COALESCE(u.username, m.author) AS author,
+                   m.content,
+                   m.user_id,
+                   m.parent_id,
+                   m.like_count,
+                   m.article_id,
+                   m.status,
+                   m.created_at,
+                   m.updated_at,
+                   u.avatar
             FROM messages m
             LEFT JOIN users u ON m.user_id = u.id
             WHERE m.article_id = ?
             ORDER BY m.created_at ASC
         `
         : `
-            SELECT m.*, u.avatar
+            SELECT m.id,
+                   COALESCE(u.username, m.author) AS author,
+                   m.content,
+                   m.user_id,
+                   m.parent_id,
+                   m.like_count,
+                   m.article_id,
+                   m.status,
+                   m.created_at,
+                   m.updated_at,
+                   u.avatar
             FROM messages m
             LEFT JOIN users u ON m.user_id = u.id
             WHERE m.article_id IS NULL
