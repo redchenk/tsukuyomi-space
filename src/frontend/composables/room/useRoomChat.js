@@ -54,12 +54,20 @@ function cleanReply(text) {
 }
 
 function defaultTtsUrl(provider) {
-  if (provider === 'gpt-sovits') return 'http://127.0.0.1:9880/tts';
+  if (provider === 'gpt-sovits') return 'http://localhost:9880/tts';
   return '';
 }
 
+function normalizeLocalGptSovitsUrl(url) {
+  const parsed = new URL(url || defaultTtsUrl('gpt-sovits'));
+  if (window.location.protocol === 'https:' && parsed.protocol === 'http:' && parsed.hostname === '127.0.0.1') {
+    parsed.hostname = 'localhost';
+  }
+  return parsed;
+}
+
 function buildGptSovitsAudioUrl(text, settings) {
-  const url = new URL(settings.apiUrl || defaultTtsUrl(settings.provider));
+  const url = normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl(settings.provider));
   url.searchParams.set('text', String(text));
   url.searchParams.set('text_lang', settings.textLang || settings.model || 'zh');
   url.searchParams.set('ref_audio_path', settings.refAudioPath || settings.voice || '');
