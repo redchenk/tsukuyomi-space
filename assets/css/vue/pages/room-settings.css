@@ -149,6 +149,57 @@
     background: rgba(255, 255, 255, 0.52);
 }
 
+.room-live2d-debug-card {
+    grid-column: span 1;
+}
+
+.live2d-debug-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.7rem;
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.54);
+}
+
+.live2d-debug-details {
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 14px;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.52);
+}
+
+.live2d-debug-details summary {
+    color: var(--ink);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.live2d-debug-details pre,
+.live2d-debug-history pre {
+    max-height: 260px;
+    overflow: auto;
+    margin: 0.7rem 0 0;
+    padding: 0.75rem;
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 12px;
+    color: var(--text);
+    background: rgba(248, 250, 252, 0.94);
+    font: 0.8rem/1.55 Consolas, "SFMono-Regular", monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.live2d-debug-history {
+    display: grid;
+    gap: 0.65rem;
+    max-height: 420px;
+    overflow: auto;
+    padding-right: 0.2rem;
+}
+
 .room-memory-manager,
 .room-knowledge-manager {
     grid-column: 1 / -1;
@@ -472,6 +523,18 @@ html[data-theme="dark"] .room-settings-card textarea {
 html[data-theme="dark"] .mcp-tool-list {
     border-color: rgba(177, 205, 238, 0.16);
     background: rgba(15, 23, 42, 0.5);
+}
+
+html[data-theme="dark"] .live2d-debug-summary,
+html[data-theme="dark"] .live2d-debug-details {
+    border-color: rgba(177, 205, 238, 0.16);
+    background: rgba(15, 23, 42, 0.5);
+}
+
+html[data-theme="dark"] .live2d-debug-details pre,
+html[data-theme="dark"] .live2d-debug-history pre {
+    border-color: rgba(177, 205, 238, 0.16);
+    background: rgba(2, 6, 23, 0.76);
 }
 
 html[data-theme="dark"] .memory-editor,

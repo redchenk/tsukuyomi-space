@@ -1,5 +1,11 @@
 import { roomLive2DManifest } from '../../constants/room/live2dManifest';
 
+const DEBUG_STATE_KEY = 'roomLive2DDebugState';
+export const ROOM_LIVE2D_PENDING_INTENT_KEY = 'roomLive2DPendingIntent';
+const DEBUG_HISTORY_LIMIT = 12;
+
+let activeQueueTimers = [];
+
 const expressionAliases = {
   neutral: 'neutral',
   none: 'neutral',
@@ -121,6 +127,48 @@ function normalizeDuration(value) {
   return Math.min(Math.max(Math.round(numeric), 800), 12000);
 }
 
+function normalizeDelay(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.min(Math.max(Math.round(numeric), 0), 12000);
+}
+
+function readDebugState() {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem(DEBUG_STATE_KEY) || '{}') || {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function writeDebugState(patch) {
+  if (typeof localStorage === 'undefined') return;
+  const current = readDebugState();
+  const next = {
+    ...current,
+    ...patch,
+    updatedAt: Date.now()
+  };
+  localStorage.setItem(DEBUG_STATE_KEY, JSON.stringify(next));
+  window.dispatchEvent(new CustomEvent('tsukuyomi:room-live2d-debug', { detail: next }));
+}
+
+function appendDebugHistory(entry) {
+  const current = readDebugState();
+  const history = Array.isArray(current.history) ? current.history : [];
+  writeDebugState({
+    history: [
+      {
+        ...entry,
+        id: `act-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        createdAt: Date.now()
+      },
+      ...history
+    ].slice(0, DEBUG_HISTORY_LIMIT)
+  });
+}
+
 export function normalizeLive2DExpression(value, manifest = roomLive2DManifest) {
   const ids = manifestIds(manifest.expressions);
   const key = normalizeToken(value);
@@ -163,7 +211,7 @@ function normalizeExpressionMix(value, fallbackExpression, manifest) {
   return fallbackExpression ? [{ expression: fallbackExpression, weight: 1 }] : [];
 }
 
-export function normalizeLive2DIntent(input, manifest = roomLive2DManifest) {
+function normalizeLive2DStep(input, manifest = roomLive2DManifest) {
   if (!input || typeof input !== 'object') return null;
   const rawExpression = input.expression || input.expressionId || input.face || input.mood || input.emotion || '';
   const expression = normalizeLive2DExpression(rawExpression, manifest) || normalizeLive2DEmotion(input.emotion || input.mood, manifest);
@@ -178,7 +226,29 @@ export function normalizeLive2DIntent(input, manifest = roomLive2DManifest) {
     expressionMix,
     motion: motion || null,
     intensity: clamp01(input.intensity, 0.65),
-    durationMs: normalizeDuration(input.durationMs || input.duration)
+    durationMs: normalizeDuration(input.durationMs || input.duration),
+    delayMs: normalizeDelay(input.delayMs || input.delay)
+  };
+}
+
+function normalizeSequence(input, manifest = roomLive2DManifest) {
+  const rawSequence = Array.isArray(input?.sequence) ? input.sequence : [];
+  return rawSequence
+    .map((step) => normalizeLive2DStep(step, manifest))
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+export function normalizeLive2DIntent(input, manifest = roomLive2DManifest) {
+  if (!input || typeof input !== 'object') return null;
+  const sequence = normalizeSequence(input, manifest);
+  const baseStep = normalizeLive2DStep(input, manifest);
+  const steps = sequence.length ? sequence : (baseStep ? [baseStep] : []);
+  if (!steps.length) return null;
+  const primary = baseStep || steps[0];
+  return {
+    ...primary,
+    sequence: steps
   };
 }
 
@@ -199,6 +269,82 @@ export function inferLive2DIntentFromText(text, manifest = roomLive2DManifest) {
 export function dispatchRoomLive2D(intent) {
   const normalized = normalizeLive2DIntent(intent);
   if (!normalized) return null;
-  window.dispatchEvent(new CustomEvent('tsukuyomi:room-act', { detail: normalized }));
+  const sequence = Array.isArray(normalized.sequence) && normalized.sequence.length
+    ? normalized.sequence
+    : [normalized];
+  activeQueueTimers.forEach((timer) => window.clearTimeout(timer));
+  activeQueueTimers = [];
+  writeDebugState({
+    status: 'queued',
+    raw: intent,
+    normalized,
+    activeIndex: 0,
+    total: sequence.length
+  });
+  appendDebugHistory({ source: 'dispatch', normalized });
+  let elapsed = 0;
+  sequence.forEach((step, index) => {
+    elapsed += normalizeDelay(step.delayMs);
+    const timer = window.setTimeout(() => {
+      writeDebugState({
+        status: 'playing',
+        current: step,
+        activeIndex: index + 1,
+        total: sequence.length
+      });
+      window.dispatchEvent(new CustomEvent('tsukuyomi:room-act', { detail: step }));
+      if (index === sequence.length - 1) {
+        window.setTimeout(() => {
+          writeDebugState({ status: 'idle', activeIndex: sequence.length, total: sequence.length });
+        }, normalizeDuration(step.durationMs));
+      }
+    }, elapsed);
+    activeQueueTimers.push(timer);
+    elapsed += normalizeDuration(step.durationMs);
+  });
   return normalized;
+}
+
+export function queueRoomLive2DForNextRoom(intent) {
+  const normalized = normalizeLive2DIntent(intent);
+  if (!normalized || typeof localStorage === 'undefined') return null;
+  localStorage.setItem(ROOM_LIVE2D_PENDING_INTENT_KEY, JSON.stringify({
+    intent: normalized,
+    createdAt: Date.now()
+  }));
+  writeDebugState({
+    status: 'pending',
+    raw: intent,
+    normalized,
+    activeIndex: 0,
+    total: normalized.sequence?.length || 1
+  });
+  appendDebugHistory({ source: 'pending', normalized });
+  return normalized;
+}
+
+export function consumePendingRoomLive2DIntent(maxAgeMs = 120000) {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const payload = JSON.parse(localStorage.getItem(ROOM_LIVE2D_PENDING_INTENT_KEY) || 'null');
+    localStorage.removeItem(ROOM_LIVE2D_PENDING_INTENT_KEY);
+    if (!payload?.intent || Date.now() - Number(payload.createdAt || 0) > maxAgeMs) return null;
+    return dispatchRoomLive2D(payload.intent);
+  } catch (_) {
+    localStorage.removeItem(ROOM_LIVE2D_PENDING_INTENT_KEY);
+    return null;
+  }
+}
+
+export function readRoomLive2DDebugState() {
+  return readDebugState();
+}
+
+export function clearRoomLive2DQueue() {
+  activeQueueTimers.forEach((timer) => window.clearTimeout(timer));
+  activeQueueTimers = [];
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem(ROOM_LIVE2D_PENDING_INTENT_KEY);
+  }
+  writeDebugState({ status: 'idle', current: null, activeIndex: 0, total: 0 });
 }

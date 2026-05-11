@@ -1,6 +1,12 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { cloneKnowledgeEntry, defaultKnowledgeEntries } from '../constants/room/knowledgeEntries';
+import { roomLive2DManifest } from '../constants/room/live2dManifest';
+import {
+  clearRoomLive2DQueue,
+  queueRoomLive2DForNextRoom,
+  readRoomLive2DDebugState
+} from '../services/room/live2dControl';
 
 const props = defineProps({
   user: { type: Object, default: null }
@@ -94,6 +100,21 @@ const mcp = reactive({
   toolAllowlist: '',
   tools: []
 });
+const live2dDebug = reactive({
+  status: 'idle',
+  current: null,
+  normalized: null,
+  raw: null,
+  history: [],
+  activeIndex: 0,
+  total: 0,
+  updatedAt: 0
+});
+const live2dTest = reactive({
+  expression: 'smile',
+  motion: '',
+  durationMs: 5000
+});
 
 const roomUser = computed(() => storedUser.value || (props.user?.id && localStorage.getItem('tsukuyomi_token') ? props.user : null));
 const visitorKey = computed(() => {
@@ -119,6 +140,15 @@ const memoryTypeOptions = [
   { value: 'semantic', label: '语义记忆' },
   { value: 'conversation', label: '对话片段' }
 ];
+const live2dExpressionOptions = roomLive2DManifest.expressions;
+const live2dMotionOptions = [{ id: '', label: '不触发动作' }, ...roomLive2DManifest.motions];
+const live2dDebugJson = computed(() => JSON.stringify({
+  status: live2dDebug.status,
+  activeIndex: live2dDebug.activeIndex,
+  total: live2dDebug.total,
+  current: live2dDebug.current,
+  normalized: live2dDebug.normalized
+}, null, 2));
 
 function readStoredUser() {
   try {
@@ -167,6 +197,7 @@ function testDialogTargetLabel(target = testDialog.target) {
   if (target === 'llm') return 'LLM';
   if (target === 'tts') return 'TTS';
   if (target === 'mcp') return 'MCP';
+  if (target === 'live2d') return 'Live2D';
   return '连接测试';
 }
 
@@ -180,6 +211,90 @@ function memoryAuthHeaders(extra = {}) {
 
 function memoryTypeLabel(type) {
   return memoryTypeOptions.find((item) => item.value === type)?.label || type || '未分类';
+}
+
+function syncLive2DDebugState(state = readRoomLive2DDebugState()) {
+  live2dDebug.status = state.status || 'idle';
+  live2dDebug.current = state.current || null;
+  live2dDebug.normalized = state.normalized || null;
+  live2dDebug.raw = state.raw || null;
+  live2dDebug.history = Array.isArray(state.history) ? state.history : [];
+  live2dDebug.activeIndex = Number(state.activeIndex || 0);
+  live2dDebug.total = Number(state.total || 0);
+  live2dDebug.updatedAt = Number(state.updatedAt || 0);
+}
+
+function live2DStatusLabel(status = live2dDebug.status) {
+  if (status === 'queued') return '队列中';
+  if (status === 'playing') return '执行中';
+  if (status === 'pending') return '待回房间执行';
+  return '空闲';
+}
+
+function formatDebugTime(value) {
+  if (!value) return '暂无';
+  return new Date(value).toLocaleString();
+}
+
+function onLive2DDebugEvent(event) {
+  syncLive2DDebugState(event.detail || readRoomLive2DDebugState());
+}
+
+function onLive2DStorageEvent() {
+  syncLive2DDebugState();
+}
+
+function queueLive2DTest(intent, message = 'Live2D 测试指令已加入待执行队列，返回房间后会自动播放。') {
+  const normalized = queueRoomLive2DForNextRoom(intent);
+  syncLive2DDebugState();
+  if (!normalized) {
+    openTestDialog('live2d', 'error', 'Live2D 调试', '指令无效。', JSON.stringify(intent, null, 2));
+    return;
+  }
+  openTestDialog('live2d', 'success', 'Live2D 调试', message, JSON.stringify(normalized, null, 2));
+  showToast('Live2D 调试指令已准备');
+}
+
+function queueCustomLive2DTest() {
+  queueLive2DTest({
+    expression: live2dTest.expression,
+    motion: live2dTest.motion || 'none',
+    durationMs: live2dTest.durationMs,
+    expressionMix: [{ expression: live2dTest.expression, weight: 1 }],
+    intensity: 0.72
+  });
+}
+
+function queuePresetLive2DSequence(name) {
+  const presets = {
+    greeting: {
+      sequence: [
+        { expression: 'smile', motion: 'tap_body', durationMs: 2600 },
+        { expression: 'neutral', delayMs: 120, durationMs: 1800 }
+      ]
+    },
+    shy: {
+      sequence: [
+        { expression: 'bsmile', durationMs: 3200 },
+        { expression: 'smile', delayMs: 100, durationMs: 2200 },
+        { expression: 'neutral', delayMs: 120, durationMs: 1600 }
+      ]
+    },
+    tears: {
+      sequence: [
+        { expression: 'namida', durationMs: 2800 },
+        { expression: 'tears', delayMs: 120, durationMs: 3200 },
+        { expression: 'neutral', delayMs: 180, durationMs: 1800 }
+      ]
+    }
+  };
+  queueLive2DTest(presets[name], '动作队列已加入待执行队列，返回房间后会按顺序播放。');
+}
+
+function clearLive2DDebugQueue() {
+  clearRoomLive2DQueue();
+  syncLive2DDebugState();
+  showToast('Live2D 队列已清空');
 }
 
 function normalizeChatUrl(apiUrl, modelName) {
@@ -1198,7 +1313,17 @@ async function testMCPWithDialog() {
   }
 }
 
-onMounted(loadSettings);
+onMounted(() => {
+  loadSettings();
+  syncLive2DDebugState();
+  window.addEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
+  window.addEventListener('storage', onLive2DStorageEvent);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
+  window.removeEventListener('storage', onLive2DStorageEvent);
+});
 </script>
 
 <template>
@@ -1226,6 +1351,51 @@ onMounted(loadSettings);
             <button class="primary-btn" type="button" @click="saveModel">保存模型设置</button>
             <button class="ghost-btn" type="button" @click="resetModel">重置模型</button>
             <button class="ghost-btn" type="button" @click="resetPanels">重置浮窗位置</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="room-settings-card room-live2d-debug-card">
+        <h2>Live2D 调试</h2>
+        <div class="live2d-debug-summary">
+          <span class="room-test-status" :class="live2dDebug.status === 'playing' ? 'loading' : live2dDebug.status === 'pending' ? 'warning' : 'success'">
+            {{ live2DStatusLabel() }}
+          </span>
+          <span class="field-hint">最近更新：{{ formatDebugTime(live2dDebug.updatedAt) }}</span>
+          <span class="field-hint">队列进度：{{ live2dDebug.activeIndex }} / {{ live2dDebug.total }}</span>
+        </div>
+        <div class="form-grid">
+          <label>表情
+            <select v-model="live2dTest.expression">
+              <option v-for="item in live2dExpressionOptions" :key="item.id" :value="item.id">{{ item.label }} / {{ item.id }}</option>
+            </select>
+          </label>
+          <label>动作
+            <select v-model="live2dTest.motion">
+              <option v-for="item in live2dMotionOptions" :key="item.id || 'none'" :value="item.id">{{ item.label }}{{ item.id ? ` / ${item.id}` : '' }}</option>
+            </select>
+          </label>
+          <label>恢复时间 <strong>{{ live2dTest.durationMs }}ms</strong><input v-model="live2dTest.durationMs" type="range" min="800" max="12000" step="100"></label>
+          <div class="button-row">
+            <button class="primary-btn" type="button" @click="queueCustomLive2DTest">测试当前组合</button>
+            <button class="ghost-btn" type="button" @click="queuePresetLive2DSequence('greeting')">问候队列</button>
+            <button class="ghost-btn" type="button" @click="queuePresetLive2DSequence('shy')">害羞队列</button>
+            <button class="ghost-btn" type="button" @click="queuePresetLive2DSequence('tears')">落泪队列</button>
+            <button class="danger-btn" type="button" @click="clearLive2DDebugQueue">清空队列</button>
+          </div>
+          <p class="field-hint">调试指令会写入待执行队列。返回房间后自动播放；如果房间在另一个标签页打开，也会通过 storage 事件执行。</p>
+          <details class="live2d-debug-details">
+            <summary>最近一次控制 JSON</summary>
+            <pre>{{ live2dDebugJson }}</pre>
+          </details>
+          <div v-if="live2dDebug.history.length" class="live2d-debug-history">
+            <article v-for="item in live2dDebug.history" :key="item.id" class="memory-item">
+              <div class="memory-item-head">
+                <span class="chip">{{ item.source || 'debug' }}</span>
+                <span class="field-hint">{{ formatDebugTime(item.createdAt) }}</span>
+              </div>
+              <pre>{{ JSON.stringify(item.normalized, null, 2) }}</pre>
+            </article>
           </div>
         </div>
       </article>
