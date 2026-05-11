@@ -43,6 +43,10 @@ function normalizeCoordinate(value, fallback, min, max) {
     return Math.max(min, Math.min(max, number));
 }
 
+function hasCoordinate(value) {
+    return Number.isFinite(Number(value));
+}
+
 function weatherFromCode(code) {
     const numericCode = Number(code);
     const match = WEATHER_CODE_MAP.find((item) => item.codes.includes(numericCode));
@@ -160,10 +164,27 @@ async function fetchOpenMeteoWorld({ lat, lon, timezone, city }) {
 }
 
 router.get('/world', async (req, res) => {
-    const lat = normalizeCoordinate(req.query.lat || process.env.ROOM_WEATHER_LAT, DEFAULT_WEATHER.lat, -90, 90);
-    const lon = normalizeCoordinate(req.query.lon || process.env.ROOM_WEATHER_LON, DEFAULT_WEATHER.lon, -180, 180);
+    const hasClientCoords = hasCoordinate(req.query.lat) && hasCoordinate(req.query.lon);
+    const hasEnvCoords = hasCoordinate(process.env.ROOM_WEATHER_LAT) && hasCoordinate(process.env.ROOM_WEATHER_LON);
+    const rawLat = hasClientCoords ? req.query.lat : (hasEnvCoords ? process.env.ROOM_WEATHER_LAT : null);
+    const rawLon = hasClientCoords ? req.query.lon : (hasEnvCoords ? process.env.ROOM_WEATHER_LON : null);
     const timezone = String(req.query.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
     const cityFallback = String(req.query.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city;
+    const locationSource = String(req.query.locationSource || (hasClientCoords ? 'browser-geolocation' : (hasEnvCoords ? 'env-default' : 'timezone'))).trim();
+    if (!hasClientCoords && !hasEnvCoords) {
+        const world = {
+            ...fallbackWorld('client-location-unavailable', cityFallback),
+            address: cityFallback,
+            locationSource,
+            location: { lat: null, lon: null, timezone, city: cityFallback, address: cityFallback, source: locationSource }
+        };
+        res.set('Cache-Control', 'no-store');
+        return res.json({ success: true, data: world });
+    }
+
+    const lat = normalizeCoordinate(rawLat, DEFAULT_WEATHER.lat, -90, 90);
+    const lon = normalizeCoordinate(rawLon, DEFAULT_WEATHER.lon, -180, 180);
+    const accuracy = Number.isFinite(Number(req.query.accuracy)) ? Number(req.query.accuracy) : null;
     const cacheLocation = { lat, lon, timezone, city: cityFallback };
     const cached = await weatherCache.getWorld(cacheLocation);
     if (cached) {
@@ -179,7 +200,8 @@ router.get('/world', async (req, res) => {
         ...data,
         city: locationName.city,
         address: locationName.address,
-        location: { lat, lon, timezone, city: locationName.city, address: locationName.address }
+        locationSource,
+        location: { lat, lon, accuracy, timezone, city: locationName.city, address: locationName.address, source: locationSource }
     };
     await weatherCache.setWorld(cacheLocation, world);
 

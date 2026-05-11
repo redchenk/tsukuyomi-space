@@ -2,7 +2,9 @@ import { computed, ref } from 'vue';
 
 const WORLD_ENDPOINT = '/api/room/world';
 const WORLD_CACHE_KEY = 'roomWorldState';
+const WORLD_LOCATION_KEY = 'roomWorldLocation';
 const WORLD_CACHE_TTL = 20 * 60 * 1000;
+const WORLD_LOCATION_TTL = 6 * 60 * 60 * 1000;
 
 function readJson(key, fallback) {
   try {
@@ -15,6 +17,13 @@ function readJson(key, fallback) {
 
 function writeJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function locationCacheKey(location = {}) {
+  if (location.lat != null && location.lon != null) {
+    return `${Number(location.lat).toFixed(3)},${Number(location.lon).toFixed(3)}`;
+  }
+  return `timezone:${location.timezone || browserTimezone() || 'unknown'}`;
 }
 
 function getTimePhase(date = new Date()) {
@@ -49,6 +58,9 @@ function normalizeWorld(data = {}) {
     city: city || '\u6708\u8bfb\u7a7a\u95f4',
     address: address || city || '\u6708\u8bfb\u7a7a\u95f4',
     source: data.source || 'local',
+    reason: data.reason || '',
+    locationSource: data.locationSource || data.location?.source || '',
+    locationAccuracy: Number.isFinite(Number(data.location?.accuracy)) ? Number(data.location.accuracy) : null,
     updatedAt: data.updatedAt || now.toISOString()
   };
 }
@@ -93,15 +105,16 @@ function seasonLabel(value) {
   })[value] || '\u5b63\u8282';
 }
 
-function readCachedWorld() {
+function readCachedWorld(location = {}) {
   const cached = readJson(WORLD_CACHE_KEY, null);
   if (!cached?.savedAt || !cached.data) return null;
   if (Date.now() - cached.savedAt > WORLD_CACHE_TTL) return null;
+  if (cached.locationKey && cached.locationKey !== locationCacheKey(location)) return null;
   return normalizeWorld(cached.data);
 }
 
-function writeCachedWorld(value) {
-  writeJson(WORLD_CACHE_KEY, { savedAt: Date.now(), data: value });
+function writeCachedWorld(value, location = {}) {
+  writeJson(WORLD_CACHE_KEY, { savedAt: Date.now(), locationKey: locationCacheKey(location), data: value });
 }
 
 function isMobileViewport() {
@@ -121,6 +134,18 @@ function cityFromTimezone(timezone = '') {
   return raw ? raw.replace(/_/g, ' ') : '';
 }
 
+function readCachedLocation() {
+  const cached = readJson(WORLD_LOCATION_KEY, null);
+  if (!cached?.savedAt || cached.lat == null || cached.lon == null) return null;
+  if (Date.now() - cached.savedAt > WORLD_LOCATION_TTL) return null;
+  return cached;
+}
+
+function writeCachedLocation(location) {
+  if (location?.lat == null || location?.lon == null) return;
+  writeJson(WORLD_LOCATION_KEY, { ...location, savedAt: Date.now() });
+}
+
 export function useRoomWorld() {
   const worldTimer = ref(null);
   const worldLocationPromise = ref(null);
@@ -134,27 +159,38 @@ export function useRoomWorld() {
     address: world.value.address || world.value.city || '\u6708\u8bfb\u7a7a\u95f4',
     temperature: world.value.temperature == null ? '--\u00b0C' : `${Math.round(world.value.temperature)}\u00b0C`,
     wind: world.value.windSpeed == null ? '\u98ce\u901f --' : `\u98ce\u901f ${Math.round(world.value.windSpeed)} km/h`,
-    detail: `${seasonLabel(world.value.season)} \u00b7 ${timePhaseLabel(world.value.timePhase)} \u00b7 ${world.value.source === 'open-meteo' ? '\u5b9e\u65f6\u540c\u6b65' : '\u672c\u5730\u4f30\u8ba1'}`
+    detail: `${seasonLabel(world.value.season)} \u00b7 ${timePhaseLabel(world.value.timePhase)} \u00b7 ${world.value.source === 'open-meteo' ? '\u7528\u6237\u4f4d\u7f6e\u5b9e\u65f6\u540c\u6b65' : (world.value.reason === 'client-location-unavailable' ? '\u7b49\u5f85\u5b9a\u4f4d\u6388\u6743' : '\u672c\u5730\u4f30\u8ba1')}`
   }));
 
   function readRoomWorldLocation() {
     if (worldLocationPromise.value) return worldLocationPromise.value;
     const timezone = browserTimezone();
     const city = cityFromTimezone(timezone);
+    const cachedLocation = readCachedLocation();
+    if (cachedLocation) {
+      worldLocationPromise.value = Promise.resolve({ ...cachedLocation, timezone: cachedLocation.timezone || timezone, city: cachedLocation.city || city, source: 'cached-geolocation' });
+      return worldLocationPromise.value;
+    }
     if (!navigator.geolocation) {
-      worldLocationPromise.value = Promise.resolve(timezone ? { timezone, city } : null);
+      worldLocationPromise.value = Promise.resolve(timezone ? { timezone, city, source: 'timezone' } : null);
       return worldLocationPromise.value;
     }
     worldLocationPromise.value = new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        (position) => resolve({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-          timezone,
-          city
-        }),
-        () => resolve(timezone ? { timezone, city } : null),
-        { enableHighAccuracy: false, maximumAge: WORLD_CACHE_TTL, timeout: 2500 }
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timezone,
+            city,
+            source: 'browser-geolocation'
+          };
+          writeCachedLocation(location);
+          resolve(location);
+        },
+        () => resolve(timezone ? { timezone, city, source: 'timezone' } : null),
+        { enableHighAccuracy: true, maximumAge: 10 * 60 * 1000, timeout: 10000 }
       );
     });
     return worldLocationPromise.value;
@@ -200,23 +236,30 @@ export function useRoomWorld() {
   async function refreshRoomWorld() {
     try {
       const location = await readRoomWorldLocation();
+      const cached = readCachedWorld(location || {});
+      if (cached) {
+        applyWorld(cached);
+        return;
+      }
       const params = new URLSearchParams();
       if (location?.lat != null) params.set('lat', String(location.lat));
       if (location?.lon != null) params.set('lon', String(location.lon));
+      if (location?.accuracy != null) params.set('accuracy', String(Math.round(location.accuracy)));
       if (location?.timezone) params.set('timezone', String(location.timezone));
       if (location?.city) params.set('city', String(location.city));
+      if (location?.source) params.set('locationSource', String(location.source));
       const response = await fetch(`${WORLD_ENDPOINT}${params.toString() ? `?${params}` : ''}`, { cache: 'no-store' });
       const result = await response.json().catch(() => ({}));
       const nextWorld = normalizeWorld(result.data || {});
       applyWorld(nextWorld);
-      writeCachedWorld(nextWorld);
+      writeCachedWorld(nextWorld, location || {});
     } catch (_) {
       applyWorld(normalizeWorld());
     }
   }
 
   function initRoomWorld() {
-    applyWorld(readCachedWorld() || normalizeWorld());
+    applyWorld(normalizeWorld());
     refreshRoomWorld();
     window.clearInterval(worldTimer.value);
     worldTimer.value = window.setInterval(refreshRoomWorld, WORLD_CACHE_TTL);
