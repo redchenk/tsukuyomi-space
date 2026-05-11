@@ -19,6 +19,32 @@ type RoomLive2DState = {
 
 let roomState: RoomLive2DState | null = null;
 
+const allowedExpressions = new Set(['neutral', 'smile', 'bsmile', 'namida', 'tears']);
+const allowedTapBodyMotions = new Set(['tap_body', 'body_tap', 'tapbody']);
+
+function normalizeExpression(value: unknown): string {
+  const expression = String(value || '').trim().toLowerCase();
+  return allowedExpressions.has(expression) ? expression : '';
+}
+
+function primaryExpressionFromMix(value: unknown): string {
+  if (!Array.isArray(value)) return '';
+  const sorted = value
+    .map((layer) => ({
+      expression: normalizeExpression(layer?.expression || layer?.key || layer?.id),
+      weight: Number(layer?.weight)
+    }))
+    .filter((layer) => layer.expression && Number.isFinite(layer.weight) && layer.weight > 0.02)
+    .sort((left, right) => right.weight - left.weight);
+  return sorted[0]?.expression || '';
+}
+
+function normalizeDuration(value: unknown): number {
+  const duration = Number(value);
+  if (!Number.isFinite(duration)) return 5000;
+  return Math.min(Math.max(Math.round(duration), 800), 12000);
+}
+
 function ensureCubismStarted(): void {
   if ((window as any).TSUKUYOMI_CUBISM_STARTED) return;
 
@@ -89,15 +115,18 @@ function initRoomLive2D(): void {
   const onRoomAct = (event: Event): void => {
     const detail = ((event as CustomEvent).detail || {}) as {
       expression?: string;
+      expressionMix?: Array<{ expression?: string; key?: string; id?: string; weight?: number }>;
       motion?: string;
+      durationMs?: number;
     };
     const manager = subdelegate.getLive2DManager();
     if (!manager) return;
 
-    if (detail.expression) {
-      manager.setExpression(detail.expression);
+    const expression = primaryExpressionFromMix(detail.expressionMix) || normalizeExpression(detail.expression);
+    if (expression) {
+      manager.setExpression(expression, normalizeDuration(detail.durationMs));
     }
-    if (['tap_body', 'body_tap', 'tapbody'].includes(String(detail.motion || '').toLowerCase())) {
+    if (allowedTapBodyMotions.has(String(detail.motion || '').toLowerCase())) {
       manager.startTapBodyMotion();
     }
   };

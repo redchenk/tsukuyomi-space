@@ -42,15 +42,16 @@ export class LAppLive2DManager {
     }
   }
 
-  private scheduleNeutralExpressionReset(): void {
+  private scheduleNeutralExpressionReset(durationMs: number = 5000): void {
     this.clearExpressionResetTimer();
+    const safeDuration = Math.min(Math.max(Math.round(durationMs), 800), 12000);
     this._expressionResetTimer = window.setTimeout(() => {
       this._expressionResetTimer = null;
       const model: LAppModel = this._models.at(0);
       if (model) {
         model.setExpression('neutral');
       }
-    }, 5000);
+    }, safeDuration);
   }
 
   /**
@@ -69,14 +70,14 @@ export class LAppLive2DManager {
   /**
    * 指定表情
    */
-  public setExpression(expressionId: string): void {
+  public setExpression(expressionId: string, durationMs: number = 5000): void {
     const model: LAppModel = this._models.at(0);
     if (model && expressionId) {
       model.setExpression(expressionId);
       if (expressionId === 'neutral') {
         this.clearExpressionResetTimer();
       } else {
-        this.scheduleNeutralExpressionReset();
+        this.scheduleNeutralExpressionReset(durationMs);
       }
     }
   }

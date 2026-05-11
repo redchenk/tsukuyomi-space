@@ -1,5 +1,11 @@
 import { nextTick, ref } from 'vue';
 import { defaultKnowledgeEntries } from '../../constants/room/knowledgeEntries';
+import { live2DPromptCatalog } from '../../constants/room/live2dManifest';
+import {
+  dispatchRoomLive2D,
+  inferLive2DIntentFromText,
+  normalizeLive2DIntent as normalizeRoomLive2DIntent
+} from '../../services/room/live2dControl';
 import { readJson, writeJson } from '../../services/room/roomStorage';
 
 function uid() {
@@ -70,54 +76,6 @@ function cleanTtsText(text) {
     .trim();
 }
 
-const LIVE2D_EXPRESSION_ALIASES = {
-  smile: 'smile',
-  happy: 'smile',
-  joy: 'smile',
-  cheerful: 'smile',
-  '\u5f00\u5fc3': 'smile',
-  '\u9ad8\u5174': 'smile',
-  '\u6109\u5feb': 'smile',
-  '\u5fae\u7b11': 'smile',
-  '\u7b11': 'smile',
-  '\u512a\u3057\u3044': 'smile',
-  '\u5b09\u3057\u3044': 'smile',
-  blush: 'bsmile',
-  shy: 'bsmile',
-  embarrassed: 'bsmile',
-  playful: 'bsmile',
-  bsmile: 'bsmile',
-  angry: 'bsmile',
-  annoyed: 'bsmile',
-  '\u5bb3\u7f9e': 'bsmile',
-  '\u8138\u7ea2': 'bsmile',
-  '\u8c03\u76ae': 'bsmile',
-  '\u751f\u6c14': 'bsmile',
-  '\u6124\u6012': 'bsmile',
-  '\u7167\u308c': 'bsmile',
-  namida: 'namida',
-  sad: 'namida',
-  sorrow: 'namida',
-  '\u96be\u8fc7': 'namida',
-  '\u60b2\u4f24': 'namida',
-  '\u4f24\u5fc3': 'namida',
-  '\u6cea': 'namida',
-  '\u60b2\u3057\u3044': 'namida',
-  tears: 'tears',
-  crying: 'tears',
-  cry: 'tears',
-  '\u54ed': 'tears',
-  '\u54ed\u6ce3': 'tears',
-  '\u6d41\u6cea': 'tears',
-  '\u5927\u54ed': 'tears',
-  '\u6ce3\u304f': 'tears'
-};
-
-function normalizeLive2DExpression(value) {
-  const key = String(value || '').trim().toLowerCase();
-  return LIVE2D_EXPRESSION_ALIASES[key] || '';
-}
-
 function extractJsonObject(text) {
   const value = String(text || '').trim();
   if (!value) return null;
@@ -129,35 +87,6 @@ function extractJsonObject(text) {
   return null;
 }
 
-function normalizeLive2DIntent(input) {
-  if (!input || typeof input !== 'object') return null;
-  const rawExpression = input.expression || input.expressionId || input.face || input.mood || input.emotion || '';
-  const expression = normalizeLive2DExpression(rawExpression);
-  const motion = String(input.motion || input.action || '').trim().toLowerCase().replace(/\s+/g, '_');
-  const normalizedMotion = motion && motion !== 'none' ? motion : '';
-  if (!expression && !normalizedMotion) return null;
-  return {
-    emotion: String(input.emotion || input.mood || '').trim() || null,
-    expression: expression || null,
-    motion: normalizedMotion || null,
-    intensity: Number.isFinite(Number(input.intensity)) ? Number(input.intensity) : null
-  };
-}
-
-function inferLive2DIntent(text) {
-  const value = String(text || '').toLowerCase();
-  const matchers = [
-    { expression: 'tears', pattern: /(\u5927\u54ed|\u54ed\u6ce3|\u6d41\u6cea|\u5d29\u6e83|crying|tears|\u6ce3\u304f)/u, emotion: 'crying' },
-    { expression: 'namida', pattern: /(\u96be\u8fc7|\u60b2\u4f24|\u4f24\u5fc3|\u5bc2\u5bde|\u6cea|sad|sorrow|\u60b2\u3057\u3044)/u, emotion: 'sad' },
-    { expression: 'bsmile', pattern: /(\u5bb3\u7f9e|\u8138\u7ea2|\u8c03\u76ae|\u751f\u6c14|\u6124\u6012|shy|blush|angry|annoyed|\u7167\u308c)/u, emotion: 'shy' },
-    { expression: 'smile', pattern: /(\u5f00\u5fc3|\u9ad8\u5174|\u6109\u5feb|\u5fae\u7b11|\u7b11|happy|smile|joy|\u5b09\u3057\u3044|\u512a\u3057\u3044)/u, emotion: 'happy' }
-  ];
-  const matched = matchers.find((item) => item.pattern.test(value));
-  return matched
-    ? { emotion: matched.emotion, expression: matched.expression, motion: null, intensity: 0.5 }
-    : null;
-}
-
 function parseAssistantPayload(rawText) {
   const raw = String(rawText || '').trim();
   const jsonText = extractJsonObject(raw);
@@ -165,14 +94,14 @@ function parseAssistantPayload(rawText) {
     try {
       const data = JSON.parse(jsonText);
       const reply = cleanReply(data.reply || data.text || data.message || '');
-      const live2d = normalizeLive2DIntent(data.live2d || data.pose || data.act || data) || inferLive2DIntent(reply);
+      const live2d = normalizeRoomLive2DIntent(data.live2d || data.pose || data.act || data) || inferLive2DIntentFromText(reply);
       return { reply, live2d };
     } catch (_) {
       // fall through to plain text handling
     }
   }
   const reply = cleanReply(raw);
-  return { reply, live2d: inferLive2DIntent(reply) };
+  return { reply, live2d: inferLive2DIntentFromText(reply) };
 }
 
 function defaultTtsUrl(provider) {
@@ -334,17 +263,20 @@ function roomSystemPrompt() {
   return [
     '你是月见八千代，回复应保持温柔、清澈、带一点神秘感。',
     '请严格只返回 JSON 对象，不要输出 Markdown、代码块或额外解释。',
-    '返回格式必须是：{"reply":"给用户看的正文","live2d":{"emotion":"happy","expression":"smile","motion":"none","intensity":0.6}}。',
+    '返回格式必须是：{"reply":"给用户看的正文","live2d":{"emotion":"happy","expression":"smile","expressionMix":[{"expression":"smile","weight":1}],"motion":"none","intensity":0.6,"durationMs":5000}}。',
     'reply 只允许放自然对话正文，不能包含动作提示词、表情提示词、括号说明、舞台指令或标签。',
-    'live2d 是可选控制信息；当前系统会优先使用 expression 控制表情，motion 仅作为未来扩展。',
+    'live2d 是可选控制信息；当前系统会优先使用 expression 与 expressionMix 控制表情，motion 仅作为未来扩展。',
     'emotion 可选值：happy、shy、sad、crying、angry、neutral。',
-    'expression 可用值仅限 smile、bsmile、namida、tears、none；无法判断时返回 none 或省略 live2d。'
+    'expression 可用值仅限 neutral、smile、bsmile、namida、tears；无法判断时返回 neutral 或省略 live2d。',
+    'expressionMix 若提供，只能使用上述 expression id，最多三层，权重从大到小排序。',
+    'motion 若提供，只能使用 tap_body，其他动作统一写 none 或省略。',
+    '不要在 reply 中输出任何动作文字、括号补充、舞台指令、心声、标签或 TTS 提示。',
+    live2DPromptCatalog()
   ].join('\n');
 }
 
 function applyRoomAct(live2d) {
-  if (!live2d) return;
-  window.dispatchEvent(new CustomEvent('tsukuyomi:room-act', { detail: live2d }));
+  dispatchRoomLive2D(live2d);
 }
 
 function pickReply(data) {
@@ -610,7 +542,10 @@ export function useRoomChat({ live2d, world }) {
       const settings = readJson('roomLLMSettings', {});
       const conversation = readJson('roomChatHistory', []).slice(-12);
       const roomContext = await buildRoomContext(message, image, settings);
-      const systemPrompt = [settings.systemPrompt || roomSystemPrompt(), roomContext].filter(Boolean).join('\n\n');
+      const basePrompt = settings.systemPrompt
+        ? [settings.systemPrompt, roomSystemPrompt()].filter(Boolean).join('\n\n')
+        : roomSystemPrompt();
+      const systemPrompt = [basePrompt, roomContext].filter(Boolean).join('\n\n');
       const mcpEnhancedMessage = roomContext && image && (settings.visionMode === 'mcp' || settings.visionMode === 'auto')
         ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n\n\u4e0a\u4e0b\u6587\u5df2\u5305\u542b MCP \u5bf9\u56fe\u7247\u7684\u7406\u89e3\u7ed3\u679c\uff0c\u8bf7\u7ed3\u5408\u5b83\u56de\u7b54\u3002`
         : message;
