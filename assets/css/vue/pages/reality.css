@@ -41,10 +41,11 @@ html[data-theme="dark"] .reality-page {
     width: fit-content;
     padding: 0.42rem 0.7rem;
     border: 1px solid var(--reality-line);
-    border-radius: 8px;
+    border-radius: var(--ts-radius-md);
     color: var(--reality-blue);
     background: var(--reality-soft-bg);
     font-size: 0.82rem;
+    backdrop-filter: var(--ts-blur-sm);
 }
 
 .reality-hero h1 {
@@ -81,7 +82,7 @@ html[data-theme="dark"] .reality-hero h1 {
     min-height: 42px;
     padding: 0 1rem;
     border: 1px solid rgba(180, 108, 149, 0.28);
-    border-radius: 8px;
+    border-radius: var(--ts-radius-md);
     background: rgba(245, 166, 199, 0.22);
     color: var(--reality-title);
     text-decoration: none;
@@ -147,9 +148,11 @@ html[data-theme="dark"] .reality-btn.secondary {
     min-height: 152px;
     padding: 1.15rem;
     border: 1px solid var(--reality-line);
-    border-radius: 8px;
+    border-radius: var(--ts-radius-xl);
     background: var(--reality-card-bg);
-    backdrop-filter: blur(14px);
+    box-shadow: var(--ts-shadow-sm);
+    backdrop-filter: var(--ts-blur-md);
+    overflow: hidden;
 }
 .reality-card h3 {
     margin: 0 0 0.65rem;
@@ -180,11 +183,14 @@ html[data-theme="dark"] .reality-btn.secondary {
 
 .reality-data-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     overflow: hidden;
     border: 1px solid var(--reality-line);
-    border-radius: 8px;
+    border-radius: var(--ts-radius-xl);
     background: var(--reality-card-bg);
+    box-shadow: var(--ts-shadow-sm);
+    backdrop-filter: var(--ts-blur-md);
 }
 .reality-data-table th,
 .reality-data-table td {
@@ -208,11 +214,14 @@ html[data-theme="dark"] .reality-btn.secondary {
 .reality-statement {
     padding: 1.25rem;
     border: 1px solid var(--reality-line);
-    border-radius: 8px;
+    border-radius: var(--ts-radius-xl);
     background: var(--reality-soft-bg);
     color: var(--reality-muted);
     line-height: 1.85;
     font-size: 0.93rem;
+    box-shadow: var(--ts-shadow-sm);
+    backdrop-filter: var(--ts-blur-md);
+    overflow: hidden;
 }
 .reality-statement strong { color: var(--reality-title); }
 .reality-statement p { margin: 0 0 0.8rem; }
