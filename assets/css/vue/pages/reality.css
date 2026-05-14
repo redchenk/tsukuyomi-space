@@ -34,7 +34,10 @@ html[data-theme="dark"] .reality-page {
     display: grid;
     align-content: center;
     gap: 1.6rem;
+    padding-inline: clamp(1.1rem, 3vw, 2rem);
     padding-bottom: 3.4rem;
+    border-radius: var(--ts-radius-xl);
+    overflow: hidden;
 }
 
 .reality-hero-kicker {
