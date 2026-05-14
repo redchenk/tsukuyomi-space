@@ -452,16 +452,19 @@ body.vue-room-route {
     width: min(300px, calc(100vw - 7.5rem));
     min-height: 160px;
     padding: 0;
-    border-radius: 22px;
-    background: rgba(246, 248, 252, 0.78);
-    color: #233047;
+    border-color: var(--ts-border);
+    border-radius: var(--ts-radius-xl);
+    background: var(--ts-glass);
+    color: var(--ts-text);
+    box-shadow: var(--ts-shadow-md);
+    backdrop-filter: var(--ts-blur-md);
 }
 
 .room-music-panel::before {
     background:
-        radial-gradient(circle at 12% 8%, rgba(174, 242, 255, 0.2), transparent 34%),
-        radial-gradient(circle at 98% 0%, rgba(255, 122, 200, 0.14), transparent 32%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.18));
+        radial-gradient(circle at 12% 8%, rgba(107, 216, 240, 0.14), transparent 34%),
+        radial-gradient(circle at 98% 0%, rgba(255, 154, 186, 0.12), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
 }
 
 .room-music-panel > .panel-header {
@@ -495,13 +498,13 @@ body.vue-room-route {
     display: grid;
     place-items: center;
     overflow: hidden;
-    border: 1px solid rgba(231, 249, 255, 0.16);
-    border-radius: 8px;
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-sm);
     background:
         radial-gradient(circle at 26% 18%, color-mix(in srgb, var(--music-cover-a), transparent 12%), transparent 32%),
         radial-gradient(circle at 78% 16%, color-mix(in srgb, var(--music-cover-b), transparent 18%), transparent 34%),
         linear-gradient(135deg, color-mix(in srgb, var(--music-cover-c), #111629 32%), rgba(10, 16, 32, 0.82));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 18px 48px rgba(0, 0, 0, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), var(--ts-shadow-sm);
 }
 
 .music-cover.has-cover {
@@ -568,12 +571,12 @@ body.vue-room-route {
     display: grid;
     place-items: center;
     padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.48);
+    border: 1px solid rgba(255, 255, 255, 0.56);
     border-radius: 999px;
     color: #fff;
-    background: rgba(20, 24, 36, 0.42);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
-    backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--ts-accent), rgba(20, 24, 36, 0.54) 46%);
+    box-shadow: var(--ts-shadow-sm);
+    backdrop-filter: var(--ts-blur-sm);
     transform: translateX(-50%);
     cursor: pointer;
 }
@@ -594,7 +597,7 @@ body.vue-room-route {
 .music-title-row strong {
     display: block;
     overflow: hidden;
-    color: #152034;
+    color: var(--ts-text-strong);
     font-size: 1rem;
     font-weight: 900;
     line-height: 1.35;
@@ -605,7 +608,7 @@ body.vue-room-route {
 .music-title-row span {
     min-width: 0;
     overflow: hidden;
-    color: rgba(35, 48, 71, 0.74);
+    color: var(--ts-muted);
     font-size: 0.82rem;
     font-weight: 800;
     text-overflow: ellipsis;
@@ -618,14 +621,14 @@ body.vue-room-route {
 
 .room-panel .music-progress {
     min-height: 18px;
-    accent-color: #a9d7ff;
+    accent-color: var(--ts-accent);
 }
 
 .music-meta-row {
     display: flex;
     align-items: center;
     gap: 0.36rem;
-    color: rgba(35, 48, 71, 0.58);
+    color: var(--ts-muted);
     font-size: 0.8rem;
     font-weight: 800;
     white-space: nowrap;
@@ -639,7 +642,7 @@ body.vue-room-route {
     padding: 0;
     border: 0;
     border-radius: 999px;
-    color: rgba(35, 48, 71, 0.68);
+    color: var(--ts-muted);
     background: transparent;
     font: inherit;
     font-weight: 900;
@@ -648,8 +651,8 @@ body.vue-room-route {
 
 .music-mini-btn:hover,
 .music-mini-btn.is-active {
-    color: #152034;
-    background: rgba(35, 48, 71, 0.08);
+    color: var(--ts-text-strong);
+    background: var(--ts-card-hover);
 }
 
 .music-close {
@@ -658,8 +661,8 @@ body.vue-room-route {
     height: 36px;
     border: 0;
     border-radius: 999px;
-    color: #fff;
-    background: rgba(30, 34, 42, 0.56);
+    color: var(--ts-text-strong);
+    background: var(--ts-card);
     font-size: 1rem;
 }
 
@@ -686,7 +689,7 @@ body.vue-room-route {
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 0.56rem;
-    color: rgba(35, 48, 71, 0.68);
+    color: var(--ts-muted);
     font-size: 0.78rem;
     font-weight: 900;
 }
@@ -699,21 +702,44 @@ body.vue-room-route {
 
 .music-icon-btn {
     min-height: 34px;
-    border-radius: 12px;
-    color: #152034;
-    background: rgba(255, 255, 255, 0.46);
+    border-color: var(--ts-border);
+    border-radius: var(--ts-radius-md);
+    color: var(--ts-text-strong);
+    background: var(--ts-card);
     font-size: 1.25rem;
 }
 
 .room-panel #musicTrackSelect {
     min-height: 36px;
-    color: #152034;
-    background: rgba(255, 255, 255, 0.48);
+    border-color: var(--ts-border);
+    color: var(--ts-text-strong);
+    background: var(--ts-surface-strong);
 }
 
 .room-panel .music-volume-inline input {
     min-height: 24px;
-    accent-color: #89c9ff;
+    accent-color: var(--ts-accent);
+}
+
+html[data-theme="dark"] .room-music-panel {
+    border-color: var(--ts-border);
+    background: var(--ts-glass);
+    color: var(--ts-text);
+    box-shadow: var(--ts-shadow-lg);
+}
+
+html[data-theme="dark"] .room-music-panel::before {
+    background:
+        radial-gradient(circle at 12% 8%, rgba(174, 242, 255, 0.16), transparent 34%),
+        radial-gradient(circle at 98% 0%, rgba(255, 122, 200, 0.12), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+}
+
+html[data-theme="dark"] .music-close,
+html[data-theme="dark"] .music-icon-btn,
+html[data-theme="dark"] .room-panel #musicTrackSelect {
+    color: var(--ts-text-strong);
+    background: var(--ts-card);
 }
 
 .room-chat-panel.image-drag-over {
