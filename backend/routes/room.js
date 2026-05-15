@@ -135,7 +135,7 @@ async function reverseLocationByBigDataCloud({ lat, lon }) {
         localityLanguage: 'zh'
     });
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2600);
+    const timeout = setTimeout(() => controller.abort(), 6000);
     try {
         const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?${params}`, {
             signal: controller.signal,
