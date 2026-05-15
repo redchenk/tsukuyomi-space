@@ -1,4 +1,5 @@
 const express = require('express');
+const https = require('https');
 const { authenticateToken } = require('../middleware/auth');
 const roomMemory = require('../services/room-memory');
 const weatherCache = require('../services/weather-cache');
@@ -134,31 +135,45 @@ async function reverseLocationByBigDataCloud({ lat, lon }) {
         longitude: String(lon),
         localityLanguage: 'zh'
     });
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-    try {
-        const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?${params}`, {
-            signal: controller.signal,
-            headers: { Accept: 'application/json' }
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?${params}`;
+    return new Promise((resolve) => {
+        const request = https.get(url, { headers: { Accept: 'application/json' }, timeout: 8000 }, (response) => {
+            if (response.statusCode < 200 || response.statusCode >= 300) {
+                response.resume();
+                resolve(null);
+                return;
+            }
+            let body = '';
+            response.setEncoding('utf8');
+            response.on('data', (chunk) => {
+                body += chunk;
+                if (body.length > 64 * 1024) {
+                    request.destroy();
+                    resolve(null);
+                }
+            });
+            response.on('end', () => {
+                try {
+                    const payload = JSON.parse(body);
+                    const city = payload.city
+                        || payload.locality
+                        || payload.principalSubdivision
+                        || payload.countryName
+                        || '';
+                    const address = [
+                        payload.countryName,
+                        payload.principalSubdivision,
+                        payload.city || payload.locality
+                    ].filter(Boolean).join(' · ');
+                    resolve(city ? { city, address: address || city } : null);
+                } catch (_) {
+                    resolve(null);
+                }
+            });
         });
-        if (!response.ok) return null;
-        const payload = await response.json();
-        const city = payload.city
-            || payload.locality
-            || payload.principalSubdivision
-            || payload.countryName
-            || '';
-        const address = [
-            payload.countryName,
-            payload.principalSubdivision,
-            payload.city || payload.locality
-        ].filter(Boolean).join(' · ');
-        return city ? { city, address: address || city } : null;
-    } catch (_) {
-        return null;
-    } finally {
-        clearTimeout(timeout);
-    }
+        request.on('timeout', () => request.destroy());
+        request.on('error', () => resolve(null));
+    });
 }
 
 async function resolveLocationName({ lat, lon, fallback, allowFallback = true }) {
