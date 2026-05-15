@@ -236,8 +236,11 @@ router.get('/world', async (req, res) => {
     const rawLon = hasClientCoords ? req.query.lon : (hasIpCoords ? ipLocation.lon : (hasEnvCoords ? process.env.ROOM_WEATHER_LON : null));
     const timezone = String(req.query.timezone || ipLocation?.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
     const requestedCity = String(req.query.city || '').trim();
+    const requestedLocationSource = String(req.query.locationSource || '').trim();
     const cityFallback = String(requestedCity || ipLocation?.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city;
-    const locationSource = String(req.query.locationSource || (hasClientCoords ? 'browser-geolocation' : (hasIpCoords ? 'ip-geolocation' : (hasEnvCoords ? 'env-default' : 'unavailable')))).trim();
+    const locationSource = hasClientCoords
+        ? (requestedLocationSource || 'browser-geolocation')
+        : (hasIpCoords ? 'ip-geolocation' : (hasEnvCoords ? 'env-default' : 'unavailable'));
     if (!hasClientCoords && !hasIpCoords && !hasEnvCoords) {
         const world = {
             ...fallbackWorld('client-location-unavailable', '月读空间'),
