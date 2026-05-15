@@ -2,9 +2,12 @@ const crypto = require('crypto');
 const config = require('../config');
 const store = require('./redis-store');
 
+const WORLD_CACHE_SCHEMA = 2;
+
 function keyForLocation({ lat, lon, timezone, city, locationSource }) {
     const hasBrowserCoords = locationSource === 'browser-geolocation' || locationSource === 'cached-geolocation';
     const normalized = {
+        schema: WORLD_CACHE_SCHEMA,
         lat: Number.isFinite(Number(lat)) ? Number(lat).toFixed(3) : lat,
         lon: Number.isFinite(Number(lon)) ? Number(lon).toFixed(3) : lon,
         timezone: timezone || ''

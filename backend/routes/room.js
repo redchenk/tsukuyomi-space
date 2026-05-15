@@ -101,14 +101,68 @@ function weatherFromCode(code) {
     return match ? match.weather : 'cloudy';
 }
 
-function coordinateLocationName(lat, lon) {
-    const shortLat = Number.isFinite(Number(lat)) ? Number(lat).toFixed(3) : String(lat || '');
-    const shortLon = Number.isFinite(Number(lon)) ? Number(lon).toFixed(3) : String(lon || '');
-    return shortLat && shortLon ? `当前位置 ${shortLat}, ${shortLon}` : '当前位置';
+function genericLocationName() {
+    return '当前位置';
+}
+
+function pickReadableLocation(address = {}, payload = {}) {
+    const city = address.city
+        || address.town
+        || address.village
+        || address.municipality
+        || address.county
+        || address.district
+        || address.state
+        || payload.name
+        || '';
+    const detail = [
+        address.country,
+        address.state,
+        address.city || address.town || address.village || address.municipality,
+        address.county,
+        address.suburb || address.neighbourhood || address.road
+    ].filter(Boolean);
+    return {
+        city,
+        address: payload.display_name || detail.join(' · ') || city
+    };
+}
+
+async function reverseLocationByBigDataCloud({ lat, lon }) {
+    const params = new URLSearchParams({
+        latitude: String(lat),
+        longitude: String(lon),
+        localityLanguage: 'zh'
+    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2600);
+    try {
+        const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?${params}`, {
+            signal: controller.signal,
+            headers: { Accept: 'application/json' }
+        });
+        if (!response.ok) return null;
+        const payload = await response.json();
+        const city = payload.city
+            || payload.locality
+            || payload.principalSubdivision
+            || payload.countryName
+            || '';
+        const address = [
+            payload.countryName,
+            payload.principalSubdivision,
+            payload.city || payload.locality
+        ].filter(Boolean).join(' · ');
+        return city ? { city, address: address || city } : null;
+    } catch (_) {
+        return null;
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
 async function resolveLocationName({ lat, lon, fallback, allowFallback = true }) {
-    const fallbackName = allowFallback ? fallback : coordinateLocationName(lat, lon);
+    const fallbackName = allowFallback ? fallback : genericLocationName();
     if (process.env.ROOM_WEATHER_REVERSE_OFFLINE === 'true' || typeof fetch !== 'function') {
         return { city: fallbackName, address: fallbackName };
     }
@@ -134,23 +188,17 @@ async function resolveLocationName({ lat, lon, fallback, allowFallback = true })
         });
         if (!response.ok) return { city: fallbackName, address: fallbackName };
         const payload = await response.json();
-        const address = payload.address || {};
-        const city = address.city
-            || address.town
-            || address.village
-            || address.county
-            || address.state
-            || payload.name
-            || fallbackName;
-        return {
-            city,
-            address: payload.display_name || payload.name || city
-        };
+        const readable = pickReadableLocation(payload.address || {}, payload);
+        if (readable.city) return readable;
     } catch (_) {
-        return { city: fallbackName, address: fallbackName };
     } finally {
         clearTimeout(timeout);
     }
+    if (!allowFallback) {
+        const backup = await reverseLocationByBigDataCloud({ lat, lon });
+        if (backup?.city) return backup;
+    }
+    return { city: fallbackName, address: fallbackName };
 }
 
 async function resolveIpLocation(req) {
@@ -269,7 +317,7 @@ router.get('/world', async (req, res) => {
         ? (requestedLocationSource || 'browser-geolocation')
         : (hasIpCoords ? 'ip-geolocation' : (hasEnvCoords ? 'env-default' : 'unavailable'));
     const cityFallback = hasClientCoords
-        ? coordinateLocationName(rawLat, rawLon)
+        ? genericLocationName()
         : (String(requestedCity || ipLocation?.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city);
     if (!hasClientCoords && !hasIpCoords && !hasEnvCoords) {
         const world = {
