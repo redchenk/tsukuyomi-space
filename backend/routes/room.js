@@ -258,8 +258,13 @@ router.get('/world', async (req, res) => {
     const cacheLocation = { lat, lon, timezone, city: cityFallback };
     const cached = await weatherCache.getWorld(cacheLocation);
     if (cached) {
+        const cachedWorld = {
+            ...cached,
+            locationSource,
+            location: { ...(cached.location || {}), source: locationSource }
+        };
         res.set('Cache-Control', 'public, max-age=600');
-        return res.json({ success: true, data: { ...cached, cache: 'hit' } });
+        return res.json({ success: true, data: { ...cachedWorld, cache: 'hit' } });
     }
 
     const [data, locationName] = await Promise.all([
