@@ -360,7 +360,9 @@ router.get('/world', async (req, res) => {
         location: { lat, lon, accuracy, timezone, city: locationName.city, address: locationName.address, source: locationSource },
         debug: weatherDebug(req, { hasClientCoords, hasIpCoords, hasEnvCoords, ipLocation })
     };
-    await weatherCache.setWorld(cacheLocation, world);
+    if (!hasClientCoords || locationName.city !== genericLocationName()) {
+        await weatherCache.setWorld(cacheLocation, world);
+    }
 
     res.set('Cache-Control', 'public, max-age=600');
     res.json({

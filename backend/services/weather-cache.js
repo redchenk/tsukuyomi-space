@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const config = require('../config');
 const store = require('./redis-store');
 
-const WORLD_CACHE_SCHEMA = 2;
+const WORLD_CACHE_SCHEMA = 3;
 
 function keyForLocation({ lat, lon, timezone, city, locationSource }) {
     const hasBrowserCoords = locationSource === 'browser-geolocation' || locationSource === 'cached-geolocation';
