@@ -137,7 +137,7 @@ async function reverseLocationByBigDataCloud({ lat, lon }) {
     });
     const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?${params}`;
     return new Promise((resolve) => {
-        const request = https.get(url, { headers: { Accept: 'application/json' }, timeout: 8000 }, (response) => {
+        const request = https.get(url, { family: 4, headers: { Accept: 'application/json' }, timeout: 8000 }, (response) => {
             if (response.statusCode < 200 || response.statusCode >= 300) {
                 response.resume();
                 resolve(null);
