@@ -189,7 +189,7 @@ export function useRoomWorld() {
           writeCachedLocation(location);
           resolve(location);
         },
-        () => resolve(timezone ? { timezone, city, source: 'timezone' } : null),
+        () => resolve(timezone ? { timezone, source: 'browser-geolocation-unavailable' } : null),
         { enableHighAccuracy: true, maximumAge: 10 * 60 * 1000, timeout: 10000 }
       );
     });
@@ -236,7 +236,8 @@ export function useRoomWorld() {
   async function refreshRoomWorld() {
     try {
       const location = await readRoomWorldLocation();
-      const cached = readCachedWorld(location || {});
+      const hasLocationCoordinates = location?.lat != null && location?.lon != null;
+      const cached = hasLocationCoordinates ? readCachedWorld(location || {}) : null;
       if (cached) {
         applyWorld(cached);
         return;
@@ -246,13 +247,15 @@ export function useRoomWorld() {
       if (location?.lon != null) params.set('lon', String(location.lon));
       if (location?.accuracy != null) params.set('accuracy', String(Math.round(location.accuracy)));
       if (location?.timezone) params.set('timezone', String(location.timezone));
-      if (location?.city) params.set('city', String(location.city));
+      if (hasLocationCoordinates && location?.city) params.set('city', String(location.city));
       if (location?.source) params.set('locationSource', String(location.source));
       const response = await fetch(`${WORLD_ENDPOINT}${params.toString() ? `?${params}` : ''}`, { cache: 'no-store' });
       const result = await response.json().catch(() => ({}));
       const nextWorld = normalizeWorld(result.data || {});
       applyWorld(nextWorld);
-      writeCachedWorld(nextWorld, location || {});
+      if (nextWorld.source === 'open-meteo' && (hasLocationCoordinates || nextWorld.locationSource === 'ip-geolocation')) {
+        writeCachedWorld(nextWorld, nextWorld.location || location || {});
+      }
     } catch (_) {
       applyWorld(normalizeWorld());
     }

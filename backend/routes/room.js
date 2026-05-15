@@ -47,6 +47,33 @@ function hasCoordinate(value) {
     return Number.isFinite(Number(value));
 }
 
+function normalizeIp(value = '') {
+    const raw = String(value || '').split(',')[0].trim();
+    return raw.startsWith('::ffff:') ? raw.slice(7) : raw;
+}
+
+function isPublicIp(ip = '') {
+    const value = normalizeIp(ip);
+    if (!value || value === '::1' || value === '127.0.0.1' || value === 'localhost') return false;
+    if (/^(10|127)\./.test(value)) return false;
+    if (/^192\.168\./.test(value)) return false;
+    if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(value)) return false;
+    if (/^(169\.254|0\.|255\.)/.test(value)) return false;
+    if (/^(fc|fd|fe80):/i.test(value)) return false;
+    return true;
+}
+
+function getClientIp(req) {
+    const candidates = [
+        req.headers['cf-connecting-ip'],
+        req.headers['x-forwarded-for'],
+        req.headers['x-real-ip'],
+        req.ip,
+        req.socket?.remoteAddress
+    ].flatMap((value) => String(value || '').split(',').map(item => normalizeIp(item)).filter(Boolean));
+    return candidates.find(isPublicIp) || candidates[0] || '';
+}
+
 function weatherFromCode(code) {
     const numericCode = Number(code);
     const match = WEATHER_CODE_MAP.find((item) => item.codes.includes(numericCode));
@@ -93,6 +120,43 @@ async function resolveLocationName({ lat, lon, fallback }) {
         };
     } catch (_) {
         return { city: fallback, address: fallback };
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function resolveIpLocation(req) {
+    const clientIp = getClientIp(req);
+    if (!isPublicIp(clientIp) || process.env.ROOM_WEATHER_IP_LOOKUP === 'false' || typeof fetch !== 'function') {
+        return null;
+    }
+
+    const cached = await weatherCache.getIpLocation(clientIp);
+    if (cached?.lat != null && cached?.lon != null) return cached;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2600);
+    try {
+        const fields = 'status,message,country,regionName,city,lat,lon,timezone,query';
+        const response = await fetch(`http://ip-api.com/json/${encodeURIComponent(clientIp)}?fields=${fields}&lang=zh-CN`, {
+            signal: controller.signal,
+            headers: { Accept: 'application/json' }
+        });
+        if (!response.ok) return null;
+        const payload = await response.json();
+        if (payload.status !== 'success' || !hasCoordinate(payload.lat) || !hasCoordinate(payload.lon)) return null;
+        const location = {
+            lat: Number(payload.lat),
+            lon: Number(payload.lon),
+            timezone: payload.timezone || '',
+            city: payload.city || payload.regionName || payload.country || '',
+            address: [payload.country, payload.regionName, payload.city].filter(Boolean).join(' · '),
+            source: 'ip-geolocation'
+        };
+        await weatherCache.setIpLocation(clientIp, location);
+        return location;
+    } catch (_) {
+        return null;
     } finally {
         clearTimeout(timeout);
     }
@@ -166,17 +230,20 @@ async function fetchOpenMeteoWorld({ lat, lon, timezone, city }) {
 router.get('/world', async (req, res) => {
     const hasClientCoords = hasCoordinate(req.query.lat) && hasCoordinate(req.query.lon);
     const hasEnvCoords = hasCoordinate(process.env.ROOM_WEATHER_LAT) && hasCoordinate(process.env.ROOM_WEATHER_LON);
-    const rawLat = hasClientCoords ? req.query.lat : (hasEnvCoords ? process.env.ROOM_WEATHER_LAT : null);
-    const rawLon = hasClientCoords ? req.query.lon : (hasEnvCoords ? process.env.ROOM_WEATHER_LON : null);
-    const timezone = String(req.query.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
-    const cityFallback = String(req.query.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city;
-    const locationSource = String(req.query.locationSource || (hasClientCoords ? 'browser-geolocation' : (hasEnvCoords ? 'env-default' : 'timezone'))).trim();
-    if (!hasClientCoords && !hasEnvCoords) {
+    const ipLocation = !hasClientCoords ? await resolveIpLocation(req) : null;
+    const hasIpCoords = hasCoordinate(ipLocation?.lat) && hasCoordinate(ipLocation?.lon);
+    const rawLat = hasClientCoords ? req.query.lat : (hasIpCoords ? ipLocation.lat : (hasEnvCoords ? process.env.ROOM_WEATHER_LAT : null));
+    const rawLon = hasClientCoords ? req.query.lon : (hasIpCoords ? ipLocation.lon : (hasEnvCoords ? process.env.ROOM_WEATHER_LON : null));
+    const timezone = String(req.query.timezone || ipLocation?.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
+    const requestedCity = String(req.query.city || '').trim();
+    const cityFallback = String(requestedCity || ipLocation?.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city;
+    const locationSource = String(req.query.locationSource || (hasClientCoords ? 'browser-geolocation' : (hasIpCoords ? 'ip-geolocation' : (hasEnvCoords ? 'env-default' : 'unavailable')))).trim();
+    if (!hasClientCoords && !hasIpCoords && !hasEnvCoords) {
         const world = {
-            ...fallbackWorld('client-location-unavailable', cityFallback),
-            address: cityFallback,
+            ...fallbackWorld('client-location-unavailable', '月读空间'),
+            address: '等待定位授权',
             locationSource,
-            location: { lat: null, lon: null, timezone, city: cityFallback, address: cityFallback, source: locationSource }
+            location: { lat: null, lon: null, timezone, city: '月读空间', address: '等待定位授权', source: locationSource }
         };
         res.set('Cache-Control', 'no-store');
         return res.json({ success: true, data: world });
