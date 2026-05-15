@@ -74,6 +74,27 @@ function getClientIp(req) {
     return candidates.find(isPublicIp) || candidates[0] || '';
 }
 
+function shouldDebugWeather(req) {
+    return process.env.ROOM_WEATHER_DEBUG === 'true' || req.query.debug === '1';
+}
+
+function weatherDebug(req, extra = {}) {
+    if (!shouldDebugWeather(req)) return undefined;
+    return {
+        clientIp: getClientIp(req),
+        ip: req.ip,
+        remoteAddress: req.socket?.remoteAddress || '',
+        headers: {
+            cfConnectingIp: req.headers['cf-connecting-ip'] || '',
+            xRealIp: req.headers['x-real-ip'] || '',
+            xForwardedFor: req.headers['x-forwarded-for'] || '',
+            xForwardedProto: req.headers['x-forwarded-proto'] || '',
+            host: req.headers.host || ''
+        },
+        ...extra
+    };
+}
+
 function weatherFromCode(code) {
     const numericCode = Number(code);
     const match = WEATHER_CODE_MAP.find((item) => item.codes.includes(numericCode));
@@ -246,7 +267,8 @@ router.get('/world', async (req, res) => {
             ...fallbackWorld('client-location-unavailable', '月读空间'),
             address: '等待定位授权',
             locationSource,
-            location: { lat: null, lon: null, timezone, city: '月读空间', address: '等待定位授权', source: locationSource }
+            location: { lat: null, lon: null, timezone, city: '月读空间', address: '等待定位授权', source: locationSource },
+            debug: weatherDebug(req, { hasClientCoords, hasIpCoords, hasEnvCoords, ipLocation })
         };
         res.set('Cache-Control', 'no-store');
         return res.json({ success: true, data: world });
@@ -261,7 +283,8 @@ router.get('/world', async (req, res) => {
         const cachedWorld = {
             ...cached,
             locationSource,
-            location: { ...(cached.location || {}), source: locationSource }
+            location: { ...(cached.location || {}), source: locationSource },
+            debug: weatherDebug(req, { hasClientCoords, hasIpCoords, hasEnvCoords, ipLocation, cache: 'hit' })
         };
         res.set('Cache-Control', 'public, max-age=600');
         return res.json({ success: true, data: { ...cachedWorld, cache: 'hit' } });
@@ -276,7 +299,8 @@ router.get('/world', async (req, res) => {
         city: locationName.city,
         address: locationName.address,
         locationSource,
-        location: { lat, lon, accuracy, timezone, city: locationName.city, address: locationName.address, source: locationSource }
+        location: { lat, lon, accuracy, timezone, city: locationName.city, address: locationName.address, source: locationSource },
+        debug: weatherDebug(req, { hasClientCoords, hasIpCoords, hasEnvCoords, ipLocation })
     };
     await weatherCache.setWorld(cacheLocation, world);
 
