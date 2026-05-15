@@ -186,10 +186,11 @@ async function resolveLocationName({ lat, lon, fallback, allowFallback = true })
                 'User-Agent': 'tsukuyomi-space/2.1 room-weather'
             }
         });
-        if (!response.ok) return { city: fallbackName, address: fallbackName };
-        const payload = await response.json();
-        const readable = pickReadableLocation(payload.address || {}, payload);
-        if (readable.city) return readable;
+        if (response.ok) {
+            const payload = await response.json();
+            const readable = pickReadableLocation(payload.address || {}, payload);
+            if (readable.city) return readable;
+        }
     } catch (_) {
     } finally {
         clearTimeout(timeout);
