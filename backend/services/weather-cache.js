@@ -2,9 +2,16 @@ const crypto = require('crypto');
 const config = require('../config');
 const store = require('./redis-store');
 
-function keyForLocation({ lat, lon, timezone, city }) {
+function keyForLocation({ lat, lon, timezone, city, locationSource }) {
+    const hasBrowserCoords = locationSource === 'browser-geolocation' || locationSource === 'cached-geolocation';
+    const normalized = {
+        lat: Number.isFinite(Number(lat)) ? Number(lat).toFixed(3) : lat,
+        lon: Number.isFinite(Number(lon)) ? Number(lon).toFixed(3) : lon,
+        timezone: timezone || ''
+    };
+    if (!hasBrowserCoords && city) normalized.city = city;
     const hash = crypto.createHash('sha1')
-        .update(JSON.stringify({ lat, lon, timezone, city }))
+        .update(JSON.stringify(normalized))
         .digest('hex');
     return `weather:room-world:${hash}`;
 }

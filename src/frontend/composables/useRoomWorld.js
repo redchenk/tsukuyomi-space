@@ -1,8 +1,8 @@
 import { computed, ref } from 'vue';
 
 const WORLD_ENDPOINT = '/api/room/world';
-const WORLD_CACHE_KEY = 'roomWorldState';
-const WORLD_LOCATION_KEY = 'roomWorldLocation';
+const WORLD_CACHE_KEY = 'roomWorldState:v2';
+const WORLD_LOCATION_KEY = 'roomWorldLocation:v2';
 const WORLD_CACHE_TTL = 20 * 60 * 1000;
 const WORLD_LOCATION_TTL = 6 * 60 * 60 * 1000;
 
@@ -129,11 +129,6 @@ function browserTimezone() {
   }
 }
 
-function cityFromTimezone(timezone = '') {
-  const raw = String(timezone || '').split('/').pop() || '';
-  return raw ? raw.replace(/_/g, ' ') : '';
-}
-
 function readCachedLocation() {
   const cached = readJson(WORLD_LOCATION_KEY, null);
   if (!cached?.savedAt || cached.lat == null || cached.lon == null) return null;
@@ -167,14 +162,13 @@ export function useRoomWorld() {
   function readRoomWorldLocation() {
     if (worldLocationPromise.value) return worldLocationPromise.value;
     const timezone = browserTimezone();
-    const city = cityFromTimezone(timezone);
     const cachedLocation = readCachedLocation();
     if (cachedLocation) {
       worldLocationPromise.value = Promise.resolve({ ...cachedLocation, timezone: cachedLocation.timezone || timezone, source: 'cached-geolocation' });
       return worldLocationPromise.value;
     }
     if (!navigator.geolocation) {
-      worldLocationPromise.value = Promise.resolve(timezone ? { timezone, city, source: 'timezone' } : null);
+      worldLocationPromise.value = Promise.resolve(timezone ? { timezone, source: 'timezone' } : null);
       return worldLocationPromise.value;
     }
     worldLocationPromise.value = new Promise((resolve) => {

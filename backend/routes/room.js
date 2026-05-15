@@ -101,9 +101,16 @@ function weatherFromCode(code) {
     return match ? match.weather : 'cloudy';
 }
 
-async function resolveLocationName({ lat, lon, fallback }) {
+function coordinateLocationName(lat, lon) {
+    const shortLat = Number.isFinite(Number(lat)) ? Number(lat).toFixed(3) : String(lat || '');
+    const shortLon = Number.isFinite(Number(lon)) ? Number(lon).toFixed(3) : String(lon || '');
+    return shortLat && shortLon ? `当前位置 ${shortLat}, ${shortLon}` : '当前位置';
+}
+
+async function resolveLocationName({ lat, lon, fallback, allowFallback = true }) {
+    const fallbackName = allowFallback ? fallback : coordinateLocationName(lat, lon);
     if (process.env.ROOM_WEATHER_REVERSE_OFFLINE === 'true' || typeof fetch !== 'function') {
-        return { city: fallback, address: fallback };
+        return { city: fallbackName, address: fallbackName };
     }
 
     const params = new URLSearchParams({
@@ -125,7 +132,7 @@ async function resolveLocationName({ lat, lon, fallback }) {
                 'User-Agent': 'tsukuyomi-space/2.1 room-weather'
             }
         });
-        if (!response.ok) return { city: fallback, address: fallback };
+        if (!response.ok) return { city: fallbackName, address: fallbackName };
         const payload = await response.json();
         const address = payload.address || {};
         const city = address.city
@@ -134,13 +141,13 @@ async function resolveLocationName({ lat, lon, fallback }) {
             || address.county
             || address.state
             || payload.name
-            || fallback;
+            || fallbackName;
         return {
             city,
             address: payload.display_name || payload.name || city
         };
     } catch (_) {
-        return { city: fallback, address: fallback };
+        return { city: fallbackName, address: fallbackName };
     } finally {
         clearTimeout(timeout);
     }
@@ -258,10 +265,12 @@ router.get('/world', async (req, res) => {
     const timezone = String(req.query.timezone || ipLocation?.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
     const requestedCity = hasClientCoords ? '' : String(req.query.city || '').trim();
     const requestedLocationSource = String(req.query.locationSource || '').trim();
-    const cityFallback = String(requestedCity || ipLocation?.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city;
     const locationSource = hasClientCoords
         ? (requestedLocationSource || 'browser-geolocation')
         : (hasIpCoords ? 'ip-geolocation' : (hasEnvCoords ? 'env-default' : 'unavailable'));
+    const cityFallback = hasClientCoords
+        ? coordinateLocationName(rawLat, rawLon)
+        : (String(requestedCity || ipLocation?.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city);
     if (!hasClientCoords && !hasIpCoords && !hasEnvCoords) {
         const world = {
             ...fallbackWorld('client-location-unavailable', '月读空间'),
@@ -277,7 +286,7 @@ router.get('/world', async (req, res) => {
     const lat = normalizeCoordinate(rawLat, DEFAULT_WEATHER.lat, -90, 90);
     const lon = normalizeCoordinate(rawLon, DEFAULT_WEATHER.lon, -180, 180);
     const accuracy = Number.isFinite(Number(req.query.accuracy)) ? Number(req.query.accuracy) : null;
-    const cacheLocation = { lat, lon, timezone, city: cityFallback };
+    const cacheLocation = { lat, lon, timezone, city: cityFallback, locationSource };
     const cached = await weatherCache.getWorld(cacheLocation);
     if (cached) {
         const cachedWorld = {
@@ -292,7 +301,7 @@ router.get('/world', async (req, res) => {
 
     const [data, locationName] = await Promise.all([
         fetchOpenMeteoWorld({ lat, lon, timezone, city: cityFallback }),
-        resolveLocationName({ lat, lon, fallback: cityFallback })
+        resolveLocationName({ lat, lon, fallback: cityFallback, allowFallback: !hasClientCoords })
     ]);
     const world = {
         ...data,
