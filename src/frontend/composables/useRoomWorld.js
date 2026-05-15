@@ -138,12 +138,14 @@ function readCachedLocation() {
   const cached = readJson(WORLD_LOCATION_KEY, null);
   if (!cached?.savedAt || cached.lat == null || cached.lon == null) return null;
   if (Date.now() - cached.savedAt > WORLD_LOCATION_TTL) return null;
-  return cached;
+  const { city: _city, ...location } = cached;
+  return location;
 }
 
 function writeCachedLocation(location) {
   if (location?.lat == null || location?.lon == null) return;
-  writeJson(WORLD_LOCATION_KEY, { ...location, savedAt: Date.now() });
+  const { city: _city, ...nextLocation } = location;
+  writeJson(WORLD_LOCATION_KEY, { ...nextLocation, savedAt: Date.now() });
 }
 
 export function useRoomWorld() {
@@ -168,7 +170,7 @@ export function useRoomWorld() {
     const city = cityFromTimezone(timezone);
     const cachedLocation = readCachedLocation();
     if (cachedLocation) {
-      worldLocationPromise.value = Promise.resolve({ ...cachedLocation, timezone: cachedLocation.timezone || timezone, city: cachedLocation.city || city, source: 'cached-geolocation' });
+      worldLocationPromise.value = Promise.resolve({ ...cachedLocation, timezone: cachedLocation.timezone || timezone, source: 'cached-geolocation' });
       return worldLocationPromise.value;
     }
     if (!navigator.geolocation) {
@@ -183,7 +185,6 @@ export function useRoomWorld() {
             lon: position.coords.longitude,
             accuracy: position.coords.accuracy,
             timezone,
-            city,
             source: 'browser-geolocation'
           };
           writeCachedLocation(location);
