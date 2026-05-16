@@ -41,8 +41,7 @@ function sitemapUrl({ loc, lastmod, changefreq, priority }) {
 
 function sendRobots(req, res) {
     res.set({
-        'Cache-Control': 'no-store, max-age=0',
-        'X-Robots-Tag': 'noindex'
+        'Cache-Control': 'no-store, max-age=0'
     });
     res.removeHeader('ETag');
     res.type('text/plain; charset=utf-8').send([
@@ -76,8 +75,7 @@ function sendSitemap(req, res) {
         priority: '0.7'
     }));
     res.set({
-        'Cache-Control': 'no-store, max-age=0',
-        'X-Robots-Tag': 'noindex'
+        'Cache-Control': 'no-store, max-age=0'
     });
     res.removeHeader('ETag');
     res.type('application/xml; charset=utf-8').send([
