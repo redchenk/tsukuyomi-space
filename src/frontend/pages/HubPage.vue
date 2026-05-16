@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { authHeaders, getSession, parseResponse } from '../api/client';
+import TsIcon from '../components/TsIcon.vue';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -23,7 +24,7 @@ const sceneLinks = computed(() => [
     name: props.t.plaza,
     desc: plazaMessages.value.length ? `${plazaMessages.value.length} 条最近留言` : '交流、分享、发现',
     code: 'Plaza',
-    icon: '☽',
+    icon: 'plaza',
     tone: 'cyan',
     spa: true,
     image: '',
@@ -35,14 +36,14 @@ const sceneLinks = computed(() => [
     name: latestArticle.value?.title || props.t.stage,
     desc: latestArticle.value?.excerpt || '记录、创作、知识',
     code: latestArticle.value?.category || 'Stage',
-    icon: '▤',
+    icon: 'book',
     tone: 'blue',
     spa: true,
     image: latestArticle.value?.cover_image || '/assets/images/room-bg.png',
     label: props.t.stage
   },
-  { href: '/reality', name: props.t.reality, desc: '现实世界连接入口', code: 'Reality', icon: '◎', tone: 'pink', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
-  { href: '/arena/', name: props.t.arena, desc: '超时空辉夜姬竞技场', code: 'Arena', icon: '◇', tone: 'gold', spa: false, image: '/assets/images/tsukuyomi-bg.png' }
+  { href: '/reality', name: props.t.reality, desc: '现实世界连接入口', code: 'Reality', icon: 'compass', tone: 'pink', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
+  { href: '/arena/', name: props.t.arena, desc: '超时空辉夜姬竞技场', code: 'Arena', icon: 'gamepad', tone: 'gold', spa: false, image: '/assets/images/tsukuyomi-bg.png' }
 ]);
 
 const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
@@ -154,8 +155,14 @@ onMounted(loadHubPreview);
           <p class="hub-en-title">Tsukuyomi Space</p>
           <p class="section-subtitle">{{ t.heroCopy }}</p>
           <div class="hub-actions">
-            <a href="/room" class="primary-btn hub-primary" @click.prevent="$emit('go', '/room')">进入私人居所</a>
-            <a href="/plaza" class="nav-link hub-secondary" @click.prevent="$emit('go', '/plaza')">浏览月读广场</a>
+            <a href="/room" class="primary-btn hub-primary" @click.prevent="$emit('go', '/room')">
+              <TsIcon name="moon" :size="17" />
+              <span>进入私人居所</span>
+            </a>
+            <a href="/plaza" class="nav-link hub-secondary" @click.prevent="$emit('go', '/plaza')">
+              <TsIcon name="plaza" :size="17" />
+              <span>浏览月读广场</span>
+            </a>
           </div>
         </div>
 
@@ -212,7 +219,9 @@ onMounted(loadHubPreview);
           @keydown.enter="openScene(scene, $event)"
           @keydown.space.prevent="openScene(scene, $event)"
         >
-          <span class="scene-icon" aria-hidden="true">{{ scene.icon }}</span>
+          <span class="scene-icon" aria-hidden="true">
+            <TsIcon :name="scene.icon" :size="22" :stroke-width="1.9" />
+          </span>
           <span v-if="scene.label" class="scene-label">{{ scene.label }}</span>
           <span v-if="scene.kind !== 'plaza'" class="scene-main">
             <span class="scene-name">{{ scene.name }}</span>
@@ -229,7 +238,10 @@ onMounted(loadHubPreview);
             </span>
             <form class="hub-plaza-form" @click.stop @keydown.stop @submit.prevent="submitPlazaQuick">
               <input v-model="plazaQuick.content" type="text" placeholder="快速留言...">
-              <button type="submit" :disabled="plazaQuick.loading">{{ plazaQuick.loading ? '发送中' : '发送' }}</button>
+              <button type="submit" :disabled="plazaQuick.loading">
+                <TsIcon :name="plazaQuick.loading ? 'loader' : 'send'" :size="15" />
+                <span>{{ plazaQuick.loading ? '发送中' : '发送' }}</span>
+              </button>
             </form>
             <span v-if="plazaQuick.message" class="hub-plaza-feedback">{{ plazaQuick.message }}</span>
           </span>

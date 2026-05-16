@@ -216,6 +216,19 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
+.hub-primary,
+.hub-secondary,
+.hub-plaza-form button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+}
+
+.hub-plaza-form button:disabled .ts-icon {
+    animation: hubIconSpin 1s linear infinite;
+}
+
 .hub-character {
     position: fixed;
     right: clamp(-6.2rem, -5vw, -2.8rem);
@@ -660,6 +673,10 @@ html[data-theme="light"] .scene-card::after {
 
 @keyframes hubFloat {
     50% { transform: translateY(-10px); }
+}
+
+@keyframes hubIconSpin {
+    to { transform: rotate(360deg); }
 }
 
 @media (max-width: 1180px) {
