@@ -1,6 +1,6 @@
 const LLM_API_KEY = process.env.LLM_API_KEY || '';
 const LLM_API_URL = process.env.LLM_API_URL || '';
-const LLM_MODEL = process.env.LLM_MODEL || 'moonshot-v1-8k';
+const LLM_MODEL = process.env.LLM_MODEL || 'kimi-k2.6';
 
 const CHAT_SYSTEM_PROMPT = [
     '你是月读空间中的温柔中文对话助手。',

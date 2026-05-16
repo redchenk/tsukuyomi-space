@@ -21,7 +21,7 @@ const LLM_PRESETS = {
   openaiChat: { label: 'OpenAI Chat', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
   openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-5.2' },
   deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
-  moonshot: { label: 'Moonshot', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k' },
+  kimi: { label: 'Kimi', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'kimi-k2.6' },
   aliyun: { label: '阿里云百炼', apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' },
   zhipu: { label: '智谱 GLM', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4-flash' },
   siliconflow: { label: 'SiliconFlow', apiUrl: 'https://api.siliconflow.cn/v1/chat/completions', model: 'Qwen/Qwen2.5-7B-Instruct' },
@@ -355,6 +355,7 @@ function isAnthropicChatApi(apiUrl, modelName) {
 }
 
 function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiUrl) {
+  const defaultModel = /api\.moonshot\.cn|kimi/i.test(`${apiUrl || ''} ${modelName || ''}`) ? 'kimi-k2.6' : 'moonshot-v1-8k';
   if (isOpenAIResponsesApi(apiUrl)) {
     const instructions = messages.filter(item => item.role === 'system').map(item => String(item.content || '')).join('\n\n');
     return {
@@ -380,7 +381,7 @@ function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiU
     };
   }
   const body = {
-    model: modelName || 'moonshot-v1-8k',
+    model: modelName || defaultModel,
     messages,
     temperature: 0.4
   };
