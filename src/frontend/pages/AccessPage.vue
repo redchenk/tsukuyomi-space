@@ -6,7 +6,7 @@ defineProps({
 });
 
 const emit = defineEmits(['go']);
-const accessVideoSrc = '/assets/video/tsukuyomi-mv.mp4';
+const accessVideoSrc = '/assets/video/【4K⧸中日双语】超时空辉夜姬「ray 」官方MV.mp4';
 const accessPosterSrc = '/assets/images/tsukuyomi-bg.png';
 const videoEl = ref(null);
 const videoState = reactive({
