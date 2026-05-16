@@ -228,7 +228,7 @@ function chatHeaders(chatUrl, apiKey, model) {
         'Authorization': `Bearer ${apiKey}`
     };
     if (isOpenRouterUrl(chatUrl)) {
-        headers['HTTP-Referer'] = process.env.PUBLIC_SITE_URL || 'https://yachiyo.redchenk.com';
+        headers['HTTP-Referer'] = process.env.PUBLIC_SITE_URL || 'https://yachiyo.hk';
         headers['X-OpenRouter-Title'] = process.env.OPENROUTER_APP_TITLE || 'Tsukuyomi Space';
     }
     return headers;

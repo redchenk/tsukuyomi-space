@@ -2,7 +2,7 @@
 
 一个以“月读空间”为主题的沉浸式个人网站，包含 Hub 中枢大厅、Live2D 私人房间、文章舞台、留言广场、用户中心、管理员终端和独立 Arena 游戏入口。
 
-> 预览地址：[https://yachiyo.redchenk.com](https://yachiyo.redchenk.com)
+> 预览地址：[https://yachiyo.hk](https://yachiyo.hk)
 
 ![Tsukuyomi Space Hub](assets/images/readme/hub.png)
 

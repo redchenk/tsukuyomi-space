@@ -1,5 +1,5 @@
 const SITE_NAME = '月读空间';
-const SITE_URL = 'https://yachiyo.redchenk.com';
+const SITE_URL = 'https://yachiyo.hk';
 const DEFAULT_DESCRIPTION = '月读空间是一个融合文章、留言广场、Live2D 房间与互动工具的二次元个人站。';
 const DEFAULT_IMAGE = `${SITE_URL}/assets/icons/icon-512.png`;
 
