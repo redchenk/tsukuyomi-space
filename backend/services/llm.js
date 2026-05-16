@@ -16,6 +16,8 @@ const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.openai.com', path: /^\/v1\/chat\/completions\/?$/ },
     { hostname: 'api.openai.com', path: /^\/v1\/responses\/?$/ },
     { hostname: 'dashscope.aliyuncs.com', path: /^\/compatible-mode\/v1\/chat\/completions\/?$/ },
+    { hostname: 'dashscope-intl.aliyuncs.com', path: /^\/compatible-mode\/v1\/chat\/completions\/?$/ },
+    { hostname: 'dashscope-us.aliyuncs.com', path: /^\/compatible-mode\/v1\/chat\/completions\/?$/ },
     { hostname: 'openrouter.ai', path: /^\/api\/v1\/chat\/completions\/?$/ },
     { hostname: 'open.bigmodel.cn', path: /^\/api\/paas\/v4\/chat\/completions\/?$/ },
     { hostname: 'api.siliconflow.cn', path: /^\/v1\/chat\/completions\/?$/ },
