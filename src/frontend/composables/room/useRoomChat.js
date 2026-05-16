@@ -281,7 +281,61 @@ function applyRoomAct(live2d) {
 }
 
 function pickReply(data) {
+  if (data?.output_text) return String(data.output_text || '').trim();
+  if (Array.isArray(data?.output)) {
+    return data.output
+      .flatMap(item => Array.isArray(item?.content) ? item.content : [])
+      .filter(block => block?.type === 'output_text' || block?.type === 'text')
+      .map(block => block.text || '')
+      .join('\n')
+      .trim();
+  }
   return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.reply || '';
+}
+
+function isOpenAIResponsesApi(apiUrl = '') {
+  return /api\.openai\.com\/v1\/responses\/?$/i.test(String(apiUrl || '').replace(/\/$/, ''));
+}
+
+function normalizeOpenAIUrl(apiUrl = '') {
+  const url = String(apiUrl || '').trim();
+  if (/api\.openai\.com\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/responses`;
+  return url;
+}
+
+function openAIResponsesContent(text, image) {
+  const content = [{ type: 'input_text', text: String(text || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : '')) }];
+  if (image?.dataUrl) content.push({ type: 'input_image', image_url: image.dataUrl });
+  return content;
+}
+
+function makeLLMRequestBody(settings, systemPrompt, conversation, message, image) {
+  const apiUrl = normalizeOpenAIUrl(settings.apiUrl || '');
+  if (isOpenAIResponsesApi(apiUrl)) {
+    return {
+      model: settings.model || 'gpt-5.5',
+      instructions: systemPrompt,
+      input: [
+        ...conversation.map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: String(item.content || '') })),
+        { role: 'user', content: openAIResponsesContent(message, image) }
+      ],
+      max_output_tokens: 360
+    };
+  }
+  const userContent = image?.dataUrl
+    ? [
+        { type: 'text', text: String(message || '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002') },
+        { type: 'image_url', image_url: { url: image.dataUrl } }
+      ]
+    : String(message || '');
+  return {
+    model: settings.model || 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...conversation.map((item) => ({ role: item.role, content: String(item.content || '') })),
+      { role: 'user', content: userContent }
+    ]
+  };
 }
 
 async function translateForJapaneseTts(text) {
@@ -310,17 +364,20 @@ async function translateForJapaneseTts(text) {
     return cleanTtsText(result.reply || '');
   }
 
-  const response = await fetch(settings.apiUrl, {
+  const apiUrl = normalizeOpenAIUrl(settings.apiUrl);
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
-    body: JSON.stringify({
-      model: settings.model || 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: source }
-      ],
-      temperature: 0.2
-    })
+    body: JSON.stringify(isOpenAIResponsesApi(apiUrl)
+      ? { model: settings.model || 'gpt-5.5', instructions: systemPrompt, input: source, max_output_tokens: 240 }
+      : {
+          model: settings.model || 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: source }
+          ],
+          temperature: 0.2
+        })
   });
   if (!response.ok) throw new Error(`日文翻译失败：LLM ${response.status}`);
   return cleanTtsText(pickReply(await response.json()));
@@ -562,17 +619,17 @@ export function useRoomChat({ live2d, world }) {
           image: settings.visionMode === 'mcp' ? null : image
         });
       } else if (settings.apiKey && settings.apiUrl) {
-        const response = await fetch(settings.apiUrl, {
+        const apiUrl = normalizeOpenAIUrl(settings.apiUrl);
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
-          body: JSON.stringify({
-            model: settings.model || 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...conversation.map((item) => ({ role: item.role, content: String(item.content || '') })),
-              { role: 'user', content: mcpEnhancedMessage || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : '') }
-            ]
-          })
+          body: JSON.stringify(makeLLMRequestBody(
+            { ...settings, apiUrl },
+            systemPrompt,
+            conversation,
+            mcpEnhancedMessage || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
+            image
+          ))
         });
         if (!response.ok) throw new Error(`LLM ${response.status}`);
         result = { reply: pickReply(await response.json()) };

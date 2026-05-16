@@ -14,6 +14,7 @@ const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.moonshot.cn', path: /^\/v1\/chat\/completions\/?$/ },
     { hostname: 'api.deepseek.com', path: /^\/(?:v1\/)?chat\/completions\/?$/ },
     { hostname: 'api.openai.com', path: /^\/v1\/chat\/completions\/?$/ },
+    { hostname: 'api.openai.com', path: /^\/v1\/responses\/?$/ },
     { hostname: 'dashscope.aliyuncs.com', path: /^\/compatible-mode\/v1\/chat\/completions\/?$/ },
     { hostname: 'openrouter.ai', path: /^\/api\/v1\/chat\/completions\/?$/ },
     { hostname: 'open.bigmodel.cn', path: /^\/api\/paas\/v4\/chat\/completions\/?$/ },
@@ -39,6 +40,12 @@ class LLMEndpointError extends Error {
 
 function normalizeChatUrl(apiUrl, model) {
     let url = apiUrl || LLM_API_URL || 'https://api.moonshot.cn/v1/chat/completions';
+    if (/api\.openai\.com\/v1\/responses\/?$/i.test(url)) {
+        return validateChatUrl(url.replace(/\/$/, ''));
+    }
+    if (/api\.openai\.com\/v1\/?$/i.test(url)) {
+        return validateChatUrl(url.replace(/\/$/, '') + '/responses');
+    }
     if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${model || ''}`)) {
         return validateChatUrl(url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages'));
     }
@@ -96,6 +103,15 @@ function fallbackRoomReply(message) {
 }
 
 function pickReply(data) {
+    if (data.output_text) return String(data.output_text || '').trim();
+    if (Array.isArray(data.output)) {
+        return data.output
+            .flatMap(item => Array.isArray(item?.content) ? item.content : [])
+            .filter(block => block?.type === 'output_text' || block?.type === 'text')
+            .map(block => block.text || '')
+            .join('\n')
+            .trim();
+    }
     if (Array.isArray(data.content)) {
         return data.content.filter(block => block?.type === 'text').map(block => block.text || '').join('\n').trim();
     }
@@ -107,6 +123,10 @@ function pickReply(data) {
 
 function isAnthropicChatUrl(chatUrl, model) {
     return /\/anthropic\/v1\/messages\/?$|anthropic\.com\/v1\/messages\/?$|MiniMax-M2/i.test(`${chatUrl || ''} ${model || ''}`);
+}
+
+function isOpenAIResponsesUrl(chatUrl) {
+    return /api\.openai\.com\/v1\/responses\/?$/i.test(String(chatUrl || '').replace(/\/$/, ''));
 }
 
 function isMiniMaxAnthropicText(chatUrl, model) {
@@ -138,6 +158,23 @@ function buildAnthropicUserContent(message, image, allowImage) {
 }
 
 function buildChatPayload({ chatUrl, model, systemPrompt, history, message, image }) {
+    if (isOpenAIResponsesUrl(chatUrl)) {
+        const userContent = image?.dataUrl
+            ? [
+                { type: 'input_text', text: String(message || '璇锋弿杩拌繖寮犲浘鐗囥€?) },
+                { type: 'input_image', image_url: image.dataUrl }
+            ]
+            : String(message || '');
+        return {
+            model: model || 'gpt-5.5',
+            instructions: systemPrompt,
+            input: [
+                ...history.map(item => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: String(item.content || '') })),
+                { role: 'user', content: userContent }
+            ],
+            max_output_tokens: 360
+        };
+    }
     if (isAnthropicChatUrl(chatUrl, model)) {
         const allowImage = !isMiniMaxAnthropicText(chatUrl, model);
         return {

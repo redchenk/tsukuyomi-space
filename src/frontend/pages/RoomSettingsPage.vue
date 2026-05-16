@@ -17,7 +17,8 @@ const emit = defineEmits(['go']);
 const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
 const MEMORY_STORE = 'memories';
 const LLM_PRESETS = {
-  openai: { label: 'OpenAI', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
+  openai: { label: 'OpenAI Responses', apiUrl: 'https://api.openai.com/v1/responses', model: 'gpt-5.5' },
+  openaiChat: { label: 'OpenAI Chat', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
   openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-4o-mini' },
   deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
   moonshot: { label: 'Moonshot', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k' },
@@ -299,6 +300,8 @@ function clearLive2DDebugQueue() {
 
 function normalizeChatUrl(apiUrl, modelName) {
   let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
+  if (/api\.openai\.com\/v1\/responses\/?$/i.test(url)) return url.replace(/\/$/, '');
+  if (/api\.openai\.com\/v1\/?$/i.test(url)) return url.replace(/\/$/, '') + '/responses';
   if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${modelName || ''}`)) {
     return url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages');
   }
@@ -312,10 +315,23 @@ function normalizeChatUrl(apiUrl, modelName) {
 }
 
 function pickChatReply(data) {
+  if (data?.output_text) return String(data.output_text || '').trim();
+  if (Array.isArray(data?.output)) {
+    return data.output
+      .flatMap(item => Array.isArray(item?.content) ? item.content : [])
+      .filter(block => block?.type === 'output_text' || block?.type === 'text')
+      .map(block => block.text || '')
+      .join('\n')
+      .trim();
+  }
   if (Array.isArray(data?.content)) {
     return data.content.filter(block => block?.type === 'text').map(block => block.text || '').join('\n').trim();
   }
   return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || '';
+}
+
+function isOpenAIResponsesApi(apiUrl) {
+  return /api\.openai\.com\/v1\/responses\/?$/i.test(normalizeChatUrl(apiUrl || '', ''));
 }
 
 function isMiniMaxAnthropic(apiUrl, modelName) {
@@ -327,6 +343,17 @@ function isAnthropicChatApi(apiUrl, modelName) {
 }
 
 function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiUrl) {
+  if (isOpenAIResponsesApi(apiUrl)) {
+    const instructions = messages.filter(item => item.role === 'system').map(item => String(item.content || '')).join('\n\n');
+    return {
+      model: modelName || 'gpt-5.5',
+      instructions: instructions || undefined,
+      input: messages
+        .filter(item => item.role !== 'system')
+        .map(item => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: String(item.content || '') })),
+      max_output_tokens: limit
+    };
+  }
   if (isAnthropicChatApi(apiUrl, modelName)) {
     const system = messages.filter(item => item.role === 'system').map(item => String(item.content || '')).join('\n\n');
     return {
