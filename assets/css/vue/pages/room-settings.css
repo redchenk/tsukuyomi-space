@@ -29,6 +29,53 @@
     gap: 0.55rem;
 }
 
+.preset-menu {
+    position: relative;
+}
+
+.preset-menu summary {
+    display: inline-flex;
+    align-items: center;
+    list-style: none;
+}
+
+.preset-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.preset-menu summary::after {
+    content: "⌄";
+    margin-left: 0.42rem;
+    font-size: 0.8rem;
+    opacity: 0.72;
+}
+
+.preset-menu[open] summary::after {
+    transform: rotate(180deg);
+}
+
+.preset-submenu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.45rem);
+    left: 0;
+    display: grid;
+    min-width: 220px;
+    gap: 0.4rem;
+    padding: 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel);
+    box-shadow: var(--float-shadow);
+    backdrop-filter: blur(16px) saturate(1.08);
+}
+
+.preset-submenu .chip {
+    justify-content: flex-start;
+    width: 100%;
+    text-align: left;
+}
+
 .room-settings-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
