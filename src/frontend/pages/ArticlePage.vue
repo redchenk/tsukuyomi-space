@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
 import { renderMarkdown } from '../utils/markdown';
+import { applySeo, articleSeo } from '../utils/seo';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -48,6 +49,7 @@ async function loadArticle() {
     const result = await parseResponse(response);
     if (!result.success || !result.data) throw new Error(result.message || '文章不存在');
     article.value = result.data;
+    applySeo(articleSeo(result.data, `/article?id=${encodeURIComponent(articleId.value)}`));
     await loadComments();
   } catch (error) {
     message.value = error.message || props.t.loadFailed || '加载失败';

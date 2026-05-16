@@ -46,6 +46,7 @@ module.exports = {
     loginFailureMax: Number(process.env.LOGIN_FAILURE_MAX || 8),
     dbPath: path.resolve(process.env.DB_PATH || path.join(dataDir, 'tsukuyomi.db')),
     corsOrigins: csvEnv('CORS_ORIGINS'),
+    publicSiteUrl: (process.env.PUBLIC_SITE_URL || 'https://yachiyo.redchenk.com').replace(/\/$/, ''),
     trustProxy: boolEnv('TRUST_PROXY', isProduction),
     enableFrontendDist: boolEnv('ENABLE_FRONTEND_DIST', true),
     defaultAdmin: {

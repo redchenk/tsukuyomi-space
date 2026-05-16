@@ -1,6 +1,9 @@
 {
-  "name": "Tsukuyomi Space",
-  "short_name": "Tsukuyomi",
+  "name": "月读空间 | Tsukuyomi Space",
+  "short_name": "月读空间",
+  "description": "融合文章、留言广场、Live2D 房间与互动工具的二次元个人站。",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/assets/icons/icon-192.png",

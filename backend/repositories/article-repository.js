@@ -79,6 +79,15 @@ function listUserArticles(userId) {
     `).all(userId);
 }
 
+function listSeoArticles(limit = 500) {
+    return db.prepare(`
+        SELECT id, title, excerpt, publish_date, created_at, updated_at
+        FROM articles
+        ORDER BY pinned_at IS NULL, pinned_at DESC, publish_date DESC, created_at DESC
+        LIMIT ?
+    `).all(limit);
+}
+
 function updateUserArticle(id, article) {
     db.prepare(`
         UPDATE articles SET
@@ -97,5 +106,6 @@ module.exports = {
     updateArticle,
     deleteArticle,
     listUserArticles,
+    listSeoArticles,
     updateUserArticle
 };
