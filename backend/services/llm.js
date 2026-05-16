@@ -29,6 +29,7 @@ const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.together.xyz', path: /^\/v1\/chat\/completions\/?$/ },
     { hostname: 'api.perplexity.ai', path: /^\/chat\/completions\/?$/ },
     { hostname: 'api.x.ai', path: /^\/v1\/chat\/completions\/?$/ },
+    { hostname: 'api.x.ai', path: /^\/v1\/responses\/?$/ },
     { hostname: 'generativelanguage.googleapis.com', path: /^\/v1beta\/openai\/chat\/completions\/?$/ }
 ];
 
@@ -42,10 +43,10 @@ class LLMEndpointError extends Error {
 
 function normalizeChatUrl(apiUrl, model) {
     let url = apiUrl || LLM_API_URL || 'https://api.moonshot.cn/v1/chat/completions';
-    if (/api\.openai\.com\/v1\/responses\/?$/i.test(url)) {
+    if (/(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(url)) {
         return validateChatUrl(url.replace(/\/$/, ''));
     }
-    if (/api\.openai\.com\/v1\/?$/i.test(url)) {
+    if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) {
         return validateChatUrl(url.replace(/\/$/, '') + '/responses');
     }
     if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${model || ''}`)) {
@@ -128,7 +129,7 @@ function isAnthropicChatUrl(chatUrl, model) {
 }
 
 function isOpenAIResponsesUrl(chatUrl) {
-    return /api\.openai\.com\/v1\/responses\/?$/i.test(String(chatUrl || '').replace(/\/$/, ''));
+    return /(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(String(chatUrl || '').replace(/\/$/, ''));
 }
 
 function isOpenRouterUrl(chatUrl) {

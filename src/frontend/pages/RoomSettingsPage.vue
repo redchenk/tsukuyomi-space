@@ -30,8 +30,8 @@ const LLM_PRESETS = {
   mistral: { label: 'Mistral', apiUrl: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-small-latest' },
   together: { label: 'Together', apiUrl: 'https://api.together.xyz/v1/chat/completions', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
   perplexity: { label: 'Perplexity', apiUrl: 'https://api.perplexity.ai/chat/completions', model: 'sonar' },
-  xai: { label: 'xAI', apiUrl: 'https://api.x.ai/v1/chat/completions', model: 'grok-3-mini' },
-  gemini: { label: 'Gemini', apiUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-2.0-flash' }
+  xai: { label: 'Grok', apiUrl: 'https://api.x.ai/v1/responses', model: 'grok-4.3' },
+  gemini: { label: 'Gemini', apiUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-2.5-flash' }
 };
 const ALIYUN_LLM_PRESETS = {
   cn: { label: '北京 · 通用 qwen-plus', apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' },
@@ -306,8 +306,8 @@ function clearLive2DDebugQueue() {
 
 function normalizeChatUrl(apiUrl, modelName) {
   let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
-  if (/api\.openai\.com\/v1\/responses\/?$/i.test(url)) return url.replace(/\/$/, '');
-  if (/api\.openai\.com\/v1\/?$/i.test(url)) return url.replace(/\/$/, '') + '/responses';
+  if (/(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(url)) return url.replace(/\/$/, '');
+  if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return url.replace(/\/$/, '') + '/responses';
   if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${modelName || ''}`)) {
     return url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages');
   }
@@ -337,7 +337,7 @@ function pickChatReply(data) {
 }
 
 function isOpenAIResponsesApi(apiUrl) {
-  return /api\.openai\.com\/v1\/responses\/?$/i.test(normalizeChatUrl(apiUrl || '', ''));
+  return /(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(normalizeChatUrl(apiUrl || '', ''));
 }
 
 function isOpenRouterApi(apiUrl) {

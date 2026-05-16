@@ -294,7 +294,7 @@ function pickReply(data) {
 }
 
 function isOpenAIResponsesApi(apiUrl = '') {
-  return /api\.openai\.com\/v1\/responses\/?$/i.test(String(apiUrl || '').replace(/\/$/, ''));
+  return /(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(String(apiUrl || '').replace(/\/$/, ''));
 }
 
 function isOpenRouterApi(apiUrl = '') {
@@ -311,7 +311,7 @@ function openRouterHeaders(apiUrl = '') {
 
 function normalizeOpenAIUrl(apiUrl = '') {
   const url = String(apiUrl || '').trim();
-  if (/api\.openai\.com\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/responses`;
+  if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/responses`;
   return url;
 }
 
