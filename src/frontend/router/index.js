@@ -23,6 +23,7 @@ export const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: '登录', description: '登录月读空间账号。', noindex: true } },
   { path: '/register', name: 'register', component: RegisterPage, meta: { title: '注册', description: '注册月读空间账号。', noindex: true } },
   { path: '/stage', name: 'stage', component: StagePage, meta: { title: '主舞台', description: '阅读月读空间的文章、公告、传说与技术记录。' } },
+  { path: '/articles/:id/:slug?', name: 'articleDetail', component: ArticlePage, meta: { title: '文章', description: '月读空间文章正文与评论。' } },
   { path: '/article', name: 'article', component: ArticlePage, meta: { title: '文章', description: '月读空间文章正文与评论。' } },
   { path: '/room', name: 'room', component: RoomPage, meta: { title: '八千代的房间', description: '与八千代对话，使用 Live2D、长记忆、TTS 与音乐卡片的互动房间。' } },
   { path: '/room/settings', name: 'roomSettings', component: RoomSettingsPage, alias: '/room-settings', meta: { title: '房间设置', description: '配置房间中的 LLM、TTS、MCP、知识库与长记忆。', noindex: true } },

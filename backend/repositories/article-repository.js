@@ -1,4 +1,17 @@
 const db = require('../db');
+const { createSlug } = require('../utils/slug');
+
+function uniqueArticleSlug(title, id = null) {
+    const base = createSlug(title, id ? `article-${id}` : 'article');
+    let slug = base;
+    let suffix = 2;
+    while (true) {
+        const existing = db.prepare('SELECT id FROM articles WHERE slug = ? AND (? IS NULL OR id != ?)').get(slug, id, id);
+        if (!existing) return slug;
+        slug = `${base}-${suffix}`;
+        suffix += 1;
+    }
+}
 
 function listArticles({ category, limit, offset }) {
     let query = `
@@ -24,11 +37,13 @@ function listArticles({ category, limit, offset }) {
 }
 
 function createArticle(article) {
+    const slug = uniqueArticleSlug(article.title);
     const result = db.prepare(`
-        INSERT INTO articles (title, excerpt, content, category, tags, author_id, publish_date, read_time, cover_image)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO articles (title, slug, excerpt, content, category, tags, author_id, publish_date, read_time, cover_image)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         article.title,
+        slug,
         article.excerpt || '',
         article.content || '',
         article.category,
@@ -42,7 +57,12 @@ function createArticle(article) {
 }
 
 function findArticleById(id) {
-    return db.prepare('SELECT * FROM articles WHERE id = ?').get(id);
+    return db.prepare(`
+        SELECT a.*, u.username AS author_username
+        FROM articles a
+        LEFT JOIN users u ON a.author_id = u.id
+        WHERE a.id = ?
+    `).get(id);
 }
 
 function incrementArticleViews(id) {
@@ -50,12 +70,14 @@ function incrementArticleViews(id) {
 }
 
 function updateArticle(id, article) {
+    const slug = uniqueArticleSlug(article.title, id);
     db.prepare(`
         UPDATE articles
-        SET title = ?, excerpt = ?, content = ?, category = ?, tags = ?, read_time = ?, cover_image = ?, updated_at = CURRENT_TIMESTAMP
+        SET title = ?, slug = ?, excerpt = ?, content = ?, category = ?, tags = ?, read_time = ?, cover_image = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
     `).run(
         article.title,
+        slug,
         article.excerpt || '',
         article.content || '',
         article.category || '公告',
@@ -73,7 +95,7 @@ function deleteArticle(id) {
 
 function listUserArticles(userId) {
     return db.prepare(`
-        SELECT id, title, category, view_count, status, pinned_at, created_at, updated_at
+        SELECT id, title, slug, category, view_count, status, pinned_at, created_at, updated_at
         FROM articles WHERE author_id = ?
         ORDER BY pinned_at IS NULL, pinned_at DESC, created_at DESC
     `).all(userId);
@@ -81,7 +103,7 @@ function listUserArticles(userId) {
 
 function listSeoArticles(limit = 500) {
     return db.prepare(`
-        SELECT id, title, excerpt, publish_date, created_at, updated_at
+        SELECT id, title, slug, excerpt, publish_date, created_at, updated_at, cover_image
         FROM articles
         ORDER BY pinned_at IS NULL, pinned_at DESC, publish_date DESC, created_at DESC
         LIMIT ?
@@ -89,16 +111,18 @@ function listSeoArticles(limit = 500) {
 }
 
 function updateUserArticle(id, article) {
+    const slug = uniqueArticleSlug(article.title, id);
     db.prepare(`
         UPDATE articles SET
-            title = ?, excerpt = ?, content = ?, category = ?,
+            title = ?, slug = ?, excerpt = ?, content = ?, category = ?,
             read_time = ?, cover_image = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    `).run(article.title, article.excerpt || '', article.content || '', article.category, article.readTime || '5 min', article.coverImage || null, id);
+    `).run(article.title, slug, article.excerpt || '', article.content || '', article.category, article.readTime || '5 min', article.coverImage || null, id);
     return findArticleById(id);
 }
 
 module.exports = {
+    uniqueArticleSlug,
     listArticles,
     createArticle,
     findArticleById,

@@ -21,6 +21,10 @@ const openReplies = reactive({});
 const session = ref(getSession());
 
 const articleId = computed(() => String(route.query.id || route.params.id || ''));
+const articlePath = computed(() => {
+  if (!article.value?.id) return `/article?id=${encodeURIComponent(articleId.value)}`;
+  return `/articles/${encodeURIComponent(article.value.id)}${article.value.slug ? `/${encodeURIComponent(article.value.slug)}` : ''}`;
+});
 const topComments = computed(() => comments.value.filter((item) => !item.parent_id));
 
 function formatDate(value) {
@@ -49,7 +53,7 @@ async function loadArticle() {
     const result = await parseResponse(response);
     if (!result.success || !result.data) throw new Error(result.message || '文章不存在');
     article.value = result.data;
-    applySeo(articleSeo(result.data, `/article?id=${encodeURIComponent(articleId.value)}`));
+    applySeo(articleSeo(result.data, articlePath.value));
     await loadComments();
   } catch (error) {
     message.value = error.message || props.t.loadFailed || '加载失败';

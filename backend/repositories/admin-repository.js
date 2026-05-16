@@ -1,4 +1,5 @@
 const db = require('../db');
+const { uniqueArticleSlug } = require('./article-repository');
 
 function findAdminByUsername(username) {
     return db.prepare('SELECT * FROM admins WHERE username = ?').get(username);
@@ -14,16 +15,18 @@ function updateAdminPassword(id, passwordHash) {
 
 function listAdminArticles() {
     return db.prepare(`
-        SELECT id, title, category, view_count, status, pinned_at, created_at, updated_at
+        SELECT id, title, slug, category, view_count, status, pinned_at, created_at, updated_at
         FROM articles
         ORDER BY pinned_at IS NULL, pinned_at DESC, COALESCE(updated_at, created_at) DESC
     `).all();
 }
 
 function updateAdminArticle(id, article) {
+    const slug = uniqueArticleSlug(article.title, id);
     return db.prepare(`
         UPDATE articles
         SET title = ?,
+            slug = ?,
             excerpt = ?,
             content = ?,
             category = ?,
@@ -34,6 +37,7 @@ function updateAdminArticle(id, article) {
         WHERE id = ?
     `).run(
         article.title,
+        slug,
         article.excerpt || '',
         article.content || '',
         article.category || '随笔',

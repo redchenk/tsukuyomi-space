@@ -3,6 +3,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const config = require('../../config');
 const db = require('../index');
+const { createSlug } = require('../../utils/slug');
 
 const MIGRATION_TABLE = 'schema_migrations';
 
@@ -95,12 +96,14 @@ function seedDefaultArticles() {
     if (articleCount > 0) return;
 
     const insert = db.prepare(`
-        INSERT INTO articles (title, excerpt, content, category, tags, publish_date, read_time)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO articles (title, slug, excerpt, content, category, tags, publish_date, read_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const seed = db.transaction(() => {
+        const firstTitle = '欢迎来到月读空间';
         insert.run(
-            '欢迎来到月读空间',
+            firstTitle,
+            createSlug(firstTitle),
             '这里是月读空间的第一篇文章',
             '月读空间是一个承载梦、记忆与交流的虚拟空间。欢迎在这里阅读、留言，也欢迎慢慢留下自己的痕迹。',
             '公告',
@@ -108,8 +111,10 @@ function seedDefaultArticles() {
             '2024-01-01',
             '3 min'
         );
+        const secondTitle = '辉夜姬的传说';
         insert.run(
-            '辉夜姬的传说',
+            secondTitle,
+            createSlug(secondTitle),
             '来自月之都的公主，跨越千年的故事',
             '在遥远的传说里，月亮承载着归途、等待与重逢。这里保存这些轻柔的片段，也保存每一次抵达。',
             '传说',
@@ -117,8 +122,10 @@ function seedDefaultArticles() {
             '2024-01-02',
             '5 min'
         );
+        const thirdTitle = '月读空间技术札记';
         insert.run(
-            '月读空间技术札记',
+            thirdTitle,
+            createSlug(thirdTitle),
             '探索虚拟空间背后的实现',
             '这个项目把前端页面、用户系统、文章、留言、统计和智能服务串在一起。后续会继续让结构更清晰，体验更稳定。',
             '技术',

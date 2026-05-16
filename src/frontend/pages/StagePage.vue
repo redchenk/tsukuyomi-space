@@ -60,6 +60,10 @@ function checkEditorAuth(event) {
   emit('go', '/login');
 }
 
+function articlePath(article) {
+  return `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
+}
+
 onMounted(loadArticles);
 </script>
 
@@ -96,9 +100,9 @@ onMounted(loadArticles);
       <a
         v-for="article in filteredArticles"
         :key="article.id"
-        :href="'/article?id=' + article.id"
+        :href="articlePath(article)"
         class="stage-card"
-        @click.prevent="$emit('go', '/article?id=' + article.id)"
+        @click.prevent="$emit('go', articlePath(article))"
       >
         <div class="stage-card-body">
           <div class="stage-card-meta">

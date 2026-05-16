@@ -66,6 +66,10 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN');
 }
 
+function articlePath(article) {
+  return `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
+}
+
 function showMessage(text, type = 'success') {
   terminal.message = text;
   terminal.messageType = type;
@@ -359,7 +363,7 @@ onUnmounted(() => {
             </div>
             <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>置顶</th><th>更新时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in terminal.articles" :key="item.id">
-                <td>{{ item.id }}</td><td><a href="#" @click.prevent="$emit('go', `/article?id=${item.id}`)">{{ item.title }}</a></td><td>{{ item.category || '未分类' }}</td><td>{{ item.view_count || 0 }}</td>
+                <td>{{ item.id }}</td><td><a href="#" @click.prevent="$emit('go', articlePath(item))">{{ item.title }}</a></td><td>{{ item.category || '未分类' }}</td><td>{{ item.view_count || 0 }}</td>
                 <td><span class="terminal-badge" :class="item.status === 'published' ? 'ok' : 'warn'">{{ item.status === 'published' ? '已发布' : '草稿' }}</span></td>
                 <td><span class="terminal-badge" :class="item.pinned_at ? 'hot' : ''">{{ item.pinned_at ? '已置顶' : '普通' }}</span></td>
                 <td>{{ formatDate(item.updated_at || item.created_at) }}</td>

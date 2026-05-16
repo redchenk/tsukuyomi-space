@@ -2,6 +2,8 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const messageRepository = require('../repositories/message-repository');
 const notificationRepository = require('../repositories/notification-repository');
+const articleRepository = require('../repositories/article-repository');
+const { articlePath } = require('../seo/render-article');
 
 const router = express.Router();
 
@@ -10,7 +12,9 @@ function actorName(user) {
 }
 
 function messageLink(message) {
-    return message?.article_id ? `/article?id=${message.article_id}` : '/plaza';
+    if (!message?.article_id) return '/plaza';
+    const article = articleRepository.findArticleById(message.article_id);
+    return article ? articlePath(article) : `/articles/${message.article_id}`;
 }
 
 function notifyMessageOwner({ targetMessage, actor, type, title, content, relatedMessageId }) {

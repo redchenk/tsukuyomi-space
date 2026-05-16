@@ -3,6 +3,7 @@ const path = require('path');
 const express = require('express');
 const config = require('../config');
 const articleRepository = require('../repositories/article-repository');
+const { articlePath, renderArticleHtml, renderNotFoundHtml } = require('../seo/render-article');
 
 const SEO_ROUTES = [
     { path: '/', priority: '1.0', changefreq: 'weekly' },
@@ -64,7 +65,7 @@ function sendSitemap(req, res) {
         priority: route.priority
     }));
     const articleUrls = articleRepository.listSeoArticles().map(article => sitemapUrl({
-        loc: absoluteSiteUrl(`/article?id=${encodeURIComponent(article.id)}`),
+        loc: absoluteSiteUrl(articlePath(article)),
         lastmod: String(article.updated_at || article.created_at || article.publish_date || today).slice(0, 10),
         changefreq: 'monthly',
         priority: '0.7'
@@ -86,6 +87,22 @@ function serveStaticFiles(app) {
 
     app.get('/robots.txt', sendRobots);
     app.get('/sitemap.xml', sendSitemap);
+    app.get('/article', (req, res, next) => {
+        const id = req.query?.id;
+        if (!id) return next();
+        if (req.query?.spa === '1') return next();
+        const article = articleRepository.findArticleById(id);
+        if (!article) return res.status(404).type('html').send(renderNotFoundHtml());
+        return res.redirect(301, articlePath(article));
+    });
+    app.get('/articles/:id/:slug?', (req, res) => {
+        const article = articleRepository.findArticleById(req.params.id);
+        if (!article) return res.status(404).type('html').send(renderNotFoundHtml());
+        if (article.slug && req.params.slug !== article.slug) {
+            return res.redirect(301, articlePath(article));
+        }
+        return res.type('html').send(renderArticleHtml(article));
+    });
 
     app.use((req, res, next) => {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
