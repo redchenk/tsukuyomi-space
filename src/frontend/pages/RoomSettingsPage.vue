@@ -19,7 +19,7 @@ const MEMORY_STORE = 'memories';
 const LLM_PRESETS = {
   openai: { label: 'OpenAI Responses', apiUrl: 'https://api.openai.com/v1/responses', model: 'gpt-5.5' },
   openaiChat: { label: 'OpenAI Chat', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
-  openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-4o-mini' },
+  openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-5.2' },
   deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
   moonshot: { label: 'Moonshot', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k' },
   aliyun: { label: '阿里云百炼', apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' },
@@ -332,6 +332,18 @@ function pickChatReply(data) {
 
 function isOpenAIResponsesApi(apiUrl) {
   return /api\.openai\.com\/v1\/responses\/?$/i.test(normalizeChatUrl(apiUrl || '', ''));
+}
+
+function isOpenRouterApi(apiUrl) {
+  return /openrouter\.ai\/api\/v1\/chat\/completions\/?$/i.test(normalizeChatUrl(apiUrl || '', ''));
+}
+
+function openRouterHeaders(apiUrl) {
+  if (!isOpenRouterApi(apiUrl)) return {};
+  return {
+    'HTTP-Referer': window.location.origin,
+    'X-OpenRouter-Title': 'Tsukuyomi Space'
+  };
 }
 
 function isMiniMaxAnthropic(apiUrl, modelName) {
@@ -889,6 +901,7 @@ async function testLLM() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...openRouterHeaders(llm.apiUrl),
         ...(llm.useProxy || isAnthropicChatApi(llm.apiUrl, llm.model) ? {} : { Authorization: `Bearer ${llm.apiKey}` }),
         ...(!llm.useProxy && isAnthropicChatApi(llm.apiUrl, llm.model) ? { 'x-api-key': llm.apiKey, 'anthropic-version': '2023-06-01' } : {})
       },

@@ -129,6 +129,10 @@ function isOpenAIResponsesUrl(chatUrl) {
     return /api\.openai\.com\/v1\/responses\/?$/i.test(String(chatUrl || '').replace(/\/$/, ''));
 }
 
+function isOpenRouterUrl(chatUrl) {
+    return /openrouter\.ai\/api\/v1\/chat\/completions\/?$/i.test(String(chatUrl || '').replace(/\/$/, ''));
+}
+
 function isMiniMaxAnthropicText(chatUrl, model) {
     return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages\/?$|MiniMax-M2/i.test(`${chatUrl || ''} ${model || ''}`);
 }
@@ -216,10 +220,15 @@ function chatHeaders(chatUrl, apiKey, model) {
             'anthropic-version': '2023-06-01'
         };
     }
-    return {
+    const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
     };
+    if (isOpenRouterUrl(chatUrl)) {
+        headers['HTTP-Referer'] = process.env.PUBLIC_SITE_URL || 'https://yachiyo.redchenk.com';
+        headers['X-OpenRouter-Title'] = process.env.OPENROUTER_APP_TITLE || 'Tsukuyomi Space';
+    }
+    return headers;
 }
 
 async function createChatCompletion({ message, conversation = [], apiKey, apiUrl, model, systemPrompt = CHAT_SYSTEM_PROMPT, image }) {

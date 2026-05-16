@@ -297,6 +297,18 @@ function isOpenAIResponsesApi(apiUrl = '') {
   return /api\.openai\.com\/v1\/responses\/?$/i.test(String(apiUrl || '').replace(/\/$/, ''));
 }
 
+function isOpenRouterApi(apiUrl = '') {
+  return /openrouter\.ai\/api\/v1\/chat\/completions\/?$/i.test(String(apiUrl || '').replace(/\/$/, ''));
+}
+
+function openRouterHeaders(apiUrl = '') {
+  if (!isOpenRouterApi(apiUrl)) return {};
+  return {
+    'HTTP-Referer': window.location.origin,
+    'X-OpenRouter-Title': 'Tsukuyomi Space'
+  };
+}
+
 function normalizeOpenAIUrl(apiUrl = '') {
   const url = String(apiUrl || '').trim();
   if (/api\.openai\.com\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/responses`;
@@ -367,7 +379,7 @@ async function translateForJapaneseTts(text) {
   const apiUrl = normalizeOpenAIUrl(settings.apiUrl);
   const response = await fetch(apiUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}`, ...openRouterHeaders(apiUrl) },
     body: JSON.stringify(isOpenAIResponsesApi(apiUrl)
       ? { model: settings.model || 'gpt-5.5', instructions: systemPrompt, input: source, max_output_tokens: 240 }
       : {
@@ -622,7 +634,7 @@ export function useRoomChat({ live2d, world }) {
         const apiUrl = normalizeOpenAIUrl(settings.apiUrl);
         const response = await fetch(apiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}`, ...openRouterHeaders(apiUrl) },
           body: JSON.stringify(makeLLMRequestBody(
             { ...settings, apiUrl },
             systemPrompt,
