@@ -41,13 +41,6 @@ const roomUserId = computed(() => roomUser.value?.id || roomUser.value?.username
     :style="room.roomStyle.value"
   >
     <div class="room-backdrop" aria-hidden="true"></div>
-    <section class="room-seo-intro" aria-label="八千代的房间介绍">
-      <h1>八千代的房间</h1>
-      <p>
-        这是一个基于 Live2D、LLM、TTS、长期记忆和角色知识库构建的虚拟角色互动房间，
-        用于探索个人 AI Agent 与二次元角色陪伴体验。
-      </p>
-    </section>
     <div
       v-if="['rain', 'storm', 'snow', 'fog', 'cloudy'].includes(room.world.world.value.weather)"
       class="room-weather-layer"
