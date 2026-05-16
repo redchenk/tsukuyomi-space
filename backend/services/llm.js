@@ -161,7 +161,7 @@ function buildChatPayload({ chatUrl, model, systemPrompt, history, message, imag
     if (isOpenAIResponsesUrl(chatUrl)) {
         const userContent = image?.dataUrl
             ? [
-                { type: 'input_text', text: String(message || '璇锋弿杩拌繖寮犲浘鐗囥€?) },
+                { type: 'input_text', text: String(message || '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002') },
                 { type: 'input_image', image_url: image.dataUrl }
             ]
             : String(message || '');
