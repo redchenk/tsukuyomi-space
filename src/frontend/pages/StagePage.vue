@@ -72,6 +72,10 @@ onMounted(loadArticles);
     <header class="stage-header">
       <h1 class="section-title">{{ t.stageTitle }}</h1>
       <p class="section-subtitle">{{ t.stageSubtitle }}</p>
+      <p class="stage-seo-intro">
+        主舞台集中展示月读空间的文章、公告、技术记录与创作日志，内容覆盖 Live2D、AI 角色、
+        个人网站开发、二次元网页设计和日常项目复盘。
+      </p>
     </header>
 
     <div class="stage-controls">

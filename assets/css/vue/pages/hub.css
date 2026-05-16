@@ -121,6 +121,18 @@
     line-height: 1.8;
 }
 
+.hub-seo-intro {
+    max-width: 34rem;
+    margin: 0.88rem 0 0;
+    padding: 0.78rem 0.92rem;
+    border: 1px solid rgba(231, 249, 255, 0.14);
+    border-radius: 16px;
+    color: rgba(239, 247, 255, 0.78);
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.92rem;
+    line-height: 1.72;
+}
+
 .hub-actions {
     display: flex;
     flex-wrap: wrap;
@@ -620,6 +632,7 @@ html[data-theme="light"] .hub-hero-panel::after {
 html[data-theme="light"] .hub-kicker,
 html[data-theme="light"] .hub-welcome,
 html[data-theme="light"] .section-subtitle,
+html[data-theme="light"] .hub-seo-intro,
 html[data-theme="light"] .hub-en-title,
 html[data-theme="light"] .hub-entry small,
 html[data-theme="light"] .hub-section-head span,
@@ -644,6 +657,7 @@ html[data-theme="light"] .hub-side-card strong {
 }
 
 html[data-theme="light"] .hub-kicker,
+html[data-theme="light"] .hub-seo-intro,
 html[data-theme="light"] .scene-card,
 html[data-theme="light"] .hub-stat-grid div,
 html[data-theme="light"] .hub-side-card,

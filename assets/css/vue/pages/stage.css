@@ -9,6 +9,17 @@
     margin-bottom: 2rem;
 }
 
+.stage-seo-intro {
+    width: min(760px, 100%);
+    margin: 1rem auto 0;
+    padding: 0.88rem 1.05rem;
+    border: 1px solid rgba(255, 107, 157, 0.18);
+    border-radius: 18px;
+    color: rgba(255, 225, 232, 0.74);
+    background: rgba(255, 255, 255, 0.04);
+    line-height: 1.78;
+}
+
 .stage-controls {
     display: flex;
     justify-content: space-between;
@@ -207,5 +218,11 @@
 
 .stage-card:hover .stage-cover-img {
     transform: scale(1.05);
+}
+
+html[data-theme="light"] .stage-seo-intro {
+    border-color: rgba(75, 95, 140, 0.14);
+    color: rgba(38, 48, 72, 0.72);
+    background: rgba(255, 255, 255, 0.66);
 }
 

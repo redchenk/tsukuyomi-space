@@ -44,6 +44,18 @@ function upsertStructuredData(id, payload) {
   document.head.appendChild(node);
 }
 
+function normalizeTags(value) {
+  if (Array.isArray(value)) return value.filter(Boolean).map(String);
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.filter(Boolean).map(String);
+  } catch (_) {
+    // Support older comma-separated tag values.
+  }
+  return String(value).split(/[,，]/).map((tag) => tag.trim()).filter(Boolean);
+}
+
 export function applySeo({
   title = SITE_NAME,
   description = DEFAULT_DESCRIPTION,
@@ -98,6 +110,7 @@ export function articleSeo(article, path) {
     .slice(0, 160) || DEFAULT_DESCRIPTION;
   const image = article?.cover_image || DEFAULT_IMAGE;
   const url = absoluteUrl(path);
+  const tags = normalizeTags(article?.tags);
   return {
     title,
     description,
@@ -116,7 +129,18 @@ export function articleSeo(article, path) {
         '@type': 'Person',
         name: article?.author_username || 'redchenk'
       },
-      mainEntityOfPage: url
+      publisher: {
+        '@type': 'Organization',
+        name: SITE_NAME,
+        logo: {
+          '@type': 'ImageObject',
+          url: DEFAULT_IMAGE
+        }
+      },
+      mainEntityOfPage: url,
+      inLanguage: 'zh-CN',
+      keywords: tags.join(','),
+      articleSection: article?.category || ''
     }
   };
 }

@@ -103,9 +103,11 @@ function listUserArticles(userId) {
 
 function listSeoArticles(limit = 500) {
     return db.prepare(`
-        SELECT id, title, slug, excerpt, publish_date, created_at, updated_at, cover_image
-        FROM articles
-        ORDER BY pinned_at IS NULL, pinned_at DESC, publish_date DESC, created_at DESC
+        SELECT a.id, a.title, a.slug, a.excerpt, a.publish_date, a.created_at, a.updated_at,
+            a.cover_image, a.category, a.tags, a.read_time, u.username AS author_username
+        FROM articles a
+        LEFT JOIN users u ON a.author_id = u.id
+        ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, a.publish_date DESC, a.created_at DESC
         LIMIT ?
     `).all(limit);
 }

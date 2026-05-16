@@ -50,6 +50,37 @@ body.vue-room-route {
     transition: background 0.8s ease, filter 0.8s ease;
 }
 
+.room-seo-intro {
+    position: fixed;
+    left: max(92px, env(safe-area-inset-left));
+    top: max(24px, env(safe-area-inset-top));
+    z-index: 3;
+    width: min(380px, calc(100vw - 132px));
+    padding: 0.78rem 0.92rem;
+    border: 1px solid var(--room-glass-border);
+    border-radius: 18px;
+    color: rgba(255, 247, 251, 0.78);
+    background: rgba(10, 16, 32, 0.3);
+    box-shadow: var(--room-glass-shadow);
+    backdrop-filter: blur(16px) saturate(1.08);
+    pointer-events: none;
+}
+
+.room-seo-intro h1 {
+    margin: 0 0 0.35rem;
+    color: #fff;
+    font-family: var(--ts-font-serif);
+    font-size: 1.18rem;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.room-seo-intro p {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.72;
+}
+
 .room-page[data-time-phase="dawn"] {
     --room-top-shade: rgba(54, 37, 56, 0.18);
     --room-bottom-shade: rgba(23, 18, 33, 0.58);
@@ -1219,6 +1250,10 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
 }
 
 @media (max-width: 820px) {
+    .room-seo-intro {
+        display: none;
+    }
+
     .room-shell .site-rail {
         top: 0.55rem;
         left: 0.55rem;

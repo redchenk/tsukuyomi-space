@@ -3,7 +3,7 @@ const path = require('path');
 const express = require('express');
 const config = require('../config');
 const articleRepository = require('../repositories/article-repository');
-const { articlePath, renderArticleHtml, renderNotFoundHtml } = require('../seo/render-article');
+const { articlePath, renderArticleHtml, renderNotFoundHtml, renderStageHtml } = require('../seo/render-article');
 
 const SEO_ROUTES = [
     { path: '/', priority: '1.0', changefreq: 'weekly' },
@@ -87,6 +87,10 @@ function serveStaticFiles(app) {
 
     app.get('/robots.txt', sendRobots);
     app.get('/sitemap.xml', sendSitemap);
+    app.get('/stage', (req, res, next) => {
+        if (req.query?.spa === '1') return next();
+        return res.type('html').send(renderStageHtml(articleRepository.listSeoArticles(60)));
+    });
     app.get('/article', (req, res, next) => {
         const id = req.query?.id;
         if (!id) return next();

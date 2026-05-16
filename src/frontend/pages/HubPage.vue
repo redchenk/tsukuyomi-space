@@ -153,6 +153,10 @@ onMounted(loadHubPreview);
           <h1 class="section-title">{{ t.brand }}</h1>
           <p class="hub-en-title">Tsukuyomi Space</p>
           <p class="section-subtitle">{{ t.heroCopy }}</p>
+          <p class="hub-seo-intro">
+            月读空间是 redchenk 的二次元个人空间，收纳 Live2D AI 房间、技术文章、留言广场、
+            网页游戏实验和虚拟角色项目记录。
+          </p>
           <div class="hub-actions">
             <a href="/room" class="primary-btn hub-primary" @click.prevent="$emit('go', '/room')">进入私人居所</a>
             <a href="/plaza" class="nav-link hub-secondary" @click.prevent="$emit('go', '/plaza')">浏览月读广场</a>
