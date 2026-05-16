@@ -40,7 +40,12 @@ function sitemapUrl({ loc, lastmod, changefreq, priority }) {
 }
 
 function sendRobots(req, res) {
-    res.type('text/plain').send([
+    res.set({
+        'Cache-Control': 'no-store, max-age=0',
+        'X-Robots-Tag': 'noindex'
+    });
+    res.removeHeader('ETag');
+    res.type('text/plain; charset=utf-8').send([
         'User-agent: *',
         'Allow: /',
         'Disallow: /terminal',
@@ -70,7 +75,12 @@ function sendSitemap(req, res) {
         changefreq: 'monthly',
         priority: '0.7'
     }));
-    res.type('application/xml').send([
+    res.set({
+        'Cache-Control': 'no-store, max-age=0',
+        'X-Robots-Tag': 'noindex'
+    });
+    res.removeHeader('ETag');
+    res.type('application/xml; charset=utf-8').send([
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
         ...staticUrls,
