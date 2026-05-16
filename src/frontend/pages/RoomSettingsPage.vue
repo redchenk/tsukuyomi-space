@@ -22,8 +22,9 @@ const LLM_PRESETS = {
   openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-5.2' },
   deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
   kimi: { label: 'Kimi', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'kimi-k2.6' },
-  siliconflow: { label: 'SiliconFlow', apiUrl: 'https://api.siliconflow.cn/v1/chat/completions', model: 'Qwen/Qwen2.5-7B-Instruct' },
-  volcengine: { label: '火山方舟', apiUrl: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions', model: 'doubao-1-5-pro-32k-250115' },
+  zhipu: { label: '智谱 GLM', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-5.1' },
+  siliconflow: { label: 'SiliconFlow', apiUrl: 'https://api.siliconflow.cn/v1/chat/completions', model: 'deepseek-ai/DeepSeek-V3' },
+  volcengine: { label: '火山方舟', apiUrl: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions', model: 'ep-替换为你的接入点ID' },
   minimax: { label: 'MiniMax', apiUrl: 'https://api.minimaxi.com/anthropic/v1/messages', model: 'MiniMax-M2.7' },
   groq: { label: 'Groq', apiUrl: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.1-8b-instant' },
   mistral: { label: 'Mistral', apiUrl: 'https://api.mistral.ai/v1/chat/completions', model: 'mistral-small-latest' },
@@ -38,18 +39,6 @@ const ALIYUN_LLM_PRESETS = {
   cnVisionMax: { label: '北京 · 视觉 qwen-vl-max', apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-vl-max' },
   intl: { label: '国际/新加坡 · qwen-plus', apiUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' },
   us: { label: '美国 · qwen-plus', apiUrl: 'https://dashscope-us.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' }
-};
-const GLM_LLM_PRESETS = {
-  glm51: { label: 'GLM-5.1 旗舰', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-5.1' },
-  glm5: { label: 'GLM-5 高智能', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-5' },
-  glm5Turbo: { label: 'GLM-5 Turbo', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-5-turbo' },
-  glm47: { label: 'GLM-4.7 通用', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4.7' },
-  glm47FlashX: { label: 'GLM-4.7 FlashX', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4.7-flashx' },
-  glm46: { label: 'GLM-4.6 通用', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4.6' },
-  glm45Air: { label: 'GLM-4.5-Air 性价比', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4.5-air' },
-  glm4Long: { label: 'GLM-4-Long 长上下文', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4-long' },
-  glm5vTurbo: { label: 'GLM-5V Turbo 视觉', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-5v-turbo' },
-  glm46v: { label: 'GLM-4.6V 视觉', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4.6v' }
 };
 const TTS_PRESETS = {
   mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
@@ -880,13 +869,6 @@ function applyAliyunPreset(name) {
   llm.model = preset.model;
 }
 
-function applyGlmPreset(name) {
-  const preset = GLM_LLM_PRESETS[name];
-  if (!preset) return;
-  llm.apiUrl = preset.apiUrl;
-  llm.model = preset.model;
-}
-
 function applyTtsPreset(name) {
   const preset = TTS_PRESETS[name];
   if (!preset) return;
@@ -1479,12 +1461,6 @@ onBeforeUnmount(() => {
             <summary class="chip">阿里云百炼</summary>
             <div class="preset-submenu">
               <button v-for="(preset, name) in ALIYUN_LLM_PRESETS" :key="name" class="chip" type="button" @click="applyAliyunPreset(name)">{{ preset.label }}</button>
-            </div>
-          </details>
-          <details class="preset-menu">
-            <summary class="chip">智谱 GLM</summary>
-            <div class="preset-submenu">
-              <button v-for="(preset, name) in GLM_LLM_PRESETS" :key="name" class="chip" type="button" @click="applyGlmPreset(name)">{{ preset.label }}</button>
             </div>
           </details>
           <button v-for="(preset, name) in LLM_PRESETS" :key="name" class="chip" type="button" @click="applyPreset(name)">{{ preset.label }}</button>
