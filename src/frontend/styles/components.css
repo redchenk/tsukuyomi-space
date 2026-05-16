@@ -588,6 +588,31 @@ html[data-theme="light"] .site-music-playlist-drawer select {
     border: 0;
 }
 
+.ts-icon {
+    display: block;
+    flex: 0 0 auto;
+}
+
+.rail-link .ts-icon,
+.rail-mark .ts-icon,
+.nav-link .ts-icon,
+.panel-toggle-btn .ts-icon,
+.music-mini-btn .ts-icon,
+.music-icon-btn .ts-icon,
+.site-music-play .ts-icon,
+.site-music-handle .ts-icon,
+.music-cover-play .ts-icon,
+.music-close .ts-icon {
+    margin: auto;
+}
+
+.site-music-space,
+.site-music-track-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.24rem;
+}
+
 .room-shell .room-weather-card {
     top: clamp(1rem, 3vw, 2rem);
 }

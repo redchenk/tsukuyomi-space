@@ -1,4 +1,5 @@
 <script setup>
+import TsIcon from '../TsIcon.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
 
 defineProps({
@@ -22,7 +23,9 @@ const emit = defineEmits(['close', 'focus', 'drag-start']);
       <div class="music-card-main">
         <div id="musicCover" class="music-cover" :class="{ 'has-cover': music.coverUrl.value }" :style="music.coverUrl.value ? { '--music-cover-image': `url('${music.coverUrl.value}')` } : null" role="img" aria-label="cover">
           <span id="musicCoverGlyph">{{ music.currentTrack.value?.title?.slice(0, 1) || '♪' }}</span>
-          <button id="musicPlayBtn" class="music-cover-play" type="button" aria-label="Play music" @click.stop="music.togglePlay">{{ music.playing.value ? 'Ⅱ' : '▶' }}</button>
+          <button id="musicPlayBtn" class="music-cover-play" type="button" aria-label="Play music" @click.stop="music.togglePlay">
+            <TsIcon :name="music.playing.value ? 'pause' : 'play'" :size="17" :stroke-width="2.4" />
+          </button>
         </div>
         <div class="music-main-info">
           <div class="music-title-row">
@@ -36,16 +39,23 @@ const emit = defineEmits(['close', 'focus', 'drag-start']);
             <span id="musicCurrentTime">{{ music.currentLabel.value }}</span>
             <span>/</span>
             <span id="musicDuration">{{ music.durationLabel.value }}</span>
-            <button id="musicVolumeBtn" class="music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">&#9834;</button>
-            <button id="musicMenuBtn" class="music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">&#9776;</button>
+            <button id="musicVolumeBtn" class="music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">
+              <TsIcon name="volume" :size="15" />
+            </button>
+            <button id="musicMenuBtn" class="music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">
+              <TsIcon name="list" :size="15" />
+            </button>
           </div>
         </div>
-        <button class="panel-close music-close" type="button" aria-label="Close music" @pointerdown.stop @click.stop="emit('close')">x</button>
+        <button class="panel-close music-close" type="button" aria-label="Close music" @pointerdown.stop @click.stop="emit('close')">
+          <TsIcon name="x" :size="16" />
+        </button>
       </div>
     </template>
+
     <div v-if="music.drawer.volume" id="musicVolumeDrawer" class="music-drawer music-volume-drawer">
       <div class="music-volume-inline">
-        <span>&#38899;&#37327;</span>
+        <span>音量</span>
         <input :value="music.volume.value" type="range" min="0" max="1" step="0.01" aria-label="Volume" @input="music.setVolume($event.target.value)">
       </div>
     </div>
@@ -54,8 +64,12 @@ const emit = defineEmits(['close', 'focus', 'drag-start']);
         <option v-for="(track, index) in music.tracks" :key="track.file" :value="index">{{ String(index + 1).padStart(2, '0') }} - {{ track.title }}</option>
       </select>
       <div class="music-drawer-actions">
-        <button id="musicPrevBtn" class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">&#8592;</button>
-        <button id="musicNextBtn" class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">&#8594;</button>
+        <button id="musicPrevBtn" class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">
+          <TsIcon name="skipBack" :size="17" />
+        </button>
+        <button id="musicNextBtn" class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">
+          <TsIcon name="skipForward" :size="17" />
+        </button>
       </div>
     </div>
   </RoomDraggablePanel>

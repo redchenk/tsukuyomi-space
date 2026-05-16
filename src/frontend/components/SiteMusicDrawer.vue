@@ -1,4 +1,6 @@
 <script setup>
+import TsIcon from './TsIcon.vue';
+
 defineProps({
   music: { type: Object, required: true }
 });
@@ -7,7 +9,7 @@ defineProps({
 <template>
   <div class="site-music-drawer" :class="{ 'is-open': music.drawer.open }">
     <button class="site-music-handle" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
-      <span aria-hidden="true">{{ music.drawer.open ? '⌃' : '⌄' }}</span>
+      <TsIcon :name="music.drawer.open ? 'chevronDown' : 'chevronUp'" :size="22" :stroke-width="2.4" />
       <span class="sr-only">{{ music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer' }}</span>
     </button>
 
@@ -25,8 +27,8 @@ defineProps({
         <div class="site-music-summary-main">
           <div class="music-title-row site-music-title-row">
             <strong>{{ music.currentTrack.value?.title || 'Remember' }}</strong>
-            <span class="site-music-space">☾ Tsukuyomi Space</span>
-            <span class="site-music-track-pill">✦ Track {{ String(music.trackIndex.value + 1).padStart(2, '0') }}</span>
+            <span class="site-music-space"><TsIcon name="moon" :size="13" /> Tsukuyomi Space</span>
+            <span class="site-music-track-pill"><TsIcon name="music" :size="13" /> Track {{ String(music.trackIndex.value + 1).padStart(2, '0') }}</span>
           </div>
           <div class="music-meta-row site-music-meta-row">
             <span>{{ music.currentLabel.value }}</span>
@@ -35,7 +37,7 @@ defineProps({
           </div>
         </div>
         <button class="site-music-play" type="button" :aria-label="music.playing.value ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
-          {{ music.playing.value ? 'Ⅱ' : '▶' }}
+          <TsIcon :name="music.playing.value ? 'pause' : 'play'" :size="18" :stroke-width="2.4" />
         </button>
       </div>
 
@@ -47,15 +49,23 @@ defineProps({
         </div>
 
         <div class="site-music-controls">
-          <button class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">&#8592;</button>
-          <button class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">&#8594;</button>
-          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">&#9834;</button>
-          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">&#9776;</button>
+          <button class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">
+            <TsIcon name="skipBack" :size="17" />
+          </button>
+          <button class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">
+            <TsIcon name="skipForward" :size="17" />
+          </button>
+          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.volume }" type="button" aria-label="Volume" @click.stop="music.toggleDrawer('volume')">
+            <TsIcon name="volume" :size="17" />
+          </button>
+          <button class="music-mini-btn site-music-mini-btn" :class="{ 'is-active': music.drawer.playlist }" type="button" aria-label="Playlist" @click.stop="music.toggleDrawer('playlist')">
+            <TsIcon name="list" :size="17" />
+          </button>
         </div>
 
         <div v-if="music.drawer.volume" class="music-drawer site-music-subdrawer site-music-volume-drawer">
           <div class="music-volume-inline site-music-volume-inline">
-            <span aria-hidden="true">&#38899;</span>
+            <TsIcon name="volume" :size="15" />
             <input :value="music.volume.value" type="range" min="0" max="1" step="0.01" aria-label="Volume" @input="music.setVolume($event.target.value)">
             <strong>{{ Math.round(music.volume.value * 100) }}%</strong>
           </div>
