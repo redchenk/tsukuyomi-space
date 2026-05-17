@@ -41,6 +41,21 @@ function parseIframeInput(value) {
   };
 }
 
+function isRawIframe(value) {
+  return /^\s*<iframe[\s\S]*<\/iframe>\s*$/i.test(String(value || '').trim());
+}
+
+function iframeSandboxForUrl(url) {
+  const tokens = ['allow-scripts', 'allow-forms', 'allow-popups', 'allow-popups-to-escape-sandbox', 'allow-presentation'];
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    if (hostname === 'player.bilibili.com') tokens.push('allow-same-origin');
+  } catch (_) {
+    // Keep the stricter default if the URL cannot be parsed.
+  }
+  return tokens.join(' ');
+}
+
 function splitTargetAndTitle(value) {
   const source = String(value || '').trim();
   const quoted = source.match(/^(\S+)(?:\s+["']([^"']*)["'])?$/);
@@ -110,7 +125,7 @@ export function renderIframeEmbed(url, title = 'Embedded content', height = '') 
   const finalTitle = title || iframeInput.title || 'Embedded content';
   const parsedHeight = Math.min(Math.max(Number.parseInt(height || iframeInput.height, 10) || 420, 220), 900);
   return `<figure class="markdown-iframe">
-    <iframe src="${escapeAttr(safeUrl)}" title="${escapeAttr(finalTitle)}" loading="lazy" height="${parsedHeight}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"></iframe>
+    <iframe src="${escapeAttr(safeUrl)}" title="${escapeAttr(finalTitle)}" loading="lazy" height="${parsedHeight}" sandbox="${escapeAttr(iframeSandboxForUrl(safeUrl))}" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"></iframe>
     <figcaption>${escapeHtml(finalTitle || safeUrl)}</figcaption>
   </figure>`;
 }
@@ -230,6 +245,13 @@ export function renderMarkdown(markdown) {
 
     if (!line.trim()) {
       flushFlow();
+      continue;
+    }
+
+    if (isRawIframe(line)) {
+      flushFlow();
+      const embed = renderIframeEmbed(line, iframeAttr(line, 'title') || iframeAttr(line, 'aria-label') || '嵌入内容', iframeAttr(line, 'height'));
+      if (embed) html.push(embed);
       continue;
     }
 
