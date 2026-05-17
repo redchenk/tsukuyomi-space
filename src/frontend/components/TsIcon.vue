@@ -110,9 +110,9 @@ const iconPaths = {
     ['path', { d: 'm21 15-4.6-4.6a2 2 0 0 0-2.8 0L5 19' }]
   ],
   ellipsis: [
-    ['circle', { cx: '5', cy: '12', r: '1.2' }],
-    ['circle', { cx: '12', cy: '12', r: '1.2' }],
-    ['circle', { cx: '19', cy: '12', r: '1.2' }]
+    ['circle', { cx: '5', cy: '12', r: '1.25', fill: 'currentColor', stroke: 'none' }],
+    ['circle', { cx: '12', cy: '12', r: '1.25', fill: 'currentColor', stroke: 'none' }],
+    ['circle', { cx: '19', cy: '12', r: '1.25', fill: 'currentColor', stroke: 'none' }]
   ],
   menu: [
     ['path', { d: 'M4 6h16' }],

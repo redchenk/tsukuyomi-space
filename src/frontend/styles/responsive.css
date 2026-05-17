@@ -213,6 +213,27 @@
         display: grid;
     }
 
+    .room-shell .room-dock .panel-toggle-btn:last-child,
+    html[data-theme="dark"] .room-shell .room-dock .panel-toggle-btn:last-child,
+    html[data-theme="light"] .room-shell .room-dock .panel-toggle-btn:last-child {
+        border: 1px solid rgba(255, 255, 255, 0.22) !important;
+        color: rgba(255, 255, 255, 0.92) !important;
+        background:
+            radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.2), transparent 40%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)),
+            rgba(24, 27, 43, 0.42) !important;
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.18),
+            inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+            0 14px 36px rgba(7, 8, 20, 0.26) !important;
+        backdrop-filter: blur(24px) saturate(1.22) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(1.22) !important;
+    }
+
+    .room-shell .room-dock .panel-toggle-btn:last-child .ts-icon {
+        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.18));
+    }
+
     .room-shell .dock-icon {
         display: none;
     }
