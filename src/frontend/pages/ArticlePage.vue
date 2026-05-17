@@ -33,7 +33,33 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN');
 }
 
-function formatContent(content) {
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderBlockContent(content) {
+  try {
+    const blocks = JSON.parse(String(content || '[]'));
+    if (!Array.isArray(blocks)) return renderMarkdown(content);
+    return blocks.map((block) => {
+      if (block?.type === 'heading') return `<h2>${escapeHtml(block.text || '')}</h2>`;
+      if (block?.type === 'image' && block.url) return `<figure class="markdown-image"><img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt || '')}" loading="lazy"></figure>`;
+      if (block?.type === 'video' && block.url) return `<p><a href="${escapeHtml(block.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(block.title || block.url)}</a></p>`;
+      return `<p>${escapeHtml(block?.text || block?.content || '')}</p>`;
+    }).join('');
+  } catch (_) {
+    return renderMarkdown(content);
+  }
+}
+
+function formatContent(content, format = 'markdown') {
+  if (format === 'block') return renderBlockContent(content);
+  if (format === 'html') return escapeHtml(content).replace(/\n/g, '<br>');
   return renderMarkdown(content);
 }
 
@@ -176,7 +202,7 @@ watch(articleId, loadArticle);
         </header>
 
         <img v-if="article.cover_image" class="article-cover" :src="article.cover_image" alt="">
-        <section class="article-content" v-html="formatContent(article.content)"></section>
+        <section class="article-content" v-html="formatContent(article.content, article.content_format)"></section>
 
         <section class="comments-section">
           <div class="comments-head">

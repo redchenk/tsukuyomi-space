@@ -196,17 +196,19 @@ router.put('/articles/:id', (req, res) => {
         const id = asInt(req.params.id);
         if (!id) return fail(res, 400, '文章 ID 无效');
 
-        const { title, excerpt, content, category, status, read_time, cover_image } = req.body || {};
+        const { title, excerpt, content, content_format, category, status, read_time, cover_image, cover_image_asset_id } = req.body || {};
         if (!String(title || '').trim()) return fail(res, 400, '标题不能为空');
 
         const changes = adminRepository.updateAdminArticle(id, {
             title: String(title).trim(),
             excerpt,
             content,
+            contentFormat: content_format,
             category,
             status,
             readTime: read_time,
-            coverImage: cover_image
+            coverImage: cover_image,
+            coverImageAssetId: cover_image_asset_id
         });
         if (!changes) return fail(res, 404, '文章不存在');
         ok(res);

@@ -30,6 +30,7 @@ module.exports = {
                 title TEXT NOT NULL,
                 excerpt TEXT,
                 content TEXT,
+                content_format TEXT DEFAULT 'markdown',
                 category TEXT DEFAULT '公告',
                 tags TEXT DEFAULT '[]',
                 author_id TEXT,
@@ -37,6 +38,7 @@ module.exports = {
                 read_time TEXT DEFAULT '5 min',
                 view_count INTEGER DEFAULT 0,
                 cover_image TEXT,
+                cover_image_asset_id TEXT,
                 status TEXT DEFAULT 'published',
                 pinned_at DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -58,6 +60,34 @@ module.exports = {
                 FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (parent_id) REFERENCES messages(id),
                 FOREIGN KEY (article_id) REFERENCES articles(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS article_assets (
+                id TEXT PRIMARY KEY,
+                article_id INTEGER,
+                owner_id TEXT,
+                asset_type TEXT NOT NULL,
+                mime_type TEXT,
+                url TEXT NOT NULL,
+                storage_key TEXT,
+                metadata TEXT DEFAULT '{}',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (article_id) REFERENCES articles(id),
+                FOREIGN KEY (owner_id) REFERENCES users(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS article_content_blocks (
+                id TEXT PRIMARY KEY,
+                article_id INTEGER NOT NULL,
+                block_type TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                content_json TEXT NOT NULL DEFAULT '{}',
+                asset_id TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+                FOREIGN KEY (asset_id) REFERENCES article_assets(id)
             );
 
             CREATE TABLE IF NOT EXISTS message_likes (

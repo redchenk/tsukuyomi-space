@@ -222,7 +222,16 @@ async function handleEditorSubmit() {
   editor.submitting = true;
   try {
     const id = currentArticleId.value;
-    const body = { title, category, read_time: readTime, excerpt, content, cover_image: editor.coverImageBase64 };
+    const body = {
+      title,
+      category,
+      read_time: readTime,
+      excerpt,
+      content,
+      content_format: 'markdown',
+      cover_image: editor.coverImageBase64,
+      cover_image_asset_id: editor.currentArticle?.cover_image_asset_id || null
+    };
     let url = '/api/articles';
     let method = 'POST';
 

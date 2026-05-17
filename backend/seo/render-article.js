@@ -22,6 +22,23 @@ function stripMarkdown(value) {
         .trim();
 }
 
+function plainArticleContent(article) {
+    if (article?.content_format === 'block') {
+        try {
+            const blocks = JSON.parse(String(article.content || '[]'));
+            if (Array.isArray(blocks)) {
+                return blocks.map(block => block?.text || block?.content || block?.title || '').join('\n\n');
+            }
+        } catch (_) {
+            return article.content || '';
+        }
+    }
+    if (article?.content_format === 'html') {
+        return String(article.content || '').replace(/<[^>]+>/g, ' ');
+    }
+    return article?.content || '';
+}
+
 function parseTags(value) {
     if (Array.isArray(value)) return value.filter(Boolean).map(String);
     if (!value) return [];
@@ -49,7 +66,7 @@ function articleUrl(article) {
 }
 
 function articleDescription(article) {
-    return stripMarkdown(article.excerpt || article.content || DEFAULT_DESCRIPTION).slice(0, 160) || DEFAULT_DESCRIPTION;
+    return stripMarkdown(article.excerpt || plainArticleContent(article) || DEFAULT_DESCRIPTION).slice(0, 160) || DEFAULT_DESCRIPTION;
 }
 
 function renderPlainContent(content, limit = 12) {
@@ -97,7 +114,7 @@ function renderArticleHtml(article) {
     const description = articleDescription(article);
     const url = articleUrl(article);
     const image = absoluteUrl(article.cover_image || DEFAULT_IMAGE);
-    const body = renderPlainContent(article.content || article.excerpt || '');
+    const body = renderPlainContent(plainArticleContent(article) || article.excerpt || '');
 
     return `<!DOCTYPE html>
 <html lang="zh-CN">

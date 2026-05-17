@@ -46,7 +46,7 @@ router.get('/', (req, res) => {
 // 创建文章：普通用户可发普通分类，公告类仅管理员可发。
 router.post('/', authenticateToken, (req, res) => {
     try {
-        const { title, excerpt, content, category, tags, read_time, cover_image } = req.body;
+        const { title, excerpt, content, content_format, category, tags, read_time, cover_image, cover_image_asset_id } = req.body;
         if (!title) {
             return res.status(400).json({ success: false, message: '请求处理失败' });
         }
@@ -61,12 +61,14 @@ router.post('/', authenticateToken, (req, res) => {
             title,
             excerpt,
             content,
+            contentFormat: content_format,
             category: finalCategory,
             tags,
             authorId: req.user.scope === 'admin' ? null : req.user.id,
             publishDate,
             readTime: read_time,
-            coverImage: cover_image
+            coverImage: cover_image,
+            coverImageAssetId: cover_image_asset_id
         });
         res.status(201).json({ success: true, message: '操作成功', data: newArticle });
     } catch (error) {
@@ -93,15 +95,17 @@ router.get('/:id', (req, res) => {
 
 router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
-        const { title, excerpt, content, category, tags, read_time, cover_image } = req.body;
+        const { title, excerpt, content, content_format, category, tags, read_time, cover_image, cover_image_asset_id } = req.body;
         const updatedArticle = articleRepository.updateArticle(req.params.id, {
             title: title || req.body.title,
             excerpt,
             content,
+            contentFormat: content_format,
             category,
             tags,
             readTime: read_time,
-            coverImage: cover_image
+            coverImage: cover_image,
+            coverImageAssetId: cover_image_asset_id
         });
         res.json({ success: true, message: '文章更新成功', data: updatedArticle });
     } catch (error) {

@@ -1,5 +1,5 @@
 const db = require('../db');
-const { uniqueArticleSlug } = require('./article-repository');
+const { normalizeContentFormat, uniqueArticleSlug } = require('./article-repository');
 
 function findAdminByUsername(username) {
     return db.prepare('SELECT * FROM admins WHERE username = ?').get(username);
@@ -15,7 +15,7 @@ function updateAdminPassword(id, passwordHash) {
 
 function listAdminArticles() {
     return db.prepare(`
-        SELECT id, title, slug, category, view_count, status, pinned_at, created_at, updated_at
+        SELECT id, title, slug, category, content_format, cover_image_asset_id, view_count, status, pinned_at, created_at, updated_at
         FROM articles
         ORDER BY pinned_at IS NULL, pinned_at DESC, COALESCE(updated_at, created_at) DESC
     `).all();
@@ -29,10 +29,12 @@ function updateAdminArticle(id, article) {
             slug = ?,
             excerpt = ?,
             content = ?,
+            content_format = ?,
             category = ?,
             status = ?,
             read_time = COALESCE(?, read_time),
             cover_image = COALESCE(?, cover_image),
+            cover_image_asset_id = COALESCE(?, cover_image_asset_id),
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
     `).run(
@@ -40,10 +42,12 @@ function updateAdminArticle(id, article) {
         slug,
         article.excerpt || '',
         article.content || '',
+        normalizeContentFormat(article.contentFormat),
         article.category || '随笔',
         ['published', 'draft'].includes(article.status) ? article.status : 'published',
         article.readTime || null,
         article.coverImage || null,
+        article.coverImageAssetId || null,
         id
     ).changes;
 }

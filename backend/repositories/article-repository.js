@@ -1,6 +1,13 @@
 const db = require('../db');
 const { createSlug } = require('../utils/slug');
 
+const CONTENT_FORMATS = new Set(['markdown', 'html', 'block']);
+
+function normalizeContentFormat(format) {
+    const value = String(format || '').trim().toLowerCase();
+    return CONTENT_FORMATS.has(value) ? value : 'markdown';
+}
+
 function uniqueArticleSlug(title, id = null) {
     const base = createSlug(title, id ? `article-${id}` : 'article');
     let slug = base;
@@ -15,7 +22,10 @@ function uniqueArticleSlug(title, id = null) {
 
 function listArticles({ category, limit, offset }) {
     let query = `
-        SELECT a.*, u.username AS author_username
+        SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.tags, a.author_id,
+            a.publish_date, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
+            a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
+            u.username AS author_username
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
     `;
@@ -39,19 +49,24 @@ function listArticles({ category, limit, offset }) {
 function createArticle(article) {
     const slug = uniqueArticleSlug(article.title);
     const result = db.prepare(`
-        INSERT INTO articles (title, slug, excerpt, content, category, tags, author_id, publish_date, read_time, cover_image)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO articles (
+            title, slug, excerpt, content, content_format, category, tags, author_id,
+            publish_date, read_time, cover_image, cover_image_asset_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         article.title,
         slug,
         article.excerpt || '',
         article.content || '',
+        normalizeContentFormat(article.contentFormat),
         article.category,
         JSON.stringify(article.tags || []),
         article.authorId,
         article.publishDate,
         article.readTime || '5 min',
-        article.coverImage || null
+        article.coverImage || null,
+        article.coverImageAssetId || null
     );
     return findArticleById(result.lastInsertRowid);
 }
@@ -73,17 +88,29 @@ function updateArticle(id, article) {
     const slug = uniqueArticleSlug(article.title, id);
     db.prepare(`
         UPDATE articles
-        SET title = ?, slug = ?, excerpt = ?, content = ?, category = ?, tags = ?, read_time = ?, cover_image = ?, updated_at = CURRENT_TIMESTAMP
+        SET title = ?,
+            slug = ?,
+            excerpt = ?,
+            content = ?,
+            content_format = ?,
+            category = ?,
+            tags = ?,
+            read_time = ?,
+            cover_image = ?,
+            cover_image_asset_id = ?,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
     `).run(
         article.title,
         slug,
         article.excerpt || '',
         article.content || '',
+        normalizeContentFormat(article.contentFormat),
         article.category || '公告',
         JSON.stringify(article.tags || []),
         article.readTime || '5 min',
         article.coverImage !== undefined ? article.coverImage : null,
+        article.coverImageAssetId || null,
         id
     );
     return findArticleById(id);
@@ -95,7 +122,7 @@ function deleteArticle(id) {
 
 function listUserArticles(userId) {
     return db.prepare(`
-        SELECT id, title, slug, category, view_count, status, pinned_at, created_at, updated_at
+        SELECT id, title, slug, category, view_count, status, pinned_at, content_format, cover_image_asset_id, created_at, updated_at
         FROM articles WHERE author_id = ?
         ORDER BY pinned_at IS NULL, pinned_at DESC, created_at DESC
     `).all(userId);
@@ -103,8 +130,8 @@ function listUserArticles(userId) {
 
 function listSeoArticles(limit = 500) {
     return db.prepare(`
-        SELECT a.id, a.title, a.slug, a.excerpt, a.publish_date, a.created_at, a.updated_at,
-            a.cover_image, a.category, a.tags, a.read_time, u.username AS author_username
+        SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.content_format, a.publish_date, a.created_at, a.updated_at,
+            a.cover_image, a.cover_image_asset_id, a.category, a.tags, a.read_time, u.username AS author_username
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
         ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, a.publish_date DESC, a.created_at DESC
@@ -116,15 +143,35 @@ function updateUserArticle(id, article) {
     const slug = uniqueArticleSlug(article.title, id);
     db.prepare(`
         UPDATE articles SET
-            title = ?, slug = ?, excerpt = ?, content = ?, category = ?,
-            read_time = ?, cover_image = ?, updated_at = CURRENT_TIMESTAMP
+            title = ?,
+            slug = ?,
+            excerpt = ?,
+            content = ?,
+            content_format = ?,
+            category = ?,
+            read_time = ?,
+            cover_image = ?,
+            cover_image_asset_id = ?,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    `).run(article.title, slug, article.excerpt || '', article.content || '', article.category, article.readTime || '5 min', article.coverImage || null, id);
+    `).run(
+        article.title,
+        slug,
+        article.excerpt || '',
+        article.content || '',
+        normalizeContentFormat(article.contentFormat),
+        article.category,
+        article.readTime || '5 min',
+        article.coverImage || null,
+        article.coverImageAssetId || null,
+        id
+    );
     return findArticleById(id);
 }
 
 module.exports = {
     uniqueArticleSlug,
+    normalizeContentFormat,
     listArticles,
     createArticle,
     findArticleById,

@@ -208,7 +208,7 @@ router.delete('/articles/:id', authenticateToken, (req, res) => {
 // 鏇存柊鐢ㄦ埛鐨勬枃绔?
 router.put('/articles/:id', authenticateToken, (req, res) => {
     try {
-        const { title, excerpt, content, category, read_time, cover_image } = req.body;
+        const { title, excerpt, content, content_format, category, read_time, cover_image, cover_image_asset_id } = req.body;
         const articleId = req.params.id;
 
         const article = articleRepository.findArticleById(articleId);
@@ -226,9 +226,11 @@ router.put('/articles/:id', authenticateToken, (req, res) => {
             title,
             excerpt,
             content,
+            contentFormat: content_format,
             category,
             readTime: read_time,
-            coverImage: cover_image
+            coverImage: cover_image,
+            coverImageAssetId: cover_image_asset_id
         });
 
         res.json({
