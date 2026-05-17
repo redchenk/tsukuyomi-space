@@ -162,6 +162,24 @@ function insertMarkdownTemplate(type) {
   actions[type]?.();
 }
 
+function insertRichEmbed(type) {
+  if (type === 'bilibili') {
+    const target = window.prompt('输入 B 站 BV 号或视频链接');
+    if (!target) return;
+    const title = window.prompt('视频标题', 'Bilibili 视频') || 'Bilibili 视频';
+    replaceContentSelection(`\n::bilibili[${title.replace(/[\]\r\n]/g, ' ')}](${target.trim()})\n`);
+    return;
+  }
+
+  if (type === 'media') {
+    const url = window.prompt('输入媒体链接');
+    if (!url) return;
+    const title = window.prompt('卡片标题', '媒体卡片') || '媒体卡片';
+    const description = window.prompt('卡片描述，可留空', '') || '';
+    replaceContentSelection(`\n::media[${title.replace(/[\]\r\n]/g, ' ')}](${url.trim()} "${description.replace(/["\r\n]/g, ' ')}")\n`);
+  }
+}
+
 async function handleEditorCoverUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -399,6 +417,8 @@ watch(currentArticleId, initEditor);
             <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('code')">{ }</button>
             <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('link')">Link</button>
             <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('hr')">—</button>
+            <button type="button" class="ghost-btn" @click="insertRichEmbed('bilibili')">B站</button>
+            <button type="button" class="ghost-btn" @click="insertRichEmbed('media')">媒体卡片</button>
             <button
               type="button"
               class="primary-btn markdown-image-btn"

@@ -15,6 +15,7 @@ function escapeHtml(value) {
 
 function stripMarkdown(value) {
     return String(value || '')
+        .replace(/^::(?:bilibili|media)\[([^\]]*)]\([^)]+\)\s*$/gim, '$1')
         .replace(/!\[[^\]]*]\([^)]+\)/g, '')
         .replace(/\[[^\]]+]\([^)]+\)/g, match => match.replace(/^\[|\]\([^)]+\)$/g, ''))
         .replace(/[#>*_`~|]/g, '')
@@ -27,7 +28,7 @@ function plainArticleContent(article) {
         try {
             const blocks = JSON.parse(String(article.content || '[]'));
             if (Array.isArray(blocks)) {
-                return blocks.map(block => block?.text || block?.content || block?.title || '').join('\n\n');
+                return blocks.map(block => block?.text || block?.content || block?.title || block?.description || block?.url || '').join('\n\n');
             }
         } catch (_) {
             return article.content || '';

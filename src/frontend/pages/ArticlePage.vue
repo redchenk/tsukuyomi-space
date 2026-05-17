@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
-import { renderMarkdown } from '../utils/markdown';
+import { renderBilibiliEmbed, renderMarkdown, renderMediaCard } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
 
 const props = defineProps({
@@ -42,14 +42,21 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function isSafeMediaUrl(value) {
+  return /^(https?:\/\/|\/(?!\/)|data:image\/(?:png|jpe?g|gif|webp);base64,)/i.test(String(value || '').trim());
+}
+
 function renderBlockContent(content) {
   try {
     const blocks = JSON.parse(String(content || '[]'));
     if (!Array.isArray(blocks)) return renderMarkdown(content);
     return blocks.map((block) => {
       if (block?.type === 'heading') return `<h2>${escapeHtml(block.text || '')}</h2>`;
-      if (block?.type === 'image' && block.url) return `<figure class="markdown-image"><img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt || '')}" loading="lazy"></figure>`;
-      if (block?.type === 'video' && block.url) return `<p><a href="${escapeHtml(block.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(block.title || block.url)}</a></p>`;
+      if (block?.type === 'image' && isSafeMediaUrl(block.url)) return `<figure class="markdown-image"><img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt || '')}" loading="lazy"></figure>`;
+      if (block?.type === 'bilibili') return renderBilibiliEmbed(block.bvid || block.url || block.aid, block.title || 'Bilibili video');
+      if (block?.type === 'video' && /bilibili\.com|BV[a-zA-Z0-9]+|av\d+/i.test(`${block.url || ''} ${block.bvid || ''} ${block.aid || ''}`)) return renderBilibiliEmbed(block.bvid || block.url || block.aid, block.title || 'Bilibili video');
+      if (block?.type === 'media' && block.url) return renderMediaCard(block.url, block.title, block.description);
+      if (block?.type === 'video' && block.url) return renderMediaCard(block.url, block.title || 'Video', block.description || '');
       return `<p>${escapeHtml(block?.text || block?.content || '')}</p>`;
     }).join('');
   } catch (_) {

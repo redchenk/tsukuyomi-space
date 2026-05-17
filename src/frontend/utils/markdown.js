@@ -24,6 +24,68 @@ function sanitizeMarkdownUrl(value) {
   return '';
 }
 
+function splitTargetAndTitle(value) {
+  const source = String(value || '').trim();
+  const quoted = source.match(/^(\S+)(?:\s+["']([^"']*)["'])?$/);
+  if (!quoted) return { target: source, title: '' };
+  return { target: quoted[1] || '', title: quoted[2] || '' };
+}
+
+function parseBilibiliTarget(value) {
+  const source = String(value || '').trim().replace(/&amp;/g, '&');
+  const result = { bvid: '', aid: '', page: '1' };
+  const pageMatch = source.match(/[?&]p=(\d+)/i) || source.match(/[?&]page=(\d+)/i);
+  if (pageMatch) result.page = pageMatch[1];
+
+  const bvidMatch = source.match(/(BV[a-zA-Z0-9]+)/i) || source.match(/[?&]bvid=(BV[a-zA-Z0-9]+)/i);
+  if (bvidMatch) {
+    result.bvid = bvidMatch[1];
+    return result;
+  }
+
+  const aidMatch = source.match(/(?:av|aid=)(\d+)/i);
+  if (aidMatch) result.aid = aidMatch[1];
+  return result;
+}
+
+export function renderBilibiliEmbed(target, title = 'Bilibili video') {
+  const parsed = parseBilibiliTarget(target);
+  const params = new URLSearchParams({
+    page: parsed.page || '1',
+    high_quality: '1',
+    danmaku: '0'
+  });
+  if (parsed.bvid) params.set('bvid', parsed.bvid);
+  if (parsed.aid) params.set('aid', parsed.aid);
+  if (!parsed.bvid && !parsed.aid) return '';
+
+  return `<figure class="markdown-bilibili">
+    <div class="markdown-bilibili-frame">
+      <iframe src="https://player.bilibili.com/player.html?${escapeAttr(params.toString())}" title="${escapeAttr(title || 'Bilibili video')}" loading="lazy" allowfullscreen></iframe>
+    </div>
+    <figcaption>${escapeHtml(title || parsed.bvid || `av${parsed.aid}`)}</figcaption>
+  </figure>`;
+}
+
+export function renderMediaCard(url, title = '', description = '') {
+  const safeUrl = sanitizeMarkdownUrl(url);
+  if (!safeUrl || !/^https?:\/\//i.test(safeUrl)) return '';
+  let host = safeUrl;
+  try {
+    host = new URL(safeUrl).hostname;
+  } catch (_) {
+    host = safeUrl.replace(/^https?:\/\//i, '').split('/')[0];
+  }
+  return `<a class="markdown-media-card" href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener noreferrer">
+    <span class="markdown-media-card-icon">Link</span>
+    <span class="markdown-media-card-main">
+      <strong>${escapeHtml(title || host)}</strong>
+      ${description ? `<small>${escapeHtml(description)}</small>` : ''}
+      <em>${escapeHtml(host)}</em>
+    </span>
+  </a>`;
+}
+
 function renderInline(value) {
   const codeSpans = [];
   let source = String(value ?? '').replace(/`([^`\n]+)`/g, (_, code) => {
@@ -72,7 +134,7 @@ function renderList(lines, ordered = false) {
 
 function renderParagraph(lines) {
   const rendered = renderInline(lines.join('\n')).replace(/\n/g, '<br>');
-  if (/^<figure class="markdown-image">[\s\S]*<\/figure>$/.test(rendered)) return rendered;
+  if (/^<(figure|a) class="markdown-(image|bilibili|media-card)"[\s\S]*(<\/figure>|<\/a>)$/.test(rendered)) return rendered;
   return `<p>${rendered}</p>`;
 }
 
@@ -139,6 +201,24 @@ export function renderMarkdown(markdown) {
 
     if (!line.trim()) {
       flushFlow();
+      continue;
+    }
+
+    const bilibili = line.match(/^\s*::bilibili\[([^\]\n]*)\]\(([^)\n]+)\)\s*$/i);
+    if (bilibili) {
+      flushFlow();
+      const { target, title } = splitTargetAndTitle(bilibili[2]);
+      const embed = renderBilibiliEmbed(target, bilibili[1] || title);
+      if (embed) html.push(embed);
+      continue;
+    }
+
+    const media = line.match(/^\s*::media\[([^\]\n]*)\]\(([^)\n]+)\)\s*$/i);
+    if (media) {
+      flushFlow();
+      const { target, title } = splitTargetAndTitle(media[2]);
+      const card = renderMediaCard(target, media[1] || title, title && media[1] ? title : '');
+      if (card) html.push(card);
       continue;
     }
 
