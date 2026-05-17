@@ -342,6 +342,9 @@
     }
 
     .room-shell .room-weather-card {
+        width: 6.9rem !important;
+        min-width: 0 !important;
+        max-width: 6.9rem !important;
         min-height: 3.1rem;
         display: flex;
         align-items: center;
@@ -372,7 +375,7 @@
     }
 
     .room-shell .room-weather-head small {
-        max-width: 4.7rem;
+        max-width: 3.9rem;
         overflow: hidden;
         color: rgba(255, 255, 255, 0.95);
         font-size: 0.76rem;
@@ -383,7 +386,7 @@
     }
 
     .room-shell .room-weather-head strong {
-        max-width: 4.7rem;
+        max-width: 3.9rem;
         overflow: hidden;
         color: rgba(255, 255, 255, 0.9);
         font-size: 0.68rem;
@@ -399,13 +402,14 @@
     }
 
     .room-shell .room-chat-panel {
-        padding: 0.42rem;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 24px;
-        background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.045));
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 16px 38px rgba(8, 9, 20, 0.18);
-        backdrop-filter: blur(18px) saturate(1.12);
+        max-height: min(42dvh, 13rem);
+        overflow: visible;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
         contain: none;
     }
 
@@ -427,7 +431,7 @@
     .room-shell .room-chat-panel .room-chat-messages {
         justify-self: center;
         width: min(19rem, calc(100vw - 4.2rem));
-        max-height: 8.5rem;
+        max-height: 5.2rem;
         margin: 0;
         padding: 0.34rem;
         overflow-y: auto;
@@ -435,9 +439,9 @@
         -webkit-overflow-scrolling: touch;
         border: 0;
         border-radius: 18px;
-        background: rgba(255, 255, 255, 0.08);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 12px 30px rgba(8, 9, 20, 0.16);
-        backdrop-filter: blur(16px) saturate(1.1);
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
         scrollbar-width: thin;
     }
 
