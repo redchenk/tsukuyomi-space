@@ -1220,15 +1220,7 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
 
 @media (max-width: 820px) {
     .room-shell .site-rail {
-        top: 0.55rem;
-        left: 0.55rem;
-        bottom: auto;
-        width: 3.35rem;
-        max-height: calc(100vh - 1.1rem);
-        display: grid;
-        padding: 0.55rem 0.42rem;
-        overflow: auto;
-        border-radius: 16px;
+        display: none;
     }
 
     .room-stage {

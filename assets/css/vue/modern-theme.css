@@ -1370,17 +1370,6 @@ html[data-theme="dark"] .status-box {
     box-shadow: 0 22px 58px rgba(0, 0, 0, 0.34);
 }
 
-/* Mobile experience refresh */
-.mobile-nav-toggle {
-    color: var(--ink);
-}
-
-html[data-theme="dark"] .mobile-nav-toggle {
-    color: var(--text);
-    border-color: rgba(177, 205, 238, 0.18);
-    background: rgba(17, 24, 39, 0.9);
-}
-
 .hub-copy,
 .hub-feature,
 .hub-grid-wrap,

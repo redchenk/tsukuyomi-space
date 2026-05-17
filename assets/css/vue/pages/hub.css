@@ -225,6 +225,11 @@
     gap: 0.42rem;
 }
 
+.hub-primary .ts-icon,
+.hub-secondary .ts-icon {
+    margin: 0;
+}
+
 .hub-plaza-form button:disabled .ts-icon {
     animation: hubIconSpin 1s linear infinite;
 }
