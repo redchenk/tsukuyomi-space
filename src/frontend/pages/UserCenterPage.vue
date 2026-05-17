@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { authHeaders, clearSession, getAuthToken, getSession, parseResponse, updateStoredUser } from '../api/client';
 import { compressImage } from '../utils/image';
+import { formatDateOnly } from '../utils/time';
 
 const props = defineProps({
   lang: { type: String, required: true },
@@ -49,7 +50,7 @@ const ucTotalViews = computed(() => {
 });
 const ucJoinDate = computed(() => {
   if (!ucUser.value?.created_at) return '-';
-  return new Date(ucUser.value.created_at).toLocaleDateString(locale.value);
+  return formatDateOnly(ucUser.value.created_at, locale.value);
 });
 const ucFilteredArticles = computed(() => {
   if (!uc.articleQuery) return uc.articles;
@@ -101,7 +102,7 @@ function ucDefaultAvatar(name) {
 
 function ucFormatDate(value) {
   if (!value) return '-';
-  return new Date(value).toLocaleDateString(locale.value);
+  return formatDateOnly(value, locale.value);
 }
 
 async function ucLoadProfile() {

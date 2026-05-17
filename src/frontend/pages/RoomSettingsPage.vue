@@ -7,6 +7,7 @@ import {
   queueRoomLive2DForNextRoom,
   readRoomLive2DDebugState
 } from '../services/room/live2dControl';
+import { formatDateTime } from '../utils/time';
 
 const props = defineProps({
   user: { type: Object, default: null }
@@ -240,7 +241,7 @@ function live2DStatusLabel(status = live2dDebug.status) {
 
 function formatDebugTime(value) {
   if (!value) return '暂无';
-  return new Date(value).toLocaleString();
+  return formatDateTime(value, 'zh-CN');
 }
 
 function onLive2DDebugEvent(event) {

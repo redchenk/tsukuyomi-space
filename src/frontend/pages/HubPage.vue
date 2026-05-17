@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { authHeaders, getSession, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
+import { compareAppDate } from '../utils/time';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -95,10 +96,10 @@ async function loadHubPreview() {
     const messages = messageResult.success && Array.isArray(messageResult.data) ? messageResult.data : [];
 
     latestArticle.value = [...articles]
-      .sort((a, b) => new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0))[0] || null;
+      .sort((a, b) => compareAppDate(b.created_at || b.updated_at, a.created_at || a.updated_at))[0] || null;
     plazaMessages.value = [...messages]
       .filter((item) => !item.parent_id)
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      .sort((a, b) => compareAppDate(b.created_at, a.created_at));
     siteStats.value = statsResult.success ? statsResult.data || null : null;
   } catch (_) {
     latestArticle.value = null;

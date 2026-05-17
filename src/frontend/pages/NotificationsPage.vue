@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive } from 'vue';
 import { authHeaders, parseResponse } from '../api/client';
+import { formatDateTime } from '../utils/time';
 
 const emit = defineEmits(['go']);
 
@@ -14,9 +15,7 @@ const inbox = reactive({
 const unreadLabel = computed(() => inbox.unread > 99 ? '99+' : String(inbox.unread || 0));
 
 function formatDate(value) {
-  if (!value) return '-';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN');
+  return formatDateTime(value, 'zh-CN');
 }
 
 function notificationIcon(type) {

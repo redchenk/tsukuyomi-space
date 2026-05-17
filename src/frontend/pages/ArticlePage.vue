@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
+import { formatDateTime } from '../utils/time';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -28,9 +29,7 @@ const articlePath = computed(() => {
 const topComments = computed(() => comments.value.filter((item) => !item.parent_id));
 
 function formatDate(value) {
-  if (!value) return '-';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN');
+  return formatDateTime(value, 'zh-CN');
 }
 
 function escapeHtml(value) {

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive } from 'vue';
+import { formatDateTime } from '../utils/time';
 
 const emit = defineEmits(['go', 'auth-changed']);
 
@@ -62,8 +63,7 @@ const pinnedArticleCount = computed(() => terminal.articles.filter((item) => ite
 
 function formatDate(value) {
   if (!value) return '未记录';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN');
+  return formatDateTime(value, 'zh-CN');
 }
 
 function articlePath(article) {
@@ -284,7 +284,7 @@ async function saveSettings() {
 }
 
 function updateClock() {
-  terminal.clock = new Date().toLocaleString('zh-CN');
+  terminal.clock = formatDateTime(new Date(), 'zh-CN');
 }
 
 onMounted(() => {

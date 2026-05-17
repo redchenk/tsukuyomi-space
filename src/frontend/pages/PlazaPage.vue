@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { authHeaders, getSession, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
+import { compareAppDate, formatDateTime, parseAppDate } from '../utils/time';
 
 const props = defineProps({
   lang: { type: String, required: true },
@@ -71,7 +72,7 @@ const plazaMessages = computed(() => {
 
   let top = plaza.messages.filter((item) => !item.parent_id).map((item) => ({
     ...item,
-    replies: (repliesByParent[item.id] || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    replies: (repliesByParent[item.id] || []).sort((a, b) => compareAppDate(a.created_at, b.created_at))
   }));
 
   if (plaza.query) {
@@ -84,22 +85,22 @@ const plazaMessages = computed(() => {
 
   const currentUsername = user.value?.username;
   if (plaza.filter === 'hot') {
-    top.sort((a, b) => (b.like_count || 0) - (a.like_count || 0) || new Date(b.created_at) - new Date(a.created_at));
+    top.sort((a, b) => (b.like_count || 0) - (a.like_count || 0) || compareAppDate(b.created_at, a.created_at));
   } else if (plaza.filter === 'replied') {
     top = top.filter((item) => item.replies.length > 0);
-    top.sort((a, b) => b.replies.length - a.replies.length || new Date(b.created_at) - new Date(a.created_at));
+    top.sort((a, b) => b.replies.length - a.replies.length || compareAppDate(b.created_at, a.created_at));
   } else if (plaza.filter === 'mine') {
     top = top.filter((item) => currentUsername && item.author === currentUsername);
-    top.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    top.sort((a, b) => compareAppDate(b.created_at, a.created_at));
   } else {
-    top.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    top.sort((a, b) => compareAppDate(b.created_at, a.created_at));
   }
 
   return top;
 });
 
 const plazaActivity = computed(() => [...plaza.messages]
-  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  .sort((a, b) => compareAppDate(b.created_at, a.created_at))
   .slice(0, 6));
 
 function go(path) {
@@ -256,11 +257,11 @@ function plazaAvatarAlt(name) {
 
 function plazaFormatDate(value) {
   if (!value) return '-';
-  return new Date(value).toLocaleString(isZh.value ? 'zh-CN' : 'ja-JP', { hour12: false });
+  return formatDateTime(value, isZh.value ? 'zh-CN' : 'ja-JP');
 }
 
 function plazaFormatRelative(value) {
-  const diff = Math.max(0, Date.now() - new Date(value).getTime());
+  const diff = Math.max(0, Date.now() - (parseAppDate(value)?.getTime() || Date.now()));
   const min = Math.floor(diff / 60000);
   if (min < 1) return fallback.value.justNow;
   if (min < 60) return `${min} ${fallback.value.minutesAgo}`;

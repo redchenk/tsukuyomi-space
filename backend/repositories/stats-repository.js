@@ -22,7 +22,7 @@ function publicViewCounters() {
             WHERE event_type = 'view'
         )
         SELECT
-            COUNT(DISTINCT CASE WHEN date(created_at) = date('now', 'localtime') THEN visitor_key END) AS today,
+            COUNT(DISTINCT CASE WHEN date(created_at, '+8 hours') = date('now', '+8 hours') THEN visitor_key END) AS today,
             COUNT(DISTINCT CASE WHEN created_at >= datetime('now', '-7 days') THEN visitor_key END) AS week,
             COUNT(DISTINCT visitor_key) AS total
         FROM view_events
@@ -39,7 +39,7 @@ function adminViewCounters() {
             WHERE event_type = 'view'
         )
         SELECT
-            COUNT(DISTINCT CASE WHEN date(created_at) = date('now', 'localtime') THEN visitor_key END) AS today,
+            COUNT(DISTINCT CASE WHEN date(created_at, '+8 hours') = date('now', '+8 hours') THEN visitor_key END) AS today,
             COUNT(DISTINCT visitor_key) AS total
         FROM view_events
     `).get();
@@ -55,7 +55,7 @@ function analyticsViewCounters() {
             WHERE event_type = 'view'
         )
         SELECT
-            COUNT(DISTINCT CASE WHEN date(created_at) = date('now', 'localtime') THEN visitor_key END) AS today,
+            COUNT(DISTINCT CASE WHEN date(created_at, '+8 hours') = date('now', '+8 hours') THEN visitor_key END) AS today,
             COUNT(DISTINCT CASE WHEN created_at >= datetime('now', '-7 days') THEN visitor_key END) AS week,
             COUNT(DISTINCT CASE WHEN created_at >= datetime('now', '-30 days') THEN visitor_key END) AS month,
             COUNT(DISTINCT visitor_key) AS total
