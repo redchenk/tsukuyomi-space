@@ -463,28 +463,6 @@ html[data-theme="light"] .site-music-track-pill {
     transform: translateX(0.4rem);
 }
 
-.site-music-handle-glyph {
-    width: 1.12rem;
-    display: grid;
-    gap: 0.22rem;
-    place-items: center;
-    color: currentColor;
-    transition: transform var(--ts-motion-base) var(--ts-ease-lift), opacity var(--ts-motion-base);
-}
-
-.site-music-handle-glyph i {
-    width: 1.08rem;
-    height: 0.16rem;
-    border-radius: 999px;
-    background: currentColor;
-    box-shadow: 0 1px 4px rgba(42, 38, 72, 0.18);
-    opacity: 0.9;
-}
-
-.site-music-drawer.is-open .site-music-handle-glyph {
-    transform: translateY(1px);
-}
-
 .site-music-body {
     display: grid;
     gap: 0.42rem;

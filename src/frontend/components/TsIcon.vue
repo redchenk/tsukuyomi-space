@@ -78,6 +78,14 @@ const iconPaths = {
     ['circle', { cx: '6', cy: '18', r: '3' }],
     ['circle', { cx: '18', cy: '16', r: '3' }]
   ],
+  audioLines: [
+    ['path', { d: 'M2 10v3' }],
+    ['path', { d: 'M6 6v11' }],
+    ['path', { d: 'M10 3v18' }],
+    ['path', { d: 'M14 8v7' }],
+    ['path', { d: 'M18 5v13' }],
+    ['path', { d: 'M22 10v3' }]
+  ],
   play: [['path', { d: 'm8 5 11 7-11 7Z' }]],
   pause: [
     ['path', { d: 'M8 5v14' }],
