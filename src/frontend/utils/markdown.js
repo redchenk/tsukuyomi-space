@@ -17,11 +17,28 @@ function escapeAttr(value) {
 function sanitizeMarkdownUrl(value) {
   const url = String(value || '').trim().replace(/&amp;/g, '&');
   if (!url) return '';
+  if (/^\/\/[a-z0-9.-]+(?:\/|$)/i.test(url)) return `https:${url}`;
   const lower = url.toLowerCase();
   if (/^data:image\/(png|jpe?g|gif|webp);base64,[a-z0-9+/=\s]+$/i.test(url)) return url.replace(/\s/g, '');
   if (/^(https?:\/\/|\/(?!\/)|\.\/|\.\.\/|#)/i.test(url)) return url;
   if (/^(javascript|data|vbscript):/i.test(lower)) return '';
   return '';
+}
+
+function iframeAttr(source, name) {
+  const pattern = new RegExp(`${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i');
+  const match = String(source || '').match(pattern);
+  return match ? (match[1] || match[2] || match[3] || '').trim() : '';
+}
+
+function parseIframeInput(value) {
+  const source = String(value || '').trim();
+  if (!/^<iframe[\s>]/i.test(source)) return { src: source, title: '', height: '' };
+  return {
+    src: iframeAttr(source, 'src'),
+    title: iframeAttr(source, 'title') || iframeAttr(source, 'aria-label'),
+    height: iframeAttr(source, 'height')
+  };
 }
 
 function splitTargetAndTitle(value) {
@@ -87,12 +104,14 @@ export function renderMediaCard(url, title = '', description = '') {
 }
 
 export function renderIframeEmbed(url, title = 'Embedded content', height = '') {
-  const safeUrl = sanitizeMarkdownUrl(url);
+  const iframeInput = parseIframeInput(url);
+  const safeUrl = sanitizeMarkdownUrl(iframeInput.src);
   if (!safeUrl || !/^https:\/\//i.test(safeUrl)) return '';
-  const parsedHeight = Math.min(Math.max(Number.parseInt(height, 10) || 420, 220), 900);
+  const finalTitle = title || iframeInput.title || 'Embedded content';
+  const parsedHeight = Math.min(Math.max(Number.parseInt(height || iframeInput.height, 10) || 420, 220), 900);
   return `<figure class="markdown-iframe">
-    <iframe src="${escapeAttr(safeUrl)}" title="${escapeAttr(title || 'Embedded content')}" loading="lazy" height="${parsedHeight}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"></iframe>
-    <figcaption>${escapeHtml(title || safeUrl)}</figcaption>
+    <iframe src="${escapeAttr(safeUrl)}" title="${escapeAttr(finalTitle)}" loading="lazy" height="${parsedHeight}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"></iframe>
+    <figcaption>${escapeHtml(finalTitle || safeUrl)}</figcaption>
   </figure>`;
 }
 
@@ -232,7 +251,7 @@ export function renderMarkdown(markdown) {
       continue;
     }
 
-    const iframe = line.match(/^\s*::iframe\[([^\]\n]*)\]\(([^)\n]+)\)\s*$/i);
+    const iframe = line.match(/^\s*::iframe\[([^\]\n]*)\]\(([\s\S]+)\)\s*$/i);
     if (iframe) {
       flushFlow();
       const { target, title } = splitTargetAndTitle(iframe[2]);

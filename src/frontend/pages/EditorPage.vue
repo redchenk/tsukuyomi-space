@@ -181,11 +181,13 @@ function insertRichEmbed(type) {
   }
 
   if (type === 'iframe') {
-    const url = window.prompt('输入 iframe 地址，仅支持 HTTPS');
-    if (!url) return;
+    const iframe = window.prompt('输入 iframe 地址或完整 iframe 代码，仅支持 HTTPS');
+    if (!iframe) return;
     const title = window.prompt('iframe 标题', '嵌入内容') || '嵌入内容';
     const height = window.prompt('高度，220-900', '420') || '420';
-    replaceContentSelection(`\n::iframe[${title.replace(/[\]\r\n]/g, ' ')}](${url.trim()} "${height.replace(/["\r\n]/g, ' ')}")\n`);
+    const srcMatch = iframe.match(/src\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const src = (srcMatch?.[1] || srcMatch?.[2] || srcMatch?.[3] || iframe).trim();
+    replaceContentSelection(`\n::iframe[${title.replace(/[\]\r\n]/g, ' ')}](${src} "${height.replace(/["\r\n]/g, ' ')}")\n`);
   }
 }
 
