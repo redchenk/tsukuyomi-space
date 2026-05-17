@@ -247,47 +247,48 @@ body.vue-room-route {
     top: clamp(1rem, 3vw, 2rem);
     right: clamp(1rem, 3vw, 2rem);
     z-index: 12;
-    width: min(300px, calc(100vw - 7.5rem));
-    display: grid;
-    gap: 0.82rem;
+    width: 9.2rem;
+    max-width: calc(100vw - 7.5rem);
+    min-height: 3.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0;
     overflow: hidden;
-    padding: 1rem;
-    border: 1px solid var(--room-glass-border);
-    border-radius: 22px;
+    padding: 0.38rem 0.68rem 0.38rem 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
     color: #eff7ff;
-    background: var(--room-glass-bg);
-    box-shadow: var(--room-glass-shadow);
-    backdrop-filter: blur(12px) saturate(1.08);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08)),
+        rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 14px 34px rgba(12, 10, 24, 0.2);
+    backdrop-filter: blur(18px) saturate(1.14);
+    -webkit-backdrop-filter: blur(18px) saturate(1.14);
 }
 
 .room-weather-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background:
-        radial-gradient(circle at 20% 16%, rgba(174, 242, 255, 0.24), transparent 34%),
-        radial-gradient(circle at 88% 8%, rgba(255, 122, 200, 0.18), transparent 38%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    display: none;
 }
 
 .room-weather-head {
     display: flex;
     align-items: center;
-    gap: 0.78rem;
+    min-width: 0;
+    gap: 0.42rem;
 }
 
 .room-weather-icon {
-    width: 42px;
-    height: 42px;
+    width: 2rem;
+    height: 2rem;
     display: grid;
     place-items: center;
     flex: 0 0 auto;
-    border: 1px solid rgba(231, 249, 255, 0.18);
-    border-radius: 14px;
-    color: #fff;
-    background: rgba(255, 255, 255, 0.1);
-    font-size: 1.18rem;
+    border: 0;
+    border-radius: 999px;
+    color: #ffd45c;
+    background: transparent;
+    font-size: 1.52rem;
+    line-height: 1;
 }
 
 .room-weather-head small,
@@ -306,31 +307,33 @@ body.vue-room-route {
 }
 
 #roomWeatherCity {
-    width: fit-content;
-    max-width: 100%;
-    margin-bottom: 0.22rem;
-    padding: 0.2rem 0.46rem;
+    width: auto;
+    max-width: 5.2rem;
+    margin-bottom: 0.08rem;
+    padding: 0;
     overflow: hidden;
-    border: 1px solid rgba(231, 249, 255, 0.14);
-    border-radius: 999px;
-    color: rgba(239, 247, 255, 0.74);
-    background: rgba(9, 15, 32, 0.38);
+    border: 0;
+    border-radius: 0;
+    color: rgba(239, 247, 255, 0.95);
+    background: transparent;
     text-overflow: ellipsis;
     white-space: nowrap;
-    backdrop-filter: blur(8px);
+    backdrop-filter: none;
 }
 
 .room-weather-head strong {
     display: block;
-    color: #fff;
-    font-size: 1.28rem;
-    line-height: 1.1;
+    max-width: 5.2rem;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.76rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .room-weather-meta {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5rem;
+    display: none;
 }
 
 .room-weather-meta span {
@@ -345,9 +348,7 @@ body.vue-room-route {
 }
 
 .room-weather-card p {
-    margin: 0;
-    line-height: 1.65;
-    font-size: 0.84rem;
+    display: none;
 }
 
 .room-stage-copy p {
