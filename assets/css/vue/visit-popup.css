@@ -1,7 +1,7 @@
 .visit-popup-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 80;
+    z-index: 220;
     display: grid;
     place-items: center;
     padding: clamp(1rem, 4vw, 2rem);
@@ -73,9 +73,12 @@
 @media (max-width: 640px) {
     .visit-popup-backdrop {
         align-items: end;
+        padding: 1rem 0.85rem max(6.2rem, calc(env(safe-area-inset-bottom) + 5.8rem));
     }
 
     .visit-popup-card {
+        max-height: min(72dvh, calc(100dvh - 7.6rem));
+        overflow: auto;
         border-radius: var(--ts-radius-lg);
     }
 }
