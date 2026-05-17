@@ -28,7 +28,7 @@ const emit = defineEmits(['toggle', 'settings']);
 
     <button class="panel-toggle-btn" type="button" aria-label="设置" @click="emit('settings')">
       <span class="dock-icon" aria-hidden="true">
-        <TsIcon name="settings" :size="18" />
+        <TsIcon name="ellipsis" :size="22" />
       </span>
       <span class="dock-label">设置</span>
     </button>

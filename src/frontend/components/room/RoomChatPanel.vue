@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import TsIcon from '../TsIcon.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
 
 defineProps({
@@ -59,9 +60,15 @@ function ttsLabel(chat, messageId) {
       </div>
       <div class="chat-input-row">
         <input ref="imageInputRef" id="chatImageInput" type="file" accept="image/*" hidden @change="chat.attachImage($event.target.files?.[0]); $event.target.value = ''">
-        <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" title="&#19978;&#20256;&#22270;&#29255;" aria-label="&#19978;&#20256;&#22270;&#29255;" @click="imageInputRef?.click()"><span aria-hidden="true">+</span><span>&#22270;&#29255;</span></button>
+        <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" title="&#19978;&#20256;&#22270;&#29255;" aria-label="&#19978;&#20256;&#22270;&#29255;" @click="imageInputRef?.click()">
+          <TsIcon name="image" :size="22" :stroke-width="2" />
+          <span>&#22270;&#29255;</span>
+        </button>
         <input id="chatInput" v-model="chat.input.value" type="text" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;" @keydown.enter="chat.send">
-        <button id="sendChatBtn" class="panel-btn" type="button" :disabled="chat.sending.value" @click="chat.send">&#21457;&#36865;</button>
+        <button id="sendChatBtn" class="panel-btn" type="button" :disabled="chat.sending.value" aria-label="&#21457;&#36865;" @click="chat.send">
+          <TsIcon name="send" :size="22" :stroke-width="2.1" />
+          <span>&#21457;&#36865;</span>
+        </button>
       </div>
     </div>
   </RoomDraggablePanel>

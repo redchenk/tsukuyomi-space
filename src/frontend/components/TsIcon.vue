@@ -104,6 +104,16 @@ const iconPaths = {
     ['path', { d: 'M3 12h.01' }],
     ['path', { d: 'M3 18h.01' }]
   ],
+  image: [
+    ['rect', { x: '3', y: '3', width: '18', height: '18', rx: '2.5', ry: '2.5' }],
+    ['circle', { cx: '8.5', cy: '8.5', r: '1.5' }],
+    ['path', { d: 'm21 15-4.6-4.6a2 2 0 0 0-2.8 0L5 19' }]
+  ],
+  ellipsis: [
+    ['circle', { cx: '5', cy: '12', r: '1.2' }],
+    ['circle', { cx: '12', cy: '12', r: '1.2' }],
+    ['circle', { cx: '19', cy: '12', r: '1.2' }]
+  ],
   menu: [
     ['path', { d: 'M4 6h16' }],
     ['path', { d: 'M4 12h16' }],
@@ -158,6 +168,7 @@ const paths = computed(() => iconPaths[props.name] || iconPaths.home);
     <template v-for="(path, index) in paths" :key="index">
       <path v-if="path[0] === 'path'" v-bind="path[1]" />
       <circle v-else-if="path[0] === 'circle'" v-bind="path[1]" />
+      <rect v-else-if="path[0] === 'rect'" v-bind="path[1]" />
     </template>
   </svg>
 </template>
