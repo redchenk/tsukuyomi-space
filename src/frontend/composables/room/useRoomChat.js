@@ -576,7 +576,7 @@ export function useRoomChat({ live2d, world }) {
   function loadHistory() {
     const history = readJson('roomChatHistory', []);
     messages.value = [];
-    addMessage('system', 'Live2D is ready');
+    addMessage('system', 'Live2D 已就绪');
     history.forEach((message) => addMessage(message.role, message.content));
   }
 

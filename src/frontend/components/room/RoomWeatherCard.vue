@@ -10,8 +10,7 @@ defineProps({
       <span id="roomWeatherIcon" class="room-weather-icon" aria-hidden="true">{{ weather.icon }}</span>
       <div>
         <small id="roomWeatherCity" :title="weather.city">{{ weather.city }}</small>
-        <small>Room Weather</small>
-        <strong id="roomWeatherLabel">{{ weather.label }}</strong>
+        <strong id="roomWeatherLabel">{{ weather.temperature }} {{ weather.label }}</strong>
       </div>
     </div>
     <div class="room-weather-meta">
