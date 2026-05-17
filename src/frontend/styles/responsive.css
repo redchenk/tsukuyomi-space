@@ -90,9 +90,9 @@
         top: max(4.35rem, calc(env(safe-area-inset-top) + 3.55rem));
         left: 0.9rem;
         right: auto;
-        width: auto;
+        width: 8.2rem;
         min-width: 0;
-        max-width: min(8.8rem, calc(100vw - 6.2rem));
+        max-width: calc(100vw - 6.4rem);
     }
 
     .room-panel {
@@ -346,7 +346,7 @@
         display: flex;
         align-items: center;
         gap: 0;
-        padding: 0.34rem 0.62rem 0.34rem 0.48rem;
+        padding: 0.34rem 0.54rem 0.34rem 0.44rem;
         border-color: rgba(255, 255, 255, 0.2);
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.16);
@@ -355,7 +355,8 @@
     }
 
     .room-shell .room-weather-head {
-        gap: 0.42rem;
+        min-width: 0;
+        gap: 0.34rem;
     }
 
     .room-shell .room-weather-icon {
@@ -371,18 +372,25 @@
     }
 
     .room-shell .room-weather-head small {
-        max-width: 5.7rem;
+        max-width: 4.7rem;
+        overflow: hidden;
         color: rgba(255, 255, 255, 0.95);
         font-size: 0.76rem;
         font-weight: 800;
         line-height: 1.25;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .room-shell .room-weather-head strong {
+        max-width: 4.7rem;
+        overflow: hidden;
         color: rgba(255, 255, 255, 0.9);
         font-size: 0.68rem;
         font-weight: 700;
         line-height: 1.3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .room-shell .room-weather-meta,
@@ -391,11 +399,13 @@
     }
 
     .room-shell .room-chat-panel {
-        padding: 0;
-        border: 0;
-        background: transparent;
-        box-shadow: none;
-        backdrop-filter: none;
+        padding: 0.42rem;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 24px;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.045));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 16px 38px rgba(8, 9, 20, 0.18);
+        backdrop-filter: blur(18px) saturate(1.12);
         contain: none;
     }
 
@@ -409,7 +419,7 @@
 
     .room-shell .room-chat-panel .chat-body {
         display: grid;
-        gap: 0.48rem;
+        gap: 0.42rem;
         height: auto;
         max-height: none;
     }
