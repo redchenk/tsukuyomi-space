@@ -140,7 +140,7 @@ onMounted(loadUnreadNotifications);
       </a>
     </header>
 
-    <div v-if="showChrome" id="site-navigation" class="nav-actions room-nav-links site-nav-links" :class="{ open: navOpen }">
+    <div v-if="showChrome && navOpen" id="site-navigation" class="nav-actions room-nav-links site-nav-links open">
       <a
         v-for="item in navItems"
         :key="item.key"
