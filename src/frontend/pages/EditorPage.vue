@@ -181,7 +181,7 @@ function insertRichEmbed(type) {
   }
 
   if (type === 'iframe') {
-    const url = window.prompt('输入 iframe 地址');
+    const url = window.prompt('输入 iframe 地址，仅支持 HTTPS');
     if (!url) return;
     const title = window.prompt('iframe 标题', '嵌入内容') || '嵌入内容';
     const height = window.prompt('高度，220-900', '420') || '420';

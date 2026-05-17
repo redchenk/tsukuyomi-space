@@ -88,10 +88,10 @@ export function renderMediaCard(url, title = '', description = '') {
 
 export function renderIframeEmbed(url, title = 'Embedded content', height = '') {
   const safeUrl = sanitizeMarkdownUrl(url);
-  if (!safeUrl || !/^https?:\/\//i.test(safeUrl)) return '';
+  if (!safeUrl || !/^https:\/\//i.test(safeUrl)) return '';
   const parsedHeight = Math.min(Math.max(Number.parseInt(height, 10) || 420, 220), 900);
   return `<figure class="markdown-iframe">
-    <iframe src="${escapeAttr(safeUrl)}" title="${escapeAttr(title || 'Embedded content')}" loading="lazy" height="${parsedHeight}" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    <iframe src="${escapeAttr(safeUrl)}" title="${escapeAttr(title || 'Embedded content')}" loading="lazy" height="${parsedHeight}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"></iframe>
     <figcaption>${escapeHtml(title || safeUrl)}</figcaption>
   </figure>`;
 }
