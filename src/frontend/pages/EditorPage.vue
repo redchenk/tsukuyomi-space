@@ -177,6 +177,15 @@ function insertRichEmbed(type) {
     const title = window.prompt('卡片标题', '媒体卡片') || '媒体卡片';
     const description = window.prompt('卡片描述，可留空', '') || '';
     replaceContentSelection(`\n::media[${title.replace(/[\]\r\n]/g, ' ')}](${url.trim()} "${description.replace(/["\r\n]/g, ' ')}")\n`);
+    return;
+  }
+
+  if (type === 'iframe') {
+    const url = window.prompt('输入 iframe 地址');
+    if (!url) return;
+    const title = window.prompt('iframe 标题', '嵌入内容') || '嵌入内容';
+    const height = window.prompt('高度，220-900', '420') || '420';
+    replaceContentSelection(`\n::iframe[${title.replace(/[\]\r\n]/g, ' ')}](${url.trim()} "${height.replace(/["\r\n]/g, ' ')}")\n`);
   }
 }
 
@@ -419,6 +428,7 @@ watch(currentArticleId, initEditor);
             <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('hr')">—</button>
             <button type="button" class="ghost-btn" @click="insertRichEmbed('bilibili')">B站</button>
             <button type="button" class="ghost-btn" @click="insertRichEmbed('media')">媒体卡片</button>
+            <button type="button" class="ghost-btn" @click="insertRichEmbed('iframe')">iframe</button>
             <button
               type="button"
               class="primary-btn markdown-image-btn"

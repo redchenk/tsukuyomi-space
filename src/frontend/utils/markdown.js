@@ -86,6 +86,16 @@ export function renderMediaCard(url, title = '', description = '') {
   </a>`;
 }
 
+export function renderIframeEmbed(url, title = 'Embedded content', height = '') {
+  const safeUrl = sanitizeMarkdownUrl(url);
+  if (!safeUrl || !/^https?:\/\//i.test(safeUrl)) return '';
+  const parsedHeight = Math.min(Math.max(Number.parseInt(height, 10) || 420, 220), 900);
+  return `<figure class="markdown-iframe">
+    <iframe src="${escapeAttr(safeUrl)}" title="${escapeAttr(title || 'Embedded content')}" loading="lazy" height="${parsedHeight}" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    <figcaption>${escapeHtml(title || safeUrl)}</figcaption>
+  </figure>`;
+}
+
 function renderInline(value) {
   const codeSpans = [];
   let source = String(value ?? '').replace(/`([^`\n]+)`/g, (_, code) => {
@@ -134,7 +144,7 @@ function renderList(lines, ordered = false) {
 
 function renderParagraph(lines) {
   const rendered = renderInline(lines.join('\n')).replace(/\n/g, '<br>');
-  if (/^<(figure|a) class="markdown-(image|bilibili|media-card)"[\s\S]*(<\/figure>|<\/a>)$/.test(rendered)) return rendered;
+  if (/^<(figure|a) class="markdown-(image|bilibili|iframe|media-card)"[\s\S]*(<\/figure>|<\/a>)$/.test(rendered)) return rendered;
   return `<p>${rendered}</p>`;
 }
 
@@ -219,6 +229,15 @@ export function renderMarkdown(markdown) {
       const { target, title } = splitTargetAndTitle(media[2]);
       const card = renderMediaCard(target, media[1] || title, title && media[1] ? title : '');
       if (card) html.push(card);
+      continue;
+    }
+
+    const iframe = line.match(/^\s*::iframe\[([^\]\n]*)\]\(([^)\n]+)\)\s*$/i);
+    if (iframe) {
+      flushFlow();
+      const { target, title } = splitTargetAndTitle(iframe[2]);
+      const embed = renderIframeEmbed(target, iframe[1] || title, /^\d+$/.test(title) ? title : '');
+      if (embed) html.push(embed);
       continue;
     }
 

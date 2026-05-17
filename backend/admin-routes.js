@@ -5,6 +5,7 @@ const adminRepository = require('./repositories/admin-repository');
 const articleRepository = require('./repositories/article-repository');
 const statsRepository = require('./repositories/stats-repository');
 const authState = require('./services/auth-state');
+const articleMedia = require('./services/article-media');
 const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
 
 const router = express.Router();
@@ -199,7 +200,7 @@ router.put('/articles/:id', (req, res) => {
         const { title, excerpt, content, content_format, category, status, read_time, cover_image, cover_image_asset_id } = req.body || {};
         if (!String(title || '').trim()) return fail(res, 400, '标题不能为空');
 
-        const changes = adminRepository.updateAdminArticle(id, {
+        const mediaPayload = articleMedia.normalizeArticleMediaPayload({
             title: String(title).trim(),
             excerpt,
             content,
@@ -209,7 +210,9 @@ router.put('/articles/:id', (req, res) => {
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id
-        });
+        }, { articleId: id, ownerId: req.user.id });
+        const changes = adminRepository.updateAdminArticle(id, mediaPayload);
+        articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, id);
         if (!changes) return fail(res, 404, '文章不存在');
         ok(res);
     } catch (error) {

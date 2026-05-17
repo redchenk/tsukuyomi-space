@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const config = require('../../config');
 const db = require('../index');
 const { createSlug } = require('../../utils/slug');
+const { migrateExistingArticleImages } = require('../../services/article-media');
 
 const MIGRATION_TABLE = 'schema_migrations';
 
@@ -159,6 +160,7 @@ function initDatabase() {
     ensureDefaultAdminAccount();
     seedDefaultArticles();
     seedSiteSettings();
+    migrateExistingArticleImages();
 }
 
 module.exports = {

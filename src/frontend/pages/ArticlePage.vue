@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
-import { renderBilibiliEmbed, renderMarkdown, renderMediaCard } from '../utils/markdown';
+import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
 
 const props = defineProps({
@@ -55,6 +55,7 @@ function renderBlockContent(content) {
       if (block?.type === 'image' && isSafeMediaUrl(block.url)) return `<figure class="markdown-image"><img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt || '')}" loading="lazy"></figure>`;
       if (block?.type === 'bilibili') return renderBilibiliEmbed(block.bvid || block.url || block.aid, block.title || 'Bilibili video');
       if (block?.type === 'video' && /bilibili\.com|BV[a-zA-Z0-9]+|av\d+/i.test(`${block.url || ''} ${block.bvid || ''} ${block.aid || ''}`)) return renderBilibiliEmbed(block.bvid || block.url || block.aid, block.title || 'Bilibili video');
+      if (block?.type === 'iframe' && block.url) return renderIframeEmbed(block.url, block.title || 'Embedded content', block.height);
       if (block?.type === 'media' && block.url) return renderMediaCard(block.url, block.title, block.description);
       if (block?.type === 'video' && block.url) return renderMediaCard(block.url, block.title || 'Video', block.description || '');
       return `<p>${escapeHtml(block?.text || block?.content || '')}</p>`;

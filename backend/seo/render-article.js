@@ -15,7 +15,7 @@ function escapeHtml(value) {
 
 function stripMarkdown(value) {
     return String(value || '')
-        .replace(/^::(?:bilibili|media)\[([^\]]*)]\([^)]+\)\s*$/gim, '$1')
+        .replace(/^::(?:bilibili|media|iframe)\[([^\]]*)]\([^)]+\)\s*$/gim, '$1')
         .replace(/!\[[^\]]*]\([^)]+\)/g, '')
         .replace(/\[[^\]]+]\([^)]+\)/g, match => match.replace(/^\[|\]\([^)]+\)$/g, ''))
         .replace(/[#>*_`~|]/g, '')

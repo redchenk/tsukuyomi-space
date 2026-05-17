@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const articleRepository = require('./repositories/article-repository');
 const userRepository = require('./repositories/user-repository');
 const notificationRepository = require('./repositories/notification-repository');
+const articleMedia = require('./services/article-media');
 
 const { authenticateToken } = require('./middleware/auth');
 
@@ -222,7 +223,7 @@ router.put('/articles/:id', authenticateToken, (req, res) => {
             return res.status(403).json({ success: false, message: '鏃犳潈闄愮紪杈戞鏂囩珷' });
         }
 
-        const updatedArticle = articleRepository.updateUserArticle(articleId, {
+        const mediaPayload = articleMedia.normalizeArticleMediaPayload({
             title,
             excerpt,
             content,
@@ -231,7 +232,9 @@ router.put('/articles/:id', authenticateToken, (req, res) => {
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id
-        });
+        }, { articleId, ownerId: req.user.id });
+        const updatedArticle = articleRepository.updateUserArticle(articleId, mediaPayload);
+        articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, updatedArticle.id);
 
         res.json({
             success: true,

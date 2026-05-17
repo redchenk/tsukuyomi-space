@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const articleRepository = require('../repositories/article-repository');
+const articleMedia = require('../services/article-media');
 const { parsePositiveInt, safeJsonParse } = require('../validators');
 
 const router = express.Router();
@@ -57,7 +58,7 @@ router.post('/', authenticateToken, (req, res) => {
 
         const finalCategory = category || (canPublishAnnouncement(req.user) ? '公告' : '其他');
         const publishDate = new Date().toISOString().split('T')[0];
-        const newArticle = articleRepository.createArticle({
+        const mediaPayload = articleMedia.normalizeArticleMediaPayload({
             title,
             excerpt,
             content,
@@ -69,7 +70,9 @@ router.post('/', authenticateToken, (req, res) => {
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id
-        });
+        }, { ownerId: req.user.scope === 'admin' ? null : req.user.id });
+        const newArticle = articleRepository.createArticle(mediaPayload);
+        articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, newArticle.id);
         res.status(201).json({ success: true, message: '操作成功', data: newArticle });
     } catch (error) {
         console.error('Create article failed:', error);
@@ -96,7 +99,7 @@ router.get('/:id', (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
         const { title, excerpt, content, content_format, category, tags, read_time, cover_image, cover_image_asset_id } = req.body;
-        const updatedArticle = articleRepository.updateArticle(req.params.id, {
+        const mediaPayload = articleMedia.normalizeArticleMediaPayload({
             title: title || req.body.title,
             excerpt,
             content,
@@ -106,7 +109,9 @@ router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id
-        });
+        }, { articleId: req.params.id, ownerId: req.user.scope === 'admin' ? null : req.user.id });
+        const updatedArticle = articleRepository.updateArticle(req.params.id, mediaPayload);
+        articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, updatedArticle.id);
         res.json({ success: true, message: '文章更新成功', data: updatedArticle });
     } catch (error) {
         console.error('Update article failed:', error);

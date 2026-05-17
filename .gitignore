@@ -5,6 +5,7 @@
 *.zip
 *.rar
 *.7z
+assets/uploads/
 
 # Node modules
 node_modules/
