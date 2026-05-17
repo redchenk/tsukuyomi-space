@@ -9,7 +9,7 @@ defineProps({
 <template>
   <div class="site-music-drawer" :class="{ 'is-open': music.drawer.open }">
     <button class="site-music-handle" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
-      <TsIcon :name="music.drawer.open ? 'chevronDown' : 'chevronUp'" :size="22" :stroke-width="2.4" />
+      <span class="site-music-handle-glyph" aria-hidden="true"><i></i><i></i></span>
       <span class="sr-only">{{ music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer' }}</span>
     </button>
 

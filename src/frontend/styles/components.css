@@ -258,11 +258,16 @@ html[data-theme="dark"] .site-global-bg {
     display: grid;
     place-items: center;
     padding: 0;
-    border: 1px solid var(--ts-border);
+    border: 1px solid rgba(232, 228, 255, 0.48);
     border-radius: 999px;
     color: var(--ts-text-strong);
-    background: var(--ts-glass);
-    box-shadow: var(--ts-shadow-md);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06)),
+        var(--ts-glass);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.42),
+        0 12px 34px rgba(34, 28, 70, 0.18);
+    -webkit-backdrop-filter: var(--ts-blur-md);
     backdrop-filter: var(--ts-blur-md);
     pointer-events: auto;
     cursor: pointer;
@@ -272,9 +277,13 @@ html[data-theme="dark"] .site-global-bg {
 :root:not([data-theme="dark"]) .site-music-handle,
 html[data-theme="light"] .site-music-handle {
     color: var(--ts-text-strong);
-    border-color: var(--ts-border);
-    background: var(--ts-glass-strong);
-    box-shadow: var(--ts-shadow-sm);
+    border-color: rgba(96, 112, 154, 0.18);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.5)),
+        var(--ts-glass-strong);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.72),
+        0 10px 28px rgba(72, 84, 124, 0.14);
 }
 
 .site-music-handle:hover {
@@ -454,9 +463,26 @@ html[data-theme="light"] .site-music-track-pill {
     transform: translateX(0.4rem);
 }
 
-.site-music-handle span:first-child {
-    font-size: 1.35rem;
-    font-weight: 900;
+.site-music-handle-glyph {
+    width: 1.12rem;
+    display: grid;
+    gap: 0.22rem;
+    place-items: center;
+    color: currentColor;
+    transition: transform var(--ts-motion-base) var(--ts-ease-lift), opacity var(--ts-motion-base);
+}
+
+.site-music-handle-glyph i {
+    width: 1.08rem;
+    height: 0.16rem;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 1px 4px rgba(42, 38, 72, 0.18);
+    opacity: 0.9;
+}
+
+.site-music-drawer.is-open .site-music-handle-glyph {
+    transform: translateY(1px);
 }
 
 .site-music-body {
