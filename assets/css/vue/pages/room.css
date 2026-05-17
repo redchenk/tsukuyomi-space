@@ -1255,12 +1255,12 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     }
 
     .room-dock {
-        top: max(4.25rem, calc(env(safe-area-inset-top) + 3.45rem));
-        right: 0.92rem;
+        top: max(4.45rem, calc(env(safe-area-inset-top) + 3.65rem));
+        right: 1rem;
         bottom: auto;
         left: auto;
-        width: 4rem;
-        height: 4rem;
+        width: 3.25rem;
+        height: 3.25rem;
         display: grid;
         grid-auto-flow: column;
         grid-auto-columns: 4rem;
@@ -1421,9 +1421,34 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         white-space: nowrap;
     }
 
-    .room-chat-panel .chat-message-actions,
     .room-chat-panel .chat-image-thumb {
         display: none;
+    }
+
+    .room-chat-panel .chat-message-actions {
+        display: none;
+    }
+
+    .room-chat-panel .chat-message:last-child .chat-message-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        min-width: 3.2rem;
+    }
+
+    .room-chat-panel .chat-message:last-child .chat-tts-btn {
+        min-height: 2.1rem;
+        padding: 0 0.72rem;
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.12);
+        white-space: nowrap;
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .room-chat-panel .chat-message:last-child .chat-tts-btn.playing {
+        background: rgba(125, 93, 236, 0.58);
     }
 
     .room-chat-panel .chat-input-row {

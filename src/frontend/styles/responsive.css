@@ -175,12 +175,12 @@
     }
 
     .room-shell .room-dock {
-        top: max(4.25rem, calc(env(safe-area-inset-top) + 3.45rem));
-        right: 0.92rem;
+        top: max(4.45rem, calc(env(safe-area-inset-top) + 3.65rem));
+        right: 1rem;
         bottom: auto;
         left: auto;
-        width: 4rem;
-        height: 4rem;
+        width: 3.25rem;
+        height: 3.25rem;
         display: block;
         padding: 0;
         overflow: visible;
@@ -192,10 +192,10 @@
     }
 
     .room-shell .panel-toggle-btn {
-        width: 4rem;
-        min-width: 4rem;
-        height: 4rem;
-        min-height: 4rem;
+        width: 3.25rem;
+        min-width: 3.25rem;
+        height: 3.25rem;
+        min-height: 3.25rem;
         display: none;
         place-items: center;
         padding: 0;
@@ -215,7 +215,7 @@
         content: "...";
         display: block;
         color: #fff;
-        font-size: 2rem;
+        font-size: 1.62rem;
         font-weight: 900;
         letter-spacing: 0.08em;
         line-height: 0.6;
@@ -314,8 +314,8 @@
     }
 
     .room-shell .room-dock {
-        top: max(4.1rem, calc(env(safe-area-inset-top) + 3.3rem));
-        right: 0.9rem;
+        top: max(4.35rem, calc(env(safe-area-inset-top) + 3.55rem));
+        right: 0.95rem;
     }
 
     .room-panel {
@@ -470,9 +470,34 @@
         white-space: nowrap;
     }
 
-    .room-shell .room-chat-panel .chat-message-actions,
     .room-shell .room-chat-panel .chat-image-thumb {
         display: none;
+    }
+
+    .room-shell .room-chat-panel .chat-message-actions {
+        display: none;
+    }
+
+    .room-shell .room-chat-panel .chat-message:last-child .chat-message-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        min-width: 3.2rem;
+    }
+
+    .room-shell .room-chat-panel .chat-message:last-child .chat-tts-btn {
+        min-height: 2.1rem;
+        padding: 0 0.72rem;
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.12);
+        white-space: nowrap;
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .room-shell .room-chat-panel .chat-message:last-child .chat-tts-btn.playing {
+        background: rgba(125, 93, 236, 0.58);
     }
 
     .room-shell .room-chat-panel .chat-input-row {
