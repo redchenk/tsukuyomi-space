@@ -29,6 +29,11 @@
         border-radius: var(--ts-radius-md);
     }
 
+    .nav-actions.site-nav-links .nav-link .ts-icon,
+    .nav-actions.site-nav-links .theme-toggle .ts-icon {
+        margin: 0;
+    }
+
     .site-music-drawer {
         top: 0.7rem;
         right: 0.7rem;
@@ -103,6 +108,7 @@
     .room-chat-panel {
         left: 50% !important;
         right: auto !important;
+        bottom: max(5.35rem, calc(env(safe-area-inset-bottom) + 5.35rem)) !important;
         width: min(22rem, calc(100vw - 1.5rem));
         max-height: 38dvh;
         transform: translateX(-50%);
@@ -312,6 +318,7 @@
     .room-chat-panel {
         left: 50% !important;
         right: auto !important;
+        bottom: max(5.25rem, calc(env(safe-area-inset-bottom) + 5.25rem)) !important;
         width: min(21rem, calc(100vw - 1.1rem));
         transform: translateX(-50%);
     }

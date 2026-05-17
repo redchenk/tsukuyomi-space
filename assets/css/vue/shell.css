@@ -176,9 +176,40 @@
     .nav-actions.site-nav-links .ghost-btn,
     .nav-actions.site-nav-links .theme-toggle {
         min-height: 44px;
-        justify-content: center;
+        width: 100%;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 1.35rem minmax(0, 1fr) auto;
+        align-items: center;
+        justify-content: stretch;
+        gap: 0.48rem;
+        text-align: left;
         border-radius: 14px;
         font-size: 0.9rem;
+    }
+
+    .nav-actions.site-nav-links .nav-link .ts-icon,
+    .nav-actions.site-nav-links .theme-toggle .ts-icon {
+        justify-self: center;
+        margin: 0;
+    }
+
+    .nav-actions.site-nav-links .nav-link span:not(.nav-inline-badge),
+    .nav-actions.site-nav-links .theme-toggle span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .nav-actions.site-nav-links .ghost-btn {
+        justify-items: stretch;
+        text-align: left;
+    }
+
+    .nav-actions.site-nav-links .nav-inline-badge {
+        justify-self: end;
+        grid-column: 3;
     }
 
     .nav-actions.site-nav-links .lang-switcher {

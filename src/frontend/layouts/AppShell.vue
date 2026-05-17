@@ -165,10 +165,22 @@ onMounted(loadUnreadNotifications);
         <span v-if="unreadNotifications" class="nav-inline-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
       </a>
 
-      <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">{{ t.ucTitle }}</a>
-      <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="navOpen = false; $emit('go', '/login')">{{ t.login }}</a>
-      <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="navOpen = false; $emit('go', '/register')">{{ t.register }}</a>
-      <button v-if="isAuthed" class="ghost-btn nav-link" type="button" @click="navOpen = false; $emit('logout')">{{ t.logout }}</button>
+      <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">
+        <TsIcon class="nav-icon" name="user" :size="18" />
+        <span>{{ t.ucTitle }}</span>
+      </a>
+      <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="navOpen = false; $emit('go', '/login')">
+        <TsIcon class="nav-icon" name="user" :size="18" />
+        <span>{{ t.login }}</span>
+      </a>
+      <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="navOpen = false; $emit('go', '/register')">
+        <TsIcon class="nav-icon" name="badge" :size="18" />
+        <span>{{ t.register }}</span>
+      </a>
+      <button v-if="isAuthed" class="ghost-btn nav-link" type="button" @click="navOpen = false; $emit('logout')">
+        <TsIcon class="nav-icon" name="x" :size="18" />
+        <span>{{ t.logout }}</span>
+      </button>
 
       <button
         class="theme-toggle nav-link"

@@ -606,6 +606,11 @@ html[data-theme="light"] .site-music-playlist-drawer select {
     margin: auto;
 }
 
+.hub-actions .hub-primary .ts-icon,
+.hub-actions .hub-secondary .ts-icon {
+    margin: 0;
+}
+
 .site-music-space,
 .site-music-track-pill {
     display: inline-flex;
