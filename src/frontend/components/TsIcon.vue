@@ -96,6 +96,11 @@ const iconPaths = {
     ['path', { d: 'M3 12h.01' }],
     ['path', { d: 'M3 18h.01' }]
   ],
+  menu: [
+    ['path', { d: 'M4 6h16' }],
+    ['path', { d: 'M4 12h16' }],
+    ['path', { d: 'M4 18h16' }]
+  ],
   chevronUp: [['path', { d: 'm18 15-6-6-6 6' }]],
   chevronDown: [['path', { d: 'm6 9 6 6 6-6' }]],
   skipBack: [

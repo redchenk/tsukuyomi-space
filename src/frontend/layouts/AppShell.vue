@@ -32,8 +32,10 @@ const navItems = computed(() => [
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true }
 ]);
 
+const mobilePrimaryItems = computed(() => navItems.value.slice(0, 4));
 const accountLabel = computed(() => (props.isAuthed ? props.t.ucTitle : props.t.login));
 const themeLabel = computed(() => (props.theme === 'dark' ? '切换浅色主题' : '切换深色主题'));
+const moreLabel = computed(() => (props.lang === 'ja' ? 'その他' : '更多'));
 
 function userInitial() {
   return String(props.user?.username || props.user?.email || props.t.brand || '月').slice(0, 1).toUpperCase();
@@ -196,6 +198,33 @@ onMounted(loadUnreadNotifications);
         </div>
       </div>
     </header>
+
+    <nav v-if="showChrome && routeName !== 'room'" class="mobile-bottom-nav" aria-label="Mobile primary navigation">
+      <a
+        v-for="item in mobilePrimaryItems"
+        :key="item.key"
+        :href="item.path"
+        class="mobile-bottom-link"
+        :class="{ active: item.active }"
+        :aria-label="item.label"
+        @click="item.spa && ($event.preventDefault(), $emit('go', item.path))"
+      >
+        <TsIcon :name="item.icon" :size="20" />
+        <span>{{ item.label }}</span>
+      </a>
+      <button
+        class="mobile-bottom-link"
+        :class="{ active: navOpen }"
+        type="button"
+        :aria-label="moreLabel"
+        :aria-expanded="navOpen"
+        aria-controls="site-navigation"
+        @click="navOpen = !navOpen"
+      >
+        <TsIcon name="menu" :size="20" />
+        <span>{{ moreLabel }}</span>
+      </button>
+    </nav>
 
     <SiteMusicDrawer v-if="showChrome && music" :music="music" />
     <slot></slot>

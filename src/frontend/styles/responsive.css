@@ -24,7 +24,7 @@
     }
 
     .page {
-        padding: 5.2rem 0.9rem 1.35rem;
+        padding: 5.2rem 0.9rem max(6.4rem, calc(env(safe-area-inset-bottom) + 5.6rem));
     }
 
     .mobile-nav-toggle {
