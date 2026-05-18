@@ -207,7 +207,7 @@ router.delete('/articles/:id', authenticateToken, (req, res) => {
 });
 
 // 鏇存柊鐢ㄦ埛鐨勬枃绔?
-router.put('/articles/:id', authenticateToken, (req, res) => {
+router.put('/articles/:id', authenticateToken, async (req, res) => {
     try {
         const { title, excerpt, content, content_format, category, read_time, cover_image, cover_image_asset_id } = req.body;
         const articleId = req.params.id;
@@ -223,7 +223,7 @@ router.put('/articles/:id', authenticateToken, (req, res) => {
             return res.status(403).json({ success: false, message: '鏃犳潈闄愮紪杈戞鏂囩珷' });
         }
 
-        const mediaPayload = articleMedia.normalizeArticleMediaPayload({
+        const mediaPayload = await articleMedia.normalizeArticleMediaPayload({
             title,
             excerpt,
             content,

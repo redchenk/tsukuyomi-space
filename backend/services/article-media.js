@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const db = require('../db');
 const config = require('../config');
+const objectStorage = require('./object-storage');
 
 const DATA_IMAGE_PATTERN = /^data:image\/(png|jpe?g|gif|webp);base64,([\s\S]+)$/i;
 const MARKDOWN_DATA_IMAGE_PATTERN = /!\[([^\]\n]*)\]\((data:image\/(?:png|jpe?g|gif|webp);base64,[^)]+)\)/gi;
@@ -65,11 +66,7 @@ function createAssetRecord({ id, articleId = null, ownerId = null, assetType, mi
     `).run(id, articleId, ownerId, assetType, mimeType, url, storageKey, JSON.stringify(metadata || {}));
 }
 
-function saveDataImage(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '' } = {}) {
-    const parsed = parseDataImage(dataUrl);
-    if (!parsed || !parsed.buffer.length) return null;
-
-    const id = crypto.randomUUID();
+function saveParsedImageLocal(parsed, { id = crypto.randomUUID(), articleId = null, ownerId = null, role = 'body', alt = '' } = {}) {
     const fileName = `${id}.${parsed.ext}`;
     const filePath = path.join(uploadFolder(), fileName);
     fs.writeFileSync(filePath, parsed.buffer);
@@ -82,28 +79,70 @@ function saveDataImage(dataUrl, { articleId = null, ownerId = null, role = 'body
         mimeType: parsed.mimeType,
         url,
         storageKey: path.relative(config.projectRoot, filePath).replace(/\\/g, '/'),
-        metadata: { role, alt, size: parsed.buffer.length }
+        metadata: { role, alt, size: parsed.buffer.length, storage: 'local' }
     });
     return { id, url };
 }
 
-function replaceInlineDataImages(content, { articleId = null, ownerId = null } = {}) {
+async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '' } = {}) {
+    const parsed = parseDataImage(dataUrl);
+    if (!parsed || !parsed.buffer.length) return null;
+
+    const id = crypto.randomUUID();
+    try {
+        const uploaded = await objectStorage.putObject({
+            buffer: parsed.buffer,
+            mimeType: parsed.mimeType,
+            ext: parsed.ext,
+            role,
+            id
+        });
+        if (uploaded?.url) {
+            createAssetRecord({
+                id,
+                articleId,
+                ownerId,
+                assetType: role === 'cover' ? 'cover-image' : 'body-image',
+                mimeType: parsed.mimeType,
+                url: uploaded.url,
+                storageKey: uploaded.key,
+                metadata: { role, alt, size: parsed.buffer.length, storage: uploaded.storage || 'oss' }
+            });
+            return { id, url: uploaded.url };
+        }
+    } catch (error) {
+        console.warn('OSS image upload failed, falling back to local storage:', error.message);
+    }
+
+    return saveParsedImageLocal(parsed, { id, articleId, ownerId, role, alt });
+}
+
+function saveDataImageLocal(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '' } = {}) {
+    const parsed = parseDataImage(dataUrl);
+    if (!parsed || !parsed.buffer.length) return null;
+    return saveParsedImageLocal(parsed, { articleId, ownerId, role, alt });
+}
+
+async function replaceInlineDataImages(content, { articleId = null, ownerId = null } = {}) {
     const assetIds = [];
-    const nextContent = String(content || '').replace(MARKDOWN_DATA_IMAGE_PATTERN, (match, alt, dataUrl) => {
-        const asset = saveDataImage(dataUrl, { articleId, ownerId, role: 'body', alt });
-        if (!asset) return match;
+    const matches = [...String(content || '').matchAll(MARKDOWN_DATA_IMAGE_PATTERN)];
+    let nextContent = String(content || '');
+    for (const match of matches) {
+        const [raw, alt, dataUrl] = match;
+        const asset = await saveDataImage(dataUrl, { articleId, ownerId, role: 'body', alt });
+        if (!asset) continue;
         assetIds.push(asset.id);
-        return `![${alt}](${asset.url})`;
-    });
+        nextContent = nextContent.replace(raw, `![${alt}](${asset.url})`);
+    }
     return { content: nextContent, assetIds };
 }
 
-function normalizeArticleMediaPayload(article, { articleId = null, ownerId = null } = {}) {
+async function normalizeArticleMediaPayload(article, { articleId = null, ownerId = null } = {}) {
     const result = { ...article };
     const assetIds = [];
 
     if (isDataImage(result.coverImage)) {
-        const cover = saveDataImage(result.coverImage, { articleId, ownerId, role: 'cover' });
+        const cover = await saveDataImage(result.coverImage, { articleId, ownerId, role: 'cover' });
         if (cover) {
             result.coverImage = cover.url;
             result.coverImageAssetId = cover.id;
@@ -111,10 +150,35 @@ function normalizeArticleMediaPayload(article, { articleId = null, ownerId = nul
         }
     }
 
-    const body = replaceInlineDataImages(result.content || '', { articleId, ownerId });
+    const body = await replaceInlineDataImages(result.content || '', { articleId, ownerId });
     result.content = body.content;
     assetIds.push(...body.assetIds);
     result.mediaAssetIds = assetIds;
+    return result;
+}
+
+function replaceInlineDataImagesLocal(content, { articleId = null, ownerId = null } = {}) {
+    const assetIds = [];
+    const nextContent = String(content || '').replace(MARKDOWN_DATA_IMAGE_PATTERN, (match, alt, dataUrl) => {
+        const asset = saveDataImageLocal(dataUrl, { articleId, ownerId, role: 'body', alt });
+        if (!asset) return match;
+        assetIds.push(asset.id);
+        return `![${alt}](${asset.url})`;
+    });
+    return { content: nextContent, assetIds };
+}
+
+function normalizeArticleMediaPayloadLocal(article, { articleId = null, ownerId = null } = {}) {
+    const result = { ...article };
+    if (isDataImage(result.coverImage)) {
+        const cover = saveDataImageLocal(result.coverImage, { articleId, ownerId, role: 'cover' });
+        if (cover) {
+            result.coverImage = cover.url;
+            result.coverImageAssetId = cover.id;
+        }
+    }
+    const body = replaceInlineDataImagesLocal(result.content || '', { articleId, ownerId });
+    result.content = body.content;
     return result;
 }
 
@@ -144,7 +208,7 @@ function migrateExistingArticleImages() {
 
     const tx = db.transaction(() => {
         for (const row of rows) {
-            const normalized = normalizeArticleMediaPayload({
+            const normalized = normalizeArticleMediaPayloadLocal({
                 coverImage: row.cover_image,
                 content: row.content
             }, { articleId: row.id, ownerId: row.author_id });

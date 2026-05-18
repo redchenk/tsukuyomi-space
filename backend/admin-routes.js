@@ -6,6 +6,7 @@ const articleRepository = require('./repositories/article-repository');
 const statsRepository = require('./repositories/stats-repository');
 const authState = require('./services/auth-state');
 const articleMedia = require('./services/article-media');
+const objectStorage = require('./services/object-storage');
 const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
 
 const router = express.Router();
@@ -243,7 +244,7 @@ router.get('/articles/:id', (req, res) => {
     }
 });
 
-router.put('/articles/:id', (req, res) => {
+router.put('/articles/:id', async (req, res) => {
     try {
         const id = asInt(req.params.id);
         if (!id) return fail(res, 400, '文章 ID 无效');
@@ -251,7 +252,7 @@ router.put('/articles/:id', (req, res) => {
         const { title, excerpt, content, content_format, category, status, read_time, cover_image, cover_image_asset_id } = req.body || {};
         if (!String(title || '').trim()) return fail(res, 400, '标题不能为空');
 
-        const mediaPayload = articleMedia.normalizeArticleMediaPayload({
+        const mediaPayload = await articleMedia.normalizeArticleMediaPayload({
             title: String(title).trim(),
             excerpt,
             content,
@@ -498,6 +499,8 @@ router.post('/settings', (req, res) => {
             'ossAccessKeySecret',
             'ossPublicBaseUrl',
             'ossPrefix',
+            'ossUploadPath',
+            'ossFileNameMode',
             'ossForcePathStyle'
         ];
         adminRepository.saveSettings(req.body, allowed);
@@ -567,6 +570,21 @@ router.post('/settings/oss-test', async (req, res) => {
             addCheck('基础配置', 'failed', `缺少 ${missingFields.join('、')}，后续上传资源前需要补齐`);
         } else {
             addCheck('基础配置', 'passed', 'Bucket 与 AccessKey 已填写');
+        }
+
+        try {
+            const writeResult = await objectStorage.testWrite(settings);
+            if (writeResult.ok) {
+                addCheck('上传权限', 'passed', `测试文件上传成功，并已尝试清理：${writeResult.key}`, {
+                    elapsedMs: writeResult.elapsedMs,
+                    url: writeResult.url,
+                    network: true
+                });
+            } else if (writeResult.skipped) {
+                addCheck('上传权限', 'skipped', writeResult.message || '参数不完整，已跳过上传测试');
+            }
+        } catch (error) {
+            addCheck('上传权限', 'failed', `测试文件上传失败：${error.message || '未知错误'}`);
         }
 
         const usable = !hasFailure && hasPassedNetworkCheck;

@@ -55,6 +55,8 @@ const terminal = reactive({
     ossAccessKeySecret: '',
     ossPublicBaseUrl: '',
     ossPrefix: '',
+    ossUploadPath: 'articles/${year}/${month}/${role}',
+    ossFileNameMode: 'uuid',
     ossForcePathStyle: false
   },
   ossTest: {
@@ -538,6 +540,13 @@ onUnmounted(() => {
               <label>Region<input v-model="terminal.settings.ossRegion" placeholder="oss-cn-hangzhou"></label>
               <label>Bucket<input v-model="terminal.settings.ossBucket" placeholder="tsukuyomi-assets"></label>
               <label>资源前缀<input v-model="terminal.settings.ossPrefix" placeholder="public/"></label>
+              <label>上传目录<input v-model="terminal.settings.ossUploadPath" placeholder="articles/${year}/${month}/${role}"></label>
+              <label>文件名策略
+                <select v-model="terminal.settings.ossFileNameMode">
+                  <option value="uuid">UUID</option>
+                  <option value="timestamp">时间戳 + UUID</option>
+                </select>
+              </label>
               <label>AccessKey ID<input v-model="terminal.settings.ossAccessKeyId" autocomplete="off"></label>
               <label>AccessKey Secret<input v-model="terminal.settings.ossAccessKeySecret" type="password" autocomplete="new-password"></label>
               <label class="terminal-check"><input v-model="terminal.settings.ossForcePathStyle" type="checkbox"> 使用路径风格访问</label>

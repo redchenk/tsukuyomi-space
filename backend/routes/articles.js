@@ -45,7 +45,7 @@ router.get('/', (req, res) => {
 });
 
 // 创建文章：普通用户可发普通分类，公告类仅管理员可发。
-router.post('/', authenticateToken, (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
     try {
         const { title, excerpt, content, content_format, category, tags, read_time, cover_image, cover_image_asset_id } = req.body;
         if (!title) {
@@ -58,7 +58,7 @@ router.post('/', authenticateToken, (req, res) => {
 
         const finalCategory = category || (canPublishAnnouncement(req.user) ? '公告' : '其他');
         const publishDate = new Date().toISOString().split('T')[0];
-        const mediaPayload = articleMedia.normalizeArticleMediaPayload({
+        const mediaPayload = await articleMedia.normalizeArticleMediaPayload({
             title,
             excerpt,
             content,
@@ -96,10 +96,10 @@ router.get('/:id', (req, res) => {
     }
 });
 
-router.put('/:id', authenticateToken, requireAdmin, (req, res) => {
+router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { title, excerpt, content, content_format, category, tags, read_time, cover_image, cover_image_asset_id } = req.body;
-        const mediaPayload = articleMedia.normalizeArticleMediaPayload({
+        const mediaPayload = await articleMedia.normalizeArticleMediaPayload({
             title: title || req.body.title,
             excerpt,
             content,
