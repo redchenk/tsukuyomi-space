@@ -1,7 +1,7 @@
 import { assetUrl } from '../../utils/assetUrl';
 
-const CORE_SCRIPT = assetUrl('/lib/live2dcubismcore-v5.min.js');
-const ROOM_SCRIPT = assetUrl('/lib/bundled/live2d-room.iife.js?v=20260510-live2d-act2');
+const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260510-live2d-act2';
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_READY_TIMEOUT = 20000;
 
@@ -43,8 +43,8 @@ export function preloadLive2DResources() {
   const ua = navigator.userAgent || '';
   const useLowMemoryModel = /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
   [
-    { href: CORE_SCRIPT, as: 'script' },
-    { href: ROOM_SCRIPT, as: 'script' },
+    { href: assetUrl(CORE_SCRIPT), as: 'script' },
+    { href: assetUrl(ROOM_SCRIPT), as: 'script' },
     {
       href: useLowMemoryModel
         ? assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo-ios.model3.json')
@@ -69,7 +69,7 @@ export function preloadLive2DResources() {
 export async function ensureLive2DScripts() {
   if (!loadingPromise) {
     window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
-    loadingPromise = loadScript(CORE_SCRIPT).then(() => loadScript(ROOM_SCRIPT));
+    loadingPromise = loadScript(assetUrl(CORE_SCRIPT)).then(() => loadScript(assetUrl(ROOM_SCRIPT)));
   }
   return loadingPromise;
 }

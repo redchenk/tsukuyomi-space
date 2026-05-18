@@ -152,6 +152,16 @@ function seedSiteSettings() {
     insert.run('visitPopupTitle', '欢迎来到月读空间');
     insert.run('visitPopupContent', '');
     insert.run('visitPopupButton', '我知道了');
+    insert.run('ossEnabled', 'false');
+    insert.run('ossProvider', 'aliyun');
+    insert.run('ossEndpoint', '');
+    insert.run('ossRegion', '');
+    insert.run('ossBucket', '');
+    insert.run('ossAccessKeyId', '');
+    insert.run('ossAccessKeySecret', '');
+    insert.run('ossPublicBaseUrl', '');
+    insert.run('ossPrefix', '');
+    insert.run('ossForcePathStyle', 'false');
 }
 
 function initDatabase() {

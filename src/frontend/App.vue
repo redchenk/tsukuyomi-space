@@ -5,6 +5,7 @@ import { clearSession } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
+import { setPublicAssetBaseUrl } from './utils/assetUrl';
 
 const route = useRoute();
 const router = useRouter();
@@ -103,6 +104,17 @@ async function loadVisitPopup() {
   }
 }
 
+async function loadPublicSettings() {
+  try {
+    const response = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
+    const result = await response.json();
+    const settings = result?.data || {};
+    setPublicAssetBaseUrl(settings.publicAssetBaseUrl || '');
+  } catch (error) {
+    console.warn('Public settings failed:', error);
+  }
+}
+
 function closeVisitPopup() {
   localStorage.setItem(VISIT_POPUP_SEEN_KEY, visitPopup.value.signature);
   visitPopup.value.visible = false;
@@ -123,6 +135,7 @@ watch(theme, setTheme, { immediate: true });
 watch(() => route.fullPath, refreshUser, { immediate: true });
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
+  loadPublicSettings();
   if (localStorage.getItem(VIEW_RECORDED_KEY) === '1') return;
   localStorage.setItem(VIEW_RECORDED_KEY, '1');
   const payload = JSON.stringify({ path: route.fullPath || '/' });

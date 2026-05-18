@@ -45,7 +45,17 @@ const terminal = reactive({
     visitPopupEnabled: false,
     visitPopupTitle: '欢迎来到月读空间',
     visitPopupContent: '',
-    visitPopupButton: '我知道了'
+    visitPopupButton: '我知道了',
+    ossEnabled: false,
+    ossProvider: 'aliyun',
+    ossEndpoint: '',
+    ossRegion: '',
+    ossBucket: '',
+    ossAccessKeyId: '',
+    ossAccessKeySecret: '',
+    ossPublicBaseUrl: '',
+    ossPrefix: '',
+    ossForcePathStyle: false
   }
 });
 
@@ -465,6 +475,28 @@ onUnmounted(() => {
               <label>弹窗标题<input v-model="terminal.settings.visitPopupTitle" placeholder="欢迎来到月读空间"></label>
               <label>弹窗内容<textarea v-model="terminal.settings.visitPopupContent" placeholder="输入访客进入网站时看到的内容"></textarea></label>
               <label>按钮文字<input v-model="terminal.settings.visitPopupButton" placeholder="我知道了"></label>
+            </div>
+            <div class="terminal-settings-block terminal-oss-settings">
+              <label class="terminal-check"><input v-model="terminal.settings.ossEnabled" type="checkbox"> 启用对象存储资源域名</label>
+              <label>服务商
+                <select v-model="terminal.settings.ossProvider">
+                  <option value="aliyun">阿里云 OSS</option>
+                  <option value="tencent">腾讯云 COS</option>
+                  <option value="qiniu">七牛云 Kodo</option>
+                  <option value="aws-s3">AWS S3 / 兼容 S3</option>
+                  <option value="cloudflare-r2">Cloudflare R2</option>
+                  <option value="custom">自定义</option>
+                </select>
+              </label>
+              <label>公开访问域名 / CDN 域名<input v-model="terminal.settings.ossPublicBaseUrl" placeholder="https://static.example.com"></label>
+              <label>Endpoint<input v-model="terminal.settings.ossEndpoint" placeholder="https://oss-cn-hangzhou.aliyuncs.com"></label>
+              <label>Region<input v-model="terminal.settings.ossRegion" placeholder="oss-cn-hangzhou"></label>
+              <label>Bucket<input v-model="terminal.settings.ossBucket" placeholder="tsukuyomi-assets"></label>
+              <label>资源前缀<input v-model="terminal.settings.ossPrefix" placeholder="public/"></label>
+              <label>AccessKey ID<input v-model="terminal.settings.ossAccessKeyId" autocomplete="off"></label>
+              <label>AccessKey Secret<input v-model="terminal.settings.ossAccessKeySecret" type="password" autocomplete="new-password"></label>
+              <label class="terminal-check"><input v-model="terminal.settings.ossForcePathStyle" type="checkbox"> 使用路径风格访问</label>
+              <p class="terminal-setting-note">公开访问域名会下发给前端用于 /assets、/models、/lib 等静态资源；AccessKey 仅保存在后台配置接口中。</p>
             </div>
             <label class="terminal-check"><input v-model="terminal.settings.sakuraEffect" type="checkbox"> 启用环境动效</label>
             <label class="terminal-check"><input v-model="terminal.settings.scanlineEffect" type="checkbox"> 启用扫描线效果</label>

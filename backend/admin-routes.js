@@ -429,7 +429,26 @@ router.get('/settings', (req, res) => {
 
 router.post('/settings', (req, res) => {
     try {
-        const allowed = ['siteTitle', 'siteAnnouncement', 'sakuraEffect', 'scanlineEffect', 'visitPopupEnabled', 'visitPopupTitle', 'visitPopupContent', 'visitPopupButton'];
+        const allowed = [
+            'siteTitle',
+            'siteAnnouncement',
+            'sakuraEffect',
+            'scanlineEffect',
+            'visitPopupEnabled',
+            'visitPopupTitle',
+            'visitPopupContent',
+            'visitPopupButton',
+            'ossEnabled',
+            'ossProvider',
+            'ossEndpoint',
+            'ossRegion',
+            'ossBucket',
+            'ossAccessKeyId',
+            'ossAccessKeySecret',
+            'ossPublicBaseUrl',
+            'ossPrefix',
+            'ossForcePathStyle'
+        ];
         adminRepository.saveSettings(req.body, allowed);
         ok(res, null, '配置已保存');
     } catch (error) {

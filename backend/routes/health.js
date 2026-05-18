@@ -21,6 +21,9 @@ router.get('/settings', (req, res) => {
     const settings = Object.fromEntries(
         adminRepository.listSettings().map(row => [row.key, parseSettingValue(row.value)])
     );
+    const publicAssetBaseUrl = settings.ossEnabled === true && settings.ossPublicBaseUrl
+        ? String(settings.ossPublicBaseUrl).replace(/\/$/, '')
+        : '';
     res.json({
         success: true,
         data: {
@@ -29,6 +32,7 @@ router.get('/settings', (req, res) => {
             visitPopupEnabled: settings.visitPopupEnabled === true,
             visitPopupTitle: settings.visitPopupTitle || '欢迎来到月读空间',
             visitPopupContent: settings.visitPopupContent || '',
+            publicAssetBaseUrl,
             visitPopupButton: settings.visitPopupButton || '我知道了'
         }
     });

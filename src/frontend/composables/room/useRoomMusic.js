@@ -1,8 +1,9 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import { MUSIC_BASE_PATH, MUSIC_TRACKS } from '../../constants/room/musicTracks';
+import { assetUrl } from '../../utils/assetUrl';
 
 function trackUrl(track) {
-  return `${MUSIC_BASE_PATH}/${track.file.split('/').map(encodeURIComponent).join('/')}`;
+  return `${assetUrl(MUSIC_BASE_PATH)}/${track.file.split('/').map(encodeURIComponent).join('/')}`;
 }
 
 function formatTime(seconds) {
