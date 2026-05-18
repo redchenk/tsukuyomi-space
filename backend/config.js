@@ -27,6 +27,9 @@ if (isProduction && jwtSecret.length < 32) {
 const dataDir = path.resolve(process.env.DATA_DIR || path.join(projectRoot, 'data'));
 fs.mkdirSync(dataDir, { recursive: true });
 
+const siteLaunchedAt = process.env.SITE_LAUNCHED_AT || '2026-03-30T00:00:00+08:00';
+const siteLaunchedAtMs = Date.parse(siteLaunchedAt);
+
 module.exports = {
     projectRoot,
     isProduction,
@@ -47,6 +50,8 @@ module.exports = {
     dbPath: path.resolve(process.env.DB_PATH || path.join(dataDir, 'tsukuyomi.db')),
     corsOrigins: csvEnv('CORS_ORIGINS'),
     publicSiteUrl: (process.env.PUBLIC_SITE_URL || 'https://yachiyo.hk').replace(/\/$/, ''),
+    siteLaunchedAt,
+    siteLaunchedAtMs,
     trustProxy: boolEnv('TRUST_PROXY', isProduction),
     enableFrontendDist: boolEnv('ENABLE_FRONTEND_DIST', true),
     defaultAdmin: {

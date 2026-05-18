@@ -1,7 +1,13 @@
 const express = require('express');
+const config = require('../config');
 const statsRepository = require('../repositories/stats-repository');
 
 const router = express.Router();
+
+function siteUptimeSeconds() {
+    const launchedAt = Number.isFinite(config.siteLaunchedAtMs) ? config.siteLaunchedAtMs : Date.now();
+    return Math.max(0, Math.floor((Date.now() - launchedAt) / 1000));
+}
 
 function normalizeIp(value) {
     return String(value || '')
@@ -31,7 +37,7 @@ router.get('/', (req, res) => {
                 todayViews: views.today || 0,
                 weekViews: views.week || 0,
                 totalViews: views.total || 0,
-                uptime: process.uptime()
+                uptime: siteUptimeSeconds()
             }
         });
     } catch (error) {
