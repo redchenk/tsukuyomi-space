@@ -56,6 +56,12 @@ const terminal = reactive({
     ossPublicBaseUrl: '',
     ossPrefix: '',
     ossForcePathStyle: false
+  },
+  ossTest: {
+    loading: false,
+    message: '',
+    type: '',
+    detail: ''
   }
 });
 
@@ -293,6 +299,35 @@ async function saveSettings() {
   showMessage('配置已保存');
 }
 
+async function testOssSettings() {
+  terminal.ossTest.loading = true;
+  terminal.ossTest.message = '';
+  terminal.ossTest.type = '';
+  terminal.ossTest.detail = '';
+  try {
+    const result = await adminApi('/settings/oss-test', {
+      method: 'POST',
+      body: JSON.stringify(terminal.settings)
+    });
+    terminal.ossTest.type = result?.usable ? 'success' : 'error';
+    terminal.ossTest.message = result?.usable ? '测试通过：公开资源域名可访问' : '测试未通过：公开资源域名不可用';
+    terminal.ossTest.detail = [
+      result?.publicBaseUrl ? `地址：${result.publicBaseUrl}` : '',
+      result?.status ? `HTTP：${result.status} ${result.statusText || ''}` : '',
+      result?.elapsedMs ? `耗时：${result.elapsedMs}ms` : '',
+      result?.error ? `错误：${result.error}` : ''
+    ].filter(Boolean).join(' / ');
+    showMessage(terminal.ossTest.message, result?.usable ? 'success' : 'error');
+  } catch (error) {
+    terminal.ossTest.type = 'error';
+    terminal.ossTest.message = '测试失败：无法完成对象存储检测';
+    terminal.ossTest.detail = error.message || '';
+    showMessage(terminal.ossTest.message, 'error');
+  } finally {
+    terminal.ossTest.loading = false;
+  }
+}
+
 function updateClock() {
   terminal.clock = formatDateTime(new Date(), 'zh-CN');
 }
@@ -496,6 +531,15 @@ onUnmounted(() => {
               <label>AccessKey ID<input v-model="terminal.settings.ossAccessKeyId" autocomplete="off"></label>
               <label>AccessKey Secret<input v-model="terminal.settings.ossAccessKeySecret" type="password" autocomplete="new-password"></label>
               <label class="terminal-check"><input v-model="terminal.settings.ossForcePathStyle" type="checkbox"> 使用路径风格访问</label>
+              <div class="terminal-oss-actions">
+                <button class="ghost-btn" type="button" :disabled="terminal.ossTest.loading" @click="testOssSettings">
+                  {{ terminal.ossTest.loading ? '测试中...' : '测试对象存储' }}
+                </button>
+                <span v-if="terminal.ossTest.message" class="terminal-oss-result" :class="terminal.ossTest.type">
+                  {{ terminal.ossTest.message }}
+                </span>
+              </div>
+              <p v-if="terminal.ossTest.detail" class="terminal-setting-note terminal-oss-detail">{{ terminal.ossTest.detail }}</p>
               <p class="terminal-setting-note">公开访问域名会下发给前端用于 /assets、/models、/lib 等静态资源；AccessKey 仅保存在后台配置接口中。</p>
             </div>
             <label class="terminal-check"><input v-model="terminal.settings.sakuraEffect" type="checkbox"> 启用环境动效</label>

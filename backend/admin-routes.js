@@ -29,6 +29,46 @@ function parseSettingValue(value) {
     return value;
 }
 
+function normalizePublicBaseUrl(value) {
+    const url = String(value || '').trim().replace(/\/+$/, '');
+    if (!url) return '';
+    if (!/^https?:\/\//i.test(url)) return '';
+    try {
+        return new URL(url).toString().replace(/\/+$/, '');
+    } catch (_) {
+        return '';
+    }
+}
+
+async function testPublicResourceUrl(publicBaseUrl) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const startedAt = Date.now();
+    try {
+        let response = await fetch(publicBaseUrl, {
+            method: 'HEAD',
+            redirect: 'follow',
+            signal: controller.signal
+        });
+        if (response.status === 405 || response.status === 403) {
+            response = await fetch(publicBaseUrl, {
+                method: 'GET',
+                redirect: 'follow',
+                signal: controller.signal
+            });
+        }
+        return {
+            ok: response.ok || response.status === 403,
+            status: response.status,
+            statusText: response.statusText,
+            url: response.url || publicBaseUrl,
+            elapsedMs: Date.now() - startedAt
+        };
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 function adminTokenPayload(admin) {
     return {
         id: `admin-${admin.id}`,
@@ -454,6 +494,37 @@ router.post('/settings', (req, res) => {
     } catch (error) {
         console.error('Admin settings save error:', error);
         fail(res, 500, '无法保存系统配置');
+    }
+});
+
+router.post('/settings/oss-test', async (req, res) => {
+    try {
+        const publicBaseUrl = normalizePublicBaseUrl(req.body?.ossPublicBaseUrl);
+        if (!publicBaseUrl) {
+            return fail(res, 400, '请填写有效的公开访问域名，例如 https://static.example.com');
+        }
+
+        const result = await testPublicResourceUrl(publicBaseUrl);
+        if (!result.ok) {
+            return ok(res, {
+                ...result,
+                publicBaseUrl,
+                usable: false
+            }, `对象存储公开域名可访问性异常：HTTP ${result.status}`);
+        }
+
+        ok(res, {
+            ...result,
+            publicBaseUrl,
+            usable: true
+        }, `对象存储公开域名测试通过：HTTP ${result.status}`);
+    } catch (error) {
+        const aborted = error?.name === 'AbortError';
+        ok(res, {
+            publicBaseUrl: normalizePublicBaseUrl(req.body?.ossPublicBaseUrl),
+            usable: false,
+            error: aborted ? '请求超时' : (error.message || '连接失败')
+        }, aborted ? '对象存储公开域名测试失败：请求超时' : '对象存储公开域名测试失败：无法连接');
     }
 });
 
