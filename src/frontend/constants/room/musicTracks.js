@@ -1,4 +1,6 @@
-export const MUSIC_BASE_PATH = '/assets/music';
+import { assetUrl } from '../../utils/assetUrl';
+
+export const MUSIC_BASE_PATH = assetUrl('/assets/music');
 
 export const MUSIC_TRACKS = [
   { title: 'Remember', file: '01.Remember.flac' },

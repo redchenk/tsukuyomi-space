@@ -50,6 +50,7 @@ module.exports = {
     dbPath: path.resolve(process.env.DB_PATH || path.join(dataDir, 'tsukuyomi.db')),
     corsOrigins: csvEnv('CORS_ORIGINS'),
     publicSiteUrl: (process.env.PUBLIC_SITE_URL || 'https://yachiyo.hk').replace(/\/$/, ''),
+    publicAssetBaseUrl: (process.env.PUBLIC_ASSET_BASE_URL || '').replace(/\/$/, ''),
     siteLaunchedAt,
     siteLaunchedAtMs,
     trustProxy: boolEnv('TRUST_PROXY', isProduction),

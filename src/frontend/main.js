@@ -1,7 +1,10 @@
 import { createApp } from 'vue';
 import App from './App.vue';
 import { router } from './router';
+import { configureAssetCssVars } from './utils/assetUrl';
 import './styles/global.css';
+
+configureAssetCssVars();
 
 const app = createApp(App);
 

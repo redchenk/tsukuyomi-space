@@ -1,5 +1,7 @@
-const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260510-live2d-act2';
+import { assetUrl } from '../../utils/assetUrl';
+
+const CORE_SCRIPT = assetUrl('/lib/live2dcubismcore-v5.min.js');
+const ROOM_SCRIPT = assetUrl('/lib/bundled/live2d-room.iife.js?v=20260510-live2d-act2');
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_READY_TIMEOUT = 20000;
 
@@ -45,12 +47,12 @@ export function preloadLive2DResources() {
     { href: ROOM_SCRIPT, as: 'script' },
     {
       href: useLowMemoryModel
-        ? '/models/tsukimi-yachiyo/tsukimi-yachiyo-ios.model3.json'
-        : '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json',
+        ? assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo-ios.model3.json')
+        : assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json'),
       as: 'fetch',
       type: 'application/json'
     },
-    { href: '/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3', as: 'fetch', type: 'application/octet-stream' }
+    { href: assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3'), as: 'fetch', type: 'application/octet-stream' }
   ].forEach((resource) => {
     if (document.head.querySelector(`link[data-room-preload="${resource.href}"]`)) return;
     const link = document.createElement('link');
