@@ -305,27 +305,28 @@ async function testOssSettings() {
   terminal.ossTest.type = '';
   terminal.ossTest.detail = '';
   try {
-    if (!String(terminal.settings.ossPublicBaseUrl || '').trim()) {
-      terminal.ossTest.type = 'success';
-      terminal.ossTest.message = 'CDN 域名未填写：已跳过测试';
-      terminal.ossTest.detail = 'CDN / 公开访问域名是可选项；不填写时会继续使用本站本地静态资源。';
-      showMessage(terminal.ossTest.message, 'success');
-      return;
-    }
-
     const result = await adminApi('/settings/oss-test', {
       method: 'POST',
       body: JSON.stringify(terminal.settings)
     });
     terminal.ossTest.type = result?.usable ? 'success' : 'error';
-    terminal.ossTest.message = result?.skipped ? 'CDN 域名未填写：已跳过测试' : (result?.usable ? '测试通过：公开资源域名可访问' : '测试未通过：公开资源域名不可用');
-    terminal.ossTest.detail = [
-      result?.skipped ? 'CDN / 公开访问域名是可选项；不填写时会继续使用本站本地静态资源。' : '',
-      result?.publicBaseUrl ? `地址：${result.publicBaseUrl}` : '',
-      result?.status ? `HTTP：${result.status} ${result.statusText || ''}` : '',
-      result?.elapsedMs ? `耗时：${result.elapsedMs}ms` : '',
-      result?.error ? `错误：${result.error}` : ''
-    ].filter(Boolean).join(' / ');
+    terminal.ossTest.message = result?.usable ? '测试通过：对象存储配置可用' : '测试完成：请查看对象存储检查结果';
+    terminal.ossTest.detail = Array.isArray(result?.checks) && result.checks.length
+      ? result.checks.map((item) => {
+        const marker = item.status === 'passed' ? '通过' : (item.status === 'skipped' ? '跳过' : '异常');
+        const extra = [
+          item.status ? `状态：${marker}` : '',
+          item.status ? item.message : '',
+          item.status && item.status !== 'skipped' && item.elapsedMs ? `耗时：${item.elapsedMs}ms` : ''
+        ].filter(Boolean).join('，');
+        return `${item.name}：${extra}`;
+      }).join('；')
+      : [
+        result?.publicBaseUrl ? `地址：${result.publicBaseUrl}` : '',
+        result?.status ? `HTTP：${result.status} ${result.statusText || ''}` : '',
+        result?.elapsedMs ? `耗时：${result.elapsedMs}ms` : '',
+        result?.error ? `错误：${result.error}` : ''
+      ].filter(Boolean).join(' / ');
     showMessage(terminal.ossTest.message, result?.usable ? 'success' : 'error');
   } catch (error) {
     terminal.ossTest.type = 'error';

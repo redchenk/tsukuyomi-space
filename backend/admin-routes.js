@@ -499,34 +499,71 @@ router.post('/settings', (req, res) => {
 
 router.post('/settings/oss-test', async (req, res) => {
     try {
-        const rawPublicBaseUrl = String(req.body?.ossPublicBaseUrl || '').trim();
+        const settings = req.body || {};
+        const checks = [];
+        let hasFailure = false;
+        let hasPassedNetworkCheck = false;
+
+        const addCheck = (name, status, message, detail = {}) => {
+            if (status === 'failed') hasFailure = true;
+            if (status === 'passed' && detail.network === true) hasPassedNetworkCheck = true;
+            checks.push({ name, status, message, ...detail });
+        };
+
+        const rawPublicBaseUrl = String(settings.ossPublicBaseUrl || '').trim();
         if (!rawPublicBaseUrl) {
-            return ok(res, {
-                publicBaseUrl: '',
-                usable: true,
-                skipped: true
-            }, 'CDN / 公开访问域名未填写，已跳过测试');
+            addCheck('CDN / 公开访问域名', 'skipped', '未填写，已跳过；不影响保存，会继续使用本站本地静态资源');
+        } else {
+            const publicBaseUrl = normalizePublicBaseUrl(rawPublicBaseUrl);
+            if (!publicBaseUrl) {
+                addCheck('CDN / 公开访问域名', 'failed', '格式无效，请填写 http:// 或 https:// 开头的地址');
+            } else {
+                const result = await testPublicResourceUrl(publicBaseUrl);
+                addCheck(
+                    'CDN / 公开访问域名',
+                    result.ok ? 'passed' : 'failed',
+                    result.ok ? `可访问：HTTP ${result.status}` : `访问异常：HTTP ${result.status}`,
+                    { ...result, publicBaseUrl, network: true }
+                );
+            }
         }
 
-        const publicBaseUrl = normalizePublicBaseUrl(req.body?.ossPublicBaseUrl);
-        if (!publicBaseUrl) {
-            return fail(res, 400, '请填写有效的公开访问域名，例如 https://static.example.com');
+        const rawEndpoint = String(settings.ossEndpoint || '').trim();
+        if (!rawEndpoint) {
+            addCheck('Endpoint', 'skipped', '未填写，无法测试对象存储服务端点连通性');
+        } else {
+            const endpoint = normalizePublicBaseUrl(rawEndpoint);
+            if (!endpoint) {
+                addCheck('Endpoint', 'failed', '格式无效，请填写 http:// 或 https:// 开头的地址');
+            } else {
+                const result = await testPublicResourceUrl(endpoint);
+                addCheck(
+                    'Endpoint',
+                    result.ok || result.status < 500 ? 'passed' : 'failed',
+                    result.ok || result.status < 500 ? `端点可达：HTTP ${result.status}` : `端点异常：HTTP ${result.status}`,
+                    { ...result, endpoint, network: true }
+                );
+            }
         }
 
-        const result = await testPublicResourceUrl(publicBaseUrl);
-        if (!result.ok) {
-            return ok(res, {
-                ...result,
-                publicBaseUrl,
-                usable: false
-            }, `对象存储公开域名可访问性异常：HTTP ${result.status}`);
+        const missingFields = [
+            ['ossBucket', 'Bucket'],
+            ['ossAccessKeyId', 'AccessKey ID'],
+            ['ossAccessKeySecret', 'AccessKey Secret']
+        ].filter(([key]) => !String(settings[key] || '').trim()).map(([, label]) => label);
+
+        if (missingFields.length) {
+            addCheck('基础配置', 'failed', `缺少 ${missingFields.join('、')}，后续上传资源前需要补齐`);
+        } else {
+            addCheck('基础配置', 'passed', 'Bucket 与 AccessKey 已填写');
         }
 
+        const usable = !hasFailure && hasPassedNetworkCheck;
         ok(res, {
-            ...result,
-            publicBaseUrl,
-            usable: true
-        }, `对象存储公开域名测试通过：HTTP ${result.status}`);
+            usable,
+            skipped: !hasPassedNetworkCheck,
+            checks
+        }, usable ? '对象存储测试通过' : '对象存储测试完成，请查看检查结果');
     } catch (error) {
         const aborted = error?.name === 'AbortError';
         ok(res, {
