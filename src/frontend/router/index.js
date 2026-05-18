@@ -7,6 +7,7 @@ import StagePage from '../pages/StagePage.vue';
 import PlazaPage from '../pages/PlazaPage.vue';
 import RealityPage from '../pages/RealityPage.vue';
 import EditorPage from '../pages/EditorPage.vue';
+import AttachmentsPage from '../pages/AttachmentsPage.vue';
 import UserCenterPage from '../pages/UserCenterPage.vue';
 import NotificationsPage from '../pages/NotificationsPage.vue';
 import RoomPage from '../pages/RoomPage.vue';
@@ -112,6 +113,12 @@ export const routes = [
     name: 'editor',
     component: EditorPage,
     meta: { title: '文章编辑', description: '编辑和发布月读空间文章。', noindex: true }
+  },
+  {
+    path: '/attachments',
+    name: 'attachments',
+    component: AttachmentsPage,
+    meta: { title: '附件库', description: '管理文章图片和个人上传附件。', noindex: true }
   },
   {
     path: '/user-center',

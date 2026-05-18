@@ -30,6 +30,14 @@ function isDataImage(value) {
     return DATA_IMAGE_PATTERN.test(String(value || ''));
 }
 
+function parseStoredMetadata(value) {
+    try {
+        return value ? JSON.parse(value) : {};
+    } catch (_) {
+        return {};
+    }
+}
+
 function uploadFolder() {
     const now = new Date();
     const folder = path.join(
@@ -115,6 +123,30 @@ async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role =
     }
 
     return saveParsedImageLocal(parsed, { id, articleId, ownerId, role, alt });
+}
+
+async function saveUserImageAsset(dataUrl, { ownerId, alt = '', fileName = '' } = {}) {
+    if (!ownerId) return null;
+    const asset = await saveDataImage(dataUrl, {
+        articleId: null,
+        ownerId,
+        role: 'attachment',
+        alt
+    });
+    if (!asset) return null;
+    if (fileName) {
+        const row = db.prepare('SELECT metadata FROM article_assets WHERE id = ?').get(asset.id);
+        const metadata = {
+            ...parseStoredMetadata(row?.metadata),
+            fileName: String(fileName || '').slice(0, 180)
+        };
+        db.prepare('UPDATE article_assets SET metadata = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(JSON.stringify(metadata), asset.id);
+    }
+    return db.prepare(`
+        SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
+        FROM article_assets
+        WHERE id = ?
+    `).get(asset.id);
 }
 
 function saveDataImageLocal(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '' } = {}) {
@@ -228,6 +260,7 @@ function migrateExistingArticleImages() {
 module.exports = {
     isDataImage,
     normalizeArticleMediaPayload,
+    saveUserImageAsset,
     attachAssetsToArticle,
     migrateExistingArticleImages
 };

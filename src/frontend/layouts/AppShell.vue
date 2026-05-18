@@ -169,6 +169,10 @@ onMounted(loadUnreadNotifications);
         <TsIcon class="nav-icon" name="user" :size="18" />
         <span>{{ t.ucTitle }}</span>
       </a>
+      <a v-if="isAuthed" href="/attachments" class="nav-link" :class="{ 'router-link-active': routeName === 'attachments' }" @click.prevent="navOpen = false; $emit('go', '/attachments')">
+        <TsIcon class="nav-icon" name="image" :size="18" />
+        <span>附件库</span>
+      </a>
       <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="navOpen = false; $emit('go', '/login')">
         <TsIcon class="nav-icon" name="user" :size="18" />
         <span>{{ t.login }}</span>

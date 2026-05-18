@@ -1,0 +1,138 @@
+.attachments-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 7.2rem 1.5rem 5rem;
+}
+
+.attachments-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.attachments-kicker {
+    display: block;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.attachments-hero h1 {
+    margin: 0.2rem 0;
+    color: var(--text);
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    line-height: 1.05;
+}
+
+.attachments-hero p {
+    max-width: 620px;
+    margin: 0;
+    color: var(--muted);
+}
+
+.attachments-actions,
+.attachments-toolbar,
+.attachments-card-actions,
+.attachments-pager {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+}
+
+.attachments-toolbar {
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+.attachments-toolbar input {
+    min-width: min(360px, 100%);
+    flex: 1;
+}
+
+.attachments-status,
+.attachments-empty {
+    padding: 2rem;
+    text-align: center;
+}
+
+.attachments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 1rem;
+}
+
+.attachments-card {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+}
+
+.attachments-card img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.attachments-card-body {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.85rem;
+}
+
+.attachments-card-body strong {
+    overflow: hidden;
+    color: var(--text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachments-card-body span,
+.attachments-card-body code {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachments-card-actions {
+    padding: 0 0.85rem 0.9rem;
+}
+
+.attachments-card-actions .ghost-btn,
+.attachments-card-actions .danger-btn {
+    min-height: 34px;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.82rem;
+}
+
+.attachments-pager {
+    justify-content: center;
+    margin-top: 1.2rem;
+}
+
+@media (max-width: 760px) {
+    .attachments-page {
+        padding: 5.6rem 1rem 6rem;
+    }
+
+    .attachments-hero {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .attachments-actions .primary-btn,
+    .attachments-actions .ghost-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}

@@ -26,6 +26,7 @@ const categories = [
 
 const editor = reactive({
   coverImageBase64: null,
+  coverImageAssetId: null,
   coverImageSize: 0,
   currentArticle: null,
   message: '',
@@ -34,6 +35,14 @@ const editor = reactive({
   loading: true,
   bodyImageUploading: false,
   bodyImages: {},
+  assetPicker: {
+    open: false,
+    loading: false,
+    mode: 'body',
+    assets: [],
+    search: '',
+    message: ''
+  },
   form: {
     title: '',
     category: '',
@@ -86,6 +95,7 @@ function serializeEditorContent(content) {
 function resetEditorForm(article = null) {
   editor.currentArticle = article;
   editor.coverImageBase64 = article?.cover_image || null;
+  editor.coverImageAssetId = article?.cover_image_asset_id || null;
   editor.coverImageSize = 0;
   editor.form.title = article?.title || '';
   editor.form.category = article?.category || '';
@@ -193,6 +203,7 @@ async function handleEditorCoverUpload(event) {
 
   try {
     editor.coverImageBase64 = await compressImage(file, { maxWidth: 1200, maxHeight: 630, quality: 0.72 });
+    editor.coverImageAssetId = null;
     editor.coverImageSize = Math.round(editor.coverImageBase64.length * 3 / 4);
   } catch (_) {
     showMessage('error', props.t.editorImageFailed);
@@ -222,8 +233,57 @@ async function handleBodyImageUpload(event) {
   }
 }
 
+function assetDisplayName(asset) {
+  return asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
+}
+
+async function openAssetPicker(mode = 'body') {
+  editor.assetPicker.open = true;
+  editor.assetPicker.mode = mode;
+  editor.assetPicker.message = '';
+  await loadAssetPicker();
+}
+
+function closeAssetPicker() {
+  editor.assetPicker.open = false;
+}
+
+async function loadAssetPicker() {
+  editor.assetPicker.loading = true;
+  try {
+    const params = new URLSearchParams({
+      type: 'image',
+      limit: '60',
+      search: editor.assetPicker.search.trim()
+    });
+    const response = await fetch(`/api/assets?${params}`, { headers: authHeaders() });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '附件读取失败');
+    editor.assetPicker.assets = result.data?.assets || [];
+  } catch (error) {
+    editor.assetPicker.assets = [];
+    editor.assetPicker.message = error.message || '附件读取失败';
+  } finally {
+    editor.assetPicker.loading = false;
+  }
+}
+
+function useAsset(asset) {
+  if (editor.assetPicker.mode === 'cover') {
+    editor.coverImageBase64 = asset.url;
+    editor.coverImageAssetId = asset.id;
+    editor.coverImageSize = 0;
+    closeAssetPicker();
+    return;
+  }
+  const alt = assetDisplayName(asset).replace(/[\]\r\n]/g, ' ');
+  replaceContentSelection(`\n![${alt}](${asset.url})\n`, 3, alt.length);
+  closeAssetPicker();
+}
+
 function removeEditorCover() {
   editor.coverImageBase64 = null;
+  editor.coverImageAssetId = null;
   editor.coverImageSize = 0;
   if (editorCoverInput.value) editorCoverInput.value.value = '';
 }
@@ -251,7 +311,7 @@ async function handleEditorSubmit() {
       content,
       content_format: 'markdown',
       cover_image: editor.coverImageBase64,
-      cover_image_asset_id: editor.currentArticle?.cover_image_asset_id || null
+      cover_image_asset_id: editor.coverImageAssetId || null
     };
     let url = '/api/articles';
     let method = 'POST';
@@ -372,6 +432,7 @@ watch(currentArticleId, initEditor);
               {{ t.editorRemove }}
             </button>
           </div>
+          <button class="ghost-btn editor-asset-library-btn" type="button" @click="openAssetPicker('cover')">从附件库选择封面</button>
         </div>
 
         <div class="form-group">
@@ -430,6 +491,7 @@ watch(currentArticleId, initEditor);
             >
               {{ editor.bodyImageUploading ? '图片处理中...' : '插入图片' }}
             </button>
+            <button type="button" class="ghost-btn" @click="openAssetPicker('body')">附件库</button>
             <input
               ref="editorBodyImageInput"
               class="markdown-image-input"
@@ -462,6 +524,32 @@ watch(currentArticleId, initEditor);
           <button type="button" class="ghost-btn" @click="cancelEdit">{{ t.cancel }}</button>
         </div>
       </form>
+
+      <div v-if="editor.assetPicker.open" class="editor-asset-backdrop" role="presentation" @click.self="closeAssetPicker">
+        <section class="editor-asset-modal" role="dialog" aria-modal="true" aria-label="附件库">
+          <header class="editor-asset-head">
+            <div>
+              <span>Asset Library</span>
+              <h2>{{ editor.assetPicker.mode === 'cover' ? '选择封面图片' : '插入附件图片' }}</h2>
+            </div>
+            <button class="ghost-btn" type="button" @click="closeAssetPicker">关闭</button>
+          </header>
+          <div class="editor-asset-tools">
+            <input v-model="editor.assetPicker.search" type="search" placeholder="搜索附件" @keydown.enter="loadAssetPicker">
+            <button class="ghost-btn" type="button" @click="loadAssetPicker">搜索</button>
+            <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
+          </div>
+          <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
+          <div v-if="editor.assetPicker.loading" class="editor-asset-status">加载附件中...</div>
+          <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用图片，可以先进入附件库上传。</div>
+          <div v-else class="editor-asset-grid">
+            <button v-for="asset in editor.assetPicker.assets" :key="asset.id" type="button" class="editor-asset-card" @click="useAsset(asset)">
+              <img :src="asset.url" :alt="assetDisplayName(asset)" loading="lazy">
+              <span>{{ assetDisplayName(asset) }}</span>
+            </button>
+          </div>
+        </section>
+      </div>
     </div>
   </main>
 </template>

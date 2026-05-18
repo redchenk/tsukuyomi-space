@@ -110,6 +110,110 @@
     display: none;
 }
 
+.editor-asset-library-btn {
+    margin-top: 0.7rem;
+}
+
+.editor-asset-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(3, 7, 18, 0.64);
+    backdrop-filter: blur(14px);
+}
+
+.editor-asset-modal {
+    width: min(920px, 100%);
+    max-height: min(760px, 88vh);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel-strong);
+    box-shadow: var(--shadow);
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.editor-asset-head,
+.editor-asset-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.editor-asset-head h2 {
+    margin: 0.15rem 0 0;
+    color: var(--text);
+}
+
+.editor-asset-head span {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.editor-asset-tools {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.editor-asset-tools input {
+    flex: 1;
+    min-width: min(320px, 100%);
+}
+
+.editor-asset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.8rem;
+    overflow: auto;
+    padding: 1rem;
+}
+
+.editor-asset-card {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    text-align: left;
+}
+
+.editor-asset-card:hover {
+    border-color: rgba(126, 219, 232, 0.48);
+    transform: translateY(-1px);
+}
+
+.editor-asset-card img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.editor-asset-card span {
+    overflow: hidden;
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editor-asset-status {
+    padding: 2rem;
+    color: var(--muted);
+    text-align: center;
+}
+
 .editor-preview-head {
     display: flex;
     align-items: baseline;
@@ -243,6 +347,16 @@
     .markdown-image-btn {
         width: 100%;
         margin-left: 0;
+    }
+
+    .editor-asset-modal {
+        max-height: 82vh;
+    }
+
+    .editor-asset-head,
+    .editor-asset-tools {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .editor-preview-head {
