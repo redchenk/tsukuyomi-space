@@ -12,10 +12,8 @@ const props = defineProps({
 const emit = defineEmits(['go']);
 const route = useRoute();
 const editorCoverInput = ref(null);
-const editorBodyImageInput = ref(null);
 const editorContentInput = ref(null);
 const session = ref(getSession());
-const BODY_IMAGE_SCHEME = 'tsukuyomi-image:';
 
 const categories = [
   { value: '\u516c\u544a', labelKey: 'editorCatAnnouncement' },
@@ -33,8 +31,6 @@ const editor = reactive({
   messageType: 'error',
   submitting: false,
   loading: true,
-  bodyImageUploading: false,
-  bodyImages: {},
   assetPicker: {
     open: false,
     loading: false,
@@ -62,34 +58,12 @@ const submitLabel = computed(() => {
 });
 const contentPreview = computed(() => renderMarkdown(serializeEditorContent(editor.form.content)));
 
-function createBodyImageId() {
-  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function registerBodyImage(dataUrl) {
-  const id = createBodyImageId();
-  editor.bodyImages[id] = dataUrl;
-  return id;
-}
-
-function makeBodyImageMarkdown(alt, id) {
-  return `![${alt}](${BODY_IMAGE_SCHEME}${id})`;
-}
-
 function maskEditorContentImages(content) {
-  editor.bodyImages = {};
-  return String(content || '').replace(/!\[([^\]\n]*)\]\((data:image\/(?:png|jpe?g|gif|webp);base64,[^)]+)\)/gi, (_, alt, dataUrl) => {
-    const id = registerBodyImage(dataUrl);
-    return makeBodyImageMarkdown(alt, id);
-  });
+  return String(content || '');
 }
 
 function serializeEditorContent(content) {
-  return String(content || '').replace(/!\[([^\]\n]*)\]\(tsukuyomi-image:([^)]+)\)/g, (match, alt, id) => {
-    const dataUrl = editor.bodyImages[id];
-    return dataUrl ? `![${alt}](${dataUrl})` : match;
-  });
+  return String(content || '');
 }
 
 function resetEditorForm(article = null) {
@@ -207,29 +181,6 @@ async function handleEditorCoverUpload(event) {
     editor.coverImageSize = Math.round(editor.coverImageBase64.length * 3 / 4);
   } catch (_) {
     showMessage('error', props.t.editorImageFailed);
-  }
-}
-
-async function handleBodyImageUpload(event) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  if (!file.type.startsWith('image/')) {
-    showMessage('error', props.t.editorImageOnly);
-    return;
-  }
-
-  editor.bodyImageUploading = true;
-  try {
-    const image = await compressImage(file, { maxWidth: 1400, maxHeight: 1200, quality: 0.78 });
-    const alt = file.name.replace(/\.[^.]+$/, '').replace(/[\\[\]\r\n]/g, ' ').trim() || 'article image';
-    const id = registerBodyImage(image);
-    replaceContentSelection(`\n${makeBodyImageMarkdown(alt, id)}\n`, 3, alt.length);
-    editor.message = '';
-  } catch (_) {
-    showMessage('error', props.t.editorImageFailed);
-  } finally {
-    editor.bodyImageUploading = false;
-    if (editorBodyImageInput.value) editorBodyImageInput.value.value = '';
   }
 }
 
@@ -483,22 +434,7 @@ watch(currentArticleId, initEditor);
             <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('hr')">—</button>
             <button type="button" class="ghost-btn" @click="insertRichEmbed('media')">媒体卡片</button>
             <button type="button" class="ghost-btn" @click="insertRichEmbed('iframe')">iframe</button>
-            <button
-              type="button"
-              class="primary-btn markdown-image-btn"
-              :disabled="editor.bodyImageUploading"
-              @click="editorBodyImageInput?.click()"
-            >
-              {{ editor.bodyImageUploading ? '图片处理中...' : '插入图片' }}
-            </button>
-            <button type="button" class="ghost-btn" @click="openAssetPicker('body')">附件库</button>
-            <input
-              ref="editorBodyImageInput"
-              class="markdown-image-input"
-              type="file"
-              accept="image/*"
-              @change="handleBodyImageUpload"
-            >
+            <button type="button" class="primary-btn markdown-image-btn" @click="openAssetPicker('body')">附件库插入图片</button>
           </div>
           <textarea
             id="editorContent"
@@ -508,7 +444,7 @@ watch(currentArticleId, initEditor);
             style="min-height:400px"
             :placeholder="t.editorContentPh"
           ></textarea>
-          <div class="help-text">{{ t.editorContentHint }}</div>
+          <div class="help-text">图片请先上传到附件库，再点击“附件库插入图片”选择使用；这样图片可复用，也会自动兼容对象存储。</div>
         </div>
 
         <div class="form-group">
@@ -541,7 +477,7 @@ watch(currentArticleId, initEditor);
           </div>
           <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
           <div v-if="editor.assetPicker.loading" class="editor-asset-status">加载附件中...</div>
-          <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用图片，可以先进入附件库上传。</div>
+          <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用图片。请先点击“管理附件”上传图片，上传后回到这里选择插入。</div>
           <div v-else class="editor-asset-grid">
             <button v-for="asset in editor.assetPicker.assets" :key="asset.id" type="button" class="editor-asset-card" @click="useAsset(asset)">
               <img :src="asset.url" :alt="assetDisplayName(asset)" loading="lazy">

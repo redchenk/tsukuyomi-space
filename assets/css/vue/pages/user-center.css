@@ -137,6 +137,10 @@
 .uc-tabs .tab-btn:hover { border-color: rgba(255,183,197,0.52); background: rgba(255,107,157,0.25); }
 .uc-tabs .tab-btn.active { color: #fff; background: rgba(255,107,157,0.24); border-color: rgba(255,183,197,0.5); }
 .uc-tabs .tab-btn small { color: rgba(255,225,235,0.42); }
+.uc-tabs .uc-asset-tab {
+    border-color: rgba(126, 219, 232, 0.3);
+    background: rgba(126, 219, 232, 0.1);
+}
 
 .uc-content-panel { width: 100%; max-width: 100%; padding: 1.1rem; min-height: 520px; }
 .uc-tabs-panel { width: 100%; max-width: 100%; }
