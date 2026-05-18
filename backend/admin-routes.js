@@ -40,6 +40,17 @@ function normalizePublicBaseUrl(value) {
     }
 }
 
+function normalizeEndpointUrl(value) {
+    const endpoint = String(value || '').trim().replace(/\/+$/, '');
+    if (!endpoint) return '';
+    const url = /^https?:\/\//i.test(endpoint) ? endpoint : `http://${endpoint}`;
+    try {
+        return new URL(url).toString().replace(/\/+$/, '');
+    } catch (_) {
+        return '';
+    }
+}
+
 async function testPublicResourceUrl(publicBaseUrl) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -532,9 +543,9 @@ router.post('/settings/oss-test', async (req, res) => {
         if (!rawEndpoint) {
             addCheck('Endpoint', 'skipped', '未填写，无法测试对象存储服务端点连通性');
         } else {
-            const endpoint = normalizePublicBaseUrl(rawEndpoint);
+            const endpoint = normalizeEndpointUrl(rawEndpoint);
             if (!endpoint) {
-                addCheck('Endpoint', 'failed', '格式无效，请填写 http:// 或 https:// 开头的地址');
+                addCheck('Endpoint', 'failed', '格式无效，请填写域名、IP、IP:端口或完整 http(s) 地址');
             } else {
                 const result = await testPublicResourceUrl(endpoint);
                 addCheck(

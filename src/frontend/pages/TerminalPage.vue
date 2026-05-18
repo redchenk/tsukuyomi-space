@@ -534,7 +534,7 @@ onUnmounted(() => {
                 </select>
               </label>
               <label>公开访问域名 / CDN 域名<input v-model="terminal.settings.ossPublicBaseUrl" placeholder="https://static.example.com"></label>
-              <label>Endpoint<input v-model="terminal.settings.ossEndpoint" placeholder="https://oss-cn-hangzhou.aliyuncs.com"></label>
+              <label>Endpoint<input v-model="terminal.settings.ossEndpoint" placeholder="https://oss-cn-hangzhou.aliyuncs.com 或 127.0.0.1:9000"></label>
               <label>Region<input v-model="terminal.settings.ossRegion" placeholder="oss-cn-hangzhou"></label>
               <label>Bucket<input v-model="terminal.settings.ossBucket" placeholder="tsukuyomi-assets"></label>
               <label>资源前缀<input v-model="terminal.settings.ossPrefix" placeholder="public/"></label>
