@@ -499,6 +499,15 @@ router.post('/settings', (req, res) => {
 
 router.post('/settings/oss-test', async (req, res) => {
     try {
+        const rawPublicBaseUrl = String(req.body?.ossPublicBaseUrl || '').trim();
+        if (!rawPublicBaseUrl) {
+            return ok(res, {
+                publicBaseUrl: '',
+                usable: true,
+                skipped: true
+            }, 'CDN / 公开访问域名未填写，已跳过测试');
+        }
+
         const publicBaseUrl = normalizePublicBaseUrl(req.body?.ossPublicBaseUrl);
         if (!publicBaseUrl) {
             return fail(res, 400, '请填写有效的公开访问域名，例如 https://static.example.com');
