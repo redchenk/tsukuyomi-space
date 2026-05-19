@@ -32,6 +32,7 @@
     max-width: 620px;
     margin: 0;
     color: var(--muted);
+    overflow-wrap: anywhere;
 }
 
 .attachments-actions,
@@ -96,6 +97,9 @@
     margin: 0;
     color: var(--muted);
     font-size: 0.82rem;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .attachments-status,
@@ -183,6 +187,21 @@
 .attachments-pager {
     justify-content: center;
     margin-top: 1.2rem;
+}
+
+@media (max-width: 980px) {
+    .attachments-toolbar {
+        grid-template-columns: minmax(0, 1fr) minmax(130px, 180px);
+    }
+
+    .attachments-toolbar .ghost-btn {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .attachments-upload-options {
+        grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+    }
 }
 
 @media (max-width: 760px) {
