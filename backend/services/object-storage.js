@@ -195,22 +195,36 @@ function isConfigured(settings = getSettings()) {
     return Boolean(settings.ossEnabled === true && hasUploadParams(settings));
 }
 
-async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', settings = null }) {
+function normalizeExtraHeaders(headers = {}) {
+    return Object.fromEntries(
+        Object.entries(headers || {})
+            .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '')
+            .map(([key, value]) => [String(key).toLowerCase(), String(value)])
+    );
+}
+
+async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', headers = {}, settings = null }) {
     if (settings && isAliyunProvider(settings)) {
-        return aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body, contentType, settings });
+        return aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body, contentType, headers, settings });
     }
     const now = new Date();
     const requestDate = amzDate(now);
     const scopeDate = dateStamp(now);
     const payloadHash = sha256(body);
     const host = url.host;
-    const canonicalHeaders = [
-        `content-type:${contentType}`,
-        `host:${host}`,
-        `x-amz-content-sha256:${payloadHash}`,
-        `x-amz-date:${requestDate}`
-    ].join('\n') + '\n';
-    const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
+    const extraHeaders = normalizeExtraHeaders(headers);
+    const headersForCanonical = {
+        'content-type': contentType,
+        host,
+        'x-amz-content-sha256': payloadHash,
+        'x-amz-date': requestDate,
+        ...extraHeaders
+    };
+    const canonicalHeaders = Object.entries(headersForCanonical)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => `${key}:${String(value).trim()}\n`)
+        .join('');
+    const signedHeaders = Object.keys(headersForCanonical).sort().join(';');
     const canonicalRequest = [
         method,
         url.pathname,
@@ -235,20 +249,22 @@ async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, 
             Authorization: authorization,
             'Content-Type': contentType,
             'X-Amz-Content-Sha256': payloadHash,
-            'X-Amz-Date': requestDate
+            'X-Amz-Date': requestDate,
+            ...extraHeaders
         },
         body: method === 'PUT' ? body : undefined
     });
 }
 
-async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', settings }) {
+async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', headers = {}, settings }) {
     const now = new Date();
     const requestDate = amzDate(now);
     const scopeDate = dateStamp(now);
     const payloadHash = 'UNSIGNED-PAYLOAD';
     const headersForCanonical = {
         'x-oss-content-sha256': payloadHash,
-        'x-oss-date': requestDate
+        'x-oss-date': requestDate,
+        ...normalizeExtraHeaders(headers)
     };
     if (contentType) headersForCanonical['content-type'] = contentType;
     const canonicalHeaders = Object.entries(headersForCanonical)
@@ -279,7 +295,8 @@ async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySe
             Authorization: authorization,
             'Content-Type': contentType,
             'X-Oss-Content-Sha256': payloadHash,
-            'X-Oss-Date': requestDate
+            'X-Oss-Date': requestDate,
+            ...normalizeExtraHeaders(headers)
         },
         body: method === 'PUT' ? body : undefined
     });
@@ -374,7 +391,8 @@ async function deleteObject(objectKey, settings = getSettings()) {
     return response.ok || response.status === 204 || response.status === 404;
 }
 
-async function getObject(objectKey, settings = getSettings()) {
+async function getObject(objectKey, { range = '', settings: providedSettings = null } = {}) {
+    const settings = providedSettings || getSettings();
     const key = normalizeObjectKey(objectKey);
     if (!hasUploadParams(settings) || !key) return null;
     const url = buildRequestUrl(settings, key);
@@ -387,17 +405,23 @@ async function getObject(objectKey, settings = getSettings()) {
         accessKeySecret: settings.ossAccessKeySecret,
         body: Buffer.alloc(0),
         contentType: 'application/octet-stream',
+        headers: range ? { range } : {},
         settings
     });
-    if (!response.ok) {
+    if (!response.ok && response.status !== 206) {
         const text = await response.text().catch(() => '');
         throw new Error(`OSS get failed: HTTP ${response.status} ${text.slice(0, 160)}`);
     }
     const arrayBuffer = await response.arrayBuffer();
     return {
         buffer: Buffer.from(arrayBuffer),
+        status: response.status,
         contentType: response.headers.get('content-type') || 'application/octet-stream',
-        contentLength: response.headers.get('content-length') || ''
+        contentLength: response.headers.get('content-length') || '',
+        contentRange: response.headers.get('content-range') || '',
+        acceptRanges: response.headers.get('accept-ranges') || 'bytes',
+        etag: response.headers.get('etag') || '',
+        lastModified: response.headers.get('last-modified') || ''
     };
 }
 

@@ -264,12 +264,16 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
         if (metadata.storage !== 'oss') {
             return res.redirect(302, asset.url);
         }
-        const object = await objectStorage.getObject(asset.storage_key);
+        const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
         if (!object?.buffer) return fail(res, 404, '附件不存在');
         res.setHeader('Content-Type', asset.mime_type || object.contentType || 'application/octet-stream');
         if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
+        if (object.acceptRanges) res.setHeader('Accept-Ranges', object.acceptRanges);
+        if (object.contentRange) res.setHeader('Content-Range', object.contentRange);
+        if (object.etag) res.setHeader('ETag', object.etag);
+        if (object.lastModified) res.setHeader('Last-Modified', object.lastModified);
         res.setHeader('Cache-Control', metadata.visibility === 'private' ? 'private, no-store' : 'public, max-age=300');
-        res.send(object.buffer);
+        res.status(object.status === 206 ? 206 : 200).send(object.buffer);
     } catch (error) {
         console.error('Proxy OSS asset failed:', error);
         fail(res, 502, '对象存储资源读取失败');
