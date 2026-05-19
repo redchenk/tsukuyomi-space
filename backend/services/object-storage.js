@@ -35,6 +35,21 @@ function normalizeUploadPath(value, fallback = '') {
         .join('/');
 }
 
+function normalizeObjectKey(value) {
+    const key = String(value || '')
+        .trim()
+        .replace(/\\/g, '/')
+        .replace(/^\/+|\/+$/g, '')
+        .replace(/\/{2,}/g, '/');
+    if (!key) return '';
+    if (/^[a-z][a-z0-9+.-]*:/i.test(key) || key.includes('..')) return '';
+    return key
+        .split('/')
+        .map(part => part.replace(/[\u0000-\u001f\u007f]/g, '').trim())
+        .filter(Boolean)
+        .join('/');
+}
+
 function normalizeEndpoint(value) {
     const endpoint = String(value || '').trim().replace(/\/+$/, '');
     if (!endpoint) return null;
@@ -125,6 +140,12 @@ function publicUrl(settings, objectKey) {
     if (publicBaseUrl) return `${publicBaseUrl}/${encodeKeyPath(objectKey)}`;
     const requestUrl = buildRequestUrl(settings, objectKey);
     return requestUrl ? requestUrl.toString() : '';
+}
+
+function publicUrlForKey(objectKey, settings = getSettings()) {
+    const key = normalizeObjectKey(objectKey);
+    if (!key) return '';
+    return publicUrl(settings, key);
 }
 
 function hasUploadParams(settings = getSettings()) {
@@ -259,9 +280,11 @@ module.exports = {
     getSettings,
     hasUploadParams,
     isConfigured,
+    normalizeObjectKey,
     normalizeStorageMode,
     normalizeUploadPath,
     publicUrl,
+    publicUrlForKey,
     putObject,
     testWrite
 };

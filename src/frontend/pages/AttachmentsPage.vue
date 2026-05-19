@@ -14,13 +14,25 @@ const state = reactive({
   messageType: 'success',
   assets: [],
   search: '',
+  type: 'all',
   storage: 'auto',
   uploadPath: '',
+  ossImport: {
+    objectKey: '',
+    title: '',
+    assetType: 'auto',
+    mimeType: '',
+    size: '',
+    visibility: 'public',
+    description: '',
+    loading: false
+  },
   page: 1,
   totalPages: 1
 });
 
 const isAuthed = computed(() => Boolean(session.value));
+const canRegisterOss = computed(() => session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role));
 
 function showMessage(message, type = 'success') {
   state.message = message;
@@ -28,12 +40,16 @@ function showMessage(message, type = 'success') {
 }
 
 function assetName(asset) {
-  return asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
+  return asset.metadata?.title || asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
 }
 
 function markdownFor(asset) {
   const alt = String(asset.metadata?.alt || assetName(asset)).replace(/[\]\r\n]/g, ' ');
-  return `![${alt}](${asset.url})`;
+  const mimeType = String(asset.mime_type || '');
+  if (mimeType.startsWith('image/')) return `![${alt}](${asset.url})`;
+  if (mimeType.startsWith('video/')) return `\n::media[${alt}](${asset.url} "video")\n`;
+  if (mimeType.startsWith('audio/')) return `\n::media[${alt}](${asset.url} "audio")\n`;
+  return `[${alt}](${asset.url})`;
 }
 
 async function loadAssets(page = 1) {
@@ -43,8 +59,9 @@ async function loadAssets(page = 1) {
     const params = new URLSearchParams({
       page: String(page),
       limit: '72',
-      type: 'image',
-      search: state.search.trim()
+      type: state.type,
+      search: state.search.trim(),
+      includePublic: 'true'
     });
     const response = await fetch(`/api/assets?${params}`, {
       headers: authHeaders(),
@@ -122,6 +139,58 @@ async function deleteAsset(asset) {
   }
 }
 
+function resetOssImport() {
+  state.ossImport.objectKey = '';
+  state.ossImport.title = '';
+  state.ossImport.assetType = 'auto';
+  state.ossImport.mimeType = '';
+  state.ossImport.size = '';
+  state.ossImport.visibility = 'public';
+  state.ossImport.description = '';
+}
+
+async function registerOssAsset() {
+  const objectKey = state.ossImport.objectKey.trim();
+  if (!objectKey) {
+    showMessage('请填写 OSS Object Key', 'error');
+    return;
+  }
+  state.ossImport.loading = true;
+  try {
+    const response = await fetch('/api/assets/oss-register', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        objectKey,
+        title: state.ossImport.title.trim(),
+        assetType: state.ossImport.assetType,
+        mimeType: state.ossImport.mimeType.trim(),
+        size: state.ossImport.size,
+        visibility: state.ossImport.visibility,
+        description: state.ossImport.description.trim()
+      })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || 'OSS 资源登记失败');
+    showMessage('OSS 资源已登记，只保存索引，不同步到本地');
+    resetOssImport();
+    state.type = 'all';
+    await loadAssets(1);
+  } catch (error) {
+    showMessage(error.message || 'OSS 资源登记失败', 'error');
+  } finally {
+    state.ossImport.loading = false;
+  }
+}
+
+function assetPreviewType(asset) {
+  const mimeType = String(asset.mime_type || '');
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  return 'file';
+}
+
 function go(path) {
   emit('go', path);
 }
@@ -158,6 +227,14 @@ onMounted(() => {
 
       <section class="panel attachments-toolbar">
         <input v-model="state.search" type="search" placeholder="搜索文件名、路径或备注" @keydown.enter="loadAssets(1)">
+        <select v-model="state.type" @change="loadAssets(1)">
+          <option value="all">全部</option>
+          <option value="image">图片</option>
+          <option value="video">视频</option>
+          <option value="audio">音频</option>
+          <option value="document">文档</option>
+          <option value="file">文件</option>
+        </select>
         <button class="ghost-btn" type="button" @click="loadAssets(1)">搜索</button>
         <button class="ghost-btn" type="button" @click="state.search = ''; loadAssets(1)">重置</button>
       </section>
@@ -176,6 +253,48 @@ onMounted(() => {
         <p>上传路径是相对目录，留空时使用后台默认目录；不要填写 URL、盘符或包含 .. 的路径。</p>
       </section>
 
+      <section v-if="canRegisterOss" class="panel attachments-oss-import">
+        <div>
+          <h2>登记 OSS 大文件</h2>
+          <p>适合电影、长视频、音频包等已经手动上传到 OSS 的资源；这里只登记 Object Key，不同步到本地服务器。</p>
+        </div>
+        <label>Object Key
+          <input v-model="state.ossImport.objectKey" type="text" placeholder="movies/example.mp4">
+        </label>
+        <label>显示名称
+          <input v-model="state.ossImport.title" type="text" placeholder="留空则使用文件名">
+        </label>
+        <label>资源类型
+          <select v-model="state.ossImport.assetType">
+            <option value="auto">自动识别</option>
+            <option value="video">视频</option>
+            <option value="audio">音频</option>
+            <option value="image">图片</option>
+            <option value="document">文档</option>
+            <option value="file">文件</option>
+            <option value="live2d">Live2D</option>
+          </select>
+        </label>
+        <label>MIME 类型
+          <input v-model="state.ossImport.mimeType" type="text" placeholder="可选，例如 video/mp4">
+        </label>
+        <label>大小（字节）
+          <input v-model="state.ossImport.size" type="number" min="0" placeholder="可选">
+        </label>
+        <label>可见性
+          <select v-model="state.ossImport.visibility">
+            <option value="public">公共资源</option>
+            <option value="private">仅自己可见</option>
+          </select>
+        </label>
+        <label class="attachments-oss-description">备注
+          <textarea v-model="state.ossImport.description" rows="2" placeholder="可选"></textarea>
+        </label>
+        <button class="primary-btn" type="button" :disabled="state.ossImport.loading" @click="registerOssAsset">
+          {{ state.ossImport.loading ? '登记中...' : '登记 OSS 资源' }}
+        </button>
+      </section>
+
       <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>
 
       <section v-if="state.loading" class="attachments-status">加载附件中...</section>
@@ -185,10 +304,13 @@ onMounted(() => {
       </section>
       <section v-else class="attachments-grid">
         <article v-for="asset in state.assets" :key="asset.id" class="attachments-card">
-          <img :src="asset.url" :alt="assetName(asset)" loading="lazy">
+          <img v-if="assetPreviewType(asset) === 'image'" :src="asset.url" :alt="assetName(asset)" loading="lazy">
+          <video v-else-if="assetPreviewType(asset) === 'video'" :src="asset.url" preload="metadata" controls></video>
+          <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="asset.url" preload="metadata" controls></audio>
+          <div v-else class="attachments-file-preview">{{ asset.asset_type || 'file' }}</div>
           <div class="attachments-card-body">
             <strong>{{ assetName(asset) }}</strong>
-            <span>{{ asset.mime_type || 'image' }}</span>
+            <span>{{ asset.mime_type || asset.asset_type || 'file' }}</span>
             <code>{{ asset.storage_key }}</code>
           </div>
           <div class="attachments-card-actions">
