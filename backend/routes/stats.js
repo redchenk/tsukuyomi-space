@@ -46,6 +46,32 @@ router.get('/', (req, res) => {
     }
 });
 
+router.get('/live/:nonce', (req, res) => {
+    try {
+        const articles = statsRepository.articleCounters();
+        const userCount = statsRepository.userCount();
+        const messageCount = statsRepository.messageCount();
+        const views = statsRepository.publicViewCounters();
+
+        res.json({
+            success: true,
+            data: {
+                articles: articles.count || 0,
+                articleViews: articles.views || 0,
+                users: userCount,
+                messages: messageCount,
+                todayViews: views.today || 0,
+                weekViews: views.week || 0,
+                totalViews: views.total || 0,
+                uptime: siteUptimeSeconds()
+            }
+        });
+    } catch (error) {
+        console.error('Read stats failed:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 router.post('/view', (req, res) => {
     try {
         const ip = clientIp(req);

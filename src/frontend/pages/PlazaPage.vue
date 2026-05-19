@@ -118,7 +118,7 @@ function showPlazaToast(text) {
 
 async function loadPlazaStats() {
   try {
-    const response = await fetch('/api/stats');
+    const response = await fetch(`/api/stats/live/${Date.now()}`, { cache: 'no-store' });
     const result = await parseResponse(response);
     if (result.success) plaza.stats = result.data || {};
   } catch (_) {}
@@ -126,12 +126,27 @@ async function loadPlazaStats() {
 
 async function loadPlazaMessages() {
   try {
-    const response = await fetch('/api/messages');
+    const response = await fetch(`/api/messages/plaza/${Date.now()}`, { cache: 'no-store' });
     const result = await parseResponse(response);
-    if (result.success) plaza.messages = Array.isArray(result.data) ? result.data : [];
+    if (result.success) {
+      plaza.messages = Array.isArray(result.data)
+        ? result.data.filter((item) => !item.article_id)
+        : [];
+    }
   } catch (_) {
     showPlazaToast(props.t.plazaLoadFailed);
   }
+}
+
+function upsertPlazaMessage(message) {
+  if (!message?.id) return;
+  const normalized = { ...message, article_id: message.article_id || null };
+  const index = plaza.messages.findIndex((item) => item.id === normalized.id);
+  if (index >= 0) {
+    plaza.messages.splice(index, 1, { ...plaza.messages[index], ...normalized });
+    return;
+  }
+  plaza.messages.unshift(normalized);
 }
 
 async function refreshPlaza() {
@@ -161,6 +176,7 @@ async function plazaSubmitMessage(content) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.publishFailed);
+    upsertPlazaMessage(result.data);
     showPlazaToast(props.t.msgPublished);
     await refreshPlaza();
     return true;
@@ -187,6 +203,7 @@ async function plazaSubmitReply(parentId, content) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.replyFailed);
+    upsertPlazaMessage(result.data);
     showPlazaToast(props.t.replyPublished);
     await refreshPlaza();
     return true;
@@ -212,6 +229,8 @@ async function plazaLikeMessage(id) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.likeFailed);
+    const target = plaza.messages.find((item) => item.id === id);
+    if (target) target.like_count = Number(target.like_count || 0) + 1;
     localStorage.setItem(`liked_${id}`, '1');
     showPlazaToast(props.t.likedToast);
     await refreshPlaza();

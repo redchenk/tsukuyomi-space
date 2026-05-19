@@ -97,7 +97,7 @@ async function loadArticle() {
 
 async function loadComments() {
   try {
-    const response = await fetch(`/api/articles/${encodeURIComponent(articleId.value)}/messages`, {
+    const response = await fetch(`/api/articles/${encodeURIComponent(articleId.value)}/messages/live/${Date.now()}`, {
       cache: 'no-store'
     });
     const result = await parseResponse(response);

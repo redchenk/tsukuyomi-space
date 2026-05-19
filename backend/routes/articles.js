@@ -97,6 +97,21 @@ router.get('/:id/messages', (req, res) => {
     }
 });
 
+router.get('/:id/messages/live/:nonce', (req, res) => {
+    try {
+        const article = articleRepository.findArticleById(req.params.id);
+        if (!article) {
+            return res.status(404).json({ success: false, message: 'Article not found' });
+        }
+
+        const messages = messageRepository.listMessages({ articleId: req.params.id });
+        res.json({ success: true, data: messages });
+    } catch (error) {
+        console.error('List article messages failed:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 router.get('/:id', (req, res) => {
     try {
         const article = articleRepository.findArticleById(req.params.id);

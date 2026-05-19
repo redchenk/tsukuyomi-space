@@ -35,14 +35,22 @@ function notifyMessageOwner({ targetMessage, actor, type, title, content, relate
     });
 }
 
-router.get('/', (req, res) => {
+function sendMessageList(req, res, articleId) {
     try {
-        const messages = messageRepository.listMessages({ articleId: req.query.article_id });
+        const messages = messageRepository.listMessages({ articleId });
         res.json({ success: true, data: messages });
     } catch (error) {
         console.error('Messages API error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
+}
+
+router.get('/', (req, res) => {
+    sendMessageList(req, res, req.query.article_id);
+});
+
+router.get('/plaza/:nonce', (req, res) => {
+    sendMessageList(req, res, null);
 });
 
 router.post('/', authenticateToken, (req, res) => {
