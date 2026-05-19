@@ -67,6 +67,10 @@ function isPublicIp(ip = '') {
 function getClientIp(req) {
     const candidates = [
         req.headers['cf-connecting-ip'],
+        req.headers['ali-cdn-real-ip'],
+        req.headers['cdn-src-ip'],
+        req.headers['x-client-ip'],
+        req.headers['x-true-ip'],
         req.headers['x-forwarded-for'],
         req.headers['x-real-ip'],
         req.ip,
@@ -319,7 +323,7 @@ async function fetchOpenMeteoWorld({ lat, lon, timezone, city }) {
     }
 }
 
-router.get('/world', async (req, res) => {
+async function sendWorld(req, res) {
     const hasClientCoords = hasCoordinate(req.query.lat) && hasCoordinate(req.query.lon);
     const hasEnvCoords = hasCoordinate(process.env.ROOM_WEATHER_LAT) && hasCoordinate(process.env.ROOM_WEATHER_LON);
     const ipLocation = !hasClientCoords ? await resolveIpLocation(req) : null;
@@ -359,7 +363,7 @@ router.get('/world', async (req, res) => {
             location: { ...(cached.location || {}), source: locationSource },
             debug: weatherDebug(req, { hasClientCoords, hasIpCoords, hasEnvCoords, ipLocation, cache: 'hit' })
         };
-        res.set('Cache-Control', 'public, max-age=600');
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         return res.json({ success: true, data: { ...cachedWorld, cache: 'hit' } });
     }
 
@@ -379,12 +383,16 @@ router.get('/world', async (req, res) => {
         await weatherCache.setWorld(cacheLocation, world);
     }
 
-    res.set('Cache-Control', 'public, max-age=600');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.json({
         success: true,
         data: world
     });
-});
+}
+
+router.get('/world', sendWorld);
+
+router.get('/world/live/:nonce', sendWorld);
 
 router.get('/memory/status', authenticateToken, (req, res) => {
     res.json({
