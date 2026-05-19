@@ -14,6 +14,36 @@ function withParsedTags(article) {
     };
 }
 
+function listArticlesPayload(req) {
+    const { category } = req.query;
+    const page = parsePositiveInt(req.query.page, 1);
+    const limit = parsePositiveInt(req.query.limit, 100);
+    const offset = (page - 1) * limit;
+
+    const result = articleRepository.listArticles({ category, limit, offset });
+    const articles = result.articles.map(withParsedTags);
+
+    return {
+        success: true,
+        data: articles,
+        pagination: {
+            page,
+            limit,
+            total: result.total,
+            totalPages: Math.ceil(result.total / limit)
+        }
+    };
+}
+
+function sendArticleList(req, res) {
+    try {
+        res.json(listArticlesPayload(req));
+    } catch (error) {
+        console.error('List articles failed:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+}
+
 function canPublishAnnouncement(user) {
     return user?.role === 'admin' || user?.role === 'super_admin';
 }
@@ -46,6 +76,8 @@ router.get('/', (req, res) => {
 });
 
 // 创建文章：普通用户可发普通分类，公告类仅管理员可发。
+router.get('/live/:nonce', sendArticleList);
+
 router.post('/', authenticateToken, async (req, res) => {
     try {
         const { title, excerpt, content, content_format, category, tags, read_time, cover_image, cover_image_asset_id } = req.body;
@@ -108,6 +140,21 @@ router.get('/:id/messages/live/:nonce', (req, res) => {
         res.json({ success: true, data: messages });
     } catch (error) {
         console.error('List article messages failed:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+router.get('/:id/live/:nonce', (req, res) => {
+    try {
+        const article = articleRepository.findArticleById(req.params.id);
+        if (!article) {
+            return res.status(404).json({ success: false, message: 'Article not found' });
+        }
+
+        articleRepository.incrementArticleViews(req.params.id);
+        res.json({ success: true, data: withParsedTags(article) });
+    } catch (error) {
+        console.error('Get article failed:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

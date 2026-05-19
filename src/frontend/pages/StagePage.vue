@@ -43,7 +43,7 @@ function stageCategoryLabel(category) {
 async function loadArticles() {
   articlesLoading.value = true;
   try {
-    const response = await fetch('/api/articles');
+    const response = await fetch(`/api/articles/live/${Date.now()}`, { cache: 'no-store' });
     const result = await parseResponse(response);
     articles.value = result.success && Array.isArray(result.data) ? result.data : [];
   } catch (_) {

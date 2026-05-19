@@ -682,7 +682,8 @@ async function loadMemoryCount() {
   try {
     if (canUseServerMemory.value) {
       const response = await fetch('/api/room/memory/status', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('tsukuyomi_token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('tsukuyomi_token')}` },
+        cache: 'no-store'
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
@@ -712,7 +713,8 @@ async function loadServerMemories() {
     if (memory.query.trim()) params.set('q', memory.query.trim());
     if (memory.type && !memory.query.trim()) params.set('type', memory.type);
     const response = await fetch(`/api/room/memory?${params}`, {
-      headers: memoryAuthHeaders()
+      headers: memoryAuthHeaders(),
+      cache: 'no-store'
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
@@ -1118,7 +1120,8 @@ async function openMemoryItem(item) {
 
 async function fetchMemoryDetail(id) {
   const response = await fetch(`/api/room/memory/${encodeURIComponent(id)}`, {
-    headers: memoryAuthHeaders()
+    headers: memoryAuthHeaders(),
+    cache: 'no-store'
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);

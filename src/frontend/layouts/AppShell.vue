@@ -50,7 +50,10 @@ async function loadUnreadNotifications() {
   }
 
   try {
-    const response = await fetch('/api/user/notifications/unread-count', { headers: authHeaders() });
+    const response = await fetch('/api/user/notifications/unread-count', {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
     const result = await parseResponse(response);
     if (result.success) unreadNotifications.value = Number(result.data?.count || 0);
   } catch (_) {

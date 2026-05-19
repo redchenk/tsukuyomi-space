@@ -83,10 +83,11 @@ function openScene(scene, event) {
 
 async function loadHubPreview() {
   try {
+    const nonce = Date.now();
     const [articleResponse, messageResponse, statsResponse] = await Promise.all([
-      fetch('/api/articles'),
-      fetch('/api/messages'),
-      fetch('/api/stats')
+      fetch(`/api/articles/live/${nonce}`, { cache: 'no-store' }),
+      fetch(`/api/messages/plaza/${nonce}`, { cache: 'no-store' }),
+      fetch(`/api/stats/live/${nonce}`, { cache: 'no-store' })
     ]);
     const [articleResult, messageResult, statsResult] = await Promise.all([
       parseResponse(articleResponse),
@@ -129,6 +130,18 @@ async function submitPlazaQuick() {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '发布失败');
+    if (result.data?.id) {
+      plazaMessages.value = [
+        { ...result.data, article_id: result.data.article_id || null },
+        ...plazaMessages.value.filter((item) => item.id !== result.data.id)
+      ];
+      if (siteStats.value) {
+        siteStats.value = {
+          ...siteStats.value,
+          messages: Number(siteStats.value.messages || 0) + 1
+        };
+      }
+    }
     plazaQuick.content = '';
     plazaQuick.message = '已发布';
     await loadHubPreview();

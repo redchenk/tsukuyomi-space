@@ -82,7 +82,9 @@ async function loadArticle() {
   }
 
   try {
-    const response = await fetch(`/api/articles/${encodeURIComponent(articleId.value)}`);
+    const response = await fetch(`/api/articles/${encodeURIComponent(articleId.value)}/live/${Date.now()}`, {
+      cache: 'no-store'
+    });
     const result = await parseResponse(response);
     if (!result.success || !result.data) throw new Error(result.message || '文章不存在');
     article.value = result.data;

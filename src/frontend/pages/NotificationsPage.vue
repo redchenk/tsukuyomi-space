@@ -30,7 +30,10 @@ async function loadNotifications() {
   inbox.loading = true;
   inbox.message = '';
   try {
-    const response = await fetch('/api/user/notifications', { headers: authHeaders() });
+    const response = await fetch('/api/user/notifications', {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
     const result = await parseResponse(response);
     if (!result.success) {
       if (response.status === 404 || /Cannot GET/i.test(result.message || '')) {

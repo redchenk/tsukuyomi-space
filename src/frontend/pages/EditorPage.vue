@@ -207,7 +207,10 @@ async function loadAssetPicker() {
       limit: '60',
       search: editor.assetPicker.search.trim()
     });
-    const response = await fetch(`/api/assets?${params}`, { headers: authHeaders() });
+    const response = await fetch(`/api/assets?${params}`, {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '附件读取失败');
     editor.assetPicker.assets = result.data?.assets || [];
@@ -305,7 +308,10 @@ async function initEditor() {
   if (id) {
     try {
       const url = session.value.admin ? `/api/admin/articles/${id}` : `/api/user/articles/${id}`;
-      const response = await fetch(url, { headers: { Authorization: `Bearer ${session.value.token}` } });
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${session.value.token}` },
+        cache: 'no-store'
+      });
       const result = await parseResponse(response);
       if (!result.success) throw new Error(result.message || props.t.unknown);
       const validCategories = categories.map((item) => item.value);

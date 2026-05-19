@@ -485,7 +485,8 @@ async function fetchRelevantMemories(message) {
   if (!token || !String(message || '').trim()) return [];
   const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
   const response = await fetch(`/api/room/memory?${params}`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store'
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || !result.success) return [];

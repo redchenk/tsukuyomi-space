@@ -109,7 +109,10 @@ async function ucLoadProfile() {
   const token = getAuthToken();
   if (!token) return;
   try {
-    const response = await fetch('/api/user/profile', { headers: authHeaders() });
+    const response = await fetch('/api/user/profile', {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.ucProfileLoadFailed);
     ucUser.value = result.data;
@@ -129,7 +132,10 @@ async function ucLoadArticles() {
     return;
   }
   try {
-    const response = await fetch('/api/user/articles', { headers: authHeaders() });
+    const response = await fetch('/api/user/articles', {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.ucArticleLoadFailed);
     uc.articles = result.data || [];

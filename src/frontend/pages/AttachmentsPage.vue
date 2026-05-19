@@ -44,7 +44,10 @@ async function loadAssets(page = 1) {
       type: 'image',
       search: state.search.trim()
     });
-    const response = await fetch(`/api/assets?${params}`, { headers: authHeaders() });
+    const response = await fetch(`/api/assets?${params}`, {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '附件读取失败');
     state.assets = result.data?.assets || [];
