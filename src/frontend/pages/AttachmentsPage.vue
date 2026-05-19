@@ -224,10 +224,6 @@ onMounted(() => {
           <option value="document">文档</option>
           <option value="file">文件</option>
         </select>
-        <select v-if="canManageAllAssets" v-model="state.scope" @change="loadAssets(1)">
-          <option value="mine">我的附件</option>
-          <option value="all">全部附件</option>
-        </select>
         <button class="ghost-btn" type="button" @click="loadAssets(1)">搜索</button>
         <button class="ghost-btn" type="button" @click="state.search = ''; loadAssets(1)">重置</button>
       </section>
@@ -240,7 +236,7 @@ onMounted(() => {
             <option value="oss">对象存储</option>
           </select>
         </label>
-        <p>上传目录由系统自动按用户与文件类型分类：users/{用户ID}/image、video、audio、document、file。普通用户只能查看和管理自己的附件，管理员可以切换查看全部附件。</p>
+        <p>上传目录由系统自动按用户与文件类型分类：users/{用户ID}/image、video、audio、document、file。普通用户只能查看和管理自己的附件；管理员请从终端入口进入全站附件管理。</p>
       </section>
 
       <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>
