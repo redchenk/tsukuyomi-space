@@ -26,7 +26,16 @@ const canManageAllAssets = computed(() => session.value?.admin || ['admin', 'sup
 const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
 
 function syncDefaultScope() {
-  if (canManageAllAssets.value) state.scope = 'all';
+  if (!canManageAllAssets.value) state.scope = 'mine';
+}
+
+function assetAuthHeaders(extra = {}) {
+  if (canManageAllAssets.value && state.scope === 'all') {
+    const token = localStorage.getItem('admin_token') || '';
+    return token ? { ...extra, Authorization: `Bearer ${token}` } : authHeaders(extra);
+  }
+  const token = localStorage.getItem('tsukuyomi_token') || '';
+  return token ? { ...extra, Authorization: `Bearer ${token}` } : authHeaders(extra);
 }
 
 function showMessage(message, type = 'success') {
@@ -64,7 +73,7 @@ async function loadAssets(page = 1) {
     });
     if (canManageAllAssets.value && state.scope === 'all') params.set('scope', 'all');
     const response = await fetch(`/api/assets?${params}`, {
-      headers: authHeaders(),
+      headers: assetAuthHeaders(),
       cache: 'no-store'
     });
     const result = await parseResponse(response);
@@ -94,7 +103,7 @@ async function uploadAsset(event) {
       : await fileToDataUrl(file);
     const response = await fetch('/api/assets', {
       method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      headers: assetAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         dataUrl,
         fileName: file.name,
@@ -149,7 +158,7 @@ async function deleteAsset(asset) {
   try {
     const response = await fetch(`/api/assets/${encodeURIComponent(asset.id)}`, {
       method: 'DELETE',
-      headers: authHeaders()
+      headers: assetAuthHeaders()
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '附件删除失败');

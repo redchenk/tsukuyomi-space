@@ -11,7 +11,7 @@ export async function parseResponse(response) {
 }
 
 export function getAuthToken() {
-  return localStorage.getItem('admin_token') || localStorage.getItem('tsukuyomi_token') || '';
+  return localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
 }
 
 export function getSession() {
