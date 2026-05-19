@@ -1,9 +1,11 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 
 const emit = defineEmits(['go']);
+const route = useRoute();
 const fileInput = ref(null);
 const session = ref(getSession());
 
@@ -26,7 +28,7 @@ const canManageAllAssets = computed(() => session.value?.admin || ['admin', 'sup
 const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
 
 function syncDefaultScope() {
-  if (!canManageAllAssets.value) state.scope = 'mine';
+  state.scope = canManageAllAssets.value && route.query.scope === 'all' ? 'all' : 'mine';
 }
 
 function assetAuthHeaders(extra = {}) {
