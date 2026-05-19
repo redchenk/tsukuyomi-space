@@ -255,8 +255,12 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
         const asset = assetRepository.findAssetForAdmin(req.params.id);
         if (!asset) return fail(res, 404, '附件不存在');
         const metadata = asset.metadata || {};
-        const isPrivate = metadata.visibility === 'private' && !admin && asset.owner_id !== req.user?.id;
-        if (isPrivate) return fail(res, req.user ? 403 : 401, '无权访问附件');
+        const isOwner = asset.owner_id && asset.owner_id === req.user?.id;
+        const publicAsset = !asset.owner_id || metadata.visibility === 'public';
+        const publishedReference = assetRepository.isAssetPubliclyReferenced(asset.id);
+        if (!admin && !isOwner && !publicAsset && !publishedReference) {
+            return fail(res, req.user ? 403 : 401, '无权访问附件');
+        }
         if (metadata.storage !== 'oss') {
             return res.redirect(302, asset.url);
         }

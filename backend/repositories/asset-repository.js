@@ -85,6 +85,22 @@ function findAssetByStorageKey(storageKey) {
     `).get(storageKey));
 }
 
+function isAssetPubliclyReferenced(id) {
+    const token = `%/api/assets/proxy/${id}%`;
+    const row = db.prepare(`
+        SELECT 1
+        FROM articles
+        WHERE status = 'published'
+          AND (
+            cover_image_asset_id = ?
+            OR cover_image LIKE ?
+            OR content LIKE ?
+          )
+        LIMIT 1
+    `).get(id, token, token);
+    return Boolean(row);
+}
+
 function createAsset({ id, articleId = null, ownerId = null, assetType, mimeType = '', url, storageKey, metadata = {} }) {
     db.prepare(`
         INSERT INTO article_assets (
@@ -124,5 +140,6 @@ module.exports = {
     findAssetForAdmin,
     findAssetByStorageKey,
     findAssetForOwner,
+    isAssetPubliclyReferenced,
     listAssetsByOwner
 };
