@@ -100,10 +100,10 @@ onMounted(() => {
       <p class="hero-kicker">TSUKUYOMI SPACE</p>
       <p class="hero-copy">{{ t.heroCopy }}</p>
       <button class="primary-btn" type="button" @click="startAccess(t)">{{ t.access }}</button>
+      <footer class="access-beian">
+        <BeianLink />
+      </footer>
     </section>
-    <footer class="access-beian">
-      <BeianLink />
-    </footer>
     <div v-if="loading.active" class="loading-layer">
       <div class="loading-box">
         <div class="loading-text">{{ loading.text }}</div>
