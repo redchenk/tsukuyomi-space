@@ -436,7 +436,8 @@ body .page.terminal-page textarea::placeholder {
 }
 
 .terminal-oss-settings {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    align-items: end;
 }
 
 .terminal-oss-settings .terminal-check,
@@ -457,6 +458,12 @@ body .page.terminal-page textarea::placeholder {
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
+    padding-top: 0.2rem;
+}
+
+.terminal-oss-actions .primary-btn,
+.terminal-oss-actions .ghost-btn {
+    flex: 0 0 auto;
 }
 
 .terminal-oss-result {
@@ -494,7 +501,8 @@ body .page.terminal-page textarea::placeholder {
 .terminal-oss-import {
     display: grid;
     grid-column: 1 / -1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    align-items: end;
     gap: 0.9rem;
     padding: 1rem;
     border: 1px solid rgba(139, 168, 205, 0.18);
@@ -523,6 +531,15 @@ body .page.terminal-page textarea::placeholder {
 }
 
 .terminal-oss-import label {
+    min-width: 0;
+}
+
+.terminal-oss-settings input,
+.terminal-oss-settings select,
+.terminal-oss-import input,
+.terminal-oss-import select,
+.terminal-oss-import textarea {
+    width: 100%;
     min-width: 0;
 }
 

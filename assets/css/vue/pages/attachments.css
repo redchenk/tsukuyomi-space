@@ -35,7 +35,6 @@
 }
 
 .attachments-actions,
-.attachments-toolbar,
 .attachments-card-actions,
 .attachments-pager {
     display: flex;
@@ -45,22 +44,34 @@
 }
 
 .attachments-toolbar {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(130px, 170px) auto auto;
+    align-items: center;
+    gap: 0.7rem;
     margin-bottom: 1rem;
     padding: 1rem;
 }
 
 .attachments-toolbar input {
-    min-width: min(360px, 100%);
-    flex: 1;
+    width: 100%;
+    min-width: 0;
 }
 
 .attachments-toolbar select {
-    min-width: 120px;
+    width: 100%;
+    min-width: 0;
+}
+
+.attachments-toolbar .ghost-btn {
+    justify-content: center;
+    min-width: 82px;
+    white-space: nowrap;
 }
 
 .attachments-upload-options {
     display: grid;
-    grid-template-columns: minmax(180px, 220px) minmax(320px, 1fr);
+    grid-template-columns: minmax(210px, 260px) minmax(420px, 1fr);
+    align-items: end;
     gap: 0.9rem;
     margin-bottom: 1rem;
     padding: 1rem;
@@ -190,8 +201,13 @@
         justify-content: center;
     }
 
+    .attachments-toolbar,
     .attachments-upload-options {
         grid-template-columns: 1fr;
+    }
+
+    .attachments-toolbar .ghost-btn {
+        width: 100%;
     }
 
 }

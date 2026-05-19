@@ -656,6 +656,7 @@ onUnmounted(() => {
               <label>AccessKey Secret<input v-model="terminal.settings.ossAccessKeySecret" type="password" autocomplete="new-password"></label>
               <label class="terminal-check"><input v-model="terminal.settings.ossForcePathStyle" type="checkbox"> 使用路径风格访问</label>
               <div class="terminal-oss-actions">
+                <button class="primary-btn" type="submit">保存对象存储设置</button>
                 <button class="ghost-btn" type="button" :disabled="terminal.ossTest.loading" @click="testOssSettings">
                   {{ terminal.ossTest.loading ? '测试中...' : '测试对象存储' }}
                 </button>
