@@ -25,6 +25,10 @@ const isAuthed = computed(() => Boolean(session.value));
 const canManageAllAssets = computed(() => session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role));
 const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
 
+function syncDefaultScope() {
+  if (canManageAllAssets.value) state.scope = 'all';
+}
+
 function showMessage(message, type = 'success') {
   state.message = message;
   state.messageType = type;
@@ -165,6 +169,7 @@ function go(path) {
 
 onMounted(() => {
   session.value = getSession();
+  syncDefaultScope();
   loadAssets();
 });
 </script>
