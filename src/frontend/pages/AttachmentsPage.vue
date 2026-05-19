@@ -12,6 +12,8 @@ const session = ref(getSession());
 const state = reactive({
   loading: false,
   uploading: false,
+  uploadProgress: 0,
+  uploadPhase: '',
   message: '',
   messageType: 'success',
   assets: [],
@@ -43,6 +45,29 @@ function assetAuthHeaders(extra = {}) {
 function showMessage(message, type = 'success') {
   state.message = message;
   state.messageType = type;
+}
+
+function postJsonWithProgress(url, payload, headers, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    Object.entries(headers || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
+    });
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onload = () => {
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        text: () => Promise.resolve(xhr.responseText || '')
+      });
+    };
+    xhr.onerror = () => reject(new Error('附件上传失败，请检查网络后重试'));
+    xhr.send(JSON.stringify(payload));
+  });
 }
 
 function assetName(asset) {
@@ -99,29 +124,40 @@ async function uploadAsset(event) {
     return;
   }
   state.uploading = true;
+  state.uploadProgress = 4;
+  state.uploadPhase = file.type.startsWith('image/') ? '正在压缩图片...' : '正在读取文件...';
   try {
     const dataUrl = file.type.startsWith('image/')
       ? await compressImage(file, { maxWidth: 1800, maxHeight: 1600, quality: 0.82 })
       : await fileToDataUrl(file);
-    const response = await fetch('/api/assets', {
-      method: 'POST',
-      headers: assetAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
+    state.uploadProgress = 8;
+    state.uploadPhase = '正在上传...';
+    const response = await postJsonWithProgress(
+      '/api/assets',
+      {
         dataUrl,
         fileName: file.name,
         mimeType: file.type || 'application/octet-stream',
         alt: file.name.replace(/\.[^.]+$/, ''),
         storage: state.storage
-      })
-    });
+      },
+      assetAuthHeaders({ 'Content-Type': 'application/json' }),
+      (progress) => {
+        state.uploadProgress = Math.max(8, Math.min(96, progress));
+      }
+    );
+    state.uploadPhase = '正在处理...';
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '附件上传失败');
+    state.uploadProgress = 100;
     showMessage('附件已上传');
     await loadAssets(1);
   } catch (error) {
     showMessage(error.message || '附件上传失败', 'error');
   } finally {
     state.uploading = false;
+    state.uploadPhase = '';
+    state.uploadProgress = 0;
     if (fileInput.value) fileInput.value.value = '';
   }
 }
@@ -213,6 +249,16 @@ onMounted(() => {
           <input ref="fileInput" type="file" :accept="uploadAccept" hidden @change="uploadAsset">
         </div>
       </header>
+
+      <div v-if="state.uploading" class="attachments-upload-progress" role="status" aria-live="polite">
+        <div class="attachments-upload-progress-head">
+          <span>{{ state.uploadPhase || '正在上传...' }}</span>
+          <strong>{{ state.uploadProgress }}%</strong>
+        </div>
+        <div class="attachments-upload-progress-track" aria-hidden="true">
+          <span :style="{ width: `${state.uploadProgress}%` }"></span>
+        </div>
+      </div>
 
       <section class="panel attachments-toolbar">
         <input v-model="state.search" type="search" placeholder="搜索文件名、路径或备注" @keydown.enter="loadAssets(1)">

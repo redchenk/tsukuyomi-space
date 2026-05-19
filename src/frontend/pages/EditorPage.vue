@@ -37,6 +37,8 @@ const editor = reactive({
     open: false,
     loading: false,
     uploading: false,
+    uploadProgress: 0,
+    uploadPhase: '',
     mode: 'body',
     assets: [],
     search: '',
@@ -261,6 +263,29 @@ function fileToDataUrl(file) {
   });
 }
 
+function postJsonWithProgress(url, payload, headers, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    Object.entries(headers || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
+    });
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onload = () => {
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        text: () => Promise.resolve(xhr.responseText || '')
+      });
+    };
+    xhr.onerror = () => reject(new Error('附件上传失败，请检查网络后重试'));
+    xhr.send(JSON.stringify(payload));
+  });
+}
+
 function isSupportedAssetFile(file) {
   const type = file.type || '';
   const name = file.name || '';
@@ -283,29 +308,40 @@ async function uploadEditorAsset(event) {
     return;
   }
   editor.assetPicker.uploading = true;
+  editor.assetPicker.uploadProgress = 4;
+  editor.assetPicker.uploadPhase = file.type.startsWith('image/') ? '正在压缩图片...' : '正在读取文件...';
   editor.assetPicker.message = '';
   try {
     const dataUrl = file.type.startsWith('image/')
       ? await compressImage(file, { maxWidth: 1800, maxHeight: 1600, quality: 0.82 })
       : await fileToDataUrl(file);
-    const response = await fetch('/api/assets', {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
+    editor.assetPicker.uploadProgress = 8;
+    editor.assetPicker.uploadPhase = '正在上传...';
+    const response = await postJsonWithProgress(
+      '/api/assets',
+      {
         dataUrl,
         fileName: file.name,
         mimeType: file.type || 'application/octet-stream',
         alt: file.name.replace(/\.[^.]+$/, '')
-      })
-    });
+      },
+      authHeaders({ 'Content-Type': 'application/json' }),
+      (progress) => {
+        editor.assetPicker.uploadProgress = Math.max(8, Math.min(96, progress));
+      }
+    );
+    editor.assetPicker.uploadPhase = '正在处理...';
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '附件上传失败');
+    editor.assetPicker.uploadProgress = 100;
     await loadAssetPicker();
     useAsset(result.data);
   } catch (error) {
     editor.assetPicker.message = error.message || '附件上传失败';
   } finally {
     editor.assetPicker.uploading = false;
+    editor.assetPicker.uploadPhase = '';
+    editor.assetPicker.uploadProgress = 0;
     if (editorAssetUploadInput.value) editorAssetUploadInput.value.value = '';
   }
 }
@@ -567,6 +603,15 @@ watch(currentArticleId, initEditor);
             </button>
             <input ref="editorAssetUploadInput" type="file" :accept="uploadAccept" hidden @change="uploadEditorAsset">
             <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
+          </div>
+          <div v-if="editor.assetPicker.uploading" class="editor-upload-progress" role="status" aria-live="polite">
+            <div class="editor-upload-progress-head">
+              <span>{{ editor.assetPicker.uploadPhase || '正在上传...' }}</span>
+              <strong>{{ editor.assetPicker.uploadProgress }}%</strong>
+            </div>
+            <div class="editor-upload-progress-track" aria-hidden="true">
+              <span :style="{ width: `${editor.assetPicker.uploadProgress}%` }"></span>
+            </div>
           </div>
           <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
           <div v-if="editor.assetPicker.loading" class="editor-asset-status">加载附件中...</div>

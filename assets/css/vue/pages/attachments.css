@@ -45,6 +45,53 @@
     flex-wrap: wrap;
 }
 
+.attachments-upload-progress {
+    width: min(100%, 760px);
+    margin: 0 0 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(126, 219, 232, 0.22);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.attachments-upload-progress-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.55rem;
+    color: var(--text);
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+
+.attachments-upload-progress-head span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.attachments-upload-progress-head strong {
+    color: rgba(126, 219, 232, 0.95);
+    font-variant-numeric: tabular-nums;
+}
+
+.attachments-upload-progress-track {
+    overflow: hidden;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.attachments-upload-progress-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(126, 219, 232, 0.95), rgba(255, 155, 205, 0.9));
+    transition: width 0.18s ease;
+}
+
 .attachments-toolbar {
     display: grid;
     width: 100%;

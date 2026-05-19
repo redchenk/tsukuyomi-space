@@ -165,6 +165,47 @@
     min-width: min(320px, 100%);
 }
 
+.editor-upload-progress {
+    padding: 0.8rem 1rem 0.95rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.editor-upload-progress-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.editor-upload-progress-head span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.editor-upload-progress-head strong {
+    color: rgba(126, 219, 232, 0.95);
+    font-variant-numeric: tabular-nums;
+}
+
+.editor-upload-progress-track {
+    overflow: hidden;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.editor-upload-progress-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(126, 219, 232, 0.95), rgba(255, 155, 205, 0.9));
+    transition: width 0.18s ease;
+}
+
 .editor-asset-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
