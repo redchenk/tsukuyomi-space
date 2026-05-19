@@ -35,6 +35,7 @@ const MIME_BY_EXT = {
     json: 'application/json'
 };
 const SKIP_SCAN_KEYS = /(^|\/)(?:\.|__MACOSX)|\/$/;
+const ASSET_URL_TTL_SECONDS = 30 * 60;
 
 function ok(res, data = null, message = '操作成功') {
     res.json({ success: true, message, data });
@@ -44,14 +45,37 @@ function fail(res, status, message) {
     res.status(status).json({ success: false, message });
 }
 
-function normalizeAsset(row) {
+function signAssetAccess(assetId, expiresAt) {
+    return crypto
+        .createHmac('sha256', config.jwtSecret)
+        .update(`${assetId}.${expiresAt}`)
+        .digest('base64url');
+}
+
+function signedAssetUrl(assetId) {
+    const expiresAt = Math.floor(Date.now() / 1000) + ASSET_URL_TTL_SECONDS;
+    const signature = signAssetAccess(assetId, expiresAt);
+    return `/api/assets/proxy/${encodeURIComponent(assetId)}?expires=${expiresAt}&signature=${encodeURIComponent(signature)}`;
+}
+
+function hasValidAssetSignature(assetId, query = {}) {
+    const expiresAt = Number(query.expires);
+    const signature = String(query.signature || '');
+    if (!Number.isFinite(expiresAt) || expiresAt < Math.floor(Date.now() / 1000) || !signature) return false;
+    const expected = signAssetAccess(assetId, Math.floor(expiresAt));
+    const expectedBuffer = Buffer.from(expected);
+    const signatureBuffer = Buffer.from(signature);
+    return expectedBuffer.length === signatureBuffer.length && crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
+}
+
+function normalizeAsset(row, { signUrl = false } = {}) {
     if (!row) return row;
     const asset = {
         ...row,
         metadata: typeof row.metadata === 'string' ? safeJson(row.metadata) : (row.metadata || {})
     };
     if (asset.metadata?.storage === 'oss') {
-        asset.display_url = `/api/assets/proxy/${encodeURIComponent(asset.id)}`;
+        asset.display_url = signUrl ? signedAssetUrl(asset.id) : `/api/assets/proxy/${encodeURIComponent(asset.id)}`;
     } else {
         asset.display_url = asset.url;
     }
@@ -157,7 +181,7 @@ router.get('/', authenticateToken, (req, res) => {
         const includeAll = req.query.scope === 'all' && isAdminUser(req.user);
         const includePublic = !includeAll && req.query.includePublic === 'true' && isAdminUser(req.user);
         const options = { limit, offset, type, search, includePublic, includeAll };
-        const assets = assetRepository.listAssetsByOwner(req.user.id, options);
+        const assets = assetRepository.listAssetsByOwner(req.user.id, options).map((asset) => normalizeAsset(asset, { signUrl: true }));
         const total = assetRepository.countAssetsByOwner(req.user.id, { type, search, includePublic, includeAll });
         ok(res, {
             assets,
@@ -196,7 +220,7 @@ router.post('/oss-register', authenticateToken, requireAdmin, (req, res) => {
             ownerId: req.user.id
         });
         if (!asset) return fail(res, 400, 'Invalid OSS Object Key or public URL settings');
-        ok(res, normalizeAsset(asset), 'OSS asset registered');
+        ok(res, normalizeAsset(asset, { signUrl: true }), 'OSS asset registered');
     } catch (error) {
         console.error('Register OSS asset failed:', error);
         fail(res, 500, 'OSS asset registration failed');
@@ -232,7 +256,7 @@ router.post('/oss-scan', authenticateToken, requireAdmin, async (req, res) => {
                 lastModified: item.lastModified,
                 ownerId: req.user.id
             });
-            if (asset) imported.push(normalizeAsset(asset));
+            if (asset) imported.push(normalizeAsset(asset, { signUrl: true }));
             else skipped.push({ key: item.key, reason: 'invalid' });
         }
         ok(res, {
@@ -257,8 +281,9 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
         const metadata = asset.metadata || {};
         const isOwner = asset.owner_id && asset.owner_id === req.user?.id;
         const publicAsset = !asset.owner_id || metadata.visibility === 'public';
+        const signedAccess = hasValidAssetSignature(asset.id, req.query);
         const publishedReference = assetRepository.isAssetPubliclyReferenced(asset.id);
-        if (!admin && !isOwner && !publicAsset && !publishedReference) {
+        if (!signedAccess && !admin && !isOwner && !publicAsset && !publishedReference) {
             return fail(res, req.user ? 403 : 401, '无权访问附件');
         }
         if (metadata.storage !== 'oss') {
@@ -295,7 +320,7 @@ router.post('/', authenticateToken, async (req, res) => {
             storage: objectStorage.normalizeStorageMode(storage)
         });
         if (!asset) return fail(res, 400, '文件格式无效');
-        ok(res, normalizeAsset(asset), '附件已上传');
+        ok(res, normalizeAsset(asset, { signUrl: true }), '附件已上传');
     } catch (error) {
         console.error('Upload asset failed:', error);
         fail(res, 500, '附件上传失败');
