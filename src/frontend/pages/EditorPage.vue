@@ -191,6 +191,10 @@ function assetDisplayName(asset) {
   return asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
 }
 
+function assetUrl(asset) {
+  return asset.display_url || asset.url;
+}
+
 async function openAssetPicker(mode = 'body') {
   editor.assetPicker.open = true;
   editor.assetPicker.mode = mode;
@@ -226,8 +230,9 @@ async function loadAssetPicker() {
 }
 
 function useAsset(asset) {
+  const url = assetUrl(asset);
   if (editor.assetPicker.mode === 'cover') {
-    editor.coverImageBase64 = asset.url;
+    editor.coverImageBase64 = url;
     editor.coverImageAssetId = asset.id;
     editor.coverImageSize = 0;
     closeAssetPicker();
@@ -236,13 +241,13 @@ function useAsset(asset) {
   const alt = assetDisplayName(asset).replace(/[\]\r\n]/g, ' ');
   const mimeType = String(asset.mime_type || '');
   if (mimeType.startsWith('image/')) {
-    replaceContentSelection(`\n![${alt}](${asset.url})\n`, 3, alt.length);
+    replaceContentSelection(`\n![${alt}](${url})\n`, 3, alt.length);
   } else if (mimeType.startsWith('video/')) {
-    replaceContentSelection(`\n::media[${alt}](${asset.url} "video")\n`);
+    replaceContentSelection(`\n::media[${alt}](${url} "video")\n`);
   } else if (mimeType.startsWith('audio/')) {
-    replaceContentSelection(`\n::media[${alt}](${asset.url} "audio")\n`);
+    replaceContentSelection(`\n::media[${alt}](${url} "audio")\n`);
   } else {
-    replaceContentSelection(`\n[${alt}](${asset.url})\n`, 2, alt.length);
+    replaceContentSelection(`\n[${alt}](${url})\n`, 2, alt.length);
   }
   closeAssetPicker();
 }
@@ -568,9 +573,9 @@ watch(currentArticleId, initEditor);
           <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用附件。可以在这里直接上传，或点击“管理附件”进入附件库。</div>
           <div v-else class="editor-asset-grid">
             <button v-for="asset in editor.assetPicker.assets" :key="asset.id" type="button" class="editor-asset-card" @click="useAsset(asset)">
-              <img v-if="assetPreviewType(asset) === 'image'" :src="asset.url" :alt="assetDisplayName(asset)" loading="lazy">
-              <video v-else-if="assetPreviewType(asset) === 'video'" :src="asset.url" preload="metadata"></video>
-              <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="asset.url" preload="metadata"></audio>
+              <img v-if="assetPreviewType(asset) === 'image'" :src="assetUrl(asset)" :alt="assetDisplayName(asset)" loading="lazy">
+              <video v-else-if="assetPreviewType(asset) === 'video'" :src="assetUrl(asset)" preload="metadata"></video>
+              <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="assetUrl(asset)" preload="metadata"></audio>
               <div v-else class="editor-asset-file">{{ asset.asset_type || 'file' }}</div>
               <span>{{ assetDisplayName(asset) }}</span>
             </button>

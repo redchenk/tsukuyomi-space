@@ -374,6 +374,33 @@ async function deleteObject(objectKey, settings = getSettings()) {
     return response.ok || response.status === 204 || response.status === 404;
 }
 
+async function getObject(objectKey, settings = getSettings()) {
+    const key = normalizeObjectKey(objectKey);
+    if (!hasUploadParams(settings) || !key) return null;
+    const url = buildRequestUrl(settings, key);
+    if (!url) return null;
+    const response = await signedFetch({
+        method: 'GET',
+        url,
+        region: normalizeRegion(settings.ossRegion),
+        accessKeyId: settings.ossAccessKeyId,
+        accessKeySecret: settings.ossAccessKeySecret,
+        body: Buffer.alloc(0),
+        contentType: 'application/octet-stream',
+        settings
+    });
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`OSS get failed: HTTP ${response.status} ${text.slice(0, 160)}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+        buffer: Buffer.from(arrayBuffer),
+        contentType: response.headers.get('content-type') || 'application/octet-stream',
+        contentLength: response.headers.get('content-length') || ''
+    };
+}
+
 async function testWrite(settings = getSettings()) {
     if (!hasUploadParams(settings)) {
         return { ok: false, skipped: true, message: '对象存储上传参数未填写完整' };
@@ -405,6 +432,7 @@ module.exports = {
     buildObjectKey,
     buildRequestUrl,
     deleteObject,
+    getObject,
     getSettings,
     hasUploadParams,
     isConfigured,

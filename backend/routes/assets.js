@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const config = require('../config');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, optionalAuth, requireAdmin } = require('../middleware/auth');
 const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
@@ -46,10 +46,16 @@ function fail(res, status, message) {
 
 function normalizeAsset(row) {
     if (!row) return row;
-    return {
+    const asset = {
         ...row,
         metadata: typeof row.metadata === 'string' ? safeJson(row.metadata) : (row.metadata || {})
     };
+    if (asset.metadata?.storage === 'oss') {
+        asset.display_url = `/api/assets/proxy/${encodeURIComponent(asset.id)}`;
+    } else {
+        asset.display_url = asset.url;
+    }
+    return asset;
 }
 
 function isAdminUser(user) {
@@ -240,6 +246,29 @@ router.post('/oss-scan', authenticateToken, requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Scan OSS assets failed:', error);
         fail(res, 500, error.message || 'OSS scan failed');
+    }
+});
+
+router.get('/proxy/:id', optionalAuth, async (req, res) => {
+    try {
+        const admin = isAdminUser(req.user);
+        const asset = assetRepository.findAssetForAdmin(req.params.id);
+        if (!asset) return fail(res, 404, '附件不存在');
+        const metadata = asset.metadata || {};
+        const isPrivate = metadata.visibility === 'private' && !admin && asset.owner_id !== req.user?.id;
+        if (isPrivate) return fail(res, req.user ? 403 : 401, '无权访问附件');
+        if (metadata.storage !== 'oss') {
+            return res.redirect(302, asset.url);
+        }
+        const object = await objectStorage.getObject(asset.storage_key);
+        if (!object?.buffer) return fail(res, 404, '附件不存在');
+        res.setHeader('Content-Type', asset.mime_type || object.contentType || 'application/octet-stream');
+        if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
+        res.setHeader('Cache-Control', metadata.visibility === 'private' ? 'private, no-store' : 'public, max-age=300');
+        res.send(object.buffer);
+    } catch (error) {
+        console.error('Proxy OSS asset failed:', error);
+        fail(res, 502, '对象存储资源读取失败');
     }
 });
 

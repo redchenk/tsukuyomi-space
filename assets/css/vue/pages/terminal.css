@@ -191,6 +191,13 @@ html[data-theme="dark"] .terminal-hero {
     line-height: 1.7;
 }
 
+.terminal-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.7rem;
+}
+
 .terminal-cards {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -599,6 +606,10 @@ body .page.terminal-page input:disabled {
     .terminal-panel-head {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .terminal-hero-actions {
+        justify-content: flex-start;
     }
 
     .terminal-session {

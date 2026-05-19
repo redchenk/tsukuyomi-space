@@ -38,13 +38,18 @@ function assetName(asset) {
   return asset.metadata?.title || asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
 }
 
+function assetUrl(asset) {
+  return asset.display_url || asset.url;
+}
+
 function markdownFor(asset) {
   const alt = String(asset.metadata?.alt || assetName(asset)).replace(/[\]\r\n]/g, ' ');
+  const url = assetUrl(asset);
   const mimeType = String(asset.mime_type || '');
-  if (mimeType.startsWith('image/')) return `![${alt}](${asset.url})`;
-  if (mimeType.startsWith('video/')) return `\n::media[${alt}](${asset.url} "video")\n`;
-  if (mimeType.startsWith('audio/')) return `\n::media[${alt}](${asset.url} "audio")\n`;
-  return `[${alt}](${asset.url})`;
+  if (mimeType.startsWith('image/')) return `![${alt}](${url})`;
+  if (mimeType.startsWith('video/')) return `\n::media[${alt}](${url} "video")\n`;
+  if (mimeType.startsWith('audio/')) return `\n::media[${alt}](${url} "audio")\n`;
+  return `[${alt}](${url})`;
 }
 
 async function loadAssets(page = 1) {
@@ -236,9 +241,9 @@ onMounted(() => {
       </section>
       <section v-else class="attachments-grid">
         <article v-for="asset in state.assets" :key="asset.id" class="attachments-card">
-          <img v-if="assetPreviewType(asset) === 'image'" :src="asset.url" :alt="assetName(asset)" loading="lazy">
-          <video v-else-if="assetPreviewType(asset) === 'video'" :src="asset.url" preload="metadata" controls></video>
-          <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="asset.url" preload="metadata" controls></audio>
+          <img v-if="assetPreviewType(asset) === 'image'" :src="assetUrl(asset)" :alt="assetName(asset)" loading="lazy">
+          <video v-else-if="assetPreviewType(asset) === 'video'" :src="assetUrl(asset)" preload="metadata" controls></video>
+          <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="assetUrl(asset)" preload="metadata" controls></audio>
           <div v-else class="attachments-file-preview">{{ asset.asset_type || 'file' }}</div>
           <div class="attachments-card-body">
             <strong>{{ assetName(asset) }}</strong>
@@ -247,7 +252,7 @@ onMounted(() => {
           </div>
           <div class="attachments-card-actions">
             <button class="ghost-btn" type="button" @click="copyMarkdown(asset)">复制 Markdown</button>
-            <a class="ghost-btn" :href="asset.url" target="_blank" rel="noopener noreferrer">打开</a>
+            <a class="ghost-btn" :href="assetUrl(asset)" target="_blank" rel="noopener noreferrer">打开</a>
             <button class="danger-btn" type="button" @click="deleteAsset(asset)">删除</button>
           </div>
         </article>
