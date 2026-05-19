@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { authHeaders, getSession, parseResponse } from '../api/client';
+import BeianLink from '../components/BeianLink.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { compareAppDate } from '../utils/time';
 
@@ -193,6 +194,9 @@ onMounted(loadHubPreview);
           <span>Visitor Flow</span>
           <strong>{{ formatHubNumber(siteStats?.weekViews) }} 次</strong>
           <p>最近七天访问记录。数据来自站内访问事件与文章阅读量。</p>
+        </div>
+        <div class="hub-beian">
+          <BeianLink />
         </div>
       </aside>
     </section>

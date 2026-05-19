@@ -125,6 +125,33 @@
     place-items: center;
 }
 
+.beian-link {
+    color: rgba(225, 236, 246, 0.62);
+    font-size: 0.78rem;
+    text-decoration: none;
+}
+
+.beian-link:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.site-beian-footer {
+    position: relative;
+    z-index: 6;
+    display: flex;
+    justify-content: center;
+    padding: 0 1rem max(1.4rem, env(safe-area-inset-bottom));
+}
+
+html[data-theme="light"] .beian-link {
+    color: rgba(38, 52, 78, 0.66);
+}
+
+html[data-theme="light"] .beian-link:hover {
+    color: rgba(18, 28, 46, 0.96);
+}
+
 @media (max-width: 860px) {
     .topbar {
         min-height: 58px;
@@ -231,6 +258,10 @@
 
     .page {
         padding: 4.75rem 0.9rem max(6.4rem, calc(env(safe-area-inset-bottom) + 5.6rem));
+    }
+
+    .site-beian-footer {
+        padding-bottom: max(6rem, calc(env(safe-area-inset-bottom) + 5.4rem));
     }
 
     .mobile-bottom-nav {

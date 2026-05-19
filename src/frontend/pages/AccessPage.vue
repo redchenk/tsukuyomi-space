@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
+import BeianLink from '../components/BeianLink.vue';
 
 defineProps({
   t: { type: Object, required: true }
@@ -100,6 +101,9 @@ onMounted(() => {
       <p class="hero-copy">{{ t.heroCopy }}</p>
       <button class="primary-btn" type="button" @click="startAccess(t)">{{ t.access }}</button>
     </section>
+    <footer class="access-beian">
+      <BeianLink />
+    </footer>
     <div v-if="loading.active" class="loading-layer">
       <div class="loading-box">
         <div class="loading-text">{{ loading.text }}</div>

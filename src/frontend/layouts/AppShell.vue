@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { authHeaders, parseResponse } from '../api/client';
+import BeianLink from '../components/BeianLink.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
 
@@ -21,6 +22,7 @@ const navOpen = ref(false);
 const unreadNotifications = ref(0);
 
 const hasGlobalBackground = computed(() => props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
+const showSiteBeian = computed(() => props.showChrome && props.routeName !== 'hub');
 const showNotifications = computed(() => props.isAuthed);
 
 const navItems = computed(() => [
@@ -232,5 +234,8 @@ onMounted(loadUnreadNotifications);
 
     <SiteMusicDrawer v-if="showChrome && music" :music="music" />
     <slot></slot>
+    <footer v-if="showSiteBeian" class="site-beian-footer">
+      <BeianLink />
+    </footer>
   </div>
 </template>

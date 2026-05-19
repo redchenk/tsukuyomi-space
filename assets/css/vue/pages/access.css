@@ -113,6 +113,22 @@
     box-shadow: 0 0 20px rgba(255, 107, 157, 0.6);
 }
 
+.access-beian {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: max(0.9rem, env(safe-area-inset-bottom));
+    z-index: 3;
+    display: flex;
+    justify-content: center;
+    padding: 0 1rem;
+}
+
+.access-beian .beian-link {
+    color: rgba(255, 255, 255, 0.68);
+    text-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
 @media (max-width: 720px) {
     .access-page {
         place-items: end center;

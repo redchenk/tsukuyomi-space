@@ -363,6 +363,16 @@
     line-height: 1.65;
 }
 
+.hub-beian {
+    display: flex;
+    justify-content: center;
+    padding: 0.2rem 0 0.05rem;
+}
+
+.hub-beian .beian-link {
+    color: rgba(239, 247, 255, 0.62);
+}
+
 .hub-grid-wrap {
     padding: 1rem;
     width: min(100%, calc(var(--hub-max) - var(--hub-side) - var(--hub-gap)));
