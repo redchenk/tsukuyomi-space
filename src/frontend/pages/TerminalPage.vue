@@ -65,6 +65,18 @@ const terminal = reactive({
     message: '',
     type: '',
     detail: ''
+  },
+  ossImport: {
+    objectKey: '',
+    title: '',
+    assetType: 'auto',
+    mimeType: '',
+    size: '',
+    visibility: 'public',
+    description: '',
+    loading: false,
+    message: '',
+    type: ''
   }
 });
 
@@ -341,6 +353,56 @@ async function testOssSettings() {
   }
 }
 
+function resetOssImport() {
+  terminal.ossImport.objectKey = '';
+  terminal.ossImport.title = '';
+  terminal.ossImport.assetType = 'auto';
+  terminal.ossImport.mimeType = '';
+  terminal.ossImport.size = '';
+  terminal.ossImport.visibility = 'public';
+  terminal.ossImport.description = '';
+}
+
+async function registerOssAsset() {
+  terminal.ossImport.message = '';
+  terminal.ossImport.type = '';
+  const objectKey = terminal.ossImport.objectKey.trim();
+  if (!objectKey) {
+    terminal.ossImport.message = '请填写 OSS Object Key';
+    terminal.ossImport.type = 'error';
+    return;
+  }
+  terminal.ossImport.loading = true;
+  try {
+    const response = await fetch('/api/assets/oss-register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${terminal.token}`
+      },
+      body: JSON.stringify({
+        objectKey,
+        title: terminal.ossImport.title.trim(),
+        assetType: terminal.ossImport.assetType,
+        mimeType: terminal.ossImport.mimeType.trim(),
+        size: terminal.ossImport.size,
+        visibility: terminal.ossImport.visibility,
+        description: terminal.ossImport.description.trim()
+      })
+    });
+    const result = await parseJsonResponse(response);
+    if (!response.ok || !result.success) throw new Error(result.message || 'OSS 资源登记失败');
+    terminal.ossImport.message = 'OSS 资源已登记，只保存索引，不同步到本地';
+    terminal.ossImport.type = 'success';
+    resetOssImport();
+  } catch (error) {
+    terminal.ossImport.message = error.message || 'OSS 资源登记失败';
+    terminal.ossImport.type = 'error';
+  } finally {
+    terminal.ossImport.loading = false;
+  }
+}
+
 function updateClock() {
   terminal.clock = formatDateTime(new Date(), 'zh-CN');
 }
@@ -568,6 +630,42 @@ onUnmounted(() => {
               </div>
               <p v-if="terminal.ossTest.detail" class="terminal-setting-note terminal-oss-detail">{{ terminal.ossTest.detail }}</p>
               <p class="terminal-setting-note">公开访问域名会下发给前端用于 /assets、/models、/lib 等静态资源；AccessKey 仅保存在后台配置接口中。</p>
+              <div class="terminal-oss-import">
+                <div class="terminal-oss-import-head">
+                  <strong>登记 OSS 大文件</strong>
+                  <span>适合电影、长视频、音频包等已手动上传到 OSS 的资源；只登记 Object Key，不同步到本地。</span>
+                </div>
+                <label>Object Key<input v-model="terminal.ossImport.objectKey" placeholder="movies/example.mp4"></label>
+                <label>显示名称<input v-model="terminal.ossImport.title" placeholder="留空则使用文件名"></label>
+                <label>资源类型
+                  <select v-model="terminal.ossImport.assetType">
+                    <option value="auto">自动识别</option>
+                    <option value="video">视频</option>
+                    <option value="audio">音频</option>
+                    <option value="image">图片</option>
+                    <option value="document">文档</option>
+                    <option value="file">文件</option>
+                    <option value="live2d">Live2D</option>
+                  </select>
+                </label>
+                <label>MIME 类型<input v-model="terminal.ossImport.mimeType" placeholder="可选，例如 video/mp4"></label>
+                <label>大小（字节）<input v-model="terminal.ossImport.size" type="number" min="0" placeholder="可选"></label>
+                <label>可见性
+                  <select v-model="terminal.ossImport.visibility">
+                    <option value="public">公共资源</option>
+                    <option value="private">仅管理员账号可见</option>
+                  </select>
+                </label>
+                <label class="terminal-oss-import-note">备注<textarea v-model="terminal.ossImport.description" rows="2" placeholder="可选"></textarea></label>
+                <div class="terminal-oss-actions">
+                  <button class="ghost-btn" type="button" :disabled="terminal.ossImport.loading" @click="registerOssAsset">
+                    {{ terminal.ossImport.loading ? '登记中...' : '登记 OSS 资源' }}
+                  </button>
+                  <span v-if="terminal.ossImport.message" class="terminal-oss-result" :class="terminal.ossImport.type">
+                    {{ terminal.ossImport.message }}
+                  </span>
+                </div>
+              </div>
             </div>
             <label class="terminal-check"><input v-model="terminal.settings.sakuraEffect" type="checkbox"> 启用环境动效</label>
             <label class="terminal-check"><input v-model="terminal.settings.scanlineEffect" type="checkbox"> 启用扫描线效果</label>

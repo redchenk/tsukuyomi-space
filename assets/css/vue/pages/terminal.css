@@ -491,8 +491,44 @@ body .page.terminal-page textarea::placeholder {
     background: rgba(255, 255, 255, 0.62);
 }
 
+.terminal-oss-import {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+    padding: 1rem;
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: var(--ts-radius-lg);
+    background: rgba(255, 255, 255, 0.48);
+}
+
+.terminal-oss-import-head,
+.terminal-oss-import-note {
+    grid-column: 1 / -1;
+}
+
+.terminal-oss-import-head {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.terminal-oss-import-head strong {
+    color: var(--text);
+}
+
+.terminal-oss-import-head span {
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.6;
+}
+
+.terminal-oss-import label {
+    min-width: 0;
+}
+
 html[data-theme="dark"] .terminal-oss-detail,
-html[data-theme="dark"] .terminal-oss-result {
+html[data-theme="dark"] .terminal-oss-result,
+html[data-theme="dark"] .terminal-oss-import {
     background: rgba(15, 23, 42, 0.68);
 }
 
@@ -555,7 +591,8 @@ body .page.terminal-page input:disabled {
     .terminal-sidebar,
     .terminal-cards,
     .terminal-account-grid,
-    .terminal-oss-settings {
+    .terminal-oss-settings,
+    .terminal-oss-import {
         grid-template-columns: 1fr;
     }
 }

@@ -7,11 +7,57 @@ const objectStorage = require('./object-storage');
 
 const DATA_IMAGE_PATTERN = /^data:image\/(png|jpe?g|gif|webp);base64,([\s\S]+)$/i;
 const MARKDOWN_DATA_IMAGE_PATTERN = /!\[([^\]\n]*)\]\((data:image\/(?:png|jpe?g|gif|webp);base64,[^)]+)\)/gi;
+const EXT_BY_MIME = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/quicktime': 'mov',
+    'video/x-matroska': 'mkv',
+    'audio/mpeg': 'mp3',
+    'audio/flac': 'flac',
+    'audio/wav': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/mp4': 'm4a',
+    'application/pdf': 'pdf',
+    'text/plain': 'txt',
+    'text/markdown': 'md',
+    'application/zip': 'zip',
+    'application/json': 'json'
+};
+const MIME_BY_EXT = Object.fromEntries(Object.entries(EXT_BY_MIME).map(([mime, ext]) => [ext, mime]));
 
 function normalizeExt(ext) {
     const value = String(ext || '').toLowerCase();
     if (value === 'jpeg') return 'jpg';
     return ['png', 'jpg', 'gif', 'webp'].includes(value) ? value : 'png';
+}
+
+function extFromName(fileName = '') {
+    return String(fileName || '').split('?')[0].split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+}
+
+function normalizeAssetExt({ fileName = '', mimeType = '' } = {}) {
+    const ext = extFromName(fileName);
+    if (ext) return ext.slice(0, 12);
+    return EXT_BY_MIME[String(mimeType || '').toLowerCase()] || 'bin';
+}
+
+function normalizeAssetMimeType({ fileName = '', mimeType = '' } = {}) {
+    const clean = String(mimeType || '').trim().toLowerCase();
+    if (clean && clean !== 'application/octet-stream') return clean;
+    return MIME_BY_EXT[extFromName(fileName)] || clean || 'application/octet-stream';
+}
+
+function assetTypeFromMime(mimeType = '') {
+    const value = String(mimeType || '');
+    if (value.startsWith('image/')) return 'body-image';
+    if (value.startsWith('video/')) return 'video';
+    if (value.startsWith('audio/')) return 'audio';
+    if (value.startsWith('text/') || value === 'application/pdf') return 'document';
+    return 'file';
 }
 
 function parseDataImage(dataUrl) {
@@ -116,6 +162,23 @@ function saveParsedImageLocal(parsed, { id = crypto.randomUUID(), articleId = nu
     return { id, url };
 }
 
+function saveBufferLocal({ buffer, mimeType, ext, id, articleId = null, ownerId = null, role = 'attachment', alt = '', fileName = '', uploadPath = '' }) {
+    const filePath = path.join(uploadFolder(uploadPath, { role, id, ext }), `${id}.${ext}`);
+    fs.writeFileSync(filePath, buffer);
+    const url = publicUrlForFile(filePath);
+    createAssetRecord({
+        id,
+        articleId,
+        ownerId,
+        assetType: assetTypeFromMime(mimeType),
+        mimeType,
+        url,
+        storageKey: path.relative(config.projectRoot, filePath).replace(/\\/g, '/'),
+        metadata: { role, alt, fileName, size: buffer.length, storage: 'local' }
+    });
+    return { id, url };
+}
+
 async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '', storage = 'auto', uploadPath = '' } = {}) {
     const parsed = parseDataImage(dataUrl);
     if (!parsed || !parsed.buffer.length) return null;
@@ -182,6 +245,57 @@ async function saveUserImageAsset(dataUrl, { ownerId, alt = '', fileName = '', s
         FROM article_assets
         WHERE id = ?
     `).get(asset.id);
+}
+
+async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octet-stream', fileName = '', alt = '', storage = 'auto', uploadPath = '' } = {}) {
+    if (!ownerId || !Buffer.isBuffer(buffer) || !buffer.length) return null;
+    const id = crypto.randomUUID();
+    const normalizedMimeType = normalizeAssetMimeType({ fileName, mimeType });
+    const ext = normalizeAssetExt({ fileName, mimeType: normalizedMimeType });
+    const settings = objectStorage.getSettings();
+    const storageMode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
+    if (storageMode === 'oss' && !objectStorage.isConfigured(settings)) {
+        throw new Error('对象存储未启用或参数不完整');
+    }
+    const shouldTryOss = storageMode !== 'local' && (storageMode === 'oss' || settings.ossEnabled === true);
+
+    if (shouldTryOss) try {
+        const uploaded = await objectStorage.putObject({
+            buffer,
+            mimeType: normalizedMimeType,
+            ext,
+            role: 'attachment',
+            id,
+            uploadPath
+        });
+        if (uploaded?.url) {
+            createAssetRecord({
+                id,
+                articleId: null,
+                ownerId,
+                assetType: assetTypeFromMime(normalizedMimeType),
+                mimeType: normalizedMimeType,
+                url: uploaded.url,
+                storageKey: uploaded.key,
+                metadata: { role: 'attachment', alt, fileName, size: buffer.length, storage: uploaded.storage || 'oss' }
+            });
+            return db.prepare(`
+                SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
+                FROM article_assets
+                WHERE id = ?
+            `).get(id);
+        }
+    } catch (error) {
+        if (storageMode === 'oss') throw new Error('对象存储上传失败，请检查后台配置或上传路径');
+        console.warn('OSS file upload failed, falling back to local storage:', error.message);
+    }
+
+    saveBufferLocal({ buffer, mimeType: normalizedMimeType, ext, id, ownerId, role: 'attachment', alt, fileName, uploadPath });
+    return db.prepare(`
+        SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
+        FROM article_assets
+        WHERE id = ?
+    `).get(id);
 }
 
 function saveDataImageLocal(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '', uploadPath = '' } = {}) {
@@ -295,6 +409,7 @@ function migrateExistingArticleImages() {
 module.exports = {
     isDataImage,
     normalizeArticleMediaPayload,
+    saveUserFileAsset,
     saveUserImageAsset,
     attachAssetsToArticle,
     migrateExistingArticleImages

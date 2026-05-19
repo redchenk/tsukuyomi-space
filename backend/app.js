@@ -62,9 +62,9 @@ function createApp() {
     app.use('/api/auth/', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 60, keyPrefix: 'auth' }));
     app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
 
-    // 10MB 用于支持封面图等 base64 数据。
-    app.use(express.json({ limit: '10mb' }));
-    app.use(express.urlencoded({ limit: '10mb', extended: true }));
+    // Regular attachments can use data URLs; large media should be registered from OSS.
+    app.use(express.json({ limit: '80mb' }));
+    app.use(express.urlencoded({ limit: '80mb', extended: true }));
     app.use(jsonParseError);
 
     serveStaticFiles(app);

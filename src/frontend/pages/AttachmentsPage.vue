@@ -17,22 +17,12 @@ const state = reactive({
   type: 'all',
   storage: 'auto',
   uploadPath: '',
-  ossImport: {
-    objectKey: '',
-    title: '',
-    assetType: 'auto',
-    mimeType: '',
-    size: '',
-    visibility: 'public',
-    description: '',
-    loading: false
-  },
   page: 1,
   totalPages: 1
 });
 
 const isAuthed = computed(() => Boolean(session.value));
-const canRegisterOss = computed(() => session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role));
+const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
 
 function showMessage(message, type = 'success') {
   state.message = message;
@@ -60,8 +50,7 @@ async function loadAssets(page = 1) {
       page: String(page),
       limit: '72',
       type: state.type,
-      search: state.search.trim(),
-      includePublic: 'true'
+      search: state.search.trim()
     });
     const response = await fetch(`/api/assets?${params}`, {
       headers: authHeaders(),
@@ -83,19 +72,22 @@ async function loadAssets(page = 1) {
 async function uploadAsset(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  if (!file.type.startsWith('image/')) {
-    showMessage('目前附件库优先支持图片上传', 'error');
+  if (!isSupportedFile(file)) {
+    showMessage('暂不支持这种文件类型', 'error');
     return;
   }
   state.uploading = true;
   try {
-    const dataUrl = await compressImage(file, { maxWidth: 1800, maxHeight: 1600, quality: 0.82 });
+    const dataUrl = file.type.startsWith('image/')
+      ? await compressImage(file, { maxWidth: 1800, maxHeight: 1600, quality: 0.82 })
+      : await fileToDataUrl(file);
     const response = await fetch('/api/assets', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         dataUrl,
         fileName: file.name,
+        mimeType: file.type || 'application/octet-stream',
         alt: file.name.replace(/\.[^.]+$/, ''),
         storage: state.storage,
         uploadPath: state.uploadPath.trim()
@@ -111,6 +103,25 @@ async function uploadAsset(event) {
     state.uploading = false;
     if (fileInput.value) fileInput.value.value = '';
   }
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function isSupportedFile(file) {
+  const type = file.type || '';
+  const name = file.name || '';
+  return type.startsWith('image/')
+    || type.startsWith('video/')
+    || type.startsWith('audio/')
+    || ['application/pdf', 'text/plain', 'text/markdown', 'application/zip', 'application/json'].includes(type)
+    || /\.(md|txt|pdf|zip|json|mp4|webm|mov|m4v|mkv|mp3|flac|wav|ogg|m4a)$/i.test(name);
 }
 
 async function copyMarkdown(asset) {
@@ -136,50 +147,6 @@ async function deleteAsset(asset) {
     await loadAssets(state.page);
   } catch (error) {
     showMessage(error.message || '附件删除失败', 'error');
-  }
-}
-
-function resetOssImport() {
-  state.ossImport.objectKey = '';
-  state.ossImport.title = '';
-  state.ossImport.assetType = 'auto';
-  state.ossImport.mimeType = '';
-  state.ossImport.size = '';
-  state.ossImport.visibility = 'public';
-  state.ossImport.description = '';
-}
-
-async function registerOssAsset() {
-  const objectKey = state.ossImport.objectKey.trim();
-  if (!objectKey) {
-    showMessage('请填写 OSS Object Key', 'error');
-    return;
-  }
-  state.ossImport.loading = true;
-  try {
-    const response = await fetch('/api/assets/oss-register', {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
-        objectKey,
-        title: state.ossImport.title.trim(),
-        assetType: state.ossImport.assetType,
-        mimeType: state.ossImport.mimeType.trim(),
-        size: state.ossImport.size,
-        visibility: state.ossImport.visibility,
-        description: state.ossImport.description.trim()
-      })
-    });
-    const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || 'OSS 资源登记失败');
-    showMessage('OSS 资源已登记，只保存索引，不同步到本地');
-    resetOssImport();
-    state.type = 'all';
-    await loadAssets(1);
-  } catch (error) {
-    showMessage(error.message || 'OSS 资源登记失败', 'error');
-  } finally {
-    state.ossImport.loading = false;
   }
 }
 
@@ -219,9 +186,9 @@ onMounted(() => {
         <div class="attachments-actions">
           <button class="ghost-btn" type="button" @click="go('/editor')">写文章</button>
           <button class="primary-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
-            {{ state.uploading ? '上传中...' : '上传图片' }}
+            {{ state.uploading ? '上传中...' : '上传文件' }}
           </button>
-          <input ref="fileInput" type="file" accept="image/*" hidden @change="uploadAsset">
+          <input ref="fileInput" type="file" :accept="uploadAccept" hidden @change="uploadAsset">
         </div>
       </header>
 
@@ -251,48 +218,6 @@ onMounted(() => {
           <input v-model="state.uploadPath" type="text" placeholder="attachments/${year}/${month} 或 user-images">
         </label>
         <p>上传路径是相对目录，留空时使用后台默认目录；不要填写 URL、盘符或包含 .. 的路径。</p>
-      </section>
-
-      <section v-if="canRegisterOss" class="panel attachments-oss-import">
-        <div>
-          <h2>登记 OSS 大文件</h2>
-          <p>适合电影、长视频、音频包等已经手动上传到 OSS 的资源；这里只登记 Object Key，不同步到本地服务器。</p>
-        </div>
-        <label>Object Key
-          <input v-model="state.ossImport.objectKey" type="text" placeholder="movies/example.mp4">
-        </label>
-        <label>显示名称
-          <input v-model="state.ossImport.title" type="text" placeholder="留空则使用文件名">
-        </label>
-        <label>资源类型
-          <select v-model="state.ossImport.assetType">
-            <option value="auto">自动识别</option>
-            <option value="video">视频</option>
-            <option value="audio">音频</option>
-            <option value="image">图片</option>
-            <option value="document">文档</option>
-            <option value="file">文件</option>
-            <option value="live2d">Live2D</option>
-          </select>
-        </label>
-        <label>MIME 类型
-          <input v-model="state.ossImport.mimeType" type="text" placeholder="可选，例如 video/mp4">
-        </label>
-        <label>大小（字节）
-          <input v-model="state.ossImport.size" type="number" min="0" placeholder="可选">
-        </label>
-        <label>可见性
-          <select v-model="state.ossImport.visibility">
-            <option value="public">公共资源</option>
-            <option value="private">仅自己可见</option>
-          </select>
-        </label>
-        <label class="attachments-oss-description">备注
-          <textarea v-model="state.ossImport.description" rows="2" placeholder="可选"></textarea>
-        </label>
-        <button class="primary-btn" type="button" :disabled="state.ossImport.loading" @click="registerOssAsset">
-          {{ state.ossImport.loading ? '登记中...' : '登记 OSS 资源' }}
-        </button>
       </section>
 
       <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>

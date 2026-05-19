@@ -78,6 +78,15 @@ function parsePositiveSize(value) {
     return Number.isFinite(size) && size > 0 ? Math.round(size) : 0;
 }
 
+function parseDataUrl(value = '') {
+    const match = String(value || '').match(/^data:([^;,]+);base64,([\s\S]+)$/i);
+    if (!match) return null;
+    return {
+        mimeType: match[1].toLowerCase(),
+        buffer: Buffer.from(match[2].replace(/\s/g, ''), 'base64')
+    };
+}
+
 function safeJson(value) {
     try {
         return value ? JSON.parse(value) : {};
@@ -106,7 +115,7 @@ router.get('/', authenticateToken, (req, res) => {
         const offset = (page - 1) * limit;
         const type = String(req.query.type || '').trim();
         const search = String(req.query.search || '').trim().slice(0, 80);
-        const includePublic = req.query.includePublic === 'true';
+        const includePublic = req.query.includePublic === 'true' && isAdminUser(req.user);
         const options = { limit, offset, type, search, includePublic };
         const assets = assetRepository.listAssetsByOwner(req.user.id, options);
         const total = assetRepository.countAssetsByOwner(req.user.id, { type, search, includePublic });
@@ -172,16 +181,20 @@ router.post('/oss-register', authenticateToken, requireAdmin, (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { dataUrl, alt, fileName, storage, uploadPath } = req.body || {};
-        if (!dataUrl) return fail(res, 400, '请选择要上传的图片');
-        const asset = await articleMedia.saveUserImageAsset(dataUrl, {
+        const { dataUrl, alt, fileName, mimeType, storage, uploadPath } = req.body || {};
+        if (!dataUrl) return fail(res, 400, '请选择要上传的文件');
+        const parsed = parseDataUrl(dataUrl);
+        if (!parsed?.buffer?.length) return fail(res, 400, '文件格式无效');
+        const asset = await articleMedia.saveUserFileAsset({
+            buffer: parsed.buffer,
             ownerId: req.user.id,
+            mimeType: String(mimeType || parsed.mimeType || 'application/octet-stream').trim().slice(0, 120),
             alt: String(alt || '').trim(),
             fileName: String(fileName || '').trim(),
             storage: objectStorage.normalizeStorageMode(storage),
             uploadPath: objectStorage.normalizeUploadPath(uploadPath, '')
         });
-        if (!asset) return fail(res, 400, '图片格式无效');
+        if (!asset) return fail(res, 400, '文件格式无效');
         ok(res, normalizeAsset(asset), '附件已上传');
     } catch (error) {
         console.error('Upload asset failed:', error);
