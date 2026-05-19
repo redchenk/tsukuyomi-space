@@ -92,10 +92,31 @@ function signingKey(secret, date, region) {
     return hmac(kService, 'aws4_request');
 }
 
+function aliyunSigningKey(secret, date, region) {
+    const kDate = hmac(`aliyun_v4${secret}`, date);
+    const kRegion = hmac(kDate, region);
+    const kService = hmac(kRegion, 'oss');
+    return hmac(kService, 'aliyun_v4_request');
+}
+
 function normalizeRegion(value) {
     const region = String(value || '').trim();
     if (!region) return 'auto';
     return region === 'Auto' ? 'auto' : region;
+}
+
+function isAliyunProvider(settings = {}) {
+    const provider = String(settings.ossProvider || '').toLowerCase();
+    const endpoint = normalizeEndpoint(settings.ossEndpoint);
+    return provider === 'aliyun' || endpoint?.hostname.includes('aliyuncs.com');
+}
+
+function canonicalQueryString(searchParams) {
+    return [...searchParams.entries()]
+        .map(([key, value]) => [encodeURIComponent(key), encodeURIComponent(value)])
+        .sort(([aKey, aValue], [bKey, bValue]) => aKey === bKey ? aValue.localeCompare(bValue) : aKey.localeCompare(bKey))
+        .map(([key, value]) => `${key}=${value}`)
+        .join('&');
 }
 
 function buildObjectKey({ settings, id, ext, role = 'body', uploadPath = '' }) {
@@ -119,11 +140,15 @@ function buildObjectKey({ settings, id, ext, role = 'body', uploadPath = '' }) {
         .join('/');
 }
 
+function isPathStyle(settings, endpoint) {
+    return settings.ossForcePathStyle === true || settings.ossForcePathStyle === 'true' || isIpHost(endpoint.hostname);
+}
+
 function buildRequestUrl(settings, objectKey) {
     const endpoint = normalizeEndpoint(settings.ossEndpoint);
     if (!endpoint || !settings.ossBucket) return null;
 
-    const forcePathStyle = settings.ossForcePathStyle === true || settings.ossForcePathStyle === 'true' || isIpHost(endpoint.hostname);
+    const forcePathStyle = isPathStyle(settings, endpoint);
     const encodedKey = encodeKeyPath(objectKey);
     const url = new URL(endpoint.toString());
     if (forcePathStyle) {
@@ -133,6 +158,15 @@ function buildRequestUrl(settings, objectKey) {
         url.pathname = `/${encodedKey}`;
     }
     return url;
+}
+
+function aliyunCanonicalPath(settings, url) {
+    const endpoint = normalizeEndpoint(settings.ossEndpoint);
+    const forcePathStyle = endpoint ? isPathStyle(settings, endpoint) : false;
+    if (forcePathStyle) return url.pathname || '/';
+    const bucket = trimSlashes(settings.ossBucket || '');
+    const pathname = url.pathname || '/';
+    return `/${bucket}${pathname === '/' ? '/' : pathname}`;
 }
 
 function publicUrl(settings, objectKey) {
@@ -161,7 +195,10 @@ function isConfigured(settings = getSettings()) {
     return Boolean(settings.ossEnabled === true && hasUploadParams(settings));
 }
 
-async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream' }) {
+async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', settings = null }) {
+    if (settings && isAliyunProvider(settings)) {
+        return aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body, contentType, settings });
+    }
     const now = new Date();
     const requestDate = amzDate(now);
     const scopeDate = dateStamp(now);
@@ -177,7 +214,7 @@ async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, 
     const canonicalRequest = [
         method,
         url.pathname,
-        url.searchParams.toString(),
+        canonicalQueryString(url.searchParams),
         canonicalHeaders,
         signedHeaders,
         payloadHash
@@ -199,6 +236,50 @@ async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, 
             'Content-Type': contentType,
             'X-Amz-Content-Sha256': payloadHash,
             'X-Amz-Date': requestDate
+        },
+        body: method === 'PUT' ? body : undefined
+    });
+}
+
+async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', settings }) {
+    const now = new Date();
+    const requestDate = amzDate(now);
+    const scopeDate = dateStamp(now);
+    const payloadHash = 'UNSIGNED-PAYLOAD';
+    const headersForCanonical = {
+        'x-oss-content-sha256': payloadHash,
+        'x-oss-date': requestDate
+    };
+    if (contentType) headersForCanonical['content-type'] = contentType;
+    const canonicalHeaders = Object.entries(headersForCanonical)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => `${key}:${String(value).trim()}\n`)
+        .join('');
+    const canonicalRequest = [
+        method,
+        aliyunCanonicalPath(settings, url),
+        canonicalQueryString(url.searchParams),
+        canonicalHeaders,
+        '',
+        payloadHash
+    ].join('\n');
+    const credentialScope = `${scopeDate}/${region}/oss/aliyun_v4_request`;
+    const stringToSign = [
+        'OSS4-HMAC-SHA256',
+        requestDate,
+        credentialScope,
+        sha256(canonicalRequest)
+    ].join('\n');
+    const signature = hmac(aliyunSigningKey(accessKeySecret, scopeDate, region), stringToSign, 'hex');
+    const authorization = `OSS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope},Signature=${signature}`;
+
+    return fetch(url, {
+        method,
+        headers: {
+            Authorization: authorization,
+            'Content-Type': contentType,
+            'X-Oss-Content-Sha256': payloadHash,
+            'X-Oss-Date': requestDate
         },
         body: method === 'PUT' ? body : undefined
     });
@@ -239,7 +320,8 @@ async function listObjects({ prefix = '', maxKeys = 100, settings: providedSetti
         accessKeyId: settings.ossAccessKeyId,
         accessKeySecret: settings.ossAccessKeySecret,
         body: Buffer.alloc(0),
-        contentType: 'application/octet-stream'
+        contentType: 'application/octet-stream',
+        settings
     });
     const text = await response.text().catch(() => '');
     if (!response.ok) {
@@ -261,7 +343,8 @@ async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', set
         accessKeyId: settings.ossAccessKeyId,
         accessKeySecret: settings.ossAccessKeySecret,
         body: buffer,
-        contentType: mimeType || 'application/octet-stream'
+        contentType: mimeType || 'application/octet-stream',
+        settings
     });
     if (!response.ok) {
         const text = await response.text().catch(() => '');
@@ -285,7 +368,8 @@ async function deleteObject(objectKey, settings = getSettings()) {
         accessKeyId: settings.ossAccessKeyId,
         accessKeySecret: settings.ossAccessKeySecret,
         body: Buffer.alloc(0),
-        contentType: 'application/octet-stream'
+        contentType: 'application/octet-stream',
+        settings
     });
     return response.ok || response.status === 204 || response.status === 404;
 }
