@@ -16,12 +16,13 @@ const state = reactive({
   search: '',
   type: 'all',
   storage: 'auto',
-  uploadPath: '',
+  scope: 'mine',
   page: 1,
   totalPages: 1
 });
 
 const isAuthed = computed(() => Boolean(session.value));
+const canManageAllAssets = computed(() => session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role));
 const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
 
 function showMessage(message, type = 'success') {
@@ -52,6 +53,7 @@ async function loadAssets(page = 1) {
       type: state.type,
       search: state.search.trim()
     });
+    if (canManageAllAssets.value && state.scope === 'all') params.set('scope', 'all');
     const response = await fetch(`/api/assets?${params}`, {
       headers: authHeaders(),
       cache: 'no-store'
@@ -89,8 +91,7 @@ async function uploadAsset(event) {
         fileName: file.name,
         mimeType: file.type || 'application/octet-stream',
         alt: file.name.replace(/\.[^.]+$/, ''),
-        storage: state.storage,
-        uploadPath: state.uploadPath.trim()
+        storage: state.storage
       })
     });
     const result = await parseResponse(response);
@@ -202,6 +203,10 @@ onMounted(() => {
           <option value="document">文档</option>
           <option value="file">文件</option>
         </select>
+        <select v-if="canManageAllAssets" v-model="state.scope" @change="loadAssets(1)">
+          <option value="mine">我的附件</option>
+          <option value="all">全部附件</option>
+        </select>
         <button class="ghost-btn" type="button" @click="loadAssets(1)">搜索</button>
         <button class="ghost-btn" type="button" @click="state.search = ''; loadAssets(1)">重置</button>
       </section>
@@ -214,10 +219,7 @@ onMounted(() => {
             <option value="oss">对象存储</option>
           </select>
         </label>
-        <label>上传路径
-          <input v-model="state.uploadPath" type="text" placeholder="attachments/${year}/${month} 或 user-images">
-        </label>
-        <p>上传路径是相对目录，留空时使用后台默认目录；不要填写 URL、盘符或包含 .. 的路径。</p>
+        <p>上传目录由系统自动按用户与文件类型分类：users/{用户ID}/image、video、audio、document、file。普通用户只能查看和管理自己的附件，管理员可以切换查看全部附件。</p>
       </section>
 
       <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>

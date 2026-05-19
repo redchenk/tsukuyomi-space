@@ -148,10 +148,11 @@ router.get('/', authenticateToken, (req, res) => {
         const offset = (page - 1) * limit;
         const type = String(req.query.type || '').trim();
         const search = String(req.query.search || '').trim().slice(0, 80);
-        const includePublic = req.query.includePublic === 'true' && isAdminUser(req.user);
-        const options = { limit, offset, type, search, includePublic };
+        const includeAll = req.query.scope === 'all' && isAdminUser(req.user);
+        const includePublic = !includeAll && req.query.includePublic === 'true' && isAdminUser(req.user);
+        const options = { limit, offset, type, search, includePublic, includeAll };
         const assets = assetRepository.listAssetsByOwner(req.user.id, options);
-        const total = assetRepository.countAssetsByOwner(req.user.id, { type, search, includePublic });
+        const total = assetRepository.countAssetsByOwner(req.user.id, { type, search, includePublic, includeAll });
         ok(res, {
             assets,
             pagination: {
@@ -244,7 +245,7 @@ router.post('/oss-scan', authenticateToken, requireAdmin, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { dataUrl, alt, fileName, mimeType, storage, uploadPath } = req.body || {};
+        const { dataUrl, alt, fileName, mimeType, storage } = req.body || {};
         if (!dataUrl) return fail(res, 400, '请选择要上传的文件');
         const parsed = parseDataUrl(dataUrl);
         if (!parsed?.buffer?.length) return fail(res, 400, '文件格式无效');
@@ -254,8 +255,7 @@ router.post('/', authenticateToken, async (req, res) => {
             mimeType: String(mimeType || parsed.mimeType || 'application/octet-stream').trim().slice(0, 120),
             alt: String(alt || '').trim(),
             fileName: String(fileName || '').trim(),
-            storage: objectStorage.normalizeStorageMode(storage),
-            uploadPath: objectStorage.normalizeUploadPath(uploadPath, '')
+            storage: objectStorage.normalizeStorageMode(storage)
         });
         if (!asset) return fail(res, 400, '文件格式无效');
         ok(res, normalizeAsset(asset), '附件已上传');

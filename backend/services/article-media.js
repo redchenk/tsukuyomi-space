@@ -60,6 +60,29 @@ function assetTypeFromMime(mimeType = '') {
     return 'file';
 }
 
+function assetFolderFromMime(mimeType = '', assetType = '') {
+    const type = String(assetType || '').toLowerCase();
+    const mime = String(mimeType || '').toLowerCase();
+    if (type.includes('image') || mime.startsWith('image/')) return 'image';
+    if (type.startsWith('video') || mime.startsWith('video/')) return 'video';
+    if (type.startsWith('audio') || mime.startsWith('audio/')) return 'audio';
+    if (type.startsWith('live2d')) return 'live2d';
+    if (type.startsWith('document') || mime.startsWith('text/') || mime === 'application/pdf') return 'document';
+    return 'file';
+}
+
+function safeUserFolderId(ownerId = '') {
+    return String(ownerId || '')
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80) || 'unknown';
+}
+
+function userAssetUploadPath(ownerId, { mimeType = '', assetType = 'file' } = {}) {
+    return ['users', safeUserFolderId(ownerId), assetFolderFromMime(mimeType, assetType)].join('/');
+}
+
 function parseDataImage(dataUrl) {
     const match = String(dataUrl || '').match(DATA_IMAGE_PATTERN);
     if (!match) return null;
@@ -174,7 +197,7 @@ function saveBufferLocal({ buffer, mimeType, ext, id, articleId = null, ownerId 
         mimeType,
         url,
         storageKey: path.relative(config.projectRoot, filePath).replace(/\\/g, '/'),
-        metadata: { role, alt, fileName, size: buffer.length, storage: 'local' }
+        metadata: { role, alt, fileName, size: buffer.length, storage: 'local', folder: safeRelativePath(uploadPath) }
     });
     return { id, url };
 }
@@ -230,7 +253,7 @@ async function saveUserImageAsset(dataUrl, { ownerId, alt = '', fileName = '', s
         role: 'attachment',
         alt,
         storage,
-        uploadPath
+        uploadPath: userAssetUploadPath(ownerId, { mimeType: 'image/jpeg', assetType: 'body-image' })
     });
     if (!asset) return null;
     if (fileName) {
@@ -253,6 +276,8 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
     const id = crypto.randomUUID();
     const normalizedMimeType = normalizeAssetMimeType({ fileName, mimeType });
     const ext = normalizeAssetExt({ fileName, mimeType: normalizedMimeType });
+    const normalizedAssetType = assetTypeFromMime(normalizedMimeType);
+    const managedUploadPath = userAssetUploadPath(ownerId, { mimeType: normalizedMimeType, assetType: normalizedAssetType });
     const settings = objectStorage.getSettings();
     const storageMode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
     if (storageMode === 'oss' && !objectStorage.hasUploadParams(settings)) {
@@ -267,7 +292,7 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
             ext,
             role: 'attachment',
             id,
-            uploadPath,
+            uploadPath: managedUploadPath,
             requireEnabled: storageMode !== 'oss'
         });
         if (uploaded?.url) {
@@ -275,11 +300,11 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
                 id,
                 articleId: null,
                 ownerId,
-                assetType: assetTypeFromMime(normalizedMimeType),
+                assetType: normalizedAssetType,
                 mimeType: normalizedMimeType,
                 url: uploaded.url,
                 storageKey: uploaded.key,
-                metadata: { role: 'attachment', alt, fileName, size: buffer.length, storage: uploaded.storage || 'oss' }
+                metadata: { role: 'attachment', alt, fileName, size: buffer.length, storage: uploaded.storage || 'oss', folder: managedUploadPath }
             });
             return db.prepare(`
                 SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
@@ -292,7 +317,7 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
         console.warn('OSS file upload failed, falling back to local storage:', error.message);
     }
 
-    saveBufferLocal({ buffer, mimeType: normalizedMimeType, ext, id, ownerId, role: 'attachment', alt, fileName, uploadPath });
+    saveBufferLocal({ buffer, mimeType: normalizedMimeType, ext, id, ownerId, role: 'attachment', alt, fileName, uploadPath: managedUploadPath });
     return db.prepare(`
         SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
         FROM article_assets

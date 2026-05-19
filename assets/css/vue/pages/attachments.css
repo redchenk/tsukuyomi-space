@@ -45,7 +45,7 @@
 
 .attachments-toolbar {
     display: grid;
-    grid-template-columns: minmax(280px, 1fr) minmax(130px, 170px) auto auto;
+    grid-template-columns: minmax(280px, 1fr) repeat(2, minmax(130px, 170px)) auto auto;
     align-items: center;
     gap: 0.7rem;
     margin-bottom: 1rem;
@@ -70,7 +70,7 @@
 
 .attachments-upload-options {
     display: grid;
-    grid-template-columns: minmax(210px, 260px) minmax(420px, 1fr);
+    grid-template-columns: minmax(210px, 260px) minmax(320px, 1fr);
     align-items: end;
     gap: 0.9rem;
     margin-bottom: 1rem;

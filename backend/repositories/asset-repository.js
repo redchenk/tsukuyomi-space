@@ -1,7 +1,11 @@
 const db = require('../db');
 
-function buildOwnerWhere(ownerId, includePublic = false) {
-    return includePublic ? '(owner_id = ? OR owner_id IS NULL)' : 'owner_id = ?';
+function buildOwnerFilter(ownerId, { includePublic = false, includeAll = false } = {}) {
+    if (includeAll) return { where: '1 = 1', params: [] };
+    return {
+        where: includePublic ? '(owner_id = ? OR owner_id IS NULL)' : 'owner_id = ?',
+        params: [ownerId]
+    };
 }
 
 function parseMetadata(row) {
@@ -23,9 +27,10 @@ function normalizeTypeWhere(type, params) {
     return ' AND asset_type LIKE ?';
 }
 
-function listAssetsByOwner(ownerId, { limit = 60, offset = 0, type = '', search = '', includePublic = false } = {}) {
-    const params = [ownerId];
-    let where = buildOwnerWhere(ownerId, includePublic);
+function listAssetsByOwner(ownerId, { limit = 60, offset = 0, type = '', search = '', includePublic = false, includeAll = false } = {}) {
+    const ownerFilter = buildOwnerFilter(ownerId, { includePublic, includeAll });
+    const params = [...ownerFilter.params];
+    let where = ownerFilter.where;
     where += normalizeTypeWhere(type, params);
     if (search) {
         where += ' AND (url LIKE ? OR storage_key LIKE ? OR metadata LIKE ?)';
@@ -42,9 +47,10 @@ function listAssetsByOwner(ownerId, { limit = 60, offset = 0, type = '', search 
     return rows.map(parseMetadata);
 }
 
-function countAssetsByOwner(ownerId, { type = '', search = '', includePublic = false } = {}) {
-    const params = [ownerId];
-    let where = buildOwnerWhere(ownerId, includePublic);
+function countAssetsByOwner(ownerId, { type = '', search = '', includePublic = false, includeAll = false } = {}) {
+    const ownerFilter = buildOwnerFilter(ownerId, { includePublic, includeAll });
+    const params = [...ownerFilter.params];
+    let where = ownerFilter.where;
     where += normalizeTypeWhere(type, params);
     if (search) {
         where += ' AND (url LIKE ? OR storage_key LIKE ? OR metadata LIKE ?)';
