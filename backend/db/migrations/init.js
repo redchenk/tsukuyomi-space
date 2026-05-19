@@ -152,6 +152,8 @@ function seedSiteSettings() {
     insert.run('visitPopupTitle', '欢迎来到月读空间');
     insert.run('visitPopupContent', '');
     insert.run('visitPopupButton', '我知道了');
+    insert.run('beianText', '');
+    insert.run('beianUrl', '');
     insert.run('ossEnabled', 'false');
     insert.run('ossProvider', 'aliyun');
     insert.run('ossEndpoint', '');

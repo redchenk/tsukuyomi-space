@@ -32,6 +32,8 @@ router.get('/settings', (req, res) => {
             visitPopupEnabled: settings.visitPopupEnabled === true,
             visitPopupTitle: settings.visitPopupTitle || '欢迎来到月读空间',
             visitPopupContent: settings.visitPopupContent || '',
+            beianText: settings.beianText || '',
+            beianUrl: settings.beianUrl || '',
             publicAssetBaseUrl,
             visitPopupButton: settings.visitPopupButton || '我知道了'
         }

@@ -490,6 +490,8 @@ router.post('/settings', (req, res) => {
             'visitPopupTitle',
             'visitPopupContent',
             'visitPopupButton',
+            'beianText',
+            'beianUrl',
             'ossEnabled',
             'ossProvider',
             'ossEndpoint',
