@@ -502,6 +502,7 @@ router.post('/settings', (req, res) => {
             'ossPublicBaseUrl',
             'ossPrefix',
             'ossUploadPath',
+            'ossDefaultStorage',
             'ossFileNameMode',
             'ossForcePathStyle'
         ];

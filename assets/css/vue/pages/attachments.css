@@ -54,6 +54,34 @@
     flex: 1;
 }
 
+.attachments-upload-options {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.32fr) minmax(240px, 1fr);
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+.attachments-upload-options label {
+    display: grid;
+    gap: 0.35rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.attachments-upload-options select,
+.attachments-upload-options input {
+    width: 100%;
+}
+
+.attachments-upload-options p {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
 .attachments-status,
 .attachments-empty {
     padding: 2rem;
@@ -134,5 +162,9 @@
     .attachments-actions .ghost-btn {
         flex: 1;
         justify-content: center;
+    }
+
+    .attachments-upload-options {
+        grid-template-columns: 1fr;
     }
 }

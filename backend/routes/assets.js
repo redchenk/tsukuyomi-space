@@ -74,12 +74,14 @@ router.get('/', authenticateToken, (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { dataUrl, alt, fileName } = req.body || {};
+        const { dataUrl, alt, fileName, storage, uploadPath } = req.body || {};
         if (!dataUrl) return fail(res, 400, '请选择要上传的图片');
         const asset = await articleMedia.saveUserImageAsset(dataUrl, {
             ownerId: req.user.id,
             alt: String(alt || '').trim(),
-            fileName: String(fileName || '').trim()
+            fileName: String(fileName || '').trim(),
+            storage: objectStorage.normalizeStorageMode(storage),
+            uploadPath: objectStorage.normalizeUploadPath(uploadPath, '')
         });
         if (!asset) return fail(res, 400, '图片格式无效');
         ok(res, normalizeAsset(asset), '附件已上传');

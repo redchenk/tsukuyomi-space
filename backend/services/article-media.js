@@ -38,15 +38,39 @@ function parseStoredMetadata(value) {
     }
 }
 
-function uploadFolder() {
+function safeRelativePath(value = '') {
+    const cleaned = String(value || '')
+        .trim()
+        .replace(/\\/g, '/')
+        .replace(/^\/+|\/+$/g, '')
+        .replace(/\/{2,}/g, '/');
+    if (!cleaned || /^[a-z][a-z0-9+.-]*:/i.test(cleaned) || cleaned.includes('..')) return '';
+    return cleaned
+        .split('/')
+        .map(part => part.replace(/[^a-zA-Z0-9._-]/g, '-'))
+        .filter(Boolean)
+        .join('/');
+}
+
+function expandUploadPathTemplate(value = '', { role = 'body', id = '', ext = '' } = {}) {
     const now = new Date();
+    return String(value || '')
+        .replace(/\$\{year\}/g, String(now.getFullYear()))
+        .replace(/\$\{month\}/g, String(now.getMonth() + 1).padStart(2, '0'))
+        .replace(/\$\{day\}/g, String(now.getDate()).padStart(2, '0'))
+        .replace(/\$\{role\}/g, role)
+        .replace(/\$\{uuid\}/g, id)
+        .replace(/\$\{ext\}/g, ext);
+}
+
+function uploadFolder(uploadPath = '', context = {}) {
+    const now = new Date();
+    const expandedPath = safeRelativePath(expandUploadPathTemplate(uploadPath, context));
     const folder = path.join(
         config.projectRoot,
         'assets',
         'uploads',
-        'articles',
-        String(now.getFullYear()),
-        String(now.getMonth() + 1).padStart(2, '0')
+        expandedPath || path.join('articles', String(now.getFullYear()), String(now.getMonth() + 1).padStart(2, '0'))
     );
     fs.mkdirSync(folder, { recursive: true });
     return folder;
@@ -74,9 +98,9 @@ function createAssetRecord({ id, articleId = null, ownerId = null, assetType, mi
     `).run(id, articleId, ownerId, assetType, mimeType, url, storageKey, JSON.stringify(metadata || {}));
 }
 
-function saveParsedImageLocal(parsed, { id = crypto.randomUUID(), articleId = null, ownerId = null, role = 'body', alt = '' } = {}) {
+function saveParsedImageLocal(parsed, { id = crypto.randomUUID(), articleId = null, ownerId = null, role = 'body', alt = '', uploadPath = '' } = {}) {
     const fileName = `${id}.${parsed.ext}`;
-    const filePath = path.join(uploadFolder(), fileName);
+    const filePath = path.join(uploadFolder(uploadPath, { role, id, ext: parsed.ext }), fileName);
     fs.writeFileSync(filePath, parsed.buffer);
     const url = publicUrlForFile(filePath);
     createAssetRecord({
@@ -92,18 +116,26 @@ function saveParsedImageLocal(parsed, { id = crypto.randomUUID(), articleId = nu
     return { id, url };
 }
 
-async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '' } = {}) {
+async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '', storage = 'auto', uploadPath = '' } = {}) {
     const parsed = parseDataImage(dataUrl);
     if (!parsed || !parsed.buffer.length) return null;
 
     const id = crypto.randomUUID();
-    try {
+    const settings = objectStorage.getSettings();
+    const storageMode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
+    if (storageMode === 'oss' && !objectStorage.isConfigured(settings)) {
+        throw new Error('对象存储未启用或参数不完整');
+    }
+    const shouldTryOss = storageMode !== 'local' && (storageMode === 'oss' || settings.ossEnabled === true);
+
+    if (shouldTryOss) try {
         const uploaded = await objectStorage.putObject({
             buffer: parsed.buffer,
             mimeType: parsed.mimeType,
             ext: parsed.ext,
             role,
-            id
+            id,
+            uploadPath
         });
         if (uploaded?.url) {
             createAssetRecord({
@@ -119,19 +151,22 @@ async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role =
             return { id, url: uploaded.url };
         }
     } catch (error) {
+        if (storageMode === 'oss') throw new Error('对象存储上传失败，请检查后台配置或上传路径');
         console.warn('OSS image upload failed, falling back to local storage:', error.message);
     }
 
-    return saveParsedImageLocal(parsed, { id, articleId, ownerId, role, alt });
+    return saveParsedImageLocal(parsed, { id, articleId, ownerId, role, alt, uploadPath });
 }
 
-async function saveUserImageAsset(dataUrl, { ownerId, alt = '', fileName = '' } = {}) {
+async function saveUserImageAsset(dataUrl, { ownerId, alt = '', fileName = '', storage = 'auto', uploadPath = '' } = {}) {
     if (!ownerId) return null;
     const asset = await saveDataImage(dataUrl, {
         articleId: null,
         ownerId,
         role: 'attachment',
-        alt
+        alt,
+        storage,
+        uploadPath
     });
     if (!asset) return null;
     if (fileName) {
@@ -149,10 +184,10 @@ async function saveUserImageAsset(dataUrl, { ownerId, alt = '', fileName = '' } 
     `).get(asset.id);
 }
 
-function saveDataImageLocal(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '' } = {}) {
+function saveDataImageLocal(dataUrl, { articleId = null, ownerId = null, role = 'body', alt = '', uploadPath = '' } = {}) {
     const parsed = parseDataImage(dataUrl);
     if (!parsed || !parsed.buffer.length) return null;
-    return saveParsedImageLocal(parsed, { articleId, ownerId, role, alt });
+    return saveParsedImageLocal(parsed, { articleId, ownerId, role, alt, uploadPath });
 }
 
 async function replaceInlineDataImages(content, { articleId = null, ownerId = null } = {}) {

@@ -164,6 +164,7 @@ function seedSiteSettings() {
     insert.run('ossPublicBaseUrl', '');
     insert.run('ossPrefix', '');
     insert.run('ossUploadPath', 'articles/${year}/${month}/${role}');
+    insert.run('ossDefaultStorage', 'auto');
     insert.run('ossFileNameMode', 'uuid');
     insert.run('ossForcePathStyle', 'false');
 }

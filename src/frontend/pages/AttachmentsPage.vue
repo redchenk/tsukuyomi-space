@@ -14,6 +14,8 @@ const state = reactive({
   messageType: 'success',
   assets: [],
   search: '',
+  storage: 'auto',
+  uploadPath: '',
   page: 1,
   totalPages: 1
 });
@@ -77,7 +79,9 @@ async function uploadAsset(event) {
       body: JSON.stringify({
         dataUrl,
         fileName: file.name,
-        alt: file.name.replace(/\.[^.]+$/, '')
+        alt: file.name.replace(/\.[^.]+$/, ''),
+        storage: state.storage,
+        uploadPath: state.uploadPath.trim()
       })
     });
     const result = await parseResponse(response);
@@ -156,6 +160,20 @@ onMounted(() => {
         <input v-model="state.search" type="search" placeholder="搜索文件名、路径或备注" @keydown.enter="loadAssets(1)">
         <button class="ghost-btn" type="button" @click="loadAssets(1)">搜索</button>
         <button class="ghost-btn" type="button" @click="state.search = ''; loadAssets(1)">重置</button>
+      </section>
+
+      <section class="panel attachments-upload-options">
+        <label>存储位置
+          <select v-model="state.storage">
+            <option value="auto">跟随站点默认</option>
+            <option value="local">本地存储</option>
+            <option value="oss">对象存储</option>
+          </select>
+        </label>
+        <label>上传路径
+          <input v-model="state.uploadPath" type="text" placeholder="attachments/${year}/${month} 或 user-images">
+        </label>
+        <p>上传路径是相对目录，留空时使用后台默认目录；不要填写 URL、盘符或包含 .. 的路径。</p>
       </section>
 
       <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>

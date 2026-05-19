@@ -17,6 +17,24 @@ function trimSlashes(value) {
     return String(value || '').trim().replace(/^\/+|\/+$/g, '');
 }
 
+function normalizeStorageMode(value) {
+    const mode = String(value || '').trim().toLowerCase();
+    return ['auto', 'local', 'oss'].includes(mode) ? mode : 'auto';
+}
+
+function normalizeUploadPath(value, fallback = '') {
+    const path = trimSlashes(value || fallback)
+        .replace(/\\/g, '/')
+        .replace(/\/{2,}/g, '/');
+    if (!path) return '';
+    if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.includes('..')) return '';
+    return path
+        .split('/')
+        .map(part => part.replace(/[^a-zA-Z0-9._~!$&'()+,;=@${}-]/g, '-'))
+        .filter(Boolean)
+        .join('/');
+}
+
 function normalizeEndpoint(value) {
     const endpoint = String(value || '').trim().replace(/\/+$/, '');
     if (!endpoint) return null;
@@ -65,14 +83,14 @@ function normalizeRegion(value) {
     return region === 'Auto' ? 'auto' : region;
 }
 
-function buildObjectKey({ settings, id, ext, role = 'body' }) {
+function buildObjectKey({ settings, id, ext, role = 'body', uploadPath = '' }) {
     const now = new Date();
     const uuid = id || crypto.randomUUID();
     const cleanExt = String(ext || 'bin').replace(/^\./, '').toLowerCase();
     const baseName = String(settings.ossFileNameMode || 'uuid') === 'timestamp'
         ? `${Date.now()}-${uuid.slice(0, 8)}`
         : uuid;
-    const template = String(settings.ossUploadPath || 'articles/${year}/${month}/${role}').trim();
+    const template = normalizeUploadPath(uploadPath, settings.ossUploadPath || 'articles/${year}/${month}/${role}');
     const folder = template
         .replace(/\$\{year\}/g, String(now.getFullYear()))
         .replace(/\$\{month\}/g, String(now.getMonth() + 1).padStart(2, '0'))
@@ -165,10 +183,10 @@ async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, 
     });
 }
 
-async function putObject({ buffer, mimeType, ext, role, id, settings: providedSettings = null, requireEnabled = true }) {
+async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', settings: providedSettings = null, requireEnabled = true }) {
     const settings = providedSettings || getSettings();
     if ((requireEnabled && !settings.ossEnabled) || !hasUploadParams(settings)) return null;
-    const objectKey = buildObjectKey({ settings, id, ext, role });
+    const objectKey = buildObjectKey({ settings, id, ext, role, uploadPath });
     const url = buildRequestUrl(settings, objectKey);
     if (!url) return null;
     const response = await signedFetch({
@@ -241,6 +259,8 @@ module.exports = {
     getSettings,
     hasUploadParams,
     isConfigured,
+    normalizeStorageMode,
+    normalizeUploadPath,
     publicUrl,
     putObject,
     testWrite

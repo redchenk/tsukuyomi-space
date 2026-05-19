@@ -56,6 +56,7 @@ const terminal = reactive({
     ossPublicBaseUrl: '',
     ossPrefix: '',
     ossUploadPath: 'articles/${year}/${month}/${role}',
+    ossDefaultStorage: 'auto',
     ossFileNameMode: 'uuid',
     ossForcePathStyle: false
   },
@@ -541,6 +542,13 @@ onUnmounted(() => {
               <label>Bucket<input v-model="terminal.settings.ossBucket" placeholder="tsukuyomi-assets"></label>
               <label>资源前缀<input v-model="terminal.settings.ossPrefix" placeholder="public/"></label>
               <label>上传目录<input v-model="terminal.settings.ossUploadPath" placeholder="articles/${year}/${month}/${role}"></label>
+              <label>默认存储位置
+                <select v-model="terminal.settings.ossDefaultStorage">
+                  <option value="auto">自动：对象存储可用时优先，否则本地</option>
+                  <option value="local">本地存储</option>
+                  <option value="oss">对象存储</option>
+                </select>
+              </label>
               <label>文件名策略
                 <select v-model="terminal.settings.ossFileNameMode">
                   <option value="uuid">UUID</option>
