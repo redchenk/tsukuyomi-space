@@ -97,9 +97,13 @@ async function loadArticle() {
 
 async function loadComments() {
   try {
-    const response = await fetch(`/api/messages?article_id=${encodeURIComponent(articleId.value)}`);
+    const response = await fetch(`/api/articles/${encodeURIComponent(articleId.value)}/messages`, {
+      cache: 'no-store'
+    });
     const result = await parseResponse(response);
-    comments.value = result.success && Array.isArray(result.data) ? result.data : [];
+    comments.value = result.success && Array.isArray(result.data)
+      ? result.data.filter((item) => String(item.article_id) === String(articleId.value))
+      : [];
   } catch (_) {
     comments.value = [];
   }

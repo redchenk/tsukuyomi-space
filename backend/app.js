@@ -52,6 +52,13 @@ function createApp() {
 
     // 分层限流：API 总量、认证入口、后台登录分别控制。
     app.use('/api/', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 600, keyPrefix: 'api' }));
+    app.use('/api', (req, res, next) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        next();
+    });
+
     app.use('/api/auth/', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 60, keyPrefix: 'auth' }));
     app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const articleRepository = require('../repositories/article-repository');
+const messageRepository = require('../repositories/message-repository');
 const articleMedia = require('../services/article-media');
 const { parsePositiveInt, safeJsonParse } = require('../validators');
 
@@ -81,6 +82,21 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // 单篇文章读取会顺便累计阅读数。
+router.get('/:id/messages', (req, res) => {
+    try {
+        const article = articleRepository.findArticleById(req.params.id);
+        if (!article) {
+            return res.status(404).json({ success: false, message: 'Article not found' });
+        }
+
+        const messages = messageRepository.listMessages({ articleId: req.params.id });
+        res.json({ success: true, data: messages });
+    } catch (error) {
+        console.error('List article messages failed:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 router.get('/:id', (req, res) => {
     try {
         const article = articleRepository.findArticleById(req.params.id);

@@ -15,6 +15,25 @@ const SEO_ROUTES = [
     { path: '/arena', priority: '0.7', changefreq: 'weekly' }
 ];
 
+function setNoStore(res) {
+    res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    });
+}
+
+function setStaticCacheHeaders(res, filePath) {
+    if (filePath.endsWith('.html')) {
+        setNoStore(res);
+        return;
+    }
+
+    if (/[.-][A-Za-z0-9_-]{8,}\.(?:js|css|png|jpe?g|gif|webp|svg|woff2?)$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+}
+
 function xmlEscape(value) {
     return String(value || '')
         .replace(/&/g, '&amp;')
@@ -40,9 +59,7 @@ function sitemapUrl({ loc, lastmod, changefreq, priority }) {
 }
 
 function sendRobots(req, res) {
-    res.set({
-        'Cache-Control': 'no-store, max-age=0'
-    });
+    setNoStore(res);
     res.removeHeader('ETag');
     res.type('text/plain; charset=utf-8').send([
         'User-agent: *',
@@ -74,9 +91,7 @@ function sendSitemap(req, res) {
         changefreq: 'monthly',
         priority: '0.7'
     }));
-    res.set({
-        'Cache-Control': 'no-store, max-age=0'
-    });
+    setNoStore(res);
     res.removeHeader('ETag');
     res.type('application/xml; charset=utf-8').send([
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -97,6 +112,7 @@ function serveStaticFiles(app) {
     app.get('/sitemap.xml', sendSitemap);
     app.get('/stage', (req, res, next) => {
         if (req.query?.spa === '1') return next();
+        setNoStore(res);
         return res.type('html').send(renderStageHtml(articleRepository.listSeoArticles(60)));
     });
     app.get('/article', (req, res, next) => {
@@ -113,6 +129,7 @@ function serveStaticFiles(app) {
         if (article.slug && req.params.slug !== article.slug) {
             return res.redirect(301, articlePath(article));
         }
+        setNoStore(res);
         return res.type('html').send(renderArticleHtml(article));
     });
 
@@ -125,13 +142,13 @@ function serveStaticFiles(app) {
     });
 
     if (useFrontendDist) {
-        app.use(express.static(frontendDistRoot));
+        app.use(express.static(frontendDistRoot, { setHeaders: setStaticCacheHeaders }));
     }
 
-    app.use(express.static(publicRoot));
-    app.use('/assets', express.static(path.join(publicRoot, 'assets')));
-    app.use('/lib', express.static(path.join(publicRoot, 'lib')));
-    app.use('/models', express.static(path.join(publicRoot, 'models')));
+    app.use(express.static(publicRoot, { setHeaders: setStaticCacheHeaders }));
+    app.use('/assets', express.static(path.join(publicRoot, 'assets'), { setHeaders: setStaticCacheHeaders }));
+    app.use('/lib', express.static(path.join(publicRoot, 'lib'), { setHeaders: setStaticCacheHeaders }));
+    app.use('/models', express.static(path.join(publicRoot, 'models'), { setHeaders: setStaticCacheHeaders }));
 
     // Serve Vue routes from the Vite build.
     app.use((req, res, next) => {
@@ -143,6 +160,7 @@ function serveStaticFiles(app) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');
             }
+            setNoStore(res);
             return res.sendFile(path.join(frontendDistRoot, 'index.html'));
         }
 
