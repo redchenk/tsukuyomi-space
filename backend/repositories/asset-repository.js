@@ -70,6 +70,15 @@ function findAssetForAdmin(id) {
     `).get(id));
 }
 
+function findAssetByStorageKey(storageKey) {
+    return parseMetadata(db.prepare(`
+        SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
+        FROM article_assets
+        WHERE storage_key = ?
+        LIMIT 1
+    `).get(storageKey));
+}
+
 function createAsset({ id, articleId = null, ownerId = null, assetType, mimeType = '', url, storageKey, metadata = {} }) {
     db.prepare(`
         INSERT INTO article_assets (
@@ -107,6 +116,7 @@ module.exports = {
     deleteAssetById,
     deleteAssetForOwner,
     findAssetForAdmin,
+    findAssetByStorageKey,
     findAssetForOwner,
     listAssetsByOwner
 };

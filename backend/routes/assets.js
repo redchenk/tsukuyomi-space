@@ -34,6 +34,7 @@ const MIME_BY_EXT = {
     zip: 'application/zip',
     json: 'application/json'
 };
+const SKIP_SCAN_KEYS = /(^|\/)(?:\.|__MACOSX)|\/$/;
 
 function ok(res, data = null, message = '操作成功') {
     res.json({ success: true, message, data });
@@ -85,6 +86,38 @@ function parseDataUrl(value = '') {
         mimeType: match[1].toLowerCase(),
         buffer: Buffer.from(match[2].replace(/\s/g, ''), 'base64')
     };
+}
+
+function createOssAssetRecord({ objectKey, title = '', assetType = 'auto', mimeType = '', size = 0, visibility = 'public', description = '', etag = '', lastModified = '', ownerId }) {
+    const storageKey = objectStorage.normalizeObjectKey(objectKey);
+    if (!storageKey) return null;
+    const url = objectStorage.publicUrlForKey(storageKey);
+    if (!url) return null;
+    const normalizedMimeType = inferMimeType(storageKey, mimeType);
+    const normalizedAssetType = inferAssetType(normalizedMimeType, storageKey, assetType);
+    const displayName = String(title || storageKey.split('/').pop() || storageKey).trim().slice(0, 180);
+    const publicAsset = visibility !== 'private';
+    return assetRepository.createAsset({
+        id: crypto.randomUUID(),
+        articleId: null,
+        ownerId: publicAsset ? null : ownerId,
+        assetType: normalizedAssetType,
+        mimeType: normalizedMimeType,
+        url,
+        storageKey,
+        metadata: {
+            title: displayName,
+            fileName: displayName,
+            description: String(description || '').trim().slice(0, 500),
+            size: parsePositiveSize(size),
+            storage: 'oss',
+            source: 'oss_import',
+            visibility: publicAsset ? 'public' : 'private',
+            mirror: 'oss_only',
+            etag,
+            lastModified
+        }
+    });
 }
 
 function safeJson(value) {
@@ -145,37 +178,67 @@ router.post('/oss-register', authenticateToken, requireAdmin, (req, res) => {
             visibility = 'public',
             description = ''
         } = req.body || {};
-        const storageKey = objectStorage.normalizeObjectKey(objectKey);
-        if (!storageKey) return fail(res, 400, '请填写有效的 OSS Object Key');
-        const url = objectStorage.publicUrlForKey(storageKey);
-        if (!url) return fail(res, 400, '对象存储公开域名或 Endpoint 未配置，无法生成访问 URL');
-        const normalizedMimeType = inferMimeType(storageKey, mimeType);
-        const normalizedAssetType = inferAssetType(normalizedMimeType, storageKey, assetType);
-        const displayName = String(title || storageKey.split('/').pop() || storageKey).trim().slice(0, 180);
-        const publicAsset = visibility !== 'private';
-        const asset = assetRepository.createAsset({
-            id: crypto.randomUUID(),
-            articleId: null,
-            ownerId: publicAsset ? null : req.user.id,
-            assetType: normalizedAssetType,
-            mimeType: normalizedMimeType,
-            url,
-            storageKey,
-            metadata: {
-                title: displayName,
-                fileName: displayName,
-                description: String(description || '').trim().slice(0, 500),
-                size: parsePositiveSize(size),
-                storage: 'oss',
-                source: 'oss_import',
-                visibility: publicAsset ? 'public' : 'private',
-                mirror: 'oss_only'
-            }
+        const asset = createOssAssetRecord({
+            objectKey,
+            title,
+            assetType,
+            mimeType,
+            size,
+            visibility,
+            description,
+            ownerId: req.user.id
         });
-        ok(res, normalizeAsset(asset), 'OSS 资源已登记');
+        if (!asset) return fail(res, 400, 'Invalid OSS Object Key or public URL settings');
+        ok(res, normalizeAsset(asset), 'OSS asset registered');
     } catch (error) {
         console.error('Register OSS asset failed:', error);
-        fail(res, 500, 'OSS 资源登记失败');
+        fail(res, 500, 'OSS asset registration failed');
+    }
+});
+
+router.post('/oss-scan', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const {
+            prefix = '',
+            maxKeys = 100,
+            visibility = 'public',
+            assetType = 'auto'
+        } = req.body || {};
+        const listed = await objectStorage.listObjects({ prefix, maxKeys });
+        const imported = [];
+        const skipped = [];
+        for (const item of listed.objects || []) {
+            if (!item.key || SKIP_SCAN_KEYS.test(item.key)) {
+                skipped.push({ key: item.key, reason: 'ignored' });
+                continue;
+            }
+            if (assetRepository.findAssetByStorageKey(item.key)) {
+                skipped.push({ key: item.key, reason: 'exists' });
+                continue;
+            }
+            const asset = createOssAssetRecord({
+                objectKey: item.key,
+                assetType,
+                size: item.size,
+                visibility,
+                etag: item.etag,
+                lastModified: item.lastModified,
+                ownerId: req.user.id
+            });
+            if (asset) imported.push(normalizeAsset(asset));
+            else skipped.push({ key: item.key, reason: 'invalid' });
+        }
+        ok(res, {
+            imported,
+            importedCount: imported.length,
+            skippedCount: skipped.length,
+            skipped,
+            scannedCount: (listed.objects || []).length,
+            prefix: listed.prefix || ''
+        }, 'OSS scan completed');
+    } catch (error) {
+        console.error('Scan OSS assets failed:', error);
+        fail(res, 500, error.message || 'OSS scan failed');
     }
 });
 

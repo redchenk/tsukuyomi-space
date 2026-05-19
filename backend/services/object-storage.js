@@ -204,6 +204,50 @@ async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, 
     });
 }
 
+function textBetween(value, tag) {
+    const match = String(value || '').match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+    return match ? match[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&') : '';
+}
+
+function parseListObjectsXml(xml) {
+    return [...String(xml || '').matchAll(/<Contents>([\s\S]*?)<\/Contents>/gi)]
+        .map((match) => {
+            const block = match[1];
+            return {
+                key: textBetween(block, 'Key'),
+                size: Number(textBetween(block, 'Size')) || 0,
+                etag: textBetween(block, 'ETag').replace(/^"|"$/g, ''),
+                lastModified: textBetween(block, 'LastModified')
+            };
+        })
+        .filter(item => item.key);
+}
+
+async function listObjects({ prefix = '', maxKeys = 100, settings: providedSettings = null } = {}) {
+    const settings = providedSettings || getSettings();
+    if (!hasUploadParams(settings)) return { objects: [] };
+    const url = buildRequestUrl(settings, '');
+    if (!url) return { objects: [] };
+    url.searchParams.set('list-type', '2');
+    url.searchParams.set('max-keys', String(Math.min(Math.max(Number(maxKeys) || 100, 1), 1000)));
+    const cleanPrefix = normalizeObjectKey(prefix);
+    if (cleanPrefix) url.searchParams.set('prefix', cleanPrefix);
+    const response = await signedFetch({
+        method: 'GET',
+        url,
+        region: normalizeRegion(settings.ossRegion),
+        accessKeyId: settings.ossAccessKeyId,
+        accessKeySecret: settings.ossAccessKeySecret,
+        body: Buffer.alloc(0),
+        contentType: 'application/octet-stream'
+    });
+    const text = await response.text().catch(() => '');
+    if (!response.ok) {
+        throw new Error(`OSS list failed: HTTP ${response.status} ${text.slice(0, 160)}`);
+    }
+    return { objects: parseListObjectsXml(text), prefix: cleanPrefix };
+}
+
 async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', settings: providedSettings = null, requireEnabled = true }) {
     const settings = providedSettings || getSettings();
     if ((requireEnabled && !settings.ossEnabled) || !hasUploadParams(settings)) return null;
@@ -280,6 +324,7 @@ module.exports = {
     getSettings,
     hasUploadParams,
     isConfigured,
+    listObjects,
     normalizeObjectKey,
     normalizeStorageMode,
     normalizeUploadPath,

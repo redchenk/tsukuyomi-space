@@ -76,7 +76,12 @@ const terminal = reactive({
     description: '',
     loading: false,
     message: '',
-    type: ''
+    type: '',
+    scanPrefix: '',
+    scanLimit: 100,
+    scanning: false,
+    scanMessage: '',
+    scanType: ''
   }
 });
 
@@ -403,6 +408,36 @@ async function registerOssAsset() {
   }
 }
 
+async function scanOssAssets() {
+  terminal.ossImport.scanMessage = '';
+  terminal.ossImport.scanType = '';
+  terminal.ossImport.scanning = true;
+  try {
+    const response = await fetch('/api/assets/oss-scan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${terminal.token}`
+      },
+      body: JSON.stringify({
+        prefix: terminal.ossImport.scanPrefix.trim(),
+        maxKeys: terminal.ossImport.scanLimit || 100,
+        visibility: terminal.ossImport.visibility,
+        assetType: terminal.ossImport.assetType
+      })
+    });
+    const result = await parseJsonResponse(response);
+    if (!response.ok || !result.success) throw new Error(result.message || 'OSS 扫描失败');
+    terminal.ossImport.scanType = 'success';
+    terminal.ossImport.scanMessage = `扫描 ${result.data.scannedCount || 0} 个，登记 ${result.data.importedCount || 0} 个，跳过 ${result.data.skippedCount || 0} 个`;
+  } catch (error) {
+    terminal.ossImport.scanType = 'error';
+    terminal.ossImport.scanMessage = error.message || 'OSS 扫描失败';
+  } finally {
+    terminal.ossImport.scanning = false;
+  }
+}
+
 function updateClock() {
   terminal.clock = formatDateTime(new Date(), 'zh-CN');
 }
@@ -636,6 +671,8 @@ onUnmounted(() => {
                   <span>适合电影、长视频、音频包等已手动上传到 OSS 的资源；只登记 Object Key，不同步到本地。</span>
                 </div>
                 <label>Object Key<input v-model="terminal.ossImport.objectKey" placeholder="movies/example.mp4"></label>
+                <label>扫描前缀<input v-model="terminal.ossImport.scanPrefix" placeholder="movies/ 或留空扫描根目录"></label>
+                <label>扫描数量<input v-model.number="terminal.ossImport.scanLimit" type="number" min="1" max="1000" placeholder="100"></label>
                 <label>显示名称<input v-model="terminal.ossImport.title" placeholder="留空则使用文件名"></label>
                 <label>资源类型
                   <select v-model="terminal.ossImport.assetType">
@@ -661,8 +698,14 @@ onUnmounted(() => {
                   <button class="ghost-btn" type="button" :disabled="terminal.ossImport.loading" @click="registerOssAsset">
                     {{ terminal.ossImport.loading ? '登记中...' : '登记 OSS 资源' }}
                   </button>
+                  <button class="ghost-btn" type="button" :disabled="terminal.ossImport.scanning" @click="scanOssAssets">
+                    {{ terminal.ossImport.scanning ? '扫描中...' : '扫描并登记' }}
+                  </button>
                   <span v-if="terminal.ossImport.message" class="terminal-oss-result" :class="terminal.ossImport.type">
                     {{ terminal.ossImport.message }}
+                  </span>
+                  <span v-if="terminal.ossImport.scanMessage" class="terminal-oss-result" :class="terminal.ossImport.scanType">
+                    {{ terminal.ossImport.scanMessage }}
                   </span>
                 </div>
               </div>

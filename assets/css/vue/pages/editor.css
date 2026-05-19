@@ -190,11 +190,33 @@
     transform: translateY(-1px);
 }
 
-.editor-asset-card img {
+.editor-asset-card img,
+.editor-asset-card video,
+.editor-asset-card audio,
+.editor-asset-file {
     width: 100%;
     aspect-ratio: 1 / 1;
-    object-fit: cover;
     border-radius: 8px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.editor-asset-card img,
+.editor-asset-card video {
+    object-fit: cover;
+}
+
+.editor-asset-card audio,
+.editor-asset-file {
+    padding: 0.8rem;
+}
+
+.editor-asset-file {
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 900;
+    text-transform: uppercase;
 }
 
 .editor-asset-card span {

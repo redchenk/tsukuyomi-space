@@ -13,7 +13,9 @@ const emit = defineEmits(['go']);
 const route = useRoute();
 const editorCoverInput = ref(null);
 const editorContentInput = ref(null);
+const editorAssetUploadInput = ref(null);
 const session = ref(getSession());
+const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
 
 const categories = [
   { value: '\u516c\u544a', labelKey: 'editorCatAnnouncement' },
@@ -34,6 +36,7 @@ const editor = reactive({
   assetPicker: {
     open: false,
     loading: false,
+    uploading: false,
     mode: 'body',
     assets: [],
     search: '',
@@ -203,7 +206,7 @@ async function loadAssetPicker() {
   editor.assetPicker.loading = true;
   try {
     const params = new URLSearchParams({
-      type: 'image',
+      type: editor.assetPicker.mode === 'cover' ? 'image' : 'all',
       limit: '60',
       search: editor.assetPicker.search.trim()
     });
@@ -231,8 +234,83 @@ function useAsset(asset) {
     return;
   }
   const alt = assetDisplayName(asset).replace(/[\]\r\n]/g, ' ');
-  replaceContentSelection(`\n![${alt}](${asset.url})\n`, 3, alt.length);
+  const mimeType = String(asset.mime_type || '');
+  if (mimeType.startsWith('image/')) {
+    replaceContentSelection(`\n![${alt}](${asset.url})\n`, 3, alt.length);
+  } else if (mimeType.startsWith('video/')) {
+    replaceContentSelection(`\n::media[${alt}](${asset.url} "video")\n`);
+  } else if (mimeType.startsWith('audio/')) {
+    replaceContentSelection(`\n::media[${alt}](${asset.url} "audio")\n`);
+  } else {
+    replaceContentSelection(`\n[${alt}](${asset.url})\n`, 2, alt.length);
+  }
   closeAssetPicker();
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function isSupportedAssetFile(file) {
+  const type = file.type || '';
+  const name = file.name || '';
+  return type.startsWith('image/')
+    || type.startsWith('video/')
+    || type.startsWith('audio/')
+    || ['application/pdf', 'text/plain', 'text/markdown', 'application/zip', 'application/json'].includes(type)
+    || /\.(md|txt|pdf|zip|json|mp4|webm|mov|m4v|mkv|mp3|flac|wav|ogg|m4a)$/i.test(name);
+}
+
+async function uploadEditorAsset(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (editor.assetPicker.mode === 'cover' && !file.type.startsWith('image/')) {
+    editor.assetPicker.message = '封面只能选择图片';
+    return;
+  }
+  if (!isSupportedAssetFile(file)) {
+    editor.assetPicker.message = '暂不支持这种文件类型';
+    return;
+  }
+  editor.assetPicker.uploading = true;
+  editor.assetPicker.message = '';
+  try {
+    const dataUrl = file.type.startsWith('image/')
+      ? await compressImage(file, { maxWidth: 1800, maxHeight: 1600, quality: 0.82 })
+      : await fileToDataUrl(file);
+    const response = await fetch('/api/assets', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        dataUrl,
+        fileName: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        alt: file.name.replace(/\.[^.]+$/, '')
+      })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '附件上传失败');
+    await loadAssetPicker();
+    useAsset(result.data);
+  } catch (error) {
+    editor.assetPicker.message = error.message || '附件上传失败';
+  } finally {
+    editor.assetPicker.uploading = false;
+    if (editorAssetUploadInput.value) editorAssetUploadInput.value.value = '';
+  }
+}
+
+function assetPreviewType(asset) {
+  const mimeType = String(asset.mime_type || '');
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  return 'file';
 }
 
 function removeEditorCover() {
@@ -440,7 +518,7 @@ watch(currentArticleId, initEditor);
             <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('hr')">—</button>
             <button type="button" class="ghost-btn" @click="insertRichEmbed('media')">媒体卡片</button>
             <button type="button" class="ghost-btn" @click="insertRichEmbed('iframe')">iframe</button>
-            <button type="button" class="primary-btn markdown-image-btn" @click="openAssetPicker('body')">附件库插入图片</button>
+            <button type="button" class="primary-btn markdown-image-btn" @click="openAssetPicker('body')">上传 / 选择附件</button>
           </div>
           <textarea
             id="editorContent"
@@ -450,7 +528,7 @@ watch(currentArticleId, initEditor);
             style="min-height:400px"
             :placeholder="t.editorContentPh"
           ></textarea>
-          <div class="help-text">图片请先上传到附件库，再点击“附件库插入图片”选择使用；这样图片可复用，也会自动兼容对象存储。</div>
+          <div class="help-text">可以上传或选择自己的附件；图片、视频、音频和文件会按类型插入正文，并自动兼容对象存储。</div>
         </div>
 
         <div class="form-group">
@@ -472,21 +550,28 @@ watch(currentArticleId, initEditor);
           <header class="editor-asset-head">
             <div>
               <span>Asset Library</span>
-              <h2>{{ editor.assetPicker.mode === 'cover' ? '选择封面图片' : '插入附件图片' }}</h2>
+              <h2>{{ editor.assetPicker.mode === 'cover' ? '选择封面图片' : '上传 / 选择附件' }}</h2>
             </div>
             <button class="ghost-btn" type="button" @click="closeAssetPicker">关闭</button>
           </header>
           <div class="editor-asset-tools">
             <input v-model="editor.assetPicker.search" type="search" placeholder="搜索附件" @keydown.enter="loadAssetPicker">
             <button class="ghost-btn" type="button" @click="loadAssetPicker">搜索</button>
+            <button class="primary-btn" type="button" :disabled="editor.assetPicker.uploading" @click="editorAssetUploadInput?.click()">
+              {{ editor.assetPicker.uploading ? '上传中...' : '上传附件' }}
+            </button>
+            <input ref="editorAssetUploadInput" type="file" :accept="uploadAccept" hidden @change="uploadEditorAsset">
             <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
           </div>
           <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
           <div v-if="editor.assetPicker.loading" class="editor-asset-status">加载附件中...</div>
-          <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用图片。请先点击“管理附件”上传图片，上传后回到这里选择插入。</div>
+          <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用附件。可以在这里直接上传，或点击“管理附件”进入附件库。</div>
           <div v-else class="editor-asset-grid">
             <button v-for="asset in editor.assetPicker.assets" :key="asset.id" type="button" class="editor-asset-card" @click="useAsset(asset)">
-              <img :src="asset.url" :alt="assetDisplayName(asset)" loading="lazy">
+              <img v-if="assetPreviewType(asset) === 'image'" :src="asset.url" :alt="assetDisplayName(asset)" loading="lazy">
+              <video v-else-if="assetPreviewType(asset) === 'video'" :src="asset.url" preload="metadata"></video>
+              <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="asset.url" preload="metadata"></audio>
+              <div v-else class="editor-asset-file">{{ asset.asset_type || 'file' }}</div>
               <span>{{ assetDisplayName(asset) }}</span>
             </button>
           </div>
