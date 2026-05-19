@@ -321,6 +321,65 @@ function parseListObjectsXml(xml) {
         .filter(item => item.key);
 }
 
+function parseByteRange(range = '', totalSize = 0) {
+    const match = String(range || '').match(/^bytes=(\d*)-(\d*)$/i);
+    if (!match || !totalSize) return null;
+    let start = match[1] === '' ? null : Number(match[1]);
+    let end = match[2] === '' ? null : Number(match[2]);
+    if (start === null && end === null) return null;
+    if (start === null) {
+        const suffixLength = Math.max(0, Math.min(end || 0, totalSize));
+        start = Math.max(0, totalSize - suffixLength);
+        end = totalSize - 1;
+    } else {
+        if (!Number.isFinite(start) || start < 0 || start >= totalSize) return null;
+        end = end === null || !Number.isFinite(end) ? totalSize - 1 : Math.min(end, totalSize - 1);
+    }
+    if (end < start) return null;
+    return { start, end, totalSize };
+}
+
+async function fullObjectSlice({ objectKey, range, settings }) {
+    const key = normalizeObjectKey(objectKey);
+    const url = buildRequestUrl(settings, key);
+    if (!url) return null;
+    const response = await signedFetch({
+        method: 'GET',
+        url,
+        region: normalizeRegion(settings.ossRegion),
+        accessKeyId: settings.ossAccessKeyId,
+        accessKeySecret: settings.ossAccessKeySecret,
+        body: Buffer.alloc(0),
+        contentType: 'application/octet-stream',
+        settings
+    });
+    if (!response.ok) return null;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const parsed = parseByteRange(range, buffer.length);
+    if (!parsed) {
+        return {
+            buffer,
+            status: 200,
+            contentType: response.headers.get('content-type') || 'application/octet-stream',
+            contentLength: String(buffer.length),
+            acceptRanges: 'bytes',
+            etag: response.headers.get('etag') || '',
+            lastModified: response.headers.get('last-modified') || ''
+        };
+    }
+    const sliced = buffer.subarray(parsed.start, parsed.end + 1);
+    return {
+        buffer: sliced,
+        status: 206,
+        contentType: response.headers.get('content-type') || 'application/octet-stream',
+        contentLength: String(sliced.length),
+        contentRange: `bytes ${parsed.start}-${parsed.end}/${parsed.totalSize}`,
+        acceptRanges: 'bytes',
+        etag: response.headers.get('etag') || '',
+        lastModified: response.headers.get('last-modified') || ''
+    };
+}
+
 async function listObjects({ prefix = '', maxKeys = 100, settings: providedSettings = null } = {}) {
     const settings = providedSettings || getSettings();
     if (!hasUploadParams(settings)) return { objects: [] };
@@ -409,6 +468,10 @@ async function getObject(objectKey, { range = '', settings: providedSettings = n
         settings
     });
     if (!response.ok && response.status !== 206) {
+        if (range) {
+            const fallback = await fullObjectSlice({ objectKey: key, range, settings }).catch(() => null);
+            if (fallback) return fallback;
+        }
         const text = await response.text().catch(() => '');
         throw new Error(`OSS get failed: HTTP ${response.status} ${text.slice(0, 160)}`);
     }
