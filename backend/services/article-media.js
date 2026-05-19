@@ -186,10 +186,10 @@ async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role =
     const id = crypto.randomUUID();
     const settings = objectStorage.getSettings();
     const storageMode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
-    if (storageMode === 'oss' && !objectStorage.isConfigured(settings)) {
+    if (storageMode === 'oss' && !objectStorage.hasUploadParams(settings)) {
         throw new Error('对象存储未启用或参数不完整');
     }
-    const shouldTryOss = storageMode !== 'local' && (storageMode === 'oss' || settings.ossEnabled === true);
+    const shouldTryOss = storageMode !== 'local' && (storageMode === 'oss' || (settings.ossEnabled === true && objectStorage.hasUploadParams(settings)));
 
     if (shouldTryOss) try {
         const uploaded = await objectStorage.putObject({
@@ -198,7 +198,8 @@ async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role =
             ext: parsed.ext,
             role,
             id,
-            uploadPath
+            uploadPath,
+            requireEnabled: storageMode !== 'oss'
         });
         if (uploaded?.url) {
             createAssetRecord({
@@ -254,10 +255,10 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
     const ext = normalizeAssetExt({ fileName, mimeType: normalizedMimeType });
     const settings = objectStorage.getSettings();
     const storageMode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
-    if (storageMode === 'oss' && !objectStorage.isConfigured(settings)) {
+    if (storageMode === 'oss' && !objectStorage.hasUploadParams(settings)) {
         throw new Error('对象存储未启用或参数不完整');
     }
-    const shouldTryOss = storageMode !== 'local' && (storageMode === 'oss' || settings.ossEnabled === true);
+    const shouldTryOss = storageMode !== 'local' && (storageMode === 'oss' || (settings.ossEnabled === true && objectStorage.hasUploadParams(settings)));
 
     if (shouldTryOss) try {
         const uploaded = await objectStorage.putObject({
@@ -266,7 +267,8 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
             ext,
             role: 'attachment',
             id,
-            uploadPath
+            uploadPath,
+            requireEnabled: storageMode !== 'oss'
         });
         if (uploaded?.url) {
             createAssetRecord({

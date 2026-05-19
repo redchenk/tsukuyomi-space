@@ -622,7 +622,7 @@ onUnmounted(() => {
               <label>按钮文字<input v-model="terminal.settings.visitPopupButton" placeholder="我知道了"></label>
             </div>
             <div class="terminal-settings-block terminal-oss-settings">
-              <label class="terminal-check"><input v-model="terminal.settings.ossEnabled" type="checkbox"> 启用对象存储资源域名</label>
+              <label class="terminal-check"><input v-model="terminal.settings.ossEnabled" type="checkbox"> 自动优先使用对象存储上传</label>
               <label>服务商
                 <select v-model="terminal.settings.ossProvider">
                   <option value="aliyun">阿里云 OSS</option>
