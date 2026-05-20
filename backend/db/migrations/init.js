@@ -151,6 +151,7 @@ function seedSiteSettings() {
     insert.run('visitPopupEnabled', 'false');
     insert.run('visitPopupTitle', '欢迎来到月读空间');
     insert.run('visitPopupContent', '');
+    insert.run('messageReviewKeywords', '');
     insert.run('visitPopupButton', '我知道了');
     insert.run('beianText', '');
     insert.run('beianUrl', '');

@@ -46,6 +46,7 @@ const terminal = reactive({
     visitPopupTitle: '欢迎来到月读空间',
     visitPopupContent: '',
     visitPopupButton: '我知道了',
+    messageReviewKeywords: '',
     ossEnabled: false,
     ossProvider: 'aliyun',
     ossEndpoint: '',
@@ -624,6 +625,10 @@ onUnmounted(() => {
               <label>弹窗标题<input v-model="terminal.settings.visitPopupTitle" placeholder="欢迎来到月读空间"></label>
               <label>弹窗内容<textarea v-model="terminal.settings.visitPopupContent" placeholder="输入访客进入网站时看到的内容"></textarea></label>
               <label>按钮文字<input v-model="terminal.settings.visitPopupButton" placeholder="我知道了"></label>
+            </div>
+            <div class="terminal-settings-block">
+              <label>留言审核关键词<textarea v-model="terminal.settings.messageReviewKeywords" rows="5" placeholder="每行一个或用逗号分隔。命中关键词的留言会进入待审，未命中则自动通过。留空时使用系统默认备案安全词库。"></textarea></label>
+              <p class="terminal-setting-note">用于阅读广场、文章评论和回复。普通友好留言会自动公开；涉及安全、违法、广告等关键词的内容进入人工审核。</p>
             </div>
             <div class="terminal-settings-block terminal-oss-settings">
               <label class="terminal-check"><input v-model="terminal.settings.ossEnabled" type="checkbox"> 自动优先使用对象存储上传</label>

@@ -3,6 +3,7 @@ const { authenticateToken } = require('../middleware/auth');
 const messageRepository = require('../repositories/message-repository');
 const notificationRepository = require('../repositories/notification-repository');
 const articleRepository = require('../repositories/article-repository');
+const { reviewMessageContent } = require('../services/message-moderation');
 const { articlePath } = require('../seo/render-article');
 
 const router = express.Router();
@@ -60,13 +61,19 @@ router.post('/', authenticateToken, (req, res) => {
             return res.status(400).json({ success: false, message: '留言内容不能为空' });
         }
 
+        const review = reviewMessageContent(content);
         const newMessage = messageRepository.createMessage({
             author: req.user.username,
             content,
             userId: req.user.id,
-            articleId: article_id || null
+            articleId: article_id || null,
+            status: review.status
         });
-        res.status(201).json({ success: true, data: newMessage, message: '留言已提交，审核通过后会公开显示' });
+        res.status(201).json({
+            success: true,
+            data: newMessage,
+            message: review.status === 'approved' ? '留言已发布' : '留言已提交，审核通过后会公开显示'
+        });
     } catch (error) {
         console.error('Create message failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
@@ -116,22 +123,30 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
+        const review = reviewMessageContent(content);
         const newMessage = messageRepository.createMessage({
             author: req.user.username,
             content,
             userId: req.user.id,
             parentId: messageId,
-            articleId: originalMessage.article_id || null
+            articleId: originalMessage.article_id || null,
+            status: review.status
         });
-        notifyMessageOwner({
-            targetMessage: originalMessage,
-            actor: req.user,
-            type: 'reply',
-            title: `${actorName(req.user)} 回复了你的留言`,
-            content,
-            relatedMessageId: newMessage.id
+        if (review.status === 'approved') {
+            notifyMessageOwner({
+                targetMessage: originalMessage,
+                actor: req.user,
+                type: 'reply',
+                title: `${actorName(req.user)} 回复了你的留言`,
+                content,
+                relatedMessageId: newMessage.id
+            });
+        }
+        res.status(201).json({
+            success: true,
+            data: newMessage,
+            message: review.status === 'approved' ? '回复已发布' : '回复已提交，审核通过后会公开显示'
         });
-        res.status(201).json({ success: true, data: newMessage, message: '回复已提交，审核通过后会公开显示' });
     } catch (error) {
         console.error('Reply message failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });

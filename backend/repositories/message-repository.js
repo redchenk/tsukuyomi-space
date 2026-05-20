@@ -42,16 +42,17 @@ function listMessages({ articleId, includePending = false } = {}) {
     return articleId ? db.prepare(query).all(articleId) : db.prepare(query).all();
 }
 
-function createMessage({ author, content, userId, articleId = null, parentId = null }) {
+function createMessage({ author, content, userId, articleId = null, parentId = null, status = 'pending' }) {
+    const normalizedStatus = status === 'approved' ? 'approved' : 'pending';
     const result = parentId
         ? db.prepare(`
             INSERT INTO messages (author, content, user_id, parent_id, article_id, status)
-            VALUES (?, ?, ?, ?, ?, 'pending')
-        `).run(author, content, userId, parentId, articleId)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(author, content, userId, parentId, articleId, normalizedStatus)
         : db.prepare(`
             INSERT INTO messages (author, content, user_id, article_id, status)
-            VALUES (?, ?, ?, ?, 'pending')
-        `).run(author, content, userId, articleId);
+            VALUES (?, ?, ?, ?, ?)
+        `).run(author, content, userId, articleId, normalizedStatus);
     return findMessageById(result.lastInsertRowid);
 }
 
