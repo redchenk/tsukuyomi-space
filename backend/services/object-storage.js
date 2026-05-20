@@ -141,6 +141,10 @@ function buildObjectKey({ settings, id, ext, role = 'body', uploadPath = '' }) {
 }
 
 function isPathStyle(settings, endpoint) {
+    const provider = String(settings.ossProvider || '').toLowerCase();
+    if (provider === 'aliyun' || endpoint.hostname.includes('aliyuncs.com')) {
+        return isIpHost(endpoint.hostname);
+    }
     return settings.ossForcePathStyle === true || settings.ossForcePathStyle === 'true' || isIpHost(endpoint.hostname);
 }
 
