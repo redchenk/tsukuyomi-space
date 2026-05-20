@@ -154,7 +154,9 @@ router.put('/password', authenticateToken, (req, res) => {
 // 鑾峰彇鐢ㄦ埛鐨勬枃绔犲垪琛?
 router.get('/articles', authenticateToken, (req, res) => {
     try {
-        const articles = articleRepository.listUserArticles(req.user.id);
+        const articles = articleRepository.listUserArticles(req.user.id, {
+            includeAdminAuthored: req.user.scope === 'admin' || req.user.role === 'admin' || req.user.role === 'super_admin'
+        });
 
         res.json({ success: true, data: articles });
     } catch (error) {

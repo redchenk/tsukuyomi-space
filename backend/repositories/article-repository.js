@@ -120,7 +120,15 @@ function deleteArticle(id) {
     return db.prepare('DELETE FROM articles WHERE id = ?').run(id).changes;
 }
 
-function listUserArticles(userId) {
+function listUserArticles(userId, options = {}) {
+    if (options.includeAdminAuthored) {
+        return db.prepare(`
+            SELECT id, title, slug, category, view_count, status, pinned_at, content_format, cover_image_asset_id, created_at, updated_at
+            FROM articles
+            WHERE author_id = ? OR author_id IS NULL OR author_id = ''
+            ORDER BY pinned_at IS NULL, pinned_at DESC, created_at DESC
+        `).all(userId);
+    }
     return db.prepare(`
         SELECT id, title, slug, category, view_count, status, pinned_at, content_format, cover_image_asset_id, created_at, updated_at
         FROM articles WHERE author_id = ?
