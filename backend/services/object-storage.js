@@ -182,7 +182,40 @@ function publicUrlForKey(objectKey, settings = getSettings()) {
     return publicUrl(settings, key);
 }
 
-function aliyunV1SignatureUrl(objectKey, { expiresSeconds = 21600, settings: providedSettings = null } = {}) {
+function canonicalAliyunV1Resource(settings, url) {
+    const signedQueryKeys = new Set([
+        'acl',
+        'uploads',
+        'location',
+        'cors',
+        'logging',
+        'website',
+        'referer',
+        'lifecycle',
+        'delete',
+        'append',
+        'tagging',
+        'objectMeta',
+        'uploadId',
+        'partNumber',
+        'security-token',
+        'position',
+        'response-cache-control',
+        'response-content-disposition',
+        'response-content-encoding',
+        'response-content-language',
+        'response-content-type',
+        'response-expires'
+    ]);
+    const parts = [...url.searchParams.entries()]
+        .filter(([key]) => signedQueryKeys.has(key))
+        .sort(([aKey, aValue], [bKey, bValue]) => aKey === bKey ? aValue.localeCompare(bValue) : aKey.localeCompare(bKey))
+        .map(([key, value]) => value ? `${key}=${value}` : key);
+    const resource = aliyunCanonicalPath(settings, url);
+    return parts.length ? `${resource}?${parts.join('&')}` : resource;
+}
+
+function aliyunV1SignatureUrl(objectKey, { expiresSeconds = 21600, contentType = '', contentDisposition = '', settings: providedSettings = null } = {}) {
     const settings = providedSettings || getSettings();
     const key = normalizeObjectKey(objectKey);
     if (!hasUploadParams(settings) || !key || !isAliyunProvider(settings)) return '';
@@ -191,8 +224,10 @@ function aliyunV1SignatureUrl(objectKey, { expiresSeconds = 21600, settings: pro
     if (String(settings.ossPublicBaseUrl || '').trim().startsWith('https://') || String(settings.ossEndpoint || '').trim().startsWith('https://')) {
         url.protocol = 'https:';
     }
+    if (contentType) url.searchParams.set('response-content-type', contentType);
+    if (contentDisposition) url.searchParams.set('response-content-disposition', contentDisposition);
     const expiresAt = Math.floor(Date.now() / 1000) + Math.min(Math.max(Number(expiresSeconds) || 21600, 60), 604800);
-    const canonicalResource = aliyunCanonicalPath(settings, url);
+    const canonicalResource = canonicalAliyunV1Resource(settings, url);
     const stringToSign = ['GET', '', '', String(expiresAt), canonicalResource].join('\n');
     const signature = crypto.createHmac('sha1', settings.ossAccessKeySecret).update(stringToSign, 'utf8').digest('base64');
     url.searchParams.set('OSSAccessKeyId', settings.ossAccessKeyId);

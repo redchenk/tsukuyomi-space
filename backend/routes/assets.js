@@ -300,7 +300,11 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
             return res.redirect(302, asset.url);
         }
         if (publicAsset && asset.url) {
-            const signedUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, { expiresSeconds: 21600 });
+            const signedUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
+                expiresSeconds: 21600,
+                contentType: asset.mime_type || 'application/octet-stream',
+                contentDisposition: 'inline'
+            });
             return res.redirect(302, signedUrl || asset.url);
         }
         const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
