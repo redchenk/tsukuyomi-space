@@ -41,6 +41,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.codegraph/
 *.swp
 *.swo
 

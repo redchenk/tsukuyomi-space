@@ -30,7 +30,9 @@ const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.perplexity.ai', path: /^\/chat\/completions\/?$/ },
     { hostname: 'api.x.ai', path: /^\/v1\/chat\/completions\/?$/ },
     { hostname: 'api.x.ai', path: /^\/v1\/responses\/?$/ },
-    { hostname: 'generativelanguage.googleapis.com', path: /^\/v1beta\/openai\/chat\/completions\/?$/ }
+    { hostname: 'generativelanguage.googleapis.com', path: /^\/v1beta\/openai\/chat\/completions\/?$/ },
+    { hostname: 'api.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ },
+    { hostname: 'token-plan-cn.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ }
 ];
 
 class LLMEndpointError extends Error {
@@ -55,7 +57,7 @@ function normalizeChatUrl(apiUrl, model) {
     if (/anthropic/i.test(url + model) && !/\/v1\/messages\/?$/.test(url)) {
         url = url.replace(/\/$/, '') + '/v1/messages';
     }
-    const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(url + model) && !/\/chat\/completions\/?$/.test(url);
+    const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage|xiaomimimo|token-plan-cn/i.test(url + model) && !/\/chat\/completions\/?$/.test(url);
     if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
     return validateChatUrl(url);
 }

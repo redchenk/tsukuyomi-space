@@ -41,6 +41,12 @@ const ALIYUN_LLM_PRESETS = {
   intl: { label: '国际/新加坡 · qwen-plus', apiUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' },
   us: { label: '美国 · qwen-plus', apiUrl: 'https://dashscope-us.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' }
 };
+const MIMO_LLM_PRESETS = {
+  standardPro: { label: '标准模式 · mimo-v2.5-pro', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-pro' },
+  standardFlash: { label: '标准模式 · mimo-v2-flash', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2-flash' },
+  tokenPlan: { label: 'Token Plan · mimo-v2.5', apiUrl: 'https://token-plan-cn.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5' },
+  tokenPlanPro: { label: 'Token Plan · mimo-v2.5-pro', apiUrl: 'https://token-plan-cn.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-pro' }
+};
 const TTS_PRESETS = {
   mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
   openai: { label: 'OpenAI TTS', provider: 'openai', apiUrl: 'https://api.openai.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
@@ -315,7 +321,7 @@ function normalizeChatUrl(apiUrl, modelName) {
   if (/anthropic/i.test(`${url} ${modelName || ''}`) && !/\/v1\/messages\/?$/.test(url)) {
     return url.replace(/\/$/, '') + '/v1/messages';
   }
-  const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|minimax|minimaxi|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage/i.test(`${url} ${modelName || ''}`)
+  const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|minimax|minimaxi|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage|xiaomimimo|token-plan-cn/i.test(`${url} ${modelName || ''}`)
     && !/\/chat\/completions\/?$/.test(url);
   if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
   return url;
@@ -867,6 +873,13 @@ function applyPreset(name) {
 
 function applyAliyunPreset(name) {
   const preset = ALIYUN_LLM_PRESETS[name];
+  if (!preset) return;
+  llm.apiUrl = preset.apiUrl;
+  llm.model = preset.model;
+}
+
+function applyMimoPreset(name) {
+  const preset = MIMO_LLM_PRESETS[name];
   if (!preset) return;
   llm.apiUrl = preset.apiUrl;
   llm.model = preset.model;
@@ -1465,6 +1478,12 @@ onBeforeUnmount(() => {
             <summary class="chip">阿里云百炼</summary>
             <div class="preset-submenu">
               <button v-for="(preset, name) in ALIYUN_LLM_PRESETS" :key="name" class="chip" type="button" @click="applyAliyunPreset(name)">{{ preset.label }}</button>
+            </div>
+          </details>
+          <details class="preset-menu">
+            <summary class="chip">Xiaomi MiMo</summary>
+            <div class="preset-submenu">
+              <button v-for="(preset, name) in MIMO_LLM_PRESETS" :key="name" class="chip" type="button" @click="applyMimoPreset(name)">{{ preset.label }}</button>
             </div>
           </details>
           <button v-for="(preset, name) in LLM_PRESETS" :key="name" class="chip" type="button" @click="applyPreset(name)">{{ preset.label }}</button>

@@ -312,6 +312,7 @@ function openRouterHeaders(apiUrl = '') {
 function normalizeOpenAIUrl(apiUrl = '') {
   const url = String(apiUrl || '').trim();
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/responses`;
+  if (/(xiaomimimo\.com|token-plan-cn\.xiaomimimo\.com)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/chat/completions`;
   return url;
 }
 
