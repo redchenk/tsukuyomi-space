@@ -80,7 +80,7 @@ function normalizeAsset(row, { signUrl = false } = {}) {
     };
     if (asset.metadata?.storage === 'oss') {
         const isPublic = !asset.owner_id || asset.metadata?.visibility === 'public';
-        asset.display_url = isPublic || !signUrl ? durableAssetUrl(asset.id) : signedAssetUrl(asset.id);
+        asset.display_url = isPublic ? asset.url : (signUrl ? signedAssetUrl(asset.id) : durableAssetUrl(asset.id));
     } else {
         asset.display_url = asset.url;
     }
