@@ -62,6 +62,25 @@ function durableAssetUrl(assetId) {
     return `/api/assets/proxy/${encodeURIComponent(assetId)}`;
 }
 
+async function canUseRedirectUrl(url) {
+    if (!url) return false;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { Range: 'bytes=0-0' },
+            signal: controller.signal
+        });
+        response.body?.cancel?.();
+        return response.ok || response.status === 206 || response.status === 304;
+    } catch (_) {
+        return false;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 function currentOssPublicUrl(asset) {
     if (!asset?.storage_key) return asset?.url || '';
     return objectStorage.publicUrlForKey(asset.storage_key) || asset.url || '';
@@ -183,6 +202,20 @@ function deleteLocalFile(storageKey) {
     const root = path.resolve(config.projectRoot, 'assets', 'uploads');
     if (!target.startsWith(root)) return;
     fs.rmSync(target, { force: true });
+}
+
+async function streamOssAsset(req, res, asset, metadata) {
+    const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
+    if (!object?.buffer) return fail(res, 404, '附件不存在');
+    res.setHeader('Content-Type', asset.mime_type || object.contentType || 'application/octet-stream');
+    if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
+    if (object.acceptRanges) res.setHeader('Accept-Ranges', object.acceptRanges);
+    if (object.contentRange) res.setHeader('Content-Range', object.contentRange);
+    if (object.etag) res.setHeader('ETag', object.etag);
+    if (object.lastModified) res.setHeader('Last-Modified', object.lastModified);
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', metadata.visibility === 'private' ? 'private, no-store' : 'public, max-age=300');
+    return res.status(object.status === 206 ? 206 : 200).send(object.buffer);
 }
 
 router.get('/', authenticateToken, (req, res) => {
@@ -315,18 +348,12 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
                 contentDisposition: 'inline',
                 preferPublicBase: true
             });
-            return res.redirect(302, signedUrl || publicUrl);
+            const redirectUrl = signedUrl || publicUrl;
+            if (await canUseRedirectUrl(redirectUrl)) return res.redirect(302, redirectUrl);
+            console.warn('OSS public redirect unavailable, falling back to proxy stream:', asset.id, asset.storage_key);
+            return streamOssAsset(req, res, asset, metadata);
         }
-        const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
-        if (!object?.buffer) return fail(res, 404, '附件不存在');
-        res.setHeader('Content-Type', asset.mime_type || object.contentType || 'application/octet-stream');
-        if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
-        if (object.acceptRanges) res.setHeader('Accept-Ranges', object.acceptRanges);
-        if (object.contentRange) res.setHeader('Content-Range', object.contentRange);
-        if (object.etag) res.setHeader('ETag', object.etag);
-        if (object.lastModified) res.setHeader('Last-Modified', object.lastModified);
-        res.setHeader('Cache-Control', metadata.visibility === 'private' ? 'private, no-store' : 'public, max-age=300');
-        res.status(object.status === 206 ? 206 : 200).send(object.buffer);
+        return streamOssAsset(req, res, asset, metadata);
     } catch (error) {
         console.error('Proxy OSS asset failed:', error);
         fail(res, 502, '对象存储资源读取失败');
