@@ -182,6 +182,22 @@ function publicUrlForKey(objectKey, settings = getSettings()) {
     return publicUrl(settings, key);
 }
 
+function aliyunV1SignatureUrl(objectKey, { expiresSeconds = 21600, settings: providedSettings = null } = {}) {
+    const settings = providedSettings || getSettings();
+    const key = normalizeObjectKey(objectKey);
+    if (!hasUploadParams(settings) || !key || !isAliyunProvider(settings)) return '';
+    const url = buildRequestUrl(settings, key);
+    if (!url) return '';
+    const expiresAt = Math.floor(Date.now() / 1000) + Math.min(Math.max(Number(expiresSeconds) || 21600, 60), 604800);
+    const canonicalResource = aliyunCanonicalPath(settings, url);
+    const stringToSign = ['GET', '', '', String(expiresAt), canonicalResource].join('\n');
+    const signature = crypto.createHmac('sha1', settings.ossAccessKeySecret).update(stringToSign, 'utf8').digest('base64');
+    url.searchParams.set('OSSAccessKeyId', settings.ossAccessKeyId);
+    url.searchParams.set('Expires', String(expiresAt));
+    url.searchParams.set('Signature', signature);
+    return url.toString();
+}
+
 function hasUploadParams(settings = getSettings()) {
     return Boolean(
         settings.ossEndpoint &&
@@ -516,6 +532,7 @@ async function testWrite(settings = getSettings()) {
 }
 
 module.exports = {
+    aliyunV1SignatureUrl,
     buildObjectKey,
     buildRequestUrl,
     deleteObject,
