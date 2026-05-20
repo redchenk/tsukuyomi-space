@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive } from 'vue';
-import { authHeaders, parseResponse } from '../api/client';
+import { authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import { formatDateTime } from '../utils/time';
 
 const emit = defineEmits(['go']);
@@ -30,7 +30,7 @@ async function loadNotifications() {
   inbox.loading = true;
   inbox.message = '';
   try {
-    const response = await fetch('/api/user/notifications', {
+    const response = await fetch(noStoreUrl('/api/user/notifications'), {
       headers: authHeaders(),
       cache: 'no-store'
     });

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
-import { clearSession } from './api/client';
+import { clearSession, noStoreUrl } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
@@ -84,7 +84,7 @@ async function loadVisitPopup() {
   if (route.name !== 'hub' || sessionStorage.getItem(VISIT_POPUP_PENDING_KEY) !== '1') return;
   sessionStorage.removeItem(VISIT_POPUP_PENDING_KEY);
   try {
-    const response = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
+    const response = await fetch(noStoreUrl('/api/settings'), { headers: { Accept: 'application/json' }, cache: 'no-store' });
     const result = await response.json();
     const settings = result?.data || {};
     const content = String(settings.visitPopupContent || '').trim();
@@ -106,7 +106,7 @@ async function loadVisitPopup() {
 
 async function loadPublicSettings() {
   try {
-    const response = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
+    const response = await fetch(noStoreUrl('/api/settings'), { headers: { Accept: 'application/json' }, cache: 'no-store' });
     const result = await response.json();
     const settings = result?.data || {};
     setPublicAssetBaseUrl(settings.publicAssetBaseUrl || '');

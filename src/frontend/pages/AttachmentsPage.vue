@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { authHeaders, getSession, parseResponse } from '../api/client';
+import { authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 
 const emit = defineEmits(['go']);
@@ -103,7 +103,7 @@ async function loadAssets(page = 1) {
       search: state.search.trim()
     });
     if (canManageAllAssets.value && state.scope === 'all') params.set('scope', 'all');
-    const response = await fetch(`/api/assets?${params}`, {
+    const response = await fetch(noStoreUrl(`/api/assets?${params}`), {
       headers: assetAuthHeaders(),
       cache: 'no-store'
     });

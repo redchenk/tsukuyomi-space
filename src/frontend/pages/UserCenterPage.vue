@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { authHeaders, clearSession, getAuthToken, getSession, parseResponse, updateStoredUser } from '../api/client';
+import { authHeaders, clearSession, getAuthToken, getSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import { compressImage } from '../utils/image';
 import { formatDateOnly } from '../utils/time';
 
@@ -109,7 +109,7 @@ async function ucLoadProfile() {
   const token = getAuthToken();
   if (!token) return;
   try {
-    const response = await fetch('/api/user/profile', {
+    const response = await fetch(noStoreUrl('/api/user/profile'), {
       headers: authHeaders(),
       cache: 'no-store'
     });
@@ -132,7 +132,7 @@ async function ucLoadArticles() {
     return;
   }
   try {
-    const response = await fetch('/api/user/articles', {
+    const response = await fetch(noStoreUrl('/api/user/articles'), {
       headers: authHeaders(),
       cache: 'no-store'
     });

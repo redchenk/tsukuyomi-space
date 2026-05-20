@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { authHeaders, getSession, parseResponse } from '../api/client';
+import { authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 import { renderMarkdown } from '../utils/markdown';
 
@@ -220,7 +220,7 @@ async function loadAssetPicker() {
       limit: '60',
       search: editor.assetPicker.search.trim()
     });
-    const response = await fetch(`/api/assets?${params}`, {
+    const response = await fetch(noStoreUrl(`/api/assets?${params}`), {
       headers: authHeaders(),
       cache: 'no-store'
     });
@@ -431,7 +431,7 @@ async function initEditor() {
   if (id) {
     try {
       const url = session.value.admin ? `/api/admin/articles/${id}` : `/api/user/articles/${id}`;
-      const response = await fetch(url, {
+      const response = await fetch(noStoreUrl(url), {
         headers: { Authorization: `Bearer ${session.value.token}` },
         cache: 'no-store'
       });

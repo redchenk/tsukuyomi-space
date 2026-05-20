@@ -57,6 +57,15 @@ export function authHeaders(extra = {}) {
   return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
 }
 
+export function noStoreUrl(url) {
+  const value = String(url || '');
+  const hashIndex = value.indexOf('#');
+  const base = hashIndex >= 0 ? value.slice(0, hashIndex) : value;
+  const hash = hashIndex >= 0 ? value.slice(hashIndex) : '';
+  const separator = base.includes('?') ? '&' : '?';
+  return `${base}${separator}_=${Date.now()}${hash}`;
+}
+
 export function countdown(target, resetLabel) {
   let left = 60;
   target.loading = true;

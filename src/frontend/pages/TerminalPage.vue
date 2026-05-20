@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive } from 'vue';
+import { noStoreUrl } from '../api/client';
 import { formatDateTime } from '../utils/time';
 
 const emit = defineEmits(['go', 'auth-changed']);
@@ -127,7 +128,9 @@ async function adminApi(path, options = {}) {
     headers.set('Content-Type', 'application/json');
   }
   if (terminal.token) headers.set('Authorization', `Bearer ${terminal.token}`);
-  const response = await fetch(`/api/admin${path}`, { ...options, headers });
+  const method = String(options.method || 'GET').toUpperCase();
+  const url = method === 'GET' ? noStoreUrl(`/api/admin${path}`) : `/api/admin${path}`;
+  const response = await fetch(url, { ...options, headers, cache: method === 'GET' ? 'no-store' : options.cache });
   const result = await parseJsonResponse(response);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
   return result.data;
