@@ -1,9 +1,11 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 
 const emit = defineEmits(['go']);
+const route = useRoute();
 const fileInput = ref(null);
 const session = ref(getSession());
 
@@ -24,13 +26,18 @@ const state = reactive({
 });
 
 const isAuthed = computed(() => Boolean(session.value));
+const canManageAllAssets = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
 const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
 
 function syncDefaultScope() {
-  state.scope = 'mine';
+  state.scope = canManageAllAssets.value && route.query.scope === 'all' ? 'all' : 'mine';
 }
 
 function assetAuthHeaders(extra = {}) {
+  if (canManageAllAssets.value && state.scope === 'all') {
+    const token = localStorage.getItem('admin_token') || '';
+    return token ? { ...extra, Authorization: `Bearer ${token}` } : authHeaders(extra);
+  }
   const token = localStorage.getItem('tsukuyomi_token') || '';
   return token ? { ...extra, Authorization: `Bearer ${token}` } : authHeaders(extra);
 }
@@ -91,6 +98,7 @@ async function loadAssets(page = 1) {
       type: state.type,
       search: state.search.trim()
     });
+    if (canManageAllAssets.value && state.scope === 'all') params.set('scope', 'all');
     const response = await fetch(`/api/assets?${params}`, {
       headers: assetAuthHeaders(),
       cache: 'no-store'
@@ -264,6 +272,10 @@ onMounted(() => {
         </select>
         <button class="ghost-btn" type="button" @click="loadAssets(1)">搜索</button>
         <button class="ghost-btn" type="button" @click="state.search = ''; loadAssets(1)">重置</button>
+        <template v-if="canManageAllAssets">
+          <button class="chip" type="button" :class="{ active: state.scope === 'mine' }" @click="state.scope = 'mine'; loadAssets(1)">我的附件</button>
+          <button class="chip" type="button" :class="{ active: state.scope === 'all' }" @click="state.scope = 'all'; loadAssets(1)">全部附件</button>
+        </template>
       </section>
 
       <section class="panel attachments-upload-options">

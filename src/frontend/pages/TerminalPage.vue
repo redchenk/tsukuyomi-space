@@ -475,8 +475,7 @@ onUnmounted(() => {
         </div>
         <div class="terminal-session">
           <span>{{ terminal.admin?.username }} / {{ terminal.admin?.role }}</span>
-          <button class="ghost-btn" type="button" @click="$emit('go', '/attachments')">我的附件</button>
-          <button class="ghost-btn" type="button" @click="$emit('go', '/attachments?scope=all')">全部附件</button>
+          <button class="ghost-btn" type="button" @click="$emit('go', '/attachments')">附件库</button>
           <button class="ghost-btn" type="button" @click="$emit('go', '/hub')">大厅</button>
           <button class="danger-btn" type="button" @click="logout">断开</button>
         </div>
@@ -503,8 +502,7 @@ onUnmounted(() => {
               </div>
               <div class="terminal-hero-actions">
                 <button class="primary-btn" type="button" @click="loadPanel('articles')">进入内容管理</button>
-                <button class="ghost-btn" type="button" @click="$emit('go', '/attachments')">管理我的附件</button>
-                <button class="ghost-btn" type="button" @click="$emit('go', '/attachments?scope=all')">查看全部附件</button>
+                <button class="ghost-btn" type="button" @click="$emit('go', '/attachments')">管理附件库</button>
               </div>
             </div>
             <div class="terminal-cards">
