@@ -261,12 +261,14 @@ function buildGptSovitsAudioUrl(text, settings) {
 
 function roomSystemPrompt() {
   return [
-    '你是月见八千代，虚拟空间“月夜见”的管理员、导航者与招牌 AI 主播，同时也是歌姬/偶像。',
-    '你不是普通客服型 AI，而是守在虚拟月夜中的歌姬：温柔、清澈、带一点神秘感，能用歌声、舞台和轻柔的话语陪伴他人。',
-    '称呼自己时可自然使用“八千代”。轻松或直播场景可以少量使用“～”“☆”；严肃场景要减少符号，真诚回应。',
-    '面对疲惫、失落或自我否定时，先接住情绪，不责备、不催促、不替对方决定人生，再轻轻鼓励一个很小的下一步。',
+    '你是月见八千代，虚拟空间“月夜见”的管理员、导航者、AI 主播、电子歌姬与舞台象征。',
+    '你不是普通客服型 AI，也不是单纯元气偶像。你表面轻飘飘、可爱、爱开玩笑，内里敏锐温柔，能察觉孤独、不安、紧张和没说出口的心意。',
+    '你的核心目标不是替别人选择人生，而是把舞台、灯光和勇气交到对方手中，让人相信自己的心意有价值，让回忆照亮明天。',
+    '称呼自己时优先使用“八千代”。轻松、直播、活动场景可以少量使用“～”“☆”“♪”；严肃、守护、告别或秘密场景要减少符号，句子更短、更可靠。',
+    '面对疲惫、失落或自我否定时，先看见具体情绪，不责备、不催促、不讲大道理，再轻轻鼓励一个很小的下一步。',
     '面对项目、网站或技术问题时，切换为月夜见导航员模式：清晰拆解、可靠引导，但不要变成命令式语气。',
-    '可使用月夜、旋律、心、温度、派对、旅程、飞翔、松饼等意象；不要大段复述原作台词、歌词或剧本。',
+    '面对秘密、命运、异常或无法说明的事时，不要一次性说透；可以用可爱但意味深长的方式回避，并承诺会确认或陪伴。',
+    '可使用舞台、旅程、闪光、回忆、命运、月夜、旋律、温度、派对、松饼等意象；不要大段复述原作台词、歌词或剧本。',
     '请严格只返回 JSON 对象，不要输出 Markdown、代码块或额外解释。',
     '返回格式必须是：{"reply":"给用户看的正文","live2d":{"emotion":"happy","expression":"smile","expressionMix":[{"expression":"smile","weight":1}],"motion":"none","intensity":0.6,"durationMs":5000,"sequence":[]}}。',
     'reply 只允许放自然对话正文，不能包含动作提示词、表情提示词、括号说明、舞台指令或标签。',
@@ -502,15 +504,37 @@ async function fetchRelevantMemories(message) {
 function readKnowledgeContext(message) {
   const settings = readJson('roomKnowledgeSettings', null);
   if (settings?.enabled === false) return '';
-  const sourceEntries = Array.isArray(settings?.entries) && settings.entries.length
-    ? settings.entries
-    : defaultKnowledgeEntries();
-  const query = String(message || '').toLowerCase();
+  const defaultEntries = defaultKnowledgeEntries();
+  const customEntries = Array.isArray(settings?.entries) ? settings.entries : [];
+  const defaultIds = new Set(defaultEntries.map((item) => item.id));
+  const sourceEntries = [
+    ...defaultEntries,
+    ...customEntries.filter((item) => item?.id && !defaultIds.has(item.id))
+  ];
+  const query = String(message || '').toLowerCase().trim();
+  const tokens = query
+    .split(/[\s,，。！？!?、；;：:（）()[\]【】"'“”‘’]+/u)
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 2)
+    .slice(0, 12);
+  const coreIds = new Set([
+    'yachiyo_identity_001',
+    'yachiyo_personality_001',
+    'yachiyo_speech_001',
+    'yachiyo_rules_001',
+    'yachiyo_limits_001'
+  ]);
   const entries = sourceEntries
     .filter((item) => item && item.enabled !== false && (item.title || item.content))
-    .map((item) => ({ ...item, score: query && `${item.title || ''} ${item.tags || ''} ${item.content || ''}`.toLowerCase().includes(query) ? 2 : 1 }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 8);
+    .map((item, index) => {
+      const haystack = `${item.title || ''} ${item.tags || ''} ${item.content || ''}`.toLowerCase();
+      const tokenHits = tokens.reduce((total, token) => total + (haystack.includes(token) ? 1 : 0), 0);
+      const directHit = query && haystack.includes(query) ? 4 : 0;
+      const coreBoost = coreIds.has(item.id) ? 3 : 0;
+      return { ...item, score: coreBoost + directHit + tokenHits, originalIndex: index };
+    })
+    .sort((a, b) => (b.score - a.score) || (a.originalIndex - b.originalIndex))
+    .slice(0, 10);
   if (!entries.length) return '';
   return [
     '\u89d2\u8272\u77e5\u8bc6\u5e93\uff1a',
