@@ -307,12 +307,10 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
             return res.redirect(302, publicUrl || asset.url);
         }
         if (publicAsset && publicUrl) {
-            if (!/aliyuncs\.com/i.test(publicUrl)) {
-                return res.redirect(302, publicUrl);
-            }
             const signedUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
                 expiresSeconds: 21600,
-                contentDisposition: 'inline'
+                contentDisposition: 'inline',
+                preferPublicBase: true
             });
             return res.redirect(302, signedUrl || publicUrl);
         }

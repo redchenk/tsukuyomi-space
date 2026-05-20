@@ -215,11 +215,21 @@ function canonicalAliyunV1Resource(settings, url) {
     return parts.length ? `${resource}?${parts.join('&')}` : resource;
 }
 
-function aliyunV1SignatureUrl(objectKey, { expiresSeconds = 21600, contentType = '', contentDisposition = '', settings: providedSettings = null } = {}) {
+function publicRequestUrl(settings, objectKey) {
+    const publicBaseUrl = String(settings.ossPublicBaseUrl || '').trim().replace(/\/+$/, '');
+    if (!publicBaseUrl) return null;
+    try {
+        return new URL(`${publicBaseUrl}/${encodeKeyPath(objectKey)}`);
+    } catch (_) {
+        return null;
+    }
+}
+
+function aliyunV1SignatureUrl(objectKey, { expiresSeconds = 21600, contentType = '', contentDisposition = '', preferPublicBase = false, settings: providedSettings = null } = {}) {
     const settings = providedSettings || getSettings();
     const key = normalizeObjectKey(objectKey);
     if (!hasUploadParams(settings) || !key || !isAliyunProvider(settings)) return '';
-    const url = buildRequestUrl(settings, key);
+    const url = preferPublicBase ? (publicRequestUrl(settings, key) || buildRequestUrl(settings, key)) : buildRequestUrl(settings, key);
     if (!url) return '';
     if (String(settings.ossPublicBaseUrl || '').trim().startsWith('https://') || String(settings.ossEndpoint || '').trim().startsWith('https://')) {
         url.protocol = 'https:';
