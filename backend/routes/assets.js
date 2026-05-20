@@ -67,16 +67,6 @@ function currentOssPublicUrl(asset) {
     return objectStorage.publicUrlForKey(asset.storage_key) || asset.url || '';
 }
 
-function currentOssAccessUrl(asset) {
-    const publicUrl = currentOssPublicUrl(asset);
-    const signedUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
-        expiresSeconds: 21600,
-        contentDisposition: 'inline',
-        preferPublicBase: true
-    });
-    return signedUrl || publicUrl;
-}
-
 function hasValidAssetSignature(assetId, query = {}) {
     const expiresAt = Number(query.expires);
     const signature = String(query.signature || '');
@@ -94,10 +84,9 @@ function normalizeAsset(row, { signUrl = false } = {}) {
         metadata: typeof row.metadata === 'string' ? safeJson(row.metadata) : (row.metadata || {})
     };
     if (asset.metadata?.storage === 'oss') {
-        const isPublic = !asset.owner_id || asset.metadata?.visibility === 'public';
         asset.url = currentOssPublicUrl(asset);
         asset.markdown_url = durableAssetUrl(asset.id);
-        asset.access_url = isPublic && signUrl ? currentOssAccessUrl(asset) : (signUrl ? signedAssetUrl(asset.id) : durableAssetUrl(asset.id));
+        asset.access_url = signUrl ? signedAssetUrl(asset.id) : durableAssetUrl(asset.id);
         asset.display_url = asset.access_url;
     } else {
         asset.access_url = asset.url;
