@@ -162,10 +162,14 @@ function buildRequestUrl(settings, objectKey) {
 
 function aliyunCanonicalPath(settings, url) {
     const endpoint = normalizeEndpoint(settings.ossEndpoint);
-    const forcePathStyle = endpoint ? isPathStyle(settings, endpoint) : false;
-    if (forcePathStyle) return url.pathname || '/';
+    const publicBase = normalizeEndpoint(settings.ossPublicBaseUrl);
     const bucket = trimSlashes(settings.ossBucket || '');
     const pathname = url.pathname || '/';
+    if (publicBase && url.hostname === publicBase.hostname) {
+        return `/${bucket}${pathname === '/' ? '/' : pathname}`;
+    }
+    const forcePathStyle = endpoint ? isPathStyle(settings, endpoint) : false;
+    if (forcePathStyle) return url.pathname || '/';
     return `/${bucket}${pathname === '/' ? '/' : pathname}`;
 }
 
