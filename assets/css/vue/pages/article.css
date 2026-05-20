@@ -273,7 +273,7 @@
 
 .article-content .markdown-media-card-player video {
     height: auto;
-    max-height: min(72vh, 720px);
+    max-height: min(62vh, 420px);
     object-fit: contain;
     background: #000;
 }

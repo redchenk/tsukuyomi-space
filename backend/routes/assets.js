@@ -299,6 +299,9 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
         if (metadata.storage !== 'oss') {
             return res.redirect(302, asset.url);
         }
+        if (publicAsset && asset.url) {
+            return res.redirect(302, asset.url);
+        }
         const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
         if (!object?.buffer) return fail(res, 404, '附件不存在');
         res.setHeader('Content-Type', asset.mime_type || object.contentType || 'application/octet-stream');
