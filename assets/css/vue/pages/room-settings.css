@@ -186,6 +186,35 @@
     padding: 0.55rem 0.7rem;
 }
 
+.model-recommend-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.35rem 0.7rem;
+    align-items: center;
+    padding: 0.72rem 0.82rem;
+    border: 1px solid rgba(102, 197, 223, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.model-recommend-card span {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.model-recommend-card strong {
+    min-width: 0;
+    color: var(--ink);
+    font-size: 0.9rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.model-recommend-card .ghost-btn {
+    grid-row: span 2;
+}
+
 .mcp-tool-list {
     display: flex;
     flex-wrap: wrap;
@@ -569,6 +598,11 @@ html[data-theme="dark"] .room-settings-card textarea {
 
 html[data-theme="dark"] .mcp-tool-list {
     border-color: rgba(177, 205, 238, 0.16);
+    background: rgba(15, 23, 42, 0.5);
+}
+
+html[data-theme="dark"] .model-recommend-card {
+    border-color: rgba(131, 216, 236, 0.22);
     background: rgba(15, 23, 42, 0.5);
 }
 

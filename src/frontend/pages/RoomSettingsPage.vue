@@ -66,6 +66,25 @@ const MODEL_PROVIDER_PREFIXES = {
   gemini: ['google/'],
   mimo: ['xiaomi/', 'mimo/']
 };
+const MODEL_RECOMMEND_PATTERNS = {
+  openai: ['gpt-5.5', 'gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-4.1', 'gpt-4o'],
+  openrouter: ['openai/gpt-5.5', 'openai/gpt-5.2', 'anthropic/claude-opus-4.5', 'google/gemini-3', 'x-ai/grok-4', 'deepseek/deepseek-chat'],
+  deepseek: ['deepseek-chat', 'deepseek-v3', 'deepseek-r1'],
+  kimi: ['kimi-k2', 'moonshot-v1-128k', 'moonshot-v1-32k'],
+  zhipu: ['glm-5', 'glm-4.5', 'glm-4-plus'],
+  aliyun: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-vl-max', 'qwen-vl-plus'],
+  siliconflow: ['deepseek-v3', 'deepseek-r1', 'qwen3', 'qwen2.5'],
+  volcengine: ['doubao-1.5-pro', 'doubao-pro', 'doubao-lite'],
+  minimax: ['minimax-m2', 'minimax-01'],
+  groq: ['llama-3.3-70b', 'llama-3.1-8b', 'qwen'],
+  mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],
+  together: ['llama-3.3-70b', 'deepseek-v3', 'qwen3', 'mistral-large'],
+  perplexity: ['sonar-pro', 'sonar'],
+  xai: ['grok-4', 'grok-3'],
+  gemini: ['gemini-3', 'gemini-2.5-pro', 'gemini-2.5-flash'],
+  mimo: ['mimo-v2.5-pro', 'mimo-v2.5', 'mimo-v2-flash']
+};
+const MODEL_NON_CHAT_PATTERN = /(embedding|moderation|tts|audio|whisper|image|vision-preview|rerank|reward|guard|ocr|video|speech)/i;
 const TTS_PRESETS = {
   mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
   openai: { label: 'OpenAI TTS', provider: 'openai', apiUrl: 'https://api.openai.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
@@ -163,6 +182,13 @@ const visitorKey = computed(() => {
 const canUseServerMemory = computed(() => Boolean(roomUser.value?.id && localStorage.getItem('tsukuyomi_token')));
 const llmProviderKey = computed(() => detectLLMProvider(llm.apiUrl, llm.model));
 const syncedModelOptions = computed(() => modelOptionsForProvider(llmProviderKey.value));
+const recommendedModelOption = computed(() => recommendedModelForProvider(llmProviderKey.value));
+const recommendedModelText = computed(() => {
+  const option = recommendedModelOption.value;
+  if (!option) return '暂无可用推荐；请先同步模型列表，或使用供应商预设。';
+  const value = syncedModelSelectValue(option);
+  return `${value}（${option.source === 'openrouter' ? '来自 OpenRouter 最新目录' : '来自本地预设'}）`;
+});
 const memoryModeLabel = computed(() => canUseServerMemory.value ? '服务端私有记忆' : '本地浏览器记忆');
 const memoryLocationText = computed(() => canUseServerMemory.value
   ? '记忆保存在服务端 SQLite 向量记忆库，按登录用户隔离；未登录时自动退回本机 IndexedDB。'
@@ -241,6 +267,11 @@ function nativeModelId(openRouterId, provider = llmProviderKey.value) {
   return slashIndex >= 0 ? id.slice(slashIndex + 1) : id;
 }
 
+function modelModalities(architecture, key) {
+  const values = architecture?.[key];
+  return Array.isArray(values) ? values.map((item) => String(item).toLowerCase()) : [];
+}
+
 function providerStaticModelOptions(provider) {
   const presets = [
     ...Object.values(LLM_PRESETS),
@@ -254,6 +285,10 @@ function providerStaticModelOptions(provider) {
       nativeId: preset.model,
       label: preset.label,
       detail: preset.apiUrl,
+      contextLength: 0,
+      created: 0,
+      inputModalities: ['text'],
+      outputModalities: ['text'],
       source: 'preset'
     }));
 }
@@ -276,6 +311,10 @@ function modelOptionsForProvider(provider) {
         nativeId,
         label: model.name || model.id,
         detail: [nativeId, context, modalities, `${promptPrice}/${outputPrice}`].filter(Boolean).join(' · '),
+        contextLength: Number(model.context_length || 0),
+        created: Number(model.created || 0),
+        inputModalities: modelModalities(model.architecture, 'input_modalities'),
+        outputModalities: modelModalities(model.architecture, 'output_modalities'),
         source: 'openrouter'
       };
     });
@@ -284,6 +323,37 @@ function modelOptionsForProvider(provider) {
     ...synced,
     ...providerStaticModelOptions(provider).filter((item) => !seen.has(item.nativeId))
   ];
+}
+
+function modelRecommendationScore(option, provider) {
+  if (!option) return -Infinity;
+  const id = String(option.id || '').toLowerCase();
+  const nativeId = String(option.nativeId || '').toLowerCase();
+  const label = String(option.label || '').toLowerCase();
+  const haystack = `${id} ${nativeId} ${label}`;
+  let score = option.source === 'openrouter' ? 80 : 20;
+  const inputModalities = option.inputModalities || [];
+  const outputModalities = option.outputModalities || [];
+  if (inputModalities.length && !inputModalities.includes('text')) score -= 700;
+  if (outputModalities.length && !outputModalities.includes('text')) score -= 900;
+  if (MODEL_NON_CHAT_PATTERN.test(haystack)) score -= 520;
+  if (/preview|experimental|beta|alpha|deprecated/i.test(haystack)) score -= 30;
+  if (/latest|stable/i.test(haystack)) score += 45;
+  if (/pro|max|large|opus/i.test(haystack)) score += 34;
+  if (/flash|mini|small|lite|instant/i.test(haystack)) score += 10;
+  const patterns = MODEL_RECOMMEND_PATTERNS[provider] || [];
+  patterns.forEach((pattern, index) => {
+    if (haystack.includes(pattern.toLowerCase())) score += 900 - index * 70;
+  });
+  if (option.contextLength) score += Math.min(90, Math.log2(Number(option.contextLength || 0) + 1) * 5);
+  if (option.created) score += Math.min(120, Number(option.created) / 100000000);
+  return score;
+}
+
+function recommendedModelForProvider(provider) {
+  const options = modelOptionsForProvider(provider);
+  if (!options.length) return null;
+  return [...options].sort((left, right) => modelRecommendationScore(right, provider) - modelRecommendationScore(left, provider))[0] || null;
 }
 
 function loadModelCatalogCache() {
@@ -310,7 +380,7 @@ async function syncModelCatalog() {
       models: modelCatalog.models,
       updatedAt: modelCatalog.updatedAt
     });
-    modelCatalog.message = `已同步 ${modelCatalog.models.length} 个模型；当前供应商匹配 ${syncedModelOptions.value.length} 个`;
+    modelCatalog.message = `已同步 ${modelCatalog.models.length} 个模型；当前供应商匹配 ${syncedModelOptions.value.length} 个；最新推荐 ${recommendedModelOption.value ? syncedModelSelectValue(recommendedModelOption.value) : '暂无'}`;
     showToast('模型目录已同步');
   } catch (error) {
     modelCatalog.message = `模型目录同步失败：${error.message}`;
@@ -327,6 +397,23 @@ function applySyncedModel(option) {
     llm.model = option.id;
   }
   showToast(`已选择模型：${llm.model}`);
+}
+
+function applyRecommendedModel() {
+  const option = recommendedModelOption.value;
+  if (!option) {
+    showToast('暂无推荐模型，请先同步模型列表');
+    return;
+  }
+  applySyncedModel(option);
+}
+
+function applyRecommendedModelForProvider(provider) {
+  const option = recommendedModelForProvider(provider);
+  if (!option || option.source !== 'openrouter') return false;
+  llm.model = option.source === 'openrouter' && provider === 'openrouter' ? option.id : option.nativeId;
+  showToast(`已应用最新模型：${llm.model}`);
+  return true;
 }
 
 function applySyncedModelById(modelId) {
@@ -1023,6 +1110,7 @@ function applyPreset(name) {
   if (!preset) return;
   llm.apiUrl = preset.apiUrl;
   llm.model = preset.model;
+  applyRecommendedModelForProvider(detectLLMProvider(preset.apiUrl, preset.model));
 }
 
 function applyAliyunPreset(name) {
@@ -1030,6 +1118,7 @@ function applyAliyunPreset(name) {
   if (!preset) return;
   llm.apiUrl = preset.apiUrl;
   llm.model = preset.model;
+  applyRecommendedModelForProvider('aliyun');
 }
 
 function applyMimoPreset(name) {
@@ -1659,6 +1748,11 @@ onBeforeUnmount(() => {
             当前识别供应商：{{ llmProviderKey }}。OpenRouter 会同步完整模型目录；其他供应商会按模型前缀筛选并转换为原生模型名，无法确定时保留本地预设。
             {{ modelCatalog.message }}
           </p>
+          <div class="model-recommend-card">
+            <span>最新推荐模型</span>
+            <strong>{{ recommendedModelText }}</strong>
+            <button class="ghost-btn compact" type="button" :disabled="!recommendedModelOption" @click="applyRecommendedModel">应用最新模型</button>
+          </div>
           <label>图片理解策略<select v-model="llm.visionMode">
             <option value="auto">自动识别视觉模型</option>
             <option value="llm">强制发送给 LLM</option>

@@ -430,6 +430,8 @@ router.get('/models/openrouter', async (req, res) => {
                 models: models.map((model) => ({
                     id: String(model.id || ''),
                     name: String(model.name || model.id || ''),
+                    created: Number(model.created || 0),
+                    description: String(model.description || ''),
                     context_length: Number(model.context_length || 0),
                     architecture: model.architecture || {},
                     pricing: model.pricing || {},
