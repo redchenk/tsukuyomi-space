@@ -151,19 +151,20 @@ router.put('/password', authenticateToken, (req, res) => {
     }
 });
 
-// 鑾峰彇鐢ㄦ埛鐨勬枃绔犲垪琛?
-router.get('/articles', authenticateToken, (req, res) => {
+function sendUserArticles(req, res) {
     try {
-        const articles = articleRepository.listUserArticles(req.user.id, {
-            includeAdminAuthored: req.user.scope === 'admin' || req.user.role === 'admin' || req.user.role === 'super_admin'
-        });
+        const articles = articleRepository.listUserArticles(req.user.id);
 
         res.json({ success: true, data: articles });
     } catch (error) {
         console.error('鑾峰彇鐢ㄦ埛鏂囩珷澶辫触:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
-});
+}
+
+// 鑾峰彇鐢ㄦ埛鐨勬枃绔犲垪琛?
+router.get('/articles', authenticateToken, sendUserArticles);
+router.get('/articles/live/:nonce', authenticateToken, sendUserArticles);
 
 // 鑾峰彇鐢ㄦ埛鐨勫崟绡囨枃绔狅紙鐢ㄤ簬缂栬緫锛?
 router.get('/articles/:id', authenticateToken, (req, res) => {

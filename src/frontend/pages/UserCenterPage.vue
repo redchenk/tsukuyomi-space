@@ -132,7 +132,7 @@ async function ucLoadArticles() {
     return;
   }
   try {
-    const response = await fetch(noStoreUrl('/api/user/articles'), {
+    const response = await fetch(`/api/user/articles/live/${Date.now()}`, {
       headers: authHeaders(),
       cache: 'no-store'
     });
