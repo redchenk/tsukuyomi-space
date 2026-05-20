@@ -188,7 +188,7 @@
 
 .attachments-card img,
 .attachments-card video {
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .attachments-card audio,

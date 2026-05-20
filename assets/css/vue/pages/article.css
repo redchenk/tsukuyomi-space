@@ -249,6 +249,42 @@
     box-shadow: 0 14px 38px rgba(0, 0, 0, 0.14);
 }
 
+.article-content figure.markdown-media-card {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.article-content .markdown-media-card-player {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: 10px;
+    background: rgba(4, 8, 18, 0.32);
+}
+
+.article-content .markdown-media-card-player video,
+.article-content .markdown-media-card-player audio {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+}
+
+.article-content .markdown-media-card-player video {
+    height: auto;
+    max-height: min(72vh, 720px);
+    object-fit: contain;
+    background: #000;
+}
+
+.article-content figure.markdown-media-card figcaption {
+    display: grid;
+    gap: 0.2rem;
+    margin-top: 0.65rem;
+    min-width: 0;
+}
+
 .article-content .markdown-media-card:hover {
     border-color: rgba(255, 183, 197, 0.42);
     background: rgba(255, 255, 255, 0.12);

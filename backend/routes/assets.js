@@ -58,6 +58,10 @@ function signedAssetUrl(assetId) {
     return `/api/assets/proxy/${encodeURIComponent(assetId)}?expires=${expiresAt}&signature=${encodeURIComponent(signature)}`;
 }
 
+function durableAssetUrl(assetId) {
+    return `/api/assets/proxy/${encodeURIComponent(assetId)}`;
+}
+
 function hasValidAssetSignature(assetId, query = {}) {
     const expiresAt = Number(query.expires);
     const signature = String(query.signature || '');
@@ -75,7 +79,8 @@ function normalizeAsset(row, { signUrl = false } = {}) {
         metadata: typeof row.metadata === 'string' ? safeJson(row.metadata) : (row.metadata || {})
     };
     if (asset.metadata?.storage === 'oss') {
-        asset.display_url = signUrl ? signedAssetUrl(asset.id) : `/api/assets/proxy/${encodeURIComponent(asset.id)}`;
+        const isPublic = !asset.owner_id || asset.metadata?.visibility === 'public';
+        asset.display_url = isPublic || !signUrl ? durableAssetUrl(asset.id) : signedAssetUrl(asset.id);
     } else {
         asset.display_url = asset.url;
     }
