@@ -305,6 +305,7 @@ onMounted(() => {
           <div class="attachments-card-body">
             <strong>{{ assetName(asset) }}</strong>
             <span>{{ asset.mime_type || asset.asset_type || 'file' }}</span>
+            <small v-if="assetPreviewType(asset) === 'video' || assetPreviewType(asset) === 'audio'">可直接在文章中以播放器方式调用</small>
             <code>{{ asset.storage_key }}</code>
           </div>
           <div class="attachments-card-actions">

@@ -101,12 +101,25 @@ export function renderBilibiliEmbed(target, title = 'Bilibili video') {
 
 export function renderMediaCard(url, title = '', description = '') {
   const safeUrl = sanitizeMarkdownUrl(url);
-  if (!safeUrl || !/^https?:\/\//i.test(safeUrl)) return '';
+  if (!safeUrl) return '';
+  const mediaKind = String(description || '').trim().toLowerCase();
   let host = safeUrl;
   try {
     host = new URL(safeUrl).hostname;
   } catch (_) {
     host = safeUrl.replace(/^https?:\/\//i, '').split('/')[0];
+  }
+  if (mediaKind === 'video' || mediaKind === 'audio') {
+    const element = mediaKind === 'video'
+      ? `<video controls preload="metadata" playsinline src="${escapeAttr(safeUrl)}"></video>`
+      : `<audio controls preload="metadata" src="${escapeAttr(safeUrl)}"></audio>`;
+    return `<figure class="markdown-media-card markdown-media-card-${mediaKind}">
+      <div class="markdown-media-card-player">${element}</div>
+      <figcaption>
+        <strong>${escapeHtml(title || host)}</strong>
+        <em>${escapeHtml(host)}</em>
+      </figcaption>
+    </figure>`;
   }
   return `<a class="markdown-media-card" href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener noreferrer">
     <span class="markdown-media-card-icon">Link</span>
