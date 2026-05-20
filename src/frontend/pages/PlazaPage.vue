@@ -176,8 +176,7 @@ async function plazaSubmitMessage(content) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.publishFailed);
-    upsertPlazaMessage(result.data);
-    showPlazaToast(props.t.msgPublished);
+    showPlazaToast(result.message || '留言已提交，审核通过后会公开显示');
     await refreshPlaza();
     return true;
   } catch (error) {
@@ -203,8 +202,7 @@ async function plazaSubmitReply(parentId, content) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.replyFailed);
-    upsertPlazaMessage(result.data);
-    showPlazaToast(props.t.replyPublished);
+    showPlazaToast(result.message || '回复已提交，审核通过后会公开显示');
     await refreshPlaza();
     return true;
   } catch (error) {

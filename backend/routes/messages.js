@@ -37,7 +37,7 @@ function notifyMessageOwner({ targetMessage, actor, type, title, content, relate
 
 function sendMessageList(req, res, articleId) {
     try {
-        const messages = messageRepository.listMessages({ articleId });
+        const messages = messageRepository.listMessages({ articleId, includePending: false });
         res.json({ success: true, data: messages });
     } catch (error) {
         console.error('Messages API error:', error);
@@ -66,7 +66,7 @@ router.post('/', authenticateToken, (req, res) => {
             userId: req.user.id,
             articleId: article_id || null
         });
-        res.status(201).json({ success: true, data: newMessage });
+        res.status(201).json({ success: true, data: newMessage, message: '留言已提交，审核通过后会公开显示' });
     } catch (error) {
         console.error('Create message failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
@@ -80,6 +80,11 @@ router.post('/:id/like', authenticateToken, (req, res) => {
         const existing = messageRepository.findMessageLike(messageId, userId);
         if (existing) {
             return res.status(400).json({ success: false, message: '请求处理失败' });
+        }
+
+        const visibleMessage = messageRepository.findApprovedMessageById(messageId);
+        if (!visibleMessage) {
+            return res.status(404).json({ success: false, message: '留言不存在或仍在审核中' });
         }
 
         const message = messageRepository.likeMessage(messageId, userId);
@@ -106,7 +111,7 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
             return res.status(400).json({ success: false, message: '回复内容不能为空' });
         }
 
-        const originalMessage = messageRepository.findMessageById(messageId);
+        const originalMessage = messageRepository.findApprovedMessageById(messageId);
         if (!originalMessage) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }
@@ -126,7 +131,7 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
             content,
             relatedMessageId: newMessage.id
         });
-        res.status(201).json({ success: true, data: newMessage });
+        res.status(201).json({ success: true, data: newMessage, message: '回复已提交，审核通过后会公开显示' });
     } catch (error) {
         console.error('Reply message failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });

@@ -9,6 +9,10 @@ function userCount() {
 }
 
 function messageCount() {
+    return db.prepare("SELECT COUNT(*) AS count FROM messages WHERE COALESCE(status, 'approved') = 'approved'").get().count;
+}
+
+function allMessageCount() {
     return db.prepare('SELECT COUNT(*) AS count FROM messages').get().count;
 }
 
@@ -98,6 +102,7 @@ module.exports = {
     articleCounters,
     userCount,
     messageCount,
+    allMessageCount,
     publicViewCounters,
     adminViewCounters,
     analyticsViewCounters,

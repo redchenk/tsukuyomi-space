@@ -141,7 +141,7 @@ async function submitComment() {
     return;
   }
   commentText.value = '';
-  message.value = '';
+  message.value = result.message || '';
   await loadComments();
 }
 
@@ -165,7 +165,7 @@ async function submitReply(commentId) {
   }
   replyText[commentId] = '';
   openReplies[commentId] = false;
-  message.value = '';
+  message.value = result.message || '';
   await loadComments();
 }
 

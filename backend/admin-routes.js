@@ -202,7 +202,7 @@ router.get('/analytics', (req, res) => {
     try {
         const views = statsRepository.analyticsViewCounters();
         const articles = statsRepository.articleCounters();
-        const messages = statsRepository.messageCount();
+        const messages = statsRepository.allMessageCount();
         const users = statsRepository.userCount();
         const totalViews = views.total || 0;
 

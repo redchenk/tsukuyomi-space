@@ -1,6 +1,7 @@
 const db = require('../db');
 
-function listMessages({ articleId } = {}) {
+function listMessages({ articleId, includePending = false } = {}) {
+    const statusFilter = includePending ? '' : "AND COALESCE(m.status, 'approved') = 'approved'";
     const query = articleId
         ? `
             SELECT m.id,
@@ -17,6 +18,7 @@ function listMessages({ articleId } = {}) {
             FROM messages m
             LEFT JOIN users u ON m.user_id = u.id
             WHERE m.article_id = ?
+              ${statusFilter}
             ORDER BY m.created_at ASC
         `
         : `
@@ -34,6 +36,7 @@ function listMessages({ articleId } = {}) {
             FROM messages m
             LEFT JOIN users u ON m.user_id = u.id
             WHERE m.article_id IS NULL
+              ${statusFilter}
             ORDER BY m.created_at DESC
         `;
     return articleId ? db.prepare(query).all(articleId) : db.prepare(query).all();
@@ -42,18 +45,22 @@ function listMessages({ articleId } = {}) {
 function createMessage({ author, content, userId, articleId = null, parentId = null }) {
     const result = parentId
         ? db.prepare(`
-            INSERT INTO messages (author, content, user_id, parent_id, article_id)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO messages (author, content, user_id, parent_id, article_id, status)
+            VALUES (?, ?, ?, ?, ?, 'pending')
         `).run(author, content, userId, parentId, articleId)
         : db.prepare(`
-            INSERT INTO messages (author, content, user_id, article_id)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO messages (author, content, user_id, article_id, status)
+            VALUES (?, ?, ?, ?, 'pending')
         `).run(author, content, userId, articleId);
     return findMessageById(result.lastInsertRowid);
 }
 
 function findMessageById(id) {
     return db.prepare('SELECT * FROM messages WHERE id = ?').get(id);
+}
+
+function findApprovedMessageById(id) {
+    return db.prepare("SELECT * FROM messages WHERE id = ? AND COALESCE(status, 'approved') = 'approved'").get(id);
 }
 
 function findMessageLike(messageId, userId) {
@@ -73,6 +80,7 @@ module.exports = {
     listMessages,
     createMessage,
     findMessageById,
+    findApprovedMessageById,
     findMessageLike,
     likeMessage
 };
