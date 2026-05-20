@@ -194,7 +194,11 @@ function assetDisplayName(asset) {
 }
 
 function assetUrl(asset) {
-  return asset.display_url || asset.url;
+  return asset.access_url || asset.display_url || asset.url;
+}
+
+function assetMarkdownUrl(asset) {
+  return asset.markdown_url || asset.display_url || asset.url;
 }
 
 async function openAssetPicker(mode = 'body') {
@@ -232,9 +236,9 @@ async function loadAssetPicker() {
 }
 
 function useAsset(asset) {
-  const url = assetUrl(asset);
+  const url = assetMarkdownUrl(asset);
   if (editor.assetPicker.mode === 'cover') {
-    editor.coverImageBase64 = url;
+    editor.coverImageBase64 = assetUrl(asset);
     editor.coverImageAssetId = asset.id;
     editor.coverImageSize = 0;
     closeAssetPicker();

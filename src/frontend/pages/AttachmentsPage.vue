@@ -75,12 +75,16 @@ function assetName(asset) {
 }
 
 function assetUrl(asset) {
-  return asset.display_url || asset.url;
+  return asset.access_url || asset.display_url || asset.url;
+}
+
+function assetMarkdownUrl(asset) {
+  return asset.markdown_url || asset.display_url || asset.url;
 }
 
 function markdownFor(asset) {
   const alt = String(asset.metadata?.alt || assetName(asset)).replace(/[\]\r\n]/g, ' ');
-  const url = assetUrl(asset);
+  const url = assetMarkdownUrl(asset);
   const mimeType = String(asset.mime_type || '');
   if (mimeType.startsWith('image/')) return `![${alt}](${url})`;
   if (mimeType.startsWith('video/')) return `\n::media[${alt}](${url} "video")\n`;
