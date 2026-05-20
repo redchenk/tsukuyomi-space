@@ -492,7 +492,7 @@ async function fetchRelevantMemories(message) {
   const token = localStorage.getItem('tsukuyomi_token') || '';
   if (!token || !String(message || '').trim()) return [];
   const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
-  const response = await fetch(`/api/room/memory?${params}`, {
+  const response = await fetch(`/api/room/memory/live/${Date.now()}?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store'
   });

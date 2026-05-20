@@ -44,6 +44,15 @@ function normalizeCoordinate(value, fallback, min, max) {
     return Math.max(min, Math.min(max, number));
 }
 
+function setNoStore(res) {
+    res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
+    });
+}
+
 function hasCoordinate(value) {
     return Number.isFinite(Number(value));
 }
@@ -394,7 +403,8 @@ router.get('/world', sendWorld);
 
 router.get('/world/live/:nonce', sendWorld);
 
-router.get('/memory/status', authenticateToken, (req, res) => {
+function sendMemoryStatus(req, res) {
+    setNoStore(res);
     res.json({
         success: true,
         data: {
@@ -403,18 +413,28 @@ router.get('/memory/status', authenticateToken, (req, res) => {
             ...roomMemory.memoryStats(req.user.id)
         }
     });
-});
+}
 
-router.get('/memory', authenticateToken, (req, res) => {
+function sendMemoryList(req, res) {
+    setNoStore(res);
     const query = String(req.query.q || '').trim();
     const limit = req.query.limit || 50;
     const memories = query
         ? roomMemory.searchMemories(req.user.id, query, limit)
         : roomMemory.listMemories(req.user.id, { limit, type: req.query.type });
     res.json({ success: true, data: memories });
-});
+}
+
+router.get('/memory/status', authenticateToken, sendMemoryStatus);
+
+router.get('/memory/status/live/:nonce', authenticateToken, sendMemoryStatus);
+
+router.get('/memory', authenticateToken, sendMemoryList);
+
+router.get('/memory/live/:nonce', authenticateToken, sendMemoryList);
 
 router.get('/memory/:id', authenticateToken, (req, res) => {
+    setNoStore(res);
     const memory = roomMemory.getMemory(req.user.id, String(req.params.id || ''));
     if (!memory) return res.status(404).json({ success: false, message: '记忆不存在' });
     res.json({ success: true, data: memory });

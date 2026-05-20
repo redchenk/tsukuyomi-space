@@ -687,7 +687,7 @@ function txToPromise(tx) {
 async function loadMemoryCount() {
   try {
     if (canUseServerMemory.value) {
-      const response = await fetch('/api/room/memory/status', {
+      const response = await fetch(`/api/room/memory/status/live/${Date.now()}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('tsukuyomi_token')}` },
         cache: 'no-store'
       });
@@ -718,7 +718,7 @@ async function loadServerMemories() {
     const params = new URLSearchParams({ limit: '80' });
     if (memory.query.trim()) params.set('q', memory.query.trim());
     if (memory.type && !memory.query.trim()) params.set('type', memory.type);
-    const response = await fetch(`/api/room/memory?${params}`, {
+    const response = await fetch(`/api/room/memory/live/${Date.now()}?${params}`, {
       headers: memoryAuthHeaders(),
       cache: 'no-store'
     });
