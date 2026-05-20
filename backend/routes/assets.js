@@ -62,6 +62,11 @@ function durableAssetUrl(assetId) {
     return `/api/assets/proxy/${encodeURIComponent(assetId)}`;
 }
 
+function currentOssPublicUrl(asset) {
+    if (!asset?.storage_key) return asset?.url || '';
+    return objectStorage.publicUrlForKey(asset.storage_key) || asset.url || '';
+}
+
 function hasValidAssetSignature(assetId, query = {}) {
     const expiresAt = Number(query.expires);
     const signature = String(query.signature || '');
@@ -80,6 +85,7 @@ function normalizeAsset(row, { signUrl = false } = {}) {
     };
     if (asset.metadata?.storage === 'oss') {
         const isPublic = !asset.owner_id || asset.metadata?.visibility === 'public';
+        asset.url = currentOssPublicUrl(asset);
         asset.display_url = isPublic ? asset.url : (signUrl ? signedAssetUrl(asset.id) : durableAssetUrl(asset.id));
     } else {
         asset.display_url = asset.url;
@@ -296,15 +302,16 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
         if (!signedAccess && !admin && !isOwner && !publicAsset && !publishedReference) {
             return fail(res, req.user ? 403 : 401, '无权访问附件');
         }
+        const publicUrl = currentOssPublicUrl(asset);
         if (metadata.storage !== 'oss') {
-            return res.redirect(302, asset.url);
+            return res.redirect(302, publicUrl || asset.url);
         }
-        if (publicAsset && asset.url) {
+        if (publicAsset && publicUrl) {
             const signedUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
                 expiresSeconds: 21600,
                 contentDisposition: 'inline'
             });
-            return res.redirect(302, signedUrl || asset.url);
+            return res.redirect(302, signedUrl || publicUrl);
         }
         const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
         if (!object?.buffer) return fail(res, 404, '附件不存在');
