@@ -188,6 +188,9 @@ function aliyunV1SignatureUrl(objectKey, { expiresSeconds = 21600, settings: pro
     if (!hasUploadParams(settings) || !key || !isAliyunProvider(settings)) return '';
     const url = buildRequestUrl(settings, key);
     if (!url) return '';
+    if (String(settings.ossPublicBaseUrl || '').trim().startsWith('https://') || String(settings.ossEndpoint || '').trim().startsWith('https://')) {
+        url.protocol = 'https:';
+    }
     const expiresAt = Math.floor(Date.now() / 1000) + Math.min(Math.max(Number(expiresSeconds) || 21600, 60), 604800);
     const canonicalResource = aliyunCanonicalPath(settings, url);
     const stringToSign = ['GET', '', '', String(expiresAt), canonicalResource].join('\n');
