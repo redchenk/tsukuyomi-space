@@ -1,11 +1,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 
 const emit = defineEmits(['go']);
-const route = useRoute();
 const fileInput = ref(null);
 const session = ref(getSession());
 
@@ -26,18 +24,13 @@ const state = reactive({
 });
 
 const isAuthed = computed(() => Boolean(session.value));
-const canManageAllAssets = computed(() => session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role));
 const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
 
 function syncDefaultScope() {
-  state.scope = canManageAllAssets.value && route.query.scope === 'all' ? 'all' : 'mine';
+  state.scope = 'mine';
 }
 
 function assetAuthHeaders(extra = {}) {
-  if (canManageAllAssets.value && state.scope === 'all') {
-    const token = localStorage.getItem('admin_token') || '';
-    return token ? { ...extra, Authorization: `Bearer ${token}` } : authHeaders(extra);
-  }
   const token = localStorage.getItem('tsukuyomi_token') || '';
   return token ? { ...extra, Authorization: `Bearer ${token}` } : authHeaders(extra);
 }
@@ -98,7 +91,6 @@ async function loadAssets(page = 1) {
       type: state.type,
       search: state.search.trim()
     });
-    if (canManageAllAssets.value && state.scope === 'all') params.set('scope', 'all');
     const response = await fetch(`/api/assets?${params}`, {
       headers: assetAuthHeaders(),
       cache: 'no-store'

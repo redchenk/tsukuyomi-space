@@ -178,8 +178,13 @@ router.get('/', authenticateToken, (req, res) => {
         const offset = (page - 1) * limit;
         const type = String(req.query.type || '').trim();
         const search = String(req.query.search || '').trim().slice(0, 80);
-        const includeAll = req.query.scope === 'all' && isAdminUser(req.user);
-        const includePublic = !includeAll && req.query.includePublic === 'true' && isAdminUser(req.user);
+        const requestedAll = req.query.scope === 'all';
+        const requestedPublic = req.query.includePublic === 'true';
+        if ((requestedAll || requestedPublic) && !isAdminUser(req.user)) {
+            return fail(res, 403, '无权限访问全部附件');
+        }
+        const includeAll = requestedAll && isAdminUser(req.user);
+        const includePublic = !includeAll && requestedPublic && isAdminUser(req.user);
         const options = { limit, offset, type, search, includePublic, includeAll };
         const assets = assetRepository.listAssetsByOwner(req.user.id, options).map((asset) => normalizeAsset(asset, { signUrl: true }));
         const total = assetRepository.countAssetsByOwner(req.user.id, { type, search, includePublic, includeAll });
