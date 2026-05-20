@@ -5,6 +5,7 @@ const roomMemory = require('../services/room-memory');
 const weatherCache = require('../services/weather-cache');
 
 const router = express.Router();
+const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 const DEFAULT_WEATHER = {
     lat: 22.3193,
@@ -402,6 +403,50 @@ async function sendWorld(req, res) {
 router.get('/world', sendWorld);
 
 router.get('/world/live/:nonce', sendWorld);
+
+router.get('/models/openrouter', async (req, res) => {
+    setNoStore(res);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+        const response = await fetch(OPENROUTER_MODELS_URL, {
+            signal: controller.signal,
+            headers: {
+                Accept: 'application/json',
+                'User-Agent': 'tsukuyomi-space/2.1 room-model-sync'
+            }
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            return res.status(response.status).json({
+                success: false,
+                message: payload?.error?.message || `OpenRouter models HTTP ${response.status}`
+            });
+        }
+        const models = Array.isArray(payload.data) ? payload.data : [];
+        res.json({
+            success: true,
+            data: {
+                models: models.map((model) => ({
+                    id: String(model.id || ''),
+                    name: String(model.name || model.id || ''),
+                    context_length: Number(model.context_length || 0),
+                    architecture: model.architecture || {},
+                    pricing: model.pricing || {},
+                    supported_parameters: Array.isArray(model.supported_parameters) ? model.supported_parameters : []
+                })).filter((model) => model.id),
+                updatedAt: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        res.status(502).json({
+            success: false,
+            message: error.name === 'AbortError' ? 'OpenRouter 模型列表请求超时' : '无法同步 OpenRouter 模型列表'
+        });
+    } finally {
+        clearTimeout(timeout);
+    }
+});
 
 function sendMemoryStatus(req, res) {
     setNoStore(res);

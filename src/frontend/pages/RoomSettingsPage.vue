@@ -17,6 +17,7 @@ const emit = defineEmits(['go']);
 
 const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
 const MEMORY_STORE = 'memories';
+const MODEL_CATALOG_CACHE_KEY = 'roomModelCatalogOpenRouter';
 const LLM_PRESETS = {
   openai: { label: 'OpenAI Responses', apiUrl: 'https://api.openai.com/v1/responses', model: 'gpt-5.5' },
   openaiChat: { label: 'OpenAI Chat', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
@@ -47,6 +48,24 @@ const MIMO_LLM_PRESETS = {
   tokenPlan: { label: 'Token Plan · mimo-v2.5', apiUrl: 'https://token-plan-cn.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5' },
   tokenPlanPro: { label: 'Token Plan · mimo-v2.5-pro', apiUrl: 'https://token-plan-cn.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-pro' }
 };
+const MODEL_PROVIDER_PREFIXES = {
+  openai: ['openai/'],
+  openrouter: [],
+  deepseek: ['deepseek/'],
+  kimi: ['moonshotai/', 'moonshot/'],
+  zhipu: ['z-ai/', 'thudm/'],
+  aliyun: ['qwen/', 'alibaba/'],
+  siliconflow: ['deepseek/', 'qwen/', 'meta-llama/', 'mistralai/'],
+  volcengine: ['bytedance/', 'doubao/'],
+  minimax: ['minimax/'],
+  groq: ['meta-llama/', 'openai/', 'qwen/'],
+  mistral: ['mistralai/'],
+  together: ['meta-llama/', 'mistralai/', 'qwen/', 'deepseek/'],
+  perplexity: ['perplexity/'],
+  xai: ['x-ai/'],
+  gemini: ['google/'],
+  mimo: ['xiaomi/', 'mimo/']
+};
 const TTS_PRESETS = {
   mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
   openai: { label: 'OpenAI TTS', provider: 'openai', apiUrl: 'https://api.openai.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
@@ -75,6 +94,7 @@ const memoryCount = ref(0);
 const memoryList = ref([]);
 const memoryLoading = ref(false);
 const storedUser = ref(readStoredUser());
+const modelCatalog = reactive({ loading: false, message: '', updatedAt: '', models: [] });
 let toastTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
@@ -141,6 +161,8 @@ const visitorKey = computed(() => {
   return `guest:${id}`;
 });
 const canUseServerMemory = computed(() => Boolean(roomUser.value?.id && localStorage.getItem('tsukuyomi_token')));
+const llmProviderKey = computed(() => detectLLMProvider(llm.apiUrl, llm.model));
+const syncedModelOptions = computed(() => modelOptionsForProvider(llmProviderKey.value));
 const memoryModeLabel = computed(() => canUseServerMemory.value ? '服务端私有记忆' : '本地浏览器记忆');
 const memoryLocationText = computed(() => canUseServerMemory.value
   ? '记忆保存在服务端 SQLite 向量记忆库，按登录用户隔离；未登录时自动退回本机 IndexedDB。'
@@ -183,6 +205,137 @@ function readJson(key, fallback) {
 
 function writeJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function compactModelPrice(value) {
+  const price = Number(value);
+  if (!Number.isFinite(price) || price <= 0) return 'free';
+  return `$${(price * 1000000).toFixed(price * 1000000 < 0.01 ? 4 : 2)}/M`;
+}
+
+function detectLLMProvider(apiUrl = '', modelName = '') {
+  const source = `${apiUrl || ''} ${modelName || ''}`.toLowerCase();
+  if (/openrouter/.test(source)) return 'openrouter';
+  if (/dashscope|aliyuncs|qwen|alibaba/.test(source)) return 'aliyun';
+  if (/xiaomimimo|token-plan-cn|mimo/.test(source)) return 'mimo';
+  if (/api\.openai\.com|^gpt-|^o\d|openai\//.test(source)) return 'openai';
+  if (/deepseek/.test(source)) return 'deepseek';
+  if (/moonshot|kimi/.test(source)) return 'kimi';
+  if (/bigmodel|zhipu|glm|z-ai/.test(source)) return 'zhipu';
+  if (/siliconflow/.test(source)) return 'siliconflow';
+  if (/volces|ark|doubao|bytedance/.test(source)) return 'volcengine';
+  if (/minimax|minimaxi/.test(source)) return 'minimax';
+  if (/groq/.test(source)) return 'groq';
+  if (/mistral/.test(source)) return 'mistral';
+  if (/together/.test(source)) return 'together';
+  if (/perplexity|sonar/.test(source)) return 'perplexity';
+  if (/x\.ai|grok|x-ai\//.test(source)) return 'xai';
+  if (/generativelanguage|gemini|google\//.test(source)) return 'gemini';
+  return 'custom';
+}
+
+function nativeModelId(openRouterId, provider = llmProviderKey.value) {
+  const id = String(openRouterId || '').trim();
+  if (!id || provider === 'openrouter') return id;
+  const slashIndex = id.indexOf('/');
+  return slashIndex >= 0 ? id.slice(slashIndex + 1) : id;
+}
+
+function providerStaticModelOptions(provider) {
+  const presets = [
+    ...Object.values(LLM_PRESETS),
+    ...Object.values(ALIYUN_LLM_PRESETS),
+    ...Object.values(MIMO_LLM_PRESETS)
+  ];
+  return presets
+    .filter((preset) => detectLLMProvider(preset.apiUrl, preset.model) === provider)
+    .map((preset) => ({
+      id: preset.model,
+      nativeId: preset.model,
+      label: preset.label,
+      detail: preset.apiUrl,
+      source: 'preset'
+    }));
+}
+
+function modelOptionsForProvider(provider) {
+  const prefixes = MODEL_PROVIDER_PREFIXES[provider] || [];
+  const synced = (modelCatalog.models || [])
+    .filter((model) => provider === 'openrouter' || prefixes.some((prefix) => model.id.toLowerCase().startsWith(prefix)))
+    .slice(0, provider === 'openrouter' ? 240 : 80)
+    .map((model) => {
+      const nativeId = nativeModelId(model.id, provider);
+      const context = model.context_length ? `${Math.round(model.context_length / 1000)}k ctx` : '';
+      const promptPrice = compactModelPrice(model.pricing?.prompt);
+      const outputPrice = compactModelPrice(model.pricing?.completion);
+      const modalities = Array.isArray(model.architecture?.input_modalities)
+        ? model.architecture.input_modalities.join('+')
+        : '';
+      return {
+        id: model.id,
+        nativeId,
+        label: model.name || model.id,
+        detail: [nativeId, context, modalities, `${promptPrice}/${outputPrice}`].filter(Boolean).join(' · '),
+        source: 'openrouter'
+      };
+    });
+  const seen = new Set(synced.map((item) => item.nativeId));
+  return [
+    ...synced,
+    ...providerStaticModelOptions(provider).filter((item) => !seen.has(item.nativeId))
+  ];
+}
+
+function loadModelCatalogCache() {
+  const cached = readJson(MODEL_CATALOG_CACHE_KEY, null);
+  if (!cached || !Array.isArray(cached.models)) return;
+  modelCatalog.models = cached.models;
+  modelCatalog.updatedAt = cached.updatedAt || '';
+  modelCatalog.message = cached.models.length ? `已载入缓存模型 ${cached.models.length} 个` : '';
+}
+
+async function syncModelCatalog() {
+  modelCatalog.loading = true;
+  modelCatalog.message = '正在同步 OpenRouter 模型目录...';
+  try {
+    const response = await fetch(`/api/room/models/openrouter?_${Date.now()}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store'
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    modelCatalog.models = Array.isArray(result.data?.models) ? result.data.models : [];
+    modelCatalog.updatedAt = result.data?.updatedAt || new Date().toISOString();
+    writeJson(MODEL_CATALOG_CACHE_KEY, {
+      models: modelCatalog.models,
+      updatedAt: modelCatalog.updatedAt
+    });
+    modelCatalog.message = `已同步 ${modelCatalog.models.length} 个模型；当前供应商匹配 ${syncedModelOptions.value.length} 个`;
+    showToast('模型目录已同步');
+  } catch (error) {
+    modelCatalog.message = `模型目录同步失败：${error.message}`;
+    showToast(`模型同步失败：${error.message}`);
+  } finally {
+    modelCatalog.loading = false;
+  }
+}
+
+function applySyncedModel(option) {
+  if (!option?.nativeId) return;
+  llm.model = option.nativeId;
+  if (option.source === 'openrouter' && llmProviderKey.value === 'openrouter') {
+    llm.model = option.id;
+  }
+  showToast(`已选择模型：${llm.model}`);
+}
+
+function applySyncedModelById(modelId) {
+  const option = syncedModelOptions.value.find((item) => item.nativeId === modelId || item.id === modelId);
+  applySyncedModel(option);
+}
+
+function syncedModelSelectValue(option) {
+  return option.source === 'openrouter' && llmProviderKey.value === 'openrouter' ? option.id : option.nativeId;
 }
 
 function showToast(text) {
@@ -793,6 +946,7 @@ async function loadVisibleMemories() {
 
 function loadSettings() {
   storedUser.value = readStoredUser();
+  loadModelCatalogCache();
   const modelSettings = readJson('roomModelSettings', {});
   model.scale = Math.round(Number(modelSettings.scale || 1) * 100);
   model.xOffset = Number(modelSettings.xOffset || 0);
@@ -1491,7 +1645,20 @@ onBeforeUnmount(() => {
         <div class="form-grid">
           <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="https://api.openai.com/v1/chat/completions"></label>
           <label>API Key<input v-model="llm.apiKey" type="password" placeholder="sk-..."></label>
-          <label>模型名称<input v-model="llm.model" type="text" placeholder="gpt-4o-mini"></label>
+          <label>模型名称<input v-model="llm.model" type="text" list="llmSyncedModels" placeholder="gpt-4o-mini"></label>
+          <datalist id="llmSyncedModels">
+            <option v-for="option in syncedModelOptions" :key="`${option.source}-${option.id}`" :value="syncedModelSelectValue(option)">{{ option.label }}</option>
+          </datalist>
+          <label>同步模型列表<select :value="llm.model" @change="applySyncedModelById($event.target.value)">
+            <option value="">选择已同步模型</option>
+            <option v-for="option in syncedModelOptions" :key="`${option.source}-select-${option.id}`" :value="syncedModelSelectValue(option)">
+              {{ option.label }} · {{ option.detail }}
+            </option>
+          </select></label>
+          <p class="field-hint">
+            当前识别供应商：{{ llmProviderKey }}。OpenRouter 会同步完整模型目录；其他供应商会按模型前缀筛选并转换为原生模型名，无法确定时保留本地预设。
+            {{ modelCatalog.message }}
+          </p>
           <label>图片理解策略<select v-model="llm.visionMode">
             <option value="auto">自动识别视觉模型</option>
             <option value="llm">强制发送给 LLM</option>
@@ -1502,6 +1669,7 @@ onBeforeUnmount(() => {
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveLLM">保存 LLM</button>
             <button class="ghost-btn" type="button" @click="testLLM">测试连接</button>
+            <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
           </div>
         </div>
       </article>
