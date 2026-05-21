@@ -55,7 +55,7 @@ export const routes = [
     component: StagePage,
     meta: {
       title: '主舞台',
-      description: '浏览月读空间的文章、公告、技术记录与创作日志。'
+      description: '浏览月读空间的文章、公告、技术记录、二创作品与创作日志。'
     }
   },
   {

@@ -162,7 +162,7 @@ function renderArticleHtml(article) {
 
 function renderStageHtml(articles = []) {
     const title = `主舞台 | ${SITE_NAME}`;
-    const description = '浏览月读空间的文章、公告、技术记录与创作日志，内容包括 Live2D、AI 角色、个人网站开发、二次元网页设计与日常记录。';
+    const description = '浏览月读空间的文章、公告、技术记录、二创作品与创作日志，内容包括 Live2D、AI 角色、个人网站开发、二次元网页设计与日常记录。';
     const url = absoluteUrl('/stage');
     const itemList = articles.slice(0, 24).map((article, index) => ({
         '@type': 'ListItem',

@@ -12,7 +12,7 @@ const articles = ref([]);
 const articlesLoading = ref(true);
 const stageCategory = ref('all');
 const stageSearch = ref('');
-const categories = ['all', '\u516c\u544a', '\u4f20\u8bf4', '\u6280\u672f', '\u5176\u4ed6'];
+const categories = ['all', '\u516c\u544a', '\u4f20\u8bf4', '\u6280\u672f', '\u4e8c\u521b', '\u5176\u4ed6'];
 
 const filteredArticles = computed(() => {
   let list = articles.value;
@@ -35,6 +35,7 @@ function stageCategoryLabel(category) {
     '\u516c\u544a': props.t.filterAnnouncement,
     '\u4f20\u8bf4': props.t.filterLegend,
     '\u6280\u672f': props.t.filterTechnology,
+    '\u4e8c\u521b': props.t.filterFanwork,
     '\u5176\u4ed6': props.t.filterOther
   };
   return map[category] || category;
@@ -73,7 +74,7 @@ onMounted(loadArticles);
       <h1 class="section-title">{{ t.stageTitle }}</h1>
       <p class="section-subtitle">{{ t.stageSubtitle }}</p>
       <p class="stage-seo-intro">
-        主舞台集中展示月读空间的文章、公告、技术记录与创作日志，内容覆盖 Live2D、AI 角色、
+        主舞台集中展示月读空间的文章、公告、技术记录、二创作品与创作日志，内容覆盖 Live2D、AI 角色、
         个人网站开发、二次元网页设计和日常项目复盘。
       </p>
     </header>

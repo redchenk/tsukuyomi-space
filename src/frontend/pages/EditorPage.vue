@@ -21,6 +21,7 @@ const categories = [
   { value: '\u516c\u544a', labelKey: 'editorCatAnnouncement' },
   { value: '\u4f20\u8bf4', labelKey: 'editorCatLegend' },
   { value: '\u6280\u672f', labelKey: 'editorCatTechnology' },
+  { value: '\u4e8c\u521b', labelKey: 'editorCatFanwork' },
   { value: '\u5176\u4ed6', labelKey: 'editorCatOther' }
 ];
 
