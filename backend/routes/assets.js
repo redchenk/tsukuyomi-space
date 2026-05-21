@@ -209,10 +209,20 @@ function assetFileName(asset, metadata = {}) {
     return metadata.fileName || metadata.title || `${asset.id}.${String(asset.mime_type || '').split('/').pop() || 'bin'}`;
 }
 
+function inlineDisposition(fileName = 'media') {
+    const fallback = String(fileName || 'media').replace(/[^\x20-\x7e]/g, '_').replace(/["\\\r\n]/g, '_').slice(0, 120) || 'media';
+    return `inline; filename="${fallback}"`;
+}
+
 function setAttachmentHeaders(res, asset, metadata = {}) {
     res.setHeader('Content-Type', asset.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', attachmentDisposition(assetFileName(asset, metadata)));
     res.setHeader('X-Content-Type-Options', 'nosniff');
+}
+
+function isBrowserPreviewMedia(asset) {
+    const mimeType = String(asset?.mime_type || '').toLowerCase();
+    return mimeType.startsWith('image/') || mimeType.startsWith('video/') || mimeType.startsWith('audio/');
 }
 
 function streamLocalAsset(req, res, asset, metadata = {}) {
@@ -244,6 +254,18 @@ function streamLocalAsset(req, res, asset, metadata = {}) {
 }
 
 async function streamOssAsset(req, res, asset, metadata) {
+    if (isBrowserPreviewMedia(asset)) {
+        const redirectUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
+            expiresSeconds: 6 * 60 * 60,
+            contentType: asset.mime_type || 'application/octet-stream',
+            contentDisposition: inlineDisposition(assetFileName(asset, metadata)),
+            preferPublicBase: true
+        });
+        if (redirectUrl) {
+            res.setHeader('Cache-Control', metadata.visibility === 'private' ? 'private, no-store' : 'public, max-age=60');
+            return res.redirect(302, redirectUrl);
+        }
+    }
     const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
     if (!object?.buffer) return fail(res, 404, '附件不存在');
     setAttachmentHeaders(res, { ...asset, mime_type: asset.mime_type || object.contentType || 'application/octet-stream' }, metadata);
