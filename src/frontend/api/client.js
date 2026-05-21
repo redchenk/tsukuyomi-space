@@ -58,9 +58,16 @@ export function authHeaders(extra = {}) {
   return { ...extra };
 }
 
+export function authFetch(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    credentials: options.credentials || 'include'
+  });
+}
+
 export async function logoutSession() {
   try {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    await authFetch('/api/auth/logout', { method: 'POST' });
   } catch (_) {
     // Client-side cleanup still matters if the network request fails.
   }

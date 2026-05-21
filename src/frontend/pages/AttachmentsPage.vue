@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 
 const emit = defineEmits(['go']);
@@ -46,6 +46,7 @@ function postJsonWithProgress(url, payload, headers, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
+    xhr.withCredentials = true;
     Object.entries(headers || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
     });
@@ -98,7 +99,7 @@ async function loadAssets(page = 1) {
       search: state.search.trim()
     });
     if (canManageAllAssets.value && state.scope === 'all') params.set('scope', 'all');
-    const response = await fetch(noStoreUrl(`/api/assets?${params}`), {
+    const response = await authFetch(noStoreUrl(`/api/assets?${params}`), {
       headers: assetAuthHeaders(),
       cache: 'no-store'
     });
@@ -193,7 +194,7 @@ async function copyMarkdown(asset) {
 async function deleteAsset(asset) {
   if (!confirm(`删除附件「${assetName(asset)}」？已经插入文章的图片链接可能会失效。`)) return;
   try {
-    const response = await fetch(`/api/assets/${encodeURIComponent(asset.id)}`, {
+    const response = await authFetch(`/api/assets/${encodeURIComponent(asset.id)}`, {
       method: 'DELETE',
       headers: assetAuthHeaders()
     });

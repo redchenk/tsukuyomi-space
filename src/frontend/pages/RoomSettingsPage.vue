@@ -929,7 +929,7 @@ async function loadMemoryCount() {
     if (canUseServerMemory.value) {
       const response = await fetch(`/api/room/memory/status/live/${Date.now()}`, {
         headers: memoryAuthHeaders(),
-        credentials: 'same-origin',
+        credentials: 'include',
         cache: 'no-store'
       });
       const result = await response.json().catch(() => ({}));
@@ -1490,7 +1490,7 @@ async function clearMemory() {
       const response = await fetch('/api/room/memory', {
         method: 'DELETE',
         headers: memoryAuthHeaders(),
-        credentials: 'same-origin'
+        credentials: 'include'
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);

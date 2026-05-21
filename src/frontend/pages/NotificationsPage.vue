@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive } from 'vue';
-import { authHeaders, noStoreUrl, parseResponse } from '../api/client';
+import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import { formatDateTime } from '../utils/time';
 
 const emit = defineEmits(['go']);
@@ -30,7 +30,7 @@ async function loadNotifications() {
   inbox.loading = true;
   inbox.message = '';
   try {
-    const response = await fetch(noStoreUrl('/api/user/notifications'), {
+    const response = await authFetch(noStoreUrl('/api/user/notifications'), {
       headers: authHeaders(),
       cache: 'no-store'
     });
@@ -54,7 +54,7 @@ async function loadNotifications() {
 
 async function markRead(item) {
   if (!item?.id || !item.unread) return;
-  const response = await fetch(`/api/user/notifications/${item.id}/read`, {
+  const response = await authFetch(`/api/user/notifications/${item.id}/read`, {
     method: 'POST',
     headers: authHeaders()
   });
@@ -67,7 +67,7 @@ async function markRead(item) {
 }
 
 async function markAllRead() {
-  const response = await fetch('/api/user/notifications/read-all', {
+  const response = await authFetch('/api/user/notifications/read-all', {
     method: 'POST',
     headers: authHeaders()
   });

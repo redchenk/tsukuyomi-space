@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 import { renderMarkdown } from '../utils/markdown';
 
@@ -221,7 +221,7 @@ async function loadAssetPicker() {
       limit: '60',
       search: editor.assetPicker.search.trim()
     });
-    const response = await fetch(noStoreUrl(`/api/assets?${params}`), {
+    const response = await authFetch(noStoreUrl(`/api/assets?${params}`), {
       headers: authHeaders(),
       cache: 'no-store'
     });
@@ -272,6 +272,7 @@ function postJsonWithProgress(url, payload, headers, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
+    xhr.withCredentials = true;
     Object.entries(headers || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
     });
@@ -399,7 +400,7 @@ async function handleEditorSubmit() {
       method = 'PUT';
     }
 
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method,
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body)
@@ -432,9 +433,8 @@ async function initEditor() {
   if (id) {
     try {
       const url = session.value.admin ? `/api/admin/articles/${id}` : `/api/user/articles/${id}`;
-      const response = await fetch(noStoreUrl(url), {
+      const response = await authFetch(noStoreUrl(url), {
         headers: authHeaders(),
-        credentials: 'same-origin',
         cache: 'no-store'
       });
       const result = await parseResponse(response);

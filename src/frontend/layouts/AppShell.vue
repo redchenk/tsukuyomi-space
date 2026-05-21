@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { authHeaders, noStoreUrl, parseResponse } from '../api/client';
+import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -50,7 +50,7 @@ async function loadUnreadNotifications() {
   }
 
   try {
-    const response = await fetch(noStoreUrl('/api/user/notifications/unread-count'), {
+    const response = await authFetch(noStoreUrl('/api/user/notifications/unread-count'), {
       headers: authHeaders(),
       cache: 'no-store'
     });

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { authHeaders, getAuthToken, getSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
+import { authFetch, authHeaders, getAuthToken, getSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import { compressImage } from '../utils/image';
 import { formatDateOnly } from '../utils/time';
 
@@ -109,7 +109,7 @@ async function ucLoadProfile() {
   const token = getAuthToken();
   if (!token) return;
   try {
-    const response = await fetch(noStoreUrl('/api/user/profile'), {
+    const response = await authFetch(noStoreUrl('/api/user/profile'), {
       headers: authHeaders(),
       cache: 'no-store'
     });
@@ -132,7 +132,7 @@ async function ucLoadArticles() {
     return;
   }
   try {
-    const response = await fetch(`/api/user/articles/live/${Date.now()}`, {
+    const response = await authFetch(`/api/user/articles/live/${Date.now()}`, {
       headers: authHeaders(),
       cache: 'no-store'
     });
@@ -156,7 +156,7 @@ async function ucSaveProfile() {
   const bio = uc.profileBio.trim();
   uc.profileSaving = true;
   try {
-    const response = await fetch('/api/user/profile', {
+    const response = await authFetch('/api/user/profile', {
       method: 'PUT',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ bio })
@@ -189,7 +189,7 @@ async function ucUploadAvatar(event) {
   uc.avatarUploading = true;
   try {
     const avatar = await compressImage(file, { maxWidth: 420, maxHeight: 420, quality: 0.82 });
-    const response = await fetch('/api/user/avatar', {
+    const response = await authFetch('/api/user/avatar', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ avatar })
@@ -227,7 +227,7 @@ async function ucChangePassword() {
 
   uc.passwordChanging = true;
   try {
-    const response = await fetch('/api/user/password', {
+    const response = await authFetch('/api/user/password', {
       method: 'PUT',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ currentPassword, newPassword })
@@ -249,7 +249,7 @@ async function ucChangePassword() {
 async function ucDeleteArticle(id) {
   if (!confirm(props.t.ucDeleteConfirm)) return;
   try {
-    const response = await fetch(`/api/user/articles/${id}`, {
+    const response = await authFetch(`/api/user/articles/${id}`, {
       method: 'DELETE',
       headers: authHeaders()
     });

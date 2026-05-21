@@ -55,7 +55,7 @@ async function submitRegister() {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
+      credentials: 'include',
       body: JSON.stringify({
         username: register.username.trim(),
         email: register.email.trim(),

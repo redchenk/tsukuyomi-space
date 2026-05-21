@@ -492,7 +492,7 @@ async function fetchRelevantMemories(message) {
   if (!String(message || '').trim()) return [];
   const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
   const response = await fetch(`/api/room/memory/live/${Date.now()}?${params}`, {
-    credentials: 'same-origin',
+    credentials: 'include',
     cache: 'no-store'
   });
   const result = await response.json().catch(() => ({}));
@@ -701,7 +701,7 @@ export function useRoomChat({ live2d, world }) {
     await fetch('/api/room/memory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
+      credentials: 'include',
       body: JSON.stringify({ userMessage, assistantReply })
     });
   }

@@ -144,7 +144,7 @@ async function adminApi(path, options = {}) {
   }
   const method = String(options.method || 'GET').toUpperCase();
   const url = method === 'GET' ? noStoreUrl(`/api/admin${path}`) : `/api/admin${path}`;
-  const response = await fetch(url, { ...options, headers, credentials: 'same-origin', cache: method === 'GET' ? 'no-store' : options.cache });
+  const response = await fetch(url, { ...options, headers, credentials: 'include', cache: method === 'GET' ? 'no-store' : options.cache });
   const result = await parseJsonResponse(response);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
   return result.data;
@@ -170,7 +170,7 @@ async function login() {
     const response = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
+      credentials: 'include',
       body: JSON.stringify(terminal.login)
     });
     const result = await parseJsonResponse(response);
@@ -192,7 +192,7 @@ async function login() {
 
 async function logout() {
   try {
-    await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+    await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
   } catch (_) {
     // Local cleanup still applies.
   }
@@ -416,7 +416,7 @@ async function registerOssAsset() {
       headers: {
         'Content-Type': 'application/json'
       },
-      credentials: 'same-origin',
+      credentials: 'include',
       body: JSON.stringify({
         objectKey,
         title: terminal.ossImport.title.trim(),
@@ -450,7 +450,7 @@ async function scanOssAssets() {
       headers: {
         'Content-Type': 'application/json'
       },
-      credentials: 'same-origin',
+      credentials: 'include',
       body: JSON.stringify({
         prefix: terminal.ossImport.scanPrefix.trim(),
         maxKeys: terminal.ossImport.scanLimit || 100,
