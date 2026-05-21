@@ -48,6 +48,16 @@ const sceneLinks = computed(() => [
   { href: '/arena/', name: props.t.arena, desc: '超时空辉夜姬竞技场', code: 'Arena', icon: 'gamepad', tone: 'gold', spa: false, image: '/assets/images/tsukuyomi-bg.png' }
 ]);
 
+const orderedSceneLinks = computed(() => {
+  const links = [...sceneLinks.value];
+  const realityIndex = links.findIndex((scene) => scene.href === '/reality');
+  const arenaIndex = links.findIndex((scene) => scene.href === '/arena/');
+  if (realityIndex >= 0 && arenaIndex >= 0 && realityIndex < arenaIndex) {
+    [links[realityIndex], links[arenaIndex]] = [links[arenaIndex], links[realityIndex]];
+  }
+  return links;
+});
+
 const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
 
 function formatHubNumber(value) {
@@ -225,7 +235,7 @@ onMounted(loadHubPreview);
       <div class="scene-grid">
         <component
           :is="scene.kind === 'plaza' ? 'div' : 'a'"
-          v-for="scene in sceneLinks"
+          v-for="scene in orderedSceneLinks"
           :key="scene.href"
           class="scene-card"
           :class="[`tone-${scene.tone}`, { 'scene-card-plaza': scene.kind === 'plaza' }]"
