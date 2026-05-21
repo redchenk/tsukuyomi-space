@@ -299,6 +299,7 @@ onMounted(() => {
         </div>
         <div class="uc-hero-actions">
           <a class="primary-btn" href="/editor" @click.prevent="go('/editor')">{{ t.ucNewPost }}</a>
+          <a class="ghost-btn" href="/gallery" @click.prevent="go('/gallery')">图库</a>
           <a class="ghost-btn" href="/attachments" @click.prevent="go('/attachments')">附件库</a>
           <a class="ghost-btn" href="/stage" @click.prevent="go('/stage')">{{ t.ucViewStage }}</a>
           <button class="ghost-btn" type="button" @click="ucRefresh">{{ t.ucRefresh }}</button>
@@ -318,6 +319,7 @@ onMounted(() => {
           <div class="uc-tabs">
             <button class="tab-btn" :class="{ active: uc.tab === 'profile' }" type="button" @click="uc.tab = 'profile'">{{ t.ucProfile }} <small>Profile</small></button>
             <button class="tab-btn" :class="{ active: uc.tab === 'articles' }" type="button" @click="uc.tab = 'articles'">{{ t.ucArticlesTab }} <small>Posts</small></button>
+            <button class="tab-btn uc-asset-tab" type="button" @click="go('/gallery')">图库 <small>Gallery</small></button>
             <button class="tab-btn uc-asset-tab" type="button" @click="go('/attachments')">附件库 <small>Assets</small></button>
             <button class="tab-btn" :class="{ active: uc.tab === 'security' }" type="button" @click="uc.tab = 'security'">{{ t.ucSecurity }} <small>Security</small></button>
           </div>

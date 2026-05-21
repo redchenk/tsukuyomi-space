@@ -8,6 +8,7 @@ import PlazaPage from '../pages/PlazaPage.vue';
 import RealityPage from '../pages/RealityPage.vue';
 import EditorPage from '../pages/EditorPage.vue';
 import AttachmentsPage from '../pages/AttachmentsPage.vue';
+import GalleryPage from '../pages/GalleryPage.vue';
 import UserCenterPage from '../pages/UserCenterPage.vue';
 import NotificationsPage from '../pages/NotificationsPage.vue';
 import RoomPage from '../pages/RoomPage.vue';
@@ -119,6 +120,12 @@ export const routes = [
     name: 'attachments',
     component: AttachmentsPage,
     meta: { title: '附件库', description: '管理文章图片和个人上传附件。', noindex: true }
+  },
+  {
+    path: '/gallery',
+    name: 'gallery',
+    component: GalleryPage,
+    meta: { title: '图库', description: '上传、浏览和管理月读空间图库图片。', noindex: true }
   },
   {
     path: '/user-center',

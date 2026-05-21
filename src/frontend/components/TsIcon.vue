@@ -109,6 +109,40 @@ const iconPaths = {
     ['circle', { cx: '8.5', cy: '8.5', r: '1.5' }],
     ['path', { d: 'm21 15-4.6-4.6a2 2 0 0 0-2.8 0L5 19' }]
   ],
+  search: [
+    ['circle', { cx: '11', cy: '11', r: '7' }],
+    ['path', { d: 'm20 20-3.5-3.5' }]
+  ],
+  upload: [
+    ['path', { d: 'M12 16V4' }],
+    ['path', { d: 'm7 9 5-5 5 5' }],
+    ['path', { d: 'M4 20h16' }]
+  ],
+  copy: [
+    ['rect', { x: '8', y: '8', width: '12', height: '12', rx: '2' }],
+    ['path', { d: 'M4 16V6a2 2 0 0 1 2-2h10' }]
+  ],
+  external: [
+    ['path', { d: 'M14 3h7v7' }],
+    ['path', { d: 'M10 14 21 3' }],
+    ['path', { d: 'M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5' }]
+  ],
+  trash: [
+    ['path', { d: 'M3 6h18' }],
+    ['path', { d: 'M8 6V4h8v2' }],
+    ['path', { d: 'M19 6 18 20H6L5 6' }],
+    ['path', { d: 'M10 11v5' }],
+    ['path', { d: 'M14 11v5' }]
+  ],
+  star: [
+    ['path', { d: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z' }]
+  ],
+  grid: [
+    ['rect', { x: '3', y: '3', width: '7', height: '7', rx: '1.5' }],
+    ['rect', { x: '14', y: '3', width: '7', height: '7', rx: '1.5' }],
+    ['rect', { x: '3', y: '14', width: '7', height: '7', rx: '1.5' }],
+    ['rect', { x: '14', y: '14', width: '7', height: '7', rx: '1.5' }]
+  ],
   ellipsis: [
     ['circle', { cx: '5', cy: '12', r: '1.25', fill: 'currentColor', stroke: 'none' }],
     ['circle', { cx: '12', cy: '12', r: '1.25', fill: 'currentColor', stroke: 'none' }],
