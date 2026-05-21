@@ -25,6 +25,11 @@ function setNoStore(res) {
 }
 
 function setStaticCacheHeaders(res, filePath) {
+    if (String(filePath || '').replace(/\\/g, '/').includes('/assets/uploads/')) {
+        res.setHeader('Content-Disposition', 'attachment');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+    }
+
     if (filePath.endsWith('.html')) {
         setNoStore(res);
         return;

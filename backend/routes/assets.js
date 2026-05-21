@@ -7,6 +7,7 @@ const { authenticateToken, optionalAuth, requireAdmin } = require('../middleware
 const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
+const { attachmentDisposition } = require('../services/file-security');
 const { parsePositiveInt } = require('../validators');
 
 const router = express.Router();
@@ -204,16 +205,53 @@ function deleteLocalFile(storageKey) {
     fs.rmSync(target, { force: true });
 }
 
+function assetFileName(asset, metadata = {}) {
+    return metadata.fileName || metadata.title || `${asset.id}.${String(asset.mime_type || '').split('/').pop() || 'bin'}`;
+}
+
+function setAttachmentHeaders(res, asset, metadata = {}) {
+    res.setHeader('Content-Type', asset.mime_type || 'application/octet-stream');
+    res.setHeader('Content-Disposition', attachmentDisposition(assetFileName(asset, metadata)));
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+}
+
+function streamLocalAsset(req, res, asset, metadata = {}) {
+    if (!canDeleteLocal(asset.storage_key)) return fail(res, 404, 'Attachment not found');
+    const root = path.resolve(config.projectRoot, 'assets', 'uploads');
+    const target = path.resolve(config.projectRoot, asset.storage_key);
+    if (!target.startsWith(root) || !fs.existsSync(target)) return fail(res, 404, 'Attachment not found');
+
+    const stat = fs.statSync(target);
+    const range = String(req.headers.range || '');
+    setAttachmentHeaders(res, asset, metadata);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', metadata.visibility === 'private' ? 'private, no-store' : 'public, max-age=300');
+
+    const match = range.match(/^bytes=(\d*)-(\d*)$/i);
+    if (match) {
+        const start = match[1] === '' ? 0 : Number(match[1]);
+        const end = match[2] === '' ? stat.size - 1 : Math.min(Number(match[2]), stat.size - 1);
+        if (Number.isFinite(start) && Number.isFinite(end) && start <= end && start < stat.size) {
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+            res.setHeader('Content-Length', end - start + 1);
+            return fs.createReadStream(target, { start, end }).pipe(res);
+        }
+    }
+
+    res.setHeader('Content-Length', stat.size);
+    return fs.createReadStream(target).pipe(res);
+}
+
 async function streamOssAsset(req, res, asset, metadata) {
     const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
     if (!object?.buffer) return fail(res, 404, '附件不存在');
-    res.setHeader('Content-Type', asset.mime_type || object.contentType || 'application/octet-stream');
+    setAttachmentHeaders(res, { ...asset, mime_type: asset.mime_type || object.contentType || 'application/octet-stream' }, metadata);
     if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
     if (object.acceptRanges) res.setHeader('Accept-Ranges', object.acceptRanges);
     if (object.contentRange) res.setHeader('Content-Range', object.contentRange);
     if (object.etag) res.setHeader('ETag', object.etag);
     if (object.lastModified) res.setHeader('Last-Modified', object.lastModified);
-    res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Cache-Control', metadata.visibility === 'private' ? 'private, no-store' : 'public, max-age=300');
     return res.status(object.status === 206 ? 206 : 200).send(object.buffer);
 }
@@ -338,21 +376,7 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
         if (!signedAccess && !admin && !isOwner && !publicAsset && !publishedReference) {
             return fail(res, req.user ? 403 : 401, '无权访问附件');
         }
-        const publicUrl = currentOssPublicUrl(asset);
-        if (metadata.storage !== 'oss') {
-            return res.redirect(302, publicUrl || asset.url);
-        }
-        if (publicAsset && publicUrl) {
-            const signedUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
-                expiresSeconds: 21600,
-                contentDisposition: 'inline',
-                preferPublicBase: true
-            });
-            const redirectUrl = signedUrl || publicUrl;
-            if (await canUseRedirectUrl(redirectUrl)) return res.redirect(302, redirectUrl);
-            console.warn('OSS public redirect unavailable, falling back to proxy stream:', asset.id, asset.storage_key);
-            return streamOssAsset(req, res, asset, metadata);
-        }
+        if (metadata.storage !== 'oss') return streamLocalAsset(req, res, asset, metadata);
         return streamOssAsset(req, res, asset, metadata);
     } catch (error) {
         console.error('Proxy OSS asset failed:', error);
@@ -372,13 +396,14 @@ router.post('/', authenticateToken, async (req, res) => {
             mimeType: String(mimeType || parsed.mimeType || 'application/octet-stream').trim().slice(0, 120),
             alt: String(alt || '').trim(),
             fileName: String(fileName || '').trim(),
-            storage: objectStorage.normalizeStorageMode(storage)
+            storage: objectStorage.normalizeStorageMode(storage),
+            allowDangerous: isAdminUser(req.user)
         });
         if (!asset) return fail(res, 400, '文件格式无效');
         ok(res, normalizeAsset(asset, { signUrl: true }), '附件已上传');
     } catch (error) {
         console.error('Upload asset failed:', error);
-        fail(res, 500, '附件上传失败');
+        fail(res, error.status || 500, error.status ? error.message : '附件上传失败');
     }
 });
 

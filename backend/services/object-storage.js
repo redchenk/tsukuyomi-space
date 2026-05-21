@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const adminRepository = require('../repositories/admin-repository');
+const { attachmentDisposition } = require('./file-security');
 
 function parseSettingValue(value) {
     if (value === 'true') return true;
@@ -492,6 +493,10 @@ async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', set
         accessKeySecret: settings.ossAccessKeySecret,
         body: buffer,
         contentType: mimeType || 'application/octet-stream',
+        headers: {
+            'Content-Disposition': attachmentDisposition(objectKey.split('/').pop() || 'attachment'),
+            'X-Content-Type-Options': 'nosniff'
+        },
         settings
     });
     if (!response.ok) {

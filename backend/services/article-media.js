@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const db = require('../db');
 const config = require('../config');
 const objectStorage = require('./object-storage');
+const { detectMimeFromMagic, validateUserUpload } = require('./file-security');
 
 const DATA_IMAGE_PATTERN = /^data:image\/(png|jpe?g|gif|webp);base64,([\s\S]+)$/i;
 const MARKDOWN_DATA_IMAGE_PATTERN = /!\[([^\]\n]*)\]\((data:image\/(?:png|jpe?g|gif|webp);base64,[^)]+)\)/gi;
@@ -88,10 +89,13 @@ function parseDataImage(dataUrl) {
     if (!match) return null;
     const ext = normalizeExt(match[1]);
     const base64 = match[2].replace(/\s/g, '');
+    const buffer = Buffer.from(base64, 'base64');
+    const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    if (detectMimeFromMagic(buffer, mimeType) !== mimeType) return null;
     return {
         ext,
-        mimeType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-        buffer: Buffer.from(base64, 'base64')
+        mimeType,
+        buffer
     };
 }
 
@@ -271,11 +275,12 @@ async function saveUserImageAsset(dataUrl, { ownerId, alt = '', fileName = '', s
     `).get(asset.id);
 }
 
-async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octet-stream', fileName = '', alt = '', storage = 'auto', uploadPath = '' } = {}) {
+async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octet-stream', fileName = '', alt = '', storage = 'auto', uploadPath = '', allowDangerous = false } = {}) {
     if (!ownerId || !Buffer.isBuffer(buffer) || !buffer.length) return null;
     const id = crypto.randomUUID();
-    const normalizedMimeType = normalizeAssetMimeType({ fileName, mimeType });
-    const ext = normalizeAssetExt({ fileName, mimeType: normalizedMimeType });
+    const inspection = validateUserUpload({ buffer, fileName, claimedMimeType: mimeType, allowDangerous });
+    const normalizedMimeType = normalizeAssetMimeType({ fileName, mimeType: inspection.trustedMimeType });
+    const ext = EXT_BY_MIME[normalizedMimeType] || normalizeAssetExt({ fileName, mimeType: normalizedMimeType });
     const normalizedAssetType = assetTypeFromMime(normalizedMimeType);
     const managedUploadPath = userAssetUploadPath(ownerId, { mimeType: normalizedMimeType, assetType: normalizedAssetType });
     const settings = objectStorage.getSettings();
