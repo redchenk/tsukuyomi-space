@@ -334,12 +334,17 @@ async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySe
     const requestDate = amzDate(now);
     const scopeDate = dateStamp(now);
     const payloadHash = 'UNSIGNED-PAYLOAD';
+    const extraHeaders = normalizeExtraHeaders(headers);
     const headersForCanonical = {
         'x-oss-content-sha256': payloadHash,
         'x-oss-date': requestDate,
-        ...normalizeExtraHeaders(headers)
+        ...extraHeaders
     };
     if (contentType) headersForCanonical['content-type'] = contentType;
+    const additionalHeaders = Object.keys(extraHeaders)
+        .filter(key => !key.startsWith('x-oss-') && !['content-type', 'content-md5'].includes(key))
+        .sort()
+        .join(';');
     const canonicalHeaders = Object.entries(headersForCanonical)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([key, value]) => `${key}:${String(value).trim()}\n`)
@@ -349,7 +354,7 @@ async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySe
         aliyunCanonicalPath(settings, url),
         canonicalQueryString(url.searchParams),
         canonicalHeaders,
-        '',
+        additionalHeaders,
         payloadHash
     ].join('\n');
     const credentialScope = `${scopeDate}/${region}/oss/aliyun_v4_request`;
@@ -360,7 +365,7 @@ async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySe
         sha256(canonicalRequest)
     ].join('\n');
     const signature = hmac(aliyunSigningKey(accessKeySecret, scopeDate, region), stringToSign, 'hex');
-    const authorization = `OSS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope},Signature=${signature}`;
+    const authorization = `OSS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope},AdditionalHeaders=${additionalHeaders},Signature=${signature}`;
 
     return fetch(url, {
         method,
@@ -494,8 +499,7 @@ async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', set
         body: buffer,
         contentType: mimeType || 'application/octet-stream',
         headers: {
-            'Content-Disposition': attachmentDisposition(objectKey.split('/').pop() || 'attachment'),
-            'X-Content-Type-Options': 'nosniff'
+            'Content-Disposition': attachmentDisposition(objectKey.split('/').pop() || 'attachment')
         },
         settings
     });
