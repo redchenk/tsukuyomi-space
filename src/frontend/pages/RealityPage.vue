@@ -223,6 +223,26 @@ function go(path) {
           <p><strong>{{ noticePrefixes.links }}</strong>{{ t.realityNoticeLinks }}</p>
           <p><strong>{{ noticePrefixes.update }}</strong>{{ t.realityNoticeUpdate }}</p>
         </div>
+        <div class="reality-source-note">
+          <p v-if="!isJa">
+            <strong>素材与版权：</strong>本站使用《超时空辉夜姬》相关视觉、角色与音乐素材，版权归原著及相关权利方所有；本站为非盈利性质，仅用于个人兴趣展示与交流。
+          </p>
+          <p v-else>
+            <strong>素材と著作権：</strong>本サイトで使用している「超時空輝夜姫」関連のビジュアル、キャラクター、音楽素材の権利は原著作権者および関連権利者に帰属します。本サイトは非営利の個人展示・交流目的です。
+          </p>
+          <p v-if="!isJa">
+            <strong>Live2D 模型来源：</strong>站内 Live2D 模型来自 B 站 <a href="https://space.bilibili.com/3546783265327964?spm_id_from=333.337.0.0" target="_blank" rel="noopener noreferrer">雪熊企划</a>，模型版权归原作者及相关权利方所有。
+          </p>
+          <p v-else>
+            <strong>Live2D モデル出典：</strong>サイト内の Live2D モデルは Bilibili の <a href="https://space.bilibili.com/3546783265327964?spm_id_from=333.337.0.0" target="_blank" rel="noopener noreferrer">雪熊企划</a> に由来し、モデルの権利は原作者および関連権利者に帰属します。
+          </p>
+          <p v-if="!isJa">
+            <strong>图标来源：</strong>站内部分界面图标使用 <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> 开源图标集，遵循其开源许可证。
+          </p>
+          <p v-else>
+            <strong>アイコン：</strong>一部のUIアイコンには <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> のオープンソースアイコンを使用しています。
+          </p>
+        </div>
       </section>
 
       <div class="reality-footer">
