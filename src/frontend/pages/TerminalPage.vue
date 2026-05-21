@@ -96,6 +96,8 @@ const filteredUsers = computed(() => {
   return terminal.users.filter((item) => [item.username, item.email, item.role, item.id].some((value) => String(value || '').toLowerCase().includes(keyword)));
 });
 const pendingMessageCount = computed(() => terminal.messages.filter((item) => item.status !== 'approved').length);
+const plazaMessageCount = computed(() => terminal.messages.filter((item) => !item.article_id).length);
+const articleMessageCount = computed(() => terminal.messages.filter((item) => item.article_id).length);
 const publishedArticleCount = computed(() => terminal.articles.filter((item) => item.status === 'published').length);
 const pinnedArticleCount = computed(() => terminal.articles.filter((item) => item.pinned_at).length);
 
@@ -106,6 +108,15 @@ function formatDate(value) {
 
 function articlePath(article) {
   return `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
+}
+
+function messageSourceLabel(item) {
+  return item.article_id ? '文章评论' : '留言墙';
+}
+
+function messageArticlePath(item) {
+  if (!item.article_id) return '';
+  return `/articles/${encodeURIComponent(item.article_id)}${item.article_slug ? `/${encodeURIComponent(item.article_slug)}` : ''}`;
 }
 
 function showMessage(text, type = 'success') {
@@ -540,10 +551,23 @@ onUnmounted(() => {
             <div class="terminal-summary-row">
               <span>待审核 {{ pendingMessageCount }}</span>
               <span>已通过 {{ terminal.messages.length - pendingMessageCount }}</span>
+              <span>留言墙 {{ plazaMessageCount }}</span>
+              <span>文章评论 {{ articleMessageCount }}</span>
               <span>总留言 {{ terminal.messages.length }}</span>
             </div>
-            <div class="terminal-table-wrap"><table><thead><tr><th>作者</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
-              <tr v-for="item in terminal.messages" :key="item.id"><td>{{ item.username || item.author }}</td><td>{{ item.content }}</td><td><span class="terminal-badge" :class="item.status === 'approved' ? 'ok' : 'warn'">{{ item.status === 'approved' ? '已通过' : '待审核' }}</span></td><td>{{ formatDate(item.created_at) }}</td><td><div class="terminal-actions"><button v-if="item.status !== 'approved'" class="primary-btn" type="button" @click="approveMessage(item.id)">通过</button><button class="danger-btn" type="button" @click="deleteMessage(item.id)">删除</button></div></td></tr>
+            <div class="terminal-table-wrap"><table><thead><tr><th>作者</th><th>来源</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
+              <tr v-for="item in terminal.messages" :key="item.id">
+                <td>{{ item.username || item.author }}</td>
+                <td>
+                  <span class="terminal-badge" :class="item.article_id ? 'hot' : 'ok'">{{ messageSourceLabel(item) }}</span>
+                  <a v-if="item.article_id" class="terminal-source-link" href="#" @click.prevent="$emit('go', messageArticlePath(item))">{{ item.article_title || `文章 #${item.article_id}` }}</a>
+                  <small v-else>月读广场留言墙</small>
+                </td>
+                <td>{{ item.content }}</td>
+                <td><span class="terminal-badge" :class="item.status === 'approved' ? 'ok' : 'warn'">{{ item.status === 'approved' ? '已通过' : '待审核' }}</span></td>
+                <td>{{ formatDate(item.created_at) }}</td>
+                <td><div class="terminal-actions"><button v-if="item.status !== 'approved'" class="primary-btn" type="button" @click="approveMessage(item.id)">通过</button><button class="danger-btn" type="button" @click="deleteMessage(item.id)">删除</button></div></td>
+              </tr>
             </tbody></table></div>
           </div>
 

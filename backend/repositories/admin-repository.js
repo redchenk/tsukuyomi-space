@@ -70,13 +70,18 @@ function toggleArticlePin(id) {
 
 function listAdminMessages() {
     return db.prepare(`
-        SELECT id,
-               COALESCE(author, '匿名') AS username,
-               content,
-               COALESCE(status, 'approved') AS status,
-               created_at
-        FROM messages
-        ORDER BY created_at DESC
+        SELECT m.id,
+               COALESCE(u.username, m.author, '匿名') AS username,
+               m.content,
+               m.article_id,
+               a.title AS article_title,
+               a.slug AS article_slug,
+               COALESCE(m.status, 'approved') AS status,
+               m.created_at
+        FROM messages m
+        LEFT JOIN users u ON m.user_id = u.id
+        LEFT JOIN articles a ON m.article_id = a.id
+        ORDER BY m.created_at DESC
     `).all();
 }
 

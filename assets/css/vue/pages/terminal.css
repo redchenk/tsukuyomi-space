@@ -278,6 +278,15 @@ body .page.terminal-page .terminal-table-wrap td {
     display: block;
 }
 
+.terminal-source-link {
+    display: block;
+    margin-top: 0.4rem;
+    color: var(--ink);
+    font-weight: 800;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
 .terminal-inline-edit {
     display: flex;
     gap: 0.4rem;
