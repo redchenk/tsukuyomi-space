@@ -3,7 +3,14 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
-const { authenticateToken, generateToken, readBearerToken } = require('../middleware/auth');
+const {
+    authenticateToken,
+    generateToken,
+    readAuthTokens,
+    setAuthCookie,
+    clearAllAuthCookies,
+    USER_SESSION_COOKIE
+} = require('../middleware/auth');
 const authRepository = require('../repositories/auth-repository');
 const authState = require('../services/auth-state');
 const { EMAIL_CODE_TTL_MS, EMAIL_CODE_COOLDOWN_MS, sendVerificationEmail } = require('../services/mailer');
@@ -95,12 +102,12 @@ router.post('/register', async (req, res) => {
         authRepository.createUser({ id: userId, username, email, passwordHash: bcrypt.hashSync(password, 10) });
 
         const token = generateToken({ id: userId, username, role: 'user' }, '7d');
+        setAuthCookie(res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
         res.status(201).json({
             success: true,
             message: '注册成功',
             data: {
-                user: { id: userId, username, email, role: 'user' },
-                token
+                user: { id: userId, username, email, role: 'user' }
             }
         });
     } catch (error) {
@@ -146,6 +153,8 @@ router.post('/login', async (req, res) => {
         }
 
         await authState.clearLoginFailures(identity);
+        const token = issueTokenForUser(user);
+        setAuthCookie(res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
         res.json({
             success: true,
             message: '登录成功',
@@ -156,8 +165,7 @@ router.post('/login', async (req, res) => {
                     email: user.email,
                     role: user.role,
                     avatar: user.avatar
-                },
-                token: issueTokenForUser(user)
+                }
             }
         });
     } catch (error) {
@@ -166,9 +174,10 @@ router.post('/login', async (req, res) => {
     }
 });
 
-router.post('/logout', authenticateToken, async (req, res) => {
-    const token = readBearerToken(req);
-    if (token) await authState.blacklistToken(token);
+router.post('/logout', async (req, res) => {
+    const tokens = readAuthTokens(req);
+    await Promise.all(tokens.map(token => authState.blacklistToken(token)));
+    clearAllAuthCookies(res);
     res.json({ success: true, message: '已退出登录' });
 });
 

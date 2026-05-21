@@ -3,14 +3,79 @@ const crypto = require('crypto');
 const config = require('../config');
 const authState = require('../services/auth-state');
 
+const USER_SESSION_COOKIE = 'tsukuyomi_session';
+const ADMIN_SESSION_COOKIE = 'tsukuyomi_admin_session';
+
+function parseCookies(req) {
+    const header = String(req.headers.cookie || '');
+    return header.split(';').reduce((cookies, part) => {
+        const index = part.indexOf('=');
+        if (index < 0) return cookies;
+        const name = part.slice(0, index).trim();
+        const value = part.slice(index + 1).trim();
+        if (!name) return cookies;
+        try {
+            cookies[name] = decodeURIComponent(value);
+        } catch (_) {
+            cookies[name] = value;
+        }
+        return cookies;
+    }, {});
+}
+
 function readBearerToken(req) {
     const authHeader = req.headers.authorization || '';
     const [scheme, token] = authHeader.split(' ');
     return /^Bearer$/i.test(scheme) ? token : null;
 }
 
+function readCookieToken(req, preferred = '') {
+    const cookies = parseCookies(req);
+    if (preferred && cookies[preferred]) return cookies[preferred];
+    const url = String(req.originalUrl || req.baseUrl || req.path || '');
+    if (url.startsWith('/api/admin')) return cookies[ADMIN_SESSION_COOKIE] || cookies[USER_SESSION_COOKIE] || null;
+    return cookies[USER_SESSION_COOKIE] || cookies[ADMIN_SESSION_COOKIE] || null;
+}
+
+function readAuthToken(req, preferredCookie = '') {
+    return readBearerToken(req) || readCookieToken(req, preferredCookie);
+}
+
+function readAuthTokens(req) {
+    const tokens = new Set();
+    const bearer = readBearerToken(req);
+    const cookies = parseCookies(req);
+    if (bearer) tokens.add(bearer);
+    if (cookies[USER_SESSION_COOKIE]) tokens.add(cookies[USER_SESSION_COOKIE]);
+    if (cookies[ADMIN_SESSION_COOKIE]) tokens.add(cookies[ADMIN_SESSION_COOKIE]);
+    return [...tokens].filter(Boolean);
+}
+
+function cookieOptions({ maxAge, sameSite = 'lax' } = {}) {
+    return {
+        httpOnly: true,
+        secure: config.isProduction,
+        sameSite,
+        path: '/',
+        ...(maxAge ? { maxAge } : {})
+    };
+}
+
+function setAuthCookie(res, name, token, options = {}) {
+    res.cookie(name, token, cookieOptions(options));
+}
+
+function clearAuthCookie(res, name, sameSite = 'lax') {
+    res.clearCookie(name, cookieOptions({ sameSite }));
+}
+
+function clearAllAuthCookies(res) {
+    clearAuthCookie(res, USER_SESSION_COOKIE, 'lax');
+    clearAuthCookie(res, ADMIN_SESSION_COOKIE, 'strict');
+}
+
 async function authenticateToken(req, res, next) {
-    const token = readBearerToken(req);
+    const token = readAuthToken(req);
 
     if (!token) {
         return res.status(401).json({
@@ -68,7 +133,7 @@ function requireAdmin(req, res, next) {
 }
 
 async function optionalAuth(req, res, next) {
-    const token = readBearerToken(req);
+    const token = readAuthToken(req);
 
     if (!token) return next();
 
@@ -97,5 +162,12 @@ module.exports = {
     generateToken,
     verifyToken,
     readBearerToken,
+    readAuthToken,
+    readAuthTokens,
+    setAuthCookie,
+    clearAuthCookie,
+    clearAllAuthCookies,
+    USER_SESSION_COOKIE,
+    ADMIN_SESSION_COOKIE,
     JWT_SECRET: config.jwtSecret
 };

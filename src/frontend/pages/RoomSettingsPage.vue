@@ -169,7 +169,7 @@ const live2dTest = reactive({
   durationMs: 5000
 });
 
-const roomUser = computed(() => storedUser.value || (props.user?.id && localStorage.getItem('tsukuyomi_token') ? props.user : null));
+const roomUser = computed(() => storedUser.value || (props.user?.id ? props.user : null));
 const visitorKey = computed(() => {
   if (roomUser.value?.id) return `user:${roomUser.value.id}`;
   let id = localStorage.getItem('roomMemoryGuestId');
@@ -179,7 +179,7 @@ const visitorKey = computed(() => {
   }
   return `guest:${id}`;
 });
-const canUseServerMemory = computed(() => Boolean(roomUser.value?.id && localStorage.getItem('tsukuyomi_token')));
+const canUseServerMemory = computed(() => Boolean(roomUser.value?.id));
 const llmProviderKey = computed(() => detectLLMProvider(llm.apiUrl, llm.model));
 const syncedModelOptions = computed(() => modelOptionsForProvider(llmProviderKey.value));
 const recommendedModelOption = computed(() => recommendedModelForProvider(llmProviderKey.value));
@@ -460,7 +460,7 @@ function testStatusLabel(status) {
 }
 
 function memoryAuthHeaders(extra = {}) {
-  return { ...extra, Authorization: `Bearer ${localStorage.getItem('tsukuyomi_token') || ''}` };
+  return { ...extra };
 }
 
 function memoryTypeLabel(type) {
@@ -928,7 +928,8 @@ async function loadMemoryCount() {
   try {
     if (canUseServerMemory.value) {
       const response = await fetch(`/api/room/memory/status/live/${Date.now()}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('tsukuyomi_token')}` },
+        headers: memoryAuthHeaders(),
+        credentials: 'same-origin',
         cache: 'no-store'
       });
       const result = await response.json().catch(() => ({}));
@@ -1488,7 +1489,8 @@ async function clearMemory() {
     if (canUseServerMemory.value) {
       const response = await fetch('/api/room/memory', {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('tsukuyomi_token')}` }
+        headers: memoryAuthHeaders(),
+        credentials: 'same-origin'
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
@@ -1734,6 +1736,7 @@ onBeforeUnmount(() => {
         <div class="form-grid">
           <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="https://api.openai.com/v1/chat/completions"></label>
           <label>API Key<input v-model="llm.apiKey" type="password" placeholder="sk-..."></label>
+          <p class="field-hint warning-text">API Key 仅保存在当前浏览器本地，不会写入服务器；不建议在公共电脑使用，用完请清除浏览器站点数据。</p>
           <label>模型名称<input v-model="llm.model" type="text" list="llmSyncedModels" placeholder="gpt-4o-mini"></label>
           <datalist id="llmSyncedModels">
             <option v-for="option in syncedModelOptions" :key="`${option.source}-${option.id}`" :value="syncedModelSelectValue(option)">{{ option.label }}</option>
@@ -1786,6 +1789,7 @@ onBeforeUnmount(() => {
           </select></label>
           <label>API 端点<input v-model="tts.apiUrl" type="text" placeholder="https://api.openai.com/v1/audio/speech"></label>
           <label>API Key<input v-model="tts.apiKey" type="password" placeholder="sk-..."></label>
+          <p class="field-hint warning-text">API Key 仅保存在当前浏览器本地，不会写入服务器；不建议在公共电脑使用，用完请清除浏览器站点数据。</p>
           <label>模型名称<input v-model="tts.model" type="text" placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"></label>
           <label>音色 / Voice ID<input v-model="tts.voice" type="text" placeholder="alloy / female-shaonv / ElevenLabs voice id"></label>
           <template v-if="tts.provider === 'gpt-sovits'">
@@ -1947,6 +1951,7 @@ onBeforeUnmount(() => {
           <label>MCP HTTP 端点<input v-model="mcp.endpoint" type="text" placeholder="https://example.com/mcp"></label>
           <label>鉴权头<input v-model="mcp.authHeader" type="text" placeholder="Authorization"></label>
           <label>访问密钥<input v-model="mcp.apiKey" type="password" placeholder="Bearer ..."></label>
+          <p class="field-hint warning-text">访问密钥仅保存在当前浏览器本地，不会写入服务器；不建议在公共电脑使用，用完请清除浏览器站点数据。</p>
           <template v-if="mcp.provider.startsWith('minimax')">
             <label>MiniMax API Host<input v-model="mcp.apiHost" type="text" placeholder="https://api.minimaxi.chat"></label>
             <label>输出目录 / Base Path<input v-model="mcp.basePath" type="text" placeholder="可选，留空由 MCP 服务决定"></label>

@@ -433,7 +433,8 @@ async function initEditor() {
     try {
       const url = session.value.admin ? `/api/admin/articles/${id}` : `/api/user/articles/${id}`;
       const response = await fetch(noStoreUrl(url), {
-        headers: { Authorization: `Bearer ${session.value.token}` },
+        headers: authHeaders(),
+        credentials: 'same-origin',
         cache: 'no-store'
       });
       const result = await parseResponse(response);

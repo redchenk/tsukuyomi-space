@@ -11,33 +11,36 @@ export async function parseResponse(response) {
 }
 
 export function getAuthToken() {
-  return localStorage.getItem('tsukuyomi_token') || localStorage.getItem('admin_token') || '';
+  return getSession() ? 'cookie-session' : '';
+}
+
+function dropLegacyTokens() {
+  localStorage.removeItem('tsukuyomi_token');
+  localStorage.removeItem('admin_token');
 }
 
 export function getSession() {
-  let token = localStorage.getItem('admin_token');
+  dropLegacyTokens();
   let userStr = localStorage.getItem('admin_user');
   let admin = true;
 
-  if (!token || !userStr) {
-    token = localStorage.getItem('tsukuyomi_token');
+  if (!userStr) {
     userStr = localStorage.getItem('tsukuyomi_user');
     admin = false;
   }
 
-  if (!token || !userStr) return null;
+  if (!userStr) return null;
 
   try {
-    return { token, user: JSON.parse(userStr), admin };
+    return { token: '', user: JSON.parse(userStr), admin };
   } catch (_) {
     return null;
   }
 }
 
 export function saveUserSession(token, user) {
-  localStorage.removeItem('admin_token');
+  dropLegacyTokens();
   localStorage.removeItem('admin_user');
-  localStorage.setItem('tsukuyomi_token', token);
   localStorage.setItem('tsukuyomi_user', JSON.stringify(user));
 }
 
@@ -46,15 +49,22 @@ export function updateStoredUser(user) {
 }
 
 export function clearSession() {
-  localStorage.removeItem('tsukuyomi_token');
+  dropLegacyTokens();
   localStorage.removeItem('tsukuyomi_user');
-  localStorage.removeItem('admin_token');
   localStorage.removeItem('admin_user');
 }
 
 export function authHeaders(extra = {}) {
-  const token = getAuthToken();
-  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
+  return { ...extra };
+}
+
+export async function logoutSession() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+  } catch (_) {
+    // Client-side cleanup still matters if the network request fails.
+  }
+  clearSession();
 }
 
 export function noStoreUrl(url) {

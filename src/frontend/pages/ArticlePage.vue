@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authHeaders, getSession, parseResponse } from '../api/client';
-import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard } from '../utils/markdown';
+import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
 import { formatDateTime } from '../utils/time';
 
@@ -49,7 +49,7 @@ function renderBlockContent(content) {
   try {
     const blocks = JSON.parse(String(content || '[]'));
     if (!Array.isArray(blocks)) return renderMarkdown(content);
-    return blocks.map((block) => {
+    return sanitizeRenderedHtml(blocks.map((block) => {
       if (block?.type === 'heading') return `<h2>${escapeHtml(block.text || '')}</h2>`;
       if (block?.type === 'image' && isSafeMediaUrl(block.url)) return `<figure class="markdown-image"><img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt || '')}" loading="lazy"></figure>`;
       if (block?.type === 'bilibili') return renderBilibiliEmbed(block.bvid || block.url || block.aid, block.title || 'Bilibili video');
@@ -58,7 +58,7 @@ function renderBlockContent(content) {
       if (block?.type === 'media' && block.url) return renderMediaCard(block.url, block.title, block.description);
       if (block?.type === 'video' && block.url) return renderMediaCard(block.url, block.title || 'Video', block.description || '');
       return `<p>${escapeHtml(block?.text || block?.content || '')}</p>`;
-    }).join('');
+    }).join(''));
   } catch (_) {
     return renderMarkdown(content);
   }

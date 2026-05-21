@@ -34,12 +34,7 @@ function syncDefaultScope() {
 }
 
 function assetAuthHeaders(extra = {}) {
-  if (canManageAllAssets.value && state.scope === 'all') {
-    const token = localStorage.getItem('admin_token') || '';
-    return token ? { ...extra, Authorization: `Bearer ${token}` } : authHeaders(extra);
-  }
-  const token = localStorage.getItem('tsukuyomi_token') || '';
-  return token ? { ...extra, Authorization: `Bearer ${token}` } : authHeaders(extra);
+  return authHeaders(extra);
 }
 
 function showMessage(message, type = 'success') {

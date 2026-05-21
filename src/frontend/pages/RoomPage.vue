@@ -24,7 +24,7 @@ function readStoredUser() {
   }
 }
 
-const roomUser = computed(() => readStoredUser() || (props.user?.id && localStorage.getItem('tsukuyomi_token') ? props.user : null));
+const roomUser = computed(() => readStoredUser() || (props.user?.id ? props.user : null));
 const roomUserName = computed(() => roomUser.value?.username || roomUser.value?.email || 'Guest');
 const roomUserId = computed(() => roomUser.value?.id || roomUser.value?.username || roomUser.value?.email || '');
 </script>

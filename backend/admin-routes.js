@@ -7,7 +7,15 @@ const statsRepository = require('./repositories/stats-repository');
 const authState = require('./services/auth-state');
 const articleMedia = require('./services/article-media');
 const objectStorage = require('./services/object-storage');
-const { authenticateToken, requireAdmin, generateToken } = require('./middleware/auth');
+const {
+    authenticateToken,
+    requireAdmin,
+    generateToken,
+    readAuthToken,
+    setAuthCookie,
+    clearAuthCookie,
+    ADMIN_SESSION_COOKIE
+} = require('./middleware/auth');
 
 const router = express.Router();
 
@@ -130,8 +138,8 @@ router.post('/login', async (req, res) => {
 
         await authState.clearLoginFailures(identity);
         const token = generateToken(adminTokenPayload(admin), config.adminJwtExpiresIn);
+        setAuthCookie(res, ADMIN_SESSION_COOKIE, token, { maxAge: 24 * 60 * 60 * 1000, sameSite: 'strict' });
         ok(res, {
-            token,
             admin: {
                 id: admin.id,
                 username: admin.username,
@@ -142,6 +150,13 @@ router.post('/login', async (req, res) => {
         console.error('Admin login error:', error);
         fail(res, 500, '服务器错误');
     }
+});
+
+router.post('/logout', async (req, res) => {
+    const token = readAuthToken(req, ADMIN_SESSION_COOKIE);
+    if (token) await authState.blacklistToken(token);
+    clearAuthCookie(res, ADMIN_SESSION_COOKIE, 'strict');
+    ok(res, null, 'Logged out');
 });
 
 router.use(authenticateToken);

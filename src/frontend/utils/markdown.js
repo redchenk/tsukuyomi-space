@@ -25,6 +25,16 @@ function sanitizeMarkdownUrl(value) {
   return '';
 }
 
+export function sanitizeRenderedHtml(html) {
+  return String(html || '')
+    .replace(/<\s*\/?\s*(script|style|object|embed|link|meta|base|form|input|button|textarea|select|option|svg|math)\b[^>]*>/gi, '')
+    .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/\s+srcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/\s+style\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/\s+(href|src|poster|xlink:href)\s*=\s*(["'])\s*(?:javascript|vbscript):[\s\S]*?\2/gi, '')
+    .replace(/\s+(href|src|poster|xlink:href)\s*=\s*(?:javascript|vbscript):[^\s>]+/gi, '');
+}
+
 function iframeAttr(source, name) {
   const pattern = new RegExp(`${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i');
   const match = String(source || '').match(pattern);
@@ -341,5 +351,5 @@ export function renderMarkdown(markdown) {
     html.push(`<pre><code${codeLang ? ` class="language-${escapeAttr(codeLang)}"` : ''}>${escapeHtml(codeBuffer.join('\n'))}</code></pre>`);
   }
   flushFlow();
-  return html.join('');
+  return sanitizeRenderedHtml(html.join(''));
 }

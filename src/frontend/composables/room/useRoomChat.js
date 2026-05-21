@@ -489,11 +489,10 @@ async function callMcpTool(settings, name, args = {}) {
 async function fetchRelevantMemories(message) {
   const memorySettings = readJson('roomMemorySettings', { enabled: true });
   if (memorySettings.enabled === false) return [];
-  const token = localStorage.getItem('tsukuyomi_token') || '';
-  if (!token || !String(message || '').trim()) return [];
+  if (!String(message || '').trim()) return [];
   const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
   const response = await fetch(`/api/room/memory/live/${Date.now()}?${params}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: 'same-origin',
     cache: 'no-store'
   });
   const result = await response.json().catch(() => ({}));
@@ -699,11 +698,10 @@ export function useRoomChat({ live2d, world }) {
   async function remember(userMessage, assistantReply) {
     const memorySettings = readJson('roomMemorySettings', { enabled: true });
     if (memorySettings.enabled === false) return;
-    const token = localStorage.getItem('tsukuyomi_token') || '';
-    if (!token) return;
     await fetch('/api/room/memory', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({ userMessage, assistantReply })
     });
   }

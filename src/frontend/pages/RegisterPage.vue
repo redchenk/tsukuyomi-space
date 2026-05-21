@@ -55,6 +55,7 @@ async function submitRegister() {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({
         username: register.username.trim(),
         email: register.email.trim(),
@@ -64,8 +65,8 @@ async function submitRegister() {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.unknown);
-    if (result.data?.token) {
-      saveUserSession(result.data.token, result.data.user);
+    if (result.data?.user) {
+      saveUserSession('', result.data.user);
       emit('auth-changed');
     }
     showMessage('success', props.t.registerSuccess);

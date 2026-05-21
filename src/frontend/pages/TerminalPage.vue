@@ -17,7 +17,6 @@ const panels = [
 ];
 
 const terminal = reactive({
-  token: localStorage.getItem('admin_token') || '',
   admin: null,
   activePanel: 'dashboard',
   loading: false,
@@ -93,7 +92,7 @@ const terminal = reactive({
 });
 
 let clockTimer = 0;
-const authed = computed(() => Boolean(terminal.token && terminal.admin));
+const authed = computed(() => Boolean(terminal.admin));
 const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin');
 const filteredUsers = computed(() => {
   const keyword = terminal.userSearch.trim().toLowerCase();
@@ -143,22 +142,20 @@ async function adminApi(path, options = {}) {
   if (options.body !== undefined && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
-  if (terminal.token) headers.set('Authorization', `Bearer ${terminal.token}`);
   const method = String(options.method || 'GET').toUpperCase();
   const url = method === 'GET' ? noStoreUrl(`/api/admin${path}`) : `/api/admin${path}`;
-  const response = await fetch(url, { ...options, headers, cache: method === 'GET' ? 'no-store' : options.cache });
+  const response = await fetch(url, { ...options, headers, credentials: 'same-origin', cache: method === 'GET' ? 'no-store' : options.cache });
   const result = await parseJsonResponse(response);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
   return result.data;
 }
 
 async function verifySession() {
-  if (!terminal.token) return;
+  if (!localStorage.getItem('admin_user')) return;
   try {
     terminal.admin = await adminApi('/me');
     await loadPanel('dashboard');
   } catch (error) {
-    terminal.token = '';
     terminal.admin = null;
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
@@ -173,14 +170,16 @@ async function login() {
     const response = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify(terminal.login)
     });
     const result = await parseJsonResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || '登录失败');
-    terminal.token = result.data.token;
     terminal.admin = result.data.admin;
     terminal.login.password = '';
-    localStorage.setItem('admin_token', terminal.token);
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('tsukuyomi_token');
+    localStorage.removeItem('tsukuyomi_user');
     localStorage.setItem('admin_user', JSON.stringify(terminal.admin));
     emit('auth-changed');
     await loadPanel('dashboard');
@@ -191,8 +190,12 @@ async function login() {
   }
 }
 
-function logout() {
-  terminal.token = '';
+async function logout() {
+  try {
+    await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+  } catch (_) {
+    // Local cleanup still applies.
+  }
   terminal.admin = null;
   localStorage.removeItem('admin_token');
   localStorage.removeItem('admin_user');
@@ -411,9 +414,9 @@ async function registerOssAsset() {
     const response = await fetch('/api/assets/oss-register', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${terminal.token}`
+        'Content-Type': 'application/json'
       },
+      credentials: 'same-origin',
       body: JSON.stringify({
         objectKey,
         title: terminal.ossImport.title.trim(),
@@ -445,9 +448,9 @@ async function scanOssAssets() {
     const response = await fetch('/api/assets/oss-scan', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${terminal.token}`
+        'Content-Type': 'application/json'
       },
+      credentials: 'same-origin',
       body: JSON.stringify({
         prefix: terminal.ossImport.scanPrefix.trim(),
         maxKeys: terminal.ossImport.scanLimit || 100,

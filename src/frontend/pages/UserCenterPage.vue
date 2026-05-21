@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { authHeaders, clearSession, getAuthToken, getSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
+import { authHeaders, getAuthToken, getSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import { compressImage } from '../utils/image';
 import { formatDateOnly } from '../utils/time';
 
@@ -66,8 +66,8 @@ function articlePath(article) {
   return `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
 }
 
-function logout() {
-  clearSession();
+async function logout() {
+  await logoutSession();
   session.value = null;
   ucUser.value = null;
   emit('auth-changed');

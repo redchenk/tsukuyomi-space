@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
-import { clearSession, noStoreUrl } from './api/client';
+import { logoutSession, noStoreUrl } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
@@ -30,6 +30,8 @@ const visitPopup = ref({
 });
 
 function loadStoredUser() {
+  localStorage.removeItem('tsukuyomi_token');
+  localStorage.removeItem('admin_token');
   const raw = localStorage.getItem('tsukuyomi_user') || localStorage.getItem('admin_user');
   if (!raw) return null;
   try {
@@ -66,8 +68,8 @@ function go(path) {
   router.push(path);
 }
 
-function logout() {
-  clearSession();
+async function logout() {
+  await logoutSession();
   refreshUser();
   router.push('/');
 }
