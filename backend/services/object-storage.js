@@ -365,7 +365,12 @@ async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySe
         sha256(canonicalRequest)
     ].join('\n');
     const signature = hmac(aliyunSigningKey(accessKeySecret, scopeDate, region), stringToSign, 'hex');
-    const authorization = `OSS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope},AdditionalHeaders=${additionalHeaders},Signature=${signature}`;
+    const authorizationParts = [
+        `Credential=${accessKeyId}/${credentialScope}`
+    ];
+    if (additionalHeaders) authorizationParts.push(`AdditionalHeaders=${additionalHeaders}`);
+    authorizationParts.push(`Signature=${signature}`);
+    const authorization = `OSS4-HMAC-SHA256 ${authorizationParts.join(',')}`;
 
     return fetch(url, {
         method,
