@@ -125,10 +125,45 @@
     place-items: center;
 }
 
+.beian-links {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.22rem;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.beian-links.visible {
+    opacity: 1;
+}
+
 .beian-link {
+    display: inline-flex;
+    min-height: 1.25rem;
+    align-items: center;
+    justify-content: center;
     color: rgba(225, 236, 246, 0.62);
     font-size: 0.78rem;
+    line-height: 1.35;
     text-decoration: none;
+    transition: color 0.18s ease;
+}
+
+.beian-link.visible {
+    opacity: 1;
+}
+
+.mps-beian-link {
+    gap: 0.34rem;
+}
+
+.mps-beian-icon {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    object-fit: contain;
 }
 
 .beian-link:hover {
@@ -141,7 +176,10 @@
     z-index: 6;
     display: flex;
     justify-content: center;
+    width: min(calc(100% - 2rem), 1120px);
+    margin: 0 auto;
     padding: 0 1rem max(1.4rem, env(safe-area-inset-bottom));
+    text-align: center;
 }
 
 html[data-theme="light"] .beian-link {

@@ -1,10 +1,11 @@
 .access-page {
+    position: relative;
     isolation: isolate;
     overflow: hidden;
     min-height: 100vh;
     min-height: 100svh;
     padding-top: max(2rem, env(safe-area-inset-top));
-    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    padding-bottom: max(5.6rem, calc(env(safe-area-inset-bottom) + 4.5rem));
     background:
         linear-gradient(180deg, rgba(246, 252, 255, 0.3), rgba(239, 235, 255, 0.42)),
         url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
@@ -114,22 +115,48 @@
 }
 
 .access-beian {
-    width: 100%;
-    margin-top: 1.4rem;
-    display: flex;
+    position: absolute;
+    left: calc(50% + 30px);
+    bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.8rem));
+    z-index: 3;
+    width: min(calc(100% - 2rem), 520px);
+    transform: translateX(-50%);
+    display: grid;
+    gap: 0.32rem;
     justify-content: center;
+    text-align: center;
+    pointer-events: none;
+}
+
+.access-copyright {
+    width: 100%;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    text-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    pointer-events: auto;
+}
+
+.access-beian .beian-links,
+.access-beian .beian-link {
+    width: 100%;
+    min-width: 0;
 }
 
 .access-beian .beian-link {
     color: rgba(255, 255, 255, 0.68);
+    font-size: 0.72rem;
+    white-space: nowrap;
     text-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    pointer-events: auto;
 }
 
 @media (max-width: 720px) {
     .access-page {
         place-items: end center;
         padding-inline: 1rem;
-        padding-bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 2rem));
+        padding-bottom: max(7.2rem, calc(env(safe-area-inset-bottom) + 6rem));
     }
 
     .access-video {
@@ -148,8 +175,17 @@
     }
 
     .access-beian {
-        justify-content: flex-start;
-        margin-top: 1rem;
+        left: 50%;
+        width: min(calc(100% - 2rem), 420px);
+        justify-content: center;
+    }
+
+    .access-copyright {
+        font-size: 0.72rem;
+    }
+
+    .access-beian .beian-link {
+        font-size: 0.76rem;
     }
 
     .hero-title {

@@ -155,6 +155,9 @@ function seedSiteSettings() {
     insert.run('visitPopupButton', '我知道了');
     insert.run('beianText', '');
     insert.run('beianUrl', '');
+    insert.run('mpsBeianText', '');
+    insert.run('mpsBeianUrl', '');
+    insert.run('mpsBeianIcon', '');
     insert.run('ossEnabled', 'false');
     insert.run('ossProvider', 'aliyun');
     insert.run('ossEndpoint', '');

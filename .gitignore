@@ -6,6 +6,7 @@
 *.rar
 *.7z
 assets/uploads/
+assets/images/beian-mps.png
 
 # Node modules
 node_modules/

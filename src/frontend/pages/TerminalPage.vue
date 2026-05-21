@@ -48,6 +48,11 @@ const terminal = reactive({
     visitPopupContent: '',
     visitPopupButton: '我知道了',
     messageReviewKeywords: '',
+    beianText: '',
+    beianUrl: '',
+    mpsBeianText: '',
+    mpsBeianUrl: '',
+    mpsBeianIcon: '',
     ossEnabled: false,
     ossProvider: 'aliyun',
     ossEndpoint: '',
@@ -656,6 +661,14 @@ onUnmounted(() => {
             <div class="terminal-settings-block">
               <label>留言审核关键词<textarea v-model="terminal.settings.messageReviewKeywords" rows="5" placeholder="每行一个或用逗号分隔。命中关键词的留言会进入待审，未命中则自动通过。留空时使用系统默认备案安全词库。"></textarea></label>
               <p class="terminal-setting-note">用于阅读广场、文章评论和回复。普通友好留言会自动公开；涉及安全、违法、广告等关键词的内容进入人工审核。</p>
+            </div>
+            <div class="terminal-settings-block">
+              <label>ICP备案号<input v-model="terminal.settings.beianText" placeholder="苏ICP备2026030780号-1"></label>
+              <label>ICP备案链接<input v-model="terminal.settings.beianUrl" placeholder="https://beian.miit.gov.cn/"></label>
+              <label>公安联网备案号<input v-model="terminal.settings.mpsBeianText" placeholder="苏公网安备32058502011868号"></label>
+              <label>公安联网备案链接<input v-model="terminal.settings.mpsBeianUrl" placeholder="https://beian.mps.gov.cn/#/query/webSearch?code=32058502011868"></label>
+              <label>公安备案图标路径<input v-model="terminal.settings.mpsBeianIcon" placeholder="/assets/images/beian-mps.png"></label>
+              <p class="terminal-setting-note">公安备案会显示在 ICP 备案号下方。图标文件建议放在服务器本地 /assets/images/beian-mps.png，并用 .gitignore 排除。</p>
             </div>
             <div class="terminal-settings-block terminal-oss-settings">
               <label class="terminal-check"><input v-model="terminal.settings.ossEnabled" type="checkbox"> 自动优先使用对象存储上传</label>

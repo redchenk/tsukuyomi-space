@@ -34,6 +34,9 @@ router.get('/settings', (req, res) => {
             visitPopupContent: settings.visitPopupContent || '',
             beianText: settings.beianText || '',
             beianUrl: settings.beianUrl || '',
+            mpsBeianText: settings.mpsBeianText || '',
+            mpsBeianUrl: settings.mpsBeianUrl || '',
+            mpsBeianIcon: settings.mpsBeianIcon || '',
             publicAssetBaseUrl,
             visitPopupButton: settings.visitPopupButton || '我知道了'
         }
