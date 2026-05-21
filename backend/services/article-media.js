@@ -84,6 +84,10 @@ function userAssetUploadPath(ownerId, { mimeType = '', assetType = 'file' } = {}
     return ['users', safeUserFolderId(ownerId), assetFolderFromMime(mimeType, assetType)].join('/');
 }
 
+function userGalleryUploadPath(ownerId) {
+    return ['users', safeUserFolderId(ownerId), 'gallery'].join('/');
+}
+
 function parseDataImage(dataUrl) {
     const match = String(dataUrl || '').match(DATA_IMAGE_PATTERN);
     if (!match) return null;
@@ -275,14 +279,26 @@ async function saveUserImageAsset(dataUrl, { ownerId, alt = '', fileName = '', s
     `).get(asset.id);
 }
 
-async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octet-stream', fileName = '', alt = '', storage = 'auto', uploadPath = '', allowDangerous = false } = {}) {
+async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octet-stream', fileName = '', alt = '', storage = 'auto', uploadPath = '', allowDangerous = false, collection = '' } = {}) {
     if (!ownerId || !Buffer.isBuffer(buffer) || !buffer.length) return null;
     const id = crypto.randomUUID();
     const inspection = validateUserUpload({ buffer, fileName, claimedMimeType: mimeType, allowDangerous });
     const normalizedMimeType = normalizeAssetMimeType({ fileName, mimeType: inspection.trustedMimeType });
     const ext = EXT_BY_MIME[normalizedMimeType] || normalizeAssetExt({ fileName, mimeType: normalizedMimeType });
     const normalizedAssetType = assetTypeFromMime(normalizedMimeType);
-    const managedUploadPath = userAssetUploadPath(ownerId, { mimeType: normalizedMimeType, assetType: normalizedAssetType });
+    const isGallery = collection === 'gallery' && normalizedMimeType.startsWith('image/');
+    const managedUploadPath = isGallery
+        ? userGalleryUploadPath(ownerId)
+        : userAssetUploadPath(ownerId, { mimeType: normalizedMimeType, assetType: normalizedAssetType });
+    const assetRole = isGallery ? 'gallery' : 'attachment';
+    const metadata = {
+        role: assetRole,
+        alt,
+        fileName,
+        size: buffer.length,
+        folder: managedUploadPath,
+        ...(isGallery ? { collection: 'gallery', gallery: true, visibility: 'public' } : {})
+    };
     const settings = objectStorage.getSettings();
     const storageMode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
     if (storageMode === 'oss' && !objectStorage.hasUploadParams(settings)) {
@@ -305,11 +321,11 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
                 id,
                 articleId: null,
                 ownerId,
-                assetType: normalizedAssetType,
+                assetType: isGallery ? 'gallery-image' : normalizedAssetType,
                 mimeType: normalizedMimeType,
                 url: uploaded.url,
                 storageKey: uploaded.key,
-                metadata: { role: 'attachment', alt, fileName, size: buffer.length, storage: uploaded.storage || 'oss', folder: managedUploadPath }
+                metadata: { ...metadata, storage: uploaded.storage || 'oss' }
             });
             return db.prepare(`
                 SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
@@ -322,7 +338,11 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
         console.warn('OSS file upload failed, falling back to local storage:', error.message);
     }
 
-    saveBufferLocal({ buffer, mimeType: normalizedMimeType, ext, id, ownerId, role: 'attachment', alt, fileName, uploadPath: managedUploadPath });
+    saveBufferLocal({ buffer, mimeType: normalizedMimeType, ext, id, ownerId, role: assetRole, alt, fileName, uploadPath: managedUploadPath });
+    if (isGallery) {
+        db.prepare('UPDATE article_assets SET asset_type = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            .run('gallery-image', JSON.stringify({ ...metadata, storage: 'local' }), id);
+    }
     return db.prepare(`
         SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
         FROM article_assets

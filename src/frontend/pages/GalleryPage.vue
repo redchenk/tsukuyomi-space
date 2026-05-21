@@ -18,7 +18,6 @@ const state = reactive({
   images: [],
   search: '',
   storage: 'auto',
-  scope: 'mine',
   page: 1,
   totalPages: 1,
   total: 0,
@@ -27,6 +26,7 @@ const state = reactive({
 
 const isAuthed = computed(() => Boolean(session.value));
 const canManageAllImages = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
+const currentUserId = computed(() => session.value?.user?.id || '');
 const shownImages = computed(() => state.images);
 const latestImages = computed(() => state.images.slice(0, 4));
 const heroImage = computed(() => latestImages.value[0] ? imageUrl(latestImages.value[0]) : '/assets/images/tsukuyomi-bg.png');
@@ -39,10 +39,19 @@ function imageUrl(asset) {
   return asset.access_url || asset.display_url || asset.url;
 }
 
+function imageTitle(asset) {
+  const date = imageDate(asset);
+  return date ? `图库影像 · ${date}` : '图库影像';
+}
+
 function imageDate(asset) {
   const value = asset.created_at || asset.updated_at;
   if (!value) return '';
   return String(value).slice(0, 10);
+}
+
+function canDeleteImage(asset) {
+  return canManageAllImages.value || (asset.owner_id && asset.owner_id === currentUserId.value);
 }
 
 function showMessage(message, type = 'success') {
@@ -81,11 +90,9 @@ async function loadImages(page = 1) {
     const params = new URLSearchParams({
       page: String(page),
       limit: '48',
-      type: 'image',
       search: state.search.trim()
     });
-    if (canManageAllImages.value && state.scope === 'all') params.set('scope', 'all');
-    const response = await authFetch(noStoreUrl(`/api/assets?${params}`), {
+    const response = await authFetch(noStoreUrl(`/api/assets/gallery?${params}`), {
       headers: authHeaders(),
       cache: 'no-store'
     });
@@ -123,8 +130,9 @@ async function uploadImage(event) {
         dataUrl,
         fileName: file.name,
         mimeType: file.type || 'image/jpeg',
-        alt: file.name.replace(/\.[^.]+$/, ''),
-        storage: state.storage
+        alt: '图库图片',
+        storage: state.storage,
+        collection: 'gallery'
       },
       authHeaders({ 'Content-Type': 'application/json' }),
       (progress) => {
@@ -148,7 +156,7 @@ async function uploadImage(event) {
 }
 
 async function copyMarkdown(asset) {
-  const alt = String(asset.metadata?.alt || imageName(asset)).replace(/[\]\r\n]/g, ' ');
+  const alt = imageTitle(asset).replace(/[\]\r\n]/g, ' ');
   const url = asset.markdown_url || asset.display_url || asset.url;
   const text = `![${alt}](${url})`;
   try {
@@ -160,7 +168,7 @@ async function copyMarkdown(asset) {
 }
 
 async function deleteImage(asset) {
-  if (!confirm(`删除图片「${imageName(asset)}」？已经插入文章的图片链接可能会失效。`)) return;
+  if (!confirm(`删除这张图库图片？已经插入文章的图片链接可能会失效。`)) return;
   try {
     const response = await authFetch(`/api/assets/${encodeURIComponent(asset.id)}`, {
       method: 'DELETE',
@@ -174,11 +182,6 @@ async function deleteImage(asset) {
   } catch (error) {
     showMessage(error.message || '图片删除失败', 'error');
   }
-}
-
-function setScope(scope) {
-  state.scope = scope;
-  loadImages(1);
 }
 
 function resetSearch() {
@@ -216,10 +219,9 @@ onMounted(() => {
           <div class="gallery-toolbar">
             <label class="gallery-search">
               <TsIcon name="search" :size="18" />
-              <input v-model="state.search" type="search" placeholder="搜索标题、文件名或路径..." @keydown.enter="loadImages(1)">
+              <input v-model="state.search" type="search" placeholder="搜索标签、描述或路径..." @keydown.enter="loadImages(1)">
             </label>
-            <button class="chip" type="button" :class="{ active: state.scope === 'mine' }" @click="setScope('mine')">我的图库</button>
-            <button v-if="canManageAllImages" class="chip" type="button" :class="{ active: state.scope === 'all' }" @click="setScope('all')">全部图库</button>
+            <button class="chip active" type="button" @click="loadImages(1)">全站图库</button>
             <select v-model="state.storage" aria-label="存储位置">
               <option value="auto">默认存储</option>
               <option value="local">本地存储</option>
@@ -250,8 +252,8 @@ onMounted(() => {
           </button>
           <article>
             <span>最新上传</span>
-            <h2>{{ imageName(latestImages[0]) }}</h2>
-            <p>{{ latestImages[0].storage_key }}</p>
+            <h2>{{ imageTitle(latestImages[0]) }}</h2>
+            <p>由注册用户上传并加入图库的公开图片，不包含普通附件库图片。</p>
             <div class="gallery-feature-actions">
               <button class="ghost-btn" type="button" @click="copyMarkdown(latestImages[0])">
                 <TsIcon name="copy" :size="16" /> 复制 Markdown
@@ -266,7 +268,7 @@ onMounted(() => {
         <section v-if="state.loading" class="gallery-status">正在读取图库...</section>
         <section v-else-if="!shownImages.length" class="panel gallery-empty">
           <h2>还没有图片</h2>
-          <p>上传第一张图片后，它会出现在这里。普通用户只能看到自己的图片，管理员可以切换到全部图库。</p>
+          <p>只有选择“上传到图库”的图片会出现在这里，普通附件库图片不会自动展示。</p>
         </section>
         <section v-else class="gallery-grid">
           <article v-for="asset in shownImages" :key="asset.id" class="gallery-card">
@@ -274,7 +276,7 @@ onMounted(() => {
               <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy">
             </button>
             <div class="gallery-card-body">
-              <strong>{{ imageName(asset) }}</strong>
+              <strong>{{ imageTitle(asset) }}</strong>
               <span>{{ imageDate(asset) }}</span>
             </div>
             <div class="gallery-card-actions">
@@ -284,7 +286,7 @@ onMounted(() => {
               <a :href="imageUrl(asset)" target="_blank" rel="noopener noreferrer" title="打开图片">
                 <TsIcon name="external" :size="17" />
               </a>
-              <button type="button" title="删除图片" @click="deleteImage(asset)">
+              <button v-if="canDeleteImage(asset)" type="button" title="删除图片" @click="deleteImage(asset)">
                 <TsIcon name="trash" :size="17" />
               </button>
             </div>
@@ -308,7 +310,7 @@ onMounted(() => {
             <div><span>当前图片</span><strong>{{ state.total }}</strong><small>张</small></div>
             <div><span>本页展示</span><strong>{{ shownImages.length }}</strong><small>张</small></div>
             <div><span>存储模式</span><strong>{{ state.storage === 'oss' ? 'OSS' : state.storage === 'local' ? '本地' : '默认' }}</strong><small>上传</small></div>
-            <div><span>管理范围</span><strong>{{ state.scope === 'all' ? '全部' : '我的' }}</strong><small>图库</small></div>
+            <div><span>管理范围</span><strong>全站</strong><small>图库</small></div>
           </div>
 
           <div class="gallery-quick">
@@ -342,11 +344,11 @@ onMounted(() => {
           <img :src="imageUrl(state.selected)" :alt="imageName(state.selected)">
           <footer>
             <div>
-              <strong>{{ imageName(state.selected) }}</strong>
-              <span>{{ state.selected.storage_key }}</span>
+              <strong>{{ imageTitle(state.selected) }}</strong>
+              <span>公开图库图片</span>
             </div>
             <button class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">复制 Markdown</button>
-            <button class="danger-btn" type="button" @click="deleteImage(state.selected)">删除</button>
+            <button v-if="canDeleteImage(state.selected)" class="danger-btn" type="button" @click="deleteImage(state.selected)">删除</button>
           </footer>
         </section>
       </div>

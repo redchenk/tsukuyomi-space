@@ -288,6 +288,29 @@ router.get('/', authenticateToken, (req, res) => {
     }
 });
 
+router.get('/gallery', authenticateToken, (req, res) => {
+    try {
+        const page = parsePositiveInt(req.query.page, 1);
+        const limit = Math.min(parsePositiveInt(req.query.limit, 48), 120);
+        const offset = (page - 1) * limit;
+        const search = String(req.query.search || '').trim().slice(0, 80);
+        const assets = assetRepository.listGalleryAssets({ limit, offset, search }).map((asset) => normalizeAsset(asset, { signUrl: true }));
+        const total = assetRepository.countGalleryAssets({ search });
+        ok(res, {
+            assets,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('List gallery assets failed:', error);
+        fail(res, 500, '无法读取图库');
+    }
+});
+
 router.post('/oss-register', authenticateToken, requireAdmin, (req, res) => {
     try {
         const {
@@ -386,10 +409,14 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { dataUrl, alt, fileName, mimeType, storage } = req.body || {};
+        const { dataUrl, alt, fileName, mimeType, storage, collection } = req.body || {};
         if (!dataUrl) return fail(res, 400, '请选择要上传的文件');
         const parsed = parseDataUrl(dataUrl);
         if (!parsed?.buffer?.length) return fail(res, 400, '文件格式无效');
+        const targetCollection = String(collection || '').trim().toLowerCase();
+        if (targetCollection === 'gallery' && !String(mimeType || parsed.mimeType || '').startsWith('image/')) {
+            return fail(res, 400, '图库只支持图片文件');
+        }
         const asset = await articleMedia.saveUserFileAsset({
             buffer: parsed.buffer,
             ownerId: req.user.id,
@@ -397,6 +424,7 @@ router.post('/', authenticateToken, async (req, res) => {
             alt: String(alt || '').trim(),
             fileName: String(fileName || '').trim(),
             storage: objectStorage.normalizeStorageMode(storage),
+            collection: targetCollection,
             allowDangerous: isAdminUser(req.user)
         });
         if (!asset) return fail(res, 400, '文件格式无效');

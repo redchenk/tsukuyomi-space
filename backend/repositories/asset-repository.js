@@ -60,6 +60,42 @@ function countAssetsByOwner(ownerId, { type = '', search = '', includePublic = f
     return db.prepare(`SELECT COUNT(*) AS count FROM article_assets WHERE ${where}`).get(...params).count;
 }
 
+function buildGalleryWhere({ search = '' } = {}) {
+    const params = [];
+    let where = `
+        (mime_type LIKE 'image/%' OR asset_type LIKE '%image%')
+        AND (
+            metadata LIKE '%"collection":"gallery"%'
+            OR metadata LIKE '%"collection": "gallery"%'
+            OR metadata LIKE '%"gallery":true%'
+            OR metadata LIKE '%"gallery": true%'
+        )
+    `;
+    if (search) {
+        where += ' AND (url LIKE ? OR storage_key LIKE ? OR metadata LIKE ?)';
+        const keyword = `%${search}%`;
+        params.push(keyword, keyword, keyword);
+    }
+    return { where, params };
+}
+
+function listGalleryAssets({ limit = 60, offset = 0, search = '' } = {}) {
+    const galleryFilter = buildGalleryWhere({ search });
+    const rows = db.prepare(`
+        SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
+        FROM article_assets
+        WHERE ${galleryFilter.where}
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+    `).all(...galleryFilter.params, limit, offset);
+    return rows.map(parseMetadata);
+}
+
+function countGalleryAssets({ search = '' } = {}) {
+    const galleryFilter = buildGalleryWhere({ search });
+    return db.prepare(`SELECT COUNT(*) AS count FROM article_assets WHERE ${galleryFilter.where}`).get(...galleryFilter.params).count;
+}
+
 function findAssetForOwner(id, ownerId) {
     return parseMetadata(db.prepare(`
         SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
@@ -134,6 +170,7 @@ function deleteAssetById(id) {
 
 module.exports = {
     countAssetsByOwner,
+    countGalleryAssets,
     createAsset,
     deleteAssetById,
     deleteAssetForOwner,
@@ -141,5 +178,6 @@ module.exports = {
     findAssetByStorageKey,
     findAssetForOwner,
     isAssetPubliclyReferenced,
-    listAssetsByOwner
+    listAssetsByOwner,
+    listGalleryAssets
 };
