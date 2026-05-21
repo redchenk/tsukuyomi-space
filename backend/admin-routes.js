@@ -138,7 +138,7 @@ router.post('/login', async (req, res) => {
 
         await authState.clearLoginFailures(identity);
         const token = generateToken(adminTokenPayload(admin), config.adminJwtExpiresIn);
-        setAuthCookie(res, ADMIN_SESSION_COOKIE, token, { maxAge: 24 * 60 * 60 * 1000, sameSite: 'strict' });
+        setAuthCookie(req, res, ADMIN_SESSION_COOKIE, token, { maxAge: 24 * 60 * 60 * 1000, sameSite: 'strict' });
         ok(res, {
             admin: {
                 id: admin.id,
@@ -155,7 +155,7 @@ router.post('/login', async (req, res) => {
 router.post('/logout', async (req, res) => {
     const token = readAuthToken(req, ADMIN_SESSION_COOKIE);
     if (token) await authState.blacklistToken(token);
-    clearAuthCookie(res, ADMIN_SESSION_COOKIE, 'strict');
+    clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
     ok(res, null, 'Logged out');
 });
 

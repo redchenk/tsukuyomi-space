@@ -102,7 +102,7 @@ router.post('/register', async (req, res) => {
         authRepository.createUser({ id: userId, username, email, passwordHash: bcrypt.hashSync(password, 10) });
 
         const token = generateToken({ id: userId, username, role: 'user' }, '7d');
-        setAuthCookie(res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+        setAuthCookie(req, res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
         res.status(201).json({
             success: true,
             message: '注册成功',
@@ -154,7 +154,7 @@ router.post('/login', async (req, res) => {
 
         await authState.clearLoginFailures(identity);
         const token = issueTokenForUser(user);
-        setAuthCookie(res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+        setAuthCookie(req, res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
         res.json({
             success: true,
             message: '登录成功',
@@ -177,7 +177,7 @@ router.post('/login', async (req, res) => {
 router.post('/logout', async (req, res) => {
     const tokens = readAuthTokens(req);
     await Promise.all(tokens.map(token => authState.blacklistToken(token)));
-    clearAllAuthCookies(res);
+    clearAllAuthCookies(req, res);
     res.json({ success: true, message: '已退出登录' });
 });
 

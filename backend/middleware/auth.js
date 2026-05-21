@@ -51,27 +51,39 @@ function readAuthTokens(req) {
     return [...tokens].filter(Boolean);
 }
 
-function cookieOptions({ maxAge, sameSite = 'lax' } = {}) {
+function isSecureRequest(req) {
+    const forwardedProto = String(req?.headers?.['x-forwarded-proto'] || '').split(',')[0].trim().toLowerCase();
+    if (req?.secure || forwardedProto === 'https') return true;
+    try {
+        const publicUrl = new URL(config.publicSiteUrl);
+        const host = String(req?.headers?.['x-forwarded-host'] || req?.headers?.host || '').split(',')[0].trim().split(':')[0].toLowerCase();
+        return publicUrl.protocol === 'https:' && host === publicUrl.hostname.toLowerCase();
+    } catch (_) {
+        return false;
+    }
+}
+
+function cookieOptions({ req = null, maxAge, sameSite = 'lax' } = {}) {
     return {
         httpOnly: true,
-        secure: config.isProduction,
+        secure: config.isProduction ? isSecureRequest(req) : false,
         sameSite,
         path: '/',
         ...(maxAge ? { maxAge } : {})
     };
 }
 
-function setAuthCookie(res, name, token, options = {}) {
-    res.cookie(name, token, cookieOptions(options));
+function setAuthCookie(req, res, name, token, options = {}) {
+    res.cookie(name, token, cookieOptions({ ...options, req }));
 }
 
-function clearAuthCookie(res, name, sameSite = 'lax') {
-    res.clearCookie(name, cookieOptions({ sameSite }));
+function clearAuthCookie(req, res, name, sameSite = 'lax') {
+    res.clearCookie(name, cookieOptions({ req, sameSite }));
 }
 
-function clearAllAuthCookies(res) {
-    clearAuthCookie(res, USER_SESSION_COOKIE, 'lax');
-    clearAuthCookie(res, ADMIN_SESSION_COOKIE, 'strict');
+function clearAllAuthCookies(req, res) {
+    clearAuthCookie(req, res, USER_SESSION_COOKIE, 'lax');
+    clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
 }
 
 async function authenticateToken(req, res, next) {
@@ -167,6 +179,7 @@ module.exports = {
     setAuthCookie,
     clearAuthCookie,
     clearAllAuthCookies,
+    isSecureRequest,
     USER_SESSION_COOKIE,
     ADMIN_SESSION_COOKIE,
     JWT_SECRET: config.jwtSecret
