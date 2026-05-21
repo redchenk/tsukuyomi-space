@@ -243,16 +243,25 @@ async function deleteArticle(id) {
 }
 
 async function approveMessage(id) {
-  await adminApi(`/messages/${id}/approve`, { method: 'POST' });
-  showMessage('留言已通过');
-  await loadPanel('messages');
+  try {
+    await adminApi(`/messages/${id}/approve`, { method: 'POST' });
+    showMessage('留言已通过');
+    await loadPanel('messages');
+  } catch (error) {
+    showMessage(error.message || '留言审核失败', 'error');
+  }
 }
 
 async function deleteMessage(id) {
   if (!confirm('确定删除这条留言吗？')) return;
-  await adminApi(`/messages/${id}`, { method: 'DELETE' });
-  showMessage('留言已删除');
-  await loadPanel('messages');
+  try {
+    await adminApi(`/messages/${id}`, { method: 'DELETE' });
+    terminal.messages = terminal.messages.filter((item) => item.id !== id && item.parent_id !== id);
+    showMessage('留言已删除');
+    await loadPanel('messages');
+  } catch (error) {
+    showMessage(error.message || '留言删除失败', 'error');
+  }
 }
 
 async function deleteUser(id) {

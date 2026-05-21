@@ -73,6 +73,7 @@ function listAdminMessages() {
         SELECT m.id,
                COALESCE(u.username, m.author, '匿名') AS username,
                m.content,
+               m.parent_id,
                m.article_id,
                a.title AS article_title,
                a.slug AS article_slug,
@@ -90,7 +91,27 @@ function approveMessage(id) {
 }
 
 function deleteMessage(id) {
-    return db.prepare('DELETE FROM messages WHERE id = ?').run(id).changes;
+    const rows = db.prepare(`
+        WITH RECURSIVE message_tree(id) AS (
+            SELECT id FROM messages WHERE id = ?
+            UNION ALL
+            SELECT m.id
+            FROM messages m
+            INNER JOIN message_tree mt ON m.parent_id = mt.id
+        )
+        SELECT id FROM message_tree
+    `).all(id);
+    const ids = rows.map(row => row.id);
+    if (!ids.length) return 0;
+
+    const placeholders = ids.map(() => '?').join(',');
+    const tx = db.transaction(() => {
+        db.prepare(`DELETE FROM notifications WHERE related_message_id IN (${placeholders})`).run(...ids);
+        db.prepare(`DELETE FROM message_likes WHERE message_id IN (${placeholders})`).run(...ids);
+        db.prepare(`DELETE FROM messages WHERE id IN (${placeholders})`).run(...ids);
+    });
+    tx();
+    return ids.length;
 }
 
 function listUsers() {
