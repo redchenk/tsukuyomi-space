@@ -209,11 +209,6 @@ function assetFileName(asset, metadata = {}) {
     return metadata.fileName || metadata.title || `${asset.id}.${String(asset.mime_type || '').split('/').pop() || 'bin'}`;
 }
 
-function inlineDisposition(fileName = 'media') {
-    const fallback = String(fileName || 'media').replace(/[^\x20-\x7e]/g, '_').replace(/["\\\r\n]/g, '_').slice(0, 120) || 'media';
-    return `inline; filename="${fallback}"`;
-}
-
 function setAttachmentHeaders(res, asset, metadata = {}) {
     res.setHeader('Content-Type', asset.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', attachmentDisposition(assetFileName(asset, metadata)));
@@ -257,8 +252,6 @@ async function streamOssAsset(req, res, asset, metadata) {
     if (isBrowserPreviewMedia(asset)) {
         const redirectUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
             expiresSeconds: 6 * 60 * 60,
-            contentType: asset.mime_type || 'application/octet-stream',
-            contentDisposition: inlineDisposition(assetFileName(asset, metadata)),
             preferPublicBase: true
         });
         if (redirectUrl) {
