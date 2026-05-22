@@ -260,16 +260,14 @@
     box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
 }
 
-.gallery-feature-image,
-.gallery-feature article {
-    transition: opacity 0.42s ease, transform 0.42s ease, filter 0.42s ease;
+.gallery-feature-image img {
+    transition: opacity 0.72s ease, transform 0.72s ease, filter 0.72s ease;
 }
 
-.gallery-feature.is-fading .gallery-feature-image,
-.gallery-feature.is-fading article {
-    opacity: 0.18;
-    transform: translateY(6px);
-    filter: blur(4px);
+.gallery-feature.is-fading .gallery-feature-image img {
+    opacity: 0.16;
+    transform: scale(1.018);
+    filter: blur(5px);
 }
 
 .gallery-feature-image,

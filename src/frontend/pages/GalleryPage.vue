@@ -132,7 +132,7 @@ async function loadRandomFeatureImage() {
       requestAnimationFrame(() => {
         state.randomFeatureFading = false;
       });
-    }, 260);
+    }, 420);
   } catch (_) {
     state.randomFeatured = null;
     state.randomFeatureFading = false;
