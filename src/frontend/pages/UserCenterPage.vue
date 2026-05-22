@@ -16,6 +16,7 @@ const ucUser = ref(props.user || null);
 const sessionChecking = ref(!props.user);
 const ucToast = reactive({ text: '', visible: false });
 let ucToastTimer = 0;
+let loadedUserId = '';
 
 const uc = reactive({
   tab: 'profile',
@@ -116,8 +117,8 @@ async function ucLoadProfile() {
     if (!result.success) throw new Error(result.message || props.t.ucProfileLoadFailed);
     ucUser.value = result.data;
     uc.profileBio = result.data?.bio || '';
+    loadedUserId = result.data?.id || '';
     updateStoredUser(result.data);
-    emit('auth-changed');
   } catch (error) {
     ucShowToast(error.message || props.t.ucProfileLoadFailed);
   }
@@ -161,7 +162,6 @@ async function ucEnsureSession() {
     const currentSession = await loadCurrentSession();
     if (currentSession?.user) {
       ucUser.value = currentSession.user;
-      emit('auth-changed');
       return true;
     }
   } catch (_) {
@@ -299,7 +299,8 @@ watch(() => props.user, (nextUser) => {
   sessionChecking.value = false;
   ucUser.value = nextUser;
   uc.profileBio = nextUser.bio || '';
-  ucRefresh();
+  const nextUserId = nextUser.id || '';
+  if (nextUserId && nextUserId !== loadedUserId) ucRefresh();
 });
 
 onMounted(async () => {
