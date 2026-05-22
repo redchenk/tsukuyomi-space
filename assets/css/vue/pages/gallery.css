@@ -261,6 +261,18 @@
 }
 
 .gallery-feature-image,
+.gallery-feature article {
+    transition: opacity 0.42s ease, transform 0.42s ease, filter 0.42s ease;
+}
+
+.gallery-feature.is-fading .gallery-feature-image,
+.gallery-feature.is-fading article {
+    opacity: 0.18;
+    transform: translateY(6px);
+    filter: blur(4px);
+}
+
+.gallery-feature-image,
 .gallery-card-image {
     display: block;
     width: 100%;

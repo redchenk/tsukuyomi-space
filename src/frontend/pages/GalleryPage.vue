@@ -11,6 +11,8 @@ const props = defineProps({
 const fileInput = ref(null);
 const session = ref(getSession());
 let randomFeatureTimer = 0;
+let randomFeatureTransitionTimer = 0;
+let randomFeatureRequestId = 0;
 
 const state = reactive({
   loading: false,
@@ -27,6 +29,7 @@ const state = reactive({
   total: 0,
   latest: null,
   randomFeatured: null,
+  randomFeatureFading: false,
   selected: null
 });
 
@@ -107,6 +110,7 @@ async function loadLatestImage() {
 }
 
 async function loadRandomFeatureImage() {
+  const requestId = ++randomFeatureRequestId;
   try {
     const response = await authFetch(noStoreUrl('/api/assets/gallery/public?limit=1&random=1'), {
       headers: authHeaders({ Accept: 'application/json' }),
@@ -114,9 +118,24 @@ async function loadRandomFeatureImage() {
     });
     const result = await parseResponse(response);
     const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
-    state.randomFeatured = assets[0] || null;
+    const nextAsset = assets[0] || null;
+    if (requestId !== randomFeatureRequestId) return;
+    if (!state.randomFeatured || !nextAsset || state.randomFeatured.id === nextAsset.id) {
+      state.randomFeatured = nextAsset;
+      return;
+    }
+    state.randomFeatureFading = true;
+    window.clearTimeout(randomFeatureTransitionTimer);
+    randomFeatureTransitionTimer = window.setTimeout(() => {
+      if (requestId !== randomFeatureRequestId) return;
+      state.randomFeatured = nextAsset;
+      requestAnimationFrame(() => {
+        state.randomFeatureFading = false;
+      });
+    }, 260);
   } catch (_) {
     state.randomFeatured = null;
+    state.randomFeatureFading = false;
   }
 }
 
@@ -261,6 +280,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (randomFeatureTimer) window.clearInterval(randomFeatureTimer);
+  if (randomFeatureTransitionTimer) window.clearTimeout(randomFeatureTransitionTimer);
 });
 </script>
 
@@ -349,7 +369,7 @@ onUnmounted(() => {
           <span>支持常见图片格式，存储位置跟随管理员设置</span>
         </button>
 
-        <section v-if="randomFeatureImage && !isManageMode" class="gallery-feature">
+        <section v-if="randomFeatureImage && !isManageMode" class="gallery-feature" :class="{ 'is-fading': state.randomFeatureFading }">
           <button class="gallery-feature-image" type="button" @click="state.selected = randomFeatureImage">
             <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)">
           </button>
