@@ -45,15 +45,15 @@ const sceneLinks = computed(() => [
     label: props.t.stage
   },
   { href: '/reality', name: props.t.reality, desc: '现实世界连接入口', code: 'Reality', icon: 'compass', tone: 'pink', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
-  { href: '/arena/', name: props.t.arena, desc: '超时空辉夜姬竞技场', code: 'Arena', icon: 'gamepad', tone: 'gold', spa: false, image: '/assets/images/tsukuyomi-bg.png' }
+  { href: '/gallery', name: '图库', desc: '公开影像、插画与站点视觉记录', code: 'Gallery', icon: 'image', tone: 'gold', spa: true, image: '/assets/images/tsukuyomi-bg.png' }
 ]);
 
 const orderedSceneLinks = computed(() => {
   const links = [...sceneLinks.value];
   const realityIndex = links.findIndex((scene) => scene.href === '/reality');
-  const arenaIndex = links.findIndex((scene) => scene.href === '/arena/');
-  if (realityIndex >= 0 && arenaIndex >= 0 && realityIndex < arenaIndex) {
-    [links[realityIndex], links[arenaIndex]] = [links[arenaIndex], links[realityIndex]];
+  const galleryIndex = links.findIndex((scene) => scene.href === '/gallery');
+  if (realityIndex >= 0 && galleryIndex >= 0 && realityIndex < galleryIndex) {
+    [links[realityIndex], links[galleryIndex]] = [links[galleryIndex], links[realityIndex]];
   }
   return links;
 });
