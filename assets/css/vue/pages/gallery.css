@@ -213,6 +213,42 @@
     gap: 0.45rem;
 }
 
+.gallery-dropzone {
+    display: grid;
+    place-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-height: 168px;
+    margin-top: 1rem;
+    border: 1.5px dashed rgba(126, 219, 232, 0.42);
+    border-radius: 18px;
+    background: rgba(7, 18, 32, 0.62);
+    color: var(--text);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.gallery-dropzone strong {
+    font-size: 1.05rem;
+}
+
+.gallery-dropzone span {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.gallery-dropzone.active {
+    border-color: #7edbe8;
+    background: rgba(21, 67, 85, 0.5);
+    transform: translateY(-1px);
+}
+
+.gallery-dropzone.busy {
+    cursor: progress;
+    opacity: 0.78;
+}
+
 .gallery-feature {
     display: grid;
     overflow: hidden;

@@ -20,6 +20,7 @@ const state = reactive({
   messageType: 'success',
   images: [],
   search: '',
+  dragActive: false,
   page: 1,
   totalPages: 1,
   total: 0,
@@ -115,8 +116,7 @@ async function loadImages(page = 1) {
   }
 }
 
-async function uploadImage(event) {
-  const file = event.target.files?.[0];
+async function uploadFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) {
     showMessage('图库只支持上传图片文件', 'error');
@@ -153,10 +153,31 @@ async function uploadImage(event) {
     showMessage(error.message || '图片上传失败', 'error');
   } finally {
     state.uploading = false;
+    state.dragActive = false;
     state.uploadPhase = '';
     state.uploadProgress = 0;
     if (fileInput.value) fileInput.value.value = '';
   }
+}
+
+async function uploadImage(event) {
+  await uploadFile(event.target.files?.[0]);
+}
+
+function handleDragOver() {
+  if (!isManageMode.value || state.uploading) return;
+  state.dragActive = true;
+}
+
+function handleDragLeave(event) {
+  if (event.currentTarget.contains(event.relatedTarget)) return;
+  state.dragActive = false;
+}
+
+async function handleDrop(event) {
+  state.dragActive = false;
+  if (!isManageMode.value || state.uploading) return;
+  await uploadFile(event.dataTransfer?.files?.[0]);
 }
 
 async function copyMarkdown(asset) {
@@ -270,6 +291,23 @@ onMounted(() => {
             上传图片
           </button>
         </section>
+
+        <button
+          v-if="isManageMode"
+          class="gallery-dropzone"
+          :class="{ active: state.dragActive, busy: state.uploading }"
+          type="button"
+          :disabled="state.uploading"
+          @click="fileInput?.click()"
+          @dragover.prevent="handleDragOver"
+          @dragenter.prevent="handleDragOver"
+          @dragleave.prevent="handleDragLeave"
+          @drop.prevent="handleDrop"
+        >
+          <TsIcon name="upload" :size="26" />
+          <strong>{{ state.uploading ? '正在上传图片' : '拖拽图片到这里上传' }}</strong>
+          <span>支持常见图片格式，存储位置跟随管理员设置</span>
+        </button>
 
         <section v-if="latestImages.length && !isManageMode" class="gallery-feature">
           <button class="gallery-feature-image" type="button" @click="state.selected = latestImages[0]">
