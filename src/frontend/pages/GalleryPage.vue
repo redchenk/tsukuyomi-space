@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { compressImage } from '../utils/image';
@@ -10,6 +10,7 @@ const props = defineProps({
 });
 const fileInput = ref(null);
 const session = ref(getSession());
+let randomFeatureTimer = 0;
 
 const state = reactive({
   loading: false,
@@ -24,7 +25,8 @@ const state = reactive({
   page: 1,
   totalPages: 1,
   total: 0,
-  featured: null,
+  latest: null,
+  randomFeatured: null,
   selected: null
 });
 
@@ -34,8 +36,9 @@ const canManageAllImages = computed(() => Boolean(session.value?.admin || ['admi
 const currentUserId = computed(() => session.value?.user?.id || '');
 const manageScopeLabel = computed(() => canManageAllImages.value ? '全部图库' : '我的图库');
 const shownImages = computed(() => state.images);
-const featuredImage = computed(() => state.featured || null);
-const heroImage = computed(() => featuredImage.value ? imageUrl(featuredImage.value) : '/assets/images/tsukuyomi-bg.png');
+const latestImage = computed(() => state.latest || null);
+const randomFeatureImage = computed(() => state.randomFeatured || null);
+const heroImage = computed(() => latestImage.value ? imageUrl(latestImage.value) : '/assets/images/tsukuyomi-bg.png');
 
 function imageName(asset) {
   return asset.metadata?.title || asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
@@ -89,7 +92,21 @@ function postJsonWithProgress(url, payload, headers, onProgress) {
   });
 }
 
-async function loadFeaturedImage() {
+async function loadLatestImage() {
+  try {
+    const response = await authFetch(noStoreUrl('/api/assets/gallery/public?limit=1'), {
+      headers: authHeaders({ Accept: 'application/json' }),
+      cache: 'no-store'
+    });
+    const result = await parseResponse(response);
+    const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
+    state.latest = assets[0] || null;
+  } catch (_) {
+    state.latest = null;
+  }
+}
+
+async function loadRandomFeatureImage() {
   try {
     const response = await authFetch(noStoreUrl('/api/assets/gallery/public?limit=1&random=1'), {
       headers: authHeaders({ Accept: 'application/json' }),
@@ -97,9 +114,9 @@ async function loadFeaturedImage() {
     });
     const result = await parseResponse(response);
     const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
-    state.featured = assets[0] || null;
+    state.randomFeatured = assets[0] || null;
   } catch (_) {
-    state.featured = null;
+    state.randomFeatured = null;
   }
 }
 
@@ -163,7 +180,7 @@ async function uploadFile(file) {
     if (!result.success) throw new Error(result.message || '图片上传失败');
     state.uploadProgress = 100;
     showMessage('图片已加入图库');
-    await loadFeaturedImage();
+    await Promise.all([loadLatestImage(), loadRandomFeatureImage()]);
     await loadImages(1);
   } catch (error) {
     showMessage(error.message || '图片上传失败', 'error');
@@ -236,8 +253,14 @@ function go(path) {
 
 onMounted(() => {
   session.value = getSession();
-  loadFeaturedImage();
+  loadLatestImage();
+  loadRandomFeatureImage();
+  randomFeatureTimer = window.setInterval(loadRandomFeatureImage, 7000);
   loadImages();
+});
+
+onUnmounted(() => {
+  if (randomFeatureTimer) window.clearInterval(randomFeatureTimer);
 });
 </script>
 
@@ -326,22 +349,22 @@ onMounted(() => {
           <span>支持常见图片格式，存储位置跟随管理员设置</span>
         </button>
 
-        <section v-if="featuredImage && !isManageMode" class="gallery-feature">
-          <button class="gallery-feature-image" type="button" @click="state.selected = featuredImage">
-            <img :src="imageUrl(featuredImage)" :alt="imageName(featuredImage)">
+        <section v-if="randomFeatureImage && !isManageMode" class="gallery-feature">
+          <button class="gallery-feature-image" type="button" @click="state.selected = randomFeatureImage">
+            <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)">
           </button>
           <article>
             <span>随机影像</span>
-            <h2>{{ imageTitle(featuredImage) }}</h2>
+            <h2>{{ imageTitle(randomFeatureImage) }}</h2>
             <p>由注册用户上传并加入图库的公开图片，不包含普通附件库图片。</p>
             <div class="gallery-feature-actions">
-              <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(featuredImage)">
+              <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(randomFeatureImage)">
                 <TsIcon name="copy" :size="16" /> 复制 Markdown
               </button>
-              <a class="ghost-btn" :href="imageUrl(featuredImage)" target="_blank" rel="noopener noreferrer">
+              <a class="ghost-btn" :href="imageUrl(randomFeatureImage)" target="_blank" rel="noopener noreferrer">
                 <TsIcon name="external" :size="16" /> 打开
               </a>
-              <a class="ghost-btn" :href="imageUrl(featuredImage)" download="gallery-image" rel="noopener noreferrer">
+              <a class="ghost-btn" :href="imageUrl(randomFeatureImage)" download="gallery-image" rel="noopener noreferrer">
                 <TsIcon name="download" :size="16" /> 下载
               </a>
             </div>
