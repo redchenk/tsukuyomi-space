@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { authFetch, authHeaders, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
+import { authFetch, authHeaders, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import { compressImage } from '../utils/image';
 import { formatDateOnly } from '../utils/time';
 
@@ -13,6 +13,7 @@ const props = defineProps({
 const emit = defineEmits(['auth-changed', 'go']);
 const ucAvatarInput = ref(null);
 const ucUser = ref(props.user || null);
+const sessionChecking = ref(!props.user);
 const ucToast = reactive({ text: '', visible: false });
 let ucToastTimer = 0;
 
@@ -36,7 +37,7 @@ const uc = reactive({
   }
 });
 
-const isAuthed = computed(() => Boolean(props.user || ucUser.value));
+const isAuthed = computed(() => Boolean(ucUser.value));
 const locale = computed(() => props.lang === 'zh' ? 'zh-CN' : 'ja-JP');
 const ucAvatarSrc = computed(() => ucUser.value?.avatar || ucDefaultAvatar(ucUser.value?.username));
 const ucRoleText = computed(() => {
@@ -146,6 +147,34 @@ async function ucLoadArticles() {
 
 async function ucRefresh() {
   await Promise.all([ucLoadProfile(), ucLoadArticles()]);
+}
+
+async function ucEnsureSession() {
+  if (props.user) {
+    ucUser.value = props.user;
+    sessionChecking.value = false;
+    return true;
+  }
+
+  sessionChecking.value = true;
+  try {
+    const currentSession = await loadCurrentSession();
+    if (currentSession?.user) {
+      ucUser.value = currentSession.user;
+      emit('auth-changed');
+      return true;
+    }
+  } catch (_) {
+    // The login notice below is the right fallback for an invalid session.
+  } finally {
+    sessionChecking.value = false;
+  }
+
+  ucUser.value = null;
+  uc.profileBio = '';
+  uc.articles = [];
+  uc.articleLoading = false;
+  return false;
 }
 
 async function ucSaveProfile() {
@@ -263,25 +292,32 @@ function ucEditArticle(id) {
 }
 
 watch(() => props.user, (nextUser) => {
-  ucUser.value = nextUser || null;
   if (!nextUser) {
-    uc.profileBio = '';
-    uc.articles = [];
-    uc.articleLoading = false;
+    ucEnsureSession();
     return;
   }
+  sessionChecking.value = false;
+  ucUser.value = nextUser;
   uc.profileBio = nextUser.bio || '';
   ucRefresh();
-}, { immediate: true });
+});
 
-onMounted(() => {
-  if (isAuthed.value) ucRefresh();
+onMounted(async () => {
+  if (await ucEnsureSession()) await ucRefresh();
 });
 </script>
 
 <template>
   <main class="page uc-page">
-    <div v-if="!isAuthed" class="panel uc-login-notice">
+    <div v-if="sessionChecking" class="panel uc-login-notice">
+      <div style="text-align:center;">
+        <div class="uc-eyebrow">User Center</div>
+        <h1>Loading...</h1>
+        <p>{{ t.ucLoadingArticles }}</p>
+      </div>
+    </div>
+
+    <div v-else-if="!isAuthed" class="panel uc-login-notice">
       <div style="text-align:center;">
         <div class="uc-eyebrow">User Center</div>
         <h1>{{ t.ucNeedLogin }}</h1>
