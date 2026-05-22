@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { authHeaders, getSession, parseResponse } from '../api/client';
+import { authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
 import { compareAppDate, formatDateTime, parseAppDate } from '../utils/time';
@@ -169,7 +169,7 @@ async function plazaSubmitMessage(content) {
     return false;
   }
   try {
-    const response = await fetch('/api/messages', {
+    const response = await authFetch('/api/messages', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ content: content.trim() })
@@ -195,7 +195,7 @@ async function plazaSubmitReply(parentId, content) {
     return false;
   }
   try {
-    const response = await fetch(`/api/messages/${parentId}/reply`, {
+    const response = await authFetch(`/api/messages/${parentId}/reply`, {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ content: content.trim() })
@@ -221,7 +221,7 @@ async function plazaLikeMessage(id) {
     return;
   }
   try {
-    const response = await fetch(`/api/messages/${id}/like`, {
+    const response = await authFetch(`/api/messages/${id}/like`, {
       method: 'POST',
       headers: authHeaders()
     });

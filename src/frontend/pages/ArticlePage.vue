@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { authHeaders, getSession, parseResponse } from '../api/client';
+import { authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
 import { formatDateTime } from '../utils/time';
@@ -130,7 +130,7 @@ async function submitComment() {
     return;
   }
 
-  const response = await fetch('/api/messages', {
+  const response = await authFetch('/api/messages', {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ content, article_id: articleId.value })
@@ -153,7 +153,7 @@ async function submitReply(commentId) {
     return;
   }
 
-  const response = await fetch(`/api/messages/${commentId}/reply`, {
+  const response = await authFetch(`/api/messages/${commentId}/reply`, {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ content })
@@ -176,7 +176,7 @@ async function likeComment(commentId) {
     return;
   }
 
-  const response = await fetch(`/api/messages/${commentId}/like`, {
+  const response = await authFetch(`/api/messages/${commentId}/like`, {
     method: 'POST',
     headers: authHeaders()
   });

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { authHeaders, getSession, parseResponse } from '../api/client';
+import { authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { compareAppDate } from '../utils/time';
@@ -158,7 +158,7 @@ async function submitPlazaQuick() {
   }
   plazaQuick.loading = true;
   try {
-    const response = await fetch('/api/messages', {
+    const response = await authFetch('/api/messages', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ content })
