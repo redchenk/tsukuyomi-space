@@ -118,6 +118,11 @@ const iconPaths = {
     ['path', { d: 'm7 9 5-5 5 5' }],
     ['path', { d: 'M4 20h16' }]
   ],
+  download: [
+    ['path', { d: 'M12 4v12' }],
+    ['path', { d: 'm7 11 5 5 5-5' }],
+    ['path', { d: 'M4 20h16' }]
+  ],
   copy: [
     ['rect', { x: '8', y: '8', width: '12', height: '12', rx: '2' }],
     ['path', { d: 'M4 16V6a2 2 0 0 1 2-2h10' }]

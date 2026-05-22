@@ -72,7 +72,7 @@
 
 .gallery-toolbar {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) auto auto minmax(120px, 150px) auto auto;
+    grid-template-columns: minmax(220px, 1fr) auto auto auto;
     gap: 0.7rem;
     align-items: center;
 }
@@ -97,12 +97,6 @@
     background: transparent;
     color: #fff;
     outline: 0;
-}
-
-.gallery-toolbar select {
-    width: 100%;
-    border-color: rgba(205, 216, 255, 0.2);
-    background: rgba(8, 14, 31, 0.66);
 }
 
 .gallery-toolbar .chip,
@@ -245,7 +239,7 @@
 
 .gallery-card-body {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.7rem;
     padding: 0.85rem 0.9rem 0.55rem;
 }
@@ -447,7 +441,7 @@
 
 .gallery-lightbox footer {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     gap: 0.7rem;
     align-items: center;
     padding: 1rem;
@@ -516,7 +510,6 @@
     }
 
     .gallery-search,
-    .gallery-toolbar select,
     .gallery-toolbar .ghost-btn,
     .gallery-upload-btn {
         grid-column: 1 / -1;

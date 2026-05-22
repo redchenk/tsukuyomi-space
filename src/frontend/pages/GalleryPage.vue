@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { compressImage } from '../utils/image';
 
@@ -17,7 +17,6 @@ const state = reactive({
   messageType: 'success',
   images: [],
   search: '',
-  storage: 'auto',
   page: 1,
   totalPages: 1,
   total: 0,
@@ -62,7 +61,7 @@ function showMessage(message, type = 'success') {
 function postJsonWithProgress(url, payload, headers, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
+    xhr.open('POST', apiUrl(url));
     xhr.withCredentials = true;
     Object.entries(headers || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
@@ -131,7 +130,6 @@ async function uploadImage(event) {
         fileName: file.name,
         mimeType: file.type || 'image/jpeg',
         alt: '图库图片',
-        storage: state.storage,
         collection: 'gallery'
       },
       authHeaders({ 'Content-Type': 'application/json' }),
@@ -222,11 +220,6 @@ onMounted(() => {
               <input v-model="state.search" type="search" placeholder="搜索标签、描述或路径..." @keydown.enter="loadImages(1)">
             </label>
             <button class="chip active" type="button" @click="loadImages(1)">全站图库</button>
-            <select v-model="state.storage" aria-label="存储位置">
-              <option value="auto">默认存储</option>
-              <option value="local">本地存储</option>
-              <option value="oss">对象存储</option>
-            </select>
             <button class="ghost-btn" type="button" @click="resetSearch">重置</button>
             <button class="primary-btn gallery-upload-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
               <TsIcon name="upload" :size="18" />
@@ -261,6 +254,9 @@ onMounted(() => {
               <a class="ghost-btn" :href="imageUrl(latestImages[0])" target="_blank" rel="noopener noreferrer">
                 <TsIcon name="external" :size="16" /> 打开
               </a>
+              <a class="ghost-btn" :href="imageUrl(latestImages[0])" download="gallery-image" rel="noopener noreferrer">
+                <TsIcon name="download" :size="16" /> 下载
+              </a>
             </div>
           </article>
         </section>
@@ -276,7 +272,6 @@ onMounted(() => {
               <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy">
             </button>
             <div class="gallery-card-body">
-              <strong>{{ imageTitle(asset) }}</strong>
               <span>{{ imageDate(asset) }}</span>
             </div>
             <div class="gallery-card-actions">
@@ -285,6 +280,9 @@ onMounted(() => {
               </button>
               <a :href="imageUrl(asset)" target="_blank" rel="noopener noreferrer" title="打开图片">
                 <TsIcon name="external" :size="17" />
+              </a>
+              <a :href="imageUrl(asset)" download="gallery-image" rel="noopener noreferrer" title="下载图片">
+                <TsIcon name="download" :size="17" />
               </a>
               <button v-if="canDeleteImage(asset)" type="button" title="删除图片" @click="deleteImage(asset)">
                 <TsIcon name="trash" :size="17" />
@@ -309,8 +307,6 @@ onMounted(() => {
           <div class="gallery-stats">
             <div><span>当前图片</span><strong>{{ state.total }}</strong><small>张</small></div>
             <div><span>本页展示</span><strong>{{ shownImages.length }}</strong><small>张</small></div>
-            <div><span>存储模式</span><strong>{{ state.storage === 'oss' ? 'OSS' : state.storage === 'local' ? '本地' : '默认' }}</strong><small>上传</small></div>
-            <div><span>管理范围</span><strong>全站</strong><small>图库</small></div>
           </div>
 
           <div class="gallery-quick">
@@ -348,6 +344,7 @@ onMounted(() => {
               <span>公开图库图片</span>
             </div>
             <button class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">复制 Markdown</button>
+            <a class="ghost-btn" :href="imageUrl(state.selected)" download="gallery-image" rel="noopener noreferrer">下载</a>
             <button v-if="canDeleteImage(state.selected)" class="danger-btn" type="button" @click="deleteImage(state.selected)">删除</button>
           </footer>
         </section>
