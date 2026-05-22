@@ -13,6 +13,11 @@
     min-width: 0;
 }
 
+.gallery-page-manage {
+    width: min(100%, 1280px);
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .gallery-hero {
     position: relative;
     overflow: hidden;
@@ -32,6 +37,18 @@
     inset: 0;
     background: radial-gradient(circle at 72% 28%, rgba(147, 119, 255, 0.28), transparent 35%);
     pointer-events: none;
+}
+
+.gallery-hero-manage {
+    min-height: 230px;
+    border-color: rgba(126, 219, 232, 0.34);
+    background:
+        linear-gradient(135deg, rgba(8, 17, 31, 0.96), rgba(19, 42, 58, 0.88)),
+        var(--gallery-hero-image) center / cover no-repeat;
+}
+
+.gallery-hero-manage::after {
+    background: linear-gradient(120deg, rgba(126, 219, 232, 0.2), rgba(165, 107, 255, 0.14));
 }
 
 .gallery-hero > * {
@@ -68,6 +85,24 @@
     margin: 1rem 0 2rem;
     color: rgba(236, 242, 255, 0.86);
     font-weight: 700;
+}
+
+.gallery-manage-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: fit-content;
+    margin-top: 0.95rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(126, 219, 232, 0.28);
+    border-radius: 999px;
+    background: rgba(7, 22, 35, 0.72);
+    color: rgba(232, 249, 255, 0.92);
+    font-weight: 900;
+}
+
+.gallery-manage-badge b {
+    color: #7edbe8;
 }
 
 .gallery-toolbar {
@@ -143,6 +178,39 @@
     border-radius: inherit;
     background: linear-gradient(90deg, #7edbe8, #a56bff);
     transition: width 0.18s ease;
+}
+
+.gallery-manage-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    gap: 0.8rem;
+    align-items: center;
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid rgba(126, 219, 232, 0.22);
+    border-radius: 16px;
+    background: rgba(8, 20, 34, 0.78);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
+}
+
+.gallery-manage-strip div {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.gallery-manage-strip span {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.gallery-manage-strip strong {
+    color: var(--text);
+    font-size: 1.25rem;
+}
+
+.gallery-manage-strip .primary-btn {
+    gap: 0.45rem;
 }
 
 .gallery-feature {
@@ -517,6 +585,10 @@
     }
 
     .gallery-feature {
+        grid-template-columns: 1fr;
+    }
+
+    .gallery-manage-strip {
         grid-template-columns: 1fr;
     }
 

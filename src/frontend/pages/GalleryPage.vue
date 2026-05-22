@@ -30,6 +30,7 @@ const isAuthed = computed(() => Boolean(session.value));
 const isManageMode = computed(() => props.routeName === 'galleryManage');
 const canManageAllImages = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
 const currentUserId = computed(() => session.value?.user?.id || '');
+const manageScopeLabel = computed(() => canManageAllImages.value ? '全部图库' : '我的图库');
 const shownImages = computed(() => state.images);
 const latestImages = computed(() => state.images.slice(0, 4));
 const heroImage = computed(() => latestImages.value[0] ? imageUrl(latestImages.value[0]) : '/assets/images/tsukuyomi-bg.png');
@@ -203,7 +204,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page gallery-page">
+  <main class="page gallery-page" :class="{ 'gallery-page-manage': isManageMode }">
     <section v-if="!isAuthed" class="panel gallery-empty">
       <span class="gallery-kicker">Gallery</span>
       <h1>图库</h1>
@@ -213,10 +214,15 @@ onMounted(() => {
 
     <template v-else>
       <section class="gallery-main">
-        <header class="gallery-hero" :style="{ '--gallery-hero-image': `url(${heroImage})` }">
+        <header class="gallery-hero" :class="{ 'gallery-hero-manage': isManageMode }" :style="{ '--gallery-hero-image': `url(${heroImage})` }">
           <div class="gallery-breadcrumb">首页 / 图库</div>
           <h1>图库</h1>
           <strong>{{ isManageMode ? 'Gallery Manager' : 'Gallery' }}</strong>
+          <div v-if="isManageMode" class="gallery-manage-badge">
+            <TsIcon name="settings" :size="16" />
+            <span>管理模式</span>
+            <b>{{ manageScopeLabel }}</b>
+          </div>
           <p v-if="isManageMode">管理你上传到图库的图片。管理员可管理全站图库图片。</p>
           <p>收藏插画、截图、设定图与站点视觉记录。</p>
 
@@ -225,8 +231,9 @@ onMounted(() => {
               <TsIcon name="search" :size="18" />
               <input v-model="state.search" type="search" placeholder="搜索标签、描述或路径..." @keydown.enter="loadImages(1)">
             </label>
-            <button class="chip active" type="button" @click="loadImages(1)">全站图库</button>
+            <button class="chip active" type="button" @click="loadImages(1)">{{ isManageMode ? manageScopeLabel : '全站图库' }}</button>
             <button class="ghost-btn" type="button" @click="resetSearch">重置</button>
+            <button v-if="isManageMode" class="ghost-btn" type="button" @click="go('/gallery')">查看图库</button>
             <button v-if="isManageMode" class="primary-btn gallery-upload-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
               <TsIcon name="upload" :size="18" />
               <span>{{ state.uploading ? '上传中...' : '上传图片' }}</span>
@@ -245,7 +252,26 @@ onMounted(() => {
 
         <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>
 
-        <section v-if="latestImages.length" class="gallery-feature">
+        <section v-if="isManageMode" class="gallery-manage-strip">
+          <div>
+            <span>管理范围</span>
+            <strong>{{ manageScopeLabel }}</strong>
+          </div>
+          <div>
+            <span>当前图片</span>
+            <strong>{{ state.total }}</strong>
+          </div>
+          <div>
+            <span>本页展示</span>
+            <strong>{{ shownImages.length }}</strong>
+          </div>
+          <button class="primary-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
+            <TsIcon name="upload" :size="18" />
+            上传图片
+          </button>
+        </section>
+
+        <section v-if="latestImages.length && !isManageMode" class="gallery-feature">
           <button class="gallery-feature-image" type="button" @click="state.selected = latestImages[0]">
             <img :src="imageUrl(latestImages[0])" :alt="imageName(latestImages[0])">
           </button>
@@ -304,7 +330,7 @@ onMounted(() => {
         </div>
       </section>
 
-      <aside class="gallery-side">
+      <aside v-if="!isManageMode" class="gallery-side">
         <section class="gallery-side-card">
           <div class="gallery-side-title">
             <h2>图库概览</h2>
