@@ -14,6 +14,9 @@ export function getAuthToken() {
   return getSession() ? 'cookie-session' : '';
 }
 
+let sessionRequest = null;
+let sessionRevision = 0;
+
 function dropLegacyTokens() {
   localStorage.removeItem('tsukuyomi_token');
   localStorage.removeItem('admin_token');
@@ -42,22 +45,30 @@ function saveAdminSession(user) {
   dropLegacyTokens();
   localStorage.removeItem('tsukuyomi_user');
   localStorage.setItem('admin_user', JSON.stringify(user));
+  sessionRevision += 1;
+  sessionRequest = null;
 }
 
 export function saveUserSession(token, user) {
   dropLegacyTokens();
   localStorage.removeItem('admin_user');
   localStorage.setItem('tsukuyomi_user', JSON.stringify(user));
+  sessionRevision += 1;
+  sessionRequest = null;
 }
 
 export function updateStoredUser(user) {
   localStorage.setItem('tsukuyomi_user', JSON.stringify(user));
+  sessionRevision += 1;
+  sessionRequest = null;
 }
 
 export function clearSession() {
   dropLegacyTokens();
   localStorage.removeItem('tsukuyomi_user');
   localStorage.removeItem('admin_user');
+  sessionRevision += 1;
+  sessionRequest = null;
 }
 
 export function authHeaders(extra = {}) {
@@ -71,8 +82,9 @@ export function authFetch(url, options = {}) {
   });
 }
 
-export async function loadCurrentSession() {
+async function resolveCurrentSession({ allowClear = true } = {}) {
   dropLegacyTokens();
+  const startedRevision = sessionRevision;
 
   try {
     const response = await authFetch(noStoreUrl('/api/auth/me'), {
@@ -105,8 +117,17 @@ export async function loadCurrentSession() {
     }
   }
 
-  clearSession();
+  if (allowClear && startedRevision === sessionRevision) clearSession();
   return null;
+}
+
+export async function loadCurrentSession(options = {}) {
+  if (!sessionRequest) {
+    sessionRequest = resolveCurrentSession(options).finally(() => {
+      sessionRequest = null;
+    });
+  }
+  return sessionRequest;
 }
 
 export async function logoutSession() {

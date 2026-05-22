@@ -1,6 +1,6 @@
 <script setup>
 import { reactive } from 'vue';
-import { countdown, parseResponse, saveUserSession } from '../api/client';
+import { countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -67,7 +67,8 @@ async function submitRegister() {
     if (!result.success) throw new Error(result.message || props.t.unknown);
     if (result.data?.user) {
       saveUserSession('', result.data.user);
-      emit('auth-changed');
+      await loadCurrentSession({ allowClear: false });
+      emit('auth-changed', result.data.user);
     }
     showMessage('success', props.t.registerSuccess);
     setTimeout(() => emit('go', '/hub'), 800);

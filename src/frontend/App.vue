@@ -29,9 +29,20 @@ const visitPopup = ref({
   signature: ''
 });
 
-async function refreshUser() {
-  const session = await loadCurrentSession();
-  user.value = session?.user || null;
+let lastTrustedAuthAt = 0;
+
+async function refreshUser(trustedUser = null) {
+  if (trustedUser) {
+    user.value = trustedUser;
+    lastTrustedAuthAt = Date.now();
+  }
+  const allowClear = !user.value || Date.now() - lastTrustedAuthAt > 8000;
+  const session = await loadCurrentSession({ allowClear });
+  if (session?.user) {
+    user.value = session.user;
+    return;
+  }
+  if (allowClear) user.value = null;
 }
 
 function setLang(nextLang) {
