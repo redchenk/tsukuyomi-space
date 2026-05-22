@@ -115,6 +115,20 @@ function repliesFor(commentId) {
   return comments.value.filter((item) => item.parent_id === commentId);
 }
 
+function upsertComment(message) {
+  if (!message?.id) return;
+  const normalized = { ...message, article_id: message.article_id || articleId.value };
+  const index = comments.value.findIndex((item) => item.id === normalized.id);
+  if (index >= 0) comments.value.splice(index, 1, { ...comments.value[index], ...normalized });
+  else comments.value.unshift(normalized);
+}
+
+function patchComment(message) {
+  if (!message?.id) return;
+  const index = comments.value.findIndex((item) => item.id === message.id);
+  if (index >= 0) comments.value.splice(index, 1, { ...comments.value[index], ...message });
+}
+
 function requireLogin() {
   session.value = getSession();
   if (session.value) return true;
@@ -142,7 +156,7 @@ async function submitComment() {
   }
   commentText.value = '';
   message.value = result.message || '';
-  await loadComments();
+  if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
 }
 
 async function submitReply(commentId) {
@@ -166,7 +180,7 @@ async function submitReply(commentId) {
   replyText[commentId] = '';
   openReplies[commentId] = false;
   message.value = result.message || '';
-  await loadComments();
+  if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
 }
 
 async function likeComment(commentId) {
@@ -186,8 +200,12 @@ async function likeComment(commentId) {
     return;
   }
   localStorage.setItem(`liked_${commentId}`, '1');
+  if (result.data?.id) patchComment(result.data);
+  else {
+    const target = comments.value.find((item) => item.id === commentId);
+    if (target) target.like_count = Number(target.like_count || 0) + 1;
+  }
   message.value = '';
-  await loadComments();
 }
 
 onMounted(loadArticle);

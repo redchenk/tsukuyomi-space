@@ -149,6 +149,12 @@ function upsertPlazaMessage(message) {
   plaza.messages.unshift(normalized);
 }
 
+function patchPlazaMessage(message) {
+  if (!message?.id) return;
+  const index = plaza.messages.findIndex((item) => item.id === message.id);
+  if (index >= 0) plaza.messages.splice(index, 1, { ...plaza.messages[index], ...message });
+}
+
 async function refreshPlaza() {
   plaza.loading = true;
   session.value = getSession();
@@ -177,7 +183,8 @@ async function plazaSubmitMessage(content) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.publishFailed);
     showPlazaToast(result.message || '留言已提交，审核通过后会公开显示');
-    await refreshPlaza();
+    if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertPlazaMessage(result.data);
+    else await loadPlazaStats();
     return true;
   } catch (error) {
     showPlazaToast(error.message || props.t.publishFailed);
@@ -203,7 +210,8 @@ async function plazaSubmitReply(parentId, content) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.replyFailed);
     showPlazaToast(result.message || '回复已提交，审核通过后会公开显示');
-    await refreshPlaza();
+    if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertPlazaMessage(result.data);
+    plaza.replyOpen = { ...plaza.replyOpen, [parentId]: false };
     return true;
   } catch (error) {
     showPlazaToast(error.message || props.t.replyFailed);
@@ -227,11 +235,13 @@ async function plazaLikeMessage(id) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.likeFailed);
-    const target = plaza.messages.find((item) => item.id === id);
-    if (target) target.like_count = Number(target.like_count || 0) + 1;
+    if (result.data?.id) patchPlazaMessage(result.data);
+    else {
+      const target = plaza.messages.find((item) => item.id === id);
+      if (target) target.like_count = Number(target.like_count || 0) + 1;
+    }
     localStorage.setItem(`liked_${id}`, '1');
     showPlazaToast(props.t.likedToast);
-    await refreshPlaza();
   } catch (error) {
     showPlazaToast(error.message || props.t.likeFailed);
   }
