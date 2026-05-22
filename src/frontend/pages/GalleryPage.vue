@@ -91,7 +91,7 @@ function postJsonWithProgress(url, payload, headers, onProgress) {
 
 async function loadFeaturedImage() {
   try {
-    const response = await authFetch(noStoreUrl('/api/assets/gallery/public?limit=1'), {
+    const response = await authFetch(noStoreUrl('/api/assets/gallery/public?limit=1&random=1'), {
       headers: authHeaders({ Accept: 'application/json' }),
       cache: 'no-store'
     });
@@ -331,7 +331,7 @@ onMounted(() => {
             <img :src="imageUrl(featuredImage)" :alt="imageName(featuredImage)">
           </button>
           <article>
-            <span>最新上传</span>
+            <span>随机影像</span>
             <h2>{{ imageTitle(featuredImage) }}</h2>
             <p>由注册用户上传并加入图库的公开图片，不包含普通附件库图片。</p>
             <div class="gallery-feature-actions">

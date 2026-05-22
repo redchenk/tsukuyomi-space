@@ -306,8 +306,10 @@ router.get('/', authenticateToken, (req, res) => {
 router.get('/gallery/public', (req, res) => {
     try {
         const limit = Math.min(parsePositiveInt(req.query.limit, 4), 24);
-        const assets = assetRepository
-            .listGalleryAssets({ limit, offset: 0 })
+        const random = ['1', 'true', 'yes'].includes(String(req.query.random || '').trim().toLowerCase());
+        const assets = (random
+            ? assetRepository.listRandomGalleryAssets({ limit })
+            : assetRepository.listGalleryAssets({ limit, offset: 0 }))
             .map((asset) => normalizeAsset(asset));
         ok(res, { assets });
     } catch (error) {

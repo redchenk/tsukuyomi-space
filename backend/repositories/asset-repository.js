@@ -95,6 +95,18 @@ function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '' }
     return rows.map(parseMetadata);
 }
 
+function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '' } = {}) {
+    const galleryFilter = buildGalleryWhere({ search, ownerId });
+    const rows = db.prepare(`
+        SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
+        FROM article_assets
+        WHERE ${galleryFilter.where}
+        ORDER BY RANDOM()
+        LIMIT ?
+    `).all(...galleryFilter.params, limit);
+    return rows.map(parseMetadata);
+}
+
 function countGalleryAssets({ search = '', ownerId = '' } = {}) {
     const galleryFilter = buildGalleryWhere({ search, ownerId });
     return db.prepare(`SELECT COUNT(*) AS count FROM article_assets WHERE ${galleryFilter.where}`).get(...galleryFilter.params).count;
@@ -183,5 +195,6 @@ module.exports = {
     findAssetForOwner,
     isAssetPubliclyReferenced,
     listAssetsByOwner,
-    listGalleryAssets
+    listGalleryAssets,
+    listRandomGalleryAssets
 };
