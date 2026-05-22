@@ -60,6 +60,8 @@ router.post('/notifications/:id/read', authenticateToken, (req, res) => {
 // 鑾峰彇褰撳墠鐢ㄦ埛璧勬枡
 router.get('/profile', authenticateToken, (req, res) => {
     try {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.set('Pragma', 'no-cache');
         const user = userRepository.findProfileById(req.user.id);
 
         if (!user) {

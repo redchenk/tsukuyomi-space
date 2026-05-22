@@ -1,18 +1,18 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
-import { authFetch, authHeaders, getAuthToken, getSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { authFetch, authHeaders, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import { compressImage } from '../utils/image';
 import { formatDateOnly } from '../utils/time';
 
 const props = defineProps({
   lang: { type: String, required: true },
-  t: { type: Object, required: true }
+  t: { type: Object, required: true },
+  user: { type: Object, default: null }
 });
 
 const emit = defineEmits(['auth-changed', 'go']);
 const ucAvatarInput = ref(null);
-const session = ref(getSession());
-const ucUser = ref(session.value?.user || null);
+const ucUser = ref(props.user || null);
 const ucToast = reactive({ text: '', visible: false });
 let ucToastTimer = 0;
 
@@ -36,7 +36,7 @@ const uc = reactive({
   }
 });
 
-const isAuthed = computed(() => Boolean(session.value));
+const isAuthed = computed(() => Boolean(props.user || ucUser.value));
 const locale = computed(() => props.lang === 'zh' ? 'zh-CN' : 'ja-JP');
 const ucAvatarSrc = computed(() => ucUser.value?.avatar || ucDefaultAvatar(ucUser.value?.username));
 const ucRoleText = computed(() => {
@@ -68,7 +68,6 @@ function articlePath(article) {
 
 async function logout() {
   await logoutSession();
-  session.value = null;
   ucUser.value = null;
   emit('auth-changed');
   emit('go', '/access');
@@ -106,8 +105,7 @@ function ucFormatDate(value) {
 }
 
 async function ucLoadProfile() {
-  const token = getAuthToken();
-  if (!token) return;
+  if (!isAuthed.value) return;
   try {
     const response = await authFetch(noStoreUrl('/api/user/profile'), {
       headers: authHeaders(),
@@ -126,8 +124,7 @@ async function ucLoadProfile() {
 
 async function ucLoadArticles() {
   uc.articleLoading = true;
-  const token = getAuthToken();
-  if (!token) {
+  if (!isAuthed.value) {
     uc.articleLoading = false;
     return;
   }
@@ -148,7 +145,6 @@ async function ucLoadArticles() {
 }
 
 async function ucRefresh() {
-  session.value = getSession();
   await Promise.all([ucLoadProfile(), ucLoadArticles()]);
 }
 
@@ -265,6 +261,18 @@ async function ucDeleteArticle(id) {
 function ucEditArticle(id) {
   emit('go', `/editor?id=${id}`);
 }
+
+watch(() => props.user, (nextUser) => {
+  ucUser.value = nextUser || null;
+  if (!nextUser) {
+    uc.profileBio = '';
+    uc.articles = [];
+    uc.articleLoading = false;
+    return;
+  }
+  uc.profileBio = nextUser.bio || '';
+  ucRefresh();
+}, { immediate: true });
 
 onMounted(() => {
   if (isAuthed.value) ucRefresh();
