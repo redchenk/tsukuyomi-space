@@ -73,24 +73,6 @@ export function authFetch(url, options = {}) {
 
 export async function loadCurrentSession() {
   dropLegacyTokens();
-  const hadAdminHint = Boolean(localStorage.getItem('admin_user'));
-
-  if (hadAdminHint) {
-    try {
-      const response = await authFetch(noStoreUrl('/api/admin/me'), {
-        headers: authHeaders({ Accept: 'application/json' }),
-        cache: 'no-store'
-      });
-      const result = await parseResponse(response);
-      if (result.success && result.data) {
-        saveAdminSession(result.data);
-        return { user: result.data, admin: true };
-      }
-    } catch (_) {
-      // Fall through to normal user session validation.
-    }
-    localStorage.removeItem('admin_user');
-  }
 
   try {
     const response = await authFetch(noStoreUrl('/api/auth/me'), {
@@ -103,7 +85,24 @@ export async function loadCurrentSession() {
       return { user: result.data, admin: false };
     }
   } catch (_) {
-    // Missing or invalid cookies mean the visitor is anonymous.
+    // Fall through to optional admin session validation.
+  }
+
+  const hadAdminHint = Boolean(localStorage.getItem('admin_user'));
+  if (hadAdminHint) {
+    try {
+      const response = await authFetch(noStoreUrl('/api/admin/me'), {
+        headers: authHeaders({ Accept: 'application/json' }),
+        cache: 'no-store'
+      });
+      const result = await parseResponse(response);
+      if (result.success && result.data) {
+        saveAdminSession(result.data);
+        return { user: result.data, admin: true };
+      }
+    } catch (_) {
+      // Missing or invalid cookies mean the visitor is anonymous.
+    }
   }
 
   clearSession();

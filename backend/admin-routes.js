@@ -14,7 +14,8 @@ const {
     readAuthToken,
     setAuthCookie,
     clearAuthCookie,
-    ADMIN_SESSION_COOKIE
+    ADMIN_SESSION_COOKIE,
+    USER_SESSION_COOKIE
 } = require('./middleware/auth');
 
 const router = express.Router();
@@ -138,6 +139,7 @@ router.post('/login', async (req, res) => {
 
         await authState.clearLoginFailures(identity);
         const token = generateToken(adminTokenPayload(admin), config.adminJwtExpiresIn);
+        clearAuthCookie(req, res, USER_SESSION_COOKIE, 'lax');
         setAuthCookie(req, res, ADMIN_SESSION_COOKIE, token, { maxAge: 24 * 60 * 60 * 1000, sameSite: 'strict' });
         ok(res, {
             admin: {

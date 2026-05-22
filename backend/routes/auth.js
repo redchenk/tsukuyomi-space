@@ -8,8 +8,10 @@ const {
     generateToken,
     readAuthTokens,
     setAuthCookie,
+    clearAuthCookie,
     clearAllAuthCookies,
-    USER_SESSION_COOKIE
+    USER_SESSION_COOKIE,
+    ADMIN_SESSION_COOKIE
 } = require('../middleware/auth');
 const authRepository = require('../repositories/auth-repository');
 const authState = require('../services/auth-state');
@@ -102,6 +104,7 @@ router.post('/register', async (req, res) => {
         authRepository.createUser({ id: userId, username, email, passwordHash: bcrypt.hashSync(password, 10) });
 
         const token = generateToken({ id: userId, username, role: 'user' }, '7d');
+        clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
         setAuthCookie(req, res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
         res.status(201).json({
             success: true,
@@ -154,6 +157,7 @@ router.post('/login', async (req, res) => {
 
         await authState.clearLoginFailures(identity);
         const token = issueTokenForUser(user);
+        clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
         setAuthCookie(req, res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
         res.json({
             success: true,
