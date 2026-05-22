@@ -309,8 +309,13 @@ router.get('/gallery', authenticateToken, (req, res) => {
         const limit = Math.min(parsePositiveInt(req.query.limit, 48), 120);
         const offset = (page - 1) * limit;
         const search = String(req.query.search || '').trim().slice(0, 80);
-        const assets = assetRepository.listGalleryAssets({ limit, offset, search }).map((asset) => normalizeAsset(asset, { signUrl: true }));
-        const total = assetRepository.countGalleryAssets({ search });
+        const requestedScope = String(req.query.scope || '').trim().toLowerCase();
+        if (requestedScope === 'all' && !isAdminUser(req.user)) {
+            return fail(res, 403, 'Forbidden');
+        }
+        const ownerId = requestedScope === 'mine' ? req.user.id : '';
+        const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId }).map((asset) => normalizeAsset(asset, { signUrl: true }));
+        const total = assetRepository.countGalleryAssets({ search, ownerId });
         ok(res, {
             assets,
             pagination: {

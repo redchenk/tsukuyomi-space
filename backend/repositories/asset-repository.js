@@ -60,7 +60,7 @@ function countAssetsByOwner(ownerId, { type = '', search = '', includePublic = f
     return db.prepare(`SELECT COUNT(*) AS count FROM article_assets WHERE ${where}`).get(...params).count;
 }
 
-function buildGalleryWhere({ search = '' } = {}) {
+function buildGalleryWhere({ search = '', ownerId = '' } = {}) {
     const params = [];
     let where = `
         (mime_type LIKE 'image/%' OR asset_type LIKE '%image%')
@@ -71,6 +71,10 @@ function buildGalleryWhere({ search = '' } = {}) {
             OR metadata LIKE '%"gallery": true%'
         )
     `;
+    if (ownerId) {
+        where += ' AND owner_id = ?';
+        params.push(ownerId);
+    }
     if (search) {
         where += ' AND (url LIKE ? OR storage_key LIKE ? OR metadata LIKE ?)';
         const keyword = `%${search}%`;
@@ -79,8 +83,8 @@ function buildGalleryWhere({ search = '' } = {}) {
     return { where, params };
 }
 
-function listGalleryAssets({ limit = 60, offset = 0, search = '' } = {}) {
-    const galleryFilter = buildGalleryWhere({ search });
+function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '' } = {}) {
+    const galleryFilter = buildGalleryWhere({ search, ownerId });
     const rows = db.prepare(`
         SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
         FROM article_assets
@@ -91,8 +95,8 @@ function listGalleryAssets({ limit = 60, offset = 0, search = '' } = {}) {
     return rows.map(parseMetadata);
 }
 
-function countGalleryAssets({ search = '' } = {}) {
-    const galleryFilter = buildGalleryWhere({ search });
+function countGalleryAssets({ search = '', ownerId = '' } = {}) {
+    const galleryFilter = buildGalleryWhere({ search, ownerId });
     return db.prepare(`SELECT COUNT(*) AS count FROM article_assets WHERE ${galleryFilter.where}`).get(...galleryFilter.params).count;
 }
 

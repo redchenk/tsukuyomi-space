@@ -5,6 +5,9 @@ import TsIcon from '../components/TsIcon.vue';
 import { compressImage } from '../utils/image';
 
 const emit = defineEmits(['go']);
+const props = defineProps({
+  routeName: { type: String, default: '' }
+});
 const fileInput = ref(null);
 const session = ref(getSession());
 
@@ -24,6 +27,7 @@ const state = reactive({
 });
 
 const isAuthed = computed(() => Boolean(session.value));
+const isManageMode = computed(() => props.routeName === 'galleryManage');
 const canManageAllImages = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
 const currentUserId = computed(() => session.value?.user?.id || '');
 const shownImages = computed(() => state.images);
@@ -91,6 +95,7 @@ async function loadImages(page = 1) {
       limit: '48',
       search: state.search.trim()
     });
+    if (isManageMode.value) params.set('scope', canManageAllImages.value ? 'all' : 'mine');
     const response = await authFetch(noStoreUrl(`/api/assets/gallery?${params}`), {
       headers: authHeaders(),
       cache: 'no-store'
@@ -211,7 +216,8 @@ onMounted(() => {
         <header class="gallery-hero" :style="{ '--gallery-hero-image': `url(${heroImage})` }">
           <div class="gallery-breadcrumb">首页 / 图库</div>
           <h1>图库</h1>
-          <strong>Gallery</strong>
+          <strong>{{ isManageMode ? 'Gallery Manager' : 'Gallery' }}</strong>
+          <p v-if="isManageMode">管理你上传到图库的图片。管理员可管理全站图库图片。</p>
           <p>收藏插画、截图、设定图与站点视觉记录。</p>
 
           <div class="gallery-toolbar">
@@ -221,7 +227,7 @@ onMounted(() => {
             </label>
             <button class="chip active" type="button" @click="loadImages(1)">全站图库</button>
             <button class="ghost-btn" type="button" @click="resetSearch">重置</button>
-            <button class="primary-btn gallery-upload-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
+            <button v-if="isManageMode" class="primary-btn gallery-upload-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
               <TsIcon name="upload" :size="18" />
               <span>{{ state.uploading ? '上传中...' : '上传图片' }}</span>
             </button>
@@ -229,7 +235,7 @@ onMounted(() => {
           </div>
         </header>
 
-        <div v-if="state.uploading" class="gallery-progress" role="status" aria-live="polite">
+        <div v-if="isManageMode && state.uploading" class="gallery-progress" role="status" aria-live="polite">
           <div>
             <span>{{ state.uploadPhase || '正在上传...' }}</span>
             <strong>{{ state.uploadProgress }}%</strong>
@@ -248,7 +254,7 @@ onMounted(() => {
             <h2>{{ imageTitle(latestImages[0]) }}</h2>
             <p>由注册用户上传并加入图库的公开图片，不包含普通附件库图片。</p>
             <div class="gallery-feature-actions">
-              <button class="ghost-btn" type="button" @click="copyMarkdown(latestImages[0])">
+              <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(latestImages[0])">
                 <TsIcon name="copy" :size="16" /> 复制 Markdown
               </button>
               <a class="ghost-btn" :href="imageUrl(latestImages[0])" target="_blank" rel="noopener noreferrer">
@@ -275,7 +281,7 @@ onMounted(() => {
               <span>{{ imageDate(asset) }}</span>
             </div>
             <div class="gallery-card-actions">
-              <button type="button" title="复制 Markdown" @click="copyMarkdown(asset)">
+              <button v-if="isManageMode" type="button" title="复制 Markdown" @click="copyMarkdown(asset)">
                 <TsIcon name="copy" :size="17" />
               </button>
               <a :href="imageUrl(asset)" target="_blank" rel="noopener noreferrer" title="打开图片">
@@ -284,7 +290,7 @@ onMounted(() => {
               <a :href="imageUrl(asset)" download="gallery-image" rel="noopener noreferrer" title="下载图片">
                 <TsIcon name="download" :size="17" />
               </a>
-              <button v-if="canDeleteImage(asset)" type="button" title="删除图片" @click="deleteImage(asset)">
+              <button v-if="isManageMode && canDeleteImage(asset)" type="button" title="删除图片" @click="deleteImage(asset)">
                 <TsIcon name="trash" :size="17" />
               </button>
             </div>
@@ -343,9 +349,9 @@ onMounted(() => {
               <strong>{{ imageTitle(state.selected) }}</strong>
               <span>公开图库图片</span>
             </div>
-            <button class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">复制 Markdown</button>
+            <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">复制 Markdown</button>
             <a class="ghost-btn" :href="imageUrl(state.selected)" download="gallery-image" rel="noopener noreferrer">下载</a>
-            <button v-if="canDeleteImage(state.selected)" class="danger-btn" type="button" @click="deleteImage(state.selected)">删除</button>
+            <button v-if="isManageMode && canDeleteImage(state.selected)" class="danger-btn" type="button" @click="deleteImage(state.selected)">删除</button>
           </footer>
         </section>
       </div>

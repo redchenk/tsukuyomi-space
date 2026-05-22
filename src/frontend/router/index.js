@@ -128,6 +128,12 @@ export const routes = [
     meta: { title: '图库', description: '上传、浏览和管理月读空间图库图片。', noindex: true }
   },
   {
+    path: '/gallery/manage',
+    name: 'galleryManage',
+    component: GalleryPage,
+    meta: { title: '图库管理', description: '管理自己上传到图库的图片。', noindex: true }
+  },
+  {
     path: '/user-center',
     name: 'userCenter',
     component: UserCenterPage,

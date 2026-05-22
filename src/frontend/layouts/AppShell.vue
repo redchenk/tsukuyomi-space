@@ -30,7 +30,7 @@ const navItems = computed(() => [
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: props.routeName === 'room' || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
-  { path: '/gallery', key: 'gallery', label: '图库', icon: 'image', active: props.routeName === 'gallery', spa: true },
+  { path: '/gallery', key: 'gallery', label: '图库', icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/arena', key: 'arena', label: props.t.arena, icon: 'gamepad', active: props.routeName === 'arena', spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true }
 ]);
@@ -179,7 +179,7 @@ onMounted(loadUnreadNotifications);
         <TsIcon class="nav-icon" name="image" :size="18" />
         <span>附件库</span>
       </a>
-      <a v-if="isAuthed" href="/gallery" class="nav-link" :class="{ 'router-link-active': routeName === 'gallery' }" @click.prevent="navOpen = false; $emit('go', '/gallery')">
+      <a v-if="isAuthed" href="/gallery" class="nav-link" :class="{ 'router-link-active': routeName === 'gallery' || routeName === 'galleryManage' }" @click.prevent="navOpen = false; $emit('go', '/gallery')">
         <TsIcon class="nav-icon" name="image" :size="18" />
         <span>图库</span>
       </a>
