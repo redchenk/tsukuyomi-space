@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
-import { logoutSession, noStoreUrl } from './api/client';
+import { loadCurrentSession, logoutSession, noStoreUrl } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
@@ -11,7 +11,7 @@ const route = useRoute();
 const router = useRouter();
 const lang = ref(localStorage.getItem('lang') || 'zh');
 const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
-const user = ref(loadStoredUser());
+const user = ref(null);
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isImmersiveRoute = computed(() => isAccessRoute.value);
@@ -29,20 +29,9 @@ const visitPopup = ref({
   signature: ''
 });
 
-function loadStoredUser() {
-  localStorage.removeItem('tsukuyomi_token');
-  localStorage.removeItem('admin_token');
-  const raw = localStorage.getItem('tsukuyomi_user') || localStorage.getItem('admin_user');
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (_) {
-    return null;
-  }
-}
-
-function refreshUser() {
-  user.value = loadStoredUser();
+async function refreshUser() {
+  const session = await loadCurrentSession();
+  user.value = session?.user || null;
 }
 
 function setLang(nextLang) {
@@ -134,9 +123,12 @@ watch(hasGlobalBackground, (next) => {
 
 watch(lang, setLang, { immediate: true });
 watch(theme, setTheme, { immediate: true });
-watch(() => route.fullPath, refreshUser, { immediate: true });
+watch(() => route.fullPath, () => {
+  refreshUser();
+}, { immediate: true });
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
+  refreshUser();
   loadPublicSettings();
   if (localStorage.getItem(VIEW_RECORDED_KEY) === '1') return;
   localStorage.setItem(VIEW_RECORDED_KEY, '1');

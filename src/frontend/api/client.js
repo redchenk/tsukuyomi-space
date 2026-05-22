@@ -38,6 +38,12 @@ export function getSession() {
   }
 }
 
+function saveAdminSession(user) {
+  dropLegacyTokens();
+  localStorage.removeItem('tsukuyomi_user');
+  localStorage.setItem('admin_user', JSON.stringify(user));
+}
+
 export function saveUserSession(token, user) {
   dropLegacyTokens();
   localStorage.removeItem('admin_user');
@@ -63,6 +69,45 @@ export function authFetch(url, options = {}) {
     ...options,
     credentials: options.credentials || 'include'
   });
+}
+
+export async function loadCurrentSession() {
+  dropLegacyTokens();
+  const hadAdminHint = Boolean(localStorage.getItem('admin_user'));
+
+  if (hadAdminHint) {
+    try {
+      const response = await authFetch(noStoreUrl('/api/admin/me'), {
+        headers: authHeaders({ Accept: 'application/json' }),
+        cache: 'no-store'
+      });
+      const result = await parseResponse(response);
+      if (result.success && result.data) {
+        saveAdminSession(result.data);
+        return { user: result.data, admin: true };
+      }
+    } catch (_) {
+      // Fall through to normal user session validation.
+    }
+    localStorage.removeItem('admin_user');
+  }
+
+  try {
+    const response = await authFetch(noStoreUrl('/api/auth/me'), {
+      headers: authHeaders({ Accept: 'application/json' }),
+      cache: 'no-store'
+    });
+    const result = await parseResponse(response);
+    if (result.success && result.data) {
+      saveUserSession('', result.data);
+      return { user: result.data, admin: false };
+    }
+  } catch (_) {
+    // Missing or invalid cookies mean the visitor is anonymous.
+  }
+
+  clearSession();
+  return null;
 }
 
 export async function logoutSession() {

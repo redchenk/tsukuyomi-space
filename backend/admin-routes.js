@@ -163,6 +163,8 @@ router.use(authenticateToken);
 router.use(requireAdmin);
 
 router.get('/me', (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
     ok(res, {
         id: req.user.adminId || req.user.id,
         username: req.user.username,

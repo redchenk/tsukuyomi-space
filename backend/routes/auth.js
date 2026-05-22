@@ -183,6 +183,8 @@ router.post('/logout', async (req, res) => {
 
 router.get('/me', authenticateToken, (req, res) => {
     try {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.set('Pragma', 'no-cache');
         const user = authRepository.findCurrentUserById(req.user.id);
         if (!user) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
