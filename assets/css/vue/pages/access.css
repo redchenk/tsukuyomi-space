@@ -1,9 +1,11 @@
-.access-page {
+.page.access-page {
     position: relative;
     isolation: isolate;
     overflow: hidden;
     min-height: 100vh;
     min-height: 100svh;
+    padding-left: 0;
+    padding-right: 0;
     padding-top: max(2rem, env(safe-area-inset-top));
     padding-bottom: max(5.6rem, calc(env(safe-area-inset-bottom) + 4.5rem));
     background:
@@ -115,8 +117,8 @@
 }
 
 .access-beian {
-    position: absolute;
-    left: calc(50% + 30px);
+    position: fixed;
+    left: 50%;
     bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.8rem));
     z-index: 3;
     width: min(calc(100% - 2rem), 520px);
@@ -153,7 +155,7 @@
 }
 
 @media (max-width: 720px) {
-    .access-page {
+    .page.access-page {
         place-items: end center;
         padding-inline: 1rem;
         padding-bottom: max(7.2rem, calc(env(safe-area-inset-bottom) + 6rem));
