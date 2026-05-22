@@ -402,7 +402,8 @@ onMounted(() => {
         </section>
       </aside>
 
-      <div v-if="state.selected" class="gallery-lightbox" role="presentation" @click.self="state.selected = null">
+      <Teleport to="body">
+        <div v-if="state.selected" class="gallery-lightbox" role="presentation" @click.self="state.selected = null">
         <section role="dialog" aria-modal="true" :aria-label="imageName(state.selected)">
           <button class="gallery-lightbox-close" type="button" @click="state.selected = null">
             <TsIcon name="x" :size="18" />
@@ -418,7 +419,8 @@ onMounted(() => {
             <button v-if="isManageMode && canDeleteImage(state.selected)" class="danger-btn" type="button" @click="deleteImage(state.selected)">删除</button>
           </footer>
         </section>
-      </div>
+        </div>
+      </Teleport>
     </template>
   </main>
 </template>
