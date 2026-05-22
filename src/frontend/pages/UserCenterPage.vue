@@ -344,8 +344,6 @@ onMounted(async () => {
         </div>
         <div class="uc-hero-actions">
           <a class="primary-btn" href="/editor" @click.prevent="go('/editor')">{{ t.ucNewPost }}</a>
-          <a class="ghost-btn" href="/gallery/manage" @click.prevent="go('/gallery/manage')">图库管理</a>
-          <a class="ghost-btn" href="/attachments" @click.prevent="go('/attachments')">附件库</a>
           <a class="ghost-btn" href="/stage" @click.prevent="go('/stage')">{{ t.ucViewStage }}</a>
           <button class="ghost-btn" type="button" @click="ucRefresh">{{ t.ucRefresh }}</button>
           <button class="danger-btn" type="button" @click="logout">{{ t.ucLogout }}</button>
