@@ -1,6 +1,6 @@
 <script setup>
 import { reactive } from 'vue';
-import { countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import { apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -27,7 +27,7 @@ function showMessage(type, message) {
 async function sendCode() {
   register.sending.loading = true;
   try {
-    const response = await fetch('/api/auth/email-code', {
+    const response = await fetch(apiUrl('/api/auth/email-code'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: register.email.trim(), purpose: 'register' })
@@ -52,7 +52,7 @@ async function submitRegister() {
   }
 
   try {
-    const response = await fetch('/api/auth/register', {
+    const response = await fetch(apiUrl('/api/auth/register'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

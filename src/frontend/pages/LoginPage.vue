@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive } from 'vue';
-import { countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import { apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -33,7 +33,7 @@ function setMethod(method) {
 async function sendCode() {
   login.sending.loading = true;
   try {
-    const response = await fetch('/api/auth/email-code', {
+    const response = await fetch(apiUrl('/api/auth/email-code'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: login.username.trim(), purpose: 'login' })
@@ -53,7 +53,7 @@ async function sendCode() {
 async function submitLogin() {
   login.message = '';
   try {
-    const response = await fetch('/api/auth/login', {
+    const response = await fetch(apiUrl('/api/auth/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

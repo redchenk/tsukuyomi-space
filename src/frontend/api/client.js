@@ -10,6 +10,20 @@ export async function parseResponse(response) {
   }
 }
 
+export function apiUrl(url) {
+  const value = String(url || '');
+  if (/^https?:\/\//i.test(value)) return value;
+  if (!value.startsWith('/api')) return value;
+  if (typeof window === 'undefined') return value;
+
+  const override = localStorage.getItem('tsukuyomi_api_base_url') || '';
+  let base = override.trim().replace(/\/+$/, '');
+  if (!base && ['yachiyo.hk', 'www.yachiyo.hk'].includes(window.location.hostname)) {
+    base = 'https://origin.yachiyo.hk';
+  }
+  return base ? `${base}${value}` : value;
+}
+
 export function getAuthToken() {
   return getSession() ? 'cookie-session' : '';
 }
@@ -76,7 +90,7 @@ export function authHeaders(extra = {}) {
 }
 
 export function authFetch(url, options = {}) {
-  return fetch(url, {
+  return fetch(apiUrl(url), {
     ...options,
     credentials: options.credentials || 'include'
   });

@@ -28,7 +28,13 @@ function isAllowedOrigin(origin, req) {
         const forwardedHost = req.headers['x-forwarded-host'];
         const requestHost = forwardedHost || req.headers.host;
         if (!requestHost) return false;
-        return originUrl.host === requestHost || originUrl.hostname === requestHost.split(':')[0];
+        const requestHostname = requestHost.split(':')[0].toLowerCase();
+        const originHostname = originUrl.hostname.toLowerCase();
+        const siteHostname = new URL(config.publicSiteUrl).hostname.toLowerCase();
+        const isSameConfiguredSite = (hostname) => hostname === siteHostname || hostname.endsWith(`.${siteHostname}`);
+        return originUrl.host === requestHost
+            || originHostname === requestHostname
+            || (isSameConfiguredSite(originHostname) && isSameConfiguredSite(requestHostname));
     } catch (_) {
         return false;
     }
