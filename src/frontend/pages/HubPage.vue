@@ -12,6 +12,7 @@ const props = defineProps({
 const emit = defineEmits(['go']);
 
 const latestArticle = ref(null);
+const latestGalleryImage = ref(null);
 const plazaMessages = ref([]);
 const siteStats = ref(null);
 const plazaQuick = reactive({
@@ -45,7 +46,17 @@ const sceneLinks = computed(() => [
     label: props.t.stage
   },
   { href: '/reality', name: props.t.reality, desc: '现实世界连接入口', code: 'Reality', icon: 'compass', tone: 'pink', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
-  { href: '/gallery', name: '图库', desc: '公开影像、插画与站点视觉记录', code: 'Gallery', icon: 'image', tone: 'gold', spa: true, image: '/assets/images/tsukuyomi-bg.png' }
+  {
+    href: '/gallery',
+    name: latestGalleryImage.value ? '最新图库影像' : '图库',
+    desc: latestGalleryImage.value ? `发布于 ${formatGalleryDate(latestGalleryImage.value) || '近期'}` : '公开影像、插画与站点视觉记录',
+    code: 'Gallery',
+    icon: 'image',
+    tone: 'gold',
+    spa: true,
+    image: galleryImageUrl(latestGalleryImage.value) || '/assets/images/tsukuyomi-bg.png',
+    label: '图库'
+  }
 ]);
 
 const orderedSceneLinks = computed(() => {
@@ -72,6 +83,15 @@ function formatHubUptime(seconds = 0) {
   return `${hours || 1}小时`;
 }
 
+function galleryImageUrl(asset) {
+  return asset?.access_url || asset?.display_url || asset?.url || '';
+}
+
+function formatGalleryDate(asset) {
+  const value = asset?.created_at || asset?.updated_at;
+  return value ? String(value).slice(0, 10) : '';
+}
+
 const stats = computed(() => [
   { label: '今日访问', value: formatHubNumber(siteStats.value?.todayViews) },
   { label: '总访问', value: formatHubNumber(siteStats.value?.totalViews) },
@@ -94,27 +114,32 @@ function openScene(scene, event) {
 async function loadHubPreview() {
   try {
     const nonce = Date.now();
-    const [articleResponse, messageResponse, statsResponse] = await Promise.all([
+    const [articleResponse, messageResponse, statsResponse, galleryResponse] = await Promise.all([
       fetch(`/api/articles/live/${nonce}`, { cache: 'no-store' }),
       fetch(`/api/messages/plaza/${nonce}`, { cache: 'no-store' }),
-      fetch(`/api/stats/live/${nonce}`, { cache: 'no-store' })
+      fetch(`/api/stats/live/${nonce}`, { cache: 'no-store' }),
+      fetch(`/api/assets/gallery/public?limit=1&_=${nonce}`, { cache: 'no-store' })
     ]);
-    const [articleResult, messageResult, statsResult] = await Promise.all([
+    const [articleResult, messageResult, statsResult, galleryResult] = await Promise.all([
       parseResponse(articleResponse),
       parseResponse(messageResponse),
-      parseResponse(statsResponse)
+      parseResponse(statsResponse),
+      parseResponse(galleryResponse)
     ]);
     const articles = articleResult.success && Array.isArray(articleResult.data) ? articleResult.data : [];
     const messages = messageResult.success && Array.isArray(messageResult.data) ? messageResult.data : [];
+    const galleryAssets = galleryResult.success && Array.isArray(galleryResult.data?.assets) ? galleryResult.data.assets : [];
 
     latestArticle.value = [...articles]
       .sort((a, b) => compareAppDate(b.created_at || b.updated_at, a.created_at || a.updated_at))[0] || null;
+    latestGalleryImage.value = galleryAssets[0] || null;
     plazaMessages.value = [...messages]
       .filter((item) => !item.parent_id)
       .sort((a, b) => compareAppDate(b.created_at, a.created_at));
     siteStats.value = statsResult.success ? statsResult.data || null : null;
   } catch (_) {
     latestArticle.value = null;
+    latestGalleryImage.value = null;
     plazaMessages.value = [];
     siteStats.value = null;
   }

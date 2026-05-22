@@ -303,6 +303,19 @@ router.get('/', authenticateToken, (req, res) => {
     }
 });
 
+router.get('/gallery/public', (req, res) => {
+    try {
+        const limit = Math.min(parsePositiveInt(req.query.limit, 4), 24);
+        const assets = assetRepository
+            .listGalleryAssets({ limit, offset: 0 })
+            .map((asset) => normalizeAsset(asset));
+        ok(res, { assets });
+    } catch (error) {
+        console.error('List public gallery assets failed:', error);
+        fail(res, 500, '无法读取图库');
+    }
+});
+
 router.get('/gallery', authenticateToken, (req, res) => {
     try {
         const page = parsePositiveInt(req.query.page, 1);
