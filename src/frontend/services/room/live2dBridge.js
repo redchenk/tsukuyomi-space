@@ -1,7 +1,7 @@
 import { assetUrl } from '../../utils/assetUrl';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260510-live2d-act2';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260523-mobile-perf';
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_READY_TIMEOUT = 20000;
 
@@ -39,9 +39,42 @@ function loadScript(src) {
   });
 }
 
-export function preloadLive2DResources() {
+export function isMobileLive2DDevice() {
   const ua = navigator.userAgent || '';
-  const useLowMemoryModel = /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+}
+
+export function live2DPerformanceMode() {
+  const memory = Number(navigator.deviceMemory || 0);
+  const cores = Number(navigator.hardwareConcurrency || 0);
+  return isMobileLive2DDevice() || (memory > 0 && memory <= 4) || (cores > 0 && cores <= 4)
+    ? 'low'
+    : 'standard';
+}
+
+export function preloadLive2DResources() {
+  const useLowMemoryModel = live2DPerformanceMode() === 'low';
+  if (useLowMemoryModel) {
+    [
+      { href: assetUrl(CORE_SCRIPT), as: 'script' },
+      {
+        href: assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo-ios.model3.json'),
+        as: 'fetch',
+        type: 'application/json'
+      }
+    ].forEach((resource) => {
+      if (document.head.querySelector(`link[data-room-preload="${resource.href}"]`)) return;
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.href = resource.href;
+      link.as = resource.as;
+      link.dataset.roomPreload = resource.href;
+      if (resource.type) link.type = resource.type;
+      if (resource.as === 'fetch') link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    });
+    return;
+  }
   [
     { href: assetUrl(CORE_SCRIPT), as: 'script' },
     { href: assetUrl(ROOM_SCRIPT), as: 'script' },
@@ -69,6 +102,7 @@ export function preloadLive2DResources() {
 export async function ensureLive2DScripts() {
   if (!loadingPromise) {
     window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
+    window.TSUKUYOMI_LIVE2D_PERFORMANCE = live2DPerformanceMode();
     loadingPromise = loadScript(assetUrl(CORE_SCRIPT)).then(() => loadScript(assetUrl(ROOM_SCRIPT)));
   }
   return loadingPromise;

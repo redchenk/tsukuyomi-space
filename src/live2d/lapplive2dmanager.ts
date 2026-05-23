@@ -251,11 +251,13 @@ export class LAppLive2DManager {
 
   // モーション再生開始のコールバック関数
   beganMotion = (self: ACubismMotion): void => {
+    if (!LAppDefine.DebugLogEnable) return;
     LAppPal.printMessage('Motion Began:');
     console.log(self);
   };
   // モーション再生終了のコールバック関数
   finishedMotion = (self: ACubismMotion): void => {
+    if (!LAppDefine.DebugLogEnable) return;
     LAppPal.printMessage('Motion Finished:');
     console.log(self);
   };

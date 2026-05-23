@@ -72,11 +72,11 @@ export const MOCConsistencyValidationEnable = true;
 export const MotionConsistencyValidationEnable = true;
 
 // デバッグ用ログの表示オプション
-export const DebugLogEnable = true;
+export const DebugLogEnable = false;
 export const DebugTouchLogEnable = false;
 
 // Frameworkから出力するログのレベル設定
-export const CubismLoggingLevel: LogLevel = LogLevel.LogLevel_Verbose;
+export const CubismLoggingLevel: LogLevel = LogLevel.LogLevel_Warning;
 
 // デフォルトのレンダーターゲットサイズ
 export const RenderTargetWidth = 1900;

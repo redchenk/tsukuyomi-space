@@ -11,9 +11,13 @@ type RoomLive2DState = {
   canvas: HTMLCanvasElement;
   subdelegate: LAppSubdelegate;
   frameId: number;
+  visible: boolean;
+  targetFrameMs: number;
+  lastRenderAt: number;
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
+  onVisibilityChange: () => void;
   onRoomAct: (event: Event) => void;
 };
 
@@ -21,6 +25,25 @@ let roomState: RoomLive2DState | null = null;
 
 const allowedExpressions = new Set(['neutral', 'smile', 'bsmile', 'namida', 'tears']);
 const allowedTapBodyMotions = new Set(['tap_body', 'body_tap', 'tapbody']);
+
+function isMobileDevice(): boolean {
+  const ua = navigator.userAgent || '';
+  return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+}
+
+function live2dPerformanceProfile(): { targetFrameMs: number; lowPower: boolean } {
+  const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
+  const memory = Number((navigator as any).deviceMemory || 0);
+  const cores = Number(navigator.hardwareConcurrency || 0);
+  const lowPower = forced === 'low'
+    || isMobileDevice()
+    || (memory > 0 && memory <= 4)
+    || (cores > 0 && cores <= 4);
+  return {
+    targetFrameMs: lowPower ? 1000 / 24 : 1000 / 45,
+    lowPower
+  };
+}
 
 function normalizeExpression(value: unknown): string {
   const expression = String(value || '').trim().toLowerCase();
@@ -61,6 +84,7 @@ function destroyRoomLive2D(): void {
   if (!roomState) return;
 
   cancelAnimationFrame(roomState.frameId);
+  document.removeEventListener('visibilitychange', roomState.onVisibilityChange);
   document.removeEventListener('pointerdown', roomState.onPointerDown);
   document.removeEventListener('pointermove', roomState.onPointerMove);
   document.removeEventListener('pointerup', roomState.onPointerUp);
@@ -103,6 +127,9 @@ function initRoomLive2D(): void {
     return;
   }
 
+  const profile = live2dPerformanceProfile();
+  canvas.dataset.performance = profile.lowPower ? 'low' : 'standard';
+
   const onPointerDown = (event: PointerEvent): void => {
     subdelegate.onPointBegan(event.pageX, event.pageY);
   };
@@ -130,27 +157,40 @@ function initRoomLive2D(): void {
       manager.startTapBodyMotion();
     }
   };
+  const onVisibilityChange = (): void => {
+    if (!roomState) return;
+    roomState.visible = document.visibilityState !== 'hidden';
+    roomState.lastRenderAt = 0;
+  };
 
   document.addEventListener('pointerdown', onPointerDown, { passive: true });
   document.addEventListener('pointermove', onPointerMove, { passive: true });
   document.addEventListener('pointerup', onPointerUp, { passive: true });
   document.addEventListener('pointercancel', onPointerUp, { passive: true });
+  document.addEventListener('visibilitychange', onVisibilityChange, { passive: true });
   window.addEventListener('tsukuyomi:room-act', onRoomAct);
 
-  const run = (): void => {
+  const run = (time = 0): void => {
     if (!roomState) return;
-    LAppPal.updateTime();
-    subdelegate.update();
+    if (roomState.visible && time - roomState.lastRenderAt >= roomState.targetFrameMs) {
+      roomState.lastRenderAt = time;
+      LAppPal.updateTime();
+      subdelegate.update();
+    }
     roomState.frameId = requestAnimationFrame(run);
   };
 
   roomState = {
     canvas,
     subdelegate,
+    visible: document.visibilityState !== 'hidden',
+    targetFrameMs: profile.targetFrameMs,
+    lastRenderAt: 0,
     frameId: requestAnimationFrame(run),
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onVisibilityChange,
     onRoomAct
   };
 
