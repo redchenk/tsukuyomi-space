@@ -3,7 +3,9 @@ const path = require('path');
 const express = require('express');
 const config = require('../config');
 const articleRepository = require('../repositories/article-repository');
-const { articlePath, renderArticleHtml, renderNotFoundHtml, renderStageHtml } = require('../seo/render-article');
+const assetRepository = require('../repositories/asset-repository');
+const objectStorage = require('../services/object-storage');
+const { articlePath, renderArticleHtml, renderGalleryHtml, renderNotFoundHtml, renderStageHtml } = require('../seo/render-article');
 
 const SEO_ROUTES = [
     { path: '/', priority: '1.0', changefreq: 'weekly' },
@@ -11,6 +13,7 @@ const SEO_ROUTES = [
     { path: '/stage', priority: '0.9', changefreq: 'daily' },
     { path: '/plaza', priority: '0.8', changefreq: 'daily' },
     { path: '/room', priority: '0.8', changefreq: 'weekly' },
+    { path: '/gallery', priority: '0.8', changefreq: 'daily' },
     { path: '/reality', priority: '0.7', changefreq: 'weekly' },
     { path: '/arena', priority: '0.7', changefreq: 'weekly' }
 ];
@@ -78,9 +81,25 @@ function sendRobots(req, res) {
         'Disallow: /notifications',
         'Disallow: /login',
         'Disallow: /register',
+        'Disallow: /gallery/manage',
         `Sitemap: ${absoluteSiteUrl('/sitemap.xml')}`,
         ''
     ].join('\n'));
+}
+
+function galleryAssetUrl(asset) {
+    if (asset?.metadata?.storage === 'oss') {
+        return objectStorage.publicUrlForKey(asset.storage_key) || asset.url || '';
+    }
+    return asset?.url || '';
+}
+
+function seoGalleryAssets(limit = 48) {
+    return assetRepository.listGalleryAssets({ limit, offset: 0 }).map(asset => ({
+        ...asset,
+        display_url: galleryAssetUrl(asset),
+        access_url: galleryAssetUrl(asset)
+    }));
 }
 
 function sendSitemap(req, res) {
@@ -120,6 +139,17 @@ function serveStaticFiles(app) {
         if (req.query?.spa === '1') return next();
         setNoStore(res);
         return res.type('html').send(renderStageHtml(articleRepository.listSeoArticles(60)));
+    });
+    app.get('/gallery', (req, res, next) => {
+        if (req.query?.spa === '1') return next();
+        setNoStore(res);
+        return res.type('html').send(renderGalleryHtml(seoGalleryAssets(48)));
+    });
+    app.get('/gallery/manage', (req, res, next) => {
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+        if (!useFrontendDist) return next();
+        setNoStore(res);
+        return res.sendFile(path.join(frontendDistRoot, 'index.html'));
     });
     app.get('/article', (req, res, next) => {
         const id = req.query?.id;
@@ -161,7 +191,7 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/room/settings', '/room-settings', '/plaza', '/reality', '/editor', '/user-center', '/notifications', '/terminal', '/arena', '/arena/']);
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/room/settings', '/room-settings', '/plaza', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/terminal', '/arena', '/arena/']);
         if (vueRoutes.has(req.path)) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');

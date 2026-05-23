@@ -544,6 +544,92 @@ function renderStageHtml(articles = []) {
 </html>`;
 }
 
+function galleryImageUrl(asset) {
+    return absoluteUrl(asset?.display_url || asset?.access_url || asset?.url || '');
+}
+
+function galleryImageAlt(asset, index) {
+    const metadata = asset?.metadata || {};
+    return metadata.alt || metadata.title || metadata.description || `月读空间图库图片 ${index + 1}`;
+}
+
+function renderGalleryHtml(assets = []) {
+    const title = `图库 | ${SITE_NAME}`;
+    const description = '浏览月读空间公开图库中的插画、二创图片与站点影像记录。';
+    const url = absoluteUrl('/gallery');
+    const images = assets
+        .filter(asset => asset?.url || asset?.display_url || asset?.access_url)
+        .slice(0, 48);
+    const primaryImage = images[0] ? galleryImageUrl(images[0]) : DEFAULT_IMAGE;
+    const imageObjects = images.slice(0, 24).map((asset, index) => ({
+        '@type': 'ImageObject',
+        position: index + 1,
+        contentUrl: galleryImageUrl(asset),
+        name: galleryImageAlt(asset, index),
+        uploadDate: asset.created_at || asset.updated_at || undefined
+    }));
+    const gridHtml = images.map((asset, index) => `
+      <figure class="gallery-card">
+        <img src="${escapeAttr(galleryImageUrl(asset))}" alt="${escapeAttr(galleryImageAlt(asset, index))}" loading="${index < 4 ? 'eager' : 'lazy'}" decoding="async">
+      </figure>
+    `).join('');
+
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="${escapeHtml(url)}">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="${SITE_NAME}">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(url)}">
+  <meta property="og:image" content="${escapeHtml(primaryImage)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(primaryImage)}">
+  <script type="application/ld+json">${JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: title,
+        description,
+        url,
+        inLanguage: 'zh-CN',
+        primaryImageOfPage: primaryImage,
+        mainEntity: {
+            '@type': 'ImageGallery',
+            name: title,
+            image: imageObjects
+        }
+    })}</script>
+  <style>
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#24324a;background:#f7fbff;line-height:1.7}
+    main{width:min(1120px,calc(100% - 32px));margin:48px auto}.hero{padding:32px;border:1px solid rgba(132,167,205,.32);border-radius:24px;background:rgba(255,255,255,.84);box-shadow:0 24px 80px rgba(79,109,150,.13)}
+    h1{margin:0 0 10px;font-size:clamp(2rem,5vw,3.8rem);line-height:1.12}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:24px}.gallery-card{margin:0;overflow:hidden;border-radius:20px;border:1px solid rgba(132,167,205,.26);background:#fff;box-shadow:0 18px 48px rgba(67,92,130,.11)}.gallery-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.enter{display:inline-flex;margin-top:18px;padding:10px 16px;border-radius:999px;background:#7b8cf6;color:white;text-decoration:none}
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>图库</h1>
+      <p>${escapeHtml(description)}</p>
+      <a class="enter" href="/gallery?spa=1">进入互动图库</a>
+    </section>
+    <section class="grid" aria-label="月读空间公开图库">
+      ${gridHtml || '<p>暂时还没有公开图库图片。</p>'}
+    </section>
+  </main>
+</body>
+</html>`;
+}
+
 function renderNotFoundHtml() {
     return `<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex,nofollow"><title>文章不存在 | 月读空间</title></head><body><main><h1>文章不存在</h1><p>这篇文章可能已经离开月读空间。</p><a href="/stage">返回主舞台</a></main></body></html>`;
@@ -553,6 +639,7 @@ module.exports = {
     articlePath,
     articleUrl,
     renderArticleHtml,
+    renderGalleryHtml,
     renderStageHtml,
     renderNotFoundHtml
 };
