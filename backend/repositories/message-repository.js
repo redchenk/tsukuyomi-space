@@ -1,5 +1,21 @@
 const db = require('../db');
 
+const INLINE_AVATAR_LIMIT = 4096;
+
+function compactAvatar(avatar) {
+    if (!avatar) return '';
+    const value = String(avatar);
+    if (!value.startsWith('data:')) return value;
+    return value.length <= INLINE_AVATAR_LIMIT ? value : '';
+}
+
+function compactMessageRow(row) {
+    return {
+        ...row,
+        avatar: compactAvatar(row.avatar)
+    };
+}
+
 function listMessages({ articleId, includePending = false } = {}) {
     const statusFilter = includePending ? '' : "AND COALESCE(m.status, 'approved') = 'approved'";
     const query = articleId
@@ -39,7 +55,8 @@ function listMessages({ articleId, includePending = false } = {}) {
               ${statusFilter}
             ORDER BY m.created_at DESC
         `;
-    return articleId ? db.prepare(query).all(articleId) : db.prepare(query).all();
+    const rows = articleId ? db.prepare(query).all(articleId) : db.prepare(query).all();
+    return rows.map(compactMessageRow);
 }
 
 function createMessage({ author, content, userId, articleId = null, parentId = null, status = 'pending' }) {
