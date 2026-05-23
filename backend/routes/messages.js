@@ -5,6 +5,7 @@ const notificationRepository = require('../repositories/notification-repository'
 const articleRepository = require('../repositories/article-repository');
 const { reviewMessageContent } = require('../services/message-moderation');
 const { articlePath } = require('../seo/render-article');
+const responseCache = require('../services/response-cache');
 
 const router = express.Router();
 
@@ -38,8 +39,11 @@ function notifyMessageOwner({ targetMessage, actor, type, title, content, relate
 
 function sendMessageList(req, res, articleId) {
     try {
-        const messages = messageRepository.listMessages({ articleId, includePending: false });
-        res.json({ success: true, data: messages });
+        const key = articleId ? `public:article-messages:${articleId}` : 'public:plaza-messages';
+        res.json(responseCache.remember(key, 4000, () => ({
+            success: true,
+            data: messageRepository.listMessages({ articleId, includePending: false })
+        })));
     } catch (error) {
         console.error('Messages API error:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -69,6 +73,10 @@ router.post('/', authenticateToken, (req, res) => {
             articleId: article_id || null,
             status: review.status
         });
+        if (review.status === 'approved') {
+            responseCache.delPrefix(article_id ? `public:article-messages:${article_id}` : 'public:plaza-messages');
+            responseCache.delPrefix('public:stats');
+        }
         res.status(201).json({
             success: true,
             data: newMessage,
@@ -95,6 +103,7 @@ router.post('/:id/like', authenticateToken, (req, res) => {
         }
 
         const message = messageRepository.likeMessage(messageId, userId);
+        responseCache.delPrefix(message.article_id ? `public:article-messages:${message.article_id}` : 'public:plaza-messages');
         notifyMessageOwner({
             targetMessage: message,
             actor: req.user,
@@ -133,6 +142,8 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
             status: review.status
         });
         if (review.status === 'approved') {
+            responseCache.delPrefix(originalMessage.article_id ? `public:article-messages:${originalMessage.article_id}` : 'public:plaza-messages');
+            responseCache.delPrefix('public:stats');
             notifyMessageOwner({
                 targetMessage: originalMessage,
                 actor: req.user,

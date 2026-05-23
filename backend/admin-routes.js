@@ -7,6 +7,7 @@ const statsRepository = require('./repositories/stats-repository');
 const authState = require('./services/auth-state');
 const articleMedia = require('./services/article-media');
 const objectStorage = require('./services/object-storage');
+const responseCache = require('./services/response-cache');
 const {
     authenticateToken,
     requireAdmin,
@@ -31,6 +32,17 @@ function fail(res, status, message) {
 function asInt(value) {
     const id = Number.parseInt(value, 10);
     return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function clearPublicArticleCache() {
+    responseCache.delPrefix('public:articles:');
+    responseCache.delPrefix('public:stats');
+}
+
+function clearPublicMessageCache() {
+    responseCache.delPrefix('public:plaza-messages');
+    responseCache.delPrefix('public:article-messages:');
+    responseCache.delPrefix('public:stats');
 }
 
 function parseSettingValue(value) {
@@ -285,6 +297,7 @@ router.put('/articles/:id', async (req, res) => {
         const changes = adminRepository.updateAdminArticle(id, mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, id);
         if (!changes) return fail(res, 404, '文章不存在');
+        clearPublicArticleCache();
         ok(res);
     } catch (error) {
         console.error('Admin article update error:', error);
@@ -298,6 +311,7 @@ router.post('/articles/:id/toggle-status', (req, res) => {
         if (!id) return fail(res, 400, '文章 ID 无效');
         const status = adminRepository.toggleArticleStatus(id);
         if (!status) return fail(res, 404, '文章不存在');
+        clearPublicArticleCache();
         ok(res, { status }, status === 'published' ? '文章已发布' : '文章已下架');
     } catch (error) {
         console.error('Admin article toggle error:', error);
@@ -311,6 +325,7 @@ router.post('/articles/:id/toggle-pin', (req, res) => {
         if (!id) return fail(res, 400, '文章 ID 无效');
         const result = adminRepository.toggleArticlePin(id);
         if (!result) return fail(res, 404, '文章不存在');
+        responseCache.delPrefix('public:articles:');
         ok(res, { pinned_at: result.pinnedAt }, result.pinnedAt ? '文章已置顶' : '文章已取消置顶');
     } catch (error) {
         console.error('Admin article pin toggle error:', error);
@@ -323,6 +338,8 @@ router.delete('/articles/:id', (req, res) => {
         const id = asInt(req.params.id);
         if (!id) return fail(res, 400, '文章 ID 无效');
         if (!articleRepository.deleteArticle(id)) return fail(res, 404, '文章不存在');
+        clearPublicArticleCache();
+        responseCache.delPrefix('public:article-messages:');
         ok(res, null, '文章已删除');
     } catch (error) {
         console.error('Admin article delete error:', error);
@@ -344,6 +361,7 @@ router.post('/messages/:id/approve', (req, res) => {
         const id = asInt(req.params.id);
         if (!id) return fail(res, 400, '留言 ID 无效');
         if (!adminRepository.approveMessage(id)) return fail(res, 404, '留言不存在');
+        clearPublicMessageCache();
         ok(res, null, '留言已通过');
     } catch (error) {
         console.error('Admin message approve error:', error);
@@ -356,6 +374,7 @@ router.delete('/messages/:id', (req, res) => {
         const id = asInt(req.params.id);
         if (!id) return fail(res, 400, '留言 ID 无效');
         if (!adminRepository.deleteMessage(id)) return fail(res, 404, '留言不存在');
+        clearPublicMessageCache();
         ok(res, null, '留言已删除');
     } catch (error) {
         console.error('Admin message delete error:', error);

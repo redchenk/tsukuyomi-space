@@ -6,6 +6,7 @@ const articleRepository = require('./repositories/article-repository');
 const userRepository = require('./repositories/user-repository');
 const notificationRepository = require('./repositories/notification-repository');
 const articleMedia = require('./services/article-media');
+const responseCache = require('./services/response-cache');
 
 const { authenticateToken } = require('./middleware/auth');
 
@@ -204,6 +205,9 @@ router.delete('/articles/:id', authenticateToken, (req, res) => {
         }
 
         articleRepository.deleteArticle(req.params.id);
+        responseCache.delPrefix('public:articles:');
+        responseCache.delPrefix('public:article-messages:');
+        responseCache.delPrefix('public:stats');
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('鍒犻櫎鏂囩珷澶辫触:', error);
@@ -240,6 +244,7 @@ router.put('/articles/:id', authenticateToken, async (req, res) => {
         }, { articleId, ownerId: req.user.id });
         const updatedArticle = articleRepository.updateUserArticle(articleId, mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, updatedArticle.id);
+        responseCache.delPrefix('public:articles:');
 
         res.json({
             success: true,

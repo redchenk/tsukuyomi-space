@@ -3,6 +3,7 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const articleRepository = require('../repositories/article-repository');
 const messageRepository = require('../repositories/message-repository');
 const articleMedia = require('../services/article-media');
+const responseCache = require('../services/response-cache');
 const { parsePositiveInt, safeJsonParse } = require('../validators');
 
 const router = express.Router();
@@ -35,9 +36,13 @@ function listArticlesPayload(req) {
     };
 }
 
+function articleListCacheKey(req) {
+    return `public:articles:${String(req.query.category || '')}:${parsePositiveInt(req.query.page, 1)}:${parsePositiveInt(req.query.limit, 100)}`;
+}
+
 function sendArticleList(req, res) {
     try {
-        res.json(listArticlesPayload(req));
+        res.json(responseCache.remember(articleListCacheKey(req), 8000, () => listArticlesPayload(req)));
     } catch (error) {
         console.error('List articles failed:', error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -48,32 +53,7 @@ function canPublishAnnouncement(user) {
     return user?.role === 'admin' || user?.role === 'super_admin';
 }
 
-// 公开文章列表：支持分类和分页，返回作者用户名用于前端展示。
-router.get('/', (req, res) => {
-    try {
-        const { category } = req.query;
-        const page = parsePositiveInt(req.query.page, 1);
-        const limit = parsePositiveInt(req.query.limit, 100);
-        const offset = (page - 1) * limit;
-
-        const result = articleRepository.listArticles({ category, limit, offset });
-        const articles = result.articles.map(withParsedTags);
-
-        res.json({
-            success: true,
-            data: articles,
-            pagination: {
-                page,
-                limit,
-                total: result.total,
-                totalPages: Math.ceil(result.total / limit)
-            }
-        });
-    } catch (error) {
-        console.error('List articles failed:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
-    }
-});
+router.get('/', sendArticleList);
 
 // 创建文章：普通用户可发普通分类，公告类仅管理员可发。
 router.get('/live/:nonce', sendArticleList);
@@ -106,6 +86,8 @@ router.post('/', authenticateToken, async (req, res) => {
         }, { ownerId: req.user.scope === 'admin' ? null : req.user.id });
         const newArticle = articleRepository.createArticle(mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, newArticle.id);
+        responseCache.delPrefix('public:articles:');
+        responseCache.delPrefix('public:stats');
         res.status(201).json({ success: true, message: '操作成功', data: newArticle });
     } catch (error) {
         console.error('Create article failed:', error);
@@ -121,8 +103,10 @@ router.get('/:id/messages', (req, res) => {
             return res.status(404).json({ success: false, message: 'Article not found' });
         }
 
-        const messages = messageRepository.listMessages({ articleId: req.params.id });
-        res.json({ success: true, data: messages });
+        res.json(responseCache.remember(`public:article-messages:${req.params.id}`, 4000, () => ({
+            success: true,
+            data: messageRepository.listMessages({ articleId: req.params.id })
+        })));
     } catch (error) {
         console.error('List article messages failed:', error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -136,8 +120,10 @@ router.get('/:id/messages/live/:nonce', (req, res) => {
             return res.status(404).json({ success: false, message: 'Article not found' });
         }
 
-        const messages = messageRepository.listMessages({ articleId: req.params.id });
-        res.json({ success: true, data: messages });
+        res.json(responseCache.remember(`public:article-messages:${req.params.id}`, 4000, () => ({
+            success: true,
+            data: messageRepository.listMessages({ articleId: req.params.id })
+        })));
     } catch (error) {
         console.error('List article messages failed:', error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -190,6 +176,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
         }, { articleId: req.params.id, ownerId: req.user.scope === 'admin' ? null : req.user.id });
         const updatedArticle = articleRepository.updateArticle(req.params.id, mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, updatedArticle.id);
+        responseCache.delPrefix('public:articles:');
         res.json({ success: true, message: '文章更新成功', data: updatedArticle });
     } catch (error) {
         console.error('Update article failed:', error);
@@ -200,6 +187,9 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
 router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
         articleRepository.deleteArticle(req.params.id);
+        responseCache.delPrefix('public:articles:');
+        responseCache.delPrefix('public:article-messages:');
+        responseCache.delPrefix('public:stats');
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('Delete article failed:', error);
