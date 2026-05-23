@@ -36,7 +36,7 @@ function live2dPerformanceProfile(): { targetFrameMs: number; lowPower: boolean 
   const lowPower = forced === 'low'
     || isMobileDevice();
   return {
-    targetFrameMs: lowPower ? 1000 / 24 : 1000 / 60,
+    targetFrameMs: lowPower ? 1000 / 45 : 1000 / 60,
     lowPower
   };
 }
