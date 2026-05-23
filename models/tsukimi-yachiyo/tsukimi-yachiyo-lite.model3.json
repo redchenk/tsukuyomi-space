@@ -1,0 +1,34 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "tsukimi-yachiyo.moc3",
+    "Textures": [
+      "textures/lite/texture_00.webp",
+      "textures/lite/texture_01.webp"
+    ],
+    "Expressions": [
+      { "Name": "neutral", "File": "expression_neutral.exp3.json" },
+      { "Name": "smile", "File": "expression_smile.exp3.json" },
+      { "Name": "bsmile", "File": "expression_bsmile.exp3.json" },
+      { "Name": "namida", "File": "expression_namida.exp3.json" },
+      { "Name": "tears", "File": "expression_tears.exp3.json" }
+    ],
+    "Physics": "tsukimi-yachiyo.physics3.json"
+  },
+  "Groups": [
+    {
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": [
+        "ParamEyeLOpen",
+        "ParamEyeROpen"
+      ]
+    },
+    {
+      "Target": "Parameter",
+      "Name": "LipSync",
+      "Ids": []
+    }
+  ],
+  "HitAreas": []
+}

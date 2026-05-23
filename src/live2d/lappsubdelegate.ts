@@ -14,6 +14,8 @@ import { LAppView } from './lappview';
 
 function live2dRenderPixelRatio(): number {
   const ratio = window.devicePixelRatio || 1;
+  const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
+  if (forced === 'lite') return Math.min(ratio, 0.75);
   const ua = navigator.userAgent || '';
   const isMobile = /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
   return Math.min(ratio, isMobile ? 1 : 2);

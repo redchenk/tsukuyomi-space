@@ -14,12 +14,14 @@ import { LAppModel } from './lappmodel';
 import { LAppPal } from './lapppal';
 import { LAppSubdelegate } from './lappsubdelegate';
 
-function prefersLowMemoryModel(): boolean {
-  if (typeof navigator === 'undefined') return false;
+function live2dModelVariant(): 'standard' | 'mobile' | 'lite' {
+  if (typeof navigator === 'undefined') return 'standard';
   const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
-  if (forced === 'low') return true;
+  if (forced === 'lite') return 'lite';
+  if (forced === 'low') return 'mobile';
   const ua = navigator.userAgent || '';
-  return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  const mobile = /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  return mobile ? 'mobile' : 'standard';
 }
 
 /**
@@ -193,9 +195,12 @@ export class LAppLive2DManager {
     // ディレクトリ名とmodel3.jsonの名前を一致させておくこと。
     const model: string = LAppDefine.ModelDir[index];
     const modelPath: string = LAppDefine.ResourcesPath + model + '/';
-    const modelJsonName: string = prefersLowMemoryModel()
-      ? `${LAppDefine.ModelDir[index]}-mobile.model3.json`
-      : `${LAppDefine.ModelDir[index]}.model3.json`;
+    const modelVariant = live2dModelVariant();
+    const modelJsonName: string = modelVariant === 'lite'
+      ? `${LAppDefine.ModelDir[index]}-lite.model3.json`
+      : modelVariant === 'mobile'
+        ? `${LAppDefine.ModelDir[index]}-mobile.model3.json`
+        : `${LAppDefine.ModelDir[index]}.model3.json`;
 
     this.releaseAllModel();
     const instance = new LAppModel();
