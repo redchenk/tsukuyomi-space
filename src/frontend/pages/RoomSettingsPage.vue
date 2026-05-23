@@ -108,6 +108,7 @@ const MINIMAX_MCP_TOOLS = 'text_to_audio,list_voices,voice_clone,voice_design,mu
 const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
 
 const toast = reactive({ text: '', visible: false });
+const modelSaveNotice = reactive({ visible: false, text: '', detail: '' });
 const testDialog = reactive({ visible: false, target: '', status: 'idle', title: '', message: '', detail: '' });
 const memoryCount = ref(0);
 const memoryList = ref([]);
@@ -115,6 +116,7 @@ const memoryLoading = ref(false);
 const storedUser = ref(readStoredUser());
 const modelCatalog = reactive({ loading: false, message: '', updatedAt: '', models: [] });
 let toastTimer = 0;
+let modelNoticeTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0, lowQualityModel: false });
 const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto' });
@@ -431,7 +433,21 @@ function showToast(text) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     toast.visible = false;
-  }, 2200);
+  }, 3200);
+}
+
+function modelQualityLabel() {
+  return model.lowQualityModel ? '低质量模型：512 纹理' : '默认模型：移动端 1024 纹理';
+}
+
+function showModelSaveNotice() {
+  modelSaveNotice.visible = true;
+  modelSaveNotice.text = '模型设置已保存';
+  modelSaveNotice.detail = `${modelQualityLabel()}；移动端 DPR 1，帧率 45fps。返回房间后生效。`;
+  clearTimeout(modelNoticeTimer);
+  modelNoticeTimer = setTimeout(() => {
+    modelSaveNotice.visible = false;
+  }, 6000);
 }
 
 function openTestDialog(target, status, title, message, detail = '') {
@@ -1093,7 +1109,8 @@ function saveModel() {
     yOffset: Number(model.yOffset || 0),
     lowQualityModel: Boolean(model.lowQualityModel)
   });
-  showToast('模型设置已保存，回到房间后生效');
+  showModelSaveNotice();
+  showToast(`模型设置已保存：${modelQualityLabel()}，回到房间后生效`);
 }
 
 function resetModel() {
@@ -1642,6 +1659,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
   window.removeEventListener('storage', onLive2DStorageEvent);
+  clearTimeout(modelNoticeTimer);
+  clearTimeout(toastTimer);
 });
 </script>
 
@@ -1668,6 +1687,13 @@ onBeforeUnmount(() => {
           <label>垂直位置 <strong>{{ model.yOffset }}</strong><input v-model="model.yOffset" type="range" min="-180" max="180"></label>
           <label class="check-row"><input v-model="model.lowQualityModel" type="checkbox"> 低质量模型（512 纹理，适合性能较弱手机）</label>
           <p class="field-hint">移动端默认使用 1024 纹理、DPR 1、45fps；开启低质量模型后只切换到 512 纹理，帧率仍保持 45fps。</p>
+          <div v-if="modelSaveNotice.visible" class="model-save-notice" role="status" aria-live="polite">
+            <span class="room-test-status success">已保存</span>
+            <div>
+              <strong>{{ modelSaveNotice.text }}</strong>
+              <p>{{ modelSaveNotice.detail }}</p>
+            </div>
+          </div>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveModel">保存模型设置</button>
             <button class="ghost-btn" type="button" @click="resetModel">重置模型</button>

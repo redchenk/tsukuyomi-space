@@ -186,6 +186,32 @@
     padding: 0.55rem 0.7rem;
 }
 
+.model-save-notice {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.65rem;
+    align-items: start;
+    padding: 0.72rem 0.82rem;
+    border: 1px solid rgba(34, 197, 94, 0.24);
+    border-radius: 12px;
+    color: var(--text);
+    background: rgba(220, 252, 231, 0.76);
+}
+
+.model-save-notice strong {
+    display: block;
+    margin: 0 0 0.16rem;
+    color: var(--ink);
+    font-size: 0.9rem;
+}
+
+.model-save-notice p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.84rem;
+    line-height: 1.55;
+}
+
 .model-recommend-card {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
