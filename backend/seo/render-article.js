@@ -3,6 +3,12 @@ const config = require('../config');
 const SITE_NAME = '月读空间';
 const DEFAULT_DESCRIPTION = '月读空间是一个融合文章、留言广场、Live2D 房间与互动工具的二次元个人站。';
 const DEFAULT_IMAGE = `${config.publicSiteUrl}/assets/icons/icon-512.png`;
+const TOPIC_LINKS = [
+    { href: '/topics/chou-kaguya-hime', title: '超时空辉夜姬资源', text: '小说、电影、二创与图库入口' },
+    { href: '/topics/yachiyo-live2d', title: '八千代 Live2D 房间', text: 'Live2D、语音与角色互动体验' },
+    { href: '/topics/ai-character-room', title: '月读空间 AI 角色互动', text: 'AI 聊天、TTS、记忆与房间设置' },
+    { href: '/topics/kaguya-yachiyo', title: '超时空辉夜姬 八千代', text: '八千代相关内容与现实锚点' }
+];
 
 function escapeHtml(value) {
     return String(value || '')
@@ -495,6 +501,12 @@ function renderStageHtml(articles = []) {
         <p>${escapeHtml(articleDescription(article))}</p>
       </a>
     `).join('');
+    const topicHtml = TOPIC_LINKS.map(topic => `
+      <a class="topic" href="${escapeAttr(topic.href)}">
+        <strong>${escapeHtml(topic.title)}</strong>
+        <span>${escapeHtml(topic.text)}</span>
+      </a>
+    `).join('');
 
     return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -526,7 +538,7 @@ function renderStageHtml(articles = []) {
   <style>
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25314a;background:#f5f8ff;line-height:1.7}
     main{width:min(1060px,calc(100% - 32px));margin:48px auto}.hero{padding:32px;border:1px solid rgba(132,167,205,.32);border-radius:24px;background:rgba(255,255,255,.82);box-shadow:0 24px 80px rgba(79,109,150,.13)}
-    h1{margin:0 0 10px;font-size:clamp(2rem,5vw,3.8rem);line-height:1.12}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:24px}.card{display:grid;gap:10px;min-height:210px;padding:18px;border:1px solid rgba(132,167,205,.28);border-radius:20px;background:rgba(255,255,255,.76);color:inherit;text-decoration:none;overflow:hidden}.card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px}.card h2{margin:0;font-size:1.12rem}.card p{margin:0;color:#62708a}.meta{color:#7b86a0;font-size:.82rem}.enter{display:inline-flex;margin-top:18px;padding:10px 16px;border-radius:999px;background:#7b8cf6;color:white;text-decoration:none}
+    h1{margin:0 0 10px;font-size:clamp(2rem,5vw,3.8rem);line-height:1.12}.topics{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:22px}.topic{display:grid;gap:4px;padding:14px;border:1px solid rgba(132,167,205,.28);border-radius:16px;background:rgba(255,255,255,.66);color:inherit;text-decoration:none}.topic span{color:#62708a;font-size:.92rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:24px}.card{display:grid;gap:10px;min-height:210px;padding:18px;border:1px solid rgba(132,167,205,.28);border-radius:20px;background:rgba(255,255,255,.76);color:inherit;text-decoration:none;overflow:hidden}.card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px}.card h2{margin:0;font-size:1.12rem}.card p{margin:0;color:#62708a}.meta{color:#7b86a0;font-size:.82rem}.enter{display:inline-flex;margin-top:18px;padding:10px 16px;border-radius:999px;background:#7b8cf6;color:white;text-decoration:none}
   </style>
 </head>
 <body>
@@ -535,10 +547,108 @@ function renderStageHtml(articles = []) {
       <h1>主舞台</h1>
       <p>${escapeHtml(description)}</p>
       <a class="enter" href="/stage?spa=1">进入互动主舞台</a>
+      <nav class="topics" aria-label="月读空间专题入口">
+        ${topicHtml}
+      </nav>
     </section>
     <section class="grid" aria-label="月读空间文章列表">
       ${listHtml || '<p>暂时还没有公开文章。</p>'}
     </section>
+  </main>
+</body>
+</html>`;
+}
+
+function renderTopicLandingHtml(topic, articles = [], galleryAssets = []) {
+    const title = `${topic.title} | ${SITE_NAME}`;
+    const url = absoluteUrl(topic.path);
+    const primaryImage = topic.image || (galleryAssets[0] ? galleryImageUrl(galleryAssets[0]) : DEFAULT_IMAGE);
+    const articleCards = articles.slice(0, 12).map(article => `
+      <a class="card" href="${escapeAttr(articlePath(article))}">
+        ${article.cover_image ? `<img src="${escapeAttr(article.cover_image)}" alt="${escapeAttr(article.title)}" loading="lazy" decoding="async">` : ''}
+        <span class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.publish_date || article.created_at || '')}</span>
+        <h2>${escapeHtml(article.title)}</h2>
+        <p>${escapeHtml(articleDescription(article))}</p>
+      </a>
+    `).join('');
+    const galleryHtml = galleryAssets.slice(0, 6).map((asset, index) => `
+      <figure class="image-card">
+        <img src="${escapeAttr(galleryImageUrl(asset))}" alt="${escapeAttr(galleryImageAlt(asset, index))}" loading="lazy" decoding="async">
+      </figure>
+    `).join('');
+    const actionHtml = topic.actions.map(action => `<a class="action" href="${escapeAttr(action.href)}">${escapeHtml(action.label)}</a>`).join('');
+    const schema = {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: title,
+        description: topic.description,
+        url,
+        inLanguage: 'zh-CN',
+        keywords: topic.keywords.join(','),
+        primaryImageOfPage: primaryImage,
+        mainEntity: {
+            '@type': 'ItemList',
+            itemListElement: articles.slice(0, 12).map((article, index) => ({
+                '@type': 'ListItem',
+                position: index + 1,
+                url: articleUrl(article),
+                name: article.title
+            }))
+        },
+        breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+                { '@type': 'ListItem', position: 1, name: SITE_NAME, item: absoluteUrl('/') },
+                { '@type': 'ListItem', position: 2, name: '专题', item: absoluteUrl('/stage') },
+                { '@type': 'ListItem', position: 3, name: topic.title, item: url }
+            ]
+        }
+    };
+
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(topic.description)}">
+  <meta name="keywords" content="${escapeHtml(topic.keywords.join(','))}">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="${escapeHtml(url)}">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="${SITE_NAME}">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(topic.description)}">
+  <meta property="og:url" content="${escapeHtml(url)}">
+  <meta property="og:image" content="${escapeHtml(primaryImage)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(topic.description)}">
+  <meta name="twitter:image" content="${escapeHtml(primaryImage)}">
+  <script type="application/ld+json">${JSON.stringify(schema)}</script>
+  <style>
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#24324a;background:#f6f9ff;line-height:1.72}
+    main{width:min(1120px,calc(100% - 32px));margin:48px auto}.hero,.section{padding:30px;border:1px solid rgba(132,167,205,.32);border-radius:24px;background:rgba(255,255,255,.84);box-shadow:0 24px 80px rgba(79,109,150,.13)}.section{margin-top:22px}
+    h1{margin:0 0 12px;font-size:clamp(2rem,5vw,3.7rem);line-height:1.12}h2{margin:0 0 14px}.lead{font-size:1.05rem;color:#43536e}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.action{display:inline-flex;padding:10px 15px;border-radius:999px;background:#7b8cf6;color:white;text-decoration:none}.points{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:20px}.point{padding:14px;border-radius:16px;background:rgba(126,151,235,.1);border:1px solid rgba(132,167,205,.24)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{display:grid;gap:10px;min-height:210px;padding:16px;border:1px solid rgba(132,167,205,.28);border-radius:18px;background:rgba(255,255,255,.76);color:inherit;text-decoration:none;overflow:hidden}.card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px}.card h2{font-size:1.08rem;margin:0}.card p{margin:0;color:#62708a}.meta{color:#7b86a0;font-size:.82rem}.images{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.image-card{margin:0;overflow:hidden;border-radius:16px;background:#fff}.image-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>${escapeHtml(topic.title)}</h1>
+      <p class="lead">${escapeHtml(topic.description)}</p>
+      <div class="actions">${actionHtml}</div>
+      <div class="points">
+        ${topic.points.map(point => `<div class="point">${escapeHtml(point)}</div>`).join('')}
+      </div>
+    </section>
+    <section class="section">
+      <h2>相关内容</h2>
+      <div class="grid">${articleCards || '<p>相关内容正在整理中。</p>'}</div>
+    </section>
+    ${galleryHtml ? `<section class="section"><h2>图库影像</h2><div class="images">${galleryHtml}</div></section>` : ''}
   </main>
 </body>
 </html>`;
@@ -641,5 +751,6 @@ module.exports = {
     renderArticleHtml,
     renderGalleryHtml,
     renderStageHtml,
+    renderTopicLandingHtml,
     renderNotFoundHtml
 };
