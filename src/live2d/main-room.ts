@@ -33,14 +33,10 @@ function isMobileDevice(): boolean {
 
 function live2dPerformanceProfile(): { targetFrameMs: number; lowPower: boolean } {
   const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
-  const memory = Number((navigator as any).deviceMemory || 0);
-  const cores = Number(navigator.hardwareConcurrency || 0);
   const lowPower = forced === 'low'
-    || isMobileDevice()
-    || (memory > 0 && memory <= 4)
-    || (cores > 0 && cores <= 4);
+    || isMobileDevice();
   return {
-    targetFrameMs: lowPower ? 1000 / 24 : 1000 / 45,
+    targetFrameMs: lowPower ? 1000 / 24 : 1000 / 60,
     lowPower
   };
 }

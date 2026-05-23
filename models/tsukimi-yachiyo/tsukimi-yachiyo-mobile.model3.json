@@ -3,8 +3,8 @@
   "FileReferences": {
     "Moc": "tsukimi-yachiyo.moc3",
     "Textures": [
-      "textures/desktop/texture_00.webp",
-      "textures/desktop/texture_01.webp"
+      "textures/mobile/texture_00.webp",
+      "textures/mobile/texture_01.webp"
     ],
     "Expressions": [
       { "Name": "neutral", "File": "expression_neutral.exp3.json" },

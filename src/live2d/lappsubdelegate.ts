@@ -16,7 +16,7 @@ function live2dRenderPixelRatio(): number {
   const ratio = window.devicePixelRatio || 1;
   const ua = navigator.userAgent || '';
   const isMobile = /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-  return Math.min(ratio, isMobile ? 1.5 : 2);
+  return Math.min(ratio, isMobile ? 1 : 2);
 }
 
 /**

@@ -16,6 +16,8 @@ import { LAppSubdelegate } from './lappsubdelegate';
 
 function prefersLowMemoryModel(): boolean {
   if (typeof navigator === 'undefined') return false;
+  const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
+  if (forced === 'low') return true;
   const ua = navigator.userAgent || '';
   return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
 }
@@ -192,7 +194,7 @@ export class LAppLive2DManager {
     const model: string = LAppDefine.ModelDir[index];
     const modelPath: string = LAppDefine.ResourcesPath + model + '/';
     const modelJsonName: string = prefersLowMemoryModel()
-      ? `${LAppDefine.ModelDir[index]}-ios.model3.json`
+      ? `${LAppDefine.ModelDir[index]}-mobile.model3.json`
       : `${LAppDefine.ModelDir[index]}.model3.json`;
 
     this.releaseAllModel();

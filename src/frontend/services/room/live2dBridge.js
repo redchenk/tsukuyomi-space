@@ -1,7 +1,7 @@
 import { assetUrl } from '../../utils/assetUrl';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260523-mobile-perf';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260523-mobile-texture';
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_READY_TIMEOUT = 20000;
 
@@ -45,11 +45,7 @@ export function isMobileLive2DDevice() {
 }
 
 export function live2DPerformanceMode() {
-  const memory = Number(navigator.deviceMemory || 0);
-  const cores = Number(navigator.hardwareConcurrency || 0);
-  return isMobileLive2DDevice() || (memory > 0 && memory <= 4) || (cores > 0 && cores <= 4)
-    ? 'low'
-    : 'standard';
+  return isMobileLive2DDevice() ? 'low' : 'standard';
 }
 
 export function preloadLive2DResources() {
@@ -58,7 +54,7 @@ export function preloadLive2DResources() {
     [
       { href: assetUrl(CORE_SCRIPT), as: 'script' },
       {
-        href: assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo-ios.model3.json'),
+        href: assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo-mobile.model3.json'),
         as: 'fetch',
         type: 'application/json'
       }
@@ -78,12 +74,12 @@ export function preloadLive2DResources() {
   [
     { href: assetUrl(CORE_SCRIPT), as: 'script' },
     { href: assetUrl(ROOM_SCRIPT), as: 'script' },
-    {
-      href: useLowMemoryModel
-        ? assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo-ios.model3.json')
+      {
+        href: useLowMemoryModel
+        ? assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo-mobile.model3.json')
         : assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json'),
-      as: 'fetch',
-      type: 'application/json'
+        as: 'fetch',
+        type: 'application/json'
     },
     { href: assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3'), as: 'fetch', type: 'application/octet-stream' }
   ].forEach((resource) => {
