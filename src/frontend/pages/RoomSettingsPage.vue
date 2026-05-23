@@ -116,7 +116,7 @@ const storedUser = ref(readStoredUser());
 const modelCatalog = reactive({ loading: false, message: '', updatedAt: '', models: [] });
 let toastTimer = 0;
 
-const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
+const model = reactive({ scale: 100, xOffset: 0, yOffset: 0, lowQualityModel: false });
 const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto' });
 const tts = reactive({
   enabled: false,
@@ -1039,6 +1039,7 @@ function loadSettings() {
   model.scale = Math.round(Number(modelSettings.scale || 1) * 100);
   model.xOffset = Number(modelSettings.xOffset || 0);
   model.yOffset = Number(modelSettings.yOffset || 0);
+  model.lowQualityModel = Boolean(modelSettings.lowQualityModel);
 
   Object.assign(llm, readJson('roomLLMSettings', {}));
   Object.assign(tts, { ...tts, ...readJson('roomTTSSettings', {}) });
@@ -1089,7 +1090,8 @@ function saveModel() {
   writeJson('roomModelSettings', {
     scale: Number(model.scale || 100) / 100,
     xOffset: Number(model.xOffset || 0),
-    yOffset: Number(model.yOffset || 0)
+    yOffset: Number(model.yOffset || 0),
+    lowQualityModel: Boolean(model.lowQualityModel)
   });
   showToast('模型设置已保存，回到房间后生效');
 }
@@ -1098,6 +1100,7 @@ function resetModel() {
   model.scale = 100;
   model.xOffset = 0;
   model.yOffset = 0;
+  model.lowQualityModel = false;
   saveModel();
 }
 
@@ -1663,6 +1666,8 @@ onBeforeUnmount(() => {
           <label>模型大小 <strong>{{ model.scale }}%</strong><input v-model="model.scale" type="range" min="60" max="160"></label>
           <label>水平位置 <strong>{{ model.xOffset }}</strong><input v-model="model.xOffset" type="range" min="-240" max="240"></label>
           <label>垂直位置 <strong>{{ model.yOffset }}</strong><input v-model="model.yOffset" type="range" min="-180" max="180"></label>
+          <label class="check-row"><input v-model="model.lowQualityModel" type="checkbox"> 低质量模型（512 纹理，适合性能较弱手机）</label>
+          <p class="field-hint">移动端默认使用 1024 纹理、DPR 1、45fps；开启低质量模型后只切换到 512 纹理，帧率仍保持 45fps。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveModel">保存模型设置</button>
             <button class="ghost-btn" type="button" @click="resetModel">重置模型</button>

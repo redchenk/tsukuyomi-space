@@ -14,8 +14,6 @@ type RoomLive2DState = {
   visible: boolean;
   targetFrameMs: number;
   lastRenderAt: number;
-  lowPower: boolean;
-  slowFrameCount: number;
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
@@ -35,11 +33,10 @@ function isMobileDevice(): boolean {
 
 function live2dPerformanceProfile(): { targetFrameMs: number; lowPower: boolean } {
   const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
-  const lowPower = forced === 'lite'
-    || forced === 'low'
+  const lowPower = forced === 'low'
     || isMobileDevice();
   return {
-    targetFrameMs: forced === 'lite' ? 1000 / 30 : lowPower ? 1000 / 45 : 1000 / 60,
+    targetFrameMs: lowPower ? 1000 / 45 : 1000 / 60,
     lowPower
   };
 }
@@ -173,19 +170,8 @@ function initRoomLive2D(): void {
     if (!roomState) return;
     if (roomState.visible && time - roomState.lastRenderAt >= roomState.targetFrameMs) {
       roomState.lastRenderAt = time;
-      const startedAt = performance.now();
       LAppPal.updateTime();
       subdelegate.update();
-      const renderCost = performance.now() - startedAt;
-      if (roomState.lowPower && roomState.targetFrameMs < 1000 / 30) {
-        roomState.slowFrameCount = renderCost > 22
-          ? roomState.slowFrameCount + 1
-          : Math.max(0, roomState.slowFrameCount - 1);
-        if (roomState.slowFrameCount >= 8) {
-          roomState.targetFrameMs = 1000 / 30;
-          roomState.canvas.dataset.performance = 'adaptive';
-        }
-      }
     }
     roomState.frameId = requestAnimationFrame(run);
   };
@@ -196,8 +182,6 @@ function initRoomLive2D(): void {
     visible: document.visibilityState !== 'hidden',
     targetFrameMs: profile.targetFrameMs,
     lastRenderAt: 0,
-    lowPower: profile.lowPower,
-    slowFrameCount: 0,
     frameId: requestAnimationFrame(run),
     onPointerDown,
     onPointerMove,

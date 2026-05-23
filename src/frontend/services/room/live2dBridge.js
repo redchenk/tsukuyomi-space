@@ -1,7 +1,7 @@
 import { assetUrl } from '../../utils/assetUrl';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260523-mobile-adaptive';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260523-mobile-manual-quality';
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_READY_TIMEOUT = 20000;
 
@@ -44,23 +44,18 @@ export function isMobileLive2DDevice() {
   return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
 }
 
-function connectionInfo() {
-  return navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+function readRoomModelSettings() {
+  try {
+    return JSON.parse(localStorage.getItem('roomModelSettings') || '{}') || {};
+  } catch (_) {
+    return {};
+  }
 }
 
 export function live2DPerformanceMode() {
+  if (readRoomModelSettings().lowQualityModel) return 'lite';
   if (!isMobileLive2DDevice()) return 'standard';
-  const memory = Number(navigator.deviceMemory || 0);
-  const cores = Number(navigator.hardwareConcurrency || 0);
-  const connection = connectionInfo();
-  const effectiveType = String(connection.effectiveType || '').toLowerCase();
-  const constrained =
-    Boolean(connection.saveData) ||
-    (memory > 0 && memory <= 4) ||
-    (cores > 0 && cores <= 4) ||
-    effectiveType === 'slow-2g' ||
-    effectiveType === '2g';
-  return constrained ? 'lite' : 'low';
+  return 'low';
 }
 
 function live2DModelJson(mode = live2DPerformanceMode()) {
