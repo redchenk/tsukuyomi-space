@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 import { renderMarkdown } from '../utils/markdown';
 
@@ -271,7 +271,7 @@ function fileToDataUrl(file) {
 function postJsonWithProgress(url, payload, headers, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
+    xhr.open('POST', apiUrl(url));
     xhr.withCredentials = true;
     Object.entries(headers || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
