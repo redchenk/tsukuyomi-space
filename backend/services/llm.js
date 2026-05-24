@@ -138,6 +138,14 @@ function isOpenRouterUrl(chatUrl) {
     return /openrouter\.ai\/api\/v1\/chat\/completions\/?$/i.test(String(chatUrl || '').replace(/\/$/, ''));
 }
 
+function isKimiChatTarget(chatUrl, model) {
+    return /api\.moonshot\.cn|moonshot|kimi/i.test(`${chatUrl || ''} ${model || ''}`);
+}
+
+function chatTemperatureFor(chatUrl, model, fallback) {
+    return isKimiChatTarget(chatUrl, model) ? 1 : fallback;
+}
+
 function isMiniMaxAnthropicText(chatUrl, model) {
     return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages\/?$|MiniMax-M2/i.test(`${chatUrl || ''} ${model || ''}`);
 }
@@ -211,7 +219,7 @@ function buildChatPayload({ chatUrl, model, systemPrompt, history, message, imag
             ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
             { role: 'user', content: userContent }
         ],
-        temperature: 0.7,
+        temperature: chatTemperatureFor(chatUrl, model, 0.7),
         max_tokens: 240,
         stream: false
     };
@@ -272,6 +280,8 @@ module.exports = {
     ROOM_SYSTEM_PROMPT,
     createChatCompletion,
     fallbackRoomReply,
+    buildChatPayload,
+    chatTemperatureFor,
     normalizeChatUrl,
     validateChatUrl
 };

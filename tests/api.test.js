@@ -22,7 +22,7 @@ process.env.ROOM_WEATHER_OFFLINE = 'true';
 
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
-const { normalizeChatUrl } = require('../backend/services/llm');
+const { buildChatPayload, normalizeChatUrl } = require('../backend/services/llm');
 
 let server;
 let baseUrl;
@@ -583,6 +583,26 @@ describe('chat API endpoint allowlist', () => {
             normalizeChatUrl('https://api.deepseek.com', 'deepseek-chat'),
             'https://api.deepseek.com/chat/completions'
         );
+    });
+
+    it('uses Kimi-compatible temperature for Moonshot models', () => {
+        const payload = buildChatPayload({
+            chatUrl: 'https://api.moonshot.cn/v1/chat/completions',
+            model: 'kimi-k2.6',
+            systemPrompt: 'system',
+            history: [],
+            message: 'hello'
+        });
+        assert.equal(payload.temperature, 1);
+
+        const normalPayload = buildChatPayload({
+            chatUrl: 'https://api.deepseek.com/chat/completions',
+            model: 'deepseek-chat',
+            systemPrompt: 'system',
+            history: [],
+            message: 'hello'
+        });
+        assert.equal(normalPayload.temperature, 0.7);
     });
 
     it('rejects arbitrary chat apiUrl values before proxying', async () => {

@@ -308,6 +308,14 @@ function isOpenRouterApi(apiUrl = '') {
   return /openrouter\.ai\/api\/v1\/chat\/completions\/?$/i.test(String(apiUrl || '').replace(/\/$/, ''));
 }
 
+function isKimiChatTarget(apiUrl = '', modelName = '') {
+  return /api\.moonshot\.cn|moonshot|kimi/i.test(`${apiUrl || ''} ${modelName || ''}`);
+}
+
+function chatTemperatureFor(apiUrl = '', modelName = '', fallback = null) {
+  return isKimiChatTarget(apiUrl, modelName) ? 1 : fallback;
+}
+
 function openRouterHeaders(apiUrl = '') {
   if (!isOpenRouterApi(apiUrl)) return {};
   return {
@@ -331,6 +339,7 @@ function openAIResponsesContent(text, image) {
 
 function makeLLMRequestBody(settings, systemPrompt, conversation, message, image) {
   const apiUrl = normalizeOpenAIUrl(settings.apiUrl || '');
+  const model = settings.model || 'gpt-4o-mini';
   if (isOpenAIResponsesApi(apiUrl)) {
     return {
       model: settings.model || 'gpt-5.5',
@@ -349,12 +358,13 @@ function makeLLMRequestBody(settings, systemPrompt, conversation, message, image
       ]
     : String(message || '');
   return {
-    model: settings.model || 'gpt-4o-mini',
+    model,
     messages: [
       { role: 'system', content: systemPrompt },
       ...conversation.map((item) => ({ role: item.role, content: String(item.content || '') })),
       { role: 'user', content: userContent }
-    ]
+    ],
+    ...(isKimiChatTarget(apiUrl, model) ? { temperature: 1 } : {})
   };
 }
 
@@ -396,7 +406,7 @@ async function translateForJapaneseTts(text) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: source }
           ],
-          temperature: 0.2
+          temperature: chatTemperatureFor(apiUrl, settings.model || 'gpt-4o-mini', 0.2)
         })
   });
   if (!response.ok) throw new Error(`日文翻译失败：LLM ${response.status}`);

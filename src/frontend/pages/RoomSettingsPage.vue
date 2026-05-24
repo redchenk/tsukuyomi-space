@@ -607,6 +607,14 @@ function isOpenRouterApi(apiUrl) {
   return /openrouter\.ai\/api\/v1\/chat\/completions\/?$/i.test(normalizeChatUrl(apiUrl || '', ''));
 }
 
+function isKimiChatTarget(apiUrl, modelName) {
+  return /api\.moonshot\.cn|moonshot|kimi/i.test(`${apiUrl || ''} ${modelName || ''}`);
+}
+
+function chatTemperatureFor(apiUrl, modelName, fallback) {
+  return isKimiChatTarget(apiUrl, modelName) ? 1 : fallback;
+}
+
 function openRouterHeaders(apiUrl) {
   if (!isOpenRouterApi(apiUrl)) return {};
   return {
@@ -652,7 +660,7 @@ function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiU
   const body = {
     model: modelName || defaultModel,
     messages,
-    temperature: 0.4
+    temperature: chatTemperatureFor(apiUrl, modelName || defaultModel, 0.4)
   };
   body.max_tokens = limit;
   return body;

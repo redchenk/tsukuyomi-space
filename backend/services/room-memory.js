@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const db = require('../db');
-const { normalizeChatUrl } = require('./llm');
+const { chatTemperatureFor, normalizeChatUrl } = require('./llm');
 
 const VECTOR_SIZE = 96;
 const MAX_MEMORIES_PER_USER = Number(process.env.ROOM_MEMORY_MAX_PER_USER || 500);
@@ -199,19 +199,21 @@ async function extractMemoryCandidatesWithLLM(payload = {}) {
         'type 只能是 profile, preference, project, episodic, semantic, conversation。',
         '如果没有值得长期保存的内容，输出 []。'
     ].join('\n');
-    const response = await fetch(normalizeChatUrl(process.env.LLM_API_URL, process.env.LLM_MODEL || 'moonshot-v1-8k'), {
+    const model = process.env.LLM_MODEL || 'moonshot-v1-8k';
+    const chatUrl = normalizeChatUrl(process.env.LLM_API_URL, model);
+    const response = await fetch(chatUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${process.env.LLM_API_KEY}`
         },
         body: JSON.stringify({
-            model: process.env.LLM_MODEL || 'moonshot-v1-8k',
+            model,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content }
             ],
-            temperature: 0.1,
+            temperature: chatTemperatureFor(chatUrl, model, 0.1),
             max_tokens: 420,
             stream: false
         })
