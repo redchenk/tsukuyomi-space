@@ -19,6 +19,8 @@ const mcpRoutes = require('./routes/mcp');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./user-routes');
 
+const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '200mb';
+
 function isAllowedOrigin(origin, req) {
     if (!origin) return true;
     if (config.corsOrigins.length === 0 || config.corsOrigins.includes(origin)) return true;
@@ -71,8 +73,8 @@ function createApp() {
     app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
 
     // Regular attachments can use data URLs; large media should be registered from OSS.
-    app.use(express.json({ limit: '80mb' }));
-    app.use(express.urlencoded({ limit: '80mb', extended: true }));
+    app.use(express.json({ limit: requestBodyLimit }));
+    app.use(express.urlencoded({ limit: requestBodyLimit, extended: true }));
     app.use(jsonParseError);
 
     serveStaticFiles(app);
