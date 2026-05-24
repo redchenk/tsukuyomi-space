@@ -39,6 +39,9 @@ function notifyMessageOwner({ targetMessage, actor, type, title, content, relate
 
 function sendMessageList(req, res, articleId) {
     try {
+        if (articleId && !articleRepository.findPublishedArticleById(articleId)) {
+            return res.status(404).json({ success: false, message: 'Article not found' });
+        }
         const key = articleId ? `public:article-messages:${articleId}` : 'public:plaza-messages';
         res.json(responseCache.remember(key, 4000, () => ({
             success: true,
@@ -63,6 +66,9 @@ router.post('/', authenticateToken, (req, res) => {
         const { content, article_id } = req.body;
         if (!content) {
             return res.status(400).json({ success: false, message: '留言内容不能为空' });
+        }
+        if (article_id && !articleRepository.findPublishedArticleById(article_id)) {
+            return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         }
 
         const review = reviewMessageContent(content);
@@ -101,6 +107,9 @@ router.post('/:id/like', authenticateToken, (req, res) => {
         if (!visibleMessage) {
             return res.status(404).json({ success: false, message: '留言不存在或仍在审核中' });
         }
+        if (visibleMessage.article_id && !articleRepository.findPublishedArticleById(visibleMessage.article_id)) {
+            return res.status(404).json({ success: false, message: '文章不存在或未公开' });
+        }
 
         const message = messageRepository.likeMessage(messageId, userId);
         responseCache.delPrefix(message.article_id ? `public:article-messages:${message.article_id}` : 'public:plaza-messages');
@@ -130,6 +139,9 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
         const originalMessage = messageRepository.findApprovedMessageById(messageId);
         if (!originalMessage) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
+        }
+        if (originalMessage.article_id && !articleRepository.findPublishedArticleById(originalMessage.article_id)) {
+            return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         }
 
         const review = reviewMessageContent(content);

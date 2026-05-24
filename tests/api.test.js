@@ -37,8 +37,22 @@ let replyId;
 function jsonHeaders(token) {
     return {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+        ...(token ? authHeader(token) : {})
     };
+}
+
+function authHeader(token) {
+    if (String(token || '').includes('=')) return { Cookie: token };
+    return { Authorization: `Bearer ${token}` };
+}
+
+function authCookieFrom(response) {
+    const header = response.headers.get('set-cookie') || '';
+    return header
+        .split(/,(?=\s*[^;,]+=)/)
+        .map(part => part.split(';')[0].trim())
+        .filter(pair => pair && !pair.endsWith('='))
+        .join('; ');
 }
 
 async function request(pathname, options = {}) {
@@ -68,7 +82,7 @@ async function login(pathname, username, password) {
     const { response, body } = await postJson(pathname, { username, password });
     assert.equal(response.status, 200);
     assert.equal(body.success, true);
-    return body.data.token;
+    return body.data?.token || authCookieFrom(response);
 }
 
 before(async () => {
@@ -136,7 +150,7 @@ describe('auth API', () => {
         });
         assert.equal(ok.response.status, 200);
         assert.equal(ok.body.data.user.role, 'user');
-        assert.ok(ok.body.data.token);
+        assert.ok(ok.body.data.token || authCookieFrom(ok.response));
 
         const bad = await postJson('/api/auth/login', {
             username: 'normal-user',
@@ -177,6 +191,44 @@ describe('articles API', () => {
         assert.ok(Array.isArray(body.data));
         assert.ok(body.data.length > 0);
         assert.equal(body.pagination.limit, 2);
+    });
+
+    it('hides draft articles from public API, SSR, and sitemap', async () => {
+        const draft = db.prepare(`
+            INSERT INTO articles (title, slug, excerpt, content, category, tags, publish_date, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            'Hidden Draft Article',
+            'hidden-draft-article',
+            'Draft summary',
+            'Draft body should not be public.',
+            '\u968f\u7b14',
+            '[]',
+            '2026-05-24',
+            'draft'
+        );
+        const draftId = draft.lastInsertRowid;
+
+        const list = await request('/api/articles?limit=200');
+        assert.equal(list.response.status, 200);
+        assert.equal(list.body.data.some(article => article.id === draftId), false);
+
+        const detail = await request(`/api/articles/${draftId}`);
+        assert.equal(detail.response.status, 404);
+
+        const liveDetail = await request(`/api/articles/${draftId}/live/test`);
+        assert.equal(liveDetail.response.status, 404);
+
+        const comments = await request(`/api/messages?article_id=${draftId}`);
+        assert.equal(comments.response.status, 404);
+
+        const ssr = await request(`/articles/${draftId}/hidden-draft-article`);
+        assert.equal(ssr.response.status, 404);
+        assert.equal(String(ssr.body).includes('Hidden Draft Article'), false);
+
+        const sitemap = await request('/sitemap.xml');
+        assert.equal(sitemap.response.status, 200);
+        assert.equal(String(sitemap.body).includes(`/articles/${draftId}/hidden-draft-article`), false);
     });
 
     it('allows an authenticated user to create and read a non-admin article', async () => {

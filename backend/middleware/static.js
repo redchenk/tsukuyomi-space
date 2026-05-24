@@ -245,12 +245,12 @@ function serveStaticFiles(app) {
         const id = req.query?.id;
         if (!id) return next();
         if (req.query?.spa === '1') return next();
-        const article = articleRepository.findArticleById(id);
+        const article = articleRepository.findPublishedArticleById(id);
         if (!article) return res.status(404).type('html').send(renderNotFoundHtml());
         return res.redirect(301, articlePath(article));
     });
     app.get('/articles/:id/:slug?', (req, res) => {
-        const article = articleRepository.findArticleById(req.params.id);
+        const article = articleRepository.findPublishedArticleById(req.params.id);
         if (!article) return res.status(404).type('html').send(renderNotFoundHtml());
         if (article.slug && req.params.slug !== article.slug) {
             return res.redirect(301, articlePath(article));

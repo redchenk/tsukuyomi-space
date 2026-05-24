@@ -53,6 +53,10 @@ function canPublishAnnouncement(user) {
     return user?.role === 'admin' || user?.role === 'super_admin';
 }
 
+function findPublicArticle(id) {
+    return articleRepository.findPublishedArticleById(id);
+}
+
 router.get('/', sendArticleList);
 
 // 创建文章：普通用户可发普通分类，公告类仅管理员可发。
@@ -98,7 +102,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // 单篇文章读取会顺便累计阅读数。
 router.get('/:id/messages', (req, res) => {
     try {
-        const article = articleRepository.findArticleById(req.params.id);
+        const article = findPublicArticle(req.params.id);
         if (!article) {
             return res.status(404).json({ success: false, message: 'Article not found' });
         }
@@ -115,7 +119,7 @@ router.get('/:id/messages', (req, res) => {
 
 router.get('/:id/messages/live/:nonce', (req, res) => {
     try {
-        const article = articleRepository.findArticleById(req.params.id);
+        const article = findPublicArticle(req.params.id);
         if (!article) {
             return res.status(404).json({ success: false, message: 'Article not found' });
         }
@@ -132,7 +136,7 @@ router.get('/:id/messages/live/:nonce', (req, res) => {
 
 router.get('/:id/live/:nonce', (req, res) => {
     try {
-        const article = articleRepository.findArticleById(req.params.id);
+        const article = findPublicArticle(req.params.id);
         if (!article) {
             return res.status(404).json({ success: false, message: 'Article not found' });
         }
@@ -147,7 +151,7 @@ router.get('/:id/live/:nonce', (req, res) => {
 
 router.get('/:id', (req, res) => {
     try {
-        const article = articleRepository.findArticleById(req.params.id);
+        const article = findPublicArticle(req.params.id);
         if (!article) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }

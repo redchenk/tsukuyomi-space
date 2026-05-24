@@ -28,13 +28,14 @@ function listArticles({ category, limit, offset }) {
             u.username AS author_username
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
+        WHERE COALESCE(a.status, 'published') = 'published'
     `;
-    let countQuery = 'SELECT COUNT(*) AS total FROM articles';
+    let countQuery = "SELECT COUNT(*) AS total FROM articles WHERE COALESCE(status, 'published') = 'published'";
     const params = [];
 
     if (category) {
-        query += ' WHERE a.category = ?';
-        countQuery += ' WHERE category = ?';
+        query += ' AND a.category = ?';
+        countQuery += ' AND category = ?';
         params.push(category);
     }
 
@@ -77,6 +78,16 @@ function findArticleById(id) {
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
         WHERE a.id = ?
+    `).get(id);
+}
+
+function findPublishedArticleById(id) {
+    return db.prepare(`
+        SELECT a.*, u.username AS author_username
+        FROM articles a
+        LEFT JOIN users u ON a.author_id = u.id
+        WHERE a.id = ?
+          AND COALESCE(a.status, 'published') = 'published'
     `).get(id);
 }
 
@@ -134,6 +145,7 @@ function listSeoArticles(limit = 500) {
             a.cover_image, a.cover_image_asset_id, a.category, a.tags, a.read_time, u.username AS author_username
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
+        WHERE COALESCE(a.status, 'published') = 'published'
         ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, a.publish_date DESC, a.created_at DESC
         LIMIT ?
     `).all(limit);
@@ -175,6 +187,7 @@ module.exports = {
     listArticles,
     createArticle,
     findArticleById,
+    findPublishedArticleById,
     incrementArticleViews,
     updateArticle,
     deleteArticle,

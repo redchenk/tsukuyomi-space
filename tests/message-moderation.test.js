@@ -27,8 +27,22 @@ let baseUrl;
 function jsonHeaders(token) {
     return {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+        ...(token ? authHeader(token) : {})
     };
+}
+
+function authHeader(token) {
+    if (String(token || '').includes('=')) return { Cookie: token };
+    return { Authorization: `Bearer ${token}` };
+}
+
+function authCookieFrom(response) {
+    const header = response.headers.get('set-cookie') || '';
+    return header
+        .split(/,(?=\s*[^;,]+=)/)
+        .map(part => part.split(';')[0].trim())
+        .filter(pair => pair && !pair.endsWith('='))
+        .join('; ');
 }
 
 async function request(pathname, options = {}) {
@@ -49,7 +63,7 @@ async function login(pathname, payload) {
     const { response, body } = await postJson(pathname, payload);
     assert.equal(response.status, 200);
     assert.equal(body.success, true);
-    return body.data.token;
+    return body.data?.token || authCookieFrom(response);
 }
 
 async function main() {
