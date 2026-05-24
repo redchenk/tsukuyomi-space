@@ -6,14 +6,14 @@ import { formatDateTime } from '../utils/time';
 const emit = defineEmits(['go', 'auth-changed']);
 
 const panels = [
-  { id: 'dashboard', label: '总览', code: '01' },
-  { id: 'articles', label: '文章', code: '02' },
-  { id: 'messages', label: '留言', code: '03' },
-  { id: 'users', label: '用户', code: '04' },
-  { id: 'account', label: '账号安全', code: '05' },
-  { id: 'links', label: '友链', code: '06' },
-  { id: 'analytics', label: '统计', code: '07' },
-  { id: 'settings', label: '设置', code: '08' }
+  { id: 'dashboard', label: '总览', code: '01', group: '巡检', desc: '关键指标和常用入口' },
+  { id: 'analytics', label: '统计', code: '02', group: '巡检', desc: '访问趋势和站点热度' },
+  { id: 'articles', label: '文章', code: '03', group: '内容', desc: '发布、置顶和状态管理' },
+  { id: 'messages', label: '留言', code: '04', group: '内容', desc: '留言墙与文章评论审核' },
+  { id: 'links', label: '友链', code: '05', group: '内容', desc: '站点友链维护' },
+  { id: 'users', label: '用户', code: '06', group: '系统', desc: '用户检索、角色和密码' },
+  { id: 'account', label: '账号安全', code: '07', group: '系统', desc: '当前管理员安全设置' },
+  { id: 'settings', label: '设置', code: '08', group: '系统', desc: '站点、备案和对象存储' }
 ];
 
 const terminal = reactive({
@@ -94,6 +94,10 @@ const terminal = reactive({
 let clockTimer = 0;
 const authed = computed(() => Boolean(terminal.admin));
 const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin');
+const groupedPanels = computed(() => ['巡检', '内容', '系统']
+  .map((group) => ({ group, items: panels.filter((panel) => panel.group === group) }))
+  .filter((entry) => entry.items.length));
+const activePanelMeta = computed(() => panels.find((panel) => panel.id === terminal.activePanel) || panels[0]);
 const filteredUsers = computed(() => {
   const keyword = terminal.userSearch.trim().toLowerCase();
   if (!keyword) return terminal.users;
@@ -500,12 +504,15 @@ onUnmounted(() => {
 
     <section v-else class="terminal-shell">
       <header class="terminal-topbar">
-        <div>
+        <div class="terminal-brand">
           <strong>Tsukuyomi Terminal</strong>
           <span>后台管理工作台 · {{ terminal.clock }}</span>
         </div>
         <div class="terminal-session">
-          <span>{{ terminal.admin?.username }} / {{ terminal.admin?.role }}</span>
+          <span class="terminal-user-pill">
+            <span class="terminal-status-dot" :class="{ busy: terminal.loading }"></span>
+            {{ terminal.admin?.username }} / {{ terminal.admin?.role }}
+          </span>
           <button class="ghost-btn" type="button" @click="$emit('go', '/gallery/manage')">图库管理</button>
           <button class="ghost-btn" type="button" @click="$emit('go', '/attachments')">附件库</button>
           <button class="ghost-btn" type="button" @click="$emit('go', '/hub')">大厅</button>
@@ -515,17 +522,46 @@ onUnmounted(() => {
 
       <div class="terminal-layout">
         <aside class="terminal-sidebar">
-          <button v-for="panel in panels" :key="panel.id" class="terminal-nav-btn" :class="{ active: terminal.activePanel === panel.id }" type="button" @click="loadPanel(panel.id)">
-            {{ panel.label }} <span>{{ panel.code }}</span>
-          </button>
+          <div class="terminal-sidebar-head">
+            <strong>模块</strong>
+            <span>{{ panels.length }} sections</span>
+          </div>
+          <div v-for="group in groupedPanels" :key="group.group" class="terminal-nav-group">
+            <span class="terminal-nav-group-label">{{ group.group }}</span>
+            <button v-for="panel in group.items" :key="panel.id" class="terminal-nav-btn" :class="{ active: terminal.activePanel === panel.id }" type="button" @click="loadPanel(panel.id)">
+              <span class="terminal-nav-copy">
+                <strong>{{ panel.label }}</strong>
+                <small>{{ panel.desc }}</small>
+              </span>
+              <span class="terminal-nav-code">{{ panel.code }}</span>
+            </button>
+          </div>
+          <div class="terminal-sidebar-foot">
+            <span>当前会话</span>
+            <strong>{{ terminal.loading ? '同步中' : '已连接' }}</strong>
+          </div>
         </aside>
 
         <section class="terminal-panel">
+          <div class="terminal-context-bar">
+            <div>
+              <span class="terminal-kicker">{{ activePanelMeta.group }} / {{ activePanelMeta.code }}</span>
+              <strong>{{ activePanelMeta.label }}</strong>
+              <p>{{ activePanelMeta.desc }}</p>
+            </div>
+            <div class="terminal-context-actions">
+              <button class="ghost-btn" type="button" :disabled="terminal.loading" @click="loadPanel(terminal.activePanel)">
+                {{ terminal.loading ? '同步中...' : '刷新当前' }}
+              </button>
+              <button v-if="terminal.activePanel === 'articles'" class="primary-btn" type="button" @click="$emit('go', '/editor')">新建文章</button>
+              <button v-if="terminal.activePanel === 'settings'" class="primary-btn" type="button" @click="saveSettings">保存配置</button>
+            </div>
+          </div>
           <div v-if="terminal.message" class="form-message" :class="terminal.messageType">{{ terminal.message }}</div>
           <div v-if="terminal.loading" class="terminal-empty">正在同步数据...</div>
 
           <div v-show="terminal.activePanel === 'dashboard'">
-            <div class="terminal-panel-head"><h2>系统总览</h2><button class="ghost-btn" type="button" @click="loadPanel('dashboard')">刷新</button></div>
+            <div class="terminal-panel-head"><h2>系统总览</h2></div>
             <div class="terminal-hero">
               <div>
                 <span class="terminal-kicker">CONTROL CENTER</span>
@@ -539,15 +575,31 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="terminal-cards">
-              <div class="terminal-card"><strong>文章总数</strong><span>{{ terminal.stats.articles || 0 }}</span></div>
-              <div class="terminal-card"><strong>待审留言</strong><span>{{ terminal.stats.pendingMessages || 0 }}</span></div>
-              <div class="terminal-card"><strong>今日访问</strong><span>{{ terminal.stats.todayViews || 0 }}</span></div>
-              <div class="terminal-card"><strong>用户总数</strong><span>{{ terminal.stats.users || 0 }}</span></div>
+              <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('articles')">
+                <strong>文章总数</strong>
+                <span>{{ terminal.stats.articles || 0 }}</span>
+                <small>查看内容状态</small>
+              </button>
+              <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('messages')">
+                <strong>待审留言</strong>
+                <span>{{ terminal.stats.pendingMessages || 0 }}</span>
+                <small>进入审核队列</small>
+              </button>
+              <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('analytics')">
+                <strong>今日访问</strong>
+                <span>{{ terminal.stats.todayViews || 0 }}</span>
+                <small>查看统计面板</small>
+              </button>
+              <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('users')">
+                <strong>用户总数</strong>
+                <span>{{ terminal.stats.users || 0 }}</span>
+                <small>管理用户权限</small>
+              </button>
             </div>
           </div>
 
           <div v-show="terminal.activePanel === 'articles'">
-            <div class="terminal-panel-head"><h2>文章管理</h2><button class="primary-btn" type="button" @click="$emit('go', '/editor')">新建文章</button></div>
+            <div class="terminal-panel-head"><h2>文章管理</h2></div>
             <div class="terminal-summary-row">
               <span>已发布 {{ publishedArticleCount }}</span>
               <span>草稿 {{ terminal.articles.length - publishedArticleCount }}</span>
@@ -566,7 +618,7 @@ onUnmounted(() => {
           </div>
 
           <div v-show="terminal.activePanel === 'messages'">
-            <div class="terminal-panel-head"><h2>留言审核</h2><button class="ghost-btn" type="button" @click="loadPanel('messages')">刷新</button></div>
+            <div class="terminal-panel-head"><h2>留言审核</h2></div>
             <div class="terminal-summary-row">
               <span>待审核 {{ pendingMessageCount }}</span>
               <span>已通过 {{ terminal.messages.length - pendingMessageCount }}</span>
@@ -591,7 +643,7 @@ onUnmounted(() => {
           </div>
 
           <div v-show="terminal.activePanel === 'users'">
-            <div class="terminal-panel-head"><h2>用户管理</h2><button class="ghost-btn" type="button" @click="loadPanel('users')">刷新</button></div>
+            <div class="terminal-panel-head"><h2>用户管理</h2></div>
             <div class="terminal-toolbar">
               <input v-model="terminal.userSearch" placeholder="搜索用户名、邮箱、角色或 ID">
               <span class="terminal-toolbar-note">仅 super_admin 可修改角色或重置密码</span>
@@ -627,7 +679,7 @@ onUnmounted(() => {
           </div>
 
           <div v-show="terminal.activePanel === 'account'">
-            <div class="terminal-panel-head"><h2>账号密码管理</h2><button class="ghost-btn" type="button" @click="loadPanel('account')">刷新</button></div>
+            <div class="terminal-panel-head"><h2>账号密码管理</h2></div>
             <div class="terminal-account-grid">
               <article class="terminal-card terminal-account-card">
                 <strong>当前管理员</strong>
@@ -645,7 +697,7 @@ onUnmounted(() => {
           </div>
 
           <div v-show="terminal.activePanel === 'links'">
-            <div class="terminal-panel-head"><h2>友链管理</h2><button class="ghost-btn" type="button" @click="loadPanel('links')">刷新</button></div>
+            <div class="terminal-panel-head"><h2>友链管理</h2></div>
             <form class="terminal-toolbar" @submit.prevent="createLink"><input v-model="terminal.newLink.name" placeholder="站点名称" required><input v-model="terminal.newLink.url" placeholder="https://example.com" required><button class="primary-btn" type="submit">添加友链</button></form>
             <div class="terminal-table-wrap"><table><thead><tr><th>名称</th><th>URL</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in terminal.links" :key="item.id"><td>{{ item.name }}</td><td><a :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></td><td><span class="terminal-badge ok">{{ item.status || 'active' }}</span></td><td>{{ formatDate(item.created_at) }}</td><td><button class="danger-btn" type="button" @click="deleteLink(item.id)">删除</button></td></tr>
@@ -653,7 +705,7 @@ onUnmounted(() => {
           </div>
 
           <div v-show="terminal.activePanel === 'analytics'">
-            <div class="terminal-panel-head"><h2>访问统计</h2><button class="ghost-btn" type="button" @click="loadPanel('analytics')">刷新</button></div>
+            <div class="terminal-panel-head"><h2>访问统计</h2></div>
             <div class="terminal-cards">
               <div class="terminal-card"><strong>今日访问</strong><span>{{ terminal.analytics.todayViews || 0 }}</span></div>
               <div class="terminal-card"><strong>7 日访问</strong><span>{{ terminal.analytics.weekViews || 0 }}</span></div>
@@ -663,20 +715,38 @@ onUnmounted(() => {
           </div>
 
           <form v-show="terminal.activePanel === 'settings'" class="terminal-settings" @submit.prevent="saveSettings">
-            <div class="terminal-panel-head"><h2>系统配置</h2><button class="primary-btn" type="submit">保存配置</button></div>
-            <label>站点标题<input v-model="terminal.settings.siteTitle"></label>
-            <label>公告内容<textarea v-model="terminal.settings.siteAnnouncement"></textarea></label>
-            <div class="terminal-settings-block">
+            <div class="terminal-panel-head"><h2>系统配置</h2></div>
+            <div class="terminal-settings-block terminal-settings-grid">
+              <div class="terminal-settings-title">
+                <strong>基础信息</strong>
+                <span>站点标题、公告和轻量展示设置</span>
+              </div>
+              <label>站点标题<input v-model="terminal.settings.siteTitle"></label>
+              <label class="terminal-wide-field">公告内容<textarea v-model="terminal.settings.siteAnnouncement"></textarea></label>
+            </div>
+            <div class="terminal-settings-block terminal-settings-grid">
+              <div class="terminal-settings-title">
+                <strong>首次访问弹窗</strong>
+                <span>用于提示访客进入站点时需要第一时间看到的信息</span>
+              </div>
               <label class="terminal-check"><input v-model="terminal.settings.visitPopupEnabled" type="checkbox"> 启用访问弹窗</label>
               <label>弹窗标题<input v-model="terminal.settings.visitPopupTitle" placeholder="欢迎来到月读空间"></label>
-              <label>弹窗内容<textarea v-model="terminal.settings.visitPopupContent" placeholder="输入访客进入网站时看到的内容"></textarea></label>
+              <label class="terminal-wide-field">弹窗内容<textarea v-model="terminal.settings.visitPopupContent" placeholder="输入访客进入网站时看到的内容"></textarea></label>
               <label>按钮文字<input v-model="terminal.settings.visitPopupButton" placeholder="我知道了"></label>
             </div>
             <div class="terminal-settings-block">
+              <div class="terminal-settings-title">
+                <strong>留言审核</strong>
+                <span>关键词命中后进入人工审核，未命中自动通过</span>
+              </div>
               <label>留言审核关键词<textarea v-model="terminal.settings.messageReviewKeywords" rows="5" placeholder="每行一个或用逗号分隔。命中关键词的留言会进入待审，未命中则自动通过。留空时使用系统默认备案安全词库。"></textarea></label>
               <p class="terminal-setting-note">用于阅读广场、文章评论和回复。普通友好留言会自动公开；涉及安全、违法、广告等关键词的内容进入人工审核。</p>
             </div>
-            <div class="terminal-settings-block">
+            <div class="terminal-settings-block terminal-settings-grid">
+              <div class="terminal-settings-title">
+                <strong>备案信息</strong>
+                <span>ICP 与公安联网备案会同步展示在站点底部</span>
+              </div>
               <label>ICP备案号<input v-model="terminal.settings.beianText" placeholder="苏ICP备2026030780号-1"></label>
               <label>ICP备案链接<input v-model="terminal.settings.beianUrl" placeholder="https://beian.miit.gov.cn/"></label>
               <label>公安联网备案号<input v-model="terminal.settings.mpsBeianText" placeholder="苏公网安备32058502011868号"></label>
@@ -685,6 +755,10 @@ onUnmounted(() => {
               <p class="terminal-setting-note">公安备案会显示在 ICP 备案号下方。图标文件建议放在服务器本地 /assets/images/beian-mps.png，并用 .gitignore 排除。</p>
             </div>
             <div class="terminal-settings-block terminal-oss-settings">
+              <div class="terminal-settings-title">
+                <strong>对象存储</strong>
+                <span>上传策略、CDN 域名、连接测试和 OSS 大文件登记</span>
+              </div>
               <label class="terminal-check"><input v-model="terminal.settings.ossEnabled" type="checkbox"> 自动优先使用对象存储上传</label>
               <label>服务商
                 <select v-model="terminal.settings.ossProvider">
