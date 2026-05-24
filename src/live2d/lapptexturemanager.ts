@@ -8,6 +8,13 @@
 import { csmVector, iterator } from '@framework/type/csmvector';
 import { LAppGlManager } from './lappglmanager';
 
+function shouldUseMipmaps(): boolean {
+  const mode = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
+  const ua = navigator.userAgent || '';
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  return mode === 'standard' && !isMobile;
+}
+
 /**
  * テクスチャ管理クラス
  * 画像読み込み、管理を行うクラス。
@@ -86,13 +93,17 @@ export class LAppTextureManager {
           .getGl()
           .bindTexture(this._glManager.getGl().TEXTURE_2D, tex);
 
+        const useMipmaps = shouldUseMipmaps();
+
         // テクスチャにピクセルを書き込む
         this._glManager
           .getGl()
           .texParameteri(
             this._glManager.getGl().TEXTURE_2D,
             this._glManager.getGl().TEXTURE_MIN_FILTER,
-            this._glManager.getGl().LINEAR_MIPMAP_LINEAR
+            useMipmaps
+              ? this._glManager.getGl().LINEAR_MIPMAP_LINEAR
+              : this._glManager.getGl().LINEAR
           );
         this._glManager
           .getGl()
@@ -124,10 +135,11 @@ export class LAppTextureManager {
             img
           );
 
-        // ミップマップを生成
-        this._glManager
-          .getGl()
-          .generateMipmap(this._glManager.getGl().TEXTURE_2D);
+        if (useMipmaps) {
+          this._glManager
+            .getGl()
+            .generateMipmap(this._glManager.getGl().TEXTURE_2D);
+        }
 
         // テクスチャをバインド
         this._glManager

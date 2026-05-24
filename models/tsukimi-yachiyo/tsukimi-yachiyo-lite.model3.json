@@ -12,8 +12,7 @@
       { "Name": "bsmile", "File": "expression_bsmile.exp3.json" },
       { "Name": "namida", "File": "expression_namida.exp3.json" },
       { "Name": "tears", "File": "expression_tears.exp3.json" }
-    ],
-    "Physics": "tsukimi-yachiyo.physics3.json"
+    ]
   },
   "Groups": [
     {

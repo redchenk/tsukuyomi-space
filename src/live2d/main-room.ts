@@ -34,11 +34,17 @@ function isMobileDevice(): boolean {
 function live2dPerformanceProfile(): { targetFrameMs: number; lowPower: boolean } {
   const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
   const lowPower = forced === 'low'
+    || forced === 'lite'
     || isMobileDevice();
   return {
     targetFrameMs: lowPower ? 1000 / 45 : 1000 / 60,
     lowPower
   };
+}
+
+function isEventInsideNode(event: PointerEvent, node: HTMLElement): boolean {
+  const target = event.target;
+  return target instanceof Node && node.contains(target);
 }
 
 function normalizeExpression(value: unknown): string {
@@ -125,14 +131,26 @@ function initRoomLive2D(): void {
 
   const profile = live2dPerformanceProfile();
   canvas.dataset.performance = profile.lowPower ? 'low' : 'standard';
+  let pointerActive = false;
+  let pendingPointerMove: { x: number; y: number } | null = null;
 
   const onPointerDown = (event: PointerEvent): void => {
+    if (profile.lowPower && !isEventInsideNode(event, container)) return;
+    pointerActive = true;
     subdelegate.onPointBegan(event.pageX, event.pageY);
   };
   const onPointerMove = (event: PointerEvent): void => {
+    if (profile.lowPower) {
+      if (!pointerActive) return;
+      pendingPointerMove = { x: event.pageX, y: event.pageY };
+      return;
+    }
     subdelegate.onPointMoved(event.pageX, event.pageY);
   };
   const onPointerUp = (event: PointerEvent): void => {
+    if (profile.lowPower && !pointerActive) return;
+    pointerActive = false;
+    pendingPointerMove = null;
     subdelegate.onPointEnded(event.pageX, event.pageY);
   };
   const onRoomAct = (event: Event): void => {
@@ -170,6 +188,11 @@ function initRoomLive2D(): void {
     if (!roomState) return;
     if (roomState.visible && time - roomState.lastRenderAt >= roomState.targetFrameMs) {
       roomState.lastRenderAt = time;
+      if (pendingPointerMove) {
+        const point = pendingPointerMove;
+        pendingPointerMove = null;
+        subdelegate.onPointMoved(point.x, point.y);
+      }
       LAppPal.updateTime();
       subdelegate.update();
     }

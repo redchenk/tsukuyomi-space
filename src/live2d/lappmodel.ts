@@ -45,6 +45,11 @@ import { CubismMoc } from '@framework/model/cubismmoc';
 import { LAppDelegate } from './lappdelegate';
 import { LAppSubdelegate } from './lappsubdelegate';
 
+function shouldReduceIdleEffects(): boolean {
+  const mode = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
+  return mode === 'lite';
+}
+
 enum LoadStep {
   LoadAssets,
   LoadModel,
@@ -280,6 +285,13 @@ export class LAppModel extends CubismUserModel {
 
     // Breath
     const setupBreath = (): void => {
+      if (shouldReduceIdleEffects()) {
+        this._breath = null;
+        this._state = LoadStep.LoadUserData;
+        loadUserData();
+        return;
+      }
+
       this._breath = CubismBreath.create();
 
       const breathParameters: csmVector<BreathParameterData> = new csmVector();

@@ -119,8 +119,6 @@ export class LAppView {
     //   this._gear.render(this._programId);
     // }
 
-    this._subdelegate.getGlManager().getGl().flush();
-
     const lapplive2dmanager = this._subdelegate.getLive2DManager();
     if (lapplive2dmanager != null) {
       lapplive2dmanager.setViewMatrix(this._viewMatrix);

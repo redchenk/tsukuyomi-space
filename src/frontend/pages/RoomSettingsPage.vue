@@ -437,13 +437,13 @@ function showToast(text) {
 }
 
 function modelQualityLabel() {
-  return model.lowQualityModel ? '低质量模型：512 纹理' : '默认模型：移动端 1024 纹理';
+  return model.lowQualityModel ? '低质量模型：512 纹理，关闭重物理' : '默认模型：移动端 1024 纹理';
 }
 
 function showModelSaveNotice() {
   modelSaveNotice.visible = true;
   modelSaveNotice.text = '模型设置已保存';
-  modelSaveNotice.detail = `${modelQualityLabel()}；移动端 DPR 1，帧率 45fps。返回房间后生效。`;
+  modelSaveNotice.detail = `${modelQualityLabel()}；移动端 DPR 1，目标帧率 45fps，弱性能手机会自动使用低质量模型。返回房间后生效。`;
   clearTimeout(modelNoticeTimer);
   modelNoticeTimer = setTimeout(() => {
     modelSaveNotice.visible = false;
@@ -1685,8 +1685,8 @@ onBeforeUnmount(() => {
           <label>模型大小 <strong>{{ model.scale }}%</strong><input v-model="model.scale" type="range" min="60" max="160"></label>
           <label>水平位置 <strong>{{ model.xOffset }}</strong><input v-model="model.xOffset" type="range" min="-240" max="240"></label>
           <label>垂直位置 <strong>{{ model.yOffset }}</strong><input v-model="model.yOffset" type="range" min="-180" max="180"></label>
-          <label class="check-row"><input v-model="model.lowQualityModel" type="checkbox"> 低质量模型（512 纹理，适合性能较弱手机）</label>
-          <p class="field-hint">移动端默认使用 1024 纹理、DPR 1、45fps；开启低质量模型后只切换到 512 纹理，帧率仍保持 45fps。</p>
+          <label class="check-row"><input v-model="model.lowQualityModel" type="checkbox"> 低质量模型（512 纹理，关闭重物理，适合性能较弱手机）</label>
+          <p class="field-hint">移动端默认使用 1024 纹理、DPR 1、目标 45fps；弱性能手机会自动使用 512 纹理低质量模型，开启后会关闭重物理与部分待机呼吸效果。</p>
           <div v-if="modelSaveNotice.visible" class="model-save-notice" role="status" aria-live="polite">
             <span class="room-test-status success">已保存</span>
             <div>

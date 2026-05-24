@@ -1,7 +1,7 @@
 import { assetUrl } from '../../utils/assetUrl';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260523-mobile-manual-quality';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260524-mobile-perf';
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_READY_TIMEOUT = 20000;
 
@@ -44,6 +44,13 @@ export function isMobileLive2DDevice() {
   return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
 }
 
+function isConstrainedMobileLive2DDevice() {
+  if (!isMobileLive2DDevice()) return false;
+  const memory = Number(navigator.deviceMemory || 0);
+  const cores = Number(navigator.hardwareConcurrency || 0);
+  return (memory > 0 && memory <= 4) || (cores > 0 && cores <= 4);
+}
+
 function readRoomModelSettings() {
   try {
     return JSON.parse(localStorage.getItem('roomModelSettings') || '{}') || {};
@@ -55,6 +62,7 @@ function readRoomModelSettings() {
 export function live2DPerformanceMode() {
   if (readRoomModelSettings().lowQualityModel) return 'lite';
   if (!isMobileLive2DDevice()) return 'standard';
+  if (isConstrainedMobileLive2DDevice()) return 'lite';
   return 'low';
 }
 
