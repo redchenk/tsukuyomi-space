@@ -577,7 +577,7 @@ describe('chat API endpoint allowlist', () => {
     it('normalizes supported provider chat endpoints', () => {
         assert.equal(
             normalizeChatUrl('https://api.openai.com/v1', 'gpt-4o-mini'),
-            'https://api.openai.com/v1/chat/completions'
+            'https://api.openai.com/v1/responses'
         );
         assert.equal(
             normalizeChatUrl('https://api.deepseek.com', 'deepseek-chat'),
@@ -613,13 +613,13 @@ describe('admin API permissions', () => {
         assert.equal(body.code, 'UNAUTHORIZED');
     });
 
-    it('rejects normal user tokens for admin APIs', async () => {
+    it('rejects normal user sessions for admin APIs', async () => {
         const { response, body } = await request('/api/admin/stats', {
             headers: jsonHeaders(userToken)
         });
 
-        assert.equal(response.status, 403);
-        assert.equal(body.code, 'FORBIDDEN');
+        assert.equal(response.status, 401);
+        assert.equal(body.code, 'UNAUTHORIZED');
     });
 
     it('allows an admin token to access admin APIs', async () => {

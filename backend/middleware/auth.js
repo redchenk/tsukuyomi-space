@@ -34,7 +34,7 @@ function readCookieToken(req, preferred = '') {
     if (preferred && cookies[preferred]) return cookies[preferred];
     const url = String(req.originalUrl || req.baseUrl || req.path || '');
     if (url.startsWith('/api/admin')) return cookies[ADMIN_SESSION_COOKIE] || null;
-    return cookies[USER_SESSION_COOKIE] || null;
+    return cookies[USER_SESSION_COOKIE] || cookies[ADMIN_SESSION_COOKIE] || null;
 }
 
 function readAuthToken(req, preferredCookie = '') {
