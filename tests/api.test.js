@@ -30,6 +30,7 @@ let userToken;
 let managedUserToken;
 let adminToken;
 let staffAdminToken;
+const testAvatar = `data:image/png;base64,${'a'.repeat(5000)}`;
 let articleId;
 let messageId;
 let replyId;
@@ -96,7 +97,7 @@ before(async () => {
     db.prepare(`
         INSERT INTO users (id, username, email, password_hash, role, avatar)
         VALUES (?, ?, ?, ?, ?, ?)
-    `).run('user-001', 'normal-user', 'normal@example.test', bcrypt.hashSync('user-test-password', 10), 'user', 'data:image/png;base64,test-avatar');
+    `).run('user-001', 'normal-user', 'normal@example.test', bcrypt.hashSync('user-test-password', 10), 'user', testAvatar);
     db.prepare(`
         INSERT INTO users (id, username, email, password_hash, role, bio)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -284,12 +285,13 @@ describe('messages API', () => {
         }, userToken);
         assert.equal(created.response.status, 201);
         messageId = created.body.data.id;
+        assert.equal(created.body.data.avatar, testAvatar);
 
         const list = await request(`/api/messages?article_id=${articleId}`);
         assert.equal(list.response.status, 200);
         const listedMessage = list.body.data.find(item => item.id === messageId);
         assert.ok(listedMessage);
-        assert.equal(listedMessage.avatar, 'data:image/png;base64,test-avatar');
+        assert.equal(listedMessage.avatar, testAvatar);
 
         const liked = await postJson(`/api/messages/${messageId}/like`, {}, userToken);
         assert.equal(liked.response.status, 200);

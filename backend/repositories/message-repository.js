@@ -1,6 +1,6 @@
 const db = require('../db');
 
-const INLINE_AVATAR_LIMIT = 4096;
+const INLINE_AVATAR_LIMIT = 256 * 1024;
 
 function compactAvatar(avatar) {
     if (!avatar) return '';
@@ -16,41 +16,33 @@ function compactMessageRow(row) {
     };
 }
 
+const MESSAGE_SELECT_FIELDS = `
+    SELECT m.id,
+           COALESCE(u.username, m.author) AS author,
+           m.content,
+           m.user_id,
+           m.parent_id,
+           m.like_count,
+           m.article_id,
+           m.status,
+           m.created_at,
+           m.updated_at,
+           u.avatar
+    FROM messages m
+    LEFT JOIN users u ON m.user_id = u.id
+`;
+
 function listMessages({ articleId, includePending = false } = {}) {
     const statusFilter = includePending ? '' : "AND COALESCE(m.status, 'approved') = 'approved'";
     const query = articleId
         ? `
-            SELECT m.id,
-                   COALESCE(u.username, m.author) AS author,
-                   m.content,
-                   m.user_id,
-                   m.parent_id,
-                   m.like_count,
-                   m.article_id,
-                   m.status,
-                   m.created_at,
-                   m.updated_at,
-                   u.avatar
-            FROM messages m
-            LEFT JOIN users u ON m.user_id = u.id
+            ${MESSAGE_SELECT_FIELDS}
             WHERE m.article_id = ?
               ${statusFilter}
             ORDER BY m.created_at ASC
         `
         : `
-            SELECT m.id,
-                   COALESCE(u.username, m.author) AS author,
-                   m.content,
-                   m.user_id,
-                   m.parent_id,
-                   m.like_count,
-                   m.article_id,
-                   m.status,
-                   m.created_at,
-                   m.updated_at,
-                   u.avatar
-            FROM messages m
-            LEFT JOIN users u ON m.user_id = u.id
+            ${MESSAGE_SELECT_FIELDS}
             WHERE m.article_id IS NULL
               ${statusFilter}
             ORDER BY m.created_at DESC
@@ -74,11 +66,13 @@ function createMessage({ author, content, userId, articleId = null, parentId = n
 }
 
 function findMessageById(id) {
-    return db.prepare('SELECT * FROM messages WHERE id = ?').get(id);
+    const row = db.prepare(`${MESSAGE_SELECT_FIELDS} WHERE m.id = ?`).get(id);
+    return row ? compactMessageRow(row) : null;
 }
 
 function findApprovedMessageById(id) {
-    return db.prepare("SELECT * FROM messages WHERE id = ? AND COALESCE(status, 'approved') = 'approved'").get(id);
+    const row = db.prepare(`${MESSAGE_SELECT_FIELDS} WHERE m.id = ? AND COALESCE(m.status, 'approved') = 'approved'`).get(id);
+    return row ? compactMessageRow(row) : null;
 }
 
 function findMessageLike(messageId, userId) {
