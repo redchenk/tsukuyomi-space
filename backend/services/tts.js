@@ -8,6 +8,7 @@ const GPT_SOVITS_TEXT_LANG = process.env.GPT_SOVITS_TEXT_LANG || 'zh';
 const GPT_SOVITS_PROMPT_LANG = process.env.GPT_SOVITS_PROMPT_LANG || 'zh';
 const GPT_SOVITS_GPT_WEIGHT_PATH = process.env.GPT_SOVITS_GPT_WEIGHT_PATH || 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
 const GPT_SOVITS_SOVITS_WEIGHT_PATH = process.env.GPT_SOVITS_SOVITS_WEIGHT_PATH || 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth';
+const MINIMAX_CLONED_VOICE_ID = 'yachiyo_jp_prompt_20260525c';
 
 const ALLOWED_TTS_ENDPOINTS = [
     { hostname: 'api.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ },
@@ -139,6 +140,23 @@ function normalizeGptSovitsLang(value, fallback = 'zh') {
         : fallback;
 }
 
+function minimaxLanguageBoost(textLang) {
+    const lang = normalizeGptSovitsLang(textLang, 'ja');
+    const values = {
+        ja: 'Japanese',
+        all_ja: 'Japanese',
+        en: 'English',
+        zh: 'Chinese',
+        all_zh: 'Chinese',
+        yue: 'Chinese,Yue',
+        all_yue: 'Chinese,Yue',
+        auto_yue: 'Chinese,Yue',
+        ko: 'Korean',
+        auto: 'auto'
+    };
+    return values[lang] || 'Japanese';
+}
+
 async function loadGptSovitsWeights(baseUrl, gptWeightPath, sovitsWeightPath) {
     const url = new URL(baseUrl);
     const gptPath = gptWeightPath || GPT_SOVITS_GPT_WEIGHT_PATH;
@@ -162,18 +180,18 @@ async function loadGptSovitsWeights(baseUrl, gptWeightPath, sovitsWeightPath) {
 async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang, gptWeightPath, sovitsWeightPath }) {
     const useProvider = provider || process.env.TTS_PROVIDER || 'mimo';
     const useApiKey = apiKey || TTS_API_KEY;
-    const useVoice = voice || TTS_VOICE || (useProvider === 'gpt-sovits' ? '' : useProvider === 'openai' || useProvider === 'openai-compatible' ? 'alloy' : 'mimo_default');
+    const useVoice = voice || TTS_VOICE || (useProvider === 'gpt-sovits' ? '' : useProvider === 'minimax' ? MINIMAX_CLONED_VOICE_ID : useProvider === 'openai' || useProvider === 'openai-compatible' ? 'alloy' : 'mimo_default');
     const rawApiUrl = apiUrl || (useProvider === 'gpt-sovits' ? GPT_SOVITS_API_URL : TTS_API_URL) || (useProvider === 'openai' || useProvider === 'openai-compatible'
         ? 'https://api.openai.com/v1/audio/speech'
         : useProvider === 'minimax'
-            ? 'https://api.minimax.chat/v1/t2a_v2'
+            ? 'https://api.minimaxi.com/v1/t2a_v2'
             : useProvider === 'elevenlabs'
                 ? 'https://api.elevenlabs.io/v1/text-to-speech'
                 : useProvider === 'gpt-sovits'
                     ? GPT_SOVITS_API_URL
         : 'https://api.xiaomimimo.com/v1/chat/completions');
     const useApiUrl = validateTtsUrl(rawApiUrl, useProvider);
-    const useModel = model || process.env.TTS_MODEL || (useProvider === 'openai' || useProvider === 'openai-compatible' ? 'tts-1' : useProvider === 'minimax' ? 'speech-02-hd' : useProvider === 'elevenlabs' ? 'eleven_multilingual_v2' : 'mimo-v2.5-tts');
+    const useModel = model || process.env.TTS_MODEL || (useProvider === 'openai' || useProvider === 'openai-compatible' ? 'tts-1' : useProvider === 'minimax' ? 'speech-2.8-hd' : useProvider === 'elevenlabs' ? 'eleven_multilingual_v2' : 'mimo-v2.5-tts');
 
     if (useProvider !== 'gpt-sovits' && !useApiKey) {
         const error = new Error('TTS API 未配置，请设置 TTS_API_KEY 或在请求中传入 apiKey');
@@ -275,6 +293,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
                 model: useModel,
                 text: String(text),
                 stream: false,
+                language_boost: minimaxLanguageBoost(textLang || 'ja'),
                 voice_setting: { voice_id: useVoice || 'female-shaonv', speed: 1, vol: 1, pitch: 0 },
                 audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 }
             })

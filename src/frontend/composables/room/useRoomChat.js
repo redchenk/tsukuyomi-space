@@ -770,7 +770,7 @@ export function useRoomChat({ live2d, world }) {
       const response = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...settings, text: ttsText, textLang: 'auto' })
+          body: JSON.stringify({ ...settings, text: ttsText, textLang: settings.textLang || 'auto' })
         });
       if (!response.ok) {
         const contentType = response.headers.get('content-type') || '';

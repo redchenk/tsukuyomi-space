@@ -89,7 +89,7 @@ const TTS_PRESETS = {
   mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
   openai: { label: 'OpenAI TTS', provider: 'openai', apiUrl: 'https://api.openai.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
   openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
-  minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimax.chat/v1/t2a_v2', model: 'speech-02-hd', voice: 'female-shaonv' },
+  minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimaxi.com/v1/t2a_v2', model: 'speech-2.8-hd', voice: 'yachiyo_jp_prompt_20260525c', textLang: 'ja' },
   elevenlabs: { label: 'ElevenLabs', provider: 'elevenlabs', apiUrl: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2', voice: '21m00Tcm4TlvDq8ikWAM' },
   gptSovitsLocal: { label: '本机 GPT-SoVITS 直连', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
@@ -713,7 +713,7 @@ function ttsReadInstruction(text, textLang) {
 function defaultTtsUrl(provider) {
   if (provider === 'openai' || provider === 'openai-compatible') return 'https://api.openai.com/v1/audio/speech';
   if (provider === 'elevenlabs') return 'https://api.elevenlabs.io/v1/text-to-speech';
-  if (provider === 'minimax') return 'https://api.minimax.chat/v1/t2a_v2';
+  if (provider === 'minimax') return 'https://api.minimaxi.com/v1/t2a_v2';
   if (provider === 'gpt-sovits') return 'http://localhost:9880/tts';
   return 'https://api.xiaomimimo.com/v1/chat/completions';
 }
@@ -792,6 +792,23 @@ function normalizeGptSovitsLang(value, fallback = 'zh') {
     : fallback;
 }
 
+function minimaxLanguageBoost(textLang) {
+  const lang = normalizeGptSovitsLang(textLang, 'ja');
+  const values = {
+    ja: 'Japanese',
+    all_ja: 'Japanese',
+    en: 'English',
+    zh: 'Chinese',
+    all_zh: 'Chinese',
+    yue: 'Chinese,Yue',
+    all_yue: 'Chinese,Yue',
+    auto_yue: 'Chinese,Yue',
+    ko: 'Korean',
+    auto: 'auto'
+  };
+  return values[lang] || 'Japanese';
+}
+
 function detectGptSovitsTextLang(text) {
   const value = String(text || '');
   if (/[\u3040-\u30ff]/u.test(value)) return 'ja';
@@ -832,7 +849,7 @@ function gptSovitsTestText(settings) {
 function buildTtsRequest(text, settings) {
   const provider = settings.provider || 'mimo';
   const apiUrl = settings.apiUrl || defaultTtsUrl(provider);
-  const voice = settings.voice || (provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
+  const voice = settings.voice || (provider === 'minimax' ? 'yachiyo_jp_prompt_20260525c' : provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
   if (provider === 'gpt-sovits') {
     return {
       apiUrl,
@@ -893,10 +910,11 @@ function buildTtsRequest(text, settings) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
         body: JSON.stringify({
-          model: settings.model || 'speech-02-hd',
+          model: settings.model || 'speech-2.8-hd',
           text: String(text),
           stream: false,
-          voice_setting: { voice_id: voice || 'female-shaonv', speed: 1, vol: 1, pitch: 0 },
+          language_boost: minimaxLanguageBoost(settings.textLang || 'ja'),
+          voice_setting: { voice_id: voice || 'yachiyo_jp_prompt_20260525c', speed: 1, vol: 1, pitch: 0 },
           audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 }
         })
       }
@@ -1071,6 +1089,12 @@ function loadSettings() {
     tts.useProxy = false;
     if (!tts.apiUrl || /127\.0\.0\.1/.test(tts.apiUrl)) tts.apiUrl = defaultTtsUrl('gpt-sovits');
   }
+  if (tts.provider === 'minimax') {
+    if (!tts.apiUrl || /api\.minimax\.chat/.test(tts.apiUrl)) tts.apiUrl = defaultTtsUrl('minimax');
+    if (!tts.model) tts.model = 'speech-2.8-hd';
+    if (!tts.voice) tts.voice = 'yachiyo_jp_prompt_20260525c';
+    if (!tts.textLang) tts.textLang = 'ja';
+  }
   Object.assign(memory, { enabled: true, ...readJson('roomMemorySettings', {}) });
   Object.assign(knowledge, { enabled: true, managerOpen: false, ...readJson('roomKnowledgeSettings', {}) });
   if (!Array.isArray(knowledge.entries) || !knowledge.entries.length) knowledge.entries = defaultKnowledgeEntries();
@@ -1239,6 +1263,12 @@ function saveTTS() {
     tts.sovitsWeightPath = String(tts.sovitsWeightPath || DEFAULT_GPT_SOVITS_SOVITS_WEIGHT).trim();
     tts.useProxy = false;
   }
+  if (tts.provider === 'minimax') {
+    tts.textLang = normalizeGptSovitsLang(tts.textLang || 'ja', 'ja');
+    tts.model = String(tts.model || 'speech-2.8-hd').trim();
+    tts.voice = String(tts.voice || 'yachiyo_jp_prompt_20260525c').trim();
+  }
+  const hasTtsLanguageSelect = tts.provider === 'gpt-sovits' || tts.provider === 'minimax';
   writeJson('roomTTSSettings', {
     enabled: Boolean(tts.enabled),
     provider: tts.provider || 'mimo',
@@ -1248,7 +1278,7 @@ function saveTTS() {
     voice: String(tts.voice || '').trim(),
     refAudioPath: String(tts.refAudioPath || '').trim(),
     promptText: String(tts.promptText || '').trim(),
-    textLang: tts.provider === 'gpt-sovits' ? normalizeGptSovitsLang(tts.textLang, 'auto') : String(tts.textLang || '').trim(),
+    textLang: hasTtsLanguageSelect ? normalizeGptSovitsLang(tts.textLang, tts.provider === 'minimax' ? 'ja' : 'auto') : String(tts.textLang || '').trim(),
     promptLang: tts.provider === 'gpt-sovits' ? normalizeGptSovitsLang(tts.promptLang, 'ja') : String(tts.promptLang || '').trim(),
     gptWeightPath: String(tts.gptWeightPath || '').trim(),
     sovitsWeightPath: String(tts.sovitsWeightPath || '').trim(),
@@ -1274,7 +1304,7 @@ async function testTTS() {
     showToast('请先填写 TTS API Key');
     return;
   }
-  const testText = tts.provider === 'gpt-sovits'
+  const testText = tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
     ? gptSovitsTestText(tts)
     : '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
   openTestDialog('tts', 'loading', 'TTS 语音测试', tts.useProxy ? '正在通过站内受限代理请求语音供应商...' : '正在请求语音供应商...', `${tts.useProxy ? '/api/tts' : (tts.apiUrl || defaultTtsUrl(tts.provider))}\nProvider：${tts.provider || 'mimo'}\n模型/语言：${tts.model || tts.textLang || '未填写'}\n音色/参考音频：${tts.voice || tts.refAudioPath || '未填写'}\n测试文本：${testText}`);
@@ -1301,7 +1331,7 @@ async function testTTS() {
           voice: tts.voice,
           refAudioPath: tts.refAudioPath,
           promptText: tts.promptText,
-          textLang: normalizeGptSovitsLang(tts.textLang, 'auto'),
+          textLang: normalizeGptSovitsLang(tts.textLang, tts.provider === 'minimax' ? 'ja' : 'auto'),
           promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja'),
           gptWeightPath: tts.gptWeightPath,
           sovitsWeightPath: tts.sovitsWeightPath
@@ -1831,10 +1861,12 @@ onBeforeUnmount(() => {
           <p class="field-hint warning-text">API Key 仅保存在当前浏览器本地，不会写入服务器；不建议在公共电脑使用，用完请清除浏览器站点数据。</p>
           <label>模型名称<input v-model="tts.model" type="text" placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"></label>
           <label>音色 / Voice ID<input v-model="tts.voice" type="text" placeholder="alloy / female-shaonv / ElevenLabs voice id"></label>
-          <template v-if="tts.provider === 'gpt-sovits'">
+          <template v-if="tts.provider === 'gpt-sovits' || tts.provider === 'minimax'">
             <label>文本语言<select v-model="tts.textLang">
               <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`text-${option.value}`" :value="option.value">{{ option.label }}</option>
             </select></label>
+          </template>
+          <template v-if="tts.provider === 'gpt-sovits'">
             <label>参考音频路径<input v-model="tts.refAudioPath" type="text" placeholder="E:\\visualstudio\\tts\\xxx.wav"></label>
             <label>参考音频文本<input v-model="tts.promptText" type="text" placeholder="参考音频里说的话"></label>
             <label>参考音频语言<select v-model="tts.promptLang">
