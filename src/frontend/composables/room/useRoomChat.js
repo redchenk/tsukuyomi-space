@@ -199,6 +199,11 @@ function resolveGptSovitsTextLang(text, settings) {
   return configured === 'auto' ? detectGptSovitsTextLang(text) : configured;
 }
 
+function wantsJapaneseTts(settings) {
+  const configured = normalizeGptSovitsLang(settings.textLang || settings.model, 'auto');
+  return configured === 'ja' || configured === 'all_ja';
+}
+
 function normalizeGptSovitsRefAudioPath(value) {
   const path = String(value || '').trim();
   if (/月见八千代|月見八千代|ai配音训练|超时空辉夜姬/.test(path)) {
@@ -765,7 +770,9 @@ export function useRoomChat({ live2d, world }) {
         await audio.play();
         return;
       }
-      const ttsText = cleanTtsText(text);
+      const ttsText = settings.provider === 'minimax' && wantsJapaneseTts(settings)
+        ? await translateForJapaneseTts(text)
+        : cleanTtsText(text);
       if (!ttsText) throw new Error('TTS 文本为空，已取消语音播放。');
       const response = await fetch('/api/tts', {
           method: 'POST',
