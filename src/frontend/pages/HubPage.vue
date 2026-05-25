@@ -11,10 +11,45 @@ const props = defineProps({
 
 const emit = defineEmits(['go']);
 
-const latestArticle = ref(null);
-const latestGalleryImage = ref(null);
-const plazaMessages = ref([]);
-const siteStats = ref(null);
+const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache';
+const HUB_PREVIEW_TTL_MS = 30000;
+let hubPreviewCache = readHubPreviewCache();
+
+function readHubPreviewCache() {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(HUB_PREVIEW_CACHE_KEY) || 'null');
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      latestArticle: parsed.latestArticle || null,
+      latestGalleryImage: parsed.latestGalleryImage || null,
+      plazaMessages: Array.isArray(parsed.plazaMessages) ? parsed.plazaMessages : [],
+      siteStats: parsed.siteStats || null,
+      cachedAt: Number(parsed.cachedAt || 0)
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeHubPreviewCache(payload) {
+  hubPreviewCache = {
+    latestArticle: payload.latestArticle || null,
+    latestGalleryImage: payload.latestGalleryImage || null,
+    plazaMessages: Array.isArray(payload.plazaMessages) ? payload.plazaMessages : [],
+    siteStats: payload.siteStats || null,
+    cachedAt: Date.now()
+  };
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(HUB_PREVIEW_CACHE_KEY, JSON.stringify(hubPreviewCache));
+  } catch (_) {}
+}
+
+const latestArticle = ref(hubPreviewCache?.latestArticle || null);
+const latestGalleryImage = ref(hubPreviewCache?.latestGalleryImage || null);
+const plazaMessages = ref(hubPreviewCache?.plazaMessages || []);
+const siteStats = ref(hubPreviewCache?.siteStats || null);
 const plazaQuick = reactive({
   content: '',
   loading: false,
@@ -92,6 +127,14 @@ function formatGalleryDate(asset) {
   return value ? String(value).slice(0, 10) : '';
 }
 
+function applyHubPreviewCache(cache) {
+  if (!cache) return;
+  latestArticle.value = cache.latestArticle || null;
+  latestGalleryImage.value = cache.latestGalleryImage || null;
+  plazaMessages.value = Array.isArray(cache.plazaMessages) ? cache.plazaMessages : [];
+  siteStats.value = cache.siteStats || null;
+}
+
 const stats = computed(() => [
   { label: '今日访问', value: formatHubNumber(siteStats.value?.todayViews) },
   { label: '总访问', value: formatHubNumber(siteStats.value?.totalViews) },
@@ -111,7 +154,12 @@ function openScene(scene, event) {
   window.location.href = scene.href;
 }
 
-async function loadHubPreview() {
+async function loadHubPreview(options = {}) {
+  const force = options.force === true;
+  const cached = hubPreviewCache || readHubPreviewCache();
+  if (cached) applyHubPreviewCache(cached);
+  if (!force && cached?.cachedAt && Date.now() - cached.cachedAt < HUB_PREVIEW_TTL_MS) return;
+
   try {
     const nonce = Date.now();
     const [articleResponse, messageResponse, statsResponse, galleryResponse] = await Promise.all([
@@ -130,18 +178,31 @@ async function loadHubPreview() {
     const messages = messageResult.success && Array.isArray(messageResult.data) ? messageResult.data : [];
     const galleryAssets = galleryResult.success && Array.isArray(galleryResult.data?.assets) ? galleryResult.data.assets : [];
 
-    latestArticle.value = [...articles]
+    const nextLatestArticle = [...articles]
       .sort((a, b) => compareAppDate(b.created_at || b.updated_at, a.created_at || a.updated_at))[0] || null;
-    latestGalleryImage.value = galleryAssets[0] || null;
-    plazaMessages.value = [...messages]
+    const nextLatestGalleryImage = galleryAssets[0] || null;
+    const nextPlazaMessages = [...messages]
       .filter((item) => !item.parent_id)
       .sort((a, b) => compareAppDate(b.created_at, a.created_at));
-    siteStats.value = statsResult.success ? statsResult.data || null : null;
+    const nextSiteStats = statsResult.success ? statsResult.data || null : null;
+
+    latestArticle.value = nextLatestArticle;
+    latestGalleryImage.value = nextLatestGalleryImage;
+    plazaMessages.value = nextPlazaMessages;
+    siteStats.value = nextSiteStats;
+    writeHubPreviewCache({
+      latestArticle: nextLatestArticle,
+      latestGalleryImage: nextLatestGalleryImage,
+      plazaMessages: nextPlazaMessages,
+      siteStats: nextSiteStats
+    });
   } catch (_) {
-    latestArticle.value = null;
-    latestGalleryImage.value = null;
-    plazaMessages.value = [];
-    siteStats.value = null;
+    if (!cached) {
+      latestArticle.value = null;
+      latestGalleryImage.value = null;
+      plazaMessages.value = [];
+      siteStats.value = null;
+    }
   }
 }
 
@@ -179,7 +240,13 @@ async function submitPlazaQuick() {
     }
     plazaQuick.content = '';
     plazaQuick.message = '已发布';
-    await loadHubPreview();
+    writeHubPreviewCache({
+      latestArticle: latestArticle.value,
+      latestGalleryImage: latestGalleryImage.value,
+      plazaMessages: plazaMessages.value,
+      siteStats: siteStats.value
+    });
+    await loadHubPreview({ force: true });
   } catch (error) {
     plazaQuick.message = error.message || '发布失败';
   } finally {
