@@ -85,11 +85,13 @@ const MODEL_RECOMMEND_PATTERNS = {
   mimo: ['mimo-v2.5-pro', 'mimo-v2.5', 'mimo-v2-flash']
 };
 const MODEL_NON_CHAT_PATTERN = /(embedding|moderation|tts|audio|whisper|image|vision-preview|rerank|reward|guard|ocr|video|speech)/i;
+const MINIMAX_DEFAULT_VOICE_ID = 'English_expressive_narrator';
+const LEGACY_MINIMAX_DEFAULT_VOICE_ID = 'yachiyo_jp_prompt_20260525c';
 const TTS_PRESETS = {
   mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
   openai: { label: 'OpenAI TTS', provider: 'openai', apiUrl: 'https://api.openai.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
   openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
-  minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimaxi.com/v1/t2a_v2', model: 'speech-2.8-hd', voice: 'English_expressive_narrator', textLang: 'ja' },
+  minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimaxi.com/v1/t2a_v2', model: 'speech-2.8-hd', voice: MINIMAX_DEFAULT_VOICE_ID, textLang: 'ja' },
   elevenlabs: { label: 'ElevenLabs', provider: 'elevenlabs', apiUrl: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2', voice: '21m00Tcm4TlvDq8ikWAM' },
   gptSovitsLocal: { label: '本机 GPT-SoVITS 直连', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
@@ -849,7 +851,7 @@ function gptSovitsTestText(settings) {
 function buildTtsRequest(text, settings) {
   const provider = settings.provider || 'mimo';
   const apiUrl = settings.apiUrl || defaultTtsUrl(provider);
-  const voice = settings.voice || (provider === 'minimax' ? 'English_expressive_narrator' : provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
+  const voice = settings.voice || (provider === 'minimax' ? MINIMAX_DEFAULT_VOICE_ID : provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
   if (provider === 'gpt-sovits') {
     return {
       apiUrl,
@@ -914,7 +916,7 @@ function buildTtsRequest(text, settings) {
           text: String(text),
           stream: false,
           language_boost: minimaxLanguageBoost(settings.textLang || 'ja'),
-          voice_setting: { voice_id: voice || 'English_expressive_narrator', speed: 1, vol: 1, pitch: 0 },
+          voice_setting: { voice_id: voice || MINIMAX_DEFAULT_VOICE_ID, speed: 1, vol: 1, pitch: 0 },
           audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 }
         })
       }
@@ -1092,7 +1094,7 @@ function loadSettings() {
   if (tts.provider === 'minimax') {
     if (!tts.apiUrl || /api\.minimax\.chat/.test(tts.apiUrl)) tts.apiUrl = defaultTtsUrl('minimax');
     if (!tts.model) tts.model = 'speech-2.8-hd';
-    if (!tts.voice) tts.voice = 'English_expressive_narrator';
+    if (!tts.voice || tts.voice === LEGACY_MINIMAX_DEFAULT_VOICE_ID) tts.voice = MINIMAX_DEFAULT_VOICE_ID;
     if (!tts.textLang) tts.textLang = 'ja';
   }
   Object.assign(memory, { enabled: true, ...readJson('roomMemorySettings', {}) });
@@ -1266,7 +1268,7 @@ function saveTTS() {
   if (tts.provider === 'minimax') {
     tts.textLang = normalizeGptSovitsLang(tts.textLang || 'ja', 'ja');
     tts.model = String(tts.model || 'speech-2.8-hd').trim();
-    tts.voice = String(tts.voice || 'English_expressive_narrator').trim();
+    tts.voice = String(tts.voice || MINIMAX_DEFAULT_VOICE_ID).trim();
   }
   const hasTtsLanguageSelect = tts.provider === 'gpt-sovits' || tts.provider === 'minimax';
   writeJson('roomTTSSettings', {
