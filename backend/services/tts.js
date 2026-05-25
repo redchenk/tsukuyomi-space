@@ -8,7 +8,7 @@ const GPT_SOVITS_TEXT_LANG = process.env.GPT_SOVITS_TEXT_LANG || 'zh';
 const GPT_SOVITS_PROMPT_LANG = process.env.GPT_SOVITS_PROMPT_LANG || 'zh';
 const GPT_SOVITS_GPT_WEIGHT_PATH = process.env.GPT_SOVITS_GPT_WEIGHT_PATH || 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
 const GPT_SOVITS_SOVITS_WEIGHT_PATH = process.env.GPT_SOVITS_SOVITS_WEIGHT_PATH || 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth';
-const MINIMAX_CLONED_VOICE_ID = 'yachiyo_jp_prompt_20260525c';
+const MINIMAX_DEFAULT_VOICE_ID = 'English_expressive_narrator';
 
 const ALLOWED_TTS_ENDPOINTS = [
     { hostname: 'api.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ },
@@ -180,7 +180,7 @@ async function loadGptSovitsWeights(baseUrl, gptWeightPath, sovitsWeightPath) {
 async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang, gptWeightPath, sovitsWeightPath }) {
     const useProvider = provider || process.env.TTS_PROVIDER || 'mimo';
     const useApiKey = apiKey || TTS_API_KEY;
-    const useVoice = voice || TTS_VOICE || (useProvider === 'gpt-sovits' ? '' : useProvider === 'minimax' ? MINIMAX_CLONED_VOICE_ID : useProvider === 'openai' || useProvider === 'openai-compatible' ? 'alloy' : 'mimo_default');
+    const useVoice = voice || TTS_VOICE || (useProvider === 'gpt-sovits' ? '' : useProvider === 'minimax' ? MINIMAX_DEFAULT_VOICE_ID : useProvider === 'openai' || useProvider === 'openai-compatible' ? 'alloy' : 'mimo_default');
     const rawApiUrl = apiUrl || (useProvider === 'gpt-sovits' ? GPT_SOVITS_API_URL : TTS_API_URL) || (useProvider === 'openai' || useProvider === 'openai-compatible'
         ? 'https://api.openai.com/v1/audio/speech'
         : useProvider === 'minimax'
