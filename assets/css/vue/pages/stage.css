@@ -161,6 +161,43 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
+.stage-author {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    min-width: 0;
+    max-width: 12rem;
+    padding-left: 0.34rem;
+}
+
+.stage-author-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(255, 183, 197, 0.94), rgba(126, 219, 232, 0.82));
+    color: #23111c;
+    font-size: 0.68rem;
+    font-weight: 800;
+}
+
+.stage-author-avatar img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.stage-author > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .stage-card-title {
     font-size: 1.1rem;
     color: rgba(255, 183, 197, 0.95);

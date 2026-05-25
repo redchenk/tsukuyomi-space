@@ -65,6 +65,18 @@ function articlePath(article) {
   return `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
 }
 
+function stageAuthorName(article) {
+  return article.author_username || 'admin';
+}
+
+function stageAuthorInitial(article) {
+  return String(stageAuthorName(article)).trim().slice(0, 1).toUpperCase();
+}
+
+function stageAuthorAlt(article) {
+  return `${stageAuthorName(article)} avatar`;
+}
+
 onMounted(loadArticles);
 </script>
 
@@ -112,7 +124,13 @@ onMounted(loadArticles);
         <div class="stage-card-body">
           <div class="stage-card-meta">
             <span class="tag">{{ article.category }}</span>
-            <span class="tag tag-author">{{ article.author_username || 'admin' }}</span>
+            <span class="tag tag-author stage-author">
+              <span class="stage-author-avatar">
+                <img v-if="article.author_avatar" :src="article.author_avatar" :alt="stageAuthorAlt(article)">
+                <span v-else>{{ stageAuthorInitial(article) }}</span>
+              </span>
+              <span>{{ stageAuthorName(article) }}</span>
+            </span>
           </div>
           <h3 class="stage-card-title">{{ article.title }}</h3>
           <p class="stage-card-excerpt">{{ article.excerpt }}</p>

@@ -1,5 +1,6 @@
 const db = require('../db');
 const { createSlug } = require('../utils/slug');
+const { compactAvatar } = require('../utils/avatar');
 
 const CONTENT_FORMATS = new Set(['markdown', 'html', 'block']);
 
@@ -20,12 +21,21 @@ function uniqueArticleSlug(title, id = null) {
     }
 }
 
+function compactArticleRow(row) {
+    return row ? { ...row, author_avatar: compactAvatar(row.author_avatar) } : row;
+}
+
+function compactArticleRows(rows) {
+    return rows.map(compactArticleRow);
+}
+
 function listArticles({ category, limit, offset }) {
     let query = `
         SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.tags, a.author_id,
             a.publish_date, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
-            u.username AS author_username
+            u.username AS author_username,
+            u.avatar AS author_avatar
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
         WHERE COALESCE(a.status, 'published') = 'published'
@@ -43,7 +53,7 @@ function listArticles({ category, limit, offset }) {
 
     return {
         total: db.prepare(countQuery).get(...params).total,
-        articles: db.prepare(query).all(...params, limit, offset)
+        articles: compactArticleRows(db.prepare(query).all(...params, limit, offset))
     };
 }
 
@@ -73,22 +83,22 @@ function createArticle(article) {
 }
 
 function findArticleById(id) {
-    return db.prepare(`
-        SELECT a.*, u.username AS author_username
+    return compactArticleRow(db.prepare(`
+        SELECT a.*, u.username AS author_username, u.avatar AS author_avatar
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
         WHERE a.id = ?
-    `).get(id);
+    `).get(id));
 }
 
 function findPublishedArticleById(id) {
-    return db.prepare(`
-        SELECT a.*, u.username AS author_username
+    return compactArticleRow(db.prepare(`
+        SELECT a.*, u.username AS author_username, u.avatar AS author_avatar
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
         WHERE a.id = ?
           AND COALESCE(a.status, 'published') = 'published'
-    `).get(id);
+    `).get(id));
 }
 
 function incrementArticleViews(id) {
@@ -140,15 +150,17 @@ function listUserArticles(userId) {
 }
 
 function listSeoArticles(limit = 500) {
-    return db.prepare(`
+    return compactArticleRows(db.prepare(`
         SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.content_format, a.publish_date, a.created_at, a.updated_at,
-            a.cover_image, a.cover_image_asset_id, a.category, a.tags, a.read_time, u.username AS author_username
+            a.cover_image, a.cover_image_asset_id, a.category, a.tags, a.read_time,
+            u.username AS author_username,
+            u.avatar AS author_avatar
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
         WHERE COALESCE(a.status, 'published') = 'published'
         ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, a.publish_date DESC, a.created_at DESC
         LIMIT ?
-    `).all(limit);
+    `).all(limit));
 }
 
 function updateUserArticle(id, article) {

@@ -245,11 +245,19 @@ describe('articles API', () => {
         assert.equal(created.response.status, 201);
         assert.equal(created.body.success, true);
         articleId = created.body.data.id;
+        assert.equal(created.body.data.author_avatar, testAvatar);
 
         const fetched = await request(`/api/articles/${articleId}`);
         assert.equal(fetched.response.status, 200);
         assert.equal(fetched.body.data.title, 'Test Article');
         assert.deepEqual(fetched.body.data.tags, ['test']);
+        assert.equal(fetched.body.data.author_avatar, testAvatar);
+
+        const list = await request('/api/articles?limit=200');
+        assert.equal(list.response.status, 200);
+        const listedArticle = list.body.data.find(article => article.id === articleId);
+        assert.ok(listedArticle);
+        assert.equal(listedArticle.author_avatar, testAvatar);
     });
 
     it('prevents a normal user from publishing an announcement article', async () => {
