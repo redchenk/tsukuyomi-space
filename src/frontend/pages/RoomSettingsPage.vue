@@ -85,8 +85,8 @@ const MODEL_RECOMMEND_PATTERNS = {
   mimo: ['mimo-v2.5-pro', 'mimo-v2.5', 'mimo-v2-flash']
 };
 const MODEL_NON_CHAT_PATTERN = /(embedding|moderation|tts|audio|whisper|image|vision-preview|rerank|reward|guard|ocr|video|speech)/i;
-const MINIMAX_DEFAULT_VOICE_ID = 'English_expressive_narrator';
-const LEGACY_MINIMAX_DEFAULT_VOICE_ID = 'yachiyo_jp_prompt_20260525c';
+const MINIMAX_DEFAULT_VOICE_ID = 'female-shaonv';
+const LEGACY_MINIMAX_DEFAULT_VOICE_IDS = ['yachiyo_jp_prompt_20260525c', 'English_expressive_narrator'];
 const TTS_PRESETS = {
   mimo: { label: 'MiMo-V2.5-TTS', provider: 'mimo', apiUrl: 'https://api.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-tts', voice: 'mimo_default' },
   openai: { label: 'OpenAI TTS', provider: 'openai', apiUrl: 'https://api.openai.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
@@ -1094,7 +1094,7 @@ function loadSettings() {
   if (tts.provider === 'minimax') {
     if (!tts.apiUrl || /api\.minimax\.chat/.test(tts.apiUrl)) tts.apiUrl = defaultTtsUrl('minimax');
     if (!tts.model) tts.model = 'speech-2.8-hd';
-    if (!tts.voice || tts.voice === LEGACY_MINIMAX_DEFAULT_VOICE_ID) tts.voice = MINIMAX_DEFAULT_VOICE_ID;
+    if (!tts.voice || LEGACY_MINIMAX_DEFAULT_VOICE_IDS.includes(tts.voice)) tts.voice = MINIMAX_DEFAULT_VOICE_ID;
     if (!tts.textLang) tts.textLang = 'ja';
   }
   Object.assign(memory, { enabled: true, ...readJson('roomMemorySettings', {}) });

@@ -8,7 +8,7 @@ const GPT_SOVITS_TEXT_LANG = process.env.GPT_SOVITS_TEXT_LANG || 'zh';
 const GPT_SOVITS_PROMPT_LANG = process.env.GPT_SOVITS_PROMPT_LANG || 'zh';
 const GPT_SOVITS_GPT_WEIGHT_PATH = process.env.GPT_SOVITS_GPT_WEIGHT_PATH || 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
 const GPT_SOVITS_SOVITS_WEIGHT_PATH = process.env.GPT_SOVITS_SOVITS_WEIGHT_PATH || 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth';
-const MINIMAX_DEFAULT_VOICE_ID = 'English_expressive_narrator';
+const MINIMAX_DEFAULT_VOICE_ID = 'female-shaonv';
 
 const ALLOWED_TTS_ENDPOINTS = [
     { hostname: 'api.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ },
@@ -294,7 +294,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
                 text: String(text),
                 stream: false,
                 language_boost: minimaxLanguageBoost(textLang || 'ja'),
-                voice_setting: { voice_id: useVoice || 'female-shaonv', speed: 1, vol: 1, pitch: 0 },
+                voice_setting: { voice_id: useVoice || MINIMAX_DEFAULT_VOICE_ID, speed: 1, vol: 1, pitch: 0 },
                 audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 }
             })
         });
