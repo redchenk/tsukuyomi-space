@@ -1,0 +1,216 @@
+body.vue-live2d-route {
+    overflow: hidden;
+    background: #080a12;
+}
+
+.live2d-page {
+    --live2d-accent: #ff9aba;
+    --live2d-cyan: #9ee8ff;
+    --live2d-ink: rgba(248, 251, 255, 0.94);
+    --live2d-muted: rgba(235, 242, 255, 0.68);
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    color: var(--live2d-ink);
+    background:
+        linear-gradient(180deg, rgba(8, 10, 18, 0.16), rgba(3, 5, 13, 0.78)),
+        url("/assets/images/room-bg.png") center / cover no-repeat;
+}
+
+.live2d-backdrop {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 50% 18%, rgba(255, 154, 186, 0.2), transparent 24rem),
+        radial-gradient(circle at 50% 72%, rgba(158, 232, 255, 0.14), transparent 24rem),
+        linear-gradient(90deg, rgba(5, 8, 18, 0.58), transparent 30%, transparent 70%, rgba(5, 8, 18, 0.58));
+}
+
+.live2d-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.live2d-model {
+    position: absolute;
+    left: 50%;
+    bottom: -4vh;
+    width: min(78vw, 840px);
+    height: min(90vh, 900px);
+    transform: translateX(-50%);
+}
+
+.live2d-model canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    background: transparent;
+    filter: saturate(1) contrast(0.98) drop-shadow(0 18px 38px rgba(0, 0, 0, 0.46));
+    touch-action: none;
+}
+
+.live2d-error,
+.live2d-loading,
+.live2d-control-panel {
+    border: 1px solid rgba(235, 242, 255, 0.18);
+    border-radius: 8px;
+    background: rgba(10, 15, 29, 0.58);
+    box-shadow: 0 18px 54px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(18px) saturate(1.08);
+}
+
+.live2d-error {
+    position: fixed;
+    left: 50%;
+    top: 1.2rem;
+    z-index: 5;
+    max-width: min(36rem, calc(100vw - 2rem));
+    padding: 0.78rem 1rem;
+    color: #ffe8ef;
+    transform: translateX(-50%);
+}
+
+.live2d-control-panel {
+    position: fixed;
+    right: clamp(1rem, 3vw, 2rem);
+    bottom: clamp(1rem, 3vw, 2rem);
+    z-index: 4;
+    width: min(22rem, calc(100vw - 2rem));
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.82rem;
+}
+
+.live2d-status-row,
+.live2d-icon-actions,
+.live2d-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.live2d-status-row {
+    justify-content: space-between;
+    color: var(--live2d-muted);
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+}
+
+.live2d-status-row strong {
+    color: var(--live2d-ink);
+}
+
+.live2d-status-dot {
+    width: 0.62rem;
+    height: 0.62rem;
+    border-radius: 50%;
+    background: #f7c66f;
+    box-shadow: 0 0 16px rgba(247, 198, 111, 0.56);
+}
+
+.live2d-status-dot.ready {
+    background: #9ee8ff;
+    box-shadow: 0 0 18px rgba(158, 232, 255, 0.64);
+}
+
+.live2d-status-dot.error {
+    background: #ff7896;
+    box-shadow: 0 0 18px rgba(255, 120, 150, 0.66);
+}
+
+.live2d-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.live2d-action-btn,
+.live2d-icon-btn {
+    min-height: 2.35rem;
+    border: 1px solid rgba(235, 242, 255, 0.18);
+    border-radius: 7px;
+    color: var(--live2d-ink);
+    background: rgba(255, 255, 255, 0.08);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.live2d-icon-actions {
+    justify-content: flex-end;
+}
+
+.live2d-icon-btn {
+    width: 2.35rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+}
+
+.live2d-action-btn:hover:not(:disabled),
+.live2d-icon-btn:hover:not(:disabled) {
+    border-color: rgba(158, 232, 255, 0.5);
+    background: rgba(158, 232, 255, 0.16);
+    transform: translateY(-1px);
+}
+
+.live2d-action-btn:disabled,
+.live2d-icon-btn:disabled {
+    cursor: wait;
+    opacity: 0.5;
+}
+
+.live2d-loading {
+    position: fixed;
+    left: 50%;
+    bottom: clamp(1rem, 3vw, 2rem);
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.66rem 0.9rem;
+    color: var(--live2d-muted);
+    font-size: 0.82rem;
+    font-weight: 800;
+    transform: translateX(-50%);
+}
+
+.live2d-loading .ts-icon {
+    animation: live2dSpin 1s linear infinite;
+}
+
+@keyframes live2dSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 820px) {
+    .live2d-model {
+        bottom: 4.8rem;
+        width: min(112vw, 540px);
+        height: min(78dvh, 680px);
+    }
+
+    .live2d-control-panel {
+        left: 1rem;
+        right: 1rem;
+        bottom: max(0.9rem, env(safe-area-inset-bottom));
+        width: auto;
+    }
+
+    .live2d-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .live2d-loading {
+        top: max(0.9rem, env(safe-area-inset-top));
+        bottom: auto;
+    }
+}

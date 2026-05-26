@@ -14,8 +14,9 @@ const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
 const user = ref(null);
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
-const isImmersiveRoute = computed(() => isAccessRoute.value);
-const hasGlobalBackground = computed(() => !isAccessRoute.value && route.name !== 'room');
+const isLive2DRoute = computed(() => route.name === 'live2d');
+const isImmersiveRoute = computed(() => isAccessRoute.value || isLive2DRoute.value);
+const hasGlobalBackground = computed(() => !isAccessRoute.value && route.name !== 'room' && !isLive2DRoute.value);
 const isAuthed = computed(() => Boolean(user.value));
 const music = useRoomMusic();
 const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
@@ -130,6 +131,10 @@ watch(isAccessRoute, (next) => {
 
 watch(hasGlobalBackground, (next) => {
   document.body.classList.toggle('vue-global-bg-route', next);
+}, { immediate: true });
+
+watch(isLive2DRoute, (next) => {
+  document.body.classList.toggle('vue-live2d-route', next);
 }, { immediate: true });
 
 watch(lang, setLang, { immediate: true });

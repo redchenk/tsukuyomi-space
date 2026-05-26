@@ -13,6 +13,7 @@ import UserCenterPage from '../pages/UserCenterPage.vue';
 import NotificationsPage from '../pages/NotificationsPage.vue';
 import RoomPage from '../pages/RoomPage.vue';
 import RoomSettingsPage from '../pages/RoomSettingsPage.vue';
+import Live2DPage from '../pages/Live2DPage.vue';
 import ArticlePage from '../pages/ArticlePage.vue';
 import TerminalPage from '../pages/TerminalPage.vue';
 import ArenaPage from '../pages/ArenaPage.vue';
@@ -88,6 +89,16 @@ export const routes = [
     meta: {
       title: '房间设置',
       description: '配置房间中的 LLM、TTS、MCP、知识库与长记忆。',
+      noindex: true
+    }
+  },
+  {
+    path: '/live2d',
+    name: 'live2d',
+    component: Live2DPage,
+    meta: {
+      title: 'Live2D Preview',
+      description: 'Hidden Live2D preview page.',
       noindex: true
     }
   },
