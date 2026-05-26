@@ -6,6 +6,8 @@ body.vue-live2d-route {
 .live2d-page {
     --live2d-accent: #ff9aba;
     --live2d-cyan: #9ee8ff;
+    --live2d-green: #9ef7c8;
+    --live2d-amber: #f7c66f;
     --live2d-ink: rgba(248, 251, 255, 0.94);
     --live2d-muted: rgba(235, 242, 255, 0.68);
     position: fixed;
@@ -43,6 +45,9 @@ body.vue-live2d-route {
     width: min(78vw, 840px);
     height: min(90vh, 900px);
     transform: translateX(-50%);
+    transform-origin: 50% 84%;
+    animation: live2dStageIdle 7.5s ease-in-out infinite;
+    will-change: transform;
 }
 
 .live2d-model canvas {
@@ -51,7 +56,153 @@ body.vue-live2d-route {
     display: block;
     background: transparent;
     filter: saturate(1) contrast(0.98) drop-shadow(0 18px 38px rgba(0, 0, 0, 0.46));
+    transform-origin: 50% 84%;
     touch-action: none;
+}
+
+.live2d-model[data-speaking="true"] canvas {
+    animation: live2dSpeakingPulse 0.62s ease-in-out infinite;
+}
+
+.live2d-model[data-pose="nod"] {
+    animation: live2dPoseNod 1.25s cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+.live2d-model[data-pose="shake_head"] {
+    animation: live2dPoseShakeHead 1.4s cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+.live2d-model[data-pose="lean_in"] {
+    animation: live2dPoseLeanIn 1.7s cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+.live2d-model[data-pose="lean_left"] {
+    animation: live2dPoseLeanLeft 1.8s cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+.live2d-model[data-pose="lean_right"] {
+    animation: live2dPoseLeanRight 1.8s cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+.live2d-model[data-pose="sway"] {
+    animation: live2dPoseSway 2.4s ease-in-out 1;
+}
+
+.live2d-model[data-pose="bounce"] {
+    animation: live2dPoseBounce 1.35s cubic-bezier(0.2, 1, 0.22, 1) 1;
+}
+
+.live2d-model[data-pose="emphasis"] {
+    animation: live2dPoseEmphasis 1.15s cubic-bezier(0.2, 1, 0.22, 1) 1;
+}
+
+.live2d-broadcast-hud {
+    position: fixed;
+    left: clamp(1rem, 3vw, 2rem);
+    bottom: clamp(1rem, 3vw, 2rem);
+    z-index: 4;
+    width: min(34rem, calc(100vw - 26rem));
+    display: grid;
+    gap: 0.72rem;
+    pointer-events: none;
+}
+
+.live2d-on-air {
+    width: fit-content;
+    min-height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.44rem 0.62rem;
+    border: 1px solid rgba(235, 242, 255, 0.16);
+    border-radius: 7px;
+    color: var(--live2d-muted);
+    background: rgba(10, 15, 29, 0.54);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(16px) saturate(1.08);
+}
+
+.live2d-on-air span {
+    width: 0.58rem;
+    height: 0.58rem;
+    border-radius: 50%;
+    background: var(--live2d-amber);
+    box-shadow: 0 0 16px rgba(247, 198, 111, 0.58);
+}
+
+.live2d-on-air.active span {
+    background: #ff4f78;
+    box-shadow: 0 0 18px rgba(255, 79, 120, 0.72);
+    animation: live2dOnAirPulse 1.2s ease-in-out infinite;
+}
+
+.live2d-on-air strong {
+    color: var(--live2d-ink);
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+}
+
+.live2d-on-air small {
+    color: var(--live2d-muted);
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.live2d-caption {
+    max-width: 100%;
+    padding: 0.72rem 0.9rem;
+    border: 1px solid rgba(158, 232, 255, 0.22);
+    border-radius: 8px;
+    color: var(--live2d-ink);
+    background: rgba(6, 11, 24, 0.62);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(18px) saturate(1.1);
+    font-size: clamp(1rem, 1.8vw, 1.35rem);
+    font-weight: 850;
+    line-height: 1.5;
+    text-wrap: balance;
+}
+
+.live2d-feed {
+    display: grid;
+    gap: 0.42rem;
+    max-height: 12.4rem;
+    overflow: hidden;
+}
+
+.live2d-feed-line {
+    display: grid;
+    grid-template-columns: 4.2rem minmax(0, 1fr);
+    gap: 0.52rem;
+    align-items: start;
+    padding: 0.48rem 0.58rem;
+    border: 1px solid rgba(235, 242, 255, 0.12);
+    border-radius: 7px;
+    background: rgba(8, 14, 30, 0.46);
+    backdrop-filter: blur(12px);
+}
+
+.live2d-feed-line strong {
+    color: var(--live2d-cyan);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.live2d-feed-line span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--live2d-muted);
+    font-size: 0.78rem;
+    line-height: 1.42;
+}
+
+.live2d-feed-line.audience strong {
+    color: var(--live2d-green);
+}
+
+.live2d-feed-line.system strong {
+    color: var(--live2d-amber);
 }
 
 .live2d-error,
@@ -84,6 +235,15 @@ body.vue-live2d-route {
     display: grid;
     gap: 0.75rem;
     padding: 0.82rem;
+}
+
+.live2d-live-director {
+    display: grid;
+    gap: 0.58rem;
+    padding: 0.62rem;
+    border: 1px solid rgba(158, 232, 255, 0.16);
+    border-radius: 7px;
+    background: rgba(158, 232, 255, 0.06);
 }
 
 .live2d-status-row,
@@ -128,6 +288,10 @@ body.vue-live2d-route {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.live2d-body-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .live2d-action-btn,
 .live2d-icon-btn {
     min-height: 2.35rem;
@@ -142,6 +306,13 @@ body.vue-live2d-route {
     transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
+.live2d-run-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+}
+
 .live2d-icon-actions {
     justify-content: flex-end;
 }
@@ -151,10 +322,9 @@ body.vue-live2d-route {
     gap: 0.58rem;
 }
 
+.live2d-live-director input:not([type="checkbox"]),
 .live2d-llm-form textarea {
     width: 100%;
-    min-height: 5.5rem;
-    resize: vertical;
     border: 1px solid rgba(235, 242, 255, 0.18);
     border-radius: 7px;
     padding: 0.66rem 0.72rem;
@@ -166,9 +336,51 @@ body.vue-live2d-route {
     line-height: 1.5;
 }
 
+.live2d-llm-form textarea {
+    min-height: 5.5rem;
+    resize: vertical;
+}
+
+.live2d-live-director input:not([type="checkbox"]):focus,
 .live2d-llm-form textarea:focus {
     border-color: rgba(158, 232, 255, 0.5);
     box-shadow: 0 0 0 3px rgba(158, 232, 255, 0.1);
+}
+
+.live2d-live-actions,
+.live2d-audience-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.live2d-toggle {
+    min-height: 2.35rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    padding: 0 0.64rem;
+    border: 1px solid rgba(235, 242, 255, 0.16);
+    border-radius: 7px;
+    color: var(--live2d-muted);
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.76rem;
+    font-weight: 850;
+    cursor: pointer;
+}
+
+.live2d-toggle input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--live2d-cyan);
+}
+
+.live2d-inline-error {
+    margin: 0;
+    color: #ffb4c4;
+    font-size: 0.74rem;
+    line-height: 1.45;
 }
 
 .live2d-llm-actions {
@@ -268,11 +480,164 @@ body.vue-live2d-route {
     }
 }
 
+@keyframes live2dStageIdle {
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0) rotate(-0.35deg) scale(1);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-0.9vh) rotate(0.45deg) scale(1.006);
+    }
+}
+
+@keyframes live2dSpeakingPulse {
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+        filter: saturate(1) contrast(0.98) drop-shadow(0 18px 38px rgba(0, 0, 0, 0.46));
+    }
+    50% {
+        transform: translateY(-0.28vh) scale(1.004);
+        filter: saturate(1.04) contrast(1) drop-shadow(0 20px 42px rgba(0, 0, 0, 0.5));
+    }
+}
+
+@keyframes live2dPoseNod {
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+    }
+    28% {
+        transform: translateX(-50%) translateY(2.2vh) rotate(0deg) scale(0.995);
+    }
+    58% {
+        transform: translateX(-50%) translateY(-1.2vh) rotate(0deg) scale(1.006);
+    }
+}
+
+@keyframes live2dPoseShakeHead {
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+    }
+    20% {
+        transform: translateX(calc(-50% - 1.9vw)) translateY(-0.2vh) rotate(-4.2deg) scale(1);
+    }
+    48% {
+        transform: translateX(calc(-50% + 1.8vw)) translateY(-0.4vh) rotate(4deg) scale(1);
+    }
+    72% {
+        transform: translateX(calc(-50% - 0.9vw)) translateY(0) rotate(-2deg) scale(1);
+    }
+}
+
+@keyframes live2dPoseLeanIn {
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+    }
+    45%,
+    78% {
+        transform: translateX(-50%) translateY(-2.4vh) rotate(0deg) scale(1.075);
+    }
+}
+
+@keyframes live2dPoseLeanLeft {
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+    }
+    46%,
+    78% {
+        transform: translateX(calc(-50% - 4.2vw)) translateY(-1vh) rotate(-7deg) scale(1.035);
+    }
+}
+
+@keyframes live2dPoseLeanRight {
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+    }
+    46%,
+    78% {
+        transform: translateX(calc(-50% + 4.2vw)) translateY(-1vh) rotate(7deg) scale(1.035);
+    }
+}
+
+@keyframes live2dPoseSway {
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+    }
+    25% {
+        transform: translateX(calc(-50% - 2.6vw)) translateY(-0.8vh) rotate(-3.6deg) scale(1.012);
+    }
+    58% {
+        transform: translateX(calc(-50% + 2.4vw)) translateY(-1.1vh) rotate(3.4deg) scale(1.018);
+    }
+}
+
+@keyframes live2dPoseBounce {
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+    }
+    18% {
+        transform: translateX(-50%) translateY(1.6vh) rotate(0deg) scale(0.985);
+    }
+    42% {
+        transform: translateX(-50%) translateY(-3.4vh) rotate(-1deg) scale(1.052);
+    }
+    70% {
+        transform: translateX(-50%) translateY(-1vh) rotate(1deg) scale(1.018);
+    }
+}
+
+@keyframes live2dPoseEmphasis {
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+    }
+    35% {
+        transform: translateX(-50%) translateY(-1.9vh) rotate(-3.2deg) scale(1.04);
+    }
+    62% {
+        transform: translateX(-50%) translateY(0.8vh) rotate(2.8deg) scale(1.005);
+    }
+}
+
+@keyframes live2dOnAirPulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.82;
+    }
+    50% {
+        transform: scale(1.22);
+        opacity: 1;
+    }
+}
+
 @media (max-width: 820px) {
     .live2d-model {
         bottom: 4.8rem;
         width: min(112vw, 540px);
         height: min(78dvh, 680px);
+    }
+
+    .live2d-broadcast-hud {
+        left: 1rem;
+        right: 1rem;
+        bottom: 19rem;
+        width: auto;
+    }
+
+    .live2d-caption {
+        font-size: 0.96rem;
+    }
+
+    .live2d-feed {
+        display: none;
     }
 
     .live2d-control-panel {

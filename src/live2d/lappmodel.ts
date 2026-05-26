@@ -111,9 +111,11 @@ export class LAppModel extends CubismUserModel {
   _idParamOutputBodyX: CubismIdHandle;
   _idParamOutputBodyY: CubismIdHandle;
   _idParamOutputBodyZ: CubismIdHandle;
+  _idParamMouthOpenY: CubismIdHandle;
   _idParamChestZ: CubismIdHandle;
   _idParamHipZ: CubismIdHandle;
   _proceduralBodyPose: ProceduralBodyPoseState | null;
+  _manualMouthOpen: { value: number; updatedSeconds: number } | null;
 
   /**
    * model3.jsonが置かれたディレクトリとファイルパスからモデルを生成する
@@ -629,6 +631,7 @@ export class LAppModel extends CubismUserModel {
         this._model.addParameterValueById(this._lipSyncIds.at(i), value, 0.8);
       }
     }
+    this.applyManualMouthOpen();
 
     // ポーズの設定
     if (this._pose != null) {
@@ -659,6 +662,28 @@ export class LAppModel extends CubismUserModel {
       startSeconds: this._userTimeSeconds,
       durationSeconds: Math.min(Math.max(durationMs, 800), 8000) / 1000
     };
+  }
+
+  public setManualMouthOpen(value: number): void {
+    this._manualMouthOpen = {
+      value: Math.min(Math.max(Number(value) || 0, 0), 1),
+      updatedSeconds: this._userTimeSeconds
+    };
+  }
+
+  private applyManualMouthOpen(): void {
+    const mouth = this._manualMouthOpen;
+    if (!mouth) return;
+
+    const elapsed = this._userTimeSeconds - mouth.updatedSeconds;
+    if (elapsed > 0.38) {
+      this._model.setParameterValueById(this._idParamMouthOpenY, 0);
+      this._manualMouthOpen = null;
+      return;
+    }
+
+    const decay = elapsed <= 0.08 ? 1 : Math.max(0, 1 - ((elapsed - 0.08) / 0.3));
+    this._model.setParameterValueById(this._idParamMouthOpenY, mouth.value * decay);
   }
 
   private applyProceduralBodyPose(): void {
@@ -1121,6 +1146,9 @@ export class LAppModel extends CubismUserModel {
     this._idParamEyeBallY = CubismFramework.getIdManager().getId(
       CubismDefaultParameterId.ParamEyeBallY
     );
+    this._idParamMouthOpenY = CubismFramework.getIdManager().getId(
+      CubismDefaultParameterId.ParamMouthOpenY
+    );
     this._idParamBodyAngleX = CubismFramework.getIdManager().getId(
       CubismDefaultParameterId.ParamBodyAngleX
     );
@@ -1152,6 +1180,7 @@ export class LAppModel extends CubismUserModel {
     this._allMotionCount = 0;
     this._roomReadyNotified = false;
     this._wavFileHandler = new LAppWavFileHandler();
+    this._manualMouthOpen = null;
     this._consistency = false;
   }
 

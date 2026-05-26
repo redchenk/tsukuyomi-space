@@ -147,6 +147,13 @@ export class LAppLive2DManager {
     }
   }
 
+  public setMouthOpen(value: number): void {
+    const model: LAppModel = this._models.at(0);
+    if (model) {
+      model.setManualMouthOpen(value);
+    }
+  }
+
   /**
    * 画面をタップした時の処理
    *

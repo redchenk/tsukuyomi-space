@@ -19,6 +19,7 @@ type RoomLive2DState = {
   onPointerUp: (event: PointerEvent) => void;
   onVisibilityChange: () => void;
   onRoomAct: (event: Event) => void;
+  onMouth: (event: Event) => void;
 };
 
 let roomState: RoomLive2DState | null = null;
@@ -113,6 +114,7 @@ function destroyRoomLive2D(): void {
   document.removeEventListener('pointerup', roomState.onPointerUp);
   document.removeEventListener('pointercancel', roomState.onPointerUp);
   window.removeEventListener('tsukuyomi:room-act', roomState.onRoomAct);
+  window.removeEventListener('tsukuyomi:live2d-mouth', roomState.onMouth);
 
   roomState.subdelegate.release();
   roomState.canvas.remove();
@@ -205,6 +207,13 @@ function initRoomLive2D(): void {
       manager.startProceduralBodyPose(bodyPose, Number(detail.intensity), normalizeDuration(detail.durationMs));
     }
   };
+  const onMouth = (event: Event): void => {
+    const detail = ((event as CustomEvent).detail || {}) as { value?: number };
+    const manager = subdelegate.getLive2DManager();
+    if (!manager) return;
+    const value = Math.min(Math.max(Number(detail.value) || 0, 0), 1);
+    manager.setMouthOpen(value);
+  };
   const onVisibilityChange = (): void => {
     if (!roomState) return;
     roomState.visible = document.visibilityState !== 'hidden';
@@ -217,6 +226,7 @@ function initRoomLive2D(): void {
   document.addEventListener('pointercancel', onPointerUp, { passive: true });
   document.addEventListener('visibilitychange', onVisibilityChange, { passive: true });
   window.addEventListener('tsukuyomi:room-act', onRoomAct);
+  window.addEventListener('tsukuyomi:live2d-mouth', onMouth);
 
   const run = (time = 0): void => {
     if (!roomState) return;
@@ -244,7 +254,8 @@ function initRoomLive2D(): void {
     onPointerMove,
     onPointerUp,
     onVisibilityChange,
-    onRoomAct
+    onRoomAct,
+    onMouth
   };
 
   (window as any).setLive2DModelSettings = function(

@@ -49,6 +49,7 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+.codex_tmp/
 *.tmp
 
 # Backup files
