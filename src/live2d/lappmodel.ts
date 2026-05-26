@@ -679,58 +679,61 @@ export class LAppModel extends CubismUserModel {
     const add = (id: CubismIdHandle, value: number): void => {
       this._model.addParameterValueById(id, value);
     };
+    const set = (id: CubismIdHandle, value: number): void => {
+      this._model.setParameterValueById(id, value);
+    };
     const driveBody = (x: number, y: number, z: number): void => {
-      add(this._idParamBodyAngleX, x);
-      add(this._idParamBodyAngleY, y);
-      add(this._idParamBodyAngleZ, z);
-      add(this._idParamAngleBodyX, x);
-      add(this._idParamAngleBodyY, y);
-      add(this._idParamAngleBodyZ, z);
-      add(this._idParamOutputBodyX, x);
-      add(this._idParamOutputBodyY, y);
-      add(this._idParamOutputBodyZ, z);
+      set(this._idParamBodyAngleX, x);
+      set(this._idParamBodyAngleY, y);
+      set(this._idParamBodyAngleZ, z);
+      set(this._idParamAngleBodyX, x);
+      set(this._idParamAngleBodyY, y);
+      set(this._idParamAngleBodyZ, z);
+      set(this._idParamOutputBodyX, x);
+      set(this._idParamOutputBodyY, y);
+      set(this._idParamOutputBodyZ, z);
     };
 
     switch (pose.name) {
       case 'nod':
-        add(this._idParamAngleY, -12 * strength * Math.abs(doubleWave));
+        set(this._idParamAngleY, -22 * strength * Math.abs(doubleWave));
         driveBody(0, -9 * strength * Math.abs(doubleWave), 0);
         break;
       case 'shake_head':
-        add(this._idParamAngleX, 14 * strength * doubleWave);
+        set(this._idParamAngleX, 26 * strength * doubleWave);
         driveBody(8 * strength * doubleWave, 0, 0);
-        add(this._idParamEyeBallX, -0.25 * strength * doubleWave);
+        set(this._idParamEyeBallX, -0.45 * strength * doubleWave);
         break;
       case 'lean_in':
-        add(this._idParamAngleY, 10 * strength);
+        set(this._idParamAngleY, 18 * strength);
         driveBody(0, 12 * strength, 0);
-        add(this._idParamPositionZ, 1.2 * strength);
+        set(this._idParamPositionZ, 1.2 * strength);
         break;
       case 'lean_left':
-        add(this._idParamAngleZ, -9 * strength);
+        set(this._idParamAngleZ, -18 * strength);
         driveBody(-5 * strength, 0, -18 * strength);
-        add(this._idParamChestZ, 6 * strength);
-        add(this._idParamHipZ, -5 * strength);
+        set(this._idParamChestZ, 6 * strength);
+        set(this._idParamHipZ, -5 * strength);
         break;
       case 'lean_right':
-        add(this._idParamAngleZ, 9 * strength);
+        set(this._idParamAngleZ, 18 * strength);
         driveBody(5 * strength, 0, 18 * strength);
-        add(this._idParamChestZ, -6 * strength);
-        add(this._idParamHipZ, 5 * strength);
+        set(this._idParamChestZ, -6 * strength);
+        set(this._idParamHipZ, 5 * strength);
         break;
       case 'sway':
         driveBody(14 * strength * wave, 0, 13 * strength * wave);
-        add(this._idParamAngleZ, 4 * strength * wave);
-        add(this._idParamEyeBallX, 0.2 * strength * wave);
+        set(this._idParamAngleZ, 12 * strength * wave);
+        set(this._idParamEyeBallX, 0.35 * strength * wave);
         break;
       case 'bounce':
-        add(this._idParamAngleY, 7 * strength * Math.abs(doubleWave));
+        set(this._idParamAngleY, 16 * strength * Math.abs(doubleWave));
         driveBody(0, 10 * strength * Math.abs(doubleWave), 0);
-        add(this._idParamPositionZ, 0.8 * strength * Math.abs(doubleWave));
+        set(this._idParamPositionZ, 0.8 * strength * Math.abs(doubleWave));
         break;
       case 'emphasis':
-        add(this._idParamAngleY, -8 * strength * Math.abs(wave));
-        add(this._idParamAngleZ, 5 * strength * wave);
+        set(this._idParamAngleY, -16 * strength * Math.abs(wave));
+        set(this._idParamAngleZ, 12 * strength * wave);
         driveBody(9 * strength * wave, -8 * strength * Math.abs(wave), 4 * strength * wave);
         break;
     }
