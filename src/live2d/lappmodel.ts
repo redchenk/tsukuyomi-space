@@ -105,6 +105,12 @@ export class LAppModel extends CubismUserModel {
   _idParamBodyAngleY: CubismIdHandle;
   _idParamBodyAngleZ: CubismIdHandle;
   _idParamPositionZ: CubismIdHandle;
+  _idParamAngleBodyX: CubismIdHandle;
+  _idParamAngleBodyY: CubismIdHandle;
+  _idParamAngleBodyZ: CubismIdHandle;
+  _idParamOutputBodyX: CubismIdHandle;
+  _idParamOutputBodyY: CubismIdHandle;
+  _idParamOutputBodyZ: CubismIdHandle;
   _idParamChestZ: CubismIdHandle;
   _idParamHipZ: CubismIdHandle;
   _proceduralBodyPose: ProceduralBodyPoseState | null;
@@ -600,7 +606,6 @@ export class LAppModel extends CubismUserModel {
 
     // ドラッグによる目の向きの調整
     this._model.addParameterValueById(this._idParamEyeBallX, this._dragX); // -1から1の値を加える
-    this.applyProceduralBodyPose();
     this._model.addParameterValueById(this._idParamEyeBallY, this._dragY);
 
     // 呼吸など
@@ -629,6 +634,8 @@ export class LAppModel extends CubismUserModel {
     if (this._pose != null) {
       this._pose.updateParameters(this._model, deltaTimeSeconds);
     }
+
+    this.applyProceduralBodyPose();
 
     this._model.update();
   }
@@ -672,50 +679,59 @@ export class LAppModel extends CubismUserModel {
     const add = (id: CubismIdHandle, value: number): void => {
       this._model.addParameterValueById(id, value);
     };
+    const driveBody = (x: number, y: number, z: number): void => {
+      add(this._idParamBodyAngleX, x);
+      add(this._idParamBodyAngleY, y);
+      add(this._idParamBodyAngleZ, z);
+      add(this._idParamAngleBodyX, x);
+      add(this._idParamAngleBodyY, y);
+      add(this._idParamAngleBodyZ, z);
+      add(this._idParamOutputBodyX, x);
+      add(this._idParamOutputBodyY, y);
+      add(this._idParamOutputBodyZ, z);
+    };
 
     switch (pose.name) {
       case 'nod':
-        add(this._idParamAngleY, -10 * strength * Math.abs(doubleWave));
-        add(this._idParamBodyAngleY, -5 * strength * Math.abs(doubleWave));
+        add(this._idParamAngleY, -12 * strength * Math.abs(doubleWave));
+        driveBody(0, -9 * strength * Math.abs(doubleWave), 0);
         break;
       case 'shake_head':
         add(this._idParamAngleX, 14 * strength * doubleWave);
-        add(this._idParamBodyAngleX, 5 * strength * doubleWave);
+        driveBody(8 * strength * doubleWave, 0, 0);
         add(this._idParamEyeBallX, -0.25 * strength * doubleWave);
         break;
       case 'lean_in':
-        add(this._idParamAngleY, 8 * strength);
-        add(this._idParamBodyAngleY, 8 * strength);
-        add(this._idParamPositionZ, 0.7 * strength);
+        add(this._idParamAngleY, 10 * strength);
+        driveBody(0, 12 * strength, 0);
+        add(this._idParamPositionZ, 1.2 * strength);
         break;
       case 'lean_left':
         add(this._idParamAngleZ, -9 * strength);
-        add(this._idParamBodyAngleZ, -13 * strength);
+        driveBody(-5 * strength, 0, -18 * strength);
         add(this._idParamChestZ, 6 * strength);
         add(this._idParamHipZ, -5 * strength);
         break;
       case 'lean_right':
         add(this._idParamAngleZ, 9 * strength);
-        add(this._idParamBodyAngleZ, 13 * strength);
+        driveBody(5 * strength, 0, 18 * strength);
         add(this._idParamChestZ, -6 * strength);
         add(this._idParamHipZ, 5 * strength);
         break;
       case 'sway':
-        add(this._idParamBodyAngleX, 10 * strength * wave);
-        add(this._idParamBodyAngleZ, 9 * strength * wave);
+        driveBody(14 * strength * wave, 0, 13 * strength * wave);
         add(this._idParamAngleZ, 4 * strength * wave);
         add(this._idParamEyeBallX, 0.2 * strength * wave);
         break;
       case 'bounce':
         add(this._idParamAngleY, 7 * strength * Math.abs(doubleWave));
-        add(this._idParamBodyAngleY, 6 * strength * Math.abs(doubleWave));
-        add(this._idParamPositionZ, 0.35 * strength * Math.abs(doubleWave));
+        driveBody(0, 10 * strength * Math.abs(doubleWave), 0);
+        add(this._idParamPositionZ, 0.8 * strength * Math.abs(doubleWave));
         break;
       case 'emphasis':
         add(this._idParamAngleY, -8 * strength * Math.abs(wave));
         add(this._idParamAngleZ, 5 * strength * wave);
-        add(this._idParamBodyAngleX, 6 * strength * wave);
-        add(this._idParamBodyAngleY, -5 * strength * Math.abs(wave));
+        driveBody(9 * strength * wave, -8 * strength * Math.abs(wave), 4 * strength * wave);
         break;
     }
   }
@@ -1108,6 +1124,12 @@ export class LAppModel extends CubismUserModel {
     this._idParamBodyAngleY = CubismFramework.getIdManager().getId('ParamBodyAngleY');
     this._idParamBodyAngleZ = CubismFramework.getIdManager().getId('ParamBodyAngleZ');
     this._idParamPositionZ = CubismFramework.getIdManager().getId('ParamPosition_Z');
+    this._idParamAngleBodyX = CubismFramework.getIdManager().getId('ParamAngle_BodyX');
+    this._idParamAngleBodyY = CubismFramework.getIdManager().getId('ParamAngle_BodyY');
+    this._idParamAngleBodyZ = CubismFramework.getIdManager().getId('ParamAngle_BodyZ');
+    this._idParamOutputBodyX = CubismFramework.getIdManager().getId('ParamOutput_BodyX');
+    this._idParamOutputBodyY = CubismFramework.getIdManager().getId('ParamOutput_BodyY');
+    this._idParamOutputBodyZ = CubismFramework.getIdManager().getId('ParamOutput_BodyZ');
     this._idParamChestZ = CubismFramework.getIdManager().getId('ParamAngle_ChestZ');
     this._idParamHipZ = CubismFramework.getIdManager().getId('ParamAngle_HipZ');
     this._proceduralBodyPose = null;
