@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import TsIcon from '../components/TsIcon.vue';
 import { useLive2D } from '../composables/room/useLive2D';
 import {
@@ -36,6 +36,7 @@ const testActions = [
 async function init() {
   if (booted.value) return;
   booted.value = true;
+  window.TSUKUYOMI_LIVE2D_DISABLE_POINTER = true;
   await live2d.init();
 }
 
@@ -115,6 +116,9 @@ function resetLLMHistory() {
 }
 
 onMounted(init);
+onUnmounted(() => {
+  delete window.TSUKUYOMI_LIVE2D_DISABLE_POINTER;
+});
 </script>
 
 <template>

@@ -50,6 +50,10 @@ function shouldReduceIdleEffects(): boolean {
   return mode === 'lite';
 }
 
+function isPointerControlDisabled(): boolean {
+  return Boolean((window as any).TSUKUYOMI_LIVE2D_DISABLE_POINTER);
+}
+
 enum LoadStep {
   LoadAssets,
   LoadModel,
@@ -514,9 +518,14 @@ export class LAppModel extends CubismUserModel {
     const deltaTimeSeconds: number = LAppPal.getDeltaTime();
     this._userTimeSeconds += deltaTimeSeconds;
 
-    this._dragManager.update(deltaTimeSeconds);
-    this._dragX = this._dragManager.getX();
-    this._dragY = this._dragManager.getY();
+    if (isPointerControlDisabled()) {
+      this._dragX = 0.0;
+      this._dragY = 0.0;
+    } else {
+      this._dragManager.update(deltaTimeSeconds);
+      this._dragX = this._dragManager.getX();
+      this._dragY = this._dragManager.getY();
+    }
 
     // モーションによるパラメータ更新の有無
     let motionUpdated = false;

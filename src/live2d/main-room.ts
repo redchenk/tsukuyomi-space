@@ -42,6 +42,10 @@ function live2dPerformanceProfile(): { targetFrameMs: number; lowPower: boolean 
   };
 }
 
+function isPointerControlDisabled(): boolean {
+  return Boolean((window as any).TSUKUYOMI_LIVE2D_DISABLE_POINTER);
+}
+
 function isEventInsideNode(event: PointerEvent, node: HTMLElement): boolean {
   const target = event.target;
   return target instanceof Node && node.contains(target);
@@ -135,11 +139,13 @@ function initRoomLive2D(): void {
   let pendingPointerMove: { x: number; y: number } | null = null;
 
   const onPointerDown = (event: PointerEvent): void => {
+    if (isPointerControlDisabled()) return;
     if (profile.lowPower && !isEventInsideNode(event, container)) return;
     pointerActive = true;
     subdelegate.onPointBegan(event.pageX, event.pageY);
   };
   const onPointerMove = (event: PointerEvent): void => {
+    if (isPointerControlDisabled()) return;
     if (profile.lowPower) {
       if (!pointerActive) return;
       pendingPointerMove = { x: event.pageX, y: event.pageY };
@@ -148,6 +154,11 @@ function initRoomLive2D(): void {
     subdelegate.onPointMoved(event.pageX, event.pageY);
   };
   const onPointerUp = (event: PointerEvent): void => {
+    if (isPointerControlDisabled()) {
+      pointerActive = false;
+      pendingPointerMove = null;
+      return;
+    }
     if (profile.lowPower && !pointerActive) return;
     pointerActive = false;
     pendingPointerMove = null;

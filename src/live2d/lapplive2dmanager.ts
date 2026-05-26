@@ -24,6 +24,10 @@ function live2dModelVariant(): 'standard' | 'mobile' | 'lite' {
   return mobile ? 'mobile' : 'standard';
 }
 
+function isPointerControlDisabled(): boolean {
+  return Boolean((window as any).TSUKUYOMI_LIVE2D_DISABLE_POINTER);
+}
+
 /**
  * サンプルアプリケーションにおいてCubismModelを管理するクラス
  * モデル生成と破棄、タップイベントの処理、モデル切り替えを行う。
@@ -67,6 +71,10 @@ export class LAppLive2DManager {
   public onDrag(x: number, y: number): void {
     const model: LAppModel = this._models.at(0);
     if (model) {
+      if (isPointerControlDisabled()) {
+        model.setDragging(0.0, 0.0);
+        return;
+      }
       model.setDragging(x, y);
     }
   }
