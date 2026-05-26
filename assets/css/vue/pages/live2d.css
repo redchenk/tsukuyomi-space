@@ -146,6 +146,83 @@ body.vue-live2d-route {
     justify-content: flex-end;
 }
 
+.live2d-llm-form {
+    display: grid;
+    gap: 0.58rem;
+}
+
+.live2d-llm-form textarea {
+    width: 100%;
+    min-height: 5.5rem;
+    resize: vertical;
+    border: 1px solid rgba(235, 242, 255, 0.18);
+    border-radius: 7px;
+    padding: 0.66rem 0.72rem;
+    outline: none;
+    color: var(--live2d-ink);
+    background: rgba(3, 7, 18, 0.38);
+    font: inherit;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.live2d-llm-form textarea:focus {
+    border-color: rgba(158, 232, 255, 0.5);
+    box-shadow: 0 0 0 3px rgba(158, 232, 255, 0.1);
+}
+
+.live2d-llm-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem;
+}
+
+.live2d-run-btn {
+    width: 100%;
+}
+
+.live2d-llm-result {
+    display: grid;
+    gap: 0.42rem;
+    max-height: 13rem;
+    overflow: auto;
+    padding: 0.62rem;
+    border: 1px solid rgba(158, 232, 255, 0.2);
+    border-radius: 7px;
+    background: rgba(158, 232, 255, 0.08);
+}
+
+.live2d-llm-result.error {
+    border-color: rgba(255, 120, 150, 0.26);
+    background: rgba(255, 120, 150, 0.1);
+}
+
+.live2d-llm-result strong {
+    color: var(--live2d-cyan);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+}
+
+.live2d-llm-result.error strong {
+    color: #ffb4c4;
+}
+
+.live2d-llm-result p {
+    margin: 0;
+    color: var(--live2d-ink);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+.live2d-llm-result pre {
+    margin: 0;
+    overflow: auto;
+    color: var(--live2d-muted);
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
 .live2d-icon-btn {
     width: 2.35rem;
     display: grid;
