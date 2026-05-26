@@ -69,6 +69,36 @@ const motionAliases = {
   轻动: 'tap_body'
 };
 
+const bodyPoseAliases = {
+  none: '',
+  null: '',
+  tap_body: 'emphasis',
+  body_tap: 'emphasis',
+  tapbody: 'emphasis',
+  nod: 'nod',
+  agree: 'nod',
+  yes: 'nod',
+  shake: 'shake_head',
+  shake_head: 'shake_head',
+  no: 'shake_head',
+  lean: 'lean_in',
+  lean_in: 'lean_in',
+  forward: 'lean_in',
+  close: 'lean_in',
+  lean_left: 'lean_left',
+  left: 'lean_left',
+  lean_right: 'lean_right',
+  right: 'lean_right',
+  sway: 'sway',
+  bounce: 'bounce',
+  excited: 'bounce',
+  emphasis: 'emphasis',
+  accent: 'emphasis',
+  鐐瑰ご: 'nod',
+  闈犺繎: 'lean_in',
+  杞诲姩: 'sway'
+};
+
 const emotionAliases = {
   happy: 'smile',
   joy: 'smile',
@@ -184,6 +214,14 @@ export function normalizeLive2DMotion(value, manifest = roomLive2DManifest) {
   return ids.has(aliased) ? aliased : '';
 }
 
+export function normalizeLive2DBodyPose(value, manifest = roomLive2DManifest) {
+  const ids = manifestIds(manifest.motions);
+  const key = normalizeToken(value);
+  if (!key || key === 'none' || key === 'null') return '';
+  const aliased = bodyPoseAliases[key] ?? key;
+  return ids.has(aliased) ? aliased : '';
+}
+
 export function normalizeLive2DEmotion(value, manifest = roomLive2DManifest) {
   const key = normalizeToken(value);
   const aliased = emotionAliases[key] || key;
@@ -216,15 +254,17 @@ function normalizeLive2DStep(input, manifest = roomLive2DManifest) {
   const rawExpression = input.expression || input.expressionId || input.face || input.mood || input.emotion || '';
   const expression = normalizeLive2DExpression(rawExpression, manifest) || normalizeLive2DEmotion(input.emotion || input.mood, manifest);
   const motion = normalizeLive2DMotion(input.motion || input.action, manifest);
+  const bodyPose = normalizeLive2DBodyPose(input.bodyPose || input.pose || input.posture || input.motion || input.action, manifest);
   const expressionMix = normalizeExpressionMix(input.expressionMix, expression, manifest);
   const primaryExpression = expressionMix[0]?.expression || expression;
-  const hasControl = primaryExpression || motion;
+  const hasControl = primaryExpression || motion || bodyPose;
   if (!hasControl) return null;
   return {
     emotion: String(input.emotion || input.mood || '').trim() || null,
     expression: primaryExpression || null,
     expressionMix,
     motion: motion || null,
+    bodyPose: bodyPose || null,
     intensity: clamp01(input.intensity, 0.65),
     durationMs: normalizeDuration(input.durationMs || input.duration),
     delayMs: normalizeDelay(input.delayMs || input.delay)

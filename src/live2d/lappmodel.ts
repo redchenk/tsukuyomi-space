@@ -54,6 +54,23 @@ function isPointerControlDisabled(): boolean {
   return Boolean((window as any).TSUKUYOMI_LIVE2D_DISABLE_POINTER);
 }
 
+type ProceduralBodyPoseName =
+  | 'nod'
+  | 'shake_head'
+  | 'lean_in'
+  | 'lean_left'
+  | 'lean_right'
+  | 'sway'
+  | 'bounce'
+  | 'emphasis';
+
+type ProceduralBodyPoseState = {
+  name: ProceduralBodyPoseName;
+  intensity: number;
+  startSeconds: number;
+  durationSeconds: number;
+};
+
 enum LoadStep {
   LoadAssets,
   LoadModel,
@@ -85,6 +102,13 @@ enum LoadStep {
  * モデル生成、機能コンポーネント生成、更新処理とレンダリングの呼び出しを行う。
  */
 export class LAppModel extends CubismUserModel {
+  _idParamBodyAngleY: CubismIdHandle;
+  _idParamBodyAngleZ: CubismIdHandle;
+  _idParamPositionZ: CubismIdHandle;
+  _idParamChestZ: CubismIdHandle;
+  _idParamHipZ: CubismIdHandle;
+  _proceduralBodyPose: ProceduralBodyPoseState | null;
+
   /**
    * model3.jsonが置かれたディレクトリとファイルパスからモデルを生成する
    * @param dir
@@ -576,6 +600,7 @@ export class LAppModel extends CubismUserModel {
 
     // ドラッグによる目の向きの調整
     this._model.addParameterValueById(this._idParamEyeBallX, this._dragX); // -1から1の値を加える
+    this.applyProceduralBodyPose();
     this._model.addParameterValueById(this._idParamEyeBallY, this._dragY);
 
     // 呼吸など
@@ -616,6 +641,85 @@ export class LAppModel extends CubismUserModel {
    * @param onFinishedMotionHandler モーション再生終了時に呼び出されるコールバック関数
    * @return 開始したモーションの識別番号を返す。個別のモーションが終了したか否かを判定するisFinished()の引数で使用する。開始できない時は[-1]
    */
+  public setProceduralBodyPose(
+    name: ProceduralBodyPoseName,
+    intensity: number = 0.65,
+    durationMs: number = 2200
+  ): void {
+    this._proceduralBodyPose = {
+      name,
+      intensity: Math.min(Math.max(intensity, 0), 1),
+      startSeconds: this._userTimeSeconds,
+      durationSeconds: Math.min(Math.max(durationMs, 800), 8000) / 1000
+    };
+  }
+
+  private applyProceduralBodyPose(): void {
+    const pose = this._proceduralBodyPose;
+    if (!pose) return;
+
+    const elapsed = this._userTimeSeconds - pose.startSeconds;
+    const progress = pose.durationSeconds <= 0 ? 1 : elapsed / pose.durationSeconds;
+    if (progress >= 1) {
+      this._proceduralBodyPose = null;
+      return;
+    }
+
+    const envelope = Math.sin(Math.PI * Math.max(0, Math.min(progress, 1)));
+    const wave = Math.sin(progress * Math.PI * 2);
+    const doubleWave = Math.sin(progress * Math.PI * 4);
+    const strength = pose.intensity * envelope;
+    const add = (id: CubismIdHandle, value: number): void => {
+      this._model.addParameterValueById(id, value);
+    };
+
+    switch (pose.name) {
+      case 'nod':
+        add(this._idParamAngleY, -10 * strength * Math.abs(doubleWave));
+        add(this._idParamBodyAngleY, -5 * strength * Math.abs(doubleWave));
+        break;
+      case 'shake_head':
+        add(this._idParamAngleX, 14 * strength * doubleWave);
+        add(this._idParamBodyAngleX, 5 * strength * doubleWave);
+        add(this._idParamEyeBallX, -0.25 * strength * doubleWave);
+        break;
+      case 'lean_in':
+        add(this._idParamAngleY, 8 * strength);
+        add(this._idParamBodyAngleY, 8 * strength);
+        add(this._idParamPositionZ, 0.7 * strength);
+        break;
+      case 'lean_left':
+        add(this._idParamAngleZ, -9 * strength);
+        add(this._idParamBodyAngleZ, -13 * strength);
+        add(this._idParamChestZ, 6 * strength);
+        add(this._idParamHipZ, -5 * strength);
+        break;
+      case 'lean_right':
+        add(this._idParamAngleZ, 9 * strength);
+        add(this._idParamBodyAngleZ, 13 * strength);
+        add(this._idParamChestZ, -6 * strength);
+        add(this._idParamHipZ, 5 * strength);
+        break;
+      case 'sway':
+        add(this._idParamBodyAngleX, 10 * strength * wave);
+        add(this._idParamBodyAngleZ, 9 * strength * wave);
+        add(this._idParamAngleZ, 4 * strength * wave);
+        add(this._idParamEyeBallX, 0.2 * strength * wave);
+        break;
+      case 'bounce':
+        add(this._idParamAngleY, 7 * strength * Math.abs(doubleWave));
+        add(this._idParamBodyAngleY, 6 * strength * Math.abs(doubleWave));
+        add(this._idParamPositionZ, 0.35 * strength * Math.abs(doubleWave));
+        break;
+      case 'emphasis':
+        add(this._idParamAngleY, -8 * strength * Math.abs(wave));
+        add(this._idParamAngleZ, 5 * strength * wave);
+        add(this._idParamBodyAngleX, 6 * strength * wave);
+        add(this._idParamBodyAngleY, -5 * strength * Math.abs(wave));
+        break;
+    }
+  }
+
   public startMotion(
     group: string,
     no: number,
@@ -1001,6 +1105,12 @@ export class LAppModel extends CubismUserModel {
     this._idParamBodyAngleX = CubismFramework.getIdManager().getId(
       CubismDefaultParameterId.ParamBodyAngleX
     );
+    this._idParamBodyAngleY = CubismFramework.getIdManager().getId('ParamBodyAngleY');
+    this._idParamBodyAngleZ = CubismFramework.getIdManager().getId('ParamBodyAngleZ');
+    this._idParamPositionZ = CubismFramework.getIdManager().getId('ParamPosition_Z');
+    this._idParamChestZ = CubismFramework.getIdManager().getId('ParamAngle_ChestZ');
+    this._idParamHipZ = CubismFramework.getIdManager().getId('ParamAngle_HipZ');
+    this._proceduralBodyPose = null;
 
     if (LAppDefine.MOCConsistencyValidationEnable) {
       this._mocConsistency = true;

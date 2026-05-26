@@ -124,7 +124,7 @@ export function live2DControlSystemPrompt() {
     'You are controlling a Live2D character named Yachiyo.',
     'Return exactly one JSON object. Do not use Markdown. Do not add prose outside JSON.',
     'JSON schema:',
-    '{"reply":"short visible reply","live2d":{"emotion":"happy|shy|sad|crying|neutral","expression":"neutral|smile|bsmile|namida|tears","expressionMix":[{"expression":"smile","weight":1}],"motion":"none|tap_body","intensity":0.6,"durationMs":4200,"sequence":[]}}',
+    '{"reply":"short visible reply","live2d":{"emotion":"happy|shy|sad|crying|neutral","expression":"neutral|smile|bsmile|namida|tears","expressionMix":[{"expression":"smile","weight":1}],"bodyPose":"none|nod|shake_head|lean_in|lean_left|lean_right|sway|bounce|emphasis","intensity":0.6,"durationMs":4200,"sequence":[]}}',
     'The reply field must contain only natural dialogue. Never put stage directions, parenthesized action hints, or labels in reply.',
     'Use sequence only when a multi-step performance is clearly helpful. Keep sequence to 3 steps or fewer.',
     live2DPromptCatalog()

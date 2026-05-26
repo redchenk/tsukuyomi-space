@@ -33,6 +33,13 @@ const testActions = [
   { label: 'Tears', expression: 'tears' }
 ];
 
+const bodyActions = [
+  { label: 'Nod', bodyPose: 'nod' },
+  { label: 'Lean', bodyPose: 'lean_in' },
+  { label: 'Sway', bodyPose: 'sway' },
+  { label: 'Bounce', bodyPose: 'bounce' }
+];
+
 async function init() {
   if (booted.value) return;
   booted.value = true;
@@ -45,6 +52,14 @@ function runExpression(expression) {
     expression,
     expressionMix: [{ expression, weight: 1 }],
     durationMs: 4200
+  });
+}
+
+function runBodyPose(bodyPose) {
+  dispatchRoomLive2D({
+    bodyPose,
+    intensity: 0.75,
+    durationMs: 2400
   });
 }
 
@@ -142,6 +157,18 @@ onUnmounted(() => {
           type="button"
           :disabled="!live2d.ready.value"
           @click="runExpression(action.expression)"
+        >
+          {{ action.label }}
+        </button>
+      </div>
+      <div class="live2d-actions">
+        <button
+          v-for="action in bodyActions"
+          :key="action.bodyPose"
+          class="live2d-action-btn"
+          type="button"
+          :disabled="!live2d.ready.value"
+          @click="runBodyPose(action.bodyPose)"
         >
           {{ action.label }}
         </button>

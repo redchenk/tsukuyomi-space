@@ -28,6 +28,17 @@ function isPointerControlDisabled(): boolean {
   return Boolean((window as any).TSUKUYOMI_LIVE2D_DISABLE_POINTER);
 }
 
+const proceduralBodyPoses = new Set([
+  'nod',
+  'shake_head',
+  'lean_in',
+  'lean_left',
+  'lean_right',
+  'sway',
+  'bounce',
+  'emphasis'
+]);
+
 /**
  * サンプルアプリケーションにおいてCubismModelを管理するクラス
  * モデル生成と破棄、タップイベントの処理、モデル切り替えを行う。
@@ -111,12 +122,28 @@ export class LAppLive2DManager {
   public startTapBodyMotion(): void {
     const model: LAppModel = this._models.at(0);
     if (model) {
+      model.setProceduralBodyPose('emphasis', 0.65, 2200);
       model.startRandomMotion(
         LAppDefine.MotionGroupTapBody,
         LAppDefine.PriorityNormal,
         this.finishedMotion,
         this.beganMotion
       );
+    }
+  }
+
+  public startProceduralBodyPose(
+    poseName: string,
+    intensity: number = 0.65,
+    durationMs: number = 2200
+  ): void {
+    const normalized = String(poseName || '').trim().toLowerCase().replace(/\s+/g, '_');
+    if (!proceduralBodyPoses.has(normalized)) return;
+    const safeIntensity = Number.isFinite(intensity) ? intensity : 0.65;
+    const safeDuration = Number.isFinite(durationMs) ? durationMs : 2200;
+    const model: LAppModel = this._models.at(0);
+    if (model) {
+      model.setProceduralBodyPose(normalized as any, safeIntensity, safeDuration);
     }
   }
 

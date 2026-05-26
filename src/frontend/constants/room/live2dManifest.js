@@ -1,51 +1,86 @@
 export const roomLive2DManifest = {
   id: 'tsukimi-yachiyo',
-  name: '月见八千代',
+  name: 'Tsukimi Yachiyo',
   modelJson: '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json',
   expressions: [
     {
       id: 'neutral',
-      label: '平静',
+      label: 'Neutral',
       emotion: 'neutral',
-      prompt: '默认、平静、认真倾听、没有明显情绪'
+      prompt: 'calm, attentive, listening, or no strong emotion'
     },
     {
       id: 'smile',
-      label: '微笑',
+      label: 'Smile',
       emotion: 'happy',
-      prompt: '温柔、开心、安心、轻轻微笑'
+      prompt: 'warm, happy, reassured, or gentle smile'
     },
     {
       id: 'bsmile',
-      label: '羞怯微笑',
+      label: 'Shy smile',
       emotion: 'shy',
-      prompt: '害羞、脸红、调皮、略带得意或小小生气'
+      prompt: 'shy, blushing, playful, smug, or mildly annoyed'
     },
     {
       id: 'namida',
-      label: '含泪',
+      label: 'Tearful',
       emotion: 'sad',
-      prompt: '难过、寂寞、被触动、眼眶含泪'
+      prompt: 'sad, lonely, moved, or eyes welling up'
     },
     {
       id: 'tears',
-      label: '落泪',
+      label: 'Crying',
       emotion: 'crying',
-      prompt: '哭泣、强烈悲伤、泪水明显流下'
+      prompt: 'crying, strongly hurt, or clearly shedding tears'
     }
   ],
   motions: [
     {
-      id: 'tap_body',
-      label: '轻微身体动作',
-      prompt: '轻轻点头、靠近、回应触碰或强调一句话'
+      id: 'nod',
+      label: 'Nod',
+      prompt: 'agreeing, greeting, or acknowledging the audience'
+    },
+    {
+      id: 'shake_head',
+      label: 'Shake head',
+      prompt: 'gentle refusal, surprise, or playful disagreement'
+    },
+    {
+      id: 'lean_in',
+      label: 'Lean in',
+      prompt: 'curiosity, whispering, intimacy, or focusing on the audience'
+    },
+    {
+      id: 'lean_left',
+      label: 'Lean left',
+      prompt: 'playful tilt or soft side movement'
+    },
+    {
+      id: 'lean_right',
+      label: 'Lean right',
+      prompt: 'playful tilt or soft side movement'
+    },
+    {
+      id: 'sway',
+      label: 'Sway',
+      prompt: 'idle rhythmic body movement or cheerful energy'
+    },
+    {
+      id: 'bounce',
+      label: 'Bounce',
+      prompt: 'excited response or lively emphasis'
+    },
+    {
+      id: 'emphasis',
+      label: 'Emphasis',
+      prompt: 'small body accent when stressing a line'
     }
   ],
   parameterControls: [
     {
       id: 'ParamMouthOpenY',
-      label: '口型开合',
-      prompt: '仅供 TTS 或后续口型同步使用，当前不要由 LLM 主动控制',
+      label: 'Mouth open',
+      prompt: 'reserved for TTS or later lip sync; LLM should not actively control it yet',
       min: 0,
       max: 1,
       experimental: true
@@ -55,18 +90,18 @@ export const roomLive2DManifest = {
 
 export function live2DPromptCatalog(manifest = roomLive2DManifest) {
   const expressions = manifest.expressions
-    .map((item) => `- ${item.id}: ${item.label}，适合：${item.prompt}`)
+    .map((item) => `- ${item.id}: ${item.label}; use for ${item.prompt}`)
     .join('\n');
   const motions = manifest.motions
-    .map((item) => `- ${item.id}: ${item.label}，适合：${item.prompt}`)
+    .map((item) => `- ${item.id}: ${item.label}; use for ${item.prompt}`)
     .join('\n');
 
   return [
-    'Live2D 控制能力白名单：',
-    '可用 expression：',
+    'Live2D control whitelist:',
+    'Available expression ids:',
     expressions,
-    '可用 motion：',
+    'Available bodyPose ids:',
     motions,
-    '控制规则：只能使用上面列出的 id；无法判断时 expression 使用 neutral 或省略 live2d；motion 无需动作时使用 none。'
+    'Control rules: only use listed ids. Use bodyPose for posture/body movement. Use bodyPose none when no body movement is needed.'
   ].join('\n');
 }

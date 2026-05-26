@@ -25,6 +25,16 @@ let roomState: RoomLive2DState | null = null;
 
 const allowedExpressions = new Set(['neutral', 'smile', 'bsmile', 'namida', 'tears']);
 const allowedTapBodyMotions = new Set(['tap_body', 'body_tap', 'tapbody']);
+const allowedBodyPoses = new Set([
+  'nod',
+  'shake_head',
+  'lean_in',
+  'lean_left',
+  'lean_right',
+  'sway',
+  'bounce',
+  'emphasis'
+]);
 
 function isMobileDevice(): boolean {
   const ua = navigator.userAgent || '';
@@ -72,6 +82,13 @@ function normalizeDuration(value: unknown): number {
   const duration = Number(value);
   if (!Number.isFinite(duration)) return 5000;
   return Math.min(Math.max(Math.round(duration), 800), 12000);
+}
+
+function normalizeBodyPose(value: unknown): string {
+  const pose = String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
+  if (!pose || pose === 'none') return '';
+  if (allowedTapBodyMotions.has(pose)) return 'emphasis';
+  return allowedBodyPoses.has(pose) ? pose : '';
 }
 
 function ensureCubismStarted(): void {
@@ -169,7 +186,9 @@ function initRoomLive2D(): void {
       expression?: string;
       expressionMix?: Array<{ expression?: string; key?: string; id?: string; weight?: number }>;
       motion?: string;
+      bodyPose?: string;
       durationMs?: number;
+      intensity?: number;
     };
     const manager = subdelegate.getLive2DManager();
     if (!manager) return;
@@ -180,6 +199,10 @@ function initRoomLive2D(): void {
     }
     if (allowedTapBodyMotions.has(String(detail.motion || '').toLowerCase())) {
       manager.startTapBodyMotion();
+    }
+    const bodyPose = normalizeBodyPose(detail.bodyPose || detail.motion);
+    if (bodyPose) {
+      manager.startProceduralBodyPose(bodyPose, Number(detail.intensity), normalizeDuration(detail.durationMs));
     }
   };
   const onVisibilityChange = (): void => {
