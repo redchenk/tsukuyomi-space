@@ -1,7 +1,7 @@
 import { assetUrl } from '../../utils/assetUrl';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room.iife.js?v=20260526-llm-body-poses';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room-body-poses.iife.js';
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_READY_TIMEOUT = 20000;
 
