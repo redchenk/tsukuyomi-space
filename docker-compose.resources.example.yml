@@ -1,0 +1,8 @@
+services:
+  tsukuyomi-space:
+    volumes:
+      # Local-only large resources stay outside the image. Enable this file with:
+      # docker compose -f docker-compose.yml -f docker-compose.resources.yml up -d --build
+      - ./assets/music:/app/assets/music:ro
+      - ./assets/video:/app/assets/video:ro
+      - ./models:/app/models:ro

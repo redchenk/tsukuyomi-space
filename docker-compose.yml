@@ -3,7 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     image: tsukuyomi-space:latest
+    container_name: tsukuyomi-space
     restart: unless-stopped
     env_file:
       - .env.docker
@@ -16,15 +18,44 @@ services:
       DATA_DIR: /data
       DB_PATH: /data/tsukuyomi.db
     ports:
-      - "3280:3000"
+      - "${TSUKUYOMI_HTTP_PORT:-3280}:3000"
     volumes:
       - tsukuyomi-data:/data
+      - tsukuyomi-uploads:/app/assets/uploads
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       start_period: 20s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - tsukuyomi
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    profiles:
+      - redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - tsukuyomi-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - tsukuyomi
 
 volumes:
   tsukuyomi-data:
+  tsukuyomi-uploads:
+  tsukuyomi-redis:
+
+networks:
+  tsukuyomi:

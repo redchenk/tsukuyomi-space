@@ -166,7 +166,13 @@ docker compose up -d --build
 curl http://127.0.0.1:3280/api/health
 ```
 
-Docker 部署会把 SQLite 持久化到 Compose 命名卷 `tsukuyomi-data`，容器内路径为 `/data/tsukuyomi.db`。
+Docker 部署会把 SQLite 持久化到 Compose 命名卷 `tsukuyomi-data`，容器内路径为 `/data/tsukuyomi.db`。服务器本地额外音乐、视频背景和 Live2D 模型推荐通过 `docker-compose.resources.example.yml` 只读挂载，不打进镜像。
+
+推荐更新命令：
+
+```bash
+bash deploy/docker-deploy.sh
+```
 
 ## 部署
 

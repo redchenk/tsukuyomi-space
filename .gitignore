@@ -22,6 +22,8 @@ data/
 .env
 .env.local
 .env.docker
+.env.docker.local
+docker-compose.resources.yml
 .env.*.local
 
 # Build outputs
@@ -53,6 +55,7 @@ temp/
 *.tmp
 
 # Backup files
+backups/
 *.bak
 *.backup
 

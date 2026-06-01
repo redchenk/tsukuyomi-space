@@ -7,7 +7,13 @@
 
 ## Docker Compose 部署
 
-Docker 镜像会在构建阶段执行 `npm run build:web`，运行时由 Express 同时提供 Vue 前端、静态资源和 `/api/` 接口。默认对外端口是 `3280`，容器内服务端口是 `3000`。
+Docker 是推荐部署方式。镜像构建阶段会安装依赖并构建 Vue 前端与 Live2D Studio 前端，运行时由 Express 同时提供 Vue 产物、静态资源和 `/api/` 接口。默认对外端口是 `3280`，容器内端口是 `3000`。
+
+新的 Docker 流程遵循三个原则：
+
+- 镜像只包含应用运行所需文件，`node_modules` 分为构建依赖和生产依赖两层。
+- SQLite、上传附件和可选 Redis 数据都放在 Docker volume。
+- 本地额外音乐、视频背景、Live2D 模型等大资源不强制打进镜像，推荐用只读挂载或独立对象存储。
 
 ### 1. 准备配置
 
@@ -27,8 +33,9 @@ Docker 默认使用：
 
 - `DATA_DIR=/data`
 - `DB_PATH=/data/tsukuyomi.db`
+- `TSUKUYOMI_HTTP_PORT=3280`
 
-`/data` 会挂载到 Compose 命名卷 `tsukuyomi-data`，用于持久化 SQLite 数据库。
+`/data` 会挂载到 Compose 命名卷 `tsukuyomi-data`，用于持久化 SQLite 数据库。`/app/assets/uploads` 会挂载到 `tsukuyomi-uploads`，避免用户上传文件跟随容器生命周期丢失。
 
 ### 2. 启动
 
@@ -38,19 +45,70 @@ docker compose ps
 curl http://127.0.0.1:3280/api/health
 ```
 
+如果需要 Redis 存储验证码、限流、天气缓存和 token 黑名单：
+
+```bash
+# .env.docker
+REDIS_URL=redis://redis:6379/0
+
+docker compose --profile redis up -d --build
+```
+
+### 3. 挂载本地大资源
+
+如果服务器本地有额外音乐、视频背景或 Live2D 模型，不要把它们复制进镜像。复制 override 示例后再按实际目录调整：
+
+```bash
+cp docker-compose.resources.example.yml docker-compose.resources.yml
+```
+
+默认示例会把这些目录只读挂进容器：
+
+```yaml
+./assets/music -> /app/assets/music
+./assets/video -> /app/assets/video
+./models       -> /app/models
+```
+
+启动时带上 override：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.resources.yml up -d --build
+```
+
+`docker-compose.resources.yml` 是本机配置文件，不需要提交。这样本地资源不会被 Docker 构建上下文打包，也不会被部署脚本删除。
+
+### 4. 推荐更新流程
+
+推荐使用脚本自动做“备份 -> 构建 -> 启动 -> 健康检查”：
+
+```bash
+bash deploy/docker-deploy.sh
+```
+
+如果存在 `docker-compose.resources.yml`，脚本会自动带上它。服务已经在运行时，脚本会先调用 `deploy/docker-backup.sh` 在线备份 SQLite，再更新容器。
+
 常用维护命令：
 
 ```bash
 docker compose logs -f tsukuyomi-space
 docker compose restart tsukuyomi-space
 docker compose down
-docker compose pull
-docker compose up -d --build
+docker compose build --pull tsukuyomi-space
+docker compose up -d --remove-orphans tsukuyomi-space
 ```
 
-### 3. 备份与恢复 SQLite
+### 5. 备份与恢复 SQLite
 
-备份运行中的容器数据库，会在 Docker 数据卷内生成 `/data/backups/*.db`：
+在线备份：
+
+```bash
+bash deploy/docker-backup.sh
+```
+
+备份文件会先通过 SQLite backup API 写到容器 `/data/backups/`，再复制到宿主机 `./backups/`。
+
+也可以手动备份运行中的容器数据库：
 
 ```bash
 docker compose exec -T tsukuyomi-space node - <<'NODE'
@@ -90,15 +148,15 @@ docker run --rm -v tsukuyomi-space_tsukuyomi-data:/data -v "$PWD/backups:/backup
 docker compose start tsukuyomi-space
 ```
 
-如果 Compose 项目名不是目录名，卷名可能不是 `tsukuyomi-space_tsukuyomi-data`。可以用 `docker volume ls | grep tsukuyomi` 查看实际名称。
+如果 Compose 项目名不是目录名，卷名可能不是 `tsukuyomi-space_tsukuyomi-data`。可以用 `docker volume ls | grep tsukuyomi` 查看实际名称，或者优先使用 `deploy/docker-backup.sh` 和 `docker compose cp` 避免手写卷名。
 
-### 4. 从当前服务器迁移到 Docker
+### 6. 从当前服务器迁移到 Docker
 
 当前 PM2/Nginx 部署的数据通常在：
 
 - 数据库：`/var/lib/tsukuyomi-space/tsukuyomi.db`
 - 环境变量：`/etc/tsukuyomi-space/tsukuyomi-space.env`
-- 额外音乐资源：`/var/www/tsukuyomi-space/assets/music/`，如果有
+- 额外资源：`/var/www/tsukuyomi-space/assets/music/`、`assets/video/`、`models/`，如果有本地扩展
 
 迁移步骤：
 
@@ -106,6 +164,8 @@ docker compose start tsukuyomi-space
 cd /var/www/tsukuyomi-space
 cp .env.docker.example .env.docker
 # 把旧 env 中的 JWT_SECRET、ADMIN_PASSWORD、SMTP/LLM/TTS/CORS 等值迁入 .env.docker
+# 如果要保留本地大资源：
+cp docker-compose.resources.example.yml docker-compose.resources.yml
 docker compose up -d --build
 docker compose stop tsukuyomi-space
 docker run --rm -v tsukuyomi-space_tsukuyomi-data:/data -v /var/lib/tsukuyomi-space:/host-data busybox \

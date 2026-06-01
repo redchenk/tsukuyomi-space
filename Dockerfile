@@ -1,12 +1,34 @@
-FROM node:20.20.2-bookworm-slim AS build
+# syntax=docker/dockerfile:1.7
+
+FROM node:20.20.2-bookworm-slim AS deps
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
-COPY . .
-RUN npm run build:web && npm prune --omit=dev
+FROM node:20.20.2-bookworm-slim AS prod-deps
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+
+FROM node:20.20.2-bookworm-slim AS build
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json vite.config.js vite.frontend.config.js ./
+COPY backend ./backend
+COPY src ./src
+COPY assets ./assets
+COPY lib ./lib
+COPY live2d-studio ./live2d-studio
+COPY models ./models
+COPY favicon.ico live2d-core.js site.webmanifest ./
+
+RUN npm run build:web && npm run build:live2d-studio
 
 FROM node:20.20.2-bookworm-slim AS runtime
 
@@ -21,7 +43,7 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 COPY --from=build /app/package.json /app/package-lock.json ./
-COPY --from=build /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/backend ./backend
 COPY --from=build /app/assets ./assets
 COPY --from=build /app/dist ./dist
