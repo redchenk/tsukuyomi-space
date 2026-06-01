@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Keep container paths like /data/tsukuyomi.db intact when the script is run
+# from Git Bash on Windows.
+export MSYS_NO_PATHCONV=1
+
 SERVICE="${TSUKUYOMI_SERVICE:-tsukuyomi-space}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
-DB_PATH="${DB_PATH:-/data/tsukuyomi.db}"
+CONTAINER_DB_PATH="${TSUKUYOMI_CONTAINER_DB_PATH:-/data/tsukuyomi.db}"
 
 mkdir -p "$BACKUP_DIR"
 
 backup_path="$(
-docker compose exec -T "$SERVICE" node - "$DB_PATH" <<'NODE'
+docker compose exec -T "$SERVICE" node - "$CONTAINER_DB_PATH" <<'NODE'
 const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');

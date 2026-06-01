@@ -18,7 +18,12 @@ if docker compose "${COMPOSE_FILES[@]}" ps --status running --services | grep -q
   bash deploy/docker-backup.sh
 fi
 
-docker compose "${COMPOSE_FILES[@]}" build --pull
+BUILD_ARGS=()
+if [[ "${PULL_BASE_IMAGES:-false}" == "true" ]]; then
+  BUILD_ARGS+=(--pull)
+fi
+
+docker compose "${COMPOSE_FILES[@]}" build "${BUILD_ARGS[@]}"
 docker compose "${COMPOSE_FILES[@]}" up -d --remove-orphans
 docker compose "${COMPOSE_FILES[@]}" ps "$SERVICE"
 

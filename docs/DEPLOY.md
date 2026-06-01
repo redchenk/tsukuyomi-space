@@ -88,6 +88,12 @@ bash deploy/docker-deploy.sh
 
 如果存在 `docker-compose.resources.yml`，脚本会自动带上它。服务已经在运行时，脚本会先调用 `deploy/docker-backup.sh` 在线备份 SQLite，再更新容器。
 
+默认情况下脚本会优先使用本机已有基础镜像和构建缓存，适合网络不稳定的服务器。需要强制拉取最新基础镜像时：
+
+```bash
+PULL_BASE_IMAGES=true bash deploy/docker-deploy.sh
+```
+
 常用维护命令：
 
 ```bash
