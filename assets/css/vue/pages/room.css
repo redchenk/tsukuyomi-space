@@ -1252,7 +1252,11 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         width: min(108vw, 520px);
         height: min(72dvh, 650px);
         transform: translateX(-50%);
-        filter: saturate(1.02) contrast(0.98) drop-shadow(0 22px 44px rgba(12, 8, 22, 0.38));
+        filter: none;
+    }
+
+    .room-live2d-container canvas {
+        filter: none;
     }
 
     .room-dock {
@@ -1290,8 +1294,9 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         border-color: rgba(255, 255, 255, 0.2);
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.16);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 14px 38px rgba(12, 10, 24, 0.22);
-        backdrop-filter: blur(18px) saturate(1.14);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 22px rgba(12, 10, 24, 0.18);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
     }
 
     .room-weather-icon {
@@ -1333,8 +1338,9 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     .room-panel {
         border-color: rgba(255, 255, 255, 0.2);
         background: rgba(28, 31, 47, 0.48);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 18px 48px rgba(8, 9, 20, 0.3);
-        backdrop-filter: blur(20px) saturate(1.15);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 28px rgba(8, 9, 20, 0.24);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
     }
 
     .room-chat-panel {
@@ -1395,8 +1401,9 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         border-radius: 999px;
         color: rgba(255, 255, 255, 0.94);
         background: rgba(70, 73, 96, 0.52);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 14px 32px rgba(8, 9, 20, 0.22);
-        backdrop-filter: blur(18px) saturate(1.12);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 8px 22px rgba(8, 9, 20, 0.2);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
     }
 
     .room-chat-panel .chat-role {
@@ -1464,8 +1471,9 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 999px;
         background: rgba(36, 39, 58, 0.58);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 20px 54px rgba(6, 8, 18, 0.34);
-        backdrop-filter: blur(22px) saturate(1.16);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 28px rgba(6, 8, 18, 0.28);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
     }
 
     .room-chat-panel .chat-input-row input[type="text"] {

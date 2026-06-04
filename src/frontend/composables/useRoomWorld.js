@@ -210,7 +210,7 @@ export function useRoomWorld() {
     }
     const mobile = isMobileViewport();
     const count = mobile
-      ? (weather === 'storm' ? 16 : weather === 'rain' ? 14 : 12)
+      ? (weather === 'storm' ? 8 : weather === 'rain' ? 7 : 6)
       : (weather === 'storm' ? 42 : weather === 'rain' ? 34 : 26);
     weatherParticles.value = Array.from({ length: count }, (_, index) => ({
       id: `${weather}-${index}`,

@@ -17,6 +17,9 @@ type RoomLive2DState = {
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
+  onTouchStart: (event: TouchEvent) => void;
+  onTouchMove: (event: TouchEvent) => void;
+  onTouchEnd: (event: TouchEvent) => void;
   onVisibilityChange: () => void;
   onRoomAct: (event: Event) => void;
   onMouth: (event: Event) => void;
@@ -46,9 +49,9 @@ function live2dPerformanceProfile(): { targetFrameMs: number; lowPower: boolean 
   const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
   const lowPower = forced === 'low'
     || forced === 'lite'
-    || isMobileDevice();
+    || (forced !== 'standard' && isMobileDevice());
   return {
-    targetFrameMs: lowPower ? 1000 / 45 : 1000 / 60,
+    targetFrameMs: lowPower ? 1000 / 30 : 1000 / 60,
     lowPower
   };
 }
@@ -113,6 +116,10 @@ function destroyRoomLive2D(): void {
   document.removeEventListener('pointermove', roomState.onPointerMove);
   document.removeEventListener('pointerup', roomState.onPointerUp);
   document.removeEventListener('pointercancel', roomState.onPointerUp);
+  document.removeEventListener('touchstart', roomState.onTouchStart);
+  document.removeEventListener('touchmove', roomState.onTouchMove);
+  document.removeEventListener('touchend', roomState.onTouchEnd);
+  document.removeEventListener('touchcancel', roomState.onTouchEnd);
   window.removeEventListener('tsukuyomi:room-act', roomState.onRoomAct);
   window.removeEventListener('tsukuyomi:live2d-mouth', roomState.onMouth);
 
@@ -157,20 +164,23 @@ function initRoomLive2D(): void {
   let pointerActive = false;
   let pendingPointerMove: { x: number; y: number } | null = null;
 
+  const trackPointer = (pageX: number, pageY: number): void => {
+    if (profile.lowPower) {
+      pendingPointerMove = { x: pageX, y: pageY };
+      return;
+    }
+    subdelegate.onPointMoved(pageX, pageY);
+  };
+
   const onPointerDown = (event: PointerEvent): void => {
     if (isPointerControlDisabled()) return;
-    if (profile.lowPower && !isEventInsideNode(event, container)) return;
-    pointerActive = true;
-    subdelegate.onPointBegan(event.pageX, event.pageY);
+    pointerActive = isEventInsideNode(event, container);
+    if (pointerActive) subdelegate.onPointBegan(event.pageX, event.pageY);
+    trackPointer(event.pageX, event.pageY);
   };
   const onPointerMove = (event: PointerEvent): void => {
     if (isPointerControlDisabled()) return;
-    if (profile.lowPower) {
-      if (!pointerActive) return;
-      pendingPointerMove = { x: event.pageX, y: event.pageY };
-      return;
-    }
-    subdelegate.onPointMoved(event.pageX, event.pageY);
+    trackPointer(event.pageX, event.pageY);
   };
   const onPointerUp = (event: PointerEvent): void => {
     if (isPointerControlDisabled()) {
@@ -178,10 +188,38 @@ function initRoomLive2D(): void {
       pendingPointerMove = null;
       return;
     }
-    if (profile.lowPower && !pointerActive) return;
+    if (pointerActive) {
+      pendingPointerMove = null;
+      subdelegate.onPointEnded(event.pageX, event.pageY);
+    }
     pointerActive = false;
-    pendingPointerMove = null;
-    subdelegate.onPointEnded(event.pageX, event.pageY);
+  };
+  const firstChangedTouch = (event: TouchEvent): Touch | null => event.changedTouches.item(0);
+  const onTouchStart = (event: TouchEvent): void => {
+    if ('PointerEvent' in window || isPointerControlDisabled()) return;
+    const touch = firstChangedTouch(event);
+    if (!touch) return;
+    pointerActive = isEventInsideNode(event as unknown as PointerEvent, container);
+    if (pointerActive) subdelegate.onPointBegan(touch.pageX, touch.pageY);
+    trackPointer(touch.pageX, touch.pageY);
+  };
+  const onTouchMove = (event: TouchEvent): void => {
+    if ('PointerEvent' in window || isPointerControlDisabled()) return;
+    const touch = firstChangedTouch(event);
+    if (touch) trackPointer(touch.pageX, touch.pageY);
+  };
+  const onTouchEnd = (event: TouchEvent): void => {
+    if ('PointerEvent' in window || isPointerControlDisabled()) {
+      pointerActive = false;
+      pendingPointerMove = null;
+      return;
+    }
+    const touch = firstChangedTouch(event);
+    if (pointerActive && touch) {
+      pendingPointerMove = null;
+      subdelegate.onPointEnded(touch.pageX, touch.pageY);
+    }
+    pointerActive = false;
   };
   const onRoomAct = (event: Event): void => {
     const detail = ((event as CustomEvent).detail || {}) as {
@@ -224,6 +262,10 @@ function initRoomLive2D(): void {
   document.addEventListener('pointermove', onPointerMove, { passive: true });
   document.addEventListener('pointerup', onPointerUp, { passive: true });
   document.addEventListener('pointercancel', onPointerUp, { passive: true });
+  document.addEventListener('touchstart', onTouchStart, { passive: true });
+  document.addEventListener('touchmove', onTouchMove, { passive: true });
+  document.addEventListener('touchend', onTouchEnd, { passive: true });
+  document.addEventListener('touchcancel', onTouchEnd, { passive: true });
   document.addEventListener('visibilitychange', onVisibilityChange, { passive: true });
   window.addEventListener('tsukuyomi:room-act', onRoomAct);
   window.addEventListener('tsukuyomi:live2d-mouth', onMouth);
@@ -253,6 +295,9 @@ function initRoomLive2D(): void {
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd,
     onVisibilityChange,
     onRoomAct,
     onMouth
