@@ -14,7 +14,7 @@ export default defineConfig({
       entry: fileURLToPath(new URL('./src/live2d/main-room.ts', import.meta.url)),
       name: 'Live2D',
       formats: ['iife'],
-      fileName: 'live2d-room'
+      fileName: 'live2d-room-neuro-live'
     },
     outDir: 'lib/bundled',
     emptyOutDir: false
