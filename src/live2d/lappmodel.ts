@@ -102,12 +102,20 @@ enum LoadStep {
  * モデル生成、機能コンポーネント生成、更新処理とレンダリングの呼び出しを行う。
  */
 export class LAppModel extends CubismUserModel {
+  _idParamAngleHeadX: CubismIdHandle;
+  _idParamAngleHeadY: CubismIdHandle;
+  _idParamAngleHeadZ: CubismIdHandle;
+  _idParamAngleHeadZ2: CubismIdHandle;
   _idParamBodyAngleY: CubismIdHandle;
   _idParamBodyAngleZ: CubismIdHandle;
   _idParamPositionZ: CubismIdHandle;
   _idParamAngleBodyX: CubismIdHandle;
   _idParamAngleBodyY: CubismIdHandle;
   _idParamAngleBodyZ: CubismIdHandle;
+  _idParamAngleBodyX2: CubismIdHandle;
+  _idParamAngleBodyX3: CubismIdHandle;
+  _idParamAngleBodyY2: CubismIdHandle;
+  _idParamAngleBodyZ2: CubismIdHandle;
   _idParamOutputBodyX: CubismIdHandle;
   _idParamOutputBodyY: CubismIdHandle;
   _idParamOutputBodyZ: CubismIdHandle;
@@ -605,6 +613,43 @@ export class LAppModel extends CubismUserModel {
       this._idParamBodyAngleX,
       this._dragX * 10
     ); // -10から10の値を加える
+
+    if (this._physics == null) {
+      this._model.addParameterValueById(this._idParamAngleHeadX, this._dragX * 30);
+      this._model.addParameterValueById(this._idParamAngleHeadY, this._dragY * 30);
+      this._model.addParameterValueById(
+        this._idParamAngleHeadZ,
+        this._dragX * this._dragY * -30
+      );
+      this._model.addParameterValueById(
+        this._idParamAngleHeadZ2,
+        this._dragX * this._dragY * -30
+      );
+      this._model.addParameterValueById(this._idParamBodyAngleY, this._dragY * 6);
+      this._model.addParameterValueById(
+        this._idParamBodyAngleZ,
+        this._dragX * this._dragY * -10
+      );
+      this._model.addParameterValueById(this._idParamOutputBodyX, this._dragX * 10);
+      this._model.addParameterValueById(this._idParamOutputBodyY, this._dragY * 6);
+      this._model.addParameterValueById(
+        this._idParamOutputBodyZ,
+        this._dragX * this._dragY * -10
+      );
+      this._model.addParameterValueById(this._idParamAngleBodyX, this._dragX * 10);
+      this._model.addParameterValueById(this._idParamAngleBodyX2, this._dragX * 8);
+      this._model.addParameterValueById(this._idParamAngleBodyX3, this._dragX * 5);
+      this._model.addParameterValueById(this._idParamAngleBodyY, this._dragY * 6);
+      this._model.addParameterValueById(this._idParamAngleBodyY2, this._dragY * 4);
+      this._model.addParameterValueById(
+        this._idParamAngleBodyZ,
+        this._dragX * this._dragY * -10
+      );
+      this._model.addParameterValueById(
+        this._idParamAngleBodyZ2,
+        this._dragX * this._dragY * -8
+      );
+    }
 
     // ドラッグによる目の向きの調整
     this._model.addParameterValueById(this._idParamEyeBallX, this._dragX); // -1から1の値を加える
@@ -1155,9 +1200,17 @@ export class LAppModel extends CubismUserModel {
     this._idParamBodyAngleY = CubismFramework.getIdManager().getId('ParamBodyAngleY');
     this._idParamBodyAngleZ = CubismFramework.getIdManager().getId('ParamBodyAngleZ');
     this._idParamPositionZ = CubismFramework.getIdManager().getId('ParamPosition_Z');
+    this._idParamAngleHeadX = CubismFramework.getIdManager().getId('ParamAngle_HeadX');
+    this._idParamAngleHeadY = CubismFramework.getIdManager().getId('ParamAngle_HeadY');
+    this._idParamAngleHeadZ = CubismFramework.getIdManager().getId('ParamAngle_HeadZ');
+    this._idParamAngleHeadZ2 = CubismFramework.getIdManager().getId('ParamAngle_HeadZ2');
     this._idParamAngleBodyX = CubismFramework.getIdManager().getId('ParamAngle_BodyX');
     this._idParamAngleBodyY = CubismFramework.getIdManager().getId('ParamAngle_BodyY');
     this._idParamAngleBodyZ = CubismFramework.getIdManager().getId('ParamAngle_BodyZ');
+    this._idParamAngleBodyX2 = CubismFramework.getIdManager().getId('ParamAngle_BodyX2');
+    this._idParamAngleBodyX3 = CubismFramework.getIdManager().getId('ParamAngle_BodyX3');
+    this._idParamAngleBodyY2 = CubismFramework.getIdManager().getId('ParamAngle_BodyY2');
+    this._idParamAngleBodyZ2 = CubismFramework.getIdManager().getId('ParamAngle_BodyZ2');
     this._idParamOutputBodyX = CubismFramework.getIdManager().getId('ParamOutput_BodyX');
     this._idParamOutputBodyY = CubismFramework.getIdManager().getId('ParamOutput_BodyY');
     this._idParamOutputBodyZ = CubismFramework.getIdManager().getId('ParamOutput_BodyZ');
