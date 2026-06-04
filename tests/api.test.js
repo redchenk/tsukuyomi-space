@@ -348,6 +348,30 @@ describe('notifications API', () => {
 });
 
 describe('stats API', () => {
+    it('counts plaza top-level messages without counting replies', async () => {
+        const before = await request('/api/stats');
+        assert.equal(before.response.status, 200);
+        const beforeMessages = before.body.data.messages;
+
+        const plazaMessage = await postJson('/api/messages', {
+            content: 'A plaza message for stats'
+        }, userToken);
+        assert.equal(plazaMessage.response.status, 201);
+
+        const afterMessage = await request('/api/stats/live/message-count');
+        assert.equal(afterMessage.response.status, 200);
+        assert.equal(afterMessage.body.data.messages, beforeMessages + 1);
+
+        const reply = await postJson(`/api/messages/${plazaMessage.body.data.id}/reply`, {
+            content: 'A plaza reply that should not change stats'
+        }, managedUserToken);
+        assert.equal(reply.response.status, 201);
+
+        const afterReply = await request('/api/stats/live/reply-count');
+        assert.equal(afterReply.response.status, 200);
+        assert.equal(afterReply.body.data.messages, beforeMessages + 1);
+    });
+
     it('records page views and returns public site counters', async () => {
         const recorded = await postJson('/api/stats/view', { path: '/hub' });
         assert.equal(recorded.response.status, 200);

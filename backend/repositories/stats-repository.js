@@ -9,7 +9,13 @@ function userCount() {
 }
 
 function messageCount() {
-    return db.prepare("SELECT COUNT(*) AS count FROM messages WHERE COALESCE(status, 'approved') = 'approved'").get().count;
+    return db.prepare(`
+        SELECT COUNT(*) AS count
+        FROM messages
+        WHERE COALESCE(status, 'approved') = 'approved'
+          AND article_id IS NULL
+          AND parent_id IS NULL
+    `).get().count;
 }
 
 function allMessageCount() {
