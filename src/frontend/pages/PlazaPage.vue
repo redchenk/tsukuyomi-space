@@ -99,6 +99,16 @@ const plazaMessages = computed(() => {
   return top;
 });
 
+const plazaMessageNumbers = computed(() => {
+  return plaza.messages
+    .filter((item) => !item.article_id && !item.parent_id)
+    .sort((a, b) => compareAppDate(a.created_at, b.created_at) || Number(a.id || 0) - Number(b.id || 0))
+    .reduce((numbers, item, index) => {
+      numbers[item.id] = index + 1;
+      return numbers;
+    }, {});
+});
+
 const plazaActivity = computed(() => [...plaza.messages]
   .sort((a, b) => compareAppDate(b.created_at, a.created_at))
   .slice(0, 6));
@@ -301,6 +311,10 @@ function plazaFormatNumber(value) {
   return Number(value || 0).toLocaleString(isZh.value ? 'zh-CN' : 'ja-JP');
 }
 
+function plazaMessageNumber(id) {
+  return plazaFormatNumber(plazaMessageNumbers.value[id] || id);
+}
+
 function plazaFormatUptime(seconds) {
   const total = Math.floor(Number(seconds || 0));
   const days = Math.floor(total / 86400);
@@ -387,7 +401,7 @@ onMounted(refreshPlaza);
                   <div class="plaza-msg-date">{{ plazaFormatDate(msg.created_at) }}</div>
                 </div>
               </div>
-              <div class="plaza-msg-date">#{{ msg.id }}</div>
+              <div class="plaza-msg-date">#{{ plazaMessageNumber(msg.id) }}</div>
             </div>
             <div class="plaza-msg-content">{{ msg.content }}</div>
             <div class="plaza-msg-footer">
