@@ -4,6 +4,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router';
 import { loadCurrentSession, logoutSession, noStoreUrl } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
+import SitePet from './components/SitePet.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
 
@@ -17,6 +18,7 @@ const isAccessRoute = computed(() => route.name === 'access' || route.name === '
 const isLive2DRoute = computed(() => route.name === 'live2d');
 const isImmersiveRoute = computed(() => isAccessRoute.value || isLive2DRoute.value);
 const hasGlobalBackground = computed(() => !isAccessRoute.value && route.name !== 'room' && !isLive2DRoute.value);
+const showSitePet = computed(() => !['access', 'accessAlias', 'room', 'roomSettings'].includes(route.name));
 const isAuthed = computed(() => Boolean(user.value));
 const music = useRoomMusic();
 const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
@@ -189,6 +191,8 @@ onMounted(() => {
       @toggle-theme="toggleTheme"
     />
   </AppShell>
+
+  <SitePet v-if="showSitePet" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
     <section class="visit-popup-card" role="dialog" aria-modal="true" :aria-label="visitPopup.title">
