@@ -4,8 +4,10 @@ import { live2DPromptCatalog } from '../../constants/room/live2dManifest';
 import {
   dispatchRoomLive2D,
   inferLive2DIntentFromText,
+  live2DSemanticPromptCatalog,
   normalizeLive2DIntent as normalizeRoomLive2DIntent
 } from '../../services/room/live2dControl';
+import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
 import { readJson, writeJson } from '../../services/room/roomStorage';
 
 function uid() {
@@ -94,14 +96,21 @@ function parseAssistantPayload(rawText) {
     try {
       const data = JSON.parse(jsonText);
       const reply = cleanReply(data.reply || data.text || data.message || '');
-      const live2d = normalizeRoomLive2DIntent(data.live2d || data.pose || data.act || data) || inferLive2DIntentFromText(reply);
+      const nestedControl = data.live2d || data.pose || data.act || null;
+      const payload = nestedControl ? { ...data, ...nestedControl, reply } : { ...data, reply };
+      const live2d = compileBehaviorIntent(payload)
+        || normalizeRoomLive2DIntent(payload)
+        || inferLive2DIntentFromText(reply);
       return { reply, live2d };
     } catch (_) {
       // fall through to plain text handling
     }
   }
   const reply = cleanReply(raw);
-  return { reply, live2d: inferLive2DIntentFromText(reply) };
+  return {
+    reply,
+    live2d: compileBehaviorIntent({ reply, text: raw }) || inferLive2DIntentFromText(reply)
+  };
 }
 
 function defaultTtsUrl(provider) {
@@ -284,6 +293,9 @@ function roomSystemPrompt() {
     'motion 若提供，只能使用 tap_body，其他动作统一写 none 或省略。',
     'sequence 可选，用于连续表演，最多 3 步；每步字段同 live2d，可包含 delayMs 和 durationMs。没有明确需要时保持空数组。',
     '不要在 reply 中输出任何动作文字、括号补充、舞台指令、心声、标签或 TTS 提示。',
+    'For Live2D control, prefer top-level semantic fields: {"reply":"visible reply","emotion":"happy|shy|smug|surprised|sad|crying|neutral","intensity":0.72,"actions":[{"type":"look_at_chat","duration":1.0},{"type":"smirk","duration":1.4},{"type":"head_tilt","side":"right","duration":1.2,"delay":0.2}]}',
+    'Choose 2-5 semantic actions per turn. Use duration and delay in seconds. Keep reply free of action labels and stage directions.',
+    live2DSemanticPromptCatalog(),
     live2DPromptCatalog()
   ].join('\n');
 }
@@ -695,7 +707,8 @@ export function useRoomChat({ live2d, world }) {
       }
       const structured = parseAssistantPayload(result.reply || fallbackReply(message, image));
       const reply = structured.reply || fallbackReply(message, image);
-      applyRoomAct(structured.live2d);
+      const ttsSettings = readJson('roomTTSSettings', {});
+      if (!ttsSettings.enabled) applyRoomAct(structured.live2d);
       messages.value = messages.value.filter((item) => item.id !== typingId);
       addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d });
       const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
@@ -723,9 +736,12 @@ export function useRoomChat({ live2d, world }) {
 
   function stopTTS() {
     ttsRequestId += 1;
+    live2d?.stopSpeaking?.();
     if (currentAudio) {
       currentAudio.pause();
       currentAudio.onplay = null;
+      currentAudio.onplaying = null;
+      currentAudio.ontimeupdate = null;
       currentAudio.onended = null;
       currentAudio.onerror = null;
       currentAudio = null;
@@ -733,7 +749,63 @@ export function useRoomChat({ live2d, world }) {
     ttsState.value = { messageId: '', status: 'idle' };
   }
 
-  async function playTTS(text, messageId = '') {
+  function startLive2DSpeechPlayback(speechText, audio, live2dIntent = null) {
+    const audioDuration = Number(audio?.duration);
+    live2d?.speak?.({
+      text: speechText,
+      audioDuration: Number.isFinite(audioDuration) && audioDuration > 0 ? audioDuration : undefined,
+      audio,
+      live2d: live2dIntent,
+      source: 'tts-playback'
+    });
+  }
+
+  function bindTtsAudioPlayback(audio, messageId, speechText, live2dIntent) {
+    let started = false;
+    let playbackStartFrame = 0;
+    const clearPlaybackStartCheck = () => {
+      if (!playbackStartFrame) return;
+      window.cancelAnimationFrame(playbackStartFrame);
+      playbackStartFrame = 0;
+    };
+    const hasPlaybackProgress = () => {
+      const playedEnd = audio.played?.length ? audio.played.end(audio.played.length - 1) : 0;
+      return !audio.paused
+        && !audio.ended
+        && audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+        && ((Number(audio.currentTime) || 0) > 0 || playedEnd > 0);
+    };
+    const watchPlaybackStart = () => {
+      if (started || currentAudio !== audio || audio.ended) return;
+      clearPlaybackStartCheck();
+      playbackStartFrame = window.requestAnimationFrame(startSyncedPlayback);
+    };
+    const startSyncedPlayback = () => {
+      playbackStartFrame = 0;
+      if (started || currentAudio !== audio || audio.ended) return;
+      if (!hasPlaybackProgress()) {
+        watchPlaybackStart();
+        return;
+      }
+      started = true;
+      ttsState.value = { messageId, status: 'playing' };
+      startLive2DSpeechPlayback(speechText, audio, live2dIntent);
+    };
+    audio.onplay = watchPlaybackStart;
+    audio.onplaying = watchPlaybackStart;
+    audio.ontimeupdate = startSyncedPlayback;
+    audio.onended = () => {
+      clearPlaybackStartCheck();
+      if (currentAudio === audio) stopTTS();
+    };
+    audio.onerror = () => {
+      clearPlaybackStartCheck();
+      if (currentAudio === audio) stopTTS();
+    };
+    return { watchPlaybackStart, clearPlaybackStartCheck };
+  }
+
+  async function playTTS(text, messageId = '', live2dIntent = null) {
     const settings = readJson('roomTTSSettings', {});
     if (settings.provider === 'gpt-sovits') settings.useProxy = false;
     if (!settings.enabled) {
@@ -749,6 +821,7 @@ export function useRoomChat({ live2d, world }) {
     const requestId = ttsRequestId + 1;
     ttsRequestId = requestId;
     ttsState.value = { messageId, status: 'loading' };
+    const messageLive2D = live2dIntent || messages.value.find((item) => item.id === messageId)?.live2d || null;
     try {
       if (directLocalGptSovits) {
         const ttsText = await translateForJapaneseTts(text);
@@ -756,18 +829,17 @@ export function useRoomChat({ live2d, world }) {
         await ensureGptSovitsWeights(settings);
         const audio = new Audio(buildGptSovitsAudioUrl(ttsText, { ...settings, textLang: 'ja', promptLang: settings.promptLang || 'ja' }));
         currentAudio = audio;
-        audio.onplay = () => {
-          ttsState.value = { messageId, status: 'playing' };
-          live2d?.speak?.();
-        };
-        audio.onended = () => {
-          if (currentAudio === audio) stopTTS();
-        };
         audio.onerror = () => {
           if (currentAudio === audio) stopTTS();
           addMessage('system', 'TTS 播放失败：无法直接访问本机 GPT-SoVITS 9880 端口，请确认 API 已启动且浏览器允许访问本机服务。');
         };
-        await audio.play();
+        const previousErrorHandler = audio.onerror;
+        const playbackBinding = bindTtsAudioPlayback(audio, messageId, ttsText, messageLive2D);
+        audio.onerror = () => {
+          playbackBinding.clearPlaybackStartCheck();
+          previousErrorHandler?.();
+        };
+        await audio.play().then(playbackBinding.watchPlaybackStart);
         return;
       }
       const ttsText = settings.provider === 'minimax' && wantsJapaneseTts(settings)
@@ -800,17 +872,8 @@ export function useRoomChat({ live2d, world }) {
       }
       const audio = new Audio(ttsUrl);
       currentAudio = audio;
-      audio.onplay = () => {
-        ttsState.value = { messageId, status: 'playing' };
-        live2d?.speak?.();
-      };
-      audio.onended = () => {
-        if (currentAudio === audio) stopTTS();
-      };
-      audio.onerror = () => {
-        if (currentAudio === audio) stopTTS();
-      };
-      await audio.play();
+      const playbackBinding = bindTtsAudioPlayback(audio, messageId, ttsText, messageLive2D);
+      await audio.play().then(playbackBinding.watchPlaybackStart);
     } catch (error) {
       if (requestId !== ttsRequestId) return;
       stopTTS();

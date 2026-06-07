@@ -4,10 +4,17 @@ import TsIcon from '../components/TsIcon.vue';
 import { useLive2D } from '../composables/room/useLive2D';
 import {
   clearLive2DLLMHistory,
-  requestLive2DControl
+  requestLive2DControl,
+  requestLive2DControlStream
 } from '../services/room/live2dLlmControl';
 import { dispatchRoomLive2D } from '../services/room/live2dControl';
+import { shouldDisableLive2DPointer } from '../services/room/live2dBridge';
 import { createLive2DSpeechPlayer } from '../services/room/live2dSpeech';
+import {
+  alignLive2DIntentToStreamingSpeech,
+  createLive2DStreamingSpeechSession,
+  streamingSpeechHoldMs
+} from '../services/room/live2dStreamingSpeechSession';
 
 const live2d = useLive2D();
 const booted = ref(false);
@@ -40,6 +47,7 @@ let stagePoseTimer = 0;
 let liveTimer = 0;
 let liveTurnInFlight = false;
 let speechPlayer = null;
+let streamingSpeechSession = null;
 
 const statusLabel = computed(() => {
   if (live2d.error.value) return 'ERROR';
@@ -134,13 +142,38 @@ function onRoomAct(event) {
   }, clampDuration(detail.durationMs));
 }
 
+function dispatchCharacterState(mode, detail = {}) {
+  window.dispatchEvent(new CustomEvent('tsukuyomi:live2d-character-state', {
+    detail: { mode, ...detail }
+  }));
+}
+
+function dispatchStreamingSpeechStart(durationMs = 0, detail = {}) {
+  if (streamingSpeechSession) {
+    streamingSpeechSession.lineStarted({ durationMs, ...detail });
+    return;
+  }
+  dispatchCharacterState('speaking', {
+    holdMs: streamingSpeechHoldMs(durationMs),
+    emotion: detail.emotion,
+    emotionHoldMs: Math.max(Number(durationMs) || 0, 1800),
+    attention: detail.attention ?? 0.88,
+    arousal: detail.arousal ?? (detail.emotion === 'sad' || detail.emotion === 'crying' ? 0.5 : 0.72)
+  });
+}
+
 async function init() {
   if (booted.value) return;
   booted.value = true;
-  window.TSUKUYOMI_LIVE2D_DISABLE_POINTER = true;
+  window.TSUKUYOMI_LIVE2D_DISABLE_POINTER = shouldDisableLive2DPointer();
+  streamingSpeechSession = createLive2DStreamingSpeechSession({
+    dispatchCharacterState,
+    isLiveDirectorRunning: () => liveDirector.running
+  });
   speechPlayer = createLive2DSpeechPlayer({
     onState: (patch) => {
       speechState.value = { ...speechState.value, ...patch };
+      streamingSpeechSession?.handleSpeechStatePatch(patch);
     }
   });
   await live2d.init();
@@ -189,9 +222,23 @@ function runGreeting() {
   });
 }
 
+function alignLive2DToSpeech(intent, speechDurationMs = 0) {
+  return alignLive2DIntentToStreamingSpeech(intent, speechDurationMs);
+}
+
 function speak() {
   if (latestCaption.value && speechPlayer) {
-    speechPlayer.play(latestCaption.value).catch(() => {});
+    const live2dIntent = llmState.value.live2d || null;
+    speechPlayer.play(latestCaption.value, {
+      emotion: live2dIntent?.emotion || live2dIntent?.expression || 'neutral',
+      speechStyle: live2dIntent?.speechStyle || null,
+      onStart: ({ durationMs }) => {
+        if (live2dIntent) dispatchRoomLive2D(alignLive2DToSpeech(live2dIntent, durationMs));
+        dispatchStreamingSpeechStart(durationMs, {
+          emotion: live2dIntent?.emotion || live2dIntent?.expression || 'neutral'
+        });
+      }
+    }).catch(() => {});
     return;
   }
   live2d.speak();
@@ -234,6 +281,128 @@ async function runLLMControl() {
   if (!message || llmState.value.loading) return;
   const result = await performLLMAct(message, 'manual').catch(() => null);
   if (result?.reply) pushLog('yachiyo', result.reply, { live2d: result.live2d });
+}
+
+async function performStreamingLiveTurn(message) {
+  const value = String(message || '').trim();
+  if (!value || llmState.value.loading || !speechPlayer) return null;
+  const playbackPromises = [];
+  let queuedReply = '';
+  let spokenReply = '';
+  let finalResult = null;
+  let queuedSpeechCount = 0;
+  let queuedLive2DCount = 0;
+  let dispatchedStreamLive2DCount = 0;
+
+  streamingSpeechSession?.begin();
+  dispatchCharacterState('thinking', { holdMs: 2400, attention: 0.82, arousal: 0.5 });
+  llmState.value = {
+    ...llmState.value,
+    loading: true,
+    error: ''
+  };
+
+  try {
+    finalResult = await requestLive2DControlStream(value, {
+      onSentence: (sentence) => {
+        const speechSentence = String(sentence.text || '').trim();
+        if (!speechSentence) return;
+        queuedReply = queuedReply ? `${queuedReply}\n${speechSentence}` : speechSentence;
+        if (sentence.live2d) queuedLive2DCount += 1;
+        llmState.value = {
+          loading: true,
+          error: '',
+          reply: spokenReply || llmState.value.reply,
+          raw: finalResult?.raw || null,
+          live2d: sentence.live2d
+        };
+        liveDirector.status = 'speaking';
+        queuedSpeechCount += 1;
+        streamingSpeechSession?.queueLine();
+        playbackPromises.push(speechPlayer.enqueue(speechSentence, {
+          emotion: sentence.emotion,
+          speechStyle: sentence.speechStyle,
+          onStart: ({ durationMs }) => {
+            spokenReply = spokenReply ? `${spokenReply}\n${speechSentence}` : speechSentence;
+            pushLog('yachiyo', speechSentence, { live2d: sentence.live2d, streaming: true });
+            llmState.value = {
+              loading: true,
+              error: '',
+              reply: spokenReply,
+              raw: finalResult?.raw || null,
+              live2d: sentence.live2d
+            };
+            if (sentence.live2d) {
+              dispatchedStreamLive2DCount += 1;
+              dispatchRoomLive2D(alignLive2DToSpeech(sentence.live2d, durationMs));
+            }
+            dispatchStreamingSpeechStart(durationMs, {
+              emotion: sentence.emotion,
+              attention: 0.88,
+              arousal: sentence.emotion === 'sad' || sentence.emotion === 'crying' ? 0.5 : 0.72
+            });
+          }
+        }).catch((error) => {
+          if (error?.name === 'AbortError') return;
+          speechState.value = { status: 'error', error: error.message || 'TTS failed' };
+        }).finally(() => {
+          streamingSpeechSession?.lineSettled();
+        }));
+      }
+    });
+
+    const visibleReply = queuedSpeechCount < 1 ? finalResult.reply : queuedReply;
+    if (queuedSpeechCount < 1 && visibleReply) {
+      streamingSpeechSession?.queueLine();
+      playbackPromises.push(speechPlayer.enqueue(finalResult.reply || visibleReply, {
+        emotion: finalResult.live2d?.emotion || finalResult.live2d?.expression || 'neutral',
+        speechStyle: finalResult.live2d?.speechStyle || null,
+        onStart: ({ durationMs }) => {
+          spokenReply = visibleReply;
+          pushLog('yachiyo', visibleReply, { live2d: finalResult.live2d });
+          llmState.value = {
+            loading: true,
+            error: '',
+            reply: spokenReply,
+            raw: finalResult.raw,
+            live2d: finalResult.live2d
+          };
+          if (finalResult.live2d) dispatchRoomLive2D(alignLive2DToSpeech(finalResult.live2d, durationMs));
+          dispatchStreamingSpeechStart(durationMs, {
+            emotion: finalResult.live2d?.emotion || finalResult.live2d?.expression || 'neutral'
+          });
+        }
+      }).catch((error) => {
+        if (error?.name === 'AbortError') return;
+        speechState.value = { status: 'error', error: error.message || 'TTS failed' };
+      }).finally(() => {
+        streamingSpeechSession?.lineSettled();
+      }));
+    }
+
+    llmState.value = {
+      loading: false,
+      error: '',
+      reply: spokenReply || llmState.value.reply,
+      raw: finalResult.raw,
+      live2d: finalResult.live2d
+    };
+    liveDirector.turn += 1;
+    await Promise.allSettled(playbackPromises);
+    if (queuedSpeechCount > 0 && finalResult.live2d && queuedLive2DCount > 0 && dispatchedStreamLive2DCount < 1) {
+      dispatchRoomLive2D(alignLive2DToSpeech(finalResult.live2d, Number(finalResult.live2d.durationMs) || 0));
+    }
+    streamingSpeechSession?.finish({ delayMs: 520 });
+    return { ...finalResult, reply: visibleReply };
+  } catch (error) {
+    streamingSpeechSession?.cancel({ dispatchState: true });
+    llmState.value = {
+      ...llmState.value,
+      loading: false,
+      error: error.message || 'LLM control failed'
+    };
+    throw error;
+  }
 }
 
 function resetLLMHistory() {
@@ -281,14 +450,13 @@ async function runLiveTurn() {
   liveDirector.error = '';
   const audienceLines = audienceQueue.value.splice(0, 3);
   try {
+    if (liveDirector.autoVoice && speechPlayer) {
+      await performStreamingLiveTurn(buildLiveDirectorPrompt(audienceLines));
+      liveDirector.status = 'idle';
+      return;
+    }
     const result = await performLLMAct(buildLiveDirectorPrompt(audienceLines), 'live');
     liveDirector.turn += 1;
-    if (result?.reply && liveDirector.autoVoice && speechPlayer) {
-      liveDirector.status = 'speaking';
-      await speechPlayer.play(result.reply).catch((error) => {
-        speechState.value = { status: 'error', error: error.message || 'TTS failed' };
-      });
-    }
     liveDirector.status = 'idle';
   } catch (error) {
     liveDirector.error = error.message || 'Live director failed';
@@ -337,6 +505,8 @@ onUnmounted(() => {
   stopLiveDirector();
   window.clearTimeout(stagePoseTimer);
   window.removeEventListener('tsukuyomi:room-act', onRoomAct);
+  streamingSpeechSession?.cancel();
+  streamingSpeechSession = null;
   speechPlayer?.destroy();
   speechPlayer = null;
   delete window.TSUKUYOMI_LIVE2D_DISABLE_POINTER;

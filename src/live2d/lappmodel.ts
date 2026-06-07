@@ -71,6 +71,39 @@ type ProceduralBodyPoseState = {
   durationSeconds: number;
 };
 
+type ManualParameterTargetInput = {
+  id?: string;
+  value?: number;
+  weight?: number;
+  durationMs?: number;
+  delayMs?: number;
+};
+
+type ManualParameterMotion = {
+  id: CubismIdHandle;
+  value: number;
+  weight: number;
+  startSeconds: number;
+  durationSeconds: number;
+};
+
+type BehaviorParameterFrameInput = {
+  id?: string;
+  parameterId?: string;
+  param?: string;
+  key?: string;
+  name?: string;
+  value?: number;
+  weight?: number;
+};
+
+type BehaviorParameterFrameEntry = {
+  id: CubismIdHandle;
+  value: number;
+  weight: number;
+  updatedSeconds: number;
+};
+
 enum LoadStep {
   LoadAssets,
   LoadModel,
@@ -123,7 +156,10 @@ export class LAppModel extends CubismUserModel {
   _idParamChestZ: CubismIdHandle;
   _idParamHipZ: CubismIdHandle;
   _proceduralBodyPose: ProceduralBodyPoseState | null;
+  _manualParameterMotions: ManualParameterMotion[];
   _manualMouthOpen: { value: number; updatedSeconds: number } | null;
+  _behaviorParameterFrame: Map<string, BehaviorParameterFrameEntry>;
+  _behaviorParameterIdCache: Map<string, CubismIdHandle>;
 
   /**
    * model3.jsonが置かれたディレクトリとファイルパスからモデルを生成する
@@ -684,6 +720,8 @@ export class LAppModel extends CubismUserModel {
     }
 
     this.applyProceduralBodyPose();
+    this.applyManualParameterMotions();
+    this.applyBehaviorParameterFrame();
 
     this._model.update();
   }
@@ -709,11 +747,67 @@ export class LAppModel extends CubismUserModel {
     };
   }
 
+  public startParameterMotions(targets: ManualParameterTargetInput[] = []): void {
+    const nextMotions = targets
+      .map((target): ManualParameterMotion | null => {
+        const id = String(target?.id || '').trim();
+        if (!/^[A-Za-z][A-Za-z0-9_]{1,63}$/.test(id)) return null;
+        const value = Number(target.value);
+        if (!Number.isFinite(value)) return null;
+        const weight = Math.min(Math.max(Number(target.weight) || 0.7, 0), 1);
+        const durationMs = Math.min(Math.max(Number(target.durationMs) || 900, 260), 12000);
+        const delayMs = Math.min(Math.max(Number(target.delayMs) || 0, 0), 12000);
+        return {
+          id: CubismFramework.getIdManager().getId(id),
+          value,
+          weight,
+          startSeconds: this._userTimeSeconds + delayMs / 1000,
+          durationSeconds: durationMs / 1000
+        };
+      })
+      .filter((motion): motion is ManualParameterMotion => Boolean(motion));
+
+    if (!nextMotions.length) return;
+    this._manualParameterMotions = [
+      ...this._manualParameterMotions,
+      ...nextMotions
+    ].slice(-48);
+  }
+
   public setManualMouthOpen(value: number): void {
     this._manualMouthOpen = {
       value: Math.min(Math.max(Number(value) || 0, 0), 1),
       updatedSeconds: this._userTimeSeconds
     };
+  }
+
+  public setBehaviorParameterFrame(targets: BehaviorParameterFrameInput[] = []): void {
+    if (!Array.isArray(targets)) return;
+
+    for (const target of targets.slice(0, 220)) {
+      const rawId = String(
+        target?.id ||
+        target?.parameterId ||
+        target?.param ||
+        target?.key ||
+        target?.name ||
+        ''
+      ).trim();
+      if (!/^[A-Za-z][A-Za-z0-9_]{1,63}$/.test(rawId)) continue;
+      const value = Number(target.value);
+      if (!Number.isFinite(value)) continue;
+      let id = this._behaviorParameterIdCache.get(rawId);
+      if (!id) {
+        id = CubismFramework.getIdManager().getId(rawId);
+        this._behaviorParameterIdCache.set(rawId, id);
+      }
+      this._behaviorParameterFrame.set(rawId, {
+        id,
+        value,
+        weight: Math.min(Math.max(Number(target.weight) || 0.72, 0.01), 1),
+        updatedSeconds: this._userTimeSeconds
+      });
+    }
   }
 
   private applyManualMouthOpen(): void {
@@ -729,6 +823,41 @@ export class LAppModel extends CubismUserModel {
 
     const decay = elapsed <= 0.08 ? 1 : Math.max(0, 1 - ((elapsed - 0.08) / 0.3));
     this._model.setParameterValueById(this._idParamMouthOpenY, mouth.value * decay);
+  }
+
+  private applyManualParameterMotions(): void {
+    if (!this._manualParameterMotions.length) return;
+
+    const active: ManualParameterMotion[] = [];
+    for (const motion of this._manualParameterMotions) {
+      if (this._userTimeSeconds < motion.startSeconds) {
+        active.push(motion);
+        continue;
+      }
+
+      const elapsed = this._userTimeSeconds - motion.startSeconds;
+      const progress = motion.durationSeconds <= 0 ? 1 : elapsed / motion.durationSeconds;
+      if (progress >= 1) continue;
+
+      const envelope = Math.sin(Math.PI * Math.max(0, Math.min(progress, 1)));
+      this._model.setParameterValueById(motion.id, motion.value, motion.weight * envelope);
+      active.push(motion);
+    }
+
+    this._manualParameterMotions = active;
+  }
+
+  private applyBehaviorParameterFrame(): void {
+    if (!this._behaviorParameterFrame.size) return;
+
+    const holdSeconds = 0.24;
+    for (const [key, entry] of [...this._behaviorParameterFrame.entries()]) {
+      if (this._userTimeSeconds - entry.updatedSeconds > holdSeconds) {
+        this._behaviorParameterFrame.delete(key);
+        continue;
+      }
+      this._model.setParameterValueById(entry.id, entry.value, entry.weight);
+    }
   }
 
   private applyProceduralBodyPose(): void {
@@ -1217,6 +1346,9 @@ export class LAppModel extends CubismUserModel {
     this._idParamChestZ = CubismFramework.getIdManager().getId('ParamAngle_ChestZ');
     this._idParamHipZ = CubismFramework.getIdManager().getId('ParamAngle_HipZ');
     this._proceduralBodyPose = null;
+    this._manualParameterMotions = [];
+    this._behaviorParameterFrame = new Map();
+    this._behaviorParameterIdCache = new Map();
 
     if (LAppDefine.MOCConsistencyValidationEnable) {
       this._mocConsistency = true;

@@ -154,6 +154,24 @@ export class LAppLive2DManager {
     }
   }
 
+  public startParameterMotions(
+    targets: Array<{ id?: string; value?: number; weight?: number; durationMs?: number; delayMs?: number }> = []
+  ): void {
+    const model: LAppModel = this._models.at(0);
+    if (model) {
+      model.startParameterMotions(targets);
+    }
+  }
+
+  public setBehaviorParameterFrame(
+    targets: Array<{ id?: string; parameterId?: string; param?: string; key?: string; name?: string; value?: number; weight?: number }> = []
+  ): void {
+    const model: LAppModel = this._models.at(0);
+    if (model) {
+      model.setBehaviorParameterFrame(targets);
+    }
+  }
+
   /**
    * 画面をタップした時の処理
    *

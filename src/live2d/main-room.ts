@@ -14,6 +14,7 @@ type RoomLive2DState = {
   visible: boolean;
   targetFrameMs: number;
   lastRenderAt: number;
+  actionTimers: number[];
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
@@ -23,6 +24,7 @@ type RoomLive2DState = {
   onVisibilityChange: () => void;
   onRoomAct: (event: Event) => void;
   onMouth: (event: Event) => void;
+  onFaceFrame: (event: Event) => void;
 };
 
 let roomState: RoomLive2DState | null = null;
@@ -95,6 +97,88 @@ function normalizeBodyPose(value: unknown): string {
   return allowedBodyPoses.has(pose) ? pose : '';
 }
 
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(Math.max(numeric, min), max);
+}
+
+function normalizeDelay(value: unknown): number {
+  return Math.round(clampNumber(value, 0, 12000, 0));
+}
+
+function normalizeParameterDuration(value: unknown): number {
+  return Math.round(clampNumber(value, 260, 12000, 900));
+}
+
+function normalizeParameterTargets(value: unknown): Array<{ id: string; value: number; weight: number; durationMs: number; delayMs: number }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const id = String(item?.id || '').trim();
+      if (!/^[A-Za-z][A-Za-z0-9_]{1,63}$/.test(id)) return null;
+      return {
+        id,
+        value: clampNumber(item?.value, -60, 60, 0),
+        weight: clampNumber(item?.weight, 0, 1, 0.7),
+        durationMs: normalizeParameterDuration(item?.durationMs),
+        delayMs: normalizeDelay(item?.delayMs)
+      };
+    })
+    .filter((item): item is { id: string; value: number; weight: number; durationMs: number; delayMs: number } => Boolean(item))
+    .slice(0, 32);
+}
+
+function normalizeBehaviorFrameTargets(value: unknown): Array<{ id: string; value: number; weight: number }> {
+  const source = Array.isArray(value)
+    ? value
+    : value && typeof value === 'object'
+      ? Object.entries(value).map(([id, target]) => (
+        target && typeof target === 'object'
+          ? { id, ...(target as Record<string, unknown>) }
+          : { id, value: target }
+      ))
+      : [];
+
+  return source
+    .map((item) => {
+      const id = String(
+        item?.id ||
+        item?.parameterId ||
+        item?.param ||
+        item?.key ||
+        item?.name ||
+        ''
+      ).trim();
+      const value = Number(item?.value ?? item?.target ?? item?.amount ?? item?.to);
+      if (!/^[A-Za-z][A-Za-z0-9_]{1,63}$/.test(id) || !Number.isFinite(value)) return null;
+      return {
+        id,
+        value: clampNumber(value, -90, 90, 0),
+        weight: clampNumber(item?.weight ?? item?.blend, 0.01, 1, 0.72)
+      };
+    })
+    .filter((item): item is { id: string; value: number; weight: number } => Boolean(item))
+    .slice(0, 220);
+}
+
+function normalizeBehaviorActions(value: unknown): Array<{ bodyPose: string; intensity: number; durationMs: number; delayMs: number }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const bodyPose = normalizeBodyPose(item?.bodyPose || item?.pose || item?.motion);
+      if (!bodyPose) return null;
+      return {
+        bodyPose,
+        intensity: clampNumber(item?.intensity, 0, 1, 0.65),
+        durationMs: normalizeDuration(item?.durationMs),
+        delayMs: normalizeDelay(item?.delayMs)
+      };
+    })
+    .filter((item): item is { bodyPose: string; intensity: number; durationMs: number; delayMs: number } => Boolean(item))
+    .slice(0, 8);
+}
+
 function ensureCubismStarted(): void {
   if ((window as any).TSUKUYOMI_CUBISM_STARTED) return;
 
@@ -111,6 +195,7 @@ function destroyRoomLive2D(): void {
   if (!roomState) return;
 
   cancelAnimationFrame(roomState.frameId);
+  roomState.actionTimers.forEach((timer) => window.clearTimeout(timer));
   document.removeEventListener('visibilitychange', roomState.onVisibilityChange);
   document.removeEventListener('pointerdown', roomState.onPointerDown);
   document.removeEventListener('pointermove', roomState.onPointerMove);
@@ -122,6 +207,7 @@ function destroyRoomLive2D(): void {
   document.removeEventListener('touchcancel', roomState.onTouchEnd);
   window.removeEventListener('tsukuyomi:room-act', roomState.onRoomAct);
   window.removeEventListener('tsukuyomi:live2d-mouth', roomState.onMouth);
+  window.removeEventListener('tsukuyomi:live2d-face', roomState.onFaceFrame);
 
   roomState.subdelegate.release();
   roomState.canvas.remove();
@@ -129,6 +215,9 @@ function destroyRoomLive2D(): void {
 
   if ((window as any).setLive2DModelSettings) {
     delete (window as any).setLive2DModelSettings;
+  }
+  if ((window as any).TSUKUYOMI_LOCAL_CUBISM_BRIDGE) {
+    delete (window as any).TSUKUYOMI_LOCAL_CUBISM_BRIDGE;
   }
 }
 
@@ -229,9 +318,16 @@ function initRoomLive2D(): void {
       bodyPose?: string;
       durationMs?: number;
       intensity?: number;
+      parameters?: Array<{ id?: string; value?: number; weight?: number; durationMs?: number; delayMs?: number }>;
+      parameterTargets?: Array<{ id?: string; value?: number; weight?: number; durationMs?: number; delayMs?: number }>;
+      behaviorActions?: Array<{ bodyPose?: string; pose?: string; motion?: string; intensity?: number; durationMs?: number; delayMs?: number }>;
     };
     const manager = subdelegate.getLive2DManager();
     if (!manager) return;
+    if (roomState) {
+      roomState.actionTimers.forEach((timer) => window.clearTimeout(timer));
+      roomState.actionTimers = [];
+    }
 
     const expression = primaryExpressionFromMix(detail.expressionMix) || normalizeExpression(detail.expression);
     if (expression) {
@@ -244,6 +340,21 @@ function initRoomLive2D(): void {
     if (bodyPose) {
       manager.startProceduralBodyPose(bodyPose, Number(detail.intensity), normalizeDuration(detail.durationMs));
     }
+    const parameters = normalizeParameterTargets(detail.parameters || detail.parameterTargets);
+    if (parameters.length) {
+      manager.startParameterMotions(parameters);
+    }
+    for (const action of normalizeBehaviorActions(detail.behaviorActions)) {
+      const runAction = (): void => {
+        manager.startProceduralBodyPose(action.bodyPose, action.intensity, action.durationMs);
+      };
+      if (action.delayMs > 0 && roomState) {
+        const timer = window.setTimeout(runAction, action.delayMs);
+        roomState.actionTimers.push(timer);
+      } else {
+        runAction();
+      }
+    }
   };
   const onMouth = (event: Event): void => {
     const detail = ((event as CustomEvent).detail || {}) as { value?: number };
@@ -251,6 +362,18 @@ function initRoomLive2D(): void {
     if (!manager) return;
     const value = Math.min(Math.max(Number(detail.value) || 0, 0), 1);
     manager.setMouthOpen(value);
+  };
+  const setBehaviorFrame = (parameters: unknown): void => {
+    const manager = subdelegate.getLive2DManager();
+    if (!manager) return;
+    const frame = normalizeBehaviorFrameTargets(parameters);
+    if (frame.length) {
+      manager.setBehaviorParameterFrame(frame);
+    }
+  };
+  const onFaceFrame = (event: Event): void => {
+    const detail = ((event as CustomEvent).detail || {}) as { parameters?: unknown; frame?: unknown };
+    setBehaviorFrame(detail.parameters || detail.frame);
   };
   const onVisibilityChange = (): void => {
     if (!roomState) return;
@@ -269,6 +392,11 @@ function initRoomLive2D(): void {
   document.addEventListener('visibilitychange', onVisibilityChange, { passive: true });
   window.addEventListener('tsukuyomi:room-act', onRoomAct);
   window.addEventListener('tsukuyomi:live2d-mouth', onMouth);
+  window.addEventListener('tsukuyomi:live2d-face', onFaceFrame);
+
+  (window as any).TSUKUYOMI_LOCAL_CUBISM_BRIDGE = {
+    setFrame: setBehaviorFrame
+  };
 
   const run = (time = 0): void => {
     if (!roomState) return;
@@ -291,6 +419,7 @@ function initRoomLive2D(): void {
     visible: document.visibilityState !== 'hidden',
     targetFrameMs: profile.targetFrameMs,
     lastRenderAt: 0,
+    actionTimers: [],
     frameId: requestAnimationFrame(run),
     onPointerDown,
     onPointerMove,
@@ -300,7 +429,8 @@ function initRoomLive2D(): void {
     onTouchEnd,
     onVisibilityChange,
     onRoomAct,
-    onMouth
+    onMouth,
+    onFaceFrame
   };
 
   (window as any).setLive2DModelSettings = function(

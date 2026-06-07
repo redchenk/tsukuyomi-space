@@ -51,6 +51,17 @@ function compactSpeechText(text) {
     .trim();
 }
 
+function clamp(value, min, max, fallback = min) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(Math.max(numeric, min), max);
+}
+
+function estimateSpeechDurationMs(text) {
+  const length = compactSpeechText(text).length;
+  return clamp(1500 + length * 145, 1800, 16000, 3200);
+}
+
 function pickSplitMethod(text) {
   return compactSpeechText(text).length <= 4 ? 'cut0' : 'cut5';
 }
@@ -119,11 +130,14 @@ function stopAnimationFrame(id) {
 
 export function createLive2DSpeechPlayer({ onState } = {}) {
   let currentAudio = null;
-  let objectUrl = '';
   let frameId = 0;
   let audioContext = null;
   let sourceNode = null;
   let analyser = null;
+  let currentReject = null;
+  let queueToken = 0;
+  let queueRunning = false;
+  const speechQueue = [];
 
   function setState(patch) {
     onState?.(patch);
@@ -135,19 +149,55 @@ export function createLive2DSpeechPlayer({ onState } = {}) {
     dispatchMouth(0);
   }
 
-  function stop() {
+  function makeStopError() {
+    const error = new Error('Speech stopped');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  function isStopError(error) {
+    return error?.name === 'AbortError';
+  }
+
+  function releaseAudio(audio) {
+    const url = audio?.dataset?.objectUrl || '';
+    if (url) {
+      URL.revokeObjectURL(url);
+      audio.dataset.objectUrl = '';
+    }
+  }
+
+  function clearCurrentAudio() {
     stopMouth();
     if (currentAudio) {
+      const audio = currentAudio;
       currentAudio.pause();
-      currentAudio.onplay = null;
-      currentAudio.onended = null;
-      currentAudio.onerror = null;
+      audio.onplay = null;
+      audio.onplaying = null;
+      audio.ontimeupdate = null;
+      audio.onended = null;
+      audio.onerror = null;
       currentAudio = null;
+      releaseAudio(audio);
     }
+    sourceNode?.disconnect?.();
     sourceNode = null;
     analyser = null;
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    objectUrl = '';
+    currentReject = null;
+  }
+
+  function rejectQueued(error = makeStopError()) {
+    while (speechQueue.length) {
+      const item = speechQueue.shift();
+      item.reject(error);
+    }
+  }
+
+  function stop() {
+    queueToken += 1;
+    rejectQueued();
+    if (currentReject) currentReject(makeStopError());
+    clearCurrentAudio();
     setState({ status: 'idle', error: '' });
   }
 
@@ -221,26 +271,71 @@ export function createLive2DSpeechPlayer({ onState } = {}) {
       const payload = await response.json().catch(() => null);
       throw new Error(payload?.message || `TTS ${response.status}`);
     }
-    objectUrl = URL.createObjectURL(await response.blob());
-    return new Audio(objectUrl);
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const audio = new Audio(objectUrl);
+    audio.dataset.objectUrl = objectUrl;
+    return audio;
   }
 
-  async function play(text) {
+  async function playInternal(text, options = {}, token = queueToken) {
     const speechText = String(text || '').trim();
-    if (!speechText) return;
+    if (!speechText) return false;
     const settings = readJson('roomTTSSettings', {});
     if (!settings.enabled) {
       setState({ status: 'disabled', error: '' });
-      return;
+      return false;
     }
-    stop();
     setState({ status: 'loading', error: '' });
     try {
       const audio = await makeAudio(speechText, settings);
+      if (token !== queueToken) {
+        releaseAudio(audio);
+        throw makeStopError();
+      }
       currentAudio = audio;
       audio.preload = 'auto';
-      audio.onplay = () => {
+      let started = false;
+      let playbackStartFrame = 0;
+      const clearPlaybackStartCheck = () => {
+        if (!playbackStartFrame) return;
+        window.cancelAnimationFrame(playbackStartFrame);
+        playbackStartFrame = 0;
+      };
+      const hasPlaybackProgress = () => {
+        const playedEnd = audio.played?.length ? audio.played.end(audio.played.length - 1) : 0;
+        return !audio.paused
+          && !audio.ended
+          && audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+          && ((Number(audio.currentTime) || 0) > 0 || playedEnd > 0);
+      };
+      const watchPlaybackStart = () => {
+        if (started || currentAudio !== audio || audio.ended) return;
+        clearPlaybackStartCheck();
+        playbackStartFrame = window.requestAnimationFrame(confirmPlaybackStarted);
+      };
+      const confirmPlaybackStarted = () => {
+        playbackStartFrame = 0;
+        if (started || currentAudio !== audio || audio.ended) return;
+        if (!hasPlaybackProgress()) {
+          watchPlaybackStart();
+          return;
+        }
+        started = true;
         setState({ status: 'playing', error: '' });
+        const durationMs = Number.isFinite(audio.duration) && audio.duration > 0
+          ? Math.round(audio.duration * 1000)
+          : estimateSpeechDurationMs(speechText);
+        try {
+          options.onStart?.({
+            audio,
+            speechText,
+            mouthText: speechText,
+            durationMs,
+            startedAt: performance.now()
+          });
+        } catch (_) {
+          // Animation hooks should not interrupt audio playback.
+        }
         if (audio.dataset.mouthMode === 'synthetic') {
           startSyntheticMouth(speechText, audio);
         } else {
@@ -248,16 +343,81 @@ export function createLive2DSpeechPlayer({ onState } = {}) {
         }
       };
       await new Promise((resolve, reject) => {
-        audio.onended = resolve;
-        audio.onerror = () => reject(new Error('Audio playback failed'));
-        audio.play().catch(reject);
+        currentReject = reject;
+        audio.onplay = watchPlaybackStart;
+        audio.onplaying = watchPlaybackStart;
+        audio.ontimeupdate = confirmPlaybackStarted;
+        audio.onended = () => {
+          clearPlaybackStartCheck();
+          resolve();
+        };
+        audio.onerror = () => {
+          clearPlaybackStartCheck();
+          reject(new Error('Audio playback failed'));
+        };
+        audio.play().then(watchPlaybackStart).catch((error) => {
+          clearPlaybackStartCheck();
+          reject(error);
+        });
       });
-      if (currentAudio === audio) stop();
+      if (currentAudio === audio) clearCurrentAudio();
+      return true;
     } catch (error) {
-      stop();
+      clearCurrentAudio();
+      if (isStopError(error)) return false;
       setState({ status: 'error', error: error.message || 'TTS failed' });
       throw error;
     }
+  }
+
+  async function play(text, options = {}) {
+    const speechText = String(text || '').trim();
+    if (!speechText) return;
+    stop();
+    queueToken += 1;
+    await playInternal(speechText, options, queueToken);
+    setState({ status: 'idle', error: '' });
+  }
+
+  async function runQueue(token) {
+    if (queueRunning) return;
+    queueRunning = true;
+    try {
+      while (speechQueue.length && token === queueToken) {
+        const item = speechQueue.shift();
+        try {
+          const played = await playInternal(item.text, item.options, token);
+          if (played === false) item.reject(makeStopError());
+          else item.resolve();
+        } catch (error) {
+          item.reject(error);
+        }
+      }
+    } finally {
+      queueRunning = false;
+      if (token === queueToken && !currentAudio && speechQueue.length < 1) {
+        setState({ status: 'idle', error: '' });
+      }
+      if (speechQueue.length) runQueue(queueToken);
+    }
+  }
+
+  function enqueue(text, options = {}) {
+    const speechText = String(text || '').trim();
+    if (!speechText) return Promise.resolve();
+    const settings = readJson('roomTTSSettings', {});
+    if (!settings.enabled) {
+      setState({ status: 'disabled', error: '' });
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      speechQueue.push({ text: speechText, options, resolve, reject });
+      runQueue(queueToken);
+    });
+  }
+
+  function clearQueue() {
+    rejectQueued();
   }
 
   function destroy() {
@@ -268,5 +428,5 @@ export function createLive2DSpeechPlayer({ onState } = {}) {
     }
   }
 
-  return { play, stop, destroy };
+  return { play, enqueue, playQueued: enqueue, clearQueue, stop, destroy };
 }
