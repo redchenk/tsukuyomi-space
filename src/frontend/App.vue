@@ -192,7 +192,7 @@ onMounted(() => {
     />
   </AppShell>
 
-  <SitePet v-if="showSitePet" />
+  <SitePet v-if="showSitePet" :lang="lang" :route-name="route.name" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
     <section class="visit-popup-card" role="dialog" aria-modal="true" :aria-label="visitPopup.title">
