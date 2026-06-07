@@ -237,6 +237,12 @@ function go(path) {
             <strong>Live2D モデル出典：</strong>サイト内の Live2D モデルは Bilibili の <a href="https://space.bilibili.com/3546783265327964?spm_id_from=333.337.0.0" target="_blank" rel="noopener noreferrer">雪熊企划</a> に由来し、モデルの権利は原作者および関連権利者に帰属します。
           </p>
           <p v-if="!isJa">
+            <strong>网页宠物来源：</strong>右下角 Yachiyo 宠物来自 <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a>，请以 Petdex 页面标注的来源与使用说明为准。
+          </p>
+          <p v-else>
+            <strong>Webペット出典：</strong>右下の Yachiyo ペットは <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a> に由来します。出典と利用条件は Petdex のページ表記に従います。
+          </p>
+          <p v-if="!isJa">
             <strong>图标来源：</strong>站内部分界面图标使用 <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> 开源图标集，遵循其开源许可证。
           </p>
           <p v-else>
