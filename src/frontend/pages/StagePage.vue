@@ -77,6 +77,12 @@ function stageAuthorAlt(article) {
   return `${stageAuthorName(article)} avatar`;
 }
 
+function stageOpenAuthor(article) {
+  const username = String(article?.author_username || '').trim();
+  if (!username) return;
+  emit('go', `/users/${encodeURIComponent(username)}`);
+}
+
 onMounted(loadArticles);
 </script>
 
@@ -124,7 +130,13 @@ onMounted(loadArticles);
         <div class="stage-card-body">
           <div class="stage-card-meta">
             <span class="tag">{{ article.category }}</span>
-            <span class="tag tag-author stage-author">
+            <span
+              class="tag tag-author stage-author stage-author-link"
+              role="link"
+              tabindex="0"
+              @click.stop.prevent="stageOpenAuthor(article)"
+              @keydown.enter.stop.prevent="stageOpenAuthor(article)"
+            >
               <span class="stage-author-avatar">
                 <img v-if="article.author_avatar" :src="article.author_avatar" :alt="stageAuthorAlt(article)">
                 <span v-else>{{ stageAuthorInitial(article) }}</span>

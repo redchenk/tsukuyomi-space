@@ -3,6 +3,7 @@ const { authenticateToken } = require('../middleware/auth');
 const messageRepository = require('../repositories/message-repository');
 const notificationRepository = require('../repositories/notification-repository');
 const articleRepository = require('../repositories/article-repository');
+const socialRepository = require('../repositories/social-repository');
 const { reviewMessageContent } = require('../services/message-moderation');
 const { articlePath } = require('../seo/render-article');
 const responseCache = require('../services/response-cache');
@@ -14,9 +15,11 @@ function actorName(user) {
 }
 
 function messageLink(message) {
-    if (!message?.article_id) return '/plaza';
+    const anchorId = message?.parent_id || message?.id;
+    if (!message?.article_id) return anchorId ? `/plaza#msg-${anchorId}` : '/plaza';
     const article = articleRepository.findArticleById(message.article_id);
-    return article ? articlePath(article) : `/articles/${message.article_id}`;
+    const base = article ? articlePath(article) : `/articles/${message.article_id}`;
+    return anchorId ? `${base}#comment-${anchorId}` : base;
 }
 
 function notifyMessageOwner({ targetMessage, actor, type, title, content, relatedMessageId }) {
@@ -34,6 +37,38 @@ function notifyMessageOwner({ targetMessage, actor, type, title, content, relate
             actorName: actorName(actor),
             messageId: targetMessage.id
         }
+    });
+}
+
+function messageNoun(message) {
+    return message?.article_id ? '评论' : '留言';
+}
+
+function notifyMentions({ message, actor }) {
+    const mentionedUsers = socialRepository.findUsersByUsernames(
+        socialRepository.extractMentionNames(message?.content || '')
+    );
+    mentionedUsers.forEach((user) => {
+        if (!user?.id || user.id === actor.id) return;
+        socialRepository.recordMessageMention({
+            messageId: message.id,
+            mentionedUserId: user.id,
+            actorId: actor.id
+        });
+        notificationRepository.createNotification({
+            userId: user.id,
+            actorId: actor.id,
+            type: 'mention',
+            title: `${actorName(actor)} 在${messageNoun(message)}中提到了你`,
+            content: message.content,
+            link: messageLink(message),
+            relatedMessageId: message.id,
+            relatedArticleId: message.article_id || null,
+            metadata: {
+                actorName: actorName(actor),
+                messageId: message.id
+            }
+        });
     });
 }
 
@@ -61,6 +96,21 @@ router.get('/plaza/:nonce', (req, res) => {
     sendMessageList(req, res, null);
 });
 
+router.get('/topics', (req, res) => {
+    try {
+        res.json({
+            success: true,
+            data: socialRepository.listTrendingTopics({
+                limit: req.query.limit,
+                days: req.query.days
+            })
+        });
+    } catch (error) {
+        console.error('Trending topics failed:', error);
+        res.status(500).json({ success: false, message: '热门话题读取失败' });
+    }
+});
+
 router.post('/', authenticateToken, (req, res) => {
     try {
         const { content, article_id } = req.body;
@@ -82,6 +132,7 @@ router.post('/', authenticateToken, (req, res) => {
         if (review.status === 'approved') {
             responseCache.delPrefix(article_id ? `public:article-messages:${article_id}` : 'public:plaza-messages');
             responseCache.delPrefix('public:stats');
+            notifyMentions({ message: newMessage, actor: req.user });
         }
         res.status(201).json({
             success: true,
@@ -117,7 +168,7 @@ router.post('/:id/like', authenticateToken, (req, res) => {
             targetMessage: message,
             actor: req.user,
             type: 'like',
-            title: `${actorName(req.user)} 点赞了你的留言`,
+            title: `${actorName(req.user)} 点赞了你的${messageNoun(message)}`,
             content: message.content,
             relatedMessageId: message.id
         });
@@ -160,10 +211,11 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
                 targetMessage: originalMessage,
                 actor: req.user,
                 type: 'reply',
-                title: `${actorName(req.user)} 回复了你的留言`,
+                title: `${actorName(req.user)} 回复了你的${messageNoun(originalMessage)}`,
                 content,
                 relatedMessageId: newMessage.id
             });
+            notifyMentions({ message: newMessage, actor: req.user });
         }
         res.status(201).json({
             success: true,

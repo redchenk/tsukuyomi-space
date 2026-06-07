@@ -19,7 +19,14 @@ function formatDate(value) {
 }
 
 function notificationIcon(type) {
-  return type === 'like' ? '♥' : '↩';
+  const icons = {
+    like: '♥',
+    reply: '↩',
+    mention: '@',
+    follow: '+',
+    bookmark: '★'
+  };
+  return icons[type] || '•';
 }
 
 function actorInitial(item) {

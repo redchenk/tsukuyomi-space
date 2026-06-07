@@ -5,10 +5,12 @@ const bcrypt = require('bcryptjs');
 const articleRepository = require('./repositories/article-repository');
 const userRepository = require('./repositories/user-repository');
 const notificationRepository = require('./repositories/notification-repository');
+const socialRepository = require('./repositories/social-repository');
 const articleMedia = require('./services/article-media');
 const responseCache = require('./services/response-cache');
+const { articlePath } = require('./seo/render-article');
 
-const { authenticateToken } = require('./middleware/auth');
+const { authenticateToken, optionalAuth } = require('./middleware/auth');
 
 router.get('/notifications', authenticateToken, (req, res) => {
     try {
@@ -55,6 +57,150 @@ router.post('/notifications/:id/read', authenticateToken, (req, res) => {
     } catch (error) {
         console.error('Mark notification read failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.get('/public/:username', optionalAuth, (req, res) => {
+    try {
+        const profile = socialRepository.publicProfile(req.params.username, req.user?.id || '');
+        if (!profile) return res.status(404).json({ success: false, message: '用户不存在' });
+        res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.json({ success: true, data: profile });
+    } catch (error) {
+        console.error('Public profile failed:', error);
+        res.status(500).json({ success: false, message: '用户主页读取失败' });
+    }
+});
+
+router.post('/follow/:id', authenticateToken, (req, res) => {
+    try {
+        const target = userRepository.findProfileById(req.params.id);
+        if (!target) return res.status(404).json({ success: false, message: '用户不存在' });
+        if (target.id === req.user.id) return res.status(400).json({ success: false, message: '不能关注自己' });
+        const created = socialRepository.followUser(req.user.id, target.id);
+        if (created) {
+            notificationRepository.createNotification({
+                userId: target.id,
+                actorId: req.user.id,
+                type: 'follow',
+                title: `${req.user.username || '访客'} 关注了你`,
+                content: '新的访客正在关注你的创作动态。',
+                link: `/users/${encodeURIComponent(req.user.username || '')}`,
+                metadata: { actorName: req.user.username || '' }
+            });
+        }
+        res.json({
+            success: true,
+            data: {
+                isFollowing: true,
+                ...socialRepository.followStats(target.id)
+            },
+            message: '已关注'
+        });
+    } catch (error) {
+        console.error('Follow user failed:', error);
+        res.status(500).json({ success: false, message: '关注失败' });
+    }
+});
+
+router.delete('/follow/:id', authenticateToken, (req, res) => {
+    try {
+        const target = userRepository.findProfileById(req.params.id);
+        if (!target) return res.status(404).json({ success: false, message: '用户不存在' });
+        socialRepository.unfollowUser(req.user.id, target.id);
+        res.json({
+            success: true,
+            data: {
+                isFollowing: false,
+                ...socialRepository.followStats(target.id)
+            },
+            message: '已取消关注'
+        });
+    } catch (error) {
+        console.error('Unfollow user failed:', error);
+        res.status(500).json({ success: false, message: '取消关注失败' });
+    }
+});
+
+router.get('/bookmarks', authenticateToken, (req, res) => {
+    try {
+        res.json({
+            success: true,
+            data: socialRepository.listBookmarkedArticles(req.user.id, {
+                limit: req.query.limit,
+                offset: req.query.offset
+            })
+        });
+    } catch (error) {
+        console.error('List bookmarks failed:', error);
+        res.status(500).json({ success: false, message: '收藏列表读取失败' });
+    }
+});
+
+router.get('/bookmarks/:articleId/status', authenticateToken, (req, res) => {
+    try {
+        const article = articleRepository.findPublishedArticleById(req.params.articleId);
+        if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
+        res.json({
+            success: true,
+            data: {
+                bookmarked: socialRepository.isArticleBookmarked(req.user.id, article.id),
+                count: socialRepository.articleBookmarkCount(article.id)
+            }
+        });
+    } catch (error) {
+        console.error('Bookmark status failed:', error);
+        res.status(500).json({ success: false, message: '收藏状态读取失败' });
+    }
+});
+
+router.post('/bookmarks/:articleId', authenticateToken, (req, res) => {
+    try {
+        const article = articleRepository.findPublishedArticleById(req.params.articleId);
+        if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
+        const created = socialRepository.bookmarkArticle(req.user.id, article.id);
+        if (created && article.author_id && article.author_id !== req.user.id) {
+            notificationRepository.createNotification({
+                userId: article.author_id,
+                actorId: req.user.id,
+                type: 'bookmark',
+                title: `${req.user.username || '访客'} 收藏了你的文章`,
+                content: article.title,
+                link: articlePath(article),
+                relatedArticleId: article.id,
+                metadata: { actorName: req.user.username || '', articleId: article.id }
+            });
+        }
+        res.json({
+            success: true,
+            data: {
+                bookmarked: true,
+                count: socialRepository.articleBookmarkCount(article.id)
+            },
+            message: '已收藏'
+        });
+    } catch (error) {
+        console.error('Bookmark article failed:', error);
+        res.status(500).json({ success: false, message: '收藏失败' });
+    }
+});
+
+router.delete('/bookmarks/:articleId', authenticateToken, (req, res) => {
+    try {
+        const article = articleRepository.findPublishedArticleById(req.params.articleId);
+        if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
+        socialRepository.unbookmarkArticle(req.user.id, article.id);
+        res.json({
+            success: true,
+            data: {
+                bookmarked: false,
+                count: socialRepository.articleBookmarkCount(article.id)
+            },
+            message: '已取消收藏'
+        });
+    } catch (error) {
+        console.error('Unbookmark article failed:', error);
+        res.status(500).json({ success: false, message: '取消收藏失败' });
     }
 });
 

@@ -148,6 +148,24 @@
 
 .plaza-msg-meta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
 .plaza-msg-author { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
+.plaza-author-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.plaza-author-link:hover .plaza-author-name {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+}
 .plaza-avatar {
     width: 38px;
     height: 38px;
@@ -179,7 +197,7 @@
 }
 .plaza-author-name { color: #ffb7c5; font-size: 0.9rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plaza-msg-date { color: rgba(255,225,235,0.42); font-size: 0.74rem; margin-top: 0.12rem; }
-.plaza-msg-content { color: rgba(255,255,255,0.86); line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 0.8rem; }
+.plaza-msg-content { display: block; color: rgba(255,255,255,0.86); line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 0.8rem; }
 .plaza-msg-footer { display: flex; gap: 0.55rem; align-items: center; flex-wrap: wrap; }
 
 .plaza-reply-form {
@@ -205,6 +223,46 @@
 .plaza-side .panel { padding: 1rem; }
 .panel-title { color: #fff; font-size: 0.96rem; margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; }
 .plaza-friends, .plaza-activities { display: grid; gap: 0.7rem; }
+.plaza-topic-list { display: grid; gap: 0.55rem; }
+.plaza-topic-chip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 42px;
+    padding: 0.58rem 0.7rem;
+    border: 1px solid rgba(247,215,116,0.22);
+    border-radius: 8px;
+    background: rgba(247,215,116,0.08);
+    color: #f7d774;
+    font: inherit;
+    cursor: pointer;
+}
+.plaza-topic-chip:hover {
+    border-color: rgba(255,183,197,0.42);
+    background: rgba(255,107,157,0.13);
+}
+.plaza-topic-chip span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 800;
+}
+.plaza-topic-chip small {
+    flex: 0 0 auto;
+    color: rgba(255,225,235,0.5);
+    font-size: 0.72rem;
+}
+.plaza-topic-empty {
+    padding: 0.8rem;
+    border: 1px dashed rgba(255,183,197,0.16);
+    border-radius: 8px;
+    color: rgba(255,225,235,0.58);
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
 .plaza-friend-card {
     display: grid;
     grid-template-columns: 42px minmax(0, 1fr) auto;

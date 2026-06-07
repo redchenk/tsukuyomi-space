@@ -170,6 +170,16 @@
     padding-left: 0.34rem;
 }
 
+.stage-author-link {
+    cursor: pointer;
+}
+
+.stage-author-link:hover {
+    color: #fff;
+    border-color: rgba(255,183,197,0.42);
+    background: rgba(126,219,232,0.12);
+}
+
 .stage-author-avatar {
     width: 20px;
     height: 20px;

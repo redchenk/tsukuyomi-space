@@ -1,8 +1,10 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
+import SocialText from '../components/SocialText.vue';
 import { compareAppDate, formatDateTime, parseAppDate } from '../utils/time';
 
 const props = defineProps({
@@ -11,10 +13,13 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
+const route = useRoute();
 const session = ref(getSession());
 const plaza = reactive({
   messages: [],
   stats: null,
+  topics: [],
+  topicsLoading: false,
   filter: 'latest',
   query: '',
   loading: false,
@@ -148,6 +153,19 @@ async function loadPlazaMessages() {
   }
 }
 
+async function loadTrendingTopics() {
+  plaza.topicsLoading = true;
+  try {
+    const response = await fetch(`/api/messages/topics?limit=8&_=${Date.now()}`, { cache: 'no-store' });
+    const result = await parseResponse(response);
+    plaza.topics = result.success && Array.isArray(result.data) ? result.data : [];
+  } catch (_) {
+    plaza.topics = [];
+  } finally {
+    plaza.topicsLoading = false;
+  }
+}
+
 function upsertPlazaMessage(message) {
   if (!message?.id) return;
   const normalized = { ...message, article_id: message.article_id || null };
@@ -169,7 +187,7 @@ async function refreshPlaza() {
   plaza.loading = true;
   session.value = getSession();
   try {
-    await Promise.all([loadPlazaStats(), loadPlazaMessages()]);
+    await Promise.all([loadPlazaStats(), loadPlazaMessages(), loadTrendingTopics()]);
   } finally {
     plaza.loading = false;
   }
@@ -193,8 +211,10 @@ async function plazaSubmitMessage(content) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.publishFailed);
     showPlazaToast(result.message || '留言已提交，审核通过后会公开显示');
-    if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertPlazaMessage(result.data);
-    else await loadPlazaStats();
+    if (result.data?.id && (result.data.status || 'approved') === 'approved') {
+      upsertPlazaMessage(result.data);
+      loadTrendingTopics();
+    } else await loadPlazaStats();
     return true;
   } catch (error) {
     showPlazaToast(error.message || props.t.publishFailed);
@@ -220,7 +240,10 @@ async function plazaSubmitReply(parentId, content) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.replyFailed);
     showPlazaToast(result.message || '回复已提交，审核通过后会公开显示');
-    if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertPlazaMessage(result.data);
+    if (result.data?.id && (result.data.status || 'approved') === 'approved') {
+      upsertPlazaMessage(result.data);
+      loadTrendingTopics();
+    }
     plaza.replyOpen = { ...plaza.replyOpen, [parentId]: false };
     return true;
   } catch (error) {
@@ -276,6 +299,27 @@ function plazaToggleReply(id) {
   plaza.replyOpen = { ...plaza.replyOpen, [id]: !plaza.replyOpen[id] };
 }
 
+function plazaOpenProfile(username) {
+  const value = String(username || '').trim();
+  if (!value) return;
+  emit('go', `/users/${encodeURIComponent(value)}`);
+}
+
+function plazaSelectTopic(topic) {
+  const value = String(topic || '').trim();
+  if (!value) return;
+  plaza.query = `#${value}`;
+  plaza.filter = 'latest';
+  try {
+    history.replaceState(null, '', `/plaza?topic=${encodeURIComponent(value)}`);
+  } catch (_) {}
+}
+
+function applyRouteTopic() {
+  const topic = Array.isArray(route.query.topic) ? route.query.topic[0] : route.query.topic;
+  if (topic) plazaSelectTopic(topic);
+}
+
 function isPlazaMessageLiked(id) {
   try {
     return localStorage.getItem(`liked_${id}`) === '1';
@@ -323,6 +367,7 @@ function plazaFormatUptime(seconds) {
   return days > 0 ? `${days}\u65e5${hours}\u6642\u9593` : `${hours}\u6642\u9593`;
 }
 
+watch(() => route.query.topic, applyRouteTopic, { immediate: true });
 onMounted(refreshPlaza);
 </script>
 
@@ -392,6 +437,7 @@ onMounted(refreshPlaza);
           <article v-for="msg in plazaMessages" :id="'msg-' + msg.id" :key="msg.id" class="plaza-msg-card">
             <div class="plaza-msg-meta">
               <div class="plaza-msg-author">
+                <button class="plaza-author-link" type="button" @click="plazaOpenProfile(msg.author)">
                 <div class="plaza-avatar">
                   <img v-if="msg.avatar" :src="msg.avatar" :alt="plazaAvatarAlt(msg.author)">
                   <span v-else>{{ plazaInitial(msg.author) }}</span>
@@ -400,10 +446,16 @@ onMounted(refreshPlaza);
                   <div class="plaza-author-name">{{ msg.author || fallback.anonymous }}</div>
                   <div class="plaza-msg-date">{{ plazaFormatDate(msg.created_at) }}</div>
                 </div>
+                </button>
               </div>
               <div class="plaza-msg-date">#{{ plazaMessageNumber(msg.id) }}</div>
             </div>
-            <div class="plaza-msg-content">{{ msg.content }}</div>
+            <SocialText
+              class="plaza-msg-content"
+              :content="msg.content"
+              @mention="plazaOpenProfile"
+              @topic="plazaSelectTopic"
+            />
             <div class="plaza-msg-footer">
               <button class="icon-btn" :class="{ liked: isPlazaMessageLiked(msg.id) }" type="button" @click="plazaLikeMessage(msg.id)">{{ t.like }} {{ msg.like_count || 0 }}</button>
               <button class="icon-btn" type="button" @click="plazaToggleReply(msg.id)">{{ t.reply }} {{ (msg.replies || []).length }}</button>
@@ -416,6 +468,7 @@ onMounted(refreshPlaza);
               <div v-for="reply in msg.replies" :key="reply.id" class="plaza-reply-card">
                 <div class="plaza-msg-meta" style="margin-bottom:0.45rem;">
                   <div class="plaza-msg-author">
+                    <button class="plaza-author-link" type="button" @click="plazaOpenProfile(reply.author)">
                     <div class="plaza-avatar small">
                       <img v-if="reply.avatar" :src="reply.avatar" :alt="plazaAvatarAlt(reply.author)">
                       <span v-else>{{ plazaInitial(reply.author) }}</span>
@@ -424,9 +477,16 @@ onMounted(refreshPlaza);
                       <div class="plaza-author-name" style="font-size:0.82rem;">{{ reply.author || fallback.anonymous }}</div>
                       <div class="plaza-msg-date">{{ plazaFormatDate(reply.created_at) }}</div>
                     </div>
+                    </button>
                   </div>
                 </div>
-                <div class="plaza-msg-content" style="margin-bottom:0;">{{ reply.content }}</div>
+                <SocialText
+                  class="plaza-msg-content"
+                  style="margin-bottom:0;"
+                  :content="reply.content"
+                  @mention="plazaOpenProfile"
+                  @topic="plazaSelectTopic"
+                />
               </div>
             </div>
           </article>
@@ -434,6 +494,23 @@ onMounted(refreshPlaza);
       </div>
 
       <aside class="plaza-side">
+        <div class="panel">
+          <div class="panel-title">热门话题 <span>{{ plaza.topics.length }}</span></div>
+          <div class="plaza-topic-list">
+            <div v-if="plaza.topicsLoading" class="plaza-topic-empty">同步中...</div>
+            <button
+              v-for="topic in plaza.topics"
+              :key="topic.topic"
+              class="plaza-topic-chip"
+              type="button"
+              @click="plazaSelectTopic(topic.topic)"
+            >
+              <span>#{{ topic.topic }}</span>
+              <small>{{ plazaFormatNumber(topic.count) }} · {{ plazaFormatNumber(topic.score) }}</small>
+            </button>
+            <div v-if="!plaza.topicsLoading && !plaza.topics.length" class="plaza-topic-empty">还没有话题，试试发布 #月读茶会#</div>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-title">{{ t.residents }} <span>{{ friends.length }}</span></div>
           <div class="plaza-friends">

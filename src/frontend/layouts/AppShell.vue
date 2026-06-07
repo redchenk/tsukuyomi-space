@@ -121,7 +121,7 @@ onMounted(loadUnreadNotifications);
 
         <a
           class="rail-link rail-account"
-          :class="{ active: routeName === 'userCenter' || routeName === 'login' }"
+          :class="{ active: routeName === 'userCenter' || routeName === 'userProfile' || routeName === 'login' }"
           :href="isAuthed ? '/user-center' : '/login'"
           :aria-label="accountLabel"
           :title="accountLabel"
@@ -171,7 +171,7 @@ onMounted(loadUnreadNotifications);
         <span v-if="unreadNotifications" class="nav-inline-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
       </a>
 
-      <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">
+      <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' || routeName === 'userProfile' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">
         <TsIcon class="nav-icon" name="user" :size="18" />
         <span>{{ t.ucTitle }}</span>
       </a>

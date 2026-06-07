@@ -26,3 +26,25 @@
 .icon-btn:hover { border-color: rgba(255,183,197,0.52); background: rgba(255,107,157,0.2); transform: translateY(-1px); }
 .icon-btn.liked { color: #fff; background: rgba(255,107,157,0.24); }
 
+.social-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.social-token {
+    display: inline;
+    color: #aef2ff;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.social-token:hover {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+}
+
+.topic-token {
+    color: #f7d774;
+}
+

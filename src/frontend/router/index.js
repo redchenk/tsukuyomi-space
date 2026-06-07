@@ -10,6 +10,7 @@ import EditorPage from '../pages/EditorPage.vue';
 import AttachmentsPage from '../pages/AttachmentsPage.vue';
 import GalleryPage from '../pages/GalleryPage.vue';
 import UserCenterPage from '../pages/UserCenterPage.vue';
+import UserProfilePage from '../pages/UserProfilePage.vue';
 import NotificationsPage from '../pages/NotificationsPage.vue';
 import RoomPage from '../pages/RoomPage.vue';
 import RoomSettingsPage from '../pages/RoomSettingsPage.vue';
@@ -149,6 +150,12 @@ export const routes = [
     name: 'userCenter',
     component: UserCenterPage,
     meta: { title: '用户中心', description: '管理月读空间账号资料。', noindex: true }
+  },
+  {
+    path: '/users/:username',
+    name: 'userProfile',
+    component: UserProfilePage,
+    meta: { title: '个人主页', description: '查看月读空间公开个人主页。' }
   },
   {
     path: '/notifications',

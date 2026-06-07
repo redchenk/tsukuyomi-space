@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, parseResponse } from '../api/client';
+import SocialText from '../components/SocialText.vue';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
 import { formatDateTime } from '../utils/time';
@@ -20,6 +21,12 @@ const commentText = ref('');
 const replyText = reactive({});
 const openReplies = reactive({});
 const session = ref(getSession());
+const bookmark = reactive({
+  loading: false,
+  ready: false,
+  bookmarked: false,
+  count: 0
+});
 
 const articleId = computed(() => String(route.query.id || route.params.id || ''));
 const articlePath = computed(() => {
@@ -27,6 +34,10 @@ const articlePath = computed(() => {
   return `/articles/${encodeURIComponent(article.value.id)}${article.value.slug ? `/${encodeURIComponent(article.value.slug)}` : ''}`;
 });
 const topComments = computed(() => comments.value.filter((item) => !item.parent_id));
+const bookmarkLabel = computed(() => {
+  const count = bookmark.count ? ` ${Number(bookmark.count).toLocaleString('zh-CN')}` : '';
+  return bookmark.bookmarked ? `已收藏${count}` : `收藏${count}`;
+});
 
 function formatDate(value) {
   return formatDateTime(value, 'zh-CN');
@@ -70,6 +81,18 @@ function formatContent(content, format = 'markdown') {
   return renderMarkdown(content);
 }
 
+function goProfile(username) {
+  const value = String(username || '').trim();
+  if (!value) return;
+  emit('go', `/users/${encodeURIComponent(value)}`);
+}
+
+function goTopic(topic) {
+  const value = String(topic || '').trim();
+  if (!value) return;
+  emit('go', `/plaza?topic=${encodeURIComponent(value)}`);
+}
+
 async function loadArticle() {
   loading.value = true;
   message.value = '';
@@ -89,11 +112,37 @@ async function loadArticle() {
     if (!result.success || !result.data) throw new Error(result.message || '文章不存在');
     article.value = result.data;
     applySeo(articleSeo(result.data, articlePath.value));
-    await loadComments();
+    await Promise.all([loadComments(), loadBookmarkStatus()]);
   } catch (error) {
     message.value = error.message || props.t.loadFailed || '加载失败';
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadBookmarkStatus() {
+  session.value = getSession();
+  bookmark.ready = false;
+  bookmark.bookmarked = false;
+  bookmark.count = 0;
+  if (!session.value || !articleId.value) return;
+
+  bookmark.loading = true;
+  try {
+    const response = await authFetch(`/api/user/bookmarks/${encodeURIComponent(articleId.value)}/status`, {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
+    const result = await parseResponse(response);
+    if (result.success) {
+      bookmark.ready = true;
+      bookmark.bookmarked = Boolean(result.data?.bookmarked);
+      bookmark.count = Number(result.data?.count || 0);
+    }
+  } catch (_) {
+    bookmark.ready = false;
+  } finally {
+    bookmark.loading = false;
   }
 }
 
@@ -208,6 +257,27 @@ async function likeComment(commentId) {
   message.value = '';
 }
 
+async function toggleBookmark() {
+  if (!requireLogin()) return;
+  bookmark.loading = true;
+  try {
+    const response = await authFetch(`/api/user/bookmarks/${encodeURIComponent(articleId.value)}`, {
+      method: bookmark.bookmarked ? 'DELETE' : 'POST',
+      headers: authHeaders()
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '操作失败');
+    bookmark.ready = true;
+    bookmark.bookmarked = Boolean(result.data?.bookmarked);
+    bookmark.count = Number(result.data?.count || 0);
+    message.value = result.message || '';
+  } catch (error) {
+    message.value = error.message || '操作失败';
+  } finally {
+    bookmark.loading = false;
+  }
+}
+
 onMounted(loadArticle);
 watch(articleId, loadArticle);
 </script>
@@ -226,9 +296,24 @@ watch(articleId, loadArticle);
           <h1>{{ article.title }}</h1>
           <div class="article-meta">
             <span>{{ formatDate(article.publish_date || article.created_at) }}</span>
-            <span>{{ article.author_username || 'admin' }}</span>
+            <a
+              class="article-author-link"
+              :href="`/users/${encodeURIComponent(article.author_username || 'admin')}`"
+              @click.prevent="goProfile(article.author_username || 'admin')"
+            >{{ article.author_username || 'admin' }}</a>
             <span>{{ article.read_time || '5 min' }}</span>
             <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} views</span>
+          </div>
+          <div class="article-social-actions">
+            <button
+              class="icon-btn"
+              :class="{ liked: bookmark.bookmarked }"
+              type="button"
+              :disabled="bookmark.loading"
+              @click="toggleBookmark"
+            >
+              {{ bookmarkLabel }}
+            </button>
           </div>
         </header>
 
@@ -256,12 +341,14 @@ watch(articleId, loadArticle);
 
           <div v-if="!topComments.length" class="article-empty">暂无评论，快来发布第一条吧。</div>
           <div v-else class="comment-list">
-            <article v-for="comment in topComments" :key="comment.id" class="comment-item">
+            <article v-for="comment in topComments" :id="'comment-' + comment.id" :key="comment.id" class="comment-item">
               <div class="comment-header">
-                <strong>{{ comment.author || comment.username || '访客' }}</strong>
+                <button class="comment-author-link" type="button" @click="goProfile(comment.author || comment.username)">
+                  {{ comment.author || comment.username || '访客' }}
+                </button>
                 <span>{{ formatDate(comment.created_at) }}</span>
               </div>
-              <p>{{ comment.content }}</p>
+              <SocialText class="comment-content" :content="comment.content" @mention="goProfile" @topic="goTopic" />
               <div class="comment-tools">
                 <button class="icon-btn" type="button" @click="likeComment(comment.id)">喜欢 {{ comment.like_count || 0 }}</button>
                 <button class="icon-btn" type="button" @click="openReplies[comment.id] = !openReplies[comment.id]">回复</button>
@@ -275,12 +362,14 @@ watch(articleId, loadArticle);
               </div>
 
               <div v-if="repliesFor(comment.id).length" class="reply-list">
-                <div v-for="reply in repliesFor(comment.id)" :key="reply.id" class="comment-item reply-item">
+                <div v-for="reply in repliesFor(comment.id)" :id="'comment-' + reply.id" :key="reply.id" class="comment-item reply-item">
                   <div class="comment-header">
-                    <strong>{{ reply.author || reply.username || '访客' }}</strong>
+                    <button class="comment-author-link" type="button" @click="goProfile(reply.author || reply.username)">
+                      {{ reply.author || reply.username || '访客' }}
+                    </button>
                     <span>{{ formatDate(reply.created_at) }}</span>
                   </div>
-                  <p>{{ reply.content }}</p>
+                  <SocialText class="comment-content" :content="reply.content" @mention="goProfile" @topic="goTopic" />
                 </div>
               </div>
             </article>

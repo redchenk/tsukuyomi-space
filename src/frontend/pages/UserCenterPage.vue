@@ -27,8 +27,11 @@ const uc = reactive({
   profileSaving: false,
   passwordChanging: false,
   articles: [],
+  bookmarks: [],
   articleQuery: '',
+  bookmarkQuery: '',
   articleLoading: true,
+  bookmarkLoading: true,
   avatarUploading: false,
   profileBio: '',
   password: {
@@ -58,6 +61,11 @@ const ucFilteredArticles = computed(() => {
   if (!uc.articleQuery) return uc.articles;
   const q = uc.articleQuery.toLowerCase();
   return uc.articles.filter((article) => `${article.title || ''} ${article.category || ''}`.toLowerCase().includes(q));
+});
+const ucFilteredBookmarks = computed(() => {
+  if (!uc.bookmarkQuery) return uc.bookmarks;
+  const q = uc.bookmarkQuery.toLowerCase();
+  return uc.bookmarks.filter((article) => `${article.title || ''} ${article.category || ''} ${article.author_username || ''}`.toLowerCase().includes(q));
 });
 
 function go(path) {
@@ -146,8 +154,30 @@ async function ucLoadArticles() {
   }
 }
 
+async function ucLoadBookmarks() {
+  uc.bookmarkLoading = true;
+  if (!isAuthed.value) {
+    uc.bookmarkLoading = false;
+    return;
+  }
+  try {
+    const response = await authFetch(`/api/user/bookmarks?limit=80&_=${Date.now()}`, {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '收藏列表读取失败');
+    uc.bookmarks = Array.isArray(result.data) ? result.data : [];
+  } catch (error) {
+    uc.bookmarks = [];
+    ucShowToast(error.message || '收藏列表读取失败');
+  } finally {
+    uc.bookmarkLoading = false;
+  }
+}
+
 async function ucRefresh() {
-  await Promise.all([ucLoadProfile(), ucLoadArticles()]);
+  await Promise.all([ucLoadProfile(), ucLoadArticles(), ucLoadBookmarks()]);
 }
 
 async function ucEnsureSession() {
@@ -173,7 +203,9 @@ async function ucEnsureSession() {
   ucUser.value = null;
   uc.profileBio = '';
   uc.articles = [];
+  uc.bookmarks = [];
   uc.articleLoading = false;
+  uc.bookmarkLoading = false;
   return false;
 }
 
@@ -344,6 +376,7 @@ onMounted(async () => {
         </div>
         <div class="uc-hero-actions">
           <a class="primary-btn" href="/editor" @click.prevent="go('/editor')">{{ t.ucNewPost }}</a>
+          <a class="ghost-btn" :href="`/users/${encodeURIComponent(ucUser?.username || '')}`" @click.prevent="go(`/users/${encodeURIComponent(ucUser?.username || '')}`)">公开主页</a>
           <a class="ghost-btn" href="/stage" @click.prevent="go('/stage')">{{ t.ucViewStage }}</a>
           <button class="ghost-btn" type="button" @click="ucRefresh">{{ t.ucRefresh }}</button>
           <button class="danger-btn" type="button" @click="logout">{{ t.ucLogout }}</button>
@@ -362,6 +395,7 @@ onMounted(async () => {
           <div class="uc-tabs">
             <button class="tab-btn" :class="{ active: uc.tab === 'profile' }" type="button" @click="uc.tab = 'profile'">{{ t.ucProfile }} <small>Profile</small></button>
             <button class="tab-btn" :class="{ active: uc.tab === 'articles' }" type="button" @click="uc.tab = 'articles'">{{ t.ucArticlesTab }} <small>Posts</small></button>
+            <button class="tab-btn" :class="{ active: uc.tab === 'bookmarks' }" type="button" @click="uc.tab = 'bookmarks'">我的收藏 <small>Bookmarks</small></button>
             <button class="tab-btn uc-asset-tab" type="button" @click="go('/gallery/manage')">图库管理 <small>Gallery</small></button>
             <button class="tab-btn uc-asset-tab" type="button" @click="go('/attachments')">附件库 <small>Assets</small></button>
             <button class="tab-btn" :class="{ active: uc.tab === 'security' }" type="button" @click="uc.tab = 'security'">{{ t.ucSecurity }} <small>Security</small></button>
@@ -429,9 +463,41 @@ onMounted(async () => {
             </div>
           </div>
 
+          <div v-if="uc.tab === 'bookmarks'">
+            <div class="uc-section-head">
+              <h2 class="uc-section-title"><span>03</span> 我的收藏</h2>
+              <div class="uc-article-tools">
+                <input v-model="uc.bookmarkQuery" class="uc-search" type="search" placeholder="搜索收藏文章">
+                <button class="ghost-btn" type="button" @click="ucLoadBookmarks">刷新</button>
+              </div>
+            </div>
+            <div v-if="uc.bookmarkLoading" class="uc-empty">收藏列表加载中...</div>
+            <div v-else-if="!ucFilteredBookmarks.length" class="uc-empty">
+              <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">还没有收藏文章</div>
+              <div style="margin-bottom:1rem;">在文章页点击收藏后，会在这里形成你的阅读清单。</div>
+              <a class="primary-btn" href="/stage" @click.prevent="go('/stage')">去主舞台看看</a>
+            </div>
+            <div v-else class="uc-article-list">
+              <article v-for="article in ucFilteredBookmarks" :key="article.id" class="uc-article-item">
+                <div>
+                  <div class="uc-article-title">{{ article.title || t.ucUntitled }}</div>
+                  <div class="uc-article-meta">
+                    <span class="uc-status-pill">bookmarked</span>
+                    <span>{{ article.category || '' }}</span>
+                    <span>{{ article.author_username || 'admin' }}</span>
+                    <span>{{ ucFormatDate(article.bookmarked_at) }}</span>
+                  </div>
+                </div>
+                <div class="uc-article-actions">
+                  <a class="icon-btn" :href="articlePath(article)" @click.prevent="go(articlePath(article))">阅读</a>
+                </div>
+              </article>
+            </div>
+          </div>
+
           <div v-if="uc.tab === 'security'">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>03</span> {{ t.ucSecurity }}</h2>
+              <h2 class="uc-section-title"><span>04</span> {{ t.ucSecurity }}</h2>
             </div>
             <div v-if="uc.passwordMsg" class="form-message" :class="uc.passwordMsgType">{{ uc.passwordMsg }}</div>
             <div class="uc-security-grid">

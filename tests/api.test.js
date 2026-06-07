@@ -347,6 +347,76 @@ describe('notifications API', () => {
     });
 });
 
+describe('social API', () => {
+    it('creates mention notifications and returns trending topics', async () => {
+        const created = await postJson('/api/messages', {
+            content: '@managed-user 请来看看 #月读茶会# 的新话题。'
+        }, userToken);
+        assert.equal(created.response.status, 201);
+
+        const inbox = await request('/api/user/notifications', {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(inbox.response.status, 200);
+        assert.ok(inbox.body.data.some(item => item.type === 'mention' && /提到了你/.test(item.title)));
+
+        const topics = await request('/api/messages/topics?limit=5');
+        assert.equal(topics.response.status, 200);
+        assert.ok(topics.body.data.some(item => item.topic === '月读茶会'));
+    });
+
+    it('supports public profiles, following authors, and article bookmarks', async () => {
+        const profile = await request('/api/user/public/normal-user', {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(profile.response.status, 200);
+        assert.equal(profile.body.data.user.username, 'normal-user');
+        assert.equal(profile.body.data.viewer.isFollowing, false);
+        assert.ok(profile.body.data.stats.articles >= 1);
+
+        const followed = await postJson('/api/user/follow/user-001', {}, managedUserToken);
+        assert.equal(followed.response.status, 200);
+        assert.equal(followed.body.data.isFollowing, true);
+        assert.ok(followed.body.data.followers >= 1);
+
+        const followedProfile = await request('/api/user/public/normal-user', {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(followedProfile.body.data.viewer.isFollowing, true);
+
+        const bookmarked = await postJson(`/api/user/bookmarks/${articleId}`, {}, managedUserToken);
+        assert.equal(bookmarked.response.status, 200);
+        assert.equal(bookmarked.body.data.bookmarked, true);
+        assert.ok(bookmarked.body.data.count >= 1);
+
+        const status = await request(`/api/user/bookmarks/${articleId}/status`, {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(status.response.status, 200);
+        assert.equal(status.body.data.bookmarked, true);
+
+        const bookmarks = await request('/api/user/bookmarks', {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(bookmarks.response.status, 200);
+        assert.ok(bookmarks.body.data.some(item => Number(item.id) === Number(articleId)));
+
+        const unfollowed = await request('/api/user/follow/user-001', {
+            method: 'DELETE',
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(unfollowed.response.status, 200);
+        assert.equal(unfollowed.body.data.isFollowing, false);
+
+        const unbookmarked = await request(`/api/user/bookmarks/${articleId}`, {
+            method: 'DELETE',
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(unbookmarked.response.status, 200);
+        assert.equal(unbookmarked.body.data.bookmarked, false);
+    });
+});
+
 describe('stats API', () => {
     it('counts plaza top-level messages without counting replies', async () => {
         const before = await request('/api/stats');
@@ -780,6 +850,13 @@ describe('admin API permissions', () => {
 });
 
 describe('legacy page paths', () => {
+    it('routes public profile paths through the Vue fallback', async () => {
+        const { response, body } = await request('/users/normal-user');
+
+        assert.equal(response.status, 503);
+        assert.match(body, /Frontend build is missing/);
+    });
+
     it('does not redirect removed static page routes', async () => {
         for (const pathname of ['/room.html', '/article.html?id=1', '/pages/room.html', '/pages/stage']) {
             const { response } = await request(pathname, { redirect: 'manual' });
