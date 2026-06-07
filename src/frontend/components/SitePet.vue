@@ -200,7 +200,7 @@ onBeforeUnmount(() => {
   .site-pet {
     --site-pet-width: clamp(5.15rem, 24vw, 6.35rem);
     right: max(0.45rem, env(safe-area-inset-right));
-    bottom: max(0.4rem, env(safe-area-inset-bottom));
+    bottom: max(5.65rem, calc(env(safe-area-inset-bottom) + 5.65rem));
   }
 }
 </style>
