@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { authFetch, authHeaders, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
+import TsIcon from '../components/TsIcon.vue';
 import { compressImage } from '../utils/image';
 import { formatDateOnly } from '../utils/time';
 
@@ -364,41 +365,111 @@ onMounted(async () => {
         <div class="uc-avatar-block">
           <div class="uc-avatar-upload" :title="t.ucChangeAvatar" @click="ucAvatarInput?.click()">
             <img :src="ucAvatarSrc" alt="">
+            <span class="uc-avatar-edit" aria-hidden="true">
+              <TsIcon name="penLine" :size="17" />
+            </span>
           </div>
           <input ref="ucAvatarInput" type="file" accept="image/*" style="display:none;" @change="ucUploadAvatar">
-          <button class="ghost-btn" type="button" :disabled="uc.avatarUploading" @click="ucAvatarInput?.click()">{{ t.ucUploadAvatar }}</button>
+          <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.avatarUploading" @click="ucAvatarInput?.click()">
+            <TsIcon name="upload" :size="17" />
+            <span>{{ t.ucUploadAvatar }}</span>
+          </button>
         </div>
         <div class="uc-hero-info">
-          <div class="uc-role-badge">{{ ucRoleText }}</div>
+          <div class="uc-role-badge">
+            <TsIcon :name="ucUser?.role === 'admin' ? 'crown' : 'user'" :size="15" />
+            <span>{{ ucRoleText }}</span>
+          </div>
           <h1 class="uc-username">{{ ucUser?.username || '-' }}</h1>
           <div class="uc-email">{{ ucUser?.email || '-' }}</div>
           <p class="uc-bio-preview">{{ ucUser?.bio || t.ucNoBio }}</p>
         </div>
         <div class="uc-hero-actions">
-          <a class="primary-btn" href="/editor" @click.prevent="go('/editor')">{{ t.ucNewPost }}</a>
-          <a class="ghost-btn" :href="`/users/${encodeURIComponent(ucUser?.username || '')}`" @click.prevent="go(`/users/${encodeURIComponent(ucUser?.username || '')}`)">公开主页</a>
-          <a class="ghost-btn" href="/stage" @click.prevent="go('/stage')">{{ t.ucViewStage }}</a>
-          <button class="ghost-btn" type="button" @click="ucRefresh">{{ t.ucRefresh }}</button>
-          <button class="danger-btn" type="button" @click="logout">{{ t.ucLogout }}</button>
+          <a class="primary-btn uc-icon-action" href="/editor" @click.prevent="go('/editor')">
+            <TsIcon name="penLine" :size="17" />
+            <span>{{ t.ucNewPost }}</span>
+          </a>
+          <a class="ghost-btn uc-icon-action" :href="`/users/${encodeURIComponent(ucUser?.username || '')}`" @click.prevent="go(`/users/${encodeURIComponent(ucUser?.username || '')}`)">
+            <TsIcon name="user" :size="17" />
+            <span>&#20844;&#24320;&#20027;&#39029;</span>
+          </a>
+          <a class="ghost-btn uc-icon-action" href="/stage" @click.prevent="go('/stage')">
+            <TsIcon name="book" :size="17" />
+            <span>{{ t.ucViewStage }}</span>
+          </a>
+          <button class="ghost-btn uc-icon-action" type="button" @click="ucRefresh">
+            <TsIcon name="refresh" :size="17" />
+            <span>{{ t.ucRefresh }}</span>
+          </button>
+          <button class="danger-btn uc-icon-action" type="button" @click="logout">
+            <TsIcon name="logOut" :size="17" />
+            <span>{{ t.ucLogout }}</span>
+          </button>
         </div>
       </section>
 
       <section class="uc-stats">
-        <div class="uc-stat-card"><div class="uc-stat-label">{{ t.ucMyArticles }}</div><div class="uc-stat-value">{{ ucArticlesCount }}</div><div class="uc-stat-note">{{ t.ucPostsTotal }}</div></div>
-        <div class="uc-stat-card"><div class="uc-stat-label">{{ t.ucTotalViews }}</div><div class="uc-stat-value">{{ ucTotalViews }}</div><div class="uc-stat-note">{{ t.ucArticleViews }}</div></div>
-        <div class="uc-stat-card"><div class="uc-stat-label">{{ t.ucAccountRole }}</div><div class="uc-stat-value">{{ ucRoleText }}</div><div class="uc-stat-note">{{ t.ucPermLevel }}</div></div>
-        <div class="uc-stat-card"><div class="uc-stat-label">{{ t.ucJoinDate }}</div><div class="uc-stat-value">{{ ucJoinDate }}</div><div class="uc-stat-note">{{ t.ucTsukuyomiJoin }}</div></div>
+        <div class="uc-stat-card">
+          <div class="uc-stat-icon"><TsIcon name="fileText" :size="27" /></div>
+          <div>
+            <div class="uc-stat-label">{{ t.ucMyArticles }}</div>
+            <div class="uc-stat-value">{{ ucArticlesCount }}</div>
+            <div class="uc-stat-note">{{ t.ucPostsTotal }}</div>
+          </div>
+        </div>
+        <div class="uc-stat-card">
+          <div class="uc-stat-icon"><TsIcon name="layers" :size="28" /></div>
+          <div>
+            <div class="uc-stat-label">{{ t.ucTotalViews }}</div>
+            <div class="uc-stat-value">{{ ucTotalViews }}</div>
+            <div class="uc-stat-note">{{ t.ucArticleViews }}</div>
+          </div>
+        </div>
+        <div class="uc-stat-card">
+          <div class="uc-stat-icon"><TsIcon name="crown" :size="29" /></div>
+          <div>
+            <div class="uc-stat-label">{{ t.ucAccountRole }}</div>
+            <div class="uc-stat-value">{{ ucRoleText }}</div>
+            <div class="uc-stat-note">{{ t.ucPermLevel }}</div>
+          </div>
+        </div>
+        <div class="uc-stat-card">
+          <div class="uc-stat-icon"><TsIcon name="calendar" :size="27" /></div>
+          <div>
+            <div class="uc-stat-label">{{ t.ucJoinDate }}</div>
+            <div class="uc-stat-value">{{ ucJoinDate }}</div>
+            <div class="uc-stat-note">{{ t.ucTsukuyomiJoin }}</div>
+          </div>
+        </div>
       </section>
 
       <section class="uc-layout">
         <aside class="panel uc-tabs-panel">
           <div class="uc-tabs">
-            <button class="tab-btn" :class="{ active: uc.tab === 'profile' }" type="button" @click="uc.tab = 'profile'">{{ t.ucProfile }} <small>Profile</small></button>
-            <button class="tab-btn" :class="{ active: uc.tab === 'articles' }" type="button" @click="uc.tab = 'articles'">{{ t.ucArticlesTab }} <small>Posts</small></button>
-            <button class="tab-btn" :class="{ active: uc.tab === 'bookmarks' }" type="button" @click="uc.tab = 'bookmarks'">我的收藏 <small>Bookmarks</small></button>
-            <button class="tab-btn uc-asset-tab" type="button" @click="go('/gallery/manage')">图库管理 <small>Gallery</small></button>
-            <button class="tab-btn uc-asset-tab" type="button" @click="go('/attachments')">附件库 <small>Assets</small></button>
-            <button class="tab-btn" :class="{ active: uc.tab === 'security' }" type="button" @click="uc.tab = 'security'">{{ t.ucSecurity }} <small>Security</small></button>
+            <button class="tab-btn" :class="{ active: uc.tab === 'profile' }" type="button" @click="uc.tab = 'profile'">
+              <span><TsIcon name="user" :size="18" /> {{ t.ucProfile }}</span>
+              <small>Profile</small>
+            </button>
+            <button class="tab-btn" :class="{ active: uc.tab === 'articles' }" type="button" @click="uc.tab = 'articles'">
+              <span><TsIcon name="fileText" :size="18" /> {{ t.ucArticlesTab }}</span>
+              <small>Posts</small>
+            </button>
+            <button class="tab-btn" :class="{ active: uc.tab === 'bookmarks' }" type="button" @click="uc.tab = 'bookmarks'">
+              <span><TsIcon name="bookmark" :size="18" /> &#25105;&#30340;&#25910;&#34255;</span>
+              <small>Bookmarks</small>
+            </button>
+            <button class="tab-btn uc-asset-tab" type="button" @click="go('/gallery/manage')">
+              <span><TsIcon name="image" :size="18" /> &#22270;&#24211;&#31649;&#29702;</span>
+              <small>Gallery</small>
+            </button>
+            <button class="tab-btn uc-asset-tab" type="button" @click="go('/attachments')">
+              <span><TsIcon name="paperclip" :size="18" /> &#38468;&#20214;&#24211;</span>
+              <small>Assets</small>
+            </button>
+            <button class="tab-btn" :class="{ active: uc.tab === 'security' }" type="button" @click="uc.tab = 'security'">
+              <span><TsIcon name="shield" :size="18" /> {{ t.ucSecurity }}</span>
+              <small>Security</small>
+            </button>
           </div>
         </aside>
 
@@ -424,7 +495,10 @@ onMounted(async () => {
                 <div class="help-text">{{ uc.profileBio.length || 0 }} / 300</div>
               </div>
               <div>
-                <button class="primary-btn" type="button" :disabled="uc.profileSaving" @click="ucSaveProfile">{{ t.ucSaveProfile }}</button>
+                <button class="primary-btn uc-icon-action uc-save-btn" type="button" :disabled="uc.profileSaving" @click="ucSaveProfile">
+                  <TsIcon name="penLine" :size="17" />
+                  <span>{{ t.ucSaveProfile }}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -434,14 +508,20 @@ onMounted(async () => {
               <h2 class="uc-section-title"><span>02</span> {{ t.ucArticlesTab }}</h2>
               <div class="uc-article-tools">
                 <input v-model="uc.articleQuery" class="uc-search" type="search" :placeholder="t.ucSearchArticles">
-                <a class="primary-btn" href="/editor" @click.prevent="go('/editor')">{{ t.ucWriteNew }}</a>
+                <a class="primary-btn uc-icon-action" href="/editor" @click.prevent="go('/editor')">
+                  <TsIcon name="penLine" :size="17" />
+                  <span>{{ t.ucWriteNew }}</span>
+                </a>
               </div>
             </div>
             <div v-if="uc.articleLoading" class="uc-empty">{{ t.ucLoadingArticles }}</div>
             <div v-else-if="!ucFilteredArticles.length" class="uc-empty">
               <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">{{ t.ucNoArticles }}</div>
               <div style="margin-bottom:1rem;">{{ t.ucNoArticlesHint }}</div>
-              <a class="primary-btn" href="/editor" @click.prevent="go('/editor')">{{ t.ucNewPost }}</a>
+              <a class="primary-btn uc-icon-action" href="/editor" @click.prevent="go('/editor')">
+                <TsIcon name="penLine" :size="17" />
+                <span>{{ t.ucNewPost }}</span>
+              </a>
             </div>
             <div v-else class="uc-article-list">
               <article v-for="article in ucFilteredArticles" :key="article.id" class="uc-article-item">
@@ -455,9 +535,18 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div class="uc-article-actions">
-                  <a class="icon-btn" :href="articlePath(article)" @click.prevent="go(articlePath(article))">{{ t.ucView }}</a>
-                  <button class="icon-btn" type="button" @click="ucEditArticle(article.id)">{{ t.ucEdit }}</button>
-                  <button class="danger-btn" type="button" @click="ucDeleteArticle(article.id)">{{ t.ucDelete }}</button>
+                  <a class="icon-btn uc-icon-action" :href="articlePath(article)" @click.prevent="go(articlePath(article))">
+                    <TsIcon name="eye" :size="16" />
+                    <span>{{ t.ucView }}</span>
+                  </a>
+                  <button class="icon-btn uc-icon-action" type="button" @click="ucEditArticle(article.id)">
+                    <TsIcon name="penLine" :size="16" />
+                    <span>{{ t.ucEdit }}</span>
+                  </button>
+                  <button class="danger-btn uc-icon-action" type="button" @click="ucDeleteArticle(article.id)">
+                    <TsIcon name="trash" :size="16" />
+                    <span>{{ t.ucDelete }}</span>
+                  </button>
                 </div>
               </article>
             </div>
@@ -468,7 +557,10 @@ onMounted(async () => {
               <h2 class="uc-section-title"><span>03</span> 我的收藏</h2>
               <div class="uc-article-tools">
                 <input v-model="uc.bookmarkQuery" class="uc-search" type="search" placeholder="搜索收藏文章">
-                <button class="ghost-btn" type="button" @click="ucLoadBookmarks">刷新</button>
+                <button class="ghost-btn uc-icon-action" type="button" @click="ucLoadBookmarks">
+                  <TsIcon name="refresh" :size="17" />
+                  <span>&#21047;&#26032;</span>
+                </button>
               </div>
             </div>
             <div v-if="uc.bookmarkLoading" class="uc-empty">收藏列表加载中...</div>
@@ -489,7 +581,10 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div class="uc-article-actions">
-                  <a class="icon-btn" :href="articlePath(article)" @click.prevent="go(articlePath(article))">阅读</a>
+                  <a class="icon-btn uc-icon-action" :href="articlePath(article)" @click.prevent="go(articlePath(article))">
+                    <TsIcon name="eye" :size="16" />
+                    <span>&#38405;&#35835;</span>
+                  </a>
                 </div>
               </article>
             </div>
@@ -516,7 +611,10 @@ onMounted(async () => {
                     <input v-model="uc.password.confirm" type="password" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
                   </div>
                   <div>
-                    <button class="primary-btn" type="button" :disabled="uc.passwordChanging" @click="ucChangePassword">{{ t.ucChangePassword }}</button>
+                    <button class="primary-btn uc-icon-action" type="button" :disabled="uc.passwordChanging" @click="ucChangePassword">
+                      <TsIcon name="lock" :size="17" />
+                      <span>{{ t.ucChangePassword }}</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -524,7 +622,10 @@ onMounted(async () => {
                 <h3>{{ t.ucSecurityTip }}</h3>
                 <p>{{ t.ucSecurityTipText }}</p>
                 <div style="margin-top:1rem;">
-                  <button class="danger-btn" type="button" @click="logout">{{ t.ucExitLogin }}</button>
+                  <button class="danger-btn uc-icon-action" type="button" @click="logout">
+                    <TsIcon name="logOut" :size="17" />
+                    <span>{{ t.ucExitLogin }}</span>
+                  </button>
                 </div>
               </aside>
             </div>

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import TsIcon from '../components/TsIcon.vue';
 import { formatDateOnly } from '../utils/time';
 
 const props = defineProps({
@@ -24,6 +25,12 @@ const profileUser = computed(() => profile.value?.user || null);
 const profileStats = computed(() => profile.value?.stats || {});
 const viewer = computed(() => profile.value?.viewer || {});
 const profileArticles = computed(() => Array.isArray(profile.value?.articles) ? profile.value.articles : []);
+const roleIcon = computed(() => profileUser.value?.role === 'admin' ? 'crown' : 'user');
+const roleText = computed(() => {
+  if (!profileUser.value?.role) return 'Creator';
+  if (profileUser.value.role === 'admin') return props.lang === 'zh' ? '管理员' : 'Admin';
+  return props.lang === 'zh' ? '创作者' : 'Creator';
+});
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString(locale.value);
@@ -120,39 +127,58 @@ onMounted(loadProfile);
           <img :src="avatarSrc(profileUser)" :alt="profileUser?.username || ''">
         </div>
         <div class="profile-main">
-          <div class="profile-kicker">User Profile</div>
+          <div class="profile-kicker"><TsIcon name="star" :size="15" /> User Profile</div>
           <h1>{{ profileUser?.username }}</h1>
           <p>{{ profileUser?.bio || '\u8fd9\u4f4d\u521b\u4f5c\u8005\u8fd8\u6ca1\u6709\u5199\u4e0b\u4e2a\u4eba\u7b80\u4ecb\u3002' }}</p>
           <div class="profile-meta">
-            <span>{{ profileUser?.role || 'user' }}</span>
-            <span>{{ formatDate(profileUser?.created_at) }}</span>
+            <span><TsIcon :name="roleIcon" :size="15" /> {{ roleText }}</span>
+            <span><TsIcon name="calendar" :size="15" /> {{ formatDate(profileUser?.created_at) }}</span>
           </div>
         </div>
         <div class="profile-actions">
           <button
             v-if="!viewer.isSelf"
-            class="primary-btn"
+            class="primary-btn profile-icon-action"
             type="button"
             :disabled="followLoading"
             @click="toggleFollow"
           >
-            {{ viewer.isFollowing ? '\u53d6\u6d88\u5173\u6ce8' : '\u5173\u6ce8\u4f5c\u8005' }}
+            <TsIcon :name="viewer.isFollowing ? 'userCheck' : 'userPlus'" :size="17" />
+            <span>{{ viewer.isFollowing ? '\u53d6\u6d88\u5173\u6ce8' : '\u5173\u6ce8\u4f5c\u8005' }}</span>
           </button>
-          <a v-else class="primary-btn" href="/user-center" @click.prevent="emit('go', '/user-center')">编辑个人资料</a>
-          <a class="ghost-btn" href="/stage" @click.prevent="emit('go', '/stage')">回到主舞台</a>
+          <a v-else class="primary-btn profile-icon-action" href="/user-center" @click.prevent="emit('go', '/user-center')">
+            <TsIcon name="penLine" :size="17" />
+            <span>编辑个人资料</span>
+          </a>
+          <a class="ghost-btn profile-icon-action" href="/stage" @click.prevent="emit('go', '/stage')">
+            <TsIcon name="book" :size="17" />
+            <span>回到主舞台</span>
+          </a>
         </div>
       </section>
 
       <section class="profile-stats">
-        <div class="profile-stat"><span>文章</span><strong>{{ formatNumber(profileStats.articles) }}</strong></div>
-        <div class="profile-stat"><span>阅读</span><strong>{{ formatNumber(profileStats.totalViews) }}</strong></div>
-        <div class="profile-stat"><span>关注者</span><strong>{{ formatNumber(profileStats.followers) }}</strong></div>
-        <div class="profile-stat"><span>正在关注</span><strong>{{ formatNumber(profileStats.following) }}</strong></div>
+        <div class="profile-stat">
+          <div class="profile-stat-icon"><TsIcon name="fileText" :size="27" /></div>
+          <div><span>文章</span><strong>{{ formatNumber(profileStats.articles) }}</strong></div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-icon"><TsIcon name="layers" :size="28" /></div>
+          <div><span>阅读</span><strong>{{ formatNumber(profileStats.totalViews) }}</strong></div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-icon"><TsIcon name="users" :size="28" /></div>
+          <div><span>关注者</span><strong>{{ formatNumber(profileStats.followers) }}</strong></div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-icon"><TsIcon name="userCheck" :size="28" /></div>
+          <div><span>正在关注</span><strong>{{ formatNumber(profileStats.following) }}</strong></div>
+        </div>
       </section>
 
       <section class="panel profile-articles">
         <div class="profile-section-head">
-          <h2>公开文章</h2>
+          <h2><TsIcon name="fileText" :size="19" /> 公开文章</h2>
           <span>{{ formatNumber(profileArticles.length) }}</span>
         </div>
         <div v-if="message" class="form-message error">{{ message }}</div>
@@ -168,7 +194,10 @@ onMounted(loadProfile);
               <h3>{{ article.title }}</h3>
               <p>{{ article.excerpt }}</p>
             </div>
-            <a class="icon-btn" :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">阅读</a>
+            <a class="icon-btn profile-icon-action" :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">
+              <TsIcon name="eye" :size="16" />
+              <span>阅读</span>
+            </a>
           </article>
         </div>
       </section>
