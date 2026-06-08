@@ -17,19 +17,6 @@ body .page.user-profile-page {
     isolation: isolate;
 }
 
-body .page.user-profile-page::before {
-    content: "";
-    position: absolute;
-    inset: -1.5rem -1rem 0;
-    z-index: -1;
-    border-radius: 8px;
-    background:
-        linear-gradient(180deg, rgba(6, 8, 24, 0.2), rgba(7, 9, 28, 0.72)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
-    opacity: 0.7;
-    pointer-events: none;
-}
-
 body .page.user-profile-page .panel,
 body .page.user-profile-page .profile-hero,
 body .page.user-profile-page .profile-stat,

@@ -21,19 +21,6 @@ body .page.uc-page {
     isolation: isolate;
 }
 
-body .page.uc-page::before {
-    content: "";
-    position: absolute;
-    inset: -1.5rem -1rem 0;
-    z-index: -1;
-    border-radius: 8px;
-    background:
-        linear-gradient(180deg, rgba(6, 8, 24, 0.22), rgba(7, 9, 28, 0.72)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
-    opacity: 0.7;
-    pointer-events: none;
-}
-
 body .page.uc-page .panel,
 body .page.uc-page .uc-hero,
 body .page.uc-page .uc-stat-card,
