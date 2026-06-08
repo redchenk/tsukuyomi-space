@@ -1,12 +1,14 @@
 /* ---- public user profile ---- */
 body .page.user-profile-page {
-    --profile-bg: rgba(8, 11, 28, 0.84);
-    --profile-bg-strong: rgba(13, 17, 40, 0.92);
-    --profile-line: rgba(154, 128, 255, 0.26);
-    --profile-line-bright: rgba(180, 151, 255, 0.5);
-    --profile-text: #f8f7ff;
-    --profile-muted: rgba(222, 226, 255, 0.7);
-    --profile-faint: rgba(222, 226, 255, 0.46);
+    --profile-bg: rgba(17, 24, 39, 0.78);
+    --profile-bg-strong: rgba(12, 18, 32, 0.86);
+    --profile-line: rgba(177, 205, 238, 0.18);
+    --profile-line-bright: rgba(131, 216, 236, 0.34);
+    --profile-text: #eef6ff;
+    --profile-muted: rgba(185, 199, 216, 0.76);
+    --profile-faint: rgba(185, 199, 216, 0.52);
+    --profile-accent: #83d8ec;
+    --profile-accent-soft: #b9adff;
     width: min(100%, 1240px);
     max-width: 1240px;
     margin: 0 auto;
@@ -24,7 +26,7 @@ body .page.user-profile-page .profile-article,
 body .page.user-profile-page .profile-empty {
     border: 1px solid var(--profile-line);
     border-radius: 8px;
-    background: linear-gradient(145deg, rgba(18, 22, 54, 0.82), rgba(9, 12, 31, 0.78));
+    background: linear-gradient(145deg, rgba(17, 24, 39, 0.78), rgba(12, 18, 32, 0.72));
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(18px) saturate(1.15);
 }
@@ -47,7 +49,7 @@ body .page.user-profile-page .profile-hero {
     padding: clamp(1.05rem, 2vw, 1.65rem);
     overflow: hidden;
     background:
-        linear-gradient(90deg, rgba(11, 14, 38, 0.94), rgba(18, 16, 48, 0.74) 48%, rgba(10, 13, 35, 0.9)),
+        linear-gradient(90deg, rgba(11, 18, 32, 0.94), rgba(19, 30, 50, 0.76) 48%, rgba(16, 22, 38, 0.92)),
         url("/assets/images/tsukuyomi-bg.png") center 42% / cover no-repeat;
 }
 
@@ -56,8 +58,8 @@ body .page.user-profile-page .profile-hero::before {
     position: absolute;
     inset: 0;
     background:
-        linear-gradient(115deg, transparent 0 58%, rgba(128, 92, 255, 0.18) 74%, transparent 100%),
-        linear-gradient(90deg, transparent, rgba(137, 105, 255, 0.16), transparent);
+        linear-gradient(115deg, transparent 0 58%, rgba(131, 216, 236, 0.08) 74%, transparent 100%),
+        linear-gradient(90deg, transparent, rgba(185, 173, 255, 0.08), transparent);
     pointer-events: none;
 }
 
@@ -74,9 +76,9 @@ body .page.user-profile-page .profile-avatar {
     padding: 4px;
     border-radius: 50%;
     overflow: visible;
-    border: 1px solid rgba(197, 177, 255, 0.72);
-    background: linear-gradient(135deg, rgba(109, 132, 255, 0.8), rgba(156, 82, 255, 0.88));
-    box-shadow: 0 0 0 7px rgba(124, 77, 255, 0.13), 0 18px 38px rgba(0, 0, 0, 0.38);
+    border: 1px solid rgba(177, 205, 238, 0.48);
+    background: linear-gradient(135deg, rgba(102, 197, 223, 0.48), rgba(185, 173, 255, 0.46));
+    box-shadow: 0 0 0 7px rgba(131, 216, 236, 0.08), 0 18px 38px rgba(0, 0, 0, 0.34);
 }
 
 body .page.user-profile-page .profile-avatar img {
@@ -97,7 +99,7 @@ body .page.user-profile-page .profile-kicker {
     align-items: center;
     gap: 0.42rem;
     margin-bottom: 0.58rem;
-    color: #bfaeff;
+    color: var(--profile-accent);
     font-size: 0.76rem;
     letter-spacing: 0.12rem;
     text-transform: uppercase;
@@ -130,10 +132,10 @@ body .page.user-profile-page .profile-meta span {
     align-items: center;
     gap: 0.38rem;
     padding: 0.28rem 0.62rem;
-    border: 1px solid rgba(178, 157, 255, 0.26);
+    border: 1px solid rgba(177, 205, 238, 0.18);
     border-radius: 999px;
-    color: rgba(245, 243, 255, 0.86);
-    background: rgba(38, 42, 84, 0.64);
+    color: rgba(238, 246, 255, 0.84);
+    background: rgba(30, 41, 59, 0.58);
     font-size: 0.76rem;
 }
 
@@ -154,15 +156,15 @@ body .page.user-profile-page .icon-btn {
 
 body .page.user-profile-page .primary-btn {
     color: #fff;
-    border-color: rgba(174, 148, 255, 0.42);
-    background: linear-gradient(135deg, #6e8aff, #7d4dff 52%, #9a55ff);
+    border-color: rgba(131, 216, 236, 0.28);
+    background: linear-gradient(135deg, rgba(98, 191, 219, 0.88), rgba(169, 155, 237, 0.88));
 }
 
 body .page.user-profile-page .ghost-btn,
 body .page.user-profile-page .icon-btn {
-    color: rgba(245, 243, 255, 0.92);
-    border-color: rgba(166, 146, 255, 0.22);
-    background: rgba(40, 39, 82, 0.72);
+    color: rgba(238, 246, 255, 0.9);
+    border-color: rgba(177, 205, 238, 0.18);
+    background: rgba(30, 41, 59, 0.62);
 }
 
 body .page.user-profile-page .primary-btn:hover,
@@ -170,7 +172,7 @@ body .page.user-profile-page .ghost-btn:hover,
 body .page.user-profile-page .icon-btn:hover {
     color: #fff;
     border-color: var(--profile-line-bright);
-    background: linear-gradient(135deg, rgba(104, 137, 255, 0.92), rgba(127, 77, 255, 0.92));
+    background: linear-gradient(135deg, rgba(85, 183, 213, 0.82), rgba(157, 142, 230, 0.82));
     transform: translateY(-1px);
 }
 
@@ -209,8 +211,8 @@ body .page.user-profile-page .profile-stat-icon {
     height: 56px;
     color: #fff;
     border-radius: 8px;
-    background: linear-gradient(135deg, rgba(108, 139, 255, 0.95), rgba(132, 72, 255, 0.95));
-    box-shadow: 0 12px 26px rgba(72, 52, 175, 0.34);
+    background: linear-gradient(135deg, rgba(102, 197, 223, 0.76), rgba(169, 155, 237, 0.76));
+    box-shadow: 0 12px 26px rgba(29, 78, 116, 0.24);
 }
 
 body .page.user-profile-page .profile-stat span {
@@ -256,7 +258,7 @@ body .page.user-profile-page .profile-section-head span {
     padding: 0 0.6rem;
     color: #fff;
     border-radius: 8px;
-    background: rgba(124, 77, 255, 0.5);
+    background: rgba(30, 64, 88, 0.74);
     font-weight: 900;
 }
 
@@ -267,7 +269,7 @@ body .page.user-profile-page .profile-empty {
     color: var(--profile-muted);
     text-align: center;
     border-style: dashed;
-    background: rgba(20, 25, 58, 0.42);
+    background: rgba(15, 23, 42, 0.42);
 }
 
 body .page.user-profile-page .profile-article-list {
@@ -282,7 +284,7 @@ body .page.user-profile-page .profile-article {
     align-items: center;
     padding: 1rem;
     box-shadow: none;
-    background: rgba(20, 25, 58, 0.62);
+    background: rgba(15, 23, 42, 0.56);
 }
 
 body .page.user-profile-page .profile-article h3 {
