@@ -22,7 +22,7 @@ const navOpen = ref(false);
 const unreadNotifications = ref(0);
 
 const hasGlobalBackground = computed(() => props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
-const showSiteBeian = computed(() => props.showChrome && props.routeName !== 'hub');
+const showSiteBeian = computed(() => props.showChrome && !['hub', 'room', 'roomSettings'].includes(props.routeName));
 const showNotifications = computed(() => props.isAuthed);
 
 const navItems = computed(() => [
