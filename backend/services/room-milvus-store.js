@@ -205,7 +205,7 @@ function flattenSearchResults(results) {
     return Array.isArray(results[0]) ? results.flat() : results;
 }
 
-async function search({ scope, userId, vector, limit = 5, type = '', outputFields = ['memory_type', 'summary', 'content', 'importance', 'updated_ts'] }) {
+async function search({ scope, userId, vector, limit = 5, type = '', outputFields = ['id', 'memory_type', 'summary', 'content', 'importance', 'updated_ts'] }) {
     if (!isEnabled()) return null;
     const client = await ensureCollection();
     if (!client) return null;
