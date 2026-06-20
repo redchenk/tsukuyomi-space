@@ -1,21 +1,13 @@
 const crypto = require('crypto');
 const db = require('../db');
 const { chatTemperatureFor, normalizeChatUrl } = require('./llm');
+const { createEmbedding, createMemoryEmbedding } = require('./room-embedding');
+const milvusStore = require('./room-milvus-store');
 
-const VECTOR_SIZE = 96;
 const MAX_MEMORIES_PER_USER = Number(process.env.ROOM_MEMORY_MAX_PER_USER || 500);
 const MEMORY_TYPES = new Set(['profile', 'preference', 'project', 'episodic', 'semantic', 'conversation']);
 const SENSITIVE_PATTERN = /(password|api[_-]?key|secret|token|bearer\s+[a-z0-9._-]+|sk-[a-z0-9._-]+|密码|密钥|令牌|身份证|银行卡)/i;
 const LLM_EXTRACTOR_ENABLED = process.env.ROOM_MEMORY_EXTRACTOR === 'llm';
-
-function hashString(value) {
-    let hash = 2166136261;
-    for (let index = 0; index < value.length; index += 1) {
-        hash ^= value.charCodeAt(index);
-        hash = Math.imul(hash, 16777619);
-    }
-    return hash >>> 0;
-}
 
 function tokenize(text) {
     const value = String(text || '').toLowerCase();
@@ -25,17 +17,6 @@ function tokenize(text) {
         grams.push(`${words[index]}${words[index + 1]}`);
     }
     return words.concat(grams);
-}
-
-function createEmbedding(text) {
-    const vector = Array(VECTOR_SIZE).fill(0);
-    tokenize(text).forEach((token) => {
-        const hash = hashString(token);
-        const slot = hash % VECTOR_SIZE;
-        vector[slot] += (hash & 1) ? 1 : -1;
-    });
-    const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0)) || 1;
-    return vector.map(value => Number((value / norm).toFixed(6)));
 }
 
 function similarity(a, b) {
@@ -263,7 +244,7 @@ function tokenOverlapScore(a, b) {
 
 function findMergeTarget(userId, candidate) {
     const candidateText = `${candidate.summary}\n${candidate.content}`;
-    const vector = createEmbedding(`${candidate.summary}\n${candidate.content}`);
+    const vector = candidate.vector || createEmbedding(candidateText);
     const rows = db.prepare(`
         SELECT * FROM room_memories
         WHERE user_id = ? AND memory_type = ?
@@ -282,7 +263,7 @@ function findMergeTarget(userId, candidate) {
 
 function pruneUserMemories(userId) {
     const extra = db.prepare('SELECT COUNT(*) AS count FROM room_memories WHERE user_id = ?').get(userId).count - MAX_MEMORIES_PER_USER;
-    if (extra <= 0) return 0;
+    if (extra <= 0) return [];
     const stale = db.prepare(`
         SELECT id FROM room_memories
         WHERE user_id = ?
@@ -292,15 +273,17 @@ function pruneUserMemories(userId) {
     const remove = db.prepare('DELETE FROM room_memories WHERE id = ? AND user_id = ?');
     const tx = db.transaction(() => stale.forEach(item => remove.run(item.id, userId)));
     tx();
-    return stale.length;
+    return stale.map(item => item.id);
 }
 
-function upsertCandidate(userId, candidate) {
+async function upsertCandidate(userId, candidate) {
     if (!candidate?.content || !candidate?.summary) {
         const error = new Error('Memory content is empty');
         error.statusCode = 400;
         throw error;
     }
+    const vector = candidate.vector || await createMemoryEmbedding(`${candidate.summary}\n${candidate.content}`);
+    candidate.vector = vector;
     const target = findMergeTarget(userId, candidate);
     if (target) {
         const oldMetadata = parseJson(target.metadata || '{}', {});
@@ -313,6 +296,7 @@ function upsertCandidate(userId, candidate) {
         const summary = mergeMemoryText(target.summary, candidate.summary);
         const content = mergeMemoryText(target.content, candidate.content).slice(0, 4000);
         const importance = Math.max(Number(target.importance || 0), Number(candidate.importance || 0));
+        const nextVector = await createMemoryEmbedding(`${summary}\n${content}`);
         db.prepare(`
             UPDATE room_memories
             SET visitor_name = ?,
@@ -327,12 +311,21 @@ function upsertCandidate(userId, candidate) {
             candidate.visitorName || target.visitor_name || '',
             summary,
             content,
-            JSON.stringify(createEmbedding(`${summary}\n${content}`)),
+            JSON.stringify(nextVector),
             importance,
             JSON.stringify(metadata),
             target.id,
             userId
         );
+        await milvusStore.upsertUserMemory({
+            id: target.id,
+            userId,
+            type: target.memory_type,
+            summary,
+            content,
+            importance,
+            vector: nextVector
+        });
         return { memory: getMemory(userId, target.id), action: 'merged' };
     }
 
@@ -348,11 +341,23 @@ function upsertCandidate(userId, candidate) {
         candidate.type,
         candidate.summary.slice(0, 500),
         candidate.content.slice(0, 4000),
-        JSON.stringify(createEmbedding(`${candidate.summary}\n${candidate.content}`)),
+        JSON.stringify(vector),
         candidate.importance,
         JSON.stringify(candidate.metadata)
     );
-    pruneUserMemories(userId);
+    const prunedIds = pruneUserMemories(userId);
+    for (const prunedId of prunedIds) {
+        await milvusStore.deleteUserMemory(userId, prunedId);
+    }
+    await milvusStore.upsertUserMemory({
+        id,
+        userId,
+        type: candidate.type,
+        summary: candidate.summary,
+        content: candidate.content,
+        importance: candidate.importance,
+        vector
+    });
     return { memory: getMemory(userId, id), action: 'created' };
 }
 
@@ -368,16 +373,38 @@ async function recordMemory(userId, payload = {}) {
         if (fallback) candidates = [fallback];
     }
     if (!candidates.length) return null;
-    const results = candidates.map(candidate => upsertCandidate(userId, candidate));
+    const results = [];
+    for (const candidate of candidates) {
+        results.push(await upsertCandidate(userId, candidate));
+    }
     return results.length === 1
         ? results[0]
         : { memory: results.map(item => item.memory), action: results.some(item => item.action === 'merged') ? 'merged' : 'created' };
 }
 
-function searchMemories(userId, query, limit = 5) {
+function touchMemories(userId, ids) {
+    const safeIds = [...new Set(ids.filter(Boolean))];
+    if (!safeIds.length) return;
+    const touch = db.prepare('UPDATE room_memories SET last_accessed_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
+    const tx = db.transaction(() => safeIds.forEach(id => touch.run(id, userId)));
+    tx();
+}
+
+function rowsForMemoryIds(userId, ids) {
+    const safeIds = [...new Set(ids.filter(Boolean))];
+    if (!safeIds.length) return [];
+    const placeholders = safeIds.map(() => '?').join(', ');
+    const rows = db.prepare(`
+        SELECT * FROM room_memories
+        WHERE user_id = ? AND id IN (${placeholders})
+    `).all(userId, ...safeIds);
+    const byId = new Map(rows.map(row => [row.id, row]));
+    return safeIds.map(id => byId.get(id)).filter(Boolean);
+}
+
+function searchSqliteMemories(userId, query, vector, limit = 5) {
     const safeLimit = Math.max(1, Math.min(20, Number(limit) || 5));
     const queryType = inferMemoryType(query);
-    const vector = createEmbedding(query);
     const now = Date.now();
     const rows = db.prepare(`
         SELECT * FROM room_memories
@@ -404,16 +431,30 @@ function searchMemories(userId, query, limit = 5) {
         .sort((a, b) => b.score - a.score || String(b.row.created_at).localeCompare(String(a.row.created_at)))
         .slice(0, safeLimit);
 
-    if (matched.length) {
-        const touch = db.prepare('UPDATE room_memories SET last_accessed_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
-        const tx = db.transaction(() => matched.forEach(item => touch.run(item.row.id, userId)));
-        tx();
-    }
+    touchMemories(userId, matched.map(item => item.row.id));
 
     return matched.map(item => toPublicMemory(item.row, item.score));
 }
 
-function listMemories(userId, { limit = 50, type = '', q = '' } = {}) {
+async function searchMemories(userId, query, limit = 5) {
+    const safeLimit = Math.max(1, Math.min(20, Number(limit) || 5));
+    const vector = await createMemoryEmbedding(query);
+    const milvusResults = await milvusStore.searchUserMemories({ userId, vector, limit: safeLimit });
+    if (Array.isArray(milvusResults) && milvusResults.length) {
+        const scoreById = new Map(milvusResults.map(item => [String(item.id), Number(item.score || 0)]));
+        const rows = rowsForMemoryIds(userId, milvusResults.map(item => String(item.id)));
+        const matched = rows
+            .map(row => ({ row, score: scoreById.get(row.id) || 0 }))
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, safeLimit);
+        touchMemories(userId, matched.map(item => item.row.id));
+        if (matched.length) return matched.map(item => toPublicMemory(item.row, item.score));
+    }
+    return searchSqliteMemories(userId, query, vector, safeLimit);
+}
+
+async function listMemories(userId, { limit = 50, type = '', q = '' } = {}) {
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
     const safeType = normalizeType(type);
     const hasType = type && MEMORY_TYPES.has(String(type).trim().toLowerCase());
@@ -430,16 +471,37 @@ function listMemories(userId, { limit = 50, type = '', q = '' } = {}) {
     return rows.map(row => toPublicMemory(row));
 }
 
+async function searchPersonaMemories(query, limit = 5) {
+    const text = cleanText(query, 1000);
+    if (!text) return [];
+    const vector = await createMemoryEmbedding(text);
+    const results = await milvusStore.searchPersonaMemories({
+        vector,
+        limit: Math.max(1, Math.min(12, Number(limit) || 5))
+    });
+    if (!Array.isArray(results)) return [];
+    return results.map(item => ({
+        id: String(item.id || ''),
+        type: item.memory_type || 'persona',
+        summary: item.summary || '',
+        content: item.content || '',
+        importance: Number(item.importance || 0),
+        score: Number(Number(item.score || 0).toFixed(4))
+    })).filter(item => item.id && (item.summary || item.content));
+}
+
 function getMemory(userId, id) {
     const row = db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId);
     return row ? toPublicMemory(row, undefined, { includeContent: true }) : null;
 }
 
-function clearMemories(userId) {
-    return db.prepare('DELETE FROM room_memories WHERE user_id = ?').run(userId).changes;
+async function clearMemories(userId) {
+    const count = db.prepare('DELETE FROM room_memories WHERE user_id = ?').run(userId).changes;
+    await milvusStore.clearUserMemories(userId);
+    return count;
 }
 
-function updateMemory(userId, id, payload = {}) {
+async function updateMemory(userId, id, payload = {}) {
     const existing = db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId);
     if (!existing) return null;
     const oldMetadata = parseJson(existing.metadata || '{}', {});
@@ -454,16 +516,20 @@ function updateMemory(userId, id, payload = {}) {
         ? Math.max(0, Math.min(1, Number(payload.confidence)))
         : Number(oldMetadata.confidence || 0.8);
     const metadata = { ...oldMetadata, tags, confidence, editedAt: new Date().toISOString() };
+    const vector = await createMemoryEmbedding(`${summary}\n${content}`);
     db.prepare(`
         UPDATE room_memories
         SET memory_type = ?, summary = ?, content = ?, embedding = ?, importance = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND user_id = ?
-    `).run(type, summary, content, JSON.stringify(createEmbedding(`${summary}\n${content}`)), importance, JSON.stringify(metadata), id, userId);
+    `).run(type, summary, content, JSON.stringify(vector), importance, JSON.stringify(metadata), id, userId);
+    await milvusStore.upsertUserMemory({ id, userId, type, summary, content, importance, vector });
     return getMemory(userId, id);
 }
 
-function deleteMemory(userId, id) {
-    return db.prepare('DELETE FROM room_memories WHERE id = ? AND user_id = ?').run(id, userId).changes;
+async function deleteMemory(userId, id) {
+    const count = db.prepare('DELETE FROM room_memories WHERE id = ? AND user_id = ?').run(id, userId).changes;
+    if (count) await milvusStore.deleteUserMemory(userId, id);
+    return count;
 }
 
 function memoryStats(userId) {
@@ -482,6 +548,7 @@ function memoryStats(userId) {
         count: stats.count || 0,
         avgImportance: Number(Number(stats.avgImportance || 0).toFixed(3)),
         maxPerUser: MAX_MEMORIES_PER_USER,
+        vectorStore: milvusStore.status(),
         byType
     };
 }
@@ -492,6 +559,7 @@ module.exports = {
     buildMemoryCandidate,
     recordMemory,
     searchMemories,
+    searchPersonaMemories,
     listMemories,
     getMemory,
     updateMemory,

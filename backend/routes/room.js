@@ -462,13 +462,13 @@ function sendMemoryStatus(req, res) {
     });
 }
 
-function sendMemoryList(req, res) {
+async function sendMemoryList(req, res) {
     setNoStore(res);
     const query = String(req.query.q || '').trim();
     const limit = req.query.limit || 50;
     const memories = query
-        ? roomMemory.searchMemories(req.user.id, query, limit)
-        : roomMemory.listMemories(req.user.id, { limit, type: req.query.type });
+        ? await roomMemory.searchMemories(req.user.id, query, limit)
+        : await roomMemory.listMemories(req.user.id, { limit, type: req.query.type });
     res.json({ success: true, data: memories });
 }
 
@@ -506,9 +506,9 @@ router.post('/memory', authenticateToken, async (req, res) => {
     }
 });
 
-router.patch('/memory/:id', authenticateToken, (req, res) => {
+router.patch('/memory/:id', authenticateToken, async (req, res) => {
     try {
-        const memory = roomMemory.updateMemory(req.user.id, String(req.params.id || ''), req.body || {});
+        const memory = await roomMemory.updateMemory(req.user.id, String(req.params.id || ''), req.body || {});
         if (!memory) return res.status(404).json({ success: false, message: '记忆不存在' });
         res.json({ success: true, data: memory, message: '记忆已更新' });
     } catch (error) {
@@ -516,15 +516,39 @@ router.patch('/memory/:id', authenticateToken, (req, res) => {
     }
 });
 
-router.delete('/memory/:id', authenticateToken, (req, res) => {
-    const count = roomMemory.deleteMemory(req.user.id, String(req.params.id || ''));
+router.delete('/memory/:id', authenticateToken, async (req, res) => {
+    const count = await roomMemory.deleteMemory(req.user.id, String(req.params.id || ''));
     if (!count) return res.status(404).json({ success: false, message: '记忆不存在' });
     res.json({ success: true, data: { count }, message: '记忆已删除' });
 });
 
-router.delete('/memory', authenticateToken, (req, res) => {
-    const count = roomMemory.clearMemories(req.user.id);
+router.delete('/memory', authenticateToken, async (req, res) => {
+    const count = await roomMemory.clearMemories(req.user.id);
     res.json({ success: true, data: { count }, message: '记忆已清空' });
+});
+
+router.get('/persona-memory', async (req, res) => {
+    setNoStore(res);
+    try {
+        const query = String(req.query.q || '').trim();
+        const limit = req.query.limit || 5;
+        const memories = await roomMemory.searchPersonaMemories(query, limit);
+        res.json({ success: true, data: memories });
+    } catch (error) {
+        res.json({ success: true, data: [] });
+    }
+});
+
+router.get('/persona-memory/live/:nonce', async (req, res) => {
+    setNoStore(res);
+    try {
+        const query = String(req.query.q || '').trim();
+        const limit = req.query.limit || 5;
+        const memories = await roomMemory.searchPersonaMemories(query, limit);
+        res.json({ success: true, data: memories });
+    } catch (error) {
+        res.json({ success: true, data: [] });
+    }
 });
 
 router.post('/chat', async (req, res) => {

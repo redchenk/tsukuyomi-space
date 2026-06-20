@@ -527,6 +527,17 @@ async function fetchRelevantMemories(message) {
   return Array.isArray(result.data) ? result.data : [];
 }
 
+async function fetchPersonaMemories(message) {
+  if (!String(message || '').trim()) return [];
+  const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
+  const response = await fetch(`/api/room/persona-memory/live/${Date.now()}?${params}`, {
+    cache: 'no-store'
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.success) return [];
+  return Array.isArray(result.data) ? result.data : [];
+}
+
 function readKnowledgeContext(message) {
   const settings = readJson('roomKnowledgeSettings', null);
   if (settings?.enabled === false) return '';
@@ -576,6 +587,14 @@ function memoryContext(memories) {
   ].join('\n');
 }
 
+function personaMemoryContext(memories) {
+  if (!memories.length) return '';
+  return [
+    '\u516b\u5343\u4ee3\u4eba\u683c\u8bed\u6599\u7684\u76f8\u5173\u7247\u6bb5\uff08\u7528\u4e8e\u4fdd\u6301\u4eba\u683c\u3001\u8bed\u6c14\u548c\u56de\u5e94\u8fde\u7eed\u6027\uff09\uff1a',
+    ...memories.map((item, index) => `${index + 1}. ${compactText(item.summary || item.content || '', 260)}`)
+  ].join('\n');
+}
+
 function shouldUseWebSearch(message) {
   return /(\u641c\u7d22|\u67e5\u627e|\u67e5\u4e00\u4e0b|\u6700\u65b0|\u65b0\u95fb|\u7f51\u9875|\u5b98\u7f51|web|search)/i.test(String(message || ''));
 }
@@ -583,6 +602,9 @@ function shouldUseWebSearch(message) {
 async function buildRoomContext(message, image, llmSettings) {
   const mcpSettings = readJson('roomMCPSettings', {});
   const context = [readKnowledgeContext(message)];
+  const personaMemories = await fetchPersonaMemories(message).catch(() => []);
+  const personaText = personaMemoryContext(personaMemories);
+  if (personaText) context.push(personaText);
   const memories = await fetchRelevantMemories(message).catch(() => []);
   const memoryText = memoryContext(memories);
   if (memoryText) context.push(memoryText);

@@ -19,6 +19,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json vite.config.js vite.frontend.config.js ./
 COPY backend ./backend
+COPY scripts ./scripts
 COPY src ./src
 COPY assets ./assets
 COPY lib ./lib
@@ -43,6 +44,7 @@ WORKDIR /app
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/backend ./backend
+COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/assets ./assets
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/lib ./lib

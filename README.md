@@ -164,6 +164,10 @@ cp .env.docker.example .env.docker
 # 修改 JWT_SECRET、ADMIN_PASSWORD、CORS_ORIGINS 等生产配置
 docker compose up -d --build
 curl http://127.0.0.1:3280/api/health
+
+# Optional: import the Yachiyo persona corpus after Milvus is healthy.
+docker compose cp ./data/yachiyo_novel_detailed_corpus.txt tsukuyomi-space:/data/yachiyo_novel_detailed_corpus.txt
+docker compose exec tsukuyomi-space npm run import:yachiyo -- --file /data/yachiyo_novel_detailed_corpus.txt --clear
 ```
 
 Docker 部署会把 SQLite 持久化到 Compose 命名卷 `tsukuyomi-data`，容器内路径为 `/data/tsukuyomi.db`。服务器本地额外音乐、视频背景和 Live2D 模型推荐通过 `docker-compose.resources.example.yml` 只读挂载，不打进镜像。
@@ -180,6 +184,9 @@ bash deploy/docker-deploy.sh
 
 ```bash
 bash deploy/deploy.sh
+
+# PM2 deployments can import the persona corpus from the host filesystem.
+ROOM_MEMORY_VECTOR_BACKEND=milvus MILVUS_ADDRESS=127.0.0.1:19530 npm run import:yachiyo -- --file "E:\visualstudio\yachiyo_novel_detailed_corpus.txt" --clear
 ```
 
 完整步骤见 [docs/DEPLOY.md](docs/DEPLOY.md)。

@@ -17,11 +17,18 @@ services:
       ENABLE_FRONTEND_DIST: "true"
       DATA_DIR: /data
       DB_PATH: /data/tsukuyomi.db
+      ROOM_MEMORY_VECTOR_BACKEND: ${ROOM_MEMORY_VECTOR_BACKEND:-milvus}
+      MILVUS_ADDRESS: ${MILVUS_ADDRESS:-milvus:19530}
+      ROOM_MEMORY_MILVUS_COLLECTION: ${ROOM_MEMORY_MILVUS_COLLECTION:-tsukuyomi_room_memories}
+      ROOM_MEMORY_VECTOR_DIM: ${ROOM_MEMORY_VECTOR_DIM:-96}
     ports:
       - "${TSUKUYOMI_HTTP_PORT:-3280}:3000"
     volumes:
       - tsukuyomi-data:/data
       - tsukuyomi-uploads:/app/assets/uploads
+    depends_on:
+      milvus:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -52,10 +59,79 @@ services:
     networks:
       - tsukuyomi
 
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.25
+    restart: unless-stopped
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: etcd -advertise-client-urls=http://milvus-etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    volumes:
+      - milvus-etcd:/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - tsukuyomi
+
+  milvus-minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    restart: unless-stopped
+    environment:
+      MINIO_ACCESS_KEY: ${MILVUS_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MILVUS_MINIO_SECRET_KEY:-minioadmin}
+    command: minio server /minio_data --console-address ":9001"
+    volumes:
+      - milvus-minio:/minio_data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - tsukuyomi
+
+  milvus:
+    image: milvusdb/milvus:v2.6.18
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+      MINIO_ACCESS_KEY: ${MILVUS_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MILVUS_MINIO_SECRET_KEY:-minioadmin}
+      MQ_TYPE: woodpecker
+    ports:
+      - "${MILVUS_GRPC_PORT:-19530}:19530"
+    volumes:
+      - milvus-data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      milvus-etcd:
+        condition: service_healthy
+      milvus-minio:
+        condition: service_healthy
+    networks:
+      - tsukuyomi
+
 volumes:
   tsukuyomi-data:
   tsukuyomi-uploads:
   tsukuyomi-redis:
+  milvus-etcd:
+  milvus-minio:
+  milvus-data:
 
 networks:
   tsukuyomi:
