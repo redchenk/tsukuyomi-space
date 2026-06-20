@@ -301,15 +301,6 @@ function sendLocalMessage() {
   chatMessage.value = '';
 }
 
-function paletteColor(index, palette = activePalette.value) {
-  const colorIndex = Number(index);
-  return colorIndex >= 0 ? palette[colorIndex] || 'transparent' : 'transparent';
-}
-
-function artworkColor(artwork, index) {
-  return paletteColor(index, Array.isArray(artwork?.palette) ? artwork.palette : presetPalette);
-}
-
 function canvasPresetKey(width, height) {
   return `${Number(width)}x${Number(height)}`;
 }
@@ -319,12 +310,17 @@ function findCanvasPreset(width, height) {
   return CANVAS_PRESETS.find(preset => canvasPresetKey(preset.width, preset.height) === key) || null;
 }
 
+function artworkDimension(value, fallback) {
+  const dimension = Number.parseInt(value, 10);
+  return Number.isFinite(dimension) && dimension > 0 ? dimension : fallback;
+}
+
 function artworkWidth(artwork) {
-  return Number(artwork?.width || artwork?.size || DEFAULT_CANVAS_PRESET.width);
+  return artworkDimension(artwork?.width || artwork?.size, DEFAULT_CANVAS_PRESET.width);
 }
 
 function artworkHeight(artwork) {
-  return Number(artwork?.height || artwork?.size || DEFAULT_CANVAS_PRESET.height);
+  return artworkDimension(artwork?.height || artwork?.size, DEFAULT_CANVAS_PRESET.height);
 }
 
 function blankPixels(width = canvasWidth.value, height = canvasHeight.value) {
@@ -1096,11 +1092,17 @@ onBeforeUnmount(() => {
               '--canvas-bg': artwork.background_color || '#0b1020'
             }"
           >
-            <span
-              v-for="(colorIndex, index) in artwork.pixels"
-              :key="index"
-              :style="{ backgroundColor: artworkColor(artwork, colorIndex) }"
-            ></span>
+            <PixelCanvasCells
+              :pixels="Array.isArray(artwork.pixels) ? artwork.pixels : []"
+              :palette="Array.isArray(artwork.palette) ? artwork.palette : presetPalette"
+              :width="artworkWidth(artwork)"
+              :height="artworkHeight(artwork)"
+              :cell-size="1"
+              :background-color="artwork.background_color || '#0b1020'"
+              :show-grid="false"
+              :interactive="false"
+              :aria-label="artwork.title || copy.gallery"
+            />
           </div>
           <div class="pixel-art-body">
             <div class="pixel-art-title-row">

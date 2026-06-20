@@ -557,12 +557,9 @@
 }
 
 .pixel-art-preview {
-    display: grid;
-    grid-template-columns: repeat(var(--grid-width, 96), minmax(0, 1fr));
-    grid-template-rows: repeat(var(--grid-height, 54), minmax(0, 1fr));
-    gap: 1px;
+    display: block;
     aspect-ratio: var(--grid-width) / var(--grid-height);
-    padding: 0.55rem;
+    overflow: hidden;
     background-color: var(--canvas-bg, #0b1020);
     background-image:
         linear-gradient(135deg, rgba(174, 242, 255, 0.09), rgba(255, 154, 186, 0.06)),
@@ -571,10 +568,16 @@
     background-size: auto, 18px 18px, 18px 18px;
 }
 
-.pixel-art-preview span {
-    min-width: 0;
-    border-radius: 2px;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+.pixel-art-preview .pixel-canvas-renderer {
+    width: 100%;
+    height: 100%;
+    cursor: default;
+    touch-action: auto;
+}
+
+.pixel-canvas-renderer.is-readonly {
+    cursor: default;
+    touch-action: auto;
 }
 
 .pixel-art-body {
@@ -1373,7 +1376,7 @@ body .page.arena-page {
 }
 
 .pixel-art-preview {
-    padding: 0.35rem;
+    padding: 0;
     background-image: none;
 }
 
@@ -1761,6 +1764,11 @@ body .page.arena-page .pixel-canvas-renderer {
     cursor: crosshair;
 }
 
+body .page.arena-page .pixel-canvas-renderer.is-readonly {
+    touch-action: auto;
+    cursor: default;
+}
+
 body .page.arena-page .pixel-cell {
     aspect-ratio: auto;
     min-width: 0;
@@ -1954,7 +1962,7 @@ body .page.arena-page .pixel-art-card {
 }
 
 body .page.arena-page .pixel-art-preview {
-    padding: 0.55rem;
+    padding: 0;
     border-radius: 14px 14px 0 0;
 }
 
