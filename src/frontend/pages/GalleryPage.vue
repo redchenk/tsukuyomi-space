@@ -37,7 +37,10 @@ const isAuthed = computed(() => Boolean(session.value));
 const isManageMode = computed(() => props.routeName === 'galleryManage');
 const canManageAllImages = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
 const currentUserId = computed(() => session.value?.user?.id || '');
-const manageScopeLabel = computed(() => canManageAllImages.value ? '全部图库' : '我的图库');
+const manageScopeLabel = computed(() => {
+  if (!isAuthed.value) return '登录后管理';
+  return canManageAllImages.value ? '全部图库' : '我的图库';
+});
 const shownImages = computed(() => state.images);
 const latestImage = computed(() => state.latest || null);
 const randomFeatureImage = computed(() => state.randomFeatured || null);
@@ -140,7 +143,13 @@ async function loadRandomFeatureImage() {
 }
 
 async function loadImages(page = 1) {
-  if (!isAuthed.value) return;
+  if (isManageMode.value && !isAuthed.value) {
+    state.images = [];
+    state.page = 1;
+    state.totalPages = 1;
+    state.total = 0;
+    return;
+  }
   state.loading = true;
   try {
     const params = new URLSearchParams({
@@ -169,6 +178,10 @@ async function loadImages(page = 1) {
 
 async function uploadFile(file) {
   if (!file) return;
+  if (!isAuthed.value) {
+    showMessage('请先登录，然后从「图库管理」入口上传图片。', 'error');
+    return;
+  }
   if (!file.type.startsWith('image/')) {
     showMessage('图库只支持上传图片文件', 'error');
     return;
@@ -286,11 +299,14 @@ onUnmounted(() => {
 
 <template>
   <main class="page gallery-page" :class="{ 'gallery-page-manage': isManageMode }">
-    <section v-if="!isAuthed" class="panel gallery-empty">
+    <section v-if="isManageMode && !isAuthed" class="panel gallery-empty">
       <span class="gallery-kicker">Gallery</span>
-      <h1>图库</h1>
-      <p>登录后可以上传、管理和调用自己的图片。</p>
-      <button class="primary-btn" type="button" @click="go('/login')">去登录</button>
+      <h1>图库管理</h1>
+      <p>公开图库无需登录即可查看。上传图片入口在图库管理页，登录后可以上传、管理并复制图片 Markdown。</p>
+      <div class="gallery-empty-actions">
+        <button class="primary-btn" type="button" @click="go('/login')">去登录</button>
+        <button class="ghost-btn" type="button" @click="go('/gallery')">查看公开图库</button>
+      </div>
     </section>
 
     <template v-else>
@@ -315,6 +331,11 @@ onUnmounted(() => {
             <button class="chip active" type="button" @click="loadImages(1)">{{ isManageMode ? manageScopeLabel : '全站图库' }}</button>
             <button class="ghost-btn" type="button" @click="resetSearch">重置</button>
             <button v-if="isManageMode" class="ghost-btn" type="button" @click="go('/gallery')">查看图库</button>
+            <button v-else-if="isAuthed" class="primary-btn gallery-upload-btn" type="button" @click="go('/gallery/manage')">
+              <TsIcon name="upload" :size="18" />
+              <span>上传图片</span>
+            </button>
+            <button v-else class="ghost-btn" type="button" @click="go('/login')">登录后上传</button>
             <button v-if="isManageMode" class="primary-btn gallery-upload-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
               <TsIcon name="upload" :size="18" />
               <span>{{ state.uploading ? '上传中...' : '上传图片' }}</span>
@@ -449,6 +470,15 @@ onUnmounted(() => {
             </button>
             <button type="button" @click="state.search = 'screenshot'; loadImages(1)">
               <TsIcon name="grid" :size="16" /> 截图
+            </button>
+          </div>
+
+          <div class="gallery-upload-entry">
+            <h3>图库上传入口</h3>
+            <p>登录后进入「图库管理」页面上传图片；上传到图库的公开图片会显示在当前页面。</p>
+            <button class="primary-btn" type="button" @click="go(isAuthed ? '/gallery/manage' : '/login')">
+              <TsIcon name="upload" :size="16" />
+              <span>{{ isAuthed ? '进入图库管理' : '登录后上传' }}</span>
             </button>
           </div>
 

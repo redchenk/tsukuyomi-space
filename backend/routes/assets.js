@@ -318,7 +318,7 @@ router.get('/gallery/public', (req, res) => {
     }
 });
 
-router.get('/gallery', authenticateToken, (req, res) => {
+router.get('/gallery', optionalAuth, (req, res) => {
     try {
         const page = parsePositiveInt(req.query.page, 1);
         const limit = Math.min(parsePositiveInt(req.query.limit, 48), 120);
@@ -328,8 +328,11 @@ router.get('/gallery', authenticateToken, (req, res) => {
         if (requestedScope === 'all' && !isAdminUser(req.user)) {
             return fail(res, 403, 'Forbidden');
         }
+        if (requestedScope === 'mine' && !req.user?.id) {
+            return fail(res, 401, '请先登录');
+        }
         const ownerId = requestedScope === 'mine' ? req.user.id : '';
-        const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId }).map((asset) => normalizeAsset(asset, { signUrl: true }));
+        const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId }).map((asset) => normalizeAsset(asset, { signUrl: Boolean(req.user) }));
         const total = assetRepository.countGalleryAssets({ search, ownerId });
         ok(res, {
             assets,
