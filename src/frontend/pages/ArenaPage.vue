@@ -94,8 +94,6 @@ const copy = computed(() => props.lang === 'ja' ? {
   loading: '同期中...',
   like: 'いいね',
   liked: 'いいね済み',
-  copyLink: 'リンク',
-  linkCopied: 'リンクをコピーしました',
   publishOk: '作品を共有しました',
   updateOk: '作品を更新しました',
   publishFailed: '共有に失敗しました',
@@ -155,8 +153,6 @@ const copy = computed(() => props.lang === 'ja' ? {
   loading: '同步中...',
   like: '点赞',
   liked: '已赞',
-  copyLink: '复制链接',
-  linkCopied: '链接已复制',
   publishOk: '作品已分享',
   updateOk: '作品已更新',
   publishFailed: '分享失败',
@@ -199,6 +195,7 @@ const gallery = reactive({
   sort: 'latest'
 });
 const editingArtwork = ref(null);
+const previewArtwork = ref(null);
 const toast = reactive({
   text: '',
   visible: false
@@ -743,6 +740,50 @@ function downloadDraft() {
   link.click();
 }
 
+function artworkPalette(artwork) {
+  return Array.isArray(artwork?.palette) && artwork.palette.length ? artwork.palette : presetPalette;
+}
+
+function artworkPixels(artwork) {
+  return Array.isArray(artwork?.pixels) ? artwork.pixels : [];
+}
+
+function artworkBackground(artwork) {
+  return artwork?.background_color || artwork?.backgroundColor || '#0b1020';
+}
+
+function artworkFileName(artwork) {
+  const title = String(artwork?.title || 'tsukuyomi-pixel-art')
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '-')
+    .slice(0, 60);
+  return `${title || 'tsukuyomi-pixel-art'}.png`;
+}
+
+function downloadArtwork(artwork) {
+  if (!artwork) return;
+  const canvas = makeCanvasFromPixels(
+    artworkPixels(artwork),
+    artworkPalette(artwork),
+    artworkWidth(artwork),
+    artworkHeight(artwork),
+    artworkBackground(artwork)
+  );
+  const link = document.createElement('a');
+  link.download = artworkFileName(artwork);
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function openArtworkPreview(artwork) {
+  previewArtwork.value = artwork;
+}
+
+function closeArtworkPreview() {
+  previewArtwork.value = null;
+}
+
 async function loadArtworks() {
   gallery.loading = true;
   session.value = getSession();
@@ -871,22 +912,16 @@ async function likeArtwork(artwork) {
   }
 }
 
-async function copyArtworkLink(artwork) {
-  const url = `${location.origin}/arena?art=${artwork.id}#pixel-art-${artwork.id}`;
-  try {
-    await navigator.clipboard.writeText(url);
-  } catch (_) {
-    location.hash = `pixel-art-${artwork.id}`;
-  }
-  showToast(copy.value.linkCopied);
-}
-
 function focusSharedArtwork() {
   const id = new URLSearchParams(location.search).get('art');
   if (!id) return;
   window.setTimeout(() => {
     document.getElementById(`pixel-art-${id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, 120);
+}
+
+function handleArenaKeydown(event) {
+  if (event.key === 'Escape' && previewArtwork.value) closeArtworkPreview();
 }
 
 function artworkInitial(name) {
@@ -898,6 +933,7 @@ watch(() => gallery.sort, loadArtworks);
 onMounted(() => {
   window.addEventListener('pointerup', endPaint);
   window.addEventListener('pointercancel', endPaint);
+  window.addEventListener('keydown', handleArenaKeydown);
   loadArtworks();
   loadArtworkForEdit();
 });
@@ -905,6 +941,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('pointerup', endPaint);
   window.removeEventListener('pointercancel', endPaint);
+  window.removeEventListener('keydown', handleArenaKeydown);
   clearTimeout(toastTimer);
 });
 </script>
@@ -1159,26 +1196,30 @@ onBeforeUnmount(() => {
           :key="artwork.id"
           class="pixel-art-card"
         >
-          <div
+          <button
             class="pixel-art-preview"
+            type="button"
+            :title="artwork.title || copy.gallery"
+            :aria-label="artwork.title || copy.gallery"
             :style="{
               '--grid-width': artworkWidth(artwork),
               '--grid-height': artworkHeight(artwork),
-              '--canvas-bg': artwork.background_color || '#0b1020'
+              '--canvas-bg': artworkBackground(artwork)
             }"
+            @click="openArtworkPreview(artwork)"
           >
             <PixelCanvasCells
-              :pixels="Array.isArray(artwork.pixels) ? artwork.pixels : []"
-              :palette="Array.isArray(artwork.palette) ? artwork.palette : presetPalette"
+              :pixels="artworkPixels(artwork)"
+              :palette="artworkPalette(artwork)"
               :width="artworkWidth(artwork)"
               :height="artworkHeight(artwork)"
               :cell-size="1"
-              :background-color="artwork.background_color || '#0b1020'"
+              :background-color="artworkBackground(artwork)"
               :show-grid="false"
               :interactive="false"
               :aria-label="artwork.title || copy.gallery"
             />
-          </div>
+          </button>
           <div class="pixel-art-body">
             <div class="pixel-art-title-row">
               <h3>{{ artwork.title }}</h3>
@@ -1204,14 +1245,58 @@ onBeforeUnmount(() => {
               <TsIcon name="heart" :size="17" />
               <span>{{ artwork.viewer_liked ? copy.liked : copy.like }} {{ formatNumber(artwork.like_count) }}</span>
             </button>
-            <button class="icon-btn" type="button" @click="copyArtworkLink(artwork)">
-              <TsIcon name="copy" :size="17" />
-              <span>{{ copy.copyLink }}</span>
+            <button class="icon-btn" type="button" @click="downloadArtwork(artwork)">
+              <TsIcon name="download" :size="17" />
+              <span>{{ copy.download }}</span>
             </button>
           </div>
         </article>
       </div>
     </section>
+
+    <div
+      v-if="previewArtwork"
+      class="arena-art-lightbox"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="previewArtwork.title || copy.gallery"
+      @click.self="closeArtworkPreview"
+    >
+      <section class="arena-art-lightbox-card">
+        <button class="arena-art-lightbox-close" type="button" :aria-label="props.lang === 'ja' ? '閉じる' : '关闭'" @click="closeArtworkPreview">
+          <TsIcon name="x" :size="18" />
+        </button>
+        <div
+          class="arena-art-lightbox-canvas"
+          :style="{
+            backgroundColor: artworkBackground(previewArtwork),
+            aspectRatio: `${artworkWidth(previewArtwork)} / ${artworkHeight(previewArtwork)}`
+          }"
+        >
+          <PixelCanvasCells
+            :pixels="artworkPixels(previewArtwork)"
+            :palette="artworkPalette(previewArtwork)"
+            :width="artworkWidth(previewArtwork)"
+            :height="artworkHeight(previewArtwork)"
+            :cell-size="4"
+            :background-color="artworkBackground(previewArtwork)"
+            :show-grid="false"
+            :interactive="false"
+            :aria-label="previewArtwork.title || copy.gallery"
+          />
+        </div>
+        <footer class="arena-art-lightbox-footer">
+          <div>
+            <strong>{{ previewArtwork.title || copy.gallery }}</strong>
+            <span>{{ copy.by }} {{ previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }}x{{ artworkHeight(previewArtwork) }}</span>
+          </div>
+          <button class="ghost-btn" type="button" @click="downloadArtwork(previewArtwork)">
+            <TsIcon name="download" :size="17" />
+            <span>{{ copy.download }}</span>
+          </button>
+        </footer>
+      </section>
+    </div>
 
     <div v-if="toast.visible" class="arena-toast show">{{ toast.text }}</div>
   </main>

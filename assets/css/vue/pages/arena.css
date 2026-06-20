@@ -1962,8 +1962,38 @@ body .page.arena-page .pixel-art-card {
 }
 
 body .page.arena-page .pixel-art-preview {
+    display: block;
+    width: 100%;
     padding: 0;
+    border: 0;
     border-radius: 14px 14px 0 0;
+    appearance: none;
+    cursor: zoom-in;
+    background-color: var(--canvas-bg, #0b1020);
+    background-image:
+        linear-gradient(135deg, rgba(174, 242, 255, 0.09), rgba(255, 154, 186, 0.06)),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: auto, 18px 18px, 18px 18px;
+    transition: filter 0.18s ease, transform 0.18s ease;
+}
+
+body .page.arena-page .pixel-art-preview:hover {
+    filter: brightness(1.08);
+}
+
+body .page.arena-page .pixel-art-preview:active {
+    transform: scale(0.996);
+}
+
+body .page.arena-page .pixel-art-preview:focus-visible {
+    outline: 2px solid rgba(174, 242, 255, 0.82);
+    outline-offset: -4px;
+}
+
+body .page.arena-page .pixel-art-preview .pixel-canvas-renderer.is-readonly {
+    cursor: zoom-in;
+    pointer-events: none;
 }
 
 body .page.arena-page .arena-chat-panel {
@@ -2030,6 +2060,109 @@ body .page.arena-page .arena-empty {
 body .page.arena-page .arena-toast {
     border-radius: 999px;
     background: rgba(10, 16, 32, 0.84);
+}
+
+body .page.arena-page .arena-art-lightbox {
+    position: fixed;
+    z-index: 120;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: clamp(0.85rem, 2vw, 1.4rem);
+    background: rgba(2, 5, 14, 0.78);
+    backdrop-filter: blur(18px) saturate(1.12);
+}
+
+body .page.arena-page .arena-art-lightbox-card {
+    position: relative;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    width: min(100%, 1040px);
+    max-height: min(92vh, 860px);
+    overflow: hidden;
+    border: 1px solid rgba(231, 249, 255, 0.2);
+    border-radius: 16px;
+    background: rgba(10, 16, 32, 0.94);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+body .page.arena-page .arena-art-lightbox-canvas {
+    display: grid;
+    place-items: center;
+    width: min(100%, 1040px);
+    max-height: 72vh;
+    overflow: hidden;
+    background-image:
+        linear-gradient(135deg, rgba(174, 242, 255, 0.08), rgba(255, 154, 186, 0.06)),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: auto, 22px 22px, 22px 22px;
+}
+
+body .page.arena-page .arena-art-lightbox-canvas .pixel-canvas-renderer {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    cursor: default;
+}
+
+body .page.arena-page .arena-art-lightbox-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.85rem;
+    align-items: center;
+    padding: 0.95rem;
+    border-top: 1px solid rgba(231, 249, 255, 0.14);
+    background: rgba(255, 255, 255, 0.055);
+}
+
+body .page.arena-page .arena-art-lightbox-footer div {
+    display: grid;
+    min-width: 0;
+    gap: 0.2rem;
+}
+
+body .page.arena-page .arena-art-lightbox-footer strong,
+body .page.arena-page .arena-art-lightbox-footer span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body .page.arena-page .arena-art-lightbox-footer strong {
+    color: #fff;
+}
+
+body .page.arena-page .arena-art-lightbox-footer span {
+    color: rgba(239, 247, 255, 0.68);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+body .page.arena-page .arena-art-lightbox-footer .ghost-btn {
+    min-height: 40px;
+    border: 1px solid rgba(231, 249, 255, 0.16);
+    border-radius: 12px;
+    color: var(--ts-text);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+body .page.arena-page .arena-art-lightbox-close {
+    position: absolute;
+    z-index: 2;
+    top: 0.78rem;
+    right: 0.78rem;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(10, 16, 32, 0.72);
+    cursor: pointer;
 }
 
 html[data-theme="light"] body .page.arena-page .arena-hero-copy,
@@ -2133,5 +2266,17 @@ html[data-theme="light"] body .page.arena-page .arena-chat-message strong {
 
     body .page.arena-page .arena-status {
         display: none;
+    }
+
+    body .page.arena-page .arena-art-lightbox {
+        padding: 0.75rem;
+    }
+
+    body .page.arena-page .arena-art-lightbox-footer {
+        grid-template-columns: 1fr;
+    }
+
+    body .page.arena-page .arena-art-lightbox-footer .ghost-btn {
+        width: 100%;
     }
 }
