@@ -34,6 +34,7 @@ const testAvatar = `data:image/png;base64,${'a'.repeat(5000)}`;
 let articleId;
 let messageId;
 let replyId;
+let pixelArtworkId;
 
 function jsonHeaders(token) {
     return {
@@ -321,6 +322,56 @@ describe('messages API', () => {
     });
 });
 
+describe('pixel art API', () => {
+    it('creates, lists, and likes shared pixel artworks', async () => {
+        const artworkWidth = 128;
+        const artworkHeight = 72;
+        const pixels = Array(artworkWidth * artworkHeight).fill(-1);
+        pixels[artworkWidth * 4 + 4] = 2;
+        pixels[artworkWidth * 4 + 5] = 3;
+        pixels[artworkWidth * 5 + 4] = 4;
+        pixels[artworkWidth * 5 + 5] = 5;
+
+        const created = await postJson('/api/pixel-art', {
+            title: 'Test Pixel Moon',
+            description: 'A small test painting',
+            size: artworkWidth,
+            width: artworkWidth,
+            height: artworkHeight,
+            background_color: '#172033',
+            palette: ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#a481ff', '#ff9aba'],
+            pixels
+        }, userToken);
+        assert.equal(created.response.status, 201);
+        assert.equal(created.body.success, true);
+        assert.equal(created.body.data.author, 'normal-user');
+        assert.equal(created.body.data.avatar, testAvatar);
+        assert.equal(created.body.data.size, artworkWidth);
+        assert.equal(created.body.data.width, artworkWidth);
+        assert.equal(created.body.data.height, artworkHeight);
+        assert.equal(created.body.data.background_color, '#172033');
+        pixelArtworkId = created.body.data.id;
+
+        const list = await request('/api/pixel-art?limit=10');
+        assert.equal(list.response.status, 200);
+        assert.ok(list.body.data.some(item => item.id === pixelArtworkId));
+
+        const liked = await postJson(`/api/pixel-art/${pixelArtworkId}/like`, {}, managedUserToken);
+        assert.equal(liked.response.status, 200);
+        assert.equal(liked.body.data.like_count, 1);
+        assert.equal(liked.body.data.viewer_liked, true);
+
+        const duplicateLike = await postJson(`/api/pixel-art/${pixelArtworkId}/like`, {}, managedUserToken);
+        assert.equal(duplicateLike.response.status, 400);
+
+        const detail = await request(`/api/pixel-art/${pixelArtworkId}`, {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(detail.response.status, 200);
+        assert.equal(detail.body.data.viewer_liked, true);
+    });
+});
+
 describe('notifications API', () => {
     it('records replies and likes as inbox notifications', async () => {
         const liked = await postJson(`/api/messages/${messageId}/like`, {}, managedUserToken);
@@ -333,6 +384,7 @@ describe('notifications API', () => {
         assert.ok(inbox.body.unread >= 2);
         assert.ok(inbox.body.data.some(item => item.type === 'reply' && Number(item.related_message_id) === Number(replyId)));
         assert.ok(inbox.body.data.some(item => item.type === 'like' && Number(item.related_message_id) === Number(messageId)));
+        assert.ok(inbox.body.data.some(item => item.type === 'pixel_art_like' && item.metadata?.artworkId === pixelArtworkId));
 
         const countBefore = inbox.body.unread;
         const firstUnread = inbox.body.data.find(item => item.unread);

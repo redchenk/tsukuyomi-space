@@ -176,8 +176,8 @@ export const routes = [
     component: ArenaPage,
     alias: '/arena/',
     meta: {
-      title: '超时空辉夜姬竞技场',
-      description: '月读空间中的浏览器 MOBA 网页游戏实验，探索双队对战、角色技能和二次元竞技场体验。'
+      title: '月光像素工坊',
+      description: '在月读空间画像素画、公开分享作品，并浏览和点赞其他用户的像素创作。'
     }
   }
 ];

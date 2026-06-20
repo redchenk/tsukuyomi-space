@@ -92,22 +92,22 @@ const ACTION_SEQUENCES = [
 
 const FEATURE_TIPS = {
   zh: [
-    { key: 'hub', routeName: 'hub', title: '中枢大厅', body: '从大厅可以快速进入文章、广场、竞技场和现实回廊。' },
+    { key: 'hub', routeName: 'hub', title: '中枢大厅', body: '从大厅可以快速进入文章、广场、像素工坊和现实回廊。' },
     { key: 'room', routeName: 'room', title: '私人居所', body: '房间里有 Live2D 聊天、语音和记忆设置，适合慢慢调教你的角色。' },
     { key: 'plaza', routeName: 'plaza', title: '月读广场', body: '广场可以留言、回复和点赞，反馈、友链和问候都可以放在那里。' },
     { key: 'stage', routeName: 'stage', title: '主舞台', body: '主舞台收纳文章和内容展示，可以搜索、筛选和继续阅读。' },
     { key: 'gallery', routeName: 'gallery', title: '图库', body: '图库集中整理图片素材，登录后还能进入管理页面维护内容。' },
-    { key: 'arena', routeName: 'arena', title: '竞技场', body: '竞技场放项目和小游戏原型，适合试运行新的交互点子。' },
+    { key: 'arena', routeName: 'arena', title: '像素工坊', body: '这里可以画像素画、公开分享，也可以给其他用户的作品点赞。' },
     { key: 'reality', routeName: 'reality', title: '现实回廊', body: '现实回廊写着联系方式、隐私说明，也记录了这只宠物的来源。' },
     { key: 'account', routeName: 'userCenter', title: '用户中心', body: '登录后可以查看个人资料、文章、图库和站内互动记录。' }
   ],
   ja: [
-    { key: 'hub', routeName: 'hub', title: '中枢ホール', body: 'ホールから記事、広場、アリーナ、リアル回廊へすぐ移動できます。' },
+    { key: 'hub', routeName: 'hub', title: '中枢ホール', body: 'ホールから記事、広場、ピクセル工房、リアル回廊へすぐ移動できます。' },
     { key: 'room', routeName: 'room', title: 'プライベートルーム', body: 'Live2D チャット、音声、記憶設定でキャラクター体験を調整できます。' },
     { key: 'plaza', routeName: 'plaza', title: '月読広場', body: '広場ではメッセージ、返信、いいねで気軽に交流できます。' },
     { key: 'stage', routeName: 'stage', title: 'メインステージ', body: '記事やコンテンツを検索、絞り込み、読み進められる場所です。' },
     { key: 'gallery', routeName: 'gallery', title: 'ギャラリー', body: '画像素材をまとめて確認し、ログイン後は管理ページも使えます。' },
-    { key: 'arena', routeName: 'arena', title: 'アリーナ', body: 'プロジェクトや小さなゲーム試作を試せる実験スペースです。' },
+    { key: 'arena', routeName: 'arena', title: 'ピクセル工房', body: 'ピクセルアートを描いて共有し、ほかの作品にいいねできます。' },
     { key: 'reality', routeName: 'reality', title: 'リアル回廊', body: '連絡先、プライバシー説明、このペットの出典を確認できます。' },
     { key: 'account', routeName: 'userCenter', title: 'ユーザーセンター', body: 'ログイン後、プロフィール、記事、ギャラリー、サイト内交流を確認できます。' }
   ]

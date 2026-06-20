@@ -16,6 +16,7 @@ const ttsRoutes = require('./routes/tts');
 const assetRoutes = require('./routes/assets');
 const roomRoutes = require('./routes/room');
 const mcpRoutes = require('./routes/mcp');
+const pixelArtRoutes = require('./routes/pixel-art');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./user-routes');
 
@@ -89,6 +90,7 @@ function createApp() {
     app.use('/api/assets', assetRoutes);
     app.use('/api/room', roomRoutes);
     app.use('/api/mcp', mcpRoutes);
+    app.use('/api/pixel-art', pixelArtRoutes);
     app.use('/api/admin', adminRoutes);
     app.use('/api/user', userRoutes);
 

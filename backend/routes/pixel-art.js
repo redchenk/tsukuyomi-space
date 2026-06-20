@@ -1,0 +1,167 @@
+const express = require('express');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
+const notificationRepository = require('../repositories/notification-repository');
+const pixelArtRepository = require('../repositories/pixel-art-repository');
+const responseCache = require('../services/response-cache');
+
+const router = express.Router();
+const DEFAULT_DIMENSIONS = { width: 96, height: 54 };
+const ALLOWED_DIMENSIONS = new Set(['32x18', '48x27', '64x36', '96x54', '128x72', '160x90', '192x108']);
+const MAX_PALETTE_COLORS = 32;
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+function actorName(user) {
+    return user?.username || '访客';
+}
+
+function cleanText(value, maxLength) {
+    return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function normalizePalette(value) {
+    if (!Array.isArray(value)) return null;
+    const colors = value
+        .map(color => String(color || '').trim())
+        .filter(Boolean)
+        .slice(0, MAX_PALETTE_COLORS);
+    if (colors.length < 2 || colors.some(color => !HEX_COLOR.test(color))) return null;
+    return colors.map(color => color.toLowerCase());
+}
+
+function normalizeColor(value, fallback = '#0b1020') {
+    const color = String(value || '').trim();
+    return HEX_COLOR.test(color) ? color.toLowerCase() : fallback;
+}
+
+function normalizeDimensions(body) {
+    const width = Number.parseInt(body.width ?? body.size, 10);
+    const height = Number.parseInt(body.height ?? body.size, 10);
+    const key = `${width}x${height}`;
+    return ALLOWED_DIMENSIONS.has(key) ? { width, height } : DEFAULT_DIMENSIONS;
+}
+
+function normalizePixels(value, width, height, paletteLength) {
+    if (!Array.isArray(value)) return null;
+    const expected = width * height;
+    if (value.length !== expected) return null;
+
+    const pixels = value.map((item) => {
+        const colorIndex = Number.parseInt(item, 10);
+        if (!Number.isInteger(colorIndex)) return null;
+        if (colorIndex < -1 || colorIndex >= paletteLength) return null;
+        return colorIndex;
+    });
+
+    if (pixels.some(item => item === null)) return null;
+    return pixels;
+}
+
+function notifyArtworkOwner({ artwork, actor }) {
+    if (!artwork?.author_id || artwork.author_id === actor.id) return;
+    notificationRepository.createNotification({
+        userId: artwork.author_id,
+        actorId: actor.id,
+        type: 'pixel_art_like',
+        title: `${actorName(actor)} 点赞了你的像素画`,
+        content: artwork.title,
+        link: `/arena?art=${artwork.id}#pixel-art-${artwork.id}`,
+        metadata: {
+            actorName: actorName(actor),
+            artworkId: artwork.id
+        }
+    });
+}
+
+router.get('/', optionalAuth, (req, res) => {
+    try {
+        const sort = req.query.sort === 'hot' ? 'hot' : 'latest';
+        const payload = pixelArtRepository.listArtworks({
+            viewerId: req.user?.id || '',
+            sort,
+            limit: req.query.limit,
+            offset: req.query.offset
+        });
+        res.set({
+            'Cache-Control': req.user ? 'private, no-store' : 'public, max-age=10, stale-while-revalidate=30',
+            'Vary': 'Cookie, Accept-Encoding'
+        });
+        res.json({
+            success: true,
+            data: payload.items,
+            pagination: {
+                total: payload.total,
+                limit: payload.limit,
+                offset: payload.offset
+            }
+        });
+    } catch (error) {
+        console.error('List pixel art failed:', error);
+        res.status(500).json({ success: false, message: '像素画读取失败' });
+    }
+});
+
+router.get('/:id', optionalAuth, (req, res) => {
+    try {
+        const artwork = pixelArtRepository.findArtworkById(req.params.id, req.user?.id || '');
+        if (!artwork) return res.status(404).json({ success: false, message: '像素画不存在' });
+        res.json({ success: true, data: artwork });
+    } catch (error) {
+        console.error('Read pixel art failed:', error);
+        res.status(500).json({ success: false, message: '像素画读取失败' });
+    }
+});
+
+router.post('/', authenticateToken, (req, res) => {
+    try {
+        const title = cleanText(req.body.title, 40);
+        const description = cleanText(req.body.description, 120);
+        const dimensions = normalizeDimensions(req.body);
+        const backgroundColor = normalizeColor(req.body.background_color || req.body.backgroundColor);
+        const palette = normalizePalette(req.body.palette);
+        if (!title) return res.status(400).json({ success: false, message: '请给作品取一个名字' });
+        if (!palette) return res.status(400).json({ success: false, message: '调色板格式不正确' });
+
+        const pixels = normalizePixels(req.body.pixels, dimensions.width, dimensions.height, palette.length);
+        if (!pixels) return res.status(400).json({ success: false, message: '像素数据格式不正确' });
+        if (!pixels.some(colorIndex => colorIndex >= 0)) {
+            return res.status(400).json({ success: false, message: '画布还是空的，先落下一点月光吧' });
+        }
+
+        const artwork = pixelArtRepository.createArtwork({
+            title,
+            description,
+            authorId: req.user.id,
+            size: dimensions.width,
+            width: dimensions.width,
+            height: dimensions.height,
+            backgroundColor,
+            palette,
+            pixels
+        });
+        responseCache.delPrefix('public:pixel-art');
+        res.status(201).json({ success: true, data: artwork, message: '像素画已分享' });
+    } catch (error) {
+        console.error('Create pixel art failed:', error);
+        res.status(500).json({ success: false, message: '像素画发布失败' });
+    }
+});
+
+router.post('/:id/like', authenticateToken, (req, res) => {
+    try {
+        const artwork = pixelArtRepository.findArtworkById(req.params.id, req.user.id);
+        if (!artwork) return res.status(404).json({ success: false, message: '像素画不存在' });
+        if (pixelArtRepository.findArtworkLike(artwork.id, req.user.id)) {
+            return res.status(400).json({ success: false, message: '已经点过赞了' });
+        }
+
+        const updated = pixelArtRepository.likeArtwork(artwork.id, req.user.id);
+        notifyArtworkOwner({ artwork: updated, actor: req.user });
+        responseCache.delPrefix('public:pixel-art');
+        res.json({ success: true, data: updated, message: '已点赞' });
+    } catch (error) {
+        console.error('Like pixel art failed:', error);
+        res.status(500).json({ success: false, message: '点赞失败' });
+    }
+});
+
+module.exports = router;
