@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { authFetch, authHeaders, getSession, loadPublicStats, parseResponse, setPublicStatsCache } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
+import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { compareAppDate } from '../utils/time';
 
@@ -11,8 +12,9 @@ const props = defineProps({
 
 const emit = defineEmits(['go']);
 
-const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache';
+const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v2';
 const HUB_PREVIEW_TTL_MS = 30000;
+const fallbackPixelPalette = ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#ff9aba', '#f1d98e'];
 let hubPreviewCache = readHubPreviewCache();
 
 function readHubPreviewCache() {
@@ -23,6 +25,7 @@ function readHubPreviewCache() {
     return {
       latestArticle: parsed.latestArticle || null,
       latestGalleryImage: parsed.latestGalleryImage || null,
+      latestPixelArtwork: parsed.latestPixelArtwork || null,
       plazaMessages: Array.isArray(parsed.plazaMessages) ? parsed.plazaMessages : [],
       siteStats: parsed.siteStats || null,
       cachedAt: Number(parsed.cachedAt || 0)
@@ -36,6 +39,7 @@ function writeHubPreviewCache(payload) {
   hubPreviewCache = {
     latestArticle: payload.latestArticle || null,
     latestGalleryImage: payload.latestGalleryImage || null,
+    latestPixelArtwork: payload.latestPixelArtwork || null,
     plazaMessages: Array.isArray(payload.plazaMessages) ? payload.plazaMessages : [],
     siteStats: payload.siteStats || null,
     cachedAt: Date.now()
@@ -48,6 +52,7 @@ function writeHubPreviewCache(payload) {
 
 const latestArticle = ref(hubPreviewCache?.latestArticle || null);
 const latestGalleryImage = ref(hubPreviewCache?.latestGalleryImage || null);
+const latestPixelArtwork = ref(hubPreviewCache?.latestPixelArtwork || null);
 const plazaMessages = ref(hubPreviewCache?.plazaMessages || []);
 const siteStats = ref(hubPreviewCache?.siteStats || null);
 const plazaQuick = reactive({
@@ -80,7 +85,6 @@ const sceneLinks = computed(() => [
     image: latestArticle.value?.cover_image || '/assets/images/room-bg.png',
     label: props.t.stage
   },
-  { href: '/reality', name: props.t.reality, desc: '现实世界连接入口', code: 'Reality', icon: 'compass', tone: 'pink', spa: true, image: '/assets/images/tsukuyomi-bg.png' },
   {
     href: '/gallery',
     name: latestGalleryImage.value ? '最新图库影像' : '图库',
@@ -91,18 +95,25 @@ const sceneLinks = computed(() => [
     spa: true,
     image: galleryImageUrl(latestGalleryImage.value) || '/assets/images/tsukuyomi-bg.png',
     label: '图库'
+  },
+  {
+    href: '/arena',
+    name: latestPixelArtwork.value?.title || props.t.arena || '月光像素工坊',
+    desc: latestPixelArtwork.value
+      ? `${latestPixelArtwork.value.author || '访客'} 发布于 ${formatPixelDate(latestPixelArtwork.value) || '近期'}`
+      : '绘制、发布、点赞月光像素画',
+    code: latestPixelArtwork.value ? `${artworkWidth(latestPixelArtwork.value)}x${artworkHeight(latestPixelArtwork.value)}` : 'Arena',
+    icon: 'palette',
+    tone: 'pink',
+    spa: true,
+    image: '/assets/images/tsukuyomi-bg.png',
+    label: latestPixelArtwork.value ? '最新像素画' : '像素画',
+    kind: 'arena',
+    artwork: latestPixelArtwork.value
   }
 ]);
 
-const orderedSceneLinks = computed(() => {
-  const links = [...sceneLinks.value];
-  const realityIndex = links.findIndex((scene) => scene.href === '/reality');
-  const galleryIndex = links.findIndex((scene) => scene.href === '/gallery');
-  if (realityIndex >= 0 && galleryIndex >= 0 && realityIndex < galleryIndex) {
-    [links[realityIndex], links[galleryIndex]] = [links[galleryIndex], links[realityIndex]];
-  }
-  return links;
-});
+const orderedSceneLinks = computed(() => sceneLinks.value);
 
 const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
 
@@ -127,10 +138,46 @@ function formatGalleryDate(asset) {
   return value ? String(value).slice(0, 10) : '';
 }
 
+function formatPixelDate(artwork) {
+  const value = artwork?.created_at || artwork?.updated_at;
+  return value ? String(value).slice(0, 10) : '';
+}
+
+function artworkDimension(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function artworkWidth(artwork) {
+  return artworkDimension(artwork?.width ?? artwork?.size, 96);
+}
+
+function artworkHeight(artwork) {
+  return artworkDimension(artwork?.height ?? artwork?.size, 54);
+}
+
+function artworkPalette(artwork) {
+  return Array.isArray(artwork?.palette) && artwork.palette.length ? artwork.palette : fallbackPixelPalette;
+}
+
+function artworkPixels(artwork) {
+  return Array.isArray(artwork?.pixels) ? artwork.pixels : [];
+}
+
+function artworkBackground(artwork) {
+  return artwork?.background_color || artwork?.backgroundColor || '#0b1020';
+}
+
+function formatLikeCount(value) {
+  const total = Number(value || 0);
+  return Number.isFinite(total) ? total.toLocaleString('zh-CN') : '0';
+}
+
 function applyHubPreviewCache(cache) {
   if (!cache) return;
   latestArticle.value = cache.latestArticle || null;
   latestGalleryImage.value = cache.latestGalleryImage || null;
+  latestPixelArtwork.value = cache.latestPixelArtwork || null;
   plazaMessages.value = Array.isArray(cache.plazaMessages) ? cache.plazaMessages : [];
   siteStats.value = cache.siteStats || null;
 }
@@ -169,39 +216,46 @@ async function loadHubPreview(options = {}) {
         writeHubPreviewCache({
           latestArticle: latestArticle.value,
           latestGalleryImage: latestGalleryImage.value,
+          latestPixelArtwork: latestPixelArtwork.value,
           plazaMessages: plazaMessages.value,
           siteStats: nextSiteStats
         });
       })
       .catch(() => {});
 
-    const [articleResponse, messageResponse, galleryResponse] = await Promise.all([
+    const [articleResponse, messageResponse, galleryResponse, pixelResponse] = await Promise.all([
       fetch(`/api/articles/live/${nonce}`, { cache: 'no-store' }),
       fetch(`/api/messages/plaza/${nonce}`, { cache: 'no-store' }),
-      fetch(`/api/assets/gallery/public?limit=1&_=${nonce}`, { cache: 'no-store' })
+      fetch(`/api/assets/gallery/public?limit=1&_=${nonce}`, { cache: 'no-store' }),
+      fetch(`/api/pixel-art?sort=latest&limit=1&_=${nonce}`, { cache: 'no-store' })
     ]);
-    const [articleResult, messageResult, galleryResult] = await Promise.all([
+    const [articleResult, messageResult, galleryResult, pixelResult] = await Promise.all([
       parseResponse(articleResponse),
       parseResponse(messageResponse),
-      parseResponse(galleryResponse)
+      parseResponse(galleryResponse),
+      parseResponse(pixelResponse)
     ]);
     const articles = articleResult.success && Array.isArray(articleResult.data) ? articleResult.data : [];
     const messages = messageResult.success && Array.isArray(messageResult.data) ? messageResult.data : [];
     const galleryAssets = galleryResult.success && Array.isArray(galleryResult.data?.assets) ? galleryResult.data.assets : [];
+    const pixelArtworks = pixelResult.success && Array.isArray(pixelResult.data) ? pixelResult.data : [];
 
     const nextLatestArticle = [...articles]
       .sort((a, b) => compareAppDate(b.created_at || b.updated_at, a.created_at || a.updated_at))[0] || null;
     const nextLatestGalleryImage = galleryAssets[0] || null;
+    const nextLatestPixelArtwork = pixelArtworks[0] || null;
     const nextPlazaMessages = [...messages]
       .filter((item) => !item.parent_id)
       .sort((a, b) => compareAppDate(b.created_at, a.created_at));
 
     latestArticle.value = nextLatestArticle;
     latestGalleryImage.value = nextLatestGalleryImage;
+    latestPixelArtwork.value = nextLatestPixelArtwork;
     plazaMessages.value = nextPlazaMessages;
     writeHubPreviewCache({
       latestArticle: nextLatestArticle,
       latestGalleryImage: nextLatestGalleryImage,
+      latestPixelArtwork: nextLatestPixelArtwork,
       plazaMessages: nextPlazaMessages,
       siteStats: siteStats.value
     });
@@ -209,6 +263,7 @@ async function loadHubPreview(options = {}) {
     if (!cached) {
       latestArticle.value = null;
       latestGalleryImage.value = null;
+      latestPixelArtwork.value = null;
       plazaMessages.value = [];
       siteStats.value = null;
     }
@@ -253,6 +308,7 @@ async function submitPlazaQuick() {
     writeHubPreviewCache({
       latestArticle: latestArticle.value,
       latestGalleryImage: latestGalleryImage.value,
+      latestPixelArtwork: latestPixelArtwork.value,
       plazaMessages: plazaMessages.value,
       siteStats: siteStats.value
     });
@@ -340,7 +396,7 @@ onMounted(loadHubPreview);
           v-for="scene in orderedSceneLinks"
           :key="scene.href"
           class="scene-card"
-          :class="[`tone-${scene.tone}`, { 'scene-card-plaza': scene.kind === 'plaza' }]"
+          :class="[`tone-${scene.tone}`, { 'scene-card-plaza': scene.kind === 'plaza', 'scene-card-arena': scene.kind === 'arena' }]"
           :style="{ '--scene-image': `url(${scene.image})` }"
           :href="scene.kind === 'plaza' ? undefined : scene.href"
           :role="scene.kind === 'plaza' ? 'link' : undefined"
@@ -353,7 +409,29 @@ onMounted(loadHubPreview);
             <TsIcon :name="scene.icon" :size="22" :stroke-width="1.9" />
           </span>
           <span v-if="scene.label" class="scene-label">{{ scene.label }}</span>
-          <span v-if="scene.kind !== 'plaza'" class="scene-main">
+          <span v-if="scene.kind === 'arena'" class="scene-main hub-arena-card-body">
+            <span class="scene-name">{{ scene.name }}</span>
+            <span class="scene-desc">{{ scene.desc }}</span>
+            <span v-if="scene.artwork" class="hub-arena-preview" :style="{ '--hub-arena-bg': artworkBackground(scene.artwork) }">
+              <PixelCanvasCells
+                :pixels="artworkPixels(scene.artwork)"
+                :palette="artworkPalette(scene.artwork)"
+                :width="artworkWidth(scene.artwork)"
+                :height="artworkHeight(scene.artwork)"
+                :cell-size="1"
+                :background-color="artworkBackground(scene.artwork)"
+                :show-grid="false"
+                :interactive="false"
+                :aria-label="scene.name"
+              />
+            </span>
+            <span v-else class="hub-arena-empty">等待第一幅公开像素画。</span>
+            <span v-if="scene.artwork" class="hub-arena-meta">
+              <span>{{ scene.code }}</span>
+              <span>{{ formatLikeCount(scene.artwork.like_count) }} 喜欢</span>
+            </span>
+          </span>
+          <span v-else-if="scene.kind !== 'plaza'" class="scene-main">
             <span class="scene-name">{{ scene.name }}</span>
             <span class="scene-desc">{{ scene.desc }}</span>
           </span>

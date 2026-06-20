@@ -125,6 +125,13 @@ const iconPaths = {
     ['path', { d: 'M7.5 12.5c-2.8.6-4.5 2.8-4.5 6.5 3.7 0 5.9-1.7 6.5-4.5' }],
     ['path', { d: 'M9.5 14.5 7.5 12.5' }]
   ],
+  palette: [
+    ['path', { d: 'M12 22a10 10 0 1 1 10-10 3 3 0 0 1-3 3h-1.8a1.8 1.8 0 0 0-1.28 3.08 1.8 1.8 0 0 1-1.27 3.07H12Z' }],
+    ['circle', { cx: '8.5', cy: '7.5', r: '0.9', fill: 'currentColor', stroke: 'none' }],
+    ['circle', { cx: '13.5', cy: '6.5', r: '0.9', fill: 'currentColor', stroke: 'none' }],
+    ['circle', { cx: '17.5', cy: '10.5', r: '0.9', fill: 'currentColor', stroke: 'none' }],
+    ['circle', { cx: '6.5', cy: '12.5', r: '0.9', fill: 'currentColor', stroke: 'none' }]
+  ],
   eraser: [
     ['path', { d: 'm7 21-4-4a2.8 2.8 0 0 1 0-4l8-8a2.8 2.8 0 0 1 4 0l6 6a2.8 2.8 0 0 1 0 4l-6 6' }],
     ['path', { d: 'M22 21H7' }],

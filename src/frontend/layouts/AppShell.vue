@@ -31,7 +31,7 @@ const navItems = computed(() => [
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
   { path: '/gallery', key: 'gallery', label: '图库', icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
-  { path: '/arena', key: 'arena', label: props.t.arena, icon: 'gamepad', active: props.routeName === 'arena', spa: true },
+  { path: '/arena', key: 'arena', label: props.t.arena, icon: 'palette', active: props.routeName === 'arena', spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true }
 ]);
 
