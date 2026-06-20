@@ -53,8 +53,8 @@ const copy = computed(() => props.lang === 'ja' ? {
   draftTitle: '新しい作品',
   draftPlaceholder: '作品名',
   descPlaceholder: 'ひとことメモ',
-  share: '共有',
-  loginToShare: 'ログインして共有',
+  share: '投稿する',
+  loginToShare: 'ログインして投稿',
   clear: '消去',
   undo: '戻す',
   redo: '進む',
@@ -112,8 +112,8 @@ const copy = computed(() => props.lang === 'ja' ? {
   draftTitle: '新作品',
   draftPlaceholder: '作品名',
   descPlaceholder: '给这幅画留一句话',
-  share: '分享作品',
-  loginToShare: '登录后分享',
+  share: '发布作品',
+  loginToShare: '登录后发布',
   clear: '清空',
   undo: '撤销',
   redo: '重做',
@@ -915,6 +915,10 @@ onBeforeUnmount(() => {
           <button class="ghost-btn" type="button" :title="copy.download" @click="downloadDraft">
             <TsIcon name="download" :size="17" /> <span>{{ copy.download }}</span>
           </button>
+          <button class="primary-btn arena-publish-btn" type="button" :title="isAuthed ? copy.share : copy.loginToShare" @click="shareArtwork">
+            <TsIcon name="send" :size="17" />
+            <span>{{ isAuthed ? copy.share : copy.loginToShare }}</span>
+          </button>
           <div class="arena-zoom-controls" :aria-label="copy.zoom">
             <button class="icon-btn" type="button" :title="`${copy.zoom} -`" @click="adjustZoom(-25)">
               <TsIcon name="minus" :size="17" />
@@ -1036,10 +1040,6 @@ onBeforeUnmount(() => {
             <span>{{ copy.descPlaceholder }}</span>
             <textarea v-model="form.description" maxlength="120" rows="3" :placeholder="copy.descPlaceholder"></textarea>
           </label>
-          <button class="primary-btn arena-share-btn" type="button" @click="shareArtwork">
-            <TsIcon name="send" :size="18" />
-            <span>{{ isAuthed ? copy.share : copy.loginToShare }}</span>
-          </button>
         </div>
 
         <div class="arena-metrics">

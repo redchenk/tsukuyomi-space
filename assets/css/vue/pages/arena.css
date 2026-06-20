@@ -235,6 +235,7 @@
 
 .arena-canvas-actions .ghost-btn,
 .arena-gallery-tools .ghost-btn,
+.arena-publish-btn,
 .arena-share-btn,
 .pixel-art-actions .icon-btn {
     display: inline-flex;
@@ -244,6 +245,7 @@
 }
 
 .arena-canvas-actions .ghost-btn,
+.arena-publish-btn,
 .arena-gallery-tools .ghost-btn,
 .pixel-art-actions .icon-btn {
     min-height: 40px;
@@ -503,6 +505,12 @@
 .arena-share-btn {
     min-height: 44px;
     width: 100%;
+}
+
+.arena-publish-btn {
+    flex: 0 0 auto;
+    padding-inline: 0.8rem;
+    white-space: nowrap;
 }
 
 .arena-metrics {
@@ -808,6 +816,7 @@ html[data-theme="light"] .arena-canvas-viewport {
     }
 
     .arena-canvas-actions .ghost-btn,
+    .arena-canvas-actions .arena-publish-btn,
     .arena-gallery-tools .ghost-btn,
     .arena-gallery-tools .chip {
         width: 100%;
@@ -1814,6 +1823,21 @@ body .page.arena-page .arena-canvas-actions .ghost-btn span {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+}
+
+body .page.arena-page .arena-canvas-actions .arena-publish-btn {
+    min-height: 40px;
+    padding-inline: 0.82rem;
+    color: #fff;
+    border-color: rgba(174, 242, 255, 0.28);
+    background: linear-gradient(135deg, #56bfe8, #a481ff);
+    box-shadow: 0 14px 30px rgba(86, 191, 232, 0.2);
+}
+
+body .page.arena-page .arena-canvas-actions .arena-publish-btn:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.34);
+    background: linear-gradient(135deg, #4db4dd, #9774f2);
 }
 
 body .page.arena-page .arena-tool-toggle .icon-btn.active,
