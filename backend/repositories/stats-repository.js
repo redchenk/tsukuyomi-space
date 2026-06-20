@@ -1,5 +1,14 @@
 const db = require('../db');
 
+const VIEW_VISITOR_KEY_SQL = `
+    COALESCE(
+        NULLIF(visitor_key, ''),
+        NULLIF(CASE WHEN json_valid(event_data) THEN json_extract(event_data, '$.ip') END, ''),
+        NULLIF(event_data, ''),
+        CAST(id AS TEXT)
+    )
+`;
+
 function articleCounters() {
     return db.prepare('SELECT COUNT(*) AS count, COALESCE(SUM(view_count), 0) AS views FROM articles').get();
 }
@@ -27,7 +36,7 @@ function publicViewCounters() {
         WITH view_events AS (
             SELECT
                 created_at,
-                COALESCE(NULLIF(CASE WHEN json_valid(event_data) THEN json_extract(event_data, '$.ip') END, ''), event_data, CAST(id AS TEXT)) AS visitor_key
+                ${VIEW_VISITOR_KEY_SQL} AS visitor_key
             FROM stats
             WHERE event_type = 'view'
         )
@@ -44,7 +53,7 @@ function adminViewCounters() {
         WITH view_events AS (
             SELECT
                 created_at,
-                COALESCE(NULLIF(CASE WHEN json_valid(event_data) THEN json_extract(event_data, '$.ip') END, ''), event_data, CAST(id AS TEXT)) AS visitor_key
+                ${VIEW_VISITOR_KEY_SQL} AS visitor_key
             FROM stats
             WHERE event_type = 'view'
         )
@@ -60,7 +69,7 @@ function analyticsViewCounters() {
         WITH view_events AS (
             SELECT
                 created_at,
-                COALESCE(NULLIF(CASE WHEN json_valid(event_data) THEN json_extract(event_data, '$.ip') END, ''), event_data, CAST(id AS TEXT)) AS visitor_key
+                ${VIEW_VISITOR_KEY_SQL} AS visitor_key
             FROM stats
             WHERE event_type = 'view'
         )
@@ -94,14 +103,23 @@ function findViewByIp(ip) {
         SELECT id
         FROM stats
         WHERE event_type = 'view'
-          AND COALESCE(NULLIF(CASE WHEN json_valid(event_data) THEN json_extract(event_data, '$.ip') END, ''), event_data) = ?
+          AND visitor_key = ?
         ORDER BY id DESC
         LIMIT 1
     `).get(String(ip || 'unknown'));
 }
 
-function recordView(eventData) {
-    return db.prepare('INSERT INTO stats (event_type, event_data) VALUES (?, ?)').run('view', eventData);
+function recordView({ eventData, visitorKey, path, userAgent }) {
+    return db.prepare(`
+        INSERT INTO stats (event_type, event_data, visitor_key, page_path, user_agent)
+        VALUES (?, ?, ?, ?, ?)
+    `).run(
+        'view',
+        eventData,
+        String(visitorKey || 'unknown'),
+        String(path || '').slice(0, 500),
+        String(userAgent || '').slice(0, 500)
+    );
 }
 
 module.exports = {

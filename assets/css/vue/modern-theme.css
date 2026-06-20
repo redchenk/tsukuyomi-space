@@ -126,6 +126,50 @@ html[data-theme="dark"] body.vue-access-route {
     animation: pageLiftIn 0.46s cubic-bezier(.2, .8, .2, 1) both;
 }
 
+.route-stage {
+    position: relative;
+    z-index: 2;
+}
+
+.route-stage-immersive {
+    z-index: 1;
+}
+
+.route-view {
+    display: block;
+    will-change: opacity, transform;
+}
+
+.route-view.page {
+    animation: none;
+}
+
+.ts-route-enter-active,
+.ts-route-leave-active {
+    transition:
+        opacity 180ms cubic-bezier(.2, .8, .2, 1),
+        transform 180ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.ts-route-enter-from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.995);
+}
+
+.ts-route-leave-to {
+    opacity: 0;
+    transform: translate3d(0, -5px, 0) scale(0.998);
+}
+
+.ts-route-leave-active {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    pointer-events: none;
+}
+
 .moon {
     opacity: 0.82;
     background: linear-gradient(145deg, #fff, #e4f8ff 50%, #eee9ff);
@@ -1569,5 +1613,9 @@ html[data-theme="dark"] .hub .scene-code {
         animation-iteration-count: 1 !important;
         scroll-behavior: auto !important;
         transition-duration: 0.001ms !important;
+    }
+
+    .ts-route-leave-active {
+        position: static;
     }
 }

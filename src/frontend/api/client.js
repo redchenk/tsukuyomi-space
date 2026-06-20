@@ -30,6 +30,10 @@ export function getAuthToken() {
 
 let sessionRequest = null;
 let sessionRevision = 0;
+let publicStatsRequest = null;
+let publicStatsCache = null;
+
+const PUBLIC_STATS_CACHE_KEY = 'tsukuyomi_public_stats_cache';
 
 function dropLegacyTokens() {
   localStorage.removeItem('tsukuyomi_token');
@@ -94,6 +98,72 @@ export function authFetch(url, options = {}) {
     ...options,
     credentials: options.credentials || 'include'
   });
+}
+
+function readPublicStatsCache() {
+  if (publicStatsCache) return publicStatsCache;
+  if (typeof sessionStorage === 'undefined') return null;
+
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(PUBLIC_STATS_CACHE_KEY) || 'null');
+    if (!parsed || typeof parsed !== 'object' || !parsed.data) return null;
+    publicStatsCache = {
+      data: parsed.data,
+      cachedAt: Number(parsed.cachedAt || 0)
+    };
+    return publicStatsCache;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function setPublicStatsCache(data) {
+  if (!data || typeof data !== 'object') return null;
+  publicStatsCache = {
+    data,
+    cachedAt: Date.now()
+  };
+
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      sessionStorage.setItem(PUBLIC_STATS_CACHE_KEY, JSON.stringify(publicStatsCache));
+    } catch (_) {}
+  }
+
+  return publicStatsCache.data;
+}
+
+export async function loadPublicStats(options = {}) {
+  const maxAgeMs = Number(options.maxAgeMs || 60000);
+  const cached = readPublicStatsCache();
+  const fresh = cached?.cachedAt && Date.now() - cached.cachedAt < maxAgeMs;
+
+  if (!options.force && fresh) return cached.data;
+  if (publicStatsRequest) {
+    return cached && options.staleWhileRevalidate !== false
+      ? cached.data
+      : publicStatsRequest;
+  }
+
+  publicStatsRequest = fetch(apiUrl('/api/stats'), {
+    headers: { Accept: 'application/json' },
+    cache: options.cache || 'default'
+  })
+    .then(parseResponse)
+    .then((result) => {
+      if (!result.success) throw new Error(result.message || 'Stats unavailable');
+      return setPublicStatsCache(result.data || {});
+    })
+    .finally(() => {
+      publicStatsRequest = null;
+    });
+
+  if (cached && options.staleWhileRevalidate !== false) {
+    publicStatsRequest.catch(() => {});
+    return cached.data;
+  }
+
+  return publicStatsRequest;
 }
 
 async function resolveCurrentSession({ allowClear = true } = {}) {

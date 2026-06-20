@@ -39,11 +39,22 @@ function statsPayload() {
     };
 }
 
+function setPublicStatsCache(res) {
+    res.set({
+        'Cache-Control': 'public, max-age=15, stale-while-revalidate=45',
+        'Vary': 'Accept-Encoding'
+    });
+    res.removeHeader('Pragma');
+    res.removeHeader('Expires');
+    res.removeHeader('Surrogate-Control');
+}
+
 function sendStats(req, res) {
     try {
+        setPublicStatsCache(res);
         res.json({
             success: true,
-            data: responseCache.remember('public:stats', 5000, statsPayload)
+            data: responseCache.remember('public:stats', 15000, statsPayload)
         });
     } catch (error) {
         console.error('Read stats failed:', error);
@@ -66,7 +77,12 @@ router.post('/view', (req, res) => {
             userAgent: req.headers['user-agent'] || '',
             ip
         });
-        statsRepository.recordView(eventData);
+        statsRepository.recordView({
+            eventData,
+            visitorKey: ip,
+            path: req.body?.path || req.headers.referer || '',
+            userAgent: req.headers['user-agent'] || ''
+        });
         responseCache.delPrefix('public:stats');
         res.json({ success: true, message: 'OK' });
     } catch (error) {

@@ -17,6 +17,7 @@ const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isLive2DRoute = computed(() => route.name === 'live2d');
 const isImmersiveRoute = computed(() => isAccessRoute.value || isLive2DRoute.value);
+const routeTransitionName = computed(() => isImmersiveRoute.value ? '' : 'ts-route');
 const hasGlobalBackground = computed(() => !isAccessRoute.value && route.name !== 'room' && !isLive2DRoute.value);
 const showSitePet = computed(() => !['access', 'accessAlias', 'room', 'roomSettings'].includes(route.name));
 const isAuthed = computed(() => Boolean(user.value));
@@ -179,17 +180,26 @@ onMounted(() => {
     @set-lang="setLang"
     @toggle-theme="toggleTheme"
   >
-    <RouterView
-      :lang="lang"
-      :t="t"
-      :theme="theme"
-      :user="user"
-      :route-name="route.name"
-      @auth-changed="refreshUser"
-      @go="go"
-      @logout="logout"
-      @toggle-theme="toggleTheme"
-    />
+    <div class="route-stage" :class="{ 'route-stage-immersive': isImmersiveRoute }">
+      <RouterView v-slot="{ Component, route: viewRoute }">
+        <Transition :name="routeTransitionName" appear>
+          <component
+            :is="Component"
+            :key="viewRoute.fullPath"
+            class="route-view"
+            :lang="lang"
+            :t="t"
+            :theme="theme"
+            :user="user"
+            :route-name="route.name"
+            @auth-changed="refreshUser"
+            @go="go"
+            @logout="logout"
+            @toggle-theme="toggleTheme"
+          />
+        </Transition>
+      </RouterView>
+    </div>
   </AppShell>
 
   <SitePet v-if="showSitePet" :lang="lang" :route-name="route.name" />

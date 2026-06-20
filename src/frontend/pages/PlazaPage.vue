@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { authFetch, authHeaders, getSession, parseResponse } from '../api/client';
+import { authFetch, authHeaders, getSession, loadPublicStats, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
 import SocialText from '../components/SocialText.vue';
@@ -133,9 +133,7 @@ function showPlazaToast(text) {
 
 async function loadPlazaStats() {
   try {
-    const response = await fetch(`/api/stats/live/${Date.now()}`, { cache: 'no-store' });
-    const result = await parseResponse(response);
-    if (result.success) plaza.stats = result.data || {};
+    plaza.stats = await loadPublicStats({ maxAgeMs: 60000 }) || {};
   } catch (_) {}
 }
 
@@ -186,8 +184,9 @@ function patchPlazaMessage(message) {
 async function refreshPlaza() {
   plaza.loading = true;
   session.value = getSession();
+  loadPlazaStats();
   try {
-    await Promise.all([loadPlazaStats(), loadPlazaMessages(), loadTrendingTopics()]);
+    await Promise.all([loadPlazaMessages(), loadTrendingTopics()]);
   } finally {
     plaza.loading = false;
   }

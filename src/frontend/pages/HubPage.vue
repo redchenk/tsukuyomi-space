@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { authFetch, authHeaders, getSession, parseResponse } from '../api/client';
+import { authFetch, authHeaders, getSession, loadPublicStats, parseResponse, setPublicStatsCache } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { compareAppDate } from '../utils/time';
@@ -162,16 +162,27 @@ async function loadHubPreview(options = {}) {
 
   try {
     const nonce = Date.now();
-    const [articleResponse, messageResponse, statsResponse, galleryResponse] = await Promise.all([
+    loadPublicStats({ force, maxAgeMs: 60000 })
+      .then((nextSiteStats) => {
+        if (!nextSiteStats) return;
+        siteStats.value = nextSiteStats;
+        writeHubPreviewCache({
+          latestArticle: latestArticle.value,
+          latestGalleryImage: latestGalleryImage.value,
+          plazaMessages: plazaMessages.value,
+          siteStats: nextSiteStats
+        });
+      })
+      .catch(() => {});
+
+    const [articleResponse, messageResponse, galleryResponse] = await Promise.all([
       fetch(`/api/articles/live/${nonce}`, { cache: 'no-store' }),
       fetch(`/api/messages/plaza/${nonce}`, { cache: 'no-store' }),
-      fetch(`/api/stats/live/${nonce}`, { cache: 'no-store' }),
       fetch(`/api/assets/gallery/public?limit=1&_=${nonce}`, { cache: 'no-store' })
     ]);
-    const [articleResult, messageResult, statsResult, galleryResult] = await Promise.all([
+    const [articleResult, messageResult, galleryResult] = await Promise.all([
       parseResponse(articleResponse),
       parseResponse(messageResponse),
-      parseResponse(statsResponse),
       parseResponse(galleryResponse)
     ]);
     const articles = articleResult.success && Array.isArray(articleResult.data) ? articleResult.data : [];
@@ -184,17 +195,15 @@ async function loadHubPreview(options = {}) {
     const nextPlazaMessages = [...messages]
       .filter((item) => !item.parent_id)
       .sort((a, b) => compareAppDate(b.created_at, a.created_at));
-    const nextSiteStats = statsResult.success ? statsResult.data || null : null;
 
     latestArticle.value = nextLatestArticle;
     latestGalleryImage.value = nextLatestGalleryImage;
     plazaMessages.value = nextPlazaMessages;
-    siteStats.value = nextSiteStats;
     writeHubPreviewCache({
       latestArticle: nextLatestArticle,
       latestGalleryImage: nextLatestGalleryImage,
       plazaMessages: nextPlazaMessages,
-      siteStats: nextSiteStats
+      siteStats: siteStats.value
     });
   } catch (_) {
     if (!cached) {
@@ -236,6 +245,7 @@ async function submitPlazaQuick() {
           ...siteStats.value,
           messages: Number(siteStats.value.messages || 0) + 1
         };
+        setPublicStatsCache(siteStats.value);
       }
     }
     plazaQuick.content = '';

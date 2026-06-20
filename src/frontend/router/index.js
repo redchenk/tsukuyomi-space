@@ -1,24 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import AccessPage from '../pages/AccessPage.vue';
-import HubPage from '../pages/HubPage.vue';
-import LoginPage from '../pages/LoginPage.vue';
-import RegisterPage from '../pages/RegisterPage.vue';
-import StagePage from '../pages/StagePage.vue';
-import PlazaPage from '../pages/PlazaPage.vue';
-import RealityPage from '../pages/RealityPage.vue';
-import EditorPage from '../pages/EditorPage.vue';
-import AttachmentsPage from '../pages/AttachmentsPage.vue';
-import GalleryPage from '../pages/GalleryPage.vue';
-import UserCenterPage from '../pages/UserCenterPage.vue';
-import UserProfilePage from '../pages/UserProfilePage.vue';
-import NotificationsPage from '../pages/NotificationsPage.vue';
-import RoomPage from '../pages/RoomPage.vue';
-import RoomSettingsPage from '../pages/RoomSettingsPage.vue';
-import Live2DPage from '../pages/Live2DPage.vue';
-import ArticlePage from '../pages/ArticlePage.vue';
-import TerminalPage from '../pages/TerminalPage.vue';
-import ArenaPage from '../pages/ArenaPage.vue';
 import { applyRouteSeo } from '../utils/seo';
+
+const AccessPage = () => import('../pages/AccessPage.vue');
+const HubPage = () => import('../pages/HubPage.vue');
+const LoginPage = () => import('../pages/LoginPage.vue');
+const RegisterPage = () => import('../pages/RegisterPage.vue');
+const StagePage = () => import('../pages/StagePage.vue');
+const PlazaPage = () => import('../pages/PlazaPage.vue');
+const RealityPage = () => import('../pages/RealityPage.vue');
+const EditorPage = () => import('../pages/EditorPage.vue');
+const AttachmentsPage = () => import('../pages/AttachmentsPage.vue');
+const GalleryPage = () => import('../pages/GalleryPage.vue');
+const UserCenterPage = () => import('../pages/UserCenterPage.vue');
+const UserProfilePage = () => import('../pages/UserProfilePage.vue');
+const NotificationsPage = () => import('../pages/NotificationsPage.vue');
+const RoomPage = () => import('../pages/RoomPage.vue');
+const RoomSettingsPage = () => import('../pages/RoomSettingsPage.vue');
+const Live2DPage = () => import('../pages/Live2DPage.vue');
+const ArticlePage = () => import('../pages/ArticlePage.vue');
+const TerminalPage = () => import('../pages/TerminalPage.vue');
+const ArenaPage = () => import('../pages/ArenaPage.vue');
 
 export const routes = [
   {
@@ -186,6 +187,47 @@ export const router = createRouter({
   routes
 });
 
+const routeWarmups = {
+  access: [HubPage],
+  accessAlias: [HubPage],
+  hub: [PlazaPage, StagePage, RoomPage, GalleryPage],
+  plaza: [HubPage, LoginPage, UserProfilePage],
+  stage: [ArticlePage, HubPage, EditorPage],
+  article: [StagePage],
+  articleDetail: [StagePage],
+  room: [RoomSettingsPage, HubPage],
+  roomSettings: [RoomPage],
+  gallery: [AttachmentsPage, HubPage],
+  galleryManage: [GalleryPage],
+  userCenter: [NotificationsPage, UserProfilePage],
+  terminal: [EditorPage, AttachmentsPage],
+  arena: [HubPage]
+};
+const warmedRouteComponents = new WeakSet();
+
+function warmRouteComponent(loader) {
+  if (typeof loader !== 'function' || warmedRouteComponents.has(loader)) return;
+  warmedRouteComponents.add(loader);
+  loader().catch(() => {
+    warmedRouteComponents.delete(loader);
+  });
+}
+
+function scheduleRouteWarmup(to) {
+  if (typeof window === 'undefined') return;
+  const connection = window.navigator?.connection;
+  if (connection?.saveData) return;
+
+  const loaders = routeWarmups[to.name] || [HubPage, PlazaPage, StagePage, GalleryPage];
+  const warm = () => loaders.forEach(warmRouteComponent);
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(warm, { timeout: 1800 });
+    return;
+  }
+  window.setTimeout(warm, 500);
+}
+
 router.afterEach((to) => {
   applyRouteSeo(to);
+  scheduleRouteWarmup(to);
 });
