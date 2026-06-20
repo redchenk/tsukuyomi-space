@@ -428,7 +428,7 @@
 
 .scene-main {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     display: block;
     min-width: 0;
     align-self: start;
@@ -439,6 +439,8 @@
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 0;
+    pointer-events: none;
 }
 
 .scene-card::before {
@@ -456,6 +458,7 @@
 }
 
 .scene-card::after {
+    z-index: 1;
     background:
         linear-gradient(180deg, rgba(7, 12, 26, 0.04), rgba(7, 12, 26, 0.2) 42%, rgba(7, 12, 26, 0.48)),
         radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.2), transparent 36%);
@@ -474,14 +477,14 @@
 
 .scene-icon {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     background: rgba(9, 15, 32, 0.48);
     backdrop-filter: blur(10px);
 }
 
 .scene-label {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     width: fit-content;
     max-width: 100%;
     padding: 0.24rem 0.48rem;
@@ -536,65 +539,39 @@
     -webkit-box-orient: vertical;
 }
 
-.hub-arena-card-body {
-    display: grid;
-    gap: 0.38rem;
-    align-content: start;
-}
-
-.hub-arena-preview,
-.hub-arena-empty {
-    display: grid;
-    place-items: center;
-    width: 100%;
-    min-height: 88px;
-    margin-top: 0.1rem;
+.hub-arena-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
     overflow: hidden;
-    border: 1px solid rgba(231, 249, 255, 0.14);
-    border-radius: 10px;
-    background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(174, 242, 255, 0.04)),
-        var(--hub-arena-bg, #0b1020);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    background: var(--hub-arena-bg, #0b1020);
+    pointer-events: none;
 }
 
-.hub-arena-preview {
-    aspect-ratio: 16 / 9;
-    padding: 0.38rem;
-}
-
-.hub-arena-preview .pixel-canvas-renderer {
+.hub-arena-cover .pixel-canvas-renderer {
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     image-rendering: pixelated;
-    border-radius: 6px;
+    opacity: 0.82;
+    transform: scale(1.02);
+    transition: transform 0.28s ease, opacity 0.28s ease;
 }
 
-.hub-arena-empty {
-    min-height: 96px;
-    padding: 0.7rem;
-    color: rgba(239, 247, 255, 0.68);
-    font-size: 0.78rem;
-    line-height: 1.5;
-    text-align: center;
+.scene-card-arena:has(.hub-arena-cover)::before {
+    opacity: 0;
 }
 
-.hub-arena-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.38rem;
-    color: rgba(239, 247, 255, 0.58);
-    font-size: 0.72rem;
-    font-weight: 800;
+.scene-card-arena:has(.hub-arena-cover)::after {
+    background:
+        linear-gradient(180deg, rgba(7, 12, 26, 0.1), rgba(7, 12, 26, 0.28) 42%, rgba(7, 12, 26, 0.68)),
+        radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.24), transparent 36%);
 }
 
-.hub-arena-meta span {
-    padding: 0.18rem 0.4rem;
-    border: 1px solid rgba(231, 249, 255, 0.12);
-    border-radius: 999px;
-    background: rgba(9, 15, 32, 0.28);
+.scene-card-arena:hover .hub-arena-cover .pixel-canvas-renderer {
+    opacity: 0.94;
+    transform: scale(1.08);
 }
 
 .scene-code {
@@ -736,23 +713,21 @@ html[data-theme="light"] .hub-kicker,
 html[data-theme="light"] .scene-card,
 html[data-theme="light"] .hub-stat-grid div,
 html[data-theme="light"] .hub-side-card,
-html[data-theme="light"] .scene-icon,
-html[data-theme="light"] .hub-arena-preview,
-html[data-theme="light"] .hub-arena-empty,
-html[data-theme="light"] .hub-arena-meta span {
+html[data-theme="light"] .scene-icon {
     border-color: rgba(75, 95, 140, 0.14);
     background: rgba(255, 255, 255, 0.66);
-}
-
-html[data-theme="light"] .hub-arena-empty,
-html[data-theme="light"] .hub-arena-meta {
-    color: rgba(38, 48, 72, 0.68);
 }
 
 html[data-theme="light"] .scene-card::after {
     background:
         linear-gradient(180deg, rgba(10, 18, 36, 0.02), rgba(10, 18, 36, 0.2) 42%, rgba(10, 18, 36, 0.72)),
         radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.2), transparent 36%);
+}
+
+html[data-theme="light"] .scene-card-arena:has(.hub-arena-cover)::after {
+    background:
+        linear-gradient(180deg, rgba(10, 18, 36, 0.04), rgba(10, 18, 36, 0.24) 42%, rgba(10, 18, 36, 0.76)),
+        radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.24), transparent 36%);
 }
 
 @keyframes hubFloat {
@@ -954,15 +929,6 @@ html[data-theme="light"] .scene-card::after {
 
     .scene-card-plaza {
         min-height: 220px;
-    }
-
-    .scene-card-arena {
-        min-height: 242px;
-    }
-
-    .hub-arena-preview,
-    .hub-arena-empty {
-        min-height: 104px;
     }
 
     .hub-plaza-list {

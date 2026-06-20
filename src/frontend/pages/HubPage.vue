@@ -168,11 +168,6 @@ function artworkBackground(artwork) {
   return artwork?.background_color || artwork?.backgroundColor || '#0b1020';
 }
 
-function formatLikeCount(value) {
-  const total = Number(value || 0);
-  return Number.isFinite(total) ? total.toLocaleString('zh-CN') : '0';
-}
-
 function applyHubPreviewCache(cache) {
   if (!cache) return;
   latestArticle.value = cache.latestArticle || null;
@@ -405,33 +400,24 @@ onMounted(loadHubPreview);
           @keydown.enter="openScene(scene, $event)"
           @keydown.space.prevent="openScene(scene, $event)"
         >
+          <span v-if="scene.kind === 'arena' && scene.artwork" class="hub-arena-cover" :style="{ '--hub-arena-bg': artworkBackground(scene.artwork) }" aria-hidden="true">
+            <PixelCanvasCells
+              :pixels="artworkPixels(scene.artwork)"
+              :palette="artworkPalette(scene.artwork)"
+              :width="artworkWidth(scene.artwork)"
+              :height="artworkHeight(scene.artwork)"
+              :cell-size="1"
+              :background-color="artworkBackground(scene.artwork)"
+              :show-grid="false"
+              :interactive="false"
+              :aria-label="scene.name"
+            />
+          </span>
           <span class="scene-icon" aria-hidden="true">
             <TsIcon :name="scene.icon" :size="22" :stroke-width="1.9" />
           </span>
           <span v-if="scene.label" class="scene-label">{{ scene.label }}</span>
-          <span v-if="scene.kind === 'arena'" class="scene-main hub-arena-card-body">
-            <span class="scene-name">{{ scene.name }}</span>
-            <span class="scene-desc">{{ scene.desc }}</span>
-            <span v-if="scene.artwork" class="hub-arena-preview" :style="{ '--hub-arena-bg': artworkBackground(scene.artwork) }">
-              <PixelCanvasCells
-                :pixels="artworkPixels(scene.artwork)"
-                :palette="artworkPalette(scene.artwork)"
-                :width="artworkWidth(scene.artwork)"
-                :height="artworkHeight(scene.artwork)"
-                :cell-size="1"
-                :background-color="artworkBackground(scene.artwork)"
-                :show-grid="false"
-                :interactive="false"
-                :aria-label="scene.name"
-              />
-            </span>
-            <span v-else class="hub-arena-empty">等待第一幅公开像素画。</span>
-            <span v-if="scene.artwork" class="hub-arena-meta">
-              <span>{{ scene.code }}</span>
-              <span>{{ formatLikeCount(scene.artwork.like_count) }} 喜欢</span>
-            </span>
-          </span>
-          <span v-else-if="scene.kind !== 'plaza'" class="scene-main">
+          <span v-if="scene.kind !== 'plaza'" class="scene-main">
             <span class="scene-name">{{ scene.name }}</span>
             <span class="scene-desc">{{ scene.desc }}</span>
           </span>
