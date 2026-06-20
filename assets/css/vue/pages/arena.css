@@ -2075,6 +2075,7 @@ body .page.arena-page .arena-art-lightbox {
 
 body .page.arena-page .arena-art-lightbox-card {
     position: relative;
+    isolation: isolate;
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;
     width: min(100%, 1040px);
@@ -2150,7 +2151,7 @@ body .page.arena-page .arena-art-lightbox-footer .ghost-btn {
 
 body .page.arena-page .arena-art-lightbox-close {
     position: absolute;
-    z-index: 2;
+    z-index: 20;
     top: 0.78rem;
     right: 0.78rem;
     display: grid;
@@ -2163,6 +2164,8 @@ body .page.arena-page .arena-art-lightbox-close {
     color: #fff;
     background: rgba(10, 16, 32, 0.72);
     cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
 }
 
 html[data-theme="light"] body .page.arena-page .arena-hero-copy,
