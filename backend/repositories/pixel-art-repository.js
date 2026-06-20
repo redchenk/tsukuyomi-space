@@ -75,6 +75,34 @@ function listArtworks({ viewerId = '', sort = 'latest', limit = 24, offset = 0 }
     };
 }
 
+function listManageArtworks({ viewerId = '', admin = false, sort = 'latest', limit = 80, offset = 0 } = {}) {
+    const safeLimit = clampLimit(limit, 80, 120);
+    const safeOffset = clampOffset(offset);
+    const orderBy = sort === 'hot'
+        ? 'ORDER BY a.like_count DESC, a.created_at DESC, a.id DESC'
+        : 'ORDER BY a.created_at DESC, a.id DESC';
+    const where = admin ? '' : 'WHERE a.author_id = ?';
+    const params = admin
+        ? [viewerId, viewerId, safeLimit, safeOffset]
+        : [viewerId, viewerId, viewerId, safeLimit, safeOffset];
+    const rows = db.prepare(`
+        ${artworkSelect(viewerId)}
+        ${where}
+        ${orderBy}
+        LIMIT ? OFFSET ?
+    `).all(...params);
+    const total = admin
+        ? db.prepare('SELECT COUNT(*) AS count FROM pixel_artworks').get().count || 0
+        : db.prepare('SELECT COUNT(*) AS count FROM pixel_artworks WHERE author_id = ?').get(viewerId).count || 0;
+
+    return {
+        items: rows.map(normalizeArtwork),
+        total,
+        limit: safeLimit,
+        offset: safeOffset
+    };
+}
+
 function findArtworkById(id, viewerId = '') {
     const row = db.prepare(`
         ${artworkSelect(viewerId)}
@@ -99,6 +127,41 @@ function createArtwork({ title, description = '', authorId, size, width = size, 
         JSON.stringify(pixels)
     );
     return findArtworkById(result.lastInsertRowid, authorId);
+}
+
+function updateArtwork(id, { title, description = '', size, width = size, height = size, backgroundColor = '#0b1020', palette, pixels }, viewerId = '') {
+    const changes = db.prepare(`
+        UPDATE pixel_artworks
+        SET title = ?,
+            description = ?,
+            size = ?,
+            width = ?,
+            height = ?,
+            background_color = ?,
+            palette = ?,
+            pixels = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    `).run(
+        title,
+        description,
+        size,
+        width,
+        height,
+        backgroundColor,
+        JSON.stringify(palette),
+        JSON.stringify(pixels),
+        id
+    ).changes;
+    return changes ? findArtworkById(id, viewerId) : null;
+}
+
+function deleteArtwork(id) {
+    const tx = db.transaction(() => {
+        db.prepare('DELETE FROM pixel_art_likes WHERE artwork_id = ?').run(id);
+        return db.prepare('DELETE FROM pixel_artworks WHERE id = ?').run(id).changes;
+    });
+    return tx();
 }
 
 function findArtworkLike(artworkId, userId) {
@@ -129,8 +192,11 @@ function likeArtwork(artworkId, userId) {
 
 module.exports = {
     listArtworks,
+    listManageArtworks,
     findArtworkById,
     createArtwork,
+    updateArtwork,
+    deleteArtwork,
     findArtworkLike,
     likeArtwork
 };

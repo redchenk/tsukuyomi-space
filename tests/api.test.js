@@ -72,6 +72,14 @@ async function postJson(pathname, body, token) {
     });
 }
 
+async function putJson(pathname, body, token) {
+    return request(pathname, {
+        method: 'PUT',
+        headers: jsonHeaders(token),
+        body: JSON.stringify(body)
+    });
+}
+
 async function patchJson(pathname, body, token) {
     return request(pathname, {
         method: 'PATCH',
@@ -323,6 +331,24 @@ describe('messages API', () => {
 });
 
 describe('pixel art API', () => {
+    function makePixelArtworkPayload(title, width = 32, height = 18) {
+        const pixels = Array(width * height).fill(-1);
+        pixels[width * 3 + 3] = 2;
+        pixels[width * 3 + 4] = 3;
+        pixels[width * 4 + 3] = 4;
+        pixels[width * 4 + 4] = 5;
+        return {
+            title,
+            description: `${title} description`,
+            size: width,
+            width,
+            height,
+            background_color: '#172033',
+            palette: ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#a481ff', '#ff9aba'],
+            pixels
+        };
+    }
+
     it('creates, lists, and likes shared pixel artworks', async () => {
         const artworkWidth = 128;
         const artworkHeight = 72;
@@ -369,6 +395,82 @@ describe('pixel art API', () => {
         });
         assert.equal(detail.response.status, 200);
         assert.equal(detail.body.data.viewer_liked, true);
+    });
+
+    it('isolates pixel artwork management by owner while allowing admins', async () => {
+        const managedCreated = await postJson('/api/pixel-art', makePixelArtworkPayload('Managed User Pixel'), managedUserToken);
+        assert.equal(managedCreated.response.status, 201);
+        const managedArtworkId = managedCreated.body.data.id;
+
+        const userManageList = await request('/api/pixel-art/manage?limit=20', {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(userManageList.response.status, 200);
+        assert.ok(userManageList.body.data.some(item => item.id === pixelArtworkId));
+        assert.ok(!userManageList.body.data.some(item => item.id === managedArtworkId));
+
+        const forbiddenRead = await request(`/api/pixel-art/manage/${managedArtworkId}`, {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(forbiddenRead.response.status, 403);
+
+        const forbiddenUpdate = await putJson(
+            `/api/pixel-art/${managedArtworkId}`,
+            makePixelArtworkPayload('Hijacked Pixel'),
+            userToken
+        );
+        assert.equal(forbiddenUpdate.response.status, 403);
+
+        const forbiddenDelete = await request(`/api/pixel-art/${managedArtworkId}`, {
+            method: 'DELETE',
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(forbiddenDelete.response.status, 403);
+
+        const ownDetail = await request(`/api/pixel-art/${pixelArtworkId}`, {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(ownDetail.response.status, 200);
+        const ownPixels = [...ownDetail.body.data.pixels];
+        ownPixels[0] = 1;
+        const ownerUpdate = await putJson(`/api/pixel-art/${pixelArtworkId}`, {
+            title: 'Updated Test Pixel Moon',
+            description: 'Updated by owner',
+            size: ownDetail.body.data.width,
+            width: ownDetail.body.data.width,
+            height: ownDetail.body.data.height,
+            background_color: ownDetail.body.data.background_color,
+            palette: ownDetail.body.data.palette,
+            pixels: ownPixels
+        }, userToken);
+        assert.equal(ownerUpdate.response.status, 200);
+        assert.equal(ownerUpdate.body.data.title, 'Updated Test Pixel Moon');
+        assert.equal(ownerUpdate.body.data.author, 'normal-user');
+
+        const adminManageList = await request('/api/pixel-art/manage?limit=20', {
+            headers: jsonHeaders(adminToken)
+        });
+        assert.equal(adminManageList.response.status, 200);
+        assert.ok(adminManageList.body.data.some(item => item.id === pixelArtworkId));
+        assert.ok(adminManageList.body.data.some(item => item.id === managedArtworkId));
+
+        const adminUpdate = await putJson(
+            `/api/pixel-art/${managedArtworkId}`,
+            makePixelArtworkPayload('Admin Curated Pixel'),
+            adminToken
+        );
+        assert.equal(adminUpdate.response.status, 200);
+        assert.equal(adminUpdate.body.data.title, 'Admin Curated Pixel');
+        assert.equal(adminUpdate.body.data.author, 'managed-user');
+
+        const adminDelete = await request(`/api/pixel-art/${managedArtworkId}`, {
+            method: 'DELETE',
+            headers: jsonHeaders(adminToken)
+        });
+        assert.equal(adminDelete.response.status, 200);
+
+        const deletedDetail = await request(`/api/pixel-art/${managedArtworkId}`);
+        assert.equal(deletedDetail.response.status, 404);
     });
 });
 

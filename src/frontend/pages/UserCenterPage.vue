@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { authFetch, authHeaders, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
+import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { compressImage } from '../utils/image';
 import { formatDateOnly } from '../utils/time';
@@ -18,6 +19,7 @@ const sessionChecking = ref(!props.user);
 const ucToast = reactive({ text: '', visible: false });
 let ucToastTimer = 0;
 let loadedUserId = '';
+const pixelFallbackPalette = ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#ff9aba', '#f1d98e'];
 
 const uc = reactive({
   tab: 'profile',
@@ -29,10 +31,14 @@ const uc = reactive({
   passwordChanging: false,
   articles: [],
   bookmarks: [],
+  pixelArtworks: [],
   articleQuery: '',
   bookmarkQuery: '',
+  pixelQuery: '',
   articleLoading: true,
   bookmarkLoading: true,
+  pixelLoading: true,
+  pixelDeleting: '',
   avatarUploading: false,
   profileBio: '',
   password: {
@@ -43,13 +49,15 @@ const uc = reactive({
 });
 
 const isAuthed = computed(() => Boolean(ucUser.value));
+const isAdminUser = computed(() => ['admin', 'super_admin'].includes(ucUser.value?.role) || ucUser.value?.scope === 'admin');
 const locale = computed(() => props.lang === 'zh' ? 'zh-CN' : 'ja-JP');
 const ucAvatarSrc = computed(() => ucUser.value?.avatar || ucDefaultAvatar(ucUser.value?.username));
 const ucRoleText = computed(() => {
   if (!ucUser.value) return '';
-  return ucUser.value.role === 'admin' ? props.t.ucAdmin : props.t.ucUser;
+  return isAdminUser.value ? props.t.ucAdmin : props.t.ucUser;
 });
 const ucArticlesCount = computed(() => uc.articles.length.toLocaleString(locale.value));
+const ucPixelArtworkCount = computed(() => uc.pixelArtworks.length.toLocaleString(locale.value));
 const ucTotalViews = computed(() => {
   const total = uc.articles.reduce((sum, article) => sum + Number(article.view_count || 0), 0);
   return total.toLocaleString(locale.value);
@@ -68,6 +76,11 @@ const ucFilteredBookmarks = computed(() => {
   const q = uc.bookmarkQuery.toLowerCase();
   return uc.bookmarks.filter((article) => `${article.title || ''} ${article.category || ''} ${article.author_username || ''}`.toLowerCase().includes(q));
 });
+const ucFilteredPixelArtworks = computed(() => {
+  if (!uc.pixelQuery) return uc.pixelArtworks;
+  const q = uc.pixelQuery.toLowerCase();
+  return uc.pixelArtworks.filter((artwork) => `${artwork.title || ''} ${artwork.description || ''} ${artwork.author || ''}`.toLowerCase().includes(q));
+});
 
 function go(path) {
   emit('go', path);
@@ -75,6 +88,14 @@ function go(path) {
 
 function articlePath(article) {
   return `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
+}
+
+function pixelArtworkPath(artwork) {
+  return `/arena?art=${encodeURIComponent(artwork.id)}#pixel-art-${encodeURIComponent(artwork.id)}`;
+}
+
+function pixelArtworkEditPath(artwork) {
+  return `/arena?edit=${encodeURIComponent(artwork.id)}`;
 }
 
 async function logout() {
@@ -113,6 +134,31 @@ function ucDefaultAvatar(name) {
 function ucFormatDate(value) {
   if (!value) return '-';
   return formatDateOnly(value, locale.value);
+}
+
+function pixelArtworkDimension(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function pixelArtworkWidth(artwork) {
+  return pixelArtworkDimension(artwork?.width ?? artwork?.size, 96);
+}
+
+function pixelArtworkHeight(artwork) {
+  return pixelArtworkDimension(artwork?.height ?? artwork?.size, 54);
+}
+
+function pixelArtworkPalette(artwork) {
+  return Array.isArray(artwork?.palette) && artwork.palette.length ? artwork.palette : pixelFallbackPalette;
+}
+
+function pixelArtworkPixels(artwork) {
+  return Array.isArray(artwork?.pixels) ? artwork.pixels : [];
+}
+
+function pixelArtworkBackground(artwork) {
+  return artwork?.background_color || artwork?.backgroundColor || '#0b1020';
 }
 
 async function ucLoadProfile() {
@@ -177,8 +223,30 @@ async function ucLoadBookmarks() {
   }
 }
 
+async function ucLoadPixelArtworks() {
+  uc.pixelLoading = true;
+  if (!isAuthed.value) {
+    uc.pixelLoading = false;
+    return;
+  }
+  try {
+    const response = await authFetch(`/api/pixel-art/manage?limit=100&_=${Date.now()}`, {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '像素画列表读取失败');
+    uc.pixelArtworks = Array.isArray(result.data) ? result.data : [];
+  } catch (error) {
+    uc.pixelArtworks = [];
+    ucShowToast(error.message || '像素画列表读取失败');
+  } finally {
+    uc.pixelLoading = false;
+  }
+}
+
 async function ucRefresh() {
-  await Promise.all([ucLoadProfile(), ucLoadArticles(), ucLoadBookmarks()]);
+  await Promise.all([ucLoadProfile(), ucLoadArticles(), ucLoadBookmarks(), ucLoadPixelArtworks()]);
 }
 
 async function ucEnsureSession() {
@@ -205,8 +273,10 @@ async function ucEnsureSession() {
   uc.profileBio = '';
   uc.articles = [];
   uc.bookmarks = [];
+  uc.pixelArtworks = [];
   uc.articleLoading = false;
   uc.bookmarkLoading = false;
+  uc.pixelLoading = false;
   return false;
 }
 
@@ -322,6 +392,31 @@ async function ucDeleteArticle(id) {
 
 function ucEditArticle(id) {
   emit('go', `/editor?id=${id}`);
+}
+
+function ucEditPixelArtwork(artwork) {
+  emit('go', pixelArtworkEditPath(artwork));
+}
+
+async function ucDeletePixelArtwork(artwork) {
+  if (!artwork?.id) return;
+  const label = artwork.title ? `《${artwork.title}》` : '这幅像素画';
+  if (!confirm(`确定删除${label}吗？删除后不可恢复。`)) return;
+  uc.pixelDeleting = artwork.id;
+  try {
+    const response = await authFetch(`/api/pixel-art/${encodeURIComponent(artwork.id)}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '像素画删除失败');
+    uc.pixelArtworks = uc.pixelArtworks.filter(item => item.id !== artwork.id);
+    ucShowToast(result.message || '像素画已删除');
+  } catch (error) {
+    ucShowToast(error.message || '像素画删除失败');
+  } finally {
+    uc.pixelDeleting = '';
+  }
 }
 
 watch(() => props.user, (nextUser) => {
@@ -458,6 +553,10 @@ onMounted(async () => {
               <span><TsIcon name="bookmark" :size="18" /> &#25105;&#30340;&#25910;&#34255;</span>
               <small>Bookmarks</small>
             </button>
+            <button class="tab-btn" :class="{ active: uc.tab === 'pixelArt' }" type="button" @click="uc.tab = 'pixelArt'">
+              <span><TsIcon name="palette" :size="18" /> 像素画</span>
+              <small>{{ isAdminUser ? 'All Pixel Art' : ucPixelArtworkCount }}</small>
+            </button>
             <button class="tab-btn uc-asset-tab" type="button" @click="go('/gallery/manage')">
               <span><TsIcon name="image" :size="18" /> &#22270;&#24211;&#31649;&#29702;</span>
               <small>Gallery</small>
@@ -590,9 +689,79 @@ onMounted(async () => {
             </div>
           </div>
 
+          <div v-if="uc.tab === 'pixelArt'">
+            <div class="uc-section-head">
+              <h2 class="uc-section-title"><span>04</span> {{ isAdminUser ? '全站像素画管理' : '我的像素画' }}</h2>
+              <div class="uc-article-tools">
+                <input v-model="uc.pixelQuery" class="uc-search" type="search" placeholder="搜索像素画">
+                <a class="primary-btn uc-icon-action" href="/arena" @click.prevent="go('/arena')">
+                  <TsIcon name="palette" :size="17" />
+                  <span>新建像素画</span>
+                </a>
+                <button class="ghost-btn uc-icon-action" type="button" @click="ucLoadPixelArtworks">
+                  <TsIcon name="refresh" :size="17" />
+                  <span>刷新</span>
+                </button>
+              </div>
+            </div>
+            <div v-if="uc.pixelLoading" class="uc-empty">像素画列表加载中...</div>
+            <div v-else-if="!ucFilteredPixelArtworks.length" class="uc-empty">
+              <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">还没有像素画</div>
+              <div style="margin-bottom:1rem;">从月光像素工坊开始新建作品，发布后会在这里管理。</div>
+              <a class="primary-btn uc-icon-action" href="/arena" @click.prevent="go('/arena')">
+                <TsIcon name="palette" :size="17" />
+                <span>去新建像素画</span>
+              </a>
+            </div>
+            <div v-else class="uc-pixel-grid">
+              <article v-for="artwork in ucFilteredPixelArtworks" :key="artwork.id" class="uc-pixel-card">
+                <div class="uc-pixel-preview" :style="{ '--pixel-bg': pixelArtworkBackground(artwork) }">
+                  <PixelCanvasCells
+                    :pixels="pixelArtworkPixels(artwork)"
+                    :palette="pixelArtworkPalette(artwork)"
+                    :width="pixelArtworkWidth(artwork)"
+                    :height="pixelArtworkHeight(artwork)"
+                    :cell-size="1"
+                    :background-color="pixelArtworkBackground(artwork)"
+                    :show-grid="false"
+                    :interactive="false"
+                    :aria-label="artwork.title || '像素画'"
+                  />
+                </div>
+                <div class="uc-pixel-body">
+                  <div class="uc-pixel-title-row">
+                    <h3>{{ artwork.title || '未命名像素画' }}</h3>
+                    <span>#{{ artwork.id }}</span>
+                  </div>
+                  <p v-if="artwork.description">{{ artwork.description }}</p>
+                  <div class="uc-article-meta">
+                    <span class="uc-status-pill">{{ pixelArtworkWidth(artwork) }}x{{ pixelArtworkHeight(artwork) }}</span>
+                    <span v-if="isAdminUser">{{ artwork.author || '未知作者' }}</span>
+                    <span>{{ (artwork.like_count || 0).toLocaleString(locale) }} 喜欢</span>
+                    <span>{{ ucFormatDate(artwork.created_at) }}</span>
+                  </div>
+                </div>
+                <div class="uc-article-actions uc-pixel-actions">
+                  <a class="icon-btn uc-icon-action" :href="pixelArtworkPath(artwork)" @click.prevent="go(pixelArtworkPath(artwork))">
+                    <TsIcon name="eye" :size="16" />
+                    <span>查看</span>
+                  </a>
+                  <button class="icon-btn uc-icon-action" type="button" @click="ucEditPixelArtwork(artwork)">
+                    <TsIcon name="penLine" :size="16" />
+                    <span>编辑</span>
+                  </button>
+                  <button class="danger-btn uc-icon-action" type="button" :disabled="uc.pixelDeleting === artwork.id" @click="ucDeletePixelArtwork(artwork)">
+                    <TsIcon name="trash" :size="16" />
+                    <span>{{ uc.pixelDeleting === artwork.id ? '删除中' : '删除' }}</span>
+                  </button>
+                </div>
+              </article>
+            </div>
+          </div>
+
           <div v-if="uc.tab === 'security'">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>04</span> {{ t.ucSecurity }}</h2>
+              <h2 class="uc-section-title"><span>05</span> {{ t.ucSecurity }}</h2>
             </div>
             <div v-if="uc.passwordMsg" class="form-message" :class="uc.passwordMsgType">{{ uc.passwordMsg }}</div>
             <div class="uc-security-grid">

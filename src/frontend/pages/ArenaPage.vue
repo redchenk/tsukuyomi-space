@@ -54,6 +54,7 @@ const copy = computed(() => props.lang === 'ja' ? {
   draftPlaceholder: '作品名',
   descPlaceholder: 'ひとことメモ',
   share: '投稿する',
+  saveUpdate: '更新を保存',
   loginToShare: 'ログインして投稿',
   clear: '消去',
   undo: '戻す',
@@ -96,6 +97,7 @@ const copy = computed(() => props.lang === 'ja' ? {
   copyLink: 'リンク',
   linkCopied: 'リンクをコピーしました',
   publishOk: '作品を共有しました',
+  updateOk: '作品を更新しました',
   publishFailed: '共有に失敗しました',
   titleRequired: '作品名を入れてください',
   blankCanvas: 'キャンバスはまだ空です',
@@ -113,6 +115,7 @@ const copy = computed(() => props.lang === 'ja' ? {
   draftPlaceholder: '作品名',
   descPlaceholder: '给这幅画留一句话',
   share: '发布作品',
+  saveUpdate: '保存更新',
   loginToShare: '登录后发布',
   clear: '清空',
   undo: '撤销',
@@ -155,6 +158,7 @@ const copy = computed(() => props.lang === 'ja' ? {
   copyLink: '复制链接',
   linkCopied: '链接已复制',
   publishOk: '作品已分享',
+  updateOk: '作品已更新',
   publishFailed: '分享失败',
   titleRequired: '请先给作品取个名字',
   blankCanvas: '画布还是空的',
@@ -194,6 +198,7 @@ const gallery = reactive({
   loading: false,
   sort: 'latest'
 });
+const editingArtwork = ref(null);
 const toast = reactive({
   text: '',
   visible: false
@@ -227,6 +232,10 @@ const canvasStyle = computed(() => ({
   transform: `translateZ(0) scale(${canvasZoomScale.value})`,
   backgroundColor: backgroundColor.value
 }));
+const publishButtonText = computed(() => {
+  if (!isAuthed.value) return copy.value.loginToShare;
+  return editingArtwork.value ? copy.value.saveUpdate : copy.value.share;
+});
 
 function go(path) {
   emit('go', path);
@@ -349,6 +358,39 @@ function restoreSnapshot(snapshot) {
   pixels.value = Array.isArray(snapshot.pixels) && snapshot.pixels.length === nextPreset.width * nextPreset.height
     ? [...snapshot.pixels]
     : blankPixels(nextPreset.width, nextPreset.height);
+}
+
+function loadArtworkIntoDraft(artwork) {
+  const width = artworkWidth(artwork);
+  const height = artworkHeight(artwork);
+  const nextPreset = findCanvasPreset(width, height) || DEFAULT_CANVAS_PRESET;
+  const palette = Array.isArray(artwork.palette) && artwork.palette.length ? artwork.palette.map(color => normalizeHexColor(color, presetPalette[3])) : presetPalette;
+  const nextCustomColors = [...new Set(palette.filter(color => !presetPalette.includes(color)))].slice(0, MAX_CUSTOM_COLORS);
+  const nextPalette = [...presetPalette, ...nextCustomColors];
+  const sourcePixels = Array.isArray(artwork.pixels) && artwork.pixels.length === nextPreset.width * nextPreset.height
+    ? artwork.pixels
+    : blankPixels(nextPreset.width, nextPreset.height);
+  const remappedPixels = sourcePixels.map((colorIndex) => {
+    const sourceIndex = Number(colorIndex);
+    if (!Number.isInteger(sourceIndex) || sourceIndex < 0) return -1;
+    const color = palette[sourceIndex];
+    if (!color) return -1;
+    const exactIndex = nextPalette.indexOf(color);
+    return exactIndex >= 0 ? exactIndex : nearestPaletteIndex(color, nextPalette);
+  });
+  canvasWidth.value = nextPreset.width;
+  canvasHeight.value = nextPreset.height;
+  backgroundColor.value = normalizeHexColor(artwork.background_color || artwork.backgroundColor, '#ffffff');
+  customColors.value = nextCustomColors;
+  selectedColor.value = nextPalette.find(color => color !== presetPalette[0]) || presetPalette[3];
+  customColor.value = selectedColor.value;
+  pixels.value = remappedPixels;
+  form.title = artwork.title || '';
+  form.description = artwork.description || '';
+  undoStack.value = [];
+  redoStack.value = [];
+  editingArtwork.value = artwork;
+  sideTab.value = 'gallery';
 }
 
 function pushHistory() {
@@ -720,6 +762,29 @@ async function loadArtworks() {
   }
 }
 
+async function loadArtworkForEdit() {
+  const id = new URLSearchParams(location.search).get('edit');
+  if (!id) return;
+  session.value = getSession();
+  if (!isAuthed.value) {
+    go('/login');
+    return;
+  }
+
+  try {
+    const response = await authFetch(`/api/pixel-art/manage/${encodeURIComponent(id)}?_=${Date.now()}`, {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || copy.value.publishFailed);
+    loadArtworkIntoDraft(result.data);
+    showToast(props.lang === 'ja' ? '編集用に読み込みました' : '已载入像素画，可以继续编辑');
+  } catch (error) {
+    showToast(error.message || copy.value.publishFailed);
+  }
+}
+
 function upsertArtwork(artwork) {
   if (!artwork?.id) return;
   const index = gallery.items.findIndex(item => item.id === artwork.id);
@@ -746,8 +811,12 @@ async function shareArtwork() {
   }
 
   try {
-    const response = await authFetch('/api/pixel-art', {
-      method: 'POST',
+    const wasEditing = Boolean(editingArtwork.value?.id);
+    const targetUrl = wasEditing
+      ? `/api/pixel-art/${encodeURIComponent(editingArtwork.value.id)}`
+      : '/api/pixel-art';
+    const response = await authFetch(targetUrl, {
+      method: wasEditing ? 'PUT' : 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         title: form.title.trim(),
@@ -763,9 +832,14 @@ async function shareArtwork() {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
     upsertArtwork(result.data);
-    showToast(result.message || copy.value.publishOk);
-    form.title = '';
-    form.description = '';
+    if (wasEditing) {
+      editingArtwork.value = result.data;
+      showToast(result.message || copy.value.updateOk);
+    } else {
+      showToast(result.message || copy.value.publishOk);
+      form.title = '';
+      form.description = '';
+    }
   } catch (error) {
     showToast(error.message || copy.value.publishFailed);
   }
@@ -825,6 +899,7 @@ onMounted(() => {
   window.addEventListener('pointerup', endPaint);
   window.addEventListener('pointercancel', endPaint);
   loadArtworks();
+  loadArtworkForEdit();
 });
 
 onBeforeUnmount(() => {
@@ -911,9 +986,9 @@ onBeforeUnmount(() => {
           <button class="ghost-btn" type="button" :title="copy.download" @click="downloadDraft">
             <TsIcon name="download" :size="17" /> <span>{{ copy.download }}</span>
           </button>
-          <button class="primary-btn arena-publish-btn" type="button" :title="isAuthed ? copy.share : copy.loginToShare" @click="shareArtwork">
+          <button class="primary-btn arena-publish-btn" type="button" :title="publishButtonText" @click="shareArtwork">
             <TsIcon name="send" :size="17" />
-            <span>{{ isAuthed ? copy.share : copy.loginToShare }}</span>
+            <span>{{ publishButtonText }}</span>
           </button>
           <div class="arena-zoom-controls" :aria-label="copy.zoom">
             <button class="icon-btn" type="button" :title="`${copy.zoom} -`" @click="adjustZoom(-25)">
