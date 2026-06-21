@@ -239,6 +239,27 @@
     text-align: left;
 }
 
+.room-settings-card .preset-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    align-items: stretch;
+}
+
+.room-settings-card .preset-row .chip,
+.room-settings-card .preset-row .preset-menu,
+.room-settings-card .preset-row .preset-menu summary {
+    width: 100%;
+    min-width: 0;
+}
+
+.room-settings-card .preset-row .chip,
+.room-settings-card .preset-row .preset-menu summary {
+    display: flex;
+    justify-content: center;
+    min-height: 38px;
+    text-align: center;
+}
+
 .room-settings-grid {
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -249,7 +270,7 @@
 .room-settings-card {
     display: flex;
     flex-direction: column;
-    grid-column: span 6;
+    grid-column: 1 / -1;
     gap: 0.95rem;
     min-width: 0;
     scroll-margin-top: 5.8rem;
@@ -264,7 +285,7 @@
 }
 
 .room-settings-card-primary {
-    grid-column: span 6;
+    grid-column: 1 / -1;
 }
 
 .room-card-head {
@@ -482,7 +503,7 @@
 }
 
 .room-live2d-debug-card {
-    grid-column: span 6;
+    grid-column: 1 / -1;
     order: 7;
 }
 
