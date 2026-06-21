@@ -2154,18 +2154,31 @@ body .page.arena-page .arena-art-lightbox-close {
     z-index: 20;
     top: 0.78rem;
     right: 0.78rem;
-    display: grid;
-    place-items: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 40px;
     height: 40px;
+    box-sizing: border-box;
     padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 999px;
+    appearance: none;
+    -webkit-appearance: none;
     color: #fff;
     background: rgba(10, 16, 32, 0.72);
     cursor: pointer;
+    font-size: 0;
+    line-height: 0;
     pointer-events: auto;
     touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body .page.arena-page .arena-art-lightbox-close svg {
+    display: block;
+    flex: 0 0 auto;
+    pointer-events: none;
 }
 
 html[data-theme="light"] body .page.arena-page .arena-hero-copy,
