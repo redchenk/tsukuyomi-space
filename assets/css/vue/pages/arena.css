@@ -2273,6 +2273,36 @@ html[data-theme="light"] body .page.arena-page .arena-chat-message strong {
     }
 }
 
+@media (min-width: 900px) and (max-width: 1180px) and (min-height: 540px) and (orientation: landscape) {
+    body .page.arena-page {
+        height: 100vh;
+        min-height: 760px;
+        grid-template-columns: minmax(210px, 240px) minmax(0, 1fr) minmax(290px, 340px);
+        grid-template-rows: minmax(92px, auto) minmax(0, 1fr);
+        overflow: hidden;
+    }
+
+    body .page.arena-page .arena-hero {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+
+    body .page.arena-page .arena-controls {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    body .page.arena-page .arena-canvas-panel {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    body .page.arena-page .arena-gallery {
+        grid-column: 3;
+        grid-row: 2;
+    }
+}
+
 @media (max-width: 760px) {
     body .page.arena-page {
         height: auto;
