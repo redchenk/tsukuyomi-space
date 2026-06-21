@@ -1256,60 +1256,62 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <div
-      v-if="previewArtwork"
-      class="arena-art-lightbox"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="previewArtwork.title || copy.gallery"
-      @pointerdown.self="closeArtworkPreview"
-      @mousedown.self="closeArtworkPreview"
-      @touchstart.self="closeArtworkPreview"
-      @click.self="closeArtworkPreview"
-    >
-      <section class="arena-art-lightbox-card">
-        <button
-          class="arena-art-lightbox-close"
-          type="button"
-          :aria-label="props.lang === 'ja' ? '閉じる' : '关闭'"
-          @pointerdown.stop.prevent="closeArtworkPreview"
-          @mousedown.stop.prevent="closeArtworkPreview"
-          @touchstart.stop.prevent="closeArtworkPreview"
-          @click.stop.prevent="closeArtworkPreview"
-        >
-          <TsIcon name="x" :size="18" />
-        </button>
-        <div
-          class="arena-art-lightbox-canvas"
-          :style="{
-            backgroundColor: artworkBackground(previewArtwork),
-            aspectRatio: `${artworkWidth(previewArtwork)} / ${artworkHeight(previewArtwork)}`
-          }"
-        >
-          <PixelCanvasCells
-            :pixels="artworkPixels(previewArtwork)"
-            :palette="artworkPalette(previewArtwork)"
-            :width="artworkWidth(previewArtwork)"
-            :height="artworkHeight(previewArtwork)"
-            :cell-size="4"
-            :background-color="artworkBackground(previewArtwork)"
-            :show-grid="false"
-            :interactive="false"
-            :aria-label="previewArtwork.title || copy.gallery"
-          />
-        </div>
-        <footer class="arena-art-lightbox-footer">
-          <div>
-            <strong>{{ previewArtwork.title || copy.gallery }}</strong>
-            <span>{{ copy.by }} {{ previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }}x{{ artworkHeight(previewArtwork) }}</span>
-          </div>
-          <button class="ghost-btn" type="button" @click="downloadArtwork(previewArtwork)">
-            <TsIcon name="download" :size="17" />
-            <span>{{ copy.download }}</span>
+    <Teleport to="body">
+      <div
+        v-if="previewArtwork"
+        class="arena-art-lightbox"
+        role="presentation"
+        @pointerdown.self="closeArtworkPreview"
+        @mousedown.self="closeArtworkPreview"
+        @touchstart.self="closeArtworkPreview"
+        @touchend.self="closeArtworkPreview"
+        @click.self="closeArtworkPreview"
+      >
+        <section class="arena-art-lightbox-card" role="dialog" aria-modal="true" :aria-label="previewArtwork.title || copy.gallery">
+          <button
+            class="arena-art-lightbox-close"
+            type="button"
+            :aria-label="props.lang === 'ja' ? '閉じる' : '关闭'"
+            @pointerdown.stop.prevent="closeArtworkPreview"
+            @mousedown.stop.prevent="closeArtworkPreview"
+            @touchstart.stop.prevent="closeArtworkPreview"
+            @touchend.stop.prevent="closeArtworkPreview"
+            @click.stop.prevent="closeArtworkPreview"
+          >
+            <TsIcon name="x" :size="18" />
           </button>
-        </footer>
-      </section>
-    </div>
+          <div
+            class="arena-art-lightbox-canvas"
+            :style="{
+              backgroundColor: artworkBackground(previewArtwork),
+              aspectRatio: `${artworkWidth(previewArtwork)} / ${artworkHeight(previewArtwork)}`
+            }"
+          >
+            <PixelCanvasCells
+              :pixels="artworkPixels(previewArtwork)"
+              :palette="artworkPalette(previewArtwork)"
+              :width="artworkWidth(previewArtwork)"
+              :height="artworkHeight(previewArtwork)"
+              :cell-size="4"
+              :background-color="artworkBackground(previewArtwork)"
+              :show-grid="false"
+              :interactive="false"
+              :aria-label="previewArtwork.title || copy.gallery"
+            />
+          </div>
+          <footer class="arena-art-lightbox-footer">
+            <div>
+              <strong>{{ previewArtwork.title || copy.gallery }}</strong>
+              <span>{{ copy.by }} {{ previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }}x{{ artworkHeight(previewArtwork) }}</span>
+            </div>
+            <button class="ghost-btn" type="button" @click="downloadArtwork(previewArtwork)">
+              <TsIcon name="download" :size="17" />
+              <span>{{ copy.download }}</span>
+            </button>
+          </footer>
+        </section>
+      </div>
+    </Teleport>
 
     <div v-if="toast.visible" class="arena-toast show">{{ toast.text }}</div>
   </main>
