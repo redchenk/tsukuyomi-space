@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import TsIcon from '../components/TsIcon.vue';
 import { cloneKnowledgeEntry, defaultKnowledgeEntries } from '../constants/room/knowledgeEntries';
 import { roomLive2DManifest } from '../constants/room/live2dManifest';
 import {
@@ -177,6 +178,11 @@ const live2dTest = reactive({
 });
 
 const roomUser = computed(() => storedUser.value || (props.user?.id ? props.user : null));
+const roomIdentityLabel = computed(() => roomUser.value?.username || '访客身份');
+const llmConnectionLabel = computed(() => llm.model || '待配置');
+const ttsConnectionLabel = computed(() => tts.enabled ? (tts.voice || tts.provider || '已启用') : '未启用');
+const memoryConnectionLabel = computed(() => memory.enabled ? `${memoryCount.value} 条记忆` : '未启用');
+const mcpConnectionLabel = computed(() => mcp.enabled ? `${mcp.tools.length || 0} 个工具` : '未启用');
 const visitorKey = computed(() => {
   if (roomUser.value?.id) return `user:${roomUser.value.id}`;
   let id = localStorage.getItem('roomMemoryGuestId');
@@ -1800,20 +1806,77 @@ onBeforeUnmount(() => {
 <template>
   <main class="page room-settings-page">
     <section class="room-settings-hero">
-      <div>
+      <div class="room-settings-hero-copy">
         <div class="hub-kicker">Room Settings</div>
         <h1 class="section-title">房间设置</h1>
         <p class="section-subtitle">模型位置、LLM、TTS、长期记忆和 MCP 工具都集中在这里管理。保存后回到房间即可使用。</p>
       </div>
-      <div class="room-settings-actions">
-        <a class="primary-btn" href="/room" @click.prevent="emit('go', '/room')">返回房间</a>
-        <button class="ghost-btn" type="button" @click="loadSettings">重新读取</button>
+      <div class="room-settings-hero-panel">
+        <div class="room-settings-status-grid">
+          <div class="room-settings-status-card">
+            <TsIcon name="user" :size="18" />
+            <span>当前身份</span>
+            <strong>{{ roomIdentityLabel }}</strong>
+          </div>
+          <div class="room-settings-status-card">
+            <TsIcon name="message" :size="18" />
+            <span>LLM</span>
+            <strong>{{ llmConnectionLabel }}</strong>
+          </div>
+          <div class="room-settings-status-card">
+            <TsIcon name="audioLines" :size="18" />
+            <span>TTS</span>
+            <strong>{{ ttsConnectionLabel }}</strong>
+          </div>
+          <div class="room-settings-status-card">
+            <TsIcon name="bookmark" :size="18" />
+            <span>记忆</span>
+            <strong>{{ memoryConnectionLabel }}</strong>
+          </div>
+        </div>
+        <div class="room-settings-actions">
+          <a class="primary-btn" href="/room" @click.prevent="emit('go', '/room')">
+            <TsIcon name="home" :size="17" />
+            <span>返回房间</span>
+          </a>
+          <button class="ghost-btn" type="button" @click="loadSettings">
+            <TsIcon name="refresh" :size="17" />
+            <span>重新读取</span>
+          </button>
+        </div>
       </div>
     </section>
 
-    <section class="room-settings-grid">
-      <article class="room-settings-card">
-        <h2>模型与浮窗</h2>
+    <section class="room-settings-layout">
+      <aside class="room-settings-rail" aria-label="房间设置导航">
+        <div class="room-settings-rail-head">
+          <TsIcon name="settings" :size="18" />
+          <strong>配置索引</strong>
+        </div>
+        <nav class="room-settings-nav">
+          <a href="#room-model-settings"><TsIcon name="layers" :size="16" /> 模型与浮窗</a>
+          <a href="#room-llm-settings"><TsIcon name="message" :size="16" /> LLM API</a>
+          <a href="#room-tts-settings"><TsIcon name="audioLines" :size="16" /> TTS 语音</a>
+          <a href="#room-memory-settings"><TsIcon name="bookmark" :size="16" /> 长期记忆</a>
+          <a href="#room-knowledge-settings"><TsIcon name="book" :size="16" /> 角色知识库</a>
+          <a href="#room-mcp-settings"><TsIcon name="grid" :size="16" /> MCP 工具</a>
+          <a href="#room-live2d-debug"><TsIcon name="star" :size="16" /> Live2D 调试</a>
+        </nav>
+        <div class="room-settings-rail-note">
+          <span>本机密钥只保存在当前浏览器</span>
+          <strong>{{ mcpConnectionLabel }}</strong>
+        </div>
+      </aside>
+
+      <section class="room-settings-grid">
+      <article id="room-model-settings" class="room-settings-card room-settings-card-primary">
+        <div class="room-card-head">
+          <span class="room-card-icon"><TsIcon name="layers" :size="20" /></span>
+          <div>
+            <span>01 · Space</span>
+            <h2>模型与浮窗</h2>
+          </div>
+        </div>
         <div class="form-grid">
           <label>模型大小 <strong>{{ model.scale }}%</strong><input v-model="model.scale" type="range" min="60" max="160"></label>
           <label>水平位置 <strong>{{ model.xOffset }}</strong><input v-model="model.xOffset" type="range" min="-240" max="240"></label>
@@ -1835,8 +1898,14 @@ onBeforeUnmount(() => {
         </div>
       </article>
 
-      <article class="room-settings-card room-live2d-debug-card">
-        <h2>Live2D 调试</h2>
+      <article id="room-live2d-debug" class="room-settings-card room-live2d-debug-card">
+        <div class="room-card-head">
+          <span class="room-card-icon"><TsIcon name="star" :size="20" /></span>
+          <div>
+            <span>07 · Debug</span>
+            <h2>Live2D 调试</h2>
+          </div>
+        </div>
         <div class="live2d-debug-summary">
           <span class="room-test-status" :class="live2dDebug.status === 'playing' ? 'loading' : live2dDebug.status === 'pending' ? 'warning' : 'success'">
             {{ live2DStatusLabel() }}
@@ -1880,8 +1949,14 @@ onBeforeUnmount(() => {
         </div>
       </article>
 
-      <article class="room-settings-card">
-        <h2>LLM API</h2>
+      <article id="room-llm-settings" class="room-settings-card room-settings-card-primary">
+        <div class="room-card-head">
+          <span class="room-card-icon"><TsIcon name="message" :size="20" /></span>
+          <div>
+            <span>02 · Intelligence</span>
+            <h2>LLM API</h2>
+          </div>
+        </div>
         <div class="button-row preset-row">
           <details class="preset-menu">
             <summary class="chip">阿里云百炼</summary>
@@ -1936,8 +2011,14 @@ onBeforeUnmount(() => {
         </div>
       </article>
 
-      <article class="room-settings-card">
-        <h2>TTS 语音</h2>
+      <article id="room-tts-settings" class="room-settings-card">
+        <div class="room-card-head">
+          <span class="room-card-icon"><TsIcon name="audioLines" :size="20" /></span>
+          <div>
+            <span>03 · Voice</span>
+            <h2>TTS 语音</h2>
+          </div>
+        </div>
         <div class="button-row preset-row">
           <button v-for="(preset, name) in TTS_PRESETS" :key="name" class="chip" type="button" @click="applyTtsPreset(name)">{{ preset.label }}</button>
         </div>
@@ -1982,8 +2063,14 @@ onBeforeUnmount(() => {
         </div>
       </article>
 
-      <article class="room-settings-card">
-        <h2>长期记忆</h2>
+      <article id="room-memory-settings" class="room-settings-card">
+        <div class="room-card-head">
+          <span class="room-card-icon"><TsIcon name="bookmark" :size="20" /></span>
+          <div>
+            <span>04 · Memory</span>
+            <h2>长期记忆</h2>
+          </div>
+        </div>
         <div class="form-grid">
           <label class="check-row"><input v-model="memory.enabled" type="checkbox"> 启用长期记忆</label>
           <p class="field-hint">{{ memoryLocationText }} 当前身份已有 {{ memoryCount }} 条记忆。</p>
@@ -1995,7 +2082,7 @@ onBeforeUnmount(() => {
         </div>
       </article>
 
-      <article class="room-settings-card room-knowledge-manager" :class="{ collapsed: !knowledge.managerOpen }">
+      <article id="room-knowledge-settings" class="room-settings-card room-knowledge-manager" :class="{ collapsed: !knowledge.managerOpen }">
         <button
           class="memory-manager-toggle"
           type="button"
@@ -2003,7 +2090,7 @@ onBeforeUnmount(() => {
           @click="toggleKnowledgeManager"
         >
           <span>
-            <strong>角色知识库</strong>
+            <strong><TsIcon name="book" :size="20" /> 角色知识库</strong>
             <small>用于还原八千代的人格、说话方式和关系设定。当前有 {{ knowledge.entries.length }} 条知识。</small>
           </span>
           <span class="memory-manager-icon">{{ knowledge.managerOpen ? '收起' : '展开' }}</span>
@@ -2048,7 +2135,7 @@ onBeforeUnmount(() => {
           @click="toggleMemoryManager"
         >
           <span>
-            <strong>记忆管理</strong>
+            <strong><TsIcon name="bookmark" :size="20" /> 记忆管理</strong>
             <small>{{ memoryModeLabel }}已有 {{ memoryCount }} 条，展开后可搜索、编辑和删除。</small>
           </span>
           <span class="memory-manager-icon">{{ memory.managerOpen ? '收起' : '展开' }}</span>
@@ -2103,8 +2190,14 @@ onBeforeUnmount(() => {
         </div>
       </article>
 
-      <article class="room-settings-card">
-        <h2>MCP 工具接入</h2>
+      <article id="room-mcp-settings" class="room-settings-card">
+        <div class="room-card-head">
+          <span class="room-card-icon"><TsIcon name="grid" :size="20" /></span>
+          <div>
+            <span>06 · Tools</span>
+            <h2>MCP 工具接入</h2>
+          </div>
+        </div>
         <div class="form-grid">
           <label class="check-row"><input v-model="mcp.enabled" type="checkbox"> 允许 LLM 调用 MCP 工具</label>
           <label>提供商
@@ -2140,6 +2233,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </article>
+      </section>
     </section>
 
     <Teleport to="body">
