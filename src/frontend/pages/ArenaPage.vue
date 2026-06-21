@@ -1263,18 +1263,22 @@ onBeforeUnmount(() => {
       aria-modal="true"
       :aria-label="previewArtwork.title || copy.gallery"
       @pointerdown.self="closeArtworkPreview"
+      @mousedown.self="closeArtworkPreview"
+      @touchstart.self="closeArtworkPreview"
       @click.self="closeArtworkPreview"
     >
+      <button
+        class="arena-art-lightbox-close"
+        type="button"
+        :aria-label="props.lang === 'ja' ? '閉じる' : '关闭'"
+        @pointerdown.stop.prevent="closeArtworkPreview"
+        @mousedown.stop.prevent="closeArtworkPreview"
+        @touchstart.stop.prevent="closeArtworkPreview"
+        @click.stop.prevent="closeArtworkPreview"
+      >
+        <TsIcon name="x" :size="20" />
+      </button>
       <section class="arena-art-lightbox-card">
-        <button
-          class="arena-art-lightbox-close"
-          type="button"
-          :aria-label="props.lang === 'ja' ? '閉じる' : '关闭'"
-          @pointerdown.stop.prevent="closeArtworkPreview"
-          @click.stop.prevent="closeArtworkPreview"
-        >
-          <TsIcon name="x" :size="18" />
-        </button>
         <div
           class="arena-art-lightbox-canvas"
           :style="{

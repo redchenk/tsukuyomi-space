@@ -2076,6 +2076,7 @@ body .page.arena-page .arena-art-lightbox {
 body .page.arena-page .arena-art-lightbox-card {
     position: relative;
     isolation: isolate;
+    z-index: 1;
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;
     width: min(100%, 1040px);
@@ -2150,15 +2151,17 @@ body .page.arena-page .arena-art-lightbox-footer .ghost-btn {
 }
 
 body .page.arena-page .arena-art-lightbox-close {
-    position: absolute;
-    z-index: 20;
-    top: 0.78rem;
-    right: 0.78rem;
-    display: inline-flex;
+    position: fixed;
+    z-index: 140;
+    top: max(1rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
     box-sizing: border-box;
     padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.22);
@@ -2172,9 +2175,14 @@ body .page.arena-page .arena-art-lightbox-close {
     line-height: 0;
     pointer-events: auto;
     touch-action: manipulation;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    user-select: none;
+    -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
+body .page.arena-page .arena-art-lightbox-close > *,
 body .page.arena-page .arena-art-lightbox-close svg {
     display: block;
     flex: 0 0 auto;
