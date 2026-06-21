@@ -2316,3 +2316,352 @@ html[data-theme="light"] body .page.arena-page .arena-chat-message strong {
         width: 100%;
     }
 }
+
+@media (max-width: 760px) {
+    body .page.arena-page {
+        grid-template-rows: auto auto auto auto;
+        gap: 0.78rem;
+        overflow-x: hidden;
+        padding-top: 5.15rem;
+        padding-right: 0.9rem;
+        padding-bottom: calc(5.8rem + env(safe-area-inset-bottom));
+        padding-left: 0.9rem;
+    }
+
+    body .page.arena-page .arena-hero,
+    body .page.arena-page .arena-controls,
+    body .page.arena-page .arena-canvas-panel,
+    body .page.arena-page .arena-gallery {
+        width: 100%;
+        min-width: 0;
+    }
+
+    body .page.arena-page .arena-hero {
+        gap: 0;
+    }
+
+    body .page.arena-page .arena-hero-copy {
+        min-height: 168px;
+        padding: 1rem;
+        border-radius: 16px;
+    }
+
+    body .page.arena-page .arena-kicker {
+        margin-bottom: 0.42rem;
+        padding: 0.28rem 0.56rem;
+        font-size: 0.7rem;
+        line-height: 1.2;
+    }
+
+    body .page.arena-page .arena-hero h1 {
+        font-size: clamp(1.86rem, 9.8vw, 2.42rem);
+        line-height: 1.08;
+    }
+
+    body .page.arena-page .arena-hero p {
+        margin-top: 0.46rem;
+        font-size: 0.86rem;
+        line-height: 1.55;
+    }
+
+    body .page.arena-page .arena-canvas-panel {
+        grid-template-rows: auto auto minmax(380px, 58dvh);
+        border-radius: 16px;
+    }
+
+    body .page.arena-page .arena-canvas-panel .arena-section-head,
+    body .page.arena-page .arena-canvas-actions,
+    body .page.arena-page .arena-gallery-head {
+        padding: 0.56rem 0.62rem;
+    }
+
+    body .page.arena-page .arena-canvas-panel .arena-section-head {
+        gap: 0.55rem;
+    }
+
+    body .page.arena-page .arena-section-head h2 {
+        font-size: 0.98rem;
+        line-height: 1.22;
+    }
+
+    body .page.arena-page .arena-tool-toggle {
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
+        gap: 0.42rem;
+    }
+
+    body .page.arena-page .arena-tool-toggle .icon-btn,
+    body .page.arena-page .arena-canvas-actions .icon-btn,
+    body .page.arena-page .arena-canvas-actions .ghost-btn {
+        width: 42px;
+        min-width: 42px;
+        height: 42px;
+        min-height: 42px;
+    }
+
+    body .page.arena-page .arena-canvas-actions {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.46rem;
+        min-height: 58px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body .page.arena-page .arena-canvas-actions > * {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+    }
+
+    body .page.arena-page .arena-canvas-actions .arena-publish-btn {
+        order: -1;
+        width: min(11rem, 48vw);
+        min-width: 9.6rem;
+        height: 42px;
+        min-height: 42px;
+        padding-inline: 0.82rem;
+    }
+
+    body .page.arena-page .arena-canvas-actions .arena-publish-btn span {
+        max-width: 9.4rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body .page.arena-page .arena-zoom-controls {
+        margin-left: 0;
+        padding-left: 0.2rem;
+    }
+
+    body .page.arena-page .arena-zoom-controls strong {
+        min-width: 3.1rem;
+        font-size: 0.94rem;
+    }
+
+    body .page.arena-page .arena-canvas-viewport {
+        height: auto;
+        min-height: 380px;
+        max-height: 58dvh;
+        padding: 0.58rem;
+        align-content: start;
+        justify-content: start;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body .page.arena-page .pixel-canvas {
+        border-radius: 10px;
+    }
+
+    body .page.arena-page .arena-controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.62rem;
+        overflow: visible;
+        padding: 0.75rem;
+        border-radius: 16px;
+    }
+
+    body .page.arena-page .arena-controls .arena-section-head {
+        display: flex;
+        grid-column: 1 / -1;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+    body .page.arena-page .arena-size-block,
+    body .page.arena-page .arena-import-panel,
+    body .page.arena-page .arena-slider-block,
+    body .page.arena-page .arena-controls > .arena-control-block,
+    body .page.arena-page .arena-color-picker,
+    body .page.arena-page .arena-draft-form {
+        grid-column: 1 / -1;
+    }
+
+    body .page.arena-page .arena-control-block,
+    body .page.arena-page .arena-import-panel,
+    body .page.arena-page .arena-draft-form,
+    body .page.arena-page .arena-color-picker {
+        padding: 0.62rem;
+        border-radius: 12px;
+    }
+
+    body .page.arena-page .arena-metrics {
+        display: none;
+    }
+
+    body .page.arena-page .arena-size-options {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 0.4rem;
+        overflow-x: auto;
+        padding-bottom: 0.05rem;
+        scrollbar-width: none;
+    }
+
+    body .page.arena-page .arena-size-options::-webkit-scrollbar {
+        display: none;
+    }
+
+    body .page.arena-page .arena-size-options .chip {
+        flex: 0 0 auto;
+        min-width: 5.25rem;
+        min-height: 36px;
+        padding-inline: 0.58rem;
+    }
+
+    body .page.arena-page .pixel-palette,
+    body .page.arena-page .pixel-palette-custom {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0.42rem;
+    }
+
+    body .page.arena-page .pixel-background-palette {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.42rem;
+    }
+
+    body .page.arena-page .pixel-swatch {
+        min-height: 34px;
+        border-radius: 10px;
+    }
+
+    body .page.arena-page .arena-color-picker {
+        grid-template-columns: minmax(0, 1fr) 42px 38px;
+        align-items: end;
+    }
+
+    body .page.arena-page .arena-color-picker .ghost-btn {
+        width: 42px;
+        min-width: 42px;
+        min-height: 42px;
+        padding: 0;
+    }
+
+    body .page.arena-page .arena-color-picker .ghost-btn span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    body .page.arena-page .arena-color-chip {
+        width: 38px;
+        height: 42px;
+    }
+
+    body .page.arena-page .arena-draft-form {
+        gap: 0.62rem;
+    }
+
+    body .page.arena-page .arena-draft-form textarea {
+        min-height: 76px;
+    }
+
+    body .page.arena-page .arena-gallery {
+        border-radius: 16px;
+    }
+
+    body .page.arena-page .arena-gallery-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.55rem;
+    }
+
+    body .page.arena-page .arena-gallery-tools {
+        width: 100%;
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 0.44rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    body .page.arena-page .arena-gallery-tools::-webkit-scrollbar {
+        display: none;
+    }
+
+    body .page.arena-page .arena-gallery-tools .chip,
+    body .page.arena-page .arena-gallery-tools .ghost-btn {
+        flex: 0 0 auto;
+        width: auto;
+        min-height: 38px;
+        padding-inline: 0.78rem;
+    }
+
+    body .page.arena-page .pixel-gallery-grid {
+        grid-template-columns: 1fr;
+        max-height: none;
+        overflow: visible;
+        padding: 0.7rem;
+    }
+
+    body .page.arena-page .pixel-art-card {
+        border-radius: 14px;
+    }
+
+    body .page.arena-page .pixel-art-body {
+        padding: 0.72rem;
+    }
+
+    body .page.arena-page .pixel-art-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+        padding: 0.62rem;
+    }
+
+    body .page.arena-page .pixel-art-actions .icon-btn {
+        width: 100%;
+        min-height: 40px;
+        padding-inline: 0.5rem;
+    }
+}
+
+@media (max-width: 430px) {
+    body .page.arena-page {
+        padding-right: 0.72rem;
+        padding-left: 0.72rem;
+    }
+
+    body .page.arena-page .arena-hero-copy {
+        min-height: 158px;
+        padding: 0.86rem;
+    }
+
+    body .page.arena-page .arena-hero p {
+        font-size: 0.82rem;
+        line-height: 1.48;
+    }
+
+    body .page.arena-page .arena-canvas-panel {
+        grid-template-rows: auto auto minmax(360px, 56dvh);
+    }
+
+    body .page.arena-page .arena-canvas-viewport {
+        min-height: 360px;
+        max-height: 56dvh;
+    }
+
+    body .page.arena-page .arena-controls {
+        padding: 0.62rem;
+    }
+
+    body .page.arena-page .pixel-palette,
+    body .page.arena-page .pixel-palette-custom {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    body .page.arena-page .pixel-background-palette {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+}
