@@ -19,6 +19,7 @@ const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
 const MEMORY_STORE = 'memories';
 const MODEL_CATALOG_CACHE_KEY = 'roomModelCatalogOpenRouter';
 const LLM_PRESETS = {
+  ollama: { label: 'Ollama 本机', apiUrl: 'http://localhost:11434/api/chat', model: 'qwen2.5:7b', useProxy: false, apiKey: '' },
   openai: { label: 'OpenAI Responses', apiUrl: 'https://api.openai.com/v1/responses', model: 'gpt-5.5' },
   openaiChat: { label: 'OpenAI Chat', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
   openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-5.2' },
@@ -64,7 +65,8 @@ const MODEL_PROVIDER_PREFIXES = {
   perplexity: ['perplexity/'],
   xai: ['x-ai/'],
   gemini: ['google/'],
-  mimo: ['xiaomi/', 'mimo/']
+  mimo: ['xiaomi/', 'mimo/'],
+  ollama: []
 };
 const MODEL_RECOMMEND_PATTERNS = {
   openai: ['gpt-5.5', 'gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-4.1', 'gpt-4o'],
@@ -82,7 +84,8 @@ const MODEL_RECOMMEND_PATTERNS = {
   perplexity: ['sonar-pro', 'sonar'],
   xai: ['grok-4', 'grok-3'],
   gemini: ['gemini-3', 'gemini-2.5-pro', 'gemini-2.5-flash'],
-  mimo: ['mimo-v2.5-pro', 'mimo-v2.5', 'mimo-v2-flash']
+  mimo: ['mimo-v2.5-pro', 'mimo-v2.5', 'mimo-v2-flash'],
+  ollama: ['qwen2.5', 'llama3.1', 'llama3.2', 'gemma3', 'mistral']
 };
 const MODEL_NON_CHAT_PATTERN = /(embedding|moderation|tts|audio|whisper|image|vision-preview|rerank|reward|guard|ocr|video|speech)/i;
 const MINIMAX_DEFAULT_VOICE_ID = 'female-shaonv';
@@ -245,6 +248,7 @@ function compactModelPrice(value) {
 
 function detectLLMProvider(apiUrl = '', modelName = '') {
   const source = `${apiUrl || ''} ${modelName || ''}`.toLowerCase();
+  if (/localhost:11434|127\.0\.0\.1:11434|\[::1\]:11434|ollama/.test(source)) return 'ollama';
   if (/openrouter/.test(source)) return 'openrouter';
   if (/dashscope|aliyuncs|qwen|alibaba/.test(source)) return 'aliyun';
   if (/xiaomimimo|token-plan-cn|mimo/.test(source)) return 'mimo';
@@ -262,6 +266,42 @@ function detectLLMProvider(apiUrl = '', modelName = '') {
   if (/x\.ai|grok|x-ai\//.test(source)) return 'xai';
   if (/generativelanguage|gemini|google\//.test(source)) return 'gemini';
   return 'custom';
+}
+
+function normalizeLocalLLMUrl(apiUrl = '') {
+  const value = String(apiUrl || '').trim();
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value)) return `http://${value}`;
+  return value;
+}
+
+function isOllamaApi(apiUrl = '') {
+  try {
+    const parsed = new URL(normalizeLocalLLMUrl(apiUrl));
+    return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname.toLowerCase())
+      && (parsed.port || '11434') === '11434';
+  } catch (_) {
+    return false;
+  }
+}
+
+function normalizeOllamaUrl(apiUrl = '') {
+  const parsed = new URL(normalizeLocalLLMUrl(apiUrl || 'http://localhost:11434/api/chat'));
+  const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
+  if (pathname === '/' || pathname === '/api') parsed.pathname = '/api/chat';
+  else if (pathname === '/v1') parsed.pathname = '/v1/chat/completions';
+  return parsed.toString().replace(/\/$/, '');
+}
+
+function isOllamaNativeApi(apiUrl = '') {
+  try {
+    return isOllamaApi(apiUrl) && /^\/api\/chat\/?$/.test(new URL(normalizeOllamaUrl(apiUrl)).pathname);
+  } catch (_) {
+    return false;
+  }
+}
+
+function llmNeedsApiKey(apiUrl = llm.apiUrl) {
+  return !isOllamaApi(apiUrl);
 }
 
 function nativeModelId(openRouterId, provider = llmProviderKey.value) {
@@ -570,7 +610,8 @@ function clearLive2DDebugQueue() {
 }
 
 function normalizeChatUrl(apiUrl, modelName) {
-  let url = apiUrl || 'https://api.moonshot.cn/v1/chat/completions';
+  let url = normalizeLocalLLMUrl(apiUrl || 'https://api.moonshot.cn/v1/chat/completions');
+  if (isOllamaApi(url)) return normalizeOllamaUrl(url);
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(url)) return url.replace(/\/$/, '');
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return url.replace(/\/$/, '') + '/responses';
   if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${modelName || ''}`)) {
@@ -598,7 +639,7 @@ function pickChatReply(data) {
   if (Array.isArray(data?.content)) {
     return data.content.filter(block => block?.type === 'text').map(block => block.text || '').join('\n').trim();
   }
-  return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || '';
+  return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || data?.response || '';
 }
 
 function isOpenAIResponsesApi(apiUrl) {
@@ -635,6 +676,17 @@ function isAnthropicChatApi(apiUrl, modelName) {
 
 function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiUrl) {
   const defaultModel = /api\.moonshot\.cn|kimi/i.test(`${apiUrl || ''} ${modelName || ''}`) ? 'kimi-k2.6' : 'moonshot-v1-8k';
+  if (isOllamaNativeApi(apiUrl)) {
+    return {
+      model: modelName || 'qwen2.5:7b',
+      messages,
+      stream: false,
+      options: {
+        temperature: chatTemperatureFor(apiUrl, modelName || 'qwen2.5:7b', 0.4),
+        num_predict: limit
+      }
+    };
+  }
   if (isOpenAIResponsesApi(apiUrl)) {
     const instructions = messages.filter(item => item.role === 'system').map(item => String(item.content || '')).join('\n\n');
     return {
@@ -792,6 +844,18 @@ function normalizeGptSovitsLang(value, fallback = 'zh') {
   return ['zh', 'ja', 'en', 'yue', 'ko', 'auto', 'all-zh', 'all-ja', 'all-yue', 'auto-yue'].includes(normalized)
     ? normalized.replace(/-/g, '_')
     : fallback;
+}
+
+function chatRequestHeaders(apiUrl, apiKey, modelName = llm.model) {
+  const normalized = normalizeChatUrl(apiUrl, modelName);
+  if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
+  return {
+    'Content-Type': 'application/json',
+    ...openRouterHeaders(normalized),
+    ...(isAnthropicChatApi(normalized, modelName)
+      ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
+      : { Authorization: `Bearer ${apiKey}` })
+  };
 }
 
 function minimaxLanguageBoost(textLang) {
@@ -1086,6 +1150,11 @@ function loadSettings() {
   model.lowQualityModel = Boolean(modelSettings.lowQualityModel);
 
   Object.assign(llm, readJson('roomLLMSettings', {}));
+  if (isOllamaApi(llm.apiUrl)) {
+    llm.apiUrl = normalizeOllamaUrl(llm.apiUrl);
+    llm.useProxy = false;
+    if (!llm.model) llm.model = 'qwen2.5:7b';
+  }
   Object.assign(tts, { ...tts, ...readJson('roomTTSSettings', {}) });
   if (tts.provider === 'gpt-sovits') {
     tts.useProxy = false;
@@ -1165,6 +1234,8 @@ function applyPreset(name) {
   if (!preset) return;
   llm.apiUrl = preset.apiUrl;
   llm.model = preset.model;
+  if ('apiKey' in preset) llm.apiKey = preset.apiKey;
+  if ('useProxy' in preset) llm.useProxy = Boolean(preset.useProxy);
   applyRecommendedModelForProvider(detectLLMProvider(preset.apiUrl, preset.model));
 }
 
@@ -1198,47 +1269,66 @@ function applyTtsPreset(name) {
   if (tts.provider === 'gpt-sovits') tts.useProxy = false;
 }
 
+function normalizedLLMSettings() {
+  const apiUrl = isOllamaApi(llm.apiUrl)
+    ? normalizeOllamaUrl(llm.apiUrl)
+    : String(llm.apiUrl || '').trim();
+  const modelName = String(llm.model || '').trim() || (isOllamaApi(apiUrl) ? 'qwen2.5:7b' : '');
+  const needsApiKey = llmNeedsApiKey(apiUrl);
+  return {
+    apiUrl,
+    apiKey: needsApiKey ? String(llm.apiKey || '').trim() : '',
+    model: modelName,
+    useProxy: needsApiKey ? Boolean(llm.useProxy) : false,
+    visionMode: ['auto', 'llm', 'mcp'].includes(llm.visionMode) ? llm.visionMode : 'auto',
+    needsApiKey
+  };
+}
+
 function saveLLM() {
+  const settings = normalizedLLMSettings();
+  llm.apiUrl = settings.apiUrl;
+  llm.model = settings.model;
+  llm.useProxy = settings.useProxy;
+  if (!settings.needsApiKey) llm.apiKey = '';
   writeJson('roomLLMSettings', {
-    apiUrl: String(llm.apiUrl || '').trim(),
-    apiKey: String(llm.apiKey || '').trim(),
-    model: String(llm.model || '').trim(),
-    useProxy: Boolean(llm.useProxy),
-    visionMode: ['auto', 'llm', 'mcp'].includes(llm.visionMode) ? llm.visionMode : 'auto'
+    apiUrl: settings.apiUrl,
+    apiKey: settings.apiKey,
+    model: settings.model,
+    useProxy: settings.useProxy,
+    visionMode: settings.visionMode
   });
+  const ready = !settings.needsApiKey || Boolean(settings.apiKey);
   openTestDialog(
     'llm',
-    llm.apiKey ? 'success' : 'warning',
+    ready ? 'success' : 'warning',
     'LLM 设置已保存',
-    llm.apiKey ? 'LLM API 设置已保存到当前浏览器。' : 'LLM API 设置已保存，但还没有填写 API Key。',
-    `端点：${String(llm.apiUrl || '').trim() || '未填写'}\n模型：${String(llm.model || '').trim() || '未填写'}\n请求方式：${llm.useProxy ? '服务器受限代理' : '浏览器直连'}\n图片理解策略：${llm.visionMode || 'auto'}`
+    ready ? (settings.needsApiKey ? 'LLM API 设置已保存到当前浏览器。' : 'Ollama 本机设置已保存，无需 API Key。') : 'LLM API 设置已保存，但还没有填写 API Key。',
+    `端点：${settings.apiUrl || '未填写'}\n模型：${settings.model || '未填写'}\n请求方式：${settings.useProxy ? '服务器受限代理' : '浏览器直连'}\n图片理解策略：${settings.visionMode || 'auto'}`
   );
   showToast('LLM API 设置已保存');
 }
 
 async function testLLM() {
   saveLLM();
-  if (!llm.apiKey) {
+  const settings = normalizedLLMSettings();
+  if (settings.needsApiKey && !settings.apiKey) {
     openTestDialog('llm', 'error', 'LLM 连接测试', '请先填写 LLM API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的模型供应商。');
     showToast('请先填写 LLM API Key');
     return;
   }
-  openTestDialog('llm', 'loading', 'LLM 连接测试', llm.useProxy ? '正在通过站内受限代理请求模型供应商...' : '正在请求模型供应商...', `${llm.useProxy ? '/api/chat' : normalizeChatUrl(llm.apiUrl, llm.model)}\n模型：${llm.model || '未填写'}`);
+  const requestUrl = settings.useProxy ? '/api/chat' : normalizeChatUrl(settings.apiUrl, settings.model);
+  openTestDialog('llm', 'loading', 'LLM 连接测试', settings.useProxy ? '正在通过站内受限代理请求模型供应商...' : '正在请求模型供应商...', `${requestUrl}\n模型：${settings.model || '未填写'}`);
   try {
-    const response = await fetch(llm.useProxy ? '/api/chat' : normalizeChatUrl(llm.apiUrl, llm.model), {
+    const response = await fetch(requestUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...openRouterHeaders(llm.apiUrl),
-        ...(llm.useProxy || isAnthropicChatApi(llm.apiUrl, llm.model) ? {} : { Authorization: `Bearer ${llm.apiKey}` }),
-        ...(!llm.useProxy && isAnthropicChatApi(llm.apiUrl, llm.model) ? { 'x-api-key': llm.apiKey, 'anthropic-version': '2023-06-01' } : {})
-      },
-      body: JSON.stringify(llm.useProxy
-        ? { message: '请用一句话回复连接测试。', apiKey: llm.apiKey, apiUrl: llm.apiUrl, model: llm.model }
-        : makeChatRequestBody(llm.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120, llm.apiUrl))
+      headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model),
+      body: JSON.stringify(settings.useProxy
+        ? { message: '请用一句话回复连接测试。', apiKey: settings.apiKey, apiUrl: settings.apiUrl, model: settings.model }
+        : makeChatRequestBody(settings.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120, settings.apiUrl))
     });
     const raw = await response.json().catch(() => ({}));
-    const data = llm.useProxy ? raw.data || raw : raw;
+    const data = settings.useProxy ? raw.data || raw : raw;
     if (!response.ok) throw new Error(data?.error?.message || `HTTP ${response.status}`);
     const reply = pickChatReply(data);
     openTestDialog(
@@ -1246,11 +1336,14 @@ async function testLLM() {
       reply ? 'success' : 'warning',
       'LLM 连接测试',
       reply ? '连接成功，模型已返回文本。' : '连接成功，但没有解析到文本内容。',
-      reply ? `模型：${data.model || llm.model || '未知'}\n回复：${reply.slice(0, 300)}` : JSON.stringify(data).slice(0, 500)
+      reply ? `模型：${data.model || settings.model || '未知'}\n回复：${reply.slice(0, 300)}` : JSON.stringify(data).slice(0, 500)
     );
     showToast(reply ? 'LLM 连接测试成功' : 'LLM 已响应，但未返回文本');
   } catch (error) {
-    openTestDialog('llm', 'error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
+    const corsHint = settings.needsApiKey
+      ? '如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。'
+      : '如果是 Ollama CORS，请在本机设置 OLLAMA_ORIGINS=https://yachiyo.hk,http://localhost:5173 后重启 Ollama。';
+    openTestDialog('llm', 'error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n${corsHint}`);
     showToast(`LLM 测试失败：${error.message}`);
   }
 }
@@ -1805,9 +1898,9 @@ onBeforeUnmount(() => {
           <button v-for="(preset, name) in LLM_PRESETS" :key="name" class="chip" type="button" @click="applyPreset(name)">{{ preset.label }}</button>
         </div>
         <div class="form-grid">
-          <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="https://api.openai.com/v1/chat/completions"></label>
-          <label>API Key<input v-model="llm.apiKey" type="password" placeholder="sk-..."></label>
-          <p class="field-hint warning-text">API Key 仅保存在当前浏览器本地，不会写入服务器；不建议在公共电脑使用，用完请清除浏览器站点数据。</p>
+          <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="http://localhost:11434/api/chat"></label>
+          <label>API Key<input v-model="llm.apiKey" type="password" placeholder="Ollama 可留空 / sk-..."></label>
+          <p class="field-hint warning-text">API Key 仅保存在当前浏览器本地，不会写入服务器；Ollama 本机模式无需 API Key。若本机跨域失败，请设置 OLLAMA_ORIGINS=https://yachiyo.hk,http://localhost:5173 后重启 Ollama。</p>
           <label>模型名称<input v-model="llm.model" type="text" list="llmSyncedModels" placeholder="gpt-4o-mini"></label>
           <datalist id="llmSyncedModels">
             <option v-for="option in syncedModelOptions" :key="`${option.source}-${option.id}`" :value="syncedModelSelectValue(option)">{{ option.label }}</option>
@@ -1832,8 +1925,9 @@ onBeforeUnmount(() => {
             <option value="llm">强制发送给 LLM</option>
             <option value="mcp">使用 MCP understand_image</option>
           </select></label>
-          <label class="check-row"><input v-model="llm.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>
-          <p class="field-hint">关闭时由浏览器直连供应商，更保护隐私；开启后请求会经过本站后端，仅允许预设供应商域名，用于处理 CORS 限制。</p>
+          <label class="check-row"><input v-model="llm.useProxy" type="checkbox" :disabled="llmProviderKey === 'ollama'"> 使用服务器受限代理规避 CORS</label>
+          <p class="field-hint" v-if="llmProviderKey === 'ollama'">Ollama 本机模式会从当前浏览器直连 http://localhost:11434，网站服务器不会代为连接你的本机模型。</p>
+          <p class="field-hint" v-else>关闭时由浏览器直连供应商，更保护隐私；开启后请求会经过本站后端，仅允许预设供应商域名，用于处理 CORS 限制。</p>
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveLLM">保存 LLM</button>
             <button class="ghost-btn" type="button" @click="testLLM">测试连接</button>

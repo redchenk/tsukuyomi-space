@@ -34,6 +34,8 @@ const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ },
     { hostname: 'token-plan-cn.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ }
 ];
+const OLLAMA_LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const OLLAMA_CHAT_PATHS = [/^\/api\/chat\/?$/, /^\/v1\/chat\/completions\/?$/];
 
 class LLMEndpointError extends Error {
     constructor(message) {
@@ -44,7 +46,10 @@ class LLMEndpointError extends Error {
 }
 
 function normalizeChatUrl(apiUrl, model) {
-    let url = apiUrl || LLM_API_URL || 'https://api.moonshot.cn/v1/chat/completions';
+    let url = normalizeLocalChatUrl(apiUrl || LLM_API_URL || 'https://api.moonshot.cn/v1/chat/completions');
+    if (isOllamaCandidate(url)) {
+        return validateChatUrl(normalizeOllamaChatUrl(url));
+    }
     if (/(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(url)) {
         return validateChatUrl(url.replace(/\/$/, ''));
     }
@@ -62,6 +67,57 @@ function normalizeChatUrl(apiUrl, model) {
     return validateChatUrl(url);
 }
 
+function normalizeLocalChatUrl(url) {
+    const value = String(url || '').trim();
+    if (/^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value)) return `http://${value}`;
+    return value;
+}
+
+function isOllamaCandidate(url) {
+    try {
+        const parsed = new URL(normalizeLocalChatUrl(url));
+        return OLLAMA_LOOPBACK_HOSTS.has(parsed.hostname.toLowerCase()) && (parsed.port || '11434') === '11434';
+    } catch (_) {
+        return false;
+    }
+}
+
+function normalizeOllamaChatUrl(url) {
+    const parsed = new URL(normalizeLocalChatUrl(url));
+    const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
+    if (pathname === '/' || pathname === '/api') parsed.pathname = '/api/chat';
+    else if (pathname === '/v1') parsed.pathname = '/v1/chat/completions';
+    return parsed.toString();
+}
+
+function isAllowedOllamaUrl(parsed) {
+    return parsed.protocol === 'http:'
+        && !parsed.username
+        && !parsed.password
+        && !parsed.search
+        && !parsed.hash
+        && OLLAMA_LOOPBACK_HOSTS.has(parsed.hostname.toLowerCase())
+        && (parsed.port || '11434') === '11434'
+        && OLLAMA_CHAT_PATHS.some(path => path.test(parsed.pathname));
+}
+
+function isOllamaChatUrl(chatUrl) {
+    try {
+        return isAllowedOllamaUrl(new URL(chatUrl));
+    } catch (_) {
+        return false;
+    }
+}
+
+function isOllamaNativeChatUrl(chatUrl) {
+    try {
+        const parsed = new URL(chatUrl);
+        return isAllowedOllamaUrl(parsed) && /^\/api\/chat\/?$/.test(parsed.pathname);
+    } catch (_) {
+        return false;
+    }
+}
+
 function validateChatUrl(url) {
     let parsed;
     try {
@@ -69,6 +125,8 @@ function validateChatUrl(url) {
     } catch (_) {
         throw new LLMEndpointError('不支持的 LLM API 端点');
     }
+
+    if (isAllowedOllamaUrl(parsed)) return parsed.toString();
 
     if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash) {
         throw new LLMEndpointError('不支持的 LLM API 端点');
@@ -123,6 +181,7 @@ function pickReply(data) {
     return data.choices?.[0]?.message?.content
         || data.choices?.[0]?.text
         || data.message?.content
+        || data.response
         || '';
 }
 
@@ -175,6 +234,26 @@ function buildAnthropicUserContent(message, image, allowImage) {
 }
 
 function buildChatPayload({ chatUrl, model, systemPrompt, history, message, image }) {
+    if (isOllamaNativeChatUrl(chatUrl)) {
+        const userMessage = {
+            role: 'user',
+            content: String(message || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : ''))
+        };
+        const parsedImage = image?.dataUrl ? parseDataUrl(image.dataUrl) : null;
+        if (parsedImage?.data) userMessage.images = [parsedImage.data];
+        return {
+            model: model || 'qwen2.5:7b',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
+                userMessage
+            ],
+            stream: false,
+            options: {
+                temperature: chatTemperatureFor(chatUrl, model, 0.7)
+            }
+        };
+    }
     if (isOpenAIResponsesUrl(chatUrl)) {
         const userContent = image?.dataUrl
             ? [
@@ -234,9 +313,9 @@ function chatHeaders(chatUrl, apiKey, model) {
         };
     }
     const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Content-Type': 'application/json'
     };
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
     if (isOpenRouterUrl(chatUrl)) {
         headers['HTTP-Referer'] = process.env.PUBLIC_SITE_URL || 'https://yachiyo.hk';
         headers['X-OpenRouter-Title'] = process.env.OPENROUTER_APP_TITLE || 'Tsukuyomi Space';
@@ -248,14 +327,14 @@ async function createChatCompletion({ message, conversation = [], apiKey, apiUrl
     const useApiKey = apiKey || LLM_API_KEY;
     const useModel = model || LLM_MODEL;
 
-    if (!useApiKey) {
-        return { reply: fallbackChatReply(), model: 'preset' };
-    }
-
     const history = Array.isArray(conversation)
         ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12)
         : [];
     const chatUrl = normalizeChatUrl(apiUrl, useModel);
+
+    if (!useApiKey && !isOllamaChatUrl(chatUrl)) {
+        return { reply: fallbackChatReply(), model: 'preset' };
+    }
 
     const response = await fetch(chatUrl, {
         method: 'POST',
@@ -282,6 +361,8 @@ module.exports = {
     fallbackRoomReply,
     buildChatPayload,
     chatTemperatureFor,
+    isOllamaChatUrl,
+    isOllamaNativeChatUrl,
     normalizeChatUrl,
     validateChatUrl
 };

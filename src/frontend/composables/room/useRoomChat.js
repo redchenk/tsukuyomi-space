@@ -314,7 +314,39 @@ function pickReply(data) {
       .join('\n')
       .trim();
   }
-  return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.reply || '';
+  return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || data?.response || data?.reply || '';
+}
+
+function normalizeLocalLLMUrl(apiUrl = '') {
+  const value = String(apiUrl || '').trim();
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value)) return `http://${value}`;
+  return value;
+}
+
+function isOllamaApi(apiUrl = '') {
+  try {
+    const parsed = new URL(normalizeLocalLLMUrl(apiUrl));
+    return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname.toLowerCase())
+      && (parsed.port || '11434') === '11434';
+  } catch (_) {
+    return false;
+  }
+}
+
+function normalizeOllamaUrl(apiUrl = '') {
+  const parsed = new URL(normalizeLocalLLMUrl(apiUrl || 'http://localhost:11434/api/chat'));
+  const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
+  if (pathname === '/' || pathname === '/api') parsed.pathname = '/api/chat';
+  else if (pathname === '/v1') parsed.pathname = '/v1/chat/completions';
+  return parsed.toString().replace(/\/$/, '');
+}
+
+function isOllamaNativeApi(apiUrl = '') {
+  try {
+    return isOllamaApi(apiUrl) && /^\/api\/chat\/?$/.test(new URL(normalizeOllamaUrl(apiUrl)).pathname);
+  } catch (_) {
+    return false;
+  }
 }
 
 function isOpenAIResponsesApi(apiUrl = '') {
@@ -342,10 +374,26 @@ function openRouterHeaders(apiUrl = '') {
 }
 
 function normalizeOpenAIUrl(apiUrl = '') {
-  const url = String(apiUrl || '').trim();
+  const url = normalizeLocalLLMUrl(apiUrl);
+  if (isOllamaApi(url)) return normalizeOllamaUrl(url);
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/responses`;
   if (/(xiaomimimo\.com|token-plan-cn\.xiaomimimo\.com)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/chat/completions`;
   return url;
+}
+
+function chatRequestHeaders(apiUrl = '', apiKey = '') {
+  const normalized = normalizeOpenAIUrl(apiUrl);
+  if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
+  return {
+    'Content-Type': 'application/json',
+    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    ...openRouterHeaders(normalized)
+  };
+}
+
+function dataUrlBase64(dataUrl = '') {
+  const match = String(dataUrl || '').match(/^data:[^;,]+;base64,(.+)$/);
+  return match?.[1] || '';
 }
 
 function openAIResponsesContent(text, image) {
@@ -356,7 +404,27 @@ function openAIResponsesContent(text, image) {
 
 function makeLLMRequestBody(settings, systemPrompt, conversation, message, image) {
   const apiUrl = normalizeOpenAIUrl(settings.apiUrl || '');
-  const model = settings.model || 'gpt-4o-mini';
+  const model = isOllamaApi(apiUrl) ? (settings.model || 'qwen2.5:7b') : (settings.model || 'gpt-4o-mini');
+  if (isOllamaNativeApi(apiUrl)) {
+    const userMessage = {
+      role: 'user',
+      content: String(message || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : ''))
+    };
+    const imageBase64 = dataUrlBase64(image?.dataUrl);
+    if (imageBase64) userMessage.images = [imageBase64];
+    return {
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...conversation.map((item) => ({ role: item.role, content: String(item.content || '') })),
+        userMessage
+      ],
+      stream: false,
+      options: {
+        temperature: chatTemperatureFor(apiUrl, model, 0.4)
+      }
+    };
+  }
   if (isOpenAIResponsesApi(apiUrl)) {
     return {
       model: settings.model || 'gpt-5.5',
@@ -389,7 +457,9 @@ async function translateForJapaneseTts(text) {
   const source = cleanTtsText(text);
   if (!source) return '';
   const settings = readJson('roomLLMSettings', {});
-  if (!settings.apiKey || !settings.apiUrl) {
+  const apiUrl = normalizeOpenAIUrl(settings.apiUrl || '');
+  const useLocalOllama = isOllamaApi(apiUrl);
+  if (!settings.apiUrl || (!settings.apiKey && !useLocalOllama)) {
     throw new Error('请先在 Room 设置中配置 LLM，用于把回复翻译成日文后再播放语音。');
   }
   const systemPrompt = [
@@ -399,7 +469,7 @@ async function translateForJapaneseTts(text) {
     '如果原文含有动作、表情、姿态、语气、旁白提示，请彻底删除，只保留角色真正要说出口的话。'
   ].join('\n');
 
-  if (settings.useProxy) {
+  if (settings.useProxy && !useLocalOllama) {
     const result = await postJson('/api/chat', {
       message: source,
       conversation: [],
@@ -411,20 +481,21 @@ async function translateForJapaneseTts(text) {
     return cleanTtsText(result.reply || '');
   }
 
-  const apiUrl = normalizeOpenAIUrl(settings.apiUrl);
   const response = await fetch(apiUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}`, ...openRouterHeaders(apiUrl) },
-    body: JSON.stringify(isOpenAIResponsesApi(apiUrl)
-      ? { model: settings.model || 'gpt-5.5', instructions: systemPrompt, input: source, max_output_tokens: 240 }
-      : {
-          model: settings.model || 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: source }
-          ],
-          temperature: chatTemperatureFor(apiUrl, settings.model || 'gpt-4o-mini', 0.2)
-        })
+    headers: chatRequestHeaders(apiUrl, settings.apiKey),
+    body: JSON.stringify(isOllamaNativeApi(apiUrl)
+      ? makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, [], source, null)
+      : (isOpenAIResponsesApi(apiUrl)
+        ? { model: settings.model || 'gpt-5.5', instructions: systemPrompt, input: source, max_output_tokens: 240 }
+        : {
+            model: settings.model || 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: source }
+            ],
+            temperature: chatTemperatureFor(apiUrl, settings.model || 'gpt-4o-mini', 0.2)
+          }))
   });
   if (!response.ok) throw new Error(`日文翻译失败：LLM ${response.status}`);
   return cleanTtsText(pickReply(await response.json()));
@@ -699,7 +770,9 @@ export function useRoomChat({ live2d, world }) {
         ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n\n\u4e0a\u4e0b\u6587\u5df2\u5305\u542b MCP \u5bf9\u56fe\u7247\u7684\u7406\u89e3\u7ed3\u679c\uff0c\u8bf7\u7ed3\u5408\u5b83\u56de\u7b54\u3002`
         : message;
       let result;
-      if (settings.useProxy) {
+      const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
+      const useLocalOllama = isOllamaApi(apiUrl);
+      if (settings.useProxy && !useLocalOllama) {
         result = await postJson('/api/chat', {
           message: mcpEnhancedMessage || (image ? '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
           conversation,
@@ -709,11 +782,10 @@ export function useRoomChat({ live2d, world }) {
           systemPrompt,
           image: settings.visionMode === 'mcp' ? null : image
         });
-      } else if (settings.apiKey && settings.apiUrl) {
-        const apiUrl = normalizeOpenAIUrl(settings.apiUrl);
+      } else if (settings.apiUrl && (settings.apiKey || useLocalOllama)) {
         const response = await fetch(apiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}`, ...openRouterHeaders(apiUrl) },
+          headers: chatRequestHeaders(apiUrl, settings.apiKey),
           body: JSON.stringify(makeLLMRequestBody(
             { ...settings, apiUrl },
             systemPrompt,

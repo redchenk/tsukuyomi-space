@@ -78,7 +78,39 @@ function pickReply(data) {
       .join('\n')
       .trim();
   }
-  return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.reply || '';
+  return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || data?.response || data?.reply || '';
+}
+
+function normalizeLocalLLMUrl(apiUrl = '') {
+  const value = String(apiUrl || '').trim();
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value)) return `http://${value}`;
+  return value;
+}
+
+function isOllamaApi(apiUrl = '') {
+  try {
+    const parsed = new URL(normalizeLocalLLMUrl(apiUrl));
+    return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname.toLowerCase())
+      && (parsed.port || '11434') === '11434';
+  } catch (_) {
+    return false;
+  }
+}
+
+function normalizeOllamaUrl(apiUrl = '') {
+  const parsed = new URL(normalizeLocalLLMUrl(apiUrl || 'http://localhost:11434/api/chat'));
+  const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
+  if (pathname === '/' || pathname === '/api') parsed.pathname = '/api/chat';
+  else if (pathname === '/v1') parsed.pathname = '/v1/chat/completions';
+  return parsed.toString().replace(/\/$/, '');
+}
+
+function isOllamaNativeApi(apiUrl = '') {
+  try {
+    return isOllamaApi(apiUrl) && /^\/api\/chat\/?$/.test(new URL(normalizeOllamaUrl(apiUrl)).pathname);
+  } catch (_) {
+    return false;
+  }
 }
 
 function extractJsonObject(text) {
@@ -538,7 +570,8 @@ function parsePayload(rawText) {
 }
 
 function normalizeOpenAIUrl(apiUrl = '') {
-  const url = String(apiUrl || '').trim();
+  const url = normalizeLocalLLMUrl(apiUrl);
+  if (isOllamaApi(url)) return normalizeOllamaUrl(url);
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/responses`;
   if (/(xiaomimimo\.com|token-plan-cn\.xiaomimimo\.com)\/v1\/?$/i.test(url)) return `${url.replace(/\/$/, '')}/chat/completions`;
   return url;
@@ -564,9 +597,33 @@ function openRouterHeaders(apiUrl = '') {
   };
 }
 
+function chatRequestHeaders(apiUrl = '', apiKey = '') {
+  const normalized = normalizeOpenAIUrl(apiUrl);
+  if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
+  return {
+    'Content-Type': 'application/json',
+    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    ...openRouterHeaders(normalized)
+  };
+}
+
 function buildDirectRequestBody(settings, systemPrompt, history, message) {
   const apiUrl = normalizeOpenAIUrl(settings.apiUrl || '');
-  const model = settings.model || 'gpt-4o-mini';
+  const model = isOllamaApi(apiUrl) ? (settings.model || 'qwen2.5:7b') : (settings.model || 'gpt-4o-mini');
+  if (isOllamaNativeApi(apiUrl)) {
+    return {
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...history.map((item) => ({ role: item.role, content: String(item.content || '') })),
+        { role: 'user', content: String(message || '') }
+      ],
+      stream: false,
+      options: {
+        temperature: isKimiChatTarget(apiUrl, model) ? 1 : 0.4
+      }
+    };
+  }
   if (isOpenAIResponsesApi(apiUrl)) {
     return {
       model: settings.model || 'gpt-5.5',
@@ -728,7 +785,9 @@ export function clearLive2DLLMHistory() {
 
 export async function requestLive2DControl(message) {
   const settings = readJson('roomLLMSettings', {});
-  if (!settings.apiKey || !settings.apiUrl) {
+  const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
+  const useLocalOllama = isOllamaApi(apiUrl);
+  if (!settings.apiUrl || (!settings.apiKey && !useLocalOllama)) {
     throw new Error('Missing Room LLM settings. Configure LLM in /room/settings first.');
   }
 
@@ -736,7 +795,7 @@ export async function requestLive2DControl(message) {
   const systemPrompt = [settings.systemPrompt, live2DControlSystemPrompt()].filter(Boolean).join('\n\n');
   let rawReply = '';
 
-  if (settings.useProxy) {
+  if (settings.useProxy && !useLocalOllama) {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -753,14 +812,9 @@ export async function requestLive2DControl(message) {
     if (!response.ok || !result.success) throw new Error(result.message || `LLM ${response.status}`);
     rawReply = result.data?.reply || '';
   } else {
-    const apiUrl = normalizeOpenAIUrl(settings.apiUrl);
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.apiKey}`,
-        ...openRouterHeaders(apiUrl)
-      },
+      headers: chatRequestHeaders(apiUrl, settings.apiKey),
       body: JSON.stringify(buildDirectRequestBody({ ...settings, apiUrl }, systemPrompt, history, message))
     });
     if (!response.ok) throw new Error(`LLM ${response.status}`);
@@ -779,8 +833,18 @@ export async function requestLive2DControl(message) {
 
 export async function requestLive2DControlStream(message, handlers = {}) {
   const settings = readJson('roomLLMSettings', {});
-  if (!settings.apiKey || !settings.apiUrl) {
+  const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
+  const useLocalOllama = isOllamaApi(apiUrl);
+  if (!settings.apiUrl || (!settings.apiKey && !useLocalOllama)) {
     throw new Error('Missing Room LLM settings. Configure LLM in /room/settings first.');
+  }
+
+  if (useLocalOllama) {
+    const sentenceEmitter = createReplySentenceEmitter(handlers);
+    const fallback = await requestLive2DControl(message);
+    sentenceEmitter.flushReply(fallback.reply);
+    handlers.onDone?.(fallback);
+    return fallback;
   }
 
   const history = readLive2DLLMHistory();
@@ -819,14 +883,9 @@ export async function requestLive2DControlStream(message, handlers = {}) {
       onEvent: (event) => handlers.onEvent?.(event)
     });
   } else {
-    const apiUrl = normalizeOpenAIUrl(settings.apiUrl);
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.apiKey}`,
-        ...openRouterHeaders(apiUrl)
-      },
+      headers: chatRequestHeaders(apiUrl, settings.apiKey),
       body: JSON.stringify(buildStreamingDirectRequestBody({ ...settings, apiUrl }, systemPrompt, history, message))
     });
     if (!response.ok) throw new Error(`LLM ${response.status}`);

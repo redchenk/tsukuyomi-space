@@ -22,7 +22,7 @@ process.env.ROOM_WEATHER_OFFLINE = 'true';
 
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
-const { buildChatPayload, normalizeChatUrl } = require('../backend/services/llm');
+const { buildChatPayload, createChatCompletion, isOllamaChatUrl, normalizeChatUrl } = require('../backend/services/llm');
 
 let server;
 let baseUrl;
@@ -861,6 +861,59 @@ describe('chat API endpoint allowlist', () => {
             message: 'hello'
         });
         assert.equal(normalPayload.temperature, 0.7);
+    });
+
+    it('normalizes loopback Ollama endpoints and builds native chat payloads', () => {
+        const nativeUrl = normalizeChatUrl('localhost:11434', 'qwen2.5:7b');
+        assert.equal(nativeUrl, 'http://localhost:11434/api/chat');
+        assert.equal(isOllamaChatUrl(nativeUrl), true);
+        assert.equal(
+            normalizeChatUrl('http://127.0.0.1:11434/v1', 'llama3.1'),
+            'http://127.0.0.1:11434/v1/chat/completions'
+        );
+
+        const payload = buildChatPayload({
+            chatUrl: nativeUrl,
+            model: 'qwen2.5:7b',
+            systemPrompt: 'system',
+            history: [{ role: 'assistant', content: 'hi' }],
+            message: 'hello'
+        });
+
+        assert.equal(payload.model, 'qwen2.5:7b');
+        assert.equal(payload.stream, false);
+        assert.deepEqual(payload.messages.map(item => item.role), ['system', 'assistant', 'user']);
+        assert.equal(payload.messages[2].content, 'hello');
+    });
+
+    it('allows no-key Ollama chat requests and parses native replies', async () => {
+        const originalFetch = globalThis.fetch;
+        const calls = [];
+        globalThis.fetch = async (url, options) => {
+            calls.push({ url, options });
+            return {
+                ok: true,
+                json: async () => ({ model: 'qwen2.5:7b', message: { role: 'assistant', content: 'pong' } })
+            };
+        };
+
+        try {
+            const result = await createChatCompletion({
+                message: 'ping',
+                apiUrl: 'localhost:11434',
+                model: 'qwen2.5:7b',
+                systemPrompt: 'system'
+            });
+
+            assert.equal(result.reply, 'pong');
+            assert.equal(calls[0].url, 'http://localhost:11434/api/chat');
+            assert.equal(calls[0].options.headers.Authorization, undefined);
+            const body = JSON.parse(calls[0].options.body);
+            assert.equal(body.stream, false);
+            assert.equal(body.messages.at(-1).content, 'ping');
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
     });
 
     it('rejects arbitrary chat apiUrl values before proxying', async () => {
