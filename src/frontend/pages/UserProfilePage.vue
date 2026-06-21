@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
+import { assetUrl } from '../utils/assetUrl';
 import { formatDateOnly } from '../utils/time';
 
 const props = defineProps({
@@ -17,6 +18,7 @@ const profile = ref(null);
 const loading = ref(true);
 const message = ref('');
 const followLoading = ref(false);
+const failedCovers = ref(new Set());
 
 const username = computed(() => String(route.params.username || '').trim());
 const locale = computed(() => props.lang === 'zh' ? 'zh-CN' : 'ja-JP');
@@ -31,6 +33,18 @@ const roleText = computed(() => {
   if (profileUser.value.role === 'admin') return props.lang === 'zh' ? '管理员' : 'Admin';
   return props.lang === 'zh' ? '创作者' : 'Creator';
 });
+const profileInitial = computed(() => String(profileUser.value?.username || '月').trim().slice(0, 1).toUpperCase());
+const latestArticle = computed(() => profileArticles.value[0] || null);
+const profileCategoryChips = computed(() => {
+  const categories = profileArticles.value.map((article) => String(article.category || '').trim()).filter(Boolean);
+  return [...new Set(categories)].slice(0, 6);
+});
+const profileStatCards = computed(() => [
+  { key: 'articles', icon: 'fileText', label: props.lang === 'zh' ? '文章' : 'Articles', value: profileStats.value.articles, note: props.lang === 'zh' ? '公开发布' : 'Published' },
+  { key: 'views', icon: 'layers', label: props.lang === 'zh' ? '阅读' : 'Views', value: profileStats.value.totalViews, note: props.lang === 'zh' ? '累计浏览' : 'Total reads' },
+  { key: 'followers', icon: 'users', label: props.lang === 'zh' ? '关注者' : 'Followers', value: profileStats.value.followers, note: props.lang === 'zh' ? '正在等候更新' : 'Following updates' },
+  { key: 'following', icon: 'userCheck', label: props.lang === 'zh' ? '正在关注' : 'Following', value: profileStats.value.following, note: props.lang === 'zh' ? '连接的创作者' : 'Creator links' }
+]);
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString(locale.value);
@@ -50,6 +64,24 @@ function articlePath(article) {
   return `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
 }
 
+function articleCover(article) {
+  const key = articleCoverKey(article);
+  if (!key || failedCovers.value.has(key)) return '';
+  return assetUrl(article.cover_image);
+}
+
+function articleCoverKey(article) {
+  return String(article?.id || article?.cover_image || '');
+}
+
+function handleArticleCoverError(article) {
+  const key = articleCoverKey(article);
+  if (!key) return;
+  const next = new Set(failedCovers.value);
+  next.add(key);
+  failedCovers.value = next;
+}
+
 async function loadProfile() {
   if (!username.value) {
     message.value = '\u7528\u6237\u4e0d\u5b58\u5728';
@@ -59,6 +91,7 @@ async function loadProfile() {
 
   loading.value = true;
   message.value = '';
+  failedCovers.value = new Set();
   session.value = getSession();
   try {
     const response = await authFetch(noStoreUrl(`/api/user/public/${encodeURIComponent(username.value)}`), {
@@ -118,21 +151,28 @@ onMounted(loadProfile);
 
 <template>
   <main class="page user-profile-page">
-    <div v-if="loading" class="user-profile-status panel">Loading...</div>
+    <div v-if="loading" class="user-profile-status panel">
+      <TsIcon name="loader" :size="24" />
+      <span>正在读取公开主页...</span>
+    </div>
     <div v-else-if="message && !profile" class="user-profile-status panel">{{ message }}</div>
 
     <template v-else-if="profile">
       <section class="profile-hero">
-        <div class="profile-avatar">
-          <img :src="avatarSrc(profileUser)" :alt="profileUser?.username || ''">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar">
+            <img :src="avatarSrc(profileUser)" :alt="profileUser?.username || ''">
+          </div>
+          <span class="profile-avatar-initial">{{ profileInitial }}</span>
         </div>
         <div class="profile-main">
           <div class="profile-kicker"><TsIcon name="star" :size="15" /> User Profile</div>
           <h1>{{ profileUser?.username }}</h1>
-          <p>{{ profileUser?.bio || '\u8fd9\u4f4d\u521b\u4f5c\u8005\u8fd8\u6ca1\u6709\u5199\u4e0b\u4e2a\u4eba\u7b80\u4ecb\u3002' }}</p>
+          <p>{{ profileUser?.bio || '这位创作者还没有写下个人简介。' }}</p>
           <div class="profile-meta">
             <span><TsIcon :name="roleIcon" :size="15" /> {{ roleText }}</span>
             <span><TsIcon name="calendar" :size="15" /> {{ formatDate(profileUser?.created_at) }}</span>
+            <span><TsIcon name="book" :size="15" /> {{ formatNumber(profileStats.articles) }} 篇公开文章</span>
           </div>
         </div>
         <div class="profile-actions">
@@ -144,7 +184,7 @@ onMounted(loadProfile);
             @click="toggleFollow"
           >
             <TsIcon :name="viewer.isFollowing ? 'userCheck' : 'userPlus'" :size="17" />
-            <span>{{ viewer.isFollowing ? '\u53d6\u6d88\u5173\u6ce8' : '\u5173\u6ce8\u4f5c\u8005' }}</span>
+            <span>{{ viewer.isFollowing ? '取消关注' : '关注作者' }}</span>
           </button>
           <a v-else class="primary-btn profile-icon-action" href="/user-center" @click.prevent="emit('go', '/user-center')">
             <TsIcon name="penLine" :size="17" />
@@ -155,52 +195,112 @@ onMounted(loadProfile);
             <span>回到主舞台</span>
           </a>
         </div>
+        <aside class="profile-presence">
+          <div>
+            <span>创作档案</span>
+            <strong>{{ latestArticle ? latestArticle.title : '等待新的公开记录' }}</strong>
+          </div>
+          <p>{{ latestArticle ? (latestArticle.excerpt || '最近公开的文章会出现在这里。') : '这里会收纳这个用户发布到月读空间的公开文章、关注关系和创作痕迹。' }}</p>
+          <div class="profile-presence-grid">
+            <span><b>{{ formatNumber(profileStats.totalViews) }}</b><small>累计阅读</small></span>
+            <span><b>{{ formatNumber(profileStats.followers) }}</b><small>关注者</small></span>
+          </div>
+        </aside>
       </section>
 
       <section class="profile-stats">
-        <div class="profile-stat">
-          <div class="profile-stat-icon"><TsIcon name="fileText" :size="27" /></div>
-          <div><span>文章</span><strong>{{ formatNumber(profileStats.articles) }}</strong></div>
-        </div>
-        <div class="profile-stat">
-          <div class="profile-stat-icon"><TsIcon name="layers" :size="28" /></div>
-          <div><span>阅读</span><strong>{{ formatNumber(profileStats.totalViews) }}</strong></div>
-        </div>
-        <div class="profile-stat">
-          <div class="profile-stat-icon"><TsIcon name="users" :size="28" /></div>
-          <div><span>关注者</span><strong>{{ formatNumber(profileStats.followers) }}</strong></div>
-        </div>
-        <div class="profile-stat">
-          <div class="profile-stat-icon"><TsIcon name="userCheck" :size="28" /></div>
-          <div><span>正在关注</span><strong>{{ formatNumber(profileStats.following) }}</strong></div>
+        <div v-for="card in profileStatCards" :key="card.key" class="profile-stat">
+          <div class="profile-stat-icon"><TsIcon :name="card.icon" :size="26" /></div>
+          <div>
+            <span>{{ card.label }}</span>
+            <strong>{{ formatNumber(card.value) }}</strong>
+            <small>{{ card.note }}</small>
+          </div>
         </div>
       </section>
 
-      <section class="panel profile-articles">
-        <div class="profile-section-head">
-          <h2><TsIcon name="fileText" :size="19" /> 公开文章</h2>
-          <span>{{ formatNumber(profileArticles.length) }}</span>
-        </div>
-        <div v-if="message" class="form-message error">{{ message }}</div>
-        <div v-if="!profileArticles.length" class="profile-empty">暂无公开文章。</div>
-        <div v-else class="profile-article-list">
-          <article v-for="article in profileArticles" :key="article.id" class="profile-article">
+      <div class="profile-content-grid">
+        <section class="panel profile-articles">
+          <div class="profile-section-head">
             <div>
-              <div class="profile-article-meta">
-                <span>{{ article.category || '\u672a\u5206\u7c7b' }}</span>
-                <span>{{ formatDate(article.publish_date || article.created_at) }}</span>
-                <span>{{ formatNumber(article.view_count) }} views</span>
-              </div>
-              <h3>{{ article.title }}</h3>
-              <p>{{ article.excerpt }}</p>
+              <span>Published Notes</span>
+              <h2><TsIcon name="fileText" :size="19" /> 公开文章</h2>
             </div>
-            <a class="icon-btn profile-icon-action" :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">
-              <TsIcon name="eye" :size="16" />
-              <span>阅读</span>
+            <strong>{{ formatNumber(profileArticles.length) }}</strong>
+          </div>
+          <div v-if="message" class="form-message error">{{ message }}</div>
+          <div v-if="!profileArticles.length" class="profile-empty">
+            <TsIcon name="fileText" :size="28" />
+            <strong>暂无公开文章</strong>
+            <span>当这位用户发布文章后，会在这里形成公开创作列表。</span>
+          </div>
+          <div v-else class="profile-article-list">
+            <article v-for="article in profileArticles" :key="article.id" class="profile-article">
+              <a class="profile-article-cover" :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">
+                <img
+                  v-if="articleCover(article)"
+                  :src="articleCover(article)"
+                  :alt="article.title || ''"
+                  loading="lazy"
+                  @error="handleArticleCoverError(article)"
+                >
+                <span v-else>
+                  <TsIcon name="fileText" :size="28" />
+                  <b>{{ article.category || '未分类' }}</b>
+                </span>
+              </a>
+              <div class="profile-article-body">
+                <div class="profile-article-meta">
+                  <span>{{ article.category || '未分类' }}</span>
+                  <span>{{ formatDate(article.publish_date || article.created_at) }}</span>
+                  <span>{{ formatNumber(article.view_count) }} views</span>
+                </div>
+                <h3>
+                  <a :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">{{ article.title }}</a>
+                </h3>
+                <p>{{ article.excerpt || '这篇文章还没有摘要。' }}</p>
+              </div>
+              <a class="icon-btn profile-icon-action" :href="articlePath(article)" @click.prevent="emit('go', articlePath(article))">
+                <TsIcon name="eye" :size="16" />
+                <span>阅读</span>
+              </a>
+            </article>
+          </div>
+        </section>
+
+        <aside class="profile-side-stack">
+          <section class="profile-side-card">
+            <div class="profile-side-title">
+              <h2>创作索引</h2>
+              <TsIcon name="grid" :size="20" />
+            </div>
+            <div class="profile-side-metrics">
+              <div>
+                <span>公开文章</span>
+                <strong>{{ formatNumber(profileStats.articles) }}</strong>
+              </div>
+              <div>
+                <span>累计阅读</span>
+                <strong>{{ formatNumber(profileStats.totalViews) }}</strong>
+              </div>
+            </div>
+            <div class="profile-topic-list">
+              <button v-for="category in profileCategoryChips" :key="category" type="button">{{ category }}</button>
+              <span v-if="!profileCategoryChips.length">还没有可展示的文章分类</span>
+            </div>
+          </section>
+
+          <section v-if="latestArticle" class="profile-side-card profile-latest-card">
+            <span>Latest</span>
+            <h2>{{ latestArticle.title }}</h2>
+            <p>{{ latestArticle.excerpt || '最近公开的文章。' }}</p>
+            <a class="ghost-btn profile-icon-action" :href="articlePath(latestArticle)" @click.prevent="emit('go', articlePath(latestArticle))">
+              <TsIcon name="external" :size="16" />
+              <span>查看最新文章</span>
             </a>
-          </article>
-        </div>
-      </section>
+          </section>
+        </aside>
+      </div>
     </template>
   </main>
 </template>
