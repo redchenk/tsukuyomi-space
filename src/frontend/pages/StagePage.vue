@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { getAuthToken, parseResponse } from '../api/client';
 
 const props = defineProps({
@@ -12,7 +12,22 @@ const articles = ref([]);
 const articlesLoading = ref(true);
 const stageCategory = ref('all');
 const stageSearch = ref('');
+const stagePage = ref(1);
 const categories = ['all', '\u516c\u544a', '\u4f20\u8bf4', '\u6280\u672f', '\u4e8c\u521b', '\u5176\u4ed6'];
+const STAGE_PAGE_SIZE = 6;
+
+const stagePageCopy = {
+  resultUnit: '\u7bc7\u6587\u7ae0',
+  showing: '\u5f53\u524d',
+  page: '\u7b2c',
+  pageSuffix: '\u9875',
+  totalPages: '\u5171',
+  pageSize: '\u6bcf\u9875 6 \u7bc7',
+  prevPage: '\u4e0a\u4e00\u9875',
+  nextPage: '\u4e0b\u4e00\u9875',
+  jumpToPage: '\u8df3\u5230\u7b2c',
+  rangeUnit: '\u7bc7'
+};
 
 const filteredArticles = computed(() => {
   let list = articles.value;
@@ -29,6 +44,40 @@ const filteredArticles = computed(() => {
   return list;
 });
 
+const stageTotalArticles = computed(() => filteredArticles.value.length);
+const stageTotalPages = computed(() => Math.max(1, Math.ceil(stageTotalArticles.value / STAGE_PAGE_SIZE)));
+const stageCurrentPage = computed(() => Math.min(Math.max(stagePage.value, 1), stageTotalPages.value));
+const stagePageStart = computed(() => stageTotalArticles.value
+  ? (stageCurrentPage.value - 1) * STAGE_PAGE_SIZE + 1
+  : 0);
+const stagePageEnd = computed(() => Math.min(stageCurrentPage.value * STAGE_PAGE_SIZE, stageTotalArticles.value));
+
+const pagedArticles = computed(() => {
+  const start = (stageCurrentPage.value - 1) * STAGE_PAGE_SIZE;
+  return filteredArticles.value.slice(start, start + STAGE_PAGE_SIZE);
+});
+
+const stagePageItems = computed(() => {
+  const total = stageTotalPages.value;
+  const current = stageCurrentPage.value;
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+
+  const pages = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) pages.push('gap-left');
+  for (let page = start; page <= end; page += 1) pages.push(page);
+  if (end < total - 1) pages.push('gap-right');
+  pages.push(total);
+  return pages;
+});
+
+const stageResultSummary = computed(() => `${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.resultUnit}`);
+const stageRangeSummary = computed(() => stageTotalArticles.value
+  ? `${stagePageCopy.showing} ${stageFormatNumber(stagePageStart.value)}-${stageFormatNumber(stagePageEnd.value)} ${stagePageCopy.rangeUnit}`
+  : '');
+const stagePageSummary = computed(() => `${stagePageCopy.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.pageSuffix} / ${stagePageCopy.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.pageSuffix}`);
+
 function stageCategoryLabel(category) {
   const map = {
     all: props.t.filterAll,
@@ -39,6 +88,26 @@ function stageCategoryLabel(category) {
     '\u5176\u4ed6': props.t.filterOther
   };
   return map[category] || category;
+}
+
+function stageFormatNumber(value) {
+  return Number(value || 0).toLocaleString('zh-CN');
+}
+
+function stageSetPage(page, { scroll = true } = {}) {
+  const numericPage = Number(page);
+  if (!Number.isFinite(numericPage)) return;
+  const nextPage = Math.min(Math.max(Math.trunc(numericPage), 1), stageTotalPages.value);
+  if (nextPage === stagePage.value) return;
+  stagePage.value = nextPage;
+  if (!scroll) return;
+  nextTick(() => {
+    document.querySelector('.stage-list-region')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+}
+
+function isStagePageGap(item) {
+  return typeof item === 'string';
 }
 
 async function loadArticles() {
@@ -83,6 +152,13 @@ function stageOpenAuthor(article) {
   emit('go', `/users/${encodeURIComponent(username)}`);
 }
 
+watch([stageCategory, stageSearch], () => {
+  stagePage.value = 1;
+});
+watch(stageTotalPages, (total) => {
+  if (stagePage.value > total) stagePage.value = total;
+  if (stagePage.value < 1) stagePage.value = 1;
+});
 onMounted(loadArticles);
 </script>
 
@@ -116,12 +192,22 @@ onMounted(loadArticles);
         {{ stageCategoryLabel(category) }}
       </button>
     </div>
+    <div v-if="!articlesLoading && filteredArticles.length" class="stage-result-strip">
+      <div>
+        <strong>{{ stageResultSummary }}</strong>
+        <span>{{ stageRangeSummary }}</span>
+      </div>
+      <div class="stage-result-page">
+        <span>{{ stagePageSummary }}</span>
+        <small>{{ stagePageCopy.pageSize }}</small>
+      </div>
+    </div>
 
     <div v-if="articlesLoading" class="stage-status">{{ t.loading }}</div>
     <div v-else-if="!filteredArticles.length" class="stage-status">{{ t.noArticles }}</div>
-    <div v-else class="stage-list">
+    <div v-else class="stage-list stage-list-region">
       <a
-        v-for="article in filteredArticles"
+        v-for="article in pagedArticles"
         :key="article.id"
         :href="articlePath(article)"
         class="stage-card"
@@ -154,6 +240,41 @@ onMounted(loadArticles);
           <img :src="article.cover_image" alt="" class="stage-cover-img">
         </div>
       </a>
+      <nav v-if="stageTotalPages > 1" class="stage-pagination" aria-label="Stage articles pagination">
+        <div class="stage-pagination-info">{{ stagePageSummary }}</div>
+        <div class="stage-pagination-controls">
+          <button
+            class="stage-page-btn stage-page-nav"
+            type="button"
+            :disabled="stageCurrentPage <= 1"
+            @click="stageSetPage(stageCurrentPage - 1)"
+          >
+            {{ stagePageCopy.prevPage }}
+          </button>
+          <template v-for="item in stagePageItems" :key="item">
+            <span v-if="isStagePageGap(item)" class="stage-page-gap">...</span>
+            <button
+              v-else
+              class="stage-page-btn"
+              :class="{ active: item === stageCurrentPage }"
+              type="button"
+              :aria-current="item === stageCurrentPage ? 'page' : undefined"
+              :aria-label="`${stagePageCopy.jumpToPage} ${item}`"
+              @click="stageSetPage(item)"
+            >
+              {{ item }}
+            </button>
+          </template>
+          <button
+            class="stage-page-btn stage-page-nav"
+            type="button"
+            :disabled="stageCurrentPage >= stageTotalPages"
+            @click="stageSetPage(stageCurrentPage + 1)"
+          >
+            {{ stagePageCopy.nextPage }}
+          </button>
+        </div>
+      </nav>
     </div>
   </main>
 </template>

@@ -77,7 +77,7 @@
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
 }
 
 .filter-btn {
@@ -100,6 +100,49 @@
     background: rgba(255, 107, 157, 0.25);
     border-color: rgba(255, 107, 157, 0.5);
     color: #ffb7c5;
+}
+
+.stage-result-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.4rem;
+    padding: 0.78rem 0.9rem;
+    border: 1px solid rgba(255, 107, 157, 0.16);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.stage-result-strip div {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.stage-result-strip strong {
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.stage-result-strip span,
+.stage-result-strip small,
+.stage-pagination-info {
+    color: rgba(255, 225, 235, 0.58);
+    font-size: 0.78rem;
+}
+
+.stage-result-page {
+    justify-content: flex-end;
+}
+
+.stage-result-page small {
+    padding: 0.26rem 0.48rem;
+    border: 1px solid rgba(255, 107, 157, 0.14);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.045);
 }
 
 .stage-status {
@@ -267,9 +310,153 @@
     transform: scale(1.05);
 }
 
+.stage-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    padding: 0.85rem;
+    border: 1px solid rgba(255, 107, 157, 0.16);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.stage-pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.stage-page-btn,
+.stage-page-gap {
+    min-width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.8rem;
+}
+
+.stage-page-btn {
+    border: 1px solid rgba(255, 107, 157, 0.22);
+    background: rgba(255, 255, 255, 0.045);
+    color: rgba(255, 225, 235, 0.78);
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.stage-page-btn:hover:not(:disabled) {
+    border-color: rgba(255, 107, 157, 0.5);
+    background: rgba(255, 107, 157, 0.16);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.stage-page-btn.active {
+    border-color: rgba(255, 107, 157, 0.52);
+    background: rgba(255, 107, 157, 0.28);
+    color: #fff;
+    font-weight: 800;
+}
+
+.stage-page-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.42;
+}
+
+.stage-page-nav {
+    min-width: 82px;
+    padding: 0 0.8rem;
+}
+
+.stage-page-gap {
+    color: rgba(255, 225, 235, 0.44);
+}
+
 html[data-theme="light"] .stage-seo-intro {
     border-color: rgba(75, 95, 140, 0.14);
     color: rgba(38, 48, 72, 0.72);
     background: rgba(255, 255, 255, 0.66);
 }
 
+html[data-theme="light"] .stage-result-strip,
+html[data-theme="light"] .stage-pagination {
+    border-color: rgba(139, 168, 205, 0.18);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: var(--float-shadow, 0 12px 30px rgba(86, 112, 160, 0.12));
+}
+
+html[data-theme="light"] .stage-result-strip strong,
+html[data-theme="light"] .stage-page-btn.active {
+    color: var(--ink, #172033);
+}
+
+html[data-theme="light"] .stage-result-strip span,
+html[data-theme="light"] .stage-result-strip small,
+html[data-theme="light"] .stage-pagination-info,
+html[data-theme="light"] .stage-page-gap {
+    color: var(--muted, #4b5565);
+}
+
+html[data-theme="light"] .stage-page-btn,
+html[data-theme="light"] .stage-result-page small {
+    border-color: rgba(139, 168, 205, 0.22);
+    background: rgba(255, 255, 255, 0.74);
+    color: var(--ink-soft, #263244);
+}
+
+html[data-theme="light"] .stage-page-btn:hover:not(:disabled) {
+    border-color: rgba(102, 197, 223, 0.45);
+    background: rgba(229, 246, 252, 0.9);
+    color: var(--ink, #172033);
+}
+
+html[data-theme="light"] .stage-page-btn.active {
+    border-color: rgba(223, 106, 157, 0.3);
+    background: rgba(255, 235, 244, 0.95);
+}
+
+@media (max-width: 760px) {
+    .stage-result-strip,
+    .stage-pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .stage-result-strip div,
+    .stage-result-page,
+    .stage-pagination-controls {
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .stage-page-nav {
+        flex: 1 1 112px;
+    }
+}
+
+@media (max-width: 560px) {
+    .stage-result-strip,
+    .stage-pagination {
+        padding: 0.7rem;
+    }
+
+    .stage-result-strip div {
+        gap: 0.4rem;
+    }
+
+    .stage-page-btn,
+    .stage-page-gap {
+        min-width: 38px;
+        height: 38px;
+    }
+
+    .stage-page-nav {
+        min-width: 0;
+    }
+}
