@@ -1,4 +1,5 @@
 import { nextTick, ref } from 'vue';
+import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../../api/client';
 import { defaultKnowledgeEntries } from '../../constants/room/knowledgeEntries';
 import { live2DPromptCatalog } from '../../constants/room/live2dManifest';
 import {
@@ -9,6 +10,8 @@ import {
 } from '../../services/room/live2dControl';
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
 import { readJson, writeJson } from '../../services/room/roomStorage';
+
+const ROOM_MEMORY_UPDATED_KEY = 'roomMemoryLastUpdatedAt';
 
 function uid() {
   return `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -589,11 +592,11 @@ async function fetchRelevantMemories(message) {
   if (memorySettings.enabled === false) return [];
   if (!String(message || '').trim()) return [];
   const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
-  const response = await fetch(`/api/room/memory/live/${Date.now()}?${params}`, {
-    credentials: 'include',
+  const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
+    headers: authHeaders({ Accept: 'application/json' }),
     cache: 'no-store'
   });
-  const result = await response.json().catch(() => ({}));
+  const result = await parseResponse(response);
   if (!response.ok || !result.success) return [];
   return Array.isArray(result.data) ? result.data : [];
 }
@@ -601,12 +604,24 @@ async function fetchRelevantMemories(message) {
 async function fetchPersonaMemories(message) {
   if (!String(message || '').trim()) return [];
   const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
-  const response = await fetch(`/api/room/persona-memory/live/${Date.now()}?${params}`, {
+  const response = await authFetch(noStoreUrl(`/api/room/persona-memory?${params}`), {
+    headers: authHeaders({ Accept: 'application/json' }),
     cache: 'no-store'
   });
-  const result = await response.json().catch(() => ({}));
+  const result = await parseResponse(response);
   if (!response.ok || !result.success) return [];
   return Array.isArray(result.data) ? result.data : [];
+}
+
+function notifyRoomMemoryUpdated(memory) {
+  if (typeof window === 'undefined') return;
+  const updatedAt = Date.now();
+  try {
+    localStorage.setItem(ROOM_MEMORY_UPDATED_KEY, String(updatedAt));
+  } catch (_) {}
+  window.dispatchEvent(new CustomEvent('tsukuyomi:room-memory-updated', {
+    detail: { memory, updatedAt }
+  }));
 }
 
 function readKnowledgeContext(message) {
@@ -808,7 +823,9 @@ export function useRoomChat({ live2d, world }) {
       const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
       const nextHistory = [...conversation, { role: 'user', content: userContent }, { role: 'assistant', content: reply }].slice(-24);
       writeJson('roomChatHistory', nextHistory);
-      remember(userContent, reply).catch(() => {});
+      remember(userContent, reply).catch((error) => {
+        console.warn('Room memory save failed:', error);
+      });
     } catch (error) {
       messages.value = messages.value.filter((item) => item.id !== typingId);
       addMessage('system', `\u53d1\u9001\u5931\u8d25\uff1a${error.message}`);
@@ -820,12 +837,15 @@ export function useRoomChat({ live2d, world }) {
   async function remember(userMessage, assistantReply) {
     const memorySettings = readJson('roomMemorySettings', { enabled: true });
     if (memorySettings.enabled === false) return;
-    await fetch('/api/room/memory', {
+    const response = await authFetch('/api/room/memory', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
       body: JSON.stringify({ userMessage, assistantReply })
     });
+    const result = await parseResponse(response);
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    if (result.data) notifyRoomMemoryUpdated(result.data);
+    return result.data || null;
   }
 
   function stopTTS() {

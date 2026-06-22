@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { cloneKnowledgeEntry, defaultKnowledgeEntries } from '../constants/room/knowledgeEntries';
 import { roomLive2DManifest } from '../constants/room/live2dManifest';
@@ -18,6 +19,7 @@ const emit = defineEmits(['go']);
 
 const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
 const MEMORY_STORE = 'memories';
+const ROOM_MEMORY_UPDATED_KEY = 'roomMemoryLastUpdatedAt';
 const MODEL_CATALOG_CACHE_KEY = 'roomModelCatalogOpenRouter';
 const LLM_PRESETS = {
   ollama: { label: 'Ollama 本机', apiUrl: 'http://localhost:11434/api/chat', model: 'qwen2.5:7b', useProxy: false, apiKey: '' },
@@ -226,11 +228,7 @@ const live2dDebugJson = computed(() => JSON.stringify({
 }, null, 2));
 
 function readStoredUser() {
-  try {
-    return JSON.parse(localStorage.getItem('tsukuyomi_user') || 'null');
-  } catch (_) {
-    return null;
-  }
+  return getSession()?.user || null;
 }
 
 function readJson(key, fallback) {
@@ -524,7 +522,7 @@ function testStatusLabel(status) {
 }
 
 function memoryAuthHeaders(extra = {}) {
-  return { ...extra };
+  return authHeaders({ Accept: 'application/json', ...extra });
 }
 
 function memoryTypeLabel(type) {
@@ -558,8 +556,22 @@ function onLive2DDebugEvent(event) {
   syncLive2DDebugState(event.detail || readRoomLive2DDebugState());
 }
 
-function onLive2DStorageEvent() {
+function refreshMemoryState() {
+  storedUser.value = readStoredUser();
+  loadMemoryCount();
+  if (memory.managerOpen) loadVisibleMemories();
+}
+
+function onRoomMemoryUpdated() {
+  if (memory.enabled === false) return;
+  refreshMemoryState();
+}
+
+function onRoomSettingsStorageEvent(event) {
   syncLive2DDebugState();
+  if (event?.key === ROOM_MEMORY_UPDATED_KEY || event?.key === 'tsukuyomi_user' || event?.key === 'admin_user') {
+    onRoomMemoryUpdated();
+  }
 }
 
 function queueLive2DTest(intent, message = 'Live2D 测试指令已加入待执行队列，返回房间后会自动播放。') {
@@ -1041,12 +1053,11 @@ function txToPromise(tx) {
 async function loadMemoryCount() {
   try {
     if (canUseServerMemory.value) {
-      const response = await fetch(`/api/room/memory/status/live/${Date.now()}`, {
+      const response = await authFetch(noStoreUrl('/api/room/memory/status'), {
         headers: memoryAuthHeaders(),
-        credentials: 'include',
         cache: 'no-store'
       });
-      const result = await response.json().catch(() => ({}));
+      const result = await parseResponse(response);
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
       memoryCount.value = result.data?.count || 0;
       return;
@@ -1073,11 +1084,11 @@ async function loadServerMemories() {
     const params = new URLSearchParams({ limit: '80' });
     if (memory.query.trim()) params.set('q', memory.query.trim());
     if (memory.type && !memory.query.trim()) params.set('type', memory.type);
-    const response = await fetch(`/api/room/memory/live/${Date.now()}?${params}`, {
+    const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
       headers: memoryAuthHeaders(),
       cache: 'no-store'
     });
-    const result = await response.json().catch(() => ({}));
+    const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     memoryList.value = Array.isArray(result.data) ? result.data : [];
     memoryCount.value = memoryList.value.length || memoryCount.value;
@@ -1535,11 +1546,11 @@ async function openMemoryItem(item) {
 }
 
 async function fetchMemoryDetail(id) {
-  const response = await fetch(`/api/room/memory/${encodeURIComponent(id)}`, {
+  const response = await authFetch(noStoreUrl(`/api/room/memory/${encodeURIComponent(id)}`), {
     headers: memoryAuthHeaders(),
     cache: 'no-store'
   });
-  const result = await response.json().catch(() => ({}));
+  const result = await parseResponse(response);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
   return result.data;
 }
@@ -1594,7 +1605,7 @@ async function saveMemoryEdit() {
       await loadLocalMemories();
       return;
     }
-    const response = await fetch(`/api/room/memory/${encodeURIComponent(memory.editing.id)}`, {
+    const response = await authFetch(`/api/room/memory/${encodeURIComponent(memory.editing.id)}`, {
       method: 'PATCH',
       headers: memoryAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
@@ -1606,7 +1617,7 @@ async function saveMemoryEdit() {
         tags: String(memory.editing.tags || '').split(',').map((item) => item.trim()).filter(Boolean)
       })
     });
-    const result = await response.json().catch(() => ({}));
+    const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     showToast('记忆已更新');
     memory.editing = null;
@@ -1629,11 +1640,11 @@ async function deleteMemoryItem(item) {
       await loadLocalMemories();
       return;
     }
-    const response = await fetch(`/api/room/memory/${encodeURIComponent(item.id)}`, {
+    const response = await authFetch(`/api/room/memory/${encodeURIComponent(item.id)}`, {
       method: 'DELETE',
       headers: memoryAuthHeaders()
     });
-    const result = await response.json().catch(() => ({}));
+    const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     showToast('记忆已删除');
     await loadMemoryCount();
@@ -1646,12 +1657,11 @@ async function deleteMemoryItem(item) {
 async function clearMemory() {
   try {
     if (canUseServerMemory.value) {
-      const response = await fetch('/api/room/memory', {
+      const response = await authFetch('/api/room/memory', {
         method: 'DELETE',
-        headers: memoryAuthHeaders(),
-        credentials: 'include'
+        headers: memoryAuthHeaders()
       });
-      const result = await response.json().catch(() => ({}));
+      const result = await parseResponse(response);
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
       memoryCount.value = 0;
       memoryList.value = [];
@@ -1788,16 +1798,23 @@ async function testMCPWithDialog() {
   }
 }
 
+watch(() => props.user?.id || '', (userId, previousUserId) => {
+  if (userId === previousUserId) return;
+  refreshMemoryState();
+});
+
 onMounted(() => {
   loadSettings();
   syncLive2DDebugState();
   window.addEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
-  window.addEventListener('storage', onLive2DStorageEvent);
+  window.addEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
+  window.addEventListener('storage', onRoomSettingsStorageEvent);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
-  window.removeEventListener('storage', onLive2DStorageEvent);
+  window.removeEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
+  window.removeEventListener('storage', onRoomSettingsStorageEvent);
   clearTimeout(modelNoticeTimer);
   clearTimeout(toastTimer);
 });

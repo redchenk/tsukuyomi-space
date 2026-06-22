@@ -7,6 +7,7 @@ import RoomNotePanel from '../components/room/RoomNotePanel.vue';
 import RoomProfilePanel from '../components/room/RoomProfilePanel.vue';
 import RoomStage from '../components/room/RoomStage.vue';
 import RoomWeatherCard from '../components/room/RoomWeatherCard.vue';
+import { getSession } from '../api/client';
 import { useRoomState } from '../composables/room/useRoomState';
 
 const props = defineProps({
@@ -17,11 +18,7 @@ const emit = defineEmits(['go']);
 const room = useRoomState();
 
 function readStoredUser() {
-  try {
-    return JSON.parse(localStorage.getItem('tsukuyomi_user') || 'null');
-  } catch (_) {
-    return null;
-  }
+  return getSession()?.user || null;
 }
 
 const roomUser = computed(() => readStoredUser() || (props.user?.id ? props.user : null));
