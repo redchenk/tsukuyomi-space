@@ -117,6 +117,12 @@ const orderedSceneLinks = computed(() => sceneLinks.value);
 
 const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
 
+const heroSignals = computed(() => [
+  { label: '今日访问', value: siteStats.value ? formatHubNumber(siteStats.value.todayViews) : '--' },
+  { label: '站内文章', value: siteStats.value ? formatHubNumber(siteStats.value.articles) : '--' },
+  { label: '广场留言', value: siteStats.value ? formatHubNumber(siteStats.value.messages) : '--' }
+]);
+
 function formatHubNumber(value) {
   return Number(value || 0).toLocaleString('zh-CN');
 }
@@ -315,23 +321,35 @@ async function submitPlazaQuick() {
   }
 }
 
-onMounted(loadHubPreview);
+onMounted(() => {
+  if (typeof window === 'undefined') {
+    loadHubPreview();
+    return;
+  }
+  window.requestAnimationFrame(() => loadHubPreview());
+});
 </script>
 
 <template>
   <main class="page hub">
     <figure class="hub-character" aria-label="月见八千代">
-      <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代">
+      <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代" loading="eager" decoding="async" fetchpriority="high">
     </figure>
 
     <section class="hub-showcase">
       <div class="hub-hero-panel">
         <div class="hub-hero-copy">
-          <span class="hub-kicker">✦ Web UI Redesign Concept</span>
+          <span class="hub-kicker">TSUKUYOMI / LIVE PORTAL</span>
           <p class="hub-welcome">欢迎来到</p>
           <h1 class="section-title">{{ t.brand }}</h1>
           <p class="hub-en-title">Tsukuyomi Space</p>
           <p class="section-subtitle">{{ t.heroCopy }}</p>
+          <div class="hub-hero-signals" aria-label="站点即时数据">
+            <span v-for="signal in heroSignals" :key="signal.label">
+              <strong>{{ signal.value }}</strong>
+              <small>{{ signal.label }}</small>
+            </span>
+          </div>
           <div class="hub-actions">
             <a href="/room" class="primary-btn hub-primary" @click.prevent="$emit('go', '/room')">
               <TsIcon name="moon" :size="17" />
@@ -345,7 +363,7 @@ onMounted(loadHubPreview);
         </div>
 
         <div class="hub-orbit" aria-hidden="true">
-          <div class="hub-orbit-moon">☾</div>
+          <div class="hub-orbit-moon">TS</div>
           <div class="hub-orbit-ring"></div>
           <div class="hub-floating-island">
             <span></span>
@@ -399,7 +417,7 @@ onMounted(loadHubPreview);
           @click="openScene(scene, $event)"
           @keydown.enter="openScene(scene, $event)"
           @keydown.space.prevent="openScene(scene, $event)"
-        >
+          >
           <span v-if="scene.kind === 'arena' && scene.artwork" class="hub-arena-cover" :style="{ '--hub-arena-bg': artworkBackground(scene.artwork) }" aria-hidden="true">
             <PixelCanvasCells
               :pixels="artworkPixels(scene.artwork)"
@@ -413,8 +431,11 @@ onMounted(loadHubPreview);
               :aria-label="scene.name"
             />
           </span>
-          <span class="scene-icon" aria-hidden="true">
-            <TsIcon :name="scene.icon" :size="22" :stroke-width="1.9" />
+          <span class="scene-top">
+            <span class="scene-icon" aria-hidden="true">
+              <TsIcon :name="scene.icon" :size="22" :stroke-width="1.9" />
+            </span>
+            <span class="scene-code">{{ scene.code }}</span>
           </span>
           <span v-if="scene.label" class="scene-label">{{ scene.label }}</span>
           <span v-if="scene.kind !== 'plaza'" class="scene-main">
