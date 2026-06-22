@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, loadPublicStats, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
 import SocialText from '../components/SocialText.vue';
+import TsIcon from '../components/TsIcon.vue';
 import { compareAppDate, formatDateTime, parseAppDate } from '../utils/time';
 
 const props = defineProps({
@@ -22,11 +23,13 @@ const plaza = reactive({
   topicsLoading: false,
   filter: 'latest',
   query: '',
+  page: 1,
   loading: false,
   replyOpen: {}
 });
 const plazaToast = reactive({ text: '', visible: false });
 let plazaToastTimer = 0;
+const PLAZA_PAGE_SIZE = 8;
 
 const user = computed(() => session.value?.user || null);
 const isAuthed = computed(() => Boolean(session.value));
@@ -54,7 +57,17 @@ const fallback = computed(() => isZh.value ? {
   daysAgo: '\u5929\u524d',
   posted: '\u53d1\u5e03\u4e86\u7559\u8a00',
   replied: '\u56de\u590d\u4e86\u7559\u8a00',
-  arrow: '\u2192'
+  arrow: '\u2192',
+  filteredMessages: '\u6761\u5339\u914d\u7559\u8a00',
+  showing: '\u5f53\u524d',
+  page: '\u7b2c',
+  pageSuffix: '\u9875',
+  totalPages: '\u5171',
+  pageSize: '\u6bcf\u9875 8 \u6761',
+  prevPage: '\u4e0a\u4e00\u9875',
+  nextPage: '\u4e0b\u4e00\u9875',
+  jumpToPage: '\u8df3\u5230\u7b2c',
+  messageRangeUnit: '\u6761'
 } : {
   anonymous: '\u533f\u540d\u30b2\u30b9\u30c8',
   visitor: '\u8a2a\u554f\u8005',
@@ -65,7 +78,17 @@ const fallback = computed(() => isZh.value ? {
   daysAgo: '\u65e5\u524d',
   posted: '\u30e1\u30c3\u30bb\u30fc\u30b8\u3092\u6295\u7a3f',
   replied: '\u30e1\u30c3\u30bb\u30fc\u30b8\u306b\u8fd4\u4fe1',
-  arrow: '\u2192'
+  arrow: '\u2192',
+  filteredMessages: '\u4ef6\u306e\u30e1\u30c3\u30bb\u30fc\u30b8',
+  showing: '\u8868\u793a\u4e2d',
+  page: '\u30da\u30fc\u30b8',
+  pageSuffix: '',
+  totalPages: '\u5168',
+  pageSize: '1\u30da\u30fc\u30b8 8 \u4ef6',
+  prevPage: '\u524d\u3078',
+  nextPage: '\u6b21\u3078',
+  jumpToPage: '\u30da\u30fc\u30b8\u3078\u79fb\u52d5',
+  messageRangeUnit: '\u4ef6'
 });
 
 const plazaMessages = computed(() => {
@@ -118,6 +141,40 @@ const plazaActivity = computed(() => [...plaza.messages]
   .sort((a, b) => compareAppDate(b.created_at, a.created_at))
   .slice(0, 6));
 
+const plazaTotalMessages = computed(() => plazaMessages.value.length);
+const plazaTotalPages = computed(() => Math.max(1, Math.ceil(plazaTotalMessages.value / PLAZA_PAGE_SIZE)));
+const plazaCurrentPage = computed(() => Math.min(Math.max(plaza.page, 1), plazaTotalPages.value));
+const plazaPageStart = computed(() => plazaTotalMessages.value
+  ? (plazaCurrentPage.value - 1) * PLAZA_PAGE_SIZE + 1
+  : 0);
+const plazaPageEnd = computed(() => Math.min(plazaCurrentPage.value * PLAZA_PAGE_SIZE, plazaTotalMessages.value));
+
+const pagedPlazaMessages = computed(() => {
+  const start = (plazaCurrentPage.value - 1) * PLAZA_PAGE_SIZE;
+  return plazaMessages.value.slice(start, start + PLAZA_PAGE_SIZE);
+});
+
+const plazaPageItems = computed(() => {
+  const total = plazaTotalPages.value;
+  const current = plazaCurrentPage.value;
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+
+  const pages = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) pages.push('gap-left');
+  for (let page = start; page <= end; page += 1) pages.push(page);
+  if (end < total - 1) pages.push('gap-right');
+  pages.push(total);
+  return pages;
+});
+
+const plazaResultSummary = computed(() => `${plazaFormatNumber(plazaTotalMessages.value)} ${fallback.value.filteredMessages}`);
+const plazaRangeSummary = computed(() => plazaTotalMessages.value
+  ? `${fallback.value.showing} ${plazaFormatNumber(plazaPageStart.value)}-${plazaFormatNumber(plazaPageEnd.value)} ${fallback.value.messageRangeUnit}`
+  : '');
+const plazaPageSummary = computed(() => `${fallback.value.page} ${plazaFormatNumber(plazaCurrentPage.value)} ${fallback.value.pageSuffix} / ${fallback.value.totalPages} ${plazaFormatNumber(plazaTotalPages.value)} ${fallback.value.pageSuffix}`);
+
 function go(path) {
   emit('go', path);
 }
@@ -129,6 +186,37 @@ function showPlazaToast(text) {
   plazaToastTimer = setTimeout(() => {
     plazaToast.visible = false;
   }, 2200);
+}
+
+function plazaSetPage(page, { scroll = true } = {}) {
+  const numericPage = Number(page);
+  if (!Number.isFinite(numericPage)) return;
+  const nextPage = Math.min(Math.max(Math.trunc(numericPage), 1), plazaTotalPages.value);
+  if (nextPage === plaza.page) return;
+  plaza.page = nextPage;
+  if (!scroll) return;
+  nextTick(() => {
+    document.querySelector('.plaza-message-region')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+}
+
+function isPlazaPageGap(item) {
+  return typeof item === 'string';
+}
+
+function plazaSyncPageWithHash() {
+  const match = String(location.hash || '').match(/^#msg-(\d+)$/);
+  if (!match) return;
+  const anchorId = match[1];
+  const target = plaza.messages.find((item) => String(item.id) === anchorId);
+  const topLevelId = target?.parent_id || target?.id;
+  if (!topLevelId) return;
+  const index = plazaMessages.value.findIndex((item) => String(item.id) === String(topLevelId));
+  if (index < 0) return;
+  plazaSetPage(Math.floor(index / PLAZA_PAGE_SIZE) + 1, { scroll: false });
+  nextTick(() => {
+    document.getElementById(`msg-${topLevelId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
 }
 
 async function loadPlazaStats() {
@@ -145,6 +233,7 @@ async function loadPlazaMessages() {
       plaza.messages = Array.isArray(result.data)
         ? result.data.filter((item) => !item.article_id)
         : [];
+      plazaSyncPageWithHash();
     }
   } catch (_) {
     showPlazaToast(props.t.plazaLoadFailed);
@@ -211,6 +300,7 @@ async function plazaSubmitMessage(content) {
     if (!result.success) throw new Error(result.message || props.t.publishFailed);
     showPlazaToast(result.message || '留言已提交，审核通过后会公开显示');
     if (result.data?.id && (result.data.status || 'approved') === 'approved') {
+      plaza.page = 1;
       upsertPlazaMessage(result.data);
       loadTrendingTopics();
     } else await loadPlazaStats();
@@ -366,6 +456,13 @@ function plazaFormatUptime(seconds) {
   return days > 0 ? `${days}\u65e5${hours}\u6642\u9593` : `${hours}\u6642\u9593`;
 }
 
+watch(() => [plaza.filter, plaza.query], () => {
+  plaza.page = 1;
+});
+watch(plazaTotalPages, (total) => {
+  if (plaza.page > total) plaza.page = total;
+  if (plaza.page < 1) plaza.page = 1;
+});
 watch(() => route.query.topic, applyRouteTopic, { immediate: true });
 onMounted(refreshPlaza);
 </script>
@@ -405,8 +502,14 @@ onMounted(refreshPlaza);
         <div class="plaza-section-head">
           <h2 class="plaza-section-title"><span>01</span> {{ t.wallTitle }}</h2>
           <div class="plaza-toolbar">
-            <input v-model="plaza.query" class="plaza-search" type="search" :placeholder="t.searchPlaceholder || fallback.search">
-            <button class="ghost-btn" type="button" @click="refreshPlaza">{{ t.refresh }}</button>
+            <label class="plaza-search-wrap">
+              <TsIcon name="search" :size="16" />
+              <input v-model="plaza.query" class="plaza-search" type="search" :placeholder="t.searchPlaceholder || fallback.search">
+            </label>
+            <button class="ghost-btn plaza-refresh-btn" type="button" @click="refreshPlaza">
+              <TsIcon name="refresh" :size="16" />
+              <span>{{ t.refresh }}</span>
+            </button>
           </div>
         </div>
         <div class="plaza-filters">
@@ -414,6 +517,16 @@ onMounted(refreshPlaza);
           <button class="chip" :class="{ active: plaza.filter === 'hot' }" type="button" @click="plaza.filter = 'hot'">{{ t.filterHot }}</button>
           <button class="chip" :class="{ active: plaza.filter === 'replied' }" type="button" @click="plaza.filter = 'replied'">{{ t.filterReplied }}</button>
           <button class="chip" :class="{ active: plaza.filter === 'mine' }" type="button" @click="plaza.filter = 'mine'">{{ t.filterMine }}</button>
+        </div>
+        <div v-if="!plaza.loading && plazaMessages.length" class="plaza-result-strip">
+          <div>
+            <strong>{{ plazaResultSummary }}</strong>
+            <span>{{ plazaRangeSummary }}</span>
+          </div>
+          <div class="plaza-result-page">
+            <span>{{ plazaPageSummary }}</span>
+            <small>{{ fallback.pageSize }}</small>
+          </div>
         </div>
 
         <div v-if="!isAuthed" class="plaza-composer plaza-composer-locked">
@@ -432,8 +545,8 @@ onMounted(refreshPlaza);
           <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">{{ t.noMessages }}</div>
           <div>{{ t.noMessagesHint }}</div>
         </div>
-        <div v-else class="plaza-messages">
-          <article v-for="msg in plazaMessages" :id="'msg-' + msg.id" :key="msg.id" class="plaza-msg-card">
+        <div v-else class="plaza-messages plaza-message-region">
+          <article v-for="msg in pagedPlazaMessages" :id="'msg-' + msg.id" :key="msg.id" class="plaza-msg-card">
             <div class="plaza-msg-meta">
               <div class="plaza-msg-author">
                 <button class="plaza-author-link" type="button" @click="plazaOpenProfile(msg.author)">
@@ -489,6 +602,41 @@ onMounted(refreshPlaza);
               </div>
             </div>
           </article>
+          <nav v-if="plazaTotalPages > 1" class="plaza-pagination" aria-label="Plaza messages pagination">
+            <div class="plaza-pagination-info">{{ plazaPageSummary }}</div>
+            <div class="plaza-pagination-controls">
+              <button
+                class="plaza-page-btn plaza-page-nav"
+                type="button"
+                :disabled="plazaCurrentPage <= 1"
+                @click="plazaSetPage(plazaCurrentPage - 1)"
+              >
+                {{ fallback.prevPage }}
+              </button>
+              <template v-for="item in plazaPageItems" :key="item">
+                <span v-if="isPlazaPageGap(item)" class="plaza-page-gap">...</span>
+                <button
+                  v-else
+                  class="plaza-page-btn"
+                  :class="{ active: item === plazaCurrentPage }"
+                  type="button"
+                  :aria-current="item === plazaCurrentPage ? 'page' : undefined"
+                  :aria-label="`${fallback.jumpToPage} ${item}`"
+                  @click="plazaSetPage(item)"
+                >
+                  {{ item }}
+                </button>
+              </template>
+              <button
+                class="plaza-page-btn plaza-page-nav"
+                type="button"
+                :disabled="plazaCurrentPage >= plazaTotalPages"
+                @click="plazaSetPage(plazaCurrentPage + 1)"
+              >
+                {{ fallback.nextPage }}
+              </button>
+            </div>
+          </nav>
         </div>
       </div>
 
