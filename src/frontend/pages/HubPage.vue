@@ -332,10 +332,6 @@ onMounted(() => {
 
 <template>
   <main class="page hub">
-    <figure class="hub-character" aria-label="月见八千代">
-      <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代" loading="eager" decoding="async" fetchpriority="high">
-    </figure>
-
     <section class="hub-showcase">
       <div class="hub-hero-panel">
         <div class="hub-hero-copy">
@@ -371,6 +367,9 @@ onMounted(() => {
           </div>
         </div>
 
+        <figure class="hub-character" aria-label="月见八千代">
+          <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代" loading="eager" decoding="async" fetchpriority="high">
+        </figure>
       </div>
 
       <aside class="hub-side-panel">
