@@ -1649,7 +1649,7 @@ body .page.hub .hub-character {
     height: clamp(250px, 44vh, 390px);
     min-width: 0;
     max-width: none;
-    opacity: 0.72;
+    opacity: 0.84;
     filter: saturate(1.04) contrast(0.98) drop-shadow(0 28px 70px rgba(0, 0, 0, 0.38));
     mask-image:
         linear-gradient(90deg, transparent 0, rgba(0, 0, 0, 0.18) 12%, #000 30%, #000 100%),

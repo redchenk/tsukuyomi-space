@@ -358,15 +358,6 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="hub-orbit" aria-hidden="true">
-          <div class="hub-orbit-moon">TS</div>
-          <div class="hub-orbit-ring"></div>
-          <div class="hub-floating-island">
-            <span></span>
-            <strong>Tsukuyomi</strong>
-          </div>
-        </div>
-
         <figure class="hub-character" aria-label="月见八千代">
           <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代" loading="eager" decoding="async" fetchpriority="high">
         </figure>
