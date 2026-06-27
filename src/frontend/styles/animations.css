@@ -29,6 +29,20 @@
     }
 }
 
+@keyframes ts-route-veil-sweep {
+    0% {
+        opacity: 0;
+        transform: translate3d(0, 8px, 0) scale(1.02);
+    }
+    38% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
 @keyframes ts-section-rise-in {
     from {
         opacity: 0;
@@ -166,21 +180,56 @@ body.vue-global-bg-route::after {
 .ts-route-enter-active,
 .ts-route-leave-active {
     transition:
-        opacity 260ms var(--ts-ease-lift),
-        filter 260ms var(--ts-ease-lift),
-        transform 260ms var(--ts-ease-lift);
+        opacity 340ms var(--ts-ease-lift),
+        filter 340ms var(--ts-ease-lift),
+        transform 420ms var(--ts-ease-lift);
+}
+
+.ts-route-enter-active {
+    transition-delay: 48ms;
+}
+
+.ts-route-leave-active {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    pointer-events: none;
+    transition-duration: 280ms, 280ms, 320ms;
 }
 
 .ts-route-enter-from {
     opacity: 0;
-    filter: blur(5px);
-    transform: translate3d(0, 14px, 0) scale(0.992);
+    filter: blur(7px) saturate(0.96);
+    transform: translate3d(0, 22px, 0) scale(0.986);
 }
 
 .ts-route-leave-to {
     opacity: 0;
-    filter: blur(3px);
-    transform: translate3d(0, -8px, 0) scale(0.996);
+    filter: blur(6px) saturate(1.02);
+    transform: translate3d(0, -14px, 0) scale(0.992);
+}
+
+.route-stage {
+    min-height: 100vh;
+}
+
+.route-stage-immersive {
+    min-height: 100svh;
+}
+
+.route-transition-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 32;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 50% 34%, rgba(174, 242, 255, 0.16), transparent 32%),
+        linear-gradient(135deg, rgba(11, 16, 32, 0), rgba(123, 140, 246, 0.12) 52%, rgba(255, 154, 186, 0.1)),
+        rgba(7, 10, 21, 0.08);
+    mix-blend-mode: screen;
+    animation: ts-route-veil-sweep 0.58s var(--ts-ease-standard) both;
 }
 
 .route-view.page:not(.hub) {
@@ -269,5 +318,14 @@ body.vue-global-bg-route::after {
         animation-iteration-count: 1 !important;
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
+    }
+
+    .ts-route-enter-active,
+    .ts-route-leave-active {
+        position: static;
+    }
+
+    .route-transition-veil {
+        display: none;
     }
 }

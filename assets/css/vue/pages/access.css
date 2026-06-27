@@ -11,6 +11,9 @@
     background:
         linear-gradient(180deg, rgba(246, 252, 255, 0.3), rgba(239, 235, 255, 0.42)),
         url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
+    transition:
+        filter 0.46s var(--ts-ease-lift),
+        transform 0.46s var(--ts-ease-lift);
 }
 
 .access-page::before {
@@ -24,14 +27,62 @@
         url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
     opacity: 1;
     transform: scale(1.02);
+    transition:
+        opacity 0.44s var(--ts-ease-standard),
+        transform 0.56s var(--ts-ease-lift),
+        filter 0.56s var(--ts-ease-lift);
+}
+
+.access-page::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 32;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate3d(0, 4%, 0) scale(1.02);
+    background:
+        radial-gradient(circle at 50% 42%, rgba(174, 242, 255, 0.2), transparent 28%),
+        linear-gradient(135deg, rgba(11, 16, 32, 0), rgba(123, 140, 246, 0.18) 48%, rgba(255, 154, 186, 0.16)),
+        rgba(7, 10, 21, 0.18);
+    transition:
+        opacity 0.42s var(--ts-ease-standard),
+        transform 0.52s var(--ts-ease-lift);
 }
 
 .access-page.video-ready::before {
     opacity: 0;
 }
 
+.access-video,
+.access-overlay {
+    transition:
+        opacity 0.42s var(--ts-ease-standard),
+        filter 0.56s var(--ts-ease-lift),
+        transform 0.56s var(--ts-ease-lift);
+}
+
 .access-page.video-failed .access-video {
     opacity: 0;
+}
+
+.access-page.is-leaving {
+    transform: scale(1.004);
+}
+
+.access-page.is-leaving::before,
+.access-page.is-leaving .access-video {
+    filter: blur(8px) saturate(1.08);
+    transform: scale(1.035);
+}
+
+.access-page.is-leaving .access-overlay {
+    opacity: 0.9;
+}
+
+.access-page.is-leaving::after {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
 }
 
 .hero {
@@ -40,6 +91,17 @@
     width: min(100%, 920px);
     text-align: center;
     padding: 0 clamp(0.5rem, 3vw, 1rem);
+    animation: accessHeroArrive 0.78s var(--ts-ease-lift) both;
+    transition:
+        opacity 0.36s var(--ts-ease-standard),
+        filter 0.42s var(--ts-ease-lift),
+        transform 0.42s var(--ts-ease-lift);
+}
+
+.access-page.is-leaving .hero {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translate3d(0, -18px, 0) scale(0.985);
 }
 
 .hero-title {
@@ -83,18 +145,61 @@
     border-color: rgba(126, 219, 232, 0.52);
 }
 
+.access-page .primary-btn:disabled {
+    cursor: progress;
+    opacity: 0.78;
+    transform: none;
+}
+
 .loading-layer {
     position: fixed;
     inset: 0;
     z-index: 40;
     display: grid;
     place-items: center;
-    background: rgba(0, 0, 0, 0.9);
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% 38%, rgba(155, 140, 255, 0.2), transparent 30%),
+        linear-gradient(180deg, rgba(6, 10, 24, 0.76), rgba(9, 12, 26, 0.88));
+    backdrop-filter: blur(12px) saturate(1.16);
+    -webkit-backdrop-filter: blur(12px) saturate(1.16);
+    transition:
+        opacity 0.44s var(--ts-ease-standard),
+        transform 0.46s var(--ts-ease-lift);
+}
+
+.loading-layer::before {
+    content: "";
+    position: absolute;
+    inset: -18% -30%;
+    opacity: 0.34;
+    background:
+        linear-gradient(112deg, transparent 0 34%, rgba(174, 242, 255, 0.2) 48%, transparent 64% 100%),
+        radial-gradient(circle at 30% 36%, rgba(255, 154, 186, 0.16), transparent 26%);
+    transform: translateX(-12%);
+    animation: accessLoadingAurora 1.8s var(--ts-ease-standard) infinite alternate;
+}
+
+.loading-layer.is-completing {
+    opacity: 0;
+    transform: scale(1.018);
 }
 
 .loading-box {
+    position: relative;
+    z-index: 1;
     width: min(80vw, 320px);
     text-align: center;
+    transition:
+        opacity 0.32s var(--ts-ease-standard),
+        transform 0.42s var(--ts-ease-lift),
+        filter 0.42s var(--ts-ease-lift);
+}
+
+.loading-layer.is-completing .loading-box {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translate3d(0, -10px, 0) scale(0.98);
 }
 
 .loading-text {
@@ -118,61 +223,110 @@
 
 .access-beian {
     position: fixed;
-    left: max(1rem, env(safe-area-inset-left));
-    bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.8rem));
+    left: 50%;
+    bottom: max(0.9rem, calc(env(safe-area-inset-bottom) + 0.72rem));
     z-index: 3;
-    width: min(42rem, calc(100% - 2rem));
-    padding: 0.64rem 0.78rem;
-    display: grid;
-    gap: 0.28rem;
-    justify-content: start;
-    text-align: left;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: var(--ts-radius-md);
-    background:
-        linear-gradient(135deg, rgba(12, 18, 32, 0.42), rgba(12, 18, 32, 0.2)),
-        rgba(8, 13, 28, 0.2);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.12),
-        0 16px 42px rgba(0, 0, 0, 0.18);
-    backdrop-filter: blur(16px) saturate(1.14);
-    -webkit-backdrop-filter: blur(16px) saturate(1.14);
-    animation: accessLegalDockIn 0.58s var(--ts-ease-lift) 0.18s both;
+    width: fit-content;
+    max-width: min(980px, calc(100% - clamp(2rem, 5vw, 4.5rem)));
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.18rem 0.72rem;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transform: translateX(-50%);
+    animation: accessLegalRailIn 0.62s var(--ts-ease-lift) 0.22s both;
     pointer-events: none;
 }
 
+.access-beian::before {
+    content: "";
+    position: absolute;
+    inset: -0.5rem -0.78rem;
+    z-index: -1;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--ts-radius-pill);
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(174, 242, 255, 0.04)),
+        rgba(7, 10, 21, 0.14);
+    opacity: 0.36;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(14px) saturate(1.08);
+    -webkit-backdrop-filter: blur(14px) saturate(1.08);
+}
+
 .access-copyright {
-    width: 100%;
+    width: auto;
+    max-width: min(100%, 54rem);
     margin: 0;
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.66);
+    font-size: 0.68rem;
     line-height: 1.45;
-    text-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    text-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
     pointer-events: auto;
 }
 
 .access-beian .beian-links,
 .access-beian .beian-link {
-    width: 100%;
+    width: auto;
     min-width: 0;
-    align-items: flex-start;
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: center;
 }
 
 .access-beian .beian-link {
-    color: rgba(255, 255, 255, 0.68);
-    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.64);
+    font-size: 0.68rem;
     white-space: nowrap;
-    text-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    text-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
     pointer-events: auto;
 }
 
-@keyframes accessLegalDockIn {
+.access-beian .beian-links {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.18rem 0.62rem;
+}
+
+.access-page.is-leaving .access-beian {
+    opacity: 0;
+    transform: translate3d(-50%, 8px, 0);
+    transition:
+        opacity 0.28s var(--ts-ease-standard),
+        transform 0.34s var(--ts-ease-lift);
+}
+
+@keyframes accessHeroArrive {
     from {
         opacity: 0;
+        filter: blur(8px);
+        transform: translate3d(0, 18px, 0) scale(0.99);
     }
     to {
         opacity: 1;
+        filter: blur(0);
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+@keyframes accessLegalRailIn {
+    from {
+        opacity: 0;
+        transform: translate3d(-50%, 8px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(-50%, 0, 0);
+    }
+}
+
+@keyframes accessLoadingAurora {
+    from {
+        transform: translateX(-12%) scale(1);
+    }
+    to {
+        transform: translateX(10%) scale(1.04);
     }
 }
 
@@ -200,17 +354,26 @@
 
     .access-beian {
         left: 50%;
-        bottom: max(0.82rem, calc(env(safe-area-inset-bottom) + 0.72rem));
-        width: min(calc(100% - 2rem), 420px);
-        padding: 0.58rem 0.7rem;
+        bottom: max(0.54rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+        width: min(calc(100% - 1.4rem), 420px);
+        max-width: min(calc(100% - 1.4rem), 420px);
+        padding: 0;
         transform: translateX(-50%);
+        gap: 0.1rem 0.36rem;
         justify-content: center;
         text-align: center;
-        animation-name: accessLegalFloatIn;
+    }
+
+    .access-beian::before {
+        inset: -0.48rem -0.56rem;
+        border-radius: var(--ts-radius-lg);
+        opacity: 0.32;
     }
 
     .access-copyright {
-        font-size: 0.72rem;
+        flex-basis: 100%;
+        font-size: 0.64rem;
+        line-height: 1.35;
     }
 
     .access-beian .beian-links,
@@ -220,7 +383,8 @@
     }
 
     .access-beian .beian-link {
-        font-size: 0.76rem;
+        font-size: 0.64rem;
+        line-height: 1.3;
     }
 
     .hero-title {
@@ -265,20 +429,19 @@
     }
 }
 
-@keyframes accessLegalFloatIn {
-    from {
-        opacity: 0;
-        transform: translateX(-50%);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(-50%);
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
-    .access-beian {
+    .access-page,
+    .access-page::before,
+    .access-page::after,
+    .access-video,
+    .access-overlay,
+    .hero,
+    .access-beian,
+    .loading-layer,
+    .loading-layer::before,
+    .loading-box {
         animation: none;
+        transition: none;
     }
 }
 

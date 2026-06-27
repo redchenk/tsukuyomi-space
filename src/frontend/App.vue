@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, provide, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { loadCurrentSession, logoutSession, noStoreUrl } from './api/client';
 import { i18n } from './i18n';
@@ -17,11 +17,12 @@ const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isLive2DRoute = computed(() => route.name === 'live2d');
 const isImmersiveRoute = computed(() => isAccessRoute.value || isLive2DRoute.value);
-const routeTransitionName = computed(() => isImmersiveRoute.value ? '' : 'ts-route');
+const routeTransitionName = computed(() => isLive2DRoute.value ? '' : 'ts-route');
 const hasGlobalBackground = computed(() => !isAccessRoute.value && route.name !== 'room' && !isLive2DRoute.value);
 const showSitePet = computed(() => !['access', 'accessAlias', 'room', 'roomSettings'].includes(route.name));
 const isAuthed = computed(() => Boolean(user.value));
 const music = useRoomMusic();
+const routeTransitioning = ref(false);
 const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
 const VISIT_POPUP_SEEN_KEY = 'tsukuyomi_visit_popup_seen';
 const VISIT_POPUP_PENDING_KEY = 'tsukuyomi_visit_popup_after_access';
@@ -34,6 +35,7 @@ const visitPopup = ref({
 });
 
 let lastTrustedAuthAt = 0;
+let routeTransitionTimer = 0;
 
 async function refreshUser(trustedUser = null) {
   if (trustedUser) {
@@ -70,6 +72,23 @@ function go(path) {
     sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1');
   }
   router.push(path);
+}
+
+function beginRouteTransition() {
+  if (typeof window === 'undefined') return;
+  window.clearTimeout(routeTransitionTimer);
+  routeTransitioning.value = true;
+  routeTransitionTimer = window.setTimeout(() => {
+    routeTransitioning.value = false;
+  }, 620);
+}
+
+function finishRouteTransition() {
+  if (typeof window === 'undefined') return;
+  window.clearTimeout(routeTransitionTimer);
+  routeTransitionTimer = window.setTimeout(() => {
+    routeTransitioning.value = false;
+  }, 90);
 }
 
 async function logout() {
@@ -163,6 +182,10 @@ onMounted(() => {
     keepalive: true
   }).catch(() => {});
 });
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') window.clearTimeout(routeTransitionTimer);
+});
 </script>
 
 <template>
@@ -180,9 +203,17 @@ onMounted(() => {
     @set-lang="setLang"
     @toggle-theme="toggleTheme"
   >
-    <div class="route-stage" :class="{ 'route-stage-immersive': isImmersiveRoute }">
+    <div class="route-stage" :class="{ 'route-stage-immersive': isImmersiveRoute, 'route-stage-transitioning': routeTransitioning }">
       <RouterView v-slot="{ Component, route: viewRoute }">
-        <Transition :name="routeTransitionName" appear>
+        <Transition
+          :name="routeTransitionName"
+          appear
+          @before-leave="beginRouteTransition"
+          @after-enter="finishRouteTransition"
+          @enter-cancelled="finishRouteTransition"
+          @after-leave="finishRouteTransition"
+          @leave-cancelled="finishRouteTransition"
+        >
           <component
             :is="Component"
             :key="viewRoute.fullPath"
@@ -201,6 +232,8 @@ onMounted(() => {
       </RouterView>
     </div>
   </AppShell>
+
+  <div v-if="routeTransitioning" class="route-transition-veil" aria-hidden="true"></div>
 
   <SitePet v-if="showSitePet" :lang="lang" :route-name="route.name" />
 
