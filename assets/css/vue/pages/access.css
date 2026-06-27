@@ -118,15 +118,26 @@
 
 .access-beian {
     position: fixed;
-    left: 50%;
+    left: max(1rem, env(safe-area-inset-left));
     bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.8rem));
     z-index: 3;
-    width: min(calc(100% - 2rem), 520px);
-    transform: translateX(-50%);
+    width: min(42rem, calc(100% - 2rem));
+    padding: 0.64rem 0.78rem;
     display: grid;
-    gap: 0.32rem;
-    justify-content: center;
-    text-align: center;
+    gap: 0.28rem;
+    justify-content: start;
+    text-align: left;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--ts-radius-md);
+    background:
+        linear-gradient(135deg, rgba(12, 18, 32, 0.42), rgba(12, 18, 32, 0.2)),
+        rgba(8, 13, 28, 0.2);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 16px 42px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(16px) saturate(1.14);
+    -webkit-backdrop-filter: blur(16px) saturate(1.14);
+    animation: accessLegalDockIn 0.58s var(--ts-ease-lift) 0.18s both;
     pointer-events: none;
 }
 
@@ -144,6 +155,8 @@
 .access-beian .beian-link {
     width: 100%;
     min-width: 0;
+    align-items: flex-start;
+    justify-content: flex-start;
 }
 
 .access-beian .beian-link {
@@ -152,6 +165,15 @@
     white-space: nowrap;
     text-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     pointer-events: auto;
+}
+
+@keyframes accessLegalDockIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 @media (max-width: 720px) {
@@ -178,12 +200,23 @@
 
     .access-beian {
         left: 50%;
+        bottom: max(0.82rem, calc(env(safe-area-inset-bottom) + 0.72rem));
         width: min(calc(100% - 2rem), 420px);
+        padding: 0.58rem 0.7rem;
+        transform: translateX(-50%);
         justify-content: center;
+        text-align: center;
+        animation-name: accessLegalFloatIn;
     }
 
     .access-copyright {
         font-size: 0.72rem;
+    }
+
+    .access-beian .beian-links,
+    .access-beian .beian-link {
+        align-items: center;
+        justify-content: center;
     }
 
     .access-beian .beian-link {
@@ -229,6 +262,23 @@
         background: rgba(12, 18, 32, 0.72);
         box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
         backdrop-filter: blur(18px) saturate(1.2);
+    }
+}
+
+@keyframes accessLegalFloatIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .access-beian {
+        animation: none;
     }
 }
 
