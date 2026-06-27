@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import BeianLink from '../components/BeianLink.vue';
 
 defineProps({
@@ -10,6 +10,7 @@ const emit = defineEmits(['go']);
 const accessVideoSrc = '/assets/video/【4K⧸中日双语】超时空辉夜姬「ray 」官方MV.mp4';
 const accessPosterSrc = '/assets/images/tsukuyomi-bg.png';
 const videoEl = ref(null);
+const isLeaving = ref(false);
 const videoState = reactive({
   ready: false,
   failed: false
@@ -19,6 +20,7 @@ const loading = reactive({
   progress: 0,
   text: ''
 });
+let navigationTimer = 0;
 
 function markVideoReady() {
   videoState.ready = true;
@@ -43,7 +45,13 @@ function tryPlayAccessVideo() {
   }
 }
 
+function getExitDelay() {
+  if (typeof window === 'undefined') return 340;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 80 : 340;
+}
+
 function startAccess(t) {
+  if (loading.active || isLeaving.value) return;
   loading.active = true;
   loading.progress = 0;
   const labels = [t.connecting, t.loading, t.sync, t.welcome];
@@ -58,8 +66,13 @@ function startAccess(t) {
       loading.text = labels[index];
     }
     if (loading.progress >= 100) {
-      loading.active = false;
-      emit('go', '/hub');
+      loading.progress = 100;
+      loading.text = labels[labels.length - 1];
+      isLeaving.value = true;
+      navigationTimer = window.setTimeout(() => {
+        loading.active = false;
+        emit('go', '/hub');
+      }, getExitDelay());
       return;
     }
     requestAnimationFrame(tick);
@@ -71,12 +84,16 @@ function startAccess(t) {
 onMounted(() => {
   requestAnimationFrame(tryPlayAccessVideo);
 });
+
+onBeforeUnmount(() => {
+  if (navigationTimer) window.clearTimeout(navigationTimer);
+});
 </script>
 
 <template>
   <main
     class="page center-page access-page"
-    :class="{ 'video-ready': videoState.ready, 'video-failed': videoState.failed }"
+    :class="{ 'video-ready': videoState.ready, 'video-failed': videoState.failed, 'is-leaving': isLeaving }"
   >
     <video
       ref="videoEl"
@@ -99,12 +116,13 @@ onMounted(() => {
       <h1 class="hero-title">{{ t.title }}</h1>
       <p class="hero-kicker">TSUKUYOMI SPACE</p>
       <p class="hero-copy">{{ t.heroCopy }}</p>
-      <button class="primary-btn" type="button" @click="startAccess(t)">{{ t.access }}</button>
-      <footer class="access-beian">
-        <BeianLink />
-      </footer>
+      <button class="primary-btn" type="button" :disabled="loading.active || isLeaving" @click="startAccess(t)">{{ t.access }}</button>
     </section>
-    <div v-if="loading.active" class="loading-layer">
+    <footer class="access-beian">
+      <p class="access-copyright">本站使用《超时空辉夜姬》相关素材版权归原著所有，本站为非盈利性质。</p>
+      <BeianLink />
+    </footer>
+    <div v-if="loading.active" class="loading-layer" :class="{ 'is-completing': isLeaving }">
       <div class="loading-box">
         <div class="loading-text">{{ loading.text }}</div>
         <div class="loading-bar">
