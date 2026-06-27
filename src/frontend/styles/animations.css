@@ -19,8 +19,8 @@
 @keyframes ts-route-soft-in {
     from {
         opacity: 0;
-        filter: blur(5px);
-        transform: translate3d(0, 16px, 0) scale(0.992);
+        filter: blur(3px);
+        transform: translate3d(0, 10px, 0) scale(0.996);
     }
     to {
         opacity: 1;
@@ -32,9 +32,9 @@
 @keyframes ts-route-veil-sweep {
     0% {
         opacity: 0;
-        transform: translate3d(0, 8px, 0) scale(1.02);
+        transform: translate3d(0, 6px, 0) scale(1.012);
     }
-    38% {
+    34% {
         opacity: 1;
     }
     100% {
@@ -180,13 +180,13 @@ body.vue-global-bg-route::after {
 .ts-route-enter-active,
 .ts-route-leave-active {
     transition:
-        opacity 340ms var(--ts-ease-lift),
-        filter 340ms var(--ts-ease-lift),
-        transform 420ms var(--ts-ease-lift);
+        opacity 300ms var(--ts-ease-lift),
+        filter 300ms var(--ts-ease-lift),
+        transform 360ms var(--ts-ease-lift);
 }
 
 .ts-route-enter-active {
-    transition-delay: 48ms;
+    transition-delay: 24ms;
 }
 
 .ts-route-leave-active {
@@ -196,19 +196,19 @@ body.vue-global-bg-route::after {
     left: 0;
     width: 100%;
     pointer-events: none;
-    transition-duration: 280ms, 280ms, 320ms;
+    transition-duration: 240ms, 240ms, 280ms;
 }
 
 .ts-route-enter-from {
     opacity: 0;
-    filter: blur(7px) saturate(0.96);
-    transform: translate3d(0, 22px, 0) scale(0.986);
+    filter: blur(4px) saturate(0.98);
+    transform: translate3d(0, 12px, 0) scale(0.994);
 }
 
 .ts-route-leave-to {
     opacity: 0;
-    filter: blur(6px) saturate(1.02);
-    transform: translate3d(0, -14px, 0) scale(0.992);
+    filter: blur(3px) saturate(1.01);
+    transform: translate3d(0, -7px, 0) scale(0.997);
 }
 
 .route-stage {
@@ -225,35 +225,35 @@ body.vue-global-bg-route::after {
     z-index: 32;
     pointer-events: none;
     background:
-        radial-gradient(circle at 50% 34%, rgba(174, 242, 255, 0.16), transparent 32%),
-        linear-gradient(135deg, rgba(11, 16, 32, 0), rgba(123, 140, 246, 0.12) 52%, rgba(255, 154, 186, 0.1)),
-        rgba(7, 10, 21, 0.08);
+        radial-gradient(circle at 50% 34%, rgba(174, 242, 255, 0.12), transparent 32%),
+        linear-gradient(135deg, rgba(11, 16, 32, 0), rgba(123, 140, 246, 0.08) 52%, rgba(255, 154, 186, 0.08)),
+        rgba(7, 10, 21, 0.05);
     mix-blend-mode: screen;
-    animation: ts-route-veil-sweep 0.58s var(--ts-ease-standard) both;
+    animation: ts-route-veil-sweep 0.46s var(--ts-ease-standard) both;
 }
 
-.route-view.page:not(.hub) {
-    animation: ts-route-soft-in 0.54s var(--ts-ease-lift) both;
+.route-view.page:not(.hub):not(.access-page) {
+    animation: ts-route-soft-in 0.42s var(--ts-ease-lift) both;
 }
 
-.route-view.page:not(.hub) > :where(header, section, aside, article, form, .panel, .auth-card, .stage-hero, .plaza-hero, .gallery-hero, .arena-hero, .uc-hero, .profile-hero, .settings-hero, .terminal-hero, .article-shell) {
-    animation: ts-section-rise-in 0.62s var(--ts-ease-lift) both;
+.route-view.page:not(.hub):not(.access-page) > :where(header, section, aside, article, form, .panel, .auth-card, .stage-hero, .plaza-hero, .gallery-hero, .arena-hero, .uc-hero, .profile-hero, .settings-hero, .terminal-hero, .article-shell) {
+    animation: ts-section-rise-in 0.48s var(--ts-ease-lift) both;
 }
 
-.route-view.page:not(.hub) > :where(header, .stage-hero, .plaza-hero, .gallery-hero, .arena-hero, .uc-hero, .profile-hero, .settings-hero, .terminal-hero) {
+.route-view.page:not(.hub):not(.access-page) > :where(header, .stage-hero, .plaza-hero, .gallery-hero, .arena-hero, .uc-hero, .profile-hero, .settings-hero, .terminal-hero) {
     animation-delay: 0.04s;
 }
 
-.route-view.page:not(.hub) > :where(section, aside, article, form, .panel, .article-shell):nth-child(2) {
-    animation-delay: 0.1s;
+.route-view.page:not(.hub):not(.access-page) > :where(section, aside, article, form, .panel, .article-shell):nth-child(2) {
+    animation-delay: 0.08s;
 }
 
-.route-view.page:not(.hub) > :where(section, aside, article, form, .panel, .article-shell):nth-child(3) {
+.route-view.page:not(.hub):not(.access-page) > :where(section, aside, article, form, .panel, .article-shell):nth-child(3) {
+    animation-delay: 0.12s;
+}
+
+.route-view.page:not(.hub):not(.access-page) > :where(section, aside, article, form, .panel, .article-shell):nth-child(n + 4) {
     animation-delay: 0.16s;
-}
-
-.route-view.page:not(.hub) > :where(section, aside, article, form, .panel, .article-shell):nth-child(n + 4) {
-    animation-delay: 0.22s;
 }
 
 .page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card) {
@@ -266,13 +266,13 @@ body.vue-global-bg-route::after {
         filter var(--ts-motion-base) var(--ts-ease-standard);
 }
 
-.route-view.page:not(.hub) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card) {
-    animation: ts-card-bloom-in 0.58s var(--ts-ease-lift) both;
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card) {
+    animation: ts-card-bloom-in 0.46s var(--ts-ease-lift) both;
 }
 
-.route-view.page:not(.hub) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(2) { animation-delay: 0.06s; }
-.route-view.page:not(.hub) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(3) { animation-delay: 0.1s; }
-.route-view.page:not(.hub) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(n + 4) { animation-delay: 0.14s; }
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(2) { animation-delay: 0.04s; }
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(3) { animation-delay: 0.08s; }
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(n + 4) { animation-delay: 0.1s; }
 
 .page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):hover {
     border-color: var(--ts-border-strong);

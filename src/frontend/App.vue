@@ -80,7 +80,7 @@ function beginRouteTransition() {
   routeTransitioning.value = true;
   routeTransitionTimer = window.setTimeout(() => {
     routeTransitioning.value = false;
-  }, 620);
+  }, 500);
 }
 
 function finishRouteTransition() {
@@ -88,7 +88,7 @@ function finishRouteTransition() {
   window.clearTimeout(routeTransitionTimer);
   routeTransitionTimer = window.setTimeout(() => {
     routeTransitioning.value = false;
-  }, 90);
+  }, 40);
 }
 
 async function logout() {
