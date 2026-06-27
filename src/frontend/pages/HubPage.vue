@@ -123,6 +123,13 @@ const heroSignals = computed(() => [
   { label: '广场留言', value: siteStats.value ? formatHubNumber(siteStats.value.messages) : '--' }
 ]);
 
+const heroQuickLinks = computed(() => [
+  { href: '/stage', label: props.t.stage, icon: 'book' },
+  { href: '/gallery', label: '图库', icon: 'image' },
+  { href: '/arena', label: props.t.arena || '像素画', icon: 'palette' },
+  { href: '/room/settings', label: '房间设置', icon: 'settings' }
+]);
+
 function formatHubNumber(value) {
   return Number(value || 0).toLocaleString('zh-CN');
 }
@@ -334,6 +341,11 @@ onMounted(() => {
   <main class="page hub">
     <section class="hub-showcase">
       <div class="hub-hero-panel">
+        <div class="hub-stage-ribbon" aria-hidden="true">
+          <span>TSUKUYOMI</span>
+          <span>月读空间</span>
+          <span>LIVE PORTAL</span>
+        </div>
         <div class="hub-hero-copy">
           <span class="hub-kicker">TSUKUYOMI / LIVE PORTAL</span>
           <p class="hub-welcome">欢迎来到</p>
@@ -356,11 +368,26 @@ onMounted(() => {
               <span>浏览月读广场</span>
             </a>
           </div>
+          <nav class="hub-quick-rail" aria-label="月读空间快速入口">
+            <a
+              v-for="item in heroQuickLinks"
+              :key="item.href"
+              :href="item.href"
+              @click.prevent="$emit('go', item.href)"
+            >
+              <TsIcon :name="item.icon" :size="15" />
+              <span>{{ item.label }}</span>
+            </a>
+          </nav>
         </div>
 
         <figure class="hub-character" aria-label="月见八千代">
           <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代" loading="eager" decoding="async" fetchpriority="high">
         </figure>
+        <div class="hub-scroll-thread" aria-hidden="true">
+          <span></span>
+          <strong>01</strong>
+        </div>
       </div>
 
       <aside class="hub-side-panel">

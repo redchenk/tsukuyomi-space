@@ -141,7 +141,7 @@ onMounted(loadUnreadNotifications);
         </span>
         <span>
           <strong>{{ t.brand }}</strong>
-          <small>Web UI Redesign Concept</small>
+          <small>Tsukuyomi Live Portal</small>
         </span>
       </a>
     </header>

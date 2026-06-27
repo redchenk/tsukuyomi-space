@@ -295,7 +295,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="site-pet-wrap" aria-live="polite">
+  <div class="site-pet-wrap" :class="routeName ? `site-pet-route-${routeName}` : ''" aria-live="polite">
     <Transition name="site-pet-tip">
       <aside v-if="activeTip" class="site-pet-bubble">
         <strong>{{ activeTip.title }}</strong>
@@ -435,6 +435,24 @@ onBeforeUnmount(() => {
   .site-pet-bubble p {
     font-size: 0.72rem;
     line-height: 1.45;
+  }
+
+  .site-pet-wrap.site-pet-route-hub {
+    --site-pet-width: clamp(3.45rem, 15vw, 4rem);
+    right: calc(env(safe-area-inset-right) - 1rem);
+    bottom: max(3.35rem, calc(env(safe-area-inset-bottom) + 3.35rem));
+    opacity: 0.66;
+  }
+
+  .site-pet-wrap.site-pet-route-hub .site-pet-bubble {
+    right: calc(100% - 0.4rem);
+    bottom: 88%;
+  }
+}
+
+@media (max-width: 620px) {
+  .site-pet-wrap.site-pet-route-hub {
+    display: none;
   }
 }
 </style>
