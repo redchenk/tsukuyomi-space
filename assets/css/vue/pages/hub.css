@@ -2090,9 +2090,22 @@ body .page.hub .hub-hero-copy {
 }
 
 body .page.hub .hub-kicker {
+    position: relative;
+    overflow: hidden;
     border-color: rgba(174, 242, 255, 0.28);
     color: rgba(239, 247, 255, 0.92);
     background: rgba(8, 18, 38, 0.5);
+}
+
+body .page.hub .hub-kicker::after {
+    content: "";
+    position: absolute;
+    inset: -60% auto -60% -38%;
+    width: 32%;
+    background: linear-gradient(90deg, transparent, rgba(174, 242, 255, 0.34), transparent);
+    transform: rotate(18deg);
+    animation: hubKickerSweep 4.8s ease-in-out infinite;
+    pointer-events: none;
 }
 
 body .page.hub .hub-welcome {
@@ -2115,12 +2128,30 @@ body .page.hub .hub-hero-signals span {
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.055)),
         rgba(8, 18, 38, 0.38);
+    animation: hubMetricBreathe 5.6s ease-in-out infinite;
     transition: transform var(--ts-motion-base) var(--ts-ease-lift), border-color var(--ts-motion-base) ease, background var(--ts-motion-base) ease;
+}
+
+body .page.hub .hub-hero-signals span:nth-child(2),
+body .page.hub .hub-stat-grid div:nth-child(2),
+body .page.hub .hub-stat-grid div:nth-child(5) {
+    animation-delay: 0.7s;
+}
+
+body .page.hub .hub-hero-signals span:nth-child(3),
+body .page.hub .hub-stat-grid div:nth-child(3),
+body .page.hub .hub-stat-grid div:nth-child(6) {
+    animation-delay: 1.4s;
 }
 
 body .page.hub .hub-hero-signals span:hover {
     transform: translateY(-2px);
     border-color: var(--ts-border-strong);
+}
+
+body .page.hub .hub-primary .ts-icon {
+    animation: hubCtaOrbit 3.8s ease-in-out infinite;
+    transform-origin: 50% 50%;
 }
 
 body .page.hub .hub-quick-rail {
@@ -2147,8 +2178,14 @@ body .page.hub .hub-quick-rail a {
     text-decoration: none;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
     backdrop-filter: var(--ts-blur-sm);
+    animation: hubQuickLinkIn 0.58s var(--ts-ease-lift) both;
     transition: transform var(--ts-motion-fast) var(--ts-ease-lift), color var(--ts-motion-fast) ease, border-color var(--ts-motion-fast) ease, background var(--ts-motion-fast) ease;
 }
+
+body .page.hub .hub-quick-rail a:nth-child(1) { animation-delay: 0.18s; }
+body .page.hub .hub-quick-rail a:nth-child(2) { animation-delay: 0.24s; }
+body .page.hub .hub-quick-rail a:nth-child(3) { animation-delay: 0.3s; }
+body .page.hub .hub-quick-rail a:nth-child(4) { animation-delay: 0.36s; }
 
 body .page.hub .hub-quick-rail a:hover,
 body .page.hub .hub-quick-rail a:focus-visible {
@@ -2156,6 +2193,13 @@ body .page.hub .hub-quick-rail a:focus-visible {
     border-color: rgba(174, 242, 255, 0.36);
     color: #fff;
     background: rgba(123, 140, 246, 0.18);
+}
+
+body .page.hub .hub-quick-rail a:hover .ts-icon,
+body .page.hub .hub-quick-rail a:focus-visible .ts-icon,
+body .page.hub .scene-card:hover .scene-icon .ts-icon,
+body .page.hub .scene-card:focus-visible .scene-icon .ts-icon {
+    animation: hubIconPop 0.58s var(--ts-ease-lift) both;
 }
 
 body .page.hub .hub-quick-rail span {
@@ -2237,6 +2281,7 @@ body .page.hub .hub-stat-grid div {
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
         rgba(255, 255, 255, 0.06);
+    animation: hubMetricBreathe 6.4s ease-in-out infinite;
 }
 
 body .page.hub .hub-side-card {
@@ -2345,6 +2390,7 @@ body .page.hub .scene-icon {
     height: 40px;
     border-color: rgba(231, 249, 255, 0.18);
     border-radius: var(--ts-radius-md);
+    animation: hubSceneIconGlow 5.2s ease-in-out infinite;
 }
 
 body .page.hub .scene-label,
@@ -2538,9 +2584,15 @@ html[data-theme="light"] body .page.hub .scene-card::after {
     body .page.hub .hub-hero-copy,
     body .page.hub .hub-stage-ribbon,
     body .page.hub .hub-character,
+    body .page.hub .hub-kicker::after,
+    body .page.hub .hub-primary .ts-icon,
+    body .page.hub .hub-hero-signals span,
     body .page.hub .hub-scroll-thread span::before,
     body .page.hub .hub-side-panel,
+    body .page.hub .hub-stat-grid div,
     body .page.hub .hub-grid-wrap,
+    body .page.hub .hub-quick-rail a,
+    body .page.hub .scene-icon,
     body .page.hub .scene-card {
         animation: none;
     }
@@ -2594,4 +2646,53 @@ html[data-theme="light"] body .page.hub .scene-card::after {
 @keyframes hubThreadFlow {
     from { transform: translateY(-110%); }
     to { transform: translateY(230%); }
+}
+
+@keyframes hubKickerSweep {
+    0%, 22% { transform: translateX(0) rotate(18deg); opacity: 0; }
+    38% { opacity: 1; }
+    58%, 100% { transform: translateX(520%) rotate(18deg); opacity: 0; }
+}
+
+@keyframes hubMetricBreathe {
+    0%, 100% {
+        border-color: rgba(231, 249, 255, 0.16);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    50% {
+        border-color: rgba(174, 242, 255, 0.32);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.18),
+            0 14px 34px rgba(123, 140, 246, 0.18);
+    }
+}
+
+@keyframes hubCtaOrbit {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    35% { transform: rotate(-10deg) scale(1.04); }
+    70% { transform: rotate(8deg) scale(1.02); }
+}
+
+@keyframes hubQuickLinkIn {
+    from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.98); }
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes hubIconPop {
+    0% { transform: translateY(0) scale(1); }
+    44% { transform: translateY(-3px) scale(1.12); }
+    100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes hubSceneIconGlow {
+    0%, 100% {
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.14),
+            0 8px 22px rgba(174, 242, 255, 0.08);
+    }
+    50% {
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.22),
+            0 12px 30px rgba(174, 242, 255, 0.22);
+    }
 }
