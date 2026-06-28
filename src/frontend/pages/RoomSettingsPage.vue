@@ -217,6 +217,15 @@ const memoryTypeOptions = [
   { value: 'semantic', label: '语义记忆' },
   { value: 'conversation', label: '对话片段' }
 ];
+const roomSettingsNavItems = [
+  { href: '#room-model-settings', icon: 'layers', title: '模型与浮窗', detail: '先把角色大小和窗口位置调舒服。' },
+  { href: '#room-llm-settings', icon: 'message', title: 'LLM API', detail: '聊天回复的核心配置，优先完成。' },
+  { href: '#room-tts-settings', icon: 'audioLines', title: 'TTS 语音', detail: '需要角色开口时再启用并测试。' },
+  { href: '#room-memory-settings', icon: 'bookmark', title: '长期记忆', detail: '控制是否写入用户隔离记忆。' },
+  { href: '#room-knowledge-settings', icon: 'book', title: '角色知识库', detail: '维护人格、口吻和背景设定。' },
+  { href: '#room-mcp-settings', icon: 'grid', title: 'MCP 工具', detail: '需要搜索、图像理解或外部工具时开启。' },
+  { href: '#room-live2d-debug', icon: 'star', title: 'Live2D 调试', detail: '调试表情动作队列，排查表现。' }
+];
 const live2dExpressionOptions = roomLive2DManifest.expressions;
 const live2dMotionOptions = [{ id: '', label: '不触发动作' }, ...roomLive2DManifest.motions];
 const live2dDebugJson = computed(() => JSON.stringify({
@@ -226,6 +235,40 @@ const live2dDebugJson = computed(() => JSON.stringify({
   current: live2dDebug.current,
   normalized: live2dDebug.normalized
 }, null, 2));
+const roomSetupGuide = computed(() => [
+  {
+    href: '#room-llm-settings',
+    icon: 'message',
+    step: '01',
+    title: '先让她能回答',
+    detail: llmProviderKey.value === 'ollama' ? 'Ollama 本机模式无需 API Key，保存后测试连接。' : '选择供应商、模型和密钥，保存后测试 LLM。',
+    status: llm.model ? `模型：${llm.model}` : '待选择模型'
+  },
+  {
+    href: '#room-tts-settings',
+    icon: 'audioLines',
+    step: '02',
+    title: '再决定是否开口',
+    detail: '语音不是必填项，启用后先用测试按钮听一段。',
+    status: tts.enabled ? `音色：${tts.voice || tts.provider || '已启用'}` : '可暂时关闭'
+  },
+  {
+    href: '#room-memory-settings',
+    icon: 'bookmark',
+    step: '03',
+    title: '确认记忆边界',
+    detail: canUseServerMemory.value ? '登录用户会写入服务端私有记忆。' : '游客只写入当前浏览器本地记忆。',
+    status: memory.enabled ? `${memoryCount.value} 条记忆` : '记忆关闭'
+  },
+  {
+    href: '#room-knowledge-settings',
+    icon: 'book',
+    step: '04',
+    title: '补充人格与工具',
+    detail: '知识库塑造角色设定，MCP 只在需要外部能力时开启。',
+    status: `${knowledge.entries.length} 条知识 / ${mcpConnectionLabel.value}`
+  }
+]);
 
 function readStoredUser() {
   return getSession()?.user || null;
@@ -1851,6 +1894,21 @@ onBeforeUnmount(() => {
             <strong>{{ memoryConnectionLabel }}</strong>
           </div>
         </div>
+        <div class="room-settings-guide-strip" aria-label="推荐配置路径">
+          <a
+            v-for="item in roomSetupGuide"
+            :key="item.step"
+            class="room-settings-guide-step"
+            :href="item.href"
+          >
+            <span class="room-settings-guide-icon"><TsIcon :name="item.icon" :size="16" /></span>
+            <span class="room-settings-guide-copy">
+              <small>{{ item.step }} · {{ item.status }}</small>
+              <strong>{{ item.title }}</strong>
+              <em>{{ item.detail }}</em>
+            </span>
+          </a>
+        </div>
         <div class="room-settings-actions">
           <a class="primary-btn" href="/room" @click.prevent="emit('go', '/room')">
             <TsIcon name="home" :size="17" />
@@ -1871,13 +1929,13 @@ onBeforeUnmount(() => {
           <strong>配置索引</strong>
         </div>
         <nav class="room-settings-nav">
-          <a href="#room-model-settings"><TsIcon name="layers" :size="16" /> 模型与浮窗</a>
-          <a href="#room-llm-settings"><TsIcon name="message" :size="16" /> LLM API</a>
-          <a href="#room-tts-settings"><TsIcon name="audioLines" :size="16" /> TTS 语音</a>
-          <a href="#room-memory-settings"><TsIcon name="bookmark" :size="16" /> 长期记忆</a>
-          <a href="#room-knowledge-settings"><TsIcon name="book" :size="16" /> 角色知识库</a>
-          <a href="#room-mcp-settings"><TsIcon name="grid" :size="16" /> MCP 工具</a>
-          <a href="#room-live2d-debug"><TsIcon name="star" :size="16" /> Live2D 调试</a>
+          <a v-for="item in roomSettingsNavItems" :key="item.href" :href="item.href">
+            <TsIcon :name="item.icon" :size="16" />
+            <span>
+              <strong>{{ item.title }}</strong>
+              <small>{{ item.detail }}</small>
+            </span>
+          </a>
         </nav>
         <div class="room-settings-rail-note">
           <span>本机密钥只保存在当前浏览器</span>
@@ -1892,6 +1950,7 @@ onBeforeUnmount(() => {
           <div>
             <span>01 · Space</span>
             <h2>模型与浮窗</h2>
+            <p>只调整房间里的视觉位置和浮窗布局，不影响聊天、语音或记忆数据。</p>
           </div>
         </div>
         <div class="form-grid">
@@ -1921,6 +1980,7 @@ onBeforeUnmount(() => {
           <div>
             <span>07 · Debug</span>
             <h2>Live2D 调试</h2>
+            <p>用于临时排查表情、动作队列和恢复时间，正常使用时可以跳过。</p>
           </div>
         </div>
         <div class="live2d-debug-summary">
@@ -1972,6 +2032,7 @@ onBeforeUnmount(() => {
           <div>
             <span>02 · Intelligence</span>
             <h2>LLM API</h2>
+            <p>房间能否对话的第一步。选预设或本机 Ollama，保存后先测试连接。</p>
           </div>
         </div>
         <div class="button-row preset-row">
@@ -2034,6 +2095,7 @@ onBeforeUnmount(() => {
           <div>
             <span>03 · Voice</span>
             <h2>TTS 语音</h2>
+            <p>语音是增强项。先确认 LLM 能回复，再启用 TTS 并播放测试音频。</p>
           </div>
         </div>
         <div class="button-row preset-row">
@@ -2086,6 +2148,7 @@ onBeforeUnmount(() => {
           <div>
             <span>04 · Memory</span>
             <h2>长期记忆</h2>
+            <p>控制对话是否写入长期记忆；登录用户与游客记忆位置不同。</p>
           </div>
         </div>
         <div class="form-grid">
@@ -2213,6 +2276,7 @@ onBeforeUnmount(() => {
           <div>
             <span>06 · Tools</span>
             <h2>MCP 工具接入</h2>
+            <p>给 LLM 增加外部工具能力。没有搜索、图像理解或生成需求时可保持关闭。</p>
           </div>
         </div>
         <div class="form-grid">
