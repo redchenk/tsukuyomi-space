@@ -45,9 +45,17 @@ function tryPlayAccessVideo() {
   }
 }
 
+function prefersReducedMotion() {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function getAccessLoadDuration() {
+  return prefersReducedMotion() ? 100 : 300;
+}
+
 function getExitDelay() {
-  if (typeof window === 'undefined') return 340;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 80 : 340;
+  return prefersReducedMotion() ? 24 : 70;
 }
 
 function startAccess(t) {
@@ -57,15 +65,21 @@ function startAccess(t) {
   const labels = [t.connecting, t.loading, t.sync, t.welcome];
   let index = 0;
   loading.text = labels[index];
+  const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const duration = getAccessLoadDuration();
 
   const tick = () => {
-    loading.progress = Math.min(100, loading.progress + 1.35);
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const elapsed = Math.max(0, now - startedAt);
+    const linearProgress = Math.min(1, elapsed / duration);
+    const easedProgress = 1 - Math.pow(1 - linearProgress, 3);
+    loading.progress = Math.min(100, easedProgress * 100);
     const nextIndex = Math.min(labels.length - 1, Math.floor(loading.progress / 25));
     if (nextIndex !== index) {
       index = nextIndex;
       loading.text = labels[index];
     }
-    if (loading.progress >= 100) {
+    if (linearProgress >= 1) {
       loading.progress = 100;
       loading.text = labels[labels.length - 1];
       isLeaving.value = true;

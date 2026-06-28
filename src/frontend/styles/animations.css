@@ -18,13 +18,11 @@
 
 @keyframes ts-route-soft-in {
     from {
-        opacity: 0;
-        filter: blur(3px);
-        transform: translate3d(0, 10px, 0) scale(0.996);
+        opacity: 0.42;
+        transform: translate3d(0, 5px, 0) scale(0.999);
     }
     to {
         opacity: 1;
-        filter: blur(0);
         transform: translate3d(0, 0, 0) scale(1);
     }
 }
@@ -32,26 +30,24 @@
 @keyframes ts-route-veil-sweep {
     0% {
         opacity: 0;
-        transform: translate3d(0, 6px, 0) scale(1.012);
+        transform: scale(1.006);
     }
-    34% {
-        opacity: 1;
+    32% {
+        opacity: 0.74;
     }
     100% {
         opacity: 0;
-        transform: translate3d(0, 0, 0) scale(1);
+        transform: scale(1);
     }
 }
 
 @keyframes ts-section-rise-in {
     from {
         opacity: 0;
-        filter: blur(4px);
-        transform: translate3d(0, 18px, 0);
+        transform: translate3d(0, 10px, 0);
     }
     to {
         opacity: 1;
-        filter: blur(0);
         transform: translate3d(0, 0, 0);
     }
 }
@@ -59,12 +55,10 @@
 @keyframes ts-card-bloom-in {
     from {
         opacity: 0;
-        filter: blur(3px) saturate(0.92);
-        transform: translate3d(0, 18px, 0) scale(0.985);
+        transform: translate3d(0, 10px, 0) scale(0.992);
     }
     to {
         opacity: 1;
-        filter: blur(0) saturate(1);
         transform: translate3d(0, 0, 0) scale(1);
     }
 }
@@ -180,13 +174,8 @@ body.vue-global-bg-route::after {
 .ts-route-enter-active,
 .ts-route-leave-active {
     transition:
-        opacity 300ms var(--ts-ease-lift),
-        filter 300ms var(--ts-ease-lift),
-        transform 360ms var(--ts-ease-lift);
-}
-
-.ts-route-enter-active {
-    transition-delay: 24ms;
+        opacity 220ms var(--ts-ease-lift),
+        transform 260ms var(--ts-ease-lift);
 }
 
 .ts-route-leave-active {
@@ -196,19 +185,17 @@ body.vue-global-bg-route::after {
     left: 0;
     width: 100%;
     pointer-events: none;
-    transition-duration: 240ms, 240ms, 280ms;
+    transition-duration: 200ms, 240ms;
 }
 
 .ts-route-enter-from {
-    opacity: 0;
-    filter: blur(4px) saturate(0.98);
-    transform: translate3d(0, 12px, 0) scale(0.994);
+    opacity: 0.3;
+    transform: translate3d(0, 5px, 0) scale(0.999);
 }
 
 .ts-route-leave-to {
-    opacity: 0;
-    filter: blur(3px) saturate(1.01);
-    transform: translate3d(0, -7px, 0) scale(0.997);
+    opacity: 0.55;
+    transform: translate3d(0, -3px, 0) scale(0.999);
 }
 
 .route-stage {
@@ -225,19 +212,17 @@ body.vue-global-bg-route::after {
     z-index: 32;
     pointer-events: none;
     background:
-        radial-gradient(circle at 50% 34%, rgba(174, 242, 255, 0.12), transparent 32%),
-        linear-gradient(135deg, rgba(11, 16, 32, 0), rgba(123, 140, 246, 0.08) 52%, rgba(255, 154, 186, 0.08)),
-        rgba(7, 10, 21, 0.05);
-    mix-blend-mode: screen;
-    animation: ts-route-veil-sweep 0.46s var(--ts-ease-standard) both;
+        radial-gradient(circle at 50% 34%, rgba(174, 242, 255, 0.08), transparent 34%),
+        linear-gradient(135deg, rgba(7, 10, 21, 0.18), rgba(24, 22, 38, 0.13) 54%, rgba(16, 24, 39, 0.16));
+    animation: ts-route-veil-sweep 0.34s var(--ts-ease-standard) both;
 }
 
 .route-view.page:not(.hub):not(.access-page) {
-    animation: ts-route-soft-in 0.42s var(--ts-ease-lift) both;
+    animation: ts-route-soft-in 0.32s var(--ts-ease-lift) both;
 }
 
 .route-view.page:not(.hub):not(.access-page) > :where(header, section, aside, article, form, .panel, .auth-card, .stage-hero, .plaza-hero, .gallery-hero, .arena-hero, .uc-hero, .profile-hero, .settings-hero, .terminal-hero, .article-shell) {
-    animation: ts-section-rise-in 0.48s var(--ts-ease-lift) both;
+    animation: ts-section-rise-in 0.36s var(--ts-ease-lift) both;
 }
 
 .route-view.page:not(.hub):not(.access-page) > :where(header, .stage-hero, .plaza-hero, .gallery-hero, .arena-hero, .uc-hero, .profile-hero, .settings-hero, .terminal-hero) {
@@ -245,15 +230,15 @@ body.vue-global-bg-route::after {
 }
 
 .route-view.page:not(.hub):not(.access-page) > :where(section, aside, article, form, .panel, .article-shell):nth-child(2) {
-    animation-delay: 0.08s;
+    animation-delay: 0.04s;
 }
 
 .route-view.page:not(.hub):not(.access-page) > :where(section, aside, article, form, .panel, .article-shell):nth-child(3) {
-    animation-delay: 0.12s;
+    animation-delay: 0.07s;
 }
 
 .route-view.page:not(.hub):not(.access-page) > :where(section, aside, article, form, .panel, .article-shell):nth-child(n + 4) {
-    animation-delay: 0.16s;
+    animation-delay: 0.09s;
 }
 
 .page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card) {
@@ -262,21 +247,19 @@ body.vue-global-bg-route::after {
         transform var(--ts-motion-base) var(--ts-ease-lift),
         border-color var(--ts-motion-base) var(--ts-ease-standard),
         background var(--ts-motion-base) var(--ts-ease-standard),
-        box-shadow var(--ts-motion-base) var(--ts-ease-standard),
-        filter var(--ts-motion-base) var(--ts-ease-standard);
+        box-shadow var(--ts-motion-base) var(--ts-ease-standard);
 }
 
 .route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card) {
-    animation: ts-card-bloom-in 0.46s var(--ts-ease-lift) both;
+    animation: ts-card-bloom-in 0.34s var(--ts-ease-lift) both;
 }
 
-.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(2) { animation-delay: 0.04s; }
-.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(3) { animation-delay: 0.08s; }
-.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(n + 4) { animation-delay: 0.1s; }
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(2) { animation-delay: 0.025s; }
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(3) { animation-delay: 0.045s; }
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(n + 4) { animation-delay: 0.06s; }
 
 .page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):hover {
     border-color: var(--ts-border-strong);
-    filter: saturate(1.04);
     transform: translate3d(0, -3px, 0);
     box-shadow: var(--ts-shadow-lg);
 }

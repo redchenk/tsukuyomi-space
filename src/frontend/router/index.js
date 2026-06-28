@@ -188,21 +188,22 @@ export const router = createRouter({
 });
 
 const routeWarmups = {
-  access: [HubPage],
-  accessAlias: [HubPage],
-  hub: [PlazaPage, StagePage, RoomPage, GalleryPage],
-  plaza: [HubPage, LoginPage, UserProfilePage],
-  stage: [ArticlePage, HubPage, EditorPage],
-  article: [StagePage],
-  articleDetail: [StagePage],
+  access: [HubPage, PlazaPage, StagePage, RoomPage],
+  accessAlias: [HubPage, PlazaPage, StagePage, RoomPage],
+  hub: [PlazaPage, StagePage, RoomPage, GalleryPage, ArenaPage, UserCenterPage, RoomSettingsPage],
+  plaza: [HubPage, StagePage, LoginPage, UserProfilePage, NotificationsPage],
+  stage: [ArticlePage, HubPage, EditorPage, PlazaPage],
+  article: [StagePage, HubPage],
+  articleDetail: [StagePage, HubPage],
   room: [RoomSettingsPage, HubPage],
-  roomSettings: [RoomPage],
-  gallery: [AttachmentsPage, HubPage],
-  galleryManage: [GalleryPage],
-  userCenter: [NotificationsPage, UserProfilePage],
-  terminal: [EditorPage, AttachmentsPage],
-  arena: [HubPage]
+  roomSettings: [RoomPage, HubPage],
+  gallery: [AttachmentsPage, HubPage, UserCenterPage],
+  galleryManage: [GalleryPage, AttachmentsPage],
+  userCenter: [NotificationsPage, UserProfilePage, EditorPage, ArenaPage],
+  terminal: [EditorPage, AttachmentsPage, HubPage],
+  arena: [HubPage, UserCenterPage]
 };
+const defaultRouteWarmups = [HubPage, PlazaPage, StagePage, GalleryPage, ArenaPage];
 const warmedRouteComponents = new WeakSet();
 
 function warmRouteComponent(loader) {
@@ -218,13 +219,14 @@ function scheduleRouteWarmup(to) {
   const connection = window.navigator?.connection;
   if (connection?.saveData) return;
 
-  const loaders = routeWarmups[to.name] || [HubPage, PlazaPage, StagePage, GalleryPage];
+  const loaders = routeWarmups[to.name] || defaultRouteWarmups;
   const warm = () => loaders.forEach(warmRouteComponent);
+  window.setTimeout(warm, to.name === 'access' || to.name === 'accessAlias' ? 180 : 70);
   if (typeof window.requestIdleCallback === 'function') {
-    window.requestIdleCallback(warm, { timeout: 1800 });
+    window.requestIdleCallback(warm, { timeout: 520 });
     return;
   }
-  window.setTimeout(warm, 500);
+  window.setTimeout(warm, 180);
 }
 
 router.afterEach((to) => {

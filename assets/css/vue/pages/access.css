@@ -13,8 +13,8 @@
         linear-gradient(180deg, rgba(246, 252, 255, 0.3), rgba(239, 235, 255, 0.42)),
         url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
     transition:
-        filter 0.46s var(--ts-ease-lift),
-        transform 0.46s var(--ts-ease-lift);
+        filter 0.24s var(--ts-ease-lift),
+        transform 0.26s var(--ts-ease-lift);
 }
 
 .access-page::before {
@@ -29,9 +29,9 @@
     opacity: 1;
     transform: scale(1.02);
     transition:
-        opacity 0.44s var(--ts-ease-standard),
-        transform 0.56s var(--ts-ease-lift),
-        filter 0.56s var(--ts-ease-lift);
+        opacity 0.22s var(--ts-ease-standard),
+        transform 0.28s var(--ts-ease-lift),
+        filter 0.28s var(--ts-ease-lift);
 }
 
 .access-page::after {
@@ -47,8 +47,8 @@
         linear-gradient(135deg, rgba(11, 16, 32, 0), rgba(123, 140, 246, 0.18) 48%, rgba(255, 154, 186, 0.16)),
         rgba(7, 10, 21, 0.18);
     transition:
-        opacity 0.42s var(--ts-ease-standard),
-        transform 0.52s var(--ts-ease-lift);
+        opacity 0.22s var(--ts-ease-standard),
+        transform 0.26s var(--ts-ease-lift);
 }
 
 .access-page.video-ready::before {
@@ -58,9 +58,9 @@
 .access-video,
 .access-overlay {
     transition:
-        opacity 0.42s var(--ts-ease-standard),
-        filter 0.56s var(--ts-ease-lift),
-        transform 0.56s var(--ts-ease-lift);
+        opacity 0.22s var(--ts-ease-standard),
+        filter 0.26s var(--ts-ease-lift),
+        transform 0.26s var(--ts-ease-lift);
 }
 
 .access-page.video-failed .access-video {
@@ -73,8 +73,8 @@
 
 .access-page.is-leaving::before,
 .access-page.is-leaving .access-video {
-    filter: blur(8px) saturate(1.08);
-    transform: scale(1.035);
+    filter: blur(2px) saturate(1.04);
+    transform: scale(1.014);
 }
 
 .access-page.is-leaving .access-overlay {
@@ -94,15 +94,15 @@
     padding: 0 clamp(0.5rem, 3vw, 1rem);
     animation: accessHeroArrive 0.78s var(--ts-ease-lift) both;
     transition:
-        opacity 0.36s var(--ts-ease-standard),
-        filter 0.42s var(--ts-ease-lift),
-        transform 0.42s var(--ts-ease-lift);
+        opacity 0.18s var(--ts-ease-standard),
+        filter 0.22s var(--ts-ease-lift),
+        transform 0.22s var(--ts-ease-lift);
 }
 
 .access-page.is-leaving .hero {
     opacity: 0;
-    filter: blur(6px);
-    transform: translate3d(0, -18px, 0) scale(0.985);
+    filter: blur(1.5px);
+    transform: translate3d(0, -8px, 0) scale(0.992);
 }
 
 .hero-title {
@@ -165,8 +165,8 @@
     backdrop-filter: blur(12px) saturate(1.16);
     -webkit-backdrop-filter: blur(12px) saturate(1.16);
     transition:
-        opacity 0.44s var(--ts-ease-standard),
-        transform 0.46s var(--ts-ease-lift);
+        opacity 0.18s var(--ts-ease-standard),
+        transform 0.22s var(--ts-ease-lift);
 }
 
 .loading-layer::before {
@@ -192,15 +192,15 @@
     width: min(80vw, 320px);
     text-align: center;
     transition:
-        opacity 0.32s var(--ts-ease-standard),
-        transform 0.42s var(--ts-ease-lift),
-        filter 0.42s var(--ts-ease-lift);
+        opacity 0.16s var(--ts-ease-standard),
+        transform 0.2s var(--ts-ease-lift),
+        filter 0.2s var(--ts-ease-lift);
 }
 
 .loading-layer.is-completing .loading-box {
     opacity: 0;
-    filter: blur(4px);
-    transform: translate3d(0, -10px, 0) scale(0.98);
+    filter: blur(1px);
+    transform: translate3d(0, -5px, 0) scale(0.99);
 }
 
 .loading-text {
@@ -293,10 +293,10 @@
 
 .access-page.is-leaving .access-beian {
     opacity: 0;
-    transform: translate3d(0, 10px, 0);
+    transform: translate3d(0, 6px, 0);
     transition:
-        opacity 0.28s var(--ts-ease-standard),
-        transform 0.34s var(--ts-ease-lift);
+        opacity 0.16s var(--ts-ease-standard),
+        transform 0.2s var(--ts-ease-lift);
 }
 
 @keyframes accessHeroArrive {
