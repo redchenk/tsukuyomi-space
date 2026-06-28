@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { getAuthToken, parseResponse } from '../api/client';
 
 const props = defineProps({
@@ -7,12 +8,14 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
+const route = useRoute();
 
 const articles = ref([]);
 const articlesLoading = ref(true);
 const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
+let applyingStageQuery = false;
 const categories = ['all', '\u516c\u544a', '\u4f20\u8bf4', '\u6280\u672f', '\u4e8c\u521b', '\u5176\u4ed6'];
 const STAGE_PAGE_SIZE = 6;
 
@@ -77,6 +80,46 @@ const stageRangeSummary = computed(() => stageTotalArticles.value
   ? `${stagePageCopy.showing} ${stageFormatNumber(stagePageStart.value)}-${stageFormatNumber(stagePageEnd.value)} ${stagePageCopy.rangeUnit}`
   : '');
 const stagePageSummary = computed(() => `${stagePageCopy.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.pageSuffix} / ${stagePageCopy.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.pageSuffix}`);
+const stageReturnPath = computed(() => {
+  const params = new URLSearchParams();
+  if (stageCurrentPage.value > 1) params.set('page', String(stageCurrentPage.value));
+  if (stageCategory.value !== 'all') params.set('category', stageCategory.value);
+  const search = stageSearch.value.trim();
+  if (search) params.set('q', search);
+  const query = params.toString();
+  return query ? `/stage?${query}` : '/stage';
+});
+
+function queryValue(value) {
+  if (Array.isArray(value)) return value[0] || '';
+  return value || '';
+}
+
+function queryPage(value) {
+  const page = Number(queryValue(value));
+  return Number.isFinite(page) ? Math.max(1, Math.trunc(page)) : 1;
+}
+
+function applyStageQuery(query = {}) {
+  applyingStageQuery = true;
+  const category = queryValue(query.category);
+  stageCategory.value = categories.includes(category) ? category : 'all';
+  stageSearch.value = String(queryValue(query.q)).slice(0, 120);
+  stagePage.value = queryPage(query.page);
+  nextTick(() => {
+    applyingStageQuery = false;
+  });
+}
+
+function syncStageUrl() {
+  if (applyingStageQuery || typeof window === 'undefined') return;
+  const nextPath = stageReturnPath.value;
+  if (`${window.location.pathname}${window.location.search}` === nextPath) return;
+  const state = window.history.state && typeof window.history.state === 'object'
+    ? { ...window.history.state, current: nextPath }
+    : window.history.state;
+  window.history.replaceState(state, '', nextPath);
+}
 
 function stageCategoryLabel(category) {
   const map = {
@@ -131,7 +174,9 @@ function checkEditorAuth(event) {
 }
 
 function articlePath(article) {
-  return `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
+  const basePath = `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
+  const params = new URLSearchParams({ from: stageReturnPath.value });
+  return `${basePath}?${params.toString()}`;
 }
 
 function stageAuthorName(article) {
@@ -153,12 +198,18 @@ function stageOpenAuthor(article) {
 }
 
 watch([stageCategory, stageSearch], () => {
+  if (applyingStageQuery) return;
   stagePage.value = 1;
 });
+watch([stagePage, stageCategory, stageSearch], syncStageUrl);
 watch(stageTotalPages, (total) => {
   if (stagePage.value > total) stagePage.value = total;
   if (stagePage.value < 1) stagePage.value = 1;
 });
+watch(() => route.query, (query) => {
+  if (route.name === 'stage') applyStageQuery(query);
+});
+applyStageQuery(route.query);
 onMounted(loadArticles);
 </script>
 

@@ -33,6 +33,7 @@ const articlePath = computed(() => {
   if (!article.value?.id) return `/article?id=${encodeURIComponent(articleId.value)}`;
   return `/articles/${encodeURIComponent(article.value.id)}${article.value.slug ? `/${encodeURIComponent(article.value.slug)}` : ''}`;
 });
+const articleBackPath = computed(() => normalizeStageReturnPath(route.query.from));
 const topComments = computed(() => comments.value.filter((item) => !item.parent_id));
 const bookmarkLabel = computed(() => {
   const count = bookmark.count ? ` ${Number(bookmark.count).toLocaleString('zh-CN')}` : '';
@@ -41,6 +42,46 @@ const bookmarkLabel = computed(() => {
 
 function formatDate(value) {
   return formatDateTime(value, 'zh-CN');
+}
+
+function queryValue(value) {
+  if (Array.isArray(value)) return value[0] || '';
+  return value || '';
+}
+
+function normalizeStageReturnPath(value) {
+  let raw = String(queryValue(value)).trim();
+  if (!raw) return '/stage';
+  try {
+    raw = decodeURIComponent(raw);
+  } catch (_) {
+    // Vue Router usually decodes query values already.
+  }
+  if (!raw.startsWith('/stage')) return '/stage';
+
+  try {
+    const url = new URL(raw, 'https://yachiyo.hk');
+    if (url.pathname !== '/stage') return '/stage';
+
+    const params = new URLSearchParams();
+    const page = Number(url.searchParams.get('page'));
+    if (Number.isFinite(page) && page > 1) params.set('page', String(Math.trunc(page)));
+
+    const category = String(url.searchParams.get('category') || '').slice(0, 40);
+    if (category) params.set('category', category);
+
+    const search = String(url.searchParams.get('q') || '').slice(0, 120);
+    if (search) params.set('q', search);
+
+    const query = params.toString();
+    return query ? `/stage?${query}` : '/stage';
+  } catch (_) {
+    return '/stage';
+  }
+}
+
+function goBackToStage() {
+  emit('go', articleBackPath.value);
 }
 
 function escapeHtml(value) {
@@ -285,7 +326,7 @@ watch(articleId, loadArticle);
 <template>
   <main class="page article-page">
     <div class="article-shell">
-      <a class="ghost-btn article-back" href="/stage" @click.prevent="$emit('go', '/stage')">返回主舞台</a>
+      <a class="ghost-btn article-back" :href="articleBackPath" @click.prevent="goBackToStage">返回主舞台</a>
 
       <div v-if="loading" class="article-status">{{ t.loading }}</div>
       <div v-else-if="message && !article" class="article-status">{{ message }}</div>
