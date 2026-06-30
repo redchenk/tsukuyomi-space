@@ -336,11 +336,14 @@ onMounted(() => {
         </div>
         <button class="primary-btn" type="submit">{{ t.login }}</button>
       </form>
-      <div class="auth-divider"><span>或</span></div>
-      <button class="ghost-btn oauth-login-btn" type="button" @click="startQQLogin">
-        <TsIcon name="message" :size="18" />
-        <span>QQ 登录</span>
-      </button>
+      <div class="oauth-login-section">
+        <div class="auth-divider"><span>其他方式登录</span></div>
+        <div class="oauth-provider-row">
+          <button class="oauth-icon-btn qq" type="button" aria-label="QQ 登录" title="QQ 登录" @click="startQQLogin">
+            <TsIcon name="user" :size="24" :stroke-width="2.35" />
+          </button>
+        </div>
+      </div>
       <div class="panel-links">{{ t.noAccount }} <a href="/register" @click.prevent="go('/register')">{{ t.register }}</a></div>
     </section>
   </main>

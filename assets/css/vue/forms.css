@@ -105,13 +105,18 @@ input:focus {
     color: #fff;
 }
 
+.oauth-login-section {
+    margin-top: 1.1rem;
+}
+
 .auth-divider {
     position: relative;
     display: grid;
     place-items: center;
-    margin: 1rem 0 0.85rem;
+    margin: 0 0 1.25rem;
     color: var(--muted);
-    font-size: 0.82rem;
+    font-size: 0.95rem;
+    letter-spacing: 0;
 }
 
 .auth-divider::before {
@@ -126,16 +131,60 @@ input:focus {
 
 .auth-divider span {
     position: relative;
-    padding: 0 0.65rem;
+    padding: 0 1.35rem;
     background: color-mix(in srgb, var(--panel), transparent 18%);
 }
 
-.oauth-login-btn {
-    width: 100%;
-    display: inline-flex;
+.oauth-provider-row {
+    display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.48rem;
+    gap: 1.4rem;
+    min-height: 3.7rem;
+}
+
+.oauth-icon-btn {
+    width: 3.35rem;
+    height: 3.35rem;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 14px 34px rgba(24, 32, 62, 0.13);
+    cursor: pointer;
+    transition:
+        transform var(--ts-motion-base, 180ms) var(--ts-ease-lift, ease),
+        border-color var(--ts-motion-base, 180ms),
+        background var(--ts-motion-base, 180ms),
+        color var(--ts-motion-base, 180ms),
+        box-shadow var(--ts-motion-base, 180ms);
+}
+
+.oauth-icon-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(123, 140, 246, 0.24);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 18px 42px rgba(123, 140, 246, 0.22);
+}
+
+.oauth-icon-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--ts-focus-ring), 0 18px 42px rgba(123, 140, 246, 0.22);
+}
+
+.oauth-icon-btn.qq {
+    color: #5fb8ff;
+}
+
+html[data-theme="dark"] .oauth-icon-btn {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="dark"] .oauth-icon-btn:hover {
+    background: #fff;
 }
 
 .oauth-panel {
