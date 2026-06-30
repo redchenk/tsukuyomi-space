@@ -24,6 +24,14 @@ function tokenBlacklistKey(token) {
     return `auth:token-blacklist:${sha256(token)}`;
 }
 
+function oauthStateKey(state) {
+    return `auth:oauth-state:${sha256(state)}`;
+}
+
+function oauthPendingKey(ticket) {
+    return `auth:oauth-pending:${sha256(ticket)}`;
+}
+
 async function latestVerificationCode(email, purpose) {
     return store.getJson(verificationKey(email, purpose));
 }
@@ -92,6 +100,45 @@ async function isTokenBlacklisted(token) {
     return Boolean(await store.get(tokenBlacklistKey(token)));
 }
 
+async function createOAuthState({ state, provider, redirectPath = '/hub', ttlMs = config.oauth.stateTtlMs }) {
+    await store.setJson(oauthStateKey(state), {
+        provider,
+        redirectPath,
+        created_at: Date.now()
+    }, Math.ceil(ttlMs / 1000));
+}
+
+async function consumeOAuthState(state, provider) {
+    const key = oauthStateKey(state);
+    const row = await store.getJson(key);
+    await store.del(key);
+    if (!row || row.provider !== provider) return null;
+    return row;
+}
+
+async function createOAuthPending({ ticket, provider, profile, redirectPath = '/hub', ttlMs = config.oauth.pendingTtlMs }) {
+    await store.setJson(oauthPendingKey(ticket), {
+        provider,
+        profile,
+        redirectPath,
+        created_at: Date.now()
+    }, Math.ceil(ttlMs / 1000));
+}
+
+async function getOAuthPending(ticket, provider) {
+    const row = await store.getJson(oauthPendingKey(ticket));
+    if (!row || row.provider !== provider) return null;
+    return row;
+}
+
+async function consumeOAuthPending(ticket, provider) {
+    const key = oauthPendingKey(ticket);
+    const row = await store.getJson(key);
+    await store.del(key);
+    if (!row || row.provider !== provider) return null;
+    return row;
+}
+
 module.exports = {
     latestVerificationCode,
     createVerificationCode,
@@ -101,5 +148,10 @@ module.exports = {
     clearLoginFailures,
     loginFailureState,
     blacklistToken,
-    isTokenBlacklisted
+    isTokenBlacklisted,
+    createOAuthState,
+    consumeOAuthState,
+    createOAuthPending,
+    getOAuthPending,
+    consumeOAuthPending
 };

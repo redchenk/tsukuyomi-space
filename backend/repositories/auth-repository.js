@@ -4,6 +4,10 @@ function findUserByEmail(email) {
     return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 }
 
+function findUserById(id) {
+    return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+}
+
 function findUserByUsernameOrEmail(value) {
     return db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(value, value);
 }
@@ -16,17 +20,117 @@ function findCurrentUserById(id) {
     return db.prepare('SELECT id, username, email, role, avatar, created_at FROM users WHERE id = ?').get(id);
 }
 
-function createUser({ id, username, email, passwordHash }) {
+function isUsernameTaken(username) {
+    return Boolean(db.prepare('SELECT id FROM users WHERE username = ?').get(username));
+}
+
+function createUser({ id, username, email, passwordHash, role = 'user', avatar = '' }) {
     return db.prepare(`
-        INSERT INTO users (id, username, email, password_hash)
-        VALUES (?, ?, ?, ?)
-    `).run(id, username, email, passwordHash);
+        INSERT INTO users (id, username, email, password_hash, role, avatar)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `).run(id, username, email, passwordHash, role, avatar || '');
+}
+
+function findUserByOAuthAccount(provider, providerUserId) {
+    return db.prepare(`
+        SELECT users.*, oauth.provider, oauth.provider_user_id, oauth.union_id, oauth.provider_email
+        FROM user_oauth_accounts oauth
+        INNER JOIN users ON users.id = oauth.user_id
+        WHERE oauth.provider = ? AND oauth.provider_user_id = ?
+    `).get(provider, providerUserId);
+}
+
+function findOAuthAccount(provider, providerUserId) {
+    return db.prepare(`
+        SELECT * FROM user_oauth_accounts
+        WHERE provider = ? AND provider_user_id = ?
+    `).get(provider, providerUserId);
+}
+
+function oauthProfileJson(profile) {
+    try {
+        return JSON.stringify(profile || {});
+    } catch (_) {
+        return '{}';
+    }
+}
+
+function createOAuthAccount({
+    id,
+    userId,
+    provider,
+    providerUserId,
+    unionId = '',
+    providerEmail = '',
+    nickname = '',
+    avatar = '',
+    profile = {}
+}) {
+    return db.prepare(`
+        INSERT INTO user_oauth_accounts (
+            id,
+            user_id,
+            provider,
+            provider_user_id,
+            union_id,
+            provider_email,
+            nickname,
+            avatar,
+            profile_json
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+        id,
+        userId,
+        provider,
+        providerUserId,
+        unionId || '',
+        providerEmail || '',
+        nickname || '',
+        avatar || '',
+        oauthProfileJson(profile)
+    );
+}
+
+const createUserWithOAuthAccount = db.transaction(({ user, account }) => {
+    createUser(user);
+    createOAuthAccount({ ...account, userId: user.id });
+    return findCurrentUserById(user.id);
+});
+
+const linkOAuthAccount = db.transaction((account) => {
+    createOAuthAccount(account);
+    if (account.avatar) {
+        db.prepare(`
+            UPDATE users
+            SET avatar = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND COALESCE(avatar, '') = ''
+        `).run(account.avatar, account.userId);
+    }
+    return findCurrentUserById(account.userId);
+});
+
+function listOAuthAccountsByUser(userId) {
+    return db.prepare(`
+        SELECT provider, provider_user_id, union_id, provider_email, nickname, avatar, created_at, updated_at
+        FROM user_oauth_accounts
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    `).all(userId);
 }
 
 module.exports = {
     findUserByEmail,
+    findUserById,
     findUserByUsernameOrEmail,
     findUserByUsernameOrEmailPair,
     findCurrentUserById,
-    createUser
+    isUsernameTaken,
+    createUser,
+    findUserByOAuthAccount,
+    findOAuthAccount,
+    createOAuthAccount,
+    createUserWithOAuthAccount,
+    linkOAuthAccount,
+    listOAuthAccountsByUser
 };

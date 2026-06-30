@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
 const {
     authenticateToken,
+    optionalAuth,
     generateToken,
     readAuthTokens,
     setAuthCookie,
@@ -15,6 +16,7 @@ const {
 } = require('../middleware/auth');
 const authRepository = require('../repositories/auth-repository');
 const authState = require('../services/auth-state');
+const qqOAuth = require('../services/qq-oauth');
 const { EMAIL_CODE_TTL_MS, EMAIL_CODE_COOLDOWN_MS, sendVerificationEmail } = require('../services/mailer');
 const { normalizeEmail, isEmail } = require('../validators');
 
@@ -24,15 +26,162 @@ function issueTokenForUser(user) {
     return generateToken({ id: user.id, username: user.username, role: user.role }, '7d');
 }
 
-async function rejectLockedLogin(res, identity) {
-    const failures = await authState.loginFailureState(identity);
-    if (failures < config.loginFailureMax) return false;
-    res.status(429).json({ success: false, message: '登录失败次数过多，请稍后再试' });
-    return true;
+function userResponse(user) {
+    return {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar || ''
+    };
+}
+
+function setUserLoginSession(req, res, user) {
+    const token = issueTokenForUser(user);
+    clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
+    setAuthCookie(req, res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+    return userResponse(user);
+}
+
+function safeRedirectPath(value) {
+    const path = String(value || '').trim() || '/hub';
+    if (!path.startsWith('/') || path.startsWith('//') || /[\r\n\\]/.test(path)) return '/hub';
+    return path;
+}
+
+function siteUrl(path, params = {}) {
+    const url = new URL(path, config.publicSiteUrl);
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+            url.searchParams.set(key, String(value));
+        }
+    });
+    return url.toString();
+}
+
+function redirectToOAuthError(res, code) {
+    return res.redirect(siteUrl('/login', { oauth_error: code }));
+}
+
+function httpError(status, message) {
+    const error = new Error(message);
+    error.status = status;
+    return error;
 }
 
 function loginIdentity(value) {
     return normalizeEmail(value) || String(value || '').trim().toLowerCase();
+}
+
+async function verifyUserLogin({ username, password, emailCode, loginMethod }) {
+    if (!username) {
+        throw httpError(400, '请输入用户名或邮箱');
+    }
+
+    const identity = loginIdentity(username);
+    const failures = await authState.loginFailureState(identity);
+    if (failures >= config.loginFailureMax) {
+        throw httpError(429, '登录失败次数过多，请稍后再试');
+    }
+
+    const user = authRepository.findUserByUsernameOrEmail(username);
+    if (!user) {
+        await authState.recordLoginFailure(identity);
+        throw httpError(401, '用户名或密码错误');
+    }
+
+    if (loginMethod === 'code') {
+        if (!emailCode) {
+            throw httpError(400, '请填写邮箱验证码');
+        }
+        if (!(await authState.consumeVerificationCode(normalizeEmail(user.email), 'login', emailCode))) {
+            await authState.recordLoginFailure(identity);
+            throw httpError(401, '验证码无效或已过期');
+        }
+    } else {
+        if (!password) {
+            throw httpError(400, '请输入密码');
+        }
+        if (!bcrypt.compareSync(password, user.password_hash)) {
+            await authState.recordLoginFailure(identity);
+            throw httpError(401, '用户名或密码错误');
+        }
+    }
+
+    await authState.clearLoginFailures(identity);
+    return user;
+}
+
+function compactOAuthProfile(profile) {
+    return {
+        provider: profile.provider,
+        providerUserId: profile.providerUserId,
+        unionId: profile.unionId || '',
+        email: normalizeEmail(profile.email || ''),
+        nickname: String(profile.nickname || '').trim() || 'QQ 用户',
+        avatar: profile.avatar || '',
+        raw: profile.raw || {}
+    };
+}
+
+function oauthAccountFromProfile(profile, userId) {
+    return {
+        id: uuidv4(),
+        userId,
+        provider: profile.provider,
+        providerUserId: profile.providerUserId,
+        unionId: profile.unionId,
+        providerEmail: profile.email,
+        nickname: profile.nickname,
+        avatar: profile.avatar,
+        profile
+    };
+}
+
+function usernameBase(value) {
+    const base = String(value || '')
+        .trim()
+        .replace(/[\s@/\\]+/g, '_')
+        .replace(/[^\p{L}\p{N}_-]/gu, '')
+        .slice(0, 24);
+    return base || 'qq_user';
+}
+
+function uniqueUsername(preferred, providerUserId) {
+    const hash = crypto.createHash('sha256').update(String(providerUserId)).digest('hex').slice(0, 6);
+    const base = usernameBase(preferred);
+    const candidates = [
+        base,
+        `${base}_${hash}`,
+        `qq_${hash}`
+    ];
+
+    for (const candidate of candidates) {
+        if (!authRepository.isUsernameTaken(candidate)) return candidate;
+    }
+
+    for (let index = 2; index < 1000; index += 1) {
+        const candidate = `${base.slice(0, 18)}_${hash}_${index}`;
+        if (!authRepository.isUsernameTaken(candidate)) return candidate;
+    }
+
+    return `qq_${crypto.randomUUID().slice(0, 8)}`;
+}
+
+function oauthPlaceholderEmail(provider, providerUserId) {
+    const hash = crypto.createHash('sha256').update(`${provider}:${providerUserId}`).digest('hex').slice(0, 24);
+    return `${provider}_${hash}@oauth.yachiyo.local`;
+}
+
+function pendingOAuthResponse(profile) {
+    return {
+        provider: profile.provider,
+        nickname: profile.nickname,
+        avatar: profile.avatar,
+        email: profile.email || '',
+        hasEmailMatch: Boolean(profile.email && authRepository.findUserByEmail(profile.email)),
+        suggestedUsername: uniqueUsername(profile.nickname, profile.providerUserId)
+    };
 }
 
 router.post('/email-code', async (req, res) => {
@@ -123,57 +272,192 @@ router.post('/login', async (req, res) => {
     try {
         const { username, password, emailCode } = req.body;
         const loginMethod = req.body.loginMethod === 'code' ? 'code' : 'password';
-
-        if (!username) {
-            return res.status(400).json({ success: false, message: '请输入用户名或邮箱' });
-        }
-
-        const identity = loginIdentity(username);
-        if (await rejectLockedLogin(res, identity)) return;
-
-        const user = authRepository.findUserByUsernameOrEmail(username);
-        if (!user) {
-            await authState.recordLoginFailure(identity);
-            return res.status(401).json({ success: false, message: '用户名或密码错误' });
-        }
-
-        if (loginMethod === 'code') {
-            if (!emailCode) {
-                return res.status(400).json({ success: false, message: '请填写邮箱验证码' });
-            }
-            if (!(await authState.consumeVerificationCode(normalizeEmail(user.email), 'login', emailCode))) {
-                await authState.recordLoginFailure(identity);
-                return res.status(401).json({ success: false, message: '验证码无效或已过期' });
-            }
-        } else {
-            if (!password) {
-                return res.status(400).json({ success: false, message: '请输入密码' });
-            }
-            if (!bcrypt.compareSync(password, user.password_hash)) {
-                await authState.recordLoginFailure(identity);
-                return res.status(401).json({ success: false, message: '用户名或密码错误' });
-            }
-        }
-
-        await authState.clearLoginFailures(identity);
-        const token = issueTokenForUser(user);
-        clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
-        setAuthCookie(req, res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+        const user = await verifyUserLogin({ username, password, emailCode, loginMethod });
+        const sessionUser = setUserLoginSession(req, res, user);
         res.json({
             success: true,
             message: '登录成功',
-            data: {
-                user: {
-                    id: user.id,
-                    username: user.username,
-                    email: user.email,
-                    role: user.role,
-                    avatar: user.avatar
-                }
-            }
+            data: { user: sessionUser }
         });
     } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, message: error.message });
+        }
         console.error('Login failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.get('/oauth/qq/start', async (req, res) => {
+    try {
+        const state = crypto.randomBytes(24).toString('hex');
+        const redirectPath = safeRedirectPath(req.query.redirect || '/hub');
+        await authState.createOAuthState({ state, provider: 'qq', redirectPath });
+        res.redirect(qqOAuth.authorizationUrl({ state }));
+    } catch (error) {
+        console.error('Start QQ OAuth failed:', error);
+        redirectToOAuthError(res, error.code === 'QQ_OAUTH_NOT_CONFIGURED' ? 'qq_not_configured' : 'qq_start_failed');
+    }
+});
+
+router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
+    try {
+        if (req.query.error) return redirectToOAuthError(res, 'qq_denied');
+
+        const code = String(req.query.code || '').trim();
+        const state = String(req.query.state || '').trim();
+        if (!code || !state) return redirectToOAuthError(res, 'qq_missing_code');
+
+        const statePayload = await authState.consumeOAuthState(state, 'qq');
+        if (!statePayload) return redirectToOAuthError(res, 'qq_invalid_state');
+
+        const profile = compactOAuthProfile(await qqOAuth.getProfileFromCode(code));
+        const linkedUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
+        if (linkedUser) {
+            setUserLoginSession(req, res, linkedUser);
+            return res.redirect(siteUrl(safeRedirectPath(statePayload.redirectPath)));
+        }
+
+        if (req.user?.id) {
+            const currentUser = authRepository.findUserById(req.user.id);
+            if (currentUser) {
+                const linkedCurrentUser = authRepository.linkOAuthAccount(oauthAccountFromProfile(profile, currentUser.id));
+                setUserLoginSession(req, res, linkedCurrentUser || currentUser);
+                return res.redirect(siteUrl(safeRedirectPath(statePayload.redirectPath)));
+            }
+        }
+
+        const ticket = crypto.randomBytes(24).toString('hex');
+        await authState.createOAuthPending({
+            ticket,
+            provider: 'qq',
+            profile,
+            redirectPath: statePayload.redirectPath
+        });
+
+        const mode = profile.email && authRepository.findUserByEmail(profile.email) ? 'bind' : '';
+        return res.redirect(siteUrl('/login', { oauth: 'qq', ticket, mode }));
+    } catch (error) {
+        console.error('QQ OAuth callback failed:', error);
+        return redirectToOAuthError(res, 'qq_callback_failed');
+    }
+});
+
+router.get('/oauth/qq/pending', async (req, res) => {
+    try {
+        const ticket = String(req.query.ticket || '').trim();
+        const pending = await authState.getOAuthPending(ticket, 'qq');
+        if (!pending) {
+            return res.status(404).json({ success: false, message: 'QQ 登录状态已过期，请重新授权' });
+        }
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.json({
+            success: true,
+            data: pendingOAuthResponse(pending.profile)
+        });
+    } catch (error) {
+        console.error('Read QQ OAuth pending failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.post('/oauth/qq/create', async (req, res) => {
+    try {
+        const ticket = String(req.body.ticket || '').trim();
+        const pending = await authState.getOAuthPending(ticket, 'qq');
+        if (!pending) {
+            return res.status(404).json({ success: false, message: 'QQ 登录状态已过期，请重新授权' });
+        }
+
+        const profile = compactOAuthProfile(pending.profile);
+        const linkedUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
+        if (linkedUser) {
+            await authState.consumeOAuthPending(ticket, 'qq');
+            const sessionUser = setUserLoginSession(req, res, linkedUser);
+            return res.json({ success: true, message: '登录成功', data: { user: sessionUser, redirect: safeRedirectPath(pending.redirectPath) } });
+        }
+
+        const userId = uuidv4();
+        const username = uniqueUsername(req.body.username || profile.nickname, profile.providerUserId);
+        const email = profile.email && !authRepository.findUserByEmail(profile.email)
+            ? profile.email
+            : oauthPlaceholderEmail('qq', profile.providerUserId);
+        const passwordHash = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 10);
+        const user = authRepository.createUserWithOAuthAccount({
+            user: {
+                id: userId,
+                username,
+                email,
+                passwordHash,
+                avatar: profile.avatar
+            },
+            account: oauthAccountFromProfile(profile, userId)
+        });
+        await authState.consumeOAuthPending(ticket, 'qq');
+        const sessionUser = setUserLoginSession(req, res, user);
+        res.status(201).json({
+            success: true,
+            message: 'QQ 登录成功',
+            data: { user: sessionUser, redirect: safeRedirectPath(pending.redirectPath) }
+        });
+    } catch (error) {
+        if (/UNIQUE constraint failed/.test(error.message || '')) {
+            return res.status(409).json({ success: false, message: '该 QQ 已绑定其他账号，或用户名已被使用' });
+        }
+        console.error('Create QQ OAuth account failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.post('/oauth/qq/bind', optionalAuth, async (req, res) => {
+    try {
+        const ticket = String(req.body.ticket || '').trim();
+        const pending = await authState.getOAuthPending(ticket, 'qq');
+        if (!pending) {
+            return res.status(404).json({ success: false, message: 'QQ 登录状态已过期，请重新授权' });
+        }
+
+        const profile = compactOAuthProfile(pending.profile);
+        const existingOAuthUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
+        if (existingOAuthUser) {
+            await authState.consumeOAuthPending(ticket, 'qq');
+            const sessionUser = setUserLoginSession(req, res, existingOAuthUser);
+            return res.json({ success: true, message: '登录成功', data: { user: sessionUser, redirect: safeRedirectPath(pending.redirectPath) } });
+        }
+
+        let user = null;
+        if (req.user?.id) {
+            user = authRepository.findUserById(req.user.id);
+        } else {
+            const loginMethod = req.body.loginMethod === 'code' ? 'code' : 'password';
+            user = await verifyUserLogin({
+                username: req.body.username,
+                password: req.body.password,
+                emailCode: req.body.emailCode,
+                loginMethod
+            });
+        }
+
+        if (!user) {
+            return res.status(401).json({ success: false, message: '请先登录或验证要绑定的邮箱账号' });
+        }
+
+        const linkedUser = authRepository.linkOAuthAccount(oauthAccountFromProfile(profile, user.id));
+        await authState.consumeOAuthPending(ticket, 'qq');
+        const sessionUser = setUserLoginSession(req, res, linkedUser || user);
+        res.json({
+            success: true,
+            message: 'QQ 已绑定到当前账号',
+            data: { user: sessionUser, redirect: safeRedirectPath(pending.redirectPath) }
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, message: error.message });
+        }
+        if (/UNIQUE constraint failed/.test(error.message || '')) {
+            return res.status(409).json({ success: false, message: '该 QQ 已绑定其他账号' });
+        }
+        console.error('Bind QQ OAuth account failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
