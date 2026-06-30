@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive } from 'vue';
 import { apiFetch, apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
-import TsIcon from '../components/TsIcon.vue';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -37,6 +36,7 @@ const oauth = reactive({
 
 const loginPlaceholder = computed(() => login.method === 'code' ? props.t.emailPh : props.t.accountPh);
 const hasOAuthTicket = computed(() => Boolean(oauth.ticket));
+const qqIconUrl = '/assets/icons/qq-login.png';
 
 const oauthErrorText = {
   qq_not_configured: 'QQ 登录暂未配置，请稍后再试',
@@ -340,7 +340,7 @@ onMounted(() => {
         <div class="auth-divider"><span>其他方式登录</span></div>
         <div class="oauth-provider-row">
           <button class="oauth-icon-btn qq" type="button" aria-label="QQ 登录" title="QQ 登录" @click="startQQLogin">
-            <TsIcon name="user" :size="24" :stroke-width="2.35" />
+            <img :src="qqIconUrl" alt="">
           </button>
         </div>
       </div>
