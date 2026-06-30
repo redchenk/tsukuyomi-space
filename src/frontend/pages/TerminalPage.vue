@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive } from 'vue';
-import { noStoreUrl } from '../api/client';
+import { apiFetch, noStoreUrl } from '../api/client';
 import { formatDateTime } from '../utils/time';
 
 const emit = defineEmits(['go', 'auth-changed']);
@@ -148,7 +148,7 @@ async function adminApi(path, options = {}) {
   }
   const method = String(options.method || 'GET').toUpperCase();
   const url = method === 'GET' ? noStoreUrl(`/api/admin${path}`) : `/api/admin${path}`;
-  const response = await fetch(url, { ...options, headers, credentials: 'include', cache: method === 'GET' ? 'no-store' : options.cache });
+  const response = await apiFetch(url, { ...options, headers, credentials: 'include', cache: method === 'GET' ? 'no-store' : options.cache });
   const result = await parseJsonResponse(response);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
   return result.data;
@@ -171,7 +171,7 @@ async function login() {
   terminal.loading = true;
   terminal.loginMessage = '';
   try {
-    const response = await fetch('/api/admin/login', {
+    const response = await apiFetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -196,7 +196,7 @@ async function login() {
 
 async function logout() {
   try {
-    await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
+    await apiFetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
   } catch (_) {
     // Local cleanup still applies.
   }
@@ -415,7 +415,7 @@ async function registerOssAsset() {
   }
   terminal.ossImport.loading = true;
   try {
-    const response = await fetch('/api/assets/oss-register', {
+    const response = await apiFetch('/api/assets/oss-register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -449,7 +449,7 @@ async function scanOssAssets() {
   terminal.ossImport.scanType = '';
   terminal.ossImport.scanning = true;
   try {
-    const response = await fetch('/api/assets/oss-scan', {
+    const response = await apiFetch('/api/assets/oss-scan', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

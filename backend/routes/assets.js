@@ -7,6 +7,8 @@ const { authenticateToken, optionalAuth, requireAdmin } = require('../middleware
 const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
+const responseCache = require('../services/response-cache');
+const { setPublicReadCache } = require('../services/public-cache');
 const { attachmentDisposition } = require('../services/file-security');
 const { parsePositiveInt } = require('../validators');
 
@@ -44,6 +46,10 @@ function ok(res, data = null, message = '操作成功') {
 
 function fail(res, status, message) {
     res.status(status).json({ success: false, message });
+}
+
+function clearPublicGalleryCache() {
+    responseCache.delPrefix('public:gallery');
 }
 
 function signAssetAccess(assetId, expiresAt) {
@@ -307,11 +313,15 @@ router.get('/gallery/public', (req, res) => {
     try {
         const limit = Math.min(parsePositiveInt(req.query.limit, 4), 24);
         const random = ['1', 'true', 'yes'].includes(String(req.query.random || '').trim().toLowerCase());
-        const assets = (random
-            ? assetRepository.listRandomGalleryAssets({ limit })
-            : assetRepository.listGalleryAssets({ limit, offset: 0 }))
-            .map((asset) => normalizeAsset(asset));
-        ok(res, { assets });
+        const key = `public:gallery:preview:${random ? 'random' : 'latest'}:${limit}`;
+        setPublicReadCache(res, { maxAge: random ? 5 : 20, stale: 30 });
+        res.json(responseCache.remember(key, random ? 5000 : 20000, () => {
+            const assets = (random
+                ? assetRepository.listRandomGalleryAssets({ limit })
+                : assetRepository.listGalleryAssets({ limit, offset: 0 }))
+                .map((asset) => normalizeAsset(asset));
+            return { success: true, message: 'OK', data: { assets } };
+        }));
     } catch (error) {
         console.error('List public gallery assets failed:', error);
         fail(res, 500, '无法读取图库');
@@ -332,16 +342,38 @@ router.get('/gallery', optionalAuth, (req, res) => {
             return fail(res, 401, '请先登录');
         }
         const ownerId = requestedScope === 'mine' ? req.user.id : '';
-        const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId }).map((asset) => normalizeAsset(asset, { signUrl: Boolean(req.user) }));
-        const total = assetRepository.countGalleryAssets({ search, ownerId });
+        const cacheablePublicList = !req.user && !requestedScope && !search;
+        if (cacheablePublicList) setPublicReadCache(res, { maxAge: 15, stale: 30 });
+        const payload = cacheablePublicList
+            ? responseCache.remember(`public:gallery:list:${page}:${limit}`, 15000, () => {
+                const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId }).map((asset) => normalizeAsset(asset));
+                const total = assetRepository.countGalleryAssets({ search, ownerId });
+                return {
+                    assets,
+                    pagination: {
+                        page,
+                        limit,
+                        total,
+                        totalPages: Math.ceil(total / limit)
+                    }
+                };
+            })
+            : (() => {
+                const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId }).map((asset) => normalizeAsset(asset, { signUrl: Boolean(req.user) }));
+                const total = assetRepository.countGalleryAssets({ search, ownerId });
+                return {
+                    assets,
+                    pagination: {
+                        page,
+                        limit,
+                        total,
+                        totalPages: Math.ceil(total / limit)
+                    }
+                };
+            })();
         ok(res, {
-            assets,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit)
-            }
+            assets: payload.assets,
+            pagination: payload.pagination
         });
     } catch (error) {
         console.error('List gallery assets failed:', error);
@@ -371,6 +403,7 @@ router.post('/oss-register', authenticateToken, requireAdmin, (req, res) => {
             ownerId: req.user.id
         });
         if (!asset) return fail(res, 400, 'Invalid OSS Object Key or public URL settings');
+        if ((visibility || 'public') !== 'private') clearPublicGalleryCache();
         ok(res, normalizeAsset(asset, { signUrl: true }), 'OSS asset registered');
     } catch (error) {
         console.error('Register OSS asset failed:', error);
@@ -410,6 +443,7 @@ router.post('/oss-scan', authenticateToken, requireAdmin, async (req, res) => {
             if (asset) imported.push(normalizeAsset(asset, { signUrl: true }));
             else skipped.push({ key: item.key, reason: 'invalid' });
         }
+        if (imported.some((asset) => !asset.owner_id || asset.metadata?.visibility === 'public')) clearPublicGalleryCache();
         ok(res, {
             imported,
             importedCount: imported.length,
@@ -466,6 +500,7 @@ router.post('/', authenticateToken, async (req, res) => {
             allowDangerous: isAdminUser(req.user)
         });
         if (!asset) return fail(res, 400, '文件格式无效');
+        if (targetCollection === 'gallery') clearPublicGalleryCache();
         ok(res, normalizeAsset(asset, { signUrl: true }), '附件已上传');
     } catch (error) {
         console.error('Upload asset failed:', error);
@@ -493,6 +528,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         } else {
             assetRepository.deleteAssetForOwner(req.params.id, req.user.id);
         }
+        clearPublicGalleryCache();
         ok(res, null, '附件已删除');
     } catch (error) {
         console.error('Delete asset failed:', error);

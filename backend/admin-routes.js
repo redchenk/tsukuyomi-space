@@ -42,6 +42,7 @@ function clearPublicArticleCache() {
 function clearPublicMessageCache() {
     responseCache.delPrefix('public:plaza-messages');
     responseCache.delPrefix('public:article-messages:');
+    responseCache.delPrefix('public:message-topics');
     responseCache.delPrefix('public:stats');
 }
 

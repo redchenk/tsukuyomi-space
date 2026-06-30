@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { getAuthToken, parseResponse } from '../api/client';
+import { apiFetch, getAuthToken, parseResponse } from '../api/client';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -156,7 +156,7 @@ function isStagePageGap(item) {
 async function loadArticles() {
   articlesLoading.value = true;
   try {
-    const response = await fetch(`/api/articles/live/${Date.now()}`, { cache: 'no-store' });
+    const response = await apiFetch('/api/articles');
     const result = await parseResponse(response);
     articles.value = result.success && Array.isArray(result.data) ? result.data : [];
   } catch (_) {

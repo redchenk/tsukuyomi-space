@@ -6,6 +6,7 @@ import {
 } from './live2dControl';
 import { compileBehaviorIntent } from './live2dBehaviorController';
 import { readJson, writeJson } from './roomStorage';
+import { apiFetch } from '../../api/client';
 
 const HISTORY_KEY = 'live2dLLMControlHistory';
 const HARD_SENTENCE_END_PATTERN = /[\u3002\uff01\uff1f.!?\u2026]/u;
@@ -796,7 +797,7 @@ export async function requestLive2DControl(message) {
   let rawReply = '';
 
   if (settings.useProxy && !useLocalOllama) {
-    const response = await fetch('/api/chat', {
+    const response = await apiFetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -853,7 +854,7 @@ export async function requestLive2DControlStream(message, handlers = {}) {
   let rawReply = '';
 
   if (settings.useProxy) {
-    const response = await fetch('/api/chat/stream', {
+    const response = await apiFetch('/api/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

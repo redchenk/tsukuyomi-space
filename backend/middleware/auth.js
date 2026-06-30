@@ -69,6 +69,7 @@ function cookieOptions({ req = null, maxAge, sameSite = 'lax' } = {}) {
         secure: config.isProduction ? isSecureRequest(req) : false,
         sameSite,
         path: '/',
+        ...(config.authCookieDomain ? { domain: config.authCookieDomain } : {}),
         ...(maxAge ? { maxAge } : {})
     };
 }

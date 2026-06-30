@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
-import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { compressImage } from '../utils/image';
 
@@ -100,9 +100,8 @@ function postJsonWithProgress(url, payload, headers, onProgress) {
 
 async function loadLatestImage() {
   try {
-    const response = await authFetch(noStoreUrl('/api/assets/gallery/public?limit=1'), {
-      headers: authHeaders({ Accept: 'application/json' }),
-      cache: 'no-store'
+    const response = await apiFetch('/api/assets/gallery/public?limit=1', {
+      headers: { Accept: 'application/json' }
     });
     const result = await parseResponse(response);
     const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
@@ -115,9 +114,8 @@ async function loadLatestImage() {
 async function loadRandomFeatureImage() {
   const requestId = ++randomFeatureRequestId;
   try {
-    const response = await authFetch(noStoreUrl('/api/assets/gallery/public?limit=1&random=1'), {
-      headers: authHeaders({ Accept: 'application/json' }),
-      cache: 'no-store'
+    const response = await apiFetch('/api/assets/gallery/public?limit=1&random=1', {
+      headers: { Accept: 'application/json' }
     });
     const result = await parseResponse(response);
     const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
@@ -158,10 +156,14 @@ async function loadImages(page = 1) {
       search: state.search.trim()
     });
     if (isManageMode.value) params.set('scope', canManageAllImages.value ? 'all' : 'mine');
-    const response = await authFetch(noStoreUrl(`/api/assets/gallery?${params}`), {
-      headers: authHeaders(),
-      cache: 'no-store'
-    });
+    const response = isManageMode.value
+      ? await authFetch(noStoreUrl(`/api/assets/gallery?${params}`), {
+        headers: authHeaders(),
+        cache: 'no-store'
+      })
+      : await apiFetch(`/api/assets/gallery?${params}`, {
+        headers: { Accept: 'application/json' }
+      });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '图库读取失败');
     state.images = result.data?.assets || [];

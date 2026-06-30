@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { authFetch, authHeaders, getSession, parseResponse } from '../api/client';
+import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { formatDateTime } from '../utils/time';
@@ -790,10 +790,15 @@ async function loadArtworks() {
   gallery.loading = true;
   session.value = getSession();
   try {
-    const response = await authFetch(`/api/pixel-art?sort=${gallery.sort}&limit=36&_=${Date.now()}`, {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store'
-    });
+    const galleryUrl = `/api/pixel-art?sort=${gallery.sort}&limit=36`;
+    const response = isAuthed.value
+      ? await authFetch(`${galleryUrl}&_=${Date.now()}`, {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      })
+      : await apiFetch(galleryUrl, {
+        headers: { Accept: 'application/json' }
+      });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || 'Pixel art unavailable');
     gallery.items = Array.isArray(result.data) ? result.data : [];

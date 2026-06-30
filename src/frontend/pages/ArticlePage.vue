@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { authFetch, authHeaders, getSession, parseResponse } from '../api/client';
+import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import SocialText from '../components/SocialText.vue';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
@@ -146,7 +146,7 @@ async function loadArticle() {
   }
 
   try {
-    const response = await fetch(`/api/articles/${encodeURIComponent(articleId.value)}/live/${Date.now()}`, {
+    const response = await apiFetch(`/api/articles/${encodeURIComponent(articleId.value)}/live/${Date.now()}`, {
       cache: 'no-store'
     });
     const result = await parseResponse(response);
@@ -189,9 +189,7 @@ async function loadBookmarkStatus() {
 
 async function loadComments() {
   try {
-    const response = await fetch(`/api/articles/${encodeURIComponent(articleId.value)}/messages/live/${Date.now()}`, {
-      cache: 'no-store'
-    });
+    const response = await apiFetch(`/api/articles/${encodeURIComponent(articleId.value)}/messages`);
     const result = await parseResponse(response);
     comments.value = result.success && Array.isArray(result.data)
       ? result.data.filter((item) => String(item.article_id) === String(articleId.value))

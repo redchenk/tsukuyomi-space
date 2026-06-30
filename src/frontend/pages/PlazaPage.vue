@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { authFetch, authHeaders, getSession, loadPublicStats, parseResponse } from '../api/client';
+import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
 import SocialText from '../components/SocialText.vue';
@@ -227,7 +227,7 @@ async function loadPlazaStats() {
 
 async function loadPlazaMessages() {
   try {
-    const response = await fetch(`/api/messages/plaza/${Date.now()}`, { cache: 'no-store' });
+    const response = await apiFetch('/api/messages/plaza/latest');
     const result = await parseResponse(response);
     if (result.success) {
       plaza.messages = Array.isArray(result.data)
@@ -243,7 +243,7 @@ async function loadPlazaMessages() {
 async function loadTrendingTopics() {
   plaza.topicsLoading = true;
   try {
-    const response = await fetch(`/api/messages/topics?limit=8&_=${Date.now()}`, { cache: 'no-store' });
+    const response = await apiFetch('/api/messages/topics?limit=8');
     const result = await parseResponse(response);
     plaza.topics = result.success && Array.isArray(result.data) ? result.data : [];
   } catch (_) {

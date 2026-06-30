@@ -29,6 +29,21 @@ fs.mkdirSync(dataDir, { recursive: true });
 
 const siteLaunchedAt = process.env.SITE_LAUNCHED_AT || '2026-03-30T00:00:00+08:00';
 const siteLaunchedAtMs = Date.parse(siteLaunchedAt);
+const publicSiteUrl = (process.env.PUBLIC_SITE_URL || 'https://yachiyo.hk').replace(/\/$/, '');
+
+function inferAuthCookieDomain() {
+    const explicit = String(process.env.AUTH_COOKIE_DOMAIN || '').trim();
+    if (explicit) return explicit;
+    if (!isProduction) return '';
+    try {
+        const hostname = new URL(publicSiteUrl).hostname.toLowerCase();
+        if (hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return '';
+        if (hostname === 'yachiyo.hk' || hostname.endsWith('.yachiyo.hk')) return '.yachiyo.hk';
+    } catch (_) {
+        return '';
+    }
+    return '';
+}
 
 module.exports = {
     projectRoot,
@@ -49,7 +64,8 @@ module.exports = {
     loginFailureMax: Number(process.env.LOGIN_FAILURE_MAX || 8),
     dbPath: path.resolve(process.env.DB_PATH || path.join(dataDir, 'tsukuyomi.db')),
     corsOrigins: csvEnv('CORS_ORIGINS'),
-    publicSiteUrl: (process.env.PUBLIC_SITE_URL || 'https://yachiyo.hk').replace(/\/$/, ''),
+    publicSiteUrl,
+    authCookieDomain: inferAuthCookieDomain(),
     publicAssetBaseUrl: (process.env.PUBLIC_ASSET_BASE_URL || '').replace(/\/$/, ''),
     siteLaunchedAt,
     siteLaunchedAtMs,

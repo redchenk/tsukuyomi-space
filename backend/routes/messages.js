@@ -7,6 +7,7 @@ const socialRepository = require('../repositories/social-repository');
 const { reviewMessageContent } = require('../services/message-moderation');
 const { articlePath } = require('../seo/render-article');
 const responseCache = require('../services/response-cache');
+const { setPublicReadCache } = require('../services/public-cache');
 
 const router = express.Router();
 
@@ -78,7 +79,8 @@ function sendMessageList(req, res, articleId) {
             return res.status(404).json({ success: false, message: 'Article not found' });
         }
         const key = articleId ? `public:article-messages:${articleId}` : 'public:plaza-messages';
-        res.json(responseCache.remember(key, 4000, () => ({
+        setPublicReadCache(res, { maxAge: articleId ? 5 : 8, stale: 20 });
+        res.json(responseCache.remember(key, articleId ? 5000 : 8000, () => ({
             success: true,
             data: messageRepository.listMessages({ articleId, includePending: false })
         })));
@@ -98,13 +100,16 @@ router.get('/plaza/:nonce', (req, res) => {
 
 router.get('/topics', (req, res) => {
     try {
-        res.json({
+        const limit = req.query.limit;
+        const days = req.query.days;
+        setPublicReadCache(res, { maxAge: 30, stale: 60 });
+        res.json(responseCache.remember(`public:message-topics:${limit || ''}:${days || ''}`, 30000, () => ({
             success: true,
             data: socialRepository.listTrendingTopics({
-                limit: req.query.limit,
-                days: req.query.days
+                limit,
+                days
             })
-        });
+        })));
     } catch (error) {
         console.error('Trending topics failed:', error);
         res.status(500).json({ success: false, message: '热门话题读取失败' });
@@ -131,6 +136,7 @@ router.post('/', authenticateToken, (req, res) => {
         });
         if (review.status === 'approved') {
             responseCache.delPrefix(article_id ? `public:article-messages:${article_id}` : 'public:plaza-messages');
+            responseCache.delPrefix('public:message-topics');
             responseCache.delPrefix('public:stats');
             notifyMentions({ message: newMessage, actor: req.user });
         }
@@ -164,6 +170,7 @@ router.post('/:id/like', authenticateToken, (req, res) => {
 
         const message = messageRepository.likeMessage(messageId, userId);
         responseCache.delPrefix(message.article_id ? `public:article-messages:${message.article_id}` : 'public:plaza-messages');
+        responseCache.delPrefix('public:message-topics');
         notifyMessageOwner({
             targetMessage: message,
             actor: req.user,
@@ -206,6 +213,7 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
         });
         if (review.status === 'approved') {
             responseCache.delPrefix(originalMessage.article_id ? `public:article-messages:${originalMessage.article_id}` : 'public:plaza-messages');
+            responseCache.delPrefix('public:message-topics');
             responseCache.delPrefix('public:stats');
             notifyMessageOwner({
                 targetMessage: originalMessage,

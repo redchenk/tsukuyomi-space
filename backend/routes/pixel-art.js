@@ -3,6 +3,7 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const notificationRepository = require('../repositories/notification-repository');
 const pixelArtRepository = require('../repositories/pixel-art-repository');
 const responseCache = require('../services/response-cache');
+const { setPrivateNoStore, setPublicReadCache } = require('../services/public-cache');
 
 const router = express.Router();
 const DEFAULT_DIMENSIONS = { width: 96, height: 54 };
@@ -111,16 +112,13 @@ function normalizeArtworkPayload(body) {
 router.get('/', optionalAuth, (req, res) => {
     try {
         const sort = req.query.sort === 'hot' ? 'hot' : 'latest';
-        const payload = pixelArtRepository.listArtworks({
-            viewerId: req.user?.id || '',
-            sort,
-            limit: req.query.limit,
-            offset: req.query.offset
-        });
-        res.set({
-            'Cache-Control': req.user ? 'private, no-store' : 'public, max-age=10, stale-while-revalidate=30',
-            'Vary': 'Cookie, Accept-Encoding'
-        });
+        const limit = req.query.limit;
+        const offset = req.query.offset;
+        const payload = req.user
+            ? pixelArtRepository.listArtworks({ viewerId: req.user.id, sort, limit, offset })
+            : responseCache.remember(`public:pixel-art:${sort}:${limit || ''}:${offset || ''}`, 10000, () => pixelArtRepository.listArtworks({ viewerId: '', sort, limit, offset }));
+        if (req.user) setPrivateNoStore(res, { vary: 'Cookie, Authorization, Accept-Encoding' });
+        else setPublicReadCache(res, { maxAge: 10, stale: 30 });
         res.json({
             success: true,
             data: payload.items,
@@ -187,6 +185,8 @@ router.get('/:id', optionalAuth, (req, res) => {
     try {
         const artwork = pixelArtRepository.findArtworkById(req.params.id, req.user?.id || '');
         if (!artwork) return res.status(404).json({ success: false, message: '像素画不存在' });
+        if (req.user) setPrivateNoStore(res, { vary: 'Cookie, Authorization, Accept-Encoding' });
+        else setPublicReadCache(res, { maxAge: 10, stale: 30 });
         res.json({ success: true, data: artwork });
     } catch (error) {
         console.error('Read pixel art failed:', error);

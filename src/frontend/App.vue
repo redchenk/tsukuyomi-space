@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
-import { loadCurrentSession, logoutSession, noStoreUrl } from './api/client';
+import { apiBeacon, apiFetch, loadCurrentSession, logoutSession, noStoreUrl } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
 import SitePet from './components/SitePet.vue';
@@ -109,7 +109,7 @@ async function loadVisitPopup() {
   if (route.name !== 'hub' || sessionStorage.getItem(VISIT_POPUP_PENDING_KEY) !== '1') return;
   sessionStorage.removeItem(VISIT_POPUP_PENDING_KEY);
   try {
-    const response = await fetch(noStoreUrl('/api/settings'), { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    const response = await apiFetch(noStoreUrl('/api/settings'), { headers: { Accept: 'application/json' }, cache: 'no-store' });
     const result = await response.json();
     const settings = result?.data || {};
     const content = String(settings.visitPopupContent || '').trim();
@@ -131,7 +131,7 @@ async function loadVisitPopup() {
 
 async function loadPublicSettings() {
   try {
-    const response = await fetch(noStoreUrl('/api/settings'), { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    const response = await apiFetch(noStoreUrl('/api/settings'), { headers: { Accept: 'application/json' }, cache: 'no-store' });
     const result = await response.json();
     const settings = result?.data || {};
     setPublicAssetBaseUrl(settings.publicAssetBaseUrl || '');
@@ -171,11 +171,10 @@ onMounted(() => {
   if (localStorage.getItem(VIEW_RECORDED_KEY) === '1') return;
   localStorage.setItem(VIEW_RECORDED_KEY, '1');
   const payload = JSON.stringify({ path: route.fullPath || '/' });
-  if (navigator.sendBeacon) {
-    navigator.sendBeacon('/api/stats/view', new Blob([payload], { type: 'application/json' }));
+  if (apiBeacon('/api/stats/view', new Blob([payload], { type: 'application/json' }))) {
     return;
   }
-  fetch('/api/stats/view', {
+  apiFetch('/api/stats/view', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: payload,

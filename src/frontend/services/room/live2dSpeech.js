@@ -1,3 +1,4 @@
+import { apiFetch } from '../../api/client';
 import { readJson } from './roomStorage';
 
 const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
@@ -262,7 +263,7 @@ export function createLive2DSpeechPlayer({ onState } = {}) {
       return audio;
     }
 
-    const response = await fetch('/api/tts', {
+    const response = await apiFetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...settings, text, textLang: settings.textLang || 'auto' })

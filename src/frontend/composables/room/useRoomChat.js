@@ -1,5 +1,5 @@
 import { nextTick, ref } from 'vue';
-import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../../api/client';
+import { apiFetch, authFetch, authHeaders, noStoreUrl, parseResponse } from '../../api/client';
 import { defaultKnowledgeEntries } from '../../constants/room/knowledgeEntries';
 import { live2DPromptCatalog } from '../../constants/room/live2dManifest';
 import {
@@ -514,7 +514,7 @@ function fileToDataUrl(file) {
 }
 
 async function postJson(path, payload) {
-  const response = await fetch(path, {
+  const response = await apiFetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -960,7 +960,7 @@ export function useRoomChat({ live2d, world }) {
         ? await translateForJapaneseTts(text)
         : cleanTtsText(text);
       if (!ttsText) throw new Error('TTS 文本为空，已取消语音播放。');
-      const response = await fetch('/api/tts', {
+      const response = await apiFetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...settings, text: ttsText, textLang: settings.textLang || 'auto' })

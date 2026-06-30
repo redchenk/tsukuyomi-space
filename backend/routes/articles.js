@@ -4,6 +4,7 @@ const articleRepository = require('../repositories/article-repository');
 const messageRepository = require('../repositories/message-repository');
 const articleMedia = require('../services/article-media');
 const responseCache = require('../services/response-cache');
+const { setPublicReadCache } = require('../services/public-cache');
 const { parsePositiveInt, safeJsonParse } = require('../validators');
 
 const router = express.Router();
@@ -42,7 +43,8 @@ function articleListCacheKey(req) {
 
 function sendArticleList(req, res) {
     try {
-        res.json(responseCache.remember(articleListCacheKey(req), 8000, () => listArticlesPayload(req)));
+        setPublicReadCache(res, { maxAge: 15, stale: 30 });
+        res.json(responseCache.remember(articleListCacheKey(req), 15000, () => listArticlesPayload(req)));
     } catch (error) {
         console.error('List articles failed:', error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -55,6 +57,24 @@ function canPublishAnnouncement(user) {
 
 function findPublicArticle(id) {
     return articleRepository.findPublishedArticleById(id);
+}
+
+function sendArticleMessages(req, res) {
+    try {
+        const article = findPublicArticle(req.params.id);
+        if (!article) {
+            return res.status(404).json({ success: false, message: 'Article not found' });
+        }
+
+        setPublicReadCache(res, { maxAge: 5, stale: 20 });
+        res.json(responseCache.remember(`public:article-messages:${req.params.id}`, 5000, () => ({
+            success: true,
+            data: messageRepository.listMessages({ articleId: req.params.id })
+        })));
+    } catch (error) {
+        console.error('List article messages failed:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 }
 
 router.get('/', sendArticleList);
@@ -100,39 +120,9 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // 单篇文章读取会顺便累计阅读数。
-router.get('/:id/messages', (req, res) => {
-    try {
-        const article = findPublicArticle(req.params.id);
-        if (!article) {
-            return res.status(404).json({ success: false, message: 'Article not found' });
-        }
+router.get('/:id/messages', sendArticleMessages);
 
-        res.json(responseCache.remember(`public:article-messages:${req.params.id}`, 4000, () => ({
-            success: true,
-            data: messageRepository.listMessages({ articleId: req.params.id })
-        })));
-    } catch (error) {
-        console.error('List article messages failed:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-router.get('/:id/messages/live/:nonce', (req, res) => {
-    try {
-        const article = findPublicArticle(req.params.id);
-        if (!article) {
-            return res.status(404).json({ success: false, message: 'Article not found' });
-        }
-
-        res.json(responseCache.remember(`public:article-messages:${req.params.id}`, 4000, () => ({
-            success: true,
-            data: messageRepository.listMessages({ articleId: req.params.id })
-        })));
-    } catch (error) {
-        console.error('List article messages failed:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
+router.get('/:id/messages/live/:nonce', sendArticleMessages);
 
 router.get('/:id/live/:nonce', (req, res) => {
     try {

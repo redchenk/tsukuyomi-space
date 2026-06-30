@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue';
+import { apiFetch } from '../api/client';
 
 const WORLD_ENDPOINT = '/api/room/world';
 const WORLD_CACHE_KEY = 'roomWorldState:v3';
@@ -244,7 +245,7 @@ export function useRoomWorld() {
       if (location?.timezone) params.set('timezone', String(location.timezone));
       if (hasLocationCoordinates && location?.city) params.set('city', String(location.city));
       if (location?.source) params.set('locationSource', String(location.source));
-      const response = await fetch(`${WORLD_ENDPOINT}/live/${Date.now()}${params.toString() ? `?${params}` : ''}`, { cache: 'no-store' });
+      const response = await apiFetch(`${WORLD_ENDPOINT}/live/${Date.now()}${params.toString() ? `?${params}` : ''}`, { cache: 'no-store' });
       const result = await response.json().catch(() => ({}));
       const nextWorld = normalizeWorld(result.data || {});
       applyWorld(nextWorld);

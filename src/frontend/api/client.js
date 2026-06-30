@@ -100,6 +100,15 @@ export function authFetch(url, options = {}) {
   });
 }
 
+export function apiFetch(url, options = {}) {
+  return fetch(apiUrl(url), options);
+}
+
+export function apiBeacon(url, data) {
+  if (typeof navigator === 'undefined' || !navigator.sendBeacon) return false;
+  return navigator.sendBeacon(apiUrl(url), data);
+}
+
 function readPublicStatsCache() {
   if (publicStatsCache) return publicStatsCache;
   if (typeof sessionStorage === 'undefined') return null;

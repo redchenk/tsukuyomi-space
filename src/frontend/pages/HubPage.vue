@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { authFetch, authHeaders, getSession, loadPublicStats, parseResponse, setPublicStatsCache } from '../api/client';
+import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, parseResponse, setPublicStatsCache } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -216,7 +216,6 @@ async function loadHubPreview(options = {}) {
   if (!force && cached?.cachedAt && Date.now() - cached.cachedAt < HUB_PREVIEW_TTL_MS) return;
 
   try {
-    const nonce = Date.now();
     loadPublicStats({ force, maxAgeMs: 60000 })
       .then((nextSiteStats) => {
         if (!nextSiteStats) return;
@@ -232,10 +231,10 @@ async function loadHubPreview(options = {}) {
       .catch(() => {});
 
     const [articleResponse, messageResponse, galleryResponse, pixelResponse] = await Promise.all([
-      fetch(`/api/articles/live/${nonce}`, { cache: 'no-store' }),
-      fetch(`/api/messages/plaza/${nonce}`, { cache: 'no-store' }),
-      fetch(`/api/assets/gallery/public?limit=1&_=${nonce}`, { cache: 'no-store' }),
-      fetch(`/api/pixel-art?sort=latest&limit=1&_=${nonce}`, { cache: 'no-store' })
+      apiFetch('/api/articles?limit=12'),
+      apiFetch('/api/messages/plaza/latest'),
+      apiFetch('/api/assets/gallery/public?limit=1'),
+      apiFetch('/api/pixel-art?sort=latest&limit=1')
     ]);
     const [articleResult, messageResult, galleryResult, pixelResult] = await Promise.all([
       parseResponse(articleResponse),

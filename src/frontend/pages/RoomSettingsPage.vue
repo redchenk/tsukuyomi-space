@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { cloneKnowledgeEntry, defaultKnowledgeEntries } from '../constants/room/knowledgeEntries';
 import { roomLive2DManifest } from '../constants/room/live2dManifest';
@@ -459,7 +459,7 @@ async function syncModelCatalog() {
   modelCatalog.loading = true;
   modelCatalog.message = '正在同步 OpenRouter 模型目录...';
   try {
-    const response = await fetch(`/api/room/models/openrouter?_${Date.now()}`, {
+    const response = await apiFetch(`/api/room/models/openrouter?_${Date.now()}`, {
       headers: { Accept: 'application/json' },
       cache: 'no-store'
     });
@@ -1377,10 +1377,11 @@ async function testLLM() {
     showToast('请先填写 LLM API Key');
     return;
   }
-  const requestUrl = settings.useProxy ? '/api/chat' : normalizeChatUrl(settings.apiUrl, settings.model);
+  const requestUrl = settings.useProxy ? apiUrl('/api/chat') : normalizeChatUrl(settings.apiUrl, settings.model);
+  const requestFetch = settings.useProxy ? (options) => apiFetch('/api/chat', options) : (options) => fetch(requestUrl, options);
   openTestDialog('llm', 'loading', 'LLM 连接测试', settings.useProxy ? '正在通过站内受限代理请求模型供应商...' : '正在请求模型供应商...', `${requestUrl}\n模型：${settings.model || '未填写'}`);
   try {
-    const response = await fetch(requestUrl, {
+    const response = await requestFetch({
       method: 'POST',
       headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model),
       body: JSON.stringify(settings.useProxy
@@ -1462,7 +1463,7 @@ async function testTTS() {
   const testText = tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
     ? gptSovitsTestText(tts)
     : '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
-  openTestDialog('tts', 'loading', 'TTS 语音测试', tts.useProxy ? '正在通过站内受限代理请求语音供应商...' : '正在请求语音供应商...', `${tts.useProxy ? '/api/tts' : (tts.apiUrl || defaultTtsUrl(tts.provider))}\nProvider：${tts.provider || 'mimo'}\n模型/语言：${tts.model || tts.textLang || '未填写'}\n音色/参考音频：${tts.voice || tts.refAudioPath || '未填写'}\n测试文本：${testText}`);
+  openTestDialog('tts', 'loading', 'TTS 语音测试', tts.useProxy ? '正在通过站内受限代理请求语音供应商...' : '正在请求语音供应商...', `${tts.useProxy ? apiUrl('/api/tts') : (tts.apiUrl || defaultTtsUrl(tts.provider))}\nProvider：${tts.provider || 'mimo'}\n模型/语言：${tts.model || tts.textLang || '未填写'}\n音色/参考音频：${tts.voice || tts.refAudioPath || '未填写'}\n测试文本：${testText}`);
   try {
     if (tts.provider === 'gpt-sovits' && !tts.useProxy) {
       await ensureGptSovitsWeights(tts);
@@ -1474,7 +1475,7 @@ async function testTTS() {
     }
     const request = buildTtsRequest(testText, tts);
     const response = tts.useProxy
-      ? await fetch('/api/tts', {
+      ? await apiFetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
