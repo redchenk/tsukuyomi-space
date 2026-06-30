@@ -21,7 +21,7 @@ defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
 const navOpen = ref(false);
 const unreadNotifications = ref(0);
 
-const hasGlobalBackground = computed(() => props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
+const hasGlobalBackground = computed(() => props.showChrome && props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
 const showSiteBeian = computed(() => props.showChrome && !['hub', 'room', 'roomSettings'].includes(props.routeName));
 const showNotifications = computed(() => props.isAuthed);
 
