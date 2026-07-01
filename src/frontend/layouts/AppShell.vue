@@ -105,7 +105,7 @@ onUnmounted(() => {
 
     <aside v-if="showChrome" ref="railRef" class="site-rail" aria-label="Quick navigation">
       <a href="/hub" class="rail-mark" :aria-label="t.brand" @click.prevent="$emit('go', '/hub')">
-        <TsIcon name="moon" :size="24" :stroke-width="1.8" />
+        <TsIcon name="moonStar" :size="24" :stroke-width="1.85" />
         <span class="rail-mark-label">{{ t.brand }}</span>
       </a>
 
@@ -187,9 +187,8 @@ onUnmounted(() => {
 
     <header v-if="showChrome && routeName !== 'room'" class="topbar site-commandbar">
       <a href="/hub" class="brand room-brand site-brand" @click.prevent="$emit('go', '/hub')">
-        <span class="room-brand-mark site-brand-mark room-user-avatar">
-          <img v-if="user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
-          <span v-else>{{ userInitial() }}</span>
+        <span class="room-brand-mark site-brand-mark site-brand-icon" aria-hidden="true">
+          <TsIcon name="moonStar" :size="21" :stroke-width="1.85" />
         </span>
         <span>
           <strong>{{ t.brand }}</strong>

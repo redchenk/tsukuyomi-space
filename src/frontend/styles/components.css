@@ -405,6 +405,18 @@ html[data-theme="dark"] .site-global-bg {
     background: rgba(255, 255, 255, 0.1);
 }
 
+.site-brand-icon {
+    color: var(--ts-unified-primary-text, #061624);
+    border-color: rgba(151, 231, 242, 0.5);
+    background: var(--ts-unified-primary-bg, linear-gradient(135deg, #7bd4e7 0%, #4aa8ca 100%));
+    box-shadow: 0 12px 30px rgba(44, 125, 160, 0.2);
+}
+
+.site-brand-icon .ts-icon {
+    width: 1.32rem;
+    height: 1.32rem;
+}
+
 .dock-icon {
     display: none;
 }
