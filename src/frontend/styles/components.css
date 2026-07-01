@@ -131,6 +131,7 @@ html[data-theme="dark"] .site-global-bg {
     box-shadow: 0 12px 32px rgba(123, 140, 246, 0.32);
     will-change: height, border-radius, transform;
     transition:
+        width 0.34s var(--ts-ease-lift),
         height 0.54s var(--ts-ease-lift),
         border-radius 0.34s var(--ts-ease-lift),
         row-gap 0.34s var(--ts-ease-lift),
@@ -141,9 +142,10 @@ html[data-theme="dark"] .site-global-bg {
 
 .rail-mark:hover,
 .rail-mark:focus-visible {
-    height: 4.75rem;
-    row-gap: 0.18rem;
-    padding: 0.08rem 0.12rem 0.45rem;
+    width: 3.5rem;
+    height: 4.2rem;
+    row-gap: 0.14rem;
+    padding: 0.08rem 0.16rem 0.38rem;
     border-radius: 999px;
     box-shadow: 0 18px 44px rgba(123, 140, 246, 0.34);
     transform: translateY(-1px);
@@ -156,17 +158,19 @@ html[data-theme="dark"] .site-global-bg {
 }
 
 .rail-mark-label {
-    width: 2.16rem;
+    width: max-content;
+    max-width: 3.12rem;
     max-height: 0;
     overflow: hidden;
     opacity: 0;
     color: #fff;
-    font-size: 0.58rem;
+    font-size: 0.6rem;
     font-weight: 900;
     letter-spacing: 0;
-    line-height: 1.08;
+    line-height: 1;
     text-align: center;
-    white-space: normal;
+    white-space: nowrap;
+    text-overflow: clip;
     transform: translateY(-0.24rem) scale(0.98);
     transition:
         max-height 0.46s var(--ts-ease-lift),
@@ -176,7 +180,7 @@ html[data-theme="dark"] .site-global-bg {
 
 .rail-mark:hover .rail-mark-label,
 .rail-mark:focus-visible .rail-mark-label {
-    max-height: 2rem;
+    max-height: 1rem;
     opacity: 1;
     transform: translateY(0) scale(1);
 }
@@ -214,9 +218,10 @@ html[data-theme="dark"] .site-global-bg {
     font-weight: 800;
     text-decoration: none;
     cursor: pointer;
-    white-space: normal;
+    white-space: nowrap;
     will-change: height, border-radius, transform;
     transition:
+        width 0.34s var(--ts-ease-lift),
         height 0.54s var(--ts-ease-lift),
         row-gap 0.34s var(--ts-ease-lift),
         padding 0.34s var(--ts-ease-lift),
@@ -242,17 +247,19 @@ html[data-theme="dark"] .site-global-bg {
 }
 
 .rail-label {
-    width: 2.08rem;
+    width: max-content;
+    max-width: 3.08rem;
     max-height: 0;
     overflow: hidden;
     opacity: 0;
     color: currentColor;
-    font-size: 0.56rem;
+    font-size: 0.6rem;
     font-weight: 900;
     letter-spacing: 0;
-    line-height: 1.08;
+    line-height: 1;
     text-align: center;
-    white-space: normal;
+    white-space: nowrap;
+    text-overflow: clip;
     transform: translateY(-0.24rem) scale(0.98);
     transition:
         max-height 0.46s var(--ts-ease-lift),
@@ -263,16 +270,17 @@ html[data-theme="dark"] .site-global-bg {
 .rail-link:hover,
 .rail-link:focus-visible,
 .rail-link.expanded {
-    height: 4.45rem;
-    row-gap: 0.16rem;
-    padding: 0.05rem 0.12rem 0.42rem;
+    width: 3.4rem;
+    height: 4.08rem;
+    row-gap: 0.12rem;
+    padding: 0.05rem 0.14rem 0.36rem;
     border-radius: 999px;
 }
 
 .rail-link:hover .rail-label,
 .rail-link:focus-visible .rail-label,
 .rail-link.expanded .rail-label {
-    max-height: 1.45rem;
+    max-height: 1rem;
     opacity: 1;
     transform: translateY(0) scale(1);
 }

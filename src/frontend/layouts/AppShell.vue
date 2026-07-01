@@ -73,6 +73,10 @@ function expandRail(key) {
   railExpandedKey.value = key;
 }
 
+function collapseRail(key) {
+  if (railExpandedKey.value === key) railExpandedKey.value = null;
+}
+
 function closeRailOnOutside(event) {
   if (!railRef.value || railRef.value.contains(event.target)) return;
   railExpandedKey.value = null;
@@ -115,7 +119,9 @@ onUnmounted(() => {
           :aria-label="item.label"
           :title="item.label"
           @pointerenter="expandRail(item.key)"
+          @pointerleave="collapseRail(item.key)"
           @focus="expandRail(item.key)"
+          @blur="collapseRail(item.key)"
           @click="expandRail(item.key); item.spa && ($event.preventDefault(), $emit('go', item.path))"
         >
           <span class="rail-icon"><TsIcon :name="item.icon" :size="20" /></span>
@@ -132,7 +138,9 @@ onUnmounted(() => {
           :aria-label="`站内信，${unreadNotifications} 条未读`"
           :title="`站内信，${unreadNotifications} 条未读`"
           @pointerenter="expandRail('notifications')"
+          @pointerleave="collapseRail('notifications')"
           @focus="expandRail('notifications')"
+          @blur="collapseRail('notifications')"
           @click="expandRail('notifications'); $emit('go', '/notifications')"
         >
           <span class="rail-icon"><TsIcon name="bell" :size="20" /></span>
@@ -147,7 +155,9 @@ onUnmounted(() => {
           :title="themeLabel"
           :class="{ expanded: railExpandedKey === 'theme' }"
           @pointerenter="expandRail('theme')"
+          @pointerleave="collapseRail('theme')"
           @focus="expandRail('theme')"
+          @blur="collapseRail('theme')"
           @click="expandRail('theme'); $emit('toggle-theme')"
         >
           <span class="rail-icon"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="20" /></span>
@@ -161,7 +171,9 @@ onUnmounted(() => {
           :aria-label="accountLabel"
           :title="accountLabel"
           @pointerenter="expandRail('account')"
+          @pointerleave="collapseRail('account')"
           @focus="expandRail('account')"
+          @blur="collapseRail('account')"
           @click.prevent="expandRail('account'); $emit('go', isAuthed ? '/user-center' : '/login')"
         >
           <span class="rail-icon rail-account-icon">
