@@ -196,7 +196,6 @@ const gallery = reactive({
 });
 const editingArtwork = ref(null);
 const previewArtwork = ref(null);
-const galleryScroller = ref(null);
 const toast = reactive({
   text: '',
   visible: false
@@ -928,15 +927,6 @@ function focusSharedArtwork() {
   }, 120);
 }
 
-function handleGalleryWheel(event) {
-  const scroller = event.currentTarget || galleryScroller.value;
-  if (!scroller || scroller.scrollWidth <= scroller.clientWidth) return;
-  const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-  if (!delta) return;
-  event.preventDefault();
-  scroller.scrollLeft += delta;
-}
-
 function handleArenaKeydown(event) {
   if (event.key === 'Escape' && previewArtwork.value) closeArtworkPreview();
 }
@@ -1206,7 +1196,7 @@ onBeforeUnmount(() => {
       </div>
       <div v-else-if="gallery.loading" class="arena-empty">{{ copy.loading }}</div>
       <div v-else-if="!gallery.items.length" class="arena-empty">{{ copy.empty }}</div>
-      <div v-else ref="galleryScroller" class="pixel-gallery-grid" @wheel="handleGalleryWheel">
+      <div v-else class="pixel-gallery-grid">
         <article
           v-for="artwork in gallery.items"
           :id="'pixel-art-' + artwork.id"
