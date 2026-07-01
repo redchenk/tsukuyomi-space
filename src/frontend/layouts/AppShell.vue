@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
@@ -19,6 +19,8 @@ const props = defineProps({
 defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
 
 const navOpen = ref(false);
+const railExpandedKey = ref(null);
+const railRef = ref(null);
 const unreadNotifications = ref(0);
 
 const hasGlobalBackground = computed(() => props.showChrome && props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
@@ -38,6 +40,11 @@ const navItems = computed(() => [
 const mobilePrimaryItems = computed(() => navItems.value.slice(0, 4));
 const accountLabel = computed(() => (props.isAuthed ? props.t.ucTitle : props.t.login));
 const themeLabel = computed(() => (props.theme === 'dark' ? '切换浅色主题' : '切换深色主题'));
+const railThemeLabel = computed(() => {
+  if (props.lang === 'ja') return props.theme === 'dark' ? 'ライト' : 'ダーク';
+  return props.theme === 'dark' ? '浅色' : '深色';
+});
+const railNotificationsLabel = computed(() => (props.lang === 'ja' ? '通知' : '站内信'));
 const moreLabel = computed(() => (props.lang === 'ja' ? 'その他' : '更多'));
 
 function userInitial() {
@@ -62,13 +69,29 @@ async function loadUnreadNotifications() {
   }
 }
 
+function expandRail(key) {
+  railExpandedKey.value = key;
+}
+
+function closeRailOnOutside(event) {
+  if (!railRef.value || railRef.value.contains(event.target)) return;
+  railExpandedKey.value = null;
+}
+
 watch(() => props.routeName, () => {
   navOpen.value = false;
+  railExpandedKey.value = null;
   loadUnreadNotifications();
 });
 
 watch(() => props.isAuthed, loadUnreadNotifications, { immediate: true });
-onMounted(loadUnreadNotifications);
+onMounted(() => {
+  loadUnreadNotifications();
+  document.addEventListener('pointerdown', closeRailOnOutside, { passive: true });
+});
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', closeRailOnOutside);
+});
 </script>
 
 <template>
@@ -76,9 +99,10 @@ onMounted(loadUnreadNotifications);
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && routeName !== 'room'" class="moon" aria-hidden="true"></div>
 
-    <aside v-if="showChrome" class="site-rail" aria-label="Quick navigation">
+    <aside v-if="showChrome" ref="railRef" class="site-rail" aria-label="Quick navigation">
       <a href="/hub" class="rail-mark" :aria-label="t.brand" @click.prevent="$emit('go', '/hub')">
         <TsIcon name="moon" :size="24" :stroke-width="1.8" />
+        <span class="rail-mark-label">{{ t.brand }}</span>
       </a>
 
       <nav class="rail-nav">
@@ -87,12 +111,15 @@ onMounted(loadUnreadNotifications);
           :key="item.key"
           :href="item.path"
           class="rail-link"
-          :class="{ active: item.active }"
+          :class="{ active: item.active, expanded: railExpandedKey === item.key }"
           :aria-label="item.label"
           :title="item.label"
-          @click="item.spa && ($event.preventDefault(), $emit('go', item.path))"
+          @pointerenter="expandRail(item.key)"
+          @focus="expandRail(item.key)"
+          @click="expandRail(item.key); item.spa && ($event.preventDefault(), $emit('go', item.path))"
         >
-          <TsIcon :name="item.icon" :size="20" />
+          <span class="rail-icon"><TsIcon :name="item.icon" :size="20" /></span>
+          <span class="rail-label">{{ item.label }}</span>
         </a>
       </nav>
 
@@ -100,12 +127,16 @@ onMounted(loadUnreadNotifications);
         <button
           v-if="showNotifications"
           class="rail-link rail-notifications"
+          :class="{ active: routeName === 'notifications', expanded: railExpandedKey === 'notifications' }"
           type="button"
           :aria-label="`站内信，${unreadNotifications} 条未读`"
           :title="`站内信，${unreadNotifications} 条未读`"
-          @click="$emit('go', '/notifications')"
+          @pointerenter="expandRail('notifications')"
+          @focus="expandRail('notifications')"
+          @click="expandRail('notifications'); $emit('go', '/notifications')"
         >
-          <TsIcon name="bell" :size="20" />
+          <span class="rail-icon"><TsIcon name="bell" :size="20" /></span>
+          <span class="rail-label">{{ railNotificationsLabel }}</span>
           <i v-if="unreadNotifications" class="rail-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</i>
         </button>
 
@@ -114,21 +145,30 @@ onMounted(loadUnreadNotifications);
           type="button"
           :aria-label="themeLabel"
           :title="themeLabel"
-          @click="$emit('toggle-theme')"
+          :class="{ expanded: railExpandedKey === 'theme' }"
+          @pointerenter="expandRail('theme')"
+          @focus="expandRail('theme')"
+          @click="expandRail('theme'); $emit('toggle-theme')"
         >
-          <TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="20" />
+          <span class="rail-icon"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="20" /></span>
+          <span class="rail-label">{{ railThemeLabel }}</span>
         </button>
 
         <a
           class="rail-link rail-account"
-          :class="{ active: routeName === 'userCenter' || routeName === 'userProfile' || routeName === 'login' }"
+          :class="{ active: routeName === 'userCenter' || routeName === 'userProfile' || routeName === 'login', expanded: railExpandedKey === 'account' }"
           :href="isAuthed ? '/user-center' : '/login'"
           :aria-label="accountLabel"
           :title="accountLabel"
-          @click.prevent="$emit('go', isAuthed ? '/user-center' : '/login')"
+          @pointerenter="expandRail('account')"
+          @focus="expandRail('account')"
+          @click.prevent="expandRail('account'); $emit('go', isAuthed ? '/user-center' : '/login')"
         >
-          <img v-if="user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
-          <span v-else aria-hidden="true">{{ userInitial() }}</span>
+          <span class="rail-icon rail-account-icon">
+            <img v-if="user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
+            <span v-else aria-hidden="true">{{ userInitial() }}</span>
+          </span>
+          <span class="rail-label">{{ accountLabel }}</span>
         </a>
       </div>
     </aside>
