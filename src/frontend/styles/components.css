@@ -109,6 +109,8 @@ html[data-theme="dark"] .site-global-bg {
     width: 4rem;
     display: grid;
     grid-template-rows: auto 1fr auto;
+    grid-template-columns: 2.5rem;
+    justify-content: center;
     justify-items: center;
     gap: var(--ts-space-4);
     padding: 0.85rem 0.55rem;
@@ -116,6 +118,7 @@ html[data-theme="dark"] .site-global-bg {
 }
 
 .rail-mark {
+    justify-self: center;
     width: 2.5rem;
     height: 2.5rem;
     display: flex;
@@ -142,7 +145,7 @@ html[data-theme="dark"] .site-global-bg {
 
 .rail-mark:hover,
 .rail-mark:focus-visible {
-    width: 3.5rem;
+    width: 3.72rem;
     height: 4.2rem;
     row-gap: 0.14rem;
     padding: 0.08rem 0.16rem 0.38rem;
@@ -155,11 +158,13 @@ html[data-theme="dark"] .site-global-bg {
     width: 2.5rem;
     min-width: 2.5rem;
     height: 2.5rem;
+    flex: 0 0 2.5rem;
+    margin: 0 auto;
 }
 
 .rail-mark-label {
     width: max-content;
-    max-width: 3.12rem;
+    max-width: 3.36rem;
     max-height: 0;
     overflow: hidden;
     opacity: 0;
@@ -188,18 +193,28 @@ html[data-theme="dark"] .site-global-bg {
 .rail-nav,
 .rail-footer {
     display: grid;
+    grid-template-columns: 2.5rem;
+    justify-content: center;
     gap: var(--ts-space-2);
-    width: 100%;
+    width: 2.5rem;
+    min-width: 0;
+    max-width: 2.5rem;
     justify-items: center;
+    overflow: visible;
 }
 
 .rail-nav {
     align-content: start;
 }
 
+.rail-footer {
+    align-self: end;
+}
+
 .rail-link,
 .rail-theme {
     position: relative;
+    justify-self: center;
     width: 2.35rem;
     height: 2.35rem;
     display: flex;
@@ -234,9 +249,10 @@ html[data-theme="dark"] .site-global-bg {
 }
 
 .rail-icon {
-    width: 2.35rem;
-    min-width: 2.35rem;
+    width: 100%;
+    min-width: 0;
     height: 2.35rem;
+    flex: 0 0 2.35rem;
     display: grid;
     place-items: center;
     border-radius: inherit;
@@ -248,7 +264,7 @@ html[data-theme="dark"] .site-global-bg {
 
 .rail-label {
     width: max-content;
-    max-width: 3.08rem;
+    max-width: 3.36rem;
     max-height: 0;
     overflow: hidden;
     opacity: 0;
@@ -270,7 +286,7 @@ html[data-theme="dark"] .site-global-bg {
 .rail-link:hover,
 .rail-link:focus-visible,
 .rail-link.expanded {
-    width: 3.4rem;
+    width: 3.72rem;
     height: 4.08rem;
     row-gap: 0.12rem;
     padding: 0.05rem 0.14rem 0.36rem;
