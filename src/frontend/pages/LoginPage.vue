@@ -4,12 +4,16 @@ import authVisualBgUrl from '../../../assets/images/auth-visual-bg.png';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import { getAuthRedirectFromLocation, sanitizeAuthRedirect, withAuthRedirect } from '../utils/authRedirect';
 
 const props = defineProps({
   t: { type: Object, required: true }
 });
 
 const emit = defineEmits(['auth-changed', 'go']);
+
+const authRedirect = computed(() => getAuthRedirectFromLocation('/hub'));
+const registerPath = computed(() => withAuthRedirect('/register', authRedirect.value));
 
 const login = reactive({
   method: 'password',
@@ -129,7 +133,7 @@ async function submitLogin() {
     await loadCurrentSession({ allowClear: false });
     emit('auth-changed', result.data.user);
     showMessage('success', props.t.loginSuccess);
-    setTimeout(() => emit('go', '/hub'), 700);
+    setTimeout(() => emit('go', authRedirect.value), 700);
   } catch (error) {
     showMessage('error', props.t.failedPrefix + error.message);
   }
@@ -140,11 +144,11 @@ async function finishOAuthLogin(result, fallbackMessage) {
   await loadCurrentSession({ allowClear: false });
   emit('auth-changed', result.data.user);
   showOAuthMessage('success', result.message || fallbackMessage);
-  setTimeout(() => emit('go', result.data.redirect || '/hub'), 700);
+  setTimeout(() => emit('go', sanitizeAuthRedirect(result.data?.redirect, authRedirect.value)), 700);
 }
 
 function startQQLogin() {
-  const redirect = '/hub';
+  const redirect = authRedirect.value;
   window.location.href = apiUrl(`/api/auth/oauth/qq/start?redirect=${encodeURIComponent(redirect)}`);
 }
 
@@ -156,7 +160,7 @@ function clearOAuthFlow() {
   oauth.password = '';
   oauth.emailCode = '';
   if (window.history?.replaceState) {
-    window.history.replaceState(null, '', '/login');
+    window.history.replaceState(null, '', withAuthRedirect('/login', authRedirect.value));
   }
 }
 
@@ -419,7 +423,7 @@ onMounted(() => {
             </div>
           </div>
           <div class="auth-card-footer">
-            <div class="panel-links">{{ t.noAccount }} <a href="/register" @click.prevent="go('/register')">{{ t.register }}</a></div>
+            <div class="panel-links">{{ t.noAccount }} <a :href="registerPath" @click.prevent="go(registerPath)">{{ t.register }}</a></div>
             <a class="auth-home-link" href="/" @click.prevent="go('/')">{{ authHomeLabel }}</a>
           </div>
         </section>

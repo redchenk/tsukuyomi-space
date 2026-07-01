@@ -4,12 +4,16 @@ import authVisualBgUrl from '../../../assets/images/auth-visual-bg.png';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import { getAuthRedirectFromLocation, withAuthRedirect } from '../utils/authRedirect';
 
 const props = defineProps({
   t: { type: Object, required: true }
 });
 
 const emit = defineEmits(['auth-changed', 'go']);
+
+const authRedirect = computed(() => getAuthRedirectFromLocation('/hub'));
+const loginPath = computed(() => withAuthRedirect('/login', authRedirect.value));
 
 const register = reactive({
   username: '',
@@ -84,7 +88,7 @@ async function submitRegister() {
       emit('auth-changed', result.data.user);
     }
     showMessage('success', props.t.registerSuccess);
-    setTimeout(() => emit('go', '/hub'), 800);
+    setTimeout(() => emit('go', authRedirect.value), 800);
   } catch (error) {
     showMessage('error', props.t.failedPrefix + error.message);
   }
@@ -95,7 +99,7 @@ function go(path) {
 }
 
 function startQQLogin() {
-  const redirect = '/hub';
+  const redirect = authRedirect.value;
   window.location.href = apiUrl(`/api/auth/oauth/qq/start?redirect=${encodeURIComponent(redirect)}`);
 }
 </script>
@@ -188,7 +192,7 @@ function startQQLogin() {
             </div>
           </div>
           <div class="auth-card-footer">
-            <div class="panel-links">{{ t.haveAccount }} <a href="/login" @click.prevent="go('/login')">{{ t.login }}</a></div>
+            <div class="panel-links">{{ t.haveAccount }} <a :href="loginPath" @click.prevent="go(loginPath)">{{ t.login }}</a></div>
             <a class="auth-home-link" href="/" @click.prevent="go('/')">{{ authHomeLabel }}</a>
           </div>
         </section>

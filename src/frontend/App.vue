@@ -7,6 +7,7 @@ import AppShell from './layouts/AppShell.vue';
 import SitePet from './components/SitePet.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
+import { isAuthPath, withAuthRedirect } from './utils/authRedirect';
 
 const route = useRoute();
 const router = useRouter();
@@ -68,11 +69,27 @@ function toggleTheme() {
   setTheme(theme.value === 'dark' ? 'light' : 'dark');
 }
 
+function resolveNavigationPath(path) {
+  const value = String(path || '/hub');
+  if (!isAuthPath(value)) return value;
+
+  try {
+    const target = new URL(value, window.location.origin);
+    if (target.searchParams.get('redirect')) return value;
+  } catch (_) {
+    // Fall through and attach the current route when the path is still an auth path.
+  }
+
+  const redirect = (!isAuthRoute.value && !isAccessRoute.value) ? route.fullPath : '';
+  return withAuthRedirect(value, redirect);
+}
+
 function go(path) {
+  const target = resolveNavigationPath(path);
   if (isAccessRoute.value && path === '/hub') {
     sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1');
   }
-  router.push(path);
+  router.push(target);
 }
 
 function beginRouteTransition() {
