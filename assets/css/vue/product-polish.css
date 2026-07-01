@@ -887,3 +887,437 @@ body .page.auth-page-register .auth-card-footer {
         animation: none !important;
     }
 }
+
+/* Unified visual system pass: calmer moon-blue controls, less purple/pink drift. */
+:root {
+    --ts-color-blue-500: #4fb7d4;
+    --ts-color-blue-700: #2c7da0;
+    --ts-color-lilac-500: #6d8aaa;
+    --ts-color-lilac-700: #506a8c;
+    --ts-color-pink-400: #c994a4;
+    --ts-color-pink-600: #a96573;
+    --ts-accent: #56bed9;
+    --ts-accent-2: #7ccbd4;
+    --ts-cyan: #9be7f0;
+    --ts-card-hover: rgba(86, 190, 217, 0.12);
+    --ts-border-strong: rgba(119, 204, 222, 0.34);
+    --ts-focus-ring: 0 0 0 3px rgba(86, 190, 217, 0.24);
+    --ts-shadow-accent: 0 16px 38px rgba(44, 125, 160, 0.22);
+    --pink: var(--ts-color-pink-400);
+    --pink-strong: var(--ts-color-pink-600);
+    --lilac: var(--ts-color-lilac-500);
+    --moon-accent: var(--ts-accent);
+    --moon-accent-2: var(--ts-accent-2);
+    --ts-polish-card-hover: rgba(86, 190, 217, 0.12);
+    --ts-polish-border-strong: rgba(119, 204, 222, 0.34);
+    --ts-polish-control-bg: rgba(255, 255, 255, 0.07);
+    --ts-polish-control-hover: rgba(126, 203, 212, 0.14);
+    --ts-unified-button-radius: 12px;
+    --ts-unified-button-radius-compact: 10px;
+    --ts-unified-button-height: 42px;
+    --ts-unified-button-bg: rgba(255, 255, 255, 0.07);
+    --ts-unified-button-hover: rgba(126, 203, 212, 0.14);
+    --ts-unified-button-border: rgba(231, 249, 255, 0.15);
+    --ts-unified-button-border-hover: rgba(147, 226, 239, 0.34);
+    --ts-unified-button-shadow: 0 12px 28px rgba(5, 12, 28, 0.18);
+    --ts-unified-primary-bg: linear-gradient(135deg, #7bd4e7 0%, #4aa8ca 100%);
+    --ts-unified-primary-bg-hover: linear-gradient(135deg, #8fe0ef 0%, #56b7d6 100%);
+    --ts-unified-primary-text: #061624;
+    --ts-unified-danger-bg: rgba(180, 83, 96, 0.15);
+    --ts-unified-danger-border: rgba(213, 123, 135, 0.32);
+    --ts-unified-danger-text: #ffd7de;
+}
+
+html[data-theme="light"] {
+    --ts-bg: #eef7fb;
+    --ts-bg-soft: #e7f2f7;
+    --ts-bg-warm: #f7fafc;
+    --ts-surface: rgba(255, 255, 255, 0.78);
+    --ts-surface-strong: rgba(255, 255, 255, 0.92);
+    --ts-card: rgba(255, 255, 255, 0.66);
+    --ts-card-hover: rgba(232, 246, 250, 0.88);
+    --ts-border: rgba(58, 88, 116, 0.16);
+    --ts-border-strong: rgba(75, 166, 194, 0.32);
+    --ts-text: #263443;
+    --ts-text-strong: #111a24;
+    --ts-muted: rgba(38, 52, 67, 0.68);
+    --ts-accent: #3f9fbd;
+    --ts-accent-2: #66bbc5;
+    --ts-cyan: #53bfd4;
+    --ts-focus-ring: 0 0 0 3px rgba(63, 159, 189, 0.2);
+    --ts-polish-card-hover: rgba(63, 159, 189, 0.11);
+    --ts-polish-border: rgba(58, 88, 116, 0.16);
+    --ts-polish-border-strong: rgba(63, 159, 189, 0.32);
+    --ts-polish-control-bg: rgba(255, 255, 255, 0.74);
+    --ts-polish-control-hover: rgba(231, 247, 251, 0.94);
+    --ts-unified-button-bg: rgba(255, 255, 255, 0.78);
+    --ts-unified-button-hover: rgba(231, 247, 251, 0.96);
+    --ts-unified-button-border: rgba(58, 88, 116, 0.16);
+    --ts-unified-button-border-hover: rgba(63, 159, 189, 0.34);
+    --ts-unified-button-shadow: 0 12px 28px rgba(82, 113, 150, 0.12);
+    --ts-unified-primary-bg: linear-gradient(135deg, #5cc2d7 0%, #348bb0 100%);
+    --ts-unified-primary-bg-hover: linear-gradient(135deg, #69cfe0 0%, #3b9abc 100%);
+    --ts-unified-primary-text: #f8fdff;
+    --ts-unified-danger-bg: rgba(169, 85, 97, 0.1);
+    --ts-unified-danger-border: rgba(169, 85, 97, 0.24);
+    --ts-unified-danger-text: #8a3a48;
+}
+
+html[data-theme="dark"] {
+    --ts-bg: #08101d;
+    --ts-bg-soft: #101b2d;
+    --ts-bg-warm: #121c2a;
+    --ts-card-hover: rgba(86, 190, 217, 0.12);
+    --ts-border-strong: rgba(147, 226, 239, 0.34);
+    --ts-accent: #74d3e6;
+    --ts-accent-2: #8fd2d6;
+    --ts-cyan: #a7edf5;
+    --ts-glass: rgba(8, 16, 29, 0.68);
+    --ts-glass-strong: rgba(8, 16, 29, 0.86);
+    --ts-shadow-md: 0 18px 48px rgba(0, 0, 0, 0.28);
+    --ts-shadow-lg: 0 24px 76px rgba(0, 0, 0, 0.34);
+}
+
+body,
+html[data-theme="dark"] body,
+body.vue-global-bg-route {
+    background:
+        radial-gradient(circle at 18% 8%, rgba(126, 203, 212, 0.12), transparent 34%),
+        radial-gradient(circle at 86% 14%, rgba(86, 190, 217, 0.08), transparent 30%),
+        linear-gradient(135deg, rgba(6, 12, 24, 0.94), rgba(11, 24, 42, 0.9) 48%, rgba(12, 18, 31, 0.96)),
+        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] body.vue-global-bg-route {
+    background:
+        radial-gradient(circle at 18% 8%, rgba(63, 159, 189, 0.12), transparent 34%),
+        radial-gradient(circle at 86% 14%, rgba(102, 187, 197, 0.09), transparent 30%),
+        linear-gradient(135deg, rgba(238, 247, 251, 0.94), rgba(231, 242, 247, 0.91) 48%, rgba(247, 250, 252, 0.96)),
+        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+}
+
+.site-global-bg,
+body::before {
+    filter: saturate(0.88) hue-rotate(-8deg);
+}
+
+:where(.ts-icon) {
+    flex: 0 0 auto;
+    color: currentColor;
+    transition:
+        color 150ms var(--ts-ease-standard),
+        opacity 150ms var(--ts-ease-standard),
+        transform 150ms var(--ts-ease-lift);
+}
+
+.page :where(button, a.primary-btn, a.ghost-btn, a.danger-btn, .nav-link, .rail-link, .mobile-bottom-link, .primary-btn, .ghost-btn, .danger-btn, .lang-btn, .theme-toggle, .room-theme-toggle, .panel-btn, .panel-toggle-btn, .room-nav-button, .terminal-nav-btn, .filter-btn, .chip, .user-chip, .icon-btn, .mode-btn, .code-btn, .tab-btn, .stage-new-btn, .stage-page-btn, .plaza-page-btn, .plaza-topic-chip, .plaza-refresh-btn, .oauth-icon-btn, .memory-expand-btn, .memory-manager-toggle, .arena-publish-btn, .arena-upload-btn, .arena-share-btn, .gallery-upload-btn, .editor-asset-library-btn, .markdown-image-btn, .live2d-icon-btn, .live2d-action-btn, .live2d-run-btn, .music-mini-btn, .site-music-mini-btn, .site-music-play, .chat-attach-btn, .chat-tts-btn, .gallery-card-actions button, .gallery-feature-actions button, .gallery-quick button, .gallery-tags button, .hub-plaza-form button, .notification-tools .compact):not(.arena-color-chip):not(.terminal-card):not(.terminal-stat-card) {
+    min-height: var(--ts-unified-button-height);
+    border: 1px solid var(--ts-unified-button-border);
+    border-radius: var(--ts-unified-button-radius);
+    color: var(--ts-text);
+    background: var(--ts-unified-button-bg);
+    box-shadow: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    letter-spacing: 0;
+    text-decoration: none;
+    transition:
+        transform 150ms var(--ts-ease-lift),
+        border-color 150ms var(--ts-ease-standard),
+        background 150ms var(--ts-ease-standard),
+        color 150ms var(--ts-ease-standard),
+        box-shadow 150ms var(--ts-ease-standard),
+        opacity 150ms var(--ts-ease-standard);
+}
+
+.page :where(.compact, .terminal-actions .ghost-btn, .terminal-actions .danger-btn, .notification-tools .compact) {
+    min-height: 34px;
+    border-radius: var(--ts-unified-button-radius-compact);
+}
+
+.page :where(.icon-btn, .uc-icon-action, .profile-icon-action, .music-icon-btn, .site-music-play, .live2d-icon-btn, .chat-attach-btn, .chat-tts-btn, .gallery-card-actions button, .hub-plaza-form button):not(.primary-btn):not(.ghost-btn):not(.danger-btn) {
+    min-width: var(--ts-unified-button-height);
+    width: var(--ts-unified-button-height);
+    padding-inline: 0;
+    aspect-ratio: 1;
+}
+
+.page :where(button, a.primary-btn, a.ghost-btn, a.danger-btn, .nav-link, .rail-link, .mobile-bottom-link, .primary-btn, .ghost-btn, .danger-btn, .lang-btn, .theme-toggle, .room-theme-toggle, .panel-btn, .panel-toggle-btn, .room-nav-button, .terminal-nav-btn, .filter-btn, .chip, .user-chip, .icon-btn, .mode-btn, .code-btn, .tab-btn, .stage-new-btn, .stage-page-btn, .plaza-page-btn, .plaza-topic-chip, .plaza-refresh-btn, .oauth-icon-btn, .memory-expand-btn, .memory-manager-toggle, .arena-publish-btn, .arena-upload-btn, .arena-share-btn, .gallery-upload-btn, .editor-asset-library-btn, .markdown-image-btn, .live2d-icon-btn, .live2d-action-btn, .live2d-run-btn, .music-mini-btn, .site-music-mini-btn, .site-music-play, .chat-attach-btn, .chat-tts-btn, .gallery-card-actions button, .gallery-feature-actions button, .gallery-quick button, .gallery-tags button, .hub-plaza-form button, .notification-tools .compact):not(.arena-color-chip):not(.terminal-card):not(.terminal-stat-card):not(:disabled):hover {
+    color: var(--ts-text-strong);
+    border-color: var(--ts-unified-button-border-hover);
+    background: var(--ts-unified-button-hover);
+    box-shadow: var(--ts-unified-button-shadow);
+    transform: translate3d(0, -1px, 0);
+}
+
+.page :where(button, a.primary-btn, a.ghost-btn, a.danger-btn, .nav-link, .rail-link, .mobile-bottom-link, .primary-btn, .ghost-btn, .danger-btn, .lang-btn, .theme-toggle, .room-theme-toggle, .panel-btn, .panel-toggle-btn, .room-nav-button, .terminal-nav-btn, .filter-btn, .chip, .user-chip, .icon-btn, .mode-btn, .code-btn, .tab-btn, .stage-new-btn, .stage-page-btn, .plaza-page-btn, .plaza-topic-chip, .plaza-refresh-btn, .oauth-icon-btn, .memory-expand-btn, .memory-manager-toggle, .arena-publish-btn, .arena-upload-btn, .arena-share-btn, .gallery-upload-btn, .editor-asset-library-btn, .markdown-image-btn, .live2d-icon-btn, .live2d-action-btn, .live2d-run-btn, .music-mini-btn, .site-music-mini-btn, .site-music-play, .chat-attach-btn, .chat-tts-btn, .gallery-card-actions button, .gallery-feature-actions button, .gallery-quick button, .gallery-tags button, .hub-plaza-form button, .notification-tools .compact):not(.terminal-card):not(.terminal-stat-card):focus-visible {
+    outline: none;
+    border-color: var(--ts-unified-button-border-hover);
+    box-shadow: var(--ts-focus-ring), var(--ts-unified-button-shadow);
+}
+
+.page :where(.primary-btn, .stage-new-btn, .arena-publish-btn, .gallery-upload-btn, .plaza-composer .primary-btn, .comment-form .primary-btn, .reply-form .primary-btn),
+body .page.auth-page .auth-card .primary-btn,
+body .page.auth-page-register .auth-card .primary-btn,
+body .page.hub .hub-plaza-form button,
+.nav-link.router-link-active,
+.terminal-nav-btn.active,
+.rail-link.active,
+.mobile-bottom-link.active,
+.room-nav-button.router-link-active,
+.room-nav-button.active,
+.filter-btn.active,
+.chip.active,
+.user-chip.router-link-active,
+.mode-btn.active,
+.tab-btn.active,
+.stage-page-btn.active,
+.plaza-page-btn.active,
+.gallery-quick button.active,
+body .page.arena-page .arena-tool-toggle .icon-btn.active,
+body .page.arena-page .arena-size-options .chip.active,
+body .page.arena-page .arena-gallery-tools .chip.active {
+    color: var(--ts-unified-primary-text);
+    border-color: rgba(151, 231, 242, 0.5);
+    background: var(--ts-unified-primary-bg);
+    box-shadow: 0 14px 34px rgba(44, 125, 160, 0.24);
+}
+
+.page :where(.primary-btn, .stage-new-btn, .arena-publish-btn, .gallery-upload-btn, .plaza-composer .primary-btn, .comment-form .primary-btn, .reply-form .primary-btn):not(:disabled):hover,
+body .page.auth-page .auth-card .primary-btn:not(:disabled):hover,
+body .page.auth-page-register .auth-card .primary-btn:not(:disabled):hover,
+body .page.hub .hub-plaza-form button:not(:disabled):hover {
+    color: var(--ts-unified-primary-text);
+    background: var(--ts-unified-primary-bg-hover);
+    box-shadow: 0 16px 38px rgba(44, 125, 160, 0.28);
+}
+
+.page :where(.danger-btn, .terminal-actions .danger-btn, .attachments-card-actions .danger-btn),
+body .page.uc-page :where(.danger-btn),
+body .page.user-profile-page :where(.danger-btn) {
+    color: var(--ts-unified-danger-text);
+    border-color: var(--ts-unified-danger-border);
+    background: var(--ts-unified-danger-bg);
+}
+
+.page :where(.danger-btn, .terminal-actions .danger-btn, .attachments-card-actions .danger-btn):not(:disabled):hover {
+    color: var(--ts-unified-danger-text);
+    border-color: rgba(222, 142, 154, 0.44);
+    background: rgba(180, 83, 96, 0.2);
+}
+
+.page :where(button, .primary-btn, .ghost-btn, .danger-btn, .icon-btn, .panel-btn, .tab-btn, .chip, .filter-btn, .mode-btn, .code-btn, .terminal-nav-btn, .stage-page-btn, .plaza-page-btn):disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+    transform: none;
+    box-shadow: none;
+}
+
+body .page.auth-page .oauth-icon-btn,
+body .page.auth-page .auth-card input,
+body .page.auth-page .auth-card .code-btn,
+body .page.auth-page .auth-card .mode-row {
+    border-color: var(--ts-unified-button-border);
+    background: var(--ts-unified-button-bg);
+}
+
+body .page.auth-page .oauth-icon-btn:hover {
+    border-color: var(--ts-unified-button-border-hover);
+    background: var(--ts-unified-button-hover);
+    box-shadow: var(--ts-unified-button-shadow);
+}
+
+body .page.auth-page .auth-card .mode-btn.active {
+    color: var(--ts-unified-primary-text);
+    background: var(--ts-unified-primary-bg);
+}
+
+.notifications-count,
+.uc-stat-icon,
+.profile-stat-icon,
+.room-card-icon,
+.room-settings-guide-icon,
+.scene-icon,
+.notification-type-icon,
+.room-weather-icon {
+    color: var(--ts-accent);
+    border-color: var(--ts-polish-border);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
+        rgba(86, 190, 217, 0.1);
+    box-shadow: none;
+}
+
+.notifications-count {
+    color: var(--ts-unified-primary-text);
+    background: var(--ts-unified-primary-bg);
+    box-shadow: 0 12px 28px rgba(44, 125, 160, 0.22);
+}
+
+.notification-type-icon,
+.room-weather-icon {
+    width: 1.85rem;
+    height: 1.85rem;
+    border: 1px solid var(--ts-polish-border);
+    border-radius: 10px;
+    display: inline-grid;
+    place-items: center;
+}
+
+.notification-head strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.room-weather-icon {
+    width: 2.65rem;
+    height: 2.65rem;
+    border-radius: 14px;
+}
+
+body .page.arena-page .pixel-art-actions .icon-btn.liked {
+    color: #fff7f9;
+    border-color: rgba(213, 123, 135, 0.36);
+    background: rgba(180, 83, 96, 0.18);
+    box-shadow: 0 10px 24px rgba(120, 42, 58, 0.16);
+}
+
+.arena-color-chip {
+    border-color: var(--ts-polish-border);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.arena-color-chip.active,
+.arena-color-chip:hover {
+    border-color: var(--ts-polish-border-strong);
+    box-shadow:
+        inset 0 0 0 2px rgba(255, 255, 255, 0.78),
+        0 0 0 3px rgba(86, 190, 217, 0.18);
+}
+
+.page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):hover {
+    border-color: var(--ts-polish-border-strong);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 18px 48px rgba(4, 12, 28, 0.24);
+}
+
+body .page.hub .hub-stage-accent,
+body .page.hub .hub-stage-meter,
+body .page.hub .hub-plaza-line,
+.gallery-feature::before,
+.plaza-topic-chip.active,
+.stage-result-strip strong,
+.arena-progress-fill,
+.room-memory-meter {
+    background: linear-gradient(90deg, var(--ts-accent), var(--ts-accent-2));
+}
+
+body .page.hub .hub-pulse,
+body .page.hub .hub-orbit,
+body .page.hub .hub-stage-ribbon,
+body .page.hub .hub-scroll-thread {
+    border-color: rgba(126, 203, 212, 0.24);
+    box-shadow: 0 0 42px rgba(86, 190, 217, 0.12);
+}
+
+@media (max-width: 620px) {
+    .page :where(button, a.primary-btn, a.ghost-btn, a.danger-btn, .primary-btn, .ghost-btn, .danger-btn, .icon-btn, .chip, .filter-btn, .tab-btn):not(.arena-color-chip) {
+        border-radius: 11px;
+    }
+}
+
+/* Final specificity guard for shell controls and page-local overrides. */
+.rail-mark {
+    color: var(--ts-unified-primary-text);
+    border-color: rgba(151, 231, 242, 0.5);
+    background: var(--ts-unified-primary-bg);
+    box-shadow: 0 12px 30px rgba(44, 125, 160, 0.24);
+}
+
+.rail-mark:hover,
+.rail-mark:focus-visible {
+    color: var(--ts-unified-primary-text);
+    border-color: rgba(171, 239, 248, 0.62);
+    background: var(--ts-unified-primary-bg-hover);
+    box-shadow: var(--ts-focus-ring), 0 16px 38px rgba(44, 125, 160, 0.26);
+}
+
+.site-rail .rail-link {
+    border-color: transparent;
+    background: transparent;
+}
+
+.site-rail .rail-link:hover,
+.site-rail .rail-link:focus-visible,
+.site-rail .rail-link.expanded {
+    color: var(--ts-text-strong);
+    border-color: var(--ts-unified-button-border-hover);
+    background: var(--ts-unified-button-hover);
+    box-shadow: 0 10px 24px rgba(5, 12, 28, 0.16);
+}
+
+.site-rail .rail-link.active,
+.mobile-bottom-link.active {
+    color: var(--ts-unified-primary-text);
+    border-color: rgba(151, 231, 242, 0.5);
+    background: var(--ts-unified-primary-bg);
+    box-shadow: 0 12px 28px rgba(44, 125, 160, 0.22);
+}
+
+.mobile-bottom-link {
+    border-color: var(--ts-unified-button-border);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+body .page :where(.primary-btn, .stage-new-btn, .arena-publish-btn, .gallery-upload-btn, .plaza-composer .primary-btn, .comment-form .primary-btn, .reply-form .primary-btn),
+body .page.auth-page .auth-card .primary-btn,
+body .page.auth-page-register .auth-card .primary-btn,
+body .page.arena-page .arena-canvas-actions .arena-publish-btn,
+body .page.uc-page .primary-btn,
+body .page.user-profile-page .primary-btn,
+body .page.room-settings-page .primary-btn,
+body .page.terminal-page .primary-btn,
+body .page.gallery-page .primary-btn,
+body .page.editor-page .primary-btn,
+body .page.attachments-page .primary-btn {
+    color: var(--ts-unified-primary-text) !important;
+    border-color: rgba(151, 231, 242, 0.5) !important;
+    background: var(--ts-unified-primary-bg) !important;
+    box-shadow: 0 14px 34px rgba(44, 125, 160, 0.24) !important;
+}
+
+body .page :where(.primary-btn, .stage-new-btn, .arena-publish-btn, .gallery-upload-btn, .plaza-composer .primary-btn, .comment-form .primary-btn, .reply-form .primary-btn):not(:disabled):hover,
+body .page.auth-page .auth-card .primary-btn:not(:disabled):hover,
+body .page.auth-page-register .auth-card .primary-btn:not(:disabled):hover,
+body .page.arena-page .arena-canvas-actions .arena-publish-btn:not(:disabled):hover,
+body .page.uc-page .primary-btn:not(:disabled):hover,
+body .page.user-profile-page .primary-btn:not(:disabled):hover,
+body .page.room-settings-page .primary-btn:not(:disabled):hover,
+body .page.terminal-page .primary-btn:not(:disabled):hover,
+body .page.gallery-page .primary-btn:not(:disabled):hover,
+body .page.editor-page .primary-btn:not(:disabled):hover,
+body .page.attachments-page .primary-btn:not(:disabled):hover {
+    color: var(--ts-unified-primary-text) !important;
+    background: var(--ts-unified-primary-bg-hover) !important;
+    box-shadow: 0 16px 38px rgba(44, 125, 160, 0.28) !important;
+}
+
+body .page :where(.filter-btn.active, .chip.active, .mode-btn.active, .tab-btn.active, .stage-page-btn.active, .plaza-page-btn.active),
+body .page.arena-page :where(.arena-tool-toggle .icon-btn.active, .arena-size-options .chip.active, .arena-gallery-tools .chip.active),
+body .page.uc-page .tab-btn.active,
+body .page.user-profile-page .profile-actions .primary-btn {
+    color: var(--ts-unified-primary-text) !important;
+    border-color: rgba(151, 231, 242, 0.5) !important;
+    background: var(--ts-unified-primary-bg) !important;
+    box-shadow: 0 12px 28px rgba(44, 125, 160, 0.22) !important;
+}
+
+body .page.auth-page :where(.auth-card-footer a, .panel-links a, .auth-home-link),
+body .page.auth-page-register :where(.auth-card-footer a, .panel-links a, .auth-home-link) {
+    color: var(--ts-cyan);
+}

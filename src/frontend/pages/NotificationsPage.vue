@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive } from 'vue';
 import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import { formatDateTime } from '../utils/time';
+import TsIcon from '../components/TsIcon.vue';
 
 const emit = defineEmits(['go']);
 
@@ -20,13 +21,13 @@ function formatDate(value) {
 
 function notificationIcon(type) {
   const icons = {
-    like: '♥',
-    reply: '↩',
-    mention: '@',
-    follow: '+',
-    bookmark: '★'
+    like: 'heart',
+    reply: 'message',
+    mention: 'mail',
+    follow: 'userPlus',
+    bookmark: 'bookmark'
   };
-  return icons[type] || '•';
+  return icons[type] || 'bell';
 }
 
 function actorInitial(item) {
@@ -128,7 +129,7 @@ onMounted(loadNotifications);
           </div>
           <div class="notification-main">
             <div class="notification-head">
-              <strong><span aria-hidden="true">{{ notificationIcon(item.type) }}</span> {{ item.title }}</strong>
+              <strong><span class="notification-type-icon" aria-hidden="true"><TsIcon :name="notificationIcon(item.type)" :size="16" /></span> {{ item.title }}</strong>
               <time>{{ formatDate(item.created_at) }}</time>
             </div>
             <p>{{ item.content }}</p>
