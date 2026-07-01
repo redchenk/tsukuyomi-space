@@ -109,30 +109,31 @@ html[data-theme="dark"] .site-global-bg {
     width: 4rem;
     display: grid;
     grid-template-rows: auto 1fr auto;
-    justify-items: start;
+    justify-items: center;
     gap: var(--ts-space-4);
     padding: 0.85rem 0.55rem;
     overflow: visible;
 }
 
 .rail-mark {
-    width: max-content;
-    max-width: 2.5rem;
-    min-width: 2.5rem;
+    width: 2.5rem;
     height: 2.5rem;
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0;
+    justify-content: flex-start;
+    row-gap: 0;
     padding: 0;
     overflow: hidden;
     border-radius: 50%;
     color: #fff;
     background: linear-gradient(135deg, rgba(123, 140, 246, 0.95), rgba(255, 122, 200, 0.78));
     box-shadow: 0 12px 32px rgba(123, 140, 246, 0.32);
+    will-change: height, border-radius, transform;
     transition:
-        max-width 0.58s var(--ts-ease-lift),
+        height 0.54s var(--ts-ease-lift),
         border-radius 0.34s var(--ts-ease-lift),
-        gap 0.34s var(--ts-ease-lift),
+        row-gap 0.34s var(--ts-ease-lift),
         padding 0.34s var(--ts-ease-lift),
         transform var(--ts-motion-fast) var(--ts-ease-lift),
         box-shadow var(--ts-motion-base) var(--ts-ease-standard);
@@ -140,9 +141,9 @@ html[data-theme="dark"] .site-global-bg {
 
 .rail-mark:hover,
 .rail-mark:focus-visible {
-    max-width: 11.5rem;
-    gap: 0.48rem;
-    padding: 0 0.82rem 0 0.58rem;
+    height: 4.75rem;
+    row-gap: 0.18rem;
+    padding: 0.08rem 0.12rem 0.45rem;
     border-radius: 999px;
     box-shadow: 0 18px 44px rgba(123, 140, 246, 0.34);
     transform: translateY(-1px);
@@ -151,29 +152,33 @@ html[data-theme="dark"] .site-global-bg {
 .rail-mark .ts-icon {
     width: 2.5rem;
     min-width: 2.5rem;
+    height: 2.5rem;
 }
 
 .rail-mark-label {
-    max-width: 0;
+    width: 2.16rem;
+    max-height: 0;
     overflow: hidden;
     opacity: 0;
     color: #fff;
-    font-size: 0.78rem;
+    font-size: 0.58rem;
     font-weight: 900;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    transform: translateX(-0.35rem);
+    letter-spacing: 0;
+    line-height: 1.08;
+    text-align: center;
+    white-space: normal;
+    transform: translateY(-0.24rem) scale(0.98);
     transition:
-        max-width 0.52s var(--ts-ease-lift),
+        max-height 0.46s var(--ts-ease-lift),
         opacity 0.22s ease,
         transform 0.34s var(--ts-ease-lift);
 }
 
 .rail-mark:hover .rail-mark-label,
 .rail-mark:focus-visible .rail-mark-label {
-    max-width: 8rem;
+    max-height: 2rem;
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0) scale(1);
 }
 
 .rail-nav,
@@ -181,7 +186,7 @@ html[data-theme="dark"] .site-global-bg {
     display: grid;
     gap: var(--ts-space-2);
     width: 100%;
-    justify-items: start;
+    justify-items: center;
 }
 
 .rail-nav {
@@ -191,14 +196,13 @@ html[data-theme="dark"] .site-global-bg {
 .rail-link,
 .rail-theme {
     position: relative;
-    width: max-content;
-    max-width: 2.35rem;
-    min-width: 2.35rem;
+    width: 2.35rem;
     height: 2.35rem;
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    gap: 0;
+    row-gap: 0;
     padding: 0;
     overflow: hidden;
     border: 1px solid transparent;
@@ -210,10 +214,11 @@ html[data-theme="dark"] .site-global-bg {
     font-weight: 800;
     text-decoration: none;
     cursor: pointer;
-    white-space: nowrap;
+    white-space: normal;
+    will-change: height, border-radius, transform;
     transition:
-        max-width 0.58s var(--ts-ease-lift),
-        gap 0.34s var(--ts-ease-lift),
+        height 0.54s var(--ts-ease-lift),
+        row-gap 0.34s var(--ts-ease-lift),
         padding 0.34s var(--ts-ease-lift),
         transform var(--ts-motion-fast) var(--ts-ease-lift),
         background var(--ts-motion-base),
@@ -237,18 +242,20 @@ html[data-theme="dark"] .site-global-bg {
 }
 
 .rail-label {
-    max-width: 0;
+    width: 2.08rem;
+    max-height: 0;
     overflow: hidden;
     opacity: 0;
     color: currentColor;
-    font-size: 0.82rem;
+    font-size: 0.56rem;
     font-weight: 900;
     letter-spacing: 0;
-    line-height: 1;
-    white-space: nowrap;
-    transform: translateX(-0.35rem);
+    line-height: 1.08;
+    text-align: center;
+    white-space: normal;
+    transform: translateY(-0.24rem) scale(0.98);
     transition:
-        max-width 0.52s var(--ts-ease-lift),
+        max-height 0.46s var(--ts-ease-lift),
         opacity 0.22s ease,
         transform 0.34s var(--ts-ease-lift);
 }
@@ -256,18 +263,18 @@ html[data-theme="dark"] .site-global-bg {
 .rail-link:hover,
 .rail-link:focus-visible,
 .rail-link.expanded {
-    max-width: 11.5rem;
-    gap: 0.46rem;
-    padding-right: 0.9rem;
+    height: 4.45rem;
+    row-gap: 0.16rem;
+    padding: 0.05rem 0.12rem 0.42rem;
     border-radius: 999px;
 }
 
 .rail-link:hover .rail-label,
 .rail-link:focus-visible .rail-label,
 .rail-link.expanded .rail-label {
-    max-width: 8.2rem;
+    max-height: 1.45rem;
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0) scale(1);
 }
 
 .rail-link:hover,
