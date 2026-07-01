@@ -143,7 +143,7 @@ export function setPublicStatsCache(data) {
 }
 
 export async function loadPublicStats(options = {}) {
-  const maxAgeMs = Number(options.maxAgeMs || 60000);
+  const maxAgeMs = Number(options.maxAgeMs ?? 5000);
   const cached = readPublicStatsCache();
   const fresh = cached?.cachedAt && Date.now() - cached.cachedAt < maxAgeMs;
 
@@ -154,9 +154,13 @@ export async function loadPublicStats(options = {}) {
       : publicStatsRequest;
   }
 
-  publicStatsRequest = fetch(apiUrl('/api/stats'), {
+  const statsPath = options.live === false
+    ? noStoreUrl('/api/stats')
+    : `/api/stats/live/${Date.now().toString(36)}`;
+
+  publicStatsRequest = fetch(apiUrl(statsPath), {
     headers: { Accept: 'application/json' },
-    cache: options.cache || 'default'
+    cache: options.cache || 'no-store'
   })
     .then(parseResponse)
     .then((result) => {

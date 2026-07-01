@@ -221,7 +221,7 @@ function plazaSyncPageWithHash() {
 
 async function loadPlazaStats() {
   try {
-    plaza.stats = await loadPublicStats({ maxAgeMs: 60000 }) || {};
+    plaza.stats = await loadPublicStats({ force: true, maxAgeMs: 0, staleWhileRevalidate: false }) || {};
   } catch (_) {}
 }
 

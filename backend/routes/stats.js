@@ -1,7 +1,6 @@
 const express = require('express');
 const config = require('../config');
 const statsRepository = require('../repositories/stats-repository');
-const responseCache = require('../services/response-cache');
 
 const router = express.Router();
 
@@ -39,22 +38,22 @@ function statsPayload() {
     };
 }
 
-function setPublicStatsCache(res) {
+function setLiveStatsHeaders(res) {
     res.set({
-        'Cache-Control': 'public, max-age=15, stale-while-revalidate=45',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store',
         'Vary': 'Accept-Encoding'
     });
-    res.removeHeader('Pragma');
-    res.removeHeader('Expires');
-    res.removeHeader('Surrogate-Control');
 }
 
 function sendStats(req, res) {
     try {
-        setPublicStatsCache(res);
+        setLiveStatsHeaders(res);
         res.json({
             success: true,
-            data: responseCache.remember('public:stats', 15000, statsPayload)
+            data: statsPayload()
         });
     } catch (error) {
         console.error('Read stats failed:', error);
@@ -83,7 +82,6 @@ router.post('/view', (req, res) => {
             path: req.body?.path || req.headers.referer || '',
             userAgent: req.headers['user-agent'] || ''
         });
-        responseCache.delPrefix('public:stats');
         res.json({ success: true, message: 'OK' });
     } catch (error) {
         console.error('Record view failed:', error);

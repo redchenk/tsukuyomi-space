@@ -213,10 +213,25 @@ async function loadHubPreview(options = {}) {
   const force = options.force === true;
   const cached = hubPreviewCache || readHubPreviewCache();
   if (cached) applyHubPreviewCache(cached);
-  if (!force && cached?.cachedAt && Date.now() - cached.cachedAt < HUB_PREVIEW_TTL_MS) return;
+  if (!force && cached?.cachedAt && Date.now() - cached.cachedAt < HUB_PREVIEW_TTL_MS) {
+    loadPublicStats({ force: true, maxAgeMs: 0, staleWhileRevalidate: false })
+      .then((nextSiteStats) => {
+        if (!nextSiteStats) return;
+        siteStats.value = nextSiteStats;
+        writeHubPreviewCache({
+          latestArticle: latestArticle.value,
+          latestGalleryImage: latestGalleryImage.value,
+          latestPixelArtwork: latestPixelArtwork.value,
+          plazaMessages: plazaMessages.value,
+          siteStats: nextSiteStats
+        });
+      })
+      .catch(() => {});
+    return;
+  }
 
   try {
-    loadPublicStats({ force, maxAgeMs: 60000 })
+    loadPublicStats({ force: true, maxAgeMs: 0, staleWhileRevalidate: false })
       .then((nextSiteStats) => {
         if (!nextSiteStats) return;
         siteStats.value = nextSiteStats;
