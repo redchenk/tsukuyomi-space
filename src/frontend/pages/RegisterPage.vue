@@ -1,7 +1,8 @@
 <script setup>
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import authVisualBgUrl from '../../../assets/images/auth-visual-bg.png';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
+import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 
 const props = defineProps({
@@ -21,11 +22,15 @@ const register = reactive({
   sending: { loading: false, label: '' }
 });
 
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
 const isJapanese = computed(() => props.t.register === '新規登録');
 const authTitle = computed(() => (isJapanese.value ? '新しい居場所を作る' : '创建账号'));
 const authVisualTitle = computed(() => (isJapanese.value ? '月読空間' : '月读空间'));
 const authVisualSubtitle = computed(() => (isJapanese.value ? '探索、記録、共有' : '探索、记录、分享'));
 const authHomeLabel = computed(() => (isJapanese.value ? 'ホームへ戻る' : '返回首页'));
+const authNotePrimary = computed(() => (isJapanese.value ? '新しい記録' : '新的档案'));
+const authNoteSecondary = computed(() => (isJapanese.value ? '安全な身分' : '安全身份'));
 
 function showMessage(type, message) {
   register.type = type;
@@ -100,41 +105,76 @@ function startQQLogin() {
     <section class="auth-shell">
       <aside class="auth-visual" aria-label="Tsukuyomi Space">
         <img class="auth-visual-bg" :src="authVisualBgUrl" alt="">
+        <div class="auth-visual-sheen" aria-hidden="true"></div>
         <div class="auth-visual-copy">
-          <span class="auth-visual-kicker">Tsukuyomi Space</span>
+          <span class="auth-visual-kicker"><TsIcon name="moon" :size="14" /> Tsukuyomi Space</span>
           <h2>{{ authVisualTitle }}</h2>
           <p>{{ authVisualSubtitle }}</p>
+        </div>
+        <div class="auth-visual-notes" aria-hidden="true">
+          <div class="auth-note auth-note-primary">
+            <TsIcon name="sparkles" :size="18" />
+            <span>{{ authNotePrimary }}</span>
+          </div>
+          <div class="auth-note auth-note-secondary">
+            <TsIcon name="shield" :size="17" />
+            <span>{{ authNoteSecondary }}</span>
+          </div>
         </div>
       </aside>
 
       <section class="auth-form-stage">
         <section class="auth-card">
-          <h1>{{ authTitle }}</h1>
-          <p class="panel-subtitle">{{ t.registerSubtitle }}</p>
+          <div class="auth-card-head">
+            <span class="auth-kicker"><TsIcon name="userPlus" :size="14" /> Tsukuyomi Gate</span>
+            <h1>{{ authTitle }}</h1>
+            <p class="panel-subtitle">{{ t.registerSubtitle }}</p>
+          </div>
           <div v-if="register.message" class="form-message" :class="register.type">{{ register.message }}</div>
           <form @submit.prevent="submitRegister">
             <div class="form-group">
               <label for="registerUsername">{{ t.username }}</label>
-              <input id="registerUsername" v-model="register.username" required :placeholder="t.usernamePh" autocomplete="username">
+              <div class="auth-input-shell">
+                <TsIcon class="auth-field-icon" name="user" :size="18" />
+                <input id="registerUsername" v-model="register.username" required :placeholder="t.usernamePh" autocomplete="username">
+              </div>
             </div>
             <div class="form-group">
               <label for="registerEmail">{{ t.email }}</label>
               <div class="code-row">
-                <input id="registerEmail" v-model="register.email" required type="email" :placeholder="t.emailInputPh" autocomplete="email">
+                <div class="auth-input-shell">
+                  <TsIcon class="auth-field-icon" name="mail" :size="18" />
+                  <input id="registerEmail" v-model="register.email" required type="email" :placeholder="t.emailInputPh" autocomplete="email">
+                </div>
                 <button class="code-btn" type="button" :disabled="register.sending.loading" @click="sendCode">{{ register.sending.label || t.sendCode }}</button>
               </div>
             </div>
             <div class="form-group">
               <label for="registerCode">{{ t.emailCode }}</label>
-              <input id="registerCode" v-model="register.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+              <div class="auth-input-shell">
+                <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
+                <input id="registerCode" v-model="register.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+              </div>
             </div>
             <div class="form-group">
               <label for="registerPassword">{{ t.password }}</label>
-              <input id="registerPassword" v-model="register.password" required minlength="6" type="password" :placeholder="t.passwordPh" autocomplete="new-password">
+              <div class="auth-input-shell has-action">
+                <TsIcon class="auth-field-icon" name="lock" :size="18" />
+                <input id="registerPassword" v-model="register.password" required minlength="6" :type="showPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="new-password">
+                <button class="auth-password-toggle" type="button" :aria-pressed="showPassword" @click="showPassword = !showPassword">
+                  <TsIcon :name="showPassword ? 'eyeOff' : 'eye'" :size="18" />
+                </button>
+              </div>
             </div>
             <div class="form-group">
               <label for="registerConfirm">{{ t.confirmPassword }}</label>
-              <input id="registerConfirm" v-model="register.confirmPassword" required minlength="6" type="password" :placeholder="t.confirmPh" autocomplete="new-password">
+              <div class="auth-input-shell has-action">
+                <TsIcon class="auth-field-icon" name="lock" :size="18" />
+                <input id="registerConfirm" v-model="register.confirmPassword" required minlength="6" :type="showConfirmPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
+                <button class="auth-password-toggle" type="button" :aria-pressed="showConfirmPassword" @click="showConfirmPassword = !showConfirmPassword">
+                  <TsIcon :name="showConfirmPassword ? 'eyeOff' : 'eye'" :size="18" />
+                </button>
+              </div>
             </div>
             <button class="primary-btn" type="submit">{{ t.register }}</button>
           </form>

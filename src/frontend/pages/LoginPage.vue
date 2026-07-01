@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, reactive } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import authVisualBgUrl from '../../../assets/images/auth-visual-bg.png';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
+import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 
 const props = defineProps({
@@ -19,6 +20,9 @@ const login = reactive({
   type: 'error',
   sending: { loading: false, label: '' }
 });
+
+const showLoginPassword = ref(false);
+const showOAuthPassword = ref(false);
 
 const oauth = reactive({
   ticket: '',
@@ -48,6 +52,8 @@ const authSubtitle = computed(() => (
 const authVisualTitle = computed(() => (isJapanese.value ? '月読空間' : '月读空间'));
 const authVisualSubtitle = computed(() => (isJapanese.value ? '探索、記録、共有' : '探索、记录、分享'));
 const authHomeLabel = computed(() => (isJapanese.value ? 'ホームへ戻る' : '返回首页'));
+const authNotePrimary = computed(() => (isJapanese.value ? '静かな月門' : '静谧月门'));
+const authNoteSecondary = computed(() => (isJapanese.value ? '安全なセッション' : '私密会话'));
 
 const oauthErrorText = {
   qq_not_configured: 'QQ 登录暂未配置，请稍后再试',
@@ -267,17 +273,31 @@ onMounted(() => {
     <section class="auth-shell" :class="{ 'auth-shell-oauth': hasOAuthTicket }">
       <aside class="auth-visual" aria-label="Tsukuyomi Space">
         <img class="auth-visual-bg" :src="authVisualBgUrl" alt="">
+        <div class="auth-visual-sheen" aria-hidden="true"></div>
         <div class="auth-visual-copy">
-          <span class="auth-visual-kicker">Tsukuyomi Space</span>
+          <span class="auth-visual-kicker"><TsIcon name="moon" :size="14" /> Tsukuyomi Space</span>
           <h2>{{ authVisualTitle }}</h2>
           <p>{{ authVisualSubtitle }}</p>
+        </div>
+        <div class="auth-visual-notes" aria-hidden="true">
+          <div class="auth-note auth-note-primary">
+            <TsIcon name="sparkles" :size="18" />
+            <span>{{ authNotePrimary }}</span>
+          </div>
+          <div class="auth-note auth-note-secondary">
+            <TsIcon name="shield" :size="17" />
+            <span>{{ authNoteSecondary }}</span>
+          </div>
         </div>
       </aside>
 
       <section class="auth-form-stage">
         <section v-if="hasOAuthTicket" class="auth-card oauth-panel">
-          <h1>{{ authTitle }}</h1>
-          <p class="panel-subtitle">{{ authSubtitle }}</p>
+          <div class="auth-card-head">
+            <span class="auth-kicker"><TsIcon name="shield" :size="14" /> OAuth</span>
+            <h1>{{ authTitle }}</h1>
+            <p class="panel-subtitle">{{ authSubtitle }}</p>
+          </div>
 
           <div v-if="oauth.loading" class="oauth-loading">正在读取 QQ 授权信息...</div>
           <template v-else>
@@ -300,7 +320,10 @@ onMounted(() => {
             <form v-if="oauth.mode === 'create'" @submit.prevent="submitOAuthCreate">
               <div class="form-group">
                 <label for="qqCreateUsername">用户名</label>
-                <input id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于站内展示的用户名">
+                <div class="auth-input-shell">
+                  <TsIcon class="auth-field-icon" name="user" :size="18" />
+                  <input id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于站内展示的用户名">
+                </div>
               </div>
               <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '创建并进入' }}</button>
             </form>
@@ -312,16 +335,28 @@ onMounted(() => {
               </div>
               <div class="form-group">
                 <label for="qqBindAccount">{{ t.account }}</label>
-                <input id="qqBindAccount" v-model="oauth.identity" required :placeholder="oauth.bindMethod === 'code' ? t.emailPh : t.accountPh" autocomplete="username">
+                <div class="auth-input-shell">
+                  <TsIcon class="auth-field-icon" name="user" :size="18" />
+                  <input id="qqBindAccount" v-model="oauth.identity" required :placeholder="oauth.bindMethod === 'code' ? t.emailPh : t.accountPh" autocomplete="username">
+                </div>
               </div>
               <div v-if="oauth.bindMethod === 'password'" class="form-group">
                 <label for="qqBindPassword">{{ t.password }}</label>
-                <input id="qqBindPassword" v-model="oauth.password" required type="password" :placeholder="t.passwordPh" autocomplete="current-password">
+                <div class="auth-input-shell has-action">
+                  <TsIcon class="auth-field-icon" name="lock" :size="18" />
+                  <input id="qqBindPassword" v-model="oauth.password" required :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
+                  <button class="auth-password-toggle" type="button" :aria-pressed="showOAuthPassword" @click="showOAuthPassword = !showOAuthPassword">
+                    <TsIcon :name="showOAuthPassword ? 'eyeOff' : 'eye'" :size="18" />
+                  </button>
+                </div>
               </div>
               <div v-else class="form-group">
                 <label for="qqBindCode">{{ t.emailCode }}</label>
                 <div class="code-row">
-                  <input id="qqBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                  <div class="auth-input-shell">
+                    <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
+                    <input id="qqBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                  </div>
                   <button class="code-btn" type="button" :disabled="oauth.sending.loading" @click="sendOAuthBindCode">{{ oauth.sending.label || t.sendCode }}</button>
                 </div>
               </div>
@@ -334,8 +369,11 @@ onMounted(() => {
         </section>
 
         <section v-else class="auth-card">
-          <h1>{{ authTitle }}</h1>
-          <p class="panel-subtitle">{{ authSubtitle }}</p>
+          <div class="auth-card-head">
+            <span class="auth-kicker"><TsIcon name="moon" :size="14" /> Tsukuyomi Gate</span>
+            <h1>{{ authTitle }}</h1>
+            <p class="panel-subtitle">{{ authSubtitle }}</p>
+          </div>
           <div v-if="login.message" class="form-message" :class="login.type">{{ login.message }}</div>
           <form @submit.prevent="submitLogin">
             <div class="mode-row">
@@ -344,16 +382,28 @@ onMounted(() => {
             </div>
             <div class="form-group">
               <label for="loginAccount">{{ t.account }}</label>
-              <input id="loginAccount" v-model="login.username" required :placeholder="loginPlaceholder" autocomplete="username">
+              <div class="auth-input-shell">
+                <TsIcon class="auth-field-icon" name="user" :size="18" />
+                <input id="loginAccount" v-model="login.username" required :placeholder="loginPlaceholder" autocomplete="username">
+              </div>
             </div>
             <div v-if="login.method === 'password'" class="form-group">
               <label for="loginPassword">{{ t.password }}</label>
-              <input id="loginPassword" v-model="login.password" required type="password" :placeholder="t.passwordPh" autocomplete="current-password">
+              <div class="auth-input-shell has-action">
+                <TsIcon class="auth-field-icon" name="lock" :size="18" />
+                <input id="loginPassword" v-model="login.password" required :type="showLoginPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
+                <button class="auth-password-toggle" type="button" :aria-pressed="showLoginPassword" @click="showLoginPassword = !showLoginPassword">
+                  <TsIcon :name="showLoginPassword ? 'eyeOff' : 'eye'" :size="18" />
+                </button>
+              </div>
             </div>
             <div v-else class="form-group">
               <label for="loginCode">{{ t.emailCode }}</label>
               <div class="code-row">
-                <input id="loginCode" v-model="login.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                <div class="auth-input-shell">
+                  <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
+                  <input id="loginCode" v-model="login.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                </div>
                 <button class="code-btn" type="button" :disabled="login.sending.loading" @click="sendCode">{{ login.sending.label || t.sendCode }}</button>
               </div>
             </div>
