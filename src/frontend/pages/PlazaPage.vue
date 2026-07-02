@@ -569,9 +569,18 @@ onMounted(refreshPlaza);
               @topic="plazaSelectTopic"
             />
             <div class="plaza-msg-footer">
-              <button class="icon-btn" :class="{ liked: isPlazaMessageLiked(msg.id) }" type="button" @click="plazaLikeMessage(msg.id)">{{ t.like }} {{ msg.like_count || 0 }}</button>
-              <button class="icon-btn" type="button" @click="plazaToggleReply(msg.id)">{{ t.reply }} {{ (msg.replies || []).length }}</button>
-              <button class="icon-btn" type="button" @click="plazaCopyLink(msg.id)">{{ t.copyLink }}</button>
+              <button class="icon-btn" :class="{ liked: isPlazaMessageLiked(msg.id) }" type="button" @click="plazaLikeMessage(msg.id)">
+                <TsIcon name="heart" :size="15" />
+                <span>{{ t.like }} {{ msg.like_count || 0 }}</span>
+              </button>
+              <button class="icon-btn" type="button" @click="plazaToggleReply(msg.id)">
+                <TsIcon name="message" :size="15" />
+                <span>{{ t.reply }} {{ (msg.replies || []).length }}</span>
+              </button>
+              <button class="icon-btn" type="button" @click="plazaCopyLink(msg.id)">
+                <TsIcon name="copy" :size="15" />
+                <span>{{ t.copyLink }}</span>
+              </button>
             </div>
             <div v-if="plaza.replyOpen[msg.id]" class="plaza-reply-form">
               <PlazaReplyForm :t="t" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
