@@ -134,6 +134,18 @@ function goTopic(topic) {
   emit('go', `/plaza?topic=${encodeURIComponent(value)}`);
 }
 
+function commentAuthorName(item) {
+  return item?.author || item?.username || '访客';
+}
+
+function commentInitial(item) {
+  return String(commentAuthorName(item)).trim().slice(0, 1).toUpperCase();
+}
+
+function commentAvatarAlt(item) {
+  return `${commentAuthorName(item)} avatar`;
+}
+
 async function loadArticle() {
   loading.value = true;
   message.value = '';
@@ -382,10 +394,14 @@ watch(articleId, loadArticle);
           <div v-else class="comment-list">
             <article v-for="comment in topComments" :id="'comment-' + comment.id" :key="comment.id" class="comment-item">
               <div class="comment-header">
-                <button class="comment-author-link" type="button" @click="goProfile(comment.author || comment.username)">
-                  {{ comment.author || comment.username || '访客' }}
+                <button class="comment-author-link" type="button" @click="goProfile(commentAuthorName(comment))">
+                  <span class="comment-avatar">
+                    <img v-if="comment.avatar" :src="comment.avatar" :alt="commentAvatarAlt(comment)">
+                    <span v-else>{{ commentInitial(comment) }}</span>
+                  </span>
+                  <span class="comment-author-name">{{ commentAuthorName(comment) }}</span>
                 </button>
-                <span>{{ formatDate(comment.created_at) }}</span>
+                <span class="comment-time">{{ formatDate(comment.created_at) }}</span>
               </div>
               <SocialText class="comment-content" :content="comment.content" @mention="goProfile" @topic="goTopic" />
               <div class="comment-tools">
@@ -403,10 +419,14 @@ watch(articleId, loadArticle);
               <div v-if="repliesFor(comment.id).length" class="reply-list">
                 <div v-for="reply in repliesFor(comment.id)" :id="'comment-' + reply.id" :key="reply.id" class="comment-item reply-item">
                   <div class="comment-header">
-                    <button class="comment-author-link" type="button" @click="goProfile(reply.author || reply.username)">
-                      {{ reply.author || reply.username || '访客' }}
+                    <button class="comment-author-link" type="button" @click="goProfile(commentAuthorName(reply))">
+                      <span class="comment-avatar small">
+                        <img v-if="reply.avatar" :src="reply.avatar" :alt="commentAvatarAlt(reply)">
+                        <span v-else>{{ commentInitial(reply) }}</span>
+                      </span>
+                      <span class="comment-author-name">{{ commentAuthorName(reply) }}</span>
                     </button>
-                    <span>{{ formatDate(reply.created_at) }}</span>
+                    <span class="comment-time">{{ formatDate(reply.created_at) }}</span>
                   </div>
                   <SocialText class="comment-content" :content="reply.content" @mention="goProfile" @topic="goTopic" />
                 </div>
