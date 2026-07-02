@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -25,6 +25,8 @@ const DEFAULT_CANVAS_PRESET = CANVAS_PRESETS[3];
 const DISPLAY_CELL_SIZE = 6;
 const EXPORT_CELL_SIZE = 8;
 const DEFAULT_ZOOM = 100;
+const MIN_ZOOM = 35;
+const MAX_ZOOM = 260;
 const MAX_CUSTOM_COLORS = 20;
 const MAX_IMAGE_COLORS = 32;
 const presetPalette = [
@@ -175,6 +177,8 @@ const canvasHeight = ref(DEFAULT_CANVAS_PRESET.height);
 const pixels = ref(blankPixels(DEFAULT_CANVAS_PRESET.width, DEFAULT_CANVAS_PRESET.height));
 const brushSize = ref(1);
 const zoom = ref(DEFAULT_ZOOM);
+const canvasViewportRef = ref(null);
+const isCanvasZoomManual = ref(false);
 const sideTab = ref('gallery');
 const chatMessage = ref('');
 const chatMessages = ref([
@@ -203,6 +207,8 @@ const toast = reactive({
 
 let toastTimer = 0;
 let activePaintColorIndex = -1;
+let canvasFitObserver = null;
+let canvasFitFrame = 0;
 
 const isAuthed = computed(() => Boolean(session.value));
 const activePalette = computed(() => [...presetPalette, ...customColors.value]);
@@ -212,7 +218,6 @@ const hasRedo = computed(() => redoStack.value.length > 0);
 const paletteStyle = computed(() => ({
   '--palette-size': activePalette.value.length
 }));
-const canvasGridLabel = computed(() => `${canvasWidth.value}x${canvasHeight.value}`);
 const activeCanvasPresetKey = computed(() => canvasPresetKey(canvasWidth.value, canvasHeight.value));
 const canvasBaseWidth = computed(() => canvasWidth.value * DISPLAY_CELL_SIZE);
 const canvasBaseHeight = computed(() => canvasHeight.value * DISPLAY_CELL_SIZE);
@@ -416,8 +421,53 @@ function setCanvasPreset(preset) {
   canvasHeight.value = nextPreset.height;
 }
 
+function clampZoom(value) {
+  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(value)));
+}
+
+function viewportInnerSize(element) {
+  const rect = element.getBoundingClientRect();
+  const style = window.getComputedStyle(element);
+  const left = Number.parseFloat(style.paddingLeft) || 0;
+  const right = Number.parseFloat(style.paddingRight) || 0;
+  const top = Number.parseFloat(style.paddingTop) || 0;
+  const bottom = Number.parseFloat(style.paddingBottom) || 0;
+  const paddingX = left + right;
+  const paddingY = top + bottom;
+  return {
+    width: Math.max(0, rect.width - paddingX),
+    height: Math.max(0, rect.height - paddingY)
+  };
+}
+
+function fitCanvasToViewport(force = false) {
+  if (!force && isCanvasZoomManual.value) return;
+  const viewport = canvasViewportRef.value;
+  if (!viewport || !canvasBaseWidth.value || !canvasBaseHeight.value) return;
+  const { width, height } = viewportInnerSize(viewport);
+  if (!width || !height) return;
+  const scale = Math.min(width / canvasBaseWidth.value, height / canvasBaseHeight.value);
+  const fittedZoom = clampZoom(Math.floor((scale * 100) / 5) * 5);
+  if (Number.isFinite(fittedZoom) && Math.abs(fittedZoom - zoom.value) >= 1) {
+    zoom.value = fittedZoom;
+  }
+}
+
+function scheduleCanvasFit(force = false) {
+  if (canvasFitFrame) window.cancelAnimationFrame(canvasFitFrame);
+  canvasFitFrame = window.requestAnimationFrame(() => {
+    canvasFitFrame = 0;
+    fitCanvasToViewport(force);
+  });
+}
+
+function handleCanvasViewportResize() {
+  scheduleCanvasFit();
+}
+
 function adjustZoom(delta) {
-  zoom.value = Math.max(25, Math.min(150, zoom.value + delta));
+  isCanvasZoomManual.value = true;
+  zoom.value = clampZoom(zoom.value + delta);
 }
 
 function fillPixelsFrom(index, colorIndex) {
@@ -936,11 +986,19 @@ function artworkInitial(name) {
 }
 
 watch(() => gallery.sort, loadArtworks);
+watch([canvasBaseWidth, canvasBaseHeight], () => scheduleCanvasFit());
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('pointerup', endPaint);
   window.addEventListener('pointercancel', endPaint);
   window.addEventListener('keydown', handleArenaKeydown);
+  window.addEventListener('resize', handleCanvasViewportResize);
+  await nextTick();
+  if (typeof ResizeObserver !== 'undefined' && canvasViewportRef.value) {
+    canvasFitObserver = new ResizeObserver(handleCanvasViewportResize);
+    canvasFitObserver.observe(canvasViewportRef.value);
+  }
+  scheduleCanvasFit(true);
   loadArtworks();
   loadArtworkForEdit();
 });
@@ -949,6 +1007,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerup', endPaint);
   window.removeEventListener('pointercancel', endPaint);
   window.removeEventListener('keydown', handleArenaKeydown);
+  window.removeEventListener('resize', handleCanvasViewportResize);
+  canvasFitObserver?.disconnect();
+  canvasFitObserver = null;
+  if (canvasFitFrame) window.cancelAnimationFrame(canvasFitFrame);
   clearTimeout(toastTimer);
 });
 </script>
@@ -963,10 +1025,6 @@ onBeforeUnmount(() => {
       </div>
       <aside class="arena-status panel">
         <div class="arena-status-line"><span>{{ copy.channel }}</span><strong>{{ copy.channelValue }}</strong></div>
-        <div class="arena-mini-stats">
-          <div><strong>{{ formatNumber(gallery.items.length) }}</strong><span>{{ copy.gallery }}</span></div>
-          <div><strong>{{ canvasGridLabel }}</strong><span>{{ copy.size }}</span></div>
-        </div>
       </aside>
     </section>
 
@@ -990,7 +1048,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="arena-canvas-viewport">
+        <div ref="canvasViewportRef" class="arena-canvas-viewport">
           <div
             class="pixel-canvas-zoom-surface"
             :style="canvasSurfaceStyle"
@@ -1155,11 +1213,6 @@ onBeforeUnmount(() => {
             <span>{{ copy.descPlaceholder }}</span>
             <textarea v-model="form.description" maxlength="120" rows="3" :placeholder="copy.descPlaceholder"></textarea>
           </label>
-        </div>
-
-        <div class="arena-metrics">
-          <div><span>{{ copy.colors }}</span><strong>{{ activePalette.length }}</strong></div>
-          <div><span>{{ copy.size }}</span><strong>{{ canvasGridLabel }}</strong></div>
         </div>
       </aside>
     </section>
