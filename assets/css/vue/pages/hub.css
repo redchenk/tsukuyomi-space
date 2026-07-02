@@ -363,6 +363,56 @@
     line-height: 1.65;
 }
 
+.hub-visit-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.7rem;
+}
+
+.hub-visit-title-row strong {
+    min-width: 0;
+    line-height: 1.35;
+}
+
+.hub-visit-title-row small {
+    flex: 0 0 auto;
+    padding: 0.18rem 0.46rem;
+    border: 1px solid rgba(231, 249, 255, 0.16);
+    border-radius: 999px;
+    color: rgba(239, 247, 255, 0.58);
+    background: rgba(255, 255, 255, 0.07);
+    font-size: 0.68rem;
+}
+
+.hub-visit-title-row small.active {
+    color: #aef2ff;
+    border-color: rgba(174, 242, 255, 0.26);
+    background: rgba(174, 242, 255, 0.1);
+}
+
+.hub-visit-content {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    white-space: pre-line;
+}
+
+.hub-visit-action {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.36rem;
+    padding: 0.34rem 0.62rem;
+    border: 1px solid rgba(255, 183, 197, 0.18);
+    border-radius: 999px;
+    color: rgba(255, 225, 235, 0.86);
+    background: rgba(255, 183, 197, 0.08);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
 .hub-beian {
     display: flex;
     justify-content: center;
@@ -1330,6 +1380,28 @@ html[data-theme="light"] body .page.hub .hub-orbit-ring {
     background: rgba(255, 255, 255, 0.66);
 }
 
+html[data-theme="light"] body .page.hub .hub-visit-content {
+    color: rgba(38, 48, 68, 0.68);
+}
+
+html[data-theme="light"] body .page.hub .hub-visit-title-row small {
+    color: rgba(38, 48, 68, 0.58);
+    border-color: rgba(75, 95, 140, 0.16);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] body .page.hub .hub-visit-title-row small.active {
+    color: #2f6f7b;
+    border-color: rgba(86, 190, 217, 0.28);
+    background: rgba(229, 246, 252, 0.86);
+}
+
+html[data-theme="light"] body .page.hub .hub-visit-action {
+    color: rgba(38, 48, 68, 0.78);
+    border-color: rgba(223, 106, 157, 0.18);
+    background: rgba(255, 235, 244, 0.74);
+}
+
 html[data-theme="light"] body .page.hub .hub-hero-signals strong,
 html[data-theme="light"] body .page.hub .hub-hero-signals small {
     color: #172033;
@@ -2292,6 +2364,19 @@ body .page.hub .hub-side-card {
         linear-gradient(145deg, rgba(174, 242, 255, 0.13), transparent 38%),
         linear-gradient(315deg, rgba(255, 154, 186, 0.1), transparent 44%),
         rgba(255, 255, 255, 0.06);
+}
+
+body .page.hub .hub-visit-card {
+    align-content: start;
+    gap: 0.62rem;
+}
+
+body .page.hub .hub-visit-content {
+    color: rgba(239, 247, 255, 0.72);
+}
+
+body .page.hub .hub-visit-action .ts-icon {
+    flex: 0 0 auto;
 }
 
 body .page.hub .hub-grid-wrap {

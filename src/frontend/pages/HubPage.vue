@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, parseResponse, setPublicStatsCache } from '../api/client';
+import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, noStoreUrl, parseResponse, setPublicStatsCache } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -55,6 +55,12 @@ const latestGalleryImage = ref(hubPreviewCache?.latestGalleryImage || null);
 const latestPixelArtwork = ref(hubPreviewCache?.latestPixelArtwork || null);
 const plazaMessages = ref(hubPreviewCache?.plazaMessages || []);
 const siteStats = ref(hubPreviewCache?.siteStats || null);
+const visitPopupPreview = ref({
+  enabled: false,
+  title: '欢迎来到月读空间',
+  content: '首次访问弹窗尚未配置内容。',
+  button: '我知道了'
+});
 const plazaQuick = reactive({
   content: '',
   loading: false,
@@ -121,13 +127,6 @@ const heroSignals = computed(() => [
   { label: '今日访问', value: siteStats.value ? formatHubNumber(siteStats.value.todayViews) : '--' },
   { label: '站内文章', value: siteStats.value ? formatHubNumber(siteStats.value.articles) : '--' },
   { label: '广场留言', value: siteStats.value ? formatHubNumber(siteStats.value.messages) : '--' }
-]);
-
-const heroQuickLinks = computed(() => [
-  { href: '/stage', label: props.t.stage, icon: 'book' },
-  { href: '/gallery', label: '图库', icon: 'image' },
-  { href: '/arena', label: props.t.arena || '像素画', icon: 'palette' },
-  { href: '/room/settings', label: '房间设置', icon: 'settings' }
 ]);
 
 function formatHubNumber(value) {
@@ -342,12 +341,43 @@ async function submitPlazaQuick() {
   }
 }
 
+async function loadVisitPopupPreview() {
+  try {
+    const response = await apiFetch(noStoreUrl('/api/settings'), {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store'
+    });
+    const result = await parseResponse(response);
+    const settings = result?.data || {};
+    const title = String(settings.visitPopupTitle || '').trim();
+    const content = String(settings.visitPopupContent || '').trim();
+    const button = String(settings.visitPopupButton || '').trim();
+    visitPopupPreview.value = {
+      enabled: settings.visitPopupEnabled === true,
+      title: title || '欢迎来到月读空间',
+      content: content || '首次访问弹窗尚未配置内容。',
+      button: button || '我知道了'
+    };
+  } catch (_) {
+    visitPopupPreview.value = {
+      enabled: false,
+      title: '首访弹窗',
+      content: '弹窗内容暂时无法读取。',
+      button: '我知道了'
+    };
+  }
+}
+
 onMounted(() => {
   if (typeof window === 'undefined') {
     loadHubPreview();
+    loadVisitPopupPreview();
     return;
   }
-  window.requestAnimationFrame(() => loadHubPreview());
+  window.requestAnimationFrame(() => {
+    loadHubPreview();
+    loadVisitPopupPreview();
+  });
 });
 </script>
 
@@ -377,22 +407,7 @@ onMounted(() => {
               <TsIcon name="moon" :size="17" />
               <span>进入私人居所</span>
             </a>
-            <a href="/plaza" class="nav-link hub-secondary" @click.prevent="$emit('go', '/plaza')">
-              <TsIcon name="plaza" :size="17" />
-              <span>浏览月读广场</span>
-            </a>
           </div>
-          <nav class="hub-quick-rail" aria-label="月读空间快速入口">
-            <a
-              v-for="item in heroQuickLinks"
-              :key="item.href"
-              :href="item.href"
-              @click.prevent="$emit('go', item.href)"
-            >
-              <TsIcon :name="item.icon" :size="15" />
-              <span>{{ item.label }}</span>
-            </a>
-          </nav>
         </div>
 
         <figure class="hub-character" aria-label="月见八千代">
@@ -415,10 +430,17 @@ onMounted(() => {
             <span>{{ item.label }}</span>
           </div>
         </div>
-        <div class="hub-side-card">
-          <span>Visitor Flow</span>
-          <strong>{{ formatHubNumber(siteStats?.weekViews) }} 次</strong>
-          <p>最近七天访问记录。数据来自站内访问事件与文章阅读量。</p>
+        <div class="hub-side-card hub-visit-card">
+          <span class="hub-visit-eyebrow">Visitor Flow</span>
+          <div class="hub-visit-title-row">
+            <strong>{{ visitPopupPreview.title }}</strong>
+            <small :class="{ active: visitPopupPreview.enabled }">{{ visitPopupPreview.enabled ? '已启用' : '未启用' }}</small>
+          </div>
+          <p class="hub-visit-content">{{ visitPopupPreview.content }}</p>
+          <div class="hub-visit-action">
+            <TsIcon name="message" :size="15" />
+            <span>{{ visitPopupPreview.button }}</span>
+          </div>
         </div>
         <div class="hub-beian">
           <BeianLink />
