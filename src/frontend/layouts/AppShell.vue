@@ -28,7 +28,7 @@ const showSiteBeian = computed(() => props.showChrome && !['hub', 'room', 'roomS
 const showNotifications = computed(() => props.isAuthed);
 
 const navItems = computed(() => [
-  { path: '/hub', key: 'hub', label: props.t.hub, icon: 'home', active: props.routeName === 'hub', spa: true },
+  { path: '/hub', key: 'hub', label: props.t.hub, icon: 'eclipse', active: props.routeName === 'hub', spa: true },
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: props.routeName === 'room' || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
