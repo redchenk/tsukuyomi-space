@@ -1361,6 +1361,42 @@ body .page.article-page .article-bookmark-btn.liked .ts-icon {
     color: #ffb7c5;
 }
 
+body .page.article-page .comment-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.52rem;
+}
+
+body .page.article-page .comment-tools .comment-tool-btn {
+    width: auto;
+    min-width: max-content;
+    max-width: 100%;
+    min-height: 38px;
+    padding-inline: 0.78rem;
+    aspect-ratio: auto;
+    flex: 0 0 auto;
+    gap: 0.38rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+body .page.article-page .comment-tools .comment-tool-btn .ts-icon {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+body .page.article-page .comment-tools .comment-tool-btn span {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 @media (max-width: 520px) {
     body .page.article-page .article-social-actions {
         width: 100%;
@@ -1368,6 +1404,16 @@ body .page.article-page .article-bookmark-btn.liked .ts-icon {
 
     body .page.article-page .article-bookmark-btn {
         width: 100%;
+        justify-content: center;
+    }
+
+    body .page.article-page .comment-tools {
+        width: 100%;
+    }
+
+    body .page.article-page .comment-tools .comment-tool-btn {
+        min-width: 0;
+        flex: 1 1 8.5rem;
         justify-content: center;
     }
 }

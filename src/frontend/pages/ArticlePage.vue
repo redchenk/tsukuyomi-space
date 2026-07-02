@@ -416,11 +416,11 @@ watch(articleId, loadArticle);
               </div>
               <SocialText class="comment-content" :content="comment.content" @mention="goProfile" @topic="goTopic" />
               <div class="comment-tools">
-                <button class="icon-btn" type="button" @click="likeComment(comment.id)">
+                <button class="icon-btn comment-tool-btn" type="button" @click="likeComment(comment.id)">
                   <TsIcon name="heart" :size="16" />
                   <span>喜欢 {{ comment.like_count || 0 }}</span>
                 </button>
-                <button class="icon-btn" type="button" @click="openReplies[comment.id] = !openReplies[comment.id]">
+                <button class="icon-btn comment-tool-btn" type="button" @click="openReplies[comment.id] = !openReplies[comment.id]">
                   <TsIcon name="message" :size="16" />
                   <span>回复</span>
                 </button>
