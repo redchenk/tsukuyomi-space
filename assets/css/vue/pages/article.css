@@ -91,6 +91,16 @@
     gap: 0.42rem;
 }
 
+.article-social-actions .icon-btn {
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+}
+
+.article-social-actions .icon-btn span {
+    white-space: nowrap;
+}
+
 .article-page .ts-icon {
     flex: 0 0 auto;
 }

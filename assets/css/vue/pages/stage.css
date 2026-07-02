@@ -136,16 +136,16 @@
     flex-wrap: wrap;
 }
 
-.stage-result-strip strong {
-    color: #fff;
-    font-size: 0.9rem;
-}
-
 .stage-result-strip span,
 .stage-result-strip small,
 .stage-pagination-info {
     color: rgba(255, 225, 235, 0.58);
     font-size: 0.78rem;
+}
+
+.stage-result-count {
+    font-weight: 650;
+    letter-spacing: 0;
 }
 
 .stage-result-page {
@@ -412,7 +412,7 @@ html[data-theme="light"] .stage-pagination {
     box-shadow: var(--float-shadow, 0 12px 30px rgba(86, 112, 160, 0.12));
 }
 
-html[data-theme="light"] .stage-result-strip strong,
+html[data-theme="light"] .stage-result-count,
 html[data-theme="light"] .stage-page-btn.active {
     color: var(--ink, #172033);
 }

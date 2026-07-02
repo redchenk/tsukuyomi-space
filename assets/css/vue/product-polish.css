@@ -1211,7 +1211,6 @@ body .page.hub .hub-stage-meter,
 body .page.hub .hub-plaza-line,
 .gallery-feature::before,
 .plaza-topic-chip.active,
-.stage-result-strip strong,
 .arena-progress-fill,
 .room-memory-meter {
     background: linear-gradient(90deg, var(--ts-accent), var(--ts-accent-2));

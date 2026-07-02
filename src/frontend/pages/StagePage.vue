@@ -21,7 +21,7 @@ const categories = ['all', '\u516c\u544a', '\u4f20\u8bf4', '\u6280\u672f', '\u4e
 const STAGE_PAGE_SIZE = 6;
 
 const stagePageCopy = {
-  resultUnit: '\u7bc7\u6587\u7ae0',
+  resultUnit: '\u7bc7',
   showing: '\u5f53\u524d',
   page: '\u7b2c',
   pageSuffix: '\u9875',
@@ -76,7 +76,7 @@ const stagePageItems = computed(() => {
   return pages;
 });
 
-const stageResultSummary = computed(() => `${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.resultUnit}`);
+const stageResultSummary = computed(() => `\u5171 ${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.resultUnit}`);
 const stageRangeSummary = computed(() => stageTotalArticles.value
   ? `${stagePageCopy.showing} ${stageFormatNumber(stagePageStart.value)}-${stageFormatNumber(stagePageEnd.value)} ${stagePageCopy.rangeUnit}`
   : '');
@@ -250,7 +250,7 @@ onMounted(loadArticles);
     </div>
     <div v-if="!articlesLoading && filteredArticles.length" class="stage-result-strip">
       <div>
-        <strong>{{ stageResultSummary }}</strong>
+        <span class="stage-result-count">{{ stageResultSummary }}</span>
         <span>{{ stageRangeSummary }}</span>
       </div>
       <div class="stage-result-page">
