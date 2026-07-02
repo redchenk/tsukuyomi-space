@@ -58,8 +58,7 @@ const siteStats = ref(hubPreviewCache?.siteStats || null);
 const visitPopupPreview = ref({
   enabled: false,
   title: '欢迎来到月读空间',
-  content: '首次访问弹窗尚未配置内容。',
-  button: '我知道了'
+  content: '首次访问弹窗尚未配置内容。'
 });
 const plazaQuick = reactive({
   content: '',
@@ -122,12 +121,6 @@ const sceneLinks = computed(() => [
 const orderedSceneLinks = computed(() => sceneLinks.value);
 
 const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
-
-const heroSignals = computed(() => [
-  { label: '今日访问', value: siteStats.value ? formatHubNumber(siteStats.value.todayViews) : '--' },
-  { label: '站内文章', value: siteStats.value ? formatHubNumber(siteStats.value.articles) : '--' },
-  { label: '广场留言', value: siteStats.value ? formatHubNumber(siteStats.value.messages) : '--' }
-]);
 
 function formatHubNumber(value) {
   return Number(value || 0).toLocaleString('zh-CN');
@@ -351,19 +344,16 @@ async function loadVisitPopupPreview() {
     const settings = result?.data || {};
     const title = String(settings.visitPopupTitle || '').trim();
     const content = String(settings.visitPopupContent || '').trim();
-    const button = String(settings.visitPopupButton || '').trim();
     visitPopupPreview.value = {
       enabled: settings.visitPopupEnabled === true,
       title: title || '欢迎来到月读空间',
-      content: content || '首次访问弹窗尚未配置内容。',
-      button: button || '我知道了'
+      content: content || '首次访问弹窗尚未配置内容。'
     };
   } catch (_) {
     visitPopupPreview.value = {
       enabled: false,
       title: '首访弹窗',
-      content: '弹窗内容暂时无法读取。',
-      button: '我知道了'
+      content: '弹窗内容暂时无法读取。'
     };
   }
 }
@@ -396,12 +386,6 @@ onMounted(() => {
           <h1 class="section-title">{{ t.brand }}</h1>
           <p class="hub-en-title">Tsukuyomi Space</p>
           <p class="section-subtitle">{{ t.heroCopy }}</p>
-          <div class="hub-hero-signals" aria-label="站点即时数据">
-            <span v-for="signal in heroSignals" :key="signal.label">
-              <strong>{{ signal.value }}</strong>
-              <small>{{ signal.label }}</small>
-            </span>
-          </div>
           <div class="hub-actions">
             <a href="/room" class="primary-btn hub-primary" @click.prevent="$emit('go', '/room')">
               <TsIcon name="moon" :size="17" />
@@ -437,10 +421,6 @@ onMounted(() => {
             <small :class="{ active: visitPopupPreview.enabled }">{{ visitPopupPreview.enabled ? '已启用' : '未启用' }}</small>
           </div>
           <p class="hub-visit-content">{{ visitPopupPreview.content }}</p>
-          <div class="hub-visit-action">
-            <TsIcon name="message" :size="15" />
-            <span>{{ visitPopupPreview.button }}</span>
-          </div>
         </div>
         <div class="hub-beian">
           <BeianLink />
