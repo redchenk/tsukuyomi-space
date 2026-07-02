@@ -1320,3 +1320,54 @@ body .page.auth-page :where(.auth-card-footer a, .panel-links a, .auth-home-link
 body .page.auth-page-register :where(.auth-card-footer a, .panel-links a, .auth-home-link) {
     color: var(--ts-cyan);
 }
+
+body .page.hub .hub-plaza-form .hub-plaza-submit {
+    width: var(--ts-unified-button-height);
+    min-width: var(--ts-unified-button-height);
+    max-width: var(--ts-unified-button-height);
+    padding-inline: 0;
+    aspect-ratio: 1;
+}
+
+body .page.hub .hub-plaza-form .hub-plaza-submit .ts-icon {
+    margin: 0;
+}
+
+body .page.article-page .article-bookmark-btn {
+    width: auto;
+    min-width: max-content;
+    max-width: 100%;
+    padding-inline: 0.82rem;
+    aspect-ratio: auto;
+    flex: 0 0 auto;
+    gap: 0.42rem;
+    white-space: nowrap;
+}
+
+body .page.article-page .article-bookmark-btn .ts-icon {
+    flex: 0 0 auto;
+}
+
+body .page.article-page .article-bookmark-btn span {
+    display: inline-block;
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body .page.article-page .article-bookmark-btn.liked .ts-icon {
+    color: #ffb7c5;
+}
+
+@media (max-width: 520px) {
+    body .page.article-page .article-social-actions {
+        width: 100%;
+    }
+
+    body .page.article-page .article-bookmark-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

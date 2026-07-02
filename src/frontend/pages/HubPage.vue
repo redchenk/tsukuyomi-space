@@ -482,9 +482,14 @@ onMounted(() => {
             </span>
             <form class="hub-plaza-form" @click.stop @keydown.stop @submit.prevent="submitPlazaQuick">
               <input v-model="plazaQuick.content" type="text" placeholder="快速留言...">
-              <button type="submit" :disabled="plazaQuick.loading">
+              <button
+                class="hub-plaza-submit"
+                type="submit"
+                :disabled="plazaQuick.loading"
+                :aria-label="plazaQuick.loading ? '发送中' : '发送'"
+                :title="plazaQuick.loading ? '发送中' : '发送'"
+              >
                 <TsIcon :name="plazaQuick.loading ? 'loader' : 'send'" :size="15" />
-                <span>{{ plazaQuick.loading ? '发送中' : '发送' }}</span>
               </button>
             </form>
             <span v-if="plazaQuick.message" class="hub-plaza-feedback">{{ plazaQuick.message }}</span>

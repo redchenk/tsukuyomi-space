@@ -361,7 +361,7 @@ watch(articleId, loadArticle);
           </div>
           <div class="article-social-actions">
             <button
-              class="icon-btn"
+              class="article-bookmark-btn"
               :class="{ liked: bookmark.bookmarked }"
               type="button"
               :disabled="bookmark.loading"
