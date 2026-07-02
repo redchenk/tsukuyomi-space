@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, reactive } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { apiFetch, noStoreUrl } from '../api/client';
 import { formatDateTime } from '../utils/time';
 
@@ -31,6 +31,8 @@ const terminal = reactive({
   messages: [],
   users: [],
   userSearch: '',
+  userPage: 1,
+  userPageSize: 8,
   usernameDrafts: {},
   roleDrafts: {},
   passwordDrafts: {},
@@ -92,6 +94,7 @@ const terminal = reactive({
 });
 
 let clockTimer = 0;
+const TERMINAL_USER_PAGE_SIZES = [8, 12, 20];
 const authed = computed(() => Boolean(terminal.admin));
 const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin');
 const groupedPanels = computed(() => ['巡检', '内容', '系统']
@@ -102,6 +105,28 @@ const filteredUsers = computed(() => {
   const keyword = terminal.userSearch.trim().toLowerCase();
   if (!keyword) return terminal.users;
   return terminal.users.filter((item) => [item.username, item.email, item.role, item.id].some((value) => String(value || '').toLowerCase().includes(keyword)));
+});
+const userTotalPages = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / Number(terminal.userPageSize || 8))));
+const userCurrentPage = computed(() => Math.min(Math.max(Number(terminal.userPage) || 1, 1), userTotalPages.value));
+const userPageStart = computed(() => filteredUsers.value.length ? (userCurrentPage.value - 1) * Number(terminal.userPageSize || 8) + 1 : 0);
+const userPageEnd = computed(() => Math.min(userCurrentPage.value * Number(terminal.userPageSize || 8), filteredUsers.value.length));
+const pagedUsers = computed(() => {
+  const size = Number(terminal.userPageSize || 8);
+  const start = (userCurrentPage.value - 1) * size;
+  return filteredUsers.value.slice(start, start + size);
+});
+const userPageItems = computed(() => {
+  const total = userTotalPages.value;
+  const current = userCurrentPage.value;
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  const pages = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) pages.push('gap-left');
+  for (let page = start; page <= end; page += 1) pages.push(page);
+  if (end < total - 1) pages.push('gap-right');
+  pages.push(total);
+  return pages;
 });
 const pendingMessageCount = computed(() => terminal.messages.filter((item) => item.status !== 'approved').length);
 const plazaMessageCount = computed(() => terminal.messages.filter((item) => !item.article_id).length);
@@ -130,6 +155,16 @@ function messageArticlePath(item) {
 function showMessage(text, type = 'success') {
   terminal.message = text;
   terminal.messageType = type;
+}
+
+function setUserPage(page) {
+  const numericPage = Number(page);
+  if (!Number.isFinite(numericPage)) return;
+  terminal.userPage = Math.min(Math.max(Math.trunc(numericPage), 1), userTotalPages.value);
+}
+
+function isUserPageGap(item) {
+  return typeof item === 'string';
 }
 
 async function parseJsonResponse(response) {
@@ -216,6 +251,7 @@ async function loadPanel(panel = terminal.activePanel) {
     if (panel === 'messages') terminal.messages = await adminApi('/messages') || [];
     if (panel === 'users') {
       terminal.users = await adminApi('/users') || [];
+      terminal.userPage = 1;
       terminal.usernameDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.username || '']));
       terminal.roleDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.role || 'user']));
       terminal.passwordDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, '']));
@@ -484,6 +520,19 @@ onMounted(() => {
   verifySession();
 });
 
+watch(() => terminal.userSearch, () => {
+  terminal.userPage = 1;
+});
+
+watch(() => terminal.userPageSize, () => {
+  terminal.userPage = 1;
+});
+
+watch(userTotalPages, (total) => {
+  if (terminal.userPage > total) terminal.userPage = total;
+  if (terminal.userPage < 1) terminal.userPage = 1;
+});
+
 onUnmounted(() => {
   window.clearInterval(clockTimer);
 });
@@ -644,12 +693,20 @@ onUnmounted(() => {
 
           <div v-show="terminal.activePanel === 'users'">
             <div class="terminal-panel-head"><h2>用户管理</h2></div>
-            <div class="terminal-toolbar">
+            <div class="terminal-toolbar terminal-users-toolbar">
               <input v-model="terminal.userSearch" placeholder="搜索用户名、邮箱、角色或 ID">
+              <label class="terminal-page-size">
+                <span>每页</span>
+                <select v-model.number="terminal.userPageSize">
+                  <option v-for="size in TERMINAL_USER_PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
+                </select>
+              </label>
               <span class="terminal-toolbar-note">仅 super_admin 可修改角色或重置密码</span>
+              <span class="terminal-toolbar-count">{{ userPageStart }}-{{ userPageEnd }} / {{ filteredUsers.length }}</span>
             </div>
-            <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>用户</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>权限</th><th>密码</th><th>操作</th></tr></thead><tbody>
-              <tr v-for="item in filteredUsers" :key="item.id">
+            <div v-if="!filteredUsers.length" class="terminal-empty">没有匹配的用户，试试更换搜索条件。</div>
+            <div v-else class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>用户</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>权限</th><th>密码</th><th>操作</th></tr></thead><tbody>
+              <tr v-for="item in pagedUsers" :key="item.id">
                 <td>{{ String(item.id).slice(0, 8) }}</td>
                 <td>
                   <strong>{{ item.username }}</strong>
@@ -676,6 +733,26 @@ onUnmounted(() => {
                 <td><button class="danger-btn" type="button" :disabled="!canManageAccounts || item.role === 'admin' || item.username === 'admin'" @click="deleteUser(item.id)">删除</button></td>
               </tr>
             </tbody></table></div>
+            <nav v-if="filteredUsers.length" class="terminal-pagination" aria-label="Users pagination">
+              <div class="terminal-pagination-info">第 {{ userCurrentPage }} 页 / 共 {{ userTotalPages }} 页</div>
+              <div class="terminal-pagination-controls">
+                <button class="terminal-page-btn terminal-page-nav" type="button" :disabled="userCurrentPage <= 1" @click="setUserPage(userCurrentPage - 1)">上一页</button>
+                <template v-for="item in userPageItems" :key="item">
+                  <span v-if="isUserPageGap(item)" class="terminal-page-gap">...</span>
+                  <button
+                    v-else
+                    class="terminal-page-btn"
+                    :class="{ active: item === userCurrentPage }"
+                    type="button"
+                    :aria-current="item === userCurrentPage ? 'page' : undefined"
+                    @click="setUserPage(item)"
+                  >
+                    {{ item }}
+                  </button>
+                </template>
+                <button class="terminal-page-btn terminal-page-nav" type="button" :disabled="userCurrentPage >= userTotalPages" @click="setUserPage(userCurrentPage + 1)">下一页</button>
+              </div>
+            </nav>
           </div>
 
           <div v-show="terminal.activePanel === 'account'">
