@@ -28,7 +28,7 @@ const showSiteBeian = computed(() => props.showChrome && !['hub', 'room', 'roomS
 const showNotifications = computed(() => props.isAuthed);
 
 const navItems = computed(() => [
-  { path: '/hub', key: 'hub', label: props.t.hub, icon: 'eclipse', active: props.routeName === 'hub', spa: true },
+  { path: '/hub', key: 'hub', label: props.t.hub, icon: 'home', active: props.routeName === 'hub', spa: true },
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: props.routeName === 'room' || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
@@ -105,7 +105,7 @@ onUnmounted(() => {
 
     <aside v-if="showChrome" ref="railRef" class="site-rail" aria-label="Quick navigation">
       <a href="/hub" class="rail-mark" :aria-label="t.brand" @click.prevent="$emit('go', '/hub')">
-        <TsIcon name="moonStar" :size="24" :stroke-width="1.85" />
+        <TsIcon name="eclipse" :size="24" :stroke-width="1.9" />
         <span class="rail-mark-label">{{ t.brand }}</span>
       </a>
 
@@ -188,7 +188,7 @@ onUnmounted(() => {
     <header v-if="showChrome && routeName !== 'room'" class="topbar site-commandbar">
       <a href="/hub" class="brand room-brand site-brand" @click.prevent="$emit('go', '/hub')">
         <span class="room-brand-mark site-brand-mark site-brand-icon" aria-hidden="true">
-          <TsIcon name="moonStar" :size="21" :stroke-width="1.85" />
+          <TsIcon name="eclipse" :size="21" :stroke-width="1.9" />
         </span>
         <span>
           <strong>{{ t.brand }}</strong>
