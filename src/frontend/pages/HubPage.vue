@@ -56,7 +56,6 @@ const latestPixelArtwork = ref(hubPreviewCache?.latestPixelArtwork || null);
 const plazaMessages = ref(hubPreviewCache?.plazaMessages || []);
 const siteStats = ref(hubPreviewCache?.siteStats || null);
 const visitPopupPreview = ref({
-  enabled: false,
   title: '欢迎来到月读空间',
   content: '首次访问弹窗尚未配置内容。'
 });
@@ -345,13 +344,11 @@ async function loadVisitPopupPreview() {
     const title = String(settings.visitPopupTitle || '').trim();
     const content = String(settings.visitPopupContent || '').trim();
     visitPopupPreview.value = {
-      enabled: settings.visitPopupEnabled === true,
       title: title || '欢迎来到月读空间',
       content: content || '首次访问弹窗尚未配置内容。'
     };
   } catch (_) {
     visitPopupPreview.value = {
-      enabled: false,
       title: '首访弹窗',
       content: '弹窗内容暂时无法读取。'
     };
@@ -415,10 +412,9 @@ onMounted(() => {
           </div>
         </div>
         <div class="hub-side-card hub-visit-card">
-          <span class="hub-visit-eyebrow">Visitor Flow</span>
+          <span class="hub-visit-eyebrow">公告</span>
           <div class="hub-visit-title-row">
             <strong>{{ visitPopupPreview.title }}</strong>
-            <small :class="{ active: visitPopupPreview.enabled }">{{ visitPopupPreview.enabled ? '已启用' : '未启用' }}</small>
           </div>
           <p class="hub-visit-content">{{ visitPopupPreview.content }}</p>
         </div>
