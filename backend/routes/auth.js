@@ -59,6 +59,11 @@ function siteUrl(path, params = {}) {
     return url.toString();
 }
 
+function oauthDisplayForRequest(req) {
+    const userAgent = String(req.get('user-agent') || '');
+    return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(userAgent) ? 'mobile' : 'pc';
+}
+
 function redirectToOAuthError(res, code) {
     return res.redirect(siteUrl('/login', { oauth_error: code }));
 }
@@ -171,6 +176,26 @@ function uniqueUsername(preferred, providerUserId) {
 function oauthPlaceholderEmail(provider, providerUserId) {
     const hash = crypto.createHash('sha256').update(`${provider}:${providerUserId}`).digest('hex').slice(0, 24);
     return `${provider}_${hash}@oauth.yachiyo.local`;
+}
+
+function createUserFromOAuthProfile(profile, preferredUsername = '') {
+    const userId = uuidv4();
+    const username = uniqueUsername(preferredUsername || profile.nickname, profile.providerUserId);
+    const email = profile.email && !authRepository.findUserByEmail(profile.email)
+        ? profile.email
+        : oauthPlaceholderEmail(profile.provider, profile.providerUserId);
+    const passwordHash = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 10);
+
+    return authRepository.createUserWithOAuthAccount({
+        user: {
+            id: userId,
+            username,
+            email,
+            passwordHash,
+            avatar: profile.avatar
+        },
+        account: oauthAccountFromProfile(profile, userId)
+    });
 }
 
 function pendingOAuthResponse(profile) {
@@ -293,7 +318,7 @@ router.get('/oauth/qq/start', async (req, res) => {
         const state = crypto.randomBytes(24).toString('hex');
         const redirectPath = safeRedirectPath(req.query.redirect || '/hub');
         await authState.createOAuthState({ state, provider: 'qq', redirectPath });
-        res.redirect(qqOAuth.authorizationUrl({ state }));
+        res.redirect(qqOAuth.authorizationUrl({ state, display: oauthDisplayForRequest(req) }));
     } catch (error) {
         console.error('Start QQ OAuth failed:', error);
         redirectToOAuthError(res, error.code === 'QQ_OAUTH_NOT_CONFIGURED' ? 'qq_not_configured' : 'qq_start_failed');
@@ -306,7 +331,8 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
 
         const code = String(req.query.code || '').trim();
         const state = String(req.query.state || '').trim();
-        if (!code || !state) return redirectToOAuthError(res, 'qq_missing_code');
+        if (!state) return redirectToOAuthError(res, 'qq_invalid_state');
+        if (!code) return redirectToOAuthError(res, 'qq_missing_code');
 
         const statePayload = await authState.consumeOAuthState(state, 'qq');
         if (!statePayload) return redirectToOAuthError(res, 'qq_invalid_state');
@@ -327,16 +353,21 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
             }
         }
 
-        const ticket = crypto.randomBytes(24).toString('hex');
-        await authState.createOAuthPending({
-            ticket,
-            provider: 'qq',
-            profile,
-            redirectPath: statePayload.redirectPath
-        });
+        const matchedEmailUser = profile.email ? authRepository.findUserByEmail(profile.email) : null;
+        if (matchedEmailUser) {
+            const ticket = crypto.randomBytes(24).toString('hex');
+            await authState.createOAuthPending({
+                ticket,
+                provider: 'qq',
+                profile,
+                redirectPath: statePayload.redirectPath
+            });
+            return res.redirect(siteUrl('/login', { oauth: 'qq', ticket, mode: 'bind' }));
+        }
 
-        const mode = profile.email && authRepository.findUserByEmail(profile.email) ? 'bind' : '';
-        return res.redirect(siteUrl('/login', { oauth: 'qq', ticket, mode }));
+        const createdUser = createUserFromOAuthProfile(profile);
+        setUserLoginSession(req, res, createdUser);
+        return res.redirect(siteUrl(safeRedirectPath(statePayload.redirectPath)));
     } catch (error) {
         console.error('QQ OAuth callback failed:', error);
         return redirectToOAuthError(res, 'qq_callback_failed');
@@ -377,22 +408,7 @@ router.post('/oauth/qq/create', async (req, res) => {
             return res.json({ success: true, message: '登录成功', data: { user: sessionUser, redirect: safeRedirectPath(pending.redirectPath) } });
         }
 
-        const userId = uuidv4();
-        const username = uniqueUsername(req.body.username || profile.nickname, profile.providerUserId);
-        const email = profile.email && !authRepository.findUserByEmail(profile.email)
-            ? profile.email
-            : oauthPlaceholderEmail('qq', profile.providerUserId);
-        const passwordHash = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 10);
-        const user = authRepository.createUserWithOAuthAccount({
-            user: {
-                id: userId,
-                username,
-                email,
-                passwordHash,
-                avatar: profile.avatar
-            },
-            account: oauthAccountFromProfile(profile, userId)
-        });
+        const user = createUserFromOAuthProfile(profile, req.body.username);
         await authState.consumeOAuthPending(ticket, 'qq');
         const sessionUser = setUserLoginSession(req, res, user);
         res.status(201).json({

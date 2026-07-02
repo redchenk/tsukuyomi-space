@@ -50,7 +50,9 @@ const isJapanese = computed(() => props.t.login === 'ログイン');
 const authTitle = computed(() => hasOAuthTicket.value ? 'QQ 登录确认' : (isJapanese.value ? 'おかえりなさい' : '欢迎回来'));
 const authSubtitle = computed(() => (
   hasOAuthTicket.value
-    ? '选择创建新账号，或验证已有邮箱账号后把 QQ 绑定到同一个账号。'
+    ? (oauth.profile?.hasEmailMatch
+      ? '检测到相同邮箱账号，可验证后把 QQ 绑定到同一个账号，也可以直接开通新账号。'
+      : 'QQ 授权已完成，可以直接进入，也可以绑定已有站内账号。')
     : props.t.loginSubtitle
 ));
 const authVisualTitle = computed(() => (isJapanese.value ? '月読空間' : '月读空间'));
@@ -317,7 +319,7 @@ onMounted(() => {
             <div v-if="oauth.message" class="form-message" :class="oauth.type">{{ oauth.message }}</div>
 
             <div class="mode-row">
-              <button class="mode-btn" :class="{ active: oauth.mode === 'create' }" type="button" @click="setOAuthMode('create')">创建 QQ 账号</button>
+              <button class="mode-btn" :class="{ active: oauth.mode === 'create' }" type="button" @click="setOAuthMode('create')">QQ 一键进入</button>
               <button class="mode-btn" :class="{ active: oauth.mode === 'bind' }" type="button" @click="setOAuthMode('bind')">绑定已有账号</button>
             </div>
 
@@ -329,7 +331,7 @@ onMounted(() => {
                   <input id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于站内展示的用户名">
                 </div>
               </div>
-              <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '创建并进入' }}</button>
+              <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '一键开通并进入' }}</button>
             </form>
 
             <form v-else @submit.prevent="submitOAuthBind">
@@ -418,7 +420,7 @@ onMounted(() => {
             <div class="oauth-provider-row">
               <button class="oauth-icon-btn qq" type="button" aria-label="QQ 登录" title="QQ 登录" @click="startQQLogin">
                 <img :src="qqIconUrl" alt="">
-                <span>QQ</span>
+                <span>QQ 登录</span>
               </button>
             </div>
           </div>

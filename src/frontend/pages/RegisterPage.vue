@@ -187,7 +187,7 @@ function startQQLogin() {
             <div class="oauth-provider-row">
               <button class="oauth-icon-btn qq" type="button" aria-label="QQ 登录" title="QQ 登录" @click="startQQLogin">
                 <img :src="qqIconUrl" alt="">
-                <span>QQ</span>
+                <span>QQ 登录</span>
               </button>
             </div>
           </div>

@@ -17,7 +17,7 @@ function qqConfig() {
     return qq;
 }
 
-function authorizationUrl({ state }) {
+function authorizationUrl({ state, display = 'pc' }) {
     const qq = qqConfig();
     const params = new URLSearchParams({
         response_type: 'code',
@@ -26,6 +26,9 @@ function authorizationUrl({ state }) {
         state,
         scope: 'get_user_info'
     });
+    if (display === 'mobile' || display === 'pc') {
+        params.set('display', display);
+    }
     return `${QQ_AUTHORIZE_URL}?${params.toString()}`;
 }
 
@@ -94,7 +97,8 @@ async function exchangeCodeForToken(code) {
         client_id: qq.clientId,
         client_secret: qq.clientSecret,
         code,
-        redirect_uri: qq.redirectUri
+        redirect_uri: qq.redirectUri,
+        fmt: 'json'
     });
     const payload = parseMaybeJson(await fetchText(`${QQ_TOKEN_URL}?${params.toString()}`));
     assertNoProviderError(payload, 'token');
