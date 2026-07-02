@@ -1,0 +1,617 @@
+/* Final theme guardrails: keep Tsukuyomi glass, but guarantee readable light/dark contrast. */
+:root {
+    --ts-bg: #edf6ff;
+    --ts-bg-soft: #f5f7ff;
+    --ts-bg-warm: #fffafe;
+    --ts-surface: rgba(255, 255, 255, 0.86);
+    --ts-surface-strong: rgba(255, 255, 255, 0.96);
+    --ts-card: rgba(255, 255, 255, 0.78);
+    --ts-card-hover: rgba(248, 251, 255, 0.94);
+    --ts-border: rgba(45, 64, 98, 0.2);
+    --ts-border-strong: rgba(45, 127, 168, 0.36);
+    --ts-text: #263044;
+    --ts-text-strong: #0f172a;
+    --ts-muted: rgba(38, 48, 68, 0.74);
+    --ts-cyan: #2d8fba;
+    --ts-glass: rgba(255, 255, 255, 0.84);
+    --ts-glass-strong: rgba(255, 255, 255, 0.96);
+    --ts-readable-panel-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.76)),
+        var(--ts-glass);
+    --ts-readable-card-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(247, 251, 255, 0.7)),
+        rgba(255, 255, 255, 0.78);
+    --ts-readable-control-bg: rgba(255, 255, 255, 0.76);
+    --ts-readable-control-hover: rgba(255, 255, 255, 0.96);
+    --ts-readable-input-bg: rgba(255, 255, 255, 0.9);
+    --ts-readable-shadow: 0 16px 42px rgba(68, 91, 132, 0.14);
+
+    --text: var(--ts-text);
+    --muted: var(--ts-muted);
+    --ink: var(--ts-text-strong);
+    --ink-soft: var(--ts-text);
+    --panel: var(--ts-surface);
+    --panel-strong: var(--ts-surface-strong);
+    --line: var(--ts-border);
+
+    --ts-polish-glass: var(--ts-glass);
+    --ts-polish-glass-strong: var(--ts-glass-strong);
+    --ts-polish-card: var(--ts-card);
+    --ts-polish-card-hover: var(--ts-card-hover);
+    --ts-polish-border: var(--ts-border);
+    --ts-polish-border-strong: var(--ts-border-strong);
+    --ts-polish-shadow: var(--ts-shadow-md);
+    --ts-polish-shadow-soft: var(--ts-readable-shadow);
+    --ts-polish-control-bg: var(--ts-readable-control-bg);
+    --ts-polish-control-hover: var(--ts-readable-control-hover);
+}
+
+html[data-theme="dark"] {
+    --ts-bg: #0b1020;
+    --ts-bg-soft: #111a30;
+    --ts-bg-warm: #17142a;
+    --ts-surface: rgba(10, 16, 32, 0.78);
+    --ts-surface-strong: rgba(7, 11, 24, 0.92);
+    --ts-card: rgba(255, 255, 255, 0.09);
+    --ts-card-hover: rgba(123, 140, 246, 0.18);
+    --ts-border: rgba(231, 249, 255, 0.18);
+    --ts-border-strong: rgba(174, 242, 255, 0.38);
+    --ts-text: #edf7ff;
+    --ts-text-strong: #ffffff;
+    --ts-muted: rgba(237, 247, 255, 0.74);
+    --ts-cyan: #aef2ff;
+    --ts-glass: rgba(8, 13, 28, 0.72);
+    --ts-glass-strong: rgba(8, 13, 28, 0.9);
+    --ts-readable-panel-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.115), rgba(255, 255, 255, 0.045)),
+        var(--ts-glass);
+    --ts-readable-card-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035)),
+        rgba(8, 13, 28, 0.62);
+    --ts-readable-control-bg: rgba(255, 255, 255, 0.075);
+    --ts-readable-control-hover: rgba(255, 255, 255, 0.13);
+    --ts-readable-input-bg: rgba(3, 7, 18, 0.52);
+    --ts-readable-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+body:not(.vue-access-route) {
+    color: var(--ts-text);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) {
+    color: var(--ts-text);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .panel,
+    [class$="-panel"],
+    [class*="-panel "],
+    [class$="-card"],
+    [class*="-card "],
+    [class$="-item"],
+    [class*="-item "],
+    [class$="-empty"],
+    [class*="-empty "],
+    [class$="-status"],
+    [class*="-status "],
+    [class$="-toolbar"],
+    [class*="-toolbar "],
+    [class$="-drawer"],
+    [class*="-drawer "],
+    .article-reader,
+    .comments-section,
+    .comment-form,
+    .reply-form,
+    .editor-form,
+    .plaza-wall,
+    .plaza-composer,
+    .gallery-dropzone,
+    .gallery-feature,
+    .attachments-upload-options,
+    .arena-draft-form,
+    .memory-editor,
+    .knowledge-editor
+) {
+    color: var(--ts-text);
+    border-color: var(--ts-border);
+    background: var(--ts-readable-card-bg);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        var(--ts-readable-shadow);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .panel,
+    [class$="-panel"],
+    [class*="-panel "],
+    .article-reader,
+    .comments-section,
+    .editor-form,
+    .plaza-wall,
+    .arena-gallery,
+    .uc-content-panel,
+    .room-settings-card,
+    .live2d-control-panel
+) {
+    background: var(--ts-readable-panel-bg);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    label,
+    strong,
+    th,
+    .panel-title,
+    .section-title,
+    .uc-section-title,
+    .profile-section-head h2,
+    [class$="-title"],
+    [class*="-title "],
+    [class$="-name"],
+    [class*="-name "],
+    [class$="-value"],
+    [class*="-value "]
+) {
+    color: var(--ts-text-strong);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    p,
+    small,
+    figcaption,
+    .help-text,
+    .panel-subtitle,
+    .section-subtitle,
+    [class$="-meta"],
+    [class*="-meta "],
+    [class$="-note"],
+    [class*="-note "],
+    [class$="-hint"],
+    [class*="-hint "],
+    [class$="-subtitle"],
+    [class*="-subtitle "],
+    [class$="-excerpt"],
+    [class*="-excerpt "],
+    [class$="-desc"],
+    [class*="-desc "]
+) {
+    color: var(--ts-muted);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    input,
+    textarea,
+    select
+) {
+    color: var(--ts-text-strong) !important;
+    -webkit-text-fill-color: currentColor !important;
+    border-color: var(--ts-border) !important;
+    background: var(--ts-readable-input-bg) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 0 0 0 rgba(0, 0, 0, 0) !important;
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    input:disabled,
+    textarea:disabled,
+    select:disabled
+) {
+    color: color-mix(in srgb, var(--ts-text) 72%, transparent) !important;
+    opacity: 1;
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    input,
+    textarea
+)::placeholder {
+    color: color-mix(in srgb, var(--ts-muted) 72%, transparent) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .ghost-btn,
+    .icon-btn,
+    .panel-btn,
+    .panel-toggle-btn,
+    .filter-btn,
+    .tab-btn,
+    .chip,
+    .mode-btn,
+    .code-btn,
+    .stage-page-btn,
+    .plaza-page-btn,
+    .plaza-topic-chip,
+    .oauth-icon-btn,
+    .memory-expand-btn,
+    .memory-manager-toggle,
+    .room-nav-button,
+    .room-theme-toggle,
+    .terminal-nav-btn,
+    .music-mini-btn,
+    .site-music-mini-btn
+):not(.active):not(.router-link-active):not(.primary-btn):not(.danger-btn) {
+    color: var(--ts-text);
+    border-color: var(--ts-border);
+    background: var(--ts-readable-control-bg);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .ghost-btn,
+    .icon-btn,
+    .panel-btn,
+    .panel-toggle-btn,
+    .filter-btn,
+    .tab-btn,
+    .chip,
+    .mode-btn,
+    .code-btn,
+    .stage-page-btn,
+    .plaza-page-btn,
+    .plaza-topic-chip,
+    .oauth-icon-btn,
+    .memory-expand-btn,
+    .memory-manager-toggle,
+    .room-nav-button,
+    .room-theme-toggle,
+    .terminal-nav-btn,
+    .music-mini-btn,
+    .site-music-mini-btn
+):not(:disabled):hover {
+    color: var(--ts-text-strong);
+    border-color: var(--ts-border-strong);
+    background: var(--ts-readable-control-hover);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .primary-btn,
+    .danger-btn,
+    .tab-btn.active,
+    .chip.active,
+    .mode-btn.active,
+    .filter-btn.active,
+    .stage-page-btn.active,
+    .plaza-page-btn.active,
+    .terminal-nav-btn.active,
+    .room-nav-button.active,
+    .music-mini-btn.is-active,
+    .site-music-mini-btn.is-active,
+    .nav-link.router-link-active,
+    .mobile-bottom-link.router-link-active,
+    .rail-link.router-link-active
+) {
+    color: #fff;
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .form-message,
+    .plaza-toast,
+    .arena-toast,
+    .visit-popup-card
+) {
+    color: var(--ts-text);
+    border-color: var(--ts-border);
+    background: var(--ts-readable-panel-bg);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .form-message.success
+) {
+    color: #0f5132;
+    border-color: rgba(34, 197, 94, 0.34);
+    background: rgba(220, 252, 231, 0.92);
+}
+
+html[data-theme="dark"] body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .form-message.success
+) {
+    color: #c7f9d8;
+    background: rgba(34, 197, 94, 0.16);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .form-message.error
+) {
+    color: #7f1d1d;
+    border-color: rgba(244, 63, 94, 0.32);
+    background: rgba(255, 228, 230, 0.92);
+}
+
+html[data-theme="dark"] body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .form-message.error
+) {
+    color: #ffd7df;
+    background: rgba(244, 63, 94, 0.16);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(a:not(.primary-btn):not(.ghost-btn):not(.danger-btn):not(.icon-btn)) {
+    color: color-mix(in srgb, var(--ts-cyan) 72%, var(--ts-text-strong));
+}
+
+html[data-theme="light"] body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .status-pill,
+    .uc-status-pill,
+    .plaza-status-value,
+    .arena-chat-status,
+    .notification-type-icon
+) {
+    color: color-mix(in srgb, var(--ts-cyan) 58%, var(--ts-text-strong));
+}
+
+/* Global chrome is outside page containers, so it needs the same theme contract. */
+body:not(.vue-access-route) :is(
+    .topbar.site-commandbar,
+    .site-rail,
+    .mobile-bottom-nav,
+    .nav-actions.site-nav-links.open,
+    .site-music-panel,
+    .site-music-handle,
+    .site-music-subdrawer,
+    .music-drawer,
+    .room-commandbar,
+    .room-dock
+) {
+    color: var(--ts-text);
+    border-color: var(--ts-border);
+    background: var(--ts-readable-panel-bg);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        var(--ts-readable-shadow);
+}
+
+body:not(.vue-access-route) :is(
+    .site-brand,
+    .site-brand strong,
+    .site-music-title-row strong,
+    .room-brand,
+    .room-brand strong,
+    .room-panel .panel-title
+) {
+    color: var(--ts-text-strong);
+}
+
+body:not(.vue-access-route) :is(
+    .site-brand small,
+    .site-music-space,
+    .site-music-progress-row,
+    .room-brand small,
+    .room-panel .field-hint
+) {
+    color: var(--ts-muted);
+}
+
+body:not(.vue-access-route) :is(
+    .rail-link,
+    .mobile-bottom-link,
+    .theme-toggle,
+    .lang-btn,
+    .site-music-mini-btn,
+    .site-music-controls .music-icon-btn
+):not(.active):not(.router-link-active):not(.is-active) {
+    color: var(--ts-text);
+    border-color: var(--ts-border);
+    background: var(--ts-readable-control-bg);
+}
+
+body:not(.vue-access-route) :is(
+    .rail-link:hover,
+    .rail-link.expanded,
+    .mobile-bottom-link:hover,
+    .theme-toggle:hover,
+    .lang-btn:hover,
+    .site-music-mini-btn:hover,
+    .site-music-controls .music-icon-btn:hover
+) {
+    color: var(--ts-text-strong);
+    border-color: var(--ts-border-strong);
+    background: var(--ts-readable-control-hover);
+}
+
+body:not(.vue-access-route) :is(
+    .rail-mark,
+    .rail-link.active,
+    .mobile-bottom-link.active,
+    .mobile-bottom-link.router-link-active,
+    .site-music-play,
+    .site-music-main-control
+) {
+    color: var(--ts-unified-primary-text, #061624);
+}
+
+body:not(.vue-access-route) .nav-inline-badge {
+    color: var(--ts-text-strong);
+    border-color: color-mix(in srgb, var(--ts-border) 76%, transparent);
+    background: color-mix(in srgb, var(--ts-readable-control-hover) 78%, transparent);
+}
+
+/* Auth pages deliberately keep their split visual layout, but theme colors must remain readable. */
+body .page.auth-page,
+body .page.auth-page .auth-shell,
+body .page.auth-page .auth-form-stage {
+    color: var(--ts-text);
+}
+
+html[data-theme="light"] body .page.auth-page,
+html[data-theme="light"] body .page.auth-page .auth-shell {
+    background:
+        radial-gradient(circle at 20% 14%, rgba(63, 159, 189, 0.12), transparent 28%),
+        radial-gradient(circle at 82% 10%, rgba(102, 187, 197, 0.09), transparent 34%),
+        linear-gradient(135deg, rgba(238, 247, 251, 0.96), rgba(231, 242, 247, 0.92) 48%, rgba(247, 250, 252, 0.96));
+}
+
+html[data-theme="light"] body .page.auth-page .auth-form-stage {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(238, 247, 251, 0.78)),
+        rgba(255, 255, 255, 0.74);
+}
+
+html[data-theme="light"] body .page.auth-page .auth-card {
+    color: var(--ts-text);
+    border-color: var(--ts-border);
+    background: var(--ts-readable-panel-bg);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.38),
+        var(--ts-readable-shadow);
+}
+
+body .page.auth-page .auth-card h1,
+body .page.auth-page .auth-card label,
+body .page.auth-page .auth-profile strong {
+    color: var(--ts-text-strong);
+}
+
+body .page.auth-page .auth-card .panel-subtitle,
+body .page.auth-page .oauth-profile span,
+body .page.auth-page .oauth-loading,
+body .page.auth-page .auth-card-footer,
+body .page.auth-page .auth-divider,
+body .page.auth-page .panel-links {
+    color: var(--ts-muted);
+}
+
+body .page.auth-page :is(.auth-kicker, .auth-visual-kicker) {
+    color: color-mix(in srgb, var(--ts-cyan) 68%, var(--ts-text-strong));
+}
+
+body .page.auth-page .auth-card :is(.mode-row, .auth-input-shell, .code-btn, .oauth-icon-btn, .auth-divider span) {
+    color: var(--ts-text);
+    border-color: var(--ts-border);
+    background: var(--ts-readable-control-bg);
+}
+
+body .page.auth-page .auth-card .auth-input-shell:focus-within {
+    border-color: var(--ts-border-strong);
+    background: var(--ts-readable-control-hover);
+    box-shadow: var(--ts-focus-ring);
+}
+
+body .page.auth-page .auth-card .auth-input-shell input {
+    color: var(--ts-text-strong) !important;
+    -webkit-text-fill-color: currentColor !important;
+    background: transparent !important;
+}
+
+body .page.auth-page .auth-card .auth-input-shell input::placeholder {
+    color: color-mix(in srgb, var(--ts-muted) 72%, transparent) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+body .page.auth-page :is(.auth-field-icon, .auth-password-toggle) {
+    color: color-mix(in srgb, var(--ts-cyan) 58%, var(--ts-text));
+}
+
+body .page.auth-page .auth-password-toggle:hover,
+body .page.auth-page .auth-password-toggle[aria-pressed="true"] {
+    color: var(--ts-text-strong);
+    background: var(--ts-readable-control-hover);
+}
+
+body .page.auth-page :is(.auth-card-footer a, .panel-links a, .auth-home-link, .oauth-back-btn) {
+    color: color-mix(in srgb, var(--ts-cyan) 66%, var(--ts-text-strong));
+}
+
+html[data-theme="dark"] body .page.auth-page .auth-card {
+    color: var(--ts-text);
+    border-color: var(--ts-border);
+    background: var(--ts-readable-panel-bg);
+}
+
+html[data-theme="dark"] body .page.auth-page .auth-card .panel-subtitle {
+    color: var(--ts-muted);
+}
+
+/* Dialogs, lightboxes, toasts, and tabular surfaces need reliable text over overlays. */
+body:not(.vue-access-route) :is(
+    .gallery-lightbox section,
+    .arena-art-lightbox-card,
+    .editor-asset-modal,
+    .room-test-modal-card,
+    .visit-popup-card
+) {
+    color: var(--ts-text);
+    border-color: var(--ts-border);
+    background: var(--ts-readable-panel-bg);
+}
+
+body:not(.vue-access-route) :is(
+    .gallery-lightbox footer strong,
+    .arena-art-lightbox-card h2,
+    .editor-asset-modal h2,
+    .room-test-modal-card h3,
+    .visit-popup-card h2
+) {
+    color: var(--ts-text-strong);
+}
+
+body:not(.vue-access-route) :is(
+    .gallery-lightbox footer span,
+    .arena-art-lightbox-card p,
+    .editor-asset-modal p,
+    .room-test-modal-card p,
+    .visit-popup-card p
+) {
+    color: var(--ts-muted);
+}
+
+body:not(.vue-access-route) :is(
+    table,
+    thead,
+    tbody,
+    tr,
+    td,
+    th,
+    pre,
+    code
+) {
+    border-color: var(--ts-border);
+}
+
+body:not(.vue-access-route) :is(td, th, pre, code) {
+    color: var(--ts-text);
+}
+
+body:not(.vue-access-route) th {
+    color: var(--ts-text-strong);
+    background: color-mix(in srgb, var(--ts-readable-control-hover) 80%, transparent);
+}
+
+/* Light theme should not inherit night-scene copy colors on bright presentation blocks. */
+html[data-theme="light"] body .page.arena-page :is(
+    .arena-hero-copy,
+    .arena-hero-copy p,
+    .arena-kicker
+),
+html[data-theme="light"] body .page.gallery-page .gallery-breadcrumb,
+html[data-theme="light"] body .page.plaza-page .plaza-eyebrow {
+    -webkit-text-fill-color: currentColor;
+}
+
+html[data-theme="light"] body .page.arena-page .arena-hero-copy {
+    color: var(--ts-text);
+}
+
+html[data-theme="light"] body .page.arena-page .arena-hero-copy p {
+    color: var(--ts-muted);
+}
+
+html[data-theme="light"] body .page.arena-page .arena-kicker,
+html[data-theme="light"] body .page.gallery-page .gallery-breadcrumb,
+html[data-theme="light"] body .page.plaza-page .plaza-eyebrow {
+    color: color-mix(in srgb, var(--ts-cyan) 48%, var(--ts-text-strong));
+}
+
+html[data-theme="light"] body:not(.vue-access-route) :is(
+    .hub-side-card > span,
+    .plaza-section-title > span,
+    .uc-eyebrow,
+    .uc-section-title > span,
+    .notifications-kicker
+) {
+    color: color-mix(in srgb, var(--ts-cyan) 38%, var(--ts-text-strong)) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
