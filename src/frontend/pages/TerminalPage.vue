@@ -694,7 +694,19 @@ onUnmounted(() => {
           <div v-show="terminal.activePanel === 'users'">
             <div class="terminal-panel-head"><h2>用户管理</h2></div>
             <div class="terminal-toolbar terminal-users-toolbar">
-              <input v-model="terminal.userSearch" placeholder="搜索用户名、邮箱、角色或 ID">
+              <input
+                v-model="terminal.userSearch"
+                type="search"
+                name="terminal-filter-q"
+                autocomplete="off"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+                data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                placeholder="搜索用户名、邮箱、角色或 ID"
+              >
               <label class="terminal-page-size">
                 <span>每页</span>
                 <select v-model.number="terminal.userPageSize">
@@ -712,7 +724,17 @@ onUnmounted(() => {
                   <strong>{{ item.username }}</strong>
                   <small>{{ item.bio || '未填写简介' }}</small>
                   <div v-if="canManageAccounts && item.username !== 'admin'" class="terminal-inline-edit">
-                    <input v-model="terminal.usernameDrafts[item.id]" type="text" maxlength="32" placeholder="编辑昵称">
+                    <input
+                      v-model="terminal.usernameDrafts[item.id]"
+                      type="text"
+                      name="terminal-display-name"
+                      autocomplete="off"
+                      data-form-type="other"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      maxlength="32"
+                      placeholder="编辑昵称"
+                    >
                     <button class="ghost-btn compact" type="button" :disabled="!terminal.usernameDrafts[item.id] || terminal.usernameDrafts[item.id] === item.username || item.username === 'admin'" @click="changeUserUsername(item)">保存昵称</button>
                   </div>
                 </td>
@@ -727,7 +749,16 @@ onUnmounted(() => {
                   <button class="ghost-btn compact" type="button" :disabled="!canManageAccounts || terminal.roleDrafts[item.id] === item.role || item.username === 'admin'" @click="changeUserRole(item)">保存</button>
                 </td>
                 <td>
-                  <input v-model="terminal.passwordDrafts[item.id]" type="password" placeholder="新密码">
+                  <input
+                    v-model="terminal.passwordDrafts[item.id]"
+                    type="password"
+                    name="terminal-reset-password"
+                    autocomplete="new-password"
+                    data-form-type="other"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    placeholder="新密码"
+                  >
                   <button class="ghost-btn compact" type="button" :disabled="!canManageAccounts || !terminal.passwordDrafts[item.id]" @click="resetUserPassword(item)">重置</button>
                 </td>
                 <td><button class="danger-btn" type="button" :disabled="!canManageAccounts || item.role === 'admin' || item.username === 'admin'" @click="deleteUser(item.id)">删除</button></td>
