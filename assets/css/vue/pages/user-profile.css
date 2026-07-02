@@ -1350,3 +1350,308 @@ body .page.user-profile-page .profile-empty {
         min-height: 138px;
     }
 }
+
+/* Product Design mobile refinement: compact public profile */
+@media (max-width: 720px) {
+    body .page.user-profile-page {
+        width: 100%;
+        max-width: 100%;
+        padding-top: 5rem;
+        padding-right: 0.86rem;
+        padding-bottom: max(6.2rem, calc(env(safe-area-inset-bottom) + 5.6rem));
+        padding-left: 0.86rem;
+    }
+
+    body .page.user-profile-page .profile-hero {
+        grid-template-columns: 76px minmax(0, 1fr);
+        gap: 0.72rem;
+        align-items: center;
+        min-height: 0;
+        margin-bottom: 0.72rem;
+        padding: 0.82rem;
+        border-radius: var(--ts-radius-lg);
+        text-align: left;
+    }
+
+    body .page.user-profile-page .profile-avatar-wrap,
+    body .page.user-profile-page .profile-main,
+    body .page.user-profile-page .profile-actions {
+        grid-row: auto;
+    }
+
+    body .page.user-profile-page .profile-avatar-wrap {
+        grid-column: 1;
+        align-self: start;
+        justify-self: start;
+        margin: 0;
+    }
+
+    body .page.user-profile-page .profile-avatar {
+        width: 72px;
+        height: 72px;
+        padding: 3px;
+        box-shadow: 0 0 0 4px rgba(174, 242, 255, 0.08);
+    }
+
+    body .page.user-profile-page .profile-avatar-initial {
+        right: -4px;
+        bottom: 0;
+        width: 27px;
+        height: 27px;
+        font-size: 0.78rem;
+    }
+
+    body .page.user-profile-page .profile-main {
+        grid-column: 2;
+        align-self: center;
+        min-width: 0;
+        text-align: left;
+    }
+
+    body .page.user-profile-page .profile-kicker {
+        margin-bottom: 0.3rem;
+        font-size: 0.66rem;
+        letter-spacing: 0.08rem;
+    }
+
+    body .page.user-profile-page .profile-main h1 {
+        max-width: 100%;
+        margin-bottom: 0.28rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: clamp(1.42rem, 8vw, 2rem);
+        line-height: 1.08;
+    }
+
+    body .page.user-profile-page .profile-main p {
+        display: -webkit-box;
+        max-width: none;
+        margin: 0;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        font-size: 0.82rem;
+        line-height: 1.5;
+    }
+
+    body .page.user-profile-page .profile-meta {
+        margin-top: 0.5rem;
+        gap: 0.34rem;
+        justify-content: flex-start;
+    }
+
+    body .page.user-profile-page .profile-meta span {
+        max-width: 100%;
+        padding: 0.22rem 0.48rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.68rem;
+    }
+
+    body .page.user-profile-page .profile-actions {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.46rem;
+        width: 100%;
+    }
+
+    body .page.user-profile-page .profile-actions .primary-btn,
+    body .page.user-profile-page .profile-actions .ghost-btn {
+        width: 100%;
+        min-width: 0;
+        min-height: 38px;
+        padding-inline: 0.5rem;
+    }
+
+    body .page.user-profile-page .profile-icon-action span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body .page.user-profile-page .profile-presence,
+    body .page.user-profile-page .profile-side-stack {
+        display: none;
+    }
+
+    body .page.user-profile-page .profile-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        margin-bottom: 0.72rem;
+    }
+
+    body .page.user-profile-page .profile-stat {
+        display: grid;
+        grid-template-columns: 32px minmax(0, 1fr);
+        min-height: 66px;
+        padding: 0.58rem;
+        gap: 0.5rem;
+        align-items: center;
+        border-radius: var(--ts-radius-md);
+    }
+
+    body .page.user-profile-page .profile-stat-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--ts-radius-sm);
+    }
+
+    body .page.user-profile-page .profile-stat-icon svg {
+        width: 17px;
+        height: 17px;
+    }
+
+    body .page.user-profile-page .profile-stat span,
+    body .page.user-profile-page .profile-stat small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body .page.user-profile-page .profile-stat span {
+        font-size: 0.66rem;
+    }
+
+    body .page.user-profile-page .profile-stat strong {
+        font-size: clamp(0.98rem, 5.5vw, 1.22rem);
+    }
+
+    body .page.user-profile-page .profile-stat small {
+        font-size: 0.64rem;
+    }
+
+    body .page.user-profile-page .profile-content-grid {
+        display: block;
+        animation: profile-panel-in 0.24s var(--ts-ease-lift) both;
+    }
+
+    body .page.user-profile-page .profile-articles {
+        padding: 0.82rem;
+        border-radius: var(--ts-radius-lg);
+    }
+
+    body .page.user-profile-page .profile-section-head {
+        align-items: center;
+        flex-direction: row;
+        gap: 0.7rem;
+        margin-bottom: 0.74rem;
+    }
+
+    body .page.user-profile-page .profile-section-head h2 {
+        font-size: 0.96rem;
+    }
+
+    body .page.user-profile-page .profile-section-head > div > span {
+        font-size: 0.64rem;
+    }
+
+    body .page.user-profile-page .profile-section-head strong {
+        min-width: 34px;
+        height: 30px;
+        padding-inline: 0.56rem;
+    }
+
+    body .page.user-profile-page .profile-article-list {
+        gap: 0.58rem;
+    }
+
+    body .page.user-profile-page .profile-article {
+        grid-template-columns: 86px minmax(0, 1fr);
+        gap: 0.62rem;
+        align-items: stretch;
+        min-height: 104px;
+        padding: 0.62rem;
+        border-radius: var(--ts-radius-md);
+    }
+
+    body .page.user-profile-page .profile-article-cover {
+        grid-row: 1 / 3;
+        min-height: 88px;
+        height: 100%;
+        border-radius: var(--ts-radius-sm);
+    }
+
+    body .page.user-profile-page .profile-article-body {
+        min-width: 0;
+    }
+
+    body .page.user-profile-page .profile-article-meta {
+        gap: 0.32rem;
+        font-size: 0.68rem;
+    }
+
+    body .page.user-profile-page .profile-article-meta span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body .page.user-profile-page .profile-article h3 {
+        margin: 0.26rem 0;
+        font-size: 0.92rem;
+        line-height: 1.34;
+    }
+
+    body .page.user-profile-page .profile-article p {
+        -webkit-line-clamp: 1;
+        font-size: 0.78rem;
+        line-height: 1.45;
+    }
+
+    body .page.user-profile-page .profile-article .icon-btn {
+        aspect-ratio: auto;
+        grid-column: 2;
+        grid-row: 2;
+        align-self: start;
+        justify-self: start;
+        min-width: 0;
+        width: auto;
+        min-height: 32px;
+        padding: 0.38rem 0.58rem;
+    }
+}
+
+@media (max-width: 430px) {
+    body .page.user-profile-page {
+        padding-right: 0.68rem;
+        padding-left: 0.68rem;
+    }
+
+    body .page.user-profile-page .profile-hero {
+        grid-template-columns: 66px minmax(0, 1fr);
+        padding: 0.72rem;
+    }
+
+    body .page.user-profile-page .profile-avatar {
+        width: 62px;
+        height: 62px;
+    }
+
+    body .page.user-profile-page .profile-actions .primary-btn,
+    body .page.user-profile-page .profile-actions .ghost-btn {
+        min-height: 36px;
+        font-size: 0.76rem;
+    }
+
+    body .page.user-profile-page .profile-stat small {
+        display: none;
+    }
+
+    body .page.user-profile-page .profile-article {
+        grid-template-columns: 74px minmax(0, 1fr);
+        min-height: 92px;
+    }
+
+    body .page.user-profile-page .profile-article-cover {
+        min-height: 76px;
+    }
+
+    body .page.user-profile-page .profile-article p {
+        display: none;
+    }
+}
