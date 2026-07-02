@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import SocialText from '../components/SocialText.vue';
+import TsIcon from '../components/TsIcon.vue';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
 import { formatDateTime } from '../utils/time';
@@ -336,7 +337,10 @@ watch(articleId, loadArticle);
 <template>
   <main class="page article-page">
     <div class="article-shell">
-      <a class="ghost-btn article-back" :href="articleBackPath" @click.prevent="goBackToStage">返回主舞台</a>
+      <a class="ghost-btn article-back" :href="articleBackPath" @click.prevent="goBackToStage">
+        <TsIcon name="arrowLeft" :size="17" />
+        <span>返回主舞台</span>
+      </a>
 
       <div v-if="loading" class="article-status">{{ t.loading }}</div>
       <div v-else-if="message && !article" class="article-status">{{ message }}</div>
@@ -363,7 +367,8 @@ watch(articleId, loadArticle);
               :disabled="bookmark.loading"
               @click="toggleBookmark"
             >
-              {{ bookmarkLabel }}
+              <TsIcon name="bookmark" :size="17" />
+              <span>{{ bookmarkLabel }}</span>
             </button>
           </div>
         </header>
@@ -382,12 +387,18 @@ watch(articleId, loadArticle);
           <div v-if="session" class="comment-form">
             <textarea v-model="commentText" class="comment-input" placeholder="写下你的评论..."></textarea>
             <div class="comment-actions">
-              <button class="primary-btn" type="button" @click="submitComment">发布评论</button>
+              <button class="primary-btn" type="button" @click="submitComment">
+                <TsIcon name="send" :size="17" />
+                <span>发布评论</span>
+              </button>
             </div>
           </div>
           <div v-else class="comment-login">
             <span>登录后可以发表评论和回复。</span>
-            <a class="ghost-btn" href="/login" @click.prevent="$emit('go', '/login')">去登录</a>
+            <a class="ghost-btn" href="/login" @click.prevent="$emit('go', '/login')">
+              <TsIcon name="user" :size="17" />
+              <span>去登录</span>
+            </a>
           </div>
 
           <div v-if="!topComments.length" class="article-empty">暂无评论，快来发布第一条吧。</div>
@@ -405,14 +416,23 @@ watch(articleId, loadArticle);
               </div>
               <SocialText class="comment-content" :content="comment.content" @mention="goProfile" @topic="goTopic" />
               <div class="comment-tools">
-                <button class="icon-btn" type="button" @click="likeComment(comment.id)">喜欢 {{ comment.like_count || 0 }}</button>
-                <button class="icon-btn" type="button" @click="openReplies[comment.id] = !openReplies[comment.id]">回复</button>
+                <button class="icon-btn" type="button" @click="likeComment(comment.id)">
+                  <TsIcon name="heart" :size="16" />
+                  <span>喜欢 {{ comment.like_count || 0 }}</span>
+                </button>
+                <button class="icon-btn" type="button" @click="openReplies[comment.id] = !openReplies[comment.id]">
+                  <TsIcon name="message" :size="16" />
+                  <span>回复</span>
+                </button>
               </div>
 
               <div v-if="openReplies[comment.id]" class="reply-form">
                 <textarea v-model="replyText[comment.id]" class="comment-input" placeholder="写下回复..."></textarea>
                 <div class="comment-actions">
-                  <button class="primary-btn" type="button" @click="submitReply(comment.id)">发布回复</button>
+                  <button class="primary-btn" type="button" @click="submitReply(comment.id)">
+                    <TsIcon name="send" :size="17" />
+                    <span>发布回复</span>
+                  </button>
                 </div>
               </div>
 

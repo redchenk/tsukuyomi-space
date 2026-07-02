@@ -336,6 +336,14 @@ const iconPaths = {
   ],
   chevronUp: [['path', { d: 'm18 15-6-6-6 6' }]],
   chevronDown: [['path', { d: 'm6 9 6 6 6-6' }]],
+  arrowLeft: [
+    ['path', { d: 'm12 19-7-7 7-7' }],
+    ['path', { d: 'M19 12H5' }]
+  ],
+  arrowRight: [
+    ['path', { d: 'M5 12h14' }],
+    ['path', { d: 'm12 5 7 7-7 7' }]
+  ],
   skipBack: [
     ['path', { d: 'M19 20 9 12l10-8v16Z' }],
     ['path', { d: 'M5 19V5' }]

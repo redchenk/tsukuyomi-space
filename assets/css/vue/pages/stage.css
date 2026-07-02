@@ -32,11 +32,21 @@
 .search-box {
     flex: 1;
     min-width: 200px;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.stage-search-icon {
+    position: absolute;
+    left: 0.9rem;
+    color: rgba(255, 183, 197, 0.48);
+    pointer-events: none;
 }
 
 .search-box input {
     width: 100%;
-    padding: 0.7rem 1rem;
+    padding: 0.7rem 1rem 0.7rem 2.45rem;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 107, 157, 0.2);
     border-radius: 6px;
@@ -55,6 +65,10 @@
 }
 
 .stage-new-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.44rem;
     text-decoration: none;
     white-space: nowrap;
     padding: 0.7rem 1.5rem;
@@ -370,8 +384,15 @@
 }
 
 .stage-page-nav {
+    gap: 0.36rem;
     min-width: 82px;
     padding: 0 0.8rem;
+}
+
+.stage-new-btn .ts-icon,
+.stage-page-nav .ts-icon,
+.stage-search-icon {
+    flex: 0 0 auto;
 }
 
 .stage-page-gap {
@@ -401,6 +422,10 @@ html[data-theme="light"] .stage-result-strip small,
 html[data-theme="light"] .stage-pagination-info,
 html[data-theme="light"] .stage-page-gap {
     color: var(--muted, #4b5565);
+}
+
+html[data-theme="light"] .stage-search-icon {
+    color: rgba(75, 95, 140, 0.52);
 }
 
 html[data-theme="light"] .stage-page-btn,

@@ -10,6 +10,7 @@
 .article-back {
     display: inline-flex;
     align-items: center;
+    gap: 0.44rem;
     width: fit-content;
     margin-bottom: 1.4rem;
 }
@@ -78,6 +79,24 @@
     flex-wrap: wrap;
     gap: 0.55rem;
     margin-top: 0.2rem;
+}
+
+.article-social-actions .icon-btn,
+.comment-tools .icon-btn,
+.comment-actions .primary-btn,
+.comment-login .ghost-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+}
+
+.article-page .ts-icon {
+    flex: 0 0 auto;
+}
+
+.article-social-actions .icon-btn.liked .ts-icon {
+    color: #ffb7c5;
 }
 
 .article-cover {

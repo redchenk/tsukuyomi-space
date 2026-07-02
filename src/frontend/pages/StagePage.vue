@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch, getAuthToken, parseResponse } from '../api/client';
+import TsIcon from '../components/TsIcon.vue';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -226,9 +227,13 @@ onMounted(loadArticles);
 
     <div class="stage-controls">
       <div class="search-box">
+        <TsIcon class="stage-search-icon" name="search" :size="17" />
         <input v-model="stageSearch" type="text" :placeholder="t.searchPlaceholder">
       </div>
-      <a href="/editor" class="stage-new-btn" @click="checkEditorAuth">{{ t.newPost }}</a>
+      <a href="/editor" class="stage-new-btn" @click="checkEditorAuth">
+        <TsIcon name="penLine" :size="17" />
+        <span>{{ t.newPost }}</span>
+      </a>
     </div>
 
     <div class="stage-filters">
@@ -300,7 +305,8 @@ onMounted(loadArticles);
             :disabled="stageCurrentPage <= 1"
             @click="stageSetPage(stageCurrentPage - 1)"
           >
-            {{ stagePageCopy.prevPage }}
+            <TsIcon name="arrowLeft" :size="16" />
+            <span>{{ stagePageCopy.prevPage }}</span>
           </button>
           <template v-for="item in stagePageItems" :key="item">
             <span v-if="isStagePageGap(item)" class="stage-page-gap">...</span>
@@ -322,7 +328,8 @@ onMounted(loadArticles);
             :disabled="stageCurrentPage >= stageTotalPages"
             @click="stageSetPage(stageCurrentPage + 1)"
           >
-            {{ stagePageCopy.nextPage }}
+            <span>{{ stagePageCopy.nextPage }}</span>
+            <TsIcon name="arrowRight" :size="16" />
           </button>
         </div>
       </nav>
