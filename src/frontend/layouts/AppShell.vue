@@ -38,6 +38,8 @@ const navItems = computed(() => [
 ]);
 
 const mobilePrimaryItems = computed(() => navItems.value.slice(0, 4));
+const mobileSecondaryItems = computed(() => navItems.value.slice(4));
+const activeNavItem = computed(() => navItems.value.find((item) => item.active) || navItems.value[0]);
 const accountLabel = computed(() => (props.isAuthed ? props.t.ucTitle : props.t.login));
 const themeLabel = computed(() => (props.theme === 'dark' ? '切换浅色主题' : '切换深色主题'));
 const railThemeLabel = computed(() => {
@@ -192,76 +194,135 @@ onUnmounted(() => {
         </span>
         <span>
           <strong>{{ t.brand }}</strong>
-          <small>Tsukuyomi Live Portal</small>
+          <small>{{ activeNavItem?.label || 'Tsukuyomi Live Portal' }}</small>
         </span>
       </a>
+
+      <div class="mobile-command-actions" aria-label="Mobile quick actions">
+        <button
+          v-if="showNotifications"
+          class="mobile-command-btn"
+          type="button"
+          :class="{ active: routeName === 'notifications' }"
+          :aria-label="`站内信，${unreadNotifications} 条未读`"
+          @click="$emit('go', '/notifications')"
+        >
+          <TsIcon name="bell" :size="18" />
+          <span v-if="unreadNotifications" class="mobile-command-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
+        </button>
+        <button
+          class="mobile-command-btn mobile-account-btn"
+          type="button"
+          :class="{ active: routeName === 'userCenter' || routeName === 'userProfile' || routeName === 'login' }"
+          :aria-label="accountLabel"
+          @click="$emit('go', isAuthed ? '/user-center' : '/login')"
+        >
+          <img v-if="isAuthed && user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
+          <span v-else-if="isAuthed">{{ userInitial() }}</span>
+          <TsIcon v-else name="user" :size="18" />
+        </button>
+      </div>
     </header>
 
-    <div v-if="showChrome && navOpen" id="site-navigation" class="nav-actions room-nav-links site-nav-links open">
-      <a
-        v-for="item in navItems"
-        :key="item.key"
-        :href="item.path"
-        class="nav-link"
-        :class="{ 'router-link-active': item.active }"
-        @click="navOpen = false; item.spa && ($event.preventDefault(), $emit('go', item.path))"
-      >
-        <TsIcon class="nav-icon" :name="item.icon" :size="18" />
-        <span>{{ item.label }}</span>
-      </a>
+    <button
+      v-if="showChrome && navOpen"
+      class="site-navigation-scrim"
+      type="button"
+      aria-label="关闭导航"
+      @click="navOpen = false"
+    ></button>
 
-      <a
-        v-if="showNotifications"
-        href="/notifications"
-        class="nav-link"
-        :class="{ 'router-link-active': routeName === 'notifications' }"
-        @click.prevent="navOpen = false; $emit('go', '/notifications')"
-      >
-        <TsIcon class="nav-icon" name="bell" :size="18" />
-        <span>站内信</span>
-        <span v-if="unreadNotifications" class="nav-inline-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
-      </a>
-
-      <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' || routeName === 'userProfile' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">
-        <TsIcon class="nav-icon" name="user" :size="18" />
-        <span>{{ t.ucTitle }}</span>
-      </a>
-      <a v-if="isAuthed" href="/attachments" class="nav-link" :class="{ 'router-link-active': routeName === 'attachments' }" @click.prevent="navOpen = false; $emit('go', '/attachments')">
-        <TsIcon class="nav-icon" name="image" :size="18" />
-        <span>附件库</span>
-      </a>
-      <a v-if="isAuthed" href="/gallery" class="nav-link" :class="{ 'router-link-active': routeName === 'gallery' || routeName === 'galleryManage' }" @click.prevent="navOpen = false; $emit('go', '/gallery')">
-        <TsIcon class="nav-icon" name="image" :size="18" />
-        <span>图库</span>
-      </a>
-      <a v-if="!isAuthed" href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="navOpen = false; $emit('go', '/login')">
-        <TsIcon class="nav-icon" name="user" :size="18" />
-        <span>{{ t.login }}</span>
-      </a>
-      <a v-if="!isAuthed" href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="navOpen = false; $emit('go', '/register')">
-        <TsIcon class="nav-icon" name="badge" :size="18" />
-        <span>{{ t.register }}</span>
-      </a>
-      <button v-if="isAuthed" class="ghost-btn nav-link" type="button" @click="navOpen = false; $emit('logout')">
-        <TsIcon class="nav-icon" name="x" :size="18" />
-        <span>{{ t.logout }}</span>
-      </button>
-
-      <button
-        class="theme-toggle nav-link"
-        type="button"
-        :aria-label="themeLabel"
-        :title="themeLabel"
-        @click="$emit('toggle-theme')"
-      >
-        <TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />
-        <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
-      </button>
-
-      <div class="lang-switcher" aria-label="Language">
-        <button class="lang-btn" :class="{ active: lang === 'zh' }" type="button" @click="$emit('set-lang', 'zh')">中文</button>
-        <button class="lang-btn" :class="{ active: lang === 'ja' }" type="button" @click="$emit('set-lang', 'ja')">日本語</button>
+    <div v-if="showChrome && navOpen" id="site-navigation" class="nav-actions room-nav-links site-nav-links open" role="dialog" aria-modal="true" :aria-label="moreLabel">
+      <div class="site-nav-drawer-head">
+        <div>
+          <strong>{{ moreLabel }}</strong>
+          <span>{{ activeNavItem?.label || t.brand }}</span>
+        </div>
+        <button class="site-nav-close" type="button" aria-label="关闭导航" @click="navOpen = false">
+          <TsIcon name="x" :size="18" />
+        </button>
       </div>
+
+      <section class="site-nav-section">
+        <span class="site-nav-section-title">{{ lang === 'ja' ? '探索' : '探索' }}</span>
+        <div class="site-nav-grid">
+          <a
+            v-for="item in mobileSecondaryItems"
+            :key="item.key"
+            :href="item.path"
+            class="nav-link"
+            :class="{ 'router-link-active': item.active }"
+            @click="navOpen = false; item.spa && ($event.preventDefault(), $emit('go', item.path))"
+          >
+            <TsIcon class="nav-icon" :name="item.icon" :size="18" />
+            <span>{{ item.label }}</span>
+          </a>
+        </div>
+      </section>
+
+      <section v-if="showNotifications || isAuthed" class="site-nav-section">
+        <span class="site-nav-section-title">{{ lang === 'ja' ? 'アカウント' : '账户' }}</span>
+        <div class="site-nav-grid">
+          <a
+            v-if="showNotifications"
+            href="/notifications"
+            class="nav-link"
+            :class="{ 'router-link-active': routeName === 'notifications' }"
+            @click.prevent="navOpen = false; $emit('go', '/notifications')"
+          >
+            <TsIcon class="nav-icon" name="bell" :size="18" />
+            <span>站内信</span>
+            <span v-if="unreadNotifications" class="nav-inline-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
+          </a>
+          <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' || routeName === 'userProfile' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">
+            <TsIcon class="nav-icon" name="user" :size="18" />
+            <span>{{ t.ucTitle }}</span>
+          </a>
+          <a v-if="isAuthed" href="/attachments" class="nav-link" :class="{ 'router-link-active': routeName === 'attachments' }" @click.prevent="navOpen = false; $emit('go', '/attachments')">
+            <TsIcon class="nav-icon" name="image" :size="18" />
+            <span>附件库</span>
+          </a>
+          <button v-if="isAuthed" class="ghost-btn nav-link" type="button" @click="navOpen = false; $emit('logout')">
+            <TsIcon class="nav-icon" name="x" :size="18" />
+            <span>{{ t.logout }}</span>
+          </button>
+        </div>
+      </section>
+
+      <section v-else class="site-nav-section">
+        <span class="site-nav-section-title">{{ lang === 'ja' ? 'アカウント' : '账户' }}</span>
+        <div class="site-nav-grid">
+          <a href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="navOpen = false; $emit('go', '/login')">
+            <TsIcon class="nav-icon" name="user" :size="18" />
+            <span>{{ t.login }}</span>
+          </a>
+          <a href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="navOpen = false; $emit('go', '/register')">
+            <TsIcon class="nav-icon" name="badge" :size="18" />
+            <span>{{ t.register }}</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="site-nav-section">
+        <span class="site-nav-section-title">{{ lang === 'ja' ? '表示' : '偏好' }}</span>
+        <div class="site-nav-preferences">
+          <button
+            class="theme-toggle nav-link"
+            type="button"
+            :aria-label="themeLabel"
+            :title="themeLabel"
+            @click="$emit('toggle-theme')"
+          >
+            <TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />
+            <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
+          </button>
+
+          <div class="lang-switcher" aria-label="Language">
+            <button class="lang-btn" :class="{ active: lang === 'zh' }" type="button" @click="$emit('set-lang', 'zh')">中文</button>
+            <button class="lang-btn" :class="{ active: lang === 'ja' }" type="button" @click="$emit('set-lang', 'ja')">日本語</button>
+          </div>
+        </div>
+      </section>
     </div>
 
     <nav v-if="showChrome" class="mobile-bottom-nav" aria-label="Mobile primary navigation">
@@ -272,7 +333,7 @@ onUnmounted(() => {
         class="mobile-bottom-link"
         :class="{ active: item.active }"
         :aria-label="item.label"
-        @click="item.spa && ($event.preventDefault(), $emit('go', item.path))"
+        @click="navOpen = false; item.spa && ($event.preventDefault(), $emit('go', item.path))"
       >
         <TsIcon :name="item.icon" :size="20" />
         <span>{{ item.label }}</span>
