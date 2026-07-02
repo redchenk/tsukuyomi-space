@@ -1171,12 +1171,23 @@ body .page.uc-page .uc-security-card {
 
 @media (max-width: 980px) {
     body .page.uc-page .uc-layout {
+        grid-template-columns: 1fr;
         gap: 0.72rem;
     }
 
     body .page.uc-page .uc-tabs-panel {
+        grid-column: 1 / -1;
+        width: 100%;
+        max-width: 100%;
         overflow-x: auto;
         scrollbar-width: thin;
+    }
+
+    body .page.uc-page .uc-content-panel {
+        grid-column: 1 / -1;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
     }
 
     body .page.uc-page .uc-tabs {
@@ -1406,13 +1417,17 @@ body .page.uc-page .uc-security-card {
     }
 
     body .page.uc-page .uc-layout {
+        grid-template-columns: 1fr;
         gap: 0.62rem;
     }
 
     body .page.uc-page .uc-tabs-panel {
+        grid-column: 1 / -1;
         position: sticky;
         top: 4.75rem;
         z-index: 8;
+        width: 100%;
+        max-width: 100%;
         margin-inline: -0.08rem;
         padding: 0.42rem;
         overflow-x: auto;
@@ -1448,6 +1463,10 @@ body .page.uc-page .uc-security-card {
     }
 
     body .page.uc-page .uc-content-panel {
+        grid-column: 1 / -1;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
         min-height: 0;
         padding: 0.82rem;
         border-radius: var(--ts-radius-lg);
