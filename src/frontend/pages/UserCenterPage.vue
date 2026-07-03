@@ -28,6 +28,7 @@ const uc = reactive({
   passwordMsg: '',
   passwordMsgType: 'error',
   profileSaving: false,
+  profileLoading: false,
   passwordChanging: false,
   articles: [],
   bookmarks: [],
@@ -69,12 +70,23 @@ const ucJoinDate = computed(() => {
 });
 const ucOAuthAccounts = computed(() => Array.isArray(ucUser.value?.oauth_accounts) ? ucUser.value.oauth_accounts : []);
 const ucQQAccount = computed(() => ucOAuthAccounts.value.find((account) => account?.provider === 'qq') || null);
+const ucQQSyncing = computed(() => uc.profileLoading && !Array.isArray(ucUser.value?.oauth_accounts));
 const ucQQBound = computed(() => Boolean(ucQQAccount.value));
 const ucQQBoundDate = computed(() => {
   if (!ucQQAccount.value?.created_at) return '';
   return formatDateOnly(ucQQAccount.value.created_at, locale.value);
 });
 const ucQQDisplayName = computed(() => ucQQAccount.value?.nickname || ucUser.value?.username || 'QQ');
+const ucQQStatusText = computed(() => {
+  if (ucQQSyncing.value) return '同步中';
+  return ucQQBound.value ? '已绑定' : '未绑定';
+});
+const ucQQDescription = computed(() => {
+  if (ucQQSyncing.value) return '正在同步最新账号绑定状态，请稍候。';
+  return ucQQBound.value
+    ? `已连接 ${ucQQDisplayName.value}，可使用 QQ 或邮箱登录同一账号。`
+    : '未连接 QQ。登录页使用 QQ 授权后，可绑定到当前账号。';
+});
 const ucFilteredArticles = computed(() => {
   if (!uc.articleQuery) return uc.articles;
   const q = uc.articleQuery.toLowerCase();
@@ -171,7 +183,11 @@ function pixelArtworkBackground(artwork) {
 }
 
 async function ucLoadProfile() {
-  if (!isAuthed.value) return;
+  uc.profileLoading = true;
+  if (!isAuthed.value) {
+    uc.profileLoading = false;
+    return;
+  }
   try {
     const response = await authFetch(noStoreUrl('/api/user/profile'), {
       headers: authHeaders(),
@@ -185,6 +201,8 @@ async function ucLoadProfile() {
     updateStoredUser(result.data);
   } catch (error) {
     ucShowToast(error.message || props.t.ucProfileLoadFailed);
+  } finally {
+    uc.profileLoading = false;
   }
 }
 
@@ -804,9 +822,9 @@ onMounted(async () => {
                   <div class="uc-oauth-main">
                     <div class="uc-oauth-title">
                       <span>QQ 登录</span>
-                      <strong>{{ ucQQBound ? '已绑定' : '未绑定' }}</strong>
+                      <strong>{{ ucQQStatusText }}</strong>
                     </div>
-                    <p>{{ ucQQBound ? `已连接 ${ucQQDisplayName}，可使用 QQ 或邮箱登录同一账号。` : '未连接 QQ。登录页使用 QQ 授权后，可绑定到当前账号。' }}</p>
+                    <p>{{ ucQQDescription }}</p>
                     <small v-if="ucQQBoundDate">绑定于 {{ ucQQBoundDate }}</small>
                   </div>
                 </div>

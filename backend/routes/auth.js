@@ -26,6 +26,17 @@ function issueTokenForUser(user) {
     return generateToken({ id: user.id, username: user.username, role: user.role }, '7d');
 }
 
+function publicOAuthAccounts(userId) {
+    return authRepository.listOAuthAccountsByUser(userId).map(account => ({
+        provider: account.provider,
+        provider_email: publicEmail(account.provider_email),
+        nickname: account.nickname || '',
+        avatar: account.avatar || '',
+        created_at: account.created_at,
+        updated_at: account.updated_at
+    }));
+}
+
 function userResponse(user) {
     const email = publicEmail(user.email);
     return {
@@ -35,7 +46,8 @@ function userResponse(user) {
         has_real_email: Boolean(email),
         role: user.role,
         avatar: user.avatar || '',
-        created_at: user.created_at
+        created_at: user.created_at,
+        oauth_accounts: publicOAuthAccounts(user.id)
     };
 }
 
