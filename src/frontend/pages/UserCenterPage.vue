@@ -67,6 +67,14 @@ const ucJoinDate = computed(() => {
   if (!ucUser.value?.created_at) return '-';
   return formatDateOnly(ucUser.value.created_at, locale.value);
 });
+const ucOAuthAccounts = computed(() => Array.isArray(ucUser.value?.oauth_accounts) ? ucUser.value.oauth_accounts : []);
+const ucQQAccount = computed(() => ucOAuthAccounts.value.find((account) => account?.provider === 'qq') || null);
+const ucQQBound = computed(() => Boolean(ucQQAccount.value));
+const ucQQBoundDate = computed(() => {
+  if (!ucQQAccount.value?.created_at) return '';
+  return formatDateOnly(ucQQAccount.value.created_at, locale.value);
+});
+const ucQQDisplayName = computed(() => ucQQAccount.value?.nickname || ucUser.value?.username || 'QQ');
 const ucFilteredArticles = computed(() => {
   if (!uc.articleQuery) return uc.articles;
   const q = uc.articleQuery.toLowerCase();
@@ -789,6 +797,19 @@ onMounted(async () => {
                 </div>
               </div>
               <aside class="uc-security-card">
+                <div class="uc-oauth-status" :class="{ bound: ucQQBound }">
+                  <div class="uc-oauth-icon">
+                    <TsIcon name="shield" :size="20" />
+                  </div>
+                  <div class="uc-oauth-main">
+                    <div class="uc-oauth-title">
+                      <span>QQ 登录</span>
+                      <strong>{{ ucQQBound ? '已绑定' : '未绑定' }}</strong>
+                    </div>
+                    <p>{{ ucQQBound ? `已连接 ${ucQQDisplayName}，可使用 QQ 或邮箱登录同一账号。` : '未连接 QQ。登录页使用 QQ 授权后，可绑定到当前账号。' }}</p>
+                    <small v-if="ucQQBoundDate">绑定于 {{ ucQQBoundDate }}</small>
+                  </div>
+                </div>
                 <h3>{{ t.ucSecurityTip }}</h3>
                 <p>{{ t.ucSecurityTipText }}</p>
                 <div style="margin-top:1rem;">

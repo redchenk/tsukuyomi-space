@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const articleRepository = require('./repositories/article-repository');
 const userRepository = require('./repositories/user-repository');
+const authRepository = require('./repositories/auth-repository');
 const notificationRepository = require('./repositories/notification-repository');
 const socialRepository = require('./repositories/social-repository');
 const articleMedia = require('./services/article-media');
@@ -217,6 +218,14 @@ router.get('/profile', authenticateToken, (req, res) => {
         }
 
         const email = publicEmail(user.email);
+        const oauthAccounts = authRepository.listOAuthAccountsByUser(user.id).map(account => ({
+            provider: account.provider,
+            provider_email: publicEmail(account.provider_email),
+            nickname: account.nickname || '',
+            avatar: account.avatar || '',
+            created_at: account.created_at,
+            updated_at: account.updated_at
+        }));
         res.json({
             success: true,
             data: {
@@ -227,7 +236,8 @@ router.get('/profile', authenticateToken, (req, res) => {
                 avatar: user.avatar || '',
                 bio: user.bio || '',
                 role: user.role,
-                created_at: user.created_at
+                created_at: user.created_at,
+                oauth_accounts: oauthAccounts
             }
         });
     } catch (error) {
