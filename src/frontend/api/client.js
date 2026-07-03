@@ -40,6 +40,20 @@ function dropLegacyTokens() {
   localStorage.removeItem('admin_token');
 }
 
+function isOAuthPlaceholderEmail(email) {
+  return String(email || '').trim().toLowerCase().endsWith('@oauth.yachiyo.local');
+}
+
+function sanitizeUser(user) {
+  if (!user || typeof user !== 'object') return user;
+  const next = { ...user };
+  if (isOAuthPlaceholderEmail(next.email)) {
+    next.email = '';
+    next.has_real_email = false;
+  }
+  return next;
+}
+
 export function getSession() {
   dropLegacyTokens();
   let userStr = localStorage.getItem('admin_user');
@@ -53,7 +67,7 @@ export function getSession() {
   if (!userStr) return null;
 
   try {
-    return { token: '', user: JSON.parse(userStr), admin };
+    return { token: '', user: sanitizeUser(JSON.parse(userStr)), admin };
   } catch (_) {
     return null;
   }
@@ -70,13 +84,13 @@ function saveAdminSession(user) {
 export function saveUserSession(token, user) {
   dropLegacyTokens();
   localStorage.removeItem('admin_user');
-  localStorage.setItem('tsukuyomi_user', JSON.stringify(user));
+  localStorage.setItem('tsukuyomi_user', JSON.stringify(sanitizeUser(user)));
   sessionRevision += 1;
   sessionRequest = null;
 }
 
 export function updateStoredUser(user) {
-  localStorage.setItem('tsukuyomi_user', JSON.stringify(user));
+  localStorage.setItem('tsukuyomi_user', JSON.stringify(sanitizeUser(user)));
   sessionRevision += 1;
   sessionRequest = null;
 }

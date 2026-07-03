@@ -56,6 +56,7 @@ const ucRoleText = computed(() => {
   if (!ucUser.value) return '';
   return isAdminUser.value ? props.t.ucAdmin : props.t.ucUser;
 });
+const ucEmailText = computed(() => ucUser.value?.email || (props.lang === 'zh' ? '未绑定邮箱' : 'メール未連携'));
 const ucArticlesCount = computed(() => uc.articles.length.toLocaleString(locale.value));
 const ucPixelArtworkCount = computed(() => uc.pixelArtworks.length.toLocaleString(locale.value));
 const ucTotalViews = computed(() => {
@@ -476,7 +477,7 @@ onMounted(async () => {
             <span>{{ ucRoleText }}</span>
           </div>
           <h1 class="uc-username">{{ ucUser?.username || '-' }}</h1>
-          <div class="uc-email">{{ ucUser?.email || '-' }}</div>
+          <div class="uc-email">{{ ucEmailText }}</div>
           <p class="uc-bio-preview">{{ ucUser?.bio || t.ucNoBio }}</p>
         </div>
         <div class="uc-hero-actions">
@@ -586,7 +587,7 @@ onMounted(async () => {
               </div>
               <div class="form-group">
                 <label>{{ t.ucEmail }}</label>
-                <input type="email" disabled :value="ucUser?.email || ''">
+                <input type="text" disabled :value="ucEmailText">
               </div>
               <div class="form-group">
                 <label>{{ t.ucBio }}</label>

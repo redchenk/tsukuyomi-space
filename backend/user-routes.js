@@ -9,6 +9,7 @@ const socialRepository = require('./repositories/social-repository');
 const articleMedia = require('./services/article-media');
 const responseCache = require('./services/response-cache');
 const { articlePath } = require('./seo/render-article');
+const { publicEmail } = require('./validators');
 
 const { authenticateToken, optionalAuth } = require('./middleware/auth');
 
@@ -215,12 +216,14 @@ router.get('/profile', authenticateToken, (req, res) => {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
+        const email = publicEmail(user.email);
         res.json({
             success: true,
             data: {
                 id: user.id,
                 username: user.username,
-                email: user.email,
+                email,
+                has_real_email: Boolean(email),
                 avatar: user.avatar || '',
                 bio: user.bio || '',
                 role: user.role,

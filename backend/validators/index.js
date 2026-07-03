@@ -6,6 +6,15 @@ function isEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function isOAuthPlaceholderEmail(email) {
+    return normalizeEmail(email).endsWith('@oauth.yachiyo.local');
+}
+
+function publicEmail(email) {
+    const normalized = normalizeEmail(email);
+    return isOAuthPlaceholderEmail(normalized) ? '' : normalized;
+}
+
 function parsePositiveInt(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -23,6 +32,8 @@ function safeJsonParse(value, fallback) {
 module.exports = {
     normalizeEmail,
     isEmail,
+    isOAuthPlaceholderEmail,
+    publicEmail,
     parsePositiveInt,
     safeJsonParse
 };

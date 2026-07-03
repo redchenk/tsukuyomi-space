@@ -18,7 +18,7 @@ const authRepository = require('../repositories/auth-repository');
 const authState = require('../services/auth-state');
 const qqOAuth = require('../services/qq-oauth');
 const { EMAIL_CODE_TTL_MS, EMAIL_CODE_COOLDOWN_MS, sendVerificationEmail } = require('../services/mailer');
-const { normalizeEmail, isEmail } = require('../validators');
+const { normalizeEmail, isEmail, publicEmail } = require('../validators');
 
 const router = express.Router();
 
@@ -27,12 +27,15 @@ function issueTokenForUser(user) {
 }
 
 function userResponse(user) {
+    const email = publicEmail(user.email);
     return {
         id: user.id,
         username: user.username,
-        email: user.email,
+        email,
+        has_real_email: Boolean(email),
         role: user.role,
-        avatar: user.avatar || ''
+        avatar: user.avatar || '',
+        created_at: user.created_at
     };
 }
 
@@ -199,12 +202,13 @@ function createUserFromOAuthProfile(profile, preferredUsername = '') {
 }
 
 function pendingOAuthResponse(profile) {
+    const email = publicEmail(profile.email);
     return {
         provider: profile.provider,
         nickname: profile.nickname,
         avatar: profile.avatar,
-        email: profile.email || '',
-        hasEmailMatch: Boolean(profile.email && authRepository.findUserByEmail(profile.email)),
+        email,
+        hasEmailMatch: Boolean(email && authRepository.findUserByEmail(email)),
         suggestedUsername: uniqueUsername(profile.nickname, profile.providerUserId)
     };
 }
@@ -493,7 +497,7 @@ router.get('/me', authenticateToken, (req, res) => {
         if (!user) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }
-        res.json({ success: true, data: user });
+        res.json({ success: true, data: userResponse(user) });
     } catch (error) {
         console.error('Get current user failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });

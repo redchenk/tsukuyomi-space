@@ -8,6 +8,7 @@ const authState = require('./services/auth-state');
 const articleMedia = require('./services/article-media');
 const objectStorage = require('./services/object-storage');
 const responseCache = require('./services/response-cache');
+const { publicEmail } = require('./validators');
 const {
     authenticateToken,
     requireAdmin,
@@ -122,10 +123,12 @@ function requireSuperAdminUser(req, res) {
 }
 
 function sanitizeUser(user) {
+    const email = publicEmail(user.email);
     return {
         id: user.id,
         username: user.username,
-        email: user.email,
+        email,
+        has_real_email: Boolean(email),
         role: user.role || 'user',
         avatar: user.avatar || '',
         bio: user.bio || '',

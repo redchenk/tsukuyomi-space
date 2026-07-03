@@ -738,7 +738,7 @@ onUnmounted(() => {
                     <button class="ghost-btn compact" type="button" :disabled="!terminal.usernameDrafts[item.id] || terminal.usernameDrafts[item.id] === item.username || item.username === 'admin'" @click="changeUserUsername(item)">保存昵称</button>
                   </div>
                 </td>
-                <td>{{ item.email }}</td>
+                <td>{{ item.email || '未绑定邮箱' }}</td>
                 <td><span class="terminal-badge hot">{{ item.role || 'user' }}</span></td>
                 <td>{{ formatDate(item.created_at) }}</td>
                 <td>
