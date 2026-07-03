@@ -64,7 +64,9 @@ async function sendVerificationEmail(email, code, purpose) {
     }
 
     const client = createSmtpClient();
-    const title = purpose === 'login' ? '登录验证码' : '注册验证码';
+    const title = purpose === 'login'
+        ? '登录验证码'
+        : (purpose === 'oauth_bind' ? '绑定验证码' : '注册验证码');
     const subject = `月读空间${title}`;
     const text = [
         `你的月读空间${title}是：${code}`,

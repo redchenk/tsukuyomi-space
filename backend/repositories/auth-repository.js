@@ -92,6 +92,44 @@ function createOAuthAccount({
     );
 }
 
+function writeOAuthAccount(account) {
+    const existing = findOAuthAccount(account.provider, account.providerUserId);
+    if (!existing) {
+        createOAuthAccount(account);
+        return;
+    }
+
+    db.prepare(`
+        UPDATE user_oauth_accounts
+        SET user_id = ?,
+            union_id = ?,
+            provider_email = ?,
+            nickname = ?,
+            avatar = ?,
+            profile_json = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE provider = ? AND provider_user_id = ?
+    `).run(
+        account.userId,
+        account.unionId || '',
+        account.providerEmail || '',
+        account.nickname || '',
+        account.avatar || '',
+        oauthProfileJson(account.profile),
+        account.provider,
+        account.providerUserId
+    );
+}
+
+function applyOAuthAvatar(userId, avatar) {
+    if (!avatar) return;
+    db.prepare(`
+        UPDATE users
+        SET avatar = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND COALESCE(avatar, '') = ''
+    `).run(avatar, userId);
+}
+
 const createUserWithOAuthAccount = db.transaction(({ user, account }) => {
     createUser(user);
     createOAuthAccount({ ...account, userId: user.id });
@@ -99,15 +137,20 @@ const createUserWithOAuthAccount = db.transaction(({ user, account }) => {
 });
 
 const linkOAuthAccount = db.transaction((account) => {
-    createOAuthAccount(account);
-    if (account.avatar) {
-        db.prepare(`
-            UPDATE users
-            SET avatar = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ? AND COALESCE(avatar, '') = ''
-        `).run(account.avatar, account.userId);
-    }
+    writeOAuthAccount(account);
+    applyOAuthAvatar(account.userId, account.avatar);
     return findCurrentUserById(account.userId);
+});
+
+const updateUserEmailWithOAuthAccount = db.transaction(({ userId, email, account }) => {
+    db.prepare(`
+        UPDATE users
+        SET email = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    `).run(email, userId);
+    writeOAuthAccount({ ...account, userId });
+    applyOAuthAvatar(userId, account.avatar);
+    return findCurrentUserById(userId);
 });
 
 function listOAuthAccountsByUser(userId) {
@@ -132,5 +175,6 @@ module.exports = {
     createOAuthAccount,
     createUserWithOAuthAccount,
     linkOAuthAccount,
+    updateUserEmailWithOAuthAccount,
     listOAuthAccountsByUser
 };

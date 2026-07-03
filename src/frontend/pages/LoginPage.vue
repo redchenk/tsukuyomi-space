@@ -33,6 +33,7 @@ const oauth = reactive({
   mode: 'create',
   bindMethod: 'password',
   identity: '',
+  email: '',
   password: '',
   emailCode: '',
   createUsername: '',
@@ -47,13 +48,25 @@ const oauth = reactive({
 const loginPlaceholder = computed(() => login.method === 'code' ? props.t.emailPh : props.t.accountPh);
 const hasOAuthTicket = computed(() => Boolean(oauth.ticket));
 const isJapanese = computed(() => props.t.login === 'ログイン');
-const authTitle = computed(() => hasOAuthTicket.value ? 'QQ 登录确认' : (isJapanese.value ? 'おかえりなさい' : '欢迎回来'));
+const oauthRequiresEmailBinding = computed(() => oauth.mode === 'email' || Boolean(oauth.profile?.requiresEmailBinding));
+const authTitle = computed(() => (
+  hasOAuthTicket.value
+    ? (oauthRequiresEmailBinding.value ? '绑定邮箱' : 'QQ 登录确认')
+    : (isJapanese.value ? 'おかえりなさい' : '欢迎回来')
+));
 const authSubtitle = computed(() => (
   hasOAuthTicket.value
-    ? (oauth.profile?.hasEmailMatch
+    ? (oauthRequiresEmailBinding.value
+      ? 'QQ 授权已完成，请验证邮箱来完成账号绑定。邮箱若已注册，会自动合并到已有账号。'
+      : oauth.profile?.hasEmailMatch
       ? '检测到相同邮箱账号，可验证后把 QQ 绑定到同一个账号，也可以直接开通新账号。'
       : 'QQ 授权已完成，可以直接进入，也可以绑定已有站内账号。')
     : props.t.loginSubtitle
+));
+const oauthProfileHint = computed(() => (
+  oauthRequiresEmailBinding.value
+    ? 'QQ 未提供邮箱，请绑定一个可接收验证码的邮箱'
+    : (oauth.profile?.email || 'QQ 未返回邮箱，可手动绑定已有邮箱账号')
 ));
 const authVisualTitle = computed(() => (isJapanese.value ? '月読空間' : '月读空间'));
 const authVisualSubtitle = computed(() => (isJapanese.value ? '探索、記録、共有' : '探索、记录、分享'));
@@ -159,6 +172,7 @@ function clearOAuthFlow() {
   oauth.profile = null;
   oauth.message = '';
   oauth.identity = '';
+  oauth.email = '';
   oauth.password = '';
   oauth.emailCode = '';
   if (window.history?.replaceState) {
@@ -178,7 +192,8 @@ async function loadOAuthPending(ticket) {
     if (!result.success) throw new Error(result.message || 'QQ 登录状态读取失败');
     oauth.profile = result.data;
     oauth.createUsername = result.data.suggestedUsername || result.data.nickname || '';
-    oauth.mode = result.data.hasEmailMatch ? 'bind' : 'create';
+    oauth.mode = result.data.requiresEmailBinding ? 'email' : (result.data.hasEmailMatch ? 'bind' : 'create');
+    oauth.email = result.data.email || '';
     if (result.data.email) oauth.identity = result.data.email;
   } catch (error) {
     showOAuthMessage('error', error.message || 'QQ 登录状态读取失败');
@@ -194,6 +209,26 @@ async function sendOAuthBindCode() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: oauth.identity.trim(), purpose: 'login' })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || props.t.unknown);
+    showOAuthMessage('success', props.t.codeSent);
+    oauth.sending.label = '60s';
+    countdown(oauth.sending, props.t.sendCode);
+  } catch (error) {
+    oauth.sending.loading = false;
+    oauth.sending.label = props.t.sendCode;
+    showOAuthMessage('error', props.t.failedPrefix + error.message);
+  }
+}
+
+async function sendOAuthEmailCode() {
+  oauth.sending.loading = true;
+  try {
+    const response = await apiFetch('/api/auth/email-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: oauth.email.trim(), purpose: 'oauth_bind' })
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.unknown);
@@ -226,6 +261,31 @@ async function submitOAuthBind() {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || 'QQ 绑定失败');
     await finishOAuthLogin(result, 'QQ 已绑定到当前账号');
+  } catch (error) {
+    showOAuthMessage('error', props.t.failedPrefix + error.message);
+  } finally {
+    oauth.submitting = false;
+  }
+}
+
+async function submitOAuthEmailBind() {
+  oauth.submitting = true;
+  oauth.message = '';
+  try {
+    const response = await apiFetch('/api/auth/oauth/qq/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        ticket: oauth.ticket,
+        email: oauth.email.trim(),
+        emailCode: oauth.emailCode.trim(),
+        username: oauth.createUsername.trim()
+      })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || 'QQ 邮箱绑定失败');
+    await finishOAuthLogin(result, 'QQ 邮箱绑定成功');
   } catch (error) {
     showOAuthMessage('error', props.t.failedPrefix + error.message);
   } finally {
@@ -312,62 +372,89 @@ onMounted(() => {
               <div v-else class="oauth-avatar">QQ</div>
               <div>
                 <strong>{{ oauth.profile.nickname || 'QQ 用户' }}</strong>
-                <span>{{ oauth.profile.email || 'QQ 未返回邮箱，可手动绑定已有邮箱账号' }}</span>
+                <span>{{ oauthProfileHint }}</span>
               </div>
             </div>
 
             <div v-if="oauth.message" class="form-message" :class="oauth.type">{{ oauth.message }}</div>
 
-            <div class="mode-row">
-              <button class="mode-btn" :class="{ active: oauth.mode === 'create' }" type="button" @click="setOAuthMode('create')">QQ 一键进入</button>
-              <button class="mode-btn" :class="{ active: oauth.mode === 'bind' }" type="button" @click="setOAuthMode('bind')">绑定已有账号</button>
-            </div>
-
-            <form v-if="oauth.mode === 'create'" @submit.prevent="submitOAuthCreate">
-              <div class="form-group">
-                <label for="qqCreateUsername">用户名</label>
-                <div class="auth-input-shell">
-                  <TsIcon class="auth-field-icon" name="user" :size="18" />
-                  <input id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于站内展示的用户名">
-                </div>
-              </div>
-              <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '一键开通并进入' }}</button>
-            </form>
-
-            <form v-else @submit.prevent="submitOAuthBind">
-              <div class="mode-row compact">
-                <button class="mode-btn" :class="{ active: oauth.bindMethod === 'password' }" type="button" @click="setOAuthBindMethod('password')">{{ t.passwordLogin }}</button>
-                <button class="mode-btn" :class="{ active: oauth.bindMethod === 'code' }" type="button" @click="setOAuthBindMethod('code')">{{ t.codeLogin }}</button>
+            <form v-if="oauth.mode === 'email'" class="oauth-email-form" @submit.prevent="submitOAuthEmailBind">
+              <div class="oauth-bind-note">
+                <TsIcon name="mail" :size="18" />
+                <span>邮箱已注册时会自动绑定到已有账号；邮箱未注册时会作为新的登录邮箱。</span>
               </div>
               <div class="form-group">
-                <label for="qqBindAccount">{{ t.account }}</label>
+                <label for="qqBindEmail">绑定邮箱</label>
                 <div class="auth-input-shell">
-                  <TsIcon class="auth-field-icon" name="user" :size="18" />
-                  <input id="qqBindAccount" v-model="oauth.identity" required :placeholder="oauth.bindMethod === 'code' ? t.emailPh : t.accountPh" autocomplete="username">
+                  <TsIcon class="auth-field-icon" name="mail" :size="18" />
+                  <input id="qqBindEmail" v-model="oauth.email" required type="email" autocomplete="email" placeholder="请输入要绑定的邮箱">
                 </div>
               </div>
-              <div v-if="oauth.bindMethod === 'password'" class="form-group">
-                <label for="qqBindPassword">{{ t.password }}</label>
-                <div class="auth-input-shell has-action">
-                  <TsIcon class="auth-field-icon" name="lock" :size="18" />
-                  <input id="qqBindPassword" v-model="oauth.password" required :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
-                  <button class="auth-password-toggle" type="button" :aria-pressed="showOAuthPassword" @click="showOAuthPassword = !showOAuthPassword">
-                    <TsIcon :name="showOAuthPassword ? 'eyeOff' : 'eye'" :size="18" />
-                  </button>
-                </div>
-              </div>
-              <div v-else class="form-group">
-                <label for="qqBindCode">{{ t.emailCode }}</label>
+              <div class="form-group">
+                <label for="qqEmailBindCode">{{ t.emailCode }}</label>
                 <div class="code-row">
                   <div class="auth-input-shell">
                     <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
-                    <input id="qqBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                    <input id="qqEmailBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                   </div>
-                  <button class="code-btn" type="button" :disabled="oauth.sending.loading" @click="sendOAuthBindCode">{{ oauth.sending.label || t.sendCode }}</button>
+                  <button class="code-btn" type="button" :disabled="oauth.sending.loading" @click="sendOAuthEmailCode">{{ oauth.sending.label || t.sendCode }}</button>
                 </div>
               </div>
-              <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定并登录' }}</button>
+              <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定邮箱并进入' }}</button>
             </form>
+
+            <template v-else>
+              <div class="mode-row">
+                <button class="mode-btn" :class="{ active: oauth.mode === 'create' }" type="button" @click="setOAuthMode('create')">QQ 一键进入</button>
+                <button class="mode-btn" :class="{ active: oauth.mode === 'bind' }" type="button" @click="setOAuthMode('bind')">绑定已有账号</button>
+              </div>
+
+              <form v-if="oauth.mode === 'create'" @submit.prevent="submitOAuthCreate">
+                <div class="form-group">
+                  <label for="qqCreateUsername">用户名</label>
+                  <div class="auth-input-shell">
+                    <TsIcon class="auth-field-icon" name="user" :size="18" />
+                    <input id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于站内展示的用户名">
+                  </div>
+                </div>
+                <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '一键开通并进入' }}</button>
+              </form>
+
+              <form v-else @submit.prevent="submitOAuthBind">
+                <div class="mode-row compact">
+                  <button class="mode-btn" :class="{ active: oauth.bindMethod === 'password' }" type="button" @click="setOAuthBindMethod('password')">{{ t.passwordLogin }}</button>
+                  <button class="mode-btn" :class="{ active: oauth.bindMethod === 'code' }" type="button" @click="setOAuthBindMethod('code')">{{ t.codeLogin }}</button>
+                </div>
+                <div class="form-group">
+                  <label for="qqBindAccount">{{ t.account }}</label>
+                  <div class="auth-input-shell">
+                    <TsIcon class="auth-field-icon" name="user" :size="18" />
+                    <input id="qqBindAccount" v-model="oauth.identity" required :placeholder="oauth.bindMethod === 'code' ? t.emailPh : t.accountPh" autocomplete="username">
+                  </div>
+                </div>
+                <div v-if="oauth.bindMethod === 'password'" class="form-group">
+                  <label for="qqBindPassword">{{ t.password }}</label>
+                  <div class="auth-input-shell has-action">
+                    <TsIcon class="auth-field-icon" name="lock" :size="18" />
+                    <input id="qqBindPassword" v-model="oauth.password" required :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
+                    <button class="auth-password-toggle" type="button" :aria-pressed="showOAuthPassword" @click="showOAuthPassword = !showOAuthPassword">
+                      <TsIcon :name="showOAuthPassword ? 'eyeOff' : 'eye'" :size="18" />
+                    </button>
+                  </div>
+                </div>
+                <div v-else class="form-group">
+                  <label for="qqBindCode">{{ t.emailCode }}</label>
+                  <div class="code-row">
+                    <div class="auth-input-shell">
+                      <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
+                      <input id="qqBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                    </div>
+                    <button class="code-btn" type="button" :disabled="oauth.sending.loading" @click="sendOAuthBindCode">{{ oauth.sending.label || t.sendCode }}</button>
+                  </div>
+                </div>
+                <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定并登录' }}</button>
+              </form>
+            </template>
 
             <button class="ghost-btn oauth-back-btn" type="button" @click="clearOAuthFlow">返回普通登录</button>
             <a class="auth-home-link" href="/" @click.prevent="go('/')">{{ authHomeLabel }}</a>

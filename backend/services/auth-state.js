@@ -116,11 +116,21 @@ async function consumeOAuthState(state, provider) {
     return row;
 }
 
-async function createOAuthPending({ ticket, provider, profile, redirectPath = '/hub', ttlMs = config.oauth.pendingTtlMs }) {
+async function createOAuthPending({
+    ticket,
+    provider,
+    profile,
+    redirectPath = '/hub',
+    mode = '',
+    linkedUserId = '',
+    ttlMs = config.oauth.pendingTtlMs
+}) {
     await store.setJson(oauthPendingKey(ticket), {
         provider,
         profile,
         redirectPath,
+        mode,
+        linkedUserId,
         created_at: Date.now()
     }, Math.ceil(ttlMs / 1000));
 }

@@ -18,7 +18,7 @@ const authRepository = require('../repositories/auth-repository');
 const authState = require('../services/auth-state');
 const qqOAuth = require('../services/qq-oauth');
 const { EMAIL_CODE_TTL_MS, EMAIL_CODE_COOLDOWN_MS, sendVerificationEmail } = require('../services/mailer');
-const { normalizeEmail, isEmail, publicEmail } = require('../validators');
+const { normalizeEmail, isEmail, isOAuthPlaceholderEmail, publicEmail } = require('../validators');
 
 const router = express.Router();
 
@@ -201,25 +201,46 @@ function createUserFromOAuthProfile(profile, preferredUsername = '') {
     });
 }
 
-function pendingOAuthResponse(profile) {
+function pendingOAuthResponse(profile, pending = {}) {
     const email = publicEmail(profile.email);
+    const requiresEmailBinding = pending.mode === 'bind_email' || !email;
     return {
         provider: profile.provider,
         nickname: profile.nickname,
         avatar: profile.avatar,
         email,
+        requiresEmailBinding,
         hasEmailMatch: Boolean(email && authRepository.findUserByEmail(email)),
         suggestedUsername: uniqueUsername(profile.nickname, profile.providerUserId)
     };
 }
 
+function oauthPendingLoginUrl(ticket, mode = 'email') {
+    return siteUrl('/login', { oauth: 'qq', ticket, mode });
+}
+
+function oauthProfileWithEmail(profile, email) {
+    return {
+        ...profile,
+        email: normalizeEmail(email || '')
+    };
+}
+
+function isUserMissingPublicEmail(user) {
+    return !publicEmail(user?.email) || isOAuthPlaceholderEmail(user?.email);
+}
+
 router.post('/email-code', async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
-        const purpose = req.body.purpose === 'login' ? 'login' : 'register';
+        const requestedPurpose = String(req.body.purpose || '').trim();
+        const purpose = ['login', 'register', 'oauth_bind'].includes(requestedPurpose) ? requestedPurpose : 'register';
 
         if (!isEmail(email)) {
             return res.status(400).json({ success: false, message: '请输入有效邮箱' });
+        }
+        if (isOAuthPlaceholderEmail(email)) {
+            return res.status(400).json({ success: false, message: '请输入真实邮箱' });
         }
 
         const existingUser = authRepository.findUserByEmail(email);
@@ -344,6 +365,18 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
         const profile = compactOAuthProfile(await qqOAuth.getProfileFromCode(code));
         const linkedUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
         if (linkedUser) {
+            if (isUserMissingPublicEmail(linkedUser)) {
+                const ticket = crypto.randomBytes(24).toString('hex');
+                await authState.createOAuthPending({
+                    ticket,
+                    provider: 'qq',
+                    profile,
+                    redirectPath: statePayload.redirectPath,
+                    mode: 'bind_email',
+                    linkedUserId: linkedUser.id
+                });
+                return res.redirect(oauthPendingLoginUrl(ticket));
+            }
             setUserLoginSession(req, res, linkedUser);
             return res.redirect(siteUrl(safeRedirectPath(statePayload.redirectPath)));
         }
@@ -364,9 +397,22 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
                 ticket,
                 provider: 'qq',
                 profile,
-                redirectPath: statePayload.redirectPath
+                redirectPath: statePayload.redirectPath,
+                mode: 'bind'
             });
-            return res.redirect(siteUrl('/login', { oauth: 'qq', ticket, mode: 'bind' }));
+            return res.redirect(oauthPendingLoginUrl(ticket, 'bind'));
+        }
+
+        if (!publicEmail(profile.email)) {
+            const ticket = crypto.randomBytes(24).toString('hex');
+            await authState.createOAuthPending({
+                ticket,
+                provider: 'qq',
+                profile,
+                redirectPath: statePayload.redirectPath,
+                mode: 'bind_email'
+            });
+            return res.redirect(oauthPendingLoginUrl(ticket));
         }
 
         const createdUser = createUserFromOAuthProfile(profile);
@@ -388,7 +434,7 @@ router.get('/oauth/qq/pending', async (req, res) => {
         res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.json({
             success: true,
-            data: pendingOAuthResponse(pending.profile)
+            data: pendingOAuthResponse(pending.profile, pending)
         });
     } catch (error) {
         console.error('Read QQ OAuth pending failed:', error);
@@ -405,6 +451,9 @@ router.post('/oauth/qq/create', async (req, res) => {
         }
 
         const profile = compactOAuthProfile(pending.profile);
+        if (pending.mode === 'bind_email' || !publicEmail(profile.email)) {
+            return res.status(400).json({ success: false, message: '请先绑定邮箱后再完成 QQ 登录' });
+        }
         const linkedUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
         if (linkedUser) {
             await authState.consumeOAuthPending(ticket, 'qq');
@@ -425,6 +474,65 @@ router.post('/oauth/qq/create', async (req, res) => {
             return res.status(409).json({ success: false, message: '该 QQ 已绑定其他账号，或用户名已被使用' });
         }
         console.error('Create QQ OAuth account failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.post('/oauth/qq/email', async (req, res) => {
+    try {
+        const ticket = String(req.body.ticket || '').trim();
+        const pending = await authState.getOAuthPending(ticket, 'qq');
+        if (!pending) {
+            return res.status(404).json({ success: false, message: 'QQ 登录状态已过期，请重新授权' });
+        }
+
+        const email = normalizeEmail(req.body.email);
+        const emailCode = String(req.body.emailCode || '').trim();
+        if (!isEmail(email)) {
+            return res.status(400).json({ success: false, message: '请输入有效邮箱' });
+        }
+        if (isOAuthPlaceholderEmail(email)) {
+            return res.status(400).json({ success: false, message: '请输入真实邮箱' });
+        }
+        if (!emailCode) {
+            return res.status(400).json({ success: false, message: '请输入邮箱验证码' });
+        }
+        if (!(await authState.consumeVerificationCode(email, 'oauth_bind', emailCode))) {
+            return res.status(400).json({ success: false, message: '验证码无效或已过期' });
+        }
+
+        const profile = oauthProfileWithEmail(compactOAuthProfile(pending.profile), email);
+        const existingEmailUser = authRepository.findUserByEmail(email);
+        const linkedUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
+        let user = null;
+
+        if (existingEmailUser) {
+            user = authRepository.linkOAuthAccount(oauthAccountFromProfile(profile, existingEmailUser.id));
+        } else if (linkedUser) {
+            if (!isUserMissingPublicEmail(linkedUser) && publicEmail(linkedUser.email) !== email) {
+                return res.status(409).json({ success: false, message: '该 QQ 已绑定其他邮箱账号' });
+            }
+            user = authRepository.updateUserEmailWithOAuthAccount({
+                userId: linkedUser.id,
+                email,
+                account: oauthAccountFromProfile(profile, linkedUser.id)
+            });
+        } else {
+            user = createUserFromOAuthProfile(profile, req.body.username);
+        }
+
+        await authState.consumeOAuthPending(ticket, 'qq');
+        const sessionUser = setUserLoginSession(req, res, user);
+        res.status(existingEmailUser ? 200 : 201).json({
+            success: true,
+            message: existingEmailUser ? 'QQ 已绑定到已有邮箱账号' : '邮箱已绑定，QQ 登录成功',
+            data: { user: sessionUser, redirect: safeRedirectPath(pending.redirectPath) }
+        });
+    } catch (error) {
+        if (/UNIQUE constraint failed/.test(error.message || '')) {
+            return res.status(409).json({ success: false, message: '该邮箱或 QQ 已绑定其他账号' });
+        }
+        console.error('Complete QQ OAuth email binding failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });

@@ -990,6 +990,26 @@ textarea::placeholder {
     color: color-mix(in srgb, var(--ts-muted), transparent 35%);
 }
 
+.oauth-bind-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-md);
+    background: color-mix(in srgb, var(--ts-surface), transparent 24%);
+    color: var(--ts-muted);
+    font-size: 0.88rem;
+    line-height: 1.6;
+}
+
+.oauth-bind-note .ts-icon {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    color: var(--ts-accent);
+}
+
 .moon {
     z-index: 3;
     top: 7vh;
