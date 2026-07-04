@@ -42,7 +42,7 @@ defineProps({
             <TsIcon :name="music.playing.value ? 'pause' : 'play'" :size="17" :stroke-width="2.4" />
           </button>
           <button class="site-music-handle" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
-            <TsIcon :name="music.drawer.open ? 'chevronUp' : 'chevronDown'" :size="17" :stroke-width="2.4" />
+            <TsIcon :name="music.drawer.open ? 'chevronUp' : 'audioLines'" :size="17" :stroke-width="2.4" />
             <span class="sr-only">{{ music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer' }}</span>
           </button>
         </div>
@@ -55,7 +55,15 @@ defineProps({
       <div v-show="music.drawer.open" class="site-music-body">
         <div class="music-progress-row site-music-progress-row">
           <span>{{ music.currentLabel.value }}</span>
-          <input v-model.number="music.progress.value" class="music-progress site-music-progress" type="range" min="0" max="1000" aria-label="Music progress">
+          <input
+            v-model.number="music.progress.value"
+            class="music-progress site-music-progress"
+            type="range"
+            min="0"
+            max="1000"
+            aria-label="Music progress"
+            :style="{ '--music-progress': `${Math.min(100, Math.max(0, music.progress.value / 10))}%` }"
+          >
           <span>{{ music.durationLabel.value }}</span>
         </div>
 
