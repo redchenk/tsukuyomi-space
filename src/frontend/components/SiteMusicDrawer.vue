@@ -7,12 +7,7 @@ defineProps({
 </script>
 
 <template>
-  <div class="site-music-drawer" :class="{ 'is-open': music.drawer.open }">
-    <button class="site-music-handle" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
-      <TsIcon name="audioLines" :size="20" :stroke-width="2.25" />
-      <span class="sr-only">{{ music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer' }}</span>
-    </button>
-
+  <div class="site-music-drawer" :class="{ 'is-open': music.drawer.open, 'is-playing': music.playing.value }">
     <section class="site-music-panel" aria-label="Music player">
       <div class="site-music-summary">
         <div
@@ -22,23 +17,39 @@ defineProps({
           role="img"
           aria-label="cover"
         >
-          <span>{{ music.currentTrack.value?.title?.slice(0, 1) || '♪' }}</span>
+          <span><TsIcon name="music" :size="19" :stroke-width="2.15" /></span>
         </div>
+
         <div class="site-music-summary-main">
+          <span class="site-music-kicker">
+            <TsIcon name="audioLines" :size="13" :stroke-width="2.1" />
+            Music
+          </span>
           <div class="music-title-row site-music-title-row">
             <strong>{{ music.currentTrack.value?.title || 'Remember' }}</strong>
-            <span class="site-music-space"><TsIcon name="moon" :size="13" /> Tsukuyomi Space</span>
-            <span class="site-music-track-pill"><TsIcon name="music" :size="13" /> Track {{ String(music.trackIndex.value + 1).padStart(2, '0') }}</span>
           </div>
           <div class="music-meta-row site-music-meta-row">
+            <span>Track {{ String(music.trackIndex.value + 1).padStart(2, '0') }}</span>
+            <span>/</span>
             <span>{{ music.currentLabel.value }}</span>
             <span>/</span>
             <span>{{ music.durationLabel.value }}</span>
           </div>
         </div>
-        <button class="site-music-play" type="button" :aria-label="music.playing.value ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
-          <TsIcon :name="music.playing.value ? 'pause' : 'play'" :size="18" :stroke-width="2.4" />
-        </button>
+
+        <div class="site-music-quick-actions">
+          <button class="site-music-play" type="button" :aria-label="music.playing.value ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
+            <TsIcon :name="music.playing.value ? 'pause' : 'play'" :size="17" :stroke-width="2.4" />
+          </button>
+          <button class="site-music-handle" type="button" :aria-expanded="music.drawer.open ? 'true' : 'false'" :aria-label="music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer'" @click="music.toggleShell">
+            <TsIcon :name="music.drawer.open ? 'chevronUp' : 'chevronDown'" :size="17" :stroke-width="2.4" />
+            <span class="sr-only">{{ music.drawer.open ? 'Collapse music drawer' : 'Expand music drawer' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="site-music-mini-progress" aria-hidden="true">
+        <span :style="{ width: `${Math.min(100, Math.max(0, music.progress.value / 10))}%` }"></span>
       </div>
 
       <div v-show="music.drawer.open" class="site-music-body">
@@ -51,6 +62,9 @@ defineProps({
         <div class="site-music-controls">
           <button class="panel-btn music-icon-btn" type="button" aria-label="Previous" @click="music.prev">
             <TsIcon name="skipBack" :size="17" />
+          </button>
+          <button class="panel-btn music-icon-btn site-music-main-control" type="button" :aria-label="music.playing.value ? 'Pause music' : 'Play music'" @click.stop="music.togglePlay">
+            <TsIcon :name="music.playing.value ? 'pause' : 'play'" :size="17" :stroke-width="2.4" />
           </button>
           <button class="panel-btn music-icon-btn" type="button" aria-label="Next" @click="music.next">
             <TsIcon name="skipForward" :size="17" />
