@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
-import { apiBeacon, apiFetch, loadCurrentSession, logoutSession, noStoreUrl } from './api/client';
+import { apiBeacon, apiFetch, getSession, loadCurrentSession, logoutSession, noStoreUrl } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
 import SitePet from './components/SitePet.vue';
@@ -38,19 +38,33 @@ const visitPopup = ref({
 
 let lastTrustedAuthAt = 0;
 let routeTransitionTimer = 0;
+let refreshUserRun = 0;
+
+function hydrateCachedUser() {
+  const cachedSession = getSession();
+  if (!cachedSession?.user) return false;
+  user.value = cachedSession.user;
+  return true;
+}
 
 async function refreshUser(trustedUser = null) {
+  const refreshRun = ++refreshUserRun;
   if (trustedUser) {
     user.value = trustedUser;
     lastTrustedAuthAt = Date.now();
+  } else if (!user.value) {
+    hydrateCachedUser();
   }
+
   const allowClear = !user.value || Date.now() - lastTrustedAuthAt > 8000;
   const session = await loadCurrentSession({ allowClear });
+  if (refreshRun !== refreshUserRun) return;
+
   if (session?.user) {
     user.value = session.user;
     return;
   }
-  if (allowClear) user.value = null;
+  if (allowClear) user.value = getSession()?.user || null;
 }
 
 function setLang(nextLang) {
@@ -163,6 +177,17 @@ function closeVisitPopup() {
   visitPopup.value.visible = false;
 }
 
+function handlePageShow(event) {
+  if (event?.persisted) hydrateCachedUser();
+  refreshUser();
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState !== 'visible') return;
+  hydrateCachedUser();
+  refreshUser();
+}
+
 provide('siteMusic', music);
 
 watch(isAccessRoute, (next) => {
@@ -186,6 +211,8 @@ watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
   refreshUser();
   loadPublicSettings();
+  window.addEventListener('pageshow', handlePageShow);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
   if (localStorage.getItem(VIEW_RECORDED_KEY) === '1') return;
   localStorage.setItem(VIEW_RECORDED_KEY, '1');
   const payload = JSON.stringify({ path: route.fullPath || '/' });
@@ -201,7 +228,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (typeof window !== 'undefined') window.clearTimeout(routeTransitionTimer);
+  if (typeof window === 'undefined') return;
+  window.clearTimeout(routeTransitionTimer);
+  window.removeEventListener('pageshow', handlePageShow);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 

@@ -29,7 +29,9 @@ export function getAuthToken() {
 }
 
 let sessionRequest = null;
+let sessionRequestCanClear = true;
 let sessionRevision = 0;
+let trustedSessionUntil = 0;
 let publicStatsRequest = null;
 let publicStatsCache = null;
 
@@ -77,6 +79,7 @@ function saveAdminSession(user) {
   dropLegacyTokens();
   localStorage.removeItem('tsukuyomi_user');
   localStorage.setItem('admin_user', JSON.stringify(user));
+  trustedSessionUntil = Date.now() + 8000;
   sessionRevision += 1;
   sessionRequest = null;
 }
@@ -85,12 +88,14 @@ export function saveUserSession(token, user) {
   dropLegacyTokens();
   localStorage.removeItem('admin_user');
   localStorage.setItem('tsukuyomi_user', JSON.stringify(sanitizeUser(user)));
+  trustedSessionUntil = Date.now() + 8000;
   sessionRevision += 1;
   sessionRequest = null;
 }
 
 export function updateStoredUser(user) {
   localStorage.setItem('tsukuyomi_user', JSON.stringify(sanitizeUser(user)));
+  trustedSessionUntil = Date.now() + 8000;
   sessionRevision += 1;
   sessionRequest = null;
 }
@@ -99,6 +104,7 @@ export function clearSession() {
   dropLegacyTokens();
   localStorage.removeItem('tsukuyomi_user');
   localStorage.removeItem('admin_user');
+  trustedSessionUntil = 0;
   sessionRevision += 1;
   sessionRequest = null;
 }
@@ -121,6 +127,14 @@ export function apiFetch(url, options = {}) {
 export function apiBeacon(url, data) {
   if (typeof navigator === 'undefined' || !navigator.sendBeacon) return false;
   return navigator.sendBeacon(apiUrl(url), data);
+}
+
+function isAuthFailure(response, result) {
+  const status = Number(response?.status || 0);
+  const code = String(result?.code || '').toUpperCase();
+  return status === 401
+    || status === 403
+    || ['UNAUTHORIZED', 'TOKEN_EXPIRED', 'TOKEN_INVALID', 'TOKEN_REVOKED', 'FORBIDDEN'].includes(code);
 }
 
 function readPublicStatsCache() {
@@ -196,6 +210,10 @@ export async function loadPublicStats(options = {}) {
 async function resolveCurrentSession({ allowClear = true } = {}) {
   dropLegacyTokens();
   const startedRevision = sessionRevision;
+  const cachedSession = getSession();
+  const canClearSession = () => typeof allowClear === 'function' ? allowClear() : allowClear;
+  let sawAuthFailure = false;
+  let sawSoftFailure = false;
 
   try {
     const response = await authFetch(noStoreUrl('/api/auth/me'), {
@@ -207,8 +225,10 @@ async function resolveCurrentSession({ allowClear = true } = {}) {
       saveUserSession('', result.data);
       return { user: result.data, admin: false };
     }
+    sawAuthFailure = isAuthFailure(response, result);
+    sawSoftFailure = !sawAuthFailure;
   } catch (_) {
-    // Fall through to optional admin session validation.
+    sawSoftFailure = true;
   }
 
   const hadAdminHint = Boolean(localStorage.getItem('admin_user'));
@@ -223,20 +243,38 @@ async function resolveCurrentSession({ allowClear = true } = {}) {
         saveAdminSession(result.data);
         return { user: result.data, admin: true };
       }
+      sawAuthFailure = isAuthFailure(response, result);
+      sawSoftFailure = !sawAuthFailure;
     } catch (_) {
-      // Missing or invalid cookies mean the visitor is anonymous.
+      sawSoftFailure = true;
     }
   }
 
-  if (allowClear && startedRevision === sessionRevision) clearSession();
+  if (sawSoftFailure && cachedSession?.user) return cachedSession;
+
+  const recentlyTrusted = Date.now() < trustedSessionUntil;
+  if (recentlyTrusted && cachedSession?.user) return cachedSession;
+  if (!canClearSession() && cachedSession?.user) return cachedSession;
+
+  if (canClearSession() && !recentlyTrusted && startedRevision === sessionRevision && (sawAuthFailure || !cachedSession?.user)) {
+    clearSession();
+  }
   return null;
 }
 
 export async function loadCurrentSession(options = {}) {
+  const allowClear = options.allowClear !== false;
   if (!sessionRequest) {
-    sessionRequest = resolveCurrentSession(options).finally(() => {
+    sessionRequestCanClear = allowClear;
+    sessionRequest = resolveCurrentSession({
+      ...options,
+      allowClear: () => sessionRequestCanClear
+    }).finally(() => {
       sessionRequest = null;
+      sessionRequestCanClear = true;
     });
+  } else if (!allowClear) {
+    sessionRequestCanClear = false;
   }
   return sessionRequest;
 }

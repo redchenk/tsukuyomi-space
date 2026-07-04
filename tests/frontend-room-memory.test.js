@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { describe, it } = require('node:test');
+const vm = require('node:vm');
 
 const rootDir = path.resolve(__dirname, '..');
 
@@ -18,11 +19,66 @@ function assertNoRawRoomMemoryFetch(relativePath) {
     );
 }
 
+function createStorage() {
+    const store = new Map();
+    return {
+        getItem(key) {
+            return store.has(key) ? store.get(key) : null;
+        },
+        setItem(key, value) {
+            store.set(key, String(value));
+        },
+        removeItem(key) {
+            store.delete(key);
+        },
+        clear() {
+            store.clear();
+        }
+    };
+}
+
+function jsonResponse(status, body) {
+    return {
+        status,
+        text: async () => JSON.stringify(body)
+    };
+}
+
+function loadApiClient(fetchImpl) {
+    const localStorage = createStorage();
+    const sessionStorage = createStorage();
+    const context = {
+        localStorage,
+        sessionStorage,
+        navigator: {},
+        fetch: fetchImpl,
+        Date,
+        JSON,
+        Number,
+        String,
+        URL
+    };
+    const code = source('src/frontend/api/client.js')
+        .replace(/export async function /g, 'async function ')
+        .replace(/export function /g, 'function ')
+        .concat('\nglobalThis.__client = { getSession, saveUserSession, clearSession, loadCurrentSession };\n');
+
+    vm.runInNewContext(code, context, { filename: 'src/frontend/api/client.js' });
+
+    return {
+        client: context.__client,
+        localStorage,
+        setFetch(nextFetch) {
+            context.fetch = nextFetch;
+        }
+    };
+}
+
 describe('frontend room memory API client usage', () => {
     it('routes chat memory requests through the shared API client', () => {
         const code = source('src/frontend/composables/room/useRoomChat.js');
 
-        assert.match(code, /import \{ authFetch, authHeaders, noStoreUrl, parseResponse \} from '\.\.\/\.\.\/api\/client';/);
+        assert.match(code, /import \{ apiFetch, authFetch, authHeaders, noStoreUrl, parseResponse \} from '\.\.\/\.\.\/api\/client';/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/persona-memory\?\$\{params\}`\)/);
         assert.match(code, /authFetch\('\/api\/room\/memory'/);
@@ -33,11 +89,73 @@ describe('frontend room memory API client usage', () => {
     it('routes settings memory management through the shared API client', () => {
         const code = source('src/frontend/pages/RoomSettingsPage.vue');
 
-        assert.match(code, /import \{ authFetch, authHeaders, getSession, noStoreUrl, parseResponse \} from '\.\.\/api\/client';/);
+        assert.match(code, /import \{ apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse \} from '\.\.\/api\/client';/);
         assert.match(code, /return getSession\(\)\?\.user \|\| null;/);
         assert.match(code, /authFetch\(noStoreUrl\('\/api\/room\/memory\/status'\)/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
         assert.match(code, /window\.addEventListener\('tsukuyomi:room-memory-updated', onRoomMemoryUpdated\)/);
         assertNoRawRoomMemoryFetch('src/frontend/pages/RoomSettingsPage.vue');
+    });
+});
+
+describe('frontend session refresh resilience', () => {
+    it('keeps a cached user when the session refresh is interrupted', async () => {
+        const env = loadApiClient(async () => {
+            throw new Error('navigation aborted');
+        });
+        env.localStorage.setItem('tsukuyomi_user', JSON.stringify({ username: 'mobile-user' }));
+
+        const session = await env.client.loadCurrentSession();
+
+        assert.equal(session.user.username, 'mobile-user');
+        assert.ok(env.localStorage.getItem('tsukuyomi_user'));
+    });
+
+    it('clears a cached user only for explicit auth failures', async () => {
+        const env = loadApiClient(async () => jsonResponse(401, {
+            success: false,
+            code: 'TOKEN_EXPIRED'
+        }));
+        env.localStorage.setItem('tsukuyomi_user', JSON.stringify({ username: 'expired-user' }));
+
+        const session = await env.client.loadCurrentSession();
+
+        assert.equal(session, null);
+        assert.equal(env.localStorage.getItem('tsukuyomi_user'), null);
+    });
+
+    it('lets a non-clearing concurrent refresh protect the shared request', async () => {
+        let release;
+        const response = new Promise((resolve) => {
+            release = () => resolve(jsonResponse(401, {
+                success: false,
+                code: 'TOKEN_EXPIRED'
+            }));
+        });
+        const env = loadApiClient(async () => response);
+        env.localStorage.setItem('tsukuyomi_user', JSON.stringify({ username: 'route-user' }));
+
+        const clearingRefresh = env.client.loadCurrentSession({ allowClear: true });
+        const protectedRefresh = env.client.loadCurrentSession({ allowClear: false });
+        release();
+
+        const [clearingSession, protectedSession] = await Promise.all([clearingRefresh, protectedRefresh]);
+
+        assert.equal(clearingSession.user.username, 'route-user');
+        assert.equal(protectedSession.user.username, 'route-user');
+        assert.ok(env.localStorage.getItem('tsukuyomi_user'));
+    });
+
+    it('trusts a just-saved session through a transient auth mismatch', async () => {
+        const env = loadApiClient(async () => jsonResponse(401, {
+            success: false,
+            code: 'UNAUTHORIZED'
+        }));
+        env.client.saveUserSession('', { username: 'fresh-user' });
+
+        const session = await env.client.loadCurrentSession();
+
+        assert.equal(session.user.username, 'fresh-user');
+        assert.ok(env.localStorage.getItem('tsukuyomi_user'));
     });
 });
