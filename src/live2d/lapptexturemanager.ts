@@ -9,10 +9,7 @@ import { csmVector, iterator } from '@framework/type/csmvector';
 import { LAppGlManager } from './lappglmanager';
 
 function shouldUseMipmaps(): boolean {
-  const mode = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
-  const ua = navigator.userAgent || '';
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-  return mode === 'standard' && !isMobile;
+  return true;
 }
 
 /**

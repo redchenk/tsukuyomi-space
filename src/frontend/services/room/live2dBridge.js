@@ -44,7 +44,7 @@ function loadScript(src) {
   });
 }
 
-export function isMobileLive2DDevice() {
+function isMobileLive2DDevice() {
   const ua = navigator.userAgent || '';
   return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
 }
@@ -53,21 +53,6 @@ export function shouldDisableLive2DPointer() {
   if (typeof window === 'undefined') return true;
   if (isMobileLive2DDevice()) return false;
   return !window.matchMedia?.('(pointer: coarse), (hover: none)')?.matches;
-}
-
-function isConstrainedMobileLive2DDevice() {
-  if (!isMobileLive2DDevice()) return false;
-  const memory = Number(navigator.deviceMemory || 0);
-  const cores = Number(navigator.hardwareConcurrency || 0);
-  return (memory > 0 && memory <= 4) || (cores > 0 && cores <= 4);
-}
-
-function readRoomModelSettings() {
-  try {
-    return JSON.parse(localStorage.getItem('roomModelSettings') || '{}') || {};
-  } catch (_) {
-    return {};
-  }
 }
 
 function clamp(value, min, max, fallback = min) {
@@ -202,42 +187,15 @@ function speechBehaviorIntent(options = {}) {
 }
 
 export function live2DPerformanceMode() {
-  if (readRoomModelSettings().lowQualityModel) return 'lite';
-  if (!isMobileLive2DDevice()) return 'standard';
-  if (isConstrainedMobileLive2DDevice()) return 'lite';
-  return 'low';
+  return 'standard';
 }
 
-function live2DModelJson(mode = live2DPerformanceMode()) {
-  if (mode === 'lite') return '/models/tsukimi-yachiyo/tsukimi-yachiyo-lite.model3.json';
-  if (mode === 'low') return '/models/tsukimi-yachiyo/tsukimi-yachiyo-mobile.model3.json';
+function live2DModelJson() {
   return '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json';
 }
 
 export function preloadLive2DResources() {
-  const mode = live2DPerformanceMode();
-  const modelJson = live2DModelJson(mode);
-  if (mode !== 'standard') {
-    [
-      { href: assetUrl(CORE_SCRIPT), as: 'script' },
-      {
-        href: assetUrl(modelJson),
-        as: 'fetch',
-        type: 'application/json'
-      }
-    ].forEach((resource) => {
-      if (document.head.querySelector(`link[data-room-preload="${resource.href}"]`)) return;
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      link.href = resource.href;
-      link.as = resource.as;
-      link.dataset.roomPreload = resource.href;
-      if (resource.type) link.type = resource.type;
-      if (resource.as === 'fetch') link.crossOrigin = 'anonymous';
-      document.head.appendChild(link);
-    });
-    return;
-  }
+  const modelJson = live2DModelJson();
   [
     { href: assetUrl(CORE_SCRIPT), as: 'script' },
     { href: assetUrl(ROOM_SCRIPT), as: 'script' },

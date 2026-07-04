@@ -46,8 +46,7 @@ import { LAppDelegate } from './lappdelegate';
 import { LAppSubdelegate } from './lappsubdelegate';
 
 function shouldReduceIdleEffects(): boolean {
-  const mode = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
-  return mode === 'lite';
+  return false;
 }
 
 function isPointerControlDisabled(): boolean {

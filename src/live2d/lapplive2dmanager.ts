@@ -14,14 +14,8 @@ import { LAppModel } from './lappmodel';
 import { LAppPal } from './lapppal';
 import { LAppSubdelegate } from './lappsubdelegate';
 
-function live2dModelVariant(): 'standard' | 'mobile' | 'lite' {
-  if (typeof navigator === 'undefined') return 'standard';
-  const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
-  if (forced === 'lite') return 'lite';
-  if (forced === 'low') return 'mobile';
-  const ua = navigator.userAgent || '';
-  const mobile = /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-  return mobile ? 'mobile' : 'standard';
+function live2dModelJsonName(index: number): string {
+  return `${LAppDefine.ModelDir[index]}.model3.json`;
 }
 
 function isPointerControlDisabled(): boolean {
@@ -255,12 +249,7 @@ export class LAppLive2DManager {
     // ディレクトリ名とmodel3.jsonの名前を一致させておくこと。
     const model: string = LAppDefine.ModelDir[index];
     const modelPath: string = LAppDefine.ResourcesPath + model + '/';
-    const modelVariant = live2dModelVariant();
-    const modelJsonName: string = modelVariant === 'lite'
-      ? `${LAppDefine.ModelDir[index]}-lite.model3.json`
-      : modelVariant === 'mobile'
-        ? `${LAppDefine.ModelDir[index]}-mobile.model3.json`
-        : `${LAppDefine.ModelDir[index]}.model3.json`;
+    const modelJsonName: string = live2dModelJsonName(index);
 
     this.releaseAllModel();
     const instance = new LAppModel();

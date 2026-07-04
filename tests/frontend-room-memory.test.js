@@ -159,3 +159,24 @@ describe('frontend session refresh resilience', () => {
         assert.ok(env.localStorage.getItem('tsukuyomi_user'));
     });
 });
+
+describe('room Live2D mobile quality parity', () => {
+    it('keeps the room renderer on the full desktop profile for every device', () => {
+        const bridge = source('src/frontend/services/room/live2dBridge.js');
+        const roomRuntime = source('src/live2d/main-room.ts');
+        const subdelegate = source('src/live2d/lappsubdelegate.ts');
+        const manager = source('src/live2d/lapplive2dmanager.ts');
+        const textures = source('src/live2d/lapptexturemanager.ts');
+        const model = source('src/live2d/lappmodel.ts');
+
+        assert.match(bridge, /export function live2DPerformanceMode\(\) \{\s*return 'standard';\s*\}/);
+        assert.doesNotMatch(bridge, /isConstrainedMobileLive2DDevice|lowQualityModel|tsukimi-yachiyo-(?:mobile|lite)\.model3\.json/);
+        assert.doesNotMatch(roomRuntime, /targetFrameMs|lastRenderAt|pendingPointerMove|lowPower|1000 \/ 30|1000 \/ 60|dataset\.performance/);
+        assert.match(subdelegate, /return window\.devicePixelRatio \|\| 1;/);
+        assert.doesNotMatch(subdelegate, /Math\.min\(ratio|isMobile/);
+        assert.match(manager, /function live2dModelJsonName\(index: number\): string \{\s*return `\$\{LAppDefine\.ModelDir\[index\]\}\.model3\.json`;/);
+        assert.doesNotMatch(manager, /-mobile\.model3\.json|-lite\.model3\.json|live2dModelVariant/);
+        assert.match(textures, /function shouldUseMipmaps\(\): boolean \{\s*return true;\s*\}/);
+        assert.match(model, /function shouldReduceIdleEffects\(\): boolean \{\s*return false;\s*\}/);
+    });
+});

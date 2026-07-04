@@ -126,7 +126,7 @@ const modelCatalog = reactive({ loading: false, message: '', updatedAt: '', mode
 let toastTimer = 0;
 let modelNoticeTimer = 0;
 
-const model = reactive({ scale: 100, xOffset: 0, yOffset: 0, lowQualityModel: false });
+const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
 const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto' });
 const tts = reactive({
   enabled: false,
@@ -526,13 +526,13 @@ function showToast(text) {
 }
 
 function modelQualityLabel() {
-  return model.lowQualityModel ? '低质量模型：512 纹理，关闭重物理' : '默认模型：移动端 1024 纹理';
+  return '标准模型：移动端与桌面端使用同一套清晰度、帧率和物理效果';
 }
 
 function showModelSaveNotice() {
   modelSaveNotice.visible = true;
   modelSaveNotice.text = '模型设置已保存';
-  modelSaveNotice.detail = `${modelQualityLabel()}；移动端 DPR 1，目标帧率 45fps，弱性能手机会自动使用低质量模型。返回房间后生效。`;
+  modelSaveNotice.detail = `${modelQualityLabel()}。返回房间后生效。`;
   clearTimeout(modelNoticeTimer);
   modelNoticeTimer = setTimeout(() => {
     modelSaveNotice.visible = false;
@@ -1207,7 +1207,6 @@ function loadSettings() {
   model.scale = Math.round(Number(modelSettings.scale || 1) * 100);
   model.xOffset = Number(modelSettings.xOffset || 0);
   model.yOffset = Number(modelSettings.yOffset || 0);
-  model.lowQualityModel = Boolean(modelSettings.lowQualityModel);
 
   Object.assign(llm, readJson('roomLLMSettings', {}));
   if (isOllamaApi(llm.apiUrl)) {
@@ -1269,8 +1268,7 @@ function saveModel() {
   writeJson('roomModelSettings', {
     scale: Number(model.scale || 100) / 100,
     xOffset: Number(model.xOffset || 0),
-    yOffset: Number(model.yOffset || 0),
-    lowQualityModel: Boolean(model.lowQualityModel)
+    yOffset: Number(model.yOffset || 0)
   });
   showModelSaveNotice();
   showToast(`模型设置已保存：${modelQualityLabel()}，回到房间后生效`);
@@ -1280,7 +1278,6 @@ function resetModel() {
   model.scale = 100;
   model.xOffset = 0;
   model.yOffset = 0;
-  model.lowQualityModel = false;
   saveModel();
 }
 
@@ -1958,8 +1955,7 @@ onBeforeUnmount(() => {
           <label>模型大小 <strong>{{ model.scale }}%</strong><input v-model="model.scale" type="range" min="60" max="160"></label>
           <label>水平位置 <strong>{{ model.xOffset }}</strong><input v-model="model.xOffset" type="range" min="-240" max="240"></label>
           <label>垂直位置 <strong>{{ model.yOffset }}</strong><input v-model="model.yOffset" type="range" min="-180" max="180"></label>
-          <label class="check-row"><input v-model="model.lowQualityModel" type="checkbox"> 低质量模型（512 纹理，关闭重物理，适合性能较弱手机）</label>
-          <p class="field-hint">移动端默认使用 1024 纹理、DPR 1、目标 45fps；弱性能手机会自动使用 512 纹理低质量模型，开启后会关闭重物理与部分待机呼吸效果。</p>
+          <p class="field-hint">Live2D 现在移动端与桌面端保持同一套标准模型、真实设备 DPR、浏览器原生刷新率和完整物理效果。</p>
           <div v-if="modelSaveNotice.visible" class="model-save-notice" role="status" aria-live="polite">
             <span class="room-test-status success">已保存</span>
             <div>

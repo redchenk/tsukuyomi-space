@@ -12,8 +12,6 @@ type RoomLive2DState = {
   subdelegate: LAppSubdelegate;
   frameId: number;
   visible: boolean;
-  targetFrameMs: number;
-  lastRenderAt: number;
   actionTimers: number[];
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
@@ -41,22 +39,6 @@ const allowedBodyPoses = new Set([
   'bounce',
   'emphasis'
 ]);
-
-function isMobileDevice(): boolean {
-  const ua = navigator.userAgent || '';
-  return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-}
-
-function live2dPerformanceProfile(): { targetFrameMs: number; lowPower: boolean } {
-  const forced = String((window as any).TSUKUYOMI_LIVE2D_PERFORMANCE || '').toLowerCase();
-  const lowPower = forced === 'low'
-    || forced === 'lite'
-    || (forced !== 'standard' && isMobileDevice());
-  return {
-    targetFrameMs: lowPower ? 1000 / 30 : 1000 / 60,
-    lowPower
-  };
-}
 
 function isPointerControlDisabled(): boolean {
   return Boolean((window as any).TSUKUYOMI_LIVE2D_DISABLE_POINTER);
@@ -248,16 +230,9 @@ function initRoomLive2D(): void {
     return;
   }
 
-  const profile = live2dPerformanceProfile();
-  canvas.dataset.performance = profile.lowPower ? 'low' : 'standard';
   let pointerActive = false;
-  let pendingPointerMove: { x: number; y: number } | null = null;
 
   const trackPointer = (pageX: number, pageY: number): void => {
-    if (profile.lowPower) {
-      pendingPointerMove = { x: pageX, y: pageY };
-      return;
-    }
     subdelegate.onPointMoved(pageX, pageY);
   };
 
@@ -274,11 +249,9 @@ function initRoomLive2D(): void {
   const onPointerUp = (event: PointerEvent): void => {
     if (isPointerControlDisabled()) {
       pointerActive = false;
-      pendingPointerMove = null;
       return;
     }
     if (pointerActive) {
-      pendingPointerMove = null;
       subdelegate.onPointEnded(event.pageX, event.pageY);
     }
     pointerActive = false;
@@ -300,12 +273,10 @@ function initRoomLive2D(): void {
   const onTouchEnd = (event: TouchEvent): void => {
     if ('PointerEvent' in window || isPointerControlDisabled()) {
       pointerActive = false;
-      pendingPointerMove = null;
       return;
     }
     const touch = firstChangedTouch(event);
     if (pointerActive && touch) {
-      pendingPointerMove = null;
       subdelegate.onPointEnded(touch.pageX, touch.pageY);
     }
     pointerActive = false;
@@ -378,7 +349,6 @@ function initRoomLive2D(): void {
   const onVisibilityChange = (): void => {
     if (!roomState) return;
     roomState.visible = document.visibilityState !== 'hidden';
-    roomState.lastRenderAt = 0;
   };
 
   document.addEventListener('pointerdown', onPointerDown, { passive: true });
@@ -398,15 +368,9 @@ function initRoomLive2D(): void {
     setFrame: setBehaviorFrame
   };
 
-  const run = (time = 0): void => {
+  const run = (): void => {
     if (!roomState) return;
-    if (roomState.visible && time - roomState.lastRenderAt >= roomState.targetFrameMs) {
-      roomState.lastRenderAt = time;
-      if (pendingPointerMove) {
-        const point = pendingPointerMove;
-        pendingPointerMove = null;
-        subdelegate.onPointMoved(point.x, point.y);
-      }
+    if (roomState.visible) {
       LAppPal.updateTime();
       subdelegate.update();
     }
@@ -417,8 +381,6 @@ function initRoomLive2D(): void {
     canvas,
     subdelegate,
     visible: document.visibilityState !== 'hidden',
-    targetFrameMs: profile.targetFrameMs,
-    lastRenderAt: 0,
     actionTimers: [],
     frameId: requestAnimationFrame(run),
     onPointerDown,
