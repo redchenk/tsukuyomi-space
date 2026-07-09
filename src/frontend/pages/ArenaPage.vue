@@ -70,6 +70,8 @@ const copy = computed(() => props.lang === 'ja' ? {
   zoom: 'ズーム',
   layers: 'レイヤー',
   brushSize: 'Size',
+  pressure: '筆圧',
+  stabilizer: '手ぶれ補正',
   chat: 'チャット',
   connected: '接続中',
   messagePlaceholder: 'メッセージ...',
@@ -129,6 +131,8 @@ const copy = computed(() => props.lang === 'ja' ? {
   zoom: '缩放',
   layers: '图层',
   brushSize: 'Size',
+  pressure: '笔压',
+  stabilizer: '防抖',
   chat: '聊天',
   connected: '已连接',
   messagePlaceholder: '输入消息...',
@@ -176,9 +180,12 @@ const canvasWidth = ref(DEFAULT_CANVAS_PRESET.width);
 const canvasHeight = ref(DEFAULT_CANVAS_PRESET.height);
 const pixels = ref(blankPixels(DEFAULT_CANVAS_PRESET.width, DEFAULT_CANVAS_PRESET.height));
 const brushSize = ref(1);
+const pressureEnabled = ref(true);
+const stabilizerEnabled = ref(true);
 const zoom = ref(DEFAULT_ZOOM);
 const canvasViewportRef = ref(null);
 const isCanvasZoomManual = ref(false);
+const isSpacePanning = ref(false);
 const sideTab = ref('gallery');
 const chatMessage = ref('');
 const chatMessages = ref([
@@ -207,10 +214,14 @@ const toast = reactive({
 
 let toastTimer = 0;
 let activePaintColorIndex = -1;
+let canvasPanState = null;
 let canvasFitObserver = null;
 let canvasFitFrame = 0;
+let strokePixels = null;
+let strokeCommitFrame = 0;
 
 const isAuthed = computed(() => Boolean(session.value));
+const activeTool = computed(() => isSpacePanning.value ? 'move' : tool.value);
 const activePalette = computed(() => [...presetPalette, ...customColors.value]);
 const paintedCount = computed(() => pixels.value.filter(index => index >= 0).length);
 const hasUndo = computed(() => undoStack.value.length > 0);
@@ -338,11 +349,44 @@ function blankPixels(width = canvasWidth.value, height = canvasHeight.value) {
   return Array(width * height).fill(-1);
 }
 
+function cancelStrokeCommit() {
+  if (!strokeCommitFrame) return;
+  window.cancelAnimationFrame(strokeCommitFrame);
+  strokeCommitFrame = 0;
+}
+
+function commitStrokePixels() {
+  if (!strokePixels) return;
+  pixels.value = [...strokePixels];
+}
+
+function scheduleStrokeCommit() {
+  if (strokeCommitFrame) return;
+  strokeCommitFrame = window.requestAnimationFrame(() => {
+    strokeCommitFrame = 0;
+    commitStrokePixels();
+  });
+}
+
+function flushStrokeCommit() {
+  cancelStrokeCommit();
+  commitStrokePixels();
+}
+
+function discardStrokeBuffer() {
+  cancelStrokeCommit();
+  strokePixels = null;
+}
+
+function draftPixelsSnapshot() {
+  return strokePixels ? [...strokePixels] : [...pixels.value];
+}
+
 function currentSnapshot() {
   return {
     width: canvasWidth.value,
     height: canvasHeight.value,
-    pixels: [...pixels.value],
+    pixels: draftPixelsSnapshot(),
     customColors: [...customColors.value],
     selectedColor: selectedColor.value,
     customColor: customColor.value
@@ -351,6 +395,7 @@ function currentSnapshot() {
 
 function restoreSnapshot(snapshot) {
   if (!snapshot) return;
+  discardStrokeBuffer();
   const nextPreset = findCanvasPreset(snapshot.width || snapshot.size, snapshot.height || snapshot.size) || DEFAULT_CANVAS_PRESET;
   canvasWidth.value = nextPreset.width;
   canvasHeight.value = nextPreset.height;
@@ -363,6 +408,7 @@ function restoreSnapshot(snapshot) {
 }
 
 function loadArtworkIntoDraft(artwork) {
+  discardStrokeBuffer();
   const width = artworkWidth(artwork);
   const height = artworkHeight(artwork);
   const nextPreset = findCanvasPreset(width, height) || DEFAULT_CANVAS_PRESET;
@@ -413,6 +459,7 @@ function resizePixels(sourcePixels, oldWidth, oldHeight, newWidth, newHeight) {
 }
 
 function setCanvasPreset(preset) {
+  endPaint();
   const nextPreset = findCanvasPreset(preset?.width, preset?.height);
   if (!nextPreset || activeCanvasPresetKey.value === canvasPresetKey(nextPreset.width, nextPreset.height)) return;
   pushHistory();
@@ -495,17 +542,17 @@ function fillPixelsFrom(index, colorIndex) {
   pixels.value = next;
 }
 
-function brushTargetIndices(index) {
+function brushTargetIndices(index, diameter = brushSize.value) {
   const width = canvasWidth.value;
   const height = canvasHeight.value;
   const x = index % width;
   const y = Math.floor(index / width);
-  const diameter = Math.max(1, Number(brushSize.value) || 1);
-  const start = Math.floor((diameter - 1) / 2);
+  const normalizedDiameter = Math.max(1, Math.min(6, Math.round(Number(diameter) || 1)));
+  const start = Math.floor((normalizedDiameter - 1) / 2);
   const result = [];
 
-  for (let offsetY = 0; offsetY < diameter; offsetY += 1) {
-    for (let offsetX = 0; offsetX < diameter; offsetX += 1) {
+  for (let offsetY = 0; offsetY < normalizedDiameter; offsetY += 1) {
+    for (let offsetX = 0; offsetX < normalizedDiameter; offsetX += 1) {
       const targetX = x + offsetX - start;
       const targetY = y + offsetY - start;
       if (targetX < 0 || targetY < 0 || targetX >= width || targetY >= height) continue;
@@ -517,57 +564,124 @@ function brushTargetIndices(index) {
 }
 
 function normalizePaintIndices(payload) {
-  const source = Array.isArray(payload) ? payload : [payload];
-  const limit = canvasWidth.value * canvasHeight.value;
-  return source
-    .map(index => Number(index))
-    .filter(index => Number.isInteger(index) && index >= 0 && index < limit);
+  return normalizePaintSamples(payload).map(sample => sample.index);
 }
 
-function paintBrushPath(indices, colorIndex) {
-  const source = normalizePaintIndices(indices);
+function normalizePaintSamples(payload) {
+  if (payload == null) return [];
+  const source = Array.isArray(payload?.points)
+    ? payload.points
+    : Array.isArray(payload)
+      ? payload
+      : [payload];
+  const limit = canvasWidth.value * canvasHeight.value;
+  return source
+    .map((item) => {
+      if (item && typeof item === 'object') {
+        return {
+          index: Number(item.index),
+          pressure: Number.isFinite(Number(item.pressure)) ? Number(item.pressure) : 0.5,
+          pointerType: item.pointerType || payload?.pointerType || 'mouse'
+        };
+      }
+      return {
+        index: Number(item),
+        pressure: 0.5,
+        pointerType: payload?.pointerType || 'mouse'
+      };
+    })
+    .filter(sample => Number.isInteger(sample.index) && sample.index >= 0 && sample.index < limit);
+}
+
+function pressureBrushSize(sample) {
+  const baseSize = Math.max(1, Number(brushSize.value) || 1);
+  if (!pressureEnabled.value || sample.pointerType !== 'pen') return baseSize;
+  const rawPressure = Number(sample.pressure);
+  const pressure = Math.max(0, Math.min(1, Number.isFinite(rawPressure) ? rawPressure : 0.5));
+  return Math.min(6, baseSize + Math.max(0, Math.round((pressure - 0.45) * 3)));
+}
+
+function paintBrushPath(payload, colorIndex) {
+  const source = normalizePaintSamples(payload);
   if (!source.length) return;
 
-  const next = [...pixels.value];
+  const next = strokePixels || [...pixels.value];
   let changed = false;
-  for (const index of source) {
-    for (const targetIndex of brushTargetIndices(index)) {
+  for (const sample of source) {
+    for (const targetIndex of brushTargetIndices(sample.index, pressureBrushSize(sample))) {
       if (next[targetIndex] === colorIndex) continue;
       next[targetIndex] = colorIndex;
       changed = true;
     }
   }
 
-  if (changed) pixels.value = next;
+  if (!changed) return;
+  if (strokePixels) {
+    scheduleStrokeCommit();
+  } else {
+    pixels.value = next;
+  }
 }
 
-function beginPaint(indices) {
-  const source = normalizePaintIndices(indices);
-  if (!source.length) return;
+function beginPaint(payload) {
+  const source = normalizePaintSamples(payload);
+  if (!source.length || activeTool.value === 'move') return;
   pushHistory();
-  const nextColor = tool.value === 'eraser' ? -1 : ensurePaletteColor(selectedColor.value);
-  if (tool.value === 'fill') {
-    fillPixelsFrom(source[0], nextColor);
+  const currentTool = tool.value;
+  const nextColor = currentTool === 'eraser' ? -1 : ensurePaletteColor(selectedColor.value);
+  if (currentTool === 'fill') {
+    fillPixelsFrom(source[0].index, nextColor);
     isDrawing.value = false;
     return;
   }
 
   activePaintColorIndex = nextColor;
   isDrawing.value = true;
+  strokePixels = [...pixels.value];
   paintBrushPath(source, activePaintColorIndex);
 }
 
-function continuePaint(indices) {
+function continuePaint(payload) {
   if (!isDrawing.value) return;
-  paintBrushPath(indices, activePaintColorIndex);
+  paintBrushPath(payload, activePaintColorIndex);
 }
 
 function endPaint() {
+  if (strokePixels) flushStrokeCommit();
+  strokePixels = null;
   isDrawing.value = false;
   activePaintColorIndex = -1;
 }
 
+function beginCanvasPan(sample) {
+  const viewport = canvasViewportRef.value;
+  if (!viewport) return;
+  canvasPanState = {
+    clientX: sample.clientX,
+    clientY: sample.clientY,
+    scrollLeft: viewport.scrollLeft,
+    scrollTop: viewport.scrollTop
+  };
+}
+
+function continueCanvasPan(sample) {
+  const viewport = canvasViewportRef.value;
+  if (!viewport || !canvasPanState) return;
+  viewport.scrollLeft = canvasPanState.scrollLeft - (sample.clientX - canvasPanState.clientX);
+  viewport.scrollTop = canvasPanState.scrollTop - (sample.clientY - canvasPanState.clientY);
+}
+
+function endCanvasPan() {
+  canvasPanState = null;
+}
+
+function endCanvasInteraction() {
+  endPaint();
+  endCanvasPan();
+}
+
 function undo() {
+  endPaint();
   const previous = undoStack.value.pop();
   if (!previous) return;
   redoStack.value.push(currentSnapshot());
@@ -575,6 +689,7 @@ function undo() {
 }
 
 function redo() {
+  endPaint();
   const next = redoStack.value.pop();
   if (!next) return;
   undoStack.value.push(currentSnapshot());
@@ -582,12 +697,14 @@ function redo() {
 }
 
 function clearCanvas() {
+  endPaint();
   if (!paintedCount.value) return;
   pushHistory();
   pixels.value = blankPixels();
 }
 
 function applyMoonPattern() {
+  endPaint();
   pushHistory();
   const width = canvasWidth.value;
   const height = canvasHeight.value;
@@ -757,6 +874,7 @@ function convertImageToPixels(image, width, height) {
 }
 
 async function handleImageUpload(event) {
+  endPaint();
   const input = event.target;
   const file = input.files?.[0];
   input.value = '';
@@ -783,7 +901,8 @@ async function handleImageUpload(event) {
 }
 
 function downloadDraft() {
-  const canvas = makeCanvasFromPixels(pixels.value, activePalette.value, canvasWidth.value, canvasHeight.value, backgroundColor.value);
+  flushStrokeCommit();
+  const canvas = makeCanvasFromPixels(draftPixelsSnapshot(), activePalette.value, canvasWidth.value, canvasHeight.value, backgroundColor.value);
   const link = document.createElement('a');
   link.download = `${form.title.trim() || 'tsukuyomi-pixel-art'}.png`;
   link.href = canvas.toDataURL('image/png');
@@ -894,6 +1013,7 @@ function upsertArtwork(artwork) {
 }
 
 async function shareArtwork() {
+  flushStrokeCommit();
   session.value = getSession();
   if (!isAuthed.value) {
     go('/login');
@@ -924,7 +1044,7 @@ async function shareArtwork() {
         height: canvasHeight.value,
         background_color: backgroundColor.value,
         palette: activePalette.value,
-        pixels: pixels.value
+        pixels: draftPixelsSnapshot()
       })
     });
     const result = await parseResponse(response);
@@ -977,8 +1097,42 @@ function focusSharedArtwork() {
   }, 120);
 }
 
+function isTypingTarget(target) {
+  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName) || target?.isContentEditable;
+}
+
 function handleArenaKeydown(event) {
   if (event.key === 'Escape' && previewArtwork.value) closeArtworkPreview();
+  if (isTypingTarget(event.target)) return;
+  const key = event.key.toLowerCase();
+  if ((event.ctrlKey || event.metaKey) && key === 'z') {
+    event.preventDefault();
+    if (event.shiftKey) redo();
+    else undo();
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && key === 'y') {
+    event.preventDefault();
+    redo();
+    return;
+  }
+  if (event.key === ' ') {
+    event.preventDefault();
+    isSpacePanning.value = true;
+    return;
+  }
+  if (key === 'b') tool.value = 'brush';
+  if (key === 'e') tool.value = 'eraser';
+  if (key === 'f') tool.value = 'fill';
+  if (key === 'v' || key === 'h') tool.value = 'move';
+  if (event.key === '[') brushSize.value = Math.max(1, brushSize.value - 1);
+  if (event.key === ']') brushSize.value = Math.min(4, brushSize.value + 1);
+  if (event.key === '-' || event.key === '_') adjustZoom(-25);
+  if (event.key === '=' || event.key === '+') adjustZoom(25);
+}
+
+function handleArenaKeyup(event) {
+  if (event.key === ' ') isSpacePanning.value = false;
 }
 
 function artworkInitial(name) {
@@ -989,9 +1143,10 @@ watch(() => gallery.sort, loadArtworks);
 watch([canvasBaseWidth, canvasBaseHeight], () => scheduleCanvasFit());
 
 onMounted(async () => {
-  window.addEventListener('pointerup', endPaint);
-  window.addEventListener('pointercancel', endPaint);
+  window.addEventListener('pointerup', endCanvasInteraction);
+  window.addEventListener('pointercancel', endCanvasInteraction);
   window.addEventListener('keydown', handleArenaKeydown);
+  window.addEventListener('keyup', handleArenaKeyup);
   window.addEventListener('resize', handleCanvasViewportResize);
   await nextTick();
   if (typeof ResizeObserver !== 'undefined' && canvasViewportRef.value) {
@@ -1004,13 +1159,15 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('pointerup', endPaint);
-  window.removeEventListener('pointercancel', endPaint);
+  window.removeEventListener('pointerup', endCanvasInteraction);
+  window.removeEventListener('pointercancel', endCanvasInteraction);
   window.removeEventListener('keydown', handleArenaKeydown);
+  window.removeEventListener('keyup', handleArenaKeyup);
   window.removeEventListener('resize', handleCanvasViewportResize);
   canvasFitObserver?.disconnect();
   canvasFitObserver = null;
   if (canvasFitFrame) window.cancelAnimationFrame(canvasFitFrame);
+  cancelStrokeCommit();
   clearTimeout(toastTimer);
 });
 </script>
@@ -1036,14 +1193,17 @@ onBeforeUnmount(() => {
             <h2>{{ copy.draftTitle }}</h2>
           </div>
           <div class="arena-tool-toggle" role="group" :aria-label="copy.brush">
-            <button class="icon-btn" :class="{ active: tool === 'brush' }" type="button" :title="copy.brush" @click="tool = 'brush'">
+            <button class="icon-btn" :class="{ active: activeTool === 'brush' }" type="button" :title="copy.brush" @click="tool = 'brush'">
               <TsIcon name="brush" :size="18" />
             </button>
-            <button class="icon-btn" :class="{ active: tool === 'eraser' }" type="button" :title="copy.eraser" @click="tool = 'eraser'">
+            <button class="icon-btn" :class="{ active: activeTool === 'eraser' }" type="button" :title="copy.eraser" @click="tool = 'eraser'">
               <TsIcon name="eraser" :size="18" />
             </button>
-            <button class="icon-btn" :class="{ active: tool === 'fill' }" type="button" :title="copy.fill" @click="tool = 'fill'">
+            <button class="icon-btn" :class="{ active: activeTool === 'fill' }" type="button" :title="copy.fill" @click="tool = 'fill'">
               <TsIcon name="paintBucket" :size="18" />
+            </button>
+            <button class="icon-btn" :class="{ active: activeTool === 'move' }" type="button" :title="copy.move" @click="tool = 'move'">
+              <TsIcon name="move" :size="18" />
             </button>
           </div>
         </div>
@@ -1064,9 +1224,14 @@ onBeforeUnmount(() => {
                 :width="canvasWidth"
                 :height="canvasHeight"
                 :cell-size="DISPLAY_CELL_SIZE"
+                :tool="activeTool"
+                :stabilizer="stabilizerEnabled"
                 @begin-paint="beginPaint"
                 @continue-paint="continuePaint"
                 @end-paint="endPaint"
+                @begin-pan="beginCanvasPan"
+                @continue-pan="continueCanvasPan"
+                @end-pan="endCanvasPan"
               />
             </div>
           </div>
@@ -1138,6 +1303,16 @@ onBeforeUnmount(() => {
         <div class="arena-control-block arena-slider-block">
           <div class="arena-control-label">{{ copy.brushSize }}: {{ brushSize }}px</div>
           <input v-model.number="brushSize" type="range" min="1" max="4" step="1">
+          <div class="arena-drawing-toggles">
+            <label class="arena-drawing-toggle">
+              <input v-model="pressureEnabled" type="checkbox">
+              <span>{{ copy.pressure }}</span>
+            </label>
+            <label class="arena-drawing-toggle">
+              <input v-model="stabilizerEnabled" type="checkbox">
+              <span>{{ copy.stabilizer }}</span>
+            </label>
+          </div>
         </div>
 
         <div class="arena-control-block">

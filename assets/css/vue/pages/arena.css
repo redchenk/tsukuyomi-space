@@ -3142,3 +3142,132 @@ html[data-theme="light"] body .page.arena-page .arena-hero p {
         max-height: 58dvh;
     }
 }
+
+/* Arena drawing ergonomics: stylus, touch pen, and tablet input. */
+body .page.arena-page .arena-canvas-viewport {
+    overscroll-behavior: contain;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+body .page.arena-page .pixel-canvas-zoom-surface {
+    isolation: isolate;
+}
+
+body .page.arena-page .pixel-canvas,
+body .page.arena-page .pixel-canvas-renderer {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body .page.arena-page .pixel-canvas-renderer {
+    display: block;
+    cursor: crosshair;
+}
+
+body .page.arena-page .pixel-canvas-renderer.is-tool-brush {
+    cursor: crosshair;
+}
+
+body .page.arena-page .pixel-canvas-renderer.is-tool-eraser {
+    cursor: cell;
+}
+
+body .page.arena-page .pixel-canvas-renderer.is-tool-fill {
+    cursor: copy;
+}
+
+body .page.arena-page .pixel-canvas-renderer.is-tool-move {
+    cursor: grab;
+}
+
+body .page.arena-page .pixel-canvas-renderer.is-readonly {
+    cursor: default;
+    touch-action: auto;
+}
+
+body .page.arena-page .arena-drawing-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.48rem;
+    margin-top: 0.58rem;
+}
+
+body .page.arena-page .arena-drawing-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 34px;
+    padding: 0.28rem 0.58rem;
+    border: 1px solid rgba(86, 191, 232, 0.28);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(239, 247, 255, 0.68);
+    font-size: 0.82rem;
+    line-height: 1.2;
+}
+
+body .page.arena-page .arena-drawing-toggle input {
+    width: 16px;
+    height: 16px;
+    accent-color: #56bfe8;
+}
+
+body .page.arena-page .arena-tool-toggle .icon-btn.active,
+body .page.arena-page .arena-drawing-toggle:has(input:checked) {
+    border-color: rgba(86, 191, 232, 0.62);
+    color: #fff;
+    background: rgba(86, 191, 232, 0.16);
+}
+
+html[data-theme="light"] body .page.arena-page .arena-drawing-toggle {
+    color: rgba(38, 48, 72, 0.72);
+    background: rgba(255, 255, 255, 0.64);
+}
+
+html[data-theme="light"] body .page.arena-page .arena-tool-toggle .icon-btn.active,
+html[data-theme="light"] body .page.arena-page .arena-drawing-toggle:has(input:checked) {
+    color: #172033;
+    background: rgba(86, 191, 232, 0.18);
+}
+
+@media (min-width: 761px) {
+    body .page.arena-page .arena-canvas-viewport {
+        min-height: min(68dvh, 720px);
+    }
+}
+
+@media (pointer: coarse) {
+    body .page.arena-page .arena-tool-toggle .icon-btn,
+    body .page.arena-page .arena-canvas-actions .icon-btn,
+    body .page.arena-page .pixel-swatch,
+    body .page.arena-page .chip {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    body .page.arena-page .arena-tool-toggle .icon-btn,
+    body .page.arena-page .arena-canvas-actions .icon-btn {
+        width: 44px;
+    }
+
+    body .page.arena-page .arena-drawing-toggle {
+        min-height: 40px;
+        padding-inline: 0.7rem;
+    }
+}
+
+@media (max-width: 760px) {
+    body .page.arena-page .arena-canvas-viewport {
+        min-height: clamp(380px, 62dvh, 640px);
+        max-height: 68dvh;
+    }
+
+    body .page.arena-page .arena-tool-toggle {
+        gap: 0.42rem;
+    }
+}
