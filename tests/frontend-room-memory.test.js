@@ -206,3 +206,20 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(glManager, /WEBGL_lose_context/);
     });
 });
+
+describe('room model and voice defaults', () => {
+    it('keeps the DeepSeek and GPT-SoVITS defaults aligned across every request path', () => {
+        const settings = source('src/frontend/pages/RoomSettingsPage.vue');
+        const roomChat = source('src/frontend/composables/room/useRoomChat.js');
+        const live2dSpeech = source('src/frontend/services/room/live2dSpeech.js');
+        const backendTts = source('backend/services/tts.js');
+        const sources = [settings, roomChat, live2dSpeech, backendTts];
+
+        assert.match(settings, /model: 'deepseek-v4-flash'/);
+        for (const content of sources) {
+            assert.match(content, /GPT_weights_v2ProPlus\/yachiyo-v2pro-e20\.ckpt/);
+            assert.match(content, /SoVITS_weights_v2ProPlus\/yachiyo-v2pro_e12_s684\.pth/);
+            assert.doesNotMatch(content, /yachiyo-v2pro-e15\.ckpt|yachiyo-v2pro_e8_s456\.pth/);
+        }
+    });
+});

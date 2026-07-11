@@ -26,7 +26,7 @@ const LLM_PRESETS = {
   openai: { label: 'OpenAI Responses', apiUrl: 'https://api.openai.com/v1/responses', model: 'gpt-5.5' },
   openaiChat: { label: 'OpenAI Chat', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
   openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-5.2' },
-  deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
+  deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-v4-flash' },
   kimi: { label: 'Kimi', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'kimi-k2.6' },
   zhipu: { label: '智谱 GLM', apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-5.1' },
   siliconflow: { label: 'SiliconFlow', apiUrl: 'https://api.siliconflow.cn/v1/chat/completions', model: 'deepseek-ai/DeepSeek-V3' },
@@ -74,7 +74,7 @@ const MODEL_PROVIDER_PREFIXES = {
 const MODEL_RECOMMEND_PATTERNS = {
   openai: ['gpt-5.5', 'gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-4.1', 'gpt-4o'],
   openrouter: ['openai/gpt-5.5', 'openai/gpt-5.2', 'anthropic/claude-opus-4.5', 'google/gemini-3', 'x-ai/grok-4', 'deepseek/deepseek-chat'],
-  deepseek: ['deepseek-chat', 'deepseek-v3', 'deepseek-r1'],
+  deepseek: ['deepseek-v4-flash', 'deepseek-chat', 'deepseek-v3', 'deepseek-r1'],
   kimi: ['kimi-k2', 'moonshot-v1-128k', 'moonshot-v1-32k'],
   zhipu: ['glm-5', 'glm-4.5', 'glm-4-plus'],
   aliyun: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-vl-max', 'qwen-vl-plus'],
@@ -99,7 +99,7 @@ const TTS_PRESETS = {
   openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
   minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimaxi.com/v1/t2a_v2', model: 'speech-2.8-hd', voice: MINIMAX_DEFAULT_VOICE_ID, textLang: 'ja' },
   elevenlabs: { label: 'ElevenLabs', provider: 'elevenlabs', apiUrl: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2', voice: '21m00Tcm4TlvDq8ikWAM' },
-  gptSovitsLocal: { label: '本机 GPT-SoVITS 直连', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth' },
+  gptSovitsLocal: { label: '本机 GPT-SoVITS 直连', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
 };
 const BEGINNER_LLM_PROVIDERS = [
@@ -115,8 +115,8 @@ const BEGINNER_TTS_PROVIDERS = [
   { value: 'minimax', label: 'MiniMax TTS' },
   { value: 'gptSovitsLocal', label: '本机 GPT-SoVITS' }
 ];
-const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
-const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth';
+const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt';
+const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth';
 const GPT_SOVITS_LANGUAGE_OPTIONS = [
   { value: 'zh', label: '中文 / zh' },
   { value: 'ja', label: '日语 / ja' },
@@ -2395,8 +2395,8 @@ onBeforeUnmount(() => {
             <label>参考音频语言<select v-model="tts.promptLang">
               <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`prompt-${option.value}`" :value="option.value">{{ option.label }}</option>
             </select></label>
-            <label>GPT 权重路径<input v-model="tts.gptWeightPath" type="text" placeholder="GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt"></label>
-            <label>SoVITS 权重路径<input v-model="tts.sovitsWeightPath" type="text" placeholder="SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth"></label>
+            <label>GPT 权重路径<input v-model="tts.gptWeightPath" type="text" placeholder="GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt"></label>
+            <label>SoVITS 权重路径<input v-model="tts.sovitsWeightPath" type="text" placeholder="SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth"></label>
             <p v-if="gptSovitsPathWarning(tts.refAudioPath)" class="field-hint warning-text">{{ gptSovitsPathWarning(tts.refAudioPath) }}</p>
           </template>
           <label v-if="tts.provider !== 'gpt-sovits'" class="check-row"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>

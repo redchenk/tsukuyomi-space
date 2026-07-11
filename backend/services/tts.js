@@ -6,8 +6,8 @@ const GPT_SOVITS_REF_AUDIO_PATH = process.env.GPT_SOVITS_REF_AUDIO_PATH || '';
 const GPT_SOVITS_PROMPT_TEXT = process.env.GPT_SOVITS_PROMPT_TEXT || '';
 const GPT_SOVITS_TEXT_LANG = process.env.GPT_SOVITS_TEXT_LANG || 'zh';
 const GPT_SOVITS_PROMPT_LANG = process.env.GPT_SOVITS_PROMPT_LANG || 'zh';
-const GPT_SOVITS_GPT_WEIGHT_PATH = process.env.GPT_SOVITS_GPT_WEIGHT_PATH || 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
-const GPT_SOVITS_SOVITS_WEIGHT_PATH = process.env.GPT_SOVITS_SOVITS_WEIGHT_PATH || 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth';
+const GPT_SOVITS_GPT_WEIGHT_PATH = process.env.GPT_SOVITS_GPT_WEIGHT_PATH || 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt';
+const GPT_SOVITS_SOVITS_WEIGHT_PATH = process.env.GPT_SOVITS_SOVITS_WEIGHT_PATH || 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth';
 const MINIMAX_DEFAULT_VOICE_ID = 'female-shaonv';
 
 const ALLOWED_TTS_ENDPOINTS = [
