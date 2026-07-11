@@ -160,7 +160,7 @@ onUnmounted(() => {
           @pointerleave="collapseRail('theme')"
           @focus="expandRail('theme')"
           @blur="collapseRail('theme')"
-          @click="expandRail('theme'); $emit('toggle-theme')"
+          @click="expandRail('theme'); $emit('toggle-theme', $event)"
         >
           <span class="rail-icon"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="20" /></span>
           <span class="rail-label">{{ railThemeLabel }}</span>
@@ -311,7 +311,7 @@ onUnmounted(() => {
             type="button"
             :aria-label="themeLabel"
             :title="themeLabel"
-            @click="$emit('toggle-theme')"
+            @click="$emit('toggle-theme', $event)"
           >
             <TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />
             <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>

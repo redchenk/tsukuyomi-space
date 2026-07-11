@@ -1,0 +1,438 @@
+/*
+ * UI Refresh layer — final cascade layer, loaded after every page skin and patch.
+ * Unifies brand color, control language, micro-interactions and page niceties
+ * on top of the design system tokens (src/frontend/styles/tokens.css).
+ */
+
+/* ---- 1. Brand unification: one lilac primary across music player, mobile nav, brand icon ----
+ * design.md declares lilac (#9b8cff / #7b8cf6→#a481ff) as the brand primary; the patch layers
+ * had drifted the "unified" tokens and light-theme accent to teal. Reclaim them here for both
+ * themes so the brand no longer changes color when the theme toggles. Cyan stays as highlight.
+ */
+:root,
+html[data-theme="light"] {
+    --ts-accent: #7b74e8;
+    --ts-accent-2: #e85f9b;
+    --ts-border-strong: rgba(111, 98, 217, 0.36);
+    --ts-focus-ring: 0 0 0 3px rgba(123, 140, 246, 0.24);
+    --ts-unified-primary-bg: var(--ts-gradient-brand);
+    --ts-unified-primary-bg-hover: var(--ts-gradient-brand-hover);
+    --ts-unified-primary-text: #ffffff;
+    --ts-unified-button-radius: var(--ts-radius-control);
+    --ts-unified-button-radius-compact: 10px;
+    --ts-unified-button-hover: rgba(123, 140, 246, 0.12);
+    --ts-unified-button-border-hover: rgba(123, 110, 230, 0.42);
+    --ts-ink-gradient: linear-gradient(118deg, #3d3a78 0%, #6f62d9 46%, #b25f92 100%);
+}
+
+html[data-theme="dark"] {
+    --ts-accent: #8f9dff;
+    --ts-accent-2: #ff7ac8;
+    --ts-focus-ring: 0 0 0 3px rgba(154, 160, 255, 0.24);
+    --ts-unified-primary-bg: var(--ts-gradient-brand);
+    --ts-unified-primary-bg-hover: var(--ts-gradient-brand-hover);
+    --ts-unified-primary-text: #ffffff;
+    --ts-unified-button-hover: rgba(123, 140, 246, 0.2);
+    --ts-unified-button-border-hover: rgba(174, 165, 255, 0.46);
+    --ts-ink-gradient: linear-gradient(118deg, #eff7ff 0%, #c9c4ff 48%, #ffb9d9 100%);
+}
+
+/* Rail brand mark: lilac halo instead of the teal one-off shadows. */
+.rail-mark,
+.rail-mark:hover,
+.rail-mark:focus-visible {
+    border-color: rgba(216, 209, 255, 0.5);
+    box-shadow: 0 12px 30px rgba(123, 110, 230, 0.3);
+}
+
+.rail-mark:focus-visible {
+    box-shadow: var(--ts-focus-ring), 0 16px 38px rgba(123, 110, 230, 0.3);
+}
+
+.site-brand-icon {
+    border-color: rgba(216, 209, 255, 0.5);
+    box-shadow: 0 12px 30px rgba(123, 110, 230, 0.24);
+}
+
+/* ---- 2. Base niceties: selection, scrollbars, keyboard focus ---- */
+::selection {
+    background: color-mix(in srgb, var(--ts-accent), transparent 64%);
+    color: var(--ts-text-strong);
+}
+
+html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--ts-accent), transparent 46%) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ts-accent), transparent 46%);
+    background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--ts-accent), transparent 24%);
+    background-clip: padding-box;
+}
+
+:where(a, button, [role="button"], [role="link"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--ts-accent), transparent 24%);
+    outline-offset: 2px;
+}
+
+:where(.rail-link, .rail-mark):focus-visible {
+    outline: none;
+}
+
+/* ---- 3. Typography: aurora ink for page hero titles ---- */
+html body .page :is(.stage-header h1, .plaza-title, .gallery-hero h1, .notifications-hero h1, .attachments-hero h1, .uc-hero h1, .profile-hero h1, .reality-hero h1),
+html body .page.hub .hub-hero-copy .section-title {
+    background: var(--ts-ink-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.page :where(h1, h2) {
+    letter-spacing: 0.012em;
+}
+
+/* ---- 4. Buttons: sheen sweep on primary, springy icon pop, unified radius ---- */
+.page .primary-btn,
+.visit-popup-card .primary-btn {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background: var(--ts-gradient-brand);
+}
+
+.page .primary-btn:hover,
+.visit-popup-card .primary-btn:hover {
+    background: var(--ts-gradient-brand-hover);
+}
+
+.page .primary-btn::after,
+.visit-popup-card .primary-btn::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 42%;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+    transform: translateX(-130%) skewX(-18deg);
+    opacity: 0;
+}
+
+.page .primary-btn:hover::after,
+.visit-popup-card .primary-btn:hover::after {
+    animation: ts-shine-sweep 0.72s var(--ts-ease-standard);
+    opacity: 1;
+}
+
+.page :where(.primary-btn, .ghost-btn, .nav-link):hover > .ts-icon,
+.page :where(.primary-btn, .ghost-btn, .nav-link):hover > :where(span, .rail-icon) > .ts-icon {
+    animation: ts-pop 0.42s var(--ts-ease-spring);
+}
+
+.page :where(.nav-link, .ghost-btn, .lang-btn, .theme-toggle, .panel-btn, .terminal-nav-btn, .filter-btn, .icon-btn, .danger-btn, .mode-btn, .code-btn, .primary-btn) {
+    border-radius: var(--ts-unified-button-radius);
+}
+
+/* ---- 5. Inputs: calmer resting state, glowing focus ---- */
+.page :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), textarea, select) {
+    border-radius: var(--ts-radius-control);
+    transition:
+        border-color var(--ts-motion-base) var(--ts-ease-standard),
+        background var(--ts-motion-base) var(--ts-ease-standard),
+        box-shadow var(--ts-motion-base) var(--ts-ease-standard);
+}
+
+.page :where(input, textarea, select):focus {
+    border-color: color-mix(in srgb, var(--ts-accent), var(--ts-border) 30%);
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--ts-accent), transparent 78%),
+        0 10px 30px color-mix(in srgb, var(--ts-accent), transparent 84%);
+}
+
+/* ---- 6. Cards: accent edge glow joins the global hover lift ---- */
+html body .page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-msg-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .scene-card, .glass-card):hover {
+    box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--ts-accent), transparent 70%),
+        0 0 30px color-mix(in srgb, var(--ts-accent), transparent 86%),
+        var(--ts-shadow-lg);
+}
+
+/* ---- 7. Empty states: one shared visual language ---- */
+.page :where([class*="-empty"]) {
+    padding: clamp(1.7rem, 4vw, 2.7rem) 1.2rem;
+    border: 1px dashed color-mix(in srgb, var(--ts-border-strong), transparent 20%);
+    border-radius: var(--ts-radius-lg);
+    background: color-mix(in srgb, var(--ts-surface), transparent 34%);
+    color: var(--ts-muted);
+    text-align: center;
+}
+
+.ts-empty-title {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: var(--ts-text-strong);
+    font-weight: 750;
+}
+
+.ts-empty-desc {
+    display: block;
+    margin-bottom: 1rem;
+    color: var(--ts-muted);
+}
+
+.uc-login-notice-body {
+    text-align: center;
+}
+
+.plaza-friend-arrow {
+    color: color-mix(in srgb, var(--ts-muted), transparent 30%);
+    transition: transform var(--ts-motion-base) var(--ts-ease-lift), color var(--ts-motion-base) var(--ts-ease-standard);
+}
+
+.plaza-friend-card:hover .plaza-friend-arrow {
+    color: var(--ts-accent);
+    transform: translateX(3px);
+}
+
+/* ---- 8. Feedback: form messages breathe in, errors shake ---- */
+.form-message {
+    animation: ts-section-rise-in 0.3s var(--ts-ease-lift) both;
+}
+
+.form-message.error {
+    animation:
+        ts-section-rise-in 0.3s var(--ts-ease-lift) both,
+        ts-shake 0.44s var(--ts-ease-standard) 0.08s;
+}
+
+/* Newest plaza message glows briefly so fresh posts are findable. */
+.plaza-wall .plaza-message:first-child {
+    animation:
+        ts-card-bloom-in 0.34s var(--ts-ease-lift) both,
+        ts-flash-highlight 1.7s var(--ts-ease-standard) 0.4s both;
+}
+
+/* ---- 9. Notifications: unread accent spine ---- */
+.notification-card.unread {
+    border-color: color-mix(in srgb, var(--ts-accent), var(--ts-border) 42%);
+    box-shadow:
+        inset 3px 0 0 0 var(--ts-accent),
+        var(--ts-shadow-md);
+}
+
+/* ---- 10. Gallery lightbox: fade backdrop, zoom content ---- */
+@keyframes ts-overlay-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes ts-overlay-zoom-in {
+    from {
+        opacity: 0;
+        transform: scale(0.94) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.gallery-lightbox {
+    animation: ts-overlay-fade-in 0.22s var(--ts-ease-standard) both;
+}
+
+.gallery-lightbox section {
+    animation: ts-overlay-zoom-in 0.32s var(--ts-ease-out-expo) both;
+}
+
+.visit-popup-backdrop {
+    animation: ts-overlay-fade-in 0.24s var(--ts-ease-standard) both;
+}
+
+.visit-popup-card {
+    animation: ts-overlay-zoom-in 0.36s var(--ts-ease-out-expo) both;
+}
+
+/* ---- 11. Article: reading rhythm + fixed reading progress ---- */
+.article-content {
+    font-size: 1.02rem;
+    line-height: 1.88;
+    letter-spacing: 0.012em;
+}
+
+.article-content :where(img) {
+    border-radius: var(--ts-radius-lg);
+    box-shadow: var(--ts-shadow-md);
+}
+
+.article-content :where(blockquote) {
+    margin: 1.2em 0;
+    padding: 0.72em 1.05em;
+    border-left: 3px solid var(--ts-accent);
+    border-radius: 0 var(--ts-radius-md) var(--ts-radius-md) 0;
+    background: color-mix(in srgb, var(--ts-accent), transparent 92%);
+}
+
+@keyframes ts-grow-x {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+.article-progress {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 64;
+    height: 3px;
+    pointer-events: none;
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+    background: var(--ts-gradient-aurora);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--ts-accent), transparent 40%);
+}
+
+@supports (animation-timeline: scroll()) {
+    .article-progress {
+        animation: ts-grow-x 1ms linear both;
+        animation-timeline: scroll();
+    }
+}
+
+@supports not (animation-timeline: scroll()) {
+    .article-progress {
+        display: none;
+    }
+}
+
+/* ---- 12. Terminal: readable data tables ---- */
+body .page .terminal-table-wrap tbody tr td {
+    transition: background var(--ts-motion-fast) var(--ts-ease-standard);
+}
+
+body .page .terminal-table-wrap tbody tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--ts-accent), transparent 95%);
+}
+
+body .page .terminal-table-wrap tbody tr:hover td {
+    background: color-mix(in srgb, var(--ts-accent), transparent 90%);
+}
+
+body .page .terminal-table-wrap th {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* ---- 13. Reality page: retire the rose one-off, join the brand ---- */
+.page .reality-btn {
+    border-color: var(--ts-border);
+    border-radius: var(--ts-unified-button-radius);
+    color: var(--ts-text);
+    background: color-mix(in srgb, var(--ts-surface), transparent 20%);
+}
+
+.page .reality-btn:hover {
+    border-color: var(--ts-unified-button-border-hover);
+    color: var(--ts-text-strong);
+    background: var(--ts-unified-button-hover);
+}
+
+/* ---- 13b. Stage & filter chips: brand skin asserted over legacy patch layers ---- */
+html body .page .stage-new-btn {
+    border-color: rgba(174, 242, 255, 0.22);
+    border-radius: var(--ts-unified-button-radius);
+    color: #fff;
+    background: var(--ts-gradient-brand);
+    box-shadow: var(--ts-shadow-accent);
+}
+
+html body .page .stage-new-btn:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    background: var(--ts-gradient-brand-hover);
+    box-shadow: var(--ts-shadow-accent);
+    transform: translateY(-2px);
+}
+
+html body .page .filter-btn {
+    border-radius: var(--ts-radius-pill);
+}
+
+html body .page .filter-btn.active,
+html body .page .filter-btn.active:hover {
+    border-color: rgba(174, 242, 255, 0.32);
+    color: #fff;
+    background: var(--ts-gradient-brand);
+    box-shadow: var(--ts-shadow-accent);
+}
+
+/* ---- 14. Hub garnish: shimmering roman title, icon pop on entry cards ---- */
+.page.hub .hub-en-title {
+    background: var(--ts-gradient-aurora);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: ts-shimmer-pan 7s linear infinite;
+}
+
+.scene-card:hover .scene-icon .ts-icon {
+    animation: ts-pop 0.44s var(--ts-ease-spring);
+}
+
+/* ---- 15. Ambient stardust on chrome routes (desktop only) ---- */
+.site-global-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        radial-gradient(1.6px 1.6px at 12% 24%, rgba(255, 255, 255, 0.85), transparent 55%),
+        radial-gradient(1.2px 1.2px at 32% 68%, rgba(174, 242, 255, 0.8), transparent 55%),
+        radial-gradient(1.8px 1.8px at 54% 16%, rgba(255, 255, 255, 0.7), transparent 55%),
+        radial-gradient(1.1px 1.1px at 71% 47%, rgba(215, 194, 255, 0.85), transparent 55%),
+        radial-gradient(1.5px 1.5px at 86% 22%, rgba(255, 255, 255, 0.75), transparent 55%),
+        radial-gradient(1.2px 1.2px at 24% 88%, rgba(174, 242, 255, 0.7), transparent 55%),
+        radial-gradient(1.7px 1.7px at 64% 82%, rgba(255, 209, 232, 0.7), transparent 55%),
+        radial-gradient(1.1px 1.1px at 92% 72%, rgba(255, 255, 255, 0.65), transparent 55%);
+    opacity: 0.4;
+    animation: ts-twinkle 5.2s ease-in-out infinite;
+}
+
+html[data-theme="dark"] .site-global-bg::after {
+    opacity: 0.6;
+}
+
+@media (max-width: 860px) {
+    .site-global-bg::after {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .site-global-bg::after {
+        display: none;
+    }
+
+    .page .primary-btn::after {
+        display: none;
+    }
+}

@@ -79,8 +79,23 @@ function setTheme(nextTheme) {
   document.documentElement.dataset.theme = theme.value;
 }
 
-function toggleTheme() {
-  setTheme(theme.value === 'dark' ? 'light' : 'dark');
+function toggleTheme(event) {
+  const next = theme.value === 'dark' ? 'light' : 'dark';
+  const root = document.documentElement;
+  const reduceMotion = typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (typeof document.startViewTransition !== 'function' || reduceMotion) {
+    setTheme(next);
+    return;
+  }
+
+  const hasPointer = Number.isFinite(event?.clientX) && (event.clientX || event.clientY);
+  root.style.setProperty('--tt-x', hasPointer ? `${event.clientX}px` : '50%');
+  root.style.setProperty('--tt-y', hasPointer ? `${event.clientY}px` : '8%');
+  root.classList.add('ts-theme-transition');
+  const transition = document.startViewTransition(() => setTheme(next));
+  transition.finished.finally(() => root.classList.remove('ts-theme-transition'));
 }
 
 function resolveNavigationPath(path) {

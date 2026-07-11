@@ -531,8 +531,8 @@ onMounted(refreshPlaza);
 
         <div v-if="!isAuthed" class="plaza-composer plaza-composer-locked">
           <div class="plaza-empty">
-            <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">{{ t.loginToPost }}</div>
-            <div style="margin-bottom:1rem;">{{ t.loginToPostDesc }}</div>
+            <div class="ts-empty-title">{{ t.loginToPost }}</div>
+            <div class="ts-empty-desc">{{ t.loginToPostDesc }}</div>
             <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.goLogin }}</a>
           </div>
         </div>
@@ -542,7 +542,7 @@ onMounted(refreshPlaza);
 
         <div v-if="plaza.loading" class="plaza-empty">{{ t.plazaConnecting }}</div>
         <div v-else-if="!plazaMessages.length" class="plaza-empty">
-          <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">{{ t.noMessages }}</div>
+          <div class="ts-empty-title">{{ t.noMessages }}</div>
           <div>{{ t.noMessagesHint }}</div>
         </div>
         <div v-else class="plaza-messages plaza-message-region">
@@ -676,7 +676,7 @@ onMounted(refreshPlaza);
                 <div class="plaza-friend-name">{{ f.name }}</div>
                 <div class="plaza-friend-desc">{{ f.desc }}</div>
               </div>
-              <div style="color:rgba(255,225,235,0.42);">{{ fallback.arrow }}</div>
+              <div class="plaza-friend-arrow">{{ fallback.arrow }}</div>
             </a>
           </div>
         </div>

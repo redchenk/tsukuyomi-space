@@ -16,7 +16,11 @@ export default defineConfig({
       allow: [fileURLToPath(new URL('.', import.meta.url))]
     },
     proxy: {
-      '^/api(?!/client\\.js(?:\\?|$))': 'http://127.0.0.1:3000'
+      '^/api(?!/client\\.js(?:\\?|$))': 'http://127.0.0.1:3000',
+      '/lib': 'http://127.0.0.1:3000',
+      '/models': 'http://127.0.0.1:3000',
+      '/assets': 'http://127.0.0.1:3000',
+      '/live2d-core.js': 'http://127.0.0.1:3000'
     }
   },
   build: {

@@ -336,6 +336,7 @@ watch(articleId, loadArticle);
 
 <template>
   <main class="page article-page">
+    <div class="article-progress" aria-hidden="true"></div>
     <div class="article-shell">
       <a class="ghost-btn article-back" :href="articleBackPath" @click.prevent="goBackToStage">
         <TsIcon name="arrowLeft" :size="17" />

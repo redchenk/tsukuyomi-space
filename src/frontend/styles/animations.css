@@ -103,6 +103,62 @@
     }
 }
 
+@keyframes ts-shine-sweep {
+    from { transform: translateX(-130%) skewX(-18deg); }
+    to { transform: translateX(230%) skewX(-18deg); }
+}
+
+@keyframes ts-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+}
+
+@keyframes ts-shimmer-pan {
+    from { background-position: 0% 50%; }
+    to { background-position: 200% 50%; }
+}
+
+@keyframes ts-flash-highlight {
+    0% {
+        border-color: rgba(154, 140, 255, 0.66);
+        box-shadow: 0 0 0 3px rgba(154, 140, 255, 0.24), var(--ts-shadow-md);
+    }
+    100% {
+        border-color: var(--ts-border);
+        box-shadow: var(--ts-shadow-md);
+    }
+}
+
+@keyframes ts-shake {
+    0%, 100% { transform: translateX(0); }
+    22% { transform: translateX(-5px); }
+    44% { transform: translateX(4px); }
+    66% { transform: translateX(-3px); }
+    84% { transform: translateX(2px); }
+}
+
+@keyframes ts-twinkle {
+    0%, 100% { opacity: 0.34; }
+    50% { opacity: 0.85; }
+}
+
+@keyframes ts-theme-reveal {
+    from { clip-path: circle(0 at var(--tt-x, 50%) var(--tt-y, 8%)); }
+    to { clip-path: circle(150vmax at var(--tt-x, 50%) var(--tt-y, 8%)); }
+}
+
+/* Theme toggle: circular reveal driven by App.vue via document.startViewTransition. */
+html.ts-theme-transition::view-transition-old(root),
+html.ts-theme-transition::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+html.ts-theme-transition::view-transition-new(root) {
+    animation: ts-theme-reveal 0.52s var(--ts-ease-standard) both;
+}
+
 body::before,
 body::after {
     content: "";
@@ -241,7 +297,7 @@ body.vue-global-bg-route::after {
     animation-delay: 0.09s;
 }
 
-.page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card) {
+.page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card, [class*="-card"]:not([class*="auth-"]), [class*="-tile"]) {
     transform: translateZ(0);
     transition:
         transform var(--ts-motion-base) var(--ts-ease-lift),
@@ -250,13 +306,13 @@ body.vue-global-bg-route::after {
         box-shadow var(--ts-motion-base) var(--ts-ease-standard);
 }
 
-.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card) {
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card, [class*="-card"]:not([class*="auth-"]), [class*="-tile"], [class*="-panel"]:not([class*="auth-"])) {
     animation: ts-card-bloom-in 0.34s var(--ts-ease-lift) both;
 }
 
-.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(2) { animation-delay: 0.025s; }
-.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(3) { animation-delay: 0.045s; }
-.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):nth-child(n + 4) { animation-delay: 0.06s; }
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card, [class*="-card"]:not([class*="auth-"]), [class*="-tile"], [class*="-panel"]:not([class*="auth-"])):nth-child(2) { animation-delay: 0.025s; }
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card, [class*="-card"]:not([class*="auth-"]), [class*="-tile"], [class*="-panel"]:not([class*="auth-"])):nth-child(3) { animation-delay: 0.045s; }
+.route-view.page:not(.hub):not(.access-page) :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card, [class*="-card"]:not([class*="auth-"]), [class*="-tile"], [class*="-panel"]:not([class*="auth-"])):nth-child(n + 4) { animation-delay: 0.06s; }
 
 .page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card):hover {
     border-color: var(--ts-border-strong);
@@ -274,6 +330,15 @@ body.vue-global-bg-route::after {
 .page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(4) { animation-delay: 0.19s; }
 .page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(5) { animation-delay: 0.24s; }
 .page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(n + 6) { animation-delay: 0.28s; }
+
+/* Below-fold list items reveal as they scroll into view instead of all at load time. */
+@supports (animation-timeline: view()) {
+    .route-view.page:not(.hub):not(.access-page) :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, li, div):nth-child(n + 7) {
+        animation: ts-card-bloom-in 1ms var(--ts-ease-lift) both;
+        animation-timeline: view();
+        animation-range: entry 4% entry 42%;
+    }
+}
 
 .page :where(.primary-btn, .ghost-btn, .nav-link, .panel-btn, .filter-btn, .icon-btn, .mode-btn, .code-btn, .lang-btn, .theme-toggle, .chip) {
     transition:
@@ -299,6 +364,7 @@ body.vue-global-bg-route::after {
     *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
+        animation-timeline: auto !important;
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
     }

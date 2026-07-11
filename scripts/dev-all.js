@@ -1,6 +1,7 @@
 const { spawn } = require('node:child_process');
 
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const isWindows = process.platform === 'win32';
+const npmCommand = 'npm';
 
 const processes = [
     {
@@ -63,7 +64,8 @@ for (const item of processes) {
             FORCE_COLOR: process.env.FORCE_COLOR || '1'
         },
         stdio: ['inherit', 'pipe', 'pipe'],
-        shell: false
+        // Node on Windows refuses to spawn .cmd shims without a shell (CVE-2024-27980).
+        shell: isWindows
     });
 
     children.push(child);

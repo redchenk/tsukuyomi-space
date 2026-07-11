@@ -13,10 +13,10 @@
     width: min(760px, 100%);
     margin: 1rem auto 0;
     padding: 0.88rem 1.05rem;
-    border: 1px solid rgba(255, 107, 157, 0.18);
-    border-radius: 18px;
-    color: rgba(255, 225, 232, 0.74);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-lg);
+    color: var(--ts-muted);
+    background: color-mix(in srgb, var(--ts-surface), transparent 40%);
     line-height: 1.78;
 }
 
@@ -40,28 +40,22 @@
 .stage-search-icon {
     position: absolute;
     left: 0.9rem;
-    color: rgba(255, 183, 197, 0.48);
+    color: color-mix(in srgb, var(--ts-muted), transparent 30%);
     pointer-events: none;
 }
 
 .search-box input {
     width: 100%;
     padding: 0.7rem 1rem 0.7rem 2.45rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 107, 157, 0.2);
-    border-radius: 6px;
-    color: rgba(255, 183, 197, 0.9);
+    background: color-mix(in srgb, var(--ts-surface), transparent 30%);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-control);
+    color: var(--ts-text);
     font-size: 0.9rem;
 }
 
 .search-box input::placeholder {
-    color: rgba(255, 183, 197, 0.4);
-}
-
-.search-box input:focus {
-    border-color: rgba(126, 219, 232, 0.54);
-    box-shadow: 0 0 0 3px rgba(126, 219, 232, 0.1);
-    outline: none;
+    color: color-mix(in srgb, var(--ts-muted), transparent 35%);
 }
 
 .stage-new-btn {
@@ -72,17 +66,22 @@
     text-decoration: none;
     white-space: nowrap;
     padding: 0.7rem 1.5rem;
-    background: rgba(255, 107, 157, 0.2);
-    color: #ffb7c5;
-    border: 1px solid rgba(255, 107, 157, 0.3);
-    border-radius: 6px;
+    background: var(--ts-gradient-brand);
+    color: #fff;
+    border: 1px solid rgba(174, 242, 255, 0.22);
+    border-radius: var(--ts-radius-control);
     font-size: 0.9rem;
-    transition: all 0.3s;
+    font-weight: 700;
+    box-shadow: var(--ts-shadow-accent);
+    transition:
+        transform var(--ts-motion-fast) var(--ts-ease-lift),
+        box-shadow var(--ts-motion-base) var(--ts-ease-standard),
+        background var(--ts-motion-base) var(--ts-ease-standard);
     cursor: pointer;
 }
 
 .stage-new-btn:hover {
-    background: rgba(255, 107, 157, 0.3);
+    background: var(--ts-gradient-brand-hover);
     transform: translateY(-2px);
     color: #fff;
 }
@@ -94,26 +93,31 @@
     margin-bottom: 1rem;
 }
 
-.filter-btn {
+.stage-page .filter-btn {
     padding: 0.5rem 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 107, 157, 0.2);
-    border-radius: 20px;
-    color: rgba(255, 183, 197, 0.7);
+    background: color-mix(in srgb, var(--ts-surface), transparent 30%);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-pill);
+    color: var(--ts-muted);
     cursor: pointer;
     font-size: 0.85rem;
-    transition: all 0.3s;
+    transition:
+        border-color var(--ts-motion-base) var(--ts-ease-standard),
+        background var(--ts-motion-base) var(--ts-ease-standard),
+        color var(--ts-motion-base) var(--ts-ease-standard),
+        transform var(--ts-motion-fast) var(--ts-ease-lift);
 }
 
-.filter-btn:hover {
-    background: rgba(255, 107, 157, 0.15);
-    border-color: rgba(255, 107, 157, 0.4);
+.stage-page .filter-btn:hover {
+    background: var(--ts-card-hover);
+    border-color: var(--ts-border-strong);
+    color: var(--ts-text-strong);
 }
 
-.filter-btn.active {
-    background: rgba(255, 107, 157, 0.25);
-    border-color: rgba(255, 107, 157, 0.5);
-    color: #ffb7c5;
+.stage-page .filter-btn.active {
+    background: var(--ts-gradient-brand);
+    border-color: rgba(174, 242, 255, 0.32);
+    color: #fff;
 }
 
 .stage-result-strip {
@@ -124,9 +128,9 @@
     flex-wrap: wrap;
     margin-bottom: 1.4rem;
     padding: 0.78rem 0.9rem;
-    border: 1px solid rgba(255, 107, 157, 0.16);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-md);
+    background: color-mix(in srgb, var(--ts-surface), transparent 30%);
 }
 
 .stage-result-strip div {
@@ -139,13 +143,14 @@
 .stage-result-strip span,
 .stage-result-strip small,
 .stage-pagination-info {
-    color: rgba(255, 225, 235, 0.58);
+    color: var(--ts-muted);
     font-size: 0.78rem;
 }
 
 .stage-result-count {
     font-weight: 650;
     letter-spacing: 0;
+    color: var(--ts-text-strong);
 }
 
 .stage-result-page {
@@ -154,15 +159,15 @@
 
 .stage-result-page small {
     padding: 0.26rem 0.48rem;
-    border: 1px solid rgba(255, 107, 157, 0.14);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-pill);
+    background: color-mix(in srgb, var(--ts-surface), transparent 40%);
 }
 
 .stage-status {
     text-align: center;
     padding: 3rem;
-    color: rgba(255, 183, 197, 0.5);
+    color: var(--ts-muted);
 }
 
 .stage-list {
@@ -174,19 +179,16 @@
 .stage-card {
     display: flex;
     gap: 1.5rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 107, 157, 0.15);
-    border-radius: 8px;
+    background: var(--ts-card);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-card);
     text-decoration: none;
-    transition: all 0.3s;
     overflow: hidden;
     height: 180px;
 }
 
 .stage-card:hover {
-    transform: translateX(8px);
-    border-color: rgba(255, 107, 157, 0.3);
-    background: rgba(255, 107, 157, 0.08);
+    background: var(--ts-card-hover);
 }
 
 .stage-card-body {
@@ -207,15 +209,16 @@
 
 .tag {
     padding: 0.25rem 0.7rem;
-    background: rgba(255, 107, 157, 0.15);
-    border-radius: 12px;
+    background: color-mix(in srgb, var(--ts-accent), transparent 86%);
+    border-radius: var(--ts-radius-pill);
     font-size: 0.7rem;
-    color: rgba(255, 183, 197, 0.9);
-    font-weight: 500;
+    color: color-mix(in srgb, var(--ts-accent), var(--ts-text) 30%);
+    font-weight: 650;
 }
 
 .tag-author {
-    background: rgba(255, 255, 255, 0.1);
+    background: color-mix(in srgb, var(--ts-surface), transparent 20%);
+    color: var(--ts-muted);
 }
 
 .stage-author {
@@ -229,12 +232,14 @@
 
 .stage-author-link {
     cursor: pointer;
+    transition:
+        color var(--ts-motion-base) var(--ts-ease-standard),
+        background var(--ts-motion-base) var(--ts-ease-standard);
 }
 
 .stage-author-link:hover {
-    color: #fff;
-    border-color: rgba(255,183,197,0.42);
-    background: rgba(126,219,232,0.12);
+    color: var(--ts-text-strong);
+    background: color-mix(in srgb, var(--ts-accent), transparent 84%);
 }
 
 .stage-author-avatar {
@@ -245,8 +250,8 @@
     place-items: center;
     flex: 0 0 auto;
     overflow: hidden;
-    background: linear-gradient(135deg, rgba(255, 183, 197, 0.94), rgba(126, 219, 232, 0.82));
-    color: #23111c;
+    background: var(--ts-gradient-aurora);
+    color: #1c1633;
     font-size: 0.68rem;
     font-weight: 800;
 }
@@ -267,11 +272,11 @@
 
 .stage-card-title {
     font-size: 1.1rem;
-    color: rgba(255, 183, 197, 0.95);
+    color: var(--ts-text-strong);
     min-height: calc(2em * 1.38 + 0.22rem);
     margin: -0.08rem 0 0.2rem;
     padding: 0.1rem 0 0.12rem;
-    font-weight: 500;
+    font-weight: 650;
     line-height: 1.38;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -282,7 +287,7 @@
 }
 
 .stage-card-excerpt {
-    color: rgba(255, 183, 197, 0.6);
+    color: var(--ts-muted);
     line-height: 1.42;
     margin-bottom: 0.32rem;
     font-size: 0.85rem;
@@ -302,7 +307,7 @@
 
 .read-time {
     font-size: 0.75rem;
-    color: rgba(255, 183, 197, 0.5);
+    color: color-mix(in srgb, var(--ts-muted), transparent 20%);
 }
 
 .stage-card-cover {
@@ -316,7 +321,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.3s;
+    transition: transform var(--ts-motion-slower) var(--ts-ease-out-expo);
     display: block;
 }
 
@@ -331,9 +336,9 @@
     gap: 0.9rem;
     flex-wrap: wrap;
     padding: 0.85rem;
-    border: 1px solid rgba(255, 107, 157, 0.16);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-md);
+    background: color-mix(in srgb, var(--ts-surface), transparent 35%);
 }
 
 .stage-pagination-controls {
@@ -351,29 +356,33 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: var(--ts-radius-sm);
     font: inherit;
     font-size: 0.8rem;
 }
 
 .stage-page-btn {
-    border: 1px solid rgba(255, 107, 157, 0.22);
-    background: rgba(255, 255, 255, 0.045);
-    color: rgba(255, 225, 235, 0.78);
+    border: 1px solid var(--ts-border);
+    background: color-mix(in srgb, var(--ts-surface), transparent 30%);
+    color: var(--ts-text);
     cursor: pointer;
-    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    transition:
+        border-color var(--ts-motion-fast) var(--ts-ease-standard),
+        background var(--ts-motion-fast) var(--ts-ease-standard),
+        color var(--ts-motion-fast) var(--ts-ease-standard),
+        transform var(--ts-motion-fast) var(--ts-ease-lift);
 }
 
 .stage-page-btn:hover:not(:disabled) {
-    border-color: rgba(255, 107, 157, 0.5);
-    background: rgba(255, 107, 157, 0.16);
-    color: #fff;
+    border-color: var(--ts-border-strong);
+    background: var(--ts-card-hover);
+    color: var(--ts-text-strong);
     transform: translateY(-1px);
 }
 
 .stage-page-btn.active {
-    border-color: rgba(255, 107, 157, 0.52);
-    background: rgba(255, 107, 157, 0.28);
+    border-color: rgba(174, 242, 255, 0.32);
+    background: var(--ts-gradient-brand);
     color: #fff;
     font-weight: 800;
 }
@@ -396,54 +405,7 @@
 }
 
 .stage-page-gap {
-    color: rgba(255, 225, 235, 0.44);
-}
-
-html[data-theme="light"] .stage-seo-intro {
-    border-color: rgba(75, 95, 140, 0.14);
-    color: rgba(38, 48, 72, 0.72);
-    background: rgba(255, 255, 255, 0.66);
-}
-
-html[data-theme="light"] .stage-result-strip,
-html[data-theme="light"] .stage-pagination {
-    border-color: rgba(139, 168, 205, 0.18);
-    background: rgba(255, 255, 255, 0.78);
-    box-shadow: var(--float-shadow, 0 12px 30px rgba(86, 112, 160, 0.12));
-}
-
-html[data-theme="light"] .stage-result-count,
-html[data-theme="light"] .stage-page-btn.active {
-    color: var(--ink, #172033);
-}
-
-html[data-theme="light"] .stage-result-strip span,
-html[data-theme="light"] .stage-result-strip small,
-html[data-theme="light"] .stage-pagination-info,
-html[data-theme="light"] .stage-page-gap {
-    color: var(--muted, #4b5565);
-}
-
-html[data-theme="light"] .stage-search-icon {
-    color: rgba(75, 95, 140, 0.52);
-}
-
-html[data-theme="light"] .stage-page-btn,
-html[data-theme="light"] .stage-result-page small {
-    border-color: rgba(139, 168, 205, 0.22);
-    background: rgba(255, 255, 255, 0.74);
-    color: var(--ink-soft, #263244);
-}
-
-html[data-theme="light"] .stage-page-btn:hover:not(:disabled) {
-    border-color: rgba(102, 197, 223, 0.45);
-    background: rgba(229, 246, 252, 0.9);
-    color: var(--ink, #172033);
-}
-
-html[data-theme="light"] .stage-page-btn.active {
-    border-color: rgba(223, 106, 157, 0.3);
-    background: rgba(255, 235, 244, 0.95);
+    color: color-mix(in srgb, var(--ts-muted), transparent 30%);
 }
 
 @media (max-width: 760px) {

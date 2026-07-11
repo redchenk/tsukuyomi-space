@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, noStoreUrl, parseResponse, setPublicStatsCache } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
+import CountUpValue from '../components/CountUpValue.vue';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { compareAppDate } from '../utils/time';
@@ -407,7 +408,7 @@ onMounted(() => {
         </div>
         <div class="hub-stat-grid">
           <div v-for="item in stats" :key="item.label">
-            <strong>{{ item.value }}</strong>
+            <strong><CountUpValue :value="item.value" /></strong>
             <span>{{ item.label }}</span>
           </div>
         </div>

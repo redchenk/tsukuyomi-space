@@ -13,7 +13,9 @@ module.exports = defineConfig({
     projects: [
         {
             name: 'chromium',
-            use: { ...devices['Desktop Chrome'] }
+            // PW_CHANNEL lets local runs borrow a system browser (e.g. msedge)
+            // when the Playwright browser download is unavailable; CI leaves it unset.
+            use: { ...devices['Desktop Chrome'], channel: process.env.PW_CHANNEL || undefined }
         }
     ],
     webServer: process.env.E2E_BASE_URL ? undefined : {

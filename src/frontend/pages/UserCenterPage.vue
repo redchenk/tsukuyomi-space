@@ -466,7 +466,7 @@ onMounted(async () => {
 <template>
   <main class="page uc-page">
     <div v-if="sessionChecking" class="panel uc-login-notice">
-      <div style="text-align:center;">
+      <div class="uc-login-notice-body">
         <div class="uc-eyebrow">User Center</div>
         <h1>Loading...</h1>
         <p>{{ t.ucLoadingArticles }}</p>
@@ -474,7 +474,7 @@ onMounted(async () => {
     </div>
 
     <div v-else-if="!isAuthed" class="panel uc-login-notice">
-      <div style="text-align:center;">
+      <div class="uc-login-notice-body">
         <div class="uc-eyebrow">User Center</div>
         <h1>{{ t.ucNeedLogin }}</h1>
         <p>{{ t.ucLoginPrompt }}</p>
@@ -642,8 +642,8 @@ onMounted(async () => {
             </div>
             <div v-if="uc.articleLoading" class="uc-empty">{{ t.ucLoadingArticles }}</div>
             <div v-else-if="!ucFilteredArticles.length" class="uc-empty">
-              <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">{{ t.ucNoArticles }}</div>
-              <div style="margin-bottom:1rem;">{{ t.ucNoArticlesHint }}</div>
+              <div class="ts-empty-title">{{ t.ucNoArticles }}</div>
+              <div class="ts-empty-desc">{{ t.ucNoArticlesHint }}</div>
               <a class="primary-btn uc-icon-action" href="/editor" @click.prevent="go('/editor')">
                 <TsIcon name="penLine" :size="17" />
                 <span>{{ t.ucNewPost }}</span>
@@ -691,8 +691,8 @@ onMounted(async () => {
             </div>
             <div v-if="uc.bookmarkLoading" class="uc-empty">收藏列表加载中...</div>
             <div v-else-if="!ucFilteredBookmarks.length" class="uc-empty">
-              <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">还没有收藏文章</div>
-              <div style="margin-bottom:1rem;">在文章页点击收藏后，会在这里形成你的阅读清单。</div>
+              <div class="ts-empty-title">还没有收藏文章</div>
+              <div class="ts-empty-desc">在文章页点击收藏后，会在这里形成你的阅读清单。</div>
               <a class="primary-btn" href="/stage" @click.prevent="go('/stage')">去主舞台看看</a>
             </div>
             <div v-else class="uc-article-list">
@@ -733,8 +733,8 @@ onMounted(async () => {
             </div>
             <div v-if="uc.pixelLoading" class="uc-empty">像素画列表加载中...</div>
             <div v-else-if="!ucFilteredPixelArtworks.length" class="uc-empty">
-              <div style="font-weight:700;color:#fff;margin-bottom:0.45rem;">还没有像素画</div>
-              <div style="margin-bottom:1rem;">从月光像素工坊开始新建作品，发布后会在这里管理。</div>
+              <div class="ts-empty-title">还没有像素画</div>
+              <div class="ts-empty-desc">从月光像素工坊开始新建作品，发布后会在这里管理。</div>
               <a class="primary-btn uc-icon-action" href="/arena" @click.prevent="go('/arena')">
                 <TsIcon name="palette" :size="17" />
                 <span>去新建像素画</span>
