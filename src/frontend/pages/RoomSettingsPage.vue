@@ -102,6 +102,19 @@ const TTS_PRESETS = {
   gptSovitsLocal: { label: '本机 GPT-SoVITS 直连', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
 };
+const BEGINNER_LLM_PROVIDERS = [
+  { value: 'openaiChat', label: 'OpenAI', detail: '通用稳定' },
+  { value: 'deepseek', label: 'DeepSeek', detail: '中文友好' },
+  { value: 'kimi', label: 'Kimi', detail: '长文本' },
+  { value: 'openrouter', label: 'OpenRouter', detail: '模型丰富' },
+  { value: 'zhipu', label: '智谱 GLM', detail: '国内服务' }
+];
+const BEGINNER_TTS_PROVIDERS = [
+  { value: 'mimo', label: 'MiMo 语音' },
+  { value: 'openai', label: 'OpenAI TTS' },
+  { value: 'minimax', label: 'MiniMax TTS' },
+  { value: 'gptSovitsLocal', label: '本机 GPT-SoVITS' }
+];
 const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e15.ckpt';
 const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e8_s456.pth';
 const GPT_SOVITS_LANGUAGE_OPTIONS = [
@@ -123,6 +136,9 @@ const memoryList = ref([]);
 const memoryLoading = ref(false);
 const storedUser = ref(readStoredUser());
 const modelCatalog = reactive({ loading: false, message: '', updatedAt: '', models: [] });
+const setupStep = ref(1);
+const setupLlmMode = ref('ollama');
+const setupCloudProvider = ref('openaiChat');
 let toastTimer = 0;
 let modelNoticeTimer = 0;
 
@@ -183,8 +199,14 @@ const roomUser = computed(() => storedUser.value || (props.user?.id ? props.user
 const roomIdentityLabel = computed(() => roomUser.value?.username || '访客身份');
 const llmConnectionLabel = computed(() => llm.model || '待配置');
 const ttsConnectionLabel = computed(() => tts.enabled ? (tts.voice || tts.provider || '已启用') : '未启用');
-const memoryConnectionLabel = computed(() => memory.enabled ? `${memoryCount.value} 条记忆` : '未启用');
-const mcpConnectionLabel = computed(() => mcp.enabled ? `${mcp.tools.length || 0} 个工具` : '未启用');
+const llmSetupReady = computed(() => Boolean(llm.model) && (!llmNeedsApiKey(llm.apiUrl) || Boolean(llm.apiKey)));
+const ttsSetupReady = computed(() => !tts.enabled || (Boolean(tts.apiUrl) && (tts.provider === 'gpt-sovits' || Boolean(tts.apiKey))));
+const setupProgress = computed(() => [llmSetupReady.value, ttsSetupReady.value, true].filter(Boolean).length);
+const setupStatusItems = computed(() => [
+  { icon: 'message', label: '聊天模型', value: llmSetupReady.value ? llmConnectionLabel.value : '待完成', ready: llmSetupReady.value },
+  { icon: 'audioLines', label: '语音', value: tts.enabled ? (ttsSetupReady.value ? ttsConnectionLabel.value : '待完成') : '暂不开启', ready: ttsSetupReady.value },
+  { icon: 'bookmark', label: '记忆', value: memory.enabled ? memoryModeLabel.value : '已关闭', ready: true }
+]);
 const visitorKey = computed(() => {
   if (roomUser.value?.id) return `user:${roomUser.value.id}`;
   let id = localStorage.getItem('roomMemoryGuestId');
@@ -217,15 +239,6 @@ const memoryTypeOptions = [
   { value: 'semantic', label: '语义记忆' },
   { value: 'conversation', label: '对话片段' }
 ];
-const roomSettingsNavItems = [
-  { href: '#room-model-settings', icon: 'layers', title: '模型与浮窗', detail: '先把角色大小和窗口位置调舒服。' },
-  { href: '#room-llm-settings', icon: 'message', title: 'LLM API', detail: '聊天回复的核心配置，优先完成。' },
-  { href: '#room-tts-settings', icon: 'audioLines', title: 'TTS 语音', detail: '需要角色开口时再启用并测试。' },
-  { href: '#room-memory-settings', icon: 'bookmark', title: '长期记忆', detail: '控制是否写入用户隔离记忆。' },
-  { href: '#room-knowledge-settings', icon: 'book', title: '角色知识库', detail: '维护人格、口吻和背景设定。' },
-  { href: '#room-mcp-settings', icon: 'grid', title: 'MCP 工具', detail: '需要搜索、图像理解或外部工具时开启。' },
-  { href: '#room-live2d-debug', icon: 'star', title: 'Live2D 调试', detail: '调试表情动作队列，排查表现。' }
-];
 const live2dExpressionOptions = roomLive2DManifest.expressions;
 const live2dMotionOptions = [{ id: '', label: '不触发动作' }, ...roomLive2DManifest.motions];
 const live2dDebugJson = computed(() => JSON.stringify({
@@ -235,41 +248,6 @@ const live2dDebugJson = computed(() => JSON.stringify({
   current: live2dDebug.current,
   normalized: live2dDebug.normalized
 }, null, 2));
-const roomSetupGuide = computed(() => [
-  {
-    href: '#room-llm-settings',
-    icon: 'message',
-    step: '01',
-    title: '先让她能回答',
-    detail: llmProviderKey.value === 'ollama' ? 'Ollama 本机模式无需 API Key，保存后测试连接。' : '选择供应商、模型和密钥，保存后测试 LLM。',
-    status: llm.model ? `模型：${llm.model}` : '待选择模型'
-  },
-  {
-    href: '#room-tts-settings',
-    icon: 'audioLines',
-    step: '02',
-    title: '再决定是否开口',
-    detail: '语音不是必填项，启用后先用测试按钮听一段。',
-    status: tts.enabled ? `音色：${tts.voice || tts.provider || '已启用'}` : '可暂时关闭'
-  },
-  {
-    href: '#room-memory-settings',
-    icon: 'bookmark',
-    step: '03',
-    title: '确认记忆边界',
-    detail: canUseServerMemory.value ? '登录用户会写入服务端私有记忆。' : '游客只写入当前浏览器本地记忆。',
-    status: memory.enabled ? `${memoryCount.value} 条记忆` : '记忆关闭'
-  },
-  {
-    href: '#room-knowledge-settings',
-    icon: 'book',
-    step: '04',
-    title: '补充人格与工具',
-    detail: '知识库塑造角色设定，MCP 只在需要外部能力时开启。',
-    status: `${knowledge.entries.length} 条知识 / ${mcpConnectionLabel.value}`
-  }
-]);
-
 function readStoredUser() {
   return getSession()?.user || null;
 }
@@ -1233,6 +1211,12 @@ function loadSettings() {
   knowledge.draft = { title: '', content: '', tags: '', enabled: true };
   Object.assign(mcp, { ...mcp, ...readJson('roomMCPSettings', {}) });
   if (!Array.isArray(mcp.tools)) mcp.tools = [];
+  setupLlmMode.value = isOllamaApi(llm.apiUrl) ? 'ollama' : 'cloud';
+  const activePreset = BEGINNER_LLM_PROVIDERS.find(({ value }) => {
+    const preset = LLM_PRESETS[value];
+    return preset && detectLLMProvider(preset.apiUrl, preset.model) === llmProviderKey.value;
+  });
+  if (activePreset) setupCloudProvider.value = activePreset.value;
   loadMemoryCount();
   if (memory.managerOpen) loadVisibleMemories();
 }
@@ -1279,6 +1263,48 @@ function resetModel() {
   model.xOffset = 0;
   model.yOffset = 0;
   saveModel();
+}
+
+function chooseSetupLlmMode(mode) {
+  setupLlmMode.value = mode;
+  if (mode === 'ollama') {
+    applyPreset('ollama');
+    return;
+  }
+  if (isOllamaApi(llm.apiUrl) || !llm.apiUrl) applySetupCloudProvider(setupCloudProvider.value);
+}
+
+function applySetupCloudProvider(provider) {
+  setupCloudProvider.value = provider;
+  applyPreset(provider);
+}
+
+function applySetupTtsProvider(provider) {
+  applyTtsPreset(provider);
+  tts.enabled = true;
+}
+
+function saveSetupStep() {
+  if (setupStep.value === 1) {
+    saveLLM(false);
+    if (!llmSetupReady.value) {
+      showToast(llmNeedsApiKey(llm.apiUrl) ? '请填写 API Key 后继续' : '请先选择模型');
+      return;
+    }
+    setupStep.value = 2;
+    return;
+  }
+  if (setupStep.value === 2) {
+    saveTTS(false);
+    if (!ttsSetupReady.value) {
+      showToast('请补全语音设置，或关闭语音后继续');
+      return;
+    }
+    setupStep.value = 3;
+    return;
+  }
+  saveMemory();
+  showToast('房间已经准备好');
 }
 
 function resetPanels() {
@@ -1342,7 +1368,7 @@ function normalizedLLMSettings() {
   };
 }
 
-function saveLLM() {
+function saveLLM(showDialog = true) {
   const settings = normalizedLLMSettings();
   llm.apiUrl = settings.apiUrl;
   llm.model = settings.model;
@@ -1356,13 +1382,15 @@ function saveLLM() {
     visionMode: settings.visionMode
   });
   const ready = !settings.needsApiKey || Boolean(settings.apiKey);
-  openTestDialog(
-    'llm',
-    ready ? 'success' : 'warning',
-    'LLM 设置已保存',
-    ready ? (settings.needsApiKey ? 'LLM API 设置已保存到当前浏览器。' : 'Ollama 本机设置已保存，无需 API Key。') : 'LLM API 设置已保存，但还没有填写 API Key。',
-    `端点：${settings.apiUrl || '未填写'}\n模型：${settings.model || '未填写'}\n请求方式：${settings.useProxy ? '服务器受限代理' : '浏览器直连'}\n图片理解策略：${settings.visionMode || 'auto'}`
-  );
+  if (showDialog) {
+    openTestDialog(
+      'llm',
+      ready ? 'success' : 'warning',
+      'LLM 设置已保存',
+      ready ? (settings.needsApiKey ? 'LLM API 设置已保存到当前浏览器。' : 'Ollama 本机设置已保存，无需 API Key。') : 'LLM API 设置已保存，但还没有填写 API Key。',
+      `端点：${settings.apiUrl || '未填写'}\n模型：${settings.model || '未填写'}\n请求方式：${settings.useProxy ? '服务器受限代理' : '浏览器直连'}\n图片理解策略：${settings.visionMode || 'auto'}`
+    );
+  }
   showToast('LLM API 设置已保存');
 }
 
@@ -1406,7 +1434,7 @@ async function testLLM() {
   }
 }
 
-function saveTTS() {
+function saveTTS(showDialog = true) {
   if (tts.provider === 'gpt-sovits') {
     tts.textLang = normalizeGptSovitsLang(tts.textLang || tts.model, 'auto');
     tts.promptLang = normalizeGptSovitsLang(tts.promptLang, 'ja');
@@ -1438,15 +1466,17 @@ function saveTTS() {
     useProxy: tts.provider === 'gpt-sovits' ? false : Boolean(tts.useProxy)
   });
   const localGptSovits = tts.provider === 'gpt-sovits';
-  openTestDialog(
-    'tts',
-    tts.enabled && (tts.apiKey || localGptSovits) ? 'success' : 'warning',
-    'TTS 设置已保存',
-    tts.enabled
-      ? (tts.apiKey || localGptSovits ? 'TTS 语音设置已保存到当前浏览器。' : 'TTS 已启用并保存，但还没有填写 API Key。')
-      : 'TTS 设置已保存，当前未启用语音合成。',
-    `Provider：${tts.provider || 'mimo'}\n端点：${String(tts.apiUrl || '').trim() || defaultTtsUrl(tts.provider)}\n模型/语言：${String(tts.model || tts.textLang || '').trim() || '未填写'}\n音色/参考音频：${String(tts.voice || tts.refAudioPath || '').trim() || '未填写'}\n请求方式：${tts.useProxy ? '服务器受限代理' : '浏览器直连'}${gptSovitsPathWarning(tts.refAudioPath) ? `\n提示：${gptSovitsPathWarning(tts.refAudioPath)}` : ''}`
-  );
+  if (showDialog) {
+    openTestDialog(
+      'tts',
+      tts.enabled && (tts.apiKey || localGptSovits) ? 'success' : 'warning',
+      'TTS 设置已保存',
+      tts.enabled
+        ? (tts.apiKey || localGptSovits ? 'TTS 语音设置已保存到当前浏览器。' : 'TTS 已启用并保存，但还没有填写 API Key。')
+        : 'TTS 设置已保存，当前未启用语音合成。',
+      `Provider：${tts.provider || 'mimo'}\n端点：${String(tts.apiUrl || '').trim() || defaultTtsUrl(tts.provider)}\n模型/语言：${String(tts.model || tts.textLang || '').trim() || '未填写'}\n音色/参考音频：${String(tts.voice || tts.refAudioPath || '').trim() || '未填写'}\n请求方式：${tts.useProxy ? '服务器受限代理' : '浏览器直连'}${gptSovitsPathWarning(tts.refAudioPath) ? `\n提示：${gptSovitsPathWarning(tts.refAudioPath)}` : ''}`
+    );
+  }
   showToast('TTS 设置已保存');
 }
 
@@ -1863,84 +1893,198 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="page room-settings-page">
-    <section class="room-settings-hero">
-      <div class="room-settings-hero-copy">
-        <div class="hub-kicker">Room Settings</div>
-        <h1 class="section-title">房间设置</h1>
-        <p class="section-subtitle">模型位置、LLM、TTS、长期记忆和 MCP 工具都集中在这里管理。保存后回到房间即可使用。</p>
+    <header class="room-setup-header">
+      <div>
+        <h1>房间设置</h1>
+        <p>三步完成基础配置</p>
       </div>
-      <div class="room-settings-hero-panel">
-        <div class="room-settings-status-grid">
-          <div class="room-settings-status-card">
-            <TsIcon name="user" :size="18" />
-            <span>当前身份</span>
-            <strong>{{ roomIdentityLabel }}</strong>
-          </div>
-          <div class="room-settings-status-card">
-            <TsIcon name="message" :size="18" />
-            <span>LLM</span>
-            <strong>{{ llmConnectionLabel }}</strong>
-          </div>
-          <div class="room-settings-status-card">
-            <TsIcon name="audioLines" :size="18" />
-            <span>TTS</span>
-            <strong>{{ ttsConnectionLabel }}</strong>
-          </div>
-          <div class="room-settings-status-card">
-            <TsIcon name="bookmark" :size="18" />
-            <span>记忆</span>
-            <strong>{{ memoryConnectionLabel }}</strong>
-          </div>
-        </div>
-        <div class="room-settings-guide-strip" aria-label="推荐配置路径">
-          <a
-            v-for="item in roomSetupGuide"
-            :key="item.step"
-            class="room-settings-guide-step"
-            :href="item.href"
-          >
-            <span class="room-settings-guide-icon"><TsIcon :name="item.icon" :size="16" /></span>
-            <span class="room-settings-guide-copy">
-              <small>{{ item.step }} · {{ item.status }}</small>
-              <strong>{{ item.title }}</strong>
-              <em>{{ item.detail }}</em>
-            </span>
-          </a>
-        </div>
-        <div class="room-settings-actions">
-          <a class="primary-btn" href="/room" @click.prevent="emit('go', '/room')">
-            <TsIcon name="home" :size="17" />
-            <span>返回房间</span>
-          </a>
-          <button class="ghost-btn" type="button" @click="loadSettings">
-            <TsIcon name="refresh" :size="17" />
-            <span>重新读取</span>
-          </button>
-        </div>
+      <div class="room-settings-actions">
+        <button class="ghost-btn" type="button" @click="loadSettings">
+          <TsIcon name="refresh" :size="17" />
+          <span>重新读取</span>
+        </button>
+        <a class="primary-btn" href="/room" @click.prevent="emit('go', '/room')">
+          <TsIcon name="home" :size="17" />
+          <span>返回房间</span>
+        </a>
+      </div>
+    </header>
+
+    <section class="room-setup-shell">
+      <nav class="room-setup-stepper" aria-label="房间设置进度">
+        <button
+          v-for="item in [{ step: 1, label: '聊天模型', icon: 'message' }, { step: 2, label: '语音', icon: 'audioLines' }, { step: 3, label: '记忆', icon: 'bookmark' }]"
+          :key="item.step"
+          type="button"
+          :class="{ active: setupStep === item.step, complete: setupStep > item.step }"
+          :aria-current="setupStep === item.step ? 'step' : undefined"
+          @click="setupStep = item.step"
+        >
+          <span class="room-setup-step-number">{{ item.step }}</span>
+          <TsIcon :name="item.icon" :size="17" />
+          <strong>{{ item.label }}</strong>
+        </button>
+      </nav>
+
+      <div class="room-setup-layout">
+        <article class="room-setup-card">
+          <section v-if="setupStep === 1" class="room-setup-step-panel">
+            <div class="room-setup-title">
+              <span>第 1 步，共 3 步</span>
+              <h2>选择聊天模型</h2>
+              <p>这是必填项，配置完成后八千代才能回复你。</p>
+            </div>
+
+            <div class="room-choice-grid">
+              <label class="room-choice-card" :class="{ selected: setupLlmMode === 'ollama' }">
+                <input class="room-choice-radio" type="radio" name="setup-llm-mode" value="ollama" :checked="setupLlmMode === 'ollama'" @change="chooseSetupLlmMode('ollama')">
+                <span class="room-choice-icon"><TsIcon name="layers" :size="22" /></span>
+                <span>
+                  <strong>本机 Ollama <em>推荐</em></strong>
+                  <small>无需密钥，数据留在设备上</small>
+                </span>
+              </label>
+              <label class="room-choice-card" :class="{ selected: setupLlmMode === 'cloud' }">
+                <input class="room-choice-radio" type="radio" name="setup-llm-mode" value="cloud" :checked="setupLlmMode === 'cloud'" @change="chooseSetupLlmMode('cloud')">
+                <span class="room-choice-icon"><TsIcon name="cloud" :size="22" /></span>
+                <span>
+                  <strong>云端 API</strong>
+                  <small>无需安装，填写密钥即可使用</small>
+                </span>
+              </label>
+            </div>
+
+            <div class="room-simple-form">
+              <label v-if="setupLlmMode === 'cloud'">提供方
+                <select v-model="setupCloudProvider" @change="applySetupCloudProvider(setupCloudProvider)">
+                  <option v-for="provider in BEGINNER_LLM_PROVIDERS" :key="provider.value" :value="provider.value">{{ provider.label }} · {{ provider.detail }}</option>
+                </select>
+              </label>
+              <label v-if="setupLlmMode === 'cloud'">API Key
+                <input v-model="llm.apiKey" type="password" autocomplete="off" placeholder="粘贴服务商提供的密钥">
+                <small><TsIcon name="lock" :size="14" /> 只保存在当前浏览器</small>
+              </label>
+              <label>模型
+                <input v-model="llm.model" type="text" :placeholder="setupLlmMode === 'ollama' ? 'qwen2.5:7b' : '模型名称'">
+                <small v-if="setupLlmMode === 'ollama'">填写你已经在 Ollama 中下载的模型</small>
+              </label>
+            </div>
+
+            <div class="room-setup-actions">
+              <button class="ghost-btn" type="button" @click="testLLM"><TsIcon name="play" :size="16" />测试连接</button>
+              <button class="primary-btn" type="button" @click="saveSetupStep">保存并继续<TsIcon name="arrowRight" :size="17" /></button>
+            </div>
+          </section>
+
+          <section v-else-if="setupStep === 2" class="room-setup-step-panel">
+            <div class="room-setup-title">
+              <span>第 2 步，共 3 步 · 可选</span>
+              <h2>让八千代开口</h2>
+              <p>不需要语音也可以直接跳过，聊天功能不受影响。</p>
+            </div>
+
+            <div class="room-choice-grid">
+              <label class="room-choice-card" :class="{ selected: !tts.enabled }">
+                <input class="room-choice-radio" type="radio" name="setup-tts-mode" :checked="!tts.enabled" @change="tts.enabled = false">
+                <span class="room-choice-icon"><TsIcon name="volume" :size="22" /></span>
+                <span><strong>暂不开启</strong><small>只使用文字聊天</small></span>
+              </label>
+              <label class="room-choice-card" :class="{ selected: tts.enabled }">
+                <input class="room-choice-radio" type="radio" name="setup-tts-mode" :checked="tts.enabled" @change="tts.enabled = true">
+                <span class="room-choice-icon"><TsIcon name="audioLines" :size="22" /></span>
+                <span><strong>开启语音</strong><small>为回复播放合成语音</small></span>
+              </label>
+            </div>
+
+            <div v-if="tts.enabled" class="room-simple-form">
+              <label>语音服务
+                <select :value="Object.keys(TTS_PRESETS).find((key) => TTS_PRESETS[key].provider === tts.provider) || 'mimo'" @change="applySetupTtsProvider($event.target.value)">
+                  <option v-for="provider in BEGINNER_TTS_PROVIDERS" :key="provider.value" :value="provider.value">{{ provider.label }}</option>
+                </select>
+              </label>
+              <label v-if="tts.provider !== 'gpt-sovits'">API Key
+                <input v-model="tts.apiKey" type="password" autocomplete="off" placeholder="粘贴语音服务密钥">
+                <small><TsIcon name="lock" :size="14" /> 只保存在当前浏览器</small>
+              </label>
+              <label v-else>参考音频
+                <input v-model="tts.refAudioPath" type="text" placeholder="本机参考音频路径">
+                <small>GPT-SoVITS 在当前设备上运行</small>
+              </label>
+              <label>音色
+                <input v-model="tts.voice" type="text" placeholder="使用默认音色即可">
+              </label>
+            </div>
+
+            <div class="room-setup-actions">
+              <button class="ghost-btn" type="button" @click="setupStep = 1"><TsIcon name="arrowLeft" :size="17" />上一步</button>
+              <button v-if="tts.enabled" class="ghost-btn" type="button" @click="testTTS"><TsIcon name="play" :size="16" />试听</button>
+              <button class="primary-btn" type="button" @click="saveSetupStep">{{ tts.enabled ? '保存并继续' : '跳过并继续' }}<TsIcon name="arrowRight" :size="17" /></button>
+            </div>
+          </section>
+
+          <section v-else class="room-setup-step-panel">
+            <div class="room-setup-title">
+              <span>第 3 步，共 3 步</span>
+              <h2>确认记忆方式</h2>
+              <p>开启后，八千代会逐渐记住你的偏好和重要对话。</p>
+            </div>
+
+            <div class="room-choice-grid">
+              <label class="room-choice-card" :class="{ selected: memory.enabled }">
+                <input class="room-choice-radio" type="radio" name="setup-memory-mode" :checked="memory.enabled" @change="memory.enabled = true">
+                <span class="room-choice-icon"><TsIcon name="bookmark" :size="22" /></span>
+                <span><strong>开启记忆 <em>推荐</em></strong><small>{{ memoryModeLabel }}，已有 {{ memoryCount }} 条</small></span>
+              </label>
+              <label class="room-choice-card" :class="{ selected: !memory.enabled }">
+                <input class="room-choice-radio" type="radio" name="setup-memory-mode" :checked="!memory.enabled" @change="memory.enabled = false">
+                <span class="room-choice-icon"><TsIcon name="lock" :size="22" /></span>
+                <span><strong>关闭记忆</strong><small>每次对话都从当前上下文开始</small></span>
+              </label>
+            </div>
+
+            <div class="room-memory-note">
+              <TsIcon name="shield" :size="20" />
+              <div><strong>{{ roomIdentityLabel }}</strong><p>{{ memoryLocationText }}</p></div>
+            </div>
+
+            <div class="room-setup-actions">
+              <button class="ghost-btn" type="button" @click="setupStep = 2"><TsIcon name="arrowLeft" :size="17" />上一步</button>
+              <button class="primary-btn" type="button" @click="saveSetupStep">保存设置</button>
+              <a class="primary-btn room-enter-btn" href="/room" @click.prevent="saveSetupStep(); emit('go', '/room')">进入房间<TsIcon name="arrowRight" :size="17" /></a>
+            </div>
+          </section>
+        </article>
+
+        <aside class="room-setup-aside">
+          <section class="room-setup-summary">
+            <div class="room-setup-summary-head">
+              <span><TsIcon name="settings" :size="18" /> 当前设置</span>
+              <strong>{{ setupProgress }}/3</strong>
+            </div>
+            <div v-for="item in setupStatusItems" :key="item.label" class="room-setup-summary-item" :class="{ ready: item.ready }">
+              <span><TsIcon :name="item.icon" :size="18" /></span>
+              <div><small>{{ item.label }}</small><strong>{{ item.value }}</strong></div>
+            </div>
+          </section>
+          <section class="room-setup-help">
+            <TsIcon name="sparkles" :size="19" />
+            <div>
+              <strong>不知道怎么选？</strong>
+              <p v-if="setupStep === 1">电脑已安装 Ollama 就选本机；否则选常用的云端服务。</p>
+              <p v-else-if="setupStep === 2">语音完全可选，先跳过也不影响聊天。</p>
+              <p v-else>游客记忆只留在当前浏览器，登录后会使用私有服务端记忆。</p>
+            </div>
+          </section>
+        </aside>
       </div>
     </section>
 
-    <section class="room-settings-layout">
-      <aside class="room-settings-rail" aria-label="房间设置导航">
-        <div class="room-settings-rail-head">
-          <TsIcon name="settings" :size="18" />
-          <strong>配置索引</strong>
-        </div>
-        <nav class="room-settings-nav">
-          <a v-for="item in roomSettingsNavItems" :key="item.href" :href="item.href">
-            <TsIcon :name="item.icon" :size="16" />
-            <span>
-              <strong>{{ item.title }}</strong>
-              <small>{{ item.detail }}</small>
-            </span>
-          </a>
-        </nav>
-        <div class="room-settings-rail-note">
-          <span>本机密钥只保存在当前浏览器</span>
-          <strong>{{ mcpConnectionLabel }}</strong>
-        </div>
-      </aside>
-
+    <details class="room-advanced-settings">
+      <summary>
+        <span class="room-advanced-icon"><TsIcon name="settings" :size="20" /></span>
+        <span><strong>高级设置</strong><small>模型位置、代理、视觉策略、知识库、MCP 与 Live2D 调试</small></span>
+        <TsIcon name="chevronDown" :size="19" class="room-advanced-chevron" />
+      </summary>
       <section class="room-settings-grid">
       <article id="room-model-settings" class="room-settings-card room-settings-card-primary">
         <div class="room-card-head">
@@ -2312,7 +2456,7 @@ onBeforeUnmount(() => {
         </div>
       </article>
       </section>
-    </section>
+    </details>
 
     <Teleport to="body">
       <div
