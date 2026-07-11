@@ -166,17 +166,43 @@ describe('room Live2D mobile quality parity', () => {
         const roomRuntime = source('src/live2d/main-room.ts');
         const subdelegate = source('src/live2d/lappsubdelegate.ts');
         const manager = source('src/live2d/lapplive2dmanager.ts');
+        const glManager = source('src/live2d/lappglmanager.ts');
         const textures = source('src/live2d/lapptexturemanager.ts');
         const model = source('src/live2d/lappmodel.ts');
 
         assert.match(bridge, /export function live2DPerformanceMode\(\) \{\s*return 'standard';\s*\}/);
         assert.doesNotMatch(bridge, /isConstrainedMobileLive2DDevice|lowQualityModel|tsukimi-yachiyo-(?:mobile|lite)\.model3\.json/);
-        assert.doesNotMatch(roomRuntime, /targetFrameMs|lastRenderAt|pendingPointerMove|lowPower|1000 \/ 30|1000 \/ 60|dataset\.performance/);
+        assert.match(roomRuntime, /ROOM_RENDER_FRAME_INTERVAL_MS = 1000 \/ 60/);
+        assert.match(roomRuntime, /ROOM_RENDER_MAX_FRAME_INTERVAL_MS = 1000 \/ 45/);
+        assert.doesNotMatch(roomRuntime, /lowPower|1000 \/ 30|dataset\.performance/);
         assert.match(subdelegate, /return window\.devicePixelRatio \|\| 1;/);
         assert.doesNotMatch(subdelegate, /Math\.min\(ratio|isMobile/);
         assert.match(manager, /function live2dModelJsonName\(index: number\): string \{\s*return `\$\{LAppDefine\.ModelDir\[index\]\}\.model3\.json`;/);
         assert.doesNotMatch(manager, /-mobile\.model3\.json|-lite\.model3\.json|live2dModelVariant/);
         assert.match(textures, /function shouldUseMipmaps\(\): boolean \{\s*return true;\s*\}/);
         assert.match(model, /function shouldReduceIdleEffects\(\): boolean \{\s*return false;\s*\}/);
+    });
+
+    it('removes high-frequency Room work without reducing Live2D quality', () => {
+        const roomRuntime = source('src/live2d/main-room.ts');
+        const behaviorBridge = source('src/frontend/services/room/live2dCubismBehaviorBridge.js');
+        const localBridge = source('src/frontend/services/room/live2dLocalCubismBridge.js');
+        const bodyActuator = source('src/frontend/services/room/live2dBodyActuator.js');
+        const panels = source('src/frontend/composables/useRoomPanels.js');
+        const manager = source('src/live2d/lapplive2dmanager.ts');
+        const glManager = source('src/live2d/lappglmanager.ts');
+
+        assert.match(roomRuntime, /pointerFrameId: number/);
+        assert.match(roomRuntime, /if \(isPointerControlDisabled\(\) \|\| !pointerActive\) return;/);
+        assert.match(behaviorBridge, /LOCAL_CUBISM_FRAME_INTERVAL_MS = 1000 \/ 60/);
+        assert.match(localBridge, /queueLocalCubismFrame\(parameters\);\s*flushLocalCubismFrame\(\);/);
+        assert.doesNotMatch(localBridge, /requestAnimationFrame\(flushLocalCubismFrame\)/);
+        assert.match(bodyActuator, /const stageSettings = readModelStageSettings\(\);/);
+        assert.match(bodyActuator, /lastContainer\?\.isConnected/);
+        assert.match(panels, /requestAnimationFrame\(applyPanelDrag\)/);
+        assert.match(panels, /style\.transform = `translate3d/);
+        assert.match(manager, /this\._models\.at\(i\)\?\.release\(\)/);
+        assert.match(manager, /CubismRenderer\.staticRelease\(\)/);
+        assert.match(glManager, /WEBGL_lose_context/);
     });
 });

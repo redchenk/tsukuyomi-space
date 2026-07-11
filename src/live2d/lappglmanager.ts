@@ -33,7 +33,11 @@ export class LAppGlManager {
     return true;
   }
 
-  public release(): void {}
+  public release(): void {
+    if (!this._gl) return;
+    this._gl.getExtension('WEBGL_lose_context')?.loseContext();
+    this._gl = null;
+  }
 
   public getGl(): WebGLRenderingContext | WebGL2RenderingContext {
     return this._gl;

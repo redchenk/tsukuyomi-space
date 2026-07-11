@@ -10,6 +10,8 @@ const LOCAL_CUBISM_FRAME_EVENT = 'tsukuyomi:live2d-local-cubism-frame';
 const LOCAL_BRIDGE_STATE_KEY = '__TSUKUYOMI_LOCAL_CUBISM_BRIDGE_STATE__';
 const LOCAL_CUBISM_FRAME_FLUSH_MS = 1000 / 60;
 const LOCAL_CUBISM_RELEASE_EPSILON = 0.0015;
+const LOCAL_CUBISM_DIAGNOSTIC_INTERVAL_MS = 100;
+const LOCAL_BRIDGE_STATE_INTERVAL_MS = 250;
 
 const LOCAL_CUBISM_BODY_DRIVER_IDS = new Set([
   'ParamSwitchCtrl_BodyX',
@@ -72,7 +74,8 @@ let lastSmoothedFrame = new Map();
 let lastVelocityFrame = new Map();
 let lastSmoothedAt = 0;
 let pendingFrame = new Map();
-let flushTimer = 0;
+let lastDiagnosticAt = 0;
+let lastBridgeStateAt = 0;
 
 function nowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -113,6 +116,9 @@ function isLocalCubismEyeExpressionId(id) {
 
 function setLocalBridgeState(patch) {
   if (typeof window === 'undefined') return;
+  const now = Date.now();
+  if (patch.parameterCount != null && now - lastBridgeStateAt < LOCAL_BRIDGE_STATE_INTERVAL_MS) return;
+  if (patch.parameterCount != null) lastBridgeStateAt = now;
   window[LOCAL_BRIDGE_STATE_KEY] = {
     ...(window[LOCAL_BRIDGE_STATE_KEY] || {}),
     ...patch,
@@ -133,6 +139,9 @@ function dispatchFallbackFrame(parameters) {
 }
 
 function dispatchLocalCubismFrame(parameters, output) {
+  const now = nowMs();
+  if (now - lastDiagnosticAt < LOCAL_CUBISM_DIAGNOSTIC_INTERVAL_MS) return;
+  lastDiagnosticAt = now;
   window.dispatchEvent(new CustomEvent(LOCAL_CUBISM_FRAME_EVENT, {
     detail: { source: 'local-cubism', output, parameters }
   }));
@@ -204,7 +213,8 @@ export function __resetLocalCubismSmoothingForTests() {
   lastVelocityFrame = new Map();
   lastSmoothedAt = 0;
   pendingFrame = new Map();
-  flushTimer = 0;
+  lastDiagnosticAt = 0;
+  lastBridgeStateAt = 0;
 }
 
 export function smoothLocalCubismFrame(parameters, now = nowMs()) {
@@ -291,7 +301,6 @@ function takePendingLocalCubismFrame() {
 }
 
 function flushLocalCubismFrame() {
-  flushTimer = 0;
   const parameters = takePendingLocalCubismFrame();
   if (!parameters.length) return;
   const frameParameters = smoothLocalCubismFrame(parameters);
@@ -310,7 +319,7 @@ function flushLocalCubismFrame() {
         volatile: true,
         persist: false,
         throttleKey: 'cubism-parameters',
-        throttleMs: 140
+        throttleMs: 250
       });
       setLocalBridgeState({
         mounted: true,
@@ -339,8 +348,7 @@ function flushLocalCubismFrame() {
 
 function writeLocalCubismFrame(parameters) {
   queueLocalCubismFrame(parameters);
-  if (flushTimer) return;
-  flushTimer = window.requestAnimationFrame(flushLocalCubismFrame);
+  flushLocalCubismFrame();
 }
 
 export function mountLocalCubismBridge() {
@@ -360,9 +368,9 @@ export function mountLocalCubismBridge() {
       delete window.TSUKUYOMI_LOCAL_CUBISM_BRIDGE_MOUNTED;
     }
     setLocalBridgeState({ mounted: false, output: 'destroyed', parameterCount: 0 });
-    if (flushTimer) window.cancelAnimationFrame(flushTimer);
     pendingFrame = new Map();
-    flushTimer = 0;
+    lastDiagnosticAt = 0;
+    lastBridgeStateAt = 0;
     lastSmoothedFrame = new Map();
     lastVelocityFrame = new Map();
     lastSmoothedAt = 0;

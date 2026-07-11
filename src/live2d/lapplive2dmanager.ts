@@ -7,6 +7,7 @@
 
 import { CubismMatrix44 } from '@framework/math/cubismmatrix44';
 import { ACubismMotion } from '@framework/motion/acubismmotion';
+import { CubismRenderer } from '@framework/rendering/cubismrenderer';
 import { csmVector } from '@framework/type/csmvector';
 
 import * as LAppDefine from './lappdefine';
@@ -39,12 +40,16 @@ const proceduralBodyPoses = new Set([
  */
 export class LAppLive2DManager {
   private _expressionResetTimer: number | null = null;
+  private _projection: CubismMatrix44 = new CubismMatrix44();
 
   /**
    * 現在のシーンで保持しているすべてのモデルを解放する
    */
   private releaseAllModel(): void {
     this.clearExpressionResetTimer();
+    for (let i = 0; i < this._models.getSize(); i++) {
+      this._models.at(i)?.release();
+    }
     this._models.clear();
   }
 
@@ -201,7 +206,8 @@ export class LAppLive2DManager {
   public onUpdate(): void {
     const { width, height } = this._subdelegate.getCanvas();
 
-    const projection: CubismMatrix44 = new CubismMatrix44();
+    const projection = this._projection;
+    projection.loadIdentity();
     const model: LAppModel = this._models.at(0);
 
     if (model.getModel()) {
@@ -285,7 +291,11 @@ export class LAppLive2DManager {
   /**
    * 解放する。
    */
-  public release(): void {}
+  public release(): void {
+    this.releaseAllModel();
+    CubismRenderer.staticRelease();
+    this._subdelegate = null;
+  }
 
   /**
    * 初期化する。

@@ -34,7 +34,9 @@ export function useRoomPanels() {
   const panelPositions = reactive(readJson('roomPanelPositions', {}));
   const panelZ = reactive({});
   const topZ = ref(30);
-  const draggingPanel = ref(null);
+  let draggingPanel = null;
+  let dragFrameId = 0;
+  let pendingDragPoint = null;
 
   function panelStyle(panelId) {
     return {
@@ -67,32 +69,60 @@ export function useRoomPanels() {
     const panel = document.getElementById(panelId);
     if (!panel) return;
     const rect = panel.getBoundingClientRect();
-    draggingPanel.value = {
+    draggingPanel = {
       id: panelId,
       offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top
+      offsetY: event.clientY - rect.top,
+      startLeft: rect.left,
+      startTop: rect.top,
+      width: rect.width,
+      height: rect.height,
+      x: rect.left,
+      y: rect.top,
+      panel
     };
     bringPanelForward(panelId);
     panel.classList.add('dragging');
+    panel.style.willChange = 'transform';
     event.preventDefault();
     event.currentTarget?.setPointerCapture?.(event.pointerId);
   }
 
+  function applyPanelDrag() {
+    dragFrameId = 0;
+    const drag = draggingPanel;
+    const point = pendingDragPoint;
+    pendingDragPoint = null;
+    if (!drag || !point || !drag.panel?.isConnected) return;
+    drag.x = Math.max(8, Math.min(window.innerWidth - drag.width - 8, point.clientX - drag.offsetX));
+    drag.y = Math.max(8, Math.min(window.innerHeight - drag.height - 8, point.clientY - drag.offsetY));
+    drag.panel.style.transform = `translate3d(${(drag.x - drag.startLeft).toFixed(2)}px, ${(drag.y - drag.startTop).toFixed(2)}px, 0)`;
+  }
+
   function onPointerMove(event) {
-    if (!draggingPanel.value) return;
-    const panel = document.getElementById(draggingPanel.value.id);
-    if (!panel) return;
-    const x = Math.max(8, Math.min(window.innerWidth - panel.offsetWidth - 8, event.clientX - draggingPanel.value.offsetX));
-    const y = Math.max(8, Math.min(window.innerHeight - panel.offsetHeight - 8, event.clientY - draggingPanel.value.offsetY));
-    panelPositions[draggingPanel.value.id] = { top: `${y}px`, left: `${x}px`, right: 'auto' };
+    if (!draggingPanel) return;
+    pendingDragPoint = { clientX: event.clientX, clientY: event.clientY };
+    if (!dragFrameId) dragFrameId = window.requestAnimationFrame(applyPanelDrag);
   }
 
   function onPointerUp(event) {
-    if (!draggingPanel.value) return;
+    if (!draggingPanel) return;
     event?.preventDefault?.();
-    document.getElementById(draggingPanel.value.id)?.classList.remove('dragging');
+    if (dragFrameId) {
+      window.cancelAnimationFrame(dragFrameId);
+      dragFrameId = 0;
+    }
+    if (pendingDragPoint) applyPanelDrag();
+    const drag = draggingPanel;
+    drag.panel?.classList.remove('dragging');
+    if (drag.panel) {
+      drag.panel.style.transform = '';
+      drag.panel.style.willChange = '';
+    }
+    panelPositions[drag.id] = { top: `${drag.y}px`, left: `${drag.x}px`, right: 'auto' };
     persistPanelPositions();
-    draggingPanel.value = null;
+    draggingPanel = null;
+    pendingDragPoint = null;
   }
 
   onMounted(() => {
@@ -105,6 +135,13 @@ export function useRoomPanels() {
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
     window.removeEventListener('pointercancel', onPointerUp);
+    if (dragFrameId) window.cancelAnimationFrame(dragFrameId);
+    if (draggingPanel?.panel) {
+      draggingPanel.panel.style.transform = '';
+      draggingPanel.panel.style.willChange = '';
+    }
+    dragFrameId = 0;
+    pendingDragPoint = null;
   });
 
   return {

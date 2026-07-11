@@ -16,6 +16,7 @@ const FACE_CAPTURE_EVENT = 'tsukuyomi:live2d-face';
 const MOUTH_EVENT = 'tsukuyomi:live2d-mouth';
 const CHARACTER_STATE_EVENT = 'tsukuyomi:live2d-character-state';
 const LOCAL_CUBISM_ACTION_INTENSITY_SCALE = 1.86;
+const LOCAL_CUBISM_FRAME_INTERVAL_MS = 1000 / 60;
 
 const EYE_OWNING_EXPRESSIONS = new Set([
   'angry',
@@ -704,6 +705,7 @@ export function mountCubismBehaviorBridge(options = {}) {
   const frameSink = typeof options.onFrame === 'function' ? options.onFrame : null;
   const frameSource = String(options.source || 'cubism-behavior');
   let frameId = 0;
+  let lastFrameAt = 0;
   let momentaryPulse = null;
 
   function dispatchFrame(parameters) {
@@ -726,8 +728,17 @@ export function mountCubismBehaviorBridge(options = {}) {
   }
 
   function tick(now = performance.now()) {
-    dispatchFrame(sample(now));
     frameId = window.requestAnimationFrame(tick);
+    if (document.visibilityState === 'hidden') {
+      lastFrameAt = 0;
+      return;
+    }
+    const elapsed = lastFrameAt ? now - lastFrameAt : LOCAL_CUBISM_FRAME_INTERVAL_MS;
+    if (elapsed < LOCAL_CUBISM_FRAME_INTERVAL_MS - 1) return;
+    lastFrameAt = elapsed >= LOCAL_CUBISM_FRAME_INTERVAL_MS
+      ? now - (elapsed % LOCAL_CUBISM_FRAME_INTERVAL_MS)
+      : now;
+    dispatchFrame(sample(now));
   }
 
   function onRoomAct(event) {
@@ -760,6 +771,7 @@ export function mountCubismBehaviorBridge(options = {}) {
     window.removeEventListener(CHARACTER_STATE_EVENT, onCharacterState);
     if (frameId) window.cancelAnimationFrame(frameId);
     frameId = 0;
+    lastFrameAt = 0;
     momentaryPulse = null;
     if (window.TSUKUYOMI_CUBISM_BEHAVIOR_BRIDGE) delete window.TSUKUYOMI_CUBISM_BEHAVIOR_BRIDGE;
   };

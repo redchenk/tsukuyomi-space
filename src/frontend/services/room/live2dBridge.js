@@ -12,6 +12,9 @@ let initialized = false;
 let initPromise = null;
 let speechFrameId = 0;
 let speechEndsAt = 0;
+let speechLastFrameAt = 0;
+
+const LIVE2D_SPEECH_FRAME_INTERVAL_MS = 1000 / 60;
 
 if (typeof window !== 'undefined') {
   window.TSUKUYOMI_EXTERNAL_LIVE2D = true;
@@ -111,6 +114,7 @@ function stopSyntheticSpeechMouth() {
   if (speechFrameId) window.cancelAnimationFrame(speechFrameId);
   speechFrameId = 0;
   speechEndsAt = 0;
+  speechLastFrameAt = 0;
   dispatchMouth(0);
 }
 
@@ -133,10 +137,13 @@ function startSyntheticSpeechMouth(options = {}) {
       stopSyntheticSpeechMouth();
       return;
     }
-    const t = audio ? (Number(audio.currentTime) || 0) : (now - startedAt) / 1000;
-    const pulse = Math.max(0, Math.sin(t * 18 + seed * 0.07));
-    const accent = Math.max(0, Math.sin(t * 7.3 + seed * 0.13));
-    dispatchMouth(Math.min(0.95, 0.08 + pulse * 0.56 + accent * 0.2));
+    if (!speechLastFrameAt || now - speechLastFrameAt >= LIVE2D_SPEECH_FRAME_INTERVAL_MS - 1) {
+      speechLastFrameAt = now;
+      const t = audio ? (Number(audio.currentTime) || 0) : (now - startedAt) / 1000;
+      const pulse = Math.max(0, Math.sin(t * 18 + seed * 0.07));
+      const accent = Math.max(0, Math.sin(t * 7.3 + seed * 0.13));
+      dispatchMouth(Math.min(0.95, 0.08 + pulse * 0.56 + accent * 0.2));
+    }
     speechFrameId = window.requestAnimationFrame(tick);
   };
   speechFrameId = window.requestAnimationFrame(tick);

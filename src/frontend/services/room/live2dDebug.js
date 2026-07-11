@@ -172,6 +172,6 @@ export function publishRoomLive2DPerformanceDebug(performanceFrame = {}, source 
     volatile: true,
     persist: false,
     throttleKey: 'performance',
-    throttleMs: 120
+    throttleMs: 250
   });
 }
