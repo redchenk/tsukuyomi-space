@@ -3,8 +3,10 @@
 - Source visual truth: `C:\Users\lenovo\.codex\generated_images\019f45ee-73d0-7a41-b591-2cf3a8c0ecf0\exec-334bff66-f278-4dca-a99a-c5c547ca3414.png`
 - Desktop implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-desktop-final.png`
 - Mobile implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-mobile-final.png`
+- Mobile advanced-state implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-mobile-advanced-final.png`
 - Full comparison: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-comparison.png`
 - Focused comparison: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-focused-comparison.png`
+- Advanced-state comparison: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-advanced-comparison.png`
 - Viewports: desktop 1440 x 1024; mobile 390 x 844
 - State: dark theme, guest session, step 1 active, advanced settings collapsed
 
@@ -22,6 +24,8 @@
 - Tested step navigation for chat, voice, and memory.
 - Tested the voice disabled and enabled states and confirmed the simplified provider fields appear correctly.
 - Tested the memory choice state and confirmed all mobile primary actions fit the viewport.
+- Tested the inline advanced disclosure on all three steps and confirmed the complete model, voice, and memory configuration surfaces render in place.
+- Tested the complete memory-management action and confirmed it opens the full advanced area and scrolls to the expanded manager.
 - Expanded advanced settings and confirmed all 8 original settings cards remain available.
 - Confirmed no application console errors in the tested states.
 
@@ -30,6 +34,9 @@
 - Iteration 1 finding: the first implementation header consumed too much vertical space and the simplified TTS selector did not clearly represent an existing local GPT-SoVITS setup.
 - Fix: reduced the header to a compact title row and added a conditional GPT-SoVITS reference-audio field while keeping API-key guidance for cloud providers.
 - Post-fix evidence: the desktop setup shell begins at y=110.5 and fits within the first viewport; final mobile metrics show no horizontal overflow, with all three step buttons ending at x=357.2 or less.
+- Iteration 2 finding: the global panel selector applied a rectangular background to `.room-setup-step-panel`, and the provider `<select>` stretched to 57 px while adjacent inputs remained 46 px.
+- Fix: explicitly neutralized the accidental panel background/elevation, set every basic and advanced control to a border-box 46 px track, and gave each of the three steps its own inline advanced disclosure.
+- Post-fix evidence: provider and API-key controls share y=504.48 and height=45.67 on desktop; all mobile advanced controls are 46 px high and end at x=325.54 or less, with no horizontal overflow.
 
 **Implementation Checklist**
 

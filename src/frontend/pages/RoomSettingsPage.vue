@@ -139,6 +139,7 @@ const modelCatalog = reactive({ loading: false, message: '', updatedAt: '', mode
 const setupStep = ref(1);
 const setupLlmMode = ref('ollama');
 const setupCloudProvider = ref('openaiChat');
+const globalAdvancedOpen = ref(false);
 let toastTimer = 0;
 let modelNoticeTimer = 0;
 
@@ -1279,6 +1280,15 @@ function applySetupCloudProvider(provider) {
   applyPreset(provider);
 }
 
+function applyAdvancedLlmPreset(value) {
+  const [group, name] = String(value || '').split(':');
+  if (!name) return;
+  if (group === 'aliyun') applyAliyunPreset(name);
+  else if (group === 'mimo') applyMimoPreset(name);
+  else applyPreset(name);
+  setupLlmMode.value = isOllamaApi(llm.apiUrl) ? 'ollama' : 'cloud';
+}
+
 function applySetupTtsProvider(provider) {
   applyTtsPreset(provider);
   tts.enabled = true;
@@ -1305,6 +1315,16 @@ function saveSetupStep() {
   }
   saveMemory();
   showToast('房间已经准备好');
+}
+
+function openGlobalAdvanced(target) {
+  globalAdvancedOpen.value = true;
+  if (target === 'memory') memory.managerOpen = true;
+  if (target === 'knowledge') knowledge.managerOpen = true;
+  requestAnimationFrame(() => {
+    const selector = target === 'knowledge' ? '#room-knowledge-settings' : '.room-memory-manager';
+    document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 }
 
 function resetPanels() {
@@ -1970,6 +1990,54 @@ onBeforeUnmount(() => {
               </label>
             </div>
 
+            <details class="room-step-advanced">
+              <summary>
+                <span><TsIcon name="settings" :size="18" /><strong>高级设置</strong><small>端点、模型目录、视觉与代理</small></span>
+                <TsIcon name="chevronDown" :size="18" class="room-step-advanced-chevron" />
+              </summary>
+              <div class="room-step-advanced-body room-step-form">
+                <label>全部服务商
+                  <select value="" @change="applyAdvancedLlmPreset($event.target.value)">
+                    <option value="">选择预设</option>
+                    <optgroup label="常用服务商">
+                      <option v-for="(preset, name) in LLM_PRESETS" :key="`advanced-llm-${name}`" :value="`llm:${name}`">{{ preset.label }}</option>
+                    </optgroup>
+                    <optgroup label="阿里云百炼">
+                      <option v-for="(preset, name) in ALIYUN_LLM_PRESETS" :key="`advanced-aliyun-${name}`" :value="`aliyun:${name}`">{{ preset.label }}</option>
+                    </optgroup>
+                    <optgroup label="Xiaomi MiMo">
+                      <option v-for="(preset, name) in MIMO_LLM_PRESETS" :key="`advanced-mimo-${name}`" :value="`mimo:${name}`">{{ preset.label }}</option>
+                    </optgroup>
+                  </select>
+                </label>
+                <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="https://.../chat/completions"></label>
+                <label>API Key<input v-model="llm.apiKey" type="password" autocomplete="off" placeholder="Ollama 可留空"></label>
+                <label>模型名称<input v-model="llm.model" type="text" list="llmSyncedModels" placeholder="模型名称"></label>
+                <label>已同步模型
+                  <select :value="llm.model" @change="applySyncedModelById($event.target.value)">
+                    <option value="">选择已同步模型</option>
+                    <option v-for="option in syncedModelOptions" :key="`wizard-${option.source}-${option.id}`" :value="syncedModelSelectValue(option)">{{ option.label }} · {{ option.detail }}</option>
+                  </select>
+                </label>
+                <label>图片理解
+                  <select v-model="llm.visionMode">
+                    <option value="auto">自动识别视觉模型</option>
+                    <option value="llm">强制发送给 LLM</option>
+                    <option value="mcp">使用 MCP understand_image</option>
+                  </select>
+                </label>
+                <label class="room-step-check"><input v-model="llm.useProxy" type="checkbox" :disabled="llmProviderKey === 'ollama'"> 使用服务器受限代理</label>
+                <div class="model-recommend-card">
+                  <span>推荐模型</span>
+                  <strong>{{ recommendedModelText }}</strong>
+                  <button class="ghost-btn compact" type="button" :disabled="!recommendedModelOption" @click="applyRecommendedModel">应用推荐</button>
+                </div>
+                <div class="button-row">
+                  <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
+                </div>
+              </div>
+            </details>
+
             <div class="room-setup-actions">
               <button class="ghost-btn" type="button" @click="testLLM"><TsIcon name="play" :size="16" />测试连接</button>
               <button class="primary-btn" type="button" @click="saveSetupStep">保存并继续<TsIcon name="arrowRight" :size="17" /></button>
@@ -2015,6 +2083,42 @@ onBeforeUnmount(() => {
               </label>
             </div>
 
+            <details class="room-step-advanced">
+              <summary>
+                <span><TsIcon name="settings" :size="18" /><strong>高级设置</strong><small>端点、模型、语言与本机参数</small></span>
+                <TsIcon name="chevronDown" :size="18" class="room-step-advanced-chevron" />
+              </summary>
+              <div class="room-step-advanced-body room-step-form">
+                <label class="room-step-check"><input v-model="tts.enabled" type="checkbox"> 启用语音合成</label>
+                <label>全部语音服务
+                  <select :value="Object.keys(TTS_PRESETS).find((key) => TTS_PRESETS[key].provider === tts.provider) || 'custom'" @change="applyTtsPreset($event.target.value)">
+                    <option v-for="(preset, name) in TTS_PRESETS" :key="`advanced-tts-${name}`" :value="name">{{ preset.label }}</option>
+                  </select>
+                </label>
+                <label>API 端点<input v-model="tts.apiUrl" type="text" placeholder="https://.../audio/speech"></label>
+                <label>API Key<input v-model="tts.apiKey" type="password" autocomplete="off" placeholder="本机服务可留空"></label>
+                <label>模型名称<input v-model="tts.model" type="text" placeholder="tts-1 / speech-2.8-hd"></label>
+                <label>音色 / Voice ID<input v-model="tts.voice" type="text" placeholder="音色名称或 Voice ID"></label>
+                <label v-if="tts.provider === 'gpt-sovits' || tts.provider === 'minimax'">文本语言
+                  <select v-model="tts.textLang">
+                    <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`wizard-text-${option.value}`" :value="option.value">{{ option.label }}</option>
+                  </select>
+                </label>
+                <template v-if="tts.provider === 'gpt-sovits'">
+                  <label>参考音频路径<input v-model="tts.refAudioPath" type="text" placeholder="本机 wav 文件路径"></label>
+                  <label>参考音频文本<input v-model="tts.promptText" type="text" placeholder="参考音频里说的话"></label>
+                  <label>参考音频语言
+                    <select v-model="tts.promptLang">
+                      <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`wizard-prompt-${option.value}`" :value="option.value">{{ option.label }}</option>
+                    </select>
+                  </label>
+                  <label>GPT 权重路径<input v-model="tts.gptWeightPath" type="text"></label>
+                  <label>SoVITS 权重路径<input v-model="tts.sovitsWeightPath" type="text"></label>
+                </template>
+                <label v-if="tts.provider !== 'gpt-sovits'" class="room-step-check"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理</label>
+              </div>
+            </details>
+
             <div class="room-setup-actions">
               <button class="ghost-btn" type="button" @click="setupStep = 1"><TsIcon name="arrowLeft" :size="17" />上一步</button>
               <button v-if="tts.enabled" class="ghost-btn" type="button" @click="testTTS"><TsIcon name="play" :size="16" />试听</button>
@@ -2046,6 +2150,28 @@ onBeforeUnmount(() => {
               <TsIcon name="shield" :size="20" />
               <div><strong>{{ roomIdentityLabel }}</strong><p>{{ memoryLocationText }}</p></div>
             </div>
+
+            <details class="room-step-advanced">
+              <summary>
+                <span><TsIcon name="settings" :size="18" /><strong>高级设置</strong><small>存储、知识库与记忆数据</small></span>
+                <TsIcon name="chevronDown" :size="18" class="room-step-advanced-chevron" />
+              </summary>
+              <div class="room-step-advanced-body room-step-form">
+                <label class="room-step-check"><input v-model="memory.enabled" type="checkbox"> 启用长期记忆</label>
+                <label class="room-step-check"><input v-model="knowledge.enabled" type="checkbox"> 注入角色知识库</label>
+                <div class="room-step-info">
+                  <TsIcon name="bookmark" :size="18" />
+                  <div><strong>{{ memoryModeLabel }}</strong><p>{{ memoryLocationText }}</p></div>
+                </div>
+                <div class="room-step-data-actions">
+                  <button class="ghost-btn" type="button" @click="loadVisibleMemories">刷新记忆</button>
+                  <button class="ghost-btn" type="button" @click="openGlobalAdvanced('memory')">完整记忆管理</button>
+                  <button class="ghost-btn" type="button" @click="openGlobalAdvanced('knowledge')">完整知识库管理</button>
+                  <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>
+                </div>
+                <p class="field-hint">知识库当前有 {{ knowledge.entries.length }} 条，长期记忆当前有 {{ memoryCount }} 条。展开完整设置后可逐条编辑。</p>
+              </div>
+            </details>
 
             <div class="room-setup-actions">
               <button class="ghost-btn" type="button" @click="setupStep = 2"><TsIcon name="arrowLeft" :size="17" />上一步</button>
@@ -2079,7 +2205,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <details class="room-advanced-settings">
+    <details class="room-advanced-settings" :open="globalAdvancedOpen" @toggle="globalAdvancedOpen = $event.currentTarget.open">
       <summary>
         <span class="room-advanced-icon"><TsIcon name="settings" :size="20" /></span>
         <span><strong>高级设置</strong><small>模型位置、代理、视觉策略、知识库、MCP 与 Live2D 调试</small></span>
