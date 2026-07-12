@@ -222,4 +222,16 @@ describe('room model and voice defaults', () => {
             assert.doesNotMatch(content, /yachiyo-v2pro-e15\.ckpt|yachiyo-v2pro_e8_s456\.pth/);
         }
     });
+
+    it('does not cap the visible Room LLM reply', () => {
+        const roomChat = source('src/frontend/composables/room/useRoomChat.js');
+        const llmService = source('backend/services/llm.js');
+
+        assert.doesNotMatch(roomChat, /max_output_tokens:\s*360/);
+        assert.doesNotMatch(roomChat, /max_tokens:\s*240/);
+        assert.match(roomChat, /if \(Array\.isArray\(data\?\.content\)\)/);
+        assert.match(roomChat, /max_tokens:\s*16384/);
+        assert.doesNotMatch(llmService, /max_output_tokens:\s*360|max_tokens:\s*240/);
+        assert.doesNotMatch(llmService, /每次回复不超过\s*\d+\s*字/);
+    });
 });

@@ -134,6 +134,7 @@ const testDialog = reactive({ visible: false, target: '', status: 'idle', title:
 const memoryCount = ref(0);
 const memoryList = ref([]);
 const memoryLoading = ref(false);
+const memoryVector = reactive({ backend: '', enabled: false, pending: 0, failed: 0, embedding: '' });
 const storedUser = ref(readStoredUser());
 const modelCatalog = reactive({ loading: false, message: '', updatedAt: '', models: [] });
 const setupStep = ref(1);
@@ -228,6 +229,13 @@ const recommendedModelText = computed(() => {
   return `${value}（${option.source === 'openrouter' ? '来自 OpenRouter 最新目录' : '来自本地预设'}）`;
 });
 const memoryModeLabel = computed(() => canUseServerMemory.value ? '服务端私有记忆' : '本地浏览器记忆');
+const memoryVectorLabel = computed(() => {
+  if (!canUseServerMemory.value) return '本地记忆';
+  if (!memoryVector.enabled) return 'SQLite 向量检索';
+  if (memoryVector.failed) return `Milvus ${memoryVector.failed} 条同步失败`;
+  if (memoryVector.pending) return `Milvus ${memoryVector.pending} 条待同步`;
+  return 'Milvus 已同步';
+});
 const memoryLocationText = computed(() => canUseServerMemory.value
   ? '记忆保存在服务端 SQLite 向量记忆库，按登录用户隔离；未登录时自动退回本机 IndexedDB。'
   : '当前未登录，记忆仅保存在本机 IndexedDB，不上传服务器。');
@@ -1082,8 +1090,14 @@ async function loadMemoryCount() {
       const result = await parseResponse(response);
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
       memoryCount.value = result.data?.count || 0;
+      memoryVector.backend = result.data?.vectorStore?.backend || '';
+      memoryVector.enabled = Boolean(result.data?.vectorStore?.enabled);
+      memoryVector.pending = Number(result.data?.vectorSync?.pending || 0);
+      memoryVector.failed = Number(result.data?.vectorSync?.failed || 0);
+      memoryVector.embedding = result.data?.embedding?.activeModel || '';
       return;
     }
+    Object.assign(memoryVector, { backend: '', enabled: false, pending: 0, failed: 0, embedding: '' });
     const db = await openMemoryDb();
     if (!db) return;
     const tx = db.transaction(MEMORY_STORE, 'readonly');
@@ -1559,6 +1573,26 @@ function saveMemory() {
   writeJson('roomMemorySettings', { enabled: Boolean(memory.enabled) });
   loadMemoryCount();
   showToast(memory.enabled ? '长期记忆已开启' : '长期记忆已关闭');
+}
+
+async function syncMemoryVectors() {
+  if (!canUseServerMemory.value) {
+    showToast('登录后才能同步账号私有向量记忆');
+    return;
+  }
+  try {
+    const response = await authFetch('/api/room/memory/vector-sync', {
+      method: 'POST',
+      headers: memoryAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ limit: 500 })
+    });
+    const result = await parseResponse(response);
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    await loadMemoryCount();
+    showToast(result.message || '向量记忆已同步');
+  } catch (error) {
+    showToast(`向量同步失败：${error.message}`);
+  }
 }
 
 function saveKnowledge(showMessage = true) {
@@ -2161,10 +2195,11 @@ onBeforeUnmount(() => {
                 <label class="room-step-check"><input v-model="knowledge.enabled" type="checkbox"> 注入角色知识库</label>
                 <div class="room-step-info">
                   <TsIcon name="bookmark" :size="18" />
-                  <div><strong>{{ memoryModeLabel }}</strong><p>{{ memoryLocationText }}</p></div>
+                  <div><strong>{{ memoryModeLabel }} · {{ memoryVectorLabel }}</strong><p>{{ memoryLocationText }}<template v-if="memoryVector.embedding"> 当前向量：{{ memoryVector.embedding }}。</template></p></div>
                 </div>
                 <div class="room-step-data-actions">
                   <button class="ghost-btn" type="button" @click="loadVisibleMemories">刷新记忆</button>
+                  <button v-if="canUseServerMemory" class="ghost-btn" type="button" @click="syncMemoryVectors">同步向量库</button>
                   <button class="ghost-btn" type="button" @click="openGlobalAdvanced('memory')">完整记忆管理</button>
                   <button class="ghost-btn" type="button" @click="openGlobalAdvanced('knowledge')">完整知识库管理</button>
                   <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>

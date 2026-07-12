@@ -7,13 +7,13 @@ Room memory is an optional add-on for Yachiyo's agent flow. It must not block ch
 - Logged-in users use server-side private memory through `/api/room/memory`.
 - Guests use browser-local IndexedDB memory only.
 - Each server memory row is scoped by `user_id`; users cannot read or delete another user's memory.
-- SQLite stores summary, original content, importance, metadata, and a lightweight embedding vector.
+- SQLite stores summary, original content, importance, embedding metadata, a vector-sync timestamp, and any retryable sync error.
 - Search uses a hybrid score: similarity, importance, recency, access signal, and memory type match.
 - Writes are filtered for long-term value and obvious sensitive content. Similar memories of the same type are merged instead of always appending.
 - The room settings page supports listing, searching, editing, deleting, and clearing the current user's server memories.
 - Memory content is collapsed in the settings page by default; users explicitly expand an item to view the original content.
 - Optional LLM extraction can be enabled with `ROOM_MEMORY_EXTRACTOR=llm` plus the existing `LLM_API_KEY`/`LLM_API_URL`/`LLM_MODEL` settings. Without it, the rule-based extractor remains active.
-- The lightweight hashed vector implementation is intentionally dependency-light and can later be replaced by pgvector, Qdrant, LanceDB, or sqlite-vec behind the same service boundary.
+- Milvus is the production vector index. A private local `feature-hash-v2` embedding remains available when no external embedding API is configured.
 
 ## Agent Flow
 
@@ -34,5 +34,4 @@ Room memory is an optional add-on for Yachiyo's agent flow. It must not block ch
 ## Next Steps
 
 - Tune the LLM extraction prompt after observing real room conversations.
-- Add a provider interface for real vector stores.
 - Add pin/export support and optional TTL/decay jobs.

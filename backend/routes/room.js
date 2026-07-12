@@ -450,14 +450,22 @@ router.get('/models/openrouter', async (req, res) => {
     }
 });
 
-function sendMemoryStatus(req, res) {
+async function sendMemoryStatus(req, res) {
     setNoStore(res);
+    const sync = await roomMemory.syncPendingUserMemories(req.user.id, { limit: 20 }).catch((error) => ({
+        enabled: true,
+        attempted: 0,
+        synced: 0,
+        failed: 1,
+        error: error.message
+    }));
     res.json({
         success: true,
         data: {
             mode: 'server-vector',
             scope: 'per-user',
-            ...roomMemory.memoryStats(req.user.id)
+            ...roomMemory.memoryStats(req.user.id),
+            sync
         }
     });
 }
@@ -479,6 +487,22 @@ router.get('/memory/status/live/:nonce', authenticateToken, sendMemoryStatus);
 router.get('/memory', authenticateToken, sendMemoryList);
 
 router.get('/memory/live/:nonce', authenticateToken, sendMemoryList);
+
+router.post('/memory/vector-sync', authenticateToken, async (req, res) => {
+    try {
+        const sync = await roomMemory.syncPendingUserMemories(req.user.id, {
+            limit: req.body?.limit || 200,
+            force: req.body?.force === true
+        });
+        res.json({
+            success: true,
+            data: { ...roomMemory.memoryStats(req.user.id), sync },
+            message: sync.failed ? '向量同步部分失败，将在下次检索时继续重试' : '当前账号的向量记忆已同步'
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ success: false, message: error.message || '向量同步失败' });
+    }
+});
 
 router.get('/memory/:id', authenticateToken, (req, res) => {
     setNoStore(res);

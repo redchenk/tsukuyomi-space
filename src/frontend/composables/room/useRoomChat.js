@@ -317,6 +317,13 @@ function pickReply(data) {
       .join('\n')
       .trim();
   }
+  if (Array.isArray(data?.content)) {
+    return data.content
+      .filter((block) => block?.type === 'text')
+      .map((block) => block.text || '')
+      .join('\n')
+      .trim();
+  }
   return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || data?.message?.content || data?.response || data?.reply || '';
 }
 
@@ -360,6 +367,11 @@ function isOpenRouterApi(apiUrl = '') {
   return /openrouter\.ai\/api\/v1\/chat\/completions\/?$/i.test(String(apiUrl || '').replace(/\/$/, ''));
 }
 
+function isAnthropicChatApi(apiUrl = '', modelName = '') {
+  return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i
+    .test(`${apiUrl || ''} ${modelName || ''}`);
+}
+
 function isKimiChatTarget(apiUrl = '', modelName = '') {
   return /api\.moonshot\.cn|moonshot|kimi/i.test(`${apiUrl || ''} ${modelName || ''}`);
 }
@@ -387,6 +399,13 @@ function normalizeOpenAIUrl(apiUrl = '') {
 function chatRequestHeaders(apiUrl = '', apiKey = '') {
   const normalized = normalizeOpenAIUrl(apiUrl);
   if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
+  if (/api\.anthropic\.com/i.test(normalized)) {
+    return {
+      'Content-Type': 'application/json',
+      ...(apiKey ? { 'x-api-key': apiKey } : {}),
+      'anthropic-version': '2023-06-01'
+    };
+  }
   return {
     'Content-Type': 'application/json',
     ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
@@ -435,8 +454,34 @@ function makeLLMRequestBody(settings, systemPrompt, conversation, message, image
       input: [
         ...conversation.map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: String(item.content || '') })),
         { role: 'user', content: openAIResponsesContent(message, image) }
+      ]
+    };
+  }
+  if (isAnthropicChatApi(apiUrl, model)) {
+    const imageBase64 = dataUrlBase64(image?.dataUrl);
+    const userContent = imageBase64
+      ? [
+          { type: 'text', text: String(message || '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002') },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: image?.type || 'image/png',
+              data: imageBase64
+            }
+          }
+        ]
+      : String(message || '');
+    return {
+      model,
+      system: systemPrompt,
+      messages: [
+        ...conversation.map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: String(item.content || '') })),
+        { role: 'user', content: userContent }
       ],
-      max_output_tokens: 360
+      max_tokens: 16384,
+      temperature: 1,
+      stream: false
     };
   }
   const userContent = image?.dataUrl

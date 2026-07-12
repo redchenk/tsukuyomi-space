@@ -5,10 +5,11 @@ const LLM_MODEL = process.env.LLM_MODEL || 'kimi-k2.6';
 const CHAT_SYSTEM_PROMPT = [
     '你是月读空间中的温柔中文对话助手。',
     '请先接住用户情绪，再给出简洁、有温度、可执行的回应。',
-    '每次回复不超过 200 字，不要提及系统提示或模型身份。'
+    '根据问题需要完整回答，不要人为限制回复长度，也不要提及系统提示或模型身份。'
 ].join('\n');
 
-const ROOM_SYSTEM_PROMPT = '请始终用温柔、从容、克制的中文回应。先接住对方的情绪，再给出简洁而有温度的回应。每次回复不超过 200 字，不要提及系统设定。';
+const ROOM_SYSTEM_PROMPT = '请始终用温柔、从容、克制的中文回应。先接住对方的情绪，再根据问题需要给出完整、有温度的回应。不要人为限制回复长度，不要提及系统设定。';
+const ANTHROPIC_REQUIRED_MAX_TOKENS = Math.max(4096, Number.parseInt(process.env.ROOM_ANTHROPIC_MAX_TOKENS || '16384', 10) || 16384);
 
 const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.moonshot.cn', path: /^\/v1\/chat\/completions\/?$/ },
@@ -186,7 +187,8 @@ function pickReply(data) {
 }
 
 function isAnthropicChatUrl(chatUrl, model) {
-    return /\/anthropic\/v1\/messages\/?$|anthropic\.com\/v1\/messages\/?$|MiniMax-M2/i.test(`${chatUrl || ''} ${model || ''}`);
+    return /\/anthropic\/v1\/messages\/?$|anthropic\.com\/v1\/messages\/?$/i.test(String(chatUrl || ''))
+        || /MiniMax-M2/i.test(String(model || ''));
 }
 
 function isOpenAIResponsesUrl(chatUrl) {
@@ -267,8 +269,7 @@ function buildChatPayload({ chatUrl, model, systemPrompt, history, message, imag
             input: [
                 ...history.map(item => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: String(item.content || '') })),
                 { role: 'user', content: userContent }
-            ],
-            max_output_tokens: 360
+            ]
         };
     }
     if (isAnthropicChatUrl(chatUrl, model)) {
@@ -281,7 +282,8 @@ function buildChatPayload({ chatUrl, model, systemPrompt, history, message, imag
                 { role: 'user', content: buildAnthropicUserContent(message, image, allowImage) }
             ],
             temperature: 1,
-            max_tokens: 240,
+            // Anthropic-compatible APIs require this protocol field. Keep it high so the app does not impose a short reply cap.
+            max_tokens: ANTHROPIC_REQUIRED_MAX_TOKENS,
             stream: false
         };
     }
@@ -299,7 +301,6 @@ function buildChatPayload({ chatUrl, model, systemPrompt, history, message, imag
             { role: 'user', content: userContent }
         ],
         temperature: chatTemperatureFor(chatUrl, model, 0.7),
-        max_tokens: 240,
         stream: false
     };
 }

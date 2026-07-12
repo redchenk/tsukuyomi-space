@@ -167,7 +167,7 @@ async function upsertRow(row) {
     } catch (error) {
         await client.delete({
             collection_name: COLLECTION_NAME,
-            filter: filterEquals('id', row.id)
+            filter: `${scopeFilter(row.scope, row.user_id)} AND ${filterEquals('id', row.id)}`
         }).catch(() => {});
         assertOk(await client.insert({
             collection_name: COLLECTION_NAME,
@@ -217,6 +217,7 @@ async function search({ scope, userId, vector, limit = 5, type = '', outputField
         filter: scopeFilter(scope, userId, type),
         output_fields: outputFields,
         metric_type: MetricType.COSINE,
+        consistency_level: process.env.ROOM_MEMORY_MILVUS_CONSISTENCY || 'Strong',
         params: { ef: Number.parseInt(process.env.ROOM_MEMORY_MILVUS_SEARCH_EF || '64', 10) || 64 }
     });
     assertOk(response, 'search');
@@ -286,6 +287,7 @@ function status() {
         address: process.env.MILVUS_ADDRESS || '',
         readyAt: lastReadyAt,
         cooldownUntil: unavailableUntil > Date.now() ? new Date(unavailableUntil).toISOString() : '',
+        consistency: process.env.ROOM_MEMORY_MILVUS_CONSISTENCY || 'Strong',
         lastError
     };
 }
@@ -301,5 +303,6 @@ module.exports = {
     searchPersonaMemories,
     deleteUserMemory,
     clearUserMemories,
-    clearPersonaMemories
+    clearPersonaMemories,
+    scopeFilter
 };

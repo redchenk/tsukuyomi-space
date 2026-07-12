@@ -22,7 +22,10 @@ process.env.ROOM_WEATHER_OFFLINE = 'true';
 
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
-const { buildChatPayload, createChatCompletion, isOllamaChatUrl, normalizeChatUrl } = require('../backend/services/llm');
+const { ROOM_SYSTEM_PROMPT, buildChatPayload, createChatCompletion, isOllamaChatUrl, normalizeChatUrl } = require('../backend/services/llm');
+const { createEmbedding } = require('../backend/services/room-embedding');
+const { requireUserId, similarity } = require('../backend/services/room-memory');
+const { scopeFilter } = require('../backend/services/room-milvus-store');
 
 let server;
 let baseUrl;
@@ -680,6 +683,16 @@ describe('room world API', () => {
 });
 
 describe('room memory API', () => {
+    it('builds useful local vectors and enforces user scope at the service boundary', () => {
+        const preference = createEmbedding('我喜欢浅蓝色和淡紫色');
+        const related = createEmbedding('用户偏好浅蓝色房间主题');
+        const unrelated = createEmbedding('服务器数据库部署完成');
+
+        assert.ok(similarity(preference, related) > similarity(preference, unrelated));
+        assert.throws(() => requireUserId(''), /authenticated user/i);
+        assert.match(scopeFilter('user', 'account-a'), /scope == "user" AND user_id == "account-a"/);
+    });
+
     it('requires a logged-in user for server-side room memories', async () => {
         const { response, body } = await request('/api/room/memory/status');
 
@@ -689,6 +702,7 @@ describe('room memory API', () => {
 
     it('records, searches, isolates, and clears per-user memories', async () => {
         const created = await postJson('/api/room/memory', {
+            userId: 'spoofed-other-account',
             visitorName: 'normal-user',
             userMessage: '请记住我喜欢浅蓝色和淡紫色的房间氛围。',
             assistantReply: '我记住了。下次会把房间的光调得更像浅蓝和淡紫的月色。',
@@ -699,6 +713,7 @@ describe('room memory API', () => {
         assert.equal(created.body.data.type, 'preference');
         assert.ok(created.body.data.tags.includes('preference'));
         assert.ok(created.body.data.importance > 0);
+        assert.equal(created.body.data.vectorPending, false);
 
         const merged = await postJson('/api/room/memory', {
             visitorName: 'normal-user',
@@ -750,13 +765,37 @@ describe('room memory API', () => {
         assert.equal(isolated.response.status, 200);
         assert.equal(isolated.body.data.length, 0);
 
+        const isolatedDetail = await request(`/api/room/memory/${created.body.data.id}`, {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(isolatedDetail.response.status, 404);
+
+        const isolatedUpdate = await request(`/api/room/memory/${created.body.data.id}`, {
+            method: 'PATCH',
+            headers: jsonHeaders(managedUserToken),
+            body: JSON.stringify({ summary: '不应允许跨账号修改' })
+        });
+        assert.equal(isolatedUpdate.response.status, 404);
+
+        const isolatedDelete = await request(`/api/room/memory/${created.body.data.id}`, {
+            method: 'DELETE',
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(isolatedDelete.response.status, 404);
+
         const status = await request('/api/room/memory/status', {
             headers: jsonHeaders(userToken)
         });
         assert.equal(status.response.status, 200);
         assert.equal(status.body.data.scope, 'per-user');
         assert.equal(status.body.data.count, 1);
+        assert.equal(status.body.data.embedding.activeModel, 'feature-hash-v2');
+        assert.deepEqual(status.body.data.vectorSync, { pending: 0, failed: 0, pendingDeletions: 0, lastSyncedAt: '' });
         assert.ok(status.body.data.byType.some(item => item.type === 'project' && item.count === 1));
+
+        const synced = await postJson('/api/room/memory/vector-sync', { limit: 500, userId: 'spoofed-other-account' }, userToken);
+        assert.equal(synced.response.status, 200);
+        assert.equal(synced.body.data.sync.enabled, false);
 
         const ignored = await postJson('/api/room/memory', {
             userMessage: '我现在有点饿。',
@@ -861,6 +900,35 @@ describe('chat API endpoint allowlist', () => {
             message: 'hello'
         });
         assert.equal(normalPayload.temperature, 0.7);
+    });
+
+    it('does not impose a short Room reply limit', () => {
+        const responsesPayload = buildChatPayload({
+            chatUrl: 'https://api.openai.com/v1/responses',
+            model: 'gpt-5.5',
+            systemPrompt: ROOM_SYSTEM_PROMPT,
+            history: [],
+            message: '请完整说明。'
+        });
+        const compatiblePayload = buildChatPayload({
+            chatUrl: 'https://api.deepseek.com/chat/completions',
+            model: 'deepseek-v4-flash',
+            systemPrompt: ROOM_SYSTEM_PROMPT,
+            history: [],
+            message: '请完整说明。'
+        });
+        const anthropicPayload = buildChatPayload({
+            chatUrl: 'https://api.anthropic.com/v1/messages',
+            model: 'claude-sonnet-4',
+            systemPrompt: ROOM_SYSTEM_PROMPT,
+            history: [],
+            message: '请完整说明。'
+        });
+
+        assert.equal(Object.hasOwn(responsesPayload, 'max_output_tokens'), false);
+        assert.equal(Object.hasOwn(compatiblePayload, 'max_tokens'), false);
+        assert.ok(anthropicPayload.max_tokens >= 4096);
+        assert.doesNotMatch(ROOM_SYSTEM_PROMPT, /不超过\s*\d+\s*字/);
     });
 
     it('normalizes loopback Ollama endpoints and builds native chat payloads', () => {

@@ -20,6 +20,8 @@ ROOM_MEMORY_VECTOR_BACKEND=milvus
 MILVUS_ADDRESS=127.0.0.1:19530
 ROOM_MEMORY_MILVUS_COLLECTION=tsukuyomi_room_memories
 ROOM_MEMORY_VECTOR_DIM=96
+ROOM_MEMORY_MILVUS_CONSISTENCY=Strong
+ROOM_MEMORY_CONTENT_LIMIT=12000
 ```
 
 If Milvus is not enabled or temporarily unavailable, Room keeps working through the SQLite vector fallback. User memory writes still persist in SQLite.
@@ -32,7 +34,7 @@ ROOM_MEMORY_EMBEDDING_API_KEY=...
 ROOM_MEMORY_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-Without an embedding API, the server uses the deterministic local embedding fallback so memory remains private and does not require a third-party request.
+Without an embedding API, the server uses the deterministic local `feature-hash-v2` embedding so memory remains private and does not require a third-party request. The active embedding provider and model are reported by `/api/room/memory/status`.
 
 ## Persona Corpus Import
 
@@ -53,6 +55,12 @@ The Room chat context fetches the most relevant persona chunks from `/api/room/p
 ## Runtime Behavior
 
 - Recording, editing, deleting, and clearing memories update SQLite first, then synchronize the matching Milvus vector row.
-- Search tries Milvus first and falls back to SQLite scoring if Milvus returns no usable result.
+- Each row records `vector_synced_at` and `vector_sync_error`. Failed writes remain pending and are retried by status checks, searches, or `POST /api/room/memory/vector-sync` for the current authenticated account.
+- Failed vector deletions are retained in a per-user deletion queue and retried until Milvus confirms removal.
+- Search fuses Milvus cosine similarity with SQLite similarity, importance, recency, access, and memory type signals. Every Milvus id is resolved again through `WHERE user_id = ?` before it can enter an LLM prompt.
 - Milvus connection errors enter a short retry cooldown (`ROOM_MEMORY_MILVUS_RETRY_COOLDOWN_MS`, default 30s), so Room chat does not wait on every message while Milvus is starting.
-- `/api/room/memory/status` includes `vectorStore` status so the settings page or diagnostics can see whether Milvus is enabled, the active collection, vector dimension, and last connection error.
+- `/api/room/memory/status` includes vector store, embedding, pending sync, failed sync, and deletion-queue status for the authenticated account.
+
+## Reply Length
+
+Room does not send an application-level output limit to OpenAI Responses or OpenAI-compatible chat APIs. Anthropic-compatible APIs require a `max_tokens` protocol field, so Room uses a high default of 16384 (`ROOM_ANTHROPIC_MAX_TOKENS`) instead of the previous short cap.

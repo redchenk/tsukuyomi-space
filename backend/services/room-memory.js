@@ -1,13 +1,30 @@
 const crypto = require('crypto');
 const db = require('../db');
 const { chatTemperatureFor, normalizeChatUrl } = require('./llm');
-const { createEmbedding, createMemoryEmbedding } = require('./room-embedding');
+const {
+    LOCAL_EMBEDDING_VERSION,
+    createEmbedding,
+    createMemoryEmbedding,
+    createMemoryEmbeddingDetailed,
+    embeddingStatus
+} = require('./room-embedding');
 const milvusStore = require('./room-milvus-store');
 
 const MAX_MEMORIES_PER_USER = Number(process.env.ROOM_MEMORY_MAX_PER_USER || 500);
+const MAX_MEMORY_CONTENT_LENGTH = Math.max(4000, Number(process.env.ROOM_MEMORY_CONTENT_LIMIT || 12000));
 const MEMORY_TYPES = new Set(['profile', 'preference', 'project', 'episodic', 'semantic', 'conversation']);
 const SENSITIVE_PATTERN = /(password|api[_-]?key|secret|token|bearer\s+[a-z0-9._-]+|sk-[a-z0-9._-]+|密码|密钥|令牌|身份证|银行卡)/i;
 const LLM_EXTRACTOR_ENABLED = process.env.ROOM_MEMORY_EXTRACTOR === 'llm';
+
+function requireUserId(userId) {
+    const value = String(userId || '').trim();
+    if (!value || value.length > 128) {
+        const error = new Error('A valid authenticated user is required');
+        error.statusCode = 401;
+        throw error;
+    }
+    return value;
+}
 
 function tokenize(text) {
     const value = String(text || '').toLowerCase();
@@ -47,7 +64,7 @@ function parseJsonArrayText(text) {
     return Array.isArray(parsed) ? parsed : [];
 }
 
-function cleanText(text, limit = 4000) {
+function cleanText(text, limit = MAX_MEMORY_CONTENT_LENGTH) {
     return String(text || '')
         .replace(/<\|ACT:[\s\S]*?\|>/g, '')
         .replace(/<\|DELAY:\d+(?:\.\d+)?\|>/g, '')
@@ -129,6 +146,10 @@ function toPublicMemory(row, score = undefined, options = {}) {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         lastAccessedAt: row.last_accessed_at,
+        vectorSyncedAt: row.vector_synced_at || '',
+        vectorPending: milvusStore.status().enabled
+            ? !row.vector_synced_at || new Date(row.vector_synced_at).getTime() < new Date(row.updated_at).getTime()
+            : false,
         ...(score == null ? {} : { score: Number(score.toFixed(4)) })
     };
     if (options.includeContent) memory.content = row.content;
@@ -168,9 +189,9 @@ function buildMemoryCandidate(payload = {}) {
 
 async function extractMemoryCandidatesWithLLM(payload = {}) {
     if (!LLM_EXTRACTOR_ENABLED || !process.env.LLM_API_KEY) return [];
-    const userMessage = cleanText(payload.userMessage || '', 1200);
-    const assistantReply = cleanText(payload.assistantReply || '', 1200);
-    const content = cleanText(payload.content || `用户：${userMessage}\n八千代：${assistantReply}`, 2400);
+    const userMessage = cleanText(payload.userMessage || '', 4000);
+    const assistantReply = cleanText(payload.assistantReply || '', 8000);
+    const content = cleanText(payload.content || `用户：${userMessage}\n八千代：${assistantReply}`, MAX_MEMORY_CONTENT_LENGTH);
     if (!content || SENSITIVE_PATTERN.test(content)) return [];
 
     const systemPrompt = [
@@ -195,7 +216,7 @@ async function extractMemoryCandidatesWithLLM(payload = {}) {
                 { role: 'user', content }
             ],
             temperature: chatTemperatureFor(chatUrl, model, 0.1),
-            max_tokens: 420,
+            max_tokens: 1000,
             stream: false
         })
     });
@@ -222,13 +243,13 @@ async function extractMemoryCandidatesWithLLM(payload = {}) {
         .slice(0, 4);
 }
 
-function mergeMemoryText(previous, next) {
-    const a = cleanText(previous, 360);
-    const b = cleanText(next, 360);
+function mergeMemoryText(previous, next, limit = MAX_MEMORY_CONTENT_LENGTH) {
+    const a = cleanText(previous, limit);
+    const b = cleanText(next, limit);
     if (!a) return b;
     if (!b || a.includes(b)) return a;
     if (b.includes(a)) return b;
-    return `${a}；${b}`.slice(0, 500);
+    return `${a}；${b}`.slice(0, limit);
 }
 
 function tokenOverlapScore(a, b) {
@@ -276,27 +297,163 @@ function pruneUserMemories(userId) {
     return stale.map(item => item.id);
 }
 
+function memoryEmbeddingMetadata(metadata, embedding) {
+    return {
+        ...(metadata || {}),
+        embeddingProvider: embedding.provider,
+        embeddingModel: embedding.model,
+        embeddingVersion: embedding.version
+    };
+}
+
+function expectedEmbeddingVersion() {
+    const status = embeddingStatus();
+    return status.configuredProvider === 'remote'
+        ? `remote:${status.configuredModel}`
+        : LOCAL_EMBEDDING_VERSION;
+}
+
+function markVectorSync(userId, id, synced, error = '') {
+    db.prepare(`
+        UPDATE room_memories
+        SET vector_synced_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END,
+            vector_sync_error = ?
+        WHERE id = ? AND user_id = ?
+    `).run(synced ? 1 : 0, String(error || '').slice(0, 500), id, userId);
+}
+
+async function syncMemoryRow(userId, row) {
+    if (!milvusStore.status().enabled) return { synced: false, skipped: true };
+    const synced = await milvusStore.upsertUserMemory({
+        id: row.id,
+        userId,
+        type: row.memory_type,
+        summary: row.summary,
+        content: row.content,
+        importance: Number(row.importance || 0),
+        vector: parseJson(row.embedding, [])
+    });
+    const error = synced ? '' : (milvusStore.status().lastError || 'Milvus is temporarily unavailable');
+    markVectorSync(userId, row.id, synced, error);
+    return { synced, skipped: false, error };
+}
+
+function queueVectorDeletion(userId, memoryId) {
+    if (!milvusStore.status().enabled) return;
+    db.prepare(`
+        INSERT INTO room_memory_vector_deletions (user_id, memory_id)
+        VALUES (?, ?)
+        ON CONFLICT(user_id, memory_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+    `).run(userId, memoryId);
+}
+
+async function flushPendingVectorDeletions(userId, limit = 100) {
+    if (!milvusStore.status().enabled) return { attempted: 0, deleted: 0, failed: 0 };
+    const rows = db.prepare(`
+        SELECT id, memory_id FROM room_memory_vector_deletions
+        WHERE user_id = ?
+        ORDER BY created_at ASC
+        LIMIT ?
+    `).all(userId, Math.max(1, Math.min(500, Number(limit) || 100)));
+    let deleted = 0;
+    let failed = 0;
+    for (const row of rows) {
+        const success = await milvusStore.deleteUserMemory(userId, row.memory_id);
+        if (success) {
+            db.prepare('DELETE FROM room_memory_vector_deletions WHERE id = ? AND user_id = ?').run(row.id, userId);
+            deleted += 1;
+        } else {
+            db.prepare(`
+                UPDATE room_memory_vector_deletions
+                SET last_error = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND user_id = ?
+            `).run(milvusStore.status().lastError || 'Milvus is temporarily unavailable', row.id, userId);
+            failed += 1;
+        }
+    }
+    return { attempted: rows.length, deleted, failed };
+}
+
+async function syncPendingUserMemories(userId, { limit = 50, force = false } = {}) {
+    const scopedUserId = requireUserId(userId);
+    const vectorStatus = milvusStore.status();
+    if (!vectorStatus.enabled) {
+        return { enabled: false, attempted: 0, synced: 0, failed: 0, pending: 0 };
+    }
+    const safeLimit = Math.max(1, Math.min(500, Number(limit) || 50));
+    const deletions = await flushPendingVectorDeletions(scopedUserId, safeLimit);
+    const rows = db.prepare(`
+        SELECT * FROM room_memories
+        WHERE user_id = ?
+          AND (
+            ? = 1
+            OR vector_synced_at IS NULL
+            OR vector_synced_at < updated_at
+            OR COALESCE(vector_sync_error, '') <> ''
+          )
+        ORDER BY updated_at ASC
+        LIMIT ?
+    `).all(scopedUserId, force ? 1 : 0, safeLimit);
+    let synced = 0;
+    let failed = 0;
+    for (const row of rows) {
+        const metadata = parseJson(row.metadata || '{}', {});
+        let nextRow = row;
+        if (force || !Array.isArray(parseJson(row.embedding, null)) || metadata.embeddingVersion !== expectedEmbeddingVersion()) {
+            const embedding = await createMemoryEmbeddingDetailed(`${row.summary}\n${row.content}`);
+            const nextMetadata = memoryEmbeddingMetadata(metadata, embedding);
+            db.prepare(`
+                UPDATE room_memories
+                SET embedding = ?, metadata = ?, vector_synced_at = NULL, vector_sync_error = ''
+                WHERE id = ? AND user_id = ?
+            `).run(JSON.stringify(embedding.vector), JSON.stringify(nextMetadata), row.id, scopedUserId);
+            nextRow = { ...row, embedding: JSON.stringify(embedding.vector), metadata: JSON.stringify(nextMetadata) };
+        }
+        const result = await syncMemoryRow(scopedUserId, nextRow);
+        if (result.synced) synced += 1;
+        else failed += 1;
+    }
+    const pending = db.prepare(`
+        SELECT COUNT(*) AS count FROM room_memories
+        WHERE user_id = ?
+          AND (vector_synced_at IS NULL OR vector_synced_at < updated_at OR COALESCE(vector_sync_error, '') <> '')
+    `).get(scopedUserId).count;
+    return { enabled: true, attempted: rows.length, synced, failed, pending, deletions };
+}
+
 async function upsertCandidate(userId, candidate) {
+    userId = requireUserId(userId);
     if (!candidate?.content || !candidate?.summary) {
         const error = new Error('Memory content is empty');
         error.statusCode = 400;
         throw error;
     }
-    const vector = candidate.vector || await createMemoryEmbedding(`${candidate.summary}\n${candidate.content}`);
+    const embedding = candidate.vector
+        ? {
+            vector: candidate.vector,
+            provider: candidate.metadata?.embeddingProvider || 'local',
+            model: candidate.metadata?.embeddingModel || LOCAL_EMBEDDING_VERSION,
+            version: candidate.metadata?.embeddingVersion || LOCAL_EMBEDDING_VERSION
+        }
+        : await createMemoryEmbeddingDetailed(`${candidate.summary}\n${candidate.content}`);
+    const vector = embedding.vector;
     candidate.vector = vector;
+    candidate.metadata = memoryEmbeddingMetadata(candidate.metadata, embedding);
     const target = findMergeTarget(userId, candidate);
     if (target) {
         const oldMetadata = parseJson(target.metadata || '{}', {});
-        const metadata = {
+        let metadata = {
             ...oldMetadata,
             ...candidate.metadata,
             tags: uniqueTags([...(oldMetadata.tags || []), ...(candidate.metadata.tags || [])]),
             confidence: Math.max(Number(oldMetadata.confidence || 0), Number(candidate.metadata.confidence || 0))
         };
-        const summary = mergeMemoryText(target.summary, candidate.summary);
-        const content = mergeMemoryText(target.content, candidate.content).slice(0, 4000);
+        const summary = mergeMemoryText(target.summary, candidate.summary, 800);
+        const content = mergeMemoryText(target.content, candidate.content, MAX_MEMORY_CONTENT_LENGTH);
         const importance = Math.max(Number(target.importance || 0), Number(candidate.importance || 0));
-        const nextVector = await createMemoryEmbedding(`${summary}\n${content}`);
+        const nextEmbedding = await createMemoryEmbeddingDetailed(`${summary}\n${content}`);
+        const nextVector = nextEmbedding.vector;
+        metadata = memoryEmbeddingMetadata(metadata, nextEmbedding);
         db.prepare(`
             UPDATE room_memories
             SET visitor_name = ?,
@@ -305,7 +462,9 @@ async function upsertCandidate(userId, candidate) {
                 embedding = ?,
                 importance = ?,
                 metadata = ?,
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = CURRENT_TIMESTAMP,
+                vector_synced_at = NULL,
+                vector_sync_error = ''
             WHERE id = ? AND user_id = ?
         `).run(
             candidate.visitorName || target.visitor_name || '',
@@ -317,51 +476,38 @@ async function upsertCandidate(userId, candidate) {
             target.id,
             userId
         );
-        await milvusStore.upsertUserMemory({
-            id: target.id,
-            userId,
-            type: target.memory_type,
-            summary,
-            content,
-            importance,
-            vector: nextVector
-        });
+        await syncMemoryRow(userId, db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(target.id, userId));
         return { memory: getMemory(userId, target.id), action: 'merged' };
     }
 
     const id = crypto.randomUUID();
     db.prepare(`
         INSERT INTO room_memories (
-            id, user_id, visitor_name, memory_type, summary, content, embedding, importance, metadata
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, user_id, visitor_name, memory_type, summary, content, embedding, importance, metadata,
+            vector_synced_at, vector_sync_error
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, '')
     `).run(
         id,
         userId,
         candidate.visitorName,
         candidate.type,
-        candidate.summary.slice(0, 500),
-        candidate.content.slice(0, 4000),
+        candidate.summary.slice(0, 800),
+        candidate.content.slice(0, MAX_MEMORY_CONTENT_LENGTH),
         JSON.stringify(vector),
         candidate.importance,
         JSON.stringify(candidate.metadata)
     );
     const prunedIds = pruneUserMemories(userId);
     for (const prunedId of prunedIds) {
-        await milvusStore.deleteUserMemory(userId, prunedId);
+        queueVectorDeletion(userId, prunedId);
     }
-    await milvusStore.upsertUserMemory({
-        id,
-        userId,
-        type: candidate.type,
-        summary: candidate.summary,
-        content: candidate.content,
-        importance: candidate.importance,
-        vector
-    });
+    await flushPendingVectorDeletions(userId, prunedIds.length || 1);
+    await syncMemoryRow(userId, db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId));
     return { memory: getMemory(userId, id), action: 'created' };
 }
 
 async function recordMemory(userId, payload = {}) {
+    userId = requireUserId(userId);
     let candidates = [];
     try {
         candidates = await extractMemoryCandidatesWithLLM(payload);
@@ -402,7 +548,7 @@ function rowsForMemoryIds(userId, ids) {
     return safeIds.map(id => byId.get(id)).filter(Boolean);
 }
 
-function searchSqliteMemories(userId, query, vector, limit = 5) {
+function searchSqliteMemories(userId, query, vector, limit = 5, { touch = true } = {}) {
     const safeLimit = Math.max(1, Math.min(20, Number(limit) || 5));
     const queryType = inferMemoryType(query);
     const now = Date.now();
@@ -431,30 +577,49 @@ function searchSqliteMemories(userId, query, vector, limit = 5) {
         .sort((a, b) => b.score - a.score || String(b.row.created_at).localeCompare(String(a.row.created_at)))
         .slice(0, safeLimit);
 
-    touchMemories(userId, matched.map(item => item.row.id));
+    if (touch) touchMemories(userId, matched.map(item => item.row.id));
 
     return matched.map(item => toPublicMemory(item.row, item.score));
 }
 
 async function searchMemories(userId, query, limit = 5) {
+    userId = requireUserId(userId);
     const safeLimit = Math.max(1, Math.min(20, Number(limit) || 5));
     const vector = await createMemoryEmbedding(query);
-    const milvusResults = await milvusStore.searchUserMemories({ userId, vector, limit: safeLimit });
-    if (Array.isArray(milvusResults) && milvusResults.length) {
-        const scoreById = new Map(milvusResults.map(item => [String(item.id), Number(item.score || 0)]));
-        const rows = rowsForMemoryIds(userId, milvusResults.map(item => String(item.id)));
-        const matched = rows
-            .map(row => ({ row, score: scoreById.get(row.id) || 0 }))
-            .filter(item => item.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, safeLimit);
-        touchMemories(userId, matched.map(item => item.row.id));
-        if (matched.length) return matched.map(item => toPublicMemory(item.row, item.score));
+    if (milvusStore.status().enabled) {
+        await syncPendingUserMemories(userId, { limit: 20 }).catch(() => {});
     }
-    return searchSqliteMemories(userId, query, vector, safeLimit);
+    const candidateLimit = Math.min(20, Math.max(safeLimit, safeLimit * 3));
+    const sqliteResults = searchSqliteMemories(userId, query, vector, candidateLimit, { touch: false });
+    const milvusResults = await milvusStore.searchUserMemories({ userId, vector, limit: candidateLimit });
+    if (!Array.isArray(milvusResults) || !milvusResults.length) {
+        const fallback = sqliteResults.slice(0, safeLimit);
+        touchMemories(userId, fallback.map(item => item.id));
+        return fallback;
+    }
+
+    const localScore = new Map(sqliteResults.map(item => [String(item.id), Number(item.score || 0)]));
+    const vectorScore = new Map(milvusResults.map((item) => {
+        const raw = Number(item.score || 0);
+        return [String(item.id), Math.max(0, Math.min(1, (raw + 1) / 2))];
+    }));
+    const ids = [...new Set([...vectorScore.keys(), ...localScore.keys()])];
+    const matched = rowsForMemoryIds(userId, ids)
+        .map((row) => {
+            const semantic = vectorScore.get(row.id);
+            const local = localScore.get(row.id) || 0;
+            const score = semantic == null ? local : (semantic * 0.68) + (local * 0.32);
+            return { row, score };
+        })
+        .filter(item => item.score > 0.16)
+        .sort((a, b) => b.score - a.score || String(b.row.updated_at).localeCompare(String(a.row.updated_at)))
+        .slice(0, safeLimit);
+    touchMemories(userId, matched.map(item => item.row.id));
+    return matched.map(item => toPublicMemory(item.row, item.score));
 }
 
 async function listMemories(userId, { limit = 50, type = '', q = '' } = {}) {
+    userId = requireUserId(userId);
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
     const safeType = normalizeType(type);
     const hasType = type && MEMORY_TYPES.has(String(type).trim().toLowerCase());
@@ -491,23 +656,31 @@ async function searchPersonaMemories(query, limit = 5) {
 }
 
 function getMemory(userId, id) {
+    userId = requireUserId(userId);
     const row = db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId);
     return row ? toPublicMemory(row, undefined, { includeContent: true }) : null;
 }
 
 async function clearMemories(userId) {
+    userId = requireUserId(userId);
+    const ids = db.prepare('SELECT id FROM room_memories WHERE user_id = ?').all(userId).map(row => row.id);
     const count = db.prepare('DELETE FROM room_memories WHERE user_id = ?').run(userId).changes;
-    await milvusStore.clearUserMemories(userId);
+    ids.forEach(id => queueVectorDeletion(userId, id));
+    if (milvusStore.status().enabled) {
+        const cleared = await milvusStore.clearUserMemories(userId);
+        if (cleared) db.prepare('DELETE FROM room_memory_vector_deletions WHERE user_id = ?').run(userId);
+    }
     return count;
 }
 
 async function updateMemory(userId, id, payload = {}) {
+    userId = requireUserId(userId);
     const existing = db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId);
     if (!existing) return null;
     const oldMetadata = parseJson(existing.metadata || '{}', {});
     const type = normalizeType(payload.type || existing.memory_type);
     const summary = cleanText(payload.summary || existing.summary, 500);
-    const content = cleanText(payload.content || existing.content, 4000);
+    const content = cleanText(payload.content || existing.content, MAX_MEMORY_CONTENT_LENGTH);
     const tags = payload.tags ? uniqueTags(payload.tags) : uniqueTags(oldMetadata.tags || []);
     const importance = Number.isFinite(Number(payload.importance))
         ? Math.max(0, Math.min(1, Number(payload.importance)))
@@ -515,24 +688,31 @@ async function updateMemory(userId, id, payload = {}) {
     const confidence = Number.isFinite(Number(payload.confidence))
         ? Math.max(0, Math.min(1, Number(payload.confidence)))
         : Number(oldMetadata.confidence || 0.8);
-    const metadata = { ...oldMetadata, tags, confidence, editedAt: new Date().toISOString() };
-    const vector = await createMemoryEmbedding(`${summary}\n${content}`);
+    const embedding = await createMemoryEmbeddingDetailed(`${summary}\n${content}`);
+    const metadata = memoryEmbeddingMetadata({ ...oldMetadata, tags, confidence, editedAt: new Date().toISOString() }, embedding);
+    const vector = embedding.vector;
     db.prepare(`
         UPDATE room_memories
-        SET memory_type = ?, summary = ?, content = ?, embedding = ?, importance = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP
+        SET memory_type = ?, summary = ?, content = ?, embedding = ?, importance = ?, metadata = ?,
+            updated_at = CURRENT_TIMESTAMP, vector_synced_at = NULL, vector_sync_error = ''
         WHERE id = ? AND user_id = ?
     `).run(type, summary, content, JSON.stringify(vector), importance, JSON.stringify(metadata), id, userId);
-    await milvusStore.upsertUserMemory({ id, userId, type, summary, content, importance, vector });
+    await syncMemoryRow(userId, db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId));
     return getMemory(userId, id);
 }
 
 async function deleteMemory(userId, id) {
+    userId = requireUserId(userId);
     const count = db.prepare('DELETE FROM room_memories WHERE id = ? AND user_id = ?').run(id, userId).changes;
-    if (count) await milvusStore.deleteUserMemory(userId, id);
+    if (count) {
+        queueVectorDeletion(userId, id);
+        await flushPendingVectorDeletions(userId, 20);
+    }
     return count;
 }
 
 function memoryStats(userId) {
+    userId = requireUserId(userId);
     const stats = db.prepare(`
         SELECT COUNT(*) AS count, COALESCE(AVG(importance), 0) AS avgImportance
         FROM room_memories
@@ -544,11 +724,32 @@ function memoryStats(userId) {
         WHERE user_id = ?
         GROUP BY memory_type
     `).all(userId);
+    const vectorStore = milvusStore.status();
+    const vectorSync = vectorStore.enabled
+        ? db.prepare(`
+            SELECT
+                SUM(CASE WHEN vector_synced_at IS NULL OR vector_synced_at < updated_at THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN COALESCE(vector_sync_error, '') <> '' THEN 1 ELSE 0 END) AS failed,
+                MAX(vector_synced_at) AS lastSyncedAt
+            FROM room_memories
+            WHERE user_id = ?
+        `).get(userId)
+        : { pending: 0, failed: 0, lastSyncedAt: null };
+    const pendingDeletions = vectorStore.enabled
+        ? db.prepare('SELECT COUNT(*) AS count FROM room_memory_vector_deletions WHERE user_id = ?').get(userId).count
+        : 0;
     return {
         count: stats.count || 0,
         avgImportance: Number(Number(stats.avgImportance || 0).toFixed(3)),
         maxPerUser: MAX_MEMORIES_PER_USER,
-        vectorStore: milvusStore.status(),
+        vectorStore,
+        embedding: embeddingStatus(),
+        vectorSync: {
+            pending: Number(vectorSync.pending || 0),
+            failed: Number(vectorSync.failed || 0),
+            pendingDeletions: Number(pendingDeletions || 0),
+            lastSyncedAt: vectorSync.lastSyncedAt || ''
+        },
         byType
     };
 }
@@ -565,5 +766,7 @@ module.exports = {
     updateMemory,
     deleteMemory,
     clearMemories,
-    memoryStats
+    memoryStats,
+    syncPendingUserMemories,
+    requireUserId
 };
