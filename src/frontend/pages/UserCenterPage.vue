@@ -112,11 +112,11 @@ function articlePath(article) {
 }
 
 function pixelArtworkPath(artwork) {
-  return `/arena?art=${encodeURIComponent(artwork.id)}#pixel-art-${encodeURIComponent(artwork.id)}`;
+  return `/pixel?art=${encodeURIComponent(artwork.id)}#pixel-art-${encodeURIComponent(artwork.id)}`;
 }
 
 function pixelArtworkEditPath(artwork) {
-  return `/arena?edit=${encodeURIComponent(artwork.id)}`;
+  return `/pixel?edit=${encodeURIComponent(artwork.id)}`;
 }
 
 async function logout() {
@@ -721,7 +721,7 @@ onMounted(async () => {
               <h2 class="uc-section-title"><span>04</span> {{ isAdminUser ? '全站像素画管理' : '我的像素画' }}</h2>
               <div class="uc-article-tools">
                 <input v-model="uc.pixelQuery" class="uc-search" type="search" placeholder="搜索像素画">
-                <a class="primary-btn uc-icon-action" href="/arena" @click.prevent="go('/arena')">
+                <a class="primary-btn uc-icon-action" href="/pixel" @click.prevent="go('/pixel')">
                   <TsIcon name="palette" :size="17" />
                   <span>新建像素画</span>
                 </a>
@@ -735,7 +735,7 @@ onMounted(async () => {
             <div v-else-if="!ucFilteredPixelArtworks.length" class="uc-empty">
               <div class="ts-empty-title">还没有像素画</div>
               <div class="ts-empty-desc">从月光像素工坊开始新建作品，发布后会在这里管理。</div>
-              <a class="primary-btn uc-icon-action" href="/arena" @click.prevent="go('/arena')">
+              <a class="primary-btn uc-icon-action" href="/pixel" @click.prevent="go('/pixel')">
                 <TsIcon name="palette" :size="17" />
                 <span>去新建像素画</span>
               </a>

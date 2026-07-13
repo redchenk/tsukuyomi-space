@@ -61,7 +61,7 @@ test('user can publish a plaza message', async ({ page }) => {
     await expect(page.getByText(message)).toBeVisible();
 });
 
-test('arena artwork preview is body-level and closes from the visible button', async ({ page }) => {
+test('pixel artwork preview is body-level and closes from the visible button', async ({ page }) => {
     await loginAsUser(page);
     const createResponse = await page.request.post('/api/pixel-art', {
         data: makePixelArtworkPayload(`E2E Arena Preview ${Date.now()}`)
@@ -70,7 +70,7 @@ test('arena artwork preview is body-level and closes from the visible button', a
     const created = await createResponse.json();
     const artworkId = created.data.id;
 
-    await page.goto('/arena');
+    await page.goto('/pixel');
     const card = page.locator(`#pixel-art-${artworkId}`);
     await expect(card).toBeVisible();
     await card.locator('.pixel-art-preview').click();

@@ -171,14 +171,18 @@ export const routes = [
     meta: { title: '终端管理', description: '月读空间后台管理终端。', noindex: true }
   },
   {
-    path: '/arena',
-    name: 'arena',
+    path: '/pixel',
+    name: 'pixel',
     component: ArenaPage,
-    alias: '/arena/',
+    alias: '/pixel/',
     meta: {
       title: '月光像素工坊',
       description: '在月读空间画像素画、公开分享作品，并浏览和点赞其他用户的像素创作。'
     }
+  },
+  {
+    path: '/arena/:pathMatch(.*)*',
+    redirect: to => ({ path: '/pixel', query: to.query, hash: to.hash })
   }
 ];
 
@@ -201,7 +205,7 @@ const routeWarmups = {
   galleryManage: [GalleryPage, AttachmentsPage],
   userCenter: [NotificationsPage, UserProfilePage, EditorPage, ArenaPage],
   terminal: [EditorPage, AttachmentsPage, HubPage],
-  arena: [HubPage, UserCenterPage]
+  pixel: [HubPage, UserCenterPage]
 };
 const defaultRouteWarmups = [HubPage, PlazaPage, StagePage, GalleryPage, ArenaPage];
 const warmedRouteComponents = new WeakSet();

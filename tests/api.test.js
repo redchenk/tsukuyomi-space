@@ -1125,6 +1125,13 @@ describe('admin API permissions', () => {
 });
 
 describe('legacy page paths', () => {
+    it('redirects the former pixel art path and preserves its query', async () => {
+        const { response } = await request('/arena?art=42', { redirect: 'manual' });
+
+        assert.equal(response.status, 301);
+        assert.equal(response.headers.get('location'), '/pixel?art=42');
+    });
+
     it('routes public profile paths through the Vue fallback', async () => {
         const { response, body } = await request('/users/normal-user');
 

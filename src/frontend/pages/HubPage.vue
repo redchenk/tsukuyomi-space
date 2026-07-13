@@ -102,7 +102,7 @@ const sceneLinks = computed(() => [
     label: '图库'
   },
   {
-    href: '/arena',
+    href: '/pixel',
     name: latestPixelArtwork.value?.title || props.t.arena || '月光像素工坊',
     desc: latestPixelArtwork.value
       ? `${latestPixelArtwork.value.author || '访客'} 发布于 ${formatPixelDate(latestPixelArtwork.value) || '近期'}`

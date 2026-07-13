@@ -15,7 +15,7 @@ const SEO_ROUTES = [
     { path: '/room', priority: '0.8', changefreq: 'weekly' },
     { path: '/gallery', priority: '0.8', changefreq: 'daily' },
     { path: '/reality', priority: '0.7', changefreq: 'weekly' },
-    { path: '/arena', priority: '0.7', changefreq: 'weekly' }
+    { path: '/pixel', priority: '0.7', changefreq: 'weekly' }
 ];
 
 const TOPIC_ROUTES = [
@@ -267,6 +267,12 @@ function serveStaticFiles(app) {
         next();
     });
 
+    app.get('/arena', (req, res) => {
+        const queryIndex = req.originalUrl.indexOf('?');
+        const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+        return res.redirect(301, `/pixel${query}`);
+    });
+
     if (useFrontendDist) {
         app.use(express.static(frontendDistRoot, { setHeaders: setStaticCacheHeaders }));
     }
@@ -281,7 +287,7 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/room/settings', '/room-settings', '/plaza', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/terminal', '/arena', '/arena/']);
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/room/settings', '/room-settings', '/plaza', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/terminal', '/pixel', '/pixel/']);
         if (vueRoutes.has(req.path) || req.path.startsWith('/users/')) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');

@@ -65,7 +65,7 @@ function notifyArtworkOwner({ artwork, actor }) {
         type: 'pixel_art_like',
         title: `${actorName(actor)} 点赞了你的像素画`,
         content: artwork.title,
-        link: `/arena?art=${artwork.id}#pixel-art-${artwork.id}`,
+        link: `/pixel?art=${artwork.id}#pixel-art-${artwork.id}`,
         metadata: {
             actorName: actorName(actor),
             artworkId: artwork.id
