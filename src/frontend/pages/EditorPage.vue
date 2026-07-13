@@ -15,7 +15,7 @@ const editorCoverInput = ref(null);
 const editorContentInput = ref(null);
 const editorAssetUploadInput = ref(null);
 const session = ref(getSession());
-const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
+const uploadAccept = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/flac,audio/wav,audio/ogg,audio/mp4,application/pdf,text/plain,text/markdown';
 
 const categories = [
   { value: '\u516c\u544a', labelKey: 'editorCatAnnouncement' },
@@ -273,6 +273,7 @@ function postJsonWithProgress(url, payload, headers, onProgress) {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', apiUrl(url));
     xhr.withCredentials = true;
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     Object.entries(headers || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
     });

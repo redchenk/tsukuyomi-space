@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const config = require('./config');
 const { initDatabase } = require('./db/migrations/init');
-const { securityHeaders, createRateLimiter } = require('./middleware/security');
+const { securityHeaders, createRateLimiter, isAllowedOrigin, requireTrustedWrite } = require('./middleware/security');
 const { serveStaticFiles } = require('./middleware/static');
 const { jsonParseError, errorHandler } = require('./middleware/error');
 
@@ -20,32 +20,13 @@ const pixelArtRoutes = require('./routes/pixel-art');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./user-routes');
 
-const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '200mb';
-
-function isAllowedOrigin(origin, req) {
-    if (!origin) return true;
-    if (config.corsOrigins.includes(origin)) return true;
-
-    try {
-        const originUrl = new URL(origin);
-        const requestHost = req.headers.host;
-        if (!requestHost) return false;
-        const requestHostname = requestHost.split(':')[0].toLowerCase();
-        const originHostname = originUrl.hostname.toLowerCase();
-        const siteHostname = new URL(config.publicSiteUrl).hostname.toLowerCase();
-        const isSameConfiguredSite = (hostname) => hostname === siteHostname || hostname.endsWith(`.${siteHostname}`);
-        return originUrl.host === requestHost
-            || originHostname === requestHostname
-            || (isSameConfiguredSite(originHostname) && isSameConfiguredSite(requestHostname));
-    } catch (_) {
-        return false;
-    }
-}
+const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '1mb';
 
 function createApp() {
     initDatabase();
 
     const app = express();
+    app.disable('x-powered-by');
     if (config.trustProxy) app.set('trust proxy', 1);
 
     app.use(securityHeaders);
@@ -57,6 +38,7 @@ function createApp() {
             credentials: true
         })(req, res, next);
     });
+    app.use('/api', requireTrustedWrite);
 
     // 分层限流：API 总量、认证入口、后台登录分别控制。
     app.use('/api/', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 600, keyPrefix: 'api' }));
@@ -72,6 +54,10 @@ function createApp() {
     app.use('/api/auth/', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 60, keyPrefix: 'auth' }));
     app.use('/api/auth/email-code', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'email-code' }));
     app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
+    app.use('/api/assets', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 80, keyPrefix: 'assets' }));
+    app.use('/api/chat', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'chat' }));
+    app.use('/api/tts', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' }));
+    app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
 
     // Parse message writes with a small cap before the much larger media-aware API parser.
     const messageIpLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: 'message-ip' });
@@ -79,9 +65,15 @@ function createApp() {
     app.use('/api/messages', express.json({ limit: '16kb' }));
     app.use('/api/messages', express.urlencoded({ limit: '16kb', extended: true }));
 
-    // Regular attachments can use data URLs; large media should be registered from OSS.
+    // Data URL routes get explicit caps; ordinary JSON remains small on the 2GB host.
+    app.use('/api/assets', express.json({ limit: '28mb' }));
+    app.use('/api/mcp', express.json({ limit: '6mb' }));
+    app.use('/api/chat', express.json({ limit: '8mb' }));
+    app.use('/api/tts', express.json({ limit: '12mb' }));
+    app.use('/api/articles', express.json({ limit: '12mb' }));
+    app.use('/api/user/avatar', express.json({ limit: '8mb' }));
     app.use(express.json({ limit: requestBodyLimit }));
-    app.use(express.urlencoded({ limit: requestBodyLimit, extended: true }));
+    app.use(express.urlencoded({ limit: '128kb', extended: true }));
     app.use(jsonParseError);
 
     serveStaticFiles(app);

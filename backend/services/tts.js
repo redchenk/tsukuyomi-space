@@ -9,6 +9,11 @@ const GPT_SOVITS_PROMPT_LANG = process.env.GPT_SOVITS_PROMPT_LANG || 'zh';
 const GPT_SOVITS_GPT_WEIGHT_PATH = process.env.GPT_SOVITS_GPT_WEIGHT_PATH || 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt';
 const GPT_SOVITS_SOVITS_WEIGHT_PATH = process.env.GPT_SOVITS_SOVITS_WEIGHT_PATH || 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth';
 const MINIMAX_DEFAULT_VOICE_ID = 'female-shaonv';
+const MAX_TTS_AUDIO_BYTES = 32 * 1024 * 1024;
+let loadedGptWeightPath = '';
+let loadedSovitsWeightPath = '';
+let gptSovitsQueue = Promise.resolve();
+let gptSovitsPending = 0;
 
 const ALLOWED_TTS_ENDPOINTS = [
     { hostname: 'api.xiaomimimo.com', path: /^\/v1\/chat\/completions\/?$/ },
@@ -70,9 +75,77 @@ function validateTtsUrl(url, provider) {
 function makeAudioBufferFromEncoded(value) {
     const text = String(value || '').replace(/^data:audio\/\w+;base64,/, '').trim();
     if (/^[0-9a-f]+$/i.test(text) && text.length % 2 === 0) {
-        return Buffer.from(text, 'hex');
+        const buffer = Buffer.from(text, 'hex');
+        if (buffer.length > MAX_TTS_AUDIO_BYTES) throw new Error('TTS 音频响应过大');
+        return buffer;
     }
-    return Buffer.from(text, 'base64');
+    const buffer = Buffer.from(text, 'base64');
+    if (buffer.length > MAX_TTS_AUDIO_BYTES) throw new Error('TTS 音频响应过大');
+    return buffer;
+}
+
+function fetchTts(url, options = {}) {
+    return fetch(url, {
+        ...options,
+        redirect: 'error',
+        signal: options.signal || AbortSignal.timeout(60000)
+    });
+}
+
+async function readAudioBuffer(response) {
+    const declaredLength = Number(response.headers.get('content-length') || 0);
+    if (declaredLength > MAX_TTS_AUDIO_BYTES) throw new Error('TTS 音频响应过大');
+    if (!response.body) return Buffer.alloc(0);
+    const reader = response.body.getReader();
+    const chunks = [];
+    let size = 0;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > MAX_TTS_AUDIO_BYTES) {
+            await reader.cancel().catch(() => {});
+            throw new Error('TTS 音频响应过大');
+        }
+        chunks.push(Buffer.from(value));
+    }
+    return Buffer.concat(chunks, size);
+}
+
+function runGptSovitsExclusive(task) {
+    if (gptSovitsPending >= 3) {
+        const error = new Error('本地语音服务正忙，请稍后重试');
+        error.status = 429;
+        throw error;
+    }
+    gptSovitsPending += 1;
+    const result = gptSovitsQueue.then(task, task);
+    gptSovitsQueue = result.catch(() => {});
+    return result.finally(() => {
+        gptSovitsPending = Math.max(0, gptSovitsPending - 1);
+    });
+}
+
+function managedResourcePath(value, { label, extensions, rootPattern = null }) {
+    const normalized = String(value || '').trim().replace(/\\/g, '/');
+    if (!normalized || normalized.length > 300 || normalized.startsWith('/') || /^[a-z]:/i.test(normalized)
+        || /^[a-z][a-z0-9+.-]*:/i.test(normalized) || normalized.split('/').some(part => !part || part === '.' || part === '..' || /[\u0000-\u001f\u007f]/.test(part))) {
+        const error = new Error(`${label}必须是受管理目录内的相对路径`);
+        error.status = 400;
+        throw error;
+    }
+    if (rootPattern && !rootPattern.test(normalized.split('/')[0])) {
+        const error = new Error(`${label}不在允许的权重目录中`);
+        error.status = 400;
+        throw error;
+    }
+    const extension = normalized.split('.').pop()?.toLowerCase();
+    if (!extensions.includes(extension)) {
+        const error = new Error(`${label}文件类型无效`);
+        error.status = 400;
+        throw error;
+    }
+    return normalized;
 }
 
 function makeProviderError(provider, status, body) {
@@ -159,25 +232,41 @@ function minimaxLanguageBoost(textLang) {
 
 async function loadGptSovitsWeights(baseUrl, gptWeightPath, sovitsWeightPath) {
     const url = new URL(baseUrl);
-    const gptPath = gptWeightPath || GPT_SOVITS_GPT_WEIGHT_PATH;
-    const sovitsPath = sovitsWeightPath || GPT_SOVITS_SOVITS_WEIGHT_PATH;
-    if (gptPath) {
+    const gptPath = managedResourcePath(gptWeightPath || GPT_SOVITS_GPT_WEIGHT_PATH, {
+        label: 'GPT 权重路径',
+        extensions: ['ckpt'],
+        rootPattern: /^GPT_weights(?:_|$)/i
+    });
+    const sovitsPath = managedResourcePath(sovitsWeightPath || GPT_SOVITS_SOVITS_WEIGHT_PATH, {
+        label: 'SoVITS 权重路径',
+        extensions: ['pth'],
+        rootPattern: /^SoVITS_weights(?:_|$)/i
+    });
+    if (gptPath && gptPath !== loadedGptWeightPath) {
         url.pathname = '/set_gpt_weights';
         url.search = '';
         url.searchParams.set('weights_path', gptPath);
-        const response = await fetch(url);
+        const response = await fetchTts(url);
         if (!response.ok) throw makeProviderError('GPT-SoVITS set_gpt_weights', response.status, await response.text());
+        loadedGptWeightPath = gptPath;
     }
-    if (sovitsPath) {
+    if (sovitsPath && sovitsPath !== loadedSovitsWeightPath) {
         url.pathname = '/set_sovits_weights';
         url.search = '';
         url.searchParams.set('weights_path', sovitsPath);
-        const response = await fetch(url);
+        const response = await fetchTts(url);
         if (!response.ok) throw makeProviderError('GPT-SoVITS set_sovits_weights', response.status, await response.text());
+        loadedSovitsWeightPath = sovitsPath;
     }
 }
 
 async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang, gptWeightPath, sovitsWeightPath }) {
+    const normalizedText = String(text || '').trim();
+    if (!normalizedText || normalizedText.length > 8000) {
+        const error = new Error('朗读文本长度必须在 1 到 8000 字之间');
+        error.status = 400;
+        throw error;
+    }
     const useProvider = provider || process.env.TTS_PROVIDER || 'mimo';
     const useApiKey = apiKey || TTS_API_KEY;
     const useVoice = voice || TTS_VOICE || (useProvider === 'gpt-sovits' ? '' : useProvider === 'minimax' ? MINIMAX_DEFAULT_VOICE_ID : useProvider === 'openai' || useProvider === 'openai-compatible' ? 'alloy' : 'mimo_default');
@@ -200,37 +289,49 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
     }
 
     if (useProvider === 'gpt-sovits') {
-        await loadGptSovitsWeights(useApiUrl, gptWeightPath, sovitsWeightPath);
-        const useRefAudioPath = refAudioPath || useVoice || GPT_SOVITS_REF_AUDIO_PATH;
-        if (!useRefAudioPath) {
-            const error = new Error('GPT-SoVITS 需要填写参考音频路径');
-            error.status = 400;
-            throw error;
-        }
-        const response = await fetch(useApiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                text: String(text),
-                text_lang: normalizeGptSovitsLang(textLang || model || GPT_SOVITS_TEXT_LANG, 'zh'),
-                ref_audio_path: useRefAudioPath,
-                prompt_text: promptText || promptAudio || GPT_SOVITS_PROMPT_TEXT,
-                prompt_lang: normalizeGptSovitsLang(promptLang || GPT_SOVITS_PROMPT_LANG, 'zh'),
-                text_split_method: 'cut5',
-                batch_size: 1,
-                media_type: 'wav',
-                streaming_mode: false,
-                parallel_infer: true
-            })
+        return runGptSovitsExclusive(async () => {
+            try {
+                await loadGptSovitsWeights(useApiUrl, gptWeightPath, sovitsWeightPath);
+                const useRefAudioPath = refAudioPath || useVoice || GPT_SOVITS_REF_AUDIO_PATH;
+                if (!useRefAudioPath) {
+                    const error = new Error('GPT-SoVITS 需要填写参考音频路径');
+                    error.status = 400;
+                    throw error;
+                }
+                const safeRefAudioPath = managedResourcePath(useRefAudioPath, {
+                    label: '参考音频路径',
+                    extensions: ['wav', 'mp3', 'flac', 'ogg', 'm4a']
+                });
+                const response = await fetchTts(useApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: normalizedText,
+                        text_lang: normalizeGptSovitsLang(textLang || model || GPT_SOVITS_TEXT_LANG, 'zh'),
+                        ref_audio_path: safeRefAudioPath,
+                        prompt_text: String(promptText || promptAudio || GPT_SOVITS_PROMPT_TEXT).slice(0, 2000),
+                        prompt_lang: normalizeGptSovitsLang(promptLang || GPT_SOVITS_PROMPT_LANG, 'zh'),
+                        text_split_method: 'cut5',
+                        batch_size: 1,
+                        media_type: 'wav',
+                        streaming_mode: false,
+                        parallel_infer: true
+                    })
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw makeProviderError('GPT-SoVITS', response.status, errorText);
+                }
+                return {
+                    audioBuffer: await readAudioBuffer(response),
+                    contentType: response.headers.get('content-type') || 'audio/wav'
+                };
+            } catch (error) {
+                loadedGptWeightPath = '';
+                loadedSovitsWeightPath = '';
+                throw error;
+            }
         });
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw makeProviderError('GPT-SoVITS', response.status, errorText);
-        }
-        return {
-            audioBuffer: Buffer.from(await response.arrayBuffer()),
-            contentType: response.headers.get('content-type') || 'audio/wav'
-        };
     }
 
     if (useProvider === 'mimo' || /xiaomimimo/i.test(useApiUrl)) {
@@ -238,14 +339,14 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
             model: useModel,
             messages: [
                 { role: 'user', content: ttsReadInstruction(text, textLang) },
-                { role: 'assistant', content: String(text) }
+                { role: 'assistant', content: normalizedText }
             ],
             modalities: ['audio'],
             audio: { format: 'wav', voice: useVoice }
         };
         if (promptAudio) requestBody.audio.prompt_audio = promptAudio;
 
-        const response = await fetch(useApiUrl, {
+        const response = await fetchTts(useApiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -270,28 +371,28 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
     if (useProvider === 'elevenlabs') {
         const baseUrl = useApiUrl.replace(/\/$/, '');
         const requestUrl = /\/text-to-speech\/[^/]+\/?$/i.test(baseUrl) ? baseUrl : `${baseUrl}/${encodeURIComponent(useVoice || '21m00Tcm4TlvDq8ikWAM')}`;
-        const response = await fetch(requestUrl, {
+        const response = await fetchTts(requestUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'xi-api-key': useApiKey },
-            body: JSON.stringify({ text: String(text), model_id: useModel })
+            body: JSON.stringify({ text: normalizedText, model_id: useModel })
         });
         if (!response.ok) {
             const errorText = await response.text();
             throw makeProviderError('ElevenLabs', response.status, errorText);
         }
         return {
-            audioBuffer: Buffer.from(await response.arrayBuffer()),
+            audioBuffer: await readAudioBuffer(response),
             contentType: response.headers.get('content-type') || 'audio/mpeg'
         };
     }
 
     if (useProvider === 'minimax') {
-        const response = await fetch(useApiUrl, {
+        const response = await fetchTts(useApiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${useApiKey}` },
             body: JSON.stringify({
                 model: useModel,
-                text: String(text),
+                text: normalizedText,
                 stream: false,
                 language_boost: minimaxLanguageBoost(textLang || 'ja'),
                 voice_setting: { voice_id: useVoice || MINIMAX_DEFAULT_VOICE_ID, speed: 1, vol: 1, pitch: 0 },
@@ -311,7 +412,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
         };
     }
 
-    const response = await fetch(useApiUrl, {
+    const response = await fetchTts(useApiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -319,7 +420,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
         },
         body: JSON.stringify({
             model: useModel,
-            input: String(text),
+            input: normalizedText,
             voice: useVoice,
             response_format: 'mp3',
             speed: 1.0
@@ -331,7 +432,7 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
     }
 
     return {
-        audioBuffer: Buffer.from(await response.arrayBuffer()),
+        audioBuffer: await readAudioBuffer(response),
         contentType: 'audio/mpeg'
     };
 }

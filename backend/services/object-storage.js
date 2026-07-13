@@ -1,6 +1,10 @@
 const crypto = require('crypto');
 const adminRepository = require('../repositories/admin-repository');
 const { attachmentDisposition } = require('./file-security');
+const { resolvePublicUrl } = require('./outbound-url-security');
+
+const MAX_OSS_PROXY_BYTES = 64 * 1024 * 1024;
+const MAX_OSS_LIST_BYTES = 2 * 1024 * 1024;
 
 function parseSettingValue(value) {
     if (value === 'true') return true;
@@ -60,6 +64,26 @@ function normalizeEndpoint(value) {
     } catch (_) {
         return null;
     }
+}
+
+function privateStorageAllowed() {
+    return process.env.ALLOW_PRIVATE_OBJECT_STORAGE_ENDPOINTS === 'true' || process.env.NODE_ENV !== 'production';
+}
+
+async function validateOutboundUrl(value) {
+    const url = value instanceof URL ? value : normalizeEndpoint(value);
+    if (!url || url.username || url.password || !['http:', 'https:'].includes(url.protocol)) throw new Error('对象存储地址无效');
+    if (process.env.ALLOW_INSECURE_OBJECT_STORAGE_ENDPOINTS !== 'true' && process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
+        throw new Error('生产环境对象存储地址必须使用 HTTPS');
+    }
+    if (!privateStorageAllowed()) await resolvePublicUrl(url.toString(), { protocols: ['https:'] });
+    return url;
+}
+
+async function validateSettingsUrls(settings = {}) {
+    if (String(settings.ossEndpoint || '').trim()) await validateOutboundUrl(settings.ossEndpoint);
+    if (String(settings.ossPublicBaseUrl || '').trim()) await validateOutboundUrl(settings.ossPublicBaseUrl);
+    return true;
 }
 
 function isIpHost(hostname) {
@@ -277,6 +301,7 @@ function normalizeExtraHeaders(headers = {}) {
 }
 
 async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', headers = {}, settings = null }) {
+    await validateOutboundUrl(url);
     if (settings && isAliyunProvider(settings)) {
         return aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body, contentType, headers, settings });
     }
@@ -325,7 +350,9 @@ async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, 
             'X-Amz-Date': requestDate,
             ...extraHeaders
         },
-        body: method === 'PUT' ? body : undefined
+        body: method === 'PUT' ? body : undefined,
+        redirect: 'error',
+        signal: AbortSignal.timeout(30000)
     });
 }
 
@@ -381,8 +408,30 @@ async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySe
             'X-Oss-Date': requestDate,
             ...normalizeExtraHeaders(headers)
         },
-        body: method === 'PUT' ? body : undefined
+        body: method === 'PUT' ? body : undefined,
+        redirect: 'error',
+        signal: AbortSignal.timeout(30000)
     });
+}
+
+async function readBodyLimited(response, maxBytes) {
+    const declaredLength = Number(response.headers.get('content-length') || 0);
+    if (declaredLength > maxBytes) throw new Error('对象存储响应过大');
+    if (!response.body) return Buffer.alloc(0);
+    const reader = response.body.getReader();
+    const chunks = [];
+    let size = 0;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > maxBytes) {
+            await reader.cancel().catch(() => {});
+            throw new Error('对象存储响应过大');
+        }
+        chunks.push(Buffer.from(value));
+    }
+    return Buffer.concat(chunks, size);
 }
 
 function textBetween(value, tag) {
@@ -437,7 +486,7 @@ async function fullObjectSlice({ objectKey, range, settings }) {
         settings
     });
     if (!response.ok) return null;
-    const buffer = Buffer.from(await response.arrayBuffer());
+    const buffer = await readBodyLimited(response, MAX_OSS_PROXY_BYTES);
     const parsed = parseByteRange(range, buffer.length);
     if (!parsed) {
         return {
@@ -482,7 +531,7 @@ async function listObjects({ prefix = '', maxKeys = 100, settings: providedSetti
         contentType: 'application/octet-stream',
         settings
     });
-    const text = await response.text().catch(() => '');
+    const text = (await readBodyLimited(response, MAX_OSS_LIST_BYTES)).toString('utf8');
     if (!response.ok) {
         throw new Error(`OSS list failed: HTTP ${response.status} ${text.slice(0, 160)}`);
     }
@@ -561,9 +610,9 @@ async function getObject(objectKey, { range = '', settings: providedSettings = n
         const text = await response.text().catch(() => '');
         throw new Error(`OSS get failed: HTTP ${response.status} ${text.slice(0, 160)}`);
     }
-    const arrayBuffer = await response.arrayBuffer();
+    const buffer = await readBodyLimited(response, MAX_OSS_PROXY_BYTES);
     return {
-        buffer: Buffer.from(arrayBuffer),
+        buffer,
         status: response.status,
         contentType: response.headers.get('content-type') || 'application/octet-stream',
         contentLength: response.headers.get('content-length') || '',
@@ -617,5 +666,7 @@ module.exports = {
     publicUrl,
     publicUrlForKey,
     putObject,
-    testWrite
+    testWrite,
+    validateOutboundUrl,
+    validateSettingsUrls
 };

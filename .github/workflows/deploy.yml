@@ -19,14 +19,39 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build:web
+      - run: npm run build:live2d
+      - run: npm run build:live2d-studio
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-dist
+          path: |
+            dist
+            lib/bundled/live2d-room-neuro-live.iife.js
+          if-no-files-found: error
 
   deploy:
     needs: check
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-dist
+
+      - name: Upload prebuilt frontend
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          source: dist,lib/bundled/live2d-room-neuro-live.iife.js
+          target: /var/www/tsukuyomi-space
+          overwrite: true
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -38,6 +63,4 @@ jobs:
             set -e
             cd /var/www/tsukuyomi-space
             git pull --ff-only
-            bash deploy/deploy.sh
-            nginx -t
-            systemctl reload nginx
+            INSTALL_NGINX_CONFIG=true bash deploy/deploy.sh

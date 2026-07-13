@@ -29,6 +29,7 @@ let baseUrl;
 function jsonHeaders(token) {
     return {
         'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
         ...(token ? authHeader(token) : {})
     };
 }
@@ -189,7 +190,7 @@ async function main() {
     assert.equal(getClientIp({
         socket: { remoteAddress: '127.0.0.1' },
         headers: { 'x-forwarded-for': '198.51.100.27, 203.0.113.20' }
-    }), '198.51.100.27');
+    }), '203.0.113.20');
 
     const health = await request('/api/health');
     assert.match(health.response.headers.get('content-security-policy') || '', /script-src 'self'/);

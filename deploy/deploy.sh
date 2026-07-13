@@ -5,6 +5,8 @@ APP_DIR="${APP_DIR:-/var/www/tsukuyomi-space}"
 ENV_DIR="${ENV_DIR:-/etc/tsukuyomi-space}"
 DATA_DIR="${DATA_DIR:-/var/lib/tsukuyomi-space}"
 LOG_DIR="${LOG_DIR:-/var/log/tsukuyomi-space}"
+APP_USER="${APP_USER:-tsukuyomi}"
+APP_GROUP="${APP_GROUP:-www-data}"
 ENV_FILE="$ENV_DIR/tsukuyomi-space.env"
 
 cd "$APP_DIR"
@@ -23,7 +25,7 @@ set -a
 set +a
 
 DB_FILE="${DB_PATH:-$DATA_DIR/tsukuyomi.db}"
-BACKUP_DIR="${BACKUP_DIR:-$DATA_DIR/backups}"
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/tsukuyomi-space/deploy}"
 BACKUP_STAMP="$(date +%Y%m%d-%H%M%S)"
 
 backup_sqlite() {
@@ -50,9 +52,48 @@ backup_sqlite() {
 
 backup_sqlite
 
-npm ci --omit=dev
-npm run build:web
-npm run build:live2d
-npm run build:live2d-studio
+if ! getent group "$APP_GROUP" >/dev/null; then
+    groupadd --system "$APP_GROUP"
+fi
+if ! id "$APP_USER" >/dev/null 2>&1; then
+    useradd --system --gid "$APP_GROUP" --home-dir "$DATA_DIR" --shell /usr/sbin/nologin "$APP_USER"
+fi
+
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 750 "$DATA_DIR" "$LOG_DIR" "$APP_DIR/assets/uploads"
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 700 "$DATA_DIR/mcp-home"
+chown -R "$APP_USER:$APP_GROUP" "$DATA_DIR" "$LOG_DIR" "$APP_DIR/assets/uploads"
+
+if [ "${INSTALL_DEPS:-false}" = "true" ]; then
+    npm install --omit=dev --ignore-scripts --no-audit --no-fund
+fi
+
+if [ "${BUILD_ON_SERVER:-false}" = "true" ]; then
+    npm run build:web
+    npm run build:live2d
+    npm run build:live2d-studio
+fi
+
+for output in dist/frontend/index.html lib/bundled/live2d-room-neuro-live.iife.js dist/live2d-studio/index.html; do
+    [ -f "$output" ] || { echo "Missing prebuilt artifact: $output" >&2; exit 1; }
+done
+
 pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 pm2 save
+
+if [ "${INSTALL_NGINX_CONFIG:-false}" = "true" ]; then
+    NGINX_SITE_PATH="${NGINX_SITE_PATH:-/etc/nginx/sites-available/tsukuyomi-space}"
+    NGINX_BACKUP="${NGINX_SITE_PATH}.predeploy"
+    cp -p "$NGINX_SITE_PATH" "$NGINX_BACKUP"
+    cp deploy/nginx.conf "${NGINX_SITE_PATH}.candidate"
+    if [ -f /etc/nginx/snippets/agent-os.conf ]; then
+        sed -i '/^[[:space:]]*server[[:space:]]*{/a\    include /etc/nginx/snippets/agent-os.conf;' "${NGINX_SITE_PATH}.candidate"
+    fi
+    mv "${NGINX_SITE_PATH}.candidate" "$NGINX_SITE_PATH"
+    if ! nginx -t; then
+        mv "$NGINX_BACKUP" "$NGINX_SITE_PATH"
+        nginx -t
+        exit 1
+    fi
+    rm -f "$NGINX_BACKUP"
+    systemctl reload nginx
+fi

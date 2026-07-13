@@ -42,6 +42,7 @@ let pixelArtworkId;
 function jsonHeaders(token) {
     return {
         'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
         ...(token ? authHeader(token) : {})
     };
 }
@@ -830,13 +831,18 @@ describe('room memory API', () => {
 });
 
 describe('MCP bridge API', () => {
-    it('lists MiniMax Token Plan MCP tools without proxying arbitrary URLs', async () => {
+    it('requires a session and lists only the fixed MiniMax tools', async () => {
+        const anonymous = await postJson('/api/mcp/token-plan', {
+            jsonrpc: '2.0', id: 0, method: 'tools/list', params: {}
+        });
+        assert.equal(anonymous.response.status, 401);
+
         const { response, body } = await postJson('/api/mcp/token-plan', {
             jsonrpc: '2.0',
             id: 1,
             method: 'tools/list',
             params: {}
-        });
+        }, userToken);
 
         assert.equal(response.status, 200);
         assert.equal(body.jsonrpc, '2.0');
@@ -851,7 +857,7 @@ describe('MCP bridge API', () => {
             id: 2,
             method: 'resources/list',
             params: {}
-        });
+        }, userToken);
         assert.equal(unsupportedMethod.response.status, 400);
         assert.equal(unsupportedMethod.body.error.code, -32601);
 
@@ -864,7 +870,7 @@ describe('MCP bridge API', () => {
                 arguments: { url: 'https://example.com' },
                 meta: { auth: { api_key: 'test-key' } }
             }
-        });
+        }, userToken);
         assert.equal(unsupportedTool.response.status, 400);
         assert.equal(unsupportedTool.body.error.code, -32602);
     });
@@ -1001,6 +1007,73 @@ describe('chat API endpoint allowlist', () => {
             assert.equal(body.success, false);
             assert.match(body.message, /LLM API/);
         }
+    });
+});
+
+describe('request and upload security', () => {
+    it('rejects cookie writes without the CSRF request header', async () => {
+        const loggedIn = await postJson('/api/auth/login', {
+            username: 'normal-user',
+            password: 'user-test-password'
+        });
+        const cookie = authCookieFrom(loggedIn.response);
+        const result = await request('/api/auth/logout', {
+            method: 'POST',
+            headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        assert.equal(result.response.status, 403);
+        assert.equal(result.body.code, 'CSRF_REJECTED');
+    });
+
+    it('does not trust arbitrary yachiyo.hk subdomains for CORS', async () => {
+        const result = await request('/api/health', {
+            headers: { Origin: 'https://attacker.yachiyo.hk' }
+        });
+        assert.equal(result.response.headers.get('access-control-allow-origin'), null);
+    });
+
+    it('rejects executable or mismatched uploads for users and admins', async () => {
+        const phpBytes = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.from('<?php echo 1; ?>')]);
+        const payload = {
+            dataUrl: `data:image/jpeg;base64,${phpBytes.toString('base64')}`,
+            fileName: 'avatar.php',
+            mimeType: 'image/jpeg',
+            storage: 'local'
+        };
+        const userUpload = await postJson('/api/assets', payload, userToken);
+        const adminUpload = await postJson('/api/assets', payload, adminToken);
+        assert.equal(userUpload.response.status, 400);
+        assert.equal(adminUpload.response.status, 400);
+
+        const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+        const svgUpload = await postJson('/api/assets', {
+            dataUrl: `data:image/svg+xml;base64,${svg.toString('base64')}`,
+            fileName: 'payload.svg',
+            mimeType: 'image/svg+xml'
+        }, userToken);
+        assert.equal(svgUpload.response.status, 400);
+    });
+
+    it('rejects active avatar data URLs', async () => {
+        const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+        const result = await postJson('/api/user/avatar', {
+            avatar: `data:image/svg+xml;base64,${svg.toString('base64')}`
+        }, userToken);
+        assert.equal(result.response.status, 400);
+    });
+
+    it('rejects GPT-SoVITS path traversal before contacting the local service', async () => {
+        const result = await postJson('/api/tts', {
+            text: '测试',
+            provider: 'gpt-sovits',
+            apiUrl: 'http://127.0.0.1:9880/tts',
+            refAudioPath: 'reference_audio/yachiyo.wav',
+            gptWeightPath: '../payload.ckpt',
+            sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth'
+        });
+        assert.equal(result.response.status, 400);
+        assert.match(result.body.message, /相对路径|权重路径/);
     });
 });
 

@@ -15,7 +15,7 @@ router.post('/', async (req, res) => {
         res.set('Content-Length', audioBuffer.length);
         res.send(audioBuffer);
     } catch (error) {
-        console.error('TTS API error:', error);
+        if (!error.status || error.status >= 500) console.error('TTS API error:', error);
         res.status(error.status || 500).json({ success: false, message: error.message || '操作失败' });
     }
 });

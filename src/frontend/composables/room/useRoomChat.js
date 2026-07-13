@@ -559,7 +559,7 @@ function fileToDataUrl(file) {
 }
 
 async function postJson(path, payload) {
-  const response = await apiFetch(path, {
+  const response = await authFetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -606,9 +606,17 @@ function mcpResultText(result) {
 
 async function callMcpTool(settings, name, args = {}) {
   if (!settings.enabled || !settings.endpoint || !mcpToolAllowed(settings, name)) return '';
-  const response = await fetch(settings.endpoint, {
+  const localTokenPlan = settings.endpoint === '/api/mcp/token-plan';
+  const headers = makeMcpHeaders(settings);
+  if (localTokenPlan) {
+    Object.keys(headers).forEach((key) => {
+      if (key.toLowerCase() === 'authorization') delete headers[key];
+    });
+  }
+  const request = localTokenPlan ? authFetch : fetch;
+  const response = await request(settings.endpoint, {
     method: 'POST',
-    headers: makeMcpHeaders(settings),
+    headers,
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: Date.now(),

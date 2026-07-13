@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const net = require('net');
+const config = require('../config');
 const store = require('../services/redis-store');
 
 const CONTENT_SECURITY_POLICY = [
@@ -29,6 +30,53 @@ function securityHeaders(req, res, next) {
     next();
 }
 
+function normalizedOrigin(value) {
+    try {
+        const url = new URL(String(value || ''));
+        return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password ? url.origin : '';
+    } catch (_) {
+        return '';
+    }
+}
+
+function trustedOrigins() {
+    const origins = new Set(config.corsOrigins.map(normalizedOrigin).filter(Boolean));
+    const publicOrigin = normalizedOrigin(config.publicSiteUrl);
+    const oauthOrigin = normalizedOrigin(config.oauthRedirectBaseUrl);
+    if (publicOrigin) origins.add(publicOrigin);
+    if (oauthOrigin) origins.add(oauthOrigin);
+    if (publicOrigin) {
+        const url = new URL(publicOrigin);
+        if (url.hostname === 'yachiyo.hk') origins.add(`${url.protocol}//www.yachiyo.hk${url.port ? `:${url.port}` : ''}`);
+    }
+    return origins;
+}
+
+function isAllowedOrigin(origin, req = null) {
+    if (!origin) return true;
+    const normalized = normalizedOrigin(origin);
+    if (!normalized) return false;
+    if (trustedOrigins().has(normalized)) return true;
+    if (!config.isProduction && req?.headers?.host) {
+        return normalized === `${req.protocol || 'http'}://${req.headers.host}`;
+    }
+    return false;
+}
+
+function requireTrustedWrite(req, res, next) {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(String(req.method || '').toUpperCase())) return next();
+    if (req.path === '/stats/view' || /^\/stats\/view\//.test(req.path)) return next();
+    if (/^Bearer\s+\S+$/i.test(String(req.headers.authorization || ''))) return next();
+
+    const fetchSite = String(req.headers['sec-fetch-site'] || '').toLowerCase();
+    const origin = String(req.headers.origin || '');
+    const requestedWith = String(req.headers['x-requested-with'] || '');
+    if (fetchSite === 'cross-site' || (origin && !isAllowedOrigin(origin, req)) || requestedWith !== 'XMLHttpRequest') {
+        return res.status(403).json({ success: false, message: '请求来源校验失败', code: 'CSRF_REJECTED' });
+    }
+    next();
+}
+
 function normalizeIp(value) {
     let candidate = String(value || '').trim();
     if (!candidate) return '';
@@ -45,14 +93,19 @@ function isLoopback(value) {
 }
 
 function getClientIp(req) {
+    const frameworkIp = normalizeIp(req?.ip);
+    if (frameworkIp && !isLoopback(frameworkIp)) return frameworkIp;
     const directIp = normalizeIp(req?.socket?.remoteAddress || req?.connection?.remoteAddress);
-    if (!isLoopback(directIp)) return directIp || 'unknown';
+    if (directIp && !isLoopback(directIp)) return directIp;
 
+    const realIp = normalizeIp(req?.headers?.['x-real-ip']);
+    if (realIp) return realIp;
     const forwarded = String(req?.headers?.['x-forwarded-for'] || '')
         .split(',')
         .map(normalizeIp)
-        .find(Boolean);
-    return forwarded || normalizeIp(req?.headers?.['x-real-ip']) || directIp || 'unknown';
+        .filter(Boolean)
+        .pop();
+    return forwarded || directIp || 'unknown';
 }
 
 function rateLimitKey(prefix, identity) {
@@ -105,5 +158,7 @@ module.exports = {
     CONTENT_SECURITY_POLICY,
     securityHeaders,
     createRateLimiter,
-    getClientIp
+    getClientIp,
+    isAllowedOrigin,
+    requireTrustedWrite
 };

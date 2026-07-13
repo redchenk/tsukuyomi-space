@@ -79,6 +79,7 @@ function postJsonWithProgress(url, payload, headers, onProgress) {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', apiUrl(url));
     xhr.withCredentials = true;
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     Object.entries(headers || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
     });

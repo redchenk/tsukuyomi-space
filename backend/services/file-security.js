@@ -1,18 +1,38 @@
 const path = require('path');
 
-const DANGEROUS_USER_EXTENSIONS = new Set(['svg', 'html', 'htm', 'js', 'mjs', 'cjs', 'json', 'zip']);
-const DANGEROUS_USER_MIME_TYPES = new Set([
-    'image/svg+xml',
-    'text/html',
-    'application/xhtml+xml',
-    'application/javascript',
-    'text/javascript',
-    'application/ecmascript',
-    'text/ecmascript',
-    'application/json',
-    'application/zip',
-    'application/x-zip-compressed'
+const MAX_USER_UPLOAD_BYTES = 20 * 1024 * 1024;
+const SAFE_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const ALLOWED_USER_MIME_TYPES = new Set([
+    ...SAFE_IMAGE_MIME_TYPES,
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'audio/mpeg',
+    'audio/flac',
+    'audio/wav',
+    'audio/ogg',
+    'audio/mp4',
+    'application/pdf',
+    'text/plain',
+    'text/markdown'
 ]);
+const ALLOWED_EXTENSIONS_BY_MIME = {
+    'image/jpeg': new Set(['jpg', 'jpeg']),
+    'image/png': new Set(['png']),
+    'image/gif': new Set(['gif']),
+    'image/webp': new Set(['webp']),
+    'video/mp4': new Set(['mp4', 'm4v']),
+    'video/webm': new Set(['webm']),
+    'video/quicktime': new Set(['mov']),
+    'audio/mpeg': new Set(['mp3']),
+    'audio/flac': new Set(['flac']),
+    'audio/wav': new Set(['wav']),
+    'audio/ogg': new Set(['ogg']),
+    'audio/mp4': new Set(['m4a']),
+    'application/pdf': new Set(['pdf']),
+    'text/plain': new Set(['txt']),
+    'text/markdown': new Set(['md', 'markdown'])
+};
 
 function cleanMime(value = '') {
     return String(value || '').split(';')[0].trim().toLowerCase();
@@ -66,20 +86,42 @@ function detectMimeFromMagic(buffer, fallback = '') {
         if (sample.startsWith('<svg') || sample.includes('<svg')) return 'image/svg+xml';
         return cleanMime(fallback).startsWith('text/') ? cleanMime(fallback) : 'text/plain';
     }
-    return cleanMime(fallback) || 'application/octet-stream';
+    return 'application/octet-stream';
 }
 
-function validateUserUpload({ buffer, fileName = '', claimedMimeType = '', allowDangerous = false } = {}) {
+function uploadError(message, status = 400) {
+    const error = new Error(message);
+    error.status = status;
+    return error;
+}
+
+function validateUserUpload({ buffer, fileName = '', claimedMimeType = '' } = {}) {
+    if (!Buffer.isBuffer(buffer) || !buffer.length) throw uploadError('文件内容为空');
+    if (buffer.length > MAX_USER_UPLOAD_BYTES) throw uploadError('文件不能超过 20MB', 413);
+
     const ext = extensionFromName(fileName);
     const claimedMime = cleanMime(claimedMimeType);
     const detectedMime = detectMimeFromMagic(buffer, claimedMime);
-    if (!allowDangerous) {
-        if (DANGEROUS_USER_EXTENSIONS.has(ext) || DANGEROUS_USER_MIME_TYPES.has(claimedMime) || DANGEROUS_USER_MIME_TYPES.has(detectedMime)) {
-            const error = new Error('This file type is not allowed for normal users.');
-            error.status = 400;
-            throw error;
+
+    if (!ALLOWED_USER_MIME_TYPES.has(detectedMime)) {
+        throw uploadError('不支持此文件类型');
+    }
+
+    if (claimedMime && !ALLOWED_USER_MIME_TYPES.has(claimedMime)) {
+        throw uploadError('文件声明类型不受支持');
+    }
+
+    if (ext) {
+        const detectedExtensions = ALLOWED_EXTENSIONS_BY_MIME[detectedMime] || new Set();
+        const claimedExtensions = ALLOWED_EXTENSIONS_BY_MIME[claimedMime] || new Set();
+        const safeImageTranscode = SAFE_IMAGE_MIME_TYPES.has(detectedMime)
+            && SAFE_IMAGE_MIME_TYPES.has(claimedMime)
+            && claimedExtensions.has(ext);
+        if (!detectedExtensions.has(ext) && !safeImageTranscode) {
+            throw uploadError('文件扩展名与内容类型不匹配');
         }
     }
+
     return {
         ext,
         claimedMimeType: claimedMime,
@@ -94,6 +136,9 @@ function attachmentDisposition(fileName = 'attachment') {
 }
 
 module.exports = {
+    ALLOWED_USER_MIME_TYPES,
+    MAX_USER_UPLOAD_BYTES,
+    SAFE_IMAGE_MIME_TYPES,
     cleanMime,
     detectMimeFromMagic,
     validateUserUpload,

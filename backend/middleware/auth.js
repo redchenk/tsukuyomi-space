@@ -57,7 +57,7 @@ function isSecureRequest(req) {
     if (req?.secure || forwardedProto === 'https') return true;
     try {
         const publicUrl = new URL(config.publicSiteUrl);
-        const host = String(req?.headers?.['x-forwarded-host'] || req?.headers?.host || '').split(',')[0].trim().split(':')[0].toLowerCase();
+        const host = String(req?.headers?.host || '').split(',')[0].trim().split(':')[0].toLowerCase();
         return publicUrl.protocol === 'https:' && host === publicUrl.hostname.toLowerCase();
     } catch (_) {
         return false;

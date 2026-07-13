@@ -9,7 +9,7 @@ const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
 const responseCache = require('../services/response-cache');
 const { setPublicReadCache } = require('../services/public-cache');
-const { attachmentDisposition } = require('../services/file-security');
+const { attachmentDisposition, cleanMime, MAX_USER_UPLOAD_BYTES } = require('../services/file-security');
 const { parsePositiveInt } = require('../validators');
 
 const router = express.Router();
@@ -39,6 +39,20 @@ const MIME_BY_EXT = {
 };
 const SKIP_SCAN_KEYS = /(^|\/)(?:\.|__MACOSX)|\/$/;
 const ASSET_URL_TTL_SECONDS = 30 * 60;
+const BROWSER_PREVIEW_MIME_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'audio/mpeg',
+    'audio/flac',
+    'audio/wav',
+    'audio/ogg',
+    'audio/mp4'
+]);
 
 function ok(res, data = null, message = '操作成功') {
     res.json({ success: true, message, data });
@@ -67,25 +81,6 @@ function signedAssetUrl(assetId) {
 
 function durableAssetUrl(assetId) {
     return `/api/assets/proxy/${encodeURIComponent(assetId)}`;
-}
-
-async function canUseRedirectUrl(url) {
-    if (!url) return false;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { Range: 'bytes=0-0' },
-            signal: controller.signal
-        });
-        response.body?.cancel?.();
-        return response.ok || response.status === 206 || response.status === 304;
-    } catch (_) {
-        return false;
-    } finally {
-        clearTimeout(timer);
-    }
 }
 
 function currentOssPublicUrl(asset) {
@@ -127,7 +122,7 @@ function isAdminUser(user) {
 }
 
 function inferMimeType(objectKey, provided = '') {
-    const clean = String(provided || '').trim();
+    const clean = cleanMime(provided);
     if (clean) return clean.slice(0, 120);
     const ext = String(objectKey || '').split('?')[0].split('.').pop()?.toLowerCase() || '';
     return MIME_BY_EXT[ext] || 'application/octet-stream';
@@ -150,11 +145,30 @@ function parsePositiveSize(value) {
 }
 
 function parseDataUrl(value = '') {
-    const match = String(value || '').match(/^data:([^;,]+);base64,([\s\S]+)$/i);
+    if (typeof value !== 'string' || value.length > Math.ceil(MAX_USER_UPLOAD_BYTES * 4 / 3) + 1024) {
+        const error = new Error('文件不能超过 20MB');
+        error.status = 413;
+        throw error;
+    }
+    const match = value.match(/^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/i);
     if (!match) return null;
+    const encoded = match[2].replace(/\s/g, '');
+    if (!encoded || encoded.length % 4 === 1 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) return null;
+    const padding = encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0;
+    if (Math.floor(encoded.length * 3 / 4) - padding > MAX_USER_UPLOAD_BYTES) {
+        const error = new Error('文件不能超过 20MB');
+        error.status = 413;
+        throw error;
+    }
+    const buffer = Buffer.from(encoded, 'base64');
+    if (buffer.length > MAX_USER_UPLOAD_BYTES) {
+        const error = new Error('文件不能超过 20MB');
+        error.status = 413;
+        throw error;
+    }
     return {
-        mimeType: match[1].toLowerCase(),
-        buffer: Buffer.from(match[2].replace(/\s/g, ''), 'base64')
+        mimeType: cleanMime(match[1]),
+        buffer
     };
 }
 
@@ -203,12 +217,21 @@ function canDeleteLocal(storageKey) {
     return key.startsWith('assets/uploads/');
 }
 
-function deleteLocalFile(storageKey) {
-    if (!canDeleteLocal(storageKey)) return;
-    const target = path.resolve(config.projectRoot, storageKey);
+function resolveLocalUpload(storageKey) {
+    if (!canDeleteLocal(storageKey)) return '';
     const root = path.resolve(config.projectRoot, 'assets', 'uploads');
-    if (!target.startsWith(root)) return;
-    fs.rmSync(target, { force: true });
+    const target = path.resolve(config.projectRoot, storageKey);
+    const relative = path.relative(root, target);
+    if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) return '';
+    return target;
+}
+
+function deleteLocalFile(storageKey) {
+    const target = resolveLocalUpload(storageKey);
+    if (!target || !fs.existsSync(target)) return;
+    const stat = fs.lstatSync(target);
+    if (!stat.isFile() || stat.isSymbolicLink()) return;
+    fs.unlinkSync(target);
 }
 
 function assetFileName(asset, metadata = {}) {
@@ -216,23 +239,30 @@ function assetFileName(asset, metadata = {}) {
 }
 
 function setAttachmentHeaders(res, asset, metadata = {}) {
-    res.setHeader('Content-Type', asset.mime_type || 'application/octet-stream');
+    res.setHeader('Content-Type', cleanMime(asset.mime_type) || 'application/octet-stream');
     res.setHeader('Content-Disposition', attachmentDisposition(assetFileName(asset, metadata)));
     res.setHeader('X-Content-Type-Options', 'nosniff');
 }
 
 function isBrowserPreviewMedia(asset) {
-    const mimeType = String(asset?.mime_type || '').toLowerCase();
-    return mimeType.startsWith('image/') || mimeType.startsWith('video/') || mimeType.startsWith('audio/');
+    return BROWSER_PREVIEW_MIME_TYPES.has(cleanMime(asset?.mime_type));
 }
 
 function streamLocalAsset(req, res, asset, metadata = {}) {
-    if (!canDeleteLocal(asset.storage_key)) return fail(res, 404, 'Attachment not found');
-    const root = path.resolve(config.projectRoot, 'assets', 'uploads');
-    const target = path.resolve(config.projectRoot, asset.storage_key);
-    if (!target.startsWith(root) || !fs.existsSync(target)) return fail(res, 404, 'Attachment not found');
-
-    const stat = fs.statSync(target);
+    const target = resolveLocalUpload(asset.storage_key);
+    if (!target || !fs.existsSync(target)) return fail(res, 404, 'Attachment not found');
+    const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0);
+    let fd;
+    try {
+        fd = fs.openSync(target, flags);
+    } catch (_) {
+        return fail(res, 404, 'Attachment not found');
+    }
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile()) {
+        fs.closeSync(fd);
+        return fail(res, 404, 'Attachment not found');
+    }
     const range = String(req.headers.range || '');
     setAttachmentHeaders(res, asset, metadata);
     res.setHeader('Accept-Ranges', 'bytes');
@@ -246,18 +276,20 @@ function streamLocalAsset(req, res, asset, metadata = {}) {
             res.status(206);
             res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
             res.setHeader('Content-Length', end - start + 1);
-            return fs.createReadStream(target, { start, end }).pipe(res);
+            return fs.createReadStream(target, { fd, autoClose: true, start, end }).pipe(res);
         }
     }
 
     res.setHeader('Content-Length', stat.size);
-    return fs.createReadStream(target).pipe(res);
+    return fs.createReadStream(target, { fd, autoClose: true }).pipe(res);
 }
 
 async function streamOssAsset(req, res, asset, metadata) {
     if (isBrowserPreviewMedia(asset)) {
         const redirectUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
             expiresSeconds: 6 * 60 * 60,
+            contentType: cleanMime(asset.mime_type),
+            contentDisposition: attachmentDisposition(assetFileName(asset, metadata)).replace(/^attachment/, 'inline'),
             preferPublicBase: true
         });
         if (redirectUrl) {
@@ -497,13 +529,12 @@ router.post('/', authenticateToken, async (req, res) => {
             fileName: String(fileName || '').trim(),
             storage: objectStorage.normalizeStorageMode(storage),
             collection: targetCollection,
-            allowDangerous: isAdminUser(req.user)
         });
         if (!asset) return fail(res, 400, '文件格式无效');
         if (targetCollection === 'gallery') clearPublicGalleryCache();
         ok(res, normalizeAsset(asset, { signUrl: true }), '附件已上传');
     } catch (error) {
-        console.error('Upload asset failed:', error);
+        if (!error.status || error.status >= 500) console.error('Upload asset failed:', error);
         fail(res, error.status || 500, error.status ? error.message : '附件上传失败');
     }
 });

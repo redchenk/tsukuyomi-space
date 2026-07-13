@@ -27,7 +27,7 @@ const state = reactive({
 
 const isAuthed = computed(() => Boolean(session.value));
 const canManageAllAssets = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
-const uploadAccept = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf,text/plain,text/markdown,application/zip,application/json';
+const uploadAccept = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/flac,audio/wav,audio/ogg,audio/mp4,application/pdf,text/plain,text/markdown';
 
 function syncDefaultScope() {
   state.scope = canManageAllAssets.value && route.query.scope === 'all' ? 'all' : 'mine';
@@ -47,6 +47,7 @@ function postJsonWithProgress(url, payload, headers, onProgress) {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', apiUrl(url));
     xhr.withCredentials = true;
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     Object.entries(headers || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
     });

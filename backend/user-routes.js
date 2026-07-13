@@ -11,6 +11,7 @@ const articleMedia = require('./services/article-media');
 const responseCache = require('./services/response-cache');
 const { articlePath } = require('./seo/render-article');
 const { publicEmail } = require('./validators');
+const { validateAvatar } = require('./utils/avatar');
 
 const { authenticateToken, optionalAuth } = require('./middleware/auth');
 
@@ -249,7 +250,7 @@ router.get('/profile', authenticateToken, (req, res) => {
 // 鏇存柊鐢ㄦ埛璧勬枡
 router.put('/profile', authenticateToken, (req, res) => {
     try {
-        const { bio } = req.body;
+        const bio = String(req.body?.bio || '').trim().slice(0, 500);
 
         userRepository.updateBio(req.user.id, bio);
         res.json({ success: true, message: '操作成功' });
@@ -268,16 +269,17 @@ router.post('/avatar', authenticateToken, (req, res) => {
             return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
-        userRepository.updateAvatar(req.user.id, avatar);
+        const safeAvatar = validateAvatar(avatar);
+        userRepository.updateAvatar(req.user.id, safeAvatar);
 
         res.json({
             success: true,
-            message: '操作失败',
-            data: { avatar }
+            message: '操作成功',
+            data: { avatar: safeAvatar }
         });
     } catch (error) {
-        console.error('涓婁紶澶村儚澶辫触:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        if (!error.status || error.status >= 500) console.error('涓婁紶澶村儚澶辫触:', error);
+        res.status(error.status || 500).json({ success: false, message: error.status ? error.message : '服务器错误' });
     }
 });
 

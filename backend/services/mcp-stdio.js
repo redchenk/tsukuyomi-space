@@ -1,12 +1,18 @@
 const { spawn } = require('child_process');
+const os = require('os');
 
 const DEFAULT_PROTOCOL_VERSION = '2024-11-05';
 
-function createMessageParser(onMessage) {
+function createMessageParser(onMessage, onOverflow = () => {}) {
     let buffer = '';
 
     return (chunk) => {
         buffer += chunk.toString('utf8');
+        if (Buffer.byteLength(buffer, 'utf8') > 1024 * 1024) {
+            buffer = '';
+            onOverflow();
+            return;
+        }
         let newlineIndex = buffer.indexOf('\n');
         while (newlineIndex !== -1) {
             const line = buffer.slice(0, newlineIndex).trim();
@@ -31,9 +37,18 @@ function requestOverStdio({
     timeoutMs = 30000
 }) {
     return new Promise((resolve, reject) => {
+        const childEnv = {
+            PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
+            HOME: process.env.MINIMAX_MCP_HOME || os.tmpdir(),
+            LANG: process.env.LANG || 'C.UTF-8',
+            ...env
+        };
         const child = spawn(command, args, {
-            env: { ...process.env, ...env },
-            stdio: ['pipe', 'pipe', 'pipe']
+            env: childEnv,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            shell: false,
+            windowsHide: true,
+            detached: process.platform !== 'win32'
         });
         let nextId = 1;
         let stderr = '';
@@ -44,7 +59,12 @@ function requestOverStdio({
             if (settled) return;
             settled = true;
             clearTimeout(timer);
-            child.kill();
+            try {
+                if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, 'SIGKILL');
+                else child.kill();
+            } catch (_) {
+                child.kill();
+            }
             if (error) reject(error);
             else resolve(result);
         };
@@ -75,10 +95,10 @@ function requestOverStdio({
             } else {
                 handlers.resolve(message.result);
             }
-        }));
+        }, () => finish(new Error('MCP process output exceeded 1MB'))));
 
         child.stderr.on('data', (chunk) => {
-            stderr += chunk.toString('utf8');
+            stderr = (stderr + chunk.toString('utf8')).slice(-64 * 1024);
         });
 
         child.on('error', (error) => {

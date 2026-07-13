@@ -279,10 +279,10 @@ async function saveUserImageAsset(dataUrl, { ownerId, alt = '', fileName = '', s
     `).get(asset.id);
 }
 
-async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octet-stream', fileName = '', alt = '', storage = 'auto', uploadPath = '', allowDangerous = false, collection = '' } = {}) {
+async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octet-stream', fileName = '', alt = '', storage = 'auto', uploadPath = '', collection = '' } = {}) {
     if (!ownerId || !Buffer.isBuffer(buffer) || !buffer.length) return null;
     const id = crypto.randomUUID();
-    const inspection = validateUserUpload({ buffer, fileName, claimedMimeType: mimeType, allowDangerous });
+    const inspection = validateUserUpload({ buffer, fileName, claimedMimeType: mimeType });
     const normalizedMimeType = normalizeAssetMimeType({ fileName, mimeType: inspection.trustedMimeType });
     const ext = EXT_BY_MIME[normalizedMimeType] || normalizeAssetExt({ fileName, mimeType: normalizedMimeType });
     const normalizedAssetType = assetTypeFromMime(normalizedMimeType);

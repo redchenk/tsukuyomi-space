@@ -80,15 +80,16 @@ async function testPublicResourceUrl(publicBaseUrl) {
     const timeout = setTimeout(() => controller.abort(), 8000);
     const startedAt = Date.now();
     try {
+        await objectStorage.validateOutboundUrl(publicBaseUrl);
         let response = await fetch(publicBaseUrl, {
             method: 'HEAD',
-            redirect: 'follow',
+            redirect: 'error',
             signal: controller.signal
         });
         if (response.status === 405 || response.status === 403) {
             response = await fetch(publicBaseUrl, {
                 method: 'GET',
-                redirect: 'follow',
+                redirect: 'error',
                 signal: controller.signal
             });
         }
@@ -521,7 +522,7 @@ router.get('/settings', (req, res) => {
     }
 });
 
-router.post('/settings', (req, res) => {
+router.post('/settings', async (req, res) => {
     try {
         const allowed = [
             'siteTitle',
@@ -552,11 +553,12 @@ router.post('/settings', (req, res) => {
             'ossFileNameMode',
             'ossForcePathStyle'
         ];
+        await objectStorage.validateSettingsUrls(req.body || {});
         adminRepository.saveSettings(req.body, allowed);
         ok(res, null, '配置已保存');
     } catch (error) {
         console.error('Admin settings save error:', error);
-        fail(res, 500, '无法保存系统配置');
+        fail(res, error.message?.includes('对象存储') || error.message?.includes('HTTPS') || error.message?.includes('禁止访问') ? 400 : 500, '无法保存系统配置：对象存储地址不安全或无效');
     }
 });
 

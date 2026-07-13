@@ -20,9 +20,15 @@ module.exports = {
             name: 'tsukuyomi-api',
             script: 'backend/server.js',
             cwd: '/var/www/tsukuyomi-space',
+            uid: 'tsukuyomi',
+            gid: 'www-data',
             instances: 1,
             exec_mode: 'fork',
-            env: loadEnv('/etc/tsukuyomi-space/tsukuyomi-space.env'),
+            env: {
+                ...loadEnv('/etc/tsukuyomi-space/tsukuyomi-space.env'),
+                HOME: '/var/lib/tsukuyomi-space',
+                MINIMAX_MCP_HOME: '/var/lib/tsukuyomi-space/mcp-home'
+            },
             max_memory_restart: '300M',
             error_file: '/var/log/tsukuyomi-space/error.log',
             out_file: '/var/log/tsukuyomi-space/out.log',

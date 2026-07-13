@@ -113,15 +113,23 @@ export function authHeaders(extra = {}) {
   return { ...extra };
 }
 
+function secureApiOptions(url, options = {}) {
+  const method = String(options.method || 'GET').toUpperCase();
+  if (['GET', 'HEAD', 'OPTIONS'].includes(method) || !String(url || '').startsWith('/api')) return options;
+  const headers = new Headers(options.headers || {});
+  headers.set('X-Requested-With', 'XMLHttpRequest');
+  return { ...options, headers };
+}
+
 export function authFetch(url, options = {}) {
   return fetch(apiUrl(url), {
-    ...options,
+    ...secureApiOptions(url, options),
     credentials: options.credentials || 'include'
   });
 }
 
 export function apiFetch(url, options = {}) {
-  return fetch(apiUrl(url), options);
+  return fetch(apiUrl(url), secureApiOptions(url, options));
 }
 
 export function apiBeacon(url, data) {
