@@ -1,4 +1,5 @@
 const config = require('../config');
+const { safeJsonForHtml, sanitizeRenderedHtml } = require('../services/html-sanitizer');
 
 const SITE_NAME = '月读空间';
 const DEFAULT_DESCRIPTION = '月读空间是一个融合文章、留言广场、Live2D 房间与互动工具的二次元个人站。';
@@ -21,16 +22,6 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
     return escapeHtml(value).replace(/`/g, '&#96;');
-}
-
-function sanitizeRenderedHtml(html) {
-    return String(html || '')
-        .replace(/<\s*\/?\s*(script|style|object|embed|link|meta|base|form|input|button|textarea|select|option|svg|math)\b[^>]*>/gi, '')
-        .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-        .replace(/\s+srcdoc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-        .replace(/\s+style\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-        .replace(/\s+(href|src|poster|xlink:href)\s*=\s*(["'])\s*(?:javascript|vbscript):[\s\S]*?\2/gi, '')
-        .replace(/\s+(href|src|poster|xlink:href)\s*=\s*(?:javascript|vbscript):[^\s>]+/gi, '');
 }
 
 function sanitizeMarkdownUrl(value) {
@@ -459,7 +450,7 @@ function renderArticleHtml(article) {
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
-  <script type="application/ld+json">${JSON.stringify(articleSchema(article))}</script>
+  <script type="application/ld+json">${safeJsonForHtml(articleSchema(article))}</script>
   <style>
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#24324a;background:#f7fbff;line-height:1.78}
     main{width:min(860px,calc(100% - 32px));margin:48px auto;padding:32px;border:1px solid rgba(132,167,205,.35);border-radius:24px;background:rgba(255,255,255,.84);box-shadow:0 24px 80px rgba(79,109,150,.14)}
@@ -523,7 +514,7 @@ function renderStageHtml(articles = []) {
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:url" content="${escapeHtml(url)}">
   <meta property="og:image" content="${escapeHtml(DEFAULT_IMAGE)}">
-  <script type="application/ld+json">${JSON.stringify({
+  <script type="application/ld+json">${safeJsonForHtml({
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
         name: title,
@@ -627,7 +618,7 @@ function renderTopicLandingHtml(topic, articles = [], galleryAssets = []) {
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(topic.description)}">
   <meta name="twitter:image" content="${escapeHtml(primaryImage)}">
-  <script type="application/ld+json">${JSON.stringify(schema)}</script>
+  <script type="application/ld+json">${safeJsonForHtml(schema)}</script>
   <style>
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#24324a;background:#f6f9ff;line-height:1.72}
     main{width:min(1120px,calc(100% - 32px));margin:48px auto}.hero,.section{padding:30px;border:1px solid rgba(132,167,205,.32);border-radius:24px;background:rgba(255,255,255,.84);box-shadow:0 24px 80px rgba(79,109,150,.13)}.section{margin-top:22px}
@@ -705,7 +696,7 @@ function renderGalleryHtml(assets = []) {
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(primaryImage)}">
-  <script type="application/ld+json">${JSON.stringify({
+  <script type="application/ld+json">${safeJsonForHtml({
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
         name: title,

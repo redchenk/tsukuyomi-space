@@ -24,12 +24,11 @@ const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '200mb';
 
 function isAllowedOrigin(origin, req) {
     if (!origin) return true;
-    if (config.corsOrigins.length === 0 || config.corsOrigins.includes(origin)) return true;
+    if (config.corsOrigins.includes(origin)) return true;
 
     try {
         const originUrl = new URL(origin);
-        const forwardedHost = req.headers['x-forwarded-host'];
-        const requestHost = forwardedHost || req.headers.host;
+        const requestHost = req.headers.host;
         if (!requestHost) return false;
         const requestHostname = requestHost.split(':')[0].toLowerCase();
         const originHostname = originUrl.hostname.toLowerCase();
@@ -71,7 +70,14 @@ function createApp() {
     });
 
     app.use('/api/auth/', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 60, keyPrefix: 'auth' }));
+    app.use('/api/auth/email-code', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'email-code' }));
     app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
+
+    // Parse message writes with a small cap before the much larger media-aware API parser.
+    const messageIpLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: 'message-ip' });
+    app.use('/api/messages', (req, res, next) => req.method === 'POST' ? messageIpLimiter(req, res, next) : next());
+    app.use('/api/messages', express.json({ limit: '16kb' }));
+    app.use('/api/messages', express.urlencoded({ limit: '16kb', extended: true }));
 
     // Regular attachments can use data URLs; large media should be registered from OSS.
     app.use(express.json({ limit: requestBodyLimit }));

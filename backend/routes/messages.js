@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
+const { createRateLimiter } = require('../middleware/security');
 const messageRepository = require('../repositories/message-repository');
 const notificationRepository = require('../repositories/notification-repository');
 const articleRepository = require('../repositories/article-repository');
@@ -10,6 +11,26 @@ const responseCache = require('../services/response-cache');
 const { setPublicReadCache } = require('../services/public-cache');
 
 const router = express.Router();
+const messageWriteLimiter = createRateLimiter({
+    windowMs: 10 * 60 * 1000,
+    max: 12,
+    keyPrefix: 'message-account',
+    keyGenerator: req => req.user?.id || 'anonymous'
+});
+
+function rejectInvalidContent(res, review) {
+    const messages = {
+        EMPTY_CONTENT: '留言内容不能为空',
+        INVALID_CONTENT: '留言格式无效',
+        CONTENT_TOO_LONG: '留言不能超过 2000 字',
+        ACTIVE_MARKUP: '留言包含不安全的活动内容'
+    };
+    return res.status(422).json({
+        success: false,
+        message: messages[review.code] || '留言内容无效',
+        code: review.code || 'INVALID_CONTENT'
+    });
+}
 
 function actorName(user) {
     return user?.username || '访客';
@@ -116,20 +137,18 @@ router.get('/topics', (req, res) => {
     }
 });
 
-router.post('/', authenticateToken, (req, res) => {
+router.post('/', authenticateToken, messageWriteLimiter, (req, res) => {
     try {
-        const { content, article_id } = req.body;
-        if (!content) {
-            return res.status(400).json({ success: false, message: '留言内容不能为空' });
-        }
+        const { content, article_id } = req.body || {};
+        const review = reviewMessageContent(content);
+        if (!review.accepted) return rejectInvalidContent(res, review);
         if (article_id && !articleRepository.findPublishedArticleById(article_id)) {
             return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         }
 
-        const review = reviewMessageContent(content);
         const newMessage = messageRepository.createMessage({
             author: req.user.username,
-            content,
+            content: review.content,
             userId: req.user.id,
             articleId: article_id || null,
             status: review.status
@@ -186,13 +205,12 @@ router.post('/:id/like', authenticateToken, (req, res) => {
     }
 });
 
-router.post('/:id/reply', authenticateToken, (req, res) => {
+router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => {
     try {
         const messageId = req.params.id;
-        const { content } = req.body;
-        if (!content) {
-            return res.status(400).json({ success: false, message: '回复内容不能为空' });
-        }
+        const { content } = req.body || {};
+        const review = reviewMessageContent(content);
+        if (!review.accepted) return rejectInvalidContent(res, review);
 
         const originalMessage = messageRepository.findApprovedMessageById(messageId);
         if (!originalMessage) {
@@ -202,10 +220,9 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
             return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         }
 
-        const review = reviewMessageContent(content);
         const newMessage = messageRepository.createMessage({
             author: req.user.username,
-            content,
+            content: review.content,
             userId: req.user.id,
             parentId: messageId,
             articleId: originalMessage.article_id || null,
@@ -220,7 +237,7 @@ router.post('/:id/reply', authenticateToken, (req, res) => {
                 actor: req.user,
                 type: 'reply',
                 title: `${actorName(req.user)} 回复了你的${messageNoun(originalMessage)}`,
-                content,
+                content: review.content,
                 relatedMessageId: newMessage.id
             });
             notifyMentions({ message: newMessage, actor: req.user });

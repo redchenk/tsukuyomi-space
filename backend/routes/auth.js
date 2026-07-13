@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
 const {
     authenticateToken,
@@ -52,6 +51,7 @@ function userResponse(user) {
 }
 
 function setUserLoginSession(req, res, user) {
+    if (user?.role === 'banned') throw httpError(403, '账号已停用');
     const token = issueTokenForUser(user);
     clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
     setAuthCookie(req, res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
@@ -128,6 +128,10 @@ async function verifyUserLogin({ username, password, emailCode, loginMethod }) {
         }
     }
 
+    if (user.role === 'banned') {
+        throw httpError(403, '账号已停用');
+    }
+
     await authState.clearLoginFailures(identity);
     return user;
 }
@@ -146,7 +150,7 @@ function compactOAuthProfile(profile) {
 
 function oauthAccountFromProfile(profile, userId) {
     return {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         userId,
         provider: profile.provider,
         providerUserId: profile.providerUserId,
@@ -194,7 +198,7 @@ function oauthPlaceholderEmail(provider, providerUserId) {
 }
 
 function createUserFromOAuthProfile(profile, preferredUsername = '') {
-    const userId = uuidv4();
+    const userId = crypto.randomUUID();
     const username = uniqueUsername(preferredUsername || profile.nickname, profile.providerUserId);
     const email = profile.email && !authRepository.findUserByEmail(profile.email)
         ? profile.email
@@ -311,7 +315,7 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ success: false, message: '验证码无效或已过期' });
         }
 
-        const userId = uuidv4();
+        const userId = crypto.randomUUID();
         authRepository.createUser({ id: userId, username, email, passwordHash: bcrypt.hashSync(password, 10) });
 
         const token = generateToken({ id: userId, username, role: 'user' }, '7d');

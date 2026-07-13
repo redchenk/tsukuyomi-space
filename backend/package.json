@@ -10,14 +10,19 @@
     "test": "npm run check"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
     "better-sqlite3": "^9.4.3",
-    "uuid": "^9.0.0"
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "sanitize-html": "^2.17.6"
   },
-  "keywords": ["tsukuyomi", "api", "backend", "tts"],
+  "keywords": [
+    "tsukuyomi",
+    "api",
+    "backend",
+    "tts"
+  ],
   "author": "redchenk",
   "license": "MIT"
 }

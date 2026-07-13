@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const config = require('../config');
 const authState = require('../services/auth-state');
+const authRepository = require('../repositories/auth-repository');
 
 const USER_SESSION_COOKIE = 'tsukuyomi_session';
 const ADMIN_SESSION_COOKIE = 'tsukuyomi_admin_session';
@@ -87,6 +88,13 @@ function clearAllAuthCookies(req, res) {
     clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
 }
 
+function currentUserForClaims(claims) {
+    if (claims?.scope === 'admin') return claims;
+    const user = authRepository.findCurrentUserById(claims?.id);
+    if (!user || user.role === 'banned') return null;
+    return { ...claims, id: user.id, username: user.username, role: user.role };
+}
+
 async function authenticateToken(req, res, next) {
     const token = readAuthToken(req);
 
@@ -107,7 +115,16 @@ async function authenticateToken(req, res, next) {
             });
         }
 
-        req.user = jwt.verify(token, config.jwtSecret);
+        const claims = jwt.verify(token, config.jwtSecret);
+        req.user = currentUserForClaims(claims);
+        if (!req.user) {
+            clearAllAuthCookies(req, res);
+            return res.status(403).json({
+                success: false,
+                message: '账号已停用',
+                code: 'ACCOUNT_DISABLED'
+            });
+        }
         next();
     } catch (err) {
         if (err.name === 'TokenExpiredError') {
@@ -152,7 +169,7 @@ async function optionalAuth(req, res, next) {
 
     try {
         if (!(await authState.isTokenBlacklisted(token))) {
-            req.user = jwt.verify(token, config.jwtSecret);
+            req.user = currentUserForClaims(jwt.verify(token, config.jwtSecret)) || undefined;
         }
     } catch (_) {
         // Optional auth deliberately ignores invalid tokens.

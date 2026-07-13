@@ -20,6 +20,8 @@ process.env.ENABLE_FRONTEND_DIST = 'false';
 
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
+const { generateToken } = require('../backend/middleware/auth');
+const { getClientIp } = require('../backend/middleware/security');
 
 let server;
 let baseUrl;
@@ -105,6 +107,33 @@ async function main() {
     assert.ok(safeVisible);
     assert.equal(safeVisible.content, safeContent);
 
+    const attackPayloads = [
+        '<script>alert(1)</script>',
+        '<img src=x onerror=alert(1)>',
+        '%3Csvg%20onload%3Dalert(1)%3E',
+        '&#x3c;iframe srcdoc="<script>alert(1)</script>">',
+        '&#999999999999999999999;<img src=x onerror=alert(1)>',
+        '<a href="java\nscript:alert(1)">click</a>',
+        "{{constructor.constructor('alert(1)')()}}"
+    ];
+    for (const content of attackPayloads) {
+        const blocked = await postJson('/api/messages', { content }, userToken);
+        assert.equal(blocked.response.status, 422);
+        assert.equal(blocked.body.success, false);
+        assert.ok(['ACTIVE_MARKUP', 'CONTENT_TOO_LONG'].includes(blocked.body.code));
+        assert.equal(db.prepare('SELECT COUNT(*) AS count FROM messages WHERE content = ?').get(content).count, 0);
+    }
+
+    const harmlessAngleText = await postJson('/api/messages', { content: '今天也很开心 <3' }, userToken);
+    assert.equal(harmlessAngleText.response.status, 201);
+
+    const tooLong = await postJson('/api/messages', { content: 'x'.repeat(2001) }, userToken);
+    assert.equal(tooLong.response.status, 422);
+    assert.equal(tooLong.body.code, 'CONTENT_TOO_LONG');
+
+    const parseLimited = await postJson('/api/messages', { content: 'x'.repeat(20 * 1024) }, userToken);
+    assert.equal(parseLimited.response.status, 413);
+
     const riskyContent = `moderation-check-${Date.now()} 诈骗`;
     const riskyCreateRes = await postJson('/api/messages', { content: riskyContent }, userToken);
     assert.equal(riskyCreateRes.response.status, 201);
@@ -134,7 +163,38 @@ async function main() {
     assert.equal(visible.status, 'approved');
     assert.equal(visible.content, riskyContent);
 
-    console.log('message moderation flow ok');
+    db.prepare(`
+        INSERT INTO users (id, username, email, password_hash, role)
+        VALUES (?, ?, ?, ?, ?)
+    `).run('banned-user', 'banned-user', 'banned@example.test', bcrypt.hashSync('banned-password', 10), 'banned');
+    const staleBannedToken = generateToken({ id: 'banned-user', username: 'banned-user', role: 'user' });
+    const blockedSession = await request('/api/auth/me', { headers: jsonHeaders(staleBannedToken) });
+    assert.equal(blockedSession.response.status, 403);
+    assert.equal(blockedSession.body.code, 'ACCOUNT_DISABLED');
+    const blockedLogin = await postJson('/api/auth/login', { username: 'banned-user', password: 'banned-password' });
+    assert.equal(blockedLogin.response.status, 403);
+
+    db.prepare(`
+        INSERT INTO users (id, username, email, password_hash, role)
+        VALUES (?, ?, ?, ?, ?)
+    `).run('rate-user', 'rate-user', 'rate@example.test', bcrypt.hashSync('rate-password', 10), 'user');
+    const rateToken = generateToken({ id: 'rate-user', username: 'rate-user', role: 'user' });
+    for (let index = 0; index < 12; index += 1) {
+        const accepted = await postJson('/api/messages', { content: `rate-limit-${index}` }, rateToken);
+        assert.equal(accepted.response.status, 201);
+    }
+    const rateLimited = await postJson('/api/messages', { content: 'rate-limit-blocked' }, rateToken);
+    assert.equal(rateLimited.response.status, 429);
+
+    assert.equal(getClientIp({
+        socket: { remoteAddress: '127.0.0.1' },
+        headers: { 'x-forwarded-for': '198.51.100.27, 203.0.113.20' }
+    }), '198.51.100.27');
+
+    const health = await request('/api/health');
+    assert.match(health.response.headers.get('content-security-policy') || '', /script-src 'self'/);
+
+    console.log('message security and moderation flow ok');
 }
 
 main()
