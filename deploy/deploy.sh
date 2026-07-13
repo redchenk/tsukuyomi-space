@@ -91,8 +91,11 @@ harden_app_permissions() {
 
 harden_app_permissions
 
-if [ "${INSTALL_DEPS:-false}" = "true" ]; then
-    npm install --omit=dev --ignore-scripts --no-audit --no-fund
+if [ "${INSTALL_DEPS:-false}" = "true" ] || ! npm ls --omit=dev --depth=0 >/dev/null 2>&1; then
+    echo "Production dependencies are missing or out of date; installing with a single worker."
+    npm_config_jobs="${npm_config_jobs:-1}" \
+        NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=384}" \
+        npm install --omit=dev --ignore-scripts --no-audit --no-fund
 fi
 
 if [ "${BUILD_ON_SERVER:-false}" = "true" ]; then
