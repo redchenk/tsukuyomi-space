@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const adminRepository = require('../repositories/admin-repository');
 const { attachmentDisposition } = require('./file-security');
-const { resolvePublicUrl } = require('./outbound-url-security');
+const { fetchPinnedUrl, resolvePublicUrl } = require('./outbound-url-security');
 
 const MAX_OSS_PROXY_BYTES = 64 * 1024 * 1024;
 const MAX_OSS_LIST_BYTES = 2 * 1024 * 1024;
@@ -84,6 +84,15 @@ async function validateSettingsUrls(settings = {}) {
     if (String(settings.ossEndpoint || '').trim()) await validateOutboundUrl(settings.ossEndpoint);
     if (String(settings.ossPublicBaseUrl || '').trim()) await validateOutboundUrl(settings.ossPublicBaseUrl);
     return true;
+}
+
+async function fetchOutbound(value, options = {}) {
+    const url = await validateOutboundUrl(value);
+    if (privateStorageAllowed()) return fetch(url, options);
+    return fetchPinnedUrl(url.toString(), {
+        ...options,
+        protocols: ['https:']
+    });
 }
 
 function isIpHost(hostname) {
@@ -301,7 +310,6 @@ function normalizeExtraHeaders(headers = {}) {
 }
 
 async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', headers = {}, settings = null }) {
-    await validateOutboundUrl(url);
     if (settings && isAliyunProvider(settings)) {
         return aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body, contentType, headers, settings });
     }
@@ -341,7 +349,7 @@ async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, 
     const signature = hmac(signingKey(accessKeySecret, scopeDate, region), stringToSign, 'hex');
     const authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
-    return fetch(url, {
+    return fetchOutbound(url, {
         method,
         headers: {
             Authorization: authorization,
@@ -399,7 +407,7 @@ async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySe
     authorizationParts.push(`Signature=${signature}`);
     const authorization = `OSS4-HMAC-SHA256 ${authorizationParts.join(',')}`;
 
-    return fetch(url, {
+    return fetchOutbound(url, {
         method,
         headers: {
             Authorization: authorization,
@@ -655,6 +663,7 @@ module.exports = {
     buildObjectKey,
     buildRequestUrl,
     deleteObject,
+    fetchOutbound,
     getObject,
     getSettings,
     hasUploadParams,

@@ -1,5 +1,8 @@
 const dns = require('dns').promises;
+const http = require('http');
+const https = require('https');
 const net = require('net');
+const { Readable } = require('stream');
 const ipaddr = require('ipaddr.js');
 
 function isPrivateAddress(value = '') {
@@ -45,7 +48,60 @@ function pinnedLookup(records = []) {
     };
 }
 
+async function fetchPinnedUrl(value, {
+    method = 'GET',
+    headers = {},
+    body,
+    signal,
+    timeoutMs = 30000,
+    redirect = 'error',
+    protocols = ['https:'],
+    allowedHostnames = []
+} = {}) {
+    const { url, records } = await resolvePublicUrl(value, { protocols, allowedHostnames });
+    const transport = url.protocol === 'https:' ? https : http;
+    const payload = body === undefined || body === null
+        ? null
+        : (Buffer.isBuffer(body) ? body : Buffer.from(body));
+    const requestHeaders = { 'Accept-Encoding': 'identity', ...headers };
+    if (payload && !Object.keys(requestHeaders).some(key => key.toLowerCase() === 'content-length')) {
+        requestHeaders['Content-Length'] = String(payload.length);
+    }
+
+    return new Promise((resolve, reject) => {
+        const request = transport.request(url, {
+            method,
+            headers: requestHeaders,
+            lookup: pinnedLookup(records),
+            signal
+        }, (incoming) => {
+            const status = incoming.statusCode || 502;
+            if (redirect === 'error' && status >= 300 && status < 400) {
+                incoming.resume();
+                reject(new Error('外部地址不允许重定向'));
+                return;
+            }
+
+            const responseHeaders = new Headers();
+            for (let index = 0; index < incoming.rawHeaders.length; index += 2) {
+                responseHeaders.append(incoming.rawHeaders[index], incoming.rawHeaders[index + 1]);
+            }
+            const noBody = method.toUpperCase() === 'HEAD' || status === 204 || status === 304;
+            resolve(new Response(noBody ? null : Readable.toWeb(incoming), {
+                status,
+                statusText: incoming.statusMessage || '',
+                headers: responseHeaders
+            }));
+        });
+        request.setTimeout(timeoutMs, () => request.destroy(new Error('外部请求超时')));
+        request.on('error', reject);
+        if (payload) request.write(payload);
+        request.end();
+    });
+}
+
 module.exports = {
+    fetchPinnedUrl,
     isPrivateAddress,
     pinnedLookup,
     resolvePublicUrl

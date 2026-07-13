@@ -4,15 +4,15 @@ Audit date: 2026-07-13
 
 Scope: Node.js/Express API, Vue frontend, SQLite repositories, file uploads, MCP/TTS integrations, Nginx, PM2, CI/CD, and the production upload inventory.
 
-Baseline: `891e31b` plus the hardening changes documented here.
+Baseline: `f7a63f0` plus the hardening changes documented here.
 
 ## Executive summary
 
-The review found several high-impact weaknesses in the upload and deployment boundaries. The most important issues were trusting client-provided file metadata, serving files from the repository root, accepting attacker-selected outbound destinations, and exposing an MCP subprocess to unnecessary environment secrets and local file paths. These paths have been closed in the current change set.
+The review found several high-impact weaknesses in the upload, authorization, and deployment boundaries. The most important issues were trusting client-provided file metadata, bypassing private-asset authorization through static URLs, leaving production source writable by the service account, retaining privileged sessions after password changes, accepting attacker-selected outbound destinations, and exposing an MCP subprocess to unnecessary environment secrets and local file paths. These paths have been closed in the current change set.
 
 The production upload inventory was preserved before remediation using a consistent SQLite backup, database metadata export, MIME inspection, and SHA-256 manifest. The inventory contained 612 files and 611 database records. The inspected files were 607 JPEG images, two WAV files, one MP4, one MP3, and one PDF; no executable or active-content extension was found. This does not replace future malware scanning, but there was no confirmed malicious binary in the retained inventory.
 
-No exploitable SQL injection, XXE, or JSONP endpoint was found. Existing XSS defenses were retained and extended by removing active file formats from the same-origin upload surface. Remaining operational work is listed at the end, especially credential rotation and removal of the shared parent-domain session cookie when cross-subdomain login is no longer required.
+No exploitable SQL injection, command injection, XXE, or JSONP endpoint was found. Existing XSS defenses were retained and extended by removing active file formats from the same-origin upload surface and rejecting unsafe persisted link URLs. Remaining operational work is listed at the end, especially credential rotation and removal of the shared parent-domain session cookie when cross-subdomain login is no longer required.
 
 ## Findings
 
@@ -93,7 +93,7 @@ Evidence: `backend/services/tts.js:12`, `backend/services/tts.js:88`, `backend/s
 
 Severity: High
 
-Status: Fixed with one low residual risk
+Status: Fixed
 
 Administrator-supplied object-storage endpoints and MCP image URLs could cause the server to contact attacker-selected destinations. That creates access to loopback services, cloud metadata endpoints, and internal networks.
 
@@ -102,12 +102,11 @@ Remediation:
 - Require HTTPS in production unless a deliberate environment override is set.
 - Reject credentials in URLs and block loopback, private, link-local, carrier-grade NAT, multicast, documentation, mapped IPv4, NAT64, 6to4, Teredo, and other non-unicast ranges.
 - Resolve every DNS answer and reject the host if any answer is non-public.
+- Pin production object-storage and connectivity-test sockets to the validated DNS records while preserving TLS hostname verification.
 - Restrict MiniMax API hosts to an exact allowlist and pin validated image-download DNS answers.
 - Disable automatic redirects and bound object-storage list/proxy responses.
 
-Evidence: `backend/services/outbound-url-security.js:5`, `backend/services/outbound-url-security.js:19`, `backend/services/outbound-url-security.js:39`, `backend/services/object-storage.js:67`, `backend/services/object-storage.js:83`, `backend/services/object-storage.js:417`, `backend/admin-routes.js:79`, `backend/admin-routes.js:556`, `backend/routes/mcp.js:55`, `tests/security-hardening.test.js:50`.
-
-Residual risk: Node's object-storage `fetch` validates DNS immediately before the request but does not pin the validated answer. A hostile authoritative DNS server may attempt a narrow rebinding race. The MCP image downloader does pin DNS and is not affected. Replacing the object-storage transport with a pinned connection dispatcher would remove this residual risk.
+Evidence: `backend/services/outbound-url-security.js:19`, `backend/services/outbound-url-security.js:51`, `backend/services/object-storage.js:73`, `backend/services/object-storage.js:89`, `backend/services/object-storage.js:352`, `backend/admin-routes.js:129`, `backend/routes/mcp.js:55`, `tests/security-hardening.test.js:50`.
 
 Reference: [OWASP SSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)
 
@@ -149,23 +148,24 @@ Remediation:
 
 Evidence: `backend/app.js:23`, `backend/app.js:65`, `backend/app.js:69`, `backend/services/object-storage.js:6`, `backend/services/object-storage.js:417`, `backend/services/tts.js:12`, `backend/services/tts.js:95`, `backend/routes/mcp.js:188`, `deploy/ecosystem.config.cjs:26`.
 
-### SEC-08: Overprivileged production process and public inner proxy
+### SEC-08: Overprivileged production process, writable source, and public inner proxy
 
 Severity: High
 
 Status: Fixed in deployment configuration
 
-The Node.js process previously ran as root, and the inner Nginx listener was reachable on all interfaces. An application-level compromise would therefore have had unnecessary host privileges and an alternate path around the public reverse proxy.
+The Node.js process previously ran as root, the inner Nginx listener was reachable on all interfaces, and much of the deployed worktree was group/world writable. An application-level compromise could therefore modify backend source or deployment scripts for persistence and had an alternate path around the public reverse proxy.
 
 Remediation:
 
 - Run the API as the system account `tsukuyomi` with group `www-data`.
 - Grant write access only to the database/data, log, MCP home, and upload directories.
+- Make application source, dependencies, deployment scripts, and built artifacts root-owned and non-writable by the service account; keep `.git` mode `0700/0600` and set runtime/deploy umask `027`.
 - Bind the inner Nginx listener to `127.0.0.1:3280` and preserve only the trusted outer proxy's client IP/protocol values.
 - Build in CI or locally and deploy prebuilt artifacts; server-side dependency installation and builds are opt-in.
 - Back up SQLite before each deployment and validate Nginx before replacing the live configuration.
 
-Evidence: `deploy/ecosystem.config.cjs:23`, `deploy/deploy.sh:31`, `deploy/deploy.sh:59`, `deploy/deploy.sh:62`, `deploy/deploy.sh:66`, `deploy/deploy.sh:70`, `deploy/deploy.sh:80`, `deploy/deploy.sh:83`, `deploy/nginx.conf:2`, `.github/workflows/deploy.yml:19`, `.github/workflows/deploy.yml:27`.
+Evidence: `deploy/ecosystem.config.cjs:23`, `deploy/deploy.sh:3`, `deploy/deploy.sh:69`, `deploy/deploy.sh:92`, `deploy/deploy.sh:108`, `backend/server.js:3`, `deploy/nginx.conf:2`, `.github/workflows/deploy.yml:19`.
 
 Reference: [Express production performance and reliability](https://expressjs.com/en/advanced/best-practice-performance/)
 
@@ -217,20 +217,74 @@ Status: No JSONP endpoint found
 
 No API reads a callback parameter or emits executable JavaScript responses. API responses remain JSON and CORS is handled centrally with an exact origin policy.
 
+### SEC-14: Private local-asset authorization bypass
+
+Severity: High
+
+Status: Fixed
+
+Nginx and Express previously served `/assets/uploads/*` directly. The asset proxy enforced owner, administrator, public-visibility, signed-URL, and published-article checks, but a caller who learned the local storage URL could bypass those checks.
+
+Remediation:
+
+- Rewrite every local upload request to `/api/assets/local/*`; the upload tree is no longer a public static directory.
+- Resolve the storage key through the asset database and apply the same authorization policy used by the ID-based proxy.
+- Return proxy URLs from asset APIs while preserving published legacy article URLs through the authenticated rewrite.
+- Treat an asset as publicly referenced only when a published article links its ID, article relationship, proxy URL, or exact stored URL.
+
+Evidence: `deploy/nginx.conf:172`, `backend/middleware/static.js:283`, `backend/routes/assets.js:124`, `backend/routes/assets.js:508`, `backend/repositories/asset-repository.js:140`, `tests/api.test.js:1058`.
+
+### SEC-15: Stale privileged sessions and infrastructure-admin overreach
+
+Severity: High
+
+Status: Fixed
+
+JWTs previously trusted embedded administrator claims for up to 24 hours, and user sessions remained valid after password reset. Ordinary administrators could also read or modify object-storage credentials and invoke infrastructure network tests/imports.
+
+Remediation:
+
+- Bind each JWT to an HMAC-derived credential version and re-read the current account and role on every authenticated request.
+- Invalidate existing user or administrator tokens immediately after a password change, reset, deletion, ban, or missing account; role changes take effect without waiting for expiry.
+- Restrict OSS endpoint changes, network tests, registration, and scans to `super_admin`; ordinary administrators receive only site-presentation settings.
+- Treat the OSS secret as write-only: it is never returned to the browser, a blank save preserves the stored value, and connectivity tests merge it only on the server.
+- Reject credential-bearing or non-HTTP(S) friend-link URLs before persistence and neutralize unsafe legacy values on read.
+
+Evidence: `backend/middleware/auth.js:92`, `backend/middleware/auth.js:105`, `backend/middleware/auth.js:195`, `backend/admin-routes.js:26`, `backend/admin-routes.js:90`, `backend/admin-routes.js:566`, `backend/admin-routes.js:592`, `backend/routes/assets.js:431`, `tests/api.test.js:1170`.
+
+### SEC-16: Container escape and default-credential exposure
+
+Severity: High
+
+Status: Fixed with a documented residual
+
+The container image made `/app` writable by the Node user, published application and Milvus ports on every host interface, and allowed known default MinIO credentials. These defaults expanded persistence and lateral-movement options after an application compromise.
+
+Remediation:
+
+- Keep image source root-owned, make the application root filesystem read-only, mount only data/uploads as writable, drop all application capabilities, and set `no-new-privileges`.
+- Bind host-published application and Milvus ports to `127.0.0.1`.
+- Require explicit Milvus MinIO credentials rather than falling back to `minioadmin`.
+- Apply `no-new-privileges` to Redis, etcd, MinIO, and Milvus containers.
+
+Residual: the upstream Milvus standalone configuration still uses `seccomp:unconfined`. It is isolated to the private Compose network, its optional host port is loopback-only, and `no-new-privileges` is enabled, but removing the setting requires a compatibility test against the deployed Milvus version.
+
+Evidence: `Dockerfile:47`, `docker-compose.yml:10`, `docker-compose.yml:57`, `docker-compose.yml:100`, `docker-compose.yml:116`, `tests/security-hardening.test.js:96`.
+
 ## Remaining operational actions
 
 1. Rotate the JWT signing secret, administrator credentials, OAuth/SMTP credentials, Redis credentials, and external provider keys in a coordinated maintenance window. Secret values are intentionally omitted from this report. Rotating the JWT secret signs out all current sessions.
 2. Remove `AUTH_COOKIE_DOMAIN=.yachiyo.hk` and use host-only cookies when cross-subdomain sessions are no longer required. A shared parent-domain cookie increases the impact of any future sibling-subdomain compromise.
 3. Add asynchronous antivirus or content-disarm scanning if uploads expand beyond the current allowlist or become publicly writable at higher volume.
-4. Add a pinned DNS dispatcher for object-storage requests to eliminate the remaining DNS rebinding window.
+4. Compatibility-test Milvus with its default seccomp profile and remove `seccomp:unconfined` if startup, indexing, and search remain healthy.
 5. Keep the forensic upload snapshot and SQLite backup under root-only permissions according to the retention policy; do not publish the contained user metadata.
 
 ## Verification completed before release
 
-- API/security suite: 55 tests passed in the final full run.
-- Frontend suite: 12 tests passed.
+- API/security suite: 58 tests passed in the latest focused run.
+- Frontend suite: 13 tests passed.
 - Playwright end-to-end suite: 5 user, article, plaza, pixel-art, and administrator flows passed.
-- Dedicated upload/SSRF/Nginx tests: 6 tests passed.
+- Dedicated upload/SSRF/Nginx/deployment-boundary tests: 9 tests passed.
 - Root production dependency audit: 0 known vulnerabilities using the official npm registry.
 - Backend production dependency audit: 0 known vulnerabilities using the official npm registry.
 - Web, Live2D room bundle, and Live2D Studio production builds succeeded.

@@ -1,4 +1,9 @@
 const config = require('./config');
+
+if (config.isProduction && process.platform !== 'win32') {
+    process.umask(0o027);
+}
+
 const db = require('./db');
 const { createApp } = require('./app');
 

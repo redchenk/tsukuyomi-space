@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 027
 
 APP_DIR="${APP_DIR:-/var/www/tsukuyomi-space}"
 ENV_DIR="${ENV_DIR:-/etc/tsukuyomi-space}"
@@ -15,9 +16,11 @@ mkdir -p "$ENV_DIR" "$DATA_DIR" "$LOG_DIR"
 
 if [ ! -f "$ENV_FILE" ]; then
     cp .env.example "$ENV_FILE"
-    chmod 600 "$ENV_FILE"
     echo "Created $ENV_FILE. Edit secrets before starting."
 fi
+chown root:root "$ENV_DIR" "$ENV_FILE"
+chmod 700 "$ENV_DIR"
+chmod 600 "$ENV_FILE"
 
 set -a
 # shellcheck disable=SC1090
@@ -63,6 +66,31 @@ install -d -o "$APP_USER" -g "$APP_GROUP" -m 750 "$DATA_DIR" "$LOG_DIR" "$APP_DI
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 700 "$DATA_DIR/mcp-home"
 chown -R "$APP_USER:$APP_GROUP" "$DATA_DIR" "$LOG_DIR" "$APP_DIR/assets/uploads"
 
+harden_app_permissions() {
+    if [ -L "$APP_DIR/assets/uploads" ]; then
+        echo "Refusing to deploy with a symlinked upload directory" >&2
+        exit 1
+    fi
+
+    find "$APP_DIR" -xdev -path "$APP_DIR/assets/uploads" -prune -o \
+        \( -type f -o -type d \) -exec chown root:root {} +
+    find "$APP_DIR" -xdev -path "$APP_DIR/assets/uploads" -prune -o \
+        -type d -exec chmod go-w {} +
+    find "$APP_DIR" -xdev -path "$APP_DIR/assets/uploads" -prune -o \
+        -type f -exec chmod go-w {} +
+
+    if [ -d "$APP_DIR/.git" ]; then
+        find "$APP_DIR/.git" -xdev -type d -exec chmod 700 {} +
+        find "$APP_DIR/.git" -xdev -type f -exec chmod 600 {} +
+    fi
+
+    chown -R "$APP_USER:$APP_GROUP" "$APP_DIR/assets/uploads"
+    find "$APP_DIR/assets/uploads" -xdev -type d -exec chmod 750 {} +
+    find "$APP_DIR/assets/uploads" -xdev -type f -exec chmod 640 {} +
+}
+
+harden_app_permissions
+
 if [ "${INSTALL_DEPS:-false}" = "true" ]; then
     npm install --omit=dev --ignore-scripts --no-audit --no-fund
 fi
@@ -76,6 +104,8 @@ fi
 for output in dist/frontend/index.html lib/bundled/live2d-room-neuro-live.iife.js dist/live2d-studio/index.html; do
     [ -f "$output" ] || { echo "Missing prebuilt artifact: $output" >&2; exit 1; }
 done
+
+harden_app_permissions
 
 pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 pm2 save

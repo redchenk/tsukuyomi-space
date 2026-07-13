@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const config = require('../config');
-const { authenticateToken, optionalAuth, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, optionalAuth, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
@@ -110,15 +110,30 @@ function normalizeAsset(row, { signUrl = false } = {}) {
         asset.access_url = signUrl ? signedAssetUrl(asset.id) : durableAssetUrl(asset.id);
         asset.display_url = asset.access_url;
     } else {
-        asset.access_url = asset.url;
-        asset.markdown_url = asset.url;
-        asset.display_url = asset.url;
+        asset.markdown_url = durableAssetUrl(asset.id);
+        asset.access_url = signUrl ? signedAssetUrl(asset.id) : durableAssetUrl(asset.id);
+        asset.display_url = asset.access_url;
     }
     return asset;
 }
 
 function isAdminUser(user) {
     return user?.role === 'admin' || user?.role === 'super_admin' || user?.scope === 'admin';
+}
+
+function canAccessAsset(req, asset) {
+    const metadata = asset?.metadata || {};
+    const isOwner = Boolean(asset?.owner_id && asset.owner_id === req.user?.id);
+    const publicAsset = !asset?.owner_id || metadata.visibility === 'public';
+    return hasValidAssetSignature(asset.id, req.query)
+        || isAdminUser(req.user)
+        || isOwner
+        || publicAsset
+        || assetRepository.isAssetPubliclyReferenced(asset.id);
+}
+
+function rejectAssetAccess(req, res) {
+    return fail(res, req.user ? 403 : 401, '无权访问附件');
 }
 
 function inferMimeType(objectKey, provided = '') {
@@ -238,9 +253,10 @@ function assetFileName(asset, metadata = {}) {
     return metadata.fileName || metadata.title || `${asset.id}.${String(asset.mime_type || '').split('/').pop() || 'bin'}`;
 }
 
-function setAttachmentHeaders(res, asset, metadata = {}) {
+function setAttachmentHeaders(res, asset, metadata = {}, { inline = false } = {}) {
     res.setHeader('Content-Type', cleanMime(asset.mime_type) || 'application/octet-stream');
-    res.setHeader('Content-Disposition', attachmentDisposition(assetFileName(asset, metadata)));
+    const disposition = attachmentDisposition(assetFileName(asset, metadata));
+    res.setHeader('Content-Disposition', inline ? disposition.replace(/^attachment/, 'inline') : disposition);
     res.setHeader('X-Content-Type-Options', 'nosniff');
 }
 
@@ -264,7 +280,7 @@ function streamLocalAsset(req, res, asset, metadata = {}) {
         return fail(res, 404, 'Attachment not found');
     }
     const range = String(req.headers.range || '');
-    setAttachmentHeaders(res, asset, metadata);
+    setAttachmentHeaders(res, asset, metadata, { inline: isBrowserPreviewMedia(asset) });
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', metadata.visibility === 'private' ? 'private, no-store' : 'public, max-age=300');
 
@@ -299,7 +315,8 @@ async function streamOssAsset(req, res, asset, metadata) {
     }
     const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
     if (!object?.buffer) return fail(res, 404, '附件不存在');
-    setAttachmentHeaders(res, { ...asset, mime_type: asset.mime_type || object.contentType || 'application/octet-stream' }, metadata);
+    const streamedAsset = { ...asset, mime_type: asset.mime_type || object.contentType || 'application/octet-stream' };
+    setAttachmentHeaders(res, streamedAsset, metadata, { inline: isBrowserPreviewMedia(streamedAsset) });
     if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
     if (object.acceptRanges) res.setHeader('Accept-Ranges', object.acceptRanges);
     if (object.contentRange) res.setHeader('Content-Range', object.contentRange);
@@ -413,7 +430,7 @@ router.get('/gallery', optionalAuth, (req, res) => {
     }
 });
 
-router.post('/oss-register', authenticateToken, requireAdmin, (req, res) => {
+router.post('/oss-register', authenticateToken, requireAdmin, requireSuperAdmin, (req, res) => {
     try {
         const {
             objectKey,
@@ -443,7 +460,7 @@ router.post('/oss-register', authenticateToken, requireAdmin, (req, res) => {
     }
 });
 
-router.post('/oss-scan', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/oss-scan', authenticateToken, requireAdmin, requireSuperAdmin, async (req, res) => {
     try {
         const {
             prefix = '',
@@ -490,19 +507,26 @@ router.post('/oss-scan', authenticateToken, requireAdmin, async (req, res) => {
     }
 });
 
+router.get('/local/*', optionalAuth, (req, res) => {
+    try {
+        const relativeKey = String(req.params[0] || '').replace(/\\/g, '/').replace(/^\/+/, '');
+        if (!relativeKey || relativeKey.includes('\0')) return fail(res, 404, '附件不存在');
+        const asset = assetRepository.findAssetByStorageKey(`assets/uploads/${relativeKey}`);
+        if (!asset || asset.metadata?.storage === 'oss') return fail(res, 404, '附件不存在');
+        if (!canAccessAsset(req, asset)) return rejectAssetAccess(req, res);
+        return streamLocalAsset(req, res, asset, asset.metadata || {});
+    } catch (error) {
+        console.error('Read local asset failed:', error);
+        return fail(res, 500, '附件读取失败');
+    }
+});
+
 router.get('/proxy/:id', optionalAuth, async (req, res) => {
     try {
-        const admin = isAdminUser(req.user);
         const asset = assetRepository.findAssetForAdmin(req.params.id);
         if (!asset) return fail(res, 404, '附件不存在');
         const metadata = asset.metadata || {};
-        const isOwner = asset.owner_id && asset.owner_id === req.user?.id;
-        const publicAsset = !asset.owner_id || metadata.visibility === 'public';
-        const signedAccess = hasValidAssetSignature(asset.id, req.query);
-        const publishedReference = assetRepository.isAssetPubliclyReferenced(asset.id);
-        if (!signedAccess && !admin && !isOwner && !publicAsset && !publishedReference) {
-            return fail(res, req.user ? 403 : 401, '无权访问附件');
-        }
+        if (!canAccessAsset(req, asset)) return rejectAssetAccess(req, res);
         if (metadata.storage !== 'oss') return streamLocalAsset(req, res, asset, metadata);
         return streamOssAsset(req, res, asset, metadata);
     } catch (error) {

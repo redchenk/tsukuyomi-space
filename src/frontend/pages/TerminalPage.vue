@@ -95,6 +95,22 @@ const terminal = reactive({
 
 let clockTimer = 0;
 const TERMINAL_USER_PAGE_SIZES = [8, 12, 20];
+const SITE_SETTING_KEYS = [
+  'siteTitle',
+  'siteAnnouncement',
+  'sakuraEffect',
+  'scanlineEffect',
+  'visitPopupEnabled',
+  'visitPopupTitle',
+  'visitPopupContent',
+  'visitPopupButton',
+  'messageReviewKeywords',
+  'beianText',
+  'beianUrl',
+  'mpsBeianText',
+  'mpsBeianUrl',
+  'mpsBeianIcon'
+];
 const authed = computed(() => Boolean(terminal.admin));
 const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin');
 const groupedPanels = computed(() => ['巡检', '内容', '系统']
@@ -387,7 +403,10 @@ async function deleteLink(id) {
 }
 
 async function saveSettings() {
-  await adminApi('/settings', { method: 'POST', body: JSON.stringify(terminal.settings) });
+  const settings = canManageAccounts.value
+    ? terminal.settings
+    : Object.fromEntries(SITE_SETTING_KEYS.map((key) => [key, terminal.settings[key]]));
+  await adminApi('/settings', { method: 'POST', body: JSON.stringify(settings) });
   showMessage('配置已保存');
 }
 
@@ -862,7 +881,7 @@ onUnmounted(() => {
               <label>公安备案图标路径<input v-model="terminal.settings.mpsBeianIcon" placeholder="/assets/images/beian-mps.png"></label>
               <p class="terminal-setting-note">公安备案会显示在 ICP 备案号下方。图标文件建议放在服务器本地 /assets/images/beian-mps.png，并用 .gitignore 排除。</p>
             </div>
-            <div class="terminal-settings-block terminal-oss-settings">
+            <div v-if="canManageAccounts" class="terminal-settings-block terminal-oss-settings">
               <div class="terminal-settings-title">
                 <strong>对象存储</strong>
                 <span>上传策略、CDN 域名、连接测试和 OSS 大文件登记</span>

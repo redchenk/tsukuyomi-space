@@ -83,4 +83,27 @@ describe('nginx static-file boundary', () => {
         assert.match(config, /location \^~ \/\.git/);
         assert.doesNotMatch(config, /location \/ \{[\s\S]*?try_files \$uri \/dist\/frontend\/index\.html/);
     });
+
+    it('routes local uploads through the authenticated asset API', () => {
+        const config = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx.conf'), 'utf8');
+        const block = config.match(/location \^~ \/assets\/uploads\/ \{[\s\S]*?\n    \}/)?.[0] || '';
+        assert.match(block, /rewrite \^\/assets\/uploads\/\(\.\*\)\$ \/api\/assets\/local\/\$1 last/);
+        assert.doesNotMatch(block, /try_files \$uri/);
+    });
+});
+
+describe('deployment privilege boundary', () => {
+    it('keeps application source read-only to the service account', () => {
+        const deploy = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'deploy.sh'), 'utf8');
+        const dockerfile = fs.readFileSync(path.join(__dirname, '..', 'Dockerfile'), 'utf8');
+        const compose = fs.readFileSync(path.join(__dirname, '..', 'docker-compose.yml'), 'utf8');
+        assert.match(deploy, /umask 027/);
+        assert.match(deploy, /chown root:root/);
+        assert.match(deploy, /chmod go-w/);
+        assert.match(dockerfile, /chown -R root:root \/app/);
+        assert.match(compose, /read_only: true/);
+        assert.match(compose, /cap_drop:\s*\n\s*- ALL/);
+        assert.match(compose, /no-new-privileges:true/);
+        assert.match(compose, /127\.0\.0\.1:\$\{TSUKUYOMI_HTTP_PORT/);
+    });
 });

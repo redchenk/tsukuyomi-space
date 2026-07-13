@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const config = require('../config');
 const authState = require('../services/auth-state');
 const authRepository = require('../repositories/auth-repository');
+const adminRepository = require('../repositories/admin-repository');
 
 const USER_SESSION_COOKIE = 'tsukuyomi_session';
 const ADMIN_SESSION_COOKIE = 'tsukuyomi_admin_session';
@@ -88,10 +89,39 @@ function clearAllAuthCookies(req, res) {
     clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
 }
 
+function credentialVersion(passwordHash) {
+    return crypto
+        .createHmac('sha256', config.jwtSecret)
+        .update(String(passwordHash || ''))
+        .digest('base64url');
+}
+
+function hasCurrentCredentials(claims, passwordHash) {
+    const expected = Buffer.from(credentialVersion(passwordHash));
+    const actual = Buffer.from(String(claims?.credentialVersion || ''));
+    return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+}
+
 function currentUserForClaims(claims) {
-    if (claims?.scope === 'admin') return claims;
-    const user = authRepository.findCurrentUserById(claims?.id);
-    if (!user || user.role === 'banned') return null;
+    if (claims?.scope === 'admin') {
+        const adminId = Number(claims.adminId);
+        if (!Number.isInteger(adminId) || adminId <= 0) return null;
+        const admin = adminRepository.findAdminById(adminId);
+        if (!admin || !['admin', 'super_admin'].includes(admin.role) || !hasCurrentCredentials(claims, admin.password_hash)) {
+            return null;
+        }
+        return {
+            ...claims,
+            id: `admin-${admin.id}`,
+            adminId: admin.id,
+            username: admin.username,
+            role: admin.role,
+            scope: 'admin'
+        };
+    }
+
+    const user = authRepository.findUserById(claims?.id);
+    if (!user || user.role === 'banned' || !hasCurrentCredentials(claims, user.password_hash)) return null;
     return { ...claims, id: user.id, username: user.username, role: user.role };
 }
 
@@ -162,6 +192,16 @@ function requireAdmin(req, res, next) {
     next();
 }
 
+function requireSuperAdmin(req, res, next) {
+    if (!req.user) {
+        return res.status(401).json({ success: false, message: '请先登录', code: 'UNAUTHORIZED' });
+    }
+    if (req.user.role !== 'super_admin') {
+        return res.status(403).json({ success: false, message: '需要超级管理员权限', code: 'FORBIDDEN' });
+    }
+    next();
+}
+
 async function optionalAuth(req, res, next) {
     const token = readAuthToken(req);
 
@@ -178,7 +218,15 @@ async function optionalAuth(req, res, next) {
 }
 
 function generateToken(payload, expiresIn = config.jwtExpiresIn) {
-    return jwt.sign({ ...payload, jti: payload.jti || crypto.randomUUID() }, config.jwtSecret, { expiresIn });
+    const account = payload?.scope === 'admin'
+        ? adminRepository.findAdminById(Number(payload.adminId))
+        : authRepository.findUserById(payload?.id);
+    if (!account?.password_hash) throw new Error('Cannot issue a token for a missing account');
+    return jwt.sign({
+        ...payload,
+        credentialVersion: credentialVersion(account.password_hash),
+        jti: payload.jti || crypto.randomUUID()
+    }, config.jwtSecret, { expiresIn });
 }
 
 function verifyToken(token) {
@@ -188,6 +236,7 @@ function verifyToken(token) {
 module.exports = {
     authenticateToken,
     requireAdmin,
+    requireSuperAdmin,
     optionalAuth,
     generateToken,
     verifyToken,

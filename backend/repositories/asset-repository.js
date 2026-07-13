@@ -138,18 +138,29 @@ function findAssetByStorageKey(storageKey) {
 }
 
 function isAssetPubliclyReferenced(id) {
-    const token = `%/api/assets/proxy/${id}%`;
+    const asset = findAssetForAdmin(id);
+    if (!asset) return false;
+    const proxyToken = `/api/assets/proxy/${id}`;
+    const directUrl = String(asset.url || '');
     const row = db.prepare(`
         SELECT 1
         FROM articles
         WHERE status = 'published'
           AND (
-            cover_image_asset_id = ?
-            OR cover_image LIKE ?
-            OR content LIKE ?
+            id = ?
+            OR cover_image_asset_id = ?
+            OR instr(COALESCE(cover_image, ''), ?) > 0
+            OR instr(COALESCE(content, ''), ?) > 0
+            OR (
+                ? <> ''
+                AND (
+                    instr(COALESCE(cover_image, ''), ?) > 0
+                    OR instr(COALESCE(content, ''), ?) > 0
+                )
+            )
           )
         LIMIT 1
-    `).get(id, token, token);
+    `).get(asset.article_id, id, proxyToken, proxyToken, directUrl, directUrl, directUrl);
     return Boolean(row);
 }
 

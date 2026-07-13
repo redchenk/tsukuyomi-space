@@ -12,6 +12,7 @@ const { publicEmail } = require('./validators');
 const {
     authenticateToken,
     requireAdmin,
+    requireSuperAdmin,
     generateToken,
     readAuthToken,
     setAuthCookie,
@@ -21,6 +22,39 @@ const {
 } = require('./middleware/auth');
 
 const router = express.Router();
+
+const SITE_SETTING_KEYS = [
+    'siteTitle',
+    'siteAnnouncement',
+    'sakuraEffect',
+    'scanlineEffect',
+    'visitPopupEnabled',
+    'visitPopupTitle',
+    'visitPopupContent',
+    'visitPopupButton',
+    'messageReviewKeywords',
+    'beianText',
+    'beianUrl',
+    'mpsBeianText',
+    'mpsBeianUrl',
+    'mpsBeianIcon'
+];
+const OSS_SETTING_KEYS = [
+    'ossEnabled',
+    'ossProvider',
+    'ossEndpoint',
+    'ossRegion',
+    'ossBucket',
+    'ossAccessKeyId',
+    'ossAccessKeySecret',
+    'ossPublicBaseUrl',
+    'ossPrefix',
+    'ossUploadPath',
+    'ossDefaultStorage',
+    'ossFileNameMode',
+    'ossForcePathStyle'
+];
+const OSS_SETTING_KEY_SET = new Set(OSS_SETTING_KEYS);
 
 function ok(res, data = null, message = '操作成功') {
     res.json({ success: true, message, data });
@@ -53,6 +87,18 @@ function parseSettingValue(value) {
     return value;
 }
 
+function normalizeFriendLinkUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw || raw.length > 2048 || /[\u0000-\u001f\u007f]/.test(raw)) return '';
+    try {
+        const url = new URL(raw);
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return '';
+        return url.toString();
+    } catch (_) {
+        return '';
+    }
+}
+
 function normalizePublicBaseUrl(value) {
     const url = String(value || '').trim().replace(/\/+$/, '');
     if (!url) return '';
@@ -80,14 +126,13 @@ async function testPublicResourceUrl(publicBaseUrl) {
     const timeout = setTimeout(() => controller.abort(), 8000);
     const startedAt = Date.now();
     try {
-        await objectStorage.validateOutboundUrl(publicBaseUrl);
-        let response = await fetch(publicBaseUrl, {
+        let response = await objectStorage.fetchOutbound(publicBaseUrl, {
             method: 'HEAD',
             redirect: 'error',
             signal: controller.signal
         });
         if (response.status === 405 || response.status === 403) {
-            response = await fetch(publicBaseUrl, {
+            response = await objectStorage.fetchOutbound(publicBaseUrl, {
                 method: 'GET',
                 redirect: 'error',
                 signal: controller.signal
@@ -480,7 +525,11 @@ router.delete('/users/:id', (req, res) => {
 
 router.get('/links', (req, res) => {
     try {
-        ok(res, adminRepository.listLinks());
+        const links = adminRepository.listLinks().map(link => ({
+            ...link,
+            url: normalizeFriendLinkUrl(link.url) || '#'
+        }));
+        ok(res, links);
     } catch (error) {
         console.error('Admin link list error:', error);
         fail(res, 500, '无法读取友链');
@@ -490,8 +539,8 @@ router.get('/links', (req, res) => {
 router.post('/links', (req, res) => {
     try {
         const name = String(req.body?.name || '').trim();
-        const url = String(req.body?.url || '').trim();
-        if (!name || !/^https?:\/\//i.test(url)) return fail(res, 400, '请填写名称和有效 URL');
+        const url = normalizeFriendLinkUrl(req.body?.url);
+        if (!name || !url) return fail(res, 400, '请填写名称和有效 URL');
         adminRepository.createLink({ name, url });
         ok(res, null, '友链已添加');
     } catch (error) {
@@ -514,7 +563,10 @@ router.delete('/links/:id', (req, res) => {
 
 router.get('/settings', (req, res) => {
     try {
-        const rows = adminRepository.listSettings();
+        const allowed = req.user.role === 'super_admin' ? null : new Set(SITE_SETTING_KEYS);
+        const rows = adminRepository.listSettings().filter(row => (
+            row.key !== 'ossAccessKeySecret' && (!allowed || allowed.has(row.key))
+        ));
         ok(res, Object.fromEntries(rows.map(row => [row.key, parseSettingValue(row.value)])));
     } catch (error) {
         console.error('Admin settings get error:', error);
@@ -524,37 +576,17 @@ router.get('/settings', (req, res) => {
 
 router.post('/settings', async (req, res) => {
     try {
-        const allowed = [
-            'siteTitle',
-            'siteAnnouncement',
-            'sakuraEffect',
-            'scanlineEffect',
-            'visitPopupEnabled',
-            'visitPopupTitle',
-            'visitPopupContent',
-            'visitPopupButton',
-            'messageReviewKeywords',
-            'beianText',
-            'beianUrl',
-            'mpsBeianText',
-            'mpsBeianUrl',
-            'mpsBeianIcon',
-            'ossEnabled',
-            'ossProvider',
-            'ossEndpoint',
-            'ossRegion',
-            'ossBucket',
-            'ossAccessKeyId',
-            'ossAccessKeySecret',
-            'ossPublicBaseUrl',
-            'ossPrefix',
-            'ossUploadPath',
-            'ossDefaultStorage',
-            'ossFileNameMode',
-            'ossForcePathStyle'
-        ];
-        await objectStorage.validateSettingsUrls(req.body || {});
-        adminRepository.saveSettings(req.body, allowed);
+        const settings = { ...(req.body || {}) };
+        const superAdmin = req.user.role === 'super_admin';
+        if (!superAdmin && Object.keys(settings).some(key => OSS_SETTING_KEY_SET.has(key))) {
+            return fail(res, 403, '需要超级管理员权限');
+        }
+        const allowed = superAdmin ? [...SITE_SETTING_KEYS, ...OSS_SETTING_KEYS] : SITE_SETTING_KEYS;
+        if (superAdmin && !String(settings.ossAccessKeySecret || '').trim()) {
+            delete settings.ossAccessKeySecret;
+        }
+        if (superAdmin) await objectStorage.validateSettingsUrls(settings);
+        adminRepository.saveSettings(settings, allowed);
         ok(res, null, '配置已保存');
     } catch (error) {
         console.error('Admin settings save error:', error);
@@ -562,9 +594,14 @@ router.post('/settings', async (req, res) => {
     }
 });
 
-router.post('/settings/oss-test', async (req, res) => {
+router.post('/settings/oss-test', requireSuperAdmin, async (req, res) => {
     try {
-        const settings = req.body || {};
+        const providedSettings = req.body || {};
+        const savedSettings = objectStorage.getSettings();
+        const settings = { ...savedSettings, ...providedSettings };
+        if (!String(providedSettings.ossAccessKeySecret || '').trim()) {
+            settings.ossAccessKeySecret = savedSettings.ossAccessKeySecret || '';
+        }
         const checks = [];
         let hasFailure = false;
         let hasPassedNetworkCheck = false;

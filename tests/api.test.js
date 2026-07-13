@@ -1055,6 +1055,37 @@ describe('request and upload security', () => {
         assert.equal(svgUpload.response.status, 400);
     });
 
+    it('keeps local uploads behind asset authorization', async () => {
+        const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x00, 0x43]);
+        const upload = await postJson('/api/assets', {
+            dataUrl: `data:image/jpeg;base64,${jpeg.toString('base64')}`,
+            fileName: 'private-photo.jpg',
+            mimeType: 'image/jpeg',
+            storage: 'local'
+        }, userToken);
+        assert.equal(upload.response.status, 200);
+        assert.match(upload.body.data.markdown_url, /^\/api\/assets\/proxy\//);
+
+        const direct = await request(upload.body.data.url, { redirect: 'manual' });
+        assert.equal(direct.response.status, 307);
+        const protectedPath = direct.response.headers.get('location');
+        assert.match(protectedPath, /^\/api\/assets\/local\//);
+
+        const anonymous = await request(protectedPath);
+        assert.equal(anonymous.response.status, 401);
+
+        const owner = await request(protectedPath, { headers: authHeader(userToken) });
+        assert.equal(owner.response.status, 200);
+        assert.equal(owner.response.headers.get('content-type'), 'image/jpeg');
+        assert.match(owner.response.headers.get('content-disposition') || '', /^inline/);
+
+        const removed = await request(`/api/assets/${upload.body.data.id}`, {
+            method: 'DELETE',
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(removed.response.status, 200);
+    });
+
     it('rejects active avatar data URLs', async () => {
         const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
         const result = await postJson('/api/user/avatar', {
@@ -1108,6 +1139,27 @@ describe('admin API permissions', () => {
         });
         assert.equal(articles.response.status, 200);
         assert.ok(Array.isArray(articles.body.data));
+
+        db.prepare(`
+            INSERT INTO site_settings (key, value, updated_at)
+            VALUES ('ossAccessKeySecret', 'stored-test-secret', CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `).run();
+        const settings = await request('/api/admin/settings', {
+            headers: jsonHeaders(adminToken)
+        });
+        assert.equal(settings.response.status, 200);
+        assert.equal(Object.hasOwn(settings.body.data, 'ossAccessKeySecret'), false);
+
+        const savedSettings = await postJson('/api/admin/settings', {
+            siteTitle: 'Tsukuyomi Space',
+            ossAccessKeySecret: ''
+        }, adminToken);
+        assert.equal(savedSettings.response.status, 200);
+        assert.equal(
+            db.prepare("SELECT value FROM site_settings WHERE key = 'ossAccessKeySecret'").get().value,
+            'stored-test-secret'
+        );
     });
 
     it('lets admins pin and unpin articles', async () => {
@@ -1152,6 +1204,11 @@ describe('admin API permissions', () => {
         }, adminToken);
         assert.equal(reset.response.status, 200);
 
+        const staleSession = await request('/api/auth/me', {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(staleSession.response.status, 403);
+
         const loginWithNewPassword = await postJson('/api/auth/login', {
             username: 'managed-user',
             password: 'managed-new-password'
@@ -1177,6 +1234,29 @@ describe('admin API permissions', () => {
             headers: jsonHeaders(staffAdminToken)
         });
         assert.equal(forbiddenDelete.response.status, 403);
+
+        const hiddenSettings = await request('/api/admin/settings', {
+            headers: jsonHeaders(staffAdminToken)
+        });
+        assert.equal(hiddenSettings.response.status, 200);
+        assert.equal(Object.hasOwn(hiddenSettings.body.data, 'ossAccessKeySecret'), false);
+
+        const forbiddenSettings = await postJson('/api/admin/settings', {
+            ossEndpoint: 'https://storage.example.test'
+        }, staffAdminToken);
+        assert.equal(forbiddenSettings.response.status, 403);
+
+        const forbiddenOssTest = await postJson('/api/admin/settings/oss-test', {}, staffAdminToken);
+        assert.equal(forbiddenOssTest.response.status, 403);
+
+        const forbiddenOssImport = await postJson('/api/assets/oss-register', {}, staffAdminToken);
+        assert.equal(forbiddenOssImport.response.status, 403);
+
+        const injectedLink = await postJson('/api/admin/links', {
+            name: 'unsafe',
+            url: 'javascript:alert(1)'
+        }, staffAdminToken);
+        assert.equal(injectedLink.response.status, 400);
     });
 
     it('allows an admin to change their own terminal password', async () => {
@@ -1185,6 +1265,11 @@ describe('admin API permissions', () => {
             newPassword: 'staff-new-password'
         }, staffAdminToken);
         assert.equal(changed.response.status, 200);
+
+        const staleSession = await request('/api/admin/me', {
+            headers: jsonHeaders(staffAdminToken)
+        });
+        assert.equal(staleSession.response.status, 403);
 
         const oldPassword = await postJson('/api/admin/login', {
             username: 'staff-admin',

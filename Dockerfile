@@ -51,7 +51,12 @@ COPY --from=build /app/lib ./lib
 COPY --from=build /app/models ./models
 COPY --from=build /app/favicon.ico /app/live2d-core.js /app/site.webmanifest ./
 
-RUN mkdir -p /data && chown -R node:node /app /data
+RUN mkdir -p /data /app/assets/uploads \
+    && chown -R root:root /app \
+    && chown -R node:node /data /app/assets/uploads \
+    && chmod 750 /data /app/assets/uploads \
+    && find /app -path /app/assets/uploads -prune -o -type d -exec chmod go-w {} + \
+    && find /app -path /app/assets/uploads -prune -o -type f -exec chmod go-w {} +
 
 USER node
 

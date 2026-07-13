@@ -279,6 +279,11 @@ function serveStaticFiles(app) {
         app.use(express.static(frontendDistRoot, { setHeaders: setStaticCacheHeaders }));
     }
 
+    app.use('/assets/uploads', (req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        const suffix = String(req.url || '/').replace(/^\/+/, '');
+        return res.redirect(307, `/api/assets/local/${suffix}`);
+    });
     app.use(express.static(publicRoot, { setHeaders: setStaticCacheHeaders }));
     app.use('/assets', express.static(path.join(publicRoot, 'assets'), { setHeaders: setStaticCacheHeaders }));
     app.use('/lib', express.static(path.join(publicRoot, 'lib'), { setHeaders: setStaticCacheHeaders }));

@@ -33,3 +33,12 @@ describe('frontend navigation routes', () => {
         }
     });
 });
+
+describe('terminal privilege boundaries', () => {
+    it('hides infrastructure settings and submits only site settings for ordinary admins', () => {
+        const terminal = source('src/frontend/pages/TerminalPage.vue');
+
+        assert.match(terminal, /v-if="canManageAccounts" class="terminal-settings-block terminal-oss-settings"/);
+        assert.match(terminal, /Object\.fromEntries\(SITE_SETTING_KEYS\.map/);
+    });
+});
