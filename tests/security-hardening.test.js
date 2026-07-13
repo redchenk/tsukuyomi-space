@@ -105,5 +105,7 @@ describe('deployment privilege boundary', () => {
         assert.match(compose, /cap_drop:\s*\n\s*- ALL/);
         assert.match(compose, /no-new-privileges:true/);
         assert.match(compose, /127\.0\.0\.1:\$\{TSUKUYOMI_HTTP_PORT/);
+        assert.match(compose, /MINIO_ROOT_USER: \$\{MILVUS_MINIO_ACCESS_KEY:/);
+        assert.match(compose, /MINIO_ACCESS_KEY_ID: \$\{MILVUS_MINIO_ACCESS_KEY:/);
     });
 });
