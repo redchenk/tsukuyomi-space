@@ -270,6 +270,8 @@ function serveStaticFiles(app) {
     app.get('/arena', (req, res) => {
         const queryIndex = req.originalUrl.indexOf('?');
         const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        res.setHeader('Expires', '0');
         return res.redirect(301, `/pixel${query}`);
     });
 

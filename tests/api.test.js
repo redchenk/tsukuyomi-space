@@ -1130,6 +1130,7 @@ describe('legacy page paths', () => {
 
         assert.equal(response.status, 301);
         assert.equal(response.headers.get('location'), '/pixel?art=42');
+        assert.match(response.headers.get('cache-control') || '', /no-store/);
     });
 
     it('routes public profile paths through the Vue fallback', async () => {
