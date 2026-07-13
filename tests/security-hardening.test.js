@@ -124,6 +124,7 @@ describe('deployment privilege boundary', () => {
         assert.match(deploy, /chmod go-w/);
         assert.match(deploy, /npm ls --omit=dev --depth=0/);
         assert.match(deploy, /npm_config_jobs="\$\{npm_config_jobs:-1\}"/);
+        assert.match(deploy, /npm install --omit=dev --ignore-scripts --no-audit --no-fund --no-save/);
         assert.match(dockerfile, /chown -R root:root \/app/);
         assert.match(compose, /read_only: true/);
         assert.match(compose, /cap_drop:\s*\n\s*- ALL/);

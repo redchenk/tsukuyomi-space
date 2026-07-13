@@ -95,7 +95,7 @@ if [ "${INSTALL_DEPS:-false}" = "true" ] || ! npm ls --omit=dev --depth=0 >/dev/
     echo "Production dependencies are missing or out of date; installing with a single worker."
     npm_config_jobs="${npm_config_jobs:-1}" \
         NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=384}" \
-        npm install --omit=dev --ignore-scripts --no-audit --no-fund
+        npm install --omit=dev --ignore-scripts --no-audit --no-fund --no-save
 fi
 
 if [ "${BUILD_ON_SERVER:-false}" = "true" ]; then
