@@ -62,5 +62,13 @@ jobs:
           script: |
             set -e
             cd /var/www/tsukuyomi-space
-            git pull --ff-only
+            for attempt in 1 2 3; do
+              if git -c http.version=HTTP/1.1 pull --ff-only; then
+                break
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                exit 1
+              fi
+              sleep $((attempt * 10))
+            done
             INSTALL_NGINX_CONFIG=true bash deploy/deploy.sh
