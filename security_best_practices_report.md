@@ -229,6 +229,7 @@ No API reads a callback parameter or emits executable JavaScript responses. API 
 
 - API/security suite: 55 tests passed in the final full run.
 - Frontend suite: 12 tests passed.
+- Playwright end-to-end suite: 5 user, article, plaza, pixel-art, and administrator flows passed.
 - Dedicated upload/SSRF/Nginx tests: 6 tests passed.
 - Root production dependency audit: 0 known vulnerabilities using the official npm registry.
 - Backend production dependency audit: 0 known vulnerabilities using the official npm registry.

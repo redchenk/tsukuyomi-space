@@ -35,16 +35,21 @@ test.beforeEach(async ({ page }) => {
 
 test('user can log in and reach the hub', async ({ page }) => {
     await loginAsUser(page);
-    await expect(page.getByText('e2e-user')).toBeVisible();
+    await expect(page.getByRole('link', { name: '用户中心' })).toBeVisible();
+    const sessionResponse = await page.request.get('/api/auth/me');
+    expect(sessionResponse.status()).toBe(200);
+    const session = await sessionResponse.json();
+    expect(session.data.username).toBe('e2e-user');
 });
 
 test('user can read an article and post a comment', async ({ page }) => {
     await loginAsUser(page);
     await page.goto('/article?id=1');
     await expect(page.getByRole('heading', { name: '欢迎来到月读空间' })).toBeVisible();
+    await page.getByRole('link', { name: '进入完整互动文章页' }).click();
 
     const comment = `E2E article comment ${Date.now()}`;
-    await page.locator('.comment-input').first().fill(comment);
+    await page.getByPlaceholder('写下你的评论...').fill(comment);
     await page.getByRole('button', { name: '发布评论' }).click();
 
     await expect(page.getByText(comment)).toBeVisible();
@@ -64,6 +69,7 @@ test('user can publish a plaza message', async ({ page }) => {
 test('pixel artwork preview is body-level and closes from the visible button', async ({ page }) => {
     await loginAsUser(page);
     const createResponse = await page.request.post('/api/pixel-art', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
         data: makePixelArtworkPayload(`E2E Arena Preview ${Date.now()}`)
     });
     expect(createResponse.status()).toBe(201);
@@ -103,7 +109,7 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
     await expect(page.getByText('Tsukuyomi Terminal')).toBeVisible();
     await expect(page.getByRole('heading', { name: '系统总览' })).toBeVisible();
 
-    await page.getByRole('button', { name: /用户/ }).click();
+    await page.getByRole('button', { name: /用户检索、角色和密码/ }).click();
     await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'e2e-user' }).first()).toBeVisible();
 });
