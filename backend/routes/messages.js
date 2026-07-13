@@ -32,6 +32,17 @@ function rejectInvalidContent(res, review) {
     });
 }
 
+function messageId(value) {
+    const id = Number.parseInt(value, 10);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+function clearMessageCaches(articleId = null) {
+    responseCache.delPrefix(articleId ? `public:article-messages:${articleId}` : 'public:plaza-messages');
+    responseCache.delPrefix('public:message-topics');
+    responseCache.delPrefix('public:stats');
+}
+
 function actorName(user) {
     return user?.username || '访客';
 }
@@ -134,6 +145,22 @@ router.get('/topics', (req, res) => {
     } catch (error) {
         console.error('Trending topics failed:', error);
         res.status(500).json({ success: false, message: '热门话题读取失败' });
+    }
+});
+
+router.get('/mine', authenticateToken, (req, res) => {
+    try {
+        res.set('Cache-Control', 'private, no-store');
+        res.json({
+            success: true,
+            data: messageRepository.listUserMessages(req.user.id, {
+                limit: req.query.limit,
+                offset: req.query.offset
+            })
+        });
+    } catch (error) {
+        console.error('List user messages failed:', error);
+        res.status(500).json({ success: false, message: '留言列表读取失败' });
     }
 });
 
@@ -250,6 +277,45 @@ router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => 
     } catch (error) {
         console.error('Reply message failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.patch('/:id', authenticateToken, messageWriteLimiter, (req, res) => {
+    try {
+        const id = messageId(req.params.id);
+        if (!id) return res.status(400).json({ success: false, message: '留言 ID 无效' });
+        const existing = messageRepository.findUserMessageById(id, req.user.id);
+        if (!existing) return res.status(404).json({ success: false, message: '留言不存在' });
+
+        const review = reviewMessageContent(req.body?.content);
+        if (!review.accepted) return rejectInvalidContent(res, review);
+        const updated = messageRepository.updateUserMessage(id, req.user.id, {
+            content: review.content,
+            status: review.status
+        });
+        clearMessageCaches(existing.article_id);
+        res.json({
+            success: true,
+            data: updated,
+            message: review.status === 'approved' ? '留言已更新' : '留言已更新，审核通过后会公开显示'
+        });
+    } catch (error) {
+        console.error('Update user message failed:', error);
+        res.status(500).json({ success: false, message: '留言更新失败' });
+    }
+});
+
+router.delete('/:id', authenticateToken, (req, res) => {
+    try {
+        const id = messageId(req.params.id);
+        if (!id) return res.status(400).json({ success: false, message: '留言 ID 无效' });
+        const deleted = messageRepository.deleteUserMessage(id, req.user.id);
+        if (!deleted) return res.status(404).json({ success: false, message: '留言不存在' });
+        clearMessageCaches(deleted.article_id);
+        res.json({ success: true, message: '留言已删除' });
+    } catch (error) {
+        console.error('Delete user message failed:', error);
+        res.status(500).json({ success: false, message: '留言删除失败' });
     }
 });
 

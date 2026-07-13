@@ -66,6 +66,32 @@ test('user can publish a plaza message', async ({ page }) => {
     await expect(page.getByText(message)).toBeVisible();
 });
 
+test('user can edit and delete their own message from user center', async ({ page }) => {
+    await loginAsUser(page);
+    const original = `E2E managed message ${Date.now()}`;
+    const createResponse = await page.request.post('/api/messages', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        data: { content: original }
+    });
+    expect(createResponse.status()).toBe(201);
+    const created = await createResponse.json();
+
+    await page.goto('/user-center');
+    await page.getByRole('button', { name: /我的留言/ }).click();
+    const messageItem = page.locator(`#uc-message-${created.data.id}`);
+    await expect(messageItem).toBeVisible();
+
+    await messageItem.getByRole('button', { name: '编辑' }).click();
+    const updated = `${original} updated`;
+    await messageItem.getByLabel('编辑留言').fill(updated);
+    await messageItem.getByRole('button', { name: '保存', exact: true }).click();
+    await expect(messageItem.getByText(updated)).toBeVisible();
+
+    page.once('dialog', dialog => dialog.accept());
+    await messageItem.getByRole('button', { name: '删除' }).click();
+    await expect(messageItem).toHaveCount(0);
+});
+
 test('pixel artwork preview is body-level and closes from the visible button', async ({ page }) => {
     await loginAsUser(page);
     const createResponse = await page.request.post('/api/pixel-art', {
@@ -101,6 +127,14 @@ test('pixel artwork preview is body-level and closes from the visible button', a
 });
 
 test('admin can open the terminal dashboard and user panel', async ({ page }) => {
+    await loginAsUser(page);
+    const pendingMessage = `E2E terminal moderation 政治 ${Date.now()}`;
+    const createResponse = await page.request.post('/api/messages', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        data: { content: pendingMessage }
+    });
+    expect(createResponse.status()).toBe(201);
+
     await page.goto('/terminal');
     await page.locator('input[autocomplete="username"]').fill('admin');
     await page.locator('input[autocomplete="current-password"]').fill('admin-test-password');
@@ -109,7 +143,14 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
     await expect(page.getByText('Tsukuyomi Terminal')).toBeVisible();
     await expect(page.getByRole('heading', { name: '系统总览' })).toBeVisible();
 
+    await page.getByRole('button', { name: /留言墙与文章评论审核/ }).click();
+    const messageRow = page.locator('.terminal-message-table tbody tr').filter({ hasText: pendingMessage });
+    await expect(messageRow).toBeVisible();
+    await expect(messageRow.getByRole('button', { name: /通过留言/ })).toBeVisible();
+    await expect(messageRow.getByRole('button', { name: /删除留言/ })).toBeVisible();
+
     await page.getByRole('button', { name: /用户检索、角色和密码/ }).click();
     await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'e2e-user' }).first()).toBeVisible();
+    await expect(page.locator('select option[value="banned"]').first()).toHaveText('banned');
 });

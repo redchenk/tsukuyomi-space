@@ -5,6 +5,7 @@ const { initDatabase } = require('./db/migrations/init');
 const { securityHeaders, createRateLimiter, isAllowedOrigin, requireTrustedWrite } = require('./middleware/security');
 const { serveStaticFiles } = require('./middleware/static');
 const { jsonParseError, errorHandler } = require('./middleware/error');
+const { rejectDuplicateJsonKeys } = require('./services/json-security');
 
 const healthRoutes = require('./routes/health');
 const authRoutes = require('./routes/auth');
@@ -21,6 +22,10 @@ const adminRoutes = require('./routes/admin');
 const userRoutes = require('./user-routes');
 
 const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '1mb';
+
+function strictJson(limit) {
+    return express.json({ limit, verify: rejectDuplicateJsonKeys });
+}
 
 function createApp() {
     initDatabase();
@@ -62,17 +67,17 @@ function createApp() {
     // Parse message writes with a small cap before the much larger media-aware API parser.
     const messageIpLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: 'message-ip' });
     app.use('/api/messages', (req, res, next) => req.method === 'POST' ? messageIpLimiter(req, res, next) : next());
-    app.use('/api/messages', express.json({ limit: '16kb' }));
+    app.use('/api/messages', strictJson('16kb'));
     app.use('/api/messages', express.urlencoded({ limit: '16kb', extended: true }));
 
     // Data URL routes get explicit caps; ordinary JSON remains small on the 2GB host.
-    app.use('/api/assets', express.json({ limit: '28mb' }));
-    app.use('/api/mcp', express.json({ limit: '6mb' }));
-    app.use('/api/chat', express.json({ limit: '8mb' }));
-    app.use('/api/tts', express.json({ limit: '12mb' }));
-    app.use('/api/articles', express.json({ limit: '12mb' }));
-    app.use('/api/user/avatar', express.json({ limit: '8mb' }));
-    app.use(express.json({ limit: requestBodyLimit }));
+    app.use('/api/assets', strictJson('28mb'));
+    app.use('/api/mcp', strictJson('6mb'));
+    app.use('/api/chat', strictJson('8mb'));
+    app.use('/api/tts', strictJson('12mb'));
+    app.use('/api/articles', strictJson('12mb'));
+    app.use('/api/user/avatar', strictJson('8mb'));
+    app.use(strictJson(requestBodyLimit));
     app.use(express.urlencoded({ limit: '128kb', extended: true }));
     app.use(jsonParseError);
 

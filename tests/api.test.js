@@ -157,6 +157,16 @@ describe('database initialization', () => {
 });
 
 describe('auth API', () => {
+    it('rejects JSON requests containing duplicate object keys', async () => {
+        const result = await request('/api/auth/login', {
+            method: 'POST',
+            headers: jsonHeaders(),
+            body: '{"username":"normal-user","username":"admin","password":"user-test-password"}'
+        });
+        assert.equal(result.response.status, 400);
+        assert.equal(result.body.code, 'DUPLICATE_JSON_KEY');
+    });
+
     it('logs in a normal user and rejects invalid credentials', async () => {
         const ok = await postJson('/api/auth/login', {
             username: 'normal-user',
@@ -331,6 +341,49 @@ describe('messages API', () => {
 
         const listWithReply = await request(`/api/messages?article_id=${articleId}`);
         assert.ok(listWithReply.body.data.some(item => item.id === reply.body.data.id));
+    });
+
+    it('lets users manage only their own messages without deleting other users replies', async () => {
+        const created = await postJson('/api/messages', {
+            content: 'An editable owner message'
+        }, userToken);
+        assert.equal(created.response.status, 201);
+        const ownedId = created.body.data.id;
+
+        const reply = await postJson(`/api/messages/${ownedId}/reply`, {
+            content: 'A reply that must survive parent deletion'
+        }, managedUserToken);
+        assert.equal(reply.response.status, 201);
+
+        const mine = await request('/api/messages/mine', { headers: jsonHeaders(userToken) });
+        assert.equal(mine.response.status, 200);
+        assert.ok(mine.body.data.some(item => item.id === ownedId));
+        assert.ok(mine.body.data.every(item => item.user_id === 'user-001'));
+
+        const deniedEdit = await patchJson(`/api/messages/${ownedId}`, {
+            content: 'Unauthorized edit'
+        }, managedUserToken);
+        assert.equal(deniedEdit.response.status, 404);
+
+        const edited = await patchJson(`/api/messages/${ownedId}`, {
+            content: 'The owner updated this message'
+        }, userToken);
+        assert.equal(edited.response.status, 200);
+        assert.equal(edited.body.data.content, 'The owner updated this message');
+
+        const deniedDelete = await request(`/api/messages/${ownedId}`, {
+            method: 'DELETE',
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(deniedDelete.response.status, 404);
+
+        const deleted = await request(`/api/messages/${ownedId}`, {
+            method: 'DELETE',
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(deleted.response.status, 200);
+        assert.equal(db.prepare('SELECT id FROM messages WHERE id = ?').get(ownedId), undefined);
+        assert.equal(db.prepare('SELECT parent_id FROM messages WHERE id = ?').get(reply.body.data.id).parent_id, null);
     });
 });
 
@@ -1215,6 +1268,18 @@ describe('admin API permissions', () => {
         });
         assert.equal(loginWithNewPassword.response.status, 200);
         assert.equal(loginWithNewPassword.body.data.user.username, 'managed-user');
+
+        const banned = await patchJson(`/api/admin/users/${managed.id}/role`, { role: 'banned' }, adminToken);
+        assert.equal(banned.response.status, 200);
+        assert.equal(banned.body.data.role, 'banned');
+        const blockedLogin = await postJson('/api/auth/login', {
+            username: 'managed-user',
+            password: 'managed-new-password'
+        });
+        assert.equal(blockedLogin.response.status, 403);
+
+        const restored = await patchJson(`/api/admin/users/${managed.id}/role`, { role: 'admin' }, adminToken);
+        assert.equal(restored.response.status, 200);
     });
 
     it('prevents non-super admins from changing user permissions or passwords', async () => {

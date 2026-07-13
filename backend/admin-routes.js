@@ -447,7 +447,7 @@ router.patch('/users/:id/role', (req, res) => {
         const userId = String(req.params.id || '').trim();
         const role = String(req.body?.role || '').trim();
         if (!userId) return fail(res, 400, '用户 ID 无效');
-        if (!['user', 'admin'].includes(role)) return fail(res, 400, '用户角色无效');
+        if (!['user', 'admin', 'banned'].includes(role)) return fail(res, 400, '用户角色无效');
 
         const user = adminRepository.findUserForAdmin(userId);
         if (!user) return fail(res, 404, '用户不存在');

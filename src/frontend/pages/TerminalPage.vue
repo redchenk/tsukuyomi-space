@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { apiFetch, noStoreUrl } from '../api/client';
+import TsIcon from '../components/TsIcon.vue';
 import { formatDateTime } from '../utils/time';
 
 const emit = defineEmits(['go', 'auth-changed']);
@@ -694,7 +695,7 @@ onUnmounted(() => {
               <span>文章评论 {{ articleMessageCount }}</span>
               <span>总留言 {{ terminal.messages.length }}</span>
             </div>
-            <div class="terminal-table-wrap"><table><thead><tr><th>作者</th><th>来源</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
+            <div class="terminal-table-wrap terminal-message-table"><table><thead><tr><th>作者</th><th>来源</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in terminal.messages" :key="item.id">
                 <td>{{ item.username || item.author }}</td>
                 <td>
@@ -705,7 +706,18 @@ onUnmounted(() => {
                 <td>{{ item.content }}</td>
                 <td><span class="terminal-badge" :class="item.status === 'approved' ? 'ok' : 'warn'">{{ item.status === 'approved' ? '已通过' : '待审核' }}</span></td>
                 <td>{{ formatDate(item.created_at) }}</td>
-                <td><div class="terminal-actions"><button v-if="item.status !== 'approved'" class="primary-btn" type="button" @click="approveMessage(item.id)">通过</button><button class="danger-btn" type="button" @click="deleteMessage(item.id)">删除</button></div></td>
+                <td>
+                  <div class="terminal-actions terminal-message-actions">
+                    <button v-if="item.status !== 'approved'" class="primary-btn compact" type="button" title="通过留言" :aria-label="`通过留言 ${item.id}`" @click="approveMessage(item.id)">
+                      <TsIcon name="userCheck" :size="16" />
+                      <span>通过</span>
+                    </button>
+                    <button class="danger-btn compact" type="button" title="删除留言" :aria-label="`删除留言 ${item.id}`" @click="deleteMessage(item.id)">
+                      <TsIcon name="trash" :size="16" />
+                      <span>删除</span>
+                    </button>
+                  </div>
+                </td>
               </tr>
             </tbody></table></div>
           </div>
@@ -764,6 +776,7 @@ onUnmounted(() => {
                   <select v-model="terminal.roleDrafts[item.id]" :disabled="!canManageAccounts || item.username === 'admin'">
                     <option value="user">user</option>
                     <option value="admin">admin</option>
+                    <option value="banned">banned</option>
                   </select>
                   <button class="ghost-btn compact" type="button" :disabled="!canManageAccounts || terminal.roleDrafts[item.id] === item.role || item.username === 'admin'" @click="changeUserRole(item)">保存</button>
                 </td>

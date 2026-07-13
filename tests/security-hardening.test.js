@@ -11,6 +11,28 @@ const {
     isPrivateAddress,
     resolvePublicUrl
 } = require('../backend/services/outbound-url-security');
+const { assertNoDuplicateJsonKeys } = require('../backend/services/json-security');
+
+describe('JSON duplicate-key validation', () => {
+    it('rejects duplicate keys at any object depth, including escaped equivalents', () => {
+        assert.throws(
+            () => assertNoDuplicateJsonKeys('{"role":"user","role":"admin"}'),
+            error => error?.code === 'DUPLICATE_JSON_KEY'
+        );
+        assert.throws(
+            () => assertNoDuplicateJsonKeys('{"profile":{"name":"first","name":"second"}}'),
+            error => error?.code === 'DUPLICATE_JSON_KEY'
+        );
+        assert.throws(
+            () => assertNoDuplicateJsonKeys('{"name":"first","\\u006eame":"second"}'),
+            error => error?.code === 'DUPLICATE_JSON_KEY'
+        );
+    });
+
+    it('allows the same key in separate sibling objects', () => {
+        assert.doesNotThrow(() => assertNoDuplicateJsonKeys('{"items":[{"name":"one"},{"name":"two"}]}'));
+    });
+});
 
 describe('file upload validation', () => {
     it('allows a supported file and rejects dangerous extensions', () => {

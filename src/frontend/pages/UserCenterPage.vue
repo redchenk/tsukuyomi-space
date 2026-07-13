@@ -31,15 +31,22 @@ const uc = reactive({
   profileLoading: false,
   passwordChanging: false,
   articles: [],
+  messages: [],
   bookmarks: [],
   pixelArtworks: [],
   articleQuery: '',
+  messageQuery: '',
   bookmarkQuery: '',
   pixelQuery: '',
   articleLoading: true,
+  messageLoading: true,
   bookmarkLoading: true,
   pixelLoading: true,
   pixelDeleting: '',
+  messageEditing: '',
+  messageSaving: '',
+  messageDeleting: '',
+  messageDrafts: {},
   avatarUploading: false,
   profileBio: '',
   password: {
@@ -92,6 +99,11 @@ const ucFilteredArticles = computed(() => {
   const q = uc.articleQuery.toLowerCase();
   return uc.articles.filter((article) => `${article.title || ''} ${article.category || ''}`.toLowerCase().includes(q));
 });
+const ucFilteredMessages = computed(() => {
+  if (!uc.messageQuery) return uc.messages;
+  const q = uc.messageQuery.toLowerCase();
+  return uc.messages.filter((message) => `${message.content || ''} ${message.article_title || ''} ${message.status || ''}`.toLowerCase().includes(q));
+});
 const ucFilteredBookmarks = computed(() => {
   if (!uc.bookmarkQuery) return uc.bookmarks;
   const q = uc.bookmarkQuery.toLowerCase();
@@ -109,6 +121,17 @@ function go(path) {
 
 function articlePath(article) {
   return `/articles/${encodeURIComponent(article.id)}${article.slug ? `/${encodeURIComponent(article.slug)}` : ''}`;
+}
+
+function messagePath(message) {
+  const anchorId = message.parent_id || message.id;
+  if (!message.article_id) return `/plaza#msg-${encodeURIComponent(anchorId)}`;
+  const slug = message.article_slug ? `/${encodeURIComponent(message.article_slug)}` : '';
+  return `/articles/${encodeURIComponent(message.article_id)}${slug}#comment-${encodeURIComponent(anchorId)}`;
+}
+
+function messageSource(message) {
+  return message.article_id ? (message.article_title || `文章 #${message.article_id}`) : '留言墙';
 }
 
 function pixelArtworkPath(artwork) {
@@ -250,6 +273,28 @@ async function ucLoadBookmarks() {
   }
 }
 
+async function ucLoadMessages() {
+  uc.messageLoading = true;
+  if (!isAuthed.value) {
+    uc.messageLoading = false;
+    return;
+  }
+  try {
+    const response = await authFetch(`/api/messages/mine?limit=100&_=${Date.now()}`, {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '留言列表读取失败');
+    uc.messages = Array.isArray(result.data) ? result.data : [];
+  } catch (error) {
+    uc.messages = [];
+    ucShowToast(error.message || '留言列表读取失败');
+  } finally {
+    uc.messageLoading = false;
+  }
+}
+
 async function ucLoadPixelArtworks() {
   uc.pixelLoading = true;
   if (!isAuthed.value) {
@@ -273,7 +318,7 @@ async function ucLoadPixelArtworks() {
 }
 
 async function ucRefresh() {
-  await Promise.all([ucLoadProfile(), ucLoadArticles(), ucLoadBookmarks(), ucLoadPixelArtworks()]);
+  await Promise.all([ucLoadProfile(), ucLoadArticles(), ucLoadMessages(), ucLoadBookmarks(), ucLoadPixelArtworks()]);
 }
 
 async function ucEnsureSession() {
@@ -299,9 +344,11 @@ async function ucEnsureSession() {
   ucUser.value = null;
   uc.profileBio = '';
   uc.articles = [];
+  uc.messages = [];
   uc.bookmarks = [];
   uc.pixelArtworks = [];
   uc.articleLoading = false;
+  uc.messageLoading = false;
   uc.bookmarkLoading = false;
   uc.pixelLoading = false;
   return false;
@@ -419,6 +466,61 @@ async function ucDeleteArticle(id) {
 
 function ucEditArticle(id) {
   emit('go', `/editor?id=${id}`);
+}
+
+function ucStartMessageEdit(message) {
+  uc.messageEditing = message.id;
+  uc.messageDrafts[message.id] = message.content || '';
+}
+
+function ucCancelMessageEdit(id) {
+  uc.messageEditing = '';
+  delete uc.messageDrafts[id];
+}
+
+async function ucSaveMessage(message) {
+  const content = String(uc.messageDrafts[message.id] || '').trim();
+  if (!content) {
+    ucShowToast('留言内容不能为空');
+    return;
+  }
+  uc.messageSaving = message.id;
+  try {
+    const response = await authFetch(`/api/messages/${encodeURIComponent(message.id)}`, {
+      method: 'PATCH',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ content })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '留言更新失败');
+    const index = uc.messages.findIndex(item => item.id === message.id);
+    if (index >= 0) uc.messages.splice(index, 1, { ...uc.messages[index], ...result.data });
+    ucCancelMessageEdit(message.id);
+    ucShowToast(result.message || '留言已更新');
+  } catch (error) {
+    ucShowToast(error.message || '留言更新失败');
+  } finally {
+    uc.messageSaving = '';
+  }
+}
+
+async function ucDeleteMessage(message) {
+  if (!confirm('确定删除这条留言吗？删除后不可恢复。')) return;
+  uc.messageDeleting = message.id;
+  try {
+    const response = await authFetch(`/api/messages/${encodeURIComponent(message.id)}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '留言删除失败');
+    uc.messages = uc.messages.filter(item => item.id !== message.id);
+    ucShowToast(result.message || '留言已删除');
+  } catch (error) {
+    ucShowToast(error.message || '留言删除失败');
+  } finally {
+    uc.messageDeleting = '';
+  }
 }
 
 function ucEditPixelArtwork(artwork) {
@@ -576,6 +678,10 @@ onMounted(async () => {
               <span><TsIcon name="fileText" :size="18" /> {{ t.ucArticlesTab }}</span>
               <small>Posts</small>
             </button>
+            <button class="tab-btn" :class="{ active: uc.tab === 'messages' }" type="button" @click="uc.tab = 'messages'">
+              <span><TsIcon name="message" :size="18" /> 我的留言</span>
+              <small>{{ uc.messages.length }}</small>
+            </button>
             <button class="tab-btn" :class="{ active: uc.tab === 'bookmarks' }" type="button" @click="uc.tab = 'bookmarks'">
               <span><TsIcon name="bookmark" :size="18" /> &#25105;&#30340;&#25910;&#34255;</span>
               <small>Bookmarks</small>
@@ -680,7 +786,7 @@ onMounted(async () => {
 
           <div v-if="uc.tab === 'bookmarks'">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>03</span> 我的收藏</h2>
+              <h2 class="uc-section-title"><span>04</span> 我的收藏</h2>
               <div class="uc-article-tools">
                 <input v-model="uc.bookmarkQuery" class="uc-search" type="search" placeholder="搜索收藏文章">
                 <button class="ghost-btn uc-icon-action" type="button" @click="ucLoadBookmarks">
@@ -716,9 +822,76 @@ onMounted(async () => {
             </div>
           </div>
 
+          <div v-if="uc.tab === 'messages'">
+            <div class="uc-section-head">
+              <h2 class="uc-section-title"><span>03</span> 我的留言</h2>
+              <div class="uc-article-tools">
+                <input v-model="uc.messageQuery" class="uc-search" type="search" placeholder="搜索留言">
+                <button class="ghost-btn uc-icon-action" type="button" @click="ucLoadMessages">
+                  <TsIcon name="refresh" :size="17" />
+                  <span>刷新</span>
+                </button>
+              </div>
+            </div>
+            <div v-if="uc.messageLoading" class="uc-empty">留言列表加载中...</div>
+            <div v-else-if="!ucFilteredMessages.length" class="uc-empty">
+              <div class="ts-empty-title">还没有留言</div>
+              <a class="primary-btn uc-icon-action" href="/plaza" @click.prevent="go('/plaza')">
+                <TsIcon name="message" :size="17" />
+                <span>去留言墙</span>
+              </a>
+            </div>
+            <div v-else class="uc-article-list uc-message-list">
+              <article v-for="message in ucFilteredMessages" :id="`uc-message-${message.id}`" :key="message.id" class="uc-article-item uc-message-item">
+                <div>
+                  <textarea
+                    v-if="uc.messageEditing === message.id"
+                    v-model="uc.messageDrafts[message.id]"
+                    class="uc-message-editor"
+                    maxlength="2000"
+                    aria-label="编辑留言"
+                  ></textarea>
+                  <div v-else class="uc-article-title uc-message-content">{{ message.content }}</div>
+                  <div class="uc-article-meta">
+                    <span class="uc-status-pill">{{ message.status === 'approved' ? '已通过' : '待审核' }}</span>
+                    <span>{{ messageSource(message) }}</span>
+                    <span v-if="message.reply_count">{{ message.reply_count }} 回复</span>
+                    <span>{{ ucFormatDate(message.updated_at || message.created_at) }}</span>
+                  </div>
+                </div>
+                <div class="uc-article-actions">
+                  <template v-if="uc.messageEditing === message.id">
+                    <button class="primary-btn uc-icon-action" type="button" :disabled="uc.messageSaving === message.id" @click="ucSaveMessage(message)">
+                      <TsIcon name="userCheck" :size="16" />
+                      <span>{{ uc.messageSaving === message.id ? '保存中' : '保存' }}</span>
+                    </button>
+                    <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.messageSaving === message.id" @click="ucCancelMessageEdit(message.id)">
+                      <TsIcon name="x" :size="16" />
+                      <span>取消</span>
+                    </button>
+                  </template>
+                  <template v-else>
+                    <a class="icon-btn uc-icon-action" :href="messagePath(message)" @click.prevent="go(messagePath(message))">
+                      <TsIcon name="eye" :size="16" />
+                      <span>查看</span>
+                    </a>
+                    <button class="icon-btn uc-icon-action" type="button" @click="ucStartMessageEdit(message)">
+                      <TsIcon name="penLine" :size="16" />
+                      <span>编辑</span>
+                    </button>
+                    <button class="danger-btn uc-icon-action" type="button" :disabled="uc.messageDeleting === message.id" @click="ucDeleteMessage(message)">
+                      <TsIcon name="trash" :size="16" />
+                      <span>{{ uc.messageDeleting === message.id ? '删除中' : '删除' }}</span>
+                    </button>
+                  </template>
+                </div>
+              </article>
+            </div>
+          </div>
+
           <div v-if="uc.tab === 'pixelArt'">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>04</span> {{ isAdminUser ? '全站像素画管理' : '我的像素画' }}</h2>
+              <h2 class="uc-section-title"><span>05</span> {{ isAdminUser ? '全站像素画管理' : '我的像素画' }}</h2>
               <div class="uc-article-tools">
                 <input v-model="uc.pixelQuery" class="uc-search" type="search" placeholder="搜索像素画">
                 <a class="primary-btn uc-icon-action" href="/pixel" @click.prevent="go('/pixel')">
@@ -788,7 +961,7 @@ onMounted(async () => {
 
           <div v-if="uc.tab === 'security'">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>05</span> {{ t.ucSecurity }}</h2>
+              <h2 class="uc-section-title"><span>06</span> {{ t.ucSecurity }}</h2>
             </div>
             <div v-if="uc.passwordMsg" class="form-message" :class="uc.passwordMsgType">{{ uc.passwordMsg }}</div>
             <div class="uc-security-grid">

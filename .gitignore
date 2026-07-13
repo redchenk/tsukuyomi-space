@@ -31,6 +31,8 @@ dist/
 build/
 .next/
 out/
+test-results/
+playwright-report/
 
 # Logs
 logs/
@@ -53,6 +55,9 @@ tmp/
 temp/
 .codex_tmp/
 *.tmp
+
+# Local security audit notes
+security_best_practices_report.md
 
 # Backup files
 backups/

@@ -2,6 +2,13 @@ function jsonParseError(err, req, res, next) {
     if (err?.type === 'entity.too.large' || err?.status === 413) {
         return res.status(413).json({ success: false, message: '请求内容过大' });
     }
+    if (err?.code === 'DUPLICATE_JSON_KEY') {
+        return res.status(400).json({
+            success: false,
+            message: '请求 JSON 包含重复键',
+            code: 'DUPLICATE_JSON_KEY'
+        });
+    }
     if (err instanceof SyntaxError && 'body' in err) {
         return res.status(400).json({ success: false, message: '请求 JSON 格式无效' });
     }

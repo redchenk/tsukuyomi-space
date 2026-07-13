@@ -67,6 +67,66 @@ function findApprovedMessageById(id) {
     return row ? compactMessageRow(row) : null;
 }
 
+function listUserMessages(userId, { limit = 100, offset = 0 } = {}) {
+    const safeLimit = Math.max(1, Math.min(Number(limit) || 100, 100));
+    const safeOffset = Math.max(0, Number(offset) || 0);
+    return db.prepare(`
+        SELECT m.id,
+               COALESCE(u.username, m.author) AS author,
+               m.content,
+               m.user_id,
+               m.parent_id,
+               m.like_count,
+               m.article_id,
+               m.status,
+               m.created_at,
+               m.updated_at,
+               u.avatar,
+               a.title AS article_title,
+               a.slug AS article_slug,
+               (SELECT COUNT(*) FROM messages reply WHERE reply.parent_id = m.id) AS reply_count
+        FROM messages m
+        LEFT JOIN users u ON m.user_id = u.id
+        LEFT JOIN articles a ON m.article_id = a.id
+        WHERE m.user_id = ?
+        ORDER BY COALESCE(m.updated_at, m.created_at) DESC
+        LIMIT ? OFFSET ?
+    `).all(userId, safeLimit, safeOffset).map(compactMessageRow);
+}
+
+function findUserMessageById(id, userId) {
+    const row = db.prepare(`${MESSAGE_SELECT_FIELDS} WHERE m.id = ? AND m.user_id = ?`).get(id, userId);
+    return row ? compactMessageRow(row) : null;
+}
+
+function updateUserMessage(id, userId, { content, status }) {
+    const normalizedStatus = status === 'approved' ? 'approved' : 'pending';
+    const changed = db.prepare(`
+        UPDATE messages
+        SET content = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND user_id = ?
+    `).run(content, normalizedStatus, id, userId).changes;
+    return changed ? findUserMessageById(id, userId) : null;
+}
+
+function deleteUserMessage(id, userId) {
+    return db.transaction(() => {
+        const message = db.prepare(`
+            SELECT id, parent_id, article_id
+            FROM messages
+            WHERE id = ? AND user_id = ?
+        `).get(id, userId);
+        if (!message) return null;
+
+        db.prepare('UPDATE messages SET parent_id = ? WHERE parent_id = ?').run(message.parent_id || null, message.id);
+        db.prepare('DELETE FROM notifications WHERE related_message_id = ?').run(message.id);
+        db.prepare('DELETE FROM message_likes WHERE message_id = ?').run(message.id);
+        db.prepare('DELETE FROM message_mentions WHERE message_id = ?').run(message.id);
+        db.prepare('DELETE FROM messages WHERE id = ? AND user_id = ?').run(message.id, userId);
+        return message;
+    })();
+}
+
 function findMessageLike(messageId, userId) {
     return db.prepare('SELECT id FROM message_likes WHERE message_id = ? AND user_id = ?').get(messageId, userId);
 }
@@ -85,6 +145,10 @@ module.exports = {
     createMessage,
     findMessageById,
     findApprovedMessageById,
+    listUserMessages,
+    findUserMessageById,
+    updateUserMessage,
+    deleteUserMessage,
     findMessageLike,
     likeMessage
 };

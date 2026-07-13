@@ -1614,3 +1614,28 @@ body .page.uc-page .uc-security-card {
         grid-template-columns: 1fr;
     }
 }
+
+body .page.uc-page .uc-message-content {
+    white-space: pre-wrap;
+}
+
+body .page.uc-page .uc-message-editor {
+    display: block;
+    width: 100%;
+    min-height: 104px;
+    margin-bottom: 0.55rem;
+    padding: 0.76rem 0.82rem;
+    resize: vertical;
+    border: 1px solid rgba(174, 242, 255, 0.24);
+    border-radius: var(--ts-radius-md);
+    color: var(--uc-text);
+    background: rgba(3, 7, 18, 0.42);
+    font: inherit;
+    line-height: 1.6;
+}
+
+body .page.uc-page .uc-message-editor:focus {
+    outline: 2px solid rgba(123, 212, 231, 0.28);
+    outline-offset: 1px;
+    border-color: rgba(123, 212, 231, 0.58);
+}

@@ -873,6 +873,37 @@ body .page.terminal-page input:disabled {
     }
 }
 
+body .page.terminal-page .terminal-message-table th:last-child,
+body .page.terminal-page .terminal-message-table td:last-child {
+    position: sticky;
+    right: 0;
+    min-width: 156px;
+    background: var(--terminal-card-bg);
+    box-shadow: -12px 0 24px rgba(15, 23, 42, 0.08);
+}
+
+body .page.terminal-page .terminal-message-table th:last-child {
+    z-index: 3;
+    background: var(--terminal-control-hover);
+}
+
+body .page.terminal-page .terminal-message-table td:last-child {
+    z-index: 2;
+}
+
+body .page.terminal-page .terminal-message-actions {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+}
+
+body .page.terminal-page .terminal-message-actions :is(.primary-btn, .danger-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.38rem;
+    min-width: 68px;
+}
+
 @media (max-width: 560px) {
     .terminal-cards {
         grid-template-columns: 1fr;
