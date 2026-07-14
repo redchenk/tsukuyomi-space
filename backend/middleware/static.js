@@ -289,6 +289,7 @@ function serveStaticFiles(app) {
     app.use('/lib', express.static(path.join(publicRoot, 'lib'), { setHeaders: setStaticCacheHeaders }));
     app.use('/models', express.static(path.join(publicRoot, 'models'), { setHeaders: setStaticCacheHeaders }));
     app.use('/models-v3', express.static(path.join(publicRoot, 'models'), { setHeaders: setStaticCacheHeaders }));
+    app.use('/models-v4', express.static(path.join(publicRoot, 'models'), { setHeaders: setStaticCacheHeaders }));
 
     // Serve Vue routes from the Vite build.
     app.use((req, res, next) => {

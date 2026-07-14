@@ -210,7 +210,7 @@ const routeWarmups = {
 const defaultRouteWarmups = [HubPage, PlazaPage, StagePage, GalleryPage, ArenaPage];
 const warmedRouteComponents = new WeakSet();
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
-const ROOM_WARMUP_FALLBACK_MS = 120000;
+const ROOM_WARMUP_FALLBACK_MS = 210000;
 let cancelPendingRoomWarmup = null;
 
 function warmRouteComponent(loader) {

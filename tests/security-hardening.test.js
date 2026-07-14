@@ -146,10 +146,11 @@ describe('nginx static-file boundary', () => {
     it('serves the versioned Live2D model prefix from the read-only model directory', () => {
         const config = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx.conf'), 'utf8');
         const staticMiddleware = fs.readFileSync(path.join(__dirname, '..', 'backend', 'middleware', 'static.js'), 'utf8');
-        const block = config.match(/location \^~ \/models-v3\/ \{[\s\S]*?\n    \}/)?.[0] || '';
+        const block = config.match(/location \^~ \/models-v4\/ \{[\s\S]*?\n    \}/)?.[0] || '';
         assert.match(block, /alias \/var\/www\/tsukuyomi-space\/models\//);
+        assert.match(block, /gzip_types application\/octet-stream/);
         assert.match(block, /immutable/);
-        assert.match(staticMiddleware, /app\.use\('\/models-v3', express\.static\(path\.join\(publicRoot, 'models'\)/);
+        assert.match(staticMiddleware, /app\.use\('\/models-v4', express\.static\(path\.join\(publicRoot, 'models'\)/);
     });
 });
 

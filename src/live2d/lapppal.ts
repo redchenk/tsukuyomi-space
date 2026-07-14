@@ -20,7 +20,7 @@ const live2dAssetMaxAttempts = 3;
 const live2dAssetRetryDelayMs = 750;
 
 function live2dAssetTimeoutMs(filePath: string): number {
-  return /\.moc3(?:$|\?)/i.test(filePath) ? 35000 : 20000;
+  return /\.moc3(?:$|\?)/i.test(filePath) ? 60000 : 20000;
 }
 
 function live2dAssetAttemptUrl(filePath: string, attempt: number): string {
