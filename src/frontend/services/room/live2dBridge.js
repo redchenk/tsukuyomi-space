@@ -3,9 +3,10 @@ import { dispatchRoomLive2D } from './live2dControl';
 import { alignLive2DIntentToStreamingSpeech } from './live2dStreamingSpeechSession';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf.iife.js';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r2.iife.js';
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
-const LIVE2D_READY_TIMEOUT = 45000;
+const LIVE2D_ERROR_EVENT = 'tsukuyomi:live2d-error';
+const LIVE2D_READY_TIMEOUT = 120000;
 
 let loadingPromise = null;
 let initialized = false;
@@ -239,17 +240,28 @@ function waitForLive2DReady() {
   if (window.TSUKUYOMI_LIVE2D_READY) return Promise.resolve();
 
   return new Promise((resolve, reject) => {
-    const timeoutId = window.setTimeout(() => {
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
       window.removeEventListener(LIVE2D_READY_EVENT, onReady);
+      window.removeEventListener(LIVE2D_ERROR_EVENT, onError);
+    };
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
       reject(new Error('Live2D 加载超时，请刷新页面重试'));
     }, LIVE2D_READY_TIMEOUT);
 
     function onReady() {
-      window.clearTimeout(timeoutId);
+      cleanup();
       resolve();
     }
 
+    function onError(event) {
+      cleanup();
+      reject(new Error(event?.detail?.message || 'Live2D texture loading failed'));
+    }
+
     window.addEventListener(LIVE2D_READY_EVENT, onReady, { once: true });
+    window.addEventListener(LIVE2D_ERROR_EVENT, onError, { once: true });
   });
 }
 

@@ -211,6 +211,7 @@ describe('room Live2D mobile quality parity', () => {
         const music = source('src/frontend/composables/room/useRoomMusic.js');
         const router = source('src/frontend/router/index.js');
         const bridge = source('src/frontend/services/room/live2dBridge.js');
+        const textureManager = source('src/live2d/lapptexturemanager.ts');
         const nginx = source('deploy/nginx.conf');
 
         assert.match(app, /Boolean\(route\.name\).*showSitePet|showSitePet.*Boolean\(route\.name\)/s);
@@ -222,10 +223,16 @@ describe('room Live2D mobile quality parity', () => {
         assert.doesNotMatch(music, /\n\s*loadTrack\(trackIndex\.value\);\s*\n\s*onBeforeUnmount/);
         assert.match(router, /LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready'/);
         assert.match(router, /if \(to\.name === 'room'\)[\s\S]*addEventListener\(LIVE2D_READY_EVENT/);
-        assert.match(bridge, /LIVE2D_READY_TIMEOUT = 45000/);
-        assert.match(bridge, /live2d-room-neuro-live\.20260714-mobile-perf\.iife\.js/);
+        assert.match(bridge, /LIVE2D_READY_TIMEOUT = 120000/);
+        assert.match(bridge, /LIVE2D_ERROR_EVENT = 'tsukuyomi:live2d-error'/);
+        assert.match(bridge, /live2d-room-neuro-live\.20260714-mobile-perf-r2\.iife\.js/);
+        assert.match(router, /ROOM_WARMUP_FALLBACK_MS = 120000/);
+        assert.match(textureManager, /textureLoadMaxAttempts = 3/);
+        assert.match(textureManager, /textureLoadTimeoutMs = 35000/);
+        assert.match(textureManager, /_live2d_texture_retry/);
+        assert.match(textureManager, /img\.addEventListener\('error', retryOrFail/);
         assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.iife\.js \{[\s\S]*max-age=300, must-revalidate/);
-        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260714-mobile-perf\.iife\.js \{[\s\S]*immutable/);
+        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260714-mobile-perf-r2\.iife\.js \{[\s\S]*immutable/);
     });
 
     it('shares peripheral animation timing and avoids redundant frame writes', () => {

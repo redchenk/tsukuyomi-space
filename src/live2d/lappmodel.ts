@@ -567,7 +567,20 @@ export class LAppModel extends CubismUserModel {
         // 読み込み
         const textureManager = this._subdelegate?.getTextureManager();
         if (!textureManager) return;
-        textureManager.createTextureFromPngFile(texturePath, usePremultiply, onLoad);
+        textureManager.createTextureFromPngFile(
+          texturePath,
+          usePremultiply,
+          onLoad,
+          (error): void => {
+            if (typeof window === 'undefined') return;
+            window.dispatchEvent(new CustomEvent('tsukuyomi:live2d-error', {
+              detail: {
+                message: 'Live2D 纹理加载失败，请检查网络后刷新页面重试',
+                cause: error.message
+              }
+            }));
+          }
+        );
         this.getRenderer().setIsPremultipliedAlpha(usePremultiply);
       }
 

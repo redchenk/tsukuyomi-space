@@ -12,6 +12,55 @@ function shouldUseMipmaps(): boolean {
   return true;
 }
 
+const textureLoadMaxAttempts = 3;
+const textureLoadTimeoutMs = 35000;
+const textureRetryDelayMs = 750;
+
+function textureAttemptUrl(fileName: string, attempt: number): string {
+  if (attempt === 0) return fileName;
+  const url = new URL(fileName, window.location.href);
+  url.searchParams.set('_live2d_texture_retry', String(attempt));
+  return url.href;
+}
+
+function loadTextureImage(
+  fileName: string,
+  onLoad: (img: HTMLImageElement) => void,
+  onError?: (error: Error) => void
+): void {
+  const loadAttempt = (attempt: number): void => {
+    const img = new Image();
+    let settled = false;
+    let timeoutId = 0;
+    const finish = (callback: () => void): void => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      callback();
+    };
+    const retryOrFail = (): void => finish(() => {
+      if (attempt + 1 < textureLoadMaxAttempts) {
+        window.setTimeout(
+          () => loadAttempt(attempt + 1),
+          textureRetryDelayMs * (attempt + 1)
+        );
+        return;
+      }
+      onError?.(new Error(`Failed to load Live2D texture: ${fileName}`));
+    });
+    timeoutId = window.setTimeout(retryOrFail, textureLoadTimeoutMs);
+
+    img.addEventListener('load', () => finish(() => onLoad(img)), {
+      once: true,
+      passive: true
+    });
+    img.addEventListener('error', retryOrFail, { once: true, passive: true });
+    img.src = textureAttemptUrl(fileName, attempt);
+  };
+
+  loadAttempt(0);
+}
+
 /**
  * テクスチャ管理クラス
  * 画像読み込み、管理を行うクラス。
@@ -49,7 +98,8 @@ export class LAppTextureManager {
   public createTextureFromPngFile(
     fileName: string,
     usePremultiply: boolean,
-    callback: (textureInfo: TextureInfo) => void
+    callback: (textureInfo: TextureInfo) => void,
+    onError?: (error: Error) => void
   ): void {
     if (!this._textures || !this._glManager?.getGl()) return;
     // search loaded texture already
@@ -65,22 +115,22 @@ export class LAppTextureManager {
         // 2回目以降はキャッシュが使用される(待ち時間なし)
         // WebKitでは同じImageのonloadを再度呼ぶには再インスタンスが必要
         // 詳細：https://stackoverflow.com/a/5024181
-        ite.ptr().img = new Image();
-        ite
-          .ptr()
-          .img.addEventListener('load', (): void => callback(ite.ptr()), {
-            passive: true
-          });
-        ite.ptr().img.src = fileName;
+        loadTextureImage(
+          fileName,
+          (img): void => {
+            ite.ptr().img = img;
+            callback(ite.ptr());
+          },
+          onError
+        );
         return;
       }
     }
 
     // データのオンロードをトリガーにする
-    const img = new Image();
-    img.addEventListener(
-      'load',
-      (): void => {
+    loadTextureImage(
+      fileName,
+      (img): void => {
         // テクスチャオブジェクトの作成
         if (!this._textures || !this._glManager?.getGl()) return;
         const tex: WebGLTexture = this._glManager.getGl().createTexture();
@@ -158,9 +208,8 @@ export class LAppTextureManager {
 
         callback(textureInfo);
       },
-      { passive: true }
+      onError
     );
-    img.src = fileName;
   }
 
   /**

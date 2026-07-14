@@ -210,6 +210,7 @@ const routeWarmups = {
 const defaultRouteWarmups = [HubPage, PlazaPage, StagePage, GalleryPage, ArenaPage];
 const warmedRouteComponents = new WeakSet();
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
+const ROOM_WARMUP_FALLBACK_MS = 120000;
 let cancelPendingRoomWarmup = null;
 
 function warmRouteComponent(loader) {
@@ -250,7 +251,7 @@ function scheduleRouteWarmup(to) {
       warmAfterLive2D();
     } else {
       window.addEventListener(LIVE2D_READY_EVENT, warmAfterLive2D, { once: true });
-      timeoutId = window.setTimeout(warmAfterLive2D, 45000);
+      timeoutId = window.setTimeout(warmAfterLive2D, ROOM_WARMUP_FALLBACK_MS);
     }
     return;
   }
