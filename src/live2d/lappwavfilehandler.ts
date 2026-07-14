@@ -6,6 +6,8 @@
  */
 
 /** @deprecated この変数は getInstance() が非推奨になったことに伴い、非推奨となりました。 */
+import { LAppPal } from './lapppal';
+
 export let s_instance: LAppWavFileHandler = null;
 
 export class LAppWavFileHandler {
@@ -111,7 +113,7 @@ export class LAppWavFileHandler {
 
       // ファイルロード
       const asyncFileLoad = async () => {
-        return fetch(filePath).then(responce => {
+        return LAppPal.fetchFile(filePath).then(responce => {
           return responce.arrayBuffer();
         });
       };

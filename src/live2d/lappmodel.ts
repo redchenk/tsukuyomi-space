@@ -168,7 +168,7 @@ export class LAppModel extends CubismUserModel {
   public loadAssets(dir: string, fileName: string): void {
     this._modelHomeDir = dir;
 
-    fetch(`${this._modelHomeDir}${fileName}`)
+    LAppPal.fetchFile(`${this._modelHomeDir}${fileName}`)
       .then(response => response.arrayBuffer())
       .then(arrayBuffer => {
         const setting: ICubismModelSetting = new CubismModelSettingJson(
@@ -204,7 +204,7 @@ export class LAppModel extends CubismUserModel {
     if (this._modelSetting.getModelFileName() != '') {
       const modelFileName = this._modelSetting.getModelFileName();
 
-      fetch(`${this._modelHomeDir}${modelFileName}`)
+      LAppPal.fetchFile(`${this._modelHomeDir}${modelFileName}`)
         .then(response => {
           if (response.ok) {
             return response.arrayBuffer();
@@ -238,7 +238,7 @@ export class LAppModel extends CubismUserModel {
           const expressionFileName =
             this._modelSetting.getExpressionFileName(i);
 
-          fetch(`${this._modelHomeDir}${expressionFileName}`)
+          LAppPal.fetchFile(`${this._modelHomeDir}${expressionFileName}`)
             .then(response => {
               if (response.ok) {
                 return response.arrayBuffer();
@@ -290,7 +290,7 @@ export class LAppModel extends CubismUserModel {
       if (this._modelSetting.getPhysicsFileName() != '') {
         const physicsFileName = this._modelSetting.getPhysicsFileName();
 
-        fetch(`${this._modelHomeDir}${physicsFileName}`)
+        LAppPal.fetchFile(`${this._modelHomeDir}${physicsFileName}`)
           .then(response => {
             if (response.ok) {
               return response.arrayBuffer();
@@ -323,7 +323,7 @@ export class LAppModel extends CubismUserModel {
       if (this._modelSetting.getPoseFileName() != '') {
         const poseFileName = this._modelSetting.getPoseFileName();
 
-        fetch(`${this._modelHomeDir}${poseFileName}`)
+        LAppPal.fetchFile(`${this._modelHomeDir}${poseFileName}`)
           .then(response => {
             if (response.ok) {
               return response.arrayBuffer();
@@ -410,7 +410,7 @@ export class LAppModel extends CubismUserModel {
       if (this._modelSetting.getUserDataFile() != '') {
         const userDataFile = this._modelSetting.getUserDataFile();
 
-        fetch(`${this._modelHomeDir}${userDataFile}`)
+        LAppPal.fetchFile(`${this._modelHomeDir}${userDataFile}`)
           .then(response => {
             if (response.ok) {
               return response.arrayBuffer();
@@ -974,7 +974,7 @@ export class LAppModel extends CubismUserModel {
     let autoDelete = false;
 
     if (motion == null) {
-      fetch(`${this._modelHomeDir}${motionFileName}`)
+      LAppPal.fetchFile(`${this._modelHomeDir}${motionFileName}`)
         .then(response => {
           if (response.ok) {
             return response.arrayBuffer();
@@ -1152,7 +1152,7 @@ export class LAppModel extends CubismUserModel {
         );
       }
 
-      fetch(`${this._modelHomeDir}${motionFileName}`)
+      LAppPal.fetchFile(`${this._modelHomeDir}${motionFileName}`)
         .then(response => {
           if (response.ok) {
             return response.arrayBuffer();
@@ -1277,7 +1277,7 @@ export class LAppModel extends CubismUserModel {
     if (this._modelSetting.getModelFileName() != '') {
       const modelFileName = this._modelSetting.getModelFileName();
 
-      const response = await fetch(`${this._modelHomeDir}${modelFileName}`);
+      const response = await LAppPal.fetchFile(`${this._modelHomeDir}${modelFileName}`);
       const arrayBuffer = await response.arrayBuffer();
 
       this._consistency = CubismMoc.hasMocConsistency(arrayBuffer);
