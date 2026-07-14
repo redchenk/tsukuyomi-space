@@ -16,11 +16,9 @@ export function apiUrl(url) {
   if (!value.startsWith('/api')) return value;
   if (typeof window === 'undefined') return value;
 
-  const override = localStorage.getItem('tsukuyomi_api_base_url') || '';
-  let base = override.trim().replace(/\/+$/, '');
-  if (!base && ['yachiyo.hk', 'www.yachiyo.hk'].includes(window.location.hostname)) {
-    base = 'https://origin.yachiyo.hk';
-  }
+  const isLocalDevelopment = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  const override = isLocalDevelopment ? localStorage.getItem('tsukuyomi_api_base_url') || '' : '';
+  const base = override.trim().replace(/\/+$/, '');
   return base ? `${base}${value}` : value;
 }
 

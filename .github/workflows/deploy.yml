@@ -71,4 +71,4 @@ jobs:
               fi
               sleep $((attempt * 10))
             done
-            INSTALL_NGINX_CONFIG=true bash deploy/deploy.sh
+            INSTALL_NGINX_CONFIG=true HARDEN_OPENRESTY_ORIGIN=true bash deploy/deploy.sh

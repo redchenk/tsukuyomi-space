@@ -130,3 +130,7 @@ if [ "${INSTALL_NGINX_CONFIG:-false}" = "true" ]; then
     rm -f "$NGINX_BACKUP"
     systemctl reload nginx
 fi
+
+if [ "${HARDEN_OPENRESTY_ORIGIN:-false}" = "true" ]; then
+    bash deploy/install-openresty-hardening.sh
+fi

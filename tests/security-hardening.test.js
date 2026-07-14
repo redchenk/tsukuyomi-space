@@ -3,6 +3,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { describe, it } = require('node:test');
 
+function sourceFile(relativePath) {
+    return fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+}
+
 const {
     MAX_USER_UPLOAD_BYTES,
     validateUserUpload
@@ -104,6 +108,32 @@ describe('nginx static-file boundary', () => {
         assert.match(config, /location ~ \^\/(?:\(\?:)?backend\|backups\|data\|deploy/);
         assert.match(config, /location \^~ \/\.git/);
         assert.doesNotMatch(config, /location \/ \{[\s\S]*?try_files \$uri \/dist\/frontend\/index\.html/);
+    });
+
+    it('keeps public OpenResty free of Lua execution and ambiguous request framing', () => {
+        const main = sourceFile('deploy/openresty-nginx.conf');
+        const site = sourceFile('deploy/openresty-site-security.conf');
+        const proxy = sourceFile('deploy/openresty-root-proxy.conf');
+
+        assert.match(main, /^user www-data www-data;/m);
+        assert.doesNotMatch(main, /_by_lua|lua_package_path|1pwaf/);
+        assert.match(site, /\$http_transfer_encoding != ""/);
+        assert.match(proxy, /proxy_request_buffering on;/);
+        assert.match(proxy, /proxy_set_header Connection "";/);
+        assert.match(proxy, /proxy_set_header Transfer-Encoding "";/);
+    });
+
+    it('does not publish the origin hostname or server addresses in client and deploy defaults', () => {
+        for (const relativePath of [
+            '.env.example',
+            'src/frontend/api/client.js',
+            'deploy/hk-frontend-openresty.conf',
+            'deploy/hk-frontend-sync.ps1'
+        ]) {
+            const content = sourceFile(relativePath);
+            assert.doesNotMatch(content, /origin\.yachiyo\.hk/);
+            assert.doesNotMatch(content, /120\.24\.144\.120|207\.57\.132\.225/);
+        }
     });
 
     it('routes local uploads through the authenticated asset API', () => {
