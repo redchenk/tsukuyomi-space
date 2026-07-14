@@ -34,6 +34,7 @@ jobs:
           path: |
             dist
             lib/bundled/live2d-room-neuro-live.iife.js
+            lib/bundled/live2d-room-neuro-live.20260714-mobile-perf.iife.js
           if-no-files-found: error
 
   deploy:
@@ -71,7 +72,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: dist,lib/bundled/live2d-room-neuro-live.iife.js
+          source: dist,lib/bundled/live2d-room-neuro-live.iife.js,lib/bundled/live2d-room-neuro-live.20260714-mobile-perf.iife.js
           target: /var/www/tsukuyomi-space
           overwrite: true
 

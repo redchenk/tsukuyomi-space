@@ -223,8 +223,9 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(router, /LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready'/);
         assert.match(router, /if \(to\.name === 'room'\)[\s\S]*addEventListener\(LIVE2D_READY_EVENT/);
         assert.match(bridge, /LIVE2D_READY_TIMEOUT = 45000/);
-        assert.match(bridge, /live2d-room-neuro-live\.iife\.js\?v=20260714-mobile-perf/);
+        assert.match(bridge, /live2d-room-neuro-live\.20260714-mobile-perf\.iife\.js/);
         assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.iife\.js \{[\s\S]*max-age=300, must-revalidate/);
+        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260714-mobile-perf\.iife\.js \{[\s\S]*immutable/);
     });
 
     it('shares peripheral animation timing and avoids redundant frame writes', () => {
