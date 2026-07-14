@@ -229,6 +229,9 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(bridge, /LIVE2D_READY_TIMEOUT = 210000/);
         assert.match(bridge, /LIVE2D_ERROR_EVENT = 'tsukuyomi:live2d-error'/);
         assert.match(bridge, /live2d-room-neuro-live\.20260714-mobile-perf-r5\.iife\.js/);
+        assert.match(bridge, /return '\/models-v4\/tsukimi-yachiyo\/tsukimi-yachiyo\.model3\.json';/);
+        assert.doesNotMatch(bridge, /assetUrl\('\/models\/tsukimi-yachiyo/);
+        assert.doesNotMatch(bridge, /assetUrl\('[^']+\.moc3'\)/);
         assert.match(router, /ROOM_WARMUP_FALLBACK_MS = 210000/);
         assert.match(textureManager, /textureLoadMaxAttempts = 3/);
         assert.match(textureManager, /textureLoadTimeoutMs = 35000/);

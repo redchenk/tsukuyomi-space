@@ -199,7 +199,7 @@ export function live2DPerformanceMode() {
 }
 
 function live2DModelJson() {
-  return '/models/tsukimi-yachiyo/tsukimi-yachiyo.model3.json';
+  return '/models-v4/tsukimi-yachiyo/tsukimi-yachiyo.model3.json';
 }
 
 export function preloadLive2DResources() {
@@ -211,8 +211,7 @@ export function preloadLive2DResources() {
         href: assetUrl(modelJson),
         as: 'fetch',
         type: 'application/json'
-    },
-    { href: assetUrl('/models/tsukimi-yachiyo/tsukimi-yachiyo.moc3'), as: 'fetch', type: 'application/octet-stream' }
+      }
   ].forEach((resource) => {
     if (document.head.querySelector(`link[data-room-preload="${resource.href}"]`)) return;
     const link = document.createElement('link');
