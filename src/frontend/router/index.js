@@ -209,6 +209,8 @@ const routeWarmups = {
 };
 const defaultRouteWarmups = [HubPage, PlazaPage, StagePage, GalleryPage, ArenaPage];
 const warmedRouteComponents = new WeakSet();
+const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
+let cancelPendingRoomWarmup = null;
 
 function warmRouteComponent(loader) {
   if (typeof loader !== 'function' || warmedRouteComponents.has(loader)) return;
@@ -220,11 +222,38 @@ function warmRouteComponent(loader) {
 
 function scheduleRouteWarmup(to) {
   if (typeof window === 'undefined') return;
+  cancelPendingRoomWarmup?.();
+  cancelPendingRoomWarmup = null;
   const connection = window.navigator?.connection;
   if (connection?.saveData) return;
 
   const loaders = routeWarmups[to.name] || defaultRouteWarmups;
   const warm = () => loaders.forEach(warmRouteComponent);
+  if (to.name === 'room') {
+    let timeoutId = 0;
+    const warmAfterLive2D = () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener(LIVE2D_READY_EVENT, warmAfterLive2D);
+      cancelPendingRoomWarmup = null;
+      if (router.currentRoute.value.name !== 'room') return;
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(warm, { timeout: 1800 });
+        return;
+      }
+      window.setTimeout(warm, 900);
+    };
+    cancelPendingRoomWarmup = () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener(LIVE2D_READY_EVENT, warmAfterLive2D);
+    };
+    if (window.TSUKUYOMI_LIVE2D_READY) {
+      warmAfterLive2D();
+    } else {
+      window.addEventListener(LIVE2D_READY_EVENT, warmAfterLive2D, { once: true });
+      timeoutId = window.setTimeout(warmAfterLive2D, 45000);
+    }
+    return;
+  }
   window.setTimeout(warm, to.name === 'access' || to.name === 'accessAlias' ? 180 : 70);
   if (typeof window.requestIdleCallback === 'function') {
     window.requestIdleCallback(warm, { timeout: 520 });

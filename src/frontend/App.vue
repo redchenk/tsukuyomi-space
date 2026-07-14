@@ -21,7 +21,8 @@ const isLive2DRoute = computed(() => route.name === 'live2d');
 const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value);
 const routeTransitionName = computed(() => isLive2DRoute.value ? '' : 'ts-route');
 const hasGlobalBackground = computed(() => !isAccessRoute.value && !isAuthRoute.value && route.name !== 'room' && !isLive2DRoute.value);
-const showSitePet = computed(() => !['access', 'accessAlias', 'login', 'register', 'room', 'roomSettings'].includes(route.name));
+const showSitePet = computed(() => Boolean(route.name)
+  && !['access', 'accessAlias', 'login', 'register', 'room', 'roomSettings'].includes(route.name));
 const isAuthed = computed(() => Boolean(user.value));
 const music = useRoomMusic();
 const routeTransitioning = ref(false);
@@ -39,6 +40,7 @@ const visitPopup = ref({
 let lastTrustedAuthAt = 0;
 let routeTransitionTimer = 0;
 let refreshUserRun = 0;
+let initialRouteReady = false;
 
 function hydrateCachedUser() {
   const cachedSession = getSession();
@@ -193,7 +195,8 @@ function closeVisitPopup() {
 }
 
 function handlePageShow(event) {
-  if (event?.persisted) hydrateCachedUser();
+  if (!event?.persisted) return;
+  hydrateCachedUser();
   refreshUser();
 }
 
@@ -220,11 +223,14 @@ watch(isLive2DRoute, (next) => {
 watch(lang, setLang, { immediate: true });
 watch(theme, setTheme, { immediate: true });
 watch(() => route.fullPath, () => {
+  if (initialRouteReady) refreshUser();
+});
+router.isReady().then(() => {
+  initialRouteReady = true;
   refreshUser();
-}, { immediate: true });
+});
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
-  refreshUser();
   loadPublicSettings();
   window.addEventListener('pageshow', handlePageShow);
   document.addEventListener('visibilitychange', handleVisibilityChange);

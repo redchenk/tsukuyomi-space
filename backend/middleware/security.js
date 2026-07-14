@@ -71,7 +71,10 @@ function requireTrustedWrite(req, res, next) {
     const fetchSite = String(req.headers['sec-fetch-site'] || '').toLowerCase();
     const origin = String(req.headers.origin || '');
     const requestedWith = String(req.headers['x-requested-with'] || '');
-    if (fetchSite === 'cross-site' || (origin && !isAllowedOrigin(origin, req)) || requestedWith !== 'XMLHttpRequest') {
+    const allowedOrigin = Boolean(origin) && isAllowedOrigin(origin, req);
+    const browserProvesSameOrigin = fetchSite === 'same-origin' && allowedOrigin;
+    const hasAjaxHeader = requestedWith === 'XMLHttpRequest';
+    if (fetchSite === 'cross-site' || (origin && !allowedOrigin) || (!hasAjaxHeader && !browserProvesSameOrigin)) {
         return res.status(403).json({ success: false, message: '请求来源校验失败', code: 'CSRF_REJECTED' });
     }
     next();

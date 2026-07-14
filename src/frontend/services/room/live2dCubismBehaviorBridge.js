@@ -703,6 +703,9 @@ export function mountCubismBehaviorBridge(options = {}) {
   window.TSUKUYOMI_CUBISM_BEHAVIOR_BRIDGE = true;
   const performanceBrain = getRoomLive2DPerformanceBrain();
   const frameSink = typeof options.onFrame === 'function' ? options.onFrame : null;
+  const onPerformanceFrame = typeof options.onPerformanceFrame === 'function'
+    ? options.onPerformanceFrame
+    : null;
   const frameSource = String(options.source || 'cubism-behavior');
   let frameId = 0;
   let lastFrameAt = 0;
@@ -724,7 +727,10 @@ export function mountCubismBehaviorBridge(options = {}) {
       momentaryPulse = null;
     }
 
-    return sampleCubismBehaviorFrame(performanceFrame, now, { momentaryPulse });
+    return {
+      parameters: sampleCubismBehaviorFrame(performanceFrame, now, { momentaryPulse }),
+      performanceFrame
+    };
   }
 
   function tick(now = performance.now()) {
@@ -738,7 +744,9 @@ export function mountCubismBehaviorBridge(options = {}) {
     lastFrameAt = elapsed >= LOCAL_CUBISM_FRAME_INTERVAL_MS
       ? now - (elapsed % LOCAL_CUBISM_FRAME_INTERVAL_MS)
       : now;
-    dispatchFrame(sample(now));
+    const { parameters, performanceFrame } = sample(now);
+    dispatchFrame(parameters);
+    onPerformanceFrame?.(performanceFrame, now);
   }
 
   function onRoomAct(event) {

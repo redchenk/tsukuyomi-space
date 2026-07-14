@@ -4,8 +4,10 @@ export const ROOM_LIVE2D_DEBUG_STATE_KEY = 'roomLive2DDebugState';
 const BEHAVIOR_EVENT_LIMIT = 10;
 const HISTORY_LIMIT = 12;
 const PARAMETER_LIMIT = 28;
+const PERFORMANCE_DEBUG_INTERVAL_MS = 250;
 
 let debugStateCache = null;
+let lastPerformanceDebugAt = 0;
 const throttleMarks = new Map();
 
 function nowTime() {
@@ -151,6 +153,9 @@ export function summarizeDebugBehaviorPlan(plan, elapsedMs = 0) {
 }
 
 export function publishRoomLive2DPerformanceDebug(performanceFrame = {}, source = 'performance') {
+  const now = nowTime();
+  if (now - lastPerformanceDebugAt < PERFORMANCE_DEBUG_INTERVAL_MS) return;
+  lastPerformanceDebugAt = now;
   const character = performanceFrame.character || {};
   const behaviorPlan = summarizeDebugBehaviorPlan(performanceFrame.behaviorPlan, performanceFrame.elapsedMs);
   publishRoomLive2DDebugState({
@@ -172,6 +177,6 @@ export function publishRoomLive2DPerformanceDebug(performanceFrame = {}, source 
     volatile: true,
     persist: false,
     throttleKey: 'performance',
-    throttleMs: 250
+    throttleMs: PERFORMANCE_DEBUG_INTERVAL_MS
   });
 }

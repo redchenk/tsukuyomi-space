@@ -205,6 +205,53 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(manager, /CubismRenderer\.staticRelease\(\)/);
         assert.match(glManager, /WEBGL_lose_context/);
     });
+
+    it('keeps Room startup work behind the Live2D critical path', () => {
+        const app = source('src/frontend/App.vue');
+        const music = source('src/frontend/composables/room/useRoomMusic.js');
+        const router = source('src/frontend/router/index.js');
+        const bridge = source('src/frontend/services/room/live2dBridge.js');
+        const nginx = source('deploy/nginx.conf');
+
+        assert.match(app, /Boolean\(route\.name\).*showSitePet|showSitePet.*Boolean\(route\.name\)/s);
+        assert.doesNotMatch(app, /onMounted\(\(\) => \{\s*refreshUser\(\);/);
+        assert.match(app, /function handlePageShow\(event\) \{\s*if \(!event\?\.persisted\) return;/);
+        assert.match(app, /router\.isReady\(\)\.then\(\(\) => \{[\s\S]*initialRouteReady = true;[\s\S]*refreshUser\(\);/);
+        assert.doesNotMatch(app, /watch\(\(\) => route\.fullPath,[\s\S]{0,100}\{ immediate: true \}/);
+        assert.match(music, /function ensureTrackLoaded\(/);
+        assert.doesNotMatch(music, /\n\s*loadTrack\(trackIndex\.value\);\s*\n\s*onBeforeUnmount/);
+        assert.match(router, /LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready'/);
+        assert.match(router, /if \(to\.name === 'room'\)[\s\S]*addEventListener\(LIVE2D_READY_EVENT/);
+        assert.match(bridge, /LIVE2D_READY_TIMEOUT = 45000/);
+        assert.match(bridge, /live2d-room-neuro-live\.iife\.js\?v=20260714-mobile-perf/);
+        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.iife\.js \{[\s\S]*max-age=300, must-revalidate/);
+    });
+
+    it('shares peripheral animation timing and avoids redundant frame writes', () => {
+        const live2d = source('src/frontend/composables/room/useLive2D.js');
+        const behaviorBridge = source('src/frontend/services/room/live2dCubismBehaviorBridge.js');
+        const live2dDebug = source('src/frontend/services/room/live2dDebug.js');
+        const localBridge = source('src/frontend/services/room/live2dLocalCubismBridge.js');
+        const bodyActuator = source('src/frontend/services/room/live2dBodyActuator.js');
+
+        assert.match(live2d, /externallyDriven:\s*true/);
+        assert.match(live2d, /onPerformanceFrame:\s*destroyStageBodyActuator\.renderFrame/);
+        assert.match(behaviorBridge, /onPerformanceFrame\?\.\(performanceFrame, now\)/);
+        assert.match(live2dDebug, /if \(now - lastPerformanceDebugAt < PERFORMANCE_DEBUG_INTERVAL_MS\) return;/);
+        assert.match(localBridge, /lastDebugSummaryAt/);
+        assert.match(localBridge, /if \(now - lastDebugSummaryAt >= 250\)[\s\S]*summarizeDebugParameters/);
+        assert.match(bodyActuator, /if \(containerTransform !== lastContainerTransform\)/);
+        assert.match(bodyActuator, /cleanup\.renderFrame = renderExternalFrame/);
+    });
+
+    it('avoids mobile Room filters that force full-screen recompositing', () => {
+        const responsive = source('src/frontend/styles/responsive.css');
+
+        assert.doesNotMatch(responsive, /\.room-shell \.room-live2d-container \{[^}]*drop-shadow/s);
+        assert.doesNotMatch(responsive, /\.room-shell \.room-weather-card \{[^}]*backdrop-filter/s);
+        assert.doesNotMatch(responsive, /\.room-shell \.room-chat-panel \.chat-body \{[^}]*backdrop-filter/s);
+        assert.doesNotMatch(responsive, /\.room-shell \.room-chat-panel \.chat-input-row \{[^}]*backdrop-filter/s);
+    });
 });
 
 describe('room model and voice defaults', () => {

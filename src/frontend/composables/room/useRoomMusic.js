@@ -61,6 +61,7 @@ export function useRoomMusic() {
   const drawer = reactive({ volume: false, playlist: false, open: false });
   let coverObjectUrl = '';
   let coverRequestId = 0;
+  let loadedTrackIndex = -1;
 
   const tracks = MUSIC_TRACKS;
   const currentTrack = computed(() => tracks[trackIndex.value] || tracks[0]);
@@ -93,6 +94,7 @@ export function useRoomMusic() {
     if (!tracks.length) return;
     const wasPlaying = playing.value;
     trackIndex.value = (index + tracks.length) % tracks.length;
+    loadedTrackIndex = trackIndex.value;
     localStorage.setItem('roomMusicTrackIndex', String(trackIndex.value));
     audio.src = trackUrl(currentTrack.value);
     audio.preload = 'metadata';
@@ -100,8 +102,16 @@ export function useRoomMusic() {
     if (options.play || wasPlaying) audio.play().catch(() => {});
   }
 
+  function ensureTrackLoaded() {
+    if (loadedTrackIndex === trackIndex.value && audio.src) return;
+    loadTrack(trackIndex.value);
+  }
+
   function togglePlay() {
-    if (audio.paused) audio.play().catch(() => {});
+    if (audio.paused) {
+      ensureTrackLoaded();
+      audio.play().catch(() => {});
+    }
     else audio.pause();
   }
 
@@ -121,6 +131,7 @@ export function useRoomMusic() {
 
   function toggleDrawer(name) {
     drawer[name] = !drawer[name];
+    if (drawer[name]) ensureTrackLoaded();
     Object.keys(drawer).forEach((key) => {
       if (key !== name && key !== 'open') drawer[key] = false;
     });
@@ -128,6 +139,7 @@ export function useRoomMusic() {
 
   function toggleShell() {
     drawer.open = !drawer.open;
+    if (drawer.open) ensureTrackLoaded();
     if (!drawer.open) {
       drawer.volume = false;
       drawer.playlist = false;
@@ -138,6 +150,7 @@ export function useRoomMusic() {
     audio.pause();
     audio.removeAttribute('src');
     audio.load();
+    loadedTrackIndex = -1;
     if (coverObjectUrl) URL.revokeObjectURL(coverObjectUrl);
     coverRequestId += 1;
   }
@@ -156,7 +169,6 @@ export function useRoomMusic() {
     playing.value = false;
   });
   audio.addEventListener('ended', next);
-  loadTrack(trackIndex.value);
   onBeforeUnmount(destroy);
 
   return {

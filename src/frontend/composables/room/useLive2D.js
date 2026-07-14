@@ -42,8 +42,12 @@ export function useLive2D() {
       await initLive2DRoom();
       destroyCubismBridge?.();
       destroyStageBodyActuator?.();
-      destroyCubismBridge = mountLocalCubismBridge();
-      destroyStageBodyActuator = mountLive2DStageBodyActuator('#live2d-container');
+      destroyStageBodyActuator = mountLive2DStageBodyActuator('#live2d-container', {
+        externallyDriven: true
+      });
+      destroyCubismBridge = mountLocalCubismBridge({
+        onPerformanceFrame: destroyStageBodyActuator.renderFrame
+      });
       ready.value = true;
       loading.value = false;
       consumePendingSoon();

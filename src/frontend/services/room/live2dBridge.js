@@ -3,9 +3,9 @@ import { dispatchRoomLive2D } from './live2dControl';
 import { alignLive2DIntentToStreamingSpeech } from './live2dStreamingSpeechSession';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room-neuro-live.iife.js';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room-neuro-live.iife.js?v=20260714-mobile-perf';
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
-const LIVE2D_READY_TIMEOUT = 20000;
+const LIVE2D_READY_TIMEOUT = 45000;
 
 let loadingPromise = null;
 let initialized = false;

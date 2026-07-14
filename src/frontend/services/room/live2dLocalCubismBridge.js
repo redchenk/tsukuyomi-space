@@ -76,6 +76,7 @@ let lastSmoothedAt = 0;
 let pendingFrame = new Map();
 let lastDiagnosticAt = 0;
 let lastBridgeStateAt = 0;
+let lastDebugSummaryAt = 0;
 
 function nowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -311,16 +312,20 @@ function flushLocalCubismFrame() {
     try {
       bridge.setFrame(frameParameters);
       dispatchLocalCubismFrame(frameParameters, 'runtime-direct');
-      publishRoomLive2DDebugState({
-        cubismParameters: summarizeDebugParameters(frameParameters),
-        cubismParameterCount: frameParameters.length,
-        cubismParametersUpdatedAt: Date.now()
-      }, {
-        volatile: true,
-        persist: false,
-        throttleKey: 'cubism-parameters',
-        throttleMs: 250
-      });
+      const now = Date.now();
+      if (now - lastDebugSummaryAt >= 250) {
+        lastDebugSummaryAt = now;
+        publishRoomLive2DDebugState({
+          cubismParameters: summarizeDebugParameters(frameParameters),
+          cubismParameterCount: frameParameters.length,
+          cubismParametersUpdatedAt: now
+        }, {
+          volatile: true,
+          persist: false,
+          throttleKey: 'cubism-parameters',
+          throttleMs: 250
+        });
+      }
       setLocalBridgeState({
         mounted: true,
         output: 'runtime-direct',
@@ -351,7 +356,7 @@ function writeLocalCubismFrame(parameters) {
   flushLocalCubismFrame();
 }
 
-export function mountLocalCubismBridge() {
+export function mountLocalCubismBridge(options = {}) {
   if (typeof window === 'undefined') return () => {};
 
   window.TSUKUYOMI_LOCAL_CUBISM_BRIDGE_MOUNTED = true;
@@ -359,7 +364,8 @@ export function mountLocalCubismBridge() {
 
   const destroyBehaviorBridge = mountCubismBehaviorBridge({
     source: 'local-cubism',
-    onFrame: writeLocalCubismFrame
+    onFrame: writeLocalCubismFrame,
+    onPerformanceFrame: options.onPerformanceFrame
   });
 
   return () => {
@@ -371,6 +377,7 @@ export function mountLocalCubismBridge() {
     pendingFrame = new Map();
     lastDiagnosticAt = 0;
     lastBridgeStateAt = 0;
+    lastDebugSummaryAt = 0;
     lastSmoothedFrame = new Map();
     lastVelocityFrame = new Map();
     lastSmoothedAt = 0;

@@ -1064,6 +1064,42 @@ describe('chat API endpoint allowlist', () => {
 });
 
 describe('request and upload security', () => {
+    it('accepts Agent OS login with browser-proven same-origin metadata', async () => {
+        const result = await request('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                Origin: baseUrl,
+                'Sec-Fetch-Site': 'same-origin',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: 'normal-user',
+                password: 'user-test-password'
+            })
+        });
+
+        assert.equal(result.response.status, 200);
+        assert.equal(result.body.success, true);
+    });
+
+    it('rejects forged same-origin metadata from an untrusted origin', async () => {
+        const result = await request('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                Origin: 'https://attacker.example',
+                'Sec-Fetch-Site': 'same-origin',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: 'normal-user',
+                password: 'user-test-password'
+            })
+        });
+
+        assert.equal(result.response.status, 403);
+        assert.equal(result.body.code, 'CSRF_REJECTED');
+    });
+
     it('rejects cookie writes without the CSRF request header', async () => {
         const loggedIn = await postJson('/api/auth/login', {
             username: 'normal-user',
