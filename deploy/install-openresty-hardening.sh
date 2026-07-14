@@ -120,12 +120,23 @@ if [ "$UPDATE_OPENRESTY_IMAGE" = "true" ]; then
             exit 1
         fi
 
+        image_validated=false
         for _ in $(seq 1 30); do
             if docker exec "$OPENRESTY_CONTAINER" /usr/local/openresty/bin/openresty -t >/dev/null 2>&1; then
+                image_validated=true
                 break
             fi
             sleep 1
         done
+
+        if [ "$image_validated" != "true" ]; then
+            cp -a "$compose_backup" "$compose_file"
+            docker compose --env-file "$OPENRESTY_ROOT/.env" -f "$compose_file" up -d
+            docker exec "$OPENRESTY_CONTAINER" /usr/local/openresty/bin/openresty -t
+            echo "OpenResty image validation failed; restored the previous image" >&2
+            exit 1
+        fi
+
         docker exec "$OPENRESTY_CONTAINER" /usr/local/openresty/bin/openresty -t
     fi
 fi
