@@ -73,7 +73,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           source: dist,lib/bundled/live2d-room-neuro-live.iife.js,lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r2.iife.js
-          target: /var/www/tsukuyomi-space
+          target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}
           overwrite: true
 
       - name: Upload deployment bundle
@@ -96,10 +96,23 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             set -e
-            cd /var/www/tsukuyomi-space
+            app=/var/www/tsukuyomi-space
             bundle=/tmp/tsukuyomi-deployment-${{ github.run_id }}.bundle
-            trap 'rm -f "$bundle"' EXIT
+            prebuilt=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}
+            case "$prebuilt" in
+              /tmp/tsukuyomi-prebuilt-[0-9]*) ;;
+              *) echo "Invalid prebuilt path" >&2; exit 1 ;;
+            esac
+            trap 'rm -f "$bundle"; rm -rf -- "$prebuilt"' EXIT
+            cd "$app"
+            git restore --worktree -- lib/bundled/live2d-room-neuro-live.iife.js
             git fetch "$bundle" refs/heads/codex-deploy
             test "$(git rev-parse FETCH_HEAD)" = "${{ github.sha }}"
             git -c core.hooksPath=/dev/null merge --ff-only FETCH_HEAD
+            test -f "$prebuilt/dist/frontend/index.html"
+            test -f "$prebuilt/lib/bundled/live2d-room-neuro-live.iife.js"
+            test -f "$prebuilt/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r2.iife.js"
+            cp -a "$prebuilt/dist/." "$app/dist/"
+            install -m 0644 "$prebuilt/lib/bundled/live2d-room-neuro-live.iife.js" "$app/lib/bundled/live2d-room-neuro-live.iife.js"
+            install -m 0644 "$prebuilt/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r2.iife.js" "$app/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r2.iife.js"
             INSTALL_NGINX_CONFIG=true HARDEN_OPENRESTY_ORIGIN=true bash deploy/deploy.sh

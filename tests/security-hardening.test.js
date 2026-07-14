@@ -163,4 +163,11 @@ describe('deployment privilege boundary', () => {
         assert.match(compose, /MINIO_ROOT_USER: \$\{MILVUS_MINIO_ACCESS_KEY:/);
         assert.match(compose, /MINIO_ACCESS_KEY_ID: \$\{MILVUS_MINIO_ACCESS_KEY:/);
     });
+
+    it('stages prebuilt files outside the Git worktree before merging', () => {
+        const workflow = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'deploy.yml'), 'utf8');
+        assert.match(workflow, /target: \/tmp\/tsukuyomi-prebuilt-\$\{\{ github\.run_id \}\}/);
+        assert.match(workflow, /git restore --worktree -- lib\/bundled\/live2d-room-neuro-live\.iife\.js[\s\S]*git .*merge --ff-only FETCH_HEAD/);
+        assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$prebuilt\/dist\/\." "\$app\/dist\/"/);
+    });
 });
