@@ -34,7 +34,7 @@ jobs:
           path: |
             dist
             lib/bundled/live2d-room-neuro-live.iife.js
-            lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r3.iife.js
+            lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r4.iife.js
           if-no-files-found: error
 
   deploy:
@@ -72,7 +72,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: dist,lib/bundled/live2d-room-neuro-live.iife.js,lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r3.iife.js
+          source: dist,lib/bundled/live2d-room-neuro-live.iife.js,lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r4.iife.js
           target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}
           overwrite: true
 
@@ -111,8 +111,8 @@ jobs:
             git -c core.hooksPath=/dev/null merge --ff-only FETCH_HEAD
             test -f "$prebuilt/dist/frontend/index.html"
             test -f "$prebuilt/lib/bundled/live2d-room-neuro-live.iife.js"
-            test -f "$prebuilt/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r3.iife.js"
+            test -f "$prebuilt/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r4.iife.js"
             cp -a "$prebuilt/dist/." "$app/dist/"
             install -m 0644 "$prebuilt/lib/bundled/live2d-room-neuro-live.iife.js" "$app/lib/bundled/live2d-room-neuro-live.iife.js"
-            install -m 0644 "$prebuilt/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r3.iife.js" "$app/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r3.iife.js"
+            install -m 0644 "$prebuilt/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r4.iife.js" "$app/lib/bundled/live2d-room-neuro-live.20260714-mobile-perf-r4.iife.js"
             INSTALL_NGINX_CONFIG=true HARDEN_OPENRESTY_ORIGIN=true bash deploy/deploy.sh

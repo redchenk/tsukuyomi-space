@@ -167,6 +167,7 @@ describe('room Live2D mobile quality parity', () => {
         const subdelegate = source('src/live2d/lappsubdelegate.ts');
         const manager = source('src/live2d/lapplive2dmanager.ts');
         const glManager = source('src/live2d/lappglmanager.ts');
+        const define = source('src/live2d/lappdefine.ts');
         const textures = source('src/live2d/lapptexturemanager.ts');
         const model = source('src/live2d/lappmodel.ts');
 
@@ -179,6 +180,7 @@ describe('room Live2D mobile quality parity', () => {
         assert.doesNotMatch(subdelegate, /Math\.min\(ratio|isMobile/);
         assert.match(manager, /function live2dModelJsonName\(index: number\): string \{\s*return `\$\{LAppDefine\.ModelDir\[index\]\}\.model3\.json`;/);
         assert.doesNotMatch(manager, /-mobile\.model3\.json|-lite\.model3\.json|live2dModelVariant/);
+        assert.match(define, /ResourcesPath = '\/models-v3\/'/);
         assert.match(textures, /function shouldUseMipmaps\(\): boolean \{\s*return true;\s*\}/);
         assert.match(model, /function shouldReduceIdleEffects\(\): boolean \{\s*return false;\s*\}/);
     });
@@ -226,7 +228,7 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(router, /if \(to\.name === 'room'\)[\s\S]*addEventListener\(LIVE2D_READY_EVENT/);
         assert.match(bridge, /LIVE2D_READY_TIMEOUT = 120000/);
         assert.match(bridge, /LIVE2D_ERROR_EVENT = 'tsukuyomi:live2d-error'/);
-        assert.match(bridge, /live2d-room-neuro-live\.20260714-mobile-perf-r3\.iife\.js/);
+        assert.match(bridge, /live2d-room-neuro-live\.20260714-mobile-perf-r4\.iife\.js/);
         assert.match(router, /ROOM_WARMUP_FALLBACK_MS = 120000/);
         assert.match(textureManager, /textureLoadMaxAttempts = 3/);
         assert.match(textureManager, /textureLoadTimeoutMs = 35000/);
@@ -237,7 +239,7 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(platform, /AbortController/);
         assert.match(platform, /tsukuyomi:live2d-error/);
         assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.iife\.js \{[\s\S]*max-age=300, must-revalidate/);
-        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260714-mobile-perf-r3\.iife\.js \{[\s\S]*immutable/);
+        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260714-mobile-perf-r4\.iife\.js \{[\s\S]*immutable/);
     });
 
     it('shares peripheral animation timing and avoids redundant frame writes', () => {

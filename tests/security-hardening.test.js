@@ -142,6 +142,15 @@ describe('nginx static-file boundary', () => {
         assert.match(block, /rewrite \^\/assets\/uploads\/\(\.\*\)\$ \/api\/assets\/local\/\$1 last/);
         assert.doesNotMatch(block, /try_files \$uri/);
     });
+
+    it('serves the versioned Live2D model prefix from the read-only model directory', () => {
+        const config = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx.conf'), 'utf8');
+        const staticMiddleware = fs.readFileSync(path.join(__dirname, '..', 'backend', 'middleware', 'static.js'), 'utf8');
+        const block = config.match(/location \^~ \/models-v3\/ \{[\s\S]*?\n    \}/)?.[0] || '';
+        assert.match(block, /alias \/var\/www\/tsukuyomi-space\/models\//);
+        assert.match(block, /immutable/);
+        assert.match(staticMiddleware, /app\.use\('\/models-v3', express\.static\(path\.join\(publicRoot, 'models'\)/);
+    });
 });
 
 describe('deployment privilege boundary', () => {
