@@ -22,11 +22,15 @@ const CONTENT_SECURITY_POLICY = [
 
 function securityHeaders(req, res, next) {
     res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+    if (config.isProduction) {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+    res.setHeader('Origin-Agent-Cluster', '?1');
     next();
 }
 
@@ -71,12 +75,17 @@ function requireTrustedWrite(req, res, next) {
     const origin = String(req.headers.origin || '');
     const requestedWith = String(req.headers['x-requested-with'] || '');
     const allowedOrigin = Boolean(origin) && isAllowedOrigin(origin, req);
-    const browserProvesSameOrigin = fetchSite === 'same-origin' && allowedOrigin;
     const hasAjaxHeader = requestedWith === 'XMLHttpRequest';
-    if (fetchSite === 'cross-site' || (origin && !allowedOrigin) || (!hasAjaxHeader && !browserProvesSameOrigin)) {
-        return res.status(403).json({ success: false, message: '请求来源校验失败', code: 'CSRF_REJECTED' });
+    const browserProvesTrustedContext = fetchSite === 'same-origin'
+        || (fetchSite === 'same-site' && allowedOrigin);
+    const trustedOriginRequest = allowedOrigin && (hasAjaxHeader || browserProvesTrustedContext);
+    const trustedOriginlessRequest = !origin && fetchSite === 'same-origin' && hasAjaxHeader;
+
+    if (fetchSite !== 'cross-site' && (!origin || allowedOrigin) && (trustedOriginRequest || trustedOriginlessRequest)) {
+        return next();
     }
-    next();
+
+    return res.status(403).json({ success: false, message: '请求被拒绝' });
 }
 
 function normalizeIp(value) {

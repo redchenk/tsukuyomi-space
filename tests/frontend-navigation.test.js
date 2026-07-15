@@ -40,6 +40,15 @@ function loadNotificationBadge(navigatorTarget = {}) {
 }
 
 describe('frontend navigation routes', () => {
+    it('loads every paginated article before applying local stage filters', () => {
+        const stage = source('src/frontend/pages/StagePage.vue');
+
+        assert.match(stage, /STAGE_FETCH_LIMIT = 100/);
+        assert.match(stage, /\/api\/articles\?limit=\$\{STAGE_FETCH_LIMIT\}&page=\$\{page\}/);
+        assert.match(stage, /result\.pagination\?\.totalPages/);
+        assert.match(stage, /while \(page <= totalPages\)/);
+    });
+
     it('separates the public friend-link directory from the application flow', () => {
         const router = source('src/frontend/router/index.js');
         const plaza = source('src/frontend/pages/PlazaPage.vue');

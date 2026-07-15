@@ -43,6 +43,7 @@ function jsonHeaders(token) {
     return {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
+        ...(baseUrl ? { Origin: baseUrl, 'Sec-Fetch-Site': 'same-origin' } : {}),
         ...(token ? authHeader(token) : {})
     };
 }
@@ -153,10 +154,34 @@ describe('database initialization', () => {
         assert.deepEqual(migrations.map(row => row.version), expectedVersions);
         assert.ok(db.prepare('SELECT COUNT(*) AS count FROM articles').get().count >= 3);
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('admin').role, 'admin');
+        assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('staff-admin').role, 'admin');
     });
 });
 
 describe('auth API', () => {
+    it('gives an administrator separate terminal and real site-account sessions', async () => {
+        const loginResult = await postJson('/api/admin/login', {
+            username: 'admin',
+            password: 'admin-test-password'
+        });
+        assert.equal(loginResult.response.status, 200);
+        assert.equal(loginResult.body.data.user.username, 'admin');
+        assert.equal(loginResult.body.data.user.role, 'admin');
+        assert.equal(loginResult.body.data.user.has_real_email, true);
+
+        const cookies = loginResult.response.headers.get('set-cookie') || '';
+        assert.match(cookies, /tsukuyomi_session=/);
+        assert.match(cookies, /tsukuyomi_admin_session=/);
+
+        const sessionCookies = authCookieFrom(loginResult.response);
+        const siteMe = await request('/api/auth/me', { headers: jsonHeaders(sessionCookies) });
+        const adminMe = await request('/api/admin/me', { headers: jsonHeaders(sessionCookies) });
+        assert.equal(siteMe.response.status, 200);
+        assert.equal(siteMe.body.data.id, 'admin-001');
+        assert.equal(adminMe.response.status, 200);
+        assert.equal(adminMe.body.data.role, 'super_admin');
+    });
+
     it('rejects JSON requests containing duplicate object keys', async () => {
         const result = await request('/api/auth/login', {
             method: 'POST',
@@ -794,7 +819,7 @@ describe('stats API', () => {
             body: JSON.stringify({ path: '/forged' })
         });
         assert.equal(rejected.response.status, 403);
-        assert.equal(rejected.body.code, 'CSRF_REJECTED');
+        assert.deepEqual(rejected.body, { success: false, message: '请求被拒绝' });
     });
 });
 
@@ -1197,10 +1222,11 @@ describe('request and upload security', () => {
         });
 
         assert.equal(result.response.status, 403);
-        assert.equal(result.body.code, 'CSRF_REJECTED');
+        assert.equal(result.body.message, '请求被拒绝');
+        assert.equal(Object.hasOwn(result.body, 'code'), false);
     });
 
-    it('rejects cookie writes without the CSRF request header', async () => {
+    it('rejects cookie writes without trusted browser provenance', async () => {
         const loggedIn = await postJson('/api/auth/login', {
             username: 'normal-user',
             password: 'user-test-password'
@@ -1212,7 +1238,28 @@ describe('request and upload security', () => {
             body: '{}'
         });
         assert.equal(result.response.status, 403);
-        assert.equal(result.body.code, 'CSRF_REJECTED');
+        assert.equal(result.body.message, '请求被拒绝');
+        assert.equal(Object.hasOwn(result.body, 'code'), false);
+    });
+
+    it('does not accept an AJAX header alone as CSRF proof', async () => {
+        const loggedIn = await postJson('/api/auth/login', {
+            username: 'normal-user',
+            password: 'user-test-password'
+        });
+        const cookie = authCookieFrom(loggedIn.response);
+        const result = await request('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+                Cookie: cookie,
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: '{}'
+        });
+
+        assert.equal(result.response.status, 403);
+        assert.deepEqual(result.body, { success: false, message: '请求被拒绝' });
     });
 
     it('does not trust arbitrary yachiyo.hk subdomains for CORS', async () => {
@@ -1526,6 +1573,29 @@ describe('admin API permissions', () => {
         assert.equal(injectedLink.response.status, 400);
     });
 
+    it('keeps linked administrator site identities immutable', async () => {
+        const staffUser = db.prepare('SELECT id FROM users WHERE username = ?').get('staff-admin');
+        assert.ok(staffUser?.id);
+
+        const roleChange = await patchJson(`/api/admin/users/${staffUser.id}/role`, { role: 'user' }, adminToken);
+        const usernameChange = await patchJson(`/api/admin/users/${staffUser.id}/username`, { username: 'renamed-admin' }, adminToken);
+        const deleteResult = await request(`/api/admin/users/${staffUser.id}`, {
+            method: 'DELETE',
+            headers: jsonHeaders(adminToken)
+        });
+        assert.equal(roleChange.response.status, 403);
+        assert.equal(usernameChange.response.status, 403);
+        assert.equal(deleteResult.response.status, 403);
+
+        const staffLogin = await postJson('/api/admin/login', {
+            username: 'staff-admin',
+            password: 'staff-test-password'
+        });
+        assert.equal(staffLogin.response.status, 200);
+        assert.equal(staffLogin.body.data.user.email, '');
+        assert.equal(staffLogin.body.data.user.has_real_email, false);
+    });
+
     it('allows an admin to change their own terminal password', async () => {
         const changed = await postJson('/api/admin/password', {
             currentPassword: 'staff-test-password',
@@ -1546,10 +1616,29 @@ describe('admin API permissions', () => {
 
         const newPasswordToken = await login('/api/admin/login', 'staff-admin', 'staff-new-password');
         assert.ok(newPasswordToken);
+
+        const siteUserToken = await login('/api/auth/login', 'staff-admin', 'staff-new-password');
+        const changedFromSite = await putJson('/api/user/password', {
+            currentPassword: 'staff-new-password',
+            newPassword: 'staff-final-password'
+        }, siteUserToken);
+        assert.equal(changedFromSite.response.status, 200);
+
+        const finalAdminToken = await login('/api/admin/login', 'staff-admin', 'staff-final-password');
+        assert.ok(finalAdminToken);
     });
 });
 
 describe('legacy page paths', () => {
+    it('never exposes repository files through the Express static fallback', async () => {
+        const sourceFile = await request('/package.json');
+        assert.equal(sourceFile.response.status, 404);
+
+        const publicRuntime = await request('/live2d-core.js');
+        assert.equal(publicRuntime.response.status, 200);
+        assert.match(publicRuntime.response.headers.get('content-type') || '', /javascript/);
+    });
+
     it('redirects the former pixel art path and preserves its query', async () => {
         const { response } = await request('/arena?art=42', { redirect: 'manual' });
 
@@ -1563,6 +1652,43 @@ describe('legacy page paths', () => {
 
         assert.equal(response.status, 503);
         assert.match(body, /Frontend build is missing/);
+    });
+
+    it('routes browser stage requests through Vue and renders every article for crawlers', async () => {
+        const browser = await request('/stage', {
+            headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        assert.equal(browser.response.status, 503);
+        assert.match(browser.body, /Frontend build is missing/);
+
+        const insert = db.prepare(`
+            INSERT INTO articles (title, excerpt, content, publish_date, status)
+            VALUES (?, ?, ?, ?, 'published')
+        `);
+        const ids = [];
+        try {
+            for (let index = 1; index <= 30; index += 1) {
+                const day = String(index).padStart(2, '0');
+                const result = insert.run(
+                    `Stage complete article ${day}`,
+                    'Stage crawler regression test',
+                    'Stage crawler regression test content',
+                    `2099-01-${day}`
+                );
+                ids.push(result.lastInsertRowid);
+            }
+
+            const crawler = await request('/stage', {
+                headers: { 'User-Agent': 'Googlebot/2.1' }
+            });
+            assert.equal(crawler.response.status, 200);
+            assert.match(crawler.response.headers.get('vary') || '', /User-Agent/i);
+            assert.match(crawler.body, /Stage complete article 01/);
+            assert.match(crawler.body, /Stage complete article 30/);
+        } finally {
+            const remove = db.prepare('DELETE FROM articles WHERE id = ?');
+            for (const id of ids) remove.run(id);
+        }
     });
 
     it('does not redirect removed static page routes', async () => {

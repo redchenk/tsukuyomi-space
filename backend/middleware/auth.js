@@ -248,6 +248,5 @@ module.exports = {
     clearAllAuthCookies,
     isSecureRequest,
     USER_SESSION_COOKIE,
-    ADMIN_SESSION_COOKIE,
-    JWT_SECRET: config.jwtSecret
+    ADMIN_SESSION_COOKIE
 };

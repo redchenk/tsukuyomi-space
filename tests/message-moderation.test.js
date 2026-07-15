@@ -30,6 +30,7 @@ function jsonHeaders(token) {
     return {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
+        ...(baseUrl ? { Origin: baseUrl, 'Sec-Fetch-Site': 'same-origin' } : {}),
         ...(token ? authHeader(token) : {})
     };
 }

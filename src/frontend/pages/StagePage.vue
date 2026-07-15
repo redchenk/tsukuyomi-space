@@ -20,6 +20,7 @@ const stagePage = ref(1);
 let applyingStageQuery = false;
 const categories = ['all', '\u516c\u544a', '\u4f20\u8bf4', '\u6280\u672f', '\u4e8c\u521b', '\u5176\u4ed6'];
 const STAGE_PAGE_SIZE = 6;
+const STAGE_FETCH_LIMIT = 100;
 
 const stagePageCopy = {
   resultUnit: '\u7bc7',
@@ -159,10 +160,18 @@ async function loadArticles() {
   articlesLoading.value = true;
   articlesError.value = '';
   try {
-    const response = await apiFetch('/api/articles');
-    const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || props.t.loadFailed);
-    articles.value = Array.isArray(result.data) ? result.data : [];
+    const loaded = [];
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const response = await apiFetch(`/api/articles?limit=${STAGE_FETCH_LIMIT}&page=${page}`);
+      const result = await parseResponse(response);
+      if (!result.success) throw new Error(result.message || props.t.loadFailed);
+      if (Array.isArray(result.data)) loaded.push(...result.data);
+      totalPages = Math.max(1, Number.parseInt(result.pagination?.totalPages, 10) || 1);
+      page += 1;
+    } while (page <= totalPages);
+    articles.value = loaded;
   } catch (error) {
     articles.value = [];
     articlesError.value = error.message || props.t.loadFailed;

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
-import { apiFetch, noStoreUrl } from '../api/client';
+import { apiFetch, noStoreUrl, saveUserSession } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { formatDateTime } from '../utils/time';
 
@@ -202,7 +202,7 @@ async function parseJsonResponse(response) {
   try {
     return text ? JSON.parse(text) : { success: false, message: `HTTP ${response.status}` };
   } catch (_) {
-    return { success: false, message: text.replace(/<[^>]*>/g, '').trim() || `HTTP ${response.status}` };
+    return { success: false, message: `请求失败 (HTTP ${response.status})` };
   }
 }
 
@@ -253,8 +253,8 @@ async function login() {
     terminal.login.password = '';
     localStorage.removeItem('admin_token');
     localStorage.removeItem('tsukuyomi_token');
-    localStorage.removeItem('tsukuyomi_user');
     localStorage.setItem('admin_user', JSON.stringify(terminal.admin));
+    saveUserSession('', result.data.user, { preserveAdmin: true });
     emit('auth-changed');
     await loadPanel('dashboard');
   } catch (error) {
@@ -376,8 +376,8 @@ async function changeUserUsername(user) {
 
 async function resetUserPassword(user) {
   const password = terminal.passwordDrafts[user.id] || '';
-  if (password.length < 6) {
-    showMessage('用户新密码至少 6 位', 'error');
+  if (password.length < 8) {
+    showMessage('用户新密码至少 8 位', 'error');
     return;
   }
   if (!confirm(`确定重置 ${user.username} 的登录密码吗？`)) return;

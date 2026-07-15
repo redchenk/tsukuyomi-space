@@ -21,12 +21,15 @@ function notFound(req, res) {
 
 function errorHandler(err, req, res, next) {
     if (res.headersSent) return next(err);
-    console.error('Unhandled API error:', err);
     const requestedStatus = Number(err.status || err.statusCode || 500);
     const status = requestedStatus >= 400 && requestedStatus < 500 ? requestedStatus : 500;
+    console.error('Unhandled API error', {
+        name: String(err?.name || 'Error').slice(0, 80),
+        status
+    });
     res.status(status).json({
         success: false,
-        message: status < 500 && err.message ? err.message : '服务器错误'
+        message: status < 500 && err?.expose === true ? err.message : (status < 500 ? '请求处理失败' : '服务器错误')
     });
 }
 

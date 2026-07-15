@@ -144,7 +144,7 @@ function startQQLogin() {
               <label for="registerUsername">{{ t.username }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="user" :size="18" />
-                <input id="registerUsername" v-model="register.username" required :placeholder="t.usernamePh" autocomplete="username">
+                <input id="registerUsername" v-model="register.username" required maxlength="32" :placeholder="t.usernamePh" autocomplete="username">
               </div>
             </div>
             <div class="form-group">
@@ -171,7 +171,7 @@ function startQQLogin() {
               <label for="registerPassword">{{ t.password }}</label>
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
-                <input id="registerPassword" v-model="register.password" required minlength="6" :type="showPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="new-password">
+                <input id="registerPassword" v-model="register.password" required minlength="8" :type="showPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="new-password">
                 <button class="auth-password-toggle" type="button" :aria-pressed="showPassword" @click="showPassword = !showPassword">
                   <TsIcon :name="showPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>

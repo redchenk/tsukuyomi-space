@@ -5,7 +5,7 @@ export async function parseResponse(response) {
   } catch (_) {
     return {
       success: false,
-      message: text.replace(/<[^>]*>/g, '').trim().slice(0, 120) || `HTTP ${response.status}`
+      message: `请求失败 (HTTP ${response.status})`
     };
   }
 }
@@ -40,14 +40,16 @@ function dropLegacyTokens() {
   localStorage.removeItem('admin_token');
 }
 
-function isOAuthPlaceholderEmail(email) {
-  return String(email || '').trim().toLowerCase().endsWith('@oauth.yachiyo.local');
+function isPrivatePlaceholderEmail(email) {
+  const normalized = String(email || '').trim().toLowerCase();
+  return normalized.endsWith('@oauth.yachiyo.local')
+    || normalized.endsWith('@admin.yachiyo.local');
 }
 
 function sanitizeUser(user) {
   if (!user || typeof user !== 'object') return user;
   const next = { ...user };
-  if (isOAuthPlaceholderEmail(next.email)) {
+  if (isPrivatePlaceholderEmail(next.email)) {
     next.email = '';
     next.has_real_email = false;
   }
@@ -56,12 +58,12 @@ function sanitizeUser(user) {
 
 export function getSession() {
   dropLegacyTokens();
-  let userStr = localStorage.getItem('admin_user');
-  let admin = true;
+  let userStr = localStorage.getItem('tsukuyomi_user');
+  let admin = false;
 
   if (!userStr) {
-    userStr = localStorage.getItem('tsukuyomi_user');
-    admin = false;
+    userStr = localStorage.getItem('admin_user');
+    admin = true;
   }
 
   if (!userStr) return null;
@@ -75,16 +77,15 @@ export function getSession() {
 
 function saveAdminSession(user) {
   dropLegacyTokens();
-  localStorage.removeItem('tsukuyomi_user');
   localStorage.setItem('admin_user', JSON.stringify(user));
   trustedSessionUntil = Date.now() + 8000;
   sessionRevision += 1;
   sessionRequest = null;
 }
 
-export function saveUserSession(token, user) {
+export function saveUserSession(token, user, { preserveAdmin = false } = {}) {
   dropLegacyTokens();
-  localStorage.removeItem('admin_user');
+  if (!preserveAdmin) localStorage.removeItem('admin_user');
   localStorage.setItem('tsukuyomi_user', JSON.stringify(sanitizeUser(user)));
   trustedSessionUntil = Date.now() + 8000;
   sessionRevision += 1;
@@ -217,6 +218,7 @@ async function resolveCurrentSession({ allowClear = true } = {}) {
   dropLegacyTokens();
   const startedRevision = sessionRevision;
   const cachedSession = getSession();
+  const hadAdminHint = Boolean(localStorage.getItem('admin_user'));
   const canClearSession = () => typeof allowClear === 'function' ? allowClear() : allowClear;
   let sawAuthFailure = false;
   let sawSoftFailure = false;
@@ -228,7 +230,7 @@ async function resolveCurrentSession({ allowClear = true } = {}) {
     });
     const result = await parseResponse(response);
     if (result.success && result.data) {
-      saveUserSession('', result.data);
+      saveUserSession('', result.data, { preserveAdmin: hadAdminHint });
       return { user: result.data, admin: false };
     }
     sawAuthFailure = isAuthFailure(response, result);
@@ -237,7 +239,6 @@ async function resolveCurrentSession({ allowClear = true } = {}) {
     sawSoftFailure = true;
   }
 
-  const hadAdminHint = Boolean(localStorage.getItem('admin_user'));
   if (hadAdminHint) {
     try {
       const response = await authFetch(noStoreUrl('/api/admin/me'), {

@@ -443,7 +443,7 @@ async function ucChangePassword() {
     ucShowMessage('password', props.t.ucPasswordMismatch);
     return;
   }
-  if (newPassword.length < 6) {
+  if (newPassword.length < 8) {
     ucShowMessage('password', props.t.ucPasswordTooShort);
     return;
   }

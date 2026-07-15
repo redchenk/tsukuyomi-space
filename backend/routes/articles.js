@@ -19,7 +19,7 @@ function withParsedTags(article) {
 function listArticlesPayload(req) {
     const { category } = req.query;
     const page = parsePositiveInt(req.query.page, 1);
-    const limit = parsePositiveInt(req.query.limit, 100);
+    const limit = Math.min(parsePositiveInt(req.query.limit, 100), 100);
     const offset = (page - 1) * limit;
 
     const result = articleRepository.listArticles({ category, limit, offset });
@@ -38,7 +38,8 @@ function listArticlesPayload(req) {
 }
 
 function articleListCacheKey(req) {
-    return `public:articles:${String(req.query.category || '')}:${parsePositiveInt(req.query.page, 1)}:${parsePositiveInt(req.query.limit, 100)}`;
+    const limit = Math.min(parsePositiveInt(req.query.limit, 100), 100);
+    return `public:articles:${String(req.query.category || '')}:${parsePositiveInt(req.query.page, 1)}:${limit}`;
 }
 
 function sendArticleList(req, res) {

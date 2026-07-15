@@ -105,9 +105,11 @@ describe('outbound URL validation', () => {
 describe('nginx static-file boundary', () => {
     it('does not serve arbitrary repository files from the SPA fallback', () => {
         const config = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'nginx.conf'), 'utf8');
+        const expressStatic = sourceFile('backend/middleware/static.js');
         assert.match(config, /location ~ \^\/(?:\(\?:)?backend\|backups\|data\|deploy/);
         assert.match(config, /location \^~ \/\.git/);
         assert.doesNotMatch(config, /location \/ \{[\s\S]*?try_files \$uri \/dist\/frontend\/index\.html/);
+        assert.doesNotMatch(expressStatic, /express\.static\(publicRoot/);
     });
 
     it('keeps public OpenResty free of Lua execution and ambiguous request framing', () => {
@@ -151,6 +153,33 @@ describe('nginx static-file boundary', () => {
         assert.match(block, /gzip_types application\/octet-stream/);
         assert.match(block, /immutable/);
         assert.match(staticMiddleware, /app\.use\('\/models-v4', express\.static\(path\.join\(publicRoot, 'models'\)/);
+    });
+});
+
+describe('sensitive error handling', () => {
+    it('does not expose proxy bodies, runtime errors, or JWT configuration through client helpers', () => {
+        const client = sourceFile('src/frontend/api/client.js');
+        const terminal = sourceFile('src/frontend/pages/TerminalPage.vue');
+        const frontendMain = sourceFile('src/frontend/main.js');
+        const auth = sourceFile('backend/middleware/auth.js');
+        const server = sourceFile('backend/server.js');
+
+        assert.doesNotMatch(client, /text\.replace\(/);
+        assert.doesNotMatch(terminal, /text\.replace\(/);
+        assert.match(frontendMain, /if \(import\.meta\.env\.DEV\) console\.error/);
+        assert.doesNotMatch(auth, /JWT_SECRET\s*:/);
+        assert.doesNotMatch(server, /console\.log\('Database:'/);
+    });
+});
+
+describe('stage delivery hardening', () => {
+    it('does not truncate SEO articles and reserves static HTML for crawlers', () => {
+        const staticMiddleware = sourceFile('backend/middleware/static.js');
+        const seoRenderer = sourceFile('backend/seo/render-article.js');
+
+        assert.match(staticMiddleware, /CRAWLER_USER_AGENT/);
+        assert.match(staticMiddleware, /!isCrawlerRequest\(req\)/);
+        assert.doesNotMatch(seoRenderer, /articles\.slice\(0, 24\)/);
     });
 });
 

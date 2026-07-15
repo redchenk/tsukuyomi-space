@@ -478,13 +478,13 @@ function renderStageHtml(articles = []) {
     const title = `主舞台 | ${SITE_NAME}`;
     const description = '浏览月读空间的文章、公告、技术记录、二创作品与创作日志，内容包括 Live2D、AI 角色、个人网站开发、二次元网页设计与日常记录。';
     const url = absoluteUrl('/stage');
-    const itemList = articles.slice(0, 24).map((article, index) => ({
+    const itemList = articles.map((article, index) => ({
         '@type': 'ListItem',
         position: index + 1,
         url: articleUrl(article),
         name: article.title
     }));
-    const listHtml = articles.slice(0, 24).map(article => `
+    const listHtml = articles.map(article => `
       <a class="card" href="${escapeHtml(articlePath(article))}">
         ${article.cover_image ? `<img src="${escapeHtml(article.cover_image)}" alt="${escapeHtml(article.title)}" loading="lazy" decoding="async">` : ''}
         <span class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.publish_date || article.created_at || '')}</span>

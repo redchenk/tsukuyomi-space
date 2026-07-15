@@ -28,6 +28,14 @@ function makePixelArtworkPayload(title) {
     };
 }
 
+function sameOriginWriteHeaders(page) {
+    return {
+        Origin: new URL(page.url()).origin,
+        'Sec-Fetch-Site': 'same-origin',
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+}
+
 test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
@@ -70,7 +78,7 @@ test('user can edit and delete their own message from user center', async ({ pag
     await loginAsUser(page);
     const original = `E2E managed message ${Date.now()}`;
     const createResponse = await page.request.post('/api/messages', {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        headers: sameOriginWriteHeaders(page),
         data: { content: original }
     });
     expect(createResponse.status()).toBe(201);
@@ -95,7 +103,7 @@ test('user can edit and delete their own message from user center', async ({ pag
 test('pixel artwork preview is body-level and closes from the visible button', async ({ page }) => {
     await loginAsUser(page);
     const createResponse = await page.request.post('/api/pixel-art', {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        headers: sameOriginWriteHeaders(page),
         data: makePixelArtworkPayload(`E2E Arena Preview ${Date.now()}`)
     });
     expect(createResponse.status()).toBe(201);
@@ -130,7 +138,7 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
     await loginAsUser(page);
     const pendingMessage = `E2E terminal moderation 政治 ${Date.now()}`;
     const createResponse = await page.request.post('/api/messages', {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        headers: sameOriginWriteHeaders(page),
         data: { content: pendingMessage }
     });
     expect(createResponse.status()).toBe(201);

@@ -12,7 +12,9 @@ function isOAuthPlaceholderEmail(email) {
 
 function publicEmail(email) {
     const normalized = normalizeEmail(email);
-    return isOAuthPlaceholderEmail(normalized) ? '' : normalized;
+    const privatePlaceholder = isOAuthPlaceholderEmail(normalized)
+        || normalized.endsWith('@admin.yachiyo.local');
+    return privatePlaceholder ? '' : normalized;
 }
 
 function parsePositiveInt(value, fallback) {

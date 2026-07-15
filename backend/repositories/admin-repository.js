@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const db = require('../db');
 const { normalizeContentFormat, uniqueArticleSlug } = require('./article-repository');
 
@@ -9,8 +10,51 @@ function findAdminById(id) {
     return db.prepare('SELECT * FROM admins WHERE id = ?').get(id);
 }
 
+function ensureSiteUserForAdmin(admin) {
+    if (!admin?.id || !admin?.username || !admin?.password_hash) {
+        throw new Error('Cannot link an incomplete admin account');
+    }
+
+    const sync = db.transaction(() => {
+        let user = db.prepare('SELECT * FROM users WHERE username = ?').get(admin.username);
+        if (!user) {
+            db.prepare(`
+                INSERT INTO users (id, username, email, password_hash, role)
+                VALUES (?, ?, ?, ?, 'admin')
+            `).run(
+                crypto.randomUUID(),
+                admin.username,
+                `admin-${admin.id}@admin.yachiyo.local`,
+                admin.password_hash
+            );
+            user = db.prepare('SELECT * FROM users WHERE username = ?').get(admin.username);
+        } else {
+            db.prepare(`
+                UPDATE users
+                SET password_hash = ?, role = 'admin', updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(admin.password_hash, user.id);
+            user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+        }
+        return user;
+    });
+
+    return sync();
+}
+
 function updateAdminPassword(id, passwordHash) {
-    return db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(passwordHash, id).changes;
+    const update = db.transaction(() => {
+        const admin = findAdminById(id);
+        if (!admin) return 0;
+        const changes = db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(passwordHash, id).changes;
+        db.prepare(`
+            UPDATE users
+            SET password_hash = ?, role = 'admin', updated_at = CURRENT_TIMESTAMP
+            WHERE username = ?
+        `).run(passwordHash, admin.username);
+        return changes;
+    });
+    return update();
 }
 
 function listAdminArticles() {
@@ -146,7 +190,15 @@ function updateUserUsername(id, username) {
 }
 
 function resetUserPassword(id, passwordHash) {
-    return db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(passwordHash, id).changes;
+    const update = db.transaction(() => {
+        const user = db.prepare('SELECT username FROM users WHERE id = ?').get(id);
+        if (!user) return 0;
+        const changes = db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            .run(passwordHash, id).changes;
+        db.prepare('UPDATE admins SET password_hash = ? WHERE username = ?').run(passwordHash, user.username);
+        return changes;
+    });
+    return update();
 }
 
 function deleteUser(id) {
@@ -195,6 +247,7 @@ function saveSettings(settings, allowedKeys) {
 module.exports = {
     findAdminByUsername,
     findAdminById,
+    ensureSiteUserForAdmin,
     updateAdminPassword,
     listAdminArticles,
     updateAdminArticle,

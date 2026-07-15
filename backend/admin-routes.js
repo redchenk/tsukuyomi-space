@@ -194,15 +194,28 @@ router.post('/login', async (req, res) => {
         }
 
         await authState.clearLoginFailures(identity);
-        const token = generateToken(adminTokenPayload(admin), config.adminJwtExpiresIn);
-        clearAuthCookie(req, res, USER_SESSION_COOKIE, 'lax');
-        setAuthCookie(req, res, ADMIN_SESSION_COOKIE, token, { maxAge: 24 * 60 * 60 * 1000, sameSite: 'strict' });
+        const siteUser = adminRepository.ensureSiteUserForAdmin(admin);
+        const adminToken = generateToken(adminTokenPayload(admin), config.adminJwtExpiresIn);
+        const userToken = generateToken({
+            id: siteUser.id,
+            username: siteUser.username,
+            role: siteUser.role
+        }, '7d');
+        setAuthCookie(req, res, USER_SESSION_COOKIE, userToken, {
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            sameSite: 'lax'
+        });
+        setAuthCookie(req, res, ADMIN_SESSION_COOKIE, adminToken, {
+            maxAge: 24 * 60 * 60 * 1000,
+            sameSite: 'strict'
+        });
         ok(res, {
             admin: {
                 id: admin.id,
                 username: admin.username,
                 role: admin.role
-            }
+            },
+            user: sanitizeUser(siteUser)
         }, '登录成功');
     } catch (error) {
         console.error('Admin login error:', error);
@@ -445,7 +458,7 @@ router.patch('/users/:id/role', (req, res) => {
 
         const user = adminRepository.findUserForAdmin(userId);
         if (!user) return fail(res, 404, '用户不存在');
-        if (user.username === config.defaultAdmin.username) return fail(res, 403, '不能修改默认管理员角色');
+        if (adminRepository.findAdminByUsername(user.username)) return fail(res, 403, '不能修改管理员角色');
 
         adminRepository.updateUserRole(userId, role);
         ok(res, { role }, '用户角色已更新');
@@ -466,7 +479,7 @@ router.patch('/users/:id/username', (req, res) => {
 
         const user = adminRepository.findUserForAdmin(userId);
         if (!user) return fail(res, 404, '用户不存在');
-        if (user.username === config.defaultAdmin.username) return fail(res, 403, '不能修改默认管理员昵称');
+        if (adminRepository.findAdminByUsername(user.username)) return fail(res, 403, '不能修改管理员昵称');
 
         const duplicate = adminRepository.findUserByUsername(username);
         if (duplicate && duplicate.id !== userId) {
@@ -487,7 +500,7 @@ router.post('/users/:id/password', (req, res) => {
         const userId = String(req.params.id || '').trim();
         const password = String(req.body?.password || '');
         if (!userId) return fail(res, 400, '用户 ID 无效');
-        if (password.length < 6) return fail(res, 400, '新密码至少 6 位');
+        if (password.length < 8) return fail(res, 400, '新密码至少 8 位');
 
         const changed = adminRepository.resetUserPassword(userId, bcrypt.hashSync(password, 10));
         if (!changed) return fail(res, 404, '用户不存在');
@@ -505,7 +518,7 @@ router.delete('/users/:id', (req, res) => {
         if (!userId) return fail(res, 400, '用户 ID 无效');
         const user = adminRepository.findUserForAdmin(userId);
         if (!user) return fail(res, 404, '用户不存在');
-        if (user.role === 'admin' || user.username === config.defaultAdmin.username) {
+        if (user.role === 'admin' || adminRepository.findAdminByUsername(user.username)) {
             return fail(res, 403, '不能删除管理员账号');
         }
 

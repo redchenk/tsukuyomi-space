@@ -1,4 +1,15 @@
 const store = new Map();
+const MAX_CACHE_ENTRIES = 500;
+
+function prune() {
+    const now = Date.now();
+    for (const [key, item] of store.entries()) {
+        if (item.expiresAt <= now) store.delete(key);
+    }
+    while (store.size >= MAX_CACHE_ENTRIES) {
+        store.delete(store.keys().next().value);
+    }
+}
 
 function get(key) {
     const item = store.get(key);
@@ -11,6 +22,7 @@ function get(key) {
 }
 
 function set(key, value, ttlMs = 5000) {
+    prune();
     store.set(key, {
         value,
         expiresAt: Date.now() + Math.max(250, Number(ttlMs) || 5000)
@@ -35,6 +47,7 @@ function clear() {
 }
 
 module.exports = {
+    MAX_CACHE_ENTRIES,
     get,
     set,
     remember,

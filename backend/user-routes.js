@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const articleRepository = require('./repositories/article-repository');
 const userRepository = require('./repositories/user-repository');
+const adminRepository = require('./repositories/admin-repository');
 const authRepository = require('./repositories/auth-repository');
 const notificationRepository = require('./repositories/notification-repository');
 const socialRepository = require('./repositories/social-repository');
@@ -306,8 +307,11 @@ router.put('/password', authenticateToken, (req, res) => {
         }
 
         // 鍔犲瘑鏂板瘑鐮?
+        if (String(newPassword).length < 8) {
+            return res.status(400).json({ success: false, message: '新密码至少 8 位' });
+        }
         const passwordHash = bcrypt.hashSync(newPassword, 10);
-        userRepository.updatePassword(req.user.id, passwordHash);
+        adminRepository.resetUserPassword(req.user.id, passwordHash);
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('淇敼瀵嗙爜澶辫触:', error);

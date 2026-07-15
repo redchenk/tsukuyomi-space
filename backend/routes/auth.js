@@ -294,7 +294,9 @@ router.post('/email-code', async (req, res) => {
 
 router.post('/register', async (req, res) => {
     try {
-        const { username, password, emailCode } = req.body;
+        const username = String(req.body?.username || '').trim();
+        const password = String(req.body?.password || '');
+        const emailCode = String(req.body?.emailCode || '').trim();
         const email = normalizeEmail(req.body.email);
 
         if (!username || !email || !password || !emailCode) {
@@ -303,8 +305,11 @@ router.post('/register', async (req, res) => {
         if (!isEmail(email)) {
             return res.status(400).json({ success: false, message: '请输入有效邮箱' });
         }
-        if (password.length < 6) {
-            return res.status(400).json({ success: false, message: '密码至少需要 6 位' });
+        if (username.length > 32 || /[\u0000-\u001f\u007f<>/\\]/.test(username)) {
+            return res.status(400).json({ success: false, message: '用户名格式无效' });
+        }
+        if (password.length < 8) {
+            return res.status(400).json({ success: false, message: '密码至少需要 8 位' });
         }
 
         const existingUser = authRepository.findUserByUsernameOrEmailPair(username, email);

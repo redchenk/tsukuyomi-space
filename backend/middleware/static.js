@@ -7,6 +7,12 @@ const assetRepository = require('../repositories/asset-repository');
 const objectStorage = require('../services/object-storage');
 const { articlePath, renderArticleHtml, renderGalleryHtml, renderNotFoundHtml, renderStageHtml, renderTopicLandingHtml } = require('../seo/render-article');
 
+const CRAWLER_USER_AGENT = /(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|discordbot)/i;
+
+function isCrawlerRequest(req) {
+    return CRAWLER_USER_AGENT.test(String(req.get('user-agent') || ''));
+}
+
 const SEO_ROUTES = [
     { path: '/', priority: '1.0', changefreq: 'weekly' },
     { path: '/hub', priority: '0.9', changefreq: 'weekly' },
@@ -220,12 +226,14 @@ function serveStaticFiles(app) {
     app.get('/robots.txt', sendRobots);
     app.get('/sitemap.xml', sendSitemap);
     app.get('/stage', (req, res, next) => {
-        if (req.query?.spa === '1') return next();
+        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
+        res.vary('User-Agent');
         setNoStore(res);
-        return res.type('html').send(renderStageHtml(articleRepository.listSeoArticles(60)));
+        return res.type('html').send(renderStageHtml(articleRepository.listSeoArticles()));
     });
     app.get('/gallery', (req, res, next) => {
-        if (req.query?.spa === '1') return next();
+        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
+        res.vary('User-Agent');
         setNoStore(res);
         return res.type('html').send(renderGalleryHtml(seoGalleryAssets(48)));
     });
@@ -279,12 +287,18 @@ function serveStaticFiles(app) {
         app.use(express.static(frontendDistRoot, { setHeaders: setStaticCacheHeaders }));
     }
 
+    for (const fileName of ['favicon.ico', 'site.webmanifest', 'live2d-core.js']) {
+        app.get(`/${fileName}`, (req, res) => {
+            setStaticCacheHeaders(res, path.join(publicRoot, fileName));
+            return res.sendFile(path.join(publicRoot, fileName));
+        });
+    }
+
     app.use('/assets/uploads', (req, res, next) => {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         const suffix = String(req.url || '/').replace(/^\/+/, '');
         return res.redirect(307, `/api/assets/local/${suffix}`);
     });
-    app.use(express.static(publicRoot, { setHeaders: setStaticCacheHeaders }));
     app.use('/assets', express.static(path.join(publicRoot, 'assets'), { setHeaders: setStaticCacheHeaders }));
     app.use('/lib', express.static(path.join(publicRoot, 'lib'), { setHeaders: setStaticCacheHeaders }));
     app.use('/models', express.static(path.join(publicRoot, 'models'), { setHeaders: setStaticCacheHeaders }));
