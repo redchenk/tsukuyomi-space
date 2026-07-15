@@ -3,7 +3,7 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const notificationRepository = require('../repositories/notification-repository');
 const pixelArtRepository = require('../repositories/pixel-art-repository');
 const responseCache = require('../services/response-cache');
-const { setPrivateNoStore, setPublicReadCache } = require('../services/public-cache');
+const { setPrivateNoStore } = require('../services/public-cache');
 
 const router = express.Router();
 const DEFAULT_DIMENSIONS = { width: 96, height: 54 };
@@ -109,16 +109,15 @@ function normalizeArtworkPayload(body) {
     };
 }
 
-router.get('/', optionalAuth, (req, res) => {
+function sendArtworkList(req, res, fixedLimit = null) {
     try {
         const sort = req.query.sort === 'hot' ? 'hot' : 'latest';
-        const limit = req.query.limit;
+        const limit = fixedLimit || req.query.limit;
         const offset = req.query.offset;
         const payload = req.user
             ? pixelArtRepository.listArtworks({ viewerId: req.user.id, sort, limit, offset })
             : responseCache.remember(`public:pixel-art:${sort}:${limit || ''}:${offset || ''}`, 10000, () => pixelArtRepository.listArtworks({ viewerId: '', sort, limit, offset }));
-        if (req.user) setPrivateNoStore(res, { vary: 'Cookie, Authorization, Accept-Encoding' });
-        else setPublicReadCache(res, { maxAge: 10, stale: 30 });
+        setPrivateNoStore(res);
         res.json({
             success: true,
             data: payload.items,
@@ -132,7 +131,11 @@ router.get('/', optionalAuth, (req, res) => {
         console.error('List pixel art failed:', error);
         res.status(500).json({ success: false, message: '像素画读取失败' });
     }
-});
+}
+
+router.get('/', optionalAuth, (req, res) => sendArtworkList(req, res));
+router.get('/gallery', optionalAuth, (req, res) => sendArtworkList(req, res, 36));
+router.get('/preview', optionalAuth, (req, res) => sendArtworkList(req, res, 1));
 
 router.get('/manage', authenticateToken, (req, res) => {
     try {

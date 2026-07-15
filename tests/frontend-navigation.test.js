@@ -62,6 +62,15 @@ describe('frontend navigation routes', () => {
             assert.doesNotMatch(content, /\/arena(?:[/?#'"`]|$)/);
         }
     });
+
+    it('keeps the pixel gallery and home preview on separate CDN cache paths', () => {
+        const arena = source('src/frontend/pages/ArenaPage.vue');
+        const hub = source('src/frontend/pages/HubPage.vue');
+
+        assert.match(arena, /\/api\/pixel-art\/gallery\?sort=/);
+        assert.match(hub, /\/api\/pixel-art\/preview\?sort=latest/);
+        assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
+    });
 });
 
 describe('notification dock badge', () => {

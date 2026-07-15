@@ -246,7 +246,7 @@ async function loadHubPreview(options = {}) {
       apiFetch('/api/articles?limit=12'),
       apiFetch('/api/messages/plaza/latest'),
       apiFetch('/api/assets/gallery/public?limit=1'),
-      apiFetch('/api/pixel-art?sort=latest&limit=1')
+      apiFetch('/api/pixel-art/preview?sort=latest', { cache: 'no-store' })
     ]);
     const [articleResult, messageResult, galleryResult, pixelResult] = await Promise.all([
       parseResponse(articleResponse),

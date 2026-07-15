@@ -439,6 +439,16 @@ describe('pixel art API', () => {
         assert.equal(list.response.status, 200);
         assert.ok(list.body.data.some(item => item.id === pixelArtworkId));
 
+        const galleryList = await request('/api/pixel-art/gallery');
+        assert.equal(galleryList.response.status, 200);
+        assert.ok(galleryList.body.data.some(item => item.id === pixelArtworkId));
+        assert.match(galleryList.response.headers.get('cache-control') || '', /no-store/);
+
+        const previewList = await request('/api/pixel-art/preview');
+        assert.equal(previewList.response.status, 200);
+        assert.equal(previewList.body.data.length, 1);
+        assert.match(previewList.response.headers.get('cache-control') || '', /no-store/);
+
         const liked = await postJson(`/api/pixel-art/${pixelArtworkId}/like`, {}, managedUserToken);
         assert.equal(liked.response.status, 200);
         assert.equal(liked.body.data.like_count, 1);

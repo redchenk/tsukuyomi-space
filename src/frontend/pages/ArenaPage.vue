@@ -961,9 +961,9 @@ async function loadArtworks() {
   gallery.error = '';
   session.value = getSession();
   try {
-    const galleryUrl = `/api/pixel-art?sort=${gallery.sort}&limit=36`;
+    const galleryUrl = `/api/pixel-art/gallery?sort=${gallery.sort}`;
     const response = isAuthed.value
-      ? await authFetch(`${galleryUrl}&_=${Date.now()}`, {
+      ? await authFetch(galleryUrl, {
         headers: { Accept: 'application/json' },
         cache: 'no-store'
       })
