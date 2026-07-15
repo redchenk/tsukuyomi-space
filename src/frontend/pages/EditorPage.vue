@@ -616,7 +616,7 @@ watch(currentArticleId, initEditor);
             <input ref="editorAssetUploadInput" type="file" :accept="uploadAccept" hidden @change="uploadEditorAsset">
             <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
           </div>
-          <div v-if="editor.assetPicker.uploading" class="editor-upload-progress" aria-busy="true">
+          <div v-if="editor.assetPicker.uploading" class="ts-loader-region" aria-busy="true">
             <StatusLoader :label="editor.assetPicker.uploadPhase || '正在上传...'" :progress="editor.assetPicker.uploadProgress" />
           </div>
           <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>

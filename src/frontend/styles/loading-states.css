@@ -10,6 +10,21 @@
     border: 0 !important;
 }
 
+.ts-loader-region {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 2px;
+    margin: 0.55rem 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
 div.ts-status-loader {
     display: block;
     width: min(100%, 8rem);
@@ -41,7 +56,6 @@ div.ts-status-loader-progress {
     height: 2px;
     overflow: hidden;
     border-radius: 999px;
-    background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 .ts-status-loader-progress > span {
@@ -50,7 +64,6 @@ div.ts-status-loader-progress {
     height: 100%;
     border-radius: inherit;
     background: linear-gradient(90deg, var(--pink, #ff6b9d), var(--cyan, #7edbe8));
-    box-shadow: 0 0 8px color-mix(in srgb, var(--pink, #ff6b9d) 38%, transparent);
     transition: width 180ms ease-out;
 }
 

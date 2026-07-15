@@ -9,8 +9,7 @@ defineProps({
 
 <template>
   <div v-if="active" id="loadingOverlay" class="status-layer active" aria-busy="true">
-    <div class="status-box" data-material="hud">
-      <div class="status-progress" aria-hidden="true"><span></span></div>
+    <div class="ts-loader-region">
       <StatusLoader :label="title" :detail="detail" />
     </div>
   </div>

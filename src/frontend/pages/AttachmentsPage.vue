@@ -253,7 +253,7 @@ onMounted(() => {
         </div>
       </header>
 
-      <div v-if="state.uploading" class="attachments-upload-progress" aria-busy="true">
+      <div v-if="state.uploading" class="ts-loader-region" aria-busy="true">
         <StatusLoader :label="state.uploadPhase || '正在上传...'" :progress="state.uploadProgress" />
       </div>
 

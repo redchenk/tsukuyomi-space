@@ -350,7 +350,7 @@ onUnmounted(() => {
           </div>
         </header>
 
-        <div v-if="isManageMode && state.uploading" class="gallery-progress" aria-busy="true">
+        <div v-if="isManageMode && state.uploading" class="ts-loader-region" aria-busy="true">
           <StatusLoader :label="state.uploadPhase || '正在上传...'" :progress="state.uploadProgress" />
         </div>
 

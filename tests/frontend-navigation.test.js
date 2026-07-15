@@ -150,6 +150,9 @@ describe('unified async loading states', () => {
         assert.match(styles, /width: min\(100%, 20rem\)/);
         assert.match(styles, /height: 2px/);
         assert.match(styles, /@keyframes ts-loader-progress/);
+        assert.match(styles, /\.ts-loader-region[\s\S]*background: transparent;[\s\S]*box-shadow: none;/);
+        assert.doesNotMatch(styles, /div\.ts-status-loader-progress\s*\{[^}]*background:/s);
+        assert.doesNotMatch(styles, /\.ts-status-loader-progress > span\s*\{[^}]*box-shadow:/s);
         assert.doesNotMatch(styles, /width: min\(100%, 34rem\)/);
         assert.match(styles, /data-skeleton-variant="gallery"/);
         assert.match(styles, /data-skeleton-variant="list"[^}]*grid-template-columns: 1fr/s);
@@ -188,6 +191,8 @@ describe('unified async loading states', () => {
         }
         assert.match(roomState, /error: false/);
         assert.match(roomState, /loading\.error = true/);
+        assert.doesNotMatch(roomOverlay, /status-progress/);
+        assert.match(roomOverlay, /class="ts-loader-region"[\s\S]*<StatusLoader/);
         assert.match(roomOverlay, /v-if="active"[\s\S]*v-else-if="error"[\s\S]*role="alert"/);
     });
 });

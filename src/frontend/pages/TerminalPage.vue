@@ -569,7 +569,7 @@ onUnmounted(() => {
 <template>
   <main class="page terminal-page" :aria-busy="terminal.sessionChecking || terminal.loading">
     <section v-if="terminal.sessionChecking" class="terminal-auth" aria-busy="true">
-      <div class="terminal-card terminal-login-card">
+      <div class="ts-loader-region">
         <StatusLoader label="正在验证管理会话" />
       </div>
     </section>
