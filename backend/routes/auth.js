@@ -14,6 +14,7 @@ const {
     ADMIN_SESSION_COOKIE
 } = require('../middleware/auth');
 const authRepository = require('../repositories/auth-repository');
+const adminRepository = require('../repositories/admin-repository');
 const authState = require('../services/auth-state');
 const qqOAuth = require('../services/qq-oauth');
 const { EMAIL_CODE_TTL_MS, EMAIL_CODE_COOLDOWN_MS, sendVerificationEmail } = require('../services/mailer');
@@ -87,6 +88,13 @@ function httpError(status, message) {
     const error = new Error(message);
     error.status = status;
     return error;
+}
+
+function validatedNewPassword(value) {
+    const password = String(value || '');
+    if (password.length < 8) throw httpError(400, '新密码至少 8 位');
+    if (password.length > 128) throw httpError(400, '新密码不能超过 128 位');
+    return password;
 }
 
 function loginIdentity(value) {
@@ -197,13 +205,14 @@ function oauthPlaceholderEmail(provider, providerUserId) {
     return `${provider}_${hash}@oauth.yachiyo.local`;
 }
 
-function createUserFromOAuthProfile(profile, preferredUsername = '') {
+function createUserFromOAuthProfile(profile, preferredUsername = '', initialPassword = '') {
     const userId = crypto.randomUUID();
     const username = uniqueUsername(preferredUsername || profile.nickname, profile.providerUserId);
     const email = profile.email && !authRepository.findUserByEmail(profile.email)
         ? profile.email
         : oauthPlaceholderEmail(profile.provider, profile.providerUserId);
-    const passwordHash = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 10);
+    const password = String(initialPassword || '') || crypto.randomBytes(32).toString('hex');
+    const passwordHash = bcrypt.hashSync(password, 10);
 
     return authRepository.createUserWithOAuthAccount({
         user: {
@@ -250,7 +259,7 @@ router.post('/email-code', async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
         const requestedPurpose = String(req.body.purpose || '').trim();
-        const purpose = ['login', 'register', 'oauth_bind'].includes(requestedPurpose) ? requestedPurpose : 'register';
+        const purpose = ['login', 'register', 'oauth_bind', 'password_reset'].includes(requestedPurpose) ? requestedPurpose : 'register';
 
         if (!isEmail(email)) {
             return res.status(400).json({ success: false, message: '请输入有效邮箱' });
@@ -265,6 +274,9 @@ router.post('/email-code', async (req, res) => {
         }
         if (purpose === 'login' && !existingUser) {
             return res.status(404).json({ success: false, message: '该邮箱尚未注册' });
+        }
+        if (purpose === 'password_reset' && !existingUser) {
+            return res.json({ success: true, message: '如果该邮箱已注册，验证码将发送到邮箱' });
         }
 
         const wait = await authState.verificationCooldownTtl(email, purpose);
@@ -355,6 +367,46 @@ router.post('/login', async (req, res) => {
             return res.status(error.status).json({ success: false, message: error.message });
         }
         console.error('Login failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+router.post('/password/reset', async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body?.email);
+        const emailCode = String(req.body?.emailCode || '').trim();
+        const newPassword = validatedNewPassword(req.body?.newPassword);
+        if (!isEmail(email) || isOAuthPlaceholderEmail(email) || !emailCode) {
+            return res.status(400).json({ success: false, message: '邮箱或验证码无效' });
+        }
+
+        const user = authRepository.findUserByEmail(email);
+        if (!user || user.role === 'banned') {
+            return res.status(400).json({ success: false, message: '邮箱或验证码无效' });
+        }
+        if (!(await authState.consumeVerificationCode(email, 'password_reset', emailCode))) {
+            return res.status(400).json({ success: false, message: '验证码无效或已过期' });
+        }
+
+        const changed = adminRepository.resetUserPassword(user.id, bcrypt.hashSync(newPassword, 10));
+        if (!changed) return res.status(400).json({ success: false, message: '密码重设失败' });
+        await Promise.all([
+            authState.clearLoginFailures(loginIdentity(user.email)),
+            authState.clearLoginFailures(loginIdentity(user.username))
+        ]);
+
+        const freshUser = authRepository.findUserById(user.id);
+        const sessionUser = setUserLoginSession(req, res, freshUser);
+        res.json({
+            success: true,
+            message: '密码已重设',
+            data: { user: sessionUser, redirect: safeRedirectPath(req.body?.redirect || '/hub') }
+        });
+    } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ success: false, message: error.message });
+        }
+        console.error('Reset password failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
@@ -509,6 +561,7 @@ router.post('/oauth/qq/email', async (req, res) => {
 
         const email = normalizeEmail(req.body.email);
         const emailCode = String(req.body.emailCode || '').trim();
+        const newPassword = validatedNewPassword(req.body.newPassword);
         if (!isEmail(email)) {
             return res.status(400).json({ success: false, message: '请输入有效邮箱' });
         }
@@ -526,6 +579,7 @@ router.post('/oauth/qq/email', async (req, res) => {
         const existingEmailUser = authRepository.findUserByEmail(email);
         const linkedUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
         let user = null;
+        let createdWithPassword = false;
 
         if (existingEmailUser) {
             user = authRepository.linkOAuthAccount(oauthAccountFromProfile(profile, existingEmailUser.id));
@@ -539,7 +593,16 @@ router.post('/oauth/qq/email', async (req, res) => {
                 account: oauthAccountFromProfile(profile, linkedUser.id)
             });
         } else {
-            user = createUserFromOAuthProfile(profile, req.body.username);
+            user = createUserFromOAuthProfile(profile, req.body.username, newPassword);
+            createdWithPassword = true;
+        }
+
+        if (!createdWithPassword) {
+            const passwordChanged = adminRepository.resetUserPassword(user.id, bcrypt.hashSync(newPassword, 10));
+            if (!passwordChanged) {
+                throw httpError(400, '密码设置失败');
+            }
+            user = authRepository.findUserById(user.id);
         }
 
         await authState.consumeOAuthPending(ticket, 'qq');

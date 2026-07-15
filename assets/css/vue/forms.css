@@ -1394,6 +1394,36 @@ body .page.auth-page .auth-password-toggle[aria-pressed="true"] {
     background: rgba(255, 255, 255, 0.08);
 }
 
+body .page.auth-page .auth-form-tools {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.42rem;
+}
+
+body .page.auth-page .auth-inline-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    padding: 0.28rem 0.34rem;
+    border: 0;
+    border-radius: 9px;
+    color: rgba(198, 229, 244, 0.78);
+    background: transparent;
+    box-shadow: none;
+    font-size: 0.8rem;
+    font-weight: 760;
+    cursor: pointer;
+}
+
+body .page.auth-page .auth-inline-link:hover {
+    color: #fff;
+    background: rgba(174, 242, 255, 0.08);
+}
+
+body .page.auth-page .forgot-password-footer {
+    align-items: center;
+}
+
 body .page.auth-page .auth-card .code-row {
     grid-template-columns: minmax(0, 1fr) minmax(7.4rem, auto);
     gap: 0.68rem;

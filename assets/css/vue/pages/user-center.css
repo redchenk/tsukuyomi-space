@@ -450,6 +450,25 @@ body .page.uc-page .form-group input {
     padding: 0.72rem 0.82rem;
 }
 
+body .page.uc-page .uc-password-reset-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    margin-top: 0.48rem;
+    padding: 0.24rem 0.1rem;
+    border: 0;
+    color: var(--uc-accent);
+    background: transparent;
+    box-shadow: none;
+    font-size: 0.78rem;
+    font-weight: 760;
+    cursor: pointer;
+}
+
+body .page.uc-page .uc-password-reset-link:hover {
+    color: #fff;
+}
+
 body .page.uc-page .form-group input:disabled {
     color: rgba(247, 247, 255, 0.7) !important;
     opacity: 1;

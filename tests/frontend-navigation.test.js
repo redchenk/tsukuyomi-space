@@ -91,6 +91,22 @@ describe('frontend navigation routes', () => {
         assert.match(authRoutes, /router\.get\('\/oauth\/qq\/callback'/);
     });
 
+    it('supports password setup during QQ email binding and email password recovery', () => {
+        const login = source('src/frontend/pages/LoginPage.vue');
+        const userCenter = source('src/frontend/pages/UserCenterPage.vue');
+        const authRoutes = source('backend/routes/auth.js');
+
+        assert.match(login, /openForgotPassword/);
+        assert.match(login, /purpose: 'password_reset'/);
+        assert.match(login, /\/api\/auth\/password\/reset/);
+        assert.match(login, /newPassword: oauth\.newPassword/);
+        assert.match(login, /t\.forgotPassword/);
+        assert.match(login, /searchParams\.delete\('forgot'\)/);
+        assert.match(userCenter, /forgot=1&redirect=%2Fuser-center/);
+        assert.match(authRoutes, /router\.post\('\/password\/reset'/);
+        assert.match(authRoutes, /consumeVerificationCode\(email, 'password_reset'/);
+    });
+
     it('links the existing Agent OS app from the side navigation with a Lucide icon', () => {
         const shell = source('src/frontend/layouts/AppShell.vue');
         const icons = source('src/frontend/components/TsIcon.vue');

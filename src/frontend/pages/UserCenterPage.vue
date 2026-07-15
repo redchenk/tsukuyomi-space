@@ -994,6 +994,10 @@ onMounted(async () => {
                   <div class="form-group">
                     <label>{{ t.ucCurrentPassword }}</label>
                     <input v-model="uc.password.current" type="password" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh">
+                    <button v-if="ucUser?.has_real_email" class="uc-password-reset-link" type="button" @click="go('/login?forgot=1&redirect=%2Fuser-center')">
+                      <TsIcon name="mail" :size="14" />
+                      <span>没有当前密码？使用邮箱验证</span>
+                    </button>
                   </div>
                   <div class="form-group">
                     <label>{{ t.ucNewPassword }}</label>

@@ -22,6 +22,7 @@ process.env.ROOM_WEATHER_OFFLINE = 'true';
 
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
+const authState = require('../backend/services/auth-state');
 const { ROOM_SYSTEM_PROMPT, buildChatPayload, createChatCompletion, isOllamaChatUrl, normalizeChatUrl } = require('../backend/services/llm');
 const { createEmbedding } = require('../backend/services/room-embedding');
 const { requireUserId, similarity } = require('../backend/services/room-memory');
@@ -228,6 +229,96 @@ describe('auth API', () => {
         });
         assert.equal(revoked.response.status, 401);
         assert.equal(revoked.body.code, 'TOKEN_REVOKED');
+    });
+
+    it('sets a usable password when a new QQ user binds an email', async () => {
+        const ticket = 'qq-first-password-ticket';
+        const email = 'qq-first-password@example.test';
+        await authState.createOAuthPending({
+            ticket,
+            provider: 'qq',
+            mode: 'bind_email',
+            profile: {
+                provider: 'qq',
+                providerUserId: 'qq-first-password-openid',
+                nickname: 'QQ First Password',
+                avatar: '',
+                raw: {}
+            }
+        });
+        await authState.createVerificationCode({
+            email,
+            code: '321654',
+            purpose: 'oauth_bind',
+            ttlMs: 10 * 60 * 1000,
+            cooldownMs: 60 * 1000
+        });
+
+        const bound = await postJson('/api/auth/oauth/qq/email', {
+            ticket,
+            email,
+            emailCode: '321654',
+            username: 'qq-first-password',
+            newPassword: 'qq-first-password-2026'
+        });
+        assert.equal(bound.response.status, 201);
+
+        const passwordLogin = await postJson('/api/auth/login', {
+            username: email,
+            password: 'qq-first-password-2026'
+        });
+        assert.equal(passwordLogin.response.status, 200);
+    });
+
+    it('resets an OAuth users password with a one-time email code', async () => {
+        const userId = 'oauth-reset-user';
+        const email = 'oauth-reset@example.test';
+        db.prepare(`
+            INSERT INTO users (id, username, email, password_hash, role)
+            VALUES (?, ?, ?, ?, ?)
+        `).run(userId, 'oauth-reset-user', email, bcrypt.hashSync('unknown-oauth-password', 10), 'user');
+        db.prepare(`
+            INSERT INTO user_oauth_accounts (id, user_id, provider, provider_user_id, nickname)
+            VALUES (?, ?, ?, ?, ?)
+        `).run('oauth-reset-link', userId, 'qq', 'oauth-reset-openid', 'OAuth Reset');
+
+        const oldSession = await login('/api/auth/login', email, 'unknown-oauth-password');
+        await authState.createVerificationCode({
+            email,
+            code: '654321',
+            purpose: 'password_reset',
+            ttlMs: 10 * 60 * 1000,
+            cooldownMs: 60 * 1000
+        });
+
+        const reset = await postJson('/api/auth/password/reset', {
+            email,
+            emailCode: '654321',
+            newPassword: 'oauth-reset-password-2026'
+        });
+        assert.equal(reset.response.status, 200);
+        assert.match(reset.response.headers.get('set-cookie') || '', /tsukuyomi_session=/);
+
+        const stale = await request('/api/auth/me', { headers: jsonHeaders(oldSession) });
+        assert.equal(stale.response.status, 403);
+
+        const resetSession = authCookieFrom(reset.response);
+        const current = await request('/api/auth/me', { headers: jsonHeaders(resetSession) });
+        assert.equal(current.response.status, 200);
+        assert.equal(current.body.data.id, userId);
+
+        const reused = await postJson('/api/auth/password/reset', {
+            email,
+            emailCode: '654321',
+            newPassword: 'must-not-be-accepted'
+        });
+        assert.equal(reused.response.status, 400);
+
+        const passwordLogin = await postJson('/api/auth/login', {
+            username: email,
+            password: 'oauth-reset-password-2026'
+        });
+        assert.equal(passwordLogin.response.status, 200);
     });
 
     it('keeps session hydration available beyond the sensitive auth rate limit', async () => {

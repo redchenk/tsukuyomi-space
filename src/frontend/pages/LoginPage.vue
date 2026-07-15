@@ -26,8 +26,21 @@ const login = reactive({
   sending: { loading: false, label: '' }
 });
 
+const forgot = reactive({
+  email: '',
+  emailCode: '',
+  newPassword: '',
+  confirmPassword: '',
+  message: '',
+  type: 'error',
+  submitting: false,
+  sending: { loading: false, label: '' }
+});
+
 const showLoginPassword = ref(false);
 const showOAuthPassword = ref(false);
+const showForgotPassword = ref(false);
+const forgotMode = ref(false);
 
 const oauth = reactive({
   ticket: '',
@@ -36,6 +49,8 @@ const oauth = reactive({
   identity: '',
   email: '',
   password: '',
+  newPassword: '',
+  confirmPassword: '',
   emailCode: '',
   createUsername: '',
   profile: null,
@@ -53,7 +68,9 @@ const oauthRequiresEmailBinding = computed(() => oauth.mode === 'email' || Boole
 const authTitle = computed(() => (
   hasOAuthTicket.value
     ? (oauthRequiresEmailBinding.value ? '绑定邮箱' : 'QQ 登录确认')
-    : (isJapanese.value ? 'おかえりなさい' : '欢迎回来')
+    : forgotMode.value
+      ? props.t.resetPassword
+      : (isJapanese.value ? 'おかえりなさい' : '欢迎回来')
 ));
 const authSubtitle = computed(() => (
   hasOAuthTicket.value
@@ -62,7 +79,7 @@ const authSubtitle = computed(() => (
       : oauth.profile?.hasEmailMatch
       ? '检测到相同邮箱账号，可验证后把 QQ 绑定到同一个账号，也可以直接开通新账号。'
       : 'QQ 授权已完成，可以直接进入，也可以绑定已有站内账号。')
-    : props.t.loginSubtitle
+    : (forgotMode.value ? props.t.resetPasswordSubtitle : props.t.loginSubtitle)
 ));
 const oauthProfileHint = computed(() => (
   oauthRequiresEmailBinding.value
@@ -92,6 +109,32 @@ function showMessage(type, message) {
 function showOAuthMessage(type, message) {
   oauth.type = type;
   oauth.message = message;
+}
+
+function showForgotMessage(type, message) {
+  forgot.type = type;
+  forgot.message = message;
+}
+
+function syncForgotQuery(enabled) {
+  const url = new URL(window.location.href);
+  if (enabled) url.searchParams.set('forgot', '1');
+  else url.searchParams.delete('forgot');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function openForgotPassword() {
+  const identity = login.username.trim();
+  if (identity.includes('@')) forgot.email = identity;
+  forgot.message = '';
+  forgotMode.value = true;
+  syncForgotQuery(true);
+}
+
+function closeForgotPassword() {
+  forgotMode.value = false;
+  forgot.message = '';
+  syncForgotQuery(false);
 }
 
 function setMethod(method) {
@@ -126,6 +169,64 @@ async function sendCode() {
     login.sending.loading = false;
     login.sending.label = props.t.sendCode;
     showMessage('error', props.t.failedPrefix + error.message);
+  }
+}
+
+async function sendForgotCode() {
+  forgot.sending.loading = true;
+  try {
+    const response = await apiFetch('/api/auth/email-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: forgot.email.trim(), purpose: 'password_reset' })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || props.t.unknown);
+    showForgotMessage('success', props.t.resetCodeSent);
+    forgot.sending.label = '60s';
+    countdown(forgot.sending, props.t.sendCode);
+  } catch (error) {
+    forgot.sending.loading = false;
+    forgot.sending.label = props.t.sendCode;
+    showForgotMessage('error', props.t.failedPrefix + error.message);
+  }
+}
+
+async function submitForgotPassword() {
+  forgot.message = '';
+  if (forgot.newPassword.length < 8) {
+    showForgotMessage('error', props.t.passwordTooShort);
+    return;
+  }
+  if (forgot.newPassword !== forgot.confirmPassword) {
+    showForgotMessage('error', props.t.passwordMismatch);
+    return;
+  }
+
+  forgot.submitting = true;
+  try {
+    const response = await apiFetch('/api/auth/password/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        email: forgot.email.trim(),
+        emailCode: forgot.emailCode.trim(),
+        newPassword: forgot.newPassword,
+        redirect: authRedirect.value
+      })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || props.t.resetPasswordFailed);
+    saveUserSession('', result.data.user);
+    await loadCurrentSession({ allowClear: false });
+    emit('auth-changed', result.data.user);
+    showForgotMessage('success', props.t.resetPasswordSuccess);
+    setTimeout(() => emit('go', sanitizeAuthRedirect(result.data?.redirect, authRedirect.value)), 700);
+  } catch (error) {
+    showForgotMessage('error', props.t.failedPrefix + error.message);
+  } finally {
+    forgot.submitting = false;
   }
 }
 
@@ -178,6 +279,8 @@ function clearOAuthFlow() {
   oauth.identity = '';
   oauth.email = '';
   oauth.password = '';
+  oauth.newPassword = '';
+  oauth.confirmPassword = '';
   oauth.emailCode = '';
   if (window.history?.replaceState) {
     window.history.replaceState(null, '', withAuthRedirect('/login', authRedirect.value));
@@ -273,6 +376,14 @@ async function submitOAuthBind() {
 }
 
 async function submitOAuthEmailBind() {
+  if (oauth.newPassword.length < 8) {
+    showOAuthMessage('error', props.t.passwordTooShort);
+    return;
+  }
+  if (oauth.newPassword !== oauth.confirmPassword) {
+    showOAuthMessage('error', props.t.passwordMismatch);
+    return;
+  }
   oauth.submitting = true;
   oauth.message = '';
   try {
@@ -284,7 +395,8 @@ async function submitOAuthEmailBind() {
         ticket: oauth.ticket,
         email: oauth.email.trim(),
         emailCode: oauth.emailCode.trim(),
-        username: oauth.createUsername.trim()
+        username: oauth.createUsername.trim(),
+        newPassword: oauth.newPassword
       })
     });
     const result = await parseResponse(response);
@@ -334,6 +446,8 @@ onMounted(() => {
   if (params.get('oauth') === 'qq' && params.get('ticket')) {
     oauth.ticket = params.get('ticket');
     loadOAuthPending(oauth.ticket);
+  } else if (params.get('forgot') === '1') {
+    openForgotPassword();
   }
 });
 </script>
@@ -408,6 +522,23 @@ onMounted(() => {
                   </button>
                 </div>
               </div>
+              <div class="form-group">
+                <label for="qqEmailPassword">{{ t.setLoginPassword }}</label>
+                <div class="auth-input-shell has-action">
+                  <TsIcon class="auth-field-icon" name="lock" :size="18" />
+                  <input id="qqEmailPassword" v-model="oauth.newPassword" required minlength="8" maxlength="128" :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.newPasswordPh" autocomplete="new-password">
+                  <button class="auth-password-toggle" type="button" :aria-label="showOAuthPassword ? t.hidePassword : t.showPassword" :aria-pressed="showOAuthPassword" @click="showOAuthPassword = !showOAuthPassword">
+                    <TsIcon :name="showOAuthPassword ? 'eyeOff' : 'eye'" :size="18" />
+                  </button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="qqEmailPasswordConfirm">{{ t.confirmPassword }}</label>
+                <div class="auth-input-shell">
+                  <TsIcon class="auth-field-icon" name="shield" :size="18" />
+                  <input id="qqEmailPasswordConfirm" v-model="oauth.confirmPassword" required minlength="8" maxlength="128" :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
+                </div>
+              </div>
               <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定邮箱并进入' }}</button>
             </form>
 
@@ -472,13 +603,58 @@ onMounted(() => {
           </template>
         </section>
 
-        <section v-else class="auth-card" data-material="content" :aria-busy="login.submitting">
+        <section v-else class="auth-card" data-material="content" :aria-busy="forgotMode ? forgot.submitting : login.submitting">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="moon" :size="14" /> Tsukuyomi Gate</span>
             <h1>{{ authTitle }}</h1>
             <p class="panel-subtitle">{{ authSubtitle }}</p>
           </div>
-          <div v-if="login.message" class="form-message" :class="login.type">{{ login.message }}</div>
+          <div v-if="forgotMode && forgot.message" class="form-message" :class="forgot.type">{{ forgot.message }}</div>
+          <div v-else-if="!forgotMode && login.message" class="form-message" :class="login.type">{{ login.message }}</div>
+
+          <form v-if="forgotMode" class="forgot-password-form" :aria-busy="forgot.submitting" @submit.prevent="submitForgotPassword">
+            <div class="form-group">
+              <label for="forgotEmail">{{ t.email }}</label>
+              <div class="auth-input-shell">
+                <TsIcon class="auth-field-icon" name="mail" :size="18" />
+                <input id="forgotEmail" v-model="forgot.email" required type="email" autocomplete="email" :placeholder="t.emailPh">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="forgotCode">{{ t.emailCode }}</label>
+              <div class="code-row">
+                <div class="auth-input-shell">
+                  <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
+                  <input id="forgotCode" v-model="forgot.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                </div>
+                <button class="code-btn" type="button" :disabled="forgot.sending.loading" :aria-busy="forgot.sending.loading" @click="sendForgotCode">
+                  <TsIcon v-if="forgot.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
+                  <span :role="forgot.sending.loading ? 'status' : undefined">{{ forgot.sending.label || t.sendCode }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="forgotNewPassword">{{ t.newPassword }}</label>
+              <div class="auth-input-shell has-action">
+                <TsIcon class="auth-field-icon" name="lock" :size="18" />
+                <input id="forgotNewPassword" v-model="forgot.newPassword" required minlength="8" maxlength="128" :type="showForgotPassword ? 'text' : 'password'" :placeholder="t.newPasswordPh" autocomplete="new-password">
+                <button class="auth-password-toggle" type="button" :aria-label="showForgotPassword ? t.hidePassword : t.showPassword" :aria-pressed="showForgotPassword" @click="showForgotPassword = !showForgotPassword">
+                  <TsIcon :name="showForgotPassword ? 'eyeOff' : 'eye'" :size="18" />
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="forgotConfirmPassword">{{ t.confirmPassword }}</label>
+              <div class="auth-input-shell">
+                <TsIcon class="auth-field-icon" name="shield" :size="18" />
+                <input id="forgotConfirmPassword" v-model="forgot.confirmPassword" required minlength="8" maxlength="128" :type="showForgotPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
+              </div>
+            </div>
+            <button class="primary-btn" type="submit" :disabled="forgot.submitting" :aria-busy="forgot.submitting">{{ t.resetAndLogin }}</button>
+            <StatusLoader v-if="forgot.submitting" :label="t.resettingPassword" compact />
+          </form>
+
+          <template v-else>
           <form :aria-busy="login.submitting" @submit.prevent="submitLogin">
             <div class="mode-row">
               <button class="mode-btn" :class="{ active: login.method === 'password' }" type="button" @click="setMethod('password')">{{ t.passwordLogin }}</button>
@@ -498,6 +674,12 @@ onMounted(() => {
                 <input id="loginPassword" v-model="login.password" required :type="showLoginPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
                 <button class="auth-password-toggle" type="button" :aria-pressed="showLoginPassword" @click="showLoginPassword = !showLoginPassword">
                   <TsIcon :name="showLoginPassword ? 'eyeOff' : 'eye'" :size="18" />
+                </button>
+              </div>
+              <div class="auth-form-tools">
+                <button class="auth-inline-link" type="button" @click="openForgotPassword">
+                  <TsIcon name="keyRound" :size="14" />
+                  <span>{{ t.forgotPassword }}</span>
                 </button>
               </div>
             </div>
@@ -528,6 +710,15 @@ onMounted(() => {
           </div>
           <div class="auth-card-footer">
             <div class="panel-links">{{ t.noAccount }} <a :href="registerPath" @click.prevent="go(registerPath)">{{ t.register }}</a></div>
+            <a class="auth-home-link" href="/" @click.prevent="go('/')">{{ authHomeLabel }}</a>
+          </div>
+          </template>
+
+          <div v-if="forgotMode" class="auth-card-footer forgot-password-footer">
+            <button class="auth-inline-link" type="button" @click="closeForgotPassword">
+              <TsIcon name="arrowLeft" :size="14" />
+              <span>{{ t.backToLogin }}</span>
+            </button>
             <a class="auth-home-link" href="/" @click.prevent="go('/')">{{ authHomeLabel }}</a>
           </div>
         </section>

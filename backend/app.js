@@ -62,6 +62,7 @@ function createApp() {
         '/api/auth/login',
         '/api/auth/register',
         '/api/auth/email-code',
+        '/api/auth/password/reset',
         '/api/auth/oauth/qq/start',
         '/api/auth/oauth/qq/create',
         '/api/auth/oauth/qq/email',
