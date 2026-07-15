@@ -108,8 +108,10 @@ describe('nginx static-file boundary', () => {
         const expressStatic = sourceFile('backend/middleware/static.js');
         assert.match(config, /location ~ \^\/(?:\(\?:)?backend\|backups\|data\|deploy/);
         assert.match(config, /location \^~ \/\.git/);
+        assert.match(config, /location = \/security_best_practices_report\.md[\s\S]*?return 404/);
         assert.doesNotMatch(config, /location \/ \{[\s\S]*?try_files \$uri \/dist\/frontend\/index\.html/);
         assert.doesNotMatch(expressStatic, /express\.static\(publicRoot/);
+        assert.match(sourceFile('deploy/openresty-site-security.conf'), /location = \/security_best_practices_report\.md[\s\S]*?return 404/);
     });
 
     it('keeps public OpenResty free of Lua execution and ambiguous request framing', () => {
