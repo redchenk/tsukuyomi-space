@@ -75,7 +75,7 @@ if [ -d "$PRIMARY_SITE_DIR/proxy" ]; then
 fi
 
 if [ -n "$ORIGIN_SITE_DIR" ] && [ -d "$ORIGIN_SITE_DIR/proxy" ]; then
-    install -o root -g root -m 644 deploy/openresty-root-proxy.conf "$ORIGIN_SITE_DIR/proxy/root.conf"
+    install -o root -g root -m 644 deploy/openresty-oauth-callback-proxy.conf "$ORIGIN_SITE_DIR/proxy/root.conf"
 fi
 
 if [ -d "$PRIMARY_SITE_DIR/proxy" ]; then

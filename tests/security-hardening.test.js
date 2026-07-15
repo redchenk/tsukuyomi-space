@@ -114,6 +114,8 @@ describe('nginx static-file boundary', () => {
         const main = sourceFile('deploy/openresty-nginx.conf');
         const site = sourceFile('deploy/openresty-site-security.conf');
         const proxy = sourceFile('deploy/openresty-root-proxy.conf');
+        const oauthCallbackProxy = sourceFile('deploy/openresty-oauth-callback-proxy.conf');
+        const installer = sourceFile('deploy/install-openresty-hardening.sh');
 
         assert.match(main, /^user www-data www-data;/m);
         assert.doesNotMatch(main, /_by_lua|lua_package_path|1pwaf/);
@@ -121,6 +123,10 @@ describe('nginx static-file boundary', () => {
         assert.match(proxy, /proxy_request_buffering on;/);
         assert.match(proxy, /proxy_set_header Connection "";/);
         assert.match(proxy, /proxy_set_header Transfer-Encoding "";/);
+        assert.match(oauthCallbackProxy, /location = \/api\/auth\/oauth\/qq\/callback/);
+        assert.match(oauthCallbackProxy, /location \/ \{\s*return 404;/);
+        assert.match(oauthCallbackProxy, /limit_except GET/);
+        assert.match(installer, /openresty-oauth-callback-proxy\.conf "\$ORIGIN_SITE_DIR\/proxy\/root\.conf"/);
     });
 
     it('does not publish the origin hostname or server addresses in client and deploy defaults', () => {
