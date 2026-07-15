@@ -9,6 +9,13 @@ const VIEW_VISITOR_KEY_SQL = `
     )
 `;
 
+const VIEW_DAY_SQL = `
+    COALESCE(
+        NULLIF(visit_day, ''),
+        date(created_at, '+8 hours')
+    )
+`;
+
 function articleCounters() {
     return db.prepare('SELECT COUNT(*) AS count, COALESCE(SUM(view_count), 0) AS views FROM articles').get();
 }
@@ -35,15 +42,15 @@ function publicViewCounters() {
     return db.prepare(`
         WITH view_events AS (
             SELECT
-                created_at,
+                ${VIEW_DAY_SQL} AS visit_day,
                 ${VIEW_VISITOR_KEY_SQL} AS visitor_key
             FROM stats
             WHERE event_type = 'view'
         )
         SELECT
-            COUNT(DISTINCT CASE WHEN date(created_at, '+8 hours') = date('now', '+8 hours') THEN visitor_key END) AS today,
-            COUNT(DISTINCT CASE WHEN created_at >= datetime('now', '-7 days') THEN visitor_key END) AS week,
-            COUNT(DISTINCT visitor_key) AS total
+            COUNT(DISTINCT CASE WHEN visit_day = date('now', '+8 hours') THEN visit_day || char(31) || visitor_key END) AS today,
+            COUNT(DISTINCT CASE WHEN visit_day BETWEEN date('now', '+8 hours', '-6 days') AND date('now', '+8 hours') THEN visit_day || char(31) || visitor_key END) AS week,
+            COUNT(DISTINCT visit_day || char(31) || visitor_key) AS total
         FROM view_events
     `).get();
 }
@@ -52,14 +59,14 @@ function adminViewCounters() {
     return db.prepare(`
         WITH view_events AS (
             SELECT
-                created_at,
+                ${VIEW_DAY_SQL} AS visit_day,
                 ${VIEW_VISITOR_KEY_SQL} AS visitor_key
             FROM stats
             WHERE event_type = 'view'
         )
         SELECT
-            COUNT(DISTINCT CASE WHEN date(created_at, '+8 hours') = date('now', '+8 hours') THEN visitor_key END) AS today,
-            COUNT(DISTINCT visitor_key) AS total
+            COUNT(DISTINCT CASE WHEN visit_day = date('now', '+8 hours') THEN visit_day || char(31) || visitor_key END) AS today,
+            COUNT(DISTINCT visit_day || char(31) || visitor_key) AS total
         FROM view_events
     `).get();
 }
@@ -68,16 +75,16 @@ function analyticsViewCounters() {
     return db.prepare(`
         WITH view_events AS (
             SELECT
-                created_at,
+                ${VIEW_DAY_SQL} AS visit_day,
                 ${VIEW_VISITOR_KEY_SQL} AS visitor_key
             FROM stats
             WHERE event_type = 'view'
         )
         SELECT
-            COUNT(DISTINCT CASE WHEN date(created_at, '+8 hours') = date('now', '+8 hours') THEN visitor_key END) AS today,
-            COUNT(DISTINCT CASE WHEN created_at >= datetime('now', '-7 days') THEN visitor_key END) AS week,
-            COUNT(DISTINCT CASE WHEN created_at >= datetime('now', '-30 days') THEN visitor_key END) AS month,
-            COUNT(DISTINCT visitor_key) AS total
+            COUNT(DISTINCT CASE WHEN visit_day = date('now', '+8 hours') THEN visit_day || char(31) || visitor_key END) AS today,
+            COUNT(DISTINCT CASE WHEN visit_day BETWEEN date('now', '+8 hours', '-6 days') AND date('now', '+8 hours') THEN visit_day || char(31) || visitor_key END) AS week,
+            COUNT(DISTINCT CASE WHEN visit_day BETWEEN date('now', '+8 hours', '-29 days') AND date('now', '+8 hours') THEN visit_day || char(31) || visitor_key END) AS month,
+            COUNT(DISTINCT visit_day || char(31) || visitor_key) AS total
         FROM view_events
     `).get();
 }
@@ -98,29 +105,79 @@ function findRecentView(eventData, seconds = 5) {
     `).get(eventData, `-${seconds} seconds`);
 }
 
-function findViewByIp(ip) {
+function findDailyViewByVisitorKey(visitorKey) {
     return db.prepare(`
-        SELECT id
+        SELECT id, visitor_key, browser_key
         FROM stats
         WHERE event_type = 'view'
           AND visitor_key = ?
-        ORDER BY id DESC
+          AND ${VIEW_DAY_SQL} = date('now', '+8 hours')
         LIMIT 1
-    `).get(String(ip || 'unknown'));
+    `).get(String(visitorKey || ''));
 }
 
-function recordView({ eventData, visitorKey, path, userAgent }) {
+function findDailyViewByBrowserKey(browserKey, anonymousOnly = false) {
+    if (!browserKey) return null;
+    const anonymousFilter = anonymousOnly
+        ? "AND (visitor_key LIKE 'visitor:%' OR visitor_key LIKE 'fallback:%')"
+        : '';
     return db.prepare(`
-        INSERT INTO stats (event_type, event_data, visitor_key, page_path, user_agent)
-        VALUES (?, ?, ?, ?, ?)
-    `).run(
-        'view',
-        eventData,
-        String(visitorKey || 'unknown'),
-        String(path || '').slice(0, 500),
-        String(userAgent || '').slice(0, 500)
-    );
+        SELECT id, visitor_key, browser_key
+        FROM stats
+        WHERE event_type = 'view'
+          AND browser_key = ?
+          AND ${VIEW_DAY_SQL} = date('now', '+8 hours')
+          ${anonymousFilter}
+        ORDER BY id ASC
+        LIMIT 1
+    `).get(String(browserKey));
 }
+
+const recordDailyView = db.transaction(({ eventData, visitorKey, browserKey, path, userAgent, authenticated }) => {
+    const normalizedVisitorKey = String(visitorKey || '');
+    const normalizedBrowserKey = String(browserKey || '');
+    const existing = findDailyViewByVisitorKey(normalizedVisitorKey);
+    if (existing) return { recorded: false, deduped: true, id: existing.id };
+
+    const browserMatch = findDailyViewByBrowserKey(normalizedBrowserKey, Boolean(authenticated));
+    if (browserMatch) {
+        if (browserMatch.visitor_key !== normalizedVisitorKey && authenticated) {
+            db.prepare(`
+                UPDATE stats
+                SET event_data = ?, visitor_key = ?, browser_key = ?, page_path = ?, user_agent = ?
+                WHERE id = ?
+            `).run(
+                eventData,
+                normalizedVisitorKey,
+                normalizedBrowserKey,
+                String(path || '').slice(0, 500),
+                String(userAgent || '').slice(0, 500),
+                browserMatch.id
+            );
+        }
+        return { recorded: false, deduped: true, migrated: authenticated, id: browserMatch.id };
+    }
+
+    try {
+        const result = db.prepare(`
+            INSERT INTO stats (event_type, event_data, visitor_key, browser_key, visit_day, page_path, user_agent)
+            VALUES ('view', ?, ?, ?, date('now', '+8 hours'), ?, ?)
+        `).run(
+            eventData,
+            normalizedVisitorKey,
+            normalizedBrowserKey,
+            String(path || '').slice(0, 500),
+            String(userAgent || '').slice(0, 500)
+        );
+        return { recorded: true, deduped: false, id: result.lastInsertRowid };
+    } catch (error) {
+        if (error?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            const duplicate = findDailyViewByVisitorKey(normalizedVisitorKey);
+            return { recorded: false, deduped: true, id: duplicate?.id || null };
+        }
+        throw error;
+    }
+});
 
 module.exports = {
     articleCounters,
@@ -132,6 +189,6 @@ module.exports = {
     analyticsViewCounters,
     pendingMessageCount,
     findRecentView,
-    findViewByIp,
-    recordView
+    findDailyViewByVisitorKey,
+    recordDailyView
 };

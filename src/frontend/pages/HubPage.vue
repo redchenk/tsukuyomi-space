@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, noStoreUrl, parseResponse, setPublicStatsCache } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import CountUpValue from '../components/CountUpValue.vue';
@@ -15,6 +15,7 @@ const emit = defineEmits(['go']);
 
 const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v2';
 const HUB_PREVIEW_TTL_MS = 30000;
+const STATS_UPDATED_EVENT = 'tsukuyomi:stats-updated';
 const fallbackPixelPalette = ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#ff9aba', '#f1d98e'];
 let hubPreviewCache = readHubPreviewCache();
 
@@ -67,6 +68,19 @@ const plazaQuick = reactive({
   loading: false,
   message: ''
 });
+
+function handleStatsUpdated(event) {
+  const nextStats = event?.detail;
+  if (!nextStats || typeof nextStats !== 'object') return;
+  siteStats.value = nextStats;
+  writeHubPreviewCache({
+    latestArticle: latestArticle.value,
+    latestGalleryImage: latestGalleryImage.value,
+    latestPixelArtwork: latestPixelArtwork.value,
+    plazaMessages: plazaMessages.value,
+    siteStats: nextStats
+  });
+}
 
 const sceneLinks = computed(() => [
   {
@@ -373,10 +387,17 @@ onMounted(() => {
     loadVisitPopupPreview();
     return;
   }
+  window.addEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
   window.requestAnimationFrame(() => {
     loadHubPreview();
     loadVisitPopupPreview();
   });
+});
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
+  }
 });
 </script>
 

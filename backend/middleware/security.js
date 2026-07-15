@@ -65,7 +65,6 @@ function isAllowedOrigin(origin, req = null) {
 
 function requireTrustedWrite(req, res, next) {
     if (['GET', 'HEAD', 'OPTIONS'].includes(String(req.method || '').toUpperCase())) return next();
-    if (req.path === '/stats/view' || /^\/stats\/view\//.test(req.path)) return next();
     if (/^Bearer\s+\S+$/i.test(String(req.headers.authorization || ''))) return next();
 
     const fetchSite = String(req.headers['sec-fetch-site'] || '').toLowerCase();

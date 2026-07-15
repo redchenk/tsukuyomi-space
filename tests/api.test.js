@@ -667,6 +667,7 @@ describe('stats API', () => {
         const recorded = await postJson('/api/stats/view', { path: '/hub' });
         assert.equal(recorded.response.status, 200);
         assert.equal(recorded.body.success, true);
+        assert.ok(recorded.body.data.todayViews >= 1);
 
         const { response, body } = await request('/api/stats');
         assert.equal(response.status, 200);
@@ -680,14 +681,15 @@ describe('stats API', () => {
         assert.ok('articleViews' in body.data);
     });
 
-    it('deduplicates repeated view records from the same visitor IP', async () => {
+    it('deduplicates repeated anonymous visits from the same browser for the current Hong Kong day', async () => {
         const before = await request('/api/stats');
         const beforeToday = before.body.data.todayViews;
         const first = await request('/api/stats/view', {
             method: 'POST',
             headers: {
                 ...jsonHeaders(),
-                'x-forwarded-for': '203.0.113.10'
+                'x-forwarded-for': '203.0.113.10',
+                'user-agent': 'tsukuyomi-dedupe-test'
             },
             body: JSON.stringify({ path: '/room' })
         });
@@ -695,7 +697,8 @@ describe('stats API', () => {
             method: 'POST',
             headers: {
                 ...jsonHeaders(),
-                'x-forwarded-for': '203.0.113.10'
+                'x-forwarded-for': '203.0.113.10',
+                'user-agent': 'tsukuyomi-dedupe-test'
             },
             body: JSON.stringify({ path: '/plaza' })
         });
@@ -705,6 +708,93 @@ describe('stats API', () => {
 
         const after = await request('/api/stats');
         assert.equal(after.body.data.todayViews, beforeToday + 1);
+    });
+
+    it('merges an anonymous browser visit into the signed-in account for the same day', async () => {
+        const before = await request('/api/stats');
+        const visitor = await request('/api/stats/view', {
+            method: 'POST',
+            headers: {
+                ...jsonHeaders(),
+                'user-agent': 'tsukuyomi-alias-test'
+            },
+            body: JSON.stringify({ path: '/access' })
+        });
+        const visitorCookie = authCookieFrom(visitor.response);
+        const userHeaders = jsonHeaders(userToken);
+        const combinedCookie = [userHeaders.Cookie, visitorCookie].filter(Boolean).join('; ');
+        const signedIn = await request('/api/stats/view', {
+            method: 'POST',
+            headers: {
+                ...userHeaders,
+                ...(combinedCookie ? { Cookie: combinedCookie } : {}),
+                'user-agent': 'tsukuyomi-alias-test'
+            },
+            body: JSON.stringify({ path: '/hub' })
+        });
+
+        assert.equal(visitor.body.recorded, true);
+        assert.equal(signedIn.body.deduped, true);
+        assert.equal(db.prepare(`
+            SELECT COUNT(*) AS count
+            FROM stats
+            WHERE event_type = 'view'
+              AND visit_day = date('now', '+8 hours')
+              AND visitor_key = 'account:user:user-001'
+        `).get().count, 1);
+        const after = await request('/api/stats');
+        assert.equal(after.body.data.todayViews, before.body.data.todayViews + 1);
+    });
+
+    it('counts each signed-in account only once per day across repeated visits', async () => {
+        const before = await request('/api/stats');
+        const managedFirst = await postJson('/api/stats/view', { path: '/room' }, managedUserToken);
+        const managedAgain = await postJson('/api/stats/view', { path: '/plaza' }, managedUserToken);
+        const adminFirst = await postJson('/api/stats/view', { path: '/terminal' }, adminToken);
+        const adminAgain = await postJson('/api/stats/view', { path: '/terminal?panel=analytics' }, adminToken);
+
+        assert.equal(managedFirst.body.recorded, true);
+        assert.equal(managedAgain.body.deduped, true);
+        assert.equal(adminFirst.body.recorded, true);
+        assert.equal(adminAgain.body.deduped, true);
+        const after = await request('/api/stats');
+        assert.equal(after.body.data.todayViews, before.body.data.todayViews + 2);
+    });
+
+    it('records the same account again on a later Hong Kong day', async () => {
+        const managedView = db.prepare(`
+            SELECT id
+            FROM stats
+            WHERE event_type = 'view'
+              AND visitor_key = 'account:user:user-002'
+              AND visit_day = date('now', '+8 hours')
+        `).get();
+        assert.ok(managedView?.id);
+        db.prepare(`
+            UPDATE stats
+            SET visit_day = date('now', '+8 hours', '-1 day'),
+                created_at = datetime('now', '-1 day')
+            WHERE id = ?
+        `).run(managedView.id);
+
+        const nextDay = await postJson('/api/stats/view', { path: '/hub' }, managedUserToken);
+        assert.equal(nextDay.body.recorded, true);
+        assert.equal(db.prepare(`
+            SELECT COUNT(DISTINCT visit_day) AS count
+            FROM stats
+            WHERE event_type = 'view'
+              AND visitor_key = 'account:user:user-002'
+        `).get().count, 2);
+    });
+
+    it('rejects untrusted page-view writes without the same-origin request header', async () => {
+        const rejected = await request('/api/stats/view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: '/forged' })
+        });
+        assert.equal(rejected.response.status, 403);
+        assert.equal(rejected.body.code, 'CSRF_REJECTED');
     });
 });
 

@@ -71,6 +71,17 @@ describe('frontend navigation routes', () => {
         assert.match(hub, /\/api\/pixel-art\/preview\?sort=latest/);
         assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
     });
+
+    it('records one successful site visit per account and Hong Kong day', () => {
+        const app = source('src/frontend/App.vue');
+
+        assert.match(app, /timeZone: 'Asia\/Hong_Kong'/);
+        assert.match(app, /authFetch\('\/api\/stats\/view'/);
+        assert.match(app, /localStorage\.setItem\(VIEW_RECORDED_KEY, marker\)/);
+        assert.match(app, /STATS_UPDATED_EVENT/);
+        assert.doesNotMatch(app, /localStorage\.setItem\(VIEW_RECORDED_KEY, '1'\)/);
+        assert.doesNotMatch(app, /apiBeacon\('\/api\/stats\/view'/);
+    });
 });
 
 describe('notification dock badge', () => {

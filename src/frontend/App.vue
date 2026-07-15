@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
-import { apiBeacon, apiFetch, getSession, loadCurrentSession, logoutSession, noStoreUrl } from './api/client';
+import { apiFetch, authFetch, getSession, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, setPublicStatsCache } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
 import SitePet from './components/SitePet.vue';
@@ -27,6 +27,7 @@ const isAuthed = computed(() => Boolean(user.value));
 const music = useRoomMusic();
 const routeTransitioning = ref(false);
 const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
+const STATS_UPDATED_EVENT = 'tsukuyomi:stats-updated';
 const VISIT_POPUP_SEEN_KEY = 'tsukuyomi_visit_popup_seen';
 const VISIT_POPUP_PENDING_KEY = 'tsukuyomi_visit_popup_after_access';
 const visitPopup = ref({
@@ -41,12 +42,60 @@ let lastTrustedAuthAt = 0;
 let routeTransitionTimer = 0;
 let refreshUserRun = 0;
 let initialRouteReady = false;
+const viewRecordRequests = new Map();
 
 function hydrateCachedUser() {
   const cachedSession = getSession();
   if (!cachedSession?.user) return false;
   user.value = cachedSession.user;
   return true;
+}
+
+function hongKongDay() {
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'Asia/Hong_Kong',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+function dailyViewMarker() {
+  const currentUser = user.value || getSession()?.user || null;
+  const scope = currentUser?.scope === 'admin' ? 'admin' : 'user';
+  const identity = currentUser?.id ? `${scope}:${currentUser.id}` : 'visitor';
+  return `${hongKongDay()}:${identity}`;
+}
+
+function recordDailyView() {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  const marker = dailyViewMarker();
+  if (localStorage.getItem(VIEW_RECORDED_KEY) === marker) return Promise.resolve(null);
+  if (viewRecordRequests.has(marker)) return viewRecordRequests.get(marker);
+
+  const request = authFetch('/api/stats/view', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: route.fullPath || '/' }),
+    keepalive: true
+  })
+    .then(async (response) => {
+      const result = await parseResponse(response);
+      if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+      localStorage.setItem(VIEW_RECORDED_KEY, marker);
+      if (result.data && typeof result.data === 'object') {
+        setPublicStatsCache(result.data);
+        window.dispatchEvent(new CustomEvent(STATS_UPDATED_EVENT, { detail: result.data }));
+      }
+      return result;
+    })
+    .catch(() => null)
+    .finally(() => viewRecordRequests.delete(marker));
+
+  viewRecordRequests.set(marker, request);
+  return request;
 }
 
 async function refreshUser(trustedUser = null) {
@@ -64,9 +113,11 @@ async function refreshUser(trustedUser = null) {
 
   if (session?.user) {
     user.value = session.user;
+    recordDailyView();
     return;
   }
   if (allowClear) user.value = getSession()?.user || null;
+  recordDailyView();
 }
 
 function setLang(nextLang) {
@@ -234,18 +285,6 @@ onMounted(() => {
   loadPublicSettings();
   window.addEventListener('pageshow', handlePageShow);
   document.addEventListener('visibilitychange', handleVisibilityChange);
-  if (localStorage.getItem(VIEW_RECORDED_KEY) === '1') return;
-  localStorage.setItem(VIEW_RECORDED_KEY, '1');
-  const payload = JSON.stringify({ path: route.fullPath || '/' });
-  if (apiBeacon('/api/stats/view', new Blob([payload], { type: 'application/json' }))) {
-    return;
-  }
-  apiFetch('/api/stats/view', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload,
-    keepalive: true
-  }).catch(() => {});
 });
 
 onUnmounted(() => {
