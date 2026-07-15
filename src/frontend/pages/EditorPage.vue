@@ -594,7 +594,7 @@ watch(currentArticleId, initEditor);
       </form>
 
       <div v-if="editor.assetPicker.open" class="editor-asset-backdrop" role="presentation" @click.self="closeAssetPicker">
-        <section class="editor-asset-modal" role="dialog" aria-modal="true" aria-label="附件库">
+        <section class="editor-asset-modal" data-material="popover" role="dialog" aria-modal="true" aria-label="附件库">
           <header class="editor-asset-head">
             <div>
               <span>Asset Library</span>

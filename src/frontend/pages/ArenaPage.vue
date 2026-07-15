@@ -1500,7 +1500,7 @@ onBeforeUnmount(() => {
         @touchend.self="closeArtworkPreview"
         @click.self="closeArtworkPreview"
       >
-        <section class="arena-art-lightbox-card" role="dialog" aria-modal="true" :aria-label="previewArtwork.title || copy.gallery">
+        <section class="arena-art-lightbox-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="previewArtwork.title || copy.gallery">
           <button
             class="arena-art-lightbox-close"
             type="button"

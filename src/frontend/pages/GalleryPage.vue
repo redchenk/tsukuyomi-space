@@ -497,7 +497,7 @@ onUnmounted(() => {
 
       <Teleport to="body">
         <div v-if="state.selected" class="gallery-lightbox" role="presentation" @click.self="state.selected = null">
-        <section role="dialog" aria-modal="true" :aria-label="imageName(state.selected)">
+        <section data-material="popover" role="dialog" aria-modal="true" :aria-label="imageName(state.selected)">
           <button class="gallery-lightbox-close" type="button" @click="state.selected = null">
             <TsIcon name="x" :size="18" />
           </button>

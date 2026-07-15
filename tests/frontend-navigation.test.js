@@ -99,6 +99,36 @@ describe('notification dock badge', () => {
     });
 });
 
+describe('platform material surfaces', () => {
+    it('maps native material roles without changing control semantics', () => {
+        const appStyles = source('assets/css/vue-app.css');
+        const materials = source('src/frontend/styles/materials.css');
+        const shell = source('src/frontend/layouts/AppShell.vue');
+        const main = source('src/frontend/main.js');
+
+        assert.match(appStyles, /materials\.css/);
+        assert.match(shell, /class="site-rail" data-material="sidebar"/);
+        assert.match(shell, /class="topbar site-commandbar" data-material="header"/);
+        assert.match(shell, /data-material="popover" role="dialog"/);
+        assert.match(materials, /\[data-material="hud"\]/);
+        assert.match(materials, /html\[data-window-active="false"\] \[data-material\]/);
+        assert.match(main, /document\.documentElement\.dataset\.windowActive/);
+        assert.doesNotMatch(shell, /role="button"[^>]*data-material/);
+    });
+
+    it('degrades safely for narrow screens and reduced transparency', () => {
+        const materials = source('src/frontend/styles/materials.css');
+
+        assert.match(materials, /@media \(max-width: 860px\)/);
+        assert.match(materials, /\.room-shell \[data-material\]:not\(\[data-material="hud"\]\)[\s\S]*--ts-current-material-filter: none/);
+        assert.match(materials, /\.room-shell \.status-layer\.active[\s\S]*backdrop-filter: none/);
+        assert.match(materials, /prefers-reduced-transparency: reduce/);
+        assert.match(materials, /@supports not \(\(backdrop-filter: blur\(1px\)\)/);
+        assert.match(materials, /overflow-wrap: anywhere/);
+        assert.match(materials, /\[role="dialog"\]\[data-material="popover"\][\s\S]*max-height/);
+    });
+});
+
 describe('terminal privilege boundaries', () => {
     it('hides infrastructure settings and submits only site settings for ordinary admins', () => {
         const terminal = source('src/frontend/pages/TerminalPage.vue');

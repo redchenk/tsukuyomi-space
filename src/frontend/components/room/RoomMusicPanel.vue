@@ -53,13 +53,13 @@ const emit = defineEmits(['close', 'focus', 'drag-start']);
       </div>
     </template>
 
-    <div v-if="music.drawer.volume" id="musicVolumeDrawer" class="music-drawer music-volume-drawer">
+    <div v-if="music.drawer.volume" id="musicVolumeDrawer" class="music-drawer music-volume-drawer" data-material="popover">
       <div class="music-volume-inline">
         <span>音量</span>
         <input :value="music.volume.value" type="range" min="0" max="1" step="0.01" aria-label="Volume" @input="music.setVolume($event.target.value)">
       </div>
     </div>
-    <div v-if="music.drawer.playlist" id="musicPlaylistDrawer" class="music-drawer music-playlist-drawer">
+    <div v-if="music.drawer.playlist" id="musicPlaylistDrawer" class="music-drawer music-playlist-drawer" data-material="popover">
       <select id="musicTrackSelect" :value="music.trackIndex.value" aria-label="Track" @change="music.loadTrack(Number($event.target.value), { play: music.playing.value })">
         <option v-for="(track, index) in music.tracks" :key="track.file" :value="index">{{ String(index + 1).padStart(2, '0') }} - {{ track.title }}</option>
       </select>

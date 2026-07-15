@@ -137,7 +137,7 @@ onBeforeUnmount(() => {
       <BeianLink />
     </footer>
     <div v-if="loading.active" class="loading-layer" :class="{ 'is-completing': isLeaving }">
-      <div class="loading-box">
+      <div class="loading-box" data-material="hud">
         <div class="loading-text">{{ loading.text }}</div>
         <div class="loading-bar">
           <div class="loading-progress" :style="{ width: loading.progress + '%' }"></div>

@@ -128,7 +128,7 @@ function startQQLogin() {
       </aside>
 
       <section class="auth-form-stage">
-        <section class="auth-card">
+        <section class="auth-card" data-material="content">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="userPlus" :size="14" /> Tsukuyomi Gate</span>
             <h1>{{ authTitle }}</h1>

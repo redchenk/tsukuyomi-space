@@ -152,7 +152,7 @@ onUnmounted(() => {
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && routeName !== 'room'" class="moon" aria-hidden="true"></div>
 
-    <aside v-if="showChrome" ref="railRef" class="site-rail" aria-label="Quick navigation">
+    <aside v-if="showChrome" ref="railRef" class="site-rail" data-material="sidebar" aria-label="Quick navigation">
       <a href="/hub" class="rail-mark" :aria-label="t.brand" @click.prevent="$emit('go', '/hub')">
         <TsIcon name="eclipse" :size="24" :stroke-width="1.9" />
         <span class="rail-mark-label">{{ t.brand }}</span>
@@ -234,7 +234,7 @@ onUnmounted(() => {
       </div>
     </aside>
 
-    <header v-if="showChrome && routeName !== 'room'" class="topbar site-commandbar">
+    <header v-if="showChrome && routeName !== 'room'" class="topbar site-commandbar" data-material="header">
       <a href="/hub" class="brand room-brand site-brand" @click.prevent="$emit('go', '/hub')">
         <span class="room-brand-mark site-brand-mark site-brand-icon" aria-hidden="true">
           <TsIcon name="eclipse" :size="21" :stroke-width="1.9" />
@@ -279,7 +279,7 @@ onUnmounted(() => {
       @click="navOpen = false"
     ></button>
 
-    <div v-if="showChrome && navOpen" id="site-navigation" class="nav-actions room-nav-links site-nav-links open" role="dialog" aria-modal="true" :aria-label="moreLabel">
+    <div v-if="showChrome && navOpen" id="site-navigation" class="nav-actions room-nav-links site-nav-links open" data-material="popover" role="dialog" aria-modal="true" :aria-label="moreLabel">
       <div class="site-nav-drawer-head">
         <div>
           <strong>{{ moreLabel }}</strong>
@@ -372,7 +372,7 @@ onUnmounted(() => {
       </section>
     </div>
 
-    <nav v-if="showChrome" class="mobile-bottom-nav" aria-label="Mobile primary navigation">
+    <nav v-if="showChrome" class="mobile-bottom-nav" data-material="header" aria-label="Mobile primary navigation">
       <a
         v-for="item in mobilePrimaryItems"
         :key="item.key"

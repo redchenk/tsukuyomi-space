@@ -10,7 +10,7 @@ const emit = defineEmits(['toggle', 'settings']);
 </script>
 
 <template>
-  <div class="panel-controls room-dock" aria-label="Room tools">
+  <div class="panel-controls room-dock" data-material="header" aria-label="Room tools">
     <button
       v-for="button in buttons"
       :key="button.id"

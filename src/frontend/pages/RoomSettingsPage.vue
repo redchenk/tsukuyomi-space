@@ -2628,7 +2628,7 @@ onBeforeUnmount(() => {
         :aria-label="testDialog.title || testDialogTargetLabel()"
         @click.self="closeTestDialog"
       >
-        <section class="room-test-modal-card">
+        <section class="room-test-modal-card" data-material="popover">
           <div class="room-test-dialog-head">
             <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
             <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>

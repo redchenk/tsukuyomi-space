@@ -8,7 +8,7 @@ defineProps({
 
 <template>
   <div class="site-music-drawer" :class="{ 'is-open': music.drawer.open, 'is-playing': music.playing.value }">
-    <section class="site-music-panel" aria-label="Music player">
+    <section class="site-music-panel" data-material="popover" aria-label="Music player">
       <div class="site-music-summary">
         <div
           class="music-cover site-music-cover"
@@ -85,7 +85,7 @@ defineProps({
           </button>
         </div>
 
-        <div v-if="music.drawer.volume" class="music-drawer site-music-subdrawer site-music-volume-drawer">
+        <div v-if="music.drawer.volume" class="music-drawer site-music-subdrawer site-music-volume-drawer" data-material="popover">
           <div class="music-volume-inline site-music-volume-inline">
             <TsIcon name="volume" :size="15" />
             <input :value="music.volume.value" type="range" min="0" max="1" step="0.01" aria-label="Volume" @input="music.setVolume($event.target.value)">
@@ -93,7 +93,7 @@ defineProps({
           </div>
         </div>
 
-        <div v-if="music.drawer.playlist" class="music-drawer site-music-subdrawer site-music-playlist-drawer">
+        <div v-if="music.drawer.playlist" class="music-drawer site-music-subdrawer site-music-playlist-drawer" data-material="popover">
           <select :value="music.trackIndex.value" aria-label="Track" @change="music.loadTrack(Number($event.target.value), { play: music.playing.value })">
             <option v-for="(track, index) in music.tracks" :key="track.file" :value="index">{{ String(index + 1).padStart(2, '0') }} - {{ track.title }}</option>
           </select>

@@ -358,7 +358,7 @@ onMounted(() => {
       </aside>
 
       <section class="auth-form-stage">
-        <section v-if="hasOAuthTicket" class="auth-card oauth-panel">
+        <section v-if="hasOAuthTicket" class="auth-card oauth-panel" data-material="content">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="shield" :size="14" /> OAuth</span>
             <h1>{{ authTitle }}</h1>
@@ -461,7 +461,7 @@ onMounted(() => {
           </template>
         </section>
 
-        <section v-else class="auth-card">
+        <section v-else class="auth-card" data-material="content">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="moon" :size="14" /> Tsukuyomi Gate</span>
             <h1>{{ authTitle }}</h1>

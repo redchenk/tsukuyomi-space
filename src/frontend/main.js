@@ -6,6 +6,17 @@ import './styles/global.css';
 
 configureAssetCssVars();
 
+function syncWindowAppearance() {
+  const isActive = document.visibilityState === 'visible' && document.hasFocus();
+  document.documentElement.dataset.windowActive = isActive ? 'true' : 'false';
+}
+
+window.addEventListener('focus', syncWindowAppearance, { passive: true });
+window.addEventListener('blur', syncWindowAppearance, { passive: true });
+window.addEventListener('pageshow', syncWindowAppearance, { passive: true });
+document.addEventListener('visibilitychange', syncWindowAppearance, { passive: true });
+syncWindowAppearance();
+
 const app = createApp(App);
 
 app.config.errorHandler = (err, vm, info) => {

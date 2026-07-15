@@ -1,0 +1,273 @@
+/* Platform material mapping for the Web/PWA surface. */
+:root,
+html[data-theme="light"] {
+    --ts-material-sidebar-bg: rgba(241, 247, 255, 0.64);
+    --ts-material-header-bg: rgba(247, 250, 255, 0.68);
+    --ts-material-content-bg: rgba(248, 251, 255, 0.72);
+    --ts-material-card-bg: rgba(255, 255, 255, 0.58);
+    --ts-material-control-bg: rgba(255, 255, 255, 0.66);
+    --ts-material-popover-bg: rgba(250, 252, 255, 0.84);
+    --ts-material-hud-bg: rgba(21, 27, 44, 0.78);
+    --ts-material-highlight: rgba(255, 255, 255, 0.48);
+    --ts-material-lowlight: rgba(63, 75, 112, 0.08);
+    --ts-material-border: rgba(67, 81, 121, 0.2);
+    --ts-material-shadow: 0 18px 50px rgba(48, 65, 104, 0.18);
+    --ts-material-shadow-raised: 0 26px 72px rgba(40, 52, 88, 0.24);
+    --ts-material-filter-thin: blur(14px) saturate(1.18);
+    --ts-material-filter-regular: blur(22px) saturate(1.34);
+    --ts-material-filter-thick: blur(30px) saturate(1.42);
+    --ts-material-filter-hud: blur(18px) saturate(1.16);
+    --ts-readable-panel-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.08)),
+        var(--ts-material-content-bg);
+    --ts-readable-card-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.05)),
+        var(--ts-material-card-bg);
+    --ts-readable-control-bg: var(--ts-material-control-bg);
+    --ts-readable-control-hover: rgba(255, 255, 255, 0.88);
+    --ts-readable-input-bg: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme="dark"] {
+    --ts-material-sidebar-bg: rgba(8, 13, 27, 0.6);
+    --ts-material-header-bg: rgba(10, 15, 30, 0.64);
+    --ts-material-content-bg: rgba(10, 16, 32, 0.66);
+    --ts-material-card-bg: rgba(13, 20, 39, 0.56);
+    --ts-material-control-bg: rgba(255, 255, 255, 0.075);
+    --ts-material-popover-bg: rgba(8, 12, 25, 0.82);
+    --ts-material-hud-bg: rgba(5, 8, 18, 0.84);
+    --ts-material-highlight: rgba(255, 255, 255, 0.14);
+    --ts-material-lowlight: rgba(0, 0, 0, 0.24);
+    --ts-material-border: rgba(224, 239, 255, 0.18);
+    --ts-material-shadow: 0 20px 54px rgba(0, 0, 0, 0.32);
+    --ts-material-shadow-raised: 0 30px 82px rgba(0, 0, 0, 0.44);
+    --ts-readable-panel-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.025)),
+        var(--ts-material-content-bg);
+    --ts-readable-card-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018)),
+        var(--ts-material-card-bg);
+    --ts-readable-control-bg: var(--ts-material-control-bg);
+    --ts-readable-control-hover: rgba(255, 255, 255, 0.14);
+    --ts-readable-input-bg: rgba(3, 7, 18, 0.58);
+}
+
+[data-material] {
+    --ts-current-material-bg: var(--ts-material-content-bg);
+    --ts-current-material-filter: var(--ts-material-filter-thin);
+    --ts-current-material-shadow: var(--ts-material-shadow);
+    min-width: 0;
+    border-color: var(--ts-material-border) !important;
+    background:
+        linear-gradient(180deg, var(--ts-material-highlight), transparent 44%),
+        linear-gradient(0deg, var(--ts-material-lowlight), transparent 38%),
+        var(--ts-current-material-bg) !important;
+    background-clip: padding-box;
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--ts-material-highlight) 86%, transparent),
+        var(--ts-current-material-shadow) !important;
+    -webkit-backdrop-filter: var(--ts-current-material-filter) !important;
+    backdrop-filter: var(--ts-current-material-filter) !important;
+}
+
+[data-material="sidebar"] {
+    --ts-current-material-bg: var(--ts-material-sidebar-bg);
+    --ts-current-material-filter: var(--ts-material-filter-regular);
+}
+
+[data-material="header"] {
+    --ts-current-material-bg: var(--ts-material-header-bg);
+    --ts-current-material-filter: var(--ts-material-filter-regular);
+}
+
+[data-material="content"] {
+    --ts-current-material-bg: var(--ts-material-content-bg);
+    --ts-current-material-filter: var(--ts-material-filter-thin);
+}
+
+[data-material="popover"] {
+    --ts-current-material-bg: var(--ts-material-popover-bg);
+    --ts-current-material-filter: var(--ts-material-filter-thick);
+    --ts-current-material-shadow: var(--ts-material-shadow-raised);
+}
+
+[data-material="hud"] {
+    --ts-current-material-bg: var(--ts-material-hud-bg);
+    --ts-current-material-filter: var(--ts-material-filter-hud);
+    --ts-current-material-shadow: var(--ts-material-shadow-raised);
+    color: #f8fbff;
+}
+
+/* Scrims are separate from the material surface, like native sheets and popovers. */
+:where(
+    .site-navigation-scrim,
+    .visit-popup-backdrop,
+    .gallery-lightbox,
+    .arena-art-lightbox,
+    .editor-asset-backdrop,
+    .room-test-modal,
+    .status-layer.active,
+    .loading-layer
+) {
+    background: rgba(4, 7, 16, 0.34);
+    -webkit-backdrop-filter: blur(7px) saturate(1.04);
+    backdrop-filter: blur(7px) saturate(1.04);
+}
+
+/* Keep dynamic copy and controls inside materials resilient to data changes. */
+[data-material] > *,
+[data-material] :where(header, footer, section, div, form, label) {
+    min-width: 0;
+}
+
+[data-material] :where(h1, h2, h3, h4, p, strong, small, label, figcaption, .status-title, .status-detail) {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+[data-material] :where(input, textarea, select) {
+    max-width: 100%;
+    min-width: 0;
+}
+
+:where(
+    .site-brand strong,
+    .site-brand small,
+    .site-music-title-row strong,
+    .site-music-meta-row span,
+    .nav-link span,
+    .mobile-bottom-link span,
+    .dock-label
+) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+[role="dialog"][data-material="popover"] {
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overscroll-behavior: contain;
+}
+
+:where([role="status"], [aria-busy="true"], [class$="-status"], [class$="-empty"]) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.loading-box[data-material],
+.status-box[data-material] {
+    width: min(100%, 28rem);
+    overflow: hidden;
+}
+
+/* Repeated cards use a tint, not one compositor-heavy blur per item. */
+.page :where(
+    .stage-card,
+    .article-card,
+    .gallery-card,
+    .gallery-tile,
+    .plaza-card,
+    .plaza-message,
+    .message-card,
+    .notification-card,
+    .attachment-card,
+    .artwork-card,
+    .scene-card
+) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+html[data-window-active="false"] {
+    --ts-material-sidebar-bg: color-mix(in srgb, var(--ts-surface-strong) 94%, transparent);
+    --ts-material-header-bg: color-mix(in srgb, var(--ts-surface-strong) 96%, transparent);
+    --ts-material-content-bg: color-mix(in srgb, var(--ts-surface-strong) 94%, transparent);
+    --ts-material-popover-bg: color-mix(in srgb, var(--ts-surface-strong) 98%, transparent);
+}
+
+html[data-window-active="false"] [data-material] {
+    --ts-current-material-filter: none;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ts-material-highlight) 64%, transparent) !important;
+}
+
+@media (max-width: 860px) {
+    :root {
+        --ts-material-filter-thin: blur(10px) saturate(1.1);
+        --ts-material-filter-regular: blur(17px) saturate(1.2);
+        --ts-material-filter-thick: blur(21px) saturate(1.24);
+    }
+
+    [role="dialog"][data-material="popover"] {
+        width: min(100% - 1rem, 42rem);
+        max-width: calc(100vw - 1rem);
+        max-height: calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    [data-material] :where(.notifications-actions, .gallery-empty-actions, .room-test-dialog-head) {
+        flex-wrap: wrap;
+    }
+
+    .room-shell [data-material]:not([data-material="hud"]) {
+        --ts-current-material-bg: color-mix(in srgb, var(--ts-surface-strong) 94%, transparent);
+        --ts-current-material-filter: none;
+    }
+
+    .room-shell .status-layer.active {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+@media (max-width: 460px) {
+    [data-material] {
+        --ts-current-material-shadow: 0 14px 38px rgba(0, 0, 0, 0.24);
+    }
+
+    [data-material] :where(.site-nav-grid, .hub-stat-grid, .notifications-actions) {
+        min-width: 0;
+    }
+
+    [data-material] :where(button, .primary-btn, .ghost-btn) {
+        max-width: 100%;
+    }
+
+    .hub-side-panel[data-material="sidebar"] .hub-side-head {
+        padding-right: 3.25rem;
+    }
+
+    .hub-side-panel[data-material="sidebar"] .hub-side-head small {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    [data-material],
+    :where(.site-navigation-scrim, .visit-popup-backdrop, .gallery-lightbox, .arena-art-lightbox, .editor-asset-backdrop, .room-test-modal, .status-layer.active, .loading-layer) {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    [data-material] {
+        --ts-current-material-bg: var(--ts-surface-strong);
+    }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    [data-material] {
+        --ts-current-material-bg: var(--ts-surface-strong);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-box[data-material],
+    .status-box[data-material] {
+        animation: none;
+    }
+}

@@ -306,7 +306,7 @@ onUnmounted(() => {
   <SitePet v-if="showSitePet" :lang="lang" :route-name="route.name" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
-    <section class="visit-popup-card" role="dialog" aria-modal="true" :aria-label="visitPopup.title">
+    <section class="visit-popup-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="visitPopup.title">
       <span class="visit-popup-kicker">Tsukuyomi Notice</span>
       <h2>{{ visitPopup.title }}</h2>
       <p>{{ visitPopup.content }}</p>

@@ -401,7 +401,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <aside class="hub-side-panel">
+      <aside class="hub-side-panel" data-material="sidebar">
         <div class="hub-side-head">
           <span>本站统计</span>
           <small>Site Analytics</small>
@@ -425,7 +425,7 @@ onMounted(() => {
       </aside>
     </section>
 
-    <section class="hub-grid-wrap">
+    <section class="hub-grid-wrap" data-material="content">
       <div class="hub-section-head">
         <div>
           <h2>中枢大厅</h2>
