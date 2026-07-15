@@ -11,28 +11,23 @@
 }
 
 div.ts-status-loader {
-    display: inline-grid;
-    grid-template-columns: auto minmax(0, auto) auto;
-    align-items: center;
-    gap: 0.48rem;
-    width: fit-content;
+    display: block;
+    width: min(100%, 8rem);
     max-width: 100%;
     min-width: 0;
-    padding: 0.25rem 0;
+    padding: 0;
     border: 0;
     background: transparent;
     color: inherit;
 }
 
 .ts-status-loader.has-progress {
-    grid-template-columns: auto minmax(0, 1fr) auto;
     width: min(100%, 20rem);
 }
 
 .ts-status-loader.compact {
-    width: auto;
+    width: min(100%, 4.5rem);
     padding: 0;
-    gap: 0.4rem;
 }
 
 .ts-status-loader-icon {
@@ -40,43 +35,10 @@ div.ts-status-loader {
     animation: ts-loader-spin 0.9s linear infinite;
 }
 
-div.ts-status-loader-copy {
-    display: grid;
-    min-width: 0;
-    gap: 0.08rem;
-}
-
-.ts-status-loader-copy strong,
-.ts-status-loader-copy span {
-    min-width: 0;
-    overflow-wrap: anywhere;
-}
-
-.ts-status-loader-copy strong {
-    font-size: 0.8rem;
-    font-weight: 700;
-    line-height: 1.25;
-}
-
-.ts-status-loader-copy span {
-    color: var(--ts-text-muted, currentColor);
-    font-size: 0.72rem;
-    line-height: 1.3;
-}
-
-.ts-status-loader-value {
-    font-size: 0.76rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-
 div.ts-status-loader-progress {
-    grid-column: 1 / -1;
     display: block;
     width: 100%;
     height: 2px;
-    margin-top: 0.08rem;
     overflow: hidden;
     border-radius: 999px;
     background: color-mix(in srgb, currentColor 12%, transparent);
@@ -90,6 +52,11 @@ div.ts-status-loader-progress {
     background: linear-gradient(90deg, var(--pink, #ff6b9d), var(--cyan, #7edbe8));
     box-shadow: 0 0 8px color-mix(in srgb, var(--pink, #ff6b9d) 38%, transparent);
     transition: width 180ms ease-out;
+}
+
+.ts-status-loader-progress.indeterminate > span {
+    width: 42%;
+    animation: ts-loader-progress 1.05s ease-in-out infinite;
 }
 
 .ts-skeleton {
@@ -296,6 +263,11 @@ div.ts-status-loader-progress {
     to { transform: rotate(360deg); }
 }
 
+@keyframes ts-loader-progress {
+    0% { transform: translateX(-115%); }
+    100% { transform: translateX(275%); }
+}
+
 @keyframes ts-skeleton-pulse {
     0%, 100% { opacity: 0.54; }
     50% { opacity: 1; }
@@ -330,8 +302,15 @@ div.ts-status-loader-progress {
 
 @media (prefers-reduced-motion: reduce) {
     .ts-status-loader-icon,
-    .ts-skeleton-block {
+    .ts-skeleton-block,
+    .ts-status-loader-progress.indeterminate > span {
         animation: none;
+    }
+
+    .ts-status-loader-progress.indeterminate > span {
+        width: 100%;
+        opacity: 0.62;
+        transform: none;
     }
 
     .ts-status-loader-progress > span {

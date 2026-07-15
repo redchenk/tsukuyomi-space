@@ -1,6 +1,5 @@
 <script setup>
 import { computed } from 'vue';
-import TsIcon from './TsIcon.vue';
 
 const props = defineProps({
   label: { type: String, default: 'Loading' },
@@ -17,22 +16,17 @@ const progressValue = computed(() => {
 
 <template>
   <div class="ts-status-loader" :class="{ compact, 'has-progress': progressValue !== null }" role="status" aria-live="polite" :aria-label="label">
-    <TsIcon class="ts-status-loader-icon" name="loader" :size="compact ? 14 : 16" aria-hidden="true" />
-    <div class="ts-status-loader-copy">
-      <strong>{{ label }}</strong>
-      <span v-if="detail">{{ detail }}</span>
-    </div>
-    <strong v-if="progressValue !== null" class="ts-status-loader-value">{{ progressValue }}%</strong>
     <div
-      v-if="progressValue !== null"
       class="ts-status-loader-progress"
+      :class="{ indeterminate: progressValue === null }"
       role="progressbar"
       :aria-label="label"
       aria-valuemin="0"
       aria-valuemax="100"
-      :aria-valuenow="progressValue"
+      :aria-valuenow="progressValue === null ? undefined : progressValue"
     >
-      <span :style="{ width: `${progressValue}%` }"></span>
+      <span :style="progressValue === null ? undefined : { width: `${progressValue}%` }"></span>
     </div>
+    <span class="ts-visually-hidden">{{ label }}{{ detail ? `：${detail}` : '' }}{{ progressValue === null ? '' : `，${progressValue}%` }}</span>
   </div>
 </template>
