@@ -303,6 +303,74 @@ body .page.terminal-page .terminal-context-bar strong {
     gap: 0.4rem;
 }
 
+.terminal-link-create {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.9rem;
+    border: 1px solid var(--terminal-border, var(--ts-border));
+    border-radius: var(--terminal-card-radius, var(--ts-radius-lg));
+    background: var(--terminal-card-bg, var(--ts-card));
+}
+
+.terminal-link-create-title,
+.terminal-link-create-title span {
+    display: flex;
+    align-items: center;
+}
+
+.terminal-link-create-title {
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.terminal-link-create-title span {
+    gap: 0.4rem;
+    color: var(--ts-text-strong, var(--ink));
+    font-weight: 850;
+}
+
+.terminal-link-create-title small {
+    color: var(--ts-muted);
+}
+
+.terminal-link-create-fields {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.25fr) minmax(180px, 1fr) auto;
+    align-items: end;
+    gap: 0.65rem;
+}
+
+.terminal-link-create-fields label {
+    display: grid;
+    min-width: 0;
+    gap: 0.4rem;
+    color: var(--ts-text, var(--text));
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+.terminal-link-create-fields input {
+    width: 100%;
+    min-width: 0;
+}
+
+.terminal-link-create-fields .primary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding-inline: 0.9rem;
+}
+
+.terminal-link-create[aria-busy="true"] .terminal-link-create-fields .primary-btn svg {
+    animation: terminal-spin 0.8s linear infinite;
+}
+
+@keyframes terminal-spin {
+    to { transform: rotate(360deg); }
+}
+
 .terminal-review-filters {
     display: flex;
     gap: 0.45rem;
@@ -930,6 +998,10 @@ body .page.terminal-page input:disabled {
 }
 
 @media (max-width: 1080px) {
+    .terminal-link-create-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .terminal-layout {
         grid-template-columns: 1fr;
     }
@@ -970,6 +1042,14 @@ body .page.terminal-page input:disabled {
 }
 
 @media (max-width: 760px) {
+    .terminal-link-create-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .terminal-link-create-fields .primary-btn {
+        width: 100%;
+    }
+
     .terminal-topbar,
     .terminal-hero,
     .terminal-context-bar,

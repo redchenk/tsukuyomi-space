@@ -61,15 +61,25 @@ describe('frontend navigation routes', () => {
         assert.match(application, /TsIcon name="external"/);
     });
 
-    it('uses the Terminal friend-link panel only for application review', () => {
+    it('supports direct friend-link creation alongside application review', () => {
         const terminal = source('src/frontend/pages/TerminalPage.vue');
 
         assert.match(terminal, /label: '友链审核'/);
+        assert.match(terminal, /newLink: \{ name: '', url: '', description: '' \}/);
+        assert.match(terminal, /async function createLink\(\)/);
+        assert.match(terminal, /@submit\.prevent="createLink"/);
+        assert.match(terminal, /提交后直接公开/);
         assert.match(terminal, /linkReviewFilter: 'pending'/);
         assert.match(terminal, /filteredReviewLinks/);
         assert.match(terminal, /友链审核状态/);
-        assert.doesNotMatch(terminal, /createLink\(/);
-        assert.doesNotMatch(terminal, /直接添加/);
+    });
+
+    it('keeps the QQ OAuth callback aligned with the production route', () => {
+        const config = source('backend/config.js');
+        const authRoutes = source('backend/routes/auth.js');
+
+        assert.match(config, /\/api\/auth\/oauth\/qq\/callback/);
+        assert.match(authRoutes, /router\.get\('\/oauth\/qq\/callback'/);
     });
 
     it('links the existing Agent OS app from the side navigation with a Lucide icon', () => {

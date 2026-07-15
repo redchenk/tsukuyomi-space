@@ -41,6 +41,8 @@ const terminal = reactive({
   passwordDrafts: {},
   adminPassword: { currentPassword: '', newPassword: '', confirmPassword: '' },
   links: [],
+  newLink: { name: '', url: '', description: '' },
+  linkCreating: false,
   linkReviewFilter: 'pending',
   settings: {
     siteTitle: '',
@@ -403,6 +405,24 @@ async function saveAdminPassword() {
   terminal.adminPassword.newPassword = '';
   terminal.adminPassword.confirmPassword = '';
   showMessage('管理员密码已更新，请妥善保存新密码');
+}
+
+async function createLink() {
+  terminal.linkCreating = true;
+  try {
+    await adminApi('/links', {
+      method: 'POST',
+      body: JSON.stringify(terminal.newLink)
+    });
+    terminal.newLink = { name: '', url: '', description: '' };
+    terminal.linkReviewFilter = 'active';
+    showMessage('友链已添加并公开');
+    await loadPanel('links');
+  } catch (error) {
+    showMessage(error.message || '友链添加失败', 'error');
+  } finally {
+    terminal.linkCreating = false;
+  }
 }
 
 async function updateLinkStatus(id, status) {
@@ -867,6 +887,21 @@ onUnmounted(() => {
               <div><h2>友链审核</h2><p>核对站点信息后决定是否收录。</p></div>
               <button class="ghost-btn" type="button" @click="$emit('go', '/friend-links')"><TsIcon name="external" :size="16" />查看公开页</button>
             </div>
+            <form class="terminal-link-create" :aria-busy="terminal.linkCreating" @submit.prevent="createLink">
+              <div class="terminal-link-create-title">
+                <span><TsIcon name="plus" :size="16" />手动添加</span>
+                <small>提交后直接公开</small>
+              </div>
+              <div class="terminal-link-create-fields">
+                <label>站点名称<input v-model.trim="terminal.newLink.name" type="text" minlength="2" maxlength="40" autocomplete="off" required></label>
+                <label>站点地址<input v-model.trim="terminal.newLink.url" type="url" maxlength="2048" inputmode="url" placeholder="https://" autocomplete="url" required></label>
+                <label>简介<input v-model.trim="terminal.newLink.description" type="text" minlength="6" maxlength="160" placeholder="可留空" autocomplete="off"></label>
+                <button class="primary-btn" type="submit" :disabled="terminal.linkCreating">
+                  <TsIcon :name="terminal.linkCreating ? 'loader' : 'plus'" :size="16" />
+                  {{ terminal.linkCreating ? '添加中' : '添加友链' }}
+                </button>
+              </div>
+            </form>
             <div class="terminal-review-filters" aria-label="友链审核状态">
               <button type="button" :class="{ active: terminal.linkReviewFilter === 'pending' }" @click="terminal.linkReviewFilter = 'pending'">待审核 <span>{{ linkReviewCounts.pending }}</span></button>
               <button type="button" :class="{ active: terminal.linkReviewFilter === 'active' }" @click="terminal.linkReviewFilter = 'active'">已通过 <span>{{ linkReviewCounts.active }}</span></button>
