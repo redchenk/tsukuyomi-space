@@ -143,6 +143,10 @@ describe('unified async loading states', () => {
         assert.doesNotMatch(skeleton, /role="status"/);
         assert.match(statusLoader, /role="status" aria-live="polite"/);
         assert.match(statusLoader, /role="progressbar"/);
+        assert.match(statusLoader, /compact \? 14 : 16/);
+        assert.match(styles, /width: min\(100%, 20rem\)/);
+        assert.match(styles, /height: 2px/);
+        assert.doesNotMatch(styles, /width: min\(100%, 34rem\)/);
         assert.match(styles, /data-skeleton-variant="gallery"/);
         assert.match(styles, /data-skeleton-variant="list"[^}]*grid-template-columns: 1fr/s);
         assert.match(styles, /data-skeleton-variant="article"/);

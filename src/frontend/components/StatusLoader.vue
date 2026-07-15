@@ -16,8 +16,8 @@ const progressValue = computed(() => {
 </script>
 
 <template>
-  <div class="ts-status-loader" :class="{ compact }" role="status" aria-live="polite" :aria-label="label">
-    <TsIcon class="ts-status-loader-icon" name="loader" :size="compact ? 18 : 24" aria-hidden="true" />
+  <div class="ts-status-loader" :class="{ compact, 'has-progress': progressValue !== null }" role="status" aria-live="polite" :aria-label="label">
+    <TsIcon class="ts-status-loader-icon" name="loader" :size="compact ? 14 : 16" aria-hidden="true" />
     <div class="ts-status-loader-copy">
       <strong>{{ label }}</strong>
       <span v-if="detail">{{ detail }}</span>
