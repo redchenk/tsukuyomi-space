@@ -4,6 +4,11 @@ import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client
 import BeianLink from '../components/BeianLink.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
+import {
+  NOTIFICATION_BADGE_EVENT,
+  normalizeNotificationCount,
+  publishNotificationBadge
+} from '../services/notificationBadge';
 
 const props = defineProps({
   isAuthed: { type: Boolean, default: false },
@@ -22,6 +27,9 @@ const navOpen = ref(false);
 const railExpandedKey = ref(null);
 const railRef = ref(null);
 const unreadNotifications = ref(0);
+const UNREAD_POLL_INTERVAL_MS = 60000;
+let unreadPollId = 0;
+let unreadRequest = null;
 
 const hasGlobalBackground = computed(() => props.showChrome && props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
 const showSiteBeian = computed(() => props.showChrome && !['hub', 'room', 'roomSettings'].includes(props.routeName));
@@ -56,20 +64,50 @@ function userInitial() {
 
 async function loadUnreadNotifications() {
   if (!props.isAuthed) {
-    unreadNotifications.value = 0;
+    unreadNotifications.value = publishNotificationBadge(0);
     return;
   }
 
-  try {
-    const response = await authFetch(noStoreUrl('/api/user/notifications/unread-count'), {
-      headers: authHeaders(),
-      cache: 'no-store'
-    });
-    const result = await parseResponse(response);
-    if (result.success) unreadNotifications.value = Number(result.data?.count || 0);
-  } catch (_) {
-    unreadNotifications.value = 0;
-  }
+  if (unreadRequest) return unreadRequest;
+
+  unreadRequest = (async () => {
+    try {
+      const response = await authFetch(noStoreUrl('/api/user/notifications/unread-count'), {
+        headers: authHeaders(),
+        cache: 'no-store'
+      });
+      const result = await parseResponse(response);
+      if (response.status === 401) {
+        unreadNotifications.value = publishNotificationBadge(0);
+        return;
+      }
+      if (result.success && props.isAuthed) {
+        unreadNotifications.value = publishNotificationBadge(result.data?.count);
+      }
+    } catch (_) {
+      // Preserve the last known count during transient network failures.
+    } finally {
+      unreadRequest = null;
+    }
+  })();
+
+  return unreadRequest;
+}
+
+function handleNotificationBadge(event) {
+  unreadNotifications.value = normalizeNotificationCount(event.detail?.count);
+}
+
+function refreshUnreadWhenVisible() {
+  if (!document.hidden) loadUnreadNotifications();
+}
+
+function restartUnreadPolling() {
+  if (unreadPollId) window.clearInterval(unreadPollId);
+  unreadPollId = 0;
+  if (!props.isAuthed) return;
+
+  unreadPollId = window.setInterval(refreshUnreadWhenVisible, UNREAD_POLL_INTERVAL_MS);
 }
 
 function expandRail(key) {
@@ -91,13 +129,21 @@ watch(() => props.routeName, () => {
   loadUnreadNotifications();
 });
 
-watch(() => props.isAuthed, loadUnreadNotifications, { immediate: true });
+watch(() => props.isAuthed, () => {
+  loadUnreadNotifications();
+  restartUnreadPolling();
+}, { immediate: true });
 onMounted(() => {
   loadUnreadNotifications();
   document.addEventListener('pointerdown', closeRailOnOutside, { passive: true });
+  document.addEventListener('visibilitychange', refreshUnreadWhenVisible, { passive: true });
+  window.addEventListener(NOTIFICATION_BADGE_EVENT, handleNotificationBadge);
 });
 onUnmounted(() => {
+  if (unreadPollId) window.clearInterval(unreadPollId);
   document.removeEventListener('pointerdown', closeRailOnOutside);
+  document.removeEventListener('visibilitychange', refreshUnreadWhenVisible);
+  window.removeEventListener(NOTIFICATION_BADGE_EVENT, handleNotificationBadge);
 });
 </script>
 

@@ -2,11 +2,41 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { describe, it } = require('node:test');
+const vm = require('node:vm');
 
 const projectRoot = path.resolve(__dirname, '..');
 
 function source(relativePath) {
     return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8');
+}
+
+function loadNotificationBadge(navigatorTarget = {}) {
+    const events = [];
+    const context = {
+        navigator: navigatorTarget,
+        window: {
+            dispatchEvent(event) {
+                events.push(event);
+            }
+        },
+        CustomEvent: class CustomEvent {
+            constructor(type, options = {}) {
+                this.type = type;
+                this.detail = options.detail;
+            }
+        },
+        Number,
+        Math,
+        Promise
+    };
+    const code = source('src/frontend/services/notificationBadge.js')
+        .replace(/export const /g, 'const ')
+        .replace(/export async function /g, 'async function ')
+        .replace(/export function /g, 'function ')
+        .concat('\nglobalThis.__badge = { applyAppBadge, normalizeNotificationCount, publishNotificationBadge };\n');
+
+    vm.runInNewContext(code, context, { filename: 'src/frontend/services/notificationBadge.js' });
+    return { badge: context.__badge, events };
 }
 
 describe('frontend navigation routes', () => {
@@ -31,6 +61,41 @@ describe('frontend navigation routes', () => {
         for (const content of [shell, hub, userCenter, notifications]) {
             assert.doesNotMatch(content, /\/arena(?:[/?#'"`]|$)/);
         }
+    });
+});
+
+describe('notification dock badge', () => {
+    it('sets a numeric app badge and clears it when unread reaches zero', async () => {
+        const calls = [];
+        const { badge, events } = loadNotificationBadge({
+            async setAppBadge(count) {
+                calls.push(['set', count]);
+            },
+            async clearAppBadge() {
+                calls.push(['clear']);
+            }
+        });
+
+        assert.equal(await badge.applyAppBadge(7), 7);
+        assert.equal(await badge.applyAppBadge(0), 0);
+        assert.deepEqual(calls, [['set', 7], ['clear']]);
+        assert.equal(badge.publishNotificationBadge(3), 3);
+        await Promise.resolve();
+        assert.equal(events.at(-1).type, 'tsukuyomi:notification-badge');
+        assert.equal(events.at(-1).detail.count, 3);
+    });
+
+    it('keeps app badging separate from attention and synchronizes every inbox surface', () => {
+        const badge = source('src/frontend/services/notificationBadge.js');
+        const shell = source('src/frontend/layouts/AppShell.vue');
+        const inbox = source('src/frontend/pages/NotificationsPage.vue');
+
+        assert.doesNotMatch(badge, /requestUserAttention|requestPermission|new Notification/);
+        assert.match(shell, /NOTIFICATION_BADGE_EVENT/);
+        assert.match(shell, /UNREAD_POLL_INTERVAL_MS = 60000/);
+        assert.match(shell, /response\.status === 401[\s\S]*publishNotificationBadge\(0\)/);
+        assert.match(inbox, /setUnreadCount\(result\.unread/);
+        assert.match(inbox, /setUnreadCount\(result\.data\?\.count\)/);
     });
 });
 

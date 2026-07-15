@@ -3,6 +3,7 @@ import { computed, onMounted, reactive } from 'vue';
 import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import { formatDateTime } from '../utils/time';
 import TsIcon from '../components/TsIcon.vue';
+import { publishNotificationBadge } from '../services/notificationBadge';
 
 const emit = defineEmits(['go']);
 
@@ -14,6 +15,10 @@ const inbox = reactive({
 });
 
 const unreadLabel = computed(() => inbox.unread > 99 ? '99+' : String(inbox.unread || 0));
+
+function setUnreadCount(value) {
+  inbox.unread = publishNotificationBadge(value);
+}
 
 function formatDate(value) {
   return formatDateTime(value, 'zh-CN');
@@ -46,13 +51,13 @@ async function loadNotifications() {
     if (!result.success) {
       if (response.status === 404 || /Cannot GET/i.test(result.message || '')) {
         inbox.items = [];
-        inbox.unread = 0;
+        setUnreadCount(0);
         return;
       }
       throw new Error(result.message || '加载失败');
     }
     inbox.items = Array.isArray(result.data) ? result.data : [];
-    inbox.unread = Number(result.unread || 0);
+    setUnreadCount(result.unread);
   } catch (error) {
     inbox.message = error.message || '站内信加载失败';
   } finally {
@@ -70,7 +75,7 @@ async function markRead(item) {
   if (result.success) {
     item.unread = false;
     item.read_at = result.data?.read_at || new Date().toISOString();
-    inbox.unread = Number(result.unread ?? Math.max(0, inbox.unread - 1));
+    setUnreadCount(result.unread ?? Math.max(0, inbox.unread - 1));
   }
 }
 
@@ -82,7 +87,7 @@ async function markAllRead() {
   const result = await parseResponse(response);
   if (result.success) {
     inbox.items = inbox.items.map(item => ({ ...item, unread: false, read_at: item.read_at || new Date().toISOString() }));
-    inbox.unread = Number(result.data?.count || 0);
+    setUnreadCount(result.data?.count);
   }
 }
 
