@@ -23,6 +23,7 @@ const register = reactive({
   confirmPassword: '',
   message: '',
   type: 'error',
+  submitting: false,
   sending: { loading: false, label: '' }
 });
 
@@ -68,6 +69,7 @@ async function submitRegister() {
     return;
   }
 
+  register.submitting = true;
   try {
     const response = await apiFetch('/api/auth/register', {
       method: 'POST',
@@ -91,6 +93,8 @@ async function submitRegister() {
     setTimeout(() => emit('go', authRedirect.value), 800);
   } catch (error) {
     showMessage('error', props.t.failedPrefix + error.message);
+  } finally {
+    register.submitting = false;
   }
 }
 
@@ -128,14 +132,14 @@ function startQQLogin() {
       </aside>
 
       <section class="auth-form-stage">
-        <section class="auth-card" data-material="content">
+        <section class="auth-card" data-material="content" :aria-busy="register.submitting">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="userPlus" :size="14" /> Tsukuyomi Gate</span>
             <h1>{{ authTitle }}</h1>
             <p class="panel-subtitle">{{ t.registerSubtitle }}</p>
           </div>
           <div v-if="register.message" class="form-message" :class="register.type">{{ register.message }}</div>
-          <form @submit.prevent="submitRegister">
+          <form :aria-busy="register.submitting" @submit.prevent="submitRegister">
             <div class="form-group">
               <label for="registerUsername">{{ t.username }}</label>
               <div class="auth-input-shell">
@@ -150,7 +154,10 @@ function startQQLogin() {
                   <TsIcon class="auth-field-icon" name="mail" :size="18" />
                   <input id="registerEmail" v-model="register.email" required type="email" :placeholder="t.emailInputPh" autocomplete="email">
                 </div>
-                <button class="code-btn" type="button" :disabled="register.sending.loading" @click="sendCode">{{ register.sending.label || t.sendCode }}</button>
+                <button class="code-btn" type="button" :disabled="register.sending.loading" :aria-busy="register.sending.loading" @click="sendCode">
+                  <TsIcon v-if="register.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
+                  <span :role="register.sending.loading ? 'status' : undefined">{{ register.sending.label || t.sendCode }}</span>
+                </button>
               </div>
             </div>
             <div class="form-group">
@@ -180,7 +187,8 @@ function startQQLogin() {
                 </button>
               </div>
             </div>
-            <button class="primary-btn" type="submit">{{ t.register }}</button>
+            <button class="primary-btn" type="submit" :disabled="register.submitting" :aria-busy="register.submitting">{{ t.register }}</button>
+            <StatusLoader v-if="register.submitting" label="正在创建账号" compact />
           </form>
           <div class="oauth-login-section">
             <div class="auth-divider"><span>其他方式登录</span></div>

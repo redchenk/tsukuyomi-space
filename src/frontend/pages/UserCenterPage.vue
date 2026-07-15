@@ -29,6 +29,7 @@ const uc = reactive({
   passwordMsgType: 'error',
   profileSaving: false,
   profileLoading: false,
+  profileError: '',
   passwordChanging: false,
   articles: [],
   messages: [],
@@ -39,9 +40,13 @@ const uc = reactive({
   bookmarkQuery: '',
   pixelQuery: '',
   articleLoading: true,
+  articleError: '',
   messageLoading: true,
+  messageError: '',
   bookmarkLoading: true,
+  bookmarkError: '',
   pixelLoading: true,
+  pixelError: '',
   pixelDeleting: '',
   messageEditing: '',
   messageSaving: '',
@@ -57,6 +62,7 @@ const uc = reactive({
 });
 
 const isAuthed = computed(() => Boolean(ucUser.value));
+const ucRefreshing = computed(() => uc.profileLoading || uc.articleLoading || uc.messageLoading || uc.bookmarkLoading || uc.pixelLoading);
 const isAdminUser = computed(() => ['admin', 'super_admin'].includes(ucUser.value?.role) || ucUser.value?.scope === 'admin');
 const locale = computed(() => props.lang === 'zh' ? 'zh-CN' : 'ja-JP');
 const ucAvatarSrc = computed(() => ucUser.value?.avatar || ucDefaultAvatar(ucUser.value?.username));
@@ -207,6 +213,7 @@ function pixelArtworkBackground(artwork) {
 
 async function ucLoadProfile() {
   uc.profileLoading = true;
+  uc.profileError = '';
   if (!isAuthed.value) {
     uc.profileLoading = false;
     return;
@@ -223,6 +230,7 @@ async function ucLoadProfile() {
     loadedUserId = result.data?.id || '';
     updateStoredUser(result.data);
   } catch (error) {
+    uc.profileError = error.message || props.t.ucProfileLoadFailed;
     ucShowToast(error.message || props.t.ucProfileLoadFailed);
   } finally {
     uc.profileLoading = false;
@@ -231,6 +239,7 @@ async function ucLoadProfile() {
 
 async function ucLoadArticles() {
   uc.articleLoading = true;
+  uc.articleError = '';
   if (!isAuthed.value) {
     uc.articleLoading = false;
     return;
@@ -245,6 +254,7 @@ async function ucLoadArticles() {
     uc.articles = result.data || [];
   } catch (error) {
     uc.articles = [];
+    uc.articleError = error.message || props.t.ucArticleLoadFailed;
     ucShowToast(error.message || props.t.ucArticleLoadFailed);
   } finally {
     uc.articleLoading = false;
@@ -253,6 +263,7 @@ async function ucLoadArticles() {
 
 async function ucLoadBookmarks() {
   uc.bookmarkLoading = true;
+  uc.bookmarkError = '';
   if (!isAuthed.value) {
     uc.bookmarkLoading = false;
     return;
@@ -267,6 +278,7 @@ async function ucLoadBookmarks() {
     uc.bookmarks = Array.isArray(result.data) ? result.data : [];
   } catch (error) {
     uc.bookmarks = [];
+    uc.bookmarkError = error.message || '收藏列表读取失败';
     ucShowToast(error.message || '收藏列表读取失败');
   } finally {
     uc.bookmarkLoading = false;
@@ -275,6 +287,7 @@ async function ucLoadBookmarks() {
 
 async function ucLoadMessages() {
   uc.messageLoading = true;
+  uc.messageError = '';
   if (!isAuthed.value) {
     uc.messageLoading = false;
     return;
@@ -289,6 +302,7 @@ async function ucLoadMessages() {
     uc.messages = Array.isArray(result.data) ? result.data : [];
   } catch (error) {
     uc.messages = [];
+    uc.messageError = error.message || '留言列表读取失败';
     ucShowToast(error.message || '留言列表读取失败');
   } finally {
     uc.messageLoading = false;
@@ -297,6 +311,7 @@ async function ucLoadMessages() {
 
 async function ucLoadPixelArtworks() {
   uc.pixelLoading = true;
+  uc.pixelError = '';
   if (!isAuthed.value) {
     uc.pixelLoading = false;
     return;
@@ -311,6 +326,7 @@ async function ucLoadPixelArtworks() {
     uc.pixelArtworks = Array.isArray(result.data) ? result.data : [];
   } catch (error) {
     uc.pixelArtworks = [];
+    uc.pixelError = error.message || '像素画列表读取失败';
     ucShowToast(error.message || '像素画列表读取失败');
   } finally {
     uc.pixelLoading = false;
@@ -347,6 +363,11 @@ async function ucEnsureSession() {
   uc.messages = [];
   uc.bookmarks = [];
   uc.pixelArtworks = [];
+  uc.profileError = '';
+  uc.articleError = '';
+  uc.messageError = '';
+  uc.bookmarkError = '';
+  uc.pixelError = '';
   uc.articleLoading = false;
   uc.messageLoading = false;
   uc.bookmarkLoading = false;
@@ -566,14 +587,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="page uc-page">
-    <div v-if="sessionChecking" class="panel uc-login-notice">
-      <div class="uc-login-notice-body">
-        <div class="uc-eyebrow">User Center</div>
-        <h1>Loading...</h1>
-        <p>{{ t.ucLoadingArticles }}</p>
-      </div>
-    </div>
+  <main class="page uc-page" :aria-busy="sessionChecking">
+    <LoadingSkeleton v-if="sessionChecking" variant="profile" :count="1" :label="t.ucLoadingArticles" />
 
     <div v-else-if="!isAuthed" class="panel uc-login-notice">
       <div class="uc-login-notice-body">
@@ -585,7 +600,10 @@ onMounted(async () => {
     </div>
 
     <template v-else>
-      <section class="uc-hero">
+      <LoadingSkeleton v-if="uc.profileLoading" variant="profile" :count="1" label="正在同步个人资料" />
+      <div v-else-if="uc.profileError" class="uc-empty" role="alert">{{ uc.profileError }}</div>
+      <template v-else>
+      <section class="uc-hero" :aria-busy="uc.avatarUploading">
         <div class="uc-avatar-block">
           <div class="uc-avatar-upload" :title="t.ucChangeAvatar" @click="ucAvatarInput?.click()">
             <img :src="ucAvatarSrc" alt="">
@@ -594,9 +612,9 @@ onMounted(async () => {
             </span>
           </div>
           <input ref="ucAvatarInput" type="file" accept="image/*" style="display:none;" @change="ucUploadAvatar">
-          <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.avatarUploading" @click="ucAvatarInput?.click()">
-            <TsIcon name="upload" :size="17" />
-            <span>{{ t.ucUploadAvatar }}</span>
+          <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.avatarUploading" :aria-busy="uc.avatarUploading" @click="ucAvatarInput?.click()">
+            <TsIcon :class="{ 'ts-status-loader-icon': uc.avatarUploading }" :name="uc.avatarUploading ? 'loader' : 'upload'" :size="17" />
+            <span :role="uc.avatarUploading ? 'status' : undefined">{{ uc.avatarUploading ? '正在上传头像' : t.ucUploadAvatar }}</span>
           </button>
         </div>
         <div class="uc-hero-info">
@@ -621,7 +639,7 @@ onMounted(async () => {
             <TsIcon name="book" :size="17" />
             <span>{{ t.ucViewStage }}</span>
           </a>
-          <button class="ghost-btn uc-icon-action" type="button" @click="ucRefresh">
+          <button class="ghost-btn uc-icon-action" type="button" :disabled="ucRefreshing" :aria-busy="ucRefreshing" @click="ucRefresh">
             <TsIcon name="refresh" :size="17" />
             <span>{{ t.ucRefresh }}</span>
           </button>
@@ -666,6 +684,7 @@ onMounted(async () => {
           </div>
         </div>
       </section>
+      </template>
 
       <section class="uc-layout">
         <aside class="panel uc-tabs-panel">
@@ -706,7 +725,7 @@ onMounted(async () => {
         </aside>
 
         <section class="panel uc-content-panel">
-          <div v-if="uc.tab === 'profile'">
+          <div v-if="uc.tab === 'profile'" :aria-busy="uc.profileSaving">
             <div class="uc-section-head">
               <h2 class="uc-section-title"><span>01</span> {{ t.ucProfile }}</h2>
             </div>
@@ -727,15 +746,16 @@ onMounted(async () => {
                 <div class="help-text">{{ uc.profileBio.length || 0 }} / 300</div>
               </div>
               <div>
-                <button class="primary-btn uc-icon-action uc-save-btn" type="button" :disabled="uc.profileSaving" @click="ucSaveProfile">
+                <button class="primary-btn uc-icon-action uc-save-btn" type="button" :disabled="uc.profileSaving" :aria-busy="uc.profileSaving" @click="ucSaveProfile">
                   <TsIcon name="penLine" :size="17" />
                   <span>{{ t.ucSaveProfile }}</span>
                 </button>
+                <StatusLoader v-if="uc.profileSaving" label="正在保存个人资料" compact />
               </div>
             </div>
           </div>
 
-          <div v-if="uc.tab === 'articles'">
+          <div v-if="uc.tab === 'articles'" :aria-busy="uc.articleLoading">
             <div class="uc-section-head">
               <h2 class="uc-section-title"><span>02</span> {{ t.ucArticlesTab }}</h2>
               <div class="uc-article-tools">
@@ -746,7 +766,8 @@ onMounted(async () => {
                 </a>
               </div>
             </div>
-            <div v-if="uc.articleLoading" class="uc-empty">{{ t.ucLoadingArticles }}</div>
+            <LoadingSkeleton v-if="uc.articleLoading" variant="list" :count="5" :label="t.ucLoadingArticles" />
+            <div v-else-if="uc.articleError" class="uc-empty error" role="alert">{{ uc.articleError }}</div>
             <div v-else-if="!ucFilteredArticles.length" class="uc-empty">
               <div class="ts-empty-title">{{ t.ucNoArticles }}</div>
               <div class="ts-empty-desc">{{ t.ucNoArticlesHint }}</div>
@@ -784,18 +805,19 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div v-if="uc.tab === 'bookmarks'">
+          <div v-if="uc.tab === 'bookmarks'" :aria-busy="uc.bookmarkLoading">
             <div class="uc-section-head">
               <h2 class="uc-section-title"><span>04</span> 我的收藏</h2>
               <div class="uc-article-tools">
                 <input v-model="uc.bookmarkQuery" class="uc-search" type="search" placeholder="搜索收藏文章">
-                <button class="ghost-btn uc-icon-action" type="button" @click="ucLoadBookmarks">
+                <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.bookmarkLoading" :aria-busy="uc.bookmarkLoading" @click="ucLoadBookmarks">
                   <TsIcon name="refresh" :size="17" />
                   <span>&#21047;&#26032;</span>
                 </button>
               </div>
             </div>
-            <div v-if="uc.bookmarkLoading" class="uc-empty">收藏列表加载中...</div>
+            <LoadingSkeleton v-if="uc.bookmarkLoading" variant="list" :count="5" label="正在加载收藏列表" />
+            <div v-else-if="uc.bookmarkError" class="uc-empty error" role="alert">{{ uc.bookmarkError }}</div>
             <div v-else-if="!ucFilteredBookmarks.length" class="uc-empty">
               <div class="ts-empty-title">还没有收藏文章</div>
               <div class="ts-empty-desc">在文章页点击收藏后，会在这里形成你的阅读清单。</div>
@@ -822,18 +844,19 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div v-if="uc.tab === 'messages'">
+          <div v-if="uc.tab === 'messages'" :aria-busy="uc.messageLoading">
             <div class="uc-section-head">
               <h2 class="uc-section-title"><span>03</span> 我的留言</h2>
               <div class="uc-article-tools">
                 <input v-model="uc.messageQuery" class="uc-search" type="search" placeholder="搜索留言">
-                <button class="ghost-btn uc-icon-action" type="button" @click="ucLoadMessages">
+                <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.messageLoading" :aria-busy="uc.messageLoading" @click="ucLoadMessages">
                   <TsIcon name="refresh" :size="17" />
                   <span>刷新</span>
                 </button>
               </div>
             </div>
-            <div v-if="uc.messageLoading" class="uc-empty">留言列表加载中...</div>
+            <LoadingSkeleton v-if="uc.messageLoading" variant="list" :count="5" label="正在加载留言列表" />
+            <div v-else-if="uc.messageError" class="uc-empty error" role="alert">{{ uc.messageError }}</div>
             <div v-else-if="!ucFilteredMessages.length" class="uc-empty">
               <div class="ts-empty-title">还没有留言</div>
               <a class="primary-btn uc-icon-action" href="/plaza" @click.prevent="go('/plaza')">
@@ -842,7 +865,7 @@ onMounted(async () => {
               </a>
             </div>
             <div v-else class="uc-article-list uc-message-list">
-              <article v-for="message in ucFilteredMessages" :id="`uc-message-${message.id}`" :key="message.id" class="uc-article-item uc-message-item">
+              <article v-for="message in ucFilteredMessages" :id="`uc-message-${message.id}`" :key="message.id" class="uc-article-item uc-message-item" :aria-busy="uc.messageSaving === message.id || uc.messageDeleting === message.id">
                 <div>
                   <textarea
                     v-if="uc.messageEditing === message.id"
@@ -861,9 +884,9 @@ onMounted(async () => {
                 </div>
                 <div class="uc-article-actions">
                   <template v-if="uc.messageEditing === message.id">
-                    <button class="primary-btn uc-icon-action" type="button" :disabled="uc.messageSaving === message.id" @click="ucSaveMessage(message)">
+                    <button class="primary-btn uc-icon-action" type="button" :disabled="uc.messageSaving === message.id" :aria-busy="uc.messageSaving === message.id" @click="ucSaveMessage(message)">
                       <TsIcon name="userCheck" :size="16" />
-                      <span>{{ uc.messageSaving === message.id ? '保存中' : '保存' }}</span>
+                      <span :role="uc.messageSaving === message.id ? 'status' : undefined">{{ uc.messageSaving === message.id ? '保存中' : '保存' }}</span>
                     </button>
                     <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.messageSaving === message.id" @click="ucCancelMessageEdit(message.id)">
                       <TsIcon name="x" :size="16" />
@@ -879,9 +902,9 @@ onMounted(async () => {
                       <TsIcon name="penLine" :size="16" />
                       <span>编辑</span>
                     </button>
-                    <button class="danger-btn uc-icon-action" type="button" :disabled="uc.messageDeleting === message.id" @click="ucDeleteMessage(message)">
+                    <button class="danger-btn uc-icon-action" type="button" :disabled="uc.messageDeleting === message.id" :aria-busy="uc.messageDeleting === message.id" @click="ucDeleteMessage(message)">
                       <TsIcon name="trash" :size="16" />
-                      <span>{{ uc.messageDeleting === message.id ? '删除中' : '删除' }}</span>
+                      <span :role="uc.messageDeleting === message.id ? 'status' : undefined">{{ uc.messageDeleting === message.id ? '删除中' : '删除' }}</span>
                     </button>
                   </template>
                 </div>
@@ -889,7 +912,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div v-if="uc.tab === 'pixelArt'">
+          <div v-if="uc.tab === 'pixelArt'" :aria-busy="uc.pixelLoading">
             <div class="uc-section-head">
               <h2 class="uc-section-title"><span>05</span> {{ isAdminUser ? '全站像素画管理' : '我的像素画' }}</h2>
               <div class="uc-article-tools">
@@ -898,13 +921,14 @@ onMounted(async () => {
                   <TsIcon name="palette" :size="17" />
                   <span>新建像素画</span>
                 </a>
-                <button class="ghost-btn uc-icon-action" type="button" @click="ucLoadPixelArtworks">
+                <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.pixelLoading" :aria-busy="uc.pixelLoading" @click="ucLoadPixelArtworks">
                   <TsIcon name="refresh" :size="17" />
                   <span>刷新</span>
                 </button>
               </div>
             </div>
-            <div v-if="uc.pixelLoading" class="uc-empty">像素画列表加载中...</div>
+            <LoadingSkeleton v-if="uc.pixelLoading" variant="pixel" :count="4" label="正在加载像素画列表" />
+            <div v-else-if="uc.pixelError" class="uc-empty error" role="alert">{{ uc.pixelError }}</div>
             <div v-else-if="!ucFilteredPixelArtworks.length" class="uc-empty">
               <div class="ts-empty-title">还没有像素画</div>
               <div class="ts-empty-desc">从月光像素工坊开始新建作品，发布后会在这里管理。</div>
@@ -914,7 +938,7 @@ onMounted(async () => {
               </a>
             </div>
             <div v-else class="uc-pixel-grid">
-              <article v-for="artwork in ucFilteredPixelArtworks" :key="artwork.id" class="uc-pixel-card">
+              <article v-for="artwork in ucFilteredPixelArtworks" :key="artwork.id" class="uc-pixel-card" :aria-busy="uc.pixelDeleting === artwork.id">
                 <div class="uc-pixel-preview" :style="{ '--pixel-bg': pixelArtworkBackground(artwork) }">
                   <PixelCanvasCells
                     :pixels="pixelArtworkPixels(artwork)"
@@ -950,16 +974,16 @@ onMounted(async () => {
                     <TsIcon name="penLine" :size="16" />
                     <span>编辑</span>
                   </button>
-                  <button class="danger-btn uc-icon-action" type="button" :disabled="uc.pixelDeleting === artwork.id" @click="ucDeletePixelArtwork(artwork)">
+                  <button class="danger-btn uc-icon-action" type="button" :disabled="uc.pixelDeleting === artwork.id" :aria-busy="uc.pixelDeleting === artwork.id" @click="ucDeletePixelArtwork(artwork)">
                     <TsIcon name="trash" :size="16" />
-                    <span>{{ uc.pixelDeleting === artwork.id ? '删除中' : '删除' }}</span>
+                    <span :role="uc.pixelDeleting === artwork.id ? 'status' : undefined">{{ uc.pixelDeleting === artwork.id ? '删除中' : '删除' }}</span>
                   </button>
                 </div>
               </article>
             </div>
           </div>
 
-          <div v-if="uc.tab === 'security'">
+          <div v-if="uc.tab === 'security'" :aria-busy="uc.passwordChanging">
             <div class="uc-section-head">
               <h2 class="uc-section-title"><span>06</span> {{ t.ucSecurity }}</h2>
             </div>
@@ -980,10 +1004,11 @@ onMounted(async () => {
                     <input v-model="uc.password.confirm" type="password" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
                   </div>
                   <div>
-                    <button class="primary-btn uc-icon-action" type="button" :disabled="uc.passwordChanging" @click="ucChangePassword">
+                    <button class="primary-btn uc-icon-action" type="button" :disabled="uc.passwordChanging" :aria-busy="uc.passwordChanging" @click="ucChangePassword">
                       <TsIcon name="lock" :size="17" />
                       <span>{{ t.ucChangePassword }}</span>
                     </button>
+                    <StatusLoader v-if="uc.passwordChanging" label="正在更新密码" compact />
                   </div>
                 </div>
               </div>

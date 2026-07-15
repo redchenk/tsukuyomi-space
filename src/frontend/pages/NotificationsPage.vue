@@ -101,7 +101,7 @@ onMounted(loadNotifications);
 
 <template>
   <main class="page notifications-page">
-    <section class="notifications-shell">
+    <section class="notifications-shell" :aria-busy="inbox.loading">
       <header class="notifications-hero">
         <div>
           <span class="notifications-kicker">Inbox</span>
@@ -111,12 +111,12 @@ onMounted(loadNotifications);
         <div class="notifications-actions">
           <span class="notifications-count">{{ unreadLabel }}</span>
           <button class="ghost-btn" type="button" :disabled="!inbox.unread" @click="markAllRead">全部已读</button>
-          <button class="primary-btn" type="button" @click="loadNotifications">刷新</button>
+          <button class="primary-btn" type="button" :disabled="inbox.loading" :aria-busy="inbox.loading" @click="loadNotifications">刷新</button>
         </div>
       </header>
 
-      <div v-if="inbox.loading" class="notifications-status">加载中...</div>
-      <div v-else-if="inbox.message" class="notifications-status error">{{ inbox.message }}</div>
+      <LoadingSkeleton v-if="inbox.loading" variant="list" :count="5" label="正在加载站内信" />
+      <div v-else-if="inbox.message" class="notifications-status error" role="alert">{{ inbox.message }}</div>
       <div v-else-if="!inbox.items.length" class="notifications-empty">
         暂时没有新消息。等有人回应你的文字时，这里会亮起来。
       </div>

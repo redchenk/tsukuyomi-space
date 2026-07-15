@@ -19,11 +19,13 @@ const panels = [
 
 const terminal = reactive({
   admin: null,
+  sessionChecking: true,
   activePanel: 'dashboard',
   loading: false,
   loginMessage: '',
   message: '',
   messageType: 'success',
+  loadError: '',
   clock: '',
   login: { username: '', password: '' },
   stats: { articles: 0, pendingMessages: 0, todayViews: 0, users: 0 },
@@ -207,7 +209,10 @@ async function adminApi(path, options = {}) {
 }
 
 async function verifySession() {
-  if (!localStorage.getItem('admin_user')) return;
+  if (!localStorage.getItem('admin_user')) {
+    terminal.sessionChecking = false;
+    return;
+  }
   try {
     terminal.admin = await adminApi('/me');
     await loadPanel('dashboard');
@@ -216,6 +221,8 @@ async function verifySession() {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     terminal.loginMessage = error.message;
+  } finally {
+    terminal.sessionChecking = false;
   }
 }
 
@@ -262,6 +269,7 @@ async function loadPanel(panel = terminal.activePanel) {
   terminal.activePanel = panel;
   terminal.loading = true;
   terminal.message = '';
+  terminal.loadError = '';
   try {
     if (panel === 'dashboard') terminal.stats = { ...terminal.stats, ...(await adminApi('/stats') || {}) };
     if (panel === 'articles') terminal.articles = await adminApi('/articles') || [];
@@ -277,7 +285,7 @@ async function loadPanel(panel = terminal.activePanel) {
     if (panel === 'analytics') terminal.analytics = { ...terminal.analytics, ...(await adminApi('/analytics') || {}) };
     if (panel === 'settings') terminal.settings = { ...terminal.settings, ...(await adminApi('/settings') || {}) };
   } catch (error) {
-    showMessage(error.message, 'error');
+    terminal.loadError = error.message || '后台数据读取失败';
   } finally {
     terminal.loading = false;
   }
@@ -559,15 +567,22 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="page terminal-page">
-    <section v-if="!authed" class="terminal-auth">
-      <form class="terminal-card terminal-login-card" @submit.prevent="login">
+  <main class="page terminal-page" :aria-busy="terminal.sessionChecking || terminal.loading">
+    <section v-if="terminal.sessionChecking" class="terminal-auth" aria-busy="true">
+      <div class="terminal-card terminal-login-card">
+        <StatusLoader label="正在验证管理会话" />
+      </div>
+    </section>
+
+    <section v-else-if="!authed" class="terminal-auth">
+      <form class="terminal-card terminal-login-card" :aria-busy="terminal.loading" @submit.prevent="login">
         <h1>数据终端</h1>
         <p>仅管理员可访问。所有操作都会通过服务端权限校验。</p>
         <div v-if="terminal.loginMessage" class="form-message error">{{ terminal.loginMessage }}</div>
         <label>管理员账号<input v-model="terminal.login.username" autocomplete="username" required></label>
         <label>密码<input v-model="terminal.login.password" type="password" autocomplete="current-password" required></label>
-        <button class="primary-btn" type="submit" :disabled="terminal.loading">{{ terminal.loading ? '连接中...' : '连接终端' }}</button>
+        <button class="primary-btn" type="submit" :disabled="terminal.loading" :aria-busy="terminal.loading">{{ terminal.loading ? '连接中...' : '连接终端' }}</button>
+        <StatusLoader v-if="terminal.loading" label="正在连接终端" compact />
       </form>
     </section>
 
@@ -611,7 +626,7 @@ onUnmounted(() => {
           </div>
         </aside>
 
-        <section class="terminal-panel">
+        <section class="terminal-panel" :aria-busy="terminal.loading">
           <div class="terminal-context-bar">
             <div>
               <span class="terminal-kicker">{{ activePanelMeta.group }} / {{ activePanelMeta.code }}</span>
@@ -619,7 +634,7 @@ onUnmounted(() => {
               <p>{{ activePanelMeta.desc }}</p>
             </div>
             <div class="terminal-context-actions">
-              <button class="ghost-btn" type="button" :disabled="terminal.loading" @click="loadPanel(terminal.activePanel)">
+              <button class="ghost-btn" type="button" :disabled="terminal.loading" :aria-busy="terminal.loading" @click="loadPanel(terminal.activePanel)">
                 {{ terminal.loading ? '同步中...' : '刷新当前' }}
               </button>
               <button v-if="terminal.activePanel === 'articles'" class="primary-btn" type="button" @click="$emit('go', '/editor')">新建文章</button>
@@ -627,9 +642,10 @@ onUnmounted(() => {
             </div>
           </div>
           <div v-if="terminal.message" class="form-message" :class="terminal.messageType">{{ terminal.message }}</div>
-          <div v-if="terminal.loading" class="terminal-empty">正在同步数据...</div>
+          <LoadingSkeleton v-if="terminal.loading" variant="list" :count="6" label="正在同步后台数据" />
+          <div v-else-if="terminal.loadError" class="terminal-empty error" role="alert">{{ terminal.loadError }}</div>
 
-          <div v-show="terminal.activePanel === 'dashboard'">
+          <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'dashboard'">
             <div class="terminal-panel-head"><h2>系统总览</h2></div>
             <div class="terminal-hero">
               <div>
@@ -667,7 +683,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-show="terminal.activePanel === 'articles'">
+          <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'articles'">
             <div class="terminal-panel-head"><h2>文章管理</h2></div>
             <div class="terminal-summary-row">
               <span>已发布 {{ publishedArticleCount }}</span>
@@ -686,7 +702,7 @@ onUnmounted(() => {
             </tbody></table></div>
           </div>
 
-          <div v-show="terminal.activePanel === 'messages'">
+          <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'messages'">
             <div class="terminal-panel-head"><h2>留言审核</h2></div>
             <div class="terminal-summary-row">
               <span>待审核 {{ pendingMessageCount }}</span>
@@ -722,7 +738,7 @@ onUnmounted(() => {
             </tbody></table></div>
           </div>
 
-          <div v-show="terminal.activePanel === 'users'">
+          <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'users'">
             <div class="terminal-panel-head"><h2>用户管理</h2></div>
             <div class="terminal-toolbar terminal-users-toolbar">
               <input
@@ -818,7 +834,7 @@ onUnmounted(() => {
             </nav>
           </div>
 
-          <div v-show="terminal.activePanel === 'account'">
+          <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'account'">
             <div class="terminal-panel-head"><h2>账号密码管理</h2></div>
             <div class="terminal-account-grid">
               <article class="terminal-card terminal-account-card">
@@ -836,7 +852,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-show="terminal.activePanel === 'links'">
+          <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'links'">
             <div class="terminal-panel-head"><h2>友链管理</h2></div>
             <form class="terminal-toolbar" @submit.prevent="createLink"><input v-model="terminal.newLink.name" placeholder="站点名称" required><input v-model="terminal.newLink.url" placeholder="https://example.com" required><button class="primary-btn" type="submit">添加友链</button></form>
             <div class="terminal-table-wrap"><table><thead><tr><th>名称</th><th>URL</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
@@ -844,7 +860,7 @@ onUnmounted(() => {
             </tbody></table></div>
           </div>
 
-          <div v-show="terminal.activePanel === 'analytics'">
+          <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'analytics'">
             <div class="terminal-panel-head"><h2>访问统计</h2></div>
             <div class="terminal-cards">
               <div class="terminal-card"><strong>今日访问</strong><span>{{ terminal.analytics.todayViews || 0 }}</span></div>
@@ -854,7 +870,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <form v-show="terminal.activePanel === 'settings'" class="terminal-settings" @submit.prevent="saveSettings">
+          <form v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'settings'" class="terminal-settings" :aria-busy="terminal.ossTest.loading || terminal.ossImport.loading || terminal.ossImport.scanning" @submit.prevent="saveSettings">
             <div class="terminal-panel-head"><h2>系统配置</h2></div>
             <div class="terminal-settings-block terminal-settings-grid">
               <div class="terminal-settings-title">
@@ -934,10 +950,11 @@ onUnmounted(() => {
               <label class="terminal-check"><input v-model="terminal.settings.ossForcePathStyle" type="checkbox"> 使用路径风格访问</label>
               <div class="terminal-oss-actions">
                 <button class="primary-btn" type="submit">保存对象存储设置</button>
-                <button class="ghost-btn" type="button" :disabled="terminal.ossTest.loading" @click="testOssSettings">
+                <button class="ghost-btn" type="button" :disabled="terminal.ossTest.loading" :aria-busy="terminal.ossTest.loading" @click="testOssSettings">
                   {{ terminal.ossTest.loading ? '测试中...' : '测试对象存储' }}
                 </button>
-                <span v-if="terminal.ossTest.message" class="terminal-oss-result" :class="terminal.ossTest.type">
+                <StatusLoader v-if="terminal.ossTest.loading" label="正在测试对象存储" compact />
+                <span v-else-if="terminal.ossTest.message" class="terminal-oss-result" :class="terminal.ossTest.type" :role="terminal.ossTest.type === 'error' ? 'alert' : 'status'">
                   {{ terminal.ossTest.message }}
                 </span>
               </div>
@@ -973,13 +990,15 @@ onUnmounted(() => {
                 </label>
                 <label class="terminal-oss-import-note">备注<textarea v-model="terminal.ossImport.description" rows="2" placeholder="可选"></textarea></label>
                 <div class="terminal-oss-actions">
-                  <button class="ghost-btn" type="button" :disabled="terminal.ossImport.loading" @click="registerOssAsset">
+                  <button class="ghost-btn" type="button" :disabled="terminal.ossImport.loading" :aria-busy="terminal.ossImport.loading" @click="registerOssAsset">
                     {{ terminal.ossImport.loading ? '登记中...' : '登记 OSS 资源' }}
                   </button>
-                  <button class="ghost-btn" type="button" :disabled="terminal.ossImport.scanning" @click="scanOssAssets">
+                  <button class="ghost-btn" type="button" :disabled="terminal.ossImport.scanning" :aria-busy="terminal.ossImport.scanning" @click="scanOssAssets">
                     {{ terminal.ossImport.scanning ? '扫描中...' : '扫描并登记' }}
                   </button>
-                  <span v-if="terminal.ossImport.message" class="terminal-oss-result" :class="terminal.ossImport.type">
+                  <StatusLoader v-if="terminal.ossImport.loading" label="正在登记 OSS 资源" compact />
+                  <StatusLoader v-else-if="terminal.ossImport.scanning" label="正在扫描 OSS 资源" compact />
+                  <span v-else-if="terminal.ossImport.message" class="terminal-oss-result" :class="terminal.ossImport.type" :role="terminal.ossImport.type === 'error' ? 'alert' : 'status'">
                     {{ terminal.ossImport.message }}
                   </span>
                   <span v-if="terminal.ossImport.scanMessage" class="terminal-oss-result" :class="terminal.ossImport.scanType">

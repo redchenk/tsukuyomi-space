@@ -202,7 +202,8 @@ const form = reactive({
 });
 const gallery = reactive({
   items: [],
-  loading: false,
+  loading: true,
+  error: '',
   sort: 'latest'
 });
 const editingArtwork = ref(null);
@@ -957,6 +958,7 @@ function closeArtworkPreview(event = null) {
 
 async function loadArtworks() {
   gallery.loading = true;
+  gallery.error = '';
   session.value = getSession();
   try {
     const galleryUrl = `/api/pixel-art?sort=${gallery.sort}&limit=36`;
@@ -973,6 +975,8 @@ async function loadArtworks() {
     gallery.items = Array.isArray(result.data) ? result.data : [];
     focusSharedArtwork();
   } catch (error) {
+    gallery.items = [];
+    gallery.error = error.message || copy.value.publishFailed;
     showToast(error.message || copy.value.publishFailed);
   } finally {
     gallery.loading = false;
@@ -1392,7 +1396,7 @@ onBeforeUnmount(() => {
       </aside>
     </section>
 
-    <section class="arena-gallery panel">
+    <section class="arena-gallery panel" :aria-busy="sideTab === 'gallery' && gallery.loading">
       <div class="arena-section-head arena-gallery-head">
         <div>
           <span>03</span>
@@ -1401,7 +1405,7 @@ onBeforeUnmount(() => {
         <div class="arena-gallery-tools">
           <button class="chip" :class="{ active: sideTab === 'chat' }" type="button" @click="sideTab = 'chat'">{{ copy.chat }}</button>
           <button class="chip" :class="{ active: sideTab === 'gallery' }" type="button" @click="sideTab = 'gallery'">{{ copy.gallery }}</button>
-          <button v-if="sideTab === 'gallery'" class="ghost-btn" type="button" @click="loadArtworks">
+          <button v-if="sideTab === 'gallery'" class="ghost-btn" type="button" :disabled="gallery.loading" :aria-busy="gallery.loading" @click="loadArtworks">
             <TsIcon name="refresh" :size="17" />
             <span>{{ copy.refresh }}</span>
           </button>
@@ -1422,7 +1426,8 @@ onBeforeUnmount(() => {
           <button type="button" @click="sendLocalMessage">{{ copy.sendMessage }}</button>
         </div>
       </div>
-      <div v-else-if="gallery.loading" class="arena-empty">{{ copy.loading }}</div>
+      <LoadingSkeleton v-else-if="gallery.loading" variant="pixel" :count="4" :label="copy.loading" />
+      <div v-else-if="gallery.error" class="arena-empty error" role="alert">{{ gallery.error }}</div>
       <div v-else-if="!gallery.items.length" class="arena-empty">{{ copy.empty }}</div>
       <div v-else class="pixel-gallery-grid">
         <article

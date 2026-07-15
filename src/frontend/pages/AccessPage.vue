@@ -108,6 +108,7 @@ onBeforeUnmount(() => {
   <main
     class="page center-page access-page"
     :class="{ 'video-ready': videoState.ready, 'video-failed': videoState.failed, 'is-leaving': isLeaving }"
+    :aria-busy="loading.active"
   >
     <video
       ref="videoEl"
@@ -130,18 +131,15 @@ onBeforeUnmount(() => {
       <h1 class="hero-title">{{ t.title }}</h1>
       <p class="hero-kicker">TSUKUYOMI SPACE</p>
       <p class="hero-copy">{{ t.heroCopy }}</p>
-      <button class="primary-btn" type="button" :disabled="loading.active || isLeaving" @click="startAccess(t)">{{ t.access }}</button>
+      <button class="primary-btn" type="button" :disabled="loading.active || isLeaving" :aria-busy="loading.active" @click="startAccess(t)">{{ t.access }}</button>
     </section>
     <footer class="access-beian">
       <p class="access-copyright">本站使用《超时空辉夜姬》相关素材版权归原著所有，本站为非盈利性质。</p>
       <BeianLink />
     </footer>
-    <div v-if="loading.active" class="loading-layer" :class="{ 'is-completing': isLeaving }">
+    <div v-if="loading.active" class="loading-layer" :class="{ 'is-completing': isLeaving }" aria-busy="true">
       <div class="loading-box" data-material="hud">
-        <div class="loading-text">{{ loading.text }}</div>
-        <div class="loading-bar">
-          <div class="loading-progress" :style="{ width: loading.progress + '%' }"></div>
-        </div>
+        <StatusLoader :label="loading.text" :progress="loading.progress" />
       </div>
     </div>
   </main>

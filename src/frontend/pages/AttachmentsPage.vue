@@ -10,12 +10,13 @@ const fileInput = ref(null);
 const session = ref(getSession());
 
 const state = reactive({
-  loading: false,
+  loading: Boolean(session.value),
   uploading: false,
   uploadProgress: 0,
   uploadPhase: '',
   message: '',
   messageType: 'success',
+  loadError: '',
   assets: [],
   search: '',
   type: 'all',
@@ -92,6 +93,7 @@ function markdownFor(asset) {
 async function loadAssets(page = 1) {
   if (!isAuthed.value) return;
   state.loading = true;
+  state.loadError = '';
   try {
     const params = new URLSearchParams({
       page: String(page),
@@ -111,7 +113,7 @@ async function loadAssets(page = 1) {
     state.totalPages = result.data?.pagination?.totalPages || 1;
   } catch (error) {
     state.assets = [];
-    showMessage(error.message || '附件读取失败', 'error');
+    state.loadError = error.message || '附件读取失败';
   } finally {
     state.loading = false;
   }
@@ -228,7 +230,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page attachments-page">
+  <main class="page attachments-page" :aria-busy="state.loading || state.uploading">
     <section v-if="!isAuthed" class="panel attachments-empty">
       <h1>附件库</h1>
       <p>登录后可以管理自己上传的图片附件。</p>
@@ -244,21 +246,15 @@ onMounted(() => {
         </div>
         <div class="attachments-actions">
           <button class="ghost-btn" type="button" @click="go('/editor')">写文章</button>
-          <button class="primary-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
+          <button class="primary-btn" type="button" :disabled="state.uploading" :aria-busy="state.uploading" @click="fileInput?.click()">
             {{ state.uploading ? '上传中...' : '上传文件' }}
           </button>
           <input ref="fileInput" type="file" :accept="uploadAccept" hidden @change="uploadAsset">
         </div>
       </header>
 
-      <div v-if="state.uploading" class="attachments-upload-progress" role="status" aria-live="polite">
-        <div class="attachments-upload-progress-head">
-          <span>{{ state.uploadPhase || '正在上传...' }}</span>
-          <strong>{{ state.uploadProgress }}%</strong>
-        </div>
-        <div class="attachments-upload-progress-track" aria-hidden="true">
-          <span :style="{ width: `${state.uploadProgress}%` }"></span>
-        </div>
+      <div v-if="state.uploading" class="attachments-upload-progress" aria-busy="true">
+        <StatusLoader :label="state.uploadPhase || '正在上传...'" :progress="state.uploadProgress" />
       </div>
 
       <section class="panel attachments-toolbar">
@@ -292,7 +288,8 @@ onMounted(() => {
 
       <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>
 
-      <section v-if="state.loading" class="attachments-status">加载附件中...</section>
+      <LoadingSkeleton v-if="state.loading" variant="gallery" :count="8" label="正在加载附件" />
+      <section v-else-if="state.loadError" class="attachments-status error" role="alert">{{ state.loadError }}</section>
       <section v-else-if="!state.assets.length" class="panel attachments-empty">
         <h2>还没有附件</h2>
         <p>上传图片后，它会出现在这里，并只对你自己的账号可见。</p>

@@ -22,6 +22,7 @@ const login = reactive({
   emailCode: '',
   message: '',
   type: 'error',
+  submitting: false,
   sending: { loading: false, label: '' }
 });
 
@@ -129,6 +130,7 @@ async function sendCode() {
 }
 
 async function submitLogin() {
+  login.submitting = true;
   login.message = '';
   try {
     const response = await apiFetch('/api/auth/login', {
@@ -151,6 +153,8 @@ async function submitLogin() {
     setTimeout(() => emit('go', authRedirect.value), 700);
   } catch (error) {
     showMessage('error', props.t.failedPrefix + error.message);
+  } finally {
+    login.submitting = false;
   }
 }
 
@@ -358,14 +362,14 @@ onMounted(() => {
       </aside>
 
       <section class="auth-form-stage">
-        <section v-if="hasOAuthTicket" class="auth-card oauth-panel" data-material="content">
+        <section v-if="hasOAuthTicket" class="auth-card oauth-panel" data-material="content" :aria-busy="oauth.loading || oauth.submitting">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="shield" :size="14" /> OAuth</span>
             <h1>{{ authTitle }}</h1>
             <p class="panel-subtitle">{{ authSubtitle }}</p>
           </div>
 
-          <div v-if="oauth.loading" class="oauth-loading">正在读取 QQ 授权信息...</div>
+          <StatusLoader v-if="oauth.loading" label="正在读取 QQ 授权信息" />
           <template v-else>
             <div v-if="oauth.profile" class="oauth-profile">
               <img v-if="oauth.profile.avatar" :src="oauth.profile.avatar" :alt="oauth.profile.nickname">
@@ -377,8 +381,9 @@ onMounted(() => {
             </div>
 
             <div v-if="oauth.message" class="form-message" :class="oauth.type">{{ oauth.message }}</div>
+            <StatusLoader v-if="oauth.submitting" label="正在完成 QQ 登录" compact />
 
-            <form v-if="oauth.mode === 'email'" class="oauth-email-form" @submit.prevent="submitOAuthEmailBind">
+            <form v-if="oauth.mode === 'email'" class="oauth-email-form" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthEmailBind">
               <div class="oauth-bind-note">
                 <TsIcon name="mail" :size="18" />
                 <span>邮箱已注册时会自动绑定到已有账号；邮箱未注册时会作为新的登录邮箱。</span>
@@ -397,10 +402,13 @@ onMounted(() => {
                     <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
                     <input id="qqEmailBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                   </div>
-                  <button class="code-btn" type="button" :disabled="oauth.sending.loading" @click="sendOAuthEmailCode">{{ oauth.sending.label || t.sendCode }}</button>
+                  <button class="code-btn" type="button" :disabled="oauth.sending.loading" :aria-busy="oauth.sending.loading" @click="sendOAuthEmailCode">
+                    <TsIcon v-if="oauth.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
+                    <span :role="oauth.sending.loading ? 'status' : undefined">{{ oauth.sending.label || t.sendCode }}</span>
+                  </button>
                 </div>
               </div>
-              <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定邮箱并进入' }}</button>
+              <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定邮箱并进入' }}</button>
             </form>
 
             <template v-else>
@@ -409,7 +417,7 @@ onMounted(() => {
                 <button class="mode-btn" :class="{ active: oauth.mode === 'bind' }" type="button" @click="setOAuthMode('bind')">绑定已有账号</button>
               </div>
 
-              <form v-if="oauth.mode === 'create'" @submit.prevent="submitOAuthCreate">
+              <form v-if="oauth.mode === 'create'" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthCreate">
                 <div class="form-group">
                   <label for="qqCreateUsername">用户名</label>
                   <div class="auth-input-shell">
@@ -417,10 +425,10 @@ onMounted(() => {
                     <input id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于站内展示的用户名">
                   </div>
                 </div>
-                <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '一键开通并进入' }}</button>
+                <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '一键开通并进入' }}</button>
               </form>
 
-              <form v-else @submit.prevent="submitOAuthBind">
+              <form v-else :aria-busy="oauth.submitting" @submit.prevent="submitOAuthBind">
                 <div class="mode-row compact">
                   <button class="mode-btn" :class="{ active: oauth.bindMethod === 'password' }" type="button" @click="setOAuthBindMethod('password')">{{ t.passwordLogin }}</button>
                   <button class="mode-btn" :class="{ active: oauth.bindMethod === 'code' }" type="button" @click="setOAuthBindMethod('code')">{{ t.codeLogin }}</button>
@@ -449,10 +457,13 @@ onMounted(() => {
                       <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
                       <input id="qqBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                     </div>
-                    <button class="code-btn" type="button" :disabled="oauth.sending.loading" @click="sendOAuthBindCode">{{ oauth.sending.label || t.sendCode }}</button>
+                    <button class="code-btn" type="button" :disabled="oauth.sending.loading" :aria-busy="oauth.sending.loading" @click="sendOAuthBindCode">
+                      <TsIcon v-if="oauth.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
+                      <span :role="oauth.sending.loading ? 'status' : undefined">{{ oauth.sending.label || t.sendCode }}</span>
+                    </button>
                   </div>
                 </div>
-                <button class="primary-btn" type="submit" :disabled="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定并登录' }}</button>
+                <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定并登录' }}</button>
               </form>
             </template>
 
@@ -461,14 +472,14 @@ onMounted(() => {
           </template>
         </section>
 
-        <section v-else class="auth-card" data-material="content">
+        <section v-else class="auth-card" data-material="content" :aria-busy="login.submitting">
           <div class="auth-card-head">
             <span class="auth-kicker"><TsIcon name="moon" :size="14" /> Tsukuyomi Gate</span>
             <h1>{{ authTitle }}</h1>
             <p class="panel-subtitle">{{ authSubtitle }}</p>
           </div>
           <div v-if="login.message" class="form-message" :class="login.type">{{ login.message }}</div>
-          <form @submit.prevent="submitLogin">
+          <form :aria-busy="login.submitting" @submit.prevent="submitLogin">
             <div class="mode-row">
               <button class="mode-btn" :class="{ active: login.method === 'password' }" type="button" @click="setMethod('password')">{{ t.passwordLogin }}</button>
               <button class="mode-btn" :class="{ active: login.method === 'code' }" type="button" @click="setMethod('code')">{{ t.codeLogin }}</button>
@@ -497,10 +508,14 @@ onMounted(() => {
                   <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
                   <input id="loginCode" v-model="login.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                 </div>
-                <button class="code-btn" type="button" :disabled="login.sending.loading" @click="sendCode">{{ login.sending.label || t.sendCode }}</button>
+                <button class="code-btn" type="button" :disabled="login.sending.loading" :aria-busy="login.sending.loading" @click="sendCode">
+                  <TsIcon v-if="login.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
+                  <span :role="login.sending.loading ? 'status' : undefined">{{ login.sending.label || t.sendCode }}</span>
+                </button>
               </div>
             </div>
-            <button class="primary-btn" type="submit">{{ t.login }}</button>
+            <button class="primary-btn" type="submit" :disabled="login.submitting" :aria-busy="login.submitting">{{ t.login }}</button>
+            <StatusLoader v-if="login.submitting" label="正在登录" compact />
           </form>
           <div class="oauth-login-section">
             <div class="auth-divider"><span>其他方式登录</span></div>

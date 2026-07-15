@@ -10,6 +10,7 @@ import { useRoomWorld } from './useRoomWorld';
 export function useRoomState() {
   const loading = reactive({
     active: true,
+    error: false,
     title: 'SYNCHRONIZING...',
     detail: 'Loading room assets...'
   });
@@ -24,6 +25,7 @@ export function useRoomState() {
 
   async function init() {
     loading.active = true;
+    loading.error = false;
     loading.title = 'SYNCHRONIZING...';
     loading.detail = 'Loading room assets...';
     world.initRoomWorld();
@@ -34,6 +36,7 @@ export function useRoomState() {
       loading.title = 'LIVE2D LOAD FAILED';
       loading.detail = err?.message || 'Live2D init failed';
       loading.active = false;
+      loading.error = true;
     }
   }
 

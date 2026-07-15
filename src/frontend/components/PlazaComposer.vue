@@ -7,6 +7,7 @@ const props = defineProps({
 });
 
 const text = ref('');
+const submitting = ref(false);
 const charCount = computed(() => `${text.value.length} / 300`);
 
 const moods = [
@@ -21,13 +22,19 @@ function insert(prefix) {
 }
 
 async function submit() {
-  const ok = await props.onSubmit(text.value);
-  if (ok) text.value = '';
+  if (submitting.value) return;
+  submitting.value = true;
+  try {
+    const ok = await props.onSubmit(text.value);
+    if (ok) text.value = '';
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>
 
 <template>
-  <div>
+  <div :aria-busy="submitting">
     <div class="plaza-composer-top">
       <span>{{ t.publish }}</span>
       <span class="plaza-char-count">{{ charCount }}</span>
@@ -40,7 +47,8 @@ async function submit() {
     </div>
     <div class="plaza-composer-actions">
       <span class="plaza-char-count">{{ t.composerHint }}</span>
-      <button class="primary-btn" type="button" @click="submit">{{ t.publish }}</button>
+      <button class="primary-btn" type="button" :disabled="submitting" :aria-busy="submitting" @click="submit">{{ t.publish }}</button>
     </div>
+    <StatusLoader v-if="submitting" :label="t.syncing" compact />
   </div>
 </template>

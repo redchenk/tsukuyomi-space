@@ -36,6 +36,7 @@ const roomUserId = computed(() => roomUser.value?.id || roomUser.value?.username
     :data-season="room.world.world.value.season"
     :data-weather="room.world.world.value.weather"
     :style="room.roomStyle.value"
+    :aria-busy="room.loading.active"
   >
     <div class="room-backdrop" aria-hidden="true"></div>
     <div
@@ -88,6 +89,6 @@ const roomUserId = computed(() => roomUser.value?.id || roomUser.value?.username
       @drag-start="room.panels.startPanelDrag('notePanel', $event)"
       @save="room.note.saveNote()"
     />
-    <RoomLoadingOverlay :active="room.loading.active" :title="room.loading.title" :detail="room.loading.detail" />
+    <RoomLoadingOverlay :active="room.loading.active" :error="room.loading.error" :title="room.loading.title" :detail="room.loading.detail" />
   </main>
 </template>

@@ -514,7 +514,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="live2d-page" :data-live-state="liveDirector.running ? 'on' : 'off'" aria-label="Live2D preview">
+  <main class="live2d-page" :data-live-state="liveDirector.running ? 'on' : 'off'" :aria-busy="live2d.loading.value || llmState.loading" aria-label="Live2D preview">
     <div class="live2d-backdrop" aria-hidden="true"></div>
     <section class="live2d-stage" aria-label="Yachiyo Live2D stage">
       <div
@@ -549,13 +549,14 @@ onUnmounted(() => {
         <strong>{{ statusLabel }}</strong>
       </div>
 
-      <section class="live2d-live-director" aria-label="Live director">
+      <section class="live2d-live-director" :aria-busy="llmState.loading" aria-label="Live director">
         <input v-model="liveTopic" type="text" spellcheck="false" placeholder="Stream topic">
         <div class="live2d-live-actions">
           <button
             class="live2d-action-btn live2d-run-btn"
             type="button"
             :disabled="!live2d.ready.value || (!liveDirector.running && llmState.loading)"
+            :aria-busy="llmState.loading"
             @click="liveDirector.running ? stopLiveDirector() : startLiveDirector()"
           >
             <TsIcon :name="liveDirector.running ? 'pause' : 'play'" :size="16" />
@@ -609,10 +610,10 @@ onUnmounted(() => {
           <TsIcon name="audioLines" :size="20" />
         </button>
       </div>
-      <form class="live2d-llm-form" @submit.prevent="runLLMControl">
+      <form class="live2d-llm-form" :aria-busy="llmState.loading" @submit.prevent="runLLMControl">
         <textarea v-model="prompt" rows="3" spellcheck="false" placeholder="Ask LLM to control Live2D"></textarea>
         <div class="live2d-llm-actions">
-          <button class="live2d-action-btn live2d-run-btn" type="submit" :disabled="!live2d.ready.value || llmState.loading">
+          <button class="live2d-action-btn live2d-run-btn" type="submit" :disabled="!live2d.ready.value || llmState.loading" :aria-busy="llmState.loading">
             {{ llmState.loading ? 'Thinking' : 'LLM Act' }}
           </button>
           <button class="live2d-icon-btn" type="button" title="Clear history" aria-label="Clear history" @click="resetLLMHistory">
@@ -620,16 +621,16 @@ onUnmounted(() => {
           </button>
         </div>
       </form>
-      <div v-if="llmState.error || llmState.live2d" class="live2d-llm-result" :class="{ error: llmState.error }">
+      <StatusLoader v-if="llmState.loading" label="Waiting for LLM result" compact />
+      <div v-else-if="llmState.error || llmState.live2d" class="live2d-llm-result" :class="{ error: llmState.error }" :role="llmState.error ? 'alert' : 'status'">
         <strong>{{ llmState.error ? 'ERROR' : 'ACT' }}</strong>
         <p v-if="llmState.error">{{ llmState.error }}</p>
         <pre v-if="llmState.live2d">{{ JSON.stringify(llmState.live2d, null, 2) }}</pre>
       </div>
     </aside>
 
-    <div v-if="live2d.loading.value" class="live2d-loading" role="status">
-      <TsIcon name="loader" :size="28" />
-      <span>Loading Live2D</span>
+    <div v-if="live2d.loading.value" class="live2d-loading" aria-busy="true">
+      <StatusLoader label="Loading Live2D" />
     </div>
   </main>
 </template>

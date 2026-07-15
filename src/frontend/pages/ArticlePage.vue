@@ -335,7 +335,7 @@ watch(articleId, loadArticle);
 </script>
 
 <template>
-  <main class="page article-page">
+  <main class="page article-page" :aria-busy="loading">
     <div class="article-progress" aria-hidden="true"></div>
     <div class="article-shell">
       <a class="ghost-btn article-back" :href="articleBackPath" @click.prevent="goBackToStage">
@@ -343,8 +343,8 @@ watch(articleId, loadArticle);
         <span>返回主舞台</span>
       </a>
 
-      <div v-if="loading" class="article-status">{{ t.loading }}</div>
-      <div v-else-if="message && !article" class="article-status">{{ message }}</div>
+      <LoadingSkeleton v-if="loading" variant="article" :count="1" :label="t.loading" />
+      <div v-else-if="message && !article" class="article-status error" role="alert">{{ message }}</div>
 
       <article v-else-if="article" class="article-reader">
         <header class="article-hero">
@@ -366,10 +366,12 @@ watch(articleId, loadArticle);
               :class="{ liked: bookmark.bookmarked }"
               type="button"
               :disabled="bookmark.loading"
+              :aria-busy="bookmark.loading"
               @click="toggleBookmark"
             >
-              <TsIcon name="bookmark" :size="17" />
+              <TsIcon :class="{ 'ts-status-loader-icon': bookmark.loading }" :name="bookmark.loading ? 'loader' : 'bookmark'" :size="17" />
               <span>{{ bookmarkLabel }}</span>
+              <span v-if="bookmark.loading" class="ts-visually-hidden" role="status">正在更新收藏状态</span>
             </button>
           </div>
         </header>

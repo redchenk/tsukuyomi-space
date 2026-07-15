@@ -34,21 +34,23 @@ function ttsLabel(chat, messageId) {
     @drag-start="emit('drag-start', $event)"
   >
     <div class="panel-content chat-body" @dragover.prevent @drop="chat.onDrop">
-      <div id="chatMessages" :ref="(node) => { chat.messageListRef.value = node; }" class="room-chat-messages">
-        <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="message.role">
+      <div id="chatMessages" :ref="(node) => { chat.messageListRef.value = node; }" class="room-chat-messages" :aria-busy="chat.sending.value">
+        <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="message.role" :aria-busy="message.pending || undefined">
           <span class="chat-role">{{ message.role === 'assistant' ? '八千代' : message.role === 'user' ? '你' : '系统' }}</span>
           <img v-if="message.image?.dataUrl" class="chat-image-thumb" :src="message.image.dataUrl" :alt="message.image.name || 'image'">
-          <div class="chat-content">{{ message.content }}</div>
+          <StatusLoader v-if="message.pending" :label="message.content" compact />
+          <div v-else class="chat-content">{{ message.content }}</div>
           <div v-if="message.role === 'assistant' && !message.pending" class="chat-message-actions">
             <button
               class="chat-tts-btn"
               :class="{ loading: ttsStatus(chat, message.id) === 'loading', playing: ttsStatus(chat, message.id) === 'playing' }"
               type="button"
               :disabled="ttsStatus(chat, message.id) === 'loading'"
+              :aria-busy="ttsStatus(chat, message.id) === 'loading'"
               @click="chat.playTTS(message.speechText || message.content, message.id, message.live2d)"
             >
-              <span v-if="ttsStatus(chat, message.id) === 'loading'" class="chat-tts-spinner" aria-hidden="true"></span>
-              <span>{{ ttsLabel(chat, message.id) }}</span>
+              <TsIcon v-if="ttsStatus(chat, message.id) === 'loading'" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
+              <span :role="ttsStatus(chat, message.id) === 'loading' ? 'status' : undefined">{{ ttsLabel(chat, message.id) }}</span>
             </button>
           </div>
         </div>
@@ -65,7 +67,7 @@ function ttsLabel(chat, messageId) {
           <span>&#22270;&#29255;</span>
         </button>
         <input id="chatInput" v-model="chat.input.value" type="text" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;" @keydown.enter="chat.send">
-        <button id="sendChatBtn" class="panel-btn" type="button" :disabled="chat.sending.value" aria-label="&#21457;&#36865;" @click="chat.send">
+        <button id="sendChatBtn" class="panel-btn" type="button" :disabled="chat.sending.value" :aria-busy="chat.sending.value" aria-label="&#21457;&#36865;" @click="chat.send">
           <TsIcon name="send" :size="22" :stroke-width="2.1" />
           <span>&#21457;&#36865;</span>
         </button>

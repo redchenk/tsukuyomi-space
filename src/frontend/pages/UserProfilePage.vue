@@ -150,12 +150,9 @@ onMounted(loadProfile);
 </script>
 
 <template>
-  <main class="page user-profile-page">
-    <div v-if="loading" class="user-profile-status panel">
-      <TsIcon name="loader" :size="24" />
-      <span>正在读取公开主页...</span>
-    </div>
-    <div v-else-if="message && !profile" class="user-profile-status panel">{{ message }}</div>
+  <main class="page user-profile-page" :aria-busy="loading">
+    <LoadingSkeleton v-if="loading" variant="profile" :count="1" label="正在读取公开主页" />
+    <div v-else-if="message && !profile" class="user-profile-status panel" role="alert">{{ message }}</div>
 
     <template v-else-if="profile">
       <section class="profile-hero">
@@ -181,10 +178,11 @@ onMounted(loadProfile);
             class="primary-btn profile-icon-action"
             type="button"
             :disabled="followLoading"
+            :aria-busy="followLoading"
             @click="toggleFollow"
           >
-            <TsIcon :name="viewer.isFollowing ? 'userCheck' : 'userPlus'" :size="17" />
-            <span>{{ viewer.isFollowing ? '取消关注' : '关注作者' }}</span>
+            <TsIcon :class="{ 'ts-status-loader-icon': followLoading }" :name="followLoading ? 'loader' : (viewer.isFollowing ? 'userCheck' : 'userPlus')" :size="17" />
+            <span :role="followLoading ? 'status' : undefined">{{ followLoading ? '正在更新关注状态' : (viewer.isFollowing ? '取消关注' : '关注作者') }}</span>
           </button>
           <a v-else class="primary-btn profile-icon-action" href="/user-center" @click.prevent="emit('go', '/user-center')">
             <TsIcon name="penLine" :size="17" />

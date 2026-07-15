@@ -134,9 +134,10 @@ const testDialog = reactive({ visible: false, target: '', status: 'idle', title:
 const memoryCount = ref(0);
 const memoryList = ref([]);
 const memoryLoading = ref(false);
+const memoryError = ref('');
 const memoryVector = reactive({ backend: '', enabled: false, pending: 0, failed: 0, embedding: '' });
 const storedUser = ref(readStoredUser());
-const modelCatalog = reactive({ loading: false, message: '', updatedAt: '', models: [] });
+const modelCatalog = reactive({ loading: false, message: '', error: '', updatedAt: '', models: [] });
 const setupStep = ref(1);
 const setupLlmMode = ref('ollama');
 const setupCloudProvider = ref('openaiChat');
@@ -444,6 +445,7 @@ function loadModelCatalogCache() {
 
 async function syncModelCatalog() {
   modelCatalog.loading = true;
+  modelCatalog.error = '';
   modelCatalog.message = '正在同步 OpenRouter 模型目录...';
   try {
     const response = await apiFetch(`/api/room/models/openrouter?_${Date.now()}`, {
@@ -461,7 +463,8 @@ async function syncModelCatalog() {
     modelCatalog.message = `已同步 ${modelCatalog.models.length} 个模型；当前供应商匹配 ${syncedModelOptions.value.length} 个；最新推荐 ${recommendedModelOption.value ? syncedModelSelectValue(recommendedModelOption.value) : '暂无'}`;
     showToast('模型目录已同步');
   } catch (error) {
-    modelCatalog.message = `模型目录同步失败：${error.message}`;
+    modelCatalog.error = `模型目录同步失败：${error.message}`;
+    modelCatalog.message = modelCatalog.error;
     showToast(`模型同步失败：${error.message}`);
   } finally {
     modelCatalog.loading = false;
@@ -1116,6 +1119,7 @@ async function loadServerMemories() {
     return;
   }
   memoryLoading.value = true;
+  memoryError.value = '';
   try {
     const params = new URLSearchParams({ limit: '80' });
     if (memory.query.trim()) params.set('q', memory.query.trim());
@@ -1129,6 +1133,8 @@ async function loadServerMemories() {
     memoryList.value = Array.isArray(result.data) ? result.data : [];
     memoryCount.value = memoryList.value.length || memoryCount.value;
   } catch (error) {
+    memoryList.value = [];
+    memoryError.value = error.message || '读取记忆失败';
     showToast(`读取记忆失败：${error.message}`);
   } finally {
     memoryLoading.value = false;
@@ -1152,6 +1158,7 @@ function buildGptSovitsAudioUrl(text, settings) {
 
 async function loadLocalMemories() {
   memoryLoading.value = true;
+  memoryError.value = '';
   try {
     const db = await openMemoryDb();
     if (!db) {
@@ -1181,6 +1188,8 @@ async function loadLocalMemories() {
       }));
     memoryCount.value = records.length;
   } catch (error) {
+    memoryList.value = [];
+    memoryError.value = error.message || '读取本地记忆失败';
     showToast(`读取本地记忆失败：${error.message}`);
   } finally {
     memoryLoading.value = false;
@@ -2067,7 +2076,9 @@ onBeforeUnmount(() => {
                   <button class="ghost-btn compact" type="button" :disabled="!recommendedModelOption" @click="applyRecommendedModel">应用推荐</button>
                 </div>
                 <div class="button-row">
-                  <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
+                  <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" :aria-busy="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
+                  <StatusLoader v-if="modelCatalog.loading" label="正在同步模型列表" compact />
+                  <p v-else-if="modelCatalog.error" class="field-hint warning-text" role="alert">{{ modelCatalog.error }}</p>
                 </div>
               </div>
             </details>
@@ -2328,7 +2339,7 @@ onBeforeUnmount(() => {
         </div>
       </article>
 
-      <article id="room-llm-settings" class="room-settings-card room-settings-card-primary">
+      <article id="room-llm-settings" class="room-settings-card room-settings-card-primary" :aria-busy="modelCatalog.loading">
         <div class="room-card-head">
           <span class="room-card-icon"><TsIcon name="message" :size="20" /></span>
           <div>
@@ -2366,7 +2377,7 @@ onBeforeUnmount(() => {
               {{ option.label }} · {{ option.detail }}
             </option>
           </select></label>
-          <p class="field-hint">
+          <p class="field-hint" :class="{ 'warning-text': modelCatalog.error }" :role="modelCatalog.error ? 'alert' : undefined">
             当前识别供应商：{{ llmProviderKey }}。OpenRouter 会同步完整模型目录；其他供应商会按模型前缀筛选并转换为原生模型名，无法确定时保留本地预设。
             {{ modelCatalog.message }}
           </p>
@@ -2386,7 +2397,8 @@ onBeforeUnmount(() => {
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveLLM">保存 LLM</button>
             <button class="ghost-btn" type="button" @click="testLLM">测试连接</button>
-            <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
+            <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" :aria-busy="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
+            <StatusLoader v-if="modelCatalog.loading" label="正在同步模型列表" compact />
           </div>
         </div>
       </article>
@@ -2522,13 +2534,13 @@ onBeforeUnmount(() => {
           </span>
           <span class="memory-manager-icon">{{ memory.managerOpen ? '收起' : '展开' }}</span>
         </button>
-        <div v-if="memory.managerOpen" class="memory-manager-body">
+        <div v-if="memory.managerOpen" class="memory-manager-body" :aria-busy="memoryLoading">
           <div class="memory-toolbar">
             <input v-model="memory.query" type="text" placeholder="搜索记忆内容、偏好或项目">
             <select v-model="memory.type">
               <option v-for="item in memoryTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
             </select>
-            <button class="ghost-btn" type="button" @click="loadVisibleMemories">{{ memoryLoading ? '读取中...' : '检索' }}</button>
+            <button class="ghost-btn" type="button" :disabled="memoryLoading" :aria-busy="memoryLoading" @click="loadVisibleMemories">{{ memoryLoading ? '读取中...' : '检索' }}</button>
           </div>
           <form v-if="memory.editing" class="memory-editor" @submit.prevent="saveMemoryEdit">
           <label>类型
@@ -2548,7 +2560,9 @@ onBeforeUnmount(() => {
             <button class="ghost-btn" type="button" @click="cancelMemoryEdit">取消</button>
           </div>
           </form>
-          <div v-if="!memoryList.length" class="field-hint">{{ memoryLoading ? '正在读取记忆...' : `还没有可显示的${memoryModeLabel}。` }}</div>
+          <LoadingSkeleton v-if="memoryLoading" variant="list" :count="4" label="正在读取记忆" />
+          <div v-else-if="memoryError" class="field-hint error" role="alert">{{ memoryError }}</div>
+          <div v-else-if="!memoryList.length" class="field-hint">{{ `还没有可显示的${memoryModeLabel}。` }}</div>
           <div v-else class="memory-list">
             <article v-for="item in memoryList" :key="item.id" class="memory-item">
             <div class="memory-item-head">
@@ -2628,15 +2642,18 @@ onBeforeUnmount(() => {
         :aria-label="testDialog.title || testDialogTargetLabel()"
         @click.self="closeTestDialog"
       >
-        <section class="room-test-modal-card" data-material="popover">
+        <section class="room-test-modal-card" data-material="popover" :aria-busy="testDialog.status === 'loading'">
           <div class="room-test-dialog-head">
             <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
             <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
           </div>
           <small class="room-test-target">{{ testDialogTargetLabel() }}</small>
           <h3>{{ testDialog.title }}</h3>
-          <p>{{ testDialog.message }}</p>
-          <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
+          <StatusLoader v-if="testDialog.status === 'loading'" :label="testDialog.message" :detail="testDialog.detail" />
+          <template v-else>
+            <p>{{ testDialog.message }}</p>
+            <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
+          </template>
         </section>
       </div>
     </Teleport>

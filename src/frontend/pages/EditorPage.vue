@@ -32,6 +32,7 @@ const editor = reactive({
   currentArticle: null,
   message: '',
   messageType: 'error',
+  loadError: '',
   submitting: false,
   loading: true,
   assetPicker: {
@@ -43,7 +44,8 @@ const editor = reactive({
     mode: 'body',
     assets: [],
     search: '',
-    message: ''
+    message: '',
+    loadError: ''
   },
   form: {
     title: '',
@@ -215,6 +217,7 @@ function closeAssetPicker() {
 
 async function loadAssetPicker() {
   editor.assetPicker.loading = true;
+  editor.assetPicker.loadError = '';
   try {
     const params = new URLSearchParams({
       type: editor.assetPicker.mode === 'cover' ? 'image' : 'all',
@@ -230,7 +233,7 @@ async function loadAssetPicker() {
     editor.assetPicker.assets = result.data?.assets || [];
   } catch (error) {
     editor.assetPicker.assets = [];
-    editor.assetPicker.message = error.message || '附件读取失败';
+    editor.assetPicker.loadError = error.message || '附件读取失败';
   } finally {
     editor.assetPicker.loading = false;
   }
@@ -420,6 +423,7 @@ async function handleEditorSubmit() {
 
 async function initEditor() {
   editor.loading = true;
+  editor.loadError = '';
   editor.message = '';
   editor.messageType = 'error';
   session.value = getSession();
@@ -446,8 +450,7 @@ async function initEditor() {
         category: validCategories.includes(result.data.category) ? result.data.category : '\u5176\u4ed6'
       });
     } catch (error) {
-      editor.message = props.t.editorLoadFailed + (error.message || props.t.editorNetworkFailed);
-      editor.messageType = 'error';
+      editor.loadError = props.t.editorLoadFailed + (error.message || props.t.editorNetworkFailed);
     }
   } else {
     resetEditorForm();
@@ -470,7 +473,7 @@ watch(currentArticleId, initEditor);
 </script>
 
 <template>
-  <main class="page editor-page">
+  <main class="page editor-page" :aria-busy="editor.loading || editor.submitting">
     <div class="editor-container">
       <header class="editor-header">
         <h1 class="section-title">{{ t.editorTitle }}</h1>
@@ -482,9 +485,11 @@ watch(currentArticleId, initEditor);
         <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.editorLogin }}</a>
       </div>
 
-      <div v-else-if="editor.loading" class="editor-status">{{ t.loading }}</div>
+      <LoadingSkeleton v-else-if="editor.loading" variant="editor" :count="1" :label="t.loading" />
 
-      <form v-else class="editor-form" @submit.prevent="handleEditorSubmit">
+      <div v-else-if="editor.loadError" class="editor-status error" role="alert">{{ editor.loadError }}</div>
+
+      <form v-else class="editor-form" :aria-busy="editor.submitting" @submit.prevent="handleEditorSubmit">
         <div v-if="editor.message" class="form-message" :class="editor.messageType">{{ editor.message }}</div>
 
         <div class="form-group">
@@ -588,13 +593,13 @@ watch(currentArticleId, initEditor);
         </div>
 
         <div class="btn-group">
-          <button type="submit" class="primary-btn" :disabled="editor.submitting">{{ submitLabel }}</button>
+          <button type="submit" class="primary-btn" :disabled="editor.submitting" :aria-busy="editor.submitting">{{ submitLabel }}</button>
           <button type="button" class="ghost-btn" @click="cancelEdit">{{ t.cancel }}</button>
         </div>
       </form>
 
       <div v-if="editor.assetPicker.open" class="editor-asset-backdrop" role="presentation" @click.self="closeAssetPicker">
-        <section class="editor-asset-modal" data-material="popover" role="dialog" aria-modal="true" aria-label="附件库">
+        <section class="editor-asset-modal" data-material="popover" role="dialog" aria-modal="true" aria-label="附件库" :aria-busy="editor.assetPicker.loading || editor.assetPicker.uploading">
           <header class="editor-asset-head">
             <div>
               <span>Asset Library</span>
@@ -605,23 +610,18 @@ watch(currentArticleId, initEditor);
           <div class="editor-asset-tools">
             <input v-model="editor.assetPicker.search" type="search" placeholder="搜索附件" @keydown.enter="loadAssetPicker">
             <button class="ghost-btn" type="button" @click="loadAssetPicker">搜索</button>
-            <button class="primary-btn" type="button" :disabled="editor.assetPicker.uploading" @click="editorAssetUploadInput?.click()">
+            <button class="primary-btn" type="button" :disabled="editor.assetPicker.uploading" :aria-busy="editor.assetPicker.uploading" @click="editorAssetUploadInput?.click()">
               {{ editor.assetPicker.uploading ? '上传中...' : '上传附件' }}
             </button>
             <input ref="editorAssetUploadInput" type="file" :accept="uploadAccept" hidden @change="uploadEditorAsset">
             <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
           </div>
-          <div v-if="editor.assetPicker.uploading" class="editor-upload-progress" role="status" aria-live="polite">
-            <div class="editor-upload-progress-head">
-              <span>{{ editor.assetPicker.uploadPhase || '正在上传...' }}</span>
-              <strong>{{ editor.assetPicker.uploadProgress }}%</strong>
-            </div>
-            <div class="editor-upload-progress-track" aria-hidden="true">
-              <span :style="{ width: `${editor.assetPicker.uploadProgress}%` }"></span>
-            </div>
+          <div v-if="editor.assetPicker.uploading" class="editor-upload-progress" aria-busy="true">
+            <StatusLoader :label="editor.assetPicker.uploadPhase || '正在上传...'" :progress="editor.assetPicker.uploadProgress" />
           </div>
           <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
-          <div v-if="editor.assetPicker.loading" class="editor-asset-status">加载附件中...</div>
+          <LoadingSkeleton v-if="editor.assetPicker.loading" variant="gallery" :count="6" label="正在加载附件" />
+          <div v-else-if="editor.assetPicker.loadError" class="editor-asset-status error" role="alert">{{ editor.assetPicker.loadError }}</div>
           <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用附件。可以在这里直接上传，或点击“管理附件”进入附件库。</div>
           <div v-else class="editor-asset-grid">
             <button v-for="asset in editor.assetPicker.assets" :key="asset.id" type="button" class="editor-asset-card" @click="useAsset(asset)">

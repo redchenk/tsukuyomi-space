@@ -56,6 +56,8 @@ const latestGalleryImage = ref(hubPreviewCache?.latestGalleryImage || null);
 const latestPixelArtwork = ref(hubPreviewCache?.latestPixelArtwork || null);
 const plazaMessages = ref(hubPreviewCache?.plazaMessages || []);
 const siteStats = ref(hubPreviewCache?.siteStats || null);
+const previewLoading = ref(!hubPreviewCache);
+const previewError = ref('');
 const visitPopupPreview = ref({
   title: '欢迎来到月读空间',
   content: '首次访问弹窗尚未配置内容。'
@@ -206,6 +208,7 @@ async function loadHubPreview(options = {}) {
   const cached = hubPreviewCache || readHubPreviewCache();
   if (cached) applyHubPreviewCache(cached);
   if (!force && cached?.cachedAt && Date.now() - cached.cachedAt < HUB_PREVIEW_TTL_MS) {
+    previewLoading.value = false;
     loadPublicStats({ force: true, maxAgeMs: 0, staleWhileRevalidate: false })
       .then((nextSiteStats) => {
         if (!nextSiteStats) return;
@@ -222,6 +225,8 @@ async function loadHubPreview(options = {}) {
     return;
   }
 
+  previewLoading.value = true;
+  previewError.value = '';
   try {
     loadPublicStats({ force: true, maxAgeMs: 0, staleWhileRevalidate: false })
       .then((nextSiteStats) => {
@@ -249,6 +254,9 @@ async function loadHubPreview(options = {}) {
       parseResponse(galleryResponse),
       parseResponse(pixelResponse)
     ]);
+    if (![articleResult, messageResult, galleryResult, pixelResult].some((result) => result.success)) {
+      throw new Error('大厅最新内容读取失败');
+    }
     const articles = articleResult.success && Array.isArray(articleResult.data) ? articleResult.data : [];
     const messages = messageResult.success && Array.isArray(messageResult.data) ? messageResult.data : [];
     const galleryAssets = galleryResult.success && Array.isArray(galleryResult.data?.assets) ? galleryResult.data.assets : [];
@@ -273,14 +281,17 @@ async function loadHubPreview(options = {}) {
       plazaMessages: nextPlazaMessages,
       siteStats: siteStats.value
     });
-  } catch (_) {
+  } catch (error) {
     if (!cached) {
       latestArticle.value = null;
       latestGalleryImage.value = null;
       latestPixelArtwork.value = null;
       plazaMessages.value = [];
       siteStats.value = null;
+      previewError.value = error.message || '大厅最新内容读取失败';
     }
+  } finally {
+    previewLoading.value = false;
   }
 }
 
@@ -370,7 +381,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page hub">
+  <main class="page hub" :aria-busy="previewLoading">
     <section class="hub-showcase">
       <div class="hub-hero-panel">
         <div class="hub-stage-ribbon" aria-hidden="true">
@@ -406,11 +417,14 @@ onMounted(() => {
           <span>本站统计</span>
           <small>Site Analytics</small>
         </div>
-        <div class="hub-stat-grid">
-          <div v-for="item in stats" :key="item.label">
-            <strong><CountUpValue :value="item.value" /></strong>
-            <span>{{ item.label }}</span>
-          </div>
+        <div class="hub-stat-grid" :aria-busy="previewLoading">
+          <LoadingSkeleton v-if="previewLoading" variant="stats" :count="6" label="正在读取站点统计" />
+          <template v-else>
+            <div v-for="item in stats" :key="item.label">
+              <strong><CountUpValue :value="item.value" /></strong>
+              <span>{{ item.label }}</span>
+            </div>
+          </template>
         </div>
         <div class="hub-side-card hub-visit-card">
           <span class="hub-visit-eyebrow">公告</span>
@@ -433,7 +447,10 @@ onMounted(() => {
         </div>
         <span class="hub-online">STATUS: ONLINE</span>
       </div>
-      <div class="scene-grid">
+      <div class="scene-grid" :aria-busy="previewLoading">
+        <LoadingSkeleton v-if="previewLoading" variant="hub" :count="4" label="正在读取大厅最新内容" />
+        <div v-else-if="previewError" class="hub-preview-error" role="alert">{{ previewError }}</div>
+        <template v-else>
         <component
           :is="scene.kind === 'plaza' ? 'div' : 'a'"
           v-for="scene in orderedSceneLinks"
@@ -481,21 +498,24 @@ onMounted(() => {
                 <span>{{ msg.content }}</span>
               </span>
             </span>
-            <form class="hub-plaza-form" @click.stop @keydown.stop @submit.prevent="submitPlazaQuick">
+            <form class="hub-plaza-form" :aria-busy="plazaQuick.loading" @click.stop @keydown.stop @submit.prevent="submitPlazaQuick">
               <input v-model="plazaQuick.content" type="text" placeholder="快速留言...">
               <button
                 class="hub-plaza-submit"
                 type="submit"
                 :disabled="plazaQuick.loading"
+                :aria-busy="plazaQuick.loading"
                 :aria-label="plazaQuick.loading ? '发送中' : '发送'"
                 :title="plazaQuick.loading ? '发送中' : '发送'"
               >
                 <TsIcon :name="plazaQuick.loading ? 'loader' : 'send'" :size="15" />
               </button>
+              <span v-if="plazaQuick.loading" class="ts-visually-hidden" role="status">发送中</span>
             </form>
-            <span v-if="plazaQuick.message" class="hub-plaza-feedback">{{ plazaQuick.message }}</span>
+            <span v-if="plazaQuick.message" class="hub-plaza-feedback" role="status">{{ plazaQuick.message }}</span>
           </span>
         </component>
+        </template>
       </div>
     </section>
   </main>

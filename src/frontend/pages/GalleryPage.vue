@@ -15,12 +15,13 @@ let randomFeatureTransitionTimer = 0;
 let randomFeatureRequestId = 0;
 
 const state = reactive({
-  loading: false,
+  loading: true,
   uploading: false,
   uploadProgress: 0,
   uploadPhase: '',
   message: '',
   messageType: 'success',
+  loadError: '',
   images: [],
   search: '',
   dragActive: false,
@@ -147,9 +148,11 @@ async function loadImages(page = 1) {
     state.page = 1;
     state.totalPages = 1;
     state.total = 0;
+    state.loading = false;
     return;
   }
   state.loading = true;
+  state.loadError = '';
   try {
     const params = new URLSearchParams({
       page: String(page),
@@ -173,7 +176,7 @@ async function loadImages(page = 1) {
     state.total = result.data?.pagination?.total || state.images.length;
   } catch (error) {
     state.images = [];
-    showMessage(error.message || '图库读取失败', 'error');
+    state.loadError = error.message || '图库读取失败';
   } finally {
     state.loading = false;
   }
@@ -301,7 +304,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="page gallery-page" :class="{ 'gallery-page-manage': isManageMode }">
+  <main class="page gallery-page" :class="{ 'gallery-page-manage': isManageMode }" :aria-busy="state.loading || state.uploading">
     <section v-if="isManageMode && !isAuthed" class="panel gallery-empty">
       <span class="gallery-kicker">Gallery</span>
       <h1>图库管理</h1>
@@ -339,7 +342,7 @@ onUnmounted(() => {
               <span>上传图片</span>
             </button>
             <button v-else class="ghost-btn" type="button" @click="go('/login')">登录后上传</button>
-            <button v-if="isManageMode" class="primary-btn gallery-upload-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
+            <button v-if="isManageMode" class="primary-btn gallery-upload-btn" type="button" :disabled="state.uploading" :aria-busy="state.uploading" @click="fileInput?.click()">
               <TsIcon name="upload" :size="18" />
               <span>{{ state.uploading ? '上传中...' : '上传图片' }}</span>
             </button>
@@ -347,12 +350,8 @@ onUnmounted(() => {
           </div>
         </header>
 
-        <div v-if="isManageMode && state.uploading" class="gallery-progress" role="status" aria-live="polite">
-          <div>
-            <span>{{ state.uploadPhase || '正在上传...' }}</span>
-            <strong>{{ state.uploadProgress }}%</strong>
-          </div>
-          <i><span :style="{ width: `${state.uploadProgress}%` }"></span></i>
+        <div v-if="isManageMode && state.uploading" class="gallery-progress" aria-busy="true">
+          <StatusLoader :label="state.uploadPhase || '正在上传...'" :progress="state.uploadProgress" />
         </div>
 
         <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>
@@ -370,7 +369,7 @@ onUnmounted(() => {
             <span>本页展示</span>
             <strong>{{ shownImages.length }}</strong>
           </div>
-          <button class="primary-btn" type="button" :disabled="state.uploading" @click="fileInput?.click()">
+          <button class="primary-btn" type="button" :disabled="state.uploading" :aria-busy="state.uploading" @click="fileInput?.click()">
             <TsIcon name="upload" :size="18" />
             上传图片
           </button>
@@ -382,6 +381,7 @@ onUnmounted(() => {
           :class="{ active: state.dragActive, busy: state.uploading }"
           type="button"
           :disabled="state.uploading"
+          :aria-busy="state.uploading"
           @click="fileInput?.click()"
           @dragover.prevent="handleDragOver"
           @dragenter.prevent="handleDragOver"
@@ -415,7 +415,8 @@ onUnmounted(() => {
           </article>
         </section>
 
-        <section v-if="state.loading" class="gallery-status">正在读取图库...</section>
+        <LoadingSkeleton v-if="state.loading" variant="gallery" :count="8" label="正在读取图库" />
+        <section v-else-if="state.loadError" class="gallery-status error" role="alert">{{ state.loadError }}</section>
         <section v-else-if="!shownImages.length" class="panel gallery-empty">
           <h2>还没有图片</h2>
           <p>只有选择“上传到图库”的图片会出现在这里，普通附件库图片不会自动展示。</p>

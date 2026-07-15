@@ -129,6 +129,61 @@ describe('platform material surfaces', () => {
     });
 });
 
+describe('unified async loading states', () => {
+    it('registers shared skeleton and status-loader primitives with resilient geometry', () => {
+        const main = source('src/frontend/main.js');
+        const styles = source('src/frontend/styles/loading-states.css');
+        const appStyles = source('assets/css/vue-app.css');
+        const skeleton = source('src/frontend/components/LoadingSkeleton.vue');
+        const statusLoader = source('src/frontend/components/StatusLoader.vue');
+
+        assert.match(main, /app\.component\('LoadingSkeleton', LoadingSkeleton\)/);
+        assert.match(main, /app\.component\('StatusLoader', StatusLoader\)/);
+        assert.match(appStyles, /loading-states\.css/);
+        assert.doesNotMatch(skeleton, /role="status"/);
+        assert.match(statusLoader, /role="status" aria-live="polite"/);
+        assert.match(statusLoader, /role="progressbar"/);
+        assert.match(styles, /data-skeleton-variant="gallery"/);
+        assert.match(styles, /data-skeleton-variant="list"[^}]*grid-template-columns: 1fr/s);
+        assert.match(styles, /data-skeleton-variant="article"/);
+        assert.match(styles, /data-skeleton-variant="hub"/);
+        assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+    });
+
+    it('marks known content regions busy and replaces skeletons with errors or results', () => {
+        const gallery = source('src/frontend/pages/GalleryPage.vue');
+        const stage = source('src/frontend/pages/StagePage.vue');
+        const notifications = source('src/frontend/pages/NotificationsPage.vue');
+        const plaza = source('src/frontend/pages/PlazaPage.vue');
+        const userCenter = source('src/frontend/pages/UserCenterPage.vue');
+        const hub = source('src/frontend/pages/HubPage.vue');
+
+        assert.match(gallery, /:aria-busy="state\.loading \|\| state\.uploading"/);
+        assert.match(gallery, /LoadingSkeleton v-if="state\.loading"[\s\S]*v-else-if="state\.loadError"[^>]*role="alert"[\s\S]*v-else-if="!shownImages\.length"/);
+        assert.match(stage, /LoadingSkeleton v-if="articlesLoading"[\s\S]*v-else-if="articlesError"[^>]*role="alert"[\s\S]*v-else-if="!filteredArticles\.length"/);
+        assert.match(notifications, /LoadingSkeleton v-if="inbox\.loading"[\s\S]*v-else-if="inbox\.message"[^>]*role="alert"[\s\S]*v-else-if="!inbox\.items\.length"/);
+        assert.match(plaza, /LoadingSkeleton v-if="plaza\.loading"[\s\S]*v-else-if="plaza\.loadError"[^>]*role="alert"[\s\S]*v-else-if="!plazaMessages\.length"/);
+        assert.match(userCenter, /LoadingSkeleton v-if="uc\.articleLoading"[\s\S]*v-else-if="uc\.articleError"[^>]*role="alert"/);
+        assert.match(hub, /LoadingSkeleton v-if="previewLoading" variant="hub"[\s\S]*v-else-if="previewError"[^>]*role="alert"/);
+    });
+
+    it('uses status loaders for unknown work and exposes a persistent Room error state', () => {
+        const access = source('src/frontend/pages/AccessPage.vue');
+        const login = source('src/frontend/pages/LoginPage.vue');
+        const terminal = source('src/frontend/pages/TerminalPage.vue');
+        const roomOverlay = source('src/frontend/components/room/RoomLoadingOverlay.vue');
+        const roomState = source('src/frontend/composables/room/useRoomState.js');
+
+        for (const content of [access, login, terminal, roomOverlay]) {
+            assert.match(content, /<StatusLoader/);
+            assert.match(content, /aria-busy/);
+        }
+        assert.match(roomState, /error: false/);
+        assert.match(roomState, /loading\.error = true/);
+        assert.match(roomOverlay, /v-if="active"[\s\S]*v-else-if="error"[\s\S]*role="alert"/);
+    });
+});
+
 describe('terminal privilege boundaries', () => {
     it('hides infrastructure settings and submits only site settings for ordinary admins', () => {
         const terminal = source('src/frontend/pages/TerminalPage.vue');

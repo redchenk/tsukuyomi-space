@@ -13,6 +13,7 @@ const route = useRoute();
 
 const articles = ref([]);
 const articlesLoading = ref(true);
+const articlesError = ref('');
 const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
@@ -156,12 +157,15 @@ function isStagePageGap(item) {
 
 async function loadArticles() {
   articlesLoading.value = true;
+  articlesError.value = '';
   try {
     const response = await apiFetch('/api/articles');
     const result = await parseResponse(response);
-    articles.value = result.success && Array.isArray(result.data) ? result.data : [];
-  } catch (_) {
+    if (!result.success) throw new Error(result.message || props.t.loadFailed);
+    articles.value = Array.isArray(result.data) ? result.data : [];
+  } catch (error) {
     articles.value = [];
+    articlesError.value = error.message || props.t.loadFailed;
   } finally {
     articlesLoading.value = false;
   }
@@ -215,7 +219,7 @@ onMounted(loadArticles);
 </script>
 
 <template>
-  <main class="page stage-page">
+  <main class="page stage-page" :aria-busy="articlesLoading">
     <header class="stage-header">
       <h1 class="section-title">{{ t.stageTitle }}</h1>
       <p class="section-subtitle">{{ t.stageSubtitle }}</p>
@@ -259,7 +263,8 @@ onMounted(loadArticles);
       </div>
     </div>
 
-    <div v-if="articlesLoading" class="stage-status">{{ t.loading }}</div>
+    <LoadingSkeleton v-if="articlesLoading" variant="stage" :count="6" :label="t.loading" />
+    <div v-else-if="articlesError" class="stage-status error" role="alert">{{ articlesError }}</div>
     <div v-else-if="!filteredArticles.length" class="stage-status">{{ t.noArticles }}</div>
     <div v-else class="stage-list stage-list-region">
       <a

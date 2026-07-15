@@ -20,11 +20,13 @@ const plaza = reactive({
   messages: [],
   stats: null,
   topics: [],
-  topicsLoading: false,
+  topicsLoading: true,
+  topicsError: '',
   filter: 'latest',
   query: '',
   page: 1,
-  loading: false,
+  loading: true,
+  loadError: '',
   replyOpen: {}
 });
 const plazaToast = reactive({ text: '', visible: false });
@@ -229,25 +231,29 @@ async function loadPlazaMessages() {
   try {
     const response = await apiFetch('/api/messages/plaza/latest');
     const result = await parseResponse(response);
-    if (result.success) {
-      plaza.messages = Array.isArray(result.data)
-        ? result.data.filter((item) => !item.article_id)
-        : [];
-      plazaSyncPageWithHash();
-    }
-  } catch (_) {
+    if (!result.success) throw new Error(result.message || props.t.plazaLoadFailed);
+    plaza.messages = Array.isArray(result.data)
+      ? result.data.filter((item) => !item.article_id)
+      : [];
+    plazaSyncPageWithHash();
+  } catch (error) {
+    plaza.messages = [];
+    plaza.loadError = error.message || props.t.plazaLoadFailed;
     showPlazaToast(props.t.plazaLoadFailed);
   }
 }
 
 async function loadTrendingTopics() {
   plaza.topicsLoading = true;
+  plaza.topicsError = '';
   try {
     const response = await apiFetch('/api/messages/topics?limit=8');
     const result = await parseResponse(response);
-    plaza.topics = result.success && Array.isArray(result.data) ? result.data : [];
-  } catch (_) {
+    if (!result.success) throw new Error(result.message || props.t.plazaLoadFailed);
+    plaza.topics = Array.isArray(result.data) ? result.data : [];
+  } catch (error) {
     plaza.topics = [];
+    plaza.topicsError = error.message || props.t.plazaLoadFailed;
   } finally {
     plaza.topicsLoading = false;
   }
@@ -272,6 +278,7 @@ function patchPlazaMessage(message) {
 
 async function refreshPlaza() {
   plaza.loading = true;
+  plaza.loadError = '';
   session.value = getSession();
   loadPlazaStats();
   try {
@@ -498,7 +505,7 @@ onMounted(refreshPlaza);
     </section>
 
     <section class="plaza-layout">
-      <div class="panel plaza-wall">
+      <div class="panel plaza-wall" :aria-busy="plaza.loading">
         <div class="plaza-section-head">
           <h2 class="plaza-section-title"><span>01</span> {{ t.wallTitle }}</h2>
           <div class="plaza-toolbar">
@@ -506,7 +513,7 @@ onMounted(refreshPlaza);
               <TsIcon name="search" :size="16" />
               <input v-model="plaza.query" class="plaza-search" type="search" :placeholder="t.searchPlaceholder || fallback.search">
             </label>
-            <button class="ghost-btn plaza-refresh-btn" type="button" @click="refreshPlaza">
+            <button class="ghost-btn plaza-refresh-btn" type="button" :disabled="plaza.loading" :aria-busy="plaza.loading" @click="refreshPlaza">
               <TsIcon name="refresh" :size="16" />
               <span>{{ t.refresh }}</span>
             </button>
@@ -540,7 +547,8 @@ onMounted(refreshPlaza);
           <PlazaComposer :t="t" :on-submit="plazaSubmitMessage" />
         </div>
 
-        <div v-if="plaza.loading" class="plaza-empty">{{ t.plazaConnecting }}</div>
+        <LoadingSkeleton v-if="plaza.loading" variant="list" :count="6" :label="t.plazaConnecting" />
+        <div v-else-if="plaza.loadError" class="plaza-empty error" role="alert">{{ plaza.loadError }}</div>
         <div v-else-if="!plazaMessages.length" class="plaza-empty">
           <div class="ts-empty-title">{{ t.noMessages }}</div>
           <div>{{ t.noMessagesHint }}</div>
@@ -652,19 +660,22 @@ onMounted(refreshPlaza);
       <aside class="plaza-side">
         <div class="panel">
           <div class="panel-title">热门话题 <span>{{ plaza.topics.length }}</span></div>
-          <div class="plaza-topic-list">
-            <div v-if="plaza.topicsLoading" class="plaza-topic-empty">同步中...</div>
-            <button
-              v-for="topic in plaza.topics"
-              :key="topic.topic"
-              class="plaza-topic-chip"
-              type="button"
-              @click="plazaSelectTopic(topic.topic)"
-            >
-              <span>#{{ topic.topic }}</span>
-              <small>{{ plazaFormatNumber(topic.count) }} · {{ plazaFormatNumber(topic.score) }}</small>
-            </button>
-            <div v-if="!plaza.topicsLoading && !plaza.topics.length" class="plaza-topic-empty">还没有话题，试试发布 #月读茶会#</div>
+          <div class="plaza-topic-list" :aria-busy="plaza.topicsLoading">
+            <LoadingSkeleton v-if="plaza.topicsLoading" variant="topics" :count="4" label="正在同步话题" />
+            <div v-else-if="plaza.topicsError" class="plaza-topic-empty error" role="alert">{{ plaza.topicsError }}</div>
+            <template v-else>
+              <button
+                v-for="topic in plaza.topics"
+                :key="topic.topic"
+                class="plaza-topic-chip"
+                type="button"
+                @click="plazaSelectTopic(topic.topic)"
+              >
+                <span>#{{ topic.topic }}</span>
+                <small>{{ plazaFormatNumber(topic.count) }} · {{ plazaFormatNumber(topic.score) }}</small>
+              </button>
+              <div v-if="!plaza.topics.length" class="plaza-topic-empty">还没有话题，试试发布 #月读茶会#</div>
+            </template>
           </div>
         </div>
         <div class="panel">
