@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const config = require('./config');
 const adminRepository = require('./repositories/admin-repository');
+const friendLinkRepository = require('./repositories/friend-link-repository');
 const articleRepository = require('./repositories/article-repository');
 const statsRepository = require('./repositories/stats-repository');
 const authState = require('./services/auth-state');
@@ -9,6 +10,7 @@ const articleMedia = require('./services/article-media');
 const objectStorage = require('./services/object-storage');
 const responseCache = require('./services/response-cache');
 const { publicEmail } = require('./validators');
+const { normalizeFriendLinkUrl, validateFriendLinkApplication } = require('./services/friend-links');
 const {
     authenticateToken,
     requireAdmin,
@@ -81,22 +83,14 @@ function clearPublicMessageCache() {
     responseCache.delPrefix('public:stats');
 }
 
+function clearPublicFriendLinkCache() {
+    responseCache.delPrefix('public:friend-links');
+}
+
 function parseSettingValue(value) {
     if (value === 'true') return true;
     if (value === 'false') return false;
     return value;
-}
-
-function normalizeFriendLinkUrl(value) {
-    const raw = String(value || '').trim();
-    if (!raw || raw.length > 2048 || /[\u0000-\u001f\u007f]/.test(raw)) return '';
-    try {
-        const url = new URL(raw);
-        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return '';
-        return url.toString();
-    } catch (_) {
-        return '';
-    }
 }
 
 function normalizePublicBaseUrl(value) {
@@ -525,7 +519,7 @@ router.delete('/users/:id', (req, res) => {
 
 router.get('/links', (req, res) => {
     try {
-        const links = adminRepository.listLinks().map(link => ({
+        const links = friendLinkRepository.listAdminLinks().map(link => ({
             ...link,
             url: normalizeFriendLinkUrl(link.url) || '#'
         }));
@@ -538,14 +532,35 @@ router.get('/links', (req, res) => {
 
 router.post('/links', (req, res) => {
     try {
-        const name = String(req.body?.name || '').trim();
-        const url = normalizeFriendLinkUrl(req.body?.url);
-        if (!name || !url) return fail(res, 400, '请填写名称和有效 URL');
-        adminRepository.createLink({ name, url });
-        ok(res, null, '友链已添加');
+        const review = validateFriendLinkApplication({
+            name: req.body?.name,
+            url: req.body?.url,
+            description: req.body?.description || '管理员添加的站点'
+        });
+        if (review.error) return fail(res, 400, review.error);
+        if (friendLinkRepository.findByUrl(review.data.url)) return fail(res, 409, '该站点已有友链记录');
+        const link = friendLinkRepository.createActiveLink(review.data);
+        clearPublicFriendLinkCache();
+        ok(res, link, '友链已添加');
     } catch (error) {
         console.error('Admin link create error:', error);
         fail(res, 500, '无法添加友链');
+    }
+});
+
+router.patch('/links/:id/status', (req, res) => {
+    try {
+        const id = asInt(req.params.id);
+        const status = String(req.body?.status || '').trim();
+        if (!id) return fail(res, 400, '友链 ID 无效');
+        if (!['pending', 'active', 'rejected'].includes(status)) return fail(res, 400, '审核状态无效');
+        const link = friendLinkRepository.updateStatus(id, status);
+        if (!link) return fail(res, 404, '友链不存在');
+        clearPublicFriendLinkCache();
+        ok(res, link, '友链状态已更新');
+    } catch (error) {
+        console.error('Admin link status update error:', error);
+        fail(res, 500, '无法更新友链状态');
     }
 });
 
@@ -553,7 +568,8 @@ router.delete('/links/:id', (req, res) => {
     try {
         const id = asInt(req.params.id);
         if (!id) return fail(res, 400, '友链 ID 无效');
-        if (!adminRepository.deleteLink(id)) return fail(res, 404, '友链不存在');
+        if (!friendLinkRepository.deleteLink(id)) return fail(res, 404, '友链不存在');
+        clearPublicFriendLinkCache();
         ok(res, null, '友链已删除');
     } catch (error) {
         console.error('Admin link delete error:', error);

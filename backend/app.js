@@ -18,6 +18,7 @@ const assetRoutes = require('./routes/assets');
 const roomRoutes = require('./routes/room');
 const mcpRoutes = require('./routes/mcp');
 const pixelArtRoutes = require('./routes/pixel-art');
+const friendLinkRoutes = require('./routes/friend-links');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./user-routes');
 
@@ -70,6 +71,10 @@ function createApp() {
     app.use('/api/messages', strictJson('16kb'));
     app.use('/api/messages', express.urlencoded({ limit: '16kb', extended: true }));
 
+    const friendLinkIpLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 12, keyPrefix: 'friend-link-ip' });
+    app.use('/api/friend-links', (req, res, next) => req.method === 'POST' ? friendLinkIpLimiter(req, res, next) : next());
+    app.use('/api/friend-links', strictJson('16kb'));
+
     // Data URL routes get explicit caps; ordinary JSON remains small on the 2GB host.
     app.use('/api/assets', strictJson('28mb'));
     app.use('/api/mcp', strictJson('6mb'));
@@ -94,6 +99,7 @@ function createApp() {
     app.use('/api/room', roomRoutes);
     app.use('/api/mcp', mcpRoutes);
     app.use('/api/pixel-art', pixelArtRoutes);
+    app.use('/api/friend-links', friendLinkRoutes);
     app.use('/api/admin', adminRoutes);
     app.use('/api/user', userRoutes);
 

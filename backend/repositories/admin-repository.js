@@ -153,6 +153,7 @@ function deleteUser(id) {
     const tx = db.transaction(() => {
         db.prepare('DELETE FROM message_likes WHERE user_id = ?').run(id);
         db.prepare('UPDATE messages SET user_id = NULL WHERE user_id = ?').run(id);
+        db.prepare('UPDATE friend_links SET user_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(id);
         db.prepare('UPDATE articles SET author_id = NULL WHERE author_id = ?').run(id);
         return db.prepare('DELETE FROM users WHERE id = ?').run(id).changes;
     });

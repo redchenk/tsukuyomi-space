@@ -538,6 +538,18 @@ html[data-theme="dark"] .terminal-empty {
     flex: 1 1 240px;
 }
 
+.terminal-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: max-content;
+}
+
+.terminal-row-actions :where(.primary-btn, .ghost-btn, .danger-btn) {
+    min-height: 36px;
+    padding-inline: 0.65rem;
+}
+
 .terminal-login-card label,
 .terminal-password-card label,
 .terminal-settings label {

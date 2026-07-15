@@ -1,49 +1,53 @@
 **Design QA**
 
-- Source visual truth: `C:\Users\lenovo\.codex\generated_images\019f45ee-73d0-7a41-b591-2cf3a8c0ecf0\exec-334bff66-f278-4dca-a99a-c5c547ca3414.png`
-- Desktop implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-desktop-final.png`
-- Mobile implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-mobile-final.png`
-- Mobile advanced-state implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-mobile-advanced-final.png`
-- Full comparison: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-comparison.png`
-- Focused comparison: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-focused-comparison.png`
-- Advanced-state comparison: `E:\visualstudio\tsukuyomi-space\.codex_tmp\product-design-qa\room-settings-advanced-comparison.png`
-- Viewports: desktop 1440 x 1024; mobile 390 x 844
-- State: dark theme, guest session, step 1 active, advanced settings collapsed
+- Source visual truth: `E:\visualstudio\tsukuyomi-space\.codex_tmp\plaza-source.png`
+- Desktop implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\friend-link-desktop.png`
+- Mobile implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\friend-link-mobile.png`
+- Full comparison: `E:\visualstudio\tsukuyomi-space\.codex_tmp\friend-link-design-comparison.jpg`
+- Viewports: desktop browser override 1440 x 900 with a 1270 x 804 page capture; mobile 390 x 844 with a 380 px client width
+- State: dark theme, guest session, supplemental fields collapsed
 
 **Findings**
 
 - No actionable P0, P1, or P2 differences remain.
-- Fonts and typography: the implementation uses the product's existing font stack and optical weights. The step title, labels, hints, and status text preserve the reference hierarchy without introducing display-scale copy.
-- Spacing and layout rhythm: the three-step navigation, two-choice grid, minimum form, status rail, and collapsed advanced section follow the reference composition. Desktop has no horizontal overflow; the mobile shell, three step buttons, choice cards, and actions all remain inside the 390 px viewport.
-- Colors and visual tokens: the existing dark product tokens replace the mock's sampled colors while preserving its violet active state, cyan secondary accents, muted borders, and restrained elevation.
-- Image quality and asset fidelity: no raster content was required by this settings workflow. All visible interface icons use the site's existing `TsIcon` library; no placeholder or custom decorative image was introduced.
-- Copy and content: newcomer copy is task-focused and short. Required, optional, local-only, and privacy-sensitive choices are identified at the point of action.
+- Fonts and typography: the application page keeps the Plaza display hierarchy, existing font stack, optical weights, and readable line lengths. Labels, status text, and compact help copy use the product's established UI scale without clipped text.
+- Spacing and layout rhythm: the hero, form surface, side rail, and mobile stack follow the existing Plaza spacing system. Desktop panels align to one grid; the mobile page has no horizontal overflow and all persistent navigation remains visible.
+- Colors and visual tokens: the page reuses the site's material backgrounds, cyan accent, violet active navigation state, muted borders, and existing elevation tokens. No unrelated palette or decorative treatment was introduced.
+- Image quality and asset fidelity: this task does not require product imagery. All visible UI icons use the existing `TsIcon` Lucide-compatible icon set; there are no placeholder assets, custom drawings, or improvised symbols.
+- Copy and content: required fields are limited to site name, URL, and a short description. Backlink and notes are disclosed only under supplemental information. Plaza copy now points applicants to the dedicated route instead of treating applications as ordinary messages.
 
 **Interaction Evidence**
 
-- Tested step navigation for chat, voice, and memory.
-- Tested the voice disabled and enabled states and confirmed the simplified provider fields appear correctly.
-- Tested the memory choice state and confirmed all mobile primary actions fit the viewport.
-- Tested the inline advanced disclosure on all three steps and confirmed the complete model, voice, and memory configuration surfaces render in place.
-- Tested the complete memory-management action and confirmed it opens the full advanced area and scrolls to the expanded manager.
-- Expanded advanced settings and confirmed all 8 original settings cards remain available.
-- Confirmed no application console errors in the tested states.
+- Clicked the Plaza friend-link application card and confirmed navigation to `/friend-links/apply`.
+- Confirmed the guest login state replaces the form and exposes a single login action.
+- Verified the authenticated submission, duplicate prevention, private pending state, admin approval, public listing, and deletion through the integration test flow.
+- Confirmed the mobile document, body, hero, form panel, and side panels stay within the 390 px viewport.
+- Confirmed no application console errors in the tested desktop and mobile states.
+
+**Full-View Comparison Evidence**
+
+- The side-by-side comparison shows the same rail proportions, dark material surfaces, large but contained page title, cyan eyebrow, soft border contrast, and background treatment as the Plaza source.
+- The new page intentionally replaces Plaza's statistics and message wall with a focused application surface; the visual system remains consistent while the information architecture changes for the requested workflow.
+
+**Focused Region Evidence**
+
+- The mobile capture is the focused control and typography check because it renders labels and primary actions at readable scale. The 380 px client width reports no horizontal overflow, and the login action ends inside the content bounds.
 
 **Comparison History**
 
-- Iteration 1 finding: the first implementation header consumed too much vertical space and the simplified TTS selector did not clearly represent an existing local GPT-SoVITS setup.
-- Fix: reduced the header to a compact title row and added a conditional GPT-SoVITS reference-audio field while keeping API-key guidance for cloud providers.
-- Post-fix evidence: the desktop setup shell begins at y=110.5 and fits within the first viewport; final mobile metrics show no horizontal overflow, with all three step buttons ending at x=357.2 or less.
-- Iteration 2 finding: the global panel selector applied a rectangular background to `.room-setup-step-panel`, and the provider `<select>` stretched to 57 px while adjacent inputs remained 46 px.
-- Fix: explicitly neutralized the accidental panel background/elevation, set every basic and advanced control to a border-box 46 px track, and gave each of the three steps its own inline advanced disclosure.
-- Post-fix evidence: provider and API-key controls share y=504.48 and height=45.67 on desktop; all mobile advanced controls are 46 px high and end at x=325.54 or less, with no horizontal overflow.
+- Iteration 1 finding: Plaza still described friend-link applications as ordinary wall messages, which conflicted with the new dedicated workflow.
+- Fix: replaced the Plaza hero, login-state, and rules copy with dedicated-entry language while preserving the surrounding layout.
+- Post-fix evidence: the Plaza application card is the only friend-link application entry and navigates to the new route; the application page presents one focused task.
 
 **Implementation Checklist**
 
-- Three-step beginner setup: complete.
-- Existing save, test, storage, memory, MCP, knowledge, model, and Live2D behavior: preserved.
-- Desktop and mobile responsive checks: passed.
-- Build and focused frontend tests: passed.
+- Dedicated responsive application route: complete.
+- Plaza entry and active navigation state: complete.
+- Account-bound application history: complete.
+- Safe URL validation, rate limiting, duplicate protection, and private pending state: complete.
+- Admin approve, reject, and delete controls: complete.
+- Desktop and mobile browser checks: passed.
+- API, frontend, syntax, and production build checks: passed.
 
 **Follow-up Polish**
 

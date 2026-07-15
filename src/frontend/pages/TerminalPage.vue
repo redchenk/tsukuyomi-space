@@ -41,7 +41,7 @@ const terminal = reactive({
   passwordDrafts: {},
   adminPassword: { currentPassword: '', newPassword: '', confirmPassword: '' },
   links: [],
-  newLink: { name: '', url: '' },
+  newLink: { name: '', url: '', description: '' },
   settings: {
     siteTitle: '',
     siteAnnouncement: '',
@@ -400,7 +400,17 @@ async function createLink() {
   await adminApi('/links', { method: 'POST', body: JSON.stringify(terminal.newLink) });
   terminal.newLink.name = '';
   terminal.newLink.url = '';
+  terminal.newLink.description = '';
   showMessage('友链已添加');
+  await loadPanel('links');
+}
+
+async function updateLinkStatus(id, status) {
+  await adminApi(`/links/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  });
+  showMessage(status === 'active' ? '友链申请已通过' : '友链申请已拒绝');
   await loadPanel('links');
 }
 
@@ -854,9 +864,16 @@ onUnmounted(() => {
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'links'">
             <div class="terminal-panel-head"><h2>友链管理</h2></div>
-            <form class="terminal-toolbar" @submit.prevent="createLink"><input v-model="terminal.newLink.name" placeholder="站点名称" required><input v-model="terminal.newLink.url" placeholder="https://example.com" required><button class="primary-btn" type="submit">添加友链</button></form>
-            <div class="terminal-table-wrap"><table><thead><tr><th>名称</th><th>URL</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
-              <tr v-for="item in terminal.links" :key="item.id"><td>{{ item.name }}</td><td><a :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></td><td><span class="terminal-badge ok">{{ item.status || 'active' }}</span></td><td>{{ formatDate(item.created_at) }}</td><td><button class="danger-btn" type="button" @click="deleteLink(item.id)">删除</button></td></tr>
+            <form class="terminal-toolbar" @submit.prevent="createLink"><input v-model="terminal.newLink.name" maxlength="40" placeholder="站点名称" required><input v-model="terminal.newLink.url" type="url" placeholder="https://example.com" required><input v-model="terminal.newLink.description" maxlength="160" placeholder="站点简介"><button class="primary-btn" type="submit">直接添加</button></form>
+            <div class="terminal-table-wrap"><table><thead><tr><th>站点</th><th>申请人</th><th>简介</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
+              <tr v-for="item in terminal.links" :key="item.id">
+                <td><strong>{{ item.name }}</strong><br><a :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></td>
+                <td>{{ item.applicant_username || '管理员' }}<br><small v-if="item.applicant_email">{{ item.applicant_email }}</small></td>
+                <td>{{ item.description || '—' }}<br><a v-if="item.backlink_url" :href="item.backlink_url" target="_blank" rel="noopener noreferrer">回链</a></td>
+                <td><span class="terminal-badge" :class="item.status === 'active' ? 'ok' : ''">{{ item.status || 'active' }}</span></td>
+                <td>{{ formatDate(item.updated_at || item.created_at) }}</td>
+                <td><div class="terminal-row-actions"><button v-if="item.status !== 'active'" class="primary-btn" type="button" @click="updateLinkStatus(item.id, 'active')">通过</button><button v-if="item.status === 'pending'" class="ghost-btn" type="button" @click="updateLinkStatus(item.id, 'rejected')">拒绝</button><button class="danger-btn" type="button" @click="deleteLink(item.id)">删除</button></div></td>
+              </tr>
             </tbody></table></div>
           </div>
 

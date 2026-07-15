@@ -40,6 +40,18 @@ function loadNotificationBadge(navigatorTarget = {}) {
 }
 
 describe('frontend navigation routes', () => {
+    it('routes the Plaza friend-link card to the dedicated application page', () => {
+        const router = source('src/frontend/router/index.js');
+        const plaza = source('src/frontend/pages/PlazaPage.vue');
+        const application = source('src/frontend/pages/FriendLinkApplyPage.vue');
+
+        assert.match(router, /path: '\/friend-links\/apply'/);
+        assert.match(router, /name: 'friendLinkApply'/);
+        assert.match(plaza, /url: '\/friend-links\/apply'/);
+        assert.match(application, /\/api\/friend-links/);
+        assert.match(application, /TsIcon name="external"/);
+    });
+
     it('links the existing Agent OS app from the side navigation with a Lucide icon', () => {
         const shell = source('src/frontend/layouts/AppShell.vue');
         const icons = source('src/frontend/components/TsIcon.vue');

@@ -32,22 +32,43 @@ const plaza = reactive({
 const plazaToast = reactive({ text: '', visible: false });
 let plazaToastTimer = 0;
 const PLAZA_PAGE_SIZE = 8;
+const approvedFriendLinks = ref([]);
 
 const user = computed(() => session.value?.user || null);
 const isAuthed = computed(() => Boolean(session.value));
 const isZh = computed(() => props.lang === 'zh');
+const plazaCopy = computed(() => isZh.value ? {
+  subtitle: '\u8bbf\u5ba2\u3001\u521b\u4f5c\u8005\u548c\u8def\u8fc7\u7684\u89c2\u6d4b\u8005\u5728\u8fd9\u91cc\u4ea4\u6362\u7559\u8a00\u3002\u95ee\u5019\u3001\u53cd\u9988\u548c\u7075\u611f\u90fd\u53ef\u4ee5\u843d\u5728\u8fd9\u91cc\u3002',
+  loginToPostDesc: '\u53d1\u5e03\u95ee\u5019\u548c\u53cd\u9988\u4f1a\u51fa\u73b0\u5728\u5e7f\u573a\u7559\u8a00\u5899\u3002\u53cb\u94fe\u7533\u8bf7\u8bf7\u4f7f\u7528\u5e38\u9a7b\u8bbf\u5ba2\u533a\u5165\u53e3\u3002',
+  friendRule: '\u53cb\u94fe\u7533\u8bf7\u8bf7\u4f7f\u7528\u4e0a\u65b9\u72ec\u7acb\u5165\u53e3\uff0c\u5ba1\u6838\u72b6\u6001\u53ef\u968f\u65f6\u67e5\u770b\u3002'
+} : {
+  subtitle: '\u8a2a\u554f\u8005\u3001\u30af\u30ea\u30a8\u30a4\u30bf\u30fc\u3001\u901a\u308a\u3059\u304c\u308a\u306e\u89b3\u6e2c\u8005\u304c\u30e1\u30c3\u30bb\u30fc\u30b8\u3092\u4ea4\u308f\u3059\u516c\u958b\u30c1\u30e3\u30f3\u30cd\u30eb\u3067\u3059\u3002',
+  loginToPostDesc: '\u6328\u62f6\u3084\u30d5\u30a3\u30fc\u30c9\u30d0\u30c3\u30af\u306f\u5e83\u5834\u306b\u8868\u793a\u3055\u308c\u307e\u3059\u3002\u76f8\u4e92\u30ea\u30f3\u30af\u306f\u5c02\u7528\u5165\u53e3\u3092\u3054\u5229\u7528\u304f\u3060\u3055\u3044\u3002',
+  friendRule: '\u76f8\u4e92\u30ea\u30f3\u30af\u306f\u4e0a\u306e\u5c02\u7528\u5165\u53e3\u304b\u3089\u7533\u8acb\u3057\u3001\u5be9\u67fb\u72b6\u6cc1\u3092\u78ba\u8a8d\u3067\u304d\u307e\u3059\u3002'
+});
 
-const friends = computed(() => isZh.value ? [
-  { name: '\u6708\u8bfb\u7a7a\u95f4\u5b98\u65b9', desc: '\u9879\u76ee\u4ed3\u5e93\u4e0e\u66f4\u65b0\u8bb0\u5f55', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '\u6708' },
-  { name: '\u8f89\u591c\u59ec\u535a\u5ba2', desc: '\u6587\u7ae0\u3001\u516c\u544a\u4e0e\u521b\u4f5c\u624b\u8bb0', url: '/stage', avatar: '\u6587' },
-  { name: '\u6708\u5149\u50cf\u7d20\u5de5\u574a', desc: '\u753b\u50cf\u7d20\u753b\u5e76\u5206\u4eab\u5230\u516c\u5f00\u753b\u5eca', url: '/pixel/', avatar: '\u753b' },
-  { name: '\u53cb\u94fe\u7533\u8bf7', desc: '\u7559\u4e0b\u7ad9\u70b9\u4fe1\u606f\u7b49\u5f85\u5ba1\u6838', url: '/terminal', avatar: '\u94fe' }
-] : [
-  { name: '\u6708\u8aad\u7a7a\u9593\u516c\u5f0f', desc: '\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u30ea\u30dd\u30b8\u30c8\u30ea\u3068\u66f4\u65b0\u8a18\u9332', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '\u6708' },
-  { name: '\u8f1d\u591c\u59eb\u30d6\u30ed\u30b0', desc: '\u8a18\u4e8b\u3001\u304a\u77e5\u3089\u305b\u3001\u5275\u4f5c\u30ce\u30fc\u30c8', url: '/stage', avatar: '\u6587' },
-  { name: '\u6708\u5149\u30d4\u30af\u30bb\u30eb\u5de5\u623f', desc: '\u30d4\u30af\u30bb\u30eb\u30a2\u30fc\u30c8\u3092\u63cf\u3044\u3066\u5171\u6709\u30ae\u30e3\u30e9\u30ea\u30fc\u3078', url: '/pixel/', avatar: '\u753b' },
-  { name: '\u76f8\u4e92\u30ea\u30f3\u30af\u7533\u8acb', desc: '\u30b5\u30a4\u30c8\u60c5\u5831\u3092\u6b8b\u3057\u3066\u5be9\u67fb\u3092\u304a\u5f85\u3061\u304f\u3060\u3055\u3044', url: '/terminal', avatar: '\u30ea' }
-]);
+const friends = computed(() => {
+  const builtIn = isZh.value ? [
+    { name: '\u6708\u8bfb\u7a7a\u95f4\u5b98\u65b9', desc: '\u9879\u76ee\u4ed3\u5e93\u4e0e\u66f4\u65b0\u8bb0\u5f55', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '\u6708', external: true },
+    { name: '\u8f89\u591c\u59ec\u535a\u5ba2', desc: '\u6587\u7ae0\u3001\u516c\u544a\u4e0e\u521b\u4f5c\u624b\u8bb0', url: '/stage', avatar: '\u6587' },
+    { name: '\u6708\u5149\u50cf\u7d20\u5de5\u574a', desc: '\u753b\u50cf\u7d20\u753b\u5e76\u5206\u4eab\u5230\u516c\u5f00\u753b\u5eca', url: '/pixel/', avatar: '\u753b' }
+  ] : [
+    { name: '\u6708\u8aad\u7a7a\u9593\u516c\u5f0f', desc: '\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u30ea\u30dd\u30b8\u30c8\u30ea\u3068\u66f4\u65b0\u8a18\u9332', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '\u6708', external: true },
+    { name: '\u8f1d\u591c\u59eb\u30d6\u30ed\u30b0', desc: '\u8a18\u4e8b\u3001\u304a\u77e5\u3089\u305b\u3001\u5275\u4f5c\u30ce\u30fc\u30c8', url: '/stage', avatar: '\u6587' },
+    { name: '\u6708\u5149\u30d4\u30af\u30bb\u30eb\u5de5\u623f', desc: '\u30d4\u30af\u30bb\u30eb\u30a2\u30fc\u30c8\u3092\u63cf\u3044\u3066\u5171\u6709\u30ae\u30e3\u30e9\u30ea\u30fc\u3078', url: '/pixel/', avatar: '\u753b' }
+  ];
+  const approved = approvedFriendLinks.value.map((item) => ({
+    name: item.name,
+    desc: item.description || item.url,
+    url: item.url,
+    avatar: String(item.name || '?').trim().slice(0, 1).toUpperCase(),
+    external: true
+  }));
+  const application = isZh.value
+    ? { name: '\u53cb\u94fe\u7533\u8bf7', desc: '\u586b\u5199\u7ad9\u70b9\u4fe1\u606f\u5e76\u67e5\u770b\u5ba1\u6838\u72b6\u6001', url: '/friend-links/apply', avatar: '\u94fe' }
+    : { name: '\u76f8\u4e92\u30ea\u30f3\u30af\u7533\u8acb', desc: '\u30b5\u30a4\u30c8\u60c5\u5831\u3068\u5be9\u67fb\u72b6\u6cc1\u3092\u78ba\u8a8d', url: '/friend-links/apply', avatar: '\u30ea' };
+  return [...builtIn, ...approved, application];
+});
 
 const fallback = computed(() => isZh.value ? {
   anonymous: '\u533f\u540d\u8bbf\u5ba2',
@@ -243,6 +264,16 @@ async function loadPlazaMessages() {
   }
 }
 
+async function loadFriendLinks() {
+  try {
+    const response = await apiFetch('/api/friend-links');
+    const result = await parseResponse(response);
+    approvedFriendLinks.value = result.success && Array.isArray(result.data) ? result.data : [];
+  } catch (_) {
+    approvedFriendLinks.value = [];
+  }
+}
+
 async function loadTrendingTopics() {
   plaza.topicsLoading = true;
   plaza.topicsError = '';
@@ -282,7 +313,7 @@ async function refreshPlaza() {
   session.value = getSession();
   loadPlazaStats();
   try {
-    await Promise.all([loadPlazaMessages(), loadTrendingTopics()]);
+    await Promise.all([loadPlazaMessages(), loadTrendingTopics(), loadFriendLinks()]);
   } finally {
     plaza.loading = false;
   }
@@ -480,7 +511,7 @@ onMounted(refreshPlaza);
       <div class="plaza-hero-main">
         <div class="plaza-eyebrow">{{ t.plazaEyebrow }}</div>
         <h1 class="plaza-title">{{ t.plazaTitle }}</h1>
-        <p class="plaza-sub">{{ t.plazaSubtitle }}</p>
+        <p class="plaza-sub">{{ plazaCopy.subtitle }}</p>
       </div>
       <aside class="plaza-status panel">
         <div class="plaza-status-line"><span>{{ t.channelStatus }}</span><span class="plaza-status-value">{{ t.channelValue }}</span></div>
@@ -539,7 +570,7 @@ onMounted(refreshPlaza);
         <div v-if="!isAuthed" class="plaza-composer plaza-composer-locked">
           <div class="plaza-empty">
             <div class="ts-empty-title">{{ t.loginToPost }}</div>
-            <div class="ts-empty-desc">{{ t.loginToPostDesc }}</div>
+            <div class="ts-empty-desc">{{ plazaCopy.loginToPostDesc }}</div>
             <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.goLogin }}</a>
           </div>
         </div>
@@ -681,7 +712,7 @@ onMounted(refreshPlaza);
         <div class="panel">
           <div class="panel-title">{{ t.residents }} <span>{{ friends.length }}</span></div>
           <div class="plaza-friends">
-            <a v-for="f in friends" :key="f.name" class="plaza-friend-card" :href="f.url" @click="f.url.startsWith('/') && !f.external && ($event.preventDefault(), go(f.url))">
+            <a v-for="f in friends" :key="`${f.name}-${f.url}`" class="plaza-friend-card" :href="f.url" :target="f.external ? '_blank' : undefined" :rel="f.external ? 'noopener noreferrer' : undefined" @click="f.url.startsWith('/') && !f.external && ($event.preventDefault(), go(f.url))">
               <div class="plaza-friend-avatar">{{ f.avatar }}</div>
               <div>
                 <div class="plaza-friend-name">{{ f.name }}</div>
@@ -705,7 +736,7 @@ onMounted(refreshPlaza);
           <div class="panel-title">{{ t.rulesTitle }}</div>
           <div class="plaza-rules">
             <p>{{ t.rule1 }}</p>
-            <p>{{ t.rule2 }}</p>
+            <p>{{ plazaCopy.friendRule }}</p>
             <p>{{ t.rule3 }}</p>
           </div>
         </div>

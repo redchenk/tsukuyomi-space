@@ -7,6 +7,7 @@ const LoginPage = () => import('../pages/LoginPage.vue');
 const RegisterPage = () => import('../pages/RegisterPage.vue');
 const StagePage = () => import('../pages/StagePage.vue');
 const PlazaPage = () => import('../pages/PlazaPage.vue');
+const FriendLinkApplyPage = () => import('../pages/FriendLinkApplyPage.vue');
 const RealityPage = () => import('../pages/RealityPage.vue');
 const EditorPage = () => import('../pages/EditorPage.vue');
 const AttachmentsPage = () => import('../pages/AttachmentsPage.vue');
@@ -114,6 +115,16 @@ export const routes = [
     }
   },
   {
+    path: '/friend-links/apply',
+    name: 'friendLinkApply',
+    component: FriendLinkApplyPage,
+    meta: {
+      title: '友链申请',
+      description: '向月读空间提交友链申请并查看审核状态。',
+      noindex: true
+    }
+  },
+  {
     path: '/reality',
     name: 'reality',
     component: RealityPage,
@@ -195,7 +206,8 @@ const routeWarmups = {
   access: [HubPage, PlazaPage, StagePage, RoomPage],
   accessAlias: [HubPage, PlazaPage, StagePage, RoomPage],
   hub: [PlazaPage, StagePage, RoomPage, GalleryPage, ArenaPage, UserCenterPage, RoomSettingsPage],
-  plaza: [HubPage, StagePage, LoginPage, UserProfilePage, NotificationsPage],
+  plaza: [HubPage, StagePage, FriendLinkApplyPage, LoginPage, UserProfilePage, NotificationsPage],
+  friendLinkApply: [PlazaPage, LoginPage, HubPage],
   stage: [ArticlePage, HubPage, EditorPage, PlazaPage],
   article: [StagePage, HubPage],
   articleDetail: [StagePage, HubPage],

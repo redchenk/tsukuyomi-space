@@ -1297,6 +1297,72 @@ describe('request and upload security', () => {
     });
 });
 
+describe('friend link applications API', () => {
+    it('keeps applications private until an admin approves them', async () => {
+        const publicBefore = await request('/api/friend-links');
+        assert.equal(publicBefore.response.status, 200);
+        assert.ok(Array.isArray(publicBefore.body.data));
+
+        const anonymous = await postJson('/api/friend-links', {
+            name: 'Example Friend',
+            url: 'https://friend.example.test/',
+            description: 'A small independent website.'
+        });
+        assert.equal(anonymous.response.status, 401);
+
+        const unsafe = await postJson('/api/friend-links', {
+            name: 'Unsafe Friend',
+            url: 'javascript:alert(1)',
+            description: 'This URL should never be accepted.'
+        }, userToken);
+        assert.equal(unsafe.response.status, 422);
+        assert.equal(unsafe.body.code, 'INVALID_LINK_APPLICATION');
+
+        const created = await postJson('/api/friend-links', {
+            name: 'Example Friend',
+            url: 'https://friend.example.test/',
+            description: 'A small independent website.',
+            backlink_url: 'https://friend.example.test/links',
+            note: 'API integration test'
+        }, userToken);
+        assert.equal(created.response.status, 201);
+        assert.equal(created.body.data.status, 'pending');
+        const linkId = created.body.data.id;
+
+        const duplicate = await postJson('/api/friend-links', {
+            name: 'Example Friend',
+            url: 'https://friend.example.test/',
+            description: 'A duplicate application should be rejected.'
+        }, userToken);
+        assert.equal(duplicate.response.status, 409);
+        assert.equal(duplicate.body.code, 'LINK_PENDING');
+
+        const mine = await request('/api/friend-links/mine', { headers: jsonHeaders(userToken) });
+        assert.equal(mine.response.status, 200);
+        assert.ok(mine.body.data.some(item => item.id === linkId && item.status === 'pending'));
+
+        const hidden = await request('/api/friend-links');
+        assert.equal(hidden.body.data.some(item => item.id === linkId), false);
+
+        const adminList = await request('/api/admin/links', { headers: jsonHeaders(adminToken) });
+        assert.equal(adminList.response.status, 200);
+        assert.ok(adminList.body.data.some(item => item.id === linkId && item.applicant_username === 'normal-user'));
+
+        const approved = await patchJson(`/api/admin/links/${linkId}/status`, { status: 'active' }, adminToken);
+        assert.equal(approved.response.status, 200);
+        assert.equal(approved.body.data.status, 'active');
+
+        const visible = await request('/api/friend-links');
+        assert.ok(visible.body.data.some(item => item.id === linkId && item.name === 'Example Friend'));
+
+        const removed = await request(`/api/admin/links/${linkId}`, {
+            method: 'DELETE',
+            headers: jsonHeaders(adminToken)
+        });
+        assert.equal(removed.response.status, 200);
+    });
+});
+
 describe('admin API permissions', () => {
     it('requires authentication for admin APIs', async () => {
         const { response, body } = await request('/api/admin/stats');
