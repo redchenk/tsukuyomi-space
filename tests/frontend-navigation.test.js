@@ -123,6 +123,18 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
     });
 
+    it('uses path-level cache busting for every mutable public content read', () => {
+        const client = source('src/frontend/api/client.js');
+        const app = source('backend/app.js');
+
+        assert.match(client, /function liveContentUrl\(/);
+        assert.match(client, /articles\|messages\|assets\\\/gallery\|pixel-art\|friend-links/);
+        assert.match(client, /`\/api\/live\/\$\{nonce\}/);
+        assert.match(client, /fetch\(apiUrl\(liveContentUrl\(url, options\)\)/);
+        assert.match(app, /app\.use\('\/api\/live\/:nonce', liveContentRoutes\)/);
+        assert.match(app, /\['GET', 'HEAD'\]/);
+    });
+
     it('records one successful site visit per account and Hong Kong day', () => {
         const app = source('src/frontend/App.vue');
 

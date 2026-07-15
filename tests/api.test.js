@@ -229,6 +229,27 @@ describe('auth API', () => {
         assert.equal(revoked.response.status, 401);
         assert.equal(revoked.body.code, 'TOKEN_REVOKED');
     });
+
+    it('keeps session hydration available beyond the sensitive auth rate limit', async () => {
+        const isolatedApp = createApp();
+        const isolatedServer = await new Promise((resolve) => {
+            const instance = isolatedApp.listen(0, '127.0.0.1', () => resolve(instance));
+        });
+        const isolatedBaseUrl = `http://127.0.0.1:${isolatedServer.address().port}`;
+
+        try {
+            for (let index = 0; index < 65; index += 1) {
+                const response = await fetch(`${isolatedBaseUrl}/api/auth/me`, {
+                    headers: jsonHeaders(userToken)
+                });
+                assert.notEqual(response.status, 429, `session hydration was rate limited on request ${index + 1}`);
+            }
+        } finally {
+            await new Promise((resolve, reject) => {
+                isolatedServer.close((error) => error ? reject(error) : resolve());
+            });
+        }
+    });
 });
 
 describe('articles API', () => {
@@ -236,10 +257,45 @@ describe('articles API', () => {
         const { response, body } = await request('/api/articles?limit=2');
 
         assert.equal(response.status, 200);
+        assert.match(response.headers.get('cache-control') || '', /no-store/);
+        assert.equal(response.headers.get('surrogate-control'), 'no-store');
         assert.equal(body.success, true);
         assert.ok(Array.isArray(body.data));
         assert.ok(body.data.length > 0);
         assert.equal(body.pagination.limit, 2);
+    });
+
+    it('prevents shared CDN caching for every mutable public content feed', async () => {
+        const paths = [
+            '/api/articles?limit=1',
+            '/api/live/cache-regression/articles?limit=1',
+            '/api/messages',
+            '/api/live/cache-regression/messages',
+            '/api/assets/gallery/public?limit=1',
+            '/api/live/cache-regression/assets/gallery/public?limit=1',
+            '/api/assets/gallery?limit=1',
+            '/api/pixel-art/gallery?limit=1',
+            '/api/live/cache-regression/pixel-art/gallery?limit=1',
+            '/api/friend-links',
+            '/api/live/cache-regression/friend-links'
+        ];
+
+        for (const pathname of paths) {
+            const { response } = await request(pathname);
+            assert.equal(response.status, 200, pathname);
+            assert.match(response.headers.get('cache-control') || '', /no-store/, pathname);
+            assert.equal(response.headers.get('surrogate-control'), 'no-store', pathname);
+        }
+
+        const blockedWrite = await request('/api/live/cache-regression/messages', {
+            method: 'POST',
+            headers: jsonHeaders(userToken),
+            body: JSON.stringify({ content: 'must not be accepted' })
+        });
+        assert.equal(blockedWrite.response.status, 405);
+
+        const blockedAssetProxyAlias = await request('/api/live/cache-regression/assets/proxy/not-allowed');
+        assert.equal(blockedAssetProxyAlias.response.status, 404);
     });
 
     it('hides draft articles from public API, SSR, and sitemap', async () => {

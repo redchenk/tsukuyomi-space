@@ -1,13 +1,3 @@
-function setPublicReadCache(res, { maxAge = 10, stale = 30, vary = 'Origin, Accept-Encoding' } = {}) {
-    res.set({
-        'Cache-Control': `public, max-age=${maxAge}, stale-while-revalidate=${stale}`,
-        Vary: vary
-    });
-    res.removeHeader('Pragma');
-    res.removeHeader('Expires');
-    res.removeHeader('Surrogate-Control');
-}
-
 function setPrivateNoStore(res, { vary = 'Origin, Cookie, Authorization, Accept-Encoding' } = {}) {
     res.set({
         'Cache-Control': 'private, no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -16,6 +6,11 @@ function setPrivateNoStore(res, { vary = 'Origin, Cookie, Authorization, Accept-
         'Surrogate-Control': 'no-store',
         Vary: vary
     });
+}
+
+function setPublicReadCache(res, { vary = 'Origin, Cookie, Authorization, Accept-Encoding' } = {}) {
+    // Public content APIs are mutable. Shared CDN caching made newly published data stale for days.
+    setPrivateNoStore(res, { vary });
 }
 
 module.exports = {

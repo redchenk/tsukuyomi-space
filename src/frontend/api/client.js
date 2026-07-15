@@ -32,6 +32,7 @@ let sessionRevision = 0;
 let trustedSessionUntil = 0;
 let publicStatsRequest = null;
 let publicStatsCache = null;
+let liveReadSequence = 0;
 
 const PUBLIC_STATS_CACHE_KEY = 'tsukuyomi_public_stats_cache';
 
@@ -120,15 +121,26 @@ function secureApiOptions(url, options = {}) {
   return { ...options, headers };
 }
 
+function liveContentUrl(url, options = {}) {
+  const value = String(url || '');
+  const method = String(options.method || 'GET').toUpperCase();
+  if (!['GET', 'HEAD'].includes(method)) return value;
+  if (!/^\/api\/(?:articles|messages|assets\/gallery|pixel-art|friend-links)(?:[/?#]|$)/.test(value)) return value;
+
+  liveReadSequence = (liveReadSequence + 1) % Number.MAX_SAFE_INTEGER;
+  const nonce = `${Date.now().toString(36)}-${liveReadSequence.toString(36)}`;
+  return `/api/live/${nonce}${value.slice('/api'.length)}`;
+}
+
 export function authFetch(url, options = {}) {
-  return fetch(apiUrl(url), {
+  return fetch(apiUrl(liveContentUrl(url, options)), {
     ...secureApiOptions(url, options),
     credentials: options.credentials || 'include'
   });
 }
 
 export function apiFetch(url, options = {}) {
-  return fetch(apiUrl(url), secureApiOptions(url, options));
+  return fetch(apiUrl(liveContentUrl(url, options)), secureApiOptions(url, options));
 }
 
 export function apiBeacon(url, data) {

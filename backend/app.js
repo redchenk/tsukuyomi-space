@@ -57,7 +57,16 @@ function createApp() {
         next();
     });
 
-    app.use('/api/auth/', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 60, keyPrefix: 'auth' }));
+    const sensitiveAuthLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 60, keyPrefix: 'auth' });
+    app.use([
+        '/api/auth/login',
+        '/api/auth/register',
+        '/api/auth/email-code',
+        '/api/auth/oauth/qq/start',
+        '/api/auth/oauth/qq/create',
+        '/api/auth/oauth/qq/email',
+        '/api/auth/oauth/qq/bind'
+    ], sensitiveAuthLimiter);
     app.use('/api/auth/email-code', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'email-code' }));
     app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
     app.use('/api/assets', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 80, keyPrefix: 'assets' }));
@@ -87,6 +96,23 @@ function createApp() {
     app.use(jsonParseError);
 
     serveStaticFiles(app);
+
+    const liveContentRoutes = express.Router();
+    liveContentRoutes.use((req, res, next) => {
+        if (['GET', 'HEAD'].includes(String(req.method || '').toUpperCase())) return next();
+        return res.status(405).json({ success: false, message: 'Method not allowed' });
+    });
+    liveContentRoutes.use((req, res, next) => {
+        const allowedPath = /^\/(?:articles|messages|assets\/gallery|pixel-art|friend-links)(?:\/|$)/;
+        if (allowedPath.test(req.path)) return next();
+        return res.status(404).json({ success: false, message: 'Not found' });
+    });
+    liveContentRoutes.use('/articles', articleRoutes);
+    liveContentRoutes.use('/messages', messageRoutes);
+    liveContentRoutes.use('/assets', assetRoutes);
+    liveContentRoutes.use('/pixel-art', pixelArtRoutes);
+    liveContentRoutes.use('/friend-links', friendLinkRoutes);
+    app.use('/api/live/:nonce', liveContentRoutes);
 
     app.use('/api', healthRoutes);
     app.use('/api/auth', authRoutes);
