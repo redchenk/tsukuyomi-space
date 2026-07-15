@@ -11,7 +11,7 @@ const panels = [
   { id: 'analytics', label: '统计', code: '02', group: '巡检', desc: '访问趋势和站点热度' },
   { id: 'articles', label: '文章', code: '03', group: '内容', desc: '发布、置顶和状态管理' },
   { id: 'messages', label: '留言', code: '04', group: '内容', desc: '留言墙与文章评论审核' },
-  { id: 'links', label: '友链', code: '05', group: '内容', desc: '站点友链维护' },
+  { id: 'links', label: '友链审核', code: '05', group: '内容', desc: '处理友链申请与收录状态' },
   { id: 'users', label: '用户', code: '06', group: '系统', desc: '用户检索、角色和密码' },
   { id: 'account', label: '账号安全', code: '07', group: '系统', desc: '当前管理员安全设置' },
   { id: 'settings', label: '设置', code: '08', group: '系统', desc: '站点、备案和对象存储' }
@@ -41,7 +41,7 @@ const terminal = reactive({
   passwordDrafts: {},
   adminPassword: { currentPassword: '', newPassword: '', confirmPassword: '' },
   links: [],
-  newLink: { name: '', url: '', description: '' },
+  linkReviewFilter: 'pending',
   settings: {
     siteTitle: '',
     siteAnnouncement: '',
@@ -152,6 +152,15 @@ const plazaMessageCount = computed(() => terminal.messages.filter((item) => !ite
 const articleMessageCount = computed(() => terminal.messages.filter((item) => item.article_id).length);
 const publishedArticleCount = computed(() => terminal.articles.filter((item) => item.status === 'published').length);
 const pinnedArticleCount = computed(() => terminal.articles.filter((item) => item.pinned_at).length);
+const linkReviewCounts = computed(() => ({
+  all: terminal.links.length,
+  pending: terminal.links.filter((item) => item.status === 'pending').length,
+  active: terminal.links.filter((item) => item.status === 'active').length,
+  rejected: terminal.links.filter((item) => item.status === 'rejected').length
+}));
+const filteredReviewLinks = computed(() => terminal.linkReviewFilter === 'all'
+  ? terminal.links
+  : terminal.links.filter((item) => item.status === terminal.linkReviewFilter));
 
 function formatDate(value) {
   if (!value) return '未记录';
@@ -396,26 +405,17 @@ async function saveAdminPassword() {
   showMessage('管理员密码已更新，请妥善保存新密码');
 }
 
-async function createLink() {
-  await adminApi('/links', { method: 'POST', body: JSON.stringify(terminal.newLink) });
-  terminal.newLink.name = '';
-  terminal.newLink.url = '';
-  terminal.newLink.description = '';
-  showMessage('友链已添加');
-  await loadPanel('links');
-}
-
 async function updateLinkStatus(id, status) {
   await adminApi(`/links/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status })
   });
-  showMessage(status === 'active' ? '友链申请已通过' : '友链申请已拒绝');
+  showMessage(status === 'active' ? '友链申请已通过' : '友链已移出公开目录');
   await loadPanel('links');
 }
 
 async function deleteLink(id) {
-  if (!confirm('确定删除这条友链吗？')) return;
+  if (!confirm('确定删除这条友链申请记录吗？')) return;
   await adminApi(`/links/${id}`, { method: 'DELETE' });
   showMessage('友链已删除');
   await loadPanel('links');
@@ -863,17 +863,26 @@ onUnmounted(() => {
           </div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'links'">
-            <div class="terminal-panel-head"><h2>友链管理</h2></div>
-            <form class="terminal-toolbar" @submit.prevent="createLink"><input v-model="terminal.newLink.name" maxlength="40" placeholder="站点名称" required><input v-model="terminal.newLink.url" type="url" placeholder="https://example.com" required><input v-model="terminal.newLink.description" maxlength="160" placeholder="站点简介"><button class="primary-btn" type="submit">直接添加</button></form>
-            <div class="terminal-table-wrap"><table><thead><tr><th>站点</th><th>申请人</th><th>简介</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
-              <tr v-for="item in terminal.links" :key="item.id">
-                <td><strong>{{ item.name }}</strong><br><a :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></td>
+            <div class="terminal-panel-head terminal-review-head">
+              <div><h2>友链审核</h2><p>核对站点信息后决定是否收录。</p></div>
+              <button class="ghost-btn" type="button" @click="$emit('go', '/friend-links')"><TsIcon name="external" :size="16" />查看公开页</button>
+            </div>
+            <div class="terminal-review-filters" aria-label="友链审核状态">
+              <button type="button" :class="{ active: terminal.linkReviewFilter === 'pending' }" @click="terminal.linkReviewFilter = 'pending'">待审核 <span>{{ linkReviewCounts.pending }}</span></button>
+              <button type="button" :class="{ active: terminal.linkReviewFilter === 'active' }" @click="terminal.linkReviewFilter = 'active'">已通过 <span>{{ linkReviewCounts.active }}</span></button>
+              <button type="button" :class="{ active: terminal.linkReviewFilter === 'rejected' }" @click="terminal.linkReviewFilter = 'rejected'">未通过 <span>{{ linkReviewCounts.rejected }}</span></button>
+              <button type="button" :class="{ active: terminal.linkReviewFilter === 'all' }" @click="terminal.linkReviewFilter = 'all'">全部 <span>{{ linkReviewCounts.all }}</span></button>
+            </div>
+            <div class="terminal-table-wrap terminal-review-table"><table><thead><tr><th>站点</th><th>申请人</th><th>简介</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
+              <tr v-for="item in filteredReviewLinks" :key="item.id">
+                <td><strong>{{ item.name }}</strong><br><a :href="item.url" :title="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></td>
                 <td>{{ item.applicant_username || '管理员' }}<br><small v-if="item.applicant_email">{{ item.applicant_email }}</small></td>
-                <td>{{ item.description || '—' }}<br><a v-if="item.backlink_url" :href="item.backlink_url" target="_blank" rel="noopener noreferrer">回链</a></td>
-                <td><span class="terminal-badge" :class="item.status === 'active' ? 'ok' : ''">{{ item.status || 'active' }}</span></td>
+                <td>{{ item.description || '—' }}<br><a v-if="item.backlink_url" :href="item.backlink_url" target="_blank" rel="noopener noreferrer">检查回链</a><small v-if="item.note" class="terminal-review-note">{{ item.note }}</small></td>
+                <td><span class="terminal-badge" :class="{ ok: item.status === 'active', warn: item.status === 'pending', hot: item.status === 'rejected' }">{{ item.status === 'pending' ? '待审核' : (item.status === 'active' ? '已通过' : '未通过') }}</span></td>
                 <td>{{ formatDate(item.updated_at || item.created_at) }}</td>
-                <td><div class="terminal-row-actions"><button v-if="item.status !== 'active'" class="primary-btn" type="button" @click="updateLinkStatus(item.id, 'active')">通过</button><button v-if="item.status === 'pending'" class="ghost-btn" type="button" @click="updateLinkStatus(item.id, 'rejected')">拒绝</button><button class="danger-btn" type="button" @click="deleteLink(item.id)">删除</button></div></td>
+                <td><div class="terminal-row-actions"><button v-if="item.status !== 'active'" class="primary-btn" type="button" @click="updateLinkStatus(item.id, 'active')">通过</button><button v-if="item.status !== 'rejected'" class="ghost-btn" type="button" @click="updateLinkStatus(item.id, 'rejected')">{{ item.status === 'active' ? '撤下' : '拒绝' }}</button><button class="danger-btn" type="button" @click="deleteLink(item.id)">删除</button></div></td>
               </tr>
+              <tr v-if="!filteredReviewLinks.length"><td colspan="6"><div class="terminal-empty">当前筛选下没有友链申请</div></td></tr>
             </tbody></table></div>
           </div>
 

@@ -282,6 +282,126 @@ body .page.terminal-page .terminal-context-bar strong {
     margin-bottom: 1rem;
 }
 
+.terminal-review-head > div:first-child {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.terminal-review-head h2,
+.terminal-review-head p {
+    margin: 0;
+}
+
+.terminal-review-head p {
+    color: var(--ts-muted);
+    font-size: 0.8rem;
+}
+
+.terminal-review-head .ghost-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.terminal-review-filters {
+    display: flex;
+    gap: 0.45rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.terminal-review-filters::-webkit-scrollbar {
+    display: none;
+}
+
+.terminal-review-filters button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 38px;
+    padding: 0 0.75rem;
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-unified-button-radius, 12px);
+    background: transparent;
+    color: var(--ts-muted);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.terminal-review-filters button:hover,
+.terminal-review-filters button.active {
+    border-color: color-mix(in srgb, var(--ts-cyan) 42%, var(--ts-border));
+    background: color-mix(in srgb, var(--ts-cyan) 10%, transparent);
+    color: var(--ts-text-strong);
+}
+
+.terminal-review-filters button span {
+    display: grid;
+    place-items: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ts-cyan) 13%, transparent);
+    color: var(--ts-cyan);
+    font-size: 0.68rem;
+}
+
+.terminal-review-note {
+    display: block;
+    max-width: 24rem;
+    margin-top: 0.35rem;
+    overflow-wrap: anywhere;
+}
+
+body .page.terminal-page .terminal-review-table table {
+    min-width: 760px;
+    table-layout: fixed;
+}
+
+.terminal-review-table th:nth-child(1) {
+    width: 22%;
+}
+
+.terminal-review-table th:nth-child(2) {
+    width: 12%;
+}
+
+.terminal-review-table th:nth-child(3) {
+    width: 20%;
+}
+
+.terminal-review-table th:nth-child(4) {
+    width: 10%;
+}
+
+.terminal-review-table th:nth-child(5) {
+    width: 18%;
+}
+
+.terminal-review-table th:nth-child(6) {
+    width: 18%;
+}
+
+.terminal-review-table td {
+    overflow-wrap: anywhere;
+}
+
+.terminal-review-table td:first-child a {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.terminal-review-table .terminal-row-actions {
+    flex-wrap: nowrap;
+}
+
 .terminal-hero {
     display: flex;
     align-items: center;

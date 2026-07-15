@@ -40,16 +40,36 @@ function loadNotificationBadge(navigatorTarget = {}) {
 }
 
 describe('frontend navigation routes', () => {
-    it('routes the Plaza friend-link card to the dedicated application page', () => {
+    it('separates the public friend-link directory from the application flow', () => {
         const router = source('src/frontend/router/index.js');
         const plaza = source('src/frontend/pages/PlazaPage.vue');
+        const directory = source('src/frontend/pages/FriendLinksPage.vue');
         const application = source('src/frontend/pages/FriendLinkApplyPage.vue');
 
+        assert.match(router, /path: '\/friend-links'/);
+        assert.match(router, /name: 'friendLinks'/);
         assert.match(router, /path: '\/friend-links\/apply'/);
         assert.match(router, /name: 'friendLinkApply'/);
+        assert.match(plaza, /url: '\/friend-links'/);
         assert.match(plaza, /url: '\/friend-links\/apply'/);
+        assert.doesNotMatch(plaza, /approvedFriendLinks/);
+        assert.match(directory, /apiFetch\(noStoreUrl\('\/api\/friend-links'\)/);
+        assert.match(directory, /<StatusLoader/);
+        assert.match(directory, /:aria-busy="state\.loading"/);
         assert.match(application, /\/api\/friend-links/);
+        assert.match(application, /go\('\/friend-links'\)/);
         assert.match(application, /TsIcon name="external"/);
+    });
+
+    it('uses the Terminal friend-link panel only for application review', () => {
+        const terminal = source('src/frontend/pages/TerminalPage.vue');
+
+        assert.match(terminal, /label: '友链审核'/);
+        assert.match(terminal, /linkReviewFilter: 'pending'/);
+        assert.match(terminal, /filteredReviewLinks/);
+        assert.match(terminal, /友链审核状态/);
+        assert.doesNotMatch(terminal, /createLink\(/);
+        assert.doesNotMatch(terminal, /直接添加/);
     });
 
     it('links the existing Agent OS app from the side navigation with a Lucide icon', () => {

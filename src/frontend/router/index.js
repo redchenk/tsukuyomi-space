@@ -7,6 +7,7 @@ const LoginPage = () => import('../pages/LoginPage.vue');
 const RegisterPage = () => import('../pages/RegisterPage.vue');
 const StagePage = () => import('../pages/StagePage.vue');
 const PlazaPage = () => import('../pages/PlazaPage.vue');
+const FriendLinksPage = () => import('../pages/FriendLinksPage.vue');
 const FriendLinkApplyPage = () => import('../pages/FriendLinkApplyPage.vue');
 const RealityPage = () => import('../pages/RealityPage.vue');
 const EditorPage = () => import('../pages/EditorPage.vue');
@@ -115,6 +116,15 @@ export const routes = [
     }
   },
   {
+    path: '/friend-links',
+    name: 'friendLinks',
+    component: FriendLinksPage,
+    meta: {
+      title: '友链',
+      description: '浏览月读空间收录的友好站点。'
+    }
+  },
+  {
     path: '/friend-links/apply',
     name: 'friendLinkApply',
     component: FriendLinkApplyPage,
@@ -206,8 +216,9 @@ const routeWarmups = {
   access: [HubPage, PlazaPage, StagePage, RoomPage],
   accessAlias: [HubPage, PlazaPage, StagePage, RoomPage],
   hub: [PlazaPage, StagePage, RoomPage, GalleryPage, ArenaPage, UserCenterPage, RoomSettingsPage],
-  plaza: [HubPage, StagePage, FriendLinkApplyPage, LoginPage, UserProfilePage, NotificationsPage],
-  friendLinkApply: [PlazaPage, LoginPage, HubPage],
+  plaza: [HubPage, StagePage, FriendLinksPage, FriendLinkApplyPage, LoginPage, UserProfilePage, NotificationsPage],
+  friendLinks: [FriendLinkApplyPage, PlazaPage, HubPage],
+  friendLinkApply: [FriendLinksPage, PlazaPage, LoginPage, HubPage],
   stage: [ArticlePage, HubPage, EditorPage, PlazaPage],
   article: [StagePage, HubPage],
   articleDetail: [StagePage, HubPage],

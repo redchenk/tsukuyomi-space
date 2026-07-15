@@ -32,8 +32,6 @@ const plaza = reactive({
 const plazaToast = reactive({ text: '', visible: false });
 let plazaToastTimer = 0;
 const PLAZA_PAGE_SIZE = 8;
-const approvedFriendLinks = ref([]);
-
 const user = computed(() => session.value?.user || null);
 const isAuthed = computed(() => Boolean(session.value));
 const isZh = computed(() => props.lang === 'zh');
@@ -57,17 +55,13 @@ const friends = computed(() => {
     { name: '\u8f1d\u591c\u59eb\u30d6\u30ed\u30b0', desc: '\u8a18\u4e8b\u3001\u304a\u77e5\u3089\u305b\u3001\u5275\u4f5c\u30ce\u30fc\u30c8', url: '/stage', avatar: '\u6587' },
     { name: '\u6708\u5149\u30d4\u30af\u30bb\u30eb\u5de5\u623f', desc: '\u30d4\u30af\u30bb\u30eb\u30a2\u30fc\u30c8\u3092\u63cf\u3044\u3066\u5171\u6709\u30ae\u30e3\u30e9\u30ea\u30fc\u3078', url: '/pixel/', avatar: '\u753b' }
   ];
-  const approved = approvedFriendLinks.value.map((item) => ({
-    name: item.name,
-    desc: item.description || item.url,
-    url: item.url,
-    avatar: String(item.name || '?').trim().slice(0, 1).toUpperCase(),
-    external: true
-  }));
+  const directory = isZh.value
+    ? { name: '\u53cb\u94fe', desc: '\u67e5\u770b\u5df2\u6536\u5f55\u7684\u53cb\u597d\u7ad9\u70b9', url: '/friend-links', avatar: '\u53cb' }
+    : { name: '\u76f8\u4e92\u30ea\u30f3\u30af', desc: '\u63b2\u8f09\u4e2d\u306e\u53cb\u597d\u30b5\u30a4\u30c8\u4e00\u89a7', url: '/friend-links', avatar: '\u53cb' };
   const application = isZh.value
     ? { name: '\u53cb\u94fe\u7533\u8bf7', desc: '\u586b\u5199\u7ad9\u70b9\u4fe1\u606f\u5e76\u67e5\u770b\u5ba1\u6838\u72b6\u6001', url: '/friend-links/apply', avatar: '\u94fe' }
     : { name: '\u76f8\u4e92\u30ea\u30f3\u30af\u7533\u8acb', desc: '\u30b5\u30a4\u30c8\u60c5\u5831\u3068\u5be9\u67fb\u72b6\u6cc1\u3092\u78ba\u8a8d', url: '/friend-links/apply', avatar: '\u30ea' };
-  return [...builtIn, ...approved, application];
+  return [...builtIn, directory, application];
 });
 
 const fallback = computed(() => isZh.value ? {
@@ -264,16 +258,6 @@ async function loadPlazaMessages() {
   }
 }
 
-async function loadFriendLinks() {
-  try {
-    const response = await apiFetch('/api/friend-links');
-    const result = await parseResponse(response);
-    approvedFriendLinks.value = result.success && Array.isArray(result.data) ? result.data : [];
-  } catch (_) {
-    approvedFriendLinks.value = [];
-  }
-}
-
 async function loadTrendingTopics() {
   plaza.topicsLoading = true;
   plaza.topicsError = '';
@@ -313,7 +297,7 @@ async function refreshPlaza() {
   session.value = getSession();
   loadPlazaStats();
   try {
-    await Promise.all([loadPlazaMessages(), loadTrendingTopics(), loadFriendLinks()]);
+    await Promise.all([loadPlazaMessages(), loadTrendingTopics()]);
   } finally {
     plaza.loading = false;
   }

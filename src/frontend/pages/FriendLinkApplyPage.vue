@@ -30,7 +30,7 @@ const copy = computed(() => isZh.value ? {
   eyebrow: 'Friend Link',
   title: '友链申请',
   subtitle: '填写站点信息，审核通过后将在月读广场展示。',
-  back: '返回广场',
+  back: '返回友链',
   formTitle: '站点信息',
   name: '站点名称',
   namePlaceholder: '你的站点名称',
@@ -66,7 +66,7 @@ const copy = computed(() => isZh.value ? {
   eyebrow: 'Friend Link',
   title: '相互リンク申請',
   subtitle: 'サイト情報を入力してください。承認後、月読広場に表示されます。',
-  back: '広場へ戻る',
+  back: '相互リンクへ戻る',
   formTitle: 'サイト情報',
   name: 'サイト名',
   namePlaceholder: 'サイト名',
@@ -164,7 +164,7 @@ watch(() => props.user?.id, loadApplications, { immediate: true });
 <template>
   <main class="page friend-link-page">
     <header class="friend-link-hero" data-material="content">
-      <button class="friend-link-back" type="button" @click="go('/plaza')">
+      <button class="friend-link-back" type="button" @click="go('/friend-links')">
         <TsIcon name="arrowLeft" :size="18" />
         <span>{{ copy.back }}</span>
       </button>
@@ -189,7 +189,7 @@ watch(() => props.user?.id, loadApplications, { immediate: true });
           <span class="friend-link-success-icon"><TsIcon name="userCheck" :size="28" /></span>
           <h2>{{ copy.successTitle }}</h2>
           <p>{{ successMessage || copy.successDesc }}</p>
-          <button class="primary-btn" type="button" @click="go('/plaza')">{{ copy.back }}</button>
+          <button class="primary-btn" type="button" @click="go('/friend-links')">{{ copy.back }}</button>
         </div>
 
         <div v-else-if="!isAuthed" class="friend-link-login-gate">

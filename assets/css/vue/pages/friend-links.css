@@ -96,6 +96,152 @@
     border-radius: 22px;
 }
 
+.friend-links-hero-side {
+    display: grid;
+    justify-items: end;
+    gap: 0.8rem;
+}
+
+.friend-links-hero-side .primary-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.friend-links-directory {
+    padding: 0.4rem 0 1rem;
+}
+
+.friend-links-directory-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.friend-links-directory-head .friend-link-eyebrow {
+    margin-bottom: 0.35rem;
+}
+
+.friend-links-directory-head h2 {
+    margin: 0;
+    color: var(--ts-text-strong);
+    font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.friend-links-count {
+    color: var(--ts-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.friend-links-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.friend-links-card {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 1.1rem;
+    min-width: 0;
+    min-height: 190px;
+    padding: 1rem;
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-lg, 18px);
+    background: var(--ts-readable-panel-bg, var(--ts-glass));
+    color: var(--ts-text);
+    box-shadow: var(--ts-shadow-sm);
+    text-decoration: none;
+    backdrop-filter: blur(var(--ts-material-blur, 18px)) saturate(1.12);
+    -webkit-backdrop-filter: blur(var(--ts-material-blur, 18px)) saturate(1.12);
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.friend-links-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--ts-cyan) 42%, var(--ts-border));
+    background: color-mix(in srgb, var(--ts-readable-panel-bg, var(--ts-glass)) 92%, var(--ts-cyan) 8%);
+}
+
+.friend-links-card:focus-visible {
+    outline: 2px solid var(--ts-cyan);
+    outline-offset: 3px;
+}
+
+.friend-links-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    color: var(--ts-cyan);
+}
+
+.friend-links-avatar {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid color-mix(in srgb, var(--ts-cyan) 34%, var(--ts-border));
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--ts-cyan) 11%, transparent);
+    color: var(--ts-text-strong);
+    font-weight: 900;
+}
+
+.friend-links-card-copy {
+    min-width: 0;
+}
+
+.friend-links-card h3 {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--ts-text-strong);
+    font-size: 1rem;
+}
+
+.friend-links-card p {
+    display: -webkit-box;
+    margin: 0.55rem 0 0;
+    overflow: hidden;
+    color: var(--ts-muted);
+    font-size: 0.8rem;
+    line-height: 1.55;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
+.friend-links-host {
+    overflow: hidden;
+    color: var(--ts-cyan);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.friend-links-loading {
+    min-height: 190px;
+    display: grid;
+    align-items: center;
+}
+
+.friend-links-feedback {
+    display: grid;
+    justify-items: center;
+    gap: 0.8rem;
+    min-height: 190px;
+    padding: 2rem 1rem;
+    color: var(--ts-muted);
+    text-align: center;
+}
+
+.friend-links-feedback .ts-icon {
+    color: var(--ts-cyan);
+}
+
 .friend-link-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 310px;
@@ -404,6 +550,10 @@
     .friend-link-side {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .friend-links-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 620px) {
@@ -417,7 +567,7 @@
         padding-top: 3.2rem;
     }
 
-    .friend-link-hero-icon {
+    .friend-links-hero-side .friend-link-hero-icon {
         display: none;
     }
 
@@ -430,5 +580,22 @@
     .friend-link-success .primary-btn,
     .friend-link-login-gate .primary-btn {
         width: 100%;
+    }
+
+    .friend-links-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .friend-links-card {
+        min-height: 168px;
+    }
+
+    .friend-links-hero-side {
+        justify-items: stretch;
+    }
+
+    .friend-links-hero-side .primary-btn {
+        width: 100%;
+        justify-content: center;
     }
 }
