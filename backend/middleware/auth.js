@@ -7,6 +7,8 @@ const adminRepository = require('../repositories/admin-repository');
 
 const USER_SESSION_COOKIE = 'tsukuyomi_session';
 const ADMIN_SESSION_COOKIE = 'tsukuyomi_admin_session';
+const JWT_ALGORITHM = 'HS256';
+const MAX_TOKEN_LENGTH = 8192;
 
 function parseCookies(req) {
     const header = String(req.headers.cookie || '');
@@ -36,7 +38,7 @@ function readCookieToken(req, preferred = '') {
     if (preferred && cookies[preferred]) return cookies[preferred];
     const url = String(req.originalUrl || req.baseUrl || req.path || '');
     if (url.startsWith('/api/admin')) return cookies[ADMIN_SESSION_COOKIE] || null;
-    return cookies[USER_SESSION_COOKIE] || cookies[ADMIN_SESSION_COOKIE] || null;
+    return cookies[USER_SESSION_COOKIE] || null;
 }
 
 function readAuthToken(req, preferredCookie = '') {
@@ -125,6 +127,36 @@ function currentUserForClaims(claims) {
     return { ...claims, id: user.id, username: user.username, role: user.role };
 }
 
+function requestRequiresAdminSession(req) {
+    const url = String(req.originalUrl || req.baseUrl || req.path || '');
+    return url.startsWith('/api/admin');
+}
+
+function claimsMatchRequestScope(req, claims) {
+    return requestRequiresAdminSession(req)
+        ? claims?.scope === 'admin'
+        : claims?.scope !== 'admin';
+}
+
+function validateSessionClaims(claims) {
+    const validTimes = Number.isInteger(claims?.iat)
+        && Number.isInteger(claims?.exp)
+        && claims.exp > claims.iat;
+    const validJti = typeof claims?.jti === 'string'
+        && claims.jti.length >= 8
+        && claims.jti.length <= 128;
+    const validCredentialVersion = typeof claims?.credentialVersion === 'string'
+        && /^[A-Za-z0-9_-]{43}$/.test(claims.credentialVersion);
+    const validAccount = claims?.scope === 'admin'
+        ? Number.isInteger(Number(claims.adminId)) && Number(claims.adminId) > 0
+        : claims?.scope === undefined && typeof claims?.id === 'string' && claims.id.length > 0;
+
+    if (!validTimes || !validJti || !validCredentialVersion || !validAccount) {
+        throw new jwt.JsonWebTokenError('Invalid session claims');
+    }
+    return claims;
+}
+
 async function authenticateToken(req, res, next) {
     const token = readAuthToken(req);
 
@@ -145,7 +177,14 @@ async function authenticateToken(req, res, next) {
             });
         }
 
-        const claims = jwt.verify(token, config.jwtSecret);
+        const claims = verifyToken(token);
+        if (!claimsMatchRequestScope(req, claims)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Token scope does not match this endpoint',
+                code: 'TOKEN_SCOPE_INVALID'
+            });
+        }
         req.user = currentUserForClaims(claims);
         if (!req.user) {
             clearAllAuthCookies(req, res);
@@ -209,7 +248,10 @@ async function optionalAuth(req, res, next) {
 
     try {
         if (!(await authState.isTokenBlacklisted(token))) {
-            req.user = currentUserForClaims(jwt.verify(token, config.jwtSecret)) || undefined;
+            const claims = verifyToken(token);
+            if (claimsMatchRequestScope(req, claims)) {
+                req.user = currentUserForClaims(claims) || undefined;
+            }
         }
     } catch (_) {
         // Optional auth deliberately ignores invalid tokens.
@@ -226,11 +268,16 @@ function generateToken(payload, expiresIn = config.jwtExpiresIn) {
         ...payload,
         credentialVersion: credentialVersion(account.password_hash),
         jti: payload.jti || crypto.randomUUID()
-    }, config.jwtSecret, { expiresIn });
+    }, config.jwtSecret, { algorithm: JWT_ALGORITHM, expiresIn });
 }
 
 function verifyToken(token) {
-    return jwt.verify(token, config.jwtSecret);
+    if (typeof token !== 'string' || !token || token.length > MAX_TOKEN_LENGTH) {
+        throw new jwt.JsonWebTokenError('Invalid token');
+    }
+    return validateSessionClaims(jwt.verify(token, config.jwtSecret, {
+        algorithms: [JWT_ALGORITHM]
+    }));
 }
 
 module.exports = {

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuyomi-test-'));
 
@@ -21,6 +22,7 @@ process.env.ENABLE_FRONTEND_DIST = 'false';
 process.env.ROOM_WEATHER_OFFLINE = 'true';
 
 const { createApp } = require('../backend/app');
+const config = require('../backend/config');
 const db = require('../backend/db');
 const authState = require('../backend/services/auth-state');
 const { ROOM_SYSTEM_PROMPT, buildChatPayload, createChatCompletion, isOllamaChatUrl, normalizeChatUrl } = require('../backend/services/llm');
@@ -61,6 +63,26 @@ function authCookieFrom(response) {
         .map(part => part.split(';')[0].trim())
         .filter(pair => pair && !pair.endsWith('='))
         .join('; ');
+}
+
+function namedAuthCookieFrom(response, name) {
+    const header = response.headers.get('set-cookie') || '';
+    const setCookie = header
+        .split(/,(?=\s*[^;,]+=)/)
+        .map(part => part.trim())
+        .find(part => part.startsWith(`${name}=`)) || '';
+    return setCookie.split(';')[0];
+}
+
+function tokenFromCookie(cookie) {
+    return cookie.slice(cookie.indexOf('=') + 1);
+}
+
+function tamperToken(token) {
+    const parts = token.split('.');
+    const first = parts[2][0];
+    parts[2] = `${first === 'A' ? 'B' : 'A'}${parts[2].slice(1)}`;
+    return parts.join('.');
 }
 
 async function request(pathname, options = {}) {
@@ -223,6 +245,10 @@ describe('auth API', () => {
         const cookies = loginResult.response.headers.get('set-cookie') || '';
         assert.match(cookies, /tsukuyomi_session=/);
         assert.match(cookies, /tsukuyomi_admin_session=/);
+        assert.match(cookies, /HttpOnly/i);
+        assert.match(cookies, /Path=\//i);
+        assert.match(cookies, /SameSite=Lax/i);
+        assert.match(cookies, /SameSite=Strict/i);
 
         const sessionCookies = authCookieFrom(loginResult.response);
         const siteMe = await request('/api/auth/me', { headers: jsonHeaders(sessionCookies) });
@@ -258,6 +284,74 @@ describe('auth API', () => {
         });
         assert.equal(bad.response.status, 401);
         assert.equal(bad.body.success, false);
+    });
+
+    it('authenticates a valid cookie and rejects a tampered cookie token', async () => {
+        const loggedIn = await postJson('/api/auth/login', {
+            username: 'normal-user',
+            password: 'user-test-password'
+        });
+        const cookie = namedAuthCookieFrom(loggedIn.response, 'tsukuyomi_session');
+        const valid = await request('/api/auth/me', { headers: { Cookie: cookie } });
+        assert.equal(valid.response.status, 200);
+
+        const tampered = `tsukuyomi_session=${tamperToken(tokenFromCookie(cookie))}`;
+        const rejected = await request('/api/auth/me', { headers: { Cookie: tampered } });
+        assert.equal(rejected.response.status, 403);
+        assert.equal(rejected.body.code, 'TOKEN_INVALID');
+    });
+
+    it('rejects unsigned cookies and signed cookies using an unapproved JWT algorithm', async () => {
+        const loggedIn = await postJson('/api/auth/login', {
+            username: 'normal-user',
+            password: 'user-test-password'
+        });
+        const cookie = namedAuthCookieFrom(loggedIn.response, 'tsukuyomi_session');
+        const claims = jwt.decode(tokenFromCookie(cookie));
+        const wrongAlgorithmToken = jwt.sign(claims, config.jwtSecret, {
+            algorithm: 'HS512',
+            noTimestamp: true
+        });
+        const unsignedToken = jwt.sign(claims, null, {
+            algorithm: 'none',
+            noTimestamp: true
+        });
+
+        const rejectedAlgorithm = await request('/api/auth/me', {
+            headers: { Cookie: `tsukuyomi_session=${wrongAlgorithmToken}` }
+        });
+        const rejectedUnsigned = await request('/api/auth/me', {
+            headers: { Cookie: `tsukuyomi_session=${unsignedToken}` }
+        });
+        assert.equal(rejectedAlgorithm.response.status, 403);
+        assert.equal(rejectedAlgorithm.body.code, 'TOKEN_INVALID');
+        assert.equal(rejectedUnsigned.response.status, 403);
+        assert.equal(rejectedUnsigned.body.code, 'TOKEN_INVALID');
+    });
+
+    it('keeps site and terminal cookie sessions in separate scopes', async () => {
+        const loggedIn = await postJson('/api/admin/login', {
+            username: 'admin',
+            password: 'admin-test-password'
+        });
+        const userCookie = namedAuthCookieFrom(loggedIn.response, 'tsukuyomi_session');
+        const adminCookie = namedAuthCookieFrom(loggedIn.response, 'tsukuyomi_admin_session');
+
+        const userOnAdmin = await request('/api/admin/me', { headers: { Cookie: userCookie } });
+        const adminOnUser = await request('/api/auth/me', { headers: { Cookie: adminCookie } });
+        assert.equal(userOnAdmin.response.status, 401);
+        assert.equal(adminOnUser.response.status, 401);
+
+        const swappedAdmin = await request('/api/auth/me', {
+            headers: { Cookie: `tsukuyomi_session=${tokenFromCookie(adminCookie)}` }
+        });
+        const swappedUser = await request('/api/admin/me', {
+            headers: { Cookie: `tsukuyomi_admin_session=${tokenFromCookie(userCookie)}` }
+        });
+        assert.equal(swappedAdmin.response.status, 403);
+        assert.equal(swappedAdmin.body.code, 'TOKEN_SCOPE_INVALID');
+        assert.equal(swappedUser.response.status, 403);
+        assert.equal(swappedUser.body.code, 'TOKEN_SCOPE_INVALID');
     });
 
     it('returns the current user for a bearer token', async () => {
