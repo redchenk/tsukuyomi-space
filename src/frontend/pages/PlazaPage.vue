@@ -592,7 +592,13 @@ onMounted(refreshPlaza);
               @topic="plazaSelectTopic"
             />
             <div class="plaza-msg-footer">
-              <button class="icon-btn" :class="{ liked: isPlazaMessageLiked(msg.id) }" type="button" @click="plazaLikeMessage(msg.id)">
+              <button
+                class="icon-btn like-btn"
+                :class="{ liked: isPlazaMessageLiked(msg.id) }"
+                :aria-pressed="isPlazaMessageLiked(msg.id)"
+                type="button"
+                @click="plazaLikeMessage(msg.id)"
+              >
                 <TsIcon name="heart" :size="15" />
                 <span>{{ t.like }} {{ msg.like_count || 0 }}</span>
               </button>

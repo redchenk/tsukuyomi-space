@@ -1186,6 +1186,16 @@ body .page.arena-page .pixel-art-actions .icon-btn.liked {
     box-shadow: 0 10px 24px rgba(120, 42, 58, 0.16);
 }
 
+body .page .like-btn .ts-icon {
+    transition: color 160ms ease, fill 160ms ease, transform 160ms ease;
+}
+
+body .page .like-btn.liked .ts-icon {
+    color: #ff5f73;
+    fill: currentColor;
+    transform: scale(1.06);
+}
+
 .arena-color-chip {
     border-color: var(--ts-polish-border);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);

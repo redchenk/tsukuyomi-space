@@ -286,7 +286,7 @@ async function submitReply(commentId) {
 
 async function likeComment(commentId) {
   if (!requireLogin()) return;
-  if (localStorage.getItem(`liked_${commentId}`) === '1') {
+  if (isCommentLiked(commentId)) {
     message.value = '已经点过赞了';
     return;
   }
@@ -307,6 +307,14 @@ async function likeComment(commentId) {
     if (target) target.like_count = Number(target.like_count || 0) + 1;
   }
   message.value = '';
+}
+
+function isCommentLiked(commentId) {
+  try {
+    return localStorage.getItem(`liked_${commentId}`) === '1';
+  } catch (_) {
+    return false;
+  }
 }
 
 async function toggleBookmark() {
@@ -419,7 +427,13 @@ watch(articleId, loadArticle);
               </div>
               <SocialText class="comment-content" :content="comment.content" @mention="goProfile" @topic="goTopic" />
               <div class="comment-tools">
-                <button class="icon-btn comment-tool-btn" type="button" @click="likeComment(comment.id)">
+                <button
+                  class="icon-btn comment-tool-btn like-btn"
+                  :class="{ liked: isCommentLiked(comment.id) }"
+                  :aria-pressed="isCommentLiked(comment.id)"
+                  type="button"
+                  @click="likeComment(comment.id)"
+                >
                   <TsIcon name="heart" :size="16" />
                   <span>喜欢 {{ comment.like_count || 0 }}</span>
                 </button>

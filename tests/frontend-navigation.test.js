@@ -150,6 +150,21 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
     });
 
+    it('fixes new pixel canvases at 192x108 and gives every like button a persistent red-heart state', () => {
+        const arena = source('src/frontend/pages/ArenaPage.vue');
+        const article = source('src/frontend/pages/ArticlePage.vue');
+        const plaza = source('src/frontend/pages/PlazaPage.vue');
+        const polish = source('assets/css/vue/product-polish.css');
+
+        assert.match(arena, /DEFAULT_CANVAS_PRESET = CANVAS_PRESETS\[CANVAS_PRESETS\.length - 1\]/);
+        assert.doesNotMatch(arena, /class="arena-size-options"|setCanvasPreset\(/);
+        for (const page of [arena, article, plaza]) {
+            assert.match(page, /class="[^"]*like-btn[^"]*"/);
+            assert.match(page, /:aria-pressed=/);
+        }
+        assert.match(polish, /\.like-btn\.liked \.ts-icon\s*\{[\s\S]*color: #ff5f73;[\s\S]*fill: currentColor;/);
+    });
+
     it('uses path-level cache busting for every mutable public content read', () => {
         const client = source('src/frontend/api/client.js');
         const app = source('backend/app.js');

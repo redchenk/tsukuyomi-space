@@ -21,7 +21,7 @@ const CANVAS_PRESETS = [
   { width: 160, height: 90 },
   { width: 192, height: 108 }
 ];
-const DEFAULT_CANVAS_PRESET = CANVAS_PRESETS[3];
+const DEFAULT_CANVAS_PRESET = CANVAS_PRESETS[CANVAS_PRESETS.length - 1];
 const DISPLAY_CELL_SIZE = 6;
 const EXPORT_CELL_SIZE = 8;
 const DEFAULT_ZOOM = 100;
@@ -230,7 +230,6 @@ const hasRedo = computed(() => redoStack.value.length > 0);
 const paletteStyle = computed(() => ({
   '--palette-size': activePalette.value.length
 }));
-const activeCanvasPresetKey = computed(() => canvasPresetKey(canvasWidth.value, canvasHeight.value));
 const canvasBaseWidth = computed(() => canvasWidth.value * DISPLAY_CELL_SIZE);
 const canvasBaseHeight = computed(() => canvasHeight.value * DISPLAY_CELL_SIZE);
 const canvasZoomScale = computed(() => zoom.value / 100);
@@ -446,27 +445,6 @@ function pushHistory() {
   undoStack.value.push(currentSnapshot());
   if (undoStack.value.length > 50) undoStack.value.shift();
   redoStack.value = [];
-}
-
-function resizePixels(sourcePixels, oldWidth, oldHeight, newWidth, newHeight) {
-  if (oldWidth === newWidth && oldHeight === newHeight) return [...sourcePixels];
-  return Array.from({ length: newWidth * newHeight }, (_, index) => {
-    const x = index % newWidth;
-    const y = Math.floor(index / newWidth);
-    const sourceX = Math.min(oldWidth - 1, Math.floor((x / newWidth) * oldWidth));
-    const sourceY = Math.min(oldHeight - 1, Math.floor((y / newHeight) * oldHeight));
-    return sourcePixels[sourceY * oldWidth + sourceX] ?? -1;
-  });
-}
-
-function setCanvasPreset(preset) {
-  endPaint();
-  const nextPreset = findCanvasPreset(preset?.width, preset?.height);
-  if (!nextPreset || activeCanvasPresetKey.value === canvasPresetKey(nextPreset.width, nextPreset.height)) return;
-  pushHistory();
-  pixels.value = resizePixels(pixels.value, canvasWidth.value, canvasHeight.value, nextPreset.width, nextPreset.height);
-  canvasWidth.value = nextPreset.width;
-  canvasHeight.value = nextPreset.height;
 }
 
 function clampZoom(value) {
@@ -1073,7 +1051,7 @@ async function likeArtwork(artwork) {
     go('/login');
     return;
   }
-  if (artwork.viewer_liked || localStorage.getItem(`pixel_art_liked_${artwork.id}`) === '1') {
+  if (isArtworkLiked(artwork)) {
     showToast(copy.value.alreadyLiked);
     return;
   }
@@ -1090,6 +1068,15 @@ async function likeArtwork(artwork) {
     showToast(result.message || copy.value.likedToast);
   } catch (error) {
     showToast(error.message || copy.value.publishFailed);
+  }
+}
+
+function isArtworkLiked(artwork) {
+  if (artwork?.viewer_liked) return true;
+  try {
+    return localStorage.getItem(`pixel_art_liked_${artwork?.id}`) === '1';
+  } catch (_) {
+    return false;
   }
 }
 
@@ -1281,20 +1268,6 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="arena-control-block arena-size-block">
-          <div class="arena-control-label">{{ copy.canvasSize }}</div>
-          <div class="arena-size-options" role="group" :aria-label="copy.canvasSize">
-            <button
-              v-for="preset in CANVAS_PRESETS"
-              :key="canvasPresetKey(preset.width, preset.height)"
-              class="chip"
-              :class="{ active: activeCanvasPresetKey === canvasPresetKey(preset.width, preset.height) }"
-              type="button"
-              @click="setCanvasPreset(preset)"
-            >{{ canvasPresetKey(preset.width, preset.height) }}</button>
-          </div>
-        </div>
-
         <div class="arena-control-block arena-import-panel">
           <div class="arena-control-label">{{ copy.imageImport }}</div>
           <label class="ghost-btn arena-upload-btn">
@@ -1477,13 +1450,14 @@ onBeforeUnmount(() => {
           </div>
           <div class="pixel-art-actions">
             <button
-              class="icon-btn"
-              :class="{ liked: artwork.viewer_liked }"
+              class="icon-btn like-btn"
+              :class="{ liked: isArtworkLiked(artwork) }"
+              :aria-pressed="isArtworkLiked(artwork)"
               type="button"
               @click="likeArtwork(artwork)"
             >
               <TsIcon name="heart" :size="15" />
-              <span>{{ artwork.viewer_liked ? copy.liked : copy.like }} {{ formatNumber(artwork.like_count) }}</span>
+              <span>{{ isArtworkLiked(artwork) ? copy.liked : copy.like }} {{ formatNumber(artwork.like_count) }}</span>
             </button>
             <button class="icon-btn" type="button" @click="downloadArtwork(artwork)">
               <TsIcon name="download" :size="15" />

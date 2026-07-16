@@ -75,6 +75,18 @@ async function assetPickerLayout(page) {
     });
 }
 
+async function expectLikedHeart(button) {
+    await expect(button).toHaveClass(/liked/);
+    await expect(button).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => button.locator('.ts-icon').evaluate((icon) => ({
+        color: getComputedStyle(icon).color,
+        fill: getComputedStyle(icon).fill
+    }))).toEqual({
+        color: 'rgb(255, 95, 115)',
+        fill: 'rgb(255, 95, 115)'
+    });
+}
+
 function sameOriginWriteHeaders(page) {
     return {
         Origin: new URL(page.url()).origin,
@@ -108,6 +120,9 @@ test('user can read an article and post a comment', async ({ page }) => {
     await page.getByRole('button', { name: '发布评论' }).click();
 
     await expect(page.getByText(comment)).toBeVisible();
+    const commentLikeButton = page.locator('.comment-item').filter({ hasText: comment }).locator('.like-btn');
+    await commentLikeButton.click();
+    await expectLikedHeart(commentLikeButton);
 });
 
 test('user can publish a plaza message', async ({ page }) => {
@@ -119,6 +134,9 @@ test('user can publish a plaza message', async ({ page }) => {
     await page.locator('.plaza-composer-actions').getByRole('button', { name: '发布' }).click();
 
     await expect(page.getByText(message)).toBeVisible();
+    const messageLikeButton = page.locator('.plaza-msg-card').filter({ hasText: message }).locator('.like-btn');
+    await messageLikeButton.click();
+    await expectLikedHeart(messageLikeButton);
 });
 
 test('user can edit and delete their own message from user center', async ({ page }) => {
@@ -228,8 +246,17 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     const artworkId = created.data.id;
 
     await page.goto('/pixel');
+    const drawingCanvas = page.getByRole('img', { name: 'pixel canvas', exact: true });
+    await expect(drawingCanvas).toHaveAttribute('width', '1152');
+    await expect(drawingCanvas).toHaveAttribute('height', '648');
+    await expect(page.locator('.arena-size-options')).toHaveCount(0);
+
     const card = page.locator(`#pixel-art-${artworkId}`);
     await expect(card).toBeVisible();
+
+    const likeButton = card.locator('.like-btn');
+    await likeButton.click();
+    await expectLikedHeart(likeButton);
 
     const galleryActionLayout = async () => card.locator('.pixel-art-actions').evaluate((actions) => {
         const buttons = Array.from(actions.querySelectorAll('.icon-btn'));
