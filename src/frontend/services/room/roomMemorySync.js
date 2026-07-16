@@ -1,6 +1,7 @@
 import { apiUrl, getSession } from '../../api/client';
 
 const MEMORY_EVENT_NAME = 'tsukuyomi:room-memory-updated';
+const CHAT_EVENT_NAME = 'tsukuyomi:room-chat-updated';
 const MEMORY_UPDATED_KEY = 'roomMemoryLastUpdatedAt';
 
 let consumers = 0;
@@ -46,6 +47,27 @@ function handleServerEvent(event) {
   });
 }
 
+function handleServerChatEvent(event) {
+  if (currentUserId() !== streamUserId) {
+    refreshRoomMemorySync();
+    return;
+  }
+
+  let payload = {};
+  try {
+    payload = event?.data ? JSON.parse(event.data) : {};
+  } catch (_) {}
+  window.dispatchEvent(new CustomEvent(CHAT_EVENT_NAME, {
+    detail: {
+      source: 'server',
+      action: String(payload.action || 'updated'),
+      messageIds: Array.isArray(payload.messageIds) ? payload.messageIds.map(String) : [],
+      revision: String(payload.revision || ''),
+      updatedAt: Date.now()
+    }
+  }));
+}
+
 function ensureStream() {
   if (!consumers || typeof window === 'undefined' || typeof EventSource === 'undefined') return;
   const userId = currentUserId();
@@ -60,6 +82,7 @@ function ensureStream() {
   stream = new EventSource(apiUrl('/api/room/memory/events'), { withCredentials: true });
   stream.addEventListener('ready', handleServerEvent);
   stream.addEventListener('memory', handleServerEvent);
+  stream.addEventListener('chat', handleServerChatEvent);
   stream.addEventListener('error', () => {
     if (!currentUserId()) closeStream();
     else if (currentUserId() !== streamUserId) refreshRoomMemorySync();

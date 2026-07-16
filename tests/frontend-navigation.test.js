@@ -163,6 +163,10 @@ describe('frontend navigation routes', () => {
             assert.match(page, /:aria-pressed=/);
         }
         assert.match(polish, /\.like-btn\.liked \.ts-icon\s*\{[\s\S]*color: #ff5f73;[\s\S]*fill: currentColor;/);
+        assert.doesNotMatch(`${arena}\n${article}\n${plaza}`, /localStorage\.(?:getItem|setItem)\(`(?:pixel_art_)?liked_/);
+        assert.match(arena, /Boolean\(artwork\?\.viewer_liked\)/);
+        assert.match(article, /viewer_liked/);
+        assert.match(plaza, /viewer_liked/);
     });
 
     it('uses path-level cache busting for every mutable public content read', () => {

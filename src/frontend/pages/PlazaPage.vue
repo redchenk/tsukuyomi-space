@@ -6,6 +6,7 @@ import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
 import SocialText from '../components/SocialText.vue';
 import TsIcon from '../components/TsIcon.vue';
+import { applyMessageLikeState } from '../services/messageLikes';
 import { compareAppDate, formatDateTime, parseAppDate } from '../utils/time';
 
 const props = defineProps({
@@ -250,6 +251,7 @@ async function loadPlazaMessages() {
     plaza.messages = Array.isArray(result.data)
       ? result.data.filter((item) => !item.article_id)
       : [];
+    if (isAuthed.value) await applyMessageLikeState(plaza.messages).catch(() => {});
     plazaSyncPageWithHash();
   } catch (error) {
     plaza.messages = [];
@@ -368,7 +370,8 @@ async function plazaLikeMessage(id) {
     go('/login');
     return;
   }
-  if (localStorage.getItem(`liked_${id}`) === '1') {
+  const current = plaza.messages.find((item) => item.id === id);
+  if (current?.viewer_liked) {
     showPlazaToast(props.t.alreadyLiked);
     return;
   }
@@ -384,7 +387,6 @@ async function plazaLikeMessage(id) {
       const target = plaza.messages.find((item) => item.id === id);
       if (target) target.like_count = Number(target.like_count || 0) + 1;
     }
-    localStorage.setItem(`liked_${id}`, '1');
     showPlazaToast(props.t.likedToast);
   } catch (error) {
     showPlazaToast(error.message || props.t.likeFailed);
@@ -431,12 +433,8 @@ function applyRouteTopic() {
   if (topic) plazaSelectTopic(topic);
 }
 
-function isPlazaMessageLiked(id) {
-  try {
-    return localStorage.getItem(`liked_${id}`) === '1';
-  } catch (_) {
-    return false;
-  }
+function isPlazaMessageLiked(message) {
+  return Boolean(message?.viewer_liked);
 }
 
 function plazaInitial(name) {
@@ -594,8 +592,8 @@ onMounted(refreshPlaza);
             <div class="plaza-msg-footer">
               <button
                 class="icon-btn like-btn"
-                :class="{ liked: isPlazaMessageLiked(msg.id) }"
-                :aria-pressed="isPlazaMessageLiked(msg.id)"
+                :class="{ liked: isPlazaMessageLiked(msg) }"
+                :aria-pressed="isPlazaMessageLiked(msg)"
                 type="button"
                 @click="plazaLikeMessage(msg.id)"
               >

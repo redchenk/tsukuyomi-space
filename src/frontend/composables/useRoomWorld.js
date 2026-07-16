@@ -50,6 +50,7 @@ function normalizeWorld(data = {}) {
   const seasonSet = new Set(['spring', 'summer', 'autumn', 'winter']);
   const city = String(data.city || data.location?.city || data.location?.timezone || '').trim();
   const address = String(data.address || data.location?.address || '').trim();
+  const location = data.location || {};
   return {
     weather: weatherSet.has(data.weather) ? data.weather : 'clear',
     timePhase: timeSet.has(data.timePhase) ? data.timePhase : getTimePhase(now),
@@ -62,6 +63,15 @@ function normalizeWorld(data = {}) {
     reason: data.reason || '',
     locationSource: data.locationSource || data.location?.source || '',
     locationAccuracy: Number.isFinite(Number(data.location?.accuracy)) ? Number(data.location.accuracy) : null,
+    location: {
+      lat: Number.isFinite(Number(location.lat)) ? Number(location.lat) : null,
+      lon: Number.isFinite(Number(location.lon)) ? Number(location.lon) : null,
+      accuracy: Number.isFinite(Number(location.accuracy)) ? Number(location.accuracy) : null,
+      timezone: String(location.timezone || ''),
+      city: String(location.city || city || ''),
+      address: String(location.address || address || ''),
+      source: String(location.source || data.locationSource || '')
+    },
     updatedAt: data.updatedAt || now.toISOString()
   };
 }
@@ -134,14 +144,12 @@ function readCachedLocation() {
   const cached = readJson(WORLD_LOCATION_KEY, null);
   if (!cached?.savedAt || cached.lat == null || cached.lon == null) return null;
   if (Date.now() - cached.savedAt > WORLD_LOCATION_TTL) return null;
-  const { city: _city, ...location } = cached;
-  return location;
+  return cached;
 }
 
 function writeCachedLocation(location) {
   if (location?.lat == null || location?.lon == null) return;
-  const { city: _city, ...nextLocation } = location;
-  writeJson(WORLD_LOCATION_KEY, { ...nextLocation, savedAt: Date.now() });
+  writeJson(WORLD_LOCATION_KEY, { ...location, savedAt: Date.now() });
 }
 
 export function useRoomWorld() {
@@ -249,6 +257,9 @@ export function useRoomWorld() {
       const result = await response.json().catch(() => ({}));
       const nextWorld = normalizeWorld(result.data || {});
       applyWorld(nextWorld);
+      if (nextWorld.location?.lat != null && nextWorld.location?.lon != null && nextWorld.city) {
+        writeCachedLocation({ ...nextWorld.location, city: nextWorld.city, address: nextWorld.address });
+      }
       if (nextWorld.source === 'open-meteo' && (hasLocationCoordinates || nextWorld.locationSource === 'ip-geolocation')) {
         writeCachedWorld(nextWorld, nextWorld.location || location || {});
       }

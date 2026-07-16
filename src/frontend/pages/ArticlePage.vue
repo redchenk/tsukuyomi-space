@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import SocialText from '../components/SocialText.vue';
 import TsIcon from '../components/TsIcon.vue';
+import { applyMessageLikeState } from '../services/messageLikes';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
 import { formatDateTime } from '../utils/time';
@@ -207,6 +208,7 @@ async function loadComments() {
     comments.value = result.success && Array.isArray(result.data)
       ? result.data.filter((item) => String(item.article_id) === String(articleId.value))
       : [];
+    if (session.value) await applyMessageLikeState(comments.value).catch(() => {});
   } catch (_) {
     comments.value = [];
   }
@@ -300,7 +302,6 @@ async function likeComment(commentId) {
     message.value = result.message || '点赞失败';
     return;
   }
-  localStorage.setItem(`liked_${commentId}`, '1');
   if (result.data?.id) patchComment(result.data);
   else {
     const target = comments.value.find((item) => item.id === commentId);
@@ -310,11 +311,7 @@ async function likeComment(commentId) {
 }
 
 function isCommentLiked(commentId) {
-  try {
-    return localStorage.getItem(`liked_${commentId}`) === '1';
-  } catch (_) {
-    return false;
-  }
+  return Boolean(comments.value.find((item) => item.id === commentId)?.viewer_liked);
 }
 
 async function toggleBookmark() {

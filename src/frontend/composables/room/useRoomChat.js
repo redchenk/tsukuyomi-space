@@ -10,6 +10,13 @@ import {
 } from '../../services/room/live2dControl';
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
 import { readJson, writeJson } from '../../services/room/roomStorage';
+import {
+  loadRoomConversation,
+  readRoomConversation,
+  saveRoomConversationTurn,
+  startRoomConversationUpdates,
+  writeRoomConversation
+} from '../../services/room/roomConversationSync';
 import { publishLocalRoomMemoryUpdate, startRoomMemorySync } from '../../services/room/roomMemorySync';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
@@ -819,6 +826,9 @@ export function useRoomChat({ live2d, world }) {
   let ttsUrl = '';
   let currentAudio = null;
   let ttsRequestId = 0;
+  let historyLoadRevision = 0;
+  let refreshHistoryAfterSend = false;
+  let stopRoomConversationUpdates = () => {};
 
   function addMessage(role, content, options = {}) {
     messages.value.push({
@@ -835,11 +845,29 @@ export function useRoomChat({ live2d, world }) {
     });
   }
 
-  function loadHistory() {
-    const history = readJson('roomChatHistory', []);
+  function renderHistory(history) {
     messages.value = [];
     addMessage('system', 'Live2D 已就绪');
     history.forEach((message) => addMessage(message.role, message.content));
+  }
+
+  async function refreshSyncedHistory() {
+    if (sending.value) {
+      refreshHistoryAfterSend = true;
+      return;
+    }
+    const revision = ++historyLoadRevision;
+    try {
+      const history = await loadRoomConversation();
+      if (revision === historyLoadRevision && !sending.value) renderHistory(history);
+    } catch (error) {
+      console.warn('Room conversation sync failed:', error);
+    }
+  }
+
+  function loadHistory() {
+    renderHistory(readRoomConversation());
+    refreshSyncedHistory();
   }
 
   async function attachImage(file) {
@@ -863,6 +891,7 @@ export function useRoomChat({ live2d, world }) {
     const message = input.value.trim();
     const image = imageAttachment.value;
     if (!message && !image) return;
+    const turnId = uid();
     addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image });
     input.value = '';
     imageAttachment.value = null;
@@ -872,7 +901,7 @@ export function useRoomChat({ live2d, world }) {
 
     try {
       const settings = readJson('roomLLMSettings', {});
-      const conversation = readJson('roomChatHistory', []).slice(-12);
+      const conversation = readRoomConversation().slice(-12);
       const roomContext = await buildRoomContext(message, image, settings);
       const basePrompt = settings.systemPrompt
         ? [settings.systemPrompt, roomSystemPrompt()].filter(Boolean).join('\n\n')
@@ -919,7 +948,10 @@ export function useRoomChat({ live2d, world }) {
       addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d });
       const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
       const nextHistory = [...conversation, { role: 'user', content: userContent }, { role: 'assistant', content: reply }].slice(-24);
-      writeJson('roomChatHistory', nextHistory);
+      writeRoomConversation(nextHistory);
+      saveRoomConversationTurn({ turnId, userMessage: userContent, assistantMessage: reply }).catch((error) => {
+        console.warn('Room conversation save failed:', error);
+      });
       remember(userContent, reply).catch((error) => {
         console.warn('Room memory save failed:', error);
       });
@@ -928,6 +960,10 @@ export function useRoomChat({ live2d, world }) {
       addMessage('system', `\u53d1\u9001\u5931\u8d25\uff1a${error.message}`);
     } finally {
       sending.value = false;
+      if (refreshHistoryAfterSend) {
+        refreshHistoryAfterSend = false;
+        refreshSyncedHistory();
+      }
     }
   }
 
@@ -1102,12 +1138,14 @@ export function useRoomChat({ live2d, world }) {
   }
 
   function destroy() {
+    stopRoomConversationUpdates();
     stopRoomMemorySync();
     stopTTS();
     if (ttsUrl) URL.revokeObjectURL(ttsUrl);
     ttsUrl = '';
   }
 
+  stopRoomConversationUpdates = startRoomConversationUpdates(() => refreshSyncedHistory());
   loadHistory();
 
   return {

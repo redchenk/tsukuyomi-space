@@ -124,6 +124,34 @@ describe('frontend room memory API client usage', () => {
         assert.match(settings, /refreshRoomMemorySync\(\)/);
         assert.match(settings, /stopRoomMemorySync\(\)/);
     });
+
+    it('syncs account-scoped room conversations through the existing realtime stream', () => {
+        const sync = source('src/frontend/services/room/roomMemorySync.js');
+        const conversation = source('src/frontend/services/room/roomConversationSync.js');
+        const chat = source('src/frontend/composables/room/useRoomChat.js');
+
+        assert.match(sync, /stream\.addEventListener\('chat', handleServerChatEvent\)/);
+        assert.match(sync, /tsukuyomi:room-chat-updated/);
+        assert.match(conversation, /`roomChatHistory:\$\{userId\}`/);
+        assert.match(conversation, /authFetch\(noStoreUrl\('\/api\/room\/chat\?limit=24'\)/);
+        assert.match(conversation, /authFetch\('\/api\/room\/chat\/turn'/);
+        assert.match(conversation, /authFetch\('\/api\/room\/chat\/import'/);
+        assert.match(chat, /readRoomConversation\(\)\.slice\(-12\)/);
+        assert.match(chat, /saveRoomConversationTurn\(/);
+        assert.match(chat, /startRoomConversationUpdates\(/);
+        assert.doesNotMatch(chat, /readJson\('roomChatHistory'/);
+    });
+
+    it('keeps the resolved city attached to cached browser coordinates', () => {
+        const world = source('src/frontend/composables/useRoomWorld.js');
+        const route = source('backend/routes/room.js');
+
+        assert.match(world, /writeCachedLocation\(\{ \.\.\.nextWorld\.location, city: nextWorld\.city, address: nextWorld\.address \}\)/);
+        assert.match(world, /city: String\(location\.city \|\| city \|\| ''\)/);
+        assert.doesNotMatch(world, /const \{ city: _city,/);
+        assert.match(route, /zoom: '10'/);
+        assert.match(route, /requestedCity \|\| genericLocationName\(\)/);
+    });
 });
 
 describe('frontend session refresh resilience', () => {

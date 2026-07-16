@@ -150,6 +150,19 @@ router.get('/topics', (req, res) => {
     }
 });
 
+router.get('/liked', authenticateToken, (req, res) => {
+    try {
+        res.set({
+            'Cache-Control': 'private, no-store',
+            'Vary': 'Cookie, Authorization, Accept-Encoding'
+        });
+        res.json({ success: true, data: messageRepository.listMessageLikeIds(req.user.id) });
+    } catch (error) {
+        console.error('List message likes failed:', error);
+        res.status(500).json({ success: false, message: 'Unable to load liked messages' });
+    }
+});
+
 router.get('/mine', authenticateToken, (req, res) => {
     try {
         res.set('Cache-Control', 'private, no-store');
@@ -227,7 +240,7 @@ router.post('/:id/like', authenticateToken, (req, res) => {
             content: message.content,
             relatedMessageId: message.id
         });
-        res.json({ success: true, data: message });
+        res.json({ success: true, data: { ...message, viewer_liked: true } });
     } catch (error) {
         console.error('Like message failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });

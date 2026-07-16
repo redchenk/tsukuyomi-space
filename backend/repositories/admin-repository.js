@@ -212,6 +212,7 @@ function resetUserPassword(id, passwordHash) {
 
 function deleteUser(id) {
     const tx = db.transaction(() => {
+        db.prepare('DELETE FROM room_chat_messages WHERE user_id = ?').run(id);
         db.prepare('DELETE FROM message_likes WHERE user_id = ?').run(id);
         db.prepare('UPDATE messages SET user_id = NULL WHERE user_id = ?').run(id);
         db.prepare('UPDATE friend_links SET user_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(id);

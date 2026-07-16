@@ -1063,7 +1063,6 @@ async function likeArtwork(artwork) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
-    localStorage.setItem(`pixel_art_liked_${artwork.id}`, '1');
     upsertArtwork(result.data);
     showToast(result.message || copy.value.likedToast);
   } catch (error) {
@@ -1072,12 +1071,7 @@ async function likeArtwork(artwork) {
 }
 
 function isArtworkLiked(artwork) {
-  if (artwork?.viewer_liked) return true;
-  try {
-    return localStorage.getItem(`pixel_art_liked_${artwork?.id}`) === '1';
-  } catch (_) {
-    return false;
-  }
+  return Boolean(artwork?.viewer_liked);
 }
 
 function focusSharedArtwork() {

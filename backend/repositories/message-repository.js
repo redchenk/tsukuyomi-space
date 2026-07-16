@@ -143,6 +143,15 @@ function findMessageLike(messageId, userId) {
     return db.prepare('SELECT id FROM message_likes WHERE message_id = ? AND user_id = ?').get(messageId, userId);
 }
 
+function listMessageLikeIds(userId) {
+    return db.prepare(`
+        SELECT message_id
+        FROM message_likes
+        WHERE user_id = ?
+        ORDER BY id DESC
+    `).all(userId).map(row => row.message_id);
+}
+
 function likeMessage(messageId, userId) {
     const tx = db.transaction(() => {
         db.prepare('INSERT INTO message_likes (message_id, user_id) VALUES (?, ?)').run(messageId, userId);
@@ -163,5 +172,6 @@ module.exports = {
     updateUserMessage,
     deleteUserMessage,
     findMessageLike,
+    listMessageLikeIds,
     likeMessage
 };

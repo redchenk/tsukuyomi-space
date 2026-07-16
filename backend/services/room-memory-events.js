@@ -122,7 +122,28 @@ function publish(userId, { action = 'updated', memoryIds = [] } = {}) {
     return delivered;
 }
 
+function publishChat(userId, { action = 'updated', messageIds = [] } = {}) {
+    const clients = subscribers.get(String(userId || '').trim());
+    if (!clients?.size) return 0;
+
+    const eventId = nextRevision();
+    const payload = {
+        action: String(action || 'updated'),
+        messageIds: [...new Set((Array.isArray(messageIds) ? messageIds : [messageIds])
+            .map(value => String(value || '').trim())
+            .filter(Boolean))],
+        revision: eventId,
+        updatedAt: new Date().toISOString()
+    };
+    let delivered = 0;
+    for (const client of [...clients]) {
+        if (writeEvent(client, 'chat', payload, eventId)) delivered += 1;
+    }
+    return delivered;
+}
+
 module.exports = {
     publish,
+    publishChat,
     subscribe
 };

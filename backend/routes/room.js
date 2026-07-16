@@ -3,6 +3,7 @@ const https = require('https');
 const { authenticateToken } = require('../middleware/auth');
 const roomMemory = require('../services/room-memory');
 const roomMemoryEvents = require('../services/room-memory-events');
+const roomChatRepository = require('../repositories/room-chat-repository');
 const weatherCache = require('../services/weather-cache');
 
 const router = express.Router();
@@ -53,6 +54,38 @@ function setNoStore(res) {
         'Expires': '0',
         'Surrogate-Control': 'no-store'
     });
+}
+
+const MAX_CHAT_CONTENT_LENGTH = 200000;
+
+function normalizeChatContent(value, field) {
+    if (typeof value !== 'string') {
+        const error = new Error(`${field} must be a string`);
+        error.statusCode = 400;
+        throw error;
+    }
+    const content = value.trim();
+    if (!content) {
+        const error = new Error(`${field} cannot be empty`);
+        error.statusCode = 422;
+        throw error;
+    }
+    if (content.length > MAX_CHAT_CONTENT_LENGTH) {
+        const error = new Error(`${field} is too long`);
+        error.statusCode = 413;
+        throw error;
+    }
+    return content;
+}
+
+function normalizeTurnId(value) {
+    const turnId = String(value || '').trim();
+    if (!/^[A-Za-z0-9._:-]{8,128}$/.test(turnId)) {
+        const error = new Error('turnId is invalid');
+        error.statusCode = 400;
+        throw error;
+    }
+    return turnId;
 }
 
 function hasCoordinate(value) {
@@ -201,7 +234,7 @@ async function resolveLocationName({ lat, lon, fallback, allowFallback = true })
         format: 'jsonv2',
         lat: String(lat),
         lon: String(lon),
-        zoom: '16',
+        zoom: '10',
         addressdetails: '1',
         'accept-language': 'zh-CN'
     });
@@ -342,13 +375,13 @@ async function sendWorld(req, res) {
     const rawLat = hasClientCoords ? req.query.lat : (hasIpCoords ? ipLocation.lat : (hasEnvCoords ? process.env.ROOM_WEATHER_LAT : null));
     const rawLon = hasClientCoords ? req.query.lon : (hasIpCoords ? ipLocation.lon : (hasEnvCoords ? process.env.ROOM_WEATHER_LON : null));
     const timezone = String(req.query.timezone || ipLocation?.timezone || process.env.ROOM_WEATHER_TIMEZONE || DEFAULT_WEATHER.timezone);
-    const requestedCity = hasClientCoords ? '' : String(req.query.city || '').trim();
+    const requestedCity = String(req.query.city || '').trim();
     const requestedLocationSource = String(req.query.locationSource || '').trim();
     const locationSource = hasClientCoords
         ? (requestedLocationSource || 'browser-geolocation')
         : (hasIpCoords ? 'ip-geolocation' : (hasEnvCoords ? 'env-default' : 'unavailable'));
     const cityFallback = hasClientCoords
-        ? genericLocationName()
+        ? (requestedCity || genericLocationName())
         : (String(requestedCity || ipLocation?.city || process.env.ROOM_WEATHER_CITY || DEFAULT_WEATHER.city).trim() || DEFAULT_WEATHER.city);
     if (!hasClientCoords && !hasIpCoords && !hasEnvCoords) {
         const world = {
@@ -448,6 +481,57 @@ router.get('/models/openrouter', async (req, res) => {
         });
     } finally {
         clearTimeout(timeout);
+    }
+});
+
+router.get('/chat', authenticateToken, (req, res) => {
+    setNoStore(res);
+    res.json({
+        success: true,
+        data: roomChatRepository.listMessages(req.user.id, req.query.limit)
+    });
+});
+
+router.post('/chat/import', authenticateToken, (req, res) => {
+    try {
+        const source = Array.isArray(req.body?.messages) ? req.body.messages.slice(-24) : [];
+        const messages = source.map((message) => ({
+            role: ['user', 'assistant'].includes(message?.role) ? message.role : '',
+            content: normalizeChatContent(message?.content, 'message.content')
+        }));
+        if (!messages.length || messages.some((message) => !message.role)) {
+            return res.status(400).json({ success: false, message: 'messages is invalid' });
+        }
+        const messageIds = roomChatRepository.importHistoryIfEmpty(req.user.id, messages);
+        if (messageIds.length) {
+            roomMemoryEvents.publishChat(req.user.id, { action: 'imported', messageIds });
+        }
+        setNoStore(res);
+        res.status(messageIds.length ? 201 : 200).json({
+            success: true,
+            data: roomChatRepository.listMessages(req.user.id, 24)
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Chat history import failed' });
+    }
+});
+
+router.post('/chat/turn', authenticateToken, (req, res) => {
+    try {
+        const turnId = normalizeTurnId(req.body?.turnId);
+        const userMessage = normalizeChatContent(req.body?.userMessage, 'userMessage');
+        const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
+        const messageIds = roomChatRepository.saveTurn(req.user.id, { turnId, userMessage, assistantMessage });
+        if (messageIds.length) {
+            roomMemoryEvents.publishChat(req.user.id, { action: 'turn-saved', messageIds });
+        }
+        setNoStore(res);
+        res.status(messageIds.length ? 201 : 200).json({
+            success: true,
+            data: roomChatRepository.listMessages(req.user.id, 24)
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Chat turn sync failed' });
     }
 });
 

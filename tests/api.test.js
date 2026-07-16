@@ -216,7 +216,7 @@ describe('database initialization', () => {
             ORDER BY name
         `).all().map(row => row.name);
 
-        for (const table of ['schema_migrations', 'users', 'articles', 'messages', 'message_likes', 'admins', 'site_settings']) {
+        for (const table of ['schema_migrations', 'users', 'articles', 'messages', 'message_likes', 'room_chat_messages', 'admins', 'site_settings']) {
             assert.ok(tables.includes(table), `${table} table should exist`);
         }
 
@@ -716,6 +716,15 @@ describe('messages API', () => {
         const liked = await postJson(`/api/messages/${messageId}/like`, {}, userToken);
         assert.equal(liked.response.status, 200);
         assert.equal(liked.body.data.like_count, 1);
+        assert.equal(liked.body.data.viewer_liked, true);
+
+        const likedIds = await request('/api/messages/liked', { headers: jsonHeaders(userToken) });
+        assert.equal(likedIds.response.status, 200);
+        assert.ok(likedIds.body.data.includes(messageId));
+
+        const otherLikedIds = await request('/api/messages/liked', { headers: jsonHeaders(managedUserToken) });
+        assert.equal(otherLikedIds.response.status, 200);
+        assert.ok(!otherLikedIds.body.data.includes(messageId));
 
         const duplicateLike = await postJson(`/api/messages/${messageId}/like`, {}, userToken);
         assert.equal(duplicateLike.response.status, 400);
@@ -851,6 +860,12 @@ describe('pixel art API', () => {
         });
         assert.equal(detail.response.status, 200);
         assert.equal(detail.body.data.viewer_liked, true);
+
+        const likedGallery = await request('/api/pixel-art/gallery', {
+            headers: jsonHeaders(managedUserToken)
+        });
+        assert.equal(likedGallery.response.status, 200);
+        assert.equal(likedGallery.body.data.find(item => item.id === pixelArtworkId)?.viewer_liked, true);
     });
 
     it('isolates pixel artwork management by owner while allowing admins', async () => {
@@ -1226,6 +1241,66 @@ describe('room world API', () => {
 });
 
 describe('room memory API', () => {
+    it('persists room chat turns per account and broadcasts content-free updates', async () => {
+        const unauthenticated = await request('/api/room/chat');
+        assert.equal(unauthenticated.response.status, 401);
+
+        let userStream;
+        let managedStream;
+        try {
+            [userStream, managedStream] = await Promise.all([
+                openEventStream('/api/room/memory/events', userToken),
+                openEventStream('/api/room/memory/events', managedUserToken)
+            ]);
+            await Promise.all([readEvent(userStream, 'ready'), readEvent(managedStream, 'ready')]);
+
+            const turnId = `turn-${Date.now()}-account-a`;
+            const saved = await postJson('/api/room/chat/turn', {
+                turnId,
+                userId: 'spoofed-account',
+                userMessage: 'Cross-device room question',
+                assistantMessage: 'Cross-device room answer'
+            }, userToken);
+            assert.equal(saved.response.status, 201);
+            assert.deepEqual(saved.body.data.map(item => item.role), ['user', 'assistant']);
+
+            const event = await readEvent(userStream, 'chat');
+            assert.equal(event.action, 'turn-saved');
+            assert.equal(event.messageIds.length, 2);
+            assert.equal(Object.hasOwn(event, 'content'), false);
+            assert.equal(Object.hasOwn(event, 'userId'), false);
+
+            const isolated = await request('/api/room/chat', { headers: jsonHeaders(managedUserToken) });
+            assert.equal(isolated.response.status, 200);
+            assert.equal(isolated.body.data.length, 0);
+
+            const duplicate = await postJson('/api/room/chat/turn', {
+                turnId,
+                userMessage: 'Cross-device room question',
+                assistantMessage: 'Cross-device room answer'
+            }, userToken);
+            assert.equal(duplicate.response.status, 200);
+            assert.equal(duplicate.body.data.length, 2);
+
+            const imported = await postJson('/api/room/chat/import', {
+                messages: [
+                    { role: 'user', content: 'Imported local question' },
+                    { role: 'assistant', content: 'Imported local answer' }
+                ]
+            }, managedUserToken);
+            assert.equal(imported.response.status, 201);
+            assert.deepEqual(imported.body.data.map(item => item.content), ['Imported local question', 'Imported local answer']);
+
+            const userHistory = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
+            assert.deepEqual(userHistory.body.data.map(item => item.content), ['Cross-device room question', 'Cross-device room answer']);
+        } finally {
+            userStream?.controller.abort();
+            managedStream?.controller.abort();
+            await Promise.allSettled([userStream?.reader?.cancel(), managedStream?.reader?.cancel()]);
+            db.prepare("DELETE FROM room_chat_messages WHERE user_id IN ('user-001', 'user-002')").run();
+        }
+    });
+
     it('clips Milvus text fields by UTF-8 bytes without breaking Unicode characters', () => {
         const source = '月'.repeat(800);
         const clipped = truncateUtf8(source, 1024);
