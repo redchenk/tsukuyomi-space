@@ -264,6 +264,7 @@ describe('browser security headers', () => {
         const originSecurity = sourceFile('deploy/openresty-site-security.conf');
         const originProxy = sourceFile('deploy/openresty-root-proxy.conf');
         const agentOs = sourceFile('deploy/openresty-agent-os.conf');
+        const installer = sourceFile('deploy/install-openresty-hardening.sh');
         const edge = sourceFile('deploy/hk-frontend-openresty.conf');
 
         for (const name of [
@@ -289,6 +290,9 @@ describe('browser security headers', () => {
         }
         assert.match(originSecurity, /\$http_x_forwarded_proto = "http"[\s\S]*return 308 https:\/\/\$host\$request_uri;/);
         assert.match(edge, /listen 80;[\s\S]*location \/ \{[\s\S]*return 308 https:\/\/\$host\$request_uri;/);
+        assert.match(installer, /WWW_SITE_DIR="\$SITE_ROOT\/www\.yachiyo\.hk"/);
+        assert.match(installer, /install[^\n]+openresty-root-proxy\.conf "\$WWW_SITE_DIR\/proxy\/root\.conf"/);
+        assert.match(installer, /install[^\n]+openresty-agent-os\.conf "\$WWW_SITE_DIR\/proxy\/agent-os\.conf"/);
     });
 });
 

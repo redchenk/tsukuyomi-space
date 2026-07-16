@@ -12,6 +12,7 @@ OPENRESTY_CONTAINER="${OPENRESTY_CONTAINER:-}"
 UPDATE_OPENRESTY_IMAGE="${UPDATE_OPENRESTY_IMAGE:-false}"
 OPENRESTY_REGISTRY="${OPENRESTY_REGISTRY:-docker.1panel.live}"
 PRIMARY_SITE_DIR="$SITE_ROOT/yachiyo.hk"
+WWW_SITE_DIR="$SITE_ROOT/www.yachiyo.hk"
 ORIGIN_SITE_DIR="$(find "$SITE_ROOT" -mindepth 1 -maxdepth 1 -type d -name 'origin.*' -print -quit 2>/dev/null || true)"
 
 if [ -z "$OPENRESTY_CONTAINER" ]; then
@@ -25,7 +26,7 @@ backup_dir="$(mktemp -d "/root/openresty-prehardening-$(date -u +%Y%m%dT%H%M%SZ)
 chmod 700 "$backup_dir"
 cp -a "$OPENRESTY_ROOT/conf/nginx.conf" "$backup_dir/nginx.conf"
 
-for site_dir in "$PRIMARY_SITE_DIR" "$ORIGIN_SITE_DIR"; do
+for site_dir in "$PRIMARY_SITE_DIR" "$WWW_SITE_DIR" "$ORIGIN_SITE_DIR"; do
     [ -n "$site_dir" ] || continue
     proxy_dir="$site_dir/proxy"
     [ -d "$proxy_dir" ] || continue
@@ -65,7 +66,7 @@ chmod 644 "$OPENRESTY_ROOT/conf/nginx.conf"
 docker exec -i "$OPENRESTY_CONTAINER" sh -c \
     'cat > /usr/local/openresty/nginx/conf/nginx.conf' < deploy/openresty-nginx.conf
 
-for site_dir in "$PRIMARY_SITE_DIR" "$ORIGIN_SITE_DIR"; do
+for site_dir in "$PRIMARY_SITE_DIR" "$WWW_SITE_DIR" "$ORIGIN_SITE_DIR"; do
     [ -n "$site_dir" ] || continue
     proxy_dir="$site_dir/proxy"
     [ -d "$proxy_dir" ] || continue
@@ -81,6 +82,10 @@ if [ -d "$PRIMARY_SITE_DIR/proxy" ]; then
     install -o root -g root -m 644 deploy/openresty-root-proxy.conf "$PRIMARY_SITE_DIR/proxy/root.conf"
 fi
 
+if [ -d "$WWW_SITE_DIR/proxy" ]; then
+    install -o root -g root -m 644 deploy/openresty-root-proxy.conf "$WWW_SITE_DIR/proxy/root.conf"
+fi
+
 if [ -n "$ORIGIN_SITE_DIR" ] && [ -d "$ORIGIN_SITE_DIR/proxy" ]; then
     install -o root -g root -m 644 deploy/openresty-root-proxy.conf "$ORIGIN_SITE_DIR/proxy/root.conf"
 fi
@@ -89,11 +94,15 @@ if [ -d "$PRIMARY_SITE_DIR/proxy" ]; then
     install -o root -g root -m 644 deploy/openresty-agent-os.conf "$PRIMARY_SITE_DIR/proxy/agent-os.conf"
 fi
 
+if [ -d "$WWW_SITE_DIR/proxy" ]; then
+    install -o root -g root -m 644 deploy/openresty-agent-os.conf "$WWW_SITE_DIR/proxy/agent-os.conf"
+fi
+
 if ! docker exec "$OPENRESTY_CONTAINER" /usr/local/openresty/bin/openresty -t; then
     cat "$backup_dir/nginx.conf" > "$OPENRESTY_ROOT/conf/nginx.conf"
     docker exec -i "$OPENRESTY_CONTAINER" sh -c \
         'cat > /usr/local/openresty/nginx/conf/nginx.conf' < "$backup_dir/nginx.conf"
-    for site_dir in "$PRIMARY_SITE_DIR" "$ORIGIN_SITE_DIR"; do
+    for site_dir in "$PRIMARY_SITE_DIR" "$WWW_SITE_DIR" "$ORIGIN_SITE_DIR"; do
         restore_managed_proxy_files "$site_dir"
     done
     docker exec "$OPENRESTY_CONTAINER" /usr/local/openresty/bin/openresty -t
