@@ -45,6 +45,7 @@ function sendRss(req, res) {
 }
 
 router.get('/', sendJson);
+router.get('/rss', sendRss);
 
 module.exports = {
     router,

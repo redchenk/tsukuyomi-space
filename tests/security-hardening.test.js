@@ -141,6 +141,17 @@ describe('nginx static-file boundary', () => {
         }
     });
 
+    it('proxies the RSS alias instead of serving the SPA shell', () => {
+        const origin = sourceFile('deploy/nginx.conf');
+        const edge = sourceFile('deploy/hk-frontend-openresty.conf');
+
+        for (const config of [origin, edge]) {
+            const block = config.match(/location = \/feed\.xml \{[\s\S]*?\n\s*\}/)?.[0] || '';
+            assert.match(block, /proxy_pass/);
+            assert.doesNotMatch(block, /try_files/);
+        }
+    });
+
     it('does not publish the origin hostname or server addresses in client and deploy defaults', () => {
         for (const relativePath of [
             '.env.example',

@@ -552,7 +552,8 @@ describe('site activity feed', () => {
         assert.ok(Array.isArray(first.body.data.items));
         assert.ok(Number.isFinite(first.body.data.stats.articles));
         assert.match(first.body.data.feeds.json, /\/api\/site-feed$/);
-        assert.match(first.body.data.feeds.rss, /\/feed\.xml$/);
+        assert.match(first.body.data.feeds.rss, /\/api\/site-feed\/rss$/);
+        assert.match(first.body.data.feeds.rssAlias, /\/feed\.xml$/);
 
         const keys = new Set();
         const collectKeys = (value) => {
@@ -594,6 +595,11 @@ describe('site activity feed', () => {
         assert.match(rss.body, /<rss version="2\.0"/);
         assert.match(rss.body, /<item>/);
         assert.match(rss.body, new RegExp(title));
+
+        const apiRss = await request('/api/site-feed/rss?limit=2');
+        assert.equal(apiRss.response.status, 200);
+        assert.match(apiRss.response.headers.get('content-type') || '', /application\/rss\+xml/);
+        assert.match(apiRss.body, /<rss version="2\.0"/);
     });
 });
 

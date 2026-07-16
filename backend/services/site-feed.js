@@ -155,7 +155,8 @@ function buildSiteFeed(limit = 20) {
         },
         feeds: {
             json: absoluteUrl('/api/site-feed'),
-            rss: absoluteUrl('/feed.xml')
+            rss: absoluteUrl('/api/site-feed/rss'),
+            rssAlias: absoluteUrl('/feed.xml')
         },
         items
     };
