@@ -230,6 +230,35 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     await page.goto('/pixel');
     const card = page.locator(`#pixel-art-${artworkId}`);
     await expect(card).toBeVisible();
+
+    const galleryActionLayout = async () => card.locator('.pixel-art-actions').evaluate((actions) => {
+        const buttons = Array.from(actions.querySelectorAll('.icon-btn'));
+        const actionRect = actions.getBoundingClientRect();
+        const buttonRects = buttons.map((button) => button.getBoundingClientRect());
+        return {
+            actionHeight: actionRect.height,
+            buttonHeights: buttonRects.map((rect) => rect.height),
+            buttonWidthTotal: buttonRects.reduce((total, rect) => total + rect.width, 0),
+            actionWidth: actionRect.width,
+            aspectRatios: buttons.map((button) => getComputedStyle(button).aspectRatio),
+            justifyContent: getComputedStyle(actions).justifyContent,
+            horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth
+        };
+    });
+
+    const desktopActions = await galleryActionLayout();
+    expect(desktopActions.justifyContent).toBe('flex-end');
+    expect(desktopActions.aspectRatios.every((ratio) => ratio === 'auto')).toBe(true);
+    expect(desktopActions.actionHeight).toBeLessThanOrEqual(52);
+    expect(desktopActions.buttonWidthTotal).toBeLessThan(desktopActions.actionWidth * 0.8);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileActions = await galleryActionLayout();
+    expect(mobileActions.buttonHeights.every((height) => height >= 35.5 && height <= 40.5)).toBe(true);
+    expect(mobileActions.buttonWidthTotal).toBeLessThan(mobileActions.actionWidth * 0.8);
+    expect(mobileActions.horizontalOverflow).toBe(false);
+
+    await page.setViewportSize({ width: 1280, height: 720 });
     await card.locator('.pixel-art-preview').click();
 
     const lightbox = page.locator('body > .arena-art-lightbox');

@@ -1482,11 +1482,11 @@ onBeforeUnmount(() => {
               type="button"
               @click="likeArtwork(artwork)"
             >
-              <TsIcon name="heart" :size="17" />
+              <TsIcon name="heart" :size="15" />
               <span>{{ artwork.viewer_liked ? copy.liked : copy.like }} {{ formatNumber(artwork.like_count) }}</span>
             </button>
             <button class="icon-btn" type="button" @click="downloadArtwork(artwork)">
-              <TsIcon name="download" :size="17" />
+              <TsIcon name="download" :size="15" />
               <span>{{ copy.download }}</span>
             </button>
           </div>
