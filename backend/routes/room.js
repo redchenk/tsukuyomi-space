@@ -177,15 +177,21 @@ function pickReadableLocation(address = {}, payload = {}) {
     };
 }
 
-async function reverseLocationByBigDataCloud({ lat, lon }) {
+async function reverseLocationByPhoton({ lat, lon }) {
     const params = new URLSearchParams({
-        latitude: String(lat),
-        longitude: String(lon),
-        localityLanguage: 'zh'
+        lat: String(lat),
+        lon: String(lon)
     });
-    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?${params}`;
+    const url = `https://photon.komoot.io/reverse?${params}`;
     return new Promise((resolve) => {
-        const request = https.get(url, { family: 4, headers: { Accept: 'application/json' }, timeout: 8000 }, (response) => {
+        const request = https.get(url, {
+            family: 4,
+            headers: {
+                Accept: 'application/json',
+                'User-Agent': 'tsukuyomi-space/2.1 room-weather'
+            },
+            timeout: 4500
+        }, (response) => {
             if (response.statusCode < 200 || response.statusCode >= 300) {
                 response.resume();
                 resolve(null);
@@ -203,16 +209,23 @@ async function reverseLocationByBigDataCloud({ lat, lon }) {
             response.on('end', () => {
                 try {
                     const payload = JSON.parse(body);
-                    const city = payload.city
-                        || payload.locality
-                        || payload.principalSubdivision
-                        || payload.countryName
+                    const properties = payload.features?.[0]?.properties || {};
+                    const rawCity = properties.city
+                        || properties.locality
+                        || properties.district
+                        || properties.county
+                        || properties.state
+                        || properties.country
                         || '';
-                    const address = [
-                        payload.countryName,
-                        payload.principalSubdivision,
-                        payload.city || payload.locality
-                    ].filter(Boolean).join(' · ');
+                    const city = String(rawCity).split(/\s+(?=[A-Za-z])/)[0].trim();
+                    const address = [...new Set([
+                        properties.country,
+                        properties.state,
+                        properties.city,
+                        properties.district,
+                        properties.locality,
+                        properties.name
+                    ].filter(Boolean))].join(' · ');
                     resolve(city ? { city, address: address || city } : null);
                 } catch (_) {
                     resolve(null);
@@ -229,6 +242,9 @@ async function resolveLocationName({ lat, lon, fallback, allowFallback = true })
     if (process.env.ROOM_WEATHER_REVERSE_OFFLINE === 'true' || typeof fetch !== 'function') {
         return { city: fallbackName, address: fallbackName };
     }
+
+    const photonLocation = await reverseLocationByPhoton({ lat, lon });
+    if (photonLocation?.city) return photonLocation;
 
     const params = new URLSearchParams({
         format: 'jsonv2',
@@ -257,10 +273,6 @@ async function resolveLocationName({ lat, lon, fallback, allowFallback = true })
     } catch (_) {
     } finally {
         clearTimeout(timeout);
-    }
-    if (!allowFallback) {
-        const backup = await reverseLocationByBigDataCloud({ lat, lon });
-        if (backup?.city) return backup;
     }
     return { city: fallbackName, address: fallbackName };
 }

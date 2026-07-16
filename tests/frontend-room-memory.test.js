@@ -151,6 +151,8 @@ describe('frontend room memory API client usage', () => {
         assert.doesNotMatch(world, /const \{ city: _city,/);
         assert.match(route, /zoom: '10'/);
         assert.match(route, /requestedCity \|\| genericLocationName\(\)/);
+        assert.match(route, /https:\/\/photon\.komoot\.io\/reverse/);
+        assert.doesNotMatch(route, /reverse-geocode-client/);
     });
 });
 
