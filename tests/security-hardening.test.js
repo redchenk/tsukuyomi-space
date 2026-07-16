@@ -16,6 +16,31 @@ const {
     resolvePublicUrl
 } = require('../backend/services/outbound-url-security');
 const { assertNoDuplicateJsonKeys } = require('../backend/services/json-security');
+const {
+    CONTENT_SECURITY_POLICY,
+    securityHeaders
+} = require('../backend/middleware/security');
+
+function locationBlocks(config) {
+    const lines = config.split(/\r?\n/);
+    const blocks = [];
+
+    for (let start = 0; start < lines.length; start += 1) {
+        if (!/^\s*location\b/.test(lines[start])) continue;
+        let depth = 0;
+        for (let end = start; end < lines.length; end += 1) {
+            depth += (lines[end].match(/\{/g) || []).length;
+            depth -= (lines[end].match(/\}/g) || []).length;
+            if (depth === 0) {
+                blocks.push(lines.slice(start, end + 1).join('\n'));
+                start = end;
+                break;
+            }
+        }
+    }
+
+    return blocks;
+}
 
 describe('JSON duplicate-key validation', () => {
     it('rejects duplicate keys at any object depth, including escaped equivalents', () => {
@@ -180,6 +205,85 @@ describe('nginx static-file boundary', () => {
         assert.match(block, /gzip_types application\/octet-stream/);
         assert.match(block, /immutable/);
         assert.match(staticMiddleware, /app\.use\('\/models-v4', express\.static\(path\.join\(publicRoot, 'models'\)/);
+    });
+});
+
+describe('browser security headers', () => {
+    it('keeps one enforced CSP aligned across the app, HTML fallback, and proxies', () => {
+        const headerConfig = sourceFile('deploy/security-headers.inc');
+        const frontend = sourceFile('src/frontend/index.html');
+        const configuredPolicy = headerConfig.match(/add_header Content-Security-Policy "([^"]+)" always;/)?.[1];
+        const metaPolicy = frontend.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
+
+        assert.equal(configuredPolicy, CONTENT_SECURITY_POLICY);
+        assert.equal(metaPolicy, CONTENT_SECURITY_POLICY);
+        assert.match(CONTENT_SECURITY_POLICY, /script-src 'self'/);
+        assert.match(CONTENT_SECURITY_POLICY, /script-src-attr 'none'/);
+        assert.match(CONTENT_SECURITY_POLICY, /object-src 'none'/);
+        assert.match(CONTENT_SECURITY_POLICY, /base-uri 'self'/);
+        assert.match(CONTENT_SECURITY_POLICY, /frame-ancestors 'self'/);
+        assert.match(CONTENT_SECURITY_POLICY, /form-action 'self'/);
+        assert.match(CONTENT_SECURITY_POLICY, /manifest-src 'self'/);
+        assert.doesNotMatch(CONTENT_SECURITY_POLICY, /unsafe-eval|script-src[^;]*unsafe-inline/);
+    });
+
+    it('sets the complete browser header bundle in Express', () => {
+        const headers = new Map();
+        securityHeaders({}, {
+            setHeader(name, value) {
+                headers.set(name.toLowerCase(), value);
+            }
+        }, () => {});
+
+        assert.equal(headers.get('content-security-policy'), CONTENT_SECURITY_POLICY);
+        assert.equal(headers.get('x-content-type-options'), 'nosniff');
+        assert.equal(headers.get('x-frame-options'), 'SAMEORIGIN');
+        assert.equal(headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
+        assert.equal(headers.get('permissions-policy'), 'camera=(), microphone=(), geolocation=(self)');
+        assert.equal(headers.get('x-permitted-cross-domain-policies'), 'none');
+        assert.equal(headers.get('origin-agent-cluster'), '?1');
+        assert.equal(headers.get('x-xss-protection'), '0');
+    });
+
+    it('retains security headers in every location that overrides add_header inheritance', () => {
+        for (const relativePath of [
+            'deploy/nginx.conf',
+            'deploy/hk-frontend-openresty.conf',
+            'deploy/openresty-root-proxy.conf',
+            'deploy/openresty-agent-os.conf'
+        ]) {
+            for (const block of locationBlocks(sourceFile(relativePath))) {
+                if (!/\badd_header\b/.test(block)) continue;
+                assert.match(block, /security-headers\.inc/, `${relativePath}: ${block.split('\n')[0].trim()}`);
+            }
+        }
+    });
+
+    it('normalizes proxy headers and forces HTTP requests back to HTTPS', () => {
+        const headerConfig = sourceFile('deploy/security-headers.inc');
+        const originSecurity = sourceFile('deploy/openresty-site-security.conf');
+        const originProxy = sourceFile('deploy/openresty-root-proxy.conf');
+        const edge = sourceFile('deploy/hk-frontend-openresty.conf');
+
+        for (const name of [
+            'Content-Security-Policy',
+            'Strict-Transport-Security',
+            'X-Content-Type-Options',
+            'X-Frame-Options',
+            'Referrer-Policy',
+            'Permissions-Policy',
+            'X-Permitted-Cross-Domain-Policies',
+            'Origin-Agent-Cluster',
+            'X-XSS-Protection'
+        ]) {
+            assert.match(headerConfig, new RegExp(`add_header ${name.replaceAll('-', '\\-')} `));
+            assert.match(originProxy, new RegExp(`proxy_hide_header ${name.replaceAll('-', '\\-')};`));
+            assert.match(edge, new RegExp(`proxy_hide_header ${name.replaceAll('-', '\\-')};`));
+        }
+
+        assert.match(headerConfig, /Strict-Transport-Security "max-age=31536000; includeSubDomains" always;/);
+        assert.match(originSecurity, /\$http_x_forwarded_proto = "http"[\s\S]*return 308 https:\/\/\$host\$request_uri;/);
+        assert.match(edge, /listen 80;[\s\S]*location \/ \{[\s\S]*return 308 https:\/\/\$host\$request_uri;/);
     });
 });
 

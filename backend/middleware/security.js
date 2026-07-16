@@ -8,6 +8,7 @@ const CONTENT_SECURITY_POLICY = [
     "base-uri 'self'",
     "object-src 'none'",
     "script-src 'self'",
+    "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
@@ -16,6 +17,7 @@ const CONTENT_SECURITY_POLICY = [
     "frame-src https:",
     "frame-ancestors 'self'",
     "form-action 'self'",
+    "manifest-src 'self'",
     "worker-src 'self' blob:",
     'upgrade-insecure-requests'
 ].join('; ');
@@ -31,6 +33,7 @@ function securityHeaders(req, res, next) {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
     res.setHeader('Origin-Agent-Cluster', '?1');
+    res.setHeader('X-XSS-Protection', '0');
     next();
 }
 
