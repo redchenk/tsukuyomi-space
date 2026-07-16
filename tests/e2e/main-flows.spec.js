@@ -28,6 +28,53 @@ function makePixelArtworkPayload(title) {
     };
 }
 
+function makeAssetPickerPayload() {
+    const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNk+M/wn4GBgYGJAQoAHgQCAQb7R3sAAAAASUVORK5CYII=';
+    return {
+        success: true,
+        data: {
+            assets: Array.from({ length: 12 }, (_, index) => ({
+                id: `asset-picker-${index + 1}`,
+                asset_type: 'image',
+                mime_type: 'image/png',
+                display_url: image,
+                markdown_url: image,
+                metadata: {
+                    fileName: index === 0
+                        ? 'spring-garden-yachiyo-afternoon-extra-long-preview-name-01.png'
+                        : `article-attachment-${String(index + 1).padStart(2, '0')}.png`
+                }
+            })),
+            pagination: { page: 1, totalPages: 1, total: 12 }
+        }
+    };
+}
+
+async function assetPickerLayout(page) {
+    return page.locator('.editor-asset-grid').evaluate((grid) => {
+        const cards = Array.from(grid.querySelectorAll('.editor-asset-card'));
+        const boxes = cards.map((card) => card.getBoundingClientRect());
+        let overlaps = 0;
+        for (let first = 0; first < boxes.length; first += 1) {
+            for (let second = first + 1; second < boxes.length; second += 1) {
+                const a = boxes[first];
+                const b = boxes[second];
+                if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) overlaps += 1;
+            }
+        }
+        const previewBoxes = cards.map((card) => card.querySelector('.editor-asset-preview').getBoundingClientRect());
+        return {
+            cardCount: cards.length,
+            cardDisplay: getComputedStyle(cards[0]).display,
+            overlaps,
+            cardWidths: boxes.map((box) => Math.round(box.width)),
+            previewRatios: previewBoxes.map((box) => box.width / box.height),
+            columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+            horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth
+        };
+    });
+}
+
 function sameOriginWriteHeaders(page) {
     return {
         Origin: new URL(page.url()).origin,
@@ -139,6 +186,35 @@ test('mobile account security and music playlist remain readable', async ({ page
         backgroundColor: 'rgb(17, 24, 39)',
         colorScheme: 'dark'
     });
+});
+
+test('article attachment picker keeps thumbnails aligned on desktop and mobile', async ({ page }) => {
+    await loginAsUser(page);
+    await page.route('**/api/assets?**', async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(makeAssetPickerPayload())
+        });
+    });
+    await page.goto('/editor');
+    await page.getByRole('button', { name: '上传 / 选择附件', exact: true }).click();
+
+    const dialog = page.getByRole('dialog', { name: '附件库' });
+    await expect(dialog).toBeVisible();
+    const desktop = await assetPickerLayout(page);
+    expect(desktop.cardCount).toBe(12);
+    expect(desktop.cardDisplay).toBe('grid');
+    expect(desktop.overlaps).toBe(0);
+    expect(new Set(desktop.cardWidths).size).toBeLessThanOrEqual(2);
+    expect(desktop.previewRatios.every((ratio) => Math.abs(ratio - (4 / 3)) < 0.02)).toBe(true);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobile = await assetPickerLayout(page);
+    expect(mobile.columns).toBe(2);
+    expect(mobile.overlaps).toBe(0);
+    expect(mobile.horizontalOverflow).toBe(false);
+    expect(new Set(mobile.cardWidths).size).toBe(1);
 });
 
 test('pixel artwork preview is body-level and closes from the visible button', async ({ page }) => {

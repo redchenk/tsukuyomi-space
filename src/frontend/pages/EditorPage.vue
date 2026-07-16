@@ -598,42 +598,54 @@ watch(currentArticleId, initEditor);
         </div>
       </form>
 
-      <div v-if="editor.assetPicker.open" class="editor-asset-backdrop" role="presentation" @click.self="closeAssetPicker">
-        <section class="editor-asset-modal" data-material="popover" role="dialog" aria-modal="true" aria-label="附件库" :aria-busy="editor.assetPicker.loading || editor.assetPicker.uploading">
-          <header class="editor-asset-head">
-            <div>
-              <span>Asset Library</span>
-              <h2>{{ editor.assetPicker.mode === 'cover' ? '选择封面图片' : '上传 / 选择附件' }}</h2>
+      <Teleport to="body">
+        <div v-if="editor.assetPicker.open" class="editor-asset-backdrop" role="presentation" @click.self="closeAssetPicker">
+          <section class="editor-asset-modal" data-material="popover" role="dialog" aria-modal="true" aria-label="附件库" :aria-busy="editor.assetPicker.loading || editor.assetPicker.uploading">
+            <header class="editor-asset-head">
+              <div>
+                <span>Asset Library</span>
+                <h2>{{ editor.assetPicker.mode === 'cover' ? '选择封面图片' : '上传 / 选择附件' }}</h2>
+              </div>
+              <button class="ghost-btn" type="button" @click="closeAssetPicker">关闭</button>
+            </header>
+            <div class="editor-asset-tools">
+              <input v-model="editor.assetPicker.search" type="search" placeholder="搜索附件" @keydown.enter="loadAssetPicker">
+              <button class="ghost-btn" type="button" @click="loadAssetPicker">搜索</button>
+              <button class="primary-btn" type="button" :disabled="editor.assetPicker.uploading" :aria-busy="editor.assetPicker.uploading" @click="editorAssetUploadInput?.click()">
+                {{ editor.assetPicker.uploading ? '上传中...' : '上传附件' }}
+              </button>
+              <input ref="editorAssetUploadInput" type="file" :accept="uploadAccept" hidden @change="uploadEditorAsset">
+              <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
             </div>
-            <button class="ghost-btn" type="button" @click="closeAssetPicker">关闭</button>
-          </header>
-          <div class="editor-asset-tools">
-            <input v-model="editor.assetPicker.search" type="search" placeholder="搜索附件" @keydown.enter="loadAssetPicker">
-            <button class="ghost-btn" type="button" @click="loadAssetPicker">搜索</button>
-            <button class="primary-btn" type="button" :disabled="editor.assetPicker.uploading" :aria-busy="editor.assetPicker.uploading" @click="editorAssetUploadInput?.click()">
-              {{ editor.assetPicker.uploading ? '上传中...' : '上传附件' }}
-            </button>
-            <input ref="editorAssetUploadInput" type="file" :accept="uploadAccept" hidden @change="uploadEditorAsset">
-            <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
-          </div>
-          <div v-if="editor.assetPicker.uploading" class="ts-loader-region" aria-busy="true">
-            <StatusLoader :label="editor.assetPicker.uploadPhase || '正在上传...'" :progress="editor.assetPicker.uploadProgress" />
-          </div>
-          <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
-          <LoadingSkeleton v-if="editor.assetPicker.loading" variant="gallery" :count="6" label="正在加载附件" />
-          <div v-else-if="editor.assetPicker.loadError" class="editor-asset-status error" role="alert">{{ editor.assetPicker.loadError }}</div>
-          <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用附件。可以在这里直接上传，或点击“管理附件”进入附件库。</div>
-          <div v-else class="editor-asset-grid">
-            <button v-for="asset in editor.assetPicker.assets" :key="asset.id" type="button" class="editor-asset-card" @click="useAsset(asset)">
-              <img v-if="assetPreviewType(asset) === 'image'" :src="assetUrl(asset)" :alt="assetDisplayName(asset)" loading="lazy">
-              <video v-else-if="assetPreviewType(asset) === 'video'" :src="assetUrl(asset)" preload="metadata"></video>
-              <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="assetUrl(asset)" preload="metadata"></audio>
-              <div v-else class="editor-asset-file">{{ asset.asset_type || 'file' }}</div>
-              <span>{{ assetDisplayName(asset) }}</span>
-            </button>
-          </div>
-        </section>
-      </div>
+            <div v-if="editor.assetPicker.uploading" class="ts-loader-region" aria-busy="true">
+              <StatusLoader :label="editor.assetPicker.uploadPhase || '正在上传...'" :progress="editor.assetPicker.uploadProgress" />
+            </div>
+            <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
+            <LoadingSkeleton v-if="editor.assetPicker.loading" variant="gallery" :count="6" label="正在加载附件" />
+            <div v-else-if="editor.assetPicker.loadError" class="editor-asset-status error" role="alert">{{ editor.assetPicker.loadError }}</div>
+            <div v-else-if="!editor.assetPicker.assets.length" class="editor-asset-status">还没有可用附件。可以在这里直接上传，或点击“管理附件”进入附件库。</div>
+            <div v-else class="editor-asset-grid">
+              <button
+                v-for="asset in editor.assetPicker.assets"
+                :key="asset.id"
+                type="button"
+                class="editor-asset-card"
+                :aria-label="`选择附件：${assetDisplayName(asset)}`"
+                :title="assetDisplayName(asset)"
+                @click="useAsset(asset)"
+              >
+                <div class="editor-asset-preview">
+                  <img v-if="assetPreviewType(asset) === 'image'" :src="assetUrl(asset)" alt="" loading="lazy">
+                  <video v-else-if="assetPreviewType(asset) === 'video'" :src="assetUrl(asset)" preload="metadata" muted playsinline aria-hidden="true"></video>
+                  <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="assetUrl(asset)" preload="metadata" aria-hidden="true"></audio>
+                  <div v-else class="editor-asset-file">{{ asset.asset_type || 'file' }}</div>
+                </div>
+                <span class="editor-asset-name">{{ assetDisplayName(asset) }}</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </Teleport>
     </div>
   </main>
 </template>
