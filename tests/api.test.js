@@ -219,6 +219,16 @@ describe('auth API', () => {
         assert.equal(body.data.username, 'normal-user');
     });
 
+    it('returns a readable error when the current password is incorrect', async () => {
+        const result = await putJson('/api/user/password', {
+            currentPassword: 'incorrect-current-password',
+            newPassword: 'new-password-2026'
+        }, userToken);
+
+        assert.equal(result.response.status, 400);
+        assert.equal(result.body.message, '当前密码错误');
+    });
+
     it('blacklists a token after logout', async () => {
         const token = await login('/api/auth/login', 'normal-user', 'user-test-password');
         const loggedOut = await postJson('/api/auth/logout', {}, token);

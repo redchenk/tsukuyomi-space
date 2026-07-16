@@ -1585,6 +1585,25 @@ body .page.uc-page .uc-security-card {
         gap: 0.72rem;
     }
 
+    body .page.uc-page .uc-security-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body .page.uc-page .uc-security-grid > * {
+        width: 100%;
+        min-width: 0;
+    }
+
+    body .page.uc-page .uc-security-card {
+        padding: 0.82rem;
+    }
+
+    body .page.uc-page .uc-password-reset-link {
+        width: 100%;
+        justify-content: flex-start;
+        white-space: normal;
+    }
+
     body .page.uc-page .uc-profile-bio {
         min-height: 104px;
     }

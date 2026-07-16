@@ -494,8 +494,14 @@
     border-radius: 12px;
     color: var(--ts-text-strong);
     background: var(--ts-surface-strong);
+    color-scheme: dark;
     font-size: 0.78rem;
     font-weight: 750;
+}
+
+.site-music-playlist-drawer select option {
+    color: #f7fbff;
+    background: #111827;
 }
 
 html[data-theme="light"] .site-music-panel {
@@ -509,6 +515,15 @@ html[data-theme="light"] .site-music-panel {
 
 html[data-theme="light"] .site-music-subdrawer.music-drawer {
     background: rgba(255, 255, 255, 0.66);
+}
+
+html[data-theme="light"] .site-music-playlist-drawer select {
+    color-scheme: light;
+}
+
+html[data-theme="light"] .site-music-playlist-drawer select option {
+    color: #27344d;
+    background: #fff;
 }
 
 @media (max-width: 860px) {

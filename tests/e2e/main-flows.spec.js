@@ -100,6 +100,47 @@ test('user can edit and delete their own message from user center', async ({ pag
     await expect(messageItem).toHaveCount(0);
 });
 
+test('mobile account security and music playlist remain readable', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await loginAsUser(page);
+    await page.goto('/user-center');
+    await page.getByRole('button', { name: '账户安全', exact: true }).click();
+
+    const securityGrid = page.locator('.uc-security-grid');
+    await expect(securityGrid).toBeVisible();
+    const layout = await securityGrid.evaluate((grid) => {
+        const [formColumn, securityCard] = grid.children;
+        const formRect = formColumn.getBoundingClientRect();
+        const cardRect = securityCard.getBoundingClientRect();
+        return {
+            columns: getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length,
+            formWidth: formRect.width,
+            cardWidth: cardRect.width,
+            viewportWidth: document.documentElement.clientWidth,
+            pageWidth: document.documentElement.scrollWidth
+        };
+    });
+    expect(layout.columns).toBe(1);
+    expect(Math.abs(layout.formWidth - layout.cardWidth)).toBeLessThan(1);
+    expect(layout.pageWidth).toBe(layout.viewportWidth);
+
+    await page.getByRole('button', { name: 'Expand music drawer', exact: true }).click();
+    await page.getByRole('button', { name: 'Playlist', exact: true }).click();
+    const playlistStyle = await page.getByRole('combobox', { name: 'Track', exact: true }).evaluate((select) => {
+        const optionStyle = getComputedStyle(select.options[0]);
+        return {
+            color: optionStyle.color,
+            backgroundColor: optionStyle.backgroundColor,
+            colorScheme: getComputedStyle(select).colorScheme
+        };
+    });
+    expect(playlistStyle).toEqual({
+        color: 'rgb(247, 251, 255)',
+        backgroundColor: 'rgb(17, 24, 39)',
+        colorScheme: 'dark'
+    });
+});
+
 test('pixel artwork preview is body-level and closes from the visible button', async ({ page }) => {
     await loginAsUser(page);
     const createResponse = await page.request.post('/api/pixel-art', {

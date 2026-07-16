@@ -284,7 +284,7 @@ router.post('/avatar', authenticateToken, (req, res) => {
     }
 });
 
-// 淇敼瀵嗙爜
+// 修改密码
 router.put('/password', authenticateToken, (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -293,20 +293,20 @@ router.put('/password', authenticateToken, (req, res) => {
             return res.status(400).json({ success: false, message: '请求处理失败' });
         }
 
-        // 鑾峰彇褰撳墠鐢ㄦ埛
+        // 获取当前用户
         const user = userRepository.findUserById(req.user.id);
 
         if (!user) {
             return res.status(404).json({ success: false, message: '请求处理失败' });
         }
 
-        // 楠岃瘉褰撳墠瀵嗙爜
+        // 验证当前密码
         const validPassword = bcrypt.compareSync(currentPassword, user.password_hash);
         if (!validPassword) {
-            return res.status(400).json({ success: false, message: '褰撳墠瀵嗙爜閿欒' });
+            return res.status(400).json({ success: false, message: '当前密码错误' });
         }
 
-        // 鍔犲瘑鏂板瘑鐮?
+        // 加密新密码
         if (String(newPassword).length < 8) {
             return res.status(400).json({ success: false, message: '新密码至少 8 位' });
         }
@@ -314,7 +314,7 @@ router.put('/password', authenticateToken, (req, res) => {
         adminRepository.resetUserPassword(req.user.id, passwordHash);
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
-        console.error('淇敼瀵嗙爜澶辫触:', error);
+        console.error('修改密码失败:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
