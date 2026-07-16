@@ -1116,6 +1116,45 @@ body .page.terminal-page .terminal-message-actions :is(.primary-btn, .danger-btn
     min-width: 68px;
 }
 
+.terminal-message-content {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.terminal-message-risk,
+.terminal-message-keywords {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.38rem;
+    margin-top: 0.55rem;
+    color: #8f2f3d;
+    font-size: 0.78rem;
+    font-weight: 760;
+}
+
+.terminal-message-keywords {
+    color: #8a610f;
+}
+
+.terminal-message-risk code,
+.terminal-message-keywords code {
+    max-width: 100%;
+    padding: 0.14rem 0.42rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font: inherit;
+    overflow-wrap: anywhere;
+}
+
+html[data-theme="dark"] .terminal-message-risk {
+    color: #ffb4bd;
+}
+
+html[data-theme="dark"] .terminal-message-keywords {
+    color: #f3d28b;
+}
+
 @media (max-width: 560px) {
     .terminal-cards {
         grid-template-columns: 1fr;

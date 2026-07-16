@@ -335,8 +335,11 @@ describe('terminal privilege boundaries', () => {
         const terminalCss = source('assets/css/vue/pages/terminal.css');
 
         assert.match(terminal, /terminal-message-actions/);
-        assert.match(terminal, /approveMessage\(item\.id\)/);
+        assert.match(terminal, /approveMessage\(item\)/);
         assert.match(terminal, /deleteMessage\(item\.id\)/);
+        assert.match(terminal, /reviewDigest: item\.moderation\?\.reviewDigest/);
+        assert.match(terminal, /confirmExternalLink: externalHosts\.length > 0/);
+        assert.match(terminal, /class="terminal-message-risk" role="alert"/);
         assert.match(terminal, /<option value="banned">banned<\/option>/);
         assert.match(terminalCss, /terminal-message-table th:last-child[\s\S]*position: sticky/);
     });

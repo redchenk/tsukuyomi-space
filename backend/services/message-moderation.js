@@ -1,4 +1,5 @@
 const adminRepository = require('../repositories/admin-repository');
+const { inspectMessageLinks } = require('./message-link-security');
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGE_BYTES = 8000;
@@ -86,14 +87,24 @@ function reviewMessageContent(content, settings = readModerationSettings()) {
     if (containsActiveMarkup(normalizedContent)) {
         return { accepted: false, code: 'ACTIVE_MARKUP', status: 'rejected', matchedKeywords: [] };
     }
+    const linkInspection = inspectMessageLinks(decodeForInspection(normalizedContent));
+    if (linkInspection.dangerousScheme) {
+        return { accepted: false, code: 'DANGEROUS_LINK', status: 'rejected', matchedKeywords: [] };
+    }
 
     const text = normalizedContent.toLowerCase();
     const matchedKeywords = moderationKeywords(settings).filter(keyword => text.includes(keyword));
+    const externalHosts = [...new Set(linkInspection.externalLinks.map(link => link.hostname))];
+    const reviewReasons = [];
+    if (matchedKeywords.length) reviewReasons.push('keyword');
+    if (externalHosts.length) reviewReasons.push('external_link');
     return {
         accepted: true,
         content: normalizedContent,
-        status: matchedKeywords.length ? 'pending' : 'approved',
-        matchedKeywords
+        status: reviewReasons.length ? 'pending' : 'approved',
+        matchedKeywords,
+        externalHosts,
+        reviewReasons
     };
 }
 
@@ -104,6 +115,7 @@ module.exports = {
     containsActiveMarkup,
     decodeForInspection,
     normalizeKeywordList,
+    readModerationSettings,
     moderationKeywords,
     reviewMessageContent
 };

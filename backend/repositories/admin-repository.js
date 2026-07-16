@@ -122,7 +122,8 @@ function listAdminMessages() {
                a.title AS article_title,
                a.slug AS article_slug,
                COALESCE(m.status, 'approved') AS status,
-               m.created_at
+               m.created_at,
+               m.updated_at
         FROM messages m
         LEFT JOIN users u ON m.user_id = u.id
         LEFT JOIN articles a ON m.article_id = a.id
@@ -132,6 +133,14 @@ function listAdminMessages() {
 
 function approveMessage(id) {
     return db.prepare("UPDATE messages SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id).changes;
+}
+
+function findAdminMessageById(id) {
+    return db.prepare(`
+        SELECT id, content, status, created_at, updated_at
+        FROM messages
+        WHERE id = ?
+    `).get(id);
 }
 
 function deleteMessage(id) {
@@ -254,6 +263,7 @@ module.exports = {
     toggleArticleStatus,
     toggleArticlePin,
     listAdminMessages,
+    findAdminMessageById,
     approveMessage,
     deleteMessage,
     listUsers,

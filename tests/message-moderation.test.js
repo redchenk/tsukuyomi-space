@@ -22,6 +22,7 @@ const { createApp } = require('../backend/app');
 const db = require('../backend/db');
 const { generateToken } = require('../backend/middleware/auth');
 const { getClientIp } = require('../backend/middleware/security');
+const { reviewMessageContent } = require('../backend/services/message-moderation');
 
 let server;
 let baseUrl;
@@ -126,8 +127,50 @@ async function main() {
         assert.equal(db.prepare('SELECT COUNT(*) AS count FROM messages WHERE content = ?').get(content).count, 0);
     }
 
+    assert.equal(reviewMessageContent('javascript:alert(1)').code, 'DANGEROUS_LINK');
+    for (const content of [
+        'https://login-security.example/account',
+        'hxxps://paypa1[.]example/login',
+        'www.short-link.example/reset',
+        '请访问 t.me/fake-support',
+        'https : // evil . example / login'
+    ]) {
+        const review = reviewMessageContent(content);
+        assert.equal(review.accepted, true);
+        assert.equal(review.status, 'pending');
+        assert.ok(review.externalHosts.length > 0);
+        assert.ok(review.reviewReasons.includes('external_link'));
+    }
+    assert.equal(reviewMessageContent('站内说明 https://yachiyo.hk/reality').status, 'approved');
+
     const harmlessAngleText = await postJson('/api/messages', { content: '今天也很开心 <3' }, userToken);
     assert.equal(harmlessAngleText.response.status, 201);
+
+    const phishingContent = '账号异常，请访问 hxxps://paypa1[.]example/login';
+    const phishingCreateRes = await postJson('/api/messages', { content: phishingContent }, userToken);
+    assert.equal(phishingCreateRes.response.status, 201);
+    assert.equal(phishingCreateRes.body.data.status, 'pending');
+
+    const phishingHiddenRes = await request('/api/messages/plaza/test-phishing-before');
+    assert.equal(phishingHiddenRes.body.data.some(item => item.id === phishingCreateRes.body.data.id), false);
+
+    const phishingAdminList = await request('/api/admin/messages', { headers: jsonHeaders(adminToken) });
+    const phishingPending = phishingAdminList.body.data.find(item => item.id === phishingCreateRes.body.data.id);
+    assert.ok(phishingPending);
+    assert.deepEqual(phishingPending.moderation.externalHosts, ['paypa1.example']);
+    assert.ok(phishingPending.moderation.reviewDigest);
+
+    const missingConfirmation = await postJson(`/api/admin/messages/${phishingCreateRes.body.data.id}/approve`, {
+        reviewDigest: phishingPending.moderation.reviewDigest
+    }, adminToken);
+    assert.equal(missingConfirmation.response.status, 409);
+    assert.equal(missingConfirmation.body.code, 'EXTERNAL_LINK_CONFIRMATION_REQUIRED');
+
+    const phishingApprove = await postJson(`/api/admin/messages/${phishingCreateRes.body.data.id}/approve`, {
+        reviewDigest: phishingPending.moderation.reviewDigest,
+        confirmExternalLink: true
+    }, adminToken);
+    assert.equal(phishingApprove.response.status, 200);
 
     const tooLong = await postJson('/api/messages', { content: 'x'.repeat(2001) }, userToken);
     assert.equal(tooLong.response.status, 422);
@@ -154,7 +197,24 @@ async function main() {
     assert.ok(pending);
     assert.equal(pending.status, 'pending');
 
-    const approveRes = await postJson(`/api/admin/messages/${riskyCreateRes.body.data.id}/approve`, {}, adminToken);
+    const changedRiskyContent = `${riskyContent} changed-after-review`;
+    db.prepare(`
+        UPDATE messages
+        SET content = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    `).run(changedRiskyContent, riskyCreateRes.body.data.id);
+
+    const staleApproveRes = await postJson(`/api/admin/messages/${riskyCreateRes.body.data.id}/approve`, {
+        reviewDigest: pending.moderation.reviewDigest
+    }, adminToken);
+    assert.equal(staleApproveRes.response.status, 409);
+    assert.equal(staleApproveRes.body.code, 'MESSAGE_REVIEW_STALE');
+
+    const refreshedAdminList = await request('/api/admin/messages', { headers: jsonHeaders(adminToken) });
+    const refreshedPending = refreshedAdminList.body.data.find(item => item.id === riskyCreateRes.body.data.id);
+    const approveRes = await postJson(`/api/admin/messages/${riskyCreateRes.body.data.id}/approve`, {
+        reviewDigest: refreshedPending.moderation.reviewDigest
+    }, adminToken);
     assert.equal(approveRes.response.status, 200);
     assert.equal(approveRes.body.success, true);
 
@@ -163,7 +223,7 @@ async function main() {
     const visible = visibleRes.body.data.find(item => item.id === riskyCreateRes.body.data.id);
     assert.ok(visible);
     assert.equal(visible.status, 'approved');
-    assert.equal(visible.content, riskyContent);
+    assert.equal(visible.content, changedRiskyContent);
 
     db.prepare(`
         INSERT INTO users (id, username, email, password_hash, role)

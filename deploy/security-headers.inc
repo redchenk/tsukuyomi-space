@@ -6,4 +6,6 @@ add_header Referrer-Policy strict-origin-when-cross-origin always;
 add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
 add_header X-Permitted-Cross-Domain-Policies none always;
 add_header Origin-Agent-Cluster "?1" always;
+add_header Cross-Origin-Opener-Policy same-origin-allow-popups always;
+add_header Cross-Origin-Resource-Policy same-site always;
 add_header X-XSS-Protection "0" always;

@@ -23,7 +23,8 @@ function rejectInvalidContent(res, review) {
         EMPTY_CONTENT: '留言内容不能为空',
         INVALID_CONTENT: '留言格式无效',
         CONTENT_TOO_LONG: '留言不能超过 2000 字',
-        ACTIVE_MARKUP: '留言包含不安全的活动内容'
+        ACTIVE_MARKUP: '留言包含不安全的活动内容',
+        DANGEROUS_LINK: '留言包含禁止发布的危险链接'
     };
     return res.status(422).json({
         success: false,

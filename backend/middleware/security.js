@@ -33,6 +33,8 @@ function securityHeaders(req, res, next) {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
     res.setHeader('Origin-Agent-Cluster', '?1');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
     res.setHeader('X-XSS-Protection', '0');
     next();
 }

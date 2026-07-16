@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const config = require('./config');
 const adminRepository = require('./repositories/admin-repository');
 const friendLinkRepository = require('./repositories/friend-link-repository');
@@ -11,6 +12,7 @@ const objectStorage = require('./services/object-storage');
 const responseCache = require('./services/response-cache');
 const { publicEmail } = require('./validators');
 const { normalizeFriendLinkUrl, validateFriendLinkApplication } = require('./services/friend-links');
+const { readModerationSettings, reviewMessageContent } = require('./services/message-moderation');
 const {
     authenticateToken,
     requireAdmin,
@@ -64,6 +66,33 @@ function ok(res, data = null, message = '操作成功') {
 
 function fail(res, status, message) {
     res.status(status).json({ success: false, message });
+}
+
+function messageReviewDigest(message) {
+    return crypto.createHash('sha256')
+        .update(`${message?.id || ''}\0${message?.content || ''}\0${message?.updated_at || message?.created_at || ''}`)
+        .digest('base64url');
+}
+
+function digestMatches(expected, actual) {
+    const left = Buffer.from(String(expected || ''));
+    const right = Buffer.from(String(actual || ''));
+    return left.length === right.length && left.length > 0 && crypto.timingSafeEqual(left, right);
+}
+
+function messageModerationView(message, settings) {
+    const review = reviewMessageContent(message.content, settings);
+    return {
+        ...message,
+        moderation: {
+            reviewDigest: messageReviewDigest(message),
+            blocked: !review.accepted,
+            code: review.accepted ? '' : (review.code || 'UNSAFE_MESSAGE'),
+            reasons: review.reviewReasons || [],
+            matchedKeywords: review.matchedKeywords || [],
+            externalHosts: review.externalHosts || []
+        }
+    };
 }
 
 function asInt(value) {
@@ -408,7 +437,8 @@ router.delete('/articles/:id', (req, res) => {
 
 router.get('/messages', (req, res) => {
     try {
-        ok(res, adminRepository.listAdminMessages());
+        const settings = readModerationSettings();
+        ok(res, adminRepository.listAdminMessages().map(message => messageModerationView(message, settings)));
     } catch (error) {
         console.error('Admin message list error:', error);
         fail(res, 500, '无法读取留言列表');
@@ -419,6 +449,30 @@ router.post('/messages/:id/approve', (req, res) => {
     try {
         const id = asInt(req.params.id);
         if (!id) return fail(res, 400, '留言 ID 无效');
+        const message = adminRepository.findAdminMessageById(id);
+        if (!message) return fail(res, 404, '留言不存在');
+        const review = reviewMessageContent(message.content);
+        if (!review.accepted) {
+            return res.status(422).json({
+                success: false,
+                message: '留言包含禁止发布的危险内容',
+                code: review.code || 'UNSAFE_MESSAGE'
+            });
+        }
+        if (!digestMatches(messageReviewDigest(message), req.body?.reviewDigest)) {
+            return res.status(409).json({
+                success: false,
+                message: '留言内容已变化，请重新审核',
+                code: 'MESSAGE_REVIEW_STALE'
+            });
+        }
+        if (review.externalHosts?.length && req.body?.confirmExternalLink !== true) {
+            return res.status(409).json({
+                success: false,
+                message: '留言包含外部链接，需要明确确认后才能通过',
+                code: 'EXTERNAL_LINK_CONFIRMATION_REQUIRED'
+            });
+        }
         if (!adminRepository.approveMessage(id)) return fail(res, 404, '留言不存在');
         clearPublicMessageCache();
         ok(res, null, '留言已通过');

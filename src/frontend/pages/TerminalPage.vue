@@ -182,6 +182,10 @@ function messageArticlePath(item) {
   return `/articles/${encodeURIComponent(item.article_id)}${item.article_slug ? `/${encodeURIComponent(item.article_slug)}` : ''}`;
 }
 
+function messageRiskHosts(item) {
+  return Array.isArray(item?.moderation?.externalHosts) ? item.moderation.externalHosts : [];
+}
+
 function showMessage(text, type = 'success') {
   terminal.message = text;
   terminal.messageType = type;
@@ -321,9 +325,17 @@ async function deleteArticle(id) {
   await loadPanel('articles');
 }
 
-async function approveMessage(id) {
+async function approveMessage(item) {
+  const externalHosts = messageRiskHosts(item);
+  if (externalHosts.length && !confirm(`这条留言包含外部链接：${externalHosts.join('、')}。确认已核对域名并继续通过吗？`)) return;
   try {
-    await adminApi(`/messages/${id}/approve`, { method: 'POST' });
+    await adminApi(`/messages/${item.id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({
+        reviewDigest: item.moderation?.reviewDigest || '',
+        confirmExternalLink: externalHosts.length > 0
+      })
+    });
     showMessage('留言已通过');
     await loadPanel('messages');
   } catch (error) {
@@ -749,12 +761,27 @@ onUnmounted(() => {
                   <a v-if="item.article_id" class="terminal-source-link" href="#" @click.prevent="$emit('go', messageArticlePath(item))">{{ item.article_title || `文章 #${item.article_id}` }}</a>
                   <small v-else>月读广场留言墙</small>
                 </td>
-                <td>{{ item.content }}</td>
+                <td>
+                  <div class="terminal-message-content">{{ item.content }}</div>
+                  <div v-if="item.moderation?.blocked" class="terminal-message-risk" role="alert">
+                    <TsIcon name="shield" :size="15" />
+                    <span>禁止内容 {{ item.moderation.code }}</span>
+                  </div>
+                  <div v-if="messageRiskHosts(item).length" class="terminal-message-risk" role="alert">
+                    <TsIcon name="shield" :size="15" />
+                    <span>外链风险</span>
+                    <code v-for="host in messageRiskHosts(item)" :key="host">{{ host }}</code>
+                  </div>
+                  <div v-if="item.moderation?.matchedKeywords?.length" class="terminal-message-keywords">
+                    <span>命中关键词</span>
+                    <code v-for="keyword in item.moderation.matchedKeywords" :key="keyword">{{ keyword }}</code>
+                  </div>
+                </td>
                 <td><span class="terminal-badge" :class="item.status === 'approved' ? 'ok' : 'warn'">{{ item.status === 'approved' ? '已通过' : '待审核' }}</span></td>
                 <td>{{ formatDate(item.created_at) }}</td>
                 <td>
                   <div class="terminal-actions terminal-message-actions">
-                    <button v-if="item.status !== 'approved'" class="primary-btn compact" type="button" title="通过留言" :aria-label="`通过留言 ${item.id}`" @click="approveMessage(item.id)">
+                    <button v-if="item.status !== 'approved' && !item.moderation?.blocked" class="primary-btn compact" type="button" title="通过留言" :aria-label="`通过留言 ${item.id}`" @click="approveMessage(item)">
                       <TsIcon name="userCheck" :size="16" />
                       <span>通过</span>
                     </button>

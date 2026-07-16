@@ -242,6 +242,8 @@ describe('browser security headers', () => {
         assert.equal(headers.get('permissions-policy'), 'camera=(), microphone=(), geolocation=(self)');
         assert.equal(headers.get('x-permitted-cross-domain-policies'), 'none');
         assert.equal(headers.get('origin-agent-cluster'), '?1');
+        assert.equal(headers.get('cross-origin-opener-policy'), 'same-origin-allow-popups');
+        assert.equal(headers.get('cross-origin-resource-policy'), 'same-site');
         assert.equal(headers.get('x-xss-protection'), '0');
     });
 
@@ -276,6 +278,8 @@ describe('browser security headers', () => {
             'Permissions-Policy',
             'X-Permitted-Cross-Domain-Policies',
             'Origin-Agent-Cluster',
+            'Cross-Origin-Opener-Policy',
+            'Cross-Origin-Resource-Policy',
             'X-XSS-Protection'
         ]) {
             assert.match(headerConfig, new RegExp(`add_header ${name.replaceAll('-', '\\-')} `));
