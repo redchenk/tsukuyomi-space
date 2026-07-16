@@ -263,6 +263,7 @@ describe('browser security headers', () => {
         const headerConfig = sourceFile('deploy/security-headers.inc');
         const originSecurity = sourceFile('deploy/openresty-site-security.conf');
         const originProxy = sourceFile('deploy/openresty-root-proxy.conf');
+        const agentOs = sourceFile('deploy/openresty-agent-os.conf');
         const edge = sourceFile('deploy/hk-frontend-openresty.conf');
 
         for (const name of [
@@ -282,6 +283,10 @@ describe('browser security headers', () => {
         }
 
         assert.match(headerConfig, /Strict-Transport-Security "max-age=31536000; includeSubDomains" always;/);
+        for (const config of [originSecurity, originProxy, agentOs]) {
+            assert.match(config, /include \/www\/sites\/yachiyo\.hk\/proxy\/_tsukuyomi-security-headers\.inc;/);
+            assert.doesNotMatch(config, /include \/opt\/1panel\/www\/sites\//);
+        }
         assert.match(originSecurity, /\$http_x_forwarded_proto = "http"[\s\S]*return 308 https:\/\/\$host\$request_uri;/);
         assert.match(edge, /listen 80;[\s\S]*location \/ \{[\s\S]*return 308 https:\/\/\$host\$request_uri;/);
     });
