@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const https = require('https');
 const { authenticateToken } = require('../middleware/auth');
@@ -86,6 +87,24 @@ function normalizeTurnId(value) {
         throw error;
     }
     return turnId;
+}
+
+function captureCompatibleChatTurn(userId, payload = {}) {
+    if (typeof payload.userMessage !== 'string' || typeof payload.assistantReply !== 'string') return [];
+
+    try {
+        const suppliedTurnId = String(payload.turnId || '').trim();
+        const turnId = suppliedTurnId
+            ? normalizeTurnId(suppliedTurnId)
+            : `memory-${crypto.randomUUID()}`;
+        return roomChatRepository.saveTurn(userId, {
+            turnId,
+            userMessage: normalizeChatContent(payload.userMessage, 'userMessage'),
+            assistantMessage: normalizeChatContent(payload.assistantReply, 'assistantReply')
+        });
+    } catch (_) {
+        return [];
+    }
 }
 
 function hasCoordinate(value) {
@@ -615,6 +634,10 @@ router.get('/memory/:id', authenticateToken, (req, res) => {
 
 router.post('/memory', authenticateToken, async (req, res) => {
     try {
+        const chatMessageIds = captureCompatibleChatTurn(req.user.id, req.body || {});
+        if (chatMessageIds.length) {
+            roomMemoryEvents.publishChat(req.user.id, { action: 'turn-saved', messageIds: chatMessageIds });
+        }
         const result = await roomMemory.recordMemory(req.user.id, req.body || {});
         if (!result) {
             return res.status(202).json({ success: true, data: null, message: '本轮对话没有需要长期保存的记忆' });

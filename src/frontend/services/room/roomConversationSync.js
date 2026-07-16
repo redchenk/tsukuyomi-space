@@ -4,6 +4,7 @@ const CHAT_EVENT_NAME = 'tsukuyomi:room-chat-updated';
 const LEGACY_HISTORY_KEY = 'roomChatHistory';
 const LEGACY_MIGRATED_KEY = 'roomChatHistory:migrated';
 const MAX_HISTORY_MESSAGES = 24;
+const inFlightTurns = new Map();
 
 function currentUserId() {
   return String(getSession()?.user?.id || '').trim();
@@ -80,15 +81,27 @@ function removePendingTurn(turnId) {
 }
 
 async function postConversationTurn(turn) {
-  const response = await authFetch('/api/room/chat/turn', {
-    method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-    body: JSON.stringify(turn)
-  });
-  const result = await parseResponse(response);
-  if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
-  removePendingTurn(turn.turnId);
-  return normalizeHistory(result.data);
+  const existing = inFlightTurns.get(turn.turnId);
+  if (existing) return existing;
+
+  const request = (async () => {
+    const response = await authFetch('/api/room/chat/turn', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
+      body: JSON.stringify(turn)
+    });
+    const result = await parseResponse(response);
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    removePendingTurn(turn.turnId);
+    return normalizeHistory(result.data);
+  })();
+
+  inFlightTurns.set(turn.turnId, request);
+  try {
+    return await request;
+  } finally {
+    if (inFlightTurns.get(turn.turnId) === request) inFlightTurns.delete(turn.turnId);
+  }
 }
 
 async function flushPendingTurns() {

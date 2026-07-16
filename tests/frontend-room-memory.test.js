@@ -136,8 +136,10 @@ describe('frontend room memory API client usage', () => {
         assert.match(conversation, /authFetch\(noStoreUrl\('\/api\/room\/chat\?limit=24'\)/);
         assert.match(conversation, /authFetch\('\/api\/room\/chat\/turn'/);
         assert.match(conversation, /authFetch\('\/api\/room\/chat\/import'/);
+        assert.match(conversation, /const inFlightTurns = new Map\(\)/);
         assert.match(chat, /readRoomConversation\(\)\.slice\(-12\)/);
         assert.match(chat, /saveRoomConversationTurn\(/);
+        assert.match(chat, /remember\(userContent, reply, turnId\)/);
         assert.match(chat, /startRoomConversationUpdates\(/);
         assert.doesNotMatch(chat, /readJson\('roomChatHistory'/);
     });

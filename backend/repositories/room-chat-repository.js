@@ -54,8 +54,29 @@ function insertMessage({ userId, turnId, role, content }) {
     return result.changes ? id : null;
 }
 
+function findRecentMatchingTurn(userId, userMessage, assistantMessage) {
+    return db.prepare(`
+        SELECT user_message.turn_id
+        FROM room_chat_messages AS user_message
+        JOIN room_chat_messages AS assistant_message
+          ON assistant_message.user_id = user_message.user_id
+         AND assistant_message.turn_id = user_message.turn_id
+         AND assistant_message.role = 'assistant'
+        WHERE user_message.user_id = ?
+          AND user_message.role = 'user'
+          AND user_message.content = ?
+          AND assistant_message.content = ?
+          AND user_message.created_at >= datetime('now', '-2 minutes')
+        ORDER BY user_message.rowid DESC
+        LIMIT 1
+    `).get(userId, userMessage, assistantMessage)?.turn_id || '';
+}
+
 function saveTurn(userId, { turnId, userMessage, assistantMessage }) {
     const save = db.transaction(() => {
+        const matchingTurnId = findRecentMatchingTurn(userId, userMessage, assistantMessage);
+        if (matchingTurnId && matchingTurnId !== turnId) return [];
+
         const messageIds = [
             insertMessage({ userId, turnId, role: 'user', content: userMessage }),
             insertMessage({ userId, turnId, role: 'assistant', content: assistantMessage })

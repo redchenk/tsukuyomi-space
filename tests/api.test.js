@@ -229,6 +229,48 @@ describe('database initialization', () => {
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('admin').role, 'admin');
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('staff-admin').role, 'admin');
     });
+
+    it('backfills recoverable legacy memory conversations once', () => {
+        const migration = require('../backend/db/migrations/021_backfill_room_chat_messages');
+        const userId = 'legacy-chat-migration-user';
+        const memoryId = 'legacy-chat-memory';
+
+        try {
+            db.prepare(`
+                INSERT INTO users (id, username, email, password_hash, role)
+                VALUES (?, ?, ?, ?, 'user')
+            `).run(userId, userId, `${userId}@example.test`, 'unused');
+            db.prepare(`
+                INSERT INTO room_memories (id, user_id, summary, content, embedding)
+                VALUES (?, ?, ?, ?, '[]')
+            `).run(
+                memoryId,
+                userId,
+                'legacy conversation',
+                '用户：first question\n八千代：first answer\n\n用户：second question\n八千代：second answer'
+            );
+
+            migration.up(db);
+            migration.up(db);
+
+            const messages = db.prepare(`
+                SELECT role, content
+                FROM room_chat_messages
+                WHERE user_id = ?
+                ORDER BY rowid ASC
+            `).all(userId);
+            assert.deepEqual(messages, [
+                { role: 'user', content: 'first question' },
+                { role: 'assistant', content: 'first answer' },
+                { role: 'user', content: 'second question' },
+                { role: 'assistant', content: 'second answer' }
+            ]);
+        } finally {
+            db.prepare('DELETE FROM room_chat_messages WHERE user_id = ?').run(userId);
+            db.prepare('DELETE FROM room_memories WHERE user_id = ?').run(userId);
+            db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+        }
+    });
 });
 
 describe('auth API', () => {
@@ -1298,6 +1340,45 @@ describe('room memory API', () => {
             managedStream?.controller.abort();
             await Promise.allSettled([userStream?.reader?.cancel(), managedStream?.reader?.cancel()]);
             db.prepare("DELETE FROM room_chat_messages WHERE user_id IN ('user-001', 'user-002')").run();
+        }
+    });
+
+    it('captures memory-only room turns for legacy tabs without duplicating modern saves', async () => {
+        const userMessage = 'sync hello';
+        const assistantMessage = 'sync reply';
+
+        try {
+            db.prepare("DELETE FROM room_chat_messages WHERE user_id = 'user-001'").run();
+
+            const legacy = await postJson('/api/room/memory', {
+                userMessage,
+                assistantReply: assistantMessage
+            }, userToken);
+            assert.equal(legacy.response.status, 202);
+
+            const captured = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
+            assert.equal(captured.response.status, 200);
+            assert.deepEqual(captured.body.data.map(item => item.content), [userMessage, assistantMessage]);
+
+            const modernRetry = await postJson('/api/room/chat/turn', {
+                turnId: `turn-${Date.now()}-legacy-retry`,
+                userMessage,
+                assistantMessage
+            }, userToken);
+            assert.equal(modernRetry.response.status, 200);
+            assert.equal(modernRetry.body.data.length, 2);
+
+            const repeatedLegacy = await postJson('/api/room/memory', {
+                userMessage,
+                assistantReply: assistantMessage
+            }, userToken);
+            assert.equal(repeatedLegacy.response.status, 202);
+
+            const deduplicated = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
+            assert.equal(deduplicated.body.data.length, 2);
+        } finally {
+            db.prepare("DELETE FROM room_chat_messages WHERE user_id = 'user-001'").run();
+            db.prepare("DELETE FROM room_memories WHERE user_id = 'user-001'").run();
         }
     });
 

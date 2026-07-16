@@ -952,7 +952,7 @@ export function useRoomChat({ live2d, world }) {
       saveRoomConversationTurn({ turnId, userMessage: userContent, assistantMessage: reply }).catch((error) => {
         console.warn('Room conversation save failed:', error);
       });
-      remember(userContent, reply).catch((error) => {
+      remember(userContent, reply, turnId).catch((error) => {
         console.warn('Room memory save failed:', error);
       });
     } catch (error) {
@@ -967,13 +967,13 @@ export function useRoomChat({ live2d, world }) {
     }
   }
 
-  async function remember(userMessage, assistantReply) {
+  async function remember(userMessage, assistantReply, turnId = '') {
     const memorySettings = readJson('roomMemorySettings', { enabled: true });
     if (memorySettings.enabled === false) return;
     const response = await authFetch('/api/room/memory', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify({ userMessage, assistantReply })
+      body: JSON.stringify({ turnId, userMessage, assistantReply })
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
