@@ -82,7 +82,7 @@ describe('frontend room memory API client usage', () => {
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/persona-memory\?\$\{params\}`\)/);
         assert.match(code, /authFetch\('\/api\/room\/memory'/);
-        assert.match(code, /tsukuyomi:room-memory-updated/);
+        assert.match(code, /publishLocalRoomMemoryUpdate\(result\.data/);
         assertNoRawRoomMemoryFetch('src/frontend/composables/room/useRoomChat.js');
     });
 
@@ -95,6 +95,22 @@ describe('frontend room memory API client usage', () => {
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
         assert.match(code, /window\.addEventListener\('tsukuyomi:room-memory-updated', onRoomMemoryUpdated\)/);
         assertNoRawRoomMemoryFetch('src/frontend/pages/RoomSettingsPage.vue');
+    });
+
+    it('keeps one authenticated realtime stream and invalidates memory views without exposing account ids', () => {
+        const sync = source('src/frontend/services/room/roomMemorySync.js');
+        const chat = source('src/frontend/composables/room/useRoomChat.js');
+        const settings = source('src/frontend/pages/RoomSettingsPage.vue');
+
+        assert.match(sync, /new EventSource\(apiUrl\('\/api\/room\/memory\/events'\)/);
+        assert.match(sync, /getSession\(\)\?\.user\?\.id/);
+        assert.match(sync, /tsukuyomi:room-memory-updated/);
+        assert.doesNotMatch(sync, /[?&]userId=/);
+        assert.match(chat, /startRoomMemorySync\(\)/);
+        assert.match(chat, /stopRoomMemorySync\(\)/);
+        assert.match(settings, /startRoomMemorySync\(\)/);
+        assert.match(settings, /refreshRoomMemorySync\(\)/);
+        assert.match(settings, /stopRoomMemorySync\(\)/);
     });
 });
 

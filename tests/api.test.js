@@ -70,6 +70,56 @@ async function request(pathname, options = {}) {
     return { response, body };
 }
 
+async function openEventStream(pathname, token) {
+    const controller = new AbortController();
+    const response = await fetch(`${baseUrl}${pathname}`, {
+        headers: {
+            Accept: 'text/event-stream',
+            ...authHeader(token)
+        },
+        signal: controller.signal
+    });
+    return {
+        controller,
+        response,
+        reader: response.body?.getReader(),
+        decoder: new TextDecoder(),
+        buffer: ''
+    };
+}
+
+async function readEvent(stream, expectedEvent, timeoutMs = 2500) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        let timeout;
+        const remaining = Math.max(1, deadline - Date.now());
+        const chunk = await Promise.race([
+            stream.reader.read(),
+            new Promise((_, reject) => {
+                timeout = setTimeout(() => reject(new Error(`Timed out waiting for SSE event ${expectedEvent}`)), remaining);
+            })
+        ]).finally(() => clearTimeout(timeout));
+
+        if (chunk.done) throw new Error(`SSE stream ended before ${expectedEvent}`);
+        stream.buffer += stream.decoder.decode(chunk.value, { stream: true }).replace(/\r\n/g, '\n');
+
+        let boundary = stream.buffer.indexOf('\n\n');
+        while (boundary >= 0) {
+            const block = stream.buffer.slice(0, boundary);
+            stream.buffer = stream.buffer.slice(boundary + 2);
+            const event = block.match(/^event:\s*(.+)$/m)?.[1]?.trim() || 'message';
+            const data = block
+                .split('\n')
+                .filter(line => line.startsWith('data:'))
+                .map(line => line.slice(5).trimStart())
+                .join('\n');
+            if (event === expectedEvent) return data ? JSON.parse(data) : null;
+            boundary = stream.buffer.indexOf('\n\n');
+        }
+    }
+    throw new Error(`Timed out waiting for SSE event ${expectedEvent}`);
+}
+
 async function postJson(pathname, body, token) {
     return request(pathname, {
         method: 'POST',
@@ -1034,6 +1084,76 @@ describe('room memory API', () => {
 
         assert.equal(response.status, 401);
         assert.equal(body.success, false);
+    });
+
+    it('streams memory changes only to the authenticated account', async () => {
+        const unauthenticated = await request('/api/room/memory/events');
+        assert.equal(unauthenticated.response.status, 401);
+
+        let userStream;
+        let managedStream;
+        let userMemoryId = '';
+        let managedMemoryId = '';
+        try {
+            [userStream, managedStream] = await Promise.all([
+                openEventStream('/api/room/memory/events', userToken),
+                openEventStream('/api/room/memory/events', managedUserToken)
+            ]);
+            assert.equal(userStream.response.status, 200);
+            assert.equal(managedStream.response.status, 200);
+            assert.match(userStream.response.headers.get('content-type') || '', /text\/event-stream/);
+            await Promise.all([
+                readEvent(userStream, 'ready'),
+                readEvent(managedStream, 'ready')
+            ]);
+
+            const marker = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const userCreated = await postJson('/api/room/memory', {
+                userMessage: `Remember cross-device marker ${marker} for account A.`,
+                assistantReply: `Stored marker ${marker}.`,
+                force: true
+            }, userToken);
+            assert.equal(userCreated.response.status, 201);
+            userMemoryId = userCreated.body.data.id;
+
+            const userEvent = await readEvent(userStream, 'memory');
+            assert.equal(userEvent.action, 'created');
+            assert.deepEqual(userEvent.memoryIds, [userMemoryId]);
+            assert.equal(Object.hasOwn(userEvent, 'userId'), false);
+            assert.equal(Object.hasOwn(userEvent, 'content'), false);
+
+            const managedCreated = await postJson('/api/room/memory', {
+                userMessage: `Remember cross-device marker ${marker} for account B.`,
+                assistantReply: `Stored account B marker ${marker}.`,
+                force: true
+            }, managedUserToken);
+            assert.equal(managedCreated.response.status, 201);
+            managedMemoryId = managedCreated.body.data.id;
+
+            const managedEvent = await readEvent(managedStream, 'memory');
+            assert.equal(managedEvent.action, 'created');
+            assert.deepEqual(managedEvent.memoryIds, [managedMemoryId]);
+            assert.notEqual(managedEvent.memoryIds[0], userMemoryId);
+        } finally {
+            userStream?.controller.abort();
+            managedStream?.controller.abort();
+            await Promise.allSettled([
+                userStream?.reader?.cancel(),
+                managedStream?.reader?.cancel()
+            ]);
+            if (userMemoryId) {
+                await request(`/api/room/memory/${userMemoryId}`, {
+                    method: 'DELETE',
+                    headers: jsonHeaders(userToken)
+                });
+            }
+            if (managedMemoryId) {
+                await request(`/api/room/memory/${managedMemoryId}`, {
+                    method: 'DELETE',
+                    headers: jsonHeaders(managedUserToken)
+                });
+            }
+        }
     });
 
     it('records, searches, isolates, and clears per-user memories', async () => {

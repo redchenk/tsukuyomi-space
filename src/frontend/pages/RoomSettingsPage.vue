@@ -9,6 +9,7 @@ import {
   queueRoomLive2DForNextRoom,
   readRoomLive2DDebugState
 } from '../services/room/live2dControl';
+import { refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
 import { formatDateTime } from '../utils/time';
 
 const props = defineProps({
@@ -20,6 +21,8 @@ const emit = defineEmits(['go']);
 const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
 const MEMORY_STORE = 'memories';
 const ROOM_MEMORY_UPDATED_KEY = 'roomMemoryLastUpdatedAt';
+let stopRoomMemorySync = () => {};
+let memoryRefreshTimer = 0;
 const MODEL_CATALOG_CACHE_KEY = 'roomModelCatalogOpenRouter';
 const LLM_PRESETS = {
   ollama: { label: 'Ollama 本机', apiUrl: 'http://localhost:11434/api/chat', model: 'qwen2.5:7b', useProxy: false, apiKey: '' },
@@ -595,13 +598,24 @@ function refreshMemoryState() {
   if (memory.managerOpen) loadVisibleMemories();
 }
 
-function onRoomMemoryUpdated() {
+function onRoomMemoryUpdated(event) {
   if (memory.enabled === false) return;
-  refreshMemoryState();
+  const action = String(event?.detail?.action || '');
+  const memoryIds = Array.isArray(event?.detail?.memoryIds) ? event.detail.memoryIds.map(String) : [];
+  const editingId = String(memory.editing?.id || '');
+  if (editingId && (action === 'cleared' || memoryIds.includes(editingId))) {
+    memory.editing = null;
+    memory.expanded[editingId] = false;
+  }
+  clearTimeout(memoryRefreshTimer);
+  memoryRefreshTimer = setTimeout(refreshMemoryState, 80);
 }
 
 function onRoomSettingsStorageEvent(event) {
   syncLive2DDebugState();
+  if (event?.key === 'tsukuyomi_user' || event?.key === 'admin_user') {
+    refreshRoomMemorySync();
+  }
   if (event?.key === ROOM_MEMORY_UPDATED_KEY || event?.key === 'tsukuyomi_user' || event?.key === 'admin_user') {
     onRoomMemoryUpdated();
   }
@@ -1934,10 +1948,12 @@ async function testMCPWithDialog() {
 
 watch(() => props.user?.id || '', (userId, previousUserId) => {
   if (userId === previousUserId) return;
+  refreshRoomMemorySync();
   refreshMemoryState();
 });
 
 onMounted(() => {
+  stopRoomMemorySync = startRoomMemorySync();
   loadSettings();
   syncLive2DDebugState();
   window.addEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
@@ -1946,10 +1962,12 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  stopRoomMemorySync();
   window.removeEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
   window.removeEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
   window.removeEventListener('storage', onRoomSettingsStorageEvent);
   clearTimeout(modelNoticeTimer);
+  clearTimeout(memoryRefreshTimer);
   clearTimeout(toastTimer);
 });
 </script>

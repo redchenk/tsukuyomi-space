@@ -10,8 +10,7 @@ import {
 } from '../../services/room/live2dControl';
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
 import { readJson, writeJson } from '../../services/room/roomStorage';
-
-const ROOM_MEMORY_UPDATED_KEY = 'roomMemoryLastUpdatedAt';
+import { publishLocalRoomMemoryUpdate, startRoomMemorySync } from '../../services/room/roomMemorySync';
 
 function uid() {
   return `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -666,17 +665,6 @@ async function fetchPersonaMemories(message) {
   return Array.isArray(result.data) ? result.data : [];
 }
 
-function notifyRoomMemoryUpdated(memory) {
-  if (typeof window === 'undefined') return;
-  const updatedAt = Date.now();
-  try {
-    localStorage.setItem(ROOM_MEMORY_UPDATED_KEY, String(updatedAt));
-  } catch (_) {}
-  window.dispatchEvent(new CustomEvent('tsukuyomi:room-memory-updated', {
-    detail: { memory, updatedAt }
-  }));
-}
-
 function readKnowledgeContext(message) {
   const settings = readJson('roomKnowledgeSettings', null);
   if (settings?.enabled === false) return '';
@@ -766,6 +754,7 @@ async function buildRoomContext(message, image, llmSettings) {
 }
 
 export function useRoomChat({ live2d, world }) {
+  const stopRoomMemorySync = startRoomMemorySync();
   const messages = ref([]);
   const input = ref('');
   const sending = ref(false);
@@ -897,7 +886,9 @@ export function useRoomChat({ live2d, world }) {
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
-    if (result.data) notifyRoomMemoryUpdated(result.data);
+    if (result.data) {
+      publishLocalRoomMemoryUpdate(result.data, response.status === 201 ? 'created' : 'merged');
+    }
     return result.data || null;
   }
 
@@ -1056,6 +1047,7 @@ export function useRoomChat({ live2d, world }) {
   }
 
   function destroy() {
+    stopRoomMemorySync();
     stopTTS();
     if (ttsUrl) URL.revokeObjectURL(ttsUrl);
     ttsUrl = '';

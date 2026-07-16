@@ -2,6 +2,7 @@ const express = require('express');
 const https = require('https');
 const { authenticateToken } = require('../middleware/auth');
 const roomMemory = require('../services/room-memory');
+const roomMemoryEvents = require('../services/room-memory-events');
 const weatherCache = require('../services/weather-cache');
 
 const router = express.Router();
@@ -488,12 +489,17 @@ router.get('/memory', authenticateToken, sendMemoryList);
 
 router.get('/memory/live/:nonce', authenticateToken, sendMemoryList);
 
+router.get('/memory/events', authenticateToken, (req, res) => {
+    roomMemoryEvents.subscribe(req.user.id, req, res);
+});
+
 router.post('/memory/vector-sync', authenticateToken, async (req, res) => {
     try {
         const sync = await roomMemory.syncPendingUserMemories(req.user.id, {
             limit: req.body?.limit || 200,
             force: req.body?.force === true
         });
+        roomMemoryEvents.publish(req.user.id, { action: 'vector-synced' });
         res.json({
             success: true,
             data: { ...roomMemory.memoryStats(req.user.id), sync },
@@ -517,6 +523,10 @@ router.post('/memory', authenticateToken, async (req, res) => {
         if (!result) {
             return res.status(202).json({ success: true, data: null, message: '本轮对话没有需要长期保存的记忆' });
         }
+        roomMemoryEvents.publish(req.user.id, {
+            action: result.action,
+            memoryIds: [result.memory?.id]
+        });
         res.status(result.action === 'created' ? 201 : 200).json({
             success: true,
             data: result.memory,
@@ -533,6 +543,7 @@ router.post('/memory', authenticateToken, async (req, res) => {
 router.patch('/memory/:id', authenticateToken, async (req, res) => {
     try {
         const memory = await roomMemory.updateMemory(req.user.id, String(req.params.id || ''), req.body || {});
+        if (memory) roomMemoryEvents.publish(req.user.id, { action: 'updated', memoryIds: [memory.id] });
         if (!memory) return res.status(404).json({ success: false, message: '记忆不存在' });
         res.json({ success: true, data: memory, message: '记忆已更新' });
     } catch (error) {
@@ -542,12 +553,14 @@ router.patch('/memory/:id', authenticateToken, async (req, res) => {
 
 router.delete('/memory/:id', authenticateToken, async (req, res) => {
     const count = await roomMemory.deleteMemory(req.user.id, String(req.params.id || ''));
+    if (count) roomMemoryEvents.publish(req.user.id, { action: 'deleted', memoryIds: [req.params.id] });
     if (!count) return res.status(404).json({ success: false, message: '记忆不存在' });
     res.json({ success: true, data: { count }, message: '记忆已删除' });
 });
 
 router.delete('/memory', authenticateToken, async (req, res) => {
     const count = await roomMemory.clearMemories(req.user.id);
+    roomMemoryEvents.publish(req.user.id, { action: 'cleared' });
     res.json({ success: true, data: { count }, message: '记忆已清空' });
 });
 

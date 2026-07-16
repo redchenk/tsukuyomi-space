@@ -127,6 +127,20 @@ describe('nginx static-file boundary', () => {
         assert.match(proxy, /proxy_set_header Transfer-Encoding "";/);
     });
 
+    it('delivers authenticated room memory events without proxy buffering', () => {
+        const inner = sourceFile('deploy/nginx.conf');
+        const origin = sourceFile('deploy/openresty-root-proxy.conf');
+        const edge = sourceFile('deploy/hk-frontend-openresty.conf');
+
+        for (const config of [inner, origin, edge]) {
+            const block = config.match(/location = \/api\/room\/memory\/events \{[\s\S]*?\n\s*\}/)?.[0] || '';
+            assert.match(block, /proxy_buffering off;/);
+            assert.match(block, /proxy_cache off;/);
+            assert.match(block, /proxy_read_timeout 1h;/);
+            assert.match(block, /X-Accel-Buffering "no"/);
+        }
+    });
+
     it('does not publish the origin hostname or server addresses in client and deploy defaults', () => {
         for (const relativePath of [
             '.env.example',
