@@ -113,6 +113,7 @@ router.post('/', authenticateToken, async (req, res) => {
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, newArticle.id);
         responseCache.delPrefix('public:articles:');
         responseCache.delPrefix('public:stats');
+        responseCache.delPrefix('public:site-feed');
         res.status(201).json({ success: true, message: '操作成功', data: newArticle });
     } catch (error) {
         console.error('Create article failed:', error);
@@ -172,6 +173,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
         const updatedArticle = articleRepository.updateArticle(req.params.id, mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, updatedArticle.id);
         responseCache.delPrefix('public:articles:');
+        responseCache.delPrefix('public:site-feed');
         res.json({ success: true, message: '文章更新成功', data: updatedArticle });
     } catch (error) {
         console.error('Update article failed:', error);
@@ -185,6 +187,7 @@ router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
         responseCache.delPrefix('public:articles:');
         responseCache.delPrefix('public:article-messages:');
         responseCache.delPrefix('public:stats');
+        responseCache.delPrefix('public:site-feed');
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('Delete article failed:', error);

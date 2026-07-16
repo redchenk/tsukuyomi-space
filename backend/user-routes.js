@@ -373,6 +373,7 @@ router.delete('/articles/:id', authenticateToken, (req, res) => {
         responseCache.delPrefix('public:articles:');
         responseCache.delPrefix('public:article-messages:');
         responseCache.delPrefix('public:stats');
+        responseCache.delPrefix('public:site-feed');
         res.json({ success: true, message: '操作成功' });
     } catch (error) {
         console.error('鍒犻櫎鏂囩珷澶辫触:', error);
@@ -410,6 +411,7 @@ router.put('/articles/:id', authenticateToken, async (req, res) => {
         const updatedArticle = articleRepository.updateUserArticle(articleId, mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, updatedArticle.id);
         responseCache.delPrefix('public:articles:');
+        responseCache.delPrefix('public:site-feed');
 
         res.json({
             success: true,

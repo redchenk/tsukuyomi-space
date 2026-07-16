@@ -540,6 +540,63 @@ describe('articles API', () => {
     });
 });
 
+describe('site activity feed', () => {
+    it('publishes cache-safe JSON and RSS feeds and refreshes after content changes', async () => {
+        const first = await request('/api/site-feed?limit=20');
+
+        assert.equal(first.response.status, 200);
+        assert.match(first.response.headers.get('cache-control') || '', /no-store/);
+        assert.equal(first.response.headers.get('surrogate-control'), 'no-store');
+        assert.equal(first.body.success, true);
+        assert.equal(first.body.data.site.status, 'online');
+        assert.ok(Array.isArray(first.body.data.items));
+        assert.ok(Number.isFinite(first.body.data.stats.articles));
+        assert.match(first.body.data.feeds.json, /\/api\/site-feed$/);
+        assert.match(first.body.data.feeds.rss, /\/feed\.xml$/);
+
+        const keys = new Set();
+        const collectKeys = (value) => {
+            if (!value || typeof value !== 'object') return;
+            for (const [key, child] of Object.entries(value)) {
+                keys.add(key);
+                collectKeys(child);
+            }
+        };
+        collectKeys(first.body.data);
+        for (const privateKey of ['content', 'pixels', 'palette', 'storage_key', 'owner_id', 'author_id', 'user_id', 'avatar', 'email']) {
+            assert.equal(keys.has(privateKey), false, `site feed exposed ${privateKey}`);
+        }
+
+        const etag = first.response.headers.get('etag');
+        assert.ok(etag);
+        const notModified = await request('/api/site-feed?limit=20', {
+            headers: { 'If-None-Match': etag }
+        });
+        assert.equal(notModified.response.status, 304);
+
+        const title = `Fresh Site Feed ${Date.now()}`;
+        const created = await postJson('/api/articles', {
+            title,
+            excerpt: 'A new public update for feed cache invalidation.',
+            content: 'Feed regression test.',
+            category: '\u968f\u7b14'
+        }, userToken);
+        assert.equal(created.response.status, 201);
+
+        const refreshed = await request('/api/site-feed?limit=30');
+        assert.equal(refreshed.response.status, 200);
+        assert.ok(refreshed.body.data.items.some(item => item.title === title));
+
+        const rss = await request('/feed.xml?limit=30');
+        assert.equal(rss.response.status, 200);
+        assert.match(rss.response.headers.get('content-type') || '', /application\/rss\+xml/);
+        assert.match(rss.response.headers.get('cache-control') || '', /no-store/);
+        assert.match(rss.body, /<rss version="2\.0"/);
+        assert.match(rss.body, /<item>/);
+        assert.match(rss.body, new RegExp(title));
+    });
+});
+
 describe('messages API', () => {
     it('creates, lists, likes, and replies to messages', async () => {
         const created = await postJson('/api/messages', {

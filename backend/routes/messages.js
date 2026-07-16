@@ -41,6 +41,7 @@ function clearMessageCaches(articleId = null) {
     responseCache.delPrefix(articleId ? `public:article-messages:${articleId}` : 'public:plaza-messages');
     responseCache.delPrefix('public:message-topics');
     responseCache.delPrefix('public:stats');
+    responseCache.delPrefix('public:site-feed');
 }
 
 function actorName(user) {

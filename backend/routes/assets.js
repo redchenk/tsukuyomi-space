@@ -64,6 +64,7 @@ function fail(res, status, message) {
 
 function clearPublicGalleryCache() {
     responseCache.delPrefix('public:gallery');
+    responseCache.delPrefix('public:site-feed');
 }
 
 function signAssetAccess(assetId, expiresAt) {

@@ -74,6 +74,7 @@ function asInt(value) {
 function clearPublicArticleCache() {
     responseCache.delPrefix('public:articles:');
     responseCache.delPrefix('public:stats');
+    responseCache.delPrefix('public:site-feed');
 }
 
 function clearPublicMessageCache() {
@@ -81,6 +82,7 @@ function clearPublicMessageCache() {
     responseCache.delPrefix('public:article-messages:');
     responseCache.delPrefix('public:message-topics');
     responseCache.delPrefix('public:stats');
+    responseCache.delPrefix('public:site-feed');
 }
 
 function clearPublicFriendLinkCache() {

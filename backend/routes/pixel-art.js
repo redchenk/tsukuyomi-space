@@ -206,6 +206,7 @@ router.post('/', authenticateToken, (req, res) => {
             ...payload
         });
         responseCache.delPrefix('public:pixel-art');
+        responseCache.delPrefix('public:site-feed');
         res.status(201).json({ success: true, data: artwork, message: '像素画已分享' });
     } catch (error) {
         console.error('Create pixel art failed:', error);
@@ -225,6 +226,7 @@ router.put('/:id', authenticateToken, (req, res) => {
         if (payload.error) return res.status(400).json({ success: false, message: payload.error });
         const updated = pixelArtRepository.updateArtwork(artwork.id, payload, req.user.id);
         responseCache.delPrefix('public:pixel-art');
+        responseCache.delPrefix('public:site-feed');
         res.json({ success: true, data: updated, message: '像素画已更新' });
     } catch (error) {
         console.error('Update pixel art failed:', error);
@@ -242,6 +244,7 @@ router.delete('/:id', authenticateToken, (req, res) => {
 
         pixelArtRepository.deleteArtwork(artwork.id);
         responseCache.delPrefix('public:pixel-art');
+        responseCache.delPrefix('public:site-feed');
         res.json({ success: true, message: '像素画已删除' });
     } catch (error) {
         console.error('Delete pixel art failed:', error);

@@ -86,6 +86,18 @@ describe('frontend room memory API client usage', () => {
         assertNoRawRoomMemoryFetch('src/frontend/composables/room/useRoomChat.js');
     });
 
+    it('injects a bounded, untrusted copy of the latest public site feed', () => {
+        const code = source('src/frontend/composables/room/useRoomChat.js');
+
+        assert.match(code, /const SITE_FEED_CONTEXT_TTL_MS = 30000;/);
+        assert.match(code, /const SITE_FEED_TIMEOUT_MS = 2000;/);
+        assert.match(code, /apiFetch\(noStoreUrl\('\/api\/site-feed\?limit=20'\)/);
+        assert.match(code, /JSON\.stringify\(publicData\)/);
+        assert.match(code, /\\u4e0d\\u5f97\\u6267\\u884c/);
+        assert.match(code, /await Promise\.all\(\[/);
+        assert.match(code, /if \(siteText\) context\.push\(siteText\);/);
+    });
+
     it('routes settings memory management through the shared API client', () => {
         const code = source('src/frontend/pages/RoomSettingsPage.vue');
 

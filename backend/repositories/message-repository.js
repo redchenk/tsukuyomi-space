@@ -43,6 +43,18 @@ function listMessages({ articleId, includePending = false } = {}) {
     return rows.map(compactMessageRow);
 }
 
+function listRecentPublicMessages(limit = 8) {
+    const safeLimit = Math.max(1, Math.min(Number.parseInt(limit, 10) || 8, 30));
+    return db.prepare(`
+        ${MESSAGE_SELECT_FIELDS}
+        WHERE m.article_id IS NULL
+          AND m.parent_id IS NULL
+          AND COALESCE(m.status, 'approved') = 'approved'
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT ?
+    `).all(safeLimit).map(compactMessageRow);
+}
+
 function createMessage({ author, content, userId, articleId = null, parentId = null, status = 'pending' }) {
     const normalizedStatus = status === 'approved' ? 'approved' : 'pending';
     const result = parentId
@@ -142,6 +154,7 @@ function likeMessage(messageId, userId) {
 
 module.exports = {
     listMessages,
+    listRecentPublicMessages,
     createMessage,
     findMessageById,
     findApprovedMessageById,

@@ -19,6 +19,7 @@ const roomRoutes = require('./routes/room');
 const mcpRoutes = require('./routes/mcp');
 const pixelArtRoutes = require('./routes/pixel-art');
 const friendLinkRoutes = require('./routes/friend-links');
+const siteFeedRoutes = require('./routes/site-feed');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./user-routes');
 
@@ -96,6 +97,9 @@ function createApp() {
     app.use(express.urlencoded({ limit: '128kb', extended: true }));
     app.use(jsonParseError);
 
+    const siteFeedLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 300, keyPrefix: 'site-feed' });
+    app.get('/feed.xml', siteFeedLimiter, siteFeedRoutes.sendRss);
+
     serveStaticFiles(app);
 
     const liveContentRoutes = express.Router();
@@ -127,6 +131,7 @@ function createApp() {
     app.use('/api/mcp', mcpRoutes);
     app.use('/api/pixel-art', pixelArtRoutes);
     app.use('/api/friend-links', friendLinkRoutes);
+    app.use('/api/site-feed', siteFeedRoutes.router);
     app.use('/api/admin', adminRoutes);
     app.use('/api/user', userRoutes);
 

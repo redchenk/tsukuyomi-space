@@ -57,6 +57,22 @@ function listArticles({ category, limit, offset }) {
     };
 }
 
+function listRecentPublishedArticles(limit = 8) {
+    const safeLimit = Math.max(1, Math.min(Number.parseInt(limit, 10) || 8, 30));
+    return compactArticleRows(db.prepare(`
+        SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.tags, a.author_id,
+            a.publish_date, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
+            a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
+            u.username AS author_username,
+            u.avatar AS author_avatar
+        FROM articles a
+        LEFT JOIN users u ON a.author_id = u.id
+        WHERE COALESCE(a.status, 'published') = 'published'
+        ORDER BY COALESCE(a.updated_at, a.created_at, a.publish_date) DESC, a.id DESC
+        LIMIT ?
+    `).all(safeLimit));
+}
+
 function createArticle(article) {
     const slug = uniqueArticleSlug(article.title);
     const result = db.prepare(`
@@ -197,6 +213,7 @@ module.exports = {
     uniqueArticleSlug,
     normalizeContentFormat,
     listArticles,
+    listRecentPublishedArticles,
     createArticle,
     findArticleById,
     findPublishedArticleById,
