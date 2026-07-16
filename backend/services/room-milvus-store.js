@@ -3,6 +3,7 @@ const { VECTOR_SIZE } = require('./room-embedding');
 
 const COLLECTION_NAME = process.env.ROOM_MEMORY_MILVUS_COLLECTION || 'tsukuyomi_room_memories';
 const PERSONA_USER_ID = '__yachiyo_persona__';
+const MAX_SUMMARY_FIELD = 1024;
 const MAX_TEXT_FIELD = 8192;
 const RETRY_COOLDOWN_MS = Math.max(1000, Number.parseInt(process.env.ROOM_MEMORY_MILVUS_RETRY_COOLDOWN_MS || '30000', 10) || 30000);
 
@@ -72,7 +73,7 @@ function collectionFields({ partitionKey = true } = {}) {
         { name: 'scope', data_type: DataType.VarChar, max_length: 24 },
         { name: 'user_id', data_type: DataType.VarChar, max_length: 128, ...(partitionKey ? { is_partition_key: true } : {}) },
         { name: 'memory_type', data_type: DataType.VarChar, max_length: 32 },
-        { name: 'summary', data_type: DataType.VarChar, max_length: 1024 },
+        { name: 'summary', data_type: DataType.VarChar, max_length: MAX_SUMMARY_FIELD },
         { name: 'content', data_type: DataType.VarChar, max_length: MAX_TEXT_FIELD },
         { name: 'importance', data_type: DataType.Float },
         { name: 'updated_ts', data_type: DataType.Int64 },
@@ -138,18 +139,30 @@ function scopeFilter(scope, userId, type = '') {
     return filters.join(' AND ');
 }
 
-function truncate(value, limit) {
-    return String(value || '').slice(0, limit);
+function truncateUtf8(value, maxBytes) {
+    const text = String(value || '');
+    const safeLimit = Math.max(0, Number(maxBytes) || 0);
+    if (Buffer.byteLength(text, 'utf8') <= safeLimit) return text;
+
+    const characters = [];
+    let bytes = 0;
+    for (const character of text) {
+        const characterBytes = Buffer.byteLength(character, 'utf8');
+        if (bytes + characterBytes > safeLimit) break;
+        characters.push(character);
+        bytes += characterBytes;
+    }
+    return characters.join('');
 }
 
 function rowForMemory({ id, userId, type, summary, content, importance, vector, scope = 'user' }) {
     return {
-        id: String(id),
-        scope,
-        user_id: String(userId),
-        memory_type: String(type || 'conversation').slice(0, 32),
-        summary: truncate(summary, 1024),
-        content: truncate(content || summary, MAX_TEXT_FIELD),
+        id: truncateUtf8(id, 80),
+        scope: truncateUtf8(scope, 24),
+        user_id: truncateUtf8(userId, 128),
+        memory_type: truncateUtf8(type || 'conversation', 32),
+        summary: truncateUtf8(summary, MAX_SUMMARY_FIELD),
+        content: truncateUtf8(content || summary, MAX_TEXT_FIELD),
         importance: Number.isFinite(Number(importance)) ? Number(importance) : 0.5,
         updated_ts: Date.now(),
         vector
@@ -174,6 +187,8 @@ async function upsertRow(row) {
             data: [row]
         }), 'insert');
     }
+    lastError = '';
+    unavailableUntil = 0;
     return true;
 }
 
@@ -304,5 +319,6 @@ module.exports = {
     deleteUserMemory,
     clearUserMemories,
     clearPersonaMemories,
-    scopeFilter
+    scopeFilter,
+    truncateUtf8
 };

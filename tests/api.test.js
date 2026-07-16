@@ -26,7 +26,7 @@ const authState = require('../backend/services/auth-state');
 const { ROOM_SYSTEM_PROMPT, buildChatPayload, createChatCompletion, isOllamaChatUrl, normalizeChatUrl } = require('../backend/services/llm');
 const { createEmbedding } = require('../backend/services/room-embedding');
 const { requireUserId, similarity } = require('../backend/services/room-memory');
-const { scopeFilter } = require('../backend/services/room-milvus-store');
+const { scopeFilter, truncateUtf8 } = require('../backend/services/room-milvus-store');
 
 let server;
 let baseUrl;
@@ -1069,6 +1069,15 @@ describe('room world API', () => {
 });
 
 describe('room memory API', () => {
+    it('clips Milvus text fields by UTF-8 bytes without breaking Unicode characters', () => {
+        const source = '月'.repeat(800);
+        const clipped = truncateUtf8(source, 1024);
+
+        assert.equal(Buffer.byteLength(clipped, 'utf8') <= 1024, true);
+        assert.equal(clipped, '月'.repeat(341));
+        assert.doesNotMatch(clipped, /\uFFFD/);
+    });
+
     it('builds useful local vectors and enforces user scope at the service boundary', () => {
         const preference = createEmbedding('我喜欢浅蓝色和淡紫色');
         const related = createEmbedding('用户偏好浅蓝色房间主题');
@@ -1282,6 +1291,60 @@ describe('room memory API', () => {
         });
         assert.equal(cleared.response.status, 200);
         assert.equal(cleared.body.data.count, 2);
+    });
+
+    it('does not merge unrelated memories on vector similarity alone', async () => {
+        try {
+            const scenarios = [
+                {
+                    type: 'conversation',
+                    firstSummary: 'Astronomy telescope calibration notes',
+                    firstContent: 'Orion nebula aperture tracking and equatorial mount alignment.',
+                    secondSummary: 'Sourdough fermentation kitchen schedule',
+                    secondContent: 'Rye starter hydration timing and cast iron baking temperature.'
+                },
+                {
+                    type: 'preference',
+                    firstSummary: 'Enjoys minimalist piano recordings',
+                    firstContent: 'Prefers quiet solo piano albums during early morning reading.',
+                    secondSummary: 'Chooses spicy Sichuan noodles',
+                    secondContent: 'Orders extra chili oil with hand pulled noodles at lunch.'
+                }
+            ];
+
+            for (const scenario of scenarios) {
+                const first = await postJson('/api/room/memory', {
+                    type: scenario.type,
+                    summary: scenario.firstSummary,
+                    content: scenario.firstContent,
+                    force: true
+                }, userToken);
+                assert.equal(first.response.status, 201);
+
+                const falsePositiveVector = createEmbedding(`${scenario.secondSummary}\n${scenario.secondContent}`);
+                db.prepare('UPDATE room_memories SET embedding = ? WHERE id = ? AND user_id = ?')
+                    .run(JSON.stringify(falsePositiveVector), first.body.data.id, 'user-001');
+
+                const second = await postJson('/api/room/memory', {
+                    type: scenario.type,
+                    summary: scenario.secondSummary,
+                    content: scenario.secondContent,
+                    force: true
+                }, userToken);
+                assert.equal(second.response.status, 201);
+                assert.notEqual(second.body.data.id, first.body.data.id);
+            }
+
+            const status = await request('/api/room/memory/status', {
+                headers: jsonHeaders(userToken)
+            });
+            assert.equal(status.body.data.count, 4);
+        } finally {
+            await request('/api/room/memory', {
+                method: 'DELETE',
+                headers: jsonHeaders(userToken)
+            });
+        }
     });
 });
 

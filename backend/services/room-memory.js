@@ -253,14 +253,25 @@ function mergeMemoryText(previous, next, limit = MAX_MEMORY_CONTENT_LENGTH) {
 }
 
 function tokenOverlapScore(a, b) {
-    const left = new Set(tokenize(a).filter(token => token.length > 1 || /[\u4e00-\u9fff]/.test(token)));
-    const right = new Set(tokenize(b).filter(token => token.length > 1 || /[\u4e00-\u9fff]/.test(token)));
+    const meaningfulToken = token => /^[a-z0-9_]{2,}$/i.test(token) || /^[\u4e00-\u9fff]{2,}$/.test(token);
+    const left = new Set(tokenize(a).filter(meaningfulToken));
+    const right = new Set(tokenize(b).filter(meaningfulToken));
     if (!left.size || !right.size) return 0;
     let overlap = 0;
     left.forEach((token) => {
         if (right.has(token)) overlap += 1;
     });
     return overlap / Math.min(left.size, right.size);
+}
+
+function shouldMergeMemory(type, score, overlap) {
+    const memoryType = normalizeType(type);
+    if (memoryType === 'conversation' || memoryType === 'episodic') {
+        return overlap >= 0.5 || (score >= 0.92 && overlap >= 0.2);
+    }
+    return overlap >= 0.4
+        || (score >= 0.86 && overlap >= 0.1)
+        || (score >= 0.68 && overlap >= 0.25);
 }
 
 function findMergeTarget(userId, candidate) {
@@ -278,7 +289,7 @@ function findMergeTarget(userId, candidate) {
             score: similarity(vector, parseJson(row.embedding, [])),
             overlap: tokenOverlapScore(candidateText, `${row.summary}\n${row.content}`)
         }))
-        .filter(item => item.score >= 0.48 || item.overlap >= 0.32)
+        .filter(item => shouldMergeMemory(candidate.type, item.score, item.overlap))
         .sort((a, b) => b.score - a.score)[0]?.row || null;
 }
 

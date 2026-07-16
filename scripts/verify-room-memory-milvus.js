@@ -41,10 +41,12 @@ async function main() {
     let createdId = '';
     try {
         const result = await recordMemory(firstUserId, {
+            summary: `Milvus UTF-8 ${'月'.repeat(500)}`,
             content: `Milvus account isolation marker ${suffix}: the preferred observatory is Selene Ridge.`,
             type: 'preference',
             importance: 0.92,
-            source: 'milvus-integration-verification'
+            source: 'milvus-integration-verification',
+            force: true
         });
         createdId = result.memory.id;
         assert.equal(result.memory.vectorPending, false, 'new memory must be synchronized to Milvus');
