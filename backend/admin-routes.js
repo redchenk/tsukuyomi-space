@@ -504,7 +504,7 @@ router.get('/users', (req, res) => {
     }
 });
 
-router.patch('/users/:id/role', (req, res) => {
+function updateUserRole(req, res) {
     try {
         if (!requireSuperAdminUser(req, res)) return;
         const userId = String(req.params.id || '').trim();
@@ -522,7 +522,10 @@ router.patch('/users/:id/role', (req, res) => {
         console.error('Admin user role update error:', error);
         fail(res, 500, '无法更新用户角色');
     }
-});
+}
+
+router.patch('/users/:id/role', updateUserRole);
+router.post('/users/:id/role', updateUserRole);
 
 router.patch('/users/:id/username', (req, res) => {
     try {

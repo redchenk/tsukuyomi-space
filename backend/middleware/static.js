@@ -143,6 +143,7 @@ function sendRobots(req, res) {
         'User-agent: *',
         'Allow: /',
         'Disallow: /terminal',
+        'Disallow: /admin',
         'Disallow: /editor',
         'Disallow: /room/settings',
         'Disallow: /room-settings',
@@ -310,7 +311,7 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/room/settings', '/room-settings', '/plaza', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/terminal', '/pixel', '/pixel/']);
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/room/settings', '/room-settings', '/plaza', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/']);
         if (vueRoutes.has(req.path) || req.path.startsWith('/users/')) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');

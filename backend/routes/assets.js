@@ -562,7 +562,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-router.delete('/:id', authenticateToken, async (req, res) => {
+async function deleteAsset(req, res) {
     try {
         const admin = isAdminUser(req.user);
         const asset = admin
@@ -588,6 +588,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         console.error('Delete asset failed:', error);
         fail(res, 500, '附件删除失败');
     }
-});
+}
+
+router.post('/:id/delete', authenticateToken, requireAdmin, deleteAsset);
+router.delete('/:id', authenticateToken, deleteAsset);
 
 module.exports = router;

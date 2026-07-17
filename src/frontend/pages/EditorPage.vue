@@ -57,7 +57,8 @@ const editor = reactive({
 });
 
 const isAuthed = computed(() => Boolean(session.value));
-const canPublishAnnouncement = computed(() => session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role));
+const canModerateContent = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
+const canPublishAnnouncement = computed(() => canModerateContent.value);
 const availableCategories = computed(() => categories.filter((category) => canPublishAnnouncement.value || category.value !== '\u516c\u544a'));
 const currentArticleId = computed(() => route.query.id || '');
 const submitLabel = computed(() => {
@@ -393,6 +394,7 @@ async function handleEditorSubmit() {
       excerpt,
       content,
       content_format: 'markdown',
+      status: editor.currentArticle?.status || 'published',
       cover_image: editor.coverImageBase64,
       cover_image_asset_id: editor.coverImageAssetId || null
     };
@@ -400,8 +402,16 @@ async function handleEditorSubmit() {
     let method = 'POST';
 
     if (id) {
-      url = session.value?.admin ? `/api/admin/articles/${id}` : `/api/user/articles/${id}`;
-      method = 'PUT';
+      if (session.value?.admin) {
+        url = `/api/admin/articles/${id}`;
+        method = 'PUT';
+      } else if (canModerateContent.value) {
+        url = `/api/moderation/articles/${id}/save`;
+        method = 'POST';
+      } else {
+        url = `/api/user/articles/${id}`;
+        method = 'PUT';
+      }
     }
 
     const response = await authFetch(url, {
@@ -437,7 +447,9 @@ async function initEditor() {
   const id = currentArticleId.value;
   if (id) {
     try {
-      const url = session.value.admin ? `/api/admin/articles/${id}` : `/api/user/articles/${id}`;
+      const url = session.value.admin
+        ? `/api/admin/articles/${id}`
+        : (canModerateContent.value ? `/api/moderation/articles/${id}` : `/api/user/articles/${id}`);
       const response = await authFetch(noStoreUrl(url), {
         headers: authHeaders(),
         cache: 'no-store'

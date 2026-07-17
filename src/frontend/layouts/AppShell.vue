@@ -34,6 +34,7 @@ let unreadRequest = null;
 const hasGlobalBackground = computed(() => props.showChrome && props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
 const showSiteBeian = computed(() => props.showChrome && !['hub', 'room', 'roomSettings'].includes(props.routeName));
 const showNotifications = computed(() => props.isAuthed);
+const showAdmin = computed(() => ['admin', 'super_admin'].includes(props.user?.role));
 
 const navItems = computed(() => [
   { path: '/hub', key: 'hub', label: props.t.hub, icon: 'home', active: props.routeName === 'hub', spa: true },
@@ -43,6 +44,7 @@ const navItems = computed(() => [
   { path: '/gallery', key: 'gallery', label: '图库', icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true },
+  ...(showAdmin.value ? [{ path: '/admin', key: 'admin', label: '内容管理', icon: 'shield', active: props.routeName === 'admin', spa: true }] : []),
   { path: '/agent-os', key: 'agentOs', label: 'Agent OS', icon: 'bot', active: false, spa: false }
 ]);
 

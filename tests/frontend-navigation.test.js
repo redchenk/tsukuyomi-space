@@ -388,11 +388,48 @@ describe('terminal privilege boundaries', () => {
     it('keeps user role saves visible and reports failures in place', () => {
         const terminal = source('src/frontend/pages/TerminalPage.vue');
 
+        assert.match(terminal, /method: 'POST'/);
         assert.match(terminal, /userRoleSaving: \{\}/);
         assert.match(terminal, /user\.role = result\?\.role \|\| role/);
         assert.match(terminal, /showMessage\(error\.message \|\| '用户角色保存失败', 'error'\)/);
         assert.match(terminal, /:aria-busy="Boolean\(terminal\.userRoleSaving\[item\.id\]\)"/);
         assert.match(terminal, /terminal\.userRoleSaving\[item\.id\] \? '保存中' : '保存'/);
+    });
+});
+
+describe('content administration workspace', () => {
+    it('registers a private admin route and shows its navigation only to administrator roles', () => {
+        const router = source('src/frontend/router/index.js');
+        const shell = source('src/frontend/layouts/AppShell.vue');
+        const staticMiddleware = source('backend/middleware/static.js');
+
+        assert.match(router, /path: '\/admin'/);
+        assert.match(router, /name: 'admin'/);
+        assert.match(router, /component: AdminPage/);
+        assert.match(router, /noindex: true/);
+        assert.match(shell, /\['admin', 'super_admin'\]\.includes\(props\.user\?\.role\)/);
+        assert.match(shell, /path: '\/admin', key: 'admin', label: '内容管理', icon: 'shield'/);
+        assert.match(staticMiddleware, /'Disallow: \/admin'/);
+        assert.match(staticMiddleware, /'\/admin'/);
+    });
+
+    it('uses the restricted moderation API for articles and messages', () => {
+        const page = source('src/frontend/pages/AdminPage.vue');
+        const editor = source('src/frontend/pages/EditorPage.vue');
+        const routes = source('backend/routes/moderation.js');
+        const assets = source('backend/routes/assets.js');
+
+        assert.match(page, /\/api\/moderation\/me/);
+        assert.match(page, /\/api\/moderation\/articles/);
+        assert.match(page, /\/api\/moderation\/messages/);
+        assert.match(page, /\/api\/assets\/gallery\?scope=all/);
+        assert.match(page, /\/api\/assets\?scope=all/);
+        assert.match(page, /reviewDigest: item\.moderation\?\.reviewDigest/);
+        assert.match(page, /confirmExternalLink: externalHosts\.length > 0/);
+        assert.match(page, /method: 'POST'/);
+        assert.match(editor, /\/api\/moderation\/articles\/\$\{id\}\/save/);
+        assert.match(routes, /router\.use\(authenticateToken, requireAdmin\)/);
+        assert.match(assets, /router\.post\('\/:id\/delete', authenticateToken, requireAdmin, deleteAsset\)/);
     });
 });
 

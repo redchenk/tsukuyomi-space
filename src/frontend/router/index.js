@@ -22,6 +22,7 @@ const RoomSettingsPage = () => import('../pages/RoomSettingsPage.vue');
 const Live2DPage = () => import('../pages/Live2DPage.vue');
 const ArticlePage = () => import('../pages/ArticlePage.vue');
 const TerminalPage = () => import('../pages/TerminalPage.vue');
+const AdminPage = () => import('../pages/AdminPage.vue');
 const ArenaPage = () => import('../pages/ArenaPage.vue');
 
 export const routes = [
@@ -187,6 +188,12 @@ export const routes = [
     meta: { title: '站内信', description: '查看回复、点赞与站内通知。', noindex: true }
   },
   {
+    path: '/admin',
+    name: 'admin',
+    component: AdminPage,
+    meta: { title: '内容管理', description: '文章、留言、图库和附件审核工作台。', noindex: true }
+  },
+  {
     path: '/terminal',
     name: 'terminal',
     component: TerminalPage,
@@ -228,6 +235,7 @@ const routeWarmups = {
   galleryManage: [GalleryPage],
   userCenter: [NotificationsPage, UserProfilePage],
   terminal: [EditorPage, AttachmentsPage],
+  admin: [EditorPage, GalleryPage, AttachmentsPage],
   pixel: [UserCenterPage]
 };
 const defaultRouteWarmups = [HubPage];

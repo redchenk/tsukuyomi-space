@@ -369,7 +369,7 @@ async function changeUserRole(user) {
   terminal.userRoleSaving[user.id] = true;
   try {
     const result = await adminApi(`/users/${encodeURIComponent(user.id)}/role`, {
-      method: 'PATCH',
+      method: 'POST',
       body: JSON.stringify({ role })
     });
     user.role = result?.role || role;

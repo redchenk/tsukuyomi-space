@@ -2348,6 +2348,48 @@ describe('admin API permissions', () => {
         );
     });
 
+    it('exposes content moderation only through the administrator site session', async () => {
+        const anonymous = await request('/api/moderation/me');
+        assert.equal(anonymous.response.status, 401);
+
+        const normalUser = await request('/api/moderation/me', {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(normalUser.response.status, 403);
+        assert.equal(normalUser.body.code, 'FORBIDDEN');
+
+        const me = await request('/api/moderation/me', {
+            headers: jsonHeaders(adminToken)
+        });
+        assert.equal(me.response.status, 200);
+        assert.match(me.response.headers.get('cache-control') || '', /private/);
+        assert.match(me.response.headers.get('cache-control') || '', /no-store/);
+        assert.equal(me.body.data.username, 'admin');
+        assert.equal(me.body.data.role, 'admin');
+
+        const [articles, messages, gallery, attachments] = await Promise.all([
+            request('/api/moderation/articles', { headers: jsonHeaders(adminToken) }),
+            request('/api/moderation/messages', { headers: jsonHeaders(adminToken) }),
+            request('/api/assets/gallery?scope=all&limit=10', { headers: jsonHeaders(adminToken) }),
+            request('/api/assets?scope=all&limit=10', { headers: jsonHeaders(adminToken) })
+        ]);
+        for (const result of [articles, messages, gallery, attachments]) {
+            assert.equal(result.response.status, 200);
+        }
+        assert.ok(Array.isArray(articles.body.data));
+        assert.ok(Array.isArray(messages.body.data));
+        assert.ok(Array.isArray(gallery.body.data.assets));
+        assert.ok(Array.isArray(attachments.body.data.assets));
+
+        const terminalCookie = String(adminToken).split('; ').find(value => value.startsWith('tsukuyomi_admin_session='));
+        assert.ok(terminalCookie);
+        const terminalScope = await request('/api/moderation/me', {
+            headers: jsonHeaders(tokenFromCookie(terminalCookie))
+        });
+        assert.equal(terminalScope.response.status, 403);
+        assert.equal(terminalScope.body.code, 'TOKEN_SCOPE_INVALID');
+    });
+
     it('lets admins pin and unpin articles', async () => {
         const pinned = await postJson(`/api/admin/articles/${articleId}/toggle-pin`, {}, adminToken);
         assert.equal(pinned.response.status, 200);
@@ -2380,7 +2422,7 @@ describe('admin API permissions', () => {
         assert.equal(managed.bio, 'managed test user');
         assert.equal(managed.role, 'user');
 
-        const role = await patchJson(`/api/admin/users/${managed.id}/role`, { role: 'admin' }, adminToken);
+        const role = await postJson(`/api/admin/users/${managed.id}/role`, { role: 'admin' }, adminToken);
         assert.equal(role.response.status, 200);
         assert.equal(role.body.data.role, 'admin');
         assert.equal(db.prepare('SELECT role FROM users WHERE id = ?').get(managed.id).role, 'admin');
@@ -2416,7 +2458,7 @@ describe('admin API permissions', () => {
     });
 
     it('prevents non-super admins from changing user permissions or passwords', async () => {
-        const forbiddenRole = await patchJson('/api/admin/users/user-001/role', {
+        const forbiddenRole = await postJson('/api/admin/users/user-001/role', {
             role: 'admin'
         }, staffAdminToken);
         assert.equal(forbiddenRole.response.status, 403);

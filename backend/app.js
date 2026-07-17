@@ -21,6 +21,7 @@ const pixelArtRoutes = require('./routes/pixel-art');
 const friendLinkRoutes = require('./routes/friend-links');
 const siteFeedRoutes = require('./routes/site-feed');
 const adminRoutes = require('./routes/admin');
+const moderationRoutes = require('./routes/moderation');
 const userRoutes = require('./user-routes');
 
 const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '1mb';
@@ -133,6 +134,7 @@ function createApp() {
     app.use('/api/friend-links', friendLinkRoutes);
     app.use('/api/site-feed', siteFeedRoutes.router);
     app.use('/api/admin', adminRoutes);
+    app.use('/api/moderation', moderationRoutes);
     app.use('/api/user', userRoutes);
 
     app.use(errorHandler);
