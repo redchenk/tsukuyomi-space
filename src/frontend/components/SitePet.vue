@@ -16,7 +16,7 @@ const props = defineProps({
   },
   spriteSrc: {
     type: String,
-    default: '/assets/pets/yachiyo/spritesheet.webp'
+    default: '/assets/pets/yachiyo/spritesheet-perf-r2.webp'
   }
 });
 
