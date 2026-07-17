@@ -783,20 +783,15 @@ describe('gallery API', () => {
         }
     });
 
-    it('streams OSS image previews through the same-origin proxy', async () => {
+    it('redirects OSS image previews without unsupported response overrides', async () => {
         const assetId = `gallery-oss-preview-${Date.now()}`;
         const storageKey = `users/user-001/gallery/${assetId}.png`;
-        const image = Buffer.from('89504e470d0a1a0a', 'hex');
-        const originalGetObject = objectStorage.getObject;
-        objectStorage.getObject = async (key) => {
+        const originalSignatureUrl = objectStorage.aliyunV1SignatureUrl;
+        let signatureOptions = null;
+        objectStorage.aliyunV1SignatureUrl = (key, options) => {
             assert.equal(key, storageKey);
-            return {
-                buffer: image,
-                status: 200,
-                contentType: 'image/png',
-                contentLength: String(image.length),
-                acceptRanges: 'bytes'
-            };
+            signatureOptions = options;
+            return 'https://storage.example.test/signed-image.png';
         };
         db.prepare(`
             INSERT INTO article_assets (
@@ -820,12 +815,13 @@ describe('gallery API', () => {
             const response = await fetch(`${baseUrl}/api/assets/proxy/${encodeURIComponent(assetId)}`, {
                 redirect: 'manual'
             });
-            assert.equal(response.status, 200);
-            assert.equal(response.headers.get('content-type'), 'image/png');
-            assert.match(response.headers.get('content-disposition') || '', /^inline;/);
-            assert.deepEqual(Buffer.from(await response.arrayBuffer()), image);
+            assert.equal(response.status, 302);
+            assert.equal(response.headers.get('location'), 'https://storage.example.test/signed-image.png');
+            assert.equal(signatureOptions.preferPublicBase, true);
+            assert.equal(Object.hasOwn(signatureOptions, 'contentType'), false);
+            assert.equal(Object.hasOwn(signatureOptions, 'contentDisposition'), false);
         } finally {
-            objectStorage.getObject = originalGetObject;
+            objectStorage.aliyunV1SignatureUrl = originalSignatureUrl;
             db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
         }
     });
