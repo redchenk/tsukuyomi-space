@@ -150,6 +150,19 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
     });
 
+    it('shows each gallery image uploader on cards, features, and the lightbox', () => {
+        const gallery = source('src/frontend/pages/GalleryPage.vue');
+        const repository = source('backend/repositories/asset-repository.js');
+
+        assert.match(repository, /owner\.username AS owner_username/);
+        assert.match(gallery, /function uploaderName\(asset\)/);
+        assert.match(gallery, /`\/users\/\$\{encodeURIComponent\(username\)\}`/);
+        assert.match(gallery, /class="gallery-uploader"/);
+        assert.match(gallery, /class="gallery-uploader gallery-feature-uploader"/);
+        assert.match(gallery, /class="gallery-uploader gallery-lightbox-uploader"/);
+        assert.match(gallery, /<time :datetime="imageDate\(asset\)">/);
+    });
+
     it('fixes new pixel canvases at 192x108 and gives every like button a persistent red-heart state', () => {
         const arena = source('src/frontend/pages/ArenaPage.vue');
         const article = source('src/frontend/pages/ArticlePage.vue');

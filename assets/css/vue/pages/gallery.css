@@ -294,7 +294,7 @@
     padding: 1.2rem;
 }
 
-.gallery-feature span {
+.gallery-feature-badge {
     width: fit-content;
     padding: 0.35rem 0.55rem;
     border-radius: 999px;
@@ -352,24 +352,58 @@
 }
 
 .gallery-card-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
     gap: 0.7rem;
     padding: 0.85rem 0.9rem 0.55rem;
 }
 
-.gallery-card-body strong,
-.gallery-card-body span {
+.gallery-uploader {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 0.38rem;
+    color: var(--text);
+    font-size: 0.84rem;
+    font-weight: 750;
+    line-height: 1.2;
+    text-decoration: none;
+}
+
+.gallery-uploader .ts-icon {
+    flex: 0 0 auto;
+    color: #ffc16f;
+}
+
+.gallery-uploader span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.gallery-card-body strong {
-    color: var(--text);
+.gallery-uploader[href]:hover {
+    color: #ffd392;
 }
 
-.gallery-card-body span {
+.gallery-uploader-static {
+    cursor: default;
+}
+
+.gallery-card-body time {
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.gallery-feature-uploader {
+    width: fit-content;
+}
+
+.gallery-lightbox-uploader {
+    width: fit-content;
     color: var(--muted);
     font-size: 0.82rem;
 }
@@ -602,7 +636,8 @@
 }
 
 .gallery-lightbox footer strong,
-.gallery-lightbox footer span {
+.gallery-lightbox footer div > span,
+.gallery-lightbox footer div > a {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -612,7 +647,7 @@
     color: var(--text);
 }
 
-.gallery-lightbox footer span {
+.gallery-lightbox footer div > span {
     color: var(--muted);
     font-size: 0.82rem;
 }
@@ -682,7 +717,6 @@
     }
 
     .gallery-card-body {
-        grid-template-columns: 1fr;
         gap: 0.25rem;
     }
 

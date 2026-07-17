@@ -66,6 +66,15 @@ function imageDate(asset) {
   return String(value).slice(0, 10);
 }
 
+function uploaderName(asset) {
+  return String(asset?.owner_username || '').trim() || '站点归档';
+}
+
+function uploaderPath(asset) {
+  const username = String(asset?.owner_username || '').trim();
+  return username ? `/users/${encodeURIComponent(username)}` : '';
+}
+
 function canDeleteImage(asset) {
   return canManageAllImages.value || (asset.owner_id && asset.owner_id === currentUserId.value);
 }
@@ -398,8 +407,21 @@ onUnmounted(() => {
             <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)">
           </button>
           <article>
-            <span>随机影像</span>
+            <span class="gallery-feature-badge">随机影像</span>
             <h2>{{ imageTitle(randomFeatureImage) }}</h2>
+            <a
+              v-if="uploaderPath(randomFeatureImage)"
+              class="gallery-uploader gallery-feature-uploader"
+              :href="uploaderPath(randomFeatureImage)"
+              @click.prevent="go(uploaderPath(randomFeatureImage))"
+            >
+              <TsIcon name="user" :size="15" />
+              <span>{{ uploaderName(randomFeatureImage) }}</span>
+            </a>
+            <span v-else class="gallery-uploader gallery-feature-uploader gallery-uploader-static">
+              <TsIcon name="user" :size="15" />
+              <span>{{ uploaderName(randomFeatureImage) }}</span>
+            </span>
             <p>由注册用户上传并加入图库的公开图片，不包含普通附件库图片。</p>
             <div class="gallery-feature-actions">
               <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(randomFeatureImage)">
@@ -427,7 +449,21 @@ onUnmounted(() => {
               <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy">
             </button>
             <div class="gallery-card-body">
-              <span>{{ imageDate(asset) }}</span>
+              <a
+                v-if="uploaderPath(asset)"
+                class="gallery-uploader"
+                :href="uploaderPath(asset)"
+                :title="`查看 ${uploaderName(asset)} 的主页`"
+                @click.prevent="go(uploaderPath(asset))"
+              >
+                <TsIcon name="user" :size="15" />
+                <span>{{ uploaderName(asset) }}</span>
+              </a>
+              <span v-else class="gallery-uploader gallery-uploader-static">
+                <TsIcon name="user" :size="15" />
+                <span>{{ uploaderName(asset) }}</span>
+              </span>
+              <time :datetime="imageDate(asset)">{{ imageDate(asset) }}</time>
             </div>
             <div class="gallery-card-actions">
               <button v-if="isManageMode" type="button" title="复制 Markdown" @click="copyMarkdown(asset)">
@@ -506,7 +542,19 @@ onUnmounted(() => {
           <footer>
             <div>
               <strong>{{ imageTitle(state.selected) }}</strong>
-              <span>公开图库图片</span>
+              <a
+                v-if="uploaderPath(state.selected)"
+                class="gallery-uploader gallery-lightbox-uploader"
+                :href="uploaderPath(state.selected)"
+                @click.prevent="go(uploaderPath(state.selected)); state.selected = null"
+              >
+                <TsIcon name="user" :size="14" />
+                <span>{{ uploaderName(state.selected) }}</span>
+              </a>
+              <span v-else class="gallery-uploader gallery-lightbox-uploader gallery-uploader-static">
+                <TsIcon name="user" :size="14" />
+                <span>{{ uploaderName(state.selected) }}</span>
+              </span>
             </div>
             <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">复制 Markdown</button>
             <a class="ghost-btn" :href="imageUrl(state.selected)" download="gallery-image" rel="noopener noreferrer">下载</a>

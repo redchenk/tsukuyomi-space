@@ -676,6 +676,40 @@ describe('articles API', () => {
     });
 });
 
+describe('gallery API', () => {
+    it('includes the public uploader name without exposing account details', async () => {
+        const assetId = `gallery-owner-${Date.now()}`;
+        db.prepare(`
+            INSERT INTO article_assets (
+                id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
+            ) VALUES (?, ?, 'image', 'image/png', ?, ?, ?, datetime('now', '+1 hour'), datetime('now', '+1 hour'))
+        `).run(
+            assetId,
+            'user-001',
+            `/assets/uploads/${assetId}.png`,
+            `assets/uploads/${assetId}.png`,
+            JSON.stringify({ collection: 'gallery', gallery: true, title: 'Uploader credit test' })
+        );
+
+        try {
+            const list = await request('/api/assets/gallery?limit=48&search=Uploader%20credit%20test');
+            assert.equal(list.response.status, 200);
+            const listedAsset = list.body.data.assets.find(asset => asset.id === assetId);
+            assert.ok(listedAsset);
+            assert.equal(listedAsset.owner_username, 'normal-user');
+            assert.equal(Object.hasOwn(listedAsset, 'email'), false);
+
+            const preview = await request('/api/assets/gallery/public?limit=23');
+            assert.equal(preview.response.status, 200);
+            const previewAsset = preview.body.data.assets.find(asset => asset.id === assetId);
+            assert.ok(previewAsset);
+            assert.equal(previewAsset.owner_username, 'normal-user');
+        } finally {
+            db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
+        }
+    });
+});
+
 describe('site activity feed', () => {
     it('publishes cache-safe JSON and RSS feeds and refreshes after content changes', async () => {
         const first = await request('/api/site-feed?limit=20');

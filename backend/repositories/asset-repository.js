@@ -63,20 +63,20 @@ function countAssetsByOwner(ownerId, { type = '', search = '', includePublic = f
 function buildGalleryWhere({ search = '', ownerId = '' } = {}) {
     const params = [];
     let where = `
-        (mime_type LIKE 'image/%' OR asset_type LIKE '%image%')
+        (assets.mime_type LIKE 'image/%' OR assets.asset_type LIKE '%image%')
         AND (
-            metadata LIKE '%"collection":"gallery"%'
-            OR metadata LIKE '%"collection": "gallery"%'
-            OR metadata LIKE '%"gallery":true%'
-            OR metadata LIKE '%"gallery": true%'
+            assets.metadata LIKE '%"collection":"gallery"%'
+            OR assets.metadata LIKE '%"collection": "gallery"%'
+            OR assets.metadata LIKE '%"gallery":true%'
+            OR assets.metadata LIKE '%"gallery": true%'
         )
     `;
     if (ownerId) {
-        where += ' AND owner_id = ?';
+        where += ' AND assets.owner_id = ?';
         params.push(ownerId);
     }
     if (search) {
-        where += ' AND (url LIKE ? OR storage_key LIKE ? OR metadata LIKE ?)';
+        where += ' AND (assets.url LIKE ? OR assets.storage_key LIKE ? OR assets.metadata LIKE ?)';
         const keyword = `%${search}%`;
         params.push(keyword, keyword, keyword);
     }
@@ -86,10 +86,14 @@ function buildGalleryWhere({ search = '', ownerId = '' } = {}) {
 function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '' } = {}) {
     const galleryFilter = buildGalleryWhere({ search, ownerId });
     const rows = db.prepare(`
-        SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
-        FROM article_assets
+        SELECT
+            assets.id, assets.article_id, assets.owner_id, assets.asset_type, assets.mime_type,
+            assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
+            owner.username AS owner_username
+        FROM article_assets AS assets
+        LEFT JOIN users AS owner ON owner.id = assets.owner_id
         WHERE ${galleryFilter.where}
-        ORDER BY created_at DESC
+        ORDER BY assets.created_at DESC
         LIMIT ? OFFSET ?
     `).all(...galleryFilter.params, limit, offset);
     return rows.map(parseMetadata);
@@ -98,8 +102,12 @@ function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '' }
 function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '' } = {}) {
     const galleryFilter = buildGalleryWhere({ search, ownerId });
     const rows = db.prepare(`
-        SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
-        FROM article_assets
+        SELECT
+            assets.id, assets.article_id, assets.owner_id, assets.asset_type, assets.mime_type,
+            assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
+            owner.username AS owner_username
+        FROM article_assets AS assets
+        LEFT JOIN users AS owner ON owner.id = assets.owner_id
         WHERE ${galleryFilter.where}
         ORDER BY RANDOM()
         LIMIT ?
@@ -109,7 +117,7 @@ function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '' } = {}) 
 
 function countGalleryAssets({ search = '', ownerId = '' } = {}) {
     const galleryFilter = buildGalleryWhere({ search, ownerId });
-    return db.prepare(`SELECT COUNT(*) AS count FROM article_assets WHERE ${galleryFilter.where}`).get(...galleryFilter.params).count;
+    return db.prepare(`SELECT COUNT(*) AS count FROM article_assets AS assets WHERE ${galleryFilter.where}`).get(...galleryFilter.params).count;
 }
 
 function findAssetForOwner(id, ownerId) {
