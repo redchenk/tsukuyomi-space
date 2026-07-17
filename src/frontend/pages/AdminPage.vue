@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive } from 'vue';
+import { computed, onMounted, onUnmounted, reactive } from 'vue';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { formatDateTime } from '../utils/time';
@@ -16,6 +16,11 @@ const tabs = [
   { id: 'gallery', label: '图库', icon: 'image' },
   { id: 'attachments', label: '附件', icon: 'paperclip' }
 ];
+const messageFilters = [
+  { id: 'all', label: '全部' },
+  { id: 'pending', label: '待审核' },
+  { id: 'approved', label: '已通过' }
+];
 
 const state = reactive({
   checking: true,
@@ -24,7 +29,7 @@ const state = reactive({
   admin: null,
   active: 'articles',
   search: '',
-  pendingOnly: true,
+  messageFilter: 'all',
   message: '',
   messageType: 'success',
   error: '',
@@ -33,32 +38,39 @@ const state = reactive({
   messages: [],
   gallery: [],
   attachments: [],
-  totals: { gallery: 0, attachments: 0 }
+  summary: {
+    articles: 0,
+    messages: { all: 0, pending: 0, approved: 0 },
+    gallery: 0,
+    attachments: 0
+  },
+  pagination: {
+    articles: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    messages: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    gallery: { page: 1, limit: 12, total: 0, totalPages: 1 },
+    attachments: { page: 1, limit: 12, total: 0, totalPages: 1 }
+  }
 });
+
+let searchTimer = 0;
+let listRequestId = 0;
 
 const sessionUser = computed(() => props.user || getSession()?.user || null);
 const isAllowedRole = computed(() => ['admin', 'super_admin'].includes(state.admin?.role || sessionUser.value?.role));
-const pendingCount = computed(() => state.messages.filter(item => item.status !== 'approved').length);
 const tabCounts = computed(() => ({
-  articles: state.articles.length,
-  messages: pendingCount.value,
-  gallery: state.totals.gallery || state.gallery.length,
-  attachments: state.totals.attachments || state.attachments.length
+  articles: state.summary.articles,
+  messages: state.summary.messages.all,
+  gallery: state.summary.gallery,
+  attachments: state.summary.attachments
 }));
-
-const visibleArticles = computed(() => filterItems(state.articles, item => [item.title, item.category, item.status]));
-const visibleMessages = computed(() => filterItems(
-  state.pendingOnly ? state.messages.filter(item => item.status !== 'approved') : state.messages,
-  item => [item.username, item.content, item.article_title, item.status]
-));
-const visibleGallery = computed(() => filterItems(state.gallery, item => [assetName(item), item.owner_username, item.mime_type]));
-const visibleAttachments = computed(() => filterItems(state.attachments, item => [assetName(item), item.owner_username, item.mime_type, item.asset_type]));
-
-function filterItems(items, fields) {
-  const keyword = state.search.trim().toLowerCase();
-  if (!keyword) return items;
-  return items.filter(item => fields(item).some(value => String(value || '').toLowerCase().includes(keyword)));
-}
+const currentPagination = computed(() => state.pagination[state.active]);
+const pageNumbers = computed(() => {
+  const total = currentPagination.value.totalPages;
+  if (total <= 1) return [1];
+  const start = Math.max(1, Math.min(currentPagination.value.page - 2, total - 4));
+  const end = Math.min(total, start + 4);
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+});
 
 function showMessage(message, type = 'success') {
   state.message = message;
@@ -88,27 +100,85 @@ function normalizedAssets(payload) {
   return Array.isArray(payload?.assets) ? payload.assets : [];
 }
 
-async function loadWorkspace() {
+function applyPagination(tab, pagination = {}) {
+  const current = state.pagination[tab];
+  current.page = Number(pagination.page || current.page);
+  current.limit = Number(pagination.limit || current.limit);
+  current.total = Number(pagination.total || 0);
+  current.totalPages = Math.max(1, Number(pagination.totalPages || 1));
+}
+
+function activeEndpoint(tab, page) {
+  const pagination = state.pagination[tab];
+  const query = new URLSearchParams({
+    page: String(page),
+    limit: String(pagination.limit)
+  });
+  if (state.search.trim()) query.set('search', state.search.trim());
+
+  if (tab === 'articles') return `/api/moderation/articles?${query}`;
+  if (tab === 'messages') {
+    query.set('status', state.messageFilter);
+    return `/api/moderation/messages?${query}`;
+  }
+  query.set('scope', 'all');
+  if (tab === 'gallery') return `/api/assets/gallery?${query}`;
+  query.set('collection', 'attachments');
+  return `/api/assets?${query}`;
+}
+
+function assignPage(tab, payload) {
+  if (tab === 'articles') state.articles = Array.isArray(payload?.items) ? payload.items : [];
+  if (tab === 'messages') state.messages = Array.isArray(payload?.items) ? payload.items : [];
+  if (tab === 'gallery') state.gallery = normalizedAssets(payload);
+  if (tab === 'attachments') state.attachments = normalizedAssets(payload);
+  applyPagination(tab, payload?.pagination);
+}
+
+async function loadSummary() {
+  try {
+    const summary = await adminApi(noStoreUrl('/api/moderation/summary'));
+    state.summary.articles = Number(summary?.articles || 0);
+    state.summary.messages.all = Number(summary?.messages?.all || 0);
+    state.summary.messages.pending = Number(summary?.messages?.pending || 0);
+    state.summary.messages.approved = Number(summary?.messages?.approved || 0);
+    state.summary.gallery = Number(summary?.gallery || 0);
+    state.summary.attachments = Number(summary?.attachments || 0);
+  } catch (error) {
+    state.error = error.message || '管理统计读取失败';
+  }
+}
+
+async function loadActivePage() {
+  const requestId = ++listRequestId;
+  const tab = state.active;
   state.loading = true;
   state.error = '';
   try {
-    const [articles, messages, galleryPayload, assetPayload] = await Promise.all([
-      adminApi(noStoreUrl('/api/moderation/articles')),
-      adminApi(noStoreUrl('/api/moderation/messages')),
-      adminApi(noStoreUrl('/api/assets/gallery?scope=all&limit=120')),
-      adminApi(noStoreUrl('/api/assets?scope=all&limit=120'))
-    ]);
-    state.articles = Array.isArray(articles) ? articles : [];
-    state.messages = Array.isArray(messages) ? messages : [];
-    state.gallery = normalizedAssets(galleryPayload);
-    state.attachments = normalizedAssets(assetPayload).filter(asset => asset.metadata?.gallery !== true && asset.metadata?.collection !== 'gallery');
-    state.totals.gallery = Number(galleryPayload?.pagination?.total || state.gallery.length);
-    state.totals.attachments = Number(assetPayload?.pagination?.total || state.attachments.length);
+    let requestedPage = state.pagination[tab].page;
+    let payload = await adminApi(noStoreUrl(activeEndpoint(tab, requestedPage)));
+    if (requestId !== listRequestId || tab !== state.active) return;
+
+    const totalPages = Math.max(1, Number(payload?.pagination?.totalPages || 1));
+    if (requestedPage > totalPages) {
+      requestedPage = totalPages;
+      state.pagination[tab].page = requestedPage;
+      payload = await adminApi(noStoreUrl(activeEndpoint(tab, requestedPage)));
+      if (requestId !== listRequestId || tab !== state.active) return;
+    }
+    assignPage(tab, payload);
   } catch (error) {
-    state.error = error.message || '管理数据读取失败';
+    if (requestId === listRequestId && tab === state.active) {
+      state.error = error.message || '管理数据读取失败';
+    }
   } finally {
-    state.loading = false;
+    if (requestId === listRequestId) state.loading = false;
   }
+}
+
+async function refreshWorkspace() {
+  state.message = '';
+  await Promise.all([loadSummary(), loadActivePage()]);
 }
 
 async function verifyAccess() {
@@ -117,7 +187,7 @@ async function verifyAccess() {
   try {
     state.admin = await adminApi(noStoreUrl('/api/moderation/me'));
     state.access = isAllowedRole.value ? 'allowed' : 'forbidden';
-    if (state.access === 'allowed') await loadWorkspace();
+    if (state.access === 'allowed') await refreshWorkspace();
   } catch (error) {
     state.access = error.status === 401 ? 'login' : 'forbidden';
   } finally {
@@ -126,8 +196,38 @@ async function verifyAccess() {
 }
 
 function selectTab(tab) {
+  if (tab === state.active) return;
+  window.clearTimeout(searchTimer);
   state.active = tab;
   state.search = '';
+  state.message = '';
+  state.error = '';
+  state.pagination[tab].page = 1;
+  loadActivePage();
+}
+
+function scheduleSearch() {
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => {
+    state.pagination[state.active].page = 1;
+    loadActivePage();
+  }, 320);
+}
+
+function setMessageFilter(filter) {
+  if (filter === state.messageFilter) return;
+  state.messageFilter = filter;
+  state.pagination.messages.page = 1;
+  loadActivePage();
+}
+
+function goToPage(page) {
+  const pagination = currentPagination.value;
+  const nextPage = Math.max(1, Math.min(Number(page) || 1, pagination.totalPages));
+  if (nextPage === pagination.page || state.loading) return;
+  pagination.page = nextPage;
+  loadActivePage();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function runAction(key, action) {
@@ -147,6 +247,11 @@ function isBusy(key) {
   return state.busyKey === key;
 }
 
+async function reloadAfterAction(message) {
+  await Promise.all([loadSummary(), loadActivePage()]);
+  showMessage(message);
+}
+
 function editArticle(item) {
   emit('go', `/editor?id=${encodeURIComponent(item.id)}`);
 }
@@ -154,16 +259,14 @@ function editArticle(item) {
 function toggleArticleStatus(item) {
   return runAction(`article-status-${item.id}`, async () => {
     const data = await adminApi(`/api/moderation/articles/${encodeURIComponent(item.id)}/toggle-status`, { method: 'POST', body: '{}' });
-    item.status = data?.status || item.status;
-    showMessage(item.status === 'published' ? '文章已发布' : '文章已下架');
+    await reloadAfterAction(data?.status === 'published' ? '文章已发布' : '文章已下架');
   });
 }
 
 function toggleArticlePin(item) {
   return runAction(`article-pin-${item.id}`, async () => {
     const data = await adminApi(`/api/moderation/articles/${encodeURIComponent(item.id)}/toggle-pin`, { method: 'POST', body: '{}' });
-    item.pinned_at = data?.pinned_at || null;
-    showMessage(item.pinned_at ? '文章已置顶' : '文章已取消置顶');
+    await reloadAfterAction(data?.pinned_at ? '文章已置顶' : '文章已取消置顶');
   });
 }
 
@@ -171,8 +274,7 @@ function deleteArticle(item) {
   if (!confirm(`删除文章“${item.title}”？`)) return;
   return runAction(`article-delete-${item.id}`, async () => {
     await adminApi(`/api/moderation/articles/${encodeURIComponent(item.id)}/delete`, { method: 'POST', body: '{}' });
-    state.articles = state.articles.filter(article => article.id !== item.id);
-    showMessage('文章已删除');
+    await reloadAfterAction('文章已删除');
   });
 }
 
@@ -191,8 +293,7 @@ function approveMessage(item) {
         confirmExternalLink: externalHosts.length > 0
       })
     });
-    item.status = 'approved';
-    showMessage('留言已通过');
+    await reloadAfterAction('留言已通过');
   });
 }
 
@@ -200,8 +301,7 @@ function deleteMessage(item) {
   if (!confirm('删除这条留言及其回复？')) return;
   return runAction(`message-delete-${item.id}`, async () => {
     await adminApi(`/api/moderation/messages/${encodeURIComponent(item.id)}/delete`, { method: 'POST', body: '{}' });
-    state.messages = state.messages.filter(message => message.id !== item.id && message.parent_id !== item.id);
-    showMessage('留言已删除');
+    await reloadAfterAction('留言已删除');
   });
 }
 
@@ -221,14 +321,7 @@ function deleteAsset(asset, collection) {
   if (!confirm(`删除“${assetName(asset)}”？`)) return;
   return runAction(`asset-delete-${asset.id}`, async () => {
     await adminApi(`/api/assets/${encodeURIComponent(asset.id)}/delete`, { method: 'POST', body: '{}' });
-    if (collection === 'gallery') {
-      state.gallery = state.gallery.filter(item => item.id !== asset.id);
-      state.totals.gallery = Math.max(0, state.totals.gallery - 1);
-    } else {
-      state.attachments = state.attachments.filter(item => item.id !== asset.id);
-      state.totals.attachments = Math.max(0, state.totals.attachments - 1);
-    }
-    showMessage('文件已删除');
+    await reloadAfterAction(collection === 'gallery' ? '图片已删除' : '附件已删除');
   });
 }
 
@@ -237,6 +330,10 @@ function formatDate(value) {
 }
 
 onMounted(verifyAccess);
+onUnmounted(() => {
+  window.clearTimeout(searchTimer);
+  listRequestId += 1;
+});
 </script>
 
 <template>
@@ -260,7 +357,7 @@ onMounted(verifyAccess);
         </div>
         <div class="admin-header-actions">
           <span class="admin-role"><TsIcon name="shield" :size="15" />{{ state.admin?.role }}</span>
-          <button class="ghost-btn compact" type="button" :disabled="state.loading" @click="loadWorkspace">
+          <button class="ghost-btn compact" type="button" :disabled="state.loading" @click="refreshWorkspace">
             <TsIcon name="refresh" :size="16" />刷新
           </button>
         </div>
@@ -284,16 +381,18 @@ onMounted(verifyAccess);
       <div class="admin-toolbar">
         <label class="admin-search">
           <TsIcon name="search" :size="17" />
-          <input v-model="state.search" type="search" autocomplete="off" placeholder="搜索">
+          <input v-model="state.search" type="search" autocomplete="off" placeholder="搜索" aria-label="搜索当前内容" @input="scheduleSearch">
         </label>
         <div class="admin-toolbar-actions">
           <template v-if="state.active === 'articles'">
             <button class="primary-btn compact" type="button" @click="$emit('go', '/editor')"><TsIcon name="plus" :size="16" />新建</button>
           </template>
           <template v-else-if="state.active === 'messages'">
-            <button class="admin-filter-btn" type="button" :class="{ active: state.pendingOnly }" @click="state.pendingOnly = !state.pendingOnly">
-              {{ state.pendingOnly ? '仅待审核' : '全部留言' }}
-            </button>
+            <div class="admin-filter-group" role="group" aria-label="留言状态">
+              <button v-for="filter in messageFilters" :key="filter.id" class="admin-filter-btn" type="button" :class="{ active: state.messageFilter === filter.id }" :aria-pressed="state.messageFilter === filter.id" @click="setMessageFilter(filter.id)">
+                {{ filter.label }} <b>{{ state.summary.messages[filter.id] }}</b>
+              </button>
+            </div>
           </template>
           <template v-else-if="state.active === 'gallery'">
             <button class="primary-btn compact" type="button" @click="$emit('go', '/gallery/manage?scope=all')"><TsIcon name="image" :size="16" />图库管理</button>
@@ -310,7 +409,7 @@ onMounted(verifyAccess);
       <LoadingSkeleton v-if="state.loading" :variant="state.active === 'gallery' ? 'gallery' : 'list'" :count="8" label="正在读取管理数据" />
 
       <section v-else-if="state.active === 'articles'" class="admin-list" aria-label="文章管理">
-        <article v-for="item in visibleArticles" :key="item.id" class="admin-row">
+        <article v-for="item in state.articles" :key="item.id" class="admin-row">
           <div class="admin-row-main">
             <strong>{{ item.title }}</strong>
             <span>{{ item.category }} · {{ formatDate(item.published_at || item.created_at) }}</span>
@@ -326,11 +425,11 @@ onMounted(verifyAccess);
             <button class="danger-btn compact" type="button" title="删除文章" :aria-label="`删除文章 ${item.title}`" :disabled="isBusy(`article-delete-${item.id}`)" @click="deleteArticle(item)"><TsIcon name="trash" :size="16" /></button>
           </div>
         </article>
-        <div v-if="!visibleArticles.length" class="admin-empty">暂无文章</div>
+        <div v-if="!state.articles.length" class="admin-empty">暂无文章</div>
       </section>
 
       <section v-else-if="state.active === 'messages'" class="admin-list" aria-label="留言审核">
-        <article v-for="item in visibleMessages" :key="item.id" class="admin-row admin-message-row">
+        <article v-for="item in state.messages" :key="item.id" class="admin-row admin-message-row">
           <div class="admin-row-main">
             <strong>{{ item.username }}</strong>
             <p>{{ item.content }}</p>
@@ -346,11 +445,11 @@ onMounted(verifyAccess);
             <button class="danger-btn compact" type="button" title="删除留言" :aria-label="`删除 ${item.username} 的留言`" :disabled="isBusy(`message-delete-${item.id}`)" @click="deleteMessage(item)"><TsIcon name="trash" :size="16" /></button>
           </div>
         </article>
-        <div v-if="!visibleMessages.length" class="admin-empty">暂无待处理留言</div>
+        <div v-if="!state.messages.length" class="admin-empty">{{ state.messageFilter === 'all' ? '暂无留言' : '当前状态暂无留言' }}</div>
       </section>
 
       <section v-else-if="state.active === 'gallery'" class="admin-media-grid" aria-label="图库管理">
-        <article v-for="asset in visibleGallery" :key="asset.id" class="admin-media-card">
+        <article v-for="asset in state.gallery" :key="asset.id" class="admin-media-card">
           <img :src="assetUrl(asset)" :alt="assetName(asset)" loading="lazy">
           <div>
             <strong>{{ assetName(asset) }}</strong>
@@ -361,11 +460,11 @@ onMounted(verifyAccess);
             <button class="danger-btn compact" type="button" title="删除图片" :aria-label="`删除图片 ${assetName(asset)}`" :disabled="isBusy(`asset-delete-${asset.id}`)" @click="deleteAsset(asset, 'gallery')"><TsIcon name="trash" :size="16" /></button>
           </div>
         </article>
-        <div v-if="!visibleGallery.length" class="admin-empty">暂无图片</div>
+        <div v-if="!state.gallery.length" class="admin-empty">暂无图片</div>
       </section>
 
       <section v-else class="admin-list" aria-label="附件管理">
-        <article v-for="asset in visibleAttachments" :key="asset.id" class="admin-row admin-asset-row">
+        <article v-for="asset in state.attachments" :key="asset.id" class="admin-row admin-asset-row">
           <div class="admin-asset-icon">
             <img v-if="isImage(asset)" :src="assetUrl(asset)" alt="" loading="lazy">
             <TsIcon v-else name="paperclip" :size="20" />
@@ -379,8 +478,21 @@ onMounted(verifyAccess);
             <button class="danger-btn compact" type="button" title="删除附件" :aria-label="`删除附件 ${assetName(asset)}`" :disabled="isBusy(`asset-delete-${asset.id}`)" @click="deleteAsset(asset, 'attachments')"><TsIcon name="trash" :size="16" /></button>
           </div>
         </article>
-        <div v-if="!visibleAttachments.length" class="admin-empty">暂无附件</div>
+        <div v-if="!state.attachments.length" class="admin-empty">暂无附件</div>
       </section>
+
+      <nav v-if="!state.loading && currentPagination.totalPages > 1" class="admin-pagination" aria-label="内容分页">
+        <button class="ghost-btn compact" type="button" :disabled="currentPagination.page <= 1" @click="goToPage(currentPagination.page - 1)">
+          <TsIcon name="arrowLeft" :size="16" />上一页
+        </button>
+        <div class="admin-page-numbers">
+          <button v-for="page in pageNumbers" :key="page" type="button" :class="{ active: page === currentPagination.page }" :aria-current="page === currentPagination.page ? 'page' : undefined" @click="goToPage(page)">{{ page }}</button>
+        </div>
+        <span>{{ currentPagination.total }} 条</span>
+        <button class="ghost-btn compact" type="button" :disabled="currentPagination.page >= currentPagination.totalPages" @click="goToPage(currentPagination.page + 1)">
+          下一页<TsIcon name="arrowRight" :size="16" />
+        </button>
+      </nav>
     </template>
   </main>
 </template>

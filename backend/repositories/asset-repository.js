@@ -32,18 +32,30 @@ function normalizeTypeWhere(type, params) {
     return ' AND asset_type LIKE ?';
 }
 
-function listAssetsByOwner(ownerId, { limit = 60, offset = 0, type = '', search = '', includePublic = false, includeAll = false } = {}) {
+function excludeGalleryWhere(excludeGallery) {
+    if (!excludeGallery) return '';
+    return ` AND NOT (
+        metadata LIKE '%"collection":"gallery"%'
+        OR metadata LIKE '%"collection": "gallery"%'
+        OR metadata LIKE '%"gallery":true%'
+        OR metadata LIKE '%"gallery": true%'
+    )`;
+}
+
+function listAssetsByOwner(ownerId, { limit = 60, offset = 0, type = '', search = '', includePublic = false, includeAll = false, excludeGallery = false } = {}) {
     const ownerFilter = buildOwnerFilter(ownerId, { includePublic, includeAll });
     const params = [...ownerFilter.params];
     let where = ownerFilter.where;
     where += normalizeTypeWhere(type, params);
+    where += excludeGalleryWhere(excludeGallery);
     if (search) {
         where += ' AND (url LIKE ? OR storage_key LIKE ? OR metadata LIKE ?)';
         const keyword = `%${search}%`;
         params.push(keyword, keyword, keyword);
     }
     const rows = db.prepare(`
-        SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
+        SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at,
+               (SELECT username FROM users WHERE id = article_assets.owner_id) AS owner_username
         FROM article_assets
         WHERE ${where}
         ORDER BY created_at DESC
@@ -52,11 +64,12 @@ function listAssetsByOwner(ownerId, { limit = 60, offset = 0, type = '', search 
     return rows.map(parseMetadata);
 }
 
-function countAssetsByOwner(ownerId, { type = '', search = '', includePublic = false, includeAll = false } = {}) {
+function countAssetsByOwner(ownerId, { type = '', search = '', includePublic = false, includeAll = false, excludeGallery = false } = {}) {
     const ownerFilter = buildOwnerFilter(ownerId, { includePublic, includeAll });
     const params = [...ownerFilter.params];
     let where = ownerFilter.where;
     where += normalizeTypeWhere(type, params);
+    where += excludeGalleryWhere(excludeGallery);
     if (search) {
         where += ' AND (url LIKE ? OR storage_key LIKE ? OR metadata LIKE ?)';
         const keyword = `%${search}%`;

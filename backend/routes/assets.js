@@ -332,6 +332,7 @@ router.get('/', authenticateToken, (req, res) => {
         const offset = (page - 1) * limit;
         const type = String(req.query.type || '').trim();
         const search = String(req.query.search || '').trim().slice(0, 80);
+        const excludeGallery = String(req.query.collection || '').trim().toLowerCase() === 'attachments';
         const requestedAll = req.query.scope === 'all';
         const requestedPublic = req.query.includePublic === 'true';
         if ((requestedAll || requestedPublic) && !isAdminUser(req.user)) {
@@ -339,9 +340,9 @@ router.get('/', authenticateToken, (req, res) => {
         }
         const includeAll = requestedAll && isAdminUser(req.user);
         const includePublic = !includeAll && requestedPublic && isAdminUser(req.user);
-        const options = { limit, offset, type, search, includePublic, includeAll };
+        const options = { limit, offset, type, search, includePublic, includeAll, excludeGallery };
         const assets = assetRepository.listAssetsByOwner(req.user.id, options).map((asset) => normalizeAsset(asset, { signUrl: true }));
-        const total = assetRepository.countAssetsByOwner(req.user.id, { type, search, includePublic, includeAll });
+        const total = assetRepository.countAssetsByOwner(req.user.id, { type, search, includePublic, includeAll, excludeGallery });
         ok(res, {
             assets,
             pagination: {

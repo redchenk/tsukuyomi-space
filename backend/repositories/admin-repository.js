@@ -57,12 +57,37 @@ function updateAdminPassword(id, passwordHash) {
     return update();
 }
 
-function listAdminArticles() {
+function buildAdminArticleFilter({ search = '', status = '' } = {}) {
+    const where = [];
+    const params = [];
+    if (['published', 'draft'].includes(status)) {
+        where.push('status = ?');
+        params.push(status);
+    }
+    if (search) {
+        where.push('(title LIKE ? OR category LIKE ? OR excerpt LIKE ?)');
+        const keyword = `%${search}%`;
+        params.push(keyword, keyword, keyword);
+    }
+    return { sql: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
+}
+
+function listAdminArticles({ limit = 0, offset = 0, search = '', status = '' } = {}) {
+    const filter = buildAdminArticleFilter({ search, status });
+    const pageSql = limit > 0 ? 'LIMIT ? OFFSET ?' : '';
+    const params = limit > 0 ? [...filter.params, limit, offset] : filter.params;
     return db.prepare(`
         SELECT id, title, slug, category, content_format, cover_image_asset_id, view_count, status, pinned_at, published_at, created_at, updated_at
         FROM articles
+        ${filter.sql}
         ORDER BY pinned_at IS NULL, pinned_at DESC, COALESCE(updated_at, created_at) DESC
-    `).all();
+        ${pageSql}
+    `).all(...params);
+}
+
+function countAdminArticles(options = {}) {
+    const filter = buildAdminArticleFilter(options);
+    return db.prepare(`SELECT COUNT(*) AS count FROM articles ${filter.sql}`).get(...filter.params).count;
 }
 
 function updateAdminArticle(id, article) {
@@ -127,7 +152,23 @@ function toggleArticlePin(id) {
     return { pinnedAt };
 }
 
-function listAdminMessages() {
+function buildAdminMessageFilter({ search = '', status = 'all' } = {}) {
+    const where = [];
+    const params = [];
+    if (status === 'pending') where.push("COALESCE(m.status, 'approved') <> 'approved'");
+    if (status === 'approved') where.push("COALESCE(m.status, 'approved') = 'approved'");
+    if (search) {
+        where.push("(m.content LIKE ? OR COALESCE(u.username, m.author, '匿名') LIKE ? OR COALESCE(a.title, '') LIKE ?)");
+        const keyword = `%${search}%`;
+        params.push(keyword, keyword, keyword);
+    }
+    return { sql: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
+}
+
+function listAdminMessages({ limit = 0, offset = 0, search = '', status = 'all' } = {}) {
+    const filter = buildAdminMessageFilter({ search, status });
+    const pageSql = limit > 0 ? 'LIMIT ? OFFSET ?' : '';
+    const params = limit > 0 ? [...filter.params, limit, offset] : filter.params;
     return db.prepare(`
         SELECT m.id,
                COALESCE(u.username, m.author, '匿名') AS username,
@@ -142,8 +183,21 @@ function listAdminMessages() {
         FROM messages m
         LEFT JOIN users u ON m.user_id = u.id
         LEFT JOIN articles a ON m.article_id = a.id
+        ${filter.sql}
         ORDER BY m.created_at DESC
-    `).all();
+        ${pageSql}
+    `).all(...params);
+}
+
+function countAdminMessages(options = {}) {
+    const filter = buildAdminMessageFilter(options);
+    return db.prepare(`
+        SELECT COUNT(*) AS count
+        FROM messages m
+        LEFT JOIN users u ON m.user_id = u.id
+        LEFT JOIN articles a ON m.article_id = a.id
+        ${filter.sql}
+    `).get(...filter.params).count;
 }
 
 function approveMessage(id) {
@@ -274,10 +328,12 @@ module.exports = {
     findAdminById,
     ensureSiteUserForAdmin,
     updateAdminPassword,
+    countAdminArticles,
     listAdminArticles,
     updateAdminArticle,
     toggleArticleStatus,
     toggleArticlePin,
+    countAdminMessages,
     listAdminMessages,
     findAdminMessageById,
     approveMessage,

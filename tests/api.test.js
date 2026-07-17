@@ -2367,19 +2367,41 @@ describe('admin API permissions', () => {
         assert.equal(me.body.data.username, 'admin');
         assert.equal(me.body.data.role, 'admin');
 
-        const [articles, messages, gallery, attachments] = await Promise.all([
-            request('/api/moderation/articles', { headers: jsonHeaders(adminToken) }),
-            request('/api/moderation/messages', { headers: jsonHeaders(adminToken) }),
-            request('/api/assets/gallery?scope=all&limit=10', { headers: jsonHeaders(adminToken) }),
-            request('/api/assets?scope=all&limit=10', { headers: jsonHeaders(adminToken) })
+        const [summary, articles, messages, gallery, attachments] = await Promise.all([
+            request('/api/moderation/summary', { headers: jsonHeaders(adminToken) }),
+            request('/api/moderation/articles?page=1&limit=2', { headers: jsonHeaders(adminToken) }),
+            request('/api/moderation/messages?page=1&limit=2&status=all', { headers: jsonHeaders(adminToken) }),
+            request('/api/assets/gallery?scope=all&page=1&limit=2', { headers: jsonHeaders(adminToken) }),
+            request('/api/assets?scope=all&collection=attachments&page=1&limit=2', { headers: jsonHeaders(adminToken) })
         ]);
-        for (const result of [articles, messages, gallery, attachments]) {
+        for (const result of [summary, articles, messages, gallery, attachments]) {
             assert.equal(result.response.status, 200);
         }
-        assert.ok(Array.isArray(articles.body.data));
-        assert.ok(Array.isArray(messages.body.data));
+        assert.ok(summary.body.data.articles >= 3);
+        assert.equal(summary.body.data.messages.all, summary.body.data.messages.pending + summary.body.data.messages.approved);
+        assert.ok(Array.isArray(articles.body.data.items));
+        assert.equal(articles.body.data.items.length, 2);
+        assert.equal(articles.body.data.pagination.limit, 2);
+        assert.ok(articles.body.data.pagination.totalPages >= 2);
+        assert.ok(Array.isArray(messages.body.data.items));
+        assert.ok(messages.body.data.items.length <= 2);
+        assert.equal(messages.body.data.pagination.total, summary.body.data.messages.all);
         assert.ok(Array.isArray(gallery.body.data.assets));
         assert.ok(Array.isArray(attachments.body.data.assets));
+        assert.ok(attachments.body.data.assets.every(asset => asset.metadata?.collection !== 'gallery' && asset.metadata?.gallery !== true));
+
+        const pendingMessages = await request('/api/moderation/messages?page=1&limit=10&status=pending', {
+            headers: jsonHeaders(adminToken)
+        });
+        const approvedMessages = await request('/api/moderation/messages?page=1&limit=10&status=approved', {
+            headers: jsonHeaders(adminToken)
+        });
+        assert.equal(pendingMessages.response.status, 200);
+        assert.equal(approvedMessages.response.status, 200);
+        assert.equal(pendingMessages.body.data.pagination.total, summary.body.data.messages.pending);
+        assert.equal(approvedMessages.body.data.pagination.total, summary.body.data.messages.approved);
+        assert.ok(pendingMessages.body.data.items.every(message => message.status !== 'approved'));
+        assert.ok(approvedMessages.body.data.items.every(message => message.status === 'approved'));
 
         const terminalCookie = String(adminToken).split('; ').find(value => value.startsWith('tsukuyomi_admin_session='));
         assert.ok(terminalCookie);

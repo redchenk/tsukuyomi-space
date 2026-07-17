@@ -415,6 +415,7 @@ describe('content administration workspace', () => {
 
     it('uses the restricted moderation API for articles and messages', () => {
         const page = source('src/frontend/pages/AdminPage.vue');
+        const pageCss = source('assets/css/vue/pages/admin.css');
         const editor = source('src/frontend/pages/EditorPage.vue');
         const routes = source('backend/routes/moderation.js');
         const assets = source('backend/routes/assets.js');
@@ -422,14 +423,26 @@ describe('content administration workspace', () => {
         assert.match(page, /\/api\/moderation\/me/);
         assert.match(page, /\/api\/moderation\/articles/);
         assert.match(page, /\/api\/moderation\/messages/);
-        assert.match(page, /\/api\/assets\/gallery\?scope=all/);
-        assert.match(page, /\/api\/assets\?scope=all/);
+        assert.match(page, /query\.set\('scope', 'all'\)/);
+        assert.match(page, /query\.set\('collection', 'attachments'\)/);
+        assert.match(page, /messageFilter: 'all'/);
+        assert.match(page, /\{ id: 'all', label: '全部' \}/);
+        assert.match(page, /\{ id: 'pending', label: '待审核' \}/);
+        assert.match(page, /\{ id: 'approved', label: '已通过' \}/);
+        assert.match(page, /currentPagination\.totalPages > 1/);
+        assert.match(page, /function goToPage\(page\)/);
+        assert.match(page, /function loadActivePage\(\)/);
+        assert.doesNotMatch(page, /Promise\.all\(\[\s*adminApi\(noStoreUrl\('\/api\/moderation\/articles'/);
+        assert.match(pageCss, /\.admin-pagination/);
         assert.match(page, /reviewDigest: item\.moderation\?\.reviewDigest/);
         assert.match(page, /confirmExternalLink: externalHosts\.length > 0/);
         assert.match(page, /method: 'POST'/);
         assert.match(editor, /\/api\/moderation\/articles\/\$\{id\}\/save/);
         assert.match(routes, /router\.use\(authenticateToken, requireAdmin\)/);
+        assert.match(routes, /function pageQuery\(req, defaultLimit = 12\)/);
+        assert.match(routes, /status = \['pending', 'approved'\]\.includes\(req\.query\.status\)/);
         assert.match(assets, /router\.post\('\/:id\/delete', authenticateToken, requireAdmin, deleteAsset\)/);
+        assert.match(assets, /collection \|\| ''\).*=== 'attachments'/);
     });
 });
 

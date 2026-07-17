@@ -3,9 +3,11 @@ const express = require('express');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const adminRepository = require('../repositories/admin-repository');
 const articleRepository = require('../repositories/article-repository');
+const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const responseCache = require('../services/response-cache');
 const { readModerationSettings, reviewMessageContent } = require('../services/message-moderation');
+const { parsePositiveInt } = require('../validators');
 
 const router = express.Router();
 
@@ -26,6 +28,29 @@ function fail(res, status, message, code = '') {
 function asInt(value) {
     const id = Number.parseInt(value, 10);
     return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function pageQuery(req, defaultLimit = 12) {
+    const page = parsePositiveInt(req.query.page, 1);
+    const limit = Math.min(parsePositiveInt(req.query.limit, defaultLimit), 40);
+    return {
+        page,
+        limit,
+        offset: (page - 1) * limit,
+        search: String(req.query.search || '').trim().slice(0, 80)
+    };
+}
+
+function paginated(items, { page, limit }, total) {
+    return {
+        items,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / limit))
+        }
+    };
 }
 
 function clearArticleCache() {
@@ -80,9 +105,31 @@ router.get('/me', (req, res) => {
     });
 });
 
+router.get('/summary', (req, res) => {
+    try {
+        ok(res, {
+            articles: adminRepository.countAdminArticles(),
+            messages: {
+                all: adminRepository.countAdminMessages({ status: 'all' }),
+                pending: adminRepository.countAdminMessages({ status: 'pending' }),
+                approved: adminRepository.countAdminMessages({ status: 'approved' })
+            },
+            gallery: assetRepository.countGalleryAssets(),
+            attachments: assetRepository.countAssetsByOwner(req.user.id, { includeAll: true, excludeGallery: true })
+        });
+    } catch (error) {
+        console.error('Moderation summary error:', error);
+        fail(res, 500, '无法读取管理统计');
+    }
+});
+
 router.get('/articles', (req, res) => {
     try {
-        ok(res, adminRepository.listAdminArticles());
+        const options = pageQuery(req, 10);
+        const status = ['published', 'draft'].includes(req.query.status) ? req.query.status : '';
+        const items = adminRepository.listAdminArticles({ ...options, status });
+        const total = adminRepository.countAdminArticles({ search: options.search, status });
+        ok(res, paginated(items, options, total));
     } catch (error) {
         console.error('Moderation article list error:', error);
         fail(res, 500, '无法读取文章列表');
@@ -174,8 +221,13 @@ router.post('/articles/:id/delete', (req, res) => {
 
 router.get('/messages', (req, res) => {
     try {
+        const options = pageQuery(req, 10);
+        const status = ['pending', 'approved'].includes(req.query.status) ? req.query.status : 'all';
         const settings = readModerationSettings();
-        ok(res, adminRepository.listAdminMessages().map(message => messageModerationView(message, settings)));
+        const items = adminRepository.listAdminMessages({ ...options, status })
+            .map(message => messageModerationView(message, settings));
+        const total = adminRepository.countAdminMessages({ search: options.search, status });
+        ok(res, paginated(items, options, total));
     } catch (error) {
         console.error('Moderation message list error:', error);
         fail(res, 500, '无法读取留言列表');
