@@ -46,7 +46,7 @@ const manageScopeLabel = computed(() => {
 const shownImages = computed(() => state.images);
 const latestImage = computed(() => state.latest || null);
 const randomFeatureImage = computed(() => state.randomFeatured || null);
-const heroImage = computed(() => latestImage.value ? imageUrl(latestImage.value) : '/assets/images/tsukuyomi-bg.png');
+const heroImage = computed(() => latestImage.value ? imageUrl(latestImage.value) : '/assets/images/tsukuyomi-bg.webp');
 
 function imageName(asset) {
   return asset.metadata?.title || asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
@@ -431,7 +431,7 @@ onUnmounted(() => {
 
         <section v-if="randomFeatureImage && !isManageMode" class="gallery-feature" :class="{ 'is-fading': state.randomFeatureFading }">
           <button class="gallery-feature-image" type="button" @click="state.selected = randomFeatureImage">
-            <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)">
+            <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)" loading="eager" decoding="async" fetchpriority="high">
           </button>
           <article>
             <span class="gallery-feature-badge">随机影像</span>
@@ -484,7 +484,7 @@ onUnmounted(() => {
         <section v-else class="gallery-grid">
           <article v-for="asset in shownImages" :key="asset.id" class="gallery-card">
             <button class="gallery-card-image" type="button" @click="state.selected = asset">
-              <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy">
+              <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy" decoding="async">
             </button>
             <div class="gallery-card-body">
               <a

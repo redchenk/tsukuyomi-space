@@ -221,7 +221,7 @@ describe('frontend session refresh resilience', () => {
 });
 
 describe('room Live2D mobile quality parity', () => {
-    it('keeps the room renderer on the full desktop profile for every device', () => {
+    it('keeps full model resolution while adapting only frame pacing on constrained devices', () => {
         const bridge = source('src/frontend/services/room/live2dBridge.js');
         const roomRuntime = source('src/live2d/main-room.ts');
         const subdelegate = source('src/live2d/lappsubdelegate.ts');
@@ -234,8 +234,9 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(bridge, /export function live2DPerformanceMode\(\) \{\s*return 'standard';\s*\}/);
         assert.doesNotMatch(bridge, /isConstrainedMobileLive2DDevice|lowQualityModel|tsukimi-yachiyo-(?:mobile|lite)\.model3\.json/);
         assert.match(roomRuntime, /ROOM_RENDER_FRAME_INTERVAL_MS = 1000 \/ 60/);
-        assert.match(roomRuntime, /ROOM_RENDER_MAX_FRAME_INTERVAL_MS = 1000 \/ 45/);
-        assert.doesNotMatch(roomRuntime, /lowPower|1000 \/ 30|dataset\.performance/);
+        assert.match(roomRuntime, /ROOM_RENDER_BALANCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 45/);
+        assert.match(roomRuntime, /ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 30/);
+        assert.match(roomRuntime, /TSUKUYOMI_PERFORMANCE_PROFILE === 'reduced'/);
         assert.match(subdelegate, /return window\.devicePixelRatio \|\| 1;/);
         assert.doesNotMatch(subdelegate, /Math\.min\(ratio|isMobile/);
         assert.match(manager, /function live2dModelJsonName\(index: number\): string \{\s*return `\$\{LAppDefine\.ModelDir\[index\]\}\.model3\.json`;/);
@@ -284,15 +285,15 @@ describe('room Live2D mobile quality parity', () => {
         assert.doesNotMatch(app, /watch\(\(\) => route\.fullPath,[\s\S]{0,100}\{ immediate: true \}/);
         assert.match(music, /function ensureTrackLoaded\(/);
         assert.doesNotMatch(music, /\n\s*loadTrack\(trackIndex\.value\);\s*\n\s*onBeforeUnmount/);
-        assert.match(router, /LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready'/);
-        assert.match(router, /if \(to\.name === 'room'\)[\s\S]*addEventListener\(LIVE2D_READY_EVENT/);
+        assert.match(router, /if \(!loaders\.length \|\| to\.name === 'room'\) return;/);
+        assert.match(router, /scheduleIdleTask/);
+        assert.doesNotMatch(router, /room: \[[^\]]+(?:HubPage|RoomSettingsPage)/);
         assert.match(bridge, /LIVE2D_READY_TIMEOUT = 210000/);
         assert.match(bridge, /LIVE2D_ERROR_EVENT = 'tsukuyomi:live2d-error'/);
-        assert.match(bridge, /live2d-room-neuro-live\.20260714-mobile-perf-r5\.iife\.js/);
+        assert.match(bridge, /live2d-room-neuro-live\.20260717-adaptive-perf-r6\.iife\.js/);
         assert.match(bridge, /return '\/models-v4\/tsukimi-yachiyo\/tsukimi-yachiyo\.model3\.json';/);
         assert.doesNotMatch(bridge, /assetUrl\('\/models\/tsukimi-yachiyo/);
         assert.doesNotMatch(bridge, /assetUrl\('[^']+\.moc3'\)/);
-        assert.match(router, /ROOM_WARMUP_FALLBACK_MS = 210000/);
         assert.match(textureManager, /textureLoadMaxAttempts = 3/);
         assert.match(textureManager, /textureLoadTimeoutMs = 35000/);
         assert.match(textureManager, /_live2d_texture_retry/);
@@ -302,7 +303,7 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(platform, /AbortController/);
         assert.match(platform, /tsukuyomi:live2d-error/);
         assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.iife\.js \{[\s\S]*max-age=300, must-revalidate/);
-        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260714-mobile-perf-r5\.iife\.js \{[\s\S]*immutable/);
+        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260717-adaptive-perf-r6\.iife\.js \{[\s\S]*immutable/);
     });
 
     it('shares peripheral animation timing and avoids redundant frame writes', () => {

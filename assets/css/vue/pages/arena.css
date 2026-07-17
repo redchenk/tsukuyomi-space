@@ -55,7 +55,7 @@
     z-index: -2;
     background:
         linear-gradient(120deg, rgba(7, 13, 29, 0.4), rgba(7, 13, 29, 0.76)),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
     filter: saturate(1.04) contrast(1.02);
 }
 
@@ -1538,7 +1538,7 @@ body .page.arena-page .arena-hero-copy::before {
     z-index: -2;
     background:
         linear-gradient(120deg, rgba(7, 13, 29, 0.46), rgba(7, 13, 29, 0.78)),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
 }
 
 body .page.arena-page .arena-hero-copy::after {

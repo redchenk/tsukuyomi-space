@@ -1,13 +1,19 @@
 <script setup>
-import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { apiFetch, authFetch, getSession, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, setPublicStatsCache } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
-import SitePet from './components/SitePet.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
 import { isAuthPath, withAuthRedirect } from './utils/authRedirect';
+import {
+  getPerformanceProfile,
+  PERFORMANCE_PROFILE_EVENT,
+  scheduleIdleTask
+} from './utils/performance';
+
+const SitePet = defineAsyncComponent(() => import('./components/SitePet.vue'));
 
 const route = useRoute();
 const router = useRouter();
@@ -18,11 +24,15 @@ const t = computed(() => i18n[lang.value] || i18n.zh);
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isAuthRoute = computed(() => route.name === 'login' || route.name === 'register');
 const isLive2DRoute = computed(() => route.name === 'live2d');
+const isRoomRoute = computed(() => route.name === 'room');
 const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value);
 const routeTransitionName = computed(() => isLive2DRoute.value ? '' : 'ts-route');
 const hasGlobalBackground = computed(() => !isAccessRoute.value && !isAuthRoute.value && route.name !== 'room' && !isLive2DRoute.value);
 const showSitePet = computed(() => Boolean(route.name)
   && !['access', 'accessAlias', 'login', 'register', 'room', 'roomSettings'].includes(route.name));
+const performanceProfile = ref(getPerformanceProfile());
+const petReady = ref(false);
+const petReduced = computed(() => performanceProfile.value === 'reduced');
 const isAuthed = computed(() => Boolean(user.value));
 const music = useRoomMusic();
 const routeTransitioning = ref(false);
@@ -42,6 +52,7 @@ let lastTrustedAuthAt = 0;
 let routeTransitionTimer = 0;
 let refreshUserRun = 0;
 let initialRouteReady = false;
+let cancelPetWarmup = null;
 const viewRecordRequests = new Map();
 
 function hydrateCachedUser() {
@@ -257,6 +268,22 @@ function handleVisibilityChange() {
   refreshUser();
 }
 
+function scheduleSitePet() {
+  cancelPetWarmup?.();
+  cancelPetWarmup = scheduleIdleTask(() => {
+    petReady.value = true;
+    cancelPetWarmup = null;
+  }, {
+    delay: performanceProfile.value === 'reduced' ? 900 : 1800,
+    timeout: performanceProfile.value === 'reduced' ? 1400 : 3500
+  });
+}
+
+function handlePerformanceProfile(event) {
+  performanceProfile.value = event.detail?.profile || getPerformanceProfile();
+  if (!petReady.value) scheduleSitePet();
+}
+
 provide('siteMusic', music);
 
 watch(isAccessRoute, (next) => {
@@ -276,6 +303,10 @@ watch(theme, setTheme, { immediate: true });
 watch(() => route.fullPath, () => {
   if (initialRouteReady) refreshUser();
 });
+
+watch(isRoomRoute, (next) => {
+  document.body.classList.toggle('vue-room-route', next);
+}, { immediate: true });
 router.isReady().then(() => {
   initialRouteReady = true;
   refreshUser();
@@ -283,14 +314,18 @@ router.isReady().then(() => {
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
   loadPublicSettings();
+  scheduleSitePet();
   window.addEventListener('pageshow', handlePageShow);
+  window.addEventListener(PERFORMANCE_PROFILE_EVENT, handlePerformanceProfile);
   document.addEventListener('visibilitychange', handleVisibilityChange);
 });
 
 onUnmounted(() => {
   if (typeof window === 'undefined') return;
   window.clearTimeout(routeTransitionTimer);
+  cancelPetWarmup?.();
   window.removeEventListener('pageshow', handlePageShow);
+  window.removeEventListener(PERFORMANCE_PROFILE_EVENT, handlePerformanceProfile);
   document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
@@ -342,7 +377,7 @@ onUnmounted(() => {
 
   <div v-if="routeTransitioning" class="route-transition-veil" aria-hidden="true"></div>
 
-  <SitePet v-if="showSitePet" :lang="lang" :route-name="route.name" />
+  <SitePet v-if="showSitePet && petReady" :lang="lang" :route-name="route.name" :reduced="petReduced" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
     <section class="visit-popup-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="visitPopup.title">

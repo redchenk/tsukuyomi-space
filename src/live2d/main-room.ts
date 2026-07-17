@@ -29,9 +29,16 @@ type RoomLive2DState = {
 let roomState: RoomLive2DState | null = null;
 
 const ROOM_RENDER_FRAME_INTERVAL_MS = 1000 / 60;
-const ROOM_RENDER_MAX_FRAME_INTERVAL_MS = 1000 / 45;
+const ROOM_RENDER_BALANCED_MAX_FRAME_INTERVAL_MS = 1000 / 45;
+const ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS = 1000 / 30;
 const ROOM_RENDER_FRAME_TOLERANCE_MS = 1;
 const ROOM_RENDER_HEADROOM_RATIO = 1.35;
+
+function roomRenderMaxFrameInterval(): number {
+  return (window as any).TSUKUYOMI_PERFORMANCE_PROFILE === 'reduced'
+    ? ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS
+    : ROOM_RENDER_BALANCED_MAX_FRAME_INTERVAL_MS;
+}
 
 const allowedExpressions = new Set(['neutral', 'smile', 'bsmile', 'namida', 'tears']);
 const allowedTapBodyMotions = new Set(['tap_body', 'body_tap', 'tapbody']);
@@ -426,7 +433,7 @@ function initRoomLive2D(): void {
         const desiredInterval = clampNumber(
           averageRenderCost * ROOM_RENDER_HEADROOM_RATIO,
           ROOM_RENDER_FRAME_INTERVAL_MS,
-          ROOM_RENDER_MAX_FRAME_INTERVAL_MS,
+          roomRenderMaxFrameInterval(),
           ROOM_RENDER_FRAME_INTERVAL_MS
         );
         targetFrameInterval = targetFrameInterval * 0.86 + desiredInterval * 0.14;
@@ -434,7 +441,8 @@ function initRoomLive2D(): void {
           framePacingUpdatedAt = now;
           (window as any).TSUKUYOMI_LIVE2D_FRAME_PACING = {
             targetFps: Math.round(1000 / targetFrameInterval),
-            averageRenderCostMs: Math.round(averageRenderCost * 100) / 100
+            averageRenderCostMs: Math.round(averageRenderCost * 100) / 100,
+            profile: (window as any).TSUKUYOMI_PERFORMANCE_PROFILE || 'balanced'
           };
         }
       }

@@ -17,6 +17,7 @@ const MOUTH_EVENT = 'tsukuyomi:live2d-mouth';
 const CHARACTER_STATE_EVENT = 'tsukuyomi:live2d-character-state';
 const LOCAL_CUBISM_ACTION_INTENSITY_SCALE = 1.86;
 const LOCAL_CUBISM_FRAME_INTERVAL_MS = 1000 / 60;
+const LOCAL_CUBISM_REDUCED_FRAME_INTERVAL_MS = 1000 / 30;
 
 const EYE_OWNING_EXPRESSIONS = new Set([
   'angry',
@@ -711,6 +712,16 @@ export function mountCubismBehaviorBridge(options = {}) {
   let lastFrameAt = 0;
   let momentaryPulse = null;
 
+  function currentFrameInterval() {
+    const targetFps = Number(window.TSUKUYOMI_LIVE2D_FRAME_PACING?.targetFps);
+    const pacedInterval = Number.isFinite(targetFps) && targetFps > 0
+      ? 1000 / Math.min(Math.max(targetFps, 30), 60)
+      : LOCAL_CUBISM_FRAME_INTERVAL_MS;
+    return window.TSUKUYOMI_PERFORMANCE_PROFILE === 'reduced'
+      ? Math.max(pacedInterval, LOCAL_CUBISM_REDUCED_FRAME_INTERVAL_MS)
+      : pacedInterval;
+  }
+
   function dispatchFrame(parameters) {
     if (frameSink) {
       frameSink(parameters);
@@ -739,10 +750,11 @@ export function mountCubismBehaviorBridge(options = {}) {
       lastFrameAt = 0;
       return;
     }
-    const elapsed = lastFrameAt ? now - lastFrameAt : LOCAL_CUBISM_FRAME_INTERVAL_MS;
-    if (elapsed < LOCAL_CUBISM_FRAME_INTERVAL_MS - 1) return;
-    lastFrameAt = elapsed >= LOCAL_CUBISM_FRAME_INTERVAL_MS
-      ? now - (elapsed % LOCAL_CUBISM_FRAME_INTERVAL_MS)
+    const frameInterval = currentFrameInterval();
+    const elapsed = lastFrameAt ? now - lastFrameAt : frameInterval;
+    if (elapsed < frameInterval - 1) return;
+    lastFrameAt = elapsed >= frameInterval
+      ? now - (elapsed % frameInterval)
       : now;
     const { parameters, performanceFrame } = sample(now);
     dispatchFrame(parameters);

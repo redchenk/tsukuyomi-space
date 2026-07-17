@@ -48,7 +48,7 @@
         radial-gradient(circle at 54% 36%, rgba(174, 242, 255, 0.16), transparent 0 15%, transparent 28%),
         radial-gradient(circle at 70% 22%, rgba(255, 122, 200, 0.2), transparent 0 20%, transparent 38%),
         linear-gradient(180deg, rgba(7, 13, 29, 0.18), rgba(7, 13, 29, 0.86)),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
     filter: saturate(1.06) contrast(1.02);
 }
 
@@ -694,7 +694,7 @@ body .page.hub .hub-hero-panel::before {
         radial-gradient(circle at 54% 36%, rgba(174, 242, 255, 0.16), transparent 0 15%, transparent 28%),
         radial-gradient(circle at 70% 22%, rgba(255, 122, 200, 0.2), transparent 0 20%, transparent 38%),
         linear-gradient(180deg, rgba(7, 13, 29, 0.18), rgba(7, 13, 29, 0.86)),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
 }
 
 html[data-theme="light"] .hub-hero-panel::after {
@@ -1011,7 +1011,7 @@ body .page.hub .hub-hero-panel::before {
     background:
         linear-gradient(108deg, rgba(6, 12, 28, 0.92) 0%, rgba(8, 18, 38, 0.78) 38%, rgba(12, 22, 44, 0.34) 64%, rgba(8, 12, 26, 0.78) 100%),
         linear-gradient(180deg, rgba(174, 242, 255, 0.18), transparent 34%, rgba(255, 122, 200, 0.13) 100%),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
     opacity: 1;
     filter: saturate(1.16) contrast(1.04);
 }
@@ -1332,7 +1332,7 @@ html[data-theme="light"] body .page.hub .scene-card {
 html[data-theme="light"] body .page.hub .hub-hero-panel::before {
     background:
         linear-gradient(108deg, rgba(245, 252, 255, 0.94) 0%, rgba(230, 246, 252, 0.82) 42%, rgba(237, 234, 255, 0.52) 68%, rgba(255, 248, 252, 0.84) 100%),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
 }
 
 html[data-theme="light"] body .page.hub .hub-hero-panel::after {
@@ -1520,7 +1520,7 @@ body .page.hub .hub-hero-panel::before {
     background:
         linear-gradient(106deg, rgba(5, 10, 24, 0.92) 0%, rgba(8, 18, 38, 0.76) 42%, rgba(10, 18, 38, 0.36) 68%, rgba(8, 12, 26, 0.74) 100%),
         linear-gradient(180deg, rgba(174, 242, 255, 0.16), transparent 36%, rgba(255, 122, 200, 0.12) 100%),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
     opacity: 1;
     filter: saturate(1.1) contrast(1.02);
 }
@@ -1869,7 +1869,7 @@ html[data-theme="light"] body .page.hub .scene-card {
 html[data-theme="light"] body .page.hub .hub-hero-panel::before {
     background:
         linear-gradient(106deg, rgba(245, 252, 255, 0.94) 0%, rgba(230, 246, 252, 0.82) 42%, rgba(237, 234, 255, 0.52) 68%, rgba(255, 248, 252, 0.84) 100%),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
 }
 
 html[data-theme="light"] body .page.hub .hub-hero-signals span,
@@ -2050,7 +2050,7 @@ body .page.hub .hub-hero-panel::before {
         linear-gradient(108deg, rgba(7, 12, 26, 0.94) 0%, rgba(10, 19, 40, 0.72) 42%, rgba(15, 20, 44, 0.32) 68%, rgba(10, 12, 28, 0.76) 100%),
         radial-gradient(ellipse at 68% 22%, rgba(174, 242, 255, 0.2), transparent 34%),
         radial-gradient(ellipse at 20% 78%, rgba(255, 154, 186, 0.16), transparent 32%),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
     transform: scale(1.02);
     animation: hubBackdropDrift 16s ease-in-out infinite alternate;
 }
@@ -2465,7 +2465,7 @@ html[data-theme="light"] body .page.hub .hub-hero-panel::before {
         linear-gradient(108deg, rgba(250, 253, 255, 0.94) 0%, rgba(232, 246, 255, 0.82) 42%, rgba(243, 238, 255, 0.54) 68%, rgba(255, 249, 253, 0.86) 100%),
         radial-gradient(ellipse at 68% 22%, rgba(86, 191, 232, 0.18), transparent 34%),
         radial-gradient(ellipse at 20% 78%, rgba(255, 154, 186, 0.15), transparent 32%),
-        url("/assets/images/tsukuyomi-bg.png") center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center / cover no-repeat;
 }
 
 html[data-theme="light"] body .page.hub .hub-stage-ribbon,

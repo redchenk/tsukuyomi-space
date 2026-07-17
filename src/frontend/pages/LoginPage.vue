@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import authVisualBgUrl from '../../../assets/images/auth-visual-bg.png';
+import authVisualBgUrl from '../../../assets/images/auth-visual-bg.webp';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
@@ -456,7 +456,7 @@ onMounted(() => {
   <main class="page auth-page auth-page-login">
     <section class="auth-shell" :class="{ 'auth-shell-oauth': hasOAuthTicket }">
       <aside class="auth-visual" aria-label="Tsukuyomi Space">
-        <img class="auth-visual-bg" :src="authVisualBgUrl" alt="">
+        <img class="auth-visual-bg" :src="authVisualBgUrl" alt="" decoding="async">
         <div class="auth-visual-sheen" aria-hidden="true"></div>
         <div class="auth-visual-copy">
           <span class="auth-visual-kicker"><TsIcon name="moon" :size="14" /> Tsukuyomi Space</span>

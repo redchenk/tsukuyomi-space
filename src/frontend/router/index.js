@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { applyRouteSeo } from '../utils/seo';
+import { isReducedPerformance, scheduleIdleTask } from '../utils/performance';
 
 const AccessPage = () => import('../pages/AccessPage.vue');
 const HubPage = () => import('../pages/HubPage.vue');
@@ -213,28 +214,25 @@ export const router = createRouter({
 });
 
 const routeWarmups = {
-  access: [HubPage, PlazaPage, StagePage, RoomPage],
-  accessAlias: [HubPage, PlazaPage, StagePage, RoomPage],
-  hub: [PlazaPage, StagePage, RoomPage, GalleryPage, ArenaPage, UserCenterPage, RoomSettingsPage],
-  plaza: [HubPage, StagePage, FriendLinksPage, FriendLinkApplyPage, LoginPage, UserProfilePage, NotificationsPage],
-  friendLinks: [FriendLinkApplyPage, PlazaPage, HubPage],
-  friendLinkApply: [FriendLinksPage, PlazaPage, LoginPage, HubPage],
-  stage: [ArticlePage, HubPage, EditorPage, PlazaPage],
-  article: [StagePage, HubPage],
-  articleDetail: [StagePage, HubPage],
-  room: [RoomSettingsPage, HubPage],
-  roomSettings: [RoomPage, HubPage],
-  gallery: [AttachmentsPage, HubPage, UserCenterPage],
-  galleryManage: [GalleryPage, AttachmentsPage],
-  userCenter: [NotificationsPage, UserProfilePage, EditorPage, ArenaPage],
-  terminal: [EditorPage, AttachmentsPage, HubPage],
-  pixel: [HubPage, UserCenterPage]
+  access: [HubPage],
+  accessAlias: [HubPage],
+  hub: [StagePage, PlazaPage],
+  plaza: [FriendLinksPage, StagePage],
+  friendLinks: [FriendLinkApplyPage],
+  friendLinkApply: [FriendLinksPage],
+  stage: [ArticlePage],
+  article: [StagePage],
+  articleDetail: [StagePage],
+  roomSettings: [RoomPage],
+  gallery: [AttachmentsPage],
+  galleryManage: [GalleryPage],
+  userCenter: [NotificationsPage, UserProfilePage],
+  terminal: [EditorPage, AttachmentsPage],
+  pixel: [UserCenterPage]
 };
-const defaultRouteWarmups = [HubPage, PlazaPage, StagePage, GalleryPage, ArenaPage];
+const defaultRouteWarmups = [HubPage];
 const warmedRouteComponents = new WeakSet();
-const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
-const ROOM_WARMUP_FALLBACK_MS = 210000;
-let cancelPendingRoomWarmup = null;
+let cancelPendingRouteWarmup = null;
 
 function warmRouteComponent(loader) {
   if (typeof loader !== 'function' || warmedRouteComponents.has(loader)) return;
@@ -246,44 +244,21 @@ function warmRouteComponent(loader) {
 
 function scheduleRouteWarmup(to) {
   if (typeof window === 'undefined') return;
-  cancelPendingRoomWarmup?.();
-  cancelPendingRoomWarmup = null;
+  cancelPendingRouteWarmup?.();
+  cancelPendingRouteWarmup = null;
   const connection = window.navigator?.connection;
-  if (connection?.saveData) return;
+  if (connection?.saveData || isReducedPerformance() || document.visibilityState === 'hidden') return;
 
   const loaders = routeWarmups[to.name] || defaultRouteWarmups;
-  const warm = () => loaders.forEach(warmRouteComponent);
-  if (to.name === 'room') {
-    let timeoutId = 0;
-    const warmAfterLive2D = () => {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener(LIVE2D_READY_EVENT, warmAfterLive2D);
-      cancelPendingRoomWarmup = null;
-      if (router.currentRoute.value.name !== 'room') return;
-      if (typeof window.requestIdleCallback === 'function') {
-        window.requestIdleCallback(warm, { timeout: 1800 });
-        return;
-      }
-      window.setTimeout(warm, 900);
-    };
-    cancelPendingRoomWarmup = () => {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener(LIVE2D_READY_EVENT, warmAfterLive2D);
-    };
-    if (window.TSUKUYOMI_LIVE2D_READY) {
-      warmAfterLive2D();
-    } else {
-      window.addEventListener(LIVE2D_READY_EVENT, warmAfterLive2D, { once: true });
-      timeoutId = window.setTimeout(warmAfterLive2D, ROOM_WARMUP_FALLBACK_MS);
-    }
-    return;
-  }
-  window.setTimeout(warm, to.name === 'access' || to.name === 'accessAlias' ? 180 : 70);
-  if (typeof window.requestIdleCallback === 'function') {
-    window.requestIdleCallback(warm, { timeout: 520 });
-    return;
-  }
-  window.setTimeout(warm, 180);
+  if (!loaders.length || to.name === 'room') return;
+  cancelPendingRouteWarmup = scheduleIdleTask(() => {
+    cancelPendingRouteWarmup = null;
+    if (router.currentRoute.value.name !== to.name || isReducedPerformance()) return;
+    loaders.forEach(warmRouteComponent);
+  }, {
+    delay: to.name === 'access' || to.name === 'accessAlias' ? 1600 : 900,
+    timeout: 4000
+  });
 }
 
 router.afterEach((to) => {

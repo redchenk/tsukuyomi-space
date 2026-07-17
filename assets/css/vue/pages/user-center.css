@@ -75,7 +75,7 @@ body .page.uc-page .uc-hero {
     overflow: hidden;
     background:
         linear-gradient(90deg, rgba(11, 18, 32, 0.94), rgba(19, 30, 50, 0.76) 48%, rgba(16, 22, 38, 0.92)),
-        url("/assets/images/tsukuyomi-bg.png") center 42% / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center 42% / cover no-repeat;
 }
 
 body .page.uc-page .uc-hero::before {
@@ -875,7 +875,7 @@ body .page.uc-page .uc-hero {
     background:
         radial-gradient(circle at 10% 10%, rgba(174, 242, 255, 0.18), transparent 30%),
         linear-gradient(125deg, rgba(8, 13, 28, 0.86), rgba(16, 24, 42, 0.72) 54%, rgba(26, 23, 49, 0.78)),
-        url("/assets/images/tsukuyomi-bg.png") center 44% / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center 44% / cover no-repeat;
 }
 
 body .page.uc-page .uc-hero::before {

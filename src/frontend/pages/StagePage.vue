@@ -286,7 +286,7 @@ onMounted(loadArticles);
     <div v-else-if="!filteredArticles.length" class="stage-status">{{ t.noArticles }}</div>
     <div v-else class="stage-list stage-list-region">
       <a
-        v-for="article in pagedArticles"
+        v-for="(article, articleIndex) in pagedArticles"
         :key="article.id"
         :href="articlePath(article)"
         class="stage-card"
@@ -303,7 +303,7 @@ onMounted(loadArticles);
               @keydown.enter.stop.prevent="stageOpenAuthor(article)"
             >
               <span class="stage-author-avatar">
-                <img v-if="article.author_avatar" :src="article.author_avatar" :alt="stageAuthorAlt(article)">
+                <img v-if="article.author_avatar" :src="article.author_avatar" :alt="stageAuthorAlt(article)" loading="lazy" decoding="async">
                 <span v-else>{{ stageAuthorInitial(article) }}</span>
               </span>
               <span>{{ stageAuthorName(article) }}</span>
@@ -320,7 +320,14 @@ onMounted(loadArticles);
           </div>
         </div>
         <div v-if="article.cover_image" class="stage-card-cover">
-          <img :src="article.cover_image" alt="" class="stage-cover-img">
+          <img
+            :src="article.cover_image"
+            alt=""
+            class="stage-cover-img"
+            :loading="articleIndex === 0 ? 'eager' : 'lazy'"
+            decoding="async"
+            :fetchpriority="articleIndex === 0 ? 'high' : 'auto'"
+          >
         </div>
       </a>
       <nav v-if="stageTotalPages > 1" class="stage-pagination" aria-label="Stage articles pagination">

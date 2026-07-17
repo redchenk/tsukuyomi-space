@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
   lang: {
@@ -9,6 +9,10 @@ const props = defineProps({
   routeName: {
     type: String,
     default: ''
+  },
+  reduced: {
+    type: Boolean,
+    default: false
   },
   spriteSrc: {
     type: String,
@@ -159,6 +163,13 @@ let lastTipKey = '';
 let motionReduced = false;
 
 const petStyle = computed(() => {
+  if (props.reduced) {
+    return {
+      backgroundImage: 'url("/assets/pets/yachiyo/idle.webp")',
+      backgroundPosition: '0 0',
+      backgroundSize: '100% 100%'
+    };
+  }
   const col = frame.value % SPRITE_COLUMNS;
   const row = Math.floor(frame.value / SPRITE_COLUMNS);
   const x = (col / (SPRITE_COLUMNS - 1)) * 100;
@@ -197,6 +208,7 @@ function setIdleSequence() {
 }
 
 function queueNextFrame() {
+  if (motionReduced || props.reduced) return;
   const frameIndex = currentSequence.frames.indexOf(frame.value);
   const duration = currentSequence.durations[frameIndex] || 160;
   frameTimerId = window.setTimeout(() => {
@@ -210,6 +222,7 @@ function randomActionDelay() {
 }
 
 function scheduleRandomAction() {
+  if (motionReduced || props.reduced) return;
   if (actionTimerId) window.clearTimeout(actionTimerId);
   actionTimerId = window.setTimeout(() => {
     playRandomAction();
@@ -280,8 +293,22 @@ function playRandomAction() {
 }
 
 onMounted(() => {
-  motionReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
+  motionReduced = props.reduced || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
   if (!motionReduced) {
+    queueNextFrame();
+    scheduleRandomAction();
+  }
+});
+
+watch(() => props.reduced, (reduced) => {
+  motionReduced = reduced || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
+  if (motionReduced) {
+    if (frameTimerId) window.clearTimeout(frameTimerId);
+    if (actionTimerId) window.clearTimeout(actionTimerId);
+    frameTimerId = 0;
+    actionTimerId = 0;
+    setIdleSequence();
+  } else if (!frameTimerId) {
     queueNextFrame();
     scheduleRandomAction();
   }

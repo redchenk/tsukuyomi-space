@@ -1,0 +1,103 @@
+/* Runtime-selected reductions for constrained devices. Visual fidelity stays unchanged on balanced devices. */
+body:not(.vue-global-bg-route) {
+    background:
+        radial-gradient(circle at 50% -8%, rgba(123, 140, 246, 0.16), transparent 36%),
+        linear-gradient(135deg, #0b1424, #111c31 48%, #17152b);
+}
+
+html[data-theme="light"] body:not(.vue-global-bg-route):not(.vue-access-route) {
+    background:
+        radial-gradient(circle at 50% -8%, rgba(76, 169, 198, 0.12), transparent 36%),
+        linear-gradient(135deg, #edf6fb, #e9f2f7 48%, #f7fafc);
+}
+
+body.vue-room-route,
+html[data-theme="light"] body.vue-room-route {
+    overflow: hidden;
+    background: #0e0f18;
+}
+
+.route-view {
+    will-change: auto;
+}
+
+.route-stage-transitioning .route-view {
+    will-change: opacity, transform;
+}
+
+html[data-window-active="false"] *,
+html[data-window-active="false"] *::before,
+html[data-window-active="false"] *::after {
+    animation-play-state: paused !important;
+}
+
+@media (hover: none) {
+    .page :where(.stage-card, .article-card, .gallery-card, .plaza-msg-card, .uc-card, .profile-card, .arena-panel, .artwork-card, .panel):hover {
+        transform: none;
+    }
+}
+
+html[data-performance="reduced"] {
+    scroll-behavior: auto;
+}
+
+html[data-performance="reduced"] *,
+html[data-performance="reduced"] *::before,
+html[data-performance="reduced"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-timeline: auto !important;
+    transition-duration: 80ms !important;
+}
+
+html[data-performance="reduced"] :where(
+    .site-rail,
+    .mobile-bottom-nav,
+    .topbar,
+    .site-music-player,
+    [data-material],
+    .panel,
+    .glass-card,
+    .room-panel,
+    .room-dock,
+    .room-weather-card
+) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+html[data-performance="reduced"] :where(.site-global-bg, .room-backdrop, .room-live2d-container canvas),
+html[data-performance="reduced"] body::before {
+    animation: none !important;
+    filter: none !important;
+}
+
+html[data-performance="reduced"] :where(body, .site-global-bg, .room-page) {
+    background-attachment: scroll !important;
+}
+
+html[data-performance="reduced"] .site-global-bg::after,
+html[data-performance="reduced"] .room-weather-layer::before,
+html[data-performance="reduced"] .room-weather-layer::after {
+    display: none !important;
+}
+
+html[data-performance="reduced"] .route-transition-veil {
+    display: none;
+}
+
+html[data-performance="reduced"] .route-view.page:not(.room-page) :where(
+    .stage-card,
+    .gallery-card,
+    .plaza-msg-card,
+    .friend-link-card,
+    .notification-card,
+    .attachments-card,
+    .uc-article-item,
+    .uc-pixel-card,
+    .profile-article,
+    .artwork-card
+) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 320px;
+}

@@ -29,6 +29,6 @@ export function setPublicAssetBaseUrl(value) {
 export function configureAssetCssVars() {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  root.style.setProperty('--ts-bg-image', `url("${assetUrl('/assets/images/tsukuyomi-bg.png')}")`);
-  root.style.setProperty('--ts-room-bg-image', `url("${assetUrl('/assets/images/room-bg.png')}")`);
+  root.style.setProperty('--ts-bg-image', `url("${assetUrl('/assets/images/tsukuyomi-bg.webp')}")`);
+  root.style.setProperty('--ts-room-bg-image', `url("${assetUrl('/assets/images/room-bg.webp')}")`);
 }

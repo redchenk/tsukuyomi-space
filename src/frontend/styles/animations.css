@@ -298,7 +298,6 @@ body.vue-global-bg-route::after {
 }
 
 .page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card, [class*="-card"]:not([class*="auth-"]), [class*="-tile"]) {
-    transform: translateZ(0);
     transition:
         transform var(--ts-motion-base) var(--ts-ease-lift),
         border-color var(--ts-motion-base) var(--ts-ease-standard),

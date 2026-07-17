@@ -45,7 +45,7 @@ body {
     color: var(--text);
     background:
         linear-gradient(120deg, rgba(248, 253, 255, 0.94), rgba(229, 246, 252, 0.9) 34%, rgba(239, 235, 255, 0.92) 68%, rgba(255, 249, 252, 0.95)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+        url("/assets/images/tsukuyomi-bg.webp") center center / cover no-repeat fixed;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }
@@ -53,7 +53,7 @@ body {
 html[data-theme="dark"] body {
     background:
         linear-gradient(125deg, rgba(11, 18, 32, 0.94), rgba(15, 36, 52, 0.88) 36%, rgba(37, 31, 69, 0.9) 70%, rgba(24, 22, 38, 0.95)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+        url("/assets/images/tsukuyomi-bg.webp") center center / cover no-repeat fixed;
 }
 
 body::before,

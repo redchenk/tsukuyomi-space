@@ -103,7 +103,7 @@ const sceneLinks = computed(() => [
     icon: 'book',
     tone: 'blue',
     spa: true,
-    image: latestArticle.value?.cover_image || '/assets/images/room-bg.png',
+    image: latestArticle.value?.cover_image || '/assets/images/room-bg.webp',
     label: props.t.stage
   },
   {
@@ -114,7 +114,7 @@ const sceneLinks = computed(() => [
     icon: 'image',
     tone: 'gold',
     spa: true,
-    image: galleryImageUrl(latestGalleryImage.value) || '/assets/images/tsukuyomi-bg.png',
+    image: galleryImageUrl(latestGalleryImage.value) || '/assets/images/tsukuyomi-bg.webp',
     label: '图库'
   },
   {
@@ -127,7 +127,7 @@ const sceneLinks = computed(() => [
     icon: 'palette',
     tone: 'pink',
     spa: true,
-    image: '/assets/images/tsukuyomi-bg.png',
+    image: '/assets/images/tsukuyomi-bg.webp',
     label: latestPixelArtwork.value ? '最新像素画' : '像素画',
     kind: 'arena',
     artwork: latestPixelArtwork.value

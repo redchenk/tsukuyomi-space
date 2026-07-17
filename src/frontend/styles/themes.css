@@ -93,7 +93,7 @@ body {
         radial-gradient(circle at 50% -8%, rgba(123, 140, 246, 0.18), transparent 36%),
         radial-gradient(circle at 86% 12%, rgba(255, 122, 200, 0.13), transparent 28%),
         linear-gradient(135deg, rgba(237, 246, 255, 0.94), rgba(244, 240, 255, 0.91) 48%, rgba(255, 249, 253, 0.96)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+        url("/assets/images/tsukuyomi-bg.webp") center center / cover no-repeat fixed;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }
@@ -103,5 +103,5 @@ html[data-theme="dark"] body {
         radial-gradient(circle at 50% -8%, rgba(123, 140, 246, 0.22), transparent 36%),
         radial-gradient(circle at 86% 12%, rgba(255, 122, 200, 0.18), transparent 28%),
         linear-gradient(135deg, rgba(6, 10, 22, 0.95), rgba(13, 24, 45, 0.92) 44%, rgba(19, 18, 43, 0.96)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
+        url("/assets/images/tsukuyomi-bg.webp") center center / cover no-repeat fixed;
 }

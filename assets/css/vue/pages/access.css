@@ -11,7 +11,7 @@
     padding-bottom: max(var(--access-legal-reserve), calc(env(safe-area-inset-bottom) + 4.8rem));
     background:
         linear-gradient(180deg, rgba(246, 252, 255, 0.3), rgba(239, 235, 255, 0.42)),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center center / cover no-repeat;
     transition:
         filter 0.24s var(--ts-ease-lift),
         transform 0.26s var(--ts-ease-lift);
@@ -25,7 +25,7 @@
     pointer-events: none;
     background:
         linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(126, 219, 232, 0.08) 38%, rgba(255, 173, 193, 0.08) 72%),
-        url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat;
+        url("/assets/images/tsukuyomi-bg.webp") center center / cover no-repeat;
     opacity: 1;
     transform: scale(1.02);
     transition:

@@ -34,7 +34,7 @@ body.vue-room-route {
     color: #fff7fb;
     background:
         linear-gradient(180deg, var(--room-top-shade), var(--room-bottom-shade)),
-        url("/assets/images/room-bg.png") center / cover no-repeat;
+        url("/assets/images/room-bg.webp") center / cover no-repeat;
     transition: background 0.8s ease;
 }
 

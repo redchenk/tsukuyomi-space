@@ -4,8 +4,11 @@ import LoadingSkeleton from './components/LoadingSkeleton.vue';
 import StatusLoader from './components/StatusLoader.vue';
 import { router } from './router';
 import { configureAssetCssVars } from './utils/assetUrl';
+import { initializePerformanceProfile } from './utils/performance';
 import './styles/global.css';
+import './styles/performance.css';
 
+initializePerformanceProfile();
 configureAssetCssVars();
 
 function syncWindowAppearance() {

@@ -385,7 +385,7 @@ watch(articleId, loadArticle);
           </div>
         </header>
 
-        <img v-if="article.cover_image" class="article-cover" :src="article.cover_image" alt="">
+        <img v-if="article.cover_image" class="article-cover" :src="article.cover_image" alt="" loading="eager" decoding="async" fetchpriority="high">
         <section class="article-content" v-html="formatContent(article.content, article.content_format)"></section>
 
         <section class="comments-section">
@@ -419,7 +419,7 @@ watch(articleId, loadArticle);
               <div class="comment-header">
                 <button class="comment-author-link" type="button" @click="goProfile(commentAuthorName(comment))">
                   <span class="comment-avatar">
-                    <img v-if="comment.avatar" :src="comment.avatar" :alt="commentAvatarAlt(comment)">
+                    <img v-if="comment.avatar" :src="comment.avatar" :alt="commentAvatarAlt(comment)" loading="lazy" decoding="async">
                     <span v-else>{{ commentInitial(comment) }}</span>
                   </span>
                   <span class="comment-author-name">{{ commentAuthorName(comment) }}</span>
@@ -459,7 +459,7 @@ watch(articleId, loadArticle);
                   <div class="comment-header">
                     <button class="comment-author-link" type="button" @click="goProfile(commentAuthorName(reply))">
                       <span class="comment-avatar small">
-                        <img v-if="reply.avatar" :src="reply.avatar" :alt="commentAvatarAlt(reply)">
+                        <img v-if="reply.avatar" :src="reply.avatar" :alt="commentAvatarAlt(reply)" loading="lazy" decoding="async">
                         <span v-else>{{ commentInitial(reply) }}</span>
                       </span>
                       <span class="comment-author-name">{{ commentAuthorName(reply) }}</span>

@@ -19,7 +19,7 @@ body.vue-live2d-route {
     color: var(--live2d-ink);
     background:
         linear-gradient(180deg, rgba(8, 10, 18, 0.16), rgba(3, 5, 13, 0.78)),
-        url("/assets/images/room-bg.png") center / cover no-repeat;
+        url("/assets/images/room-bg.webp") center / cover no-repeat;
 }
 
 .live2d-backdrop {

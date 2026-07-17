@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { apiFetch } from '../api/client';
+import { isReducedPerformance } from '../utils/performance';
 
 const WORLD_ENDPOINT = '/api/room/world';
 const WORLD_CACHE_KEY = 'roomWorldState:v3';
@@ -217,8 +218,8 @@ export function useRoomWorld() {
       weatherParticles.value = [];
       return;
     }
-    const mobile = isMobileViewport();
-    const count = mobile
+    const constrained = isMobileViewport() || isReducedPerformance();
+    const count = constrained
       ? (weather === 'storm' ? 8 : weather === 'rain' ? 7 : 6)
       : (weather === 'storm' ? 42 : weather === 'rain' ? 34 : 26);
     weatherParticles.value = Array.from({ length: count }, (_, index) => ({
