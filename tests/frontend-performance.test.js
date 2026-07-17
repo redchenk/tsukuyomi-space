@@ -93,7 +93,7 @@ describe('constrained-device performance policy', () => {
         assert.match(styles, /data-performance="reduced"/);
         assert.match(styles, /backdrop-filter: none !important/);
         assert.match(styles, /content-visibility: auto/);
-        assert.match(room, /ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 30/);
+        assert.match(room, /ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 20/);
         assert.match(room, /roomRenderMaxFrameInterval\(\)/);
         assert.match(bridge, /currentFrameInterval\(\)/);
         assert.match(subdelegate, /window\.devicePixelRatio \|\| 1/);

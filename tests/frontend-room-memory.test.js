@@ -235,7 +235,7 @@ describe('room Live2D mobile quality parity', () => {
         assert.doesNotMatch(bridge, /isConstrainedMobileLive2DDevice|lowQualityModel|tsukimi-yachiyo-(?:mobile|lite)\.model3\.json/);
         assert.match(roomRuntime, /ROOM_RENDER_FRAME_INTERVAL_MS = 1000 \/ 60/);
         assert.match(roomRuntime, /ROOM_RENDER_BALANCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 45/);
-        assert.match(roomRuntime, /ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 30/);
+        assert.match(roomRuntime, /ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 20/);
         assert.match(roomRuntime, /TSUKUYOMI_PERFORMANCE_PROFILE === 'reduced'/);
         assert.match(subdelegate, /return window\.devicePixelRatio \|\| 1;/);
         assert.doesNotMatch(subdelegate, /Math\.min\(ratio|isMobile/);
@@ -290,7 +290,7 @@ describe('room Live2D mobile quality parity', () => {
         assert.doesNotMatch(router, /room: \[[^\]]+(?:HubPage|RoomSettingsPage)/);
         assert.match(bridge, /LIVE2D_READY_TIMEOUT = 210000/);
         assert.match(bridge, /LIVE2D_ERROR_EVENT = 'tsukuyomi:live2d-error'/);
-        assert.match(bridge, /live2d-room-neuro-live\.20260717-adaptive-perf-r7\.iife\.js/);
+        assert.match(bridge, /live2d-room-neuro-live\.20260717-adaptive-perf-r8\.iife\.js/);
         assert.match(bridge, /return '\/models-v4\/tsukimi-yachiyo\/tsukimi-yachiyo\.model3\.json';/);
         assert.doesNotMatch(bridge, /assetUrl\('\/models\/tsukimi-yachiyo/);
         assert.doesNotMatch(bridge, /assetUrl\('[^']+\.moc3'\)/);
@@ -306,7 +306,7 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(platform, /candidate\.compressed && !response\.ok/);
         assert.match(platform, /tsukuyomi:live2d-error/);
         assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.iife\.js \{[\s\S]*max-age=300, must-revalidate/);
-        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260717-adaptive-perf-r7\.iife\.js \{[\s\S]*immutable/);
+        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260717-adaptive-perf-r8\.iife\.js \{[\s\S]*immutable/);
     });
 
     it('shares peripheral animation timing and avoids redundant frame writes', () => {

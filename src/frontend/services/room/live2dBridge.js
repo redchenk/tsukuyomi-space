@@ -2,7 +2,7 @@ import { dispatchRoomLive2D } from './live2dControl';
 import { alignLive2DIntentToStreamingSpeech } from './live2dStreamingSpeechSession';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room-neuro-live.20260717-adaptive-perf-r7.iife.js';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room-neuro-live.20260717-adaptive-perf-r8.iife.js';
 const MODEL_BASE = '/models-v4/tsukimi-yachiyo';
 const MODEL_MOC = `${MODEL_BASE}/tsukimi-yachiyo.moc3`;
 const MODEL_MOC_COMPRESSED = `${MODEL_MOC}.gzip-r1`;
