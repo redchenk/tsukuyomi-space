@@ -1,4 +1,3 @@
-import { assetUrl } from '../../utils/assetUrl';
 import { dispatchRoomLive2D } from './live2dControl';
 import { alignLive2DIntentToStreamingSpeech } from './live2dStreamingSpeechSession';
 
@@ -214,7 +213,7 @@ export function preloadLive2DResources() {
     { href: CORE_SCRIPT, as: 'script' },
     { href: ROOM_SCRIPT, as: 'script' },
       {
-        href: assetUrl(modelJson),
+        href: modelJson,
         as: 'fetch',
         type: 'application/json'
       },
