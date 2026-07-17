@@ -984,8 +984,7 @@ body.vue-global-bg-route {
     background:
         radial-gradient(circle at 18% 8%, rgba(126, 203, 212, 0.12), transparent 34%),
         radial-gradient(circle at 86% 14%, rgba(86, 190, 217, 0.08), transparent 30%),
-        linear-gradient(135deg, rgba(6, 12, 24, 0.94), rgba(11, 24, 42, 0.9) 48%, rgba(12, 18, 31, 0.96)),
-        url("/assets/images/tsukuyomi-bg.webp") center center / cover no-repeat fixed;
+        linear-gradient(135deg, rgba(6, 12, 24, 0.94), rgba(11, 24, 42, 0.9) 48%, rgba(12, 18, 31, 0.96));
 }
 
 html[data-theme="light"] body,
@@ -993,8 +992,7 @@ html[data-theme="light"] body.vue-global-bg-route {
     background:
         radial-gradient(circle at 18% 8%, rgba(63, 159, 189, 0.12), transparent 34%),
         radial-gradient(circle at 86% 14%, rgba(102, 187, 197, 0.09), transparent 30%),
-        linear-gradient(135deg, rgba(238, 247, 251, 0.94), rgba(231, 242, 247, 0.91) 48%, rgba(247, 250, 252, 0.96)),
-        url("/assets/images/tsukuyomi-bg.webp") center center / cover no-repeat fixed;
+        linear-gradient(135deg, rgba(238, 247, 251, 0.94), rgba(231, 242, 247, 0.91) 48%, rgba(247, 250, 252, 0.96));
 }
 
 .site-global-bg,

@@ -45,6 +45,12 @@ describe('constrained-device performance policy', () => {
             source('assets/css/vue/pages/room.css'),
             source('assets/css/vue/pages/hub.css')
         ].join('\n');
+        const baseThemes = [
+            source('src/frontend/styles/themes.css'),
+            source('assets/css/vue/foundation.css'),
+            source('assets/css/vue/modern-theme.css')
+        ].join('\n');
+        const productPolish = source('assets/css/vue/product-polish.css');
         const pet = source('src/frontend/components/SitePet.vue');
 
         assert.ok(bytes('assets/images/tsukuyomi-bg.webp') < bytes('assets/images/tsukuyomi-bg.png') * 0.15);
@@ -56,6 +62,8 @@ describe('constrained-device performance policy', () => {
         assert.doesNotMatch(runtime, /(?:tsukuyomi|room)-bg\.png/);
         assert.match(runtime, /tsukuyomi-bg\.webp/);
         assert.match(runtime, /room-bg\.webp/);
+        assert.doesNotMatch(baseThemes, /tsukuyomi-bg\.webp/);
+        assert.doesNotMatch(productPolish, /body,\s*html\[data-theme="dark"\] body,\s*body\.vue-global-bg-route\s*\{[^}]*tsukuyomi-bg/s);
     });
 
     it('keeps the pet guidance available while avoiding its full sprite animation on reduced devices', () => {
@@ -75,6 +83,7 @@ describe('constrained-device performance policy', () => {
         const room = source('src/live2d/main-room.ts');
         const subdelegate = source('src/live2d/lappsubdelegate.ts');
         const bridge = source('src/frontend/services/room/live2dCubismBehaviorBridge.js');
+        const loader = source('src/frontend/services/room/live2dBridge.js');
 
         assert.match(styles, /data-performance="reduced"/);
         assert.match(styles, /backdrop-filter: none !important/);
@@ -85,5 +94,10 @@ describe('constrained-device performance policy', () => {
         assert.match(subdelegate, /window\.devicePixelRatio \|\| 1/);
         assert.match(subdelegate, /clientWidth \* ratio/);
         assert.doesNotMatch(subdelegate, /Math\.min\([^\n]*devicePixelRatio/);
+        assert.match(loader, /loadScript\(CORE_SCRIPT\).*loadScript\(ROOM_SCRIPT\)/s);
+        assert.doesNotMatch(loader, /loadScript\(assetUrl\(/);
+        assert.match(loader, /tsukimi-yachiyo\.moc3/);
+        assert.match(loader, /textures\/desktop\/texture_00\.webp/);
+        assert.match(loader, /\.\.\.MODEL_RESOURCES/);
     });
 });
