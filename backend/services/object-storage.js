@@ -5,6 +5,20 @@ const { fetchPinnedUrl, resolvePublicUrl } = require('./outbound-url-security');
 
 const MAX_OSS_PROXY_BYTES = 64 * 1024 * 1024;
 const MAX_OSS_LIST_BYTES = 2 * 1024 * 1024;
+const INLINE_OBJECT_MIME_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'audio/mpeg',
+    'audio/flac',
+    'audio/wav',
+    'audio/ogg',
+    'audio/mp4'
+]);
 
 function parseSettingValue(value) {
     if (value === 'true') return true;
@@ -552,6 +566,9 @@ async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', set
     const objectKey = buildObjectKey({ settings, id, ext, role, uploadPath });
     const url = buildRequestUrl(settings, objectKey);
     if (!url) return null;
+    const normalizedMimeType = String(mimeType || 'application/octet-stream').split(';')[0].trim().toLowerCase();
+    const contentDisposition = attachmentDisposition(objectKey.split('/').pop() || 'attachment')
+        .replace(/^attachment/, INLINE_OBJECT_MIME_TYPES.has(normalizedMimeType) ? 'inline' : 'attachment');
     const response = await signedFetch({
         method: 'PUT',
         url,
@@ -561,7 +578,7 @@ async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', set
         body: buffer,
         contentType: mimeType || 'application/octet-stream',
         headers: {
-            'Content-Disposition': attachmentDisposition(objectKey.split('/').pop() || 'attachment')
+            'Content-Disposition': contentDisposition
         },
         settings
     });

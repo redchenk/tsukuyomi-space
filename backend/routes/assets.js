@@ -265,6 +265,10 @@ function isBrowserPreviewMedia(asset) {
     return BROWSER_PREVIEW_MIME_TYPES.has(cleanMime(asset?.mime_type));
 }
 
+function isBrowserPreviewImage(asset) {
+    return cleanMime(asset?.mime_type).startsWith('image/');
+}
+
 function streamLocalAsset(req, res, asset, metadata = {}) {
     const target = resolveLocalUpload(asset.storage_key);
     if (!target || !fs.existsSync(target)) return fail(res, 404, 'Attachment not found');
@@ -302,11 +306,11 @@ function streamLocalAsset(req, res, asset, metadata = {}) {
 }
 
 async function streamOssAsset(req, res, asset, metadata) {
-    if (isBrowserPreviewMedia(asset)) {
+    // Keep image previews same-origin so private OSS buckets and CDN CORS rules
+    // cannot break thumbnails. Large audio/video files still redirect to OSS.
+    if (isBrowserPreviewMedia(asset) && !isBrowserPreviewImage(asset)) {
         const redirectUrl = objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
             expiresSeconds: 6 * 60 * 60,
-            contentType: cleanMime(asset.mime_type),
-            contentDisposition: attachmentDisposition(assetFileName(asset, metadata)).replace(/^attachment/, 'inline'),
             preferPublicBase: true
         });
         if (redirectUrl) {

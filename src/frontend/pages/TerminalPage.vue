@@ -38,6 +38,7 @@ const terminal = reactive({
   userPageSize: 8,
   usernameDrafts: {},
   roleDrafts: {},
+  userRoleSaving: {},
   passwordDrafts: {},
   adminPassword: { currentPassword: '', newPassword: '', confirmPassword: '' },
   links: [],
@@ -364,12 +365,21 @@ async function deleteUser(id) {
 
 async function changeUserRole(user) {
   const role = terminal.roleDrafts[user.id] || 'user';
-  await adminApi(`/users/${encodeURIComponent(user.id)}/role`, {
-    method: 'PATCH',
-    body: JSON.stringify({ role })
-  });
-  showMessage(`用户 ${user.username} 的角色已更新为 ${role}`);
-  await loadPanel('users');
+  if (terminal.userRoleSaving[user.id] || role === user.role) return;
+  terminal.userRoleSaving[user.id] = true;
+  try {
+    const result = await adminApi(`/users/${encodeURIComponent(user.id)}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role })
+    });
+    user.role = result?.role || role;
+    terminal.roleDrafts[user.id] = user.role;
+    showMessage(`用户 ${user.username} 的角色已更新为 ${user.role}`);
+  } catch (error) {
+    showMessage(error.message || '用户角色保存失败', 'error');
+  } finally {
+    terminal.userRoleSaving[user.id] = false;
+  }
 }
 
 async function changeUserUsername(user) {
@@ -851,7 +861,7 @@ onUnmounted(() => {
                     <option value="admin">admin</option>
                     <option value="banned">banned</option>
                   </select>
-                  <button class="ghost-btn compact" type="button" :disabled="!canManageAccounts || terminal.roleDrafts[item.id] === item.role || item.username === 'admin'" @click="changeUserRole(item)">保存</button>
+                  <button class="ghost-btn compact" type="button" :disabled="!canManageAccounts || terminal.userRoleSaving[item.id] || terminal.roleDrafts[item.id] === item.role || item.username === 'admin'" :aria-busy="Boolean(terminal.userRoleSaving[item.id])" @click="changeUserRole(item)">{{ terminal.userRoleSaving[item.id] ? '保存中' : '保存' }}</button>
                 </td>
                 <td>
                   <input

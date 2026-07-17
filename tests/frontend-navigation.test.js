@@ -384,6 +384,16 @@ describe('terminal privilege boundaries', () => {
         assert.match(terminal, /<option value="banned">banned<\/option>/);
         assert.match(terminalCss, /terminal-message-table th:last-child[\s\S]*position: sticky/);
     });
+
+    it('keeps user role saves visible and reports failures in place', () => {
+        const terminal = source('src/frontend/pages/TerminalPage.vue');
+
+        assert.match(terminal, /userRoleSaving: \{\}/);
+        assert.match(terminal, /user\.role = result\?\.role \|\| role/);
+        assert.match(terminal, /showMessage\(error\.message \|\| '用户角色保存失败', 'error'\)/);
+        assert.match(terminal, /:aria-busy="Boolean\(terminal\.userRoleSaving\[item\.id\]\)"/);
+        assert.match(terminal, /terminal\.userRoleSaving\[item\.id\] \? '保存中' : '保存'/);
+    });
 });
 
 describe('user center message management', () => {

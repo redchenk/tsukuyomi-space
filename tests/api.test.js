@@ -29,6 +29,7 @@ const { ROOM_SYSTEM_PROMPT, buildChatPayload, createChatCompletion, isOllamaChat
 const { createEmbedding } = require('../backend/services/room-embedding');
 const { requireUserId, similarity } = require('../backend/services/room-memory');
 const { scopeFilter, truncateUtf8 } = require('../backend/services/room-milvus-store');
+const objectStorage = require('../backend/services/object-storage');
 
 let server;
 let baseUrl;
@@ -779,6 +780,133 @@ describe('gallery API', () => {
         } finally {
             db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
             db.prepare('UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(originalAvatar, 'user-001');
+        }
+    });
+
+    it('streams OSS image previews through the same-origin proxy', async () => {
+        const assetId = `gallery-oss-preview-${Date.now()}`;
+        const storageKey = `users/user-001/gallery/${assetId}.png`;
+        const image = Buffer.from('89504e470d0a1a0a', 'hex');
+        const originalGetObject = objectStorage.getObject;
+        objectStorage.getObject = async (key) => {
+            assert.equal(key, storageKey);
+            return {
+                buffer: image,
+                status: 200,
+                contentType: 'image/png',
+                contentLength: String(image.length),
+                acceptRanges: 'bytes'
+            };
+        };
+        db.prepare(`
+            INSERT INTO article_assets (
+                id, owner_id, asset_type, mime_type, url, storage_key, metadata
+            ) VALUES (?, ?, 'gallery-image', 'image/png', ?, ?, ?)
+        `).run(
+            assetId,
+            'user-001',
+            `https://storage.example.test/${storageKey}`,
+            storageKey,
+            JSON.stringify({
+                storage: 'oss',
+                collection: 'gallery',
+                gallery: true,
+                visibility: 'public',
+                fileName: 'preview.png'
+            })
+        );
+
+        try {
+            const response = await fetch(`${baseUrl}/api/assets/proxy/${encodeURIComponent(assetId)}`, {
+                redirect: 'manual'
+            });
+            assert.equal(response.status, 200);
+            assert.equal(response.headers.get('content-type'), 'image/png');
+            assert.match(response.headers.get('content-disposition') || '', /^inline;/);
+            assert.deepEqual(Buffer.from(await response.arrayBuffer()), image);
+        } finally {
+            objectStorage.getObject = originalGetObject;
+            db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
+        }
+    });
+
+    it('keeps OSS media redirects free of unsupported response type overrides', async () => {
+        const assetId = `gallery-oss-video-${Date.now()}`;
+        const storageKey = `users/user-001/video/${assetId}.mp4`;
+        const originalSignatureUrl = objectStorage.aliyunV1SignatureUrl;
+        let signatureOptions = null;
+        objectStorage.aliyunV1SignatureUrl = (key, options) => {
+            assert.equal(key, storageKey);
+            signatureOptions = options;
+            return 'https://storage.example.test/signed-video.mp4';
+        };
+        db.prepare(`
+            INSERT INTO article_assets (
+                id, owner_id, asset_type, mime_type, url, storage_key, metadata
+            ) VALUES (?, ?, 'video', 'video/mp4', ?, ?, ?)
+        `).run(
+            assetId,
+            'user-001',
+            `https://storage.example.test/${storageKey}`,
+            storageKey,
+            JSON.stringify({ storage: 'oss', visibility: 'public', fileName: 'preview.mp4' })
+        );
+
+        try {
+            const response = await fetch(`${baseUrl}/api/assets/proxy/${encodeURIComponent(assetId)}`, {
+                redirect: 'manual'
+            });
+            assert.equal(response.status, 302);
+            assert.equal(response.headers.get('location'), 'https://storage.example.test/signed-video.mp4');
+            assert.equal(signatureOptions.preferPublicBase, true);
+            assert.equal(Object.hasOwn(signatureOptions, 'contentType'), false);
+            assert.equal(Object.hasOwn(signatureOptions, 'contentDisposition'), false);
+        } finally {
+            objectStorage.aliyunV1SignatureUrl = originalSignatureUrl;
+            db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
+        }
+    });
+
+    it('stores safe OSS preview media with inline content disposition', async () => {
+        const originalFetch = globalThis.fetch;
+        const requests = [];
+        globalThis.fetch = async (url, options) => {
+            requests.push({ url: String(url), options });
+            return new Response('', { status: 200 });
+        };
+        const settings = {
+            ossEnabled: true,
+            ossProvider: 'aliyun',
+            ossEndpoint: 'https://oss-cn-hangzhou.aliyuncs.com',
+            ossRegion: 'cn-hangzhou',
+            ossBucket: 'preview-test',
+            ossAccessKeyId: 'test-access-key',
+            ossAccessKeySecret: 'test-access-secret',
+            ossUploadPath: 'tests/${role}'
+        };
+
+        try {
+            await objectStorage.putObject({
+                buffer: Buffer.from('89504e470d0a1a0a', 'hex'),
+                mimeType: 'image/png',
+                ext: 'png',
+                role: 'gallery',
+                id: 'inline-preview',
+                settings
+            });
+            await objectStorage.putObject({
+                buffer: Buffer.from('%PDF-1.7'),
+                mimeType: 'application/pdf',
+                ext: 'pdf',
+                role: 'attachment',
+                id: 'download-document',
+                settings
+            });
+
+            assert.match(requests[0].options.headers['content-disposition'], /^inline;/);
+            assert.match(requests[1].options.headers['content-disposition'], /^attachment;/);
+        } finally {
+            globalThis.fetch = originalFetch;
         }
     });
 });
