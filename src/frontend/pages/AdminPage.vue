@@ -488,7 +488,7 @@ onUnmounted(() => {
         <div class="admin-page-numbers">
           <button v-for="page in pageNumbers" :key="page" type="button" :class="{ active: page === currentPagination.page }" :aria-current="page === currentPagination.page ? 'page' : undefined" @click="goToPage(page)">{{ page }}</button>
         </div>
-        <span>{{ currentPagination.total }} 条</span>
+        <span>共 {{ currentPagination.total }} 条</span>
         <button class="ghost-btn compact" type="button" :disabled="currentPagination.page >= currentPagination.totalPages" @click="goToPage(currentPagination.page + 1)">
           下一页<TsIcon name="arrowRight" :size="16" />
         </button>
