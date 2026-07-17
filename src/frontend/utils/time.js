@@ -43,3 +43,18 @@ export function formatDateOnly(value, locale = 'zh-CN', options = {}) {
     ...options
   }).format(date);
 }
+
+export function formatDateMinute(value, locale = 'zh-CN', options = {}) {
+  const date = parseAppDate(value);
+  if (!date) return value ? String(value) : '-';
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: UTC8_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    ...options
+  }).format(date);
+}

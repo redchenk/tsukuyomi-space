@@ -49,6 +49,23 @@ describe('frontend navigation routes', () => {
         assert.match(stage, /while \(page <= totalPages\)/);
     });
 
+    it('shows the immutable article publication time to the minute on the stage', () => {
+        const stage = source('src/frontend/pages/StagePage.vue');
+        const article = source('src/frontend/pages/ArticlePage.vue');
+        const routes = source('backend/routes/articles.js');
+        const adminRepository = source('backend/repositories/admin-repository.js');
+        const migration = source('backend/db/migrations/022_add_article_published_at.js');
+
+        assert.match(routes, /const publishedAt = new Date\(\)\.toISOString\(\)/);
+        assert.match(migration, /NULLIF\(created_at, ''\)/);
+        assert.match(adminRepository, /COALESCE\(published_at, CURRENT_TIMESTAMP\)/);
+        assert.match(stage, /formatDateMinute/);
+        assert.match(stage, /article\?\.published_at \|\| article\?\.created_at \|\| article\?\.publish_date/);
+        assert.match(stage, /<time class="stage-publish-time" :datetime="stagePublishedAt\(article\)">/);
+        assert.match(stage, /TsIcon name="calendar"/);
+        assert.match(article, /formatPublishedDate\(article\.published_at \|\| article\.created_at \|\| article\.publish_date\)/);
+    });
+
     it('separates the public friend-link directory from the application flow', () => {
         const router = source('src/frontend/router/index.js');
         const plaza = source('src/frontend/pages/PlazaPage.vue');

@@ -97,8 +97,8 @@ function seedDefaultArticles() {
     if (articleCount > 0) return;
 
     const insert = db.prepare(`
-        INSERT INTO articles (title, slug, excerpt, content, category, tags, publish_date, read_time)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO articles (title, slug, excerpt, content, category, tags, publish_date, published_at, read_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const seed = db.transaction(() => {
         const firstTitle = '欢迎来到月读空间';
@@ -110,6 +110,7 @@ function seedDefaultArticles() {
             '公告',
             JSON.stringify(['公告', '欢迎']),
             '2024-01-01',
+            '2024-01-01 00:00:00',
             '3 min'
         );
         const secondTitle = '辉夜姬的传说';
@@ -121,6 +122,7 @@ function seedDefaultArticles() {
             '传说',
             JSON.stringify(['辉夜姬', '传说']),
             '2024-01-02',
+            '2024-01-02 00:00:00',
             '5 min'
         );
         const thirdTitle = '月读空间技术札记';
@@ -132,6 +134,7 @@ function seedDefaultArticles() {
             '技术',
             JSON.stringify(['技术', '札记']),
             '2024-01-03',
+            '2024-01-03 00:00:00',
             '4 min'
         );
     });

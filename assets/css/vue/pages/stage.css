@@ -310,6 +310,20 @@
     color: color-mix(in srgb, var(--ts-muted), transparent 20%);
 }
 
+.stage-publish-time {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 0.3rem;
+    color: color-mix(in srgb, var(--ts-muted), transparent 8%);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.stage-publish-time .ts-icon {
+    flex: 0 0 auto;
+}
+
 .stage-card-cover {
     width: 45%;
     position: relative;

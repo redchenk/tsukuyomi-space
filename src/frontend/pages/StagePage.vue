@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch, getAuthToken, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
+import { formatDateMinute } from '../utils/time';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -205,6 +206,14 @@ function stageAuthorAlt(article) {
   return `${stageAuthorName(article)} avatar`;
 }
 
+function stagePublishedAt(article) {
+  return article?.published_at || article?.created_at || article?.publish_date || '';
+}
+
+function stagePublishedTime(article) {
+  return formatDateMinute(stagePublishedAt(article), 'zh-CN');
+}
+
 function stageOpenAuthor(article) {
   const username = String(article?.author_username || '').trim();
   if (!username) return;
@@ -304,6 +313,10 @@ onMounted(loadArticles);
           <p class="stage-card-excerpt">{{ article.excerpt }}</p>
           <div class="stage-card-footer">
             <span class="read-time">Time {{ article.read_time || '5 min' }}</span>
+            <time class="stage-publish-time" :datetime="stagePublishedAt(article)">
+              <TsIcon name="calendar" :size="14" />
+              <span>{{ stagePublishedTime(article) }}</span>
+            </time>
           </div>
         </div>
         <div v-if="article.cover_image" class="stage-card-cover">

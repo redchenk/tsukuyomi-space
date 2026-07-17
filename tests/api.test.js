@@ -226,6 +226,7 @@ describe('database initialization', () => {
         const migrations = db.prepare('SELECT version FROM schema_migrations ORDER BY version').all();
         assert.deepEqual(migrations.map(row => row.version), expectedVersions);
         assert.ok(db.prepare('SELECT COUNT(*) AS count FROM articles').get().count >= 3);
+        assert.equal(db.prepare('SELECT COUNT(*) AS count FROM articles WHERE published_at IS NULL').get().count, 0);
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('admin').role, 'admin');
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('staff-admin').role, 'admin');
     });
@@ -269,6 +270,33 @@ describe('database initialization', () => {
             db.prepare('DELETE FROM room_chat_messages WHERE user_id = ?').run(userId);
             db.prepare('DELETE FROM room_memories WHERE user_id = ?').run(userId);
             db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+        }
+    });
+
+    it('backfills published articles from their original creation time without publishing drafts', () => {
+        const migration = require('../backend/db/migrations/022_add_article_published_at');
+        const published = db.prepare(`
+            INSERT INTO articles (title, slug, publish_date, published_at, status, created_at)
+            VALUES (?, ?, ?, NULL, 'published', ?)
+        `).run('Legacy published timestamp', `legacy-published-${Date.now()}`, '2026-04-02', '2026-04-02 03:14:15');
+        const draft = db.prepare(`
+            INSERT INTO articles (title, slug, publish_date, published_at, status, created_at)
+            VALUES (?, ?, ?, NULL, 'draft', ?)
+        `).run('Legacy draft timestamp', `legacy-draft-${Date.now()}`, '2026-04-03', '2026-04-03 04:15:16');
+
+        try {
+            migration.up(db);
+            migration.up(db);
+            assert.equal(
+                db.prepare('SELECT published_at FROM articles WHERE id = ?').get(published.lastInsertRowid).published_at,
+                '2026-04-02 03:14:15'
+            );
+            assert.equal(
+                db.prepare('SELECT published_at FROM articles WHERE id = ?').get(draft.lastInsertRowid).published_at,
+                null
+            );
+        } finally {
+            db.prepare('DELETE FROM articles WHERE id IN (?, ?)').run(published.lastInsertRowid, draft.lastInsertRowid);
         }
     });
 });
@@ -621,6 +649,15 @@ describe('articles API', () => {
         const sitemap = await request('/sitemap.xml');
         assert.equal(sitemap.response.status, 200);
         assert.equal(String(sitemap.body).includes(`/articles/${draftId}/hidden-draft-article`), false);
+
+        const firstPublish = await postJson(`/api/admin/articles/${draftId}/toggle-status`, {}, adminToken);
+        assert.equal(firstPublish.response.status, 200);
+        const firstPublishedAt = db.prepare('SELECT published_at FROM articles WHERE id = ?').get(draftId).published_at;
+        assert.match(firstPublishedAt, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+        await postJson(`/api/admin/articles/${draftId}/toggle-status`, {}, adminToken);
+        await postJson(`/api/admin/articles/${draftId}/toggle-status`, {}, adminToken);
+        assert.equal(db.prepare('SELECT published_at FROM articles WHERE id = ?').get(draftId).published_at, firstPublishedAt);
+        await postJson(`/api/admin/articles/${draftId}/toggle-status`, {}, adminToken);
     });
 
     it('allows an authenticated user to create and read a non-admin article', async () => {
@@ -637,18 +674,34 @@ describe('articles API', () => {
         assert.equal(created.body.success, true);
         articleId = created.body.data.id;
         assert.equal(created.body.data.author_avatar, testAvatar);
+        assert.match(created.body.data.published_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+        const originalPublishedAt = created.body.data.published_at;
 
         const fetched = await request(`/api/articles/${articleId}`);
         assert.equal(fetched.response.status, 200);
         assert.equal(fetched.body.data.title, 'Test Article');
         assert.deepEqual(fetched.body.data.tags, ['test']);
         assert.equal(fetched.body.data.author_avatar, testAvatar);
+        assert.equal(fetched.body.data.published_at, originalPublishedAt);
+
+        const updated = await putJson(`/api/articles/${articleId}`, {
+            title: 'Test Article',
+            excerpt: 'Updated summary',
+            content: 'Updated without changing publication time.',
+            content_format: 'markdown',
+            category: '\u968f\u7b14',
+            tags: ['test'],
+            read_time: '1 min'
+        }, adminToken);
+        assert.equal(updated.response.status, 200);
+        assert.equal(updated.body.data.published_at, originalPublishedAt);
 
         const list = await request('/api/articles?limit=200');
         assert.equal(list.response.status, 200);
         const listedArticle = list.body.data.find(article => article.id === articleId);
         assert.ok(listedArticle);
         assert.equal(listedArticle.author_avatar, testAvatar);
+        assert.equal(listedArticle.published_at, originalPublishedAt);
     });
 
     it('prevents a normal user from publishing an announcement article', async () => {

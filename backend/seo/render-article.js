@@ -401,7 +401,7 @@ function articleSchema(article) {
         headline: article.title,
         description: articleDescription(article),
         image: [absoluteUrl(article.cover_image || DEFAULT_IMAGE)],
-        datePublished: article.publish_date || article.created_at,
+        datePublished: article.published_at || article.created_at || article.publish_date,
         dateModified: article.updated_at || article.created_at || article.publish_date,
         author: {
             '@type': 'Person',
@@ -461,7 +461,7 @@ function renderArticleHtml(article) {
   <main>
     <article>
       <h1>${escapeHtml(article.title)}</h1>
-      <div class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.publish_date || article.created_at || '')} · ${escapeHtml(article.author_username || 'redchenk')}</div>
+      <div class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.published_at || article.created_at || article.publish_date || '')} · ${escapeHtml(article.author_username || 'redchenk')}</div>
       ${article.cover_image ? `<img class="cover" src="${escapeHtml(article.cover_image)}" alt="${escapeHtml(article.title)}" loading="eager" decoding="async">` : ''}
       <p class="summary"><strong>${escapeHtml(description)}</strong></p>
       <section class="article-body">
@@ -487,7 +487,7 @@ function renderStageHtml(articles = []) {
     const listHtml = articles.map(article => `
       <a class="card" href="${escapeHtml(articlePath(article))}">
         ${article.cover_image ? `<img src="${escapeHtml(article.cover_image)}" alt="${escapeHtml(article.title)}" loading="lazy" decoding="async">` : ''}
-        <span class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.publish_date || article.created_at || '')}</span>
+        <span class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.published_at || article.created_at || article.publish_date || '')}</span>
         <h2>${escapeHtml(article.title)}</h2>
         <p>${escapeHtml(articleDescription(article))}</p>
       </a>
@@ -557,7 +557,7 @@ function renderTopicLandingHtml(topic, articles = [], galleryAssets = []) {
     const articleCards = articles.slice(0, 12).map(article => `
       <a class="card" href="${escapeAttr(articlePath(article))}">
         ${article.cover_image ? `<img src="${escapeAttr(article.cover_image)}" alt="${escapeAttr(article.title)}" loading="lazy" decoding="async">` : ''}
-        <span class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.publish_date || article.created_at || '')}</span>
+        <span class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.published_at || article.created_at || article.publish_date || '')}</span>
         <h2>${escapeHtml(article.title)}</h2>
         <p>${escapeHtml(articleDescription(article))}</p>
       </a>

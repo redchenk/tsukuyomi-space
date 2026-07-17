@@ -112,7 +112,7 @@ function listBookmarkedArticles(userId, { limit = 80, offset = 0 } = {}) {
     const safeOffset = Math.max(0, Number(offset) || 0);
     return db.prepare(`
         SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.read_time, a.view_count,
-               a.cover_image, a.cover_image_asset_id, a.publish_date, a.created_at,
+               a.cover_image, a.cover_image_asset_id, a.publish_date, a.published_at, a.created_at,
                u.username AS author_username,
                u.avatar AS author_avatar,
                b.created_at AS bookmarked_at
@@ -133,11 +133,11 @@ function listPublicArticlesByAuthor(userId, { limit = 8 } = {}) {
     const safeLimit = Math.max(1, Math.min(Number(limit) || 8, 24));
     return db.prepare(`
         SELECT id, title, slug, excerpt, category, read_time, view_count,
-               cover_image, cover_image_asset_id, publish_date, created_at
+               cover_image, cover_image_asset_id, publish_date, published_at, created_at
         FROM articles
         WHERE author_id = ?
           AND COALESCE(status, 'published') = 'published'
-        ORDER BY pinned_at IS NULL, pinned_at DESC, publish_date DESC, created_at DESC
+        ORDER BY pinned_at IS NULL, pinned_at DESC, COALESCE(published_at, created_at, publish_date) DESC
         LIMIT ?
     `).all(userId, safeLimit);
 }

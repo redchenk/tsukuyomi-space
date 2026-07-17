@@ -7,7 +7,7 @@ import TsIcon from '../components/TsIcon.vue';
 import { applyMessageLikeState } from '../services/messageLikes';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
-import { formatDateTime } from '../utils/time';
+import { formatDateMinute, formatDateTime } from '../utils/time';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -44,6 +44,10 @@ const bookmarkLabel = computed(() => {
 
 function formatDate(value) {
   return formatDateTime(value, 'zh-CN');
+}
+
+function formatPublishedDate(value) {
+  return formatDateMinute(value, 'zh-CN');
 }
 
 function queryValue(value) {
@@ -356,7 +360,7 @@ watch(articleId, loadArticle);
           <div class="article-kicker">{{ article.category || '未分类' }}</div>
           <h1>{{ article.title }}</h1>
           <div class="article-meta">
-            <span>{{ formatDate(article.publish_date || article.created_at) }}</span>
+            <span>{{ formatPublishedDate(article.published_at || article.created_at || article.publish_date) }}</span>
             <a
               class="article-author-link"
               :href="`/users/${encodeURIComponent(article.author_username || 'admin')}`"

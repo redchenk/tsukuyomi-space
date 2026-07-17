@@ -123,7 +123,7 @@ export function articleSeo(article, path) {
       headline: title,
       description,
       image: [absoluteUrl(image)],
-      datePublished: article?.publish_date || article?.created_at,
+      datePublished: article?.published_at || article?.created_at || article?.publish_date,
       dateModified: article?.updated_at || article?.created_at || article?.publish_date,
       author: {
         '@type': 'Person',

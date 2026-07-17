@@ -59,7 +59,7 @@ function updateAdminPassword(id, passwordHash) {
 
 function listAdminArticles() {
     return db.prepare(`
-        SELECT id, title, slug, category, content_format, cover_image_asset_id, view_count, status, pinned_at, created_at, updated_at
+        SELECT id, title, slug, category, content_format, cover_image_asset_id, view_count, status, pinned_at, published_at, created_at, updated_at
         FROM articles
         ORDER BY pinned_at IS NULL, pinned_at DESC, COALESCE(updated_at, created_at) DESC
     `).all();
@@ -67,6 +67,7 @@ function listAdminArticles() {
 
 function updateAdminArticle(id, article) {
     const slug = uniqueArticleSlug(article.title, id);
+    const status = ['published', 'draft'].includes(article.status) ? article.status : 'published';
     return db.prepare(`
         UPDATE articles
         SET title = ?,
@@ -76,6 +77,10 @@ function updateAdminArticle(id, article) {
             content_format = ?,
             category = ?,
             status = ?,
+            published_at = CASE
+                WHEN ? = 'published' THEN COALESCE(published_at, CURRENT_TIMESTAMP)
+                ELSE published_at
+            END,
             read_time = COALESCE(?, read_time),
             cover_image = COALESCE(?, cover_image),
             cover_image_asset_id = COALESCE(?, cover_image_asset_id),
@@ -88,7 +93,8 @@ function updateAdminArticle(id, article) {
         article.content || '',
         normalizeContentFormat(article.contentFormat),
         article.category || '随笔',
-        ['published', 'draft'].includes(article.status) ? article.status : 'published',
+        status,
+        status,
         article.readTime || null,
         article.coverImage || null,
         article.coverImageAssetId || null,
@@ -100,7 +106,16 @@ function toggleArticleStatus(id) {
     const article = db.prepare('SELECT status FROM articles WHERE id = ?').get(id);
     if (!article) return null;
     const status = article.status === 'published' ? 'draft' : 'published';
-    db.prepare('UPDATE articles SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(status, id);
+    db.prepare(`
+        UPDATE articles
+        SET status = ?,
+            published_at = CASE
+                WHEN ? = 'published' THEN COALESCE(published_at, CURRENT_TIMESTAMP)
+                ELSE published_at
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    `).run(status, status, id);
     return status;
 }
 

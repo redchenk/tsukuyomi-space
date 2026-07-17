@@ -95,7 +95,8 @@ router.post('/', authenticateToken, async (req, res) => {
         }
 
         const finalCategory = category || (canPublishAnnouncement(req.user) ? '公告' : '其他');
-        const publishDate = new Date().toISOString().split('T')[0];
+        const publishedAt = new Date().toISOString();
+        const publishDate = publishedAt.slice(0, 10);
         const mediaPayload = await articleMedia.normalizeArticleMediaPayload({
             title,
             excerpt,
@@ -105,6 +106,7 @@ router.post('/', authenticateToken, async (req, res) => {
             tags,
             authorId: req.user.scope === 'admin' ? null : req.user.id,
             publishDate,
+            publishedAt,
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id

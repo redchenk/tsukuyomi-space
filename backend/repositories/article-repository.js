@@ -32,7 +32,7 @@ function compactArticleRows(rows) {
 function listArticles({ category, limit, offset }) {
     let query = `
         SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.tags, a.author_id,
-            a.publish_date, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
+            a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             u.username AS author_username,
             u.avatar AS author_avatar
@@ -49,7 +49,7 @@ function listArticles({ category, limit, offset }) {
         params.push(category);
     }
 
-    query += ' ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, a.publish_date DESC, a.created_at DESC LIMIT ? OFFSET ?';
+    query += ' ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, COALESCE(a.published_at, a.created_at, a.publish_date) DESC LIMIT ? OFFSET ?';
 
     return {
         total: db.prepare(countQuery).get(...params).total,
@@ -61,7 +61,7 @@ function listRecentPublishedArticles(limit = 8) {
     const safeLimit = Math.max(1, Math.min(Number.parseInt(limit, 10) || 8, 30));
     return compactArticleRows(db.prepare(`
         SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.tags, a.author_id,
-            a.publish_date, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
+            a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             u.username AS author_username,
             u.avatar AS author_avatar
@@ -78,9 +78,9 @@ function createArticle(article) {
     const result = db.prepare(`
         INSERT INTO articles (
             title, slug, excerpt, content, content_format, category, tags, author_id,
-            publish_date, read_time, cover_image, cover_image_asset_id
+            publish_date, published_at, read_time, cover_image, cover_image_asset_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         article.title,
         slug,
@@ -91,6 +91,7 @@ function createArticle(article) {
         JSON.stringify(article.tags || []),
         article.authorId,
         article.publishDate,
+        article.publishedAt || new Date().toISOString(),
         article.readTime || '5 min',
         article.coverImage || null,
         article.coverImageAssetId || null
@@ -167,14 +168,14 @@ function listUserArticles(userId) {
 
 function listSeoArticles(limit = 500) {
     return compactArticleRows(db.prepare(`
-        SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.content_format, a.publish_date, a.created_at, a.updated_at,
+        SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.content_format, a.publish_date, a.published_at, a.created_at, a.updated_at,
             a.cover_image, a.cover_image_asset_id, a.category, a.tags, a.read_time,
             u.username AS author_username,
             u.avatar AS author_avatar
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
         WHERE COALESCE(a.status, 'published') = 'published'
-        ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, a.publish_date DESC, a.created_at DESC
+        ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, COALESCE(a.published_at, a.created_at, a.publish_date) DESC
         LIMIT ?
     `).all(limit));
 }
