@@ -17,6 +17,11 @@ function parseMetadata(row) {
     }
 }
 
+function parseGalleryAsset(row) {
+    const asset = parseMetadata(row);
+    return asset ? { ...asset, owner_has_avatar: Boolean(asset.owner_has_avatar) } : asset;
+}
+
 function normalizeTypeWhere(type, params) {
     if (!type || type === 'all') return '';
     if (type === 'image') return " AND (mime_type LIKE 'image/%' OR asset_type LIKE '%image%')";
@@ -89,14 +94,17 @@ function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '' }
         SELECT
             assets.id, assets.article_id, assets.owner_id, assets.asset_type, assets.mime_type,
             assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
-            owner.username AS owner_username
+            owner.username AS owner_username,
+            CASE WHEN owner.avatar IS NOT NULL AND owner.avatar <> '' THEN 1 ELSE 0 END AS owner_has_avatar,
+            CASE WHEN owner.avatar LIKE 'https://%' THEN owner.avatar ELSE '' END AS owner_avatar_url,
+            COALESCE(owner.updated_at, owner.created_at) AS owner_avatar_updated_at
         FROM article_assets AS assets
         LEFT JOIN users AS owner ON owner.id = assets.owner_id
         WHERE ${galleryFilter.where}
         ORDER BY assets.created_at DESC
         LIMIT ? OFFSET ?
     `).all(...galleryFilter.params, limit, offset);
-    return rows.map(parseMetadata);
+    return rows.map(parseGalleryAsset);
 }
 
 function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '' } = {}) {
@@ -105,14 +113,17 @@ function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '' } = {}) 
         SELECT
             assets.id, assets.article_id, assets.owner_id, assets.asset_type, assets.mime_type,
             assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
-            owner.username AS owner_username
+            owner.username AS owner_username,
+            CASE WHEN owner.avatar IS NOT NULL AND owner.avatar <> '' THEN 1 ELSE 0 END AS owner_has_avatar,
+            CASE WHEN owner.avatar LIKE 'https://%' THEN owner.avatar ELSE '' END AS owner_avatar_url,
+            COALESCE(owner.updated_at, owner.created_at) AS owner_avatar_updated_at
         FROM article_assets AS assets
         LEFT JOIN users AS owner ON owner.id = assets.owner_id
         WHERE ${galleryFilter.where}
         ORDER BY RANDOM()
         LIMIT ?
     `).all(...galleryFilter.params, limit);
-    return rows.map(parseMetadata);
+    return rows.map(parseGalleryAsset);
 }
 
 function countGalleryAssets({ search = '', ownerId = '' } = {}) {

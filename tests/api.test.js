@@ -679,6 +679,9 @@ describe('articles API', () => {
 describe('gallery API', () => {
     it('includes the public uploader name without exposing account details', async () => {
         const assetId = `gallery-owner-${Date.now()}`;
+        const originalAvatar = db.prepare('SELECT avatar FROM users WHERE id = ?').get('user-001').avatar;
+        const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+        db.prepare('UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(avatar, 'user-001');
         db.prepare(`
             INSERT INTO article_assets (
                 id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at
@@ -697,7 +700,17 @@ describe('gallery API', () => {
             const listedAsset = list.body.data.assets.find(asset => asset.id === assetId);
             assert.ok(listedAsset);
             assert.equal(listedAsset.owner_username, 'normal-user');
+            assert.equal(listedAsset.owner_has_avatar, true);
+            assert.equal(listedAsset.owner_avatar_url, '');
+            assert.ok(listedAsset.owner_avatar_updated_at);
             assert.equal(Object.hasOwn(listedAsset, 'email'), false);
+            assert.equal(Object.hasOwn(listedAsset, 'avatar'), false);
+
+            const avatarResponse = await fetch(`${baseUrl}/api/user/public/normal-user/avatar?v=${encodeURIComponent(listedAsset.owner_avatar_updated_at)}`);
+            assert.equal(avatarResponse.status, 200);
+            assert.equal(avatarResponse.headers.get('content-type'), 'image/png');
+            assert.match(avatarResponse.headers.get('cache-control') || '', /immutable/);
+            assert.ok((await avatarResponse.arrayBuffer()).byteLength > 0);
 
             const preview = await request('/api/assets/gallery/public?limit=23');
             assert.equal(preview.response.status, 200);
@@ -706,6 +719,7 @@ describe('gallery API', () => {
             assert.equal(previewAsset.owner_username, 'normal-user');
         } finally {
             db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
+            db.prepare('UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(originalAvatar, 'user-001');
         }
     });
 });

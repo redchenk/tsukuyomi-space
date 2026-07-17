@@ -155,8 +155,13 @@ describe('frontend navigation routes', () => {
         const repository = source('backend/repositories/asset-repository.js');
 
         assert.match(repository, /owner\.username AS owner_username/);
+        assert.match(repository, /owner_has_avatar/);
+        assert.doesNotMatch(repository, /owner\.avatar AS owner_avatar/);
         assert.match(gallery, /function uploaderName\(asset\)/);
+        assert.match(gallery, /function uploaderAvatarUrl\(asset\)/);
         assert.match(gallery, /`\/users\/\$\{encodeURIComponent\(username\)\}`/);
+        assert.match(gallery, /class="gallery-uploader-avatar"/);
+        assert.match(gallery, /@error="markUploaderAvatarFailed\(asset\)"/);
         assert.match(gallery, /class="gallery-uploader"/);
         assert.match(gallery, /class="gallery-uploader gallery-feature-uploader"/);
         assert.match(gallery, /class="gallery-uploader gallery-lightbox-uploader"/);

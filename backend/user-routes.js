@@ -64,6 +64,43 @@ router.post('/notifications/:id/read', authenticateToken, (req, res) => {
     }
 });
 
+router.get('/public/:username/avatar', (req, res) => {
+    try {
+        const user = userRepository.findPublicAvatarByUsername(req.params.username);
+        const avatar = String(user?.avatar || '');
+        if (!avatar.startsWith('data:')) {
+            res.set('Cache-Control', 'private, no-store');
+            return res.status(404).end();
+        }
+
+        let safeAvatar;
+        try {
+            safeAvatar = validateAvatar(avatar);
+        } catch (_) {
+            res.set('Cache-Control', 'private, no-store');
+            return res.status(404).end();
+        }
+
+        const match = safeAvatar.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/]*={0,2})$/);
+        if (!match) {
+            res.set('Cache-Control', 'private, no-store');
+            return res.status(404).end();
+        }
+
+        const avatarVersion = String(user.updated_at || user.created_at || '');
+        const requestedVersion = String(req.query.v || '');
+        res.set('Cache-Control', requestedVersion && requestedVersion === avatarVersion
+            ? 'public, max-age=31536000, immutable'
+            : 'public, max-age=0, must-revalidate');
+        res.type(match[1]);
+        return res.send(Buffer.from(match[2], 'base64'));
+    } catch (error) {
+        console.error('Public avatar failed:', error);
+        res.set('Cache-Control', 'private, no-store');
+        return res.status(500).end();
+    }
+});
+
 router.get('/public/:username', optionalAuth, (req, res) => {
     try {
         const profile = socialRepository.publicProfile(req.params.username, req.user?.id || '');
@@ -272,6 +309,7 @@ router.post('/avatar', authenticateToken, (req, res) => {
 
         const safeAvatar = validateAvatar(avatar);
         userRepository.updateAvatar(req.user.id, safeAvatar);
+        responseCache.delPrefix('public:gallery');
 
         res.json({
             success: true,

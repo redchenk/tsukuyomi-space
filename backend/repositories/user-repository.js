@@ -11,6 +11,16 @@ function findUserById(id) {
     return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
+function findPublicAvatarByUsername(username) {
+    const value = String(username || '').trim().toLowerCase();
+    if (!value) return null;
+    return db.prepare(`
+        SELECT username, avatar, created_at, updated_at
+        FROM users
+        WHERE lower(username) = ?
+    `).get(value);
+}
+
 function updateBio(id, bio) {
     return db.prepare('UPDATE users SET bio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(bio || '', id).changes;
 }
@@ -26,6 +36,7 @@ function updatePassword(id, passwordHash) {
 module.exports = {
     findProfileById,
     findUserById,
+    findPublicAvatarByUsername,
     updateBio,
     updateAvatar,
     updatePassword

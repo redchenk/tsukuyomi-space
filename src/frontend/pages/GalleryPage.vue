@@ -31,7 +31,8 @@ const state = reactive({
   latest: null,
   randomFeatured: null,
   randomFeatureFading: false,
-  selected: null
+  selected: null,
+  avatarFailures: {}
 });
 
 const isAuthed = computed(() => Boolean(session.value));
@@ -73,6 +74,32 @@ function uploaderName(asset) {
 function uploaderPath(asset) {
   const username = String(asset?.owner_username || '').trim();
   return username ? `/users/${encodeURIComponent(username)}` : '';
+}
+
+function uploaderInitial(asset) {
+  return Array.from(uploaderName(asset))[0]?.toUpperCase() || '月';
+}
+
+function uploaderAvatarKey(asset) {
+  return [asset?.owner_username, asset?.owner_avatar_updated_at, asset?.owner_avatar_url].join(':');
+}
+
+function uploaderAvatarUrl(asset) {
+  const directUrl = String(asset?.owner_avatar_url || '').trim();
+  if (/^https:\/\//i.test(directUrl)) return directUrl;
+  const username = String(asset?.owner_username || '').trim();
+  if (!asset?.owner_has_avatar || !username) return '';
+  const version = String(asset?.owner_avatar_updated_at || '').trim();
+  const query = version ? `?v=${encodeURIComponent(version)}` : '';
+  return apiUrl(`/api/user/public/${encodeURIComponent(username)}/avatar${query}`);
+}
+
+function showUploaderAvatar(asset) {
+  return Boolean(uploaderAvatarUrl(asset) && !state.avatarFailures[uploaderAvatarKey(asset)]);
+}
+
+function markUploaderAvatarFailed(asset) {
+  state.avatarFailures[uploaderAvatarKey(asset)] = true;
 }
 
 function canDeleteImage(asset) {
@@ -415,12 +442,23 @@ onUnmounted(() => {
               :href="uploaderPath(randomFeatureImage)"
               @click.prevent="go(uploaderPath(randomFeatureImage))"
             >
-              <TsIcon name="user" :size="15" />
-              <span>{{ uploaderName(randomFeatureImage) }}</span>
+              <span class="gallery-uploader-avatar" aria-hidden="true">
+                <span>{{ uploaderInitial(randomFeatureImage) }}</span>
+                <img
+                  v-if="showUploaderAvatar(randomFeatureImage)"
+                  :src="uploaderAvatarUrl(randomFeatureImage)"
+                  alt=""
+                  decoding="async"
+                  @error="markUploaderAvatarFailed(randomFeatureImage)"
+                >
+              </span>
+              <span class="gallery-uploader-name">{{ uploaderName(randomFeatureImage) }}</span>
             </a>
             <span v-else class="gallery-uploader gallery-feature-uploader gallery-uploader-static">
-              <TsIcon name="user" :size="15" />
-              <span>{{ uploaderName(randomFeatureImage) }}</span>
+              <span class="gallery-uploader-avatar" aria-hidden="true">
+                <span>{{ uploaderInitial(randomFeatureImage) }}</span>
+              </span>
+              <span class="gallery-uploader-name">{{ uploaderName(randomFeatureImage) }}</span>
             </span>
             <p>由注册用户上传并加入图库的公开图片，不包含普通附件库图片。</p>
             <div class="gallery-feature-actions">
@@ -456,12 +494,24 @@ onUnmounted(() => {
                 :title="`查看 ${uploaderName(asset)} 的主页`"
                 @click.prevent="go(uploaderPath(asset))"
               >
-                <TsIcon name="user" :size="15" />
-                <span>{{ uploaderName(asset) }}</span>
+                <span class="gallery-uploader-avatar" aria-hidden="true">
+                  <span>{{ uploaderInitial(asset) }}</span>
+                  <img
+                    v-if="showUploaderAvatar(asset)"
+                    :src="uploaderAvatarUrl(asset)"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    @error="markUploaderAvatarFailed(asset)"
+                  >
+                </span>
+                <span class="gallery-uploader-name">{{ uploaderName(asset) }}</span>
               </a>
               <span v-else class="gallery-uploader gallery-uploader-static">
-                <TsIcon name="user" :size="15" />
-                <span>{{ uploaderName(asset) }}</span>
+                <span class="gallery-uploader-avatar" aria-hidden="true">
+                  <span>{{ uploaderInitial(asset) }}</span>
+                </span>
+                <span class="gallery-uploader-name">{{ uploaderName(asset) }}</span>
               </span>
               <time :datetime="imageDate(asset)">{{ imageDate(asset) }}</time>
             </div>
@@ -548,12 +598,23 @@ onUnmounted(() => {
                 :href="uploaderPath(state.selected)"
                 @click.prevent="go(uploaderPath(state.selected)); state.selected = null"
               >
-                <TsIcon name="user" :size="14" />
-                <span>{{ uploaderName(state.selected) }}</span>
+                <span class="gallery-uploader-avatar" aria-hidden="true">
+                  <span>{{ uploaderInitial(state.selected) }}</span>
+                  <img
+                    v-if="showUploaderAvatar(state.selected)"
+                    :src="uploaderAvatarUrl(state.selected)"
+                    alt=""
+                    decoding="async"
+                    @error="markUploaderAvatarFailed(state.selected)"
+                  >
+                </span>
+                <span class="gallery-uploader-name">{{ uploaderName(state.selected) }}</span>
               </a>
               <span v-else class="gallery-uploader gallery-lightbox-uploader gallery-uploader-static">
-                <TsIcon name="user" :size="14" />
-                <span>{{ uploaderName(state.selected) }}</span>
+                <span class="gallery-uploader-avatar" aria-hidden="true">
+                  <span>{{ uploaderInitial(state.selected) }}</span>
+                </span>
+                <span class="gallery-uploader-name">{{ uploaderName(state.selected) }}</span>
               </span>
             </div>
             <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">复制 Markdown</button>
