@@ -2,11 +2,10 @@ import { dispatchRoomLive2D } from './live2dControl';
 import { alignLive2DIntentToStreamingSpeech } from './live2dStreamingSpeechSession';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
-const ROOM_SCRIPT = '/lib/bundled/live2d-room-neuro-live.20260717-adaptive-perf-r6.iife.js';
+const ROOM_SCRIPT = '/lib/bundled/live2d-room-neuro-live.20260717-adaptive-perf-r7.iife.js';
 const MODEL_BASE = '/models-v4/tsukimi-yachiyo';
-const MODEL_RESOURCES = [
-  { href: `${MODEL_BASE}/tsukimi-yachiyo.moc3`, as: 'fetch', type: 'application/octet-stream' }
-];
+const MODEL_MOC = `${MODEL_BASE}/tsukimi-yachiyo.moc3`;
+const MODEL_MOC_COMPRESSED = `${MODEL_MOC}.gzip-r1`;
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_ERROR_EVENT = 'tsukuyomi:live2d-error';
 const LIVE2D_READY_TIMEOUT = 210000;
@@ -207,6 +206,9 @@ function live2DModelJson() {
 
 export function preloadLive2DResources() {
   const modelJson = live2DModelJson();
+  const modelMoc = typeof window.DecompressionStream === 'function'
+    ? MODEL_MOC_COMPRESSED
+    : MODEL_MOC;
   [
     { href: CORE_SCRIPT, as: 'script' },
     { href: ROOM_SCRIPT, as: 'script' },
@@ -215,7 +217,7 @@ export function preloadLive2DResources() {
         as: 'fetch',
         type: 'application/json'
       },
-    ...MODEL_RESOURCES
+    { href: modelMoc, as: 'fetch', type: 'application/octet-stream' }
   ].forEach((resource) => {
     if (document.head.querySelector(`link[data-room-preload="${resource.href}"]`)) return;
     const link = document.createElement('link');

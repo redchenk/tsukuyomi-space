@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 const { describe, it } = require('node:test');
 
 const root = path.resolve(__dirname, '..');
@@ -58,6 +59,10 @@ describe('constrained-device performance policy', () => {
         assert.ok(bytes('assets/images/auth-visual-bg.webp') < bytes('assets/images/auth-visual-bg.png') * 0.05);
         assert.ok(bytes('assets/pets/yachiyo/spritesheet-perf-r2.webp') < 1.2 * 1024 * 1024);
         assert.ok(bytes('assets/pets/yachiyo/idle.webp') < 30 * 1024);
+        const model = fs.readFileSync(path.join(root, 'models/tsukimi-yachiyo/tsukimi-yachiyo.moc3'));
+        const compressedModel = fs.readFileSync(path.join(root, 'models/tsukimi-yachiyo/tsukimi-yachiyo.moc3.gzip-r1'));
+        assert.ok(compressedModel.length < model.length * 0.45);
+        assert.deepEqual(zlib.gunzipSync(compressedModel), model);
         assert.match(pet, /spritesheet-perf-r2\.webp/);
         assert.doesNotMatch(runtime, /(?:tsukuyomi|room)-bg\.png/);
         assert.match(runtime, /tsukuyomi-bg\.webp/);
@@ -98,6 +103,7 @@ describe('constrained-device performance policy', () => {
         assert.doesNotMatch(loader, /loadScript\(assetUrl\(/);
         assert.doesNotMatch(loader, /assetUrl/);
         assert.match(loader, /tsukimi-yachiyo\.moc3/);
-        assert.match(loader, /\.\.\.MODEL_RESOURCES/);
+        assert.match(loader, /MODEL_MOC_COMPRESSED/);
+        assert.match(loader, /window\.DecompressionStream/);
     });
 });

@@ -18,6 +18,28 @@ type Live2DAssetResponse = {
 
 const live2dAssetMaxAttempts = 3;
 const live2dAssetRetryDelayMs = 750;
+const compressedMocSuffix = '.gzip-r1';
+
+function canLoadCompressedMoc(filePath: string): boolean {
+  return /\.moc3(?:$|\?)/i.test(filePath) &&
+    typeof window.DecompressionStream === 'function';
+}
+
+function compressedMocPath(filePath: string): string {
+  const url = new URL(filePath, window.location.href);
+  url.pathname += compressedMocSuffix;
+  return url.href;
+}
+
+async function readLive2DAsset(
+  response: Response,
+  compressed: boolean
+): Promise<ArrayBuffer> {
+  if (!compressed) return response.arrayBuffer();
+  if (!response.body) throw new Error('Compressed Live2D response has no body');
+  const stream = response.body.pipeThrough(new DecompressionStream('gzip'));
+  return new Response(stream).arrayBuffer();
+}
 
 function live2dAssetTimeoutMs(filePath: string): number {
   return /\.moc3(?:$|\?)/i.test(filePath) ? 60000 : 20000;
@@ -47,16 +69,32 @@ async function fetchLive2DAssetAttempt(
   );
 
   try {
-    const response = await fetch(live2dAssetAttemptUrl(filePath, attempt), {
-      cache: attempt === 0 ? 'default' : 'reload',
-      signal: controller.signal
-    });
-    const buffer = await response.arrayBuffer();
-    return {
-      ok: response.ok,
-      status: response.status,
-      arrayBuffer: async () => buffer
-    };
+    const compressedPath = canLoadCompressedMoc(filePath)
+      ? compressedMocPath(filePath)
+      : '';
+    const candidates = compressedPath
+      ? [{ path: compressedPath, compressed: true }, { path: filePath, compressed: false }]
+      : [{ path: filePath, compressed: false }];
+
+    for (const candidate of candidates) {
+      try {
+        const response = await fetch(live2dAssetAttemptUrl(candidate.path, attempt), {
+          cache: attempt === 0 ? 'default' : 'reload',
+          signal: controller.signal
+        });
+        if (candidate.compressed && !response.ok) continue;
+        const buffer = await readLive2DAsset(response, candidate.compressed);
+        return {
+          ok: response.ok,
+          status: response.status,
+          arrayBuffer: async () => buffer
+        };
+      } catch (error) {
+        if (!candidate.compressed || controller.signal.aborted) throw error;
+      }
+    }
+
+    throw new Error(`Failed to load Live2D asset: ${filePath}`);
   } finally {
     window.clearTimeout(timeoutId);
   }
