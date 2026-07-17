@@ -96,7 +96,12 @@ function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '' }
             assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
             owner.username AS owner_username,
             CASE WHEN owner.avatar IS NOT NULL AND owner.avatar <> '' THEN 1 ELSE 0 END AS owner_has_avatar,
-            CASE WHEN owner.avatar LIKE 'https://%' THEN owner.avatar ELSE '' END AS owner_avatar_url,
+            CASE
+                WHEN owner.avatar LIKE 'https://%' THEN owner.avatar
+                WHEN owner.avatar LIKE 'http://thirdqq.qlogo.cn/%' THEN 'https://' || substr(owner.avatar, 8)
+                WHEN owner.avatar LIKE 'http://q.qlogo.cn/%' THEN 'https://' || substr(owner.avatar, 8)
+                ELSE ''
+            END AS owner_avatar_url,
             COALESCE(owner.updated_at, owner.created_at) AS owner_avatar_updated_at
         FROM article_assets AS assets
         LEFT JOIN users AS owner ON owner.id = assets.owner_id
@@ -115,7 +120,12 @@ function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '' } = {}) 
             assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
             owner.username AS owner_username,
             CASE WHEN owner.avatar IS NOT NULL AND owner.avatar <> '' THEN 1 ELSE 0 END AS owner_has_avatar,
-            CASE WHEN owner.avatar LIKE 'https://%' THEN owner.avatar ELSE '' END AS owner_avatar_url,
+            CASE
+                WHEN owner.avatar LIKE 'https://%' THEN owner.avatar
+                WHEN owner.avatar LIKE 'http://thirdqq.qlogo.cn/%' THEN 'https://' || substr(owner.avatar, 8)
+                WHEN owner.avatar LIKE 'http://q.qlogo.cn/%' THEN 'https://' || substr(owner.avatar, 8)
+                ELSE ''
+            END AS owner_avatar_url,
             COALESCE(owner.updated_at, owner.created_at) AS owner_avatar_updated_at
         FROM article_assets AS assets
         LEFT JOIN users AS owner ON owner.id = assets.owner_id

@@ -712,6 +712,12 @@ describe('gallery API', () => {
             assert.match(avatarResponse.headers.get('cache-control') || '', /immutable/);
             assert.ok((await avatarResponse.arrayBuffer()).byteLength > 0);
 
+            const legacyQqAvatar = 'http://thirdqq.qlogo.cn/ek_qqapp/example-avatar/100';
+            db.prepare('UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(legacyQqAvatar, 'user-001');
+            const legacyList = await request('/api/assets/gallery?limit=48&search=Uploader%20credit%20test');
+            const legacyAsset = legacyList.body.data.assets.find(asset => asset.id === assetId);
+            assert.equal(legacyAsset.owner_avatar_url, 'https://thirdqq.qlogo.cn/ek_qqapp/example-avatar/100');
+
             const preview = await request('/api/assets/gallery/public?limit=23');
             assert.equal(preview.response.status, 200);
             const previewAsset = preview.body.data.assets.find(asset => asset.id === assetId);

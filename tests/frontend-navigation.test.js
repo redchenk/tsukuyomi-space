@@ -156,6 +156,8 @@ describe('frontend navigation routes', () => {
 
         assert.match(repository, /owner\.username AS owner_username/);
         assert.match(repository, /owner_has_avatar/);
+        assert.match(repository, /http:\/\/thirdqq\.qlogo\.cn/);
+        assert.match(repository, /'https:\/\/' \|\| substr\(owner\.avatar, 8\)/);
         assert.doesNotMatch(repository, /owner\.avatar AS owner_avatar/);
         assert.match(gallery, /function uploaderName\(asset\)/);
         assert.match(gallery, /function uploaderAvatarUrl\(asset\)/);
