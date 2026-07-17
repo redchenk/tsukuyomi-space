@@ -5,9 +5,7 @@ const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
 const ROOM_SCRIPT = '/lib/bundled/live2d-room-neuro-live.20260717-adaptive-perf-r6.iife.js';
 const MODEL_BASE = '/models-v4/tsukimi-yachiyo';
 const MODEL_RESOURCES = [
-  { href: `${MODEL_BASE}/tsukimi-yachiyo.moc3`, as: 'fetch', type: 'application/octet-stream' },
-  { href: `${MODEL_BASE}/textures/desktop/texture_00.webp`, as: 'image', type: 'image/webp' },
-  { href: `${MODEL_BASE}/textures/desktop/texture_01.webp`, as: 'image', type: 'image/webp' }
+  { href: `${MODEL_BASE}/tsukimi-yachiyo.moc3`, as: 'fetch', type: 'application/octet-stream' }
 ];
 const LIVE2D_READY_EVENT = 'tsukuyomi:live2d-ready';
 const LIVE2D_ERROR_EVENT = 'tsukuyomi:live2d-error';
@@ -226,7 +224,7 @@ export function preloadLive2DResources() {
     link.as = resource.as;
     link.dataset.roomPreload = resource.href;
     if (resource.type) link.type = resource.type;
-    if (resource.as === 'fetch' || resource.as === 'image') link.crossOrigin = 'anonymous';
+    if (resource.as === 'fetch') link.crossOrigin = 'anonymous';
     document.head.appendChild(link);
   });
 }

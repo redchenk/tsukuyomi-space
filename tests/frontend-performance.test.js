@@ -98,7 +98,6 @@ describe('constrained-device performance policy', () => {
         assert.doesNotMatch(loader, /loadScript\(assetUrl\(/);
         assert.doesNotMatch(loader, /assetUrl/);
         assert.match(loader, /tsukimi-yachiyo\.moc3/);
-        assert.match(loader, /textures\/desktop\/texture_00\.webp/);
         assert.match(loader, /\.\.\.MODEL_RESOURCES/);
     });
 });
