@@ -13,13 +13,12 @@ const CONTENT_SECURITY_POLICY = [
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "media-src 'self' data: blob: https:",
-    "connect-src 'self' https: wss:",
+    "connect-src 'self' https: wss: http://localhost:11434",
     "frame-src https:",
     "frame-ancestors 'self'",
     "form-action 'self'",
     "manifest-src 'self'",
-    "worker-src 'self' blob:",
-    'upgrade-insecure-requests'
+    "worker-src 'self' blob:"
 ].join('; ');
 
 function securityHeaders(req, res, next) {

@@ -9,6 +9,7 @@ import {
   queueRoomLive2DForNextRoom,
   readRoomLive2DDebugState
 } from '../services/room/live2dControl';
+import { localOllamaFetchOptions, normalizeLocalOllamaBaseUrl } from '../services/room/localOllamaTransport';
 import { refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
 import { formatDateTime } from '../utils/time';
 
@@ -308,8 +309,7 @@ function detectLLMProvider(apiUrl = '', modelName = '') {
 
 function normalizeLocalLLMUrl(apiUrl = '') {
   const value = String(apiUrl || '').trim();
-  if (/^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value)) return `http://${value}`;
-  return value;
+  return normalizeLocalOllamaBaseUrl(value);
 }
 
 function isOllamaApi(apiUrl = '') {
@@ -1460,7 +1460,9 @@ async function testLLM() {
     return;
   }
   const requestUrl = settings.useProxy ? apiUrl('/api/chat') : normalizeChatUrl(settings.apiUrl, settings.model);
-  const requestFetch = settings.useProxy ? (options) => apiFetch('/api/chat', options) : (options) => fetch(requestUrl, options);
+  const requestFetch = settings.useProxy
+    ? (options) => apiFetch('/api/chat', options)
+    : (options) => fetch(requestUrl, localOllamaFetchOptions(requestUrl, options));
   openTestDialog('llm', 'loading', 'LLM 连接测试', settings.useProxy ? '正在通过站内受限代理请求模型供应商...' : '正在请求模型供应商...', `${requestUrl}\n模型：${settings.model || '未填写'}`);
   try {
     const response = await requestFetch({
@@ -1485,7 +1487,7 @@ async function testLLM() {
   } catch (error) {
     const corsHint = settings.needsApiKey
       ? '如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。'
-      : '如果是 Ollama CORS，请在本机设置 OLLAMA_ORIGINS=https://yachiyo.hk,http://localhost:5173 后重启 Ollama。';
+      : '请允许浏览器访问本地网络；若仍提示 CORS，请设置 OLLAMA_ORIGINS=https://yachiyo.hk,http://localhost:5173，并完全退出后重启 Ollama。';
     openTestDialog('llm', 'error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n${corsHint}`);
     showToast(`LLM 测试失败：${error.message}`);
   }
@@ -2384,7 +2386,7 @@ onBeforeUnmount(() => {
         <div class="form-grid">
           <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="http://localhost:11434/api/chat"></label>
           <label>API Key<input v-model="llm.apiKey" type="password" placeholder="Ollama 可留空 / sk-..."></label>
-          <p class="field-hint warning-text">API Key 仅保存在当前浏览器本地，不会写入服务器；Ollama 本机模式无需 API Key。若本机跨域失败，请设置 OLLAMA_ORIGINS=https://yachiyo.hk,http://localhost:5173 后重启 Ollama。</p>
+          <p class="field-hint warning-text">API Key 仅保存在当前浏览器。Ollama 无需 API Key；首次连接请允许浏览器访问本地网络。若仍提示 CORS，请设置 OLLAMA_ORIGINS=https://yachiyo.hk,http://localhost:5173，并完全退出后重启 Ollama。</p>
           <label>模型名称<input v-model="llm.model" type="text" list="llmSyncedModels" placeholder="gpt-4o-mini"></label>
           <datalist id="llmSyncedModels">
             <option v-for="option in syncedModelOptions" :key="`${option.source}-${option.id}`" :value="syncedModelSelectValue(option)">{{ option.label }}</option>

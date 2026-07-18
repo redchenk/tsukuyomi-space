@@ -224,6 +224,9 @@ describe('browser security headers', () => {
         assert.match(CONTENT_SECURITY_POLICY, /frame-ancestors 'self'/);
         assert.match(CONTENT_SECURITY_POLICY, /form-action 'self'/);
         assert.match(CONTENT_SECURITY_POLICY, /manifest-src 'self'/);
+        assert.match(CONTENT_SECURITY_POLICY, /connect-src[^;]*http:\/\/localhost:11434/);
+        assert.doesNotMatch(CONTENT_SECURITY_POLICY, /connect-src[^;]*\shttp:\s/);
+        assert.doesNotMatch(CONTENT_SECURITY_POLICY, /upgrade-insecure-requests/);
         assert.doesNotMatch(CONTENT_SECURITY_POLICY, /unsafe-eval|script-src[^;]*unsafe-inline/);
     });
 
