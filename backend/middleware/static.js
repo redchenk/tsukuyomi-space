@@ -20,6 +20,7 @@ const SEO_ROUTES = [
     { path: '/plaza', priority: '0.8', changefreq: 'daily' },
     { path: '/room', priority: '0.8', changefreq: 'weekly' },
     { path: '/gallery', priority: '0.8', changefreq: 'daily' },
+    { path: '/wiki', priority: '0.8', changefreq: 'monthly' },
     { path: '/reality', priority: '0.7', changefreq: 'weekly' },
     { path: '/pixel', priority: '0.7', changefreq: 'weekly' }
 ];
@@ -311,8 +312,9 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/room', '/room/settings', '/room-settings', '/plaza', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/']);
-        if (vueRoutes.has(req.path) || req.path.startsWith('/users/')) {
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/room/settings', '/room-settings', '/plaza', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/']);
+        const wikiEntryRoute = req.path.startsWith('/wiki/characters/') || req.path.startsWith('/wiki/terms/');
+        if (vueRoutes.has(req.path) || req.path.startsWith('/users/') || wikiEntryRoute) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');
             }

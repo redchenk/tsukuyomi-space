@@ -40,6 +40,7 @@ const navItems = computed(() => [
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: props.routeName === 'room' || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza' || props.routeName === 'friendLinkApply', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
+  { path: '/wiki', key: 'wiki', label: 'Wiki', icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: '图库', icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true },

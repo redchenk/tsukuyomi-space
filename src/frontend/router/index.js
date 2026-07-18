@@ -28,6 +28,8 @@ const ArticlePage = () => loadRoute(() => import('../pages/ArticlePage.vue'), ()
 const TerminalPage = () => loadRoute(() => import('../pages/TerminalPage.vue'), () => import('../styles/routes/terminal.css'));
 const AdminPage = () => loadRoute(() => import('../pages/AdminPage.vue'), () => import('../styles/routes/admin.css'));
 const ArenaPage = () => loadRoute(() => import('../pages/ArenaPage.vue'), () => import('../styles/routes/arena.css'));
+const WikiPage = () => loadRoute(() => import('../pages/WikiPage.vue'), () => import('../styles/routes/wiki.css'));
+const WikiEntryPage = () => loadRoute(() => import('../pages/WikiEntryPage.vue'), () => import('../styles/routes/wiki.css'));
 
 export const routes = [
   {
@@ -81,6 +83,35 @@ export const routes = [
     name: 'article',
     component: ArticlePage,
     meta: { title: '文章', description: '月读空间文章正文与评论。' }
+  },
+  {
+    path: '/wiki',
+    name: 'wiki',
+    component: WikiPage,
+    meta: {
+      title: '超辉夜姬！Wiki',
+      description: '非官方粉丝整理：超时空辉夜姬的作品概览、角色、世界观、音乐与创作资料词条。'
+    }
+  },
+  {
+    path: '/wiki/characters/:slug',
+    name: 'wikiCharacter',
+    component: WikiEntryPage,
+    props: route => ({ kind: 'character', slug: route.params.slug }),
+    meta: {
+      title: '角色词条 - 超辉夜姬！Wiki',
+      description: '超辉夜姬角色的基本资料、人物经历、关系、关联音乐与参考来源。'
+    }
+  },
+  {
+    path: '/wiki/terms/:slug',
+    name: 'wikiTerm',
+    component: WikiEntryPage,
+    props: route => ({ kind: 'term', slug: route.params.slug }),
+    meta: {
+      title: '设定词条 - 超辉夜姬！Wiki',
+      description: '超辉夜姬的月读世界观、活动、音乐与古典母题词条。'
+    }
   },
   {
     path: '/room',
@@ -240,7 +271,10 @@ const routeWarmups = {
   userCenter: [NotificationsPage, UserProfilePage],
   terminal: [EditorPage, AttachmentsPage],
   admin: [EditorPage, GalleryPage, AttachmentsPage],
-  pixel: [UserCenterPage]
+  pixel: [UserCenterPage],
+  wiki: [WikiEntryPage],
+  wikiCharacter: [WikiPage],
+  wikiTerm: [WikiPage]
 };
 const defaultRouteWarmups = [HubPage];
 const warmedRouteComponents = new WeakSet();
