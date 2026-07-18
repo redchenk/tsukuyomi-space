@@ -1,9 +1,8 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import { MUSIC_BASE_PATH, MUSIC_TRACKS } from '../../constants/room/musicTracks';
-import { assetUrl } from '../../utils/assetUrl';
 
 function trackUrl(track) {
-  return `${assetUrl(MUSIC_BASE_PATH)}/${track.file.split('/').map(encodeURIComponent).join('/')}`;
+  return `${MUSIC_BASE_PATH}/${track.file.split('/').map(encodeURIComponent).join('/')}`;
 }
 
 function formatTime(seconds) {
@@ -90,6 +89,12 @@ export function useRoomMusic() {
     }
   }
 
+  function startPlayback() {
+    return audio.play().catch(() => {
+      playing.value = false;
+    });
+  }
+
   function loadTrack(index, options = {}) {
     if (!tracks.length) return;
     const wasPlaying = playing.value;
@@ -99,7 +104,7 @@ export function useRoomMusic() {
     audio.src = trackUrl(currentTrack.value);
     audio.preload = 'metadata';
     loadCover(currentTrack.value, ++coverRequestId);
-    if (options.play || wasPlaying) audio.play().catch(() => {});
+    if (options.play || wasPlaying) startPlayback();
   }
 
   function ensureTrackLoaded() {
@@ -110,7 +115,7 @@ export function useRoomMusic() {
   function togglePlay() {
     if (audio.paused) {
       ensureTrackLoaded();
-      audio.play().catch(() => {});
+      startPlayback();
     }
     else audio.pause();
   }
@@ -166,6 +171,9 @@ export function useRoomMusic() {
     playing.value = true;
   });
   audio.addEventListener('pause', () => {
+    playing.value = false;
+  });
+  audio.addEventListener('error', () => {
     playing.value = false;
   });
   audio.addEventListener('ended', next);

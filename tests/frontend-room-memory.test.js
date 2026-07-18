@@ -331,6 +331,10 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(app, /router\.isReady\(\)\.then\(\(\) => \{[\s\S]*initialRouteReady = true;[\s\S]*refreshUser\(\);/);
         assert.doesNotMatch(app, /watch\(\(\) => route\.fullPath,[\s\S]{0,100}\{ immediate: true \}/);
         assert.match(music, /function ensureTrackLoaded\(/);
+        assert.match(music, /return `\$\{MUSIC_BASE_PATH\}\//);
+        assert.match(music, /function startPlayback\(\)/);
+        assert.doesNotMatch(music, /assetUrl/);
+        assert.doesNotMatch(music, /audio\.play\(\)\.catch\(\(\) => \{\}\)/);
         assert.doesNotMatch(music, /\n\s*loadTrack\(trackIndex\.value\);\s*\n\s*onBeforeUnmount/);
         assert.match(router, /if \(!loaders\.length \|\| to\.name === 'room'\) return;/);
         assert.match(router, /scheduleIdleTask/);
