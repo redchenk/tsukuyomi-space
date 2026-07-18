@@ -171,9 +171,13 @@ describe('frontend navigation routes', () => {
         const hub = source('src/frontend/pages/HubPage.vue');
         const userCenter = source('src/frontend/pages/UserCenterPage.vue');
         const notifications = source('backend/routes/pixel-art.js');
+        const messages = source('src/frontend/i18n/messages.js');
 
         assert.match(router, /path: '\/pixel',\s*name: 'pixel'/);
         assert.match(router, /path: '\/arena\/:pathMatch\(\.\*\)\*'/);
+        assert.match(messages, /arena: '像素画'/);
+        assert.match(messages, /arena: 'ピクセルアート'/);
+        assert.doesNotMatch(messages, /arena: '竞技场'|arena: 'アリーナ'/);
         for (const content of [shell, hub, userCenter, notifications]) {
             assert.doesNotMatch(content, /\/arena(?:[/?#'"`]|$)/);
         }
