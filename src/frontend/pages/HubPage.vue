@@ -105,7 +105,7 @@ const sceneLinks = computed(() => [
     icon: 'book',
     tone: 'blue',
     spa: true,
-    image: latestArticle.value?.cover_image_url || latestArticle.value?.cover_image || '/assets/images/room-bg.webp',
+    image: latestArticle.value?.cover_image || latestArticle.value?.cover_image_url || '/assets/images/room-bg.webp',
     label: props.t.stage
   },
   {

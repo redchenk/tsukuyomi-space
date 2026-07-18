@@ -46,14 +46,26 @@ const manageScopeLabel = computed(() => {
 const shownImages = computed(() => state.images);
 const latestImage = computed(() => state.latest || null);
 const randomFeatureImage = computed(() => state.randomFeatured || null);
-const heroImage = computed(() => latestImage.value ? imageUrl(latestImage.value) : '/assets/images/tsukuyomi-bg.webp');
+const heroImage = computed(() => latestImage.value ? reliableImageUrl(latestImage.value) : '/assets/images/tsukuyomi-bg.webp');
 
 function imageName(asset) {
   return asset.metadata?.title || asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
 }
 
 function imageUrl(asset) {
-  return (!isManageMode.value && asset?.url) || asset?.access_url || asset?.display_url || asset?.url;
+  return asset?.preview_url || asset?.access_url || asset?.display_url || asset?.url;
+}
+
+function reliableImageUrl(asset) {
+  return asset?.access_url || asset?.display_url || asset?.preview_url || asset?.url;
+}
+
+function handleImageError(event, asset) {
+  const image = event?.currentTarget;
+  const fallback = reliableImageUrl(asset);
+  if (!image || image.dataset.fallbackAttempted === 'true' || !fallback) return;
+  image.dataset.fallbackAttempted = 'true';
+  image.src = fallback;
 }
 
 function imageTitle(asset) {
@@ -192,7 +204,7 @@ async function loadImages(page = 1) {
   try {
     const params = new URLSearchParams({
       page: String(page),
-      limit: '24',
+      limit: '12',
       search: state.search.trim()
     });
     if (isManageMode.value) params.set('scope', canManageAllImages.value ? 'all' : 'mine');
@@ -431,7 +443,7 @@ onUnmounted(() => {
 
         <section v-if="randomFeatureImage && !isManageMode" class="gallery-feature" :class="{ 'is-fading': state.randomFeatureFading }">
           <button class="gallery-feature-image" type="button" @click="state.selected = randomFeatureImage">
-            <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)" loading="eager" decoding="async" fetchpriority="high">
+            <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)" loading="eager" decoding="async" fetchpriority="high" @error="handleImageError($event, randomFeatureImage)">
           </button>
           <article>
             <span class="gallery-feature-badge">随机影像</span>
@@ -484,7 +496,7 @@ onUnmounted(() => {
         <section v-else class="gallery-grid">
           <article v-for="asset in shownImages" :key="asset.id" class="gallery-card">
             <button class="gallery-card-image" type="button" @click="state.selected = asset">
-              <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy" decoding="async">
+              <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy" decoding="async" @error="handleImageError($event, asset)">
             </button>
             <div class="gallery-card-body">
               <a
@@ -588,7 +600,7 @@ onUnmounted(() => {
           <button class="gallery-lightbox-close" type="button" @click="state.selected = null">
             <TsIcon name="x" :size="18" />
           </button>
-          <img :src="imageUrl(state.selected)" :alt="imageName(state.selected)">
+          <img :src="imageUrl(state.selected)" :alt="imageName(state.selected)" @error="handleImageError($event, state.selected)">
           <footer>
             <div>
               <strong>{{ imageTitle(state.selected) }}</strong>

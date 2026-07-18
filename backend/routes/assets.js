@@ -110,10 +110,17 @@ function normalizeAsset(row, { signUrl = false } = {}) {
         asset.markdown_url = durableAssetUrl(asset.id);
         asset.access_url = signUrl ? signedAssetUrl(asset.id) : durableAssetUrl(asset.id);
         asset.display_url = asset.access_url;
+        asset.preview_url = isBrowserPreviewMedia(asset)
+            ? objectStorage.aliyunV1SignatureUrl(asset.storage_key, {
+                expiresSeconds: 6 * 60 * 60,
+                preferPublicBase: true
+            }) || asset.access_url
+            : asset.access_url;
     } else {
         asset.markdown_url = durableAssetUrl(asset.id);
         asset.access_url = signUrl ? signedAssetUrl(asset.id) : durableAssetUrl(asset.id);
         asset.display_url = asset.access_url;
+        asset.preview_url = asset.access_url;
     }
     return asset;
 }

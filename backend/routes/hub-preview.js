@@ -40,7 +40,7 @@ function latestArticle() {
         category: article.category,
         publish_date: article.publish_date,
         published_at: article.published_at,
-        cover_image: article.cover_image_url || article.cover_image,
+        cover_image: article.cover_image,
         created_at: article.created_at,
         updated_at: article.updated_at
     };
@@ -60,7 +60,7 @@ function latestGalleryImage() {
     if (!asset) return null;
     return {
         id: asset.id,
-        url: asset.url,
+        url: `/api/assets/proxy/${encodeURIComponent(String(asset.id))}`,
         created_at: asset.created_at,
         updated_at: asset.updated_at
     };
@@ -72,7 +72,7 @@ function latestPixelArtwork() {
         sort: 'latest',
         limit: 1,
         offset: 0,
-        preview: true
+        preview: 'compact'
     }).items[0];
     if (!artwork) return null;
     return {

@@ -132,7 +132,6 @@ html[data-theme="dark"] body.vue-access-route {
 }
 
 .route-view {
-    display: block;
     will-change: opacity, transform;
 }
 

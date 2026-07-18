@@ -385,7 +385,7 @@ watch(articleId, loadArticle);
           </div>
         </header>
 
-        <img v-if="article.cover_image_url || article.cover_image" class="article-cover" :src="article.cover_image_url || article.cover_image" alt="" loading="eager" decoding="async" fetchpriority="high">
+        <img v-if="article.cover_image" class="article-cover" :src="article.cover_image" alt="" loading="eager" decoding="async" fetchpriority="high">
         <section class="article-content" v-html="formatContent(article.content, article.content_format)"></section>
 
         <section class="comments-section">

@@ -2,8 +2,10 @@ const db = require('../db');
 const { publicAvatarUrl } = require('../utils/avatar');
 const { safeJsonParse } = require('../validators');
 
-const PREVIEW_MAX_WIDTH = 96;
-const PREVIEW_MAX_HEIGHT = 54;
+const PREVIEW_MAX_WIDTH = 192;
+const PREVIEW_MAX_HEIGHT = 108;
+const COMPACT_PREVIEW_MAX_WIDTH = 96;
+const COMPACT_PREVIEW_MAX_HEIGHT = 54;
 
 function normalizeArtwork(row) {
     if (!row) return null;
@@ -23,8 +25,8 @@ function normalizeArtwork(row) {
     };
 }
 
-function previewDimensions(width, height) {
-    const scale = Math.min(1, PREVIEW_MAX_WIDTH / width, PREVIEW_MAX_HEIGHT / height);
+function previewDimensions(width, height, maxWidth = PREVIEW_MAX_WIDTH, maxHeight = PREVIEW_MAX_HEIGHT) {
+    const scale = Math.min(1, maxWidth / width, maxHeight / height);
     return {
         width: Math.max(1, Math.floor(width * scale)),
         height: Math.max(1, Math.floor(height * scale))
@@ -44,12 +46,14 @@ function encodePreviewPixels(pixels, width, height, previewWidth, previewHeight)
     return encoded.toString('base64');
 }
 
-function compactArtworkPreview(artwork) {
+function compactArtworkPreview(artwork, { compact = false } = {}) {
     if (!artwork) return artwork;
     const { pixels, ...summary } = artwork;
     const width = Number(artwork.width || artwork.size || 1);
     const height = Number(artwork.height || artwork.size || 1);
-    const preview = previewDimensions(width, height);
+    const preview = compact
+        ? previewDimensions(width, height, COMPACT_PREVIEW_MAX_WIDTH, COMPACT_PREVIEW_MAX_HEIGHT)
+        : previewDimensions(width, height);
     return {
         ...summary,
         preview_width: preview.width,
@@ -112,7 +116,7 @@ function listArtworks({ viewerId = '', sort = 'latest', limit = 24, offset = 0, 
     const total = db.prepare('SELECT COUNT(*) AS count FROM pixel_artworks').get().count || 0;
 
     return {
-        items: rows.map(normalizeArtwork).map(artwork => preview ? compactArtworkPreview(artwork) : artwork),
+        items: rows.map(normalizeArtwork).map(artwork => preview ? compactArtworkPreview(artwork, { compact: preview === 'compact' }) : artwork),
         total,
         limit: safeLimit,
         offset: safeOffset
@@ -140,7 +144,7 @@ function listManageArtworks({ viewerId = '', admin = false, sort = 'latest', lim
         : db.prepare('SELECT COUNT(*) AS count FROM pixel_artworks WHERE author_id = ?').get(viewerId).count || 0;
 
     return {
-        items: rows.map(normalizeArtwork).map(artwork => preview ? compactArtworkPreview(artwork) : artwork),
+        items: rows.map(normalizeArtwork).map(artwork => preview ? compactArtworkPreview(artwork, { compact: preview === 'compact' }) : artwork),
         total,
         limit: safeLimit,
         offset: safeOffset

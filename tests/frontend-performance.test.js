@@ -22,6 +22,7 @@ describe('constrained-device performance policy', () => {
         const pixels = source('backend/repositories/pixel-art-repository.js');
         const router = source('src/frontend/router/index.js');
         const globalCss = source('assets/css/vue-app.css');
+        const modernTheme = source('assets/css/vue/modern-theme.css');
 
         assert.match(avatars, /function publicAvatarUrl/);
         assert.match(messages, /publicAvatarUrl/);
@@ -30,6 +31,7 @@ describe('constrained-device performance policy', () => {
         assert.match(router, /function loadRoute\(/);
         assert.match(router, /styles\/routes\/hub\.css/);
         assert.doesNotMatch(globalCss, /vue\/pages\/(?:hub|stage|plaza|gallery|arena)\.css/);
+        assert.doesNotMatch(modernTheme, /\.route-view\s*\{[^}]*display:\s*block/);
     });
 
     it('detects hardware, network, and measured long-task pressure', () => {

@@ -214,8 +214,9 @@ describe('frontend navigation routes', () => {
         assert.match(gallery, /class="gallery-uploader gallery-feature-uploader"/);
         assert.match(gallery, /class="gallery-uploader gallery-lightbox-uploader"/);
         assert.match(gallery, /<time :datetime="imageDate\(asset\)">/);
-        assert.match(gallery, /!isManageMode\.value && asset\?\.url/);
-        assert.match(gallery, /limit: '24'/);
+        assert.match(gallery, /asset\?\.preview_url \|\| asset\?\.access_url/);
+        assert.match(gallery, /function handleImageError\(/);
+        assert.match(gallery, /limit: '12'/);
     });
 
     it('fixes new pixel canvases at 192x108 and gives every like button a persistent red-heart state', () => {

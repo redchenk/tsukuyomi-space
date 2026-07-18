@@ -992,6 +992,7 @@ describe('gallery API', () => {
             assert.equal(listedAsset.owner_has_avatar, true);
             assert.equal(listedAsset.owner_avatar_url, '');
             assert.ok(listedAsset.owner_avatar_updated_at);
+            assert.equal(listedAsset.preview_url, listedAsset.access_url);
             assert.equal(Object.hasOwn(listedAsset, 'email'), false);
             assert.equal(Object.hasOwn(listedAsset, 'avatar'), false);
 
@@ -1047,6 +1048,10 @@ describe('gallery API', () => {
         );
 
         try {
+            const gallery = await request(`/api/assets/gallery?limit=12&search=${encodeURIComponent(assetId)}`);
+            const listedAsset = gallery.body.data.assets.find(asset => asset.id === assetId);
+            assert.equal(listedAsset.preview_url, 'https://storage.example.test/signed-image.png');
+
             const response = await fetch(`${baseUrl}/api/assets/proxy/${encodeURIComponent(assetId)}`, {
                 redirect: 'manual'
             });
@@ -1359,8 +1364,8 @@ describe('pixel art API', () => {
         assert.equal(galleryList.body.pagination.limit, 12);
         assert.equal(Object.hasOwn(galleryArtwork, 'pixels'), false);
         assert.equal(typeof galleryArtwork.pixels_base64, 'string');
-        assert.ok(galleryArtwork.preview_width <= 96);
-        assert.ok(galleryArtwork.preview_height <= 54);
+        assert.ok(galleryArtwork.preview_width <= 192);
+        assert.ok(galleryArtwork.preview_height <= 108);
         assert.doesNotMatch(JSON.stringify(galleryList.body), /data:image\//);
         assert.match(galleryList.response.headers.get('cache-control') || '', /no-store/);
 
@@ -1402,6 +1407,8 @@ describe('pixel art API', () => {
         assert.ok(hubPreview.body.data.pixel);
         assert.equal(Object.hasOwn(hubPreview.body.data.pixel, 'pixels'), false);
         assert.equal(typeof hubPreview.body.data.pixel.pixels_base64, 'string');
+        assert.ok(hubPreview.body.data.pixel.width <= 96);
+        assert.ok(hubPreview.body.data.pixel.height <= 54);
         assert.ok(JSON.stringify(hubPreview.body).length < 32 * 1024);
     });
 
