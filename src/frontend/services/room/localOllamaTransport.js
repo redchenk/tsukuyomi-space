@@ -44,7 +44,7 @@ export function localOllamaFetchOptions(apiUrl, options = {}) {
   if (!isLocalOllamaUrl(apiUrl)) return options;
   return {
     ...options,
-    targetAddressSpace: 'local'
+    targetAddressSpace: 'loopback'
   };
 }
 

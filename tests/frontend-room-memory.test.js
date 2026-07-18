@@ -126,7 +126,7 @@ describe('frontend room memory API client usage', () => {
         const control = source('src/frontend/services/room/live2dLlmControl.js');
         const settings = source('src/frontend/pages/RoomSettingsPage.vue');
 
-        assert.match(transport, /targetAddressSpace:\s*'local'/);
+        assert.match(transport, /targetAddressSpace:\s*'loopback'/);
         assert.match(transport, /parsed\.hostname = 'localhost'/);
         assert.match(transport, /parsed\.port = '11434'/);
         for (const code of [chat, control, settings]) assert.match(code, /fetchWithLocalOllamaGuidance\(/);
@@ -136,7 +136,7 @@ describe('frontend room memory API client usage', () => {
         assert.equal(runtime.normalizeLocalOllamaBaseUrl('http://[::1]:11434/api/chat'), 'http://localhost:11434/api/chat');
         assert.equal(runtime.normalizeLocalOllamaBaseUrl('http://localhost/api/chat'), 'http://localhost:11434/api/chat');
         assert.equal(runtime.isLocalOllamaUrl('http://localhost:11434/api/chat'), true);
-        assert.equal(runtime.localOllamaFetchOptions('http://localhost:11434/api/chat', {}).targetAddressSpace, 'local');
+        assert.equal(runtime.localOllamaFetchOptions('http://localhost:11434/api/chat', {}).targetAddressSpace, 'loopback');
         assert.equal(runtime.localOllamaFetchOptions('https://api.deepseek.com/chat/completions', {}).targetAddressSpace, undefined);
         assert.deepEqual(
             Array.from(runtime.localOllamaAllowedOrigins('https://malicious.example')),
