@@ -1,7 +1,7 @@
 # Tsukuyomi Space
-这是一个基于《超时空辉夜姬！》世界观的同人月读空间项目。
+这是一个基于《超时空辉夜姬！》世界观的非盈利同人月读空间项目。
 
-一个以“月读空间”为主题的沉浸式个人网站，包含 Hub 中枢大厅、Live2D 私人房间、文章舞台、留言广场、用户中心、管理员终端和独立 Arena 游戏入口。
+项目以 Vue 3 与 Express 构建，包含 Hub 中枢大厅、Live2D 私人房间、文章舞台、留言广场、图库、像素工坊、友链、Agent OS、用户中心和分级管理后台。
 
 > 预览地址：[https://yachiyo.hk](https://yachiyo.hk)
 
@@ -18,14 +18,14 @@
 - 日系清新 + 毛玻璃视觉体系，支持深色 / 浅色主题切换和统一侧边导航
 - Hub 中枢大厅展示站点入口、阅读广场快捷留言、主舞台内容预览和本站访问统计
 - Live2D 私人居所，支持天气 / 时间驱动氛围、浏览器侧 LLM 聊天、TTS 语音和音乐播放卡片
-- Room Agent 化能力：长期记忆、角色知识库、MCP 工具接入、图片理解兜底和用户独立记忆
+- Room Agent 化能力：跨端会话、按账号隔离的长期记忆、向量检索、角色知识库、MCP 工具和图片理解兜底
 - 角色知识库可在房间设置页管理，用于稳定还原“八千代”的人格、语气和行为边界
-- 文章浏览、详情页、编辑器与后台管理
-- 用户注册、登录、邮箱验证码与 JWT 鉴权
-- 留言广场、点赞、回复与管理员审核
-- 管理员终端：文章、留言、用户权限、账号密码、友链、访问统计和系统配置
-- Arena 作为独立游戏仓库部署，并保留原 `/arena` 入口
-- Docker Compose / PM2 + Nginx 部署方案，支持生产环境变量和 SQLite 数据目录隔离
+- 文章、留言、图库、附件、像素画和友链均具备发布、实时刷新、个人管理与管理员审核流程
+- 用户注册、QQ OAuth、邮箱验证、密码找回、JWT / Cookie 会话和站内通知
+- 支持本地磁盘与 S3 兼容对象存储，OSS 资源通过同源资产接口稳定预览
+- 提供 JSON 站点动态与 RSS 订阅，Room 和外部机器人可以读取最新公开内容
+- Agent OS 作为独立应用接入，运行时接口经过站内账号鉴权
+- Docker Compose 或 PM2 + Nginx / OpenResty 部署，数据、上传目录和应用源码分权隔离
 
 ## 核心模块
 
@@ -35,17 +35,25 @@
 | Room | Live2D 私人房间，包含聊天、资料、便签、天气卡片、音乐卡片和独立设置页 |
 | Stage / Article | 文章列表、详情阅读、编辑器和管理端内容发布流程 |
 | Plaza | 留言广场，支持留言、回复、点赞和管理员审核 |
-| User Center | 用户资料、账号状态和个人访问入口 |
-| Terminal | 管理员终端，管理文章、留言、用户、账号密码、友链、访问统计和系统配置 |
-| Arena | 独立部署的网页游戏入口，主站通过 `/arena` 访问 |
+| Gallery / Attachments | 图库与附件库，支持上传者展示、个人管理、审核和对象存储 |
+| Pixel | 固定 192×108 画布的像素工坊，支持发布、点赞和 PNG 导出，入口为 `/pixel` |
+| Friend Links | 公开友链目录与独立申请、审核流程 |
+| Agent OS | `/agent-os` 独立应用入口，运行时请求复用站内登录校验 |
+| User Center | 用户资料、文章、留言、收藏、作品和账号安全管理 |
+| Admin | 面向 `admin` / `super_admin` 的文章、留言、图库和附件审核工作台 |
+| Terminal | 管理用户权限、友链、访问统计、对象存储和系统配置 |
+| Reality | 联系方式、隐私说明、责任边界和第三方技术 / 素材来源 |
 
 ## 技术栈
 
-- 前端：Vue 3、Vite、CSS3、原生 JavaScript、Live2D Cubism
+- 前端：Vue 3、Vite、CSS3、原生 JavaScript、Live2D Cubism、Lucide 图标
 - 后端：Node.js、Express、better-sqlite3
-- 认证：JWT、bcryptjs
+- 数据与缓存：SQLite、可选 Redis、可选 Milvus 向量库
+- 认证：JWT、Cookie、bcryptjs、QQ OAuth、邮箱验证码
+- 存储：本地受控上传、S3 兼容对象存储 / 阿里云 OSS
+- Agent OS：独立静态应用与受认证的本机运行时代理
 - 测试：node:test、Playwright
-- 部署：Docker Compose、PM2、Nginx、GitHub Actions、SSH
+- 部署：Docker Compose、PM2、Nginx / OpenResty、GitHub Actions、SSH
 
 ## 设计系统
 
@@ -78,7 +86,7 @@ npm run dev
 - `npm run dev` / `npm run dev:all`：并行启动后端 API 和 Vite 前端
 - `npm run dev:api`：只启动 Express API
 - `npm run dev:web`：只启动 Vite 前端
-- `npm test`：执行 Node 语法检查和后端接口测试
+- `npm test`：执行语法检查、数据库迁移、API、安全和前端回归测试
 - `npm run test:api`：执行 auth、articles、messages、admin、room memory、MCP 等接口测试
 - `npm run test:e2e`：执行 Playwright 端到端主流程测试，需要先构建前端或提供 `E2E_BASE_URL`
 - `npm run build:web`：构建 Vue 前端产物
@@ -139,11 +147,13 @@ module.exports = {
 Room 页面正在向个人 Agent 方向演进，当前能力包括：
 
 - LLM 与 TTS 请求默认从用户浏览器侧发出，减少用户对话和 API Key 经由站点后端转发。
-- 长期记忆按用户隔离：登录用户使用服务端 SQLite 记忆库，未登录访客退回本机 IndexedDB。
+- 登录用户的会话与长期记忆保存在服务端并按账号隔离，通过账号会话和实时事件跨设备同步；未登录访客退回浏览器本地存储。
+- 记忆检索支持本地向量，并可选接入 Milvus；数据库边界和向量查询都会携带用户作用域。
 - 房间设置页提供“记忆管理”，默认折叠，展开后可搜索、查看、编辑、删除当前用户的记忆。
 - 角色知识库保存在浏览器 `localStorage`，默认内置八千代身份、人设、说话风格、关系和限制条目，用户可自行新增、编辑、停用或恢复默认。
-- 聊天时会把相关长期记忆、角色知识、天气上下文和可用 MCP 工具一起组织进上下文。
+- 聊天时会把相关长期记忆、角色知识、真实天气、最新站点动态和可用 MCP 工具一起组织进上下文。
 - MCP 支持自定义 JSON-RPC 端点，以及 MiniMax Token Plan 的站内受限桥接；图片理解在 LLM 不支持多模态时会尝试调用 MCP。
+- LLM 支持受控的云服务直连，也支持浏览器直连用户本机 `http://localhost:11434` 的 Ollama；本机模式不会把对话转发到本站服务器。
 - Room 音乐播放卡片读取服务器静态目录 `/assets/music/` 下的歌曲文件；音乐资源体积较大，不提交到 Git，部署时单独上传。
 - Room 天气卡片会优先使用用户浏览器定位获取所在地天气，并作为聊天上下文的一部分。
 
@@ -156,6 +166,19 @@ Room 相关设置主要保存在浏览器本地，包括：
 - `roomKnowledgeSettings`
 - `roomMusicTrackIndex`
 - `roomMusicVolume`
+
+从 HTTPS 站点连接本机 Ollama 时，需要允许浏览器访问本地网络，并为 Ollama 配置可信来源后完整重启：
+
+```powershell
+[Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS','https://yachiyo.hk,https://yachiyo.com.cn,https://cho-kaguyahime.cn','User')
+```
+
+## 内容更新与订阅
+
+- 文章、留言、图库、像素画和友链等公开列表使用路径级缓存破坏与服务端缓存失效，发布后会请求最新内容。
+- JSON 动态接口为 `/api/site-feed`，RSS 地址为 `/feed.xml` 或 `/api/site-feed/rss`。
+- 对象存储配置位于超级管理员终端；数据库只保存受控资源索引，公开访问仍通过站点资产接口或配置的 CDN 域名。
+- 部署与数据库备份默认各保留最近 10 份，可通过 `BACKUP_RETENTION` 调整。
 
 ## Docker 快速部署
 
@@ -197,10 +220,19 @@ ROOM_MEMORY_VECTOR_BACKEND=milvus MILVUS_ADDRESS=127.0.0.1:19530 npm run import:
 - 生产环境首次创建管理员时必须提供 `ADMIN_PASSWORD`。
 - 管理员终端所有数据接口都需要管理员 JWT。
 - API 已加入基础安全响应头、CORS 白名单和 Redis 优先的限流。
+- Cookie 写操作校验可信请求来源，JSON 请求拒绝重复键，上传文件同时校验扩展名、MIME 与文件特征。
+- 外部请求与对象存储地址经过 SSRF 校验，管理员操作按 `admin` / `super_admin` 权限分层。
 - SQLite 默认存放在 `DATA_DIR`，不应提交到 Git。
 - 权限模型见 [docs/PERMISSIONS.md](docs/PERMISSIONS.md)。
 - Room 长期记忆说明见 [docs/ROOM_MEMORY.md](docs/ROOM_MEMORY.md)。
 
+## 技术与素材来源
+
+- Agent OS 页面音乐 App 的技术实现来源于 [firefly20041001/Yachiyo](https://github.com/firefly20041001/yachiyo)，原项目采用 Electron、React、TypeScript，并以 Apache-2.0 许可证发布。
+- 站内 Live2D、角色视觉与音乐素材版权归原作者及相关权利方所有；项目仅用于非盈利个人展示与交流。
+- 右下角网页宠物来源于 [Petdex / Yachiyo](https://petdex.dev/zh/pets/yachiyo)，界面图标使用 [Lucide](https://lucide.dev/)。
+- 更完整的来源、隐私和责任边界请查看站内 [`/reality`](https://yachiyo.hk/reality) 页面。
+
 ## License
 
-MIT
+项目自有代码以 MIT 许可证发布。第三方代码、模型、音乐、图片和角色素材分别遵循其原始许可证与权利声明。

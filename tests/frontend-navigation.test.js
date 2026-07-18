@@ -151,6 +151,20 @@ describe('frontend navigation routes', () => {
         assert.match(icons, /M12 8V4H8/);
     });
 
+    it('credits the Agent OS music app source in the responsibility boundary and README', () => {
+        const reality = source('src/frontend/pages/RealityPage.vue');
+        const readme = source('README.md');
+
+        for (const content of [reality, readme]) {
+            assert.match(content, /https:\/\/github\.com\/firefly20041001\/yachiyo/);
+            assert.match(content, /Apache-2\.0/);
+        }
+        assert.match(reality, /Agent OS 音乐 App 技术来源/);
+        assert.match(reality, /Agent OS 音楽 App の技術出典/);
+        assert.match(readme, /\| Pixel \|[^\n]+`\/pixel`/);
+        assert.doesNotMatch(readme, /独立 Arena/);
+    });
+
     it('uses /pixel everywhere while retaining only the explicit /arena redirect', () => {
         const router = source('src/frontend/router/index.js');
         const shell = source('src/frontend/layouts/AppShell.vue');

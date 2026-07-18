@@ -243,6 +243,12 @@ function go(path) {
             <strong>Webペット出典：</strong>右下の Yachiyo ペットは <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a> に由来します。出典と利用条件は Petdex のページ表記に従います。
           </p>
           <p v-if="!isJa">
+            <strong>Agent OS 音乐 App 技术来源：</strong>Agent OS 页面中的音乐 App 技术实现来源于 <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a>。原项目基于 Electron、React 与 TypeScript，支持 QQ 音乐、网易云音乐及本地播放，并采用 Apache-2.0 许可证。
+          </p>
+          <p v-else>
+            <strong>Agent OS 音楽 App の技術出典：</strong>Agent OS ページの音楽 App の技術実装は <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a> に由来します。元プロジェクトは Electron、React、TypeScript を採用し、QQ Music、NetEase Cloud Music、ローカル再生に対応する Apache-2.0 ライセンスのプロジェクトです。
+          </p>
+          <p v-if="!isJa">
             <strong>图标来源：</strong>站内部分界面图标使用 <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> 开源图标集，遵循其开源许可证。
           </p>
           <p v-else>
