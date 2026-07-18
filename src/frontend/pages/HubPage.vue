@@ -5,6 +5,7 @@ import BeianLink from '../components/BeianLink.vue';
 import CountUpValue from '../components/CountUpValue.vue';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
+import { warmRoutePath } from '../router';
 import { compareAppDate } from '../utils/time';
 
 const props = defineProps({
@@ -227,6 +228,10 @@ function openScene(scene, event) {
     return;
   }
   window.location.href = scene.href;
+}
+
+function warmScene(scene) {
+  if (scene?.spa) warmRoutePath(scene.href);
 }
 
 async function loadHubPreviewFast() {
@@ -525,10 +530,22 @@ onBeforeUnmount(() => {
           :role="scene.kind === 'plaza' ? 'link' : undefined"
           :tabindex="scene.kind === 'plaza' ? 0 : undefined"
           @click="openScene(scene, $event)"
+          @pointerenter="warmScene(scene)"
+          @focus="warmScene(scene)"
+          @pointerdown="warmScene(scene)"
           @keydown.enter="openScene(scene, $event)"
           @keydown.space.prevent="openScene(scene, $event)"
           >
-          <span v-if="scene.kind === 'arena' && scene.artwork" class="hub-arena-cover" :style="{ '--hub-arena-bg': artworkBackground(scene.artwork) }" aria-hidden="true">
+          <span
+            v-if="scene.kind === 'arena' && scene.artwork"
+            class="hub-arena-cover"
+            :style="{
+              '--hub-arena-bg': artworkBackground(scene.artwork),
+              '--hub-pixel-width': `${artworkWidth(scene.artwork)}px`,
+              '--hub-pixel-height': `${artworkHeight(scene.artwork)}px`
+            }"
+            aria-hidden="true"
+          >
             <PixelCanvasCells
               :pixels="artworkPixels(scene.artwork)"
               :palette="artworkPalette(scene.artwork)"

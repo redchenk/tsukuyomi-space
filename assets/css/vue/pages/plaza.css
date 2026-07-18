@@ -775,18 +775,27 @@ body .page.plaza-page .plaza-msg-content {
 body .page.plaza-page .plaza-msg-footer {
     gap: 0.52rem;
     align-items: center;
+    flex-wrap: wrap;
+    overflow: visible;
     padding-top: 0.78rem;
     border-top: 1px solid color-mix(in srgb, var(--ts-border) 74%, transparent);
 }
 
 body .page.plaza-page .plaza-msg-footer .icon-btn {
+    flex: 0 0 auto;
     width: auto;
-    min-width: 0;
+    min-width: max-content;
     max-width: 100%;
     aspect-ratio: auto;
     padding-inline: 0.72rem;
     font-size: 0.8rem;
     font-weight: 800;
+}
+
+body .page.plaza-page .plaza-msg-footer .icon-btn > span {
+    min-width: max-content;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 body .page.plaza-page .plaza-msg-footer .icon-btn.liked {
@@ -892,6 +901,15 @@ html[data-theme="light"] body .page.plaza-page .plaza-msg-card:hover {
 }
 
 @media (max-width: 760px) {
+    body .page.plaza-page .plaza-hero,
+    body .page.plaza-page .plaza-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body .page.plaza-page .plaza-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     body .page.plaza-page .plaza-toolbar,
     body .page.plaza-page .plaza-composer-actions {
         width: 100%;
@@ -939,6 +957,10 @@ html[data-theme="light"] body .page.plaza-page .plaza-msg-card:hover {
 }
 
 @media (max-width: 560px) {
+    body .page.plaza-page .plaza-stats {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     body .page.plaza-page .plaza-msg-card {
         padding: 0.95rem;
     }
@@ -952,15 +974,15 @@ html[data-theme="light"] body .page.plaza-page .plaza-msg-card:hover {
     }
 
     body .page.plaza-page .plaza-msg-footer {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding-bottom: 0.08rem;
-        scrollbar-width: thin;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        overflow: visible;
     }
 
     body .page.plaza-page .plaza-msg-footer .icon-btn {
         flex: 0 0 auto;
+        padding-inline: 0.62rem;
+        font-size: 0.76rem;
     }
 
     body .page.plaza-page .plaza-replies {

@@ -1043,6 +1043,21 @@ body::before {
     aspect-ratio: 1;
 }
 
+.page.plaza-page .plaza-msg-footer .icon-btn:not(.primary-btn):not(.ghost-btn):not(.danger-btn) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: max-content;
+    padding-inline: 0.72rem;
+    aspect-ratio: auto;
+}
+
+.page.plaza-page .plaza-msg-footer .icon-btn > span {
+    min-width: max-content;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
 .page :where(button, a.primary-btn, a.ghost-btn, a.danger-btn, .nav-link, .rail-link, .mobile-bottom-link, .primary-btn, .ghost-btn, .danger-btn, .lang-btn, .theme-toggle, .room-theme-toggle, .panel-btn, .panel-toggle-btn, .room-nav-button, .terminal-nav-btn, .filter-btn, .chip, .user-chip, .icon-btn, .mode-btn, .code-btn, .tab-btn, .stage-new-btn, .stage-page-btn, .plaza-page-btn, .plaza-topic-chip, .plaza-refresh-btn, .oauth-icon-btn, .memory-expand-btn, .memory-manager-toggle, .arena-publish-btn, .arena-upload-btn, .arena-share-btn, .gallery-upload-btn, .editor-asset-library-btn, .markdown-image-btn, .live2d-icon-btn, .live2d-action-btn, .live2d-run-btn, .music-mini-btn, .site-music-mini-btn, .site-music-play, .chat-attach-btn, .chat-tts-btn, .gallery-card-actions button, .gallery-feature-actions button, .gallery-quick button, .gallery-tags button, .hub-plaza-form button, .notification-tools .compact):not(.arena-color-chip):not(.terminal-card):not(.terminal-stat-card):not(:disabled):hover {
     color: var(--ts-text-strong);
     border-color: var(--ts-unified-button-border-hover);
@@ -1235,6 +1250,11 @@ body .page.hub .hub-scroll-thread {
 @media (max-width: 620px) {
     .page :where(button, a.primary-btn, a.ghost-btn, a.danger-btn, .primary-btn, .ghost-btn, .danger-btn, .icon-btn, .chip, .filter-btn, .tab-btn):not(.arena-color-chip) {
         border-radius: 11px;
+    }
+
+    .page.plaza-page .plaza-msg-footer .icon-btn:not(.primary-btn):not(.ghost-btn):not(.danger-btn) {
+        padding-inline: 0.62rem;
+        font-size: 0.76rem;
     }
 }
 

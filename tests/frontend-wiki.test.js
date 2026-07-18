@@ -30,7 +30,7 @@ test('Wiki route, navigation and production fallback are wired together', () => 
   const shell = read('src/frontend/layouts/AppShell.vue');
   const staticMiddleware = read('backend/middleware/static.js');
 
-  assert.match(router, /const WikiPage = \(\) => loadRoute\(\(\) => import\('\.\.\/pages\/WikiPage\.vue'\), \(\) => import\('\.\.\/styles\/routes\/wiki\.css'\)\)/);
+  assert.match(router, /const WikiPage = loadRoute\(\(\) => import\('\.\.\/pages\/WikiPage\.vue'\), \(\) => import\('\.\.\/styles\/routes\/wiki\.css'\)\)/);
   assert.match(router, /path: '\/wiki',[\s\S]*name: 'wiki',[\s\S]*component: WikiPage/);
   assert.match(router, /path: '\/wiki\/characters\/:slug',[\s\S]*name: 'wikiCharacter'/);
   assert.match(router, /path: '\/wiki\/terms\/:slug',[\s\S]*name: 'wikiTerm'/);

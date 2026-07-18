@@ -230,8 +230,8 @@ body.vue-global-bg-route::after {
 .ts-route-enter-active,
 .ts-route-leave-active {
     transition:
-        opacity 220ms var(--ts-ease-lift),
-        transform 260ms var(--ts-ease-lift);
+        opacity 180ms var(--ts-ease-lift),
+        transform 220ms var(--ts-ease-lift);
 }
 
 .ts-route-leave-active {
@@ -241,7 +241,7 @@ body.vue-global-bg-route::after {
     left: 0;
     width: 100%;
     pointer-events: none;
-    transition-duration: 200ms, 240ms;
+    transition-duration: 160ms, 190ms;
 }
 
 .ts-route-enter-from {
@@ -270,7 +270,7 @@ body.vue-global-bg-route::after {
     background:
         radial-gradient(circle at 50% 34%, rgba(174, 242, 255, 0.08), transparent 34%),
         linear-gradient(135deg, rgba(7, 10, 21, 0.18), rgba(24, 22, 38, 0.13) 54%, rgba(16, 24, 39, 0.16));
-    animation: ts-route-veil-sweep 0.34s var(--ts-ease-standard) both;
+    animation: ts-route-veil-sweep 0.26s var(--ts-ease-standard) both;
 }
 
 .route-view.page:not(.hub):not(.access-page) {
@@ -320,15 +320,15 @@ body.vue-global-bg-route::after {
 }
 
 .page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div) {
-    animation: ts-card-bloom-in 0.58s var(--ts-ease-lift) both;
+    animation: ts-card-bloom-in 0.38s var(--ts-ease-lift) both;
 }
 
-.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(1) { animation-delay: 0.04s; }
-.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(2) { animation-delay: 0.09s; }
-.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(3) { animation-delay: 0.14s; }
-.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(4) { animation-delay: 0.19s; }
-.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(5) { animation-delay: 0.24s; }
-.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(n + 6) { animation-delay: 0.28s; }
+.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(1) { animation-delay: 0.02s; }
+.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(2) { animation-delay: 0.045s; }
+.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(3) { animation-delay: 0.07s; }
+.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(4) { animation-delay: 0.095s; }
+.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(5) { animation-delay: 0.11s; }
+.page :where([class*="grid"], [class*="list"], [class*="cards"], [class*="gallery"], [class*="messages"]) > :where(article, a, button, li, div):nth-child(n + 6) { animation-delay: 0.12s; }
 
 /* Below-fold list items reveal as they scroll into view instead of all at load time. */
 @supports (animation-timeline: view()) {

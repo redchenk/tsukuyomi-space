@@ -199,7 +199,7 @@ function finishRouteTransition() {
   window.clearTimeout(routeTransitionTimer);
   routeTransitionTimer = window.setTimeout(() => {
     routeTransitioning.value = false;
-  }, 40);
+  }, 16);
 }
 
 async function logout() {

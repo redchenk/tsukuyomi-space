@@ -561,6 +561,8 @@
     position: absolute;
     inset: 0;
     z-index: 0;
+    display: grid;
+    place-items: center;
     overflow: hidden;
     background: var(--hub-arena-bg, #0b1020);
     pointer-events: none;
@@ -568,13 +570,14 @@
 
 .hub-arena-cover .pixel-canvas-renderer {
     display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: min(100%, var(--hub-pixel-width, 192px));
+    height: auto;
+    max-height: 100%;
+    object-fit: contain;
     image-rendering: pixelated;
     opacity: 0.82;
-    transform: scale(1.02);
-    transition: transform 0.28s ease, opacity 0.28s ease;
+    transform: translateZ(0);
+    transition: opacity 0.22s ease, filter 0.22s ease;
 }
 
 .scene-card-arena:has(.hub-arena-cover)::before {
@@ -589,7 +592,7 @@
 
 .scene-card-arena:hover .hub-arena-cover .pixel-canvas-renderer {
     opacity: 0.94;
-    transform: scale(1.08);
+    filter: brightness(1.04);
 }
 
 .scene-code {

@@ -4,6 +4,7 @@ import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client
 import BeianLink from '../components/BeianLink.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
+import { warmRoutePath } from '../router';
 import {
   NOTIFICATION_BADGE_EVENT,
   normalizeNotificationCount,
@@ -154,7 +155,7 @@ onUnmounted(() => {
     <div v-if="showChrome && routeName !== 'room'" class="moon" aria-hidden="true"></div>
 
     <aside v-if="showChrome" ref="railRef" class="site-rail" data-material="sidebar" aria-label="Quick navigation">
-      <a href="/hub" class="rail-mark" :aria-label="t.brand" @click.prevent="$emit('go', '/hub')">
+      <a href="/hub" class="rail-mark" :aria-label="t.brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @pointerdown="warmRoutePath('/hub')" @click.prevent="$emit('go', '/hub')">
         <TsIcon name="eclipse" :size="24" :stroke-width="1.9" />
         <span class="rail-mark-label">{{ t.brand }}</span>
       </a>
@@ -168,9 +169,10 @@ onUnmounted(() => {
           :class="{ active: item.active, expanded: railExpandedKey === item.key }"
           :aria-label="item.label"
           :title="item.label"
-          @pointerenter="expandRail(item.key)"
+          @pointerenter="item.spa && warmRoutePath(item.path); expandRail(item.key)"
           @pointerleave="collapseRail(item.key)"
-          @focus="expandRail(item.key)"
+          @focus="item.spa && warmRoutePath(item.path); expandRail(item.key)"
+          @pointerdown="item.spa && warmRoutePath(item.path)"
           @blur="collapseRail(item.key)"
           @click="expandRail(item.key); item.spa && ($event.preventDefault(), $emit('go', item.path))"
         >
@@ -187,9 +189,10 @@ onUnmounted(() => {
           type="button"
           :aria-label="`站内信，${unreadNotifications} 条未读`"
           :title="`站内信，${unreadNotifications} 条未读`"
-          @pointerenter="expandRail('notifications')"
+          @pointerenter="warmRoutePath('/notifications'); expandRail('notifications')"
           @pointerleave="collapseRail('notifications')"
-          @focus="expandRail('notifications')"
+          @focus="warmRoutePath('/notifications'); expandRail('notifications')"
+          @pointerdown="warmRoutePath('/notifications')"
           @blur="collapseRail('notifications')"
           @click="expandRail('notifications'); $emit('go', '/notifications')"
         >
@@ -220,9 +223,10 @@ onUnmounted(() => {
           :href="isAuthed ? '/user-center' : '/login'"
           :aria-label="accountLabel"
           :title="accountLabel"
-          @pointerenter="expandRail('account')"
+          @pointerenter="warmRoutePath(isAuthed ? '/user-center' : '/login'); expandRail('account')"
           @pointerleave="collapseRail('account')"
-          @focus="expandRail('account')"
+          @focus="warmRoutePath(isAuthed ? '/user-center' : '/login'); expandRail('account')"
+          @pointerdown="warmRoutePath(isAuthed ? '/user-center' : '/login')"
           @blur="collapseRail('account')"
           @click.prevent="expandRail('account'); $emit('go', isAuthed ? '/user-center' : '/login')"
         >
@@ -236,7 +240,7 @@ onUnmounted(() => {
     </aside>
 
     <header v-if="showChrome && routeName !== 'room'" class="topbar site-commandbar" data-material="header">
-      <a href="/hub" class="brand room-brand site-brand" @click.prevent="$emit('go', '/hub')">
+      <a href="/hub" class="brand room-brand site-brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @pointerdown="warmRoutePath('/hub')" @click.prevent="$emit('go', '/hub')">
         <span class="room-brand-mark site-brand-mark site-brand-icon" aria-hidden="true">
           <TsIcon name="eclipse" :size="21" :stroke-width="1.9" />
         </span>
@@ -300,6 +304,9 @@ onUnmounted(() => {
             :href="item.path"
             class="nav-link"
             :class="{ 'router-link-active': item.active }"
+            @pointerenter="item.spa && warmRoutePath(item.path)"
+            @focus="item.spa && warmRoutePath(item.path)"
+            @pointerdown="item.spa && warmRoutePath(item.path)"
             @click="navOpen = false; item.spa && ($event.preventDefault(), $emit('go', item.path))"
           >
             <TsIcon class="nav-icon" :name="item.icon" :size="18" />
@@ -381,6 +388,9 @@ onUnmounted(() => {
         class="mobile-bottom-link"
         :class="{ active: item.active }"
         :aria-label="item.label"
+        @pointerenter="item.spa && warmRoutePath(item.path)"
+        @focus="item.spa && warmRoutePath(item.path)"
+        @pointerdown="item.spa && warmRoutePath(item.path)"
         @click="navOpen = false; item.spa && ($event.preventDefault(), $emit('go', item.path))"
       >
         <TsIcon :name="item.icon" :size="20" />

@@ -59,6 +59,39 @@ describe('constrained-device performance policy', () => {
         assert.doesNotMatch(router, /hub: \[[^\]]*(?:RoomPage|RoomSettingsPage|ArenaPage)/);
     });
 
+    it('shares route-load promises and prefetches navigation intent without forcing slow connections', () => {
+        const router = source('src/frontend/router/index.js');
+        const shell = source('src/frontend/layouts/AppShell.vue');
+        const hub = source('src/frontend/pages/HubPage.vue');
+
+        assert.match(router, /let routePromise = null/);
+        assert.match(router, /if \(!routePromise\)/);
+        assert.match(router, /export function warmRoutePath\(path\)/);
+        assert.match(router, /connection\?\.saveData \|\| isReducedPerformance\(\)/);
+        assert.match(router, /router\.resolve\(path\)/);
+        assert.match(shell, /@pointerenter="item\.spa && warmRoutePath\(item\.path\)/);
+        assert.match(shell, /@pointerdown="item\.spa && warmRoutePath\(item\.path\)"/);
+        assert.match(hub, /function warmScene\(scene\)/);
+        assert.match(hub, /@pointerenter="warmScene\(scene\)"/);
+    });
+
+    it('keeps Plaza actions readable and renders the Hub pixel preview at its native size', () => {
+        const plaza = source('assets/css/vue/pages/plaza.css');
+        const productPolish = source('assets/css/vue/product-polish.css');
+        const hubPage = source('src/frontend/pages/HubPage.vue');
+        const hubStyles = source('assets/css/vue/pages/hub.css');
+
+        assert.match(plaza, /\.plaza-msg-footer \.icon-btn\s*\{[^}]*min-width:\s*max-content/s);
+        assert.match(plaza, /\.plaza-msg-footer \.icon-btn > span\s*\{[^}]*overflow:\s*visible[^}]*text-overflow:\s*clip/s);
+        assert.match(plaza, /@media \(max-width: 760px\)[\s\S]*\.plaza-hero,[\s\S]*\.plaza-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+        assert.match(plaza, /@media \(max-width: 560px\)[\s\S]*\.plaza-msg-footer\s*\{[^}]*flex-wrap:\s*wrap[^}]*overflow:\s*visible/);
+        assert.match(productPolish, /\.page\.plaza-page \.plaza-msg-footer \.icon-btn:not\([^}]*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
+        assert.match(productPolish, /\.page\.plaza-page \.plaza-msg-footer \.icon-btn > span\s*\{[^}]*text-overflow:\s*clip[^}]*white-space:\s*nowrap/s);
+        assert.match(hubPage, /'--hub-pixel-width': `\$\{artworkWidth\(scene\.artwork\)\}px`/);
+        assert.match(hubStyles, /\.hub-arena-cover \.pixel-canvas-renderer\s*\{[^}]*width:\s*min\(100%, var\(--hub-pixel-width[^}]*object-fit:\s*contain/s);
+        assert.doesNotMatch(hubStyles, /\.hub-arena-cover \.pixel-canvas-renderer\s*\{[^}]*object-fit:\s*cover/s);
+    });
+
     it('uses compressed full-resolution backgrounds and a lightweight pet frame', () => {
         const runtime = [
             source('src/frontend/utils/assetUrl.js'),
