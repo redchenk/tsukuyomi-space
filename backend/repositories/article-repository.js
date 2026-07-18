@@ -155,7 +155,46 @@ function updateArticle(id, article) {
 }
 
 function deleteArticle(id) {
-    return db.prepare('DELETE FROM articles WHERE id = ?').run(id).changes;
+    const remove = db.transaction((articleId) => {
+        if (!db.prepare('SELECT 1 FROM articles WHERE id = ?').get(articleId)) return 0;
+
+        const messageTree = `
+            WITH RECURSIVE article_messages(id) AS (
+                SELECT id FROM messages WHERE article_id = ?
+                UNION
+                SELECT child.id
+                FROM messages AS child
+                JOIN article_messages AS parent ON child.parent_id = parent.id
+            )
+        `;
+        db.prepare(`${messageTree}
+            DELETE FROM notifications
+            WHERE related_article_id = ?
+               OR related_message_id IN (SELECT id FROM article_messages)
+        `).run(articleId, articleId);
+        db.prepare(`${messageTree}
+            DELETE FROM message_likes
+            WHERE message_id IN (SELECT id FROM article_messages)
+        `).run(articleId);
+        db.prepare(`${messageTree}
+            DELETE FROM message_mentions
+            WHERE message_id IN (SELECT id FROM article_messages)
+        `).run(articleId);
+        db.prepare(`${messageTree}
+            DELETE FROM messages
+            WHERE id IN (SELECT id FROM article_messages)
+        `).run(articleId);
+
+        db.prepare('DELETE FROM article_content_blocks WHERE article_id = ?').run(articleId);
+        db.prepare('DELETE FROM article_bookmarks WHERE article_id = ?').run(articleId);
+        db.prepare(`
+            UPDATE article_assets
+            SET article_id = NULL, updated_at = CURRENT_TIMESTAMP
+            WHERE article_id = ?
+        `).run(articleId);
+        return db.prepare('DELETE FROM articles WHERE id = ?').run(articleId).changes;
+    });
+    return remove(id);
 }
 
 function listUserArticles(userId) {

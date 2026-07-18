@@ -174,6 +174,71 @@ async function login(pathname, username, password) {
     return body.data?.token || authCookieFrom(response);
 }
 
+function seedArticleDeletionGraph(ownerId, suffix) {
+    return db.transaction(() => {
+        const article = db.prepare(`
+            INSERT INTO articles (title, slug, excerpt, content, category, tags, publish_date, status, author_id)
+            VALUES (?, ?, '', 'delete graph body', '测试', '[]', '2026-07-18', 'published', ?)
+        `).run(`Delete graph ${suffix}`, `delete-graph-${suffix}`, ownerId);
+        const id = article.lastInsertRowid;
+        const assetId = `delete-asset-${suffix}`;
+        db.prepare(`
+            INSERT INTO article_assets (id, article_id, owner_id, asset_type, mime_type, url, metadata)
+            VALUES (?, ?, ?, 'image', 'image/png', ?, '{}')
+        `).run(assetId, id, ownerId, `/api/assets/${assetId}`);
+        db.prepare(`
+            INSERT INTO article_content_blocks (id, article_id, block_type, sort_order, content_json, asset_id)
+            VALUES (?, ?, 'image', 0, '{}', ?)
+        `).run(`delete-block-${suffix}`, id, assetId);
+        const parentId = db.prepare(`
+            INSERT INTO messages (author, content, user_id, article_id, status)
+            VALUES ('normal-user', 'parent deletion message', 'user-001', ?, 'approved')
+        `).run(id).lastInsertRowid;
+        const replyId = db.prepare(`
+            INSERT INTO messages (author, content, user_id, parent_id, article_id, status)
+            VALUES ('managed-user', 'reply deletion message', 'user-002', ?, ?, 'approved')
+        `).run(parentId, id).lastInsertRowid;
+        db.prepare('INSERT INTO message_likes (message_id, user_id) VALUES (?, ?)').run(parentId, 'user-002');
+        db.prepare(`
+            INSERT INTO message_mentions (message_id, mentioned_user_id, actor_id)
+            VALUES (?, 'user-001', 'user-002')
+        `).run(replyId);
+        db.prepare(`
+            INSERT INTO notifications (user_id, actor_id, type, title, related_message_id, related_article_id)
+            VALUES ('user-001', 'user-002', 'reply', 'article deletion notification', ?, ?)
+        `).run(replyId, id);
+        db.prepare('INSERT INTO article_bookmarks (user_id, article_id) VALUES (?, ?)').run('user-002', id);
+        return { id, assetId, parentId, replyId };
+    })();
+}
+
+function cleanupArticleDeletionGraph(graph) {
+    db.transaction(() => {
+        db.prepare('DELETE FROM notifications WHERE related_article_id = ? OR related_message_id IN (?, ?)')
+            .run(graph.id, graph.parentId, graph.replyId);
+        db.prepare('DELETE FROM message_likes WHERE message_id IN (?, ?)').run(graph.parentId, graph.replyId);
+        db.prepare('DELETE FROM message_mentions WHERE message_id IN (?, ?)').run(graph.parentId, graph.replyId);
+        db.prepare('DELETE FROM messages WHERE id = ?').run(graph.replyId);
+        db.prepare('DELETE FROM messages WHERE id = ?').run(graph.parentId);
+        db.prepare('DELETE FROM article_bookmarks WHERE article_id = ?').run(graph.id);
+        db.prepare('DELETE FROM article_content_blocks WHERE article_id = ?').run(graph.id);
+        db.prepare('UPDATE article_assets SET article_id = NULL WHERE id = ?').run(graph.assetId);
+        db.prepare('DELETE FROM articles WHERE id = ?').run(graph.id);
+        db.prepare('DELETE FROM article_assets WHERE id = ?').run(graph.assetId);
+    })();
+}
+
+function assertArticleDeletionGraphRemoved(graph) {
+    assert.equal(db.prepare('SELECT id FROM articles WHERE id = ?').get(graph.id), undefined);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM messages WHERE id IN (?, ?)').get(graph.parentId, graph.replyId).count, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM message_likes WHERE message_id IN (?, ?)').get(graph.parentId, graph.replyId).count, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM message_mentions WHERE message_id IN (?, ?)').get(graph.parentId, graph.replyId).count, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE related_article_id = ? OR related_message_id IN (?, ?)').get(graph.id, graph.parentId, graph.replyId).count, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM article_bookmarks WHERE article_id = ?').get(graph.id).count, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM article_content_blocks WHERE article_id = ?').get(graph.id).count, 0);
+    assert.equal(db.prepare('SELECT article_id FROM article_assets WHERE id = ?').get(graph.assetId).article_id, null);
+}
+
 before(async () => {
     const app = createApp();
     server = await new Promise((resolve) => {
@@ -703,6 +768,21 @@ describe('articles API', () => {
         assert.ok(listedArticle);
         assert.equal(listedArticle.author_avatar, testAvatar);
         assert.equal(listedArticle.published_at, originalPublishedAt);
+    });
+
+    it('lets an author delete an article with dependent content', async () => {
+        const graph = seedArticleDeletionGraph('user-001', `user-${Date.now()}`);
+        try {
+            const removed = await request(`/api/user/articles/${graph.id}`, {
+                method: 'DELETE',
+                headers: jsonHeaders(userToken)
+            });
+            assert.equal(removed.response.status, 200);
+            assert.equal(removed.body.success, true);
+            assertArticleDeletionGraphRemoved(graph);
+        } finally {
+            cleanupArticleDeletionGraph(graph);
+        }
     });
 
     it('prevents a normal user from publishing an announcement article', async () => {
@@ -2410,6 +2490,18 @@ describe('admin API permissions', () => {
         });
         assert.equal(terminalScope.response.status, 403);
         assert.equal(terminalScope.body.code, 'TOKEN_SCOPE_INVALID');
+    });
+
+    it('lets a site admin delete an article with dependent content', async () => {
+        const graph = seedArticleDeletionGraph('user-001', `admin-${Date.now()}`);
+        try {
+            const removed = await postJson(`/api/moderation/articles/${graph.id}/delete`, {}, adminToken);
+            assert.equal(removed.response.status, 200);
+            assert.equal(removed.body.success, true);
+            assertArticleDeletionGraphRemoved(graph);
+        } finally {
+            cleanupArticleDeletionGraph(graph);
+        }
     });
 
     it('lets admins pin and unpin articles', async () => {
