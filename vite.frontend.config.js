@@ -25,6 +25,16 @@ export default defineConfig({
   },
   build: {
     outDir: fileURLToPath(new URL('./dist/frontend', import.meta.url)),
-    emptyOutDir: true
+    emptyOutDir: true,
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/vue') || id.includes('node_modules/@vue') || id.includes('node_modules/vue-router')) {
+            return 'vue-vendor';
+          }
+        }
+      }
+    }
   }
 });

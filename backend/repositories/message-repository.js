@@ -1,10 +1,15 @@
 const db = require('../db');
-const { compactAvatar } = require('../utils/avatar');
+const { publicAvatarUrl } = require('../utils/avatar');
 
 function compactMessageRow(row) {
+    const { avatar_updated_at: avatarUpdatedAt, ...message } = row;
     return {
-        ...row,
-        avatar: compactAvatar(row.avatar)
+        ...message,
+        avatar: publicAvatarUrl({
+            avatar: message.avatar,
+            username: message.author,
+            updatedAt: avatarUpdatedAt
+        })
     };
 }
 
@@ -19,7 +24,8 @@ const MESSAGE_SELECT_FIELDS = `
            m.status,
            m.created_at,
            m.updated_at,
-           u.avatar
+           u.avatar,
+           COALESCE(u.updated_at, u.created_at) AS avatar_updated_at
     FROM messages m
     LEFT JOIN users u ON m.user_id = u.id
 `;
@@ -94,6 +100,7 @@ function listUserMessages(userId, { limit = 100, offset = 0 } = {}) {
                m.created_at,
                m.updated_at,
                u.avatar,
+               COALESCE(u.updated_at, u.created_at) AS avatar_updated_at,
                a.title AS article_title,
                a.slug AS article_slug,
                (SELECT COUNT(*) FROM messages reply WHERE reply.parent_id = m.id) AS reply_count

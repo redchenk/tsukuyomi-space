@@ -319,9 +319,9 @@ onMounted(loadArticles);
             </time>
           </div>
         </div>
-        <div v-if="article.cover_image" class="stage-card-cover">
+        <div v-if="article.cover_image_url || article.cover_image" class="stage-card-cover">
           <img
-            :src="article.cover_image"
+            :src="article.cover_image_url || article.cover_image"
             alt=""
             class="stage-cover-img"
             :loading="articleIndex === 0 ? 'eager' : 'lazy'"

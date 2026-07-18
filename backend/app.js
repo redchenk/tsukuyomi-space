@@ -18,6 +18,7 @@ const assetRoutes = require('./routes/assets');
 const roomRoutes = require('./routes/room');
 const mcpRoutes = require('./routes/mcp');
 const pixelArtRoutes = require('./routes/pixel-art');
+const hubPreviewRoutes = require('./routes/hub-preview');
 const friendLinkRoutes = require('./routes/friend-links');
 const siteFeedRoutes = require('./routes/site-feed');
 const adminRoutes = require('./routes/admin');
@@ -131,6 +132,7 @@ function createApp() {
     app.use('/api/room', roomRoutes);
     app.use('/api/mcp', mcpRoutes);
     app.use('/api/pixel-art', pixelArtRoutes);
+    app.use('/api/hub-preview', hubPreviewRoutes);
     app.use('/api/friend-links', friendLinkRoutes);
     app.use('/api/site-feed', siteFeedRoutes.router);
     app.use('/api/admin', adminRoutes);

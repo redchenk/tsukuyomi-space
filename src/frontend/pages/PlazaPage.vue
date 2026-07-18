@@ -245,7 +245,7 @@ async function loadPlazaStats() {
 
 async function loadPlazaMessages() {
   try {
-    const response = await apiFetch('/api/messages/plaza/latest');
+    const response = await apiFetch('/api/messages');
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.plazaLoadFailed);
     plaza.messages = Array.isArray(result.data)

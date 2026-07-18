@@ -1,7 +1,7 @@
 <script setup>
 import { computed, defineAsyncComponent, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
-import { apiFetch, authFetch, getSession, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, setPublicStatsCache } from './api/client';
+import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
 import { i18n } from './i18n';
 import AppShell from './layouts/AppShell.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
@@ -220,9 +220,7 @@ async function loadVisitPopup() {
   if (route.name !== 'hub' || sessionStorage.getItem(VISIT_POPUP_PENDING_KEY) !== '1') return;
   sessionStorage.removeItem(VISIT_POPUP_PENDING_KEY);
   try {
-    const response = await apiFetch(noStoreUrl('/api/settings'), { headers: { Accept: 'application/json' }, cache: 'no-store' });
-    const result = await response.json();
-    const settings = result?.data || {};
+    const settings = await loadPublicSettings();
     const content = String(settings.visitPopupContent || '').trim();
     const title = String(settings.visitPopupTitle || '').trim();
     if (settings.visitPopupEnabled !== true || (!title && !content)) return;
@@ -240,11 +238,9 @@ async function loadVisitPopup() {
   }
 }
 
-async function loadPublicSettings() {
+async function applyPublicSettings() {
   try {
-    const response = await apiFetch(noStoreUrl('/api/settings'), { headers: { Accept: 'application/json' }, cache: 'no-store' });
-    const result = await response.json();
-    const settings = result?.data || {};
+    const settings = await loadPublicSettings();
     setPublicAssetBaseUrl(settings.publicAssetBaseUrl || '');
   } catch (error) {
     console.warn('Public settings failed:', error);
@@ -313,7 +309,7 @@ router.isReady().then(() => {
 });
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
-  loadPublicSettings();
+  applyPublicSettings();
   scheduleSitePet();
   window.addEventListener('pageshow', handlePageShow);
   window.addEventListener(PERFORMANCE_PROFILE_EVENT, handlePerformanceProfile);

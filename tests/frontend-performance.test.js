@@ -15,6 +15,23 @@ function bytes(relativePath) {
 }
 
 describe('constrained-device performance policy', () => {
+    it('keeps public list payloads compact and loads route CSS on demand', () => {
+        const avatars = source('backend/utils/avatar.js');
+        const messages = source('backend/repositories/message-repository.js');
+        const articles = source('backend/repositories/article-repository.js');
+        const pixels = source('backend/repositories/pixel-art-repository.js');
+        const router = source('src/frontend/router/index.js');
+        const globalCss = source('assets/css/vue-app.css');
+
+        assert.match(avatars, /function publicAvatarUrl/);
+        assert.match(messages, /publicAvatarUrl/);
+        assert.match(articles, /publicAvatarUrl/);
+        assert.match(pixels, /pixels_base64/);
+        assert.match(router, /function loadRoute\(/);
+        assert.match(router, /styles\/routes\/hub\.css/);
+        assert.doesNotMatch(globalCss, /vue\/pages\/(?:hub|stage|plaza|gallery|arena)\.css/);
+    });
+
     it('detects hardware, network, and measured long-task pressure', () => {
         const performance = source('src/frontend/utils/performance.js');
         const main = source('src/frontend/main.js');

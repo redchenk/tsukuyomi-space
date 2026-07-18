@@ -32,6 +32,9 @@ let sessionRevision = 0;
 let trustedSessionUntil = 0;
 let publicStatsRequest = null;
 let publicStatsCache = null;
+let publicSettingsRequest = null;
+let publicSettingsCache = null;
+let publicSettingsCachedAt = 0;
 let liveReadSequence = 0;
 
 const PUBLIC_STATS_CACHE_KEY = 'tsukuyomi_public_stats_cache';
@@ -207,7 +210,8 @@ export async function loadPublicStats(options = {}) {
 
   publicStatsRequest = fetch(apiUrl(statsPath), {
     headers: { Accept: 'application/json' },
-    cache: options.cache || 'no-store'
+    cache: options.cache || 'no-store',
+    signal: options.signal
   })
     .then(parseResponse)
     .then((result) => {
@@ -224,6 +228,30 @@ export async function loadPublicStats(options = {}) {
   }
 
   return publicStatsRequest;
+}
+
+export async function loadPublicSettings(options = {}) {
+  const maxAgeMs = Math.max(0, Number(options.maxAgeMs ?? 30000));
+  const fresh = publicSettingsCache && Date.now() - publicSettingsCachedAt < maxAgeMs;
+  if (!options.force && fresh) return publicSettingsCache;
+  if (publicSettingsRequest) return publicSettingsRequest;
+
+  publicSettingsRequest = apiFetch(noStoreUrl('/api/settings'), {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store'
+  })
+    .then(parseResponse)
+    .then((result) => {
+      if (!result.success) throw new Error(result.message || 'Settings unavailable');
+      publicSettingsCache = result.data || {};
+      publicSettingsCachedAt = Date.now();
+      return publicSettingsCache;
+    })
+    .finally(() => {
+      publicSettingsRequest = null;
+    });
+
+  return publicSettingsRequest;
 }
 
 async function resolveCurrentSession({ allowClear = true } = {}) {

@@ -53,7 +53,7 @@ function imageName(asset) {
 }
 
 function imageUrl(asset) {
-  return asset.access_url || asset.display_url || asset.url;
+  return (!isManageMode.value && asset?.url) || asset?.access_url || asset?.display_url || asset?.url;
 }
 
 function imageTitle(asset) {
@@ -192,7 +192,7 @@ async function loadImages(page = 1) {
   try {
     const params = new URLSearchParams({
       page: String(page),
-      limit: '48',
+      limit: '24',
       search: state.search.trim()
     });
     if (isManageMode.value) params.set('scope', canManageAllImages.value ? 'all' : 'mine');

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { apiFetch } from '../api/client';
+import { loadPublicSettings } from '../api/client';
 
 const STORAGE_KEY = 'tsukuyomi_beian_public_settings';
 const defaultBeian = { text: '', url: '', mpsText: '', mpsUrl: '', mpsIcon: '' };
@@ -40,9 +40,8 @@ function writeCachedBeian(value) {
 
 async function loadBeian() {
   if (!settingsPromise) {
-    settingsPromise = apiFetch('/api/settings', { headers: { Accept: 'application/json' } })
-      .then(response => response.json())
-      .then(result => writeCachedBeian(result?.data || {}))
+    settingsPromise = loadPublicSettings()
+      .then(settings => writeCachedBeian(settings))
       .catch(() => ({ ...defaultBeian }))
       .finally(() => {
         settingsPromise = null;

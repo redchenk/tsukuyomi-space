@@ -20,6 +20,7 @@ const ucToast = reactive({ text: '', visible: false });
 let ucToastTimer = 0;
 let loadedUserId = '';
 const pixelFallbackPalette = ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#ff9aba', '#f1d98e'];
+const decodedPixelPreviews = new WeakMap();
 
 const uc = reactive({
   tab: 'profile',
@@ -199,12 +200,30 @@ function pixelArtworkHeight(artwork) {
   return pixelArtworkDimension(artwork?.height ?? artwork?.size, 54);
 }
 
+function pixelArtworkPreviewWidth(artwork) {
+  return pixelArtworkDimension(artwork?.preview_width, pixelArtworkWidth(artwork));
+}
+
+function pixelArtworkPreviewHeight(artwork) {
+  return pixelArtworkDimension(artwork?.preview_height, pixelArtworkHeight(artwork));
+}
+
 function pixelArtworkPalette(artwork) {
   return Array.isArray(artwork?.palette) && artwork.palette.length ? artwork.palette : pixelFallbackPalette;
 }
 
 function pixelArtworkPixels(artwork) {
-  return Array.isArray(artwork?.pixels) ? artwork.pixels : [];
+  if (Array.isArray(artwork?.pixels)) return artwork.pixels;
+  if (!artwork || typeof artwork.pixels_base64 !== 'string' || !artwork.pixels_base64) return [];
+  if (decodedPixelPreviews.has(artwork)) return decodedPixelPreviews.get(artwork);
+  try {
+    const bytes = atob(artwork.pixels_base64);
+    const pixels = Array.from(bytes, value => value.charCodeAt(0) - 1);
+    decodedPixelPreviews.set(artwork, pixels);
+    return pixels;
+  } catch (_) {
+    return [];
+  }
 }
 
 function pixelArtworkBackground(artwork) {
@@ -943,8 +962,8 @@ onMounted(async () => {
                   <PixelCanvasCells
                     :pixels="pixelArtworkPixels(artwork)"
                     :palette="pixelArtworkPalette(artwork)"
-                    :width="pixelArtworkWidth(artwork)"
-                    :height="pixelArtworkHeight(artwork)"
+                    :width="pixelArtworkPreviewWidth(artwork)"
+                    :height="pixelArtworkPreviewHeight(artwork)"
                     :cell-size="1"
                     :background-color="pixelArtworkBackground(artwork)"
                     :show-grid="false"

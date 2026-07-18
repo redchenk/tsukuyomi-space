@@ -128,6 +128,25 @@ router.get('/', (req, res) => {
     sendMessageList(req, res, req.query.article_id);
 });
 
+router.get('/plaza/latest', (req, res) => {
+    try {
+        const limit = Math.max(1, Math.min(Number.parseInt(req.query.limit, 10) || 4, 12));
+        setPublicReadCache(res, { maxAge: 5, stale: 20 });
+        res.json(responseCache.remember(`public:plaza-messages:latest:${limit}`, 5000, () => ({
+            success: true,
+            data: messageRepository.listRecentPublicMessages(limit).map(message => ({
+                id: message.id,
+                author: message.author,
+                content: message.content,
+                created_at: message.created_at
+            }))
+        })));
+    } catch (error) {
+        console.error('Latest plaza messages API error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 router.get('/plaza/:nonce', (req, res) => {
     sendMessageList(req, res, null);
 });

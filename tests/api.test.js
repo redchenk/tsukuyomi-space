@@ -38,6 +38,7 @@ let managedUserToken;
 let adminToken;
 let staffAdminToken;
 const testAvatar = `data:image/png;base64,${'a'.repeat(5000)}`;
+const publicTestAvatarPattern = /^\/api\/user\/public\/normal-user\/avatar\?v=/;
 let articleId;
 let messageId;
 let replyId;
@@ -779,7 +780,7 @@ describe('articles API', () => {
         assert.equal(created.response.status, 201);
         assert.equal(created.body.success, true);
         articleId = created.body.data.id;
-        assert.equal(created.body.data.author_avatar, testAvatar);
+        assert.match(created.body.data.author_avatar, publicTestAvatarPattern);
         assert.match(created.body.data.published_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
         const originalPublishedAt = created.body.data.published_at;
 
@@ -787,7 +788,7 @@ describe('articles API', () => {
         assert.equal(fetched.response.status, 200);
         assert.equal(fetched.body.data.title, 'Test Article');
         assert.deepEqual(fetched.body.data.tags, ['test']);
-        assert.equal(fetched.body.data.author_avatar, testAvatar);
+        assert.match(fetched.body.data.author_avatar, publicTestAvatarPattern);
         assert.equal(fetched.body.data.published_at, originalPublishedAt);
 
         const updated = await putJson(`/api/articles/${articleId}`, {
@@ -806,8 +807,9 @@ describe('articles API', () => {
         assert.equal(list.response.status, 200);
         const listedArticle = list.body.data.find(article => article.id === articleId);
         assert.ok(listedArticle);
-        assert.equal(listedArticle.author_avatar, testAvatar);
+        assert.match(listedArticle.author_avatar, publicTestAvatarPattern);
         assert.equal(listedArticle.published_at, originalPublishedAt);
+        assert.ok(JSON.stringify(list.body).length < 128 * 1024);
     });
 
     it('persists OSS article covers through a durable same-origin asset URL', async () => {
@@ -1211,13 +1213,13 @@ describe('messages API', () => {
         }, userToken);
         assert.equal(created.response.status, 201);
         messageId = created.body.data.id;
-        assert.equal(created.body.data.avatar, testAvatar);
+        assert.match(created.body.data.avatar, publicTestAvatarPattern);
 
         const list = await request(`/api/messages?article_id=${articleId}`);
         assert.equal(list.response.status, 200);
         const listedMessage = list.body.data.find(item => item.id === messageId);
         assert.ok(listedMessage);
-        assert.equal(listedMessage.avatar, testAvatar);
+        assert.match(listedMessage.avatar, publicTestAvatarPattern);
 
         const liked = await postJson(`/api/messages/${messageId}/like`, {}, userToken);
         assert.equal(liked.response.status, 200);
@@ -1245,6 +1247,13 @@ describe('messages API', () => {
 
         const listWithReply = await request(`/api/messages?article_id=${articleId}`);
         assert.ok(listWithReply.body.data.some(item => item.id === reply.body.data.id));
+        assert.doesNotMatch(JSON.stringify(listWithReply.body), /data:image\//);
+
+        const plazaLatest = await request('/api/messages/plaza/latest?limit=4');
+        assert.equal(plazaLatest.response.status, 200);
+        assert.ok(plazaLatest.body.data.length <= 4);
+        assert.ok(plazaLatest.body.data.every(item => !Object.hasOwn(item, 'avatar') && !Object.hasOwn(item, 'user_id')));
+        assert.ok(JSON.stringify(plazaLatest.body).length < 16 * 1024);
     });
 
     it('lets users manage only their own messages without deleting other users replies', async () => {
@@ -1332,7 +1341,7 @@ describe('pixel art API', () => {
         assert.equal(created.response.status, 201);
         assert.equal(created.body.success, true);
         assert.equal(created.body.data.author, 'normal-user');
-        assert.equal(created.body.data.avatar, testAvatar);
+        assert.match(created.body.data.avatar, publicTestAvatarPattern);
         assert.equal(created.body.data.size, artworkWidth);
         assert.equal(created.body.data.width, artworkWidth);
         assert.equal(created.body.data.height, artworkHeight);
@@ -1345,12 +1354,21 @@ describe('pixel art API', () => {
 
         const galleryList = await request('/api/pixel-art/gallery');
         assert.equal(galleryList.response.status, 200);
-        assert.ok(galleryList.body.data.some(item => item.id === pixelArtworkId));
+        const galleryArtwork = galleryList.body.data.find(item => item.id === pixelArtworkId);
+        assert.ok(galleryArtwork);
+        assert.equal(galleryList.body.pagination.limit, 12);
+        assert.equal(Object.hasOwn(galleryArtwork, 'pixels'), false);
+        assert.equal(typeof galleryArtwork.pixels_base64, 'string');
+        assert.ok(galleryArtwork.preview_width <= 96);
+        assert.ok(galleryArtwork.preview_height <= 54);
+        assert.doesNotMatch(JSON.stringify(galleryList.body), /data:image\//);
         assert.match(galleryList.response.headers.get('cache-control') || '', /no-store/);
 
         const previewList = await request('/api/pixel-art/preview');
         assert.equal(previewList.response.status, 200);
         assert.equal(previewList.body.data.length, 1);
+        assert.equal(Object.hasOwn(previewList.body.data[0], 'pixels'), false);
+        assert.equal(typeof previewList.body.data[0].pixels_base64, 'string');
         assert.match(previewList.response.headers.get('cache-control') || '', /no-store/);
 
         const liked = await postJson(`/api/pixel-art/${pixelArtworkId}/like`, {}, managedUserToken);
@@ -1366,12 +1384,25 @@ describe('pixel art API', () => {
         });
         assert.equal(detail.response.status, 200);
         assert.equal(detail.body.data.viewer_liked, true);
+        assert.equal(detail.body.data.width, artworkWidth);
+        assert.equal(detail.body.data.height, artworkHeight);
+        assert.equal(detail.body.data.pixels.length, artworkWidth * artworkHeight);
 
         const likedGallery = await request('/api/pixel-art/gallery', {
             headers: jsonHeaders(managedUserToken)
         });
         assert.equal(likedGallery.response.status, 200);
         assert.equal(likedGallery.body.data.find(item => item.id === pixelArtworkId)?.viewer_liked, true);
+
+        const hubPreview = await request('/api/hub-preview');
+        assert.equal(hubPreview.response.status, 200);
+        assert.equal(hubPreview.body.success, true);
+        assert.ok(hubPreview.body.data.article);
+        assert.ok(Array.isArray(hubPreview.body.data.messages));
+        assert.ok(hubPreview.body.data.pixel);
+        assert.equal(Object.hasOwn(hubPreview.body.data.pixel, 'pixels'), false);
+        assert.equal(typeof hubPreview.body.data.pixel.pixels_base64, 'string');
+        assert.ok(JSON.stringify(hubPreview.body).length < 32 * 1024);
     });
 
     it('isolates pixel artwork management by owner while allowing admins', async () => {

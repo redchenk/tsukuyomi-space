@@ -3300,3 +3300,29 @@ html[data-theme="light"] body .page.arena-page .arena-drawing-toggle:has(input:c
         gap: 0.42rem;
     }
 }
+body .page.arena-page .arena-gallery-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.7rem;
+    border-top: 1px solid rgba(231, 249, 255, 0.12);
+}
+
+body .page.arena-page .arena-gallery:has(.arena-gallery-pager) {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+body .page.arena-page .arena-gallery-pager .icon-btn {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+}
+
+body .page.arena-page .arena-gallery-pager span {
+    min-width: 4.5rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}

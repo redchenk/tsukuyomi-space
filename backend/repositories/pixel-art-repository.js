@@ -1,17 +1,60 @@
 const db = require('../db');
-const { compactAvatar } = require('../utils/avatar');
+const { publicAvatarUrl } = require('../utils/avatar');
 const { safeJsonParse } = require('../validators');
+
+const PREVIEW_MAX_WIDTH = 96;
+const PREVIEW_MAX_HEIGHT = 54;
 
 function normalizeArtwork(row) {
     if (!row) return null;
+    const { avatar_updated_at: avatarUpdatedAt, ...artwork } = row;
     return {
-        ...row,
-        width: Number(row.width || row.size),
-        height: Number(row.height || row.size),
-        palette: safeJsonParse(row.palette, []),
-        pixels: safeJsonParse(row.pixels, []),
-        avatar: compactAvatar(row.avatar),
-        viewer_liked: Boolean(row.viewer_liked)
+        ...artwork,
+        width: Number(artwork.width || artwork.size),
+        height: Number(artwork.height || artwork.size),
+        palette: safeJsonParse(artwork.palette, []),
+        pixels: safeJsonParse(artwork.pixels, []),
+        avatar: publicAvatarUrl({
+            avatar: artwork.avatar,
+            username: artwork.author,
+            updatedAt: avatarUpdatedAt
+        }),
+        viewer_liked: Boolean(artwork.viewer_liked)
+    };
+}
+
+function previewDimensions(width, height) {
+    const scale = Math.min(1, PREVIEW_MAX_WIDTH / width, PREVIEW_MAX_HEIGHT / height);
+    return {
+        width: Math.max(1, Math.floor(width * scale)),
+        height: Math.max(1, Math.floor(height * scale))
+    };
+}
+
+function encodePreviewPixels(pixels, width, height, previewWidth, previewHeight) {
+    const encoded = Buffer.alloc(previewWidth * previewHeight);
+    for (let y = 0; y < previewHeight; y += 1) {
+        const sourceY = Math.min(height - 1, Math.floor(y * height / previewHeight));
+        for (let x = 0; x < previewWidth; x += 1) {
+            const sourceX = Math.min(width - 1, Math.floor(x * width / previewWidth));
+            const value = Number(pixels[sourceY * width + sourceX]);
+            encoded[y * previewWidth + x] = Math.max(0, Math.min(255, Number.isFinite(value) ? value + 1 : 0));
+        }
+    }
+    return encoded.toString('base64');
+}
+
+function compactArtworkPreview(artwork) {
+    if (!artwork) return artwork;
+    const { pixels, ...summary } = artwork;
+    const width = Number(artwork.width || artwork.size || 1);
+    const height = Number(artwork.height || artwork.size || 1);
+    const preview = previewDimensions(width, height);
+    return {
+        ...summary,
+        preview_width: preview.width,
+        preview_height: preview.height,
+        pixels_base64: encodePreviewPixels(pixels, width, height, preview.width, preview.height)
     };
 }
 
@@ -40,6 +83,7 @@ function artworkSelect(viewerId = '') {
                a.updated_at,
                u.username AS author,
                u.avatar,
+               COALESCE(u.updated_at, u.created_at) AS avatar_updated_at,
                CASE
                    WHEN ? != '' AND EXISTS (
                        SELECT 1
@@ -54,7 +98,7 @@ function artworkSelect(viewerId = '') {
     `;
 }
 
-function listArtworks({ viewerId = '', sort = 'latest', limit = 24, offset = 0 } = {}) {
+function listArtworks({ viewerId = '', sort = 'latest', limit = 24, offset = 0, preview = false } = {}) {
     const safeLimit = clampLimit(limit);
     const safeOffset = clampOffset(offset);
     const orderBy = sort === 'hot'
@@ -68,14 +112,14 @@ function listArtworks({ viewerId = '', sort = 'latest', limit = 24, offset = 0 }
     const total = db.prepare('SELECT COUNT(*) AS count FROM pixel_artworks').get().count || 0;
 
     return {
-        items: rows.map(normalizeArtwork),
+        items: rows.map(normalizeArtwork).map(artwork => preview ? compactArtworkPreview(artwork) : artwork),
         total,
         limit: safeLimit,
         offset: safeOffset
     };
 }
 
-function listManageArtworks({ viewerId = '', admin = false, sort = 'latest', limit = 80, offset = 0 } = {}) {
+function listManageArtworks({ viewerId = '', admin = false, sort = 'latest', limit = 80, offset = 0, preview = false } = {}) {
     const safeLimit = clampLimit(limit, 80, 120);
     const safeOffset = clampOffset(offset);
     const orderBy = sort === 'hot'
@@ -96,7 +140,7 @@ function listManageArtworks({ viewerId = '', admin = false, sort = 'latest', lim
         : db.prepare('SELECT COUNT(*) AS count FROM pixel_artworks WHERE author_id = ?').get(viewerId).count || 0;
 
     return {
-        items: rows.map(normalizeArtwork),
+        items: rows.map(normalizeArtwork).map(artwork => preview ? compactArtworkPreview(artwork) : artwork),
         total,
         limit: safeLimit,
         offset: safeOffset

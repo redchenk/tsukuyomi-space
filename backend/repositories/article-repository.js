@@ -1,6 +1,6 @@
 const db = require('../db');
 const { createSlug } = require('../utils/slug');
-const { compactAvatar } = require('../utils/avatar');
+const { publicAvatarUrl } = require('../utils/avatar');
 
 const CONTENT_FORMATS = new Set(['markdown', 'html', 'block']);
 
@@ -23,13 +23,25 @@ function uniqueArticleSlug(title, id = null) {
 
 function compactArticleRow(row) {
     if (!row) return row;
-    const { cover_asset_exists: coverAssetExists, ...article } = row;
+    const {
+        cover_asset_exists: coverAssetExists,
+        cover_asset_url: coverAssetUrl,
+        author_avatar_updated_at: authorAvatarUpdatedAt,
+        ...article
+    } = row;
     return {
         ...article,
         cover_image: coverAssetExists && article.cover_image_asset_id
             ? `/api/assets/proxy/${encodeURIComponent(String(article.cover_image_asset_id))}`
             : article.cover_image,
-        author_avatar: compactAvatar(article.author_avatar)
+        cover_image_url: coverAssetExists && coverAssetUrl
+            ? coverAssetUrl
+            : article.cover_image,
+        author_avatar: publicAvatarUrl({
+            avatar: article.author_avatar,
+            username: article.author_username,
+            updatedAt: authorAvatarUpdatedAt
+        })
     };
 }
 
@@ -44,6 +56,8 @@ function listArticles({ category, limit, offset }) {
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             u.username AS author_username,
             u.avatar AS author_avatar,
+            COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
+            cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
@@ -75,6 +89,8 @@ function listRecentPublishedArticles(limit = 8) {
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             u.username AS author_username,
             u.avatar AS author_avatar,
+            COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
+            cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
@@ -114,6 +130,8 @@ function createArticle(article) {
 function findArticleById(id) {
     return compactArticleRow(db.prepare(`
         SELECT a.*, u.username AS author_username, u.avatar AS author_avatar,
+            COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
+            cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
@@ -125,6 +143,8 @@ function findArticleById(id) {
 function findPublishedArticleById(id) {
     return compactArticleRow(db.prepare(`
         SELECT a.*, u.username AS author_username, u.avatar AS author_avatar,
+            COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
+            cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
@@ -227,6 +247,8 @@ function listSeoArticles(limit = 500) {
             a.cover_image, a.cover_image_asset_id, a.category, a.tags, a.read_time,
             u.username AS author_username,
             u.avatar AS author_avatar,
+            COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
+            cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id

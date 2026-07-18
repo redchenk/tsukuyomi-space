@@ -22,6 +22,7 @@ const CANVAS_PRESETS = [
   { width: 192, height: 108 }
 ];
 const DEFAULT_CANVAS_PRESET = CANVAS_PRESETS[CANVAS_PRESETS.length - 1];
+const PIXEL_GALLERY_PAGE_SIZE = 12;
 const DISPLAY_CELL_SIZE = 6;
 const EXPORT_CELL_SIZE = 8;
 const DEFAULT_ZOOM = 100;
@@ -44,6 +45,8 @@ const presetPalette = [
   '#647086'
 ];
 const backgroundPresets = ['#ffffff', '#f7f7f7', '#edf8ff', '#ffd1e8', '#172033', '#0b1020'];
+const decodedArtworkPreviews = new WeakMap();
+const fullArtworkCache = new Map();
 
 const copy = computed(() => props.lang === 'ja' ? {
   kicker: 'Tsukuyomi Pixel Atelier',
@@ -204,7 +207,10 @@ const gallery = reactive({
   items: [],
   loading: true,
   error: '',
-  sort: 'latest'
+  sort: 'latest',
+  page: 1,
+  total: 0,
+  totalPages: 1
 });
 const editingArtwork = ref(null);
 const previewArtwork = ref(null);
@@ -343,6 +349,14 @@ function artworkWidth(artwork) {
 
 function artworkHeight(artwork) {
   return artworkDimension(artwork?.height || artwork?.size, DEFAULT_CANVAS_PRESET.height);
+}
+
+function artworkPreviewWidth(artwork) {
+  return artworkDimension(artwork?.preview_width, artworkWidth(artwork));
+}
+
+function artworkPreviewHeight(artwork) {
+  return artworkDimension(artwork?.preview_height, artworkHeight(artwork));
 }
 
 function blankPixels(width = canvasWidth.value, height = canvasHeight.value) {
@@ -893,7 +907,17 @@ function artworkPalette(artwork) {
 }
 
 function artworkPixels(artwork) {
-  return Array.isArray(artwork?.pixels) ? artwork.pixels : [];
+  if (Array.isArray(artwork?.pixels)) return artwork.pixels;
+  if (!artwork || typeof artwork.pixels_base64 !== 'string' || !artwork.pixels_base64) return [];
+  if (decodedArtworkPreviews.has(artwork)) return decodedArtworkPreviews.get(artwork);
+  try {
+    const bytes = atob(artwork.pixels_base64);
+    const pixels = Array.from(bytes, value => value.charCodeAt(0) - 1);
+    decodedArtworkPreviews.set(artwork, pixels);
+    return pixels;
+  } catch (_) {
+    return [];
+  }
 }
 
 function artworkBackground(artwork) {
@@ -909,23 +933,53 @@ function artworkFileName(artwork) {
   return `${title || 'tsukuyomi-pixel-art'}.png`;
 }
 
-function downloadArtwork(artwork) {
+async function loadFullArtwork(artwork) {
+  if (!artwork?.id || Array.isArray(artwork.pixels)) return artwork;
+  if (fullArtworkCache.has(artwork.id)) return fullArtworkCache.get(artwork.id);
+  const response = isAuthed.value
+    ? await authFetch(`/api/pixel-art/${encodeURIComponent(artwork.id)}`, {
+      headers: authHeaders({ Accept: 'application/json' }),
+      cache: 'no-store'
+    })
+    : await apiFetch(`/api/pixel-art/${encodeURIComponent(artwork.id)}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store'
+    });
+  const result = await parseResponse(response);
+  if (!result.success || !result.data) throw new Error(result.message || copy.value.publishFailed);
+  const fullArtwork = { ...artwork, ...result.data };
+  fullArtworkCache.set(artwork.id, fullArtwork);
+  return fullArtwork;
+}
+
+async function downloadArtwork(artwork) {
   if (!artwork) return;
+  let fullArtwork;
+  try {
+    fullArtwork = await loadFullArtwork(artwork);
+  } catch (error) {
+    showToast(error.message || copy.value.publishFailed);
+    return;
+  }
   const canvas = makeCanvasFromPixels(
-    artworkPixels(artwork),
-    artworkPalette(artwork),
-    artworkWidth(artwork),
-    artworkHeight(artwork),
-    artworkBackground(artwork)
+    artworkPixels(fullArtwork),
+    artworkPalette(fullArtwork),
+    artworkWidth(fullArtwork),
+    artworkHeight(fullArtwork),
+    artworkBackground(fullArtwork)
   );
   const link = document.createElement('a');
-  link.download = artworkFileName(artwork);
+  link.download = artworkFileName(fullArtwork);
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
 
-function openArtworkPreview(artwork) {
-  previewArtwork.value = artwork;
+async function openArtworkPreview(artwork) {
+  try {
+    previewArtwork.value = await loadFullArtwork(artwork);
+  } catch (error) {
+    showToast(error.message || copy.value.publishFailed);
+  }
 }
 
 function closeArtworkPreview(event = null) {
@@ -934,12 +988,14 @@ function closeArtworkPreview(event = null) {
   previewArtwork.value = null;
 }
 
-async function loadArtworks() {
+async function loadArtworks(page = gallery.page) {
   gallery.loading = true;
   gallery.error = '';
   session.value = getSession();
   try {
-    const galleryUrl = `/api/pixel-art/gallery?sort=${gallery.sort}`;
+    const nextPage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const offset = (nextPage - 1) * PIXEL_GALLERY_PAGE_SIZE;
+    const galleryUrl = `/api/pixel-art/gallery?sort=${gallery.sort}&limit=${PIXEL_GALLERY_PAGE_SIZE}&offset=${offset}`;
     const response = isAuthed.value
       ? await authFetch(galleryUrl, {
         headers: { Accept: 'application/json' },
@@ -951,6 +1007,9 @@ async function loadArtworks() {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || 'Pixel art unavailable');
     gallery.items = Array.isArray(result.data) ? result.data : [];
+    gallery.page = nextPage;
+    gallery.total = Number(result.pagination?.total || gallery.items.length);
+    gallery.totalPages = Math.max(1, Math.ceil(gallery.total / PIXEL_GALLERY_PAGE_SIZE));
     focusSharedArtwork();
   } catch (error) {
     gallery.items = [];
@@ -1124,7 +1183,7 @@ function artworkInitial(name) {
   return String(name || props.t.brand || '月').slice(0, 1).toUpperCase();
 }
 
-watch(() => gallery.sort, loadArtworks);
+watch(() => gallery.sort, () => loadArtworks(1));
 watch([canvasBaseWidth, canvasBaseHeight], () => scheduleCanvasFit());
 
 onMounted(async () => {
@@ -1409,8 +1468,8 @@ onBeforeUnmount(() => {
             :title="artwork.title || copy.gallery"
             :aria-label="artwork.title || copy.gallery"
             :style="{
-              '--grid-width': artworkWidth(artwork),
-              '--grid-height': artworkHeight(artwork),
+              '--grid-width': artworkPreviewWidth(artwork),
+              '--grid-height': artworkPreviewHeight(artwork),
               '--canvas-bg': artworkBackground(artwork)
             }"
             @click="openArtworkPreview(artwork)"
@@ -1418,8 +1477,8 @@ onBeforeUnmount(() => {
             <PixelCanvasCells
               :pixels="artworkPixels(artwork)"
               :palette="artworkPalette(artwork)"
-              :width="artworkWidth(artwork)"
-              :height="artworkHeight(artwork)"
+              :width="artworkPreviewWidth(artwork)"
+              :height="artworkPreviewHeight(artwork)"
               :cell-size="1"
               :background-color="artworkBackground(artwork)"
               :show-grid="false"
@@ -1460,6 +1519,15 @@ onBeforeUnmount(() => {
           </div>
         </article>
       </div>
+      <nav v-if="sideTab === 'gallery' && !gallery.loading && gallery.totalPages > 1" class="arena-gallery-pager" aria-label="作品分页">
+        <button class="icon-btn" type="button" :disabled="gallery.page <= 1" aria-label="上一页" @click="loadArtworks(gallery.page - 1)">
+          <TsIcon name="chevron-left" :size="16" />
+        </button>
+        <span>{{ gallery.page }} / {{ gallery.totalPages }}</span>
+        <button class="icon-btn" type="button" :disabled="gallery.page >= gallery.totalPages" aria-label="下一页" @click="loadArtworks(gallery.page + 1)">
+          <TsIcon name="chevron-right" :size="16" />
+        </button>
+      </nav>
     </section>
 
     <Teleport to="body">

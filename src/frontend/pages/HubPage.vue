@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, noStoreUrl, parseResponse, setPublicStatsCache } from '../api/client';
+import { apiFetch, authFetch, authHeaders, getSession, loadPublicSettings, loadPublicStats, parseResponse, setPublicStatsCache } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import CountUpValue from '../components/CountUpValue.vue';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
@@ -15,8 +15,10 @@ const emit = defineEmits(['go']);
 
 const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v2';
 const HUB_PREVIEW_TTL_MS = 30000;
+const HUB_PREVIEW_TIMEOUT_MS = 8000;
 const STATS_UPDATED_EVENT = 'tsukuyomi:stats-updated';
 const fallbackPixelPalette = ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#ff9aba', '#f1d98e'];
+const decodedPixelPreviews = new WeakMap();
 let hubPreviewCache = readHubPreviewCache();
 
 function readHubPreviewCache() {
@@ -103,7 +105,7 @@ const sceneLinks = computed(() => [
     icon: 'book',
     tone: 'blue',
     spa: true,
-    image: latestArticle.value?.cover_image || '/assets/images/room-bg.webp',
+    image: latestArticle.value?.cover_image_url || latestArticle.value?.cover_image || '/assets/images/room-bg.webp',
     label: props.t.stage
   },
   {
@@ -151,7 +153,7 @@ function formatHubUptime(seconds = 0) {
 }
 
 function galleryImageUrl(asset) {
-  return asset?.access_url || asset?.display_url || asset?.url || '';
+  return asset?.url || asset?.access_url || asset?.display_url || '';
 }
 
 function formatGalleryDate(asset) {
@@ -182,7 +184,17 @@ function artworkPalette(artwork) {
 }
 
 function artworkPixels(artwork) {
-  return Array.isArray(artwork?.pixels) ? artwork.pixels : [];
+  if (Array.isArray(artwork?.pixels)) return artwork.pixels;
+  if (!artwork || typeof artwork.pixels_base64 !== 'string' || !artwork.pixels_base64) return [];
+  if (decodedPixelPreviews.has(artwork)) return decodedPixelPreviews.get(artwork);
+  try {
+    const bytes = atob(artwork.pixels_base64);
+    const pixels = Array.from(bytes, value => value.charCodeAt(0) - 1);
+    decodedPixelPreviews.set(artwork, pixels);
+    return pixels;
+  } catch (_) {
+    return [];
+  }
 }
 
 function artworkBackground(artwork) {
@@ -215,6 +227,41 @@ function openScene(scene, event) {
     return;
   }
   window.location.href = scene.href;
+}
+
+async function loadHubPreviewFast() {
+  const cached = hubPreviewCache || readHubPreviewCache();
+  if (cached) applyHubPreviewCache(cached);
+  previewLoading.value = !cached;
+  previewError.value = '';
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), HUB_PREVIEW_TIMEOUT_MS);
+  try {
+    const response = await apiFetch(`/api/hub-preview?_=${Date.now().toString(36)}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    const result = await parseResponse(response);
+    if (!result.success || !result.data) throw new Error(result.message || 'Hub content unavailable');
+    latestArticle.value = result.data.article || null;
+    latestGalleryImage.value = result.data.gallery || null;
+    latestPixelArtwork.value = result.data.pixel || null;
+    plazaMessages.value = Array.isArray(result.data.messages) ? result.data.messages : [];
+    siteStats.value = result.data.stats || siteStats.value;
+    writeHubPreviewCache({
+      latestArticle: latestArticle.value,
+      latestGalleryImage: latestGalleryImage.value,
+      latestPixelArtwork: latestPixelArtwork.value,
+      plazaMessages: plazaMessages.value,
+      siteStats: siteStats.value
+    });
+  } catch (error) {
+    if (!cached) previewError.value = error.name === 'AbortError' ? '内容读取超时，请重试' : (error.message || '内容读取失败');
+  } finally {
+    window.clearTimeout(timeout);
+    previewLoading.value = false;
+  }
 }
 
 async function loadHubPreview(options = {}) {
@@ -351,7 +398,7 @@ async function submitPlazaQuick() {
       plazaMessages: plazaMessages.value,
       siteStats: siteStats.value
     });
-    await loadHubPreview({ force: true });
+    await loadHubPreviewFast();
   } catch (error) {
     plazaQuick.message = error.message || '发布失败';
   } finally {
@@ -361,12 +408,7 @@ async function submitPlazaQuick() {
 
 async function loadVisitPopupPreview() {
   try {
-    const response = await apiFetch(noStoreUrl('/api/settings'), {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store'
-    });
-    const result = await parseResponse(response);
-    const settings = result?.data || {};
+    const settings = await loadPublicSettings();
     const title = String(settings.visitPopupTitle || '').trim();
     const content = String(settings.visitPopupContent || '').trim();
     visitPopupPreview.value = {
@@ -383,13 +425,13 @@ async function loadVisitPopupPreview() {
 
 onMounted(() => {
   if (typeof window === 'undefined') {
-    loadHubPreview();
+    loadHubPreviewFast();
     loadVisitPopupPreview();
     return;
   }
   window.addEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
   window.requestAnimationFrame(() => {
-    loadHubPreview();
+    loadHubPreviewFast();
     loadVisitPopupPreview();
   });
 });

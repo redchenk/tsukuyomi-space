@@ -3,7 +3,7 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const notificationRepository = require('../repositories/notification-repository');
 const pixelArtRepository = require('../repositories/pixel-art-repository');
 const responseCache = require('../services/response-cache');
-const { setPrivateNoStore } = require('../services/public-cache');
+const { setPrivateNoStore, setPublicReadCache } = require('../services/public-cache');
 
 const router = express.Router();
 const DEFAULT_DIMENSIONS = { width: 96, height: 54 };
@@ -115,8 +115,8 @@ function sendArtworkList(req, res, fixedLimit = null) {
         const limit = fixedLimit || req.query.limit;
         const offset = req.query.offset;
         const payload = req.user
-            ? pixelArtRepository.listArtworks({ viewerId: req.user.id, sort, limit, offset })
-            : responseCache.remember(`public:pixel-art:${sort}:${limit || ''}:${offset || ''}`, 10000, () => pixelArtRepository.listArtworks({ viewerId: '', sort, limit, offset }));
+            ? pixelArtRepository.listArtworks({ viewerId: req.user.id, sort, limit, offset, preview: true })
+            : responseCache.remember(`public:pixel-art:${sort}:${limit || ''}:${offset || ''}`, 10000, () => pixelArtRepository.listArtworks({ viewerId: '', sort, limit, offset, preview: true }));
         setPrivateNoStore(res);
         res.json({
             success: true,
@@ -134,7 +134,7 @@ function sendArtworkList(req, res, fixedLimit = null) {
 }
 
 router.get('/', optionalAuth, (req, res) => sendArtworkList(req, res));
-router.get('/gallery', optionalAuth, (req, res) => sendArtworkList(req, res, 36));
+router.get('/gallery', optionalAuth, (req, res) => sendArtworkList(req, res, 12));
 router.get('/preview', optionalAuth, (req, res) => sendArtworkList(req, res, 1));
 
 router.get('/manage', authenticateToken, (req, res) => {
@@ -145,7 +145,8 @@ router.get('/manage', authenticateToken, (req, res) => {
             admin: isAdminUser(req.user),
             sort,
             limit: req.query.limit,
-            offset: req.query.offset
+            offset: req.query.offset,
+            preview: true
         });
         res.set({
             'Cache-Control': 'private, no-store',

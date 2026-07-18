@@ -40,7 +40,24 @@ function compactAvatar(avatar) {
     return value.length <= INLINE_AVATAR_TEXT_LIMIT ? value : '';
 }
 
+function publicAvatarUrl({ avatar, username, updatedAt } = {}) {
+    const value = compactAvatar(avatar);
+    if (!value) return '';
+    if (!value.startsWith('data:')) {
+        if (/^https:\/\//i.test(value)) return value;
+        if (/^http:\/\/(?:thirdqq|q)\.qlogo\.cn\//i.test(value)) return `https://${value.slice(7)}`;
+        return '';
+    }
+
+    const safeUsername = String(username || '').trim();
+    if (!safeUsername) return '';
+    const version = String(updatedAt || '').trim();
+    const query = version ? `?v=${encodeURIComponent(version)}` : '';
+    return `/api/user/public/${encodeURIComponent(safeUsername)}/avatar${query}`;
+}
+
 module.exports = {
     compactAvatar,
+    publicAvatarUrl,
     validateAvatar
 };

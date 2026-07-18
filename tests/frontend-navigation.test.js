@@ -188,7 +188,11 @@ describe('frontend navigation routes', () => {
         const hub = source('src/frontend/pages/HubPage.vue');
 
         assert.match(arena, /\/api\/pixel-art\/gallery\?sort=/);
-        assert.match(hub, /\/api\/pixel-art\/preview\?sort=latest/);
+        assert.match(arena, /limit=\$\{PIXEL_GALLERY_PAGE_SIZE\}/);
+        assert.match(arena, /pixels_base64/);
+        assert.match(arena, /await loadFullArtwork\(artwork\)/);
+        assert.match(hub, /\/api\/hub-preview/);
+        assert.match(hub, /pixels_base64/);
         assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
     });
 
@@ -210,6 +214,8 @@ describe('frontend navigation routes', () => {
         assert.match(gallery, /class="gallery-uploader gallery-feature-uploader"/);
         assert.match(gallery, /class="gallery-uploader gallery-lightbox-uploader"/);
         assert.match(gallery, /<time :datetime="imageDate\(asset\)">/);
+        assert.match(gallery, /!isManageMode\.value && asset\?\.url/);
+        assert.match(gallery, /limit: '24'/);
     });
 
     it('fixes new pixel canvases at 192x108 and gives every like button a persistent red-heart state', () => {
