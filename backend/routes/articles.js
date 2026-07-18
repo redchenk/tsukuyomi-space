@@ -110,7 +110,10 @@ router.post('/', authenticateToken, async (req, res) => {
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id
-        }, { ownerId: req.user.scope === 'admin' ? null : req.user.id });
+        }, {
+            ownerId: req.user.scope === 'admin' ? null : req.user.id,
+            allowAnyAsset: canPublishAnnouncement(req.user)
+        });
         const newArticle = articleRepository.createArticle(mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, newArticle.id);
         responseCache.delPrefix('public:articles:');
@@ -119,7 +122,10 @@ router.post('/', authenticateToken, async (req, res) => {
         res.status(201).json({ success: true, message: '操作成功', data: newArticle });
     } catch (error) {
         console.error('Create article failed:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        res.status(error.status || 500).json({
+            success: false,
+            message: error.status ? error.message : '服务器错误'
+        });
     }
 });
 
@@ -171,7 +177,11 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id
-        }, { articleId: req.params.id, ownerId: req.user.scope === 'admin' ? null : req.user.id });
+        }, {
+            articleId: req.params.id,
+            ownerId: req.user.scope === 'admin' ? null : req.user.id,
+            allowAnyAsset: true
+        });
         const updatedArticle = articleRepository.updateArticle(req.params.id, mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, updatedArticle.id);
         responseCache.delPrefix('public:articles:');
@@ -179,7 +189,10 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
         res.json({ success: true, message: '文章更新成功', data: updatedArticle });
     } catch (error) {
         console.error('Update article failed:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        res.status(error.status || 500).json({
+            success: false,
+            message: error.status ? error.message : '服务器错误'
+        });
     }
 });
 

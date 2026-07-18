@@ -175,6 +175,24 @@ function createAssetRecord({ id, articleId = null, ownerId = null, assetType, mi
     `).run(id, articleId, ownerId, assetType, mimeType, url, storageKey, JSON.stringify(metadata || {}));
 }
 
+function durableAssetUrl(id) {
+    return `/api/assets/proxy/${encodeURIComponent(String(id || ''))}`;
+}
+
+function articleMediaError(message, status = 400) {
+    const error = new Error(message);
+    error.status = status;
+    return error;
+}
+
+function findCoverAsset(id) {
+    return db.prepare(`
+        SELECT id, article_id, owner_id, asset_type, mime_type
+        FROM article_assets
+        WHERE id = ?
+    `).get(id);
+}
+
 function saveParsedImageLocal(parsed, { id = crypto.randomUUID(), articleId = null, ownerId = null, role = 'body', alt = '', uploadPath = '' } = {}) {
     const fileName = `${id}.${parsed.ext}`;
     const filePath = path.join(uploadFolder(uploadPath, { role, id, ext: parsed.ext }), fileName);
@@ -190,7 +208,7 @@ function saveParsedImageLocal(parsed, { id = crypto.randomUUID(), articleId = nu
         storageKey: path.relative(config.projectRoot, filePath).replace(/\\/g, '/'),
         metadata: { role, alt, size: parsed.buffer.length, storage: 'local' }
     });
-    return { id, url };
+    return { id, url: durableAssetUrl(id) };
 }
 
 function saveBufferLocal({ buffer, mimeType, ext, id, articleId = null, ownerId = null, role = 'attachment', alt = '', fileName = '', uploadPath = '' }) {
@@ -243,7 +261,7 @@ async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role =
                 storageKey: uploaded.key,
                 metadata: { role, alt, size: parsed.buffer.length, storage: uploaded.storage || 'oss' }
             });
-            return { id, url: uploaded.url };
+            return { id, url: durableAssetUrl(id) };
         }
     } catch (error) {
         if (storageMode === 'oss') throw new Error('对象存储上传失败，请检查后台配置或上传路径');
@@ -370,7 +388,7 @@ async function replaceInlineDataImages(content, { articleId = null, ownerId = nu
     return { content: nextContent, assetIds };
 }
 
-async function normalizeArticleMediaPayload(article, { articleId = null, ownerId = null } = {}) {
+async function normalizeArticleMediaPayload(article, { articleId = null, ownerId = null, allowAnyAsset = false } = {}) {
     const result = { ...article };
     const assetIds = [];
 
@@ -381,6 +399,22 @@ async function normalizeArticleMediaPayload(article, { articleId = null, ownerId
             result.coverImageAssetId = cover.id;
             assetIds.push(cover.id);
         }
+    }
+
+    if (result.coverImageAssetId) {
+        const coverAsset = findCoverAsset(result.coverImageAssetId);
+        if (!coverAsset) throw articleMediaError('封面资源不存在');
+        const imageAsset = String(coverAsset.mime_type || '').startsWith('image/')
+            || String(coverAsset.asset_type || '').includes('image');
+        if (!imageAsset) throw articleMediaError('封面必须使用图片资源');
+        const ownedByUser = ownerId && coverAsset.owner_id === ownerId;
+        const attachedToArticle = articleId && String(coverAsset.article_id || '') === String(articleId);
+        if (!allowAnyAsset && !ownedByUser && !attachedToArticle) {
+            throw articleMediaError('无权使用该封面资源', 403);
+        }
+        result.coverImage = durableAssetUrl(coverAsset.id);
+        result.coverImageAssetId = coverAsset.id;
+        assetIds.push(coverAsset.id);
     }
 
     const body = await replaceInlineDataImages(result.content || '', { articleId, ownerId });

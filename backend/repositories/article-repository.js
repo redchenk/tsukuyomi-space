@@ -22,7 +22,15 @@ function uniqueArticleSlug(title, id = null) {
 }
 
 function compactArticleRow(row) {
-    return row ? { ...row, author_avatar: compactAvatar(row.author_avatar) } : row;
+    if (!row) return row;
+    const { cover_asset_exists: coverAssetExists, ...article } = row;
+    return {
+        ...article,
+        cover_image: coverAssetExists && article.cover_image_asset_id
+            ? `/api/assets/proxy/${encodeURIComponent(String(article.cover_image_asset_id))}`
+            : article.cover_image,
+        author_avatar: compactAvatar(article.author_avatar)
+    };
 }
 
 function compactArticleRows(rows) {
@@ -35,9 +43,11 @@ function listArticles({ category, limit, offset }) {
             a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             u.username AS author_username,
-            u.avatar AS author_avatar
+            u.avatar AS author_avatar,
+            CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
+        LEFT JOIN article_assets cover_asset ON cover_asset.id = a.cover_image_asset_id
         WHERE COALESCE(a.status, 'published') = 'published'
     `;
     let countQuery = "SELECT COUNT(*) AS total FROM articles WHERE COALESCE(status, 'published') = 'published'";
@@ -64,9 +74,11 @@ function listRecentPublishedArticles(limit = 8) {
             a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             u.username AS author_username,
-            u.avatar AS author_avatar
+            u.avatar AS author_avatar,
+            CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
+        LEFT JOIN article_assets cover_asset ON cover_asset.id = a.cover_image_asset_id
         WHERE COALESCE(a.status, 'published') = 'published'
         ORDER BY COALESCE(a.updated_at, a.created_at, a.publish_date) DESC, a.id DESC
         LIMIT ?
@@ -101,18 +113,22 @@ function createArticle(article) {
 
 function findArticleById(id) {
     return compactArticleRow(db.prepare(`
-        SELECT a.*, u.username AS author_username, u.avatar AS author_avatar
+        SELECT a.*, u.username AS author_username, u.avatar AS author_avatar,
+            CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
+        LEFT JOIN article_assets cover_asset ON cover_asset.id = a.cover_image_asset_id
         WHERE a.id = ?
     `).get(id));
 }
 
 function findPublishedArticleById(id) {
     return compactArticleRow(db.prepare(`
-        SELECT a.*, u.username AS author_username, u.avatar AS author_avatar
+        SELECT a.*, u.username AS author_username, u.avatar AS author_avatar,
+            CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
+        LEFT JOIN article_assets cover_asset ON cover_asset.id = a.cover_image_asset_id
         WHERE a.id = ?
           AND COALESCE(a.status, 'published') = 'published'
     `).get(id));
@@ -210,9 +226,11 @@ function listSeoArticles(limit = 500) {
         SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.content_format, a.publish_date, a.published_at, a.created_at, a.updated_at,
             a.cover_image, a.cover_image_asset_id, a.category, a.tags, a.read_time,
             u.username AS author_username,
-            u.avatar AS author_avatar
+            u.avatar AS author_avatar,
+            CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
+        LEFT JOIN article_assets cover_asset ON cover_asset.id = a.cover_image_asset_id
         WHERE COALESCE(a.status, 'published') = 'published'
         ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, COALESCE(a.published_at, a.created_at, a.publish_date) DESC
         LIMIT ?

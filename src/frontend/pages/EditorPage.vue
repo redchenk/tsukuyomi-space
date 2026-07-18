@@ -243,7 +243,7 @@ async function loadAssetPicker() {
 function useAsset(asset) {
   const url = assetMarkdownUrl(asset);
   if (editor.assetPicker.mode === 'cover') {
-    editor.coverImageBase64 = assetUrl(asset);
+    editor.coverImageBase64 = url;
     editor.coverImageAssetId = asset.id;
     editor.coverImageSize = 0;
     closeAssetPicker();

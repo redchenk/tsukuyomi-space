@@ -445,7 +445,11 @@ router.put('/articles/:id', authenticateToken, async (req, res) => {
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id
-        }, { articleId, ownerId: req.user.id });
+        }, {
+            articleId,
+            ownerId: req.user.id,
+            allowAnyAsset: req.user.role === 'admin' || req.user.role === 'super_admin'
+        });
         const updatedArticle = articleRepository.updateUserArticle(articleId, mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, updatedArticle.id);
         responseCache.delPrefix('public:articles:');
@@ -458,7 +462,10 @@ router.put('/articles/:id', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('鏇存柊鏂囩珷澶辫触:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        res.status(error.status || 500).json({
+            success: false,
+            message: error.status ? error.message : '服务器错误'
+        });
     }
 });
 

@@ -166,7 +166,7 @@ router.post('/articles/:id/save', async (req, res) => {
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id
-        }, { articleId: id, ownerId: req.user.id });
+        }, { articleId: id, ownerId: req.user.id, allowAnyAsset: true });
         const changes = adminRepository.updateAdminArticle(id, mediaPayload);
         if (!changes) return fail(res, 404, '文章不存在');
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, id);
@@ -174,7 +174,7 @@ router.post('/articles/:id/save', async (req, res) => {
         ok(res, null, '文章已保存');
     } catch (error) {
         console.error('Moderation article save error:', error);
-        fail(res, 500, '无法保存文章');
+        fail(res, error.status || 500, error.status ? error.message : '无法保存文章');
     }
 });
 

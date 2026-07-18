@@ -365,6 +365,46 @@ describe('database initialization', () => {
             db.prepare('DELETE FROM articles WHERE id IN (?, ?)').run(published.lastInsertRowid, draft.lastInsertRowid);
         }
     });
+
+    it('canonicalizes legacy article cover URLs only when the asset still exists', () => {
+        const migration = require('../backend/db/migrations/023_canonicalize_article_cover_urls');
+        const validAssetId = `legacy-cover-${Date.now()}`;
+        const missingAssetId = `missing-cover-${Date.now()}`;
+        const valid = db.prepare(`
+            INSERT INTO articles (title, slug, cover_image, cover_image_asset_id)
+            VALUES (?, ?, ?, ?)
+        `).run('Legacy OSS cover', `legacy-oss-cover-${Date.now()}`, 'https://oss.example.test/legacy.png', validAssetId);
+        const missing = db.prepare(`
+            INSERT INTO articles (title, slug, cover_image, cover_image_asset_id)
+            VALUES (?, ?, ?, ?)
+        `).run('Missing legacy cover asset', `missing-cover-${Date.now()}`, '/assets/uploads/legacy.png', missingAssetId);
+        db.prepare(`
+            INSERT INTO article_assets (id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata)
+            VALUES (?, ?, 'user-001', 'cover-image', 'image/png', ?, ?, ?)
+        `).run(
+            validAssetId,
+            valid.lastInsertRowid,
+            'https://oss.example.test/legacy.png',
+            `legacy/${validAssetId}.png`,
+            JSON.stringify({ storage: 'oss' })
+        );
+
+        try {
+            migration.up(db);
+            migration.up(db);
+            assert.equal(
+                db.prepare('SELECT cover_image FROM articles WHERE id = ?').get(valid.lastInsertRowid).cover_image,
+                `/api/assets/proxy/${validAssetId}`
+            );
+            assert.equal(
+                db.prepare('SELECT cover_image FROM articles WHERE id = ?').get(missing.lastInsertRowid).cover_image,
+                '/assets/uploads/legacy.png'
+            );
+        } finally {
+            db.prepare('DELETE FROM article_assets WHERE id = ?').run(validAssetId);
+            db.prepare('DELETE FROM articles WHERE id IN (?, ?)').run(valid.lastInsertRowid, missing.lastInsertRowid);
+        }
+    });
 });
 
 describe('auth API', () => {
@@ -768,6 +808,119 @@ describe('articles API', () => {
         assert.ok(listedArticle);
         assert.equal(listedArticle.author_avatar, testAvatar);
         assert.equal(listedArticle.published_at, originalPublishedAt);
+    });
+
+    it('persists OSS article covers through a durable same-origin asset URL', async () => {
+        const originalGetSettings = objectStorage.getSettings;
+        const originalPutObject = objectStorage.putObject;
+        const foreignAssetId = `foreign-cover-${Date.now()}`;
+        let createdArticleId = null;
+        let coverAssetId = '';
+        objectStorage.getSettings = () => ({
+            ossEnabled: true,
+            ossProvider: 'aliyun',
+            ossEndpoint: 'https://oss-cn-hangzhou.aliyuncs.com',
+            ossRegion: 'cn-hangzhou',
+            ossBucket: 'article-cover-test',
+            ossAccessKeyId: 'test-access-key',
+            ossAccessKeySecret: 'test-access-secret',
+            ossPublicBaseUrl: 'https://oss.example.test',
+            ossDefaultStorage: 'oss',
+            ossUploadPath: 'articles/${role}'
+        });
+        objectStorage.putObject = async ({ id, mimeType, role }) => {
+            assert.equal(mimeType, 'image/png');
+            assert.equal(role, 'cover');
+            return {
+                storage: 'oss',
+                key: `articles/cover/${id}.png`,
+                url: `https://oss.example.test/articles/cover/${id}.png`
+            };
+        };
+
+        try {
+            const coverDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+            const created = await postJson('/api/articles', {
+                title: 'Durable OSS Cover',
+                excerpt: 'Durable cover regression',
+                content: 'The cover must not depend on a browser Referer header.',
+                category: '\u5176\u4ed6',
+                read_time: '1 min',
+                cover_image: coverDataUrl
+            }, userToken);
+            assert.equal(created.response.status, 201);
+            createdArticleId = created.body.data.id;
+            coverAssetId = created.body.data.cover_image_asset_id;
+            const durableUrl = `/api/assets/proxy/${encodeURIComponent(coverAssetId)}`;
+            assert.equal(created.body.data.cover_image, durableUrl);
+            assert.equal(db.prepare('SELECT cover_image FROM articles WHERE id = ?').get(createdArticleId).cover_image, durableUrl);
+
+            const asset = db.prepare('SELECT url, storage_key, metadata FROM article_assets WHERE id = ?').get(coverAssetId);
+            assert.match(asset.url, /^https:\/\/oss\.example\.test\//);
+            assert.match(asset.storage_key, /^articles\/cover\//);
+            assert.equal(JSON.parse(asset.metadata).storage, 'oss');
+
+            db.prepare('UPDATE articles SET cover_image = ? WHERE id = ?')
+                .run('https://oss.example.test/articles/cover/legacy-direct.png', createdArticleId);
+            const legacyDirect = await request(`/api/articles/${createdArticleId}/live/legacy-direct-cover`);
+            assert.equal(legacyDirect.response.status, 200);
+            assert.equal(legacyDirect.body.data.cover_image, durableUrl);
+
+            db.prepare('UPDATE articles SET cover_image = ?, cover_image_asset_id = ? WHERE id = ?')
+                .run('/assets/uploads/legacy-cover.png', `missing-${coverAssetId}`, createdArticleId);
+            const missingAsset = await request(`/api/articles/${createdArticleId}/live/missing-cover-asset`);
+            assert.equal(missingAsset.response.status, 200);
+            assert.equal(missingAsset.body.data.cover_image, '/assets/uploads/legacy-cover.png');
+            db.prepare('UPDATE articles SET cover_image = ?, cover_image_asset_id = ? WHERE id = ?')
+                .run(durableUrl, coverAssetId, createdArticleId);
+
+            const updated = await putJson(`/api/user/articles/${createdArticleId}`, {
+                title: 'Durable OSS Cover',
+                excerpt: 'Durable cover regression',
+                content: 'Updated article content.',
+                content_format: 'markdown',
+                category: '\u5176\u4ed6',
+                read_time: '1 min',
+                cover_image: `${durableUrl}?expires=1&signature=expired`,
+                cover_image_asset_id: coverAssetId
+            }, userToken);
+            assert.equal(updated.response.status, 200);
+            assert.equal(updated.body.data.cover_image, durableUrl);
+            assert.equal(db.prepare('SELECT cover_image FROM articles WHERE id = ?').get(createdArticleId).cover_image, durableUrl);
+
+            db.prepare(`
+                INSERT INTO article_assets (id, owner_id, asset_type, mime_type, url, storage_key, metadata)
+                VALUES (?, 'user-002', 'cover-image', 'image/png', ?, ?, ?)
+            `).run(
+                foreignAssetId,
+                `https://oss.example.test/private/${foreignAssetId}.png`,
+                `private/${foreignAssetId}.png`,
+                JSON.stringify({ storage: 'oss' })
+            );
+            const foreignCover = await putJson(`/api/user/articles/${createdArticleId}`, {
+                title: 'Durable OSS Cover',
+                excerpt: 'Durable cover regression',
+                content: 'Must not expose another users private cover.',
+                content_format: 'markdown',
+                category: '\u5176\u4ed6',
+                read_time: '1 min',
+                cover_image: `https://oss.example.test/private/${foreignAssetId}.png`,
+                cover_image_asset_id: foreignAssetId
+            }, userToken);
+            assert.equal(foreignCover.response.status, 403);
+            assert.equal(db.prepare('SELECT cover_image_asset_id FROM articles WHERE id = ?').get(createdArticleId).cover_image_asset_id, coverAssetId);
+        } finally {
+            objectStorage.getSettings = originalGetSettings;
+            objectStorage.putObject = originalPutObject;
+            db.prepare('DELETE FROM article_assets WHERE id = ?').run(foreignAssetId);
+            if (createdArticleId) {
+                await request(`/api/user/articles/${createdArticleId}`, {
+                    method: 'DELETE',
+                    headers: jsonHeaders(userToken)
+                });
+            }
+            if (coverAssetId) db.prepare('DELETE FROM article_assets WHERE id = ?').run(coverAssetId);
+        }
     });
 
     it('lets an author delete an article with dependent content', async () => {

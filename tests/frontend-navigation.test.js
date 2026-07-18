@@ -66,6 +66,13 @@ describe('frontend navigation routes', () => {
         assert.match(article, /formatPublishedDate\(article\.published_at \|\| article\.created_at \|\| article\.publish_date\)/);
     });
 
+    it('stores attachment-library article covers through the durable same-origin URL', () => {
+        const editor = source('src/frontend/pages/EditorPage.vue');
+
+        assert.match(editor, /const url = assetMarkdownUrl\(asset\);[\s\S]*?editor\.coverImageBase64 = url;/);
+        assert.doesNotMatch(editor, /editor\.coverImageBase64 = assetUrl\(asset\)/);
+    });
+
     it('separates the public friend-link directory from the application flow', () => {
         const router = source('src/frontend/router/index.js');
         const plaza = source('src/frontend/pages/PlazaPage.vue');

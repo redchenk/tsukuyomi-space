@@ -381,7 +381,7 @@ router.put('/articles/:id', async (req, res) => {
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id
-        }, { articleId: id, ownerId: req.user.id });
+        }, { articleId: id, ownerId: req.user.id, allowAnyAsset: true });
         const changes = adminRepository.updateAdminArticle(id, mediaPayload);
         articleMedia.attachAssetsToArticle(mediaPayload.mediaAssetIds, id);
         if (!changes) return fail(res, 404, '文章不存在');
@@ -389,7 +389,7 @@ router.put('/articles/:id', async (req, res) => {
         ok(res);
     } catch (error) {
         console.error('Admin article update error:', error);
-        fail(res, 500, '无法更新文章');
+        fail(res, error.status || 500, error.status ? error.message : '无法更新文章');
     }
 });
 
