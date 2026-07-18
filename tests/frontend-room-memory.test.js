@@ -129,6 +129,7 @@ describe('frontend room memory API client usage', () => {
         assert.match(transport, /targetAddressSpace:\s*'loopback'/);
         assert.match(transport, /parsed\.hostname = 'localhost'/);
         assert.match(transport, /parsed\.port = '11434'/);
+        assert.match(settings, /think:\s*false/);
         for (const code of [chat, control, settings]) assert.match(code, /fetchWithLocalOllamaGuidance\(/);
 
         const runtime = loadLocalOllamaTransport();

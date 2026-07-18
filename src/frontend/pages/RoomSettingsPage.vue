@@ -780,6 +780,7 @@ function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiU
       model: modelName || 'qwen2.5:7b',
       messages,
       stream: false,
+      think: false,
       options: {
         temperature: chatTemperatureFor(apiUrl, modelName || 'qwen2.5:7b', 0.4),
         num_predict: limit
