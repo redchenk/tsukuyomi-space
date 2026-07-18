@@ -405,7 +405,7 @@ describe('terminal privilege boundaries', () => {
 });
 
 describe('content administration workspace', () => {
-    it('registers a private admin route and shows its navigation only to administrator roles', () => {
+    it('keeps the private admin route available without exposing it in site navigation', () => {
         const router = source('src/frontend/router/index.js');
         const shell = source('src/frontend/layouts/AppShell.vue');
         const staticMiddleware = source('backend/middleware/static.js');
@@ -414,8 +414,8 @@ describe('content administration workspace', () => {
         assert.match(router, /name: 'admin'/);
         assert.match(router, /component: AdminPage/);
         assert.match(router, /noindex: true/);
-        assert.match(shell, /\['admin', 'super_admin'\]\.includes\(props\.user\?\.role\)/);
-        assert.match(shell, /path: '\/admin', key: 'admin', label: '内容管理', icon: 'shield'/);
+        assert.doesNotMatch(shell, /path: '\/admin'/);
+        assert.doesNotMatch(shell, /key: 'admin'/);
         assert.match(staticMiddleware, /'Disallow: \/admin'/);
         assert.match(staticMiddleware, /'\/admin'/);
     });
