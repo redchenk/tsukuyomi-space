@@ -75,10 +75,12 @@ function loadApiClient(fetchImpl) {
 }
 
 function loadLocalOllamaTransport() {
-    const context = { URL, Set, String };
+    const context = { URL, Set, String, TypeError };
     const code = source('src/frontend/services/room/localOllamaTransport.js')
+        .replace(/export const /g, 'const ')
+        .replace(/export async function /g, 'async function ')
         .replace(/export function /g, 'function ')
-        .concat('\nglobalThis.__transport = { normalizeLocalOllamaBaseUrl, isLocalOllamaUrl, localOllamaFetchOptions };\n');
+        .concat('\nglobalThis.__transport = { normalizeLocalOllamaBaseUrl, isLocalOllamaUrl, localOllamaFetchOptions, localOllamaAllowedOrigins, localOllamaWindowsCommand, fetchWithLocalOllamaGuidance };\n');
     vm.runInNewContext(code, context, { filename: 'src/frontend/services/room/localOllamaTransport.js' });
     return context.__transport;
 }
@@ -118,7 +120,7 @@ describe('frontend room memory API client usage', () => {
         assertNoRawRoomMemoryFetch('src/frontend/pages/RoomSettingsPage.vue');
     });
 
-    it('uses the browser local-network permission flow for every Ollama request', () => {
+    it('uses the browser local-network permission flow for every Ollama request', async () => {
         const transport = source('src/frontend/services/room/localOllamaTransport.js');
         const chat = source('src/frontend/composables/room/useRoomChat.js');
         const control = source('src/frontend/services/room/live2dLlmControl.js');
@@ -127,12 +129,7 @@ describe('frontend room memory API client usage', () => {
         assert.match(transport, /targetAddressSpace:\s*'local'/);
         assert.match(transport, /parsed\.hostname = 'localhost'/);
         assert.match(transport, /parsed\.port = '11434'/);
-        for (const code of [chat, control, settings]) {
-            assert.match(code, /localOllamaFetchOptions\(/);
-        }
-        assert.match(chat, /fetch\(apiUrl, localOllamaFetchOptions\(apiUrl,/);
-        assert.match(control, /fetch\(apiUrl, localOllamaFetchOptions\(apiUrl,/);
-        assert.match(settings, /fetch\(requestUrl, localOllamaFetchOptions\(requestUrl, options\)\)/);
+        for (const code of [chat, control, settings]) assert.match(code, /fetchWithLocalOllamaGuidance\(/);
 
         const runtime = loadLocalOllamaTransport();
         assert.equal(runtime.normalizeLocalOllamaBaseUrl('127.0.0.1:11434/api/chat'), 'http://localhost:11434/api/chat');
@@ -141,6 +138,21 @@ describe('frontend room memory API client usage', () => {
         assert.equal(runtime.isLocalOllamaUrl('http://localhost:11434/api/chat'), true);
         assert.equal(runtime.localOllamaFetchOptions('http://localhost:11434/api/chat', {}).targetAddressSpace, 'local');
         assert.equal(runtime.localOllamaFetchOptions('https://api.deepseek.com/chat/completions', {}).targetAddressSpace, undefined);
+        assert.deepEqual(
+            Array.from(runtime.localOllamaAllowedOrigins('https://malicious.example')),
+            ['https://yachiyo.hk', 'https://yachiyo.com.cn', 'https://cho-kaguyahime.cn']
+        );
+        assert.match(runtime.localOllamaWindowsCommand(), /OLLAMA_ORIGINS/);
+        assert.match(runtime.localOllamaWindowsCommand(), /https:\/\/yachiyo\.hk/);
+        assert.doesNotMatch(runtime.localOllamaWindowsCommand('https://malicious.example'), /malicious/);
+        await assert.rejects(
+            runtime.fetchWithLocalOllamaGuidance(
+                'http://localhost:11434/api/chat',
+                {},
+                async () => { throw new TypeError('Failed to fetch'); }
+            ),
+            /OLLAMA_ORIGINS.*\/room\/settings/
+        );
     });
 
     it('keeps one authenticated realtime stream and invalidates memory views without exposing account ids', () => {

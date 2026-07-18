@@ -229,6 +229,44 @@
     padding-top: 1.1rem;
 }
 
+.ollama-origin-guide {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    min-width: 0;
+    border: 1px solid rgba(102, 197, 223, 0.28);
+    border-radius: 8px;
+    padding: 0.8rem 0.9rem;
+    background: rgba(102, 197, 223, 0.08);
+}
+
+.ollama-origin-guide > div {
+    min-width: 0;
+}
+
+.ollama-origin-guide strong,
+.ollama-origin-guide p {
+    display: block;
+    margin: 0;
+}
+
+.ollama-origin-guide strong {
+    color: var(--ink);
+    font-size: 0.86rem;
+}
+
+.ollama-origin-guide p {
+    margin-top: 0.18rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
+.ollama-origin-guide .ghost-btn {
+    flex: 0 0 auto;
+}
+
 .room-simple-form label {
     display: grid;
     grid-template-rows: auto 46px minmax(16px, auto);
@@ -716,6 +754,15 @@ html[data-theme="dark"] .room-step-form select option {
     .room-step-form,
     .room-setup-aside {
         grid-template-columns: 1fr;
+    }
+
+    .ollama-origin-guide {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ollama-origin-guide .ghost-btn {
+        width: 100%;
     }
 
     .room-step-data-actions {
@@ -1749,6 +1796,11 @@ html[data-theme="dark"] .room-step-form select option {
     font: 0.84rem/1.6 Consolas, "SFMono-Regular", monospace;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+}
+
+.room-test-repair {
+    width: 100%;
+    margin-top: 0.8rem;
 }
 
 html[data-theme="dark"] .room-settings-card input,

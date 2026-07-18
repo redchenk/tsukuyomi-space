@@ -5,7 +5,7 @@ import {
   normalizeLive2DIntent
 } from './live2dControl';
 import { compileBehaviorIntent } from './live2dBehaviorController';
-import { localOllamaFetchOptions, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
+import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
 import { readJson, writeJson } from './roomStorage';
 import { apiFetch } from '../../api/client';
 
@@ -813,11 +813,11 @@ export async function requestLive2DControl(message) {
     if (!response.ok || !result.success) throw new Error(result.message || `LLM ${response.status}`);
     rawReply = result.data?.reply || '';
   } else {
-    const response = await fetch(apiUrl, localOllamaFetchOptions(apiUrl, {
+    const response = await fetchWithLocalOllamaGuidance(apiUrl, {
       method: 'POST',
       headers: chatRequestHeaders(apiUrl, settings.apiKey),
       body: JSON.stringify(buildDirectRequestBody({ ...settings, apiUrl }, systemPrompt, history, message))
-    }));
+    });
     if (!response.ok) throw new Error(`LLM ${response.status}`);
     rawReply = pickReply(await response.json());
   }
@@ -884,11 +884,11 @@ export async function requestLive2DControlStream(message, handlers = {}) {
       onEvent: (event) => handlers.onEvent?.(event)
     });
   } else {
-    const response = await fetch(apiUrl, localOllamaFetchOptions(apiUrl, {
+    const response = await fetchWithLocalOllamaGuidance(apiUrl, {
       method: 'POST',
       headers: chatRequestHeaders(apiUrl, settings.apiKey),
       body: JSON.stringify(buildStreamingDirectRequestBody({ ...settings, apiUrl }, systemPrompt, history, message))
-    }));
+    });
     if (!response.ok) throw new Error(`LLM ${response.status}`);
     rawReply = await readStreamingTextResponse(response, {
       onText: (delta, accumulated) => {

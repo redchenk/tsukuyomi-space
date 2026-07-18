@@ -214,9 +214,11 @@ describe('browser security headers', () => {
         const frontend = sourceFile('src/frontend/index.html');
         const configuredPolicy = headerConfig.match(/add_header Content-Security-Policy "([^"]+)" always;/)?.[1];
         const metaPolicy = frontend.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
+        const metaCompatiblePolicy = CONTENT_SECURITY_POLICY.replace(/frame-ancestors 'self';?\s*/, '');
 
         assert.equal(configuredPolicy, CONTENT_SECURITY_POLICY);
-        assert.equal(metaPolicy, CONTENT_SECURITY_POLICY);
+        assert.equal(metaPolicy, metaCompatiblePolicy);
+        assert.doesNotMatch(metaPolicy, /frame-ancestors/);
         assert.match(CONTENT_SECURITY_POLICY, /script-src 'self'/);
         assert.match(CONTENT_SECURITY_POLICY, /script-src-attr 'none'/);
         assert.match(CONTENT_SECURITY_POLICY, /object-src 'none'/);

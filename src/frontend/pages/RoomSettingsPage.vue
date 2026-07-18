@@ -9,7 +9,11 @@ import {
   queueRoomLive2DForNextRoom,
   readRoomLive2DDebugState
 } from '../services/room/live2dControl';
-import { localOllamaFetchOptions, normalizeLocalOllamaBaseUrl } from '../services/room/localOllamaTransport';
+import {
+  fetchWithLocalOllamaGuidance,
+  localOllamaWindowsCommand,
+  normalizeLocalOllamaBaseUrl
+} from '../services/room/localOllamaTransport';
 import { refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
 import { formatDateTime } from '../utils/time';
 
@@ -146,6 +150,14 @@ const setupStep = ref(1);
 const setupLlmMode = ref('ollama');
 const setupCloudProvider = ref('openaiChat');
 const globalAdvancedOpen = ref(false);
+const ollamaRepairCommand = computed(() => localOllamaWindowsCommand(
+  typeof window === 'undefined' ? '' : window.location.origin
+));
+const showOllamaRepairAction = computed(() => (
+  testDialog.target === 'llm'
+  && testDialog.status === 'error'
+  && isOllamaApi(llm.apiUrl)
+));
 let toastTimer = 0;
 let modelNoticeTimer = 0;
 
@@ -520,6 +532,28 @@ function showToast(text) {
 
 function modelQualityLabel() {
   return '标准模型：移动端与桌面端使用同一套清晰度、帧率和物理效果';
+}
+
+async function copyOllamaRepairCommand() {
+  const command = ollamaRepairCommand.value;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(command);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = command;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      textarea.remove();
+    }
+    showToast('Ollama 修复命令已复制');
+  } catch (_) {
+    showToast('复制失败，请手动复制测试窗口中的命令');
+  }
 }
 
 function showModelSaveNotice() {
@@ -1462,7 +1496,7 @@ async function testLLM() {
   const requestUrl = settings.useProxy ? apiUrl('/api/chat') : normalizeChatUrl(settings.apiUrl, settings.model);
   const requestFetch = settings.useProxy
     ? (options) => apiFetch('/api/chat', options)
-    : (options) => fetch(requestUrl, localOllamaFetchOptions(requestUrl, options));
+    : (options) => fetchWithLocalOllamaGuidance(requestUrl, options);
   openTestDialog('llm', 'loading', 'LLM 连接测试', settings.useProxy ? '正在通过站内受限代理请求模型供应商...' : '正在请求模型供应商...', `${requestUrl}\n模型：${settings.model || '未填写'}`);
   try {
     const response = await requestFetch({
@@ -1487,7 +1521,7 @@ async function testLLM() {
   } catch (error) {
     const corsHint = settings.needsApiKey
       ? '如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。'
-      : '请允许浏览器访问本地网络；若仍提示 CORS，请设置 OLLAMA_ORIGINS=https://yachiyo.hk,http://localhost:5173，并完全退出后重启 Ollama。';
+      : `请允许浏览器访问本地网络。Windows PowerShell 运行：\n${ollamaRepairCommand.value}\n\n然后从任务栏完全退出并重新打开 Ollama。`;
     openTestDialog('llm', 'error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n${corsHint}`);
     showToast(`LLM 测试失败：${error.message}`);
   }
@@ -2053,6 +2087,14 @@ onBeforeUnmount(() => {
               </label>
             </div>
 
+            <div v-if="setupLlmMode === 'ollama'" class="ollama-origin-guide">
+              <div>
+                <strong>首次连接需要允许本站</strong>
+                <p>复制命令到 Windows PowerShell 运行，然后完全退出并重新打开 Ollama。</p>
+              </div>
+              <button class="ghost-btn compact" type="button" @click="copyOllamaRepairCommand"><TsIcon name="copy" :size="16" />复制修复命令</button>
+            </div>
+
             <details class="room-step-advanced">
               <summary>
                 <span><TsIcon name="settings" :size="18" /><strong>高级设置</strong><small>端点、模型目录、视觉与代理</small></span>
@@ -2386,7 +2428,7 @@ onBeforeUnmount(() => {
         <div class="form-grid">
           <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="http://localhost:11434/api/chat"></label>
           <label>API Key<input v-model="llm.apiKey" type="password" placeholder="Ollama 可留空 / sk-..."></label>
-          <p class="field-hint warning-text">API Key 仅保存在当前浏览器。Ollama 无需 API Key；首次连接请允许浏览器访问本地网络。若仍提示 CORS，请设置 OLLAMA_ORIGINS=https://yachiyo.hk,http://localhost:5173，并完全退出后重启 Ollama。</p>
+          <p class="field-hint warning-text">API Key 仅保存在当前浏览器。Ollama 无需 API Key；首次连接请允许浏览器访问本地网络，并在修改来源设置后完全重启 Ollama。</p>
           <label>模型名称<input v-model="llm.model" type="text" list="llmSyncedModels" placeholder="gpt-4o-mini"></label>
           <datalist id="llmSyncedModels">
             <option v-for="option in syncedModelOptions" :key="`${option.source}-${option.id}`" :value="syncedModelSelectValue(option)">{{ option.label }}</option>
@@ -2417,6 +2459,7 @@ onBeforeUnmount(() => {
           <div class="button-row">
             <button class="primary-btn" type="button" @click="saveLLM">保存 LLM</button>
             <button class="ghost-btn" type="button" @click="testLLM">测试连接</button>
+            <button v-if="llmProviderKey === 'ollama'" class="ghost-btn" type="button" @click="copyOllamaRepairCommand"><TsIcon name="copy" :size="16" />复制 Ollama 修复命令</button>
             <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" :aria-busy="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
             <StatusLoader v-if="modelCatalog.loading" label="正在同步模型列表" compact />
           </div>
@@ -2673,6 +2716,7 @@ onBeforeUnmount(() => {
           <template v-else>
             <p>{{ testDialog.message }}</p>
             <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
+            <button v-if="showOllamaRepairAction" class="ghost-btn room-test-repair" type="button" @click="copyOllamaRepairCommand"><TsIcon name="copy" :size="16" />复制 Windows 修复命令</button>
           </template>
         </section>
       </div>

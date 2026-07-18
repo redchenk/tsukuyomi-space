@@ -9,7 +9,7 @@ import {
   normalizeLive2DIntent as normalizeRoomLive2DIntent
 } from '../../services/room/live2dControl';
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
-import { localOllamaFetchOptions, normalizeLocalOllamaBaseUrl } from '../../services/room/localOllamaTransport';
+import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from '../../services/room/localOllamaTransport';
 import { readJson, writeJson } from '../../services/room/roomStorage';
 import {
   loadRoomConversation,
@@ -539,7 +539,7 @@ async function translateForJapaneseTts(text) {
     return cleanTtsText(result.reply || '');
   }
 
-  const response = await fetch(apiUrl, localOllamaFetchOptions(apiUrl, {
+  const response = await fetchWithLocalOllamaGuidance(apiUrl, {
     method: 'POST',
     headers: chatRequestHeaders(apiUrl, settings.apiKey),
     body: JSON.stringify(isOllamaNativeApi(apiUrl)
@@ -554,7 +554,7 @@ async function translateForJapaneseTts(text) {
             ],
             temperature: chatTemperatureFor(apiUrl, settings.model || 'gpt-4o-mini', 0.2)
           }))
-  }));
+  });
   if (!response.ok) throw new Error(`日文翻译失败：LLM ${response.status}`);
   return cleanTtsText(pickReply(await response.json()));
 }
@@ -924,7 +924,7 @@ export function useRoomChat({ live2d, world }) {
           image: settings.visionMode === 'mcp' ? null : image
         });
       } else if (settings.apiUrl && (settings.apiKey || useLocalOllama)) {
-        const response = await fetch(apiUrl, localOllamaFetchOptions(apiUrl, {
+        const response = await fetchWithLocalOllamaGuidance(apiUrl, {
           method: 'POST',
           headers: chatRequestHeaders(apiUrl, settings.apiKey),
           body: JSON.stringify(makeLLMRequestBody(
@@ -934,7 +934,7 @@ export function useRoomChat({ live2d, world }) {
             mcpEnhancedMessage || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
             image
           ))
-        }));
+        });
         if (!response.ok) throw new Error(`LLM ${response.status}`);
         result = { reply: pickReply(await response.json()) };
       } else {
