@@ -29,7 +29,12 @@ set +a
 
 DB_FILE="${DB_PATH:-$DATA_DIR/tsukuyomi.db}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/tsukuyomi-space/deploy}"
+DATABASE_BACKUP_DIR="${DATABASE_BACKUP_DIR:-$DATA_DIR/backups}"
+BACKUP_RETENTION="${BACKUP_RETENTION:-10}"
 BACKUP_STAMP="$(date +%Y%m%d-%H%M%S)"
+
+# shellcheck disable=SC1091
+. "$APP_DIR/deploy/backup-retention.sh"
 
 backup_sqlite() {
     if [ ! -f "$DB_FILE" ]; then
@@ -54,6 +59,10 @@ backup_sqlite() {
 }
 
 backup_sqlite
+prune_sqlite_backups "$BACKUP_DIR" "$BACKUP_RETENTION"
+if [ "$DATABASE_BACKUP_DIR" != "$BACKUP_DIR" ]; then
+    prune_sqlite_backups "$DATABASE_BACKUP_DIR" "$BACKUP_RETENTION"
+fi
 
 if ! getent group "$APP_GROUP" >/dev/null; then
     groupadd --system "$APP_GROUP"

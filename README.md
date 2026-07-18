@@ -120,7 +120,7 @@ tsukuyomi-space/
 
 启动时会自动执行 `backend/db/migrations/` 下按版本号排序的迁移脚本，并把执行记录写入 `schema_migrations` 表。
 
-生产部署前必须先备份 SQLite。`deploy/deploy.sh` 会在安装依赖、构建和 PM2 reload 前自动备份 `DB_PATH` 或 `DATA_DIR/tsukuyomi.db` 到 `BACKUP_DIR`，默认目录是 `DATA_DIR/backups`。
+生产部署前必须先备份 SQLite。`deploy/deploy.sh` 会在安装依赖、构建和 PM2 reload 前自动备份 `DB_PATH` 或 `DATA_DIR/tsukuyomi.db` 到 `BACKUP_DIR`，默认目录是 `/var/backups/tsukuyomi-space/deploy`。脚本会分别清理该目录和 `DATABASE_BACKUP_DIR`（默认 `DATA_DIR/backups`），每处只保留由 `BACKUP_RETENTION` 指定的最新备份，默认 10 份。
 
 新增迁移时使用 `NNN_description.js` 命名，例如 `003_add_article_indexes.js`，并导出：
 

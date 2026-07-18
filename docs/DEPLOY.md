@@ -224,7 +224,9 @@ curl http://127.0.0.1:3000/api/health
 `deploy/deploy.sh` 会在每次部署前自动备份 SQLite：
 
 - 数据库路径：优先使用环境变量 `DB_PATH`，否则使用 `DATA_DIR/tsukuyomi.db`。
-- 备份目录：`BACKUP_DIR`，默认是 `DATA_DIR/backups`。
+- 部署备份目录：`BACKUP_DIR`，默认是 `/var/backups/tsukuyomi-space/deploy`。
+- 数据库历史备份目录：`DATABASE_BACKUP_DIR`，默认是 `DATA_DIR/backups`。
+- 备份保留数量：`BACKUP_RETENTION`，默认每个目录保留最新 10 份。
 - 备份方式：服务器有 `sqlite3` 时使用 `.backup`；没有时复制 `.db`，并同时复制可能存在的 `-wal`、`-shm` 文件。
 
 生产环境执行迁移前不要跳过这一步。需要回滚时，先停止 PM2，再把目标备份恢复为当前 `DB_PATH`。
