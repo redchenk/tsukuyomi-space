@@ -423,6 +423,56 @@
 }
 
 @media (max-width: 760px) {
+    .stage-controls {
+        align-items: stretch;
+    }
+
+    .stage-controls .search-box {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .stage-controls .stage-new-btn {
+        flex: 1 0 auto;
+    }
+
+    .stage-filters {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 0.16rem;
+        scrollbar-width: thin;
+    }
+
+    .stage-page .stage-filters .filter-btn {
+        flex: 0 0 auto;
+        min-width: max-content;
+    }
+
+    .stage-card {
+        height: auto;
+        min-height: 0;
+        flex-direction: column-reverse;
+        gap: 0;
+    }
+
+    .stage-card-cover {
+        width: 100%;
+        height: clamp(172px, 52vw, 210px);
+    }
+
+    .stage-card-body {
+        flex: 0 1 auto;
+        min-height: 0;
+        overflow: visible;
+        padding: 1rem;
+    }
+
+    .stage-card-footer {
+        gap: 0.7rem;
+        flex-wrap: wrap;
+    }
+
     .stage-result-strip,
     .stage-pagination {
         align-items: stretch;
@@ -442,6 +492,14 @@
 }
 
 @media (max-width: 560px) {
+    .stage-controls {
+        gap: 0.7rem;
+    }
+
+    .stage-controls .stage-new-btn {
+        width: 100%;
+    }
+
     .stage-result-strip,
     .stage-pagination {
         padding: 0.7rem;

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
@@ -29,6 +29,13 @@ const state = reactive({
 const isAuthed = computed(() => Boolean(session.value));
 const canManageAllAssets = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
 const uploadAccept = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/flac,audio/wav,audio/ogg,audio/mp4,application/pdf,text/plain,text/markdown';
+let assetLoadController = null;
+let assetLoadSequence = 0;
+
+function assetPageSize() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 36;
+  return window.matchMedia('(max-width: 760px)').matches ? 18 : 36;
+}
 
 function syncDefaultScope() {
   state.scope = canManageAllAssets.value && route.query.scope === 'all' ? 'all' : 'mine';
@@ -92,30 +99,40 @@ function markdownFor(asset) {
 
 async function loadAssets(page = 1) {
   if (!isAuthed.value) return;
+  const loadSequence = ++assetLoadSequence;
+  assetLoadController?.abort();
+  const controller = new AbortController();
+  assetLoadController = controller;
   state.loading = true;
   state.loadError = '';
   try {
     const params = new URLSearchParams({
       page: String(page),
-      limit: '72',
+      limit: String(assetPageSize()),
       type: state.type,
       search: state.search.trim()
     });
     if (canManageAllAssets.value && state.scope === 'all') params.set('scope', 'all');
     const response = await authFetch(noStoreUrl(`/api/assets?${params}`), {
       headers: assetAuthHeaders(),
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: controller.signal
     });
     const result = await parseResponse(response);
+    if (loadSequence !== assetLoadSequence) return;
     if (!result.success) throw new Error(result.message || '附件读取失败');
     state.assets = result.data?.assets || [];
     state.page = result.data?.pagination?.page || 1;
     state.totalPages = result.data?.pagination?.totalPages || 1;
   } catch (error) {
+    if (error?.name === 'AbortError' || loadSequence !== assetLoadSequence) return;
     state.assets = [];
     state.loadError = error.message || '附件读取失败';
   } finally {
-    state.loading = false;
+    if (loadSequence === assetLoadSequence) {
+      state.loading = false;
+      if (assetLoadController === controller) assetLoadController = null;
+    }
   }
 }
 
@@ -227,6 +244,12 @@ onMounted(() => {
   syncDefaultScope();
   loadAssets();
 });
+
+onBeforeUnmount(() => {
+  assetLoadSequence += 1;
+  assetLoadController?.abort();
+  assetLoadController = null;
+});
 </script>
 
 <template>
@@ -297,7 +320,17 @@ onMounted(() => {
       <section v-else class="attachments-grid">
         <article v-for="asset in state.assets" :key="asset.id" class="attachments-card">
           <img v-if="assetPreviewType(asset) === 'image'" :src="assetUrl(asset)" :alt="assetName(asset)" loading="lazy">
-          <video v-else-if="assetPreviewType(asset) === 'video'" :src="assetUrl(asset)" preload="metadata" controls></video>
+          <video
+            v-else-if="assetPreviewType(asset) === 'video'"
+            :src="assetUrl(asset)"
+            preload="none"
+            controls
+            playsinline
+            webkit-playsinline
+            disablepictureinpicture
+            disableremoteplayback
+            controlslist="nodownload noplaybackrate noremoteplayback"
+          ></video>
           <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="assetUrl(asset)" preload="metadata" controls></audio>
           <div v-else class="attachments-file-preview">{{ asset.asset_type || 'file' }}</div>
           <div class="attachments-card-body">
@@ -314,7 +347,7 @@ onMounted(() => {
         </article>
       </section>
 
-      <div class="attachments-pager">
+      <div v-if="state.totalPages > 1" class="attachments-pager">
         <button class="ghost-btn" type="button" :disabled="state.page <= 1" @click="loadAssets(state.page - 1)">上一页</button>
         <span>{{ state.page }} / {{ state.totalPages || 1 }}</span>
         <button class="ghost-btn" type="button" :disabled="state.page >= state.totalPages" @click="loadAssets(state.page + 1)">下一页</button>

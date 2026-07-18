@@ -37,6 +37,9 @@ function tryPlayAccessVideo() {
   if (!video || videoState.failed) return;
   video.muted = true;
   video.playsInline = true;
+  video.controls = false;
+  video.disablePictureInPicture = true;
+  video.disableRemotePlayback = true;
   const playPromise = video.play();
   if (playPromise && typeof playPromise.catch === 'function') {
     playPromise.catch(() => {
@@ -117,6 +120,12 @@ onBeforeUnmount(() => {
       muted
       loop
       playsinline
+      webkit-playsinline
+      disablepictureinpicture
+      disableremoteplayback
+      controlslist="nodownload noplaybackrate noremoteplayback"
+      x-webkit-airplay="deny"
+      tabindex="-1"
       preload="metadata"
       :poster="accessPosterSrc"
       aria-hidden="true"

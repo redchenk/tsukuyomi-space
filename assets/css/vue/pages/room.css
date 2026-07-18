@@ -1547,12 +1547,23 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         font-size: 0.74rem;
     }
 
-    .room-panel {
+    .room-panel:not(.room-chat-panel) {
         position: fixed;
         left: 4.25rem !important;
         right: 0.75rem !important;
         top: 10.4rem !important;
         width: auto;
+    }
+
+    .room-panel.room-chat-panel {
+        position: fixed;
+        left: 50% !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem)) !important;
+        width: min(23rem, calc(100vw - 2.2rem));
+        max-height: min(50dvh, 24rem);
+        transform: translateX(-50%);
     }
 
     .music-cover {

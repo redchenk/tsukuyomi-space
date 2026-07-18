@@ -92,6 +92,27 @@ describe('constrained-device performance policy', () => {
         assert.doesNotMatch(hubStyles, /\.hub-arena-cover \.pixel-canvas-renderer\s*\{[^}]*object-fit:\s*cover/s);
     });
 
+    it('keeps mobile content and immersive controls inside the viewport', () => {
+        const stage = source('assets/css/vue/pages/stage.css');
+        const room = source('assets/css/vue/pages/room.css');
+        const accessPage = source('src/frontend/pages/AccessPage.vue');
+        const accessStyles = source('assets/css/vue/pages/access.css');
+        const attachments = source('src/frontend/pages/AttachmentsPage.vue');
+
+        assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card\s*\{[^}]*height:\s*auto[^}]*flex-direction:\s*column-reverse/s);
+        assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card-cover\s*\{[^}]*width:\s*100%[^}]*height:\s*clamp/s);
+        assert.match(room, /\.room-panel:not\(\.room-chat-panel\)/);
+        assert.match(room, /\.room-panel\.room-chat-panel\s*\{[^}]*left:\s*50%\s*!important[^}]*top:\s*auto\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
+        assert.match(accessPage, /disablepictureinpicture/);
+        assert.match(accessPage, /disableremoteplayback/);
+        assert.match(accessStyles, /\.access-video\s*\{[^}]*pointer-events:\s*none[^}]*touch-action:\s*none/s);
+        assert.match(attachments, /let assetLoadController = null/);
+        assert.match(attachments, /assetLoadController\?\.abort\(\)/);
+        assert.match(attachments, /matchMedia\('\(max-width: 760px\)'\)\.matches \? 18 : 36/);
+        assert.match(attachments, /preload="none"[\s\S]*disablepictureinpicture[\s\S]*disableremoteplayback/);
+        assert.match(attachments, /v-if="state\.totalPages > 1" class="attachments-pager"/);
+    });
+
     it('uses compressed full-resolution backgrounds and a lightweight pet frame', () => {
         const runtime = [
             source('src/frontend/utils/assetUrl.js'),
