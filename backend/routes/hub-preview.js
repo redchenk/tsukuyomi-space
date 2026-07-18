@@ -72,7 +72,7 @@ function latestPixelArtwork() {
         sort: 'latest',
         limit: 1,
         offset: 0,
-        preview: 'compact'
+        preview: true
     }).items[0];
     if (!artwork) return null;
     return {

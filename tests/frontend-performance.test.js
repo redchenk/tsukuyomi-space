@@ -75,11 +75,13 @@ describe('constrained-device performance policy', () => {
         assert.match(hub, /@pointerenter="warmScene\(scene\)"/);
     });
 
-    it('keeps Plaza actions readable and renders the Hub pixel preview at its native size', () => {
+    it('keeps mobile actions readable and restores the full-resolution Hub pixel crop', () => {
         const plaza = source('assets/css/vue/pages/plaza.css');
+        const arena = source('assets/css/vue/pages/arena.css');
         const productPolish = source('assets/css/vue/product-polish.css');
         const hubPage = source('src/frontend/pages/HubPage.vue');
         const hubStyles = source('assets/css/vue/pages/hub.css');
+        const hubPreview = source('backend/routes/hub-preview.js');
 
         assert.match(plaza, /\.plaza-msg-footer \.icon-btn\s*\{[^}]*min-width:\s*max-content/s);
         assert.match(plaza, /\.plaza-msg-footer \.icon-btn > span\s*\{[^}]*overflow:\s*visible[^}]*text-overflow:\s*clip/s);
@@ -87,9 +89,14 @@ describe('constrained-device performance policy', () => {
         assert.match(plaza, /@media \(max-width: 560px\)[\s\S]*\.plaza-msg-footer\s*\{[^}]*flex-wrap:\s*wrap[^}]*overflow:\s*visible/);
         assert.match(productPolish, /\.page\.plaza-page \.plaza-msg-footer \.icon-btn:not\([^}]*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
         assert.match(productPolish, /\.page\.plaza-page \.plaza-msg-footer \.icon-btn > span\s*\{[^}]*text-overflow:\s*clip[^}]*white-space:\s*nowrap/s);
-        assert.match(hubPage, /'--hub-pixel-width': `\$\{artworkWidth\(scene\.artwork\)\}px`/);
-        assert.match(hubStyles, /\.hub-arena-cover \.pixel-canvas-renderer\s*\{[^}]*width:\s*min\(100%, var\(--hub-pixel-width[^}]*object-fit:\s*contain/s);
-        assert.doesNotMatch(hubStyles, /\.hub-arena-cover \.pixel-canvas-renderer\s*\{[^}]*object-fit:\s*cover/s);
+        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/s);
+        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions \.icon-btn\s*\{[^}]*width:\s*100%[^}]*min-width:\s*0[^}]*aspect-ratio:\s*auto/s);
+        assert.match(productPolish, /@media \(max-width: 760px\)[\s\S]*\.page\.arena-page \.pixel-art-actions \.icon-btn:not\([^}]*\{[^}]*width:\s*100%[^}]*min-width:\s*0[^}]*aspect-ratio:\s*auto/s);
+        assert.doesNotMatch(hubPage, /--hub-pixel-(?:width|height)/);
+        assert.match(hubStyles, /\.hub-arena-cover \.pixel-canvas-renderer\s*\{[^}]*width:\s*100%[^}]*height:\s*100%[^}]*object-fit:\s*cover/s);
+        assert.match(hubStyles, /@media \(max-width: 620px\)[\s\S]*\.scene-card:not\(\.scene-card-plaza\) \.scene-label\s*\{[^}]*position:\s*absolute[^}]*top:\s*1\.5rem[^}]*left:\s*4\.25rem/s);
+        assert.match(hubPreview, /preview:\s*true/);
+        assert.doesNotMatch(hubPreview, /preview:\s*'compact'/);
     });
 
     it('keeps mobile content and immersive controls inside the viewport', () => {

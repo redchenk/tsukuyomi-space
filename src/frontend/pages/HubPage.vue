@@ -539,11 +539,7 @@ onBeforeUnmount(() => {
           <span
             v-if="scene.kind === 'arena' && scene.artwork"
             class="hub-arena-cover"
-            :style="{
-              '--hub-arena-bg': artworkBackground(scene.artwork),
-              '--hub-pixel-width': `${artworkWidth(scene.artwork)}px`,
-              '--hub-pixel-height': `${artworkHeight(scene.artwork)}px`
-            }"
+            :style="{ '--hub-arena-bg': artworkBackground(scene.artwork) }"
             aria-hidden="true"
           >
             <PixelCanvasCells

@@ -561,8 +561,6 @@
     position: absolute;
     inset: 0;
     z-index: 0;
-    display: grid;
-    place-items: center;
     overflow: hidden;
     background: var(--hub-arena-bg, #0b1020);
     pointer-events: none;
@@ -570,14 +568,13 @@
 
 .hub-arena-cover .pixel-canvas-renderer {
     display: block;
-    width: min(100%, var(--hub-pixel-width, 192px));
-    height: auto;
-    max-height: 100%;
-    object-fit: contain;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     image-rendering: pixelated;
     opacity: 0.82;
-    transform: translateZ(0);
-    transition: opacity 0.22s ease, filter 0.22s ease;
+    transform: scale(1.02);
+    transition: transform 0.28s ease, opacity 0.28s ease;
 }
 
 .scene-card-arena:has(.hub-arena-cover)::before {
@@ -592,7 +589,7 @@
 
 .scene-card-arena:hover .hub-arena-cover .pixel-canvas-renderer {
     opacity: 0.94;
-    filter: brightness(1.04);
+    transform: scale(1.08);
 }
 
 .scene-code {
@@ -2728,5 +2725,28 @@ html[data-theme="light"] body .page.hub .scene-card::after {
         box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.22),
             0 12px 30px rgba(174, 242, 255, 0.22);
+    }
+}
+
+@media (max-width: 620px) {
+    body .page.hub .scene-card:not(.scene-card-plaza) {
+        grid-template-rows: 40px minmax(0, 1fr) auto;
+    }
+
+    body .page.hub .scene-card:not(.scene-card-plaza) .scene-top {
+        grid-row: 1;
+    }
+
+    body .page.hub .scene-card:not(.scene-card-plaza) .scene-label {
+        position: absolute;
+        top: 1.5rem;
+        left: 4.25rem;
+        width: max-content;
+        max-width: calc(100% - 5.25rem);
+    }
+
+    body .page.hub .scene-card:not(.scene-card-plaza) .scene-main {
+        grid-row: 2;
+        align-self: end;
     }
 }

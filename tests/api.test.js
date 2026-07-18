@@ -1407,9 +1407,9 @@ describe('pixel art API', () => {
         assert.ok(hubPreview.body.data.pixel);
         assert.equal(Object.hasOwn(hubPreview.body.data.pixel, 'pixels'), false);
         assert.equal(typeof hubPreview.body.data.pixel.pixels_base64, 'string');
-        assert.ok(hubPreview.body.data.pixel.width <= 96);
-        assert.ok(hubPreview.body.data.pixel.height <= 54);
-        assert.ok(JSON.stringify(hubPreview.body).length < 32 * 1024);
+        assert.equal(hubPreview.body.data.pixel.width, artworkWidth);
+        assert.equal(hubPreview.body.data.pixel.height, artworkHeight);
+        assert.ok(JSON.stringify(hubPreview.body).length < 64 * 1024);
     });
 
     it('isolates pixel artwork management by owner while allowing admins', async () => {

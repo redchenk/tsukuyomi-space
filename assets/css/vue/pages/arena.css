@@ -3326,3 +3326,28 @@ body .page.arena-page .arena-gallery-pager span {
     text-align: center;
     font-variant-numeric: tabular-nums;
 }
+
+@media (max-width: 760px) {
+    body .page.arena-page .pixel-art-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+        gap: 0.5rem;
+        padding: 0.58rem;
+    }
+
+    body .page.arena-page .pixel-art-actions .icon-btn {
+        width: 100%;
+        min-width: 0;
+        min-height: 40px;
+        aspect-ratio: auto;
+        padding-inline: 0.5rem;
+    }
+
+    body .page.arena-page .pixel-art-actions .icon-btn > span {
+        min-width: 0;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: nowrap;
+    }
+}
