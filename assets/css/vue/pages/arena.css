@@ -3371,4 +3371,8 @@ body .page.arena-page .arena-gallery-pager span {
     body .page.arena-page .pixel-canvas-renderer {
         touch-action: pan-y pinch-zoom;
     }
+
+    body .page.arena-page .pixel-canvas-renderer:not(.is-tool-move) {
+        touch-action: none;
+    }
 }

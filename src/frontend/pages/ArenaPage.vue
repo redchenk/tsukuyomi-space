@@ -172,12 +172,17 @@ const copy = computed(() => props.lang === 'ja' ? {
   by: 'by'
 });
 
+function initialCanvasTool() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'brush';
+  return window.matchMedia('(max-width: 760px) and (pointer: coarse)').matches ? 'move' : 'brush';
+}
+
 const session = ref(getSession());
 const selectedColor = ref(presetPalette[3]);
 const customColor = ref('#ff5f96');
 const customColors = ref([]);
 const backgroundColor = ref('#ffffff');
-const tool = ref('brush');
+const tool = ref(initialCanvasTool());
 const isDrawing = ref(false);
 const canvasWidth = ref(DEFAULT_CANVAS_PRESET.width);
 const canvasHeight = ref(DEFAULT_CANVAS_PRESET.height);

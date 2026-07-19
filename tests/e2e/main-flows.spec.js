@@ -308,7 +308,7 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     await expect(lightbox).toHaveCount(0);
 });
 
-test('pixel canvas preserves vertical page scrolling on touch phones', async ({ browser }) => {
+test('pixel canvas switches between mobile scrolling and uninterrupted drawing', async ({ browser }) => {
     const context = await browser.newContext({
         viewport: { width: 390, height: 844 },
         isMobile: true,
@@ -319,7 +319,11 @@ test('pixel canvas preserves vertical page scrolling on touch phones', async ({ 
     try {
         await page.goto('/pixel');
         const canvas = page.getByRole('img', { name: 'pixel canvas', exact: true });
+        const toolButtons = page.locator('.arena-tool-toggle .icon-btn');
+        const brushButton = toolButtons.first();
+        const moveButton = toolButtons.last();
         await expect(canvas).toBeVisible();
+        await expect(moveButton).toHaveClass(/active/);
         await canvas.scrollIntoViewIfNeeded();
 
         const initialScrollY = await page.evaluate(() => window.scrollY);
@@ -343,6 +347,38 @@ test('pixel canvas preserves vertical page scrolling on touch phones', async ({ 
         await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
         await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(initialScrollY);
+
+        await brushButton.click();
+        await expect(brushButton).toHaveClass(/active/);
+        await expect.poll(() => canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
+        await canvas.evaluate((element) => {
+            window.__pixelPointerTrace = [];
+            for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) {
+                element.addEventListener(type, () => window.__pixelPointerTrace.push(type));
+            }
+        });
+
+        const drawingBox = await canvas.boundingBox();
+        expect(drawingBox).not.toBeNull();
+        const drawX = drawingBox.x + Math.min(drawingBox.width / 2, 120);
+        const drawStartY = drawingBox.y + Math.min(drawingBox.height * 0.3, 120);
+        await session.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [{ x: drawX, y: drawStartY }]
+        });
+        for (const y of [drawStartY + 30, drawStartY + 60, drawStartY + 90, drawStartY + 120]) {
+            await session.send('Input.dispatchTouchEvent', {
+                type: 'touchMove',
+                touchPoints: [{ x: drawX, y }]
+            });
+        }
+        await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+        const pointerTrace = await page.evaluate(() => window.__pixelPointerTrace);
+        expect(pointerTrace).toContain('pointerdown');
+        expect(pointerTrace).toContain('pointermove');
+        expect(pointerTrace).toContain('pointerup');
+        expect(pointerTrace).not.toContain('pointercancel');
     } finally {
         await context.close();
     }
