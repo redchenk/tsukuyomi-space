@@ -1657,7 +1657,10 @@ body .page.arena-page .arena-controls {
     display: flex;
     flex-direction: column;
     gap: 0.85rem;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
     padding: 1rem;
 }
 

@@ -505,7 +505,7 @@ html[data-theme="dark"] .stage-card {
     background: var(--panel);
 }
 
-.panel,
+.panel:not(.arena-controls),
 .hub-copy,
 .hub-feature,
 .hub-grid-wrap,

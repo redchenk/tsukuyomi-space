@@ -384,6 +384,27 @@ test('pixel canvas switches between mobile scrolling and uninterrupted drawing',
     }
 });
 
+test('desktop pixel controls scroll independently from the page', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto('/pixel');
+
+    const controls = page.locator('.arena-controls');
+    await expect(controls).toBeVisible();
+
+    const metrics = await controls.evaluate((element) => ({
+        clientHeight: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+        overflowY: getComputedStyle(element).overflowY
+    }));
+    expect(metrics.overflowY).toBe('auto');
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+
+    await controls.hover();
+    await page.mouse.wheel(0, 480);
+    await expect.poll(() => controls.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 test('admin can open the terminal dashboard and user panel', async ({ page }) => {
     await loginAsUser(page);
     const pendingMessage = `E2E terminal moderation 政治 ${Date.now()}`;

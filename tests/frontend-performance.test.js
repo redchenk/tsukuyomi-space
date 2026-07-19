@@ -105,6 +105,15 @@ describe('constrained-device performance policy', () => {
         assert.doesNotMatch(hubPreview, /preview:\s*'compact'/);
     });
 
+    it('keeps desktop pixel controls scrollable without trapping mobile page scrolling', () => {
+        const arena = source('assets/css/vue/pages/arena.css');
+        const modernTheme = source('assets/css/vue/modern-theme.css');
+
+        assert.match(modernTheme, /\.panel:not\(\.arena-controls\),\s*\n\.hub-copy,[\s\S]*?\.terminal-panel\s*\{[^}]*overflow:\s*hidden/s);
+        assert.match(arena, /body \.page\.arena-page \.arena-controls\s*\{[^}]*overflow-x:\s*hidden[^}]*overflow-y:\s*auto[^}]*overscroll-behavior-y:\s*contain[^}]*scrollbar-gutter:\s*stable/s);
+        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*body \.page\.arena-page \.arena-controls\s*\{[^}]*overflow:\s*visible/s);
+    });
+
     it('keeps mobile content and immersive controls inside the viewport', () => {
         const stage = source('assets/css/vue/pages/stage.css');
         const room = source('assets/css/vue/pages/room.css');
