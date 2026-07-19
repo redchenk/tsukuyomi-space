@@ -1,4 +1,4 @@
-add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data: blob: https:; connect-src 'self' https: wss: http://localhost:11434; frame-src https:; frame-ancestors 'self'; form-action 'self'; manifest-src 'self'; worker-src 'self' blob:" always;
+add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http://localhost:9880 http://127.0.0.1:9880; font-src 'self' data:; media-src 'self' data: blob: https: http://localhost:9880 http://127.0.0.1:9880; connect-src 'self' https: wss: http://localhost:11434; frame-src https:; frame-ancestors 'self'; form-action 'self'; manifest-src 'self'; worker-src 'self' blob:" always;
 add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 add_header X-Content-Type-Options nosniff always;
 add_header X-Frame-Options SAMEORIGIN always;

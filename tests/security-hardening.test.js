@@ -227,7 +227,10 @@ describe('browser security headers', () => {
         assert.match(CONTENT_SECURITY_POLICY, /form-action 'self'/);
         assert.match(CONTENT_SECURITY_POLICY, /manifest-src 'self'/);
         assert.match(CONTENT_SECURITY_POLICY, /connect-src[^;]*http:\/\/localhost:11434/);
+        assert.match(CONTENT_SECURITY_POLICY, /img-src[^;]*http:\/\/localhost:9880[^;]*http:\/\/127\.0\.0\.1:9880/);
+        assert.match(CONTENT_SECURITY_POLICY, /media-src[^;]*http:\/\/localhost:9880[^;]*http:\/\/127\.0\.0\.1:9880/);
         assert.doesNotMatch(CONTENT_SECURITY_POLICY, /connect-src[^;]*\shttp:\s/);
+        assert.doesNotMatch(CONTENT_SECURITY_POLICY, /(?:img|media)-src[^;]*\shttp:\s/);
         assert.doesNotMatch(CONTENT_SECURITY_POLICY, /upgrade-insecure-requests/);
         assert.doesNotMatch(CONTENT_SECURITY_POLICY, /unsafe-eval|script-src[^;]*unsafe-inline/);
     });
