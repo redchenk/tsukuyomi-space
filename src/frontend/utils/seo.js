@@ -4,6 +4,7 @@ const SITE_NAME = '月读空间';
 const SITE_URL = 'https://yachiyo.hk';
 const DEFAULT_DESCRIPTION = '月读空间是一个融合文章、留言广场、Live2D 房间与互动工具的二次元个人站。';
 const DEFAULT_IMAGE = `${SITE_URL}/assets/icons/icon-512.png`;
+const DEFAULT_KEYWORDS = ['月读空间', 'Tsukuyomi Space', '超时空辉夜姬', 'Live2D', '二次元个人站'];
 
 function absoluteUrl(path = '/') {
   try {
@@ -58,6 +59,13 @@ function normalizeTags(value) {
   return String(value).split(/[,，]/).map((tag) => tag.trim()).filter(Boolean);
 }
 
+function normalizeKeywords(value) {
+  const keywords = normalizeTags(value)
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
+  return [...new Set(keywords)].slice(0, 32).join(', ');
+}
+
 function activeDocumentLanguage() {
   try {
     return documentLanguage(localStorage.getItem('lang'));
@@ -69,6 +77,7 @@ function activeDocumentLanguage() {
 export function applySeo({
   title = SITE_NAME,
   description = DEFAULT_DESCRIPTION,
+  keywords = DEFAULT_KEYWORDS,
   path = window.location.pathname + window.location.search,
   image = DEFAULT_IMAGE,
   type = 'website',
@@ -76,26 +85,30 @@ export function applySeo({
   structuredData = null,
   language = activeDocumentLanguage()
 } = {}) {
-  const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
+  const pageTitle = String(title || SITE_NAME).trim() || SITE_NAME;
+  const pageDescription = String(description || DEFAULT_DESCRIPTION).trim() || DEFAULT_DESCRIPTION;
+  const fullTitle = pageTitle.includes(SITE_NAME) ? pageTitle : `${pageTitle} | ${SITE_NAME}`;
+  const keywordContent = normalizeKeywords(keywords) || normalizeKeywords(DEFAULT_KEYWORDS);
   const url = absoluteUrl(path);
   const imageUrl = absoluteUrl(image);
 
   document.title = fullTitle;
   document.documentElement.lang = documentLanguage(language);
-  upsertMeta('meta[name="description"]', { name: 'description', content: description || DEFAULT_DESCRIPTION });
+  upsertMeta('meta[name="description"]', { name: 'description', content: pageDescription });
+  upsertMeta('meta[name="keywords"]', { name: 'keywords', content: keywordContent });
   upsertMeta('meta[name="robots"]', { name: 'robots', content: noindex ? 'noindex,nofollow' : 'index,follow' });
   upsertLink('canonical', url);
 
   upsertMeta('meta[property="og:type"]', { property: 'og:type', content: type });
   upsertMeta('meta[property="og:site_name"]', { property: 'og:site_name', content: SITE_NAME });
   upsertMeta('meta[property="og:title"]', { property: 'og:title', content: fullTitle });
-  upsertMeta('meta[property="og:description"]', { property: 'og:description', content: description || DEFAULT_DESCRIPTION });
+  upsertMeta('meta[property="og:description"]', { property: 'og:description', content: pageDescription });
   upsertMeta('meta[property="og:url"]', { property: 'og:url', content: url });
   upsertMeta('meta[property="og:image"]', { property: 'og:image', content: imageUrl });
 
-  upsertMeta('meta[name="twitter:card"]', { name: 'twitter:card', content: 'summary' });
+  upsertMeta('meta[name="twitter:card"]', { name: 'twitter:card', content: 'summary_large_image' });
   upsertMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: fullTitle });
-  upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: description || DEFAULT_DESCRIPTION });
+  upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: pageDescription });
   upsertMeta('meta[name="twitter:image"]', { name: 'twitter:image', content: imageUrl });
 
   upsertStructuredData('page', structuredData);
@@ -106,7 +119,8 @@ export function applyRouteSeo(route) {
   applySeo({
     title: meta.title || SITE_NAME,
     description: meta.description || DEFAULT_DESCRIPTION,
-    path: route.fullPath || '/',
+    keywords: meta.keywords || DEFAULT_KEYWORDS,
+    path: route.path || route.fullPath || '/',
     noindex: Boolean(meta.noindex)
   });
 }
@@ -125,6 +139,7 @@ export function articleSeo(article, path) {
   return {
     title,
     description,
+    keywords: tags.length ? tags : [title, article?.category, '月读空间文章'].filter(Boolean),
     path,
     image,
     type: 'article',

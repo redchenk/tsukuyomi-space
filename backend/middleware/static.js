@@ -4,8 +4,12 @@ const express = require('express');
 const config = require('../config');
 const articleRepository = require('../repositories/article-repository');
 const assetRepository = require('../repositories/asset-repository');
+const friendLinkRepository = require('../repositories/friend-link-repository');
+const pixelArtRepository = require('../repositories/pixel-art-repository');
 const objectStorage = require('../services/object-storage');
 const { articlePath, renderArticleHtml, renderGalleryHtml, renderNotFoundHtml, renderStageHtml, renderTopicLandingHtml } = require('../seo/render-article');
+const { WIKI_ENTRIES, WIKI_VERIFIED_AT, findWikiEntry, wikiEntryPath } = require('../seo/wiki-content');
+const { renderFriendLinksHtml, renderHubHtml, renderPixelHtml, renderWikiEntryHtml, renderWikiHtml } = require('../seo/render-pages');
 
 const CRAWLER_USER_AGENT = /(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|discordbot)/i;
 
@@ -21,6 +25,7 @@ const SEO_ROUTES = [
     { path: '/room', priority: '0.8', changefreq: 'weekly' },
     { path: '/gallery', priority: '0.8', changefreq: 'daily' },
     { path: '/wiki', priority: '0.8', changefreq: 'monthly' },
+    { path: '/friend-links', priority: '0.6', changefreq: 'weekly' },
     { path: '/reality', priority: '0.7', changefreq: 'weekly' },
     { path: '/pixel', priority: '0.7', changefreq: 'weekly' }
 ];
@@ -85,6 +90,36 @@ const TOPIC_ROUTES = [
             { label: '阅读现实锚点', href: '/reality' }
         ],
         priority: '0.75'
+    },
+    {
+        path: '/topics/cosmic-princess-kaguya-wiki',
+        title: '超时空辉夜姬角色与世界观 Wiki 专题',
+        description: '集中浏览超时空辉夜姬角色、月读世界观、八千代杯、KASSEN、音乐词条、公开文章与资料来源。',
+        keywords: ['超时空辉夜姬 Wiki', '超时空辉夜姬角色', '月读世界观', '八千代杯', 'KASSEN'],
+        match: ['辉夜', '彩叶', '八千代', '月读', 'KASSEN', '八千代杯'],
+        categories: ['传说', '二创'],
+        points: ['收录 12 个角色独立词条', '收录全部世界观与音乐词条', '连接公开文章、图库和完整互动 Wiki'],
+        actions: [
+            { label: '浏览完整 Wiki', href: '/wiki' },
+            { label: '阅读相关文章', href: '/stage' },
+            { label: '查看公开图库', href: '/gallery' }
+        ],
+        priority: '0.85'
+    },
+    {
+        path: '/topics/pixel-art-community',
+        title: '192×108 在线像素画与作品社区',
+        description: '月读空间提供固定 192×108 画布的在线像素画工具，并支持公开发布、作品浏览、点赞和 PNG 导出。',
+        keywords: ['在线像素画', '192×108 像素画', 'Pixel Art 编辑器', '像素画社区', 'PNG 导出'],
+        match: ['像素', 'pixel', '画布', '绘画', '作品'],
+        categories: ['技术', '二创'],
+        points: ['固定 192×108 像素画布', '支持鼠标、触控笔与数位板创作', '公开作品展示、点赞与 PNG 导出'],
+        actions: [
+            { label: '打开像素画工具', href: '/pixel' },
+            { label: '浏览创作文章', href: '/stage' },
+            { label: '查看公开图库', href: '/gallery' }
+        ],
+        priority: '0.75'
     }
 ];
 
@@ -123,7 +158,12 @@ function xmlEscape(value) {
 }
 
 function absoluteSiteUrl(pathname) {
-    return `${config.publicSiteUrl}${pathname.startsWith('/') ? pathname : `/${pathname}`}`;
+    try {
+        const url = new URL(String(pathname || '/'), config.publicSiteUrl);
+        return ['http:', 'https:'].includes(url.protocol) ? url.toString() : config.publicSiteUrl;
+    } catch (_) {
+        return config.publicSiteUrl;
+    }
 }
 
 function sitemapUrl({ loc, lastmod, changefreq, priority }) {
@@ -133,6 +173,27 @@ function sitemapUrl({ loc, lastmod, changefreq, priority }) {
         lastmod ? `    <lastmod>${xmlEscape(lastmod)}</lastmod>` : '',
         changefreq ? `    <changefreq>${xmlEscape(changefreq)}</changefreq>` : '',
         priority ? `    <priority>${xmlEscape(priority)}</priority>` : '',
+        '  </url>'
+    ].filter(Boolean).join('\n');
+}
+
+function sitemapImageUrl({ loc, lastmod, images = [] }) {
+    const imageXml = images
+        .filter(image => image?.loc && !String(image.loc).startsWith('data:'))
+        .map(image => [
+            '    <image:image>',
+            `      <image:loc>${xmlEscape(absoluteSiteUrl(image.loc))}</image:loc>`,
+            image.title ? `      <image:title>${xmlEscape(image.title)}</image:title>` : '',
+            image.caption ? `      <image:caption>${xmlEscape(image.caption)}</image:caption>` : '',
+            '    </image:image>'
+        ].filter(Boolean).join('\n'))
+        .join('\n');
+    if (!imageXml) return '';
+    return [
+        '  <url>',
+        `    <loc>${xmlEscape(loc)}</loc>`,
+        lastmod ? `    <lastmod>${xmlEscape(lastmod)}</lastmod>` : '',
+        imageXml,
         '  </url>'
     ].filter(Boolean).join('\n');
 }
@@ -154,6 +215,7 @@ function sendRobots(req, res) {
         'Disallow: /register',
         'Disallow: /gallery/manage',
         `Sitemap: ${absoluteSiteUrl('/sitemap.xml')}`,
+        `Sitemap: ${absoluteSiteUrl('/sitemap-images.xml')}`,
         ''
     ].join('\n'));
 }
@@ -187,6 +249,12 @@ function sendSitemap(req, res) {
         changefreq: 'weekly',
         priority: route.priority
     }));
+    const wikiUrls = WIKI_ENTRIES.map(entry => sitemapUrl({
+        loc: absoluteSiteUrl(wikiEntryPath(entry)),
+        lastmod: WIKI_VERIFIED_AT,
+        changefreq: 'monthly',
+        priority: entry.kind === 'character' ? '0.72' : '0.68'
+    }));
     const articleUrls = articleRepository.listSeoArticles().map(article => sitemapUrl({
         loc: absoluteSiteUrl(articlePath(article)),
         lastmod: String(article.updated_at || article.created_at || article.publish_date || today).slice(0, 10),
@@ -200,10 +268,49 @@ function sendSitemap(req, res) {
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
         ...staticUrls,
         ...topicUrls,
+        ...wikiUrls,
         ...articleUrls,
         '</urlset>',
         ''
     ].join('\n'));
+}
+
+function galleryImageTitle(asset, index) {
+    const metadata = asset?.metadata || {};
+    return metadata.alt || metadata.title || metadata.description || `月读空间公开图库图片 ${index + 1}`;
+}
+
+function sendImageSitemap(req, res) {
+    const articles = articleRepository.listSeoArticles();
+    const articleImages = articles.map(article => sitemapImageUrl({
+        loc: absoluteSiteUrl(articlePath(article)),
+        lastmod: String(article.updated_at || article.created_at || article.publish_date || '').slice(0, 10),
+        images: article.cover_image ? [{
+            loc: article.cover_image,
+            title: article.title,
+            caption: article.excerpt || `${article.title}文章封面`
+        }] : []
+    })).filter(Boolean);
+    const galleryAssets = seoGalleryAssets(1000);
+    const galleryImages = sitemapImageUrl({
+        loc: absoluteSiteUrl('/gallery'),
+        lastmod: String(galleryAssets[0]?.updated_at || galleryAssets[0]?.created_at || '').slice(0, 10),
+        images: galleryAssets.map((asset, index) => ({
+            loc: asset.display_url || asset.access_url || asset.url,
+            title: galleryImageTitle(asset, index),
+            caption: asset.owner_username ? `${galleryImageTitle(asset, index)}，上传者：${asset.owner_username}` : galleryImageTitle(asset, index)
+        }))
+    });
+    setNoStore(res);
+    res.removeHeader('ETag');
+    res.type('application/xml; charset=utf-8').send([
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
+        ...articleImages,
+        galleryImages,
+        '</urlset>',
+        ''
+    ].filter(Boolean).join('\n'));
 }
 
 function matchTopicArticle(topic, article) {
@@ -227,6 +334,13 @@ function serveStaticFiles(app) {
 
     app.get('/robots.txt', sendRobots);
     app.get('/sitemap.xml', sendSitemap);
+    app.get('/sitemap-images.xml', sendImageSitemap);
+    app.get('/hub', (req, res, next) => {
+        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
+        res.vary('User-Agent');
+        setNoStore(res);
+        return res.type('html').send(renderHubHtml(articleRepository.listSeoArticles(12)));
+    });
     app.get('/stage', (req, res, next) => {
         if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
         res.vary('User-Agent');
@@ -238,6 +352,41 @@ function serveStaticFiles(app) {
         res.vary('User-Agent');
         setNoStore(res);
         return res.type('html').send(renderGalleryHtml(seoGalleryAssets(48)));
+    });
+    app.get('/pixel', (req, res, next) => {
+        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
+        res.vary('User-Agent');
+        setNoStore(res);
+        const artworks = pixelArtRepository.listArtworks({ limit: 24, preview: 'compact' }).items;
+        return res.type('html').send(renderPixelHtml(artworks));
+    });
+    app.get('/wiki', (req, res, next) => {
+        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
+        res.vary('User-Agent');
+        setNoStore(res);
+        return res.type('html').send(renderWikiHtml(WIKI_ENTRIES));
+    });
+    app.get('/wiki/characters/:slug', (req, res, next) => {
+        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
+        const entry = findWikiEntry('character', req.params.slug);
+        if (!entry) return next();
+        res.vary('User-Agent');
+        setNoStore(res);
+        return res.type('html').send(renderWikiEntryHtml(entry));
+    });
+    app.get('/wiki/terms/:slug', (req, res, next) => {
+        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
+        const entry = findWikiEntry('term', req.params.slug);
+        if (!entry) return next();
+        res.vary('User-Agent');
+        setNoStore(res);
+        return res.type('html').send(renderWikiEntryHtml(entry));
+    });
+    app.get('/friend-links', (req, res, next) => {
+        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
+        res.vary('User-Agent');
+        setNoStore(res);
+        return res.type('html').send(renderFriendLinksHtml(friendLinkRepository.listActiveLinks()));
     });
     app.get('/gallery/manage', (req, res, next) => {
         res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -312,7 +461,7 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/room/settings', '/room-settings', '/plaza', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/']);
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/']);
         const wikiEntryRoute = req.path.startsWith('/wiki/characters/') || req.path.startsWith('/wiki/terms/');
         if (vueRoutes.has(req.path) || req.path.startsWith('/users/') || wikiEntryRoute) {
             if (!useFrontendDist) {

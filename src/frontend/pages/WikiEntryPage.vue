@@ -8,6 +8,7 @@ import {
   relatedWikiEntries,
   wikiEntryPath
 } from '../data/cosmicKaguyaWikiEntries';
+import { applySeo } from '../utils/seo';
 
 const props = defineProps({
   kind: { type: String, required: true },
@@ -44,12 +45,42 @@ const sectionLinks = computed(() => {
 
 function applyEntrySeo() {
   if (!entry.value) {
-    document.title = '词条未找到 | 超辉夜姬！Wiki';
+    applySeo({
+      title: '词条未找到 - 超辉夜姬！Wiki',
+      description: '请求的超时空辉夜姬 Wiki 词条不存在。',
+      path: window.location.pathname,
+      noindex: true
+    });
     return;
   }
-  document.title = `${entry.value.title} - ${entry.value.kindLabel} | 超辉夜姬！Wiki`;
-  const description = document.querySelector('meta[name="description"]');
-  description?.setAttribute('content', entry.value.headline);
+  const path = wikiEntryPath(entry.value.kind, entry.value.slug);
+  const keywords = [
+    entry.value.title,
+    entry.value.original,
+    ...entry.value.aliases,
+    ...entry.value.tags,
+    entry.value.kind === 'character' ? '超时空辉夜姬角色' : '超时空辉夜姬世界观',
+    '超辉夜姬 Wiki'
+  ].filter(Boolean);
+  applySeo({
+    title: `${entry.value.title} - ${entry.value.kindLabel} - 超辉夜姬！Wiki`,
+    description: entry.value.headline,
+    keywords,
+    path,
+    image: entry.value.image || undefined,
+    type: 'article',
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: `${entry.value.title} - ${entry.value.kindLabel}`,
+      description: entry.value.headline,
+      image: entry.value.image ? [`https://yachiyo.hk${entry.value.image}`] : undefined,
+      mainEntityOfPage: `https://yachiyo.hk${path}`,
+      inLanguage: 'zh-CN',
+      keywords: keywords.join(', '),
+      about: entry.value.title
+    }
+  });
 }
 
 function scrollToSection(id, event) {

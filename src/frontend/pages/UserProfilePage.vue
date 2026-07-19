@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { assetUrl } from '../utils/assetUrl';
+import { applySeo } from '../utils/seo';
 import { formatDateOnly } from '../utils/time';
 
 const props = defineProps({
@@ -101,9 +102,37 @@ async function loadProfile() {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '\u7528\u6237\u4e3b\u9875\u8bfb\u53d6\u5931\u8d25');
     profile.value = result.data;
+    const publicUser = result.data?.user || {};
+    const publicArticles = Array.isArray(result.data?.articles) ? result.data.articles : [];
+    const description = String(publicUser.bio || `${publicUser.username || username.value} 在月读空间发布的公开文章与创作资料。`).trim();
+    applySeo({
+      title: `${publicUser.username || username.value}的公开主页`,
+      description,
+      keywords: [publicUser.username, '月读空间创作者', ...publicArticles.map((article) => article.category)].filter(Boolean),
+      path: `/users/${encodeURIComponent(publicUser.username || username.value)}`,
+      image: /^https?:\/\//i.test(publicUser.avatar || '') ? publicUser.avatar : undefined,
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'ProfilePage',
+        name: `${publicUser.username || username.value}的公开主页`,
+        description,
+        url: `https://yachiyo.hk/users/${encodeURIComponent(publicUser.username || username.value)}`,
+        mainEntity: {
+          '@type': 'Person',
+          name: publicUser.username || username.value,
+          description
+        }
+      }
+    });
   } catch (error) {
     profile.value = null;
     message.value = error.message || '\u7528\u6237\u4e3b\u9875\u8bfb\u53d6\u5931\u8d25';
+    applySeo({
+      title: '公开主页不存在',
+      description: '请求的月读空间公开用户主页不存在。',
+      path: `/users/${encodeURIComponent(username.value)}`,
+      noindex: true
+    });
   } finally {
     loading.value = false;
   }

@@ -8,7 +8,9 @@ const TOPIC_LINKS = [
     { href: '/topics/chou-kaguya-hime', title: '超时空辉夜姬资源', text: '小说、电影、二创与图库入口' },
     { href: '/topics/yachiyo-live2d', title: '八千代 Live2D 房间', text: 'Live2D、语音与角色互动体验' },
     { href: '/topics/ai-character-room', title: '月读空间 AI 角色互动', text: 'AI 聊天、TTS、记忆与房间设置' },
-    { href: '/topics/kaguya-yachiyo', title: '超时空辉夜姬 八千代', text: '八千代相关内容与现实锚点' }
+    { href: '/topics/kaguya-yachiyo', title: '超时空辉夜姬 八千代', text: '八千代相关内容与现实锚点' },
+    { href: '/topics/cosmic-princess-kaguya-wiki', title: '角色与世界观 Wiki', text: '全部角色、设定和音乐词条' },
+    { href: '/topics/pixel-art-community', title: '192×108 在线像素画', text: '像素创作、分享、点赞与导出' }
 ];
 
 function escapeHtml(value) {
@@ -427,6 +429,7 @@ function renderArticleHtml(article) {
     const description = articleDescription(article);
     const url = articleUrl(article);
     const image = absoluteUrl(article.cover_image || DEFAULT_IMAGE);
+    const keywords = [...new Set([...parseTags(article.tags), article.category, article.title, '月读空间文章'].filter(Boolean))];
     const body = renderArticleBody(article) || renderPlainContent(plainArticleContent(article) || article.excerpt || '');
 
     return `<!DOCTYPE html>
@@ -436,6 +439,7 @@ function renderArticleHtml(article) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(description)}">
+  <meta name="keywords" content="${escapeHtml(keywords.join(', '))}">
   <meta name="robots" content="index,follow">
   <link rel="canonical" href="${escapeHtml(url)}">
   <link rel="icon" href="/favicon.ico" sizes="any">
@@ -506,6 +510,7 @@ function renderStageHtml(articles = []) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(description)}">
+  <meta name="keywords" content="月读空间文章, 主舞台, 超时空辉夜姬二创, Live2D 技术, 创作日志">
   <meta name="robots" content="index,follow">
   <link rel="canonical" href="${escapeHtml(url)}">
   <meta property="og:type" content="website">
@@ -682,6 +687,7 @@ function renderGalleryHtml(assets = []) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(description)}">
+  <meta name="keywords" content="月读空间图库, 超时空辉夜姬图片, 二次元插画, 公开图片画廊, 用户创作图片">
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="${escapeHtml(url)}">
   <link rel="icon" href="/favicon.ico" sizes="any">

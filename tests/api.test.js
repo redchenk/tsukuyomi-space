@@ -30,6 +30,7 @@ const { createEmbedding } = require('../backend/services/room-embedding');
 const { requireUserId, similarity } = require('../backend/services/room-memory');
 const { scopeFilter, truncateUtf8 } = require('../backend/services/room-milvus-store');
 const objectStorage = require('../backend/services/object-storage');
+const { renderSeoCollectionPage } = require('../backend/seo/render-pages');
 
 let server;
 let baseUrl;
@@ -2946,6 +2947,94 @@ describe('legacy page paths', () => {
         } finally {
             const remove = db.prepare('DELETE FROM articles WHERE id = ?');
             for (const id of ids) remove.run(id);
+        }
+    });
+
+    it('serves crawler snapshots for Hub, Pixel, Wiki entries, and public friend links', async () => {
+        const crawlerHeaders = { 'User-Agent': 'Googlebot/2.1' };
+        const pages = [
+            ['/hub', /月读空间中枢大厅/],
+            ['/pixel', /192×108 月光像素画工坊/],
+            ['/wiki', /超时空辉夜姬角色与世界观 Wiki/],
+            ['/wiki/characters/kaguya', /辉夜 - 角色词条/],
+            ['/wiki/terms/tsukuyomi', /月读／TSUKUYOMI/],
+            ['/friend-links', /月读空间友链导航/]
+        ];
+
+        for (const [pathname, expected] of pages) {
+            const crawler = await request(pathname, { headers: crawlerHeaders });
+            assert.equal(crawler.response.status, 200, pathname);
+            assert.match(crawler.response.headers.get('vary') || '', /User-Agent/i, pathname);
+            assert.match(crawler.body, expected, pathname);
+            assert.match(crawler.body, /<meta name="keywords" content="[^"]+">/, pathname);
+            assert.match(crawler.body, /<link rel="canonical" href="https:\/\/yachiyo\.hk\//, pathname);
+        }
+
+        const browserHub = await request('/hub', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        assert.equal(browserHub.response.status, 503);
+        assert.match(browserHub.body, /Frontend build is missing/);
+    });
+
+    it('keeps crawler snapshot links on safe web protocols', () => {
+        const html = renderSeoCollectionPage({
+            path: '/friend-links',
+            title: 'Protocol test',
+            description: 'Crawler link protocol validation.',
+            items: [{ title: 'Unsafe link', href: 'javascript:alert(1)', image: 'data:text/html,unsafe' }],
+            actions: [{ label: 'Unsafe action', href: 'file:///etc/passwd' }]
+        });
+
+        assert.doesNotMatch(html, /javascript:|file:|data:text\/html/i);
+        assert.match(html, /href="https:\/\/yachiyo\.hk\/?"/);
+    });
+
+    it('publishes every Wiki entry, SEO topic, article cover, and gallery image in sitemaps', async () => {
+        const { WIKI_ENTRIES, wikiEntryPath } = require('../backend/seo/wiki-content');
+        const articleCover = 'https://oss.yachiyo.hk/seo/article-cover.webp?version=1&source=test';
+        const galleryImage = 'https://oss.yachiyo.hk/seo/gallery-image.webp?version=2&source=test';
+        const article = db.prepare(`
+            INSERT INTO articles (title, slug, excerpt, content, category, tags, cover_image, publish_date, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published')
+        `).run(
+            'SEO image sitemap article',
+            'seo-image-sitemap-article',
+            'SEO article cover description',
+            'SEO article body',
+            '技术',
+            '["SEO"]',
+            articleCover,
+            '2026-07-20'
+        );
+        const galleryAssetId = 'seo-gallery-image-sitemap';
+        db.prepare(`
+            INSERT INTO article_assets (id, asset_type, mime_type, url, storage_key, metadata)
+            VALUES (?, 'gallery-image', 'image/webp', ?, ?, ?)
+        `).run(galleryAssetId, galleryImage, 'seo/gallery-image.webp', JSON.stringify({ collection: 'gallery', title: 'SEO gallery image' }));
+
+        try {
+            const sitemap = await request('/sitemap.xml');
+            assert.equal(sitemap.response.status, 200);
+            for (const entry of WIKI_ENTRIES) {
+                assert.match(sitemap.body, new RegExp(wikiEntryPath(entry).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+            }
+            assert.match(sitemap.body, /\/friend-links/);
+            assert.match(sitemap.body, /\/topics\/cosmic-princess-kaguya-wiki/);
+            assert.match(sitemap.body, /\/topics\/pixel-art-community/);
+
+            const imageSitemap = await request('/sitemap-images.xml');
+            assert.equal(imageSitemap.response.status, 200);
+            assert.match(imageSitemap.response.headers.get('content-type') || '', /xml/);
+            assert.match(imageSitemap.body, /xmlns:image="http:\/\/www\.google\.com\/schemas\/sitemap-image\/1\.1"/);
+            assert.match(imageSitemap.body, /article-cover\.webp\?version=1&amp;source=test/);
+            assert.match(imageSitemap.body, /gallery-image\.webp\?version=2&amp;source=test/);
+            assert.match(imageSitemap.body, /<image:title>SEO image sitemap article<\/image:title>/);
+            assert.match(imageSitemap.body, /<image:title>SEO gallery image<\/image:title>/);
+
+            const robots = await request('/robots.txt');
+            assert.match(robots.body, /Sitemap: https:\/\/yachiyo\.hk\/sitemap-images\.xml/);
+        } finally {
+            db.prepare('DELETE FROM article_assets WHERE id = ?').run(galleryAssetId);
+            db.prepare('DELETE FROM articles WHERE id = ?').run(article.lastInsertRowid);
         }
     });
 

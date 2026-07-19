@@ -48,8 +48,9 @@ export const routes = [
     name: 'access',
     component: AccessPage,
     meta: {
-      title: '月读空间',
-      description: '进入月读空间，抵达文章、广场、Live2D 房间与互动体验的入口。'
+      title: '月读空间｜超时空辉夜姬 Wiki、Live2D 与创作社区',
+      description: '月读空间汇集超时空辉夜姬 Wiki、文章、公开图库、192×108 像素画与月见八千代 Live2D AI 房间。',
+      keywords: ['月读空间', 'Tsukuyomi Space', '超时空辉夜姬 Wiki', '月见八千代 Live2D', '二次元创作社区']
     }
   },
   { path: '/access', name: 'accessAlias', redirect: '/' },
@@ -58,8 +59,9 @@ export const routes = [
     name: 'hub',
     component: HubPage,
     meta: {
-      title: '中枢大厅',
-      description: '月读空间的中枢大厅，通往月读广场、主舞台、私人居所与站点数据。'
+      title: '月读空间中枢大厅',
+      description: '从中枢大厅快速浏览主舞台文章、公开图库、月读广场、最新像素画和八千代房间动态。',
+      keywords: ['月读空间首页', '月读空间中枢大厅', '主舞台文章', '月读广场', '最新像素画']
     }
   },
   {
@@ -79,29 +81,39 @@ export const routes = [
     name: 'stage',
     component: StagePage,
     meta: {
-      title: '主舞台',
-      description: '浏览月读空间的文章、公告、技术记录、二创作品与创作日志。'
+      title: '主舞台文章与创作档案',
+      description: '浏览月读空间公开发布的公告、技术记录、超时空辉夜姬二创文章、翻译与创作日志。',
+      keywords: ['月读空间文章', '主舞台', '超时空辉夜姬二创', 'Live2D 技术', '创作日志']
     }
   },
   {
     path: '/articles/:id/:slug?',
     name: 'articleDetail',
     component: ArticlePage,
-    meta: { title: '文章', description: '月读空间文章正文与评论。' }
+    meta: {
+      title: '月读空间文章',
+      description: '阅读月读空间公开文章正文、作者资料与相关评论。',
+      keywords: ['月读空间文章', '月读空间主舞台', '公开文章', '创作记录']
+    }
   },
   {
     path: '/article',
     name: 'article',
     component: ArticlePage,
-    meta: { title: '文章', description: '月读空间文章正文与评论。' }
+    meta: {
+      title: '月读空间文章入口',
+      description: '通过文章编号访问月读空间公开文章正文、作者资料与相关评论。',
+      keywords: ['月读空间文章入口', '文章正文', '主舞台文章', '月读空间评论']
+    }
   },
   {
     path: '/wiki',
     name: 'wiki',
     component: WikiPage,
     meta: {
-      title: '超辉夜姬！Wiki',
-      description: '非官方粉丝整理：超时空辉夜姬的作品概览、角色、世界观、音乐与创作资料词条。'
+      title: '超时空辉夜姬角色与世界观 Wiki',
+      description: '非官方粉丝资料库，完整整理超时空辉夜姬作品概览、角色、月读世界观、音乐、发行与衍生词条。',
+      keywords: ['超时空辉夜姬 Wiki', '超かぐや姫', 'Cosmic Princess Kaguya', '超时空辉夜姬角色', '月读世界观']
     }
   },
   {
@@ -110,8 +122,9 @@ export const routes = [
     component: WikiEntryPage,
     props: route => ({ kind: 'character', slug: route.params.slug }),
     meta: {
-      title: '角色词条 - 超辉夜姬！Wiki',
-      description: '超辉夜姬角色的基本资料、人物经历、关系、关联音乐与参考来源。'
+      title: '超时空辉夜姬角色词条',
+      description: '查看超时空辉夜姬角色的基本资料、人物经历、关系、关联音乐、清晰角色图与参考来源。',
+      keywords: ['超时空辉夜姬角色', '超かぐや姫角色', '辉夜', '酒寄彩叶', '月见八千代']
     }
   },
   {
@@ -120,8 +133,9 @@ export const routes = [
     component: WikiEntryPage,
     props: route => ({ kind: 'term', slug: route.params.slug }),
     meta: {
-      title: '设定词条 - 超辉夜姬！Wiki',
-      description: '超辉夜姬的月读世界观、活动、音乐与古典母题词条。'
+      title: '超时空辉夜姬世界观词条',
+      description: '查看超时空辉夜姬的月读世界观、八千代杯、KASSEN、角色音乐与《竹取物语》母题词条。',
+      keywords: ['超时空辉夜姬世界观', '月读 TSUKUYOMI', '八千代杯', 'KASSEN', '竹取物语']
     }
   },
   {
@@ -129,8 +143,9 @@ export const routes = [
     name: 'room',
     component: RoomPage,
     meta: {
-      title: '八千代的房间',
-      description: '体验 Live2D 角色互动、AI 聊天、TTS 语音、长期记忆、角色知识库与 MCP 工具接入。'
+      title: '月见八千代 Live2D AI 房间',
+      description: '进入月见八千代 Live2D 房间，体验高清角色互动、AI 聊天、TTS 语音、长期记忆与角色知识库。',
+      keywords: ['月见八千代 Live2D', '八千代 AI 聊天', 'Live2D 房间', 'GPT-SoVITS', '角色长期记忆']
     }
   },
   {
@@ -159,8 +174,9 @@ export const routes = [
     name: 'plaza',
     component: PlazaPage,
     meta: {
-      title: '月读广场',
-      description: '在月读广场留言、回复、点赞，和来访者交换片刻心情。'
+      title: '月读广场留言社区',
+      description: '在月读广场浏览公开留言、参与回复和点赞，与月读空间的来访者和创作者交流。',
+      keywords: ['月读广场', '月读空间留言', '二次元留言板', '创作者交流', '公开留言社区']
     }
   },
   {
@@ -168,8 +184,9 @@ export const routes = [
     name: 'friendLinks',
     component: FriendLinksPage,
     meta: {
-      title: '友链',
-      description: '浏览月读空间收录的友好站点。'
+      title: '月读空间友链导航',
+      description: '浏览月读空间审核收录的公开友好站点、独立博客和创作伙伴，发现更多值得访问的网站。',
+      keywords: ['月读空间友链', '独立博客友链', '二次元个人站', '友好网站', '网站导航']
     }
   },
   {
@@ -187,8 +204,9 @@ export const routes = [
     name: 'reality',
     component: RealityPage,
     meta: {
-      title: '现实锚点',
-      description: '记录现实世界中的锚点、灵感与日常片段。'
+      title: '现实锚点与项目说明',
+      description: '了解月读空间、八千代 Live2D、Agent OS 音乐应用与相关开源项目的技术来源、责任边界和现实记录。',
+      keywords: ['月读空间项目说明', '八千代 Live2D 来源', 'Agent OS 音乐应用', '开源责任边界', '现实锚点']
     }
   },
   {
@@ -207,7 +225,11 @@ export const routes = [
     path: '/gallery',
     name: 'gallery',
     component: GalleryPage,
-    meta: { title: '图库', description: '上传、浏览和管理月读空间图库图片。', noindex: true }
+    meta: {
+      title: '月读空间公开图库',
+      description: '浏览月读空间用户公开上传的插画、超时空辉夜姬二创图片、站点影像与创作素材，并查看上传者信息。',
+      keywords: ['月读空间图库', '超时空辉夜姬图片', '二次元插画', '公开图片画廊', '用户创作图片']
+    }
   },
   {
     path: '/gallery/manage',
@@ -225,7 +247,11 @@ export const routes = [
     path: '/users/:username',
     name: 'userProfile',
     component: UserProfilePage,
-    meta: { title: '个人主页', description: '查看月读空间公开个人主页。' }
+    meta: {
+      title: '月读空间创作者主页',
+      description: '查看月读空间创作者的公开资料、文章、关注关系与创作动态。',
+      keywords: ['月读空间创作者', '公开个人主页', '作者文章', '二次元创作者']
+    }
   },
   {
     path: '/notifications',
@@ -251,8 +277,9 @@ export const routes = [
     component: ArenaPage,
     alias: '/pixel/',
     meta: {
-      title: '月光像素工坊',
-      description: '在月读空间画像素画、公开分享作品，并浏览和点赞其他用户的像素创作。'
+      title: '192×108 月光像素画工坊',
+      description: '使用月读空间在线像素画工具创作固定 192×108 画布，公开分享、浏览、点赞并导出其他用户的像素作品。',
+      keywords: ['在线像素画', '192×108 像素画', '月光像素工坊', '像素画社区', 'Pixel Art 编辑器']
     }
   },
   {

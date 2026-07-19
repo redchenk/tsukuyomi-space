@@ -63,6 +63,37 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(seo, /document\.documentElement\.lang = 'zh-CN'/);
     });
 
+    it('applies unique route keywords and dynamic SEO to every public page', () => {
+        const router = source('src/frontend/router/index.js');
+        const seo = source('src/frontend/utils/seo.js');
+        const indexHtml = source('src/frontend/index.html');
+        const wikiEntry = source('src/frontend/pages/WikiEntryPage.vue');
+        const userProfile = source('src/frontend/pages/UserProfilePage.vue');
+
+        assert.match(seo, /export function applySeo\(\{[\s\S]*keywords = DEFAULT_KEYWORDS/);
+        assert.match(seo, /upsertMeta\('meta\[name="keywords"\]'[^}]*content: keywordContent/);
+        assert.match(seo, /keywords: meta\.keywords \|\| DEFAULT_KEYWORDS/);
+        assert.match(seo, /keywords: tags\.length \? tags : \[title, article\?\.category/);
+        assert.match(indexHtml, /<meta name="keywords" content="月读空间, Tsukuyomi Space, 超时空辉夜姬 Wiki/);
+        assert.match(indexHtml, /<meta name="twitter:card" content="summary_large_image">/);
+
+        const publicPaths = [
+            '/', '/hub', '/stage', '/articles/:id/:slug?', '/article', '/wiki',
+            '/wiki/characters/:slug', '/wiki/terms/:slug', '/room', '/plaza',
+            '/friend-links', '/reality', '/gallery', '/users/:username', '/pixel'
+        ];
+        for (const routePath of publicPaths) {
+            const escapedPath = routePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            assert.match(router, new RegExp(`path: '${escapedPath}'[\\s\\S]{0,700}?title:[\\s\\S]{0,300}?description:[\\s\\S]{0,350}?keywords:`), routePath);
+        }
+
+        const publicGallery = router.match(/path: '\/gallery',[\s\S]*?(?=\n\s*\},\n\s*\{\n\s*path: '\/gallery\/manage')/)?.[0] || '';
+        assert.doesNotMatch(publicGallery, /noindex:\s*true/);
+        assert.match(router, /path: '\/gallery\/manage'[\s\S]{0,300}?noindex:\s*true/);
+        assert.match(wikiEntry, /applySeo\(\{[\s\S]*keywords,[\s\S]*wikiEntryPath/);
+        assert.match(userProfile, /title: `\$\{publicUser\.username \|\| username\.value\}的公开主页`/);
+    });
+
     it('loads every paginated article before applying local stage filters', () => {
         const stage = source('src/frontend/pages/StagePage.vue');
 
