@@ -4,6 +4,7 @@ import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client
 import BeianLink from '../components/BeianLink.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
+import { alternateLanguage } from '../i18n';
 import { warmRoutePath } from '../router';
 import {
   NOTIFICATION_BADGE_EVENT,
@@ -41,24 +42,26 @@ const navItems = computed(() => [
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: props.routeName === 'room' || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza' || props.routeName === 'friendLinkApply', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
-  { path: '/wiki', key: 'wiki', label: 'Wiki', icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
-  { path: '/gallery', key: 'gallery', label: '图库', icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
+  { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
+  { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true },
-  { path: '/agent-os', key: 'agentOs', label: 'Agent OS', icon: 'bot', active: false, spa: false }
+  { path: '/agent-os', key: 'agentOs', label: props.t.agentOs, icon: 'bot', active: false, spa: false }
 ]);
 
 const mobilePrimaryItems = computed(() => navItems.value.slice(0, 4));
 const mobileSecondaryItems = computed(() => navItems.value.slice(4));
 const activeNavItem = computed(() => navItems.value.find((item) => item.active) || navItems.value[0]);
 const accountLabel = computed(() => (props.isAuthed ? props.t.ucTitle : props.t.login));
-const themeLabel = computed(() => (props.theme === 'dark' ? '切换浅色主题' : '切换深色主题'));
-const railThemeLabel = computed(() => {
-  if (props.lang === 'ja') return props.theme === 'dark' ? 'ライト' : 'ダーク';
-  return props.theme === 'dark' ? '浅色' : '深色';
-});
-const railNotificationsLabel = computed(() => (props.lang === 'ja' ? '通知' : '站内信'));
-const moreLabel = computed(() => (props.lang === 'ja' ? 'その他' : '更多'));
+const themeLabel = computed(() => (props.theme === 'dark' ? props.t.switchLightTheme : props.t.switchDarkTheme));
+const railThemeLabel = computed(() => (props.theme === 'dark' ? props.t.lightTheme : props.t.darkTheme));
+const railNotificationsLabel = computed(() => props.t.notifications);
+const moreLabel = computed(() => props.t.more);
+const languageTargetLabel = computed(() => (props.lang === 'zh' ? '日本語' : '中文'));
+const languageActionLabel = computed(() => (props.lang === 'zh' ? props.t.switchToJapanese : props.t.switchToChinese));
+const notificationsActionLabel = computed(() => (props.lang === 'ja'
+  ? `${props.t.notifications}、未読 ${unreadNotifications.value} 件`
+  : `${props.t.notifications}，${unreadNotifications.value} 条未读`));
 
 function userInitial() {
   return String(props.user?.username || props.user?.email || props.t.brand || '月').slice(0, 1).toUpperCase();
@@ -154,7 +157,7 @@ onUnmounted(() => {
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && routeName !== 'room'" class="moon" aria-hidden="true"></div>
 
-    <aside v-if="showChrome" ref="railRef" class="site-rail" data-material="sidebar" aria-label="Quick navigation">
+    <aside v-if="showChrome" ref="railRef" class="site-rail" data-material="sidebar" :aria-label="t.navigation">
       <a href="/hub" class="rail-mark" :aria-label="t.brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @pointerdown="warmRoutePath('/hub')" @click.prevent="$emit('go', '/hub')">
         <TsIcon name="eclipse" :size="24" :stroke-width="1.9" />
         <span class="rail-mark-label">{{ t.brand }}</span>
@@ -187,8 +190,8 @@ onUnmounted(() => {
           class="rail-link rail-notifications"
           :class="{ active: routeName === 'notifications', expanded: railExpandedKey === 'notifications' }"
           type="button"
-          :aria-label="`站内信，${unreadNotifications} 条未读`"
-          :title="`站内信，${unreadNotifications} 条未读`"
+          :aria-label="notificationsActionLabel"
+          :title="notificationsActionLabel"
           @pointerenter="warmRoutePath('/notifications'); expandRail('notifications')"
           @pointerleave="collapseRail('notifications')"
           @focus="warmRoutePath('/notifications'); expandRail('notifications')"
@@ -215,6 +218,22 @@ onUnmounted(() => {
         >
           <span class="rail-icon"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="20" /></span>
           <span class="rail-label">{{ railThemeLabel }}</span>
+        </button>
+
+        <button
+          class="rail-link rail-language"
+          type="button"
+          :aria-label="languageActionLabel"
+          :title="languageActionLabel"
+          :class="{ expanded: railExpandedKey === 'language' }"
+          @pointerenter="expandRail('language')"
+          @pointerleave="collapseRail('language')"
+          @focus="expandRail('language')"
+          @blur="collapseRail('language')"
+          @click="expandRail('language'); $emit('set-lang', alternateLanguage(lang))"
+        >
+          <span class="rail-icon"><TsIcon name="languages" :size="20" /></span>
+          <span class="rail-label" :lang="lang === 'zh' ? 'ja' : 'zh-CN'">{{ languageTargetLabel }}</span>
         </button>
 
         <a
@@ -250,13 +269,13 @@ onUnmounted(() => {
         </span>
       </a>
 
-      <div class="mobile-command-actions" aria-label="Mobile quick actions">
+      <div class="mobile-command-actions" :aria-label="t.mobileQuickActions">
         <button
           v-if="showNotifications"
           class="mobile-command-btn"
           type="button"
           :class="{ active: routeName === 'notifications' }"
-          :aria-label="`站内信，${unreadNotifications} 条未读`"
+          :aria-label="notificationsActionLabel"
           @click="$emit('go', '/notifications')"
         >
           <TsIcon name="bell" :size="18" />
@@ -280,7 +299,7 @@ onUnmounted(() => {
       v-if="showChrome && navOpen"
       class="site-navigation-scrim"
       type="button"
-      aria-label="关闭导航"
+      :aria-label="t.closeNavigation"
       @click="navOpen = false"
     ></button>
 
@@ -290,13 +309,13 @@ onUnmounted(() => {
           <strong>{{ moreLabel }}</strong>
           <span>{{ activeNavItem?.label || t.brand }}</span>
         </div>
-        <button class="site-nav-close" type="button" aria-label="关闭导航" @click="navOpen = false">
+        <button class="site-nav-close" type="button" :aria-label="t.closeNavigation" @click="navOpen = false">
           <TsIcon name="x" :size="18" />
         </button>
       </div>
 
       <section class="site-nav-section">
-        <span class="site-nav-section-title">{{ lang === 'ja' ? '探索' : '探索' }}</span>
+        <span class="site-nav-section-title">{{ t.explore }}</span>
         <div class="site-nav-grid">
           <a
             v-for="item in mobileSecondaryItems"
@@ -316,7 +335,7 @@ onUnmounted(() => {
       </section>
 
       <section v-if="showNotifications || isAuthed" class="site-nav-section">
-        <span class="site-nav-section-title">{{ lang === 'ja' ? 'アカウント' : '账户' }}</span>
+        <span class="site-nav-section-title">{{ t.accountSection }}</span>
         <div class="site-nav-grid">
           <a
             v-if="showNotifications"
@@ -326,7 +345,7 @@ onUnmounted(() => {
             @click.prevent="navOpen = false; $emit('go', '/notifications')"
           >
             <TsIcon class="nav-icon" name="bell" :size="18" />
-            <span>站内信</span>
+            <span>{{ t.notifications }}</span>
             <span v-if="unreadNotifications" class="nav-inline-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
           </a>
           <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' || routeName === 'userProfile' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">
@@ -335,7 +354,7 @@ onUnmounted(() => {
           </a>
           <a v-if="isAuthed" href="/attachments" class="nav-link" :class="{ 'router-link-active': routeName === 'attachments' }" @click.prevent="navOpen = false; $emit('go', '/attachments')">
             <TsIcon class="nav-icon" name="image" :size="18" />
-            <span>附件库</span>
+            <span>{{ t.attachments }}</span>
           </a>
           <button v-if="isAuthed" class="ghost-btn nav-link" type="button" @click="navOpen = false; $emit('logout')">
             <TsIcon class="nav-icon" name="x" :size="18" />
@@ -345,7 +364,7 @@ onUnmounted(() => {
       </section>
 
       <section v-else class="site-nav-section">
-        <span class="site-nav-section-title">{{ lang === 'ja' ? 'アカウント' : '账户' }}</span>
+        <span class="site-nav-section-title">{{ t.accountSection }}</span>
         <div class="site-nav-grid">
           <a href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="navOpen = false; $emit('go', '/login')">
             <TsIcon class="nav-icon" name="user" :size="18" />
@@ -359,7 +378,7 @@ onUnmounted(() => {
       </section>
 
       <section class="site-nav-section">
-        <span class="site-nav-section-title">{{ lang === 'ja' ? '表示' : '偏好' }}</span>
+        <span class="site-nav-section-title">{{ t.preferences }}</span>
         <div class="site-nav-preferences">
           <button
             class="theme-toggle nav-link"
@@ -372,15 +391,15 @@ onUnmounted(() => {
             <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
           </button>
 
-          <div class="lang-switcher" aria-label="Language">
-            <button class="lang-btn" :class="{ active: lang === 'zh' }" type="button" @click="$emit('set-lang', 'zh')">中文</button>
-            <button class="lang-btn" :class="{ active: lang === 'ja' }" type="button" @click="$emit('set-lang', 'ja')">日本語</button>
+          <div class="lang-switcher" :aria-label="t.language">
+            <button class="lang-btn" :class="{ active: lang === 'zh' }" :aria-pressed="lang === 'zh'" lang="zh-CN" type="button" @click="$emit('set-lang', 'zh')">中文</button>
+            <button class="lang-btn" :class="{ active: lang === 'ja' }" :aria-pressed="lang === 'ja'" lang="ja" type="button" @click="$emit('set-lang', 'ja')">日本語</button>
           </div>
         </div>
       </section>
     </div>
 
-    <nav v-if="showChrome" class="mobile-bottom-nav" data-material="header" aria-label="Mobile primary navigation">
+    <nav v-if="showChrome" class="mobile-bottom-nav" data-material="header" :aria-label="t.mobilePrimaryNavigation">
       <a
         v-for="item in mobilePrimaryItems"
         :key="item.key"

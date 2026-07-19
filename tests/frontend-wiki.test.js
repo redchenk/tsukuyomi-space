@@ -28,13 +28,15 @@ function loadBundledModule(relativePath) {
 test('Wiki route, navigation and production fallback are wired together', () => {
   const router = read('src/frontend/router/index.js');
   const shell = read('src/frontend/layouts/AppShell.vue');
+  const messages = read('src/frontend/i18n/messages.js');
   const staticMiddleware = read('backend/middleware/static.js');
 
   assert.match(router, /const WikiPage = loadRoute\(\(\) => import\('\.\.\/pages\/WikiPage\.vue'\), \(\) => import\('\.\.\/styles\/routes\/wiki\.css'\)\)/);
   assert.match(router, /path: '\/wiki',[\s\S]*name: 'wiki',[\s\S]*component: WikiPage/);
   assert.match(router, /path: '\/wiki\/characters\/:slug',[\s\S]*name: 'wikiCharacter'/);
   assert.match(router, /path: '\/wiki\/terms\/:slug',[\s\S]*name: 'wikiTerm'/);
-  assert.match(shell, /path: '\/stage'[\s\S]*path: '\/wiki'[\s\S]*label: 'Wiki'/);
+  assert.match(shell, /path: '\/stage'[\s\S]*path: '\/wiki'[\s\S]*label: props\.t\.wiki/);
+  assert.match(messages, /wiki: '百科'[\s\S]*wiki: 'Wiki'/);
   assert.match(staticMiddleware, /\{ path: '\/wiki', priority: '0\.8', changefreq: 'monthly' \}/);
   assert.match(staticMiddleware, /vueRoutes = new Set\(\[[^\]]*'\/wiki'/);
   assert.match(staticMiddleware, /wikiEntryRoute = req\.path\.startsWith\('\/wiki\/characters\/'\) \|\| req\.path\.startsWith\('\/wiki\/terms\/'\)/);

@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
-import { i18n } from './i18n';
+import { documentLanguage, i18n, normalizeLanguage } from './i18n';
 import AppShell from './layouts/AppShell.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
@@ -17,7 +17,7 @@ const SitePet = defineAsyncComponent(() => import('./components/SitePet.vue'));
 
 const route = useRoute();
 const router = useRouter();
-const lang = ref(localStorage.getItem('lang') || 'zh');
+const lang = ref(normalizeLanguage(localStorage.getItem('lang')));
 const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
 const user = ref(null);
 const t = computed(() => i18n[lang.value] || i18n.zh);
@@ -132,9 +132,9 @@ async function refreshUser(trustedUser = null) {
 }
 
 function setLang(nextLang) {
-  lang.value = i18n[nextLang] ? nextLang : 'zh';
+  lang.value = normalizeLanguage(nextLang);
   localStorage.setItem('lang', lang.value);
-  document.documentElement.lang = lang.value === 'zh' ? 'zh-CN' : 'ja';
+  document.documentElement.lang = documentLanguage(lang.value);
 }
 
 function setTheme(nextTheme) {

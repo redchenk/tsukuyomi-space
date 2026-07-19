@@ -1,3 +1,5 @@
+import { documentLanguage } from '../i18n';
+
 const SITE_NAME = '月读空间';
 const SITE_URL = 'https://yachiyo.hk';
 const DEFAULT_DESCRIPTION = '月读空间是一个融合文章、留言广场、Live2D 房间与互动工具的二次元个人站。';
@@ -56,6 +58,14 @@ function normalizeTags(value) {
   return String(value).split(/[,，]/).map((tag) => tag.trim()).filter(Boolean);
 }
 
+function activeDocumentLanguage() {
+  try {
+    return documentLanguage(localStorage.getItem('lang'));
+  } catch (_) {
+    return documentLanguage(document.documentElement.lang);
+  }
+}
+
 export function applySeo({
   title = SITE_NAME,
   description = DEFAULT_DESCRIPTION,
@@ -63,14 +73,15 @@ export function applySeo({
   image = DEFAULT_IMAGE,
   type = 'website',
   noindex = false,
-  structuredData = null
+  structuredData = null,
+  language = activeDocumentLanguage()
 } = {}) {
   const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
   const url = absoluteUrl(path);
   const imageUrl = absoluteUrl(image);
 
   document.title = fullTitle;
-  document.documentElement.lang = 'zh-CN';
+  document.documentElement.lang = documentLanguage(language);
   upsertMeta('meta[name="description"]', { name: 'description', content: description || DEFAULT_DESCRIPTION });
   upsertMeta('meta[name="robots"]', { name: 'robots', content: noindex ? 'noindex,nofollow' : 'index,follow' });
   upsertLink('canonical', url);

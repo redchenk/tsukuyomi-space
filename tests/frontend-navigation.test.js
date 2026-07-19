@@ -40,6 +40,29 @@ function loadNotificationBadge(navigatorTarget = {}) {
 }
 
 describe('frontend navigation routes', () => {
+    it('switches between Chinese and Japanese from the left navigation rail', () => {
+        const app = source('src/frontend/App.vue');
+        const shell = source('src/frontend/layouts/AppShell.vue');
+        const messages = source('src/frontend/i18n/messages.js');
+        const i18nModule = source('src/frontend/i18n/index.js');
+        const icons = source('src/frontend/components/TsIcon.vue');
+        const seo = source('src/frontend/utils/seo.js');
+
+        assert.match(shell, /class="rail-link rail-language"/);
+        assert.match(shell, /<TsIcon name="languages"/);
+        assert.match(shell, /\$emit\('set-lang', alternateLanguage\(lang\)\)/);
+        assert.match(shell, /class="lang-switcher" :aria-label="t\.language"/);
+        assert.match(app, /normalizeLanguage\(localStorage\.getItem\('lang'\)\)/);
+        assert.match(app, /documentLanguage\(lang\.value\)/);
+        assert.match(i18nModule, /SUPPORTED_LANGUAGES = Object\.freeze\(\['zh', 'ja'\]\)/);
+        assert.match(i18nModule, /export function alternateLanguage/);
+        assert.match(messages, /switchToJapanese: '切换为日语'/);
+        assert.match(messages, /switchToChinese: '中国語に切り替え'/);
+        assert.match(icons, /languages:\s*\[/);
+        assert.match(seo, /documentLanguage\(localStorage\.getItem\('lang'\)\)/);
+        assert.doesNotMatch(seo, /document\.documentElement\.lang = 'zh-CN'/);
+    });
+
     it('loads every paginated article before applying local stage filters', () => {
         const stage = source('src/frontend/pages/StagePage.vue');
 
