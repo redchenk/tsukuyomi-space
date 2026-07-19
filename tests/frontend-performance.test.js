@@ -89,11 +89,12 @@ describe('constrained-device performance policy', () => {
         assert.match(plaza, /@media \(max-width: 560px\)[\s\S]*\.plaza-msg-footer\s*\{[^}]*flex-wrap:\s*wrap[^}]*overflow:\s*visible/);
         assert.match(productPolish, /\.page\.plaza-page \.plaza-msg-footer \.icon-btn:not\([^}]*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
         assert.match(productPolish, /\.page\.plaza-page \.plaza-msg-footer \.icon-btn > span\s*\{[^}]*text-overflow:\s*clip[^}]*white-space:\s*nowrap/s);
-        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/s);
-        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions \.icon-btn\s*\{[^}]*width:\s*100%[^}]*min-width:\s*0[^}]*aspect-ratio:\s*auto/s);
+        assert.match(productPolish, /body \.page\.arena-page \.pixel-art-actions \.icon-btn:not\([^}]*\{[^}]*width:\s*auto[^}]*min-width:\s*0[^}]*aspect-ratio:\s*auto/s);
+        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions\s*\{[^}]*display:\s*flex[^}]*flex-wrap:\s*wrap[^}]*justify-content:\s*flex-end/s);
+        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions \.icon-btn\s*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
         assert.match(arena, /@media \(max-width: 760px\) and \(pointer: coarse\)[\s\S]*\.arena-canvas-viewport\s*\{[^}]*overscroll-behavior-y:\s*auto[^}]*touch-action:\s*pan-y pinch-zoom/s);
         assert.match(arena, /@media \(max-width: 760px\) and \(pointer: coarse\)[\s\S]*\.pixel-canvas-renderer\s*\{[^}]*touch-action:\s*pan-y pinch-zoom/s);
-        assert.match(productPolish, /@media \(max-width: 760px\)[\s\S]*\.page\.arena-page \.pixel-art-actions \.icon-btn:not\([^}]*\{[^}]*width:\s*100%[^}]*min-width:\s*0[^}]*aspect-ratio:\s*auto/s);
+        assert.match(productPolish, /@media \(max-width: 760px\)[\s\S]*\.page\.arena-page \.pixel-art-actions \.icon-btn:not\([^}]*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
         assert.doesNotMatch(hubPage, /--hub-pixel-(?:width|height)/);
         assert.match(hubStyles, /\.hub-arena-cover \.pixel-canvas-renderer\s*\{[^}]*width:\s*100%[^}]*height:\s*100%[^}]*object-fit:\s*cover/s);
         assert.match(hubStyles, /@media \(max-width: 620px\)[\s\S]*\.scene-card:not\(\.scene-card-plaza\) \.scene-label\s*\{[^}]*position:\s*absolute[^}]*top:\s*1\.5rem[^}]*left:\s*4\.25rem/s);

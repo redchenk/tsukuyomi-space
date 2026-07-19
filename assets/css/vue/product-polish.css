@@ -1058,10 +1058,25 @@ body::before {
     white-space: nowrap;
 }
 
+body .page.arena-page .pixel-art-actions .icon-btn:not(.primary-btn):not(.ghost-btn):not(.danger-btn) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    min-height: 34px;
+    padding-inline: 0.56rem;
+    aspect-ratio: auto;
+}
+
+body .page.arena-page .pixel-art-actions {
+    min-height: 0;
+    padding-block: 0.32rem;
+}
+
 @media (max-width: 760px) {
     body .page.arena-page .pixel-art-actions .icon-btn:not(.primary-btn):not(.ghost-btn):not(.danger-btn) {
-        width: 100%;
-        min-width: 0;
+        width: auto;
+        min-width: max-content;
+        min-height: 36px;
         padding-inline: 0.5rem;
         aspect-ratio: auto;
     }
