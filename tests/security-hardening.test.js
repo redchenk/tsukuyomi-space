@@ -328,10 +328,13 @@ describe('stage delivery hardening', () => {
     it('does not truncate SEO articles and reserves static HTML for crawlers', () => {
         const staticMiddleware = sourceFile('backend/middleware/static.js');
         const seoRenderer = sourceFile('backend/seo/render-article.js');
+        const nginxConfig = sourceFile('deploy/nginx.conf');
 
         assert.match(staticMiddleware, /CRAWLER_USER_AGENT/);
         assert.match(staticMiddleware, /!isCrawlerRequest\(req\)/);
         assert.doesNotMatch(seoRenderer, /articles\.slice\(0, 24\)/);
+        assert.match(nginxConfig, /location = \/sitemap-images\.xml \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
+        assert.match(nginxConfig, /location ~ \^\/\(\?:hub\|pixel\|gallery\|friend-links\|wiki[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
     });
 });
 
