@@ -3351,3 +3351,24 @@ body .page.arena-page .arena-gallery-pager span {
         white-space: nowrap;
     }
 }
+
+/* Let a finger scroll the mobile page even when the gesture begins on the canvas. */
+@media (max-width: 760px) and (pointer: coarse) {
+    body .page.arena-page {
+        overflow-y: visible;
+        overscroll-behavior-y: auto;
+        touch-action: pan-y pinch-zoom;
+    }
+
+    body .page.arena-page .arena-canvas-viewport {
+        overscroll-behavior-x: contain;
+        overscroll-behavior-y: auto;
+        touch-action: pan-y pinch-zoom;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body .page.arena-page .pixel-canvas,
+    body .page.arena-page .pixel-canvas-renderer {
+        touch-action: pan-y pinch-zoom;
+    }
+}

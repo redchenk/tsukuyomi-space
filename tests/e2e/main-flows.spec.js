@@ -308,6 +308,46 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     await expect(lightbox).toHaveCount(0);
 });
 
+test('pixel canvas preserves vertical page scrolling on touch phones', async ({ browser }) => {
+    const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true
+    });
+    const page = await context.newPage();
+
+    try {
+        await page.goto('/pixel');
+        const canvas = page.getByRole('img', { name: 'pixel canvas', exact: true });
+        await expect(canvas).toBeVisible();
+        await canvas.scrollIntoViewIfNeeded();
+
+        const initialScrollY = await page.evaluate(() => window.scrollY);
+        const canvasBox = await canvas.boundingBox();
+        expect(canvasBox).not.toBeNull();
+        expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toContain('pan-y');
+
+        const session = await context.newCDPSession(page);
+        const x = canvasBox.x + Math.min(canvasBox.width / 2, 120);
+        const startY = Math.min(canvasBox.y + canvasBox.height / 2, 700);
+        await session.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [{ x, y: startY }]
+        });
+        for (const y of [startY - 35, startY - 75, startY - 120, startY - 165]) {
+            await session.send('Input.dispatchTouchEvent', {
+                type: 'touchMove',
+                touchPoints: [{ x, y }]
+            });
+        }
+        await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(initialScrollY);
+    } finally {
+        await context.close();
+    }
+});
+
 test('admin can open the terminal dashboard and user panel', async ({ page }) => {
     await loginAsUser(page);
     const pendingMessage = `E2E terminal moderation 政治 ${Date.now()}`;
