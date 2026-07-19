@@ -131,6 +131,16 @@ describe('frontend navigation routes', () => {
         assert.match(authRoutes, /consumeVerificationCode\(email, 'password_reset'/);
     });
 
+    it('lets signed-in users unlink QQ with password confirmation', () => {
+        const userCenter = source('src/frontend/pages/UserCenterPage.vue');
+        const authRoutes = source('backend/routes/auth.js');
+
+        assert.match(userCenter, /\/api\/auth\/oauth\/qq\/unlink/);
+        assert.match(userCenter, /body: JSON\.stringify\(\{ currentPassword \}\)/);
+        assert.match(authRoutes, /router\.post\('\/oauth\/qq\/unlink', authenticateToken/);
+        assert.match(authRoutes, /deleteOAuthAccountForUser\(req\.user\.id, 'qq'\)/);
+    });
+
     it('keeps mobile account security and the music playlist readable', () => {
         const userCenterCss = source('assets/css/vue/pages/user-center.css');
         const musicCss = source('assets/css/vue/music-player.css');

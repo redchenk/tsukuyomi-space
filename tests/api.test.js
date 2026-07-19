@@ -550,6 +550,33 @@ describe('auth API', () => {
         assert.equal(result.body.message, '当前密码错误');
     });
 
+    it('requires password confirmation and only unlinks the current users QQ account', async () => {
+        db.prepare(`
+            INSERT INTO user_oauth_accounts (id, user_id, provider, provider_user_id, nickname)
+            VALUES (?, ?, 'qq', ?, ?)
+        `).run('normal-user-qq-link', 'user-001', 'normal-user-qq-openid', 'Normal QQ');
+        db.prepare(`
+            INSERT INTO user_oauth_accounts (id, user_id, provider, provider_user_id, nickname)
+            VALUES (?, ?, 'qq', ?, ?)
+        `).run('managed-user-qq-link', 'user-002', 'managed-user-qq-openid', 'Managed QQ');
+
+        const rejected = await postJson('/api/auth/oauth/qq/unlink', {
+            currentPassword: 'incorrect-current-password',
+            userId: 'user-002'
+        }, userToken);
+        assert.equal(rejected.response.status, 400);
+        assert.equal(db.prepare(`SELECT COUNT(*) AS count FROM user_oauth_accounts WHERE user_id = ?`).get('user-001').count, 1);
+
+        const unlinked = await postJson('/api/auth/oauth/qq/unlink', {
+            currentPassword: 'user-test-password',
+            userId: 'user-002'
+        }, userToken);
+        assert.equal(unlinked.response.status, 200);
+        assert.equal(unlinked.body.data.user.oauth_accounts.length, 0);
+        assert.equal(db.prepare(`SELECT COUNT(*) AS count FROM user_oauth_accounts WHERE user_id = ?`).get('user-001').count, 0);
+        assert.equal(db.prepare(`SELECT COUNT(*) AS count FROM user_oauth_accounts WHERE user_id = ?`).get('user-002').count, 1);
+    });
+
     it('blacklists a token after logout', async () => {
         const token = await login('/api/auth/login', 'normal-user', 'user-test-password');
         const loggedOut = await postJson('/api/auth/logout', {}, token);

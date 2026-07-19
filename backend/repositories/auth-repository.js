@@ -162,6 +162,13 @@ function listOAuthAccountsByUser(userId) {
     `).all(userId);
 }
 
+function deleteOAuthAccountForUser(userId, provider) {
+    return db.prepare(`
+        DELETE FROM user_oauth_accounts
+        WHERE user_id = ? AND provider = ?
+    `).run(userId, provider).changes;
+}
+
 module.exports = {
     findUserByEmail,
     findUserById,
@@ -176,5 +183,6 @@ module.exports = {
     createUserWithOAuthAccount,
     linkOAuthAccount,
     updateUserEmailWithOAuthAccount,
-    listOAuthAccountsByUser
+    listOAuthAccountsByUser,
+    deleteOAuthAccountForUser
 };

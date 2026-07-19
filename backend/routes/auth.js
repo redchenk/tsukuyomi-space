@@ -674,6 +674,38 @@ router.post('/oauth/qq/bind', optionalAuth, async (req, res) => {
     }
 });
 
+router.post('/oauth/qq/unlink', authenticateToken, (req, res) => {
+    try {
+        const currentPassword = String(req.body?.currentPassword || '');
+        if (!currentPassword) {
+            return res.status(400).json({ success: false, message: '请输入当前密码' });
+        }
+
+        const user = authRepository.findUserById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: '账号不存在' });
+        }
+        if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+            return res.status(400).json({ success: false, message: '当前密码错误' });
+        }
+
+        const removed = authRepository.deleteOAuthAccountForUser(req.user.id, 'qq');
+        if (!removed) {
+            return res.status(404).json({ success: false, message: '当前账号未绑定 QQ' });
+        }
+
+        const updatedUser = authRepository.findUserById(req.user.id);
+        res.json({
+            success: true,
+            message: 'QQ 已解绑',
+            data: { user: userResponse(updatedUser) }
+        });
+    } catch (error) {
+        console.error('Unlink QQ OAuth account failed:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
 router.post('/logout', async (req, res) => {
     const tokens = readAuthTokens(req);
     await Promise.all(tokens.map(token => authState.blacklistToken(token)));

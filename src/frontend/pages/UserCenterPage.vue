@@ -32,6 +32,11 @@ const uc = reactive({
   profileLoading: false,
   profileError: '',
   passwordChanging: false,
+  qqUnlinking: false,
+  qqUnlinkOpen: false,
+  qqPassword: '',
+  qqMsg: '',
+  qqMsgType: 'error',
   articles: [],
   messages: [],
   bookmarks: [],
@@ -485,6 +490,46 @@ async function ucChangePassword() {
     ucShowMessage('password', error.message || props.t.ucPasswordChangeFailed);
   } finally {
     uc.passwordChanging = false;
+  }
+}
+
+function ucToggleQQUnlink() {
+  uc.qqUnlinkOpen = !uc.qqUnlinkOpen;
+  uc.qqPassword = '';
+  uc.qqMsg = '';
+}
+
+async function ucUnlinkQQ() {
+  const currentPassword = uc.qqPassword;
+  if (!currentPassword) {
+    ucShowMessage('qq', '请输入当前密码');
+    return;
+  }
+
+  uc.qqUnlinking = true;
+  try {
+    const response = await authFetch('/api/auth/oauth/qq/unlink', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ currentPassword })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || 'QQ 解绑失败');
+
+    if (result.data?.user) {
+      ucUser.value = result.data.user;
+      updateStoredUser(result.data.user);
+    } else {
+      await ucLoadProfile();
+    }
+    uc.qqPassword = '';
+    uc.qqUnlinkOpen = false;
+    emit('auth-changed');
+    ucShowToast(result.message || 'QQ 已解绑');
+  } catch (error) {
+    ucShowMessage('qq', error.message || 'QQ 解绑失败');
+  } finally {
+    uc.qqUnlinking = false;
   }
 }
 
@@ -1047,6 +1092,34 @@ onMounted(async () => {
                     </div>
                     <p>{{ ucQQDescription }}</p>
                     <small v-if="ucQQBoundDate">绑定于 {{ ucQQBoundDate }}</small>
+                    <div v-if="ucQQBound" class="uc-oauth-actions">
+                      <button v-if="!uc.qqUnlinkOpen" class="danger-btn uc-icon-action" type="button" @click="ucToggleQQUnlink">
+                        <TsIcon name="x" :size="16" />
+                        <span>解绑 QQ</span>
+                      </button>
+                      <div v-else class="uc-oauth-unlink-form" :aria-busy="uc.qqUnlinking">
+                        <label for="ucQqUnlinkPassword">输入当前密码确认解绑</label>
+                        <input
+                          id="ucQqUnlinkPassword"
+                          v-model="uc.qqPassword"
+                          type="password"
+                          maxlength="128"
+                          autocomplete="current-password"
+                          placeholder="当前密码"
+                          @keyup.enter="ucUnlinkQQ"
+                        >
+                        <div class="uc-oauth-unlink-buttons">
+                          <button class="danger-btn uc-icon-action" type="button" :disabled="uc.qqUnlinking" @click="ucUnlinkQQ">
+                            <TsIcon name="x" :size="16" />
+                            <span>{{ uc.qqUnlinking ? '正在解绑' : '确认解绑' }}</span>
+                          </button>
+                          <button class="icon-btn uc-icon-action" type="button" :disabled="uc.qqUnlinking" @click="ucToggleQQUnlink">
+                            取消
+                          </button>
+                        </div>
+                        <div v-if="uc.qqMsg" class="form-message" :class="uc.qqMsgType" role="status">{{ uc.qqMsg }}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <h3>{{ t.ucSecurityTip }}</h3>

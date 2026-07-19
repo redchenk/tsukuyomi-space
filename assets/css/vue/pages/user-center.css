@@ -716,6 +716,35 @@ body .page.uc-page .uc-security-card p {
     margin: 0;
 }
 
+body .page.uc-page .uc-oauth-actions {
+    margin-top: 0.8rem;
+}
+
+body .page.uc-page .uc-oauth-unlink-form {
+    display: grid;
+    gap: 0.55rem;
+}
+
+body .page.uc-page .uc-oauth-unlink-form label {
+    color: var(--uc-text);
+    font-size: 0.78rem;
+}
+
+body .page.uc-page .uc-oauth-unlink-form input {
+    width: 100%;
+    min-width: 0;
+}
+
+body .page.uc-page .uc-oauth-unlink-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+body .page.uc-page .uc-oauth-unlink-form .form-message {
+    margin: 0;
+}
+
 body .page.uc-page .form-message {
     margin-bottom: 1rem;
     border-radius: 8px;
