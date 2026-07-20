@@ -23,6 +23,7 @@ const friendLinkRoutes = require('./routes/friend-links');
 const siteFeedRoutes = require('./routes/site-feed');
 const adminRoutes = require('./routes/admin');
 const moderationRoutes = require('./routes/moderation');
+const mailRoutes = require('./routes/mail');
 const userRoutes = require('./user-routes');
 
 const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '1mb';
@@ -78,6 +79,7 @@ function createApp() {
     app.use('/api/chat', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'chat' }));
     app.use('/api/tts', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' }));
     app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
+    app.use('/api/mail', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 180, keyPrefix: 'mail' }));
 
     // Parse message writes with a small cap before the much larger media-aware API parser.
     const messageIpLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: 'message-ip' });
@@ -88,6 +90,7 @@ function createApp() {
     const friendLinkIpLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 12, keyPrefix: 'friend-link-ip' });
     app.use('/api/friend-links', (req, res, next) => req.method === 'POST' ? friendLinkIpLimiter(req, res, next) : next());
     app.use('/api/friend-links', strictJson('16kb'));
+    app.use('/api/mail', strictJson('128kb'));
 
     // Data URL routes get explicit caps; ordinary JSON remains small on the 2GB host.
     app.use('/api/assets', strictJson('28mb'));
@@ -138,6 +141,7 @@ function createApp() {
     app.use('/api/site-feed', siteFeedRoutes.router);
     app.use('/api/admin', adminRoutes);
     app.use('/api/moderation', moderationRoutes);
+    app.use('/api/mail', mailRoutes);
     app.use('/api/user', userRoutes);
 
     app.use(errorHandler);

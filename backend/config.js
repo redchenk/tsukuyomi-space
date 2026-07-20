@@ -19,6 +19,7 @@ function csvEnv(name) {
 }
 
 const jwtSecret = process.env.JWT_SECRET || (isProduction ? '' : 'dev-only-change-me-' + crypto.randomBytes(16).toString('hex'));
+const mailCredentialSecret = process.env.MAIL_CREDENTIAL_KEY || jwtSecret;
 
 if (isProduction && jwtSecret.length < 32) {
     throw new Error('JWT_SECRET must be set to at least 32 characters in production.');
@@ -52,6 +53,7 @@ module.exports = {
     port: Number(process.env.PORT || 3000),
     host: process.env.HOST || '0.0.0.0',
     jwtSecret,
+    mailCredentialSecret,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
     adminJwtExpiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '24h',
     redis: {
