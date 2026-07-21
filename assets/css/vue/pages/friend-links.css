@@ -189,6 +189,13 @@
     background: color-mix(in srgb, var(--ts-cyan) 11%, transparent);
     color: var(--ts-text-strong);
     font-weight: 900;
+    overflow: hidden;
+}
+
+.friend-links-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .friend-links-card-copy {
@@ -340,6 +347,51 @@
     color: var(--ts-muted);
     font-size: 0.68rem;
     font-weight: 700;
+}
+
+.friend-link-avatar-entry {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0.7rem;
+}
+
+.friend-link-avatar-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 46px;
+    padding-inline: 0.9rem;
+    white-space: nowrap;
+}
+
+.friend-link-avatar-action.is-loading .ts-icon {
+    animation: friend-link-avatar-spin 0.8s linear infinite;
+}
+
+@keyframes friend-link-avatar-spin {
+    to { transform: rotate(360deg); }
+}
+
+.friend-link-avatar-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+    padding: 0.7rem;
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-unified-button-radius, 12px);
+    background: color-mix(in srgb, var(--ts-readable-input-bg, rgba(3, 7, 18, 0.52)) 88%, transparent);
+    color: var(--ts-text-strong);
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.friend-link-avatar-preview > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .friend-link-advanced {
@@ -572,8 +624,13 @@
     }
 
     .friend-link-field-grid,
+    .friend-link-avatar-entry,
     .friend-link-side {
         grid-template-columns: 1fr;
+    }
+
+    .friend-link-avatar-action {
+        width: 100%;
     }
 
     .friend-link-form-actions .primary-btn,

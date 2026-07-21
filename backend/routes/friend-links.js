@@ -3,6 +3,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
 const friendLinkRepository = require('../repositories/friend-link-repository');
 const { validateFriendLinkApplication } = require('../services/friend-links');
+const friendLinkAvatarService = require('../services/friend-link-avatar');
 const responseCache = require('../services/response-cache');
 const { setPublicReadCache } = require('../services/public-cache');
 
@@ -11,6 +12,12 @@ const applicationLimiter = createRateLimiter({
     windowMs: 24 * 60 * 60 * 1000,
     max: 5,
     keyPrefix: 'friend-link-account',
+    keyGenerator: req => req.user?.id || 'anonymous'
+});
+const avatarDiscoveryLimiter = createRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 15,
+    keyPrefix: 'friend-link-avatar-account',
     keyGenerator: req => req.user?.id || 'anonymous'
 });
 
@@ -40,7 +47,21 @@ router.get('/mine', authenticateToken, (req, res) => {
     }
 });
 
-router.post('/', authenticateToken, applicationLimiter, (req, res) => {
+router.post('/discover-avatar', authenticateToken, avatarDiscoveryLimiter, async (req, res) => {
+    try {
+        const avatarUrl = await friendLinkAvatarService.discoverFriendLinkAvatar(req.body?.url);
+        res.json({ success: true, data: { avatar_url: avatarUrl } });
+    } catch (error) {
+        console.warn('Friend link avatar discovery failed:', error.message);
+        res.status(422).json({
+            success: false,
+            message: error.message || '未能自动获取站点头像',
+            code: 'AVATAR_DISCOVERY_FAILED'
+        });
+    }
+});
+
+router.post('/', authenticateToken, applicationLimiter, async (req, res) => {
     try {
         const review = validateFriendLinkApplication(req.body || {});
         if (review.error) {
@@ -56,6 +77,26 @@ router.post('/', authenticateToken, applicationLimiter, (req, res) => {
         }
         if (existing && existing.user_id && existing.user_id !== req.user.id) {
             return res.status(409).json({ success: false, message: '该站点已有申请记录', code: 'LINK_EXISTS' });
+        }
+
+        try {
+            review.data.avatarUrl = await friendLinkAvatarService.prepareFriendLinkAvatar({
+                avatarUrl: review.data.avatarUrl,
+                siteUrl: review.data.url
+            });
+            if (!review.data.avatarUrl) {
+                return res.status(422).json({
+                    success: false,
+                    message: '未能自动获取站点头像，请填写有效的 HTTPS 头像链接',
+                    code: 'AVATAR_REQUIRED'
+                });
+            }
+        } catch (_) {
+            return res.status(422).json({
+                success: false,
+                message: '头像链接不可用或指向非公开地址',
+                code: 'INVALID_AVATAR_URL'
+            });
         }
 
         const application = existing?.status === 'rejected'

@@ -60,7 +60,7 @@ function renderSeoCollectionPage({
         const href = absoluteUrl(item.href);
         return `
       <a class="card" href="${escapeHtml(href)}"${externalLinkAttrs(href)}>
-        ${item.image ? `<img src="${escapeHtml(absoluteUrl(item.image))}" alt="${escapeHtml(item.imageAlt || item.title)}" loading="lazy" decoding="async">` : ''}
+        ${item.image ? `<img${item.imageKind === 'avatar' ? ' class="avatar"' : ''} src="${escapeHtml(absoluteUrl(item.image))}" alt="${escapeHtml(item.imageAlt || item.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : ''}
         ${item.meta ? `<span>${escapeHtml(item.meta)}</span>` : ''}
         <h2>${escapeHtml(item.title)}</h2>
         ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
@@ -109,7 +109,7 @@ function renderSeoCollectionPage({
   <meta name="twitter:image" content="${escapeHtml(primaryImage)}">
   <script type="application/ld+json">${safeJsonForHtml(schema)}</script>
   <style>
-    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#24324a;background:#f6f9ff;line-height:1.7}main{width:min(1120px,calc(100% - 32px));margin:48px auto}.hero{padding:32px;border:1px solid #bfd1e6;border-radius:20px;background:#fff;box-shadow:0 20px 64px rgba(69,94,132,.12)}h1{margin:0 0 12px;font-size:clamp(2rem,5vw,3.6rem);line-height:1.14}.hero p{max-width:760px;color:#53647d}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.actions a{padding:9px 14px;border-radius:999px;background:#6578dd;color:#fff;text-decoration:none}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:24px}.card{display:grid;align-content:start;gap:9px;min-height:150px;padding:16px;border:1px solid #cbd9ea;border-radius:18px;background:#fff;color:inherit;text-decoration:none;overflow:hidden}.card img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:12px}.card h2{margin:0;font-size:1.08rem;line-height:1.35}.card p{margin:0;color:#5d6d84}.card span{color:#7b879a;font-size:.82rem}@media(max-width:600px){main{margin:24px auto}.hero{padding:22px}.grid{grid-template-columns:1fr}}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#24324a;background:#f6f9ff;line-height:1.7}main{width:min(1120px,calc(100% - 32px));margin:48px auto}.hero{padding:32px;border:1px solid #bfd1e6;border-radius:20px;background:#fff;box-shadow:0 20px 64px rgba(69,94,132,.12)}h1{margin:0 0 12px;font-size:clamp(2rem,5vw,3.6rem);line-height:1.14}.hero p{max-width:760px;color:#53647d}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.actions a{padding:9px 14px;border-radius:999px;background:#6578dd;color:#fff;text-decoration:none}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:24px}.card{display:grid;align-content:start;gap:9px;min-height:150px;padding:16px;border:1px solid #cbd9ea;border-radius:18px;background:#fff;color:inherit;text-decoration:none;overflow:hidden}.card img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:12px}.card img.avatar{width:56px;aspect-ratio:1;object-fit:contain}.card h2{margin:0;font-size:1.08rem;line-height:1.35}.card p{margin:0;color:#5d6d84}.card span{color:#7b879a;font-size:.82rem}@media(max-width:600px){main{margin:24px auto}.hero{padding:22px}.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -219,6 +219,9 @@ function renderFriendLinksHtml(links = []) {
             href: link.url,
             title: link.name,
             description: link.description || '月读空间收录的友好站点。',
+            image: link.avatar_url || '',
+            imageKind: 'avatar',
+            imageAlt: `${link.name} 站点头像`,
             meta: '公开友链'
         })),
         actions: [

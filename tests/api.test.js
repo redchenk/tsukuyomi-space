@@ -30,6 +30,7 @@ const { createEmbedding } = require('../backend/services/room-embedding');
 const { requireUserId, similarity } = require('../backend/services/room-memory');
 const { scopeFilter, truncateUtf8 } = require('../backend/services/room-milvus-store');
 const objectStorage = require('../backend/services/object-storage');
+const friendLinkAvatarService = require('../backend/services/friend-link-avatar');
 const { renderSeoCollectionPage } = require('../backend/seo/render-pages');
 
 let server;
@@ -2548,15 +2549,25 @@ describe('friend link applications API', () => {
         assert.equal(unsafe.response.status, 422);
         assert.equal(unsafe.body.code, 'INVALID_LINK_APPLICATION');
 
-        const created = await postJson('/api/friend-links', {
-            name: 'Example Friend',
-            url: 'https://friend.example.test/',
-            description: 'A small independent website.',
-            backlink_url: 'https://friend.example.test/links',
-            note: 'API integration test'
-        }, userToken);
+        const originalPrepareAvatar = friendLinkAvatarService.prepareFriendLinkAvatar;
+        friendLinkAvatarService.prepareFriendLinkAvatar = async ({ avatarUrl }) => (
+            avatarUrl || 'https://cdn.example.test/friend-avatar.png'
+        );
+        let created;
+        try {
+            created = await postJson('/api/friend-links', {
+                name: 'Example Friend',
+                url: 'https://friend.example.test/',
+                description: 'A small independent website.',
+                backlink_url: 'https://friend.example.test/links',
+                note: 'API integration test'
+            }, userToken);
+        } finally {
+            friendLinkAvatarService.prepareFriendLinkAvatar = originalPrepareAvatar;
+        }
         assert.equal(created.response.status, 201);
         assert.equal(created.body.data.status, 'pending');
+        assert.equal(created.body.data.avatar_url, 'https://cdn.example.test/friend-avatar.png');
         const linkId = created.body.data.id;
 
         const duplicate = await postJson('/api/friend-links', {
@@ -2583,7 +2594,11 @@ describe('friend link applications API', () => {
         assert.equal(approved.body.data.status, 'active');
 
         const visible = await request('/api/friend-links');
-        assert.ok(visible.body.data.some(item => item.id === linkId && item.name === 'Example Friend'));
+        assert.ok(visible.body.data.some(item => (
+            item.id === linkId
+            && item.name === 'Example Friend'
+            && Object.hasOwn(item, 'avatar_url')
+        )));
 
         const removed = await request(`/api/admin/links/${linkId}`, {
             method: 'DELETE',

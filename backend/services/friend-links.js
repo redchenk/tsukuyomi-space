@@ -2,13 +2,29 @@ const FRIEND_LINK_LIMITS = Object.freeze({
     name: 40,
     description: 160,
     note: 300,
-    url: 2048
+    url: 2048,
+    avatarUrl: 2048
 });
 
 function plainText(value, maxLength) {
     const text = String(value || '').trim().replace(/\s+/g, ' ');
     if (!text || text.length > maxLength || /[\u0000-\u001f\u007f<>]/.test(text)) return '';
     return text;
+}
+
+function normalizeFriendLinkAvatarUrl(value, { optional = false } = {}) {
+    const raw = String(value || '').trim();
+    if (!raw) return optional ? '' : null;
+    if (raw.length > FRIEND_LINK_LIMITS.avatarUrl || /[\u0000-\u001f\u007f]/.test(raw)) return null;
+
+    try {
+        const url = new URL(raw);
+        if (url.protocol !== 'https:' || url.username || url.password) return null;
+        url.hash = '';
+        return url.toString();
+    } catch (_) {
+        return null;
+    }
 }
 
 function optionalPlainText(value, maxLength) {
@@ -36,12 +52,14 @@ function validateFriendLinkApplication(body = {}) {
     const name = plainText(body.name, FRIEND_LINK_LIMITS.name);
     const description = plainText(body.description, FRIEND_LINK_LIMITS.description);
     const url = normalizeFriendLinkUrl(body.url);
+    const avatarUrl = normalizeFriendLinkAvatarUrl(body.avatar_url, { optional: true });
     const backlinkUrl = normalizeFriendLinkUrl(body.backlink_url, { optional: true });
     const note = optionalPlainText(body.note, FRIEND_LINK_LIMITS.note);
 
     if (!name || name.length < 2) return { error: '站点名称需为 2-40 个字符' };
     if (!url) return { error: '请填写有效的 HTTP(S) 站点地址' };
     if (!description || description.length < 6) return { error: '站点简介需为 6-160 个字符' };
+    if (avatarUrl === null) return { error: '头像链接必须是有效的 HTTPS 地址' };
     if (backlinkUrl === null) return { error: '回链地址格式无效' };
     if (String(body.note || '').trim() && !note) return { error: '补充说明格式无效或超过 300 个字符' };
 
@@ -50,6 +68,7 @@ function validateFriendLinkApplication(body = {}) {
             name,
             url,
             description,
+            avatarUrl,
             backlinkUrl,
             note
         }
@@ -58,6 +77,7 @@ function validateFriendLinkApplication(body = {}) {
 
 module.exports = {
     FRIEND_LINK_LIMITS,
+    normalizeFriendLinkAvatarUrl,
     normalizeFriendLinkUrl,
     validateFriendLinkApplication
 };

@@ -14,10 +14,13 @@ const form = reactive({
   name: '',
   url: '',
   description: '',
+  avatar_url: '',
   backlink_url: '',
   note: ''
 });
 const submitting = ref(false);
+const discoveringAvatar = ref(false);
+const avatarPreviewFailed = ref(false);
 const loadingApplications = ref(false);
 const applications = ref([]);
 const errorMessage = ref('');
@@ -38,6 +41,11 @@ const copy = computed(() => isZh.value ? {
   urlPlaceholder: 'https://example.com',
   description: '站点简介',
   descriptionPlaceholder: '用一句话介绍你的站点',
+  avatar: '头像链接',
+  avatarPlaceholder: 'https://example.com/avatar.png',
+  autoAvatar: '自动获取',
+  detectingAvatar: '获取中',
+  enterSiteFirst: '请先填写站点链接',
   advanced: '补充信息',
   backlink: '回链地址（选填）',
   backlinkPlaceholder: 'https://example.com/links',
@@ -74,6 +82,11 @@ const copy = computed(() => isZh.value ? {
   urlPlaceholder: 'https://example.com',
   description: 'サイト紹介',
   descriptionPlaceholder: 'サイトを一文で紹介してください',
+  avatar: 'アバター URL',
+  avatarPlaceholder: 'https://example.com/avatar.png',
+  autoAvatar: '自動取得',
+  detectingAvatar: '取得中',
+  enterSiteFirst: '先にサイト URL を入力してください',
   advanced: '追加情報',
   backlink: '相互リンク URL（任意）',
   backlinkPlaceholder: 'https://example.com/links',
@@ -112,6 +125,36 @@ function formatDate(value) {
   return value ? formatDateTime(value, isZh.value ? 'zh-CN' : 'ja-JP') : '';
 }
 
+function initial(name) {
+  return String(name || '?').trim().slice(0, 1).toUpperCase();
+}
+
+async function discoverAvatar() {
+  if (discoveringAvatar.value) return;
+  if (!form.url.trim()) {
+    errorMessage.value = copy.value.enterSiteFirst;
+    return;
+  }
+  discoveringAvatar.value = true;
+  errorMessage.value = '';
+  try {
+    const response = await authFetch('/api/friend-links/discover-avatar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: form.url.trim() })
+    });
+    const result = await parseResponse(response);
+    if (!response.ok || !result.success || !result.data?.avatar_url) {
+      throw new Error(result.message || copy.value.submitFailed);
+    }
+    form.avatar_url = result.data.avatar_url;
+  } catch (error) {
+    errorMessage.value = error.message || copy.value.submitFailed;
+  } finally {
+    discoveringAvatar.value = false;
+  }
+}
+
 async function loadApplications() {
   if (!isAuthed.value) {
     applications.value = [];
@@ -143,6 +186,7 @@ async function submitApplication() {
         name: form.name.trim(),
         url: form.url.trim(),
         description: form.description.trim(),
+        avatar_url: form.avatar_url.trim(),
         backlink_url: form.backlink_url.trim(),
         note: form.note.trim()
       })
@@ -159,6 +203,9 @@ async function submitApplication() {
 }
 
 watch(() => props.user?.id, loadApplications, { immediate: true });
+watch(() => form.avatar_url, () => {
+  avatarPreviewFailed.value = false;
+});
 </script>
 
 <template>
@@ -199,7 +246,7 @@ watch(() => props.user?.id, loadApplications, { immediate: true });
           <button class="primary-btn" type="button" @click="go('/login')">{{ copy.login }}</button>
         </div>
 
-        <form v-else class="friend-link-form" :aria-busy="submitting" @submit.prevent="submitApplication">
+        <form v-else class="friend-link-form" :aria-busy="submitting || discoveringAvatar" @submit.prevent="submitApplication">
           <div class="friend-link-field-grid">
             <label class="friend-link-field">
               <span>{{ copy.name }}</span>
@@ -216,6 +263,31 @@ watch(() => props.user?.id, loadApplications, { immediate: true });
             <textarea v-model="form.description" maxlength="160" minlength="6" rows="3" :placeholder="copy.descriptionPlaceholder" required></textarea>
             <small>{{ form.description.length }}/160</small>
           </label>
+
+          <div class="friend-link-avatar-entry">
+            <label class="friend-link-field">
+              <span>{{ copy.avatar }}</span>
+              <input v-model="form.avatar_url" type="url" maxlength="2048" inputmode="url" :placeholder="copy.avatarPlaceholder">
+            </label>
+            <button
+              class="ghost-btn friend-link-avatar-action"
+              :class="{ 'is-loading': discoveringAvatar }"
+              type="button"
+              :disabled="discoveringAvatar || !form.url.trim()"
+              @click="discoverAvatar"
+            >
+              <TsIcon :name="discoveringAvatar ? 'loader' : 'refresh'" :size="17" />
+              <span>{{ discoveringAvatar ? copy.detectingAvatar : copy.autoAvatar }}</span>
+            </button>
+          </div>
+
+          <div v-if="form.avatar_url" class="friend-link-avatar-preview">
+            <span class="friend-links-avatar" aria-hidden="true">
+              <img v-if="!avatarPreviewFailed" :src="form.avatar_url" alt="" referrerpolicy="no-referrer" @error="avatarPreviewFailed = true">
+              <span v-else>{{ initial(form.name) }}</span>
+            </span>
+            <span>{{ form.name || copy.namePlaceholder }}</span>
+          </div>
 
           <details class="friend-link-advanced">
             <summary>
@@ -238,7 +310,7 @@ watch(() => props.user?.id, loadApplications, { immediate: true });
           <p v-if="errorMessage" class="friend-link-error" role="alert">{{ errorMessage }}</p>
 
           <div class="friend-link-form-actions">
-            <button class="primary-btn" type="submit" :disabled="submitting">
+            <button class="primary-btn" type="submit" :disabled="submitting || discoveringAvatar">
               <TsIcon name="send" :size="18" />
               <span>{{ submitting ? copy.submitting : copy.submit }}</span>
             </button>

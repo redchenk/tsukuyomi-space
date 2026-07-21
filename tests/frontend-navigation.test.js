@@ -144,6 +144,11 @@ describe('frontend navigation routes', () => {
         assert.match(directory, /<StatusLoader/);
         assert.match(directory, /:aria-busy="state\.loading"/);
         assert.match(application, /\/api\/friend-links/);
+        assert.match(application, /\/api\/friend-links\/discover-avatar/);
+        assert.match(application, /avatar_url: form\.avatar_url\.trim\(\)/);
+        assert.match(application, /copy\.autoAvatar/);
+        assert.match(directory, /link\.avatar_url/);
+        assert.match(directory, /referrerpolicy="no-referrer"/);
         assert.match(application, /go\('\/friend-links'\)/);
         assert.match(application, /TsIcon name="external"/);
     });
@@ -152,8 +157,11 @@ describe('frontend navigation routes', () => {
         const terminal = source('src/frontend/pages/TerminalPage.vue');
 
         assert.match(terminal, /label: '友链审核'/);
-        assert.match(terminal, /newLink: \{ name: '', url: '', description: '' \}/);
+        assert.match(terminal, /newLink: \{ name: '', url: '', description: '', avatar_url: '' \}/);
         assert.match(terminal, /async function createLink\(\)/);
+        assert.match(terminal, /async function refreshLinkAvatar\(id\)/);
+        assert.match(terminal, /站点描述/);
+        assert.match(terminal, /头像链接/);
         assert.match(terminal, /@submit\.prevent="createLink"/);
         assert.match(terminal, /提交后直接公开/);
         assert.match(terminal, /linkReviewFilter: 'pending'/);

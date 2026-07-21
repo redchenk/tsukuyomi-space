@@ -11,7 +11,8 @@ const emit = defineEmits(['go']);
 const state = reactive({
   links: [],
   loading: true,
-  error: ''
+  error: '',
+  avatarErrors: new Set()
 });
 
 const isZh = computed(() => props.lang === 'zh');
@@ -61,6 +62,14 @@ function hostLabel(url) {
   }
 }
 
+function hasAvatar(link) {
+  return Boolean(link.avatar_url) && !state.avatarErrors.has(link.id);
+}
+
+function markAvatarFailed(id) {
+  state.avatarErrors.add(id);
+}
+
 async function loadLinks() {
   state.loading = true;
   state.error = '';
@@ -69,6 +78,7 @@ async function loadLinks() {
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || copy.value.loadFailed);
     state.links = Array.isArray(result.data) ? result.data : [];
+    state.avatarErrors.clear();
   } catch (error) {
     state.links = [];
     state.error = error.message || copy.value.loadFailed;
@@ -139,7 +149,18 @@ onMounted(loadLinks);
           :aria-label="`${copy.visit}: ${link.name}`"
         >
           <div class="friend-links-card-top">
-            <span class="friend-links-avatar" aria-hidden="true">{{ initial(link.name) }}</span>
+            <span class="friend-links-avatar" aria-hidden="true">
+              <img
+                v-if="hasAvatar(link)"
+                :src="link.avatar_url"
+                alt=""
+                loading="lazy"
+                decoding="async"
+                referrerpolicy="no-referrer"
+                @error="markAvatarFailed(link.id)"
+              >
+              <span v-else>{{ initial(link.name) }}</span>
+            </span>
             <TsIcon name="external" :size="17" />
           </div>
           <div class="friend-links-card-copy">

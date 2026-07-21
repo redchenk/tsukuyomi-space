@@ -42,8 +42,9 @@ const terminal = reactive({
   passwordDrafts: {},
   adminPassword: { currentPassword: '', newPassword: '', confirmPassword: '' },
   links: [],
-  newLink: { name: '', url: '', description: '' },
+  newLink: { name: '', url: '', description: '', avatar_url: '' },
   linkCreating: false,
+  linkAvatarLoading: {},
   linkReviewFilter: 'pending',
   settings: {
     siteTitle: '',
@@ -436,7 +437,7 @@ async function createLink() {
       method: 'POST',
       body: JSON.stringify(terminal.newLink)
     });
-    terminal.newLink = { name: '', url: '', description: '' };
+    terminal.newLink = { name: '', url: '', description: '', avatar_url: '' };
     terminal.linkReviewFilter = 'active';
     showMessage('友链已添加并公开');
     await loadPanel('links');
@@ -444,6 +445,20 @@ async function createLink() {
     showMessage(error.message || '友链添加失败', 'error');
   } finally {
     terminal.linkCreating = false;
+  }
+}
+
+async function refreshLinkAvatar(id) {
+  if (terminal.linkAvatarLoading[id]) return;
+  terminal.linkAvatarLoading[id] = true;
+  try {
+    await adminApi(`/links/${id}/avatar`, { method: 'POST', body: '{}' });
+    showMessage('站点头像已自动更新');
+    await loadPanel('links');
+  } catch (error) {
+    showMessage(error.message || '站点头像获取失败', 'error');
+  } finally {
+    terminal.linkAvatarLoading[id] = false;
   }
 }
 
@@ -931,8 +946,9 @@ onUnmounted(() => {
               </div>
               <div class="terminal-link-create-fields">
                 <label>站点名称<input v-model.trim="terminal.newLink.name" type="text" minlength="2" maxlength="40" autocomplete="off" required></label>
-                <label>站点地址<input v-model.trim="terminal.newLink.url" type="url" maxlength="2048" inputmode="url" placeholder="https://" autocomplete="url" required></label>
-                <label>简介<input v-model.trim="terminal.newLink.description" type="text" minlength="6" maxlength="160" placeholder="可留空" autocomplete="off"></label>
+                <label>站点链接<input v-model.trim="terminal.newLink.url" type="url" maxlength="2048" inputmode="url" placeholder="https://" autocomplete="url" required></label>
+                <label>头像链接<input v-model.trim="terminal.newLink.avatar_url" type="url" maxlength="2048" inputmode="url" placeholder="留空自动获取" autocomplete="url"></label>
+                <label>站点描述<input v-model.trim="terminal.newLink.description" type="text" minlength="6" maxlength="160" autocomplete="off" required></label>
                 <button class="primary-btn" type="submit" :disabled="terminal.linkCreating">
                   <TsIcon :name="terminal.linkCreating ? 'loader' : 'plus'" :size="16" />
                   {{ terminal.linkCreating ? '添加中' : '添加友链' }}
@@ -947,12 +963,12 @@ onUnmounted(() => {
             </div>
             <div class="terminal-table-wrap terminal-review-table"><table><thead><tr><th>站点</th><th>申请人</th><th>简介</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in filteredReviewLinks" :key="item.id">
-                <td><strong>{{ item.name }}</strong><br><a :href="item.url" :title="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></td>
+                <td><div class="terminal-link-site"><span class="terminal-link-avatar" aria-hidden="true"><span>{{ item.name?.slice(0, 1) || '?' }}</span><img v-if="item.avatar_url" :src="item.avatar_url" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true"></span><div><strong>{{ item.name }}</strong><a :href="item.url" :title="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></div></div></td>
                 <td>{{ item.applicant_username || '管理员' }}<br><small v-if="item.applicant_email">{{ item.applicant_email }}</small></td>
                 <td>{{ item.description || '—' }}<br><a v-if="item.backlink_url" :href="item.backlink_url" target="_blank" rel="noopener noreferrer">检查回链</a><small v-if="item.note" class="terminal-review-note">{{ item.note }}</small></td>
                 <td><span class="terminal-badge" :class="{ ok: item.status === 'active', warn: item.status === 'pending', hot: item.status === 'rejected' }">{{ item.status === 'pending' ? '待审核' : (item.status === 'active' ? '已通过' : '未通过') }}</span></td>
                 <td>{{ formatDate(item.updated_at || item.created_at) }}</td>
-                <td><div class="terminal-row-actions"><button v-if="item.status !== 'active'" class="primary-btn" type="button" @click="updateLinkStatus(item.id, 'active')">通过</button><button v-if="item.status !== 'rejected'" class="ghost-btn" type="button" @click="updateLinkStatus(item.id, 'rejected')">{{ item.status === 'active' ? '撤下' : '拒绝' }}</button><button class="danger-btn" type="button" @click="deleteLink(item.id)">删除</button></div></td>
+                <td><div class="terminal-row-actions"><button class="ghost-btn terminal-icon-action" type="button" :disabled="terminal.linkAvatarLoading[item.id]" title="自动获取头像" aria-label="自动获取头像" @click="refreshLinkAvatar(item.id)"><TsIcon :name="terminal.linkAvatarLoading[item.id] ? 'loader' : 'refresh'" :size="15" /></button><button v-if="item.status !== 'active'" class="primary-btn" type="button" @click="updateLinkStatus(item.id, 'active')">通过</button><button v-if="item.status !== 'rejected'" class="ghost-btn" type="button" @click="updateLinkStatus(item.id, 'rejected')">{{ item.status === 'active' ? '撤下' : '拒绝' }}</button><button class="danger-btn" type="button" @click="deleteLink(item.id)">删除</button></div></td>
               </tr>
               <tr v-if="!filteredReviewLinks.length"><td colspan="6"><div class="terminal-empty">当前筛选下没有友链申请</div></td></tr>
             </tbody></table></div>

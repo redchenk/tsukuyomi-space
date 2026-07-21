@@ -5,6 +5,7 @@ const PUBLIC_FIELDS = `
     name,
     url,
     COALESCE(description, '') AS description,
+    COALESCE(avatar_url, '') AS avatar_url,
     created_at
 `;
 
@@ -54,36 +55,46 @@ function findByUrl(url) {
     return db.prepare('SELECT * FROM friend_links WHERE lower(url) = lower(?) ORDER BY id DESC LIMIT 1').get(url);
 }
 
-function createApplication({ name, url, description, backlinkUrl, note, userId }) {
+function createApplication({ name, url, description, avatarUrl, backlinkUrl, note, userId }) {
     const result = db.prepare(`
-        INSERT INTO friend_links (name, url, description, backlink_url, note, user_id, status)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    `).run(name, url, description, backlinkUrl, note, userId);
+        INSERT INTO friend_links (name, url, description, avatar_url, backlink_url, note, user_id, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+    `).run(name, url, description, avatarUrl, backlinkUrl, note, userId);
     return findById(result.lastInsertRowid);
 }
 
-function resubmitApplication(id, { name, url, description, backlinkUrl, note, userId }) {
+function resubmitApplication(id, { name, url, description, avatarUrl, backlinkUrl, note, userId }) {
     const changes = db.prepare(`
         UPDATE friend_links
         SET name = ?,
             url = ?,
             description = ?,
+            avatar_url = ?,
             backlink_url = ?,
             note = ?,
             status = 'pending',
             reviewed_at = NULL,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND user_id = ? AND status = 'rejected'
-    `).run(name, url, description, backlinkUrl, note, id, userId).changes;
+    `).run(name, url, description, avatarUrl, backlinkUrl, note, id, userId).changes;
     return changes ? findById(id) : null;
 }
 
-function createActiveLink({ name, url, description = '' }) {
+function createActiveLink({ name, url, description = '', avatarUrl = '' }) {
     const result = db.prepare(`
-        INSERT INTO friend_links (name, url, description, status, reviewed_at)
-        VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP)
-    `).run(name, url, description);
+        INSERT INTO friend_links (name, url, description, avatar_url, status, reviewed_at)
+        VALUES (?, ?, ?, ?, 'active', CURRENT_TIMESTAMP)
+    `).run(name, url, description, avatarUrl);
     return findById(result.lastInsertRowid);
+}
+
+function updateAvatar(id, avatarUrl) {
+    const changes = db.prepare(`
+        UPDATE friend_links
+        SET avatar_url = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    `).run(avatarUrl, id).changes;
+    return changes ? findById(id) : null;
 }
 
 function updateStatus(id, status) {
@@ -110,6 +121,7 @@ module.exports = {
     createApplication,
     resubmitApplication,
     createActiveLink,
+    updateAvatar,
     updateStatus,
     deleteLink
 };

@@ -12,6 +12,7 @@ const objectStorage = require('./services/object-storage');
 const responseCache = require('./services/response-cache');
 const { publicEmail } = require('./validators');
 const { normalizeFriendLinkUrl, validateFriendLinkApplication } = require('./services/friend-links');
+const friendLinkAvatarService = require('./services/friend-link-avatar');
 const { readModerationSettings, reviewMessageContent } = require('./services/message-moderation');
 const {
     authenticateToken,
@@ -602,15 +603,25 @@ router.get('/links', (req, res) => {
     }
 });
 
-router.post('/links', (req, res) => {
+router.post('/links', async (req, res) => {
     try {
         const review = validateFriendLinkApplication({
             name: req.body?.name,
             url: req.body?.url,
-            description: req.body?.description || '管理员添加的站点'
+            description: req.body?.description,
+            avatar_url: req.body?.avatar_url
         });
         if (review.error) return fail(res, 400, review.error);
         if (friendLinkRepository.findByUrl(review.data.url)) return fail(res, 409, '该站点已有友链记录');
+        try {
+            review.data.avatarUrl = await friendLinkAvatarService.prepareFriendLinkAvatar({
+                avatarUrl: review.data.avatarUrl,
+                siteUrl: review.data.url
+            });
+            if (!review.data.avatarUrl) return fail(res, 400, '未能自动获取站点头像，请填写 HTTPS 头像链接');
+        } catch (_) {
+            return fail(res, 400, '头像链接不可用或指向非公开地址');
+        }
         const link = friendLinkRepository.createActiveLink(review.data);
         clearPublicFriendLinkCache();
         ok(res, link, '友链已添加');
@@ -620,19 +631,41 @@ router.post('/links', (req, res) => {
     }
 });
 
-router.patch('/links/:id/status', (req, res) => {
+router.patch('/links/:id/status', async (req, res) => {
     try {
         const id = asInt(req.params.id);
         const status = String(req.body?.status || '').trim();
         if (!id) return fail(res, 400, '友链 ID 无效');
         if (!['pending', 'active', 'rejected'].includes(status)) return fail(res, 400, '审核状态无效');
-        const link = friendLinkRepository.updateStatus(id, status);
+        let link = friendLinkRepository.findById(id);
         if (!link) return fail(res, 404, '友链不存在');
+        if (status === 'active' && !link.avatar_url) {
+            const avatarUrl = await friendLinkAvatarService.prepareFriendLinkAvatar({ siteUrl: link.url });
+            if (!avatarUrl) return fail(res, 422, '未能自动获取站点头像，请先填写或刷新头像');
+            link = friendLinkRepository.updateAvatar(id, avatarUrl) || link;
+        }
+        link = friendLinkRepository.updateStatus(id, status);
         clearPublicFriendLinkCache();
         ok(res, link, '友链状态已更新');
     } catch (error) {
         console.error('Admin link status update error:', error);
         fail(res, 500, '无法更新友链状态');
+    }
+});
+
+router.post('/links/:id/avatar', async (req, res) => {
+    try {
+        const id = asInt(req.params.id);
+        if (!id) return fail(res, 400, '友链 ID 无效');
+        const link = friendLinkRepository.findById(id);
+        if (!link) return fail(res, 404, '友链不存在');
+        const avatarUrl = await friendLinkAvatarService.discoverFriendLinkAvatar(link.url);
+        const updated = friendLinkRepository.updateAvatar(id, avatarUrl);
+        clearPublicFriendLinkCache();
+        ok(res, updated, '站点头像已更新');
+    } catch (error) {
+        console.warn('Admin friend link avatar discovery failed:', error.message);
+        fail(res, 422, error.message || '未能自动获取站点头像');
     }
 });
 
