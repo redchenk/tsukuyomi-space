@@ -21,10 +21,6 @@ html[data-theme="light"] body.vue-room-route {
     will-change: auto;
 }
 
-.route-stage-transitioning .route-view {
-    will-change: opacity, transform;
-}
-
 html[data-window-active="false"] *,
 html[data-window-active="false"] *::before,
 html[data-window-active="false"] *::after {
@@ -82,8 +78,24 @@ html[data-performance="reduced"] .room-weather-layer::after {
     display: none !important;
 }
 
-html[data-performance="reduced"] .route-transition-veil {
+html[data-performance="reduced"] .route-navigation-progress {
     display: none;
+}
+
+.route-view.page:not(.room-page):not(.arena-page) :where(
+    .stage-card,
+    .gallery-card,
+    .plaza-msg-card,
+    .friend-link-card,
+    .notification-card,
+    .attachments-card,
+    .uc-article-item,
+    .uc-pixel-card,
+    .profile-article,
+    .artwork-card
+):nth-child(n + 7) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 320px;
 }
 
 html[data-performance="reduced"] .route-view.page:not(.room-page) :where(

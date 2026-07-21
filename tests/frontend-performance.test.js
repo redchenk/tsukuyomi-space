@@ -48,6 +48,26 @@ describe('constrained-device performance policy', () => {
         assert.match(main, /performance\.css/);
     });
 
+    it('keeps route motion compositor-only and bounded during navigation', () => {
+        const packageJson = JSON.parse(source('package.json'));
+        const app = source('src/frontend/App.vue');
+        const motion = source('src/frontend/utils/motion.js');
+        const animations = source('src/frontend/styles/animations.css');
+
+        assert.match(packageJson.dependencies.animejs, /^\^4\./);
+        assert.match(motion, /from 'animejs\/waapi'/);
+        assert.match(motion, /isReducedPerformance\(\)/);
+        assert.match(motion, /prefers-reduced-motion: reduce/);
+        assert.match(motion, /MAX_ROUTE_TARGETS = 6/);
+        assert.doesNotMatch(motion, /(?:width|height|top|left):\s*\[/);
+        assert.match(app, /routeProgressVisible/);
+        assert.match(app, /ROUTE_PROGRESS_DELAY_MS = 96/);
+        assert.match(app, /routeOwnsLoading/);
+        assert.match(app, /:css="false"/);
+        assert.doesNotMatch(app, /route-transition-veil/);
+        assert.doesNotMatch(animations, /\[class\*="grid"\][\s\S]*>\s*:where\(article, a, button, li, div\)/);
+    });
+
     it('prefetches only a small adjacent route set during idle time', () => {
         const router = source('src/frontend/router/index.js');
 

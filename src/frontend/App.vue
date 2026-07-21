@@ -7,6 +7,7 @@ import AppShell from './layouts/AppShell.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
 import { isAuthPath, withAuthRedirect } from './utils/authRedirect';
+import { animateRouteEnter, cancelRouteMotion } from './utils/motion';
 import {
   getPerformanceProfile,
   PERFORMANCE_PROFILE_EVENT,
@@ -21,12 +22,14 @@ const lang = ref(normalizeLanguage(localStorage.getItem('lang')));
 const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
 const user = ref(null);
 const t = computed(() => i18n[lang.value] || i18n.zh);
+const routeLoadingLabel = computed(() => lang.value === 'ja'
+  ? 'ページを読み込み中'
+  : lang.value === 'en' ? 'Loading page' : '页面加载中');
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isAuthRoute = computed(() => route.name === 'login' || route.name === 'register');
 const isLive2DRoute = computed(() => route.name === 'live2d');
 const isRoomRoute = computed(() => route.name === 'room');
 const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value);
-const routeTransitionName = computed(() => isLive2DRoute.value ? '' : 'ts-route');
 const hasGlobalBackground = computed(() => !isAccessRoute.value && !isAuthRoute.value && route.name !== 'room' && !isLive2DRoute.value);
 const showSitePet = computed(() => Boolean(route.name)
   && !['access', 'accessAlias', 'login', 'register', 'room', 'roomSettings'].includes(route.name));
@@ -35,7 +38,10 @@ const petReady = ref(false);
 const petReduced = computed(() => performanceProfile.value === 'reduced');
 const isAuthed = computed(() => Boolean(user.value));
 const music = useRoomMusic();
-const routeTransitioning = ref(false);
+const routeProgressVisible = ref(false);
+const routeProgressCompleting = ref(false);
+const ROUTE_PROGRESS_DELAY_MS = 96;
+const ROUTE_PROGRESS_SETTLE_MS = 140;
 const VIEW_RECORDED_KEY = 'tsukuyomi_site_view_recorded';
 const STATS_UPDATED_EVENT = 'tsukuyomi:stats-updated';
 const VISIT_POPUP_SEEN_KEY = 'tsukuyomi_visit_popup_seen';
@@ -49,10 +55,13 @@ const visitPopup = ref({
 });
 
 let lastTrustedAuthAt = 0;
-let routeTransitionTimer = 0;
+let routeProgressTimer = 0;
 let refreshUserRun = 0;
 let initialRouteReady = false;
 let cancelPetWarmup = null;
+let removeRouteProgressGuard = null;
+let removeRouteProgressHook = null;
+let removeRouteErrorHook = null;
 const viewRecordRequests = new Map();
 
 function hydrateCachedUser() {
@@ -185,21 +194,37 @@ function go(path) {
   router.push(target);
 }
 
-function beginRouteTransition() {
-  if (typeof window === 'undefined') return;
-  window.clearTimeout(routeTransitionTimer);
-  routeTransitioning.value = true;
-  routeTransitionTimer = window.setTimeout(() => {
-    routeTransitioning.value = false;
-  }, 500);
+function scheduleRouteProgress(to, from) {
+  if (typeof window === 'undefined' || !from?.name || to.fullPath === from.fullPath) return;
+  const routeOwnsLoading = ['access', 'accessAlias', 'room', 'live2d'].includes(String(from.name))
+    || ['room', 'live2d'].includes(String(to.name));
+  if (routeOwnsLoading) return;
+  window.clearTimeout(routeProgressTimer);
+  routeProgressVisible.value = false;
+  routeProgressCompleting.value = false;
+  routeProgressTimer = window.setTimeout(() => {
+    routeProgressVisible.value = true;
+  }, ROUTE_PROGRESS_DELAY_MS);
 }
 
-function finishRouteTransition() {
+function finishRouteProgress() {
   if (typeof window === 'undefined') return;
-  window.clearTimeout(routeTransitionTimer);
-  routeTransitionTimer = window.setTimeout(() => {
-    routeTransitioning.value = false;
-  }, 16);
+  window.clearTimeout(routeProgressTimer);
+  if (!routeProgressVisible.value) return;
+  routeProgressCompleting.value = true;
+  routeProgressTimer = window.setTimeout(() => {
+    routeProgressVisible.value = false;
+    routeProgressCompleting.value = false;
+  }, ROUTE_PROGRESS_SETTLE_MS);
+}
+
+function enterRoute(element, done) {
+  animateRouteEnter(element, done);
+}
+
+function leaveRoute(element, done) {
+  cancelRouteMotion(element);
+  done();
 }
 
 async function logout() {
@@ -309,6 +334,9 @@ router.isReady().then(() => {
 });
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
+  removeRouteProgressGuard = router.beforeEach((to, from) => scheduleRouteProgress(to, from));
+  removeRouteProgressHook = router.afterEach(() => finishRouteProgress());
+  removeRouteErrorHook = router.onError(() => finishRouteProgress());
   applyPublicSettings();
   scheduleSitePet();
   window.addEventListener('pageshow', handlePageShow);
@@ -318,8 +346,11 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (typeof window === 'undefined') return;
-  window.clearTimeout(routeTransitionTimer);
+  window.clearTimeout(routeProgressTimer);
   cancelPetWarmup?.();
+  removeRouteProgressGuard?.();
+  removeRouteProgressHook?.();
+  removeRouteErrorHook?.();
   window.removeEventListener('pageshow', handlePageShow);
   window.removeEventListener(PERFORMANCE_PROFILE_EVENT, handlePerformanceProfile);
   document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -341,16 +372,14 @@ onUnmounted(() => {
     @set-lang="setLang"
     @toggle-theme="toggleTheme"
   >
-    <div class="route-stage" :class="{ 'route-stage-immersive': isImmersiveRoute, 'route-stage-transitioning': routeTransitioning }">
+    <div class="route-stage" :class="{ 'route-stage-immersive': isImmersiveRoute }">
       <RouterView v-slot="{ Component, route: viewRoute }">
         <Transition
-          :name="routeTransitionName"
           appear
-          @before-leave="beginRouteTransition"
-          @after-enter="finishRouteTransition"
-          @enter-cancelled="finishRouteTransition"
-          @after-leave="finishRouteTransition"
-          @leave-cancelled="finishRouteTransition"
+          :css="false"
+          @enter="enterRoute"
+          @leave="leaveRoute"
+          @enter-cancelled="cancelRouteMotion"
         >
           <component
             :is="Component"
@@ -371,7 +400,14 @@ onUnmounted(() => {
     </div>
   </AppShell>
 
-  <div v-if="routeTransitioning" class="route-transition-veil" aria-hidden="true"></div>
+  <div
+    v-if="routeProgressVisible"
+    class="route-navigation-progress"
+    :class="{ 'is-completing': routeProgressCompleting }"
+    role="status"
+    :aria-label="routeLoadingLabel"
+    aria-busy="true"
+  ><span aria-hidden="true"></span></div>
 
   <SitePet v-if="showSitePet && petReady" :lang="lang" :route-name="route.name" :reduced="petReduced" />
 
