@@ -631,7 +631,7 @@ router.post('/links', async (req, res) => {
     }
 });
 
-router.patch('/links/:id/status', async (req, res) => {
+async function updateFriendLinkStatus(req, res) {
     try {
         const id = asInt(req.params.id);
         const status = String(req.body?.status || '').trim();
@@ -651,7 +651,12 @@ router.patch('/links/:id/status', async (req, res) => {
         console.error('Admin link status update error:', error);
         fail(res, 500, '无法更新友链状态');
     }
-});
+}
+
+// Alibaba CDN rejects PATCH before it reaches the origin, so POST is the
+// browser-facing route. Keep PATCH for direct API clients and compatibility.
+router.post('/links/:id/status', updateFriendLinkStatus);
+router.patch('/links/:id/status', updateFriendLinkStatus);
 
 router.post('/links/:id/avatar', async (req, res) => {
     try {

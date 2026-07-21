@@ -45,6 +45,7 @@ const terminal = reactive({
   newLink: { name: '', url: '', description: '', avatar_url: '' },
   linkCreating: false,
   linkAvatarLoading: {},
+  linkStatusSaving: {},
   linkReviewFilter: 'pending',
   settings: {
     siteTitle: '',
@@ -463,12 +464,20 @@ async function refreshLinkAvatar(id) {
 }
 
 async function updateLinkStatus(id, status) {
-  await adminApi(`/links/${id}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status })
-  });
-  showMessage(status === 'active' ? '友链申请已通过' : '友链已移出公开目录');
-  await loadPanel('links');
+  if (terminal.linkStatusSaving[id]) return;
+  terminal.linkStatusSaving[id] = true;
+  try {
+    await adminApi(`/links/${id}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status })
+    });
+    await loadPanel('links');
+    showMessage(status === 'active' ? '友链申请已通过' : '友链已移出公开目录');
+  } catch (error) {
+    showMessage(error.message || '友链审核失败', 'error');
+  } finally {
+    delete terminal.linkStatusSaving[id];
+  }
 }
 
 async function deleteLink(id) {
@@ -968,7 +977,7 @@ onUnmounted(() => {
                 <td>{{ item.description || '—' }}<br><a v-if="item.backlink_url" :href="item.backlink_url" target="_blank" rel="noopener noreferrer">检查回链</a><small v-if="item.note" class="terminal-review-note">{{ item.note }}</small></td>
                 <td><span class="terminal-badge" :class="{ ok: item.status === 'active', warn: item.status === 'pending', hot: item.status === 'rejected' }">{{ item.status === 'pending' ? '待审核' : (item.status === 'active' ? '已通过' : '未通过') }}</span></td>
                 <td>{{ formatDate(item.updated_at || item.created_at) }}</td>
-                <td><div class="terminal-row-actions"><button class="ghost-btn terminal-icon-action" type="button" :disabled="terminal.linkAvatarLoading[item.id]" title="自动获取头像" aria-label="自动获取头像" @click="refreshLinkAvatar(item.id)"><TsIcon :name="terminal.linkAvatarLoading[item.id] ? 'loader' : 'refresh'" :size="15" /></button><button v-if="item.status !== 'active'" class="primary-btn" type="button" @click="updateLinkStatus(item.id, 'active')">通过</button><button v-if="item.status !== 'rejected'" class="ghost-btn" type="button" @click="updateLinkStatus(item.id, 'rejected')">{{ item.status === 'active' ? '撤下' : '拒绝' }}</button><button class="danger-btn" type="button" @click="deleteLink(item.id)">删除</button></div></td>
+                <td><div class="terminal-row-actions"><button class="ghost-btn terminal-icon-action" type="button" :disabled="terminal.linkAvatarLoading[item.id] || terminal.linkStatusSaving[item.id]" title="自动获取头像" aria-label="自动获取头像" @click="refreshLinkAvatar(item.id)"><TsIcon :name="terminal.linkAvatarLoading[item.id] ? 'loader' : 'refresh'" :size="15" /></button><button v-if="item.status !== 'active'" class="primary-btn" type="button" :disabled="terminal.linkStatusSaving[item.id]" :aria-busy="Boolean(terminal.linkStatusSaving[item.id])" @click="updateLinkStatus(item.id, 'active')"><TsIcon v-if="terminal.linkStatusSaving[item.id]" name="loader" :size="15" />{{ terminal.linkStatusSaving[item.id] ? '处理中' : '通过' }}</button><button v-if="item.status !== 'rejected'" class="ghost-btn" type="button" :disabled="terminal.linkStatusSaving[item.id]" @click="updateLinkStatus(item.id, 'rejected')">{{ item.status === 'active' ? '撤下' : '拒绝' }}</button><button class="danger-btn" type="button" :disabled="terminal.linkStatusSaving[item.id]" @click="deleteLink(item.id)">删除</button></div></td>
               </tr>
               <tr v-if="!filteredReviewLinks.length"><td colspan="6"><div class="terminal-empty">当前筛选下没有友链申请</div></td></tr>
             </tbody></table></div>

@@ -2589,7 +2589,7 @@ describe('friend link applications API', () => {
         assert.equal(adminList.response.status, 200);
         assert.ok(adminList.body.data.some(item => item.id === linkId && item.applicant_username === 'normal-user'));
 
-        const approved = await patchJson(`/api/admin/links/${linkId}/status`, { status: 'active' }, adminToken);
+        const approved = await postJson(`/api/admin/links/${linkId}/status`, { status: 'active' }, adminToken);
         assert.equal(approved.response.status, 200);
         assert.equal(approved.body.data.status, 'active');
 

@@ -155,6 +155,7 @@ describe('frontend navigation routes', () => {
 
     it('supports direct friend-link creation alongside application review', () => {
         const terminal = source('src/frontend/pages/TerminalPage.vue');
+        const statusAction = terminal.match(/async function updateLinkStatus[\s\S]*?\n}/)?.[0] || '';
 
         assert.match(terminal, /label: '友链审核'/);
         assert.match(terminal, /newLink: \{ name: '', url: '', description: '', avatar_url: '' \}/);
@@ -165,8 +166,12 @@ describe('frontend navigation routes', () => {
         assert.match(terminal, /@submit\.prevent="createLink"/);
         assert.match(terminal, /提交后直接公开/);
         assert.match(terminal, /linkReviewFilter: 'pending'/);
+        assert.match(terminal, /linkStatusSaving: \{\}/);
         assert.match(terminal, /filteredReviewLinks/);
         assert.match(terminal, /友链审核状态/);
+        assert.match(statusAction, /method: 'POST'/);
+        assert.doesNotMatch(statusAction, /method: 'PATCH'/);
+        assert.match(statusAction, /友链审核失败/);
     });
 
     it('keeps the QQ OAuth callback aligned with the production route', () => {
