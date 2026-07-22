@@ -37,6 +37,57 @@ test('Wiki loads as a production route and core interactions work', async ({ pag
   await expect(page.locator('.wiki-music-row')).toHaveCount(7);
 });
 
+test('Wiki table of contents tracks rapid scrolling without skipping sections', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/wiki');
+  await expect(page.locator('.wiki-toc a.active')).toHaveCount(1);
+
+  const observed = await page.evaluate(async () => {
+    const nextFrame = () => new Promise((resolve) => window.requestAnimationFrame(resolve));
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+    const links = Array.from(document.querySelectorAll('.wiki-toc a'));
+    const ids = links.map((link) => link.getAttribute('href')?.slice(1)).filter(Boolean);
+    const sequence = [];
+    const recordActive = () => {
+      const id = document.querySelector('.wiki-toc a.active')?.getAttribute('href')?.slice(1);
+      if (id && sequence.at(-1) !== id) sequence.push(id);
+    };
+    const observer = new MutationObserver(recordActive);
+
+    root.style.scrollBehavior = 'auto';
+    links.forEach((link) => observer.observe(link, { attributes: true, attributeFilter: ['class'] }));
+    window.scrollTo(0, 0);
+    await nextFrame();
+    await nextFrame();
+    recordActive();
+
+    const maxScroll = root.scrollHeight - window.innerHeight;
+    for (let step = 1; step <= 100; step += 1) {
+      window.scrollTo(0, (maxScroll * step) / 100);
+      await nextFrame();
+    }
+    await nextFrame();
+    const down = [...sequence];
+
+    sequence.length = 0;
+    recordActive();
+    for (let step = 99; step >= 0; step -= 1) {
+      window.scrollTo(0, (maxScroll * step) / 100);
+      await nextFrame();
+    }
+    await nextFrame();
+    const up = [...sequence];
+
+    observer.disconnect();
+    root.style.scrollBehavior = previousScrollBehavior;
+    return { ids, down, up };
+  });
+
+  expect(observed.down).toEqual(observed.ids);
+  expect(observed.up).toEqual([...observed.ids].reverse());
+});
+
 test('Character and term secondary pages support direct production access', async ({ page }) => {
   const kaguyaResponse = await page.goto('/wiki/characters/kaguya');
   expect(kaguyaResponse?.status()).toBe(200);
