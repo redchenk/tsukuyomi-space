@@ -62,20 +62,25 @@ test('Wiki table of contents tracks rapid scrolling without skipping sections', 
     await nextFrame();
     recordActive();
 
-    const maxScroll = root.scrollHeight - window.innerHeight;
     for (let step = 1; step <= 100; step += 1) {
+      const maxScroll = root.scrollHeight - window.innerHeight;
       window.scrollTo(0, (maxScroll * step) / 100);
       await nextFrame();
     }
+    window.scrollTo(0, root.scrollHeight);
+    await nextFrame();
     await nextFrame();
     const down = [...sequence];
 
     sequence.length = 0;
     recordActive();
     for (let step = 99; step >= 0; step -= 1) {
+      const maxScroll = root.scrollHeight - window.innerHeight;
       window.scrollTo(0, (maxScroll * step) / 100);
       await nextFrame();
     }
+    window.scrollTo(0, 0);
+    await nextFrame();
     await nextFrame();
     const up = [...sequence];
 
