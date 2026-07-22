@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
+import SocialShareDialog from '../components/SocialShareDialog.vue';
 import SocialText from '../components/SocialText.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { applyMessageLikeState } from '../services/messageLikes';
@@ -23,6 +24,7 @@ const commentText = ref('');
 const replyText = reactive({});
 const openReplies = reactive({});
 const session = ref(getSession());
+const articleShareOpen = ref(false);
 const bookmark = reactive({
   loading: false,
   ready: false,
@@ -88,6 +90,19 @@ function normalizeStageReturnPath(value) {
 
 function goBackToStage() {
   emit('go', articleBackPath.value);
+}
+
+function absoluteUrl(value) {
+  try {
+    return new URL(String(value || ''), location.origin).href;
+  } catch (_) {
+    return location.href;
+  }
+}
+
+function openArticleShare() {
+  if (!article.value) return;
+  articleShareOpen.value = true;
 }
 
 function escapeHtml(value) {
@@ -370,6 +385,10 @@ watch(articleId, loadArticle);
             <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} views</span>
           </div>
           <div class="article-social-actions">
+            <button class="article-bookmark-btn" type="button" @click="openArticleShare">
+              <TsIcon name="external" :size="17" />
+              <span>分享</span>
+            </button>
             <button
               class="article-bookmark-btn"
               :class="{ liked: bookmark.bookmarked }"
@@ -475,4 +494,12 @@ watch(articleId, loadArticle);
       </article>
     </div>
   </main>
+  <SocialShareDialog
+    :open="articleShareOpen"
+    :title="article?.title || '月读空间文章'"
+    :text="article?.excerpt || ''"
+    :url="absoluteUrl(articlePath)"
+    :image-url="absoluteUrl(article?.cover_image || '/assets/icons/icon-512.png')"
+    @close="articleShareOpen = false"
+  />
 </template>

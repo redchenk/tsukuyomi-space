@@ -28,11 +28,11 @@ const routeLoadingLabel = computed(() => lang.value === 'ja'
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
 const isAuthRoute = computed(() => route.name === 'login' || route.name === 'register');
 const isLive2DRoute = computed(() => route.name === 'live2d');
-const isRoomRoute = computed(() => route.name === 'room');
+const isRoomRoute = computed(() => route.name === 'room' || route.name === 'roomShared');
 const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value);
-const hasGlobalBackground = computed(() => !isAccessRoute.value && !isAuthRoute.value && route.name !== 'room' && !isLive2DRoute.value);
+const hasGlobalBackground = computed(() => !isAccessRoute.value && !isAuthRoute.value && !isRoomRoute.value && !isLive2DRoute.value);
 const showSitePet = computed(() => Boolean(route.name)
-  && !['access', 'accessAlias', 'login', 'register', 'room', 'roomSettings'].includes(route.name));
+  && !['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'roomSettings'].includes(route.name));
 const performanceProfile = ref(getPerformanceProfile());
 const petReady = ref(false);
 const petReduced = computed(() => performanceProfile.value === 'reduced');

@@ -285,7 +285,7 @@ describe('database initialization', () => {
             ORDER BY name
         `).all().map(row => row.name);
 
-        for (const table of ['schema_migrations', 'users', 'articles', 'messages', 'message_likes', 'room_chat_messages', 'admins', 'site_settings']) {
+        for (const table of ['schema_migrations', 'users', 'articles', 'messages', 'message_likes', 'room_chat_messages', 'room_conversation_shares', 'admins', 'site_settings']) {
             assert.ok(tables.includes(table), `${table} table should exist`);
         }
 
@@ -1439,6 +1439,19 @@ describe('pixel art API', () => {
         assert.equal(hubPreview.body.data.pixel.width, artworkWidth);
         assert.equal(hubPreview.body.data.pixel.height, artworkHeight);
         assert.ok(JSON.stringify(hubPreview.body).length < 64 * 1024);
+
+        const shareImage = await fetch(`${baseUrl}/api/pixel-art/${pixelArtworkId}/image.png`);
+        assert.equal(shareImage.status, 200);
+        assert.equal(shareImage.headers.get('content-type'), 'image/png');
+        assert.equal(Buffer.from(await shareImage.arrayBuffer()).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+
+        const crawlerPage = await request(`/pixel?art=${pixelArtworkId}`, {
+            headers: { 'User-Agent': 'Twitterbot/1.0' }
+        });
+        assert.equal(crawlerPage.response.status, 200);
+        assert.match(crawlerPage.body, /Test Pixel Moon/);
+        assert.match(crawlerPage.body, new RegExp(`/api/pixel-art/${pixelArtworkId}/image\\.png`));
+        assert.match(crawlerPage.body, new RegExp(`/pixel\\?art=${pixelArtworkId}`));
     });
 
     it('isolates pixel artwork management by owner while allowing admins', async () => {
@@ -2962,6 +2975,68 @@ describe('legacy page paths', () => {
         } finally {
             const remove = db.prepare('DELETE FROM articles WHERE id = ?');
             for (const id of ids) remove.run(id);
+        }
+    });
+
+    it('publishes and revokes one owned room turn without exposing private history', async () => {
+        const turnId = `share-${Date.now()}-owned`;
+        const assetId = `room-share-card-${Date.now()}`;
+        try {
+            db.prepare("DELETE FROM room_chat_messages WHERE user_id IN ('user-001', 'user-002')").run();
+            await postJson('/api/room/chat/turn', {
+                turnId,
+                userMessage: '今晚一起看月亮吗？',
+                assistantMessage: '当然，我会把这一刻记下来。'
+            }, userToken);
+            db.prepare(`
+                INSERT INTO article_assets (id, owner_id, asset_type, mime_type, url, storage_key, metadata)
+                VALUES (?, 'user-001', 'image', 'image/jpeg', ?, ?, '{}')
+            `).run(assetId, `/api/assets/proxy/${assetId}`, `test/${assetId}.jpg`);
+
+            const created = await postJson('/api/room/shares', {
+                turnId,
+                title: '月下的一次对话',
+                ogImageAssetId: assetId,
+                userMessage: 'forged content must be ignored',
+                scene: {
+                    weather: 'rain',
+                    timePhase: 'night',
+                    season: 'summer',
+                    city: '香港',
+                    temperature: 27,
+                    ignored: '<script>alert(1)</script>'
+                }
+            }, userToken);
+            assert.equal(created.response.status, 201);
+            assert.match(created.body.data.shareKey, /^[A-Za-z0-9_-]{20,}$/);
+            assert.equal(created.body.data.userMessage, '今晚一起看月亮吗？');
+            assert.equal(Object.hasOwn(created.body.data, 'userId'), false);
+
+            const publicShare = await request(`/api/room/shares/${created.body.data.shareKey}`);
+            assert.equal(publicShare.response.status, 200);
+            assert.equal(publicShare.body.data.assistantMessage, '当然，我会把这一刻记下来。');
+            assert.equal(publicShare.body.data.scene.city, '香港');
+            assert.equal(Object.hasOwn(publicShare.body.data.scene, 'ignored'), false);
+            assert.equal(Object.hasOwn(publicShare.body.data, 'userId'), false);
+
+            const denied = await postJson('/api/room/shares', {
+                turnId,
+                title: 'stolen',
+                ogImageAssetId: assetId
+            }, managedUserToken);
+            assert.ok([403, 404].includes(denied.response.status));
+
+            const revoked = await request(`/api/room/shares/${created.body.data.shareKey}`, {
+                method: 'DELETE',
+                headers: jsonHeaders(userToken)
+            });
+            assert.equal(revoked.response.status, 200);
+            const missing = await request(`/api/room/shares/${created.body.data.shareKey}`);
+            assert.equal(missing.response.status, 404);
+        } finally {
+            db.prepare('DELETE FROM room_conversation_shares WHERE user_id = ?').run('user-001');
+            db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
+            db.prepare("DELETE FROM room_chat_messages WHERE user_id IN ('user-001', 'user-002')").run();
         }
     });
 

@@ -31,6 +31,22 @@ function listMessages(userId, limit = 24) {
     `).all(userId, normalizeLimit(limit)).map(compactMessage);
 }
 
+function findOwnedTurn(userId, turnId) {
+    const rows = db.prepare(`
+        SELECT id, turn_id, role, content, created_at
+        FROM room_chat_messages
+        WHERE user_id = ? AND turn_id = ?
+        ORDER BY CASE role WHEN 'user' THEN 0 ELSE 1 END
+    `).all(userId, turnId);
+    if (rows.length !== 2 || rows[0].role !== 'user' || rows[1].role !== 'assistant') return null;
+    return {
+        turnId,
+        userMessage: rows[0].content,
+        assistantMessage: rows[1].content,
+        createdAt: rows[0].created_at
+    };
+}
+
 function pruneMessages(userId) {
     db.prepare(`
         DELETE FROM room_chat_messages
@@ -110,6 +126,7 @@ function importHistoryIfEmpty(userId, messages) {
 }
 
 module.exports = {
+    findOwnedTurn,
     listMessages,
     saveTurn,
     importHistoryIfEmpty

@@ -4,6 +4,7 @@ const notificationRepository = require('../repositories/notification-repository'
 const pixelArtRepository = require('../repositories/pixel-art-repository');
 const responseCache = require('../services/response-cache');
 const { setPrivateNoStore, setPublicReadCache } = require('../services/public-cache');
+const { renderPixelArtworkPng } = require('../services/pixel-art-image');
 
 const router = express.Router();
 const DEFAULT_DIMENSIONS = { width: 96, height: 54 };
@@ -182,6 +183,26 @@ router.get('/manage/:id', authenticateToken, (req, res) => {
     } catch (error) {
         console.error('Manage pixel art read failed:', error);
         res.status(500).json({ success: false, message: '像素画读取失败' });
+    }
+});
+
+router.get('/:id/image.png', (req, res) => {
+    try {
+        const artwork = pixelArtRepository.findArtworkById(req.params.id);
+        if (!artwork) return res.status(404).send('Not found');
+        const png = renderPixelArtworkPng(artwork);
+        const version = String(artwork.updated_at || artwork.created_at || artwork.id);
+        res.set({
+            'Content-Type': 'image/png',
+            'Content-Length': String(png.length),
+            'Cache-Control': req.query.v === version ? 'public, max-age=31536000, immutable' : 'public, max-age=86400, stale-while-revalidate=604800',
+            'Content-Disposition': `inline; filename="pixel-art-${String(artwork.id).replace(/[^A-Za-z0-9_-]/g, '')}.png"`,
+            'X-Content-Type-Options': 'nosniff'
+        });
+        return res.send(png);
+    } catch (error) {
+        console.error('Render pixel artwork image failed:', error);
+        return res.status(500).send('Image unavailable');
     }
 });
 

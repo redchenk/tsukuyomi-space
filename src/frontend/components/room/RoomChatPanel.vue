@@ -8,7 +8,7 @@ defineProps({
   panelStyle: { type: Object, required: true }
 });
 
-const emit = defineEmits(['close', 'focus', 'drag-start']);
+const emit = defineEmits(['close', 'focus', 'drag-start', 'share']);
 const imageInputRef = ref(null);
 
 function ttsStatus(chat, messageId) {
@@ -51,6 +51,16 @@ function ttsLabel(chat, messageId) {
             >
               <TsIcon v-if="ttsStatus(chat, message.id) === 'loading'" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
               <span :role="ttsStatus(chat, message.id) === 'loading' ? 'status' : undefined">{{ ttsLabel(chat, message.id) }}</span>
+            </button>
+            <button
+              v-if="chat.getShareTurn(message)"
+              class="chat-tts-btn chat-share-btn"
+              type="button"
+              aria-label="分享这轮对话"
+              @click="emit('share', message)"
+            >
+              <TsIcon name="external" :size="15" />
+              <span>分享</span>
             </button>
           </div>
         </div>

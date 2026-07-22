@@ -149,6 +149,17 @@ export const routes = [
     }
   },
   {
+    path: '/room/shared/:shareId',
+    name: 'roomShared',
+    component: RoomPage,
+    props: true,
+    meta: {
+      title: '与八千代的公开对话',
+      description: '进入月读空间八千代房间，查看并继续一段公开分享的对话。',
+      noindex: true
+    }
+  },
+  {
     path: '/room/settings',
     name: 'roomSettings',
     component: RoomSettingsPage,

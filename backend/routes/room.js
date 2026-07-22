@@ -4,7 +4,9 @@ const https = require('https');
 const { authenticateToken } = require('../middleware/auth');
 const roomMemory = require('../services/room-memory');
 const roomMemoryEvents = require('../services/room-memory-events');
+const assetRepository = require('../repositories/asset-repository');
 const roomChatRepository = require('../repositories/room-chat-repository');
+const roomShareRepository = require('../repositories/room-share-repository');
 const weatherCache = require('../services/weather-cache');
 
 const router = express.Router();
@@ -58,6 +60,7 @@ function setNoStore(res) {
 }
 
 const MAX_CHAT_CONTENT_LENGTH = 200000;
+const ROOM_SHARE_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 function normalizeChatContent(value, field) {
     if (typeof value !== 'string') {
@@ -87,6 +90,55 @@ function normalizeTurnId(value) {
         throw error;
     }
     return turnId;
+}
+
+function normalizeShareKey(value) {
+    const shareKey = String(value || '').trim();
+    return /^[A-Za-z0-9_-]{20,80}$/.test(shareKey) ? shareKey : '';
+}
+
+function cleanShareText(value, maxLength) {
+    return String(value || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function normalizeShareScene(value = {}) {
+    const scene = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const weather = new Set(['clear', 'cloudy', 'rain', 'storm', 'snow', 'fog']);
+    const timePhase = new Set(['dawn', 'day', 'dusk', 'night']);
+    const season = new Set(['spring', 'summer', 'autumn', 'winter']);
+    const normalized = {
+        weather: weather.has(scene.weather) ? scene.weather : 'clear',
+        timePhase: timePhase.has(scene.timePhase) ? scene.timePhase : getTimePhase(),
+        season: season.has(scene.season) ? scene.season : getSeason(),
+        city: cleanShareText(scene.city, 60) || '月读空间',
+        address: cleanShareText(scene.address, 160),
+        updatedAt: new Date().toISOString()
+    };
+    const temperature = Number(scene.temperature);
+    const windSpeed = Number(scene.windSpeed);
+    if (Number.isFinite(temperature)) normalized.temperature = Math.max(-80, Math.min(80, temperature));
+    if (Number.isFinite(windSpeed)) normalized.windSpeed = Math.max(0, Math.min(300, windSpeed));
+    const musicTitle = cleanShareText(scene.musicTitle, 100);
+    if (musicTitle) normalized.musicTitle = musicTitle;
+    return normalized;
+}
+
+function publicRoomShare(share) {
+    if (!share) return null;
+    return {
+        shareKey: share.shareKey,
+        turnId: share.turnId,
+        title: share.title,
+        userMessage: share.userMessage,
+        assistantMessage: share.assistantMessage,
+        scene: share.scene,
+        ogImageUrl: share.ogImageUrl,
+        author: share.author,
+        avatar: share.avatar,
+        createdAt: share.createdAt,
+        updatedAt: share.updatedAt,
+        path: `/room/shared/${encodeURIComponent(share.shareKey)}`
+    };
 }
 
 function captureCompatibleChatTurn(userId, payload = {}) {
@@ -564,6 +616,55 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
     } catch (error) {
         res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Chat turn sync failed' });
     }
+});
+
+router.get('/shares/:shareKey', (req, res) => {
+    const shareKey = normalizeShareKey(req.params.shareKey);
+    const share = shareKey ? roomShareRepository.findActiveShare(shareKey) : null;
+    if (!share) return res.status(404).json({ success: false, message: '分享内容不存在或已撤销' });
+    setNoStore(res);
+    return res.json({ success: true, data: publicRoomShare(share) });
+});
+
+router.post('/shares', authenticateToken, (req, res) => {
+    try {
+        const turnId = normalizeTurnId(req.body?.turnId);
+        const turn = roomChatRepository.findOwnedTurn(req.user.id, turnId);
+        if (!turn) return res.status(404).json({ success: false, message: '只能分享当前账号中完整的一轮对话' });
+
+        const ogImageAssetId = String(req.body?.ogImageAssetId || '').trim().slice(0, 160);
+        const asset = ogImageAssetId ? assetRepository.findAssetForOwner(ogImageAssetId, req.user.id) : null;
+        if (!asset || !ROOM_SHARE_IMAGE_MIME_TYPES.has(String(asset.mime_type || '').toLowerCase())) {
+            return res.status(400).json({ success: false, message: '分享卡图片无效' });
+        }
+
+        const title = cleanShareText(req.body?.title, 80) || '与八千代的一次对话';
+        const share = roomShareRepository.createOrReplaceShare({
+            userId: req.user.id,
+            turnId,
+            title,
+            userMessage: turn.userMessage,
+            assistantMessage: turn.assistantMessage,
+            scene: normalizeShareScene(req.body?.scene),
+            ogImageAssetId
+        });
+        setNoStore(res);
+        return res.status(201).json({ success: true, data: publicRoomShare(share), message: '分享卡已生成' });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.statusCode ? error.message : '无法生成对话分享卡'
+        });
+    }
+});
+
+router.delete('/shares/:shareKey', authenticateToken, (req, res) => {
+    const shareKey = normalizeShareKey(req.params.shareKey);
+    if (!shareKey || !roomShareRepository.revokeShare(shareKey, req.user.id)) {
+        return res.status(404).json({ success: false, message: '分享内容不存在' });
+    }
+    setNoStore(res);
+    return res.json({ success: true, data: null, message: '分享链接已撤销' });
 });
 
 async function sendMemoryStatus(req, res) {

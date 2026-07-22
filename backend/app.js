@@ -79,6 +79,7 @@ function createApp() {
     app.use('/api/chat', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'chat' }));
     app.use('/api/tts', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' }));
     app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
+    app.use('/api/room/shares', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, keyPrefix: 'room-shares' }));
     app.use('/api/mail', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 180, keyPrefix: 'mail' }));
 
     // Parse message writes with a small cap before the much larger media-aware API parser.

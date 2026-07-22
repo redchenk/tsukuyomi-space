@@ -823,6 +823,7 @@ export function useRoomChat({ live2d, world }) {
   const imageAttachment = ref(null);
   const messageListRef = ref(null);
   const ttsState = ref({ messageId: '', status: 'idle' });
+  const sharedConversation = ref(null);
   let ttsUrl = '';
   let currentAudio = null;
   let ttsRequestId = 0;
@@ -831,27 +832,36 @@ export function useRoomChat({ live2d, world }) {
   let stopRoomConversationUpdates = () => {};
 
   function addMessage(role, content, options = {}) {
-    messages.value.push({
-      id: uid(),
+    const nextMessage = {
+      id: options.id || uid(),
+      turnId: options.turnId || '',
       role,
       content: String(content || ''),
       speechText: String(options.speechText || content || ''),
       image: options.image || null,
       live2d: options.live2d || null,
-      createdAt: Date.now()
-    });
+      shareable: options.shareable !== false,
+      createdAt: options.createdAt || Date.now()
+    };
+    messages.value.push(nextMessage);
     nextTick(() => {
       if (messageListRef.value) messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
     });
+    return nextMessage;
   }
 
   function renderHistory(history) {
     messages.value = [];
     addMessage('system', 'Live2D 已就绪');
-    history.forEach((message) => addMessage(message.role, message.content));
+    history.forEach((message) => addMessage(message.role, message.content, {
+      id: message.id,
+      turnId: message.turnId,
+      createdAt: message.createdAt
+    }));
   }
 
   async function refreshSyncedHistory() {
+    if (sharedConversation.value) return;
     if (sending.value) {
       refreshHistoryAfterSend = true;
       return;
@@ -868,6 +878,27 @@ export function useRoomChat({ live2d, world }) {
   function loadHistory() {
     renderHistory(readRoomConversation());
     refreshSyncedHistory();
+  }
+
+  function getShareTurn(message) {
+    if (!message || message.role !== 'assistant' || message.pending || message.shareable === false || !message.turnId) return null;
+    const userMessage = messages.value.find((item) => item.role === 'user' && item.turnId === message.turnId);
+    if (!userMessage) return null;
+    return {
+      turnId: message.turnId,
+      userMessage: userMessage.content,
+      assistantMessage: message.content,
+      createdAt: userMessage.createdAt
+    };
+  }
+
+  function showSharedConversation(share) {
+    if (!share?.shareKey || !share?.userMessage || !share?.assistantMessage) return;
+    sharedConversation.value = share;
+    messages.value = [];
+    addMessage('system', share.title || '公开对话片段', { shareable: false });
+    addMessage('user', share.userMessage, { turnId: `shared-${share.shareKey}`, shareable: false, createdAt: share.createdAt });
+    addMessage('assistant', share.assistantMessage, { turnId: `shared-${share.shareKey}`, shareable: false, createdAt: share.createdAt });
   }
 
   async function attachImage(file) {
@@ -892,16 +923,21 @@ export function useRoomChat({ live2d, world }) {
     const image = imageAttachment.value;
     if (!message && !image) return;
     const turnId = uid();
-    addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image });
+    addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image, turnId });
     input.value = '';
     imageAttachment.value = null;
     sending.value = true;
     const typingId = uid();
-    messages.value.push({ id: typingId, role: 'assistant', content: '\u6b63\u5728\u56de\u5e94...', pending: true, createdAt: Date.now() });
+    messages.value.push({ id: typingId, turnId, role: 'assistant', content: '\u6b63\u5728\u56de\u5e94...', pending: true, createdAt: Date.now() });
 
     try {
       const settings = readJson('roomLLMSettings', {});
-      const conversation = readRoomConversation().slice(-12);
+      const storedConversation = readRoomConversation().slice(-12);
+      const sharedContext = sharedConversation.value ? [
+        { role: 'user', content: sharedConversation.value.userMessage },
+        { role: 'assistant', content: sharedConversation.value.assistantMessage }
+      ] : [];
+      const conversation = [...storedConversation, ...sharedContext].slice(-12);
       const roomContext = await buildRoomContext(message, image, settings);
       const basePrompt = settings.systemPrompt
         ? [settings.systemPrompt, roomSystemPrompt()].filter(Boolean).join('\n\n')
@@ -945,10 +981,11 @@ export function useRoomChat({ live2d, world }) {
       const ttsSettings = readJson('roomTTSSettings', {});
       if (!ttsSettings.enabled) applyRoomAct(structured.live2d);
       messages.value = messages.value.filter((item) => item.id !== typingId);
-      addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d });
+      addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d, turnId });
       const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
-      const nextHistory = [...conversation, { role: 'user', content: userContent }, { role: 'assistant', content: reply }].slice(-24);
+      const nextHistory = [...storedConversation, { role: 'user', content: userContent, turnId }, { role: 'assistant', content: reply, turnId }].slice(-24);
       writeRoomConversation(nextHistory);
+      sharedConversation.value = null;
       saveRoomConversationTurn({ turnId, userMessage: userContent, assistantMessage: reply }).catch((error) => {
         console.warn('Room conversation save failed:', error);
       });
@@ -1153,9 +1190,12 @@ export function useRoomChat({ live2d, world }) {
     input,
     sending,
     ttsState,
+    sharedConversation,
     imageAttachment,
     messageListRef,
     addMessage,
+    getShareTurn,
+    showSharedConversation,
     attachImage,
     clearImage,
     send,

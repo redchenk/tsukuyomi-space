@@ -25,8 +25,11 @@ function normalizeHistory(messages) {
   return messages
     .filter((message) => message && ['user', 'assistant'].includes(message.role))
     .map((message) => ({
+      id: message.id ? String(message.id) : '',
+      turnId: message.turnId ? String(message.turnId) : '',
       role: message.role,
-      content: String(message.content || '')
+      content: String(message.content || ''),
+      createdAt: message.createdAt || ''
     }))
     .filter((message) => message.content)
     .slice(-MAX_HISTORY_MESSAGES);

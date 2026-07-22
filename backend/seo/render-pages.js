@@ -172,6 +172,30 @@ function renderPixelHtml(artworks = []) {
     });
 }
 
+function renderPixelArtworkHtml(artwork) {
+    const id = encodeURIComponent(artwork.id);
+    const path = `/pixel?art=${id}`;
+    const dimensions = `${Number(artwork.width || artwork.size || 192)}×${Number(artwork.height || artwork.size || 108)}`;
+    const description = artwork.description || `${artwork.author || '月读空间用户'}创作的 ${dimensions} 像素作品。`;
+    const version = encodeURIComponent(String(artwork.updated_at || artwork.created_at || artwork.id));
+    return renderSeoCollectionPage({
+        path,
+        title: `${artwork.title || '像素作品'} - 月读空间像素画`,
+        heading: artwork.title || '月读空间像素作品',
+        description,
+        keywords: [artwork.title || '像素画', '在线像素画', dimensions, '月读空间像素画', 'Pixel Art'],
+        image: `/api/pixel-art/${id}/image.png?v=${version}`,
+        items: [{
+            href: `${path}&spa=1`,
+            title: artwork.title || '像素作品',
+            description,
+            meta: `${artwork.author || '匿名创作者'} · ${dimensions}`,
+            image: `/api/pixel-art/${id}/image.png?v=${version}`
+        }],
+        actions: [{ href: `${path}&spa=1`, label: '查看并继续创作' }]
+    });
+}
+
 function renderWikiHtml(entries = []) {
     return renderSeoCollectionPage({
         path: '/wiki',
@@ -234,6 +258,7 @@ function renderFriendLinksHtml(links = []) {
 module.exports = {
     renderSeoCollectionPage,
     renderHubHtml,
+    renderPixelArtworkHtml,
     renderPixelHtml,
     renderWikiHtml,
     renderWikiEntryHtml,

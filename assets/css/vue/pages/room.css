@@ -1009,6 +1009,8 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
 
 .chat-message-actions {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
     justify-content: flex-start;
     margin-top: 0.44rem;
 }

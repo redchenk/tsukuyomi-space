@@ -2164,6 +2164,14 @@ body > .arena-art-lightbox .arena-art-lightbox-footer .ghost-btn {
     background: rgba(255, 255, 255, 0.08);
 }
 
+body .page.arena-page .arena-art-lightbox-actions,
+body > .arena-art-lightbox .arena-art-lightbox-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
 body .page.arena-page .arena-art-lightbox-close,
 body > .arena-art-lightbox .arena-art-lightbox-close {
     position: absolute;

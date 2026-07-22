@@ -184,6 +184,14 @@ function isAssetPubliclyReferenced(id) {
     if (!asset) return false;
     const proxyToken = `/api/assets/proxy/${id}`;
     const directUrl = String(asset.url || '');
+    const roomShare = db.prepare(`
+        SELECT 1
+        FROM room_conversation_shares
+        WHERE og_image_asset_id = ? AND revoked_at IS NULL
+        LIMIT 1
+    `).get(id);
+    if (roomShare) return true;
+
     const row = db.prepare(`
         SELECT 1
         FROM articles

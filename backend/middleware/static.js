@@ -6,15 +6,30 @@ const articleRepository = require('../repositories/article-repository');
 const assetRepository = require('../repositories/asset-repository');
 const friendLinkRepository = require('../repositories/friend-link-repository');
 const pixelArtRepository = require('../repositories/pixel-art-repository');
+const roomShareRepository = require('../repositories/room-share-repository');
 const objectStorage = require('../services/object-storage');
 const { articlePath, renderArticleHtml, renderGalleryHtml, renderNotFoundHtml, renderStageHtml, renderTopicLandingHtml } = require('../seo/render-article');
+const { renderRoomShareHtml } = require('../seo/render-room-share');
 const { WIKI_ENTRIES, WIKI_VERIFIED_AT, findWikiEntry, wikiEntryPath } = require('../seo/wiki-content');
-const { renderFriendLinksHtml, renderHubHtml, renderPixelHtml, renderWikiEntryHtml, renderWikiHtml } = require('../seo/render-pages');
+const { renderFriendLinksHtml, renderHubHtml, renderPixelArtworkHtml, renderPixelHtml, renderWikiEntryHtml, renderWikiHtml } = require('../seo/render-pages');
 
 const CRAWLER_USER_AGENT = /(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|discordbot)/i;
 
 function isCrawlerRequest(req) {
     return CRAWLER_USER_AGENT.test(String(req.get('user-agent') || ''));
+}
+
+function sharePageOrigin(req) {
+    const allowedHosts = new Set(['yachiyo.hk', 'www.yachiyo.hk', 'tsukuyomi-space.com', 'www.tsukuyomi-space.com']);
+    const forwardedHost = String(req.get('x-forwarded-host') || '').split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
+    const requestHost = String(req.hostname || '').trim().toLowerCase();
+    const host = allowedHosts.has(forwardedHost) ? forwardedHost : (allowedHosts.has(requestHost) ? requestHost : '');
+    if (host) return `https://${host}`;
+    try {
+        return new URL(config.publicSiteUrl).origin;
+    } catch (_) {
+        return 'https://yachiyo.hk';
+    }
 }
 
 const SEO_ROUTES = [
@@ -331,10 +346,25 @@ function serveStaticFiles(app) {
     const publicRoot = config.projectRoot;
     const frontendDistRoot = path.join(publicRoot, 'dist', 'frontend');
     const useFrontendDist = config.enableFrontendDist && fs.existsSync(path.join(frontendDistRoot, 'index.html'));
+    const frontendIndexHtml = useFrontendDist ? fs.readFileSync(path.join(frontendDistRoot, 'index.html'), 'utf8') : '';
 
     app.get('/robots.txt', sendRobots);
     app.get('/sitemap.xml', sendSitemap);
     app.get('/sitemap-images.xml', sendImageSitemap);
+    app.get('/room/shared/:shareKey', (req, res) => {
+        const shareKey = String(req.params.shareKey || '');
+        if (!/^[A-Za-z0-9_-]{20,80}$/.test(shareKey)) return res.status(404).send('Not found');
+        const share = roomShareRepository.findActiveShare(shareKey);
+        if (!share) return res.status(404).send('Not found');
+        if (!frontendIndexHtml) return res.status(503).send('Frontend build is missing. Run npm run build:web.');
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+        setNoStore(res);
+        return res.type('html').send(renderRoomShareHtml({
+            share,
+            indexHtml: frontendIndexHtml,
+            origin: sharePageOrigin(req)
+        }));
+    });
     app.get('/hub', (req, res, next) => {
         if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
         res.vary('User-Agent');
@@ -357,6 +387,11 @@ function serveStaticFiles(app) {
         if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
         res.vary('User-Agent');
         setNoStore(res);
+        const artworkId = String(req.query?.art || '').trim();
+        if (artworkId) {
+            const artwork = pixelArtRepository.findArtworkById(artworkId);
+            if (artwork) return res.type('html').send(renderPixelArtworkHtml(artwork));
+        }
         const artworks = pixelArtRepository.listArtworks({ limit: 24, preview: 'compact' }).items;
         return res.type('html').send(renderPixelHtml(artworks));
     });

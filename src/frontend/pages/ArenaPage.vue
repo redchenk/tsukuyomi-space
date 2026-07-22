@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
+import SocialShareDialog from '../components/SocialShareDialog.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { formatDateTime } from '../utils/time';
 
@@ -108,6 +109,7 @@ const copy = computed(() => props.lang === 'ja' ? {
   blankCanvas: 'キャンバスはまだ空です',
   likedToast: 'いいねしました',
   alreadyLiked: 'すでにいいねしています',
+  shareLink: '共有',
   by: 'by'
 } : {
   kicker: 'Tsukuyomi Pixel Atelier',
@@ -169,6 +171,7 @@ const copy = computed(() => props.lang === 'ja' ? {
   blankCanvas: '画布还是空的',
   likedToast: '已点赞',
   alreadyLiked: '已经点过赞了',
+  shareLink: '分享',
   by: 'by'
 });
 
@@ -219,6 +222,8 @@ const gallery = reactive({
 });
 const editingArtwork = ref(null);
 const previewArtwork = ref(null);
+const artworkShareOpen = ref(false);
+const artworkSharePayload = ref({ title: '', text: '', url: '', imageUrl: '', downloadUrl: '', downloadName: '' });
 const toast = reactive({
   text: '',
   visible: false
@@ -987,6 +992,27 @@ async function openArtworkPreview(artwork) {
   }
 }
 
+async function openArtworkShare(artwork) {
+  try {
+    const fullArtwork = await loadFullArtwork(artwork);
+    const id = encodeURIComponent(fullArtwork.id);
+    const version = encodeURIComponent(String(fullArtwork.updated_at || fullArtwork.created_at || fullArtwork.id));
+    const url = new URL(`/pixel?art=${id}#pixel-art-${id}`, location.origin).href;
+    const imageUrl = new URL(`/api/pixel-art/${id}/image.png?v=${version}`, location.origin).href;
+    artworkSharePayload.value = {
+      title: fullArtwork.title || copy.value.gallery,
+      text: fullArtwork.description || `${copy.value.by} ${fullArtwork.author || props.t.brand}`,
+      url,
+      imageUrl,
+      downloadUrl: imageUrl,
+      downloadName: artworkFileName(fullArtwork)
+    };
+    artworkShareOpen.value = true;
+  } catch (error) {
+    showToast(error.message || copy.value.publishFailed);
+  }
+}
+
 function closeArtworkPreview(event = null) {
   event?.preventDefault?.();
   event?.stopPropagation?.();
@@ -1138,12 +1164,17 @@ function isArtworkLiked(artwork) {
   return Boolean(artwork?.viewer_liked);
 }
 
-function focusSharedArtwork() {
+async function focusSharedArtwork() {
   const id = new URLSearchParams(location.search).get('art');
   if (!id) return;
-  window.setTimeout(() => {
+  const listed = gallery.items.find((item) => String(item.id) === String(id));
+  if (listed) {
+    await nextTick();
     document.getElementById(`pixel-art-${id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, 120);
+    await openArtworkPreview(listed);
+    return;
+  }
+  await openArtworkPreview({ id });
 }
 
 function isTypingTarget(target) {
@@ -1521,6 +1552,10 @@ onBeforeUnmount(() => {
               <TsIcon name="download" :size="15" />
               <span>{{ copy.download }}</span>
             </button>
+            <button class="icon-btn" type="button" @click="openArtworkShare(artwork)">
+              <TsIcon name="external" :size="15" />
+              <span>{{ copy.shareLink }}</span>
+            </button>
           </div>
         </article>
       </div>
@@ -1583,14 +1618,32 @@ onBeforeUnmount(() => {
               <strong>{{ previewArtwork.title || copy.gallery }}</strong>
               <span>{{ copy.by }} {{ previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }}x{{ artworkHeight(previewArtwork) }}</span>
             </div>
-            <button class="ghost-btn" type="button" @click="downloadArtwork(previewArtwork)">
-              <TsIcon name="download" :size="17" />
-              <span>{{ copy.download }}</span>
-            </button>
+            <div class="arena-art-lightbox-actions">
+              <button class="ghost-btn" type="button" @click="openArtworkShare(previewArtwork)">
+                <TsIcon name="external" :size="17" />
+                <span>{{ copy.shareLink }}</span>
+              </button>
+              <button class="ghost-btn" type="button" @click="downloadArtwork(previewArtwork)">
+                <TsIcon name="download" :size="17" />
+                <span>{{ copy.download }}</span>
+              </button>
+            </div>
           </footer>
         </section>
       </div>
     </Teleport>
+
+    <SocialShareDialog
+      :open="artworkShareOpen"
+      :title="artworkSharePayload.title"
+      :text="artworkSharePayload.text"
+      :url="artworkSharePayload.url"
+      :image-url="artworkSharePayload.imageUrl"
+      :download-url="artworkSharePayload.downloadUrl"
+      :download-name="artworkSharePayload.downloadName"
+      :lang="lang"
+      @close="artworkShareOpen = false"
+    />
 
     <div v-if="toast.visible" class="arena-toast show">{{ toast.text }}</div>
   </main>
