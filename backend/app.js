@@ -16,6 +16,7 @@ const chatRoutes = require('./routes/chat');
 const ttsRoutes = require('./routes/tts');
 const assetRoutes = require('./routes/assets');
 const roomRoutes = require('./routes/room');
+const growthRoutes = require('./routes/growth');
 const mcpRoutes = require('./routes/mcp');
 const pixelArtRoutes = require('./routes/pixel-art');
 const hubPreviewRoutes = require('./routes/hub-preview');
@@ -80,6 +81,7 @@ function createApp() {
     app.use('/api/tts', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' }));
     app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
     app.use('/api/room/shares', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, keyPrefix: 'room-shares' }));
+    app.use('/api/growth', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 120, keyPrefix: 'growth' }));
     app.use('/api/mail', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 180, keyPrefix: 'mail' }));
 
     // Parse message writes with a small cap before the much larger media-aware API parser.
@@ -135,6 +137,7 @@ function createApp() {
     app.use('/api/tts', ttsRoutes);
     app.use('/api/assets', assetRoutes);
     app.use('/api/room', roomRoutes);
+    app.use('/api/growth', growthRoutes);
     app.use('/api/mcp', mcpRoutes);
     app.use('/api/pixel-art', pixelArtRoutes);
     app.use('/api/hub-preview', hubPreviewRoutes);

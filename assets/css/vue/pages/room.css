@@ -907,6 +907,75 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     height: min(56vh, 470px);
 }
 
+.room-growth-strip {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(48px, 84px) auto;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.55rem;
+    padding: 0.5rem 0.62rem;
+    border: 1px solid rgba(174, 242, 255, 0.17);
+    border-radius: 14px;
+    color: #fff7fb;
+    background: rgba(255, 255, 255, 0.065);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.room-growth-strip:hover,
+.room-growth-strip:focus-visible {
+    border-color: rgba(174, 242, 255, 0.38);
+    background: rgba(174, 242, 255, 0.1);
+}
+
+.room-growth-icon {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #bcefff;
+    background: rgba(126, 219, 232, 0.13);
+}
+
+.room-growth-copy {
+    min-width: 0;
+}
+
+.room-growth-copy strong,
+.room-growth-copy small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.room-growth-copy strong {
+    font-size: 0.78rem;
+}
+
+.room-growth-copy small {
+    margin-top: 0.08rem;
+    color: rgba(255, 247, 251, 0.58);
+    font-size: 0.67rem;
+}
+
+.room-growth-progress {
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.room-growth-progress i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #aef2ff;
+}
+
 .room-chat-messages {
     flex: 1;
     overflow-y: auto;

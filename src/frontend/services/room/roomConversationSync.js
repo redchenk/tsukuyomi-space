@@ -1,4 +1,5 @@
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
+import { applyGrowthResult } from '../userGrowth';
 
 const CHAT_EVENT_NAME = 'tsukuyomi:room-chat-updated';
 const LEGACY_HISTORY_KEY = 'roomChatHistory';
@@ -95,6 +96,7 @@ async function postConversationTurn(turn) {
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    if (result.growth) applyGrowthResult(result.growth);
     removePendingTurn(turn.turnId);
     return normalizeHistory(result.data);
   })();

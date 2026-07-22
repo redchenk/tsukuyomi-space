@@ -19,6 +19,7 @@ import {
   writeRoomConversation
 } from '../../services/room/roomConversationSync';
 import { publishLocalRoomMemoryUpdate, startRoomMemorySync } from '../../services/room/roomMemorySync';
+import { GROWTH_UPDATED_EVENT, getCachedGrowth, growthContext, loadGrowth } from '../../services/userGrowth';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
 const SITE_FEED_TIMEOUT_MS = 2000;
@@ -787,16 +788,19 @@ function shouldUseWebSearch(message) {
 async function buildRoomContext(message, image, llmSettings) {
   const mcpSettings = readJson('roomMCPSettings', {});
   const context = [readKnowledgeContext(message)];
-  const [siteText, personaMemories, memories] = await Promise.all([
+  const [siteText, personaMemories, memories, growthState] = await Promise.all([
     fetchSiteFeedContext(),
     fetchPersonaMemories(message).catch(() => []),
-    fetchRelevantMemories(message).catch(() => [])
+    fetchRelevantMemories(message).catch(() => []),
+    loadGrowth().catch(() => null)
   ]);
   if (siteText) context.push(siteText);
   const personaText = personaMemoryContext(personaMemories);
   if (personaText) context.push(personaText);
   const memoryText = memoryContext(memories);
   if (memoryText) context.push(memoryText);
+  const userGrowthText = growthContext(growthState);
+  if (userGrowthText) context.push(userGrowthText);
 
   if (mcpSettings.enabled && mcpSettings.endpoint) {
     if (image && (llmSettings.visionMode === 'mcp' || llmSettings.visionMode === 'auto')) {
@@ -824,12 +828,17 @@ export function useRoomChat({ live2d, world }) {
   const messageListRef = ref(null);
   const ttsState = ref({ messageId: '', status: 'idle' });
   const sharedConversation = ref(null);
+  const growth = ref(getCachedGrowth());
   let ttsUrl = '';
   let currentAudio = null;
   let ttsRequestId = 0;
   let historyLoadRevision = 0;
   let refreshHistoryAfterSend = false;
   let stopRoomConversationUpdates = () => {};
+
+  function handleGrowthUpdate(event) {
+    growth.value = event.detail?.state || growth.value;
+  }
 
   function addMessage(role, content, options = {}) {
     const nextMessage = {
@@ -1180,8 +1189,11 @@ export function useRoomChat({ live2d, world }) {
     stopTTS();
     if (ttsUrl) URL.revokeObjectURL(ttsUrl);
     ttsUrl = '';
+    window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthUpdate);
   }
 
+  window.addEventListener(GROWTH_UPDATED_EVENT, handleGrowthUpdate);
+  loadGrowth().then((state) => { growth.value = state || growth.value; }).catch(() => {});
   stopRoomConversationUpdates = startRoomConversationUpdates(() => refreshSyncedHistory());
   loadHistory();
 
@@ -1191,6 +1203,7 @@ export function useRoomChat({ live2d, world }) {
     sending,
     ttsState,
     sharedConversation,
+    growth,
     imageAttachment,
     messageListRef,
     addMessage,

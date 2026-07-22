@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import TsIcon from './TsIcon.vue';
 import { buildSocialShareLinks, normalizedSharePayload } from '../services/socialShare';
+import { recordShareGrowth } from '../services/userGrowth';
 
 const props = defineProps({
   title: { type: String, default: '' },
@@ -25,14 +26,16 @@ const labels = computed(() => props.lang === 'en' ? {
   system: '系统分享', copy: '复制链接', copied: '链接已复制', download: '保存图片'
 });
 
-function openComposer(url) {
+function openComposer(platform, url) {
   window.open(url, '_blank', 'noopener,noreferrer,width=760,height=680');
+  recordShareGrowth(platform).catch(() => {});
 }
 
 async function nativeShare() {
   if (!canNativeShare.value) return;
   try {
     await navigator.share({ title: payload.value.title, text: payload.value.text, url: payload.value.url });
+    await recordShareGrowth('native').catch(() => {});
   } catch (error) {
     if (error?.name !== 'AbortError') status.value = error?.message || '';
   }
@@ -53,6 +56,7 @@ async function copyLink() {
     textarea.remove();
   }
   status.value = labels.value.copied;
+  recordShareGrowth('copy').catch(() => {});
   window.setTimeout(() => { status.value = ''; }, 1800);
 }
 </script>
@@ -63,23 +67,23 @@ async function copyLink() {
       <TsIcon name="send" :size="17" />
       <span>{{ labels.system }}</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer(links.qq)">
+    <button class="social-share-button" type="button" @click="openComposer('qq', links.qq)">
       <TsIcon name="message" :size="17" />
       <span>QQ</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer(links.qzone)">
+    <button class="social-share-button" type="button" @click="openComposer('qzone', links.qzone)">
       <TsIcon name="sparkles" :size="17" />
       <span>QQ 空间</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer(links.weibo)">
+    <button class="social-share-button" type="button" @click="openComposer('weibo', links.weibo)">
       <TsIcon name="send" :size="17" />
       <span>微博</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer(links.x)">
+    <button class="social-share-button" type="button" @click="openComposer('x', links.x)">
       <TsIcon name="external" :size="17" />
       <span>X</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer(links.telegram)">
+    <button class="social-share-button" type="button" @click="openComposer('telegram', links.telegram)">
       <TsIcon name="send" :size="17" />
       <span>Telegram</span>
     </button>

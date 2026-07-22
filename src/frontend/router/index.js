@@ -30,6 +30,7 @@ const EditorPage = loadRoute(() => import('../pages/EditorPage.vue'), () => impo
 const AttachmentsPage = loadRoute(() => import('../pages/AttachmentsPage.vue'), () => import('../styles/routes/attachments.css'));
 const GalleryPage = loadRoute(() => import('../pages/GalleryPage.vue'), () => import('../styles/routes/gallery.css'));
 const UserCenterPage = loadRoute(() => import('../pages/UserCenterPage.vue'), () => import('../styles/routes/user-center.css'));
+const GrowthPage = loadRoute(() => import('../pages/GrowthPage.vue'), () => import('../styles/routes/growth.css'));
 const UserProfilePage = loadRoute(() => import('../pages/UserProfilePage.vue'), () => import('../styles/routes/user-profile.css'));
 const NotificationsPage = loadRoute(() => import('../pages/NotificationsPage.vue'), () => import('../styles/routes/notifications.css'));
 const RoomPage = loadRoute(() => import('../pages/RoomPage.vue'), () => import('../styles/routes/room.css'));
@@ -255,6 +256,12 @@ export const routes = [
     meta: { title: '用户中心', description: '管理月读空间账号资料。', noindex: true }
   },
   {
+    path: '/growth',
+    name: 'growth',
+    component: GrowthPage,
+    meta: { title: '月契成长', description: '查看每日约定、等级、连续相伴记录与邀请进度。', noindex: true }
+  },
+  {
     path: '/users/:username',
     name: 'userProfile',
     component: UserProfilePage,
@@ -317,7 +324,8 @@ const routeWarmups = {
   roomSettings: [RoomPage],
   gallery: [AttachmentsPage],
   galleryManage: [GalleryPage],
-  userCenter: [NotificationsPage, UserProfilePage],
+  userCenter: [NotificationsPage, UserProfilePage, GrowthPage],
+  growth: [RoomPage, UserCenterPage],
   terminal: [EditorPage, AttachmentsPage],
   admin: [EditorPage, GalleryPage, AttachmentsPage],
   pixel: [UserCenterPage],

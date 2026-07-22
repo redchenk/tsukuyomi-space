@@ -4,6 +4,7 @@ import { authFetch, authHeaders, parseResponse } from '../../api/client';
 import SocialShareActions from '../SocialShareActions.vue';
 import TsIcon from '../TsIcon.vue';
 import { renderRoomShareCard } from '../../services/room/roomShareCard';
+import { applyGrowthResult } from '../../services/userGrowth';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -87,6 +88,7 @@ async function publishShare() {
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || '分享链接创建失败');
+    if (result.growth) applyGrowthResult(result.growth);
     share.value = result.data;
   } catch (err) {
     if (uploadedAssetId) {

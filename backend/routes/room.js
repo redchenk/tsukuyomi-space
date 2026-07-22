@@ -8,6 +8,7 @@ const assetRepository = require('../repositories/asset-repository');
 const roomChatRepository = require('../repositories/room-chat-repository');
 const roomShareRepository = require('../repositories/room-share-repository');
 const weatherCache = require('../services/weather-cache');
+const userGrowth = require('../services/user-growth');
 
 const router = express.Router();
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
@@ -608,10 +609,12 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
         if (messageIds.length) {
             roomMemoryEvents.publishChat(req.user.id, { action: 'turn-saved', messageIds });
         }
+        const growth = userGrowth.recordRoomChat(req.user.id);
         setNoStore(res);
         res.status(messageIds.length ? 201 : 200).json({
             success: true,
-            data: roomChatRepository.listMessages(req.user.id, 24)
+            data: roomChatRepository.listMessages(req.user.id, 24),
+            growth
         });
     } catch (error) {
         res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Chat turn sync failed' });
@@ -648,8 +651,9 @@ router.post('/shares', authenticateToken, (req, res) => {
             scene: normalizeShareScene(req.body?.scene),
             ogImageAssetId
         });
+        const growth = userGrowth.recordShare(req.user.id, 'room-card');
         setNoStore(res);
-        return res.status(201).json({ success: true, data: publicRoomShare(share), message: '分享卡已生成' });
+        return res.status(201).json({ success: true, data: publicRoomShare(share), growth, message: '分享卡已生成' });
     } catch (error) {
         return res.status(error.statusCode || 500).json({
             success: false,

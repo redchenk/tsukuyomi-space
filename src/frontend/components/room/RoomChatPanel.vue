@@ -8,7 +8,7 @@ defineProps({
   panelStyle: { type: Object, required: true }
 });
 
-const emit = defineEmits(['close', 'focus', 'drag-start', 'share']);
+const emit = defineEmits(['close', 'focus', 'drag-start', 'share', 'growth']);
 const imageInputRef = ref(null);
 
 function ttsStatus(chat, messageId) {
@@ -34,6 +34,15 @@ function ttsLabel(chat, messageId) {
     @drag-start="emit('drag-start', $event)"
   >
     <div class="panel-content chat-body" @dragover.prevent @drop="chat.onDrop">
+      <button v-if="chat.growth.value" class="room-growth-strip" type="button" aria-label="查看月契成长" @click="emit('growth')">
+        <span class="room-growth-icon"><TsIcon name="sparkles" :size="16" /></span>
+        <span class="room-growth-copy">
+          <strong>Lv.{{ chat.growth.value.level.level }} {{ chat.growth.value.level.title }}</strong>
+          <small>{{ chat.growth.value.today.completed }}/{{ chat.growth.value.today.total }} 今日约定</small>
+        </span>
+        <span class="room-growth-progress" aria-hidden="true"><i :style="{ width: `${chat.growth.value.level.progressPercent}%` }"></i></span>
+        <TsIcon name="arrowRight" :size="16" />
+      </button>
       <div id="chatMessages" :ref="(node) => { chat.messageListRef.value = node; }" class="room-chat-messages" :aria-busy="chat.sending.value">
         <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="message.role" :aria-busy="message.pending || undefined">
           <span class="chat-role">{{ message.role === 'assistant' ? '八千代' : message.role === 'user' ? '你' : '系统' }}</span>

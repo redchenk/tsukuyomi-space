@@ -103,6 +103,7 @@ watch(() => props.shareId, loadSharedConversation);
       @focus="room.panels.bringPanelForward('chatPanel')"
       @drag-start="room.panels.startPanelDrag('chatPanel', $event)"
       @share="openConversationShare"
+      @growth="emit('go', '/growth')"
     />
     <RoomProfilePanel
       v-if="room.panels.activePanels.profilePanel"

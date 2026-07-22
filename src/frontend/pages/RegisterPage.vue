@@ -4,6 +4,7 @@ import authVisualBgUrl from '../../../assets/images/auth-visual-bg.webp';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import { captureReferralCode } from '../services/userGrowth';
 import { getAuthRedirectFromLocation, withAuthRedirect } from '../utils/authRedirect';
 
 const props = defineProps({
@@ -11,6 +12,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['auth-changed', 'go']);
+captureReferralCode(new URLSearchParams(window.location.search || '').get('invite'));
 
 const authRedirect = computed(() => getAuthRedirectFromLocation('/hub'));
 const loginPath = computed(() => withAuthRedirect('/login', authRedirect.value));
