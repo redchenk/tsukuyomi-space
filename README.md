@@ -1,44 +1,56 @@
 # Tsukuyomi Space
-这是一个基于《超时空辉夜姬！》世界观的非盈利同人月读空间项目。
+一个围绕《超时空辉夜姬！》世界观构建的非盈利同人社区与 Live2D AI 角色空间。
 
-项目以 Vue 3 与 Express 构建，包含 Hub 中枢大厅、Live2D 私人房间、文章舞台、留言广场、图库、像素工坊、友链、Agent OS、用户中心和分级管理后台。
+项目以 Vue 3 与 Express 构建，把 Live2D 角色陪伴、账号隔离的长期记忆、内容创作、社区互动、成长任务和公开 Wiki 连接在同一个月读空间中。
 
-> 预览地址：[https://yachiyo.hk](https://yachiyo.hk)
+## 在线访问
 
-![Tsukuyomi Space Hub](assets/images/readme/hub.png)
+| 站点 | 地址 | 语言与用途 |
+| --- | --- | --- |
+| 国内站 | [yachiyo.hk](https://yachiyo.hk) | 中文 / 日语切换，完整功能入口 |
+| 海外站 | [tsukuyomi-space.com](https://tsukuyomi-space.com) | 英文界面，海外访问入口 |
+| 站点动态 | [RSS](https://yachiyo.hk/feed.xml) · [JSON](https://yachiyo.hk/api/site-feed) | 文章、留言、图库、像素画与友链更新 |
+
+[![Tsukuyomi Space Hub](assets/images/readme/hub.jpg)](https://yachiyo.hk/hub)
 
 ## 项目预览
 
-| Hub 中枢大厅 | Live2D 私人房间 |
+| [Hub 中枢大厅](https://yachiyo.hk/hub) | [Live2D AI 私人房间](https://yachiyo.hk/room) |
 | --- | --- |
-| ![Hub 中枢大厅](assets/images/readme/hub.png) | ![Live2D 私人房间](assets/images/readme/room.png) |
+| ![Hub 中枢大厅](assets/images/readme/hub.jpg) | ![Live2D AI 私人房间](assets/images/readme/room.jpg) |
+| [192×108 像素工坊](https://yachiyo.hk/pixel) | [超时空辉夜姬 Wiki](https://yachiyo.hk/wiki) |
+| ![192×108 像素工坊](assets/images/readme/pixel.jpg) | ![超时空辉夜姬 Wiki](assets/images/readme/wiki.jpg) |
 
 ## 亮点
 
-- 日系清新 + 毛玻璃视觉体系，支持深色 / 浅色主题切换和统一侧边导航
-- Hub 中枢大厅展示站点入口、阅读广场快捷留言、主舞台内容预览和本站访问统计
-- Live2D 私人居所，支持天气 / 时间驱动氛围、浏览器侧 LLM 聊天、TTS 语音和音乐播放卡片
-- Room Agent 化能力：跨端会话、按账号隔离的长期记忆、向量检索、角色知识库、MCP 工具和图片理解兜底
-- 角色知识库可在房间设置页管理，用于稳定还原“八千代”的人格、语气和行为边界
-- 文章、留言、图库、附件、像素画和友链均具备发布、实时刷新、个人管理与管理员审核流程
-- 用户注册、QQ OAuth、邮箱验证、密码找回、JWT / Cookie 会话和站内通知
-- 支持本地磁盘与 S3 兼容对象存储，OSS 资源通过同源资产接口稳定预览
-- 提供 JSON 站点动态与 RSS 订阅，Room 和外部机器人可以读取最新公开内容
-- Agent OS 作为独立应用接入，运行时接口经过站内账号鉴权
-- Docker Compose 或 PM2 + Nginx / OpenResty 部署，数据、上传目录和应用源码分权隔离
+- **Live2D AI 房间**：天气与时间驱动场景，支持浏览器侧 LLM、Ollama、TTS、音乐、图片输入和 Live2D 表情协同。
+- **跨端私人记忆**：会话与长期记忆按账号隔离，通过实时事件同步；支持本地向量检索和可选 Milvus。
+- **用户成长循环**：每日签到、首次聊天、每日分享、轮换内容任务、连续七天奖励和邀请成长，等级会出现在用户与内容身份区域。
+- **真实内容社区**：文章、留言、图库、附件、像素画和友链均有发布、点赞、实时刷新、个人管理与管理员审核流程。
+- **传播与分享**：文章和像素作品提供社交媒体跳转；Room 可发布选定对话片段，并为分享链接生成独立 OG 信息。
+- **超时空辉夜姬 Wiki**：角色、世界观、音乐、制作与衍生资料拥有独立词条、搜索入口和服务端爬虫页面。
+- **多语言与双站部署**：国内站支持中文 / 日语切换，海外站提供强制英文构建，共享同一套功能与安全策略。
+- **全局 AI 向导**：右下角八千代宠物可复用 Room 的 LLM 配置回答站内功能问题，未配置时提供固定帮助。
+- **账号与通知**：支持注册、QQ OAuth、邮箱验证、密码找回、QQ 解绑、Cookie 会话、未读角标和服务端分页站内信。
+- **对象存储与动态订阅**：支持本地磁盘、S3 兼容存储和阿里云 OSS；提供 JSON 站点动态与 RSS。
+- **轻量而完整的部署**：支持 Docker Compose 或 PM2 + Nginx / OpenResty，数据库、上传目录、应用源码和备份分权管理。
+- **纵深安全边界**：包含严格 CSP、安全响应头、CSRF 来源校验、重复 JSON 键拒绝、上传检测、SSRF 防护和分级管理权限。
 
 ## 核心模块
 
 | 模块 | 说明 |
 | --- | --- |
 | Hub | 站点中枢大厅，聚合主要入口、广场动态、文章预览和访问统计 |
-| Room | Live2D 私人房间，包含聊天、资料、便签、天气卡片、音乐卡片和独立设置页 |
+| Room | Live2D AI 私人房间，包含聊天、长期记忆、资料、便签、天气、音乐、TTS 和独立设置页 |
+| Growth | 月契成长中心，提供每日任务、连续签到、等级、邀请关系和与八千代联动的成长反馈 |
 | Stage / Article | 文章列表、详情阅读、编辑器和管理端内容发布流程 |
 | Plaza | 留言广场，支持留言、回复、点赞和管理员审核 |
 | Gallery / Attachments | 图库与附件库，支持上传者展示、个人管理、审核和对象存储 |
-| Pixel | 固定 192×108 画布的像素工坊，支持发布、点赞和 PNG 导出，入口为 `/pixel` |
+| Pixel | 固定 192×108 画布的像素工坊，支持触控笔、发布、点赞、分享和 PNG 导出 |
+| Wiki | 角色、世界观、音乐、发行与衍生资料总览，以及独立角色和术语词条 |
 | Friend Links | 公开友链目录与独立申请、审核流程 |
 | Agent OS | `/agent-os` 独立应用入口，运行时请求复用站内登录校验 |
+| Notifications | 分页站内信、已读状态、未读角标与内容跳转 |
 | User Center | 用户资料、文章、留言、收藏、作品和账号安全管理 |
 | Admin | 面向 `admin` / `super_admin` 的文章、留言、图库和附件审核工作台 |
 | Terminal | 管理用户权限、友链、访问统计、对象存储和系统配置 |
@@ -46,14 +58,14 @@
 
 ## 技术栈
 
-- 前端：Vue 3、Vite、CSS3、原生 JavaScript、Live2D Cubism、Lucide 图标
+- 前端：Vue 3、Vite、CSS3、原生 JavaScript、Live2D Cubism、Anime.js、Lucide 图标
 - 后端：Node.js、Express、better-sqlite3
 - 数据与缓存：SQLite、可选 Redis、可选 Milvus 向量库
 - 认证：JWT、Cookie、bcryptjs、QQ OAuth、邮箱验证码
 - 存储：本地受控上传、S3 兼容对象存储 / 阿里云 OSS
-- Agent OS：独立静态应用与受认证的本机运行时代理
+- 集成：Agent OS、MCP、RSS / JSON Feed、多邮箱聚合 API
 - 测试：node:test、Playwright
-- 部署：Docker Compose、PM2、Nginx / OpenResty、GitHub Actions、SSH
+- 部署：Docker Compose、PM2、Nginx / OpenResty、GitHub Actions、SSH、国内 / 海外双站
 
 ## 设计系统
 
@@ -96,7 +108,7 @@ npm run dev
 
 ```text
 tsukuyomi-space/
-├── assets/          # 图片、图标、音频、样式等静态资源
+├── assets/          # 图片、README 示例图、图标、音频和样式等静态资源
 ├── backend/         # Express API、SQLite 初始化、路由和中间件
 ├── deploy/          # PM2、Nginx、部署脚本样例
 ├── docs/            # 部署和维护文档
@@ -117,6 +129,7 @@ tsukuyomi-space/
 
 - `NODE_ENV=production`
 - `JWT_SECRET`：至少 32 字符，建议用 `openssl rand -base64 48` 生成
+- `MAIL_CREDENTIAL_KEY`：用于加密聚合邮箱凭据，建议使用与 JWT 不同的独立随机密钥
 - `ADMIN_PASSWORD`：首次创建或重置管理员时使用
 - `CORS_ORIGINS`：线上域名，例如 `https://your-domain.example`
 - `DATA_DIR` 或 `DB_PATH`：SQLite 数据库存放路径
@@ -152,6 +165,8 @@ Room 页面正在向个人 Agent 方向演进，当前能力包括：
 - 房间设置页提供“记忆管理”，默认折叠，展开后可搜索、查看、编辑、删除当前用户的记忆。
 - 角色知识库保存在浏览器 `localStorage`，默认内置八千代身份、人设、说话风格、关系和限制条目，用户可自行新增、编辑、停用或恢复默认。
 - 聊天时会把相关长期记忆、角色知识、真实天气、最新站点动态和可用 MCP 工具一起组织进上下文。
+- 八千代能够读取用户当前等级、签到与任务状态；每天第一次对话前会显示一次“今日约定”成长入口。
+- 登录用户可以选择一轮问答生成公开对话卡，分享链接会还原对应场景，并提供独立标题、描述和 OG 图片。
 - MCP 支持自定义 JSON-RPC 端点，以及 MiniMax Token Plan 的站内受限桥接；图片理解在 LLM 不支持多模态时会尝试调用 MCP。
 - LLM 支持受控的云服务直连，也支持浏览器直连用户本机 `http://localhost:11434` 的 Ollama；本机模式不会把对话转发到本站服务器。
 - Room 音乐播放卡片读取服务器静态目录 `/assets/music/` 下的歌曲文件；音乐资源体积较大，不提交到 Git，部署时单独上传。
@@ -173,12 +188,20 @@ Room 相关设置主要保存在浏览器本地，包括：
 [Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS','https://yachiyo.hk,https://yachiyo.com.cn,https://cho-kaguyahime.cn','User')
 ```
 
-## 内容更新与订阅
+## 内容、分享与订阅
 
 - 文章、留言、图库、像素画和友链等公开列表使用路径级缓存破坏与服务端缓存失效，发布后会请求最新内容。
+- 文章详情和像素作品提供复制链接及社交媒体分享入口；用户分享行为会进入每日成长任务，但奖励只由服务端判定一次。
+- Room 对话分享只发布用户主动选择的单轮内容，不会公开整段私人会话或长期记忆。
 - JSON 动态接口为 `/api/site-feed`，RSS 地址为 `/feed.xml` 或 `/api/site-feed/rss`。
 - 对象存储配置位于超级管理员终端；数据库只保存受控资源索引，公开访问仍通过站点资产接口或配置的 CDN 域名。
 - 部署与数据库备份默认各保留最近 10 份，可通过 `BACKUP_RETENTION` 调整。
+
+海外英文构建使用同一份源码：
+
+```bash
+VITE_SITE_LANGUAGE=en npm run build:web
+```
 
 ## Docker 快速部署
 
@@ -214,14 +237,18 @@ ROOM_MEMORY_VECTOR_BACKEND=milvus MILVUS_ADDRESS=127.0.0.1:19530 npm run import:
 
 完整步骤见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
+当前生产环境采用国内完整应用与海外英文静态前端双站部署。前端通过带哈希的静态资源和原子 release 切换发布，避免更新过程中出现混合版本。
+
 ## 安全说明
 
 - 生产环境没有强 `JWT_SECRET` 会拒绝启动。
 - 生产环境首次创建管理员时必须提供 `ADMIN_PASSWORD`。
 - 管理员终端所有数据接口都需要管理员 JWT。
 - API 已加入基础安全响应头、CORS 白名单和 Redis 优先的限流。
+- CSP 由 HTTP 响应头统一下发，并限制脚本、媒体、框架、连接目标和对象资源来源。
 - Cookie 写操作校验可信请求来源，JSON 请求拒绝重复键，上传文件同时校验扩展名、MIME 与文件特征。
 - 外部请求与对象存储地址经过 SSRF 校验，管理员操作按 `admin` / `super_admin` 权限分层。
+- 公开内容中的外部链接会经过协议与风险处理，留言、文章、图库、附件和友链提供独立审核边界。
 - SQLite 默认存放在 `DATA_DIR`，不应提交到 Git。
 - 权限模型见 [docs/PERMISSIONS.md](docs/PERMISSIONS.md)。
 - Room 长期记忆说明见 [docs/ROOM_MEMORY.md](docs/ROOM_MEMORY.md)。
