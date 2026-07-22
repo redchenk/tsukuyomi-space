@@ -2,7 +2,8 @@ const OLLAMA_LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const OLLAMA_TRUSTED_WEB_ORIGINS = Object.freeze([
   'https://yachiyo.hk',
   'https://yachiyo.com.cn',
-  'https://cho-kaguyahime.cn'
+  'https://cho-kaguyahime.cn',
+  'https://tsukuyomi-space.com'
 ]);
 const LOCAL_DEVELOPMENT_ORIGIN = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i;
 

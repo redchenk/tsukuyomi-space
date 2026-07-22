@@ -40,7 +40,7 @@ function loadNotificationBadge(navigatorTarget = {}) {
 }
 
 describe('frontend navigation routes', () => {
-    it('switches between Chinese and Japanese from the left navigation rail', () => {
+    it('switches between Chinese and Japanese and supports a forced English build', () => {
         const app = source('src/frontend/App.vue');
         const shell = source('src/frontend/layouts/AppShell.vue');
         const messages = source('src/frontend/i18n/messages.js');
@@ -54,7 +54,9 @@ describe('frontend navigation routes', () => {
         assert.match(shell, /class="lang-switcher" :aria-label="t\.language"/);
         assert.match(app, /normalizeLanguage\(localStorage\.getItem\('lang'\)\)/);
         assert.match(app, /documentLanguage\(lang\.value\)/);
-        assert.match(i18nModule, /SUPPORTED_LANGUAGES = Object\.freeze\(\['zh', 'ja'\]\)/);
+        assert.match(i18nModule, /SUPPORTED_LANGUAGES = Object\.freeze\(\['zh', 'ja', 'en'\]\)/);
+        assert.match(app, /VITE_SITE_LANGUAGE/);
+        assert.match(messages, /import \{ en \} from '\.\/messages\.en\.js'/);
         assert.match(i18nModule, /export function alternateLanguage/);
         assert.match(messages, /switchToJapanese: '切换为日语'/);
         assert.match(messages, /switchToChinese: '中国語に切り替え'/);
@@ -72,7 +74,7 @@ describe('frontend navigation routes', () => {
 
         assert.match(seo, /export function applySeo\(\{[\s\S]*keywords = DEFAULT_KEYWORDS/);
         assert.match(seo, /upsertMeta\('meta\[name="keywords"\]'[^}]*content: keywordContent/);
-        assert.match(seo, /keywords: meta\.keywords \|\| DEFAULT_KEYWORDS/);
+        assert.match(seo, /keywords: ENGLISH_SITE \? DEFAULT_KEYWORDS : \(meta\.keywords \|\| DEFAULT_KEYWORDS\)/);
         assert.match(seo, /keywords: tags\.length \? tags : \[title, article\?\.category/);
         assert.match(indexHtml, /<meta name="keywords" content="月读空间, Tsukuyomi Space, 超时空辉夜姬 Wiki/);
         assert.match(indexHtml, /<meta name="twitter:card" content="summary_large_image">/);
@@ -322,7 +324,9 @@ describe('frontend navigation routes', () => {
         assert.match(client, /function liveContentUrl\(/);
         assert.match(client, /articles\|messages\|assets\\\/gallery\|pixel-art\|friend-links/);
         assert.match(client, /`\/api\/live\/\$\{nonce\}/);
-        assert.match(client, /fetch\(apiUrl\(liveContentUrl\(url, options\)\)/);
+        assert.match(client, /function englishContentUrl\(/);
+        assert.match(client, /`\/en-api\$\{value\.slice\('\/api'\.length\)\}`/);
+        assert.match(client, /fetch\(apiUrl\(englishContentUrl\(url, options\)\)/);
         assert.match(app, /app\.use\('\/api\/live\/:nonce', liveContentRoutes\)/);
         assert.match(app, /\['GET', 'HEAD'\]/);
     });

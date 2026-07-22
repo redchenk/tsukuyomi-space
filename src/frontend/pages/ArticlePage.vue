@@ -5,12 +5,15 @@ import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../
 import SocialShareDialog from '../components/SocialShareDialog.vue';
 import SocialText from '../components/SocialText.vue';
 import TsIcon from '../components/TsIcon.vue';
+import UserLevelBadge from '../components/UserLevelBadge.vue';
+import { useUserLevels } from '../composables/useUserLevels';
 import { applyMessageLikeState } from '../services/messageLikes';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
 import { applySeo, articleSeo } from '../utils/seo';
 import { formatDateMinute, formatDateTime } from '../utils/time';
 
 const props = defineProps({
+  lang: { type: String, default: 'zh' },
   t: { type: Object, required: true }
 });
 
@@ -31,6 +34,7 @@ const bookmark = reactive({
   bookmarked: false,
   count: 0
 });
+const { hydrateUserLevels, userLevel } = useUserLevels();
 
 const articleId = computed(() => String(route.query.id || route.params.id || ''));
 const articlePath = computed(() => {
@@ -187,6 +191,10 @@ async function loadArticle() {
     article.value = result.data;
     applySeo(articleSeo(result.data, articlePath.value));
     await Promise.all([loadComments(), loadBookmarkStatus()]);
+    await hydrateUserLevels([
+      result.data.author_id,
+      ...comments.value.map((item) => item.user_id)
+    ]).catch(() => {});
   } catch (error) {
     message.value = error.message || props.t.loadFailed || '加载失败';
   } finally {
@@ -243,6 +251,7 @@ function upsertComment(message) {
   const index = comments.value.findIndex((item) => item.id === normalized.id);
   if (index >= 0) comments.value.splice(index, 1, { ...comments.value[index], ...normalized });
   else comments.value.unshift(normalized);
+  if (normalized.user_id) hydrateUserLevels([normalized.user_id]).catch(() => {});
 }
 
 function patchComment(message) {
@@ -381,6 +390,7 @@ watch(articleId, loadArticle);
               :href="`/users/${encodeURIComponent(article.author_username || 'admin')}`"
               @click.prevent="goProfile(article.author_username || 'admin')"
             >{{ article.author_username || 'admin' }}</a>
+            <UserLevelBadge v-if="article.author_id" :level="userLevel(article.author_id)" :lang="lang" compact />
             <span>{{ article.read_time || '5 min' }}</span>
             <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} views</span>
           </div>
@@ -442,6 +452,7 @@ watch(articleId, loadArticle);
                     <span v-else>{{ commentInitial(comment) }}</span>
                   </span>
                   <span class="comment-author-name">{{ commentAuthorName(comment) }}</span>
+                  <UserLevelBadge v-if="comment.user_id" :level="userLevel(comment.user_id)" :lang="lang" compact :show-title="false" />
                 </button>
                 <span class="comment-time">{{ formatDate(comment.created_at) }}</span>
               </div>
@@ -482,6 +493,7 @@ watch(articleId, loadArticle);
                         <span v-else>{{ commentInitial(reply) }}</span>
                       </span>
                       <span class="comment-author-name">{{ commentAuthorName(reply) }}</span>
+                      <UserLevelBadge v-if="reply.user_id" :level="userLevel(reply.user_id)" :lang="lang" compact :show-title="false" />
                     </button>
                     <span class="comment-time">{{ formatDate(reply.created_at) }}</span>
                   </div>

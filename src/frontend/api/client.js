@@ -1,12 +1,36 @@
 export async function parseResponse(response) {
   const text = await response.text();
   try {
-    return text ? JSON.parse(text) : { success: false, message: `HTTP ${response.status}` };
+    const result = text ? JSON.parse(text) : { success: false, message: `HTTP ${response.status}` };
+    return translateResponseMessage(result);
   } catch (_) {
     return {
       success: false,
-      message: `请求失败 (HTTP ${response.status})`
+      message: FORCED_ENGLISH_SITE ? `Request failed (HTTP ${response.status})` : `请求失败 (HTTP ${response.status})`
     };
+  }
+}
+
+const FORCED_ENGLISH_SITE = typeof __TSUKUYOMI_ENGLISH_SITE__ !== 'undefined'
+  && __TSUKUYOMI_ENGLISH_SITE__;
+const CJK_TEXT_RE = /[\u3400-\u9fff\u3040-\u30ff]/u;
+
+async function translateResponseMessage(result) {
+  if (!FORCED_ENGLISH_SITE || !result || typeof result !== 'object' || !CJK_TEXT_RE.test(String(result.message || ''))) {
+    return result;
+  }
+  try {
+    const response = await fetch('/en-translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: [String(result.message)] })
+    });
+    if (!response.ok) return result;
+    const payload = await response.json();
+    const translated = String(payload?.translations?.[0] || '').trim();
+    return translated ? { ...result, message: translated } : result;
+  } catch (_) {
+    return result;
   }
 }
 
@@ -135,15 +159,25 @@ function liveContentUrl(url, options = {}) {
   return `/api/live/${nonce}${value.slice('/api'.length)}`;
 }
 
+function englishContentUrl(url, options = {}) {
+  const value = liveContentUrl(url, options);
+  const method = String(options.method || 'GET').toUpperCase();
+  if (!FORCED_ENGLISH_SITE || !['GET', 'HEAD'].includes(method)) return value;
+  if (!/^\/api\/(?:live\/[^/]+\/)?(?:settings|hub-preview|articles|messages|assets\/gallery|pixel-art|friend-links)(?:[/?#]|$)/.test(value)) {
+    return value;
+  }
+  return `/en-api${value.slice('/api'.length)}`;
+}
+
 export function authFetch(url, options = {}) {
-  return fetch(apiUrl(liveContentUrl(url, options)), {
+  return fetch(apiUrl(englishContentUrl(url, options)), {
     ...secureApiOptions(url, options),
     credentials: options.credentials || 'include'
   });
 }
 
 export function apiFetch(url, options = {}) {
-  return fetch(apiUrl(liveContentUrl(url, options)), secureApiOptions(url, options));
+  return fetch(apiUrl(englishContentUrl(url, options)), secureApiOptions(url, options));
 }
 
 export function apiBeacon(url, data) {

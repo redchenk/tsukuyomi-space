@@ -4,6 +4,8 @@ import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import SocialShareDialog from '../components/SocialShareDialog.vue';
 import TsIcon from '../components/TsIcon.vue';
+import UserLevelBadge from '../components/UserLevelBadge.vue';
+import { useUserLevels } from '../composables/useUserLevels';
 import { formatDateTime } from '../utils/time';
 
 const props = defineProps({
@@ -49,7 +51,69 @@ const backgroundPresets = ['#ffffff', '#f7f7f7', '#edf8ff', '#ffd1e8', '#172033'
 const decodedArtworkPreviews = new WeakMap();
 const fullArtworkCache = new Map();
 
-const copy = computed(() => props.lang === 'ja' ? {
+const copy = computed(() => props.lang === 'en' ? {
+  kicker: 'Tsukuyomi Pixel Atelier',
+  title: 'Moonlit Pixel Workshop',
+  subtitle: 'Set today’s moonlight, inspiration and tiny character moments onto the grid, then share them in the public gallery.',
+  channel: 'Public gallery',
+  channelValue: 'Artwork and likes sync in real time',
+  onlineRoom: 'Online drawing chat',
+  draftTitle: 'New artwork',
+  draftPlaceholder: 'Artwork title',
+  descPlaceholder: 'Leave a short note about this piece',
+  share: 'Publish artwork',
+  saveUpdate: 'Save update',
+  loginToShare: 'Sign in to publish',
+  clear: 'Clear',
+  undo: 'Undo',
+  redo: 'Redo',
+  sample: 'Moon pattern',
+  download: 'Export PNG',
+  brush: 'Brush',
+  eraser: 'Eraser',
+  fill: 'Fill',
+  move: 'Move',
+  zoom: 'Zoom',
+  layers: 'Layers',
+  brushSize: 'Size',
+  pressure: 'Pressure',
+  stabilizer: 'Stabilizer',
+  chat: 'Chat',
+  connected: 'Connected',
+  messagePlaceholder: 'Type a message...',
+  sendMessage: 'Send',
+  palette: 'Palette',
+  presets: 'Preset colors',
+  freeColor: 'Custom color',
+  addColor: 'Save color',
+  colorLimit: 'The saved-color limit has been reached',
+  canvasSize: 'Rectangular grid',
+  imageImport: 'Import image',
+  uploadImage: 'Convert an image to pixel art',
+  imageConverted: 'Image converted to pixel art',
+  imageLoadFailed: 'Unable to load image',
+  imageTypeInvalid: 'Choose an image file',
+  background: 'Canvas background',
+  colors: 'Colors',
+  size: 'Grid',
+  gallery: 'Community artwork',
+  latest: 'Latest',
+  hot: 'Popular',
+  refresh: 'Refresh',
+  empty: 'No public artwork yet. The first moonlit piece can begin here.',
+  loading: 'Syncing...',
+  like: 'Like',
+  liked: 'Liked',
+  publishOk: 'Artwork shared',
+  updateOk: 'Artwork updated',
+  publishFailed: 'Unable to share artwork',
+  titleRequired: 'Give your artwork a title first',
+  blankCanvas: 'The canvas is still empty',
+  likedToast: 'Artwork liked',
+  alreadyLiked: 'You already liked this artwork',
+  shareLink: 'Share',
+  by: 'by'
+} : props.lang === 'ja' ? {
   kicker: 'Tsukuyomi Pixel Atelier',
   title: '月光ピクセル工房',
   subtitle: '今日の月色と小さな物語をグリッドに置いて、訪れた人の反応を待つ静かなアトリエ。',
@@ -224,6 +288,7 @@ const editingArtwork = ref(null);
 const previewArtwork = ref(null);
 const artworkShareOpen = ref(false);
 const artworkSharePayload = ref({ title: '', text: '', url: '', imageUrl: '', downloadUrl: '', downloadName: '' });
+const { hydrateUserLevels, userLevel } = useUserLevels();
 const toast = reactive({
   text: '',
   visible: false
@@ -280,12 +345,12 @@ function showToast(text) {
 }
 
 function formatNumber(value) {
-  return Number(value || 0).toLocaleString(props.lang === 'ja' ? 'ja-JP' : 'zh-CN');
+  return Number(value || 0).toLocaleString(props.lang === 'en' ? 'en-US' : (props.lang === 'ja' ? 'ja-JP' : 'zh-CN'));
 }
 
 function formatDate(value) {
   if (!value) return '';
-  return formatDateTime(value, props.lang === 'ja' ? 'ja-JP' : 'zh-CN');
+  return formatDateTime(value, props.lang === 'en' ? 'en-US' : (props.lang === 'ja' ? 'ja-JP' : 'zh-CN'));
 }
 
 function normalizeHexColor(value, fallback = '#0b1020') {
@@ -333,7 +398,7 @@ function sendLocalMessage() {
   chatMessages.value.push({
     id: Date.now(),
     author: session.value?.user?.username || session.value?.username || '我',
-    time: new Date().toLocaleTimeString(props.lang === 'ja' ? 'ja-JP' : 'zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    time: new Date().toLocaleTimeString(props.lang === 'en' ? 'en-US' : (props.lang === 'ja' ? 'ja-JP' : 'zh-CN'), { hour: '2-digit', minute: '2-digit' }),
     text
   });
   chatMessage.value = '';
@@ -1038,6 +1103,7 @@ async function loadArtworks(page = gallery.page) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || 'Pixel art unavailable');
     gallery.items = Array.isArray(result.data) ? result.data : [];
+    await hydrateUserLevels(gallery.items.map((artwork) => artwork.author_id)).catch(() => {});
     gallery.page = nextPage;
     gallery.total = Number(result.pagination?.total || gallery.items.length);
     gallery.totalPages = Math.max(1, Math.ceil(gallery.total / PIXEL_GALLERY_PAGE_SIZE));
@@ -1068,7 +1134,7 @@ async function loadArtworkForEdit() {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
     loadArtworkIntoDraft(result.data);
-    showToast(props.lang === 'ja' ? '編集用に読み込みました' : '已载入像素画，可以继续编辑');
+    showToast(props.lang === 'en' ? 'Artwork loaded for editing' : (props.lang === 'ja' ? '編集用に読み込みました' : '已载入像素画，可以继续编辑'));
   } catch (error) {
     showToast(error.message || copy.value.publishFailed);
   }
@@ -1534,6 +1600,7 @@ onBeforeUnmount(() => {
                 <span v-else>{{ artworkInitial(artwork.author) }}</span>
               </span>
               <span>{{ copy.by }} {{ artwork.author || props.t.brand }}</span>
+              <UserLevelBadge v-if="artwork.author_id" :level="userLevel(artwork.author_id)" :lang="lang" compact :show-title="false" />
               <time>{{ formatDate(artwork.created_at) }}</time>
             </div>
           </div>
@@ -1585,7 +1652,7 @@ onBeforeUnmount(() => {
           <button
             class="arena-art-lightbox-close"
             type="button"
-            :aria-label="props.lang === 'ja' ? '閉じる' : '关闭'"
+            :aria-label="props.lang === 'en' ? 'Close' : (props.lang === 'ja' ? '閉じる' : '关闭')"
             @pointerdown.stop.prevent="closeArtworkPreview"
             @mousedown.stop.prevent="closeArtworkPreview"
             @touchstart.stop.prevent="closeArtworkPreview"

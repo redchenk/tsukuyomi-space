@@ -209,6 +209,10 @@ body.wiki-entry-open .moon { pointer-events: none; }
   line-height: 1;
   pointer-events: none;
 }
+html[lang="en"] .wiki-entry-moegirl-card::after {
+  content: "M";
+  font-family: var(--ts-font-sans);
+}
 .wiki-entry-moegirl-card:hover,
 .wiki-entry-moegirl-card:focus-visible {
   border-color: rgba(157, 255, 198, .82);

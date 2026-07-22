@@ -3,14 +3,18 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch, getAuthToken, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
+import UserLevelBadge from '../components/UserLevelBadge.vue';
+import { useUserLevels } from '../composables/useUserLevels';
 import { formatDateMinute } from '../utils/time';
 
 const props = defineProps({
+  lang: { type: String, default: 'zh' },
   t: { type: Object, required: true }
 });
 
 const emit = defineEmits(['go']);
 const route = useRoute();
+const { hydrateUserLevels, userLevel } = useUserLevels();
 
 const articles = ref([]);
 const articlesLoading = ref(true);
@@ -23,7 +27,10 @@ const categories = ['all', '\u516c\u544a', '\u4f20\u8bf4', '\u6280\u672f', '\u4e
 const STAGE_PAGE_SIZE = 6;
 const STAGE_FETCH_LIMIT = 100;
 
-const stagePageCopy = {
+const stagePageCopy = computed(() => props.lang === 'en' ? {
+  resultUnit: 'articles', showing: 'Showing', page: 'Page', pageSuffix: '', totalPages: 'of',
+  pageSize: '6 per page', prevPage: 'Previous', nextPage: 'Next', jumpToPage: 'Go to page', rangeUnit: 'articles'
+} : {
   resultUnit: '\u7bc7',
   showing: '\u5f53\u524d',
   page: '\u7b2c',
@@ -34,7 +41,7 @@ const stagePageCopy = {
   nextPage: '\u4e0b\u4e00\u9875',
   jumpToPage: '\u8df3\u5230\u7b2c',
   rangeUnit: '\u7bc7'
-};
+});
 
 const filteredArticles = computed(() => {
   let list = articles.value;
@@ -79,11 +86,13 @@ const stagePageItems = computed(() => {
   return pages;
 });
 
-const stageResultSummary = computed(() => `\u5171 ${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.resultUnit}`);
+const stageResultSummary = computed(() => props.lang === 'en'
+  ? `${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.value.resultUnit}`
+  : `\u5171 ${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.value.resultUnit}`);
 const stageRangeSummary = computed(() => stageTotalArticles.value
-  ? `${stagePageCopy.showing} ${stageFormatNumber(stagePageStart.value)}-${stageFormatNumber(stagePageEnd.value)} ${stagePageCopy.rangeUnit}`
+  ? `${stagePageCopy.value.showing} ${stageFormatNumber(stagePageStart.value)}-${stageFormatNumber(stagePageEnd.value)} ${stagePageCopy.value.rangeUnit}`
   : '');
-const stagePageSummary = computed(() => `${stagePageCopy.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.pageSuffix} / ${stagePageCopy.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.pageSuffix}`);
+const stagePageSummary = computed(() => `${stagePageCopy.value.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.value.pageSuffix} / ${stagePageCopy.value.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.value.pageSuffix}`);
 const stageReturnPath = computed(() => {
   const params = new URLSearchParams();
   if (stageCurrentPage.value > 1) params.set('page', String(stageCurrentPage.value));
@@ -138,7 +147,7 @@ function stageCategoryLabel(category) {
 }
 
 function stageFormatNumber(value) {
-  return Number(value || 0).toLocaleString('zh-CN');
+  return Number(value || 0).toLocaleString(props.lang === 'en' ? 'en-US' : 'zh-CN');
 }
 
 function stageSetPage(page, { scroll = true } = {}) {
@@ -173,6 +182,7 @@ async function loadArticles() {
       page += 1;
     } while (page <= totalPages);
     articles.value = loaded;
+    await hydrateUserLevels(loaded.map((article) => article.author_id)).catch(() => {});
   } catch (error) {
     articles.value = [];
     articlesError.value = error.message || props.t.loadFailed;
@@ -211,7 +221,7 @@ function stagePublishedAt(article) {
 }
 
 function stagePublishedTime(article) {
-  return formatDateMinute(stagePublishedAt(article), 'zh-CN');
+  return formatDateMinute(stagePublishedAt(article), props.lang === 'en' ? 'en-US' : 'zh-CN');
 }
 
 function stageOpenAuthor(article) {
@@ -241,10 +251,9 @@ onMounted(loadArticles);
     <header class="stage-header">
       <h1 class="section-title">{{ t.stageTitle }}</h1>
       <p class="section-subtitle">{{ t.stageSubtitle }}</p>
-      <p class="stage-seo-intro">
-        主舞台集中展示月读空间的文章、公告、技术记录、二创作品与创作日志，内容覆盖 Live2D、AI 角色、
-        个人网站开发、二次元网页设计和日常项目复盘。
-      </p>
+      <p class="stage-seo-intro">{{ lang === 'en'
+        ? 'The Main Stage brings together articles, announcements, technical notes, fan works and creative journals about Live2D, AI characters, personal websites and ongoing projects.'
+        : '主舞台集中展示月读空间的文章、公告、技术记录、二创作品与创作日志，内容覆盖 Live2D、AI 角色、个人网站开发、二次元网页设计和日常项目复盘。' }}</p>
     </header>
 
     <div class="stage-controls">
@@ -307,6 +316,7 @@ onMounted(loadArticles);
                 <span v-else>{{ stageAuthorInitial(article) }}</span>
               </span>
               <span>{{ stageAuthorName(article) }}</span>
+              <UserLevelBadge v-if="article.author_id" :level="userLevel(article.author_id)" :lang="lang" compact :show-title="false" />
             </span>
           </div>
           <h3 class="stage-card-title">{{ article.title }}</h3>

@@ -9,10 +9,12 @@ import { warmRoutePath } from '../router';
 import { compareAppDate } from '../utils/time';
 
 const props = defineProps({
+  lang: { type: String, default: 'zh' },
   t: { type: Object, required: true }
 });
 
 const emit = defineEmits(['go']);
+const isEnglish = computed(() => props.lang === 'en');
 
 const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v2';
 const HUB_PREVIEW_TTL_MS = 30000;
@@ -63,8 +65,8 @@ const siteStats = ref(hubPreviewCache?.siteStats || null);
 const previewLoading = ref(!hubPreviewCache);
 const previewError = ref('');
 const visitPopupPreview = ref({
-  title: '欢迎来到月读空间',
-  content: '首次访问弹窗尚未配置内容。'
+  title: isEnglish.value ? 'Welcome to Tsukuyomi Space' : '欢迎来到月读空间',
+  content: isEnglish.value ? 'The first-visit notice has not been configured yet.' : '首次访问弹窗尚未配置内容。'
 });
 const plazaQuick = reactive({
   content: '',
@@ -89,20 +91,22 @@ const sceneLinks = computed(() => [
   {
     href: '/plaza',
     name: props.t.plaza,
-    desc: plazaMessages.value.length ? `${plazaMessages.value.length} 条最近留言` : '交流、分享、发现',
+    desc: plazaMessages.value.length
+      ? (isEnglish.value ? `${plazaMessages.value.length} recent messages` : `${plazaMessages.value.length} 条最近留言`)
+      : (isEnglish.value ? 'Connect, share and discover' : '交流、分享、发现'),
     code: 'Plaza',
     icon: 'plaza',
     tone: 'cyan',
     spa: true,
     image: '',
-    label: '快速留言',
+    label: isEnglish.value ? 'Quick message' : '快速留言',
     kind: 'plaza'
   },
   {
     href: '/stage',
     name: latestArticle.value?.title || props.t.stage,
-    desc: latestArticle.value?.excerpt || '记录、创作、知识',
-    code: latestArticle.value?.category || 'Stage',
+    desc: latestArticle.value?.excerpt || (isEnglish.value ? 'Notes, creations and knowledge' : '记录、创作、知识'),
+    code: isEnglish.value ? englishArticleCategory(latestArticle.value?.category) : (latestArticle.value?.category || 'Stage'),
     icon: 'book',
     tone: 'blue',
     spa: true,
@@ -111,27 +115,31 @@ const sceneLinks = computed(() => [
   },
   {
     href: '/gallery',
-    name: latestGalleryImage.value ? '最新图库影像' : '图库',
-    desc: latestGalleryImage.value ? `发布于 ${formatGalleryDate(latestGalleryImage.value) || '近期'}` : '公开影像、插画与站点视觉记录',
+    name: latestGalleryImage.value ? (isEnglish.value ? 'Latest gallery image' : '最新图库影像') : props.t.gallery,
+    desc: latestGalleryImage.value
+      ? (isEnglish.value ? `Published ${formatGalleryDate(latestGalleryImage.value) || 'recently'}` : `发布于 ${formatGalleryDate(latestGalleryImage.value) || '近期'}`)
+      : (isEnglish.value ? 'Public images, illustrations and visual records' : '公开影像、插画与站点视觉记录'),
     code: 'Gallery',
     icon: 'image',
     tone: 'gold',
     spa: true,
     image: galleryImageUrl(latestGalleryImage.value) || '/assets/images/tsukuyomi-bg.webp',
-    label: '图库'
+    label: props.t.gallery
   },
   {
     href: '/pixel',
     name: latestPixelArtwork.value?.title || props.t.arena || '月光像素工坊',
     desc: latestPixelArtwork.value
-      ? `${latestPixelArtwork.value.author || '访客'} 发布于 ${formatPixelDate(latestPixelArtwork.value) || '近期'}`
-      : '绘制、发布、点赞月光像素画',
+      ? (isEnglish.value
+        ? `Published by ${latestPixelArtwork.value.author || 'Guest'} on ${formatPixelDate(latestPixelArtwork.value) || 'a recent date'}`
+        : `${latestPixelArtwork.value.author || '访客'} 发布于 ${formatPixelDate(latestPixelArtwork.value) || '近期'}`)
+      : (isEnglish.value ? 'Draw, publish and like moonlit pixel art' : '绘制、发布、点赞月光像素画'),
     code: latestPixelArtwork.value ? `${artworkWidth(latestPixelArtwork.value)}x${artworkHeight(latestPixelArtwork.value)}` : 'Arena',
     icon: 'palette',
     tone: 'pink',
     spa: true,
     image: '/assets/images/tsukuyomi-bg.webp',
-    label: latestPixelArtwork.value ? '最新像素画' : '像素画',
+    label: latestPixelArtwork.value ? (isEnglish.value ? 'Latest pixel art' : '最新像素画') : props.t.arena,
     kind: 'arena',
     artwork: latestPixelArtwork.value
   }
@@ -142,15 +150,15 @@ const orderedSceneLinks = computed(() => sceneLinks.value);
 const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
 
 function formatHubNumber(value) {
-  return Number(value || 0).toLocaleString('zh-CN');
+  return Number(value || 0).toLocaleString(isEnglish.value ? 'en-US' : 'zh-CN');
 }
 
 function formatHubUptime(seconds = 0) {
   const total = Math.max(0, Math.floor(Number(seconds) || 0));
   const days = Math.floor(total / 86400);
   const hours = Math.floor((total % 86400) / 3600);
-  if (days) return `${days}天${hours}时`;
-  return `${hours || 1}小时`;
+  if (days) return isEnglish.value ? `${days}d ${hours}h` : `${days}天${hours}时`;
+  return isEnglish.value ? `${hours || 1}h` : `${hours || 1}小时`;
 }
 
 function galleryImageUrl(asset) {
@@ -212,13 +220,18 @@ function applyHubPreviewCache(cache) {
 }
 
 const stats = computed(() => [
-  { label: '今日访问', value: formatHubNumber(siteStats.value?.todayViews) },
-  { label: '总访问', value: formatHubNumber(siteStats.value?.totalViews) },
-  { label: '注册用户', value: formatHubNumber(siteStats.value?.users) },
-  { label: '站内文章', value: formatHubNumber(siteStats.value?.articles) },
-  { label: '广场留言', value: formatHubNumber(siteStats.value?.messages) },
-  { label: '运行时间', value: siteStats.value?.uptime ? formatHubUptime(siteStats.value.uptime) : '--' }
+  { label: isEnglish.value ? 'Visits today' : '今日访问', value: formatHubNumber(siteStats.value?.todayViews) },
+  { label: isEnglish.value ? 'Total visits' : '总访问', value: formatHubNumber(siteStats.value?.totalViews) },
+  { label: isEnglish.value ? 'Registered users' : '注册用户', value: formatHubNumber(siteStats.value?.users) },
+  { label: isEnglish.value ? 'Articles' : '站内文章', value: formatHubNumber(siteStats.value?.articles) },
+  { label: isEnglish.value ? 'Plaza messages' : '广场留言', value: formatHubNumber(siteStats.value?.messages) },
+  { label: isEnglish.value ? 'Uptime' : '运行时间', value: siteStats.value?.uptime ? formatHubUptime(siteStats.value.uptime) : '--' }
 ]);
+
+function englishArticleCategory(value) {
+  const category = String(value || '').trim();
+  return ({ 公告: 'Announcement', 传说: 'Lore', 技术: 'Technology', 二创: 'Fan work', 其他: 'Other' })[category] || category || 'Stage';
+}
 
 function openScene(scene, event) {
   if (scene.kind === 'plaza' && event?.target?.closest?.('form, input, textarea, button, a')) return;
@@ -321,7 +334,7 @@ async function loadHubPreview(options = {}) {
       parseResponse(pixelResponse)
     ]);
     if (![articleResult, messageResult, galleryResult, pixelResult].some((result) => result.success)) {
-      throw new Error('大厅最新内容读取失败');
+      throw new Error(isEnglish.value ? 'Unable to load the latest Hub content' : '大厅最新内容读取失败');
     }
     const articles = articleResult.success && Array.isArray(articleResult.data) ? articleResult.data : [];
     const messages = messageResult.success && Array.isArray(messageResult.data) ? messageResult.data : [];
@@ -354,7 +367,7 @@ async function loadHubPreview(options = {}) {
       latestPixelArtwork.value = null;
       plazaMessages.value = [];
       siteStats.value = null;
-      previewError.value = error.message || '大厅最新内容读取失败';
+    previewError.value = error.message || (isEnglish.value ? 'Unable to load the latest Hub content' : '大厅最新内容读取失败');
     }
   } finally {
     previewLoading.value = false;
@@ -365,7 +378,7 @@ async function submitPlazaQuick() {
   const content = plazaQuick.content.trim();
   plazaQuick.message = '';
   if (!content) {
-    plazaQuick.message = '留言不能为空';
+    plazaQuick.message = isEnglish.value ? 'Message cannot be empty' : '留言不能为空';
     return;
   }
   if (!getSession()) {
@@ -380,7 +393,7 @@ async function submitPlazaQuick() {
       body: JSON.stringify({ content })
     });
     const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || '发布失败');
+    if (!result.success) throw new Error(result.message || (isEnglish.value ? 'Unable to publish' : '发布失败'));
     if (result.data?.id) {
       plazaMessages.value = [
         { ...result.data, article_id: result.data.article_id || null },
@@ -395,7 +408,7 @@ async function submitPlazaQuick() {
       }
     }
     plazaQuick.content = '';
-    plazaQuick.message = '已发布';
+    plazaQuick.message = isEnglish.value ? 'Published' : '已发布';
     writeHubPreviewCache({
       latestArticle: latestArticle.value,
       latestGalleryImage: latestGalleryImage.value,
@@ -405,7 +418,7 @@ async function submitPlazaQuick() {
     });
     await loadHubPreviewFast();
   } catch (error) {
-    plazaQuick.message = error.message || '发布失败';
+    plazaQuick.message = error.message || (isEnglish.value ? 'Unable to publish' : '发布失败');
   } finally {
     plazaQuick.loading = false;
   }
@@ -417,13 +430,17 @@ async function loadVisitPopupPreview() {
     const title = String(settings.visitPopupTitle || '').trim();
     const content = String(settings.visitPopupContent || '').trim();
     visitPopupPreview.value = {
-      title: title || '欢迎来到月读空间',
-      content: content || '首次访问弹窗尚未配置内容。'
+      title: isEnglish.value && title === '欢迎来到月读空间'
+        ? 'Welcome to Tsukuyomi Space'
+        : (title || (isEnglish.value ? 'Welcome to Tsukuyomi Space' : '欢迎来到月读空间')),
+      content: isEnglish.value && content === '首次访问弹窗尚未配置内容。'
+        ? 'The first-visit notice has not been configured yet.'
+        : (content || (isEnglish.value ? 'The first-visit notice has not been configured yet.' : '首次访问弹窗尚未配置内容。'))
     };
   } catch (_) {
     visitPopupPreview.value = {
-      title: '首访弹窗',
-      content: '弹窗内容暂时无法读取。'
+      title: isEnglish.value ? 'First-visit notice' : '首访弹窗',
+      content: isEnglish.value ? 'The notice is temporarily unavailable.' : '弹窗内容暂时无法读取。'
     };
   }
 }
@@ -454,25 +471,25 @@ onBeforeUnmount(() => {
       <div class="hub-hero-panel">
         <div class="hub-stage-ribbon" aria-hidden="true">
           <span>TSUKUYOMI</span>
-          <span>月读空间</span>
+          <span>{{ t.brand }}</span>
           <span>LIVE PORTAL</span>
         </div>
         <div class="hub-hero-copy">
           <span class="hub-kicker">TSUKUYOMI / LIVE PORTAL</span>
-          <p class="hub-welcome">欢迎来到</p>
+          <p class="hub-welcome">{{ isEnglish ? 'Welcome to' : '欢迎来到' }}</p>
           <h1 class="section-title">{{ t.brand }}</h1>
           <p class="hub-en-title">Tsukuyomi Space</p>
           <p class="section-subtitle">{{ t.heroCopy }}</p>
           <div class="hub-actions">
             <a href="/room" class="primary-btn hub-primary" @click.prevent="$emit('go', '/room')">
               <TsIcon name="moon" :size="17" />
-              <span>进入私人居所</span>
+              <span>{{ isEnglish ? 'Enter the Private Room' : '进入私人居所' }}</span>
             </a>
           </div>
         </div>
 
-        <figure class="hub-character" aria-label="月见八千代">
-          <img :src="'/assets/images/yachiyo-hub-stand.png'" alt="月见八千代" loading="eager" decoding="async" fetchpriority="high">
+        <figure class="hub-character" :aria-label="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'">
+          <img :src="'/assets/images/yachiyo-hub-stand.png'" :alt="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'" loading="eager" decoding="async" fetchpriority="high">
         </figure>
         <div class="hub-scroll-thread" aria-hidden="true">
           <span></span>
@@ -482,11 +499,11 @@ onBeforeUnmount(() => {
 
       <aside class="hub-side-panel" data-material="sidebar">
         <div class="hub-side-head">
-          <span>本站统计</span>
+          <span>{{ isEnglish ? 'Site statistics' : '本站统计' }}</span>
           <small>Site Analytics</small>
         </div>
         <div class="hub-stat-grid" :aria-busy="previewLoading">
-          <LoadingSkeleton v-if="previewLoading" variant="stats" :count="6" label="正在读取站点统计" />
+          <LoadingSkeleton v-if="previewLoading" variant="stats" :count="6" :label="isEnglish ? 'Loading site statistics' : '正在读取站点统计'" />
           <template v-else>
             <div v-for="item in stats" :key="item.label">
               <strong><CountUpValue :value="item.value" /></strong>
@@ -495,7 +512,7 @@ onBeforeUnmount(() => {
           </template>
         </div>
         <div class="hub-side-card hub-visit-card">
-          <span class="hub-visit-eyebrow">公告</span>
+          <span class="hub-visit-eyebrow">{{ isEnglish ? 'Notice' : '公告' }}</span>
           <div class="hub-visit-title-row">
             <strong>{{ visitPopupPreview.title }}</strong>
           </div>
@@ -510,13 +527,13 @@ onBeforeUnmount(() => {
     <section class="hub-grid-wrap" data-material="content">
       <div class="hub-section-head">
         <div>
-          <h2>中枢大厅</h2>
-          <span>选择一个入口，开启你的旅程</span>
+          <h2>{{ t.hubTitle }}</h2>
+          <span>{{ isEnglish ? 'Choose a destination and begin your journey' : '选择一个入口，开启你的旅程' }}</span>
         </div>
         <span class="hub-online">STATUS: ONLINE</span>
       </div>
       <div class="scene-grid" :aria-busy="previewLoading">
-        <LoadingSkeleton v-if="previewLoading" variant="hub" :count="4" label="正在读取大厅最新内容" />
+        <LoadingSkeleton v-if="previewLoading" variant="hub" :count="4" :label="isEnglish ? 'Loading the latest Hub content' : '正在读取大厅最新内容'" />
         <div v-else-if="previewError" class="hub-preview-error" role="alert">{{ previewError }}</div>
         <template v-else>
         <component
@@ -567,26 +584,26 @@ onBeforeUnmount(() => {
           </span>
           <span v-else class="scene-main plaza-card-body">
             <span class="scene-name hub-plaza-title">{{ scene.name }}</span>
-            <span v-if="!plazaPreviewMessages.length" class="scene-desc">还没有留言，写下第一句问候。</span>
+            <span v-if="!plazaPreviewMessages.length" class="scene-desc">{{ isEnglish ? 'No messages yet. Leave the first greeting.' : '还没有留言，写下第一句问候。' }}</span>
             <span v-else class="hub-plaza-list">
               <span v-for="msg in plazaPreviewMessages" :key="msg.id" class="hub-plaza-message">
-                <strong>{{ msg.author || '访客' }}</strong>
+                <strong>{{ msg.author || (isEnglish ? 'Guest' : '访客') }}</strong>
                 <span>{{ msg.content }}</span>
               </span>
             </span>
             <form class="hub-plaza-form" :aria-busy="plazaQuick.loading" @click.stop @keydown.stop @submit.prevent="submitPlazaQuick">
-              <input v-model="plazaQuick.content" type="text" placeholder="快速留言...">
+              <input v-model="plazaQuick.content" type="text" :placeholder="isEnglish ? 'Quick message...' : '快速留言...'">
               <button
                 class="hub-plaza-submit"
                 type="submit"
                 :disabled="plazaQuick.loading"
                 :aria-busy="plazaQuick.loading"
-                :aria-label="plazaQuick.loading ? '发送中' : '发送'"
-                :title="plazaQuick.loading ? '发送中' : '发送'"
+                :aria-label="plazaQuick.loading ? (isEnglish ? 'Sending' : '发送中') : (isEnglish ? 'Send' : '发送')"
+                :title="plazaQuick.loading ? (isEnglish ? 'Sending' : '发送中') : (isEnglish ? 'Send' : '发送')"
               >
                 <TsIcon :name="plazaQuick.loading ? 'loader' : 'send'" :size="15" />
               </button>
-              <span v-if="plazaQuick.loading" class="ts-visually-hidden" role="status">发送中</span>
+              <span v-if="plazaQuick.loading" class="ts-visually-hidden" role="status">{{ isEnglish ? 'Sending' : '发送中' }}</span>
             </form>
             <span v-if="plazaQuick.message" class="hub-plaza-feedback" role="status">{{ plazaQuick.message }}</span>
           </span>

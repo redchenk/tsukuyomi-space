@@ -397,11 +397,35 @@ function getState(userId, now = new Date()) {
     return buildState(userId, now);
 }
 
+function getPublicLevels(userIds = []) {
+    const ids = [...new Set((Array.isArray(userIds) ? userIds : [])
+        .map((value) => String(value || '').trim())
+        .filter((value) => /^[A-Za-z0-9_-]{1,64}$/.test(value)))]
+        .slice(0, 60);
+    if (!ids.length) return [];
+
+    const placeholders = ids.map(() => '?').join(', ');
+    return db.prepare(`
+        SELECT users.id AS user_id, COALESCE(user_growth_profiles.total_xp, 0) AS total_xp
+        FROM users
+        LEFT JOIN user_growth_profiles ON user_growth_profiles.user_id = users.id
+        WHERE users.id IN (${placeholders})
+    `).all(...ids).map((row) => {
+        const level = levelForXp(row.total_xp);
+        return {
+            userId: row.user_id,
+            level: level.level,
+            title: level.title
+        };
+    });
+}
+
 module.exports = {
     DAILY_ACTIONS,
     LEVELS,
     checkIn,
     claimReferral,
+    getPublicLevels,
     getState,
     hongKongDate,
     levelForXp,

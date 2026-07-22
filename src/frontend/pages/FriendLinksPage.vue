@@ -16,7 +16,21 @@ const state = reactive({
 });
 
 const isZh = computed(() => props.lang === 'zh');
-const copy = computed(() => isZh.value ? {
+const copy = computed(() => props.lang === 'en' ? {
+  eyebrow: 'Friend Links',
+  title: 'Partner Sites',
+  subtitle: 'A collection of sites worth visiting along the way.',
+  back: 'Back to Plaza',
+  apply: 'Apply for a link exchange',
+  directory: 'Site directory',
+  count: 'sites',
+  visit: 'Visit site',
+  loading: 'Loading partner sites',
+  loadFailed: 'Unable to load partner sites',
+  retry: 'Try again',
+  empty: 'No public partner sites yet',
+  emptyAction: 'Send the first application'
+} : isZh.value ? {
   eyebrow: 'Friend Links',
   title: '友链',
   subtitle: '一些值得顺路拜访的站点。',

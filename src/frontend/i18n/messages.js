@@ -1,4 +1,7 @@
+import { en } from './messages.en.js';
+
 export const i18n = {
+    en,
     zh: {
         brand: '月读空间',
         access: '进入',

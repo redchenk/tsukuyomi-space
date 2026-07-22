@@ -336,6 +336,29 @@ describe('stage delivery hardening', () => {
         assert.match(nginxConfig, /location = \/sitemap-images\.xml \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
         assert.match(nginxConfig, /location ~ \^\/\(\?:hub\|pixel\|gallery\|friend-links\|wiki[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
     });
+
+    it('bounds the overseas Wiki translation and crawler rendering surface', () => {
+        const nginx = sourceFile('deploy/overseas-openresty.conf');
+        const service = sourceFile('deploy/overseas-translation-service.py');
+        const translationBlock = nginx.match(/location = \/en-translate \{[\s\S]*?\n    \}/)?.[0] || '';
+        const seoBlock = nginx.match(/location @english_seo \{[\s\S]*?\n    \}/)?.[0] || '';
+
+        assert.match(translationBlock, /limit_except POST/);
+        assert.match(translationBlock, /client_max_body_size 256k/);
+        assert.match(translationBlock, /client_body_timeout 10s/);
+        assert.match(seoBlock, /set \$english_original_uri \$request_uri/);
+        assert.match(seoBlock, /X-Original-URI \$english_original_uri/);
+        assert.doesNotMatch(seoBlock, /X-Original-URI \$request_uri/);
+        assert.match(service, /def normalize_public_seo_path/);
+        assert.match(service, /set\(query\) != \{"art"\}/);
+        assert.match(service, /re\.fullmatch\(r"\[1-9\]\\d\{0,18\}"/);
+        assert.match(service, /PUBLIC_SEO_PATHS/);
+        assert.match(service, /MAX_TRANSLATION_CACHE_ROWS/);
+        assert.match(service, /MAX_DOCUMENT_CACHE_ROWS/);
+        assert.match(service, /BoundedSemaphore\(MAX_CONCURRENT_TRANSLATIONS\)/);
+        assert.match(service, /SEO_REQUESTS_PER_MINUTE/);
+        assert.match(service, /TRANSLATED_API_PATH_RE/);
+    });
 });
 
 describe('deployment privilege boundary', () => {

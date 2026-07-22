@@ -3,6 +3,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { authFetch, authHeaders, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
+import UserLevelBadge from '../components/UserLevelBadge.vue';
+import { loadGrowth } from '../services/userGrowth';
 import { compressImage } from '../utils/image';
 import { formatDateOnly } from '../utils/time';
 
@@ -15,6 +17,7 @@ const props = defineProps({
 const emit = defineEmits(['auth-changed', 'go']);
 const ucAvatarInput = ref(null);
 const ucUser = ref(props.user || null);
+const ucGrowth = ref(null);
 const sessionChecking = ref(!props.user);
 const ucToast = reactive({ text: '', visible: false });
 let ucToastTimer = 0;
@@ -70,13 +73,13 @@ const uc = reactive({
 const isAuthed = computed(() => Boolean(ucUser.value));
 const ucRefreshing = computed(() => uc.profileLoading || uc.articleLoading || uc.messageLoading || uc.bookmarkLoading || uc.pixelLoading);
 const isAdminUser = computed(() => ['admin', 'super_admin'].includes(ucUser.value?.role) || ucUser.value?.scope === 'admin');
-const locale = computed(() => props.lang === 'zh' ? 'zh-CN' : 'ja-JP');
+const locale = computed(() => props.lang === 'en' ? 'en-US' : (props.lang === 'zh' ? 'zh-CN' : 'ja-JP'));
 const ucAvatarSrc = computed(() => ucUser.value?.avatar || ucDefaultAvatar(ucUser.value?.username));
 const ucRoleText = computed(() => {
   if (!ucUser.value) return '';
   return isAdminUser.value ? props.t.ucAdmin : props.t.ucUser;
 });
-const ucEmailText = computed(() => ucUser.value?.email || (props.lang === 'zh' ? '未绑定邮箱' : 'メール未連携'));
+const ucEmailText = computed(() => ucUser.value?.email || (props.lang === 'en' ? 'No email linked' : (props.lang === 'zh' ? '未绑定邮箱' : 'メール未連携')));
 const ucArticlesCount = computed(() => uc.articles.length.toLocaleString(locale.value));
 const ucPixelArtworkCount = computed(() => uc.pixelArtworks.length.toLocaleString(locale.value));
 const ucTotalViews = computed(() => {
@@ -357,8 +360,16 @@ async function ucLoadPixelArtworks() {
   }
 }
 
+async function ucLoadGrowth() {
+  try {
+    ucGrowth.value = await loadGrowth({ force: true });
+  } catch (_) {
+    ucGrowth.value = null;
+  }
+}
+
 async function ucRefresh() {
-  await Promise.all([ucLoadProfile(), ucLoadArticles(), ucLoadMessages(), ucLoadBookmarks(), ucLoadPixelArtworks()]);
+  await Promise.all([ucLoadProfile(), ucLoadArticles(), ucLoadMessages(), ucLoadBookmarks(), ucLoadPixelArtworks(), ucLoadGrowth()]);
 }
 
 async function ucEnsureSession() {
@@ -687,6 +698,9 @@ onMounted(async () => {
             <span>{{ ucRoleText }}</span>
           </div>
           <h1 class="uc-username">{{ ucUser?.username || '-' }}</h1>
+          <a v-if="ucGrowth?.level" class="uc-level-link" href="/growth" @click.prevent="go('/growth')">
+            <UserLevelBadge :level="ucGrowth.level" :lang="lang" />
+          </a>
           <div class="uc-email">{{ ucEmailText }}</div>
           <p class="uc-bio-preview">{{ ucUser?.bio || t.ucNoBio }}</p>
         </div>

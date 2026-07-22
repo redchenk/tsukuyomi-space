@@ -1,4 +1,4 @@
-import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { apiFetch, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 
 export const GROWTH_UPDATED_EVENT = 'tsukuyomi:growth-updated';
 export const PENDING_REFERRAL_KEY = 'tsukuyomi:pending-referral';
@@ -7,6 +7,9 @@ let cachedState = null;
 let cachedUserId = '';
 let cachedAt = 0;
 let inFlight = null;
+const publicLevelCache = new Map();
+const publicLevelRequests = new Map();
+const PUBLIC_LEVEL_MAX_AGE_MS = 5 * 60 * 1000;
 
 function currentUserId() {
   return String(getSession()?.user?.id || '').trim();
@@ -55,6 +58,50 @@ export async function loadGrowth({ force = false } = {}) {
     inFlight = null;
   });
   return inFlight;
+}
+
+export async function loadPublicUserLevels(userIds = [], { force = false } = {}) {
+  const ids = [...new Set((Array.isArray(userIds) ? userIds : [])
+    .map((value) => String(value || '').trim())
+    .filter((value) => /^[A-Za-z0-9_-]{1,64}$/.test(value)))]
+    .slice(0, 60);
+  if (!ids.length) return {};
+
+  const now = Date.now();
+  const missing = force
+    ? ids
+    : ids.filter((id) => !publicLevelCache.has(id) || now - publicLevelCache.get(id).cachedAt > PUBLIC_LEVEL_MAX_AGE_MS);
+  if (missing.length) {
+    const requestKey = [...missing].sort().join(',');
+    let request = publicLevelRequests.get(requestKey);
+    if (!request) {
+      request = apiFetch(noStoreUrl(`/api/growth/public?ids=${encodeURIComponent(requestKey)}`), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      }).then(parseResponse).then((result) => {
+        if (!result.success) throw new Error(result.message || 'Unable to load public levels');
+        const receivedAt = Date.now();
+        (Array.isArray(result.data) ? result.data : []).forEach((item) => {
+          const userId = String(item?.userId || '').trim();
+          if (!userId) return;
+          publicLevelCache.set(userId, {
+            data: {
+              userId,
+              level: Math.max(1, Math.min(8, Number(item.level) || 1)),
+              title: String(item.title || '')
+            },
+            cachedAt: receivedAt
+          });
+        });
+      }).finally(() => publicLevelRequests.delete(requestKey));
+      publicLevelRequests.set(requestKey, request);
+    }
+    await request;
+  }
+
+  return Object.fromEntries(ids
+    .map((id) => [id, publicLevelCache.get(id)?.data || null])
+    .filter(([, value]) => value));
 }
 
 export async function checkInGrowth() {

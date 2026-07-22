@@ -32,12 +32,13 @@ const register = reactive({
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 const isJapanese = computed(() => props.t.register === '新規登録');
-const authTitle = computed(() => (isJapanese.value ? '新しい居場所を作る' : '创建账号'));
-const authVisualTitle = computed(() => (isJapanese.value ? '月読空間' : '月读空间'));
-const authVisualSubtitle = computed(() => (isJapanese.value ? '探索、記録、共有' : '探索、记录、分享'));
-const authHomeLabel = computed(() => (isJapanese.value ? 'ホームへ戻る' : '返回首页'));
-const authNotePrimary = computed(() => (isJapanese.value ? '新しい記録' : '新的档案'));
-const authNoteSecondary = computed(() => (isJapanese.value ? '安全な身分' : '安全身份'));
+const isEnglish = computed(() => props.t.register === 'Create account');
+const authTitle = computed(() => (isEnglish.value ? 'Create your account' : (isJapanese.value ? '新しい居場所を作る' : '创建账号')));
+const authVisualTitle = computed(() => (isEnglish.value ? 'Tsukuyomi Space' : (isJapanese.value ? '月読空間' : '月读空间')));
+const authVisualSubtitle = computed(() => (isEnglish.value ? 'Explore, record and share' : (isJapanese.value ? '探索、記録、共有' : '探索、记录、分享')));
+const authHomeLabel = computed(() => (isEnglish.value ? 'Back to home' : (isJapanese.value ? 'ホームへ戻る' : '返回首页')));
+const authNotePrimary = computed(() => (isEnglish.value ? 'A new profile' : (isJapanese.value ? '新しい記録' : '新的档案')));
+const authNoteSecondary = computed(() => (isEnglish.value ? 'Secure identity' : (isJapanese.value ? '安全な身分' : '安全身份')));
 
 function showMessage(type, message) {
   register.type = type;
@@ -190,14 +191,14 @@ function startQQLogin() {
               </div>
             </div>
             <button class="primary-btn" type="submit" :disabled="register.submitting" :aria-busy="register.submitting">{{ t.register }}</button>
-            <StatusLoader v-if="register.submitting" label="正在创建账号" compact />
+            <StatusLoader v-if="register.submitting" :label="isEnglish ? 'Creating account' : '正在创建账号'" compact />
           </form>
           <div class="oauth-login-section">
-            <div class="auth-divider"><span>其他方式登录</span></div>
+            <div class="auth-divider"><span>{{ isEnglish ? 'Other sign-up options' : '其他方式登录' }}</span></div>
             <div class="oauth-provider-row">
-              <button class="oauth-icon-btn qq" type="button" aria-label="QQ 登录" title="QQ 登录" @click="startQQLogin">
+              <button class="oauth-icon-btn qq" type="button" :aria-label="isEnglish ? 'Continue with QQ' : 'QQ 登录'" :title="isEnglish ? 'Continue with QQ' : 'QQ 登录'" @click="startQQLogin">
                 <img :src="qqIconUrl" alt="">
-                <span>QQ 登录</span>
+                <span>{{ isEnglish ? 'Continue with QQ' : 'QQ 登录' }}</span>
               </button>
             </div>
           </div>

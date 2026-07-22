@@ -141,10 +141,11 @@ describe('frontend room memory API client usage', () => {
         assert.equal(runtime.localOllamaFetchOptions('https://api.deepseek.com/chat/completions', {}).targetAddressSpace, undefined);
         assert.deepEqual(
             Array.from(runtime.localOllamaAllowedOrigins('https://malicious.example')),
-            ['https://yachiyo.hk', 'https://yachiyo.com.cn', 'https://cho-kaguyahime.cn']
+            ['https://yachiyo.hk', 'https://yachiyo.com.cn', 'https://cho-kaguyahime.cn', 'https://tsukuyomi-space.com']
         );
         assert.match(runtime.localOllamaWindowsCommand(), /OLLAMA_ORIGINS/);
         assert.match(runtime.localOllamaWindowsCommand(), /https:\/\/yachiyo\.hk/);
+        assert.match(runtime.localOllamaWindowsCommand(), /https:\/\/tsukuyomi-space\.com/);
         assert.doesNotMatch(runtime.localOllamaWindowsCommand('https://malicious.example'), /malicious/);
         await assert.rejects(
             runtime.fetchWithLocalOllamaGuidance(

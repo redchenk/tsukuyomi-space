@@ -63,7 +63,9 @@ const languageTargetLabel = computed(() => (props.lang === 'zh' ? '日本語' : 
 const languageActionLabel = computed(() => (props.lang === 'zh' ? props.t.switchToJapanese : props.t.switchToChinese));
 const notificationsActionLabel = computed(() => (props.lang === 'ja'
   ? `${props.t.notifications}、未読 ${unreadNotifications.value} 件`
-  : `${props.t.notifications}，${unreadNotifications.value} 条未读`));
+  : props.lang === 'en'
+    ? `${props.t.notifications}, ${unreadNotifications.value} unread`
+    : `${props.t.notifications}，${unreadNotifications.value} 条未读`));
 
 function userInitial() {
   return String(props.user?.username || props.user?.email || props.t.brand || '月').slice(0, 1).toUpperCase();
@@ -223,6 +225,7 @@ onUnmounted(() => {
         </button>
 
         <button
+          v-if="lang !== 'en'"
           class="rail-link rail-language"
           type="button"
           :aria-label="languageActionLabel"
@@ -393,7 +396,7 @@ onUnmounted(() => {
             <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
           </button>
 
-          <div class="lang-switcher" :aria-label="t.language">
+          <div v-if="lang !== 'en'" class="lang-switcher" :aria-label="t.language">
             <button class="lang-btn" :class="{ active: lang === 'zh' }" :aria-pressed="lang === 'zh'" lang="zh-CN" type="button" @click="$emit('set-lang', 'zh')">中文</button>
             <button class="lang-btn" :class="{ active: lang === 'ja' }" :aria-pressed="lang === 'ja'" lang="ja" type="button" @click="$emit('set-lang', 'ja')">日本語</button>
           </div>

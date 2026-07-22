@@ -2,12 +2,18 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
+import UserLevelBadge from '../components/UserLevelBadge.vue';
+import { useUserLevels } from '../composables/useUserLevels';
 import { compressImage } from '../utils/image';
 
 const emit = defineEmits(['go']);
 const props = defineProps({
-  routeName: { type: String, default: '' }
+  routeName: { type: String, default: '' },
+  lang: { type: String, default: 'zh' }
 });
+const isEnglishSite = import.meta.env.VITE_SITE_LANGUAGE === 'en';
+const siteLanguage = computed(() => isEnglishSite ? 'en' : props.lang);
+const { hydrateUserLevels, userLevel } = useUserLevels();
 const fileInput = ref(null);
 const session = ref(getSession());
 let randomFeatureTimer = 0;
@@ -70,6 +76,7 @@ function handleImageError(event, asset) {
 
 function imageTitle(asset) {
   const date = imageDate(asset);
+  if (isEnglishSite) return date ? `Gallery image · ${date}` : 'Gallery image';
   return date ? `图库影像 · ${date}` : '图库影像';
 }
 
@@ -156,6 +163,7 @@ async function loadLatestImage() {
     const result = await parseResponse(response);
     const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
     state.latest = assets[0] || null;
+    await hydrateUserLevels(assets.map((asset) => asset.owner_id)).catch(() => {});
   } catch (_) {
     state.latest = null;
   }
@@ -169,6 +177,7 @@ async function loadRandomFeatureImage() {
     });
     const result = await parseResponse(response);
     const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
+    await hydrateUserLevels(assets.map((asset) => asset.owner_id)).catch(() => {});
     const nextAsset = assets[0] || null;
     if (requestId !== randomFeatureRequestId) return;
     if (!state.randomFeatured || !nextAsset || state.randomFeatured.id === nextAsset.id) {
@@ -219,6 +228,7 @@ async function loadImages(page = 1) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '图库读取失败');
     state.images = result.data?.assets || [];
+    await hydrateUserLevels(state.images.map((asset) => asset.owner_id)).catch(() => {});
     state.page = result.data?.pagination?.page || 1;
     state.totalPages = result.data?.pagination?.totalPages || 1;
     state.total = result.data?.pagination?.total || state.images.length;
@@ -465,6 +475,7 @@ onUnmounted(() => {
                 >
               </span>
               <span class="gallery-uploader-name">{{ uploaderName(randomFeatureImage) }}</span>
+              <UserLevelBadge v-if="randomFeatureImage.owner_id" :level="userLevel(randomFeatureImage.owner_id)" :lang="siteLanguage" compact :show-title="false" />
             </a>
             <span v-else class="gallery-uploader gallery-feature-uploader gallery-uploader-static">
               <span class="gallery-uploader-avatar" aria-hidden="true">
@@ -518,6 +529,7 @@ onUnmounted(() => {
                   >
                 </span>
                 <span class="gallery-uploader-name">{{ uploaderName(asset) }}</span>
+                <UserLevelBadge v-if="asset.owner_id" :level="userLevel(asset.owner_id)" :lang="siteLanguage" compact :show-title="false" />
               </a>
               <span v-else class="gallery-uploader gallery-uploader-static">
                 <span class="gallery-uploader-avatar" aria-hidden="true">
@@ -621,6 +633,7 @@ onUnmounted(() => {
                   >
                 </span>
                 <span class="gallery-uploader-name">{{ uploaderName(state.selected) }}</span>
+                <UserLevelBadge v-if="state.selected.owner_id" :level="userLevel(state.selected.owner_id)" :lang="siteLanguage" compact :show-title="false" />
               </a>
               <span v-else class="gallery-uploader gallery-lightbox-uploader gallery-uploader-static">
                 <span class="gallery-uploader-avatar" aria-hidden="true">

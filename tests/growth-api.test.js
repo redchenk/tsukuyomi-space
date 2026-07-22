@@ -47,6 +47,10 @@ before(async () => {
         INSERT INTO users (id, username, email, password_hash, role)
         VALUES ('growth-api-user', 'growth-api-user', 'growth-api@example.test', 'growth-api-password-hash', 'user')
     `).run();
+    db.prepare(`
+        INSERT INTO users (id, username, email, password_hash, role)
+        VALUES ('public-level-zero', 'public-level-zero', 'public-level-zero@example.test', 'growth-api-password-hash', 'user')
+    `).run();
     token = generateToken({ id: 'growth-api-user', username: 'growth-api-user', role: 'user' });
 });
 
@@ -57,6 +61,23 @@ after(async () => {
 });
 
 describe('growth API', () => {
+    it('publishes only bounded level identity data without creating a private profile', async () => {
+        const before = db.prepare('SELECT COUNT(*) AS count FROM user_growth_profiles WHERE user_id = ?').get('public-level-zero').count;
+        const { response, body } = await call('/api/growth/public?ids=public-level-zero', { headers: headers(false) });
+        const after = db.prepare('SELECT COUNT(*) AS count FROM user_growth_profiles WHERE user_id = ?').get('public-level-zero').count;
+
+        assert.equal(response.status, 200);
+        assert.equal(body.success, true);
+        assert.deepEqual(Object.keys(body.data[0]).sort(), ['level', 'title', 'userId']);
+        assert.equal(body.data[0].userId, 'public-level-zero');
+        assert.equal(body.data[0].level, 1);
+        assert.equal(before, 0);
+        assert.equal(after, 0);
+
+        const invalid = await call('/api/growth/public?ids=public-level-zero%2C..%2Fadmin', { headers: headers(false) });
+        assert.equal(invalid.response.status, 400);
+    });
+
     it('requires an authenticated account', async () => {
         const { response, body } = await call('/api/growth/me', { headers: headers(false) });
         assert.equal(response.status, 401);

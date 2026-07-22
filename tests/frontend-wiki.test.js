@@ -88,6 +88,47 @@ test('MediaWiki rendering keeps generated HTML inside a strict passive allowlist
   }
 });
 
+test('Wiki navigation, source links and image paths reject hostile values', () => {
+  const {
+    decodeWikiHash,
+    trustedWikiAssetPath,
+    trustedWikiSourceUrl
+  } = loadBundledModule('src/frontend/utils/wikiSecurity.js');
+
+  assert.equal(decodeWikiHash('#source-intro'), 'source-intro');
+  assert.equal(decodeWikiHash('#source%2Dintro'), 'source-intro');
+  assert.equal(decodeWikiHash('#%'), '');
+  assert.equal(decodeWikiHash(`#${'a'.repeat(500)}`), '');
+  assert.equal(decodeWikiHash('#safe%00unsafe'), '');
+
+  assert.equal(trustedWikiSourceUrl('javascript:alert(1)'), '');
+  assert.equal(trustedWikiSourceUrl('http://zh.moegirl.org.cn/wiki/test'), '');
+  assert.equal(trustedWikiSourceUrl('https://zh.moegirl.org.cn.evil.example/wiki/test'), '');
+  assert.equal(trustedWikiSourceUrl('https://user:password@zh.moegirl.org.cn/wiki/test'), '');
+  assert.equal(trustedWikiSourceUrl('https://zh.moegirl.org.cn/wiki/test'), 'https://zh.moegirl.org.cn/wiki/test');
+
+  assert.equal(trustedWikiAssetPath('/assets/images/wiki/content/source-001.webp'), '/assets/images/wiki/content/source-001.webp');
+  assert.equal(trustedWikiAssetPath('/assets/images/wiki/../../index.html'), '');
+  assert.equal(trustedWikiAssetPath('/assets/images/wiki/content/active.svg'), '');
+  assert.equal(trustedWikiAssetPath('data:image/svg+xml,<svg onload=alert(1)>'), '');
+
+  const landing = read('src/frontend/pages/WikiPage.vue');
+  const entry = read('src/frontend/pages/WikiEntryPage.vue');
+  assert.doesNotMatch(landing, /decodeURIComponent\(window\.location\.hash/);
+  assert.doesNotMatch(entry, /decodeURIComponent\(window\.location\.hash/);
+  assert.match(landing, /trustedReferences/);
+  assert.match(entry, /trustedSourceLinks/);
+});
+
+test('Every published Wiki entry is admitted by the overseas SEO allowlist', () => {
+  const { allWikiEntries, wikiEntryPath } = loadBundledModule('src/frontend/data/cosmicKaguyaWikiEntries.js');
+  const service = read('deploy/overseas-translation-service.py');
+  for (const entry of allWikiEntries) {
+    const entryPath = wikiEntryPath(entry.kind, entry.slug);
+    assert.match(service, new RegExp(`['"]${entryPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`), entryPath);
+  }
+});
+
 test('Every character and term receives a reusable secondary entry page', () => {
   const data = read('src/frontend/data/cosmicKaguyaWikiEntries.js');
   const page = read('src/frontend/pages/WikiEntryPage.vue');
@@ -148,6 +189,7 @@ test('Every character and term receives a reusable secondary entry page', () => 
   assert.match(page, /:class="\{ 'wiki-entry-layout-source': entry\.sourceArticle \}"/);
   assert.match(page, /<aside v-if="!entry\.sourceArticle" class="wiki-entry-infobox"/);
   assert.match(styles, /\.wiki-entry-moegirl-card/);
+  assert.match(styles, /html\[lang="en"\] \.wiki-entry-moegirl-card::after \{[\s\S]*?content: "M"/);
 });
 
 test('Wiki landing page includes the expanded release, credits, music and derivative archive', () => {
@@ -218,7 +260,7 @@ test('User-provided source media resolves into article images and primary-page c
   assert.match(data, /超时空辉夜姬漫画封面1\.webp/);
   assert.match(data, /超时空辉夜姬小说封面\.webp/);
   assert.match(data, /超时空辉夜姬公式指南书封面\.webp/);
-  assert.match(page, /<img :src="work\.image" :alt="work\.imageAlt"/);
+  assert.match(page, /trustedWikiAssetPath\(work\.image\)/);
 });
 
 test('Wiki page keeps spoilers collapsed and exposes interactive entry points', () => {

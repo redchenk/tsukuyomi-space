@@ -18,7 +18,10 @@ const SitePet = defineAsyncComponent(() => import('./components/SitePet.vue'));
 
 const route = useRoute();
 const router = useRouter();
-const lang = ref(normalizeLanguage(localStorage.getItem('lang')));
+const forcedLanguage = String(import.meta.env.VITE_SITE_LANGUAGE || '').trim()
+  ? normalizeLanguage(import.meta.env.VITE_SITE_LANGUAGE)
+  : '';
+const lang = ref(forcedLanguage || normalizeLanguage(localStorage.getItem('lang')));
 const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
 const user = ref(null);
 const t = computed(() => i18n[lang.value] || i18n.zh);
@@ -141,8 +144,8 @@ async function refreshUser(trustedUser = null) {
 }
 
 function setLang(nextLang) {
-  lang.value = normalizeLanguage(nextLang);
-  localStorage.setItem('lang', lang.value);
+  lang.value = forcedLanguage || normalizeLanguage(nextLang);
+  if (!forcedLanguage) localStorage.setItem('lang', lang.value);
   document.documentElement.lang = documentLanguage(lang.value);
 }
 
@@ -409,7 +412,7 @@ onUnmounted(() => {
     aria-busy="true"
   ><span aria-hidden="true"></span></div>
 
-  <SitePet v-if="showSitePet && petReady" :lang="lang" :route-name="route.name" :reduced="petReduced" />
+  <SitePet v-if="showSitePet && petReady" :lang="lang" :route-name="route.name" :reduced="petReduced" @go="go" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
     <section class="visit-popup-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="visitPopup.title">

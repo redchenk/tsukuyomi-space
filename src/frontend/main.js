@@ -5,6 +5,7 @@ import StatusLoader from './components/StatusLoader.vue';
 import { router } from './router';
 import { configureAssetCssVars } from './utils/assetUrl';
 import { initializePerformanceProfile } from './utils/performance';
+import { enableEnglishStaticInterface } from './i18n/englishStaticInterface';
 import './styles/global.css';
 import './styles/performance.css';
 
@@ -21,6 +22,7 @@ window.addEventListener('blur', syncWindowAppearance, { passive: true });
 window.addEventListener('pageshow', syncWindowAppearance, { passive: true });
 document.addEventListener('visibilitychange', syncWindowAppearance, { passive: true });
 syncWindowAppearance();
+enableEnglishStaticInterface();
 
 const app = createApp(App);
 

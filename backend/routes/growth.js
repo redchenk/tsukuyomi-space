@@ -11,6 +11,22 @@ function sendError(res, error, fallback) {
     });
 }
 
+router.get('/public', (req, res) => {
+    try {
+        const rawIds = Array.isArray(req.query.ids) ? req.query.ids.join(',') : String(req.query.ids || '');
+        if (rawIds.length > 4096) {
+            return res.status(400).json({ success: false, message: '用户列表过长' });
+        }
+        const ids = rawIds.split(',').map((value) => value.trim()).filter(Boolean);
+        if (ids.length > 60 || ids.some((value) => !/^[A-Za-z0-9_-]{1,64}$/.test(value))) {
+            return res.status(400).json({ success: false, message: '用户列表格式无效' });
+        }
+        return res.json({ success: true, data: userGrowth.getPublicLevels(ids) });
+    } catch (error) {
+        return sendError(res, error, '无法读取公开等级');
+    }
+});
+
 router.get('/me', authenticateToken, (req, res) => {
     try {
         return res.json({ success: true, data: userGrowth.getState(req.user.id) });

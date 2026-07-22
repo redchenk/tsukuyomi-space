@@ -6,6 +6,8 @@ import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
 import SocialText from '../components/SocialText.vue';
 import TsIcon from '../components/TsIcon.vue';
+import UserLevelBadge from '../components/UserLevelBadge.vue';
+import { useUserLevels } from '../composables/useUserLevels';
 import { applyMessageLikeState } from '../services/messageLikes';
 import { compareAppDate, formatDateTime, parseAppDate } from '../utils/time';
 
@@ -16,6 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits(['go']);
 const route = useRoute();
+const { hydrateUserLevels, userLevel } = useUserLevels();
 const session = ref(getSession());
 const plaza = reactive({
   messages: [],
@@ -36,7 +39,12 @@ const PLAZA_PAGE_SIZE = 8;
 const user = computed(() => session.value?.user || null);
 const isAuthed = computed(() => Boolean(session.value));
 const isZh = computed(() => props.lang === 'zh');
-const plazaCopy = computed(() => isZh.value ? {
+const isEn = computed(() => props.lang === 'en');
+const plazaCopy = computed(() => isEn.value ? {
+  subtitle: 'A public channel where visitors, creators and passing observers exchange messages.',
+  loginToPostDesc: 'Greetings and feedback appear in the plaza. Use the dedicated partner-site entry for link exchanges.',
+  friendRule: 'Apply for a link exchange through the dedicated entry above and track its review status there.'
+} : isZh.value ? {
   subtitle: '\u8bbf\u5ba2\u3001\u521b\u4f5c\u8005\u548c\u8def\u8fc7\u7684\u89c2\u6d4b\u8005\u5728\u8fd9\u91cc\u4ea4\u6362\u7559\u8a00\u3002\u95ee\u5019\u3001\u53cd\u9988\u548c\u7075\u611f\u90fd\u53ef\u4ee5\u843d\u5728\u8fd9\u91cc\u3002',
   loginToPostDesc: '\u53d1\u5e03\u95ee\u5019\u548c\u53cd\u9988\u4f1a\u51fa\u73b0\u5728\u5e7f\u573a\u7559\u8a00\u5899\u3002\u53cb\u94fe\u7533\u8bf7\u8bf7\u4f7f\u7528\u5e38\u9a7b\u8bbf\u5ba2\u533a\u5165\u53e3\u3002',
   friendRule: '\u53cb\u94fe\u7533\u8bf7\u8bf7\u4f7f\u7528\u4e0a\u65b9\u72ec\u7acb\u5165\u53e3\uff0c\u5ba1\u6838\u72b6\u6001\u53ef\u968f\u65f6\u67e5\u770b\u3002'
@@ -47,7 +55,11 @@ const plazaCopy = computed(() => isZh.value ? {
 });
 
 const friends = computed(() => {
-  const builtIn = isZh.value ? [
+  const builtIn = isEn.value ? [
+    { name: 'Tsukuyomi Space', desc: 'Project repository and update history', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: 'T', external: true },
+    { name: 'Kaguya-hime Blog', desc: 'Articles, notices and creative notes', url: '/stage', avatar: 'B' },
+    { name: 'Moonlit Pixel Workshop', desc: 'Draw pixel art and share it with the public gallery', url: '/pixel/', avatar: 'P' }
+  ] : isZh.value ? [
     { name: '\u6708\u8bfb\u7a7a\u95f4\u5b98\u65b9', desc: '\u9879\u76ee\u4ed3\u5e93\u4e0e\u66f4\u65b0\u8bb0\u5f55', url: 'https://github.com/redchenk/tsukuyomi-space', avatar: '\u6708', external: true },
     { name: '\u8f89\u591c\u59ec\u535a\u5ba2', desc: '\u6587\u7ae0\u3001\u516c\u544a\u4e0e\u521b\u4f5c\u624b\u8bb0', url: '/stage', avatar: '\u6587' },
     { name: '\u6708\u5149\u50cf\u7d20\u5de5\u574a', desc: '\u753b\u50cf\u7d20\u753b\u5e76\u5206\u4eab\u5230\u516c\u5f00\u753b\u5eca', url: '/pixel/', avatar: '\u753b' }
@@ -56,16 +68,41 @@ const friends = computed(() => {
     { name: '\u8f1d\u591c\u59eb\u30d6\u30ed\u30b0', desc: '\u8a18\u4e8b\u3001\u304a\u77e5\u3089\u305b\u3001\u5275\u4f5c\u30ce\u30fc\u30c8', url: '/stage', avatar: '\u6587' },
     { name: '\u6708\u5149\u30d4\u30af\u30bb\u30eb\u5de5\u623f', desc: '\u30d4\u30af\u30bb\u30eb\u30a2\u30fc\u30c8\u3092\u63cf\u3044\u3066\u5171\u6709\u30ae\u30e3\u30e9\u30ea\u30fc\u3078', url: '/pixel/', avatar: '\u753b' }
   ];
-  const directory = isZh.value
+  const directory = isEn.value
+    ? { name: 'Partner Sites', desc: 'Browse listed friendly sites', url: '/friend-links', avatar: 'F' }
+    : isZh.value
     ? { name: '\u53cb\u94fe', desc: '\u67e5\u770b\u5df2\u6536\u5f55\u7684\u53cb\u597d\u7ad9\u70b9', url: '/friend-links', avatar: '\u53cb' }
     : { name: '\u76f8\u4e92\u30ea\u30f3\u30af', desc: '\u63b2\u8f09\u4e2d\u306e\u53cb\u597d\u30b5\u30a4\u30c8\u4e00\u89a7', url: '/friend-links', avatar: '\u53cb' };
-  const application = isZh.value
+  const application = isEn.value
+    ? { name: 'Link Exchange Application', desc: 'Submit site details and track the review', url: '/friend-links/apply', avatar: 'L' }
+    : isZh.value
     ? { name: '\u53cb\u94fe\u7533\u8bf7', desc: '\u586b\u5199\u7ad9\u70b9\u4fe1\u606f\u5e76\u67e5\u770b\u5ba1\u6838\u72b6\u6001', url: '/friend-links/apply', avatar: '\u94fe' }
     : { name: '\u76f8\u4e92\u30ea\u30f3\u30af\u7533\u8acb', desc: '\u30b5\u30a4\u30c8\u60c5\u5831\u3068\u5be9\u67fb\u72b6\u6cc1\u3092\u78ba\u8a8d', url: '/friend-links/apply', avatar: '\u30ea' };
   return [...builtIn, directory, application];
 });
 
-const fallback = computed(() => isZh.value ? {
+const fallback = computed(() => isEn.value ? {
+  anonymous: 'Anonymous guest',
+  visitor: 'Visitor',
+  search: 'Search...',
+  justNow: 'just now',
+  minutesAgo: 'minutes ago',
+  hoursAgo: 'hours ago',
+  daysAgo: 'days ago',
+  posted: 'posted a message',
+  replied: 'replied',
+  arrow: '→',
+  filteredMessages: 'matching messages',
+  showing: 'Showing',
+  page: 'Page',
+  pageSuffix: '',
+  totalPages: 'of',
+  pageSize: '8 per page',
+  prevPage: 'Previous',
+  nextPage: 'Next',
+  jumpToPage: 'Go to page',
+  messageRangeUnit: 'messages'
+} : isZh.value ? {
   anonymous: '\u533f\u540d\u8bbf\u5ba2',
   visitor: '\u8bbf\u5ba2',
   search: '\u641c\u7d22...',
@@ -251,6 +288,7 @@ async function loadPlazaMessages() {
     plaza.messages = Array.isArray(result.data)
       ? result.data.filter((item) => !item.article_id)
       : [];
+    await hydrateUserLevels(plaza.messages.map((item) => item.user_id)).catch(() => {});
     if (isAuthed.value) await applyMessageLikeState(plaza.messages).catch(() => {});
     plazaSyncPageWithHash();
   } catch (error) {
@@ -285,6 +323,7 @@ function upsertPlazaMessage(message) {
     return;
   }
   plaza.messages.unshift(normalized);
+  if (normalized.user_id) hydrateUserLevels([normalized.user_id]).catch(() => {});
 }
 
 function patchPlazaMessage(message) {
@@ -322,7 +361,7 @@ async function plazaSubmitMessage(content) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.publishFailed);
-    showPlazaToast(result.message || '留言已提交，审核通过后会公开显示');
+    showPlazaToast(result.message || (isEn.value ? 'Message submitted. It will appear after review.' : '留言已提交，审核通过后会公开显示'));
     if (result.data?.id && (result.data.status || 'approved') === 'approved') {
       plaza.page = 1;
       upsertPlazaMessage(result.data);
@@ -352,7 +391,7 @@ async function plazaSubmitReply(parentId, content) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.replyFailed);
-    showPlazaToast(result.message || '回复已提交，审核通过后会公开显示');
+    showPlazaToast(result.message || (isEn.value ? 'Reply submitted. It will appear after review.' : '回复已提交，审核通过后会公开显示'));
     if (result.data?.id && (result.data.status || 'approved') === 'approved') {
       upsertPlazaMessage(result.data);
       loadTrendingTopics();
@@ -447,7 +486,7 @@ function plazaAvatarAlt(name) {
 
 function plazaFormatDate(value) {
   if (!value) return '-';
-  return formatDateTime(value, isZh.value ? 'zh-CN' : 'ja-JP');
+  return formatDateTime(value, isEn.value ? 'en-US' : (isZh.value ? 'zh-CN' : 'ja-JP'));
 }
 
 function plazaFormatRelative(value) {
@@ -461,7 +500,7 @@ function plazaFormatRelative(value) {
 }
 
 function plazaFormatNumber(value) {
-  return Number(value || 0).toLocaleString(isZh.value ? 'zh-CN' : 'ja-JP');
+  return Number(value || 0).toLocaleString(isEn.value ? 'en-US' : (isZh.value ? 'zh-CN' : 'ja-JP'));
 }
 
 function plazaMessageNumber(id) {
@@ -472,6 +511,7 @@ function plazaFormatUptime(seconds) {
   const total = Math.floor(Number(seconds || 0));
   const days = Math.floor(total / 86400);
   const hours = Math.floor((total % 86400) / 3600);
+  if (isEn.value) return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
   if (isZh.value) return days > 0 ? `${days}\u5929${hours}\u65f6` : `${hours}\u65f6`;
   return days > 0 ? `${days}\u65e5${hours}\u6642\u9593` : `${hours}\u6642\u9593`;
 }
@@ -577,6 +617,7 @@ onMounted(refreshPlaza);
                 </div>
                 <div>
                   <div class="plaza-author-name">{{ msg.author || fallback.anonymous }}</div>
+                  <UserLevelBadge v-if="msg.user_id" :level="userLevel(msg.user_id)" :lang="lang" compact :show-title="false" />
                   <div class="plaza-msg-date">{{ plazaFormatDate(msg.created_at) }}</div>
                 </div>
                 </button>
@@ -623,6 +664,7 @@ onMounted(refreshPlaza);
                     </div>
                     <div>
                       <div class="plaza-author-name" style="font-size:0.82rem;">{{ reply.author || fallback.anonymous }}</div>
+                      <UserLevelBadge v-if="reply.user_id" :level="userLevel(reply.user_id)" :lang="lang" compact :show-title="false" />
                       <div class="plaza-msg-date">{{ plazaFormatDate(reply.created_at) }}</div>
                     </div>
                     </button>
@@ -678,9 +720,9 @@ onMounted(refreshPlaza);
 
       <aside class="plaza-side">
         <div class="panel">
-          <div class="panel-title">热门话题 <span>{{ plaza.topics.length }}</span></div>
+          <div class="panel-title">{{ isEn ? 'Trending topics' : '热门话题' }} <span>{{ plaza.topics.length }}</span></div>
           <div class="plaza-topic-list" :aria-busy="plaza.topicsLoading">
-            <LoadingSkeleton v-if="plaza.topicsLoading" variant="topics" :count="4" label="正在同步话题" />
+            <LoadingSkeleton v-if="plaza.topicsLoading" variant="topics" :count="4" :label="isEn ? 'Syncing topics' : '正在同步话题'" />
             <div v-else-if="plaza.topicsError" class="plaza-topic-empty error" role="alert">{{ plaza.topicsError }}</div>
             <template v-else>
               <button
@@ -693,7 +735,7 @@ onMounted(refreshPlaza);
                 <span>#{{ topic.topic }}</span>
                 <small>{{ plazaFormatNumber(topic.count) }} · {{ plazaFormatNumber(topic.score) }}</small>
               </button>
-              <div v-if="!plaza.topics.length" class="plaza-topic-empty">还没有话题，试试发布 #月读茶会#</div>
+              <div v-if="!plaza.topics.length" class="plaza-topic-empty">{{ isEn ? 'No topics yet. Try posting #TsukuyomiTea#' : '还没有话题，试试发布 #月读茶会#' }}</div>
             </template>
           </div>
         </div>

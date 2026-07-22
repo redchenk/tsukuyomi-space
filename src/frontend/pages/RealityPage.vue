@@ -9,6 +9,7 @@ const props = defineProps({
 const emit = defineEmits(['go']);
 
 const isJa = computed(() => props.lang === 'ja');
+const isEnglish = computed(() => props.lang === 'en');
 
 const privacyHeaders = computed(() => isJa.value
   ? ['\u30c7\u30fc\u30bf\u7a2e\u5225', '\u5229\u7528\u76ee\u7684', '\u4fdd\u5b58\u5834\u6240\u3068\u8aac\u660e']
@@ -224,31 +225,46 @@ function go(path) {
           <p><strong>{{ noticePrefixes.update }}</strong>{{ t.realityNoticeUpdate }}</p>
         </div>
         <div class="reality-source-note">
-          <p v-if="!isJa">
+          <p v-if="isEnglish">
+            <strong>Materials and copyright:</strong> Visuals, characters and music related to Cosmic Princess Kaguya belong to their respective rights holders. This non-commercial site exists for personal interest and community exchange.
+          </p>
+          <p v-else-if="!isJa">
             <strong>素材与版权：</strong>本站使用《超时空辉夜姬》相关视觉、角色与音乐素材，版权归原著及相关权利方所有；本站为非盈利性质，仅用于个人兴趣展示与交流。
           </p>
           <p v-else>
             <strong>素材と著作権：</strong>本サイトで使用している「超時空輝夜姫」関連のビジュアル、キャラクター、音楽素材の権利は原著作権者および関連権利者に帰属します。本サイトは非営利の個人展示・交流目的です。
           </p>
-          <p v-if="!isJa">
+          <p v-if="isEnglish">
+            <strong>Live2D model source:</strong> The site model comes from the <a href="https://space.bilibili.com/3546783265327964?spm_id_from=333.337.0.0" target="_blank" rel="noopener noreferrer">Xuexiong Project</a> on Bilibili and remains the property of its creators and rights holders.
+          </p>
+          <p v-else-if="!isJa">
             <strong>Live2D 模型来源：</strong>站内 Live2D 模型来自 B 站 <a href="https://space.bilibili.com/3546783265327964?spm_id_from=333.337.0.0" target="_blank" rel="noopener noreferrer">雪熊企划</a>，模型版权归原作者及相关权利方所有。
           </p>
           <p v-else>
             <strong>Live2D モデル出典：</strong>サイト内の Live2D モデルは Bilibili の <a href="https://space.bilibili.com/3546783265327964?spm_id_from=333.337.0.0" target="_blank" rel="noopener noreferrer">雪熊企划</a> に由来し、モデルの権利は原作者および関連権利者に帰属します。
           </p>
-          <p v-if="!isJa">
+          <p v-if="isEnglish">
+            <strong>Web pet source:</strong> The Yachiyo pet in the lower-right corner comes from <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a>. Refer to its Petdex page for attribution and usage terms.
+          </p>
+          <p v-else-if="!isJa">
             <strong>网页宠物来源：</strong>右下角 Yachiyo 宠物来自 <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a>，请以 Petdex 页面标注的来源与使用说明为准。
           </p>
           <p v-else>
             <strong>Webペット出典：</strong>右下の Yachiyo ペットは <a href="https://petdex.dev/zh/pets/yachiyo" target="_blank" rel="noopener noreferrer">Petdex / Yachiyo</a> に由来します。出典と利用条件は Petdex のページ表記に従います。
           </p>
-          <p v-if="!isJa">
+          <p v-if="isEnglish">
+            <strong>Agent OS music app technology:</strong> The Agent OS music app is based on <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a>, an Electron, React and TypeScript project supporting QQ Music, NetEase Cloud Music and local playback under the Apache-2.0 license.
+          </p>
+          <p v-else-if="!isJa">
             <strong>Agent OS 音乐 App 技术来源：</strong>Agent OS 页面中的音乐 App 技术实现来源于 <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a>。原项目基于 Electron、React 与 TypeScript，支持 QQ 音乐、网易云音乐及本地播放，并采用 Apache-2.0 许可证。
           </p>
           <p v-else>
             <strong>Agent OS 音楽 App の技術出典：</strong>Agent OS ページの音楽 App の技術実装は <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a> に由来します。元プロジェクトは Electron、React、TypeScript を採用し、QQ Music、NetEase Cloud Music、ローカル再生に対応する Apache-2.0 ライセンスのプロジェクトです。
           </p>
-          <p v-if="!isJa">
+          <p v-if="isEnglish">
+            <strong>Icon source:</strong> Some interface icons use the open-source <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> icon set under its license.
+          </p>
+          <p v-else-if="!isJa">
             <strong>图标来源：</strong>站内部分界面图标使用 <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> 开源图标集，遵循其开源许可证。
           </p>
           <p v-else>

@@ -29,7 +29,48 @@ const successMessage = ref('');
 const isZh = computed(() => props.lang === 'zh');
 const isAuthed = computed(() => Boolean(props.user?.id));
 const recentApplications = computed(() => applications.value.slice(0, 3));
-const copy = computed(() => isZh.value ? {
+const copy = computed(() => props.lang === 'en' ? {
+  eyebrow: 'Friend Link',
+  title: 'Apply for a Link Exchange',
+  subtitle: 'Enter your site details. Approved sites will appear in Tsukuyomi Plaza.',
+  back: 'Back to partner sites',
+  formTitle: 'Site information',
+  name: 'Site name',
+  namePlaceholder: 'Your site name',
+  url: 'Site URL',
+  urlPlaceholder: 'https://example.com',
+  description: 'Site description',
+  descriptionPlaceholder: 'Introduce your site in one sentence',
+  avatar: 'Avatar URL',
+  avatarPlaceholder: 'https://example.com/avatar.png',
+  autoAvatar: 'Auto-detect',
+  detectingAvatar: 'Detecting',
+  enterSiteFirst: 'Enter the site URL first',
+  advanced: 'Additional information',
+  backlink: 'Backlink URL (optional)',
+  backlinkPlaceholder: 'https://example.com/links',
+  note: 'Notes (optional)',
+  notePlaceholder: 'Anything else we should know',
+  submit: 'Submit application',
+  submitting: 'Submitting',
+  loginTitle: 'Sign in to apply',
+  loginDesc: 'Your applications are linked to your account so you can track their status.',
+  login: 'Sign in',
+  successTitle: 'Application submitted',
+  successDesc: 'You can track the review status on this page.',
+  requirements: 'Listing requirements',
+  reachable: 'The site is publicly accessible',
+  safe: 'The content is legal and contains no malicious redirects',
+  reciprocal: 'Adding a backlink is recommended',
+  history: 'My applications',
+  empty: 'No applications yet',
+  pending: 'Under review',
+  active: 'Listed',
+  rejected: 'Not approved',
+  loadFailed: 'Unable to load applications',
+  loading: 'Loading applications',
+  submitFailed: 'Unable to submit application'
+} : isZh.value ? {
   eyebrow: 'Friend Link',
   title: '友链申请',
   subtitle: '填写站点信息，审核通过后将在月读广场展示。',
@@ -122,7 +163,7 @@ function statusLabel(status) {
 }
 
 function formatDate(value) {
-  return value ? formatDateTime(value, isZh.value ? 'zh-CN' : 'ja-JP') : '';
+  return value ? formatDateTime(value, props.lang === 'en' ? 'en-US' : (isZh.value ? 'zh-CN' : 'ja-JP')) : '';
 }
 
 function initial(name) {

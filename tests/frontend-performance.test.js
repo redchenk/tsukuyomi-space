@@ -195,7 +195,8 @@ describe('constrained-device performance policy', () => {
         assert.match(app, /:reduced="petReduced"/);
         assert.match(pet, /assets\/pets\/yachiyo\/idle\.webp/);
         assert.match(pet, /if \(motionReduced \|\| props\.reduced\) return/);
-        assert.match(pet, /@click="showGuidanceTip"/);
+        assert.match(pet, /@click="openGuide"/);
+        assert.match(pet, /role="dialog"/);
     });
 
     it('reduces compositing work without changing Live2D canvas pixel density', () => {

@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import TsIcon from '../components/TsIcon.vue';
 import { wikiEntryPath } from '../data/cosmicKaguyaWikiEntries';
+import { decodeWikiHash, trustedWikiAssetPath, trustedWikiSourceUrl } from '../utils/wikiSecurity';
 import {
   boxOfficeMilestones,
   cast,
@@ -55,6 +56,9 @@ const filteredCharacters = computed(() => activeCharacterGroup.value === 'all'
 const filteredMusic = computed(() => activeMusicGroup.value === 'all'
   ? music
   : music.filter((song) => song.category === activeMusicGroup.value));
+const trustedReferences = computed(() => references
+  .map((reference) => ({ ...reference, url: trustedWikiSourceUrl(reference.url) }))
+  .filter((reference) => reference.url));
 
 function setActiveSection(id) {
   activeSection.value = id;
@@ -122,7 +126,7 @@ function openCharacterEntry(character, event) {
 }
 
 function scrollToInitialHash() {
-  const id = decodeURIComponent(window.location.hash.replace(/^#/, ''));
+  const id = decodeWikiHash(window.location.hash);
   if (!id) return;
   const target = document.getElementById(id);
   if (!target) return;
@@ -313,7 +317,7 @@ onBeforeUnmount(() => {
                 @click="openCharacterEntry(character, $event)"
                 @keydown.enter.prevent="openCharacterEntry(character, $event)"
               >
-                <img v-if="character.image" :src="character.image" width="160" height="160" :alt="character.imageAlt" loading="lazy" decoding="async">
+                <img v-if="trustedWikiAssetPath(character.image)" :src="trustedWikiAssetPath(character.image)" width="160" height="160" :alt="character.imageAlt" loading="lazy" decoding="async">
                 <div v-else class="wiki-character-placeholder" aria-hidden="true">{{ character.name.slice(0, 1) }}</div>
                 <div class="wiki-character-copy">
                   <div class="wiki-character-title"><div><h3>{{ character.name }}</h3><span>{{ character.original }}</span></div><small>CV {{ character.cv }}</small></div>
@@ -391,7 +395,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="wiki-derivative-grid" aria-label="衍生作品">
               <article v-for="work in derivativeWorks" :key="work.type" class="wiki-derivative-card">
-                <img :src="work.image" :alt="work.imageAlt" loading="lazy" decoding="async">
+                <img v-if="trustedWikiAssetPath(work.image)" :src="trustedWikiAssetPath(work.image)" :alt="work.imageAlt" loading="lazy" decoding="async">
                 <span>{{ work.type }}</span>
                 <h3>{{ work.title }}</h3>
                 <p>{{ work.detail }}</p>
@@ -412,7 +416,7 @@ onBeforeUnmount(() => {
               <div><strong>非官方网站／非官方百科</strong><p>本页为粉丝制作的资料导航，正文为原创归纳，不代表 Netflix、Colorido、Twin Engine 或作品权利方立场。页面主视觉为本站原创生成插画，不含官方角色图、截图、Logo 或商品扫描；作品名称与资料仅用于介绍和评论。</p></div>
             </div>
             <ol class="wiki-reference-list">
-              <li v-for="(reference, index) in references" :id="reference.id" :key="reference.id">
+              <li v-for="(reference, index) in trustedReferences" :id="reference.id" :key="reference.id">
                 <span>[{{ index + 1 }}]</span>
                 <div><a :href="reference.url" target="_blank" rel="noopener noreferrer">{{ reference.label }} <TsIcon name="external" :size="14" /></a><p>{{ reference.scope }}（核验：{{ verifiedAt }}）</p></div>
               </li>
