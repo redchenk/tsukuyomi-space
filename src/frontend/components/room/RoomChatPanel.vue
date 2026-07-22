@@ -21,6 +21,13 @@ function ttsLabel(chat, messageId) {
   if (status === 'playing') return '播放中';
   return '播放语音';
 }
+
+function showDailyGrowthPrompt(chat) {
+  const growth = chat.growth.value;
+  if (!growth) return false;
+  const chatTask = growth.today?.tasks?.find((task) => task.key === 'daily_chat');
+  return Boolean(chatTask && !chatTask.completed);
+}
 </script>
 
 <template>
@@ -34,7 +41,7 @@ function ttsLabel(chat, messageId) {
     @drag-start="emit('drag-start', $event)"
   >
     <div class="panel-content chat-body" @dragover.prevent @drop="chat.onDrop">
-      <button v-if="chat.growth.value" class="room-growth-strip" type="button" aria-label="查看月契成长" @click="emit('growth')">
+      <button v-if="showDailyGrowthPrompt(chat)" class="room-growth-strip" type="button" aria-label="查看月契成长" @click="emit('growth')">
         <span class="room-growth-icon"><TsIcon name="sparkles" :size="16" /></span>
         <span class="room-growth-copy">
           <strong>Lv.{{ chat.growth.value.level.level }} {{ chat.growth.value.level.title }}</strong>

@@ -33,6 +33,8 @@ describe('growth frontend integration', () => {
         assert.match(roomChat, /growthContext\(growthState\)/);
         assert.match(roomChat, /GROWTH_UPDATED_EVENT/);
         assert.match(roomPanel, /room-growth-strip/);
+        assert.match(roomPanel, /task\.key === 'daily_chat'/);
+        assert.match(roomPanel, /!chatTask\.completed/);
         assert.match(roomPanel, /emit\('growth'\)/);
     });
 });
