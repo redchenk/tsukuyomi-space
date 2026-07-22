@@ -22,21 +22,21 @@ const copy = computed(() => props.lang === 'ja' ? {
   kicker: 'Moon Bond', title: '月契成長', subtitle: '毎日の小さな交流が、八千代との記録になります。',
   today: '今日', checkin: 'サインイン', checked: '受取済み', streak: '連続日数', best: '最長', days: '日',
   tasks: '今日の約束', path: '成長の軌跡', invite: '友達を招待', inviteHint: '友達が初めて八千代と会話すると、二人に経験値が入ります。',
-  copyLink: '招待リンクをコピー', share: 'シェア', copied: '招待リンクをコピーしました', pending: '会話待ち', qualified: '完了',
+  copyLink: '招待リンクをコピー', share: 'シェア', copied: '招待リンクをコピーしました', pending: '会話待ち', qualified: '完了', rewarded: '付与済み',
   recent: '最近の記録', noEvents: '最初の記録は今日から始まります。', loading: '成長記録を読み込み中',
   retry: '再読込', done: '完了', go: '進む', max: '最高レベル', xp: 'EXP', rotating: '毎日更新', streakReward: '7日連続ごとに +20 EXP'
 } : props.lang === 'en' ? {
   kicker: 'Moon Bond', title: 'Bond growth', subtitle: 'Small daily moments become part of your history with Yachiyo.',
   today: 'Today', checkin: 'Check in', checked: 'Claimed', streak: 'Streak', best: 'Best', days: 'days',
   tasks: 'Today\'s bond', path: 'Growth path', invite: 'Invite a friend', inviteHint: 'You both earn XP after your friend completes their first chat with Yachiyo.',
-  copyLink: 'Copy invite link', share: 'Share', copied: 'Invite link copied', pending: 'Awaiting chat', qualified: 'Completed',
+  copyLink: 'Copy invite link', share: 'Share', copied: 'Invite link copied', pending: 'Awaiting chat', qualified: 'Completed', rewarded: 'Rewarded',
   recent: 'Recent activity', noEvents: 'Your first entry starts today.', loading: 'Loading growth',
   retry: 'Retry', done: 'Done', go: 'Open', max: 'Max level', xp: 'XP', rotating: 'Rotates daily', streakReward: '+20 XP every 7-day streak'
 } : {
   kicker: 'Moon Bond', title: '月契成长', subtitle: '每天一点自然互动，都会成为你与八千代的共同记录。',
   today: '今日', checkin: '签到', checked: '已领取', streak: '连续相伴', best: '最长记录', days: '天',
   tasks: '今日约定', path: '成长路径', invite: '邀请同行者', inviteHint: '好友首次和八千代完成一轮聊天后，双方获得成长经验。',
-  copyLink: '复制邀请链接', share: '直接分享', copied: '邀请链接已复制', pending: '待首次聊天', qualified: '已完成',
+  copyLink: '复制邀请链接', share: '直接分享', copied: '邀请链接已复制', pending: '待首次聊天', qualified: '已完成', rewarded: '已发奖励',
   recent: '最近记录', noEvents: '第一条共同记录，就从今天开始。', loading: '正在读取成长记录',
   retry: '重新加载', done: '已完成', go: '去完成', max: '已到最高等级', xp: '经验', rotating: '每日轮换', streakReward: '每连续 7 天额外 +20 经验'
 });
@@ -263,6 +263,7 @@ onUnmounted(() => window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthU
             <div class="growth-referral-stats">
               <span>{{ copy.pending }} <strong>{{ state.referral.pendingCount }}</strong></span>
               <span>{{ copy.qualified }} <strong>{{ state.referral.qualifiedCount }}</strong></span>
+              <span>{{ copy.rewarded }} <strong>{{ state.referral.rewardedCount || 0 }} · +{{ state.referral.rewardedXp || 0 }} {{ copy.xp }}</strong></span>
             </div>
           </div>
 

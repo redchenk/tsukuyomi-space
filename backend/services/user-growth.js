@@ -3,7 +3,6 @@ const db = require('../db');
 
 const HONG_KONG_TIME_ZONE = 'Asia/Hong_Kong';
 const REFERRAL_ACCOUNT_MAX_AGE_DAYS = 7;
-const REFERRAL_WEEKLY_REWARD_LIMIT = 10;
 
 const LEVELS = Object.freeze([
     { level: 1, title: '初次连接', minXp: 0 },
@@ -192,10 +191,16 @@ function buildState(userId, now = new Date()) {
     const todayEvents = new Map(todayRows.map((row) => [row.event_key, Number(row.xp) || 0]));
     const referralCounts = db.prepare(`
         SELECT
-            SUM(CASE WHEN referral_qualified_at IS NULL THEN 1 ELSE 0 END) AS pending,
-            SUM(CASE WHEN referral_qualified_at IS NOT NULL THEN 1 ELSE 0 END) AS qualified
-        FROM user_growth_profiles
-        WHERE referred_by_user_id = ?
+            SUM(CASE WHEN invitee.referral_qualified_at IS NULL THEN 1 ELSE 0 END) AS pending,
+            SUM(CASE WHEN invitee.referral_qualified_at IS NOT NULL THEN 1 ELSE 0 END) AS qualified,
+            SUM(CASE WHEN reward.id IS NOT NULL THEN 1 ELSE 0 END) AS rewarded,
+            COALESCE(SUM(reward.xp), 0) AS rewarded_xp
+        FROM user_growth_profiles invitee
+        LEFT JOIN user_growth_events reward
+          ON reward.user_id = invitee.referred_by_user_id
+         AND reward.event_key = 'referral_invite'
+         AND reward.source_id = invitee.user_id
+        WHERE invitee.referred_by_user_id = ?
     `).get(userId) || {};
     const recentEvents = db.prepare(`
         SELECT id, event_key, event_date, xp, metadata_json, created_at
@@ -245,9 +250,10 @@ function buildState(userId, now = new Date()) {
             qualified: Boolean(profile.referral_qualified_at),
             pendingCount: Number(referralCounts.pending) || 0,
             qualifiedCount: Number(referralCounts.qualified) || 0,
+            rewardedCount: Number(referralCounts.rewarded) || 0,
+            rewardedXp: Number(referralCounts.rewarded_xp) || 0,
             inviterRewardXp: 60,
-            inviteeRewardXp: 30,
-            weeklyRewardLimit: REFERRAL_WEEKLY_REWARD_LIMIT
+            inviteeRewardXp: 30
         },
         levels: LEVELS.map((item) => ({ ...item, reached: level.level >= item.level })),
         recentEvents
@@ -345,22 +351,14 @@ function qualifyReferral(userId, now) {
         metadata: { inviterId }
     });
     ensureProfile(inviterId);
-    const recentInviterRewards = db.prepare(`
-        SELECT COUNT(*) AS count
-        FROM user_growth_events
-        WHERE user_id = ? AND event_key = 'referral_invite'
-          AND created_at >= datetime('now', '-7 days')
-    `).get(inviterId)?.count || 0;
-    const inviterAward = recentInviterRewards < REFERRAL_WEEKLY_REWARD_LIMIT
-        ? insertEvent({
-            userId: inviterId,
-            eventKey: 'referral_invite',
-            eventDate: today,
-            sourceId: userId,
-            xp: 60,
-            metadata: { invitedUserId: userId }
-        })
-        : { awarded: false, xp: 0, eventKey: 'referral_invite', capped: true };
+    const inviterAward = insertEvent({
+        userId: inviterId,
+        eventKey: 'referral_invite',
+        eventDate: today,
+        sourceId: userId,
+        xp: 60,
+        metadata: { invitedUserId: userId }
+    });
     db.prepare(`
         UPDATE user_growth_profiles
         SET referral_qualified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
@@ -369,8 +367,7 @@ function qualifyReferral(userId, now) {
     return {
         inviteeXp: inviteeAward.xp,
         inviterXp: inviterAward.xp,
-        qualified: true,
-        inviterCapped: Boolean(inviterAward.capped)
+        qualified: true
     };
 }
 

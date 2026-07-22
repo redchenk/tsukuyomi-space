@@ -345,6 +345,7 @@
 }
 
 .growth-referral-stats {
+  flex-wrap: wrap;
   gap: 1rem;
   margin-top: 0.85rem;
   color: var(--text-secondary, rgba(232, 242, 255, 0.65));

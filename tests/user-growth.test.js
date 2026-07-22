@@ -27,7 +27,17 @@ function addUser(id) {
 
 before(() => {
     initDatabase();
-    ['daily-user', 'isolated-user', 'rotation-user', 'inviter-user', 'invitee-user'].forEach(addUser);
+    [
+        'daily-user',
+        'isolated-user',
+        'rotation-user',
+        'inviter-user',
+        'invitee-user',
+        'bulk-inviter',
+        'backfill-inviter',
+        'backfill-invitee',
+        ...Array.from({ length: 12 }, (_, index) => `bulk-invitee-${index + 1}`)
+    ].forEach(addUser);
 });
 
 after(() => {
@@ -125,6 +135,52 @@ describe('user growth service', () => {
         growth.recordRoomChat('invitee-user');
         assert.equal(growth.getState('invitee-user').level.totalXp, 30);
         assert.equal(growth.getState('inviter-user').level.totalXp, 60);
+    });
+
+    it('awards every qualified referral instead of silently dropping rewards after ten', () => {
+        const now = new Date('2026-07-22T04:00:00.000Z');
+        const inviterState = growth.getState('bulk-inviter', now);
+
+        for (let index = 1; index <= 12; index += 1) {
+            const inviteeId = `bulk-invitee-${index}`;
+            growth.claimReferral(inviteeId, inviterState.referral.inviteCode, now);
+            growth.recordRoomChat(inviteeId, now);
+        }
+
+        const state = growth.getState('bulk-inviter', now);
+        assert.equal(state.referral.qualifiedCount, 12);
+        assert.equal(state.referral.rewardedCount, 12);
+        assert.equal(state.referral.rewardedXp, 720);
+        assert.equal(state.level.totalXp, 12 * state.referral.inviterRewardXp);
+    });
+
+    it('backfills previously qualified referrals exactly once', () => {
+        const inviter = growth.getState('backfill-inviter');
+        growth.getState('backfill-invitee');
+        db.prepare(`
+            UPDATE user_growth_profiles
+            SET referred_by_user_id = ?, referral_claimed_at = CURRENT_TIMESTAMP,
+                referral_qualified_at = CURRENT_TIMESTAMP
+            WHERE user_id = 'backfill-invitee'
+        `).run('backfill-inviter');
+
+        const migration = require('../backend/db/migrations/028_backfill_referral_rewards');
+        migration.up(db);
+        migration.up(db);
+
+        const reward = db.prepare(`
+            SELECT xp FROM user_growth_events
+            WHERE user_id = 'backfill-inviter'
+              AND event_key = 'referral_invite'
+              AND source_id = 'backfill-invitee'
+        `).get();
+        const state = growth.getState('backfill-inviter');
+        assert.equal(reward.xp, 60);
+        assert.equal(state.level.totalXp, 60);
+        assert.equal(state.referral.qualifiedCount, 1);
+        assert.equal(state.referral.rewardedCount, 1);
+        assert.equal(state.referral.rewardedXp, 60);
+        assert.match(inviter.referral.inviteCode, /^[A-F0-9]{10}$/);
     });
 
     it('rejects self-referrals and malformed invite codes', () => {
