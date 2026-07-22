@@ -12,7 +12,8 @@ const LEVELS = Object.freeze([
     { level: 5, title: '记忆同调', minXp: 800 },
     { level: 6, title: '星海相伴', minXp: 1400 },
     { level: 7, title: '月之眷属', minXp: 2200 },
-    { level: 8, title: '永恒月契', minXp: 3200 }
+    { level: 8, title: '永恒月契', minXp: 3200 },
+    { level: 9, title: '八千代之约', minXp: 8000 }
 ]);
 
 const DAILY_ACTIONS = Object.freeze({

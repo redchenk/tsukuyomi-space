@@ -24,6 +24,8 @@ describe('growth frontend integration', () => {
         assert.match(page, /state\.referral\.inviteCode/);
         assert.match(page, /state\.referral\.rewardedCount/);
         assert.match(page, /state\.referral\.rewardedXp/);
+        assert.match(page, /八千代之约/);
+        assert.match(page, /Yachiyo's Covenant/);
         assert.match(styles, /@media \(max-width: 760px\)/);
         assert.match(styles, /grid-template-columns:\s*1fr/);
     });

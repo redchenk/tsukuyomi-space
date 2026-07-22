@@ -38,6 +38,9 @@ describe('global AI guide and visible user levels', () => {
         ];
 
         assert.match(badge, /user-level-tier-4/);
+        assert.match(badge, /user-level-tier-5/);
+        assert.match(badge, /Math\.min\(9,/);
+        assert.match(badge, /八千代之约/);
         assert.match(badge, /@media \(prefers-reduced-motion: reduce\)/);
         assert.match(badge, /data-performance="reduced"/);
         assert.match(badge, /Lv\.\{\{ value \}\}/);

@@ -42,9 +42,9 @@ const copy = computed(() => props.lang === 'ja' ? {
 });
 
 const localizedLevelTitles = {
-  zh: ['初次连接', '微光相识', '月下同行', '心声共鸣', '记忆同调', '星海相伴', '月之眷属', '永恒月契'],
-  ja: ['初めての接続', '微光の出会い', '月下の同行', '心の共鳴', '記憶の同調', '星海の絆', '月の眷属', '永遠の月契'],
-  en: ['First connection', 'First light', 'Under the moon', 'Heart resonance', 'Memory sync', 'Across the stars', 'Moonbound', 'Eternal bond']
+  zh: ['初次连接', '微光相识', '月下同行', '心声共鸣', '记忆同调', '星海相伴', '月之眷属', '永恒月契', '八千代之约'],
+  ja: ['初めての接続', '微光の出会い', '月下の同行', '心の共鳴', '記憶の同調', '星海の絆', '月の眷属', '永遠の月契', '八千代の契り'],
+  en: ['First connection', 'First light', 'Under the moon', 'Heart resonance', 'Memory sync', 'Across the stars', 'Moonbound', 'Eternal bond', "Yachiyo's Covenant"]
 };
 
 const levelTitle = computed(() => localizedLevelTitles[props.lang]?.[Math.max(0, (state.value?.level?.level || 1) - 1)] || state.value?.level?.title || '');

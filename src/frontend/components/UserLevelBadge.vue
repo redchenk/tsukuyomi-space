@@ -10,14 +10,14 @@ const props = defineProps({
 });
 
 const TITLES = Object.freeze({
-  zh: ['初次连接', '微光相识', '月下同行', '心声共鸣', '记忆同调', '星海相伴', '月之眷属', '永恒月契'],
-  ja: ['初めての接続', '微光の出会い', '月下の同行', '心の共鳴', '記憶の同調', '星海の伴侶', '月の眷属', '永遠の月契'],
-  en: ['First Connection', 'Glimmering Bond', 'Moonlit Journey', 'Resonant Hearts', 'Memory Sync', 'Starlit Companion', 'Moonbound', 'Eternal Moon Pact']
+  zh: ['初次连接', '微光相识', '月下同行', '心声共鸣', '记忆同调', '星海相伴', '月之眷属', '永恒月契', '八千代之约'],
+  ja: ['初めての接続', '微光の出会い', '月下の同行', '心の共鳴', '記憶の同調', '星海の伴侶', '月の眷属', '永遠の月契', '八千代の契り'],
+  en: ['First Connection', 'Glimmering Bond', 'Moonlit Journey', 'Resonant Hearts', 'Memory Sync', 'Starlit Companion', 'Moonbound', 'Eternal Moon Pact', "Yachiyo's Covenant"]
 });
 
 const value = computed(() => {
   const raw = typeof props.level === 'object' ? props.level?.level : props.level;
-  return Math.max(1, Math.min(8, Number(raw) || 1));
+  return Math.max(1, Math.min(9, Number(raw) || 1));
 });
 const tier = computed(() => Math.ceil(value.value / 2));
 const title = computed(() => (TITLES[props.lang] || TITLES.zh)[value.value - 1]);
@@ -95,6 +95,14 @@ const ariaLabel = computed(() => props.lang === 'en'
   box-shadow: 0 0 1.05rem rgba(215, 79, 132, 0.2), 0 0 0.35rem rgba(57, 177, 191, 0.16), inset 0 1px rgba(255, 255, 255, 0.28);
 }
 
+.user-level-tier-5 {
+  --level-color: #765fc4;
+  --level-bg: rgba(118, 95, 196, 0.15);
+  border-color: color-mix(in srgb, #4cb5c6 45%, var(--level-color));
+  box-shadow: 0 0 1.25rem rgba(118, 95, 196, 0.28), 0 0 0.55rem rgba(76, 181, 198, 0.24), inset 0 1px rgba(255, 255, 255, 0.34);
+  text-shadow: 0 0 0.7rem rgba(121, 204, 216, 0.32);
+}
+
 .user-level-tier-4::after {
   content: "";
   position: absolute;
@@ -103,6 +111,16 @@ const ariaLabel = computed(() => props.lang === 'en'
   background: rgba(255, 255, 255, 0.48);
   transform: rotate(18deg);
   animation: level-badge-glint 5.5s ease-in-out infinite;
+}
+
+.user-level-tier-5::after {
+  content: "";
+  position: absolute;
+  inset: -60% auto -60% -45%;
+  width: 28%;
+  background: rgba(255, 255, 255, 0.58);
+  transform: rotate(18deg);
+  animation: level-badge-glint 4.6s ease-in-out infinite;
 }
 
 .user-level-compact {
@@ -119,10 +137,12 @@ const ariaLabel = computed(() => props.lang === 'en'
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .user-level-tier-4::after { animation: none; display: none; }
+  .user-level-tier-4::after,
+  .user-level-tier-5::after { animation: none; display: none; }
 }
 
-html[data-performance="reduced"] .user-level-tier-4::after {
+html[data-performance="reduced"] .user-level-tier-4::after,
+html[data-performance="reduced"] .user-level-tier-5::after {
   animation: none;
   display: none;
 }

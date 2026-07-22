@@ -46,6 +46,19 @@ after(() => {
 });
 
 describe('user growth service', () => {
+    it('reserves the Yachiyo covenant level for exactly 8000 XP', () => {
+        const before = growth.levelForXp(7999);
+        const reached = growth.levelForXp(8000);
+
+        assert.equal(before.level, 8);
+        assert.equal(before.nextLevel.level, 9);
+        assert.equal(before.nextLevel.minXp, 8000);
+        assert.equal(reached.level, 9);
+        assert.equal(reached.title, '八千代之约');
+        assert.equal(reached.nextLevel, null);
+        assert.equal(reached.progressPercent, 100);
+    });
+
     it('awards each daily action once and keeps users isolated', () => {
         const now = new Date('2026-07-22T04:00:00.000Z');
         const firstCheckin = growth.checkIn('daily-user', now);
