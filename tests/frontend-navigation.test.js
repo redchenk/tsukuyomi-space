@@ -457,6 +457,19 @@ describe('unified async loading states', () => {
         assert.match(hub, /LoadingSkeleton v-if="previewLoading" variant="hub"[\s\S]*v-else-if="previewError"[^>]*role="alert"/);
     });
 
+    it('loads the notification inbox in bounded server-side pages', () => {
+        const notifications = source('src/frontend/pages/NotificationsPage.vue');
+        const styles = source('assets/css/vue/pages/notifications.css');
+
+        assert.match(notifications, /NOTIFICATIONS_PAGE_SIZE = 12/);
+        assert.match(notifications, /page: String\(requestedPage\)[\s\S]*limit: String\(NOTIFICATIONS_PAGE_SIZE\)/);
+        assert.match(notifications, /result\.pagination\?\.totalPages/);
+        assert.match(notifications, /class="notifications-pagination"/);
+        assert.match(notifications, /aria-current="item === inbox\.page \? 'page' : undefined"/);
+        assert.match(styles, /\.notifications-page-controls/);
+        assert.match(styles, /\.notifications-page-button:focus-visible/);
+    });
+
     it('uses status loaders for unknown work and exposes a persistent Room error state', () => {
         const access = source('src/frontend/pages/AccessPage.vue');
         const login = source('src/frontend/pages/LoginPage.vue');

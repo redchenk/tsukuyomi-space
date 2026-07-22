@@ -1556,6 +1556,59 @@ describe('notifications API', () => {
         const cleared = await postJson('/api/user/notifications/read-all', {}, userToken);
         assert.equal(cleared.response.status, 200);
     });
+
+    it('paginates the inbox without loading every notification', async () => {
+        const countBefore = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE user_id = ?')
+            .get('user-001').count;
+        const insert = db.prepare(`
+            INSERT INTO notifications (user_id, type, title, content)
+            VALUES ('user-001', 'test', ?, ?)
+        `);
+        db.transaction(() => {
+            for (let index = 1; index <= 25; index += 1) {
+                insert.run(`Pagination notification ${index}`, `Page fixture ${index}`);
+            }
+        })();
+
+        const firstPage = await request('/api/user/notifications?page=1&limit=10', {
+            headers: jsonHeaders(userToken)
+        });
+        const secondPage = await request('/api/user/notifications?page=2&limit=10', {
+            headers: jsonHeaders(userToken)
+        });
+        const expectedTotal = countBefore + 25;
+
+        assert.equal(firstPage.response.status, 200);
+        assert.equal(firstPage.body.data.length, 10);
+        assert.deepEqual(firstPage.body.pagination, {
+            page: 1,
+            limit: 10,
+            total: expectedTotal,
+            totalPages: Math.ceil(expectedTotal / 10),
+            hasPrevious: false,
+            hasNext: true
+        });
+        assert.equal(secondPage.response.status, 200);
+        assert.equal(secondPage.body.pagination.page, 2);
+        assert.equal(secondPage.body.data.length, 10);
+        assert.equal(secondPage.body.pagination.hasPrevious, true);
+        const firstIds = new Set(firstPage.body.data.map(item => item.id));
+        assert.ok(secondPage.body.data.every(item => !firstIds.has(item.id)));
+
+        const lastPage = await request('/api/user/notifications?page=999999&limit=10', {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(lastPage.response.status, 200);
+        assert.equal(lastPage.body.pagination.page, lastPage.body.pagination.totalPages);
+        assert.ok(lastPage.body.data.length > 0 && lastPage.body.data.length <= 10);
+
+        const bounded = await request('/api/user/notifications?page=1&limit=1000', {
+            headers: jsonHeaders(userToken)
+        });
+        assert.equal(bounded.response.status, 200);
+        assert.equal(bounded.body.pagination.limit, 50);
+        assert.ok(bounded.body.data.length <= 50);
+    });
 });
 
 describe('social API', () => {
