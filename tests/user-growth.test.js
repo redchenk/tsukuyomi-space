@@ -27,7 +27,7 @@ function addUser(id) {
 
 before(() => {
     initDatabase();
-    ['daily-user', 'isolated-user', 'inviter-user', 'invitee-user'].forEach(addUser);
+    ['daily-user', 'isolated-user', 'rotation-user', 'inviter-user', 'invitee-user'].forEach(addUser);
 });
 
 after(() => {
@@ -44,16 +44,51 @@ describe('user growth service', () => {
         const secondChat = growth.recordRoomChat('daily-user', now);
         const firstShare = growth.recordShare('daily-user', 'qq', now);
         const secondShare = growth.recordShare('daily-user', 'weibo', now);
+        const rotatingTask = growth.getState('daily-user', now).today.tasks.find((task) => task.type === 'rotating');
+        const activityByTask = {
+            daily_article_publish: 'article_publish',
+            daily_plaza_engage: 'plaza_like',
+            daily_pixel_engage: 'pixel_publish',
+            daily_gallery_upload: 'gallery_upload'
+        };
+        const firstRotating = growth.recordDailyActivity('daily-user', activityByTask[rotatingTask.key], 'source-1', now);
+        const secondRotating = growth.recordDailyActivity('daily-user', activityByTask[rotatingTask.key], 'source-2', now);
 
         assert.equal(firstCheckin.award.xp, 10);
         assert.equal(secondCheckin.award.xp, 0);
-        assert.equal(firstChat.award.xp, 20);
+        assert.equal(firstChat.award.xp, 0);
+        assert.equal(firstChat.award.roomFirstTurn, true);
         assert.equal(secondChat.award.xp, 0);
+        assert.equal(secondChat.award.roomFirstTurn, false);
         assert.equal(firstShare.award.xp, 15);
         assert.equal(secondShare.award.xp, 0);
+        assert.equal(firstRotating.award.xp, 20);
+        assert.equal(secondRotating.award.xp, 0);
         assert.equal(growth.getState('daily-user', now).level.totalXp, 45);
         assert.equal(growth.getState('daily-user', now).today.completed, 3);
+        assert.equal(growth.getState('daily-user', now).today.roomChatCompleted, true);
         assert.equal(growth.getState('isolated-user', now).level.totalXp, 0);
+    });
+
+    it('keeps the rotating task stable for the day and cycles all task types across four days', () => {
+        const taskKeys = [];
+        for (let day = 20; day <= 23; day += 1) {
+            const now = new Date(`2026-07-${day}T04:00:00.000Z`);
+            const first = growth.getState('rotation-user', now).today.tasks;
+            const second = growth.getState('rotation-user', now).today.tasks;
+            assert.deepEqual(first.slice(0, 2).map((task) => task.key), ['checkin', 'daily_share']);
+            assert.equal(first[2].type, 'rotating');
+            assert.equal(first[2].key, second[2].key);
+            taskKeys.push(first[2].key);
+        }
+        assert.equal(new Set(taskKeys).size, growth.RANDOM_DAILY_TASKS.length);
+
+        const now = new Date('2026-07-20T04:00:00.000Z');
+        const assigned = growth.getState('rotation-user', now).today.tasks[2];
+        const wrongActivity = growth.RANDOM_DAILY_TASKS
+            .find((task) => task.key !== assigned.key).activities[0];
+        assert.equal(growth.recordDailyActivity('rotation-user', wrongActivity, 'not-assigned', now), null);
+        assert.equal(growth.getState('rotation-user', now).level.totalXp, 0);
     });
 
     it('adds the seven-day streak bonus without trusting the client clock', () => {
@@ -83,12 +118,12 @@ describe('user growth service', () => {
         const chat = growth.recordRoomChat('invitee-user');
         assert.equal(chat.award.referralQualified, true);
         assert.equal(chat.award.referralXp, 30);
-        assert.equal(growth.getState('invitee-user').level.totalXp, 50);
+        assert.equal(growth.getState('invitee-user').level.totalXp, 30);
         assert.equal(growth.getState('inviter-user').level.totalXp, 60);
         assert.equal(growth.getState('inviter-user').referral.qualifiedCount, 1);
 
         growth.recordRoomChat('invitee-user');
-        assert.equal(growth.getState('invitee-user').level.totalXp, 50);
+        assert.equal(growth.getState('invitee-user').level.totalXp, 30);
         assert.equal(growth.getState('inviter-user').level.totalXp, 60);
     });
 

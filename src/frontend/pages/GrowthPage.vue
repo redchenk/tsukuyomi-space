@@ -24,21 +24,21 @@ const copy = computed(() => props.lang === 'ja' ? {
   tasks: '今日の約束', path: '成長の軌跡', invite: '友達を招待', inviteHint: '友達が初めて八千代と会話すると、二人に経験値が入ります。',
   copyLink: '招待リンクをコピー', share: 'シェア', copied: '招待リンクをコピーしました', pending: '会話待ち', qualified: '完了',
   recent: '最近の記録', noEvents: '最初の記録は今日から始まります。', loading: '成長記録を読み込み中',
-  retry: '再読込', done: '完了', go: '進む', max: '最高レベル', xp: 'EXP'
+  retry: '再読込', done: '完了', go: '進む', max: '最高レベル', xp: 'EXP', rotating: '毎日更新', streakReward: '7日連続ごとに +20 EXP'
 } : props.lang === 'en' ? {
   kicker: 'Moon Bond', title: 'Bond growth', subtitle: 'Small daily moments become part of your history with Yachiyo.',
   today: 'Today', checkin: 'Check in', checked: 'Claimed', streak: 'Streak', best: 'Best', days: 'days',
   tasks: 'Today\'s bond', path: 'Growth path', invite: 'Invite a friend', inviteHint: 'You both earn XP after your friend completes their first chat with Yachiyo.',
   copyLink: 'Copy invite link', share: 'Share', copied: 'Invite link copied', pending: 'Awaiting chat', qualified: 'Completed',
   recent: 'Recent activity', noEvents: 'Your first entry starts today.', loading: 'Loading growth',
-  retry: 'Retry', done: 'Done', go: 'Open', max: 'Max level', xp: 'XP'
+  retry: 'Retry', done: 'Done', go: 'Open', max: 'Max level', xp: 'XP', rotating: 'Rotates daily', streakReward: '+20 XP every 7-day streak'
 } : {
   kicker: 'Moon Bond', title: '月契成长', subtitle: '每天一点自然互动，都会成为你与八千代的共同记录。',
   today: '今日', checkin: '签到', checked: '已领取', streak: '连续相伴', best: '最长记录', days: '天',
   tasks: '今日约定', path: '成长路径', invite: '邀请同行者', inviteHint: '好友首次和八千代完成一轮聊天后，双方获得成长经验。',
   copyLink: '复制邀请链接', share: '直接分享', copied: '邀请链接已复制', pending: '待首次聊天', qualified: '已完成',
   recent: '最近记录', noEvents: '第一条共同记录，就从今天开始。', loading: '正在读取成长记录',
-  retry: '重新加载', done: '已完成', go: '去完成', max: '已到最高等级', xp: '经验'
+  retry: '重新加载', done: '已完成', go: '去完成', max: '已到最高等级', xp: '经验', rotating: '每日轮换', streakReward: '每连续 7 天额外 +20 经验'
 });
 
 const localizedLevelTitles = {
@@ -58,23 +58,23 @@ const inviteUrl = computed(() => state.value?.referral?.inviteCode
 
 function taskText(task) {
   const labels = props.lang === 'ja'
-    ? { checkin: '毎日のサインイン', daily_chat: '八千代と会話', daily_share: '月読空間を共有' }
+    ? { checkin: '毎日のサインイン', daily_share: '月読空間を共有', daily_article_publish: 'ステージに記事を投稿', daily_plaza_engage: 'プラザに投稿またはいいね', daily_pixel_engage: 'ピクセル絵を投稿またはいいね', daily_gallery_upload: 'ギャラリーに画像を追加' }
     : props.lang === 'en'
-      ? { checkin: 'Daily check-in', daily_chat: 'Chat with Yachiyo', daily_share: 'Share Tsukuyomi Space' }
-      : { checkin: '每日签到', daily_chat: '与八千代聊天', daily_share: '分享月读空间' };
+      ? { checkin: 'Daily check-in', daily_share: 'Share Tsukuyomi Space', daily_article_publish: 'Publish a Stage article', daily_plaza_engage: 'Post or like in Plaza', daily_pixel_engage: 'Create or like pixel art', daily_gallery_upload: 'Upload a gallery image' }
+      : { checkin: '每日签到', daily_share: '分享月读空间', daily_article_publish: '主舞台发布文章', daily_plaza_engage: '月读广场留言或点赞', daily_pixel_engage: '像素画绘画或点赞', daily_gallery_upload: '图库上传图片' };
   return labels[task.key] || task.label;
 }
 
 function taskIcon(key) {
-  return { checkin: 'calendar', daily_chat: 'message', daily_share: 'send' }[key] || 'sparkles';
+  return { checkin: 'calendar', daily_share: 'send', daily_article_publish: 'fileText', daily_plaza_engage: 'message', daily_pixel_engage: 'palette', daily_gallery_upload: 'image' }[key] || 'sparkles';
 }
 
 function eventText(item) {
   const labels = props.lang === 'ja'
-    ? { checkin: '毎日のサインイン', daily_chat: '八千代との会話', daily_share: '月読空間を共有', referral_joined: '招待を受け取りました', referral_invite: '友達が初回会話を完了' }
+    ? { checkin: '毎日のサインイン', daily_chat: '八千代との会話', daily_share: '月読空間を共有', daily_article_publish: 'ステージに記事を投稿', daily_plaza_engage: 'プラザで交流', daily_pixel_engage: 'ピクセル絵で交流', daily_gallery_upload: 'ギャラリーに画像を追加', referral_joined: '招待を受け取りました', referral_invite: '友達が初回会話を完了' }
     : props.lang === 'en'
-      ? { checkin: 'Daily check-in', daily_chat: 'Chat with Yachiyo', daily_share: 'Shared Tsukuyomi Space', referral_joined: 'Accepted an invitation', referral_invite: 'Friend completed first chat' }
-      : { checkin: '每日签到', daily_chat: '与八千代聊天', daily_share: '分享月读空间', referral_joined: '接受好友邀请', referral_invite: '好友完成首次聊天' };
+      ? { checkin: 'Daily check-in', daily_chat: 'Chat with Yachiyo', daily_share: 'Shared Tsukuyomi Space', daily_article_publish: 'Published a Stage article', daily_plaza_engage: 'Engaged in Plaza', daily_pixel_engage: 'Engaged with pixel art', daily_gallery_upload: 'Uploaded a gallery image', referral_joined: 'Accepted an invitation', referral_invite: 'Friend completed first chat' }
+      : { checkin: '每日签到', daily_chat: '与八千代聊天', daily_share: '分享月读空间', daily_article_publish: '主舞台发布文章', daily_plaza_engage: '月读广场互动', daily_pixel_engage: '像素画互动', daily_gallery_upload: '图库上传图片', referral_joined: '接受好友邀请', referral_invite: '好友完成首次聊天' };
   return labels[item.key] || item.label;
 }
 
@@ -165,8 +165,8 @@ async function shareInvite() {
 function openTask(task) {
   if (task.completed) return;
   if (task.key === 'checkin') checkIn();
-  else if (task.key === 'daily_chat') emit('go', '/room');
-  else shareInvite();
+  else if (task.key === 'daily_share') shareInvite();
+  else emit('go', task.path || '/hub');
 }
 
 function handleGrowthUpdate(event) {
@@ -216,6 +216,7 @@ onUnmounted(() => window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthU
           <div class="growth-streaks">
             <div><strong>{{ state.streak.current }}</strong><span>{{ copy.streak }} / {{ copy.days }}</span></div>
             <div><strong>{{ state.streak.longest }}</strong><span>{{ copy.best }} / {{ copy.days }}</span></div>
+            <p class="growth-streak-reward"><TsIcon name="sparkles" :size="14" /> {{ copy.streakReward }}</p>
           </div>
           <button class="growth-checkin" type="button" :disabled="state.today.tasks[0]?.completed || page.working" :aria-busy="page.working" @click="checkIn">
             <TsIcon :name="state.today.tasks[0]?.completed ? 'check' : 'calendar'" :size="18" />
@@ -241,7 +242,7 @@ onUnmounted(() => window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthU
               @click="openTask(task)"
             >
               <span class="growth-task-icon"><TsIcon :name="task.completed ? 'check' : taskIcon(task.key)" :size="20" /></span>
-              <span class="growth-task-copy"><strong>{{ taskText(task) }}</strong><small>+{{ task.xp }} {{ copy.xp }}</small></span>
+              <span class="growth-task-copy"><strong>{{ taskText(task) }}</strong><small>+{{ task.xp }} {{ copy.xp }}<template v-if="task.type === 'rotating'"> · {{ copy.rotating }}</template></small></span>
               <span>{{ task.completed ? copy.done : copy.go }}</span>
             </button>
           </div>

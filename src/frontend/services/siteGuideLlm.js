@@ -76,7 +76,7 @@ function guideSystemPrompt(lang, routeName) {
     '- /pixel: draw, publish, like, share and export 192x108 pixel art.',
     '- /friend-links and /friend-links/apply: browse or apply for partner links.',
     '- /user-center: profile, own articles, messages, bookmarks, pixel art and account security.',
-    '- /growth: level, daily check-in, daily chat/share tasks and referral progress.',
+    '- /growth: level progress, seven-day check-in rewards, fixed check-in/share tasks, one rotating creation task and referrals.',
     '- /wiki: Cosmic Princess Kaguya fan wiki.',
     '- /attachments: personal attachment library for article assets.',
     '- /agent-os: desktop-style tools and apps.',

@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 import { renderMarkdown } from '../utils/markdown';
+import { applyGrowthResult } from '../services/userGrowth';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -421,6 +422,7 @@ async function handleEditorSubmit() {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.unknown);
+    if (result.growth) applyGrowthResult(result.growth);
 
     showMessage('success', id ? props.t.editorSaved : props.t.editorPublished);
     setTimeout(() => emit('go', '/stage'), 1000);

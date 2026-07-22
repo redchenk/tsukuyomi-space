@@ -7,6 +7,7 @@ import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { formatDateTime } from '../utils/time';
+import { applyGrowthResult } from '../services/userGrowth';
 
 const props = defineProps({
   lang: { type: String, required: true },
@@ -1187,6 +1188,7 @@ async function shareArtwork() {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
+    if (result.growth) applyGrowthResult(result.growth);
     upsertArtwork(result.data);
     if (wasEditing) {
       editingArtwork.value = result.data;
@@ -1219,6 +1221,7 @@ async function likeArtwork(artwork) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
+    if (result.growth) applyGrowthResult(result.growth);
     upsertArtwork(result.data);
     showToast(result.message || copy.value.likedToast);
   } catch (error) {

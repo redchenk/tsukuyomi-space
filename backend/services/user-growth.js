@@ -18,14 +18,26 @@ const LEVELS = Object.freeze([
 
 const DAILY_ACTIONS = Object.freeze({
     checkin: { xp: 10, label: '每日签到' },
-    daily_chat: { xp: 20, label: '与八千代聊天' },
     daily_share: { xp: 15, label: '分享月读空间' }
 });
+
+const RANDOM_DAILY_TASKS = Object.freeze([
+    { key: 'daily_article_publish', xp: 20, label: '主舞台发布文章', path: '/editor', activities: ['article_publish'] },
+    { key: 'daily_plaza_engage', xp: 20, label: '月读广场留言或点赞', path: '/plaza', activities: ['plaza_message', 'plaza_like'] },
+    { key: 'daily_pixel_engage', xp: 20, label: '像素画绘画或点赞', path: '/pixel', activities: ['pixel_publish', 'pixel_like'] },
+    { key: 'daily_gallery_upload', xp: 20, label: '图库上传图片', path: '/gallery/manage', activities: ['gallery_upload'] }
+]);
+
+const DAILY_ACTIVITY_KEYS = new Set(RANDOM_DAILY_TASKS.flatMap((task) => task.activities));
 
 const EVENT_LABELS = Object.freeze({
     checkin: '每日签到',
     daily_chat: '与八千代聊天',
     daily_share: '分享月读空间',
+    daily_article_publish: '主舞台发布文章',
+    daily_plaza_engage: '月读广场留言或点赞',
+    daily_pixel_engage: '像素画绘画或点赞',
+    daily_gallery_upload: '图库上传图片',
     referral_joined: '接受好友邀请',
     referral_invite: '好友完成首次聊天'
 });
@@ -56,6 +68,26 @@ function dateDistance(left, right) {
     const rightTime = Date.parse(`${right}T00:00:00Z`);
     if (!Number.isFinite(leftTime) || !Number.isFinite(rightTime)) return null;
     return Math.round((rightTime - leftTime) / 86400000);
+}
+
+function dateOrdinal(value) {
+    const timestamp = Date.parse(`${value}T00:00:00Z`);
+    return Number.isFinite(timestamp) ? Math.floor(timestamp / 86400000) : 0;
+}
+
+function rotatingDailyTask(userId, eventDate) {
+    const digest = crypto.createHash('sha256').update(String(userId || '')).digest();
+    const userOffset = digest.readUInt32BE(0) % RANDOM_DAILY_TASKS.length;
+    const index = (dateOrdinal(eventDate) + userOffset) % RANDOM_DAILY_TASKS.length;
+    return RANDOM_DAILY_TASKS[index];
+}
+
+function dailyTasks(userId, eventDate) {
+    return [
+        { key: 'checkin', ...DAILY_ACTIONS.checkin, path: '/growth', type: 'fixed' },
+        { key: 'daily_share', ...DAILY_ACTIONS.daily_share, path: '/growth', type: 'fixed' },
+        { ...rotatingDailyTask(userId, eventDate), type: 'rotating' }
+    ];
 }
 
 function inviteCode() {
@@ -168,7 +200,7 @@ function buildState(userId, now = new Date()) {
     const recentEvents = db.prepare(`
         SELECT id, event_key, event_date, xp, metadata_json, created_at
         FROM user_growth_events
-        WHERE user_id = ?
+        WHERE user_id = ? AND xp > 0
         ORDER BY id DESC
         LIMIT 8
     `).all(userId).map(publicEvent);
@@ -177,6 +209,8 @@ function buildState(userId, now = new Date()) {
     const activeStreak = streakDistance !== null && streakDistance >= 0 && streakDistance <= 1
         ? Number(profile.current_streak) || 0
         : 0;
+    const tasks = dailyTasks(userId, today);
+    const streakCycleDay = activeStreak > 0 ? ((activeStreak - 1) % 7) + 1 : 0;
 
     return {
         serverDate: today,
@@ -184,18 +218,25 @@ function buildState(userId, now = new Date()) {
         streak: {
             current: activeStreak,
             longest: Number(profile.longest_streak) || 0,
-            lastCheckinDate: profile.last_checkin_date || ''
+            lastCheckinDate: profile.last_checkin_date || '',
+            rewardEveryDays: 7,
+            rewardXp: 20,
+            cycleDay: streakCycleDay,
+            nextRewardInDays: streakCycleDay === 0 || streakCycleDay === 7 ? 7 : 7 - streakCycleDay
         },
         today: {
             earnedXp: todayRows.reduce((sum, row) => sum + (Number(row.xp) || 0), 0),
-            completed: todayRows.filter((row) => Object.hasOwn(DAILY_ACTIONS, row.event_key)).length,
-            total: Object.keys(DAILY_ACTIONS).length,
-            tasks: Object.entries(DAILY_ACTIONS).map(([key, task]) => ({
-                key,
+            completed: tasks.filter((task) => todayEvents.has(task.key)).length,
+            total: tasks.length,
+            roomChatCompleted: todayEvents.has('daily_chat'),
+            tasks: tasks.map((task) => ({
+                key: task.key,
                 label: task.label,
                 xp: task.xp,
-                completed: todayEvents.has(key),
-                earnedXp: todayEvents.get(key) || 0
+                path: task.path,
+                type: task.type,
+                completed: todayEvents.has(task.key),
+                earnedXp: todayEvents.get(task.key) || 0
             }))
         },
         referral: {
@@ -336,16 +377,18 @@ function qualifyReferral(userId, now) {
 const roomChatTransaction = db.transaction((userId, now) => {
     const profile = ensureProfile(userId);
     const previousLevel = levelForXp(profile.total_xp);
-    const dailyAward = insertEvent({
+    const roomMarker = insertEvent({
         userId,
         eventKey: 'daily_chat',
         eventDate: hongKongDate(now),
-        xp: DAILY_ACTIONS.daily_chat.xp
+        xp: 0
     });
     const referral = qualifyReferral(userId, now);
     const award = {
-        ...dailyAward,
-        xp: dailyAward.xp + referral.inviteeXp,
+        awarded: referral.inviteeXp > 0,
+        eventKey: 'daily_chat',
+        xp: referral.inviteeXp,
+        roomFirstTurn: roomMarker.awarded,
         referralXp: referral.inviteeXp,
         referralQualified: referral.qualified
     };
@@ -354,6 +397,32 @@ const roomChatTransaction = db.transaction((userId, now) => {
 
 function recordRoomChat(userId, now = new Date()) {
     return roomChatTransaction(userId, now);
+}
+
+const dailyActivityTransaction = db.transaction((userId, activityKey, sourceId, now) => {
+    const today = hongKongDate(now);
+    const task = rotatingDailyTask(userId, today);
+    if (!task.activities.includes(activityKey)) return null;
+
+    const profile = ensureProfile(userId);
+    const previousLevel = levelForXp(profile.total_xp);
+    const award = insertEvent({
+        userId,
+        eventKey: task.key,
+        eventDate: today,
+        xp: task.xp,
+        metadata: {
+            activityKey,
+            sourceId: String(sourceId || '').trim().slice(0, 100)
+        }
+    });
+    return withLevelChange(userId, previousLevel, award, now);
+});
+
+function recordDailyActivity(userId, rawActivityKey, sourceId = '', now = new Date()) {
+    const activityKey = String(rawActivityKey || '').trim().toLowerCase();
+    if (!DAILY_ACTIVITY_KEYS.has(activityKey)) return null;
+    return dailyActivityTransaction(userId, activityKey, sourceId, now);
 }
 
 const claimReferralTransaction = db.transaction((userId, rawCode, now) => {
@@ -423,12 +492,14 @@ function getPublicLevels(userIds = []) {
 module.exports = {
     DAILY_ACTIONS,
     LEVELS,
+    RANDOM_DAILY_TASKS,
     checkIn,
     claimReferral,
     getPublicLevels,
     getState,
     hongKongDate,
     levelForXp,
+    recordDailyActivity,
     recordRoomChat,
     recordShare
 };

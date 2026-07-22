@@ -3,6 +3,7 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const notificationRepository = require('../repositories/notification-repository');
 const pixelArtRepository = require('../repositories/pixel-art-repository');
 const responseCache = require('../services/response-cache');
+const userGrowth = require('../services/user-growth');
 const { setPrivateNoStore, setPublicReadCache } = require('../services/public-cache');
 const { renderPixelArtworkPng } = require('../services/pixel-art-image');
 
@@ -11,6 +12,15 @@ const DEFAULT_DIMENSIONS = { width: 96, height: 54 };
 const ALLOWED_DIMENSIONS = new Set(['32x18', '48x27', '64x36', '96x54', '128x72', '160x90', '192x108']);
 const MAX_PALETTE_COLORS = 32;
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+function recordPixelGrowth(userId, activityKey, artworkId) {
+    try {
+        return userGrowth.recordDailyActivity(userId, activityKey, artworkId);
+    } catch (error) {
+        console.error('Record pixel growth failed:', error);
+        return null;
+    }
+}
 
 function actorName(user) {
     return user?.username || '访客';
@@ -229,7 +239,8 @@ router.post('/', authenticateToken, (req, res) => {
         });
         responseCache.delPrefix('public:pixel-art');
         responseCache.delPrefix('public:site-feed');
-        res.status(201).json({ success: true, data: artwork, message: '像素画已分享' });
+        const growth = recordPixelGrowth(req.user.id, 'pixel_publish', artwork.id);
+        res.status(201).json({ success: true, data: artwork, growth, message: '像素画已分享' });
     } catch (error) {
         console.error('Create pixel art failed:', error);
         res.status(500).json({ success: false, message: '像素画发布失败' });
@@ -285,7 +296,8 @@ router.post('/:id/like', authenticateToken, (req, res) => {
         const updated = pixelArtRepository.likeArtwork(artwork.id, req.user.id);
         notifyArtworkOwner({ artwork: updated, actor: req.user });
         responseCache.delPrefix('public:pixel-art');
-        res.json({ success: true, data: updated, message: '已点赞' });
+        const growth = recordPixelGrowth(req.user.id, 'pixel_like', artwork.id);
+        res.json({ success: true, data: updated, growth, message: '已点赞' });
     } catch (error) {
         console.error('Like pixel art failed:', error);
         res.status(500).json({ success: false, message: '点赞失败' });

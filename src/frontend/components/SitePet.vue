@@ -88,9 +88,9 @@ const GUIDES = Object.freeze([
   },
   {
     key: 'growth', icon: 'sparkles', path: '/growth', routes: ['growth', 'userCenter', 'userProfile'],
-    zh: ['等级成长', '每日签到、首次聊天和分享会获得经验，成长页可查看进度。'],
-    ja: ['レベル成長', '毎日のチェックイン、最初の会話、共有で経験値を獲得できます。'],
-    en: ['Level growth', 'Daily check-in, first chat and sharing grant XP. View progress on the Growth page.']
+    zh: ['等级成长', '签到和分享是固定任务，第三项会在文章、广场、像素画和图库中每日轮换。'],
+    ja: ['レベル成長', 'チェックインと共有は固定任務で、3つ目は記事・プラザ・ピクセル・ギャラリーから毎日更新されます。'],
+    en: ['Level growth', 'Check-in and sharing are fixed tasks. A third creation task rotates daily across Stage, Plaza, Pixel and Gallery.']
   }
 ]);
 

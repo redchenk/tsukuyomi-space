@@ -7,6 +7,7 @@ import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { warmRoutePath } from '../router';
 import { compareAppDate } from '../utils/time';
+import { applyGrowthResult } from '../services/userGrowth';
 
 const props = defineProps({
   lang: { type: String, default: 'zh' },
@@ -394,6 +395,7 @@ async function submitPlazaQuick() {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || (isEnglish.value ? 'Unable to publish' : '发布失败'));
+    if (result.growth) applyGrowthResult(result.growth);
     if (result.data?.id) {
       plazaMessages.value = [
         { ...result.data, article_id: result.data.article_id || null },

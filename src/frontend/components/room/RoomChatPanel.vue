@@ -25,8 +25,7 @@ function ttsLabel(chat, messageId) {
 function showDailyGrowthPrompt(chat) {
   const growth = chat.growth.value;
   if (!growth) return false;
-  const chatTask = growth.today?.tasks?.find((task) => task.key === 'daily_chat');
-  return Boolean(chatTask && !chatTask.completed);
+  return !growth.today?.roomChatCompleted;
 }
 </script>
 

@@ -9,6 +9,7 @@ import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { applyMessageLikeState } from '../services/messageLikes';
+import { applyGrowthResult } from '../services/userGrowth';
 import { compareAppDate, formatDateTime, parseAppDate } from '../utils/time';
 
 const props = defineProps({
@@ -361,6 +362,7 @@ async function plazaSubmitMessage(content) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.publishFailed);
+    if (result.growth) applyGrowthResult(result.growth);
     showPlazaToast(result.message || (isEn.value ? 'Message submitted. It will appear after review.' : '留言已提交，审核通过后会公开显示'));
     if (result.data?.id && (result.data.status || 'approved') === 'approved') {
       plaza.page = 1;
@@ -391,6 +393,7 @@ async function plazaSubmitReply(parentId, content) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.replyFailed);
+    if (result.growth) applyGrowthResult(result.growth);
     showPlazaToast(result.message || (isEn.value ? 'Reply submitted. It will appear after review.' : '回复已提交，审核通过后会公开显示'));
     if (result.data?.id && (result.data.status || 'approved') === 'approved') {
       upsertPlazaMessage(result.data);
@@ -421,6 +424,7 @@ async function plazaLikeMessage(id) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.likeFailed);
+    if (result.growth) applyGrowthResult(result.growth);
     if (result.data?.id) patchPlazaMessage(result.data);
     else {
       const target = plaza.messages.find((item) => item.id === id);

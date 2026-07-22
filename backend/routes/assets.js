@@ -8,6 +8,7 @@ const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
 const responseCache = require('../services/response-cache');
+const userGrowth = require('../services/user-growth');
 const { setPublicReadCache } = require('../services/public-cache');
 const { attachmentDisposition, cleanMime, MAX_USER_UPLOAD_BYTES } = require('../services/file-security');
 const { parsePositiveInt } = require('../validators');
@@ -65,6 +66,15 @@ function fail(res, status, message) {
 function clearPublicGalleryCache() {
     responseCache.delPrefix('public:gallery');
     responseCache.delPrefix('public:site-feed');
+}
+
+function recordGalleryGrowth(userId, assetId) {
+    try {
+        return userGrowth.recordDailyActivity(userId, 'gallery_upload', assetId);
+    } catch (error) {
+        console.error('Record gallery growth failed:', error);
+        return null;
+    }
 }
 
 function signAssetAccess(assetId, expiresAt) {
@@ -563,7 +573,8 @@ router.post('/', authenticateToken, async (req, res) => {
         });
         if (!asset) return fail(res, 400, '文件格式无效');
         if (targetCollection === 'gallery') clearPublicGalleryCache();
-        ok(res, normalizeAsset(asset, { signUrl: true }), '附件已上传');
+        const growth = targetCollection === 'gallery' ? recordGalleryGrowth(req.user.id, asset.id) : null;
+        res.json({ success: true, message: '附件已上传', data: normalizeAsset(asset, { signUrl: true }), growth });
     } catch (error) {
         if (!error.status || error.status >= 500) console.error('Upload asset failed:', error);
         fail(res, error.status || 500, error.status ? error.message : '附件上传失败');

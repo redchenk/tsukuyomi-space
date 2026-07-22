@@ -5,6 +5,7 @@ import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { compressImage } from '../utils/image';
+import { applyGrowthResult } from '../services/userGrowth';
 
 const emit = defineEmits(['go']);
 const props = defineProps({
@@ -274,6 +275,7 @@ async function uploadFile(file) {
     state.uploadPhase = '正在整理图库...';
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '图片上传失败');
+    if (result.growth) applyGrowthResult(result.growth);
     state.uploadProgress = 100;
     showMessage('图片已加入图库');
     await Promise.all([loadLatestImage(), loadRandomFeatureImage()]);

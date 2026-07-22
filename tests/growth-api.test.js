@@ -22,14 +22,15 @@ const { generateToken } = require('../backend/middleware/auth');
 let server;
 let baseUrl;
 let token;
+let actionToken;
 
-function headers(auth = true) {
+function headers(auth = true, authToken = token) {
     return {
         'Content-Type': 'application/json',
         Origin: baseUrl,
         'Sec-Fetch-Site': 'same-origin',
         'X-Requested-With': 'XMLHttpRequest',
-        ...(auth ? { Authorization: `Bearer ${token}` } : {})
+        ...(auth ? { Authorization: `Bearer ${authToken}` } : {})
     };
 }
 
@@ -51,7 +52,12 @@ before(async () => {
         INSERT INTO users (id, username, email, password_hash, role)
         VALUES ('public-level-zero', 'public-level-zero', 'public-level-zero@example.test', 'growth-api-password-hash', 'user')
     `).run();
+    db.prepare(`
+        INSERT INTO users (id, username, email, password_hash, role)
+        VALUES ('growth-action-user', 'growth-action-user', 'growth-action@example.test', 'growth-api-password-hash', 'user')
+    `).run();
     token = generateToken({ id: 'growth-api-user', username: 'growth-api-user', role: 'user' });
+    actionToken = generateToken({ id: 'growth-action-user', username: 'growth-action-user', role: 'user' });
 });
 
 after(async () => {
@@ -99,6 +105,8 @@ describe('growth API', () => {
         assert.equal(first.response.status, 200);
         assert.equal(first.body.data.award.xp, 15);
         assert.equal(first.body.data.state.level.totalXp, 15);
+        assert.deepEqual(first.body.data.state.today.tasks.slice(0, 2).map((task) => task.key), ['checkin', 'daily_share']);
+        assert.equal(first.body.data.state.today.tasks[2].type, 'rotating');
         assert.equal(second.body.data.award.xp, 0);
         assert.equal(second.body.data.state.level.totalXp, 15);
     });
@@ -114,8 +122,72 @@ describe('growth API', () => {
             })
         });
         assert.equal(result.response.status, 201);
+        assert.equal(result.body.growth.award.xp, 0);
+        assert.equal(result.body.growth.award.roomFirstTurn, true);
+        assert.equal(result.body.growth.state.today.roomChatCompleted, true);
+        assert.equal(result.body.growth.state.today.completed, 1);
+        assert.equal(result.body.growth.state.level.totalXp, 15);
+    });
+
+    it('completes the assigned rotating task from its real content endpoint', async () => {
+        const current = await call('/api/growth/me', { headers: headers(true, actionToken) });
+        const task = current.body.data.today.tasks.find((item) => item.type === 'rotating');
+        let result;
+
+        if (task.key === 'daily_article_publish') {
+            result = await call('/api/articles', {
+                method: 'POST',
+                headers: headers(true, actionToken),
+                body: JSON.stringify({
+                    title: 'Growth integration article',
+                    excerpt: 'A real article action for the rotating growth task.',
+                    content: 'Growth integration content',
+                    category: '其他',
+                    read_time: '1 min'
+                })
+            });
+        } else if (task.key === 'daily_plaza_engage') {
+            result = await call('/api/messages', {
+                method: 'POST',
+                headers: headers(true, actionToken),
+                body: JSON.stringify({ content: '今天的月读广场成长任务测试留言。' })
+            });
+        } else if (task.key === 'daily_pixel_engage') {
+            const pixels = Array(32 * 18).fill(-1);
+            pixels[33] = 1;
+            result = await call('/api/pixel-art', {
+                method: 'POST',
+                headers: headers(true, actionToken),
+                body: JSON.stringify({
+                    title: 'Growth integration pixel',
+                    description: 'Rotating task artwork',
+                    size: 32,
+                    width: 32,
+                    height: 18,
+                    background_color: '#172033',
+                    palette: ['#0b1020', '#ffffff'],
+                    pixels
+                })
+            });
+        } else {
+            result = await call('/api/assets', {
+                method: 'POST',
+                headers: headers(true, actionToken),
+                body: JSON.stringify({
+                    dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+                    fileName: 'growth-gallery.png',
+                    mimeType: 'image/png',
+                    alt: 'Growth gallery task',
+                    collection: 'gallery',
+                    storage: 'local'
+                })
+            });
+        }
+
+        assert.ok([200, 201].includes(result.response.status));
+        assert.equal(result.body.success, true);
+        assert.equal(result.body.growth.award.eventKey, task.key);
         assert.equal(result.body.growth.award.xp, 20);
-        assert.equal(result.body.growth.state.today.completed, 2);
-        assert.equal(result.body.growth.state.level.totalXp, 35);
+        assert.equal(result.body.growth.state.today.completed, 1);
     });
 });

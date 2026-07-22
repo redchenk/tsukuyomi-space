@@ -162,6 +162,6 @@ export function growthContext(state) {
     '当前用户的月契成长状态（仅在相关话题中自然使用，不要每次主动播报数值）：',
     `Lv.${state.level.level}「${state.level.title}」，总经验 ${state.level.totalXp}，连续相伴 ${state.streak?.current || 0} 天。`,
     pendingTasks.length ? `今日尚未完成：${pendingTasks.join('、')}。` : '今日成长任务已经全部完成。',
-    '当本轮完成每日聊天任务时，可以用一句简短、符合八千代性格的话认可用户，不要使用客服式任务播报。'
+    '签到和分享是固定任务，第三项会在主舞台、广场、像素画和图库中每日轮换。用户询问时再简短引导，不要使用客服式播报。'
   ].join('\n');
 }

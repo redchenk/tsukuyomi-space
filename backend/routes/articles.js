@@ -4,10 +4,20 @@ const articleRepository = require('../repositories/article-repository');
 const messageRepository = require('../repositories/message-repository');
 const articleMedia = require('../services/article-media');
 const responseCache = require('../services/response-cache');
+const userGrowth = require('../services/user-growth');
 const { setPublicReadCache } = require('../services/public-cache');
 const { parsePositiveInt, safeJsonParse } = require('../validators');
 
 const router = express.Router();
+
+function recordArticleGrowth(userId, articleId) {
+    try {
+        return userGrowth.recordDailyActivity(userId, 'article_publish', articleId);
+    } catch (error) {
+        console.error('Record article growth failed:', error);
+        return null;
+    }
+}
 
 function withParsedTags(article) {
     return {
@@ -119,7 +129,8 @@ router.post('/', authenticateToken, async (req, res) => {
         responseCache.delPrefix('public:articles:');
         responseCache.delPrefix('public:stats');
         responseCache.delPrefix('public:site-feed');
-        res.status(201).json({ success: true, message: '操作成功', data: newArticle });
+        const growth = recordArticleGrowth(req.user.id, newArticle.id);
+        res.status(201).json({ success: true, message: '操作成功', data: newArticle, growth });
     } catch (error) {
         console.error('Create article failed:', error);
         res.status(error.status || 500).json({

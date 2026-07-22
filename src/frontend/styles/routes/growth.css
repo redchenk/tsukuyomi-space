@@ -158,6 +158,18 @@
   display: block;
 }
 
+.growth-streaks .growth-streak-reward {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: -0.15rem 0 0;
+  padding-left: 0.85rem;
+  color: var(--accent-color, #a8d8ff);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
 .growth-streaks strong {
   font-size: 1.35rem;
 }
@@ -438,7 +450,7 @@
 
 @media (max-width: 760px) {
   .growth-page {
-    padding: 0.8rem 0.75rem calc(5.8rem + env(safe-area-inset-bottom));
+    padding: calc(5.25rem + env(safe-area-inset-top)) 0.75rem calc(5.8rem + env(safe-area-inset-bottom));
   }
 
   .growth-header {
@@ -461,6 +473,10 @@
   .growth-streaks div {
     border-left: 0;
     border-top: 1px solid rgba(198, 228, 255, 0.14);
+  }
+
+  .growth-streaks .growth-streak-reward {
+    padding-left: 0;
   }
 
   .growth-checkin {
