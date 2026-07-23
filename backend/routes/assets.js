@@ -243,6 +243,11 @@ function createOssAssetRecord({ objectKey, title = '', assetType = 'auto', mimeT
     });
 }
 
+function privateAssetOwnerId(user, visibility) {
+    if (visibility !== 'private') return null;
+    return user?.scope === 'admin' ? user.siteUserId : user?.id;
+}
+
 function safeJson(value) {
     try {
         return value ? JSON.parse(value) : {};
@@ -464,6 +469,10 @@ router.post('/oss-register', authenticateAdminToken, requireAdmin, requireSuperA
             visibility = 'public',
             description = ''
         } = req.body || {};
+        const ownerId = privateAssetOwnerId(req.user, visibility);
+        if (visibility === 'private' && !ownerId) {
+            return fail(res, 409, '管理员账号未绑定站点账号，请重新登录后重试');
+        }
         const asset = createOssAssetRecord({
             objectKey,
             title,
@@ -472,7 +481,7 @@ router.post('/oss-register', authenticateAdminToken, requireAdmin, requireSuperA
             size,
             visibility,
             description,
-            ownerId: req.user.id
+            ownerId
         });
         if (!asset) return fail(res, 400, 'Invalid OSS Object Key or public URL settings');
         if ((visibility || 'public') !== 'private') clearPublicGalleryCache();
@@ -491,6 +500,10 @@ router.post('/oss-scan', authenticateAdminToken, requireAdmin, requireSuperAdmin
             visibility = 'public',
             assetType = 'auto'
         } = req.body || {};
+        const ownerId = privateAssetOwnerId(req.user, visibility);
+        if (visibility === 'private' && !ownerId) {
+            return fail(res, 409, '管理员账号未绑定站点账号，请重新登录后重试');
+        }
         const listed = await objectStorage.listObjects({ prefix, maxKeys });
         const imported = [];
         const skipped = [];
@@ -510,7 +523,7 @@ router.post('/oss-scan', authenticateAdminToken, requireAdmin, requireSuperAdmin
                 visibility,
                 etag: item.etag,
                 lastModified: item.lastModified,
-                ownerId: req.user.id
+                ownerId
             });
             if (asset) imported.push(normalizeAsset(asset, { signUrl: true }));
             else skipped.push({ key: item.key, reason: 'invalid' });

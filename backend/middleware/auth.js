@@ -112,10 +112,12 @@ function currentUserForClaims(claims) {
         if (!admin || !['admin', 'super_admin'].includes(admin.role) || !hasCurrentCredentials(claims, admin.password_hash)) {
             return null;
         }
+        const siteUser = adminRepository.findUserByUsername(admin.username);
         return {
             ...claims,
             id: `admin-${admin.id}`,
             adminId: admin.id,
+            siteUserId: siteUser?.id || null,
             username: admin.username,
             role: admin.role,
             scope: 'admin'

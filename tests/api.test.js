@@ -2915,9 +2915,20 @@ describe('admin API permissions', () => {
 
     it('uses the terminal admin session for OSS large-file registration', async () => {
         const originalPublicUrlForKey = objectStorage.publicUrlForKey;
+        const originalListObjects = objectStorage.listObjects;
         const objectKey = `movies/admin-session-${Date.now()}.mp4`;
-        let registeredAssetId = '';
+        const scannedObjectKey = `movies/admin-scan-${Date.now()}.mp4`;
+        const registeredAssetIds = [];
         objectStorage.publicUrlForKey = key => `https://oss.example.test/${key}`;
+        objectStorage.listObjects = async () => ({
+            objects: [{
+                key: scannedObjectKey,
+                size: 2048,
+                etag: 'scan-etag',
+                lastModified: '2026-07-23T00:00:00.000Z'
+            }],
+            prefix: 'movies/'
+        });
 
         try {
             const registered = await postJson('/api/assets/oss-register', {
@@ -2925,12 +2936,28 @@ describe('admin API permissions', () => {
                 title: 'Admin session movie',
                 assetType: 'video',
                 mimeType: 'video/mp4',
-                size: 1024
+                size: 1024,
+                visibility: 'private'
             }, adminToken);
             assert.equal(registered.response.status, 200);
             assert.equal(registered.body.success, true);
             assert.equal(registered.body.data.storage_key, objectKey);
-            registeredAssetId = registered.body.data.id;
+            registeredAssetIds.push(registered.body.data.id);
+
+            const linkedSiteUser = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+            assert.ok(linkedSiteUser?.id);
+            assert.equal(registered.body.data.owner_id, linkedSiteUser.id);
+
+            const scanned = await postJson('/api/assets/oss-scan', {
+                prefix: 'movies/',
+                visibility: 'private',
+                assetType: 'video'
+            }, adminToken);
+            assert.equal(scanned.response.status, 200);
+            assert.equal(scanned.body.data.importedCount, 1);
+            assert.equal(scanned.body.data.imported[0].storage_key, scannedObjectKey);
+            assert.equal(scanned.body.data.imported[0].owner_id, linkedSiteUser.id);
+            registeredAssetIds.push(scanned.body.data.imported[0].id);
 
             const forbidden = await postJson('/api/assets/oss-register', {
                 objectKey: `movies/staff-session-${Date.now()}.mp4`
@@ -2939,8 +2966,9 @@ describe('admin API permissions', () => {
             assert.equal(forbidden.body.message, '需要超级管理员权限');
         } finally {
             objectStorage.publicUrlForKey = originalPublicUrlForKey;
-            if (registeredAssetId) {
-                db.prepare('DELETE FROM article_assets WHERE id = ?').run(registeredAssetId);
+            objectStorage.listObjects = originalListObjects;
+            for (const assetId of registeredAssetIds) {
+                db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
             }
         }
     });
