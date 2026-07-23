@@ -275,6 +275,18 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
     });
 
+    it('previews native color-picker input without filling the saved palette', () => {
+        const arena = source('src/frontend/pages/ArenaPage.vue');
+        const pixelApi = source('backend/routes/pixel-art.js');
+
+        assert.match(arena, /const MAX_CUSTOM_COLORS = 52/);
+        assert.match(arena, /function previewCustomColor\(event\)/);
+        assert.match(arena, /type="color" @input="previewCustomColor"/);
+        assert.doesNotMatch(arena, /type="color" @input="selectCustomColor"/);
+        assert.match(arena, /@click="selectCustomColor"/);
+        assert.match(pixelApi, /const MAX_PALETTE_COLORS = 64/);
+    });
+
     it('shows each gallery image uploader on cards, features, and the lightbox', () => {
         const gallery = source('src/frontend/pages/GalleryPage.vue');
         const repository = source('backend/repositories/asset-repository.js');

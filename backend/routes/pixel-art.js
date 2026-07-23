@@ -10,7 +10,7 @@ const { renderPixelArtworkPng } = require('../services/pixel-art-image');
 const router = express.Router();
 const DEFAULT_DIMENSIONS = { width: 96, height: 54 };
 const ALLOWED_DIMENSIONS = new Set(['32x18', '48x27', '64x36', '96x54', '128x72', '160x90', '192x108']);
-const MAX_PALETTE_COLORS = 32;
+const MAX_PALETTE_COLORS = 64;
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 function recordPixelGrowth(userId, activityKey, artworkId) {

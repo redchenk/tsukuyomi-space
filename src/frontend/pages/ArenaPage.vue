@@ -32,7 +32,7 @@ const EXPORT_CELL_SIZE = 8;
 const DEFAULT_ZOOM = 100;
 const MIN_ZOOM = 35;
 const MAX_ZOOM = 260;
-const MAX_CUSTOM_COLORS = 20;
+const MAX_CUSTOM_COLORS = 52;
 const MAX_IMAGE_COLORS = 32;
 const presetPalette = [
   '#0b1020',
@@ -87,7 +87,7 @@ const copy = computed(() => props.lang === 'en' ? {
   presets: 'Preset colors',
   freeColor: 'Custom color',
   addColor: 'Save color',
-  colorLimit: 'The saved-color limit has been reached',
+  colorLimit: 'The 64-color palette is full',
   canvasSize: 'Rectangular grid',
   imageImport: 'Import image',
   uploadImage: 'Convert an image to pixel art',
@@ -149,7 +149,7 @@ const copy = computed(() => props.lang === 'en' ? {
   presets: 'プリセット',
   freeColor: '自由色',
   addColor: '色を保存',
-  colorLimit: '保存できる色はここまでです',
+  colorLimit: '64色パレットがいっぱいです',
   canvasSize: '矩形グリッド',
   imageImport: '画像から変換',
   uploadImage: '画像をピクセル化',
@@ -211,7 +211,7 @@ const copy = computed(() => props.lang === 'en' ? {
   presets: '预设色',
   freeColor: '自由颜色',
   addColor: '保存颜色',
-  colorLimit: '可保存颜色已满',
+  colorLimit: '64 色调色板已满',
   canvasSize: '长方形网格',
   imageImport: '图片导入',
   uploadImage: '上传图片转像素画',
@@ -381,6 +381,13 @@ function addCustomColor(color = customColor.value) {
 
 function selectCustomColor() {
   addCustomColor(customColor.value);
+}
+
+function previewCustomColor(event) {
+  const normalized = normalizeHexColor(event?.target?.value, customColor.value);
+  customColor.value = normalized;
+  selectedColor.value = normalized;
+  tool.value = 'brush';
 }
 
 function ensurePaletteColor(color) {
@@ -1469,7 +1476,7 @@ onBeforeUnmount(() => {
         <div class="arena-color-picker">
           <label>
             <span>{{ copy.freeColor }}</span>
-            <input v-model="customColor" type="color" @input="selectCustomColor">
+            <input v-model="customColor" type="color" @input="previewCustomColor">
           </label>
           <button class="ghost-btn" type="button" @click="selectCustomColor">
             <TsIcon name="plus" :size="17" />

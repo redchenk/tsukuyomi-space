@@ -1455,6 +1455,32 @@ describe('pixel art API', () => {
         assert.match(crawlerPage.body, new RegExp(`/pixel\\?art=${pixelArtworkId}`));
     });
 
+    it('accepts a 64-color palette without truncating selected colors', async () => {
+        const width = 32;
+        const height = 18;
+        const palette = Array.from(
+            { length: 64 },
+            (_, index) => `#${index.toString(16).padStart(6, '0')}`
+        );
+        const pixels = Array(width * height).fill(-1);
+        pixels[0] = palette.length - 1;
+
+        const created = await postJson('/api/pixel-art', {
+            title: 'Expanded Palette',
+            description: 'Verifies the full drawing palette',
+            size: width,
+            width,
+            height,
+            background_color: '#ffffff',
+            palette,
+            pixels
+        }, managedUserToken);
+
+        assert.equal(created.response.status, 201);
+        assert.equal(created.body.data.palette.length, 64);
+        assert.equal(created.body.data.pixels[0], 63);
+    });
+
     it('isolates pixel artwork management by owner while allowing admins', async () => {
         const managedCreated = await postJson('/api/pixel-art', makePixelArtworkPayload('Managed User Pixel'), managedUserToken);
         assert.equal(managedCreated.response.status, 201);
