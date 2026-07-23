@@ -157,8 +157,11 @@ function validateSessionClaims(claims) {
     return claims;
 }
 
-async function authenticateToken(req, res, next) {
-    const token = readAuthToken(req);
+async function authenticateRequest(req, res, next, {
+    preferredCookie = '',
+    requiredScope = ''
+} = {}) {
+    const token = readAuthToken(req, preferredCookie);
 
     if (!token) {
         return res.status(401).json({
@@ -178,7 +181,10 @@ async function authenticateToken(req, res, next) {
         }
 
         const claims = verifyToken(token);
-        if (!claimsMatchRequestScope(req, claims)) {
+        const scopeMatches = requiredScope
+            ? (requiredScope === 'admin' ? claims?.scope === 'admin' : claims?.scope !== 'admin')
+            : claimsMatchRequestScope(req, claims);
+        if (!scopeMatches) {
             return res.status(403).json({
                 success: false,
                 message: 'Token scope does not match this endpoint',
@@ -209,6 +215,17 @@ async function authenticateToken(req, res, next) {
             code: 'TOKEN_INVALID'
         });
     }
+}
+
+function authenticateToken(req, res, next) {
+    return authenticateRequest(req, res, next);
+}
+
+function authenticateAdminToken(req, res, next) {
+    return authenticateRequest(req, res, next, {
+        preferredCookie: ADMIN_SESSION_COOKIE,
+        requiredScope: 'admin'
+    });
 }
 
 function requireAdmin(req, res, next) {
@@ -282,6 +299,7 @@ function verifyToken(token) {
 
 module.exports = {
     authenticateToken,
+    authenticateAdminToken,
     requireAdmin,
     requireSuperAdmin,
     optionalAuth,

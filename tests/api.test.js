@@ -2913,6 +2913,38 @@ describe('admin API permissions', () => {
         assert.equal(injectedLink.response.status, 400);
     });
 
+    it('uses the terminal admin session for OSS large-file registration', async () => {
+        const originalPublicUrlForKey = objectStorage.publicUrlForKey;
+        const objectKey = `movies/admin-session-${Date.now()}.mp4`;
+        let registeredAssetId = '';
+        objectStorage.publicUrlForKey = key => `https://oss.example.test/${key}`;
+
+        try {
+            const registered = await postJson('/api/assets/oss-register', {
+                objectKey,
+                title: 'Admin session movie',
+                assetType: 'video',
+                mimeType: 'video/mp4',
+                size: 1024
+            }, adminToken);
+            assert.equal(registered.response.status, 200);
+            assert.equal(registered.body.success, true);
+            assert.equal(registered.body.data.storage_key, objectKey);
+            registeredAssetId = registered.body.data.id;
+
+            const forbidden = await postJson('/api/assets/oss-register', {
+                objectKey: `movies/staff-session-${Date.now()}.mp4`
+            }, staffAdminToken);
+            assert.equal(forbidden.response.status, 403);
+            assert.equal(forbidden.body.message, '需要超级管理员权限');
+        } finally {
+            objectStorage.publicUrlForKey = originalPublicUrlForKey;
+            if (registeredAssetId) {
+                db.prepare('DELETE FROM article_assets WHERE id = ?').run(registeredAssetId);
+            }
+        }
+    });
+
     it('keeps linked administrator site identities immutable', async () => {
         const staffUser = db.prepare('SELECT id FROM users WHERE username = ?').get('staff-admin');
         assert.ok(staffUser?.id);

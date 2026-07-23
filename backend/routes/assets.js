@@ -3,7 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const config = require('../config');
-const { authenticateToken, optionalAuth, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
+const {
+    authenticateToken,
+    authenticateAdminToken,
+    optionalAuth,
+    requireAdmin,
+    requireSuperAdmin
+} = require('../middleware/auth');
 const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
@@ -447,7 +453,7 @@ router.get('/gallery', optionalAuth, (req, res) => {
     }
 });
 
-router.post('/oss-register', authenticateToken, requireAdmin, requireSuperAdmin, (req, res) => {
+router.post('/oss-register', authenticateAdminToken, requireAdmin, requireSuperAdmin, (req, res) => {
     try {
         const {
             objectKey,
@@ -477,7 +483,7 @@ router.post('/oss-register', authenticateToken, requireAdmin, requireSuperAdmin,
     }
 });
 
-router.post('/oss-scan', authenticateToken, requireAdmin, requireSuperAdmin, async (req, res) => {
+router.post('/oss-scan', authenticateAdminToken, requireAdmin, requireSuperAdmin, async (req, res) => {
     try {
         const {
             prefix = '',
