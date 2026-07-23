@@ -255,6 +255,28 @@ function renderFriendLinksHtml(links = []) {
     });
 }
 
+function renderFriendLinksSpaHtml(indexHtml = '', links = []) {
+    const anchors = links.map((link) => {
+        try {
+            const href = new URL(String(link?.url || ''));
+            if (!['http:', 'https:'].includes(href.protocol) || !link?.name) return '';
+            return `<li><a href="${escapeHtml(href.toString())}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.name)}</a></li>`;
+        } catch (_) {
+            return '';
+        }
+    }).filter(Boolean).join('');
+    const fallback = `
+    <main data-server-friend-links aria-label="公开友链">
+      <h1>月读空间友链</h1>
+      <ul>${anchors}</ul>
+      <a href="/friend-links/apply">申请友链</a>
+    </main>`;
+    return String(indexHtml || '').replace(
+        /<div\s+id=["']app["']\s*><\/div>/i,
+        `<div id="app">${fallback}</div>`
+    );
+}
+
 module.exports = {
     renderSeoCollectionPage,
     renderHubHtml,
@@ -262,5 +284,6 @@ module.exports = {
     renderPixelHtml,
     renderWikiHtml,
     renderWikiEntryHtml,
-    renderFriendLinksHtml
+    renderFriendLinksHtml,
+    renderFriendLinksSpaHtml
 };

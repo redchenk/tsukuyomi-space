@@ -11,7 +11,15 @@ const objectStorage = require('../services/object-storage');
 const { articlePath, renderArticleHtml, renderGalleryHtml, renderNotFoundHtml, renderStageHtml, renderTopicLandingHtml } = require('../seo/render-article');
 const { renderRoomShareHtml } = require('../seo/render-room-share');
 const { WIKI_ENTRIES, WIKI_VERIFIED_AT, findWikiEntry, wikiEntryPath } = require('../seo/wiki-content');
-const { renderFriendLinksHtml, renderHubHtml, renderPixelArtworkHtml, renderPixelHtml, renderWikiEntryHtml, renderWikiHtml } = require('../seo/render-pages');
+const {
+    renderFriendLinksHtml,
+    renderFriendLinksSpaHtml,
+    renderHubHtml,
+    renderPixelArtworkHtml,
+    renderPixelHtml,
+    renderWikiEntryHtml,
+    renderWikiHtml
+} = require('../seo/render-pages');
 
 const CRAWLER_USER_AGENT = /(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|discordbot)/i;
 
@@ -418,10 +426,14 @@ function serveStaticFiles(app) {
         return res.type('html').send(renderWikiEntryHtml(entry));
     });
     app.get('/friend-links', (req, res, next) => {
-        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
-        res.vary('User-Agent');
+        if (req.query?.spa === '1') return next();
+        const links = friendLinkRepository.listActiveLinks();
         setNoStore(res);
-        return res.type('html').send(renderFriendLinksHtml(friendLinkRepository.listActiveLinks()));
+        if (isCrawlerRequest(req) || !frontendIndexHtml) {
+            res.vary('User-Agent');
+            return res.type('html').send(renderFriendLinksHtml(links));
+        }
+        return res.type('html').send(renderFriendLinksSpaHtml(frontendIndexHtml, links));
     });
     app.get('/gallery/manage', (req, res, next) => {
         res.setHeader('X-Robots-Tag', 'noindex, nofollow');

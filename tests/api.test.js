@@ -31,7 +31,8 @@ const { requireUserId, similarity } = require('../backend/services/room-memory')
 const { scopeFilter, truncateUtf8 } = require('../backend/services/room-milvus-store');
 const objectStorage = require('../backend/services/object-storage');
 const friendLinkAvatarService = require('../backend/services/friend-link-avatar');
-const { renderSeoCollectionPage } = require('../backend/seo/render-pages');
+const { renderFriendLinksSpaHtml, renderSeoCollectionPage } = require('../backend/seo/render-pages');
+const friendLinkRepository = require('../backend/repositories/friend-link-repository');
 
 let server;
 let baseUrl;
@@ -3178,6 +3179,27 @@ describe('legacy page paths', () => {
         assert.match(browserHub.body, /Frontend build is missing/);
     });
 
+    it('exposes active friend links as literal hrefs to non-bot link checkers', async () => {
+        const link = friendLinkRepository.createActiveLink({
+            name: 'GitHub Actions Friend',
+            url: 'https://actions-friend.example.test/',
+            description: 'Detectable reciprocal link'
+        });
+
+        try {
+            const checker = await request('/friend-links', {
+                headers: { 'User-Agent': 'axios/1.7 link-check-workflow' }
+            });
+            assert.equal(checker.response.status, 200);
+            assert.match(checker.body, /<a[^>]+href="https:\/\/actions-friend\.example\.test\/"/);
+
+            const spaShell = renderFriendLinksSpaHtml('<div id="app"></div>', [link]);
+            assert.match(spaShell, /<a[^>]+href="https:\/\/actions-friend\.example\.test\/"/);
+        } finally {
+            friendLinkRepository.deleteLink(link.id);
+        }
+    });
+
     it('keeps crawler snapshot links on safe web protocols', () => {
         const html = renderSeoCollectionPage({
             path: '/friend-links',
@@ -3189,6 +3211,13 @@ describe('legacy page paths', () => {
 
         assert.doesNotMatch(html, /javascript:|file:|data:text\/html/i);
         assert.match(html, /href="https:\/\/yachiyo\.hk\/?"/);
+
+        const spaShell = renderFriendLinksSpaHtml('<div id="app"></div>', [
+            { name: 'Unsafe link', url: 'javascript:alert(1)' },
+            { name: 'Safe link', url: 'https://safe-friend.example.test/' }
+        ]);
+        assert.doesNotMatch(spaShell, /javascript:/i);
+        assert.match(spaShell, /href="https:\/\/safe-friend\.example\.test\/"/);
     });
 
     it('publishes every Wiki entry, SEO topic, article cover, and gallery image in sitemaps', async () => {
