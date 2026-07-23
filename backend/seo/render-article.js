@@ -35,17 +35,25 @@ function sanitizeMarkdownUrl(value) {
     return '';
 }
 
+const IFRAME_ATTR_PATTERNS = {
+    src: /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i,
+    title: /\btitle\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i,
+    'aria-label': /\baria-label\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i,
+    height: /\bheight\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i
+};
+
 function iframeAttr(source, name) {
-    const pattern = new RegExp(`${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i');
+    const pattern = IFRAME_ATTR_PATTERNS[name];
+    if (!pattern) return '';
     const match = String(source || '').match(pattern);
     return match ? (match[1] || match[2] || match[3] || '').trim() : '';
 }
 
 function parseIframeInput(value) {
     const source = String(value || '').trim();
-    if (!/^<iframe[\s>]/i.test(source)) return { src: source, title: '', height: '' };
+    if (!/^<iframe[\s>]/i.test(source)) return { src: sanitizeMarkdownUrl(source), title: '', height: '' };
     return {
-        src: iframeAttr(source, 'src'),
+        src: sanitizeMarkdownUrl(iframeAttr(source, 'src')),
         title: iframeAttr(source, 'title') || iframeAttr(source, 'aria-label'),
         height: iframeAttr(source, 'height')
     };
