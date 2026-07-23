@@ -11,7 +11,13 @@ function source(relativePath) {
 }
 
 function loadShareLinks() {
-    const context = { URL, URLSearchParams, String };
+    const context = {
+        URL,
+        URLSearchParams,
+        String,
+        TextEncoder,
+        btoa: value => Buffer.from(value, 'binary').toString('base64')
+    };
     const code = source('src/frontend/services/socialShare.js')
         .replace(/export function /g, 'function ')
         .concat('\nglobalThis.__sharing = { buildSocialShareLinks, normalizedSharePayload };\n');
@@ -29,12 +35,12 @@ describe('public sharing UI', () => {
             imageUrl: 'https://yachiyo.hk/api/pixel-art/42/image.png'
         });
 
-        assert.match(links.qq, /^https:\/\/connect\.qq\.com\/widget\/shareqq\/index\.html\?/);
+        assert.match(links.qq, /^mqqapi:\/\/share\/to_fri\?/);
         assert.match(links.qzone, /^https:\/\/sns\.qzone\.qq\.com\/cgi-bin\/qzshare\/cgi_qzshare_onekey\?/);
         assert.match(links.weibo, /^https:\/\/service\.weibo\.com\/share\/share\.php\?/);
         assert.match(links.x, /^https:\/\/twitter\.com\/intent\/tweet\?/);
         assert.match(links.telegram, /^https:\/\/t\.me\/share\/url\?/);
-        assert.match(links.qq, /%26/);
+        assert.doesNotMatch(links.qq, /connect\.qq\.com|qrcode/i);
     });
 
     it('wires sharing into every article and pixel artwork', () => {
@@ -49,6 +55,8 @@ describe('public sharing UI', () => {
         assert.match(pixel, /\/api\/pixel-art\/\$\{.*?\}\/image\.png/s);
         assert.match(pixel, /\?art=\$\{/);
         assert.match(actions, /navigator\.share/);
+        assert.match(actions, /shareToQQ/);
+        assert.doesNotMatch(actions, /openComposer\('qq'/);
         for (const platform of ['QQ', 'QQ 空间', '微博', 'X', 'Telegram']) {
             assert.match(actions, new RegExp(platform));
         }

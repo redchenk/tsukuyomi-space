@@ -19,16 +19,46 @@ const payload = computed(() => normalizedSharePayload(props));
 const links = computed(() => buildSocialShareLinks(payload.value));
 const canNativeShare = computed(() => typeof navigator !== 'undefined' && typeof navigator.share === 'function');
 const labels = computed(() => props.lang === 'en' ? {
-  system: 'Share', copy: 'Copy link', copied: 'Link copied', download: 'Download image'
+  system: 'Share', copy: 'Copy link', copied: 'Link copied', download: 'Download image',
+  qqOpening: 'Opening QQ. Share text copied.'
 } : props.lang === 'ja' ? {
-  system: '共有', copy: 'リンクコピー', copied: 'コピーしました', download: '画像を保存'
+  system: '共有', copy: 'リンクコピー', copied: 'コピーしました', download: '画像を保存',
+  qqOpening: 'QQを開いています。共有内容をコピーしました。'
 } : {
-  system: '系统分享', copy: '复制链接', copied: '链接已复制', download: '保存图片'
+  system: '系统分享', copy: '复制链接', copied: '链接已复制', download: '保存图片',
+  qqOpening: '正在打开 QQ，分享内容已复制'
 });
 
 function openComposer(platform, url) {
   window.open(url, '_blank', 'noopener,noreferrer,width=760,height=680');
   recordShareGrowth(platform).catch(() => {});
+}
+
+function legacyCopy(value) {
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  textarea.remove();
+}
+
+function shareToQQ() {
+  const shareText = [payload.value.title, payload.value.text, payload.value.url].filter(Boolean).join('\n');
+  try {
+    const write = navigator.clipboard?.writeText?.(shareText);
+    write?.catch(() => legacyCopy(shareText));
+    if (!write) legacyCopy(shareText);
+  } catch (_) {
+    legacyCopy(shareText);
+  }
+  status.value = labels.value.qqOpening;
+  window.location.href = links.value.qq;
+  recordShareGrowth('qq').catch(() => {});
+  window.setTimeout(() => { status.value = ''; }, 2600);
 }
 
 async function nativeShare() {
@@ -45,15 +75,7 @@ async function copyLink() {
   try {
     await navigator.clipboard.writeText(payload.value.url);
   } catch (_) {
-    const textarea = document.createElement('textarea');
-    textarea.value = payload.value.url;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    textarea.remove();
+    legacyCopy(payload.value.url);
   }
   status.value = labels.value.copied;
   recordShareGrowth('copy').catch(() => {});
@@ -67,7 +89,7 @@ async function copyLink() {
       <TsIcon name="send" :size="17" />
       <span>{{ labels.system }}</span>
     </button>
-    <button class="social-share-button" type="button" @click="openComposer('qq', links.qq)">
+    <button class="social-share-button" type="button" @click="shareToQQ">
       <TsIcon name="message" :size="17" />
       <span>QQ</span>
     </button>
