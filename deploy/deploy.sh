@@ -127,7 +127,8 @@ if [ "${INSTALL_NGINX_CONFIG:-false}" = "true" ]; then
     NGINX_BACKUP="${NGINX_SITE_PATH}.predeploy"
     cp -p "$NGINX_SITE_PATH" "$NGINX_BACKUP"
     cp deploy/nginx.conf "${NGINX_SITE_PATH}.candidate"
-    if [ -f /etc/nginx/snippets/agent-os.conf ]; then
+    if [ -f /etc/nginx/snippets/agent-os.conf ] \
+        && ! grep -Fq 'include /etc/nginx/snippets/agent-os.conf;' "${NGINX_SITE_PATH}.candidate"; then
         sed -i '/^[[:space:]]*server[[:space:]]*{/a\    include /etc/nginx/snippets/agent-os.conf;' "${NGINX_SITE_PATH}.candidate"
     fi
     mv "${NGINX_SITE_PATH}.candidate" "$NGINX_SITE_PATH"
