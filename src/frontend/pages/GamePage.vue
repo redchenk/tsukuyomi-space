@@ -203,6 +203,8 @@ watch(currentUserId, (nextUserId, previousUserId) => {
           <a
             class="game-author-link"
             :href="ORIGINAL_AUTHOR_URL"
+            :title="copy.originalAuthor"
+            :aria-label="copy.originalAuthor"
             target="_blank"
             rel="noopener noreferrer"
           >
