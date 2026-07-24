@@ -11,7 +11,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
-const GAME_URL = String(import.meta.env.VITE_KAGUYA_GAME_URL || '/game-runtime/kaguya-run-ef04c26b4900-r3.html').trim();
+const GAME_URL = String(import.meta.env.VITE_KAGUYA_GAME_URL || '/game-runtime/kaguya-run-ef04c26b4900-r4.html').trim();
 const ORIGINAL_AUTHOR_URL = 'https://www.bilibili.com/video/BV1Bmgx6aEvJ/';
 const LOAD_TIMEOUT_MS = 120000;
 const SCORE_SAVE_INTERVAL_MS = 15000;
