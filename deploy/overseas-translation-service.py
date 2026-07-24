@@ -57,7 +57,7 @@ PRIVATE_PATH_RE = re.compile(
     r"^/(?:terminal|admin|editor|room/settings|room-settings|user-center|notifications|login|register|gallery/manage)(?:/|$)"
 )
 PUBLIC_SEO_PATHS = frozenset({
-    "/", "/hub", "/stage", "/plaza", "/wiki", "/gallery", "/pixel",
+    "/", "/hub", "/stage", "/plaza", "/wiki", "/gallery", "/pixel", "/game",
     "/reality", "/room", "/friend-links",
     "/topics/chou-kaguya-hime", "/topics/yachiyo-live2d",
     "/topics/ai-character-room", "/topics/kaguya-yachiyo",
@@ -196,6 +196,10 @@ SEO_ROUTE_COPY = {
     "/pixel": (
         "192 × 108 Pixel Art Community | Tsukuyomi Space",
         "Create, share and explore 192 × 108 pixel art from the Tsukuyomi Space creative community.",
+    ),
+    "/game": (
+        "Kaguya Run Rhythm Game | Tsukuyomi Space",
+        "Play Kaguya Run, a rhythm runner with desktop keyboard, mobile touch and fullscreen controls.",
     ),
     "/reality": (
         "Project, Privacy and Credits | Tsukuyomi Space",
@@ -981,6 +985,7 @@ def prewarm() -> None:
         "/wiki",
         "/gallery",
         "/pixel",
+        "/game",
         "/reality",
         "/room",
         "/friend-links",
