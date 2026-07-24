@@ -7,7 +7,7 @@ const props = defineProps({
   t: { type: Object, required: true }
 });
 
-const GAME_URL = String(import.meta.env.VITE_KAGUYA_GAME_URL || '/game-runtime/kaguya-run-ef04c26b4900.html').trim();
+const GAME_URL = String(import.meta.env.VITE_KAGUYA_GAME_URL || '/game-runtime/kaguya-run-ef04c26b4900-r2.html').trim();
 const LOAD_TIMEOUT_MS = 120000;
 const frame = ref(null);
 const stage = ref(null);
