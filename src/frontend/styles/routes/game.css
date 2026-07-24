@@ -7,7 +7,10 @@
 }
 
 .game-shell {
-  width: min(100%, 1440px, calc(133.333svh - 9.333rem));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  gap: 0 1rem;
+  width: min(100%, 1440px);
   min-width: 0;
 }
 
@@ -18,6 +21,7 @@
   gap: 1rem;
   min-height: 48px;
   margin-bottom: 0.7rem;
+  grid-column: 1 / -1;
 }
 
 .game-heading,
@@ -68,6 +72,35 @@
   -webkit-backdrop-filter: blur(18px) saturate(1.25);
 }
 
+.game-author-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-height: 38px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--ts-border);
+  border-radius: 14px;
+  color: var(--ts-text-secondary);
+  background: var(--ts-glass);
+  font-size: 0.84rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+}
+
+.game-author-link:hover {
+  color: var(--ts-accent);
+  border-color: color-mix(in srgb, var(--ts-accent), transparent 52%);
+}
+
+.game-author-link:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: 2px;
+}
+
 .game-icon-button:hover {
   color: var(--ts-accent);
   border-color: color-mix(in srgb, var(--ts-accent), transparent 52%);
@@ -88,6 +121,195 @@
   background: #000;
   box-shadow: var(--ts-shadow-lg);
   contain: layout paint;
+}
+
+.game-leaderboard {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ts-border);
+  border-radius: 8px;
+  background: var(--ts-glass);
+  box-shadow: var(--ts-shadow-md);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+
+.game-leaderboard-header {
+  display: flex;
+  min-height: 56px;
+  padding: 0.7rem 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  border-bottom: 1px solid var(--ts-border);
+}
+
+.game-leaderboard-title,
+.game-score-summary {
+  display: flex;
+  align-items: center;
+}
+
+.game-leaderboard-title {
+  min-width: 0;
+  gap: 0.45rem;
+  color: var(--ts-accent);
+}
+
+.game-leaderboard-title h2 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--ts-text);
+  font-size: 0.98rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-score-summary {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem 0.55rem;
+  color: var(--ts-text-secondary);
+  font-size: 0.72rem;
+}
+
+.game-score-summary strong {
+  color: var(--ts-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.game-rank-refresh {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  color: var(--ts-text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.game-rank-refresh:hover,
+.game-rank-refresh:focus-visible {
+  color: var(--ts-accent);
+  background: color-mix(in srgb, var(--ts-accent), transparent 90%);
+}
+
+.game-rank-refresh:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.game-rank-list {
+  margin: 0;
+  padding: 0.25rem 0.65rem;
+  list-style: none;
+}
+
+.game-rank-list li {
+  display: grid;
+  min-width: 0;
+  min-height: 48px;
+  grid-template-columns: 28px 34px minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--ts-border), transparent 34%);
+}
+
+.game-rank-list li:last-child {
+  border-bottom: 0;
+}
+
+.game-rank-list li.is-current {
+  color: var(--ts-accent);
+  background: color-mix(in srgb, var(--ts-accent), transparent 94%);
+}
+
+.game-rank-position,
+.game-rank-score {
+  font-variant-numeric: tabular-nums;
+}
+
+.game-rank-position {
+  color: var(--ts-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.game-rank-list li:nth-child(-n + 3) .game-rank-position {
+  color: var(--ts-accent);
+}
+
+.game-rank-avatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ts-text);
+  background: color-mix(in srgb, var(--ts-accent), transparent 82%);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.game-rank-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-rank-name {
+  overflow: hidden;
+  color: var(--ts-text);
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-rank-score {
+  color: var(--ts-text);
+  font-size: 0.82rem;
+}
+
+.game-rank-state,
+.game-rank-login {
+  display: grid;
+  min-height: 92px;
+  margin: 0;
+  padding: 1rem;
+  place-items: center;
+  color: var(--ts-text-secondary);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.game-rank-login {
+  min-height: 42px;
+  border-top: 1px solid var(--ts-border);
+  color: var(--ts-accent);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.game-rank-loading {
+  height: 2px;
+  overflow: hidden;
+}
+
+.game-rank-loading span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--ts-accent), var(--ts-cyan), transparent);
+  animation: game-loading-slide 1.05s ease-in-out infinite;
+  will-change: transform;
 }
 
 .game-frame {
@@ -171,6 +393,26 @@
 
   .game-shell {
     width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.8rem;
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1120px) {
+  .game-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.8rem;
+    width: min(100%, calc(133.333svh - 9.333rem));
+  }
+
+  .game-leaderboard {
+    width: 100%;
+  }
+
+  .game-rank-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 1rem;
   }
 }
 
@@ -190,13 +432,41 @@
     border-radius: 13px;
   }
 
+  .game-author-link {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 13px;
+  }
+
+  .game-author-link span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
   .game-stage {
     border-radius: 6px;
+  }
+
+  .game-leaderboard-header {
+    align-items: flex-start;
+  }
+
+  .game-score-summary {
+    max-width: 66%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .game-loading span {
+    animation-duration: 1.8s;
+  }
+
+  .game-rank-loading span {
     animation-duration: 1.8s;
   }
 }

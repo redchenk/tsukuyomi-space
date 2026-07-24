@@ -52,6 +52,8 @@ describe('growth frontend integration', () => {
         const assets = source('backend/routes/assets.js');
 
         assert.match(growthService, /function recordDailyActivity/);
+        assert.match(growthService, /daily_kaguya_run/);
+        assert.match(growthService, /kaguya_score/);
         assert.match(growthService, /rotatingDailyTask\(userId, today\)/);
         assert.match(articles, /recordDailyActivity\(userId, 'article_publish'/);
         assert.match(messages, /recordDailyActivity\(userId, activityKey/);

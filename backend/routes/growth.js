@@ -1,5 +1,6 @@
 const express = require('express');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
+const kaguyaGameScores = require('../services/kaguya-game-scores');
 const userGrowth = require('../services/user-growth');
 
 const router = express.Router();
@@ -24,6 +25,40 @@ router.get('/public', (req, res) => {
         return res.json({ success: true, data: userGrowth.getPublicLevels(ids) });
     } catch (error) {
         return sendError(res, error, '无法读取公开等级');
+    }
+});
+
+router.get('/game/leaderboard', optionalAuth, (req, res) => {
+    try {
+        return res.json({
+            success: true,
+            data: kaguyaGameScores.listLeaderboard({
+                page: req.query.page,
+                limit: req.query.limit,
+                userId: req.user?.id || ''
+            })
+        });
+    } catch (error) {
+        return sendError(res, error, '无法读取积分榜');
+    }
+});
+
+router.post('/game/score', authenticateToken, (req, res) => {
+    try {
+        const result = kaguyaGameScores.submitScore(req.user.id, req.body?.score);
+        return res.json({
+            success: true,
+            data: {
+                ...result,
+                leaderboard: kaguyaGameScores.listLeaderboard({
+                    page: 1,
+                    limit: 10,
+                    userId: req.user.id
+                })
+            }
+        });
+    } catch (error) {
+        return sendError(res, error, '积分保存失败');
     }
 });
 

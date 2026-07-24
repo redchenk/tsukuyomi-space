@@ -23,6 +23,7 @@ let server;
 let baseUrl;
 let token;
 let actionToken;
+let leaderboardToken;
 
 function headers(auth = true, authToken = token) {
     return {
@@ -56,8 +57,13 @@ before(async () => {
         INSERT INTO users (id, username, email, password_hash, role)
         VALUES ('growth-action-user', 'growth-action-user', 'growth-action@example.test', 'growth-api-password-hash', 'user')
     `).run();
+    db.prepare(`
+        INSERT INTO users (id, username, email, password_hash, role)
+        VALUES ('leaderboard-user', 'leaderboard-user', 'leaderboard@example.test', 'growth-api-password-hash', 'user')
+    `).run();
     token = generateToken({ id: 'growth-api-user', username: 'growth-api-user', role: 'user' });
     actionToken = generateToken({ id: 'growth-action-user', username: 'growth-action-user', role: 'user' });
+    leaderboardToken = generateToken({ id: 'leaderboard-user', username: 'leaderboard-user', role: 'user' });
 });
 
 after(async () => {
@@ -109,6 +115,51 @@ describe('growth API', () => {
         assert.equal(first.body.data.state.today.tasks[2].type, 'rotating');
         assert.equal(second.body.data.award.xp, 0);
         assert.equal(second.body.data.state.level.totalXp, 15);
+    });
+
+    it('stores unlimited game highscores per account and publishes the ranking', async () => {
+        const unauthenticated = await call('/api/growth/game/score', {
+            method: 'POST',
+            headers: headers(false),
+            body: JSON.stringify({ score: 100 })
+        });
+        assert.equal(unauthenticated.response.status, 401);
+
+        const invalid = await call('/api/growth/game/score', {
+            method: 'POST',
+            headers: headers(true, leaderboardToken),
+            body: JSON.stringify({ score: 'not-a-score' })
+        });
+        assert.equal(invalid.response.status, 400);
+
+        const first = await call('/api/growth/game/score', {
+            method: 'POST',
+            headers: headers(true, leaderboardToken),
+            body: JSON.stringify({ score: 10000 })
+        });
+        const higher = await call('/api/growth/game/score', {
+            method: 'POST',
+            headers: headers(true, leaderboardToken),
+            body: JSON.stringify({ score: 125000 })
+        });
+        const lower = await call('/api/growth/game/score', {
+            method: 'POST',
+            headers: headers(true, leaderboardToken),
+            body: JSON.stringify({ score: 12 })
+        });
+        const publicRanking = await call('/api/growth/game/leaderboard?limit=10', {
+            headers: headers(false)
+        });
+
+        assert.equal(first.response.status, 200);
+        assert.equal(first.body.data.current.score, 10000);
+        assert.equal(higher.body.data.current.score, 125000);
+        assert.equal(lower.body.data.current.score, 125000);
+        assert.equal(publicRanking.response.status, 200);
+        assert.equal(publicRanking.body.data.entries[0].username, 'leaderboard-user');
+        assert.equal(publicRanking.body.data.entries[0].score, 125000);
+        assert.equal(publicRanking.body.data.current, null);
+        assert.equal(publicRanking.body.data.total, 1);
     });
 
     it('awards the first complete room turn and returns the updated state', async () => {
@@ -169,7 +220,7 @@ describe('growth API', () => {
                     pixels
                 })
             });
-        } else {
+        } else if (task.key === 'daily_gallery_upload') {
             result = await call('/api/assets', {
                 method: 'POST',
                 headers: headers(true, actionToken),
@@ -182,12 +233,19 @@ describe('growth API', () => {
                     storage: 'local'
                 })
             });
+        } else {
+            result = await call('/api/growth/game/score', {
+                method: 'POST',
+                headers: headers(true, actionToken),
+                body: JSON.stringify({ score: 100 })
+            });
         }
 
         assert.ok([200, 201].includes(result.response.status));
         assert.equal(result.body.success, true);
-        assert.equal(result.body.growth.award.eventKey, task.key);
-        assert.equal(result.body.growth.award.xp, 20);
-        assert.equal(result.body.growth.state.today.completed, 1);
+        const growthResult = result.body.growth || result.body.data?.growth;
+        assert.equal(growthResult.award.eventKey, task.key);
+        assert.equal(growthResult.award.xp, 20);
+        assert.equal(growthResult.state.today.completed, 1);
     });
 });

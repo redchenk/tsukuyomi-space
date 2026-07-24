@@ -25,7 +25,8 @@ const RANDOM_DAILY_TASKS = Object.freeze([
     { key: 'daily_article_publish', xp: 20, label: '主舞台发布文章', path: '/editor', activities: ['article_publish'] },
     { key: 'daily_plaza_engage', xp: 20, label: '月读广场留言或点赞', path: '/plaza', activities: ['plaza_message', 'plaza_like'] },
     { key: 'daily_pixel_engage', xp: 20, label: '像素画绘画或点赞', path: '/pixel', activities: ['pixel_publish', 'pixel_like'] },
-    { key: 'daily_gallery_upload', xp: 20, label: '图库上传图片', path: '/gallery/manage', activities: ['gallery_upload'] }
+    { key: 'daily_gallery_upload', xp: 20, label: '图库上传图片', path: '/gallery/manage', activities: ['gallery_upload'] },
+    { key: 'daily_kaguya_run', xp: 20, label: '辉夜快跑获得 100 分', path: '/game', activities: ['kaguya_score'] }
 ]);
 
 const DAILY_ACTIVITY_KEYS = new Set(RANDOM_DAILY_TASKS.flatMap((task) => task.activities));
@@ -38,6 +39,7 @@ const EVENT_LABELS = Object.freeze({
     daily_plaza_engage: '月读广场留言或点赞',
     daily_pixel_engage: '像素画绘画或点赞',
     daily_gallery_upload: '图库上传图片',
+    daily_kaguya_run: '辉夜快跑获得 100 分',
     referral_joined: '接受好友邀请',
     referral_invite: '好友完成首次聊天'
 });

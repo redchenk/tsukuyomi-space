@@ -242,6 +242,13 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(game, /allow-same-origin/);
         assert.match(game, /VITE_KAGUYA_GAME_URL/);
         assert.match(game, /:aria-busy="loading"/);
+        assert.match(game, /https:\/\/www\.bilibili\.com\/video\/BV1Bmgx6aEvJ\//);
+        assert.match(game, /rel="noopener noreferrer"/);
+        assert.match(game, /event\.source !== frame\.value\?\.contentWindow/);
+        assert.match(game, /tsukuyomi:kaguya-score/);
+        assert.match(game, /loadKaguyaLeaderboard/);
+        assert.match(game, /submitKaguyaScore/);
+        assert.match(game, /class="game-rank-list"/);
         assert.match(staticMiddleware, /'\/game'/);
     });
 

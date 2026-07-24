@@ -58,23 +58,23 @@ const inviteUrl = computed(() => state.value?.referral?.inviteCode
 
 function taskText(task) {
   const labels = props.lang === 'ja'
-    ? { checkin: '毎日のサインイン', daily_share: '月読空間を共有', daily_article_publish: 'ステージに記事を投稿', daily_plaza_engage: 'プラザに投稿またはいいね', daily_pixel_engage: 'ピクセル絵を投稿またはいいね', daily_gallery_upload: 'ギャラリーに画像を追加' }
+    ? { checkin: '毎日のサインイン', daily_share: '月読空間を共有', daily_article_publish: 'ステージに記事を投稿', daily_plaza_engage: 'プラザに投稿またはいいね', daily_pixel_engage: 'ピクセル絵を投稿またはいいね', daily_gallery_upload: 'ギャラリーに画像を追加', daily_kaguya_run: 'かぐやランで100点を獲得' }
     : props.lang === 'en'
-      ? { checkin: 'Daily check-in', daily_share: 'Share Tsukuyomi Space', daily_article_publish: 'Publish a Stage article', daily_plaza_engage: 'Post or like in Plaza', daily_pixel_engage: 'Create or like pixel art', daily_gallery_upload: 'Upload a gallery image' }
-      : { checkin: '每日签到', daily_share: '分享月读空间', daily_article_publish: '主舞台发布文章', daily_plaza_engage: '月读广场留言或点赞', daily_pixel_engage: '像素画绘画或点赞', daily_gallery_upload: '图库上传图片' };
+      ? { checkin: 'Daily check-in', daily_share: 'Share Tsukuyomi Space', daily_article_publish: 'Publish a Stage article', daily_plaza_engage: 'Post or like in Plaza', daily_pixel_engage: 'Create or like pixel art', daily_gallery_upload: 'Upload a gallery image', daily_kaguya_run: 'Score 100 in Kaguya Run' }
+      : { checkin: '每日签到', daily_share: '分享月读空间', daily_article_publish: '主舞台发布文章', daily_plaza_engage: '月读广场留言或点赞', daily_pixel_engage: '像素画绘画或点赞', daily_gallery_upload: '图库上传图片', daily_kaguya_run: '辉夜快跑获得 100 分' };
   return labels[task.key] || task.label;
 }
 
 function taskIcon(key) {
-  return { checkin: 'calendar', daily_share: 'send', daily_article_publish: 'fileText', daily_plaza_engage: 'message', daily_pixel_engage: 'palette', daily_gallery_upload: 'image' }[key] || 'sparkles';
+  return { checkin: 'calendar', daily_share: 'send', daily_article_publish: 'fileText', daily_plaza_engage: 'message', daily_pixel_engage: 'palette', daily_gallery_upload: 'image', daily_kaguya_run: 'gamepad' }[key] || 'sparkles';
 }
 
 function eventText(item) {
   const labels = props.lang === 'ja'
-    ? { checkin: '毎日のサインイン', daily_chat: '八千代との会話', daily_share: '月読空間を共有', daily_article_publish: 'ステージに記事を投稿', daily_plaza_engage: 'プラザで交流', daily_pixel_engage: 'ピクセル絵で交流', daily_gallery_upload: 'ギャラリーに画像を追加', referral_joined: '招待を受け取りました', referral_invite: '友達が初回会話を完了' }
+    ? { checkin: '毎日のサインイン', daily_chat: '八千代との会話', daily_share: '月読空間を共有', daily_article_publish: 'ステージに記事を投稿', daily_plaza_engage: 'プラザで交流', daily_pixel_engage: 'ピクセル絵で交流', daily_gallery_upload: 'ギャラリーに画像を追加', daily_kaguya_run: 'かぐやランで100点を獲得', referral_joined: '招待を受け取りました', referral_invite: '友達が初回会話を完了' }
     : props.lang === 'en'
-      ? { checkin: 'Daily check-in', daily_chat: 'Chat with Yachiyo', daily_share: 'Shared Tsukuyomi Space', daily_article_publish: 'Published a Stage article', daily_plaza_engage: 'Engaged in Plaza', daily_pixel_engage: 'Engaged with pixel art', daily_gallery_upload: 'Uploaded a gallery image', referral_joined: 'Accepted an invitation', referral_invite: 'Friend completed first chat' }
-      : { checkin: '每日签到', daily_chat: '与八千代聊天', daily_share: '分享月读空间', daily_article_publish: '主舞台发布文章', daily_plaza_engage: '月读广场互动', daily_pixel_engage: '像素画互动', daily_gallery_upload: '图库上传图片', referral_joined: '接受好友邀请', referral_invite: '好友完成首次聊天' };
+      ? { checkin: 'Daily check-in', daily_chat: 'Chat with Yachiyo', daily_share: 'Shared Tsukuyomi Space', daily_article_publish: 'Published a Stage article', daily_plaza_engage: 'Engaged in Plaza', daily_pixel_engage: 'Engaged with pixel art', daily_gallery_upload: 'Uploaded a gallery image', daily_kaguya_run: 'Scored 100 in Kaguya Run', referral_joined: 'Accepted an invitation', referral_invite: 'Friend completed first chat' }
+      : { checkin: '每日签到', daily_chat: '与八千代聊天', daily_share: '分享月读空间', daily_article_publish: '主舞台发布文章', daily_plaza_engage: '月读广场互动', daily_pixel_engage: '像素画互动', daily_gallery_upload: '图库上传图片', daily_kaguya_run: '辉夜快跑获得 100 分', referral_joined: '接受好友邀请', referral_invite: '好友完成首次聊天' };
   return labels[item.key] || item.label;
 }
 

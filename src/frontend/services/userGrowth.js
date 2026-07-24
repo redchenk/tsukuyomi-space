@@ -87,7 +87,7 @@ export async function loadPublicUserLevels(userIds = [], { force = false } = {})
           publicLevelCache.set(userId, {
             data: {
               userId,
-              level: Math.max(1, Math.min(8, Number(item.level) || 1)),
+              level: Math.max(1, Math.min(9, Number(item.level) || 1)),
               title: String(item.title || '')
             },
             cachedAt: receivedAt
@@ -121,6 +121,34 @@ export async function recordShareGrowth(platform = 'native') {
     body: JSON.stringify({ platform })
   });
   publish(result.state, result.award);
+  return result;
+}
+
+export async function loadKaguyaLeaderboard({ page = 1, limit = 10 } = {}) {
+  const query = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    _: String(Date.now())
+  });
+  const response = await authFetch(`/api/growth/game/leaderboard?${query}`, {
+    headers: authHeaders({ Accept: 'application/json' }),
+    cache: 'no-store'
+  });
+  const result = await parseResponse(response);
+  if (!response.ok || !result.success) {
+    throw new Error(result.message || `HTTP ${response.status}`);
+  }
+  return result.data;
+}
+
+export async function submitKaguyaScore(score) {
+  if (!currentUserId()) return null;
+  const result = await requestGrowth('/api/growth/game/score', {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
+    body: JSON.stringify({ score })
+  });
+  if (result.growth?.state) publish(result.growth.state, result.growth.award);
   return result;
 }
 
@@ -162,6 +190,6 @@ export function growthContext(state) {
     '当前用户的月契成长状态（仅在相关话题中自然使用，不要每次主动播报数值）：',
     `Lv.${state.level.level}「${state.level.title}」，总经验 ${state.level.totalXp}，连续相伴 ${state.streak?.current || 0} 天。`,
     pendingTasks.length ? `今日尚未完成：${pendingTasks.join('、')}。` : '今日成长任务已经全部完成。',
-    '签到和分享是固定任务，第三项会在主舞台、广场、像素画和图库中每日轮换。用户询问时再简短引导，不要使用客服式播报。'
+    '签到和分享是固定任务，第三项会在主舞台、广场、像素画、图库和辉夜快跑中每日轮换。用户询问时再简短引导，不要使用客服式播报。'
   ].join('\n');
 }
