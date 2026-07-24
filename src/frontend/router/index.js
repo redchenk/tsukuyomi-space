@@ -40,6 +40,7 @@ const ArticlePage = loadRoute(() => import('../pages/ArticlePage.vue'), () => im
 const TerminalPage = loadRoute(() => import('../pages/TerminalPage.vue'), () => import('../styles/routes/terminal.css'));
 const AdminPage = loadRoute(() => import('../pages/AdminPage.vue'), () => import('../styles/routes/admin.css'));
 const ArenaPage = loadRoute(() => import('../pages/ArenaPage.vue'), () => import('../styles/routes/arena.css'));
+const GamePage = loadRoute(() => import('../pages/GamePage.vue'), () => import('../styles/routes/game.css'));
 const WikiPage = loadRoute(() => import('../pages/WikiPage.vue'), () => import('../styles/routes/wiki.css'));
 const WikiEntryPage = loadRoute(() => import('../pages/WikiEntryPage.vue'), () => import('../styles/routes/wiki.css'));
 
@@ -301,6 +302,16 @@ export const routes = [
     }
   },
   {
+    path: '/game',
+    name: 'game',
+    component: GamePage,
+    meta: {
+      title: '辉夜快跑在线音游',
+      description: '在月读空间游玩辉夜快跑，体验为桌面键盘与移动端触控优化的辉夜姬主题节奏跑酷游戏。',
+      keywords: ['辉夜快跑', '辉夜姬音游', '在线节奏游戏', '月读空间游戏', 'Kaguya Run']
+    }
+  },
+  {
     path: '/arena/:pathMatch(.*)*',
     redirect: to => ({ path: '/pixel', query: to.query, hash: to.hash })
   }
@@ -329,6 +340,7 @@ const routeWarmups = {
   terminal: [EditorPage, AttachmentsPage],
   admin: [EditorPage, GalleryPage, AttachmentsPage],
   pixel: [UserCenterPage],
+  game: [HubPage],
   wiki: [WikiEntryPage],
   wikiCharacter: [WikiPage],
   wikiTerm: [WikiPage]

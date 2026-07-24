@@ -8,6 +8,7 @@ export const en = {
   plaza: 'Tsukuyomi Plaza', plazaDesc: 'Messages, likes and visitor interactions',
   stage: 'Main Stage', stageDesc: 'Articles and featured content',
   arena: 'Pixel Art', arenaDesc: 'Pixel art and a shared gallery',
+  game: 'Kaguya Run', gameLoading: 'Loading game', gameUnavailable: 'Unable to load the game', gameFullscreen: 'Fullscreen', gameStandalone: 'Open separately',
   reality: 'Reality Corridor', realityDesc: 'A gateway to the real world',
   terminal: 'Data Terminal', terminalDesc: 'Administrator console',
   navigation: 'Quick navigation', wiki: 'Wiki', gallery: 'Gallery', agentOs: 'Agent OS', notifications: 'Notifications', more: 'More', explore: 'Explore',

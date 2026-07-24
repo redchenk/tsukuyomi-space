@@ -134,6 +134,7 @@ function renderHubHtml(articles = []) {
         { href: '/room', title: '月见八千代 Live2D 房间', description: '高清 Live2D、AI 对话、语音与长期记忆。' },
         { href: '/gallery', title: '公开图库', description: '用户公开上传的插画与站点影像。' },
         { href: '/pixel', title: '192×108 像素画工坊', description: '在线创作、分享与浏览像素作品。' },
+        { href: '/game', title: '辉夜快跑', description: '辉夜姬主题节奏跑酷游戏。' },
         { href: '/friend-links', title: '友链导航', description: '月读空间审核收录的友好站点。' }
     ];
     const latestArticles = articles.slice(0, 12).map(article => ({
@@ -169,6 +170,17 @@ function renderPixelHtml(artworks = []) {
         keywords: ['在线像素画', '192×108 像素画', '月光像素工坊', 'Pixel Art 编辑器', '像素画社区'],
         items,
         actions: [{ href: '/pixel?spa=1', label: '打开像素画工具' }]
+    });
+}
+
+function renderGameHtml() {
+    return renderSeoCollectionPage({
+        path: '/game',
+        title: '辉夜快跑在线音游',
+        heading: '辉夜快跑',
+        description: '在月读空间游玩辉夜快跑，体验为桌面键盘与移动端触控优化的辉夜姬主题节奏跑酷游戏。',
+        keywords: ['辉夜快跑', '辉夜姬音游', '在线节奏游戏', '月读空间游戏', 'Kaguya Run'],
+        actions: [{ href: '/game?spa=1', label: '开始游戏' }]
     });
 }
 
@@ -279,6 +291,7 @@ function renderFriendLinksSpaHtml(indexHtml = '', links = []) {
 
 module.exports = {
     renderSeoCollectionPage,
+    renderGameHtml,
     renderHubHtml,
     renderPixelArtworkHtml,
     renderPixelHtml,

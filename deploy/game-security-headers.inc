@@ -1,0 +1,11 @@
+add_header Content-Security-Policy "default-src 'none'; base-uri 'none'; object-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' data: blob:; script-src-attr 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src https: wss:; worker-src blob:; child-src blob:; frame-ancestors 'self'; form-action 'none'" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header X-Content-Type-Options nosniff always;
+add_header X-Frame-Options SAMEORIGIN always;
+add_header Referrer-Policy no-referrer always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+add_header X-Permitted-Cross-Domain-Policies none always;
+add_header Origin-Agent-Cluster "?1" always;
+add_header Cross-Origin-Opener-Policy same-origin-allow-popups always;
+add_header Cross-Origin-Resource-Policy same-origin always;
+add_header X-XSS-Protection "0" always;

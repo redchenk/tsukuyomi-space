@@ -14,6 +14,7 @@ const { WIKI_ENTRIES, WIKI_VERIFIED_AT, findWikiEntry, wikiEntryPath } = require
 const {
     renderFriendLinksHtml,
     renderFriendLinksSpaHtml,
+    renderGameHtml,
     renderHubHtml,
     renderPixelArtworkHtml,
     renderPixelHtml,
@@ -50,7 +51,8 @@ const SEO_ROUTES = [
     { path: '/wiki', priority: '0.8', changefreq: 'monthly' },
     { path: '/friend-links', priority: '0.6', changefreq: 'weekly' },
     { path: '/reality', priority: '0.7', changefreq: 'weekly' },
-    { path: '/pixel', priority: '0.7', changefreq: 'weekly' }
+    { path: '/pixel', priority: '0.7', changefreq: 'weekly' },
+    { path: '/game', priority: '0.7', changefreq: 'monthly' }
 ];
 
 const TOPIC_ROUTES = [
@@ -403,6 +405,12 @@ function serveStaticFiles(app) {
         const artworks = pixelArtRepository.listArtworks({ limit: 24, preview: 'compact' }).items;
         return res.type('html').send(renderPixelHtml(artworks));
     });
+    app.get('/game', (req, res, next) => {
+        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
+        res.vary('User-Agent');
+        setNoStore(res);
+        return res.type('html').send(renderGameHtml());
+    });
     app.get('/wiki', (req, res, next) => {
         if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
         res.vary('User-Agent');
@@ -508,7 +516,7 @@ function serveStaticFiles(app) {
         if (req.method !== 'GET' && req.method !== 'HEAD') return next();
         if (req.path.startsWith('/api') || path.extname(req.path)) return next();
 
-        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/']);
+        const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/', '/game']);
         const wikiEntryRoute = req.path.startsWith('/wiki/characters/') || req.path.startsWith('/wiki/terms/');
         if (vueRoutes.has(req.path) || req.path.startsWith('/users/') || wikiEntryRoute) {
             if (!useFrontendDist) {

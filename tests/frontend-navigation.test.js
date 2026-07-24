@@ -82,7 +82,7 @@ describe('frontend navigation routes', () => {
         const publicPaths = [
             '/', '/hub', '/stage', '/articles/:id/:slug?', '/article', '/wiki',
             '/wiki/characters/:slug', '/wiki/terms/:slug', '/room', '/plaza',
-            '/friend-links', '/reality', '/gallery', '/users/:username', '/pixel'
+            '/friend-links', '/reality', '/gallery', '/users/:username', '/pixel', '/game'
         ];
         for (const routePath of publicPaths) {
             const escapedPath = routePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -228,6 +228,21 @@ describe('frontend navigation routes', () => {
         assert.match(shell, /path: '\/agent-os'.+icon: 'bot'.+spa: false/);
         assert.match(icons, /bot:\s*\[/);
         assert.match(icons, /M12 8V4H8/);
+    });
+
+    it('loads the Kaguya game only on its isolated public route', () => {
+        const router = source('src/frontend/router/index.js');
+        const shell = source('src/frontend/layouts/AppShell.vue');
+        const game = source('src/frontend/pages/GamePage.vue');
+        const staticMiddleware = source('backend/middleware/static.js');
+
+        assert.match(router, /path: '\/game',\s*name: 'game',\s*component: GamePage/);
+        assert.match(shell, /path: '\/game'.+icon: 'gamepad'.+spa: true/);
+        assert.match(game, /sandbox="allow-scripts allow-pointer-lock allow-downloads"/);
+        assert.doesNotMatch(game, /allow-same-origin/);
+        assert.match(game, /VITE_KAGUYA_GAME_URL/);
+        assert.match(game, /:aria-busy="loading"/);
+        assert.match(staticMiddleware, /'\/game'/);
     });
 
     it('credits the Agent OS music app source in the responsibility boundary and README', () => {

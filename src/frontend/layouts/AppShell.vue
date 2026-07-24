@@ -46,6 +46,7 @@ const navItems = computed(() => [
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },
+  { path: '/game', key: 'game', label: props.t.game, icon: 'gamepad', active: props.routeName === 'game', spa: true },
   ...(props.isAuthed ? [{ path: '/growth', key: 'growth', label: growthLabel.value, icon: 'sparkles', active: props.routeName === 'growth', spa: true }] : []),
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true },
   { path: '/agent-os', key: 'agentOs', label: props.t.agentOs, icon: 'bot', active: false, spa: false }
@@ -159,7 +160,7 @@ onUnmounted(() => {
 <template>
   <div class="app-shell" :class="{ 'room-shell': routeName === 'room' }">
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
-    <div v-if="showChrome && routeName !== 'room'" class="moon" aria-hidden="true"></div>
+    <div v-if="showChrome && !['room', 'game'].includes(routeName)" class="moon" aria-hidden="true"></div>
 
     <aside v-if="showChrome" ref="railRef" class="site-rail" data-material="sidebar" :aria-label="t.navigation">
       <a href="/hub" class="rail-mark" :aria-label="t.brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @pointerdown="warmRoutePath('/hub')" @click.prevent="$emit('go', '/hub')">
@@ -434,7 +435,7 @@ onUnmounted(() => {
       </button>
     </nav>
 
-    <SiteMusicDrawer v-if="showChrome && music" :music="music" />
+    <SiteMusicDrawer v-if="showChrome && music && routeName !== 'game'" :music="music" />
     <slot></slot>
     <footer v-if="showSiteBeian" class="site-beian-footer">
       <BeianLink />
