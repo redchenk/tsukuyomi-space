@@ -11,7 +11,13 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
-const GAME_URL = String(import.meta.env.VITE_KAGUYA_GAME_URL || '/game-runtime/kaguya-run-ef04c26b4900-r4.html').trim();
+const overseasGameHost = typeof window !== 'undefined'
+  && /(^|\.)tsukuyomi-space\.com$/i.test(window.location.hostname);
+// Ali CDN keeps the game CSP exception on the decoded r3 route; encoding creates a fresh cache key.
+const defaultGameUrl = overseasGameHost
+  ? '/game-runtime/kaguya-run-ef04c26b4900-r4.html'
+  : '/game-runtime/kaguya-run-ef04c26b4900-%72%33.html';
+const GAME_URL = String(import.meta.env.VITE_KAGUYA_GAME_URL || defaultGameUrl).trim();
 const ORIGINAL_AUTHOR_URL = 'https://www.bilibili.com/video/BV1Bmgx6aEvJ/';
 const LOAD_TIMEOUT_MS = 120000;
 const SCORE_SAVE_INTERVAL_MS = 15000;
