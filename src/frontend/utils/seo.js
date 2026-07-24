@@ -39,7 +39,8 @@ const ENGLISH_ROUTE_SEO = Object.freeze({
   notifications: ['Notifications', 'View replies, likes and account notifications.'],
   admin: ['Content Management', 'Review articles, messages, gallery images and attachments.'],
   terminal: ['Administration Terminal', 'Tsukuyomi Space administration terminal.'],
-  pixel: ['192 × 108 Moonlit Pixel Workshop', 'Create, publish, browse, like and export fixed-size pixel artwork.']
+  pixel: ['192 × 108 Moonlit Pixel Workshop', 'Create, publish, browse, like and export fixed-size pixel artwork.'],
+  game: ['Kaguya Run Rhythm Game', 'Play Kaguya Run with desktop keyboard, mobile touch and fullscreen controls.']
 });
 
 function absoluteUrl(path = '/') {
