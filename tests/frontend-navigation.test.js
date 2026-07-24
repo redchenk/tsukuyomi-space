@@ -533,6 +533,24 @@ describe('terminal privilege boundaries', () => {
         assert.match(terminal, /:aria-busy="Boolean\(terminal\.userRoleSaving\[item\.id\]\)"/);
         assert.match(terminal, /terminal\.userRoleSaving\[item\.id\] \? '保存中' : '保存'/);
     });
+
+    it('uses a compact Ant-style workspace with bounded tables and the existing icon system', () => {
+        const terminal = source('src/frontend/pages/TerminalPage.vue');
+        const pagination = source('src/frontend/components/terminal/TerminalPagination.vue');
+        const styles = source('assets/css/vue/pages/terminal-ant.css');
+        const packageJson = source('package.json');
+
+        assert.match(terminal, /import TerminalPagination/);
+        assert.match(terminal, /articleStatusFilter: 'all'/);
+        assert.match(terminal, /messageStatusFilter: 'all'/);
+        assert.match(terminal, /const pagedArticles = computed/);
+        assert.match(terminal, /const pagedMessages = computed/);
+        assert.match(terminal, /<TsIcon :name="panel\.icon"/);
+        assert.match(pagination, /pageItems = computed/);
+        assert.match(styles, /--terminal-ant-primary: #1677ff/);
+        assert.match(styles, /backdrop-filter: none/);
+        assert.doesNotMatch(packageJson, /"antd"\s*:/);
+    });
 });
 
 describe('content administration workspace', () => {

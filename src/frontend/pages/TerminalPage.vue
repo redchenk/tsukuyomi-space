@@ -2,19 +2,20 @@
 import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { apiFetch, noStoreUrl, saveUserSession } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
+import TerminalPagination from '../components/terminal/TerminalPagination.vue';
 import { formatDateTime } from '../utils/time';
 
 const emit = defineEmits(['go', 'auth-changed']);
 
 const panels = [
-  { id: 'dashboard', label: '总览', code: '01', group: '巡检', desc: '关键指标和常用入口' },
-  { id: 'analytics', label: '统计', code: '02', group: '巡检', desc: '访问趋势和站点热度' },
-  { id: 'articles', label: '文章', code: '03', group: '内容', desc: '发布、置顶和状态管理' },
-  { id: 'messages', label: '留言', code: '04', group: '内容', desc: '留言墙与文章评论审核' },
-  { id: 'links', label: '友链审核', code: '05', group: '内容', desc: '处理友链申请与收录状态' },
-  { id: 'users', label: '用户', code: '06', group: '系统', desc: '用户检索、角色和密码' },
-  { id: 'account', label: '账号安全', code: '07', group: '系统', desc: '当前管理员安全设置' },
-  { id: 'settings', label: '设置', code: '08', group: '系统', desc: '站点、备案和对象存储' }
+  { id: 'dashboard', label: '总览', icon: 'grid', code: '01', group: '巡检', desc: '关键指标和常用入口' },
+  { id: 'analytics', label: '统计', icon: 'layers', code: '02', group: '巡检', desc: '访问趋势和站点热度' },
+  { id: 'articles', label: '文章', icon: 'fileText', code: '03', group: '内容', desc: '发布、置顶和状态管理' },
+  { id: 'messages', label: '留言', icon: 'message', code: '04', group: '内容', desc: '留言墙与文章评论审核' },
+  { id: 'links', label: '友链审核', icon: 'external', code: '05', group: '内容', desc: '处理友链申请与收录状态' },
+  { id: 'users', label: '用户', icon: 'users', code: '06', group: '系统', desc: '用户检索、角色和密码' },
+  { id: 'account', label: '账号安全', icon: 'shield', code: '07', group: '系统', desc: '当前管理员安全设置' },
+  { id: 'settings', label: '设置', icon: 'settings', code: '08', group: '系统', desc: '站点、备案和对象存储' }
 ];
 
 const terminal = reactive({
@@ -31,7 +32,16 @@ const terminal = reactive({
   stats: { articles: 0, pendingMessages: 0, todayViews: 0, users: 0 },
   analytics: { todayViews: 0, weekViews: 0, monthViews: 0, totalViews: 0 },
   articles: [],
+  articleSearch: '',
+  articleStatusFilter: 'all',
+  articlePage: 1,
+  articlePageSize: 10,
   messages: [],
+  messageSearch: '',
+  messageStatusFilter: 'all',
+  messageSourceFilter: 'all',
+  messagePage: 1,
+  messagePageSize: 10,
   users: [],
   userSearch: '',
   userPage: 1,
@@ -47,6 +57,8 @@ const terminal = reactive({
   linkAvatarLoading: {},
   linkStatusSaving: {},
   linkReviewFilter: 'pending',
+  linkPage: 1,
+  linkPageSize: 10,
   settings: {
     siteTitle: '',
     siteAnnouncement: '',
@@ -125,6 +137,39 @@ const groupedPanels = computed(() => ['巡检', '内容', '系统']
   .map((group) => ({ group, items: panels.filter((panel) => panel.group === group) }))
   .filter((entry) => entry.items.length));
 const activePanelMeta = computed(() => panels.find((panel) => panel.id === terminal.activePanel) || panels[0]);
+const filteredArticles = computed(() => {
+  const keyword = terminal.articleSearch.trim().toLowerCase();
+  return terminal.articles.filter((item) => {
+    const statusMatches = terminal.articleStatusFilter === 'all' || item.status === terminal.articleStatusFilter;
+    const keywordMatches = !keyword || [item.id, item.title, item.category, item.slug]
+      .some((value) => String(value || '').toLowerCase().includes(keyword));
+    return statusMatches && keywordMatches;
+  });
+});
+const articleTotalPages = computed(() => Math.max(1, Math.ceil(filteredArticles.value.length / terminal.articlePageSize)));
+const articleCurrentPage = computed(() => Math.min(Math.max(terminal.articlePage, 1), articleTotalPages.value));
+const pagedArticles = computed(() => {
+  const start = (articleCurrentPage.value - 1) * terminal.articlePageSize;
+  return filteredArticles.value.slice(start, start + terminal.articlePageSize);
+});
+const filteredMessages = computed(() => {
+  const keyword = terminal.messageSearch.trim().toLowerCase();
+  return terminal.messages.filter((item) => {
+    const statusMatches = terminal.messageStatusFilter === 'all'
+      || (terminal.messageStatusFilter === 'approved' ? item.status === 'approved' : item.status !== 'approved');
+    const sourceMatches = terminal.messageSourceFilter === 'all'
+      || (terminal.messageSourceFilter === 'articles' ? Boolean(item.article_id) : !item.article_id);
+    const keywordMatches = !keyword || [item.id, item.username, item.author, item.content, item.article_title]
+      .some((value) => String(value || '').toLowerCase().includes(keyword));
+    return statusMatches && sourceMatches && keywordMatches;
+  });
+});
+const messageTotalPages = computed(() => Math.max(1, Math.ceil(filteredMessages.value.length / terminal.messagePageSize)));
+const messageCurrentPage = computed(() => Math.min(Math.max(terminal.messagePage, 1), messageTotalPages.value));
+const pagedMessages = computed(() => {
+  const start = (messageCurrentPage.value - 1) * terminal.messagePageSize;
+  return filteredMessages.value.slice(start, start + terminal.messagePageSize);
+});
 const filteredUsers = computed(() => {
   const keyword = terminal.userSearch.trim().toLowerCase();
   if (!keyword) return terminal.users;
@@ -138,19 +183,6 @@ const pagedUsers = computed(() => {
   const size = Number(terminal.userPageSize || 8);
   const start = (userCurrentPage.value - 1) * size;
   return filteredUsers.value.slice(start, start + size);
-});
-const userPageItems = computed(() => {
-  const total = userTotalPages.value;
-  const current = userCurrentPage.value;
-  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
-  const pages = [1];
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-  if (start > 2) pages.push('gap-left');
-  for (let page = start; page <= end; page += 1) pages.push(page);
-  if (end < total - 1) pages.push('gap-right');
-  pages.push(total);
-  return pages;
 });
 const pendingMessageCount = computed(() => terminal.messages.filter((item) => item.status !== 'approved').length);
 const plazaMessageCount = computed(() => terminal.messages.filter((item) => !item.article_id).length);
@@ -166,6 +198,12 @@ const linkReviewCounts = computed(() => ({
 const filteredReviewLinks = computed(() => terminal.linkReviewFilter === 'all'
   ? terminal.links
   : terminal.links.filter((item) => item.status === terminal.linkReviewFilter));
+const linkTotalPages = computed(() => Math.max(1, Math.ceil(filteredReviewLinks.value.length / terminal.linkPageSize)));
+const linkCurrentPage = computed(() => Math.min(Math.max(terminal.linkPage, 1), linkTotalPages.value));
+const pagedReviewLinks = computed(() => {
+  const start = (linkCurrentPage.value - 1) * terminal.linkPageSize;
+  return filteredReviewLinks.value.slice(start, start + terminal.linkPageSize);
+});
 
 function formatDate(value) {
   if (!value) return '未记录';
@@ -198,10 +236,6 @@ function setUserPage(page) {
   const numericPage = Number(page);
   if (!Number.isFinite(numericPage)) return;
   terminal.userPage = Math.min(Math.max(Math.trunc(numericPage), 1), userTotalPages.value);
-}
-
-function isUserPageGap(item) {
-  return typeof item === 'string';
 }
 
 async function parseJsonResponse(response) {
@@ -632,6 +666,34 @@ watch(() => terminal.userPageSize, () => {
   terminal.userPage = 1;
 });
 
+watch([() => terminal.articleSearch, () => terminal.articleStatusFilter], () => {
+  terminal.articlePage = 1;
+});
+
+watch(articleTotalPages, (total) => {
+  if (terminal.articlePage > total) terminal.articlePage = total;
+});
+
+watch([
+  () => terminal.messageSearch,
+  () => terminal.messageStatusFilter,
+  () => terminal.messageSourceFilter
+], () => {
+  terminal.messagePage = 1;
+});
+
+watch(messageTotalPages, (total) => {
+  if (terminal.messagePage > total) terminal.messagePage = total;
+});
+
+watch(() => terminal.linkReviewFilter, () => {
+  terminal.linkPage = 1;
+});
+
+watch(linkTotalPages, (total) => {
+  if (terminal.linkPage > total) terminal.linkPage = total;
+});
+
 watch(userTotalPages, (total) => {
   if (terminal.userPage > total) terminal.userPage = total;
   if (terminal.userPage < 1) terminal.userPage = 1;
@@ -652,8 +714,11 @@ onUnmounted(() => {
 
     <section v-else-if="!authed" class="terminal-auth">
       <form class="terminal-card terminal-login-card" :aria-busy="terminal.loading" @submit.prevent="login">
-        <h1>数据终端</h1>
-        <p>仅管理员可访问。所有操作都会通过服务端权限校验。</p>
+        <div class="terminal-login-mark" aria-hidden="true"><TsIcon name="shield" :size="24" /></div>
+        <div class="terminal-login-heading">
+          <h1>数据终端</h1>
+          <p>管理员安全工作区</p>
+        </div>
         <div v-if="terminal.loginMessage" class="form-message error">{{ terminal.loginMessage }}</div>
         <label>管理员账号<input v-model="terminal.login.username" autocomplete="username" required></label>
         <label>密码<input v-model="terminal.login.password" type="password" autocomplete="current-password" required></label>
@@ -665,35 +730,48 @@ onUnmounted(() => {
     <section v-else class="terminal-shell">
       <header class="terminal-topbar">
         <div class="terminal-brand">
-          <strong>Tsukuyomi Terminal</strong>
-          <span>后台管理工作台 · {{ terminal.clock }}</span>
+          <span class="terminal-brand-mark" aria-hidden="true"><TsIcon name="moonStar" :size="20" /></span>
+          <span class="terminal-brand-copy">
+            <strong>Tsukuyomi Terminal</strong>
+            <small>{{ terminal.clock }}</small>
+          </span>
         </div>
         <div class="terminal-session">
           <span class="terminal-user-pill">
             <span class="terminal-status-dot" :class="{ busy: terminal.loading }"></span>
             {{ terminal.admin?.username }} / {{ terminal.admin?.role }}
           </span>
-          <button class="ghost-btn" type="button" @click="$emit('go', '/gallery/manage')">图库管理</button>
-          <button class="ghost-btn" type="button" @click="$emit('go', '/attachments')">附件库</button>
-          <button class="ghost-btn" type="button" @click="$emit('go', '/hub')">大厅</button>
-          <button class="danger-btn" type="button" @click="logout">断开</button>
+          <button class="ghost-btn" type="button" @click="$emit('go', '/gallery/manage')"><TsIcon name="image" :size="16" />图库</button>
+          <button class="ghost-btn" type="button" @click="$emit('go', '/attachments')"><TsIcon name="paperclip" :size="16" />附件</button>
+          <button class="ghost-btn" type="button" @click="$emit('go', '/hub')"><TsIcon name="home" :size="16" />大厅</button>
+          <button class="danger-btn" type="button" @click="logout"><TsIcon name="logOut" :size="16" />退出</button>
         </div>
       </header>
 
       <div class="terminal-layout">
         <aside class="terminal-sidebar">
           <div class="terminal-sidebar-head">
-            <strong>模块</strong>
-            <span>{{ panels.length }} sections</span>
+            <strong>工作台</strong>
+            <span>{{ panels.length }}</span>
           </div>
           <div v-for="group in groupedPanels" :key="group.group" class="terminal-nav-group">
             <span class="terminal-nav-group-label">{{ group.group }}</span>
-            <button v-for="panel in group.items" :key="panel.id" class="terminal-nav-btn" :class="{ active: terminal.activePanel === panel.id }" type="button" @click="loadPanel(panel.id)">
+            <button
+              v-for="panel in group.items"
+              :key="panel.id"
+              class="terminal-nav-btn"
+              :class="{ active: terminal.activePanel === panel.id }"
+              type="button"
+              :title="panel.desc"
+              :aria-current="terminal.activePanel === panel.id ? 'page' : undefined"
+              @click="loadPanel(panel.id)"
+            >
+              <span class="terminal-nav-icon"><TsIcon :name="panel.icon" :size="17" /></span>
               <span class="terminal-nav-copy">
                 <strong>{{ panel.label }}</strong>
-                <small>{{ panel.desc }}</small>
               </span>
-              <span class="terminal-nav-code">{{ panel.code }}</span>
+              <span v-if="panel.id === 'messages' && pendingMessageCount" class="terminal-nav-badge">{{ pendingMessageCount }}</span>
+              <span v-else-if="panel.id === 'links' && linkReviewCounts.pending" class="terminal-nav-badge">{{ linkReviewCounts.pending }}</span>
             </button>
           </div>
           <div class="terminal-sidebar-foot">
@@ -705,81 +783,106 @@ onUnmounted(() => {
         <section class="terminal-panel" :aria-busy="terminal.loading">
           <div class="terminal-context-bar">
             <div>
-              <span class="terminal-kicker">{{ activePanelMeta.group }} / {{ activePanelMeta.code }}</span>
-              <strong>{{ activePanelMeta.label }}</strong>
+              <span class="terminal-kicker">数据终端 / {{ activePanelMeta.group }}</span>
+              <h1>{{ activePanelMeta.label }}</h1>
               <p>{{ activePanelMeta.desc }}</p>
             </div>
             <div class="terminal-context-actions">
               <button class="ghost-btn" type="button" :disabled="terminal.loading" :aria-busy="terminal.loading" @click="loadPanel(terminal.activePanel)">
-                {{ terminal.loading ? '同步中...' : '刷新当前' }}
+                <TsIcon :name="terminal.loading ? 'loader' : 'refresh'" :class="{ 'ts-status-loader-icon': terminal.loading }" :size="16" />
+                {{ terminal.loading ? '同步中' : '刷新' }}
               </button>
-              <button v-if="terminal.activePanel === 'articles'" class="primary-btn" type="button" @click="$emit('go', '/editor')">新建文章</button>
-              <button v-if="terminal.activePanel === 'settings'" class="primary-btn" type="button" @click="saveSettings">保存配置</button>
+              <button v-if="terminal.activePanel === 'articles'" class="primary-btn" type="button" @click="$emit('go', '/editor')"><TsIcon name="plus" :size="16" />新建文章</button>
+              <button v-if="terminal.activePanel === 'settings'" class="primary-btn" type="button" @click="saveSettings"><TsIcon name="bookmark" :size="16" />保存配置</button>
             </div>
           </div>
-          <div v-if="terminal.message" class="form-message" :class="terminal.messageType">{{ terminal.message }}</div>
+          <div v-if="terminal.message" class="form-message terminal-alert" :class="terminal.messageType" role="status">
+            <TsIcon :name="terminal.messageType === 'error' ? 'shield' : 'userCheck'" :size="17" />
+            <span>{{ terminal.message }}</span>
+          </div>
           <LoadingSkeleton v-if="terminal.loading" variant="list" :count="6" label="正在同步后台数据" />
           <div v-else-if="terminal.loadError" class="terminal-empty error" role="alert">{{ terminal.loadError }}</div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'dashboard'">
-            <div class="terminal-panel-head"><h2>系统总览</h2></div>
             <div class="terminal-hero">
               <div>
-                <span class="terminal-kicker">CONTROL CENTER</span>
-                <h3>内容、账号和站点状态集中管理</h3>
-                <p>当前会话拥有 {{ terminal.admin?.role }} 权限。敏感操作会在服务端再次校验，不依赖前端显示。</p>
+                <span class="terminal-hero-icon"><TsIcon name="shield" :size="20" /></span>
+                <div>
+                  <h2>系统运行正常</h2>
+                  <p>{{ terminal.admin?.role }} 权限已通过服务端校验</p>
+                </div>
               </div>
               <div class="terminal-hero-actions">
-                <button class="primary-btn" type="button" @click="loadPanel('articles')">进入内容管理</button>
-                <button class="ghost-btn" type="button" @click="$emit('go', '/gallery/manage')">管理图库</button>
-                <button class="ghost-btn" type="button" @click="$emit('go', '/attachments')">管理附件库</button>
+                <button class="primary-btn" type="button" @click="loadPanel('articles')"><TsIcon name="fileText" :size="16" />文章</button>
+                <button class="ghost-btn" type="button" @click="$emit('go', '/gallery/manage')"><TsIcon name="image" :size="16" />图库</button>
+                <button class="ghost-btn" type="button" @click="$emit('go', '/attachments')"><TsIcon name="paperclip" :size="16" />附件</button>
               </div>
             </div>
             <div class="terminal-cards">
               <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('articles')">
-                <strong>文章总数</strong>
-                <span>{{ terminal.stats.articles || 0 }}</span>
-                <small>查看内容状态</small>
+                <span class="terminal-stat-icon"><TsIcon name="fileText" :size="18" /></span>
+                <span class="terminal-stat-copy"><small>文章总数</small><strong>{{ terminal.stats.articles || 0 }}</strong></span>
+                <TsIcon class="terminal-stat-arrow" name="arrowRight" :size="16" />
               </button>
               <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('messages')">
-                <strong>待审留言</strong>
-                <span>{{ terminal.stats.pendingMessages || 0 }}</span>
-                <small>进入审核队列</small>
+                <span class="terminal-stat-icon warning"><TsIcon name="message" :size="18" /></span>
+                <span class="terminal-stat-copy"><small>待审留言</small><strong>{{ terminal.stats.pendingMessages || 0 }}</strong></span>
+                <TsIcon class="terminal-stat-arrow" name="arrowRight" :size="16" />
               </button>
               <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('analytics')">
-                <strong>今日访问</strong>
-                <span>{{ terminal.stats.todayViews || 0 }}</span>
-                <small>查看统计面板</small>
+                <span class="terminal-stat-icon success"><TsIcon name="eye" :size="18" /></span>
+                <span class="terminal-stat-copy"><small>今日访问</small><strong>{{ terminal.stats.todayViews || 0 }}</strong></span>
+                <TsIcon class="terminal-stat-arrow" name="arrowRight" :size="16" />
               </button>
               <button class="terminal-card terminal-stat-card" type="button" @click="loadPanel('users')">
-                <strong>用户总数</strong>
-                <span>{{ terminal.stats.users || 0 }}</span>
-                <small>管理用户权限</small>
+                <span class="terminal-stat-icon purple"><TsIcon name="users" :size="18" /></span>
+                <span class="terminal-stat-copy"><small>用户总数</small><strong>{{ terminal.stats.users || 0 }}</strong></span>
+                <TsIcon class="terminal-stat-arrow" name="arrowRight" :size="16" />
               </button>
             </div>
           </div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'articles'">
-            <div class="terminal-panel-head"><h2>文章管理</h2></div>
             <div class="terminal-summary-row">
               <span>已发布 {{ publishedArticleCount }}</span>
               <span>草稿 {{ terminal.articles.length - publishedArticleCount }}</span>
               <span>置顶 {{ pinnedArticleCount }}</span>
               <span>总阅读 {{ terminal.articles.reduce((sum, item) => sum + Number(item.view_count || 0), 0) }}</span>
             </div>
+            <div class="terminal-toolbar terminal-filter-toolbar">
+              <label class="terminal-search-field">
+                <TsIcon name="search" :size="16" aria-hidden="true" />
+                <input v-model="terminal.articleSearch" type="search" autocomplete="off" placeholder="搜索标题、分类或 ID">
+              </label>
+              <div class="terminal-segmented" aria-label="文章状态">
+                <button type="button" :class="{ active: terminal.articleStatusFilter === 'all' }" @click="terminal.articleStatusFilter = 'all'">全部</button>
+                <button type="button" :class="{ active: terminal.articleStatusFilter === 'published' }" @click="terminal.articleStatusFilter = 'published'">已发布</button>
+                <button type="button" :class="{ active: terminal.articleStatusFilter === 'draft' }" @click="terminal.articleStatusFilter = 'draft'">草稿</button>
+              </div>
+              <span class="terminal-toolbar-count">{{ filteredArticles.length }} 篇</span>
+            </div>
             <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>置顶</th><th>更新时间</th><th>操作</th></tr></thead><tbody>
-              <tr v-for="item in terminal.articles" :key="item.id">
+              <tr v-for="item in pagedArticles" :key="item.id">
                 <td>{{ item.id }}</td><td><a href="#" @click.prevent="$emit('go', articlePath(item))">{{ item.title }}</a></td><td>{{ item.category || '未分类' }}</td><td>{{ item.view_count || 0 }}</td>
                 <td><span class="terminal-badge" :class="item.status === 'published' ? 'ok' : 'warn'">{{ item.status === 'published' ? '已发布' : '草稿' }}</span></td>
                 <td><span class="terminal-badge" :class="item.pinned_at ? 'hot' : ''">{{ item.pinned_at ? '已置顶' : '普通' }}</span></td>
                 <td>{{ formatDate(item.updated_at || item.created_at) }}</td>
                 <td><div class="terminal-actions"><button class="ghost-btn" type="button" @click="$emit('go', `/editor?id=${item.id}`)">编辑</button><button class="ghost-btn" type="button" @click="toggleArticle(item.id)">切换</button><button class="ghost-btn" type="button" @click="toggleArticlePin(item)">{{ item.pinned_at ? '取消置顶' : '置顶' }}</button><button class="danger-btn" type="button" @click="deleteArticle(item.id)">删除</button></div></td>
               </tr>
+              <tr v-if="!pagedArticles.length"><td colspan="8"><div class="terminal-empty">没有符合条件的文章</div></td></tr>
             </tbody></table></div>
+            <TerminalPagination
+              :current="articleCurrentPage"
+              :total-pages="articleTotalPages"
+              :total-items="filteredArticles.length"
+              :page-size="terminal.articlePageSize"
+              item-label="篇文章"
+              aria-label="文章分页"
+              @change="terminal.articlePage = $event"
+            />
           </div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'messages'">
-            <div class="terminal-panel-head"><h2>留言审核</h2></div>
             <div class="terminal-summary-row">
               <span>待审核 {{ pendingMessageCount }}</span>
               <span>已通过 {{ terminal.messages.length - pendingMessageCount }}</span>
@@ -787,8 +890,25 @@ onUnmounted(() => {
               <span>文章评论 {{ articleMessageCount }}</span>
               <span>总留言 {{ terminal.messages.length }}</span>
             </div>
+            <div class="terminal-toolbar terminal-filter-toolbar terminal-message-toolbar">
+              <label class="terminal-search-field">
+                <TsIcon name="search" :size="16" aria-hidden="true" />
+                <input v-model="terminal.messageSearch" type="search" autocomplete="off" placeholder="搜索作者、内容或文章">
+              </label>
+              <div class="terminal-segmented" aria-label="留言状态">
+                <button type="button" :class="{ active: terminal.messageStatusFilter === 'all' }" @click="terminal.messageStatusFilter = 'all'">全部状态</button>
+                <button type="button" :class="{ active: terminal.messageStatusFilter === 'pending' }" @click="terminal.messageStatusFilter = 'pending'">待审核</button>
+                <button type="button" :class="{ active: terminal.messageStatusFilter === 'approved' }" @click="terminal.messageStatusFilter = 'approved'">已通过</button>
+              </div>
+              <select v-model="terminal.messageSourceFilter" aria-label="留言来源">
+                <option value="all">全部来源</option>
+                <option value="plaza">留言墙</option>
+                <option value="articles">文章评论</option>
+              </select>
+              <span class="terminal-toolbar-count">{{ filteredMessages.length }} 条</span>
+            </div>
             <div class="terminal-table-wrap terminal-message-table"><table><thead><tr><th>作者</th><th>来源</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
-              <tr v-for="item in terminal.messages" :key="item.id">
+              <tr v-for="item in pagedMessages" :key="item.id">
                 <td>{{ item.username || item.author }}</td>
                 <td>
                   <span class="terminal-badge" :class="item.article_id ? 'hot' : 'ok'">{{ messageSourceLabel(item) }}</span>
@@ -826,25 +946,37 @@ onUnmounted(() => {
                   </div>
                 </td>
               </tr>
+              <tr v-if="!pagedMessages.length"><td colspan="6"><div class="terminal-empty">没有符合条件的留言</div></td></tr>
             </tbody></table></div>
+            <TerminalPagination
+              :current="messageCurrentPage"
+              :total-pages="messageTotalPages"
+              :total-items="filteredMessages.length"
+              :page-size="terminal.messagePageSize"
+              item-label="条留言"
+              aria-label="留言分页"
+              @change="terminal.messagePage = $event"
+            />
           </div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'users'">
-            <div class="terminal-panel-head"><h2>用户管理</h2></div>
             <div class="terminal-toolbar terminal-users-toolbar">
-              <input
-                v-model="terminal.userSearch"
-                type="search"
-                name="terminal-filter-q"
-                autocomplete="off"
-                autocapitalize="off"
-                autocorrect="off"
-                spellcheck="false"
-                data-form-type="other"
-                data-lpignore="true"
-                data-1p-ignore="true"
-                placeholder="搜索用户名、邮箱、角色或 ID"
-              >
+              <label class="terminal-search-field">
+                <TsIcon name="search" :size="16" aria-hidden="true" />
+                <input
+                  v-model="terminal.userSearch"
+                  type="search"
+                  name="terminal-filter-q"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  data-form-type="other"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  placeholder="搜索用户名、邮箱、角色或 ID"
+                >
+              </label>
               <label class="terminal-page-size">
                 <span>每页</span>
                 <select v-model.number="terminal.userPageSize">
@@ -903,35 +1035,24 @@ onUnmounted(() => {
                 <td><button class="danger-btn" type="button" :disabled="!canManageAccounts || item.role === 'admin' || item.username === 'admin'" @click="deleteUser(item.id)">删除</button></td>
               </tr>
             </tbody></table></div>
-            <nav v-if="filteredUsers.length" class="terminal-pagination" aria-label="Users pagination">
-              <div class="terminal-pagination-info">第 {{ userCurrentPage }} 页 / 共 {{ userTotalPages }} 页</div>
-              <div class="terminal-pagination-controls">
-                <button class="terminal-page-btn terminal-page-nav" type="button" :disabled="userCurrentPage <= 1" @click="setUserPage(userCurrentPage - 1)">上一页</button>
-                <template v-for="item in userPageItems" :key="item">
-                  <span v-if="isUserPageGap(item)" class="terminal-page-gap">...</span>
-                  <button
-                    v-else
-                    class="terminal-page-btn"
-                    :class="{ active: item === userCurrentPage }"
-                    type="button"
-                    :aria-current="item === userCurrentPage ? 'page' : undefined"
-                    @click="setUserPage(item)"
-                  >
-                    {{ item }}
-                  </button>
-                </template>
-                <button class="terminal-page-btn terminal-page-nav" type="button" :disabled="userCurrentPage >= userTotalPages" @click="setUserPage(userCurrentPage + 1)">下一页</button>
-              </div>
-            </nav>
+            <TerminalPagination
+              :current="userCurrentPage"
+              :total-pages="userTotalPages"
+              :total-items="filteredUsers.length"
+              :page-size="terminal.userPageSize"
+              item-label="名用户"
+              aria-label="用户分页"
+              @change="setUserPage"
+            />
           </div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'account'">
-            <div class="terminal-panel-head"><h2>账号密码管理</h2></div>
             <div class="terminal-account-grid">
               <article class="terminal-card terminal-account-card">
-                <strong>当前管理员</strong>
-                <span>{{ terminal.admin?.username }}</span>
-                <p>角色：{{ terminal.admin?.role }}。角色变更、用户密码重置等敏感操作仅 super_admin 开放。</p>
+                <span class="terminal-account-icon"><TsIcon name="shield" :size="20" /></span>
+                <small>当前管理员</small>
+                <strong>{{ terminal.admin?.username }}</strong>
+                <span class="terminal-badge ok">{{ terminal.admin?.role }}</span>
               </article>
               <form class="terminal-card terminal-password-card" @submit.prevent="saveAdminPassword">
                 <strong>修改管理员密码</strong>
@@ -945,7 +1066,7 @@ onUnmounted(() => {
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'links'">
             <div class="terminal-panel-head terminal-review-head">
-              <div><h2>友链审核</h2><p>核对站点信息后决定是否收录。</p></div>
+              <div><h2>审核队列</h2><p>核对站点信息与回链后决定是否收录</p></div>
               <button class="ghost-btn" type="button" @click="$emit('go', '/friend-links')"><TsIcon name="external" :size="16" />查看公开页</button>
             </div>
             <form class="terminal-link-create" :aria-busy="terminal.linkCreating" @submit.prevent="createLink">
@@ -971,7 +1092,7 @@ onUnmounted(() => {
               <button type="button" :class="{ active: terminal.linkReviewFilter === 'all' }" @click="terminal.linkReviewFilter = 'all'">全部 <span>{{ linkReviewCounts.all }}</span></button>
             </div>
             <div class="terminal-table-wrap terminal-review-table"><table><thead><tr><th>站点</th><th>申请人</th><th>简介</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
-              <tr v-for="item in filteredReviewLinks" :key="item.id">
+              <tr v-for="item in pagedReviewLinks" :key="item.id">
                 <td><div class="terminal-link-site"><span class="terminal-link-avatar" aria-hidden="true"><span>{{ item.name?.slice(0, 1) || '?' }}</span><img v-if="item.avatar_url" :src="item.avatar_url" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true"></span><div><strong>{{ item.name }}</strong><a :href="item.url" :title="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></div></div></td>
                 <td>{{ item.applicant_username || '管理员' }}<br><small v-if="item.applicant_email">{{ item.applicant_email }}</small></td>
                 <td>{{ item.description || '—' }}<br><a v-if="item.backlink_url" :href="item.backlink_url" target="_blank" rel="noopener noreferrer">检查回链</a><small v-if="item.note" class="terminal-review-note">{{ item.note }}</small></td>
@@ -981,20 +1102,27 @@ onUnmounted(() => {
               </tr>
               <tr v-if="!filteredReviewLinks.length"><td colspan="6"><div class="terminal-empty">当前筛选下没有友链申请</div></td></tr>
             </tbody></table></div>
+            <TerminalPagination
+              :current="linkCurrentPage"
+              :total-pages="linkTotalPages"
+              :total-items="filteredReviewLinks.length"
+              :page-size="terminal.linkPageSize"
+              item-label="条友链"
+              aria-label="友链分页"
+              @change="terminal.linkPage = $event"
+            />
           </div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'analytics'">
-            <div class="terminal-panel-head"><h2>访问统计</h2></div>
             <div class="terminal-cards">
-              <div class="terminal-card"><strong>今日访问</strong><span>{{ terminal.analytics.todayViews || 0 }}</span></div>
-              <div class="terminal-card"><strong>7 日访问</strong><span>{{ terminal.analytics.weekViews || 0 }}</span></div>
-              <div class="terminal-card"><strong>30 日访问</strong><span>{{ terminal.analytics.monthViews || 0 }}</span></div>
-              <div class="terminal-card"><strong>总访问</strong><span>{{ terminal.analytics.totalViews || 0 }}</span></div>
+              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon success"><TsIcon name="eye" :size="18" /></span><span class="terminal-stat-copy"><small>今日访问</small><strong>{{ terminal.analytics.todayViews || 0 }}</strong></span></div>
+              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon"><TsIcon name="calendar" :size="18" /></span><span class="terminal-stat-copy"><small>7 日访问</small><strong>{{ terminal.analytics.weekViews || 0 }}</strong></span></div>
+              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon purple"><TsIcon name="layers" :size="18" /></span><span class="terminal-stat-copy"><small>30 日访问</small><strong>{{ terminal.analytics.monthViews || 0 }}</strong></span></div>
+              <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon warning"><TsIcon name="sparkles" :size="18" /></span><span class="terminal-stat-copy"><small>总访问</small><strong>{{ terminal.analytics.totalViews || 0 }}</strong></span></div>
             </div>
           </div>
 
           <form v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'settings'" class="terminal-settings" :aria-busy="terminal.ossTest.loading || terminal.ossImport.loading || terminal.ossImport.scanning" @submit.prevent="saveSettings">
-            <div class="terminal-panel-head"><h2>系统配置</h2></div>
             <div class="terminal-settings-block terminal-settings-grid">
               <div class="terminal-settings-title">
                 <strong>基础信息</strong>
