@@ -16,7 +16,7 @@ const overseasGameHost = typeof window !== 'undefined'
 // Keep the encoded domestic URL so Ali CDN uses a fresh immutable cache key.
 const defaultGameUrl = overseasGameHost
   ? '/game-runtime/kaguya-run-ef04c26b4900-r6.html'
-  : '/game-runtime/kaguya-run-ef04c26b4900-%72%36.%68tml';
+  : '/game-runtime/kaguya-run-ef04c26b4900-%72%33.ht%6dl';
 const GAME_URL = String(import.meta.env.VITE_KAGUYA_GAME_URL || defaultGameUrl).trim();
 const ORIGINAL_AUTHOR_URL = 'https://www.bilibili.com/video/BV1Bmgx6aEvJ/';
 const LOAD_TIMEOUT_MS = 120000;
