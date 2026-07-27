@@ -359,6 +359,14 @@ describe('frontend navigation routes', () => {
         assert.match(plaza, /viewer_liked/);
     });
 
+    it('keeps the Hub hero light in light mode while preserving the dark theme artwork', () => {
+        const hub = source('assets/css/vue/pages/hub.css');
+        const polish = source('assets/css/vue/product-polish.css');
+
+        assert.match(hub, /html\[data-theme="light"\] body \.page\.hub \.hub-hero-panel::before\s*\{[\s\S]*rgba\(250, 253, 255, 0\.94\)/);
+        assert.match(polish, /html:not\(\[data-theme="light"\]\) body \.page\.hub \.hub-hero-panel::before/);
+    });
+
     it('uses path-level cache busting for every mutable public content read', () => {
         const client = source('src/frontend/api/client.js');
         const app = source('backend/app.js');

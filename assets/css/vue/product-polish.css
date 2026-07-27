@@ -635,7 +635,7 @@ body .page.hub .hub-character img {
     object-position: 58% 50%;
 }
 
-body .page.hub .hub-hero-panel::before {
+html:not([data-theme="light"]) body .page.hub .hub-hero-panel::before {
     background:
         linear-gradient(108deg, rgba(7, 12, 26, 0.94) 0%, rgba(10, 19, 40, 0.76) 40%, rgba(15, 20, 44, 0.42) 66%, rgba(10, 12, 28, 0.78) 100%),
         radial-gradient(ellipse at 70% 18%, rgba(174, 242, 255, 0.16), transparent 36%),
