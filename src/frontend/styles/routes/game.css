@@ -205,9 +205,21 @@
 }
 
 .game-rank-list {
+  max-height: clamp(14rem, 48svh, 34rem);
   margin: 0;
   padding: 0.25rem 0.65rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
   list-style: none;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.game-rank-list:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: -2px;
 }
 
 .game-rank-list li {
@@ -218,6 +230,8 @@
   gap: 0.5rem;
   align-items: center;
   border-bottom: 1px solid color-mix(in srgb, var(--ts-border), transparent 34%);
+  content-visibility: auto;
+  contain-intrinsic-block-size: 48px;
 }
 
 .game-rank-list li:last-child {
@@ -409,11 +423,6 @@
     width: 100%;
   }
 
-  .game-rank-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 1rem;
-  }
 }
 
 @media (max-width: 460px) {

@@ -22,6 +22,7 @@ const ORIGINAL_AUTHOR_URL = 'https://www.bilibili.com/video/BV1Bmgx6aEvJ/';
 const LOAD_TIMEOUT_MS = 120000;
 const SCORE_SAVE_INTERVAL_MS = 15000;
 const SCORE_SAVE_STEP = 250;
+const LEADERBOARD_PAGE_SIZE = 50;
 const frame = ref(null);
 const stage = ref(null);
 const loading = ref(true);
@@ -40,6 +41,7 @@ let lastSubmittedScore = 0;
 let lastScoreSaveAt = 0;
 let scoreSaving = false;
 let resumeSiteMusic = false;
+let leaderboardRefreshId = 0;
 
 const sessionUser = computed(() => props.user || getSession()?.user || null);
 const currentUserId = computed(() => String(sessionUser.value?.id || ''));
@@ -76,14 +78,44 @@ function applyLeaderboard(data) {
 }
 
 async function refreshLeaderboard() {
+  const refreshId = ++leaderboardRefreshId;
   leaderboardLoading.value = true;
   leaderboardError.value = false;
   try {
-    applyLeaderboard(await loadKaguyaLeaderboard({ limit: 10 }));
+    const firstPage = await loadKaguyaLeaderboard({
+      page: 1,
+      limit: LEADERBOARD_PAGE_SIZE
+    });
+    const entriesByUser = new Map(
+      (Array.isArray(firstPage?.entries) ? firstPage.entries : [])
+        .map((entry) => [String(entry?.userId || ''), entry])
+    );
+    let totalPages = Math.max(1, Number(firstPage?.totalPages) || 1);
+
+    for (let page = 2; page <= totalPages; page += 1) {
+      const nextPage = await loadKaguyaLeaderboard({
+        page,
+        limit: LEADERBOARD_PAGE_SIZE
+      });
+      if (refreshId !== leaderboardRefreshId) return;
+      for (const entry of Array.isArray(nextPage?.entries) ? nextPage.entries : []) {
+        entriesByUser.set(String(entry?.userId || ''), entry);
+      }
+      totalPages = Math.max(totalPages, Number(nextPage?.totalPages) || 1);
+    }
+
+    if (refreshId !== leaderboardRefreshId) return;
+    applyLeaderboard({
+      ...firstPage,
+      entries: [...entriesByUser.values()].sort((left, right) => (
+        (Number(left?.rank) || Number.MAX_SAFE_INTEGER)
+        - (Number(right?.rank) || Number.MAX_SAFE_INTEGER)
+      ))
+    });
   } catch (_) {
-    leaderboardError.value = true;
+    if (refreshId === leaderboardRefreshId) leaderboardError.value = true;
   } finally {
-    leaderboardLoading.value = false;
+    if (refreshId === leaderboardRefreshId) leaderboardLoading.value = false;
   }
 }
 
@@ -106,8 +138,8 @@ async function flushScore() {
       bestScore.value = Math.max(bestScore.value, Number(result.current.score) || 0);
       currentRank.value = Number(result.current.rank) || 0;
     }
-    if (result?.leaderboard) applyLeaderboard(result.leaderboard);
     lastSubmittedScore = Math.max(lastSubmittedScore, score);
+    refreshLeaderboard();
   } catch (_) {
     scheduleScoreSave(12000);
   } finally {
@@ -182,6 +214,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  leaderboardRefreshId += 1;
   window.clearTimeout(loadTimer);
   window.clearTimeout(scoreSaveTimer);
   window.removeEventListener('message', handleGameScore);
@@ -267,7 +300,7 @@ watch(currentUserId, (nextUserId, previousUserId) => {
         </div>
         <p v-else-if="leaderboardError && !leaderboard.length" class="game-rank-state" role="alert">{{ copy.leaderboardUnavailable }}</p>
         <p v-else-if="!leaderboard.length" class="game-rank-state">{{ copy.empty }}</p>
-        <ol v-else class="game-rank-list">
+        <ol v-else class="game-rank-list" :aria-label="copy.leaderboard" tabindex="0">
           <li
             v-for="player in leaderboard"
             :key="player.userId"

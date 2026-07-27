@@ -405,6 +405,66 @@ test('desktop pixel controls scroll independently from the page', async ({ page 
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
+test('game leaderboard loads every score into a vertical scroll region', async ({ page }) => {
+    const players = Array.from({ length: 63 }, (_, index) => ({
+        rank: index + 1,
+        userId: `game-player-${index + 1}`,
+        username: `Player ${index + 1}`,
+        avatar: '',
+        score: 100000 - index * 137,
+        updatedAt: '2026-07-27T00:00:00.000Z'
+    }));
+    const requestedPages = [];
+
+    await page.route('**/api/growth/game/leaderboard?*', async (route) => {
+        const url = new URL(route.request().url());
+        const pageNumber = Number(url.searchParams.get('page')) || 1;
+        const limit = Number(url.searchParams.get('limit')) || 10;
+        requestedPages.push(pageNumber);
+        await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                success: true,
+                data: {
+                    entries: players.slice((pageNumber - 1) * limit, pageNumber * limit),
+                    current: null,
+                    page: pageNumber,
+                    pageSize: limit,
+                    total: players.length,
+                    totalPages: Math.ceil(players.length / limit)
+                }
+            })
+        });
+    });
+    await page.route('**/game-runtime/**', (route) => route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<!doctype html><title>Game fixture</title>'
+    }));
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/game');
+
+    const list = page.locator('.game-rank-list');
+    await expect(list.locator('li')).toHaveCount(players.length);
+    expect(requestedPages).toEqual([1, 2]);
+
+    const metrics = await list.evaluate((element) => ({
+        clientHeight: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+        overflowY: getComputedStyle(element).overflowY,
+        touchAction: getComputedStyle(element).touchAction
+    }));
+    expect(metrics.overflowY).toBe('auto');
+    expect(metrics.touchAction).toBe('pan-y');
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+
+    await list.hover();
+    await page.mouse.wheel(0, 600);
+    await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+});
+
 test('admin can open the terminal dashboard and user panel', async ({ page }) => {
     await loginAsUser(page);
     const pendingMessage = `E2E terminal moderation 政治 ${Date.now()}`;

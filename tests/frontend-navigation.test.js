@@ -234,6 +234,7 @@ describe('frontend navigation routes', () => {
         const router = source('src/frontend/router/index.js');
         const shell = source('src/frontend/layouts/AppShell.vue');
         const game = source('src/frontend/pages/GamePage.vue');
+        const gameCss = source('src/frontend/styles/routes/game.css');
         const staticMiddleware = source('backend/middleware/static.js');
 
         assert.match(router, /path: '\/game',\s*name: 'game',\s*component: GamePage/);
@@ -250,7 +251,12 @@ describe('frontend navigation routes', () => {
         assert.match(game, /tsukuyomi:kaguya-score/);
         assert.match(game, /loadKaguyaLeaderboard/);
         assert.match(game, /submitKaguyaScore/);
-        assert.match(game, /class="game-rank-list"/);
+        assert.match(game, /LEADERBOARD_PAGE_SIZE = 50/);
+        assert.match(game, /for \(let page = 2; page <= totalPages; page \+= 1\)/);
+        assert.match(game, /loadKaguyaLeaderboard\(\{\s*page,\s*limit: LEADERBOARD_PAGE_SIZE\s*\}\)/);
+        assert.match(game, /class="game-rank-list"[^>]+tabindex="0"/);
+        assert.match(gameCss, /\.game-rank-list\s*\{[\s\S]*max-height:[\s\S]*overflow-y: auto;[\s\S]*touch-action: pan-y;/);
+        assert.match(gameCss, /content-visibility: auto;/);
         assert.match(staticMiddleware, /'\/game'/);
     });
 
