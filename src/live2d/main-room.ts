@@ -6,6 +6,11 @@ import { CubismFramework, Option } from '@framework/live2dcubismframework';
 import * as LAppDefine from './lappdefine';
 import { LAppPal } from './lapppal';
 import { LAppSubdelegate } from './lappsubdelegate';
+import {
+  computeRoomFrameInterval,
+  roomBaseFrameInterval,
+  roomFramePacingSnapshot
+} from './room-frame-pacing.mjs';
 
 type RoomLive2DState = {
   canvas: HTMLCanvasElement;
@@ -28,17 +33,9 @@ type RoomLive2DState = {
 
 let roomState: RoomLive2DState | null = null;
 
-const ROOM_RENDER_FRAME_INTERVAL_MS = 1000 / 60;
-const ROOM_RENDER_BALANCED_MAX_FRAME_INTERVAL_MS = 1000 / 45;
-const ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS = 1000 / 20;
 const ROOM_RENDER_FRAME_TOLERANCE_MS = 1;
-const ROOM_RENDER_HEADROOM_RATIO = 1.35;
-
-function roomRenderMaxFrameInterval(): number {
-  return (window as any).TSUKUYOMI_PERFORMANCE_PROFILE === 'reduced'
-    ? ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS
-    : ROOM_RENDER_BALANCED_MAX_FRAME_INTERVAL_MS;
-}
+const ROOM_POINTER_ACTIVITY_MS = 900;
+const ROOM_SPEECH_ACTIVITY_MS = 420;
 
 const allowedExpressions = new Set(['neutral', 'smile', 'bsmile', 'namida', 'tears']);
 const allowedTapBodyMotions = new Set(['tap_body', 'body_tap', 'tapbody']);
@@ -250,9 +247,20 @@ function initRoomLive2D(): void {
   let pointerActive = false;
   let pendingPointer: { pageX: number; pageY: number } | null = null;
   let lastRenderAt = 0;
-  let targetFrameInterval = ROOM_RENDER_FRAME_INTERVAL_MS;
+  let activityBoostUntil = 0;
+  let targetFrameInterval = roomBaseFrameInterval(
+    (window as any).TSUKUYOMI_PERFORMANCE_PROFILE,
+    false
+  );
   let averageRenderCost = 0;
   let framePacingUpdatedAt = 0;
+
+  const markRenderActivity = (durationMs: number): void => {
+    activityBoostUntil = Math.max(
+      activityBoostUntil,
+      performance.now() + Math.max(ROOM_SPEECH_ACTIVITY_MS, durationMs)
+    );
+  };
 
   const trackPointer = (pageX: number, pageY: number): void => {
     subdelegate.onPointMoved(pageX, pageY);
@@ -277,12 +285,14 @@ function initRoomLive2D(): void {
     if (isPointerControlDisabled()) return;
     pointerActive = isEventInsideNode(event, container);
     if (pointerActive) {
+      markRenderActivity(ROOM_POINTER_ACTIVITY_MS);
       subdelegate.onPointBegan(event.pageX, event.pageY);
       queuePointer(event.pageX, event.pageY);
     }
   };
   const onPointerMove = (event: PointerEvent): void => {
     if (isPointerControlDisabled() || !pointerActive) return;
+    markRenderActivity(ROOM_POINTER_ACTIVITY_MS);
     queuePointer(event.pageX, event.pageY);
   };
   const onPointerUp = (event: PointerEvent): void => {
@@ -305,6 +315,7 @@ function initRoomLive2D(): void {
     if (!touch) return;
     pointerActive = isEventInsideNode(event as unknown as PointerEvent, container);
     if (pointerActive) {
+      markRenderActivity(ROOM_POINTER_ACTIVITY_MS);
       subdelegate.onPointBegan(touch.pageX, touch.pageY);
       queuePointer(touch.pageX, touch.pageY);
     }
@@ -312,7 +323,10 @@ function initRoomLive2D(): void {
   const onTouchMove = (event: TouchEvent): void => {
     if ('PointerEvent' in window || isPointerControlDisabled()) return;
     const touch = firstChangedTouch(event);
-    if (touch && pointerActive) queuePointer(touch.pageX, touch.pageY);
+    if (touch && pointerActive) {
+      markRenderActivity(ROOM_POINTER_ACTIVITY_MS);
+      queuePointer(touch.pageX, touch.pageY);
+    }
   };
   const onTouchEnd = (event: TouchEvent): void => {
     if ('PointerEvent' in window || isPointerControlDisabled()) {
@@ -342,6 +356,7 @@ function initRoomLive2D(): void {
     };
     const manager = subdelegate.getLive2DManager();
     if (!manager) return;
+    markRenderActivity(normalizeDuration(detail.durationMs));
     if (roomState) {
       roomState.actionTimers.forEach((timer) => window.clearTimeout(timer));
       roomState.actionTimers = [];
@@ -379,6 +394,7 @@ function initRoomLive2D(): void {
     const manager = subdelegate.getLive2DManager();
     if (!manager) return;
     const value = Math.min(Math.max(Number(detail.value) || 0, 0), 1);
+    if (value > 0.015) markRenderActivity(ROOM_SPEECH_ACTIVITY_MS);
     manager.setMouthOpen(value);
   };
   const setBehaviorFrame = (parameters: unknown): void => {
@@ -430,20 +446,24 @@ function initRoomLive2D(): void {
         averageRenderCost = averageRenderCost
           ? averageRenderCost * 0.9 + renderCost * 0.1
           : renderCost;
-        const desiredInterval = clampNumber(
-          averageRenderCost * ROOM_RENDER_HEADROOM_RATIO,
-          ROOM_RENDER_FRAME_INTERVAL_MS,
-          roomRenderMaxFrameInterval(),
-          ROOM_RENDER_FRAME_INTERVAL_MS
-        );
-        targetFrameInterval = targetFrameInterval * 0.86 + desiredInterval * 0.14;
+        const profile = (window as any).TSUKUYOMI_PERFORMANCE_PROFILE || 'balanced';
+        const active = performance.now() < activityBoostUntil;
+        targetFrameInterval = computeRoomFrameInterval({
+          profile,
+          active,
+          averageRenderCostMs: averageRenderCost,
+          renderCostMs: renderCost,
+          currentIntervalMs: targetFrameInterval
+        });
         if (now - framePacingUpdatedAt >= 1000) {
           framePacingUpdatedAt = now;
-          (window as any).TSUKUYOMI_LIVE2D_FRAME_PACING = {
-            targetFps: Math.round(1000 / targetFrameInterval),
-            averageRenderCostMs: Math.round(averageRenderCost * 100) / 100,
-            profile: (window as any).TSUKUYOMI_PERFORMANCE_PROFILE || 'balanced'
-          };
+          (window as any).TSUKUYOMI_LIVE2D_FRAME_PACING = roomFramePacingSnapshot({
+            profile,
+            active,
+            targetIntervalMs: targetFrameInterval,
+            averageRenderCostMs: averageRenderCost,
+            renderCostMs: renderCost
+          });
         }
       }
     } else {

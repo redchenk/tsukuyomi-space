@@ -294,6 +294,7 @@ const toast = reactive({
   text: '',
   visible: false
 });
+const pixelCanvasRef = ref(null);
 
 let toastTimer = 0;
 let activePaintColorIndex = -1;
@@ -301,7 +302,6 @@ let canvasPanState = null;
 let canvasFitObserver = null;
 let canvasFitFrame = 0;
 let strokePixels = null;
-let strokeCommitFrame = 0;
 
 const isAuthed = computed(() => Boolean(session.value));
 const activeTool = computed(() => isSpacePanning.value ? 'move' : tool.value);
@@ -446,32 +446,16 @@ function blankPixels(width = canvasWidth.value, height = canvasHeight.value) {
   return Array(width * height).fill(-1);
 }
 
-function cancelStrokeCommit() {
-  if (!strokeCommitFrame) return;
-  window.cancelAnimationFrame(strokeCommitFrame);
-  strokeCommitFrame = 0;
-}
-
 function commitStrokePixels() {
   if (!strokePixels) return;
   pixels.value = [...strokePixels];
 }
 
-function scheduleStrokeCommit() {
-  if (strokeCommitFrame) return;
-  strokeCommitFrame = window.requestAnimationFrame(() => {
-    strokeCommitFrame = 0;
-    commitStrokePixels();
-  });
-}
-
 function flushStrokeCommit() {
-  cancelStrokeCommit();
   commitStrokePixels();
 }
 
 function discardStrokeBuffer() {
-  cancelStrokeCommit();
   strokePixels = null;
 }
 
@@ -683,17 +667,19 @@ function paintBrushPath(payload, colorIndex) {
 
   const next = strokePixels || [...pixels.value];
   let changed = false;
+  const pixelChanges = [];
   for (const sample of source) {
     for (const targetIndex of brushTargetIndices(sample.index, pressureBrushSize(sample))) {
       if (next[targetIndex] === colorIndex) continue;
       next[targetIndex] = colorIndex;
+      pixelChanges.push({ index: targetIndex, colorIndex });
       changed = true;
     }
   }
 
   if (!changed) return;
   if (strokePixels) {
-    scheduleStrokeCommit();
+    pixelCanvasRef.value?.renderPixelChanges(pixelChanges);
   } else {
     pixels.value = next;
   }
@@ -1323,7 +1309,6 @@ onBeforeUnmount(() => {
   canvasFitObserver?.disconnect();
   canvasFitObserver = null;
   if (canvasFitFrame) window.cancelAnimationFrame(canvasFitFrame);
-  cancelStrokeCommit();
   clearTimeout(toastTimer);
 });
 </script>
@@ -1375,6 +1360,7 @@ onBeforeUnmount(() => {
               @dragstart.prevent
             >
               <PixelCanvasCells
+                ref="pixelCanvasRef"
                 :pixels="pixels"
                 :palette="activePalette"
                 :width="canvasWidth"
@@ -1595,6 +1581,7 @@ onBeforeUnmount(() => {
               :background-color="artworkBackground(artwork)"
               :show-grid="false"
               :interactive="false"
+              defer-offscreen
               :aria-label="artwork.title || copy.gallery"
             />
           </button>

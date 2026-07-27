@@ -276,6 +276,17 @@ test('Wiki page keeps spoilers collapsed and exposes interactive entry points', 
   assert.match(page, /非官方网站/);
 });
 
+test('Wiki navigation uses cached geometry and binary search while scrolling', () => {
+  const page = read('src/frontend/pages/WikiPage.vue');
+
+  assert.match(page, /let sectionGeometry = \[\]/);
+  assert.match(page, /function refreshSectionGeometry\(\)/);
+  assert.match(page, /top: scrollTop \+ section\.getBoundingClientRect\(\)\.top/);
+  assert.match(page, /while \(low <= high\)/);
+  assert.match(page, /new ResizeObserver\(queueSectionGeometryRefresh\)/);
+  assert.doesNotMatch(page, /for \(const section of trackedSections\)[\s\S]{0,300}getBoundingClientRect/);
+});
+
 test('Wiki assets and original content module are present', () => {
   const data = read('src/frontend/data/cosmicKaguyaWiki.js');
   const expectedAssets = [

@@ -3343,8 +3343,8 @@ body .page.arena-page .arena-gallery-pager span {
         display: flex;
         flex-wrap: wrap;
         justify-content: flex-end;
-        gap: 0.5rem;
-        padding: 0.58rem;
+        gap: 0.3rem;
+        padding: 0.45rem;
     }
 
     body .page.arena-page .pixel-art-actions .icon-btn {

@@ -53,6 +53,12 @@ export class csmVector<T> {
     return ret;
   }
 
+  public getRange(offset: number, count: number): T[] {
+    const start = Math.max(0, offset);
+    const end = Math.min(this._size, start + Math.max(0, count));
+    return this._ptr.slice(start, end);
+  }
+
   /**
    * pushBack処理、コンテナに新たな要素を追加する
    * @param value PushBack処理で追加する値

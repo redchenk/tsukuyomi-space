@@ -38,7 +38,10 @@ const termCloseButton = ref(null);
 const termDrawer = ref(null);
 let topObserver = null;
 let trackedSections = [];
+let sectionGeometry = [];
 let sectionSyncFrame = 0;
+let sectionGeometryFrame = 0;
+let articleResizeObserver = null;
 let lastTermTrigger = null;
 let previousBodyOverflow = '';
 
@@ -138,21 +141,29 @@ function scrollToInitialHash() {
 
 function syncActiveSection() {
   sectionSyncFrame = 0;
-  if (!trackedSections.length) return;
+  if (!sectionGeometry.length) return;
 
-  const anchor = window.innerHeight * SECTION_ANCHOR_RATIO;
-  let nextSection = trackedSections[0];
-  for (const section of trackedSections) {
-    if (section.getBoundingClientRect().top > anchor) break;
-    nextSection = section;
+  const anchor = window.scrollY + window.innerHeight * SECTION_ANCHOR_RATIO;
+  let low = 0;
+  let high = sectionGeometry.length - 1;
+  let activeIndex = 0;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    if (sectionGeometry[middle].top <= anchor) {
+      activeIndex = middle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
   }
 
   const root = document.documentElement;
   if (window.scrollY + window.innerHeight >= root.scrollHeight - 2) {
-    nextSection = trackedSections.at(-1);
+    activeIndex = sectionGeometry.length - 1;
   }
-  if (nextSection?.id && activeSection.value !== nextSection.id) {
-    activeSection.value = nextSection.id;
+  const nextSectionId = sectionGeometry[activeIndex]?.id;
+  if (nextSectionId && activeSection.value !== nextSectionId) {
+    activeSection.value = nextSectionId;
   }
 }
 
@@ -161,11 +172,35 @@ function queueActiveSectionSync() {
   sectionSyncFrame = window.requestAnimationFrame(syncActiveSection);
 }
 
+function refreshSectionGeometry() {
+  sectionGeometryFrame = 0;
+  const scrollTop = window.scrollY;
+  sectionGeometry = trackedSections
+    .map((section) => ({
+      id: section.id,
+      top: scrollTop + section.getBoundingClientRect().top
+    }))
+    .sort((left, right) => left.top - right.top);
+  queueActiveSectionSync();
+}
+
+function queueSectionGeometryRefresh() {
+  if (sectionGeometryFrame) return;
+  sectionGeometryFrame = window.requestAnimationFrame(refreshSectionGeometry);
+}
+
 onMounted(() => {
   trackedSections = Array.from(document.querySelectorAll('[data-wiki-section]'));
   window.addEventListener('scroll', queueActiveSectionSync, { passive: true });
-  window.addEventListener('resize', queueActiveSectionSync, { passive: true });
-  queueActiveSectionSync();
+  window.addEventListener('resize', queueSectionGeometryRefresh, { passive: true });
+  window.addEventListener('load', queueSectionGeometryRefresh, { passive: true, once: true });
+  queueSectionGeometryRefresh();
+
+  const article = document.getElementById('wiki-article');
+  if (article && typeof ResizeObserver === 'function') {
+    articleResizeObserver = new ResizeObserver(queueSectionGeometryRefresh);
+    articleResizeObserver.observe(article);
+  }
 
   if (topSentinel.value) {
     topObserver = new IntersectionObserver(([entry]) => {
@@ -180,10 +215,16 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', queueActiveSectionSync);
-  window.removeEventListener('resize', queueActiveSectionSync);
+  window.removeEventListener('resize', queueSectionGeometryRefresh);
+  window.removeEventListener('load', queueSectionGeometryRefresh);
   if (sectionSyncFrame) window.cancelAnimationFrame(sectionSyncFrame);
+  if (sectionGeometryFrame) window.cancelAnimationFrame(sectionGeometryFrame);
   sectionSyncFrame = 0;
+  sectionGeometryFrame = 0;
   trackedSections = [];
+  sectionGeometry = [];
+  articleResizeObserver?.disconnect();
+  articleResizeObserver = null;
   topObserver?.disconnect();
   document.removeEventListener('keydown', handleKeydown);
   document.body.style.overflow = previousBodyOverflow;

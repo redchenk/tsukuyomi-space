@@ -16,10 +16,15 @@ const isEnglishSite = import.meta.env.VITE_SITE_LANGUAGE === 'en';
 const siteLanguage = computed(() => isEnglishSite ? 'en' : props.lang);
 const { hydrateUserLevels, userLevel } = useUserLevels();
 const fileInput = ref(null);
+const galleryMainRef = ref(null);
 const session = ref(getSession());
 let randomFeatureTimer = 0;
 let randomFeatureTransitionTimer = 0;
 let randomFeatureRequestId = 0;
+let randomFeatureObserver = null;
+let randomFeatureVisible = true;
+
+const RANDOM_FEATURE_INTERVAL_MS = 30000;
 
 const state = reactive({
   loading: true,
@@ -181,6 +186,8 @@ async function loadRandomFeatureImage() {
     await hydrateUserLevels(assets.map((asset) => asset.owner_id)).catch(() => {});
     const nextAsset = assets[0] || null;
     if (requestId !== randomFeatureRequestId) return;
+    if (nextAsset) await preloadImage(imageUrl(nextAsset));
+    if (requestId !== randomFeatureRequestId) return;
     if (!state.randomFeatured || !nextAsset || state.randomFeatured.id === nextAsset.id) {
       state.randomFeatured = nextAsset;
       return;
@@ -198,6 +205,54 @@ async function loadRandomFeatureImage() {
     state.randomFeatured = null;
     state.randomFeatureFading = false;
   }
+}
+
+function preloadImage(url) {
+  if (!url || typeof Image !== 'function') return Promise.resolve();
+  return new Promise((resolve) => {
+    const image = new Image();
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      resolve();
+    };
+    const timeoutId = window.setTimeout(finish, 8000);
+    image.onload = async () => {
+      try {
+        await image.decode?.();
+      } catch (_) {
+        // A decoded network image is still usable when decode() is unavailable.
+      }
+      finish();
+    };
+    image.onerror = finish;
+    image.src = url;
+  });
+}
+
+function stopRandomFeatureRotation() {
+  if (randomFeatureTimer) window.clearInterval(randomFeatureTimer);
+  randomFeatureTimer = 0;
+}
+
+function startRandomFeatureRotation() {
+  stopRandomFeatureRotation();
+  if (
+    isManageMode.value ||
+    document.visibilityState !== 'visible' ||
+    !randomFeatureVisible
+  ) return;
+  randomFeatureTimer = window.setInterval(() => {
+    if (document.visibilityState === 'visible' && randomFeatureVisible) {
+      loadRandomFeatureImage();
+    }
+  }, RANDOM_FEATURE_INTERVAL_MS);
+}
+
+function handleGalleryVisibility() {
+  startRandomFeatureRotation();
 }
 
 async function loadImages(page = 1) {
@@ -353,13 +408,27 @@ onMounted(() => {
   session.value = getSession();
   loadLatestImage();
   loadRandomFeatureImage();
-  randomFeatureTimer = window.setInterval(loadRandomFeatureImage, 7000);
   loadImages();
+  document.addEventListener('visibilitychange', handleGalleryVisibility, { passive: true });
+  if (typeof IntersectionObserver === 'function' && galleryMainRef.value) {
+    randomFeatureObserver = new IntersectionObserver((entries) => {
+      randomFeatureVisible = entries.some((entry) => entry.isIntersecting);
+      startRandomFeatureRotation();
+    }, {
+      rootMargin: '500px 0px',
+      threshold: 0.01
+    });
+    randomFeatureObserver.observe(galleryMainRef.value);
+  }
+  startRandomFeatureRotation();
 });
 
 onUnmounted(() => {
-  if (randomFeatureTimer) window.clearInterval(randomFeatureTimer);
+  stopRandomFeatureRotation();
   if (randomFeatureTransitionTimer) window.clearTimeout(randomFeatureTransitionTimer);
+  document.removeEventListener('visibilitychange', handleGalleryVisibility);
+  randomFeatureObserver?.disconnect();
+  randomFeatureObserver = null;
 });
 </script>
 
@@ -376,7 +445,7 @@ onUnmounted(() => {
     </section>
 
     <template v-else>
-      <section class="gallery-main">
+      <section ref="galleryMainRef" class="gallery-main">
         <header class="gallery-hero" :class="{ 'gallery-hero-manage': isManageMode }" :style="{ '--gallery-hero-image': `url(${heroImage})` }">
           <div class="gallery-breadcrumb">首页 / 图库</div>
           <h1>图库</h1>

@@ -13,15 +13,18 @@ const props = defineProps({
   tool: { type: String, default: 'brush' },
   inputMode: { type: String, default: 'auto' },
   stabilizer: { type: Boolean, default: true },
+  deferOffscreen: { type: Boolean, default: false },
   ariaLabel: { type: String, default: 'pixel canvas' }
 });
 
 const emit = defineEmits(['begin-paint', 'continue-paint', 'end-paint', 'begin-pan', 'continue-pan', 'end-pan']);
 
 const canvasRef = ref(null);
+const renderReady = ref(!props.deferOffscreen);
 let activePointer = null;
 let renderFrame = 0;
 let lastPenAt = 0;
+let visibilityObserver = null;
 
 const PALM_REJECTION_MS = 850;
 const STABILIZER_BLEND = 0.62;
@@ -51,6 +54,7 @@ function canvasPixelHeight() {
 
 function renderCanvas() {
   renderFrame = 0;
+  if (!renderReady.value) return;
   const canvas = canvasRef.value;
   if (!canvas) return;
   const pixelWidth = canvasPixelWidth();
@@ -93,9 +97,91 @@ function renderCanvas() {
   }
 }
 
+function renderPixelChanges(changes) {
+  if (!renderReady.value || !Array.isArray(changes) || !changes.length) return;
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  const context = canvas.getContext('2d', { desynchronized: true });
+  if (!context) return;
+
+  const size = pixelSize();
+  const width = gridWidth();
+  const height = gridHeight();
+  const pixelWidth = canvasPixelWidth();
+  const pixelHeight = canvasPixelHeight();
+  const gridColor = 'rgba(20, 38, 45, 0.05)';
+  const uniqueChanges = new Map();
+  for (const change of changes) {
+    const index = Number(change?.index);
+    if (!Number.isInteger(index) || index < 0 || index >= width * height) continue;
+    uniqueChanges.set(index, Number(change?.colorIndex));
+  }
+
+  context.imageSmoothingEnabled = false;
+  for (const [index, colorIndex] of uniqueChanges) {
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const left = x * size;
+    const top = y * size;
+    const color = colorIndex >= 0 ? props.palette[colorIndex] : '';
+
+    context.clearRect(left, top, size, size);
+    if (color) {
+      context.fillStyle = color;
+      context.fillRect(left, top, size, size);
+    } else if (props.backgroundColor && props.backgroundColor !== 'transparent') {
+      context.fillStyle = props.backgroundColor;
+      context.fillRect(left, top, size, size);
+    }
+
+    if (props.showGrid && size >= 4) {
+      context.fillStyle = gridColor;
+      if (x > 0) context.fillRect(left, top, 1, size);
+      if (y > 0) context.fillRect(left, top, size, 1);
+      if (x + 1 < width) context.fillRect(left + size, top, 1, size);
+      if (y + 1 < height) context.fillRect(left, top + size, size, 1);
+    }
+  }
+
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+    renderCanvas();
+  }
+}
+
 function scheduleRender() {
-  if (renderFrame) return;
+  if (!renderReady.value || renderFrame) return;
   renderFrame = window.requestAnimationFrame(renderCanvas);
+}
+
+defineExpose({
+  renderPixelChanges
+});
+
+function enableRendering() {
+  if (renderReady.value) return;
+  renderReady.value = true;
+  visibilityObserver?.disconnect();
+  visibilityObserver = null;
+  scheduleRender();
+}
+
+function observeCanvasVisibility() {
+  if (!props.deferOffscreen) {
+    enableRendering();
+    return;
+  }
+  const canvas = canvasRef.value;
+  if (!canvas || typeof IntersectionObserver !== 'function') {
+    enableRendering();
+    return;
+  }
+  visibilityObserver = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) enableRendering();
+  }, {
+    rootMargin: '700px 0px',
+    threshold: 0.01
+  });
+  visibilityObserver.observe(canvas);
 }
 
 function clamp(value, min, max) {
@@ -275,10 +361,15 @@ watch(
   { flush: 'post' }
 );
 
-onMounted(renderCanvas);
+onMounted(() => {
+  if (renderReady.value) renderCanvas();
+  else observeCanvasVisibility();
+});
 
 onBeforeUnmount(() => {
   if (renderFrame) window.cancelAnimationFrame(renderFrame);
+  visibilityObserver?.disconnect();
+  visibilityObserver = null;
 });
 </script>
 
@@ -288,6 +379,7 @@ onBeforeUnmount(() => {
     class="pixel-canvas-renderer"
     :class="[
       { 'is-readonly': !props.interactive },
+      { 'is-render-pending': !renderReady },
       `is-tool-${props.tool}`
     ]"
     role="img"

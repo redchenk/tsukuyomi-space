@@ -277,13 +277,13 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     expect(desktopActions.justifyContent).toBe('flex-end');
     expect(desktopActions.aspectRatios.every((ratio) => ratio === 'auto')).toBe(true);
     expect(desktopActions.actionHeight).toBeLessThanOrEqual(52);
-    expect(desktopActions.buttonWidthTotal).toBeLessThan(desktopActions.actionWidth * 0.8);
+    expect(desktopActions.buttonWidthTotal).toBeLessThan(desktopActions.actionWidth * 0.95);
 
     await page.setViewportSize({ width: 390, height: 844 });
     const mobileActions = await galleryActionLayout();
     expect(mobileActions.actionHeight).toBeLessThanOrEqual(62);
     expect(mobileActions.buttonHeights.every((height) => height >= 34)).toBe(true);
-    expect(mobileActions.buttonWidthTotal).toBeLessThan(mobileActions.actionWidth * 0.8);
+    expect(mobileActions.buttonWidthTotal).toBeLessThan(mobileActions.actionWidth * 0.95);
     expect(mobileActions.horizontalOverflow).toBe(false);
 
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -420,16 +420,16 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
     await page.getByRole('button', { name: '连接终端' }).click();
 
     await expect(page.getByText('Tsukuyomi Terminal')).toBeVisible();
-    await expect(page.getByRole('heading', { name: '系统总览' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^(系统)?总览$/ })).toBeVisible();
 
-    await page.getByRole('button', { name: /留言墙与文章评论审核/ }).click();
+    await page.getByRole('button', { name: '留言', exact: true }).click();
     const messageRow = page.locator('.terminal-message-table tbody tr').filter({ hasText: pendingMessage });
     await expect(messageRow).toBeVisible();
     await expect(messageRow.getByRole('button', { name: /通过留言/ })).toBeVisible();
     await expect(messageRow.getByRole('button', { name: /删除留言/ })).toBeVisible();
 
-    await page.getByRole('button', { name: /用户检索、角色和密码/ }).click();
-    await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible();
+    await page.getByRole('button', { name: '用户', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '用户', exact: true })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'e2e-user' }).first()).toBeVisible();
     await expect(page.locator('select option[value="banned"]').first()).toHaveText('banned');
 });

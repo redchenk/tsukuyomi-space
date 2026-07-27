@@ -113,7 +113,7 @@ if [ "${BUILD_ON_SERVER:-false}" = "true" ]; then
     npm run build:live2d-studio
 fi
 
-for output in dist/frontend/index.html lib/bundled/live2d-room-neuro-live.iife.js lib/bundled/live2d-room-neuro-live.20260717-adaptive-perf-r8.iife.js dist/live2d-studio/index.html; do
+for output in dist/frontend/index.html lib/bundled/live2d-room-neuro-live.iife.js lib/bundled/live2d-room-neuro-live.20260727-adaptive-perf-r9.iife.js dist/live2d-studio/index.html; do
     [ -f "$output" ] || { echo "Missing prebuilt artifact: $output" >&2; exit 1; }
 done
 

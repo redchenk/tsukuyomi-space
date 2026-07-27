@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { applyRouteSeo } from '../utils/seo';
-import { isReducedPerformance, scheduleIdleTask } from '../utils/performance';
+import { isReducedPerformance, refreshPerformanceProbe, scheduleIdleTask } from '../utils/performance';
 
 function loadRoute(componentLoader, styleLoader) {
   let routePromise = null;
@@ -360,7 +360,8 @@ function warmRouteComponent(loader) {
 export function warmRoutePath(path) {
   if (typeof window === 'undefined' || document.visibilityState === 'hidden') return;
   const connection = window.navigator?.connection;
-  if (connection?.saveData || isReducedPerformance()) return;
+  const effectiveType = String(connection?.effectiveType || '').toLowerCase();
+  if (connection?.saveData || ['slow-2g', '2g'].includes(effectiveType)) return;
   try {
     const resolved = router.resolve(path);
     resolved.matched.forEach((record) => {
@@ -376,21 +377,31 @@ function scheduleRouteWarmup(to) {
   cancelPendingRouteWarmup?.();
   cancelPendingRouteWarmup = null;
   const connection = window.navigator?.connection;
-  if (connection?.saveData || isReducedPerformance() || document.visibilityState === 'hidden') return;
+  const effectiveType = String(connection?.effectiveType || '').toLowerCase();
+  if (
+    connection?.saveData ||
+    ['slow-2g', '2g'].includes(effectiveType) ||
+    document.visibilityState === 'hidden'
+  ) return;
 
   const loaders = routeWarmups[to.name] || defaultRouteWarmups;
   if (!loaders.length || to.name === 'room') return;
+  const reduced = isReducedPerformance();
+  const selectedLoaders = reduced ? loaders.slice(0, 1) : loaders;
   cancelPendingRouteWarmup = scheduleIdleTask(() => {
     cancelPendingRouteWarmup = null;
-    if (router.currentRoute.value.name !== to.name || isReducedPerformance()) return;
-    loaders.forEach(warmRouteComponent);
+    if (router.currentRoute.value.name !== to.name) return;
+    selectedLoaders.forEach(warmRouteComponent);
   }, {
-    delay: to.name === 'access' || to.name === 'accessAlias' ? 1600 : 900,
+    delay: reduced
+      ? 2600
+      : (to.name === 'access' || to.name === 'accessAlias' ? 1600 : 900),
     timeout: 4000
   });
 }
 
 router.afterEach((to) => {
   applyRouteSeo(to);
+  refreshPerformanceProbe();
   scheduleRouteWarmup(to);
 });
