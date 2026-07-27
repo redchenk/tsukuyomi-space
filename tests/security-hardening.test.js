@@ -387,4 +387,12 @@ describe('deployment privilege boundary', () => {
         assert.match(workflow, /git restore --worktree -- lib\/bundled\/live2d-room-neuro-live\.iife\.js[\s\S]*git .*merge --ff-only FETCH_HEAD/);
         assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$prebuilt\/dist\/\." "\$app\/dist\/"/);
     });
+
+    it('updates the Nginx configuration that the host actually includes', () => {
+        const deploy = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'deploy.sh'), 'utf8');
+        assert.match(deploy, /include \/etc\/nginx\/conf\.d\/\*\.conf;/);
+        assert.match(deploy, /NGINX_SITE_PATH=\/etc\/nginx\/conf\.d\/tsukuyomi-space\.conf/);
+        assert.match(deploy, /NGINX_SITE_PATH=\/etc\/nginx\/sites-available\/tsukuyomi-space/);
+        assert.match(deploy, /if ! nginx -t; then[\s\S]*mv "\$NGINX_BACKUP" "\$NGINX_SITE_PATH"/);
+    });
 });

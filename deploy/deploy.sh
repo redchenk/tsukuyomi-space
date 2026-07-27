@@ -123,7 +123,14 @@ pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 pm2 save
 
 if [ "${INSTALL_NGINX_CONFIG:-false}" = "true" ]; then
-    NGINX_SITE_PATH="${NGINX_SITE_PATH:-/etc/nginx/sites-available/tsukuyomi-space}"
+    if [ -z "${NGINX_SITE_PATH:-}" ]; then
+        if [ -f /etc/nginx/conf.d/tsukuyomi-space.conf ] \
+            && grep -Fq 'include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf; then
+            NGINX_SITE_PATH=/etc/nginx/conf.d/tsukuyomi-space.conf
+        else
+            NGINX_SITE_PATH=/etc/nginx/sites-available/tsukuyomi-space
+        fi
+    fi
     NGINX_BACKUP="${NGINX_SITE_PATH}.predeploy"
     cp -p "$NGINX_SITE_PATH" "$NGINX_BACKUP"
     cp deploy/nginx.conf "${NGINX_SITE_PATH}.candidate"
