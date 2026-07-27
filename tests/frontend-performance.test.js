@@ -191,6 +191,14 @@ describe('constrained-device performance policy', () => {
         assert.match(attachments, /v-if="state\.totalPages > 1" class="attachments-pager"/);
     });
 
+    it('keeps Access copy legible over moving video backgrounds', () => {
+        const readability = source('assets/css/vue/theme-readability.css');
+
+        assert.match(readability, /body\.vue-access-route \.page\.access-page \.hero-kicker\s*\{[^}]*rgba\(255, 255, 255, 0\.9\)/s);
+        assert.match(readability, /body\.vue-access-route \.page\.access-page \.hero-copy\s*\{[^}]*rgba\(255, 255, 255, 0\.94\)[^}]*text-shadow:/s);
+        assert.match(readability, /body\.vue-access-route \.page\.access-page :is\(\.access-copyright, \.access-beian \.beian-link\)\s*\{[^}]*rgba\(255, 255, 255, 0\.82\)/s);
+    });
+
     it('uses compressed full-resolution backgrounds and a lightweight pet frame', () => {
         const runtime = [
             source('src/frontend/utils/assetUrl.js'),
