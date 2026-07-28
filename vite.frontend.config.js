@@ -1,10 +1,11 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
 
-const englishSite = process.env.VITE_SITE_LANGUAGE === 'en';
+const projectRoot = fileURLToPath(new URL('.', import.meta.url));
+const frontendRoot = fileURLToPath(new URL('./src/frontend', import.meta.url));
 
-function englishSiteHtml() {
+function englishSiteHtml(englishSite) {
   return {
     name: 'tsukuyomi-english-site-html',
     transformIndexHtml(html) {
@@ -61,42 +62,48 @@ function englishSiteHtml() {
   };
 }
 
-export default defineConfig({
-  root: fileURLToPath(new URL('./src/frontend', import.meta.url)),
-  publicDir: false,
-  define: {
-    __TSUKUYOMI_ENGLISH_SITE__: JSON.stringify(englishSite)
-  },
-  plugins: [vue(), englishSiteHtml()],
-  resolve: {
-    alias: {
-      '@frontend': fileURLToPath(new URL('./src/frontend', import.meta.url))
-    }
-  },
-  server: {
-    fs: {
-      allow: [fileURLToPath(new URL('.', import.meta.url))]
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, projectRoot, '');
+  const englishSite = String(process.env.VITE_SITE_LANGUAGE || env.VITE_SITE_LANGUAGE || '').trim() === 'en';
+
+  return {
+    root: frontendRoot,
+    envDir: projectRoot,
+    publicDir: false,
+    define: {
+      __TSUKUYOMI_ENGLISH_SITE__: JSON.stringify(englishSite)
     },
-    proxy: {
-      '^/api(?!/client\\.js(?:\\?|$))': 'http://127.0.0.1:3000',
-      '/lib': 'http://127.0.0.1:3000',
-      '/models': 'http://127.0.0.1:3000',
-      '/assets': 'http://127.0.0.1:3000',
-      '/live2d-core.js': 'http://127.0.0.1:3000'
-    }
-  },
-  build: {
-    outDir: fileURLToPath(new URL('./dist/frontend', import.meta.url)),
-    emptyOutDir: true,
-    cssCodeSplit: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules/vue') || id.includes('node_modules/@vue') || id.includes('node_modules/vue-router')) {
-            return 'vue-vendor';
+    plugins: [vue(), englishSiteHtml(englishSite)],
+    resolve: {
+      alias: {
+        '@frontend': frontendRoot
+      }
+    },
+    server: {
+      fs: {
+        allow: [projectRoot]
+      },
+      proxy: {
+        '^/api(?!/client\\.js(?:\\?|$))': 'http://127.0.0.1:3000',
+        '/lib': 'http://127.0.0.1:3000',
+        '/models': 'http://127.0.0.1:3000',
+        '/assets': 'http://127.0.0.1:3000',
+        '/live2d-core.js': 'http://127.0.0.1:3000'
+      }
+    },
+    build: {
+      outDir: fileURLToPath(new URL('./dist/frontend', import.meta.url)),
+      emptyOutDir: true,
+      cssCodeSplit: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/vue') || id.includes('node_modules/@vue') || id.includes('node_modules/vue-router')) {
+              return 'vue-vendor';
+            }
           }
         }
       }
     }
-  }
+  };
 });

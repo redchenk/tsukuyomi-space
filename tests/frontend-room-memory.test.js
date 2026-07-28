@@ -56,9 +56,11 @@ function loadApiClient(fetchImpl) {
         JSON,
         Number,
         String,
-        URL
+        URL,
+        isEnglishSite: () => false
     };
     const code = source('src/frontend/api/client.js')
+        .replace(/^import \{ isEnglishSite \} from '\.\.\/utils\/siteVariant';\r?\n\r?\n/, '')
         .replace(/export async function /g, 'async function ')
         .replace(/export function /g, 'function ')
         .concat('\nglobalThis.__client = { getSession, saveUserSession, clearSession, loadCurrentSession };\n');

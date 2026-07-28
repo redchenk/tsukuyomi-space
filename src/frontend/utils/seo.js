@@ -1,6 +1,7 @@
 import { documentLanguage } from '../i18n';
+import { isEnglishSite } from './siteVariant';
 
-const ENGLISH_SITE = import.meta.env.VITE_SITE_LANGUAGE === 'en';
+const ENGLISH_SITE = isEnglishSite();
 const SITE_NAME = ENGLISH_SITE ? 'Tsukuyomi Space' : '月读空间';
 const SITE_URL = ENGLISH_SITE ? 'https://tsukuyomi-space.com' : 'https://yachiyo.hk';
 const DEFAULT_DESCRIPTION = ENGLISH_SITE

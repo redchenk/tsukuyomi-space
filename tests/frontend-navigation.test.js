@@ -10,6 +10,20 @@ function source(relativePath) {
     return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8');
 }
 
+function loadSiteVariant({ compiledEnglish = false, hostname = '' } = {}) {
+    const context = {
+        __TSUKUYOMI_ENGLISH_SITE__: compiledEnglish,
+        window: { location: { hostname } }
+    };
+    const code = source('src/frontend/utils/siteVariant.js')
+        .replace(/export const /g, 'const ')
+        .replace(/export function /g, 'function ')
+        .concat('\nglobalThis.__siteVariant = { forcedSiteLanguage, isEnglishSite };\n');
+
+    vm.runInNewContext(code, context, { filename: 'src/frontend/utils/siteVariant.js' });
+    return context.__siteVariant;
+}
+
 function loadNotificationBadge(navigatorTarget = {}) {
     const events = [];
     const context = {
@@ -40,6 +54,13 @@ function loadNotificationBadge(navigatorTarget = {}) {
 }
 
 describe('frontend navigation routes', () => {
+    it('locks the overseas domains to English independently of the build flag', () => {
+        assert.equal(loadSiteVariant({ hostname: 'tsukuyomi-space.com' }).isEnglishSite(), true);
+        assert.equal(loadSiteVariant({ hostname: 'www.tsukuyomi-space.com' }).forcedSiteLanguage(), 'en');
+        assert.equal(loadSiteVariant({ hostname: 'yachiyo.hk' }).isEnglishSite(), false);
+        assert.equal(loadSiteVariant({ compiledEnglish: true, hostname: 'localhost' }).isEnglishSite(), true);
+    });
+
     it('switches between Chinese and Japanese and supports a forced English build', () => {
         const app = source('src/frontend/App.vue');
         const shell = source('src/frontend/layouts/AppShell.vue');
@@ -47,6 +68,12 @@ describe('frontend navigation routes', () => {
         const i18nModule = source('src/frontend/i18n/index.js');
         const icons = source('src/frontend/components/TsIcon.vue');
         const seo = source('src/frontend/utils/seo.js');
+        const client = source('src/frontend/api/client.js');
+        const staticInterface = source('src/frontend/i18n/englishStaticInterface.js');
+        const gallery = source('src/frontend/pages/GalleryPage.vue');
+        const viteConfig = source('vite.frontend.config.js');
+        const packageJson = JSON.parse(source('package.json'));
+        const overseasEnv = source('.env.overseas');
 
         assert.match(shell, /class="rail-link rail-language"/);
         assert.match(shell, /<TsIcon name="languages"/);
@@ -55,7 +82,9 @@ describe('frontend navigation routes', () => {
         assert.match(app, /normalizeLanguage\(localStorage\.getItem\('lang'\)\)/);
         assert.match(app, /documentLanguage\(lang\.value\)/);
         assert.match(i18nModule, /SUPPORTED_LANGUAGES = Object\.freeze\(\['zh', 'ja', 'en'\]\)/);
-        assert.match(app, /VITE_SITE_LANGUAGE/);
+        for (const content of [app, client, staticInterface, seo, gallery]) {
+            assert.match(content, /isEnglishSite|forcedSiteLanguage/);
+        }
         assert.match(messages, /import \{ en \} from '\.\/messages\.en\.js'/);
         assert.match(i18nModule, /export function alternateLanguage/);
         assert.match(messages, /switchToJapanese: '切换为日语'/);
@@ -63,6 +92,10 @@ describe('frontend navigation routes', () => {
         assert.match(icons, /languages:\s*\[/);
         assert.match(seo, /documentLanguage\(localStorage\.getItem\('lang'\)\)/);
         assert.doesNotMatch(seo, /document\.documentElement\.lang = 'zh-CN'/);
+        assert.equal(packageJson.scripts['build:web:overseas'], 'vite build --mode overseas --config vite.frontend.config.js');
+        assert.match(overseasEnv, /^VITE_SITE_LANGUAGE=en\s*$/);
+        assert.match(viteConfig, /loadEnv\(mode, projectRoot, ''\)/);
+        assert.match(viteConfig, /englishSiteHtml\(englishSite\)/);
     });
 
     it('applies unique route keywords and dynamic SEO to every public page', () => {

@@ -1,3 +1,5 @@
+import { isEnglishSite } from '../utils/siteVariant';
+
 const TEXT = Object.freeze({
   '本站使用《超时空辉夜姬》相关素材版权归原著所有，本站为非盈利性质。': 'Materials related to Cosmic Princess Kaguya belong to their respective rights holders. This is a non-commercial fan site.',
 
@@ -175,7 +177,7 @@ function translateNode(node) {
 }
 
 export function enableEnglishStaticInterface() {
-  if (import.meta.env.VITE_SITE_LANGUAGE !== 'en') return;
+  if (!isEnglishSite()) return;
   translateNode(document.documentElement);
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {

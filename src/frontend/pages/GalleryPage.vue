@@ -6,14 +6,15 @@ import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { compressImage } from '../utils/image';
 import { applyGrowthResult } from '../services/userGrowth';
+import { isEnglishSite } from '../utils/siteVariant';
 
 const emit = defineEmits(['go']);
 const props = defineProps({
   routeName: { type: String, default: '' },
   lang: { type: String, default: 'zh' }
 });
-const isEnglishSite = import.meta.env.VITE_SITE_LANGUAGE === 'en';
-const siteLanguage = computed(() => isEnglishSite ? 'en' : props.lang);
+const englishSite = isEnglishSite();
+const siteLanguage = computed(() => englishSite ? 'en' : props.lang);
 const { hydrateUserLevels, userLevel } = useUserLevels();
 const fileInput = ref(null);
 const galleryMainRef = ref(null);
@@ -82,7 +83,7 @@ function handleImageError(event, asset) {
 
 function imageTitle(asset) {
   const date = imageDate(asset);
-  if (isEnglishSite) return date ? `Gallery image · ${date}` : 'Gallery image';
+  if (englishSite) return date ? `Gallery image · ${date}` : 'Gallery image';
   return date ? `图库影像 · ${date}` : '图库影像';
 }
 

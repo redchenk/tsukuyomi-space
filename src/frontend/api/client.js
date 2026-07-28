@@ -1,3 +1,5 @@
+import { isEnglishSite } from '../utils/siteVariant';
+
 export async function parseResponse(response) {
   const text = await response.text();
   try {
@@ -11,8 +13,7 @@ export async function parseResponse(response) {
   }
 }
 
-const FORCED_ENGLISH_SITE = typeof __TSUKUYOMI_ENGLISH_SITE__ !== 'undefined'
-  && __TSUKUYOMI_ENGLISH_SITE__;
+const FORCED_ENGLISH_SITE = isEnglishSite();
 const CJK_TEXT_RE = /[\u3400-\u9fff\u3040-\u30ff]/u;
 
 async function translateResponseMessage(result) {

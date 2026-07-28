@@ -8,6 +8,7 @@ import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
 import { isAuthPath, withAuthRedirect } from './utils/authRedirect';
 import { animateRouteEnter, cancelRouteMotion } from './utils/motion';
+import { forcedSiteLanguage } from './utils/siteVariant';
 import {
   getPerformanceProfile,
   PERFORMANCE_PROFILE_EVENT,
@@ -18,9 +19,7 @@ const SitePet = defineAsyncComponent(() => import('./components/SitePet.vue'));
 
 const route = useRoute();
 const router = useRouter();
-const forcedLanguage = String(import.meta.env.VITE_SITE_LANGUAGE || '').trim()
-  ? normalizeLanguage(import.meta.env.VITE_SITE_LANGUAGE)
-  : '';
+const forcedLanguage = forcedSiteLanguage();
 const lang = ref(forcedLanguage || normalizeLanguage(localStorage.getItem('lang')));
 const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
 const user = ref(null);
