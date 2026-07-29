@@ -143,6 +143,25 @@ describe('constrained-device performance policy', () => {
         assert.match(arena, /@media \(max-width: 760px\)[\s\S]*body \.page\.arena-page \.arena-controls\s*\{[^}]*overflow:\s*visible/s);
     });
 
+    it('opens Pixel as a canvas-first studio with both side panels collapsed', () => {
+        const arena = source('assets/css/vue/pages/arena.css');
+        const arenaPage = source('src/frontend/pages/ArenaPage.vue');
+
+        assert.match(arenaPage, /const controlsOpen = ref\(false\)/);
+        assert.match(arenaPage, /const galleryOpen = ref\(false\)/);
+        assert.match(arenaPage, /'is-controls-open': controlsOpen[\s\S]*'is-gallery-open': galleryOpen/);
+        assert.match(arenaPage, /class="arena-panel-toggle arena-controls-toggle"[\s\S]*:aria-expanded="controlsOpen"/);
+        assert.match(arenaPage, /class="arena-panel-toggle arena-gallery-toggle"[\s\S]*:aria-expanded="galleryOpen"/);
+        assert.match(arena, /--arena-panel-rail:\s*52px[\s\S]*grid-template-columns:\s*var\(--arena-panel-rail\) minmax\(0, 1fr\) var\(--arena-panel-rail\)/);
+        assert.match(arena, /\.arena-page\.is-controls-open\s*\{[^}]*grid-template-columns:\s*var\(--arena-controls-open\) minmax\(0, 1fr\) var\(--arena-panel-rail\)/s);
+        assert.match(arena, /\.arena-page\.is-gallery-open\s*\{[^}]*grid-template-columns:\s*var\(--arena-panel-rail\) minmax\(0, 1fr\) var\(--arena-gallery-open\)/s);
+        assert.match(arena, /\.arena-page:not\(\.is-controls-open\) \.arena-controls > :not\(\.arena-panel-toggle\)/);
+        assert.match(arena, /\.arena-page:not\(\.is-gallery-open\) \.arena-gallery > :not\(\.arena-panel-toggle\)/);
+        assert.match(arena, /\.arena-page\.is-controls-open \.arena-controls\s*\{[^}]*background:\s*#0d1220[^}]*backdrop-filter:\s*none/s);
+        assert.match(arena, /\.arena-page \.arena-controls,[\s\S]*\.arena-page \.arena-gallery\s*\{[^}]*z-index:\s*20[^}]*isolation:\s*isolate/s);
+        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*body \.page\.arena-page\s*\{[^}]*height:\s*auto[^}]*overflow-y:\s*visible/s);
+    });
+
     it('defers offscreen gallery canvases without delaying the editable pixel canvas', () => {
         const canvas = source('src/frontend/components/PixelCanvasCells.vue');
         const arena = source('src/frontend/pages/ArenaPage.vue');

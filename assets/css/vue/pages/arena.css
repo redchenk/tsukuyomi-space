@@ -3387,3 +3387,340 @@ body .page.arena-page .arena-gallery-pager span {
         touch-action: none;
     }
 }
+
+/* Pixel studio shell: maximize the canvas and reveal supporting panels on demand. */
+body .page.arena-page {
+    --arena-panel-rail: 52px;
+    --arena-controls-open: 248px;
+    --arena-gallery-open: 340px;
+    grid-template-columns: var(--arena-panel-rail) minmax(0, 1fr) var(--arena-panel-rail);
+    grid-template-rows: 64px minmax(0, 1fr);
+    gap: 0.5rem;
+}
+
+body .page.arena-page.is-controls-open {
+    grid-template-columns: var(--arena-controls-open) minmax(0, 1fr) var(--arena-panel-rail);
+}
+
+body .page.arena-page.is-gallery-open {
+    grid-template-columns: var(--arena-panel-rail) minmax(0, 1fr) var(--arena-gallery-open);
+}
+
+body .page.arena-page.is-controls-open.is-gallery-open {
+    grid-template-columns: var(--arena-controls-open) minmax(0, 1fr) var(--arena-gallery-open);
+}
+
+body .page.arena-page .arena-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 310px);
+    gap: 0.5rem;
+}
+
+body .page.arena-page .arena-hero-copy,
+body .page.arena-page .arena-status,
+body .page.arena-page .arena-canvas-panel,
+body .page.arena-page .arena-controls,
+body .page.arena-page .arena-gallery {
+    border-radius: 8px;
+}
+
+body .page.arena-page .arena-hero-copy,
+body .page.arena-page .arena-status {
+    min-height: 64px;
+    padding: 0.58rem 0.75rem;
+}
+
+body .page.arena-page .arena-hero-copy {
+    grid-template-columns: auto minmax(0, 1fr);
+    place-items: center start;
+    column-gap: 0.68rem;
+}
+
+body .page.arena-page .arena-kicker {
+    margin: 0;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+body .page.arena-page .arena-hero h1 {
+    min-width: 0;
+    overflow: hidden;
+    font-family: var(--ts-font-sans);
+    font-size: clamp(1.15rem, 1.8vw, 1.5rem);
+    font-weight: 760;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body .page.arena-page .arena-hero p {
+    display: none;
+}
+
+body .page.arena-page .arena-status-line {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.62rem;
+}
+
+body .page.arena-page .arena-status-line strong {
+    overflow: hidden;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body .page.arena-page .arena-controls,
+body .page.arena-page .arena-gallery {
+    position: relative;
+    z-index: 20;
+    isolation: isolate;
+    width: var(--arena-panel-rail);
+    min-width: var(--arena-panel-rail);
+    padding: 0;
+    gap: 0;
+    transition:
+        width 0.18s var(--ts-ease-standard),
+        box-shadow 0.18s var(--ts-ease-standard);
+}
+
+body .page.arena-page .arena-controls {
+    justify-self: start;
+}
+
+body .page.arena-page .arena-gallery {
+    justify-self: end;
+}
+
+body .page.arena-page .arena-canvas-panel {
+    position: relative;
+    z-index: 1;
+}
+
+body .page.arena-page.is-controls-open .arena-controls {
+    width: var(--arena-controls-open);
+    min-width: var(--arena-controls-open);
+    gap: 0.68rem;
+    padding: 0.68rem;
+    background: #0d1220;
+    box-shadow: 20px 0 48px rgba(3, 7, 18, 0.34);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+body .page.arena-page.is-gallery-open .arena-gallery {
+    width: var(--arena-gallery-open);
+    min-width: var(--arena-gallery-open);
+    background: #0d1220;
+    box-shadow: -20px 0 48px rgba(3, 7, 18, 0.34);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+body .page.arena-page:not(.is-controls-open) .arena-controls > :not(.arena-panel-toggle),
+body .page.arena-page:not(.is-gallery-open) .arena-gallery > :not(.arena-panel-toggle) {
+    display: none !important;
+}
+
+body .page.arena-page .arena-panel-toggle {
+    width: 100%;
+    min-width: 0;
+    min-height: var(--arena-panel-rail);
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    color: rgba(239, 247, 255, 0.82);
+    background: rgba(255, 255, 255, 0.045);
+    box-shadow: none;
+}
+
+body .page.arena-page .arena-panel-toggle:hover,
+body .page.arena-page .arena-panel-toggle:focus-visible {
+    color: #fff;
+    background: rgba(123, 140, 246, 0.18);
+}
+
+body .page.arena-page .arena-panel-toggle:focus-visible {
+    outline: none;
+    box-shadow: var(--ts-focus-ring);
+}
+
+body .page.arena-page.is-controls-open .arena-controls-toggle {
+    order: -10;
+    width: 38px;
+    min-height: 38px;
+    align-self: flex-end;
+    border: 1px solid rgba(231, 249, 255, 0.12);
+}
+
+body .page.arena-page.is-gallery-open .arena-gallery {
+    grid-template-rows: var(--arena-panel-rail) auto minmax(0, 1fr);
+}
+
+body .page.arena-page.is-gallery-open .arena-gallery:has(.arena-gallery-pager) {
+    grid-template-rows: var(--arena-panel-rail) auto minmax(0, 1fr) auto;
+}
+
+body .page.arena-page.is-gallery-open .arena-gallery-toggle {
+    width: 38px;
+    min-height: 38px;
+    margin: 0.42rem 0.42rem 0 auto;
+    border: 1px solid rgba(231, 249, 255, 0.12);
+}
+
+body .page.arena-page.is-gallery-open .arena-gallery-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+}
+
+body .page.arena-page.is-gallery-open .arena-gallery-head h2 {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+
+body .page.arena-page.is-gallery-open .arena-gallery-tools {
+    justify-content: flex-start;
+}
+
+body .page.arena-page .arena-canvas-panel {
+    grid-template-rows: 46px 46px minmax(0, 1fr);
+    background: rgba(12, 16, 24, 0.9);
+}
+
+body .page.arena-page .arena-canvas-panel .arena-section-head,
+body .page.arena-page .arena-canvas-actions {
+    min-height: 46px;
+    padding: 0.38rem 0.5rem;
+}
+
+body .page.arena-page .arena-canvas-viewport {
+    min-height: 0;
+    padding: clamp(0.5rem, 0.8vw, 0.72rem);
+    background-color: #121722;
+    background-image:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.018) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.018) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.018) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.018) 75%);
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+    background-size: 24px 24px;
+}
+
+body .page.arena-page .pixel-canvas {
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 2px;
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.48),
+        0 18px 42px rgba(0, 0, 0, 0.38);
+}
+
+html[data-theme="light"] body .page.arena-page .arena-panel-toggle {
+    color: rgba(38, 48, 68, 0.78);
+    background: rgba(255, 255, 255, 0.54);
+}
+
+html[data-theme="light"] body .page.arena-page .arena-panel-toggle:hover,
+html[data-theme="light"] body .page.arena-page .arena-panel-toggle:focus-visible {
+    color: #172033;
+    background: rgba(123, 140, 246, 0.14);
+}
+
+html[data-theme="light"] body .page.arena-page.is-controls-open .arena-controls,
+html[data-theme="light"] body .page.arena-page.is-gallery-open .arena-gallery {
+    background: #f8fbff;
+}
+
+@media (max-width: 1180px) and (min-width: 761px) {
+    body .page.arena-page {
+        --arena-controls-open: 228px;
+        --arena-gallery-open: 300px;
+    }
+
+    body .page.arena-page .arena-hero {
+        grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+    }
+}
+
+@media (max-width: 760px) {
+    body .page.arena-page {
+        --arena-panel-rail: 48px;
+        height: auto;
+        min-height: 100dvh;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto auto auto;
+        gap: 0.58rem;
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    body .page.arena-page.is-controls-open,
+    body .page.arena-page.is-gallery-open,
+    body .page.arena-page.is-controls-open.is-gallery-open {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body .page.arena-page .arena-hero {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body .page.arena-page .arena-hero-copy {
+        min-height: 58px;
+        grid-template-columns: minmax(0, 1fr);
+        padding: 0.62rem 0.72rem;
+    }
+
+    body .page.arena-page .arena-kicker,
+    body .page.arena-page .arena-status {
+        display: none;
+    }
+
+    body .page.arena-page .arena-hero h1 {
+        font-size: 1.25rem;
+    }
+
+    body .page.arena-page .arena-canvas-panel,
+    body .page.arena-page .arena-controls,
+    body .page.arena-page .arena-gallery {
+        width: 100%;
+        min-width: 0;
+        justify-self: stretch;
+    }
+
+    body .page.arena-page:not(.is-controls-open) .arena-controls,
+    body .page.arena-page:not(.is-gallery-open) .arena-gallery {
+        min-height: var(--arena-panel-rail);
+        max-height: var(--arena-panel-rail);
+    }
+
+    body .page.arena-page.is-controls-open .arena-controls,
+    body .page.arena-page.is-gallery-open .arena-gallery {
+        width: 100%;
+        min-width: 0;
+        box-shadow: var(--ts-shadow-md);
+    }
+
+    body .page.arena-page.is-controls-open .arena-controls {
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    body .page.arena-page .arena-canvas-panel {
+        grid-template-rows: 48px 48px minmax(420px, 64dvh);
+    }
+
+    body .page.arena-page .arena-canvas-viewport {
+        min-height: 420px;
+        max-height: 64dvh;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body .page.arena-page .arena-controls,
+    body .page.arena-page .arena-gallery {
+        transition: none;
+    }
+}

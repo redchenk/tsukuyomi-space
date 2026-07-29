@@ -84,6 +84,8 @@ const copy = computed(() => props.lang === 'en' ? {
   messagePlaceholder: 'Type a message...',
   sendMessage: 'Send',
   palette: 'Palette',
+  openTools: 'Open tools',
+  closeTools: 'Close tools',
   presets: 'Preset colors',
   freeColor: 'Custom color',
   addColor: 'Save color',
@@ -98,6 +100,8 @@ const copy = computed(() => props.lang === 'en' ? {
   colors: 'Colors',
   size: 'Grid',
   gallery: 'Community artwork',
+  openGallery: 'Open community artwork',
+  closeGallery: 'Close community artwork',
   latest: 'Latest',
   hot: 'Popular',
   refresh: 'Refresh',
@@ -146,6 +150,8 @@ const copy = computed(() => props.lang === 'en' ? {
   messagePlaceholder: 'メッセージ...',
   sendMessage: '送信',
   palette: 'パレット',
+  openTools: 'ツールを開く',
+  closeTools: 'ツールを閉じる',
   presets: 'プリセット',
   freeColor: '自由色',
   addColor: '色を保存',
@@ -160,6 +166,8 @@ const copy = computed(() => props.lang === 'en' ? {
   colors: '色',
   size: 'グリッド',
   gallery: 'みんなの作品',
+  openGallery: 'みんなの作品を開く',
+  closeGallery: 'みんなの作品を閉じる',
   latest: '新着',
   hot: '人気',
   refresh: '更新',
@@ -208,6 +216,8 @@ const copy = computed(() => props.lang === 'en' ? {
   messagePlaceholder: '输入消息...',
   sendMessage: '发送',
   palette: '调色板',
+  openTools: '展开工具栏',
+  closeTools: '收起工具栏',
   presets: '预设色',
   freeColor: '自由颜色',
   addColor: '保存颜色',
@@ -222,6 +232,8 @@ const copy = computed(() => props.lang === 'en' ? {
   colors: '颜色',
   size: '网格',
   gallery: '大家的作品',
+  openGallery: '展开大家的作品',
+  closeGallery: '收起大家的作品',
   latest: '最新',
   hot: '热门',
   refresh: '刷新',
@@ -263,6 +275,8 @@ const canvasViewportRef = ref(null);
 const isCanvasZoomManual = ref(false);
 const isSpacePanning = ref(false);
 const sideTab = ref('gallery');
+const controlsOpen = ref(false);
+const galleryOpen = ref(false);
 const chatMessage = ref('');
 const chatMessages = ref([
   { id: 1, author: '蓝莓', time: '03:50', text: '晚上好' },
@@ -334,6 +348,22 @@ const publishButtonText = computed(() => {
 
 function go(path) {
   emit('go', path);
+}
+
+function usesCompactWorkspace() {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(max-width: 1180px)').matches;
+}
+
+function toggleControlsPanel() {
+  controlsOpen.value = !controlsOpen.value;
+  if (controlsOpen.value && usesCompactWorkspace()) galleryOpen.value = false;
+}
+
+function toggleGalleryPanel() {
+  galleryOpen.value = !galleryOpen.value;
+  if (galleryOpen.value && usesCompactWorkspace()) controlsOpen.value = false;
 }
 
 function showToast(text) {
@@ -1244,7 +1274,17 @@ function isTypingTarget(target) {
 }
 
 function handleArenaKeydown(event) {
-  if (event.key === 'Escape' && previewArtwork.value) closeArtworkPreview();
+  if (event.key === 'Escape') {
+    if (previewArtwork.value) {
+      closeArtworkPreview();
+      return;
+    }
+    if (controlsOpen.value || galleryOpen.value) {
+      controlsOpen.value = false;
+      galleryOpen.value = false;
+      return;
+    }
+  }
   if (isTypingTarget(event.target)) return;
   const key = event.key.toLowerCase();
   if ((event.ctrlKey || event.metaKey) && key === 'z') {
@@ -1314,7 +1354,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="page arena-page">
+  <main
+    class="page arena-page"
+    :class="{ 'is-controls-open': controlsOpen, 'is-gallery-open': galleryOpen }"
+  >
     <section class="arena-hero">
       <div class="arena-hero-copy">
         <div class="arena-kicker">{{ copy.kicker }}</div>
@@ -1411,7 +1454,18 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <aside class="arena-controls panel">
+      <aside id="arena-controls-panel" class="arena-controls panel">
+        <button
+          class="arena-panel-toggle arena-controls-toggle"
+          type="button"
+          :title="controlsOpen ? copy.closeTools : copy.openTools"
+          :aria-label="controlsOpen ? copy.closeTools : copy.openTools"
+          :aria-expanded="controlsOpen"
+          aria-controls="arena-controls-panel"
+          @click="toggleControlsPanel"
+        >
+          <TsIcon :name="controlsOpen ? 'arrowLeft' : 'palette'" :size="19" />
+        </button>
         <div class="arena-section-head">
           <div>
             <span>02</span>
@@ -1520,7 +1574,22 @@ onBeforeUnmount(() => {
       </aside>
     </section>
 
-    <section class="arena-gallery panel" :aria-busy="sideTab === 'gallery' && gallery.loading">
+    <section
+      id="arena-gallery-panel"
+      class="arena-gallery panel"
+      :aria-busy="sideTab === 'gallery' && gallery.loading"
+    >
+      <button
+        class="arena-panel-toggle arena-gallery-toggle"
+        type="button"
+        :title="galleryOpen ? copy.closeGallery : copy.openGallery"
+        :aria-label="galleryOpen ? copy.closeGallery : copy.openGallery"
+        :aria-expanded="galleryOpen"
+        aria-controls="arena-gallery-panel"
+        @click="toggleGalleryPanel"
+      >
+        <TsIcon :name="galleryOpen ? 'arrowRight' : 'image'" :size="19" />
+      </button>
       <div class="arena-section-head arena-gallery-head">
         <div>
           <span>03</span>
@@ -1625,11 +1694,11 @@ onBeforeUnmount(() => {
       </div>
       <nav v-if="sideTab === 'gallery' && !gallery.loading && gallery.totalPages > 1" class="arena-gallery-pager" aria-label="作品分页">
         <button class="icon-btn" type="button" :disabled="gallery.page <= 1" aria-label="上一页" @click="loadArtworks(gallery.page - 1)">
-          <TsIcon name="chevron-left" :size="16" />
+          <TsIcon name="arrowLeft" :size="16" />
         </button>
         <span>{{ gallery.page }} / {{ gallery.totalPages }}</span>
         <button class="icon-btn" type="button" :disabled="gallery.page >= gallery.totalPages" aria-label="下一页" @click="loadArtworks(gallery.page + 1)">
-          <TsIcon name="chevron-right" :size="16" />
+          <TsIcon name="arrowRight" :size="16" />
         </button>
       </nav>
     </section>
