@@ -251,6 +251,11 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     await expect(drawingCanvas).toHaveAttribute('height', '648');
     await expect(page.locator('.arena-size-options')).toHaveCount(0);
 
+    const galleryToggle = page.locator('[aria-controls="arena-gallery-panel"]');
+    await expect(galleryToggle).toHaveAttribute('aria-expanded', 'false');
+    await galleryToggle.click();
+    await expect(galleryToggle).toHaveAttribute('aria-expanded', 'true');
+
     const card = page.locator(`#pixel-art-${artworkId}`);
     await expect(card).toBeVisible();
 
@@ -390,6 +395,10 @@ test('desktop pixel controls scroll independently from the page', async ({ page 
 
     const controls = page.locator('.arena-controls');
     await expect(controls).toBeVisible();
+    const controlsToggle = page.locator('[aria-controls="arena-controls-panel"]');
+    await expect(controlsToggle).toHaveAttribute('aria-expanded', 'false');
+    await controlsToggle.click();
+    await expect(controlsToggle).toHaveAttribute('aria-expanded', 'true');
 
     const metrics = await controls.evaluate((element) => ({
         clientHeight: element.clientHeight,
