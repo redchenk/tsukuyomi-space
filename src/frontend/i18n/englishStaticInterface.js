@@ -60,6 +60,7 @@ const TEXT = Object.freeze({
   '八千代辉夜姬正在房间里等你': 'Yachiyo is waiting for you in the room', '月读空间': 'Tsukuyomi Space',
   '晴朗': 'Clear', '聊天': 'Chat', '资料': 'Profile', '便签': 'Notes', '设置': 'Settings',
   '与辉夜姬聊天': 'Chat with Yachiyo', '系统': 'System', 'Live2D 已就绪': 'Live2D is ready', '图片': 'Image', '发送': 'Send',
+  '当前会话': 'Current conversation', '新建会话': 'New chat', '正在新建': 'Starting...',
   '房间设置': 'Room Settings', '三步完成基础配置': 'Complete the basic setup in three steps', '重新读取': 'Reload', '返回房间': 'Back to room',
   '聊天模型': 'Chat model', '语音': 'Voice', '记忆': 'Memory', '第 1 步，共 3 步': 'Step 1 of 3', '第 2 步，共 3 步': 'Step 2 of 3', '第 3 步，共 3 步': 'Step 3 of 3',
   '选择聊天模型': 'Choose a chat model', '这是必填项，配置完成后八千代才能回复你。': 'Required before Yachiyo can reply.',

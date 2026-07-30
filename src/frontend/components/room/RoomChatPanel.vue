@@ -49,6 +49,21 @@ function showDailyGrowthPrompt(chat) {
         <span class="room-growth-progress" aria-hidden="true"><i :style="{ width: `${chat.growth.value.level.progressPercent}%` }"></i></span>
         <TsIcon name="arrowRight" :size="16" />
       </button>
+      <div class="chat-session-toolbar">
+        <span class="chat-session-label">当前会话</span>
+        <button
+          class="chat-session-new-btn"
+          type="button"
+          :disabled="chat.resetting.value"
+          :aria-busy="chat.resetting.value"
+          title="新建会话"
+          aria-label="新建会话"
+          @click="chat.startNewSession"
+        >
+          <TsIcon :class="{ 'ts-status-loader-icon': chat.resetting.value }" :name="chat.resetting.value ? 'loader' : 'plus'" :size="15" />
+          <span :role="chat.resetting.value ? 'status' : undefined">{{ chat.resetting.value ? '正在新建' : '新建会话' }}</span>
+        </button>
+      </div>
       <div id="chatMessages" :ref="(node) => { chat.messageListRef.value = node; }" class="room-chat-messages" :aria-busy="chat.sending.value">
         <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="message.role" :aria-busy="message.pending || undefined">
           <span class="chat-role">{{ message.role === 'assistant' ? '八千代' : message.role === 'user' ? '你' : '系统' }}</span>

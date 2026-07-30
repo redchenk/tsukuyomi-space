@@ -125,7 +125,12 @@ function importHistoryIfEmpty(userId, messages) {
     return importHistory();
 }
 
+function clearMessages(userId) {
+    return db.prepare('DELETE FROM room_chat_messages WHERE user_id = ?').run(userId).changes;
+}
+
 module.exports = {
+    clearMessages,
     findOwnedTurn,
     listMessages,
     saveTurn,

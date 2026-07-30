@@ -179,6 +179,7 @@ describe('frontend room memory API client usage', () => {
         const sync = source('src/frontend/services/room/roomMemorySync.js');
         const conversation = source('src/frontend/services/room/roomConversationSync.js');
         const chat = source('src/frontend/composables/room/useRoomChat.js');
+        const panel = source('src/frontend/components/room/RoomChatPanel.vue');
 
         assert.match(sync, /stream\.addEventListener\('chat', handleServerChatEvent\)/);
         assert.match(sync, /tsukuyomi:room-chat-updated/);
@@ -186,12 +187,24 @@ describe('frontend room memory API client usage', () => {
         assert.match(conversation, /authFetch\(noStoreUrl\('\/api\/room\/chat\?limit=24'\)/);
         assert.match(conversation, /authFetch\('\/api\/room\/chat\/turn'/);
         assert.match(conversation, /authFetch\('\/api\/room\/chat\/import'/);
+        assert.match(conversation, /method:\s*'DELETE'/);
+        assert.match(conversation, /localStorage\.removeItem\(historyKey\(\)\)/);
+        assert.match(conversation, /localStorage\.removeItem\(pendingKey\(\)\)/);
+        assert.match(conversation, /`roomChatReset:\$\{userId\}`/);
+        assert.match(conversation, /pending\.controller\.abort\(\)/);
+        assert.match(conversation, /await Promise\.allSettled\(pendingRequests\)/);
         assert.match(conversation, /const inFlightTurns = new Map\(\)/);
         assert.match(chat, /readRoomConversation\(\)\.slice\(-12\)/);
         assert.match(chat, /saveRoomConversationTurn\(/);
+        assert.match(chat, /startNewSession/);
+        assert.match(chat, /requestConversationRevision !== conversationRevision/);
+        assert.match(chat, /detail\.action === 'cleared'/);
         assert.match(chat, /remember\(userContent, reply, turnId\)/);
         assert.match(chat, /startRoomConversationUpdates\(/);
         assert.doesNotMatch(chat, /readJson\('roomChatHistory'/);
+        assert.match(panel, /chat-session-new-btn/);
+        assert.match(panel, /chat\.startNewSession/);
+        assert.match(panel, /chat\.resetting\.value/);
     });
 
     it('keeps the resolved city attached to cached browser coordinates', () => {

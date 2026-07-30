@@ -1910,9 +1910,15 @@ describe('room memory API', () => {
     it('persists room chat turns per account and broadcasts content-free updates', async () => {
         const unauthenticated = await request('/api/room/chat');
         assert.equal(unauthenticated.response.status, 401);
+        const unauthenticatedClear = await request('/api/room/chat', {
+            method: 'DELETE',
+            headers: jsonHeaders()
+        });
+        assert.equal(unauthenticatedClear.response.status, 401);
 
         let userStream;
         let managedStream;
+        const preservedMemoryId = `chat-clear-memory-${Date.now()}`;
         try {
             [userStream, managedStream] = await Promise.all([
                 openEventStream('/api/room/memory/events', userToken),
@@ -1959,11 +1965,36 @@ describe('room memory API', () => {
 
             const userHistory = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
             assert.deepEqual(userHistory.body.data.map(item => item.content), ['Cross-device room question', 'Cross-device room answer']);
+
+            db.prepare(`
+                INSERT INTO room_memories (id, user_id, summary, content, embedding)
+                VALUES (?, 'user-001', 'Preserved long-term memory', 'This must survive a chat reset.', '[]')
+            `).run(preservedMemoryId);
+
+            const cleared = await request('/api/room/chat', {
+                method: 'DELETE',
+                headers: jsonHeaders(userToken)
+            });
+            assert.equal(cleared.response.status, 200);
+            assert.equal(cleared.body.data.deletedCount, 2);
+
+            const clearedEvent = await readEvent(userStream, 'chat');
+            assert.equal(clearedEvent.action, 'cleared');
+            assert.deepEqual(clearedEvent.messageIds, []);
+            assert.equal(Object.hasOwn(clearedEvent, 'content'), false);
+            assert.equal(Object.hasOwn(clearedEvent, 'userId'), false);
+
+            const emptyHistory = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
+            assert.deepEqual(emptyHistory.body.data, []);
+            const isolatedHistory = await request('/api/room/chat', { headers: jsonHeaders(managedUserToken) });
+            assert.deepEqual(isolatedHistory.body.data.map(item => item.content), ['Imported local question', 'Imported local answer']);
+            assert.equal(db.prepare('SELECT COUNT(*) AS count FROM room_memories WHERE id = ?').get(preservedMemoryId).count, 1);
         } finally {
             userStream?.controller.abort();
             managedStream?.controller.abort();
             await Promise.allSettled([userStream?.reader?.cancel(), managedStream?.reader?.cancel()]);
             db.prepare("DELETE FROM room_chat_messages WHERE user_id IN ('user-001', 'user-002')").run();
+            db.prepare('DELETE FROM room_memories WHERE id = ?').run(preservedMemoryId);
         }
     });
 
@@ -2000,6 +2031,17 @@ describe('room memory API', () => {
 
             const deduplicated = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
             assert.equal(deduplicated.body.data.length, 2);
+
+            db.prepare("DELETE FROM room_chat_messages WHERE user_id = 'user-001'").run();
+            const modernMemoryOnly = await postJson('/api/room/memory', {
+                turnId: `turn-${Date.now()}-no-chat-capture`,
+                userMessage,
+                assistantReply: assistantMessage,
+                captureChat: false
+            }, userToken);
+            assert.ok([200, 201, 202].includes(modernMemoryOnly.response.status));
+            const modernHistory = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
+            assert.deepEqual(modernHistory.body.data, []);
         } finally {
             db.prepare("DELETE FROM room_chat_messages WHERE user_id = 'user-001'").run();
             db.prepare("DELETE FROM room_memories WHERE user_id = 'user-001'").run();

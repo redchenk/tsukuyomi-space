@@ -109,6 +109,46 @@ test('user can log in and reach the hub', async ({ page }) => {
     expect(session.data.username).toBe('e2e-user');
 });
 
+test('user can start a clean Room conversation without deleting long-term memory', async ({ page }) => {
+    await loginAsUser(page);
+    const turnId = `e2e-room-reset-${Date.now()}`;
+    const oldQuestion = `Old Room context ${turnId}`;
+    const oldAnswer = `Old Room answer ${turnId}`;
+    const saved = await page.request.post('/api/room/chat/turn', {
+        headers: sameOriginWriteHeaders(page),
+        data: { turnId, userMessage: oldQuestion, assistantMessage: oldAnswer }
+    });
+    expect(saved.status()).toBe(201);
+
+    await page.goto('/room');
+    await expect(page.getByText(oldQuestion, { exact: true })).toBeVisible();
+    await page.evaluate((pendingTurnId) => {
+        localStorage.setItem('roomChatPending:e2e-user-001', JSON.stringify([{
+            turnId: `${pendingTurnId}-pending`,
+            userMessage: 'Pending old question',
+            assistantMessage: 'Pending old answer'
+        }]));
+    }, turnId);
+
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('.chat-session-new-btn').click();
+    await expect(page.getByText('新会话已开始。长期记忆和角色知识库已保留。', { exact: true })).toBeVisible();
+    await expect(page.getByText(oldQuestion, { exact: true })).toHaveCount(0);
+
+    const localState = await page.evaluate(() => ({
+        history: localStorage.getItem('roomChatHistory:e2e-user-001'),
+        pending: localStorage.getItem('roomChatPending:e2e-user-001')
+    }));
+    expect(localState).toEqual({ history: null, pending: null });
+
+    const historyResponse = await page.request.get('/api/room/chat');
+    expect(historyResponse.status()).toBe(200);
+    expect((await historyResponse.json()).data).toEqual([]);
+
+    await page.reload();
+    await expect(page.getByText(oldQuestion, { exact: true })).toHaveCount(0);
+});
+
 test('user can read an article and post a comment', async ({ page }) => {
     await loginAsUser(page);
     await page.goto('/article?id=1');

@@ -21,6 +21,11 @@ function pendingKey() {
   return userId ? `roomChatPending:${userId}` : 'roomChatPending:guest';
 }
 
+function resetKey() {
+  const userId = currentUserId();
+  return userId ? `roomChatReset:${userId}` : 'roomChatReset:guest';
+}
+
 function normalizeHistory(messages) {
   if (!Array.isArray(messages)) return [];
   return messages
@@ -86,13 +91,15 @@ function removePendingTurn(turnId) {
 
 async function postConversationTurn(turn) {
   const existing = inFlightTurns.get(turn.turnId);
-  if (existing) return existing;
+  if (existing) return existing.promise;
 
+  const controller = new AbortController();
   const request = (async () => {
     const response = await authFetch('/api/room/chat/turn', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify(turn)
+      body: JSON.stringify(turn),
+      signal: controller.signal
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
@@ -101,11 +108,12 @@ async function postConversationTurn(turn) {
     return normalizeHistory(result.data);
   })();
 
-  inFlightTurns.set(turn.turnId, request);
+  const pending = { controller, promise: request };
+  inFlightTurns.set(turn.turnId, pending);
   try {
     return await request;
   } finally {
-    if (inFlightTurns.get(turn.turnId) === request) inFlightTurns.delete(turn.turnId);
+    if (inFlightTurns.get(turn.turnId) === pending) inFlightTurns.delete(turn.turnId);
   }
 }
 
@@ -151,10 +159,43 @@ export async function saveRoomConversationTurn({ turnId, userMessage, assistantM
   return writeRoomConversation(await postConversationTurn(turn));
 }
 
+export function clearLocalRoomConversation({ broadcast = false } = {}) {
+  for (const pending of inFlightTurns.values()) pending.controller.abort();
+  inFlightTurns.clear();
+  localStorage.removeItem(historyKey());
+  localStorage.removeItem(pendingKey());
+  localStorage.removeItem(LEGACY_HISTORY_KEY);
+  localStorage.setItem(LEGACY_MIGRATED_KEY, '1');
+  if (broadcast) {
+    localStorage.setItem(resetKey(), `${Date.now()}:${Math.random().toString(36).slice(2)}`);
+  }
+  return [];
+}
+
+export async function clearRoomConversation() {
+  const authenticated = Boolean(currentUserId());
+  const pendingRequests = [...inFlightTurns.values()].map(({ promise }) => promise);
+  clearLocalRoomConversation({ broadcast: true });
+  await Promise.allSettled(pendingRequests);
+  if (!authenticated) return { deletedCount: 0 };
+
+  const response = await authFetch('/api/room/chat', {
+    method: 'DELETE',
+    headers: authHeaders({ Accept: 'application/json' })
+  });
+  const result = await parseResponse(response);
+  if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+  return result.data || { deletedCount: 0 };
+}
+
 export function startRoomConversationUpdates(onUpdate) {
   const handleUpdate = (event) => onUpdate?.(event?.detail || {});
   const handleStorage = (event) => {
     if (event.key === historyKey()) onUpdate?.({ source: 'storage', action: 'updated' });
+    if (event.key === resetKey()) {
+      clearLocalRoomConversation();
+      onUpdate?.({ source: 'storage', action: 'cleared' });
+    }
   };
   window.addEventListener(CHAT_EVENT_NAME, handleUpdate);
   window.addEventListener('storage', handleStorage);

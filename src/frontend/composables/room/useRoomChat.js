@@ -12,6 +12,8 @@ import { compileBehaviorIntent } from '../../services/room/live2dBehaviorControl
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from '../../services/room/localOllamaTransport';
 import { readJson, writeJson } from '../../services/room/roomStorage';
 import {
+  clearLocalRoomConversation,
+  clearRoomConversation,
   loadRoomConversation,
   readRoomConversation,
   saveRoomConversationTurn,
@@ -20,9 +22,11 @@ import {
 } from '../../services/room/roomConversationSync';
 import { publishLocalRoomMemoryUpdate, startRoomMemorySync } from '../../services/room/roomMemorySync';
 import { GROWTH_UPDATED_EVENT, getCachedGrowth, growthContext, loadGrowth } from '../../services/userGrowth';
+import { isEnglishSite } from '../../utils/siteVariant';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
 const SITE_FEED_TIMEOUT_MS = 2000;
+const ROOM_ENGLISH = isEnglishSite();
 let siteFeedContextCache = { value: '', expiresAt: 0 };
 
 function uid() {
@@ -824,6 +828,7 @@ export function useRoomChat({ live2d, world }) {
   const messages = ref([]);
   const input = ref('');
   const sending = ref(false);
+  const resetting = ref(false);
   const imageAttachment = ref(null);
   const messageListRef = ref(null);
   const ttsState = ref({ messageId: '', status: 'idle' });
@@ -833,6 +838,7 @@ export function useRoomChat({ live2d, world }) {
   let currentAudio = null;
   let ttsRequestId = 0;
   let historyLoadRevision = 0;
+  let conversationRevision = 0;
   let refreshHistoryAfterSend = false;
   let stopRoomConversationUpdates = () => {};
 
@@ -889,6 +895,51 @@ export function useRoomChat({ live2d, world }) {
     refreshSyncedHistory();
   }
 
+  function resetConversationView() {
+    conversationRevision += 1;
+    historyLoadRevision += 1;
+    refreshHistoryAfterSend = false;
+    sharedConversation.value = null;
+    imageAttachment.value = null;
+    input.value = '';
+    stopTTS();
+    renderHistory([]);
+  }
+
+  function handleConversationUpdate(detail = {}) {
+    if (detail.action === 'cleared') {
+      clearLocalRoomConversation();
+      resetConversationView();
+      return;
+    }
+    refreshSyncedHistory();
+  }
+
+  async function startNewSession() {
+    if (resetting.value) return;
+    const confirmed = window.confirm(ROOM_ENGLISH
+      ? 'Start a new chat? Current chat history and pending sync items will be cleared. Long-term memory and character knowledge will be kept.'
+      : '新建会话会清空当前聊天记录和待同步消息，但会保留长期记忆与角色知识库。是否继续？');
+    if (!confirmed) return;
+
+    resetting.value = true;
+    resetConversationView();
+    try {
+      await clearRoomConversation();
+      renderHistory([]);
+      addMessage('system', ROOM_ENGLISH
+        ? 'A new chat has started. Long-term memory and character knowledge were kept.'
+        : '新会话已开始。长期记忆和角色知识库已保留。', { shareable: false });
+    } catch (error) {
+      addMessage('system', ROOM_ENGLISH
+        ? `Could not start a new chat: ${error.message}`
+        : `新建会话失败：${error.message}`, { shareable: false });
+      await refreshSyncedHistory();
+    } finally {
+      resetting.value = false;
+    }
+  }
+
   function getShareTurn(message) {
     if (!message || message.role !== 'assistant' || message.pending || message.shareable === false || !message.turnId) return null;
     const userMessage = messages.value.find((item) => item.role === 'user' && item.turnId === message.turnId);
@@ -928,9 +979,11 @@ export function useRoomChat({ live2d, world }) {
   }
 
   async function send() {
+    if (sending.value || resetting.value) return;
     const message = input.value.trim();
     const image = imageAttachment.value;
     if (!message && !image) return;
+    const requestConversationRevision = conversationRevision;
     const turnId = uid();
     addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image, turnId });
     input.value = '';
@@ -985,6 +1038,7 @@ export function useRoomChat({ live2d, world }) {
       } else {
         result = { reply: fallbackReply(message, image) };
       }
+      if (requestConversationRevision !== conversationRevision) return;
       const structured = parseAssistantPayload(result.reply || fallbackReply(message, image));
       const reply = structured.reply || fallbackReply(message, image);
       const ttsSettings = readJson('roomTTSSettings', {});
@@ -996,7 +1050,7 @@ export function useRoomChat({ live2d, world }) {
       writeRoomConversation(nextHistory);
       sharedConversation.value = null;
       saveRoomConversationTurn({ turnId, userMessage: userContent, assistantMessage: reply }).catch((error) => {
-        console.warn('Room conversation save failed:', error);
+        if (error.name !== 'AbortError') console.warn('Room conversation save failed:', error);
       });
       remember(userContent, reply, turnId).catch((error) => {
         console.warn('Room memory save failed:', error);
@@ -1019,7 +1073,7 @@ export function useRoomChat({ live2d, world }) {
     const response = await authFetch('/api/room/memory', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify({ turnId, userMessage, assistantReply })
+      body: JSON.stringify({ turnId, userMessage, assistantReply, captureChat: false })
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
@@ -1194,13 +1248,14 @@ export function useRoomChat({ live2d, world }) {
 
   window.addEventListener(GROWTH_UPDATED_EVENT, handleGrowthUpdate);
   loadGrowth().then((state) => { growth.value = state || growth.value; }).catch(() => {});
-  stopRoomConversationUpdates = startRoomConversationUpdates(() => refreshSyncedHistory());
+  stopRoomConversationUpdates = startRoomConversationUpdates(handleConversationUpdate);
   loadHistory();
 
   return {
     messages,
     input,
     sending,
+    resetting,
     ttsState,
     sharedConversation,
     growth,
@@ -1211,6 +1266,7 @@ export function useRoomChat({ live2d, world }) {
     showSharedConversation,
     attachImage,
     clearImage,
+    startNewSession,
     send,
     playTTS,
     stopTTS,

@@ -576,6 +576,16 @@ router.get('/chat', authenticateToken, (req, res) => {
     });
 });
 
+router.delete('/chat', authenticateToken, (req, res) => {
+    const deletedCount = roomChatRepository.clearMessages(req.user.id);
+    roomMemoryEvents.publishChat(req.user.id, { action: 'cleared' });
+    setNoStore(res);
+    res.json({
+        success: true,
+        data: { deletedCount }
+    });
+});
+
 router.post('/chat/import', authenticateToken, (req, res) => {
     try {
         const source = Array.isArray(req.body?.messages) ? req.body.messages.slice(-24) : [];
@@ -739,7 +749,9 @@ router.get('/memory/:id', authenticateToken, (req, res) => {
 
 router.post('/memory', authenticateToken, async (req, res) => {
     try {
-        const chatMessageIds = captureCompatibleChatTurn(req.user.id, req.body || {});
+        const chatMessageIds = req.body?.captureChat === false
+            ? []
+            : captureCompatibleChatTurn(req.user.id, req.body || {});
         if (chatMessageIds.length) {
             roomMemoryEvents.publishChat(req.user.id, { action: 'turn-saved', messageIds: chatMessageIds });
         }

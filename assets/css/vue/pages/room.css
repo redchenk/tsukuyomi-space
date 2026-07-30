@@ -907,6 +907,49 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     height: min(56vh, 470px);
 }
 
+.chat-session-toolbar {
+    min-height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.45rem;
+}
+
+.chat-session-label {
+    color: rgba(255, 247, 251, 0.58);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.chat-session-new-btn {
+    min-height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.34rem;
+    padding: 0.34rem 0.68rem;
+    border: 1px solid rgba(174, 242, 255, 0.2);
+    border-radius: 999px;
+    color: #effaff;
+    background: rgba(126, 219, 232, 0.09);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.chat-session-new-btn:hover:not(:disabled),
+.chat-session-new-btn:focus-visible {
+    border-color: rgba(174, 242, 255, 0.42);
+    background: rgba(126, 219, 232, 0.16);
+}
+
+.chat-session-new-btn:disabled {
+    cursor: wait;
+    opacity: 0.66;
+}
+
 .room-growth-strip {
     min-width: 0;
     display: grid;
@@ -1420,6 +1463,27 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         gap: 0.78rem;
         height: auto;
         max-height: none;
+    }
+
+    .room-chat-panel .chat-session-toolbar {
+        position: absolute;
+        right: 0;
+        bottom: calc(100% + 0.45rem);
+        min-height: 1.8rem;
+        margin: 0;
+    }
+
+    .room-chat-panel .chat-session-label {
+        display: none;
+    }
+
+    .room-chat-panel .chat-session-new-btn {
+        min-height: 1.8rem;
+        padding: 0.24rem 0.58rem;
+        color: rgba(255, 255, 255, 0.92);
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(31, 34, 54, 0.78);
+        font-size: 0.68rem;
     }
 
     .room-chat-panel .room-chat-messages {
