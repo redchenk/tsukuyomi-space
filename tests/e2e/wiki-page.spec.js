@@ -162,7 +162,7 @@ test('Character and term secondary pages support direct production access', asyn
     await expect(page.locator('.wiki-entry-hero-copy').getByText('角色词条', { exact: true })).toHaveCount(0);
     const characterImage = page.getByAltText(character.alt);
     await expect(characterImage).toBeVisible();
-    expect(await characterImage.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
+    await expect.poll(() => characterImage.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
     await expect(page.locator('.wiki-entry-image-variants button')).toHaveCount(character.switches);
     if (character.switches === 2) {
       const tsukuyomiButton = page.getByRole('button', { name: '月夜见' });
