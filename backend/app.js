@@ -21,6 +21,7 @@ const mcpRoutes = require('./routes/mcp');
 const pixelArtRoutes = require('./routes/pixel-art');
 const hubPreviewRoutes = require('./routes/hub-preview');
 const friendLinkRoutes = require('./routes/friend-links');
+const friendLinkPreviewRoutes = require('./routes/friend-link-previews');
 const siteFeedRoutes = require('./routes/site-feed');
 const adminRoutes = require('./routes/admin');
 const moderationRoutes = require('./routes/moderation');
@@ -108,6 +109,11 @@ function createApp() {
 
     const siteFeedLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 300, keyPrefix: 'site-feed' });
     app.get('/feed.xml', siteFeedLimiter, siteFeedRoutes.sendRss);
+    app.use(
+        '/friend-link-previews',
+        createRateLimiter({ windowMs: 15 * 60 * 1000, max: 600, keyPrefix: 'friend-link-preview' }),
+        friendLinkPreviewRoutes
+    );
 
     serveStaticFiles(app);
 

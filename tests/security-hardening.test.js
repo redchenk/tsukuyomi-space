@@ -337,6 +337,25 @@ describe('stage delivery hardening', () => {
         assert.match(nginxConfig, /location ~ \^\/\(\?:hub\|pixel\|gallery\|friend-links\|wiki[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
     });
 
+    it('keeps versioned friend previews cacheable without weakening API cache isolation', () => {
+        for (const relativePath of [
+            'deploy/nginx.conf',
+            'deploy/openresty-root-proxy.conf',
+            'deploy/hk-frontend-openresty.conf',
+            'deploy/overseas-openresty.conf'
+        ]) {
+            const config = sourceFile(relativePath);
+            const block = config.match(/location \^~ \/friend-link-previews\/ \{[\s\S]*?\n\s*\}/)?.[0] || '';
+            assert.match(block, /proxy_pass/);
+            assert.match(block, /max-age=31536000, immutable/);
+            assert.match(block, /proxy_hide_header Set-Cookie/);
+        }
+
+        const origin = sourceFile('deploy/nginx.conf');
+        const apiBlock = origin.match(/location \/api\/ \{[\s\S]*?\n\s*\}/)?.[0] || '';
+        assert.match(apiBlock, /private, no-store/);
+    });
+
     it('bounds the overseas Wiki translation and crawler rendering surface', () => {
         const nginx = sourceFile('deploy/overseas-openresty.conf');
         const service = sourceFile('deploy/overseas-translation-service.py');

@@ -5,7 +5,6 @@ const { createRateLimiter } = require('../middleware/security');
 const friendLinkRepository = require('../repositories/friend-link-repository');
 const { validateFriendLinkApplication } = require('../services/friend-links');
 const friendLinkAvatarService = require('../services/friend-link-avatar');
-const objectStorage = require('../services/object-storage');
 const responseCache = require('../services/response-cache');
 const { setPublicReadCache } = require('../services/public-cache');
 
@@ -67,30 +66,6 @@ router.get('/source', (req, res) => {
     } catch (error) {
         console.error('Friend link monitor source failed:', error);
         res.status(500).json({ success: false, message: '友链监测源读取失败' });
-    }
-});
-
-router.get('/:id/preview', async (req, res) => {
-    try {
-        const id = Number.parseInt(req.params.id, 10);
-        if (!Number.isFinite(id) || id <= 0) return res.status(404).end();
-        const link = friendLinkRepository.findById(id);
-        if (!link || link.status !== 'active' || !link.screenshot_storage_key) return res.status(404).end();
-
-        const object = await objectStorage.getObject(link.screenshot_storage_key);
-        if (!object?.buffer?.length) return res.status(404).end();
-        res.set({
-            'Cache-Control': 'public, max-age=31536000, immutable',
-            'Content-Type': 'image/jpeg',
-            'Content-Length': String(object.buffer.length),
-            'X-Content-Type-Options': 'nosniff',
-            ...(object.etag ? { ETag: object.etag } : {}),
-            ...(object.lastModified ? { 'Last-Modified': object.lastModified } : {})
-        });
-        res.end(object.buffer);
-    } catch (error) {
-        console.warn('Friend link preview failed:', error.message);
-        res.status(404).end();
     }
 });
 

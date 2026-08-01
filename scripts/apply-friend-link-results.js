@@ -22,7 +22,7 @@ function readArgs(argv) {
 }
 
 function previewUrl(id, timestamp) {
-    return `/api/friend-links/${encodeURIComponent(id)}/preview?v=${Date.parse(timestamp) || Date.now()}`;
+    return `/friend-link-previews/${encodeURIComponent(id)}/${Date.parse(timestamp) || Date.now()}.jpg`;
 }
 
 function isJpeg(buffer) {

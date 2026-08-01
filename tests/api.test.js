@@ -2757,7 +2757,7 @@ describe('friend link applications API', () => {
 
         friendLinkRepository.updateScreenshot(
             linkId,
-            `/api/friend-links/${linkId}/preview?v=1`,
+            `/friend-link-previews/${linkId}/1.jpg`,
             '2026-08-01T00:00:00.000Z',
             `friend-links/screenshots/friend-link-${linkId}.jpg`
         );
@@ -2769,7 +2769,10 @@ describe('friend link applications API', () => {
                 etag: 'friend-preview-test',
                 lastModified: 'Sat, 01 Aug 2026 00:00:00 GMT'
             });
-            preview = await request(`/api/friend-links/${linkId}/preview?v=1`);
+            const stalePreview = await request(`/friend-link-previews/${linkId}/2.jpg`);
+            assert.equal(stalePreview.response.status, 404);
+            assert.match(stalePreview.response.headers.get('cache-control'), /no-store/);
+            preview = await request(`/friend-link-previews/${linkId}/1.jpg`);
         } finally {
             objectStorage.getObject = originalGetObject;
         }
@@ -2783,7 +2786,7 @@ describe('friend link applications API', () => {
             && item.name === 'Example Friend'
             && Object.hasOwn(item, 'avatar_url')
             && item.monitor_status === 'online'
-            && item.screenshot_url === `/api/friend-links/${linkId}/preview?v=1`
+            && item.screenshot_url === `/friend-link-previews/${linkId}/1.jpg`
         )));
 
         const source = await request('/api/friend-links/source');
