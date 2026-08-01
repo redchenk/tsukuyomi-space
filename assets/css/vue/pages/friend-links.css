@@ -138,17 +138,14 @@
 
 .friend-links-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.9rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
 }
 
 .friend-links-card {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 1.1rem;
+    display: block;
     min-width: 0;
-    min-height: 190px;
-    padding: 1rem;
+    overflow: hidden;
     border: 1px solid var(--ts-border);
     border-radius: var(--ts-radius-lg, 18px);
     background: var(--ts-readable-panel-bg, var(--ts-glass));
@@ -158,6 +155,78 @@
     backdrop-filter: blur(var(--ts-material-blur, 18px)) saturate(1.12);
     -webkit-backdrop-filter: blur(var(--ts-material-blur, 18px)) saturate(1.12);
     transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.friend-links-card-preview {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-bottom: 1px solid var(--ts-border);
+    background: color-mix(in srgb, var(--ts-readable-panel-bg, var(--ts-glass)) 88%, var(--ts-cyan) 12%);
+}
+
+.friend-links-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+}
+
+.friend-links-preview-fallback {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.friend-links-avatar.is-large {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    font-size: 1.2rem;
+}
+
+.friend-links-monitor {
+    position: absolute;
+    right: 0.7rem;
+    bottom: 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    max-width: calc(100% - 1.4rem);
+    min-height: 28px;
+    padding: 0.25rem 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    background: rgba(10, 15, 28, 0.82);
+    color: #f8fbff;
+    font-size: 0.68rem;
+    font-weight: 850;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.friend-links-monitor > span {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #8d98aa;
+}
+
+.friend-links-monitor.is-online > span { background: #54d69b; }
+.friend-links-monitor.is-slow > span { background: #f1c75b; }
+.friend-links-monitor.is-restricted > span { background: #73b7f2; }
+.friend-links-monitor.is-offline > span { background: #ec7c89; }
+
+.friend-links-card-body {
+    display: grid;
+    gap: 0.8rem;
+    min-height: 166px;
+    padding: 0.9rem 1rem 0.85rem;
 }
 
 .friend-links-card:hover {
@@ -177,6 +246,29 @@
     justify-content: space-between;
     gap: 0.8rem;
     color: var(--ts-cyan);
+}
+
+.friend-links-card-top > .ts-icon {
+    flex: 0 0 auto;
+}
+
+.friend-links-card-title {
+    min-width: 0;
+    margin-right: auto;
+}
+
+.friend-links-card-title h3,
+.friend-links-card-title span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.friend-links-card-title span {
+    margin-top: 0.15rem;
+    color: var(--ts-muted);
+    font-size: 0.7rem;
 }
 
 .friend-links-avatar {
@@ -211,22 +303,36 @@
 
 .friend-links-card p {
     display: -webkit-box;
-    margin: 0.55rem 0 0;
+    margin: 0;
     overflow: hidden;
     color: var(--ts-muted);
     font-size: 0.8rem;
     line-height: 1.55;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
 }
 
-.friend-links-host {
-    overflow: hidden;
-    color: var(--ts-cyan);
+.friend-links-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    min-width: 0;
+    margin-top: auto;
+    color: var(--ts-muted);
     font-size: 0.72rem;
-    font-weight: 800;
+}
+
+.friend-links-card-meta span {
+    min-width: 0;
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.friend-links-card-meta .has-backlink {
+    color: #54c993;
+    font-weight: 800;
 }
 
 .friend-links-loading {
@@ -347,6 +453,13 @@
     color: var(--ts-muted);
     font-size: 0.68rem;
     font-weight: 700;
+}
+
+.friend-link-field-hint {
+    color: var(--ts-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.55;
 }
 
 .friend-link-avatar-entry {
@@ -603,9 +716,7 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .friend-links-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    .friend-links-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 620px) {
@@ -644,7 +755,18 @@
     }
 
     .friend-links-card {
-        min-height: 168px;
+        min-height: 0;
+    }
+
+    .friend-links-card-body {
+        min-height: 150px;
+        padding: 0.85rem;
+    }
+
+    .friend-links-card-meta {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.25rem;
     }
 
     .friend-links-hero-side {

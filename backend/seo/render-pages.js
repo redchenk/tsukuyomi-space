@@ -245,6 +245,13 @@ function renderWikiEntryHtml(entry) {
 }
 
 function renderFriendLinksHtml(links = []) {
+    const statusLabels = {
+        online: '在线',
+        slow: '响应较慢',
+        restricted: '访问受限',
+        offline: '暂时离线',
+        unchecked: '等待检测'
+    };
     return renderSeoCollectionPage({
         path: '/friend-links',
         title: '月读空间友链导航',
@@ -255,10 +262,10 @@ function renderFriendLinksHtml(links = []) {
             href: link.url,
             title: link.name,
             description: link.description || '月读空间收录的友好站点。',
-            image: link.avatar_url || '',
-            imageKind: 'avatar',
-            imageAlt: `${link.name} 站点头像`,
-            meta: '公开友链'
+            image: link.screenshot_url || link.avatar_url || '',
+            imageKind: link.screenshot_url ? 'preview' : 'avatar',
+            imageAlt: link.screenshot_url ? `${link.name} 站点预览` : `${link.name} 站点头像`,
+            meta: `${statusLabels[link.monitor_status] || statusLabels.unchecked}${link.response_time_ms ? ` · ${link.response_time_ms}ms` : ''}`
         })),
         actions: [
             { href: '/friend-links?spa=1', label: '进入互动友链页' },

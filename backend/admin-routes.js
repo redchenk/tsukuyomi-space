@@ -13,6 +13,7 @@ const responseCache = require('./services/response-cache');
 const { publicEmail } = require('./validators');
 const { normalizeFriendLinkUrl, validateFriendLinkApplication } = require('./services/friend-links');
 const friendLinkAvatarService = require('./services/friend-link-avatar');
+const friendLinkMonitorService = require('./services/friend-link-monitor');
 const { readModerationSettings, reviewMessageContent } = require('./services/message-moderation');
 const {
     authenticateToken,
@@ -609,7 +610,9 @@ router.post('/links', async (req, res) => {
             name: req.body?.name,
             url: req.body?.url,
             description: req.body?.description,
-            avatar_url: req.body?.avatar_url
+            avatar_url: req.body?.avatar_url,
+            backlink_url: req.body?.backlink_url,
+            note: req.body?.note
         });
         if (review.error) return fail(res, 400, review.error);
         if (friendLinkRepository.findByUrl(review.data.url)) return fail(res, 409, '该站点已有友链记录');
@@ -671,6 +674,26 @@ router.post('/links/:id/avatar', async (req, res) => {
     } catch (error) {
         console.warn('Admin friend link avatar discovery failed:', error.message);
         fail(res, 422, error.message || '未能自动获取站点头像');
+    }
+});
+
+router.post('/links/:id/check', async (req, res) => {
+    try {
+        const id = asInt(req.params.id);
+        if (!id) return fail(res, 400, '友链 ID 无效');
+        const link = friendLinkRepository.findById(id);
+        if (!link) return fail(res, 404, '友链不存在');
+        if (link.status !== 'active') return fail(res, 409, '只有已通过的友链可以检测');
+
+        const result = await friendLinkMonitorService.checkFriendLink(link, {
+            authorHosts: config.friendLinkAuthorHosts
+        });
+        const updated = friendLinkRepository.updateMonitorResult(id, result);
+        clearPublicFriendLinkCache();
+        ok(res, updated, '友链检测完成');
+    } catch (error) {
+        console.error('Admin friend link check failed:', error);
+        fail(res, 500, '友链检测失败');
     }
 });
 

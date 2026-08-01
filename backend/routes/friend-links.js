@@ -1,4 +1,5 @@
 const express = require('express');
+const config = require('../config');
 const { authenticateToken } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
 const friendLinkRepository = require('../repositories/friend-link-repository');
@@ -31,6 +32,40 @@ router.get('/', (req, res) => {
     } catch (error) {
         console.error('Friend link list failed:', error);
         res.status(500).json({ success: false, message: '友链读取失败' });
+    }
+});
+
+router.get('/source', (req, res) => {
+    try {
+        setPublicReadCache(res, { maxAge: 300, stale: 600 });
+        res.json(responseCache.remember('public:friend-links-source', 300000, () => {
+            const links = friendLinkRepository.listMonitorSource();
+            return {
+                success: true,
+                data: {
+                    author_url: config.publicSiteUrl,
+                    author_hosts: config.friendLinkAuthorHosts,
+                    length: links.length,
+                    link_list: links.map(link => ({
+                        id: link.id,
+                        name: link.name,
+                        link: link.url,
+                        avatar: link.avatar_url,
+                        descr: link.description,
+                        linkpage: link.backlink_url,
+                        monitor_status: link.monitor_status,
+                        response_time_ms: link.response_time_ms,
+                        http_status: link.http_status,
+                        fail_count: link.fail_count,
+                        has_backlink: Boolean(link.has_backlink),
+                        last_checked_at: link.last_checked_at
+                    }))
+                }
+            };
+        }));
+    } catch (error) {
+        console.error('Friend link monitor source failed:', error);
+        res.status(500).json({ success: false, message: '友链监测源读取失败' });
     }
 });
 

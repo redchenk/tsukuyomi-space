@@ -46,9 +46,10 @@ const copy = computed(() => props.lang === 'en' ? {
   autoAvatar: 'Auto-detect',
   detectingAvatar: 'Detecting',
   enterSiteFirst: 'Enter the site URL first',
-  advanced: 'Additional information',
-  backlink: 'Backlink URL (optional)',
+  advanced: 'Notes',
+  backlink: 'Friend-links page URL (recommended)',
   backlinkPlaceholder: 'https://example.com/links',
+  backlinkHint: 'We periodically look for a real link to this site on that page.',
   note: 'Notes (optional)',
   notePlaceholder: 'Anything else we should know',
   submit: 'Submit application',
@@ -87,9 +88,10 @@ const copy = computed(() => props.lang === 'en' ? {
   autoAvatar: '自动获取',
   detectingAvatar: '获取中',
   enterSiteFirst: '请先填写站点链接',
-  advanced: '补充信息',
-  backlink: '回链地址（选填）',
+  advanced: '备注',
+  backlink: '友链页地址（建议填写）',
   backlinkPlaceholder: 'https://example.com/links',
+  backlinkHint: '系统会定期检查页面中是否存在指向本站的真实链接。',
   note: '备注（选填）',
   notePlaceholder: '需要说明的内容',
   submit: '提交申请',
@@ -128,9 +130,10 @@ const copy = computed(() => props.lang === 'en' ? {
   autoAvatar: '自動取得',
   detectingAvatar: '取得中',
   enterSiteFirst: '先にサイト URL を入力してください',
-  advanced: '追加情報',
-  backlink: '相互リンク URL（任意）',
+  advanced: '備考',
+  backlink: '相互リンクページ URL（推奨）',
   backlinkPlaceholder: 'https://example.com/links',
+  backlinkHint: 'このページ内に当サイトへの実際のリンクがあるか定期的に確認します。',
   note: '備考（任意）',
   notePlaceholder: '補足事項',
   submit: '申請を送信',
@@ -330,16 +333,18 @@ watch(() => form.avatar_url, () => {
             <span>{{ form.name || copy.namePlaceholder }}</span>
           </div>
 
+          <label class="friend-link-field">
+            <span>{{ copy.backlink }}</span>
+            <input v-model="form.backlink_url" type="url" maxlength="2048" inputmode="url" :placeholder="copy.backlinkPlaceholder">
+            <span class="friend-link-field-hint">{{ copy.backlinkHint }}</span>
+          </label>
+
           <details class="friend-link-advanced">
             <summary>
               <span>{{ copy.advanced }}</span>
               <TsIcon name="chevronDown" :size="17" />
             </summary>
             <div class="friend-link-advanced-body">
-              <label class="friend-link-field">
-                <span>{{ copy.backlink }}</span>
-                <input v-model="form.backlink_url" type="url" maxlength="2048" inputmode="url" :placeholder="copy.backlinkPlaceholder">
-              </label>
               <label class="friend-link-field">
                 <span>{{ copy.note }}</span>
                 <textarea v-model="form.note" maxlength="300" rows="3" :placeholder="copy.notePlaceholder"></textarea>

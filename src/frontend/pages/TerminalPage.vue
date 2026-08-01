@@ -52,9 +52,10 @@ const terminal = reactive({
   passwordDrafts: {},
   adminPassword: { currentPassword: '', newPassword: '', confirmPassword: '' },
   links: [],
-  newLink: { name: '', url: '', description: '', avatar_url: '' },
+  newLink: { name: '', url: '', description: '', avatar_url: '', backlink_url: '' },
   linkCreating: false,
   linkAvatarLoading: {},
+  linkCheckLoading: {},
   linkStatusSaving: {},
   linkReviewFilter: 'pending',
   linkPage: 1,
@@ -472,7 +473,7 @@ async function createLink() {
       method: 'POST',
       body: JSON.stringify(terminal.newLink)
     });
-    terminal.newLink = { name: '', url: '', description: '', avatar_url: '' };
+    terminal.newLink = { name: '', url: '', description: '', avatar_url: '', backlink_url: '' };
     terminal.linkReviewFilter = 'active';
     showMessage('友链已添加并公开');
     await loadPanel('links');
@@ -494,6 +495,33 @@ async function refreshLinkAvatar(id) {
     showMessage(error.message || '站点头像获取失败', 'error');
   } finally {
     terminal.linkAvatarLoading[id] = false;
+  }
+}
+
+function linkMonitorLabel(item) {
+  const labels = {
+    online: '在线',
+    slow: '较慢',
+    restricted: '受限',
+    offline: '离线',
+    unchecked: '未检测'
+  };
+  const status = labels[item.monitor_status] ? item.monitor_status : 'unchecked';
+  const latency = Number(item.response_time_ms) || 0;
+  return `${labels[status]}${latency && status !== 'offline' ? ` · ${latency}ms` : ''}`;
+}
+
+async function checkLink(id) {
+  if (terminal.linkCheckLoading[id]) return;
+  terminal.linkCheckLoading[id] = true;
+  try {
+    await adminApi(`/links/${id}/check`, { method: 'POST', body: '{}' });
+    showMessage('可达性与回链检测完成');
+    await loadPanel('links');
+  } catch (error) {
+    showMessage(error.message || '友链检测失败', 'error');
+  } finally {
+    delete terminal.linkCheckLoading[id];
   }
 }
 
@@ -1079,6 +1107,7 @@ onUnmounted(() => {
                 <label>站点链接<input v-model.trim="terminal.newLink.url" type="url" maxlength="2048" inputmode="url" placeholder="https://" autocomplete="url" required></label>
                 <label>头像链接<input v-model.trim="terminal.newLink.avatar_url" type="url" maxlength="2048" inputmode="url" placeholder="留空自动获取" autocomplete="url"></label>
                 <label>站点描述<input v-model.trim="terminal.newLink.description" type="text" minlength="6" maxlength="160" autocomplete="off" required></label>
+                <label>友链页<input v-model.trim="terminal.newLink.backlink_url" type="url" maxlength="2048" inputmode="url" placeholder="用于自动检查回链" autocomplete="url"></label>
                 <button class="primary-btn" type="submit" :disabled="terminal.linkCreating">
                   <TsIcon :name="terminal.linkCreating ? 'loader' : 'plus'" :size="16" />
                   {{ terminal.linkCreating ? '添加中' : '添加友链' }}
@@ -1096,9 +1125,9 @@ onUnmounted(() => {
                 <td><div class="terminal-link-site"><span class="terminal-link-avatar" aria-hidden="true"><span>{{ item.name?.slice(0, 1) || '?' }}</span><img v-if="item.avatar_url" :src="item.avatar_url" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true"></span><div><strong>{{ item.name }}</strong><a :href="item.url" :title="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></div></div></td>
                 <td>{{ item.applicant_username || '管理员' }}<br><small v-if="item.applicant_email">{{ item.applicant_email }}</small></td>
                 <td>{{ item.description || '—' }}<br><a v-if="item.backlink_url" :href="item.backlink_url" target="_blank" rel="noopener noreferrer">检查回链</a><small v-if="item.note" class="terminal-review-note">{{ item.note }}</small></td>
-                <td><span class="terminal-badge" :class="{ ok: item.status === 'active', warn: item.status === 'pending', hot: item.status === 'rejected' }">{{ item.status === 'pending' ? '待审核' : (item.status === 'active' ? '已通过' : '未通过') }}</span></td>
+                <td><span class="terminal-badge" :class="{ ok: item.status === 'active', warn: item.status === 'pending', hot: item.status === 'rejected' }">{{ item.status === 'pending' ? '待审核' : (item.status === 'active' ? '已通过' : '未通过') }}</span><small v-if="item.status === 'active'" class="terminal-link-monitor" :class="`is-${item.monitor_status || 'unchecked'}`">{{ linkMonitorLabel(item) }} · {{ item.has_backlink ? '有回链' : '无回链' }}</small></td>
                 <td>{{ formatDate(item.updated_at || item.created_at) }}</td>
-                <td><div class="terminal-row-actions"><button class="ghost-btn terminal-icon-action" type="button" :disabled="terminal.linkAvatarLoading[item.id] || terminal.linkStatusSaving[item.id]" title="自动获取头像" aria-label="自动获取头像" @click="refreshLinkAvatar(item.id)"><TsIcon :name="terminal.linkAvatarLoading[item.id] ? 'loader' : 'refresh'" :size="15" /></button><button v-if="item.status !== 'active'" class="primary-btn" type="button" :disabled="terminal.linkStatusSaving[item.id]" :aria-busy="Boolean(terminal.linkStatusSaving[item.id])" @click="updateLinkStatus(item.id, 'active')"><TsIcon v-if="terminal.linkStatusSaving[item.id]" name="loader" :size="15" />{{ terminal.linkStatusSaving[item.id] ? '处理中' : '通过' }}</button><button v-if="item.status !== 'rejected'" class="ghost-btn" type="button" :disabled="terminal.linkStatusSaving[item.id]" @click="updateLinkStatus(item.id, 'rejected')">{{ item.status === 'active' ? '撤下' : '拒绝' }}</button><button class="danger-btn" type="button" :disabled="terminal.linkStatusSaving[item.id]" @click="deleteLink(item.id)">删除</button></div></td>
+                <td><div class="terminal-row-actions"><button class="ghost-btn terminal-icon-action" type="button" :disabled="terminal.linkAvatarLoading[item.id] || terminal.linkStatusSaving[item.id]" title="自动获取头像" aria-label="自动获取头像" @click="refreshLinkAvatar(item.id)"><TsIcon :name="terminal.linkAvatarLoading[item.id] ? 'loader' : 'refresh'" :size="15" /></button><button v-if="item.status === 'active'" class="ghost-btn terminal-icon-action" type="button" :disabled="terminal.linkCheckLoading[item.id] || terminal.linkStatusSaving[item.id]" title="立即检测可达性与回链" aria-label="立即检测可达性与回链" @click="checkLink(item.id)"><TsIcon :name="terminal.linkCheckLoading[item.id] ? 'loader' : 'eye'" :size="15" /></button><button v-if="item.status !== 'active'" class="primary-btn" type="button" :disabled="terminal.linkStatusSaving[item.id]" :aria-busy="Boolean(terminal.linkStatusSaving[item.id])" @click="updateLinkStatus(item.id, 'active')"><TsIcon v-if="terminal.linkStatusSaving[item.id]" name="loader" :size="15" />{{ terminal.linkStatusSaving[item.id] ? '处理中' : '通过' }}</button><button v-if="item.status !== 'rejected'" class="ghost-btn" type="button" :disabled="terminal.linkStatusSaving[item.id]" @click="updateLinkStatus(item.id, 'rejected')">{{ item.status === 'active' ? '撤下' : '拒绝' }}</button><button class="danger-btn" type="button" :disabled="terminal.linkStatusSaving[item.id]" @click="deleteLink(item.id)">删除</button></div></td>
               </tr>
               <tr v-if="!filteredReviewLinks.length"><td colspan="6"><div class="terminal-empty">当前筛选下没有友链申请</div></td></tr>
             </tbody></table></div>

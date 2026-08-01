@@ -183,6 +183,9 @@ describe('frontend navigation routes', () => {
         assert.match(application, /avatar_url: form\.avatar_url\.trim\(\)/);
         assert.match(application, /copy\.autoAvatar/);
         assert.match(directory, /link\.avatar_url/);
+        assert.match(directory, /link\.screenshot_url/);
+        assert.match(directory, /monitorStatus\(link\)/);
+        assert.match(application, /copy\.backlinkHint/);
         assert.match(directory, /referrerpolicy="no-referrer"/);
         assert.match(application, /go\('\/friend-links'\)/);
         assert.match(application, /TsIcon name="external"/);
@@ -193,9 +196,10 @@ describe('frontend navigation routes', () => {
         const statusAction = terminal.match(/async function updateLinkStatus[\s\S]*?\n}/)?.[0] || '';
 
         assert.match(terminal, /label: '友链审核'/);
-        assert.match(terminal, /newLink: \{ name: '', url: '', description: '', avatar_url: '' \}/);
+        assert.match(terminal, /newLink: \{ name: '', url: '', description: '', avatar_url: '', backlink_url: '' \}/);
         assert.match(terminal, /async function createLink\(\)/);
         assert.match(terminal, /async function refreshLinkAvatar\(id\)/);
+        assert.match(terminal, /async function checkLink\(id\)/);
         assert.match(terminal, /站点描述/);
         assert.match(terminal, /头像链接/);
         assert.match(terminal, /@submit\.prevent="createLink"/);

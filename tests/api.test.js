@@ -31,6 +31,7 @@ const { requireUserId, similarity } = require('../backend/services/room-memory')
 const { scopeFilter, truncateUtf8 } = require('../backend/services/room-milvus-store');
 const objectStorage = require('../backend/services/object-storage');
 const friendLinkAvatarService = require('../backend/services/friend-link-avatar');
+const friendLinkMonitorService = require('../backend/services/friend-link-monitor');
 const { renderFriendLinksSpaHtml, renderSeoCollectionPage } = require('../backend/seo/render-pages');
 const friendLinkRepository = require('../backend/repositories/friend-link-repository');
 
@@ -299,6 +300,10 @@ describe('database initialization', () => {
         assert.equal(db.prepare('SELECT COUNT(*) AS count FROM articles WHERE published_at IS NULL').get().count, 0);
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('admin').role, 'admin');
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('staff-admin').role, 'admin');
+        const friendLinkColumns = db.prepare('PRAGMA table_info(friend_links)').all().map(column => column.name);
+        for (const column of ['monitor_status', 'response_time_ms', 'has_backlink', 'screenshot_url', 'last_checked_at']) {
+            assert.ok(friendLinkColumns.includes(column), `${column} friend link column should exist`);
+        }
     });
 
     it('backfills recoverable legacy memory conversations once', () => {
@@ -2728,11 +2733,45 @@ describe('friend link applications API', () => {
         assert.equal(approved.response.status, 200);
         assert.equal(approved.body.data.status, 'active');
 
+        const originalCheckFriendLink = friendLinkMonitorService.checkFriendLink;
+        let checked;
+        try {
+            friendLinkMonitorService.checkFriendLink = async (link) => ({
+                id: link.id,
+                url: link.url,
+                status: 'online',
+                responseTimeMs: 128,
+                httpStatus: 200,
+                failCount: 0,
+                hasBacklink: true,
+                error: '',
+                checkedAt: '2026-08-01T00:00:00.000Z'
+            });
+            checked = await postJson(`/api/admin/links/${linkId}/check`, {}, adminToken);
+        } finally {
+            friendLinkMonitorService.checkFriendLink = originalCheckFriendLink;
+        }
+        assert.equal(checked.response.status, 200);
+        assert.equal(checked.body.data.monitor_status, 'online');
+        assert.equal(checked.body.data.has_backlink, 1);
+
         const visible = await request('/api/friend-links');
         assert.ok(visible.body.data.some(item => (
             item.id === linkId
             && item.name === 'Example Friend'
             && Object.hasOwn(item, 'avatar_url')
+            && item.monitor_status === 'online'
+        )));
+
+        const source = await request('/api/friend-links/source');
+        assert.equal(source.response.status, 200);
+        assert.equal(source.body.data.author_url, config.publicSiteUrl);
+        assert.ok(source.body.data.link_list.some(item => (
+            item.id === linkId
+            && item.link === 'https://friend.example.test/'
+            && item.linkpage === 'https://friend.example.test/links'
+            && item.monitor_status === 'online'
+            && item.has_backlink === true
         )));
 
         const removed = await request(`/api/admin/links/${linkId}`, {
