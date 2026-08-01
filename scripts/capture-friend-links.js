@@ -3,6 +3,8 @@ const path = require('path');
 const { chromium } = require('@playwright/test');
 const { resolvePublicUrl } = require('../backend/services/outbound-url-security');
 
+const MIN_SCREENSHOT_BYTES = 12 * 1024;
+
 function readArgs(argv) {
     const args = {};
     for (let index = 0; index < argv.length; index += 1) {
@@ -35,6 +37,9 @@ async function main() {
     const browser = await chromium.launch({ headless: true });
     try {
         await mapWithConcurrency(links, 2, async link => {
+            delete link.screenshot_file;
+            delete link.screenshot_captured_at;
+            delete link.screenshot_error;
             const context = await browser.newContext({
                 viewport: { width: 1280, height: 720 },
                 deviceScaleFactor: 1,
@@ -86,6 +91,11 @@ async function main() {
                     fullPage: false,
                     animations: 'disabled'
                 });
+                const screenshotPath = path.join(outputDir, fileName);
+                if (fs.statSync(screenshotPath).size < MIN_SCREENSHOT_BYTES) {
+                    fs.unlinkSync(screenshotPath);
+                    throw new Error('页面预览为空白或内容过少');
+                }
                 link.screenshot_file = fileName;
                 link.screenshot_captured_at = new Date().toISOString();
                 process.stdout.write(`${link.name || link.url}: screenshot captured\n`);

@@ -7,6 +7,7 @@ const { normalizeFriendLinkUrl } = require('../backend/services/friend-links');
 
 const ALLOWED_STATUSES = new Set(['online', 'slow', 'restricted', 'offline']);
 const MAX_RESULT_BYTES = 2 * 1024 * 1024;
+const MIN_SCREENSHOT_BYTES = 12 * 1024;
 const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
 
 function readArgs(argv) {
@@ -66,7 +67,7 @@ async function main() {
         const screenshotPath = path.resolve(screenshotDir, screenshotName);
         if (!screenshotPath.startsWith(`${screenshotDir}${path.sep}`) || !fs.existsSync(screenshotPath)) continue;
         const screenshotStats = fs.statSync(screenshotPath);
-        if (!screenshotStats.isFile() || screenshotStats.size > MAX_SCREENSHOT_BYTES) continue;
+        if (!screenshotStats.isFile() || screenshotStats.size < MIN_SCREENSHOT_BYTES || screenshotStats.size > MAX_SCREENSHOT_BYTES) continue;
         const buffer = fs.readFileSync(screenshotPath);
         if (!isJpeg(buffer)) continue;
 
