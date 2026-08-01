@@ -159,14 +159,15 @@ function updateMonitorResult(id, {
     return changes ? findById(id) : null;
 }
 
-function updateScreenshot(id, screenshotUrl, capturedAt = new Date().toISOString()) {
+function updateScreenshot(id, screenshotUrl, capturedAt = new Date().toISOString(), storageKey = '') {
     const changes = db.prepare(`
         UPDATE friend_links
         SET screenshot_url = ?,
+            screenshot_storage_key = ?,
             screenshot_updated_at = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND status = 'active'
-    `).run(screenshotUrl, capturedAt, id).changes;
+    `).run(screenshotUrl, storageKey, capturedAt, id).changes;
     return changes ? findById(id) : null;
 }
 

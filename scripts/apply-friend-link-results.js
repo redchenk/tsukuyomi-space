@@ -21,10 +21,8 @@ function readArgs(argv) {
     return args;
 }
 
-function withVersion(value, timestamp) {
-    const url = new URL(value);
-    url.searchParams.set('v', String(Date.parse(timestamp) || Date.now()));
-    return url.toString();
+function previewUrl(id, timestamp) {
+    return `/api/friend-links/${encodeURIComponent(id)}/preview?v=${Date.parse(timestamp) || Date.now()}`;
 }
 
 function isJpeg(buffer) {
@@ -82,7 +80,7 @@ async function main() {
             });
             if (uploaded?.url) {
                 const capturedAt = result.screenshot_captured_at || new Date().toISOString();
-                friendLinkRepository.updateScreenshot(id, withVersion(uploaded.url, capturedAt), capturedAt);
+                friendLinkRepository.updateScreenshot(id, previewUrl(id, capturedAt), capturedAt, uploaded.key);
                 screenshots += 1;
             }
         } catch (error) {

@@ -301,7 +301,7 @@ describe('database initialization', () => {
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('admin').role, 'admin');
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('staff-admin').role, 'admin');
         const friendLinkColumns = db.prepare('PRAGMA table_info(friend_links)').all().map(column => column.name);
-        for (const column of ['monitor_status', 'response_time_ms', 'has_backlink', 'screenshot_url', 'last_checked_at']) {
+        for (const column of ['monitor_status', 'response_time_ms', 'has_backlink', 'screenshot_url', 'screenshot_storage_key', 'last_checked_at']) {
             assert.ok(friendLinkColumns.includes(column), `${column} friend link column should exist`);
         }
     });
@@ -2755,12 +2755,35 @@ describe('friend link applications API', () => {
         assert.equal(checked.body.data.monitor_status, 'online');
         assert.equal(checked.body.data.has_backlink, 1);
 
+        friendLinkRepository.updateScreenshot(
+            linkId,
+            `/api/friend-links/${linkId}/preview?v=1`,
+            '2026-08-01T00:00:00.000Z',
+            `friend-links/screenshots/friend-link-${linkId}.jpg`
+        );
+        const originalGetObject = objectStorage.getObject;
+        let preview;
+        try {
+            objectStorage.getObject = async () => ({
+                buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+                etag: 'friend-preview-test',
+                lastModified: 'Sat, 01 Aug 2026 00:00:00 GMT'
+            });
+            preview = await request(`/api/friend-links/${linkId}/preview?v=1`);
+        } finally {
+            objectStorage.getObject = originalGetObject;
+        }
+        assert.equal(preview.response.status, 200);
+        assert.equal(preview.response.headers.get('content-type'), 'image/jpeg');
+        assert.match(preview.response.headers.get('cache-control'), /immutable/);
+
         const visible = await request('/api/friend-links');
         assert.ok(visible.body.data.some(item => (
             item.id === linkId
             && item.name === 'Example Friend'
             && Object.hasOwn(item, 'avatar_url')
             && item.monitor_status === 'online'
+            && item.screenshot_url === `/api/friend-links/${linkId}/preview?v=1`
         )));
 
         const source = await request('/api/friend-links/source');
