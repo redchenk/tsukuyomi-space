@@ -149,6 +149,43 @@ test('user can start a clean Room conversation without deleting long-term memory
     await expect(page.getByText(oldQuestion, { exact: true })).toHaveCount(0);
 });
 
+test('Room knowledge entries open a visible editor and persist user changes', async ({ page }) => {
+    await page.goto('/room/settings');
+
+    const advanced = page.locator('details.room-advanced-settings');
+    if (!(await advanced.getAttribute('open'))) await advanced.locator(':scope > summary').click();
+
+    const manager = page.locator('#room-knowledge-settings');
+    await manager.locator('.memory-manager-toggle').click();
+    const target = manager.locator('.knowledge-item').last();
+    const originalTitle = (await target.locator('strong').textContent()).trim();
+    await target.locator('.button-row .ghost-btn').click();
+
+    const editor = manager.locator('.knowledge-editor');
+    const titleInput = editor.locator('input[type="text"]').first();
+    await expect(editor).toBeInViewport();
+    await expect(titleInput).toBeFocused();
+    await expect(titleInput).toHaveValue(originalTitle);
+
+    const editedTitle = `Edited knowledge ${Date.now()}`;
+    const editedContent = 'A user-owned character personality rule.';
+    await titleInput.fill(editedTitle);
+    await editor.locator('textarea').fill(editedContent);
+    await editor.locator('input[type="text"]').nth(1).fill('custom, personality');
+    await editor.locator('input[type="checkbox"]').uncheck();
+    await editor.locator('button[type="submit"]').click();
+
+    const editedItem = manager.locator('.knowledge-item').filter({ hasText: editedTitle });
+    await expect(editedItem).toContainText(editedContent);
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('roomKnowledgeSettings')));
+    const saved = stored.entries.find((entry) => entry.title === editedTitle);
+    expect(saved).toMatchObject({
+        content: editedContent,
+        tags: 'custom, personality',
+        enabled: false
+    });
+});
+
 test('user can read an article and post a comment', async ({ page }) => {
     await loginAsUser(page);
     await page.goto('/article?id=1');

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { cloneKnowledgeEntry, defaultKnowledgeEntries } from '../constants/room/knowledgeEntries';
@@ -186,6 +186,8 @@ const knowledge = reactive({
   editingId: null,
   draft: { title: '', content: '', tags: '', enabled: true }
 });
+const knowledgeEditor = ref(null);
+const knowledgeTitleInput = ref(null);
 const mcp = reactive({
   enabled: false,
   provider: 'custom',
@@ -1673,10 +1675,16 @@ function resetKnowledgeDraft() {
   knowledge.draft = { title: '', content: '', tags: '', enabled: true };
 }
 
-function editKnowledgeEntry(item) {
+async function editKnowledgeEntry(item) {
   knowledge.editingId = item.id;
   knowledge.draft = cloneKnowledgeEntry(item);
   knowledge.managerOpen = true;
+  await nextTick();
+  knowledgeEditor.value?.scrollIntoView({
+    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'center'
+  });
+  knowledgeTitleInput.value?.focus({ preventScroll: true });
 }
 
 function saveKnowledgeEntry() {
@@ -2556,14 +2564,23 @@ onBeforeUnmount(() => {
         <div v-if="knowledge.managerOpen" class="memory-manager-body">
           <label class="check-row"><input v-model="knowledge.enabled" type="checkbox"> 启用角色知识库注入</label>
           <p class="field-hint">知识库保存在当前浏览器 localStorage。聊天时会按用户问题选取相关条目注入 LLM，不会覆盖每个用户独立的长期记忆。</p>
-          <form class="knowledge-editor" @submit.prevent="saveKnowledgeEntry">
-            <label>标题<input v-model="knowledge.draft.title" type="text" placeholder="例如：月见八千代的说话方式"></label>
+          <form
+            ref="knowledgeEditor"
+            class="knowledge-editor"
+            :class="{ 'is-editing': knowledge.editingId }"
+            @submit.prevent="saveKnowledgeEntry"
+          >
+            <div v-if="knowledge.editingId" class="knowledge-editor-status" role="status" aria-live="polite">
+              <span>正在编辑</span>
+              <strong>{{ knowledge.draft.title }}</strong>
+            </div>
+            <label>标题<input ref="knowledgeTitleInput" v-model="knowledge.draft.title" type="text" placeholder="例如：月见八千代的说话方式"></label>
             <label>内容<textarea v-model="knowledge.draft.content" placeholder="写入角色事实、人设规则、口吻或行为边界"></textarea></label>
             <label>标签<input v-model="knowledge.draft.tags" type="text" placeholder="逗号分隔，如 温柔, 月读, 创作者"></label>
             <label class="check-row"><input v-model="knowledge.draft.enabled" type="checkbox"> 启用这条知识</label>
             <div class="button-row">
               <button class="primary-btn" type="submit">{{ knowledge.editingId ? '保存条目' : '添加条目' }}</button>
-              <button class="ghost-btn" type="button" @click="resetKnowledgeDraft">清空表单</button>
+              <button class="ghost-btn" type="button" @click="resetKnowledgeDraft">{{ knowledge.editingId ? '取消编辑' : '清空表单' }}</button>
               <button class="ghost-btn" type="button" @click="saveKnowledge">保存知识库</button>
               <button class="danger-btn" type="button" @click="resetKnowledgeDefaults">恢复默认</button>
             </div>

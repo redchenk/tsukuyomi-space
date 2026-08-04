@@ -73,7 +73,8 @@ const TEXT = Object.freeze({
   '当前设置': 'Current settings', '待完成': 'Incomplete', '暂不开启': 'Not now', '本地浏览器记忆': 'Local browser memory',
   '不知道怎么选？': 'Not sure what to choose?', '电脑已安装 Ollama 就选本机；否则选常用的云端服务。': 'Choose local if Ollama is installed; otherwise use a cloud provider you trust.',
   '模型位置、代理、视觉策略、知识库、MCP 与 Live2D 调试': 'Model location, proxy, vision strategy, knowledge base, MCP and Live2D diagnostics',
-  '下一步': 'Next', '上一步': 'Back', '完成': 'Finish', '保存设置': 'Save settings', '连接成功': 'Connection successful', '连接失败': 'Connection failed'
+  '下一步': 'Next', '上一步': 'Back', '完成': 'Finish', '保存设置': 'Save settings', '连接成功': 'Connection successful', '连接失败': 'Connection failed',
+  '正在编辑': 'Editing', '取消编辑': 'Cancel editing'
 });
 
 const INLINE_TEXT = Object.freeze({
