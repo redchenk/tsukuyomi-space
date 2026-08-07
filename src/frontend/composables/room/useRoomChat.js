@@ -11,6 +11,7 @@ import {
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from '../../services/room/localOllamaTransport';
 import { readJson, writeJson } from '../../services/room/roomStorage';
+import { requestTtsAudioBlob } from '../../services/room/ttsTransport';
 import {
   clearLocalRoomConversation,
   clearRoomConversation,
@@ -1162,10 +1163,6 @@ export function useRoomChat({ live2d, world }) {
       return;
     }
     const directLocalGptSovits = settings.provider === 'gpt-sovits' && !settings.useProxy;
-    if (!settings.useProxy && !directLocalGptSovits) {
-      addMessage('system', '\u5f53\u524d Vue \u7248 TTS \u5efa\u8bae\u5148\u5f00\u542f\u670d\u52a1\u5668\u4ee3\u7406\u4ee5\u89c4\u907f CORS');
-      return;
-    }
     stopTTS();
     const requestId = ttsRequestId + 1;
     ttsRequestId = requestId;
@@ -1195,25 +1192,16 @@ export function useRoomChat({ live2d, world }) {
         ? await translateForJapaneseTts(text)
         : cleanTtsText(text);
       if (!ttsText) throw new Error('TTS 文本为空，已取消语音播放。');
-      const response = await apiFetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...settings, text: ttsText, textLang: settings.textLang || 'auto' })
-        });
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type') || '';
-        let detail = '';
-        if (contentType.includes('application/json')) {
-          const payload = await response.json().catch(() => null);
-          detail = payload?.message || payload?.error || '';
-        } else {
-          detail = await response.text().catch(() => '');
-        }
-        throw new Error(detail || `TTS ${response.status}`);
-      }
+      const audioBlob = await requestTtsAudioBlob(ttsText, {
+        ...settings,
+        textLang: settings.textLang || 'auto'
+      }, {
+        fetchDirect: fetch,
+        fetchProxy: apiFetch
+      });
       if (requestId !== ttsRequestId) return;
       if (ttsUrl) URL.revokeObjectURL(ttsUrl);
-      ttsUrl = URL.createObjectURL(await response.blob());
+      ttsUrl = URL.createObjectURL(audioBlob);
       if (requestId !== ttsRequestId) {
         URL.revokeObjectURL(ttsUrl);
         ttsUrl = '';

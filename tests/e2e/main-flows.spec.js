@@ -186,6 +186,41 @@ test('Room knowledge entries open a visible editor and persist user changes', as
     });
 });
 
+test('Room TTS plays through the saved direct provider transport', async ({ page }) => {
+    const providerRequests = [];
+    await page.addInitScript(() => {
+        localStorage.setItem('roomTTSSettings', JSON.stringify({
+            enabled: true,
+            provider: 'openai',
+            apiUrl: 'https://api.openai.com/v1/audio/speech',
+            apiKey: 'browser-direct-test-key',
+            model: 'tts-1',
+            voice: 'alloy',
+            useProxy: false
+        }));
+        localStorage.setItem('roomChatHistory:guest', JSON.stringify([
+            { id: 'tts-direct-message', role: 'assistant', content: 'Direct provider playback test.' }
+        ]));
+        HTMLMediaElement.prototype.play = function play() { return Promise.resolve(); };
+        HTMLMediaElement.prototype.pause = function pause() {};
+    });
+    await page.route('https://api.openai.com/v1/audio/speech', async (route) => {
+        providerRequests.push({
+            headers: route.request().headers(),
+            body: JSON.parse(route.request().postData())
+        });
+        await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.from('mock-audio') });
+    });
+
+    await page.goto('/room');
+    await page.locator('.chat-message.assistant .chat-tts-btn').first().click();
+    await expect.poll(() => providerRequests.length).toBe(1);
+
+    expect(providerRequests[0].headers.authorization).toBe('Bearer browser-direct-test-key');
+    expect(providerRequests[0].body.input).toBe('Direct provider playback test.');
+    await expect(page.locator('body')).not.toContainText('当前 Vue 版 TTS 建议先开启服务器代理');
+});
+
 test('user can read an article and post a comment', async ({ page }) => {
     await loginAsUser(page);
     await page.goto('/article?id=1');

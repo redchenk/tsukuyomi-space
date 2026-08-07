@@ -1,5 +1,6 @@
 import { apiFetch } from '../../api/client';
 import { readJson } from './roomStorage';
+import { requestTtsAudioBlob } from './ttsTransport';
 
 const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt';
 const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth';
@@ -255,7 +256,7 @@ export function createLive2DSpeechPlayer({ onState } = {}) {
   }
 
   async function makeAudio(text, settings) {
-    const directLocalGptSovits = settings.provider === 'gpt-sovits' && !settings.useProxy;
+    const directLocalGptSovits = settings.provider === 'gpt-sovits';
     if (directLocalGptSovits) {
       await ensureGptSovitsWeights(settings);
       const audio = new Audio(buildGptSovitsAudioUrl(text, settings));
@@ -263,16 +264,14 @@ export function createLive2DSpeechPlayer({ onState } = {}) {
       return audio;
     }
 
-    const response = await apiFetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...settings, text, textLang: settings.textLang || 'auto' })
+    const audioBlob = await requestTtsAudioBlob(text, {
+      ...settings,
+      textLang: settings.textLang || 'auto'
+    }, {
+      fetchDirect: fetch,
+      fetchProxy: apiFetch
     });
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      throw new Error(payload?.message || `TTS ${response.status}`);
-    }
-    const objectUrl = URL.createObjectURL(await response.blob());
+    const objectUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(objectUrl);
     audio.dataset.objectUrl = objectUrl;
     return audio;

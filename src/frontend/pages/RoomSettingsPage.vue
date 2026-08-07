@@ -15,6 +15,7 @@ import {
   normalizeLocalOllamaBaseUrl
 } from '../services/room/localOllamaTransport';
 import { refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
+import { requestTtsAudioBlob } from '../services/room/ttsTransport';
 import { formatDateTime } from '../utils/time';
 
 const props = defineProps({
@@ -822,50 +823,6 @@ function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiU
   return body;
 }
 
-function pickAudioBase64(data) {
-  return data?.choices?.[0]?.message?.audio?.data
-    || data?.choices?.[0]?.message?.audio
-    || data?.audio?.data
-    || data?.data?.audio;
-}
-
-function makeAudioBlobFromBase64(base64, type) {
-  const raw = atob(String(base64 || ''));
-  const bytes = new Uint8Array(raw.length);
-  for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
-  return new Blob([bytes], { type });
-}
-
-function makeAudioBlobFromEncoded(value, type) {
-  const text = String(value || '').trim();
-  if (/^[0-9a-f]+$/i.test(text) && text.length % 2 === 0) {
-    const bytes = new Uint8Array(text.length / 2);
-    for (let index = 0; index < bytes.length; index += 1) {
-      bytes[index] = parseInt(text.slice(index * 2, index * 2 + 2), 16);
-    }
-    return new Blob([bytes], { type });
-  }
-  return makeAudioBlobFromBase64(text, type);
-}
-
-function detectTtsLanguage(text, textLang) {
-  const configured = normalizeGptSovitsLang(textLang, '');
-  if (configured && configured !== 'auto') return configured;
-  const value = String(text || '');
-  if (/[\u3040-\u30ff]/u.test(value)) return 'ja';
-  if (/[\uac00-\ud7af]/u.test(value)) return 'ko';
-  if (/[\u4e00-\u9fff]/u.test(value)) return 'zh';
-  return 'en';
-}
-
-function ttsReadInstruction(text, textLang) {
-  const lang = detectTtsLanguage(text, textLang);
-  if (lang === 'ja') return '以下の日本語テキストだけを、柔らかく自然な声で朗読してください。説明、翻訳、括弧内の動作指示、舞台指示は読まないでください。';
-  if (lang === 'en') return 'Read only the following English text in a soft, natural voice. Do not read explanations, translations, action cues, or stage directions.';
-  if (lang === 'ko') return '다음 한국어 텍스트만 부드럽고 자연스러운 목소리로 읽어 주세요. 설명, 번역, 괄호 안의 동작 지시나 무대 지시는 읽지 마세요.';
-  return '只朗读下面的中文文本，语气温柔自然。不要翻译，不要解释，不要读括号里的动作提示或舞台提示。';
-}
-
 function defaultTtsUrl(provider) {
   if (provider === 'openai' || provider === 'openai-compatible') return 'https://api.openai.com/v1/audio/speech';
   if (provider === 'elevenlabs') return 'https://api.elevenlabs.io/v1/text-to-speech';
@@ -960,23 +917,6 @@ function chatRequestHeaders(apiUrl, apiKey, modelName = llm.model) {
   };
 }
 
-function minimaxLanguageBoost(textLang) {
-  const lang = normalizeGptSovitsLang(textLang, 'ja');
-  const values = {
-    ja: 'Japanese',
-    all_ja: 'Japanese',
-    en: 'English',
-    zh: 'Chinese',
-    all_zh: 'Chinese',
-    yue: 'Chinese,Yue',
-    all_yue: 'Chinese,Yue',
-    auto_yue: 'Chinese,Yue',
-    ko: 'Korean',
-    auto: 'auto'
-  };
-  return values[lang] || 'Japanese';
-}
-
 function detectGptSovitsTextLang(text) {
   const value = String(text || '');
   if (/[\u3040-\u30ff]/u.test(value)) return 'ja';
@@ -1012,95 +952,6 @@ function gptSovitsTestText(settings) {
   if (lang === 'en') return 'Hello, I am Tsukimi Yachiyo. The moonlight feels gentle tonight.';
   if (lang === 'ko') return '안녕하세요, 저는 츠키미 야치요입니다. 오늘 밤 달빛도 참 부드럽네요.';
   return '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
-}
-
-function buildTtsRequest(text, settings) {
-  const provider = settings.provider || 'mimo';
-  const apiUrl = settings.apiUrl || defaultTtsUrl(provider);
-  const voice = settings.voice || (provider === 'minimax' ? MINIMAX_DEFAULT_VOICE_ID : provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
-  if (provider === 'gpt-sovits') {
-    return {
-      apiUrl,
-      options: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: String(text),
-          text_lang: resolveGptSovitsTextLang(text, settings),
-          ref_audio_path: normalizeGptSovitsRefAudioPath(settings.refAudioPath || settings.voice),
-          prompt_text: settings.promptText || '',
-          prompt_lang: normalizeGptSovitsLang(settings.promptLang, 'ja'),
-          text_split_method: 'cut5',
-          batch_size: 1,
-          media_type: 'wav',
-          streaming_mode: false,
-          parallel_infer: true
-        })
-      }
-    };
-  }
-  if (provider === 'mimo' || /xiaomimimo/i.test(apiUrl)) {
-    return {
-      apiUrl,
-      jsonAudioType: 'audio/wav',
-      options: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'api-key': settings.apiKey },
-        body: JSON.stringify({
-          model: settings.model || 'mimo-v2.5-tts',
-          messages: [
-            { role: 'user', content: ttsReadInstruction(text, settings.textLang) },
-            { role: 'assistant', content: String(text) }
-          ],
-          modalities: ['audio'],
-          audio: { format: 'wav', voice }
-        })
-      }
-    };
-  }
-  if (provider === 'elevenlabs') {
-    const baseUrl = apiUrl.replace(/\/$/, '');
-    const finalUrl = /\/text-to-speech\/[^/]+/i.test(baseUrl) ? baseUrl : `${baseUrl}/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`;
-    return {
-      apiUrl: finalUrl,
-      options: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'xi-api-key': settings.apiKey },
-        body: JSON.stringify({ text: String(text), model_id: settings.model || 'eleven_multilingual_v2' })
-      }
-    };
-  }
-  if (provider === 'minimax') {
-    return {
-      apiUrl,
-      jsonAudioType: 'audio/mp3',
-      options: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
-        body: JSON.stringify({
-          model: settings.model || 'speech-2.8-hd',
-          text: String(text),
-          stream: false,
-          language_boost: minimaxLanguageBoost(settings.textLang || 'ja'),
-          voice_setting: { voice_id: voice || MINIMAX_DEFAULT_VOICE_ID, speed: 1, vol: 1, pitch: 0 },
-          audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 }
-        })
-      }
-    };
-  }
-  return {
-    apiUrl,
-    options: {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
-      body: JSON.stringify({
-        model: settings.model || 'tts-1',
-        input: String(text),
-        voice,
-        response_format: 'mp3'
-      })
-    }
-  };
 }
 
 function openMemoryDb() {
@@ -1596,34 +1447,16 @@ async function testTTS() {
       showToast('TTS 测试成功');
       return;
     }
-    const request = buildTtsRequest(testText, tts);
-    const response = tts.useProxy
-      ? await apiFetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: testText,
-          apiKey: tts.apiKey,
-          apiUrl: tts.apiUrl,
-          provider: tts.provider,
-          model: tts.model,
-          voice: tts.voice,
-          refAudioPath: tts.refAudioPath,
-          promptText: tts.promptText,
-          textLang: normalizeGptSovitsLang(tts.textLang, tts.provider === 'minimax' ? 'ja' : 'auto'),
-          promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja'),
-          gptWeightPath: tts.gptWeightPath,
-          sovitsWeightPath: tts.sovitsWeightPath
-        })
-      })
-      : await fetch(request.apiUrl, request.options);
-    if (!response.ok) throw new Error((await response.text()).slice(0, 160) || `HTTP ${response.status}`);
-    const contentType = response.headers.get('content-type') || '';
-    const blob = contentType.includes('application/json')
-      ? makeAudioBlobFromEncoded(pickAudioBase64(await response.json()), request.jsonAudioType || 'audio/mp3')
-      : await response.blob();
+    const blob = await requestTtsAudioBlob(testText, {
+      ...tts,
+      textLang: normalizeGptSovitsLang(tts.textLang, tts.provider === 'minimax' ? 'ja' : 'auto'),
+      promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja')
+    }, {
+      fetchDirect: fetch,
+      fetchProxy: apiFetch
+    });
     await new Audio(URL.createObjectURL(blob)).play();
-    openTestDialog('tts', 'success', 'TTS 语音测试', '连接成功，已开始播放测试语音。', `音频类型：${blob.type || contentType || '未知'}\n大小：${blob.size} bytes`);
+    openTestDialog('tts', 'success', 'TTS 语音测试', '连接成功，已开始播放测试语音。', `音频类型：${blob.type || '未知'}\n大小：${blob.size} bytes`);
     showToast('TTS 测试成功');
   } catch (error) {
     openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${error.message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
