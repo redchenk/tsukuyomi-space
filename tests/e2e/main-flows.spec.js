@@ -189,6 +189,24 @@ test('Room knowledge entries open a visible editor and persist user changes', as
 test('Room TTS plays through the saved direct provider transport', async ({ page }) => {
     const providerRequests = [];
     await page.addInitScript(() => {
+        let gestureActive = false;
+        window.addEventListener('click', () => {
+            gestureActive = true;
+            queueMicrotask(() => { gestureActive = false; });
+        }, true);
+        HTMLMediaElement.prototype.play = function play() {
+            if (gestureActive && this.src.startsWith('data:audio/wav;base64,')) {
+                this.__mobilePlaybackUnlocked = true;
+            }
+            if (!this.__mobilePlaybackUnlocked) {
+                return Promise.reject(new DOMException(
+                    'play() can only be initiated by a user gesture.',
+                    'NotAllowedError'
+                ));
+            }
+            return Promise.resolve();
+        };
+        HTMLMediaElement.prototype.pause = function pause() {};
         localStorage.setItem('roomTTSSettings', JSON.stringify({
             enabled: true,
             provider: 'openai',
@@ -201,14 +219,13 @@ test('Room TTS plays through the saved direct provider transport', async ({ page
         localStorage.setItem('roomChatHistory:guest', JSON.stringify([
             { id: 'tts-direct-message', role: 'assistant', content: 'Direct provider playback test.' }
         ]));
-        HTMLMediaElement.prototype.play = function play() { return Promise.resolve(); };
-        HTMLMediaElement.prototype.pause = function pause() {};
     });
     await page.route('https://api.openai.com/v1/audio/speech', async (route) => {
         providerRequests.push({
             headers: route.request().headers(),
             body: JSON.parse(route.request().postData())
         });
+        await new Promise((resolve) => setTimeout(resolve, 120));
         await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.from('mock-audio') });
     });
 
@@ -219,6 +236,32 @@ test('Room TTS plays through the saved direct provider transport', async ({ page
     expect(providerRequests[0].headers.authorization).toBe('Bearer browser-direct-test-key');
     expect(providerRequests[0].body.input).toBe('Direct provider playback test.');
     await expect(page.locator('body')).not.toContainText('当前 Vue 版 TTS 建议先开启服务器代理');
+    await expect(page.locator('body')).not.toContainText('play() can only be initiated by a user gesture');
+});
+
+test('mobile Room settings saves provider TTS and advances with visible feedback', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/room/settings');
+    await page.locator('.room-setup-stepper button').nth(1).click();
+    await page.locator('input[name="setup-tts-mode"]').nth(1).check();
+    await page.locator('.room-simple-form select').first().selectOption('openai');
+    await page.locator('.room-simple-form input[type="password"]').fill('mobile-save-test-key');
+
+    await page.locator('.room-setup-step-panel .room-setup-actions .primary-btn').click();
+
+    await expect(page.locator('.room-setup-stepper button').nth(2)).toHaveClass(/active/);
+    await expect(page.locator('.plaza-toast.show')).toContainText('TTS 设置已保存');
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('roomTTSSettings') || 'null'));
+    expect(saved).toMatchObject({
+        enabled: true,
+        provider: 'openai',
+        apiKey: 'mobile-save-test-key',
+        useProxy: false
+    });
+    await expect.poll(() => page.locator('.room-setup-card').evaluate((element) => element.getBoundingClientRect().top))
+        .toBeGreaterThanOrEqual(-1);
+    const cardTop = await page.locator('.room-setup-card').evaluate((element) => element.getBoundingClientRect().top);
+    expect(cardTop).toBeLessThan(180);
 });
 
 test('user can read an article and post a comment', async ({ page }) => {

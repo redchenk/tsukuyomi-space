@@ -11,6 +11,12 @@ import {
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from '../../services/room/localOllamaTransport';
 import { readJson, writeJson } from '../../services/room/roomStorage';
+import {
+  describeAudioPlaybackError,
+  prepareAsyncAudioSource,
+  primeAsyncAudioPlayback,
+  releaseAsyncAudioPlayback
+} from '../../services/room/audioPlayback';
 import { requestTtsAudioBlob } from '../../services/room/ttsTransport';
 import {
   clearLocalRoomConversation,
@@ -837,6 +843,7 @@ export function useRoomChat({ live2d, world }) {
   const growth = ref(getCachedGrowth());
   let ttsUrl = '';
   let currentAudio = null;
+  let currentAudioPlayback = null;
   let ttsRequestId = 0;
   let historyLoadRevision = 0;
   let conversationRevision = 0;
@@ -1096,6 +1103,8 @@ export function useRoomChat({ live2d, world }) {
       currentAudio.onerror = null;
       currentAudio = null;
     }
+    releaseAsyncAudioPlayback(currentAudioPlayback);
+    currentAudioPlayback = null;
     ttsState.value = { messageId: '', status: 'idle' };
   }
 
@@ -1164,6 +1173,9 @@ export function useRoomChat({ live2d, world }) {
     }
     const directLocalGptSovits = settings.provider === 'gpt-sovits' && !settings.useProxy;
     stopTTS();
+    const audioPlayback = primeAsyncAudioPlayback();
+    currentAudioPlayback = audioPlayback;
+    currentAudio = audioPlayback.audio;
     const requestId = ttsRequestId + 1;
     ttsRequestId = requestId;
     ttsState.value = { messageId, status: 'loading' };
@@ -1173,7 +1185,10 @@ export function useRoomChat({ live2d, world }) {
         const ttsText = await translateForJapaneseTts(text);
         if (!ttsText) throw new Error('日文翻译结果为空，已取消语音播放。');
         await ensureGptSovitsWeights(settings);
-        const audio = new Audio(buildGptSovitsAudioUrl(ttsText, { ...settings, textLang: 'ja', promptLang: settings.promptLang || 'ja' }));
+        const audio = await prepareAsyncAudioSource(
+          audioPlayback,
+          buildGptSovitsAudioUrl(ttsText, { ...settings, textLang: 'ja', promptLang: settings.promptLang || 'ja' })
+        );
         currentAudio = audio;
         audio.onerror = () => {
           if (currentAudio === audio) stopTTS();
@@ -1207,14 +1222,14 @@ export function useRoomChat({ live2d, world }) {
         ttsUrl = '';
         return;
       }
-      const audio = new Audio(ttsUrl);
+      const audio = await prepareAsyncAudioSource(audioPlayback, ttsUrl);
       currentAudio = audio;
       const playbackBinding = bindTtsAudioPlayback(audio, messageId, ttsText, messageLive2D);
       await audio.play().then(playbackBinding.watchPlaybackStart);
     } catch (error) {
       if (requestId !== ttsRequestId) return;
       stopTTS();
-      addMessage('system', `TTS \u64ad\u653e\u5931\u8d25\uff1a${error.message}`);
+      addMessage('system', `TTS \u64ad\u653e\u5931\u8d25\uff1a${describeAudioPlaybackError(error)}`);
     }
   }
 

@@ -14,6 +14,12 @@ import {
   localOllamaWindowsCommand,
   normalizeLocalOllamaBaseUrl
 } from '../services/room/localOllamaTransport';
+import {
+  describeAudioPlaybackError,
+  prepareAsyncAudioSource,
+  primeAsyncAudioPlayback,
+  releaseAsyncAudioPlayback
+} from '../services/room/audioPlayback';
 import { refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
 import { requestTtsAudioBlob } from '../services/room/ttsTransport';
 import { formatDateTime } from '../utils/time';
@@ -140,6 +146,7 @@ const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
 const toast = reactive({ text: '', visible: false });
 const modelSaveNotice = reactive({ visible: false, text: '', detail: '' });
 const testDialog = reactive({ visible: false, target: '', status: 'idle', title: '', message: '', detail: '' });
+let ttsTestPlayback = null;
 const memoryCount = ref(0);
 const memoryList = ref([]);
 const memoryLoading = ref(false);
@@ -1219,6 +1226,17 @@ function applySetupTtsProvider(provider) {
   tts.enabled = true;
 }
 
+function moveToSetupStep(step, message) {
+  setupStep.value = step;
+  if (message) showToast(message);
+  nextTick(() => {
+    const revealStep = () => {
+      document.querySelector('.room-setup-card')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    };
+    window.requestAnimationFrame(() => window.requestAnimationFrame(revealStep));
+  });
+}
+
 function saveSetupStep() {
   if (setupStep.value === 1) {
     saveLLM(false);
@@ -1226,16 +1244,16 @@ function saveSetupStep() {
       showToast(llmNeedsApiKey(llm.apiUrl) ? '请填写 API Key 后继续' : '请先选择模型');
       return;
     }
-    setupStep.value = 2;
+    moveToSetupStep(2, '聊天模型已保存，继续设置语音');
     return;
   }
   if (setupStep.value === 2) {
-    saveTTS(false);
+    if (!saveTTS(false)) return;
     if (!ttsSetupReady.value) {
       showToast('请补全语音设置，或关闭语音后继续');
       return;
     }
-    setupStep.value = 3;
+    moveToSetupStep(3, 'TTS 设置已保存，继续设置记忆');
     return;
   }
   saveMemory();
@@ -1382,6 +1400,7 @@ async function testLLM() {
 }
 
 function saveTTS(showDialog = true) {
+  const shouldShowDialog = showDialog !== false;
   if (tts.provider === 'gpt-sovits') {
     tts.textLang = normalizeGptSovitsLang(tts.textLang || tts.model, 'auto');
     tts.promptLang = normalizeGptSovitsLang(tts.promptLang, 'ja');
@@ -1397,7 +1416,7 @@ function saveTTS(showDialog = true) {
     tts.voice = String(tts.voice || MINIMAX_DEFAULT_VOICE_ID).trim();
   }
   const hasTtsLanguageSelect = tts.provider === 'gpt-sovits' || tts.provider === 'minimax';
-  writeJson('roomTTSSettings', {
+  const settings = {
     enabled: Boolean(tts.enabled),
     provider: tts.provider || 'mimo',
     apiUrl: String(tts.apiUrl || '').trim(),
@@ -1411,9 +1430,17 @@ function saveTTS(showDialog = true) {
     gptWeightPath: String(tts.gptWeightPath || '').trim(),
     sovitsWeightPath: String(tts.sovitsWeightPath || '').trim(),
     useProxy: tts.provider === 'gpt-sovits' ? false : Boolean(tts.useProxy)
-  });
+  };
+  try {
+    writeJson('roomTTSSettings', settings);
+  } catch (error) {
+    const message = `TTS 设置保存失败：${error.message || '浏览器存储不可用'}`;
+    if (shouldShowDialog) openTestDialog('tts', 'error', 'TTS 设置保存失败', message);
+    showToast(message);
+    return false;
+  }
   const localGptSovits = tts.provider === 'gpt-sovits';
-  if (showDialog) {
+  if (shouldShowDialog) {
     openTestDialog(
       'tts',
       tts.enabled && (tts.apiKey || localGptSovits) ? 'success' : 'warning',
@@ -1425,15 +1452,20 @@ function saveTTS(showDialog = true) {
     );
   }
   showToast('TTS 设置已保存');
+  return true;
 }
 
 async function testTTS() {
-  saveTTS();
+  if (!saveTTS()) return;
   if (tts.provider !== 'gpt-sovits' && !tts.apiKey) {
     openTestDialog('tts', 'error', 'TTS 语音测试', '请先填写 TTS API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的语音供应商。');
     showToast('请先填写 TTS API Key');
     return;
   }
+  releaseAsyncAudioPlayback(ttsTestPlayback);
+  const audioPlayback = primeAsyncAudioPlayback();
+  ttsTestPlayback = audioPlayback;
+  let objectUrl = '';
   const testText = tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
     ? gptSovitsTestText(tts)
     : '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
@@ -1442,7 +1474,8 @@ async function testTTS() {
     if (tts.provider === 'gpt-sovits' && !tts.useProxy) {
       await ensureGptSovitsWeights(tts);
       const audioUrl = buildGptSovitsAudioUrl(testText, tts);
-      await new Audio(audioUrl).play();
+      const audio = await prepareAsyncAudioSource(audioPlayback, audioUrl);
+      await audio.play();
       openTestDialog('tts', 'success', 'TTS 语音测试', '已直接请求本机 GPT-SoVITS 9880 端口并开始播放。', audioUrl);
       showToast('TTS 测试成功');
       return;
@@ -1455,12 +1488,19 @@ async function testTTS() {
       fetchDirect: fetch,
       fetchProxy: apiFetch
     });
-    await new Audio(URL.createObjectURL(blob)).play();
+    objectUrl = URL.createObjectURL(blob);
+    const audio = await prepareAsyncAudioSource(audioPlayback, objectUrl);
+    audio.addEventListener('ended', () => URL.revokeObjectURL(objectUrl), { once: true });
+    await audio.play();
     openTestDialog('tts', 'success', 'TTS 语音测试', '连接成功，已开始播放测试语音。', `音频类型：${blob.type || '未知'}\n大小：${blob.size} bytes`);
     showToast('TTS 测试成功');
   } catch (error) {
-    openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${error.message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
-    showToast(`TTS 测试失败：${error.message}`);
+    releaseAsyncAudioPlayback(audioPlayback);
+    if (ttsTestPlayback === audioPlayback) ttsTestPlayback = null;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    const message = describeAudioPlaybackError(error);
+    openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
+    showToast(`TTS 测试失败：${message}`);
   }
 }
 
@@ -1841,6 +1881,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopRoomMemorySync();
+  releaseAsyncAudioPlayback(ttsTestPlayback);
+  ttsTestPlayback = null;
   window.removeEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
   window.removeEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
   window.removeEventListener('storage', onRoomSettingsStorageEvent);
