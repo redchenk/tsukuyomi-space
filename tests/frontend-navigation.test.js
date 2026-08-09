@@ -311,6 +311,18 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(readme, /独立 Arena/);
     });
 
+    it('links the project support page from the README and responsibility boundary', () => {
+        const reality = source('src/frontend/pages/RealityPage.vue');
+        const readme = source('README.md');
+        const supportUrl = /https:\/\/www\.ifdian\.net\/a\/redchenk\?utm_source=copylink/;
+
+        assert.match(reality, supportUrl);
+        assert.match(readme, supportUrl);
+        assert.match(reality, /\/assets\/images\/support\/afdian-redchenk\.jpg/);
+        assert.match(readme, /assets\/images\/support\/afdian-redchenk\.jpg/);
+        assert.equal(fs.existsSync(path.join(projectRoot, 'assets/images/support/afdian-redchenk.jpg')), true);
+    });
+
     it('uses /pixel everywhere while retaining only the explicit /arena redirect', () => {
         const router = source('src/frontend/router/index.js');
         const shell = source('src/frontend/layouts/AppShell.vue');

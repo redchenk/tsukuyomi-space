@@ -184,6 +184,61 @@ html[data-theme="dark"] .reality-btn.secondary {
     border-left: 2px solid rgba(180, 108, 149, 0.32);
 }
 
+.reality-support-card {
+    display: grid;
+    grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(1.25rem, 4vw, 3rem);
+    padding: clamp(1rem, 2.5vw, 1.5rem);
+    border: 1px solid var(--reality-line);
+    border-radius: var(--ts-radius-xl);
+    background: var(--reality-card-bg);
+    box-shadow: var(--ts-shadow-sm);
+    backdrop-filter: var(--ts-blur-md);
+    overflow: hidden;
+}
+
+.reality-support-image-link {
+    display: block;
+    border-radius: var(--ts-radius-lg);
+    overflow: hidden;
+}
+
+.reality-support-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 750 / 1032;
+    object-fit: cover;
+}
+
+.reality-support-copy {
+    display: grid;
+    justify-items: start;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.reality-support-copy h3,
+.reality-support-copy p {
+    margin: 0;
+}
+
+.reality-support-copy h3 {
+    color: var(--reality-title);
+    font-size: clamp(1.3rem, 3vw, 2rem);
+}
+
+.reality-support-copy p {
+    color: var(--reality-muted);
+    line-height: 1.85;
+}
+
+.reality-support-copy small {
+    color: var(--reality-muted);
+    line-height: 1.7;
+}
+
 .reality-data-table {
     width: 100%;
     border-collapse: separate;
@@ -244,6 +299,9 @@ html[data-theme="dark"] .reality-btn.secondary {
 @media (max-width: 860px) {
     .reality-section-head,
     .reality-3col { grid-template-columns: 1fr; }
+
+    .reality-support-card { grid-template-columns: 1fr; }
+    .reality-support-image-link { width: min(100%, 320px); margin-inline: auto; }
 
     .reality-hero { min-height: auto; padding-bottom: 2.5rem; }
 

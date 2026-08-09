@@ -21,6 +21,18 @@
 | [192×108 像素工坊](https://yachiyo.hk/pixel) | [超时空辉夜姬 Wiki](https://yachiyo.hk/wiki) |
 | ![192×108 像素工坊](assets/images/readme/pixel.jpg) | ![超时空辉夜姬 Wiki](assets/images/readme/wiki.jpg) |
 
+## 支持项目
+
+如果月读空间为你带来了帮助，可以通过爱发电自愿支持服务器、对象存储、CDN 与持续维护。支持不会影响站内功能、内容审核或用户权限。
+
+<p align="center">
+  <a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">
+    <img src="assets/images/support/afdian-redchenk.jpg" width="360" alt="通过爱发电支持 redchenk 和月读空间">
+  </a>
+</p>
+
+<p align="center"><a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">前往爱发电支持月读空间</a></p>
+
 ## 亮点
 
 - **Live2D AI 房间**：天气与时间驱动场景，支持浏览器侧 LLM、Ollama、TTS、音乐、图片输入和 Live2D 表情协同。

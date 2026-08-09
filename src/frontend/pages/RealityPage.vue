@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import afdianSupportImage from '../../../assets/images/support/afdian-redchenk.jpg';
 
 const props = defineProps({
   lang: { type: String, required: true },
@@ -141,6 +142,7 @@ function go(path) {
         <p class="reality-hero-copy">{{ t.realitySubtitle }}</p>
         <div class="reality-hero-actions">
           <a class="reality-btn" href="#contact">{{ t.realityContactTitle }}</a>
+          <a class="reality-btn secondary" href="#support">{{ t.realitySupportTitle }}</a>
           <a class="reality-btn secondary" href="#privacy">{{ t.realityPrivacyTitle }}</a>
         </div>
       </section>
@@ -166,6 +168,46 @@ function go(path) {
             <h3>{{ t.realityContactPlaza }}</h3>
             <p>{{ t.realityContactPlazaDesc }}</p>
           </article>
+        </div>
+      </section>
+
+      <section id="support" class="reality-section">
+        <div class="reality-section-head">
+          <div class="reality-eyebrow">Support</div>
+          <div>
+            <h2>{{ t.realitySupportTitle }}</h2>
+            <p class="reality-section-lead">{{ t.realitySupportLead }}</p>
+          </div>
+        </div>
+        <div class="reality-support-card">
+          <a
+            class="reality-support-image-link"
+            href="https://www.ifdian.net/a/redchenk?utm_source=copylink&utm_medium=link"
+            target="_blank"
+            rel="noopener noreferrer"
+            :aria-label="t.realitySupportAction"
+          >
+            <img
+              class="reality-support-image"
+              :src="afdianSupportImage"
+              :alt="t.realitySupportImageAlt"
+              width="750"
+              height="1032"
+              loading="eager"
+              decoding="async"
+            >
+          </a>
+          <div class="reality-support-copy">
+            <h3>{{ t.realitySupportTitle }}</h3>
+            <p>{{ t.realitySupportLead }}</p>
+            <a
+              class="reality-btn"
+              href="https://www.ifdian.net/a/redchenk?utm_source=copylink&utm_medium=link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >{{ t.realitySupportAction }}</a>
+            <small>{{ t.realitySupportNote }}</small>
+          </div>
         </div>
       </section>
 
