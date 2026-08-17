@@ -414,4 +414,25 @@ describe('deployment privilege boundary', () => {
         assert.match(deploy, /NGINX_SITE_PATH=\/etc\/nginx\/sites-available\/tsukuyomi-space/);
         assert.match(deploy, /if ! nginx -t; then[\s\S]*mv "\$NGINX_BACKUP" "\$NGINX_SITE_PATH"/);
     });
+
+    it('bounds storage growth on low-resource production hosts', () => {
+        const compose = sourceFile('docker-compose.yml');
+        const deploy = sourceFile('deploy/deploy.sh');
+        const installer = sourceFile('deploy/install-server-maintenance.sh');
+        const maintenance = sourceFile('deploy/server-maintenance.sh');
+        const dockerLogrotate = sourceFile('deploy/docker-container-json.logrotate');
+        const journald = sourceFile('deploy/journald-tsukuyomi.conf');
+
+        assert.match(compose, /x-json-logging: &json-logging[\s\S]*max-size: "10m"[\s\S]*max-file: "3"/);
+        assert.match(compose, /milvus-etcd:[\s\S]*profiles: \["milvus"\]/);
+        assert.match(compose, /milvus-minio:[\s\S]*profiles: \["milvus"\]/);
+        assert.match(compose, /\n  milvus:[\s\S]*profiles: \["milvus"\]/);
+        assert.match(compose, /ROOM_MEMORY_VECTOR_BACKEND: \$\{ROOM_MEMORY_VECTOR_BACKEND:-\}/);
+        assert.match(deploy, /INSTALL_SERVER_MAINTENANCE:-true/);
+        assert.match(installer, /systemctl enable --now tsukuyomi-maintenance\.timer/);
+        assert.match(maintenance, /prune_sqlite_backups "\$BACKUP_DIR" "\$BACKUP_RETENTION"/);
+        assert.match(maintenance, /DISK_CRITICAL_PERCENT/);
+        assert.match(dockerLogrotate, /size 20M[\s\S]*rotate 3[\s\S]*copytruncate/);
+        assert.match(journald, /SystemMaxUse=128M/);
+    });
 });

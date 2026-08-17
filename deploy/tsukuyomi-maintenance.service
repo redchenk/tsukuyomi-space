@@ -1,0 +1,18 @@
+[Unit]
+Description=Tsukuyomi Space storage maintenance
+After=local-fs.target
+ConditionPathExists=/var/www/tsukuyomi-space/deploy/backup-retention.sh
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/tsukuyomi-server-maintenance
+Nice=19
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateDevices=true
+ProtectClock=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true

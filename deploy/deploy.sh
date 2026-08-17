@@ -14,6 +14,10 @@ cd "$APP_DIR"
 
 mkdir -p "$ENV_DIR" "$DATA_DIR" "$LOG_DIR"
 
+if [ "${INSTALL_SERVER_MAINTENANCE:-true}" = "true" ] && [ "$(id -u)" -eq 0 ]; then
+    bash "$APP_DIR/deploy/install-server-maintenance.sh"
+fi
+
 if [ ! -f "$ENV_FILE" ]; then
     cp .env.example "$ENV_FILE"
     echo "Created $ENV_FILE. Edit secrets before starting."

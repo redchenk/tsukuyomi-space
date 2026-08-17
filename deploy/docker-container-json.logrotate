@@ -1,0 +1,10 @@
+/var/lib/docker/containers/*/*-json.log {
+    size 20M
+    rotate 3
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su root root
+}

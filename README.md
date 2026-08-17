@@ -224,12 +224,13 @@ cp .env.docker.example .env.docker
 docker compose up -d --build
 curl http://127.0.0.1:3280/api/health
 
-# Optional: import the Yachiyo persona corpus after Milvus is healthy.
+# Optional on a sufficiently large host: enable Milvus before importing the persona corpus.
+docker compose --profile milvus up -d
 docker compose cp ./data/yachiyo_novel_detailed_corpus.txt tsukuyomi-space:/data/yachiyo_novel_detailed_corpus.txt
 docker compose exec tsukuyomi-space npm run import:yachiyo -- --file /data/yachiyo_novel_detailed_corpus.txt --clear
 ```
 
-Docker 部署会把 SQLite 持久化到 Compose 命名卷 `tsukuyomi-data`，容器内路径为 `/data/tsukuyomi.db`。服务器本地额外音乐、视频背景和 Live2D 模型推荐通过 `docker-compose.resources.example.yml` 只读挂载，不打进镜像。
+Docker 部署会把 SQLite 持久化到 Compose 命名卷 `tsukuyomi-data`，容器内路径为 `/data/tsukuyomi.db`。SQLite 向量检索是默认的轻量记忆后端；Milvus 通过 `milvus` profile 按需启用。服务器本地额外音乐、视频背景和 Live2D 模型推荐通过 `docker-compose.resources.example.yml` 只读挂载，不打进镜像。
 
 推荐更新命令：
 
