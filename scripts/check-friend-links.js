@@ -11,9 +11,10 @@ function readArgs(argv) {
     for (let index = 0; index < argv.length; index += 1) {
         const value = argv[index];
         if (!value.startsWith('--')) continue;
-        args[value.slice(2)] = argv[index + 1] && !argv[index + 1].startsWith('--')
-            ? argv[++index]
-            : 'true';
+        const nextValue = argv[index + 1];
+        const hasValue = nextValue !== undefined && !nextValue.startsWith('--');
+        args[value.slice(2)] = hasValue ? nextValue : 'true';
+        if (hasValue) index += 1;
     }
     return args;
 }
@@ -143,8 +144,12 @@ async function main() {
         log: message => process.stderr.write(`${message}\n`)
     });
     const source = loadedSource.data;
+    const sourceLinkCount = source.link_list.length;
     const links = source.link_list.filter(link => matchesTarget(link, args.target || ''));
     const reuseStatus = ['1', 'true', 'yes'].includes(String(args['reuse-status'] || '').toLowerCase());
+    if (!args.target && sourceLinkCount > 0 && links.length === 0) {
+        throw new Error('未指定目标时不得生成空的友链监测结果');
+    }
     const authorHosts = Array.isArray(source.author_hosts) && source.author_hosts.length
         ? source.author_hosts
         : [source.author_url || 'https://yachiyo.hk'];
@@ -176,7 +181,9 @@ async function main() {
     const payload = {
         generated_at: new Date().toISOString(),
         source_url: loadedSource.sourceUrl,
-        total_count: source.length,
+        mode: reuseStatus ? 'screenshots_only' : 'status_only',
+        target: String(args.target || ''),
+        total_count: sourceLinkCount,
         checked_count: results.length,
         links: results
     };
@@ -198,5 +205,6 @@ module.exports = {
     loadSource,
     loadSourceCandidates,
     matchesTarget,
+    readArgs,
     sourceAttemptUrl
 };

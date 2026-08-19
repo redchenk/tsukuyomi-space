@@ -9,8 +9,10 @@ const {
 } = require('../backend/services/friend-link-monitor');
 const {
     loadSource,
-    loadSourceCandidates
+    loadSourceCandidates,
+    readArgs
 } = require('../scripts/check-friend-links');
+const { validateResultPayload } = require('../scripts/apply-friend-link-results');
 
 function sourceResponse(status = 200) {
     return new Response(status === 200
@@ -22,6 +24,42 @@ function sourceResponse(status = 200) {
 }
 
 describe('friend link monitoring', () => {
+    it('preserves explicitly empty CLI values instead of treating them as boolean flags', () => {
+        assert.deepEqual(readArgs([
+            '--reuse-status', 'false',
+            '--target', '',
+            '--output', 'result.json'
+        ]), {
+            'reuse-status': 'false',
+            target: '',
+            output: 'result.json'
+        });
+    });
+
+    it('rejects green-but-empty status payloads before database application', () => {
+        assert.throws(() => validateResultPayload({
+            mode: 'status_only',
+            target: '',
+            total_count: 3,
+            checked_count: 0,
+            links: []
+        }), /没有产生任何结果/);
+        assert.throws(() => validateResultPayload({
+            mode: 'status_only',
+            target: '',
+            total_count: 1,
+            checked_count: 1,
+            links: [{ status: 'online', apply_status: false }]
+        }), /不得跳过状态应用/);
+        assert.equal(validateResultPayload({
+            mode: 'status_only',
+            target: '',
+            total_count: 1,
+            checked_count: 1,
+            links: [{ status: 'online' }]
+        }).expectedStatusUpdates, 1);
+    });
+
     it('retries transient source failures with bounded exponential backoff', async () => {
         const requestedUrls = [];
         const delays = [];

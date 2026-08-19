@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/friend-links.yml
       - scripts/check-friend-links.js
+      - scripts/apply-friend-link-results.js
       - backend/services/friend-link-monitor.js
       - backend/services/outbound-url-security.js
   schedule:
@@ -52,11 +53,14 @@ jobs:
         id: mode
         shell: bash
         run: |
+          task="${{ inputs.task }}"
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ] || [ -z "$task" ]; then task=status_only; fi
           capture=false
           reuse_status=false
           if [ "${{ github.event.schedule }}" = "30 17 1,7,13,19,25 * *" ]; then capture=true; fi
-          if [ "${{ inputs.task }}" = "screenshots_only" ]; then capture=true; reuse_status=true; fi
-          if [ "${{ inputs.task }}" = "both" ]; then capture=true; fi
+          if [ "$task" = "screenshots_only" ]; then capture=true; reuse_status=true; fi
+          if [ "$task" = "both" ]; then capture=true; fi
+          echo "task=$task" >> "$GITHUB_OUTPUT"
           echo "capture=$capture" >> "$GITHUB_OUTPUT"
           echo "reuse_status=$reuse_status" >> "$GITHUB_OUTPUT"
 
