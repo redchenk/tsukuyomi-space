@@ -1,6 +1,13 @@
 name: Friend Link Monitor
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/friend-links.yml
+      - scripts/check-friend-links.js
+      - backend/services/friend-link-monitor.js
+      - backend/services/outbound-url-security.js
   schedule:
     - cron: '0 5,17 * * *'
     - cron: '30 17 1,7,13,19,25 * *'
@@ -61,6 +68,7 @@ jobs:
         run: |
           node scripts/check-friend-links.js \
             --source "https://yachiyo.hk/api/friend-links/source?run=${GITHUB_RUN_ID}" \
+            --fallback-source "https://tsukuyomi-space.com/api/friend-links/source?run=${GITHUB_RUN_ID}" \
             --output friend-link-results/result.json \
             --reuse-status "$REUSE_STATUS" \
             --target "$TARGET_LINK"
