@@ -251,15 +251,18 @@ onMounted(loadArticles);
     <header class="stage-header">
       <h1 class="section-title">{{ t.stageTitle }}</h1>
       <p class="section-subtitle">{{ t.stageSubtitle }}</p>
-      <p class="stage-seo-intro">{{ lang === 'en'
+      <details class="stage-about">
+        <summary>{{ lang === 'en' ? 'About the stage' : lang === 'ja' ? 'ステージについて' : '关于主舞台' }}</summary>
+        <p class="stage-seo-intro">{{ lang === 'en'
         ? 'The Main Stage brings together articles, announcements, technical notes, fan works and creative journals about Live2D, AI characters, personal websites and ongoing projects.'
         : '主舞台集中展示月读空间的文章、公告、技术记录、二创作品与创作日志，内容覆盖 Live2D、AI 角色、个人网站开发、二次元网页设计和日常项目复盘。' }}</p>
+      </details>
     </header>
 
     <div class="stage-controls">
       <div class="search-box">
         <TsIcon class="stage-search-icon" name="search" :size="17" />
-        <input v-model="stageSearch" type="text" :placeholder="t.searchPlaceholder">
+        <input v-model="stageSearch" type="search" :aria-label="t.searchPlaceholder" :placeholder="t.searchPlaceholder">
       </div>
       <a href="/editor" class="stage-new-btn" @click="checkEditorAuth">
         <TsIcon name="penLine" :size="17" />
@@ -273,6 +276,7 @@ onMounted(loadArticles);
         :key="category"
         class="filter-btn"
         :class="{ active: stageCategory === category }"
+        :aria-pressed="stageCategory === category"
         type="button"
         @click="stageCategory = category"
       >

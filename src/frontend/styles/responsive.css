@@ -110,7 +110,7 @@
     .room-chat-panel {
         left: 50% !important;
         right: auto !important;
-        bottom: max(5.65rem, calc(env(safe-area-inset-bottom) + 5.65rem)) !important;
+        bottom: var(--ts-chat-bottom, max(5.65rem, calc(env(safe-area-inset-bottom) + 5.65rem))) !important;
         width: min(24rem, calc(100vw - 3.2rem));
         max-height: 9.5rem;
         transform: translateX(-50%);
@@ -335,7 +335,7 @@
     .room-chat-panel {
         left: 50% !important;
         right: auto !important;
-        bottom: max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem)) !important;
+        bottom: var(--ts-chat-bottom, max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem))) !important;
         width: min(23rem, calc(100vw - 2.2rem));
         transform: translateX(-50%);
     }

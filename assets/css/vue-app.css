@@ -1,4 +1,4 @@
-@layer ts-base, ts-page, ts-modern, ts-design, ts-polish, ts-readability, ts-chrome, ts-refresh, ts-materials, ts-loading;
+@layer ts-base, ts-page, ts-modern, ts-design, ts-polish, ts-readability, ts-chrome, ts-refresh, ts-materials, ts-mobile, ts-loading;
 
 @import url("./vue/foundation.css") layer(ts-base);
 @import url("./vue/shell.css") layer(ts-base);
@@ -14,4 +14,5 @@
 @import url("./vue/music-player.css") layer(ts-chrome);
 @import url("./vue/ui-refresh.css") layer(ts-refresh);
 @import url("../../src/frontend/styles/materials.css") layer(ts-materials);
+@import url("../../src/frontend/styles/mobile-experience.css") layer(ts-mobile);
 @import url("../../src/frontend/styles/loading-states.css") layer(ts-loading);

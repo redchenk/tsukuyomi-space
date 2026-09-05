@@ -106,7 +106,7 @@ function showDailyGrowthPrompt(chat) {
           <TsIcon name="image" :size="22" :stroke-width="2" />
           <span>&#22270;&#29255;</span>
         </button>
-        <input id="chatInput" v-model="chat.input.value" type="text" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;" @keydown.enter="chat.send">
+        <input id="chatInput" v-model="chat.input.value" type="text" aria-label="输入消息" enterkeyhint="send" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;" @keydown.enter="!$event.isComposing && $event.keyCode !== 229 && chat.send()">
         <button id="sendChatBtn" class="panel-btn" type="button" :disabled="chat.sending.value" :aria-busy="chat.sending.value" aria-label="&#21457;&#36865;" @click="chat.send">
           <TsIcon name="send" :size="22" :stroke-width="2.1" />
           <span>&#21457;&#36865;</span>

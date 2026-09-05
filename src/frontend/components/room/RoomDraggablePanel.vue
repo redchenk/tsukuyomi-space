@@ -1,4 +1,5 @@
 <script setup>
+import TsIcon from '../TsIcon.vue';
 defineProps({
   panelId: { type: String, required: true },
   title: { type: String, default: '' },
@@ -20,7 +21,7 @@ const emit = defineEmits(['close', 'focus', 'drag-start']);
     <div class="panel-header" @pointerdown="emit('drag-start', $event)">
       <slot name="header">
         <span class="panel-title">{{ title }}</span>
-        <button class="panel-close" type="button" aria-label="Close panel" @pointerdown.stop @click.stop="emit('close')">x</button>
+        <button class="panel-close" type="button" aria-label="Close panel" @pointerdown.stop @click.stop="emit('close')"><TsIcon name="x" :size="18" /></button>
       </slot>
     </div>
     <slot />

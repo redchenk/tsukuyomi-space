@@ -1438,7 +1438,7 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     .room-chat-panel {
         left: 50% !important;
         right: auto !important;
-        bottom: max(5.85rem, calc(env(safe-area-inset-bottom) + 5.85rem)) !important;
+        bottom: var(--ts-chat-bottom, max(5.85rem, calc(env(safe-area-inset-bottom) + 5.85rem))) !important;
         width: min(43rem, calc(100vw - 2rem));
         max-height: 16rem;
         padding: 0;
@@ -1695,7 +1695,7 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         left: 50% !important;
         right: auto !important;
         top: auto !important;
-        bottom: max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem)) !important;
+        bottom: var(--ts-chat-bottom, max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem))) !important;
         width: min(23rem, calc(100vw - 2.2rem));
         max-height: min(50dvh, 24rem);
         transform: translateX(-50%);

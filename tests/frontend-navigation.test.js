@@ -6,6 +6,27 @@ const vm = require('node:vm');
 
 const projectRoot = path.resolve(__dirname, '..');
 
+describe('mobile keyboard viewport', () => {
+    const context = {};
+    const code = fs.readFileSync(path.join(projectRoot, 'src/frontend/composables/useMobileKeyboard.js'), 'utf8')
+        .replace(/^import .*;\r?\n/m, '')
+        .replace(/export function /g, 'function ')
+        .concat('\nglobalThis.readViewport = readKeyboardViewport;');
+    vm.runInNewContext(code, context);
+    const read = (overrides) => context.readViewport({ height: 844, viewportHeight: 844, mobile: true, editable: true, ...overrides });
+
+    it('distinguishes overlay keyboards, resized layouts and browser chrome', () => {
+        assert.equal(read({ viewportHeight: 430 }).open, true);
+        assert.equal(read({ viewportHeight: 430 }).inset, 414);
+        assert.equal(read({ height: 430, viewportHeight: 430, restingHeight: 844 }).open, true);
+        assert.equal(read({ height: 430, viewportHeight: 430, restingHeight: 844 }).inset, 0);
+        assert.equal(read({ viewportHeight: 790 }).open, false);
+        assert.equal(read({ viewportHeight: 430, scale: 2 }).open, false);
+        assert.equal(read({ viewportHeight: 430, editable: false }).open, false);
+        assert.equal(read({ viewportHeight: 430, mobile: false }).open, false);
+    });
+});
+
 function source(relativePath) {
     return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8');
 }

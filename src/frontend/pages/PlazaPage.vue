@@ -568,7 +568,7 @@ onMounted(refreshPlaza);
           <div class="plaza-toolbar">
             <label class="plaza-search-wrap">
               <TsIcon name="search" :size="16" />
-              <input v-model="plaza.query" class="plaza-search" type="search" :placeholder="t.searchPlaceholder || fallback.search">
+              <input v-model="plaza.query" class="plaza-search" type="search" :aria-label="fallback.search" :placeholder="fallback.search">
             </label>
             <button class="ghost-btn plaza-refresh-btn" type="button" :disabled="plaza.loading" :aria-busy="plaza.loading" @click="refreshPlaza">
               <TsIcon name="refresh" :size="16" />

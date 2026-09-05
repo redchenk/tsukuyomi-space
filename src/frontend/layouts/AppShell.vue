@@ -6,6 +6,7 @@ import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { alternateLanguage } from '../i18n';
 import { warmRoutePath } from '../router';
+import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import {
   NOTIFICATION_BADGE_EVENT,
   normalizeNotificationCount,
@@ -26,6 +27,10 @@ const props = defineProps({
 defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
 
 const navOpen = ref(false);
+const navigationRef = ref(null);
+const { keyboardOpen, viewportStyle } = useMobileKeyboard();
+let releaseNavigationScroll = null;
+let mobileNavigationQuery = null;
 const railExpandedKey = ref(null);
 const railRef = ref(null);
 const unreadNotifications = ref(0);
@@ -33,14 +38,15 @@ const UNREAD_POLL_INTERVAL_MS = 60000;
 let unreadPollId = 0;
 let unreadRequest = null;
 
-const hasGlobalBackground = computed(() => props.showChrome && props.routeName !== 'access' && props.routeName !== 'accessAlias' && props.routeName !== 'room');
-const showSiteBeian = computed(() => props.showChrome && !['hub', 'room', 'roomSettings'].includes(props.routeName));
+const isRoom = computed(() => ['room', 'roomShared'].includes(props.routeName));
+const hasGlobalBackground = computed(() => props.showChrome && !['access', 'accessAlias'].includes(props.routeName) && !isRoom.value);
+const showSiteBeian = computed(() => props.showChrome && !['hub', 'room', 'roomShared', 'roomSettings'].includes(props.routeName));
 const showNotifications = computed(() => props.isAuthed);
 const growthLabel = computed(() => props.lang === 'ja' ? '月契成長' : props.lang === 'en' ? 'Bond growth' : '月契成长');
 
 const navItems = computed(() => [
   { path: '/hub', key: 'hub', label: props.t.hub, icon: 'home', active: props.routeName === 'hub', spa: true },
-  { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: props.routeName === 'room' || props.routeName === 'roomSettings', spa: true },
+  { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza' || props.routeName === 'friendLinkApply', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
@@ -54,7 +60,17 @@ const navItems = computed(() => [
 
 const mobilePrimaryItems = computed(() => navItems.value.slice(0, 4));
 const mobileSecondaryItems = computed(() => navItems.value.slice(4));
-const activeNavItem = computed(() => navItems.value.find((item) => item.active) || navItems.value[0]);
+const mobileNavLabel = (item) => props.lang === 'en' ? ({ room: 'Room', plaza: 'Plaza' }[item.key] || item.label) : item.label;
+const activeNavItem = computed(() => navItems.value.find((item) => item.active));
+const currentPageLabel = computed(() => ({
+  notifications: props.t.notifications,
+  userCenter: props.t.ucTitle,
+  userProfile: props.t.ucTitle,
+  attachments: props.t.attachments,
+  roomSettings: props.lang === 'en' ? 'Room settings' : props.lang === 'ja' ? 'ルーム設定' : '房间设置',
+  friendLinks: props.lang === 'en' ? 'Friend links' : props.lang === 'ja' ? 'リンク集' : '友情链接'
+}[props.routeName] || activeNavItem.value?.label || props.t.brand));
+const moreActive = computed(() => navOpen.value || !mobilePrimaryItems.value.some((item) => item.active));
 const accountLabel = computed(() => (props.isAuthed ? props.t.ucTitle : props.t.login));
 const themeLabel = computed(() => (props.theme === 'dark' ? props.t.switchLightTheme : props.t.switchDarkTheme));
 const railThemeLabel = computed(() => (props.theme === 'dark' ? props.t.lightTheme : props.t.darkTheme));
@@ -133,6 +149,47 @@ function closeRailOnOutside(event) {
   railExpandedKey.value = null;
 }
 
+function closeNavigationOnResize(event) {
+  if (!event.matches) navOpen.value = false;
+}
+
+function closeNavigationOnBackdrop(event) {
+  if (event.target !== navigationRef.value) return;
+  const rect = navigationRef.value.getBoundingClientRect();
+  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) navOpen.value = false;
+}
+
+function cycleNavigationFocus(event) {
+  const controls = [...navigationRef.value.querySelectorAll('a[href], button:not(:disabled)')].filter((node) => node.getClientRects().length);
+  const target = event.shiftKey ? controls.at(-1) : controls[0];
+  if (document.activeElement === (event.shiftKey ? controls[0] : controls.at(-1))) {
+    event.preventDefault();
+    target?.focus();
+  }
+}
+
+watch(navOpen, (open) => {
+  const dialog = navigationRef.value;
+  if (open && dialog && !dialog.open) {
+    const scrollY = window.scrollY;
+    const previous = ['position', 'top', 'width', 'overflow'].map((key) => [key, document.body.style[key]]);
+    Object.assign(document.body.style, { position: 'fixed', top: `-${scrollY}px`, width: '100%', overflow: 'hidden' });
+    releaseNavigationScroll = () => {
+      for (const [key, value] of previous) document.body.style[key] = value;
+      window.scrollTo({ top: scrollY, behavior: 'instant' });
+    };
+    dialog.showModal();
+  } else if (!open) {
+    dialog?.close();
+    releaseNavigationScroll?.();
+    releaseNavigationScroll = null;
+  }
+}, { flush: 'post' });
+
+watch(() => props.showChrome, (visible) => {
+  if (!visible) navOpen.value = false;
+});
+
 watch(() => props.routeName, () => {
   navOpen.value = false;
   railExpandedKey.value = null;
@@ -144,12 +201,17 @@ watch(() => props.isAuthed, () => {
   restartUnreadPolling();
 }, { immediate: true });
 onMounted(() => {
+  mobileNavigationQuery = window.matchMedia('(max-width: 860px)');
+  mobileNavigationQuery.addEventListener('change', closeNavigationOnResize);
   loadUnreadNotifications();
   document.addEventListener('pointerdown', closeRailOnOutside, { passive: true });
   document.addEventListener('visibilitychange', refreshUnreadWhenVisible, { passive: true });
   window.addEventListener(NOTIFICATION_BADGE_EVENT, handleNotificationBadge);
 });
 onUnmounted(() => {
+  navigationRef.value?.close();
+  releaseNavigationScroll?.();
+  mobileNavigationQuery?.removeEventListener('change', closeNavigationOnResize);
   if (unreadPollId) window.clearInterval(unreadPollId);
   document.removeEventListener('pointerdown', closeRailOnOutside);
   document.removeEventListener('visibilitychange', refreshUnreadWhenVisible);
@@ -158,9 +220,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'room-shell': routeName === 'room' }">
+  <div class="app-shell" :class="{ 'room-shell': isRoom, 'pixel-shell': routeName === 'pixel', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
-    <div v-if="showChrome && !['room', 'game'].includes(routeName)" class="moon" aria-hidden="true"></div>
+    <div v-if="showChrome && !isRoom && routeName !== 'game'" class="moon" aria-hidden="true"></div>
 
     <aside v-if="showChrome" ref="railRef" class="site-rail" data-material="sidebar" :aria-label="t.navigation">
       <a href="/hub" class="rail-mark" :aria-label="t.brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @pointerdown="warmRoutePath('/hub')" @click.prevent="$emit('go', '/hub')">
@@ -175,6 +237,7 @@ onUnmounted(() => {
           :href="item.path"
           class="rail-link"
           :class="{ active: item.active, expanded: railExpandedKey === item.key }"
+          :aria-current="item.active ? 'page' : undefined"
           :aria-label="item.label"
           :title="item.label"
           @pointerenter="item.spa && warmRoutePath(item.path); expandRail(item.key)"
@@ -264,14 +327,14 @@ onUnmounted(() => {
       </div>
     </aside>
 
-    <header v-if="showChrome && routeName !== 'room'" class="topbar site-commandbar" data-material="header">
+    <header v-if="showChrome && !isRoom" class="topbar site-commandbar" data-material="header">
       <a href="/hub" class="brand room-brand site-brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @pointerdown="warmRoutePath('/hub')" @click.prevent="$emit('go', '/hub')">
         <span class="room-brand-mark site-brand-mark site-brand-icon" aria-hidden="true">
           <TsIcon name="eclipse" :size="21" :stroke-width="1.9" />
         </span>
         <span>
           <strong>{{ t.brand }}</strong>
-          <small>{{ activeNavItem?.label || 'Tsukuyomi Live Portal' }}</small>
+          <small>{{ currentPageLabel }}</small>
         </span>
       </a>
 
@@ -301,21 +364,13 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <button
-      v-if="showChrome && navOpen"
-      class="site-navigation-scrim"
-      type="button"
-      :aria-label="t.closeNavigation"
-      @click="navOpen = false"
-    ></button>
-
-    <div v-if="showChrome && navOpen" id="site-navigation" class="nav-actions room-nav-links site-nav-links open" data-material="popover" role="dialog" aria-modal="true" :aria-label="moreLabel">
+    <dialog v-if="showChrome" ref="navigationRef" id="site-navigation" class="nav-actions room-nav-links site-nav-links" :class="{ open: navOpen }" data-material="popover" role="dialog" :aria-label="moreLabel" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="closeNavigationOnBackdrop" @keydown.tab="cycleNavigationFocus">
       <div class="site-nav-drawer-head">
         <div>
           <strong>{{ moreLabel }}</strong>
-          <span>{{ activeNavItem?.label || t.brand }}</span>
+          <span>{{ currentPageLabel }}</span>
         </div>
-        <button class="site-nav-close" type="button" :aria-label="t.closeNavigation" @click="navOpen = false">
+        <button class="site-nav-close" type="button" autofocus :aria-label="t.closeNavigation" @click="navOpen = false">
           <TsIcon name="x" :size="18" />
         </button>
       </div>
@@ -329,6 +384,7 @@ onUnmounted(() => {
             :href="item.path"
             class="nav-link"
             :class="{ 'router-link-active': item.active }"
+            :aria-current="item.active ? 'page' : undefined"
             @pointerenter="item.spa && warmRoutePath(item.path)"
             @focus="item.spa && warmRoutePath(item.path)"
             @pointerdown="item.spa && warmRoutePath(item.path)"
@@ -403,7 +459,7 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
-    </div>
+    </dialog>
 
     <nav v-if="showChrome" class="mobile-bottom-nav" data-material="header" :aria-label="t.mobilePrimaryNavigation">
       <a
@@ -412,6 +468,7 @@ onUnmounted(() => {
         :href="item.path"
         class="mobile-bottom-link"
         :class="{ active: item.active }"
+        :aria-current="item.active ? 'page' : undefined"
         :aria-label="item.label"
         @pointerenter="item.spa && warmRoutePath(item.path)"
         @focus="item.spa && warmRoutePath(item.path)"
@@ -419,11 +476,11 @@ onUnmounted(() => {
         @click="navOpen = false; item.spa && ($event.preventDefault(), $emit('go', item.path))"
       >
         <TsIcon :name="item.icon" :size="20" />
-        <span>{{ item.label }}</span>
+        <span>{{ mobileNavLabel(item) }}</span>
       </a>
       <button
         class="mobile-bottom-link"
-        :class="{ active: navOpen }"
+        :class="{ active: moreActive }"
         type="button"
         :aria-label="moreLabel"
         :aria-expanded="navOpen"
