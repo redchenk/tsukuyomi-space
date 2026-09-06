@@ -96,6 +96,7 @@ function messageModerationView(message, settings) {
 }
 
 router.use(authenticateToken, requireAdmin);
+router.use('/article-categories', require('./article-categories').managementRouter);
 
 router.get('/me', (req, res) => {
     ok(res, {

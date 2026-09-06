@@ -456,7 +456,7 @@ router.put('/articles/:id', authenticateToken, async (req, res) => {
             excerpt,
             content,
             contentFormat: content_format,
-            category,
+            category: require('./repositories/article-category-repository').validateForUser(category, req.user, article.category || '其他'),
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id

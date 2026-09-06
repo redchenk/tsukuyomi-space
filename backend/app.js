@@ -137,6 +137,7 @@ function createApp() {
     app.use('/api', healthRoutes);
     app.use('/api/auth', authRoutes);
     app.use('/api/articles', articleRoutes);
+    app.use('/api/article-categories', require('./routes/article-categories').publicRouter);
     app.use('/api/messages', messageRoutes);
     app.use('/api/stats', statsRoutes);
     app.use('/api/chat', chatRoutes);

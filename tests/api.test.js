@@ -267,6 +267,7 @@ before(async () => {
     managedUserToken = await login('/api/auth/login', 'managed-user', 'managed-old-password');
     adminToken = await login('/api/admin/login', 'admin', 'admin-test-password');
     staffAdminToken = await login('/api/admin/login', 'staff-admin', 'staff-test-password');
+    await postJson('/api/admin/article-categories', { name: '\u968f\u7b14' }, adminToken);
 });
 
 after(async () => {
@@ -277,6 +278,106 @@ after(async () => {
     }
     db.close();
     fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
+describe('article category management', () => {
+    it('preserves legacy categories during migration and supplies a safe fallback', () => {
+        const Database = require('better-sqlite3');
+        const legacy = new Database(':memory:');
+        try {
+            legacy.exec("CREATE TABLE articles (id INTEGER PRIMARY KEY, category TEXT); INSERT INTO articles (category) VALUES ('Legacy topic'), (NULL), (''), (' Legacy topic '), ('LEGACY TOPIC');");
+            require('../backend/db/migrations/032_create_article_categories').up(legacy);
+            assert.ok(legacy.prepare('SELECT id FROM article_categories WHERE name = ?').get('Legacy topic'));
+            assert.equal(legacy.prepare("SELECT COUNT(*) AS n FROM articles WHERE category = '其他'").get().n, 2);
+            assert.equal(legacy.prepare("SELECT COUNT(*) AS n FROM articles WHERE category = 'Legacy topic'").get().n, 3);
+            assert.equal(legacy.prepare("SELECT protected FROM article_categories WHERE name = '其他'").get().protected, 1);
+        } finally { legacy.close(); }
+    });
+
+    it('limits writes to authenticated admins and rejects forged write origins', async () => {
+        const guest = await postJson('/api/admin/article-categories', { name: 'Guest topic' });
+        assert.equal(guest.response.status, 401);
+        const user = await postJson('/api/moderation/article-categories', { name: 'User topic' }, userToken);
+        assert.equal(user.response.status, 403);
+        const badOrigin = await request('/api/admin/article-categories', {
+            method: 'POST', headers: { ...jsonHeaders(adminToken), Origin: 'https://untrusted.example', 'Sec-Fetch-Site': 'cross-site' },
+            body: JSON.stringify({ name: 'Forbidden topic' })
+        });
+        assert.equal(badOrigin.response.status, 403);
+        const ordinaryAdmin = await login('/api/auth/login', 'staff-admin', 'staff-test-password');
+        const created = await postJson('/api/moderation/article-categories', { name: 'Site admin topic' }, ordinaryAdmin);
+        assert.equal(created.response.status, 201);
+        const id = created.body.data.find(item => item.name === 'Site admin topic').id;
+        const deleted = await request(`/api/moderation/article-categories/${id}`, { method: 'DELETE', headers: jsonHeaders(ordinaryAdmin) });
+        assert.equal(deleted.response.status, 200);
+    });
+
+    it('validates names, deduplicates concurrent writes and protects the fallback', async () => {
+        for (const name of ['', ' ', '<script>alert(1)</script>', 'x\nY', 'all', 'a'.repeat(33), {}, ['bad']]) {
+            const result = await postJson('/api/admin/article-categories', { name }, staffAdminToken);
+            assert.equal(result.response.status, 400);
+        }
+        const results = await Promise.all([
+            postJson('/api/admin/article-categories', { name: 'Unique topic' }, staffAdminToken),
+            postJson('/api/admin/article-categories', { name: 'Unique topic' }, staffAdminToken)
+        ]);
+        assert.deepEqual(results.map(result => result.response.status).sort(), [201, 409]);
+        const duplicate = await postJson('/api/admin/article-categories', { name: ' UNIQUE TOPIC ' }, staffAdminToken);
+        assert.equal(duplicate.response.status, 409);
+        const list = await request('/api/article-categories');
+        assert.match(list.response.headers.get('cache-control'), /no-store/);
+        const fallback = list.body.data.find(item => item.name === '其他');
+        assert.equal((await request(`/api/admin/article-categories/${fallback.id}`, { method: 'DELETE', headers: jsonHeaders(adminToken) })).response.status, 409);
+        assert.equal((await request('/api/admin/article-categories/1oops', { method: 'DELETE', headers: jsonHeaders(adminToken) })).response.status, 400);
+        const id = list.body.data.find(item => item.name === 'Unique topic').id;
+        await request(`/api/admin/article-categories/${id}`, { method: 'DELETE', headers: jsonHeaders(staffAdminToken) });
+    });
+
+    it('publishes changes immediately and moves published and draft articles atomically without data loss', async () => {
+        const initial = await request('/api/article-categories');
+        const controller = new AbortController();
+        const updates = request(`/api/article-categories/changes?revision=${initial.body.revision}`, { signal: controller.signal });
+        let articleIds = [];
+        let categoryId;
+        try {
+            const created = await postJson('/api/admin/article-categories', { name: 'Live topic' }, staffAdminToken);
+            assert.equal(created.response.status, 201);
+            categoryId = created.body.data.find(item => item.name === 'Live topic').id;
+            const notified = await updates;
+            assert.equal(notified.body.revision, created.body.revision);
+            const article = await postJson('/api/articles', { title: 'Category article', category: 'Live topic', content: 'Kept content' }, userToken);
+            assert.equal(article.response.status, 201);
+            const publicArticle = await request(`/api/articles/${article.body.data.id}`);
+            assert.equal(publicArticle.body.data.category_id, categoryId);
+            articleIds.push(article.body.data.id);
+            articleIds.push(Number(db.prepare("INSERT INTO articles (title, category, content, status) VALUES ('Category draft', 'Live topic', 'Kept draft', 'draft')").run().lastInsertRowid));
+            await request('/api/articles?category=Live%20topic');
+            const before = db.prepare('SELECT id, content, published_at FROM articles WHERE category = ? ORDER BY id').all('Live topic');
+            const removed = await request(`/api/admin/article-categories/${categoryId}`, { method: 'DELETE', headers: jsonHeaders(staffAdminToken) });
+            assert.equal(removed.response.status, 200);
+            assert.equal(removed.body.moved, 2);
+            assert.equal(removed.body.data.some(item => item.id === categoryId), false);
+            for (const record of before) {
+                const saved = db.prepare('SELECT * FROM articles WHERE id = ?').get(record.id);
+                assert.equal(saved.content, record.content);
+                assert.equal(saved.published_at, record.published_at);
+                assert.equal(saved.category, '其他');
+            }
+            const filtered = await request('/api/articles?category=Live%20topic');
+            assert.equal(filtered.body.pagination.total, 0);
+            const staleWrite = await postJson('/api/articles', { title: 'Stale topic', category: 'Live topic' }, userToken);
+            assert.equal(staleWrite.response.status, 409);
+            const edit = await putJson(`/api/user/articles/${articleIds[0]}`, { title: 'No escalation', category: ' 公告 ' }, userToken);
+            assert.equal(edit.response.status, 403);
+            const invalidEdit = await putJson(`/api/admin/articles/${articleIds[0]}`, { title: 'No stale category', category: 'Live topic' }, staffAdminToken);
+            assert.equal(invalidEdit.response.status, 409);
+        } finally {
+            controller.abort();
+            await updates.catch(() => {});
+            for (const id of articleIds) require('../backend/repositories/article-repository').deleteArticle(id);
+            if (categoryId) await request(`/api/admin/article-categories/${categoryId}`, { method: 'DELETE', headers: jsonHeaders(adminToken) });
+        }
+    });
 });
 
 describe('database initialization', () => {

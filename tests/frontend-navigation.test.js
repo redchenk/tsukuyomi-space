@@ -6,6 +6,44 @@ const vm = require('node:vm');
 
 const projectRoot = path.resolve(__dirname, '..');
 
+describe('dynamic article categories', () => {
+    it('never replaces a newer category list with a late network response', () => {
+        const context = { ref: (value) => ({ value }) };
+        const code = fs.readFileSync(path.join(projectRoot, 'src/frontend/composables/useArticleCategories.js'), 'utf8')
+            .replace(/^import .*;\r?\n/gm, '')
+            .replace(/export (async )?function /g, '$1function ')
+            .concat('\nglobalThis.categoryState = { categories, revision, applyArticleCategories };');
+        vm.runInNewContext(code, context);
+        const state = context.categoryState;
+        state.applyArticleCategories({ success: true, revision: '3', data: [{ id: 6, name: 'Topic' }] });
+        state.applyArticleCategories({ success: true, revision: '4', data: [] });
+        state.applyArticleCategories({ success: true, revision: '3', data: [{ id: 6, name: 'Topic' }] });
+        assert.equal(state.categories.value.length, 0);
+        assert.equal(state.revision.value, '4');
+        assert.throws(() => state.applyArticleCategories({ success: true, revision: 'bad', data: [] }));
+    });
+
+    it('shares dynamic categories between terminal, stage and editor with idle cleanup', () => {
+        const read = (file) => fs.readFileSync(path.join(projectRoot, file), 'utf8');
+        const manager = read('src/frontend/components/terminal/ArticleCategoryManager.vue');
+        const stage = read('src/frontend/pages/StagePage.vue');
+        const editor = read('src/frontend/pages/EditorPage.vue');
+        const sync = read('src/frontend/composables/useArticleCategories.js');
+        assert.match(manager, /managementBase.*default: '\/api\/admin'/);
+        assert.match(manager, /\/article-categories\$\{path\}/);
+        assert.match(read('src/frontend/pages/TerminalPage.vue'), /terminal\.siteSession \? '\/api\/moderation' : '\/api\/admin'/);
+        assert.match(manager, /category\.protected/);
+        assert.match(manager, /window\.confirm/);
+        assert.match(stage, /useArticleCategories\(\)/);
+        assert.match(editor, /useArticleCategories\(\)/);
+        assert.match(editor, /category\.name/);
+        assert.match(sync, /document\.hidden/);
+        assert.match(sync, /onUnmounted/);
+        assert.match(sync, /controller\?\.abort/);
+        assert.match(sync, /cache: 'no-store'/);
+    });
+});
+
 describe('mobile keyboard viewport', () => {
     const context = {};
     const code = fs.readFileSync(path.join(projectRoot, 'src/frontend/composables/useMobileKeyboard.js'), 'utf8')

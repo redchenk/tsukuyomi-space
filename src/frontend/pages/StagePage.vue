@@ -6,6 +6,7 @@ import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { formatDateMinute } from '../utils/time';
+import { useArticleCategories } from '../composables/useArticleCategories';
 
 const props = defineProps({
   lang: { type: String, default: 'zh' },
@@ -23,7 +24,8 @@ const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
 let applyingStageQuery = false;
-const categories = ['all', '\u516c\u544a', '\u4f20\u8bf4', '\u6280\u672f', '\u4e8c\u521b', '\u5176\u4ed6'];
+const { categories: articleCategories, revision: categoryRevision } = useArticleCategories();
+const categories = computed(() => ['all', ...articleCategories.value.map((item) => item.name)]);
 const STAGE_PAGE_SIZE = 6;
 const STAGE_FETCH_LIMIT = 100;
 
@@ -46,7 +48,7 @@ const stagePageCopy = computed(() => props.lang === 'en' ? {
 const filteredArticles = computed(() => {
   let list = articles.value;
   if (stageCategory.value !== 'all') {
-    list = list.filter((article) => article.category === stageCategory.value);
+    list = list.filter((article) => stageCategoryName(article) === stageCategory.value);
   }
   if (stageSearch.value) {
     const query = stageSearch.value.toLowerCase();
@@ -116,7 +118,7 @@ function queryPage(value) {
 function applyStageQuery(query = {}) {
   applyingStageQuery = true;
   const category = queryValue(query.category);
-  stageCategory.value = categories.includes(category) ? category : 'all';
+  stageCategory.value = category && (!categoryRevision.value || categories.value.includes(category)) ? category : 'all';
   stageSearch.value = String(queryValue(query.q)).slice(0, 120);
   stagePage.value = queryPage(query.page);
   nextTick(() => {
@@ -144,6 +146,17 @@ function stageCategoryLabel(category) {
     '\u5176\u4ed6': props.t.filterOther
   };
   return map[category] || category;
+}
+
+function stageCategoryName(article) {
+  // Numeric identifiers survive overseas content translation.
+  return articleCategories.value.find((item) => item.id === article.category_id)?.name || article.category;
+}
+
+function reconcileArticleCategories(list) {
+  if (!categoryRevision.value) return list;
+  return list.map((article) => categories.value.includes(stageCategoryName(article)) ? article
+    : { ...article, category_id: articleCategories.value.find((item) => item.name === '\u5176\u4ed6')?.id, category: props.t.filterOther });
 }
 
 function stageFormatNumber(value) {
@@ -181,7 +194,7 @@ async function loadArticles() {
       totalPages = Math.max(1, Number.parseInt(result.pagination?.totalPages, 10) || 1);
       page += 1;
     } while (page <= totalPages);
-    articles.value = loaded;
+    articles.value = reconcileArticleCategories(loaded);
     await hydrateUserLevels(loaded.map((article) => article.author_id)).catch(() => {});
   } catch (error) {
     articles.value = [];
@@ -243,6 +256,10 @@ watch(() => route.query, (query) => {
   if (route.name === 'stage') applyStageQuery(query);
 });
 applyStageQuery(route.query);
+watch(categoryRevision, () => {
+  if (!categories.value.includes(stageCategory.value)) stageCategory.value = 'all';
+  articles.value = reconcileArticleCategories(articles.value);
+});
 onMounted(loadArticles);
 </script>
 

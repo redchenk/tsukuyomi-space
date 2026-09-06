@@ -1,8 +1,9 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
-import { apiFetch, noStoreUrl, saveUserSession } from '../api/client';
+import { apiFetch, noStoreUrl, saveUserSession, getSession, clearSession } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import TerminalPagination from '../components/terminal/TerminalPagination.vue';
+import ArticleCategoryManager from '../components/terminal/ArticleCategoryManager.vue';
 import { formatDateTime } from '../utils/time';
 
 const emit = defineEmits(['go', 'auth-changed']);
@@ -20,6 +21,7 @@ const panels = [
 
 const terminal = reactive({
   admin: null,
+  siteSession: false,
   sessionChecking: true,
   activePanel: 'dashboard',
   loading: false,
@@ -134,8 +136,9 @@ const SITE_SETTING_KEYS = [
 ];
 const authed = computed(() => Boolean(terminal.admin));
 const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin');
+const visiblePanels = computed(() => terminal.siteSession ? panels.filter((panel) => panel.id === 'articles') : panels);
 const groupedPanels = computed(() => ['巡检', '内容', '系统']
-  .map((group) => ({ group, items: panels.filter((panel) => panel.group === group) }))
+  .map((group) => ({ group, items: visiblePanels.value.filter((panel) => panel.group === group) }))
   .filter((entry) => entry.items.length));
 const activePanelMeta = computed(() => panels.find((panel) => panel.id === terminal.activePanel) || panels[0]);
 const filteredArticles = computed(() => {
@@ -253,33 +256,51 @@ async function adminApi(path, options = {}) {
   if (options.body !== undefined && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
-  const method = String(options.method || 'GET').toUpperCase();
-  const url = method === 'GET' ? noStoreUrl(`/api/admin${path}`) : `/api/admin${path}`;
-  const response = await apiFetch(url, { ...options, headers, credentials: 'include', cache: method === 'GET' ? 'no-store' : options.cache });
+  let method = String(options.method || 'GET').toUpperCase();
+  if (terminal.siteSession && method === 'DELETE' && /^\/articles\/\d+$/.test(path)) {
+    path += '/delete';
+    method = 'POST';
+  }
+  const base = terminal.siteSession ? '/api/moderation' : '/api/admin';
+  const url = method === 'GET' ? noStoreUrl(`${base}${path}`) : `${base}${path}`;
+  const response = await apiFetch(url, { ...options, method, headers, credentials: 'include', cache: method === 'GET' ? 'no-store' : options.cache });
   const result = await parseJsonResponse(response);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
   return result.data;
 }
 
 async function verifySession() {
-  if (!localStorage.getItem('admin_user')) {
-    terminal.sessionChecking = false;
-    return;
-  }
   try {
-    terminal.admin = await adminApi('/me');
-    await loadPanel('dashboard');
-  } catch (error) {
-    terminal.admin = null;
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    terminal.loginMessage = error.message;
+    if (localStorage.getItem('admin_user')) {
+      try {
+        terminal.admin = await adminApi('/me');
+        await loadPanel('dashboard');
+        return;
+      } catch (error) {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        terminal.loginMessage = error.message;
+      }
+    }
+    if (['admin', 'super_admin'].includes(getSession()?.user?.role)) {
+      terminal.siteSession = true;
+      try {
+        terminal.admin = await adminApi('/me');
+        terminal.loginMessage = '';
+        await loadPanel('articles');
+      } catch (error) {
+        terminal.admin = null;
+        terminal.siteSession = false;
+        terminal.loginMessage = error.message;
+      }
+    }
   } finally {
     terminal.sessionChecking = false;
   }
 }
 
 async function login() {
+  terminal.siteSession = false;
   terminal.loading = true;
   terminal.loginMessage = '';
   try {
@@ -308,24 +329,27 @@ async function login() {
 
 async function logout() {
   try {
-    await apiFetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
+    await apiFetch(terminal.siteSession ? '/api/auth/logout' : '/api/admin/logout', { method: 'POST', credentials: 'include' });
   } catch (_) {
     // Local cleanup still applies.
   }
   terminal.admin = null;
+  if (terminal.siteSession) clearSession();
+  terminal.siteSession = false;
   localStorage.removeItem('admin_token');
   localStorage.removeItem('admin_user');
   emit('auth-changed');
 }
 
 async function loadPanel(panel = terminal.activePanel) {
+  if (terminal.siteSession) panel = 'articles';
   terminal.activePanel = panel;
   terminal.loading = true;
   terminal.message = '';
   terminal.loadError = '';
   try {
     if (panel === 'dashboard') terminal.stats = { ...terminal.stats, ...(await adminApi('/stats') || {}) };
-    if (panel === 'articles') terminal.articles = await adminApi('/articles') || [];
+    if (panel === 'articles') terminal.articles = await readTerminalArticles();
     if (panel === 'messages') terminal.messages = await adminApi('/messages') || [];
     if (panel === 'users') {
       terminal.users = await adminApi('/users') || [];
@@ -348,6 +372,25 @@ async function toggleArticle(id) {
   await adminApi(`/articles/${id}/toggle-status`, { method: 'POST' });
   showMessage('文章状态已更新');
   await loadPanel('articles');
+}
+
+async function readTerminalArticles() {
+  if (!terminal.siteSession) return await adminApi('/articles') || [];
+  const articles = [];
+  let page = 1;
+  let totalPages = 1;
+  do {
+    const result = await adminApi(`/articles?limit=40&page=${page}`);
+    articles.push(...(result?.items || []));
+    totalPages = result?.pagination?.totalPages || 1;
+    page += 1;
+  } while (page <= totalPages);
+  return articles;
+}
+
+async function refreshCategoryArticles() {
+  try { terminal.articles = await readTerminalArticles(); }
+  catch (error) { showMessage(error.message, 'error'); }
 }
 
 async function toggleArticlePin(item) {
@@ -780,7 +823,7 @@ onUnmounted(() => {
         <aside class="terminal-sidebar">
           <div class="terminal-sidebar-head">
             <strong>工作台</strong>
-            <span>{{ panels.length }}</span>
+            <span>{{ visiblePanels.length }}</span>
           </div>
           <div v-for="group in groupedPanels" :key="group.group" class="terminal-nav-group">
             <span class="terminal-nav-group-label">{{ group.group }}</span>
@@ -871,6 +914,7 @@ onUnmounted(() => {
           </div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'articles'">
+            <ArticleCategoryManager v-if="authed && terminal.activePanel === 'articles'" :management-base="terminal.siteSession ? '/api/moderation' : '/api/admin'" @changed="refreshCategoryArticles" />
             <div class="terminal-summary-row">
               <span>已发布 {{ publishedArticleCount }}</span>
               <span>草稿 {{ terminal.articles.length - publishedArticleCount }}</span>

@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const db = require('../db');
+const articleCategories = require('./article-category-repository');
 const { normalizeContentFormat, uniqueArticleSlug } = require('./article-repository');
 
 function findAdminByUsername(username) {
@@ -91,6 +92,7 @@ function countAdminArticles(options = {}) {
 }
 
 function updateAdminArticle(id, article) {
+    article.category = articleCategories.resolveCategory(article.category, db.prepare('SELECT category FROM articles WHERE id = ?').get(id)?.category || '其他');
     const slug = uniqueArticleSlug(article.title, id);
     const status = ['published', 'draft'].includes(article.status) ? article.status : 'published';
     return db.prepare(`

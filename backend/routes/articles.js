@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const articleRepository = require('../repositories/article-repository');
+const articleCategories = require('../repositories/article-category-repository');
 const messageRepository = require('../repositories/message-repository');
 const articleMedia = require('../services/article-media');
 const responseCache = require('../services/response-cache');
@@ -19,9 +20,10 @@ function recordArticleGrowth(userId, articleId) {
     }
 }
 
-function withParsedTags(article) {
+function withParsedTags(article, categoryIds = new Map(articleCategories.list().map(item => [item.name, item.id]))) {
     return {
         ...article,
+        category_id: categoryIds.get(article.category) || null,
         tags: safeJsonParse(article.tags, [])
     };
 }
@@ -33,7 +35,8 @@ function listArticlesPayload(req) {
     const offset = (page - 1) * limit;
 
     const result = articleRepository.listArticles({ category, limit, offset });
-    const articles = result.articles.map(withParsedTags);
+    const categoryIds = new Map(articleCategories.list().map(item => [item.name, item.id]));
+    const articles = result.articles.map(article => withParsedTags(article, categoryIds));
 
     return {
         success: true,
@@ -104,7 +107,7 @@ router.post('/', authenticateToken, async (req, res) => {
             return res.status(403).json({ success: false, message: '操作失败' });
         }
 
-        const finalCategory = category || (canPublishAnnouncement(req.user) ? '公告' : '其他');
+        const finalCategory = articleCategories.validateForUser(category, req.user);
         const publishedAt = new Date().toISOString();
         const publishDate = publishedAt.slice(0, 10);
         const mediaPayload = await articleMedia.normalizeArticleMediaPayload({

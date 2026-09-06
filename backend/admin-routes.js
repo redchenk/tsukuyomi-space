@@ -265,6 +265,7 @@ router.post('/logout', async (req, res) => {
 
 router.use(authenticateToken);
 router.use(requireAdmin);
+router.use('/article-categories', require('./routes/article-categories').managementRouter);
 
 router.get('/me', (req, res) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

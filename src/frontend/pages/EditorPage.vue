@@ -5,6 +5,7 @@ import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse }
 import { compressImage } from '../utils/image';
 import { renderMarkdown } from '../utils/markdown';
 import { applyGrowthResult } from '../services/userGrowth';
+import { useArticleCategories } from '../composables/useArticleCategories';
 
 const props = defineProps({
   t: { type: Object, required: true }
@@ -18,13 +19,11 @@ const editorAssetUploadInput = ref(null);
 const session = ref(getSession());
 const uploadAccept = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/flac,audio/wav,audio/ogg,audio/mp4,application/pdf,text/plain,text/markdown';
 
-const categories = [
-  { value: '\u516c\u544a', labelKey: 'editorCatAnnouncement' },
-  { value: '\u4f20\u8bf4', labelKey: 'editorCatLegend' },
-  { value: '\u6280\u672f', labelKey: 'editorCatTechnology' },
-  { value: '\u4e8c\u521b', labelKey: 'editorCatFanwork' },
-  { value: '\u5176\u4ed6', labelKey: 'editorCatOther' }
-];
+const { categories, revision: categoryRevision, refresh: refreshCategories } = useArticleCategories();
+const categoryLabelKeys = {
+  '\u516c\u544a': 'editorCatAnnouncement', '\u4f20\u8bf4': 'editorCatLegend',
+  '\u6280\u672f': 'editorCatTechnology', '\u4e8c\u521b': 'editorCatFanwork', '\u5176\u4ed6': 'editorCatOther'
+};
 
 const editor = reactive({
   coverImageBase64: null,
@@ -60,7 +59,7 @@ const editor = reactive({
 const isAuthed = computed(() => Boolean(session.value));
 const canModerateContent = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
 const canPublishAnnouncement = computed(() => canModerateContent.value);
-const availableCategories = computed(() => categories.filter((category) => canPublishAnnouncement.value || category.value !== '\u516c\u544a'));
+const availableCategories = computed(() => categories.value.filter((category) => canPublishAnnouncement.value || category.name !== '\u516c\u544a'));
 const currentArticleId = computed(() => route.query.id || '');
 const submitLabel = computed(() => {
   if (editor.submitting) return editor.currentArticle ? props.t.editorSaving : props.t.editorPublishing;
@@ -446,6 +445,12 @@ async function initEditor() {
     return;
   }
 
+  try { await refreshCategories(); }
+  catch (error) {
+    editor.loadError = props.t.editorLoadFailed + (error.message || props.t.editorNetworkFailed);
+    editor.loading = false;
+    return;
+  }
   const id = currentArticleId.value;
   if (id) {
     try {
@@ -458,7 +463,7 @@ async function initEditor() {
       });
       const result = await parseResponse(response);
       if (!result.success) throw new Error(result.message || props.t.unknown);
-      const validCategories = categories.map((item) => item.value);
+      const validCategories = categories.value.map((item) => item.name);
       resetEditorForm({
         ...result.data,
         category: validCategories.includes(result.data.category) ? result.data.category : '\u5176\u4ed6'
@@ -483,6 +488,11 @@ function cancelEdit() {
 }
 
 onMounted(initEditor);
+watch(categoryRevision, () => {
+  if (editor.form.category && !categories.value.some((item) => item.name === editor.form.category)) {
+    editor.form.category = '\u5176\u4ed6';
+  }
+});
 watch(currentArticleId, initEditor);
 </script>
 
@@ -547,8 +557,8 @@ watch(currentArticleId, initEditor);
             <label for="editorCategory">{{ t.editorFieldCategory }}</label>
             <select id="editorCategory" v-model="editor.form.category" required>
               <option value="">{{ t.editorCategorySelect }}</option>
-              <option v-for="category in availableCategories" :key="category.value" :value="category.value">
-                {{ t[category.labelKey] }}
+              <option v-for="category in availableCategories" :key="category.id" :value="category.name">
+                {{ t[categoryLabelKeys[category.name]] || category.name }}
               </option>
             </select>
           </div>
