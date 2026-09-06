@@ -9,6 +9,7 @@ let consumers = 0;
 let controller;
 let retryTimer;
 let retryDelay = 1000;
+let needsSnapshot = false;
 
 export function applyArticleCategories(payload) {
   if (!payload?.success || !Array.isArray(payload.data) || !/^[1-9]\d*$/.test(payload.revision)) {
@@ -43,7 +44,7 @@ async function listen() {
   const timeout = setTimeout(() => request.abort(), 30000);
   let delay = 0;
   try {
-    const path = revision.value
+    const path = revision.value && !needsSnapshot
       ? `/api/article-categories/changes?revision=${encodeURIComponent(revision.value)}`
       : '/api/article-categories';
     const response = await apiFetch(noStoreUrl(path), { cache: 'no-store', signal: request.signal });
@@ -51,9 +52,12 @@ async function listen() {
     if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
     if (controller !== request) return;
     applyArticleCategories(payload);
+    needsSnapshot = false;
     retryDelay = 1000;
   } catch (cause) {
     if (controller !== request) return;
+    // Refresh once after transport failure so CDN retries cannot starve updates.
+    needsSnapshot = true;
     error.value = cause.message || 'Category sync failed';
     delay = retryDelay;
     retryDelay = Math.min(retryDelay * 2, 30000);

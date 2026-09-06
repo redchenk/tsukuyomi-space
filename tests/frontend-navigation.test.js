@@ -7,6 +7,36 @@ const vm = require('node:vm');
 const projectRoot = path.resolve(__dirname, '..');
 
 describe('dynamic article categories', () => {
+    it('refreshes the category snapshot after a failed subscription before listening again', async () => {
+        const calls = [];
+        const pending = [];
+        const context = {
+            ref: (value) => ({ value }), AbortController,
+            document: { hidden: false }, noStoreUrl: (url) => url,
+            setTimeout: (callback, delay) => { pending.push({ callback, delay }); return pending.length; },
+            clearTimeout: () => {},
+            apiFetch: async (url) => {
+                calls.push(url);
+                if (calls.length === 1) throw new Error('CDN read timeout');
+                return { ok: true, json: async () => ({ success: true, revision: '2', data: [{ id: 7, name: 'New topic' }] }) };
+            }
+        };
+        const code = fs.readFileSync(path.join(projectRoot, 'src/frontend/composables/useArticleCategories.js'), 'utf8')
+            .replace(/^import .*;\r?\n/gm, '')
+            .replace(/export (async )?function /g, '$1function ')
+            .concat('\nconsumers = 1; revision.value = "1"; globalThis.categoryState = { listen, categories, revision };');
+        vm.runInNewContext(code, context);
+        await context.categoryState.listen();
+        assert.match(calls[0], /\/changes\?revision=1/);
+        assert.equal(pending.at(-1).delay, 1000);
+        await pending.at(-1).callback();
+        assert.equal(calls[1], '/api/article-categories');
+        assert.equal(context.categoryState.revision.value, '2');
+        assert.equal(context.categoryState.categories.value[0].name, 'New topic');
+        await pending.at(-1).callback();
+        assert.equal(calls[2], '/api/article-categories/changes?revision=2');
+    });
+
     it('never replaces a newer category list with a late network response', () => {
         const context = { ref: (value) => ({ value }) };
         const code = fs.readFileSync(path.join(projectRoot, 'src/frontend/composables/useArticleCategories.js'), 'utf8')
