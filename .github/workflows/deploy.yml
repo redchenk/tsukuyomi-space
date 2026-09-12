@@ -111,17 +111,16 @@ jobs:
             fi
             domestic="$artifact_root/domestic"
             overseas="$artifact_root/overseas"
-            overseas_root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
-            if [ ! -d "$overseas_root" ]; then
-              overseas_root=/opt/1panel/apps/openresty/openresty/www/sites/tsukuyomi-space.com/frontend
-            fi
+            overseas_container="$(docker ps --format '{{.Names}}' | awk '/^1Panel-openresty-/{print; exit}')"
+            overseas_root=/www/sites/tsukuyomi-space.com/frontend
             case "$prebuilt" in
               /tmp/tsukuyomi-prebuilt-[0-9]*) ;;
               *) echo "Invalid prebuilt path" >&2; exit 1 ;;
             esac
             trap 'rm -f "$bundle"; rm -rf -- "$prebuilt"' EXIT
             test -d "$app" || { echo "Application directory is missing" >&2; exit 1; }
-            test -d "$overseas_root" || { echo "Overseas frontend directory is missing" >&2; exit 1; }
+            test -n "$overseas_container" || { echo "Running 1Panel OpenResty container is missing" >&2; exit 1; }
+            docker exec "$overseas_container" test -d "$overseas_root" || { echo "Overseas frontend directory is missing in OpenResty" >&2; exit 1; }
             test -f "$domestic/index.html" || { echo "Domestic frontend artifact is missing" >&2; exit 1; }
             test -f "$overseas/index.html" || { echo "Overseas frontend artifact is missing" >&2; exit 1; }
             cd "$app"
@@ -130,5 +129,5 @@ jobs:
             git -c core.hooksPath=/dev/null merge --ff-only FETCH_HEAD
             install -d -m 0755 "$app/dist/frontend"
             cp -a "$domestic/." "$app/dist/frontend/"
-            cp -a "$overseas/." "$overseas_root/"
+            docker cp "$overseas/." "$overseas_container:$overseas_root/"
             INSTALL_NGINX_CONFIG=true HARDEN_OPENRESTY_ORIGIN=true bash deploy/deploy.sh
