@@ -407,6 +407,8 @@ describe('deployment privilege boundary', () => {
         assert.doesNotMatch(workflow, /npm run build:live2d/);
         assert.doesNotMatch(workflow, /source: [^\n]*lib\/bundled/);
         assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$domestic\/\." "\$app\/dist\/frontend\/"/);
+        assert.match(workflow, /find \/www\/sites -maxdepth 5 -type f -path '\*\/tsukuyomi-space\.com\/\*' -name index\.html -print -quit/);
+        assert.match(workflow, /\/www\/sites\/tsukuyomi-space\.com\/\*/);
         assert.match(workflow, /docker exec "\$overseas_container" test -d "\$overseas_root"/);
         assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*docker cp "\$overseas\/\." "\$overseas_container:\$overseas_root\/"/);
     });
