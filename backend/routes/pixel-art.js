@@ -3,24 +3,13 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const notificationRepository = require('../repositories/notification-repository');
 const pixelArtRepository = require('../repositories/pixel-art-repository');
 const responseCache = require('../services/response-cache');
-const userGrowth = require('../services/user-growth');
 const { setPrivateNoStore, setPublicReadCache } = require('../services/public-cache');
-const { renderPixelArtworkPng } = require('../services/pixel-art-image');
 
 const router = express.Router();
 const DEFAULT_DIMENSIONS = { width: 96, height: 54 };
 const ALLOWED_DIMENSIONS = new Set(['32x18', '48x27', '64x36', '96x54', '128x72', '160x90', '192x108']);
-const MAX_PALETTE_COLORS = 64;
+const MAX_PALETTE_COLORS = 32;
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
-
-function recordPixelGrowth(userId, activityKey, artworkId) {
-    try {
-        return userGrowth.recordDailyActivity(userId, activityKey, artworkId);
-    } catch (error) {
-        console.error('Record pixel growth failed:', error);
-        return null;
-    }
-}
 
 function actorName(user) {
     return user?.username || '访客';
@@ -196,26 +185,6 @@ router.get('/manage/:id', authenticateToken, (req, res) => {
     }
 });
 
-router.get('/:id/image.png', (req, res) => {
-    try {
-        const artwork = pixelArtRepository.findArtworkById(req.params.id);
-        if (!artwork) return res.status(404).send('Not found');
-        const png = renderPixelArtworkPng(artwork);
-        const version = String(artwork.updated_at || artwork.created_at || artwork.id);
-        res.set({
-            'Content-Type': 'image/png',
-            'Content-Length': String(png.length),
-            'Cache-Control': req.query.v === version ? 'public, max-age=31536000, immutable' : 'public, max-age=86400, stale-while-revalidate=604800',
-            'Content-Disposition': `inline; filename="pixel-art-${String(artwork.id).replace(/[^A-Za-z0-9_-]/g, '')}.png"`,
-            'X-Content-Type-Options': 'nosniff'
-        });
-        return res.send(png);
-    } catch (error) {
-        console.error('Render pixel artwork image failed:', error);
-        return res.status(500).send('Image unavailable');
-    }
-});
-
 router.get('/:id', optionalAuth, (req, res) => {
     try {
         const artwork = pixelArtRepository.findArtworkById(req.params.id, req.user?.id || '');
@@ -239,8 +208,7 @@ router.post('/', authenticateToken, (req, res) => {
         });
         responseCache.delPrefix('public:pixel-art');
         responseCache.delPrefix('public:site-feed');
-        const growth = recordPixelGrowth(req.user.id, 'pixel_publish', artwork.id);
-        res.status(201).json({ success: true, data: artwork, growth, message: '像素画已分享' });
+        res.status(201).json({ success: true, data: artwork, message: '像素画已分享' });
     } catch (error) {
         console.error('Create pixel art failed:', error);
         res.status(500).json({ success: false, message: '像素画发布失败' });
@@ -296,8 +264,7 @@ router.post('/:id/like', authenticateToken, (req, res) => {
         const updated = pixelArtRepository.likeArtwork(artwork.id, req.user.id);
         notifyArtworkOwner({ artwork: updated, actor: req.user });
         responseCache.delPrefix('public:pixel-art');
-        const growth = recordPixelGrowth(req.user.id, 'pixel_like', artwork.id);
-        res.json({ success: true, data: updated, growth, message: '已点赞' });
+        res.json({ success: true, data: updated, message: '已点赞' });
     } catch (error) {
         console.error('Like pixel art failed:', error);
         res.status(500).json({ success: false, message: '点赞失败' });

@@ -155,7 +155,6 @@ function writeCachedLocation(location) {
 
 export function useRoomWorld() {
   const worldTimer = ref(null);
-  const sharedWorldPinned = ref(false);
   const worldLocationPromise = ref(null);
   const weatherParticles = ref([]);
   const world = ref(normalizeWorld());
@@ -240,7 +239,6 @@ export function useRoomWorld() {
   }
 
   async function refreshRoomWorld() {
-    if (sharedWorldPinned.value) return;
     try {
       const location = await readRoomWorldLocation();
       const hasLocationCoordinates = location?.lat != null && location?.lon != null;
@@ -259,7 +257,6 @@ export function useRoomWorld() {
       const response = await apiFetch(`${WORLD_ENDPOINT}/live/${Date.now()}${params.toString() ? `?${params}` : ''}`, { cache: 'no-store' });
       const result = await response.json().catch(() => ({}));
       const nextWorld = normalizeWorld(result.data || {});
-      if (sharedWorldPinned.value) return;
       applyWorld(nextWorld);
       if (nextWorld.location?.lat != null && nextWorld.location?.lon != null && nextWorld.city) {
         writeCachedLocation({ ...nextWorld.location, city: nextWorld.city, address: nextWorld.address });
@@ -268,19 +265,11 @@ export function useRoomWorld() {
         writeCachedWorld(nextWorld, nextWorld.location || location || {});
       }
     } catch (_) {
-      if (!sharedWorldPinned.value) applyWorld(normalizeWorld());
+      applyWorld(normalizeWorld());
     }
   }
 
-  function applySharedWorld(nextWorld) {
-    sharedWorldPinned.value = true;
-    window.clearInterval(worldTimer.value);
-    worldTimer.value = null;
-    applyWorld({ ...nextWorld, source: 'shared-conversation' });
-  }
-
   function initRoomWorld() {
-    sharedWorldPinned.value = false;
     applyWorld(normalizeWorld());
     refreshRoomWorld();
     window.clearInterval(worldTimer.value);
@@ -292,7 +281,6 @@ export function useRoomWorld() {
     worldTimer.value = null;
     worldLocationPromise.value = null;
     weatherParticles.value = [];
-    sharedWorldPinned.value = false;
   }
 
   return {
@@ -300,7 +288,6 @@ export function useRoomWorld() {
     weatherCard,
     weatherParticles,
     particleStyle,
-    applySharedWorld,
     initRoomWorld,
     destroyRoomWorld
   };

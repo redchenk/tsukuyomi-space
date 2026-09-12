@@ -3,18 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const config = require('../config');
-const {
-    authenticateToken,
-    authenticateAdminToken,
-    optionalAuth,
-    requireAdmin,
-    requireSuperAdmin
-} = require('../middleware/auth');
+const { authenticateToken, optionalAuth, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
 const responseCache = require('../services/response-cache');
-const userGrowth = require('../services/user-growth');
 const { setPublicReadCache } = require('../services/public-cache');
 const { attachmentDisposition, cleanMime, MAX_USER_UPLOAD_BYTES } = require('../services/file-security');
 const { parsePositiveInt } = require('../validators');
@@ -72,15 +65,6 @@ function fail(res, status, message) {
 function clearPublicGalleryCache() {
     responseCache.delPrefix('public:gallery');
     responseCache.delPrefix('public:site-feed');
-}
-
-function recordGalleryGrowth(userId, assetId) {
-    try {
-        return userGrowth.recordDailyActivity(userId, 'gallery_upload', assetId);
-    } catch (error) {
-        console.error('Record gallery growth failed:', error);
-        return null;
-    }
 }
 
 function signAssetAccess(assetId, expiresAt) {
@@ -241,11 +225,6 @@ function createOssAssetRecord({ objectKey, title = '', assetType = 'auto', mimeT
             lastModified
         }
     });
-}
-
-function privateAssetOwnerId(user, visibility) {
-    if (visibility !== 'private') return null;
-    return user?.scope === 'admin' ? user.siteUserId : user?.id;
 }
 
 function safeJson(value) {
@@ -458,7 +437,7 @@ router.get('/gallery', optionalAuth, (req, res) => {
     }
 });
 
-router.post('/oss-register', authenticateAdminToken, requireAdmin, requireSuperAdmin, (req, res) => {
+router.post('/oss-register', authenticateToken, requireAdmin, requireSuperAdmin, (req, res) => {
     try {
         const {
             objectKey,
@@ -469,10 +448,6 @@ router.post('/oss-register', authenticateAdminToken, requireAdmin, requireSuperA
             visibility = 'public',
             description = ''
         } = req.body || {};
-        const ownerId = privateAssetOwnerId(req.user, visibility);
-        if (visibility === 'private' && !ownerId) {
-            return fail(res, 409, '管理员账号未绑定站点账号，请重新登录后重试');
-        }
         const asset = createOssAssetRecord({
             objectKey,
             title,
@@ -481,7 +456,7 @@ router.post('/oss-register', authenticateAdminToken, requireAdmin, requireSuperA
             size,
             visibility,
             description,
-            ownerId
+            ownerId: req.user.id
         });
         if (!asset) return fail(res, 400, 'Invalid OSS Object Key or public URL settings');
         if ((visibility || 'public') !== 'private') clearPublicGalleryCache();
@@ -492,7 +467,7 @@ router.post('/oss-register', authenticateAdminToken, requireAdmin, requireSuperA
     }
 });
 
-router.post('/oss-scan', authenticateAdminToken, requireAdmin, requireSuperAdmin, async (req, res) => {
+router.post('/oss-scan', authenticateToken, requireAdmin, requireSuperAdmin, async (req, res) => {
     try {
         const {
             prefix = '',
@@ -500,10 +475,6 @@ router.post('/oss-scan', authenticateAdminToken, requireAdmin, requireSuperAdmin
             visibility = 'public',
             assetType = 'auto'
         } = req.body || {};
-        const ownerId = privateAssetOwnerId(req.user, visibility);
-        if (visibility === 'private' && !ownerId) {
-            return fail(res, 409, '管理员账号未绑定站点账号，请重新登录后重试');
-        }
         const listed = await objectStorage.listObjects({ prefix, maxKeys });
         const imported = [];
         const skipped = [];
@@ -523,7 +494,7 @@ router.post('/oss-scan', authenticateAdminToken, requireAdmin, requireSuperAdmin
                 visibility,
                 etag: item.etag,
                 lastModified: item.lastModified,
-                ownerId
+                ownerId: req.user.id
             });
             if (asset) imported.push(normalizeAsset(asset, { signUrl: true }));
             else skipped.push({ key: item.key, reason: 'invalid' });
@@ -592,8 +563,7 @@ router.post('/', authenticateToken, async (req, res) => {
         });
         if (!asset) return fail(res, 400, '文件格式无效');
         if (targetCollection === 'gallery') clearPublicGalleryCache();
-        const growth = targetCollection === 'gallery' ? recordGalleryGrowth(req.user.id, asset.id) : null;
-        res.json({ success: true, message: '附件已上传', data: normalizeAsset(asset, { signUrl: true }), growth });
+        ok(res, normalizeAsset(asset, { signUrl: true }), '附件已上传');
     } catch (error) {
         if (!error.status || error.status >= 500) console.error('Upload asset failed:', error);
         fail(res, error.status || 500, error.status ? error.message : '附件上传失败');

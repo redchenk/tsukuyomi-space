@@ -4,7 +4,6 @@ import { loadPublicSettings } from '../api/client';
 
 const STORAGE_KEY = 'tsukuyomi_beian_public_settings';
 const defaultBeian = { text: '', url: '', mpsText: '', mpsUrl: '', mpsIcon: '' };
-const hideDomesticRegistration = import.meta.env.VITE_SITE_LANGUAGE === 'en';
 let cachedBeian = null;
 let settingsPromise = null;
 
@@ -55,10 +54,9 @@ const beian = ref(readCachedBeian());
 const href = computed(() => beian.value.url || 'https://beian.miit.gov.cn/');
 const mpsHref = computed(() => beian.value.mpsUrl || 'https://beian.mps.gov.cn/');
 const mpsIconSrc = computed(() => beian.value.mpsIcon || '/assets/images/beian-mps.png');
-const hasBeian = computed(() => !hideDomesticRegistration && Boolean(beian.value.text || beian.value.mpsText));
+const hasBeian = computed(() => Boolean(beian.value.text || beian.value.mpsText));
 
 onMounted(async () => {
-  if (hideDomesticRegistration) return;
   beian.value = await loadBeian();
 });
 </script>
@@ -66,7 +64,7 @@ onMounted(async () => {
 <template>
   <span class="beian-links" :class="{ visible: hasBeian }" :aria-hidden="hasBeian ? 'false' : 'true'">
     <a
-      v-if="hasBeian && beian.text"
+      v-if="beian.text"
       class="beian-link visible"
       :href="href"
       target="_blank"
@@ -75,7 +73,7 @@ onMounted(async () => {
       {{ beian.text }}
     </a>
     <a
-      v-if="hasBeian && beian.mpsText"
+      v-if="beian.mpsText"
       class="beian-link mps-beian-link visible"
       :href="mpsHref"
       target="_blank"

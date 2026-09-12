@@ -9,7 +9,6 @@ import {
   wikiEntryPath
 } from '../data/cosmicKaguyaWikiEntries';
 import { applySeo } from '../utils/seo';
-import { decodeWikiHash, trustedWikiAssetPath, trustedWikiSourceUrl } from '../utils/wikiSecurity';
 
 const props = defineProps({
   kind: { type: String, required: true },
@@ -19,10 +18,6 @@ const props = defineProps({
 const entry = computed(() => getWikiEntry(props.kind, props.slug));
 const related = computed(() => relatedWikiEntries(entry.value));
 const songs = computed(() => entrySongs(entry.value));
-const trustedMoegirlUrl = computed(() => trustedWikiSourceUrl(entry.value?.moegirl?.url));
-const trustedSourceLinks = computed(() => (entry.value?.sourceLinks || [])
-  .map((source) => ({ ...source, url: trustedWikiSourceUrl(source.url) }))
-  .filter((source) => source.url));
 const activeImageVariantId = ref(null);
 const imageVariants = computed(() => entry.value?.imageVariants || []);
 const activeImage = computed(() => {
@@ -99,7 +94,7 @@ function scrollToSection(id, event) {
 }
 
 function focusInitialHash() {
-  const id = decodeWikiHash(window.location.hash);
+  const id = decodeURIComponent(window.location.hash.replace(/^#/, ''));
   if (!id) return;
   const target = document.getElementById(id);
   if (target) window.requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
@@ -160,7 +155,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
             </button>
           </div>
           <div class="wiki-entry-image-frame">
-            <img v-if="trustedWikiAssetPath(activeImage?.image)" :key="activeImage.image" :src="trustedWikiAssetPath(activeImage.image)" :alt="activeImage.imageAlt">
+            <img v-if="activeImage?.image" :key="activeImage.image" :src="activeImage.image" :alt="activeImage.imageAlt">
             <div v-else class="wiki-entry-image-placeholder" role="img" :aria-label="`${entry.title}图片预留位置`">
               <TsIcon :name="entry.kind === 'character' ? 'user' : 'image'" :size="38" />
               <strong>{{ entry.title }} · 图片预留</strong>
@@ -228,11 +223,11 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
             </div>
           </section>
 
-          <section v-if="entry.kind === 'character' && trustedMoegirlUrl" id="moegirl" class="wiki-entry-section wiki-entry-moegirl-section" tabindex="-1">
+          <section v-if="entry.kind === 'character'" id="moegirl" class="wiki-entry-section wiki-entry-moegirl-section" tabindex="-1">
             <div class="wiki-entry-section-title"><span>↗</span><h2>外部百科</h2></div>
             <a
               class="wiki-entry-moegirl-card"
-              :href="trustedMoegirlUrl"
+              :href="entry.moegirl.url"
               target="_blank"
               rel="noopener noreferrer"
               :aria-label="`跳转至萌娘百科：${entry.title}`"
@@ -263,7 +258,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
           <section id="sources" class="wiki-entry-section" tabindex="-1">
             <div class="wiki-entry-section-title"><span>※</span><h2>资料来源与编辑说明</h2></div>
             <ul class="wiki-entry-sources">
-              <li v-for="source in trustedSourceLinks" :key="source.url"><a :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.label }} <TsIcon name="external" :size="14" /></a></li>
+              <li v-for="source in entry.sourceLinks" :key="source.url"><a :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.label }} <TsIcon name="external" :size="14" /></a></li>
             </ul>
             <p class="wiki-entry-source-note">核验日期：{{ entry.verifiedAt }}。图片、截图与角色立绘的著作权归原权利方；上传替换素材前需确认使用条件并补充逐图来源。</p>
           </section>

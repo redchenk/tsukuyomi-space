@@ -112,12 +112,10 @@ function currentUserForClaims(claims) {
         if (!admin || !['admin', 'super_admin'].includes(admin.role) || !hasCurrentCredentials(claims, admin.password_hash)) {
             return null;
         }
-        const siteUser = adminRepository.findUserByUsername(admin.username);
         return {
             ...claims,
             id: `admin-${admin.id}`,
             adminId: admin.id,
-            siteUserId: siteUser?.id || null,
             username: admin.username,
             role: admin.role,
             scope: 'admin'
@@ -159,11 +157,8 @@ function validateSessionClaims(claims) {
     return claims;
 }
 
-async function authenticateRequest(req, res, next, {
-    preferredCookie = '',
-    requiredScope = ''
-} = {}) {
-    const token = readAuthToken(req, preferredCookie);
+async function authenticateToken(req, res, next) {
+    const token = readAuthToken(req);
 
     if (!token) {
         return res.status(401).json({
@@ -183,10 +178,7 @@ async function authenticateRequest(req, res, next, {
         }
 
         const claims = verifyToken(token);
-        const scopeMatches = requiredScope
-            ? (requiredScope === 'admin' ? claims?.scope === 'admin' : claims?.scope !== 'admin')
-            : claimsMatchRequestScope(req, claims);
-        if (!scopeMatches) {
+        if (!claimsMatchRequestScope(req, claims)) {
             return res.status(403).json({
                 success: false,
                 message: 'Token scope does not match this endpoint',
@@ -217,17 +209,6 @@ async function authenticateRequest(req, res, next, {
             code: 'TOKEN_INVALID'
         });
     }
-}
-
-function authenticateToken(req, res, next) {
-    return authenticateRequest(req, res, next);
-}
-
-function authenticateAdminToken(req, res, next) {
-    return authenticateRequest(req, res, next, {
-        preferredCookie: ADMIN_SESSION_COOKIE,
-        requiredScope: 'admin'
-    });
 }
 
 function requireAdmin(req, res, next) {
@@ -301,7 +282,6 @@ function verifyToken(token) {
 
 module.exports = {
     authenticateToken,
-    authenticateAdminToken,
     requireAdmin,
     requireSuperAdmin,
     optionalAuth,

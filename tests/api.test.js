@@ -31,9 +31,7 @@ const { requireUserId, similarity } = require('../backend/services/room-memory')
 const { scopeFilter, truncateUtf8 } = require('../backend/services/room-milvus-store');
 const objectStorage = require('../backend/services/object-storage');
 const friendLinkAvatarService = require('../backend/services/friend-link-avatar');
-const friendLinkMonitorService = require('../backend/services/friend-link-monitor');
-const { renderFriendLinksSpaHtml, renderSeoCollectionPage } = require('../backend/seo/render-pages');
-const friendLinkRepository = require('../backend/repositories/friend-link-repository');
+const { renderSeoCollectionPage } = require('../backend/seo/render-pages');
 
 let server;
 let baseUrl;
@@ -267,7 +265,6 @@ before(async () => {
     managedUserToken = await login('/api/auth/login', 'managed-user', 'managed-old-password');
     adminToken = await login('/api/admin/login', 'admin', 'admin-test-password');
     staffAdminToken = await login('/api/admin/login', 'staff-admin', 'staff-test-password');
-    await postJson('/api/admin/article-categories', { name: '\u968f\u7b14' }, adminToken);
 });
 
 after(async () => {
@@ -280,106 +277,6 @@ after(async () => {
     fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
-describe('article category management', () => {
-    it('preserves legacy categories during migration and supplies a safe fallback', () => {
-        const Database = require('better-sqlite3');
-        const legacy = new Database(':memory:');
-        try {
-            legacy.exec("CREATE TABLE articles (id INTEGER PRIMARY KEY, category TEXT); INSERT INTO articles (category) VALUES ('Legacy topic'), (NULL), (''), (' Legacy topic '), ('LEGACY TOPIC');");
-            require('../backend/db/migrations/032_create_article_categories').up(legacy);
-            assert.ok(legacy.prepare('SELECT id FROM article_categories WHERE name = ?').get('Legacy topic'));
-            assert.equal(legacy.prepare("SELECT COUNT(*) AS n FROM articles WHERE category = '其他'").get().n, 2);
-            assert.equal(legacy.prepare("SELECT COUNT(*) AS n FROM articles WHERE category = 'Legacy topic'").get().n, 3);
-            assert.equal(legacy.prepare("SELECT protected FROM article_categories WHERE name = '其他'").get().protected, 1);
-        } finally { legacy.close(); }
-    });
-
-    it('limits writes to authenticated admins and rejects forged write origins', async () => {
-        const guest = await postJson('/api/admin/article-categories', { name: 'Guest topic' });
-        assert.equal(guest.response.status, 401);
-        const user = await postJson('/api/moderation/article-categories', { name: 'User topic' }, userToken);
-        assert.equal(user.response.status, 403);
-        const badOrigin = await request('/api/admin/article-categories', {
-            method: 'POST', headers: { ...jsonHeaders(adminToken), Origin: 'https://untrusted.example', 'Sec-Fetch-Site': 'cross-site' },
-            body: JSON.stringify({ name: 'Forbidden topic' })
-        });
-        assert.equal(badOrigin.response.status, 403);
-        const ordinaryAdmin = await login('/api/auth/login', 'staff-admin', 'staff-test-password');
-        const created = await postJson('/api/moderation/article-categories', { name: 'Site admin topic' }, ordinaryAdmin);
-        assert.equal(created.response.status, 201);
-        const id = created.body.data.find(item => item.name === 'Site admin topic').id;
-        const deleted = await request(`/api/moderation/article-categories/${id}`, { method: 'DELETE', headers: jsonHeaders(ordinaryAdmin) });
-        assert.equal(deleted.response.status, 200);
-    });
-
-    it('validates names, deduplicates concurrent writes and protects the fallback', async () => {
-        for (const name of ['', ' ', '<script>alert(1)</script>', 'x\nY', 'all', 'a'.repeat(33), {}, ['bad']]) {
-            const result = await postJson('/api/admin/article-categories', { name }, staffAdminToken);
-            assert.equal(result.response.status, 400);
-        }
-        const results = await Promise.all([
-            postJson('/api/admin/article-categories', { name: 'Unique topic' }, staffAdminToken),
-            postJson('/api/admin/article-categories', { name: 'Unique topic' }, staffAdminToken)
-        ]);
-        assert.deepEqual(results.map(result => result.response.status).sort(), [201, 409]);
-        const duplicate = await postJson('/api/admin/article-categories', { name: ' UNIQUE TOPIC ' }, staffAdminToken);
-        assert.equal(duplicate.response.status, 409);
-        const list = await request('/api/article-categories');
-        assert.match(list.response.headers.get('cache-control'), /no-store/);
-        const fallback = list.body.data.find(item => item.name === '其他');
-        assert.equal((await request(`/api/admin/article-categories/${fallback.id}`, { method: 'DELETE', headers: jsonHeaders(adminToken) })).response.status, 409);
-        assert.equal((await request('/api/admin/article-categories/1oops', { method: 'DELETE', headers: jsonHeaders(adminToken) })).response.status, 400);
-        const id = list.body.data.find(item => item.name === 'Unique topic').id;
-        await request(`/api/admin/article-categories/${id}`, { method: 'DELETE', headers: jsonHeaders(staffAdminToken) });
-    });
-
-    it('publishes changes immediately and moves published and draft articles atomically without data loss', async () => {
-        const initial = await request('/api/article-categories');
-        const controller = new AbortController();
-        const updates = request(`/api/article-categories/changes?revision=${initial.body.revision}`, { signal: controller.signal });
-        let articleIds = [];
-        let categoryId;
-        try {
-            const created = await postJson('/api/admin/article-categories', { name: 'Live topic' }, staffAdminToken);
-            assert.equal(created.response.status, 201);
-            categoryId = created.body.data.find(item => item.name === 'Live topic').id;
-            const notified = await updates;
-            assert.equal(notified.body.revision, created.body.revision);
-            const article = await postJson('/api/articles', { title: 'Category article', category: 'Live topic', content: 'Kept content' }, userToken);
-            assert.equal(article.response.status, 201);
-            const publicArticle = await request(`/api/articles/${article.body.data.id}`);
-            assert.equal(publicArticle.body.data.category_id, categoryId);
-            articleIds.push(article.body.data.id);
-            articleIds.push(Number(db.prepare("INSERT INTO articles (title, category, content, status) VALUES ('Category draft', 'Live topic', 'Kept draft', 'draft')").run().lastInsertRowid));
-            await request('/api/articles?category=Live%20topic');
-            const before = db.prepare('SELECT id, content, published_at FROM articles WHERE category = ? ORDER BY id').all('Live topic');
-            const removed = await request(`/api/admin/article-categories/${categoryId}`, { method: 'DELETE', headers: jsonHeaders(staffAdminToken) });
-            assert.equal(removed.response.status, 200);
-            assert.equal(removed.body.moved, 2);
-            assert.equal(removed.body.data.some(item => item.id === categoryId), false);
-            for (const record of before) {
-                const saved = db.prepare('SELECT * FROM articles WHERE id = ?').get(record.id);
-                assert.equal(saved.content, record.content);
-                assert.equal(saved.published_at, record.published_at);
-                assert.equal(saved.category, '其他');
-            }
-            const filtered = await request('/api/articles?category=Live%20topic');
-            assert.equal(filtered.body.pagination.total, 0);
-            const staleWrite = await postJson('/api/articles', { title: 'Stale topic', category: 'Live topic' }, userToken);
-            assert.equal(staleWrite.response.status, 409);
-            const edit = await putJson(`/api/user/articles/${articleIds[0]}`, { title: 'No escalation', category: ' 公告 ' }, userToken);
-            assert.equal(edit.response.status, 403);
-            const invalidEdit = await putJson(`/api/admin/articles/${articleIds[0]}`, { title: 'No stale category', category: 'Live topic' }, staffAdminToken);
-            assert.equal(invalidEdit.response.status, 409);
-        } finally {
-            controller.abort();
-            await updates.catch(() => {});
-            for (const id of articleIds) require('../backend/repositories/article-repository').deleteArticle(id);
-            if (categoryId) await request(`/api/admin/article-categories/${categoryId}`, { method: 'DELETE', headers: jsonHeaders(adminToken) });
-        }
-    });
-});
-
 describe('database initialization', () => {
     it('creates core tables and seeds defaults', () => {
         const tables = db.prepare(`
@@ -388,7 +285,7 @@ describe('database initialization', () => {
             ORDER BY name
         `).all().map(row => row.name);
 
-        for (const table of ['schema_migrations', 'users', 'articles', 'messages', 'message_likes', 'room_chat_messages', 'room_conversation_shares', 'admins', 'site_settings']) {
+        for (const table of ['schema_migrations', 'users', 'articles', 'messages', 'message_likes', 'room_chat_messages', 'admins', 'site_settings']) {
             assert.ok(tables.includes(table), `${table} table should exist`);
         }
 
@@ -401,10 +298,6 @@ describe('database initialization', () => {
         assert.equal(db.prepare('SELECT COUNT(*) AS count FROM articles WHERE published_at IS NULL').get().count, 0);
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('admin').role, 'admin');
         assert.equal(db.prepare('SELECT role FROM users WHERE username = ?').get('staff-admin').role, 'admin');
-        const friendLinkColumns = db.prepare('PRAGMA table_info(friend_links)').all().map(column => column.name);
-        for (const column of ['monitor_status', 'response_time_ms', 'has_backlink', 'screenshot_url', 'screenshot_storage_key', 'last_checked_at']) {
-            assert.ok(friendLinkColumns.includes(column), `${column} friend link column should exist`);
-        }
     });
 
     it('backfills recoverable legacy memory conversations once', () => {
@@ -1546,45 +1439,6 @@ describe('pixel art API', () => {
         assert.equal(hubPreview.body.data.pixel.width, artworkWidth);
         assert.equal(hubPreview.body.data.pixel.height, artworkHeight);
         assert.ok(JSON.stringify(hubPreview.body).length < 64 * 1024);
-
-        const shareImage = await fetch(`${baseUrl}/api/pixel-art/${pixelArtworkId}/image.png`);
-        assert.equal(shareImage.status, 200);
-        assert.equal(shareImage.headers.get('content-type'), 'image/png');
-        assert.equal(Buffer.from(await shareImage.arrayBuffer()).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
-
-        const crawlerPage = await request(`/pixel?art=${pixelArtworkId}`, {
-            headers: { 'User-Agent': 'Twitterbot/1.0' }
-        });
-        assert.equal(crawlerPage.response.status, 200);
-        assert.match(crawlerPage.body, /Test Pixel Moon/);
-        assert.match(crawlerPage.body, new RegExp(`/api/pixel-art/${pixelArtworkId}/image\\.png`));
-        assert.match(crawlerPage.body, new RegExp(`/pixel\\?art=${pixelArtworkId}`));
-    });
-
-    it('accepts a 64-color palette without truncating selected colors', async () => {
-        const width = 32;
-        const height = 18;
-        const palette = Array.from(
-            { length: 64 },
-            (_, index) => `#${index.toString(16).padStart(6, '0')}`
-        );
-        const pixels = Array(width * height).fill(-1);
-        pixels[0] = palette.length - 1;
-
-        const created = await postJson('/api/pixel-art', {
-            title: 'Expanded Palette',
-            description: 'Verifies the full drawing palette',
-            size: width,
-            width,
-            height,
-            background_color: '#ffffff',
-            palette,
-            pixels
-        }, managedUserToken);
-
-        assert.equal(created.response.status, 201);
-        assert.equal(created.body.data.palette.length, 64);
-        assert.equal(created.body.data.pixels[0], 63);
     });
 
     it('isolates pixel artwork management by owner while allowing admins', async () => {
@@ -1688,59 +1542,6 @@ describe('notifications API', () => {
 
         const cleared = await postJson('/api/user/notifications/read-all', {}, userToken);
         assert.equal(cleared.response.status, 200);
-    });
-
-    it('paginates the inbox without loading every notification', async () => {
-        const countBefore = db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE user_id = ?')
-            .get('user-001').count;
-        const insert = db.prepare(`
-            INSERT INTO notifications (user_id, type, title, content)
-            VALUES ('user-001', 'test', ?, ?)
-        `);
-        db.transaction(() => {
-            for (let index = 1; index <= 25; index += 1) {
-                insert.run(`Pagination notification ${index}`, `Page fixture ${index}`);
-            }
-        })();
-
-        const firstPage = await request('/api/user/notifications?page=1&limit=10', {
-            headers: jsonHeaders(userToken)
-        });
-        const secondPage = await request('/api/user/notifications?page=2&limit=10', {
-            headers: jsonHeaders(userToken)
-        });
-        const expectedTotal = countBefore + 25;
-
-        assert.equal(firstPage.response.status, 200);
-        assert.equal(firstPage.body.data.length, 10);
-        assert.deepEqual(firstPage.body.pagination, {
-            page: 1,
-            limit: 10,
-            total: expectedTotal,
-            totalPages: Math.ceil(expectedTotal / 10),
-            hasPrevious: false,
-            hasNext: true
-        });
-        assert.equal(secondPage.response.status, 200);
-        assert.equal(secondPage.body.pagination.page, 2);
-        assert.equal(secondPage.body.data.length, 10);
-        assert.equal(secondPage.body.pagination.hasPrevious, true);
-        const firstIds = new Set(firstPage.body.data.map(item => item.id));
-        assert.ok(secondPage.body.data.every(item => !firstIds.has(item.id)));
-
-        const lastPage = await request('/api/user/notifications?page=999999&limit=10', {
-            headers: jsonHeaders(userToken)
-        });
-        assert.equal(lastPage.response.status, 200);
-        assert.equal(lastPage.body.pagination.page, lastPage.body.pagination.totalPages);
-        assert.ok(lastPage.body.data.length > 0 && lastPage.body.data.length <= 10);
-
-        const bounded = await request('/api/user/notifications?page=1&limit=1000', {
-            headers: jsonHeaders(userToken)
-        });
-        assert.equal(bounded.response.status, 200);
-        assert.equal(bounded.body.pagination.limit, 50);
-        assert.ok(bounded.body.data.length <= 50);
     });
 });
 
@@ -2016,15 +1817,9 @@ describe('room memory API', () => {
     it('persists room chat turns per account and broadcasts content-free updates', async () => {
         const unauthenticated = await request('/api/room/chat');
         assert.equal(unauthenticated.response.status, 401);
-        const unauthenticatedClear = await request('/api/room/chat', {
-            method: 'DELETE',
-            headers: jsonHeaders()
-        });
-        assert.equal(unauthenticatedClear.response.status, 401);
 
         let userStream;
         let managedStream;
-        const preservedMemoryId = `chat-clear-memory-${Date.now()}`;
         try {
             [userStream, managedStream] = await Promise.all([
                 openEventStream('/api/room/memory/events', userToken),
@@ -2071,36 +1866,11 @@ describe('room memory API', () => {
 
             const userHistory = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
             assert.deepEqual(userHistory.body.data.map(item => item.content), ['Cross-device room question', 'Cross-device room answer']);
-
-            db.prepare(`
-                INSERT INTO room_memories (id, user_id, summary, content, embedding)
-                VALUES (?, 'user-001', 'Preserved long-term memory', 'This must survive a chat reset.', '[]')
-            `).run(preservedMemoryId);
-
-            const cleared = await request('/api/room/chat', {
-                method: 'DELETE',
-                headers: jsonHeaders(userToken)
-            });
-            assert.equal(cleared.response.status, 200);
-            assert.equal(cleared.body.data.deletedCount, 2);
-
-            const clearedEvent = await readEvent(userStream, 'chat');
-            assert.equal(clearedEvent.action, 'cleared');
-            assert.deepEqual(clearedEvent.messageIds, []);
-            assert.equal(Object.hasOwn(clearedEvent, 'content'), false);
-            assert.equal(Object.hasOwn(clearedEvent, 'userId'), false);
-
-            const emptyHistory = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
-            assert.deepEqual(emptyHistory.body.data, []);
-            const isolatedHistory = await request('/api/room/chat', { headers: jsonHeaders(managedUserToken) });
-            assert.deepEqual(isolatedHistory.body.data.map(item => item.content), ['Imported local question', 'Imported local answer']);
-            assert.equal(db.prepare('SELECT COUNT(*) AS count FROM room_memories WHERE id = ?').get(preservedMemoryId).count, 1);
         } finally {
             userStream?.controller.abort();
             managedStream?.controller.abort();
             await Promise.allSettled([userStream?.reader?.cancel(), managedStream?.reader?.cancel()]);
             db.prepare("DELETE FROM room_chat_messages WHERE user_id IN ('user-001', 'user-002')").run();
-            db.prepare('DELETE FROM room_memories WHERE id = ?').run(preservedMemoryId);
         }
     });
 
@@ -2137,17 +1907,6 @@ describe('room memory API', () => {
 
             const deduplicated = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
             assert.equal(deduplicated.body.data.length, 2);
-
-            db.prepare("DELETE FROM room_chat_messages WHERE user_id = 'user-001'").run();
-            const modernMemoryOnly = await postJson('/api/room/memory', {
-                turnId: `turn-${Date.now()}-no-chat-capture`,
-                userMessage,
-                assistantReply: assistantMessage,
-                captureChat: false
-            }, userToken);
-            assert.ok([200, 201, 202].includes(modernMemoryOnly.response.status));
-            const modernHistory = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
-            assert.deepEqual(modernHistory.body.data, []);
         } finally {
             db.prepare("DELETE FROM room_chat_messages WHERE user_id = 'user-001'").run();
             db.prepare("DELETE FROM room_memories WHERE user_id = 'user-001'").run();
@@ -2830,75 +2589,15 @@ describe('friend link applications API', () => {
         assert.equal(adminList.response.status, 200);
         assert.ok(adminList.body.data.some(item => item.id === linkId && item.applicant_username === 'normal-user'));
 
-        const approved = await postJson(`/api/admin/links/${linkId}/status`, { status: 'active' }, adminToken);
+        const approved = await patchJson(`/api/admin/links/${linkId}/status`, { status: 'active' }, adminToken);
         assert.equal(approved.response.status, 200);
         assert.equal(approved.body.data.status, 'active');
-
-        const originalCheckFriendLink = friendLinkMonitorService.checkFriendLink;
-        let checked;
-        try {
-            friendLinkMonitorService.checkFriendLink = async (link) => ({
-                id: link.id,
-                url: link.url,
-                status: 'online',
-                responseTimeMs: 128,
-                httpStatus: 200,
-                failCount: 0,
-                hasBacklink: true,
-                error: '',
-                checkedAt: '2026-08-01T00:00:00.000Z'
-            });
-            checked = await postJson(`/api/admin/links/${linkId}/check`, {}, adminToken);
-        } finally {
-            friendLinkMonitorService.checkFriendLink = originalCheckFriendLink;
-        }
-        assert.equal(checked.response.status, 200);
-        assert.equal(checked.body.data.monitor_status, 'online');
-        assert.equal(checked.body.data.has_backlink, 1);
-
-        friendLinkRepository.updateScreenshot(
-            linkId,
-            `/friend-link-previews/${linkId}/1.jpg`,
-            '2026-08-01T00:00:00.000Z',
-            `friend-links/screenshots/friend-link-${linkId}.jpg`
-        );
-        const originalGetObject = objectStorage.getObject;
-        let preview;
-        try {
-            objectStorage.getObject = async () => ({
-                buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
-                etag: 'friend-preview-test',
-                lastModified: 'Sat, 01 Aug 2026 00:00:00 GMT'
-            });
-            const stalePreview = await request(`/friend-link-previews/${linkId}/2.jpg`);
-            assert.equal(stalePreview.response.status, 404);
-            assert.match(stalePreview.response.headers.get('cache-control'), /no-store/);
-            preview = await request(`/friend-link-previews/${linkId}/1.jpg`);
-        } finally {
-            objectStorage.getObject = originalGetObject;
-        }
-        assert.equal(preview.response.status, 200);
-        assert.equal(preview.response.headers.get('content-type'), 'image/jpeg');
-        assert.match(preview.response.headers.get('cache-control'), /immutable/);
 
         const visible = await request('/api/friend-links');
         assert.ok(visible.body.data.some(item => (
             item.id === linkId
             && item.name === 'Example Friend'
             && Object.hasOwn(item, 'avatar_url')
-            && item.monitor_status === 'online'
-            && item.screenshot_url === `/friend-link-previews/${linkId}/1.jpg`
-        )));
-
-        const source = await request('/api/friend-links/source');
-        assert.equal(source.response.status, 200);
-        assert.equal(source.body.data.author_url, config.publicSiteUrl);
-        assert.ok(source.body.data.link_list.some(item => (
-            item.id === linkId
-            && item.link === 'https://friend.example.test/'
-            && item.linkpage === 'https://friend.example.test/links'
-            && item.monitor_status === 'online'
-            && item.has_backlink === true
         )));
 
         const removed = await request(`/api/admin/links/${linkId}`, {
@@ -3148,66 +2847,6 @@ describe('admin API permissions', () => {
         assert.equal(injectedLink.response.status, 400);
     });
 
-    it('uses the terminal admin session for OSS large-file registration', async () => {
-        const originalPublicUrlForKey = objectStorage.publicUrlForKey;
-        const originalListObjects = objectStorage.listObjects;
-        const objectKey = `movies/admin-session-${Date.now()}.mp4`;
-        const scannedObjectKey = `movies/admin-scan-${Date.now()}.mp4`;
-        const registeredAssetIds = [];
-        objectStorage.publicUrlForKey = key => `https://oss.example.test/${key}`;
-        objectStorage.listObjects = async () => ({
-            objects: [{
-                key: scannedObjectKey,
-                size: 2048,
-                etag: 'scan-etag',
-                lastModified: '2026-07-23T00:00:00.000Z'
-            }],
-            prefix: 'movies/'
-        });
-
-        try {
-            const registered = await postJson('/api/assets/oss-register', {
-                objectKey,
-                title: 'Admin session movie',
-                assetType: 'video',
-                mimeType: 'video/mp4',
-                size: 1024,
-                visibility: 'private'
-            }, adminToken);
-            assert.equal(registered.response.status, 200);
-            assert.equal(registered.body.success, true);
-            assert.equal(registered.body.data.storage_key, objectKey);
-            registeredAssetIds.push(registered.body.data.id);
-
-            const linkedSiteUser = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
-            assert.ok(linkedSiteUser?.id);
-            assert.equal(registered.body.data.owner_id, linkedSiteUser.id);
-
-            const scanned = await postJson('/api/assets/oss-scan', {
-                prefix: 'movies/',
-                visibility: 'private',
-                assetType: 'video'
-            }, adminToken);
-            assert.equal(scanned.response.status, 200);
-            assert.equal(scanned.body.data.importedCount, 1);
-            assert.equal(scanned.body.data.imported[0].storage_key, scannedObjectKey);
-            assert.equal(scanned.body.data.imported[0].owner_id, linkedSiteUser.id);
-            registeredAssetIds.push(scanned.body.data.imported[0].id);
-
-            const forbidden = await postJson('/api/assets/oss-register', {
-                objectKey: `movies/staff-session-${Date.now()}.mp4`
-            }, staffAdminToken);
-            assert.equal(forbidden.response.status, 403);
-            assert.equal(forbidden.body.message, '需要超级管理员权限');
-        } finally {
-            objectStorage.publicUrlForKey = originalPublicUrlForKey;
-            objectStorage.listObjects = originalListObjects;
-            for (const assetId of registeredAssetIds) {
-                db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
-            }
-        }
-    });
-
     it('keeps linked administrator site identities immutable', async () => {
         const staffUser = db.prepare('SELECT id FROM users WHERE username = ?').get('staff-admin');
         assert.ok(staffUser?.id);
@@ -3326,68 +2965,6 @@ describe('legacy page paths', () => {
         }
     });
 
-    it('publishes and revokes one owned room turn without exposing private history', async () => {
-        const turnId = `share-${Date.now()}-owned`;
-        const assetId = `room-share-card-${Date.now()}`;
-        try {
-            db.prepare("DELETE FROM room_chat_messages WHERE user_id IN ('user-001', 'user-002')").run();
-            await postJson('/api/room/chat/turn', {
-                turnId,
-                userMessage: '今晚一起看月亮吗？',
-                assistantMessage: '当然，我会把这一刻记下来。'
-            }, userToken);
-            db.prepare(`
-                INSERT INTO article_assets (id, owner_id, asset_type, mime_type, url, storage_key, metadata)
-                VALUES (?, 'user-001', 'image', 'image/jpeg', ?, ?, '{}')
-            `).run(assetId, `/api/assets/proxy/${assetId}`, `test/${assetId}.jpg`);
-
-            const created = await postJson('/api/room/shares', {
-                turnId,
-                title: '月下的一次对话',
-                ogImageAssetId: assetId,
-                userMessage: 'forged content must be ignored',
-                scene: {
-                    weather: 'rain',
-                    timePhase: 'night',
-                    season: 'summer',
-                    city: '香港',
-                    temperature: 27,
-                    ignored: '<script>alert(1)</script>'
-                }
-            }, userToken);
-            assert.equal(created.response.status, 201);
-            assert.match(created.body.data.shareKey, /^[A-Za-z0-9_-]{20,}$/);
-            assert.equal(created.body.data.userMessage, '今晚一起看月亮吗？');
-            assert.equal(Object.hasOwn(created.body.data, 'userId'), false);
-
-            const publicShare = await request(`/api/room/shares/${created.body.data.shareKey}`);
-            assert.equal(publicShare.response.status, 200);
-            assert.equal(publicShare.body.data.assistantMessage, '当然，我会把这一刻记下来。');
-            assert.equal(publicShare.body.data.scene.city, '香港');
-            assert.equal(Object.hasOwn(publicShare.body.data.scene, 'ignored'), false);
-            assert.equal(Object.hasOwn(publicShare.body.data, 'userId'), false);
-
-            const denied = await postJson('/api/room/shares', {
-                turnId,
-                title: 'stolen',
-                ogImageAssetId: assetId
-            }, managedUserToken);
-            assert.ok([403, 404].includes(denied.response.status));
-
-            const revoked = await request(`/api/room/shares/${created.body.data.shareKey}`, {
-                method: 'DELETE',
-                headers: jsonHeaders(userToken)
-            });
-            assert.equal(revoked.response.status, 200);
-            const missing = await request(`/api/room/shares/${created.body.data.shareKey}`);
-            assert.equal(missing.response.status, 404);
-        } finally {
-            db.prepare('DELETE FROM room_conversation_shares WHERE user_id = ?').run('user-001');
-            db.prepare('DELETE FROM article_assets WHERE id = ?').run(assetId);
-            db.prepare("DELETE FROM room_chat_messages WHERE user_id IN ('user-001', 'user-002')").run();
-        }
-    });
-
     it('serves crawler snapshots for Hub, Pixel, Wiki entries, and public friend links', async () => {
         const crawlerHeaders = { 'User-Agent': 'Googlebot/2.1' };
         const pages = [
@@ -3413,27 +2990,6 @@ describe('legacy page paths', () => {
         assert.match(browserHub.body, /Frontend build is missing/);
     });
 
-    it('exposes active friend links as literal hrefs to non-bot link checkers', async () => {
-        const link = friendLinkRepository.createActiveLink({
-            name: 'GitHub Actions Friend',
-            url: 'https://actions-friend.example.test/',
-            description: 'Detectable reciprocal link'
-        });
-
-        try {
-            const checker = await request('/friend-links', {
-                headers: { 'User-Agent': 'axios/1.7 link-check-workflow' }
-            });
-            assert.equal(checker.response.status, 200);
-            assert.match(checker.body, /<a[^>]+href="https:\/\/actions-friend\.example\.test\/"/);
-
-            const spaShell = renderFriendLinksSpaHtml('<div id="app"></div>', [link]);
-            assert.match(spaShell, /<a[^>]+href="https:\/\/actions-friend\.example\.test\/"/);
-        } finally {
-            friendLinkRepository.deleteLink(link.id);
-        }
-    });
-
     it('keeps crawler snapshot links on safe web protocols', () => {
         const html = renderSeoCollectionPage({
             path: '/friend-links',
@@ -3445,13 +3001,6 @@ describe('legacy page paths', () => {
 
         assert.doesNotMatch(html, /javascript:|file:|data:text\/html/i);
         assert.match(html, /href="https:\/\/yachiyo\.hk\/?"/);
-
-        const spaShell = renderFriendLinksSpaHtml('<div id="app"></div>', [
-            { name: 'Unsafe link', url: 'javascript:alert(1)' },
-            { name: 'Safe link', url: 'https://safe-friend.example.test/' }
-        ]);
-        assert.doesNotMatch(spaShell, /javascript:/i);
-        assert.match(spaShell, /href="https:\/\/safe-friend\.example\.test\/"/);
     });
 
     it('publishes every Wiki entry, SEO topic, article cover, and gallery image in sitemaps', async () => {

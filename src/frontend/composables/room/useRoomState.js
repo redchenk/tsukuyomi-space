@@ -1,6 +1,7 @@
 import { computed, inject, onBeforeUnmount, onMounted, reactive } from 'vue';
 import { useLive2D } from './useLive2D';
 import { useRoomChat } from './useRoomChat';
+import { useRoomDiary } from './useRoomDiary';
 import { useRoomMusic } from './useRoomMusic';
 import { useRoomNote } from './useRoomNote';
 import { useRoomPanels } from './useRoomPanels';
@@ -21,7 +22,8 @@ export function useRoomState() {
   const music = sharedMusic || useRoomMusic();
   const profile = useRoomProfile();
   const note = useRoomNote();
-  const chat = useRoomChat({ live2d, world });
+  const diary = useRoomDiary();
+  const chat = useRoomChat({ live2d, world, diary });
 
   async function init() {
     loading.active = true;
@@ -58,6 +60,7 @@ export function useRoomState() {
     music,
     profile,
     note,
+    diary,
     chat,
     roomStyle: computed(() => (world.world.value.temperature == null ? null : { '--room-temperature': world.world.value.temperature }))
   };

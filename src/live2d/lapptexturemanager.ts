@@ -112,8 +112,17 @@ export class LAppTextureManager {
         ite.ptr().fileName == fileName &&
         ite.ptr().usePremultply == usePremultiply
       ) {
-        const textureInfo = ite.ptr();
-        queueMicrotask(() => callback(textureInfo));
+        // 2回目以降はキャッシュが使用される(待ち時間なし)
+        // WebKitでは同じImageのonloadを再度呼ぶには再インスタンスが必要
+        // 詳細：https://stackoverflow.com/a/5024181
+        loadTextureImage(
+          fileName,
+          (img): void => {
+            ite.ptr().img = img;
+            callback(ite.ptr());
+          },
+          onError
+        );
         return;
       }
     }
@@ -190,6 +199,7 @@ export class LAppTextureManager {
           textureInfo.width = img.width;
           textureInfo.height = img.height;
           textureInfo.id = tex;
+          textureInfo.img = img;
           textureInfo.usePremultply = usePremultiply;
           if (this._textures != null) {
             this._textures.pushBack(textureInfo);
@@ -268,6 +278,7 @@ export class LAppTextureManager {
  * 画像情報構造体
  */
 export class TextureInfo {
+  img: HTMLImageElement; // 画像
   id: WebGLTexture = null; // テクスチャ
   width = 0; // 横幅
   height = 0; // 高さ

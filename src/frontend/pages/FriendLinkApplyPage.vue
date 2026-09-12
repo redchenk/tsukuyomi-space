@@ -29,49 +29,7 @@ const successMessage = ref('');
 const isZh = computed(() => props.lang === 'zh');
 const isAuthed = computed(() => Boolean(props.user?.id));
 const recentApplications = computed(() => applications.value.slice(0, 3));
-const copy = computed(() => props.lang === 'en' ? {
-  eyebrow: 'Friend Link',
-  title: 'Apply for a Link Exchange',
-  subtitle: 'Enter your site details. Approved sites will appear in Tsukuyomi Plaza.',
-  back: 'Back to partner sites',
-  formTitle: 'Site information',
-  name: 'Site name',
-  namePlaceholder: 'Your site name',
-  url: 'Site URL',
-  urlPlaceholder: 'https://example.com',
-  description: 'Site description',
-  descriptionPlaceholder: 'Introduce your site in one sentence',
-  avatar: 'Avatar URL',
-  avatarPlaceholder: 'https://example.com/avatar.png',
-  autoAvatar: 'Auto-detect',
-  detectingAvatar: 'Detecting',
-  enterSiteFirst: 'Enter the site URL first',
-  advanced: 'Notes',
-  backlink: 'Friend-links page URL (recommended)',
-  backlinkPlaceholder: 'https://example.com/links',
-  backlinkHint: 'We periodically look for a real link to this site on that page.',
-  note: 'Notes (optional)',
-  notePlaceholder: 'Anything else we should know',
-  submit: 'Submit application',
-  submitting: 'Submitting',
-  loginTitle: 'Sign in to apply',
-  loginDesc: 'Your applications are linked to your account so you can track their status.',
-  login: 'Sign in',
-  successTitle: 'Application submitted',
-  successDesc: 'You can track the review status on this page.',
-  requirements: 'Listing requirements',
-  reachable: 'The site is publicly accessible',
-  safe: 'The content is legal and contains no malicious redirects',
-  reciprocal: 'Adding a backlink is recommended',
-  history: 'My applications',
-  empty: 'No applications yet',
-  pending: 'Under review',
-  active: 'Listed',
-  rejected: 'Not approved',
-  loadFailed: 'Unable to load applications',
-  loading: 'Loading applications',
-  submitFailed: 'Unable to submit application'
-} : isZh.value ? {
+const copy = computed(() => isZh.value ? {
   eyebrow: 'Friend Link',
   title: '友链申请',
   subtitle: '填写站点信息，审核通过后将在月读广场展示。',
@@ -88,10 +46,9 @@ const copy = computed(() => props.lang === 'en' ? {
   autoAvatar: '自动获取',
   detectingAvatar: '获取中',
   enterSiteFirst: '请先填写站点链接',
-  advanced: '备注',
-  backlink: '友链页地址（建议填写）',
+  advanced: '补充信息',
+  backlink: '回链地址（选填）',
   backlinkPlaceholder: 'https://example.com/links',
-  backlinkHint: '系统会定期检查页面中是否存在指向本站的真实链接。',
   note: '备注（选填）',
   notePlaceholder: '需要说明的内容',
   submit: '提交申请',
@@ -130,10 +87,9 @@ const copy = computed(() => props.lang === 'en' ? {
   autoAvatar: '自動取得',
   detectingAvatar: '取得中',
   enterSiteFirst: '先にサイト URL を入力してください',
-  advanced: '備考',
-  backlink: '相互リンクページ URL（推奨）',
+  advanced: '追加情報',
+  backlink: '相互リンク URL（任意）',
   backlinkPlaceholder: 'https://example.com/links',
-  backlinkHint: 'このページ内に当サイトへの実際のリンクがあるか定期的に確認します。',
   note: '備考（任意）',
   notePlaceholder: '補足事項',
   submit: '申請を送信',
@@ -166,7 +122,7 @@ function statusLabel(status) {
 }
 
 function formatDate(value) {
-  return value ? formatDateTime(value, props.lang === 'en' ? 'en-US' : (isZh.value ? 'zh-CN' : 'ja-JP')) : '';
+  return value ? formatDateTime(value, isZh.value ? 'zh-CN' : 'ja-JP') : '';
 }
 
 function initial(name) {
@@ -333,18 +289,16 @@ watch(() => form.avatar_url, () => {
             <span>{{ form.name || copy.namePlaceholder }}</span>
           </div>
 
-          <label class="friend-link-field">
-            <span>{{ copy.backlink }}</span>
-            <input v-model="form.backlink_url" type="url" maxlength="2048" inputmode="url" :placeholder="copy.backlinkPlaceholder">
-            <span class="friend-link-field-hint">{{ copy.backlinkHint }}</span>
-          </label>
-
           <details class="friend-link-advanced">
             <summary>
               <span>{{ copy.advanced }}</span>
               <TsIcon name="chevronDown" :size="17" />
             </summary>
             <div class="friend-link-advanced-body">
+              <label class="friend-link-field">
+                <span>{{ copy.backlink }}</span>
+                <input v-model="form.backlink_url" type="url" maxlength="2048" inputmode="url" :placeholder="copy.backlinkPlaceholder">
+              </label>
               <label class="friend-link-field">
                 <span>{{ copy.note }}</span>
                 <textarea v-model="form.note" maxlength="300" rows="3" :placeholder="copy.notePlaceholder"></textarea>

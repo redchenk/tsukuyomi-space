@@ -3,11 +3,13 @@ import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 const panelDefaults = {
   chatPanel: { top: '12.3rem', right: '1.2rem' },
   profilePanel: { top: '6.4rem', left: 'max(6.2rem, calc(clamp(1rem, 3vw, 2rem) + 5rem))' },
-  notePanel: { top: '18.2rem', left: 'max(6.2rem, calc(clamp(1rem, 3vw, 2rem) + 5rem))' }
+  notePanel: { top: '18.2rem', left: 'max(6.2rem, calc(clamp(1rem, 3vw, 2rem) + 5rem))' },
+  diaryPanel: { top: '6.4rem', right: '1.2rem' }
 };
 
 export const roomPanelButtons = [
   { id: 'chatPanel', label: '\u804a\u5929', icon: 'message' },
+  { id: 'diaryPanel', label: '\u65e5\u8bb0', icon: 'book' },
   { id: 'profilePanel', label: '\u8d44\u6599', icon: 'badge' },
   { id: 'notePanel', label: '\u4fbf\u7b7e', icon: 'note' }
 ];
@@ -28,6 +30,7 @@ function writeJson(key, value) {
 export function useRoomPanels() {
   const activePanels = reactive({
     chatPanel: true,
+    diaryPanel: false,
     profilePanel: false,
     notePanel: false
   });
@@ -61,6 +64,12 @@ export function useRoomPanels() {
 
   function closePanel(panelId) {
     activePanels[panelId] = false;
+  }
+
+  /** Opens a panel without toggling it shut when it is already visible. */
+  function openPanel(panelId) {
+    activePanels[panelId] = true;
+    bringPanelForward(panelId);
   }
 
   function startPanelDrag(panelId, event) {
@@ -151,6 +160,7 @@ export function useRoomPanels() {
     bringPanelForward,
     togglePanel,
     closePanel,
+    openPanel,
     startPanelDrag,
     onPointerMove,
     onPointerUp

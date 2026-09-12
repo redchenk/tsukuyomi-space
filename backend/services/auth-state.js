@@ -81,7 +81,7 @@ async function loginFailureState(identity) {
 
 function tokenTtlSeconds(token) {
     try {
-        const decoded = jwt.verify(token, config.jwtSecret);
+        const decoded = jwt.decode(token);
         if (!decoded?.exp) return 0;
         return Math.max(0, decoded.exp - Math.floor(Date.now() / 1000));
     } catch (_) {

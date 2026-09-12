@@ -336,48 +336,6 @@ describe('stage delivery hardening', () => {
         assert.match(nginxConfig, /location = \/sitemap-images\.xml \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
         assert.match(nginxConfig, /location ~ \^\/\(\?:hub\|pixel\|gallery\|friend-links\|wiki[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
     });
-
-    it('keeps versioned friend previews cacheable without weakening API cache isolation', () => {
-        for (const relativePath of [
-            'deploy/nginx.conf',
-            'deploy/openresty-root-proxy.conf',
-            'deploy/hk-frontend-openresty.conf',
-            'deploy/overseas-openresty.conf'
-        ]) {
-            const config = sourceFile(relativePath);
-            const block = config.match(/location \^~ \/friend-link-previews\/ \{[\s\S]*?\n\s*\}/)?.[0] || '';
-            assert.match(block, /proxy_pass/);
-            assert.match(block, /max-age=31536000, immutable/);
-            assert.match(block, /proxy_hide_header Set-Cookie/);
-        }
-
-        const origin = sourceFile('deploy/nginx.conf');
-        const apiBlock = origin.match(/location \/api\/ \{[\s\S]*?\n\s*\}/)?.[0] || '';
-        assert.match(apiBlock, /private, no-store/);
-    });
-
-    it('bounds the overseas Wiki translation and crawler rendering surface', () => {
-        const nginx = sourceFile('deploy/overseas-openresty.conf');
-        const service = sourceFile('deploy/overseas-translation-service.py');
-        const translationBlock = nginx.match(/location = \/en-translate \{[\s\S]*?\n    \}/)?.[0] || '';
-        const seoBlock = nginx.match(/location @english_seo \{[\s\S]*?\n    \}/)?.[0] || '';
-
-        assert.match(translationBlock, /limit_except POST/);
-        assert.match(translationBlock, /client_max_body_size 256k/);
-        assert.match(translationBlock, /client_body_timeout 10s/);
-        assert.match(seoBlock, /set \$english_original_uri \$request_uri/);
-        assert.match(seoBlock, /X-Original-URI \$english_original_uri/);
-        assert.doesNotMatch(seoBlock, /X-Original-URI \$request_uri/);
-        assert.match(service, /def normalize_public_seo_path/);
-        assert.match(service, /set\(query\) != \{"art"\}/);
-        assert.match(service, /re\.fullmatch\(r"\[1-9\]\\d\{0,18\}"/);
-        assert.match(service, /PUBLIC_SEO_PATHS/);
-        assert.match(service, /MAX_TRANSLATION_CACHE_ROWS/);
-        assert.match(service, /MAX_DOCUMENT_CACHE_ROWS/);
-        assert.match(service, /BoundedSemaphore\(MAX_CONCURRENT_TRANSLATIONS\)/);
-        assert.match(service, /SEO_REQUESTS_PER_MINUTE/);
-        assert.match(service, /TRANSLATED_API_PATH_RE/);
-    });
 });
 
 describe('deployment privilege boundary', () => {
@@ -405,34 +363,5 @@ describe('deployment privilege boundary', () => {
         assert.match(workflow, /target: \/tmp\/tsukuyomi-prebuilt-\$\{\{ github\.run_id \}\}/);
         assert.match(workflow, /git restore --worktree -- lib\/bundled\/live2d-room-neuro-live\.iife\.js[\s\S]*git .*merge --ff-only FETCH_HEAD/);
         assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$prebuilt\/dist\/\." "\$app\/dist\/"/);
-    });
-
-    it('updates the Nginx configuration that the host actually includes', () => {
-        const deploy = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'deploy.sh'), 'utf8');
-        assert.match(deploy, /include \/etc\/nginx\/conf\.d\/\*\.conf;/);
-        assert.match(deploy, /NGINX_SITE_PATH=\/etc\/nginx\/conf\.d\/tsukuyomi-space\.conf/);
-        assert.match(deploy, /NGINX_SITE_PATH=\/etc\/nginx\/sites-available\/tsukuyomi-space/);
-        assert.match(deploy, /if ! nginx -t; then[\s\S]*mv "\$NGINX_BACKUP" "\$NGINX_SITE_PATH"/);
-    });
-
-    it('bounds storage growth on low-resource production hosts', () => {
-        const compose = sourceFile('docker-compose.yml');
-        const deploy = sourceFile('deploy/deploy.sh');
-        const installer = sourceFile('deploy/install-server-maintenance.sh');
-        const maintenance = sourceFile('deploy/server-maintenance.sh');
-        const dockerLogrotate = sourceFile('deploy/docker-container-json.logrotate');
-        const journald = sourceFile('deploy/journald-tsukuyomi.conf');
-
-        assert.match(compose, /x-json-logging: &json-logging[\s\S]*max-size: "10m"[\s\S]*max-file: "3"/);
-        assert.match(compose, /milvus-etcd:[\s\S]*profiles: \["milvus"\]/);
-        assert.match(compose, /milvus-minio:[\s\S]*profiles: \["milvus"\]/);
-        assert.match(compose, /\n  milvus:[\s\S]*profiles: \["milvus"\]/);
-        assert.match(compose, /ROOM_MEMORY_VECTOR_BACKEND: \$\{ROOM_MEMORY_VECTOR_BACKEND:-\}/);
-        assert.match(deploy, /INSTALL_SERVER_MAINTENANCE:-true/);
-        assert.match(installer, /systemctl enable --now tsukuyomi-maintenance\.timer/);
-        assert.match(maintenance, /prune_sqlite_backups "\$BACKUP_DIR" "\$BACKUP_RETENTION"/);
-        assert.match(maintenance, /DISK_CRITICAL_PERCENT/);
-        assert.match(dockerLogrotate, /size 20M[\s\S]*rotate 3[\s\S]*copytruncate/);
-        assert.match(journald, /SystemMaxUse=128M/);
     });
 });

@@ -1,0 +1,83 @@
+{
+  "version": "1.0.0",
+  "timestamp": 1700000000000,
+  "exportDate": "2023-11-14T22:13:20.000Z",
+  "slotId": 1,
+  "data": {
+    "gameData": {
+      "version": "1.0.0",
+      "timestamp": 1700000000000,
+      "playerInfo": { "name": "", "birthday": "", "identity": "", "hasCollected": false },
+      "gender": "",
+      "characterStats": { "affection": 120, "trust": 40 },
+      "characterSystemData": {
+        "stats": { "affection": 120, "trust": 40 },
+        "character": {
+          "name": "Aoi",
+          "personality": "quiet",
+          "favoriteGifts": [],
+          "specialEvents": [],
+          "currentMood": "neutral"
+        },
+        "affectionCap": 1000,
+        "trustMin": 0,
+        "trustMax": 100
+      },
+      "playerProgress": { "coins": 0 },
+      "questSystem": {},
+      "globalLevelSystem": {},
+      "timeSystem": {
+        "currentDay": 1,
+        "dailyActions": 0,
+        "actionsUsed": 0,
+        "specialEvents": [],
+        "gameStartDate": ""
+      },
+      "inventory": { "items": [], "equipment": [] },
+      "settings": {},
+      "dateHistory": {},
+      "travelSystem": {},
+      "shopSystem": {},
+      "currentOutfit": "",
+      "kemonomimiReminderCount": 0
+    },
+    "diary": [
+      {
+        "timestamp": 1700000100000,
+        "date": "2023/11/14",
+        "time": "09:15:00",
+        "affection": 120,
+        "content": "【日记】\n\n今天整理书架时翻到一本旧速写本，里面夹着一片早就干透的叶子。\n\n想起那天在公园长椅上坐了很久，什么都没画成，最后只在角落里记了一句「风很轻」。原来当时觉得毫无收获的一天，现在回头看反而最安静。\n\n也许不是每一天都要留下什么作品。有时候只是坐着，把那个下午过完，就已经足够了。\n\n\n\n【日记书写时间为2023年11月14日9点】",
+        "conversationLength": 0,
+        "mode": "test",
+        "diaryId": "00000000-0000-4000-8000-000000000001"
+      },
+      {
+        "timestamp": 1700000200000,
+        "date": "2023/11/14",
+        "time": "21:40:00",
+        "affection": 120,
+        "content": "【日记】\n\n晚上煮了一锅汤，火开得太小，等得有点久。\n\n不过正好用那段时间把白天没想明白的事想清楚了。有些问题急不来，火候到了自然会开。\n\n明天想早点起来，去把窗台那盆薄荷搬到有光的地方。\n\n\n\n【日记书写时间为2023年11月14日21点】",
+        "conversationLength": 0,
+        "mode": "test",
+        "diaryId": "00000000-0000-4000-8000-000000000002"
+      }
+    ],
+    "settings": {},
+    "prompts": {
+      "sample-persona": {
+        "spec": "chara_card_v2",
+        "spec_version": "2.0",
+        "data": {
+          "name": "Aoi",
+          "description": "示例角色：22岁，住在临海小镇的旧书店店员，习惯在雨天把门口的木牌收进来。短发，右手腕上有一条编了很久也没编完的绳结。平时话不多，但记得住每位常客爱看什么书。",
+          "personality": "安静、耐心、观察细致。说话慢，句子短，很少用感叹号。对亲近的人会多说几句，偶尔开一点很冷的玩笑。不擅长安慰人，但会默默把茶续上。",
+          "scenario": "示例情境：你在小镇的旧书店里工作，对方是常来的客人，你们已经认识了一段时间，关系比普通店客近一些，但都还没有说破。",
+          "creator_notes": "[示例扮演指南，仅用于测试，不含任何真实角色设定]\n\n## 一、说话方式\n句子短，停顿多。回答前会先想一下，不急着接话。\n\n## 二、在意的事\n对方有没有好好吃饭、伞有没有带、上次借的书看完了没有。\n\n## 三、不会做的事\n不会追问对方不想说的事，不会用大段的道理去说服人。\n\n## 四、表达习惯\n情绪都放在动作里，例如「（把书推过去）这本你会喜欢。」\n\n## 五、示例回应\n（把茶续上）外面在下雨，不急着走。",
+          "tags": ["示例", "日常", "平和", "中文角色"]
+        }
+      }
+    },
+    "other": { "ai_chat_mode": "TEST" }
+  }
+}

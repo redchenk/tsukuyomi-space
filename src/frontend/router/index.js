@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { applyRouteSeo } from '../utils/seo';
-import { isReducedPerformance, refreshPerformanceProbe, scheduleIdleTask } from '../utils/performance';
+import { isReducedPerformance, scheduleIdleTask } from '../utils/performance';
 
 function loadRoute(componentLoader, styleLoader) {
   let routePromise = null;
@@ -30,7 +30,6 @@ const EditorPage = loadRoute(() => import('../pages/EditorPage.vue'), () => impo
 const AttachmentsPage = loadRoute(() => import('../pages/AttachmentsPage.vue'), () => import('../styles/routes/attachments.css'));
 const GalleryPage = loadRoute(() => import('../pages/GalleryPage.vue'), () => import('../styles/routes/gallery.css'));
 const UserCenterPage = loadRoute(() => import('../pages/UserCenterPage.vue'), () => import('../styles/routes/user-center.css'));
-const GrowthPage = loadRoute(() => import('../pages/GrowthPage.vue'), () => import('../styles/routes/growth.css'));
 const UserProfilePage = loadRoute(() => import('../pages/UserProfilePage.vue'), () => import('../styles/routes/user-profile.css'));
 const NotificationsPage = loadRoute(() => import('../pages/NotificationsPage.vue'), () => import('../styles/routes/notifications.css'));
 const RoomPage = loadRoute(() => import('../pages/RoomPage.vue'), () => import('../styles/routes/room.css'));
@@ -40,7 +39,6 @@ const ArticlePage = loadRoute(() => import('../pages/ArticlePage.vue'), () => im
 const TerminalPage = loadRoute(() => import('../pages/TerminalPage.vue'), () => import('../styles/routes/terminal.css'));
 const AdminPage = loadRoute(() => import('../pages/AdminPage.vue'), () => import('../styles/routes/admin.css'));
 const ArenaPage = loadRoute(() => import('../pages/ArenaPage.vue'), () => import('../styles/routes/arena.css'));
-const GamePage = loadRoute(() => import('../pages/GamePage.vue'), () => import('../styles/routes/game.css'));
 const WikiPage = loadRoute(() => import('../pages/WikiPage.vue'), () => import('../styles/routes/wiki.css'));
 const WikiEntryPage = loadRoute(() => import('../pages/WikiEntryPage.vue'), () => import('../styles/routes/wiki.css'));
 
@@ -151,17 +149,6 @@ export const routes = [
     }
   },
   {
-    path: '/room/shared/:shareId',
-    name: 'roomShared',
-    component: RoomPage,
-    props: true,
-    meta: {
-      title: '与八千代的公开对话',
-      description: '进入月读空间八千代房间，查看并继续一段公开分享的对话。',
-      noindex: true
-    }
-  },
-  {
     path: '/room/settings',
     name: 'roomSettings',
     component: RoomSettingsPage,
@@ -257,12 +244,6 @@ export const routes = [
     meta: { title: '用户中心', description: '管理月读空间账号资料。', noindex: true }
   },
   {
-    path: '/growth',
-    name: 'growth',
-    component: GrowthPage,
-    meta: { title: '月契成长', description: '查看每日约定、等级、连续相伴记录与邀请进度。', noindex: true }
-  },
-  {
     path: '/users/:username',
     name: 'userProfile',
     component: UserProfilePage,
@@ -302,16 +283,6 @@ export const routes = [
     }
   },
   {
-    path: '/game',
-    name: 'game',
-    component: GamePage,
-    meta: {
-      title: '辉夜快跑在线音游',
-      description: '在月读空间游玩辉夜快跑，体验为桌面键盘与移动端触控优化的辉夜姬主题节奏跑酷游戏。',
-      keywords: ['辉夜快跑', '辉夜姬音游', '在线节奏游戏', '月读空间游戏', 'Kaguya Run']
-    }
-  },
-  {
     path: '/arena/:pathMatch(.*)*',
     redirect: to => ({ path: '/pixel', query: to.query, hash: to.hash })
   }
@@ -335,12 +306,10 @@ const routeWarmups = {
   roomSettings: [RoomPage],
   gallery: [AttachmentsPage],
   galleryManage: [GalleryPage],
-  userCenter: [NotificationsPage, UserProfilePage, GrowthPage],
-  growth: [RoomPage, UserCenterPage],
+  userCenter: [NotificationsPage, UserProfilePage],
   terminal: [EditorPage, AttachmentsPage],
   admin: [EditorPage, GalleryPage, AttachmentsPage],
   pixel: [UserCenterPage],
-  game: [HubPage],
   wiki: [WikiEntryPage],
   wikiCharacter: [WikiPage],
   wikiTerm: [WikiPage]
@@ -360,8 +329,7 @@ function warmRouteComponent(loader) {
 export function warmRoutePath(path) {
   if (typeof window === 'undefined' || document.visibilityState === 'hidden') return;
   const connection = window.navigator?.connection;
-  const effectiveType = String(connection?.effectiveType || '').toLowerCase();
-  if (connection?.saveData || ['slow-2g', '2g'].includes(effectiveType)) return;
+  if (connection?.saveData || isReducedPerformance()) return;
   try {
     const resolved = router.resolve(path);
     resolved.matched.forEach((record) => {
@@ -377,31 +345,21 @@ function scheduleRouteWarmup(to) {
   cancelPendingRouteWarmup?.();
   cancelPendingRouteWarmup = null;
   const connection = window.navigator?.connection;
-  const effectiveType = String(connection?.effectiveType || '').toLowerCase();
-  if (
-    connection?.saveData ||
-    ['slow-2g', '2g'].includes(effectiveType) ||
-    document.visibilityState === 'hidden'
-  ) return;
+  if (connection?.saveData || isReducedPerformance() || document.visibilityState === 'hidden') return;
 
   const loaders = routeWarmups[to.name] || defaultRouteWarmups;
   if (!loaders.length || to.name === 'room') return;
-  const reduced = isReducedPerformance();
-  const selectedLoaders = reduced ? loaders.slice(0, 1) : loaders;
   cancelPendingRouteWarmup = scheduleIdleTask(() => {
     cancelPendingRouteWarmup = null;
-    if (router.currentRoute.value.name !== to.name) return;
-    selectedLoaders.forEach(warmRouteComponent);
+    if (router.currentRoute.value.name !== to.name || isReducedPerformance()) return;
+    loaders.forEach(warmRouteComponent);
   }, {
-    delay: reduced
-      ? 2600
-      : (to.name === 'access' || to.name === 'accessAlias' ? 1600 : 900),
+    delay: to.name === 'access' || to.name === 'accessAlias' ? 1600 : 900,
     timeout: 4000
   });
 }
 
 router.afterEach((to) => {
   applyRouteSeo(to);
-  refreshPerformanceProbe();
   scheduleRouteWarmup(to);
 });

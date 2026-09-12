@@ -14,10 +14,6 @@ cd "$APP_DIR"
 
 mkdir -p "$ENV_DIR" "$DATA_DIR" "$LOG_DIR"
 
-if [ "${INSTALL_SERVER_MAINTENANCE:-true}" = "true" ] && [ "$(id -u)" -eq 0 ]; then
-    bash "$APP_DIR/deploy/install-server-maintenance.sh"
-fi
-
 if [ ! -f "$ENV_FILE" ]; then
     cp .env.example "$ENV_FILE"
     echo "Created $ENV_FILE. Edit secrets before starting."
@@ -117,7 +113,7 @@ if [ "${BUILD_ON_SERVER:-false}" = "true" ]; then
     npm run build:live2d-studio
 fi
 
-for output in dist/frontend/index.html lib/bundled/live2d-room-neuro-live.iife.js lib/bundled/live2d-room-neuro-live.20260727-adaptive-perf-r9.iife.js dist/live2d-studio/index.html; do
+for output in dist/frontend/index.html lib/bundled/live2d-room-neuro-live.iife.js lib/bundled/live2d-room-neuro-live.20260717-adaptive-perf-r8.iife.js dist/live2d-studio/index.html; do
     [ -f "$output" ] || { echo "Missing prebuilt artifact: $output" >&2; exit 1; }
 done
 
@@ -127,19 +123,11 @@ pm2 startOrReload deploy/ecosystem.config.cjs --update-env
 pm2 save
 
 if [ "${INSTALL_NGINX_CONFIG:-false}" = "true" ]; then
-    if [ -z "${NGINX_SITE_PATH:-}" ]; then
-        if [ -f /etc/nginx/conf.d/tsukuyomi-space.conf ] \
-            && grep -Fq 'include /etc/nginx/conf.d/*.conf;' /etc/nginx/nginx.conf; then
-            NGINX_SITE_PATH=/etc/nginx/conf.d/tsukuyomi-space.conf
-        else
-            NGINX_SITE_PATH=/etc/nginx/sites-available/tsukuyomi-space
-        fi
-    fi
+    NGINX_SITE_PATH="${NGINX_SITE_PATH:-/etc/nginx/sites-available/tsukuyomi-space}"
     NGINX_BACKUP="${NGINX_SITE_PATH}.predeploy"
     cp -p "$NGINX_SITE_PATH" "$NGINX_BACKUP"
     cp deploy/nginx.conf "${NGINX_SITE_PATH}.candidate"
-    if [ -f /etc/nginx/snippets/agent-os.conf ] \
-        && ! grep -Fq 'include /etc/nginx/snippets/agent-os.conf;' "${NGINX_SITE_PATH}.candidate"; then
+    if [ -f /etc/nginx/snippets/agent-os.conf ]; then
         sed -i '/^[[:space:]]*server[[:space:]]*{/a\    include /etc/nginx/snippets/agent-os.conf;' "${NGINX_SITE_PATH}.candidate"
     fi
     mv "${NGINX_SITE_PATH}.candidate" "$NGINX_SITE_PATH"

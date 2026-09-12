@@ -11,35 +11,20 @@ const socialRepository = require('./repositories/social-repository');
 const articleMedia = require('./services/article-media');
 const responseCache = require('./services/response-cache');
 const { articlePath } = require('./seo/render-article');
-const { parsePositiveInt, publicEmail } = require('./validators');
+const { publicEmail } = require('./validators');
 const { validateAvatar } = require('./utils/avatar');
 
 const { authenticateToken, optionalAuth } = require('./middleware/auth');
 
 router.get('/notifications', authenticateToken, (req, res) => {
     try {
-        const limit = Math.min(parsePositiveInt(req.query.limit, 20), 50);
-        const counts = notificationRepository.notificationCounts(req.user.id);
-        const totalPages = Math.max(1, Math.ceil(counts.total / limit));
-        const legacyOffset = Math.max(Number.parseInt(req.query.offset, 10) || 0, 0);
-        const requestedPage = req.query.page === undefined
-            ? Math.floor(legacyOffset / limit) + 1
-            : parsePositiveInt(req.query.page, 1);
-        const page = Math.min(requestedPage, totalPages);
-        const offset = (page - 1) * limit;
+        const limit = Math.min(Number.parseInt(req.query.limit, 10) || 50, 100);
+        const offset = Math.max(Number.parseInt(req.query.offset, 10) || 0, 0);
         const notifications = notificationRepository.listNotifications(req.user.id, { limit, offset });
         res.json({
             success: true,
             data: notifications,
-            unread: counts.unread,
-            pagination: {
-                page,
-                limit,
-                total: counts.total,
-                totalPages,
-                hasPrevious: page > 1,
-                hasNext: page < totalPages
-            }
+            unread: notificationRepository.unreadCount(req.user.id)
         });
     } catch (error) {
         console.error('List notifications failed:', error);
@@ -456,7 +441,7 @@ router.put('/articles/:id', authenticateToken, async (req, res) => {
             excerpt,
             content,
             contentFormat: content_format,
-            category: require('./repositories/article-category-repository').validateForUser(category, req.user, article.category || '其他'),
+            category,
             readTime: read_time,
             coverImage: cover_image,
             coverImageAssetId: cover_image_asset_id

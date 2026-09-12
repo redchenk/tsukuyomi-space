@@ -676,10 +676,7 @@ export class CubismRenderer_WebGL extends CubismRenderer {
     this._bufferData = {
       vertex: (WebGLBuffer = null),
       uv: (WebGLBuffer = null),
-      index: (WebGLBuffer = null),
-      vertexCapacity: 0,
-      uvCapacity: 0,
-      indexCapacity: 0
+      index: (WebGLBuffer = null)
     };
 
     // テクスチャ対応マップの容量を確保しておく
@@ -1017,9 +1014,6 @@ export class CubismRenderer_WebGL extends CubismRenderer {
     vertex: WebGLBuffer;
     uv: WebGLBuffer;
     index: WebGLBuffer;
-    vertexCapacity: number;
-    uvCapacity: number;
-    indexCapacity: number;
   }; // 頂点バッファデータ
   _extension: any; // 拡張機能
   gl: WebGLRenderingContext; // webglコンテキスト

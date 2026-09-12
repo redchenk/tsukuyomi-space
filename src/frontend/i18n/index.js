@@ -3,7 +3,7 @@ import { i18n } from './messages.js';
 export { i18n };
 
 export const DEFAULT_LANGUAGE = 'zh';
-export const SUPPORTED_LANGUAGES = Object.freeze(['zh', 'ja', 'en']);
+export const SUPPORTED_LANGUAGES = Object.freeze(['zh', 'ja']);
 
 export function normalizeLanguage(value) {
   const language = String(value || '').trim().toLowerCase().split('-')[0];
@@ -11,10 +11,7 @@ export function normalizeLanguage(value) {
 }
 
 export function documentLanguage(value) {
-  const language = normalizeLanguage(value);
-  if (language === 'ja') return 'ja';
-  if (language === 'en') return 'en';
-  return 'zh-CN';
+  return normalizeLanguage(value) === 'ja' ? 'ja' : 'zh-CN';
 }
 
 export function alternateLanguage(value) {

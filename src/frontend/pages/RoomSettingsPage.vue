@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { cloneKnowledgeEntry, defaultKnowledgeEntries } from '../constants/room/knowledgeEntries';
@@ -14,14 +14,16 @@ import {
   localOllamaWindowsCommand,
   normalizeLocalOllamaBaseUrl
 } from '../services/room/localOllamaTransport';
-import {
-  describeAudioPlaybackError,
-  prepareAsyncAudioSource,
-  primeAsyncAudioPlayback,
-  releaseAsyncAudioPlayback
-} from '../services/room/audioPlayback';
 import { refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
-import { requestTtsAudioBlob } from '../services/room/ttsTransport';
+import {
+  activePersonaPrompt,
+  clearDiaryArchive,
+  downloadDiaryArchive,
+  importDiaryArchive,
+  readDiaryArchive,
+  serializeDiaryArchive,
+  updatePersonaPrompt
+} from '../services/room/roomDiaryArchive';
 import { formatDateTime } from '../utils/time';
 
 const props = defineProps({
@@ -146,7 +148,6 @@ const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
 const toast = reactive({ text: '', visible: false });
 const modelSaveNotice = reactive({ visible: false, text: '', detail: '' });
 const testDialog = reactive({ visible: false, target: '', status: 'idle', title: '', message: '', detail: '' });
-let ttsTestPlayback = null;
 const memoryCount = ref(0);
 const memoryList = ref([]);
 const memoryLoading = ref(false);
@@ -194,8 +195,6 @@ const knowledge = reactive({
   editingId: null,
   draft: { title: '', content: '', tags: '', enabled: true }
 });
-const knowledgeEditor = ref(null);
-const knowledgeTitleInput = ref(null);
 const mcp = reactive({
   enabled: false,
   provider: 'custom',
@@ -223,6 +222,16 @@ const live2dTest = reactive({
   motion: '',
   durationMs: 5000
 });
+const diary = reactive({
+  open: false,
+  entryCount: 0,
+  personaName: '',
+  affection: 0,
+  slotId: 1,
+  lastDiaryAt: '',
+  persona: { name: '', description: '', personality: '', scenario: '', creatorNotes: '', tags: '' }
+});
+let diaryFileInput = null;
 
 const roomUser = computed(() => storedUser.value || (props.user?.id ? props.user : null));
 const roomIdentityLabel = computed(() => roomUser.value?.username || '访客身份');
@@ -830,6 +839,50 @@ function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiU
   return body;
 }
 
+function pickAudioBase64(data) {
+  return data?.choices?.[0]?.message?.audio?.data
+    || data?.choices?.[0]?.message?.audio
+    || data?.audio?.data
+    || data?.data?.audio;
+}
+
+function makeAudioBlobFromBase64(base64, type) {
+  const raw = atob(String(base64 || ''));
+  const bytes = new Uint8Array(raw.length);
+  for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
+  return new Blob([bytes], { type });
+}
+
+function makeAudioBlobFromEncoded(value, type) {
+  const text = String(value || '').trim();
+  if (/^[0-9a-f]+$/i.test(text) && text.length % 2 === 0) {
+    const bytes = new Uint8Array(text.length / 2);
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = parseInt(text.slice(index * 2, index * 2 + 2), 16);
+    }
+    return new Blob([bytes], { type });
+  }
+  return makeAudioBlobFromBase64(text, type);
+}
+
+function detectTtsLanguage(text, textLang) {
+  const configured = normalizeGptSovitsLang(textLang, '');
+  if (configured && configured !== 'auto') return configured;
+  const value = String(text || '');
+  if (/[\u3040-\u30ff]/u.test(value)) return 'ja';
+  if (/[\uac00-\ud7af]/u.test(value)) return 'ko';
+  if (/[\u4e00-\u9fff]/u.test(value)) return 'zh';
+  return 'en';
+}
+
+function ttsReadInstruction(text, textLang) {
+  const lang = detectTtsLanguage(text, textLang);
+  if (lang === 'ja') return '以下の日本語テキストだけを、柔らかく自然な声で朗読してください。説明、翻訳、括弧内の動作指示、舞台指示は読まないでください。';
+  if (lang === 'en') return 'Read only the following English text in a soft, natural voice. Do not read explanations, translations, action cues, or stage directions.';
+  if (lang === 'ko') return '다음 한국어 텍스트만 부드럽고 자연스러운 목소리로 읽어 주세요. 설명, 번역, 괄호 안의 동작 지시나 무대 지시는 읽지 마세요.';
+  return '只朗读下面的中文文本，语气温柔自然。不要翻译，不要解释，不要读括号里的动作提示或舞台提示。';
+}
+
 function defaultTtsUrl(provider) {
   if (provider === 'openai' || provider === 'openai-compatible') return 'https://api.openai.com/v1/audio/speech';
   if (provider === 'elevenlabs') return 'https://api.elevenlabs.io/v1/text-to-speech';
@@ -924,6 +977,23 @@ function chatRequestHeaders(apiUrl, apiKey, modelName = llm.model) {
   };
 }
 
+function minimaxLanguageBoost(textLang) {
+  const lang = normalizeGptSovitsLang(textLang, 'ja');
+  const values = {
+    ja: 'Japanese',
+    all_ja: 'Japanese',
+    en: 'English',
+    zh: 'Chinese',
+    all_zh: 'Chinese',
+    yue: 'Chinese,Yue',
+    all_yue: 'Chinese,Yue',
+    auto_yue: 'Chinese,Yue',
+    ko: 'Korean',
+    auto: 'auto'
+  };
+  return values[lang] || 'Japanese';
+}
+
 function detectGptSovitsTextLang(text) {
   const value = String(text || '');
   if (/[\u3040-\u30ff]/u.test(value)) return 'ja';
@@ -959,6 +1029,95 @@ function gptSovitsTestText(settings) {
   if (lang === 'en') return 'Hello, I am Tsukimi Yachiyo. The moonlight feels gentle tonight.';
   if (lang === 'ko') return '안녕하세요, 저는 츠키미 야치요입니다. 오늘 밤 달빛도 참 부드럽네요.';
   return '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
+}
+
+function buildTtsRequest(text, settings) {
+  const provider = settings.provider || 'mimo';
+  const apiUrl = settings.apiUrl || defaultTtsUrl(provider);
+  const voice = settings.voice || (provider === 'minimax' ? MINIMAX_DEFAULT_VOICE_ID : provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
+  if (provider === 'gpt-sovits') {
+    return {
+      apiUrl,
+      options: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: String(text),
+          text_lang: resolveGptSovitsTextLang(text, settings),
+          ref_audio_path: normalizeGptSovitsRefAudioPath(settings.refAudioPath || settings.voice),
+          prompt_text: settings.promptText || '',
+          prompt_lang: normalizeGptSovitsLang(settings.promptLang, 'ja'),
+          text_split_method: 'cut5',
+          batch_size: 1,
+          media_type: 'wav',
+          streaming_mode: false,
+          parallel_infer: true
+        })
+      }
+    };
+  }
+  if (provider === 'mimo' || /xiaomimimo/i.test(apiUrl)) {
+    return {
+      apiUrl,
+      jsonAudioType: 'audio/wav',
+      options: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'api-key': settings.apiKey },
+        body: JSON.stringify({
+          model: settings.model || 'mimo-v2.5-tts',
+          messages: [
+            { role: 'user', content: ttsReadInstruction(text, settings.textLang) },
+            { role: 'assistant', content: String(text) }
+          ],
+          modalities: ['audio'],
+          audio: { format: 'wav', voice }
+        })
+      }
+    };
+  }
+  if (provider === 'elevenlabs') {
+    const baseUrl = apiUrl.replace(/\/$/, '');
+    const finalUrl = /\/text-to-speech\/[^/]+/i.test(baseUrl) ? baseUrl : `${baseUrl}/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`;
+    return {
+      apiUrl: finalUrl,
+      options: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'xi-api-key': settings.apiKey },
+        body: JSON.stringify({ text: String(text), model_id: settings.model || 'eleven_multilingual_v2' })
+      }
+    };
+  }
+  if (provider === 'minimax') {
+    return {
+      apiUrl,
+      jsonAudioType: 'audio/mp3',
+      options: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+        body: JSON.stringify({
+          model: settings.model || 'speech-2.8-hd',
+          text: String(text),
+          stream: false,
+          language_boost: minimaxLanguageBoost(settings.textLang || 'ja'),
+          voice_setting: { voice_id: voice || MINIMAX_DEFAULT_VOICE_ID, speed: 1, vol: 1, pitch: 0 },
+          audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 }
+        })
+      }
+    };
+  }
+  return {
+    apiUrl,
+    options: {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+      body: JSON.stringify({
+        model: settings.model || 'tts-1',
+        input: String(text),
+        voice,
+        response_format: 'mp3'
+      })
+    }
+  };
 }
 
 function openMemoryDb() {
@@ -1150,12 +1309,91 @@ function loadSettings() {
     return preset && detectLLMProvider(preset.apiUrl, preset.model) === llmProviderKey.value;
   });
   if (activePreset) setupCloudProvider.value = activePreset.value;
+  loadDiaryArchive();
   loadMemoryCount();
   if (memory.managerOpen) loadVisibleMemories();
 }
 
-function applyMcpProvider(provider) {
-  mcp.provider = provider;
+function loadDiaryArchive() {
+  const archive = readDiaryArchive();
+  const persona = activePersonaPrompt(archive);
+  const entries = archive.data.diary || [];
+  diary.entryCount = entries.length;
+  diary.personaName = persona.data.name || '';
+  diary.affection = Number(archive.data.gameData.characterStats.affection) || 0;
+  diary.slotId = Number(archive.slotId) || 1;
+  const latest = entries[entries.length - 1];
+  diary.lastDiaryAt = latest ? `${latest.date} ${latest.time}` : '';
+  diary.persona = {
+    name: persona.data.name || '',
+    description: persona.data.description || '',
+    personality: persona.data.personality || '',
+    scenario: persona.data.scenario || '',
+    creatorNotes: persona.data.creator_notes || '',
+    tags: Array.isArray(persona.data.tags) ? persona.data.tags.join('、') : ''
+  };
+}
+
+function saveDiaryPersona() {
+  updatePersonaPrompt({
+    data: {
+      name: String(diary.persona.name || '').trim(),
+      description: diary.persona.description,
+      personality: diary.persona.personality,
+      scenario: diary.persona.scenario,
+      creator_notes: diary.persona.creatorNotes,
+      tags: String(diary.persona.tags || '').split(/[、,，\s]+/).map((item) => item.trim()).filter(Boolean)
+    }
+  });
+  loadDiaryArchive();
+  showToast('日记人设已保存，结束聊天时会按它来写日记');
+}
+
+function exportDiaryArchiveFile() {
+  try {
+    const name = downloadDiaryArchive();
+    showToast(`已导出存档：${name}`);
+  } catch (error) {
+    showToast(`导出失败：${error.message}`);
+  }
+}
+
+function pickDiaryFile() {
+  if (!diaryFileInput) {
+    diaryFileInput = document.createElement('input');
+    diaryFileInput.type = 'file';
+    diaryFileInput.accept = 'application/json,.json';
+    diaryFileInput.addEventListener('change', async () => {
+      const file = diaryFileInput.files?.[0];
+      diaryFileInput.value = '';
+      if (!file) return;
+      try {
+        const archive = importDiaryArchive(await file.text());
+        loadDiaryArchive();
+        showToast(`已导入 ${archive.data.diary.length} 篇日记，角色：${diary.personaName || '未命名'}`);
+      } catch (error) {
+        showToast(`导入失败：${error.message}`);
+      }
+    });
+  }
+  diaryFileInput.click();
+}
+
+function copyDiaryArchivePreview() {
+  const text = serializeDiaryArchive();
+  navigator.clipboard?.writeText(text)
+    .then(() => showToast('存档 JSON 已复制'))
+    .catch(() => showToast('复制失败，请改用导出'));
+}
+
+function resetDiaryArchiveData() {
+  if (!window.confirm('确定要清空本地的人设与日记存档吗？该操作不可撤销。')) return;
+  clearDiaryArchive();
+  loadDiaryArchive();
+  showToast('本地人设与日记存档已清空');
+}
+
+function applyMcpProvider(provider) {  mcp.provider = provider;
   if (provider === 'minimax-global') {
     mcp.enabled = true;
     mcp.authHeader = 'Authorization';
@@ -1226,17 +1464,6 @@ function applySetupTtsProvider(provider) {
   tts.enabled = true;
 }
 
-function moveToSetupStep(step, message) {
-  setupStep.value = step;
-  if (message) showToast(message);
-  nextTick(() => {
-    const revealStep = () => {
-      document.querySelector('.room-setup-card')?.scrollIntoView({ behavior: 'auto', block: 'start' });
-    };
-    window.requestAnimationFrame(() => window.requestAnimationFrame(revealStep));
-  });
-}
-
 function saveSetupStep() {
   if (setupStep.value === 1) {
     saveLLM(false);
@@ -1244,16 +1471,16 @@ function saveSetupStep() {
       showToast(llmNeedsApiKey(llm.apiUrl) ? '请填写 API Key 后继续' : '请先选择模型');
       return;
     }
-    moveToSetupStep(2, '聊天模型已保存，继续设置语音');
+    setupStep.value = 2;
     return;
   }
   if (setupStep.value === 2) {
-    if (!saveTTS(false)) return;
+    saveTTS(false);
     if (!ttsSetupReady.value) {
       showToast('请补全语音设置，或关闭语音后继续');
       return;
     }
-    moveToSetupStep(3, 'TTS 设置已保存，继续设置记忆');
+    setupStep.value = 3;
     return;
   }
   saveMemory();
@@ -1400,7 +1627,6 @@ async function testLLM() {
 }
 
 function saveTTS(showDialog = true) {
-  const shouldShowDialog = showDialog !== false;
   if (tts.provider === 'gpt-sovits') {
     tts.textLang = normalizeGptSovitsLang(tts.textLang || tts.model, 'auto');
     tts.promptLang = normalizeGptSovitsLang(tts.promptLang, 'ja');
@@ -1416,7 +1642,7 @@ function saveTTS(showDialog = true) {
     tts.voice = String(tts.voice || MINIMAX_DEFAULT_VOICE_ID).trim();
   }
   const hasTtsLanguageSelect = tts.provider === 'gpt-sovits' || tts.provider === 'minimax';
-  const settings = {
+  writeJson('roomTTSSettings', {
     enabled: Boolean(tts.enabled),
     provider: tts.provider || 'mimo',
     apiUrl: String(tts.apiUrl || '').trim(),
@@ -1430,17 +1656,9 @@ function saveTTS(showDialog = true) {
     gptWeightPath: String(tts.gptWeightPath || '').trim(),
     sovitsWeightPath: String(tts.sovitsWeightPath || '').trim(),
     useProxy: tts.provider === 'gpt-sovits' ? false : Boolean(tts.useProxy)
-  };
-  try {
-    writeJson('roomTTSSettings', settings);
-  } catch (error) {
-    const message = `TTS 设置保存失败：${error.message || '浏览器存储不可用'}`;
-    if (shouldShowDialog) openTestDialog('tts', 'error', 'TTS 设置保存失败', message);
-    showToast(message);
-    return false;
-  }
+  });
   const localGptSovits = tts.provider === 'gpt-sovits';
-  if (shouldShowDialog) {
+  if (showDialog) {
     openTestDialog(
       'tts',
       tts.enabled && (tts.apiKey || localGptSovits) ? 'success' : 'warning',
@@ -1452,20 +1670,15 @@ function saveTTS(showDialog = true) {
     );
   }
   showToast('TTS 设置已保存');
-  return true;
 }
 
 async function testTTS() {
-  if (!saveTTS()) return;
+  saveTTS();
   if (tts.provider !== 'gpt-sovits' && !tts.apiKey) {
     openTestDialog('tts', 'error', 'TTS 语音测试', '请先填写 TTS API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的语音供应商。');
     showToast('请先填写 TTS API Key');
     return;
   }
-  releaseAsyncAudioPlayback(ttsTestPlayback);
-  const audioPlayback = primeAsyncAudioPlayback();
-  ttsTestPlayback = audioPlayback;
-  let objectUrl = '';
   const testText = tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
     ? gptSovitsTestText(tts)
     : '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
@@ -1474,33 +1687,43 @@ async function testTTS() {
     if (tts.provider === 'gpt-sovits' && !tts.useProxy) {
       await ensureGptSovitsWeights(tts);
       const audioUrl = buildGptSovitsAudioUrl(testText, tts);
-      const audio = await prepareAsyncAudioSource(audioPlayback, audioUrl);
-      await audio.play();
+      await new Audio(audioUrl).play();
       openTestDialog('tts', 'success', 'TTS 语音测试', '已直接请求本机 GPT-SoVITS 9880 端口并开始播放。', audioUrl);
       showToast('TTS 测试成功');
       return;
     }
-    const blob = await requestTtsAudioBlob(testText, {
-      ...tts,
-      textLang: normalizeGptSovitsLang(tts.textLang, tts.provider === 'minimax' ? 'ja' : 'auto'),
-      promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja')
-    }, {
-      fetchDirect: fetch,
-      fetchProxy: apiFetch
-    });
-    objectUrl = URL.createObjectURL(blob);
-    const audio = await prepareAsyncAudioSource(audioPlayback, objectUrl);
-    audio.addEventListener('ended', () => URL.revokeObjectURL(objectUrl), { once: true });
-    await audio.play();
-    openTestDialog('tts', 'success', 'TTS 语音测试', '连接成功，已开始播放测试语音。', `音频类型：${blob.type || '未知'}\n大小：${blob.size} bytes`);
+    const request = buildTtsRequest(testText, tts);
+    const response = tts.useProxy
+      ? await apiFetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: testText,
+          apiKey: tts.apiKey,
+          apiUrl: tts.apiUrl,
+          provider: tts.provider,
+          model: tts.model,
+          voice: tts.voice,
+          refAudioPath: tts.refAudioPath,
+          promptText: tts.promptText,
+          textLang: normalizeGptSovitsLang(tts.textLang, tts.provider === 'minimax' ? 'ja' : 'auto'),
+          promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja'),
+          gptWeightPath: tts.gptWeightPath,
+          sovitsWeightPath: tts.sovitsWeightPath
+        })
+      })
+      : await fetch(request.apiUrl, request.options);
+    if (!response.ok) throw new Error((await response.text()).slice(0, 160) || `HTTP ${response.status}`);
+    const contentType = response.headers.get('content-type') || '';
+    const blob = contentType.includes('application/json')
+      ? makeAudioBlobFromEncoded(pickAudioBase64(await response.json()), request.jsonAudioType || 'audio/mp3')
+      : await response.blob();
+    await new Audio(URL.createObjectURL(blob)).play();
+    openTestDialog('tts', 'success', 'TTS 语音测试', '连接成功，已开始播放测试语音。', `音频类型：${blob.type || contentType || '未知'}\n大小：${blob.size} bytes`);
     showToast('TTS 测试成功');
   } catch (error) {
-    releaseAsyncAudioPlayback(audioPlayback);
-    if (ttsTestPlayback === audioPlayback) ttsTestPlayback = null;
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    const message = describeAudioPlaybackError(error);
-    openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
-    showToast(`TTS 测试失败：${message}`);
+    openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${error.message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
+    showToast(`TTS 测试失败：${error.message}`);
   }
 }
 
@@ -1548,16 +1771,10 @@ function resetKnowledgeDraft() {
   knowledge.draft = { title: '', content: '', tags: '', enabled: true };
 }
 
-async function editKnowledgeEntry(item) {
+function editKnowledgeEntry(item) {
   knowledge.editingId = item.id;
   knowledge.draft = cloneKnowledgeEntry(item);
   knowledge.managerOpen = true;
-  await nextTick();
-  knowledgeEditor.value?.scrollIntoView({
-    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-    block: 'center'
-  });
-  knowledgeTitleInput.value?.focus({ preventScroll: true });
 }
 
 function saveKnowledgeEntry() {
@@ -1881,8 +2098,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopRoomMemorySync();
-  releaseAsyncAudioPlayback(ttsTestPlayback);
-  ttsTestPlayback = null;
   window.removeEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
   window.removeEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
   window.removeEventListener('storage', onRoomSettingsStorageEvent);
@@ -2439,23 +2654,14 @@ onBeforeUnmount(() => {
         <div v-if="knowledge.managerOpen" class="memory-manager-body">
           <label class="check-row"><input v-model="knowledge.enabled" type="checkbox"> 启用角色知识库注入</label>
           <p class="field-hint">知识库保存在当前浏览器 localStorage。聊天时会按用户问题选取相关条目注入 LLM，不会覆盖每个用户独立的长期记忆。</p>
-          <form
-            ref="knowledgeEditor"
-            class="knowledge-editor"
-            :class="{ 'is-editing': knowledge.editingId }"
-            @submit.prevent="saveKnowledgeEntry"
-          >
-            <div v-if="knowledge.editingId" class="knowledge-editor-status" role="status" aria-live="polite">
-              <span>正在编辑</span>
-              <strong>{{ knowledge.draft.title }}</strong>
-            </div>
-            <label>标题<input ref="knowledgeTitleInput" v-model="knowledge.draft.title" type="text" placeholder="例如：月见八千代的说话方式"></label>
+          <form class="knowledge-editor" @submit.prevent="saveKnowledgeEntry">
+            <label>标题<input v-model="knowledge.draft.title" type="text" placeholder="例如：月见八千代的说话方式"></label>
             <label>内容<textarea v-model="knowledge.draft.content" placeholder="写入角色事实、人设规则、口吻或行为边界"></textarea></label>
             <label>标签<input v-model="knowledge.draft.tags" type="text" placeholder="逗号分隔，如 温柔, 月读, 创作者"></label>
             <label class="check-row"><input v-model="knowledge.draft.enabled" type="checkbox"> 启用这条知识</label>
             <div class="button-row">
               <button class="primary-btn" type="submit">{{ knowledge.editingId ? '保存条目' : '添加条目' }}</button>
-              <button class="ghost-btn" type="button" @click="resetKnowledgeDraft">{{ knowledge.editingId ? '取消编辑' : '清空表单' }}</button>
+              <button class="ghost-btn" type="button" @click="resetKnowledgeDraft">清空表单</button>
               <button class="ghost-btn" type="button" @click="saveKnowledge">保存知识库</button>
               <button class="danger-btn" type="button" @click="resetKnowledgeDefaults">恢复默认</button>
             </div>
@@ -2584,6 +2790,47 @@ onBeforeUnmount(() => {
             <button class="primary-btn" type="button" @click="saveMCP">保存 MCP</button>
             <button class="ghost-btn" type="button" @click="testMCPWithDialog">测试并发现工具</button>
           </div>
+        </div>
+      </article>
+
+      <article id="room-diary-settings" class="room-settings-card">
+        <div class="room-card-head">
+          <span class="room-card-icon"><TsIcon name="book" :size="20" /></span>
+          <div>
+            <span>08 · Diary</span>
+            <h2>人设与日记存档</h2>
+            <p>结束聊天时会按这里的人设写一篇日记，并写入同一个「人设 + 日记」混合 JSON 存档。</p>
+          </div>
+        </div>
+        <div class="diary-archive-summary">
+          <span class="room-test-status success">槽位 {{ diary.slotId }}</span>
+          <span class="field-hint">角色：{{ diary.personaName || '未设置' }}</span>
+          <span class="field-hint">日记：{{ diary.entryCount }} 篇</span>
+          <span class="field-hint">好感度：{{ diary.affection }}</span>
+          <span v-if="diary.lastDiaryAt" class="field-hint">最近一篇：{{ diary.lastDiaryAt }}</span>
+        </div>
+        <details class="diary-persona-editor" :open="diary.open" @toggle="diary.open = $event.currentTarget.open">
+          <summary>编辑日记人设</summary>
+          <div class="form-grid">
+            <label>角色名<input v-model="diary.persona.name" type="text" placeholder="例如：八千代"></label>
+            <label>角色简介<textarea v-model="diary.persona.description" placeholder="身份、外貌、与对方的关系"></textarea></label>
+            <label>性格与口吻<textarea v-model="diary.persona.personality" placeholder="说话习惯、情绪基调、称呼方式"></textarea></label>
+            <label>相处背景<textarea v-model="diary.persona.scenario" placeholder="日常场景与关系设定"></textarea></label>
+            <label>补充设定<textarea v-model="diary.persona.creatorNotes" placeholder="可选：写作偏好、禁忌、口头禅"></textarea></label>
+            <label>标签<input v-model="diary.persona.tags" type="text" placeholder="用顿号或逗号分隔"></label>
+            <div class="button-row">
+              <button class="primary-btn" type="button" @click="saveDiaryPersona">保存人设</button>
+            </div>
+          </div>
+        </details>
+        <div class="form-grid">
+          <div class="button-row">
+            <button class="ghost-btn" type="button" @click="exportDiaryArchiveFile">导出存档 JSON</button>
+            <button class="ghost-btn" type="button" @click="pickDiaryFile">导入存档 JSON</button>
+            <button class="ghost-btn" type="button" @click="copyDiaryArchivePreview">复制存档 JSON</button>
+            <button class="danger-btn" type="button" @click="resetDiaryArchiveData">清空存档</button>
+          </div>
+          <p class="field-hint">存档保存在当前浏览器，导出格式与桌面版备份一致（version / timestamp / exportDate / slotId / data.gameData / data.diary / data.settings / data.prompts / data.other），可直接用桌面版那份备份导入继续累积。</p>
         </div>
       </article>
       </section>

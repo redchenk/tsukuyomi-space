@@ -32,7 +32,6 @@ dist/
 build/
 .next/
 out/
-/output/playwright/
 test-results/
 playwright-report/
 

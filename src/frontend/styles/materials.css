@@ -169,19 +169,12 @@ html[data-theme="dark"] {
     .gallery-card,
     .gallery-tile,
     .plaza-card,
-    .plaza-msg-card,
     .plaza-message,
-    .plaza-stat-card,
     .message-card,
     .notification-card,
     .attachment-card,
     .artwork-card,
-    .scene-card,
-    .hub-side-card,
-    .hub-plaza-message,
-    .scene-icon,
-    .scene-code,
-    .scene-label
+    .scene-card
 ) {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;

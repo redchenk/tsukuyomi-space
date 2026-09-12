@@ -1,26 +1,14 @@
 import { nextTick, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, noStoreUrl, parseResponse } from '../../api/client';
 import { defaultKnowledgeEntries } from '../../constants/room/knowledgeEntries';
-import { live2DPromptCatalog } from '../../constants/room/live2dManifest';
 import {
   dispatchRoomLive2D,
-  inferLive2DIntentFromText,
-  live2DSemanticPromptCatalog,
-  normalizeLive2DIntent as normalizeRoomLive2DIntent
+  inferLive2DIntentFromText
 } from '../../services/room/live2dControl';
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from '../../services/room/localOllamaTransport';
 import { readJson, writeJson } from '../../services/room/roomStorage';
 import {
-  describeAudioPlaybackError,
-  prepareAsyncAudioSource,
-  primeAsyncAudioPlayback,
-  releaseAsyncAudioPlayback
-} from '../../services/room/audioPlayback';
-import { requestTtsAudioBlob } from '../../services/room/ttsTransport';
-import {
-  clearLocalRoomConversation,
-  clearRoomConversation,
   loadRoomConversation,
   readRoomConversation,
   saveRoomConversationTurn,
@@ -28,12 +16,17 @@ import {
   writeRoomConversation
 } from '../../services/room/roomConversationSync';
 import { publishLocalRoomMemoryUpdate, startRoomMemorySync } from '../../services/room/roomMemorySync';
-import { GROWTH_UPDATED_EVENT, getCachedGrowth, growthContext, loadGrowth } from '../../services/userGrowth';
-import { isEnglishSite } from '../../utils/siteVariant';
+import {
+  appendDiaryEntry,
+  activePersonaPrompt,
+  diaryTimestampLabel,
+  downloadDiaryArchive,
+  readDiaryArchive
+} from '../../services/room/roomDiaryArchive';
+import { generateDiaryEntry } from '../../services/room/roomDiaryGeneration';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
 const SITE_FEED_TIMEOUT_MS = 2000;
-const ROOM_ENGLISH = isEnglishSite();
 let siteFeedContextCache = { value: '', expiresAt: 0 };
 
 function uid() {
@@ -48,35 +41,25 @@ function stripControlTags(text) {
     .trim();
 }
 
-function stripLeadingActionHints(text) {
-  let value = String(text || '').trim();
-  const actionHintPattern = /^(?:\s*(?:[\(（][^()（）\n]{1,100}[\)）]|[\[【][^[\]【】\n]{1,100}[\]】]|\*[^*\n]{1,100}\*|(?:动作|表情|姿态|语气|神态|动作提示)\s*[:：][^\n]{1,140})\s*)+/u;
-  let previous = '';
-  while (value && value !== previous) {
-    previous = value;
-    value = value.replace(actionHintPattern, '').trimStart();
-  }
-  return value.trim();
-}
-
-function isActionHint(value) {
-  return /(?:\u52a8\u4f5c|\u8868\u60c5|\u59ff\u6001|\u8bed\u6c14|\u795e\u6001|\u63d0\u793a|\u5fae\u7b11|\u8f7b\u7b11|\u7b11|\u70b9\u5934|\u6447\u5934|\u7728\u773c|\u4f4e\u5934|\u62ac\u5934|\u53f9\u6c14|\u9760\u8fd1|\u6c89\u9ed8|\u505c\u987f|\u51dd\u89c6|\u4f38\u624b|\u6325\u624b|\u6b6a\u5934|\u8138\u7ea2|\u8f7b\u58f0|\u5c0f\u58f0|\u6e29\u67d4\u5730|\u770b\u5411)/u.test(String(value || ''));
-}
-
+/**
+ * Normalises a visible reply without deleting the writer's own style.
+ *
+ * Bracketed action beats, expression cues and kaomoji are part of the prose for
+ * role-play personas, so they are preserved. Only true protocol artefacts are
+ * removed: control tags and labelled field lines such as `动作：...`.
+ */
 function stripActionHints(text) {
   let value = String(text || '').trim();
-  const leadingActionHintPattern = /^(?:\s*(?:[\(\uFF08][^()\uFF08\uFF09\n]{1,100}[\)\uFF09]|[\[\u3010][^[\]\u3010\u3011\n]{1,100}[\]\u3011]|\*[^*\n]{1,100}\*|(?:\u52a8\u4f5c|\u8868\u60c5|\u59ff\u6001|\u8bed\u6c14|\u795e\u6001|\u52a8\u4f5c\u63d0\u793a)\s*[:\uFF1A][^\n]{1,140})\s*)+/u;
-  let previous = '';
-  while (value && value !== previous) {
-    previous = value;
-    value = value.replace(leadingActionHintPattern, '').trimStart();
-  }
+
+  // A whole-message bracket wrapper is protocol noise, not dialogue.
+  const wrapped = value.match(/^[（(]([^()（）]{1,400})[）)]$/u);
+  if (wrapped && !value.includes('\n')) value = wrapped[1].trim();
 
   return value
-    .replace(/(?:^|\n)\s*(?:\u52a8\u4f5c|\u8868\u60c5|\u59ff\u6001|\u8bed\u6c14|\u795e\u6001|\u52a8\u4f5c\u63d0\u793a)\s*[:\uFF1A][^\n]{1,140}(?=\n|$)/gu, '\n')
-    .replace(/[\(\uFF08]([^()\uFF08\uFF09\n]{1,80})[\)\uFF09]/gu, (match, cue) => (isActionHint(cue) ? '' : match))
-    .replace(/[\[\u3010]([^[\]\u3010\u3011\n]{1,80})[\]\u3011]/gu, (match, cue) => (isActionHint(cue) ? '' : match))
-    .replace(/\*([^*\n]{1,80})\*/gu, (match, cue) => (isActionHint(cue) ? '' : match))
+    // Labelled field lines the old JSON protocol produced.
+    .replace(/^(?:\u52a8\u4f5c|\u8868\u60c5|\u59ff\u6001|\u8bed\u6c14|\u795e\u6001|\u52a8\u4f5c\u63d0\u793a|\u5fc3\u58f0|reply|emotion|live2d)\s*[:\uFF1A][^\n]{0,140}$/gimu, '')
+    // Trailing machine annotations, e.g. <好感变化:+2> or [害羞变化:-3].
+    .replace(/[<\u3010\[]\s*(?:\u597d\u611f\u53d8\u5316|\u4fe1\u4efb\u53d8\u5316|\u5bb3\u7f9e\u53d8\u5316|\u6027\u6b32\u53d8\u5316|\u597d\u611f\u5ea6|\u4fe1\u4efb\u5ea6)\s*[:\uFF1A][^>\u3011\]]*[>\u3011\]]/gu, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -104,34 +87,32 @@ function cleanTtsText(text) {
     .trim();
 }
 
-function extractJsonObject(text) {
-  const value = String(text || '').trim();
-  if (!value) return null;
-  const fenced = value.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  if (fenced) return fenced[1].trim();
-  const start = value.indexOf('{');
-  const end = value.lastIndexOf('}');
-  if (start >= 0 && end > start) return value.slice(start, end + 1).trim();
-  return null;
+/**
+ * Strips a JSON envelope if the model emits one anyway.
+ *
+ * The prompt asks for plain text, but models sometimes still answer with
+ * {"reply":"..."}. When the whole message is such an object we unwrap it;
+ * otherwise the text is returned untouched so ordinary braces in prose survive.
+ */
+function unwrapJsonEnvelope(rawText) {
+  const raw = String(rawText || '').trim();
+  if (!raw) return raw;
+  const fenced = raw.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const candidate = fenced ? fenced[1].trim() : raw;
+  if (!candidate.startsWith('{') || !candidate.endsWith('}')) return raw;
+  try {
+    const data = JSON.parse(candidate);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return raw;
+    const inner = data.reply ?? data.text ?? data.message ?? data.content;
+    if (typeof inner === 'string' && inner.trim()) return inner.trim();
+    return raw;
+  } catch (_) {
+    return raw;
+  }
 }
 
 function parseAssistantPayload(rawText) {
-  const raw = String(rawText || '').trim();
-  const jsonText = extractJsonObject(raw);
-  if (jsonText) {
-    try {
-      const data = JSON.parse(jsonText);
-      const reply = cleanReply(data.reply || data.text || data.message || '');
-      const nestedControl = data.live2d || data.pose || data.act || null;
-      const payload = nestedControl ? { ...data, ...nestedControl, reply } : { ...data, reply };
-      const live2d = compileBehaviorIntent(payload)
-        || normalizeRoomLive2DIntent(payload)
-        || inferLive2DIntentFromText(reply);
-      return { reply, live2d };
-    } catch (_) {
-      // fall through to plain text handling
-    }
-  }
+  const raw = unwrapJsonEnvelope(rawText);
   const reply = cleanReply(raw);
   return {
     reply,
@@ -299,7 +280,12 @@ function buildGptSovitsAudioUrl(text, settings) {
   return url.toString();
 }
 
-function roomSystemPrompt() {
+/**
+ * The role-playing half of the system prompt, used only when the diary archive
+ * has no usable persona of its own. Once a persona is imported, this is dropped
+ * entirely so the archive character is the only voice the model hears.
+ */
+function fallbackRoomPersona() {
   return [
     '你是月见八千代，虚拟空间“月夜见”的管理员、导航者、AI 主播、电子歌姬与舞台象征。',
     '你不是普通客服型 AI，也不是单纯元气偶像。你表面轻飘飘、可爱、爱开玩笑，内里敏锐温柔，能察觉孤独、不安、紧张和没说出口的心意。',
@@ -308,26 +294,85 @@ function roomSystemPrompt() {
     '面对疲惫、失落或自我否定时，先看见具体情绪，不责备、不催促、不讲大道理，再轻轻鼓励一个很小的下一步。',
     '面对项目、网站或技术问题时，切换为月夜见导航员模式：清晰拆解、可靠引导，但不要变成命令式语气。',
     '面对秘密、命运、异常或无法说明的事时，不要一次性说透；可以用可爱但意味深长的方式回避，并承诺会确认或陪伴。',
-    '可使用舞台、旅程、闪光、回忆、命运、月夜、旋律、温度、派对、松饼等意象；不要大段复述原作台词、歌词或剧本。',
-    '请严格只返回 JSON 对象，不要输出 Markdown、代码块或额外解释。',
-    '返回格式必须是：{"reply":"给用户看的正文","live2d":{"emotion":"happy","expression":"smile","expressionMix":[{"expression":"smile","weight":1}],"motion":"none","intensity":0.6,"durationMs":5000,"sequence":[]}}。',
-    'reply 只允许放自然对话正文，不能包含动作提示词、表情提示词、括号说明、舞台指令或标签。',
-    'live2d 是可选控制信息；当前系统会优先使用 expression 与 expressionMix 控制表情，motion 仅作为未来扩展。',
-    'emotion 可选值：happy、shy、sad、crying、angry、neutral。',
-    'expression 可用值仅限 neutral、smile、bsmile、namida、tears；无法判断时返回 neutral 或省略 live2d。',
-    'expressionMix 若提供，只能使用上述 expression id，最多三层，权重从大到小排序。',
-    'motion 若提供，只能使用 tap_body，其他动作统一写 none 或省略。',
-    'sequence 可选，用于连续表演，最多 3 步；每步字段同 live2d，可包含 delayMs 和 durationMs。没有明确需要时保持空数组。',
-    '不要在 reply 中输出任何动作文字、括号补充、舞台指令、心声、标签或 TTS 提示。',
-    'For Live2D control, prefer top-level semantic fields: {"reply":"visible reply","emotion":"happy|shy|smug|surprised|sad|crying|neutral","intensity":0.72,"actions":[{"type":"look_at_chat","duration":1.0},{"type":"smirk","duration":1.4},{"type":"head_tilt","side":"right","duration":1.2,"delay":0.2}]}',
-    'Choose 2-5 semantic actions per turn. Use duration and delay in seconds. Keep reply free of action labels and stage directions.',
-    live2DSemanticPromptCatalog(),
-    live2DPromptCatalog()
+    '可使用舞台、旅程、闪光、回忆、命运、月夜、旋律、温度、派对、松饼等意象；不要大段复述原作台词、歌词或剧本。'
+  ].join('\n');
+}
+
+/**
+ * The transport half of the system prompt: output shape rules only.
+ *
+ * Replies are plain conversational text, not a JSON envelope. Brackets inside
+ * the prose are welcome — action beats, expressions and kaomoji all use them —
+ * so only whole-message wrapping and structured payloads are forbidden.
+ */
+function roomProtocolPrompt() {
+  return [
+    '【输出格式 · 必须严格遵守】',
+    '直接输出你要说的正文，不要输出 JSON、不要输出 Markdown、不要输出代码块。',
+    '不要把整段回复包在括号里，也不要输出字段名、键值对或结构化数据。',
+    '不要输出「reply:」「emotion:」这类字段前缀，不要输出舞台指令或格式说明。',
+    '不要只输出一个孤立的括号标注。',
+    '正文里可以正常使用括号、引号、标点、换行和颜文字，用来写动作、神态、心理或语气，就像平时的对话一样。',
+    '你的回复就是要说的话本身，自然、连贯，可以带动作描写。'
   ].join('\n');
 }
 
 function applyRoomAct(live2d) {
   dispatchRoomLive2D(live2d);
+}
+
+/**
+ * Display name for the active character.
+ *
+ * Falls back to the built-in name when no persona has been imported, so the UI
+ * always has a label even on a fresh install.
+ */
+export function roomCharacterName(persona) {
+  const resolved = persona === undefined ? activePersonaPrompt(readDiaryArchive()) : persona;
+  const name = String(resolved?.data?.name || '').trim();
+  return name || '\u516b\u5343\u4ee3';
+}
+
+/**
+ * Builds the role-playing half of the system prompt from the imported persona.
+ *
+ * Returns an empty string when the archive has no real persona yet, so the
+ * caller can fall back to the built-in one instead of sending an empty prompt.
+ */
+export function roomPersonaPrompt(persona) {
+  const data = persona?.data || {};
+  const name = String(data.name || '').trim();
+  const description = String(data.description || '').trim();
+  const personality = String(data.personality || '').trim();
+  const scenario = String(data.scenario || '').trim();
+  const notes = String(data.creator_notes || '').trim();
+  if (!name && !description && !personality && !scenario && !notes) return '';
+
+  const lines = [];
+  if (name) lines.push(`你现在的身份是「${name}」，请完全以这个角色的第一人称说话和行动。`);
+  if (description) lines.push(`【角色设定】\n${description}`);
+  if (personality) lines.push(`【性格与口吻】\n${personality}`);
+  if (scenario) lines.push(`【相处背景/当前情境】\n${scenario}`);
+  if (notes) lines.push(`【详细扮演指南】\n${notes}`);
+  if (name) {
+    lines.push(`【重要】始终称呼自己为「${name}」，不要提及自己是 AI、模型或助手，也不要提及八千代、月夜见、月读空间等与本角色无关的设定。`);
+  }
+  return lines.join('\n\n');
+}
+
+/**
+ * Resolves the system prompt for one chat turn.
+ *
+ * When the archive carries a persona it fully replaces the built-in character,
+ * and only the protocol half is appended so the reply stays machine-parseable.
+ */
+export function resolveRoomSystemPrompt({ persona, userPrompt, context } = {}) {
+  const archivePersona = roomPersonaPrompt(persona);
+  const role = archivePersona || fallbackRoomPersona();
+  const base = userPrompt
+    ? [userPrompt, role].filter(Boolean).join('\n\n')
+    : role;
+  return [base, roomProtocolPrompt(), context].filter(Boolean).join('\n\n');
 }
 
 function pickReply(data) {
@@ -799,19 +844,16 @@ function shouldUseWebSearch(message) {
 async function buildRoomContext(message, image, llmSettings) {
   const mcpSettings = readJson('roomMCPSettings', {});
   const context = [readKnowledgeContext(message)];
-  const [siteText, personaMemories, memories, growthState] = await Promise.all([
+  const [siteText, personaMemories, memories] = await Promise.all([
     fetchSiteFeedContext(),
     fetchPersonaMemories(message).catch(() => []),
-    fetchRelevantMemories(message).catch(() => []),
-    loadGrowth().catch(() => null)
+    fetchRelevantMemories(message).catch(() => [])
   ]);
   if (siteText) context.push(siteText);
   const personaText = personaMemoryContext(personaMemories);
   if (personaText) context.push(personaText);
   const memoryText = memoryContext(memories);
   if (memoryText) context.push(memoryText);
-  const userGrowthText = growthContext(growthState);
-  if (userGrowthText) context.push(userGrowthText);
 
   if (mcpSettings.enabled && mcpSettings.endpoint) {
     if (image && (llmSettings.visionMode === 'mcp' || llmSettings.visionMode === 'auto')) {
@@ -830,61 +872,50 @@ async function buildRoomContext(message, image, llmSettings) {
   return context.filter(Boolean).join('\n\n');
 }
 
-export function useRoomChat({ live2d, world }) {
+export function useRoomChat({ live2d, world, diary = null }) {
   const stopRoomMemorySync = startRoomMemorySync();
   const messages = ref([]);
   const input = ref('');
   const sending = ref(false);
-  const resetting = ref(false);
   const imageAttachment = ref(null);
   const messageListRef = ref(null);
   const ttsState = ref({ messageId: '', status: 'idle' });
-  const sharedConversation = ref(null);
-  const growth = ref(getCachedGrowth());
+  // Display name of whoever the archive says is speaking, so the transcript
+  // labels (and panel title) follow the imported persona instead of a constant.
+  const characterName = ref(roomCharacterName());
   let ttsUrl = '';
   let currentAudio = null;
-  let currentAudioPlayback = null;
   let ttsRequestId = 0;
   let historyLoadRevision = 0;
-  let conversationRevision = 0;
   let refreshHistoryAfterSend = false;
   let stopRoomConversationUpdates = () => {};
-
-  function handleGrowthUpdate(event) {
-    growth.value = event.detail?.state || growth.value;
-  }
+  let sessionStartedAt = Date.now();
+  let sessionBoundaryReady = false;
+  // Memory ids written during the current session, so they can be discarded.
+  const sessionMemoryIds = new Set();
 
   function addMessage(role, content, options = {}) {
-    const nextMessage = {
-      id: options.id || uid(),
-      turnId: options.turnId || '',
+    messages.value.push({
+      id: uid(),
       role,
       content: String(content || ''),
       speechText: String(options.speechText || content || ''),
       image: options.image || null,
       live2d: options.live2d || null,
-      shareable: options.shareable !== false,
-      createdAt: options.createdAt || Date.now()
-    };
-    messages.value.push(nextMessage);
+      createdAt: Date.now()
+    });
     nextTick(() => {
       if (messageListRef.value) messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
     });
-    return nextMessage;
   }
 
   function renderHistory(history) {
     messages.value = [];
     addMessage('system', 'Live2D 已就绪');
-    history.forEach((message) => addMessage(message.role, message.content, {
-      id: message.id,
-      turnId: message.turnId,
-      createdAt: message.createdAt
-    }));
+    history.forEach((message) => addMessage(message.role, message.content));
   }
 
   async function refreshSyncedHistory() {
-    if (sharedConversation.value) return;
     if (sending.value) {
       refreshHistoryAfterSend = true;
       return;
@@ -892,7 +923,15 @@ export function useRoomChat({ live2d, world }) {
     const revision = ++historyLoadRevision;
     try {
       const history = await loadRoomConversation();
-      if (revision === historyLoadRevision && !sending.value) renderHistory(history);
+      if (revision !== historyLoadRevision || sending.value) return;
+      const wasInitialLoad = !sessionBoundaryReady;
+      renderHistory(history);
+      // Only the first server load is pre-existing history. Later refreshes are
+      // triggered by our own sends, so they must not move the diary boundary.
+      if (wasInitialLoad) {
+        markSessionStart();
+        sessionBoundaryReady = true;
+      }
     } catch (error) {
       console.warn('Room conversation sync failed:', error);
     }
@@ -900,73 +939,10 @@ export function useRoomChat({ live2d, world }) {
 
   function loadHistory() {
     renderHistory(readRoomConversation());
+    // Local history is pre-existing, but the server load may replace it, so the
+    // boundary is (re)established once the authoritative history has rendered.
+    markSessionStart();
     refreshSyncedHistory();
-  }
-
-  function resetConversationView() {
-    conversationRevision += 1;
-    historyLoadRevision += 1;
-    refreshHistoryAfterSend = false;
-    sharedConversation.value = null;
-    imageAttachment.value = null;
-    input.value = '';
-    stopTTS();
-    renderHistory([]);
-  }
-
-  function handleConversationUpdate(detail = {}) {
-    if (detail.action === 'cleared') {
-      clearLocalRoomConversation();
-      resetConversationView();
-      return;
-    }
-    refreshSyncedHistory();
-  }
-
-  async function startNewSession() {
-    if (resetting.value) return;
-    const confirmed = window.confirm(ROOM_ENGLISH
-      ? 'Start a new chat? Current chat history and pending sync items will be cleared. Long-term memory and character knowledge will be kept.'
-      : '新建会话会清空当前聊天记录和待同步消息，但会保留长期记忆与角色知识库。是否继续？');
-    if (!confirmed) return;
-
-    resetting.value = true;
-    resetConversationView();
-    try {
-      await clearRoomConversation();
-      renderHistory([]);
-      addMessage('system', ROOM_ENGLISH
-        ? 'A new chat has started. Long-term memory and character knowledge were kept.'
-        : '新会话已开始。长期记忆和角色知识库已保留。', { shareable: false });
-    } catch (error) {
-      addMessage('system', ROOM_ENGLISH
-        ? `Could not start a new chat: ${error.message}`
-        : `新建会话失败：${error.message}`, { shareable: false });
-      await refreshSyncedHistory();
-    } finally {
-      resetting.value = false;
-    }
-  }
-
-  function getShareTurn(message) {
-    if (!message || message.role !== 'assistant' || message.pending || message.shareable === false || !message.turnId) return null;
-    const userMessage = messages.value.find((item) => item.role === 'user' && item.turnId === message.turnId);
-    if (!userMessage) return null;
-    return {
-      turnId: message.turnId,
-      userMessage: userMessage.content,
-      assistantMessage: message.content,
-      createdAt: userMessage.createdAt
-    };
-  }
-
-  function showSharedConversation(share) {
-    if (!share?.shareKey || !share?.userMessage || !share?.assistantMessage) return;
-    sharedConversation.value = share;
-    messages.value = [];
-    addMessage('system', share.title || '公开对话片段', { shareable: false });
-    addMessage('user', share.userMessage, { turnId: `shared-${share.shareKey}`, shareable: false, createdAt: share.createdAt });
-    addMessage('assistant', share.assistantMessage, { turnId: `shared-${share.shareKey}`, shareable: false, createdAt: share.createdAt });
   }
 
   async function attachImage(file) {
@@ -987,32 +963,27 @@ export function useRoomChat({ live2d, world }) {
   }
 
   async function send() {
-    if (sending.value || resetting.value) return;
     const message = input.value.trim();
     const image = imageAttachment.value;
     if (!message && !image) return;
-    const requestConversationRevision = conversationRevision;
     const turnId = uid();
-    addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image, turnId });
+    addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image });
     input.value = '';
     imageAttachment.value = null;
     sending.value = true;
     const typingId = uid();
-    messages.value.push({ id: typingId, turnId, role: 'assistant', content: '\u6b63\u5728\u56de\u5e94...', pending: true, createdAt: Date.now() });
+    messages.value.push({ id: typingId, role: 'assistant', content: '\u6b63\u5728\u56de\u5e94...', pending: true, createdAt: Date.now() });
 
     try {
       const settings = readJson('roomLLMSettings', {});
-      const storedConversation = readRoomConversation().slice(-12);
-      const sharedContext = sharedConversation.value ? [
-        { role: 'user', content: sharedConversation.value.userMessage },
-        { role: 'assistant', content: sharedConversation.value.assistantMessage }
-      ] : [];
-      const conversation = [...storedConversation, ...sharedContext].slice(-12);
+      const conversation = readRoomConversation().slice(-12);
       const roomContext = await buildRoomContext(message, image, settings);
-      const basePrompt = settings.systemPrompt
-        ? [settings.systemPrompt, roomSystemPrompt()].filter(Boolean).join('\n\n')
-        : roomSystemPrompt();
-      const systemPrompt = [basePrompt, roomContext].filter(Boolean).join('\n\n');
+      const persona = activePersonaPrompt(readDiaryArchive());
+      const systemPrompt = resolveRoomSystemPrompt({
+        persona,
+        userPrompt: settings.systemPrompt,
+        context: roomContext
+      });
       const mcpEnhancedMessage = roomContext && image && (settings.visionMode === 'mcp' || settings.visionMode === 'auto')
         ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n\n\u4e0a\u4e0b\u6587\u5df2\u5305\u542b MCP \u5bf9\u56fe\u7247\u7684\u7406\u89e3\u7ed3\u679c\uff0c\u8bf7\u7ed3\u5408\u5b83\u56de\u7b54\u3002`
         : message;
@@ -1046,19 +1017,17 @@ export function useRoomChat({ live2d, world }) {
       } else {
         result = { reply: fallbackReply(message, image) };
       }
-      if (requestConversationRevision !== conversationRevision) return;
       const structured = parseAssistantPayload(result.reply || fallbackReply(message, image));
       const reply = structured.reply || fallbackReply(message, image);
       const ttsSettings = readJson('roomTTSSettings', {});
       if (!ttsSettings.enabled) applyRoomAct(structured.live2d);
       messages.value = messages.value.filter((item) => item.id !== typingId);
-      addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d, turnId });
+      addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d });
       const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
-      const nextHistory = [...storedConversation, { role: 'user', content: userContent, turnId }, { role: 'assistant', content: reply, turnId }].slice(-24);
+      const nextHistory = [...conversation, { role: 'user', content: userContent }, { role: 'assistant', content: reply }].slice(-24);
       writeRoomConversation(nextHistory);
-      sharedConversation.value = null;
       saveRoomConversationTurn({ turnId, userMessage: userContent, assistantMessage: reply }).catch((error) => {
-        if (error.name !== 'AbortError') console.warn('Room conversation save failed:', error);
+        console.warn('Room conversation save failed:', error);
       });
       remember(userContent, reply, turnId).catch((error) => {
         console.warn('Room memory save failed:', error);
@@ -1081,18 +1050,229 @@ export function useRoomChat({ live2d, world }) {
     const response = await authFetch('/api/room/memory', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify({ turnId, userMessage, assistantReply, captureChat: false })
+      body: JSON.stringify({ turnId, userMessage, assistantReply })
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     if (result.data) {
+      // Remember what this session stored so "结束但不保存记忆" can undo it.
+      if (result.data.id) sessionMemoryIds.add(String(result.data.id));
       publishLocalRoomMemoryUpdate(result.data, response.status === 201 ? 'created' : 'merged');
     }
     return result.data || null;
   }
 
-  function stopTTS() {
-    ttsRequestId += 1;
+  /**
+   * Removes every memory record written during the current session.
+   *
+   * Memory is persisted turn by turn as the conversation happens, so discarding
+   * a session means deleting those records, not merely skipping a later save.
+   */
+  async function discardSessionMemories() {
+    const ids = [...sessionMemoryIds];
+    sessionMemoryIds.clear();
+    if (!ids.length) return 0;
+    let removed = 0;
+    for (const id of ids) {
+      try {
+        const response = await authFetch(`/api/room/memory/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: authHeaders({ Accept: 'application/json' })
+        });
+        const result = await parseResponse(response);
+        if (response.ok && result.success) removed += 1;
+      } catch (error) {
+        console.warn('Room memory discard failed:', error);
+      }
+    }
+    return removed;
+  }
+
+  /**
+   * Everything the "结束聊天" interaction needs: the messages produced since
+   * the previous session boundary, plus the resulting diary entry.
+   */
+  const endChatState = ref({
+    visible: false,
+    status: 'idle',
+    message: '',
+    detail: '',
+    entry: null,
+    turnCount: 0
+  });
+
+  function sessionMessages() {
+    // Bound the diary to turns produced after the session boundary. Message ids
+    // are used rather than timestamps so messages restored within the same
+    // millisecond as the boundary can never leak into a new diary.
+    const restored = endChatState.value.restoredCount;
+    const since = Number.isFinite(restored) ? restored : 0;
+    return messages.value
+      .filter((message) => ['user', 'assistant'].includes(message.role) && !message.pending)
+      .slice(since);
+  }
+
+  function sessionTurnCount() {
+    return sessionMessages().length;
+  }
+
+  /**
+   * Starts a fresh conversation after a diary has been written.
+   *
+   * The finished session is archived as a diary, so the visible transcript is
+   * cleared and the session boundary reset. Simply leaving the room does NOT
+   * clear anything: this runs only on an explicit, successful end-chat.
+   */
+  function startNewSession({ keepMemories = true } = {}) {
+    const discarded = keepMemories ? Promise.resolve(0) : discardSessionMemories();
+    if (keepMemories) sessionMemoryIds.clear();
+    messages.value = [];
+    writeRoomConversation([]);
+    addMessage('assistant', '\u65b0\u7684\u4e00\u5929\u5f00\u59cb\u4e86\u3002');
+    markSessionStart();
+    return discarded;
+  }
+
+  function openEndChatDialog() {
+    if (sending.value) {
+      addMessage('system', '\u6b63\u5728\u56de\u5e94\u4e2d\uff0c\u8bf7\u7a0d\u7b49\u7247\u523b\u518d\u7ed3\u675f\u804a\u5929\u3002');
+      return;
+    }
+    const turns = sessionTurnCount();
+    if (!turns) {
+      addMessage('system', '\u672c\u6b21\u8fd8\u6ca1\u6709\u804a\u8fc7\u5929\uff0c\u5148\u8bf4\u4e00\u53e5\u5427\u3002');
+      return;
+    }
+    endChatState.value = {
+      visible: true,
+      status: 'confirm',
+      message: '\u7ed3\u675f\u672c\u6b21\u804a\u5929\uff0c\u5e76\u5199\u4e00\u7bc7\u65e5\u8bb0\uff1f',
+      detail: `\u5c06\u6839\u636e\u672c\u6b21\u7684 ${turns} \u6761\u5bf9\u8bdd\u751f\u6210\u65e5\u8bb0\uff0c\u5199\u5165\u4eba\u8bbe\u4e0e\u65e5\u8bb0\u6df7\u5408\u7684\u5b58\u6863\u3002`,
+      entry: null,
+      turnCount: turns,
+      sessionStartedAt: endChatState.value.sessionStartedAt || sessionStartedAt || Date.now()
+    };
+  }
+
+  /**
+   * Ends the session without writing a diary and without saving any memory.
+   *
+   * The transcript is cleared so the next session starts fresh, but nothing is
+   * appended to the diary archive and nothing is sent to the memory store.
+   */
+  function confirmEndChatWithoutDiary() {
+    if (endChatState.value.status === 'generating') return Promise.resolve(0);
+    const turns = sessionTurnCount();
+    // Clears the transcript and deletes the memory records this session wrote.
+    return startNewSession({ keepMemories: false }).then((removed) => {
+      addMessage('system', removed > 0
+        ? `\u672c\u6b21\u5bf9\u8bdd\u5df2\u7ed3\u675f\uff0c\u672a\u4fdd\u7559\u65e5\u8bb0\u4e0e\u8bb0\u5fc6\uff08\u5df2\u6e05\u9664 ${removed} \u6761\uff09\u3002`
+        : '\u672c\u6b21\u5bf9\u8bdd\u5df2\u7ed3\u675f\uff0c\u672a\u4fdd\u7559\u65e5\u8bb0\u4e0e\u8bb0\u5fc6\u3002');
+      endChatState.value = {
+        ...endChatState.value,
+        visible: false,
+        status: 'idle',
+        message: '',
+        detail: '',
+        entry: null,
+        turnCount: turns
+      };
+      return removed;
+    });
+  }
+
+  function closeEndChatDialog() {
+    if (endChatState.value.status === 'generating') return;
+    endChatState.value = { ...endChatState.value, visible: false, status: 'idle', message: '', detail: '', entry: null };
+  }
+
+  /** Dismisses only the generated diary text, keeping the dialog open. */
+  function dismissDiaryText() {
+    endChatState.value = { ...endChatState.value, entry: null };
+  }
+
+  async function confirmEndChat() {
+    if (endChatState.value.status === 'generating') return;
+    const turns = sessionMessages().map((message) => ({ role: message.role, content: message.content }));
+    if (!turns.length) {
+      endChatState.value = { ...endChatState.value, status: 'error', message: '\u672c\u6b21\u6ca1\u6709\u53ef\u8bb0\u5f55\u7684\u5bf9\u8bdd\u3002', detail: '' };
+      return;
+    }
+    const now = new Date();
+    const persona = activePersonaPrompt(readDiaryArchive());
+    endChatState.value = {
+      ...endChatState.value,
+      status: 'generating',
+      message: `\u6b63\u5728\u4e3a ${persona.data.name || '\u89d2\u8272'} \u5199\u65e5\u8bb0...`,
+      detail: `\u6b63\u5728\u9605\u8bfb\u672c\u6b21 ${turns.length} \u6761\u5bf9\u8bdd\u3002`,
+      entry: null
+    };
+    try {
+      const generated = await generateDiaryEntry(turns, { persona, now });
+      const { entry } = appendDiaryEntry({
+        content: generated.body,
+        conversationLength: generated.conversationLength,
+        mode: 'Deepseek'
+      }, { now });
+      diary?.refresh?.();
+      // The session is now archived as a diary, so the transcript starts over.
+      startNewSession();
+      endChatState.value = {
+        ...endChatState.value,
+        status: 'done',
+        message: '\u65e5\u8bb0\u5df2\u5199\u5165\u5b58\u6863\uff0c\u5f53\u524d\u5bf9\u8bdd\u5df2\u7ed3\u675f\u3002',
+        detail: `${generated.personaName} \u00b7 ${diaryTimestampLabel(now)}`,
+        entry
+      };
+      return entry;
+    } catch (error) {
+      endChatState.value = {
+        ...endChatState.value,
+        status: 'error',
+        message: endChatErrorMessage(error),
+        detail: '\u53ef\u4ee5\u91cd\u8bd5\uff0c\u6216\u5148\u5230 Room \u8bbe\u7f6e\u91cc\u68c0\u67e5 LLM\u3002'
+      };
+      return null;
+    }
+  }
+
+  function endChatErrorMessage(error) {
+    const message = String(error?.message || error || '').trim();
+    if (!message) return '\u65e5\u8bb0\u751f\u6210\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5\u3002';
+    if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
+      return '\u65e5\u8bb0\u751f\u6210\u5931\u8d25\uff1a\u65e0\u6cd5\u8fde\u63a5 LLM\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u6216\u672c\u673a Ollama\u3002';
+    }
+    return `\u65e5\u8bb0\u751f\u6210\u5931\u8d25\uff1a${message}`;
+  }
+
+  function exportDiaryArchive() {
+    try {
+      const name = diary?.exportArchive
+        ? diary.exportArchive()
+        : downloadDiaryArchive(readDiaryArchive());
+      if (name) addMessage('system', `\u5df2\u5bfc\u51fa\u5b58\u6863\uff1a${name}`);
+      return name;
+    } catch (error) {
+      addMessage('system', `\u5bfc\u51fa\u5931\u8d25\uff1a${error.message}`);
+      return '';
+    }
+  }
+
+  function markSessionStart() {
+    sessionStartedAt = Date.now();
+    // The archive may have been replaced by an import, so re-read the name.
+    characterName.value = roomCharacterName();
+    endChatState.value = {
+      ...endChatState.value,
+      sessionStartedAt,
+      // Number of already-present dialogue turns that belong to earlier sessions.
+      restoredCount: messages.value.filter((message) => (
+        ['user', 'assistant'].includes(message.role) && !message.pending
+      )).length
+    };
+  }
+
+  function stopTTS() {    ttsRequestId += 1;
     live2d?.stopSpeaking?.();
     if (currentAudio) {
       currentAudio.pause();
@@ -1103,8 +1283,6 @@ export function useRoomChat({ live2d, world }) {
       currentAudio.onerror = null;
       currentAudio = null;
     }
-    releaseAsyncAudioPlayback(currentAudioPlayback);
-    currentAudioPlayback = null;
     ttsState.value = { messageId: '', status: 'idle' };
   }
 
@@ -1172,10 +1350,11 @@ export function useRoomChat({ live2d, world }) {
       return;
     }
     const directLocalGptSovits = settings.provider === 'gpt-sovits' && !settings.useProxy;
+    if (!settings.useProxy && !directLocalGptSovits) {
+      addMessage('system', '\u5f53\u524d Vue \u7248 TTS \u5efa\u8bae\u5148\u5f00\u542f\u670d\u52a1\u5668\u4ee3\u7406\u4ee5\u89c4\u907f CORS');
+      return;
+    }
     stopTTS();
-    const audioPlayback = primeAsyncAudioPlayback();
-    currentAudioPlayback = audioPlayback;
-    currentAudio = audioPlayback.audio;
     const requestId = ttsRequestId + 1;
     ttsRequestId = requestId;
     ttsState.value = { messageId, status: 'loading' };
@@ -1185,10 +1364,7 @@ export function useRoomChat({ live2d, world }) {
         const ttsText = await translateForJapaneseTts(text);
         if (!ttsText) throw new Error('日文翻译结果为空，已取消语音播放。');
         await ensureGptSovitsWeights(settings);
-        const audio = await prepareAsyncAudioSource(
-          audioPlayback,
-          buildGptSovitsAudioUrl(ttsText, { ...settings, textLang: 'ja', promptLang: settings.promptLang || 'ja' })
-        );
+        const audio = new Audio(buildGptSovitsAudioUrl(ttsText, { ...settings, textLang: 'ja', promptLang: settings.promptLang || 'ja' }));
         currentAudio = audio;
         audio.onerror = () => {
           if (currentAudio === audio) stopTTS();
@@ -1207,29 +1383,38 @@ export function useRoomChat({ live2d, world }) {
         ? await translateForJapaneseTts(text)
         : cleanTtsText(text);
       if (!ttsText) throw new Error('TTS 文本为空，已取消语音播放。');
-      const audioBlob = await requestTtsAudioBlob(ttsText, {
-        ...settings,
-        textLang: settings.textLang || 'auto'
-      }, {
-        fetchDirect: fetch,
-        fetchProxy: apiFetch
-      });
+      const response = await apiFetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...settings, text: ttsText, textLang: settings.textLang || 'auto' })
+        });
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        let detail = '';
+        if (contentType.includes('application/json')) {
+          const payload = await response.json().catch(() => null);
+          detail = payload?.message || payload?.error || '';
+        } else {
+          detail = await response.text().catch(() => '');
+        }
+        throw new Error(detail || `TTS ${response.status}`);
+      }
       if (requestId !== ttsRequestId) return;
       if (ttsUrl) URL.revokeObjectURL(ttsUrl);
-      ttsUrl = URL.createObjectURL(audioBlob);
+      ttsUrl = URL.createObjectURL(await response.blob());
       if (requestId !== ttsRequestId) {
         URL.revokeObjectURL(ttsUrl);
         ttsUrl = '';
         return;
       }
-      const audio = await prepareAsyncAudioSource(audioPlayback, ttsUrl);
+      const audio = new Audio(ttsUrl);
       currentAudio = audio;
       const playbackBinding = bindTtsAudioPlayback(audio, messageId, ttsText, messageLive2D);
       await audio.play().then(playbackBinding.watchPlaybackStart);
     } catch (error) {
       if (requestId !== ttsRequestId) return;
       stopTTS();
-      addMessage('system', `TTS \u64ad\u653e\u5931\u8d25\uff1a${describeAudioPlaybackError(error)}`);
+      addMessage('system', `TTS \u64ad\u653e\u5931\u8d25\uff1a${error.message}`);
     }
   }
 
@@ -1246,35 +1431,37 @@ export function useRoomChat({ live2d, world }) {
     stopTTS();
     if (ttsUrl) URL.revokeObjectURL(ttsUrl);
     ttsUrl = '';
-    window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthUpdate);
   }
 
-  window.addEventListener(GROWTH_UPDATED_EVENT, handleGrowthUpdate);
-  loadGrowth().then((state) => { growth.value = state || growth.value; }).catch(() => {});
-  stopRoomConversationUpdates = startRoomConversationUpdates(handleConversationUpdate);
+  stopRoomConversationUpdates = startRoomConversationUpdates(() => refreshSyncedHistory());
   loadHistory();
 
   return {
     messages,
     input,
     sending,
-    resetting,
     ttsState,
-    sharedConversation,
-    growth,
+    characterName,
     imageAttachment,
     messageListRef,
     addMessage,
-    getShareTurn,
-    showSharedConversation,
     attachImage,
     clearImage,
-    startNewSession,
     send,
     playTTS,
     stopTTS,
     onDrop,
     destroy,
+    endChatState,
+    openEndChatDialog,
+    closeEndChatDialog,
+    confirmEndChat,
+    confirmEndChatWithoutDiary,
+    dismissDiaryText,
+    sessionTurnCount,
+    exportDiaryArchive,
+    markSessionStart,
+    startNewSession,
     world
   };
 }

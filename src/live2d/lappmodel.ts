@@ -603,10 +603,7 @@ export class LAppModel extends CubismUserModel {
   public update(): void {
     if (this._state != LoadStep.CompleteSetup) return;
 
-    const deltaTimeSeconds: number = Math.min(
-      Math.max(LAppPal.getDeltaTime(), 0),
-      1 / 15
-    );
+    const deltaTimeSeconds: number = LAppPal.getDeltaTime();
     this._userTimeSeconds += deltaTimeSeconds;
 
     if (isPointerControlDisabled()) {

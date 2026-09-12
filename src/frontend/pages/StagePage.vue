@@ -3,19 +3,14 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch, getAuthToken, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
-import UserLevelBadge from '../components/UserLevelBadge.vue';
-import { useUserLevels } from '../composables/useUserLevels';
 import { formatDateMinute } from '../utils/time';
-import { useArticleCategories } from '../composables/useArticleCategories';
 
 const props = defineProps({
-  lang: { type: String, default: 'zh' },
   t: { type: Object, required: true }
 });
 
 const emit = defineEmits(['go']);
 const route = useRoute();
-const { hydrateUserLevels, userLevel } = useUserLevels();
 
 const articles = ref([]);
 const articlesLoading = ref(true);
@@ -24,15 +19,11 @@ const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
 let applyingStageQuery = false;
-const { categories: articleCategories, revision: categoryRevision } = useArticleCategories();
-const categories = computed(() => ['all', ...articleCategories.value.map((item) => item.name)]);
+const categories = ['all', '\u516c\u544a', '\u4f20\u8bf4', '\u6280\u672f', '\u4e8c\u521b', '\u5176\u4ed6'];
 const STAGE_PAGE_SIZE = 6;
 const STAGE_FETCH_LIMIT = 100;
 
-const stagePageCopy = computed(() => props.lang === 'en' ? {
-  resultUnit: 'articles', showing: 'Showing', page: 'Page', pageSuffix: '', totalPages: 'of',
-  pageSize: '6 per page', prevPage: 'Previous', nextPage: 'Next', jumpToPage: 'Go to page', rangeUnit: 'articles'
-} : {
+const stagePageCopy = {
   resultUnit: '\u7bc7',
   showing: '\u5f53\u524d',
   page: '\u7b2c',
@@ -43,12 +34,12 @@ const stagePageCopy = computed(() => props.lang === 'en' ? {
   nextPage: '\u4e0b\u4e00\u9875',
   jumpToPage: '\u8df3\u5230\u7b2c',
   rangeUnit: '\u7bc7'
-});
+};
 
 const filteredArticles = computed(() => {
   let list = articles.value;
   if (stageCategory.value !== 'all') {
-    list = list.filter((article) => stageCategoryName(article) === stageCategory.value);
+    list = list.filter((article) => article.category === stageCategory.value);
   }
   if (stageSearch.value) {
     const query = stageSearch.value.toLowerCase();
@@ -88,13 +79,11 @@ const stagePageItems = computed(() => {
   return pages;
 });
 
-const stageResultSummary = computed(() => props.lang === 'en'
-  ? `${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.value.resultUnit}`
-  : `\u5171 ${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.value.resultUnit}`);
+const stageResultSummary = computed(() => `\u5171 ${stageFormatNumber(stageTotalArticles.value)} ${stagePageCopy.resultUnit}`);
 const stageRangeSummary = computed(() => stageTotalArticles.value
-  ? `${stagePageCopy.value.showing} ${stageFormatNumber(stagePageStart.value)}-${stageFormatNumber(stagePageEnd.value)} ${stagePageCopy.value.rangeUnit}`
+  ? `${stagePageCopy.showing} ${stageFormatNumber(stagePageStart.value)}-${stageFormatNumber(stagePageEnd.value)} ${stagePageCopy.rangeUnit}`
   : '');
-const stagePageSummary = computed(() => `${stagePageCopy.value.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.value.pageSuffix} / ${stagePageCopy.value.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.value.pageSuffix}`);
+const stagePageSummary = computed(() => `${stagePageCopy.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.pageSuffix} / ${stagePageCopy.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.pageSuffix}`);
 const stageReturnPath = computed(() => {
   const params = new URLSearchParams();
   if (stageCurrentPage.value > 1) params.set('page', String(stageCurrentPage.value));
@@ -118,7 +107,7 @@ function queryPage(value) {
 function applyStageQuery(query = {}) {
   applyingStageQuery = true;
   const category = queryValue(query.category);
-  stageCategory.value = category && (!categoryRevision.value || categories.value.includes(category)) ? category : 'all';
+  stageCategory.value = categories.includes(category) ? category : 'all';
   stageSearch.value = String(queryValue(query.q)).slice(0, 120);
   stagePage.value = queryPage(query.page);
   nextTick(() => {
@@ -148,19 +137,8 @@ function stageCategoryLabel(category) {
   return map[category] || category;
 }
 
-function stageCategoryName(article) {
-  // Numeric identifiers survive overseas content translation.
-  return articleCategories.value.find((item) => item.id === article.category_id)?.name || article.category;
-}
-
-function reconcileArticleCategories(list) {
-  if (!categoryRevision.value) return list;
-  return list.map((article) => categories.value.includes(stageCategoryName(article)) ? article
-    : { ...article, category_id: articleCategories.value.find((item) => item.name === '\u5176\u4ed6')?.id, category: props.t.filterOther });
-}
-
 function stageFormatNumber(value) {
-  return Number(value || 0).toLocaleString(props.lang === 'en' ? 'en-US' : 'zh-CN');
+  return Number(value || 0).toLocaleString('zh-CN');
 }
 
 function stageSetPage(page, { scroll = true } = {}) {
@@ -194,8 +172,7 @@ async function loadArticles() {
       totalPages = Math.max(1, Number.parseInt(result.pagination?.totalPages, 10) || 1);
       page += 1;
     } while (page <= totalPages);
-    articles.value = reconcileArticleCategories(loaded);
-    await hydrateUserLevels(loaded.map((article) => article.author_id)).catch(() => {});
+    articles.value = loaded;
   } catch (error) {
     articles.value = [];
     articlesError.value = error.message || props.t.loadFailed;
@@ -234,7 +211,7 @@ function stagePublishedAt(article) {
 }
 
 function stagePublishedTime(article) {
-  return formatDateMinute(stagePublishedAt(article), props.lang === 'en' ? 'en-US' : 'zh-CN');
+  return formatDateMinute(stagePublishedAt(article), 'zh-CN');
 }
 
 function stageOpenAuthor(article) {
@@ -256,10 +233,6 @@ watch(() => route.query, (query) => {
   if (route.name === 'stage') applyStageQuery(query);
 });
 applyStageQuery(route.query);
-watch(categoryRevision, () => {
-  if (!categories.value.includes(stageCategory.value)) stageCategory.value = 'all';
-  articles.value = reconcileArticleCategories(articles.value);
-});
 onMounted(loadArticles);
 </script>
 
@@ -268,18 +241,16 @@ onMounted(loadArticles);
     <header class="stage-header">
       <h1 class="section-title">{{ t.stageTitle }}</h1>
       <p class="section-subtitle">{{ t.stageSubtitle }}</p>
-      <details class="stage-about">
-        <summary>{{ lang === 'en' ? 'About the stage' : lang === 'ja' ? 'ステージについて' : '关于主舞台' }}</summary>
-        <p class="stage-seo-intro">{{ lang === 'en'
-        ? 'The Main Stage brings together articles, announcements, technical notes, fan works and creative journals about Live2D, AI characters, personal websites and ongoing projects.'
-        : '主舞台集中展示月读空间的文章、公告、技术记录、二创作品与创作日志，内容覆盖 Live2D、AI 角色、个人网站开发、二次元网页设计和日常项目复盘。' }}</p>
-      </details>
+      <p class="stage-seo-intro">
+        主舞台集中展示月读空间的文章、公告、技术记录、二创作品与创作日志，内容覆盖 Live2D、AI 角色、
+        个人网站开发、二次元网页设计和日常项目复盘。
+      </p>
     </header>
 
     <div class="stage-controls">
       <div class="search-box">
         <TsIcon class="stage-search-icon" name="search" :size="17" />
-        <input v-model="stageSearch" type="search" :aria-label="t.searchPlaceholder" :placeholder="t.searchPlaceholder">
+        <input v-model="stageSearch" type="text" :placeholder="t.searchPlaceholder">
       </div>
       <a href="/editor" class="stage-new-btn" @click="checkEditorAuth">
         <TsIcon name="penLine" :size="17" />
@@ -293,7 +264,6 @@ onMounted(loadArticles);
         :key="category"
         class="filter-btn"
         :class="{ active: stageCategory === category }"
-        :aria-pressed="stageCategory === category"
         type="button"
         @click="stageCategory = category"
       >
@@ -337,7 +307,6 @@ onMounted(loadArticles);
                 <span v-else>{{ stageAuthorInitial(article) }}</span>
               </span>
               <span>{{ stageAuthorName(article) }}</span>
-              <UserLevelBadge v-if="article.author_id" :level="userLevel(article.author_id)" :lang="lang" compact :show-title="false" />
             </span>
           </div>
           <h3 class="stage-card-title">{{ article.title }}</h3>

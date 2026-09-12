@@ -1578,42 +1578,10 @@ html[data-theme="dark"] .room-step-form select option {
 .knowledge-editor {
     display: grid;
     gap: 0.8rem;
-    scroll-margin-block: 6rem;
     padding: 0.9rem;
     border: 1px solid rgba(139, 168, 205, 0.18);
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.58);
-}
-
-.knowledge-editor.is-editing {
-    border-color: rgba(102, 197, 223, 0.48);
-    box-shadow: 0 0 0 3px rgba(102, 197, 223, 0.08);
-}
-
-.knowledge-editor-status {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 0.55rem;
-    color: var(--muted);
-}
-
-.knowledge-editor-status span {
-    flex: 0 0 auto;
-    border-radius: 999px;
-    padding: 0.25rem 0.58rem;
-    color: var(--cyan);
-    background: rgba(102, 197, 223, 0.1);
-    font-size: 0.76rem;
-    font-weight: 800;
-}
-
-.knowledge-editor-status strong {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--ink);
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .knowledge-editor textarea {
@@ -2117,4 +2085,40 @@ html[data-theme="dark"] .room-test-modal-card pre {
     .memory-manager-toggle {
         min-height: auto;
     }
+}
+
+/* --- 人设与日记存档 --- */
+
+.diary-archive-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.44rem;
+}
+
+.diary-persona-editor {
+    border: 1px solid rgba(139, 168, 205, 0.18);
+    border-radius: 14px;
+    background: rgba(12, 15, 30, 0.28);
+    padding: 0.5rem 0.72rem;
+}
+
+.diary-persona-editor > summary {
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--muted);
+    list-style: none;
+}
+
+.diary-persona-editor > summary::-webkit-details-marker {
+    display: none;
+}
+
+.diary-persona-editor[open] > summary {
+    margin-bottom: 0.58rem;
+}
+
+.diary-persona-editor .form-grid textarea {
+    min-height: 4.2rem;
 }
