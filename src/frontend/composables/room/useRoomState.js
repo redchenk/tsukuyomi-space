@@ -1,6 +1,8 @@
 import { computed, inject, onBeforeUnmount, onMounted, reactive } from 'vue';
+import { activePersonaPrompt } from '../../services/room/roomDiaryArchive';
 import { useLive2D } from './useLive2D';
-import { useRoomChat } from './useRoomChat';
+import { roomStageCharacterName, useRoomChat } from './useRoomChat';
+import { useRoomDiary } from './useRoomDiary';
 import { useRoomMusic } from './useRoomMusic';
 import { useRoomNote } from './useRoomNote';
 import { useRoomPanels } from './useRoomPanels';
@@ -21,7 +23,8 @@ export function useRoomState() {
   const music = sharedMusic || useRoomMusic();
   const profile = useRoomProfile();
   const note = useRoomNote();
-  const chat = useRoomChat({ live2d, world });
+  const diary = useRoomDiary();
+  const chat = useRoomChat({ live2d, world, diary });
 
   async function init() {
     loading.active = true;
@@ -58,7 +61,12 @@ export function useRoomState() {
     music,
     profile,
     note,
+    diary,
     chat,
+    // The stage headline follows the imported persona; it stays reactive so a
+    // persona saved in settings shows up without a reload. The helper takes a
+    // persona card, so resolve it from the (reactive) archive first.
+    stageCharacterName: computed(() => roomStageCharacterName(activePersonaPrompt(diary.archive.value))),
     roomStyle: computed(() => (world.world.value.temperature == null ? null : { '--room-temperature': world.world.value.temperature }))
   };
 }

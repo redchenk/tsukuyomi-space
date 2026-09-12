@@ -198,7 +198,9 @@ describe('constrained-device performance policy', () => {
 
         assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card\s*\{[^}]*height:\s*auto[^}]*flex-direction:\s*column-reverse/s);
         assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card-cover\s*\{[^}]*width:\s*100%[^}]*height:\s*clamp/s);
-        assert.match(room, /\.room-panel:not\(\.room-chat-panel\)/);
+        const responsive = source('src/frontend/styles/responsive.css');
+        assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*left:\s*50%\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
+        assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*max-height:[^}]*var\(--room-mobile-top-clearance\)/s);
         assert.match(room, /\.room-panel\.room-chat-panel\s*\{[^}]*left:\s*50%\s*!important[^}]*top:\s*auto\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
         assert.match(accessPage, /disablepictureinpicture/);
         assert.match(accessPage, /disableremoteplayback/);

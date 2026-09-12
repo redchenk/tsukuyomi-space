@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { apiFetch, parseResponse } from '../api/client';
 import RoomChatPanel from '../components/room/RoomChatPanel.vue';
+import RoomDiaryPanel from '../components/room/RoomDiaryPanel.vue';
 import RoomDock from '../components/room/RoomDock.vue';
 import RoomLoadingOverlay from '../components/room/RoomLoadingOverlay.vue';
 import RoomNotePanel from '../components/room/RoomNotePanel.vue';
@@ -86,7 +87,7 @@ watch(() => props.shareId, loadSharedConversation);
       ></span>
     </div>
 
-    <RoomStage :live2d="room.live2d" />
+    <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" />
     <RoomWeatherCard :weather="room.world.weatherCard.value" />
     <RoomDock
       :buttons="room.panels.panelButtons"
@@ -104,6 +105,15 @@ watch(() => props.shareId, loadSharedConversation);
       @drag-start="room.panels.startPanelDrag('chatPanel', $event)"
       @share="openConversationShare"
       @growth="emit('go', '/growth')"
+      @open-diary="room.panels.openPanel('diaryPanel')"
+    />
+    <RoomDiaryPanel
+      v-if="room.panels.activePanels.diaryPanel"
+      :diary="room.diary"
+      :panel-style="room.panels.panelStyle('diaryPanel')"
+      @close="room.panels.closePanel('diaryPanel')"
+      @focus="room.panels.bringPanelForward('diaryPanel')"
+      @drag-start="room.panels.startPanelDrag('diaryPanel', $event)"
     />
     <RoomProfilePanel
       v-if="room.panels.activePanels.profilePanel"

@@ -53,7 +53,7 @@
     }
 
     .room-shell .site-music-drawer {
-        top: 0.7rem;
+        top: calc(var(--room-mobile-top-clearance, 0.7rem) + 0.35rem);
         right: 0.7rem;
         width: 2.55rem;
         height: 2.55rem;
@@ -61,7 +61,7 @@
     }
 
     .room-shell .site-music-handle {
-        top: 0.7rem;
+        top: calc(var(--room-mobile-top-clearance, 0.7rem) + 0.35rem);
         right: 0.7rem;
         width: 2.55rem;
         min-width: 2.55rem;
@@ -71,7 +71,7 @@
     }
 
     .room-shell .site-music-panel {
-        top: 4.55rem;
+        top: calc(var(--room-mobile-top-clearance, 4.55rem) + 0.35rem);
         right: 0.7rem;
         width: min(300px, calc(100vw - 1.4rem));
         z-index: 95;
@@ -95,15 +95,24 @@
         max-width: calc(100vw - 6.4rem);
     }
 
-    .room-panel {
-        left: auto !important;
-        right: 4.05rem !important;
+    /* Room panels on phones: one shared layout for diary / profile / note.
+       They sit centred above the bottom edge and stop below the weather pill
+       (--room-mobile-top-clearance) so nothing overlaps the weather card.
+       The previous rules pinned panels top-right as a 100dvh drawer, which ran
+       straight under both the weather pill and the top dock. */
+    .room-panel:not(.room-chat-panel):not(.room-music-panel) {
+        left: 50% !important;
+        right: auto !important;
         top: auto !important;
-        bottom: 0.85rem !important;
-        width: min(18rem, calc(100vw - 4.9rem));
+        bottom: max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem)) !important;
+        width: min(23rem, calc(100vw - 1.2rem));
         max-width: none;
-        max-height: calc(100dvh - 8.4rem);
-        border-radius: 18px 18px 14px 14px;
+        max-height: min(calc(100dvh - var(--room-mobile-top-clearance) - 6.6rem), 34rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 20px;
+        transform: translateX(-50%);
         z-index: 90;
     }
 
@@ -127,17 +136,44 @@
         color: var(--ts-text);
     }
 
+    /* Only the title is visually hidden on phones; the close button stays
+       visible and tappable so the chat panel can always be dismissed. */
     .room-chat-panel .panel-header {
         position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
+        top: 0.42rem;
+        right: 0.46rem;
+        z-index: 3;
+        width: auto;
+        height: auto;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        overflow: visible;
+        clip: auto;
         white-space: nowrap;
+        pointer-events: none;
     }
 
     .room-chat-panel .panel-title {
-        color: var(--ts-text-strong);
+        display: none;
+    }
+
+    .room-chat-panel .panel-close {
+        width: 2.05rem;
+        height: 2.05rem;
+        min-width: 2.05rem;
+        min-height: 2.05rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.14);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        font-size: 0.95rem;
+        line-height: 1;
+        pointer-events: auto;
     }
 
     .room-chat-panel .room-chat-messages {
@@ -173,75 +209,70 @@
         border-radius: 999px;
     }
 
+    /* All dock buttons stay reachable on phones. The previous rule displayed
+       only :last-child, which hid chat/diary/profile/note behind settings.
+       The dock sits on its own row under the weather pill, never over it. */
     .room-shell .room-dock {
-        top: max(4.5rem, calc(env(safe-area-inset-top) + 3.7rem));
-        right: 0.95rem;
+        top: var(--room-mobile-top-clearance);
+        left: max(0.6rem, env(safe-area-inset-left));
+        right: max(0.6rem, env(safe-area-inset-right));
         bottom: auto;
-        left: auto;
-        width: 3rem;
-        height: 3rem;
-        display: block;
-        padding: 0;
+        width: auto;
+        height: auto;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        justify-content: center;
+        gap: 0.34rem;
+        padding: 0.32rem;
         overflow: visible;
-        border: 0;
-        background: transparent;
-        box-shadow: none;
-        backdrop-filter: none;
+        border: 1px solid var(--room-glass-border);
+        border-radius: 18px;
+        background: var(--room-glass-bg-strong);
+        box-shadow: var(--room-glass-shadow);
+        backdrop-filter: blur(12px) saturate(1.08);
         transform: none;
     }
 
     .room-shell .panel-toggle-btn {
-        width: 3rem;
-        min-width: 3rem;
-        height: 3rem;
-        min-height: 3rem;
-        display: none;
-        place-items: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.05rem;
+        width: 3.1rem;
+        min-width: 3.1rem;
+        height: 2.95rem;
+        min-height: 2.95rem;
         padding: 0;
-        border-color: rgba(255, 255, 255, 0.24);
-        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 13px;
         color: #fff;
-        background:
-            radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.22), transparent 42%),
-            rgba(35, 38, 58, 0.78);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 12px 30px rgba(12, 10, 24, 0.2);
+        background: rgba(35, 38, 58, 0.72);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
     }
 
-    .room-shell .panel-toggle-btn:last-child {
-        display: grid;
-    }
-
-    .room-shell .room-dock .panel-toggle-btn:last-child,
-    html[data-theme="dark"] .room-shell .room-dock .panel-toggle-btn:last-child,
-    html[data-theme="light"] .room-shell .room-dock .panel-toggle-btn:last-child {
-        border: 1px solid rgba(255, 255, 255, 0.22) !important;
-        color: rgba(255, 255, 255, 0.92) !important;
-        background:
-            radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.2), transparent 40%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)),
-            rgba(24, 27, 43, 0.88) !important;
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.18),
-            inset 0 -1px 0 rgba(255, 255, 255, 0.08),
-            0 14px 36px rgba(7, 8, 20, 0.26) !important;
+    .room-shell .panel-toggle-btn.is-active {
+        border-color: rgba(174, 242, 255, 0.42);
+        background: rgba(125, 93, 236, 0.44);
     }
 
     .room-shell .dock-icon {
-        display: none;
-    }
-
-    .room-shell .panel-toggle-btn:last-child .dock-icon {
         display: grid;
         place-items: center;
     }
 
     .room-shell .dock-label {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip: auto;
         white-space: nowrap;
+        font-size: 0.5rem;
+        font-weight: 700;
+        line-height: 1.1;
+        color: rgba(255, 255, 255, 0.82);
     }
 }
 
@@ -272,24 +303,26 @@
         right: 0.55rem;
     }
 
+    /* Narrowest phones stack the music controls under the weather pill instead
+       of above it, so the pill is never covered. */
     .room-shell .site-music-handle {
-        top: 8.8rem;
+        top: var(--room-mobile-top-clearance);
         right: 0.55rem;
         width: 2.75rem;
         height: 2.75rem;
     }
 
     .room-shell .site-music-drawer {
-        top: 8.8rem;
+        top: var(--room-mobile-top-clearance);
         right: 0.55rem;
         width: 2.75rem;
         height: 2.75rem;
     }
 
     .room-shell .site-music-panel {
-        top: 8.8rem;
-        right: 3.85rem;
-        width: min(16.8rem, calc(100vw - 4.45rem));
+        top: calc(var(--room-mobile-top-clearance) + 3.35rem);
+        right: 0.55rem;
+        width: min(16.8rem, calc(100vw - 1.1rem));
         color: var(--ts-text);
         background: var(--ts-surface-strong);
     }
@@ -298,9 +331,10 @@
         top: max(4rem, calc(env(safe-area-inset-top) + 3.2rem));
         left: auto;
         right: auto;
-        left: 0.9rem;
-        min-width: min(14.8rem, calc(100vw - 6.7rem));
-        max-width: calc(100vw - 6.7rem);
+        left: 0.75rem;
+        right: 0.75rem;
+        min-width: 0;
+        max-width: none;
     }
 
     .site-music-summary {
@@ -323,13 +357,15 @@
     }
 
     .room-shell .room-dock {
-        top: max(4.35rem, calc(env(safe-area-inset-top) + 3.55rem));
-        right: 0.95rem;
+        top: var(--room-mobile-top-clearance);
+        left: max(0.55rem, env(safe-area-inset-left));
+        right: max(0.55rem, env(safe-area-inset-right));
     }
 
-    .room-panel {
-        right: 3.85rem !important;
-        width: min(17rem, calc(100vw - 4.55rem));
+    /* Narrowest phones only need a slightly wider panel; the shared phone
+       layout above already centres it and keeps it clear of the weather pill. */
+    .room-panel:not(.room-chat-panel):not(.room-music-panel) {
+        width: min(23rem, calc(100vw - 0.9rem));
     }
 
     .room-chat-panel {
@@ -338,6 +374,95 @@
         bottom: var(--ts-chat-bottom, max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem))) !important;
         width: min(23rem, calc(100vw - 2.2rem));
         transform: translateX(-50%);
+    }
+
+    /* Note editing on phones: the panel itself scrolls, so the textarea keeps a
+       comfortable size and the save button stays reachable. These panels carry
+       no bespoke class, so they are targeted by their stable element ids. */
+    #notePanel .panel-content,
+    #profilePanel .panel-content {
+        display: grid;
+        gap: 0.58rem;
+    }
+
+    #notePanel textarea {
+        min-height: 8.5rem;
+        max-height: 42dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        font-size: 0.9rem;
+        line-height: 1.7;
+        user-select: text;
+        -webkit-user-select: text;
+    }
+
+    #notePanel .panel-btn,
+    #profilePanel .panel-btn {
+        min-height: 2.6rem;
+        border-radius: 14px;
+    }
+
+    .room-chat-panel {
+        left: 50% !important;
+        right: auto !important;
+        bottom: max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem)) !important;
+        width: min(23rem, calc(100vw - 2.2rem));
+        transform: translateX(-50%);
+    }
+
+    /* Single column: the entry list sits above the open entry. */
+    .diary-body {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+        height: min(64vh, 34rem);
+        max-height: min(64vh, 34rem);
+    }
+
+    .diary-body > .diary-list,
+    .diary-body > .diary-detail {
+        grid-column: 1;
+    }
+
+    .diary-list {
+        max-height: 9rem;
+    }
+
+    /* The end-chat overlay clears the bottom dock and stays fully reachable. */
+    .endchat-backdrop {
+        padding: 0.7rem;
+        padding-bottom: max(0.7rem, calc(env(safe-area-inset-bottom) + 5.4rem));
+        align-content: center;
+    }
+
+    .endchat-card {
+        width: min(100%, 24rem);
+        padding: 1rem;
+        border-radius: 16px;
+    }
+
+    .endchat-actions .primary-btn,
+    .endchat-actions .ghost-btn {
+        width: 100%;
+        min-height: 2.6rem;
+    }
+
+    .diary-preview-card {
+        width: min(100%, 46rem);
+        max-height: min(72dvh, 40rem);
+        border-radius: 16px;
+    }
+
+    .diary-preview-body {
+        padding: 0.9rem 1rem;
+    }
+
+    .diary-preview-body pre {
+        font-size: 0.9rem;
+        line-height: 1.85;
+    }
+
+    .diary-preview-actions {
+        padding: 0.7rem 1rem 0.9rem;
     }
 }
 
@@ -425,8 +550,64 @@
         display: none !important;
     }
 
+    /* The phone chat panel hides its title to save vertical space, but the
+       close button must stay: it is the only way to dismiss the panel on a
+       touch device. The header itself becomes a transparent, click-through
+       layer and only the × stays interactive, floating over the message card. */
     .room-shell .room-chat-panel .panel-header {
+        position: absolute;
+        top: 0.42rem;
+        right: 0.46rem;
+        z-index: 3;
+        width: auto;
+        height: auto;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        margin: 0;
+        padding: 0;
+        background: none;
+        border: 0;
+        box-shadow: none;
+        pointer-events: none;
+    }
+
+    .room-shell .room-chat-panel .panel-title {
         display: none;
+    }
+
+    .room-shell .room-chat-panel .panel-close {
+        width: 2.05rem;
+        height: 2.05rem;
+        min-width: 2.05rem;
+        min-height: 2.05rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.14);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        font-size: 0.95rem;
+        line-height: 1;
+        pointer-events: auto;
+    }
+
+    .room-shell .room-chat-panel .panel-close:hover,
+    .room-shell .room-chat-panel .panel-close:active {
+        border-color: rgba(174, 242, 255, 0.5);
+        background: rgba(125, 93, 236, 0.5);
+        transform: none;
+    }
+
+    /* Keep the newest message clear of the floating close button. */
+    .room-shell .room-chat-panel .room-chat-messages {
+        padding-inline: 0.28rem;
+    }
+
+    .room-shell .room-chat-panel .chat-body {
+        position: relative;
     }
 
     .room-shell .room-chat-panel .chat-body {

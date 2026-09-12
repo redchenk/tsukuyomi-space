@@ -22,6 +22,15 @@ import {
 } from '../services/room/audioPlayback';
 import { refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
 import { requestTtsAudioBlob } from '../services/room/ttsTransport';
+import {
+  activePersonaPrompt,
+  clearDiaryArchive,
+  downloadDiaryArchive,
+  importDiaryArchive,
+  readDiaryArchive,
+  serializeDiaryArchive,
+  updatePersonaPrompt
+} from '../services/room/roomDiaryArchive';
 import { formatDateTime } from '../utils/time';
 
 const props = defineProps({
@@ -223,6 +232,16 @@ const live2dTest = reactive({
   motion: '',
   durationMs: 5000
 });
+const diary = reactive({
+  open: false,
+  entryCount: 0,
+  personaName: '',
+  affection: 0,
+  slotId: 1,
+  lastDiaryAt: '',
+  persona: { name: '', description: '', personality: '', scenario: '', creatorNotes: '', tags: '' }
+});
+let diaryFileInput = null;
 
 const roomUser = computed(() => storedUser.value || (props.user?.id ? props.user : null));
 const roomIdentityLabel = computed(() => roomUser.value?.username || '访客身份');
@@ -1150,12 +1169,91 @@ function loadSettings() {
     return preset && detectLLMProvider(preset.apiUrl, preset.model) === llmProviderKey.value;
   });
   if (activePreset) setupCloudProvider.value = activePreset.value;
+  loadDiaryArchive();
   loadMemoryCount();
   if (memory.managerOpen) loadVisibleMemories();
 }
 
-function applyMcpProvider(provider) {
-  mcp.provider = provider;
+function loadDiaryArchive() {
+  const archive = readDiaryArchive();
+  const persona = activePersonaPrompt(archive);
+  const entries = archive.data.diary || [];
+  diary.entryCount = entries.length;
+  diary.personaName = persona.data.name || '';
+  diary.affection = Number(archive.data.gameData.characterStats.affection) || 0;
+  diary.slotId = Number(archive.slotId) || 1;
+  const latest = entries[entries.length - 1];
+  diary.lastDiaryAt = latest ? `${latest.date} ${latest.time}` : '';
+  diary.persona = {
+    name: persona.data.name || '',
+    description: persona.data.description || '',
+    personality: persona.data.personality || '',
+    scenario: persona.data.scenario || '',
+    creatorNotes: persona.data.creator_notes || '',
+    tags: Array.isArray(persona.data.tags) ? persona.data.tags.join('、') : ''
+  };
+}
+
+function saveDiaryPersona() {
+  updatePersonaPrompt({
+    data: {
+      name: String(diary.persona.name || '').trim(),
+      description: diary.persona.description,
+      personality: diary.persona.personality,
+      scenario: diary.persona.scenario,
+      creator_notes: diary.persona.creatorNotes,
+      tags: String(diary.persona.tags || '').split(/[、,，\s]+/).map((item) => item.trim()).filter(Boolean)
+    }
+  });
+  loadDiaryArchive();
+  showToast('日记人设已保存，结束聊天时会按它来写日记');
+}
+
+function exportDiaryArchiveFile() {
+  try {
+    const name = downloadDiaryArchive();
+    showToast(`已导出存档：${name}`);
+  } catch (error) {
+    showToast(`导出失败：${error.message}`);
+  }
+}
+
+function pickDiaryFile() {
+  if (!diaryFileInput) {
+    diaryFileInput = document.createElement('input');
+    diaryFileInput.type = 'file';
+    diaryFileInput.accept = 'application/json,.json';
+    diaryFileInput.addEventListener('change', async () => {
+      const file = diaryFileInput.files?.[0];
+      diaryFileInput.value = '';
+      if (!file) return;
+      try {
+        const archive = importDiaryArchive(await file.text());
+        loadDiaryArchive();
+        showToast(`已导入 ${archive.data.diary.length} 篇日记，角色：${diary.personaName || '未命名'}`);
+      } catch (error) {
+        showToast(`导入失败：${error.message}`);
+      }
+    });
+  }
+  diaryFileInput.click();
+}
+
+function copyDiaryArchivePreview() {
+  const text = serializeDiaryArchive();
+  navigator.clipboard?.writeText(text)
+    .then(() => showToast('存档 JSON 已复制'))
+    .catch(() => showToast('复制失败，请改用导出'));
+}
+
+function resetDiaryArchiveData() {
+  if (!window.confirm('确定要清空本地的人设与日记存档吗？该操作不可撤销。')) return;
+  clearDiaryArchive();
+  loadDiaryArchive();
+  showToast('本地人设与日记存档已清空');
+}
+
+function applyMcpProvider(provider) {  mcp.provider = provider;
   if (provider === 'minimax-global') {
     mcp.enabled = true;
     mcp.authHeader = 'Authorization';
@@ -2584,6 +2682,47 @@ onBeforeUnmount(() => {
             <button class="primary-btn" type="button" @click="saveMCP">保存 MCP</button>
             <button class="ghost-btn" type="button" @click="testMCPWithDialog">测试并发现工具</button>
           </div>
+        </div>
+      </article>
+
+      <article id="room-diary-settings" class="room-settings-card">
+        <div class="room-card-head">
+          <span class="room-card-icon"><TsIcon name="book" :size="20" /></span>
+          <div>
+            <span>08 · Diary</span>
+            <h2>人设与日记存档</h2>
+            <p>结束聊天时会按这里的人设写一篇日记，并写入同一个「人设 + 日记」混合 JSON 存档。</p>
+          </div>
+        </div>
+        <div class="diary-archive-summary">
+          <span class="room-test-status success">槽位 {{ diary.slotId }}</span>
+          <span class="field-hint">角色：{{ diary.personaName || '未设置' }}</span>
+          <span class="field-hint">日记：{{ diary.entryCount }} 篇</span>
+          <span class="field-hint">好感度：{{ diary.affection }}</span>
+          <span v-if="diary.lastDiaryAt" class="field-hint">最近一篇：{{ diary.lastDiaryAt }}</span>
+        </div>
+        <details class="diary-persona-editor" :open="diary.open" @toggle="diary.open = $event.currentTarget.open">
+          <summary>编辑日记人设</summary>
+          <div class="form-grid">
+            <label>角色名<input v-model="diary.persona.name" type="text" placeholder="例如：八千代"></label>
+            <label>角色简介<textarea v-model="diary.persona.description" placeholder="身份、外貌、与对方的关系"></textarea></label>
+            <label>性格与口吻<textarea v-model="diary.persona.personality" placeholder="说话习惯、情绪基调、称呼方式"></textarea></label>
+            <label>相处背景<textarea v-model="diary.persona.scenario" placeholder="日常场景与关系设定"></textarea></label>
+            <label>补充设定<textarea v-model="diary.persona.creatorNotes" placeholder="可选：写作偏好、禁忌、口头禅"></textarea></label>
+            <label>标签<input v-model="diary.persona.tags" type="text" placeholder="用顿号或逗号分隔"></label>
+            <div class="button-row">
+              <button class="primary-btn" type="button" @click="saveDiaryPersona">保存人设</button>
+            </div>
+          </div>
+        </details>
+        <div class="form-grid">
+          <div class="button-row">
+            <button class="ghost-btn" type="button" @click="exportDiaryArchiveFile">导出存档 JSON</button>
+            <button class="ghost-btn" type="button" @click="pickDiaryFile">导入存档 JSON</button>
+            <button class="ghost-btn" type="button" @click="copyDiaryArchivePreview">复制存档 JSON</button>
+            <button class="danger-btn" type="button" @click="resetDiaryArchiveData">清空存档</button>
+          </div>
+          <p class="field-hint">存档保存在当前浏览器，导出格式与桌面版备份一致（version / timestamp / exportDate / slotId / data.gameData / data.diary / data.settings / data.prompts / data.other），可直接用桌面版那份备份导入继续累积。</p>
         </div>
       </article>
       </section>
