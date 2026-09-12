@@ -25,6 +25,9 @@ body.vue-room-route {
     --room-glass-muted: rgba(239, 247, 255, 0.66);
     --room-glass-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
     --room-weather-haze: transparent;
+    /* Top band reserved by the weather pill on phones. Panels, the dock and
+       the music handle all clear it so nothing overlaps the weather card. */
+    --room-mobile-top-clearance: calc(max(4.15rem, env(safe-area-inset-top) + 3.35rem) + 4.6rem);
     position: fixed;
     inset: 0;
     z-index: 10;
@@ -1240,23 +1243,28 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         filter: none;
     }
 
+    /* The dock sits on its own row below the weather pill, which owns the top
+       band (see --room-mobile-top-clearance). It used to be pinned top-right
+       at nearly the same height as the pill, so the two overlapped. */
     .room-dock {
-        top: max(4.45rem, calc(env(safe-area-inset-top) + 3.65rem));
-        right: 1rem;
+        top: calc(max(4.15rem, env(safe-area-inset-top) + 3.35rem) + 4.6rem);
+        left: max(0.75rem, env(safe-area-inset-left));
+        right: max(0.75rem, env(safe-area-inset-right));
         bottom: auto;
-        left: auto;
-        width: 3.25rem;
-        height: 3.25rem;
-        display: grid;
-        grid-auto-flow: column;
-        grid-auto-columns: 4rem;
-        gap: 0.5rem;
-        padding: 0;
+        width: auto;
+        height: auto;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        justify-content: center;
+        gap: 0.34rem;
+        padding: 0.32rem;
         overflow: visible;
-        border: 0;
-        background: transparent;
-        box-shadow: none;
-        backdrop-filter: none;
+        border: 1px solid var(--room-glass-border);
+        border-radius: 18px;
+        background: var(--room-glass-bg-strong);
+        box-shadow: var(--room-glass-shadow);
+        backdrop-filter: blur(12px) saturate(1.08);
         transform: none;
     }
 
@@ -1343,11 +1351,47 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         display: none;
     }
 
+    /* The title is dropped on phones, but the close button must survive so the
+       chat panel stays dismissable by touch. */
     .room-chat-panel .panel-header {
+        position: absolute;
+        top: 0.42rem;
+        right: 0.46rem;
+        left: auto;
+        z-index: 3;
+        width: auto;
+        height: auto;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        overflow: visible;
+        clip: auto;
+        pointer-events: none;
+    }
+
+    .room-chat-panel .panel-title {
         display: none;
     }
 
+    .room-chat-panel .panel-close {
+        width: 2.05rem;
+        height: 2.05rem;
+        min-width: 2.05rem;
+        min-height: 2.05rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.14);
+        font-size: 0.95rem;
+        line-height: 1;
+        pointer-events: auto;
+    }
+
     .room-chat-panel .chat-body {
+        position: relative;
         display: grid;
         gap: 0.78rem;
         height: auto;
@@ -1550,14 +1594,6 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         font-size: 0.74rem;
     }
 
-    .room-panel:not(.room-chat-panel) {
-        position: fixed;
-        left: 4.25rem !important;
-        right: 0.75rem !important;
-        top: 10.4rem !important;
-        width: auto;
-    }
-
     .room-panel.room-chat-panel {
         position: fixed;
         left: 50% !important;
@@ -1568,6 +1604,10 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         max-height: min(50dvh, 24rem);
         transform: translateX(-50%);
     }
+
+    /* Non-chat room panels (diary / profile / note) are positioned by the
+       higher-priority ts-design layer in src/frontend/styles/responsive.css;
+       rules here would lose the cascade against that layer. */
 
     .music-cover {
         width: 72px;
@@ -1644,35 +1684,65 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     text-overflow: ellipsis;
 }
 
-.chat-end-dialog {
+/* --- End-chat overlay: confirm, progress, failure and the fresh diary --- */
+
+.endchat-backdrop {
+    position: fixed;
+    inset: 0;
+    /* Above the room panels and the bottom dock. */
+    z-index: 130;
     display: grid;
-    gap: 0.6rem;
-    margin-top: 0.68rem;
-    padding: 0.86rem;
-    border: 1px solid var(--room-glass-border);
-    border-radius: 18px;
-    background: var(--room-glass-bg-strong);
-    box-shadow: var(--room-glass-shadow);
+    place-items: center;
+    padding: clamp(0.8rem, 4vh, 3rem) 1rem;
+    /* Leave room for the bottom dock so the card never sits underneath it. */
+    padding-bottom: max(clamp(0.8rem, 4vh, 3rem), calc(env(safe-area-inset-bottom) + 5.6rem));
+    background: rgba(5, 7, 16, 0.62);
+    backdrop-filter: blur(6px) saturate(1.05);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    animation: diary-preview-in 0.18s ease-out;
 }
 
-.chat-end-dialog-title {
+.endchat-card {
+    display: grid;
+    gap: 0.7rem;
+    width: min(24rem, 92vw);
+    padding: 1.1rem 1.15rem 1.15rem;
+    border: 1px solid var(--room-glass-border);
+    border-radius: 20px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 34%),
+        rgba(18, 21, 36, 0.97);
+    box-shadow: 0 32px 90px rgba(4, 6, 16, 0.62);
+    animation: diary-preview-rise 0.2s ease-out;
+}
+
+.endchat-title {
     margin: 0;
-    font-size: 0.94rem;
+    font-size: 1rem;
     font-weight: 800;
     color: #f6f2ff;
 }
 
-.chat-end-dialog-detail {
+.endchat-detail {
     margin: 0;
     color: rgba(226, 232, 255, 0.72);
-    font-size: 0.78rem;
-    line-height: 1.5;
+    font-size: 0.82rem;
+    line-height: 1.55;
 }
 
-.chat-end-dialog-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.44rem;
+.endchat-actions {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.15rem;
+}
+
+/* On a roomy screen the actions sit side by side. */
+@media (min-width: 480px) {
+    .endchat-actions {
+        display: flex;
+        flex-wrap: wrap;
+    }
 }
 
 /* --- Freshly written diary: centred above the room --- */

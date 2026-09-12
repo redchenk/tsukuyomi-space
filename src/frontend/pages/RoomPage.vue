@@ -55,7 +55,7 @@ const roomUserId = computed(() => roomUser.value?.id || roomUser.value?.username
       ></span>
     </div>
 
-    <RoomStage :live2d="room.live2d" />
+    <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" />
     <RoomWeatherCard :weather="room.world.weatherCard.value" />
     <RoomDock
       :buttons="room.panels.panelButtons"

@@ -33,8 +33,21 @@ const diaryPreviewText = computed(() => {
 });
 
 function closePreviewOnEscape(event) {
-  if (event.key !== 'Escape' || !diaryPreviewOpen.value) return;
-  props.chat.dismissDiaryText();
+  if (event.key !== 'Escape' || !endChat.value.visible) return;
+  onEndChatBackdrop();
+}
+
+/**
+ * Backdrop click: dismisses the diary text, or cancels the confirm step. The
+ * generating step is deliberately not cancellable from the backdrop.
+ */
+function onEndChatBackdrop() {
+  if (endChat.value.status === 'generating') return;
+  if (diaryPreviewOpen.value) {
+    props.chat.dismissDiaryText();
+    return;
+  }
+  props.chat.closeEndChatDialog();
 }
 
 function openDiaryPanel() {
@@ -134,45 +147,49 @@ function endChatStatusLabel() {
       </div>
     </div>
 
-    <!-- Confirm / progress / failure stay inside the chat panel: they are
-         process feedback and must not cover the room. -->
-    <div
-      v-if="endChat.visible && !diaryPreviewOpen"
-      class="chat-end-dialog"
-      role="dialog"
-      aria-modal="false"
-      aria-label="结束聊天"
-    >
-      <p class="chat-end-dialog-title">{{ endChat.message }}</p>
-      <p v-if="endChat.detail" class="chat-end-dialog-detail">{{ endChat.detail }}</p>
-      <div class="chat-end-dialog-actions">
-        <template v-if="endChat.status === 'confirm'">
-          <button class="primary-btn" type="button" @click="chat.confirmEndChat()">确认结束并写日记</button>
-          <button class="ghost-btn" type="button" @click="chat.confirmEndChatWithoutDiary()">结束但不保存</button>
-          <button class="ghost-btn" type="button" @click="chat.closeEndChatDialog()">继续聊天</button>
-        </template>
-        <template v-else-if="endChat.status === 'generating'">
-          <button class="primary-btn" type="button" disabled aria-busy="true">正在生成日记…</button>
-        </template>
-        <template v-else>
-          <button class="primary-btn" type="button" @click="chat.exportDiaryArchive()">导出存档</button>
-          <button v-if="endChat.status === 'error'" class="ghost-btn" type="button" @click="chat.confirmEndChat()">重试</button>
-          <button class="ghost-btn" type="button" @click="chat.closeEndChatDialog()">关闭</button>
-        </template>
-      </div>
-    </div>
   </RoomDraggablePanel>
 
-  <!-- A freshly written diary opens centred above everything so it can be read
-       at a comfortable width. Closing reveals the room again. -->
+  <!-- Every end-chat state renders as a centred overlay. Placed inside the chat
+       panel it could be pushed off-screen on short phones and collide with the
+       bottom dock, so it is teleported to the body and centred instead. -->
   <Teleport to="body">
     <div
-      v-if="diaryPreviewOpen"
-      class="diary-preview-backdrop"
+      v-if="endChat.visible"
+      class="endchat-backdrop"
       role="presentation"
-      @click.self="chat.dismissDiaryText()"
+      @click.self="onEndChatBackdrop()"
     >
+      <!-- Confirm / progress / failure -->
       <section
+        v-if="!diaryPreviewOpen"
+        class="endchat-card"
+        data-material="popover"
+        role="dialog"
+        aria-modal="true"
+        aria-label="结束聊天"
+      >
+        <p class="endchat-title">{{ endChat.message }}</p>
+        <p v-if="endChat.detail" class="endchat-detail">{{ endChat.detail }}</p>
+        <div class="endchat-actions">
+          <template v-if="endChat.status === 'confirm'">
+            <button class="primary-btn" type="button" @click="chat.confirmEndChat()">确认结束并写日记</button>
+            <button class="ghost-btn" type="button" @click="chat.confirmEndChatWithoutDiary()">结束但不保存</button>
+            <button class="ghost-btn" type="button" @click="chat.closeEndChatDialog()">继续聊天</button>
+          </template>
+          <template v-else-if="endChat.status === 'generating'">
+            <button class="primary-btn" type="button" disabled aria-busy="true">正在生成日记…</button>
+          </template>
+          <template v-else>
+            <button class="primary-btn" type="button" @click="chat.exportDiaryArchive()">导出存档</button>
+            <button v-if="endChat.status === 'error'" class="ghost-btn" type="button" @click="chat.confirmEndChat()">重试</button>
+            <button class="ghost-btn" type="button" @click="chat.closeEndChatDialog()">关闭</button>
+          </template>
+        </div>
+      </section>
+
+      <!-- The freshly written diary, at a comfortable reading width -->
+      <section
+        v-else
         class="diary-preview-card"
         data-material="popover"
         role="dialog"

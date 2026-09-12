@@ -117,13 +117,19 @@ describe('constrained-device performance policy', () => {
     it('keeps mobile content and immersive controls inside the viewport', () => {
         const stage = source('assets/css/vue/pages/stage.css');
         const room = source('assets/css/vue/pages/room.css');
+        const responsive = source('src/frontend/styles/responsive.css');
         const accessPage = source('src/frontend/pages/AccessPage.vue');
         const accessStyles = source('assets/css/vue/pages/access.css');
         const attachments = source('src/frontend/pages/AttachmentsPage.vue');
 
         assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card\s*\{[^}]*height:\s*auto[^}]*flex-direction:\s*column-reverse/s);
         assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card-cover\s*\{[^}]*width:\s*100%[^}]*height:\s*clamp/s);
-        assert.match(room, /\.room-panel:not\(\.room-chat-panel\)/);
+        // Diary/profile/note opt out of the chat and music panels so each keeps
+        // its own phone layout. The positioning lives in the higher-priority
+        // ts-design layer, where the panels are centred above the bottom edge and
+        // capped so they never reach the weather pill.
+        assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*left:\s*50%\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
+        assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*max-height:[^}]*var\(--room-mobile-top-clearance\)/s);
         assert.match(room, /\.room-panel\.room-chat-panel\s*\{[^}]*left:\s*50%\s*!important[^}]*top:\s*auto\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
         assert.match(accessPage, /disablepictureinpicture/);
         assert.match(accessPage, /disableremoteplayback/);

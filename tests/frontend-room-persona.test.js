@@ -163,6 +163,30 @@ describe('room chat persona resolution', () => {
         assert.doesNotMatch(panel, /'八千代'/);
         assert.doesNotMatch(panel, /&#19982;&#36745;&#22812;&#23020;/);
     });
+
+    it('greets the imported persona on the room stage headline', () => {
+        const chat = source('src/frontend/composables/room/useRoomChat.js');
+        const stage = source('src/frontend/components/room/RoomStage.vue');
+        const page = source('src/frontend/pages/RoomPage.vue');
+        const state = source('src/frontend/composables/room/useRoomState.js');
+
+        // The composable resolves the stage name from a persona card OR an
+        // archive, and falls back to the built-in full name.
+        assert.match(chat, /export function roomStageCharacterName\(personaOrArchive\)/);
+        assert.match(chat, /export const BUILT_IN_CHARACTER_NAME = '\\u516b\\u5343\\u4ee3\\u8f89\\u591c\\u59ec';/);
+        assert.match(chat, /const persona = source\?\.data\?\.prompts \? activePersonaPrompt\(source\) : source;/);
+        assert.match(chat, /return name \|\| BUILT_IN_CHARACTER_NAME;/);
+
+        // The stage renders the prop instead of a constant heading.
+        assert.match(stage, /characterName: \{ type: String, default: '' \}/);
+        assert.match(stage, /const stageName = computed\(\(\) => String\(props\.characterName \|\| ''\)\.trim\(\) \|\| BUILT_IN_CHARACTER_NAME\)/);
+        assert.match(stage, /<h1>\{\{ stageName \}\}正在房间里等你<\/h1>/);
+        assert.doesNotMatch(stage, /&#20843;&#21315;&#20195;&#36745;&#22812;&#23020;/);
+
+        // The page wires the reactive name through, and state keeps it live.
+        assert.match(page, /<RoomStage :live2d="room\.live2d" :character-name="room\.stageCharacterName\.value" \/>/);
+        assert.match(state, /stageCharacterName: computed\(\(\) => roomStageCharacterName\(activePersonaPrompt\(diary\.archive\.value\)\)\)/);
+    });
 });
 
 describe('persona extraction from a backup fixture', () => {

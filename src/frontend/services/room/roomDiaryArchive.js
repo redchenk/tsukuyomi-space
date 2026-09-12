@@ -73,7 +73,8 @@ export function diaryTimestampLabel(date = new Date()) {
     : `${parts.year}年${parts.month}月${parts.day}日${parts.hour}点`;
 }
 
-const DEFAULT_PERSONA_PROMPT_ID = 'yachiyo-default';
+/** Id of the persona the archive ships with; a renamed one no longer matches. */
+export const DEFAULT_PERSONA_PROMPT_ID = 'yachiyo-default';
 
 export function defaultPersonaPrompt() {
   return {
@@ -258,6 +259,25 @@ export function readDiaryArchive() {
   return normalizeArchive(stored);
 }
 
+/**
+ * Fired after the archive is written so open room views can re-read the persona
+ * without a reload (the room stage headline follows the imported name).
+ */
+export const DIARY_ARCHIVE_UPDATED_EVENT = 'tsukuyomi:room-diary-archive-updated';
+
+function announceArchiveUpdate(archive) {
+  // Writing the archive must never fail because the host lacks CustomEvent
+  // (test sandboxes, very old browsers): the announcement is best-effort.
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+  if (typeof CustomEvent !== 'function') return;
+  try {
+    window.dispatchEvent(new CustomEvent(DIARY_ARCHIVE_UPDATED_EVENT, {
+      detail: { personaName: String(archive?.data?.prompts ? personaDisplayName(archive) : '').trim() }
+    }));
+  } catch (_) {
+    // A listener throwing must not roll back a successful archive write.
+  }
+}
 export function writeDiaryArchive(archive) {
   const normalized = normalizeArchive(archive);
   normalized.timestamp = Date.now();
@@ -268,6 +288,7 @@ export function writeDiaryArchive(archive) {
     .sort((a, b) => diarySortKey(a) - diarySortKey(b))
     .slice(-MAX_DIARY_ENTRIES);
   writeJson(diaryArchiveKey(), normalized);
+  announceArchiveUpdate(normalized);
   return normalized;
 }
 

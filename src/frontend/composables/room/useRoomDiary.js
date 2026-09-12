@@ -1,7 +1,8 @@
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
   activePersonaPrompt,
   clearDiaryArchive,
+  DIARY_ARCHIVE_UPDATED_EVENT,
   downloadDiaryArchive,
   importDiaryArchive,
   readDiaryArchive,
@@ -87,6 +88,17 @@ export function useRoomDiary() {
     notice.value = '存档已清空';
     return archive.value;
   }
+
+  /**
+   * Another view (Room settings) wrote the archive: re-read it so the persona
+   * name and entry list stay in sync without a page reload.
+   */
+  function onArchiveUpdated() {
+    refresh();
+  }
+
+  onMounted(() => window.addEventListener(DIARY_ARCHIVE_UPDATED_EVENT, onArchiveUpdated));
+  onBeforeUnmount(() => window.removeEventListener(DIARY_ARCHIVE_UPDATED_EVENT, onArchiveUpdated));
 
   refresh();
 

@@ -56,7 +56,8 @@ globalThis.__archive = {
     activePersonaPrompt, personaDisplayName, updatePersonaPrompt, parseDiaryArchive,
     serializeDiaryArchive, importDiaryArchive, clearDiaryArchive, diaryArchiveKey,
     archiveFileName, normalizeDiaryEntry, diaryDateParts, diaryTimestampLabel, nextSlotId,
-    latestDiaryEntry, defaultPersonaPrompt, diarySortKey
+    latestDiaryEntry, defaultPersonaPrompt, diarySortKey, DEFAULT_PERSONA_PROMPT_ID,
+    DIARY_ARCHIVE_UPDATED_EVENT
 };
 `);
     vm.runInNewContext(code, context, { filename: 'roomDiaryArchive.js' });
@@ -114,8 +115,17 @@ describe('room diary archive', () => {
         assert.equal(typeof fresh.data.gameData.characterSystemData.character.name, 'string');
     });
 
-    it('formats diary timestamps the way the reference backups do', () => {
+    it('fails the archive-write announcement only through a real window', () => {
         const { archive } = loadArchive();
+        // The room stage re-reads the persona from this event, so the writer
+        // must always announce. In the vm sandbox there is no window, which
+        // exercises the guard instead of throwing.
+        assert.equal(typeof archive.DIARY_ARCHIVE_UPDATED_EVENT, 'string');
+        assert.equal(archive.DIARY_ARCHIVE_UPDATED_EVENT, 'tsukuyomi:room-diary-archive-updated');
+        assert.doesNotThrow(() => archive.updatePersonaPrompt({ data: { name: '月见八千代' } }));
+    });
+
+    it('formats diary timestamps the way the reference backups do', () => {        const { archive } = loadArchive();
         const parts = archive.diaryDateParts(new Date(2026, 8, 3, 20, 51, 19));
 
         assert.equal(parts.date, '2026/9/3');
@@ -458,9 +468,12 @@ describe('room chat end-chat wiring', () => {
         assert.match(panel, /chat\.openEndChatDialog\(\)/);
         assert.match(panel, /chat\.confirmEndChat\(\)/);
         assert.match(panel, /chat\.closeEndChatDialog\(\)/);
-        // Confirm/progress/error render in-panel; a finished entry goes to the overlay.
-        assert.match(panel, /v-if="endChat\.visible && !diaryPreviewOpen"/);
-        assert.match(panel, /v-if="diaryPreviewOpen"/);
+        // Every end-chat state renders in the centred overlay.
+        assert.match(panel, /v-if="endChat\.visible"/);
+        assert.match(panel, /class="endchat-backdrop"/);
+        assert.match(panel, /v-if="!diaryPreviewOpen"/);
+        assert.match(panel, /class="endchat-card"/);
+        assert.match(panel, /class="diary-preview-card"/);
         assert.match(panel, /role="dialog"/);
     });
 

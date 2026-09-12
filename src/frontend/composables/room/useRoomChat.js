@@ -19,6 +19,8 @@ import { publishLocalRoomMemoryUpdate, startRoomMemorySync } from '../../service
 import {
   appendDiaryEntry,
   activePersonaPrompt,
+  DEFAULT_PERSONA_PROMPT_ID,
+  DIARY_ARCHIVE_UPDATED_EVENT,
   diaryTimestampLabel,
   downloadDiaryArchive,
   readDiaryArchive
@@ -280,6 +282,12 @@ function buildGptSovitsAudioUrl(text, settings) {
   return url.toString();
 }
 
+/** Full display name of the built-in character, used when no persona is set. */
+export const BUILT_IN_CHARACTER_NAME = '\u516b\u5343\u4ee3\u8f89\u591c\u59ec';
+
+/** Short name of the built-in persona shipped with the archive. */
+export const BUILT_IN_PERSONA_SHORT_NAME = '\u516b\u5343\u4ee3';
+
 /**
  * The role-playing half of the system prompt, used only when the diary archive
  * has no usable persona of its own. Once a persona is imported, this is dropped
@@ -331,6 +339,27 @@ export function roomCharacterName(persona) {
   const resolved = persona === undefined ? activePersonaPrompt(readDiaryArchive()) : persona;
   const name = String(resolved?.data?.name || '').trim();
   return name || '\u516b\u5343\u4ee3';
+}
+
+/**
+ * Display name for the room stage headline.
+ *
+ * Accepts either a persona card (as returned by `activePersonaPrompt`) or a whole
+ * archive, because the archive is what reactive room state usually holds. While
+ * the archive still holds the untouched built-in persona the stage keeps its
+ * original full name; any imported or renamed persona replaces it.
+ */
+export function roomStageCharacterName(personaOrArchive) {
+  const source = personaOrArchive === undefined ? readDiaryArchive() : personaOrArchive;
+  // An archive carries `data.prompts`; a persona card carries `data.name`.
+  const persona = source?.data?.prompts ? activePersonaPrompt(source) : source;
+  const name = String(persona?.data?.name || '').trim();
+  // `updatePersonaPrompt` keeps the built-in id when renaming, so the id alone
+  // is not enough: the untouched default is the id AND the original short name.
+  const isUntouchedBuiltIn = String(persona?.id || '') === DEFAULT_PERSONA_PROMPT_ID
+    && (!name || name === BUILT_IN_PERSONA_SHORT_NAME);
+  if (isUntouchedBuiltIn) return BUILT_IN_CHARACTER_NAME;
+  return name || BUILT_IN_CHARACTER_NAME;
 }
 
 /**
@@ -874,8 +903,7 @@ async function buildRoomContext(message, image, llmSettings) {
 
 export function useRoomChat({ live2d, world, diary = null }) {
   const stopRoomMemorySync = startRoomMemorySync();
-  const messages = ref([]);
-  const input = ref('');
+  const messages = ref([]);  const input = ref('');
   const sending = ref(false);
   const imageAttachment = ref(null);
   const messageListRef = ref(null);
@@ -883,6 +911,14 @@ export function useRoomChat({ live2d, world, diary = null }) {
   // Display name of whoever the archive says is speaking, so the transcript
   // labels (and panel title) follow the imported persona instead of a constant.
   const characterName = ref(roomCharacterName());
+  // Saving the persona in Room settings rewrites the archive; re-read the name
+  // so the transcript labels and the panel title follow the new character.
+  function onPersonaArchiveUpdated() {
+    characterName.value = roomCharacterName();
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener(DIARY_ARCHIVE_UPDATED_EVENT, onPersonaArchiveUpdated);
+  }
   let ttsUrl = '';
   let currentAudio = null;
   let ttsRequestId = 0;
@@ -1429,6 +1465,9 @@ export function useRoomChat({ live2d, world, diary = null }) {
     stopRoomConversationUpdates();
     stopRoomMemorySync();
     stopTTS();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener(DIARY_ARCHIVE_UPDATED_EVENT, onPersonaArchiveUpdated);
+    }
     if (ttsUrl) URL.revokeObjectURL(ttsUrl);
     ttsUrl = '';
   }

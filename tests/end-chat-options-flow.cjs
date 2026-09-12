@@ -98,32 +98,43 @@ check('the dialog is still closable and offers both endings', () => {
     assert.match(panel, /chat\.confirmEndChatWithoutDiary\(\)/);
 });
 
-console.log('\n=== fresh diary overlay ===');
+console.log('\n=== end-chat overlay ===');
 const roomCss = src('assets/css/vue/pages/room.css');
 
-check('the overlay is fixed, centred and above the room', () => {
-    const block = roomCss.slice(roomCss.indexOf('.diary-preview-backdrop {'), roomCss.indexOf('.diary-preview-backdrop {') + 320);
+check('every end-chat state is teleported to a centred overlay', () => {
+    assert.match(panel, /<Teleport to="body">/);
+    assert.match(panel, /v-if="endChat\.visible"/);
+    assert.match(panel, /class="endchat-backdrop"/);
+    // Nothing end-chat related may render inside the cramped panel body.
+    assert.doesNotMatch(panel, /class="chat-end-dialog"/);
+});
+
+check('the overlay is fixed, centred and clears the bottom dock', () => {
+    const block = roomCss.slice(roomCss.indexOf('.endchat-backdrop {'), roomCss.indexOf('.endchat-backdrop {') + 700);
     assert.match(block, /position: fixed;/);
     assert.match(block, /inset: 0;/);
     assert.match(block, /place-items: center;/);
-    assert.match(block, /z-index: 120;/);
+    assert.match(block, /z-index: 130;/);
+    // Padding reserves space so the card never lands under the dock.
+    assert.match(block, /padding-bottom:\s*max\(\s*clamp\([^)]*\)\s*,\s*calc\(env\(safe-area-inset-bottom\)/);
+    assert.match(block, /overflow-y: auto;/);
 });
 
-check('the card uses a comfortable reading width', () => {
+check('the confirm card is sized for a phone', () => {
+    const block = roomCss.slice(roomCss.indexOf('.endchat-card {'), roomCss.indexOf('.endchat-card {') + 420);
+    assert.match(block, /width: min\(24rem, 92vw\)/);
+});
+
+check('confirm shows the dialog card while a finished entry shows the diary', () => {
+    assert.match(panel, /const diaryPreviewOpen = computed\(\(\) => Boolean\(endChat\.value\.entry\) && endChat\.value\.status === 'done'\)/);
+    assert.match(panel, /v-if="!diaryPreviewOpen"[\s\S]*?class="endchat-card"/);
+    assert.match(panel, /v-else[\s\S]*?class="diary-preview-card"/);
+});
+
+check('the diary card uses a comfortable reading width', () => {
     const block = roomCss.slice(roomCss.indexOf('.diary-preview-card {'), roomCss.indexOf('.diary-preview-card {') + 420);
     assert.match(block, /width: min\(46rem, 92vw\)/);
     assert.match(block, /max-height: min\(80vh, 46rem\)/);
-});
-
-check('the overlay is teleported out of the chat panel', () => {
-    assert.match(panel, /<Teleport to="body">/);
-    assert.match(panel, /v-if="diaryPreviewOpen"/);
-});
-
-check('only a finished entry opens the overlay', () => {
-    assert.match(panel, /const diaryPreviewOpen = computed\(\(\) => Boolean\(endChat\.value\.entry\) && endChat\.value\.status === 'done'\)/);
-    // Confirm/progress/error must render inside the panel instead.
-    assert.match(panel, /v-if="endChat\.visible && !diaryPreviewOpen"/);
 });
 
 check('the overlay header shows the date, so the body strips it', () => {
@@ -132,11 +143,14 @@ check('the overlay header shows the date, so the body strips it', () => {
     assert.match(panel, /replace\(\/\\s\*【日记书写时间为\[\^】\]\*】\\s\*\$\/u, ''\)/);
 });
 
-check('escape and the backdrop both close the overlay', () => {
+check('escape and the backdrop both dismiss the overlay', () => {
     assert.match(panel, /function closePreviewOnEscape\(event\)/);
     assert.match(panel, /addEventListener\('keydown', closePreviewOnEscape\)/);
     assert.match(panel, /removeEventListener\('keydown', closePreviewOnEscape\)/);
-    assert.match(panel, /@click\.self="chat\.dismissDiaryText\(\)"/);
+    assert.match(panel, /@click\.self="onEndChatBackdrop\(\)"/);
+    assert.match(panel, /function onEndChatBackdrop\(\)/);
+    // The generating step must not be cancellable from the backdrop.
+    assert.match(panel, /if \(endChat\.value\.status === 'generating'\) return;/);
 });
 
 check('the overlay can reopen the diary book', () => {
@@ -150,11 +164,32 @@ check('the overlay can reopen the diary book', () => {
     assert.match(panels, /openPanel,/);
 });
 
-check('narrow screens make the overlay near full-screen', () => {
+check('narrow screens keep the overlay fully reachable', () => {
     const responsive = src('src/frontend/styles/responsive.css');
-    const idx = responsive.indexOf('.diary-preview-card {', responsive.indexOf('.room-diary-panel {'));
+    const idx = responsive.indexOf('.endchat-backdrop {', responsive.indexOf('.room-diary-panel {'));
     assert.ok(idx > -1, 'mobile overlay rule must exist');
-    assert.match(responsive.slice(idx, idx + 220), /width: min\(100%, 46rem\)/);
+    const block = responsive.slice(idx, idx + 400);
+    // Must reserve space for the dock and stack the actions full width.
+    assert.match(block, /padding-bottom:\s*max\(/);
+    assert.match(responsive.slice(idx, idx + 1200), /\.endchat-actions \.primary-btn,[\s\S]*?width: 100%;/);
+    const diaryIdx = responsive.indexOf('.diary-preview-card {', idx);
+    assert.match(responsive.slice(diaryIdx, diaryIdx + 220), /width: min\(100%, 46rem\)/);
+});
+
+console.log('\n=== mobile dock ===');
+
+check('every dock button renders on phones, not just the last one', () => {
+    const responsive = src('src/frontend/styles/responsive.css');
+    const idx = responsive.indexOf('.room-shell .room-dock {', responsive.indexOf('.room-chat-panel .chat-input-row .panel-btn'));
+    assert.ok(idx > -1, 'mobile dock rule must exist');
+    const block = responsive.slice(idx, idx + 2600);
+    // The old rule hid every button except :last-child (the settings button).
+    assert.doesNotMatch(block, /\.panel-toggle-btn \{[\s\S]{0,220}?display: none;/);
+    assert.match(block, /\.room-shell \.panel-toggle-btn \{[\s\S]*?display: flex;/);
+    assert.match(block, /\.room-shell \.dock-icon \{[\s\S]*?display: grid;/);
+    // Labels must be readable rather than clipped away.
+    assert.match(block, /\.room-shell \.dock-label \{[\s\S]*?position: static;/);
+    assert.match(block, /\.room-shell \.dock-label \{[\s\S]*?clip: auto;/);
 });
 
 console.log('\n=== panel sizing ===');
