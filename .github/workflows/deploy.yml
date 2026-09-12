@@ -10,7 +10,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  deployment-targets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate domestic and overseas server configuration
+        env:
+          DOMESTIC_SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          OVERSEAS_SERVER_HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
+        run: |
+          test -n "$DOMESTIC_SERVER_HOST" || { echo "SERVER_HOST is not configured" >&2; exit 1; }
+          test -n "$OVERSEAS_SERVER_HOST" || { echo "OVERSEAS_SERVER_HOST is not configured" >&2; exit 1; }
+
   check:
+    needs: deployment-targets
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -71,14 +83,25 @@ jobs:
           fi
           git bundle verify "$bundle"
 
-      - name: Upload domestic and overseas frontends
+      - name: Upload domestic frontend
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: deployment-artifacts
+          source: deployment-artifacts/domestic
+          target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}
+          overwrite: true
+
+      - name: Upload overseas frontend
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || secrets.SERVER_USER }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY || secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 29687 }}
+          source: deployment-artifacts/overseas
           target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}
           overwrite: true
 
@@ -93,7 +116,21 @@ jobs:
           target: /tmp
           overwrite: true
 
-      - name: Deploy via SSH
+      - name: Validate overseas deployment target
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || secrets.SERVER_USER }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY || secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 29687 }}
+          script: |
+            set -e
+            overseas=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}/deployment-artifacts/overseas
+            overseas_root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
+            test -f "$overseas/index.html" || { echo "Overseas frontend artifact is missing" >&2; exit 1; }
+            test -d "$overseas_root" || { echo "Overseas frontend directory is missing" >&2; exit 1; }
+
+      - name: Deploy domestic site via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -105,42 +142,39 @@ jobs:
             app=/var/www/tsukuyomi-space
             bundle=/tmp/tsukuyomi-deployment-${{ github.run_id }}.bundle
             prebuilt=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}
-            artifact_root="$prebuilt/deployment-artifacts"
-            if [ ! -f "$artifact_root/domestic/index.html" ] && [ -f "$prebuilt/domestic/index.html" ]; then
-              artifact_root="$prebuilt"
-            fi
-            domestic="$artifact_root/domestic"
-            overseas="$artifact_root/overseas"
-            overseas_container=
-            overseas_index=
-            for candidate in $(docker ps --format '{{.Names}}' | awk '/^1Panel-openresty-/'); do
-              candidate_index="$(docker exec "$candidate" find /www/sites -maxdepth 5 -type f -path '*/tsukuyomi-space.com/*' -name index.html -print -quit 2>/dev/null || true)"
-              if [ -n "$candidate_index" ]; then
-                overseas_container="$candidate"
-                overseas_index="$candidate_index"
-                break
-              fi
-            done
-            overseas_root="${overseas_index%/index.html}"
+            domestic="$prebuilt/deployment-artifacts/domestic"
             case "$prebuilt" in
               /tmp/tsukuyomi-prebuilt-[0-9]*) ;;
               *) echo "Invalid prebuilt path" >&2; exit 1 ;;
             esac
             trap 'rm -f "$bundle"; rm -rf -- "$prebuilt"' EXIT
             test -d "$app" || { echo "Application directory is missing" >&2; exit 1; }
-            test -n "$overseas_container" || { echo "Running 1Panel OpenResty container is missing" >&2; exit 1; }
-            case "$overseas_root" in
-              /www/sites/tsukuyomi-space.com/*) ;;
-              *) echo "Invalid overseas frontend directory" >&2; exit 1 ;;
-            esac
-            docker exec "$overseas_container" test -d "$overseas_root" || { echo "Overseas frontend directory is missing in OpenResty" >&2; exit 1; }
             test -f "$domestic/index.html" || { echo "Domestic frontend artifact is missing" >&2; exit 1; }
-            test -f "$overseas/index.html" || { echo "Overseas frontend artifact is missing" >&2; exit 1; }
             cd "$app"
             git fetch "$bundle" refs/heads/codex-deploy
             test "$(git rev-parse FETCH_HEAD)" = "${{ github.sha }}"
             git -c core.hooksPath=/dev/null merge --ff-only FETCH_HEAD
             install -d -m 0755 "$app/dist/frontend"
             cp -a "$domestic/." "$app/dist/frontend/"
-            docker cp "$overseas/." "$overseas_container:$overseas_root/"
             INSTALL_NGINX_CONFIG=true HARDEN_OPENRESTY_ORIGIN=true bash deploy/deploy.sh
+
+      - name: Deploy overseas site via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || secrets.SERVER_USER }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY || secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 29687 }}
+          script: |
+            set -e
+            prebuilt=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}
+            overseas="$prebuilt/deployment-artifacts/overseas"
+            overseas_root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
+            case "$prebuilt" in
+              /tmp/tsukuyomi-prebuilt-[0-9]*) ;;
+              *) echo "Invalid prebuilt path" >&2; exit 1 ;;
+            esac
+            trap 'rm -rf -- "$prebuilt"' EXIT
+            test -f "$overseas/index.html" || { echo "Overseas frontend artifact is missing" >&2; exit 1; }
+            test -d "$overseas_root" || { echo "Overseas frontend directory is missing" >&2; exit 1; }
+            cp -a "$overseas/." "$overseas_root/"

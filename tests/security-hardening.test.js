@@ -406,11 +406,13 @@ describe('deployment privilege boundary', () => {
         assert.match(workflow, /path: deployment-artifacts/);
         assert.doesNotMatch(workflow, /npm run build:live2d/);
         assert.doesNotMatch(workflow, /source: [^\n]*lib\/bundled/);
+        assert.match(workflow, /OVERSEAS_SERVER_HOST is not configured/);
+        assert.match(workflow, /host: \$\{\{ secrets\.OVERSEAS_SERVER_HOST \}\}/);
+        assert.match(workflow, /source: deployment-artifacts\/domestic/);
+        assert.match(workflow, /source: deployment-artifacts\/overseas/);
         assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$domestic\/\." "\$app\/dist\/frontend\/"/);
-        assert.match(workflow, /find \/www\/sites -maxdepth 5 -type f -path '\*\/tsukuyomi-space\.com\/\*' -name index\.html -print -quit/);
-        assert.match(workflow, /\/www\/sites\/tsukuyomi-space\.com\/\*/);
-        assert.match(workflow, /docker exec "\$overseas_container" test -d "\$overseas_root"/);
-        assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*docker cp "\$overseas\/\." "\$overseas_container:\$overseas_root\/"/);
+        assert.match(workflow, /overseas_root=\/opt\/1panel\/www\/sites\/tsukuyomi-space\.com\/frontend/);
+        assert.match(workflow, /test -d "\$overseas_root"[\s\S]*cp -a "\$overseas\/\." "\$overseas_root\/"/);
     });
 
     it('updates the Nginx configuration that the host actually includes', () => {
