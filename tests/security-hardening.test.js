@@ -400,11 +400,14 @@ describe('deployment privilege boundary', () => {
         assert.match(compose, /MINIO_ACCESS_KEY_ID: \$\{MILVUS_MINIO_ACCESS_KEY:/);
     });
 
-    it('stages prebuilt files outside the Git worktree before merging', () => {
+    it('stages only the two prebuilt frontends outside the Git worktree before merging', () => {
         const workflow = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'deploy.yml'), 'utf8');
         assert.match(workflow, /target: \/tmp\/tsukuyomi-prebuilt-\$\{\{ github\.run_id \}\}/);
-        assert.match(workflow, /git restore --worktree -- lib\/bundled\/live2d-room-neuro-live\.iife\.js[\s\S]*git .*merge --ff-only FETCH_HEAD/);
-        assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$prebuilt\/dist\/\." "\$app\/dist\/"/);
+        assert.match(workflow, /path: deployment-artifacts/);
+        assert.doesNotMatch(workflow, /npm run build:live2d/);
+        assert.doesNotMatch(workflow, /source: [^\n]*lib\/bundled/);
+        assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$domestic\/\." "\$app\/dist\/frontend\/"/);
+        assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$overseas\/\." "\$overseas_root\/"/);
     });
 
     it('updates the Nginx configuration that the host actually includes', () => {
