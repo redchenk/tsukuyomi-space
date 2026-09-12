@@ -157,6 +157,89 @@
     color: #ff7a9c;
 }
 
+.notifications-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.25rem 0.15rem;
+}
+
+.notifications-page-summary {
+    color: var(--ts-muted);
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.notifications-page-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.notifications-page-button,
+.notifications-page-gap {
+    min-width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.notifications-page-button {
+    gap: 0.35rem;
+    padding: 0 0.7rem;
+    border: 1px solid var(--ts-border);
+    color: var(--ts-text);
+    background: color-mix(in srgb, var(--ts-surface), transparent 25%);
+    cursor: pointer;
+    transition:
+        color var(--ts-motion-fast) ease,
+        border-color var(--ts-motion-fast) ease,
+        background var(--ts-motion-fast) ease,
+        transform var(--ts-motion-fast) ease;
+}
+
+.notifications-page-button:not(:disabled):hover {
+    color: var(--ts-text-strong);
+    border-color: var(--ts-border-strong);
+    background: var(--ts-card-hover);
+    transform: translateY(-1px);
+}
+
+.notifications-page-button.active {
+    color: #fff;
+    border-color: transparent;
+    background: linear-gradient(135deg, #637cf0, #d85aa5);
+    box-shadow: var(--ts-shadow-accent);
+}
+
+.notifications-page-button:focus-visible {
+    outline: 2px solid var(--ts-cyan);
+    outline-offset: 2px;
+}
+
+.notifications-page-button:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+
+.notifications-page-nav {
+    min-width: auto;
+}
+
+.notifications-page-gap {
+    min-width: 24px;
+    color: var(--ts-muted);
+}
+
 @media (max-width: 620px) {
     .notifications-hero {
         display: grid;
@@ -179,5 +262,25 @@
     .notification-head {
         display: grid;
         gap: 0.25rem;
+    }
+
+    .notifications-pagination {
+        display: grid;
+        justify-items: center;
+    }
+
+    .notifications-page-controls {
+        justify-content: center;
+    }
+
+    .notifications-page-button,
+    .notifications-page-gap {
+        min-width: 36px;
+        height: 36px;
+        padding: 0 0.55rem;
+    }
+
+    .notifications-page-nav span {
+        display: none;
     }
 }

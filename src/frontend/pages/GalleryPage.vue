@@ -2,17 +2,30 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
+import UserLevelBadge from '../components/UserLevelBadge.vue';
+import { useUserLevels } from '../composables/useUserLevels';
 import { compressImage } from '../utils/image';
+import { applyGrowthResult } from '../services/userGrowth';
+import { isEnglishSite } from '../utils/siteVariant';
 
 const emit = defineEmits(['go']);
 const props = defineProps({
-  routeName: { type: String, default: '' }
+  routeName: { type: String, default: '' },
+  lang: { type: String, default: 'zh' }
 });
+const englishSite = isEnglishSite();
+const siteLanguage = computed(() => englishSite ? 'en' : props.lang);
+const { hydrateUserLevels, userLevel } = useUserLevels();
 const fileInput = ref(null);
+const galleryMainRef = ref(null);
 const session = ref(getSession());
 let randomFeatureTimer = 0;
 let randomFeatureTransitionTimer = 0;
 let randomFeatureRequestId = 0;
+let randomFeatureObserver = null;
+let randomFeatureVisible = true;
+
+const RANDOM_FEATURE_INTERVAL_MS = 30000;
 
 const state = reactive({
   loading: true,
@@ -70,6 +83,7 @@ function handleImageError(event, asset) {
 
 function imageTitle(asset) {
   const date = imageDate(asset);
+  if (englishSite) return date ? `Gallery image · ${date}` : 'Gallery image';
   return date ? `图库影像 · ${date}` : '图库影像';
 }
 
@@ -156,6 +170,7 @@ async function loadLatestImage() {
     const result = await parseResponse(response);
     const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
     state.latest = assets[0] || null;
+    await hydrateUserLevels(assets.map((asset) => asset.owner_id)).catch(() => {});
   } catch (_) {
     state.latest = null;
   }
@@ -169,7 +184,10 @@ async function loadRandomFeatureImage() {
     });
     const result = await parseResponse(response);
     const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
+    await hydrateUserLevels(assets.map((asset) => asset.owner_id)).catch(() => {});
     const nextAsset = assets[0] || null;
+    if (requestId !== randomFeatureRequestId) return;
+    if (nextAsset) await preloadImage(imageUrl(nextAsset));
     if (requestId !== randomFeatureRequestId) return;
     if (!state.randomFeatured || !nextAsset || state.randomFeatured.id === nextAsset.id) {
       state.randomFeatured = nextAsset;
@@ -188,6 +206,54 @@ async function loadRandomFeatureImage() {
     state.randomFeatured = null;
     state.randomFeatureFading = false;
   }
+}
+
+function preloadImage(url) {
+  if (!url || typeof Image !== 'function') return Promise.resolve();
+  return new Promise((resolve) => {
+    const image = new Image();
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      resolve();
+    };
+    const timeoutId = window.setTimeout(finish, 8000);
+    image.onload = async () => {
+      try {
+        await image.decode?.();
+      } catch (_) {
+        // A decoded network image is still usable when decode() is unavailable.
+      }
+      finish();
+    };
+    image.onerror = finish;
+    image.src = url;
+  });
+}
+
+function stopRandomFeatureRotation() {
+  if (randomFeatureTimer) window.clearInterval(randomFeatureTimer);
+  randomFeatureTimer = 0;
+}
+
+function startRandomFeatureRotation() {
+  stopRandomFeatureRotation();
+  if (
+    isManageMode.value ||
+    document.visibilityState !== 'visible' ||
+    !randomFeatureVisible
+  ) return;
+  randomFeatureTimer = window.setInterval(() => {
+    if (document.visibilityState === 'visible' && randomFeatureVisible) {
+      loadRandomFeatureImage();
+    }
+  }, RANDOM_FEATURE_INTERVAL_MS);
+}
+
+function handleGalleryVisibility() {
+  startRandomFeatureRotation();
 }
 
 async function loadImages(page = 1) {
@@ -219,6 +285,7 @@ async function loadImages(page = 1) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '图库读取失败');
     state.images = result.data?.assets || [];
+    await hydrateUserLevels(state.images.map((asset) => asset.owner_id)).catch(() => {});
     state.page = result.data?.pagination?.page || 1;
     state.totalPages = result.data?.pagination?.totalPages || 1;
     state.total = result.data?.pagination?.total || state.images.length;
@@ -264,6 +331,7 @@ async function uploadFile(file) {
     state.uploadPhase = '正在整理图库...';
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '图片上传失败');
+    if (result.growth) applyGrowthResult(result.growth);
     state.uploadProgress = 100;
     showMessage('图片已加入图库');
     await Promise.all([loadLatestImage(), loadRandomFeatureImage()]);
@@ -341,13 +409,27 @@ onMounted(() => {
   session.value = getSession();
   loadLatestImage();
   loadRandomFeatureImage();
-  randomFeatureTimer = window.setInterval(loadRandomFeatureImage, 7000);
   loadImages();
+  document.addEventListener('visibilitychange', handleGalleryVisibility, { passive: true });
+  if (typeof IntersectionObserver === 'function' && galleryMainRef.value) {
+    randomFeatureObserver = new IntersectionObserver((entries) => {
+      randomFeatureVisible = entries.some((entry) => entry.isIntersecting);
+      startRandomFeatureRotation();
+    }, {
+      rootMargin: '500px 0px',
+      threshold: 0.01
+    });
+    randomFeatureObserver.observe(galleryMainRef.value);
+  }
+  startRandomFeatureRotation();
 });
 
 onUnmounted(() => {
-  if (randomFeatureTimer) window.clearInterval(randomFeatureTimer);
+  stopRandomFeatureRotation();
   if (randomFeatureTransitionTimer) window.clearTimeout(randomFeatureTransitionTimer);
+  document.removeEventListener('visibilitychange', handleGalleryVisibility);
+  randomFeatureObserver?.disconnect();
+  randomFeatureObserver = null;
 });
 </script>
 
@@ -364,7 +446,7 @@ onUnmounted(() => {
     </section>
 
     <template v-else>
-      <section class="gallery-main">
+      <section ref="galleryMainRef" class="gallery-main">
         <header class="gallery-hero" :class="{ 'gallery-hero-manage': isManageMode }" :style="{ '--gallery-hero-image': `url(${heroImage})` }">
           <div class="gallery-breadcrumb">首页 / 图库</div>
           <h1>图库</h1>
@@ -465,6 +547,7 @@ onUnmounted(() => {
                 >
               </span>
               <span class="gallery-uploader-name">{{ uploaderName(randomFeatureImage) }}</span>
+              <UserLevelBadge v-if="randomFeatureImage.owner_id" :level="userLevel(randomFeatureImage.owner_id)" :lang="siteLanguage" compact :show-title="false" />
             </a>
             <span v-else class="gallery-uploader gallery-feature-uploader gallery-uploader-static">
               <span class="gallery-uploader-avatar" aria-hidden="true">
@@ -518,6 +601,7 @@ onUnmounted(() => {
                   >
                 </span>
                 <span class="gallery-uploader-name">{{ uploaderName(asset) }}</span>
+                <UserLevelBadge v-if="asset.owner_id" :level="userLevel(asset.owner_id)" :lang="siteLanguage" compact :show-title="false" />
               </a>
               <span v-else class="gallery-uploader gallery-uploader-static">
                 <span class="gallery-uploader-avatar" aria-hidden="true">
@@ -621,6 +705,7 @@ onUnmounted(() => {
                   >
                 </span>
                 <span class="gallery-uploader-name">{{ uploaderName(state.selected) }}</span>
+                <UserLevelBadge v-if="state.selected.owner_id" :level="userLevel(state.selected.owner_id)" :lang="siteLanguage" compact :show-title="false" />
               </a>
               <span v-else class="gallery-uploader gallery-lightbox-uploader gallery-uploader-static">
                 <span class="gallery-uploader-avatar" aria-hidden="true">

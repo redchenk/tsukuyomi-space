@@ -1,7 +1,7 @@
-﻿const { spawn } = require('node:child_process');
+const { spawn } = require('node:child_process');
 
 const isWindows = process.platform === 'win32';
-const npmCommand = 'pnpm';
+const npmCommand = 'npm';
 
 const processes = [
     {
@@ -60,7 +60,6 @@ function stopAll(exitCode = 0) {
 for (const item of processes) {
     const child = spawn(item.command, item.args, {
         env: {
-            PATH: (process.env.PATH || '') + ';C:\\Users\\停云\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin;C:\\Users\\停云\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\bin\\fallback',
             ...process.env,
             FORCE_COLOR: process.env.FORCE_COLOR || '1'
         },

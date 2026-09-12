@@ -1,0 +1,30 @@
+[Unit]
+Description=Tsukuyomi Space offline English translation service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/tsukuyomi-translation
+Environment=PYTHONUNBUFFERED=1
+Environment=ARGOS_DEVICE_TYPE=cpu
+Environment=XDG_DATA_HOME=/opt/tsukuyomi-translation/data
+Environment=XDG_CACHE_HOME=/opt/tsukuyomi-translation/cache
+Environment=XDG_CONFIG_HOME=/opt/tsukuyomi-translation/cache/config
+Environment=TSUKUYOMI_TRANSLATION_DB=/opt/tsukuyomi-translation/cache/translations.sqlite3
+ExecStart=/opt/tsukuyomi-translation/venv/bin/python /opt/tsukuyomi-translation/service.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/tsukuyomi-translation/cache /opt/tsukuyomi-translation/data
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+MemoryDenyWriteExecute=false
+
+[Install]
+WantedBy=multi-user.target

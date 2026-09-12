@@ -1,3 +1,4 @@
+import { apiFetch } from '../../api/client';
 import { readJson } from './roomStorage';
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
 import { activePersonaPrompt, diaryTimestampLabel } from './roomDiaryArchive';
@@ -272,6 +273,7 @@ export function diarySettings() {
 }
 
 export function isDiaryGenerationConfigured(settings = diarySettings()) {
+  if (settings.useProxy) return true;
   if (settings.useLocalOllama) return Boolean(settings.apiUrl);
   return Boolean(settings.apiUrl && settings.apiKey);
 }
@@ -284,7 +286,8 @@ export function isDiaryGenerationConfigured(settings = diarySettings()) {
 export async function generateDiaryEntry(turns, {
   persona = activePersonaPrompt(),
   now = new Date(),
-  fetchImpl = fetchWithLocalOllamaGuidance
+  fetchImpl = fetchWithLocalOllamaGuidance,
+  fetchProxy = (...args) => apiFetch(...args)
 } = {}) {
   const conversation = normalizeDiaryConversation(turns);
   if (!conversation.length) throw new Error('本次没有可记录的对话内容。');
@@ -301,23 +304,31 @@ export async function generateDiaryEntry(turns, {
 
   let reply = '';
   if (settings.useProxy && !settings.useLocalOllama) {
-    throw new Error('服务器代理模式暂不支持生成日记，请在 Room 设置中改用浏览器直连或本机 Ollama。');
+    const response = await fetchProxy('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userPrompt, conversation: [], systemPrompt,
+        apiUrl: settings.apiUrl, apiKey: settings.apiKey, model: settings.model })
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.message || '日记代理请求失败');
+    reply = pickReply(result.data);
+  } else {
+    const requestBody = makeDiaryRequestBody({
+      settings,
+      apiUrl: settings.apiUrl,
+      model: settings.model,
+      systemPrompt,
+      userPrompt
+    });
+    const response = await fetchImpl(settings.apiUrl, {
+      method: 'POST',
+      headers: chatRequestHeaders(settings.apiUrl, settings.apiKey),
+      body: JSON.stringify(requestBody)
+    });
+    if (!response.ok) throw new Error(`日记生成失败：LLM ${response.status}`);
+    reply = pickReply(await response.json());
   }
-
-  const requestBody = makeDiaryRequestBody({
-    settings,
-    apiUrl: settings.apiUrl,
-    model: settings.model,
-    systemPrompt,
-    userPrompt
-  });
-  const response = await fetchImpl(settings.apiUrl, {
-    method: 'POST',
-    headers: chatRequestHeaders(settings.apiUrl, settings.apiKey),
-    body: JSON.stringify(requestBody)
-  });
-  if (!response.ok) throw new Error(`日记生成失败：LLM ${response.status}`);
-  reply = pickReply(await response.json());
 
   const content = cleanDiaryContent(reply);
   if (content.length < DIARY_MIN_CONTENT_LENGTH) {

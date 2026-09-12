@@ -176,7 +176,7 @@ html body .page :where(.stage-card, .article-card, .gallery-card, .gallery-tile,
 }
 
 /* ---- 7. Empty states: one shared visual language ---- */
-.page :where([class*="-empty"]) {
+.page :where(.admin-empty, .arena-empty, .article-empty, .attachments-empty, .friend-link-empty, .gallery-empty, .growth-empty, .notifications-empty, .plaza-empty, .plaza-topic-empty, .terminal-empty, .uc-empty, .profile-empty) {
     padding: clamp(1.7rem, 4vw, 2.7rem) 1.2rem;
     border: 1px dashed color-mix(in srgb, var(--ts-border-strong), transparent 20%);
     border-radius: var(--ts-radius-lg);

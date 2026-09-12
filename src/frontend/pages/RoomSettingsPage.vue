@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { cloneKnowledgeEntry, defaultKnowledgeEntries } from '../constants/room/knowledgeEntries';
@@ -14,7 +14,14 @@ import {
   localOllamaWindowsCommand,
   normalizeLocalOllamaBaseUrl
 } from '../services/room/localOllamaTransport';
+import {
+  describeAudioPlaybackError,
+  prepareAsyncAudioSource,
+  primeAsyncAudioPlayback,
+  releaseAsyncAudioPlayback
+} from '../services/room/audioPlayback';
 import { refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
+import { requestTtsAudioBlob } from '../services/room/ttsTransport';
 import {
   activePersonaPrompt,
   clearDiaryArchive,
@@ -148,6 +155,7 @@ const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
 const toast = reactive({ text: '', visible: false });
 const modelSaveNotice = reactive({ visible: false, text: '', detail: '' });
 const testDialog = reactive({ visible: false, target: '', status: 'idle', title: '', message: '', detail: '' });
+let ttsTestPlayback = null;
 const memoryCount = ref(0);
 const memoryList = ref([]);
 const memoryLoading = ref(false);
@@ -195,6 +203,8 @@ const knowledge = reactive({
   editingId: null,
   draft: { title: '', content: '', tags: '', enabled: true }
 });
+const knowledgeEditor = ref(null);
+const knowledgeTitleInput = ref(null);
 const mcp = reactive({
   enabled: false,
   provider: 'custom',
@@ -839,50 +849,6 @@ function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiU
   return body;
 }
 
-function pickAudioBase64(data) {
-  return data?.choices?.[0]?.message?.audio?.data
-    || data?.choices?.[0]?.message?.audio
-    || data?.audio?.data
-    || data?.data?.audio;
-}
-
-function makeAudioBlobFromBase64(base64, type) {
-  const raw = atob(String(base64 || ''));
-  const bytes = new Uint8Array(raw.length);
-  for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
-  return new Blob([bytes], { type });
-}
-
-function makeAudioBlobFromEncoded(value, type) {
-  const text = String(value || '').trim();
-  if (/^[0-9a-f]+$/i.test(text) && text.length % 2 === 0) {
-    const bytes = new Uint8Array(text.length / 2);
-    for (let index = 0; index < bytes.length; index += 1) {
-      bytes[index] = parseInt(text.slice(index * 2, index * 2 + 2), 16);
-    }
-    return new Blob([bytes], { type });
-  }
-  return makeAudioBlobFromBase64(text, type);
-}
-
-function detectTtsLanguage(text, textLang) {
-  const configured = normalizeGptSovitsLang(textLang, '');
-  if (configured && configured !== 'auto') return configured;
-  const value = String(text || '');
-  if (/[\u3040-\u30ff]/u.test(value)) return 'ja';
-  if (/[\uac00-\ud7af]/u.test(value)) return 'ko';
-  if (/[\u4e00-\u9fff]/u.test(value)) return 'zh';
-  return 'en';
-}
-
-function ttsReadInstruction(text, textLang) {
-  const lang = detectTtsLanguage(text, textLang);
-  if (lang === 'ja') return '以下の日本語テキストだけを、柔らかく自然な声で朗読してください。説明、翻訳、括弧内の動作指示、舞台指示は読まないでください。';
-  if (lang === 'en') return 'Read only the following English text in a soft, natural voice. Do not read explanations, translations, action cues, or stage directions.';
-  if (lang === 'ko') return '다음 한국어 텍스트만 부드럽고 자연스러운 목소리로 읽어 주세요. 설명, 번역, 괄호 안의 동작 지시나 무대 지시는 읽지 마세요.';
-  return '只朗读下面的中文文本，语气温柔自然。不要翻译，不要解释，不要读括号里的动作提示或舞台提示。';
-}
-
 function defaultTtsUrl(provider) {
   if (provider === 'openai' || provider === 'openai-compatible') return 'https://api.openai.com/v1/audio/speech';
   if (provider === 'elevenlabs') return 'https://api.elevenlabs.io/v1/text-to-speech';
@@ -977,23 +943,6 @@ function chatRequestHeaders(apiUrl, apiKey, modelName = llm.model) {
   };
 }
 
-function minimaxLanguageBoost(textLang) {
-  const lang = normalizeGptSovitsLang(textLang, 'ja');
-  const values = {
-    ja: 'Japanese',
-    all_ja: 'Japanese',
-    en: 'English',
-    zh: 'Chinese',
-    all_zh: 'Chinese',
-    yue: 'Chinese,Yue',
-    all_yue: 'Chinese,Yue',
-    auto_yue: 'Chinese,Yue',
-    ko: 'Korean',
-    auto: 'auto'
-  };
-  return values[lang] || 'Japanese';
-}
-
 function detectGptSovitsTextLang(text) {
   const value = String(text || '');
   if (/[\u3040-\u30ff]/u.test(value)) return 'ja';
@@ -1029,95 +978,6 @@ function gptSovitsTestText(settings) {
   if (lang === 'en') return 'Hello, I am Tsukimi Yachiyo. The moonlight feels gentle tonight.';
   if (lang === 'ko') return '안녕하세요, 저는 츠키미 야치요입니다. 오늘 밤 달빛도 참 부드럽네요.';
   return '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
-}
-
-function buildTtsRequest(text, settings) {
-  const provider = settings.provider || 'mimo';
-  const apiUrl = settings.apiUrl || defaultTtsUrl(provider);
-  const voice = settings.voice || (provider === 'minimax' ? MINIMAX_DEFAULT_VOICE_ID : provider === 'openai' || provider === 'openai-compatible' ? 'alloy' : 'mimo_default');
-  if (provider === 'gpt-sovits') {
-    return {
-      apiUrl,
-      options: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: String(text),
-          text_lang: resolveGptSovitsTextLang(text, settings),
-          ref_audio_path: normalizeGptSovitsRefAudioPath(settings.refAudioPath || settings.voice),
-          prompt_text: settings.promptText || '',
-          prompt_lang: normalizeGptSovitsLang(settings.promptLang, 'ja'),
-          text_split_method: 'cut5',
-          batch_size: 1,
-          media_type: 'wav',
-          streaming_mode: false,
-          parallel_infer: true
-        })
-      }
-    };
-  }
-  if (provider === 'mimo' || /xiaomimimo/i.test(apiUrl)) {
-    return {
-      apiUrl,
-      jsonAudioType: 'audio/wav',
-      options: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'api-key': settings.apiKey },
-        body: JSON.stringify({
-          model: settings.model || 'mimo-v2.5-tts',
-          messages: [
-            { role: 'user', content: ttsReadInstruction(text, settings.textLang) },
-            { role: 'assistant', content: String(text) }
-          ],
-          modalities: ['audio'],
-          audio: { format: 'wav', voice }
-        })
-      }
-    };
-  }
-  if (provider === 'elevenlabs') {
-    const baseUrl = apiUrl.replace(/\/$/, '');
-    const finalUrl = /\/text-to-speech\/[^/]+/i.test(baseUrl) ? baseUrl : `${baseUrl}/${encodeURIComponent(voice || '21m00Tcm4TlvDq8ikWAM')}`;
-    return {
-      apiUrl: finalUrl,
-      options: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'xi-api-key': settings.apiKey },
-        body: JSON.stringify({ text: String(text), model_id: settings.model || 'eleven_multilingual_v2' })
-      }
-    };
-  }
-  if (provider === 'minimax') {
-    return {
-      apiUrl,
-      jsonAudioType: 'audio/mp3',
-      options: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
-        body: JSON.stringify({
-          model: settings.model || 'speech-2.8-hd',
-          text: String(text),
-          stream: false,
-          language_boost: minimaxLanguageBoost(settings.textLang || 'ja'),
-          voice_setting: { voice_id: voice || MINIMAX_DEFAULT_VOICE_ID, speed: 1, vol: 1, pitch: 0 },
-          audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 }
-        })
-      }
-    };
-  }
-  return {
-    apiUrl,
-    options: {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
-      body: JSON.stringify({
-        model: settings.model || 'tts-1',
-        input: String(text),
-        voice,
-        response_format: 'mp3'
-      })
-    }
-  };
 }
 
 function openMemoryDb() {
@@ -1464,6 +1324,17 @@ function applySetupTtsProvider(provider) {
   tts.enabled = true;
 }
 
+function moveToSetupStep(step, message) {
+  setupStep.value = step;
+  if (message) showToast(message);
+  nextTick(() => {
+    const revealStep = () => {
+      document.querySelector('.room-setup-card')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    };
+    window.requestAnimationFrame(() => window.requestAnimationFrame(revealStep));
+  });
+}
+
 function saveSetupStep() {
   if (setupStep.value === 1) {
     saveLLM(false);
@@ -1471,16 +1342,16 @@ function saveSetupStep() {
       showToast(llmNeedsApiKey(llm.apiUrl) ? '请填写 API Key 后继续' : '请先选择模型');
       return;
     }
-    setupStep.value = 2;
+    moveToSetupStep(2, '聊天模型已保存，继续设置语音');
     return;
   }
   if (setupStep.value === 2) {
-    saveTTS(false);
+    if (!saveTTS(false)) return;
     if (!ttsSetupReady.value) {
       showToast('请补全语音设置，或关闭语音后继续');
       return;
     }
-    setupStep.value = 3;
+    moveToSetupStep(3, 'TTS 设置已保存，继续设置记忆');
     return;
   }
   saveMemory();
@@ -1627,6 +1498,7 @@ async function testLLM() {
 }
 
 function saveTTS(showDialog = true) {
+  const shouldShowDialog = showDialog !== false;
   if (tts.provider === 'gpt-sovits') {
     tts.textLang = normalizeGptSovitsLang(tts.textLang || tts.model, 'auto');
     tts.promptLang = normalizeGptSovitsLang(tts.promptLang, 'ja');
@@ -1642,7 +1514,7 @@ function saveTTS(showDialog = true) {
     tts.voice = String(tts.voice || MINIMAX_DEFAULT_VOICE_ID).trim();
   }
   const hasTtsLanguageSelect = tts.provider === 'gpt-sovits' || tts.provider === 'minimax';
-  writeJson('roomTTSSettings', {
+  const settings = {
     enabled: Boolean(tts.enabled),
     provider: tts.provider || 'mimo',
     apiUrl: String(tts.apiUrl || '').trim(),
@@ -1656,9 +1528,17 @@ function saveTTS(showDialog = true) {
     gptWeightPath: String(tts.gptWeightPath || '').trim(),
     sovitsWeightPath: String(tts.sovitsWeightPath || '').trim(),
     useProxy: tts.provider === 'gpt-sovits' ? false : Boolean(tts.useProxy)
-  });
+  };
+  try {
+    writeJson('roomTTSSettings', settings);
+  } catch (error) {
+    const message = `TTS 设置保存失败：${error.message || '浏览器存储不可用'}`;
+    if (shouldShowDialog) openTestDialog('tts', 'error', 'TTS 设置保存失败', message);
+    showToast(message);
+    return false;
+  }
   const localGptSovits = tts.provider === 'gpt-sovits';
-  if (showDialog) {
+  if (shouldShowDialog) {
     openTestDialog(
       'tts',
       tts.enabled && (tts.apiKey || localGptSovits) ? 'success' : 'warning',
@@ -1670,15 +1550,20 @@ function saveTTS(showDialog = true) {
     );
   }
   showToast('TTS 设置已保存');
+  return true;
 }
 
 async function testTTS() {
-  saveTTS();
+  if (!saveTTS()) return;
   if (tts.provider !== 'gpt-sovits' && !tts.apiKey) {
     openTestDialog('tts', 'error', 'TTS 语音测试', '请先填写 TTS API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的语音供应商。');
     showToast('请先填写 TTS API Key');
     return;
   }
+  releaseAsyncAudioPlayback(ttsTestPlayback);
+  const audioPlayback = primeAsyncAudioPlayback();
+  ttsTestPlayback = audioPlayback;
+  let objectUrl = '';
   const testText = tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
     ? gptSovitsTestText(tts)
     : '你好，我是八千代辉夜姬。今晚的月光，也很温柔。';
@@ -1687,43 +1572,33 @@ async function testTTS() {
     if (tts.provider === 'gpt-sovits' && !tts.useProxy) {
       await ensureGptSovitsWeights(tts);
       const audioUrl = buildGptSovitsAudioUrl(testText, tts);
-      await new Audio(audioUrl).play();
+      const audio = await prepareAsyncAudioSource(audioPlayback, audioUrl);
+      await audio.play();
       openTestDialog('tts', 'success', 'TTS 语音测试', '已直接请求本机 GPT-SoVITS 9880 端口并开始播放。', audioUrl);
       showToast('TTS 测试成功');
       return;
     }
-    const request = buildTtsRequest(testText, tts);
-    const response = tts.useProxy
-      ? await apiFetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: testText,
-          apiKey: tts.apiKey,
-          apiUrl: tts.apiUrl,
-          provider: tts.provider,
-          model: tts.model,
-          voice: tts.voice,
-          refAudioPath: tts.refAudioPath,
-          promptText: tts.promptText,
-          textLang: normalizeGptSovitsLang(tts.textLang, tts.provider === 'minimax' ? 'ja' : 'auto'),
-          promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja'),
-          gptWeightPath: tts.gptWeightPath,
-          sovitsWeightPath: tts.sovitsWeightPath
-        })
-      })
-      : await fetch(request.apiUrl, request.options);
-    if (!response.ok) throw new Error((await response.text()).slice(0, 160) || `HTTP ${response.status}`);
-    const contentType = response.headers.get('content-type') || '';
-    const blob = contentType.includes('application/json')
-      ? makeAudioBlobFromEncoded(pickAudioBase64(await response.json()), request.jsonAudioType || 'audio/mp3')
-      : await response.blob();
-    await new Audio(URL.createObjectURL(blob)).play();
-    openTestDialog('tts', 'success', 'TTS 语音测试', '连接成功，已开始播放测试语音。', `音频类型：${blob.type || contentType || '未知'}\n大小：${blob.size} bytes`);
+    const blob = await requestTtsAudioBlob(testText, {
+      ...tts,
+      textLang: normalizeGptSovitsLang(tts.textLang, tts.provider === 'minimax' ? 'ja' : 'auto'),
+      promptLang: normalizeGptSovitsLang(tts.promptLang, 'ja')
+    }, {
+      fetchDirect: fetch,
+      fetchProxy: apiFetch
+    });
+    objectUrl = URL.createObjectURL(blob);
+    const audio = await prepareAsyncAudioSource(audioPlayback, objectUrl);
+    audio.addEventListener('ended', () => URL.revokeObjectURL(objectUrl), { once: true });
+    await audio.play();
+    openTestDialog('tts', 'success', 'TTS 语音测试', '连接成功，已开始播放测试语音。', `音频类型：${blob.type || '未知'}\n大小：${blob.size} bytes`);
     showToast('TTS 测试成功');
   } catch (error) {
-    openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${error.message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
-    showToast(`TTS 测试失败：${error.message}`);
+    releaseAsyncAudioPlayback(audioPlayback);
+    if (ttsTestPlayback === audioPlayback) ttsTestPlayback = null;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    const message = describeAudioPlaybackError(error);
+    openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
+    showToast(`TTS 测试失败：${message}`);
   }
 }
 
@@ -1771,10 +1646,16 @@ function resetKnowledgeDraft() {
   knowledge.draft = { title: '', content: '', tags: '', enabled: true };
 }
 
-function editKnowledgeEntry(item) {
+async function editKnowledgeEntry(item) {
   knowledge.editingId = item.id;
   knowledge.draft = cloneKnowledgeEntry(item);
   knowledge.managerOpen = true;
+  await nextTick();
+  knowledgeEditor.value?.scrollIntoView({
+    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'center'
+  });
+  knowledgeTitleInput.value?.focus({ preventScroll: true });
 }
 
 function saveKnowledgeEntry() {
@@ -2098,6 +1979,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopRoomMemorySync();
+  releaseAsyncAudioPlayback(ttsTestPlayback);
+  ttsTestPlayback = null;
   window.removeEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
   window.removeEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
   window.removeEventListener('storage', onRoomSettingsStorageEvent);
@@ -2654,14 +2537,23 @@ onBeforeUnmount(() => {
         <div v-if="knowledge.managerOpen" class="memory-manager-body">
           <label class="check-row"><input v-model="knowledge.enabled" type="checkbox"> 启用角色知识库注入</label>
           <p class="field-hint">知识库保存在当前浏览器 localStorage。聊天时会按用户问题选取相关条目注入 LLM，不会覆盖每个用户独立的长期记忆。</p>
-          <form class="knowledge-editor" @submit.prevent="saveKnowledgeEntry">
-            <label>标题<input v-model="knowledge.draft.title" type="text" placeholder="例如：月见八千代的说话方式"></label>
+          <form
+            ref="knowledgeEditor"
+            class="knowledge-editor"
+            :class="{ 'is-editing': knowledge.editingId }"
+            @submit.prevent="saveKnowledgeEntry"
+          >
+            <div v-if="knowledge.editingId" class="knowledge-editor-status" role="status" aria-live="polite">
+              <span>正在编辑</span>
+              <strong>{{ knowledge.draft.title }}</strong>
+            </div>
+            <label>标题<input ref="knowledgeTitleInput" v-model="knowledge.draft.title" type="text" placeholder="例如：月见八千代的说话方式"></label>
             <label>内容<textarea v-model="knowledge.draft.content" placeholder="写入角色事实、人设规则、口吻或行为边界"></textarea></label>
             <label>标签<input v-model="knowledge.draft.tags" type="text" placeholder="逗号分隔，如 温柔, 月读, 创作者"></label>
             <label class="check-row"><input v-model="knowledge.draft.enabled" type="checkbox"> 启用这条知识</label>
             <div class="button-row">
               <button class="primary-btn" type="submit">{{ knowledge.editingId ? '保存条目' : '添加条目' }}</button>
-              <button class="ghost-btn" type="button" @click="resetKnowledgeDraft">清空表单</button>
+              <button class="ghost-btn" type="button" @click="resetKnowledgeDraft">{{ knowledge.editingId ? '取消编辑' : '清空表单' }}</button>
               <button class="ghost-btn" type="button" @click="saveKnowledge">保存知识库</button>
               <button class="danger-btn" type="button" @click="resetKnowledgeDefaults">恢复默认</button>
             </div>

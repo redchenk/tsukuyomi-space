@@ -56,6 +56,20 @@ function listNotifications(userId, { limit = 50, offset = 0 } = {}) {
     `).all(userId, limit, offset).map(normalizeNotification);
 }
 
+function notificationCounts(userId) {
+    const row = db.prepare(`
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN read_at IS NULL THEN 1 ELSE 0 END) AS unread
+        FROM notifications
+        WHERE user_id = ?
+    `).get(userId);
+    return {
+        total: Number(row?.total || 0),
+        unread: Number(row?.unread || 0)
+    };
+}
+
 function unreadCount(userId) {
     return db.prepare(`
         SELECT COUNT(*) AS count
@@ -93,6 +107,7 @@ function markAllRead(userId) {
 module.exports = {
     createNotification,
     listNotifications,
+    notificationCounts,
     unreadCount,
     findNotificationById,
     markNotificationRead,

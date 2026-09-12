@@ -2,8 +2,12 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
+import SocialShareDialog from '../components/SocialShareDialog.vue';
 import TsIcon from '../components/TsIcon.vue';
+import UserLevelBadge from '../components/UserLevelBadge.vue';
+import { useUserLevels } from '../composables/useUserLevels';
 import { formatDateTime } from '../utils/time';
+import { applyGrowthResult } from '../services/userGrowth';
 
 const props = defineProps({
   lang: { type: String, required: true },
@@ -28,7 +32,7 @@ const EXPORT_CELL_SIZE = 8;
 const DEFAULT_ZOOM = 100;
 const MIN_ZOOM = 35;
 const MAX_ZOOM = 260;
-const MAX_CUSTOM_COLORS = 20;
+const MAX_CUSTOM_COLORS = 52;
 const MAX_IMAGE_COLORS = 32;
 const presetPalette = [
   '#0b1020',
@@ -48,7 +52,73 @@ const backgroundPresets = ['#ffffff', '#f7f7f7', '#edf8ff', '#ffd1e8', '#172033'
 const decodedArtworkPreviews = new WeakMap();
 const fullArtworkCache = new Map();
 
-const copy = computed(() => props.lang === 'ja' ? {
+const copy = computed(() => props.lang === 'en' ? {
+  kicker: 'Tsukuyomi Pixel Atelier',
+  title: 'Moonlit Pixel Workshop',
+  subtitle: 'Set today’s moonlight, inspiration and tiny character moments onto the grid, then share them in the public gallery.',
+  channel: 'Public gallery',
+  channelValue: 'Artwork and likes sync in real time',
+  onlineRoom: 'Online drawing chat',
+  draftTitle: 'New artwork',
+  draftPlaceholder: 'Artwork title',
+  descPlaceholder: 'Leave a short note about this piece',
+  share: 'Publish artwork',
+  saveUpdate: 'Save update',
+  loginToShare: 'Sign in to publish',
+  clear: 'Clear',
+  undo: 'Undo',
+  redo: 'Redo',
+  sample: 'Moon pattern',
+  download: 'Export PNG',
+  brush: 'Brush',
+  eraser: 'Eraser',
+  fill: 'Fill',
+  move: 'Move',
+  zoom: 'Zoom',
+  layers: 'Layers',
+  brushSize: 'Size',
+  pressure: 'Pressure',
+  stabilizer: 'Stabilizer',
+  chat: 'Chat',
+  connected: 'Connected',
+  messagePlaceholder: 'Type a message...',
+  sendMessage: 'Send',
+  palette: 'Palette',
+  openTools: 'Open tools',
+  closeTools: 'Close tools',
+  presets: 'Preset colors',
+  freeColor: 'Custom color',
+  addColor: 'Save color',
+  colorLimit: 'The 64-color palette is full',
+  canvasSize: 'Rectangular grid',
+  imageImport: 'Import image',
+  uploadImage: 'Convert an image to pixel art',
+  imageConverted: 'Image converted to pixel art',
+  imageLoadFailed: 'Unable to load image',
+  imageTypeInvalid: 'Choose an image file',
+  background: 'Canvas background',
+  colors: 'Colors',
+  size: 'Grid',
+  gallery: 'Community artwork',
+  openGallery: 'Open community artwork',
+  closeGallery: 'Close community artwork',
+  latest: 'Latest',
+  hot: 'Popular',
+  refresh: 'Refresh',
+  empty: 'No public artwork yet. The first moonlit piece can begin here.',
+  loading: 'Syncing...',
+  like: 'Like',
+  liked: 'Liked',
+  publishOk: 'Artwork shared',
+  updateOk: 'Artwork updated',
+  publishFailed: 'Unable to share artwork',
+  titleRequired: 'Give your artwork a title first',
+  blankCanvas: 'The canvas is still empty',
+  likedToast: 'Artwork liked',
+  alreadyLiked: 'You already liked this artwork',
+  shareLink: 'Share',
+  by: 'by'
+} : props.lang === 'ja' ? {
   kicker: 'Tsukuyomi Pixel Atelier',
   title: '月光ピクセル工房',
   subtitle: '今日の月色と小さな物語をグリッドに置いて、訪れた人の反応を待つ静かなアトリエ。',
@@ -80,10 +150,12 @@ const copy = computed(() => props.lang === 'ja' ? {
   messagePlaceholder: 'メッセージ...',
   sendMessage: '送信',
   palette: 'パレット',
+  openTools: 'ツールを開く',
+  closeTools: 'ツールを閉じる',
   presets: 'プリセット',
   freeColor: '自由色',
   addColor: '色を保存',
-  colorLimit: '保存できる色はここまでです',
+  colorLimit: '64色パレットがいっぱいです',
   canvasSize: '矩形グリッド',
   imageImport: '画像から変換',
   uploadImage: '画像をピクセル化',
@@ -94,6 +166,8 @@ const copy = computed(() => props.lang === 'ja' ? {
   colors: '色',
   size: 'グリッド',
   gallery: 'みんなの作品',
+  openGallery: 'みんなの作品を開く',
+  closeGallery: 'みんなの作品を閉じる',
   latest: '新着',
   hot: '人気',
   refresh: '更新',
@@ -108,6 +182,7 @@ const copy = computed(() => props.lang === 'ja' ? {
   blankCanvas: 'キャンバスはまだ空です',
   likedToast: 'いいねしました',
   alreadyLiked: 'すでにいいねしています',
+  shareLink: '共有',
   by: 'by'
 } : {
   kicker: 'Tsukuyomi Pixel Atelier',
@@ -141,10 +216,12 @@ const copy = computed(() => props.lang === 'ja' ? {
   messagePlaceholder: '输入消息...',
   sendMessage: '发送',
   palette: '调色板',
+  openTools: '展开工具栏',
+  closeTools: '收起工具栏',
   presets: '预设色',
   freeColor: '自由颜色',
   addColor: '保存颜色',
-  colorLimit: '可保存颜色已满',
+  colorLimit: '64 色调色板已满',
   canvasSize: '长方形网格',
   imageImport: '图片导入',
   uploadImage: '上传图片转像素画',
@@ -155,6 +232,8 @@ const copy = computed(() => props.lang === 'ja' ? {
   colors: '颜色',
   size: '网格',
   gallery: '大家的作品',
+  openGallery: '展开大家的作品',
+  closeGallery: '收起大家的作品',
   latest: '最新',
   hot: '热门',
   refresh: '刷新',
@@ -169,6 +248,7 @@ const copy = computed(() => props.lang === 'ja' ? {
   blankCanvas: '画布还是空的',
   likedToast: '已点赞',
   alreadyLiked: '已经点过赞了',
+  shareLink: '分享',
   by: 'by'
 });
 
@@ -195,6 +275,8 @@ const canvasViewportRef = ref(null);
 const isCanvasZoomManual = ref(false);
 const isSpacePanning = ref(false);
 const sideTab = ref('gallery');
+const controlsOpen = ref(false);
+const galleryOpen = ref(false);
 const chatMessage = ref('');
 const chatMessages = ref([
   { id: 1, author: '蓝莓', time: '03:50', text: '晚上好' },
@@ -219,10 +301,14 @@ const gallery = reactive({
 });
 const editingArtwork = ref(null);
 const previewArtwork = ref(null);
+const artworkShareOpen = ref(false);
+const artworkSharePayload = ref({ title: '', text: '', url: '', imageUrl: '', downloadUrl: '', downloadName: '' });
+const { hydrateUserLevels, userLevel } = useUserLevels();
 const toast = reactive({
   text: '',
   visible: false
 });
+const pixelCanvasRef = ref(null);
 
 let toastTimer = 0;
 let activePaintColorIndex = -1;
@@ -230,7 +316,6 @@ let canvasPanState = null;
 let canvasFitObserver = null;
 let canvasFitFrame = 0;
 let strokePixels = null;
-let strokeCommitFrame = 0;
 
 const isAuthed = computed(() => Boolean(session.value));
 const activeTool = computed(() => isSpacePanning.value ? 'move' : tool.value);
@@ -265,6 +350,22 @@ function go(path) {
   emit('go', path);
 }
 
+function usesCompactWorkspace() {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(max-width: 1180px)').matches;
+}
+
+function toggleControlsPanel() {
+  controlsOpen.value = !controlsOpen.value;
+  if (controlsOpen.value && usesCompactWorkspace()) galleryOpen.value = false;
+}
+
+function toggleGalleryPanel() {
+  galleryOpen.value = !galleryOpen.value;
+  if (galleryOpen.value && usesCompactWorkspace()) controlsOpen.value = false;
+}
+
 function showToast(text) {
   toast.text = text;
   toast.visible = true;
@@ -275,12 +376,12 @@ function showToast(text) {
 }
 
 function formatNumber(value) {
-  return Number(value || 0).toLocaleString(props.lang === 'ja' ? 'ja-JP' : 'zh-CN');
+  return Number(value || 0).toLocaleString(props.lang === 'en' ? 'en-US' : (props.lang === 'ja' ? 'ja-JP' : 'zh-CN'));
 }
 
 function formatDate(value) {
   if (!value) return '';
-  return formatDateTime(value, props.lang === 'ja' ? 'ja-JP' : 'zh-CN');
+  return formatDateTime(value, props.lang === 'en' ? 'en-US' : (props.lang === 'ja' ? 'ja-JP' : 'zh-CN'));
 }
 
 function normalizeHexColor(value, fallback = '#0b1020') {
@@ -312,6 +413,13 @@ function selectCustomColor() {
   addCustomColor(customColor.value);
 }
 
+function previewCustomColor(event) {
+  const normalized = normalizeHexColor(event?.target?.value, customColor.value);
+  customColor.value = normalized;
+  selectedColor.value = normalized;
+  tool.value = 'brush';
+}
+
 function ensurePaletteColor(color) {
   const normalized = normalizeHexColor(color, presetPalette[3]);
   const existing = activePalette.value.indexOf(normalized);
@@ -328,7 +436,7 @@ function sendLocalMessage() {
   chatMessages.value.push({
     id: Date.now(),
     author: session.value?.user?.username || session.value?.username || '我',
-    time: new Date().toLocaleTimeString(props.lang === 'ja' ? 'ja-JP' : 'zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    time: new Date().toLocaleTimeString(props.lang === 'en' ? 'en-US' : (props.lang === 'ja' ? 'ja-JP' : 'zh-CN'), { hour: '2-digit', minute: '2-digit' }),
     text
   });
   chatMessage.value = '';
@@ -368,32 +476,16 @@ function blankPixels(width = canvasWidth.value, height = canvasHeight.value) {
   return Array(width * height).fill(-1);
 }
 
-function cancelStrokeCommit() {
-  if (!strokeCommitFrame) return;
-  window.cancelAnimationFrame(strokeCommitFrame);
-  strokeCommitFrame = 0;
-}
-
 function commitStrokePixels() {
   if (!strokePixels) return;
   pixels.value = [...strokePixels];
 }
 
-function scheduleStrokeCommit() {
-  if (strokeCommitFrame) return;
-  strokeCommitFrame = window.requestAnimationFrame(() => {
-    strokeCommitFrame = 0;
-    commitStrokePixels();
-  });
-}
-
 function flushStrokeCommit() {
-  cancelStrokeCommit();
   commitStrokePixels();
 }
 
 function discardStrokeBuffer() {
-  cancelStrokeCommit();
   strokePixels = null;
 }
 
@@ -605,17 +697,19 @@ function paintBrushPath(payload, colorIndex) {
 
   const next = strokePixels || [...pixels.value];
   let changed = false;
+  const pixelChanges = [];
   for (const sample of source) {
     for (const targetIndex of brushTargetIndices(sample.index, pressureBrushSize(sample))) {
       if (next[targetIndex] === colorIndex) continue;
       next[targetIndex] = colorIndex;
+      pixelChanges.push({ index: targetIndex, colorIndex });
       changed = true;
     }
   }
 
   if (!changed) return;
   if (strokePixels) {
-    scheduleStrokeCommit();
+    pixelCanvasRef.value?.renderPixelChanges(pixelChanges);
   } else {
     pixels.value = next;
   }
@@ -987,6 +1081,27 @@ async function openArtworkPreview(artwork) {
   }
 }
 
+async function openArtworkShare(artwork) {
+  try {
+    const fullArtwork = await loadFullArtwork(artwork);
+    const id = encodeURIComponent(fullArtwork.id);
+    const version = encodeURIComponent(String(fullArtwork.updated_at || fullArtwork.created_at || fullArtwork.id));
+    const url = new URL(`/pixel?art=${id}#pixel-art-${id}`, location.origin).href;
+    const imageUrl = new URL(`/api/pixel-art/${id}/image.png?v=${version}`, location.origin).href;
+    artworkSharePayload.value = {
+      title: fullArtwork.title || copy.value.gallery,
+      text: fullArtwork.description || `${copy.value.by} ${fullArtwork.author || props.t.brand}`,
+      url,
+      imageUrl,
+      downloadUrl: imageUrl,
+      downloadName: artworkFileName(fullArtwork)
+    };
+    artworkShareOpen.value = true;
+  } catch (error) {
+    showToast(error.message || copy.value.publishFailed);
+  }
+}
+
 function closeArtworkPreview(event = null) {
   event?.preventDefault?.();
   event?.stopPropagation?.();
@@ -1012,6 +1127,7 @@ async function loadArtworks(page = gallery.page) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || 'Pixel art unavailable');
     gallery.items = Array.isArray(result.data) ? result.data : [];
+    await hydrateUserLevels(gallery.items.map((artwork) => artwork.author_id)).catch(() => {});
     gallery.page = nextPage;
     gallery.total = Number(result.pagination?.total || gallery.items.length);
     gallery.totalPages = Math.max(1, Math.ceil(gallery.total / PIXEL_GALLERY_PAGE_SIZE));
@@ -1042,7 +1158,7 @@ async function loadArtworkForEdit() {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
     loadArtworkIntoDraft(result.data);
-    showToast(props.lang === 'ja' ? '編集用に読み込みました' : '已载入像素画，可以继续编辑');
+    showToast(props.lang === 'en' ? 'Artwork loaded for editing' : (props.lang === 'ja' ? '編集用に読み込みました' : '已载入像素画，可以继续编辑'));
   } catch (error) {
     showToast(error.message || copy.value.publishFailed);
   }
@@ -1095,6 +1211,7 @@ async function shareArtwork() {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
+    if (result.growth) applyGrowthResult(result.growth);
     upsertArtwork(result.data);
     if (wasEditing) {
       editingArtwork.value = result.data;
@@ -1127,6 +1244,7 @@ async function likeArtwork(artwork) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || copy.value.publishFailed);
+    if (result.growth) applyGrowthResult(result.growth);
     upsertArtwork(result.data);
     showToast(result.message || copy.value.likedToast);
   } catch (error) {
@@ -1138,12 +1256,17 @@ function isArtworkLiked(artwork) {
   return Boolean(artwork?.viewer_liked);
 }
 
-function focusSharedArtwork() {
+async function focusSharedArtwork() {
   const id = new URLSearchParams(location.search).get('art');
   if (!id) return;
-  window.setTimeout(() => {
+  const listed = gallery.items.find((item) => String(item.id) === String(id));
+  if (listed) {
+    await nextTick();
     document.getElementById(`pixel-art-${id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, 120);
+    await openArtworkPreview(listed);
+    return;
+  }
+  await openArtworkPreview({ id });
 }
 
 function isTypingTarget(target) {
@@ -1151,7 +1274,17 @@ function isTypingTarget(target) {
 }
 
 function handleArenaKeydown(event) {
-  if (event.key === 'Escape' && previewArtwork.value) closeArtworkPreview();
+  if (event.key === 'Escape') {
+    if (previewArtwork.value) {
+      closeArtworkPreview();
+      return;
+    }
+    if (controlsOpen.value || galleryOpen.value) {
+      controlsOpen.value = false;
+      galleryOpen.value = false;
+      return;
+    }
+  }
   if (isTypingTarget(event.target)) return;
   const key = event.key.toLowerCase();
   if ((event.ctrlKey || event.metaKey) && key === 'z') {
@@ -1216,13 +1349,15 @@ onBeforeUnmount(() => {
   canvasFitObserver?.disconnect();
   canvasFitObserver = null;
   if (canvasFitFrame) window.cancelAnimationFrame(canvasFitFrame);
-  cancelStrokeCommit();
   clearTimeout(toastTimer);
 });
 </script>
 
 <template>
-  <main class="page arena-page">
+  <main
+    class="page arena-page"
+    :class="{ 'is-controls-open': controlsOpen, 'is-gallery-open': galleryOpen }"
+  >
     <section class="arena-hero">
       <div class="arena-hero-copy">
         <div class="arena-kicker">{{ copy.kicker }}</div>
@@ -1268,6 +1403,7 @@ onBeforeUnmount(() => {
               @dragstart.prevent
             >
               <PixelCanvasCells
+                ref="pixelCanvasRef"
                 :pixels="pixels"
                 :palette="activePalette"
                 :width="canvasWidth"
@@ -1318,7 +1454,18 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <aside class="arena-controls panel">
+      <aside id="arena-controls-panel" class="arena-controls panel">
+        <button
+          class="arena-panel-toggle arena-controls-toggle"
+          type="button"
+          :title="controlsOpen ? copy.closeTools : copy.openTools"
+          :aria-label="controlsOpen ? copy.closeTools : copy.openTools"
+          :aria-expanded="controlsOpen"
+          aria-controls="arena-controls-panel"
+          @click="toggleControlsPanel"
+        >
+          <TsIcon :name="controlsOpen ? 'arrowLeft' : 'palette'" :size="19" />
+        </button>
         <div class="arena-section-head">
           <div>
             <span>02</span>
@@ -1369,7 +1516,7 @@ onBeforeUnmount(() => {
         <div class="arena-color-picker">
           <label>
             <span>{{ copy.freeColor }}</span>
-            <input v-model="customColor" type="color" @input="selectCustomColor">
+            <input v-model="customColor" type="color" @input="previewCustomColor">
           </label>
           <button class="ghost-btn" type="button" @click="selectCustomColor">
             <TsIcon name="plus" :size="17" />
@@ -1427,7 +1574,22 @@ onBeforeUnmount(() => {
       </aside>
     </section>
 
-    <section class="arena-gallery panel" :aria-busy="sideTab === 'gallery' && gallery.loading">
+    <section
+      id="arena-gallery-panel"
+      class="arena-gallery panel"
+      :aria-busy="sideTab === 'gallery' && gallery.loading"
+    >
+      <button
+        class="arena-panel-toggle arena-gallery-toggle"
+        type="button"
+        :title="galleryOpen ? copy.closeGallery : copy.openGallery"
+        :aria-label="galleryOpen ? copy.closeGallery : copy.openGallery"
+        :aria-expanded="galleryOpen"
+        aria-controls="arena-gallery-panel"
+        @click="toggleGalleryPanel"
+      >
+        <TsIcon :name="galleryOpen ? 'arrowRight' : 'image'" :size="19" />
+      </button>
       <div class="arena-section-head arena-gallery-head">
         <div>
           <span>03</span>
@@ -1488,6 +1650,7 @@ onBeforeUnmount(() => {
               :background-color="artworkBackground(artwork)"
               :show-grid="false"
               :interactive="false"
+              defer-offscreen
               :aria-label="artwork.title || copy.gallery"
             />
           </button>
@@ -1503,6 +1666,7 @@ onBeforeUnmount(() => {
                 <span v-else>{{ artworkInitial(artwork.author) }}</span>
               </span>
               <span>{{ copy.by }} {{ artwork.author || props.t.brand }}</span>
+              <UserLevelBadge v-if="artwork.author_id" :level="userLevel(artwork.author_id)" :lang="lang" compact :show-title="false" />
               <time>{{ formatDate(artwork.created_at) }}</time>
             </div>
           </div>
@@ -1521,16 +1685,20 @@ onBeforeUnmount(() => {
               <TsIcon name="download" :size="15" />
               <span>{{ copy.download }}</span>
             </button>
+            <button class="icon-btn" type="button" @click="openArtworkShare(artwork)">
+              <TsIcon name="external" :size="15" />
+              <span>{{ copy.shareLink }}</span>
+            </button>
           </div>
         </article>
       </div>
       <nav v-if="sideTab === 'gallery' && !gallery.loading && gallery.totalPages > 1" class="arena-gallery-pager" aria-label="作品分页">
         <button class="icon-btn" type="button" :disabled="gallery.page <= 1" aria-label="上一页" @click="loadArtworks(gallery.page - 1)">
-          <TsIcon name="chevron-left" :size="16" />
+          <TsIcon name="arrowLeft" :size="16" />
         </button>
         <span>{{ gallery.page }} / {{ gallery.totalPages }}</span>
         <button class="icon-btn" type="button" :disabled="gallery.page >= gallery.totalPages" aria-label="下一页" @click="loadArtworks(gallery.page + 1)">
-          <TsIcon name="chevron-right" :size="16" />
+          <TsIcon name="arrowRight" :size="16" />
         </button>
       </nav>
     </section>
@@ -1550,7 +1718,7 @@ onBeforeUnmount(() => {
           <button
             class="arena-art-lightbox-close"
             type="button"
-            :aria-label="props.lang === 'ja' ? '閉じる' : '关闭'"
+            :aria-label="props.lang === 'en' ? 'Close' : (props.lang === 'ja' ? '閉じる' : '关闭')"
             @pointerdown.stop.prevent="closeArtworkPreview"
             @mousedown.stop.prevent="closeArtworkPreview"
             @touchstart.stop.prevent="closeArtworkPreview"
@@ -1583,14 +1751,32 @@ onBeforeUnmount(() => {
               <strong>{{ previewArtwork.title || copy.gallery }}</strong>
               <span>{{ copy.by }} {{ previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }}x{{ artworkHeight(previewArtwork) }}</span>
             </div>
-            <button class="ghost-btn" type="button" @click="downloadArtwork(previewArtwork)">
-              <TsIcon name="download" :size="17" />
-              <span>{{ copy.download }}</span>
-            </button>
+            <div class="arena-art-lightbox-actions">
+              <button class="ghost-btn" type="button" @click="openArtworkShare(previewArtwork)">
+                <TsIcon name="external" :size="17" />
+                <span>{{ copy.shareLink }}</span>
+              </button>
+              <button class="ghost-btn" type="button" @click="downloadArtwork(previewArtwork)">
+                <TsIcon name="download" :size="17" />
+                <span>{{ copy.download }}</span>
+              </button>
+            </div>
           </footer>
         </section>
       </div>
     </Teleport>
+
+    <SocialShareDialog
+      :open="artworkShareOpen"
+      :title="artworkSharePayload.title"
+      :text="artworkSharePayload.text"
+      :url="artworkSharePayload.url"
+      :image-url="artworkSharePayload.imageUrl"
+      :download-url="artworkSharePayload.downloadUrl"
+      :download-name="artworkSharePayload.downloadName"
+      :lang="lang"
+      @close="artworkShareOpen = false"
+    />
 
     <div v-if="toast.visible" class="arena-toast show">{{ toast.text }}</div>
   </main>

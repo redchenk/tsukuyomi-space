@@ -1,4 +1,5 @@
 const db = require('../db');
+const articleCategories = require('./article-category-repository');
 const { createSlug } = require('../utils/slug');
 const { publicAvatarUrl } = require('../utils/avatar');
 
@@ -102,6 +103,7 @@ function listRecentPublishedArticles(limit = 8) {
 }
 
 function createArticle(article) {
+    article.category = articleCategories.resolveCategory(article.category);
     const slug = uniqueArticleSlug(article.title);
     const result = db.prepare(`
         INSERT INTO articles (
@@ -159,6 +161,7 @@ function incrementArticleViews(id) {
 }
 
 function updateArticle(id, article) {
+    article.category = articleCategories.resolveCategory(article.category, db.prepare('SELECT category FROM articles WHERE id = ?').get(id)?.category || '其他');
     const slug = uniqueArticleSlug(article.title, id);
     db.prepare(`
         UPDATE articles
@@ -260,6 +263,7 @@ function listSeoArticles(limit = 500) {
 }
 
 function updateUserArticle(id, article) {
+    article.category = articleCategories.resolveCategory(article.category, db.prepare('SELECT category FROM articles WHERE id = ?').get(id)?.category || '其他');
     const slug = uniqueArticleSlug(article.title, id);
     db.prepare(`
         UPDATE articles SET

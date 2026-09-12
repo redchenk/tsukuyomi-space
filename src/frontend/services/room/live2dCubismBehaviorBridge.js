@@ -18,6 +18,7 @@ const CHARACTER_STATE_EVENT = 'tsukuyomi:live2d-character-state';
 const LOCAL_CUBISM_ACTION_INTENSITY_SCALE = 1.86;
 const LOCAL_CUBISM_FRAME_INTERVAL_MS = 1000 / 60;
 const LOCAL_CUBISM_REDUCED_FRAME_INTERVAL_MS = 1000 / 30;
+const LOCAL_CUBISM_MIN_TARGET_FPS = 4;
 
 const EYE_OWNING_EXPRESSIONS = new Set([
   'angry',
@@ -715,7 +716,7 @@ export function mountCubismBehaviorBridge(options = {}) {
   function currentFrameInterval() {
     const targetFps = Number(window.TSUKUYOMI_LIVE2D_FRAME_PACING?.targetFps);
     const pacedInterval = Number.isFinite(targetFps) && targetFps > 0
-      ? 1000 / Math.min(Math.max(targetFps, 30), 60)
+      ? 1000 / Math.min(Math.max(targetFps, LOCAL_CUBISM_MIN_TARGET_FPS), 60)
       : LOCAL_CUBISM_FRAME_INTERVAL_MS;
     return window.TSUKUYOMI_PERFORMANCE_PROFILE === 'reduced'
       ? Math.max(pacedInterval, LOCAL_CUBISM_REDUCED_FRAME_INTERVAL_MS)

@@ -462,6 +462,19 @@ body .page.terminal-page .terminal-review-table table {
     overflow-wrap: anywhere;
 }
 
+.terminal-link-monitor {
+    display: block;
+    margin-top: 0.38rem;
+    color: var(--ts-muted);
+    font-size: 0.68rem;
+    line-height: 1.45;
+    white-space: normal;
+}
+
+.terminal-link-monitor.is-online { color: #54c993; }
+.terminal-link-monitor.is-slow { color: #d4a72c; }
+.terminal-link-monitor.is-offline { color: #e7848f; }
+
 .terminal-review-table td:first-child a {
     display: block;
     overflow: hidden;

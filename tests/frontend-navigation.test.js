@@ -6,8 +6,111 @@ const vm = require('node:vm');
 
 const projectRoot = path.resolve(__dirname, '..');
 
+describe('dynamic article categories', () => {
+    it('refreshes the category snapshot after a failed subscription before listening again', async () => {
+        const calls = [];
+        const pending = [];
+        const context = {
+            ref: (value) => ({ value }), AbortController,
+            document: { hidden: false }, noStoreUrl: (url) => url,
+            setTimeout: (callback, delay) => { pending.push({ callback, delay }); return pending.length; },
+            clearTimeout: () => {},
+            apiFetch: async (url) => {
+                calls.push(url);
+                if (calls.length === 1) throw new Error('CDN read timeout');
+                return { ok: true, json: async () => ({ success: true, revision: '2', data: [{ id: 7, name: 'New topic' }] }) };
+            }
+        };
+        const code = fs.readFileSync(path.join(projectRoot, 'src/frontend/composables/useArticleCategories.js'), 'utf8')
+            .replace(/^import .*;\r?\n/gm, '')
+            .replace(/export (async )?function /g, '$1function ')
+            .concat('\nconsumers = 1; revision.value = "1"; globalThis.categoryState = { listen, categories, revision };');
+        vm.runInNewContext(code, context);
+        await context.categoryState.listen();
+        assert.match(calls[0], /\/changes\?revision=1/);
+        assert.equal(pending.at(-1).delay, 1000);
+        await pending.at(-1).callback();
+        assert.equal(calls[1], '/api/article-categories');
+        assert.equal(context.categoryState.revision.value, '2');
+        assert.equal(context.categoryState.categories.value[0].name, 'New topic');
+        await pending.at(-1).callback();
+        assert.equal(calls[2], '/api/article-categories/changes?revision=2');
+    });
+
+    it('never replaces a newer category list with a late network response', () => {
+        const context = { ref: (value) => ({ value }) };
+        const code = fs.readFileSync(path.join(projectRoot, 'src/frontend/composables/useArticleCategories.js'), 'utf8')
+            .replace(/^import .*;\r?\n/gm, '')
+            .replace(/export (async )?function /g, '$1function ')
+            .concat('\nglobalThis.categoryState = { categories, revision, applyArticleCategories };');
+        vm.runInNewContext(code, context);
+        const state = context.categoryState;
+        state.applyArticleCategories({ success: true, revision: '3', data: [{ id: 6, name: 'Topic' }] });
+        state.applyArticleCategories({ success: true, revision: '4', data: [] });
+        state.applyArticleCategories({ success: true, revision: '3', data: [{ id: 6, name: 'Topic' }] });
+        assert.equal(state.categories.value.length, 0);
+        assert.equal(state.revision.value, '4');
+        assert.throws(() => state.applyArticleCategories({ success: true, revision: 'bad', data: [] }));
+    });
+
+    it('shares dynamic categories between terminal, stage and editor with idle cleanup', () => {
+        const read = (file) => fs.readFileSync(path.join(projectRoot, file), 'utf8');
+        const manager = read('src/frontend/components/terminal/ArticleCategoryManager.vue');
+        const stage = read('src/frontend/pages/StagePage.vue');
+        const editor = read('src/frontend/pages/EditorPage.vue');
+        const sync = read('src/frontend/composables/useArticleCategories.js');
+        assert.match(manager, /managementBase.*default: '\/api\/admin'/);
+        assert.match(manager, /\/article-categories\$\{path\}/);
+        assert.match(read('src/frontend/pages/TerminalPage.vue'), /terminal\.siteSession \? '\/api\/moderation' : '\/api\/admin'/);
+        assert.match(manager, /category\.protected/);
+        assert.match(manager, /window\.confirm/);
+        assert.match(stage, /useArticleCategories\(\)/);
+        assert.match(editor, /useArticleCategories\(\)/);
+        assert.match(editor, /category\.name/);
+        assert.match(sync, /document\.hidden/);
+        assert.match(sync, /onUnmounted/);
+        assert.match(sync, /controller\?\.abort/);
+        assert.match(sync, /cache: 'no-store'/);
+    });
+});
+
+describe('mobile keyboard viewport', () => {
+    const context = {};
+    const code = fs.readFileSync(path.join(projectRoot, 'src/frontend/composables/useMobileKeyboard.js'), 'utf8')
+        .replace(/^import .*;\r?\n/m, '')
+        .replace(/export function /g, 'function ')
+        .concat('\nglobalThis.readViewport = readKeyboardViewport;');
+    vm.runInNewContext(code, context);
+    const read = (overrides) => context.readViewport({ height: 844, viewportHeight: 844, mobile: true, editable: true, ...overrides });
+
+    it('distinguishes overlay keyboards, resized layouts and browser chrome', () => {
+        assert.equal(read({ viewportHeight: 430 }).open, true);
+        assert.equal(read({ viewportHeight: 430 }).inset, 414);
+        assert.equal(read({ height: 430, viewportHeight: 430, restingHeight: 844 }).open, true);
+        assert.equal(read({ height: 430, viewportHeight: 430, restingHeight: 844 }).inset, 0);
+        assert.equal(read({ viewportHeight: 790 }).open, false);
+        assert.equal(read({ viewportHeight: 430, scale: 2 }).open, false);
+        assert.equal(read({ viewportHeight: 430, editable: false }).open, false);
+        assert.equal(read({ viewportHeight: 430, mobile: false }).open, false);
+    });
+});
+
 function source(relativePath) {
     return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8');
+}
+
+function loadSiteVariant({ compiledEnglish = false, hostname = '' } = {}) {
+    const context = {
+        __TSUKUYOMI_ENGLISH_SITE__: compiledEnglish,
+        window: { location: { hostname } }
+    };
+    const code = source('src/frontend/utils/siteVariant.js')
+        .replace(/export const /g, 'const ')
+        .replace(/export function /g, 'function ')
+        .concat('\nglobalThis.__siteVariant = { forcedSiteLanguage, isEnglishSite };\n');
+
+    vm.runInNewContext(code, context, { filename: 'src/frontend/utils/siteVariant.js' });
+    return context.__siteVariant;
 }
 
 function loadNotificationBadge(navigatorTarget = {}) {
@@ -40,13 +143,26 @@ function loadNotificationBadge(navigatorTarget = {}) {
 }
 
 describe('frontend navigation routes', () => {
-    it('switches between Chinese and Japanese from the left navigation rail', () => {
+    it('locks the overseas domains to English independently of the build flag', () => {
+        assert.equal(loadSiteVariant({ hostname: 'tsukuyomi-space.com' }).isEnglishSite(), true);
+        assert.equal(loadSiteVariant({ hostname: 'www.tsukuyomi-space.com' }).forcedSiteLanguage(), 'en');
+        assert.equal(loadSiteVariant({ hostname: 'yachiyo.hk' }).isEnglishSite(), false);
+        assert.equal(loadSiteVariant({ compiledEnglish: true, hostname: 'localhost' }).isEnglishSite(), true);
+    });
+
+    it('switches between Chinese and Japanese and supports a forced English build', () => {
         const app = source('src/frontend/App.vue');
         const shell = source('src/frontend/layouts/AppShell.vue');
         const messages = source('src/frontend/i18n/messages.js');
         const i18nModule = source('src/frontend/i18n/index.js');
         const icons = source('src/frontend/components/TsIcon.vue');
         const seo = source('src/frontend/utils/seo.js');
+        const client = source('src/frontend/api/client.js');
+        const staticInterface = source('src/frontend/i18n/englishStaticInterface.js');
+        const gallery = source('src/frontend/pages/GalleryPage.vue');
+        const viteConfig = source('vite.frontend.config.js');
+        const packageJson = JSON.parse(source('package.json'));
+        const overseasEnv = source('.env.overseas');
 
         assert.match(shell, /class="rail-link rail-language"/);
         assert.match(shell, /<TsIcon name="languages"/);
@@ -54,13 +170,21 @@ describe('frontend navigation routes', () => {
         assert.match(shell, /class="lang-switcher" :aria-label="t\.language"/);
         assert.match(app, /normalizeLanguage\(localStorage\.getItem\('lang'\)\)/);
         assert.match(app, /documentLanguage\(lang\.value\)/);
-        assert.match(i18nModule, /SUPPORTED_LANGUAGES = Object\.freeze\(\['zh', 'ja'\]\)/);
+        assert.match(i18nModule, /SUPPORTED_LANGUAGES = Object\.freeze\(\['zh', 'ja', 'en'\]\)/);
+        for (const content of [app, client, staticInterface, seo, gallery]) {
+            assert.match(content, /isEnglishSite|forcedSiteLanguage/);
+        }
+        assert.match(messages, /import \{ en \} from '\.\/messages\.en\.js'/);
         assert.match(i18nModule, /export function alternateLanguage/);
         assert.match(messages, /switchToJapanese: '切换为日语'/);
         assert.match(messages, /switchToChinese: '中国語に切り替え'/);
         assert.match(icons, /languages:\s*\[/);
         assert.match(seo, /documentLanguage\(localStorage\.getItem\('lang'\)\)/);
         assert.doesNotMatch(seo, /document\.documentElement\.lang = 'zh-CN'/);
+        assert.equal(packageJson.scripts['build:web:overseas'], 'vite build --mode overseas --config vite.frontend.config.js');
+        assert.match(overseasEnv, /^VITE_SITE_LANGUAGE=en\s*$/);
+        assert.match(viteConfig, /loadEnv\(mode, projectRoot, ''\)/);
+        assert.match(viteConfig, /englishSiteHtml\(englishSite\)/);
     });
 
     it('applies unique route keywords and dynamic SEO to every public page', () => {
@@ -72,7 +196,7 @@ describe('frontend navigation routes', () => {
 
         assert.match(seo, /export function applySeo\(\{[\s\S]*keywords = DEFAULT_KEYWORDS/);
         assert.match(seo, /upsertMeta\('meta\[name="keywords"\]'[^}]*content: keywordContent/);
-        assert.match(seo, /keywords: meta\.keywords \|\| DEFAULT_KEYWORDS/);
+        assert.match(seo, /keywords: ENGLISH_SITE \? DEFAULT_KEYWORDS : \(meta\.keywords \|\| DEFAULT_KEYWORDS\)/);
         assert.match(seo, /keywords: tags\.length \? tags : \[title, article\?\.category/);
         assert.match(indexHtml, /<meta name="keywords" content="月读空间, Tsukuyomi Space, 超时空辉夜姬 Wiki/);
         assert.match(indexHtml, /<meta name="twitter:card" content="summary_large_image">/);
@@ -80,7 +204,7 @@ describe('frontend navigation routes', () => {
         const publicPaths = [
             '/', '/hub', '/stage', '/articles/:id/:slug?', '/article', '/wiki',
             '/wiki/characters/:slug', '/wiki/terms/:slug', '/room', '/plaza',
-            '/friend-links', '/reality', '/gallery', '/users/:username', '/pixel'
+            '/friend-links', '/reality', '/gallery', '/users/:username', '/pixel', '/game'
         ];
         for (const routePath of publicPaths) {
             const escapedPath = routePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -148,6 +272,9 @@ describe('frontend navigation routes', () => {
         assert.match(application, /avatar_url: form\.avatar_url\.trim\(\)/);
         assert.match(application, /copy\.autoAvatar/);
         assert.match(directory, /link\.avatar_url/);
+        assert.match(directory, /link\.screenshot_url/);
+        assert.match(directory, /monitorStatus\(link\)/);
+        assert.match(application, /copy\.backlinkHint/);
         assert.match(directory, /referrerpolicy="no-referrer"/);
         assert.match(application, /go\('\/friend-links'\)/);
         assert.match(application, /TsIcon name="external"/);
@@ -155,18 +282,24 @@ describe('frontend navigation routes', () => {
 
     it('supports direct friend-link creation alongside application review', () => {
         const terminal = source('src/frontend/pages/TerminalPage.vue');
+        const statusAction = terminal.match(/async function updateLinkStatus[\s\S]*?\n}/)?.[0] || '';
 
         assert.match(terminal, /label: '友链审核'/);
-        assert.match(terminal, /newLink: \{ name: '', url: '', description: '', avatar_url: '' \}/);
+        assert.match(terminal, /newLink: \{ name: '', url: '', description: '', avatar_url: '', backlink_url: '' \}/);
         assert.match(terminal, /async function createLink\(\)/);
         assert.match(terminal, /async function refreshLinkAvatar\(id\)/);
+        assert.match(terminal, /async function checkLink\(id\)/);
         assert.match(terminal, /站点描述/);
         assert.match(terminal, /头像链接/);
         assert.match(terminal, /@submit\.prevent="createLink"/);
         assert.match(terminal, /提交后直接公开/);
         assert.match(terminal, /linkReviewFilter: 'pending'/);
+        assert.match(terminal, /linkStatusSaving: \{\}/);
         assert.match(terminal, /filteredReviewLinks/);
         assert.match(terminal, /友链审核状态/);
+        assert.match(statusAction, /method: 'POST'/);
+        assert.doesNotMatch(statusAction, /method: 'PATCH'/);
+        assert.match(statusAction, /友链审核失败/);
     });
 
     it('keeps the QQ OAuth callback aligned with the production route', () => {
@@ -223,6 +356,36 @@ describe('frontend navigation routes', () => {
         assert.match(icons, /M12 8V4H8/);
     });
 
+    it('loads the Kaguya game only on its isolated public route', () => {
+        const router = source('src/frontend/router/index.js');
+        const shell = source('src/frontend/layouts/AppShell.vue');
+        const game = source('src/frontend/pages/GamePage.vue');
+        const gameCss = source('src/frontend/styles/routes/game.css');
+        const staticMiddleware = source('backend/middleware/static.js');
+
+        assert.match(router, /path: '\/game',\s*name: 'game',\s*component: GamePage/);
+        assert.match(shell, /path: '\/game'.+icon: 'gamepad'.+spa: true/);
+        assert.match(game, /sandbox="allow-scripts allow-pointer-lock allow-downloads"/);
+        assert.doesNotMatch(game, /allow-same-origin/);
+        assert.match(game, /VITE_KAGUYA_GAME_URL/);
+        assert.match(game, /kaguya-run-ef04c26b4900-r7\.html/);
+        assert.match(game, /kaguya-run-ef04c26b4900-%72%33\.h%74%6dl/);
+        assert.match(game, /:aria-busy="loading"/);
+        assert.match(game, /https:\/\/www\.bilibili\.com\/video\/BV1Bmgx6aEvJ\//);
+        assert.match(game, /rel="noopener noreferrer"/);
+        assert.match(game, /event\.source !== frame\.value\?\.contentWindow/);
+        assert.match(game, /tsukuyomi:kaguya-score/);
+        assert.match(game, /loadKaguyaLeaderboard/);
+        assert.match(game, /submitKaguyaScore/);
+        assert.match(game, /LEADERBOARD_PAGE_SIZE = 50/);
+        assert.match(game, /for \(let page = 2; page <= totalPages; page \+= 1\)/);
+        assert.match(game, /loadKaguyaLeaderboard\(\{\s*page,\s*limit: LEADERBOARD_PAGE_SIZE\s*\}\)/);
+        assert.match(game, /class="game-rank-list"[^>]+tabindex="0"/);
+        assert.match(gameCss, /\.game-rank-list\s*\{[\s\S]*max-height:[\s\S]*overflow-y: auto;[\s\S]*touch-action: pan-y;/);
+        assert.match(gameCss, /content-visibility: auto;/);
+        assert.match(staticMiddleware, /'\/game'/);
+    });
+
     it('credits the Agent OS music app source in the responsibility boundary and README', () => {
         const reality = source('src/frontend/pages/RealityPage.vue');
         const readme = source('README.md');
@@ -235,6 +398,18 @@ describe('frontend navigation routes', () => {
         assert.match(reality, /Agent OS 音楽 App の技術出典/);
         assert.match(readme, /\| Pixel \|[^\n]+`\/pixel`/);
         assert.doesNotMatch(readme, /独立 Arena/);
+    });
+
+    it('links the project support page from the README and responsibility boundary', () => {
+        const reality = source('src/frontend/pages/RealityPage.vue');
+        const readme = source('README.md');
+        const supportUrl = /https:\/\/www\.ifdian\.net\/a\/redchenk\?utm_source=copylink/;
+
+        assert.match(reality, supportUrl);
+        assert.match(readme, supportUrl);
+        assert.match(reality, /\/assets\/images\/support\/afdian-redchenk\.jpg/);
+        assert.match(readme, /assets\/images\/support\/afdian-redchenk\.jpg/);
+        assert.equal(fs.existsSync(path.join(projectRoot, 'assets/images/support/afdian-redchenk.jpg')), true);
     });
 
     it('uses /pixel everywhere while retaining only the explicit /arena redirect', () => {
@@ -266,6 +441,18 @@ describe('frontend navigation routes', () => {
         assert.match(hub, /\/api\/hub-preview/);
         assert.match(hub, /pixels_base64/);
         assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
+    });
+
+    it('previews native color-picker input without filling the saved palette', () => {
+        const arena = source('src/frontend/pages/ArenaPage.vue');
+        const pixelApi = source('backend/routes/pixel-art.js');
+
+        assert.match(arena, /const MAX_CUSTOM_COLORS = 52/);
+        assert.match(arena, /function previewCustomColor\(event\)/);
+        assert.match(arena, /type="color" @input="previewCustomColor"/);
+        assert.doesNotMatch(arena, /type="color" @input="selectCustomColor"/);
+        assert.match(arena, /@click="selectCustomColor"/);
+        assert.match(pixelApi, /const MAX_PALETTE_COLORS = 64/);
     });
 
     it('shows each gallery image uploader on cards, features, and the lightbox', () => {
@@ -310,6 +497,14 @@ describe('frontend navigation routes', () => {
         assert.match(plaza, /viewer_liked/);
     });
 
+    it('keeps the Hub hero light in light mode while preserving the dark theme artwork', () => {
+        const hub = source('assets/css/vue/pages/hub.css');
+        const polish = source('assets/css/vue/product-polish.css');
+
+        assert.match(hub, /html\[data-theme="light"\] body \.page\.hub \.hub-hero-panel::before\s*\{[\s\S]*rgba\(250, 253, 255, 0\.94\)/);
+        assert.match(polish, /html:not\(\[data-theme="light"\]\) body \.page\.hub \.hub-hero-panel::before/);
+    });
+
     it('uses path-level cache busting for every mutable public content read', () => {
         const client = source('src/frontend/api/client.js');
         const app = source('backend/app.js');
@@ -317,7 +512,9 @@ describe('frontend navigation routes', () => {
         assert.match(client, /function liveContentUrl\(/);
         assert.match(client, /articles\|messages\|assets\\\/gallery\|pixel-art\|friend-links/);
         assert.match(client, /`\/api\/live\/\$\{nonce\}/);
-        assert.match(client, /fetch\(apiUrl\(liveContentUrl\(url, options\)\)/);
+        assert.match(client, /function englishContentUrl\(/);
+        assert.match(client, /`\/en-api\$\{value\.slice\('\/api'\.length\)\}`/);
+        assert.match(client, /fetch\(apiUrl\(englishContentUrl\(url, options\)\)/);
         assert.match(app, /app\.use\('\/api\/live\/:nonce', liveContentRoutes\)/);
         assert.match(app, /\['GET', 'HEAD'\]/);
     });
@@ -448,6 +645,19 @@ describe('unified async loading states', () => {
         assert.match(hub, /LoadingSkeleton v-if="previewLoading" variant="hub"[\s\S]*v-else-if="previewError"[^>]*role="alert"/);
     });
 
+    it('loads the notification inbox in bounded server-side pages', () => {
+        const notifications = source('src/frontend/pages/NotificationsPage.vue');
+        const styles = source('assets/css/vue/pages/notifications.css');
+
+        assert.match(notifications, /NOTIFICATIONS_PAGE_SIZE = 12/);
+        assert.match(notifications, /page: String\(requestedPage\)[\s\S]*limit: String\(NOTIFICATIONS_PAGE_SIZE\)/);
+        assert.match(notifications, /result\.pagination\?\.totalPages/);
+        assert.match(notifications, /class="notifications-pagination"/);
+        assert.match(notifications, /aria-current="item === inbox\.page \? 'page' : undefined"/);
+        assert.match(styles, /\.notifications-page-controls/);
+        assert.match(styles, /\.notifications-page-button:focus-visible/);
+    });
+
     it('uses status loaders for unknown work and exposes a persistent Room error state', () => {
         const access = source('src/frontend/pages/AccessPage.vue');
         const login = source('src/frontend/pages/LoginPage.vue');
@@ -498,6 +708,24 @@ describe('terminal privilege boundaries', () => {
         assert.match(terminal, /showMessage\(error\.message \|\| '用户角色保存失败', 'error'\)/);
         assert.match(terminal, /:aria-busy="Boolean\(terminal\.userRoleSaving\[item\.id\]\)"/);
         assert.match(terminal, /terminal\.userRoleSaving\[item\.id\] \? '保存中' : '保存'/);
+    });
+
+    it('uses a compact Ant-style workspace with bounded tables and the existing icon system', () => {
+        const terminal = source('src/frontend/pages/TerminalPage.vue');
+        const pagination = source('src/frontend/components/terminal/TerminalPagination.vue');
+        const styles = source('assets/css/vue/pages/terminal-ant.css');
+        const packageJson = source('package.json');
+
+        assert.match(terminal, /import TerminalPagination/);
+        assert.match(terminal, /articleStatusFilter: 'all'/);
+        assert.match(terminal, /messageStatusFilter: 'all'/);
+        assert.match(terminal, /const pagedArticles = computed/);
+        assert.match(terminal, /const pagedMessages = computed/);
+        assert.match(terminal, /<TsIcon :name="panel\.icon"/);
+        assert.match(pagination, /pageItems = computed/);
+        assert.match(styles, /--terminal-ant-primary: #1677ff/);
+        assert.match(styles, /backdrop-filter: none/);
+        assert.doesNotMatch(packageJson, /"antd"\s*:/);
     });
 });
 

@@ -64,13 +64,14 @@ const oauth = reactive({
 const loginPlaceholder = computed(() => login.method === 'code' ? props.t.emailPh : props.t.accountPh);
 const hasOAuthTicket = computed(() => Boolean(oauth.ticket));
 const isJapanese = computed(() => props.t.login === 'ログイン');
+const isEnglish = computed(() => props.t.login === 'Sign in');
 const oauthRequiresEmailBinding = computed(() => oauth.mode === 'email' || Boolean(oauth.profile?.requiresEmailBinding));
 const authTitle = computed(() => (
   hasOAuthTicket.value
     ? (oauthRequiresEmailBinding.value ? '绑定邮箱' : 'QQ 登录确认')
     : forgotMode.value
       ? props.t.resetPassword
-      : (isJapanese.value ? 'おかえりなさい' : '欢迎回来')
+      : (isEnglish.value ? 'Welcome back' : (isJapanese.value ? 'おかえりなさい' : '欢迎回来'))
 ));
 const authSubtitle = computed(() => (
   hasOAuthTicket.value
@@ -86,11 +87,11 @@ const oauthProfileHint = computed(() => (
     ? 'QQ 未提供邮箱，请绑定一个可接收验证码的邮箱'
     : (oauth.profile?.email || 'QQ 未返回邮箱，可手动绑定已有邮箱账号')
 ));
-const authVisualTitle = computed(() => (isJapanese.value ? '月読空間' : '月读空间'));
-const authVisualSubtitle = computed(() => (isJapanese.value ? '探索、記録、共有' : '探索、记录、分享'));
-const authHomeLabel = computed(() => (isJapanese.value ? 'ホームへ戻る' : '返回首页'));
-const authNotePrimary = computed(() => (isJapanese.value ? '静かな月門' : '静谧月门'));
-const authNoteSecondary = computed(() => (isJapanese.value ? '安全なセッション' : '私密会话'));
+const authVisualTitle = computed(() => (isEnglish.value ? 'Tsukuyomi Space' : (isJapanese.value ? '月読空間' : '月读空间')));
+const authVisualSubtitle = computed(() => (isEnglish.value ? 'Explore, record and share' : (isJapanese.value ? '探索、記録、共有' : '探索、记录、分享')));
+const authHomeLabel = computed(() => (isEnglish.value ? 'Back to home' : (isJapanese.value ? 'ホームへ戻る' : '返回首页')));
+const authNotePrimary = computed(() => (isEnglish.value ? 'Quiet moon gate' : (isJapanese.value ? '静かな月門' : '静谧月门')));
+const authNoteSecondary = computed(() => (isEnglish.value ? 'Private session' : (isJapanese.value ? '安全なセッション' : '私密会话')));
 
 const oauthErrorText = {
   qq_not_configured: 'QQ 登录暂未配置，请稍后再试',
@@ -697,14 +698,14 @@ onMounted(() => {
               </div>
             </div>
             <button class="primary-btn" type="submit" :disabled="login.submitting" :aria-busy="login.submitting">{{ t.login }}</button>
-            <StatusLoader v-if="login.submitting" label="正在登录" compact />
+            <StatusLoader v-if="login.submitting" :label="isEnglish ? 'Signing in' : '正在登录'" compact />
           </form>
           <div class="oauth-login-section">
-            <div class="auth-divider"><span>其他方式登录</span></div>
+            <div class="auth-divider"><span>{{ isEnglish ? 'Other sign-in options' : '其他方式登录' }}</span></div>
             <div class="oauth-provider-row">
-              <button class="oauth-icon-btn qq" type="button" aria-label="QQ 登录" title="QQ 登录" @click="startQQLogin">
+              <button class="oauth-icon-btn qq" type="button" :aria-label="isEnglish ? 'Sign in with QQ' : 'QQ 登录'" :title="isEnglish ? 'Sign in with QQ' : 'QQ 登录'" @click="startQQLogin">
                 <img :src="qqIconUrl" alt="">
-                <span>QQ 登录</span>
+                <span>{{ isEnglish ? 'Sign in with QQ' : 'QQ 登录' }}</span>
               </button>
             </div>
           </div>

@@ -1,0 +1,10 @@
+/var/log/tsukuyomi-space/*.log /root/.pm2/logs/*.log {
+    size 10M
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su root root
+}

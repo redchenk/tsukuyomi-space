@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Tsukuyomi Space storage maintenance daily
+
+[Timer]
+OnBootSec=15min
+OnCalendar=hourly
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

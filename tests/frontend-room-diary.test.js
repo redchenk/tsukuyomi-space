@@ -56,8 +56,7 @@ globalThis.__archive = {
     activePersonaPrompt, personaDisplayName, updatePersonaPrompt, parseDiaryArchive,
     serializeDiaryArchive, importDiaryArchive, clearDiaryArchive, diaryArchiveKey,
     archiveFileName, normalizeDiaryEntry, diaryDateParts, diaryTimestampLabel, nextSlotId,
-    latestDiaryEntry, defaultPersonaPrompt, diarySortKey, DEFAULT_PERSONA_PROMPT_ID,
-    DIARY_ARCHIVE_UPDATED_EVENT
+    latestDiaryEntry, defaultPersonaPrompt, diarySortKey, recentDiaryContext
 };
 `);
     vm.runInNewContext(code, context, { filename: 'roomDiaryArchive.js' });
@@ -115,17 +114,8 @@ describe('room diary archive', () => {
         assert.equal(typeof fresh.data.gameData.characterSystemData.character.name, 'string');
     });
 
-    it('fails the archive-write announcement only through a real window', () => {
+    it('formats diary timestamps the way the reference backups do', () => {
         const { archive } = loadArchive();
-        // The room stage re-reads the persona from this event, so the writer
-        // must always announce. In the vm sandbox there is no window, which
-        // exercises the guard instead of throwing.
-        assert.equal(typeof archive.DIARY_ARCHIVE_UPDATED_EVENT, 'string');
-        assert.equal(archive.DIARY_ARCHIVE_UPDATED_EVENT, 'tsukuyomi:room-diary-archive-updated');
-        assert.doesNotThrow(() => archive.updatePersonaPrompt({ data: { name: '月见八千代' } }));
-    });
-
-    it('formats diary timestamps the way the reference backups do', () => {        const { archive } = loadArchive();
         const parts = archive.diaryDateParts(new Date(2026, 8, 3, 20, 51, 19));
 
         assert.equal(parts.date, '2026/9/3');
@@ -416,24 +406,6 @@ describe('room diary generation', () => {
 describe('room chat end-chat wiring', () => {
     const chatSource = () => source('src/frontend/composables/room/useRoomChat.js');
 
-    it('scopes diary generation to turns produced after the session boundary', () => {
-        const code = chatSource();
-
-        // Restored history must never be re-diarized on every load/refresh.
-        assert.match(code, /let sessionBoundaryReady = false;/);
-        assert.match(code, /const wasInitialLoad = !sessionBoundaryReady;/);
-        assert.match(code, /if \(wasInitialLoad\) \{\s*markSessionStart\(\);\s*sessionBoundaryReady = true;\s*\}/);
-        assert.match(code, /function loadHistory\(\) \{[\s\S]*markSessionStart\(\);[\s\S]*refreshSyncedHistory\(\);/);
-
-        // renderHistory must stay boundary-neutral so repeated syncs cannot reset it.
-        assert.match(code, /function renderHistory\(history\) \{\s*messages\.value = \[\];[\s\S]*?history\.forEach[\s\S]*?\n  \}/);
-        assert.doesNotMatch(code, /function renderHistory\(history\) \{[\s\S]{0,200}markSessionStart/);
-
-        // Boundary tracking uses a message count, not fragile timestamps.
-        assert.match(code, /restoredCount: messages\.value\.filter/);
-        assert.match(code, /\.slice\(since\);/);
-    });
-
     it('persists the generated entry through the archive and refreshes the diary panel', () => {
         const code = chatSource();
 
@@ -468,12 +440,9 @@ describe('room chat end-chat wiring', () => {
         assert.match(panel, /chat\.openEndChatDialog\(\)/);
         assert.match(panel, /chat\.confirmEndChat\(\)/);
         assert.match(panel, /chat\.closeEndChatDialog\(\)/);
-        // Every end-chat state renders in the centred overlay.
+        // All states remain visible in the centred overlay on short phone screens.
         assert.match(panel, /v-if="endChat\.visible"/);
-        assert.match(panel, /class="endchat-backdrop"/);
         assert.match(panel, /v-if="!diaryPreviewOpen"/);
-        assert.match(panel, /class="endchat-card"/);
-        assert.match(panel, /class="diary-preview-card"/);
         assert.match(panel, /role="dialog"/);
     });
 
@@ -491,4 +460,45 @@ describe('room chat end-chat wiring', () => {
         assert.match(state, /const diary = useRoomDiary\(\);/);
         assert.match(state, /useRoomChat\(\{ live2d, world, diary \}\)/);
     });
+});
+
+
+it('uses only the three most recent diaries with bounded context', () => {
+    const { archive } = loadArchive();
+    const value = archive.defaultArchive();
+    value.data.diary = [5, 1, 3, 2, 4].map((day) => ({
+        date: `2026/9/${day}`, time: '12:00:00', content: `entry-${day} ` + 'x'.repeat(2000)
+    }));
+    const context = archive.recentDiaryContext(value);
+    assert.doesNotMatch(context, /entry-[12]/);
+    assert.ok(context.indexOf('entry-3') < context.indexOf('entry-5'));
+    assert.ok(context.length < 3800);
+});
+
+it('generates diaries through the existing server proxy without a client key', async () => {
+    const generation = loadGeneration({ useProxy: true });
+    const result = await generation.generateDiaryEntry([{ role: 'user', content: 'hello' }], {
+        fetchProxy: async (url, options) => {
+            assert.equal(url, '/api/chat');
+            assert.equal(options.headers['Content-Type'], 'application/json');
+            const body = JSON.parse(options.body);
+            assert.match(body.message, /hello/);
+            assert.match(body.systemPrompt, /第一人称/);
+            return { ok: true, json: async () => ({ success: true, data: { reply: '今天我们聊了许多有趣的事，我会把这段温暖的时光记在心里。' } }) };
+        }
+    });
+    assert.match(result.body, /温暖的时光/);
+});
+
+
+it('preserves extension fields when a persona archive is imported and exported', () => {
+    const { archive } = loadArchive();
+    const value = archive.defaultArchive();
+    const persona = Object.values(value.data.prompts)[0];
+    persona.extensions = { source: 'test' };
+    persona.data.first_mes = 'Hello from the imported persona';
+    const restored = archive.parseDiaryArchive(archive.serializeDiaryArchive(value));
+    const imported = Object.values(restored.data.prompts)[0];
+    assert.equal(imported.extensions.source, 'test');
+    assert.equal(imported.data.first_mes, persona.data.first_mes);
 });

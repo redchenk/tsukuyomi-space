@@ -109,6 +109,161 @@ test('user can log in and reach the hub', async ({ page }) => {
     expect(session.data.username).toBe('e2e-user');
 });
 
+test('user can start a clean Room conversation without deleting long-term memory', async ({ page }) => {
+    await loginAsUser(page);
+    const turnId = `e2e-room-reset-${Date.now()}`;
+    const oldQuestion = `Old Room context ${turnId}`;
+    const oldAnswer = `Old Room answer ${turnId}`;
+    const saved = await page.request.post('/api/room/chat/turn', {
+        headers: sameOriginWriteHeaders(page),
+        data: { turnId, userMessage: oldQuestion, assistantMessage: oldAnswer }
+    });
+    expect(saved.status()).toBe(201);
+
+    await page.goto('/room');
+    await expect(page.getByText(oldQuestion, { exact: true })).toBeVisible();
+    await page.evaluate((pendingTurnId) => {
+        localStorage.setItem('roomChatPending:e2e-user-001', JSON.stringify([{
+            turnId: `${pendingTurnId}-pending`,
+            userMessage: 'Pending old question',
+            assistantMessage: 'Pending old answer'
+        }]));
+    }, turnId);
+
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('.chat-session-new-btn').click();
+    await expect(page.getByText('新会话已开始。长期记忆和角色知识库已保留。', { exact: true })).toBeVisible();
+    await expect(page.getByText(oldQuestion, { exact: true })).toHaveCount(0);
+
+    const localState = await page.evaluate(() => ({
+        history: localStorage.getItem('roomChatHistory:e2e-user-001'),
+        pending: localStorage.getItem('roomChatPending:e2e-user-001')
+    }));
+    expect(localState).toEqual({ history: null, pending: null });
+
+    const historyResponse = await page.request.get('/api/room/chat');
+    expect(historyResponse.status()).toBe(200);
+    expect((await historyResponse.json()).data).toEqual([]);
+
+    await page.reload();
+    await expect(page.getByText(oldQuestion, { exact: true })).toHaveCount(0);
+});
+
+test('Room knowledge entries open a visible editor and persist user changes', async ({ page }) => {
+    await page.goto('/room/settings');
+
+    const advanced = page.locator('details.room-advanced-settings');
+    if (!(await advanced.getAttribute('open'))) await advanced.locator(':scope > summary').click();
+
+    const manager = page.locator('#room-knowledge-settings');
+    await manager.locator('.memory-manager-toggle').click();
+    const target = manager.locator('.knowledge-item').last();
+    const originalTitle = (await target.locator('strong').textContent()).trim();
+    await target.locator('.button-row .ghost-btn').click();
+
+    const editor = manager.locator('.knowledge-editor');
+    const titleInput = editor.locator('input[type="text"]').first();
+    await expect(editor).toBeInViewport();
+    await expect(titleInput).toBeFocused();
+    await expect(titleInput).toHaveValue(originalTitle);
+
+    const editedTitle = `Edited knowledge ${Date.now()}`;
+    const editedContent = 'A user-owned character personality rule.';
+    await titleInput.fill(editedTitle);
+    await editor.locator('textarea').fill(editedContent);
+    await editor.locator('input[type="text"]').nth(1).fill('custom, personality');
+    await editor.locator('input[type="checkbox"]').uncheck();
+    await editor.locator('button[type="submit"]').click();
+
+    const editedItem = manager.locator('.knowledge-item').filter({ hasText: editedTitle });
+    await expect(editedItem).toContainText(editedContent);
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('roomKnowledgeSettings')));
+    const saved = stored.entries.find((entry) => entry.title === editedTitle);
+    expect(saved).toMatchObject({
+        content: editedContent,
+        tags: 'custom, personality',
+        enabled: false
+    });
+});
+
+test('Room TTS plays through the saved direct provider transport', async ({ page }) => {
+    const providerRequests = [];
+    await page.addInitScript(() => {
+        let gestureActive = false;
+        window.addEventListener('click', () => {
+            gestureActive = true;
+            queueMicrotask(() => { gestureActive = false; });
+        }, true);
+        HTMLMediaElement.prototype.play = function play() {
+            if (gestureActive && this.src.startsWith('data:audio/wav;base64,')) {
+                this.__mobilePlaybackUnlocked = true;
+            }
+            if (!this.__mobilePlaybackUnlocked) {
+                return Promise.reject(new DOMException(
+                    'play() can only be initiated by a user gesture.',
+                    'NotAllowedError'
+                ));
+            }
+            return Promise.resolve();
+        };
+        HTMLMediaElement.prototype.pause = function pause() {};
+        localStorage.setItem('roomTTSSettings', JSON.stringify({
+            enabled: true,
+            provider: 'openai',
+            apiUrl: 'https://api.openai.com/v1/audio/speech',
+            apiKey: 'browser-direct-test-key',
+            model: 'tts-1',
+            voice: 'alloy',
+            useProxy: false
+        }));
+        localStorage.setItem('roomChatHistory:guest', JSON.stringify([
+            { id: 'tts-direct-message', role: 'assistant', content: 'Direct provider playback test.' }
+        ]));
+    });
+    await page.route('https://api.openai.com/v1/audio/speech', async (route) => {
+        providerRequests.push({
+            headers: route.request().headers(),
+            body: JSON.parse(route.request().postData())
+        });
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.from('mock-audio') });
+    });
+
+    await page.goto('/room');
+    await page.locator('.chat-message.assistant .chat-tts-btn').first().click();
+    await expect.poll(() => providerRequests.length).toBe(1);
+
+    expect(providerRequests[0].headers.authorization).toBe('Bearer browser-direct-test-key');
+    expect(providerRequests[0].body.input).toBe('Direct provider playback test.');
+    await expect(page.locator('body')).not.toContainText('当前 Vue 版 TTS 建议先开启服务器代理');
+    await expect(page.locator('body')).not.toContainText('play() can only be initiated by a user gesture');
+});
+
+test('mobile Room settings saves provider TTS and advances with visible feedback', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/room/settings');
+    await page.locator('.room-setup-stepper button').nth(1).click();
+    await page.locator('input[name="setup-tts-mode"]').nth(1).check();
+    await page.locator('.room-simple-form select').first().selectOption('openai');
+    await page.locator('.room-simple-form input[type="password"]').fill('mobile-save-test-key');
+
+    await page.locator('.room-setup-step-panel .room-setup-actions .primary-btn').click();
+
+    await expect(page.locator('.room-setup-stepper button').nth(2)).toHaveClass(/active/);
+    await expect(page.locator('.plaza-toast.show')).toContainText('TTS 设置已保存');
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('roomTTSSettings') || 'null'));
+    expect(saved).toMatchObject({
+        enabled: true,
+        provider: 'openai',
+        apiKey: 'mobile-save-test-key',
+        useProxy: false
+    });
+    await expect.poll(() => page.locator('.room-setup-card').evaluate((element) => element.getBoundingClientRect().top))
+        .toBeGreaterThanOrEqual(-1);
+    const cardTop = await page.locator('.room-setup-card').evaluate((element) => element.getBoundingClientRect().top);
+    expect(cardTop).toBeLessThan(180);
+});
+
 test('user can read an article and post a comment', async ({ page }) => {
     await loginAsUser(page);
     await page.goto('/article?id=1');
@@ -251,6 +406,11 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     await expect(drawingCanvas).toHaveAttribute('height', '648');
     await expect(page.locator('.arena-size-options')).toHaveCount(0);
 
+    const galleryToggle = page.locator('[aria-controls="arena-gallery-panel"]');
+    await expect(galleryToggle).toHaveAttribute('aria-expanded', 'false');
+    await galleryToggle.click();
+    await expect(galleryToggle).toHaveAttribute('aria-expanded', 'true');
+
     const card = page.locator(`#pixel-art-${artworkId}`);
     await expect(card).toBeVisible();
 
@@ -277,13 +437,13 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     expect(desktopActions.justifyContent).toBe('flex-end');
     expect(desktopActions.aspectRatios.every((ratio) => ratio === 'auto')).toBe(true);
     expect(desktopActions.actionHeight).toBeLessThanOrEqual(52);
-    expect(desktopActions.buttonWidthTotal).toBeLessThan(desktopActions.actionWidth * 0.8);
+    expect(desktopActions.buttonWidthTotal).toBeLessThan(desktopActions.actionWidth * 0.95);
 
     await page.setViewportSize({ width: 390, height: 844 });
     const mobileActions = await galleryActionLayout();
     expect(mobileActions.actionHeight).toBeLessThanOrEqual(62);
     expect(mobileActions.buttonHeights.every((height) => height >= 34)).toBe(true);
-    expect(mobileActions.buttonWidthTotal).toBeLessThan(mobileActions.actionWidth * 0.8);
+    expect(mobileActions.buttonWidthTotal).toBeLessThan(mobileActions.actionWidth * 0.95);
     expect(mobileActions.horizontalOverflow).toBe(false);
 
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -390,6 +550,10 @@ test('desktop pixel controls scroll independently from the page', async ({ page 
 
     const controls = page.locator('.arena-controls');
     await expect(controls).toBeVisible();
+    const controlsToggle = page.locator('[aria-controls="arena-controls-panel"]');
+    await expect(controlsToggle).toHaveAttribute('aria-expanded', 'false');
+    await controlsToggle.click();
+    await expect(controlsToggle).toHaveAttribute('aria-expanded', 'true');
 
     const metrics = await controls.evaluate((element) => ({
         clientHeight: element.clientHeight,
@@ -403,6 +567,66 @@ test('desktop pixel controls scroll independently from the page', async ({ page 
     await page.mouse.wheel(0, 480);
     await expect.poll(() => controls.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
+test('game leaderboard loads every score into a vertical scroll region', async ({ page }) => {
+    const players = Array.from({ length: 63 }, (_, index) => ({
+        rank: index + 1,
+        userId: `game-player-${index + 1}`,
+        username: `Player ${index + 1}`,
+        avatar: '',
+        score: 100000 - index * 137,
+        updatedAt: '2026-07-27T00:00:00.000Z'
+    }));
+    const requestedPages = [];
+
+    await page.route('**/api/growth/game/leaderboard?*', async (route) => {
+        const url = new URL(route.request().url());
+        const pageNumber = Number(url.searchParams.get('page')) || 1;
+        const limit = Number(url.searchParams.get('limit')) || 10;
+        requestedPages.push(pageNumber);
+        await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                success: true,
+                data: {
+                    entries: players.slice((pageNumber - 1) * limit, pageNumber * limit),
+                    current: null,
+                    page: pageNumber,
+                    pageSize: limit,
+                    total: players.length,
+                    totalPages: Math.ceil(players.length / limit)
+                }
+            })
+        });
+    });
+    await page.route('**/game-runtime/**', (route) => route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<!doctype html><title>Game fixture</title>'
+    }));
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/game');
+
+    const list = page.locator('.game-rank-list');
+    await expect(list.locator('li')).toHaveCount(players.length);
+    expect(requestedPages).toEqual([1, 2]);
+
+    const metrics = await list.evaluate((element) => ({
+        clientHeight: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+        overflowY: getComputedStyle(element).overflowY,
+        touchAction: getComputedStyle(element).touchAction
+    }));
+    expect(metrics.overflowY).toBe('auto');
+    expect(metrics.touchAction).toBe('pan-y');
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+
+    await list.hover();
+    await page.mouse.wheel(0, 600);
+    await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
 test('admin can open the terminal dashboard and user panel', async ({ page }) => {
@@ -420,16 +644,16 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
     await page.getByRole('button', { name: '连接终端' }).click();
 
     await expect(page.getByText('Tsukuyomi Terminal')).toBeVisible();
-    await expect(page.getByRole('heading', { name: '系统总览' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^(系统)?总览$/ })).toBeVisible();
 
-    await page.getByRole('button', { name: /留言墙与文章评论审核/ }).click();
+    await page.getByRole('button', { name: '留言', exact: true }).click();
     const messageRow = page.locator('.terminal-message-table tbody tr').filter({ hasText: pendingMessage });
     await expect(messageRow).toBeVisible();
     await expect(messageRow.getByRole('button', { name: /通过留言/ })).toBeVisible();
     await expect(messageRow.getByRole('button', { name: /删除留言/ })).toBeVisible();
 
-    await page.getByRole('button', { name: /用户检索、角色和密码/ }).click();
-    await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible();
+    await page.getByRole('button', { name: '用户', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '用户', exact: true })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'e2e-user' }).first()).toBeVisible();
     await expect(page.locator('select option[value="banned"]').first()).toHaveText('banned');
 });

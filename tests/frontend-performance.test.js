@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 const zlib = require('node:zlib');
 const { describe, it } = require('node:test');
 
@@ -43,9 +44,35 @@ describe('constrained-device performance policy', () => {
         assert.match(performance, /\['slow-2g', '2g', '3g'\]/);
         assert.match(performance, /PerformanceObserver/);
         assert.match(performance, /entry\.duration/);
+        assert.match(performance, /SLOW_FRAME_THRESHOLD_MS/);
+        assert.match(performance, /unknownMemoryMobile/);
+        assert.match(performance, /const INITIAL_PRESSURE_GRACE_MS = 7000/);
+        assert.match(performance, /if \(entry\.startTime < pressureGraceUntil\) continue/);
+        assert.match(performance, /longTaskObserver\.observe\(\{ type: 'longtask' \}\)/);
+        assert.match(performance, /export function refreshPerformanceProbe/);
         assert.match(performance, /document\.documentElement\.dataset\.performance/);
         assert.match(main, /initializePerformanceProfile\(\)/);
         assert.match(main, /performance\.css/);
+    });
+
+    it('keeps route motion compositor-only and bounded during navigation', () => {
+        const packageJson = JSON.parse(source('package.json'));
+        const app = source('src/frontend/App.vue');
+        const motion = source('src/frontend/utils/motion.js');
+        const animations = source('src/frontend/styles/animations.css');
+
+        assert.match(packageJson.dependencies.animejs, /^\^4\./);
+        assert.match(motion, /from 'animejs\/waapi'/);
+        assert.match(motion, /isReducedPerformance\(\)/);
+        assert.match(motion, /prefers-reduced-motion: reduce/);
+        assert.match(motion, /MAX_ROUTE_TARGETS = 6/);
+        assert.doesNotMatch(motion, /(?:width|height|top|left):\s*\[/);
+        assert.match(app, /routeProgressVisible/);
+        assert.match(app, /ROUTE_PROGRESS_DELAY_MS = 96/);
+        assert.match(app, /routeOwnsLoading/);
+        assert.match(app, /:css="false"/);
+        assert.doesNotMatch(app, /route-transition-veil/);
+        assert.doesNotMatch(animations, /\[class\*="grid"\][\s\S]*>\s*:where\(article, a, button, li, div\)/);
     });
 
     it('prefetches only a small adjacent route set during idle time', () => {
@@ -67,7 +94,9 @@ describe('constrained-device performance policy', () => {
         assert.match(router, /let routePromise = null/);
         assert.match(router, /if \(!routePromise\)/);
         assert.match(router, /export function warmRoutePath\(path\)/);
-        assert.match(router, /connection\?\.saveData \|\| isReducedPerformance\(\)/);
+        assert.match(router, /\['slow-2g', '2g'\]\.includes\(effectiveType\)/);
+        assert.match(router, /reduced \? loaders\.slice\(0, 1\) : loaders/);
+        assert.match(router, /refreshPerformanceProbe\(\)/);
         assert.match(router, /router\.resolve\(path\)/);
         assert.match(shell, /@pointerenter="item\.spa && warmRoutePath\(item\.path\)/);
         assert.match(shell, /@pointerdown="item\.spa && warmRoutePath\(item\.path\)"/);
@@ -114,20 +143,62 @@ describe('constrained-device performance policy', () => {
         assert.match(arena, /@media \(max-width: 760px\)[\s\S]*body \.page\.arena-page \.arena-controls\s*\{[^}]*overflow:\s*visible/s);
     });
 
+    it('opens Pixel as a canvas-first studio with both side panels collapsed', () => {
+        const arena = source('assets/css/vue/pages/arena.css');
+        const arenaPage = source('src/frontend/pages/ArenaPage.vue');
+
+        assert.match(arenaPage, /const controlsOpen = ref\(false\)/);
+        assert.match(arenaPage, /const galleryOpen = ref\(false\)/);
+        assert.match(arenaPage, /'is-controls-open': controlsOpen[\s\S]*'is-gallery-open': galleryOpen/);
+        assert.match(arenaPage, /class="arena-panel-toggle arena-controls-toggle"[\s\S]*:aria-expanded="controlsOpen"/);
+        assert.match(arenaPage, /class="arena-panel-toggle arena-gallery-toggle"[\s\S]*:aria-expanded="galleryOpen"/);
+        assert.match(arena, /--arena-panel-rail:\s*52px[\s\S]*grid-template-columns:\s*var\(--arena-panel-rail\) minmax\(0, 1fr\) var\(--arena-panel-rail\)/);
+        assert.match(arena, /\.arena-page\.is-controls-open\s*\{[^}]*grid-template-columns:\s*var\(--arena-controls-open\) minmax\(0, 1fr\) var\(--arena-panel-rail\)/s);
+        assert.match(arena, /\.arena-page\.is-gallery-open\s*\{[^}]*grid-template-columns:\s*var\(--arena-panel-rail\) minmax\(0, 1fr\) var\(--arena-gallery-open\)/s);
+        assert.match(arena, /\.arena-page:not\(\.is-controls-open\) \.arena-controls > :not\(\.arena-panel-toggle\)/);
+        assert.match(arena, /\.arena-page:not\(\.is-gallery-open\) \.arena-gallery > :not\(\.arena-panel-toggle\)/);
+        assert.match(arena, /\.arena-page\.is-controls-open \.arena-controls\s*\{[^}]*background:\s*#0d1220[^}]*backdrop-filter:\s*none/s);
+        assert.match(arena, /\.arena-page \.arena-controls,[\s\S]*\.arena-page \.arena-gallery\s*\{[^}]*z-index:\s*20[^}]*isolation:\s*isolate/s);
+        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*body \.page\.arena-page\s*\{[^}]*height:\s*auto[^}]*overflow-y:\s*visible/s);
+    });
+
+    it('defers offscreen gallery canvases without delaying the editable pixel canvas', () => {
+        const canvas = source('src/frontend/components/PixelCanvasCells.vue');
+        const arena = source('src/frontend/pages/ArenaPage.vue');
+
+        assert.match(canvas, /deferOffscreen: \{ type: Boolean, default: false \}/);
+        assert.match(canvas, /new IntersectionObserver/);
+        assert.match(canvas, /rootMargin: '700px 0px'/);
+        assert.match(canvas, /if \(!renderReady\.value\) return/);
+        assert.match(canvas, /function renderPixelChanges\(changes\)/);
+        assert.match(canvas, /defineExpose\(\{\s*renderPixelChanges/s);
+        assert.match(arena, /pixelCanvasRef\.value\?\.renderPixelChanges\(pixelChanges\)/);
+        assert.doesNotMatch(arena, /scheduleStrokeCommit/);
+        assert.equal((arena.match(/\bdefer-offscreen\b/g) || []).length, 1);
+        assert.match(arena, /class="pixel-art-preview"[\s\S]*?<PixelCanvasCells[\s\S]*?defer-offscreen/);
+    });
+
+    it('rotates Gallery feature media only while visible and decodes it before swapping', () => {
+        const gallery = source('src/frontend/pages/GalleryPage.vue');
+
+        assert.match(gallery, /const RANDOM_FEATURE_INTERVAL_MS = 30000/);
+        assert.match(gallery, /new IntersectionObserver/);
+        assert.match(gallery, /document\.visibilityState === 'visible' && randomFeatureVisible/);
+        assert.match(gallery, /await image\.decode\?\.\(\)/);
+        assert.match(gallery, /stopRandomFeatureRotation\(\)/);
+        assert.doesNotMatch(gallery, /setInterval\(loadRandomFeatureImage, 7000\)/);
+    });
+
     it('keeps mobile content and immersive controls inside the viewport', () => {
         const stage = source('assets/css/vue/pages/stage.css');
         const room = source('assets/css/vue/pages/room.css');
-        const responsive = source('src/frontend/styles/responsive.css');
         const accessPage = source('src/frontend/pages/AccessPage.vue');
         const accessStyles = source('assets/css/vue/pages/access.css');
         const attachments = source('src/frontend/pages/AttachmentsPage.vue');
 
         assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card\s*\{[^}]*height:\s*auto[^}]*flex-direction:\s*column-reverse/s);
         assert.match(stage, /@media \(max-width: 760px\)[\s\S]*\.stage-card-cover\s*\{[^}]*width:\s*100%[^}]*height:\s*clamp/s);
-        // Diary/profile/note opt out of the chat and music panels so each keeps
-        // its own phone layout. The positioning lives in the higher-priority
-        // ts-design layer, where the panels are centred above the bottom edge and
-        // capped so they never reach the weather pill.
+        const responsive = source('src/frontend/styles/responsive.css');
         assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*left:\s*50%\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
         assert.match(responsive, /\.room-panel:not\(\.room-chat-panel\):not\(\.room-music-panel\)\s*\{[^}]*max-height:[^}]*var\(--room-mobile-top-clearance\)/s);
         assert.match(room, /\.room-panel\.room-chat-panel\s*\{[^}]*left:\s*50%\s*!important[^}]*top:\s*auto\s*!important[^}]*transform:\s*translateX\(-50%\)/s);
@@ -139,6 +210,14 @@ describe('constrained-device performance policy', () => {
         assert.match(attachments, /matchMedia\('\(max-width: 760px\)'\)\.matches \? 18 : 36/);
         assert.match(attachments, /preload="none"[\s\S]*disablepictureinpicture[\s\S]*disableremoteplayback/);
         assert.match(attachments, /v-if="state\.totalPages > 1" class="attachments-pager"/);
+    });
+
+    it('keeps Access copy legible over moving video backgrounds', () => {
+        const readability = source('assets/css/vue/theme-readability.css');
+
+        assert.match(readability, /body\.vue-access-route \.page\.access-page \.hero-kicker\s*\{[^}]*rgba\(255, 255, 255, 0\.9\)/s);
+        assert.match(readability, /body\.vue-access-route \.page\.access-page \.hero-copy\s*\{[^}]*rgba\(255, 255, 255, 0\.94\)[^}]*text-shadow:/s);
+        assert.match(readability, /body\.vue-access-route \.page\.access-page :is\(\.access-copyright, \.access-beian \.beian-link\)\s*\{[^}]*rgba\(255, 255, 255, 0\.82\)/s);
     });
 
     it('uses compressed full-resolution backgrounds and a lightweight pet frame', () => {
@@ -181,12 +260,14 @@ describe('constrained-device performance policy', () => {
         assert.match(app, /:reduced="petReduced"/);
         assert.match(pet, /assets\/pets\/yachiyo\/idle\.webp/);
         assert.match(pet, /if \(motionReduced \|\| props\.reduced\) return/);
-        assert.match(pet, /@click="showGuidanceTip"/);
+        assert.match(pet, /@click="openGuide"/);
+        assert.match(pet, /role="dialog"/);
     });
 
     it('reduces compositing work without changing Live2D canvas pixel density', () => {
         const styles = source('src/frontend/styles/performance.css');
         const room = source('src/live2d/main-room.ts');
+        const pacing = source('src/live2d/room-frame-pacing.mjs');
         const subdelegate = source('src/live2d/lappsubdelegate.ts');
         const bridge = source('src/frontend/services/room/live2dCubismBehaviorBridge.js');
         const loader = source('src/frontend/services/room/live2dBridge.js');
@@ -194,8 +275,10 @@ describe('constrained-device performance policy', () => {
         assert.match(styles, /data-performance="reduced"/);
         assert.match(styles, /backdrop-filter: none !important/);
         assert.match(styles, /content-visibility: auto/);
-        assert.match(room, /ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 20/);
-        assert.match(room, /roomRenderMaxFrameInterval\(\)/);
+        assert.match(room, /computeRoomFrameInterval\(/);
+        assert.match(pacing, /idleIntervalMs: 1000 \/ 24/);
+        assert.match(pacing, /activeMinimumFps: 10/);
+        assert.match(pacing, /idleMinimumFps: 8/);
         assert.match(bridge, /currentFrameInterval\(\)/);
         assert.match(subdelegate, /window\.devicePixelRatio \|\| 1/);
         assert.match(subdelegate, /clientWidth \* ratio/);
@@ -206,5 +289,70 @@ describe('constrained-device performance policy', () => {
         assert.match(loader, /tsukimi-yachiyo\.moc3/);
         assert.match(loader, /MODEL_MOC_COMPRESSED/);
         assert.match(loader, /window\.DecompressionStream/);
+    });
+
+    it('keeps Room responsive by reserving main-thread headroom without reducing resolution', async () => {
+        const moduleUrl = pathToFileURL(path.join(root, 'src/live2d/room-frame-pacing.mjs')).href;
+        const pacing = await import(`${moduleUrl}?test=${Date.now()}`);
+
+        const reducedIdle = pacing.computeRoomFrameInterval({
+            profile: 'reduced',
+            active: false,
+            averageRenderCostMs: 10.6,
+            renderCostMs: 10.6,
+            currentIntervalMs: 1000 / 60
+        });
+        assert.ok(reducedIdle >= 1000 / 24);
+
+        const balancedActive = pacing.computeRoomFrameInterval({
+            profile: 'balanced',
+            active: true,
+            averageRenderCostMs: 8,
+            renderCostMs: 8,
+            currentIntervalMs: 1000 / 30
+        });
+        assert.ok(balancedActive < 1000 / 30);
+
+        const overloaded = pacing.computeRoomFrameInterval({
+            profile: 'reduced',
+            active: false,
+            averageRenderCostMs: 400,
+            renderCostMs: 400,
+            currentIntervalMs: 1000 / 24
+        });
+        assert.ok(overloaded > 1000 / 24);
+        assert.ok(overloaded <= 1000 / 8 + 0.01);
+        const severelyOverloaded = pacing.computeRoomFrameInterval({
+            profile: 'reduced',
+            active: false,
+            averageRenderCostMs: 5500,
+            renderCostMs: 5500,
+            currentIntervalMs: 2000
+        });
+        assert.ok(severelyOverloaded >= 1000 / 8 - 0.01);
+        assert.ok(severelyOverloaded <= 1000 / 8 + 0.01);
+        assert.equal(pacing.roomFramePacingSnapshot({
+            profile: 'reduced',
+            targetIntervalMs: reducedIdle
+        }).profile, 'reduced');
+    });
+
+    it('drops stale Live2D physics work instead of replaying it after a slow frame', () => {
+        const physics = source('lib/Framework/src/physics/cubismphysics.ts');
+        const shader = source('lib/Framework/src/rendering/cubismshader_webgl.ts');
+        const model = source('src/live2d/lappmodel.ts');
+        const textures = source('src/live2d/lapptexturemanager.ts');
+
+        assert.match(physics, /const MaxPhysicsStepsPerEvaluation = 1/);
+        assert.match(physics, /physicsSteps < MaxPhysicsStepsPerEvaluation/);
+        assert.match(physics, /Math\.min\(deltaTimeSeconds, physicsDeltaTime\)/);
+        assert.doesNotMatch(physics, /\.slice\(destinationParameterIndex\)/);
+        assert.match(physics, /function updateOutputParameterValue\(\s*parameterValue: number/);
+        assert.match(physics, /this\._physicsRig\.inputs\.getRange/);
+        assert.match(physics, /particle\.position\.x =/);
+        assert.match(shader, /gl\.bufferSubData\(target, 0, data\)/);
+        assert.match(model, /Math\.max\(LAppPal\.getDeltaTime\(\), 0\),\s*1 \/ 15/);
+        assert.doesNotMatch(textures, /textureInfo\.img\s*=/);
+        assert.match(textures, /queueMicrotask\(\(\) => callback\(textureInfo\)\)/);
     });
 });

@@ -37,6 +37,12 @@ Docker 默认使用：
 
 `/data` 会挂载到 Compose 命名卷 `tsukuyomi-data`，用于持久化 SQLite 数据库。`/app/assets/uploads` 会挂载到 `tsukuyomi-uploads`，避免用户上传文件跟随容器生命周期丢失。
 
+Room 记忆默认使用 SQLite 本地向量检索。2 GB 内存的服务器不要常驻 Milvus；SQLite 仍会保存、隔离并检索每个账号的长期记忆。资源充足且确实需要 Milvus 时，在 `.env.docker` 中配置访问密钥、`ROOM_MEMORY_VECTOR_BACKEND=milvus`、`MILVUS_ADDRESS=milvus:19530`，再启用可选 profile：
+
+```bash
+docker compose --profile milvus up -d --build
+```
+
 ### 2. 启动
 
 ```bash
@@ -102,6 +108,14 @@ docker compose restart tsukuyomi-space
 docker compose down
 docker compose build --pull tsukuyomi-space
 docker compose up -d --remove-orphans tsukuyomi-space
+```
+
+PM2 部署会自动安装 `tsukuyomi-maintenance.timer`。它每小时检查并轮转 Docker、PM2 和应用日志，压缩系统日志，删除超过两天的部署临时包，并让数据库与部署归档各保留最近 10 份。可用以下命令检查状态：
+
+```bash
+systemctl status tsukuyomi-maintenance.timer
+systemctl start tsukuyomi-maintenance.service
+df -h /
 ```
 
 ### 5. 备份与恢复 SQLite

@@ -134,6 +134,7 @@ function renderHubHtml(articles = []) {
         { href: '/room', title: '月见八千代 Live2D 房间', description: '高清 Live2D、AI 对话、语音与长期记忆。' },
         { href: '/gallery', title: '公开图库', description: '用户公开上传的插画与站点影像。' },
         { href: '/pixel', title: '192×108 像素画工坊', description: '在线创作、分享与浏览像素作品。' },
+        { href: '/game', title: '辉夜快跑', description: '辉夜姬主题节奏跑酷游戏。' },
         { href: '/friend-links', title: '友链导航', description: '月读空间审核收录的友好站点。' }
     ];
     const latestArticles = articles.slice(0, 12).map(article => ({
@@ -169,6 +170,41 @@ function renderPixelHtml(artworks = []) {
         keywords: ['在线像素画', '192×108 像素画', '月光像素工坊', 'Pixel Art 编辑器', '像素画社区'],
         items,
         actions: [{ href: '/pixel?spa=1', label: '打开像素画工具' }]
+    });
+}
+
+function renderGameHtml() {
+    return renderSeoCollectionPage({
+        path: '/game',
+        title: '辉夜快跑在线音游',
+        heading: '辉夜快跑',
+        description: '在月读空间游玩辉夜快跑，体验为桌面键盘与移动端触控优化的辉夜姬主题节奏跑酷游戏。',
+        keywords: ['辉夜快跑', '辉夜姬音游', '在线节奏游戏', '月读空间游戏', 'Kaguya Run'],
+        actions: [{ href: '/game?spa=1', label: '开始游戏' }]
+    });
+}
+
+function renderPixelArtworkHtml(artwork) {
+    const id = encodeURIComponent(artwork.id);
+    const path = `/pixel?art=${id}`;
+    const dimensions = `${Number(artwork.width || artwork.size || 192)}×${Number(artwork.height || artwork.size || 108)}`;
+    const description = artwork.description || `${artwork.author || '月读空间用户'}创作的 ${dimensions} 像素作品。`;
+    const version = encodeURIComponent(String(artwork.updated_at || artwork.created_at || artwork.id));
+    return renderSeoCollectionPage({
+        path,
+        title: `${artwork.title || '像素作品'} - 月读空间像素画`,
+        heading: artwork.title || '月读空间像素作品',
+        description,
+        keywords: [artwork.title || '像素画', '在线像素画', dimensions, '月读空间像素画', 'Pixel Art'],
+        image: `/api/pixel-art/${id}/image.png?v=${version}`,
+        items: [{
+            href: `${path}&spa=1`,
+            title: artwork.title || '像素作品',
+            description,
+            meta: `${artwork.author || '匿名创作者'} · ${dimensions}`,
+            image: `/api/pixel-art/${id}/image.png?v=${version}`
+        }],
+        actions: [{ href: `${path}&spa=1`, label: '查看并继续创作' }]
     });
 }
 
@@ -209,6 +245,13 @@ function renderWikiEntryHtml(entry) {
 }
 
 function renderFriendLinksHtml(links = []) {
+    const statusLabels = {
+        online: '在线',
+        slow: '响应较慢',
+        restricted: '访问受限',
+        offline: '暂时离线',
+        unchecked: '等待检测'
+    };
     return renderSeoCollectionPage({
         path: '/friend-links',
         title: '月读空间友链导航',
@@ -219,10 +262,10 @@ function renderFriendLinksHtml(links = []) {
             href: link.url,
             title: link.name,
             description: link.description || '月读空间收录的友好站点。',
-            image: link.avatar_url || '',
-            imageKind: 'avatar',
-            imageAlt: `${link.name} 站点头像`,
-            meta: '公开友链'
+            image: link.screenshot_url || link.avatar_url || '',
+            imageKind: link.screenshot_url ? 'preview' : 'avatar',
+            imageAlt: link.screenshot_url ? `${link.name} 站点预览` : `${link.name} 站点头像`,
+            meta: `${statusLabels[link.monitor_status] || statusLabels.unchecked}${link.response_time_ms ? ` · ${link.response_time_ms}ms` : ''}`
         })),
         actions: [
             { href: '/friend-links?spa=1', label: '进入互动友链页' },
@@ -231,11 +274,36 @@ function renderFriendLinksHtml(links = []) {
     });
 }
 
+function renderFriendLinksSpaHtml(indexHtml = '', links = []) {
+    const anchors = links.map((link) => {
+        try {
+            const href = new URL(String(link?.url || ''));
+            if (!['http:', 'https:'].includes(href.protocol) || !link?.name) return '';
+            return `<li><a href="${escapeHtml(href.toString())}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.name)}</a></li>`;
+        } catch (_) {
+            return '';
+        }
+    }).filter(Boolean).join('');
+    const fallback = `
+    <main data-server-friend-links aria-label="公开友链">
+      <h1>月读空间友链</h1>
+      <ul>${anchors}</ul>
+      <a href="/friend-links/apply">申请友链</a>
+    </main>`;
+    return String(indexHtml || '').replace(
+        /<div\s+id=["']app["']\s*><\/div>/i,
+        `<div id="app">${fallback}</div>`
+    );
+}
+
 module.exports = {
     renderSeoCollectionPage,
+    renderGameHtml,
     renderHubHtml,
+    renderPixelArtworkHtml,
     renderPixelHtml,
     renderWikiHtml,
     renderWikiEntryHtml,
-    renderFriendLinksHtml
+    renderFriendLinksHtml,
+    renderFriendLinksSpaHtml
 };

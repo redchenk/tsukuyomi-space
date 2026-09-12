@@ -8,6 +8,7 @@ const socialRepository = require('../repositories/social-repository');
 const { reviewMessageContent } = require('../services/message-moderation');
 const { articlePath } = require('../seo/render-article');
 const responseCache = require('../services/response-cache');
+const userGrowth = require('../services/user-growth');
 const { setPublicReadCache } = require('../services/public-cache');
 
 const router = express.Router();
@@ -128,6 +129,15 @@ router.get('/', (req, res) => {
     sendMessageList(req, res, req.query.article_id);
 });
 
+function recordPlazaGrowth(userId, activityKey, messageId) {
+    try {
+        return userGrowth.recordDailyActivity(userId, activityKey, messageId);
+    } catch (error) {
+        console.error('Record plaza growth failed:', error);
+        return null;
+    }
+}
+
 router.get('/plaza/latest', (req, res) => {
     try {
         const limit = Math.max(1, Math.min(Number.parseInt(req.query.limit, 10) || 4, 12));
@@ -220,9 +230,13 @@ router.post('/', authenticateToken, messageWriteLimiter, (req, res) => {
             responseCache.delPrefix('public:stats');
             notifyMentions({ message: newMessage, actor: req.user });
         }
+        const growth = review.status === 'approved' && !article_id
+            ? recordPlazaGrowth(req.user.id, 'plaza_message', newMessage.id)
+            : null;
         res.status(201).json({
             success: true,
             data: newMessage,
+            growth,
             message: review.status === 'approved' ? '留言已发布' : '留言已提交，审核通过后会公开显示'
         });
     } catch (error) {
@@ -259,7 +273,10 @@ router.post('/:id/like', authenticateToken, (req, res) => {
             content: message.content,
             relatedMessageId: message.id
         });
-        res.json({ success: true, data: { ...message, viewer_liked: true } });
+        const growth = !message.article_id
+            ? recordPlazaGrowth(req.user.id, 'plaza_like', message.id)
+            : null;
+        res.json({ success: true, data: { ...message, viewer_liked: true }, growth });
     } catch (error) {
         console.error('Like message failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
@@ -303,9 +320,13 @@ router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => 
             });
             notifyMentions({ message: newMessage, actor: req.user });
         }
+        const growth = review.status === 'approved' && !originalMessage.article_id
+            ? recordPlazaGrowth(req.user.id, 'plaza_message', newMessage.id)
+            : null;
         res.status(201).json({
             success: true,
             data: newMessage,
+            growth,
             message: review.status === 'approved' ? '回复已发布' : '回复已提交，审核通过后会公开显示'
         });
     } catch (error) {

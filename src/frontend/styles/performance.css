@@ -21,8 +21,37 @@ html[data-theme="light"] body.vue-room-route {
     will-change: auto;
 }
 
-.route-stage-transitioning .route-view {
-    will-change: opacity, transform;
+/* Controls already have premixed translucent surfaces; blurring behind each one
+   creates dozens of redundant compositor layers without changing readability. */
+:where(
+    .nav-link,
+    .rail-link,
+    .mobile-bottom-link,
+    .primary-btn,
+    .ghost-btn,
+    .danger-btn,
+    .lang-btn,
+    .theme-toggle,
+    .panel-btn,
+    .panel-toggle-btn,
+    .filter-btn,
+    .chip,
+    .user-chip,
+    .icon-btn,
+    .mode-btn,
+    .code-btn,
+    .stage-new-btn,
+    .stage-page-btn,
+    .plaza-page-btn,
+    .site-music-handle,
+    .music-mini-btn,
+    .music-icon-btn,
+    .site-music-play,
+    .chat-attach-btn,
+    .chat-tts-btn
+) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
 }
 
 html[data-window-active="false"] *,
@@ -50,20 +79,16 @@ html[data-performance="reduced"] *::after {
     transition-duration: 80ms !important;
 }
 
-html[data-performance="reduced"] :where(
-    .site-rail,
-    .mobile-bottom-nav,
-    .topbar,
-    .site-music-player,
-    [data-material],
-    .panel,
-    .glass-card,
-    .room-panel,
-    .room-dock,
-    .room-weather-card
-) {
+html[data-performance="reduced"] #app *,
+html[data-performance="reduced"] #app *::before,
+html[data-performance="reduced"] #app *::after {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+}
+
+html[data-performance="reduced"] [data-material] {
+    --ts-current-material-filter: none;
+    --ts-current-material-bg: color-mix(in srgb, var(--ts-surface-strong) 94%, transparent);
 }
 
 html[data-performance="reduced"] :where(.site-global-bg, .room-backdrop, .room-live2d-container canvas),
@@ -82,8 +107,24 @@ html[data-performance="reduced"] .room-weather-layer::after {
     display: none !important;
 }
 
-html[data-performance="reduced"] .route-transition-veil {
+html[data-performance="reduced"] .route-navigation-progress {
     display: none;
+}
+
+.route-view.page:not(.room-page):not(.arena-page) :where(
+    .stage-card,
+    .gallery-card,
+    .plaza-msg-card,
+    .friend-link-card,
+    .notification-card,
+    .attachments-card,
+    .uc-article-item,
+    .uc-pixel-card,
+    .profile-article,
+    .artwork-card
+):nth-child(n + 7) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 320px;
 }
 
 html[data-performance="reduced"] .route-view.page:not(.room-page) :where(

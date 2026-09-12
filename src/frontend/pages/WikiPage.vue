@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import TsIcon from '../components/TsIcon.vue';
 import { wikiEntryPath } from '../data/cosmicKaguyaWikiEntries';
+import { decodeWikiHash, trustedWikiAssetPath, trustedWikiSourceUrl } from '../utils/wikiSecurity';
 import {
   boxOfficeMilestones,
   cast,
@@ -35,10 +36,16 @@ const mobileToc = ref(null);
 const showBackToTop = ref(false);
 const termCloseButton = ref(null);
 const termDrawer = ref(null);
-let sectionObserver = null;
 let topObserver = null;
+let trackedSections = [];
+let sectionGeometry = [];
+let sectionSyncFrame = 0;
+let sectionGeometryFrame = 0;
+let articleResizeObserver = null;
 let lastTermTrigger = null;
 let previousBodyOverflow = '';
+
+const SECTION_ANCHOR_RATIO = 0.2;
 
 const normalizedSearch = computed(() => searchQuery.value.trim().toLocaleLowerCase());
 const searchResults = computed(() => {
@@ -55,6 +62,9 @@ const filteredCharacters = computed(() => activeCharacterGroup.value === 'all'
 const filteredMusic = computed(() => activeMusicGroup.value === 'all'
   ? music
   : music.filter((song) => song.category === activeMusicGroup.value));
+const trustedReferences = computed(() => references
+  .map((reference) => ({ ...reference, url: trustedWikiSourceUrl(reference.url) }))
+  .filter((reference) => reference.url));
 
 function setActiveSection(id) {
   activeSection.value = id;
@@ -122,22 +132,75 @@ function openCharacterEntry(character, event) {
 }
 
 function scrollToInitialHash() {
-  const id = decodeURIComponent(window.location.hash.replace(/^#/, ''));
+  const id = decodeWikiHash(window.location.hash);
   if (!id) return;
   const target = document.getElementById(id);
   if (!target) return;
   window.requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
 }
 
+function syncActiveSection() {
+  sectionSyncFrame = 0;
+  if (!sectionGeometry.length) return;
+
+  const anchor = window.scrollY + window.innerHeight * SECTION_ANCHOR_RATIO;
+  let low = 0;
+  let high = sectionGeometry.length - 1;
+  let activeIndex = 0;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    if (sectionGeometry[middle].top <= anchor) {
+      activeIndex = middle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+
+  const root = document.documentElement;
+  if (window.scrollY + window.innerHeight >= root.scrollHeight - 2) {
+    activeIndex = sectionGeometry.length - 1;
+  }
+  const nextSectionId = sectionGeometry[activeIndex]?.id;
+  if (nextSectionId && activeSection.value !== nextSectionId) {
+    activeSection.value = nextSectionId;
+  }
+}
+
+function queueActiveSectionSync() {
+  if (sectionSyncFrame) return;
+  sectionSyncFrame = window.requestAnimationFrame(syncActiveSection);
+}
+
+function refreshSectionGeometry() {
+  sectionGeometryFrame = 0;
+  const scrollTop = window.scrollY;
+  sectionGeometry = trackedSections
+    .map((section) => ({
+      id: section.id,
+      top: scrollTop + section.getBoundingClientRect().top
+    }))
+    .sort((left, right) => left.top - right.top);
+  queueActiveSectionSync();
+}
+
+function queueSectionGeometryRefresh() {
+  if (sectionGeometryFrame) return;
+  sectionGeometryFrame = window.requestAnimationFrame(refreshSectionGeometry);
+}
+
 onMounted(() => {
-  const sections = Array.from(document.querySelectorAll('[data-wiki-section]'));
-  sectionObserver = new IntersectionObserver((entries) => {
-    const visible = entries
-      .filter((entry) => entry.isIntersecting)
-      .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-    if (visible[0]?.target?.id) activeSection.value = visible[0].target.id;
-  }, { rootMargin: '-18% 0px -68% 0px', threshold: [0, 0.08, 0.25] });
-  sections.forEach((section) => sectionObserver.observe(section));
+  trackedSections = Array.from(document.querySelectorAll('[data-wiki-section]'));
+  window.addEventListener('scroll', queueActiveSectionSync, { passive: true });
+  window.addEventListener('resize', queueSectionGeometryRefresh, { passive: true });
+  window.addEventListener('load', queueSectionGeometryRefresh, { passive: true, once: true });
+  queueSectionGeometryRefresh();
+
+  const article = document.getElementById('wiki-article');
+  if (article && typeof ResizeObserver === 'function') {
+    articleResizeObserver = new ResizeObserver(queueSectionGeometryRefresh);
+    articleResizeObserver.observe(article);
+  }
 
   if (topSentinel.value) {
     topObserver = new IntersectionObserver(([entry]) => {
@@ -151,7 +214,17 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  sectionObserver?.disconnect();
+  window.removeEventListener('scroll', queueActiveSectionSync);
+  window.removeEventListener('resize', queueSectionGeometryRefresh);
+  window.removeEventListener('load', queueSectionGeometryRefresh);
+  if (sectionSyncFrame) window.cancelAnimationFrame(sectionSyncFrame);
+  if (sectionGeometryFrame) window.cancelAnimationFrame(sectionGeometryFrame);
+  sectionSyncFrame = 0;
+  sectionGeometryFrame = 0;
+  trackedSections = [];
+  sectionGeometry = [];
+  articleResizeObserver?.disconnect();
+  articleResizeObserver = null;
   topObserver?.disconnect();
   document.removeEventListener('keydown', handleKeydown);
   document.body.style.overflow = previousBodyOverflow;
@@ -313,7 +386,7 @@ onBeforeUnmount(() => {
                 @click="openCharacterEntry(character, $event)"
                 @keydown.enter.prevent="openCharacterEntry(character, $event)"
               >
-                <img v-if="character.image" :src="character.image" width="160" height="160" :alt="character.imageAlt" loading="lazy" decoding="async">
+                <img v-if="trustedWikiAssetPath(character.image)" :src="trustedWikiAssetPath(character.image)" width="160" height="160" :alt="character.imageAlt" loading="lazy" decoding="async">
                 <div v-else class="wiki-character-placeholder" aria-hidden="true">{{ character.name.slice(0, 1) }}</div>
                 <div class="wiki-character-copy">
                   <div class="wiki-character-title"><div><h3>{{ character.name }}</h3><span>{{ character.original }}</span></div><small>CV {{ character.cv }}</small></div>
@@ -391,7 +464,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="wiki-derivative-grid" aria-label="衍生作品">
               <article v-for="work in derivativeWorks" :key="work.type" class="wiki-derivative-card">
-                <img :src="work.image" :alt="work.imageAlt" loading="lazy" decoding="async">
+                <img v-if="trustedWikiAssetPath(work.image)" :src="trustedWikiAssetPath(work.image)" :alt="work.imageAlt" loading="lazy" decoding="async">
                 <span>{{ work.type }}</span>
                 <h3>{{ work.title }}</h3>
                 <p>{{ work.detail }}</p>
@@ -412,7 +485,7 @@ onBeforeUnmount(() => {
               <div><strong>非官方网站／非官方百科</strong><p>本页为粉丝制作的资料导航，正文为原创归纳，不代表 Netflix、Colorido、Twin Engine 或作品权利方立场。页面主视觉为本站原创生成插画，不含官方角色图、截图、Logo 或商品扫描；作品名称与资料仅用于介绍和评论。</p></div>
             </div>
             <ol class="wiki-reference-list">
-              <li v-for="(reference, index) in references" :id="reference.id" :key="reference.id">
+              <li v-for="(reference, index) in trustedReferences" :id="reference.id" :key="reference.id">
                 <span>[{{ index + 1 }}]</span>
                 <div><a :href="reference.url" target="_blank" rel="noopener noreferrer">{{ reference.label }} <TsIcon name="external" :size="14" /></a><p>{{ reference.scope }}（核验：{{ verifiedAt }}）</p></div>
               </li>

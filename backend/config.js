@@ -32,6 +32,10 @@ const siteLaunchedAt = process.env.SITE_LAUNCHED_AT || '2026-03-30T00:00:00+08:0
 const siteLaunchedAtMs = Date.parse(siteLaunchedAt);
 const publicSiteUrl = (process.env.PUBLIC_SITE_URL || 'https://yachiyo.hk').replace(/\/$/, '');
 const oauthRedirectBaseUrl = (process.env.OAUTH_REDIRECT_BASE || process.env.API_ORIGIN_URL || publicSiteUrl).replace(/\/$/, '');
+const friendLinkAuthorHosts = csvEnv('FRIEND_LINK_AUTHOR_HOSTS');
+if (!friendLinkAuthorHosts.length) {
+    friendLinkAuthorHosts.push('yachiyo.hk', 'yachiyo.com.cn', 'cho-kaguyahime.cn', 'tsukuyomi-space.com');
+}
 
 function inferAuthCookieDomain() {
     const explicit = String(process.env.AUTH_COOKIE_DOMAIN || '').trim();
@@ -68,6 +72,7 @@ module.exports = {
     dbPath: path.resolve(process.env.DB_PATH || path.join(dataDir, 'tsukuyomi.db')),
     corsOrigins: csvEnv('CORS_ORIGINS'),
     publicSiteUrl,
+    friendLinkAuthorHosts,
     oauthRedirectBaseUrl,
     oauth: {
         stateTtlMs: Number(process.env.OAUTH_STATE_TTL_MS || 10 * 60 * 1000),

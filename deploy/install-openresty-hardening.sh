@@ -35,6 +35,8 @@ for site_dir in "$PRIMARY_SITE_DIR" "$WWW_SITE_DIR" "$ORIGIN_SITE_DIR"; do
     cp -a "$proxy_dir"/*.conf "$backup_site/" 2>/dev/null || true
     [ ! -f "$proxy_dir/_tsukuyomi-security-headers.inc" ] || \
         cp -a "$proxy_dir/_tsukuyomi-security-headers.inc" "$backup_site/"
+    [ ! -f "$proxy_dir/_tsukuyomi-game-security-headers.inc" ] || \
+        cp -a "$proxy_dir/_tsukuyomi-game-security-headers.inc" "$backup_site/"
 done
 
 restore_managed_proxy_files() {
@@ -47,7 +49,7 @@ restore_managed_proxy_files() {
     backup_site="$backup_dir/$(basename "$site_dir")"
     [ -d "$proxy_dir" ] || return 0
 
-    for filename in 00-tsukuyomi-security.conf _tsukuyomi-security-headers.inc root.conf agent-os.conf; do
+    for filename in 00-tsukuyomi-security.conf _tsukuyomi-security-headers.inc _tsukuyomi-game-security-headers.inc root.conf agent-os.conf; do
         if [ -f "$backup_site/$filename" ]; then
             cp -a "$backup_site/$filename" "$proxy_dir/$filename"
         else
@@ -76,6 +78,8 @@ done
 if [ -d "$PRIMARY_SITE_DIR/proxy" ]; then
     install -o root -g root -m 644 deploy/security-headers.inc \
         "$PRIMARY_SITE_DIR/proxy/_tsukuyomi-security-headers.inc"
+    install -o root -g root -m 644 deploy/game-security-headers.inc \
+        "$PRIMARY_SITE_DIR/proxy/_tsukuyomi-game-security-headers.inc"
 fi
 
 if [ -d "$PRIMARY_SITE_DIR/proxy" ]; then

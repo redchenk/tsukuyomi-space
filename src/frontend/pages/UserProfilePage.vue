@@ -3,6 +3,8 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
+import UserLevelBadge from '../components/UserLevelBadge.vue';
+import { useUserLevels } from '../composables/useUserLevels';
 import { assetUrl } from '../utils/assetUrl';
 import { applySeo } from '../utils/seo';
 import { formatDateOnly } from '../utils/time';
@@ -20,9 +22,10 @@ const loading = ref(true);
 const message = ref('');
 const followLoading = ref(false);
 const failedCovers = ref(new Set());
+const { hydrateUserLevels, userLevel } = useUserLevels();
 
 const username = computed(() => String(route.params.username || '').trim());
-const locale = computed(() => props.lang === 'zh' ? 'zh-CN' : 'ja-JP');
+const locale = computed(() => props.lang === 'en' ? 'en-US' : (props.lang === 'zh' ? 'zh-CN' : 'ja-JP'));
 const isAuthed = computed(() => Boolean(session.value || props.user));
 const profileUser = computed(() => profile.value?.user || null);
 const profileStats = computed(() => profile.value?.stats || {});
@@ -103,6 +106,7 @@ async function loadProfile() {
     if (!result.success) throw new Error(result.message || '\u7528\u6237\u4e3b\u9875\u8bfb\u53d6\u5931\u8d25');
     profile.value = result.data;
     const publicUser = result.data?.user || {};
+    await hydrateUserLevels([publicUser.id]).catch(() => {});
     const publicArticles = Array.isArray(result.data?.articles) ? result.data.articles : [];
     const description = String(publicUser.bio || `${publicUser.username || username.value} 在月读空间发布的公开文章与创作资料。`).trim();
     applySeo({
@@ -194,6 +198,7 @@ onMounted(loadProfile);
         <div class="profile-main">
           <div class="profile-kicker"><TsIcon name="star" :size="15" /> User Profile</div>
           <h1>{{ profileUser?.username }}</h1>
+          <UserLevelBadge v-if="profileUser?.id" :level="userLevel(profileUser.id)" :lang="lang" />
           <p>{{ profileUser?.bio || '这位创作者还没有写下个人简介。' }}</p>
           <div class="profile-meta">
             <span><TsIcon :name="roleIcon" :size="15" /> {{ roleText }}</span>

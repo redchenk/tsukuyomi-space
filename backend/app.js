@@ -16,10 +16,12 @@ const chatRoutes = require('./routes/chat');
 const ttsRoutes = require('./routes/tts');
 const assetRoutes = require('./routes/assets');
 const roomRoutes = require('./routes/room');
+const growthRoutes = require('./routes/growth');
 const mcpRoutes = require('./routes/mcp');
 const pixelArtRoutes = require('./routes/pixel-art');
 const hubPreviewRoutes = require('./routes/hub-preview');
 const friendLinkRoutes = require('./routes/friend-links');
+const friendLinkPreviewRoutes = require('./routes/friend-link-previews');
 const siteFeedRoutes = require('./routes/site-feed');
 const adminRoutes = require('./routes/admin');
 const moderationRoutes = require('./routes/moderation');
@@ -79,6 +81,8 @@ function createApp() {
     app.use('/api/chat', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'chat' }));
     app.use('/api/tts', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' }));
     app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
+    app.use('/api/room/shares', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, keyPrefix: 'room-shares' }));
+    app.use('/api/growth', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 120, keyPrefix: 'growth' }));
     app.use('/api/mail', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 180, keyPrefix: 'mail' }));
 
     // Parse message writes with a small cap before the much larger media-aware API parser.
@@ -105,6 +109,11 @@ function createApp() {
 
     const siteFeedLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 300, keyPrefix: 'site-feed' });
     app.get('/feed.xml', siteFeedLimiter, siteFeedRoutes.sendRss);
+    app.use(
+        '/friend-link-previews',
+        createRateLimiter({ windowMs: 15 * 60 * 1000, max: 600, keyPrefix: 'friend-link-preview' }),
+        friendLinkPreviewRoutes
+    );
 
     serveStaticFiles(app);
 
@@ -128,12 +137,14 @@ function createApp() {
     app.use('/api', healthRoutes);
     app.use('/api/auth', authRoutes);
     app.use('/api/articles', articleRoutes);
+    app.use('/api/article-categories', require('./routes/article-categories').publicRouter);
     app.use('/api/messages', messageRoutes);
     app.use('/api/stats', statsRoutes);
     app.use('/api/chat', chatRoutes);
     app.use('/api/tts', ttsRoutes);
     app.use('/api/assets', assetRoutes);
     app.use('/api/room', roomRoutes);
+    app.use('/api/growth', growthRoutes);
     app.use('/api/mcp', mcpRoutes);
     app.use('/api/pixel-art', pixelArtRoutes);
     app.use('/api/hub-preview', hubPreviewRoutes);

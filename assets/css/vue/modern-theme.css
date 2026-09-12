@@ -266,7 +266,8 @@ html[data-theme="dark"] .site-brand-mark {
     color: var(--ink-soft);
     background: rgba(255, 255, 255, 0.78);
     box-shadow: 0 8px 20px rgba(86, 112, 160, 0.08);
-    backdrop-filter: blur(12px) saturate(1.08);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     border-radius: 999px;
     transition:
         transform 0.2s cubic-bezier(.2, .8, .2, 1),

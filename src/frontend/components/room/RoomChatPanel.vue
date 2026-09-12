@@ -8,7 +8,7 @@ const props = defineProps({
   panelStyle: { type: Object, required: true }
 });
 
-const emit = defineEmits(['close', 'focus', 'drag-start', 'open-diary']);
+const emit = defineEmits(['close', 'focus', 'drag-start', 'share', 'growth', 'open-diary']);
 const imageInputRef = ref(null);
 
 const endChat = computed(() => props.chat.endChatState?.value || { status: 'idle', visible: false });
@@ -69,6 +69,12 @@ function ttsLabel(chat, messageId) {
   return '播放语音';
 }
 
+function showDailyGrowthPrompt(chat) {
+  const growth = chat.growth.value;
+  if (!growth) return false;
+  return !growth.today?.roomChatCompleted;
+}
+
 function endChatStatusLabel() {
   if (endChat.value.status === 'generating') return '正在生成…';
   if (endChat.value.status === 'done') return '已完成';
@@ -88,6 +94,30 @@ function endChatStatusLabel() {
     @drag-start="emit('drag-start', $event)"
   >
     <div class="panel-content chat-body" @dragover.prevent @drop="chat.onDrop">
+      <button v-if="showDailyGrowthPrompt(chat)" class="room-growth-strip" type="button" aria-label="查看月契成长" @click="emit('growth')">
+        <span class="room-growth-icon"><TsIcon name="sparkles" :size="16" /></span>
+        <span class="room-growth-copy">
+          <strong>Lv.{{ chat.growth.value.level.level }} {{ chat.growth.value.level.title }}</strong>
+          <small>{{ chat.growth.value.today.completed }}/{{ chat.growth.value.today.total }} 今日约定</small>
+        </span>
+        <span class="room-growth-progress" aria-hidden="true"><i :style="{ width: `${chat.growth.value.level.progressPercent}%` }"></i></span>
+        <TsIcon name="arrowRight" :size="16" />
+      </button>
+      <div class="chat-session-toolbar">
+        <span class="chat-session-label">当前会话</span>
+        <button
+          class="chat-session-new-btn"
+          type="button"
+          :disabled="chat.resetting.value || endChatBusy"
+          :aria-busy="chat.resetting.value"
+          title="新建会话"
+          aria-label="新建会话"
+          @click="chat.startNewSession"
+        >
+          <TsIcon :class="{ 'ts-status-loader-icon': chat.resetting.value }" :name="chat.resetting.value ? 'loader' : 'plus'" :size="15" />
+          <span :role="chat.resetting.value ? 'status' : undefined">{{ chat.resetting.value ? '正在新建' : '新建会话' }}</span>
+        </button>
+      </div>
       <div id="chatMessages" :ref="(node) => { chat.messageListRef.value = node; }" class="room-chat-messages" :aria-busy="chat.sending.value">
         <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="message.role" :aria-busy="message.pending || undefined">
           <span class="chat-role">{{ message.role === 'assistant' ? characterName : message.role === 'user' ? '你' : '系统' }}</span>
@@ -106,6 +136,16 @@ function endChatStatusLabel() {
               <TsIcon v-if="ttsStatus(chat, message.id) === 'loading'" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
               <span :role="ttsStatus(chat, message.id) === 'loading' ? 'status' : undefined">{{ ttsLabel(chat, message.id) }}</span>
             </button>
+            <button
+              v-if="chat.getShareTurn(message)"
+              class="chat-tts-btn chat-share-btn"
+              type="button"
+              aria-label="分享这轮对话"
+              @click="emit('share', message)"
+            >
+              <TsIcon name="external" :size="15" />
+              <span>分享</span>
+            </button>
           </div>
         </div>
       </div>
@@ -120,8 +160,8 @@ function endChatStatusLabel() {
           <TsIcon name="image" :size="22" :stroke-width="2" />
           <span>&#22270;&#29255;</span>
         </button>
-        <input id="chatInput" v-model="chat.input.value" type="text" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;" @keydown.enter="chat.send">
-        <button id="sendChatBtn" class="panel-btn" type="button" :disabled="chat.sending.value" :aria-busy="chat.sending.value" aria-label="&#21457;&#36865;" @click="chat.send">
+        <input id="chatInput" v-model="chat.input.value" type="text" aria-label="输入消息" enterkeyhint="send" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;" @keydown.enter="!$event.isComposing && $event.keyCode !== 229 && chat.send()">
+        <button id="sendChatBtn" class="panel-btn" type="button" :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :aria-busy="chat.sending.value" aria-label="&#21457;&#36865;" @click="chat.send">
           <TsIcon name="send" :size="22" :stroke-width="2.1" />
           <span>&#21457;&#36865;</span>
         </button>
@@ -173,7 +213,7 @@ function endChatStatusLabel() {
         <div class="endchat-actions">
           <template v-if="endChat.status === 'confirm'">
             <button class="primary-btn" type="button" @click="chat.confirmEndChat()">确认结束并写日记</button>
-            <button class="ghost-btn" type="button" @click="chat.confirmEndChatWithoutDiary()">结束但不保存</button>
+            <button class="ghost-btn" type="button" @click="chat.confirmEndChatWithoutDiary()">结束但不写日记</button>
             <button class="ghost-btn" type="button" @click="chat.closeEndChatDialog()">继续聊天</button>
           </template>
           <template v-else-if="endChat.status === 'generating'">

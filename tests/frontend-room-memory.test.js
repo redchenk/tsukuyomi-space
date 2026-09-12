@@ -56,9 +56,11 @@ function loadApiClient(fetchImpl) {
         JSON,
         Number,
         String,
-        URL
+        URL,
+        isEnglishSite: () => false
     };
     const code = source('src/frontend/api/client.js')
+        .replace(/^import \{ isEnglishSite \} from '\.\.\/utils\/siteVariant';\r?\n\r?\n/, '')
         .replace(/export async function /g, 'async function ')
         .replace(/export function /g, 'function ')
         .concat('\nglobalThis.__client = { getSession, saveUserSession, clearSession, loadCurrentSession };\n');
@@ -141,10 +143,11 @@ describe('frontend room memory API client usage', () => {
         assert.equal(runtime.localOllamaFetchOptions('https://api.deepseek.com/chat/completions', {}).targetAddressSpace, undefined);
         assert.deepEqual(
             Array.from(runtime.localOllamaAllowedOrigins('https://malicious.example')),
-            ['https://yachiyo.hk', 'https://yachiyo.com.cn', 'https://cho-kaguyahime.cn']
+            ['https://yachiyo.hk', 'https://yachiyo.com.cn', 'https://cho-kaguyahime.cn', 'https://tsukuyomi-space.com']
         );
         assert.match(runtime.localOllamaWindowsCommand(), /OLLAMA_ORIGINS/);
         assert.match(runtime.localOllamaWindowsCommand(), /https:\/\/yachiyo\.hk/);
+        assert.match(runtime.localOllamaWindowsCommand(), /https:\/\/tsukuyomi-space\.com/);
         assert.doesNotMatch(runtime.localOllamaWindowsCommand('https://malicious.example'), /malicious/);
         await assert.rejects(
             runtime.fetchWithLocalOllamaGuidance(
@@ -176,6 +179,7 @@ describe('frontend room memory API client usage', () => {
         const sync = source('src/frontend/services/room/roomMemorySync.js');
         const conversation = source('src/frontend/services/room/roomConversationSync.js');
         const chat = source('src/frontend/composables/room/useRoomChat.js');
+        const panel = source('src/frontend/components/room/RoomChatPanel.vue');
 
         assert.match(sync, /stream\.addEventListener\('chat', handleServerChatEvent\)/);
         assert.match(sync, /tsukuyomi:room-chat-updated/);
@@ -183,12 +187,24 @@ describe('frontend room memory API client usage', () => {
         assert.match(conversation, /authFetch\(noStoreUrl\('\/api\/room\/chat\?limit=24'\)/);
         assert.match(conversation, /authFetch\('\/api\/room\/chat\/turn'/);
         assert.match(conversation, /authFetch\('\/api\/room\/chat\/import'/);
+        assert.match(conversation, /method:\s*'DELETE'/);
+        assert.match(conversation, /localStorage\.removeItem\(historyKey\(\)\)/);
+        assert.match(conversation, /localStorage\.removeItem\(pendingKey\(\)\)/);
+        assert.match(conversation, /`roomChatReset:\$\{userId\}`/);
+        assert.match(conversation, /pending\.controller\.abort\(\)/);
+        assert.match(conversation, /await Promise\.allSettled\(pendingRequests\)/);
         assert.match(conversation, /const inFlightTurns = new Map\(\)/);
         assert.match(chat, /readRoomConversation\(\)\.slice\(-12\)/);
         assert.match(chat, /saveRoomConversationTurn\(/);
+        assert.match(chat, /startNewSession/);
+        assert.match(chat, /requestConversationRevision !== conversationRevision/);
+        assert.match(chat, /detail\.action === 'cleared'/);
         assert.match(chat, /remember\(userContent, reply, turnId\)/);
         assert.match(chat, /startRoomConversationUpdates\(/);
         assert.doesNotMatch(chat, /readJson\('roomChatHistory'/);
+        assert.match(panel, /chat-session-new-btn/);
+        assert.match(panel, /chat\.startNewSession/);
+        assert.match(panel, /chat\.resetting\.value/);
     });
 
     it('keeps the resolved city attached to cached browser coordinates', () => {
@@ -271,6 +287,7 @@ describe('room Live2D mobile quality parity', () => {
     it('keeps full model resolution while adapting only frame pacing on constrained devices', () => {
         const bridge = source('src/frontend/services/room/live2dBridge.js');
         const roomRuntime = source('src/live2d/main-room.ts');
+        const framePacing = source('src/live2d/room-frame-pacing.mjs');
         const subdelegate = source('src/live2d/lappsubdelegate.ts');
         const manager = source('src/live2d/lapplive2dmanager.ts');
         const glManager = source('src/live2d/lappglmanager.ts');
@@ -280,10 +297,11 @@ describe('room Live2D mobile quality parity', () => {
 
         assert.match(bridge, /export function live2DPerformanceMode\(\) \{\s*return 'standard';\s*\}/);
         assert.doesNotMatch(bridge, /isConstrainedMobileLive2DDevice|lowQualityModel|tsukimi-yachiyo-(?:mobile|lite)\.model3\.json/);
-        assert.match(roomRuntime, /ROOM_RENDER_FRAME_INTERVAL_MS = 1000 \/ 60/);
-        assert.match(roomRuntime, /ROOM_RENDER_BALANCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 45/);
-        assert.match(roomRuntime, /ROOM_RENDER_REDUCED_MAX_FRAME_INTERVAL_MS = 1000 \/ 20/);
-        assert.match(roomRuntime, /TSUKUYOMI_PERFORMANCE_PROFILE === 'reduced'/);
+        assert.match(roomRuntime, /computeRoomFrameInterval\(/);
+        assert.match(roomRuntime, /roomFramePacingSnapshot\(/);
+        assert.match(framePacing, /balanced:[\s\S]*activeIntervalMs: FRAME_INTERVAL_60_FPS/);
+        assert.match(framePacing, /reduced:[\s\S]*activeIntervalMs: 1000 \/ 30/);
+        assert.match(framePacing, /idleIntervalMs: 1000 \/ 24/);
         assert.match(subdelegate, /return window\.devicePixelRatio \|\| 1;/);
         assert.doesNotMatch(subdelegate, /Math\.min\(ratio|isMobile/);
         assert.match(manager, /function live2dModelJsonName\(index: number\): string \{\s*return `\$\{LAppDefine\.ModelDir\[index\]\}\.model3\.json`;/);
@@ -341,7 +359,7 @@ describe('room Live2D mobile quality parity', () => {
         assert.doesNotMatch(router, /room: \[[^\]]+(?:HubPage|RoomSettingsPage)/);
         assert.match(bridge, /LIVE2D_READY_TIMEOUT = 210000/);
         assert.match(bridge, /LIVE2D_ERROR_EVENT = 'tsukuyomi:live2d-error'/);
-        assert.match(bridge, /live2d-room-neuro-live\.20260717-adaptive-perf-r8\.iife\.js/);
+        assert.match(bridge, /live2d-room-neuro-live\.20260727-adaptive-perf-r9\.iife\.js/);
         assert.match(bridge, /return '\/models-v4\/tsukimi-yachiyo\/tsukimi-yachiyo\.model3\.json';/);
         assert.doesNotMatch(bridge, /assetUrl\('\/models\/tsukimi-yachiyo/);
         assert.doesNotMatch(bridge, /assetUrl\('[^']+\.moc3'\)/);
@@ -357,7 +375,7 @@ describe('room Live2D mobile quality parity', () => {
         assert.match(platform, /candidate\.compressed && !response\.ok/);
         assert.match(platform, /tsukuyomi:live2d-error/);
         assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.iife\.js \{[\s\S]*max-age=300, must-revalidate/);
-        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260717-adaptive-perf-r8\.iife\.js \{[\s\S]*immutable/);
+        assert.match(nginx, /location = \/lib\/bundled\/live2d-room-neuro-live\.20260727-adaptive-perf-r9\.iife\.js \{[\s\S]*immutable/);
     });
 
     it('shares peripheral animation timing and avoids redundant frame writes', () => {

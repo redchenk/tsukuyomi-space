@@ -49,7 +49,7 @@ html[data-theme="dark"] body.vue-global-bg-route {
     background:
         radial-gradient(circle at 18% 12%, rgba(174, 242, 255, 0.14), transparent 34%),
         radial-gradient(circle at 84% 18%, rgba(255, 122, 200, 0.12), transparent 30%),
-        linear-gradient(125deg, rgba(237, 246, 255, 0.24), rgba(244, 240, 255, 0.32) 48%, rgba(255, 249, 253, 0.36)),
+        linear-gradient(125deg, rgba(237, 246, 255, 0.76), rgba(244, 240, 255, 0.8) 48%, rgba(255, 249, 253, 0.84)),
         url("/assets/images/tsukuyomi-bg.webp") center center / cover no-repeat;
     filter: saturate(1.04) contrast(1.02);
 }
