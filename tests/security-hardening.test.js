@@ -388,6 +388,9 @@ describe('deployment privilege boundary', () => {
         assert.match(deploy, /umask 027/);
         assert.match(deploy, /chown root:root/);
         assert.match(deploy, /chmod go-w/);
+        assert.match(deploy, /chown -R root:"\$APP_GROUP" "\$APP_DIR\/node_modules"/);
+        assert.match(deploy, /find "\$APP_DIR\/node_modules" -xdev -type d -exec chmod 750/);
+        assert.match(deploy, /find "\$APP_DIR\/node_modules" -xdev -type f -exec chmod u\+rw,g\+r,o-rwx/);
         assert.match(deploy, /npm ls --omit=dev --depth=0/);
         assert.match(deploy, /npm_config_jobs="\$\{npm_config_jobs:-1\}"/);
         assert.match(deploy, /npm install --omit=dev --ignore-scripts --no-audit --no-fund --no-save/);
