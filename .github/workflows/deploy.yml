@@ -22,19 +22,24 @@ jobs:
 
       - run: npm ci
       - run: npm test
-      - run: npm run build:web
-      - run: npm run build:live2d
-      - run: npm run build:live2d-studio
+      - name: Build domestic frontend
+        run: |
+          npm run build:web
+          mkdir -p deployment-artifacts/domestic
+          cp -a dist/frontend/. deployment-artifacts/domestic/
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+
+      - name: Build overseas frontend
+        run: |
+          npm run build:web:overseas
+          mkdir -p deployment-artifacts/overseas
+          cp -a dist/frontend/. deployment-artifacts/overseas/
 
       - uses: actions/upload-artifact@v4
         with:
           name: production-dist
-          path: |
-            dist
-            lib/bundled/live2d-room-neuro-live.iife.js
-            lib/bundled/live2d-room-neuro-live.20260727-adaptive-perf-r9.iife.js
+          path: deployment-artifacts
           if-no-files-found: error
 
   deploy:
@@ -65,14 +70,14 @@ jobs:
           fi
           git bundle verify "$bundle"
 
-      - name: Upload prebuilt frontend
+      - name: Upload domestic and overseas frontends
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: dist,lib/bundled/live2d-room-neuro-live.iife.js,lib/bundled/live2d-room-neuro-live.20260727-adaptive-perf-r9.iife.js
+          source: deployment-artifacts
           target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}
           overwrite: true
 
@@ -99,20 +104,23 @@ jobs:
             app=/var/www/tsukuyomi-space
             bundle=/tmp/tsukuyomi-deployment-${{ github.run_id }}.bundle
             prebuilt=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}
+            domestic="$prebuilt/deployment-artifacts/domestic"
+            overseas="$prebuilt/deployment-artifacts/overseas"
+            overseas_root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
             case "$prebuilt" in
               /tmp/tsukuyomi-prebuilt-[0-9]*) ;;
               *) echo "Invalid prebuilt path" >&2; exit 1 ;;
             esac
             trap 'rm -f "$bundle"; rm -rf -- "$prebuilt"' EXIT
+            test -d "$app"
+            test -d "$overseas_root"
+            test -f "$domestic/index.html"
+            test -f "$overseas/index.html"
             cd "$app"
-            git restore --worktree -- lib/bundled/live2d-room-neuro-live.iife.js
             git fetch "$bundle" refs/heads/codex-deploy
             test "$(git rev-parse FETCH_HEAD)" = "${{ github.sha }}"
             git -c core.hooksPath=/dev/null merge --ff-only FETCH_HEAD
-            test -f "$prebuilt/dist/frontend/index.html"
-            test -f "$prebuilt/lib/bundled/live2d-room-neuro-live.iife.js"
-            test -f "$prebuilt/lib/bundled/live2d-room-neuro-live.20260727-adaptive-perf-r9.iife.js"
-            cp -a "$prebuilt/dist/." "$app/dist/"
-            install -m 0644 "$prebuilt/lib/bundled/live2d-room-neuro-live.iife.js" "$app/lib/bundled/live2d-room-neuro-live.iife.js"
-            install -m 0644 "$prebuilt/lib/bundled/live2d-room-neuro-live.20260727-adaptive-perf-r9.iife.js" "$app/lib/bundled/live2d-room-neuro-live.20260727-adaptive-perf-r9.iife.js"
+            install -d -m 0755 "$app/dist/frontend"
+            cp -a "$domestic/." "$app/dist/frontend/"
+            cp -a "$overseas/." "$overseas_root/"
             INSTALL_NGINX_CONFIG=true HARDEN_OPENRESTY_ORIGIN=true bash deploy/deploy.sh
