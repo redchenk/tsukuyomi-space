@@ -410,7 +410,11 @@ describe('deployment privilege boundary', () => {
         assert.doesNotMatch(workflow, /npm run build:live2d/);
         assert.doesNotMatch(workflow, /source: [^\n]*lib\/bundled/);
         assert.match(workflow, /OVERSEAS_SERVER_HOST is not configured/);
+        assert.match(workflow, /OVERSEAS_SERVER_PASSWORD or OVERSEAS_SERVER_SSH_KEY is not configured/);
         assert.match(workflow, /host: \$\{\{ secrets\.OVERSEAS_SERVER_HOST \}\}/);
+        assert.match(workflow, /password: \$\{\{ secrets\.OVERSEAS_SERVER_PASSWORD \}\}/);
+        assert.match(workflow, /key: \$\{\{ secrets\.OVERSEAS_SERVER_SSH_KEY \}\}/);
+        assert.match(workflow, /port: \$\{\{ secrets\.OVERSEAS_SERVER_PORT \|\| 47388 \}\}/);
         assert.match(workflow, /source: deployment-artifacts\/domestic/);
         assert.match(workflow, /source: deployment-artifacts\/overseas/);
         assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$domestic\/\." "\$app\/dist\/frontend\/"/);

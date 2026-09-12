@@ -17,9 +17,15 @@ jobs:
         env:
           DOMESTIC_SERVER_HOST: ${{ secrets.SERVER_HOST }}
           OVERSEAS_SERVER_HOST: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          OVERSEAS_SERVER_PASSWORD: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+          OVERSEAS_SERVER_SSH_KEY: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
         run: |
           test -n "$DOMESTIC_SERVER_HOST" || { echo "SERVER_HOST is not configured" >&2; exit 1; }
           test -n "$OVERSEAS_SERVER_HOST" || { echo "OVERSEAS_SERVER_HOST is not configured" >&2; exit 1; }
+          test -n "$OVERSEAS_SERVER_PASSWORD" || test -n "$OVERSEAS_SERVER_SSH_KEY" || {
+            echo "OVERSEAS_SERVER_PASSWORD or OVERSEAS_SERVER_SSH_KEY is not configured" >&2
+            exit 1
+          }
 
   check:
     needs: deployment-targets
@@ -98,9 +104,10 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || secrets.SERVER_USER }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY || secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 29687 }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
           source: deployment-artifacts/overseas
           target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}
           overwrite: true
@@ -120,9 +127,10 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || secrets.SERVER_USER }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY || secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 29687 }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
           script: |
             set -e
             overseas=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}/deployment-artifacts/overseas
@@ -162,9 +170,10 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || secrets.SERVER_USER }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY || secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 29687 }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
           script: |
             set -e
             prebuilt=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}
