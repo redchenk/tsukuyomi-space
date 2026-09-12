@@ -97,6 +97,12 @@ harden_app_permissions() {
         find "$APP_DIR/.git" -xdev -type f -exec chmod 600 {} +
     fi
 
+    if [ -d "$APP_DIR/node_modules" ]; then
+        chown -R root:"$APP_GROUP" "$APP_DIR/node_modules"
+        find "$APP_DIR/node_modules" -xdev -type d -exec chmod 750 {} +
+        find "$APP_DIR/node_modules" -xdev -type f -exec chmod u+rw,g+r,o-rwx {} +
+    fi
+
     chown -R "$APP_USER:$APP_GROUP" "$APP_DIR/assets/uploads"
     find "$APP_DIR/assets/uploads" -xdev -type d -exec chmod 750 {} +
     find "$APP_DIR/assets/uploads" -xdev -type f -exec chmod 640 {} +
