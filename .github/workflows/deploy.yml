@@ -105,18 +105,25 @@ jobs:
             app=/var/www/tsukuyomi-space
             bundle=/tmp/tsukuyomi-deployment-${{ github.run_id }}.bundle
             prebuilt=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}
-            domestic="$prebuilt/deployment-artifacts/domestic"
-            overseas="$prebuilt/deployment-artifacts/overseas"
+            artifact_root="$prebuilt/deployment-artifacts"
+            if [ ! -f "$artifact_root/domestic/index.html" ] && [ -f "$prebuilt/domestic/index.html" ]; then
+              artifact_root="$prebuilt"
+            fi
+            domestic="$artifact_root/domestic"
+            overseas="$artifact_root/overseas"
             overseas_root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
+            if [ ! -d "$overseas_root" ]; then
+              overseas_root=/opt/1panel/apps/openresty/openresty/www/sites/tsukuyomi-space.com/frontend
+            fi
             case "$prebuilt" in
               /tmp/tsukuyomi-prebuilt-[0-9]*) ;;
               *) echo "Invalid prebuilt path" >&2; exit 1 ;;
             esac
             trap 'rm -f "$bundle"; rm -rf -- "$prebuilt"' EXIT
-            test -d "$app"
-            test -d "$overseas_root"
-            test -f "$domestic/index.html"
-            test -f "$overseas/index.html"
+            test -d "$app" || { echo "Application directory is missing" >&2; exit 1; }
+            test -d "$overseas_root" || { echo "Overseas frontend directory is missing" >&2; exit 1; }
+            test -f "$domestic/index.html" || { echo "Domestic frontend artifact is missing" >&2; exit 1; }
+            test -f "$overseas/index.html" || { echo "Overseas frontend artifact is missing" >&2; exit 1; }
             cd "$app"
             git fetch "$bundle" refs/heads/codex-deploy
             test "$(git rev-parse FETCH_HEAD)" = "${{ github.sha }}"
