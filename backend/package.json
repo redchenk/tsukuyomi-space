@@ -26,5 +26,16 @@
     "tts"
   ],
   "author": "redchenk",
-  "license": "MIT"
+  "license": "MIT",
+  "overrides": {
+    "nanoid": {
+      "nanoid": "5.1.16"
+    },
+    "postcss": {
+      "nanoid": "5.1.16"
+    },
+    "sanitize-html": {
+      "nanoid": "5.1.16"
+    }
+  }
 }
