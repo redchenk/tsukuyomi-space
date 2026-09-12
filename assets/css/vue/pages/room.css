@@ -409,6 +409,15 @@ body.vue-room-route {
     transform: translateX(-50%);
 }
 
+.room-dock-trigger {
+    display: none;
+}
+
+.room-dock-menu {
+    display: flex;
+    gap: 0.52rem;
+}
+
 .panel-toggle-btn {
     min-width: 68px;
     min-height: 42px;
@@ -1362,29 +1371,68 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
         filter: none;
     }
 
-    /* The dock sits on its own row below the weather pill, which owns the top
-       band (see --room-mobile-top-clearance). It used to be pinned top-right
-       at nearly the same height as the pill, so the two overlapped. */
+    /* On phones, the room tools stay collapsed in the upper-right corner so
+       the controls do not form a full-width band across the Live2D model. */
     .room-dock {
-        top: calc(max(4.15rem, env(safe-area-inset-top) + 3.35rem) + 4.6rem);
-        left: max(0.75rem, env(safe-area-inset-left));
+        top: var(--room-mobile-top-clearance);
+        left: auto;
         right: max(0.75rem, env(safe-area-inset-right));
         bottom: auto;
         width: auto;
         height: auto;
         display: flex;
-        flex-wrap: wrap;
-        align-items: stretch;
-        justify-content: center;
-        gap: 0.34rem;
-        padding: 0.32rem;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.45rem;
+        padding: 0;
         overflow: visible;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+        transform: none;
+        z-index: 110;
+    }
+
+    .room-dock-trigger {
+        width: 2.75rem;
+        height: 2.75rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(35, 38, 58, 0.82);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 24px rgba(6, 8, 18, 0.24);
+    }
+
+    .room-dock-menu {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        width: 9rem;
+        display: grid;
+        gap: 0.32rem;
+        padding: 0.42rem;
         border: 1px solid var(--room-glass-border);
-        border-radius: 18px;
+        border-radius: 16px;
         background: var(--room-glass-bg-strong);
         box-shadow: var(--room-glass-shadow);
         backdrop-filter: blur(12px) saturate(1.08);
-        transform: none;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(-0.4rem) scale(0.96);
+        transform-origin: top right;
+        transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+    }
+
+    .room-dock.is-mobile-open .room-dock-menu {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateY(0) scale(1);
     }
 
     .room-weather-card {
