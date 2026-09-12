@@ -55,6 +55,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: production-dist
+          path: deployment-artifacts
 
       - name: Create incremental deployment bundle
         shell: bash
