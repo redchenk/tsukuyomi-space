@@ -39,7 +39,7 @@ html[data-theme="dark"] {
     background: var(--ts-editorial-bg);
     min-height: 100dvh;
 }
-.content-shell :is(.site-commandbar, .mobile-bottom-nav, .route-view, .hub-hero-panel, .hub-hero-copy, .scene-card) { animation: none; opacity: 1; transform: none; }
+.content-shell :is(.site-commandbar, .mobile-bottom-nav, .route-view, .hub-showcase, .hub-grid-wrap, .hub-hero-panel, .hub-hero-copy, .scene-card) { animation: none; opacity: 1; transform: none; }
 .content-shell .site-global-bg { animation: none; opacity: 0.06; filter: none; }
 .content-shell > .moon { display: none; }
 .desktop-navigation, .desktop-actions { display: none; }

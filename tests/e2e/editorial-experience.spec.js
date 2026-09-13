@@ -68,8 +68,9 @@ test('featured and latest sorting survive article navigation', async ({ page }) 
 test('public content is visible when opening an inactive window', async ({ page }) => {
     await page.goto('/hub');
     await page.evaluate(() => { document.documentElement.dataset.windowActive = 'false'; });
-    for (const selector of ['.site-commandbar', '.hub-hero-panel', '.hub-hero-copy', '.scene-card']) {
+    for (const selector of ['.site-commandbar', '.hub-showcase', '.hub-grid-wrap', '.hub-hero-panel', '.hub-hero-copy', '.scene-card']) {
         await expect(page.locator(selector).first()).toHaveCSS('opacity', '1');
+        await expect(page.locator(selector).first()).toHaveCSS('animation-name', 'none');
     }
     const notice = page.locator('.hub-notice');
     await notice.locator('summary').click();

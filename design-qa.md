@@ -43,6 +43,8 @@ These unedited captures expose readable focused regions without artificial image
 4. P2: translated navigation collided with theme/account actions near tablet width. Reserved action width and tightened spacing at 861–1099 px. The 900 px English capture and geometry verify the fix.
 5. P2: diary deletion risked nested interactive controls. Separated entry-select and delete buttons, retained confirmation, and sized mobile controls appropriately. Browser tests cover deleting one entry and retaining the selected persona.
 
+6. P2, production smoke check: the inactive-window rule missed two parent wrappers, allowing their paused reveal animations to hide the hero and content grid. Included `.hub-showcase` and `.hub-grid-wrap` and strengthened the regression test to verify animation names as well as opacity. The post-fix production capture verifies the hero and grid in a background tab.
+
 No actionable P0/P1/P2 findings remain. Existing floating guide artwork can overlap some lower-right content at certain desktop heights; the duplicated creation link remains available in the hero. Compacting this optional guide is P3 follow-up polish.
 
 ## Interaction checks and limitations
