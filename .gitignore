@@ -66,6 +66,10 @@ backups/
 *.bak
 *.backup
 
+# Local Room exports contain persona and diary data.
+*_槽位*_备份_*.json
+*_slot*_backup_*.json
+
 # Node modules
 node_modules/
 npm-debug.log*

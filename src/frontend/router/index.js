@@ -319,6 +319,12 @@ export const routes = [
 
 export const router = createRouter({
   history: createWebHistory(),
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition;
+    // Wiki owns section navigation; keep query changes within the current page.
+    if (to.path === from.path || to.hash) return false;
+    return { top: 0, behavior: 'instant' };
+  },
   routes
 });
 

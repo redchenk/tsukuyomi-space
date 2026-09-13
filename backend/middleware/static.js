@@ -8,7 +8,7 @@ const friendLinkRepository = require('../repositories/friend-link-repository');
 const pixelArtRepository = require('../repositories/pixel-art-repository');
 const roomShareRepository = require('../repositories/room-share-repository');
 const objectStorage = require('../services/object-storage');
-const { articlePath, renderArticleHtml, renderGalleryHtml, renderNotFoundHtml, renderStageHtml, renderTopicLandingHtml } = require('../seo/render-article');
+const { articlePath, renderArticleHtml, renderArticleSpaHtml, renderGalleryHtml, renderNotFoundHtml, renderStageHtml, renderTopicLandingHtml } = require('../seo/render-article');
 const { renderRoomShareHtml } = require('../seo/render-room-share');
 const { WIKI_ENTRIES, WIKI_VERIFIED_AT, findWikiEntry, wikiEntryPath } = require('../seo/wiki-content');
 const {
@@ -461,16 +461,21 @@ function serveStaticFiles(app) {
         if (req.query?.spa === '1') return next();
         const article = articleRepository.findPublishedArticleById(id);
         if (!article) return res.status(404).type('html').send(renderNotFoundHtml());
-        return res.redirect(301, articlePath(article));
+        const from = typeof req.query.from === 'string' ? req.query.from.slice(0, 512) : '';
+        return res.redirect(301, articlePath(article) + (from ? `?${new URLSearchParams({ from })}` : ''));
     });
     app.get('/articles/:id/:slug?', (req, res) => {
         const article = articleRepository.findPublishedArticleById(req.params.id);
         if (!article) return res.status(404).type('html').send(renderNotFoundHtml());
         if (article.slug && req.params.slug !== article.slug) {
-            return res.redirect(301, articlePath(article));
+            const from = typeof req.query.from === 'string' ? req.query.from.slice(0, 512) : '';
+            return res.redirect(301, articlePath(article) + (from ? `?${new URLSearchParams({ from })}` : ''));
         }
         setNoStore(res);
-        return res.type('html').send(renderArticleHtml(article));
+        res.vary('User-Agent');
+        return res.type('html').send(frontendIndexHtml && !isCrawlerRequest(req)
+            ? renderArticleSpaHtml(frontendIndexHtml, article)
+            : renderArticleHtml(article));
     });
 
     app.use((req, res, next) => {

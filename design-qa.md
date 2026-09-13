@@ -1,62 +1,65 @@
-**Design QA**
+# Community UI and Room archive — design QA
 
-- Source visual truth: `E:\visualstudio\tsukuyomi-space\.codex_tmp\friend-links-apply-source-1280.jpg`
-- Desktop implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\friend-links-directory-implementation-1280.jpg`
-- Mobile implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\friend-links-directory-mobile.jpg`
-- Terminal desktop implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\friend-links-terminal-review-desktop-final.jpg`
-- Terminal mobile implementation: `E:\visualstudio\tsukuyomi-space\.codex_tmp\friend-links-terminal-review-mobile.jpg`
-- Full comparison: `E:\visualstudio\tsukuyomi-space\.codex_tmp\friend-links-directory-comparison-final.jpg`
-- Viewports: desktop 1280 x 720; mobile 390 x 844
-- State: dark theme, authenticated local session, one approved friend link
+Date: 2026-09-14. This replaces the earlier friend-link-only report, preserved in Git history.
 
-**Findings**
+## Visual reference and state
 
-- No actionable P0, P1, or P2 differences remain.
-- Fonts and typography: the directory preserves the application page's display hierarchy, font stack, weights, line height, and cyan eyebrow treatment. Card text and Terminal metadata wrap or truncate without escaping their bounds.
-- Spacing and layout rhythm: hero width, page margins, rail proportions, section rhythm, and card alignment match the existing friend-link flow. The directory exposes content in the first desktop viewport and stacks cleanly on mobile.
-- Colors and visual tokens: the implementation reuses the existing material surface, border, cyan accent, violet primary action, muted copy, elevation, and focus tokens.
-- Image quality and asset fidelity: no new imagery is required. All visible controls use the existing `TsIcon` Lucide-compatible icon set; no custom SVG, placeholder image, or improvised symbol was introduced.
-- Copy and content: the public page is concise and task-specific. Plaza now distinguishes browsing friend links from applying, and Terminal language is consistently framed around review rather than manual creation.
+The approved direction is a moonlit anime community with readable surfaces, text navigation, a shorter illustrated hero, and visible recent creations. This is an intentional redesign, not a pixel clone.
 
-**Interaction Evidence**
+- Approved brief: `/Users/yxy/.codex/visualizations/2026/09/13/tsukuyomi-ui-proposal/proposal.md`.
+- Source visual truth: `/Users/yxy/.codex/visualizations/2026/09/13/tsukuyomi-ui-proposal/01-hub-desktop.png`.
+- Final dark implementation: `/Users/yxy/.codex/visualizations/2026/09/13/tsukuyomi-ui-local/hub-desktop-dark.png`.
+- Final light implementation: `/Users/yxy/.codex/visualizations/2026/09/13/tsukuyomi-ui-local/hub-desktop-light.png`.
+- Local production previews: `http://127.0.0.1:4175` (Chinese), `http://127.0.0.1:4176` (overseas English build).
 
-- Clicked Plaza's “友链” entry and confirmed `/friend-links`.
-- Clicked “申请友链”, confirmed `/friend-links/apply`, then used “返回友链” to return to the directory.
-- Confirmed the directory loads the public API with a no-store URL, replaces the loading bar with results, and opens approved sites as protected external links.
-- Confirmed Terminal defaults to the pending queue; the approved filter exposes the existing record and its “撤下 / 删除” actions.
-- Confirmed desktop and mobile documents have no horizontal page overflow. Mobile filter and review table overflow remains contained within their own scroll regions.
-- The Browser surface does not expose a console-log capability; exercised the primary SPA route transitions and found no rendered error state, failed request state, or unhandled interaction failure.
+Source and final dark captures were opened together in one comparison input. Both are 1280 × 720 pixels at a 1280 × 720 CSS viewport, without frames or density normalization, showing the anonymous home page at the top in dark mode. The source has live statistics; local fixture counts and article text are not fidelity targets.
 
-**Full-View Comparison Evidence**
+## Full-view comparison
 
-- The side-by-side comparison uses the same 1280 x 720 viewport and shows matching hero geometry, rail proportions, background treatment, typography, border contrast, and material depth.
-- The directory intentionally replaces the application form with an unframed, scannable card grid while keeping the same visual hierarchy and page shell.
+- Typography: the serif display heading retains the site's identity. System sans-serif navigation and body copy, shorter heading, and measured line lengths improve hierarchy. Chinese, Japanese, and English layouts were inspected.
+- Spacing and layout: content pages use text navigation. The hero is approximately 366 px tall, exposing the announcement and recent-content section. Room retains its rail and compact mobile drawer. Controls and surfaces share rounded geometry.
+- Color and tokens: midnight and moon-white surfaces use lilac actions and restrained cyan accents. Layered glass filters and background breathing are removed on content pages.
+- Image quality: existing Yachiyo illustration, background, icons, and assets are reused. Cropping and masking preserve the subject and readable copy. No Live2D resolution, texture, model, or music changes are included.
+- Copy and content: recent articles precede statistics. Announcements, categories, search, account links, and secondary features remain accessible. Public copy contains no implementation notes.
 
-**Focused Region Evidence**
+## Focused and responsive evidence
 
-- The 390 x 844 directory capture verifies the full-width apply action, single-column card geometry, text wrapping, persistent mobile navigation, and zero page overflow.
-- The Terminal desktop capture verifies all review actions fit without horizontal clipping. The mobile capture verifies filters and the dense table remain usable without widening the document.
+Evidence directory: `/Users/yxy/.codex/visualizations/2026/09/13/tsukuyomi-ui-local/`.
 
-**Comparison History**
+- `hub-mobile-cards-light.png`, 390 × 844: readable card labels and contained bounds.
+- `hub-mobile-english.png`, 390 × 844: translated heading, actions, and bottom navigation.
+- `hub-900-english.png`, 900 × 900: navigation no longer overlaps account actions. Navigation right edge 564.75 px, actions left edge 574.75 px; no document overflow.
+- `article-desktop-reading.png`, 1440 × 900: readable article measure, heading hierarchy, and sticky contents. Article text differs from the source; this checks reading hierarchy, not line-for-line fidelity.
+- `room-mobile-tools-collapsed.png`, 390 × 844: tools start folded at the upper right, leaving Live2D visible.
+- `room-mobile-diary.png`, 390 × 844: rounded diary surfaces and empty state.
 
-- Iteration 1 finding (P2): placing the apply button under the hero copy increased the hero height and pushed the directory lower than the source rhythm.
-- Fix: moved the primary action into the hero's right-side action stack and retained a full-width mobile layout.
-- Post-fix evidence: hero height is 262 px at desktop and the first friend-link card begins at 395 px, with no document overflow.
-- Iteration 2 finding (P2): Terminal inherited the generic 900 px table minimum, clipping the delete action inside the desktop content column.
-- Fix: added a review-specific fixed table layout and column allocation, plus URL truncation.
-- Post-fix evidence: review table client and scroll widths both measure 838 px; the action group ends inside the 1221 px panel boundary.
+These unedited captures expose readable focused regions without artificial image crops.
 
-**Implementation Checklist**
+## Comparison history
 
-- Public `/friend-links` directory: complete.
-- Plaza browse and application entries: complete.
-- Application return path: complete.
-- Terminal review-only queue and status filters: complete.
-- Loading, empty, error, long-text, desktop, and mobile states: complete.
-- API, frontend, syntax, and production build checks: passed.
+1. P2: inherited styles left square white grid backgrounds, clipped the hero eyebrow, and used white labels on light cards. Removed conflicting material attributes and corrected colors, label positioning, and clipping. Final home and mobile-card captures show the fixes.
+2. P2: entry animations could leave content transparent in an inactive window. Removed entry animations on redesigned content. Final dark/light captures show full opacity.
+3. P2: article excerpts collapsed inside flex cards; mobile actions inherited full-width stacking. Gave excerpts natural height and grouped actions in a wrapping flex row. Article interaction checks pass.
+4. P2: translated navigation collided with theme/account actions near tablet width. Reserved action width and tightened spacing at 861–1099 px. The 900 px English capture and geometry verify the fix.
+5. P2: diary deletion risked nested interactive controls. Separated entry-select and delete buttons, retained confirmation, and sized mobile controls appropriately. Browser tests cover deleting one entry and retaining the selected persona.
 
-**Follow-up Polish**
+No actionable P0/P1/P2 findings remain. Existing floating guide artwork can overlap some lower-right content at certain desktop heights; the duplicated creation link remains available in the hero. Compacting this optional guide is P3 follow-up polish.
 
-- None required for handoff.
+## Interaction checks and limitations
+
+- Exercised home links, desktop/mobile navigation, themes, English/Japanese labels, Stage search/category/sort state, direct articles, contents/progress, bookmark/share controls, Wiki, and the Room drawer.
+- Integrated PR #21 selectively: diary deletion, active persona, character opening line, current time/weather, and ten recent diary summaries. Main's sharing, growth, memory, English site, security, and WebGL changes remain intact.
+- Opening turns persist after reload and are idempotent, without synthetic user messages or growth rewards. Tests cover authorization, validation, revision races, persona selection, and deletion.
+- Syntax, API/SEO, frontend, and mail checks: 357 tests passed, zero failures. Both production builds succeeded.
+- Visual checks use Chromium and the embedded browser. Physical iOS Safari and real-device GPU profiling were not performed. Room render-quality settings are unchanged. Embedded-browser console access is limited; interaction failures were checked through browser tests and rendered states.
+
+## Implementation checklist
+
+- [x] Source and final dark home compared together; desktop/mobile evidence reviewed.
+- [x] Existing artwork and functionality preserved; no new runtime dependencies.
+- [x] Room features integrated without unrelated PR deletions.
+- [x] API/frontend checks and both production builds.
+- [x] Full Chromium browser suite: 38/38 passed after isolating localhost client identities per test. Production rate limits are unchanged.
+- Incremental deployment verification is recorded separately after publishing.
 
 final result: passed

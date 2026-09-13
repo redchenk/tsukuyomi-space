@@ -1,5 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useArticleReading } from '../composables/useArticleReading';
+import { readingTimeLabel } from '../utils/reading';
 import { useRoute } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import SocialShareDialog from '../components/SocialShareDialog.vue';
@@ -20,6 +22,14 @@ const props = defineProps({
 const emit = defineEmits(['go']);
 const route = useRoute();
 const article = ref(null);
+const articleContentRef = ref(null);
+const renderedContent = computed(() => article.value ? formatContent(article.value.content, article.value.content_format) : '');
+const { headings, activeHeading, progress, plainText, tocOpen, goToHeading } = useArticleReading(articleContentRef, renderedContent);
+const readerCopy = computed(() => ({
+  zh: { back: '返回主舞台', toc: '文章目录', share: '分享', views: '次阅读', category: '未分类', bookmark: '收藏', saved: '已收藏', comments: '评论' },
+  ja: { back: 'ステージに戻る', toc: '目次', share: 'シェア', views: '回閲覧', category: '未分類', bookmark: '保存', saved: '保存済み', comments: 'コメント' },
+  en: { back: 'Back to the Stage', toc: 'On this page', share: 'Share', views: 'views', category: 'Uncategorized', bookmark: 'Bookmark', saved: 'Bookmarked', comments: 'Comments' }
+}[props.lang]));
 const comments = ref([]);
 const loading = ref(true);
 const message = ref('');
@@ -45,7 +55,7 @@ const articleBackPath = computed(() => normalizeStageReturnPath(route.query.from
 const topComments = computed(() => comments.value.filter((item) => !item.parent_id));
 const bookmarkLabel = computed(() => {
   const count = bookmark.count ? ` ${Number(bookmark.count).toLocaleString('zh-CN')}` : '';
-  return bookmark.bookmarked ? `已收藏${count}` : `收藏${count}`;
+  return `${bookmark.bookmarked ? readerCopy.value.saved : readerCopy.value.bookmark}${count}`;
 });
 
 function formatDate(value) {
@@ -76,6 +86,7 @@ function normalizeStageReturnPath(value) {
     if (url.pathname !== '/stage') return '/stage';
 
     const params = new URLSearchParams();
+    if (url.searchParams.get('sort') === 'latest') params.set('sort', 'latest');
     const page = Number(url.searchParams.get('page'));
     if (Number.isFinite(page) && page > 1) params.set('page', String(Math.trunc(page)));
 
@@ -369,11 +380,11 @@ watch(articleId, loadArticle);
 
 <template>
   <main class="page article-page" :aria-busy="loading">
-    <div class="article-progress" aria-hidden="true"></div>
+    <div class="article-progress" :style="{ transform: `scaleX(${progress})` }" aria-hidden="true"></div>
     <div class="article-shell">
       <a class="ghost-btn article-back" :href="articleBackPath" @click.prevent="goBackToStage">
         <TsIcon name="arrowLeft" :size="17" />
-        <span>返回主舞台</span>
+        <span>{{ readerCopy.back }}</span>
       </a>
 
       <LoadingSkeleton v-if="loading" variant="article" :count="1" :label="t.loading" />
@@ -381,7 +392,7 @@ watch(articleId, loadArticle);
 
       <article v-else-if="article" class="article-reader">
         <header class="article-hero">
-          <div class="article-kicker">{{ article.category || '未分类' }}</div>
+          <div class="article-kicker">{{ article.category || readerCopy.category }}</div>
           <h1>{{ article.title }}</h1>
           <div class="article-meta">
             <span>{{ formatPublishedDate(article.published_at || article.created_at || article.publish_date) }}</span>
@@ -391,13 +402,13 @@ watch(articleId, loadArticle);
               @click.prevent="goProfile(article.author_username || 'admin')"
             >{{ article.author_username || 'admin' }}</a>
             <UserLevelBadge v-if="article.author_id" :level="userLevel(article.author_id)" :lang="lang" compact />
-            <span>{{ article.read_time || '5 min' }}</span>
-            <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} views</span>
+            <span>{{ readingTimeLabel(article, lang, plainText) }}</span>
+            <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} {{ readerCopy.views }}</span>
           </div>
           <div class="article-social-actions">
             <button class="article-bookmark-btn" type="button" @click="openArticleShare">
               <TsIcon name="external" :size="17" />
-              <span>分享</span>
+              <span>{{ readerCopy.share }}</span>
             </button>
             <button
               class="article-bookmark-btn"
@@ -415,11 +426,21 @@ watch(articleId, loadArticle);
         </header>
 
         <img v-if="article.cover_image" class="article-cover" :src="article.cover_image" alt="" loading="eager" decoding="async" fetchpriority="high">
-        <section class="article-content" v-html="formatContent(article.content, article.content_format)"></section>
+        <div class="article-reading-layout" :class="{ 'has-toc': headings.length > 1 }">
+          <aside v-if="headings.length > 1" class="article-toc">
+            <details :open="tocOpen" @toggle="tocOpen = $event.target.open">
+              <summary>{{ readerCopy.toc }}<TsIcon name="chevronDown" :size="16" /></summary>
+              <nav :aria-label="readerCopy.toc">
+                <a v-for="heading in headings" :key="heading.id" :href="`#${heading.id}`" :class="{ 'is-subheading': heading.level === 3 }" :aria-current="activeHeading === heading.id ? 'location' : undefined" @click.prevent="goToHeading(heading.id)">{{ heading.text }}</a>
+              </nav>
+            </details>
+          </aside>
+          <section ref="articleContentRef" class="article-content" v-html="renderedContent"></section>
+        </div>
 
         <section class="comments-section">
           <div class="comments-head">
-            <h2>评论</h2>
+            <h2>{{ readerCopy.comments }}</h2>
             <span>{{ comments.length }}</span>
           </div>
 

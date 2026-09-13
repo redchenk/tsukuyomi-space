@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../e2e-fixtures.cjs');
 
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
@@ -8,7 +8,7 @@ async function openPage(page, path, theme = 'dark') {
     await expect(page.locator('main')).toBeVisible();
 }
 
-for (const width of [360, 390, 768]) {
+for (const width of [360, 390, 430, 768]) {
     test(`public pages fit a ${width}px viewport in both themes`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 });
         for (const theme of ['light', 'dark']) {
@@ -72,9 +72,12 @@ test('navigation fits a landscape viewport and releases the page on desktop resi
     await page.setViewportSize({ width: 1280, height: 600 });
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
-    const rail = page.locator('.rail-nav');
-    await rail.getByRole('link', { name: 'Agent OS', exact: true }).focus();
-    await expect(rail.getByRole('link', { name: 'Agent OS', exact: true })).toBeInViewport();
+    await page.locator('.desktop-navigation').getByRole('button', { name: '更多' }).click();
+    const agentLink = dialog.getByRole('link', { name: 'Agent OS', exact: true });
+    await agentLink.focus();
+    await expect(agentLink).toBeInViewport();
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
 });
 
 test('mobile content, settings controls and empty states stay compact and usable', async ({ page }) => {

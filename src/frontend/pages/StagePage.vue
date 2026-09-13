@@ -5,7 +5,8 @@ import { apiFetch, getAuthToken, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
-import { formatDateMinute } from '../utils/time';
+import { readingTimeLabel } from '../utils/reading';
+import { compareAppDate, formatDateMinute } from '../utils/time';
 import { useArticleCategories } from '../composables/useArticleCategories';
 
 const props = defineProps({
@@ -23,6 +24,8 @@ const articlesError = ref('');
 const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
+const stageOrder = ref('featured');
+const stageSortCopy = computed(() => ({ zh: ['精选优先', '最新发布', '精选'], ja: ['おすすめ順', '新着順', 'おすすめ'], en: ['Featured first', 'Latest first', 'Featured'] }[props.lang]));
 let applyingStageQuery = false;
 const { categories: articleCategories, revision: categoryRevision } = useArticleCategories();
 const categories = computed(() => ['all', ...articleCategories.value.map((item) => item.name)]);
@@ -32,7 +35,7 @@ const STAGE_FETCH_LIMIT = 100;
 const stagePageCopy = computed(() => props.lang === 'en' ? {
   resultUnit: 'articles', showing: 'Showing', page: 'Page', pageSuffix: '', totalPages: 'of',
   pageSize: '6 per page', prevPage: 'Previous', nextPage: 'Next', jumpToPage: 'Go to page', rangeUnit: 'articles'
-} : {
+} : props.lang === 'ja' ? { resultUnit: '件', showing: '表示中', page: '', pageSuffix: 'ページ', totalPages: '全', pageSize: '6 件ずつ', prevPage: '前へ', nextPage: '次へ', jumpToPage: 'ページへ', rangeUnit: '件' } : {
   resultUnit: '\u7bc7',
   showing: '\u5f53\u524d',
   page: '\u7b2c',
@@ -57,6 +60,7 @@ const filteredArticles = computed(() => {
       String(article.excerpt || '').toLowerCase().includes(query)
     ));
   }
+  if (stageOrder.value === 'latest') return [...list].sort((a, b) => compareAppDate(b.published_at || b.created_at || b.publish_date, a.published_at || a.created_at || a.publish_date));
   return list;
 });
 
@@ -97,6 +101,7 @@ const stageRangeSummary = computed(() => stageTotalArticles.value
 const stagePageSummary = computed(() => `${stagePageCopy.value.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.value.pageSuffix} / ${stagePageCopy.value.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.value.pageSuffix}`);
 const stageReturnPath = computed(() => {
   const params = new URLSearchParams();
+  if (stageOrder.value === 'latest') params.set('sort', 'latest');
   if (stageCurrentPage.value > 1) params.set('page', String(stageCurrentPage.value));
   if (stageCategory.value !== 'all') params.set('category', stageCategory.value);
   const search = stageSearch.value.trim();
@@ -117,6 +122,7 @@ function queryPage(value) {
 
 function applyStageQuery(query = {}) {
   applyingStageQuery = true;
+  stageOrder.value = queryValue(query.sort) === 'latest' ? 'latest' : 'featured';
   const category = queryValue(query.category);
   stageCategory.value = category && (!categoryRevision.value || categories.value.includes(category)) ? category : 'all';
   stageSearch.value = String(queryValue(query.q)).slice(0, 120);
@@ -243,11 +249,11 @@ function stageOpenAuthor(article) {
   emit('go', `/users/${encodeURIComponent(username)}`);
 }
 
-watch([stageCategory, stageSearch], () => {
+watch([stageCategory, stageSearch, stageOrder], () => {
   if (applyingStageQuery) return;
   stagePage.value = 1;
 });
-watch([stagePage, stageCategory, stageSearch], syncStageUrl);
+watch([stagePage, stageCategory, stageSearch, stageOrder], syncStageUrl);
 watch(stageTotalPages, (total) => {
   if (stagePage.value > total) stagePage.value = total;
   if (stagePage.value < 1) stagePage.value = 1;
@@ -287,6 +293,7 @@ onMounted(loadArticles);
       </a>
     </div>
 
+    <div class="stage-filter-row">
     <div class="stage-filters">
       <button
         v-for="category in categories"
@@ -299,6 +306,10 @@ onMounted(loadArticles);
       >
         {{ stageCategoryLabel(category) }}
       </button>
+    </div>
+      <div class="stage-order" :aria-label="lang === 'en' ? 'Sort articles' : lang === 'ja' ? '記事の並び順' : '文章排序'">
+        <button v-for="(order, index) in ['featured', 'latest']" :key="order" type="button" :aria-pressed="stageOrder === order" @click="stageOrder = order">{{ stageSortCopy[index] }}</button>
+      </div>
     </div>
     <div v-if="!articlesLoading && filteredArticles.length" class="stage-result-strip">
       <div>
@@ -324,6 +335,7 @@ onMounted(loadArticles);
       >
         <div class="stage-card-body">
           <div class="stage-card-meta">
+            <span v-if="article.pinned_at" class="stage-featured-label">{{ stageSortCopy[2] }}</span>
             <span class="tag">{{ article.category }}</span>
             <span
               class="tag tag-author stage-author stage-author-link"
@@ -343,7 +355,7 @@ onMounted(loadArticles);
           <h3 class="stage-card-title">{{ article.title }}</h3>
           <p class="stage-card-excerpt">{{ article.excerpt }}</p>
           <div class="stage-card-footer">
-            <span class="read-time">Time {{ article.read_time || '5 min' }}</span>
+            <span v-if="readingTimeLabel(article, lang)" class="read-time">{{ readingTimeLabel(article, lang) }}</span>
             <time class="stage-publish-time" :datetime="stagePublishedAt(article)">
               <TsIcon name="calendar" :size="14" />
               <span>{{ stagePublishedTime(article) }}</span>

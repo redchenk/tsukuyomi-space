@@ -1,11 +1,15 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
+  activePersonaId,
   activePersonaPrompt,
   clearDiaryArchive,
+  deleteDiaryEntry,
   DIARY_ARCHIVE_UPDATED_EVENT,
   downloadDiaryArchive,
   importDiaryArchive,
+  listPersonaPrompts,
   readDiaryArchive,
+  selectPersonaPrompt,
   updatePersonaPrompt
 } from '../../services/room/roomDiaryArchive';
 
@@ -20,6 +24,13 @@ export function useRoomDiary() {
 
   const entries = computed(() => archive.value?.data?.diary || []);
   const personaName = computed(() => activePersonaPrompt(archive.value).data.name || '角色');
+  // A backup can hold many personas (affection tiers, special forms); the user
+  // picks which one the room speaks as.
+  const personas = computed(() => listPersonaPrompts(archive.value));
+  const activePersona = computed(() => activePersonaId(archive.value));
+  const activePersonaLabel = computed(() => (
+    personas.value.find((item) => item.id === activePersona.value)?.label || personaName.value
+  ));
   const affection = computed(() => Number(archive.value?.data?.gameData?.characterStats?.affection) || 0);
   const slotId = computed(() => Number(archive.value?.slotId) || 1);
   const selectedEntry = computed(() => (
@@ -43,6 +54,41 @@ export function useRoomDiary() {
     selectedId.value = entries.value[entries.value.length - 1]?.diaryId || '';
   }
 
+  /** Switches which persona the room speaks as. */
+  function selectPersona(id) {
+    try {
+      archive.value = selectPersonaPrompt(id);
+      notice.value = `已切换人设：${activePersonaLabel.value}`;
+      return archive.value;
+    } catch (error) {
+      notice.value = `切换人设失败：${error.message}`;
+      return null;
+    }
+  }
+
+  /** Deletes one diary entry. Returns true when it was removed. */
+  function deleteEntry(entry) {
+    const id = String(entry?.diaryId || '').trim();
+    if (!id) {
+      notice.value = '删除失败：缺少日记标识';
+      return false;
+    }
+    try {
+      archive.value = deleteDiaryEntry(id);
+      // Keep the selection valid after the list shrinks.
+      if (!entries.value.some((item) => item.diaryId === selectedId.value)) {
+        selectedId.value = entries.value[entries.value.length - 1]?.diaryId || '';
+      }
+      notice.value = entries.value.length
+        ? `已删除 1 篇日记，还剩 ${entries.value.length} 篇`
+        : '已删除最后一篇日记';
+      return true;
+    } catch (error) {
+      notice.value = `删除失败：${error.message}`;
+      return false;
+    }
+  }
+
   function exportArchive() {
     try {
       const name = downloadDiaryArchive(archive.value);
@@ -58,7 +104,10 @@ export function useRoomDiary() {
     try {
       archive.value = importDiaryArchive(text);
       selectedId.value = entries.value[entries.value.length - 1]?.diaryId || '';
-      notice.value = `已导入 ${entries.value.length} 篇日记，角色：${personaName.value}`;
+      const count = personas.value.length;
+      notice.value = count > 1
+        ? `已导入 ${entries.value.length} 篇日记、${count} 个人设，当前使用：${activePersonaLabel.value}`
+        : `已导入 ${entries.value.length} 篇日记，角色：${personaName.value}`;
       return archive.value;
     } catch (error) {
       notice.value = `导入失败：${error.message}`;
@@ -106,6 +155,9 @@ export function useRoomDiary() {
     archive,
     entries,
     personaName,
+    personas,
+    activePersona,
+    activePersonaLabel,
     affection,
     slotId,
     selectedId,
@@ -114,6 +166,8 @@ export function useRoomDiary() {
     refresh,
     focusLatest,
     selectEntry,
+    selectPersona,
+    deleteEntry,
     exportArchive,
     importText,
     importFile,

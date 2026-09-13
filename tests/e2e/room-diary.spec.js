@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../e2e-fixtures.cjs');
 
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 

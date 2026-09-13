@@ -88,13 +88,13 @@ function findRecentMatchingTurn(userId, userMessage, assistantMessage) {
     `).get(userId, userMessage, assistantMessage)?.turn_id || '';
 }
 
-function saveTurn(userId, { turnId, userMessage, assistantMessage }) {
+function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = false }) {
     const save = db.transaction(() => {
         const matchingTurnId = findRecentMatchingTurn(userId, userMessage, assistantMessage);
         if (matchingTurnId && matchingTurnId !== turnId) return [];
 
         const messageIds = [
-            insertMessage({ userId, turnId, role: 'user', content: userMessage }),
+            !opener && insertMessage({ userId, turnId, role: 'user', content: userMessage }),
             insertMessage({ userId, turnId, role: 'assistant', content: assistantMessage })
         ].filter(Boolean);
         pruneMessages(userId);

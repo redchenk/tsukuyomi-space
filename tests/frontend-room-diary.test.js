@@ -463,16 +463,16 @@ describe('room chat end-chat wiring', () => {
 });
 
 
-it('uses only the three most recent diaries with bounded context', () => {
+it('uses only the ten most recent diaries with bounded context', () => {
     const { archive } = loadArchive();
     const value = archive.defaultArchive();
-    value.data.diary = [5, 1, 3, 2, 4].map((day) => ({
+    value.data.diary = [12, 1, 3, 2, 4, 10, 8, 7, 6, 9, 5, 11].map((day) => ({
         date: `2026/9/${day}`, time: '12:00:00', content: `entry-${day} ` + 'x'.repeat(2000)
     }));
     const context = archive.recentDiaryContext(value);
-    assert.doesNotMatch(context, /entry-[12]/);
-    assert.ok(context.indexOf('entry-3') < context.indexOf('entry-5'));
-    assert.ok(context.length < 3800);
+    assert.doesNotMatch(context, /entry-[12] /);
+    assert.ok(context.indexOf('entry-3') < context.indexOf('entry-12'));
+    assert.ok(context.length < 6500);
 });
 
 it('generates diaries through the existing server proxy without a client key', async () => {

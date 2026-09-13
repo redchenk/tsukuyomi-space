@@ -48,7 +48,7 @@ const navItems = computed(() => [
   { path: '/hub', key: 'hub', label: props.t.hub, icon: 'home', active: props.routeName === 'hub', spa: true },
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
   { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza' || props.routeName === 'friendLinkApply', spa: true },
-  { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || props.routeName === 'article' || props.routeName === 'editor', spa: true },
+  { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || ['article', 'articleDetail', 'editor'].includes(props.routeName), spa: true },
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },
@@ -58,6 +58,7 @@ const navItems = computed(() => [
   { path: '/agent-os', key: 'agentOs', label: props.t.agentOs, icon: 'bot', active: false, spa: false }
 ]);
 
+const desktopItems = computed(() => ['hub', 'stage', 'plaza', 'wiki'].map((key) => navItems.value.find((item) => item.key === key)));
 const mobilePrimaryItems = computed(() => navItems.value.slice(0, 4));
 const mobileSecondaryItems = computed(() => navItems.value.slice(4));
 const mobileNavLabel = (item) => props.lang === 'en' ? ({ room: 'Room', plaza: 'Plaza' }[item.key] || item.label) : item.label;
@@ -220,7 +221,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'room-shell': isRoom, 'pixel-shell': routeName === 'pixel', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
+  <div class="app-shell" :class="{ 'room-shell': isRoom, 'content-shell': showChrome && !isRoom, 'pixel-shell': routeName === 'pixel', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && !isRoom && routeName !== 'game'" class="moon" aria-hidden="true"></div>
 
@@ -338,6 +339,14 @@ onUnmounted(() => {
         </span>
       </a>
 
+      <nav class="desktop-navigation" :aria-label="t.navigation">
+        <a v-for="item in desktopItems" :key="item.key" :href="item.path" :aria-current="item.active ? 'page' : undefined" @pointerenter="warmRoutePath(item.path)" @focus="warmRoutePath(item.path)" @click.prevent="$emit('go', item.path)">{{ item.label }}</a>
+        <button type="button" :aria-expanded="navOpen" aria-controls="site-navigation" @click="navOpen = !navOpen">{{ moreLabel }} <TsIcon name="chevronDown" :size="14" /></button>
+      </nav>
+      <div class="desktop-actions">
+        <button type="button" class="desktop-theme" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="19" /></button>
+        <a class="desktop-room-link" href="/room" @pointerenter="warmRoutePath('/room')" @click.prevent="$emit('go', '/room')"><TsIcon name="moon" :size="17" />{{ t.room }}</a>
+      </div>
       <div class="mobile-command-actions" :aria-label="t.mobileQuickActions">
         <button
           v-if="showNotifications"
@@ -350,17 +359,17 @@ onUnmounted(() => {
           <TsIcon name="bell" :size="18" />
           <span v-if="unreadNotifications" class="mobile-command-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
         </button>
-        <button
+        <a
           class="mobile-command-btn mobile-account-btn"
-          type="button"
+          :href="isAuthed ? '/user-center' : '/login'"
           :class="{ active: routeName === 'userCenter' || routeName === 'userProfile' || routeName === 'login' }"
           :aria-label="accountLabel"
-          @click="$emit('go', isAuthed ? '/user-center' : '/login')"
+          @click.prevent="$emit('go', isAuthed ? '/user-center' : '/login')"
         >
           <img v-if="isAuthed && user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
           <span v-else-if="isAuthed">{{ userInitial() }}</span>
           <TsIcon v-else name="user" :size="18" />
-        </button>
+        </a>
       </div>
     </header>
 

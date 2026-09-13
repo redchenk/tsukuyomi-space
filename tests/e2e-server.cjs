@@ -30,6 +30,11 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
+if (process.env.UI_PREVIEW_FIXTURES === 'true') {
+    const article = require('./fixtures/editorial-article.cjs');
+    db.prepare('UPDATE articles SET title = ?, content = ?, content_format = ?, cover_image = ?, read_time = ? WHERE id = ?')
+        .run(article.title, article.content, article.content_format, article.cover_image, article.read_time, article.id);
+}
 const server = app.listen(Number(process.env.PORT), process.env.HOST, () => {
     const address = server.address();
     console.log(`E2E server listening on http://${address.address}:${address.port}`);

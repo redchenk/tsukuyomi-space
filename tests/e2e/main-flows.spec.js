@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../e2e-fixtures.cjs');
 
 async function loginAsUser(page) {
     await page.goto('/login');
@@ -268,7 +268,7 @@ test('user can read an article and post a comment', async ({ page }) => {
     await loginAsUser(page);
     await page.goto('/article?id=1');
     await expect(page.getByRole('heading', { name: '欢迎来到月读空间' })).toBeVisible();
-    await page.getByRole('link', { name: '进入完整互动文章页' }).click();
+    await expect(page).toHaveURL(/\/articles\/1\//);
 
     const comment = `E2E article comment ${Date.now()}`;
     await page.getByPlaceholder('写下你的评论...').fill(comment);
@@ -440,6 +440,7 @@ test('pixel artwork preview is body-level and closes from the visible button', a
     expect(desktopActions.buttonWidthTotal).toBeLessThan(desktopActions.actionWidth * 0.95);
 
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(async () => (await galleryActionLayout()).actionHeight).toBeLessThanOrEqual(62);
     const mobileActions = await galleryActionLayout();
     expect(mobileActions.actionHeight).toBeLessThanOrEqual(62);
     expect(mobileActions.buttonHeights.every((height) => height >= 34)).toBe(true);

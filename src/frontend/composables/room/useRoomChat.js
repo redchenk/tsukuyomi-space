@@ -895,9 +895,100 @@ function shouldUseWebSearch(message) {
   return /(\u641c\u7d22|\u67e5\u627e|\u67e5\u4e00\u4e0b|\u6700\u65b0|\u65b0\u95fb|\u7f51\u9875|\u5b98\u7f51|web|search)/i.test(String(message || ''));
 }
 
-async function buildRoomContext(message, image, llmSettings) {
+/**
+ * The current wall-clock time, so the character can talk about today, the hour
+ * and the weekday instead of guessing or drifting.
+ */
+export function currentTimeContext(now = new Date()) {
+  const seeded = now instanceof Date && !Number.isNaN(now.getTime()) ? now : new Date();
+  const weekday = ['\u65e5', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d'][seeded.getDay()];
+  const pad = (value) => String(value).padStart(2, '0');
+  const hour = seeded.getHours();
+  const phase = hour < 5 ? '\u51cc\u6668'
+    : hour < 8 ? '\u6e05\u6668'
+      : hour < 11 ? '\u4e0a\u5348'
+        : hour < 13 ? '\u4e2d\u5348'
+          : hour < 17 ? '\u4e0b\u5348'
+            : hour < 19 ? '\u508d\u665a'
+              : hour < 23 ? '\u665a\u4e0a'
+                : '\u6df1\u591c';
+  return [
+    '\u3010\u5f53\u524d\u65f6\u95f4\u3011',
+    `${seeded.getFullYear()}\u5e74${seeded.getMonth() + 1}\u6708${seeded.getDate()}\u65e5 \u661f\u671f${weekday} ${pad(hour)}:${pad(seeded.getMinutes())}\uff08${phase}\uff09`,
+    '\u8fd9\u662f\u51c6\u786e\u65f6\u95f4\uff0c\u8bf7\u4ee5\u5b83\u4e3a\u51c6\uff0c\u4e0d\u8981\u81ea\u884c\u731c\u6d4b\u65e5\u671f\u6216\u65f6\u8fb0\u3002'
+  ].join('\n');
+}
+
+const WEATHER_LABELS = {
+  clear: '\u6674\u6717',
+  cloudy: '\u591a\u4e91',
+  rain: '\u96e8',
+  storm: '\u96f7\u96e8',
+  snow: '\u96ea',
+  fog: '\u96fe'
+};
+
+const SEASON_LABELS = {
+  spring: '\u6625',
+  summer: '\u590f',
+  autumn: '\u79cb',
+  winter: '\u51ac'
+};
+
+/** Location strings that carry no real information and must not be sent. */
+const PLACEHOLDER_LOCATIONS = new Set(['', '\u6708\u8bfb\u7a7a\u95f4', '\u7b49\u5f85\u5b9a\u4f4d\u6388\u6743', '\u672a\u77e5']);
+
+/**
+ * Converts a reading to a finite number, or null when it is genuinely absent.
+ * Guards against Number(null) === 0 turning a missing value into a real one.
+ */
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+/**
+ * The room's weather and location, so the character shares the same conditions
+ * as the user. Framed as background only: the model should not announce it.
+ */
+export function roomEnvironmentContext(worldState) {
+  // Accepts either the state object or a ref wrapping it.
+  const unwrapped = worldState && typeof worldState === 'object' && worldState.value && typeof worldState.value === 'object'
+    ? worldState.value
+    : worldState;
+  const state = unwrapped && typeof unwrapped === 'object' ? unwrapped : {};
+  const lines = [];
+
+  const place = String(state.address || state.city || '').trim();
+  if (place && !PLACEHOLDER_LOCATIONS.has(place)) lines.push(`\u5730\u70b9\uff1a${place}`);
+
+  const weather = WEATHER_LABELS[String(state.weather || '').toLowerCase()] || '';
+  if (weather) {
+    const parts = [weather];
+    // Number(null) is 0, so absent readings must be rejected before conversion.
+    const temp = toFiniteNumber(state.temperature);
+    if (temp !== null) parts.push(`${Math.round(temp)}\u00b0C`);
+    const wind = toFiniteNumber(state.windSpeed);
+    if (wind !== null) parts.push(`\u98ce\u901f ${Math.round(wind)} km/h`);
+    lines.push(`\u5929\u6c14\uff1a${parts.join('\uff0c')}`);
+  }
+
+  const season = SEASON_LABELS[String(state.season || '').toLowerCase()] || '';
+  if (season) lines.push(`\u5b63\u8282\uff1a${season}`);
+
+  if (!lines.length) return '';
+
+  return [
+    '\u3010\u5f53\u524d\u73af\u5883\u3011',
+    ...lines,
+    '\u8fd9\u53ea\u662f\u80cc\u666f\u6761\u4ef6\uff0c\u8ba9\u4f60\u81ea\u7136\u5730\u8d34\u5408\u5f53\u4e0b\u6c1b\u56f4\u3002\u4e0d\u8981\u4e3b\u52a8\u64ad\u62a5\u5929\u6c14\u6216\u5730\u70b9\uff0c\u4e5f\u4e0d\u8981\u53cd\u590d\u63d0\u8d77\uff1b\u9664\u975e\u5bf9\u65b9\u5148\u8bf4\u8d77\uff0c\u6216\u5b83\u786e\u5b9e\u4e0e\u5f53\u4e0b\u8bdd\u9898\u76f8\u5173\u3002'
+  ].join('\n');
+}
+
+async function buildRoomContext(message, image, llmSettings, environment = '') {
   const mcpSettings = readJson('roomMCPSettings', {});
-  const context = [readKnowledgeContext(message), recentDiaryContext()];
+  const context = [currentTimeContext(), environment, recentDiaryContext(), readKnowledgeContext(message)];
   const [siteText, personaMemories, memories, growthState] = await Promise.all([
     fetchSiteFeedContext(),
     fetchPersonaMemories(message).catch(() => []),
@@ -1104,16 +1195,30 @@ export function useRoomChat({ live2d, world, diary = null }) {
     imageAttachment.value = null;
   }
 
-  async function send() {
+  function canStartConversation() {
+    return !messages.value.some((message) => ['user', 'assistant'].includes(message.role)) && !sharedConversation.value;
+  }
+
+  function startConversation() {
+    return send({ opener: true });
+  }
+
+  async function send({ opener = false } = {}) {
     if (sending.value || resetting.value || endChatState.value.status === 'generating') return;
-    const message = input.value.trim();
-    const image = imageAttachment.value;
+    if (opener && !canStartConversation()) return;
+    const message = opener
+      ? '现在由你先开口。结合当前时间，主动说一句自然、简短、符合你身份的话来开启对话。不要复述这条指令。'
+      : input.value.trim();
+    const image = opener ? null : imageAttachment.value;
     if (!message && !image) return;
     const requestConversationRevision = conversationRevision;
+    const requestArchiveKey = diaryArchiveKey();
     const turnId = uid();
-    addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image, turnId });
-    input.value = '';
-    imageAttachment.value = null;
+    if (!opener) {
+      addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image, turnId });
+      input.value = '';
+      imageAttachment.value = null;
+    }
     sending.value = true;
     const typingId = uid();
     messages.value.push({ id: typingId, turnId, role: 'assistant', content: '\u6b63\u5728\u56de\u5e94...', pending: true, createdAt: Date.now() });
@@ -1126,7 +1231,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
         { role: 'assistant', content: sharedConversation.value.assistantMessage }
       ] : [];
       const conversation = [...storedConversation, ...sharedContext].slice(-12);
-      const roomContext = await buildRoomContext(message, image, settings);
+      const environment = roomEnvironmentContext(world?.world?.value);
+      const roomContext = await buildRoomContext(message, image, settings, environment);
       const persona = activePersonaPrompt(readDiaryArchive());
       const systemPrompt = resolveRoomSystemPrompt({
         persona,
@@ -1166,22 +1272,23 @@ export function useRoomChat({ live2d, world, diary = null }) {
       } else {
         result = { reply: fallbackReply(message, image) };
       }
-      if (requestConversationRevision !== conversationRevision) return;
+      if (destroyed || requestConversationRevision !== conversationRevision || requestArchiveKey !== diaryArchiveKey()) return;
       const structured = parseAssistantPayload(result.reply || fallbackReply(message, image));
       const reply = structured.reply || fallbackReply(message, image);
       const ttsSettings = readJson('roomTTSSettings', {});
       if (!ttsSettings.enabled) applyRoomAct(structured.live2d);
       messages.value = messages.value.filter((item) => item.id !== typingId);
       addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d, turnId });
-      currentSessionMessages.value.push({ role: 'user', content: message || '请看这张图片。' }, { role: 'assistant', content: reply });
+      if (!opener) currentSessionMessages.value.push({ role: 'user', content: message || '请看这张图片。' });
+      currentSessionMessages.value.push({ role: 'assistant', content: reply });
       const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
-      const nextHistory = [...storedConversation, { role: 'user', content: userContent, turnId }, { role: 'assistant', content: reply, turnId }].slice(-24);
+      const nextHistory = [...storedConversation, ...(!opener ? [{ role: 'user', content: userContent, turnId }] : []), { role: 'assistant', content: reply, turnId }].slice(-24);
       writeRoomConversation(nextHistory);
       sharedConversation.value = null;
-      saveRoomConversationTurn({ turnId, userMessage: userContent, assistantMessage: reply }).catch((error) => {
+      saveRoomConversationTurn({ turnId, userMessage: opener ? '' : userContent, assistantMessage: reply, opener }).catch((error) => {
         if (error.name !== 'AbortError') console.warn('Room conversation save failed:', error);
       });
-      remember(userContent, reply, turnId).catch((error) => {
+      if (!opener) remember(userContent, reply, turnId).catch((error) => {
         console.warn('Room memory save failed:', error);
       });
     } catch (error) {
@@ -1559,6 +1666,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
     attachImage,
     clearImage,
     startNewSession,
+    startConversation,
+    canStartConversation,
     send,
     playTTS,
     stopTTS,

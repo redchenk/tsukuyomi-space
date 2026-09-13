@@ -152,9 +152,9 @@ export async function loadRoomConversation() {
   return writeRoomConversation(history);
 }
 
-export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage }) {
+export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, opener = false }) {
   if (!currentUserId()) return readRoomConversation();
-  const turn = { turnId, userMessage, assistantMessage };
+  const turn = { turnId, userMessage, assistantMessage, ...(opener ? { opener: true } : {}) };
   queuePendingTurn(turn);
   return writeRoomConversation(await postConversationTurn(turn));
 }

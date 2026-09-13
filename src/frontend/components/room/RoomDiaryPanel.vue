@@ -16,10 +16,25 @@ const selectedId = computed(() => props.diary.selectedId?.value || '');
 const selected = computed(() => props.diary.selectedEntry?.value || null);
 const personaName = computed(() => props.diary.personaName?.value || '角色');
 const notice = computed(() => props.diary.notice?.value || '');
+const personas = computed(() => props.diary.personas?.value || []);
+const activePersona = computed(() => props.diary.activePersona?.value || '');
 const reversed = computed(() => entries.value.slice().reverse());
 
 function selectEntry(entry) {
   props.diary.selectEntry?.(entry);
+}
+
+function onPersonaChange(event) {
+  const id = event.target.value;
+  if (id && id !== activePersona.value) props.diary.selectPersona?.(id);
+}
+
+/** Deletes one entry after a confirmation; the action cannot be undone. */
+function requestDelete(entry) {
+  if (!entry?.diaryId) return;
+  const label = `${entry.date || ''} ${entry.time || ''}`.trim();
+  if (!window.confirm(`删除这篇日记？\n\n${label}\n此操作不可撤销。`)) return;
+  props.diary.deleteEntry?.(entry);
 }
 
 function onImportFile(event) {
@@ -53,6 +68,14 @@ function onImportFile(event) {
         <input ref="fileInputRef" type="file" accept="application/json,.json" hidden @change="onImportFile">
       </div>
 
+      <!-- One backup can hold many personas; pick which one speaks. -->
+      <label v-if="personas.length > 1" class="diary-persona-picker">
+        <span>&#20154;&#35774;</span>
+        <select :value="activePersona" @change="onPersonaChange">
+          <option v-for="item in personas" :key="item.id" :value="item.id">{{ item.label }}</option>
+        </select>
+      </label>
+
       <div v-if="notice" class="diary-notice" role="status">{{ notice }}</div>
 
       <div v-if="!entries.length" class="diary-empty">
@@ -61,23 +84,36 @@ function onImportFile(event) {
 
       <template v-else>
         <div class="diary-list">
-          <button
+          <div
             v-for="entry in reversed"
             :key="entry.diaryId"
             class="diary-list-item"
             :class="{ 'is-active': entry.diaryId === selectedId }"
-            type="button"
-            @click="selectEntry(entry)"
           >
+            <button class="diary-entry-select" type="button" :aria-pressed="entry.diaryId === selectedId" @click="selectEntry(entry)">
             <span class="diary-list-date">{{ entry.date }}</span>
             <span class="diary-list-time">{{ entry.time }}</span>
             <span class="diary-list-preview">{{ String(entry.content || '').replace(/^【日记】\s*/, '').slice(0, 40) }}</span>
-          </button>
+            </button>
+            <button
+              class="diary-list-delete"
+              type="button"
+              :aria-label="`删除 ${entry.date} 的日记`"
+              :title="`删除 ${entry.date} 的日记`"
+              @click.stop="requestDelete(entry)"
+            >&#215;</button>
+          </div>
         </div>
         <div v-if="selected" class="diary-detail">
           <div class="diary-detail-head">
             <strong>{{ selected.date }} {{ selected.time }}</strong>
-            <span class="field-hint">&#22909;&#24863;&#24230; {{ selected.affection }} · {{ selected.mode || 'LLM' }}</span>
+            <span class="field-hint">好感度 {{ selected.affection }} · {{ selected.mode || 'LLM' }}</span>
+            <button
+              class="diary-detail-delete"
+              type="button"
+              aria-label="删除这篇日记"
+              @click="requestDelete(selected)"
+            >&#21024;&#38500;&#36825;&#31687;</button>
           </div>
           <pre class="diary-detail-content">{{ selected.content }}</pre>
         </div>

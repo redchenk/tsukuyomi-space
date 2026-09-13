@@ -613,13 +613,15 @@ router.post('/chat/import', authenticateToken, (req, res) => {
 router.post('/chat/turn', authenticateToken, (req, res) => {
     try {
         const turnId = normalizeTurnId(req.body?.turnId);
-        const userMessage = normalizeChatContent(req.body?.userMessage, 'userMessage');
+        const opener = req.body?.opener === true;
+        const userMessage = opener && !req.body?.userMessage ? '' : normalizeChatContent(req.body?.userMessage, 'userMessage');
+        if (opener && userMessage) return res.status(400).json({ success: false, message: 'An opener cannot include a user message' });
         const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
-        const messageIds = roomChatRepository.saveTurn(req.user.id, { turnId, userMessage, assistantMessage });
+        const messageIds = roomChatRepository.saveTurn(req.user.id, { turnId, userMessage, assistantMessage, opener });
         if (messageIds.length) {
             roomMemoryEvents.publishChat(req.user.id, { action: 'turn-saved', messageIds });
         }
-        const growth = userGrowth.recordRoomChat(req.user.id);
+        const growth = opener ? null : userGrowth.recordRoomChat(req.user.id);
         setNoStore(res);
         res.status(messageIds.length ? 201 : 200).json({
             success: true,

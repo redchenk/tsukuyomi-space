@@ -1,4 +1,4 @@
-@layer ts-base, ts-page, ts-modern, ts-design, ts-polish, ts-readability, ts-chrome, ts-refresh, ts-materials, ts-mobile, ts-loading;
+@layer ts-base, ts-page, ts-modern, ts-design, ts-polish, ts-readability, ts-chrome, ts-refresh, ts-materials, ts-mobile, ts-loading, ts-editorial;
 
 @import url("./vue/foundation.css") layer(ts-base);
 @import url("./vue/shell.css") layer(ts-base);
@@ -16,3 +16,4 @@
 @import url("../../src/frontend/styles/materials.css") layer(ts-materials);
 @import url("../../src/frontend/styles/mobile-experience.css") layer(ts-mobile);
 @import url("../../src/frontend/styles/loading-states.css") layer(ts-loading);
+@import url("../../src/frontend/styles/editorial.css") layer(ts-editorial);

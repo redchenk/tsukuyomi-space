@@ -48,6 +48,47 @@ async function setup(overrides = {}) {
 }
 async function send(chat, text) { chat.input.value = text; await chat.send(); await tick(); }
 
+test('opener preserves the draft, saves only the assistant and enters the diary once', async () => {
+  const turns = [];
+  const h = await setup({
+    readRoomConversation: () => [], loadRoomConversation: async () => [],
+    saveRoomConversationTurn: async (turn) => turns.push(turn)
+  });
+  h.chat.input.value = 'unsent draft';
+  assert.equal(h.chat.canStartConversation(), true);
+  await h.chat.startConversation();
+  await h.chat.startConversation();
+  assert.equal(h.chat.input.value, 'unsent draft');
+  assert.equal(turns.length, 1);
+  assert.equal(turns[0].opener, true);
+  assert.equal(turns[0].userMessage, '');
+  assert.equal(h.chat.messages.value.filter(item => item.role === 'user').length, 0);
+  assert.equal(h.chat.sessionTurnCount(), 1);
+  await h.chat.confirmEndChat();
+  assert.equal(h.requests[0].length, 1);
+  assert.equal(h.requests[0][0].role, 'assistant');
+  h.chat.destroy();
+});
+
+test('a late opener cannot revive a cleared conversation', async () => {
+  const d = deferred();
+  const turns = [];
+  const h = await setup({
+    readRoomConversation: () => [], loadRoomConversation: async () => [],
+    readJson: (key, fallback) => key === 'roomLLMSettings' ? { useProxy: true } : fallback,
+    saveRoomConversationTurn: async (turn) => turns.push(turn)
+  });
+  h.context.postJson = () => d.promise;
+  const pending = h.chat.startConversation();
+  await tick();
+  await h.chat.startNewSession();
+  d.resolve({ reply: 'late opener' });
+  await pending;
+  assert.equal(turns.length, 0);
+  assert.equal(h.chat.messages.value.some(item => item.content === 'late opener'), false);
+  h.chat.destroy();
+});
+
 test('diary keeps only completed session turns across server refreshes and history truncation', async () => {
   const h = await setup();
   for (let i = 0; i < 15; i++) { await send(h.chat, `new-${i}`); h.sync(); await tick(); }

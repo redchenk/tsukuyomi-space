@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../e2e-fixtures.cjs');
 
 test('Wiki loads as a production route and core interactions work', async ({ page }) => {
   const response = await page.goto('/wiki');

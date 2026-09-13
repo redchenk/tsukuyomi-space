@@ -105,6 +105,9 @@ function endChatStatusLabel() {
       </button>
       <div class="chat-session-toolbar">
         <span class="chat-session-label">当前会话</span>
+        <button v-if="chat.canStartConversation()" class="chat-session-new-btn chat-opener-btn" type="button"
+          :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :title="`让${characterName}先开口`"
+          @click="chat.startConversation()"><TsIcon name="sparkles" :size="15" /><span>我先说</span></button>
         <button
           class="chat-session-new-btn"
           type="button"

@@ -117,3 +117,20 @@ describe('renderArticleHtml iframe XSS regression', () => {
         });
     });
 });
+
+describe('interactive article entry metadata', () => {
+    const { renderArticleSpaHtml } = require('../backend/seo/render-article');
+    const template = require('node:fs').readFileSync(require('node:path').join(__dirname, '../src/frontend/index.html'), 'utf8');
+    it('keeps the interactive app and publishes article-specific, escaped metadata', () => {
+        const title = 'A $& story </script><script>alert(1)</script>';
+        const html = renderArticleSpaHtml(template, { ...articleWith('## Safe content'), title, excerpt: 'A "quoted" description', slug: 'safe-story' });
+        assert.match(html, /id="app"/);
+        assert.match(html, /src="\/main\.js"/);
+        assert.match(html, /A \$&amp; story/);
+        assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+        assert.match(html, /property="og:type" content="article"/);
+        assert.match(html, /rel="canonical" href="https:\/\/yachiyo\.hk\/articles\/test-1\/safe-story"/);
+        const schema = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+        assert.equal(schema.headline, title);
+    });
+});

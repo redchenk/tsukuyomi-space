@@ -2013,6 +2013,24 @@ describe('room world API', () => {
 });
 
 describe('room memory API', () => {
+    it('syncs an assistant opener once without a synthetic user message or growth reward', async () => {
+        const turnId = `opener-${Date.now()}`;
+        const payload = { turnId, opener: true, assistantMessage: 'Good evening. How was your day?' };
+        assert.equal((await postJson('/api/room/chat/turn', payload)).response.status, 401);
+        const saved = await postJson('/api/room/chat/turn', payload, userToken);
+        assert.equal(saved.response.status, 201);
+        assert.equal(saved.body.growth, null);
+        assert.deepEqual(saved.body.data.filter(item => item.turnId === turnId).map(item => item.role), ['assistant']);
+        const retry = await postJson('/api/room/chat/turn', payload, userToken);
+        assert.equal(retry.response.status, 200);
+        assert.equal(retry.body.data.filter(item => item.turnId === turnId).length, 1);
+        const another = await request('/api/room/chat', { headers: jsonHeaders(managedUserToken) });
+        assert.equal(another.body.data.some(item => item.turnId === turnId), false);
+        assert.equal((await postJson('/api/room/chat/turn', { ...payload, userMessage: 'fake' }, userToken)).response.status, 400);
+        assert.equal((await postJson('/api/room/chat/turn', { turnId: 'empty', assistantMessage: 'Hello' }, userToken)).response.status, 400);
+        await request('/api/room/chat', { method: 'DELETE', headers: jsonHeaders(userToken) });
+    });
+
     it('persists room chat turns per account and broadcasts content-free updates', async () => {
         const unauthenticated = await request('/api/room/chat');
         assert.equal(unauthenticated.response.status, 401);

@@ -15,6 +15,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
+const hubCopy = computed(() => ({
+  zh: { hero: '给日常留一点月光。与八千代聊天，读故事、看创作，遇见同频的人。', welcome: '与你相遇，在月光之下', room: '进入私人居所', browse: '发现创作', latest: '月下新鲜事', desc: '读一篇文章，发现一份创作，留下今天的问候。', notice: '站内公告', expand: '展开阅读', stats: '一起留下的足迹' },
+  ja: { hero: '日々に、少しの月明かりを。八千代と話し、物語や作品を楽しもう。', welcome: '月明かりの下で、あなたと', room: 'プライベートルームへ', browse: '作品を探す', latest: '月の下の新着', desc: '記事を読み、作品に出会い、今日の挨拶を。', notice: 'お知らせ', expand: '続きを読む', stats: 'みんなの足跡' },
+  en: { hero: 'Make room for a little moonlight. Talk with Yachiyo, discover stories and share what inspires you.', welcome: 'A little closer, under the moon', room: 'Enter the Room', browse: 'Explore creations', latest: 'Under the moon', desc: 'A new story, a little inspiration, a hello from the community.', notice: 'Community notice', expand: 'Read more', stats: 'The moments we share' }
+}[props.lang] || {}));
 const isEnglish = computed(() => props.lang === 'en');
 
 const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v2';
@@ -104,7 +109,7 @@ const sceneLinks = computed(() => [
     kind: 'plaza'
   },
   {
-    href: '/stage',
+    href: latestArticle.value?.id ? `/articles/${encodeURIComponent(latestArticle.value.id)}${latestArticle.value.slug ? `/${encodeURIComponent(latestArticle.value.slug)}` : ''}` : '/stage',
     name: latestArticle.value?.title || props.t.stage,
     desc: latestArticle.value?.excerpt || (isEnglish.value ? 'Notes, creations and knowledge' : '记录、创作、知识'),
     code: isEnglish.value ? englishArticleCategory(latestArticle.value?.category) : (latestArticle.value?.category || 'Stage'),
@@ -146,7 +151,7 @@ const sceneLinks = computed(() => [
   }
 ]);
 
-const orderedSceneLinks = computed(() => sceneLinks.value);
+const orderedSceneLinks = computed(() => [sceneLinks.value[1], sceneLinks.value[2], sceneLinks.value[3], sceneLinks.value[0]]);
 
 const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
 
@@ -471,68 +476,39 @@ onBeforeUnmount(() => {
   <main class="page hub" :aria-busy="previewLoading">
     <section class="hub-showcase">
       <div class="hub-hero-panel">
-        <div class="hub-stage-ribbon" aria-hidden="true">
-          <span>TSUKUYOMI</span>
-          <span>{{ t.brand }}</span>
-          <span>LIVE PORTAL</span>
-        </div>
         <div class="hub-hero-copy">
-          <span class="hub-kicker">TSUKUYOMI / LIVE PORTAL</span>
-          <p class="hub-welcome">{{ isEnglish ? 'Welcome to' : '欢迎来到' }}</p>
+          <span class="hub-kicker">TSUKUYOMI · A MOONLIT COMMUNITY</span>
+          <p class="hub-welcome">{{ hubCopy.welcome }}</p>
           <h1 class="section-title">{{ t.brand }}</h1>
           <p class="hub-en-title">Tsukuyomi Space</p>
-          <p class="section-subtitle">{{ t.heroCopy }}</p>
+          <p class="section-subtitle">{{ hubCopy.hero }}</p>
           <div class="hub-actions">
             <a href="/room" class="primary-btn hub-primary" @click.prevent="$emit('go', '/room')">
               <TsIcon name="moon" :size="17" />
-              <span>{{ isEnglish ? 'Enter the Private Room' : '进入私人居所' }}</span>
+              <span>{{ hubCopy.room }}</span>
             </a>
+            <a href="/stage" class="ghost-btn hub-secondary" @click.prevent="$emit('go', '/stage')">{{ hubCopy.browse }}<TsIcon name="arrowRight" :size="17" /></a>
           </div>
         </div>
 
         <figure class="hub-character" :aria-label="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'">
           <img :src="'/assets/images/yachiyo-hub-stand.png'" :alt="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'" loading="eager" decoding="async" fetchpriority="high">
         </figure>
-        <div class="hub-scroll-thread" aria-hidden="true">
-          <span></span>
-          <strong>01</strong>
-        </div>
       </div>
-
-      <aside class="hub-side-panel" data-material="sidebar">
-        <div class="hub-side-head">
-          <span>{{ isEnglish ? 'Site statistics' : '本站统计' }}</span>
-          <small>Site Analytics</small>
-        </div>
-        <div class="hub-stat-grid" :aria-busy="previewLoading">
-          <LoadingSkeleton v-if="previewLoading" variant="stats" :count="6" :label="isEnglish ? 'Loading site statistics' : '正在读取站点统计'" />
-          <template v-else>
-            <div v-for="item in stats" :key="item.label">
-              <strong><CountUpValue :value="item.value" /></strong>
-              <span>{{ item.label }}</span>
-            </div>
-          </template>
-        </div>
-        <div class="hub-side-card hub-visit-card">
-          <span class="hub-visit-eyebrow">{{ isEnglish ? 'Notice' : '公告' }}</span>
-          <div class="hub-visit-title-row">
-            <strong>{{ visitPopupPreview.title }}</strong>
-          </div>
-          <p class="hub-visit-content">{{ visitPopupPreview.content }}</p>
-        </div>
-        <div class="hub-beian">
-          <BeianLink />
-        </div>
-      </aside>
     </section>
 
-    <section class="hub-grid-wrap" data-material="content">
+    <details class="hub-notice">
+      <summary><TsIcon name="bell" :size="17" /><span>{{ hubCopy.notice }}</span><strong>{{ visitPopupPreview.title }}</strong><small>{{ hubCopy.expand }}</small></summary>
+      <p>{{ visitPopupPreview.content }}</p>
+    </details>
+
+    <section class="hub-grid-wrap">
       <div class="hub-section-head">
         <div>
-          <h2>{{ t.hubTitle }}</h2>
-          <span>{{ isEnglish ? 'Choose a destination and begin your journey' : '选择一个入口，开启你的旅程' }}</span>
+          <h2>{{ hubCopy.latest }}</h2>
+          <span>{{ hubCopy.desc }}</span>
         </div>
-        <span class="hub-online">STATUS: ONLINE</span>
+        <a href="/stage" class="hub-all-posts" @click.prevent="$emit('go', '/stage')">{{ hubCopy.browse }} <TsIcon name="arrowRight" :size="16" /></a>
       </div>
       <div class="scene-grid" :aria-busy="previewLoading">
         <LoadingSkeleton v-if="previewLoading" variant="hub" :count="4" :label="isEnglish ? 'Loading the latest Hub content' : '正在读取大厅最新内容'" />
@@ -613,5 +589,12 @@ onBeforeUnmount(() => {
         </template>
       </div>
     </section>
+    <footer class="hub-community-footer">
+      <h2>{{ hubCopy.stats }}</h2>
+      <div class="hub-stat-grid" :aria-busy="previewLoading">
+        <div v-for="item in stats" :key="item.label"><strong><CountUpValue :value="item.value" /></strong><span>{{ item.label }}</span></div>
+      </div>
+      <BeianLink />
+    </footer>
   </main>
 </template>

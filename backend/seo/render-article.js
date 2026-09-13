@@ -737,6 +737,32 @@ function renderGalleryHtml(assets = []) {
 </html>`;
 }
 
+function renderArticleSpaHtml(indexHtml, article) {
+    const englishSite = /<html\s+lang="en"/i.test(indexHtml);
+    const siteName = englishSite ? 'Tsukuyomi Space' : SITE_NAME;
+    const title = escapeHtml(`${article.title} | ${siteName}`);
+    const description = escapeHtml(articleDescription(article));
+    const url = escapeHtml(articleUrl(article));
+    const image = escapeHtml(absoluteUrl(article.cover_image || DEFAULT_IMAGE));
+    const metadata = articleSchema(article);
+    metadata.inLanguage = englishSite ? 'en' : 'zh-CN';
+    metadata.publisher.name = siteName;
+    const schema = safeJsonForHtml(metadata);
+    return String(indexHtml)
+        .replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`)
+        .replace(/<meta\s+name="description"[^>]*>/i, () => `<meta name="description" content="${description}">`)
+        .replace(/<link\s+rel="canonical"[^>]*>/i, () => `<link rel="canonical" href="${url}">`)
+        .replace(/<meta\s+property="og:type"[^>]*>/i, '<meta property="og:type" content="article">')
+        .replace(/<meta\s+property="og:title"[^>]*>/i, () => `<meta property="og:title" content="${title}">`)
+        .replace(/<meta\s+property="og:description"[^>]*>/i, () => `<meta property="og:description" content="${description}">`)
+        .replace(/<meta\s+property="og:url"[^>]*>/i, () => `<meta property="og:url" content="${url}">`)
+        .replace(/<meta\s+property="og:image"[^>]*>/i, () => `<meta property="og:image" content="${image}">`)
+        .replace(/<meta\s+name="twitter:title"[^>]*>/i, () => `<meta name="twitter:title" content="${title}">`)
+        .replace(/<meta\s+name="twitter:description"[^>]*>/i, () => `<meta name="twitter:description" content="${description}">`)
+        .replace(/<meta\s+name="twitter:image"[^>]*>/i, () => `<meta name="twitter:image" content="${image}">`)
+        .replace(/<script\s+type="application\/ld\+json">[\s\S]*?<\/script>/i, () => `<script type="application/ld+json">${schema}</script>`);
+}
+
 function renderNotFoundHtml() {
     return `<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex,nofollow"><title>文章不存在 | 月读空间</title></head><body><main><h1>文章不存在</h1><p>这篇文章可能已经离开月读空间。</p><a href="/stage">返回主舞台</a></main></body></html>`;
@@ -746,6 +772,7 @@ module.exports = {
     articlePath,
     articleUrl,
     renderArticleHtml,
+    renderArticleSpaHtml,
     renderGalleryHtml,
     renderStageHtml,
     renderTopicLandingHtml,
