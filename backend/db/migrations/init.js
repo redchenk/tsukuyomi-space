@@ -6,11 +6,9 @@ const db = require('../index');
 const { createSlug } = require('../../utils/slug');
 const { migrateExistingArticleImages } = require('../../services/article-media');
 
-const MIGRATION_TABLE = 'schema_migrations';
-
 function ensureMigrationTable() {
     db.exec(`
-        CREATE TABLE IF NOT EXISTS ${MIGRATION_TABLE} (
+        CREATE TABLE IF NOT EXISTS schema_migrations (
             version TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -23,7 +21,8 @@ function loadMigrations() {
         .filter(file => /^\d+_.+\.js$/.test(file))
         .sort()
         .map(file => {
-            const migration = require(path.join(__dirname, file));
+            const safeName = path.basename(file);
+            const migration = require(`./${safeName}`);
             const version = file.match(/^(\d+)_/)[1];
             if (!migration || migration.version !== version || typeof migration.up !== 'function') {
                 throw new Error(`Invalid migration module: ${file}`);
@@ -40,7 +39,7 @@ function runMigrations() {
     ensureMigrationTable();
 
     const applied = new Set(
-        db.prepare(`SELECT version FROM ${MIGRATION_TABLE}`).all().map(row => row.version)
+        db.prepare('SELECT version FROM schema_migrations').all().map(row => row.version)
     );
 
     for (const migration of loadMigrations()) {
@@ -49,7 +48,7 @@ function runMigrations() {
         const applyMigration = db.transaction(() => {
             migration.up(db);
             db.prepare(`
-                INSERT INTO ${MIGRATION_TABLE} (version, name)
+                INSERT INTO schema_migrations (version, name)
                 VALUES (?, ?)
             `).run(migration.version, migration.name);
         });
