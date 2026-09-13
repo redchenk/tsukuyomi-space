@@ -6,6 +6,7 @@ import { CubismFramework, Option } from '@framework/live2dcubismframework';
 import * as LAppDefine from './lappdefine';
 import { LAppPal } from './lapppal';
 import { LAppSubdelegate } from './lappsubdelegate';
+import { createRoomRenderSubscribers } from './room-rendering.mjs';
 import {
   computeRoomFrameInterval,
   roomBaseFrameInterval,
@@ -29,6 +30,7 @@ type RoomLive2DState = {
   onRoomAct: (event: Event) => void;
   onMouth: (event: Event) => void;
   onFaceFrame: (event: Event) => void;
+  clearRenderSubscribers: () => void;
 };
 
 let roomState: RoomLive2DState | null = null;
@@ -202,6 +204,7 @@ function destroyRoomLive2D(): void {
   window.removeEventListener('tsukuyomi:live2d-mouth', roomState.onMouth);
   window.removeEventListener('tsukuyomi:live2d-face', roomState.onFaceFrame);
 
+  roomState.clearRenderSubscribers();
   roomState.subdelegate.release();
   roomState.canvas.remove();
   roomState = null;
@@ -237,7 +240,7 @@ function initRoomLive2D(): void {
   canvas.width = container.clientWidth || 600;
   canvas.height = container.clientHeight || 700;
 
-  const subdelegate = new LAppSubdelegate();
+  const subdelegate = new LAppSubdelegate(true);
   if (!subdelegate.initialize(canvas)) {
     console.error('Failed to initialize LAppSubdelegate');
     canvas.remove();
@@ -427,8 +430,10 @@ function initRoomLive2D(): void {
   window.addEventListener('tsukuyomi:live2d-mouth', onMouth);
   window.addEventListener('tsukuyomi:live2d-face', onFaceFrame);
 
+  const renderSubscribers = createRoomRenderSubscribers();
   (window as any).TSUKUYOMI_LOCAL_CUBISM_BRIDGE = {
-    setFrame: setBehaviorFrame
+    setFrame: setBehaviorFrame,
+    subscribeBeforeRender: renderSubscribers.subscribe
   };
 
   const run = (now: number): void => {
@@ -440,6 +445,7 @@ function initRoomLive2D(): void {
           ? now - (elapsed % targetFrameInterval)
           : now;
         const renderStartedAt = performance.now();
+        renderSubscribers.run(now);
         LAppPal.updateTime();
         subdelegate.update();
         const renderCost = performance.now() - renderStartedAt;
@@ -488,7 +494,8 @@ function initRoomLive2D(): void {
     onVisibilityChange,
     onRoomAct,
     onMouth,
-    onFaceFrame
+    onFaceFrame,
+    clearRenderSubscribers: renderSubscribers.clear
   };
 
   (window as any).setLive2DModelSettings = function(

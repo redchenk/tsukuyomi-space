@@ -339,7 +339,7 @@ describe('constrained-device performance policy', () => {
 
     it('drops stale Live2D physics work instead of replaying it after a slow frame', () => {
         const physics = source('lib/Framework/src/physics/cubismphysics.ts');
-        const shader = source('lib/Framework/src/rendering/cubismshader_webgl.ts');
+        const buffers = source('lib/Framework/src/rendering/cubismdrawablebuffers.ts');
         const model = source('src/live2d/lappmodel.ts');
         const textures = source('src/live2d/lapptexturemanager.ts');
 
@@ -350,7 +350,7 @@ describe('constrained-device performance policy', () => {
         assert.match(physics, /function updateOutputParameterValue\(\s*parameterValue: number/);
         assert.match(physics, /this\._physicsRig\.inputs\.getRange/);
         assert.match(physics, /particle\.position\.x =/);
-        assert.match(shader, /gl\.bufferSubData\(target, 0, data\)/);
+        assert.match(buffers, /gl\.bufferSubData\(target, 0, data\)/);
         assert.match(model, /Math\.max\(LAppPal\.getDeltaTime\(\), 0\),\s*1 \/ 15/);
         assert.doesNotMatch(textures, /textureInfo\.img\s*=/);
         assert.match(textures, /queueMicrotask\(\(\) => callback\(textureInfo\)\)/);
