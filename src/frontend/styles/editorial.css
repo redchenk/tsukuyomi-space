@@ -217,7 +217,7 @@ html[data-theme="dark"] {
     .content-shell .mobile-command-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
     .content-shell .site-music-drawer { top: 27px; right: max(36px, calc((100vw - 1240px) / 2 + 14px)); }
     .content-shell .site-music-panel { top: auto; right: auto; max-height: calc(100dvh - 54px); overflow-y: auto; }
-    .nav-actions.site-nav-links[open] { display: grid; inset: 95px 24px auto auto; margin: 0; width: 430px; max-height: calc(100dvh - 120px); padding: 22px; gap: 20px; overflow-y: auto; border: 1px solid var(--ts-editorial-line); border-radius: 20px; color: var(--ts-editorial-ink); }
+    .nav-actions.site-nav-links[open] { display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; inset: 95px 24px auto auto; margin: 0; width: 430px; max-height: calc(100dvh - 120px); padding: 22px; gap: 20px; overflow-y: auto; border: 1px solid var(--ts-editorial-line); border-radius: 20px; color: var(--ts-editorial-ink); }
     .site-nav-drawer-head { display: flex; justify-content: space-between; align-items: center; }
     .site-nav-drawer-head > div { display: grid; gap: 5px; }
     .site-nav-drawer-head span, .site-nav-section-title { font-size: 12px; color: var(--ts-editorial-muted); }
@@ -225,6 +225,7 @@ html[data-theme="dark"] {
     .site-nav-section { display: grid; gap: 10px; }
     .site-nav-grid, .site-nav-preferences { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .site-nav-links .nav-link { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+    .site-nav-links .nav-link > .ts-icon { margin: 0; }
     .site-nav-links .nav-link span:not(.nav-inline-badge), .site-nav-links .theme-toggle span { display: inline; }
 }
 @media (min-width: 1100px) {

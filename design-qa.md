@@ -64,4 +64,16 @@ No actionable P0/P1/P2 findings remain. Existing floating guide artwork can over
 - [x] Full Chromium browser suite: 38/38 passed after isolating localhost client identities per test. Production rate limits are unchanged.
 - Incremental deployment verification is recorded separately after publishing.
 
+## PC More menu alignment follow-up — 2026-09-14
+
+Source: `/Users/yxy/.codex/visualizations/2026/09/14/tsukuyomi-more-alignment/before-desktop.png`.
+Implementation: `/Users/yxy/.codex/visualizations/2026/09/14/tsukuyomi-more-alignment/after-desktop.png`.
+Both unedited 1280 × 720 pixels / CSS px, anonymous Chinese dark home, More dialog open. Opened together in one comparison input; no density normalization. Local fixture content behind the scrim differs from production; dialog content is the same.
+
+P2 reproduced: legacy `justify-content: flex-end` shrank the single dialog grid column to 266 px and moved it right inside a 430 px panel. Fix: one explicit `minmax(0, 1fr)` track and stretched content at the desktop breakpoint. A second focused check found inherited auto margins on icons separating them from their text; reset margins only on desktop menu item icons.
+
+Final evidence: header and all sections are 384 px wide with equal 23 px left/right gaps at both 1280 px and 900 px viewport widths. First button center is 943 px; icon/text group center is 942.996 px with a 10 px gap. The paired screenshots show symmetrical internal spacing and centered icon/text groups. Typography, labels, colors, artwork, menu anchoring, focus and mobile behavior retain the existing design. No actionable P0/P1/P2 findings remain for this correction.
+
+Validation: 43 existing navigation-related checks and four browser navigation scenarios passed, covering focus trapping/restoration, route changes, landscape fit, mobile controls and account navigation. Both locale production builds passed. No new test was added for this small CSS correction.
+
 final result: passed
