@@ -712,6 +712,8 @@ export function mountCubismBehaviorBridge(options = {}) {
   let frameId = 0;
   let lastFrameAt = 0;
   let momentaryPulse = null;
+  const runtimeBridge = window.TSUKUYOMI_LOCAL_CUBISM_BRIDGE;
+  const renderDriven = typeof runtimeBridge?.subscribeBeforeRender === 'function';
 
   function currentFrameInterval() {
     const targetFps = Number(window.TSUKUYOMI_LIVE2D_FRAME_PACING?.targetFps);
@@ -746,14 +748,14 @@ export function mountCubismBehaviorBridge(options = {}) {
   }
 
   function tick(now = performance.now()) {
-    frameId = window.requestAnimationFrame(tick);
+    if (!renderDriven) frameId = window.requestAnimationFrame(tick);
     if (document.visibilityState === 'hidden') {
       lastFrameAt = 0;
       return;
     }
     const frameInterval = currentFrameInterval();
     const elapsed = lastFrameAt ? now - lastFrameAt : frameInterval;
-    if (elapsed < frameInterval - 1) return;
+    if (!renderDriven && elapsed < frameInterval - 1) return;
     lastFrameAt = elapsed >= frameInterval
       ? now - (elapsed % frameInterval)
       : now;
@@ -784,9 +786,15 @@ export function mountCubismBehaviorBridge(options = {}) {
   window.addEventListener(ROOM_ACT_EVENT, onRoomAct);
   window.addEventListener(MOUTH_EVENT, onMouth);
   window.addEventListener(CHARACTER_STATE_EVENT, onCharacterState);
-  frameId = window.requestAnimationFrame(tick);
+  // Prepare parameters immediately before their draw, even when adaptive pacing
+  // skips display frames. Older runtimes still use the independent RAF fallback.
+  const unsubscribeRender = renderDriven
+    ? runtimeBridge.subscribeBeforeRender(tick)
+    : null;
+  if (!renderDriven) frameId = window.requestAnimationFrame(tick);
 
   return () => {
+    unsubscribeRender?.();
     window.removeEventListener(ROOM_ACT_EVENT, onRoomAct);
     window.removeEventListener(MOUTH_EVENT, onMouth);
     window.removeEventListener(CHARACTER_STATE_EVENT, onCharacterState);

@@ -4,6 +4,7 @@
  * Use of this source code is governed by the Live2D Open Software license
  * that can be found at https://www.live2d.com/eula/live2d-open-software-license-agreement_en.html.
  */
+import { CubismDrawableBuffers } from './cubismdrawablebuffers';
 
 import { CubismModel } from '../model/cubismmodel';
 import { csmMap } from '../type/csmmap';
@@ -673,14 +674,6 @@ export class CubismRenderer_WebGL extends CubismRenderer {
     this.firstDraw = true;
     this._textures = new csmMap<number, number>();
     this._sortedDrawableIndexList = new csmVector<number>();
-    this._bufferData = {
-      vertex: (WebGLBuffer = null),
-      uv: (WebGLBuffer = null),
-      index: (WebGLBuffer = null),
-      vertexCapacity: 0,
-      uvCapacity: 0,
-      indexCapacity: 0
-    };
 
     // テクスチャ対応マップの容量を確保しておく
     this._textures.prepareCapacity(32, true);
@@ -699,13 +692,7 @@ export class CubismRenderer_WebGL extends CubismRenderer {
     if (this.gl == null) {
       return;
     }
-    this.gl.deleteBuffer(this._bufferData.vertex);
-    this._bufferData.vertex = null;
-    this.gl.deleteBuffer(this._bufferData.uv);
-    this._bufferData.uv = null;
-    this.gl.deleteBuffer(this._bufferData.index);
-    this._bufferData.index = null;
-    this._bufferData = null;
+    this.drawableBuffers?.release();
 
     this._textures = null;
   }
@@ -720,6 +707,8 @@ export class CubismRenderer_WebGL extends CubismRenderer {
       );
       return;
     }
+
+    this.drawableBuffers.beginFrame();
 
     //------------ クリッピングマスク・バッファ前処理方式の場合 ------------
     if (this._clippingManager != null) {
@@ -990,7 +979,9 @@ export class CubismRenderer_WebGL extends CubismRenderer {
    * glの設定
    */
   public startUp(gl: WebGLRenderingContext): void {
+    this.drawableBuffers?.release();
     this.gl = gl;
+    this.drawableBuffers = new CubismDrawableBuffers(gl);
 
     if (this._clippingManager) {
       this._clippingManager.setGL(gl);
@@ -1013,14 +1004,7 @@ export class CubismRenderer_WebGL extends CubismRenderer {
   _clippingContextBufferForDraw: CubismClippingContext_WebGL; // 画面上描画するためのクリッピングコンテキスト
   _rendererProfile: CubismRendererProfile_WebGL;
   firstDraw: boolean;
-  _bufferData: {
-    vertex: WebGLBuffer;
-    uv: WebGLBuffer;
-    index: WebGLBuffer;
-    vertexCapacity: number;
-    uvCapacity: number;
-    indexCapacity: number;
-  }; // 頂点バッファデータ
+  drawableBuffers: CubismDrawableBuffers;
   _extension: any; // 拡張機能
   gl: WebGLRenderingContext; // webglコンテキスト
 }

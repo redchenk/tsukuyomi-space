@@ -38,6 +38,7 @@ import {
 } from '@framework/utils/cubismdebug';
 
 import * as LAppDefine from './lappdefine';
+import { drawRoomModel } from './room-rendering.mjs';
 import { LAppPal } from './lapppal';
 import { TextureInfo } from './lapptexturemanager';
 import { LAppWavFileHandler } from './lappwavfilehandler';
@@ -1237,11 +1238,12 @@ export class LAppModel extends CubismUserModel {
     const canvas = this._subdelegate.getCanvas();
     const viewport: number[] = [0, 0, canvas.width, canvas.height];
 
-    this.getRenderer().setRenderState(
+    drawRoomModel(
+      this.getRenderer(),
       this._subdelegate.getFrameBuffer(),
-      viewport
+      viewport,
+      this._subdelegate.ownsExclusiveContext()
     );
-    this.getRenderer().drawModel();
   }
 
   /**

@@ -23,7 +23,7 @@ export class LAppSubdelegate {
   /**
    * コンストラクタ
    */
-  public constructor() {
+  public constructor(private readonly exclusiveContext = false) {
     this._canvas = null;
     this._glManager = new LAppGlManager();
     this._textureManager = new LAppTextureManager();
@@ -143,6 +143,14 @@ export class LAppSubdelegate {
     const gl = this._glManager.getGl();
 
     // 画面の初期化
+    if (this.exclusiveContext) {
+      // Explicit state for our canvas, without reading it back from the GPU.
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer);
+      gl.viewport(0, 0, this._canvas.width, this._canvas.height);
+      gl.disable(gl.SCISSOR_TEST);
+      gl.colorMask(true, true, true, true);
+      gl.activeTexture(gl.TEXTURE0);
+    }
     gl.clearColor(0.0, 0.0, 0.0, 0);
 
     // 深度テストを有効化
@@ -244,6 +252,10 @@ export class LAppSubdelegate {
 
   public getLive2DManager(): LAppLive2DManager {
     return this._live2dManager;
+  }
+
+  public ownsExclusiveContext(): boolean {
+    return this.exclusiveContext;
   }
 
   /**
