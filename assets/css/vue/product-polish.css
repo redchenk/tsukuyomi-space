@@ -362,17 +362,13 @@ html[data-theme="light"] :where(
 .terminal-nav-btn.active {
     color: #fff;
     border-color: rgba(174, 242, 255, 0.26);
-    background:
-        linear-gradient(135deg, rgba(123, 140, 246, 0.92), rgba(164, 129, 255, 0.84)),
-        rgba(255, 255, 255, 0.08);
+    background: var(--ts-gradient-brand);
     box-shadow: 0 12px 30px rgba(123, 140, 246, 0.22);
 }
 
 .primary-btn:hover {
     color: #fff;
-    background:
-        linear-gradient(135deg, rgba(135, 151, 255, 0.96), rgba(177, 141, 255, 0.9)),
-        rgba(255, 255, 255, 0.1);
+    background: var(--ts-gradient-brand-hover);
 }
 
 :where(input, textarea, select):not([type="range"]):not([type="color"]) {

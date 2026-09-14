@@ -872,14 +872,14 @@ html[data-theme="light"] :where(.nav-link, .ghost-btn, .lang-btn, .theme-toggle,
 .primary-btn {
     color: #fff;
     border-color: rgba(174, 242, 255, 0.22);
-    background: linear-gradient(135deg, #7b8cf6, #a481ff);
+    background: var(--ts-gradient-brand);
     box-shadow: var(--ts-shadow-accent);
 }
 
 .primary-btn:hover {
     color: #fff;
     border-color: rgba(255, 255, 255, 0.28);
-    background: linear-gradient(135deg, #8797ff, #b18dff);
+    background: var(--ts-gradient-brand-hover);
 }
 
 .danger-btn {

@@ -238,7 +238,8 @@ body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
     input,
     textarea
 )::placeholder {
-    color: color-mix(in srgb, var(--ts-muted) 72%, transparent) !important;
+    color: var(--ts-muted) !important;
+    opacity: 1;
     -webkit-text-fill-color: currentColor !important;
 }
 
@@ -525,7 +526,8 @@ body .page.auth-page .auth-card .auth-input-shell input {
 }
 
 body .page.auth-page .auth-card .auth-input-shell input::placeholder {
-    color: color-mix(in srgb, var(--ts-muted) 72%, transparent) !important;
+    color: var(--ts-muted) !important;
+    opacity: 1;
     -webkit-text-fill-color: currentColor !important;
 }
 

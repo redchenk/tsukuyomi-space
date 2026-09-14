@@ -56,7 +56,7 @@ const ariaLabel = computed(() => props.lang === 'en'
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--level-color) 62%, transparent);
   border-radius: 999px;
-  color: var(--level-color);
+  color: var(--ts-text-strong);
   background: var(--level-bg);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.18);
   font-size: 0.72rem;

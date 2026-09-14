@@ -61,8 +61,8 @@
     --ts-shadow-accent: 0 4px 12px rgba(123, 140, 246, 0.14), 0 14px 38px rgba(123, 140, 246, 0.28);
     --ts-glow-accent: 0 0 0 1px rgba(154, 140, 255, 0.22), 0 0 26px rgba(123, 140, 246, 0.22);
 
-    --ts-gradient-brand: linear-gradient(135deg, #7b8cf6, #a481ff);
-    --ts-gradient-brand-hover: linear-gradient(135deg, #8797ff, #b18dff);
+    --ts-gradient-brand: linear-gradient(135deg, #6552b3, #7751ad);
+    --ts-gradient-brand-hover: linear-gradient(135deg, #59459f, #694298);
     --ts-gradient-aurora: linear-gradient(120deg, #8fdcff 0%, #9b8cff 42%, #ff9aba 100%);
 
     --ts-motion-fast: 0.16s;

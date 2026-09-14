@@ -34,6 +34,10 @@ if (process.env.UI_PREVIEW_FIXTURES === 'true') {
     const article = require('./fixtures/editorial-article.cjs');
     db.prepare('UPDATE articles SET title = ?, content = ?, content_format = ?, cover_image = ?, read_time = ? WHERE id = ?')
         .run(article.title, article.content, article.content_format, article.cover_image, article.read_time, article.id);
+    const insertMessage = db.prepare('INSERT INTO messages (author, content, user_id, status) VALUES (?, ?, ?, ?)');
+    for (const content of ['今天也给日常留一点月光。', '一起分享喜欢的作品，期待下一次相遇。', '浅色与深色主题都应该清楚易读。']) {
+        insertMessage.run('月下旅人', content, 'e2e-user-001', 'approved');
+    }
 }
 const server = app.listen(Number(process.env.PORT), process.env.HOST, () => {
     const address = server.address();

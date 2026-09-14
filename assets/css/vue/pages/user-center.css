@@ -436,11 +436,11 @@ body .page.uc-page .form-group input,
 body .page.uc-page .uc-search,
 body .page.uc-page .uc-profile-bio {
     width: 100%;
-    color: var(--uc-text) !important;
+    color: var(--ts-text) !important;
     -webkit-text-fill-color: currentColor !important;
     border: 1px solid rgba(177, 205, 238, 0.2) !important;
     border-radius: 8px;
-    background: rgba(15, 23, 42, 0.78) !important;
+    background: var(--ts-readable-input-bg) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
     outline: none;
 }
@@ -470,7 +470,7 @@ body .page.uc-page .uc-password-reset-link:hover {
 }
 
 body .page.uc-page .form-group input:disabled {
-    color: rgba(247, 247, 255, 0.7) !important;
+    color: var(--ts-muted) !important;
     opacity: 1;
 }
 
@@ -497,7 +497,8 @@ body .page.uc-page .form-group input:focus {
 
 body .page.uc-page .uc-search::placeholder,
 body .page.uc-page .uc-profile-bio::placeholder {
-    color: rgba(222, 226, 255, 0.42) !important;
+    color: var(--ts-muted) !important;
+    opacity: 1;
     -webkit-text-fill-color: currentColor !important;
 }
 
@@ -690,7 +691,7 @@ body .page.uc-page .uc-empty {
 }
 
 body .page.uc-page .uc-empty > div:first-child {
-    color: var(--uc-text) !important;
+    color: var(--ts-text) !important;
 }
 
 body .page.uc-page .uc-security-grid {
@@ -871,7 +872,7 @@ body .page.uc-page {
     --uc-line-bright: var(--ts-border-strong);
     --uc-text: var(--ts-text-strong);
     --uc-muted: var(--ts-muted);
-    --uc-faint: color-mix(in srgb, var(--ts-muted) 70%, transparent);
+    --uc-faint: var(--ts-muted);
     --uc-accent: var(--ts-cyan);
     --uc-accent-soft: var(--ts-accent);
     width: min(100%, 1280px);
@@ -1120,7 +1121,7 @@ body .page.uc-page .form-group input,
 body .page.uc-page .uc-search,
 body .page.uc-page .uc-profile-bio {
     border-color: rgba(231, 249, 255, 0.12) !important;
-    background: rgba(3, 7, 18, 0.34) !important;
+    background: var(--ts-readable-input-bg) !important;
 }
 
 body .page.uc-page .uc-profile-bio {

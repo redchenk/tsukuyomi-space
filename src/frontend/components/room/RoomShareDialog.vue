@@ -188,18 +188,18 @@ watch(() => props.open, async (open) => {
 
 <style scoped>
 .room-share-overlay { position: fixed; inset: 0; z-index: 1700; display: grid; place-items: center; padding: 1rem; background: rgba(4, 10, 22, 0.66); }
-.room-share-dialog { width: min(620px, 100%); max-height: calc(100dvh - 2rem); overflow: auto; display: grid; gap: 0.85rem; padding: 1rem; border: 1px solid rgba(218, 239, 255, 0.18); border-radius: 18px; color: var(--ts-text, #eef7ff); background: rgba(20, 30, 54, 0.94); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38); backdrop-filter: blur(24px) saturate(1.15); }
+.room-share-dialog { width: min(620px, 100%); max-height: calc(100dvh - 2rem); overflow: auto; display: grid; gap: 0.85rem; padding: 1rem; border: 1px solid var(--ts-editorial-line); border-radius: 18px; color: var(--ts-editorial-ink); background: var(--ts-editorial-surface); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38); backdrop-filter: blur(24px) saturate(1.15); }
 .room-share-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.room-share-dialog header span { color: rgba(174, 242, 255, 0.7); font-size: 0.7rem; font-weight: 900; }
+.room-share-dialog header span { color: var(--ts-accent); font-size: 0.7rem; font-weight: 900; }
 .room-share-dialog h2 { margin: 0.12rem 0 0; font-size: 1.18rem; }
-.room-share-close { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(218, 239, 255, 0.16); border-radius: 14px; color: inherit; background: rgba(255, 255, 255, 0.07); cursor: pointer; }
-.room-share-title-field { display: grid; gap: 0.35rem; color: rgba(231, 249, 255, 0.72); font-size: 0.78rem; font-weight: 800; }
-.room-share-title-field input { width: 100%; min-height: 42px; box-sizing: border-box; border: 1px solid rgba(218, 239, 255, 0.16); border-radius: 12px; padding: 0.68rem 0.78rem; color: #f7fbff; background: rgba(255, 255, 255, 0.07); font: inherit; }
-.room-share-preview { min-height: 180px; display: grid; place-items: center; overflow: hidden; border-radius: 12px; background: rgba(0, 0, 0, 0.2); }
+.room-share-close { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--ts-editorial-line); border-radius: 14px; color: inherit; background: var(--ts-editorial-soft); cursor: pointer; }
+.room-share-title-field { display: grid; gap: 0.35rem; color: var(--ts-editorial-muted); font-size: 0.78rem; font-weight: 800; }
+.room-share-title-field input { width: 100%; min-height: 42px; box-sizing: border-box; border: 1px solid var(--ts-editorial-line); border-radius: 12px; padding: 0.68rem 0.78rem; color: var(--ts-editorial-ink); background: var(--ts-editorial-soft); font: inherit; }
+.room-share-preview { min-height: 180px; display: grid; place-items: center; overflow: hidden; border-radius: 12px; background: var(--ts-editorial-soft); }
 .room-share-preview img { display: block; width: 100%; height: auto; }
-.room-share-error { padding: 0.7rem; border-radius: 10px; color: #ffdce3; background: rgba(165, 54, 76, 0.18); font-size: 0.84rem; }
+.room-share-error { padding: 0.7rem; border-radius: 10px; color: var(--ts-editorial-ink); background: rgba(165, 54, 76, 0.18); font-size: 0.84rem; }
 .room-share-publish-row { display: flex; flex-wrap: wrap; gap: 0.55rem; }
 .room-share-publish-row button { flex: 1 1 180px; }
-.room-share-revoke { justify-self: center; border: 0; color: rgba(255, 199, 210, 0.78); background: transparent; cursor: pointer; font: inherit; font-size: 0.78rem; }
+.room-share-revoke { justify-self: center; border: 0; color: var(--ts-accent); background: transparent; cursor: pointer; font: inherit; font-size: 0.78rem; }
 @media (max-width: 480px) { .room-share-overlay { align-items: end; padding: 0; } .room-share-dialog { max-height: 90dvh; border-radius: 18px 18px 0 0; padding: 0.9rem; } }
 </style>

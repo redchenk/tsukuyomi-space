@@ -924,7 +924,7 @@ body .page.user-profile-page {
     --profile-line-bright: var(--ts-border-strong);
     --profile-text: var(--ts-text-strong);
     --profile-muted: var(--ts-muted);
-    --profile-faint: color-mix(in srgb, var(--ts-muted) 72%, transparent);
+    --profile-faint: var(--ts-muted);
     --profile-accent: var(--ts-cyan);
     --profile-accent-soft: var(--ts-accent);
     width: min(100%, 1240px);
