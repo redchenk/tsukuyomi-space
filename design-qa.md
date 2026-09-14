@@ -100,6 +100,7 @@ Comparison history:
 1. Desktop centered cover preserved the complete room hierarchy and placed Live2D over the door and open floor without obscuring the window or bed. No correction was needed.
 2. The previous mobile center/bottom rule would overemphasize the central door. A 72% horizontal focal point now retains the supplied night window, bed, and reflective floor while keeping the character readable.
 3. The mobile Room tools drawer was expanded and the chat panel reopened after the background change. Both states remain usable, and the drawer defaults to the compact upper-right trigger.
+4. The first domestic production smoke check exposed an asset-host rewrite to `oss.yachiyo.hk`, where the new file was unavailable. The Room artwork now uses the deployed same-origin `/assets` path, preserving existing object-storage resources and making the new immutable file available on both domains.
 
 Validation: both Chinese and overseas production builds succeeded; 60 navigation/performance tests passed. The local browser reported zero console errors. Its single warning was the expected unauthenticated conversation-sync response in fixture mode. Evidence files `03-local-desktop-panel.png`, `04-local-desktop.png`, `05-local-mobile.png`, `06-local-mobile-drawer.png`, and `07-local-mobile-chat.png` are in `/Users/yxy/.codex/visualizations/2026/09/14/tsukuyomi-room-background/`. No actionable P0/P1/P2 fidelity or interaction findings remain.
 
