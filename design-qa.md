@@ -86,3 +86,21 @@ The supplied 1672 × 941 moonlit lake PNG is reused without pixel changes or com
 Validation: 60 navigation/performance checks and 18 Chromium browser scenarios passed; both Chinese and overseas production builds succeeded. Browser checks assert identical background bounds before and after scrolling at 1280 × 720 and 390 × 844, verify shared artwork on account/content routes, and verify Access video and Room exclusions. Desktop/mobile light and dark visuals were inspected locally. Physical iOS Safari was not tested in this follow-up.
 
 Unedited visual evidence: `/Users/yxy/.codex/visualizations/2026/09/14/tsukuyomi-fixed-background/` (`desktop-dark.png`, `desktop-light.png`, `mobile-dark.png`, `mobile-light.png`, `entry-video-preserved.png`). Source and bundled PNG SHA-256: `6f9fd45b601f75c88b7a148c7dab106240ebd86d0ae2322ae600b0a22cbeabaf`.
+
+## Room background follow-up — 2026-09-14
+
+Source visual truth: `/Users/yxy/Downloads/ChatGPT Image 2026年9月14日 21_38_38.png`, 1672 × 941. Implementation asset: `assets/images/room-night-apartment-38e66dfa.webp`, 1672 × 941, SHA-256 `c49fddc6a4fc59760fc8bdf36632f858b20ecbacdd2098f4be80072966721922`. The WebP keeps the supplied composition at full resolution while reducing transfer size to 125 KB.
+
+Required fidelity surfaces were the Room background artwork, desktop full-room composition, portrait focal crop, foreground floor for Live2D, existing dark readability overlay, and the relationship between the scene and Room controls. The Live2D model, canvas resolution, music, chat, diary, profile, notes, settings, and the separate `/live2d` page were outside the artwork change and remained intact.
+
+Desktop source and implementation were opened together in `/Users/yxy/.codex/visualizations/2026/09/14/tsukuyomi-room-background/08-comparison-desktop.png`. The implementation state is anonymous Chinese Room, chat closed, dark theme, at a 1440 × 900 CSS viewport. Mobile source crop and implementation were opened together in `/Users/yxy/.codex/visualizations/2026/09/14/tsukuyomi-room-background/09-comparison-mobile.png`; the implementation is the same state at 390 × 844, using a 72% horizontal focal point to retain the window, moon, bed, and clear floor behind Live2D. Captures use the same browser viewport dimensions without density normalization.
+
+Comparison history:
+
+1. Desktop centered cover preserved the complete room hierarchy and placed Live2D over the door and open floor without obscuring the window or bed. No correction was needed.
+2. The previous mobile center/bottom rule would overemphasize the central door. A 72% horizontal focal point now retains the supplied night window, bed, and reflective floor while keeping the character readable.
+3. The mobile Room tools drawer was expanded and the chat panel reopened after the background change. Both states remain usable, and the drawer defaults to the compact upper-right trigger.
+
+Validation: both Chinese and overseas production builds succeeded; 60 navigation/performance tests passed. The local browser reported zero console errors. Its single warning was the expected unauthenticated conversation-sync response in fixture mode. Evidence files `03-local-desktop-panel.png`, `04-local-desktop.png`, `05-local-mobile.png`, `06-local-mobile-drawer.png`, and `07-local-mobile-chat.png` are in `/Users/yxy/.codex/visualizations/2026/09/14/tsukuyomi-room-background/`. No actionable P0/P1/P2 fidelity or interaction findings remain.
+
+final result: passed

@@ -246,7 +246,7 @@ describe('constrained-device performance policy', () => {
         assert.match(pet, /spritesheet-perf-r2\.webp/);
         assert.doesNotMatch(runtime, /(?:tsukuyomi|room)-bg\.png/);
         assert.match(runtime, /tsukuyomi-bg\.webp/);
-        assert.match(runtime, /room-bg\.webp/);
+        assert.match(runtime, /room-night-apartment-38e66dfa\.webp/);
         assert.doesNotMatch(baseThemes, /tsukuyomi-bg\.webp/);
         assert.doesNotMatch(productPolish, /body,\s*html\[data-theme="dark"\] body,\s*body\.vue-global-bg-route\s*\{[^}]*tsukuyomi-bg/s);
     });

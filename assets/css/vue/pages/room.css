@@ -38,7 +38,7 @@ body.vue-room-route {
     color: #fff7fb;
     background:
         linear-gradient(180deg, var(--room-top-shade), var(--room-bottom-shade)),
-        url("/assets/images/room-bg.webp") center / cover no-repeat;
+        var(--ts-room-bg-image, url("/assets/images/room-night-apartment-38e66dfa.webp")) center / cover no-repeat;
     transition: background 0.8s ease;
 }
 
@@ -1341,7 +1341,7 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     }
 
     .room-page {
-        background-position: center bottom;
+        background-position: center, 72% center;
     }
 
     .room-backdrop {
