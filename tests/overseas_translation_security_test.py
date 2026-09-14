@@ -2,9 +2,11 @@ import importlib.util
 import os
 import pathlib
 import sys
+import ssl
 import tempfile
 import types
 import unittest
+from unittest import mock
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -72,6 +74,35 @@ class OverseasTranslationSecurityTests(unittest.TestCase):
         for value in ("/en-api/auth/me", "/en-api/admin/settings", "/en-api/room/memory"):
             with self.assertRaises(ValueError, msg=value):
                 normalize(value)
+
+    def test_origin_route_preserves_tls_identity_and_verification(self):
+        context = ssl.create_default_context()
+        self.assertTrue(context.check_hostname)
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        with mock.patch.object(self.service, "UPSTREAM_ORIGIN_IP", "192.0.2.10"), \
+             mock.patch.object(self.service.socket, "create_connection") as connect, \
+             mock.patch.object(context, "wrap_socket") as wrap:
+            connection = self.service.UpstreamHTTPSConnection("yachiyo.hk", context=context)
+            connection.connect()
+            self.assertEqual(connect.call_args.args[0], ("192.0.2.10", 443))
+            self.assertEqual(wrap.call_args.kwargs["server_hostname"], "yachiyo.hk")
+            self.assertTrue(context.check_hostname)
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+
+    def test_origin_route_does_not_rebind_other_hosts_or_ports(self):
+        with mock.patch.object(self.service, "UPSTREAM_ORIGIN_IP", "192.0.2.10"):
+            for host in ("other.example", "yachiyo.hk:8443"):
+                with mock.patch.object(self.service.socket, "create_connection") as connect:
+                    connection = self.service.UpstreamHTTPSConnection(host)
+                    connection._create_connection((connection.host, connection.port))
+                    self.assertEqual(connect.call_args.args[0], (connection.host, connection.port))
+
+    def test_origin_route_without_configuration_keeps_dns(self):
+        with mock.patch.object(self.service, "UPSTREAM_ORIGIN_IP", ""), \
+             mock.patch.object(self.service.socket, "create_connection") as connect:
+            connection = self.service.UpstreamHTTPSConnection("yachiyo.hk")
+            connection._create_connection((connection.host, connection.port))
+            self.assertEqual(connect.call_args.args[0], ("yachiyo.hk", 443))
 
     def test_rate_buckets_and_persistent_cache_are_bounded(self):
         self.assertTrue(self.service.rate_allowed("test-client", "unit", 1))

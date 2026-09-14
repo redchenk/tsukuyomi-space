@@ -6,10 +6,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import html
+import http.client
+import ipaddress
 import json
 import os
 import re
 import sqlite3
+import socket
 import threading
 import time
 import unicodedata
@@ -29,6 +32,9 @@ import argostranslate.translate
 LISTEN_HOST = os.environ.get("TSUKUYOMI_TRANSLATION_HOST", "127.0.0.1")
 LISTEN_PORT = int(os.environ.get("TSUKUYOMI_TRANSLATION_PORT", "8790"))
 UPSTREAM = "https://yachiyo.hk"
+# Optional operator-owned origin route; TLS identity remains yachiyo.hk.
+_origin_ip = os.environ.get("TSUKUYOMI_TRANSLATION_ORIGIN_IP", "").strip()
+UPSTREAM_ORIGIN_IP = str(ipaddress.ip_address(_origin_ip)) if _origin_ip else ""
 OVERSEAS = "https://tsukuyomi-space.com"
 DB_PATH = os.environ.get(
     "TSUKUYOMI_TRANSLATION_DB",
@@ -698,6 +704,27 @@ def translator() -> EnglishTranslator:
     return TRANSLATOR
 
 
+class UpstreamHTTPSConnection(http.client.HTTPSConnection):
+    def __init__(self, host, *args, **kwargs):
+        super().__init__(host, *args, **kwargs)
+        upstream = urllib.parse.urlsplit(UPSTREAM)
+        if UPSTREAM_ORIGIN_IP and self.host == upstream.hostname and self.port == 443:
+            # Change only the TCP destination. HTTPSConnection still verifies
+            # the certificate and sends SNI for the original request hostname.
+            origin_ip = UPSTREAM_ORIGIN_IP
+            self._create_connection = lambda address, *a, **kw: socket.create_connection(
+                (origin_ip, address[1]), *a, **kw
+            )
+
+
+class UpstreamHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, request):
+        return self.do_open(UpstreamHTTPSConnection, request, context=self._context)
+
+
+UPSTREAM_OPENER = urllib.request.build_opener(UpstreamHTTPSHandler())
+
+
 def fetch_upstream(path: str, user_agent: str = "Tsukuyomi-Overseas/1.0") -> tuple[int, str, bytes]:
     if not path.startswith("/") or path.startswith("//"):
         raise ValueError("Invalid upstream path")
@@ -707,7 +734,7 @@ def fetch_upstream(path: str, user_agent: str = "Tsukuyomi-Overseas/1.0") -> tup
         headers={"Accept": "*/*", "Accept-Encoding": "identity", "User-Agent": user_agent},
     )
     try:
-        with urllib.request.urlopen(request, timeout=45) as response:
+        with UPSTREAM_OPENER.open(request, timeout=45) as response:
             return response.status, response.headers.get_content_type(), response.read()
     except urllib.error.HTTPError as error:
         return error.code, error.headers.get_content_type(), error.read()
