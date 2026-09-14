@@ -153,7 +153,7 @@ const sceneLinks = computed(() => [
 
 const orderedSceneLinks = computed(() => [sceneLinks.value[1], sceneLinks.value[2], sceneLinks.value[3], sceneLinks.value[0]]);
 
-const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 4));
+const plazaPreviewMessages = computed(() => plazaMessages.value.slice(0, 3));
 
 function formatHubNumber(value) {
   return Number(value || 0).toLocaleString(isEnglish.value ? 'en-US' : 'zh-CN');
@@ -515,21 +515,20 @@ onBeforeUnmount(() => {
         <div v-else-if="previewError" class="hub-preview-error" role="alert">{{ previewError }}</div>
         <template v-else>
         <component
-          :is="scene.kind === 'plaza' ? 'div' : 'a'"
+          :is="scene.kind === 'plaza' ? 'section' : 'a'"
           v-for="scene in orderedSceneLinks"
           :key="scene.href"
           class="scene-card"
           :class="[`tone-${scene.tone}`, { 'scene-card-plaza': scene.kind === 'plaza', 'scene-card-arena': scene.kind === 'arena' }]"
           :style="{ '--scene-image': `url(${scene.image})` }"
           :href="scene.kind === 'plaza' ? undefined : scene.href"
-          :role="scene.kind === 'plaza' ? 'link' : undefined"
-          :tabindex="scene.kind === 'plaza' ? 0 : undefined"
-          @click="openScene(scene, $event)"
+          :aria-labelledby="scene.kind === 'plaza' ? 'hub-plaza-title' : undefined"
+          @click="scene.kind !== 'plaza' && openScene(scene, $event)"
           @pointerenter="warmScene(scene)"
           @focus="warmScene(scene)"
           @pointerdown="warmScene(scene)"
-          @keydown.enter="openScene(scene, $event)"
-          @keydown.space.prevent="openScene(scene, $event)"
+          @keydown.enter="scene.kind !== 'plaza' && openScene(scene, $event)"
+          @keydown.space="scene.kind !== 'plaza' && openScene(scene, $event)"
           >
           <span
             v-if="scene.kind === 'arena' && scene.artwork"
@@ -549,28 +548,41 @@ onBeforeUnmount(() => {
               :aria-label="scene.name"
             />
           </span>
-          <span class="scene-top">
+          <span v-if="scene.kind !== 'plaza'" class="scene-top">
             <span class="scene-icon" aria-hidden="true">
               <TsIcon :name="scene.icon" :size="22" :stroke-width="1.9" />
             </span>
             <span class="scene-code">{{ scene.code }}</span>
           </span>
+          <header v-else class="hub-plaza-header">
+            <div class="hub-plaza-heading">
+              <span class="scene-icon" aria-hidden="true"><TsIcon :name="scene.icon" :size="22" :stroke-width="1.9" /></span>
+              <div>
+                <h3 id="hub-plaza-title" class="hub-plaza-title">{{ scene.name }}</h3>
+                <p class="hub-plaza-intro">{{ isEnglish ? 'Small moments, shared under the moon.' : '分享此刻，也遇见同频的人。' }}</p>
+              </div>
+            </div>
+            <a class="hub-plaza-more" :href="scene.href" @click.prevent="$emit('go', scene.href)">{{ isEnglish ? 'Visit Plaza' : '逛逛广场' }} <TsIcon name="arrowRight" :size="16" /></a>
+          </header>
           <span v-if="scene.label" class="scene-label">{{ scene.label }}</span>
           <span v-if="scene.kind !== 'plaza'" class="scene-main">
             <span class="scene-name">{{ scene.name }}</span>
             <span class="scene-desc">{{ scene.desc }}</span>
           </span>
-          <span v-else class="scene-main plaza-card-body">
-            <span class="scene-name hub-plaza-title">{{ scene.name }}</span>
+          <div v-else class="scene-main plaza-card-body">
             <span v-if="!plazaPreviewMessages.length" class="scene-desc">{{ isEnglish ? 'No messages yet. Leave the first greeting.' : '还没有留言，写下第一句问候。' }}</span>
-            <span v-else class="hub-plaza-list">
-              <span v-for="msg in plazaPreviewMessages" :key="msg.id" class="hub-plaza-message">
-                <strong>{{ msg.author || (isEnglish ? 'Guest' : '访客') }}</strong>
-                <span>{{ msg.content }}</span>
-              </span>
-            </span>
+            <div v-else class="hub-plaza-list">
+              <a v-for="msg in plazaPreviewMessages" :key="msg.id" class="hub-plaza-message" :href="scene.href" @click.prevent="$emit('go', scene.href)">
+                <span class="hub-plaza-author">
+                  <span class="hub-plaza-avatar" aria-hidden="true">{{ [...(msg.author || (isEnglish ? 'Guest' : '访客'))][0] }}</span>
+                  <strong>{{ msg.author || (isEnglish ? 'Guest' : '访客') }}</strong>
+                </span>
+                <p class="hub-plaza-content">{{ msg.content }}</p>
+              </a>
+            </div>
             <form class="hub-plaza-form" :aria-busy="plazaQuick.loading" @click.stop @keydown.stop @submit.prevent="submitPlazaQuick">
-              <input v-model="plazaQuick.content" type="text" :placeholder="isEnglish ? 'Quick message...' : '快速留言...'">
+              <label class="hub-plaza-form-label" for="hub-plaza-input">{{ isEnglish ? 'Leave a greeting' : '留一句问候' }}</label>
+              <input id="hub-plaza-input" v-model="plazaQuick.content" type="text" :placeholder="isEnglish ? 'What would you like to share today?' : '今天有什么想和大家分享的？'">
               <button
                 class="hub-plaza-submit"
                 type="submit"
@@ -580,11 +592,12 @@ onBeforeUnmount(() => {
                 :title="plazaQuick.loading ? (isEnglish ? 'Sending' : '发送中') : (isEnglish ? 'Send' : '发送')"
               >
                 <TsIcon :name="plazaQuick.loading ? 'loader' : 'send'" :size="15" />
+                <span>{{ plazaQuick.loading ? (isEnglish ? 'Sending' : '发送中') : (isEnglish ? 'Send' : '发送') }}</span>
               </button>
               <span v-if="plazaQuick.loading" class="ts-visually-hidden" role="status">{{ isEnglish ? 'Sending' : '发送中' }}</span>
             </form>
             <span v-if="plazaQuick.message" class="hub-plaza-feedback" role="status">{{ plazaQuick.message }}</span>
-          </span>
+          </div>
         </component>
         </template>
       </div>
