@@ -66,5 +66,16 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1"
+  },
+  "overrides": {
+    "imapflow": {
+      "ip-address": "10.3.1"
+    },
+    "ip-address": {
+      "ip-address": "10.3.1"
+    },
+    "socks": {
+      "ip-address": "10.3.1"
+    }
   }
 }
