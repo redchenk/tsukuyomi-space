@@ -40,7 +40,32 @@ html[data-theme="dark"] {
     min-height: 100dvh;
 }
 .content-shell :is(.site-commandbar, .mobile-bottom-nav, .route-view, .hub-showcase, .hub-grid-wrap, .hub-hero-panel, .hub-hero-copy, .scene-card) { animation: none; opacity: 1; transform: none; }
-.content-shell .site-global-bg { animation: none; opacity: 0.06; filter: none; }
+/* A viewport layer avoids mobile Safari's background-attachment limitations.
+   The large viewport height keeps the crop stable as browser chrome collapses. */
+.site-background-shell { isolation: isolate; }
+.site-background-shell > .site-global-bg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100lvh;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(rgb(245 244 250 / 72%), rgb(245 244 250 / 64%)), url('../assets/moonlit-lake.png') center top / cover no-repeat;
+    animation: none;
+    transform: none;
+    opacity: 1;
+    filter: none;
+}
+html[data-theme="dark"] .site-background-shell > .site-global-bg {
+    background-image: linear-gradient(rgb(9 17 36 / 16%), rgb(9 17 36 / 24%)), url('../assets/moonlit-lake.png');
+}
+.site-background-shell > .site-global-bg::after { content: none; }
+.site-background-shell :is(.auth-page, .auth-shell, .auth-visual, .live2d-page) { background: none; }
+.site-background-shell .auth-visual-sheen { display: none; }
+@media (max-width: 860px) and (orientation: portrait) {
+    .site-background-shell > .site-global-bg { background-position: 85% top; }
+}
 .content-shell > .moon { display: none; }
 .desktop-navigation, .desktop-actions { display: none; }
 .content-shell .section-title { color: var(--ts-editorial-ink); background: none; -webkit-text-fill-color: currentColor; letter-spacing: -.025em; text-shadow: none; }

@@ -39,7 +39,7 @@ let unreadPollId = 0;
 let unreadRequest = null;
 
 const isRoom = computed(() => ['room', 'roomShared'].includes(props.routeName));
-const hasGlobalBackground = computed(() => props.showChrome && !['access', 'accessAlias'].includes(props.routeName) && !isRoom.value);
+const hasGlobalBackground = computed(() => !isRoom.value && !['access', 'accessAlias'].includes(props.routeName));
 const showSiteBeian = computed(() => props.showChrome && !['hub', 'room', 'roomShared', 'roomSettings'].includes(props.routeName));
 const showNotifications = computed(() => props.isAuthed);
 const growthLabel = computed(() => props.lang === 'ja' ? '月契成長' : props.lang === 'en' ? 'Bond growth' : '月契成长');
@@ -221,7 +221,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'room-shell': isRoom, 'content-shell': showChrome && !isRoom, 'pixel-shell': routeName === 'pixel', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
+  <div class="app-shell" :class="{ 'room-shell': isRoom, 'site-background-shell': hasGlobalBackground, 'content-shell': showChrome && !isRoom, 'pixel-shell': routeName === 'pixel', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && !isRoom && routeName !== 'game'" class="moon" aria-hidden="true"></div>
 

@@ -32,7 +32,7 @@ const isAuthRoute = computed(() => route.name === 'login' || route.name === 'reg
 const isLive2DRoute = computed(() => route.name === 'live2d');
 const isRoomRoute = computed(() => route.name === 'room' || route.name === 'roomShared');
 const isImmersiveRoute = computed(() => isAccessRoute.value || isAuthRoute.value || isLive2DRoute.value);
-const hasGlobalBackground = computed(() => !isAccessRoute.value && !isAuthRoute.value && !isRoomRoute.value && !isLive2DRoute.value);
+const hasGlobalBackground = computed(() => !isAccessRoute.value && !isRoomRoute.value);
 const showSitePet = computed(() => Boolean(route.name)
   && !['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'roomSettings', 'game'].includes(route.name));
 const performanceProfile = ref(getPerformanceProfile());

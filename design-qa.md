@@ -77,3 +77,12 @@ Final evidence: header and all sections are 384 px wide with equal 23 px left/ri
 Validation: 43 existing navigation-related checks and four browser navigation scenarios passed, covering focus trapping/restoration, route changes, landscape fit, mobile controls and account navigation. Both locale production builds passed. No new test was added for this small CSS correction.
 
 final result: passed
+
+
+## Fixed site artwork follow-up — 2026-09-14
+
+The supplied 1672 × 941 moonlit lake PNG is reused without pixel changes or compression. Desktop uses a centered cover crop; portrait mobile uses an 85% horizontal focal point to retain the right-hand moon and lake. A fixed, pointer-transparent viewport layer with a stable large-viewport height avoids scroll-driven movement and mobile browser chrome resizing. Light and dark overlays maintain readable content. Login, registration and other content routes share the image. Access and its alias retain the existing autoplay video; Room and shared Room retain their scene.
+
+Validation: 60 navigation/performance checks and 18 Chromium browser scenarios passed; both Chinese and overseas production builds succeeded. Browser checks assert identical background bounds before and after scrolling at 1280 × 720 and 390 × 844, verify shared artwork on account/content routes, and verify Access video and Room exclusions. Desktop/mobile light and dark visuals were inspected locally. Physical iOS Safari was not tested in this follow-up.
+
+Unedited visual evidence: `/Users/yxy/.codex/visualizations/2026/09/14/tsukuyomi-fixed-background/` (`desktop-dark.png`, `desktop-light.png`, `mobile-dark.png`, `mobile-light.png`, `entry-video-preserved.png`). Source and bundled PNG SHA-256: `6f9fd45b601f75c88b7a148c7dab106240ebd86d0ae2322ae600b0a22cbeabaf`.

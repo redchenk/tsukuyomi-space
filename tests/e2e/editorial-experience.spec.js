@@ -82,5 +82,5 @@ test('image cards retain readable text in the mobile light theme', async ({ page
     await page.addInitScript(() => localStorage.setItem('tsukuyomi_theme', 'light'));
     await page.goto('/hub');
     await expect(page.locator('.scene-card').first().locator('.scene-name')).toHaveCSS('color', 'rgb(255, 255, 255)');
-    await expect(page.locator('.site-global-bg')).toHaveCSS('opacity', '0.06');
+    await expect(page.locator('.site-global-bg')).toHaveCSS('opacity', '1');
 });
