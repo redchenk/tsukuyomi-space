@@ -109,7 +109,7 @@ const sceneLinks = computed(() => [
     kind: 'plaza'
   },
   {
-    href: latestArticle.value?.id ? `/articles/${encodeURIComponent(latestArticle.value.id)}${latestArticle.value.slug ? `/${encodeURIComponent(latestArticle.value.slug)}` : ''}` : '/stage',
+    href: '/stage',
     name: latestArticle.value?.title || props.t.stage,
     desc: latestArticle.value?.excerpt || (isEnglish.value ? 'Notes, creations and knowledge' : '记录、创作、知识'),
     code: isEnglish.value ? englishArticleCategory(latestArticle.value?.category) : (latestArticle.value?.category || 'Stage'),

@@ -227,6 +227,14 @@ describe('frontend navigation routes', () => {
         assert.match(stage, /while \(page <= totalPages\)/);
     });
 
+    it('routes the main-stage preview card to the stage index', () => {
+        const hub = source('src/frontend/pages/HubPage.vue');
+        const mainStageCard = hub.match(/\{\s*href: '\/stage',[\s\S]*?label: props\.t\.stage\s*\}/)?.[0] || '';
+
+        assert.match(mainStageCard, /href: '\/stage'/);
+        assert.doesNotMatch(mainStageCard, /\/articles\//);
+    });
+
     it('shows the immutable article publication time to the minute on the stage', () => {
         const stage = source('src/frontend/pages/StagePage.vue');
         const article = source('src/frontend/pages/ArticlePage.vue');
