@@ -233,6 +233,7 @@ describe('frontend navigation routes', () => {
 
         assert.match(mainStageCard, /href: '\/stage'/);
         assert.doesNotMatch(mainStageCard, /\/articles\//);
+        assert.match(hub, /:data-route="scene\.kind === 'plaza' \? undefined : scene\.href"/);
     });
 
     it('shows the immutable article publication time to the minute on the stage', () => {

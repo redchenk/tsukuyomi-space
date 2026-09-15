@@ -522,6 +522,7 @@ onBeforeUnmount(() => {
           :class="[`tone-${scene.tone}`, { 'scene-card-plaza': scene.kind === 'plaza', 'scene-card-arena': scene.kind === 'arena' }]"
           :style="{ '--scene-image': `url(${scene.image})` }"
           :href="scene.kind === 'plaza' ? undefined : scene.href"
+          :data-route="scene.kind === 'plaza' ? undefined : scene.href"
           :aria-labelledby="scene.kind === 'plaza' ? 'hub-plaza-title' : undefined"
           @click="scene.kind !== 'plaza' && openScene(scene, $event)"
           @pointerenter="warmScene(scene)"
