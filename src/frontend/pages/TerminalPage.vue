@@ -933,7 +933,7 @@ onUnmounted(() => {
               </div>
               <span class="terminal-toolbar-count">{{ filteredArticles.length }} 篇</span>
             </div>
-            <div class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>置顶</th><th>更新时间</th><th>操作</th></tr></thead><tbody>
+            <div class="terminal-table-wrap" tabindex="0" role="region" aria-label="文章列表，可横向滚动"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>置顶</th><th>更新时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in pagedArticles" :key="item.id">
                 <td>{{ item.id }}</td><td><a href="#" @click.prevent="$emit('go', articlePath(item))">{{ item.title }}</a></td><td>{{ item.category || '未分类' }}</td><td>{{ item.view_count || 0 }}</td>
                 <td><span class="terminal-badge" :class="item.status === 'published' ? 'ok' : 'warn'">{{ item.status === 'published' ? '已发布' : '草稿' }}</span></td>
@@ -979,7 +979,7 @@ onUnmounted(() => {
               </select>
               <span class="terminal-toolbar-count">{{ filteredMessages.length }} 条</span>
             </div>
-            <div class="terminal-table-wrap terminal-message-table"><table><thead><tr><th>作者</th><th>来源</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
+            <div class="terminal-table-wrap terminal-message-table" tabindex="0" role="region" aria-label="留言列表，可横向滚动"><table><thead><tr><th>作者</th><th>来源</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in pagedMessages" :key="item.id">
                 <td>{{ item.username || item.author }}</td>
                 <td>
@@ -1059,7 +1059,7 @@ onUnmounted(() => {
               <span class="terminal-toolbar-count">{{ userPageStart }}-{{ userPageEnd }} / {{ filteredUsers.length }}</span>
             </div>
             <div v-if="!filteredUsers.length" class="terminal-empty">没有匹配的用户，试试更换搜索条件。</div>
-            <div v-else class="terminal-table-wrap"><table><thead><tr><th>ID</th><th>用户</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>权限</th><th>密码</th><th>操作</th></tr></thead><tbody>
+            <div v-else class="terminal-table-wrap" tabindex="0" role="region" aria-label="用户列表，可横向滚动"><table><thead><tr><th>ID</th><th>用户</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>权限</th><th>密码</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in pagedUsers" :key="item.id">
                 <td>{{ String(item.id).slice(0, 8) }}</td>
                 <td>
@@ -1164,7 +1164,7 @@ onUnmounted(() => {
               <button type="button" :class="{ active: terminal.linkReviewFilter === 'rejected' }" @click="terminal.linkReviewFilter = 'rejected'">未通过 <span>{{ linkReviewCounts.rejected }}</span></button>
               <button type="button" :class="{ active: terminal.linkReviewFilter === 'all' }" @click="terminal.linkReviewFilter = 'all'">全部 <span>{{ linkReviewCounts.all }}</span></button>
             </div>
-            <div class="terminal-table-wrap terminal-review-table"><table><thead><tr><th>站点</th><th>申请人</th><th>简介</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
+            <div class="terminal-table-wrap terminal-review-table" tabindex="0" role="region" aria-label="友链列表，可横向滚动"><table><thead><tr><th>站点</th><th>申请人</th><th>简介</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in pagedReviewLinks" :key="item.id">
                 <td><div class="terminal-link-site"><span class="terminal-link-avatar" aria-hidden="true"><span>{{ item.name?.slice(0, 1) || '?' }}</span><img v-if="item.avatar_url" :src="item.avatar_url" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true"></span><div><strong>{{ item.name }}</strong><a :href="item.url" :title="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></div></div></td>
                 <td>{{ item.applicant_username || '管理员' }}<br><small v-if="item.applicant_email">{{ item.applicant_email }}</small></td>
