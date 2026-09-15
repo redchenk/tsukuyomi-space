@@ -47,14 +47,19 @@ test('short articles have no empty directory, mobile long articles start collaps
     await expect(page.locator('.article-toc')).toHaveCount(0);
 });
 
-test('featured and latest sorting survive article navigation', async ({ page }) => {
+test('featured ranking ignores pin order and latest sorting survives article navigation', async ({ page }) => {
     const articles = [
-        { ...article, id: 'featured', title: '精选旧文', pinned_at: '2026-09-01', created_at: '2026-01-01', published_at: '2026-01-01', excerpt: '旧文摘要' },
-        { ...article, id: 'latest', title: '最新文章', pinned_at: null, created_at: '2026-09-13', published_at: '2026-09-13', excerpt: '新文摘要' }
+        { ...article, id: 'featured', title: '精选旧文', pinned_at: null, featured_score: 72, like_count: 20, bookmark_count: 12, created_at: '2026-01-01', published_at: '2026-01-01', excerpt: '旧文摘要' },
+        { ...article, id: 'latest', title: '最新文章', pinned_at: '2026-09-13', featured_score: 8, like_count: 0, bookmark_count: 0, created_at: '2026-09-13', published_at: '2026-09-13', excerpt: '新文摘要' }
     ];
-    await page.route(/\/api\/(?:live\/[^/]+\/)?articles\?/, (route) => route.fulfill({ json: { success: true, data: articles, pagination: { totalPages: 1, total: 2 } } }));
+    await page.route(/\/api\/(?:live\/[^/]+\/)?articles\?/, (route) => {
+        expect(new URL(route.request().url()).searchParams.get('sort')).toBe('featured');
+        return route.fulfill({ json: { success: true, data: articles, pagination: { totalPages: 1, total: 2 } } });
+    });
     await page.goto('/stage');
     await expect(page.locator('.stage-card-title').first()).toHaveText('精选旧文');
+    await expect(page.locator('.stage-card').first().getByLabel('20 点赞')).toBeVisible();
+    await expect(page.locator('.stage-card').first().getByLabel('12 收藏')).toBeVisible();
     await expect(page.locator('.stage-card .read-time')).toHaveCount(0);
     await page.getByRole('button', { name: '最新发布', exact: true }).click();
     await expect(page).toHaveURL(/sort=latest/);

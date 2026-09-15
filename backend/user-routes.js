@@ -193,6 +193,32 @@ router.get('/bookmarks', authenticateToken, (req, res) => {
     }
 });
 
+router.get('/article-likes/:articleId/status', authenticateToken, (req, res) => {
+    try {
+        const article = articleRepository.findPublishedArticleById(req.params.articleId);
+        if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
+        res.json({ success: true, data: socialRepository.articleLikeStatus(req.user.id, article.id) });
+    } catch (error) {
+        console.error('Article like status failed:', error);
+        res.status(500).json({ success: false, message: '点赞状态读取失败' });
+    }
+});
+
+for (const method of ['post', 'delete']) {
+    router[method]('/article-likes/:articleId', authenticateToken, (req, res) => {
+        try {
+            const article = articleRepository.findPublishedArticleById(req.params.articleId);
+            if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
+            const data = socialRepository.setArticleLike(req.user.id, article.id, method === 'post');
+            responseCache.delPrefix('public:articles:');
+            res.json({ success: true, data });
+        } catch (error) {
+            console.error('Article like failed:', error);
+            res.status(500).json({ success: false, message: '点赞操作失败' });
+        }
+    });
+}
+
 router.get('/bookmarks/:articleId/status', authenticateToken, (req, res) => {
     try {
         const article = articleRepository.findPublishedArticleById(req.params.articleId);
@@ -215,6 +241,7 @@ router.post('/bookmarks/:articleId', authenticateToken, (req, res) => {
         const article = articleRepository.findPublishedArticleById(req.params.articleId);
         if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         const created = socialRepository.bookmarkArticle(req.user.id, article.id);
+        responseCache.delPrefix('public:articles:');
         if (created && article.author_id && article.author_id !== req.user.id) {
             notificationRepository.createNotification({
                 userId: article.author_id,
@@ -246,6 +273,7 @@ router.delete('/bookmarks/:articleId', authenticateToken, (req, res) => {
         const article = articleRepository.findPublishedArticleById(req.params.articleId);
         if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         socialRepository.unbookmarkArticle(req.user.id, article.id);
+        responseCache.delPrefix('public:articles:');
         res.json({
             success: true,
             data: {

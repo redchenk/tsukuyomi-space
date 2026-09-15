@@ -2,6 +2,14 @@ const db = require('../db');
 const articleCategories = require('./article-category-repository');
 const { createSlug } = require('../utils/slug');
 const { publicAvatarUrl } = require('../utils/avatar');
+const { contentQuality, featuredScore, MAX_CONTENT_LENGTH } = require('../services/article-ranking');
+
+db.function('article_content_quality', { deterministic: true }, (content, format) => contentQuality(content, format));
+db.function('article_featured_score', { deterministic: true }, (quality, views, likes, bookmarks, date, now) => featuredScore(quality, views, likes, bookmarks, date, now));
+
+const ARTICLE_COUNTS = `
+    (SELECT COUNT(*) FROM article_likes al WHERE al.article_id = a.id) AS like_count,
+    (SELECT COUNT(*) FROM article_bookmarks ab WHERE ab.article_id = a.id) AS bookmark_count`;
 
 const CONTENT_FORMATS = new Set(['markdown', 'html', 'block']);
 
@@ -50,11 +58,13 @@ function compactArticleRows(rows) {
     return rows.map(compactArticleRow);
 }
 
-function listArticles({ category, limit, offset }) {
+function listArticles({ category, limit, offset, sort = 'pinned', now = Date.now() }) {
     let query = `
         SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.tags, a.author_id,
             a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
+            ${ARTICLE_COUNTS},
+            ${sort === 'featured' ? `article_content_quality(CASE WHEN a.content_format = 'block' THEN a.content ELSE substr(a.content, 1, ${MAX_CONTENT_LENGTH}) END, a.content_format)` : '0'} AS content_quality,
             u.username AS author_username,
             u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
@@ -74,11 +84,22 @@ function listArticles({ category, limit, offset }) {
         params.push(category);
     }
 
-    query += ' ORDER BY a.pinned_at IS NULL, a.pinned_at DESC, COALESCE(a.published_at, a.created_at, a.publish_date) DESC LIMIT ? OFFSET ?';
+    if (sort === 'featured') {
+        // Rank the entire published candidate set before pagination, never a single page.
+        query = `WITH candidates AS (${query})
+            SELECT *, article_featured_score(content_quality, view_count, like_count, bookmark_count,
+                COALESCE(published_at, created_at, publish_date), ?) AS featured_score
+            FROM candidates
+            ORDER BY featured_score DESC, COALESCE(published_at, created_at, publish_date) DESC, id DESC
+            LIMIT ? OFFSET ?`;
+    } else {
+        query += ` ORDER BY ${sort === 'latest' ? '' : 'a.pinned_at IS NULL, a.pinned_at DESC, '}
+            COALESCE(a.published_at, a.created_at, a.publish_date) DESC, a.id DESC LIMIT ? OFFSET ?`;
+    }
 
     return {
         total: db.prepare(countQuery).get(...params).total,
-        articles: compactArticleRows(db.prepare(query).all(...params, limit, offset))
+        articles: compactArticleRows(db.prepare(query).all(...params, ...(sort === 'featured' ? [now] : []), limit, offset))
     };
 }
 
@@ -131,7 +152,7 @@ function createArticle(article) {
 
 function findArticleById(id) {
     return compactArticleRow(db.prepare(`
-        SELECT a.*, u.username AS author_username, u.avatar AS author_avatar,
+        SELECT a.*, ${ARTICLE_COUNTS}, u.username AS author_username, u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
             cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
@@ -144,7 +165,7 @@ function findArticleById(id) {
 
 function findPublishedArticleById(id) {
     return compactArticleRow(db.prepare(`
-        SELECT a.*, u.username AS author_username, u.avatar AS author_avatar,
+        SELECT a.*, ${ARTICLE_COUNTS}, u.username AS author_username, u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
             cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists

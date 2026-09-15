@@ -26,9 +26,9 @@ const articleContentRef = ref(null);
 const renderedContent = computed(() => article.value ? formatContent(article.value.content, article.value.content_format) : '');
 const { headings, activeHeading, progress, plainText, tocOpen, goToHeading } = useArticleReading(articleContentRef, renderedContent);
 const readerCopy = computed(() => ({
-  zh: { back: '返回主舞台', toc: '文章目录', share: '分享', views: '次阅读', category: '未分类', bookmark: '收藏', saved: '已收藏', comments: '评论' },
-  ja: { back: 'ステージに戻る', toc: '目次', share: 'シェア', views: '回閲覧', category: '未分類', bookmark: '保存', saved: '保存済み', comments: 'コメント' },
-  en: { back: 'Back to the Stage', toc: 'On this page', share: 'Share', views: 'views', category: 'Uncategorized', bookmark: 'Bookmark', saved: 'Bookmarked', comments: 'Comments' }
+  zh: { back: '返回主舞台', toc: '文章目录', share: '分享', views: '次阅读', category: '未分类', bookmark: '收藏', saved: '已收藏', like: '点赞', liked: '已点赞', comments: '评论' },
+  ja: { back: 'ステージに戻る', toc: '目次', share: 'シェア', views: '回閲覧', category: '未分類', bookmark: '保存', saved: '保存済み', like: 'いいね', liked: 'いいね済み', comments: 'コメント' },
+  en: { back: 'Back to the Stage', toc: 'On this page', share: 'Share', views: 'views', category: 'Uncategorized', bookmark: 'Bookmark', saved: 'Bookmarked', like: 'Like', liked: 'Liked', comments: 'Comments' }
 }[props.lang]));
 const comments = ref([]);
 const loading = ref(true);
@@ -38,6 +38,7 @@ const replyText = reactive({});
 const openReplies = reactive({});
 const session = ref(getSession());
 const articleShareOpen = ref(false);
+const articleLike = reactive({ loading: false, liked: false, count: 0 });
 const bookmark = reactive({
   loading: false,
   ready: false,
@@ -201,7 +202,7 @@ async function loadArticle() {
     if (!result.success || !result.data) throw new Error(result.message || '文章不存在');
     article.value = result.data;
     applySeo(articleSeo(result.data, articlePath.value));
-    await Promise.all([loadComments(), loadBookmarkStatus()]);
+    await Promise.all([loadComments(), loadBookmarkStatus(), loadArticleLikeStatus()]);
     await hydrateUserLevels([
       result.data.author_id,
       ...comments.value.map((item) => item.user_id)
@@ -217,7 +218,7 @@ async function loadBookmarkStatus() {
   session.value = getSession();
   bookmark.ready = false;
   bookmark.bookmarked = false;
-  bookmark.count = 0;
+  bookmark.count = Number(article.value?.bookmark_count || 0);
   if (!session.value || !articleId.value) return;
 
   bookmark.loading = true;
@@ -236,6 +237,48 @@ async function loadBookmarkStatus() {
     bookmark.ready = false;
   } finally {
     bookmark.loading = false;
+  }
+}
+
+async function loadArticleLikeStatus() {
+  const id = articleId.value;
+  articleLike.liked = false;
+  articleLike.count = Number(article.value?.like_count || 0);
+  articleLike.loading = false;
+  if (!getSession() || !id) return;
+  articleLike.loading = true;
+  try {
+    const response = await authFetch(`/api/user/article-likes/${encodeURIComponent(id)}/status`, { headers: authHeaders(), cache: 'no-store' });
+    const result = await parseResponse(response);
+    if (id === articleId.value && result.success) {
+      articleLike.liked = Boolean(result.data?.liked);
+      articleLike.count = Number(result.data?.count || 0);
+    }
+  } catch (_) {
+    // The public count remains visible when the private status cannot be read.
+  } finally {
+    if (id === articleId.value) articleLike.loading = false;
+  }
+}
+
+async function toggleArticleLike() {
+  if (articleLike.loading || !requireLogin()) return;
+  const id = articleId.value;
+  articleLike.loading = true;
+  try {
+    const response = await authFetch(`/api/user/article-likes/${encodeURIComponent(id)}`, {
+      method: articleLike.liked ? 'DELETE' : 'POST', headers: authHeaders()
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || props.t.loadFailed);
+    if (id !== articleId.value) return;
+    articleLike.liked = Boolean(result.data?.liked);
+    articleLike.count = Number(result.data?.count || 0);
+    message.value = '';
+  } catch (error) {
+    if (id === articleId.value) message.value = error.message || props.t.loadFailed;
+  } finally {
+    if (id === articleId.value) articleLike.loading = false;
   }
 }
 
@@ -406,6 +449,10 @@ watch(articleId, loadArticle);
             <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} {{ readerCopy.views }}</span>
           </div>
           <div class="article-social-actions">
+            <button class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :aria-pressed="articleLike.liked" @click="toggleArticleLike">
+              <TsIcon :class="{ 'ts-status-loader-icon': articleLike.loading }" :name="articleLike.loading ? 'loader' : 'heart'" :size="17" />
+              <span>{{ articleLike.liked ? readerCopy.liked : readerCopy.like }} {{ articleLike.count.toLocaleString(lang) }}</span>
+            </button>
             <button class="article-bookmark-btn" type="button" @click="openArticleShare">
               <TsIcon name="external" :size="17" />
               <span>{{ readerCopy.share }}</span>

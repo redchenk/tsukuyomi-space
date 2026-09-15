@@ -88,6 +88,19 @@ function bookmarkArticle(userId, articleId) {
     `).run(userId, articleId).changes;
 }
 
+function articleLikeStatus(userId, articleId) {
+    return {
+        liked: Boolean(userId && db.prepare('SELECT 1 FROM article_likes WHERE user_id = ? AND article_id = ?').get(userId, articleId)),
+        count: db.prepare('SELECT COUNT(*) AS count FROM article_likes WHERE article_id = ?').get(articleId).count
+    };
+}
+
+function setArticleLike(userId, articleId, liked) {
+    if (liked) db.prepare('INSERT OR IGNORE INTO article_likes (user_id, article_id) VALUES (?, ?)').run(userId, articleId);
+    else db.prepare('DELETE FROM article_likes WHERE user_id = ? AND article_id = ?').run(userId, articleId);
+    return articleLikeStatus(userId, articleId);
+}
+
 function unbookmarkArticle(userId, articleId) {
     return db.prepare(`
         DELETE FROM article_bookmarks
@@ -215,6 +228,8 @@ function listTrendingTopics({ limit = 8, days = 30 } = {}) {
 }
 
 module.exports = {
+    articleLikeStatus,
+    setArticleLike,
     extractMentionNames,
     extractTopics,
     findUsersByUsernames,

@@ -25,7 +25,12 @@ const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
 const stageOrder = ref('featured');
-const stageSortCopy = computed(() => ({ zh: ['精选优先', '最新发布', '精选'], ja: ['おすすめ順', '新着順', 'おすすめ'], en: ['Featured first', 'Latest first', 'Featured'] }[props.lang]));
+const stageSortCopy = computed(() => ({ zh: ['精选优先', '最新发布', '编辑推荐'], ja: ['おすすめ順', '新着順', '編集部おすすめ'], en: ['Featured first', 'Latest first', 'Editor pick'] }[props.lang]));
+const stageRankingCopy = computed(() => ({
+  zh: { hint: '综合正文内容、阅读、点赞与收藏排序，兼顾新文章。', views: '阅读', likes: '点赞', bookmarks: '收藏' },
+  ja: { hint: '本文・閲覧・いいね・保存を総合し、新しい記事も考慮します。', views: '閲覧', likes: 'いいね', bookmarks: '保存' },
+  en: { hint: 'Ranked by content, readership, likes and bookmarks, with room for new articles.', views: 'views', likes: 'likes', bookmarks: 'bookmarks' }
+}[props.lang]));
 let applyingStageQuery = false;
 const { categories: articleCategories, revision: categoryRevision } = useArticleCategories();
 const categories = computed(() => ['all', ...articleCategories.value.map((item) => item.name)]);
@@ -193,7 +198,7 @@ async function loadArticles() {
     let page = 1;
     let totalPages = 1;
     do {
-      const response = await apiFetch(`/api/articles?limit=${STAGE_FETCH_LIMIT}&page=${page}`);
+      const response = await apiFetch(`/api/articles?limit=${STAGE_FETCH_LIMIT}&page=${page}&sort=featured`);
       const result = await parseResponse(response);
       if (!result.success) throw new Error(result.message || props.t.loadFailed);
       if (Array.isArray(result.data)) loaded.push(...result.data);
@@ -311,6 +316,7 @@ onMounted(loadArticles);
         <button v-for="(order, index) in ['featured', 'latest']" :key="order" type="button" :aria-pressed="stageOrder === order" @click="stageOrder = order">{{ stageSortCopy[index] }}</button>
       </div>
     </div>
+    <p v-if="stageOrder === 'featured'" class="stage-ranking-hint">{{ stageRankingCopy.hint }}</p>
     <div v-if="!articlesLoading && filteredArticles.length" class="stage-result-strip">
       <div>
         <span class="stage-result-count">{{ stageResultSummary }}</span>
@@ -354,6 +360,12 @@ onMounted(loadArticles);
           </div>
           <h3 class="stage-card-title">{{ article.title }}</h3>
           <p class="stage-card-excerpt">{{ article.excerpt }}</p>
+          <div class="stage-engagement">
+            <span v-for="metric in [{ field: 'view_count', icon: 'eye', label: stageRankingCopy.views }, { field: 'like_count', icon: 'heart', label: stageRankingCopy.likes }, { field: 'bookmark_count', icon: 'bookmark', label: stageRankingCopy.bookmarks }]" :key="metric.field" :aria-label="`${stageFormatNumber(article[metric.field])} ${metric.label}`" :title="metric.label">
+              <TsIcon :name="metric.icon" :size="14" aria-hidden="true" />
+              {{ stageFormatNumber(article[metric.field]) }}
+            </span>
+          </div>
           <div class="stage-card-footer">
             <span v-if="readingTimeLabel(article, lang)" class="read-time">{{ readingTimeLabel(article, lang) }}</span>
             <time class="stage-publish-time" :datetime="stagePublishedAt(article)">

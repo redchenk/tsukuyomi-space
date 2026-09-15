@@ -34,7 +34,8 @@ function listArticlesPayload(req) {
     const limit = Math.min(parsePositiveInt(req.query.limit, 100), 100);
     const offset = (page - 1) * limit;
 
-    const result = articleRepository.listArticles({ category, limit, offset });
+    const sort = ['featured', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
+    const result = articleRepository.listArticles({ category, limit, offset, sort });
     const categoryIds = new Map(articleCategories.list().map(item => [item.name, item.id]));
     const articles = result.articles.map(article => withParsedTags(article, categoryIds));
 
@@ -52,7 +53,8 @@ function listArticlesPayload(req) {
 
 function articleListCacheKey(req) {
     const limit = Math.min(parsePositiveInt(req.query.limit, 100), 100);
-    return `public:articles:${String(req.query.category || '')}:${parsePositiveInt(req.query.page, 1)}:${limit}`;
+    const sort = ['featured', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
+    return `public:articles:${sort}:${String(req.query.category || '')}:${parsePositiveInt(req.query.page, 1)}:${limit}`;
 }
 
 function sendArticleList(req, res) {

@@ -1,4 +1,27 @@
 /* ---- stage page ---- */
+.stage-ranking-hint {
+    margin: 0 0 1rem;
+    color: var(--ts-muted);
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+.stage-engagement,
+.stage-engagement span {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.stage-engagement {
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 0.65rem 0;
+    color: var(--ts-muted);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+}
+
 .stage-page {
     max-width: 1000px;
     margin: 0 auto;
