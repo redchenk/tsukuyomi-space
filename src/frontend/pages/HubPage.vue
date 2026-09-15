@@ -22,7 +22,7 @@ const hubCopy = computed(() => ({
 }[props.lang] || {}));
 const isEnglish = computed(() => props.lang === 'en');
 
-const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v2';
+const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v3';
 const HUB_PREVIEW_TTL_MS = 30000;
 const HUB_PREVIEW_TIMEOUT_MS = 8000;
 const STATS_UPDATED_EVENT = 'tsukuyomi:stats-updated';
@@ -574,7 +574,10 @@ onBeforeUnmount(() => {
             <div v-else class="hub-plaza-list">
               <a v-for="msg in plazaPreviewMessages" :key="msg.id" class="hub-plaza-message" :href="scene.href" @click.prevent="$emit('go', scene.href)">
                 <span class="hub-plaza-author">
-                  <span class="hub-plaza-avatar" aria-hidden="true">{{ [...(msg.author || (isEnglish ? 'Guest' : '访客'))][0] }}</span>
+                  <span class="hub-plaza-avatar" aria-hidden="true">
+                    <span>{{ [...(msg.author || (isEnglish ? 'Guest' : '访客'))][0] }}</span>
+                    <img v-if="msg.avatar" :src="msg.avatar" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true">
+                  </span>
                   <strong>{{ msg.author || (isEnglish ? 'Guest' : '访客') }}</strong>
                 </span>
                 <p class="hub-plaza-content">{{ msg.content }}</p>

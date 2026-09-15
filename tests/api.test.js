@@ -1393,7 +1393,8 @@ describe('messages API', () => {
         const plazaLatest = await request('/api/messages/plaza/latest?limit=4');
         assert.equal(plazaLatest.response.status, 200);
         assert.ok(plazaLatest.body.data.length <= 4);
-        assert.ok(plazaLatest.body.data.every(item => !Object.hasOwn(item, 'avatar') && !Object.hasOwn(item, 'user_id')));
+        assert.ok(plazaLatest.body.data.every(item => Object.hasOwn(item, 'avatar') && !Object.hasOwn(item, 'user_id')));
+        assert.doesNotMatch(JSON.stringify(plazaLatest.body), /data:image\//);
         assert.ok(JSON.stringify(plazaLatest.body).length < 16 * 1024);
     });
 
@@ -1540,6 +1541,8 @@ describe('pixel art API', () => {
         assert.equal(hubPreview.body.success, true);
         assert.ok(hubPreview.body.data.article);
         assert.ok(Array.isArray(hubPreview.body.data.messages));
+        assert.ok(hubPreview.body.data.messages.every(item => Object.hasOwn(item, 'avatar') && !Object.hasOwn(item, 'user_id')));
+        assert.doesNotMatch(JSON.stringify(hubPreview.body.data.messages), /data:image\//);
         assert.ok(hubPreview.body.data.pixel);
         assert.equal(Object.hasOwn(hubPreview.body.data.pixel, 'pixels'), false);
         assert.equal(typeof hubPreview.body.data.pixel.pixels_base64, 'string');

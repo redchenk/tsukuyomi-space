@@ -147,6 +147,7 @@ router.get('/plaza/latest', (req, res) => {
             data: messageRepository.listRecentPublicMessages(limit).map(message => ({
                 id: message.id,
                 author: message.author,
+                avatar: message.avatar,
                 content: message.content,
                 created_at: message.created_at
             }))
