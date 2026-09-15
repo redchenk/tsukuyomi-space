@@ -90,10 +90,11 @@ function listArticles({ category, limit, offset, sort = 'pinned', now = Date.now
             SELECT *, article_featured_score(content_quality, view_count, like_count, bookmark_count,
                 COALESCE(published_at, created_at, publish_date), ?) AS featured_score
             FROM candidates
-            ORDER BY featured_score DESC, COALESCE(published_at, created_at, publish_date) DESC, id DESC
+            ORDER BY pinned_at IS NULL, pinned_at DESC, featured_score DESC,
+                COALESCE(published_at, created_at, publish_date) DESC, id DESC
             LIMIT ? OFFSET ?`;
     } else {
-        query += ` ORDER BY ${sort === 'latest' ? '' : 'a.pinned_at IS NULL, a.pinned_at DESC, '}
+        query += ` ORDER BY a.pinned_at IS NULL, a.pinned_at DESC,
             COALESCE(a.published_at, a.created_at, a.publish_date) DESC, a.id DESC LIMIT ? OFFSET ?`;
     }
 

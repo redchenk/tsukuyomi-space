@@ -53,6 +53,14 @@ const stagePageCopy = computed(() => props.lang === 'en' ? {
   rangeUnit: '\u7bc7'
 });
 
+function compareStagePinPriority(a, b) {
+  const aPinned = Boolean(a.pinned_at);
+  const bPinned = Boolean(b.pinned_at);
+  if (aPinned !== bPinned) return aPinned ? -1 : 1;
+  if (aPinned && bPinned) return compareAppDate(b.pinned_at, a.pinned_at);
+  return 0;
+}
+
 const filteredArticles = computed(() => {
   let list = articles.value;
   if (stageCategory.value !== 'all') {
@@ -65,8 +73,17 @@ const filteredArticles = computed(() => {
       String(article.excerpt || '').toLowerCase().includes(query)
     ));
   }
-  if (stageOrder.value === 'latest') return [...list].sort((a, b) => compareAppDate(b.published_at || b.created_at || b.publish_date, a.published_at || a.created_at || a.publish_date));
-  return list;
+  return [...list].sort((a, b) => {
+    const pinPriority = compareStagePinPriority(a, b);
+    if (pinPriority) return pinPriority;
+    if (stageOrder.value === 'latest') {
+      return compareAppDate(
+        b.published_at || b.created_at || b.publish_date,
+        a.published_at || a.created_at || a.publish_date
+      );
+    }
+    return 0;
+  });
 });
 
 const stageTotalArticles = computed(() => filteredArticles.value.length);

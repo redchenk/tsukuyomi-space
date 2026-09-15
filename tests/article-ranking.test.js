@@ -92,18 +92,19 @@ async function call(url, { method = 'GET', body, authenticated = false } = {}) {
     return { response, body: await response.json() };
 }
 
-test('featured ranking runs before pagination and keeps legacy pins and latest order independent', async () => {
-    const query = '/api/articles?category=ranking-fixture&limit=1';
+test('pins stay first while featured and latest preserve their own order before pagination', async () => {
+    const query = '/api/articles?category=ranking-fixture&limit=2';
     const pinned = await call(query);
     const latest = await call(query + '&sort=latest');
     const featured = await call(query + '&sort=featured');
     assert.equal(pinned.body.data[0].id, emptyId);
     assert.equal(latest.body.data[0].id, emptyId);
-    assert.equal(featured.body.data[0].id, strongId);
+    assert.equal(featured.body.data[0].id, emptyId);
+    assert.equal(featured.body.data[1].id, strongId);
     assert.equal(featured.body.pagination.total, 107);
-    assert.ok(featured.body.data[0].featured_score > 0);
-    assert.equal(featured.body.data[0].like_count, 0);
-    assert.equal(featured.body.data[0].bookmark_count, 0);
+    assert.ok(featured.body.data[1].featured_score > featured.body.data[0].featured_score);
+    assert.equal(featured.body.data[1].like_count, 0);
+    assert.equal(featured.body.data[1].bookmark_count, 0);
     assert.equal('content' in featured.body.data[0], false);
     const all = repository.listArticles({ category: 'ranking-fixture', limit: 200, offset: 0, sort: 'featured', now }).articles;
     const pages = [0, 100].flatMap(offset => repository.listArticles({ category: 'ranking-fixture', limit: 100, offset, sort: 'featured', now }).articles);
@@ -111,7 +112,7 @@ test('featured ranking runs before pagination and keeps legacy pins and latest o
     assert.equal(new Set(pages.map(row => row.id)).size, 107);
     assert.ok(!pages.some(row => row.id === draftId));
     const live = await call('/api/live/ranking/articles?category=ranking-fixture&limit=1&sort=featured');
-    assert.equal(live.body.data[0].id, strongId);
+    assert.equal(live.body.data[0].id, emptyId);
 });
 
 test('article likes are authenticated, idempotent, reversible and invalidate the ranking cache', async () => {
