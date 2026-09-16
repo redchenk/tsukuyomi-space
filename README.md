@@ -1,54 +1,160 @@
-# Tsukuyomi Space
-一个围绕《超时空辉夜姬！》世界观构建的非盈利同人社区与 Live2D AI 角色空间。
+# 月读空间 · Tsukuyomi Space
 
-项目以 Vue 3 与 Express 构建，把 Live2D 角色陪伴、账号隔离的长期记忆、内容创作、社区互动、成长任务和公开 Wiki 连接在同一个月读空间中。
+**给日常留一点月光。与八千代聊天，读故事、看创作，遇见同频的人。**
 
-## 在线访问
+围绕《超时空辉夜姬！》世界观构建的非盈利同人社区，以 Vue 3 + Express 连接 Live2D AI 陪伴、内容创作、社区互动与作品百科。
 
-| 站点 | 地址 | 语言与用途 |
-| --- | --- | --- |
-| 国内站 | [yachiyo.hk](https://yachiyo.hk) | 中文 / 日语切换，完整功能入口 |
-| 海外站 | [tsukuyomi-space.com](https://tsukuyomi-space.com) | 英文界面，海外访问入口 |
-| 站点动态 | [RSS](https://yachiyo.hk/feed.xml) · [JSON](https://yachiyo.hk/api/site-feed) | 文章、留言、图库、像素画与友链更新 |
+[国内站 · 中文 / 日语](https://yachiyo.hk) · [海外站 · English](https://tsukuyomi-space.com) · [部署指南](docs/DEPLOY.md) · [问题反馈](https://github.com/redchenk/tsukuyomi-space/issues)
 
-[![Tsukuyomi Space Hub](assets/images/readme/hub.jpg)](https://yachiyo.hk/hub)
+[项目预览](#项目预览) · [核心体验](#核心体验) · [快速开始](#快速开始) · [部署与配置](#部署与配置) · [开发文档](#开发文档) · [支持项目](#支持项目)
+
+[![月读空间新版首页：月光主题、私人居所入口与月下新鲜事](assets/images/readme/hub.jpg)](https://yachiyo.hk/hub)
 
 ## 项目预览
 
-| [Hub 中枢大厅](https://yachiyo.hk/hub) | [Live2D AI 私人房间](https://yachiyo.hk/room) |
+以下截图采集于 **2026-09-16**，来自国内站公开页面，使用 1440 × 960 桌面视口、未登录状态。站点内容与时间、天气场景会持续变化。
+
+| Live2D AI 私人居所 | 主舞台 · 文章与创作 |
 | --- | --- |
-| ![Hub 中枢大厅](assets/images/readme/hub.jpg) | ![Live2D AI 私人房间](assets/images/readme/room.jpg) |
-| [192×108 像素工坊](https://yachiyo.hk/pixel) | [超时空辉夜姬 Wiki](https://yachiyo.hk/wiki) |
-| ![192×108 像素工坊](assets/images/readme/pixel.jpg) | ![超时空辉夜姬 Wiki](assets/images/readme/wiki.jpg) |
+| [![Live2D AI 私人居所](assets/images/readme/room.jpg)](https://yachiyo.hk/room) | [![主舞台文章列表](assets/images/readme/stage.jpg)](https://yachiyo.hk/stage) |
+| **192 × 108 像素工坊** | **超时空辉夜姬 Wiki** |
+| [![像素工坊画布与绘画工具](assets/images/readme/pixel.jpg)](https://yachiyo.hk/pixel) | [![超时空辉夜姬百科首页](assets/images/readme/wiki.jpg)](https://yachiyo.hk/wiki) |
 
-## 支持项目
+## 核心体验
 
-如果月读空间为你带来了帮助，可以通过爱发电自愿支持服务器、对象存储、CDN 与持续维护。支持不会影响站内功能、内容审核或用户权限。
+- **与八千代相伴**：Live2D 角色、聊天、表情、TTS、音乐和天气场景组合成私人居所；可连接云端 LLM 或本机 Ollama，并通过 MCP 扩展工具。
+- **让对话延续**：登录后的会话与长期记忆按账号隔离、跨设备同步；支持记忆管理、角色知识库，以及角色日记和人设备份导入。
+- **创作与交流**：在主舞台阅读文章，在月读广场留言，在图库分享作品，或用固定 192 × 108 画布绘制、发布和导出像素画。
+- **探索作品世界**：公开 Wiki 汇集角色、世界观、音乐与制作资料；节奏跑酷游戏提供键盘、触控和全屏游玩。
+- **记录每天的相遇**：月契成长中心包含签到、每日任务、连续奖励与邀请成长；站内通知帮助追踪互动。
+- **统一的月光界面**：深色 / 浅色主题、响应式导航与共享设计变量贯穿主要页面，国内站支持中文 / 日语，海外站提供英文入口。
 
-<p align="center">
-  <a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">
-    <img src="assets/images/support/afdian-redchenk.jpg" width="360" alt="通过爱发电支持 redchenk 和月读空间">
-  </a>
-</p>
+## 快速开始
 
-<p align="center"><a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">前往爱发电支持月读空间</a></p>
+使用 **Node.js 22.12+**；当前 Vite 也支持 Node.js 20.19+。在仓库根目录安装依赖即可，无需在 `backend/` 重复安装。
 
-## 亮点
+```bash
+git clone https://github.com/redchenk/tsukuyomi-space.git
+cd tsukuyomi-space
+npm ci
+npm run dev
+```
 
-- **Live2D AI 房间**：天气与时间驱动场景，支持浏览器侧 LLM、Ollama、TTS、音乐、图片输入和 Live2D 表情协同。
-- **跨端私人记忆**：会话与长期记忆按账号隔离，通过实时事件同步；支持本地向量检索和可选 Milvus。
-- **用户成长循环**：每日签到、首次聊天、每日分享、轮换内容任务、连续七天奖励和邀请成长，等级会出现在用户与内容身份区域。
-- **真实内容社区**：文章、留言、图库、附件、像素画和友链均有发布、点赞、实时刷新、个人管理与管理员审核流程。
-- **传播与分享**：文章和像素作品提供社交媒体跳转；Room 可发布选定对话片段，并为分享链接生成独立 OG 信息。
-- **超时空辉夜姬 Wiki**：角色、世界观、音乐、制作与衍生资料拥有独立词条、搜索入口和服务端爬虫页面。
-- **多语言与双站部署**：国内站支持中文 / 日语切换，海外站提供强制英文构建，共享同一套功能与安全策略。
-- **全局 AI 向导**：右下角八千代宠物可复用 Room 的 LLM 配置回答站内功能问题，未配置时提供固定帮助。
-- **账号与通知**：支持注册、QQ OAuth、邮箱验证、密码找回、QQ 解绑、Cookie 会话、未读角标和服务端分页站内信。
-- **对象存储与动态订阅**：支持本地磁盘、S3 兼容存储和阿里云 OSS；提供 JSON 站点动态与 RSS。
-- **轻量而完整的部署**：支持 Docker Compose 或 PM2 + Nginx / OpenResty，数据库、上传目录、应用源码和备份分权管理。
-- **纵深安全边界**：包含严格 CSP、安全响应头、CSRF 来源校验、重复 JSON 键拒绝、上传检测、SSRF 防护和分级管理权限。
+开发命令会同时启动前端与 API：
 
-## 核心模块
+| 服务 | 地址 |
+| --- | --- |
+| Vite 前端 | http://localhost:5173/ |
+| API 健康检查 | http://localhost:3000/api/health |
+
+开发环境默认使用本地 SQLite，数据库迁移会在 API 启动时自动执行。Redis、Milvus、SMTP 和第三方 AI 服务按需配置；聊天与语音能力需要在房间设置中配置相应服务。额外音乐、视频背景等大资源需单独准备，详见[部署指南](docs/DEPLOY.md)。
+
+### 常用命令
+
+| 命令 | 用途 |
+| --- | --- |
+| `npm run dev` | 同时启动 API 与前端 |
+| `npm run dev:api` / `npm run dev:web` | 单独启动 API / 前端 |
+| `npm run build:web` | 构建前端到 `dist/frontend/` |
+| `npm run build:web:overseas` | 使用海外环境配置构建英文站 |
+| `npm run build:live2d` | 重新构建 Live2D 房间运行时 |
+| `npm run dev:live2d-studio` | 启动 Live2D Studio 开发服务 |
+| `npm test` | 运行语法检查、API 与前端回归测试 |
+| `npm run test:api` / `npm run test:frontend` | 单独运行 API / 前端回归测试 |
+| `npm run test:e2e` | 运行 Playwright 端到端测试 |
+
+运行端到端测试前，先执行 `npm run build:web`，并通过 `npx playwright install chromium` 安装浏览器；也可用 `E2E_BASE_URL` 指向已有测试服务。
+
+## 部署与配置
+
+新环境可使用 Docker Compose：
+
+```bash
+cp .env.docker.example .env.docker
+# 编辑 .env.docker，替换密钥、管理员密码与站点域名
+docker compose up -d --build
+curl http://127.0.0.1:3280/api/health
+```
+
+默认端口绑定到服务器回环地址 `127.0.0.1:3280`，对外访问需配置反向代理与 HTTPS。SQLite 与上传文件分别持久化到 `tsukuyomi-data` 和 `tsukuyomi-uploads` 命名卷。
+
+| 配置 | 说明 |
+| --- | --- |
+| `JWT_SECRET` | 生产必填，至少 32 字符；可用 `openssl rand -base64 48` 生成 |
+| `ADMIN_PASSWORD` | 首次创建生产管理员时必填，请替换示例密码 |
+| `CORS_ORIGINS` | 允许访问 API 的线上域名 |
+| `MAIL_CREDENTIAL_KEY` | 聚合邮箱凭据加密密钥，建议独立生成并保持稳定 |
+| `DATA_DIR` / `DB_PATH` | SQLite 持久化路径；Docker 默认使用 `/data` |
+| `REDIS_URL` | 可选，用于验证码、限流、天气缓存及 token 黑名单 |
+| `ROOM_MEMORY_VECTOR_BACKEND` | 默认使用 SQLite 本地向量检索，可选接入 Milvus |
+
+完整配置见 [`.env.example`](.env.example) 与 [`.env.docker.example`](.env.docker.example)。真实环境文件、密码和 API Key 不应提交到仓库。
+
+- **Docker 更新**：`bash deploy/docker-deploy.sh`。
+- **PM2 + Nginx / OpenResty**：支持现有服务器部署，步骤见[部署指南](docs/DEPLOY.md)。
+- **可选服务与大资源**：Redis / Milvus profile、模型、音乐与视频的只读挂载均见部署指南。
+- **数据库迁移**：启动时自动执行 `backend/db/migrations/`；生产更新前先备份。部署备份与数据库备份默认各保留最近 10 份，可通过 `BACKUP_RETENTION` 调整。
+
+## 开发文档
+
+| 文档 | 内容 |
+| --- | --- |
+| [部署与运维](docs/DEPLOY.md) | Docker、PM2、反向代理、资源挂载、备份与恢复 |
+| [权限模型](docs/PERMISSIONS.md) | 用户、管理员与超级管理员的权限边界 |
+| [Room 长期记忆](docs/ROOM_MEMORY.md) | 记忆存储、检索与用户隔离 |
+| [Room 渲染性能](docs/room-rendering-performance.md) | Live2D 渲染与性能策略 |
+| [Wiki 维护](docs/WIKI.md) | 百科内容与页面维护 |
+| [文章排序](docs/article-ranking.md) | 文章排序与读者互动指标 |
+| [文章封面](docs/FEATURE_COVER_IMAGE.md) | 封面图片功能说明 |
+
+
+## 技术栈
+
+- 前端：Vue 3、Vite、CSS3、原生 JavaScript、Live2D Cubism、Anime.js、Lucide 图标
+- 后端：Node.js、Express、better-sqlite3
+- 数据与缓存：SQLite、可选 Redis、可选 Milvus 向量库
+- 认证：JWT、Cookie、bcryptjs、QQ OAuth、邮箱验证码
+- 存储：本地受控上传、S3 兼容对象存储 / 阿里云 OSS
+- 集成：Agent OS、MCP、RSS / JSON Feed、多邮箱聚合 API
+- 测试：node:test、Playwright
+- 部署：Docker Compose、PM2、Nginx / OpenResty、GitHub Actions、SSH、国内 / 海外双站
+
+## 项目结构
+
+```text
+tsukuyomi-space/
+├── assets/          # 图片、README 示例图、图标、音频和样式等静态资源
+├── backend/         # Express API、SQLite 初始化、路由和中间件
+├── deploy/          # PM2、Nginx、部署脚本样例
+├── docs/            # 部署和维护文档
+├── docker-compose.yml # Docker Compose 生产部署入口
+├── dist/frontend/   # npm run build:web 生成的 Vue 前端产物
+├── live2d-studio/   # Live2D Studio 独立前端
+├── lib/             # Live2D / 前端运行库
+├── models/          # Live2D 模型资源
+├── src/frontend/    # Vue 3 + Vite 主线前端源码
+│   └── styles/      # 设计系统 token、主题、组件、动画和响应式规则
+├── tests/           # API 与 Playwright 端到端测试
+├── .env.example     # 生产环境变量模板
+└── package.json     # 项目脚本与依赖
+```
+
+## 设计系统
+
+前端设计系统位于 `src/frontend/styles/`，用于稳定“简约清爽 + 现代感 + 二次元动漫风格”的整体视觉：
+
+- `tokens.css`：色彩、字体、间距、圆角、阴影、动效时长等基础 token
+- `themes.css`：深色 / 浅色主题变量，以及旧变量名兼容映射
+- `components.css`：按钮、卡片、面板、导航、输入框等通用组件样式
+- `animations.css`：全局背景动效、页面入场和动效节奏
+- `responsive.css`：全局移动端断点和导航响应式规则
+
+新增页面优先使用 `--ts-*` 变量；旧的 `--moon-*`、`--panel`、`--radius` 等变量会继续映射到设计系统，便于逐步迁移。
+
+<details>
+<summary>查看完整模块与 Room / Agent 使用说明</summary>
+
+### 完整模块列表
 
 | 模块 | 说明 |
 | --- | --- |
@@ -69,106 +175,7 @@
 | Terminal | 管理用户权限、友链、访问统计、对象存储和系统配置 |
 | Reality | 联系方式、隐私说明、责任边界和第三方技术 / 素材来源 |
 
-## 技术栈
-
-- 前端：Vue 3、Vite、CSS3、原生 JavaScript、Live2D Cubism、Anime.js、Lucide 图标
-- 后端：Node.js、Express、better-sqlite3
-- 数据与缓存：SQLite、可选 Redis、可选 Milvus 向量库
-- 认证：JWT、Cookie、bcryptjs、QQ OAuth、邮箱验证码
-- 存储：本地受控上传、S3 兼容对象存储 / 阿里云 OSS
-- 集成：Agent OS、MCP、RSS / JSON Feed、多邮箱聚合 API
-- 测试：node:test、Playwright
-- 部署：Docker Compose、PM2、Nginx / OpenResty、GitHub Actions、SSH、国内 / 海外双站
-
-## 设计系统
-
-前端设计系统位于 `src/frontend/styles/`，用于稳定“简约清爽 + 现代感 + 二次元动漫风格”的整体视觉：
-
-- `tokens.css`：色彩、字体、间距、圆角、阴影、动效时长等基础 token
-- `themes.css`：深色 / 浅色主题变量，以及旧变量名兼容映射
-- `components.css`：按钮、卡片、面板、导航、输入框等通用组件样式
-- `animations.css`：全局背景动效、页面入场和动效节奏
-- `responsive.css`：全局移动端断点和导航响应式规则
-
-新增页面优先使用 `--ts-*` 变量；旧的 `--moon-*`、`--panel`、`--radius` 等变量会继续映射到设计系统，便于逐步迁移。
-
-## 快速开始
-
-需要 Node.js 20 或以上版本。
-
-```bash
-npm install
-npm run dev
-```
-
-开发环境会并行启动 API 和前端：
-
-- 前端开发服务：`http://localhost:5173/`
-- API 服务：`http://localhost:3000/api/health`
-
-常用脚本：
-
-- `npm run dev` / `npm run dev:all`：并行启动后端 API 和 Vite 前端
-- `npm run dev:api`：只启动 Express API
-- `npm run dev:web`：只启动 Vite 前端
-- `npm test`：执行语法检查、数据库迁移、API、安全和前端回归测试
-- `npm run test:api`：执行 auth、articles、messages、admin、room memory、MCP 等接口测试
-- `npm run test:e2e`：执行 Playwright 端到端主流程测试，需要先构建前端或提供 `E2E_BASE_URL`
-- `npm run build:web`：构建 Vue 前端产物
-- `npm run build:live2d`：重新构建 Live2D 房间运行时
-
-## 项目结构
-
-```text
-tsukuyomi-space/
-├── assets/          # 图片、README 示例图、图标、音频和样式等静态资源
-├── backend/         # Express API、SQLite 初始化、路由和中间件
-├── deploy/          # PM2、Nginx、部署脚本样例
-├── docs/            # 部署和维护文档
-├── docker-compose.yml # Docker Compose 生产部署入口
-├── dist/frontend/   # npm run build:web 生成的 Vue 前端产物
-├── lib/             # Live2D / 前端运行库
-├── models/          # Live2D 模型资源
-├── src/frontend/    # Vue 3 + Vite 主线前端源码
-│   └── styles/      # 设计系统 token、主题、组件、动画和响应式规则
-├── tests/           # API 与 Playwright 端到端测试
-├── .env.example     # 生产环境变量模板
-└── package.json     # 项目脚本与依赖
-```
-
-## 配置
-
-生产环境必须设置：
-
-- `NODE_ENV=production`
-- `JWT_SECRET`：至少 32 字符，建议用 `openssl rand -base64 48` 生成
-- `MAIL_CREDENTIAL_KEY`：用于加密聚合邮箱凭据，建议使用与 JWT 不同的独立随机密钥
-- `ADMIN_PASSWORD`：首次创建或重置管理员时使用
-- `CORS_ORIGINS`：线上域名，例如 `https://your-domain.example`
-- `DATA_DIR` 或 `DB_PATH`：SQLite 数据库存放路径
-- `REDIS_URL`：可选，例如 `redis://127.0.0.1:6379/0`。配置后验证码、限流、天气缓存、登录失败次数和 token 黑名单会优先使用 Redis；未配置或 Redis 暂不可用时会退回进程内存储。
-
-复制 `.env.example` 到服务器的 `/etc/tsukuyomi-space/tsukuyomi-space.env`。真实 `.env`、密码、API Key 不应提交到仓库。
-
-## 数据库迁移
-
-启动时会自动执行 `backend/db/migrations/` 下按版本号排序的迁移脚本，并把执行记录写入 `schema_migrations` 表。
-
-生产部署前必须先备份 SQLite。`deploy/deploy.sh` 会在安装依赖、构建和 PM2 reload 前自动备份 `DB_PATH` 或 `DATA_DIR/tsukuyomi.db` 到 `BACKUP_DIR`，默认目录是 `/var/backups/tsukuyomi-space/deploy`。脚本会分别清理该目录和 `DATABASE_BACKUP_DIR`（默认 `DATA_DIR/backups`），每处只保留由 `BACKUP_RETENTION` 指定的最新备份，默认 10 份。
-
-新增迁移时使用 `NNN_description.js` 命名，例如 `003_add_article_indexes.js`，并导出：
-
-```js
-module.exports = {
-  version: '003',
-  name: 'add_article_indexes',
-  up(db) {
-    db.exec('CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status)');
-  }
-};
-```
-
-## Room / Agent 能力
+### Room / Agent 能力
 
 Room 页面正在向个人 Agent 方向演进，当前能力包括：
 
@@ -201,7 +208,7 @@ Room 相关设置主要保存在浏览器本地，包括：
 [Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS','https://yachiyo.hk,https://yachiyo.com.cn,https://cho-kaguyahime.cn','User')
 ```
 
-## 内容、分享与订阅
+### 内容、分享与订阅
 
 - 文章、留言、图库、像素画和友链等公开列表使用路径级缓存破坏与服务端缓存失效，发布后会请求最新内容。
 - 文章详情和像素作品提供复制链接及社交媒体分享入口；用户分享行为会进入每日成长任务，但奖励只由服务端判定一次。
@@ -216,46 +223,11 @@ Room 相关设置主要保存在浏览器本地，包括：
 VITE_SITE_LANGUAGE=en npm run build:web
 ```
 
-## Docker 快速部署
-
-```bash
-cp .env.docker.example .env.docker
-# 修改 JWT_SECRET、ADMIN_PASSWORD、CORS_ORIGINS 等生产配置
-docker compose up -d --build
-curl http://127.0.0.1:3280/api/health
-
-# Optional on a sufficiently large host: enable Milvus before importing the persona corpus.
-docker compose --profile milvus up -d
-docker compose cp ./data/yachiyo_novel_detailed_corpus.txt tsukuyomi-space:/data/yachiyo_novel_detailed_corpus.txt
-docker compose exec tsukuyomi-space npm run import:yachiyo -- --file /data/yachiyo_novel_detailed_corpus.txt --clear
-```
-
-Docker 部署会把 SQLite 持久化到 Compose 命名卷 `tsukuyomi-data`，容器内路径为 `/data/tsukuyomi.db`。SQLite 向量检索是默认的轻量记忆后端；Milvus 通过 `milvus` profile 按需启用。服务器本地额外音乐、视频背景和 Live2D 模型推荐通过 `docker-compose.resources.example.yml` 只读挂载，不打进镜像。
-
-推荐更新命令：
-
-```bash
-bash deploy/docker-deploy.sh
-```
-
-## 部署
-
-推荐新环境优先使用 Docker Compose；现有服务器也可以继续使用 PM2 运行后端，Nginx 处理静态文件并反向代理 `/api/`：
-
-```bash
-bash deploy/deploy.sh
-
-# PM2 deployments can import the persona corpus from the host filesystem.
-ROOM_MEMORY_VECTOR_BACKEND=milvus MILVUS_ADDRESS=127.0.0.1:19530 npm run import:yachiyo -- --file "E:\visualstudio\yachiyo_novel_detailed_corpus.txt" --clear
-```
-
-完整步骤见 [docs/DEPLOY.md](docs/DEPLOY.md)。
-
-当前生产环境采用国内完整应用与海外英文静态前端双站部署。前端通过带哈希的静态资源和原子 release 切换发布，避免更新过程中出现混合版本。
+</details>
 
 ## 安全说明
 
-- 生产环境没有强 `JWT_SECRET` 会拒绝启动。
+- 生产环境的 `JWT_SECRET` 少于 32 字符时会拒绝启动。
 - 生产环境首次创建管理员时必须提供 `ADMIN_PASSWORD`。
 - 管理员终端所有数据接口都需要管理员 JWT。
 - API 已加入基础安全响应头、CORS 白名单和 Redis 优先的限流。
@@ -267,6 +239,18 @@ ROOM_MEMORY_VECTOR_BACKEND=milvus MILVUS_ADDRESS=127.0.0.1:19530 npm run import:
 - 权限模型见 [docs/PERMISSIONS.md](docs/PERMISSIONS.md)。
 - Room 长期记忆说明见 [docs/ROOM_MEMORY.md](docs/ROOM_MEMORY.md)。
 
+## 支持项目
+
+如果月读空间为你带来了帮助，可以通过爱发电自愿支持服务器、对象存储、CDN 与持续维护。支持不会影响站内功能、内容审核或用户权限。
+
+<p align="center">
+  <a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">
+    <img src="assets/images/support/afdian-redchenk.jpg" width="240" alt="通过爱发电支持 redchenk 和月读空间">
+  </a>
+</p>
+
+<p align="center"><a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">前往爱发电支持月读空间</a></p>
+
 ## 技术与素材来源
 
 - Agent OS 页面音乐 App 的技术实现来源于 [firefly20041001/Yachiyo](https://github.com/firefly20041001/yachiyo)，原项目采用 Electron、React、TypeScript，并以 Apache-2.0 许可证发布。
@@ -276,4 +260,4 @@ ROOM_MEMORY_VECTOR_BACKEND=milvus MILVUS_ADDRESS=127.0.0.1:19530 npm run import:
 
 ## License
 
-项目自有代码以 MIT 许可证发布。第三方代码、模型、音乐、图片和角色素材分别遵循其原始许可证与权利声明。
+项目自有代码以 [MIT 许可证](LICENSE)发布。第三方代码、模型、音乐、图片和角色素材分别遵循其原始许可证与权利声明。
