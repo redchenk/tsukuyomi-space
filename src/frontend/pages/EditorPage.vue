@@ -34,6 +34,8 @@ const editor = reactive({
   messageType: 'error',
   loadError: '',
   submitting: false,
+  summarizing: false,
+  summaryMessage: '',
   loading: true,
   assetPicker: {
     open: false,
@@ -76,6 +78,7 @@ function serializeEditorContent(content) {
 }
 
 function resetEditorForm(article = null) {
+  editor.summaryMessage = '';
   editor.currentArticle = article;
   editor.coverImageBase64 = article?.cover_image || null;
   editor.coverImageAssetId = article?.cover_image_asset_id || null;
@@ -373,13 +376,14 @@ function removeEditorCover() {
 }
 
 async function handleEditorSubmit() {
+  if (editor.submitting || editor.summarizing) return;
   const title = editor.form.title.trim();
   const category = editor.form.category;
   const readTime = editor.form.readTime.trim();
   const excerpt = editor.form.excerpt.trim();
   const content = serializeEditorContent(editor.form.content).trim();
 
-  if (!title || !category || !readTime || !excerpt || !content) {
+  if (!title || !category || !readTime || !content) {
     showMessage('error', props.t.editorRequired);
     return;
   }
@@ -429,6 +433,40 @@ async function handleEditorSubmit() {
     showMessage('error', props.t.editorSubmitFailed + (error.message || props.t.editorNetworkFailed));
   } finally {
     editor.submitting = false;
+  }
+}
+
+async function generateExcerpt() {
+  if (editor.summarizing || editor.submitting) return;
+  const content = serializeEditorContent(editor.form.content).trim();
+  if (!content) {
+    editor.summaryMessage = props.t.editorSummaryNeedsContent;
+    return;
+  }
+  const previousExcerpt = editor.form.excerpt;
+  const articleId = currentArticleId.value;
+  editor.summarizing = true;
+  editor.summaryMessage = '';
+  try {
+    const response = await authFetch(session.value?.admin ? '/api/admin/articles/summarize' : '/api/articles/summarize', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ content, content_format: 'markdown' })
+    });
+    const result = await parseResponse(response);
+    if (articleId !== currentArticleId.value) return;
+    if (!result.success) throw new Error(result.message || props.t.editorSummaryFailed);
+    // A slow response must not replace newer typing or another article's form.
+    if (content !== serializeEditorContent(editor.form.content).trim() || previousExcerpt !== editor.form.excerpt) {
+      editor.summaryMessage = props.t.editorSummaryChanged;
+      return;
+    }
+    editor.form.excerpt = result.data.excerpt;
+    editor.summaryMessage = props.t.editorSummaryReady;
+  } catch (error) {
+    if (articleId === currentArticleId.value) editor.summaryMessage = error.message || props.t.editorSummaryFailed;
+  } finally {
+    editor.summarizing = false;
   }
 }
 
@@ -569,15 +607,21 @@ watch(currentArticleId, initEditor);
         </div>
 
         <div class="form-group">
-          <label for="editorExcerpt">{{ t.editorFieldExcerpt }}</label>
+          <div class="editor-excerpt-heading">
+            <label for="editorExcerpt">{{ t.editorFieldExcerpt }}</label>
+            <button class="ghost-btn" type="button" :disabled="editor.summarizing || editor.submitting" :aria-busy="editor.summarizing" @click="generateExcerpt">
+              {{ editor.summarizing ? t.editorSummaryGenerating : t.editorSummaryGenerate }}
+            </button>
+          </div>
           <textarea
             id="editorExcerpt"
             v-model="editor.form.excerpt"
             maxlength="200"
-            required
+            aria-describedby="editorExcerptHint editorSummaryStatus"
             :placeholder="t.editorExcerptPh"
           ></textarea>
-          <div class="help-text">{{ t.editorExcerptHint }}</div>
+          <div id="editorExcerptHint" class="help-text">{{ t.editorExcerptHint }}</div>
+          <div id="editorSummaryStatus" class="help-text" role="status" aria-live="polite">{{ editor.summaryMessage }}</div>
         </div>
 
         <div class="form-group">
@@ -617,7 +661,7 @@ watch(currentArticleId, initEditor);
         </div>
 
         <div class="btn-group">
-          <button type="submit" class="primary-btn" :disabled="editor.submitting" :aria-busy="editor.submitting">{{ submitLabel }}</button>
+          <button type="submit" class="primary-btn" :disabled="editor.submitting || editor.summarizing" :aria-busy="editor.submitting">{{ submitLabel }}</button>
           <button type="button" class="ghost-btn" @click="cancelEdit">{{ t.cancel }}</button>
         </div>
       </form>

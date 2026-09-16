@@ -366,6 +366,8 @@ router.get('/articles/:id', (req, res) => {
     }
 });
 
+router.post('/articles/summarize', require('./routes/article-summary'));
+
 router.put('/articles/:id', async (req, res) => {
     try {
         const id = asInt(req.params.id);

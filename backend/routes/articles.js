@@ -11,6 +11,8 @@ const { parsePositiveInt, safeJsonParse } = require('../validators');
 
 const router = express.Router();
 
+router.post('/summarize', authenticateToken, require('./article-summary'));
+
 function recordArticleGrowth(userId, articleId) {
     try {
         return userGrowth.recordDailyActivity(userId, 'article_publish', articleId);

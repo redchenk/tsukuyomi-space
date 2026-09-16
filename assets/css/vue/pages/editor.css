@@ -80,6 +80,20 @@
     font-size: 0.8rem;
 }
 
+.editor-excerpt-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.editor-excerpt-heading label { margin: 0; }
+.editor-excerpt-heading .ghost-btn { min-height: 44px; padding: 8px 14px; font-size: 14px; }
+.editor-form #editorExcerpt { min-height: 120px; }
+.editor-form #editorSummaryStatus:empty { display: none; }
+
 .markdown-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -471,4 +485,3 @@ body .editor-asset-card {
         display: grid;
     }
 }
-

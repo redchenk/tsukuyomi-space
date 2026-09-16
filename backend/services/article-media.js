@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const db = require('../db');
 const config = require('../config');
 const objectStorage = require('./object-storage');
+const { resolveArticleExcerpt } = require('./article-summary');
 const { detectMimeFromMagic, validateUserUpload } = require('./file-security');
 
 const DATA_IMAGE_PATTERN = /^data:image\/(png|jpe?g|gif|webp);base64,([\s\S]+)$/i;
@@ -419,6 +420,7 @@ async function normalizeArticleMediaPayload(article, { articleId = null, ownerId
 
     const body = await replaceInlineDataImages(result.content || '', { articleId, ownerId });
     result.content = body.content;
+    result.excerpt = resolveArticleExcerpt(result.excerpt, result.content, result.contentFormat);
     assetIds.push(...body.assetIds);
     result.mediaAssetIds = assetIds;
     return result;

@@ -448,6 +448,10 @@ watch(articleId, loadArticle);
             <span>{{ readingTimeLabel(article, lang, plainText) }}</span>
             <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} {{ readerCopy.views }}</span>
           </div>
+          <section v-if="article.excerpt?.trim()" class="article-excerpt" :aria-label="t.editorFieldExcerpt">
+            <h2>{{ t.editorFieldExcerpt }}</h2>
+            <p>{{ article.excerpt }}</p>
+          </section>
           <div class="article-social-actions">
             <button class="article-bookmark-btn article-like-btn" :class="{ liked: articleLike.liked }" type="button" :disabled="articleLike.loading" :aria-busy="articleLike.loading" :aria-pressed="articleLike.liked" @click="toggleArticleLike">
               <TsIcon :class="{ 'ts-status-loader-icon': articleLike.loading }" :name="articleLike.loading ? 'loader' : 'heart'" :size="17" />

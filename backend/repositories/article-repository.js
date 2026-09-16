@@ -3,9 +3,14 @@ const articleCategories = require('./article-category-repository');
 const { createSlug } = require('../utils/slug');
 const { publicAvatarUrl } = require('../utils/avatar');
 const { contentQuality, featuredScore, MAX_CONTENT_LENGTH } = require('../services/article-ranking');
+const { summarizeArticle, resolveArticleExcerpt } = require('../services/article-summary');
 
 db.function('article_content_quality', { deterministic: true }, (content, format) => contentQuality(content, format));
 db.function('article_featured_score', { deterministic: true }, (quality, views, likes, bookmarks, date, now) => featuredScore(quality, views, likes, bookmarks, date, now));
+db.function('article_auto_excerpt', { deterministic: true }, (content, format) => summarizeArticle(content, format));
+
+const ARTICLE_EXCERPT = `CASE WHEN trim(COALESCE(a.excerpt, '')) = ''
+    THEN article_auto_excerpt(a.content, a.content_format) ELSE a.excerpt END AS excerpt`;
 
 const ARTICLE_COUNTS = `
     (SELECT COUNT(*) FROM article_likes al WHERE al.article_id = a.id) AS like_count,
@@ -40,6 +45,7 @@ function compactArticleRow(row) {
     } = row;
     return {
         ...article,
+        excerpt: resolveArticleExcerpt(article.excerpt, article.content, article.content_format),
         cover_image: coverAssetExists && article.cover_image_asset_id
             ? `/api/assets/proxy/${encodeURIComponent(String(article.cover_image_asset_id))}`
             : article.cover_image,
@@ -60,7 +66,7 @@ function compactArticleRows(rows) {
 
 function listArticles({ category, limit, offset, sort = 'pinned', now = Date.now() }) {
     let query = `
-        SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.tags, a.author_id,
+        SELECT a.id, a.title, a.slug, ${ARTICLE_EXCERPT}, a.category, a.tags, a.author_id,
             a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             ${ARTICLE_COUNTS},
@@ -107,7 +113,7 @@ function listArticles({ category, limit, offset, sort = 'pinned', now = Date.now
 function listRecentPublishedArticles(limit = 8) {
     const safeLimit = Math.max(1, Math.min(Number.parseInt(limit, 10) || 8, 30));
     return compactArticleRows(db.prepare(`
-        SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.tags, a.author_id,
+        SELECT a.id, a.title, a.slug, ${ARTICLE_EXCERPT}, a.category, a.tags, a.author_id,
             a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             u.username AS author_username,

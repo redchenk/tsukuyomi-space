@@ -377,18 +377,20 @@ onMounted(loadArticles);
           </div>
           <h3 class="stage-card-title">{{ article.title }}</h3>
           <p class="stage-card-excerpt">{{ article.excerpt }}</p>
-          <div class="stage-engagement">
-            <span v-for="metric in [{ field: 'view_count', icon: 'eye', label: stageRankingCopy.views }, { field: 'like_count', icon: 'heart', label: stageRankingCopy.likes }, { field: 'bookmark_count', icon: 'bookmark', label: stageRankingCopy.bookmarks }]" :key="metric.field" :aria-label="`${stageFormatNumber(article[metric.field])} ${metric.label}`" :title="metric.label">
-              <TsIcon :name="metric.icon" :size="14" aria-hidden="true" />
-              {{ stageFormatNumber(article[metric.field]) }}
-            </span>
-          </div>
-          <div class="stage-card-footer">
-            <span v-if="readingTimeLabel(article, lang)" class="read-time">{{ readingTimeLabel(article, lang) }}</span>
-            <time class="stage-publish-time" :datetime="stagePublishedAt(article)">
-              <TsIcon name="calendar" :size="14" />
-              <span>{{ stagePublishedTime(article) }}</span>
-            </time>
+          <div class="stage-card-details">
+            <div class="stage-engagement">
+              <span v-for="metric in [{ field: 'view_count', icon: 'eye', label: stageRankingCopy.views }, { field: 'like_count', icon: 'heart', label: stageRankingCopy.likes }, { field: 'bookmark_count', icon: 'bookmark', label: stageRankingCopy.bookmarks }]" :key="metric.field" :aria-label="`${stageFormatNumber(article[metric.field])} ${metric.label}`" :title="metric.label">
+                <TsIcon :name="metric.icon" :size="14" aria-hidden="true" />
+                {{ stageFormatNumber(article[metric.field]) }}
+              </span>
+            </div>
+            <div class="stage-card-footer">
+              <span v-if="readingTimeLabel(article, lang)" class="read-time">{{ readingTimeLabel(article, lang) }}</span>
+              <time class="stage-publish-time" :datetime="stagePublishedAt(article)">
+                <TsIcon name="calendar" :size="14" />
+                <span>{{ stagePublishedTime(article) }}</span>
+              </time>
+            </div>
           </div>
         </div>
         <div v-if="article.cover_image" class="stage-card-cover">
