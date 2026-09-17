@@ -62,10 +62,10 @@ describe('constrained-device performance policy', () => {
         const animations = source('src/frontend/styles/animations.css');
 
         assert.match(packageJson.dependencies.animejs, /^\^4\./);
-        assert.match(motion, /from 'animejs\/waapi'/);
+        assert.match(motion, /element\.animate\(/);
         assert.match(motion, /isReducedPerformance\(\)/);
         assert.match(motion, /prefers-reduced-motion: reduce/);
-        assert.match(motion, /MAX_ROUTE_TARGETS = 6/);
+        assert.doesNotMatch(motion, /querySelectorAll|filter:|blur\(|scale\(/);
         assert.doesNotMatch(motion, /(?:width|height|top|left):\s*\[/);
         assert.match(app, /routeProgressVisible/);
         assert.match(app, /ROUTE_PROGRESS_DELAY_MS = 96/);

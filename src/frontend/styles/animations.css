@@ -216,6 +216,11 @@ body.vue-global-bg-route::after {
     min-height: 100svh;
 }
 
+.route-view-frame { min-width: 0; }
+.route-view-frame:is([data-route-name="access"], [data-route-name="login"], [data-route-name="register"], [data-route-name="room"], [data-route-name="roomShared"], [data-route-name="live2d"], [data-route-name="pixel"], [data-route-name="game"]) {
+    display: contents;
+}
+
 .route-navigation-progress {
     position: fixed;
     inset: 0 0 auto;
@@ -247,7 +252,7 @@ body.vue-global-bg-route::after {
 }
 
 .route-motion-target {
-    will-change: opacity, transform;
+    will-change: opacity;
 }
 
 .page :where(.stage-card, .article-card, .gallery-card, .gallery-tile, .plaza-card, .plaza-message, .message-card, .uc-card, .profile-card, .arena-panel, .arena-card, .artwork-card, .room-settings-card, .settings-card, .terminal-panel, .notification-card, .attachment-card, .panel, .glass-card, [class*="-card"]:not([class*="auth-"]), [class*="-tile"]) {

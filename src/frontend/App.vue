@@ -7,7 +7,9 @@ import AppShell from './layouts/AppShell.vue';
 import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
 import { isAuthPath, withAuthRedirect } from './utils/authRedirect';
-import { animateRouteEnter, cancelRouteMotion } from './utils/motion';
+import { animateRouteEnter, animateRouteLeave, cancelRouteMotion } from './utils/motion';
+import { installRouteLinks, routeViewKey } from './utils/routeNavigation';
+import { warmRoutePath } from './router';
 import { forcedSiteLanguage } from './utils/siteVariant';
 import {
   getPerformanceProfile,
@@ -64,6 +66,8 @@ let cancelPetWarmup = null;
 let removeRouteProgressGuard = null;
 let removeRouteProgressHook = null;
 let removeRouteErrorHook = null;
+let removeRouteLinks = null;
+let routeMotionImmediate = false;
 const viewRecordRequests = new Map();
 
 function hydrateCachedUser() {
@@ -200,6 +204,8 @@ function scheduleRouteProgress(to, from) {
   if (typeof window === 'undefined' || !from?.name || to.fullPath === from.fullPath) return;
   const routeOwnsLoading = ['access', 'accessAlias', 'room', 'live2d'].includes(String(from.name))
     || ['room', 'live2d'].includes(String(to.name));
+  routeMotionImmediate = ['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'live2d', 'pixel', 'game']
+    .some(name => name === to.name || name === from.name);
   if (routeOwnsLoading) return;
   window.clearTimeout(routeProgressTimer);
   routeProgressVisible.value = false;
@@ -221,12 +227,35 @@ function finishRouteProgress() {
 }
 
 function enterRoute(element, done) {
-  animateRouteEnter(element, done);
+  if (routeMotionImmediate) {
+    done();
+    finishRouteProgress();
+    return;
+  }
+  animateRouteEnter(element, () => {
+    done();
+    if (element.dataset.routeKey !== routeViewKey(route)) return;
+    finishRouteProgress();
+    if (!route.hash) {
+      const heading = element.querySelector('h1');
+      if (heading) {
+        const hadTabIndex = heading.hasAttribute('tabindex');
+        heading.setAttribute('tabindex', '-1');
+        heading.focus({ preventScroll: true });
+        if (!hadTabIndex) heading.addEventListener('blur', () => heading.removeAttribute('tabindex'), { once: true });
+      }
+    }
+  });
 }
 
 function leaveRoute(element, done) {
-  cancelRouteMotion(element);
-  done();
+  if (routeMotionImmediate) {
+    cancelRouteMotion(element);
+    // Let Vue install the out-in placeholder before completing an instant leave.
+    queueMicrotask(done);
+    return;
+  }
+  animateRouteLeave(element, done);
 }
 
 async function logout() {
@@ -336,8 +365,11 @@ router.isReady().then(() => {
 });
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
+  removeRouteLinks = installRouteLinks({ router, navigate: go, prefetch: warmRoutePath });
   removeRouteProgressGuard = router.beforeEach((to, from) => scheduleRouteProgress(to, from));
-  removeRouteProgressHook = router.afterEach(() => finishRouteProgress());
+  removeRouteProgressHook = router.afterEach((to, from, failure) => {
+    if (failure || routeViewKey(to) === routeViewKey(from)) finishRouteProgress();
+  });
   removeRouteErrorHook = router.onError(() => finishRouteProgress());
   applyPublicSettings();
   scheduleSitePet();
@@ -353,6 +385,7 @@ onUnmounted(() => {
   removeRouteProgressGuard?.();
   removeRouteProgressHook?.();
   removeRouteErrorHook?.();
+  removeRouteLinks?.();
   window.removeEventListener('pageshow', handlePageShow);
   window.removeEventListener(PERFORMANCE_PROFILE_EVENT, handlePerformanceProfile);
   document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -377,26 +410,34 @@ onUnmounted(() => {
     <div class="route-stage" :class="{ 'route-stage-immersive': isImmersiveRoute }">
       <RouterView v-slot="{ Component, route: viewRoute }">
         <Transition
-          appear
+          mode="out-in"
           :css="false"
           @enter="enterRoute"
           @leave="leaveRoute"
           @enter-cancelled="cancelRouteMotion"
+          @leave-cancelled="cancelRouteMotion"
         >
-          <component
-            :is="Component"
-            :key="viewRoute.fullPath"
-            class="route-view"
-            :lang="lang"
-            :t="t"
-            :theme="theme"
-            :user="user"
-            :route-name="route.name"
-            @auth-changed="refreshUser"
-            @go="go"
-            @logout="logout"
-            @toggle-theme="toggleTheme"
-          />
+          <div
+            v-if="Component"
+            :key="routeViewKey(viewRoute)"
+            :data-route-key="routeViewKey(viewRoute)"
+            :data-route-name="viewRoute.name"
+            class="route-view-frame"
+          >
+            <component
+              :is="Component"
+              class="route-view"
+              :lang="lang"
+              :t="t"
+              :theme="theme"
+              :user="user"
+              :route-name="route.name"
+              @auth-changed="refreshUser"
+              @go="go"
+              @logout="logout"
+              @toggle-theme="toggleTheme"
+            />
+          </div>
         </Transition>
       </RouterView>
     </div>

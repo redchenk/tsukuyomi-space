@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { applyRouteSeo } from '../utils/seo';
+import { cancelPendingRouteScroll, scrollToRoute } from '../utils/routeNavigation';
 import { isReducedPerformance, refreshPerformanceProbe, scheduleIdleTask } from '../utils/performance';
 
 function loadRoute(componentLoader, styleLoader) {
@@ -319,14 +320,11 @@ export const routes = [
 
 export const router = createRouter({
   history: createWebHistory(),
-  scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) return savedPosition;
-    // Wiki owns section navigation; keep query changes within the current page.
-    if (to.path === from.path || to.hash) return false;
-    return { top: 0, behavior: 'instant' };
-  },
+  scrollBehavior: scrollToRoute,
   routes
 });
+
+router.beforeEach(() => { cancelPendingRouteScroll(); });
 
 const routeWarmups = {
   access: [HubPage],
@@ -406,7 +404,8 @@ function scheduleRouteWarmup(to) {
   });
 }
 
-router.afterEach((to) => {
+router.afterEach((to, from, failure) => {
+  if (failure) return;
   applyRouteSeo(to);
   refreshPerformanceProbe();
   scheduleRouteWarmup(to);
