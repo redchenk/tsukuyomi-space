@@ -218,13 +218,18 @@ describe('frontend navigation routes', () => {
         assert.match(userProfile, /title: `\$\{publicUser\.username \|\| username\.value\}的公开主页`/);
     });
 
-    it('loads every paginated article before applying local stage filters', () => {
+    it('loads only the visible stage page and sends filters to the server', () => {
         const stage = source('src/frontend/pages/StagePage.vue');
+        const service = source('src/frontend/services/stageArticles.js');
 
-        assert.match(stage, /STAGE_FETCH_LIMIT = 100/);
-        assert.match(stage, /\/api\/articles\?limit=\$\{STAGE_FETCH_LIMIT\}&page=\$\{page\}/);
-        assert.match(stage, /result\.pagination\?\.totalPages/);
-        assert.match(stage, /while \(page <= totalPages\)/);
+        assert.match(stage, /loadStageArticles\(stageArticleRequest\(\)\)/);
+        assert.match(stage, /limit: STAGE_PAGE_SIZE/);
+        assert.match(stage, /category: stageCategory\.value === 'all' \? '' : stageCategory\.value/);
+        assert.match(stage, /search: stageSearch\.value/);
+        assert.doesNotMatch(stage, /while \(page <= totalPages\)/);
+        assert.match(service, /const STAGE_PAGE_SIZE = 6/);
+        assert.match(service, /params\.set\('q', options\.search\)/);
+        assert.match(service, /STAGE_CACHE_MAX_AGE_MS = 30 \* 1000/);
     });
 
     it('routes the main-stage preview card to the stage index', () => {

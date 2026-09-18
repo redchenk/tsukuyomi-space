@@ -32,12 +32,13 @@ function withParsedTags(article, categoryIds = new Map(articleCategories.list().
 
 function listArticlesPayload(req) {
     const { category } = req.query;
+    const query = String(req.query.q || '').trim().slice(0, 120);
     const page = parsePositiveInt(req.query.page, 1);
     const limit = Math.min(parsePositiveInt(req.query.limit, 100), 100);
     const offset = (page - 1) * limit;
 
     const sort = ['featured', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
-    const result = articleRepository.listArticles({ category, limit, offset, sort });
+    const result = articleRepository.listArticles({ category, query, limit, offset, sort });
     const categoryIds = new Map(articleCategories.list().map(item => [item.name, item.id]));
     const articles = result.articles.map(article => withParsedTags(article, categoryIds));
 
@@ -56,7 +57,8 @@ function listArticlesPayload(req) {
 function articleListCacheKey(req) {
     const limit = Math.min(parsePositiveInt(req.query.limit, 100), 100);
     const sort = ['featured', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
-    return `public:articles:${sort}:${String(req.query.category || '')}:${parsePositiveInt(req.query.page, 1)}:${limit}`;
+    const query = String(req.query.q || '').trim().slice(0, 120);
+    return `public:articles:${sort}:${String(req.query.category || '')}:${query}:${parsePositiveInt(req.query.page, 1)}:${limit}`;
 }
 
 function sendArticleList(req, res) {

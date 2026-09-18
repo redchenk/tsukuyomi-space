@@ -64,7 +64,7 @@ function compactArticleRows(rows) {
     return rows.map(compactArticleRow);
 }
 
-function listArticles({ category, limit, offset, sort = 'pinned', now = Date.now() }) {
+function listArticles({ category, query: searchQuery, limit, offset, sort = 'pinned', now = Date.now() }) {
     let query = `
         SELECT a.id, a.title, a.slug, ${ARTICLE_EXCERPT}, a.category, a.tags, a.author_id,
             a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
@@ -88,6 +88,16 @@ function listArticles({ category, limit, offset, sort = 'pinned', now = Date.now
         query += ' AND a.category = ?';
         countQuery += ' AND category = ?';
         params.push(category);
+    }
+
+    const normalizedSearch = String(searchQuery || '').trim().slice(0, 120);
+    if (normalizedSearch) {
+        const searchCondition = (prefix = '') => `(instr(lower(COALESCE(${prefix}title, '')), lower(?)) > 0
+            OR instr(lower(CASE WHEN trim(COALESCE(${prefix}excerpt, '')) = ''
+                THEN article_auto_excerpt(${prefix}content, ${prefix}content_format) ELSE ${prefix}excerpt END), lower(?)) > 0)`;
+        query += ` AND ${searchCondition('a.')}`;
+        countQuery += ` AND ${searchCondition()}`;
+        params.push(normalizedSearch, normalizedSearch);
     }
 
     if (sort === 'featured') {

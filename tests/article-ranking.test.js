@@ -115,6 +115,21 @@ test('pins stay first while featured and latest preserve their own order before 
     assert.equal(live.body.data[0].id, emptyId);
 });
 
+test('server-side article search keeps pagination compact and searches titles and generated excerpts', async () => {
+    const byTitle = await call('/api/articles?category=ranking-fixture&limit=6&sort=latest&q=实质内容');
+    assert.equal(byTitle.body.pagination.total, 1);
+    assert.equal(byTitle.body.data.length, 1);
+    assert.equal(byTitle.body.data[0].id, strongId);
+
+    const byContent = await call('/api/articles?category=ranking-fixture&limit=6&sort=featured&q=验证结果');
+    assert.equal(byContent.body.pagination.total, 1);
+    assert.equal(byContent.body.data[0].id, strongId);
+
+    const missing = await call('/api/articles?category=ranking-fixture&limit=6&q=不会命中的关键词');
+    assert.equal(missing.body.pagination.total, 0);
+    assert.deepEqual(missing.body.data, []);
+});
+
 test('article likes are authenticated, idempotent, reversible and invalidate the ranking cache', async () => {
     const route = `/api/user/article-likes/${strongId}`;
     assert.equal((await call(route, { method: 'POST' })).response.status, 401);

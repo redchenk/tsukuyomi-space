@@ -82,9 +82,16 @@ test('pinned articles stay first while featured and latest keep their own order'
         { ...article, id: 'pinned', title: '置顶文章', pinned_at: '2026-09-10', featured_score: 8, like_count: 0, bookmark_count: 0, created_at: '2025-01-01', published_at: '2025-01-01', excerpt: '置顶摘要' },
         { ...article, id: 'latest', title: '最新文章', pinned_at: null, featured_score: 12, like_count: 1, bookmark_count: 0, created_at: '2026-09-13', published_at: '2026-09-13', excerpt: '新文摘要' }
     ];
+    const requestedSorts = [];
     await page.route(/\/api\/(?:live\/[^/]+\/)?articles\?/, (route) => {
-        expect(new URL(route.request().url()).searchParams.get('sort')).toBe('featured');
-        return route.fulfill({ json: { success: true, data: articles, pagination: { totalPages: 1, total: 3 } } });
+        const params = new URL(route.request().url()).searchParams;
+        const sort = params.get('sort');
+        requestedSorts.push(sort);
+        expect(params.get('limit')).toBe('6');
+        const data = sort === 'featured'
+            ? [articles[1], articles[0], articles[2]]
+            : [articles[1], articles[2], articles[0]];
+        return route.fulfill({ json: { success: true, data, pagination: { page: 1, limit: 6, totalPages: 1, total: 3 } } });
     });
     await page.goto('/stage');
     await expect(page.getByRole('button', { name: '最新优先', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -100,6 +107,31 @@ test('pinned articles stay first while featured and latest keep their own order'
     await page.reload();
     await expect(page.getByRole('button', { name: '精选优先', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '精选旧文', '最新文章']);
+    expect(requestedSorts).toEqual(['latest', 'featured', 'featured']);
+});
+
+test('stage requests only the current server page', async ({ page }) => {
+    const requestedPages = [];
+    await page.route(/\/api\/(?:live\/[^/]+\/)?articles\?/, (route) => {
+        const params = new URL(route.request().url()).searchParams;
+        const requestedPage = Number(params.get('page'));
+        requestedPages.push(requestedPage);
+        expect(params.get('limit')).toBe('6');
+        return route.fulfill({
+            json: {
+                success: true,
+                data: [{ ...article, id: `page-${requestedPage}`, title: `第 ${requestedPage} 页文章`, excerpt: '分页摘要' }],
+                pagination: { page: requestedPage, limit: 6, totalPages: 3, total: 13 }
+            }
+        });
+    });
+
+    await page.goto('/stage?page=2');
+    await expect(page.locator('.stage-card-title')).toHaveText('第 2 页文章');
+    await expect(page.locator('.stage-result-strip')).toContainText('当前 7-12 篇');
+    await page.getByRole('button', { name: '上一页', exact: true }).click();
+    await expect(page.locator('.stage-card-title')).toHaveText('第 1 页文章');
+    expect(requestedPages).toEqual([2, 1]);
 });
 
 test('public content is visible when opening an inactive window', async ({ page }) => {

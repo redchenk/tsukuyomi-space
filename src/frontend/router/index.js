@@ -3,6 +3,12 @@ import { applyRouteSeo } from '../utils/seo';
 import { cancelPendingRouteScroll, scrollToRoute } from '../utils/routeNavigation';
 import { isReducedPerformance, refreshPerformanceProbe, scheduleIdleTask } from '../utils/performance';
 
+function prefetchStageData(options = {}) {
+  import('../services/stageArticles.js')
+    .then(({ prefetchStageArticles }) => prefetchStageArticles(options))
+    .catch(() => {});
+}
+
 function loadRoute(componentLoader, styleLoader) {
   let routePromise = null;
   return () => {
@@ -371,6 +377,14 @@ export function warmRoutePath(path) {
     resolved.matched.forEach((record) => {
       Object.values(record.components || {}).forEach(warmRouteComponent);
     });
+    if (resolved.name === 'stage') {
+      prefetchStageData({
+        page: resolved.query.page,
+        sort: resolved.query.sort,
+        category: resolved.query.category,
+        search: resolved.query.q
+      });
+    }
   } catch (_) {
     // Navigation remains available when an optional intent prefetch cannot resolve.
   }
@@ -396,6 +410,7 @@ function scheduleRouteWarmup(to) {
     cancelPendingRouteWarmup = null;
     if (router.currentRoute.value.name !== to.name) return;
     selectedLoaders.forEach(warmRouteComponent);
+    if (to.name === 'hub') prefetchStageData();
   }, {
     delay: reduced
       ? 2600

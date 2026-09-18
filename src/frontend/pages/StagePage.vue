@@ -1,13 +1,14 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { apiFetch, getAuthToken, parseResponse } from '../api/client';
+import { getAuthToken } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { readingTimeLabel } from '../utils/reading';
-import { compareAppDate, formatDateMinute } from '../utils/time';
+import { formatDateMinute } from '../utils/time';
 import { useArticleCategories } from '../composables/useArticleCategories';
+import { loadStageArticles, STAGE_PAGE_SIZE } from '../services/stageArticles';
 
 const props = defineProps({
   lang: { type: String, default: 'zh' },
@@ -21,6 +22,7 @@ const { hydrateUserLevels, userLevel } = useUserLevels();
 const articles = ref([]);
 const articlesLoading = ref(true);
 const articlesError = ref('');
+const articlePagination = ref({ page: 1, limit: STAGE_PAGE_SIZE, total: 0, totalPages: 1 });
 const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
@@ -34,8 +36,9 @@ const stageRankingCopy = computed(() => ({
 let applyingStageQuery = false;
 const { categories: articleCategories, revision: categoryRevision } = useArticleCategories();
 const categories = computed(() => ['all', ...articleCategories.value.map((item) => item.name)]);
-const STAGE_PAGE_SIZE = 6;
-const STAGE_FETCH_LIMIT = 100;
+let stageMounted = false;
+let stageReloadTimer = 0;
+let stageRequestRevision = 0;
 
 const stagePageCopy = computed(() => props.lang === 'en' ? {
   resultUnit: 'articles', showing: 'Showing', page: 'Page', pageSuffix: '', totalPages: 'of',
@@ -53,51 +56,16 @@ const stagePageCopy = computed(() => props.lang === 'en' ? {
   rangeUnit: '\u7bc7'
 });
 
-function compareStagePinPriority(a, b) {
-  const aPinned = Boolean(a.pinned_at);
-  const bPinned = Boolean(b.pinned_at);
-  if (aPinned !== bPinned) return aPinned ? -1 : 1;
-  if (aPinned && bPinned) return compareAppDate(b.pinned_at, a.pinned_at);
-  return 0;
-}
-
-const filteredArticles = computed(() => {
-  let list = articles.value;
-  if (stageCategory.value !== 'all') {
-    list = list.filter((article) => stageCategoryName(article) === stageCategory.value);
-  }
-  if (stageSearch.value) {
-    const query = stageSearch.value.toLowerCase();
-    list = list.filter((article) => (
-      String(article.title || '').toLowerCase().includes(query) ||
-      String(article.excerpt || '').toLowerCase().includes(query)
-    ));
-  }
-  return [...list].sort((a, b) => {
-    const pinPriority = compareStagePinPriority(a, b);
-    if (pinPriority) return pinPriority;
-    if (stageOrder.value === 'latest') {
-      return compareAppDate(
-        b.published_at || b.created_at || b.publish_date,
-        a.published_at || a.created_at || a.publish_date
-      );
-    }
-    return 0;
-  });
-});
-
-const stageTotalArticles = computed(() => filteredArticles.value.length);
-const stageTotalPages = computed(() => Math.max(1, Math.ceil(stageTotalArticles.value / STAGE_PAGE_SIZE)));
+const filteredArticles = computed(() => articles.value);
+const stageTotalArticles = computed(() => articlePagination.value.total);
+const stageTotalPages = computed(() => Math.max(1, articlePagination.value.totalPages));
 const stageCurrentPage = computed(() => Math.min(Math.max(stagePage.value, 1), stageTotalPages.value));
 const stagePageStart = computed(() => stageTotalArticles.value
   ? (stageCurrentPage.value - 1) * STAGE_PAGE_SIZE + 1
   : 0);
 const stagePageEnd = computed(() => Math.min(stageCurrentPage.value * STAGE_PAGE_SIZE, stageTotalArticles.value));
 
-const pagedArticles = computed(() => {
-  const start = (stageCurrentPage.value - 1) * STAGE_PAGE_SIZE;
-  return filteredArticles.value.slice(start, start + STAGE_PAGE_SIZE);
-});
+const pagedArticles = computed(() => filteredArticles.value);
 
 const stagePageItems = computed(() => {
   const total = stageTotalPages.value;
@@ -207,29 +175,44 @@ function isStagePageGap(item) {
   return typeof item === 'string';
 }
 
+function stageArticleRequest() {
+  return {
+    page: stagePage.value,
+    limit: STAGE_PAGE_SIZE,
+    sort: stageOrder.value,
+    category: stageCategory.value === 'all' ? '' : stageCategory.value,
+    search: stageSearch.value
+  };
+}
+
 async function loadArticles() {
+  const requestRevision = ++stageRequestRevision;
   articlesLoading.value = true;
   articlesError.value = '';
   try {
-    const loaded = [];
-    let page = 1;
-    let totalPages = 1;
-    do {
-      const response = await apiFetch(`/api/articles?limit=${STAGE_FETCH_LIMIT}&page=${page}&sort=featured`);
-      const result = await parseResponse(response);
-      if (!result.success) throw new Error(result.message || props.t.loadFailed);
-      if (Array.isArray(result.data)) loaded.push(...result.data);
-      totalPages = Math.max(1, Number.parseInt(result.pagination?.totalPages, 10) || 1);
-      page += 1;
-    } while (page <= totalPages);
-    articles.value = reconcileArticleCategories(loaded);
-    await hydrateUserLevels(loaded.map((article) => article.author_id)).catch(() => {});
+    const result = await loadStageArticles(stageArticleRequest());
+    if (requestRevision !== stageRequestRevision) return;
+    articles.value = reconcileArticleCategories(result.articles);
+    articlePagination.value = result.pagination;
+    if (stagePage.value > result.pagination.totalPages) {
+      stagePage.value = result.pagination.totalPages;
+      return;
+    }
+    hydrateUserLevels(result.articles.map((article) => article.author_id)).catch(() => {});
   } catch (error) {
+    if (requestRevision !== stageRequestRevision) return;
     articles.value = [];
+    articlePagination.value = { page: 1, limit: STAGE_PAGE_SIZE, total: 0, totalPages: 1 };
     articlesError.value = error.message || props.t.loadFailed;
   } finally {
-    articlesLoading.value = false;
+    if (requestRevision === stageRequestRevision) articlesLoading.value = false;
   }
+}
+
+function scheduleArticleReload(delay = 0) {
+  if (!stageMounted) return;
+  window.clearTimeout(stageReloadTimer);
+  stageReloadTimer = window.setTimeout(loadArticles, delay);
 }
 
 function checkEditorAuth(event) {
@@ -271,9 +254,16 @@ function stageOpenAuthor(article) {
   emit('go', `/users/${encodeURIComponent(username)}`);
 }
 
-watch([stageCategory, stageSearch, stageOrder], () => {
+watch([stagePage, stageCategory, stageSearch, stageOrder], (nextValues, previousValues) => {
   if (applyingStageQuery) return;
-  stagePage.value = 1;
+  const [, nextCategory, nextSearch, nextOrder] = nextValues;
+  const [, previousCategory, previousSearch, previousOrder] = previousValues;
+  const filtersChanged = nextCategory !== previousCategory || nextSearch !== previousSearch || nextOrder !== previousOrder;
+  if (filtersChanged && stagePage.value !== 1) {
+    stagePage.value = 1;
+    return;
+  }
+  scheduleArticleReload(nextSearch !== previousSearch ? 250 : 0);
 });
 watch([stagePage, stageCategory, stageSearch, stageOrder], syncStageUrl);
 watch(stageTotalPages, (total) => {
@@ -281,14 +271,24 @@ watch(stageTotalPages, (total) => {
   if (stagePage.value < 1) stagePage.value = 1;
 });
 watch(() => route.query, (query) => {
-  if (route.name === 'stage') applyStageQuery(query);
+  if (route.name !== 'stage') return;
+  applyStageQuery(query);
+  nextTick(() => scheduleArticleReload());
 });
 applyStageQuery(route.query);
 watch(categoryRevision, () => {
   if (!categories.value.includes(stageCategory.value)) stageCategory.value = 'all';
   articles.value = reconcileArticleCategories(articles.value);
 });
-onMounted(loadArticles);
+onMounted(() => {
+  stageMounted = true;
+  loadArticles();
+});
+onBeforeUnmount(() => {
+  stageMounted = false;
+  stageRequestRevision += 1;
+  window.clearTimeout(stageReloadTimer);
+});
 </script>
 
 <template>

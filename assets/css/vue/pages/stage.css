@@ -208,6 +208,8 @@
     text-decoration: none;
     overflow: hidden;
     height: 180px;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 180px;
 }
 
 .stage-card:hover {
