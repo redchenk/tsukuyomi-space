@@ -141,7 +141,7 @@ function renderBlockContent(content) {
     if (!Array.isArray(blocks)) return renderMarkdown(content, { lang: props.lang });
     return sanitizeRenderedHtml(blocks.map((block) => {
       if (block?.type === 'heading') return `<h2>${escapeHtml(block.text || '')}</h2>`;
-      if (block?.type === 'image' && isSafeMediaUrl(block.url)) return `<figure class="markdown-image"><img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt || '')}" loading="lazy"></figure>`;
+      if (block?.type === 'image' && isSafeMediaUrl(block.url)) return `<figure class="markdown-image"><img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt || '')}" loading="lazy" decoding="async" data-image-bloom></figure>`;
       if (block?.type === 'bilibili') return renderBilibiliEmbed(block.bvid || block.url || block.aid, block.title || 'Bilibili video');
       if (block?.type === 'video' && /bilibili\.com|BV[a-zA-Z0-9]+|av\d+/i.test(`${block.url || ''} ${block.bvid || ''} ${block.aid || ''}`)) return renderBilibiliEmbed(block.bvid || block.url || block.aid, block.title || 'Bilibili video');
       if (block?.type === 'iframe' && block.url) return renderIframeEmbed(block.url, block.title || 'Embedded content', block.height);
@@ -477,7 +477,7 @@ watch(articleId, loadArticle);
           </div>
         </header>
 
-        <img v-if="article.cover_image" class="article-cover" :src="article.cover_image" alt="" loading="eager" decoding="async" fetchpriority="high">
+        <img v-if="article.cover_image" class="article-cover" :src="article.cover_image" alt="" loading="eager" decoding="async" fetchpriority="high" data-image-bloom>
         <div class="article-reading-layout" :class="{ 'has-toc': headings.length > 1 }">
           <aside v-if="headings.length > 1" class="article-toc">
             <details :open="tocOpen" @toggle="tocOpen = $event.target.open">

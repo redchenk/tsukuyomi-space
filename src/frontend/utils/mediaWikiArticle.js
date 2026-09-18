@@ -144,7 +144,7 @@ function mediaPlaceholder(body) {
   const style = width ? ` style="--source-media-width:${width}px"` : '';
   const image = findSourceMedia(filename);
   const media = image
-    ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(filename.replace(/\.[^.]+$/, ''))}" loading="lazy" decoding="async">`
+    ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(filename.replace(/\.[^.]+$/, ''))}" loading="lazy" decoding="async" data-image-bloom>`
     : `<div><span>图片预留</span><code>${escapeHtml(filename)}</code></div>`;
   return `<figure class="wiki-source-media-slot${image ? ' wiki-source-media-resolved' : ''}${alignment}"${style}>
     ${media}

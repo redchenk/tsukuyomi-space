@@ -172,7 +172,7 @@ md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
 };
 const normalImage = md.renderer.rules.image;
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
-    tokens[idx].attrSet('loading', 'lazy'); tokens[idx].attrSet('decoding', 'async');
+    tokens[idx].attrSet('loading', 'lazy'); tokens[idx].attrSet('decoding', 'async'); tokens[idx].attrSet('data-image-bloom', '');
     return normalImage(tokens, idx, options, env, self);
 };
 md.renderer.rules.table_open = () => '<div class="markdown-table-scroll" tabindex="0" role="region" aria-label="Table"><table>\n';

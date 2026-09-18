@@ -32,7 +32,7 @@ function sanitizeRenderedHtml(html) {
         allowedAttributes: {
             '*': ['class', 'aria-label'],
             a: ['href', 'target', 'rel', 'title'],
-            img: ['src', 'alt', 'title', 'loading', 'decoding'],
+            img: ['src', 'alt', 'title', 'loading', 'decoding', 'data-image-bloom'],
             video: ['src', 'poster', 'controls', 'preload', 'playsinline'],
             audio: ['src', 'controls', 'preload'],
             source: ['src', 'type'],

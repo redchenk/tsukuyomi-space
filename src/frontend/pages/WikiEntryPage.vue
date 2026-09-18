@@ -160,7 +160,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
             </button>
           </div>
           <div class="wiki-entry-image-frame">
-            <img v-if="trustedWikiAssetPath(activeImage?.image)" :key="activeImage.image" :src="trustedWikiAssetPath(activeImage.image)" :alt="activeImage.imageAlt">
+            <img v-if="trustedWikiAssetPath(activeImage?.image)" :key="activeImage.image" :src="trustedWikiAssetPath(activeImage.image)" :alt="activeImage.imageAlt" decoding="async" data-image-bloom>
             <div v-else class="wiki-entry-image-placeholder" role="img" :aria-label="`${entry.title}图片预留位置`">
               <TsIcon :name="entry.kind === 'character' ? 'user' : 'image'" :size="38" />
               <strong>{{ entry.title }} · 图片预留</strong>

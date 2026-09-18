@@ -47,6 +47,35 @@ test('short articles have no empty directory, mobile long articles start collaps
     await expect(page.locator('.article-toc')).toHaveCount(0);
 });
 
+test('image bloom keeps a themed placeholder until the article cover is decoded', async ({ page }) => {
+    let releaseImage;
+    const imageGate = new Promise((resolve) => { releaseImage = resolve; });
+    await page.route(/\/api\/(?:live\/[^/]+\/)?articles\/3\/live\//, (route) => route.fulfill({
+        json: { success: true, data: { ...article, cover_image: '/e2e-image-bloom.svg' } }
+    }));
+    await page.route('**/e2e-image-bloom.svg', async (route) => {
+        await imageGate;
+        await route.fulfill({
+            contentType: 'image/svg+xml',
+            body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700"><rect width="1600" height="700" fill="#778cf6"/></svg>'
+        });
+    });
+
+    await page.goto('/article?id=3', { waitUntil: 'domcontentloaded' });
+    const cover = page.locator('.article-cover');
+    await expect(cover).toHaveAttribute('data-image-state', 'pending');
+    const pendingVisual = await cover.evaluate((node) => {
+        const style = getComputedStyle(node);
+        return { backgroundImage: style.backgroundImage, filter: style.filter };
+    });
+    expect(pendingVisual.backgroundImage).toContain('gradient');
+    expect(pendingVisual.filter).not.toBe('none');
+
+    releaseImage();
+    await expect(cover).toHaveAttribute('data-image-state', 'loaded');
+    await expect.poll(() => cover.evaluate((node) => node.naturalWidth)).toBe(1600);
+});
+
 test('pinned articles stay first while featured and latest keep their own order', async ({ page }) => {
     const articles = [
         { ...article, id: 'featured', title: '精选旧文', pinned_at: null, featured_score: 72, like_count: 20, bookmark_count: 12, created_at: '2026-01-01', published_at: '2026-01-01', excerpt: '旧文摘要' },

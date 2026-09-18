@@ -651,6 +651,7 @@ watch(currentArticleId, initEditor);
               class="editor-cover-preview show"
               :src="editor.coverImageBase64"
               alt=""
+              data-image-bloom
             >
             <button
               v-if="editor.coverImageBase64"
@@ -798,7 +799,7 @@ watch(currentArticleId, initEditor);
                 @click="useAsset(asset)"
               >
                 <div class="editor-asset-preview">
-                  <img v-if="assetPreviewType(asset) === 'image'" :src="assetUrl(asset)" alt="" loading="lazy">
+                  <img v-if="assetPreviewType(asset) === 'image'" :src="assetUrl(asset)" alt="" loading="lazy" decoding="async" data-image-bloom>
                   <video v-else-if="assetPreviewType(asset) === 'video'" :src="assetUrl(asset)" preload="metadata" muted playsinline aria-hidden="true"></video>
                   <audio v-else-if="assetPreviewType(asset) === 'audio'" :src="assetUrl(asset)" preload="metadata" aria-hidden="true"></audio>
                   <div v-else class="editor-asset-file">{{ asset.asset_type || 'file' }}</div>

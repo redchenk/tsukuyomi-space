@@ -450,7 +450,7 @@ onUnmounted(() => {
 
       <section v-else-if="state.active === 'gallery'" class="admin-media-grid" aria-label="图库管理">
         <article v-for="asset in state.gallery" :key="asset.id" class="admin-media-card">
-          <img :src="assetUrl(asset)" :alt="assetName(asset)" loading="lazy">
+          <img :src="assetUrl(asset)" :alt="assetName(asset)" loading="lazy" decoding="async" data-image-bloom>
           <div>
             <strong>{{ assetName(asset) }}</strong>
             <span>{{ asset.owner_username || '站点资源' }} · {{ formatDate(asset.created_at) }}</span>
@@ -466,7 +466,7 @@ onUnmounted(() => {
       <section v-else class="admin-list" aria-label="附件管理">
         <article v-for="asset in state.attachments" :key="asset.id" class="admin-row admin-asset-row">
           <div class="admin-asset-icon">
-            <img v-if="isImage(asset)" :src="assetUrl(asset)" alt="" loading="lazy">
+            <img v-if="isImage(asset)" :src="assetUrl(asset)" alt="" loading="lazy" decoding="async" data-image-bloom>
             <TsIcon v-else name="paperclip" :size="20" />
           </div>
           <div class="admin-row-main">

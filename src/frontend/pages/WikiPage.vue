@@ -246,6 +246,7 @@ onBeforeUnmount(() => {
           alt="原创月夜虚拟舞台插画：新月传送门与星空城市"
           fetchpriority="high"
           decoding="async"
+          data-image-bloom
         >
         <div class="wiki-hero-shade" aria-hidden="true"></div>
         <div class="wiki-hero-content">
@@ -386,7 +387,7 @@ onBeforeUnmount(() => {
                 @click="openCharacterEntry(character, $event)"
                 @keydown.enter.prevent="openCharacterEntry(character, $event)"
               >
-                <img v-if="trustedWikiAssetPath(character.image)" :src="trustedWikiAssetPath(character.image)" width="160" height="160" :alt="character.imageAlt" loading="lazy" decoding="async">
+                <img v-if="trustedWikiAssetPath(character.image)" :src="trustedWikiAssetPath(character.image)" width="160" height="160" :alt="character.imageAlt" loading="lazy" decoding="async" data-image-bloom>
                 <div v-else class="wiki-character-placeholder" aria-hidden="true">{{ character.name.slice(0, 1) }}</div>
                 <div class="wiki-character-copy">
                   <div class="wiki-character-title"><div><h3>{{ character.name }}</h3><span>{{ character.original }}</span></div><small>CV {{ character.cv }}</small></div>
@@ -464,7 +465,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="wiki-derivative-grid" aria-label="衍生作品">
               <article v-for="work in derivativeWorks" :key="work.type" class="wiki-derivative-card">
-                <img v-if="trustedWikiAssetPath(work.image)" :src="trustedWikiAssetPath(work.image)" :alt="work.imageAlt" loading="lazy" decoding="async">
+                <img v-if="trustedWikiAssetPath(work.image)" :src="trustedWikiAssetPath(work.image)" :alt="work.imageAlt" loading="lazy" decoding="async" data-image-bloom>
                 <span>{{ work.type }}</span>
                 <h3>{{ work.title }}</h3>
                 <p>{{ work.detail }}</p>

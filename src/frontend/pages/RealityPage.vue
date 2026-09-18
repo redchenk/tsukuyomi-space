@@ -195,6 +195,7 @@ function go(path) {
               height="1032"
               loading="eager"
               decoding="async"
+              data-image-bloom
             >
           </a>
           <div class="reality-support-copy">

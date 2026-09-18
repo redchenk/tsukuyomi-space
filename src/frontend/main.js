@@ -4,9 +4,11 @@ import LoadingSkeleton from './components/LoadingSkeleton.vue';
 import StatusLoader from './components/StatusLoader.vue';
 import { router } from './router';
 import { configureAssetCssVars } from './utils/assetUrl';
+import { installImageBloom } from './utils/imageBloom';
 import { initializePerformanceProfile } from './utils/performance';
 import { enableEnglishStaticInterface } from './i18n/englishStaticInterface';
 import './styles/global.css';
+import './styles/image-bloom.css';
 import './styles/performance.css';
 
 initializePerformanceProfile();
@@ -25,6 +27,8 @@ syncWindowAppearance();
 enableEnglishStaticInterface();
 
 const app = createApp(App);
+const imageBloomRoot = document.getElementById('app');
+if (imageBloomRoot) installImageBloom(imageBloomRoot);
 
 app.component('LoadingSkeleton', LoadingSkeleton);
 app.component('StatusLoader', StatusLoader);

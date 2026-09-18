@@ -1,0 +1,59 @@
+:root {
+    --ts-image-bloom-blur: 14px;
+    --ts-image-bloom-duration: 360ms;
+    --ts-image-bloom-base: color-mix(in srgb, var(--ts-accent) 18%, var(--ts-surface-strong));
+    --ts-image-bloom-glow: color-mix(in srgb, var(--ts-cyan) 30%, var(--ts-bg-soft));
+}
+
+img[data-image-bloom]:not([data-image-bloom="off"]):not([data-image-state="loaded"]):not([data-image-state="error"]) {
+    background-color: var(--ts-image-bloom-base);
+    background-image:
+        radial-gradient(circle at 24% 24%, var(--ts-image-bloom-glow), transparent 48%),
+        linear-gradient(135deg, var(--ts-image-bloom-base), var(--ts-image-bloom-glow));
+    filter: blur(var(--ts-image-bloom-blur)) saturate(0.88);
+    opacity: 0.72;
+    will-change: filter, opacity;
+}
+
+img[data-image-bloom][data-image-state="loaded"] {
+    animation: ts-image-bloom-reveal var(--ts-image-bloom-duration) var(--ts-ease-standard);
+}
+
+img[data-image-bloom][data-image-state="error"] {
+    background: var(--ts-image-bloom-base);
+    filter: none;
+    opacity: 0.72;
+}
+
+@keyframes ts-image-bloom-reveal {
+    from {
+        filter: blur(var(--ts-image-bloom-blur)) saturate(0.88);
+        opacity: 0.72;
+    }
+    to {
+        filter: blur(0) saturate(1);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    img[data-image-bloom][data-image-state="loaded"] {
+        animation: none;
+    }
+
+    img[data-image-bloom]:not([data-image-state="loaded"]):not([data-image-state="error"]) {
+        filter: none;
+        opacity: 0.9;
+        will-change: auto;
+    }
+}
+
+html[data-performance="reduced"] img[data-image-bloom][data-image-state="loaded"] {
+    animation: none;
+}
+
+html[data-performance="reduced"] img[data-image-bloom]:not([data-image-state="loaded"]):not([data-image-state="error"]) {
+    filter: none;
+    opacity: 0.9;
+    will-change: auto;
+}

@@ -274,6 +274,8 @@ onMounted(loadProfile);
                   :src="articleCover(article)"
                   :alt="article.title || ''"
                   loading="lazy"
+                  decoding="async"
+                  data-image-bloom
                   @error="handleArticleCoverError(article)"
                 >
                 <span v-else>

@@ -398,6 +398,7 @@ onMounted(loadArticles);
             :src="article.cover_image"
             alt=""
             class="stage-cover-img"
+            data-image-bloom
             :loading="articleIndex === 0 ? 'eager' : 'lazy'"
             decoding="async"
             :fetchpriority="articleIndex === 0 ? 'high' : 'auto'"

@@ -223,6 +223,7 @@ onMounted(loadLinks);
               :alt="`${link.name} preview`"
               loading="lazy"
               decoding="async"
+              data-image-bloom
               fetchpriority="low"
               referrerpolicy="no-referrer"
               @error="markScreenshotFailed(link.id)"

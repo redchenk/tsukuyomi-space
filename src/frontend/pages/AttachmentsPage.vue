@@ -319,7 +319,7 @@ onBeforeUnmount(() => {
       </section>
       <section v-else class="attachments-grid">
         <article v-for="asset in state.assets" :key="asset.id" class="attachments-card">
-          <img v-if="assetPreviewType(asset) === 'image'" :src="assetUrl(asset)" :alt="assetName(asset)" loading="lazy">
+          <img v-if="assetPreviewType(asset) === 'image'" :src="assetUrl(asset)" :alt="assetName(asset)" loading="lazy" decoding="async" data-image-bloom>
           <video
             v-else-if="assetPreviewType(asset) === 'video'"
             :src="assetUrl(asset)"

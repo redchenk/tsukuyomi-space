@@ -525,7 +525,7 @@ onUnmounted(() => {
 
         <section v-if="randomFeatureImage && !isManageMode" class="gallery-feature" :class="{ 'is-fading': state.randomFeatureFading }">
           <button class="gallery-feature-image" type="button" @click="state.selected = randomFeatureImage">
-            <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)" loading="eager" decoding="async" fetchpriority="high" @error="handleImageError($event, randomFeatureImage)">
+            <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)" loading="eager" decoding="async" fetchpriority="high" data-image-bloom @error="handleImageError($event, randomFeatureImage)">
           </button>
           <article>
             <span class="gallery-feature-badge">随机影像</span>
@@ -579,7 +579,7 @@ onUnmounted(() => {
         <section v-else class="gallery-grid">
           <article v-for="asset in shownImages" :key="asset.id" class="gallery-card">
             <button class="gallery-card-image" type="button" @click="state.selected = asset">
-              <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy" decoding="async" @error="handleImageError($event, asset)">
+              <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy" decoding="async" data-image-bloom @error="handleImageError($event, asset)">
             </button>
             <div class="gallery-card-body">
               <a
@@ -684,7 +684,7 @@ onUnmounted(() => {
           <button class="gallery-lightbox-close" type="button" @click="state.selected = null">
             <TsIcon name="x" :size="18" />
           </button>
-          <img :src="imageUrl(state.selected)" :alt="imageName(state.selected)" @error="handleImageError($event, state.selected)">
+          <img :src="imageUrl(state.selected)" :alt="imageName(state.selected)" decoding="async" data-image-bloom @error="handleImageError($event, state.selected)">
           <footer>
             <div>
               <strong>{{ imageTitle(state.selected) }}</strong>
