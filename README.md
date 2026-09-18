@@ -253,6 +253,7 @@ VITE_SITE_LANGUAGE=en npm run build:web
 
 ## 技术与素材来源
 
+- 本站的无刷新平滑切页、Markdown 编辑增强和图片渐显加载等部分前端技术，参考了 [LyraVoid/Shirone](https://github.com/LyraVoid/Shirone)；原项目的代码与许可证信息请以其仓库说明为准。
 - Agent OS 页面音乐 App 的技术实现来源于 [firefly20041001/Yachiyo](https://github.com/firefly20041001/yachiyo)，原项目采用 Electron、React、TypeScript，并以 Apache-2.0 许可证发布。
 - 站内 Live2D、角色视觉与音乐素材版权归原作者及相关权利方所有；项目仅用于非盈利个人展示与交流。
 - 右下角网页宠物来源于 [Petdex / Yachiyo](https://petdex.dev/zh/pets/yachiyo)，界面图标使用 [Lucide](https://lucide.dev/)。

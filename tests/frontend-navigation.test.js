@@ -414,6 +414,22 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(readme, /独立 Arena/);
     });
 
+    it('credits the Shirone front-end technology reference in Reality and README', () => {
+        const reality = source('src/frontend/pages/RealityPage.vue');
+        const readme = source('README.md');
+        const shironeUrl = /https:\/\/github\.com\/LyraVoid\/Shirone/;
+
+        for (const content of [reality, readme]) {
+            assert.match(content, shironeUrl);
+            assert.match(content, /Markdown/);
+        }
+        assert.match(reality, /开源技术参考/);
+        assert.match(reality, /Open-source technology reference/);
+        assert.match(reality, /オープンソース技術の参考元/);
+        assert.match(readme, /无刷新平滑切页/);
+        assert.match(readme, /图片渐显加载/);
+    });
+
     it('links the project support page from the README and responsibility boundary', () => {
         const reality = source('src/frontend/pages/RealityPage.vue');
         const readme = source('README.md');

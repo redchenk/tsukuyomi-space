@@ -64,7 +64,7 @@ export const en = {
   realityNoticeTitle: 'Limits of responsibility', realityNoticeLead: 'Tsukuyomi Space includes virtual characters, user-generated content and optional third-party integrations. These boundaries explain how the site works.',
   realityNoticeVirtual: 'Dialogue and voice in the Live2D room may come from user-configured models or third-party services. It is for interactive entertainment and is not professional advice.',
   realityNoticeLinks: 'The site may include GitHub, partner-site or user-submitted links. Review the destination’s privacy and security policies before visiting.',
-  realityNoticeUpdate: 'This page changes as the site evolves. Last updated: April 29, 2026.', realityFooterBack: 'Back to Central Hub', realityFooterBrand: 'Tsukuyomi Space Reality Anchor',
+  realityNoticeUpdate: 'This page changes as the site evolves. Last updated: September 19, 2026.', realityFooterBack: 'Back to Central Hub', realityFooterBrand: 'Tsukuyomi Space Reality Anchor',
   editorTitle: 'Article editor', editorSubtitle: 'Write an announcement, piece of lore, technical note or fan work', editorFieldCover: 'Cover image (optional)',
   editorCoverPick: 'Click or drop an image to use as the article cover', editorCoverHint: '1200 × 630 px recommended. JPG and PNG supported.', editorRemove: '×',
   editorFieldTitle: 'Title', editorTitlePh: 'Enter an article title', editorFieldCategory: 'Category', editorCategorySelect: 'Choose a category',

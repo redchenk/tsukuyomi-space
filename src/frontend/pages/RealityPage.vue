@@ -305,6 +305,15 @@ function go(path) {
             <strong>Agent OS 音楽 App の技術出典：</strong>Agent OS ページの音楽 App の技術実装は <a href="https://github.com/firefly20041001/yachiyo" target="_blank" rel="noopener noreferrer">firefly20041001/Yachiyo</a> に由来します。元プロジェクトは Electron、React、TypeScript を採用し、QQ Music、NetEase Cloud Music、ローカル再生に対応する Apache-2.0 ライセンスのプロジェクトです。
           </p>
           <p v-if="isEnglish">
+            <strong>Open-source technology reference:</strong> Some front-end techniques used by this site, including smooth client-side page transitions, Markdown editing enhancements and progressive image loading, were informed by <a href="https://github.com/LyraVoid/Shirone" target="_blank" rel="noopener noreferrer">LyraVoid/Shirone</a>. Refer to the original repository for its source and license information.
+          </p>
+          <p v-else-if="!isJa">
+            <strong>开源技术参考：</strong>本站的无刷新平滑切页、Markdown 编辑增强和图片渐显加载等部分前端技术，参考了 <a href="https://github.com/LyraVoid/Shirone" target="_blank" rel="noopener noreferrer">LyraVoid/Shirone</a>；原项目的代码与许可证信息请以其仓库说明为准。
+          </p>
+          <p v-else>
+            <strong>オープンソース技術の参考元：</strong>本サイトのシームレスなページ遷移、Markdown 編集機能の拡張、画像のプログレッシブ読み込みなど、一部のフロントエンド技術は <a href="https://github.com/LyraVoid/Shirone" target="_blank" rel="noopener noreferrer">LyraVoid/Shirone</a> を参考にしています。ソースコードとライセンスの詳細は元のリポジトリをご確認ください。
+          </p>
+          <p v-if="isEnglish">
             <strong>Icon source:</strong> Some interface icons use the open-source <a href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</a> icon set under its license.
           </p>
           <p v-else-if="!isJa">
