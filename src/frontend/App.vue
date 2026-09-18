@@ -8,7 +8,7 @@ import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
 import { isAuthPath, withAuthRedirect } from './utils/authRedirect';
 import { animateRouteEnter, animateRouteLeave, cancelRouteMotion } from './utils/motion';
-import { installRouteLinks, routeViewKey } from './utils/routeNavigation';
+import { focusRouteHeading, installRouteLinks, routeViewKey } from './utils/routeNavigation';
 import { warmRoutePath } from './router';
 import { forcedSiteLanguage } from './utils/siteVariant';
 import {
@@ -68,6 +68,7 @@ let removeRouteProgressHook = null;
 let removeRouteErrorHook = null;
 let removeRouteLinks = null;
 let routeMotionImmediate = false;
+let routeViewEntered = false;
 const viewRecordRequests = new Map();
 
 function hydrateCachedUser() {
@@ -228,6 +229,7 @@ function finishRouteProgress() {
 
 function enterRoute(element, done) {
   if (routeMotionImmediate) {
+    routeViewEntered = true;
     done();
     finishRouteProgress();
     return;
@@ -236,15 +238,9 @@ function enterRoute(element, done) {
     done();
     if (element.dataset.routeKey !== routeViewKey(route)) return;
     finishRouteProgress();
-    if (!route.hash) {
-      const heading = element.querySelector('h1');
-      if (heading) {
-        const hadTabIndex = heading.hasAttribute('tabindex');
-        heading.setAttribute('tabindex', '-1');
-        heading.focus({ preventScroll: true });
-        if (!hadTabIndex) heading.addEventListener('blur', () => heading.removeAttribute('tabindex'), { once: true });
-      }
-    }
+    const shouldFocusHeading = routeViewEntered && !route.hash;
+    routeViewEntered = true;
+    if (shouldFocusHeading) focusRouteHeading(element);
   });
 }
 

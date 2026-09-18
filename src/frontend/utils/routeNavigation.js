@@ -61,6 +61,21 @@ export function cancelPendingRouteScroll() {
   pendingScroll = null;
 }
 
+export function focusRouteHeading(element) {
+  const heading = element?.querySelector?.('h1');
+  if (!heading) return false;
+  const previousTabIndex = heading.getAttribute('tabindex');
+  heading.classList.add('route-focus-heading');
+  heading.setAttribute('tabindex', '-1');
+  heading.focus({ preventScroll: true });
+  heading.addEventListener('blur', () => {
+    heading.classList.remove('route-focus-heading');
+    if (previousTabIndex === null) heading.removeAttribute('tabindex');
+    else heading.setAttribute('tabindex', previousTabIndex);
+  }, { once: true });
+  return true;
+}
+
 function hashTarget(hash) {
   if (!hash) return null;
   try { return document.getElementById(decodeURIComponent(hash.slice(1))); }

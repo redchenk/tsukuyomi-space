@@ -95,6 +95,15 @@ html {
     outline: none;
 }
 
+/* Route announcements move screen-reader focus to the new heading after an
+ * in-app navigation. The heading is not an interactive control, so suppress
+ * the browser's temporary focus rectangle while keeping the focus itself. */
+.route-focus-heading:focus,
+.route-focus-heading:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+
 /* ---- 3. Typography: aurora ink for page hero titles ---- */
 html body .page :is(.stage-header h1, .plaza-title, .gallery-hero h1, .notifications-hero h1, .attachments-hero h1, .uc-hero h1, .profile-hero h1, .reality-hero h1),
 html body .page.hub .hub-hero-copy .section-title {

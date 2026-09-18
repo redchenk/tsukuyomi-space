@@ -14,7 +14,7 @@ function anchor(href, extra = {}) {
     return { getAttribute: name => attrs[name] ?? null, hasAttribute: name => name in attrs };
 }
 const router = { resolve: path => ({ matched: /^\/(?:hub|stage|editor|wiki|articles\/\d+)(?:[/?#]|$)/.test(path) ? [{}] : [] }) };
-const navigationExports = ['internalRoutePath', 'installRouteLinks', 'routeViewKey', 'scrollToRoute', 'cancelPendingRouteScroll'];
+const navigationExports = ['internalRoutePath', 'installRouteLinks', 'routeViewKey', 'scrollToRoute', 'cancelPendingRouteScroll', 'focusRouteHeading'];
 
 test('only intercepts recognized same-origin routes and leaves browser/native links intact', () => {
     const { internalRoutePath } = loadModule('src/frontend/utils/routeNavigation.js', navigationExports);
@@ -50,6 +50,28 @@ test('anchors and Wiki section queries preserve instances while different articl
     assert.equal(routeViewKey({ fullPath: '/articles/15/story#chapter' }), '/articles/15/story');
     assert.equal(routeViewKey({ name: 'wiki', path: '/wiki', fullPath: '/wiki?section=characters' }), '/wiki');
     assert.notEqual(routeViewKey({ fullPath: '/editor?id=1' }), routeViewKey({ fullPath: '/editor?id=2' }));
+});
+
+test('route heading focus is announced without leaving a persistent tabindex or focus class', () => {
+    const { focusRouteHeading } = loadModule('src/frontend/utils/routeNavigation.js', navigationExports);
+    const attributes = new Map(), classes = new Set(), listeners = new Map();
+    let focusOptions;
+    const heading = {
+        getAttribute: name => attributes.get(name) ?? null,
+        setAttribute: (name, value) => attributes.set(name, value),
+        removeAttribute: name => attributes.delete(name),
+        classList: { add: name => classes.add(name), remove: name => classes.delete(name) },
+        focus: options => { focusOptions = options; },
+        addEventListener: (type, handler) => listeners.set(type, handler)
+    };
+    assert.equal(focusRouteHeading({ querySelector: selector => selector === 'h1' ? heading : null }), true);
+    assert.equal(attributes.get('tabindex'), '-1');
+    assert.ok(classes.has('route-focus-heading'));
+    assert.equal(focusOptions.preventScroll, true);
+    listeners.get('blur')();
+    assert.equal(attributes.has('tabindex'), false);
+    assert.equal(classes.has('route-focus-heading'), false);
+    assert.equal(focusRouteHeading({ querySelector: () => null }), false);
 });
 
 function scrollHarness() {
