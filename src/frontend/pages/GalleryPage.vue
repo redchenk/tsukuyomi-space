@@ -70,7 +70,7 @@ function imageUrl(asset) {
 }
 
 function reliableImageUrl(asset) {
-  return asset?.access_url || asset?.display_url || asset?.preview_url || asset?.url;
+  return asset?.access_url || asset?.display_url || asset?.markdown_url || asset?.url || asset?.preview_url;
 }
 
 function handleImageError(event, asset) {
@@ -560,10 +560,10 @@ onUnmounted(() => {
               <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(randomFeatureImage)">
                 <TsIcon name="copy" :size="16" /> 复制 Markdown
               </button>
-              <a class="ghost-btn" :href="imageUrl(randomFeatureImage)" target="_blank" rel="noopener noreferrer">
+              <a class="ghost-btn" :href="reliableImageUrl(randomFeatureImage)" target="_blank" rel="noopener noreferrer">
                 <TsIcon name="external" :size="16" /> 打开
               </a>
-              <a class="ghost-btn" :href="imageUrl(randomFeatureImage)" download="gallery-image" rel="noopener noreferrer">
+              <a class="ghost-btn" :href="reliableImageUrl(randomFeatureImage)" download="gallery-image" rel="noopener noreferrer">
                 <TsIcon name="download" :size="16" /> 下载
               </a>
             </div>
@@ -615,10 +615,10 @@ onUnmounted(() => {
               <button v-if="isManageMode" type="button" title="复制 Markdown" @click="copyMarkdown(asset)">
                 <TsIcon name="copy" :size="17" />
               </button>
-              <a :href="imageUrl(asset)" target="_blank" rel="noopener noreferrer" title="打开图片">
+              <a :href="reliableImageUrl(asset)" target="_blank" rel="noopener noreferrer" title="打开图片">
                 <TsIcon name="external" :size="17" />
               </a>
-              <a :href="imageUrl(asset)" download="gallery-image" rel="noopener noreferrer" title="下载图片">
+              <a :href="reliableImageUrl(asset)" download="gallery-image" rel="noopener noreferrer" title="下载图片">
                 <TsIcon name="download" :size="17" />
               </a>
               <button v-if="isManageMode && canDeleteImage(asset)" type="button" title="删除图片" @click="deleteImage(asset)">
@@ -684,7 +684,7 @@ onUnmounted(() => {
           <button class="gallery-lightbox-close" type="button" @click="state.selected = null">
             <TsIcon name="x" :size="18" />
           </button>
-          <img :src="imageUrl(state.selected)" :alt="imageName(state.selected)" decoding="async" data-image-bloom @error="handleImageError($event, state.selected)">
+          <img :src="reliableImageUrl(state.selected)" :alt="imageName(state.selected)" decoding="async" data-image-bloom @error="handleImageError($event, state.selected)">
           <footer>
             <div>
               <strong>{{ imageTitle(state.selected) }}</strong>
@@ -715,7 +715,7 @@ onUnmounted(() => {
               </span>
             </div>
             <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">复制 Markdown</button>
-            <a class="ghost-btn" :href="imageUrl(state.selected)" download="gallery-image" rel="noopener noreferrer">下载</a>
+            <a class="ghost-btn" :href="reliableImageUrl(state.selected)" download="gallery-image" rel="noopener noreferrer">下载</a>
             <button v-if="isManageMode && canDeleteImage(state.selected)" class="danger-btn" type="button" @click="deleteImage(state.selected)">删除</button>
           </footer>
         </section>

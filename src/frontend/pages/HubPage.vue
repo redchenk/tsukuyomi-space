@@ -70,6 +70,7 @@ const plazaMessages = ref(hubPreviewCache?.plazaMessages || []);
 const siteStats = ref(hubPreviewCache?.siteStats || null);
 const previewLoading = ref(!hubPreviewCache);
 const previewError = ref('');
+const renderedPixelArtworkId = ref('');
 const visitPopupPreview = ref({
   title: isEnglish.value ? 'Welcome to Tsukuyomi Space' : '欢迎来到月读空间',
   content: isEnglish.value ? 'The first-visit notice has not been configured yet.' : '首次访问弹窗尚未配置内容。'
@@ -214,6 +215,14 @@ function artworkPixels(artwork) {
 
 function artworkBackground(artwork) {
   return artwork?.background_color || artwork?.backgroundColor || '#0b1020';
+}
+
+function pixelPreviewLoaded(artwork) {
+  return Boolean(artwork?.id && renderedPixelArtworkId.value === String(artwork.id));
+}
+
+function markPixelPreviewLoaded(artwork) {
+  renderedPixelArtworkId.value = String(artwork?.id || '');
 }
 
 function applyHubPreviewCache(cache) {
@@ -520,7 +529,6 @@ onBeforeUnmount(() => {
           :key="scene.href"
           class="scene-card"
           :class="[`tone-${scene.tone}`, { 'scene-card-plaza': scene.kind === 'plaza', 'scene-card-arena': scene.kind === 'arena' }]"
-          :style="{ '--scene-image': `url(${scene.image})` }"
           :href="scene.kind === 'plaza' ? undefined : scene.href"
           :data-route="scene.kind === 'plaza' ? undefined : scene.href"
           :aria-labelledby="scene.kind === 'plaza' ? 'hub-plaza-title' : undefined"
@@ -530,6 +538,15 @@ onBeforeUnmount(() => {
           @pointerdown="warmScene(scene)"
           @keydown.enter="scene.kind !== 'plaza' && openScene(scene, $event)"
           @keydown.space="scene.kind !== 'plaza' && openScene(scene, $event)"
+          >
+          <img
+            v-if="scene.kind !== 'plaza' && !(scene.kind === 'arena' && scene.artwork)"
+            class="scene-card-media"
+            :src="scene.image"
+            alt=""
+            loading="lazy"
+            decoding="async"
+            data-image-bloom
           >
           <span
             v-if="scene.kind === 'arena' && scene.artwork"
@@ -547,6 +564,9 @@ onBeforeUnmount(() => {
               :show-grid="false"
               :interactive="false"
               :aria-label="scene.name"
+              data-image-bloom
+              :data-image-state="pixelPreviewLoaded(scene.artwork) ? 'loaded' : 'pending'"
+              @rendered="markPixelPreviewLoaded(scene.artwork)"
             />
           </span>
           <span v-if="scene.kind !== 'plaza'" class="scene-top">

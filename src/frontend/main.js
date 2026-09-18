@@ -27,8 +27,9 @@ syncWindowAppearance();
 enableEnglishStaticInterface();
 
 const app = createApp(App);
-const imageBloomRoot = document.getElementById('app');
-if (imageBloomRoot) installImageBloom(imageBloomRoot);
+// Vue Teleport mounts dialogs beside #app, so observe the whole body to include
+// lightboxes and any future portal content that opts into image bloom.
+if (document.body) installImageBloom(document.body);
 
 app.component('LoadingSkeleton', LoadingSkeleton);
 app.component('StatusLoader', StatusLoader);

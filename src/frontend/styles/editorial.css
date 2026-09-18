@@ -120,6 +120,10 @@ html[data-theme="dark"] .site-background-shell > .site-global-bg {
 .hub-all-posts { display: inline-flex; align-items: center; gap: 8px; color: var(--ts-accent); text-decoration: none; font-size: 13px; flex-shrink: 0; }
 .hub .scene-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .hub .scene-card { --ink: #fff; --muted: #e2dfeb; display: flex; flex-direction: column; gap: 0; grid-column: auto; grid-row: auto; min-height: 330px; padding: 22px; border-radius: 20px; border: 1px solid var(--ts-editorial-line); box-shadow: var(--ts-editorial-shadow); overflow: hidden; color: #fff; }
+.hub .scene-card-media { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .28s ease; }
+.hub .scene-card:has(> .scene-card-media)::before { display: none; }
+.hub .scene-card:hover > .scene-card-media { transform: scale(1.04); }
+.hub .hub-arena-cover .pixel-canvas-renderer[data-image-bloom] { --ts-image-bloom-opacity: .82; }
 .hub .scene-card::before { background: var(--scene-image) center / cover; opacity: 1; filter: none; transform: none; }
 .hub .scene-card::after { background: linear-gradient(180deg, rgb(12 13 26 / 10%), rgb(12 13 26 / 88%)); }
 .hub .scene-top { width: 100%; justify-content: space-between; }

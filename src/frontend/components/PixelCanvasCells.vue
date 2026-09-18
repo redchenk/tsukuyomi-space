@@ -17,7 +17,7 @@ const props = defineProps({
   ariaLabel: { type: String, default: 'pixel canvas' }
 });
 
-const emit = defineEmits(['begin-paint', 'continue-paint', 'end-paint', 'begin-pan', 'continue-pan', 'end-pan']);
+const emit = defineEmits(['begin-paint', 'continue-paint', 'end-paint', 'begin-pan', 'continue-pan', 'end-pan', 'rendered']);
 
 const canvasRef = ref(null);
 const renderReady = ref(!props.deferOffscreen);
@@ -95,6 +95,7 @@ function renderCanvas() {
       context.fillRect(0, y * size, pixelWidth, 1);
     }
   }
+  emit('rendered');
 }
 
 function renderPixelChanges(changes) {

@@ -114,6 +114,72 @@ test('public content is visible when opening an inactive window', async ({ page 
     await expect(notice.locator('p')).toBeVisible();
 });
 
+test('hub article, gallery and pixel cards reveal through image bloom', async ({ page }) => {
+    await page.route(/\/api\/(?:live\/[^/]+\/)?hub-preview(?:\?|$)/, (route) => route.fulfill({
+        json: {
+            success: true,
+            data: {
+                article: { id: 'hub-article', title: '大厅文章', excerpt: '文章摘要', category: '技术', cover_image: '/e2e-hub-article.svg' },
+                gallery: { id: 'hub-gallery', url: '/e2e-hub-gallery.svg', created_at: '2026-09-18' },
+                pixel: {
+                    id: 'hub-pixel', title: '月光像素画', author: 'tester', width: 2, height: 2,
+                    background_color: '#10182a', palette: ['#ffffff', '#778cf6'], pixels_base64: 'AQIBAg=='
+                },
+                messages: [],
+                stats: {}
+            }
+        }
+    }));
+    for (const path of ['/e2e-hub-article.svg', '/e2e-hub-gallery.svg']) {
+        await page.route(`**${path}`, (route) => route.fulfill({
+            contentType: 'image/svg+xml',
+            body: '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="#778cf6"/></svg>'
+        }));
+    }
+
+    await page.goto('/hub');
+    const media = page.locator('.scene-card-media[data-image-bloom]');
+    await expect(media).toHaveCount(2);
+    await expect(media.nth(0)).toHaveAttribute('data-image-state', 'loaded');
+    await expect(media.nth(1)).toHaveAttribute('data-image-state', 'loaded');
+    await expect(page.locator('.hub-arena-cover canvas[data-image-bloom]')).toHaveAttribute('data-image-state', 'loaded');
+});
+
+test('gallery lightbox replaces the list thumbnail with the full image', async ({ page }) => {
+    const asset = {
+        id: 'gallery-full-image',
+        preview_url: '/e2e-gallery-preview.svg',
+        access_url: '/e2e-gallery-original.svg',
+        display_url: '/e2e-gallery-original.svg',
+        url: '/e2e-gallery-original.svg',
+        metadata: { title: '清晰原图' },
+        created_at: '2026-09-18'
+    };
+    await page.route(/\/api\/(?:live\/[^/]+\/)?assets\/gallery\/public(?:\?|$)/, (route) => route.fulfill({
+        json: { success: true, data: { assets: [asset] } }
+    }));
+    await page.route(/\/api\/(?:live\/[^/]+\/)?assets\/gallery\?/, (route) => route.fulfill({
+        json: { success: true, data: { assets: [asset], pagination: { page: 1, totalPages: 1, total: 1 } } }
+    }));
+    await page.route('**/e2e-gallery-preview.svg', (route) => route.fulfill({
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90"><rect width="160" height="90" fill="#9b8cff"/></svg>'
+    }));
+    await page.route('**/e2e-gallery-original.svg', (route) => route.fulfill({
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#56bfe8"/></svg>'
+    }));
+
+    await page.goto('/gallery');
+    const thumbnail = page.locator('.gallery-card-image img').first();
+    await expect(thumbnail).toHaveAttribute('src', '/e2e-gallery-preview.svg');
+    await thumbnail.click();
+    const fullImage = page.locator('.gallery-lightbox > section > img');
+    await expect(fullImage).toHaveAttribute('src', '/e2e-gallery-original.svg');
+    await expect(fullImage).toHaveAttribute('data-image-state', 'loaded');
+    await expect.poll(() => fullImage.evaluate((node) => node.naturalWidth)).toBe(1600);
+});
+
 test('image cards retain readable text in the mobile light theme', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(() => localStorage.setItem('tsukuyomi_theme', 'light'));
