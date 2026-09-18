@@ -53,6 +53,7 @@ API_REQUESTS_PER_MINUTE = 120
 SEO_REQUESTS_PER_MINUTE = 30
 XML_REQUESTS_PER_MINUTE = 30
 MAX_CONCURRENT_TRANSLATIONS = 4
+ARTICLE_LIST_CACHE_SECONDS = 30
 CJK_RE = re.compile(r"[\u3400-\u9fff\u3040-\u30ff]")
 JAPANESE_RE = re.compile(r"[\u3040-\u30ff]")
 HAN_RE = re.compile(r"[\u3400-\u9fff]")
@@ -85,6 +86,9 @@ TRANSLATED_API_PATH_RE = re.compile(
     r"|messages(?:/(?:topics|plaza/latest))?|assets/gallery(?:/public)?"
     r"|pixel-art(?:/(?:preview|gallery|[a-z0-9_-]{1,80}))?|friend-links)/?$",
     re.I,
+)
+TRANSLATED_ARTICLE_LIST_PATH_RE = re.compile(
+    r"^/en-api(?:/live/[a-z0-9-]{1,80})?/articles$", re.I
 )
 SKIP_JSON_KEYS = {
     "id", "slug", "url", "href", "path", "route", "email", "code", "token",
@@ -259,6 +263,33 @@ def normalize_translated_api_path(value: str) -> str:
     if not TRANSLATED_API_PATH_RE.fullmatch(parsed.path):
         raise ValueError("API path is not translatable")
     return urllib.parse.urlunsplit(("", "", parsed.path, parsed.query, ""))
+
+
+def translated_article_list_cache_key(value: str) -> str | None:
+    parsed = urllib.parse.urlsplit(value)
+    if not TRANSLATED_ARTICLE_LIST_PATH_RE.fullmatch(parsed.path):
+        return None
+    try:
+        pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True, max_num_fields=8)
+    except ValueError:
+        return None
+    allowed = {"limit", "page", "sort", "category", "q"}
+    if any(key not in allowed for key, _value in pairs) or len({key for key, _value in pairs}) != len(pairs):
+        return None
+    query = dict(pairs)
+    if query.get("limit") and (not query["limit"].isdigit() or not 1 <= int(query["limit"]) <= 100):
+        return None
+    if query.get("page") and (not query["page"].isdigit() or int(query["page"]) < 1):
+        return None
+    if query.get("sort") and query["sort"] not in {"featured", "latest", "pinned"}:
+        return None
+    if "category" in query:
+        query["category"] = query["category"].strip()[:48]
+    if "q" in query:
+        query["q"] = query["q"].strip()[:120]
+    canonical_query = urllib.parse.urlencode(sorted(query.items()))
+    digest = hashlib.sha256(f"{CACHE_VERSION}\0{canonical_query}".encode("utf-8")).hexdigest()
+    return f"api-article-list-v1:{digest}"
 
 
 class TranslationStore:
@@ -686,6 +717,7 @@ TRANSLATOR: EnglishTranslator | None = None
 TRANSLATION_SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT_TRANSLATIONS)
 SEO_RENDER_LOCK = threading.Lock()
 XML_RENDER_LOCK = threading.Lock()
+ARTICLE_API_RENDER_LOCK = threading.Lock()
 
 
 class TranslationServiceBusy(RuntimeError):
@@ -742,19 +774,35 @@ def fetch_upstream(path: str, user_agent: str = "Tsukuyomi-Overseas/1.0") -> tup
 
 def translated_api(path: str) -> tuple[int, str, bytes]:
     path = normalize_translated_api_path(path)
-    upstream_path = "/api" + path[len("/en-api"):]
-    status, content_type, body = fetch_upstream(upstream_path)
-    if "json" not in content_type:
-        return status, content_type, body
-    acquire_translation_slot()
-    try:
-        payload = json.loads(body.decode("utf-8"))
-        translated = translator().translate_json(payload)
-        return status, "application/json", json.dumps(translated, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    except (UnicodeDecodeError, ValueError):
-        return status, content_type, body
-    finally:
-        TRANSLATION_SLOTS.release()
+    cache_key = translated_article_list_cache_key(path)
+    if cache_key:
+        cached = STORE.get_document(cache_key, ARTICLE_LIST_CACHE_SECONDS)
+        if cached:
+            return 200, cached[0], cached[1]
+
+    def translate_uncached() -> tuple[int, str, bytes]:
+        upstream_path = "/api" + path[len("/en-api"):]
+        status, content_type, body = fetch_upstream(upstream_path)
+        if "json" not in content_type:
+            return status, content_type, body
+        acquire_translation_slot()
+        try:
+            payload = json.loads(body.decode("utf-8"))
+            translated = translator().translate_json(payload)
+            translated_body = json.dumps(translated, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            if cache_key and status == 200:
+                STORE.put_document(cache_key, "application/json", translated_body)
+            return status, "application/json", translated_body
+        except (UnicodeDecodeError, ValueError):
+            return status, content_type, body
+        finally:
+            TRANSLATION_SLOTS.release()
+
+    if not cache_key:
+        return translate_uncached()
+    with ARTICLE_API_RENDER_LOCK:
+        cached = STORE.get_document(cache_key, ARTICLE_LIST_CACHE_SECONDS)
+        return (200, cached[0], cached[1]) if cached else translate_uncached()
 
 
 def translated_seo(path: str) -> tuple[int, str, bytes]:

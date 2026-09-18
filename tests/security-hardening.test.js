@@ -377,6 +377,8 @@ describe('stage delivery hardening', () => {
         assert.match(service, /BoundedSemaphore\(MAX_CONCURRENT_TRANSLATIONS\)/);
         assert.match(service, /SEO_REQUESTS_PER_MINUTE/);
         assert.match(service, /TRANSLATED_API_PATH_RE/);
+        assert.match(service, /translated_article_list_cache_key/);
+        assert.match(service, /ARTICLE_LIST_CACHE_SECONDS = 30/);
     });
 });
 
