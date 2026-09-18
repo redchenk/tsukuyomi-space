@@ -58,17 +58,19 @@ test('pinned articles stay first while featured and latest keep their own order'
         return route.fulfill({ json: { success: true, data: articles, pagination: { totalPages: 1, total: 3 } } });
     });
     await page.goto('/stage');
-    await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '精选旧文', '最新文章']);
-    await expect(page.locator('.stage-card').nth(1).getByLabel('20 点赞')).toBeVisible();
-    await expect(page.locator('.stage-card').nth(1).getByLabel('12 收藏')).toBeVisible();
+    await expect(page.getByRole('button', { name: '最新优先', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '最新文章', '精选旧文']);
+    await expect(page.locator('.stage-card').nth(2).getByLabel('20 点赞')).toBeVisible();
+    await expect(page.locator('.stage-card').nth(2).getByLabel('12 收藏')).toBeVisible();
     await expect(page.locator('.stage-card .read-time')).toHaveCount(0);
-    await page.getByRole('button', { name: '最新发布', exact: true }).click();
-    await expect(page).toHaveURL(/sort=latest/);
-    await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '最新文章', '精选旧文']);
-    await expect(page.locator('.stage-card').first()).toHaveAttribute('href', /from=.*sort%3Dlatest/);
+    await expect(page.locator('.stage-card').first()).toHaveAttribute('href', /from=%2Fstage$/);
+    await page.getByRole('button', { name: '精选优先', exact: true }).click();
+    await expect(page).toHaveURL(/sort=featured/);
+    await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '精选旧文', '最新文章']);
+    await expect(page.locator('.stage-card').first()).toHaveAttribute('href', /from=.*sort%3Dfeatured/);
     await page.reload();
-    await expect(page.getByRole('button', { name: '最新发布', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '最新文章', '精选旧文']);
+    await expect(page.getByRole('button', { name: '精选优先', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '精选旧文', '最新文章']);
 });
 
 test('public content is visible when opening an inactive window', async ({ page }) => {

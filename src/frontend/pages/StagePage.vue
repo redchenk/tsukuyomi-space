@@ -24,8 +24,8 @@ const articlesError = ref('');
 const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
-const stageOrder = ref('featured');
-const stageSortCopy = computed(() => ({ zh: ['精选优先', '最新发布', '编辑推荐'], ja: ['おすすめ順', '新着順', '編集部おすすめ'], en: ['Featured first', 'Latest first', 'Editor pick'] }[props.lang]));
+const stageOrder = ref('latest');
+const stageSortCopy = computed(() => ({ zh: ['精选优先', '最新优先', '编辑推荐'], ja: ['おすすめ順', '新着順', '編集部おすすめ'], en: ['Featured first', 'Latest first', 'Editor pick'] }[props.lang]));
 const stageRankingCopy = computed(() => ({
   zh: { hint: '综合正文内容、阅读、点赞与收藏排序，兼顾新文章。', views: '阅读', likes: '点赞', bookmarks: '收藏' },
   ja: { hint: '本文・閲覧・いいね・保存を総合し、新しい記事も考慮します。', views: '閲覧', likes: 'いいね', bookmarks: '保存' },
@@ -123,7 +123,7 @@ const stageRangeSummary = computed(() => stageTotalArticles.value
 const stagePageSummary = computed(() => `${stagePageCopy.value.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.value.pageSuffix} / ${stagePageCopy.value.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.value.pageSuffix}`);
 const stageReturnPath = computed(() => {
   const params = new URLSearchParams();
-  if (stageOrder.value === 'latest') params.set('sort', 'latest');
+  if (stageOrder.value === 'featured') params.set('sort', 'featured');
   if (stageCurrentPage.value > 1) params.set('page', String(stageCurrentPage.value));
   if (stageCategory.value !== 'all') params.set('category', stageCategory.value);
   const search = stageSearch.value.trim();
@@ -144,7 +144,7 @@ function queryPage(value) {
 
 function applyStageQuery(query = {}) {
   applyingStageQuery = true;
-  stageOrder.value = queryValue(query.sort) === 'latest' ? 'latest' : 'featured';
+  stageOrder.value = queryValue(query.sort) === 'featured' ? 'featured' : 'latest';
   const category = queryValue(query.category);
   stageCategory.value = category && (!categoryRevision.value || categories.value.includes(category)) ? category : 'all';
   stageSearch.value = String(queryValue(query.q)).slice(0, 120);
