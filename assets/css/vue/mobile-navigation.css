@@ -53,7 +53,7 @@
         width: 2.35rem;
         height: 2.35rem;
         min-width: 2.35rem;
-        border-radius: 14px;
+        border-radius: var(--ts-radius-button, 999px);
     }
 
     .site-commandbar .site-brand > span:last-child {
@@ -96,7 +96,7 @@
         place-items: center;
         padding: 0;
         border: 1px solid var(--ts-border);
-        border-radius: 13px;
+        border-radius: var(--ts-radius-button, 999px);
         color: var(--ts-text);
         background: var(--ts-readable-control-bg, rgba(255, 255, 255, 0.74));
         box-shadow: none;
@@ -246,7 +246,7 @@
         gap: 0.5rem;
         padding: 0 0.72rem;
         border: 1px solid var(--ts-border);
-        border-radius: 14px;
+        border-radius: var(--ts-radius-button, 999px);
         color: var(--ts-text);
         background: var(--ts-readable-control-bg, rgba(255, 255, 255, 0.07));
         font-size: 0.86rem;
@@ -311,7 +311,7 @@
     .nav-actions.site-nav-links .lang-btn {
         min-height: 38px;
         justify-content: center;
-        border-radius: 11px;
+        border-radius: var(--ts-radius-button, 999px);
         color: var(--ts-text);
         background: transparent;
     }
@@ -347,7 +347,7 @@
         gap: 0.14rem;
         padding: 0.32rem 0.12rem;
         border: 1px solid transparent;
-        border-radius: 17px;
+        border-radius: var(--ts-radius-button, 999px);
         color: var(--ts-muted);
         background: transparent;
         font: inherit;

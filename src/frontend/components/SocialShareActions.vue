@@ -137,7 +137,7 @@ async function copyLink() {
   gap: 0.42rem;
   padding: 0.62rem 0.8rem;
   border: 1px solid rgba(218, 239, 255, 0.18);
-  border-radius: 14px;
+  border-radius: var(--ts-radius-button, 999px);
   color: var(--ts-text, #eef7ff);
   background: rgba(255, 255, 255, 0.08);
   text-decoration: none;

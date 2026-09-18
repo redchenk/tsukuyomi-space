@@ -18,8 +18,8 @@ html[data-theme="light"] {
     --ts-unified-primary-bg: var(--ts-gradient-brand);
     --ts-unified-primary-bg-hover: var(--ts-gradient-brand-hover);
     --ts-unified-primary-text: #ffffff;
-    --ts-unified-button-radius: var(--ts-radius-control);
-    --ts-unified-button-radius-compact: 10px;
+    --ts-unified-button-radius: var(--ts-radius-button, 999px);
+    --ts-unified-button-radius-compact: var(--ts-radius-button, 999px);
     --ts-unified-button-hover: rgba(123, 140, 246, 0.12);
     --ts-unified-button-border-hover: rgba(123, 110, 230, 0.42);
     --ts-ink-gradient: linear-gradient(118deg, #3d3a78 0%, #6f62d9 46%, #b25f92 100%);

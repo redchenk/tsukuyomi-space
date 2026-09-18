@@ -204,7 +204,7 @@
     place-items: center;
     padding: 0;
     border: 1px solid var(--ts-unified-button-border, var(--ts-border));
-    border-radius: 12px;
+    border-radius: var(--ts-radius-button, 999px);
     opacity: 1;
     pointer-events: auto;
     cursor: pointer;
@@ -440,7 +440,7 @@
     place-items: center;
     padding: 0;
     border: 1px solid var(--ts-unified-button-border, var(--ts-border));
-    border-radius: 12px;
+    border-radius: var(--ts-radius-button, 999px);
     color: var(--ts-text);
     background: var(--ts-unified-button-bg, rgba(255, 255, 255, 0.08));
     box-shadow: none;
@@ -601,7 +601,7 @@ html[data-theme="light"] .site-music-playlist-drawer select option {
         min-width: 2.06rem;
         height: 2.06rem;
         min-height: 2.06rem;
-        border-radius: 11px;
+        border-radius: var(--ts-radius-button, 999px);
     }
 
     .site-music-controls {

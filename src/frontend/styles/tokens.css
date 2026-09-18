@@ -50,6 +50,7 @@
     --ts-radius-card: 18px;
     --ts-radius-control: 12px;
     --ts-radius-pill: 999px;
+    --ts-radius-button: var(--ts-radius-pill);
 
     --ts-blur-sm: blur(10px) saturate(1.08);
     --ts-blur-md: blur(18px) saturate(1.12);

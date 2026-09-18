@@ -101,7 +101,7 @@ function onKeydown(event) {
 }
 
 .social-share-dialog h2 { margin: 0.12rem 0 0; font-size: 1.18rem; }
-.social-share-close { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(218, 239, 255, 0.16); border-radius: 14px; color: inherit; background: rgba(255, 255, 255, 0.07); cursor: pointer; }
+.social-share-close { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(218, 239, 255, 0.16); border-radius: var(--ts-radius-button, 999px); color: inherit; background: rgba(255, 255, 255, 0.07); cursor: pointer; }
 .social-share-preview { display: block; width: 100%; max-height: 300px; object-fit: contain; border-radius: 12px; background: rgba(0, 0, 0, 0.18); }
 .social-share-copy { min-width: 0; display: grid; gap: 0.3rem; }
 .social-share-copy strong, .social-share-copy p { overflow-wrap: anywhere; }

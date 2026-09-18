@@ -192,7 +192,7 @@ watch(() => props.open, async (open) => {
 .room-share-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .room-share-dialog header span { color: var(--ts-accent); font-size: 0.7rem; font-weight: 900; }
 .room-share-dialog h2 { margin: 0.12rem 0 0; font-size: 1.18rem; }
-.room-share-close { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--ts-editorial-line); border-radius: 14px; color: inherit; background: var(--ts-editorial-soft); cursor: pointer; }
+.room-share-close { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--ts-editorial-line); border-radius: var(--ts-radius-button, 999px); color: inherit; background: var(--ts-editorial-soft); cursor: pointer; }
 .room-share-title-field { display: grid; gap: 0.35rem; color: var(--ts-editorial-muted); font-size: 0.78rem; font-weight: 800; }
 .room-share-title-field input { width: 100%; min-height: 42px; box-sizing: border-box; border: 1px solid var(--ts-editorial-line); border-radius: 12px; padding: 0.68rem 0.78rem; color: var(--ts-editorial-ink); background: var(--ts-editorial-soft); font: inherit; }
 .room-share-preview { min-height: 180px; display: grid; place-items: center; overflow: hidden; border-radius: 12px; background: var(--ts-editorial-soft); }
@@ -200,6 +200,6 @@ watch(() => props.open, async (open) => {
 .room-share-error { padding: 0.7rem; border-radius: 10px; color: var(--ts-editorial-ink); background: rgba(165, 54, 76, 0.18); font-size: 0.84rem; }
 .room-share-publish-row { display: flex; flex-wrap: wrap; gap: 0.55rem; }
 .room-share-publish-row button { flex: 1 1 180px; }
-.room-share-revoke { justify-self: center; border: 0; color: var(--ts-accent); background: transparent; cursor: pointer; font: inherit; font-size: 0.78rem; }
+.room-share-revoke { justify-self: center; min-height: 40px; padding-inline: 1rem; border: 0; border-radius: var(--ts-radius-button, 999px); color: var(--ts-accent); background: transparent; cursor: pointer; font: inherit; font-size: 0.78rem; }
 @media (max-width: 480px) { .room-share-overlay { align-items: end; padding: 0; } .room-share-dialog { max-height: 90dvh; border-radius: 18px 18px 0 0; padding: 0.9rem; } }
 </style>

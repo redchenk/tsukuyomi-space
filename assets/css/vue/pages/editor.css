@@ -491,8 +491,8 @@ body .editor-asset-card {
 .editor-workbench { margin-block: 1.4rem; min-width: 0; }
 .editor-workbench-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .8rem; }
 .editor-workbench-head label { margin: 0; }
-.editor-view-switch { display: inline-flex; gap: 4px; padding: 4px; background: color-mix(in srgb, var(--text) 6%, transparent); border: 1px solid var(--line); border-radius: 12px; }
-.editor-view-switch button { min-height: 38px; border: 0; border-radius: 8px; padding: .5em .9em; color: var(--muted); background: transparent; font: inherit; font-size: .86rem; cursor: pointer; }
+.editor-view-switch { display: inline-flex; gap: 4px; padding: 4px; background: color-mix(in srgb, var(--text) 6%, transparent); border: 1px solid var(--line); border-radius: var(--ts-radius-button, 999px); }
+.editor-view-switch button { min-height: 38px; border: 0; border-radius: var(--ts-radius-button, 999px); padding: .5em 1em; color: var(--muted); background: transparent; font: inherit; font-size: .86rem; cursor: pointer; }
 .editor-view-switch button[aria-pressed="true"] { color: var(--text); background: var(--panel); box-shadow: 0 2px 8px #00000012; }
 .editor-workbench .markdown-toolbar { gap: 6px; padding: .65rem; margin: 0; border: 1px solid var(--line); border-bottom: 0; border-radius: 14px 14px 0 0; background: color-mix(in srgb, var(--text) 3%, transparent); }
 .editor-workbench .markdown-toolbar button { min-height: 40px; }

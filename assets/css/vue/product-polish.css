@@ -908,14 +908,14 @@ body .page.auth-page-register .auth-card-footer {
     --ts-polish-border-strong: rgba(119, 204, 222, 0.34);
     --ts-polish-control-bg: rgba(255, 255, 255, 0.07);
     --ts-polish-control-hover: rgba(126, 203, 212, 0.14);
-    --ts-unified-button-radius: 12px;
-    --ts-unified-button-radius-compact: 10px;
-    --ts-unified-button-height: 42px;
+    --ts-unified-button-radius: var(--ts-radius-button, 999px);
+    --ts-unified-button-radius-compact: var(--ts-radius-button, 999px);
+    --ts-unified-button-height: 44px;
     --ts-unified-button-bg: rgba(255, 255, 255, 0.07);
     --ts-unified-button-hover: rgba(126, 203, 212, 0.14);
     --ts-unified-button-border: rgba(231, 249, 255, 0.15);
     --ts-unified-button-border-hover: rgba(147, 226, 239, 0.34);
-    --ts-unified-button-shadow: 0 12px 28px rgba(5, 12, 28, 0.18);
+    --ts-unified-button-shadow: 0 4px 12px rgba(5, 12, 28, 0.08), 0 12px 30px rgba(5, 12, 28, 0.14);
     --ts-unified-primary-bg: linear-gradient(135deg, #7bd4e7 0%, #4aa8ca 100%);
     --ts-unified-primary-bg-hover: linear-gradient(135deg, #8fe0ef 0%, #56b7d6 100%);
     --ts-unified-primary-text: #061624;
@@ -950,7 +950,7 @@ html[data-theme="light"] {
     --ts-unified-button-hover: rgba(231, 247, 251, 0.96);
     --ts-unified-button-border: rgba(58, 88, 116, 0.16);
     --ts-unified-button-border-hover: rgba(63, 159, 189, 0.34);
-    --ts-unified-button-shadow: 0 12px 28px rgba(82, 113, 150, 0.12);
+    --ts-unified-button-shadow: 0 4px 12px rgba(82, 113, 150, 0.06), 0 12px 30px rgba(82, 113, 150, 0.1);
     --ts-unified-primary-bg: linear-gradient(135deg, #5cc2d7 0%, #348bb0 100%);
     --ts-unified-primary-bg-hover: linear-gradient(135deg, #69cfe0 0%, #3b9abc 100%);
     --ts-unified-primary-text: #f8fdff;
@@ -1028,7 +1028,7 @@ body::before {
 }
 
 .page :where(.compact, .terminal-actions .ghost-btn, .terminal-actions .danger-btn, .notification-tools .compact) {
-    min-height: 34px;
+    min-height: 36px;
     border-radius: var(--ts-unified-button-radius-compact);
 }
 
