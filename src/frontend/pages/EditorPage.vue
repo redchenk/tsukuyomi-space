@@ -1,13 +1,16 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { compressImage } from '../utils/image';
 import { renderMarkdown } from '../utils/markdown';
+import { handleMarkdownClick } from '../utils/markdownActions';
+import { markdownTemplates, continueMarkdownList } from '../utils/markdownTemplates';
 import { applyGrowthResult } from '../services/userGrowth';
 import { useArticleCategories } from '../composables/useArticleCategories';
 
 const props = defineProps({
+  lang: { type: String, default: 'zh' },
   t: { type: Object, required: true }
 });
 
@@ -67,7 +70,34 @@ const submitLabel = computed(() => {
   if (editor.submitting) return editor.currentArticle ? props.t.editorSaving : props.t.editorPublishing;
   return editor.currentArticle ? props.t.editorUpdate : props.t.editorSubmit;
 });
-const contentPreview = computed(() => renderMarkdown(serializeEditorContent(editor.form.content)));
+const previewSource = ref('');
+const editorView = ref(typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches ? 'write' : 'split');
+const english = computed(() => props.lang === 'en');
+const snippets = computed(() => markdownTemplates(english.value));
+const copy = computed(() => english.value ? {
+  write: 'Write', split: 'Split view', preview: 'Preview', insert: 'Insert a block…', help: 'Markdown guide',
+  hint: 'Ctrl / ⌘ + B bold · I italic · K link · Shift + C code block. Lists continue with Enter.',
+  empty: 'Your formatted article will appear here.', body: 'Article body', chars: 'characters',
+  attachment: 'Upload / choose attachment', mark: 'Highlight', spoiler: 'Spoiler', strike: 'Strikethrough',
+  sync: 'Preview uses the same formatting as the published article.', examples: 'Insert example',
+  assetHint: 'Choose files from your attachment library. Images, video and audio keep their original links.'
+} : {
+  write: '撰写', split: '分栏', preview: '预览', insert: '插入内容块…', help: 'Markdown 语法指南',
+  hint: 'Ctrl / ⌘ + B 加粗 · I 斜体 · K 链接 · Shift + C 代码块；列表按 Enter 自动续写。',
+  empty: '在左侧写下内容，这里会显示文章效果。', body: '文章正文', chars: '字符',
+  attachment: '上传 / 选择附件', mark: '高亮', spoiler: '防剧透', strike: '删除线',
+  sync: '预览与发布后的文章使用同一套排版。', examples: '插入示例',
+  assetHint: '可以上传或选择自己的附件；图片、视频和音频保留原始资源链接。'
+});
+const contentPreview = computed(() => renderMarkdown(previewSource.value, { lang: props.lang }));
+const contentLength = computed(() => Array.from(editor.form.content).length);
+let previewTimer;
+watch(() => editor.form.content, value => {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => { previewSource.value = serializeEditorContent(value); }, 180);
+});
+watch(editorView, () => { clearTimeout(previewTimer); previewSource.value = serializeEditorContent(editor.form.content); });
+onBeforeUnmount(() => clearTimeout(previewTimer));
 
 function maskEditorContentImages(content) {
   return String(content || '');
@@ -109,7 +139,13 @@ function replaceContentSelection(markdown, selectOffset = 0, selectLength = 0) {
   const { start, end } = selectedContentRange();
   const before = editor.form.content.slice(0, start);
   const after = editor.form.content.slice(end);
-  editor.form.content = `${before}${markdown}${after}`;
+  const input = editorContentInput.value;
+  input?.focus();
+  input?.setSelectionRange(start, end);
+  // Native insertion retains the browser's undo history for toolbar operations.
+  let inserted = false;
+  try { inserted = Boolean(input && document.execCommand('insertText', false, markdown)); } catch (_) { /* Use the controlled value below. */ }
+  editor.form.content = inserted ? input.value : `${before}${markdown}${after}`;
   requestAnimationFrame(() => {
     const cursorStart = start + selectOffset;
     const cursorEnd = selectLength ? cursorStart + selectLength : start + markdown.length;
@@ -152,10 +188,52 @@ function insertMarkdownTemplate(type) {
         wrapContentSelection('`', '`', 'code');
       }
     },
-    link: () => replaceContentSelection('[链接文字](https://example.com)', 1, 4),
+    mark: () => wrapContentSelection('==', '==', english.value ? 'highlight' : '高亮文字'),
+    spoiler: () => wrapContentSelection(':spoiler[', ']', english.value ? 'spoiler' : '隐藏的内容'),
+    strike: () => wrapContentSelection('~~', '~~', english.value ? 'text' : '删除的文字'),
+    link: () => wrapContentSelection('[', '](https://example.com)', english.value ? 'Link text' : '链接文字'),
     hr: () => replaceContentSelection('\n---\n')
   };
+  if (editorView.value === 'preview') editorView.value = 'write';
   actions[type]?.();
+}
+
+function insertSnippet(snippet) {
+  if (!snippet) return;
+  if (editorView.value === 'preview') editorView.value = 'write';
+  const { start, end } = selectedContentRange();
+  const selected = editor.form.content.slice(start, end);
+  let source = snippet.source;
+  if (selected && snippet.id === 'codeblock') {
+    const fence = '`'.repeat(Math.max(3, ...Array.from(selected.matchAll(/`+/g), match => match[0].length + 1)));
+    source = fence + 'text\n' + selected + '\n' + fence;
+  }
+  if (selected && ['callout', 'details'].includes(snippet.id)) {
+    const lines = source.split('\n'); source = lines[0] + '\n' + selected + '\n:::';
+  }
+  replaceContentSelection((start ? '\n\n' : '') + source + '\n\n');
+}
+function insertSelectedSnippet(event) {
+  insertSnippet(snippets.value.find(item => item.id === event.target.value));
+  event.target.value = '';
+}
+function handleContentKeydown(event) {
+  if (event.isComposing) return;
+  if (event.metaKey || event.ctrlKey) {
+    const key = event.key.toLowerCase();
+    if (event.altKey || !['b', 'i', 'k', 'c'].includes(key)) return;
+    if (key === 'c' && !event.shiftKey) return;
+    event.preventDefault();
+    if (key === 'c') insertSnippet(snippets.value.find(item => item.id === 'codeblock'));
+    else insertMarkdownTemplate({ b: 'bold', i: 'italic', k: 'link' }[key]);
+  } else if (event.key === 'Enter' && !event.shiftKey && !event.altKey) {
+    const { start, end } = selectedContentRange();
+    const edit = continueMarkdownList(editor.form.content, start, end);
+    if (!edit) return;
+    event.preventDefault();
+    editorContentInput.value.setSelectionRange(edit.start, edit.end);
+    replaceContentSelection(edit.text);
+  }
 }
 
 function insertRichEmbed(type) {
@@ -384,6 +462,7 @@ async function handleEditorSubmit() {
   const content = serializeEditorContent(editor.form.content).trim();
 
   if (!title || !category || !readTime || !content) {
+    if (!content) editorView.value = 'write';
     showMessage('error', props.t.editorRequired);
     return;
   }
@@ -624,41 +703,57 @@ watch(currentArticleId, initEditor);
           <div id="editorSummaryStatus" class="help-text" role="status" aria-live="polite">{{ editor.summaryMessage }}</div>
         </div>
 
-        <div class="form-group">
-          <label for="editorContent">{{ t.editorFieldContent }}</label>
-          <div class="markdown-toolbar" aria-label="Markdown toolbar">
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('h2')">H2</button>
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('h3')">H3</button>
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('bold')">B</button>
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('italic')"><em>I</em></button>
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('quote')">“”</button>
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('list')">• List</button>
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('ordered')">1. List</button>
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('code')">{ }</button>
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('link')">Link</button>
-            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('hr')">—</button>
-            <button type="button" class="ghost-btn" @click="insertRichEmbed('media')">媒体卡片</button>
+        <section class="editor-workbench" :data-view="editorView" :aria-label="copy.body">
+          <div class="editor-workbench-head">
+            <label for="editorContent">{{ t.editorFieldContent }}</label>
+            <div class="editor-view-switch" role="group" :aria-label="copy.preview">
+              <button v-for="view in ['write', 'split', 'preview']" :key="view" type="button" :aria-pressed="editorView === view" @click="editorView = view">{{ copy[view] }}</button>
+            </div>
+          </div>
+          <div class="markdown-toolbar" role="group" aria-label="Markdown toolbar">
+            <button type="button" class="ghost-btn" title="Heading 2" @click="insertMarkdownTemplate('h2')">H2</button>
+            <button type="button" class="ghost-btn" title="Heading 3" @click="insertMarkdownTemplate('h3')">H3</button>
+            <button type="button" class="ghost-btn" aria-label="Bold" title="Ctrl / ⌘ + B" @click="insertMarkdownTemplate('bold')"><strong>B</strong></button>
+            <button type="button" class="ghost-btn" aria-label="Italic" title="Ctrl / ⌘ + I" @click="insertMarkdownTemplate('italic')"><em>I</em></button>
+            <button type="button" class="ghost-btn" :aria-label="copy.strike" @click="insertMarkdownTemplate('strike')"><s>S</s></button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('mark')">{{ copy.mark }}</button>
+            <button type="button" class="ghost-btn" @click="insertMarkdownTemplate('spoiler')">{{ copy.spoiler }}</button>
+            <button type="button" class="ghost-btn" aria-label="Quote" @click="insertMarkdownTemplate('quote')">“”</button>
+            <button type="button" class="ghost-btn" aria-label="Bullet list" @click="insertMarkdownTemplate('list')">• List</button>
+            <button type="button" class="ghost-btn" aria-label="Ordered list" @click="insertMarkdownTemplate('ordered')">1. List</button>
+            <button type="button" class="ghost-btn" aria-label="Inline code" @click="insertMarkdownTemplate('code')">{ }</button>
+            <button type="button" class="ghost-btn" title="Ctrl / ⌘ + K" @click="insertMarkdownTemplate('link')">Link</button>
+            <button type="button" class="ghost-btn" aria-label="Horizontal rule" @click="insertMarkdownTemplate('hr')">—</button>
+            <select class="markdown-insert-select" :aria-label="copy.insert" @change="insertSelectedSnippet">
+              <option value="">{{ copy.insert }}</option>
+              <option v-for="snippet in snippets" :key="snippet.id" :value="snippet.id">{{ snippet.label }}</option>
+            </select>
+            <button type="button" class="ghost-btn" @click="insertRichEmbed('media')">{{ english ? 'Media card' : '媒体卡片' }}</button>
             <button type="button" class="ghost-btn" @click="insertRichEmbed('iframe')">iframe</button>
-            <button type="button" class="primary-btn markdown-image-btn" @click="openAssetPicker('body')">上传 / 选择附件</button>
+            <button type="button" class="primary-btn markdown-image-btn" @click="openAssetPicker('body')">{{ copy.attachment }}</button>
           </div>
-          <textarea
-            id="editorContent"
-            ref="editorContentInput"
-            v-model="editor.form.content"
-            required
-            style="min-height:400px"
-            :placeholder="t.editorContentPh"
-          ></textarea>
-          <div class="help-text">可以上传或选择自己的附件；图片、视频、音频和文件会按类型插入正文，并自动兼容对象存储。</div>
-        </div>
-
-        <div class="form-group">
-          <div class="editor-preview-head">
-            <label>Markdown 预览</label>
-            <span>图片、链接、列表、引用和代码块会按文章页样式渲染</span>
+          <div class="editor-panes">
+            <div class="editor-source-pane">
+              <textarea id="editorContent" ref="editorContentInput" v-model="editor.form.content"
+                :required="editorView !== 'preview'" :placeholder="t.editorContentPh" aria-describedby="editorMarkdownHint"
+                spellcheck="false" @keydown="handleContentKeydown"></textarea>
+            </div>
+            <div class="editor-preview-pane">
+              <div class="editor-preview-head"><strong>{{ copy.preview }}</strong><span>{{ copy.sync }}</span></div>
+              <section class="article-content editor-markdown-preview" :aria-label="copy.preview" @click="handleMarkdownClick" v-html="contentPreview"></section>
+              <p v-if="!previewSource.trim()" class="editor-preview-empty">{{ copy.empty }}</p>
+            </div>
           </div>
-          <section class="article-content editor-markdown-preview" v-html="contentPreview"></section>
-        </div>
+          <div class="editor-writing-status"><span id="editorMarkdownHint">{{ copy.hint }}</span><span>{{ contentLength.toLocaleString() }} {{ copy.chars }}</span></div>
+          <p class="help-text">{{ copy.assetHint }}</p>
+          <details class="editor-markdown-help">
+            <summary>{{ copy.help }}</summary>
+            <p>{{ english ? 'Select a template to insert at the cursor, then replace the example content. Highlight: ==text== · Spoiler: :spoiler[text] · Inline math: $x^2$.' : '从工具栏选择内容块即可在光标处插入，再替换示例内容。高亮：==文字== · 防剧透：:spoiler[内容] · 行内公式：$x^2$。' }}</p>
+            <div class="editor-syntax-grid">
+              <article v-for="snippet in snippets" :key="snippet.id"><div><strong>{{ snippet.label }}</strong><button class="ghost-btn" type="button" @click="insertSnippet(snippet)">{{ copy.examples }}</button></div><pre><code>{{ snippet.source }}</code></pre></article>
+            </div>
+          </details>
+        </section>
 
         <div class="btn-group">
           <button type="submit" class="primary-btn" :disabled="editor.submitting || editor.summarizing" :aria-busy="editor.submitting">{{ submitLabel }}</button>

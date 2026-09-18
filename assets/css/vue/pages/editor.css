@@ -485,3 +485,45 @@ body .editor-asset-card {
         display: grid;
     }
 }
+
+/* Markdown writing workspace */
+.editor-page .editor-container { width: min(100%, 1240px); }
+.editor-workbench { margin-block: 1.4rem; min-width: 0; }
+.editor-workbench-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .8rem; }
+.editor-workbench-head label { margin: 0; }
+.editor-view-switch { display: inline-flex; gap: 4px; padding: 4px; background: color-mix(in srgb, var(--text) 6%, transparent); border: 1px solid var(--line); border-radius: 12px; }
+.editor-view-switch button { min-height: 38px; border: 0; border-radius: 8px; padding: .5em .9em; color: var(--muted); background: transparent; font: inherit; font-size: .86rem; cursor: pointer; }
+.editor-view-switch button[aria-pressed="true"] { color: var(--text); background: var(--panel); box-shadow: 0 2px 8px #00000012; }
+.editor-workbench .markdown-toolbar { gap: 6px; padding: .65rem; margin: 0; border: 1px solid var(--line); border-bottom: 0; border-radius: 14px 14px 0 0; background: color-mix(in srgb, var(--text) 3%, transparent); }
+.editor-workbench .markdown-toolbar button { min-height: 40px; }
+.editor-workbench .markdown-toolbar .markdown-insert-select { width: auto; max-width: 100%; min-height: 40px; padding: .4em 1.7em .4em .7em; border-radius: 8px; font-size: .84rem; }
+.editor-panes { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); border: 1px solid var(--line); border-radius: 0 0 14px 14px; overflow: hidden; }
+.editor-panes > div { min-width: 0; }
+.editor-workbench #editorContent { display: block; min-height: 520px; height: 100%; margin: 0; border: 0; border-radius: 0; resize: vertical; font: .9rem/1.85 ui-monospace, SFMono-Regular, Consolas, monospace; tab-size: 2; padding: 1.1rem; color: var(--text); background: color-mix(in srgb, var(--panel) 90%, transparent); }
+.editor-preview-pane { padding: 1.1rem; border-inline-start: 1px solid var(--line); max-height: 760px; overflow: auto; background: var(--panel); }
+.editor-workbench .editor-preview-head { display: grid; gap: .3em; margin-bottom: 1.2rem; font-size: .8rem; color: var(--muted); }
+.editor-workbench .editor-preview-head strong { color: var(--text); }
+.editor-workbench .editor-markdown-preview { min-height: 0; font-size: .95rem; }
+.editor-workbench .editor-markdown-preview:empty::before { content: none; }
+.editor-preview-empty { color: var(--muted); font-size: .9rem; padding-block: 2rem; }
+.editor-workbench[data-view="write"] .editor-preview-pane, .editor-workbench[data-view="preview"] .editor-source-pane { display: none; }
+.editor-workbench:is([data-view="write"],[data-view="preview"]) .editor-panes { grid-template-columns: minmax(0,1fr); }
+.editor-workbench[data-view="preview"] .editor-preview-pane { border-inline-start: 0; max-height: none; min-height: 360px; }
+.editor-writing-status { display: flex; justify-content: space-between; gap: 1rem; padding-block: .7rem; color: var(--muted); font-size: .76rem; }
+.editor-writing-status > :last-child { flex-shrink: 0; }
+.editor-markdown-help { margin-top: 1rem; border: 1px solid var(--line); border-radius: 14px; padding: .8rem 1rem; font-size: .9rem; }
+.editor-markdown-help > summary { cursor: pointer; color: var(--text); font-weight: 600; min-height: 28px; }
+.editor-markdown-help > p { color: var(--muted); line-height: 1.8; }
+.editor-syntax-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
+.editor-syntax-grid article { min-width: 0; border: 1px solid var(--line); border-radius: 12px; padding: .8rem; }
+.editor-syntax-grid article > div { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.editor-syntax-grid button { font-size: .78rem; padding: .5em .7em; min-height: 36px; }
+.editor-syntax-grid pre { overflow: auto; font-size: .8rem; line-height: 1.7; padding: .7rem; color: var(--text); background: color-mix(in srgb, var(--text) 5%, transparent); border-radius: 8px; }
+@media (max-width: 760px) {
+  .editor-panes, .editor-syntax-grid { grid-template-columns: minmax(0,1fr); }
+  .editor-preview-pane { border-inline-start: 0; border-top: 1px solid var(--line); max-height: none; }
+  .editor-writing-status { flex-direction: column-reverse; gap: .3rem; line-height: 1.65; }
+  .editor-workbench-head { align-items: flex-start; gap: .5rem; }
+  .editor-workbench #editorContent { min-height: 400px; }
+  .editor-workbench .markdown-image-btn { margin-left: 0; }
+}

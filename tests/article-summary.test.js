@@ -14,6 +14,12 @@ test('extracts readable prose from Markdown without code, URLs or formatting', (
     assert.equal(summarizeArticle('[说明][ref]\n\n[ref]: https://example.test/secret\nhttps://example.test'), '说明');
 });
 
+test('new Markdown syntax leaves readable summaries without exposing spoilers', () => {
+    assert.equal(summarizeArticle('::: tip 提示\n==重点=={.tip} :spoiler[隐藏[嵌套]内容] 继续。\n:::'), '重点 继续。');
+    assert.equal(summarizeArticle('> [!NOTE]\n> 说明[^a]\n\n[^a]: 资料'), '说明');
+    assert.equal(summarizeArticle('| 项目 | 数量 |\n| :--- | ---: |\n| 月光 | 8 |\n\n- [x] 完成\n- [ ] 待办'), '项目 数量 月光 8 完成 待办');
+});
+
 test('supports HTML and block articles, excluding invisible markup', () => {
     const html = '<h2>月光</h2><p>阅读 &amp; 创作<br>继续。</p><script>secret()</script><div hidden>隐藏</div><p style="display:none">隐藏</p><div aria-hidden="true"><span>隐藏</span></div><pre><code>const secret=1</code></pre><p>下一段</p>';
     assert.equal(summarizeArticle(html, 'html'), '月光 阅读 & 创作 继续。 下一段');

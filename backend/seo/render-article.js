@@ -1,4 +1,7 @@
 const config = require('../config');
+const { renderMarkdown: renderMarkdownContent } = require('../../shared/markdown.cjs');
+const { renderMediaCard, renderIframeEmbed, sanitizeMarkdownUrl } = require('../../shared/markdown-media.cjs');
+const markdownStyles = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../shared/article-markdown.css'), 'utf8');
 const { safeJsonForHtml, sanitizeRenderedHtml } = require('../services/html-sanitizer');
 
 const SITE_NAME = '月读空间';
@@ -26,48 +29,6 @@ function escapeAttr(value) {
     return escapeHtml(value).replace(/`/g, '&#96;');
 }
 
-function sanitizeMarkdownUrl(value) {
-    const url = String(value || '').trim().replace(/&amp;/g, '&');
-    if (!url) return '';
-    if (/^\/\/[a-z0-9.-]+(?:\/|$)/i.test(url)) return `https:${url}`;
-    if (/^data:image\/(png|jpe?g|gif|webp);base64,[a-z0-9+/=\s]+$/i.test(url)) return url.replace(/\s/g, '');
-    if (/^(https?:\/\/|\/(?!\/)|\.\/|\.\.\/|#)/i.test(url)) return url;
-    return '';
-}
-
-function iframeAttr(source, name) {
-    const pattern = new RegExp(`${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i');
-    const match = String(source || '').match(pattern);
-    return match ? (match[1] || match[2] || match[3] || '').trim() : '';
-}
-
-function parseIframeInput(value) {
-    const source = String(value || '').trim();
-    if (!/^<iframe[\s>]/i.test(source)) return { src: source, title: '', height: '' };
-    return {
-        src: iframeAttr(source, 'src'),
-        title: iframeAttr(source, 'title') || iframeAttr(source, 'aria-label'),
-        height: iframeAttr(source, 'height')
-    };
-}
-
-function splitTargetAndTitle(value) {
-    const source = String(value || '').trim();
-    const quoted = source.match(/^(\S+)(?:\s+["']([^"']*)["'])?$/);
-    if (!quoted) return { target: source, title: '' };
-    return { target: quoted[1] || '', title: quoted[2] || '' };
-}
-
-function iframeSandboxForUrl(url) {
-    const tokens = ['allow-scripts', 'allow-forms', 'allow-popups', 'allow-popups-to-escape-sandbox', 'allow-presentation'];
-    try {
-        if (new URL(url).hostname.toLowerCase() === 'player.bilibili.com') tokens.push('allow-same-origin');
-    } catch (_) {
-        // Keep the stricter default if parsing fails.
-    }
-    return tokens.join(' ');
-}
-
 function stripMarkdown(value) {
     return String(value || '')
         .replace(/^::(?:bilibili|media|iframe)\[([^\]]*)]\([^)]+\)\s*$/gim, '$1')
@@ -76,234 +37,6 @@ function stripMarkdown(value) {
         .replace(/[#>*_`~|]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
-}
-
-function renderInline(value) {
-    const codeSpans = [];
-    let source = String(value ?? '').replace(/`([^`\n]+)`/g, (_, code) => {
-        const token = `%%TS_CODE_${codeSpans.length}%%`;
-        codeSpans.push(`<code>${escapeHtml(code)}</code>`);
-        return token;
-    });
-
-    source = escapeHtml(source)
-        .replace(/!\[([^\]]*)]\(([^)\s]+)(?:\s+&quot;([^&]*)&quot;)?\)/g, (_, alt, rawUrl, title) => {
-            const url = sanitizeMarkdownUrl(rawUrl);
-            if (!url) return '';
-            const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
-            return `<figure class="markdown-image"><img src="${escapeAttr(url)}" alt="${escapeAttr(alt)}"${titleAttr} loading="lazy" decoding="async"></figure>`;
-        })
-        .replace(/\[([^\]]+)]\(([^)\s]+)(?:\s+&quot;([^&]*)&quot;)?\)/g, (_, label, rawUrl, title) => {
-            const url = sanitizeMarkdownUrl(rawUrl);
-            if (!url) return label;
-            const external = /^https?:\/\//i.test(url) ? ' target="_blank" rel="noopener noreferrer"' : '';
-            const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
-            return `<a href="${escapeAttr(url)}"${external}${titleAttr}>${label}</a>`;
-        })
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/__([^_]+)__/g, '<strong>$1</strong>')
-        .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
-        .replace(/(^|[^_])_([^_\n]+)_/g, '$1<em>$2</em>')
-        .replace(/~~([^~]+)~~/g, '<del>$1</del>');
-
-    codeSpans.forEach((html, index) => {
-        source = source.replace(`%%TS_CODE_${index}%%`, html);
-    });
-
-    return source;
-}
-
-function renderMediaCard(url, title = '', description = '') {
-    const safeUrl = sanitizeMarkdownUrl(url);
-    if (!safeUrl) return '';
-    const mediaKind = String(description || '').trim().toLowerCase();
-    let host = safeUrl;
-    try {
-        host = new URL(safeUrl).hostname;
-    } catch (_) {
-        host = safeUrl.replace(/^https?:\/\//i, '').split('/')[0];
-    }
-    if (mediaKind === 'video' || mediaKind === 'audio') {
-        const element = mediaKind === 'video'
-            ? `<video controls preload="metadata" playsinline src="${escapeAttr(safeUrl)}"></video>`
-            : `<audio controls preload="metadata" src="${escapeAttr(safeUrl)}"></audio>`;
-        return `<figure class="markdown-media-card markdown-media-card-${mediaKind}">
-          <div class="markdown-media-card-player">${element}</div>
-          <figcaption><strong>${escapeHtml(title || host)}</strong><em>${escapeHtml(host)}</em></figcaption>
-        </figure>`;
-    }
-    return `<a class="markdown-media-card" href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener noreferrer">
-      <span class="markdown-media-card-main"><strong>${escapeHtml(title || host)}</strong>${description ? `<small>${escapeHtml(description)}</small>` : ''}<em>${escapeHtml(host)}</em></span>
-    </a>`;
-}
-
-function renderIframeEmbed(url, title = '嵌入内容', height = '') {
-    const iframeInput = parseIframeInput(url);
-    const safeUrl = sanitizeMarkdownUrl(iframeInput.src);
-    if (!safeUrl || !/^https:\/\//i.test(safeUrl)) return '';
-    const finalTitle = title || iframeInput.title || '嵌入内容';
-    const parsedHeight = Math.min(Math.max(Number.parseInt(height || iframeInput.height, 10) || 420, 220), 900);
-    return `<figure class="markdown-iframe">
-      <iframe src="${escapeAttr(safeUrl)}" title="${escapeAttr(finalTitle)}" loading="lazy" height="${parsedHeight}" sandbox="${escapeAttr(iframeSandboxForUrl(safeUrl))}" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"></iframe>
-      <figcaption>${escapeHtml(finalTitle || safeUrl)}</figcaption>
-    </figure>`;
-}
-
-function renderList(lines, ordered = false) {
-    const tag = ordered ? 'ol' : 'ul';
-    const items = lines.map(line => {
-        const text = ordered
-            ? line.replace(/^\s*\d+\.\s+/, '')
-            : line.replace(/^\s*[-*+]\s+/, '');
-        return `<li>${renderInline(text)}</li>`;
-    }).join('');
-    return `<${tag}>${items}</${tag}>`;
-}
-
-function renderParagraph(lines) {
-    const rendered = renderInline(lines.join('\n')).replace(/\n/g, '<br>');
-    if (/^<(figure|a) class="markdown-(image|iframe|media-card)"[\s\S]*(<\/figure>|<\/a>)$/.test(rendered)) return rendered;
-    return `<p>${rendered}</p>`;
-}
-
-function renderMarkdownContent(markdown) {
-    const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
-    const html = [];
-    let buffer = [];
-    let quoteBuffer = [];
-    let listBuffer = [];
-    let orderedListBuffer = [];
-    let codeBuffer = [];
-    let inCodeFence = false;
-    let codeLang = '';
-
-    function flushParagraph() {
-        if (!buffer.length) return;
-        html.push(renderParagraph(buffer));
-        buffer = [];
-    }
-
-    function flushQuote() {
-        if (!quoteBuffer.length) return;
-        html.push(`<blockquote>${renderParagraph(quoteBuffer)}</blockquote>`);
-        quoteBuffer = [];
-    }
-
-    function flushLists() {
-        if (listBuffer.length) {
-            html.push(renderList(listBuffer));
-            listBuffer = [];
-        }
-        if (orderedListBuffer.length) {
-            html.push(renderList(orderedListBuffer, true));
-            orderedListBuffer = [];
-        }
-    }
-
-    function flushFlow() {
-        flushParagraph();
-        flushQuote();
-        flushLists();
-    }
-
-    for (const line of lines) {
-        const fence = line.match(/^\s*```([\w-]*)\s*$/);
-        if (fence) {
-            if (inCodeFence) {
-                html.push(`<pre><code${codeLang ? ` class="language-${escapeAttr(codeLang)}"` : ''}>${escapeHtml(codeBuffer.join('\n'))}</code></pre>`);
-                inCodeFence = false;
-                codeLang = '';
-                codeBuffer = [];
-            } else {
-                flushFlow();
-                inCodeFence = true;
-                codeLang = fence[1] || '';
-            }
-            continue;
-        }
-
-        if (inCodeFence) {
-            codeBuffer.push(line);
-            continue;
-        }
-
-        if (!line.trim()) {
-            flushFlow();
-            continue;
-        }
-
-        if (/^\s*<iframe[\s\S]*<\/iframe>\s*$/i.test(line)) {
-            flushFlow();
-            const embed = renderIframeEmbed(line, iframeAttr(line, 'title') || iframeAttr(line, 'aria-label') || '嵌入内容', iframeAttr(line, 'height'));
-            if (embed) html.push(embed);
-            continue;
-        }
-
-        const media = line.match(/^\s*::media\[([^\]\n]*)]\(([^)\n]+)\)\s*$/i);
-        if (media) {
-            flushFlow();
-            const { target, title } = splitTargetAndTitle(media[2]);
-            const card = renderMediaCard(target, media[1] || title, title && media[1] ? title : '');
-            if (card) html.push(card);
-            continue;
-        }
-
-        const iframe = line.match(/^\s*::iframe\[([^\]\n]*)]\(([\s\S]+)\)\s*$/i);
-        if (iframe) {
-            flushFlow();
-            const { target, title } = splitTargetAndTitle(iframe[2]);
-            const embed = renderIframeEmbed(target, iframe[1] || title, /^\d+$/.test(title) ? title : '');
-            if (embed) html.push(embed);
-            continue;
-        }
-
-        const heading = line.match(/^(#{1,4})\s+(.+)$/);
-        if (heading) {
-            flushFlow();
-            const level = heading[1].length;
-            html.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
-            continue;
-        }
-
-        if (/^\s*> ?/.test(line)) {
-            flushParagraph();
-            flushLists();
-            quoteBuffer.push(line.replace(/^\s*> ?/, ''));
-            continue;
-        }
-
-        if (/^\s*[-*+]\s+/.test(line)) {
-            flushParagraph();
-            flushQuote();
-            if (orderedListBuffer.length) flushLists();
-            listBuffer.push(line);
-            continue;
-        }
-
-        if (/^\s*\d+\.\s+/.test(line)) {
-            flushParagraph();
-            flushQuote();
-            if (listBuffer.length) flushLists();
-            orderedListBuffer.push(line);
-            continue;
-        }
-
-        if (/^\s*---+\s*$/.test(line)) {
-            flushFlow();
-            html.push('<hr>');
-            continue;
-        }
-
-        flushQuote();
-        flushLists();
-        buffer.push(line);
-    }
-
-    if (inCodeFence) {
-        html.push(`<pre><code${codeLang ? ` class="language-${escapeAttr(codeLang)}"` : ''}>${escapeHtml(codeBuffer.join('\n'))}</code></pre>`);
-    }
-    flushFlow();
-    return sanitizeRenderedHtml(html.join('\n'));
 }
 
 function plainArticleContent(article) {
@@ -459,6 +192,7 @@ function renderArticleHtml(article) {
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#24324a;background:#f7fbff;line-height:1.78}
     main{width:min(860px,calc(100% - 32px));margin:48px auto;padding:32px;border:1px solid rgba(132,167,205,.35);border-radius:24px;background:rgba(255,255,255,.84);box-shadow:0 24px 80px rgba(79,109,150,.14)}
     a{color:#4d73d9} h1{margin:0 0 12px;font-size:clamp(2rem,5vw,3.4rem);line-height:1.18}.meta{color:#5f7088;margin-bottom:24px}.cover{width:100%;border-radius:18px;margin:20px 0;object-fit:cover}.summary{font-size:1.04rem;color:#40516c}.article-body{margin-top:26px}.article-body h1,.article-body h2,.article-body h3,.article-body h4{line-height:1.25;margin:1.5em 0 .55em}.article-body p{margin:0 0 1em}.article-body img,.article-body video{display:block;max-width:min(100%,720px);max-height:520px;margin:0 auto;border-radius:16px}.article-body audio{width:100%}.article-body figure{margin:24px 0}.article-body figcaption{margin-top:8px;text-align:center;color:#64748b;font-size:.92rem}.article-body pre{overflow:auto;padding:16px;border-radius:14px;background:#132035;color:#eef6ff}.article-body blockquote{margin:18px 0;padding:12px 16px;border-left:4px solid #8ea2ff;background:rgba(126,151,235,.1);border-radius:12px}.markdown-media-card-player,.markdown-iframe{display:grid;place-items:center}.markdown-iframe iframe{width:min(100%,720px);border:0;border-radius:16px}.enter{display:inline-flex;margin-top:24px;padding:10px 16px;border-radius:999px;background:#7b8cf6;color:white;text-decoration:none}
+    ${markdownStyles}
   </style>
 </head>
 <body>

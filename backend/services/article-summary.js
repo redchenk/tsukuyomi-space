@@ -5,10 +5,38 @@ const MAX_SUMMARY_INPUT = 2000000;
 const BLOCK_TAGS = new Set(['p', 'div', 'br', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'tr']);
 const HIDDEN_TAGS = new Set(['script', 'style', 'noscript', 'template', 'svg', 'pre', 'code', 'iframe']);
 
+function stripSpoilers(source) {
+    let result = '', cursor = 0;
+    while (cursor < source.length) {
+        const start = source.indexOf(':spoiler[', cursor);
+        if (start < 0) return result + source.slice(cursor);
+        let depth = 1, end = start + 9;
+        for (; end < source.length && depth; end++) {
+            if (source[end] === '\\') { end++; continue; }
+            if (source[end] === '[') depth++;
+            else if (source[end] === ']') depth--;
+        }
+        if (depth) return result + source.slice(cursor);
+        result += source.slice(cursor, start);
+        cursor = end;
+    }
+    return result;
+}
+
 function markdownText(source) {
-    return source
+    return stripSpoilers(source)
         .replace(/^---\s*\n[\s\S]*?\n---\s*(?:\n|$)/, '')
         .replace(/^\s*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^\s*\1\s*$|$(?![\s\S]))/gm, '')
+        .replace(/^\s*:::.*$/gm, '')
+        .replace(/\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/gi, '')
+        .replace(/==([^=\n]+)==(?:\{\.(?:primary|secondary|tertiary|error|tip)\})?/g, '$1')
+        .replace(/^\s*\*\[[^\]]+\]:.*$/gm, '')
+        .replace(/^\s*\[\^[^\]]+\]:.*$/gm, '')
+        .replace(/\[\^[^\]]+\]/g, '')
+        .replace(/\$\$[\s\S]*?\$\$/g, '')
+        .replace(/^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/gm, '')
+        .replace(/^ *\|(.+)\| *$/gm, (_, row) => row.replace(/(?<!\\)\|/g, ' ').replace(/\\\|/g, '|'))
+        .replace(/^(\s*[-*+]\s+)\[[ xX]\]\s+/gm, '$1')
         .replace(/!\[([^\]]*)\]\([^\n]*?\)/g, '$1')
         .replace(/!\[([^\]]*)\]\[[^\]]*\]/g, '$1')
         .replace(/^\s*::(?:bilibili|media|iframe)\[([^\]]*)\]\([^\n]*\)\s*$/gm, '$1')

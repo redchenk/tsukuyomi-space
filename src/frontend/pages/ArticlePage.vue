@@ -11,6 +11,7 @@ import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { applyMessageLikeState } from '../services/messageLikes';
 import { renderBilibiliEmbed, renderIframeEmbed, renderMarkdown, renderMediaCard, sanitizeRenderedHtml } from '../utils/markdown';
+import { handleMarkdownClick } from '../utils/markdownActions';
 import { applySeo, articleSeo } from '../utils/seo';
 import { formatDateMinute, formatDateTime } from '../utils/time';
 
@@ -137,7 +138,7 @@ function isSafeMediaUrl(value) {
 function renderBlockContent(content) {
   try {
     const blocks = JSON.parse(String(content || '[]'));
-    if (!Array.isArray(blocks)) return renderMarkdown(content);
+    if (!Array.isArray(blocks)) return renderMarkdown(content, { lang: props.lang });
     return sanitizeRenderedHtml(blocks.map((block) => {
       if (block?.type === 'heading') return `<h2>${escapeHtml(block.text || '')}</h2>`;
       if (block?.type === 'image' && isSafeMediaUrl(block.url)) return `<figure class="markdown-image"><img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt || '')}" loading="lazy"></figure>`;
@@ -149,14 +150,14 @@ function renderBlockContent(content) {
       return `<p>${escapeHtml(block?.text || block?.content || '')}</p>`;
     }).join(''));
   } catch (_) {
-    return renderMarkdown(content);
+    return renderMarkdown(content, { lang: props.lang });
   }
 }
 
 function formatContent(content, format = 'markdown') {
   if (format === 'block') return renderBlockContent(content);
   if (format === 'html') return escapeHtml(content).replace(/\n/g, '<br>');
-  return renderMarkdown(content);
+  return renderMarkdown(content, { lang: props.lang });
 }
 
 function goProfile(username) {
@@ -486,7 +487,7 @@ watch(articleId, loadArticle);
               </nav>
             </details>
           </aside>
-          <section ref="articleContentRef" class="article-content" v-html="renderedContent"></section>
+          <section ref="articleContentRef" class="article-content" @click="handleMarkdownClick" v-html="renderedContent"></section>
         </div>
 
         <section class="comments-section">
