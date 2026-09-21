@@ -43,7 +43,8 @@ const sessionTurns = computed(() => (typeof props.chat.sessionTurnCount === 'fun
 const characterName = computed(() => String(props.chat.characterName?.value || '').trim() || '角色');
 const panelTitle = computed(() => `与${characterName.value}聊天`);
 const hasConversation = computed(() => props.chat.messages.value.some((message) => message.role !== 'system'));
-const quickMessages = isEnglishSite()
+const englishRoom = isEnglishSite();
+const quickMessages = englishRoom
   ? ['How was your day?', 'Let’s talk', 'A little encouragement']
   : ['今天过得怎么样？', '想和你聊聊天', '给我一点鼓励'];
 
@@ -215,7 +216,7 @@ function endChatStatusLabel() {
           <TsIcon name="image" :size="22" :stroke-width="2" />
           <span>&#22270;&#29255;</span>
         </button>
-        <input id="chatInput" v-model="chat.input.value" type="text" aria-label="输入消息" enterkeyhint="send" placeholder="&#36755;&#20837;&#28040;&#24687;&#65292;Enter &#21457;&#36865;" @keydown.enter="!$event.isComposing && $event.keyCode !== 229 && chat.send()">
+        <input id="chatInput" v-model="chat.input.value" type="text" :aria-label="englishRoom ? 'Message' : '输入消息'" enterkeyhint="send" :placeholder="englishRoom ? 'Message, Enter to send' : '输入消息，Enter 发送'" @keydown.enter="!$event.isComposing && $event.keyCode !== 229 && chat.send()">
         <button id="sendChatBtn" class="panel-btn" type="button" :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :aria-busy="chat.sending.value" aria-label="&#21457;&#36865;" @click="chat.send">
           <TsIcon name="send" :size="22" :stroke-width="2.1" />
           <span>&#21457;&#36865;</span>
@@ -234,10 +235,10 @@ function endChatStatusLabel() {
         >
           <TsIcon v-if="endChatBusy" class="ts-status-loader-icon" name="loader" :size="16" aria-hidden="true" />
           <TsIcon v-else name="book" :size="16" aria-hidden="true" />
-          <span>{{ endChatBusy ? endChatStatusLabel() : '结束聊天并写日记' }}</span>
+          <span>{{ endChatBusy ? endChatStatusLabel() : englishRoom ? 'End & journal' : '结束聊天并写日记' }}</span>
         </button>
         <span class="chat-end-hint">
-          {{ sessionTurns ? `本次已记录 ${sessionTurns} 条对话` : '先说几句，再结束聊天' }}
+          {{ sessionTurns ? (englishRoom ? `${sessionTurns} messages saved` : `本次已记录 ${sessionTurns} 条对话`) : (englishRoom ? 'Start a conversation' : '先说几句，再结束聊天') }}
         </span>
       </div>
     </div>

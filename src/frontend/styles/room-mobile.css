@@ -210,7 +210,7 @@
     .room-shell .room-conversation-layout .chat-input-row .panel-btn { display: grid; place-items: center; min-width: 44px; width: 44px; min-height: 44px; height: 44px; padding: 0; color: var(--ts-text); background: transparent; border: 0; }
     .room-shell .room-conversation-layout #sendChatBtn { color: white; background: #7963c4; box-shadow: none; }
     .room-shell .room-conversation-layout .chat-end-row { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0 0; }
-    .room-shell .room-conversation-layout .chat-end-btn { min-height: 44px; padding: 4px 6px; border: 0; font-size: 11px; color: var(--ts-muted); background: transparent; }
+    .room-shell .room-conversation-layout .chat-end-btn { flex-shrink: 0; min-height: 44px; padding: 4px 6px; border: 0; font-size: 11px; color: var(--ts-muted); background: transparent; white-space: nowrap; }
     .room-shell .room-conversation-layout .chat-end-hint { font-size: 10px; color: var(--ts-muted); }
     .room-shell .room-conversation-layout .room-growth-strip { flex: 0 0 auto; min-height: 44px; margin: 0; padding: 4px 8px; background: transparent; border: 0; }
     .room-shell .room-growth-strip > :not(.room-growth-mobile-label) { display: none; }

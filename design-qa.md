@@ -1,41 +1,59 @@
-# Global pill button alignment — design QA
+# Room mobile layout validation — 2026-09-22
 
-Date: 2026-09-18. Earlier Terminal and site redesign QA remains in Git history.
+final result: passed
 
-## Visual target and evidence
+## Target and evidence
 
-The requested target is the supplied black search control: a full pill silhouette, generous horizontal spacing, a clear icon-to-label gap and a calm surface. The implementation keeps the existing Tsukuyomi color hierarchy while applying that geometry to the site's buttons.
+- Source visual: `/Users/yxy/Downloads/ChatGPT Image 2026年9月21日 16_47_25.png` (941 × 1672 pixels).
+- Comparison target is the requested layout: Live2D at the top, conversation below, Room tools in reachable positions, and the existing global navigation. Existing Yachiyo assets, site colors, typography, icons, and features are intentional product constraints.
+- Source screen-content crop: x 104–837, y 119–1584, normalized without stretching to 393 × 785 pixels; device bezel/status bar excluded.
+- Implementation: `http://127.0.0.1:5173/room`, 393 × 785 CSS pixels and screenshot pixels (1×), dark theme, local test conversation, scrolled to latest reply.
+- Full comparison opened together: `.codex_tmp/room-ui/comparison.png` (786 × 785). Source normalized image: `.codex_tmp/room-ui/reference-content.png`; implementation: `.codex_tmp/room-ui/final-dark.png`.
+- Focused controls comparison opened together: `.codex_tmp/room-ui/reference-controls.png` and `.codex_tmp/room-ui/implementation-controls.png`.
+- Additional evidence: `.codex_tmp/room-ui/mobile-conversation.png`, `mobile-small.png`, `final-light.png`, `desktop.png`.
 
-- Source visual truth: `/Users/yxy/Library/Containers/com.tencent.qq/Data/Library/Application Support/QQ/nt_qq_f5a36d15d3fb79dfea1bffd23ecfe3d1/nt_data/Pic/2026-09/Ori/b66b4744e15693b6c08279c1e4266575.png` (768 × 414 image pixels).
-- Browser-rendered local implementation: `http://127.0.0.1:4176/hub`.
-- Implementation screenshots: Codex in-app Browser inline captures; the browser backend does not expose a filesystem screenshot path. Captured states were Hub and Stage desktop dark at 1280 × 720, Hub/Login/Room/navigation drawer mobile at 390 × 844, and the mobile navigation drawer in light theme. CSS viewport and image pixels were 1:1.
-- Same-input comparison: a temporary 1440 × 900 local comparison page placed the supplied source beside a focused control gallery rendered from the production CSS bundle. It contained primary, secondary, danger, icon and segmented controls; all measured `border-radius: 999px`.
-- States: unauthenticated public pages; dark and light themes; mobile navigation open; Room chat panel open; normal and selected controls.
+## Findings and iteration history
 
-## Comparison and findings
+No actionable P0/P1/P2 issues remain in the requested layout scope.
 
-1. Shape: standard, compact, icon, navigation, language, pagination, filter and segmented controls use the shared `--ts-radius-button` pill token. Square icon controls remain circles because width and height are equal.
-2. Size and spacing: standard controls now have a 44 px minimum height, compact actions use 36 px, and phone controls retain at least 44 px touch height. Key text buttons gained small horizontal padding where the previous rectangular styling felt tight.
-3. Hierarchy: primary controls keep the moon-purple gradient, secondary controls retain neutral surfaces, and destructive controls keep their semantic red. The request changes form and softness without flattening every action into the same color.
-4. Softness: hover shadows use a low, two-layer falloff. Borders, focus rings, disabled states and existing motion remain intact.
-5. Responsive layout: no horizontal document overflow was present on Hub, Stage, Plaza, Gallery, Login, Register, Access, Wiki, Room or Terminal at 390 × 844. Desktop Hub navigation and Stage filters also stayed inside 1280 × 720.
+1. P2: music drawer extended beyond the right edge. Fixed the panel to the viewport with a bounded width; rechecked its 61–381 px bounds at 393 px width.
+2. P2: auxiliary panels showed distracting underlying chat text, and empty diary occupied unnecessary height. Applied a solid themed surface and content-sized diary; rechecked diary, profile and note panels.
+3. P1: fixed sections left only 14 px for messages on a 375 × 667 phone. Added height-aware stage sizing, compact short-screen identity controls, and hid optional suggestions on short screens. Post-fix transcript was 124 px at 375 × 667 and 93 px at 320 × 568, with persistent composer and global navigation fully visible; no horizontal overflow.
+4. P2: light-theme weather text inherited dark ink over dark artwork. Explicit light foreground colors now retain contrast in both themes; rechecked computed and rendered colors.
+5. P2: shrinking the transcript could leave the latest reply below the visible region. Resize observation now preserves the latest-message position, with cleanup when the panel unmounts, and avoids forcing users reading history to the bottom. Post-fix resize from 393 × 852 to 393 × 785 left less than 1 px to the transcript bottom; final full-view evidence shows the complete latest reply and its actions.
+6. P2: overseas input retained a Chinese placeholder and the journal action wrapped awkwardly. Added explicit English input labeling and compact English journal copy; kept the action on one line. Production-build local preview at 393 × 852 confirms a readable single-line composer and journal row in `.codex_tmp/room-ui/english-input-final.png`; no console errors. The local preview does not provide the production dynamic translation endpoint for older labels.
 
-Focused checks measured the rendered controls rather than relying only on source declarations. Hub desktop controls were 38–46 px high with 999 px radii; Stage categories were 44 px and sort controls 36 px; mobile navigation items were 44–52 px; Room chat actions were 44 px.
+## Fidelity surfaces
 
-## Iteration history
-
-- Initial implementation updated the shared button token, global control height and major late-cascade overrides.
-- P2 found on Room mobile: attach, send and end-chat controls were still 12 px because Room-specific CSS loaded after the shared layer. Added a final Room control rule and restored a 44 px minimum width for compact icon actions.
-- P2 found on mobile chrome: bottom navigation items remained at 17 px and language segments at 11 px. Moved both to the pill token and rechecked the open drawer in dark and light themes.
-- The music cover artwork was deliberately kept at its card radius; only actual music controls changed. Large clickable content cards and inputs also retain their own geometry.
+- Typography: existing system/CJK font retained; 14 px message text with 1.75 line height and 16 px input text. Titles, timestamps and tool labels have distinct hierarchy. The reference's English serif branding is intentionally replaced by the site's Chinese branding.
+- Spacing/layout: same top-to-bottom companion/chat/composer/navigation hierarchy. Existing functional controls need more space than the reference's decorative identity quote. Chat history scrolls independently; 44 px primary touch targets remain accessible. Rounded bubbles and pill controls follow site tokens.
+- Colors/tokens: existing moonlit purple palette retained instead of introducing the reference's pink branding. Light theme uses dark text on light conversation surfaces; weather remains readable over the room artwork.
+- Images: actual existing Live2D model, room background and Yachiyo avatar retained; no replacement raster or simulated character. Model rendering code, textures and resolution configuration remain unchanged. Stage crop adapts to screen height; full stage can be expanded.
+- Copy/content: actual Room features and user-facing labels retained. New welcome copy and starter suggestions are localized for the English site. Reference-only brand, voice-input control, model selector and decorative text were not invented as new functions.
 
 ## Verification
 
-- Opened and visually checked Hub, Stage, Login and Room in the Codex in-app Browser.
-- Opened the mobile “更多” drawer, verified every navigation and language control, and toggled to light theme to check contrast.
-- Audited visible buttons across ten public routes; no visible button retained a non-pill radius and no route overflowed horizontally at the phone viewport.
-- Verified Room chat actions and the mobile bottom navigation after the final rebuild.
-- Zero browser console errors were observed during the final route checks.
-- Domestic and overseas production builds completed successfully. All 69 navigation, route and constrained-device performance checks passed.
+- Tested 393 × 852, 393 × 785, 375 × 667, 320 × 568, 844 × 390 and desktop 1440 × 900.
+- Simulated focused-input viewport reduction to 375 × 400: `is-keyboard-open` activated, bottom navigation hidden, input visible, transcript 181 px high.
+- Checked diary/profile/note open-close, music drawer, global navigation and theme switch, conversation history, sharing dialog, full-stage toggle, and desktop floating layout.
+- Final page reload: no new browser console errors. Earlier Vite disconnect messages occurred while the local preview service was stopped and were excluded from the final reload window.
+- Project test script checks passed: 180 API/security/etc. tests, 13 mail tests, 198 frontend tests, plus moderation assertions and syntax checks. Room-related 147-test subset repeated after final changes: passed.
+- Domestic and overseas production builds: passed.
+- Local evidence uses temporary fixture data. Actual AI generation/TTS services and physical iOS keyboard/safe-area behavior were not end-to-end tested; existing automated Room tests cover those transport and session behaviors. No rendering-quality change is made.
 
-final result: passed
+## Implementation checklist
+
+- [x] Real Live2D at the top with expandable stage.
+- [x] Global bottom navigation reused.
+- [x] Chat composer, image upload, session, diary, profile, note, settings, music and per-reply actions remain reachable.
+- [x] Small screens, themes, keyboard simulation and desktop regression checked.
+- [x] Compared source and final browser render together.
+- [x] Built both deployment variants and passed tests.
+
+Physical iOS/Safari verification remains a device-level follow-up, not a claimed completed test.
+
+## Publication
+
+The initial implementation was pushed to `main` as `1998f29` and incrementally published to both existing frontend roots. Each original package contained five new hashed assets and an updated entry, approximately 93 KB compressed. SHA-256 manifests matched both servers, previous entries were backed up, and protected resource metadata matched before and after. The domestic public page rendered the mobile layout; the overseas public page rendered the English layout and live model with no console errors. The final input-label follow-up uses the same incremental publishing procedure.
+
+GitHub Actions currently fails its pre-existing server-configuration validation before tests/deployment. Release validation was performed locally and publication used the existing authorized SSH connections; no server checkout reset, database change, media replacement, or service restart was used.
