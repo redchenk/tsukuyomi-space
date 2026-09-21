@@ -3,6 +3,18 @@ body.vue-room-route {
     background: #0e0f18;
 }
 
+/* Reset the old floating panel coordinates in the same cascade layer that
+   owns them. On phones the conversation now participates in the room layout. */
+@media (max-width: 860px) {
+    .room-shell .room-conversation-layout .room-chat-panel {
+        inset: auto !important;
+    }
+    .room-shell .room-conversation-layout .room-chat-panel .chat-body {
+        background: var(--ts-surface-strong) !important;
+        box-shadow: none !important;
+    }
+}
+
 .room-shell .site-rail {
     z-index: 80;
 }

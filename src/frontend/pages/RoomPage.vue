@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, parseResponse } from '../api/client';
 import RoomChatPanel from '../components/room/RoomChatPanel.vue';
 import RoomDiaryPanel from '../components/room/RoomDiaryPanel.vue';
@@ -21,6 +22,26 @@ const props = defineProps({
 
 const emit = defineEmits(['go']);
 const room = useRoomState();
+const mobileRoom = ref(window.matchMedia('(max-width: 860px)').matches);
+const mobileTools = computed(() => room.panels.panelButtons.filter((button) => button.id !== 'chatPanel'));
+const companionStatus = computed(() => room.live2d.error.value ? '角色暂未连接' : room.live2d.ready.value ? '在这里，陪着你' : '正在准备与你见面…');
+let mobileQuery;
+
+function updateMobileRoom(event) {
+  mobileRoom.value = event.matches;
+}
+
+function selectMobilePanel(panelId) {
+  const wasOpen = room.panels.activePanels[panelId];
+  for (const button of mobileTools.value) room.panels.closePanel(button.id);
+  if (!wasOpen) room.panels.openPanel(panelId);
+}
+
+onMounted(() => {
+  mobileQuery = window.matchMedia('(max-width: 860px)');
+  mobileQuery.addEventListener('change', updateMobileRoom);
+});
+onBeforeUnmount(() => mobileQuery?.removeEventListener('change', updateMobileRoom));
 
 function readStoredUser() {
   return getSession()?.user || null;
@@ -61,7 +82,8 @@ watch(() => props.shareId, loadSharedConversation);
 
 <template>
   <main
-    class="room-page"
+    class="room-page room-conversation-layout"
+    :class="{ 'room-companion-only': !room.panels.activePanels.chatPanel }"
     aria-label="&#31169;&#20154;&#23621;&#25152;"
     :data-room-user-id="roomUserId"
     :data-room-user-name="roomUserName"
@@ -87,8 +109,28 @@ watch(() => props.shareId, loadSharedConversation);
       ></span>
     </div>
 
+    <header class="room-mobile-header">
+      <a href="/hub" aria-label="返回大厅" @click.prevent="emit('go', '/hub')"><TsIcon name="arrowLeft" :size="21" /></a>
+      <div><strong>私人居所</strong><span>留一点时间，与你相伴</span></div>
+      <button class="room-mobile-music" type="button" aria-label="房间音乐" :aria-expanded="room.music.drawer.open" @click="room.music.toggleShell"><TsIcon name="audioLines" :size="20" /></button>
+    </header>
     <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" />
     <RoomWeatherCard :weather="room.world.weatherCard.value" />
+    <section class="room-companion-bar" aria-label="角色与房间工具">
+      <div class="room-companion-identity">
+        <img :src="'/assets/images/wiki/entries/characters/yachiyo-tsukuyomi.webp'" alt="" width="42" height="42">
+        <div><h1>{{ room.chat.characterName.value }}</h1><p :class="{ 'is-ready': room.live2d.ready.value }">{{ companionStatus }}</p></div>
+        <button type="button" class="room-companion-mode" :aria-label="room.panels.activePanels.chatPanel ? '展开角色舞台' : '返回聊天'" @click="room.panels.togglePanel('chatPanel')">
+          <TsIcon :name="room.panels.activePanels.chatPanel ? 'maximize' : 'message'" :size="18" />
+        </button>
+      </div>
+      <nav class="room-mobile-tools" aria-label="房间功能">
+        <button v-for="button in mobileTools" :key="button.id" type="button" :aria-pressed="room.panels.activePanels[button.id]" @click="selectMobilePanel(button.id)">
+          <TsIcon :name="button.icon" :size="17" /><span>{{ button.label }}</span>
+        </button>
+        <button type="button" @click="emit('go', '/room/settings')"><TsIcon name="settings" :size="17" /><span>设置</span></button>
+      </nav>
+    </section>
     <RoomDock
       :buttons="room.panels.panelButtons"
       :active-panels="room.panels.activePanels"
@@ -99,9 +141,9 @@ watch(() => props.shareId, loadSharedConversation);
     <RoomChatPanel
       v-if="room.panels.activePanels.chatPanel"
       :chat="room.chat"
-      :panel-style="room.panels.panelStyle('chatPanel')"
+      :panel-style="mobileRoom ? {} : room.panels.panelStyle('chatPanel')"
       @close="room.panels.closePanel('chatPanel')"
-      @focus="room.panels.bringPanelForward('chatPanel')"
+      @focus="!mobileRoom && room.panels.bringPanelForward('chatPanel')"
       @drag-start="room.panels.startPanelDrag('chatPanel', $event)"
       @share="openConversationShare"
       @growth="emit('go', '/growth')"

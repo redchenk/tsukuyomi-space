@@ -1,1 +1,2 @@
 @import url("../../../../assets/css/vue/pages/room.css") layer(ts-page);
+@import url("../room-mobile.css") layer(ts-editorial);

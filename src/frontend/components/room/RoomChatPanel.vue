@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import TsIcon from '../TsIcon.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
+import { isEnglishSite } from '../../utils/siteVariant';
 
 const props = defineProps({
   chat: { type: Object, required: true },
@@ -10,6 +11,30 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'focus', 'drag-start', 'share', 'growth', 'open-diary']);
 const imageInputRef = ref(null);
+const transcriptRef = ref(null);
+let transcriptObserver;
+let followingLatestMessage = true;
+
+function bindTranscript(node) {
+  transcriptRef.value = node;
+  props.chat.messageListRef.value = node;
+}
+
+function rememberTranscriptPosition() {
+  const node = transcriptRef.value;
+  if (node) followingLatestMessage = node.scrollHeight - node.scrollTop - node.clientHeight < 24;
+}
+
+onMounted(() => {
+  // Keep the newest reply in view when the keyboard or stage changes height,
+  // while preserving the position of someone reading earlier messages.
+  transcriptObserver = new ResizeObserver(() => {
+    const node = transcriptRef.value;
+    if (node && followingLatestMessage && hasConversation.value) node.scrollTop = node.scrollHeight;
+  });
+  if (transcriptRef.value) transcriptObserver.observe(transcriptRef.value);
+});
+onBeforeUnmount(() => transcriptObserver?.disconnect());
 
 const endChat = computed(() => props.chat.endChatState?.value || { status: 'idle', visible: false });
 const endChatBusy = computed(() => endChat.value.status === 'generating');
@@ -17,6 +42,21 @@ const sessionTurns = computed(() => (typeof props.chat.sessionTurnCount === 'fun
 // The composable owns the fallback name; the panel only renders what it gets.
 const characterName = computed(() => String(props.chat.characterName?.value || '').trim() || '角色');
 const panelTitle = computed(() => `与${characterName.value}聊天`);
+const hasConversation = computed(() => props.chat.messages.value.some((message) => message.role !== 'system'));
+const quickMessages = isEnglishSite()
+  ? ['How was your day?', 'Let’s talk', 'A little encouragement']
+  : ['今天过得怎么样？', '想和你聊聊天', '给我一点鼓励'];
+
+function useQuickMessage(message) {
+  props.chat.input.value = message;
+  document.getElementById('chatInput')?.focus();
+}
+
+function messageTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
 
 // Only a finished entry opens the centred overlay; confirm/progress/error stay
 // inside the chat panel so they never cover the room.
@@ -94,39 +134,48 @@ function endChatStatusLabel() {
     @drag-start="emit('drag-start', $event)"
   >
     <div class="panel-content chat-body" @dragover.prevent @drop="chat.onDrop">
-      <button v-if="showDailyGrowthPrompt(chat)" class="room-growth-strip" type="button" aria-label="查看月契成长" @click="emit('growth')">
-        <span class="room-growth-icon"><TsIcon name="sparkles" :size="16" /></span>
-        <span class="room-growth-copy">
-          <strong>Lv.{{ chat.growth.value.level.level }} {{ chat.growth.value.level.title }}</strong>
-          <small>{{ chat.growth.value.today.completed }}/{{ chat.growth.value.today.total }} 今日约定</small>
-        </span>
-        <span class="room-growth-progress" aria-hidden="true"><i :style="{ width: `${chat.growth.value.level.progressPercent}%` }"></i></span>
-        <TsIcon name="arrowRight" :size="16" />
-      </button>
-      <div class="chat-session-toolbar">
-        <span class="chat-session-label">当前会话</span>
-        <button v-if="chat.canStartConversation()" class="chat-session-new-btn chat-opener-btn" type="button"
-          :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :title="`让${characterName}先开口`"
-          @click="chat.startConversation()"><TsIcon name="sparkles" :size="15" /><span>我先说</span></button>
-        <button
-          class="chat-session-new-btn"
-          type="button"
-          :disabled="chat.resetting.value || endChatBusy"
-          :aria-busy="chat.resetting.value"
-          title="新建会话"
-          aria-label="新建会话"
-          @click="chat.startNewSession"
-        >
-          <TsIcon :class="{ 'ts-status-loader-icon': chat.resetting.value }" :name="chat.resetting.value ? 'loader' : 'plus'" :size="15" />
-          <span :role="chat.resetting.value ? 'status' : undefined">{{ chat.resetting.value ? '正在新建' : '新建会话' }}</span>
+      <div class="chat-session-header">
+        <button v-if="showDailyGrowthPrompt(chat)" class="room-growth-strip" type="button" aria-label="查看月契成长" @click="emit('growth')">
+          <span class="room-growth-mobile-label">Lv.{{ chat.growth.value.level.level }}</span>
+          <span class="room-growth-icon"><TsIcon name="sparkles" :size="16" /></span>
+          <span class="room-growth-copy">
+            <strong>Lv.{{ chat.growth.value.level.level }} {{ chat.growth.value.level.title }}</strong>
+            <small>{{ chat.growth.value.today.completed }}/{{ chat.growth.value.today.total }} 今日约定</small>
+          </span>
+          <span class="room-growth-progress" aria-hidden="true"><i :style="{ width: `${chat.growth.value.level.progressPercent}%` }"></i></span>
+          <TsIcon name="arrowRight" :size="16" />
         </button>
+        <div class="chat-session-toolbar">
+          <span class="chat-session-label">当前会话</span>
+          <button v-if="chat.canStartConversation()" class="chat-session-new-btn chat-opener-btn" type="button"
+            :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :title="`让${characterName}先开口`"
+            @click="chat.startConversation()"><TsIcon name="sparkles" :size="15" /><span>我先说</span></button>
+          <button
+            class="chat-session-new-btn"
+            type="button"
+            :disabled="chat.resetting.value || endChatBusy"
+            :aria-busy="chat.resetting.value"
+            title="新建会话"
+            aria-label="新建会话"
+            @click="chat.startNewSession"
+          >
+            <TsIcon :class="{ 'ts-status-loader-icon': chat.resetting.value }" :name="chat.resetting.value ? 'loader' : 'plus'" :size="15" />
+            <span :role="chat.resetting.value ? 'status' : undefined">{{ chat.resetting.value ? '正在新建' : '新建会话' }}</span>
+          </button>
+        </div>
       </div>
-      <div id="chatMessages" :ref="(node) => { chat.messageListRef.value = node; }" class="room-chat-messages" :aria-busy="chat.sending.value">
+      <div id="chatMessages" :ref="bindTranscript" class="room-chat-messages" :aria-busy="chat.sending.value" @scroll.passive="rememberTranscriptPosition">
+        <div v-if="!hasConversation" class="room-chat-welcome">
+          <TsIcon name="message" :size="23" />
+          <strong>这一刻，慢慢聊</strong>
+          <p>今天的小事、想说的话，都可以留在这里。</p>
+        </div>
         <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="message.role" :aria-busy="message.pending || undefined">
           <span class="chat-role">{{ message.role === 'assistant' ? characterName : message.role === 'user' ? '你' : '系统' }}</span>
           <img v-if="message.image?.dataUrl" class="chat-image-thumb" :src="message.image.dataUrl" :alt="message.image.name || 'image'">
           <StatusLoader v-if="message.pending" :label="message.content" compact />
           <div v-else class="chat-content">{{ message.content }}</div>
+          <time v-if="message.role !== 'system' && !message.pending && messageTime(message.createdAt)" class="chat-message-time">{{ messageTime(message.createdAt) }}</time>
           <div v-if="message.role === 'assistant' && !message.pending" class="chat-message-actions">
             <button
               class="chat-tts-btn"
@@ -151,6 +200,9 @@ function endChatStatusLabel() {
             </button>
           </div>
         </div>
+      </div>
+      <div v-if="!hasConversation" class="room-chat-suggestions" aria-label="聊天开场建议">
+        <button v-for="message in quickMessages" :key="message" type="button" @click="useQuickMessage(message)">{{ message }}</button>
       </div>
       <div v-if="chat.imageAttachment.value" id="chatImagePreview" class="chat-image-preview">
         <img :src="chat.imageAttachment.value.dataUrl" :alt="chat.imageAttachment.value.name">

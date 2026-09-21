@@ -74,7 +74,7 @@ export function useRoomPanels() {
 
   function startPanelDrag(panelId, event) {
     if (event.target?.closest?.('button, input, textarea, select, a')) return;
-    if (window.matchMedia('(max-width: 760px)').matches) return;
+    if (window.matchMedia('(max-width: 860px)').matches) return;
     const panel = document.getElementById(panelId);
     if (!panel) return;
     const rect = panel.getBoundingClientRect();
