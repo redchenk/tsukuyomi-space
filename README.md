@@ -1,5 +1,7 @@
 # 月读空间 · Tsukuyomi Space
 
+[简体中文](README.md) | [English](README_EN.md)
+
 **给日常留一点月光。与八千代聊天，读故事、看创作，遇见同频的人。**
 
 围绕《超时空辉夜姬！》世界观构建的非盈利同人社区，以 Vue 3 + Express 连接 Live2D AI 陪伴、内容创作、社区互动与作品百科。
