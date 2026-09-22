@@ -12,6 +12,8 @@ const emit = defineEmits(['close', 'focus', 'drag-start', 'save']);
 <template>
   <RoomDraggablePanel
     panel-id="profilePanel"
+    panel-class="room-utility-panel room-profile-panel"
+    title-icon="user"
     :panel-style="panelStyle"
     title="&#20010;&#20154;&#36164;&#26009;"
     @close="emit('close')"

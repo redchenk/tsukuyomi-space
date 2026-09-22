@@ -104,7 +104,7 @@
         left: 50% !important;
         right: auto !important;
         top: auto !important;
-        bottom: max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem)) !important;
+        bottom: var(--ts-room-tool-bottom, max(5.55rem, calc(env(safe-area-inset-bottom) + 5.55rem))) !important;
         width: min(23rem, calc(100vw - 1.2rem));
         max-width: none;
         max-height: min(calc(100dvh - var(--room-mobile-top-clearance) - 6.6rem), 34rem);

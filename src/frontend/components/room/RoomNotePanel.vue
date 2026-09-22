@@ -12,6 +12,8 @@ const emit = defineEmits(['close', 'focus', 'drag-start', 'save']);
 <template>
   <RoomDraggablePanel
     panel-id="notePanel"
+    panel-class="room-utility-panel room-note-panel"
+    title-icon="fileText"
     :panel-style="panelStyle"
     title="&#20415;&#31614;"
     @close="emit('close')"
@@ -19,7 +21,7 @@ const emit = defineEmits(['close', 'focus', 'drag-start', 'save']);
     @drag-start="emit('drag-start', $event)"
   >
     <div class="panel-content">
-      <textarea id="noteContent" v-model="note.value" placeholder="&#25226;&#28789;&#24863;&#20808;&#25918;&#22312;&#36825;&#37324;"></textarea>
+      <textarea id="noteContent" v-model="note.value" aria-label="便签" placeholder="&#25226;&#28789;&#24863;&#20808;&#25918;&#22312;&#36825;&#37324;"></textarea>
       <button id="saveNoteBtn" class="panel-btn" type="button" @click="emit('save')">&#20445;&#23384;&#20415;&#31614;</button>
     </div>
   </RoomDraggablePanel>

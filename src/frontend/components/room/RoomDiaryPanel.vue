@@ -47,7 +47,8 @@ function onImportFile(event) {
 <template>
   <RoomDraggablePanel
     panel-id="diaryPanel"
-    panel-class="room-diary-panel"
+    panel-class="room-utility-panel room-diary-panel"
+    title-icon="book"
     :panel-style="panelStyle"
     title="&#26085;&#35760;"
     @close="emit('close')"

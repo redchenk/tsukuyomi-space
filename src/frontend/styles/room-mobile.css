@@ -261,7 +261,6 @@
     .room-shell .room-conversation-layout .room-panel:not(.room-chat-panel):not(.room-music-panel) {
         width: min(500px, calc(100vw - 24px));
         max-height: calc(var(--ts-visual-height, 100dvh) - 130px - env(safe-area-inset-top));
-        background: var(--ts-bg);
         color: var(--ts-text);
     }
     .room-shell .room-conversation-layout .room-panel:not(.room-chat-panel)::before { display: none; }

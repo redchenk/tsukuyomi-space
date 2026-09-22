@@ -1,42 +1,41 @@
-# Mobile Room glass conversation QA — 2026-09-22
+# Room utility panel glass QA — 2026-09-22
 
 final result: passed
 
-## Target and comparison evidence
+## Target and evidence
 
-The requested revision restores a transparent Liquid Glass conversation surface, exposes the actual Live2D model behind it, and shows more chat text without reducing the font size. The supplied screenshot is the problem state, not a pixel-for-pixel target.
+The requested change unifies the diary, profile and notes windows with denser frosted glass and readable text. The existing transparent conversation is the visual reference for rounded edges and highlights; these reading/editing tools deliberately use a much stronger tint. The baseline captures are the problem state, not a pixel-perfect target.
 
-- Source: `e63c2b44a1583943b8ed81407e2b2d56.png`, 1206 × 2622. The content crop (0, 187)–(1206, 2328) excludes iOS/Safari chrome and is normalized proportionally to 393 × 698.
-- Implementation: local `/room`, dark theme, a long local test conversation at 393 × 700 CSS pixels; screenshots are 1×. Test copy and weather differ from the user's private conversation, and the source contains a growth prompt absent from this test account.
-- Opened together: `.codex_tmp/room-glass/comparison.png`, containing the normalized source and `final-dark-393x700.png`.
-- Focused controls/text comparison opened together: `source-chat.png` and `final-chat.png` in the same directory.
-- Additional captures: `light-393x700.png`, `final-small.png`, `keyboard.png`, `desktop.png`, and `english.png`.
+- Before: `.codex_tmp/room-panels/before-profile.png`, `before-note.png`, `before-diary.png`, all 393 × 700 CSS/image pixels at 1×.
+- Final full-view comparison opened together: `.codex_tmp/room-panels/comparison.png` (baseline profile, updated dark profile, updated light profile).
+- The updated profile contains local fixture copy to verify saving and wrapping; the baseline is empty. Model poses differ naturally. The viewport, route and panel state match.
+- Further evidence: `dark-diary.png`, `light-diary.png`, `light-diary-end.png`, `dark-note.png`, `light-note.png`, `desktop-light-diary.png`, `desktop-dark-note.png`, `small-diary.png`, and `keyboard-note.png` in the same directory.
+- The 393 px panels are readable at native scale in the combined comparison; an additional enlarged crop was not necessary. The keyboard screenshot was opened separately to inspect the input and save control.
 
-## Findings and resolved iterations
+## Resolved review findings
 
-1. P1: the previous fixed chrome left too little room for messages. The companion strip is now one compact row, tools are in a native disclosure, session/journal actions share a row, and reply timestamps/actions share a footer. At the same 393 × 700 viewport, the measured transcript increased from 157.53 to 269.80 px (71%). Message text stays 14 px; bubbles widen from 88% to 96%.
-2. P1: initial glass styling exposed only the room artwork because the stage clipped the Live2D canvas. Following the user's clarification, the stage now permits the same canvas to extend behind the conversation; final dark/light and overseas screenshots visibly show the model through the header and message area. The dark panel tint is 24% and light panel tint 40%; message bubbles independently support text contrast.
-3. P2: paused entry animation could leave global navigation invisible in a background preview. Mobile Room navigation now has a stable visible resting state. Keyboard visibility rules still hide it during input.
-4. P2: the compact landscape header hid the music entry. A landscape-only music item now appears in the tools menu; portrait retains the header music button.
+1. P1: hard-coded opaque backgrounds and inconsistent inner surfaces made the tools diverge from the conversation design. A shared utility-panel class now supplies dark/light tint, edge highlight, border, 26 px outer radius, compact icon/title header, 44 px close and action controls, and themed inset reading/form surfaces. All three tools use the same treatment.
+2. P1: a long diary and multiple entries could squeeze the actual prose to about 38 px high during the first iteration. Mobile entries now use a bounded 120 px list, a compact metadata row, and a non-collapsing reader. The diary body can scroll as needed; at 393 × 700 the prose area is 224 px and can scroll to the final sentence. Desktop gives the diary a 720 px window with distinct list and reading columns, removing unused grid rows and text collisions.
+3. P1: keyboard appearance left the old navigation clearance below the note window and clipped the save control. Utility windows now use the visible viewport with an 8 px bottom inset during keyboard mode. The final 393 × 400 simulation shows the editor and complete save button together. Other controls keep their existing bottom offset.
+4. P2: disabling blur under the existing reduced-performance profile allowed underlying text to show through. This profile now substitutes 97% dark / 98% light tint. It retains the existing performance policy, with no extra blur layers on individual controls.
 
 No actionable P0/P1/P2 issue remains within this revision's scope.
 
-## Design and interaction review
+## Design, accessibility and scope
 
-- Existing fonts, purple accent, pill controls, icons, room artwork, avatar and real Live2D assets are retained. Chat uses 14 px text / 1.7 line height, and input text remains 16 px to avoid iOS focus zoom.
-- A single bounded glass surface uses a subtle highlight, rounded border and 3 px backdrop blur. Bubbles have no additional blur. Existing reduced-performance behavior can disable blur while keeping the translucent tint and edge highlights; reduced-transparency preference uses an opaque accessible fallback. Model rendering code, textures and resolution settings were not changed.
-- Light-theme messages use dark ink and a stronger light bubble tint; dark-theme messages use light ink and a darker translucent bubble. The model is visible through the surrounding panel and the messages remain readable in the reviewed captures.
-- Tool controls, composer and reply actions retain 44 px touch targets. Native disclosure works with keyboard, Escape restores focus, outside click closes it, and selecting a tool closes it. Diary/profile/notes open correctly. Settings retains its existing route.
-- Full-stage mode hides chat and expands the stage (669.8 px at 393 × 852); returning restores chat. Desktop at 1440 × 900 retains the independent floating chat, original full journal label, and global rail.
+- Existing fonts, purple accent, icons, artwork and Live2D assets remain. Labels/body text use 14 px; inputs use 16 px to avoid iOS focus zoom. Diary prose has 1.85 line height. Inputs and reading surfaces have 16–18 px rounded corners; primary actions remain site-style pills.
+- Dark/light tokens separately define body ink, muted ink, borders and selected states. Conservative calculated contrast over worst-case black/white backdrops is 8.65:1 dark body, 5.75:1 dark muted, 10.18:1 light body, 4.99:1 light muted, and 5.91:1 white save labels on purple. These are token compositing calculations, not screenshot-based measurements of every pixel.
+- The standard glass rule uses one 18 px blur per open tool window. The local browser selected the existing reduced-performance profile, whose no-blur fallback was visually verified. Reduced-transparency and forced-colors fallbacks are included.
+- Notes now have an accessible textarea name. Focus outlines are visible. Close/save/import/export controls preserve 44 px targets. Existing diary selection, deletion confirmation, persona selection and import/export logic are retained.
+- Chat transparency, Live2D rendering/resolution, music, shared navigation appearance and backend behavior are unchanged. The common header icon is opt-in, so the chat title is unaffected.
 
 ## Validation
 
-- Checked 393 × 700, 393 × 852, 375 × 667, 320 × 568, 844 × 390, and 1440 × 900. No horizontal overflow. Transcript heights: about 270, 237 and 191 px at 393 × 700, 375 × 667 and 320 × 568 respectively.
-- Simulated keyboard at 375 × 400: keyboard class active, navigation hidden, composer within the viewport, transcript 290 px, newest-message scroll gap zero.
-- Local overseas production preview: real Live2D ready, model visible behind glass, Tools/New chat/Journal/input fit, no new console errors. Existing legacy labels rely on the production translation endpoint, which is not provided by the local fixture server.
-- 147 Room/transport/sharing/navigation tests passed. Both production variants built successfully in fresh temporary directories; each contains 94 files. `git diff --check` passed.
-- Native physical iOS/Safari keyboard and performance were not device-tested. Live AI generation and TTS were not invoked; existing automated tests cover the unchanged transport/session paths.
+- Reviewed 393 × 700, 320 × 568, desktop 1440 × 900 and a 393 × 400 keyboard simulation. Verified long diary scroll reaches the final sentence and no horizontal document overflow on the tested narrow view.
+- Imported a local-only three-entry fixture through the existing file chooser. Saved profile and notes through the UI, then reloaded and verified their values persisted. No production personal data was modified, and no diary was deleted.
+- 158 Room/navigation/performance tests passed. Both domestic and overseas production builds succeeded (94 files each). `git diff --check` passed.
+- Physical iOS Safari keyboard and device performance were not tested. The keyboard check uses the application's existing viewport/focus detection in a resized browser. Live AI/TTS were not invoked.
 
-## Release preparation
+## Release
 
-Both incremental packages contain five new hashed frontend assets and an updated HTML entry (about 94 KB compressed each). Deployment uses the existing authorized frontend roots, validates asset hashes, backs up the old entry, and switches the entry atomically. Existing media/model directories and backend files are outside this update.
+The incremental packages contain six changed hashed assets and the HTML entry, about 144 KB compressed per site. Deployment validates hashes, backs up and atomically replaces the entry, and leaves existing asset files in place. Music, models, backend code and user data are outside this update.
