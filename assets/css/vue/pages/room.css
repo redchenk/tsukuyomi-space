@@ -10,7 +10,7 @@ body.vue-room-route {
         inset: auto !important;
     }
     .room-shell .room-conversation-layout .room-chat-panel .chat-body {
-        background: var(--ts-surface-strong) !important;
+        background: transparent !important;
         box-shadow: none !important;
     }
 }

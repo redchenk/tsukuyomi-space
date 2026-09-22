@@ -135,7 +135,7 @@ function endChatStatusLabel() {
     @drag-start="emit('drag-start', $event)"
   >
     <div class="panel-content chat-body" @dragover.prevent @drop="chat.onDrop">
-      <div class="chat-session-header">
+      <div class="chat-session-header" aria-label="会话操作">
         <button v-if="showDailyGrowthPrompt(chat)" class="room-growth-strip" type="button" aria-label="查看月契成长" @click="emit('growth')">
           <span class="room-growth-mobile-label">Lv.{{ chat.growth.value.level.level }}</span>
           <span class="room-growth-icon"><TsIcon name="sparkles" :size="16" /></span>
@@ -176,29 +176,31 @@ function endChatStatusLabel() {
           <img v-if="message.image?.dataUrl" class="chat-image-thumb" :src="message.image.dataUrl" :alt="message.image.name || 'image'">
           <StatusLoader v-if="message.pending" :label="message.content" compact />
           <div v-else class="chat-content">{{ message.content }}</div>
-          <time v-if="message.role !== 'system' && !message.pending && messageTime(message.createdAt)" class="chat-message-time">{{ messageTime(message.createdAt) }}</time>
-          <div v-if="message.role === 'assistant' && !message.pending" class="chat-message-actions">
-            <button
-              class="chat-tts-btn"
-              :class="{ loading: ttsStatus(chat, message.id) === 'loading', playing: ttsStatus(chat, message.id) === 'playing' }"
-              type="button"
-              :disabled="ttsStatus(chat, message.id) === 'loading'"
-              :aria-busy="ttsStatus(chat, message.id) === 'loading'"
-              @click="chat.playTTS(message.speechText || message.content, message.id, message.live2d)"
-            >
-              <TsIcon v-if="ttsStatus(chat, message.id) === 'loading'" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
-              <span :role="ttsStatus(chat, message.id) === 'loading' ? 'status' : undefined">{{ ttsLabel(chat, message.id) }}</span>
-            </button>
-            <button
-              v-if="chat.getShareTurn(message)"
-              class="chat-tts-btn chat-share-btn"
-              type="button"
-              aria-label="分享这轮对话"
-              @click="emit('share', message)"
-            >
-              <TsIcon name="external" :size="15" />
-              <span>分享</span>
-            </button>
+          <div class="chat-message-footer">
+            <time v-if="message.role !== 'system' && !message.pending && messageTime(message.createdAt)" class="chat-message-time">{{ messageTime(message.createdAt) }}</time>
+            <div v-if="message.role === 'assistant' && !message.pending" class="chat-message-actions">
+              <button
+                class="chat-tts-btn"
+                :class="{ loading: ttsStatus(chat, message.id) === 'loading', playing: ttsStatus(chat, message.id) === 'playing' }"
+                type="button"
+                :disabled="ttsStatus(chat, message.id) === 'loading'"
+                :aria-busy="ttsStatus(chat, message.id) === 'loading'"
+                @click="chat.playTTS(message.speechText || message.content, message.id, message.live2d)"
+              >
+                <TsIcon v-if="ttsStatus(chat, message.id) === 'loading'" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
+                <span :role="ttsStatus(chat, message.id) === 'loading' ? 'status' : undefined">{{ ttsLabel(chat, message.id) }}</span>
+              </button>
+              <button
+                v-if="chat.getShareTurn(message)"
+                class="chat-tts-btn chat-share-btn"
+                type="button"
+                aria-label="分享这轮对话"
+                @click="emit('share', message)"
+              >
+                <TsIcon name="external" :size="15" />
+                <span>分享</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -235,7 +237,8 @@ function endChatStatusLabel() {
         >
           <TsIcon v-if="endChatBusy" class="ts-status-loader-icon" name="loader" :size="16" aria-hidden="true" />
           <TsIcon v-else name="book" :size="16" aria-hidden="true" />
-          <span>{{ endChatBusy ? endChatStatusLabel() : englishRoom ? 'End & journal' : '结束聊天并写日记' }}</span>
+          <span class="chat-end-full-label">{{ endChatBusy ? endChatStatusLabel() : englishRoom ? 'End & journal' : '结束聊天并写日记' }}</span>
+          <span class="chat-end-short-label" aria-hidden="true">{{ endChatBusy ? (englishRoom ? 'Writing…' : '生成中') : (englishRoom ? 'Journal' : '写日记') }}</span>
         </button>
         <span class="chat-end-hint">
           {{ sessionTurns ? (englishRoom ? `${sessionTurns} messages saved` : `本次已记录 ${sessionTurns} 条对话`) : (englishRoom ? 'Start a conversation' : '先说几句，再结束聊天') }}

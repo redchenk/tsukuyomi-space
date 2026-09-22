@@ -62,7 +62,7 @@ const TEXT = Object.freeze({
   '与辉夜姬聊天': 'Chat with Yachiyo', '系统': 'System', 'Live2D 已就绪': 'Live2D is ready', '图片': 'Image', '发送': 'Send',
   '当前会话': 'Current conversation', '新建会话': 'New chat', '正在新建': 'Starting...',
   '留一点时间，与你相伴': 'A little time together', '房间音乐': 'Room music',
-  '角色与房间工具': 'Companion and room tools', '房间功能': 'Room tools',
+  '角色与房间工具': 'Companion and room tools', '房间功能': 'Room tools', '工具': 'Tools', '会话操作': 'Conversation actions',
   '角色暂未连接': 'Companion disconnected', '在这里，陪着你': 'Here with you', '正在准备与你见面…': 'Getting ready to see you…',
   '展开角色舞台': 'Expand character stage', '返回聊天': 'Back to chat',
   '这一刻，慢慢聊': 'Take your time', '今天的小事、想说的话，都可以留在这里。': 'A little moment, a thought — share it here.',
