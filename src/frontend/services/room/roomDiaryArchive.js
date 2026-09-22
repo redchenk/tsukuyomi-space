@@ -325,7 +325,7 @@ export function listPersonaPrompts(archive = readDiaryArchive()) {
 }
 
 /**
- * The persona the room should speak as.
+ * The persona used to write diaries, independent of the live chat persona.
  *
  * Honours an explicit selection, then falls back to the first persona that has
  * a name, matching how an untouched import used to behave.
@@ -355,7 +355,7 @@ export function activePersonaId(archive = readDiaryArchive()) {
 }
 
 /**
- * Switches which persona the room speaks as. The choice lives in the archive,
+ * Switches which persona writes diaries. The choice lives in the archive,
  * so it survives reloads and travels with an export.
  */
 export function selectPersonaPrompt(id) {

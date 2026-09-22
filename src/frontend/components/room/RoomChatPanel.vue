@@ -62,6 +62,7 @@ function messageTime(value) {
 // Only a finished entry opens the centred overlay; confirm/progress/error stay
 // inside the chat panel so they never cover the room.
 const diaryPreviewOpen = computed(() => Boolean(endChat.value.entry) && endChat.value.status === 'done');
+const diaryAuthorName = computed(() => endChat.value.entry?.characterName || '角色');
 
 // The stored body already carries the 【日记】 wrapper and the timestamp line,
 // which the overlay header now shows, so only the prose is rendered.
@@ -293,11 +294,11 @@ function endChatStatusLabel() {
         data-material="popover"
         role="dialog"
         aria-modal="true"
-        :aria-label="`${characterName}的日记`"
+        :aria-label="`${diaryAuthorName}的日记`"
       >
         <header class="diary-preview-head">
           <div class="diary-preview-heading">
-            <span class="diary-preview-kicker">{{ characterName }} · 日记</span>
+            <span class="diary-preview-kicker">{{ diaryAuthorName }} · 日记</span>
             <strong>{{ endChat.entry.date }} {{ endChat.entry.time }}</strong>
           </div>
           <button

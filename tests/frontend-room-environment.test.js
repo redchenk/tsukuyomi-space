@@ -118,7 +118,7 @@ describe('environment wiring', () => {
     it('is injected into every room request', () => {
         const code = chatSrc();
         assert.match(code, /async function buildRoomContext\(message, image, llmSettings, environment = ''\)/);
-        assert.match(code, /const context = \[\s*currentTimeContext\(\),\s*environment,\s*recentDiaryContext\(\),\s*readKnowledgeContext\(message\)/);
+        assert.match(code, /const context = \[\s*currentTimeContext\(\),\s*environment,\s*readKnowledgeContext\(message\)/);
         assert.match(code, /const environment = roomEnvironmentContext\(world\?\.world\?\.value\);/);
         assert.match(code, /await buildRoomContext\(message, image, settings, environment\)/);
     });
@@ -131,8 +131,8 @@ describe('environment wiring', () => {
             'time must come before environment'
         );
         assert.ok(
-            body.indexOf('environment,') < body.indexOf('recentDiaryContext()'),
-            'environment must come before the diary block'
+            body.indexOf('environment,') < body.indexOf('readKnowledgeContext(message)'),
+            'environment must come before the knowledge block'
         );
     });
 });

@@ -1,6 +1,6 @@
 import { nextTick, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, noStoreUrl, parseResponse } from '../../api/client';
-import { defaultKnowledgeEntries } from '../../constants/room/knowledgeEntries';
+import { knowledgeContext } from '../../services/room/roomKnowledge';
 import {
   dispatchRoomLive2D,
   inferLive2DIntentFromText
@@ -31,12 +31,9 @@ import {
   appendDiaryEntry,
   diaryArchiveKey,
   activePersonaPrompt,
-  DEFAULT_PERSONA_PROMPT_ID,
-  DIARY_ARCHIVE_UPDATED_EVENT,
   diaryTimestampLabel,
   downloadDiaryArchive,
-  readDiaryArchive,
-  recentDiaryContext
+  readDiaryArchive
 } from '../../services/room/roomDiaryArchive';
 import { generateDiaryEntry } from '../../services/room/roomDiaryGeneration';
 
@@ -248,11 +245,7 @@ function wantsJapaneseTts(settings) {
 }
 
 function normalizeGptSovitsRefAudioPath(value) {
-  const path = String(value || '').trim();
-  if (/月见八千代|月見八千代|ai配音训练|超时空辉夜姬/.test(path)) {
-    return 'E:\\visualstudio\\tts\\reference\\yachiyo_ref_ja.wav';
-  }
-  return path;
+  return String(value || '').trim();
 }
 
 function compactSpeechText(text) {
@@ -313,11 +306,7 @@ export const BUILT_IN_CHARACTER_NAME = '\u516b\u5343\u4ee3\u8f89\u591c\u59ec';
 /** Short name of the built-in persona shipped with the archive. */
 export const BUILT_IN_PERSONA_SHORT_NAME = '\u516b\u5343\u4ee3';
 
-/**
- * The role-playing half of the system prompt, used only when the diary archive
- * has no usable persona of its own. Once a persona is imported, this is dropped
- * entirely so the archive character is the only voice the model hears.
- */
+/** Stable chat persona. Diary archive settings are only used for diary generation. */
 function fallbackRoomPersona() {
   return [
     '你是月见八千代，虚拟空间“月夜见”的管理员、导航者、AI 主播、电子歌姬与舞台象征。',
@@ -354,79 +343,17 @@ function applyRoomAct(live2d) {
   dispatchRoomLive2D(live2d);
 }
 
-/**
- * Display name for the active character.
- *
- * Falls back to the built-in name when no persona has been imported, so the UI
- * always has a label even on a fresh install.
- */
-export function roomCharacterName(persona) {
-  const resolved = persona === undefined ? activePersonaPrompt(readDiaryArchive()) : persona;
-  const name = String(resolved?.data?.name || '').trim();
-  return name || '\u516b\u5343\u4ee3';
+/** Chat labels deliberately do not read the diary archive. */
+export function roomCharacterName() {
+  return BUILT_IN_PERSONA_SHORT_NAME;
 }
 
-/**
- * Display name for the room stage headline.
- *
- * Accepts either a persona card (as returned by `activePersonaPrompt`) or a whole
- * archive, because the archive is what reactive room state usually holds. While
- * the archive still holds the untouched built-in persona the stage keeps its
- * original full name; any imported or renamed persona replaces it.
- */
-export function roomStageCharacterName(personaOrArchive) {
-  const source = personaOrArchive === undefined ? readDiaryArchive() : personaOrArchive;
-  // An archive carries `data.prompts`; a persona card carries `data.name`.
-  const persona = source?.data?.prompts ? activePersonaPrompt(source) : source;
-  const name = String(persona?.data?.name || '').trim();
-  // `updatePersonaPrompt` keeps the built-in id when renaming, so the id alone
-  // is not enough: the untouched default is the id AND the original short name.
-  const isUntouchedBuiltIn = String(persona?.id || '') === DEFAULT_PERSONA_PROMPT_ID
-    && (!name || name === BUILT_IN_PERSONA_SHORT_NAME);
-  if (isUntouchedBuiltIn) return BUILT_IN_CHARACTER_NAME;
-  return name || BUILT_IN_CHARACTER_NAME;
+export function roomStageCharacterName() {
+  return BUILT_IN_CHARACTER_NAME;
 }
 
-/**
- * Builds the role-playing half of the system prompt from the imported persona.
- *
- * Returns an empty string when the archive has no real persona yet, so the
- * caller can fall back to the built-in one instead of sending an empty prompt.
- */
-export function roomPersonaPrompt(persona) {
-  const data = persona?.data || {};
-  const name = String(data.name || '').trim();
-  const description = String(data.description || '').trim();
-  const personality = String(data.personality || '').trim();
-  const scenario = String(data.scenario || '').trim();
-  const notes = String(data.creator_notes || '').trim();
-  if (!name && !description && !personality && !scenario && !notes) return '';
-
-  const lines = [];
-  if (name) lines.push(`你现在的身份是「${name}」，请完全以这个角色的第一人称说话和行动。`);
-  if (description) lines.push(`【角色设定】\n${description}`);
-  if (personality) lines.push(`【性格与口吻】\n${personality}`);
-  if (scenario) lines.push(`【相处背景/当前情境】\n${scenario}`);
-  if (notes) lines.push(`【详细扮演指南】\n${notes}`);
-  if (name && name !== '八千代') {
-    lines.push(`【重要】始终称呼自己为「${name}」，不要提及自己是 AI、模型或助手，也不要提及八千代、月夜见、月读空间等与本角色无关的设定。`);
-  }
-  return lines.join('\n\n');
-}
-
-/**
- * Resolves the system prompt for one chat turn.
- *
- * When the archive carries a persona it fully replaces the built-in character,
- * and only the protocol half is appended so the reply stays machine-parseable.
- */
-export function resolveRoomSystemPrompt({ persona, userPrompt, context } = {}) {
-  const archivePersona = roomPersonaPrompt(persona);
-  const role = archivePersona || fallbackRoomPersona();
-  const base = userPrompt
-    ? [userPrompt, role].filter(Boolean).join('\n\n')
-    : role;
-  return [base, roomProtocolPrompt(), context].filter(Boolean).join('\n\n');
+export function resolveRoomSystemPrompt({ userPrompt, context } = {}) {
+  return [fallbackRoomPersona(), userPrompt, roomProtocolPrompt(), context].filter(Boolean).join('\n\n');
 }
 
 function pickReply(data) {
@@ -788,44 +715,7 @@ async function fetchPersonaMemories(message) {
 }
 
 function readKnowledgeContext(message) {
-  const settings = readJson('roomKnowledgeSettings', null);
-  if (settings?.enabled === false) return '';
-  const defaultEntries = defaultKnowledgeEntries();
-  const customEntries = Array.isArray(settings?.entries) ? settings.entries : [];
-  const defaultIds = new Set(defaultEntries.map((item) => item.id));
-  const sourceEntries = [
-    ...defaultEntries,
-    ...customEntries.filter((item) => item?.id && !defaultIds.has(item.id))
-  ];
-  const query = String(message || '').toLowerCase().trim();
-  const tokens = query
-    .split(/[\s,，。！？!?、；;：:（）()[\]【】"'“”‘’]+/u)
-    .map((item) => item.trim())
-    .filter((item) => item.length >= 2)
-    .slice(0, 12);
-  const coreIds = new Set([
-    'yachiyo_identity_001',
-    'yachiyo_personality_001',
-    'yachiyo_speech_001',
-    'yachiyo_rules_001',
-    'yachiyo_limits_001'
-  ]);
-  const entries = sourceEntries
-    .filter((item) => item && item.enabled !== false && (item.title || item.content))
-    .map((item, index) => {
-      const haystack = `${item.title || ''} ${item.tags || ''} ${item.content || ''}`.toLowerCase();
-      const tokenHits = tokens.reduce((total, token) => total + (haystack.includes(token) ? 1 : 0), 0);
-      const directHit = query && haystack.includes(query) ? 4 : 0;
-      const coreBoost = coreIds.has(item.id) ? 3 : 0;
-      return { ...item, score: coreBoost + directHit + tokenHits, originalIndex: index };
-    })
-    .sort((a, b) => (b.score - a.score) || (a.originalIndex - b.originalIndex))
-    .slice(0, 10);
-  if (!entries.length) return '';
-  return [
-    '\u89d2\u8272\u77e5\u8bc6\u5e93\uff1a',
-    ...entries.map((item, index) => `${index + 1}. ${compactText(`${item.title || ''}\uff1a${item.content || ''}`, 260)}`)
-  ].join('\n');
+  return knowledgeContext(message, readJson('roomKnowledgeSettings', null));
 }
 
 function memoryContext(memories) {
@@ -988,10 +878,11 @@ export function roomEnvironmentContext(worldState) {
 
 async function buildRoomContext(message, image, llmSettings, environment = '') {
   const mcpSettings = readJson('roomMCPSettings', {});
-  const context = [currentTimeContext(), environment, recentDiaryContext(), readKnowledgeContext(message)];
+  const knowledgeEnabled = readJson('roomKnowledgeSettings', null)?.enabled !== false;
+  const context = [currentTimeContext(), environment, readKnowledgeContext(message)];
   const [siteText, personaMemories, memories, growthState] = await Promise.all([
     fetchSiteFeedContext(),
-    fetchPersonaMemories(message).catch(() => []),
+    knowledgeEnabled ? fetchPersonaMemories(message).catch(() => []) : [],
     fetchRelevantMemories(message).catch(() => []),
     loadGrowth().catch(() => null)
   ]);
@@ -1031,17 +922,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   const ttsState = ref({ messageId: '', status: 'idle' });
   const sharedConversation = ref(null);
   const growth = ref(getCachedGrowth());
-  // Display name of whoever the archive says is speaking, so the transcript
-  // labels (and panel title) follow the imported persona instead of a constant.
   const characterName = ref(roomCharacterName());
-  // Saving the persona in Room settings rewrites the archive; re-read the name
-  // so the transcript labels and the panel title follow the new character.
-  function onPersonaArchiveUpdated() {
-    characterName.value = roomCharacterName();
-  }
-  if (typeof window !== 'undefined') {
-    window.addEventListener(DIARY_ARCHIVE_UPDATED_EVENT, onPersonaArchiveUpdated);
-  }
   let ttsUrl = '';
   let currentAudio = null;
   let currentAudioPlayback = null;
@@ -1233,9 +1114,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       const conversation = [...storedConversation, ...sharedContext].slice(-12);
       const environment = roomEnvironmentContext(world?.world?.value);
       const roomContext = await buildRoomContext(message, image, settings, environment);
-      const persona = activePersonaPrompt(readDiaryArchive());
       const systemPrompt = resolveRoomSystemPrompt({
-        persona,
         userPrompt: settings.systemPrompt,
         context: roomContext
       });
@@ -1418,6 +1297,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       }
       const { entry } = appendDiaryEntry({
         content: generated.body,
+        characterName: generated.personaName,
         conversationLength: generated.conversationLength,
         mode: 'Deepseek'
       }, { now });
@@ -1636,9 +1516,6 @@ export function useRoomChat({ live2d, world, diary = null }) {
     stopRoomConversationUpdates();
     stopRoomMemorySync();
     stopTTS();
-    if (typeof window !== 'undefined') {
-      window.removeEventListener(DIARY_ARCHIVE_UPDATED_EVENT, onPersonaArchiveUpdated);
-    }
     if (ttsUrl) URL.revokeObjectURL(ttsUrl);
     ttsUrl = '';
     window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthUpdate);

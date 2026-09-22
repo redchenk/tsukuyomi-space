@@ -69,9 +69,9 @@ function onImportFile(event) {
         <input ref="fileInputRef" type="file" accept="application/json,.json" hidden @change="onImportFile">
       </div>
 
-      <!-- One backup can hold many personas; pick which one speaks. -->
+      <!-- A backup can hold several diary authors; chat identity is separate. -->
       <label v-if="personas.length > 1" class="diary-persona-picker">
-        <span>&#20154;&#35774;</span>
+        <span>日记人设</span>
         <select :value="activePersona" @change="onPersonaChange">
           <option v-for="item in personas" :key="item.id" :value="item.id">{{ item.label }}</option>
         </select>

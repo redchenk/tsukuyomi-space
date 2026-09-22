@@ -952,6 +952,12 @@ html[data-theme="dark"] .room-step-form select option {
     justify-content: flex-end;
 }
 
+.room-settings-unsaved {
+    flex-basis: 100%;
+    grid-column: 1 / -1;
+    text-align: end;
+}
+
 .room-settings-actions .primary-btn,
 .room-settings-actions .ghost-btn,
 .room-settings-card .button-row .primary-btn,

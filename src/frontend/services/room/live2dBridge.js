@@ -1,5 +1,6 @@
 import { dispatchRoomLive2D } from './live2dControl';
 import { alignLive2DIntentToStreamingSpeech } from './live2dStreamingSpeechSession';
+import { readJson } from './roomStorage';
 import ROOM_SCRIPT from '../../../../lib/bundled/live2d-room-neuro-live.20260913-render-sync-r10.iife.js?url';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
@@ -284,6 +285,13 @@ export async function initLive2DRoom() {
     window.initTsukuyomiLive2DRoom();
     initialized = true;
     await readyPromise;
+    // Apply once to the fresh view matrix; repeating would accumulate offsets.
+    const settings = readJson('roomModelSettings', {});
+    window.setLive2DModelSettings?.(
+      clamp(settings.scale, 0.6, 1.6, 1),
+      clamp(settings.xOffset, -240, 240, 0),
+      clamp(settings.yOffset, -180, 180, 0)
+    );
   })();
 
   try {

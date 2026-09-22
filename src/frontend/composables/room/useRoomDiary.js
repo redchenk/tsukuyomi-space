@@ -25,7 +25,7 @@ export function useRoomDiary() {
   const entries = computed(() => archive.value?.data?.diary || []);
   const personaName = computed(() => activePersonaPrompt(archive.value).data.name || '角色');
   // A backup can hold many personas (affection tiers, special forms); the user
-  // picks which one the room speaks as.
+  // picks which one writes the diary, without changing live chat.
   const personas = computed(() => listPersonaPrompts(archive.value));
   const activePersona = computed(() => activePersonaId(archive.value));
   const activePersonaLabel = computed(() => (
@@ -54,11 +54,11 @@ export function useRoomDiary() {
     selectedId.value = entries.value[entries.value.length - 1]?.diaryId || '';
   }
 
-  /** Switches which persona the room speaks as. */
+  /** Switches the diary author only. */
   function selectPersona(id) {
     try {
       archive.value = selectPersonaPrompt(id);
-      notice.value = `已切换人设：${activePersonaLabel.value}`;
+      notice.value = `已切换日记人设：${activePersonaLabel.value}，聊天角色保持不变`;
       return archive.value;
     } catch (error) {
       notice.value = `切换人设失败：${error.message}`;

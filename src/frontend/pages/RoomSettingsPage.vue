@@ -1,8 +1,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import { cloneKnowledgeEntry, defaultKnowledgeEntries } from '../constants/room/knowledgeEntries';
+import { applyKnowledgeDraft, normalizeRoomKnowledge } from '../services/room/roomKnowledge';
 import { roomLive2DManifest } from '../constants/room/live2dManifest';
 import {
   clearRoomLive2DQueue,
@@ -25,6 +27,7 @@ import { requestTtsAudioBlob } from '../services/room/ttsTransport';
 import {
   activePersonaPrompt,
   clearDiaryArchive,
+  diaryArchiveKey,
   downloadDiaryArchive,
   importDiaryArchive,
   readDiaryArchive,
@@ -179,7 +182,7 @@ let toastTimer = 0;
 let modelNoticeTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
-const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto' });
+const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '' });
 const tts = reactive({
   enabled: false,
   provider: 'mimo',
@@ -195,6 +198,7 @@ const tts = reactive({
   sovitsWeightPath: DEFAULT_GPT_SOVITS_SOVITS_WEIGHT,
   useProxy: false
 });
+const initialTtsSettings = { ...tts };
 const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
 const knowledge = reactive({
   enabled: true,
@@ -217,6 +221,7 @@ const mcp = reactive({
   toolAllowlist: '',
   tools: []
 });
+const initialMcpSettings = { ...mcp };
 const live2dDebug = reactive({
   status: 'idle',
   current: null,
@@ -241,13 +246,53 @@ const diary = reactive({
   lastDiaryAt: '',
   persona: { name: '', description: '', personality: '', scenario: '', creatorNotes: '', tags: '' }
 });
-let diaryFileInput = null;
+const diaryFileInput = ref(null);
+const savedSections = reactive({});
+const settingsSections = ['model', 'llm', 'tts', 'memory', 'knowledge', 'mcp', 'diary'];
+function sectionSnapshot(section) {
+  const value = { model, llm, tts, memory: { enabled: memory.enabled }, knowledge: { enabled: knowledge.enabled, entries: knowledge.entries }, mcp, diary: diary.persona }[section];
+  return JSON.stringify(value);
+}
+function rememberSaved(section) { savedSections[section] = sectionSnapshot(section); }
+const pendingSections = computed(() => settingsSections.filter((section) => savedSections[section] !== undefined && savedSections[section] !== sectionSnapshot(section)));
+const hasKnowledgeDraft = computed(() => Boolean(knowledge.editingId || [knowledge.draft.title, knowledge.draft.content, knowledge.draft.tags].some((value) => String(value || '').trim())));
+const hasUnsavedSettings = computed(() => pendingSections.value.length > 0 || hasKnowledgeDraft.value);
+
+function persistSettings(key, value, label) {
+  try {
+    writeJson(key, value);
+    return true;
+  } catch (error) {
+    showToast(`${label}保存失败：浏览器存储不可用或空间不足。修改仍保留在表单中，请重试。`);
+    return false;
+  }
+}
+
+function saveAllSettings() {
+  const sections = new Set(pendingSections.value);
+  if (hasKnowledgeDraft.value) sections.add('knowledge');
+  const actions = { model: saveModel, llm: () => saveLLM(false), tts: () => saveTTS(false), memory: saveMemory, knowledge: () => saveKnowledge(false), mcp: () => saveMCP(false), diary: saveDiaryPersona };
+  for (const section of sections) if (actions[section]() === false) return false;
+  showToast('所有修改已保存到当前浏览器');
+  return true;
+}
+
+function enterRoom() {
+  if (saveAllSettings()) emit('go', '/room');
+}
+
+function warnBeforeUnload(event) {
+  if (!hasUnsavedSettings.value) return;
+  event.preventDefault();
+  event.returnValue = '';
+}
+onBeforeRouteLeave(() => !hasUnsavedSettings.value || window.confirm('设置尚未保存，离开会丢失这些修改。确定离开吗？'));
 
 const roomUser = computed(() => storedUser.value || (props.user?.id ? props.user : null));
 const roomIdentityLabel = computed(() => roomUser.value?.username || '访客身份');
 const llmConnectionLabel = computed(() => llm.model || '待配置');
 const ttsConnectionLabel = computed(() => tts.enabled ? (tts.voice || tts.provider || '已启用') : '未启用');
-const llmSetupReady = computed(() => Boolean(llm.model) && (!llmNeedsApiKey(llm.apiUrl) || Boolean(llm.apiKey)));
+const llmSetupReady = computed(() => Boolean(llm.apiUrl && llm.model) && (!llmNeedsApiKey(llm.apiUrl) || Boolean(llm.apiKey)));
 const ttsSetupReady = computed(() => !tts.enabled || (Boolean(tts.apiUrl) && (tts.provider === 'gpt-sovits' || Boolean(tts.apiKey))));
 const setupProgress = computed(() => [llmSetupReady.value, ttsSetupReady.value, true].filter(Boolean).length);
 const setupStatusItems = computed(() => [
@@ -678,7 +723,9 @@ function onRoomSettingsStorageEvent(event) {
   syncLive2DDebugState();
   if (event?.key === 'tsukuyomi_user' || event?.key === 'admin_user') {
     refreshRoomMemorySync();
+    loadDiaryArchive();
   }
+  if (event?.key === diaryArchiveKey() && !pendingSections.value.includes('diary')) loadDiaryArchive();
   if (event?.key === ROOM_MEMORY_UPDATED_KEY || event?.key === 'tsukuyomi_user' || event?.key === 'admin_user') {
     onRoomMemoryUpdated();
   }
@@ -957,16 +1004,12 @@ function resolveGptSovitsTextLang(text, settings) {
 }
 
 function normalizeGptSovitsRefAudioPath(value) {
-  const path = String(value || '').trim();
-  if (/月见八千代|月見八千代|ai配音训练|超时空辉夜姬/.test(path)) {
-    return 'E:\\visualstudio\\tts\\reference\\yachiyo_ref_ja.wav';
-  }
-  return path;
+  return String(value || '').trim();
 }
 
 function gptSovitsPathWarning(path) {
   return /[^\x00-\x7F]/.test(String(path || ''))
-    ? '参考音频路径含中文或特殊字符，GPT-SoVITS 本地 API 可能无法读取；已建议使用 E:\\visualstudio\\tts\\reference\\yachiyo_ref_ja.wav。'
+    ? '参考音频路径保留原样；请确认它在运行 GPT-SoVITS 的设备上真实存在。'
     : '';
 }
 
@@ -1138,16 +1181,16 @@ function loadSettings() {
   model.xOffset = Number(modelSettings.xOffset || 0);
   model.yOffset = Number(modelSettings.yOffset || 0);
 
-  Object.assign(llm, readJson('roomLLMSettings', {}));
+  Object.assign(llm, { apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', ...readJson('roomLLMSettings', {}) });
   if (isOllamaApi(llm.apiUrl)) {
     llm.apiUrl = normalizeOllamaUrl(llm.apiUrl);
     llm.useProxy = false;
     if (!llm.model) llm.model = 'qwen2.5:7b';
   }
-  Object.assign(tts, { ...tts, ...readJson('roomTTSSettings', {}) });
+  Object.assign(tts, { ...initialTtsSettings, ...readJson('roomTTSSettings', {}) });
   if (tts.provider === 'gpt-sovits') {
     tts.useProxy = false;
-    if (!tts.apiUrl || /127\.0\.0\.1/.test(tts.apiUrl)) tts.apiUrl = defaultTtsUrl('gpt-sovits');
+    if (!tts.apiUrl) tts.apiUrl = defaultTtsUrl('gpt-sovits');
   }
   if (tts.provider === 'minimax') {
     if (!tts.apiUrl || /api\.minimax\.chat/.test(tts.apiUrl)) tts.apiUrl = defaultTtsUrl('minimax');
@@ -1156,12 +1199,10 @@ function loadSettings() {
     if (!tts.textLang) tts.textLang = 'ja';
   }
   Object.assign(memory, { enabled: true, ...readJson('roomMemorySettings', {}) });
-  Object.assign(knowledge, { enabled: true, managerOpen: false, ...readJson('roomKnowledgeSettings', {}) });
-  if (!Array.isArray(knowledge.entries) || !knowledge.entries.length) knowledge.entries = defaultKnowledgeEntries();
-  else knowledge.entries = knowledge.entries.map(cloneKnowledgeEntry);
+  Object.assign(knowledge, normalizeRoomKnowledge(readJson('roomKnowledgeSettings', null)));
   knowledge.editingId = null;
   knowledge.draft = { title: '', content: '', tags: '', enabled: true };
-  Object.assign(mcp, { ...mcp, ...readJson('roomMCPSettings', {}) });
+  Object.assign(mcp, { ...initialMcpSettings, ...readJson('roomMCPSettings', {}) });
   if (!Array.isArray(mcp.tools)) mcp.tools = [];
   setupLlmMode.value = isOllamaApi(llm.apiUrl) ? 'ollama' : 'cloud';
   const activePreset = BEGINNER_LLM_PROVIDERS.find(({ value }) => {
@@ -1170,6 +1211,7 @@ function loadSettings() {
   });
   if (activePreset) setupCloudProvider.value = activePreset.value;
   loadDiaryArchive();
+  settingsSections.forEach(rememberSaved);
   loadMemoryCount();
   if (memory.managerOpen) loadVisibleMemories();
 }
@@ -1192,21 +1234,32 @@ function loadDiaryArchive() {
     creatorNotes: persona.data.creator_notes || '',
     tags: Array.isArray(persona.data.tags) ? persona.data.tags.join('、') : ''
   };
+  rememberSaved('diary');
 }
 
 function saveDiaryPersona() {
-  updatePersonaPrompt({
-    data: {
-      name: String(diary.persona.name || '').trim(),
-      description: diary.persona.description,
-      personality: diary.persona.personality,
-      scenario: diary.persona.scenario,
-      creator_notes: diary.persona.creatorNotes,
-      tags: String(diary.persona.tags || '').split(/[、,，\s]+/).map((item) => item.trim()).filter(Boolean)
-    }
-  });
-  loadDiaryArchive();
-  showToast('日记人设已保存，结束聊天时会按它来写日记');
+  if (!String(diary.persona.name || '').trim()) {
+    showToast('请填写日记角色名');
+    return false;
+  }
+  try {
+    updatePersonaPrompt({
+      data: {
+        name: String(diary.persona.name || '').trim(),
+        description: diary.persona.description,
+        personality: diary.persona.personality,
+        scenario: diary.persona.scenario,
+        creator_notes: diary.persona.creatorNotes,
+        tags: String(diary.persona.tags || '').split(/[、,，\s]+/).map((item) => item.trim()).filter(Boolean)
+      }
+    });
+    loadDiaryArchive();
+    showToast('日记人设已保存，仅用于写日记，不会改变聊天角色');
+    return true;
+  } catch (error) {
+    showToast('日记人设保存失败，请检查浏览器存储后重试');
+    return false;
+  }
 }
 
 function exportDiaryArchiveFile() {
@@ -1219,38 +1272,42 @@ function exportDiaryArchiveFile() {
 }
 
 function pickDiaryFile() {
-  if (!diaryFileInput) {
-    diaryFileInput = document.createElement('input');
-    diaryFileInput.type = 'file';
-    diaryFileInput.accept = 'application/json,.json';
-    diaryFileInput.addEventListener('change', async () => {
-      const file = diaryFileInput.files?.[0];
-      diaryFileInput.value = '';
-      if (!file) return;
-      try {
-        const archive = importDiaryArchive(await file.text());
-        loadDiaryArchive();
-        showToast(`已导入 ${archive.data.diary.length} 篇日记，角色：${diary.personaName || '未命名'}`);
-      } catch (error) {
-        showToast(`导入失败：${error.message}`);
-      }
-    });
-  }
-  diaryFileInput.click();
+  diaryFileInput.value?.click();
 }
 
-function copyDiaryArchivePreview() {
-  const text = serializeDiaryArchive();
-  navigator.clipboard?.writeText(text)
-    .then(() => showToast('存档 JSON 已复制'))
-    .catch(() => showToast('复制失败，请改用导出'));
+async function onDiaryImportFile(event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  const owner = diaryArchiveKey();
+  try {
+    const text = await file.text();
+    if (owner !== diaryArchiveKey()) throw new Error('账号已切换，请重新选择存档');
+    const archive = importDiaryArchive(text);
+    loadDiaryArchive();
+    showToast(`已导入 ${archive.data.diary.length} 篇日记，角色：${diary.personaName || '未命名'}。聊天设置保持不变。`);
+  } catch (error) {
+    showToast(`导入失败：${error.message}`);
+  }
+}
+
+async function copyDiaryArchivePreview() {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+    await navigator.clipboard.writeText(serializeDiaryArchive());
+    showToast('存档 JSON 已复制');
+  } catch (_) {
+    showToast('复制失败，请改用导出存档 JSON');
+  }
 }
 
 function resetDiaryArchiveData() {
   if (!window.confirm('确定要清空本地的人设与日记存档吗？该操作不可撤销。')) return;
-  clearDiaryArchive();
-  loadDiaryArchive();
-  showToast('本地人设与日记存档已清空');
+  try {
+    clearDiaryArchive();
+    loadDiaryArchive();
+    showToast('本地人设与日记存档已清空');
+  } catch (_) { showToast('清空失败，请检查浏览器存储后重试'); }
 }
 
 function applyMcpProvider(provider) {  mcp.provider = provider;
@@ -1280,13 +1337,16 @@ function applyMcpProvider(provider) {  mcp.provider = provider;
 }
 
 function saveModel() {
-  writeJson('roomModelSettings', {
+  if (!persistSettings('roomModelSettings', {
+    ...readJson('roomModelSettings', {}),
     scale: Number(model.scale || 100) / 100,
     xOffset: Number(model.xOffset || 0),
     yOffset: Number(model.yOffset || 0)
-  });
+  }, '模型设置')) return false;
+  rememberSaved('model');
   showModelSaveNotice();
   showToast(`模型设置已保存：${modelQualityLabel()}，回到房间后生效`);
+  return true;
 }
 
 function resetModel() {
@@ -1337,7 +1397,7 @@ function moveToSetupStep(step, message) {
 
 function saveSetupStep() {
   if (setupStep.value === 1) {
-    saveLLM(false);
+    if (!saveLLM(false)) return false;
     if (!llmSetupReady.value) {
       showToast(llmNeedsApiKey(llm.apiUrl) ? '请填写 API Key 后继续' : '请先选择模型');
       return;
@@ -1354,8 +1414,9 @@ function saveSetupStep() {
     moveToSetupStep(3, 'TTS 设置已保存，继续设置记忆');
     return;
   }
-  saveMemory();
-  showToast('房间已经准备好');
+  if (!saveKnowledge(false) || !saveMemory()) return false;
+  showToast('记忆和角色知识库设置已保存');
+  return true;
 }
 
 function openGlobalAdvanced(target) {
@@ -1425,23 +1486,34 @@ function normalizedLLMSettings() {
     model: modelName,
     useProxy: needsApiKey ? Boolean(llm.useProxy) : false,
     visionMode: ['auto', 'llm', 'mcp'].includes(llm.visionMode) ? llm.visionMode : 'auto',
+    systemPrompt: String(llm.systemPrompt || '').trim(),
     needsApiKey
   };
 }
 
 function saveLLM(showDialog = true) {
   const settings = normalizedLLMSettings();
+  try {
+    const endpoint = new URL(settings.apiUrl);
+    if (!['http:', 'https:'].includes(endpoint.protocol) || !settings.model) throw new Error();
+  } catch (_) {
+    showToast('请填写有效的 HTTP(S) API 端点和模型名称');
+    return false;
+  }
   llm.apiUrl = settings.apiUrl;
   llm.model = settings.model;
   llm.useProxy = settings.useProxy;
   if (!settings.needsApiKey) llm.apiKey = '';
-  writeJson('roomLLMSettings', {
+  if (!persistSettings('roomLLMSettings', {
+    ...readJson('roomLLMSettings', {}),
     apiUrl: settings.apiUrl,
     apiKey: settings.apiKey,
     model: settings.model,
     useProxy: settings.useProxy,
-    visionMode: settings.visionMode
-  });
+    visionMode: settings.visionMode,
+    systemPrompt: settings.systemPrompt
+  }, 'LLM 设置')) return false;
+  rememberSaved('llm');
   const ready = !settings.needsApiKey || Boolean(settings.apiKey);
   if (showDialog) {
     openTestDialog(
@@ -1453,10 +1525,11 @@ function saveLLM(showDialog = true) {
     );
   }
   showToast('LLM API 设置已保存');
+  return true;
 }
 
 async function testLLM() {
-  saveLLM();
+  if (!saveLLM()) return;
   const settings = normalizedLLMSettings();
   if (settings.needsApiKey && !settings.apiKey) {
     openTestDialog('llm', 'error', 'LLM 连接测试', '请先填写 LLM API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的模型供应商。');
@@ -1499,6 +1572,16 @@ async function testLLM() {
 
 function saveTTS(showDialog = true) {
   const shouldShowDialog = showDialog !== false;
+  if (tts.enabled) {
+    try {
+      const endpoint = new URL(String(tts.apiUrl || defaultTtsUrl(tts.provider)).trim());
+      if (!['http:', 'https:'].includes(endpoint.protocol)) throw new Error();
+      tts.apiUrl = endpoint.href;
+    } catch (_) {
+      showToast('请填写有效的 HTTP(S) 语音端点，或关闭语音');
+      return false;
+    }
+  }
   if (tts.provider === 'gpt-sovits') {
     tts.textLang = normalizeGptSovitsLang(tts.textLang || tts.model, 'auto');
     tts.promptLang = normalizeGptSovitsLang(tts.promptLang, 'ja');
@@ -1549,6 +1632,7 @@ function saveTTS(showDialog = true) {
       `Provider：${tts.provider || 'mimo'}\n端点：${String(tts.apiUrl || '').trim() || defaultTtsUrl(tts.provider)}\n模型/语言：${String(tts.model || tts.textLang || '').trim() || '未填写'}\n音色/参考音频：${String(tts.voice || tts.refAudioPath || '').trim() || '未填写'}\n请求方式：${tts.useProxy ? '服务器受限代理' : '浏览器直连'}${gptSovitsPathWarning(tts.refAudioPath) ? `\n提示：${gptSovitsPathWarning(tts.refAudioPath)}` : ''}`
     );
   }
+  rememberSaved('tts');
   showToast('TTS 设置已保存');
   return true;
 }
@@ -1603,9 +1687,11 @@ async function testTTS() {
 }
 
 function saveMemory() {
-  writeJson('roomMemorySettings', { enabled: Boolean(memory.enabled) });
+  if (!persistSettings('roomMemorySettings', { enabled: Boolean(memory.enabled) }, '记忆设置')) return false;
+  rememberSaved('memory');
   loadMemoryCount();
   showToast(memory.enabled ? '长期记忆已开启' : '长期记忆已关闭');
+  return true;
 }
 
 async function syncMemoryVectors() {
@@ -1628,13 +1714,26 @@ async function syncMemoryVectors() {
   }
 }
 
+function persistKnowledge(entries, enabled = knowledge.enabled) {
+  const next = entries.map(cloneKnowledgeEntry).filter(item => item.title || item.content);
+  if (!persistSettings('roomKnowledgeSettings', { enabled: Boolean(enabled), entries: next }, '角色知识库')) return false;
+  knowledge.enabled = Boolean(enabled);
+  knowledge.entries = next;
+  rememberSaved('knowledge');
+  return true;
+}
+
 function saveKnowledge(showMessage = true) {
-  knowledge.entries = knowledge.entries.map(cloneKnowledgeEntry).filter(item => item.title || item.content);
-  writeJson('roomKnowledgeSettings', {
-    enabled: Boolean(knowledge.enabled),
-    entries: knowledge.entries
-  });
-  if (showMessage) showToast('角色知识库已保存，回到房间后生效');
+  try {
+    const entries = applyKnowledgeDraft(knowledge.entries, knowledge.draft, knowledge.editingId);
+    if (!persistKnowledge(entries)) return false;
+    resetKnowledgeDraft();
+    if (showMessage) showToast('角色知识库已保存，下一次对话生效');
+    return true;
+  } catch (error) {
+    showToast(error.message);
+    return false;
+  }
 }
 
 function toggleKnowledgeManager() {
@@ -1659,33 +1758,27 @@ async function editKnowledgeEntry(item) {
 }
 
 function saveKnowledgeEntry() {
-  const entry = cloneKnowledgeEntry(knowledge.draft);
-  if (!entry.title || !entry.content) {
+  if (!String(knowledge.draft.title || '').trim() || !String(knowledge.draft.content || '').trim()) {
     showToast('请填写知识条目的标题和内容');
-    return;
+    return false;
   }
-  const index = knowledge.entries.findIndex(item => item.id === knowledge.editingId);
-  if (index >= 0) knowledge.entries[index] = { ...entry, id: knowledge.editingId };
-  else knowledge.entries.unshift(entry);
-  resetKnowledgeDraft();
-  saveKnowledge(false);
-  showToast(index >= 0 ? '知识条目已更新' : '知识条目已添加');
+  const editing = Boolean(knowledge.editingId);
+  if (!saveKnowledge(false)) return false;
+  showToast(editing ? '知识条目已更新' : '知识条目已添加');
+  return true;
 }
 
 function deleteKnowledgeEntry(item) {
   if (!confirm(`确定删除知识条目“${item.title}”吗？`)) return;
-  knowledge.entries = knowledge.entries.filter(entry => entry.id !== item.id);
+  if (!persistKnowledge(knowledge.entries.filter(entry => entry.id !== item.id))) return;
   if (knowledge.editingId === item.id) resetKnowledgeDraft();
-  saveKnowledge(false);
   showToast('知识条目已删除');
 }
 
 function resetKnowledgeDefaults() {
   if (!confirm('确定恢复默认八千代知识库吗？这会覆盖当前知识条目。')) return;
-  knowledge.enabled = true;
-  knowledge.entries = defaultKnowledgeEntries();
+  if (!persistKnowledge(defaultKnowledgeEntries(), true)) return;
   resetKnowledgeDraft();
-  saveKnowledge(false);
   showToast('已恢复默认角色知识库');
 }
 
@@ -1879,10 +1972,20 @@ async function callMcp(method, params = {}) {
   return data.result || data;
 }
 
-function saveMCP() {
+function saveMCP(showDialog = true) {
   const endpoint = String(mcp.endpoint || '').trim();
+  if (mcp.enabled) {
+    try {
+      if (!endpoint) throw new Error();
+      const url = new URL(endpoint, window.location.origin);
+      if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
+    } catch (_) {
+      showToast('请填写有效的 MCP 端点，或关闭 MCP');
+      return false;
+    }
+  }
   const toolAllowlist = String(mcp.toolAllowlist || '').trim();
-  writeJson('roomMCPSettings', {
+  if (!persistSettings('roomMCPSettings', {
     enabled: Boolean(mcp.enabled),
     provider: String(mcp.provider || 'custom'),
     endpoint,
@@ -1893,8 +1996,9 @@ function saveMCP() {
     resourceMode: String(mcp.resourceMode || 'url').trim() || 'url',
     toolAllowlist,
     tools: Array.isArray(mcp.tools) ? mcp.tools : []
-  });
-  openTestDialog(
+  }, 'MCP 设置')) return false;
+  rememberSaved('mcp');
+  if (showDialog) openTestDialog(
     'mcp',
     mcp.enabled && endpoint ? 'success' : 'warning',
     'MCP 设置已保存',
@@ -1904,6 +2008,7 @@ function saveMCP() {
     `Provider：${mcp.provider || 'custom'}\n端点：${endpoint || '未填写'}\n认证头：${String(mcp.authHeader || 'Authorization').trim() || 'Authorization'}\n工具白名单：${toolAllowlist || '允许全部'}\n已发现工具：${Array.isArray(mcp.tools) ? mcp.tools.length : 0}`
   );
   showToast(mcp.enabled ? 'MCP 设置已保存并启用' : 'MCP 设置已保存（当前未启用）');
+  return true;
 }
 
 async function testMCP() {
@@ -1915,7 +2020,7 @@ async function testMCP() {
       description: tool.description || '',
       inputSchema: tool.inputSchema || tool.input_schema || { type: 'object', properties: {} }
     })).filter((tool) => tool.name);
-    saveMCP();
+    if (!saveMCP()) return;
     showToast(mcp.tools.length ? `MCP 已连接，发现 ${mcp.tools.length} 个工具` : 'MCP 已连接，但未发现工具');
   } catch (error) {
     showToast(`MCP 测试失败：${error.message}`);
@@ -1923,7 +2028,7 @@ async function testMCP() {
 }
 
 async function testMCPWithDialog() {
-  saveMCP();
+  if (!saveMCP(false)) return;
   openTestDialog(
     'mcp',
     'loading',
@@ -1939,7 +2044,7 @@ async function testMCPWithDialog() {
       description: tool.description || '',
       inputSchema: tool.inputSchema || tool.input_schema || { type: 'object', properties: {} }
     })).filter((tool) => tool.name);
-    saveMCP();
+    if (!saveMCP(false)) return;
     openTestDialog(
       'mcp',
       mcp.tools.length ? 'success' : 'warning',
@@ -1966,6 +2071,7 @@ watch(() => props.user?.id || '', (userId, previousUserId) => {
   if (userId === previousUserId) return;
   refreshRoomMemorySync();
   refreshMemoryState();
+  loadDiaryArchive();
 });
 
 onMounted(() => {
@@ -1975,6 +2081,7 @@ onMounted(() => {
   window.addEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
   window.addEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
   window.addEventListener('storage', onRoomSettingsStorageEvent);
+  window.addEventListener('beforeunload', warnBeforeUnload);
 });
 
 onBeforeUnmount(() => {
@@ -1984,6 +2091,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
   window.removeEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
   window.removeEventListener('storage', onRoomSettingsStorageEvent);
+  window.removeEventListener('beforeunload', warnBeforeUnload);
   clearTimeout(modelNoticeTimer);
   clearTimeout(memoryRefreshTimer);
   clearTimeout(toastTimer);
@@ -1998,13 +2106,15 @@ onBeforeUnmount(() => {
         <p>三步完成基础配置</p>
       </div>
       <div class="room-settings-actions">
+        <span v-if="hasUnsavedSettings" class="field-hint room-settings-unsaved" role="status">有尚未保存的修改</span>
+        <button class="primary-btn" type="button" :disabled="!hasUnsavedSettings" @click="saveAllSettings">保存全部修改</button>
         <button class="ghost-btn" type="button" @click="loadSettings">
           <TsIcon name="refresh" :size="17" />
           <span>重新读取</span>
         </button>
-        <a class="primary-btn" href="/room" @click.prevent="emit('go', '/room')">
+        <a class="primary-btn" href="/room" @click.prevent="enterRoom">
           <TsIcon name="home" :size="17" />
-          <span>返回房间</span>
+          <span>{{ hasUnsavedSettings ? '保存并返回房间' : '返回房间' }}</span>
         </a>
       </div>
     </header>
@@ -2266,7 +2376,7 @@ onBeforeUnmount(() => {
             <div class="room-setup-actions">
               <button class="ghost-btn" type="button" @click="setupStep = 2"><TsIcon name="arrowLeft" :size="17" />上一步</button>
               <button class="primary-btn" type="button" @click="saveSetupStep">保存设置</button>
-              <a class="primary-btn room-enter-btn" href="/room" @click.prevent="saveSetupStep(); emit('go', '/room')">进入房间<TsIcon name="arrowRight" :size="17" /></a>
+              <a class="primary-btn room-enter-btn" href="/room" @click.prevent="enterRoom">进入房间<TsIcon name="arrowRight" :size="17" /></a>
             </div>
           </section>
         </article>
@@ -2410,8 +2520,10 @@ onBeforeUnmount(() => {
         <div class="form-grid">
           <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="http://localhost:11434/api/chat"></label>
           <label>API Key<input v-model="llm.apiKey" type="password" placeholder="Ollama 可留空 / sk-..."></label>
-          <p class="field-hint warning-text">API Key 仅保存在当前浏览器。Ollama 无需 API Key；首次连接请允许浏览器访问本地网络，并在修改来源设置后完全重启 Ollama。</p>
+          <p class="field-hint warning-text">API Key 仅保存在当前浏览器。localhost / 127.0.0.1 指当前设备，手机不会自动连接电脑上的服务；跨设备使用请填写手机可访问的服务地址。</p>
           <label>模型名称<input v-model="llm.model" type="text" list="llmSyncedModels" placeholder="gpt-4o-mini"></label>
+          <label>对话补充指令<textarea v-model="llm.systemPrompt" placeholder="可选：回复长度、语言或交流偏好"></textarea></label>
+          <p class="field-hint">仅用于聊天，日记人设保存在独立存档中。接口设置与知识库保存在当前浏览器，不会自动同步到另一台设备。</p>
           <datalist id="llmSyncedModels">
             <option v-for="option in syncedModelOptions" :key="`${option.source}-${option.id}`" :value="syncedModelSelectValue(option)">{{ option.label }}</option>
           </datalist>
@@ -2691,7 +2803,7 @@ onBeforeUnmount(() => {
           <div>
             <span>08 · Diary</span>
             <h2>人设与日记存档</h2>
-            <p>结束聊天时会按这里的人设写一篇日记，并写入同一个「人设 + 日记」混合 JSON 存档。</p>
+            <p>这里的人设只用于结束聊天后的日记写作。导入、编辑或切换存档不会改变聊天角色、系统提示词、知识库或聊天记录，旧日记也不会自动注入对话。</p>
           </div>
         </div>
         <div class="diary-archive-summary">
@@ -2716,6 +2828,7 @@ onBeforeUnmount(() => {
           </div>
         </details>
         <div class="form-grid">
+          <input ref="diaryFileInput" type="file" accept="application/json,.json" hidden @change="onDiaryImportFile">
           <div class="button-row">
             <button class="ghost-btn" type="button" @click="exportDiaryArchiveFile">导出存档 JSON</button>
             <button class="ghost-btn" type="button" @click="pickDiaryFile">导入存档 JSON</button>
@@ -2754,6 +2867,6 @@ onBeforeUnmount(() => {
       </div>
     </Teleport>
 
-    <div v-if="toast.visible" class="plaza-toast show">{{ toast.text }}</div>
+    <div v-if="toast.visible" class="plaza-toast show" role="status" aria-live="polite">{{ toast.text }}</div>
   </main>
 </template>

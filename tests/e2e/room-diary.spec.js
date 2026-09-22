@@ -3,7 +3,7 @@ const { test, expect } = require('../e2e-fixtures.cjs');
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
 for (const width of [1280, 390]) {
-  test(`Room diary generates, exports and recalls persona memory at ${width}px`, async ({ page }) => {
+  test(`Room diary generates and exports without changing chat identity at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.addInitScript(() => {
       localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
@@ -27,8 +27,9 @@ for (const width of [1280, 390]) {
     await page.locator('#chatInput').fill('今天我们来聊聊书吧');
     await page.locator('#sendChatBtn').click();
     await expect(page.locator('.chat-content').filter({ hasText: '欢迎来到书店' })).toBeVisible();
-    expect(chatRequests[0].systemPrompt).toContain('蓝色的海');
-    expect(chatRequests[0].systemPrompt).toContain('Aoi');
+    expect(chatRequests[0].systemPrompt).not.toContain('蓝色的海');
+    expect(chatRequests[0].systemPrompt).not.toContain('Aoi');
+    expect(chatRequests[0].systemPrompt).toContain('你是月见八千代');
     await page.locator('#endChatBtn').click();
     const dialog = page.getByRole('dialog', { name: '结束聊天', exact: true });
     await expect(dialog).toBeVisible();
@@ -40,6 +41,7 @@ for (const width of [1280, 390]) {
     const preview = page.getByRole('dialog', { name: 'Aoi的日记' });
     await expect(preview).toBeVisible();
     await expect(preview).toContainText('旧书店聊了很久');
+    expect(chatRequests[1].systemPrompt).toContain('Aoi');
     expect(chatRequests[1].message).not.toContain('以前我们一起看过');
     const archive = await page.evaluate(() => JSON.parse(localStorage.getItem('roomDiaryArchive:guest')));
     expect(archive.data.diary).toHaveLength(2);
