@@ -522,8 +522,25 @@ html[data-theme="dark"] .article-status.error {
 .comment-content {
     display: block;
     margin: 0 0 1rem;
-    color: rgba(245, 250, 255, 0.88);
+    color: var(--ts-text-strong);
+    -webkit-text-fill-color: currentColor;
     line-height: 1.8;
+}
+
+.comment-content .social-token {
+    -webkit-text-fill-color: currentColor;
+}
+
+html[data-theme="light"] .article-page .comment-content .mention-token {
+    color: #185d7a;
+}
+
+html[data-theme="light"] .article-page .comment-content .topic-token {
+    color: #6b4b87;
+}
+
+html[data-theme="light"] .article-page .comment-content .social-token:hover {
+    color: var(--ts-text-strong);
 }
 
 .reply-form,

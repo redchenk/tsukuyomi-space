@@ -87,6 +87,14 @@ async function expectLikedHeart(button) {
     });
 }
 
+function textLuminance(cssColor) {
+    const channels = cssColor.match(/[\d.]+/g).slice(0, 3).map((value) => {
+        const channel = Number(value) / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
 function sameOriginWriteHeaders(page) {
     return {
         Origin: new URL(page.url()).origin,
@@ -266,6 +274,7 @@ test('mobile Room settings saves provider TTS and advances with visible feedback
 
 test('user can read an article and post a comment', async ({ page }) => {
     await loginAsUser(page);
+    await page.evaluate(() => localStorage.setItem('tsukuyomi_theme', 'light'));
     await page.goto('/article?id=1');
     await expect(page.getByRole('heading', { name: '欢迎来到月读空间' })).toBeVisible();
     await expect(page).toHaveURL(/\/articles\/1\//);
@@ -277,7 +286,7 @@ test('user can read an article and post a comment', async ({ page }) => {
     const errorBorder = await feedback.evaluate((element) => getComputedStyle(element).borderColor.match(/[\d.]+/g).slice(0, 3).map(Number));
     expect(errorBorder[0]).toBeGreaterThan(errorBorder[1]);
 
-    const comment = `E2E article comment ${Date.now()}`;
+    const comment = `E2E article comment ${Date.now()} @e2e-user #月光#`;
     await page.getByPlaceholder('写下你的评论...').fill(comment);
     await page.getByRole('button', { name: '发布评论' }).click();
 
@@ -297,6 +306,18 @@ test('user can read an article and post a comment', async ({ page }) => {
     const commentLikeButton = commentItem.locator('.like-btn');
     await commentLikeButton.click();
     await expectLikedHeart(commentLikeButton);
+
+    const commentBody = commentItem.locator('.comment-content').first();
+    for (const text of [commentBody, commentBody.locator('.mention-token'), commentBody.locator('.topic-token')]) {
+        const color = await text.evaluate((element) => getComputedStyle(element).color);
+        expect(1.05 / (textLuminance(color) + 0.05)).toBeGreaterThan(4.5);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileColor = await commentBody.evaluate((element) => getComputedStyle(element).color);
+    expect(1.05 / (textLuminance(mobileColor) + 0.05)).toBeGreaterThan(4.5);
+    await page.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+    await expect.poll(async () => textLuminance(await commentBody.evaluate((element) => getComputedStyle(element).color)))
+        .toBeGreaterThan(0.65);
 });
 
 test('user can publish a plaza message', async ({ page }) => {
