@@ -16,6 +16,7 @@ const selectedId = computed(() => props.diary.selectedId?.value || '');
 const selected = computed(() => props.diary.selectedEntry?.value || null);
 const personaName = computed(() => props.diary.personaName?.value || '角色');
 const notice = computed(() => props.diary.notice?.value || '');
+const syncStatus = computed(() => props.diary.syncStatus?.value || '');
 const personas = computed(() => props.diary.personas?.value || []);
 const activePersona = computed(() => props.diary.activePersona?.value || '');
 const reversed = computed(() => entries.value.slice().reverse());
@@ -66,6 +67,7 @@ function onImportFile(event) {
           <TsIcon name="upload" :size="15" aria-hidden="true" />
           <span>&#23548;&#20837;</span>
         </button>
+        <button class="panel-btn diary-tool-btn" type="button" @click="diary.sync?.()">同步</button>
         <input ref="fileInputRef" type="file" accept="application/json,.json" hidden @change="onImportFile">
       </div>
 
@@ -78,6 +80,7 @@ function onImportFile(event) {
       </label>
 
       <div v-if="notice" class="diary-notice" role="status">{{ notice }}</div>
+      <div v-if="syncStatus" class="diary-notice" role="status">{{ syncStatus }}</div>
 
       <div v-if="!entries.length" class="diary-empty">
         &#36824;&#27809;&#26377;&#26085;&#35760;&#12290;&#32842;&#22825;&#21518;&#28857;&#19968;&#19979;&#12300;&#32467;&#26463;&#32842;&#22825;&#24182;&#20889;&#26085;&#35760;&#12301;&#23601;&#20250;&#20889;&#20837;&#36825;&#37324;&#12290;

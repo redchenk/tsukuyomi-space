@@ -2015,6 +2015,71 @@ describe('room world API', () => {
     });
 });
 
+describe('room diary account sync', () => {
+    it('isolates entries by account, pages legacy imports, and keeps deletions from reappearing', async () => {
+        const entries = Array.from({ length: 101 }, (_, index) => ({
+            diaryId: `sync-test-${String(index).padStart(3, '0')}`,
+            date: '2026/9/23', time: '12:00:00',
+            content: index === 100 ? `开头${'月'.repeat(6000)}结尾` : `日记 ${index}`
+        }));
+        try {
+            assert.equal((await request('/api/room/diary')).response.status, 401);
+            for (let offset = 0; offset < entries.length; offset += 25) {
+                const uploaded = await postJson('/api/room/diary/sync', {
+                    expectedUserId: 'user-001', entries: entries.slice(offset, offset + 25), deletedIds: []
+                }, userToken);
+                assert.equal(uploaded.response.status, 200);
+            }
+            const first = await request('/api/room/diary', { headers: jsonHeaders(userToken) });
+            assert.equal(first.body.data.userId, 'user-001');
+            assert.equal(first.body.data.entries.length, 100);
+            assert.ok(first.body.data.nextCursor);
+            const second = await request(`/api/room/diary?cursor=${encodeURIComponent(first.body.data.nextCursor)}`, { headers: jsonHeaders(userToken) });
+            assert.equal(second.body.data.entries.length, 1);
+            assert.equal(second.body.data.entries[0].entry.content, entries[100].content);
+            assert.equal((await request('/api/room/diary', { headers: jsonHeaders(managedUserToken) })).body.data.entries.length, 0);
+            assert.equal((await postJson('/api/room/diary/sync', {
+                expectedUserId: 'user-002', entries: [entries[0]], deletedIds: []
+            }, userToken)).response.status, 409);
+
+            assert.equal((await postJson('/api/room/diary/sync', {
+                expectedUserId: 'user-001', entries: [], deletedIds: [entries[0].diaryId]
+            }, userToken)).response.status, 200);
+            assert.equal((await postJson('/api/room/diary/sync', {
+                expectedUserId: 'user-001', entries: [entries[0]], deletedIds: []
+            }, userToken)).response.status, 200);
+            const afterDelete = await request('/api/room/diary', { headers: jsonHeaders(userToken) });
+            assert.equal(afterDelete.body.data.entries[0].deleted, true);
+            assert.equal(afterDelete.body.data.entries[0].entry, null);
+        } finally {
+            db.prepare('DELETE FROM room_diary_entries WHERE user_id = ? AND diary_id LIKE ?').run('user-001', 'sync-test-%');
+        }
+    });
+
+    it('versions diary-only persona metadata without altering chat settings', async () => {
+        try {
+            const before = await request('/api/room/diary/metadata', { headers: jsonHeaders(userToken) });
+            assert.equal(before.body.data.metadata, null);
+            const metadata = { slotId: 3, prompts: { aoi: { id: 'aoi', data: { name: 'Aoi' } } }, activePersonaId: 'aoi', affection: 42, trust: 10 };
+            const saved = await putJson('/api/room/diary/metadata', {
+                expectedUserId: 'user-001', expectedRevision: 0, metadata
+            }, userToken);
+            assert.equal(saved.response.status, 200);
+            assert.equal(saved.body.data.revision, 1);
+            assert.equal((await putJson('/api/room/diary/metadata', {
+                expectedUserId: 'user-001', expectedRevision: 0, metadata: { ...metadata, slotId: 4 }
+            }, userToken)).response.status, 409);
+            const other = await request('/api/room/diary/metadata', { headers: jsonHeaders(managedUserToken) });
+            assert.equal(other.body.data.metadata, null);
+            const current = await request('/api/room/diary/metadata', { headers: jsonHeaders(userToken) });
+            assert.equal(current.body.data.metadata.prompts.aoi.data.name, 'Aoi');
+            assert.equal(current.body.data.metadata.slotId, 3);
+        } finally {
+            db.prepare('DELETE FROM room_diary_metadata WHERE user_id = ?').run('user-001');
+        }
+    });
+});
+
 describe('room memory API', () => {
     it('syncs an assistant opener once without a synthetic user message or growth reward', async () => {
         const turnId = `opener-${Date.now()}`;
@@ -2450,6 +2515,146 @@ describe('room memory API', () => {
                 method: 'DELETE',
                 headers: jsonHeaders(userToken)
             });
+        }
+    });
+
+    it('keeps related conversation turns separate and stores every fragment of an oversized turn', async () => {
+        try {
+            const first = await postJson('/api/room/memory', {
+                type: 'conversation',
+                content: '今晚一起讨论了月色和房间布置，决定先试蓝色窗帘。',
+                force: true
+            }, userToken);
+            const second = await postJson('/api/room/memory', {
+                type: 'conversation',
+                content: '今晚一起讨论了月色和房间布置，后来决定改用紫色窗帘。',
+                force: true
+            }, userToken);
+            assert.equal(first.response.status, 201);
+            assert.equal(second.response.status, 201);
+            assert.notEqual(first.body.data.id, second.body.data.id);
+
+            const longContent = `请记住${'月'.repeat(6200)}尾段仍然存在`;
+            const saved = await postJson('/api/room/memory', {
+                type: 'conversation', content: longContent, force: true
+            }, userToken);
+            assert.equal(saved.response.status, 201);
+            assert.ok(Array.isArray(saved.body.data));
+            assert.ok(saved.body.data.length >= 3);
+            const details = [];
+            for (const item of saved.body.data) {
+                const detail = await request(`/api/room/memory/${item.id}`, { headers: jsonHeaders(userToken) });
+                assert.equal(detail.response.status, 200);
+                assert.ok(detail.body.data.content.length <= 2500);
+                details.push(detail.body.data);
+            }
+            assert.equal(details.map(item => item.content).join(''), longContent);
+            assert.equal(new Set(details.map(item => item.id)).size, details.length);
+            assert.equal(new Set(details.map(item => item.metadata.fragmentGroupId)).size, 1);
+            assert.deepEqual(details.map(item => item.metadata.fragmentIndex), details.map((_, index) => index + 1));
+
+            const emojiContent = `${'🌙'.repeat(2200)}收尾`;
+            const emojiSaved = await postJson('/api/room/memory', {
+                type: 'conversation', content: emojiContent, force: true
+            }, userToken);
+            assert.equal(emojiSaved.response.status, 201);
+            const emojiDetails = [];
+            for (const item of emojiSaved.body.data) {
+                const detail = await request(`/api/room/memory/${item.id}`, { headers: jsonHeaders(userToken) });
+                assert.equal(detail.response.status, 200);
+                assert.ok(Buffer.byteLength(detail.body.data.content, 'utf8') <= 7500);
+                emojiDetails.push(detail.body.data.content);
+            }
+            assert.equal(emojiDetails.join(''), emojiContent);
+
+            const spacedContent = `please remember ${'moon glow '.repeat(700)}the last word`;
+            const spacedSaved = await postJson('/api/room/memory', {
+                type: 'conversation', content: spacedContent, force: true
+            }, userToken);
+            assert.equal(spacedSaved.response.status, 201);
+            const spacedDetails = [];
+            for (const item of spacedSaved.body.data) {
+                const detail = await request(`/api/room/memory/${item.id}`, { headers: jsonHeaders(userToken) });
+                spacedDetails.push(detail.body.data.content);
+            }
+            assert.equal(spacedDetails.join(''), spacedContent.replace(/\s+/g, ' ').trim());
+        } finally {
+            await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
+        }
+    });
+
+    it('does not overwrite a full memory or truncate an oversized edit', async () => {
+        try {
+            const firstContent = `我喜欢${'蓝'.repeat(2200)}星光A`;
+            const secondContent = `我喜欢${'蓝'.repeat(2200)}星光B`;
+            const first = await postJson('/api/room/memory', {
+                type: 'preference', summary: '喜欢蓝色星光 A', content: firstContent, force: true
+            }, userToken);
+            const second = await postJson('/api/room/memory', {
+                type: 'preference', summary: '喜欢蓝色星光 B', content: secondContent, force: true
+            }, userToken);
+            assert.equal(first.response.status, 201);
+            assert.equal(second.response.status, 201);
+            assert.notEqual(first.body.data.id, second.body.data.id);
+
+            const oversized = await request(`/api/room/memory/${first.body.data.id}`, {
+                method: 'PATCH', headers: jsonHeaders(userToken),
+                body: JSON.stringify({ content: `${'字'.repeat(12000)}绝不可静默截断` })
+            });
+            assert.equal(oversized.response.status, 413);
+            assert.match(oversized.body.message, /原记录未修改/);
+            const detail = await request(`/api/room/memory/${first.body.data.id}`, { headers: jsonHeaders(userToken) });
+            assert.equal(detail.body.data.content, firstContent);
+            const secondDetail = await request(`/api/room/memory/${second.body.data.id}`, { headers: jsonHeaders(userToken) });
+            assert.equal(secondDetail.body.data.content, secondContent);
+        } finally {
+            await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
+        }
+    });
+
+    it('never silently prunes older memories when more than 500 are stored', async () => {
+        try {
+            const insert = db.prepare(`
+                INSERT INTO room_memories (id, user_id, memory_type, summary, content, embedding)
+                VALUES (?, 'user-001', 'conversation', ?, ?, '[]')
+            `);
+            db.transaction(() => {
+                for (let index = 0; index < 500; index += 1) {
+                    insert.run(`memory-cap-test-${index}`, `旧记忆 ${index}`, `需要保留的旧记忆 ${index}`);
+                }
+            })();
+            const saved = await postJson('/api/room/memory', {
+                type: 'project', content: '请记住这个新项目也需要保存。', force: true
+            }, userToken);
+            assert.equal(saved.response.status, 201);
+            assert.equal(db.prepare('SELECT COUNT(*) AS count FROM room_memories WHERE user_id = ?').get('user-001').count, 501);
+            assert.equal(db.prepare('SELECT content FROM room_memories WHERE id = ?').get('memory-cap-test-0').content, '需要保留的旧记忆 0');
+        } finally {
+            await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
+        }
+    });
+
+    it('lets memory management page and filter the complete account history', async () => {
+        try {
+            const insert = db.prepare(`
+                INSERT INTO room_memories (id, user_id, memory_type, summary, content, embedding)
+                VALUES (?, 'user-001', ?, ?, ?, '[]')
+            `);
+            for (let index = 0; index < 85; index++) {
+                insert.run(`memory-page-${index}`, 'episodic', `画室日志 ${index}`, `绘画过程 ${index}`);
+            }
+            insert.run('memory-page-other', 'preference', '茶饮偏好', '喜欢绿茶');
+            const first = await request('/api/room/memory?view=manage&limit=80&type=episodic&q=%E7%94%BB%E5%AE%A4', { headers: jsonHeaders(userToken) });
+            assert.equal(first.response.status, 200);
+            assert.equal(first.body.data.total, 85);
+            assert.equal(first.body.data.items.length, 80);
+            assert.equal(first.body.data.hasMore, true);
+            const second = await request('/api/room/memory?view=manage&limit=80&offset=80&type=episodic&q=%E7%94%BB%E5%AE%A4', { headers: jsonHeaders(userToken) });
+            assert.equal(second.body.data.items.length, 5);
+            assert.equal(second.body.data.hasMore, false);
+            assert.equal((await request('/api/room/memory?view=manage', { headers: jsonHeaders(managedUserToken) })).body.data.total, 0);
+        } finally {
+            db.prepare('DELETE FROM room_memories WHERE user_id = ? AND id LIKE ?').run('user-001', 'memory-page-%');
         }
     });
 });

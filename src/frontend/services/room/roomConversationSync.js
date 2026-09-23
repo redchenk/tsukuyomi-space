@@ -175,9 +175,12 @@ export function clearLocalRoomConversation({ broadcast = false } = {}) {
 export async function clearRoomConversation() {
   const authenticated = Boolean(currentUserId());
   const pendingRequests = [...inFlightTurns.values()].map(({ promise }) => promise);
-  clearLocalRoomConversation({ broadcast: true });
+  for (const pending of inFlightTurns.values()) pending.controller.abort();
   await Promise.allSettled(pendingRequests);
-  if (!authenticated) return { deletedCount: 0 };
+  if (!authenticated) {
+    clearLocalRoomConversation({ broadcast: true });
+    return { deletedCount: 0 };
+  }
 
   const response = await authFetch('/api/room/chat', {
     method: 'DELETE',
@@ -185,6 +188,7 @@ export async function clearRoomConversation() {
   });
   const result = await parseResponse(response);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+  clearLocalRoomConversation({ broadcast: true });
   return result.data || { deletedCount: 0 };
 }
 

@@ -101,6 +101,9 @@ function createApp() {
     app.use('/api/mcp', strictJson('6mb'));
     app.use('/api/chat', strictJson('8mb'));
     app.use('/api/tts', strictJson('12mb'));
+    // Legacy diary archives are uploaded in bounded batches; keep this above
+    // the ordinary 1 MB JSON limit without raising that limit for other APIs.
+    app.use('/api/room/diary', strictJson('8mb'));
     app.use('/api/articles', strictJson('12mb'));
     app.use('/api/user/avatar', strictJson('8mb'));
     app.use(strictJson(requestBodyLimit));

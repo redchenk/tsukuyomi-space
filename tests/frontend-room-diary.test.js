@@ -409,11 +409,14 @@ describe('room chat end-chat wiring', () => {
     it('persists the generated entry through the archive and refreshes the diary panel', () => {
         const code = chatSource();
 
-        assert.match(code, /const generated = await generateDiaryEntry\(turns, \{ persona, now \}\);/);
-        assert.match(code, /const \{ entry \} = appendDiaryEntry\(\{/);
+        assert.match(code, /await syncDiaryArchive\(\);/);
+        assert.match(code, /await generateDiaryEntry\(turns, \{ persona: currentPersona, now \}\)/);
+        assert.match(code, /existingEntry \|\| appendDiaryEntry\(\{/);
         assert.match(code, /content: generated\.body/);
         assert.match(code, /conversationLength: generated\.conversationLength/);
         assert.match(code, /diary\?\.refresh\?\.\(\);/);
+        assert.match(code, /await syncDiaryArchive\(\{ ensureDiaryId: entry\.diaryId \}\);[\s\S]*?await finishDiarySession\(\);/);
+        assert.match(code, /pendingDiaryEntry = \{ entry, revision, archiveKey \}/);
         assert.match(code, /status: 'done'/);
     });
 

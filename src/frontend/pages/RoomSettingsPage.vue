@@ -34,6 +34,7 @@ import {
   serializeDiaryArchive,
   updatePersonaPrompt
 } from '../services/room/roomDiaryArchive';
+import { DIARY_SYNC_UPDATED_EVENT, syncDiaryArchive } from '../services/room/roomDiarySync';
 import { formatDateTime } from '../utils/time';
 
 const props = defineProps({
@@ -163,6 +164,11 @@ const memoryCount = ref(0);
 const memoryList = ref([]);
 const memoryLoading = ref(false);
 const memoryError = ref('');
+const memoryFilteredTotal = ref(0);
+const memoryHasMore = ref(false);
+const memoryContentLimit = ref(12000);
+const MEMORY_PAGE_SIZE = 80;
+let memoryListRequestId = 0;
 const memoryVector = reactive({ backend: '', enabled: false, pending: 0, failed: 0, embedding: '' });
 const storedUser = ref(readStoredUser());
 const modelCatalog = reactive({ loading: false, message: '', error: '', updatedAt: '', models: [] });
@@ -247,6 +253,7 @@ const diary = reactive({
   persona: { name: '', description: '', personality: '', scenario: '', creatorNotes: '', tags: '' }
 });
 const diaryFileInput = ref(null);
+const diarySyncStatus = ref('');
 const savedSections = reactive({});
 const settingsSections = ['model', 'llm', 'tts', 'memory', 'knowledge', 'mcp', 'diary'];
 function sectionSnapshot(section) {
@@ -1064,6 +1071,7 @@ async function loadMemoryCount() {
       const result = await parseResponse(response);
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
       memoryCount.value = result.data?.count || 0;
+      memoryContentLimit.value = Number(result.data?.maxContentLength) || 12000;
       memoryVector.backend = result.data?.vectorStore?.backend || '';
       memoryVector.enabled = Boolean(result.data?.vectorStore?.enabled);
       memoryVector.pending = Number(result.data?.vectorSync?.pending || 0);
@@ -1083,32 +1091,46 @@ async function loadMemoryCount() {
   }
 }
 
-async function loadServerMemories() {
+async function loadServerMemories({ append = false } = {}) {
   storedUser.value = readStoredUser();
   if (!canUseServerMemory.value) {
     memoryList.value = [];
     return;
   }
+  if (append && (memoryLoading.value || !memoryHasMore.value)) return;
+  const requestId = ++memoryListRequestId;
   memoryLoading.value = true;
   memoryError.value = '';
   try {
-    const params = new URLSearchParams({ limit: '80' });
+    const params = new URLSearchParams({
+      view: 'manage',
+      limit: String(MEMORY_PAGE_SIZE),
+      offset: String(append ? memoryList.value.length : 0)
+    });
     if (memory.query.trim()) params.set('q', memory.query.trim());
-    if (memory.type && !memory.query.trim()) params.set('type', memory.type);
+    if (memory.type) params.set('type', memory.type);
     const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
       headers: memoryAuthHeaders(),
       cache: 'no-store'
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
-    memoryList.value = Array.isArray(result.data) ? result.data : [];
-    memoryCount.value = memoryList.value.length || memoryCount.value;
+    if (requestId !== memoryListRequestId) return;
+    const page = Array.isArray(result.data?.items) ? result.data.items : [];
+    memoryList.value = append ? [...memoryList.value, ...page] : page;
+    memoryFilteredTotal.value = Number(result.data?.total) || 0;
+    memoryHasMore.value = Boolean(result.data?.hasMore);
   } catch (error) {
-    memoryList.value = [];
+    if (requestId !== memoryListRequestId) return;
+    if (!append) {
+      memoryList.value = [];
+      memoryFilteredTotal.value = 0;
+      memoryHasMore.value = false;
+    }
     memoryError.value = error.message || '读取记忆失败';
     showToast(`读取记忆失败：${error.message}`);
   } finally {
-    memoryLoading.value = false;
+    if (requestId === memoryListRequestId) memoryLoading.value = false;
   }
 }
 
@@ -1127,7 +1149,9 @@ function buildGptSovitsAudioUrl(text, settings) {
   return url.toString();
 }
 
-async function loadLocalMemories() {
+async function loadLocalMemories({ append = false } = {}) {
+  if (append && (memoryLoading.value || !memoryHasMore.value)) return;
+  const requestId = ++memoryListRequestId;
   memoryLoading.value = true;
   memoryError.value = '';
   try {
@@ -1135,6 +1159,8 @@ async function loadLocalMemories() {
     if (!db) {
       memoryList.value = [];
       memoryCount.value = 0;
+      memoryFilteredTotal.value = 0;
+      memoryHasMore.value = false;
       return;
     }
     const tx = db.transaction(MEMORY_STORE, 'readonly');
@@ -1142,14 +1168,16 @@ async function loadLocalMemories() {
     const records = await requestToPromise(index.getAll(IDBKeyRange.only(visitorKey.value)));
     const query = memory.query.trim().toLowerCase();
     const type = memory.type.trim();
-    memoryList.value = records
+    const filtered = records
       .filter((item) => !type || item.type === type)
       .filter((item) => {
         if (!query) return true;
         return `${item.summary || ''}\n${item.content || ''}\n${item.visitorName || ''}`.toLowerCase().includes(query);
       })
-      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
-      .slice(0, 80)
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    if (requestId !== memoryListRequestId) return;
+    const offset = append ? memoryList.value.length : 0;
+    const page = filtered.slice(offset, offset + MEMORY_PAGE_SIZE)
       .map((item) => ({
         ...item,
         type: item.type || 'conversation',
@@ -1157,20 +1185,32 @@ async function loadLocalMemories() {
         confidence: Number(item.confidence ?? 0.8),
         tags: Array.isArray(item.tags) ? item.tags : []
       }));
+    memoryList.value = append ? [...memoryList.value, ...page] : page;
     memoryCount.value = records.length;
+    memoryFilteredTotal.value = filtered.length;
+    memoryHasMore.value = offset + page.length < filtered.length;
   } catch (error) {
-    memoryList.value = [];
+    if (requestId !== memoryListRequestId) return;
+    if (!append) {
+      memoryList.value = [];
+      memoryFilteredTotal.value = 0;
+      memoryHasMore.value = false;
+    }
     memoryError.value = error.message || '读取本地记忆失败';
     showToast(`读取本地记忆失败：${error.message}`);
   } finally {
-    memoryLoading.value = false;
+    if (requestId === memoryListRequestId) memoryLoading.value = false;
   }
 }
 
-async function loadVisibleMemories() {
+async function loadVisibleMemories(options = {}) {
   storedUser.value = readStoredUser();
-  if (canUseServerMemory.value) return loadServerMemories();
-  return loadLocalMemories();
+  if (canUseServerMemory.value) return loadServerMemories(options);
+  return loadLocalMemories(options);
+}
+
+function loadMoreMemories() {
+  return loadVisibleMemories({ append: true });
 }
 
 function loadSettings() {
@@ -1237,6 +1277,23 @@ function loadDiaryArchive() {
   rememberSaved('diary');
 }
 
+async function syncDiarySettings() {
+  try {
+    await syncDiaryArchive();
+    if (!pendingSections.value.includes('diary')) loadDiaryArchive();
+  } catch (error) {
+    diarySyncStatus.value = `同步失败：${error.message}。本机存档仍保留，请稍后重试。`;
+  }
+}
+
+function onDiarySyncUpdated(event) {
+  diarySyncStatus.value = String(event?.detail?.message || '');
+}
+
+function onDiaryVisibilityChange() {
+  if (document.visibilityState === 'visible') void syncDiarySettings();
+}
+
 function saveDiaryPersona() {
   if (!String(diary.persona.name || '').trim()) {
     showToast('请填写日记角色名');
@@ -1255,6 +1312,7 @@ function saveDiaryPersona() {
     });
     loadDiaryArchive();
     showToast('日记人设已保存，仅用于写日记，不会改变聊天角色');
+    void syncDiarySettings();
     return true;
   } catch (error) {
     showToast('日记人设保存失败，请检查浏览器存储后重试');
@@ -1286,6 +1344,7 @@ async function onDiaryImportFile(event) {
     const archive = importDiaryArchive(text);
     loadDiaryArchive();
     showToast(`已导入 ${archive.data.diary.length} 篇日记，角色：${diary.personaName || '未命名'}。聊天设置保持不变。`);
+    void syncDiarySettings();
   } catch (error) {
     showToast(`导入失败：${error.message}`);
   }
@@ -1302,11 +1361,12 @@ async function copyDiaryArchivePreview() {
 }
 
 function resetDiaryArchiveData() {
-  if (!window.confirm('确定要清空本地的人设与日记存档吗？该操作不可撤销。')) return;
+  if (!window.confirm('确定要清空当前账号的人设与日记存档吗？已同步的日记也会从其他设备删除。该操作不可撤销。')) return;
   try {
     clearDiaryArchive();
     loadDiaryArchive();
-    showToast('本地人设与日记存档已清空');
+    showToast('本机存档已清空，正在同步到账号');
+    void syncDiarySettings();
   } catch (_) { showToast('清空失败，请检查浏览器存储后重试'); }
 }
 
@@ -2072,11 +2132,16 @@ watch(() => props.user?.id || '', (userId, previousUserId) => {
   refreshRoomMemorySync();
   refreshMemoryState();
   loadDiaryArchive();
+  void syncDiarySettings();
 });
 
 onMounted(() => {
   stopRoomMemorySync = startRoomMemorySync();
   loadSettings();
+  window.addEventListener(DIARY_SYNC_UPDATED_EVENT, onDiarySyncUpdated);
+  window.addEventListener('focus', onDiaryVisibilityChange);
+  document.addEventListener('visibilitychange', onDiaryVisibilityChange);
+  void syncDiarySettings();
   syncLive2DDebugState();
   window.addEventListener('tsukuyomi:room-live2d-debug', onLive2DDebugEvent);
   window.addEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
@@ -2092,6 +2157,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('tsukuyomi:room-memory-updated', onRoomMemoryUpdated);
   window.removeEventListener('storage', onRoomSettingsStorageEvent);
   window.removeEventListener('beforeunload', warnBeforeUnload);
+  window.removeEventListener(DIARY_SYNC_UPDATED_EVENT, onDiarySyncUpdated);
+  window.removeEventListener('focus', onDiaryVisibilityChange);
+  document.removeEventListener('visibilitychange', onDiaryVisibilityChange);
   clearTimeout(modelNoticeTimer);
   clearTimeout(memoryRefreshTimer);
   clearTimeout(toastTimer);
@@ -2716,6 +2784,7 @@ onBeforeUnmount(() => {
           </label>
           <label>摘要<input v-model="memory.editing.summary" type="text"></label>
           <label>内容<textarea v-model="memory.editing.content"></textarea></label>
+          <small v-if="canUseServerMemory" class="field-hint">{{ memory.editing.content.length }} / {{ memoryContentLimit }} 字；超出上限时保存会被拒绝，原记录不会被截断。</small>
           <label>标签<input v-model="memory.editing.tags" type="text" placeholder="逗号分隔"></label>
           <div class="memory-score-row">
             <label>重要度 <strong>{{ Number(memory.editing.importance).toFixed(2) }}</strong><input v-model="memory.editing.importance" type="range" min="0" max="1" step="0.05"></label>
@@ -2726,8 +2795,8 @@ onBeforeUnmount(() => {
             <button class="ghost-btn" type="button" @click="cancelMemoryEdit">取消</button>
           </div>
           </form>
-          <LoadingSkeleton v-if="memoryLoading" variant="list" :count="4" label="正在读取记忆" />
-          <div v-else-if="memoryError" class="field-hint error" role="alert">{{ memoryError }}</div>
+          <LoadingSkeleton v-if="memoryLoading && !memoryList.length" variant="list" :count="4" label="正在读取记忆" />
+          <div v-else-if="memoryError && !memoryList.length" class="field-hint error" role="alert">{{ memoryError }}</div>
           <div v-else-if="!memoryList.length" class="field-hint">{{ `还没有可显示的${memoryModeLabel}。` }}</div>
           <div v-else class="memory-list">
             <article v-for="item in memoryList" :key="item.id" class="memory-item">
@@ -2748,6 +2817,11 @@ onBeforeUnmount(() => {
               <button class="danger-btn" type="button" @click="deleteMemoryItem(item)">删除</button>
             </div>
             </article>
+          </div>
+          <div v-if="memoryError && memoryList.length" class="field-hint error" role="alert">{{ memoryError }}</div>
+          <div v-if="memoryList.length" class="button-row memory-list-more">
+            <span class="field-hint">已显示 {{ memoryList.length }} / {{ memoryFilteredTotal }} 条{{ memory.query || memory.type ? '匹配记忆' : '记忆' }}</span>
+            <button v-if="memoryHasMore" class="ghost-btn" type="button" :disabled="memoryLoading" @click="loadMoreMemories">{{ memoryLoading ? '加载中...' : '加载更多' }}</button>
           </div>
         </div>
       </article>
@@ -2813,6 +2887,10 @@ onBeforeUnmount(() => {
           <span class="field-hint">好感度：{{ diary.affection }}</span>
           <span v-if="diary.lastDiaryAt" class="field-hint">最近一篇：{{ diary.lastDiaryAt }}</span>
         </div>
+        <div class="button-row">
+          <span v-if="diarySyncStatus" class="field-hint" role="status">{{ diarySyncStatus }}</span>
+          <button class="ghost-btn" type="button" @click="syncDiarySettings">同步账号日记</button>
+        </div>
         <details class="diary-persona-editor" :open="diary.open" @toggle="diary.open = $event.currentTarget.open">
           <summary>编辑日记人设</summary>
           <div class="form-grid">
@@ -2835,7 +2913,7 @@ onBeforeUnmount(() => {
             <button class="ghost-btn" type="button" @click="copyDiaryArchivePreview">复制存档 JSON</button>
             <button class="danger-btn" type="button" @click="resetDiaryArchiveData">清空存档</button>
           </div>
-          <p class="field-hint">存档保存在当前浏览器，导出格式与桌面版备份一致（version / timestamp / exportDate / slotId / data.gameData / data.diary / data.settings / data.prompts / data.other），可直接用桌面版那份备份导入继续累积。</p>
+          <p class="field-hint">登录后日记与日记人设同步到当前账号，访客存档保留在本机。导出的 JSON 格式与桌面版备份一致（version / timestamp / exportDate / slotId / data.gameData / data.diary / data.settings / data.prompts / data.other），可直接导入继续累积。</p>
         </div>
       </article>
       </section>

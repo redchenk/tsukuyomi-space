@@ -38,7 +38,12 @@ async function setup(overrides = {}) {
       requests.push(turns);
       return { body: 'A diary about our chat.', conversationLength: turns.length, personaName: 'Aoi' };
     },
-    appendDiaryEntry: (entry) => { saved.push(entry); return { entry }; },
+    syncDiaryArchive: async () => ({ synced: true }),
+    appendDiaryEntry: (entry) => {
+      const savedEntry = { ...entry, diaryId: 'test-diary', timestamp: Date.now() };
+      saved.push(savedEntry);
+      return { entry: savedEntry };
+    },
     diaryTimestampLabel: () => 'today',
     ...overrides
   };
@@ -162,12 +167,17 @@ test('end without diary clears synced chat but never deletes existing memory', a
 });
 
 test('a failed clear after saving preserves the diary without offering duplicate generation', async () => {
-  const h = await setup({ clearRoomConversation: async () => { throw new Error('offline'); } });
+  let fails = true;
+  const h = await setup({ clearRoomConversation: async () => { if (fails) throw new Error('offline'); } });
   await send(h.chat, 'hello');
   await h.chat.confirmEndChat();
   assert.equal(h.saved.length, 1);
+  assert.equal(h.chat.endChatState.value.status, 'error');
+  assert.match(h.chat.endChatState.value.message, /本机/);
+  fails = false;
+  await h.chat.confirmEndChat();
+  assert.equal(h.saved.length, 1);
   assert.equal(h.chat.endChatState.value.status, 'done');
-  assert.match(h.chat.endChatState.value.message, /已保存/);
   h.chat.destroy();
 });
 

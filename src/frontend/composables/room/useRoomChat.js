@@ -37,6 +37,7 @@ import {
   readDiaryArchive
 } from '../../services/room/roomDiaryArchive';
 import { generateDiaryEntry } from '../../services/room/roomDiaryGeneration';
+import { syncDiaryArchive } from '../../services/room/roomDiarySync';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
 const SITE_FEED_TIMEOUT_MS = 2000;
@@ -1022,10 +1023,9 @@ export function useRoomChat({ live2d, world, diary = null }) {
     if (!confirmed) return;
 
     resetting.value = true;
-    resetConversationView();
     try {
       await clearRoomConversation();
-      renderHistory([]);
+      resetConversationView();
       addMessage('system', ROOM_ENGLISH
         ? 'A new chat has started. Long-term memory and character knowledge were kept.'
         : '新会话已开始。长期记忆和角色知识库已保留。', { shareable: false });
@@ -1212,6 +1212,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     entry: null,
     turnCount: 0
   });
+  let pendingDiaryEntry = null;
 
   function sessionMessages() {
     return currentSessionMessages.value;
@@ -1283,45 +1284,54 @@ export function useRoomChat({ live2d, world, diary = null }) {
       return;
     }
     const now = new Date();
+    if (pendingDiaryEntry && (pendingDiaryEntry.revision !== revision || pendingDiaryEntry.archiveKey !== archiveKey)) {
+      pendingDiaryEntry = null;
+    }
+    const existingEntry = pendingDiaryEntry?.entry || null;
     const persona = activePersonaPrompt(readDiaryArchive());
     endChatState.value = {
       ...endChatState.value,
       status: 'generating',
-      message: `\u6b63\u5728\u4e3a ${persona.data.name || '\u89d2\u8272'} \u5199\u65e5\u8bb0...`,
-      detail: `\u6b63\u5728\u9605\u8bfb\u672c\u6b21 ${turns.length} \u6761\u5bf9\u8bdd\u3002`,
-      entry: null
+      message: existingEntry ? '正在确认日记已同步并结束会话...' : `\u6b63\u5728\u4e3a ${persona.data.name || '\u89d2\u8272'} \u5199\u65e5\u8bb0...`,
+      detail: existingEntry ? '已有日记不会再次生成。' : `\u6b63\u5728\u9605\u8bfb\u672c\u6b21 ${turns.length} \u6761\u5bf9\u8bdd\u3002`,
+      entry: existingEntry
     };
     try {
-      const generated = await generateDiaryEntry(turns, { persona, now });
+      if (!existingEntry) await syncDiaryArchive();
+      const currentPersona = activePersonaPrompt(readDiaryArchive());
+      const generated = existingEntry ? null : await generateDiaryEntry(turns, { persona: currentPersona, now });
       if (destroyed || revision !== conversationRevision || archiveKey !== diaryArchiveKey()) {
         if (!destroyed) endChatState.value = { ...endChatState.value, status: 'idle', visible: false };
         return null;
       }
-      const { entry } = appendDiaryEntry({
+      const entry = existingEntry || appendDiaryEntry({
         content: generated.body,
         characterName: generated.personaName,
         conversationLength: generated.conversationLength,
         mode: 'Deepseek'
-      }, { now });
+      }, { now }).entry;
+      pendingDiaryEntry = { entry, revision, archiveKey };
       diary?.refresh?.();
       endChatState.value = { ...endChatState.value, entry };
-      markSessionStart();
-      // The session is now archived as a diary, so the transcript starts over.
+      await syncDiaryArchive({ ensureDiaryId: entry.diaryId });
+      // Keep the transcript until the account server confirms the diary.
       await finishDiarySession();
+      markSessionStart();
+      pendingDiaryEntry = null;
       endChatState.value = {
         ...endChatState.value,
         status: 'done',
         message: '\u65e5\u8bb0\u5df2\u5199\u5165\u5b58\u6863\uff0c\u5f53\u524d\u5bf9\u8bdd\u5df2\u7ed3\u675f\u3002',
-        detail: `${generated.personaName} \u00b7 ${diaryTimestampLabel(now)}`,
+        detail: `${entry.characterName || currentPersona.data.name} \u00b7 ${diaryTimestampLabel(new Date(entry.timestamp))}`,
         entry
       };
       return entry;
     } catch (error) {
       endChatState.value = {
         ...endChatState.value,
-        status: endChatState.value.entry ? 'done' : 'error',
-        message: endChatState.value.entry ? `日记已保存，但清理会话失败：${error.message}` : endChatErrorMessage(error),
-        detail: '\u53ef\u4ee5\u91cd\u8bd5\uff0c\u6216\u5148\u5230 Room \u8bbe\u7f6e\u91cc\u68c0\u67e5 LLM\u3002'
+        status: 'error',
+        message: endChatState.value.entry ? `日记已保存在本机，但同步或结束会话未完成：${error.message}` : endChatErrorMessage(error),
+        detail: endChatState.value.entry ? '对话仍可保留；重试不会重复生成日记。' : '\u53ef\u4ee5\u91cd\u8bd5\uff0c\u6216\u5148\u5230 Room \u8bbe\u7f6e\u91cc\u68c0\u67e5 LLM\u3002'
       };
       return null;
     }

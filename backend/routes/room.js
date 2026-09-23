@@ -7,6 +7,7 @@ const roomMemoryEvents = require('../services/room-memory-events');
 const assetRepository = require('../repositories/asset-repository');
 const roomChatRepository = require('../repositories/room-chat-repository');
 const roomShareRepository = require('../repositories/room-share-repository');
+const roomDiaryRepository = require('../repositories/room-diary-repository');
 const weatherCache = require('../services/weather-cache');
 const userGrowth = require('../services/user-growth');
 
@@ -61,6 +62,31 @@ function setNoStore(res) {
 }
 
 const MAX_CHAT_CONTENT_LENGTH = 200000;
+const MAX_DIARY_ENTRY_BYTES = 256 * 1024;
+
+function normalizeDiaryId(value) {
+    if (typeof value !== 'string' || !value.trim() || value.length > 256 || /[\u0000-\u001f\u007f]/u.test(value)) {
+        const error = new Error('日记标识无效');
+        error.statusCode = 400;
+        throw error;
+    }
+    return value.trim();
+}
+
+function normalizeDiarySyncEntry(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.content !== 'string') {
+        const error = new Error('日记内容格式无效');
+        error.statusCode = 400;
+        throw error;
+    }
+    const entry = { ...value, diaryId: normalizeDiaryId(value.diaryId) };
+    if (Buffer.byteLength(JSON.stringify(entry), 'utf8') > MAX_DIARY_ENTRY_BYTES) {
+        const error = new Error('单篇日记超过同步上限，请先导出存档备份');
+        error.statusCode = 413;
+        throw error;
+    }
+    return entry;
+}
 const ROOM_SHARE_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 function normalizeChatContent(value, field) {
@@ -633,6 +659,78 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
     }
 });
 
+router.get('/diary/metadata', authenticateToken, (req, res) => {
+    setNoStore(res);
+    res.json({ success: true, data: { userId: req.user.id, ...roomDiaryRepository.getMetadata(req.user.id) } });
+});
+
+router.put('/diary/metadata', authenticateToken, (req, res) => {
+    try {
+        if (req.body?.expectedUserId !== req.user.id) {
+            return res.status(409).json({ success: false, message: '登录账号已切换，请重新载入日记' });
+        }
+        const metadata = req.body?.metadata;
+        const revision = req.body?.expectedRevision;
+        if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)
+            || !metadata.prompts || typeof metadata.prompts !== 'object' || Array.isArray(metadata.prompts)
+            || !Number.isSafeInteger(revision) || revision < 0) {
+            return res.status(400).json({ success: false, message: '日记人设数据格式无效' });
+        }
+        if (Buffer.byteLength(JSON.stringify(metadata), 'utf8') > 1024 * 1024) {
+            return res.status(413).json({ success: false, message: '日记人设数据超过同步上限，请先导出存档备份' });
+        }
+        const nextRevision = roomDiaryRepository.putMetadata(req.user.id, metadata, revision);
+        if (!nextRevision) return res.status(409).json({ success: false, message: '另一设备修改了日记人设，请重新同步' });
+        setNoStore(res);
+        return res.json({ success: true, data: { revision: nextRevision } });
+    } catch (_) {
+        return res.status(500).json({ success: false, message: '日记人设同步失败' });
+    }
+});
+
+router.get('/diary', authenticateToken, (req, res) => {
+    try {
+        const cursor = req.query.cursor ? normalizeDiaryId(req.query.cursor) : '';
+        setNoStore(res);
+        res.json({ success: true, data: { userId: req.user.id, ...roomDiaryRepository.listEntries(req.user.id, cursor) } });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : '无法读取日记' });
+    }
+});
+
+router.post('/diary/sync', authenticateToken, (req, res) => {
+    try {
+        if (req.body?.expectedUserId !== req.user.id) {
+            return res.status(409).json({ success: false, message: '登录账号已切换，请重新载入日记' });
+        }
+        const entries = req.body?.entries;
+        const deletedIds = req.body?.deletedIds;
+        if (!Array.isArray(entries) || entries.length > 25 || !Array.isArray(deletedIds) || deletedIds.length > 100) {
+            return res.status(400).json({ success: false, message: '日记同步批次格式无效' });
+        }
+        const normalized = entries.map(normalizeDiarySyncEntry);
+        const deletes = deletedIds.map(normalizeDiaryId);
+        const result = roomDiaryRepository.applyChanges(req.user.id, normalized, deletes);
+        setNoStore(res);
+        return res.json({ success: true, data: result });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : '日记同步失败' });
+    }
+});
+
+router.delete('/diary', authenticateToken, (req, res) => {
+    try {
+        if (req.body?.expectedUserId !== req.user.id) {
+            return res.status(409).json({ success: false, message: '登录账号已切换，请重新载入日记' });
+        }
+        const count = roomDiaryRepository.clearEntries(req.user.id);
+        setNoStore(res);
+        res.json({ success: true, data: { count } });
+    } catch (_) {
+        res.status(500).json({ success: false, message: '清空云端日记失败' });
+    }
+});
+
 router.get('/shares/:shareKey', (req, res) => {
     const shareKey = normalizeShareKey(req.params.shareKey);
     const share = shareKey ? roomShareRepository.findActiveShare(shareKey) : null;
@@ -705,6 +803,17 @@ async function sendMemoryStatus(req, res) {
 
 async function sendMemoryList(req, res) {
     setNoStore(res);
+    if (req.query.view === 'manage') {
+        return res.json({
+            success: true,
+            data: roomMemory.listMemoriesForManagement(req.user.id, {
+                limit: req.query.limit,
+                offset: req.query.offset,
+                type: req.query.type,
+                q: req.query.q
+            })
+        });
+    }
     const query = String(req.query.q || '').trim();
     const limit = req.query.limit || 50;
     const memories = query
@@ -763,7 +872,7 @@ router.post('/memory', authenticateToken, async (req, res) => {
         }
         roomMemoryEvents.publish(req.user.id, {
             action: result.action,
-            memoryIds: [result.memory?.id]
+            memoryIds: (Array.isArray(result.memory) ? result.memory : [result.memory]).map((item) => item?.id).filter(Boolean)
         });
         res.status(result.action === 'created' ? 201 : 200).json({
             success: true,
@@ -785,7 +894,7 @@ router.patch('/memory/:id', authenticateToken, async (req, res) => {
         if (!memory) return res.status(404).json({ success: false, message: '记忆不存在' });
         res.json({ success: true, data: memory, message: '记忆已更新' });
     } catch (error) {
-        res.status(500).json({ success: false, message: '无法更新记忆' });
+        res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : '无法更新记忆' });
     }
 });
 

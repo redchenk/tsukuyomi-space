@@ -11,8 +11,8 @@ import { readJson, writeJson } from './roomStorage';
  *
  * `prompts` holds the persona card(s), `diary` holds the generated entries and
  * `gameData` holds the light character stats the diary header needs. Everything
- * is stored in localStorage so the feature works without backend changes, and it
- * can be exported to / imported from the same JSON shape.
+ * is cached in localStorage and can be exported to / imported from the same
+ * JSON shape. Signed-in diary entries are also merged with the account server.
  */
 
 const ARCHIVE_VERSION = '1.0.0';
@@ -20,7 +20,10 @@ const STORAGE_PREFIX = 'roomDiaryArchive';
 const DEFAULT_SLOT_ID = 1;
 const DEFAULT_AFFECTION = 0;
 const DEFAULT_TRUST = 0;
-const MAX_DIARY_ENTRIES = 2000;
+const PENDING_DELETES_SUFFIX = ':pending-deletes';
+const PENDING_CLEAR_SUFFIX = ':pending-clear';
+const METADATA_REVISION_SUFFIX = ':metadata-revision';
+const METADATA_DIRTY_SUFFIX = ':metadata-dirty';
 
 function currentUserId() {
   return String(getSession()?.user?.id || '').trim();
@@ -34,6 +37,15 @@ export function diaryArchiveKey() {
 function uid() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   return `diary-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function legacyDiaryId(entry, index) {
+  // Older desktop backups omit diaryId. A stable id lets two devices importing
+  // the same backup converge without duplicating every entry in the cloud.
+  const text = `${entry.date || ''}|${entry.time || ''}|${entry.timestamp || ''}|${entry.content || ''}`;
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+  return `legacy-${(hash >>> 0).toString(36)}-${index.toString(36)}-${text.length.toString(36)}`;
 }
 
 function clone(value) {
@@ -208,7 +220,7 @@ export function normalizeArchive(input) {
           }
         }
       },
-      diary: Array.isArray(sourceData.diary) ? sourceData.diary.filter(isPlainObject).map(normalizeDiaryEntry) : [],
+      diary: Array.isArray(sourceData.diary) ? sourceData.diary.filter(isPlainObject).map((entry, index) => normalizeDiaryEntry(entry, index)) : [],
       settings: isPlainObject(sourceData.settings) ? clone(sourceData.settings) : {},
       prompts: promptEntries.length ? Object.fromEntries(promptEntries) : { [DEFAULT_PERSONA_PROMPT_ID]: defaultPersonaPrompt() },
       other: isPlainObject(sourceData.other) ? clone(sourceData.other) : {}
@@ -217,7 +229,7 @@ export function normalizeArchive(input) {
   return archive;
 }
 
-export function normalizeDiaryEntry(entry = {}) {
+export function normalizeDiaryEntry(entry = {}, index = 0) {
   const content = String(entry.content || '');
   const timestamp = Number(entry.timestamp) || Date.now();
   const fallback = diaryDateParts(new Date(timestamp));
@@ -230,7 +242,7 @@ export function normalizeDiaryEntry(entry = {}) {
     content,
     conversationLength: Number(entry.conversationLength) || 0,
     mode: String(entry.mode || ''),
-    diaryId: String(entry.diaryId || uid()),
+    diaryId: String(entry.diaryId || legacyDiaryId(entry, index)),
     ...(entry.localDate ? { localDate: String(entry.localDate) } : {}),
     ...(entry.localTime ? { localTime: String(entry.localTime) } : {})
   };
@@ -287,8 +299,7 @@ export function writeDiaryArchive(archive) {
   normalized.data.diary = normalized.data.diary
     .slice()
     // Stable sort keeps the original file order for entries that tie on date+time.
-    .sort((a, b) => diarySortKey(a) - diarySortKey(b))
-    .slice(-MAX_DIARY_ENTRIES);
+    .sort((a, b) => diarySortKey(a) - diarySortKey(b));
   writeJson(diaryArchiveKey(), normalized);
   announceArchiveUpdate(normalized);
   return normalized;
@@ -366,7 +377,9 @@ export function selectPersonaPrompt(id) {
     throw new Error('存档里没有这个人设');
   }
   archive.data.activePersonaId = target;
-  return writeDiaryArchive(archive);
+  const saved = writeDiaryArchive(archive);
+  markDiaryMetadataDirty();
+  return saved;
 }
 
 export function personaDisplayName(archive = readDiaryArchive()) {
@@ -384,7 +397,9 @@ export function updatePersonaPrompt(patch = {}) {
     data: { ...current.data, ...(patch.data || {}) }
   }, current.id);
   archive.data.prompts = { ...(archive.data.prompts || {}), [archivePersonaId || nextPersona.id]: nextPersona };
-  return writeDiaryArchive(archive);
+  const saved = writeDiaryArchive(archive);
+  markDiaryMetadataDirty();
+  return saved;
 }
 
 export function latestDiaryEntry(archive = readDiaryArchive()) {
@@ -407,8 +422,53 @@ export function deleteDiaryEntry(diaryId) {
   const next = before.filter((entry) => String(entry?.diaryId || '') !== id);
   if (next.length === before.length) throw new Error('没有找到这篇日记');
 
+  // Record the deletion before mutating the visible archive. Failed network
+  // writes can be retried, and a stale device cannot silently restore it.
+  queueDiaryDeletions([id]);
   archive.data.diary = next;
   return writeDiaryArchive(archive);
+}
+
+function pendingDeletionsKey() { return `${diaryArchiveKey()}${PENDING_DELETES_SUFFIX}`; }
+function pendingClearKey() { return `${diaryArchiveKey()}${PENDING_CLEAR_SUFFIX}`; }
+
+export function pendingDiaryDeletions() {
+  const ids = readJson(pendingDeletionsKey(), []);
+  return Array.isArray(ids) ? [...new Set(ids.filter((id) => typeof id === 'string' && id))] : [];
+}
+
+export function queueDiaryDeletions(ids) {
+  const next = [...new Set([...pendingDiaryDeletions(), ...(ids || []).map((id) => String(id || '').trim()).filter(Boolean)])];
+  writeJson(pendingDeletionsKey(), next);
+  return next;
+}
+
+export function acknowledgeDiaryDeletions(ids) {
+  const acknowledged = new Set(ids);
+  writeJson(pendingDeletionsKey(), pendingDiaryDeletions().filter((id) => !acknowledged.has(id)));
+}
+
+export function pendingDiaryClear() { return readJson(pendingClearKey(), false) === true; }
+export function acknowledgeDiaryClear() { localStorage.removeItem(pendingClearKey()); }
+
+function metadataRevisionKey() { return `${diaryArchiveKey()}${METADATA_REVISION_SUFFIX}`; }
+function metadataDirtyKey() { return `${diaryArchiveKey()}${METADATA_DIRTY_SUFFIX}`; }
+
+export function diaryMetadataRevision() { return Number(readJson(metadataRevisionKey(), 0)) || 0; }
+export function diaryMetadataDirtyToken() {
+  const dirty = localStorage.getItem(metadataDirtyKey());
+  // An old local archive has never been migrated even if no edit happened
+  // during this browser session.
+  return dirty || (diaryMetadataRevision() === 0 && localStorage.getItem(diaryArchiveKey()) ? 'legacy' : '');
+}
+export function markDiaryMetadataDirty() {
+  const token = `${Date.now()}-${Math.random()}`;
+  localStorage.setItem(metadataDirtyKey(), token);
+  return token;
+}
+export function acknowledgeDiaryMetadata(revision, token) {
+  writeJson(metadataRevisionKey(), revision);
+  if (localStorage.getItem(metadataDirtyKey()) === token) localStorage.removeItem(metadataDirtyKey());
 }
 
 /**
@@ -440,6 +500,7 @@ export function appendDiaryEntry(entry, { now = new Date() } = {}) {
     name: persona.data.name || archive.data.gameData.characterSystemData.character?.name || ''
   };
   const saved = writeDiaryArchive(archive);
+  markDiaryMetadataDirty();
   return { archive: saved, entry: nextEntry };
 }
 
@@ -489,10 +550,20 @@ export function downloadDiaryArchive(archive = readDiaryArchive()) {
 }
 
 export function importDiaryArchive(text) {
-  return writeDiaryArchive(parseDiaryArchive(text));
+  const imported = parseDiaryArchive(text);
+  const existing = readDiaryArchive();
+  const entries = new Map((existing.data.diary || []).map((entry) => [entry.diaryId, entry]));
+  for (const entry of imported.data.diary || []) entries.set(entry.diaryId, entry);
+  imported.data.diary = [...entries.values()];
+  const saved = writeDiaryArchive(imported);
+  markDiaryMetadataDirty();
+  return saved;
 }
 
 export function clearDiaryArchive() {
+  queueDiaryDeletions((readDiaryArchive().data.diary || []).map((entry) => entry.diaryId));
+  writeJson(pendingClearKey(), true);
+  markDiaryMetadataDirty();
   localStorage.removeItem(diaryArchiveKey());
   const archive = readDiaryArchive();
   announceArchiveUpdate(archive);
@@ -503,7 +574,7 @@ export const diaryArchiveConstants = {
   ARCHIVE_VERSION,
   DEFAULT_SLOT_ID,
   DEFAULT_PERSONA_PROMPT_ID,
-  MAX_DIARY_ENTRIES
+  MAX_DIARY_ENTRIES: null
 };
 
 /** Recent diary prose is context, never a replacement for the active persona. */

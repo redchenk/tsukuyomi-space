@@ -10,8 +10,11 @@ const {
 } = require('./room-embedding');
 const milvusStore = require('./room-milvus-store');
 
-const MAX_MEMORIES_PER_USER = Number(process.env.ROOM_MEMORY_MAX_PER_USER || 500);
-const MAX_MEMORY_CONTENT_LENGTH = Math.max(4000, Number(process.env.ROOM_MEMORY_CONTENT_LIMIT || 12000));
+const MAX_MEMORY_CONTENT_LENGTH = Math.max(4000, Number.parseInt(process.env.ROOM_MEMORY_CONTENT_LIMIT || '12000', 10) || 12000);
+// Milvus stores at most 8192 UTF-8 bytes of a memory's text. Keeping automatic
+// fragments below both limits leaves room for multibyte CJK and emoji text.
+const MAX_AUTO_MEMORY_FRAGMENT_LENGTH = Math.min(MAX_MEMORY_CONTENT_LENGTH, 2500);
+const MAX_AUTO_MEMORY_FRAGMENT_BYTES = 7500;
 const MEMORY_TYPES = new Set(['profile', 'preference', 'project', 'episodic', 'semantic', 'conversation']);
 const SENSITIVE_PATTERN = /(password|api[_-]?key|secret|token|bearer\s+[a-z0-9._-]+|sk-[a-z0-9._-]+|密码|密钥|令牌|身份证|银行卡)/i;
 const LLM_EXTRACTOR_ENABLED = process.env.ROOM_MEMORY_EXTRACTOR === 'llm';
@@ -64,13 +67,42 @@ function parseJsonArrayText(text) {
     return Array.isArray(parsed) ? parsed : [];
 }
 
-function cleanText(text, limit = MAX_MEMORY_CONTENT_LENGTH) {
+function normalizeMemoryText(text) {
     return String(text || '')
         .replace(/<\|ACT:[\s\S]*?\|>/g, '')
         .replace(/<\|DELAY:\d+(?:\.\d+)?\|>/g, '')
         .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, limit);
+        .trim();
+}
+
+function cleanText(text, limit = MAX_MEMORY_CONTENT_LENGTH) {
+    return normalizeMemoryText(text).slice(0, limit);
+}
+
+function splitMemoryText(text, limit = MAX_AUTO_MEMORY_FRAGMENT_LENGTH) {
+    const source = normalizeMemoryText(text);
+    const parts = [];
+    let start = 0;
+    while (start < source.length) {
+        let end = start;
+        let bytes = 0;
+        while (end < source.length) {
+            const character = String.fromCodePoint(source.codePointAt(end));
+            const nextBytes = Buffer.byteLength(character, 'utf8');
+            if (end - start + character.length > limit || bytes + nextBytes > MAX_AUTO_MEMORY_FRAGMENT_BYTES) break;
+            end += character.length;
+            bytes += nextBytes;
+        }
+        if (end < source.length) {
+            const lower = start + Math.floor((end - start) * 0.7);
+            const window = source.slice(lower, end);
+            const boundary = Math.max(window.lastIndexOf('。'), window.lastIndexOf('！'), window.lastIndexOf('？'), window.lastIndexOf('；'));
+            if (boundary >= 0) end = lower + boundary + 1;
+        }
+        parts.push(source.slice(start, end));
+        start = end;
+    }
+    return parts.filter(Boolean);
 }
 
 function normalizeType(type) {
@@ -157,7 +189,16 @@ function toPublicMemory(row, score = undefined, options = {}) {
 }
 
 function buildMemoryCandidate(payload = {}) {
-    const rawContent = cleanText(payload.content || `用户：${payload.userMessage || ''}\n八千代：${payload.assistantReply || ''}`);
+    // Fragments have already been cleaned as a complete turn. Preserve spaces
+    // at their boundaries so reassembling all fragments never drops words.
+    const rawContent = payload.metadata?.fragmentGroupId
+        ? String(payload.content || '')
+        : normalizeMemoryText(payload.content || `用户：${payload.userMessage || ''}\n八千代：${payload.assistantReply || ''}`);
+    if (rawContent.length > MAX_MEMORY_CONTENT_LENGTH) {
+        const error = new Error(`单条记忆最多 ${MAX_MEMORY_CONTENT_LENGTH} 字，请拆分后保存`);
+        error.statusCode = 413;
+        throw error;
+    }
     const explicitSummary = cleanText(payload.summary || '', 500);
     const summary = explicitSummary || summarizeMemory({ ...payload, content: rawContent });
     const type = normalizeType(payload.type || inferMemoryType(`${summary}\n${rawContent}`));
@@ -243,13 +284,13 @@ async function extractMemoryCandidatesWithLLM(payload = {}) {
         .slice(0, 4);
 }
 
-function mergeMemoryText(previous, next, limit = MAX_MEMORY_CONTENT_LENGTH) {
-    const a = cleanText(previous, limit);
-    const b = cleanText(next, limit);
+function mergeMemoryText(previous, next) {
+    const a = normalizeMemoryText(previous);
+    const b = normalizeMemoryText(next);
     if (!a) return b;
     if (!b || a.includes(b)) return a;
     if (b.includes(a)) return b;
-    return `${a}；${b}`.slice(0, limit);
+    return `${a}；${b}`;
 }
 
 function tokenOverlapScore(a, b) {
@@ -275,6 +316,7 @@ function shouldMergeMemory(type, score, overlap) {
 }
 
 function findMergeTarget(userId, candidate) {
+    if (candidate.metadata?.fragmentGroupId) return null;
     const candidateText = `${candidate.summary}\n${candidate.content}`;
     const vector = candidate.vector || createEmbedding(candidateText);
     const rows = db.prepare(`
@@ -289,23 +331,16 @@ function findMergeTarget(userId, candidate) {
             score: similarity(vector, parseJson(row.embedding, [])),
             overlap: tokenOverlapScore(candidateText, `${row.summary}\n${row.content}`)
         }))
-        .filter(item => shouldMergeMemory(candidate.type, item.score, item.overlap))
+        .filter((item) => {
+            // Event memories are individual turns, not ever-growing transcripts.
+            if (candidate.type === 'conversation' || candidate.type === 'episodic') {
+                return normalizeMemoryText(item.row.content) === candidate.content;
+            }
+            return shouldMergeMemory(candidate.type, item.score, item.overlap)
+                && mergeMemoryText(item.row.content, candidate.content).length <= MAX_AUTO_MEMORY_FRAGMENT_LENGTH
+                && mergeMemoryText(item.row.summary, candidate.summary).length <= 800;
+        })
         .sort((a, b) => b.score - a.score)[0]?.row || null;
-}
-
-function pruneUserMemories(userId) {
-    const extra = db.prepare('SELECT COUNT(*) AS count FROM room_memories WHERE user_id = ?').get(userId).count - MAX_MEMORIES_PER_USER;
-    if (extra <= 0) return [];
-    const stale = db.prepare(`
-        SELECT id FROM room_memories
-        WHERE user_id = ?
-        ORDER BY importance ASC, COALESCE(last_accessed_at, created_at) ASC
-        LIMIT ?
-    `).all(userId, extra);
-    const remove = db.prepare('DELETE FROM room_memories WHERE id = ? AND user_id = ?');
-    const tx = db.transaction(() => stale.forEach(item => remove.run(item.id, userId)));
-    tx();
-    return stale.map(item => item.id);
 }
 
 function memoryEmbeddingMetadata(metadata, embedding) {
@@ -459,8 +494,9 @@ async function upsertCandidate(userId, candidate) {
             tags: uniqueTags([...(oldMetadata.tags || []), ...(candidate.metadata.tags || [])]),
             confidence: Math.max(Number(oldMetadata.confidence || 0), Number(candidate.metadata.confidence || 0))
         };
-        const summary = mergeMemoryText(target.summary, candidate.summary, 800);
-        const content = mergeMemoryText(target.content, candidate.content, MAX_MEMORY_CONTENT_LENGTH);
+        const eventDuplicate = candidate.type === 'conversation' || candidate.type === 'episodic';
+        const summary = eventDuplicate ? target.summary : mergeMemoryText(target.summary, candidate.summary);
+        const content = eventDuplicate ? target.content : mergeMemoryText(target.content, candidate.content);
         const importance = Math.max(Number(target.importance || 0), Number(candidate.importance || 0));
         const nextEmbedding = await createMemoryEmbeddingDetailed(`${summary}\n${content}`);
         const nextVector = nextEmbedding.vector;
@@ -502,33 +538,62 @@ async function upsertCandidate(userId, candidate) {
         userId,
         candidate.visitorName,
         candidate.type,
-        candidate.summary.slice(0, 800),
-        candidate.content.slice(0, MAX_MEMORY_CONTENT_LENGTH),
+        candidate.summary,
+        candidate.content,
         JSON.stringify(vector),
         candidate.importance,
         JSON.stringify(candidate.metadata)
     );
-    const prunedIds = pruneUserMemories(userId);
-    for (const prunedId of prunedIds) {
-        queueVectorDeletion(userId, prunedId);
-    }
-    await flushPendingVectorDeletions(userId, prunedIds.length || 1);
     await syncMemoryRow(userId, db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId));
     return { memory: getMemory(userId, id), action: 'created' };
 }
 
 async function recordMemory(userId, payload = {}) {
     userId = requireUserId(userId);
+    const source = normalizeMemoryText(payload.content || `用户：${payload.userMessage || ''}\n八千代：${payload.assistantReply || ''}`);
+    if (SENSITIVE_PATTERN.test(source)) return null;
     let candidates = [];
-    try {
-        candidates = await extractMemoryCandidatesWithLLM(payload);
-    } catch (error) {
-        console.warn('Room memory LLM extractor fallback:', error.message);
+    // The extractor has a bounded input. Never accept its partial reading as the
+    // only saved copy of an oversized turn.
+    if (source.length <= MAX_AUTO_MEMORY_FRAGMENT_LENGTH) {
+        try {
+            candidates = await extractMemoryCandidatesWithLLM(payload);
+        } catch (error) {
+            console.warn('Room memory LLM extractor fallback:', error.message);
+        }
     }
     if (!candidates.length) {
-        const fallback = buildMemoryCandidate(payload);
-        if (fallback) candidates = [fallback];
+        if (!hasLongTermValue(source) && !payload.force) return null;
+        const fragments = splitMemoryText(source);
+        const fragmentGroupId = fragments.length > 1 ? crypto.randomUUID() : '';
+        candidates = fragments.map((content, index) => buildMemoryCandidate({
+            ...payload,
+            content,
+            summary: fragments.length > 1
+                ? `${cleanText(payload.summary || content, 240)}（片段 ${index + 1}/${fragments.length}）`
+                : payload.summary,
+            force: true,
+            metadata: {
+                ...(payload.metadata || {}),
+                ...(fragmentGroupId ? { fragmentGroupId, fragmentIndex: index + 1, fragmentCount: fragments.length } : {})
+            }
+        })).filter(Boolean);
     }
+    // An extractor may occasionally return a large candidate even from a
+    // short input. Apply the same lossless fragment rules to its output.
+    candidates = candidates.flatMap((candidate) => {
+        if (candidate.content.length <= MAX_AUTO_MEMORY_FRAGMENT_LENGTH
+            && Buffer.byteLength(candidate.content, 'utf8') <= MAX_AUTO_MEMORY_FRAGMENT_BYTES) return [candidate];
+        const fragments = splitMemoryText(candidate.content);
+        const fragmentGroupId = crypto.randomUUID();
+        return fragments.map((content, index) => buildMemoryCandidate({
+            ...candidate,
+            content,
+            summary: `${cleanText(candidate.summary || content, 240)}（片段 ${index + 1}/${fragments.length}）`,
+            force: true,
+            metadata: { ...candidate.metadata, fragmentGroupId, fragmentIndex: index + 1, fragmentCount: fragments.length }
+        })).filter(Boolean);
+    });
     if (!candidates.length) return null;
     const results = [];
     for (const candidate of candidates) {
@@ -647,6 +712,37 @@ async function listMemories(userId, { limit = 50, type = '', q = '' } = {}) {
     return rows.map(row => toPublicMemory(row));
 }
 
+function listMemoriesForManagement(userId, { limit = 80, offset = 0, type = '', q = '' } = {}) {
+    userId = requireUserId(userId);
+    const safeLimit = Math.max(1, Math.min(200, Number.parseInt(limit, 10) || 80));
+    const safeOffset = Math.max(0, Math.min(1000000, Number.parseInt(offset, 10) || 0));
+    const query = cleanText(q, 500);
+    const conditions = ['user_id = ?'];
+    const params = [userId];
+    const safeType = String(type || '').trim().toLowerCase();
+    if (MEMORY_TYPES.has(safeType)) {
+        conditions.push('memory_type = ?');
+        params.push(safeType);
+    }
+    if (query) {
+        conditions.push('(instr(lower(summary), lower(?)) > 0 OR instr(lower(content), lower(?)) > 0)');
+        params.push(query, query);
+    }
+    const where = conditions.join(' AND ');
+    const total = db.prepare(`SELECT COUNT(*) AS count FROM room_memories WHERE ${where}`).get(...params).count;
+    const rows = db.prepare(`
+        SELECT * FROM room_memories
+        WHERE ${where}
+        ORDER BY created_at DESC, rowid DESC
+        LIMIT ? OFFSET ?
+    `).all(...params, safeLimit, safeOffset);
+    return {
+        items: rows.map(row => toPublicMemory(row)),
+        total,
+        hasMore: safeOffset + rows.length < total
+    };
+}
+
 async function searchPersonaMemories(query, limit = 5) {
     const text = cleanText(query, 1000);
     if (!text) return [];
@@ -690,8 +786,18 @@ async function updateMemory(userId, id, payload = {}) {
     if (!existing) return null;
     const oldMetadata = parseJson(existing.metadata || '{}', {});
     const type = normalizeType(payload.type || existing.memory_type);
-    const summary = cleanText(payload.summary || existing.summary, 500);
-    const content = cleanText(payload.content || existing.content, MAX_MEMORY_CONTENT_LENGTH);
+    const summary = payload.summary == null ? existing.summary : normalizeMemoryText(payload.summary);
+    const content = payload.content == null ? existing.content : normalizeMemoryText(payload.content);
+    if (!summary || !content) {
+        const error = new Error('记忆摘要和内容不能为空');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (summary.length > 800 || content.length > MAX_MEMORY_CONTENT_LENGTH) {
+        const error = new Error(`单条记忆摘要最多 800 字、内容最多 ${MAX_MEMORY_CONTENT_LENGTH} 字；原记录未修改`);
+        error.statusCode = 413;
+        throw error;
+    }
     const tags = payload.tags ? uniqueTags(payload.tags) : uniqueTags(oldMetadata.tags || []);
     const importance = Number.isFinite(Number(payload.importance))
         ? Math.max(0, Math.min(1, Number(payload.importance)))
@@ -752,7 +858,8 @@ function memoryStats(userId) {
     return {
         count: stats.count || 0,
         avgImportance: Number(Number(stats.avgImportance || 0).toFixed(3)),
-        maxPerUser: MAX_MEMORIES_PER_USER,
+        maxPerUser: null,
+        maxContentLength: MAX_MEMORY_CONTENT_LENGTH,
         vectorStore,
         embedding: embeddingStatus(),
         vectorSync: {
@@ -773,6 +880,7 @@ module.exports = {
     searchMemories,
     searchPersonaMemories,
     listMemories,
+    listMemoriesForManagement,
     getMemory,
     updateMemory,
     deleteMemory,
