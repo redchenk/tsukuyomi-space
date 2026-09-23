@@ -304,6 +304,18 @@
   text-align: center;
 }
 
+.game-rank-state[role="alert"] {
+  border: 1px solid rgba(244, 63, 94, 0.32);
+  border-radius: 12px;
+  color: #7f1d1d;
+  background: rgba(255, 228, 230, 0.92);
+}
+
+html[data-theme="dark"] .game-rank-state[role="alert"] {
+  color: #ffd7df;
+  background: rgba(65, 21, 32, 0.8);
+}
+
 .game-rank-login {
   min-height: 42px;
   border-top: 1px solid var(--ts-border);
@@ -362,8 +374,10 @@
   gap: 0.75rem;
   min-height: 48px;
   padding: 0.6rem 1rem;
-  color: #fff;
-  background: rgba(13, 15, 24, 0.9);
+  border: 1px solid rgba(244, 63, 94, 0.42);
+  border-radius: 12px;
+  color: #ffd7df;
+  background: rgba(65, 21, 32, 0.94);
 }
 
 .game-error button {

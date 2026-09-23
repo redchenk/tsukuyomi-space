@@ -156,7 +156,7 @@ const GPT_SOVITS_LANGUAGE_OPTIONS = [
 const MINIMAX_MCP_TOOLS = 'text_to_audio,list_voices,voice_clone,voice_design,music_generation,generate_video,image_to_video,query_video_generation,text_to_image';
 const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
 
-const toast = reactive({ text: '', visible: false });
+const toast = reactive({ text: '', type: 'success', visible: false });
 const modelSaveNotice = reactive({ visible: false, text: '', detail: '' });
 const testDialog = reactive({ visible: false, target: '', status: 'idle', title: '', message: '', detail: '' });
 let ttsTestPlayback = null;
@@ -270,7 +270,7 @@ function persistSettings(key, value, label) {
     writeJson(key, value);
     return true;
   } catch (error) {
-    showToast(`${label}保存失败：浏览器存储不可用或空间不足。修改仍保留在表单中，请重试。`);
+    showToast(`${label}保存失败：浏览器存储不可用或空间不足。修改仍保留在表单中，请重试。`, 'error');
     return false;
   }
 }
@@ -561,7 +561,7 @@ async function syncModelCatalog() {
   } catch (error) {
     modelCatalog.error = `模型目录同步失败：${error.message}`;
     modelCatalog.message = modelCatalog.error;
-    showToast(`模型同步失败：${error.message}`);
+    showToast(`模型同步失败：${error.message}`, 'error');
   } finally {
     modelCatalog.loading = false;
   }
@@ -579,7 +579,7 @@ function applySyncedModel(option) {
 function applyRecommendedModel() {
   const option = recommendedModelOption.value;
   if (!option) {
-    showToast('暂无推荐模型，请先同步模型列表');
+    showToast('暂无推荐模型，请先同步模型列表', 'error');
     return;
   }
   applySyncedModel(option);
@@ -602,8 +602,9 @@ function syncedModelSelectValue(option) {
   return option.source === 'openrouter' && llmProviderKey.value === 'openrouter' ? option.id : option.nativeId;
 }
 
-function showToast(text) {
+function showToast(text, type = 'success') {
   toast.text = text;
+  toast.type = type;
   toast.visible = true;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
@@ -633,7 +634,7 @@ async function copyOllamaRepairCommand() {
     }
     showToast('Ollama 修复命令已复制');
   } catch (_) {
-    showToast('复制失败，请手动复制测试窗口中的命令');
+    showToast('复制失败，请手动复制测试窗口中的命令', 'error');
   }
 }
 
@@ -1128,7 +1129,7 @@ async function loadServerMemories({ append = false } = {}) {
       memoryHasMore.value = false;
     }
     memoryError.value = error.message || '读取记忆失败';
-    showToast(`读取记忆失败：${error.message}`);
+    showToast(`读取记忆失败：${error.message}`, 'error');
   } finally {
     if (requestId === memoryListRequestId) memoryLoading.value = false;
   }
@@ -1197,7 +1198,7 @@ async function loadLocalMemories({ append = false } = {}) {
       memoryHasMore.value = false;
     }
     memoryError.value = error.message || '读取本地记忆失败';
-    showToast(`读取本地记忆失败：${error.message}`);
+    showToast(`读取本地记忆失败：${error.message}`, 'error');
   } finally {
     if (requestId === memoryListRequestId) memoryLoading.value = false;
   }
@@ -1296,7 +1297,7 @@ function onDiaryVisibilityChange() {
 
 function saveDiaryPersona() {
   if (!String(diary.persona.name || '').trim()) {
-    showToast('请填写日记角色名');
+    showToast('请填写日记角色名', 'error');
     return false;
   }
   try {
@@ -1315,7 +1316,7 @@ function saveDiaryPersona() {
     void syncDiarySettings();
     return true;
   } catch (error) {
-    showToast('日记人设保存失败，请检查浏览器存储后重试');
+    showToast('日记人设保存失败，请检查浏览器存储后重试', 'error');
     return false;
   }
 }
@@ -1325,7 +1326,7 @@ function exportDiaryArchiveFile() {
     const name = downloadDiaryArchive();
     showToast(`已导出存档：${name}`);
   } catch (error) {
-    showToast(`导出失败：${error.message}`);
+    showToast(`导出失败：${error.message}`, 'error');
   }
 }
 
@@ -1346,7 +1347,7 @@ async function onDiaryImportFile(event) {
     showToast(`已导入 ${archive.data.diary.length} 篇日记，角色：${diary.personaName || '未命名'}。聊天设置保持不变。`);
     void syncDiarySettings();
   } catch (error) {
-    showToast(`导入失败：${error.message}`);
+    showToast(`导入失败：${error.message}`, 'error');
   }
 }
 
@@ -1356,7 +1357,7 @@ async function copyDiaryArchivePreview() {
     await navigator.clipboard.writeText(serializeDiaryArchive());
     showToast('存档 JSON 已复制');
   } catch (_) {
-    showToast('复制失败，请改用导出存档 JSON');
+    showToast('复制失败，请改用导出存档 JSON', 'error');
   }
 }
 
@@ -1367,7 +1368,7 @@ function resetDiaryArchiveData() {
     loadDiaryArchive();
     showToast('本机存档已清空，正在同步到账号');
     void syncDiarySettings();
-  } catch (_) { showToast('清空失败，请检查浏览器存储后重试'); }
+  } catch (_) { showToast('清空失败，请检查浏览器存储后重试', 'error'); }
 }
 
 function applyMcpProvider(provider) {  mcp.provider = provider;
@@ -1459,7 +1460,7 @@ function saveSetupStep() {
   if (setupStep.value === 1) {
     if (!saveLLM(false)) return false;
     if (!llmSetupReady.value) {
-      showToast(llmNeedsApiKey(llm.apiUrl) ? '请填写 API Key 后继续' : '请先选择模型');
+      showToast(llmNeedsApiKey(llm.apiUrl) ? '请填写 API Key 后继续' : '请先选择模型', 'error');
       return;
     }
     moveToSetupStep(2, '聊天模型已保存，继续设置语音');
@@ -1468,7 +1469,7 @@ function saveSetupStep() {
   if (setupStep.value === 2) {
     if (!saveTTS(false)) return;
     if (!ttsSetupReady.value) {
-      showToast('请补全语音设置，或关闭语音后继续');
+      showToast('请补全语音设置，或关闭语音后继续', 'error');
       return;
     }
     moveToSetupStep(3, 'TTS 设置已保存，继续设置记忆');
@@ -1557,7 +1558,7 @@ function saveLLM(showDialog = true) {
     const endpoint = new URL(settings.apiUrl);
     if (!['http:', 'https:'].includes(endpoint.protocol) || !settings.model) throw new Error();
   } catch (_) {
-    showToast('请填写有效的 HTTP(S) API 端点和模型名称');
+    showToast('请填写有效的 HTTP(S) API 端点和模型名称', 'error');
     return false;
   }
   llm.apiUrl = settings.apiUrl;
@@ -1593,7 +1594,7 @@ async function testLLM() {
   const settings = normalizedLLMSettings();
   if (settings.needsApiKey && !settings.apiKey) {
     openTestDialog('llm', 'error', 'LLM 连接测试', '请先填写 LLM API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的模型供应商。');
-    showToast('请先填写 LLM API Key');
+    showToast('请先填写 LLM API Key', 'error');
     return;
   }
   const requestUrl = settings.useProxy ? apiUrl('/api/chat') : normalizeChatUrl(settings.apiUrl, settings.model);
@@ -1620,13 +1621,13 @@ async function testLLM() {
       reply ? '连接成功，模型已返回文本。' : '连接成功，但没有解析到文本内容。',
       reply ? `模型：${data.model || settings.model || '未知'}\n回复：${reply.slice(0, 300)}` : JSON.stringify(data).slice(0, 500)
     );
-    showToast(reply ? 'LLM 连接测试成功' : 'LLM 已响应，但未返回文本');
+    showToast(reply ? 'LLM 连接测试成功' : 'LLM 已响应，但未返回文本', reply ? 'success' : 'error');
   } catch (error) {
     const corsHint = settings.needsApiKey
       ? '如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。'
       : `请允许浏览器访问本地网络。Windows PowerShell 运行：\n${ollamaRepairCommand.value}\n\n然后从任务栏完全退出并重新打开 Ollama。`;
     openTestDialog('llm', 'error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n${corsHint}`);
-    showToast(`LLM 测试失败：${error.message}`);
+    showToast(`LLM 测试失败：${error.message}`, 'error');
   }
 }
 
@@ -1638,7 +1639,7 @@ function saveTTS(showDialog = true) {
       if (!['http:', 'https:'].includes(endpoint.protocol)) throw new Error();
       tts.apiUrl = endpoint.href;
     } catch (_) {
-      showToast('请填写有效的 HTTP(S) 语音端点，或关闭语音');
+      showToast('请填写有效的 HTTP(S) 语音端点，或关闭语音', 'error');
       return false;
     }
   }
@@ -1677,7 +1678,7 @@ function saveTTS(showDialog = true) {
   } catch (error) {
     const message = `TTS 设置保存失败：${error.message || '浏览器存储不可用'}`;
     if (shouldShowDialog) openTestDialog('tts', 'error', 'TTS 设置保存失败', message);
-    showToast(message);
+    showToast(message, 'error');
     return false;
   }
   const localGptSovits = tts.provider === 'gpt-sovits';
@@ -1701,7 +1702,7 @@ async function testTTS() {
   if (!saveTTS()) return;
   if (tts.provider !== 'gpt-sovits' && !tts.apiKey) {
     openTestDialog('tts', 'error', 'TTS 语音测试', '请先填写 TTS API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的语音供应商。');
-    showToast('请先填写 TTS API Key');
+    showToast('请先填写 TTS API Key', 'error');
     return;
   }
   releaseAsyncAudioPlayback(ttsTestPlayback);
@@ -1742,7 +1743,7 @@ async function testTTS() {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     const message = describeAudioPlaybackError(error);
     openTestDialog('tts', 'error', 'TTS 语音测试', '测试失败。', `${message}\n\n如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。`);
-    showToast(`TTS 测试失败：${message}`);
+    showToast(`TTS 测试失败：${message}`, 'error');
   }
 }
 
@@ -1756,7 +1757,7 @@ function saveMemory() {
 
 async function syncMemoryVectors() {
   if (!canUseServerMemory.value) {
-    showToast('登录后才能同步账号私有向量记忆');
+    showToast('登录后才能同步账号私有向量记忆', 'error');
     return;
   }
   try {
@@ -1770,7 +1771,7 @@ async function syncMemoryVectors() {
     await loadMemoryCount();
     showToast(result.message || '向量记忆已同步');
   } catch (error) {
-    showToast(`向量同步失败：${error.message}`);
+    showToast(`向量同步失败：${error.message}`, 'error');
   }
 }
 
@@ -1791,7 +1792,7 @@ function saveKnowledge(showMessage = true) {
     if (showMessage) showToast('角色知识库已保存，下一次对话生效');
     return true;
   } catch (error) {
-    showToast(error.message);
+    showToast(error.message, 'error');
     return false;
   }
 }
@@ -1819,7 +1820,7 @@ async function editKnowledgeEntry(item) {
 
 function saveKnowledgeEntry() {
   if (!String(knowledge.draft.title || '').trim() || !String(knowledge.draft.content || '').trim()) {
-    showToast('请填写知识条目的标题和内容');
+    showToast('请填写知识条目的标题和内容', 'error');
     return false;
   }
   const editing = Boolean(knowledge.editingId);
@@ -1857,7 +1858,7 @@ async function openMemoryItem(item) {
     if (index >= 0) memoryList.value[index] = { ...memoryList.value[index], ...detail };
     return detail;
   } catch (error) {
-    showToast(`读取原文失败：${error.message}`);
+    showToast(`读取原文失败：${error.message}`, 'error');
     return item;
   }
 }
@@ -1940,7 +1941,7 @@ async function saveMemoryEdit() {
     memory.editing = null;
     await loadVisibleMemories();
   } catch (error) {
-    showToast(`保存失败：${error.message}`);
+    showToast(`保存失败：${error.message}`, 'error');
   }
 }
 
@@ -1967,7 +1968,7 @@ async function deleteMemoryItem(item) {
     await loadMemoryCount();
     await loadVisibleMemories();
   } catch (error) {
-    showToast(`删除失败：${error.message}`);
+    showToast(`删除失败：${error.message}`, 'error');
   }
 }
 
@@ -2000,7 +2001,7 @@ async function clearMemory() {
     memory.expanded = {};
     showToast(`已清空 ${records.length} 条本地记忆`);
   } catch (error) {
-    showToast(`清空失败：${error.message}`);
+    showToast(`清空失败：${error.message}`, 'error');
   }
 }
 
@@ -2040,7 +2041,7 @@ function saveMCP(showDialog = true) {
       const url = new URL(endpoint, window.location.origin);
       if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
     } catch (_) {
-      showToast('请填写有效的 MCP 端点，或关闭 MCP');
+      showToast('请填写有效的 MCP 端点，或关闭 MCP', 'error');
       return false;
     }
   }
@@ -2083,7 +2084,7 @@ async function testMCP() {
     if (!saveMCP()) return;
     showToast(mcp.tools.length ? `MCP 已连接，发现 ${mcp.tools.length} 个工具` : 'MCP 已连接，但未发现工具');
   } catch (error) {
-    showToast(`MCP 测试失败：${error.message}`);
+    showToast(`MCP 测试失败：${error.message}`, 'error');
   }
 }
 
@@ -2123,7 +2124,7 @@ async function testMCPWithDialog() {
       'MCP 测试失败。',
       `${error.message}\n\n请确认 MCP 端点可访问、支持 JSON-RPC tools/list，并且如果由浏览器直连则需要允许 CORS。`
     );
-    showToast(`MCP 测试失败：${error.message}`);
+    showToast(`MCP 测试失败：${error.message}`, 'error');
   }
 }
 
@@ -2300,7 +2301,7 @@ onBeforeUnmount(() => {
                 <div class="button-row">
                   <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" :aria-busy="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
                   <StatusLoader v-if="modelCatalog.loading" label="正在同步模型列表" compact />
-                  <p v-else-if="modelCatalog.error" class="field-hint warning-text" role="alert">{{ modelCatalog.error }}</p>
+                  <p v-else-if="modelCatalog.error" class="field-hint error" role="alert">{{ modelCatalog.error }}</p>
                 </div>
               </div>
             </details>
@@ -2601,7 +2602,7 @@ onBeforeUnmount(() => {
               {{ option.label }} · {{ option.detail }}
             </option>
           </select></label>
-          <p class="field-hint" :class="{ 'warning-text': modelCatalog.error }" :role="modelCatalog.error ? 'alert' : undefined">
+          <p class="field-hint" :class="{ error: modelCatalog.error }" :role="modelCatalog.error ? 'alert' : undefined">
             当前识别供应商：{{ llmProviderKey }}。OpenRouter 会同步完整模型目录；其他供应商会按模型前缀筛选并转换为原生模型名，无法确定时保留本地预设。
             {{ modelCatalog.message }}
           </p>
@@ -2945,6 +2946,6 @@ onBeforeUnmount(() => {
       </div>
     </Teleport>
 
-    <div v-if="toast.visible" class="plaza-toast show" role="status" aria-live="polite">{{ toast.text }}</div>
+    <div v-if="toast.visible" class="plaza-toast show" :class="toast.type" :role="toast.type === 'error' ? 'alert' : 'status'" aria-live="polite">{{ toast.text }}</div>
   </main>
 </template>

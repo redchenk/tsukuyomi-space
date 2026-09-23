@@ -34,7 +34,7 @@ const plaza = reactive({
   loadError: '',
   replyOpen: {}
 });
-const plazaToast = reactive({ text: '', visible: false });
+const plazaToast = reactive({ text: '', type: 'success', visible: false });
 let plazaToastTimer = 0;
 const PLAZA_PAGE_SIZE = 8;
 const user = computed(() => session.value?.user || null);
@@ -235,8 +235,9 @@ function go(path) {
   emit('go', path);
 }
 
-function showPlazaToast(text) {
+function showPlazaToast(text, type = 'success') {
   plazaToast.text = text;
+  plazaToast.type = type;
   plazaToast.visible = true;
   clearTimeout(plazaToastTimer);
   plazaToastTimer = setTimeout(() => {
@@ -295,7 +296,7 @@ async function loadPlazaMessages() {
   } catch (error) {
     plaza.messages = [];
     plaza.loadError = error.message || props.t.plazaLoadFailed;
-    showPlazaToast(props.t.plazaLoadFailed);
+    showPlazaToast(props.t.plazaLoadFailed, 'error');
   }
 }
 
@@ -351,7 +352,7 @@ async function plazaSubmitMessage(content) {
     return false;
   }
   if (!content.trim()) {
-    showPlazaToast(props.t.contentRequired);
+    showPlazaToast(props.t.contentRequired, 'error');
     return false;
   }
   try {
@@ -371,7 +372,7 @@ async function plazaSubmitMessage(content) {
     } else await loadPlazaStats();
     return true;
   } catch (error) {
-    showPlazaToast(error.message || props.t.publishFailed);
+    showPlazaToast(error.message || props.t.publishFailed, 'error');
     return false;
   }
 }
@@ -382,7 +383,7 @@ async function plazaSubmitReply(parentId, content) {
     return false;
   }
   if (!content.trim()) {
-    showPlazaToast(props.t.replyContentRequired);
+    showPlazaToast(props.t.replyContentRequired, 'error');
     return false;
   }
   try {
@@ -402,7 +403,7 @@ async function plazaSubmitReply(parentId, content) {
     plaza.replyOpen = { ...plaza.replyOpen, [parentId]: false };
     return true;
   } catch (error) {
-    showPlazaToast(error.message || props.t.replyFailed);
+    showPlazaToast(error.message || props.t.replyFailed, 'error');
     return false;
   }
 }
@@ -414,7 +415,7 @@ async function plazaLikeMessage(id) {
   }
   const current = plaza.messages.find((item) => item.id === id);
   if (current?.viewer_liked) {
-    showPlazaToast(props.t.alreadyLiked);
+    showPlazaToast(props.t.alreadyLiked, 'error');
     return;
   }
   try {
@@ -432,7 +433,7 @@ async function plazaLikeMessage(id) {
     }
     showPlazaToast(props.t.likedToast);
   } catch (error) {
-    showPlazaToast(error.message || props.t.likeFailed);
+    showPlazaToast(error.message || props.t.likeFailed, 'error');
   }
 }
 
@@ -777,6 +778,6 @@ onMounted(refreshPlaza);
       </aside>
     </section>
 
-    <div v-if="plazaToast.visible" class="plaza-toast show">{{ plazaToast.text }}</div>
+    <div v-if="plazaToast.visible" class="plaza-toast show" :class="plazaToast.type" :role="plazaToast.type === 'error' ? 'alert' : 'status'">{{ plazaToast.text }}</div>
   </main>
 </template>

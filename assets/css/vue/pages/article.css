@@ -22,6 +22,18 @@
     text-align: center;
 }
 
+.article-status.error {
+    border: 1px solid rgba(244, 63, 94, 0.32);
+    border-radius: 18px;
+    color: #7f1d1d;
+    background: rgba(255, 228, 230, 0.92);
+}
+
+html[data-theme="dark"] .article-status.error {
+    color: #ffd7df;
+    background: rgba(244, 63, 94, 0.16);
+}
+
 .article-reader {
     display: grid;
     gap: 1.4rem;

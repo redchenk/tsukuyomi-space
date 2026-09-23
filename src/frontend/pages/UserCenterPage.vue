@@ -19,7 +19,7 @@ const ucAvatarInput = ref(null);
 const ucUser = ref(props.user || null);
 const ucGrowth = ref(null);
 const sessionChecking = ref(!props.user);
-const ucToast = reactive({ text: '', visible: false });
+const ucToast = reactive({ text: '', type: 'success', visible: false });
 let ucToastTimer = 0;
 let loadedUserId = '';
 const pixelFallbackPalette = ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#ff9aba', '#f1d98e'];
@@ -164,8 +164,9 @@ async function logout() {
   emit('go', '/access');
 }
 
-function ucShowToast(text) {
+function ucShowToast(text, type = 'success') {
   ucToast.text = text;
+  ucToast.type = type;
   ucToast.visible = true;
   clearTimeout(ucToastTimer);
   ucToastTimer = setTimeout(() => {
@@ -258,7 +259,7 @@ async function ucLoadProfile() {
     updateStoredUser(result.data);
   } catch (error) {
     uc.profileError = error.message || props.t.ucProfileLoadFailed;
-    ucShowToast(error.message || props.t.ucProfileLoadFailed);
+    ucShowToast(error.message || props.t.ucProfileLoadFailed, 'error');
   } finally {
     uc.profileLoading = false;
   }
@@ -282,7 +283,7 @@ async function ucLoadArticles() {
   } catch (error) {
     uc.articles = [];
     uc.articleError = error.message || props.t.ucArticleLoadFailed;
-    ucShowToast(error.message || props.t.ucArticleLoadFailed);
+    ucShowToast(error.message || props.t.ucArticleLoadFailed, 'error');
   } finally {
     uc.articleLoading = false;
   }
@@ -306,7 +307,7 @@ async function ucLoadBookmarks() {
   } catch (error) {
     uc.bookmarks = [];
     uc.bookmarkError = error.message || '收藏列表读取失败';
-    ucShowToast(error.message || '收藏列表读取失败');
+    ucShowToast(error.message || '收藏列表读取失败', 'error');
   } finally {
     uc.bookmarkLoading = false;
   }
@@ -330,7 +331,7 @@ async function ucLoadMessages() {
   } catch (error) {
     uc.messages = [];
     uc.messageError = error.message || '留言列表读取失败';
-    ucShowToast(error.message || '留言列表读取失败');
+    ucShowToast(error.message || '留言列表读取失败', 'error');
   } finally {
     uc.messageLoading = false;
   }
@@ -354,7 +355,7 @@ async function ucLoadPixelArtworks() {
   } catch (error) {
     uc.pixelArtworks = [];
     uc.pixelError = error.message || '像素画列表读取失败';
-    ucShowToast(error.message || '像素画列表读取失败');
+    ucShowToast(error.message || '像素画列表读取失败', 'error');
   } finally {
     uc.pixelLoading = false;
   }
@@ -436,11 +437,11 @@ async function ucUploadAvatar(event) {
   const file = event.target.files[0];
   if (!file) return;
   if (!file.type.startsWith('image/')) {
-    ucShowToast(props.t.ucSelectImage);
+    ucShowToast(props.t.ucSelectImage, 'error');
     return;
   }
   if (file.size > 6 * 1024 * 1024) {
-    ucShowToast(props.t.ucAvatarTooBig);
+    ucShowToast(props.t.ucAvatarTooBig, 'error');
     return;
   }
 
@@ -459,7 +460,7 @@ async function ucUploadAvatar(event) {
     emit('auth-changed');
     ucShowToast(props.t.ucAvatarUpdated);
   } catch (error) {
-    ucShowToast(error.message || props.t.ucAvatarUploadFailed);
+    ucShowToast(error.message || props.t.ucAvatarUploadFailed, 'error');
   } finally {
     uc.avatarUploading = false;
     event.target.value = '';
@@ -556,7 +557,7 @@ async function ucDeleteArticle(id) {
     ucShowToast(props.t.ucArticleDeleted);
     await ucLoadArticles();
   } catch (error) {
-    ucShowToast(error.message || props.t.ucArticleDeleteFailed);
+    ucShowToast(error.message || props.t.ucArticleDeleteFailed, 'error');
   }
 }
 
@@ -577,7 +578,7 @@ function ucCancelMessageEdit(id) {
 async function ucSaveMessage(message) {
   const content = String(uc.messageDrafts[message.id] || '').trim();
   if (!content) {
-    ucShowToast('留言内容不能为空');
+    ucShowToast('留言内容不能为空', 'error');
     return;
   }
   uc.messageSaving = message.id;
@@ -594,7 +595,7 @@ async function ucSaveMessage(message) {
     ucCancelMessageEdit(message.id);
     ucShowToast(result.message || '留言已更新');
   } catch (error) {
-    ucShowToast(error.message || '留言更新失败');
+    ucShowToast(error.message || '留言更新失败', 'error');
   } finally {
     uc.messageSaving = '';
   }
@@ -613,7 +614,7 @@ async function ucDeleteMessage(message) {
     uc.messages = uc.messages.filter(item => item.id !== message.id);
     ucShowToast(result.message || '留言已删除');
   } catch (error) {
-    ucShowToast(error.message || '留言删除失败');
+    ucShowToast(error.message || '留言删除失败', 'error');
   } finally {
     uc.messageDeleting = '';
   }
@@ -638,7 +639,7 @@ async function ucDeletePixelArtwork(artwork) {
     uc.pixelArtworks = uc.pixelArtworks.filter(item => item.id !== artwork.id);
     ucShowToast(result.message || '像素画已删除');
   } catch (error) {
-    ucShowToast(error.message || '像素画删除失败');
+    ucShowToast(error.message || '像素画删除失败', 'error');
   } finally {
     uc.pixelDeleting = '';
   }
@@ -1151,6 +1152,6 @@ onMounted(async () => {
       </section>
     </template>
 
-    <div v-if="ucToast.visible" class="plaza-toast show">{{ ucToast.text }}</div>
+    <div v-if="ucToast.visible" class="plaza-toast show" :class="ucToast.type" :role="ucToast.type === 'error' ? 'alert' : 'status'">{{ ucToast.text }}</div>
   </main>
 </template>

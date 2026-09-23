@@ -691,6 +691,13 @@ body .page.terminal-page .terminal-empty {
     font-size: 14px;
 }
 
+body .page.terminal-page .terminal-empty.error {
+    border: 1px solid color-mix(in srgb, var(--terminal-ui-danger) 35%, var(--terminal-ui-border));
+    border-radius: var(--terminal-control-radius);
+    color: var(--terminal-ui-danger);
+    background: color-mix(in srgb, var(--terminal-ui-danger) 9%, var(--terminal-ui-surface));
+}
+
 body .page.terminal-page .terminal-pagination {
     margin-top: 12px;
     padding: 0;

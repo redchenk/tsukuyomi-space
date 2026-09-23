@@ -329,7 +329,9 @@ body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
 }
 
 body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
-    .form-message.success
+    .form-message.success,
+    .plaza-toast.success,
+    .arena-toast.success
 ) {
     color: #0f5132;
     border-color: rgba(34, 197, 94, 0.34);
@@ -337,14 +339,25 @@ body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
 }
 
 html[data-theme="dark"] body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
-    .form-message.success
+    .form-message.success,
+    .plaza-toast.success,
+    .arena-toast.success
 ) {
     color: #c7f9d8;
     background: rgba(34, 197, 94, 0.16);
 }
 
+html[data-theme="dark"] body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .plaza-toast.success,
+    .arena-toast.success
+) {
+    background: rgba(11, 48, 38, 0.94);
+}
+
 body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
-    .form-message.error
+    .form-message.error,
+    .plaza-toast.error,
+    .arena-toast.error
 ) {
     color: #7f1d1d;
     border-color: rgba(244, 63, 94, 0.32);
@@ -352,10 +365,69 @@ body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
 }
 
 html[data-theme="dark"] body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
-    .form-message.error
+    .form-message.error,
+    .plaza-toast.error,
+    .arena-toast.error
 ) {
     color: #ffd7df;
     background: rgba(244, 63, 94, 0.16);
+}
+
+html[data-theme="dark"] body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .plaza-toast.error,
+    .arena-toast.error
+) {
+    background: rgba(65, 21, 32, 0.94);
+}
+
+/* Loading failures use the same error language as action feedback; empty states stay neutral. */
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .gallery-status.error,
+    .attachments-status.error,
+    .editor-status.error,
+    .editor-asset-status.error,
+    .stage-status.error,
+    .notifications-status.error,
+    .uc-empty.error,
+    .plaza-empty.error,
+    .plaza-topic-empty.error,
+    .arena-empty.error,
+    .friend-links-feedback[role="alert"],
+    .user-profile-status[role="alert"]
+) {
+    color: #7f1d1d;
+    border: 1px solid rgba(244, 63, 94, 0.32);
+    border-radius: 14px;
+    background: rgba(255, 228, 230, 0.92);
+}
+
+html[data-theme="dark"] body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(
+    .gallery-status.error,
+    .attachments-status.error,
+    .editor-status.error,
+    .editor-asset-status.error,
+    .stage-status.error,
+    .notifications-status.error,
+    .uc-empty.error,
+    .plaza-empty.error,
+    .plaza-topic-empty.error,
+    .arena-empty.error,
+    .friend-links-feedback[role="alert"],
+    .user-profile-status[role="alert"]
+) {
+    color: #ffd7df;
+    background: rgba(65, 21, 32, 0.8);
+}
+
+body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) .friend-link-success-icon {
+    color: #166534;
+    border-color: rgba(34, 197, 94, 0.34);
+    background: rgba(220, 252, 231, 0.92);
+}
+
+html[data-theme="dark"] body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) .friend-link-success-icon {
+    color: #c7f9d8;
+    background: rgba(11, 48, 38, 0.94);
 }
 
 body:not(.vue-access-route) :is(.page, .room-page, .live2d-page) :is(a:not(.primary-btn):not(.ghost-btn):not(.danger-btn):not(.icon-btn)) {

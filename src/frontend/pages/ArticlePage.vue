@@ -34,6 +34,7 @@ const readerCopy = computed(() => ({
 const comments = ref([]);
 const loading = ref(true);
 const message = ref('');
+const messageType = ref('error');
 const commentText = ref('');
 const replyText = reactive({});
 const openReplies = reactive({});
@@ -184,13 +185,18 @@ function commentAvatarAlt(item) {
   return `${commentAuthorName(item)} avatar`;
 }
 
+function showMessage(text, type = 'error') {
+  message.value = text || '';
+  messageType.value = type;
+}
+
 async function loadArticle() {
   loading.value = true;
-  message.value = '';
+  showMessage('');
   article.value = null;
 
   if (!articleId.value) {
-    message.value = '文章 ID 不存在';
+    showMessage('文章 ID 不存在');
     loading.value = false;
     return;
   }
@@ -209,7 +215,7 @@ async function loadArticle() {
       ...comments.value.map((item) => item.user_id)
     ]).catch(() => {});
   } catch (error) {
-    message.value = error.message || props.t.loadFailed || '加载失败';
+    showMessage(error.message || props.t.loadFailed || '加载失败');
   } finally {
     loading.value = false;
   }
@@ -275,9 +281,9 @@ async function toggleArticleLike() {
     if (id !== articleId.value) return;
     articleLike.liked = Boolean(result.data?.liked);
     articleLike.count = Number(result.data?.count || 0);
-    message.value = '';
+    showMessage('');
   } catch (error) {
-    if (id === articleId.value) message.value = error.message || props.t.loadFailed;
+    if (id === articleId.value) showMessage(error.message || props.t.loadFailed);
   } finally {
     if (id === articleId.value) articleLike.loading = false;
   }
@@ -326,71 +332,74 @@ async function submitComment() {
   if (!requireLogin()) return;
   const content = commentText.value.trim();
   if (!content) {
-    message.value = '评论内容不能为空';
+    showMessage('评论内容不能为空');
     return;
   }
 
-  const response = await authFetch('/api/messages', {
-    method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ content, article_id: articleId.value })
-  });
-  const result = await parseResponse(response);
-  if (!result.success) {
-    message.value = result.message || '发布失败';
-    return;
+  try {
+    const response = await authFetch('/api/messages', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ content, article_id: articleId.value })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '发布失败');
+    commentText.value = '';
+    showMessage(result.message || '评论已提交', 'success');
+    if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
+  } catch (error) {
+    showMessage(error.message || '发布失败');
   }
-  commentText.value = '';
-  message.value = result.message || '';
-  if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
 }
 
 async function submitReply(commentId) {
   if (!requireLogin()) return;
   const content = String(replyText[commentId] || '').trim();
   if (!content) {
-    message.value = '回复内容不能为空';
+    showMessage('回复内容不能为空');
     return;
   }
 
-  const response = await authFetch(`/api/messages/${commentId}/reply`, {
-    method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ content })
-  });
-  const result = await parseResponse(response);
-  if (!result.success) {
-    message.value = result.message || '回复失败';
-    return;
+  try {
+    const response = await authFetch(`/api/messages/${commentId}/reply`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ content })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '回复失败');
+    replyText[commentId] = '';
+    openReplies[commentId] = false;
+    showMessage(result.message || '回复已提交', 'success');
+    if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
+  } catch (error) {
+    showMessage(error.message || '回复失败');
   }
-  replyText[commentId] = '';
-  openReplies[commentId] = false;
-  message.value = result.message || '';
-  if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
 }
 
 async function likeComment(commentId) {
   if (!requireLogin()) return;
   if (isCommentLiked(commentId)) {
-    message.value = '已经点过赞了';
+    showMessage('已经点过赞了');
     return;
   }
 
-  const response = await authFetch(`/api/messages/${commentId}/like`, {
-    method: 'POST',
-    headers: authHeaders()
-  });
-  const result = await parseResponse(response);
-  if (!result.success) {
-    message.value = result.message || '点赞失败';
-    return;
+  try {
+    const response = await authFetch(`/api/messages/${commentId}/like`, {
+      method: 'POST',
+      headers: authHeaders()
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || '点赞失败');
+    if (result.data?.id) patchComment(result.data);
+    else {
+      const target = comments.value.find((item) => item.id === commentId);
+      if (target) target.like_count = Number(target.like_count || 0) + 1;
+    }
+    showMessage('');
+  } catch (error) {
+    showMessage(error.message || '点赞失败');
   }
-  if (result.data?.id) patchComment(result.data);
-  else {
-    const target = comments.value.find((item) => item.id === commentId);
-    if (target) target.like_count = Number(target.like_count || 0) + 1;
-  }
-  message.value = '';
 }
 
 function isCommentLiked(commentId) {
@@ -410,9 +419,9 @@ async function toggleBookmark() {
     bookmark.ready = true;
     bookmark.bookmarked = Boolean(result.data?.bookmarked);
     bookmark.count = Number(result.data?.count || 0);
-    message.value = result.message || '';
+    showMessage(result.message || '', 'success');
   } catch (error) {
-    message.value = error.message || '操作失败';
+    showMessage(error.message || '操作失败');
   } finally {
     bookmark.loading = false;
   }
@@ -496,7 +505,7 @@ watch(articleId, loadArticle);
             <span>{{ comments.length }}</span>
           </div>
 
-          <div v-if="message" class="form-message error">{{ message }}</div>
+          <div v-if="message" class="form-message" :class="messageType" :role="messageType === 'error' ? 'alert' : 'status'">{{ message }}</div>
 
           <div v-if="session" class="comment-form">
             <textarea v-model="commentText" class="comment-input" placeholder="写下你的评论..."></textarea>

@@ -270,12 +270,31 @@ test('user can read an article and post a comment', async ({ page }) => {
     await expect(page.getByRole('heading', { name: '欢迎来到月读空间' })).toBeVisible();
     await expect(page).toHaveURL(/\/articles\/1\//);
 
+    const feedback = page.locator('.comments-section .form-message');
+    await page.getByRole('button', { name: '发布评论' }).click();
+    await expect(feedback).toHaveClass(/error/);
+    await expect(feedback).toHaveAttribute('role', 'alert');
+    const errorBorder = await feedback.evaluate((element) => getComputedStyle(element).borderColor.match(/[\d.]+/g).slice(0, 3).map(Number));
+    expect(errorBorder[0]).toBeGreaterThan(errorBorder[1]);
+
     const comment = `E2E article comment ${Date.now()}`;
     await page.getByPlaceholder('写下你的评论...').fill(comment);
     await page.getByRole('button', { name: '发布评论' }).click();
 
+    await expect(feedback).toHaveClass(/success/);
+    await expect(feedback).toHaveAttribute('role', 'status');
+    const successBorder = await feedback.evaluate((element) => getComputedStyle(element).borderColor.match(/[\d.]+/g).slice(0, 3).map(Number));
+    expect(successBorder[1]).toBeGreaterThan(successBorder[0]);
+    expect(successBorder[1]).toBeGreaterThan(successBorder[2]);
     await expect(page.getByText(comment)).toBeVisible();
-    const commentLikeButton = page.locator('.comment-item').filter({ hasText: comment }).locator('.like-btn');
+    const commentItem = page.locator('.comment-item').filter({ hasText: comment }).first();
+    await commentItem.getByRole('button', { name: '回复' }).click();
+    const reply = `E2E article reply ${Date.now()}`;
+    await commentItem.getByPlaceholder('写下回复...').fill(reply);
+    await commentItem.getByRole('button', { name: '发布回复' }).click();
+    await expect(feedback).toHaveClass(/success/);
+    await expect(page.getByText(reply)).toBeVisible();
+    const commentLikeButton = commentItem.locator('.like-btn');
     await commentLikeButton.click();
     await expectLikedHeart(commentLikeButton);
 });

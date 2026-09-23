@@ -78,7 +78,8 @@ const visitPopupPreview = ref({
 const plazaQuick = reactive({
   content: '',
   loading: false,
-  message: ''
+  message: '',
+  messageType: 'success'
 });
 
 function handleStatsUpdated(event) {
@@ -393,6 +394,7 @@ async function submitPlazaQuick() {
   const content = plazaQuick.content.trim();
   plazaQuick.message = '';
   if (!content) {
+    plazaQuick.messageType = 'error';
     plazaQuick.message = isEnglish.value ? 'Message cannot be empty' : '留言不能为空';
     return;
   }
@@ -424,6 +426,7 @@ async function submitPlazaQuick() {
       }
     }
     plazaQuick.content = '';
+    plazaQuick.messageType = 'success';
     plazaQuick.message = isEnglish.value ? 'Published' : '已发布';
     writeHubPreviewCache({
       latestArticle: latestArticle.value,
@@ -434,6 +437,7 @@ async function submitPlazaQuick() {
     });
     await loadHubPreviewFast();
   } catch (error) {
+    plazaQuick.messageType = 'error';
     plazaQuick.message = error.message || (isEnglish.value ? 'Unable to publish' : '发布失败');
   } finally {
     plazaQuick.loading = false;
@@ -620,7 +624,7 @@ onBeforeUnmount(() => {
               </button>
               <span v-if="plazaQuick.loading" class="ts-visually-hidden" role="status">{{ isEnglish ? 'Sending' : '发送中' }}</span>
             </form>
-            <span v-if="plazaQuick.message" class="hub-plaza-feedback" role="status">{{ plazaQuick.message }}</span>
+            <span v-if="plazaQuick.message" class="hub-plaza-feedback" :class="plazaQuick.messageType" :role="plazaQuick.messageType === 'error' ? 'alert' : 'status'">{{ plazaQuick.message }}</span>
           </div>
         </component>
         </template>

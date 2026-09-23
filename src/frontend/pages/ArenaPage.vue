@@ -335,6 +335,7 @@ const artworkSharePayload = ref({ title: '', text: '', url: '', imageUrl: '', do
 const { hydrateUserLevels, userLevel } = useUserLevels();
 const toast = reactive({
   text: '',
+  type: 'success',
   visible: false
 });
 const pixelCanvasRef = ref(null);
@@ -419,8 +420,9 @@ async function preparePublish() {
   titleInputRef.value?.focus({ preventScroll: true });
 }
 
-function showToast(text) {
+function showToast(text, type = 'success') {
   toast.text = text;
+  toast.type = type;
   toast.visible = true;
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => {
@@ -454,7 +456,7 @@ function addCustomColor(color = customColor.value) {
     const fallbackColor = activePalette.value[activePalette.value.length - 1] || presetPalette[3];
     selectedColor.value = fallbackColor;
     customColor.value = fallbackColor;
-    showToast(copy.value.colorLimit);
+    showToast(copy.value.colorLimit, 'error');
     return activePalette.value.indexOf(fallbackColor);
   }
   customColors.value = [...customColors.value, normalized];
@@ -1074,7 +1076,7 @@ async function handleImageUpload(event) {
   input.value = '';
   if (!file) return;
   if (!file.type.startsWith('image/')) {
-    showToast(copy.value.imageTypeInvalid);
+    showToast(copy.value.imageTypeInvalid, 'error');
     return;
   }
 
@@ -1090,7 +1092,7 @@ async function handleImageUpload(event) {
     if (!form.title.trim()) form.title = file.name.replace(/\.[^.]+$/, '').slice(0, 40);
     showToast(copy.value.imageConverted);
   } catch (error) {
-    showToast(copy.value.imageLoadFailed);
+    showToast(copy.value.imageLoadFailed, 'error');
   }
 }
 
@@ -1159,7 +1161,7 @@ async function downloadArtwork(artwork) {
   try {
     fullArtwork = await loadFullArtwork(artwork);
   } catch (error) {
-    showToast(error.message || copy.value.publishFailed);
+    showToast(error.message || copy.value.publishFailed, 'error');
     return;
   }
   const canvas = makeCanvasFromPixels(
@@ -1179,7 +1181,7 @@ async function openArtworkPreview(artwork) {
   try {
     previewArtwork.value = await loadFullArtwork(artwork);
   } catch (error) {
-    showToast(error.message || copy.value.publishFailed);
+    showToast(error.message || copy.value.publishFailed, 'error');
   }
 }
 
@@ -1200,7 +1202,7 @@ async function openArtworkShare(artwork) {
     };
     artworkShareOpen.value = true;
   } catch (error) {
-    showToast(error.message || copy.value.publishFailed);
+    showToast(error.message || copy.value.publishFailed, 'error');
   }
 }
 
@@ -1237,7 +1239,7 @@ async function loadArtworks(page = gallery.page) {
   } catch (error) {
     gallery.items = [];
     gallery.error = error.message || copy.value.publishFailed;
-    showToast(error.message || copy.value.publishFailed);
+    showToast(error.message || copy.value.publishFailed, 'error');
   } finally {
     gallery.loading = false;
   }
@@ -1262,7 +1264,7 @@ async function loadArtworkForEdit() {
     loadArtworkIntoDraft(result.data);
     showToast(props.lang === 'en' ? 'Artwork loaded for editing' : (props.lang === 'ja' ? '編集用に読み込みました' : '已载入像素画，可以继续编辑'));
   } catch (error) {
-    showToast(error.message || copy.value.publishFailed);
+    showToast(error.message || copy.value.publishFailed, 'error');
   }
 }
 
@@ -1286,12 +1288,12 @@ async function shareArtwork() {
     return;
   }
   if (!form.title.trim()) {
-    showToast(copy.value.titleRequired);
+    showToast(copy.value.titleRequired, 'error');
     await preparePublish();
     return;
   }
   if (!paintedCount.value) {
-    showToast(copy.value.blankCanvas);
+    showToast(copy.value.blankCanvas, 'error');
     return;
   }
 
@@ -1328,7 +1330,7 @@ async function shareArtwork() {
       form.description = '';
     }
   } catch (error) {
-    showToast(error.message || copy.value.publishFailed);
+    showToast(error.message || copy.value.publishFailed, 'error');
   } finally {
     isPublishing.value = false;
   }
@@ -1341,7 +1343,7 @@ async function likeArtwork(artwork) {
     return;
   }
   if (isArtworkLiked(artwork)) {
-    showToast(copy.value.alreadyLiked);
+    showToast(copy.value.alreadyLiked, 'error');
     return;
   }
 
@@ -1356,7 +1358,7 @@ async function likeArtwork(artwork) {
     upsertArtwork(result.data);
     showToast(result.message || copy.value.likedToast);
   } catch (error) {
-    showToast(error.message || copy.value.publishFailed);
+    showToast(error.message || copy.value.publishFailed, 'error');
   }
 }
 
@@ -1950,6 +1952,6 @@ onBeforeUnmount(() => {
       @close="artworkShareOpen = false"
     />
 
-    <div v-if="toast.visible" class="arena-toast show">{{ toast.text }}</div>
+    <div v-if="toast.visible" class="arena-toast show" :class="toast.type" :role="toast.type === 'error' ? 'alert' : 'status'">{{ toast.text }}</div>
   </main>
 </template>

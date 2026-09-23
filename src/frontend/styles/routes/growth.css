@@ -201,15 +201,28 @@
 .growth-error {
   margin: 0;
   padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(34, 197, 94, 0.34);
   border-radius: 12px;
-  color: var(--ts-text);
-  background: rgba(96, 168, 214, 0.14);
+  color: #0f5132;
+  background: rgba(220, 252, 231, 0.92);
 }
 
 .growth-message.error,
 .growth-error {
-  color: var(--ts-text);
-  background: rgba(214, 91, 119, 0.15);
+  border-color: rgba(244, 63, 94, 0.32);
+  color: #7f1d1d;
+  background: rgba(255, 228, 230, 0.92);
+}
+
+html[data-theme="dark"] .growth-message.success {
+  color: #c7f9d8;
+  background: rgba(34, 197, 94, 0.16);
+}
+
+html[data-theme="dark"] .growth-message.error,
+html[data-theme="dark"] .growth-error {
+  color: #ffd7df;
+  background: rgba(65, 21, 32, 0.8);
 }
 
 .growth-section {
