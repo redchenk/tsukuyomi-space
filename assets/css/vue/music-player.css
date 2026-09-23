@@ -535,6 +535,32 @@ html[data-theme="light"] .site-music-playlist-drawer select option {
         z-index: 86;
     }
 
+    /* The site guide mascot occupies the lower-right corner on public pages. */
+    .app-shell:not(.room-shell) .site-music-drawer {
+        left: max(0.7rem, env(safe-area-inset-left));
+        right: auto;
+    }
+
+    .app-shell:not(.room-shell) .site-music-drawer:not(.is-open) {
+        width: 3.4rem;
+    }
+
+    .app-shell:not(.room-shell) .site-music-drawer:not(.is-open) .site-music-summary {
+        min-height: 3.4rem;
+    }
+
+    .app-shell:not(.room-shell) .site-music-drawer:not(.is-open) .site-music-handle {
+        width: 2.75rem;
+        min-width: 2.75rem;
+        height: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    .app-shell:not(.room-shell) .site-music-drawer.is-open {
+        /* Leave room for the mascot so every player control remains tappable. */
+        width: min(20.5rem, calc(100vw - max(0.7rem, env(safe-area-inset-left)) - max(0.45rem, env(safe-area-inset-right)) - clamp(5.15rem, 24vw, 6.35rem) - 0.75rem));
+    }
+
     .site-music-drawer:not(.is-open) {
         width: 3.05rem;
     }
@@ -572,6 +598,14 @@ html[data-theme="light"] .site-music-playlist-drawer select option {
         right: max(0.55rem, env(safe-area-inset-right));
         bottom: max(5.15rem, calc(env(safe-area-inset-bottom) + 4.95rem));
         width: min(18.6rem, calc(100vw - 1.1rem));
+    }
+
+    .app-shell:not(.room-shell) .site-music-drawer {
+        left: max(0.55rem, env(safe-area-inset-left));
+    }
+
+    .app-shell:not(.room-shell) .site-music-drawer.is-open {
+        width: min(18.6rem, calc(100vw - max(0.55rem, env(safe-area-inset-left)) - max(0.45rem, env(safe-area-inset-right)) - clamp(5.15rem, 24vw, 6.35rem) - 0.75rem));
     }
 
     .site-music-drawer:not(.is-open) {
@@ -637,6 +671,14 @@ html[data-theme="light"] .site-music-playlist-drawer select option {
     .site-music-meta-row.music-meta-row span:first-child,
     .site-music-meta-row.music-meta-row span:nth-child(2) {
         display: none;
+    }
+}
+
+@media (max-width: 340px) {
+    .app-shell:not(.room-shell) .site-music-drawer.is-open {
+        /* Very narrow screens need the full player width above the mascot. */
+        bottom: max(12.5rem, calc(env(safe-area-inset-bottom) + 12.5rem));
+        width: min(18.6rem, calc(100vw - 1.1rem));
     }
 }
 
