@@ -116,7 +116,7 @@ test('email dispatch respects enabled type, recipient address and actor identity
     assert.equal(notificationEmailRecipient('notify-owner', 'reply', 'other'), '');
 });
 
-test('published replies and new likes mail the owner once when enabled', async () => {
+test('published replies, article comments and new likes mail the owner once when enabled', async () => {
     db.prepare("UPDATE site_settings SET value = 'true' WHERE key = 'emailNotifyReplies'").run();
     const ownerToken = generateToken({ id: 'notify-owner', username: 'notify-owner', role: 'user' });
     const actorToken = generateToken({ id: 'notify-actor', username: 'notify-actor', role: 'user' });
@@ -139,6 +139,11 @@ test('published replies and new likes mail the owner once when enabled', async (
     assert.equal(secondLike.status, 400);
     const articleId = db.prepare("INSERT INTO articles (title, content, category, status, author_id) VALUES ('月下文章', '正文', '其他', 'published', ?)")
         .run('notify-owner').lastInsertRowid;
+    const articleComment = await call('/api/messages', {
+        method: 'POST', body: { content: '这篇文章写得真好', article_id: articleId }, token: actorToken
+    });
+    assert.equal(articleComment.status, 201);
+    assert.equal(articleComment.body.data.status, 'approved');
     const articleLike = await call(`/api/user/article-likes/${articleId}`, {
         method: 'POST', token: actorToken
     });
@@ -152,19 +157,56 @@ test('published replies and new likes mail the owner once when enabled', async (
     });
     assert.equal(pendingReply.status, 201);
     assert.equal(pendingReply.body.data.status, 'pending');
+    const pendingArticleComment = await call('/api/messages', {
+        method: 'POST', body: { content: '这篇文章提到政治，需要先审核', article_id: articleId }, token: actorToken
+    });
+    assert.equal(pendingArticleComment.status, 201);
+    assert.equal(pendingArticleComment.body.data.status, 'pending');
     await new Promise(resolve => setTimeout(resolve, 10));
-    assert.deepEqual(sentByRoutes.map(item => item.event.type).sort(), ['like', 'like', 'reply']);
+    assert.deepEqual(sentByRoutes.map(item => item.event.type).sort(), ['like', 'like', 'reply', 'reply']);
+    assert.equal(sentByRoutes.filter(item => item.event.title.includes('评论了你的文章《月下文章》')).length, 1);
+    assert.ok(sentByRoutes.some(item => item.event.link.endsWith(`#comment-${articleComment.body.data.id}`)));
+    assert.equal(sentByRoutes.filter(item => item.event.title.includes('点赞了你的文章')).length, 1);
     const reviewList = await call('/api/admin/messages', { cookie: superCookie });
     const reviewed = reviewList.body.data.find(item => item.id === pendingReply.body.data.id);
+    const reviewedArticleComment = reviewList.body.data.find(item => item.id === pendingArticleComment.body.data.id);
     assert.ok(reviewed?.moderation?.reviewDigest);
+    assert.ok(reviewedArticleComment?.moderation?.reviewDigest);
     const approved = await call(`/api/admin/messages/${reviewed.id}/approve`, {
         method: 'POST', cookie: superCookie,
         body: { reviewDigest: reviewed.moderation.reviewDigest }
     });
     assert.equal(approved.status, 200);
+    const approvedArticleComment = await call(`/api/admin/messages/${reviewedArticleComment.id}/approve`, {
+        method: 'POST', cookie: superCookie,
+        body: { reviewDigest: reviewedArticleComment.moderation.reviewDigest }
+    });
+    assert.equal(approvedArticleComment.status, 200);
+    const approvedAgain = await call(`/api/admin/messages/${reviewedArticleComment.id}/approve`, {
+        method: 'POST', cookie: superCookie,
+        body: { reviewDigest: reviewedArticleComment.moderation.reviewDigest }
+    });
+    assert.equal(approvedAgain.status, 200);
+    const selfComment = await call('/api/messages', {
+        method: 'POST', body: { content: '感谢大家阅读', article_id: articleId }, token: ownerToken
+    });
+    assert.equal(selfComment.status, 201);
+    const pendingEditedComment = await call('/api/messages', {
+        method: 'POST', body: { content: '这篇文章提到政治，我想补充一下', article_id: articleId }, token: actorToken
+    });
+    assert.equal(pendingEditedComment.body.data.status, 'pending');
+    const editedComment = await call(`/api/messages/${pendingEditedComment.body.data.id}`, {
+        method: 'PATCH', body: { content: '补充一句：期待下一篇' }, token: actorToken
+    });
+    assert.equal(editedComment.status, 200);
+    assert.equal(editedComment.body.data.status, 'approved');
     await new Promise(resolve => setTimeout(resolve, 10));
-    assert.deepEqual(sentByRoutes.map(item => item.event.type).sort(), ['like', 'like', 'reply', 'reply']);
+    assert.deepEqual(sentByRoutes.map(item => item.event.type).sort(), ['like', 'like', 'reply', 'reply', 'reply', 'reply', 'reply']);
+    assert.equal(sentByRoutes.filter(item => item.event.title.includes('评论了你的文章《月下文章》')).length, 3);
     assert.ok(sentByRoutes.every(item => item.to === 'owner@example.com'));
-    const notifications = db.prepare("SELECT type FROM notifications WHERE user_id = 'notify-owner' ORDER BY id").all();
-    assert.deepEqual(notifications.map(item => item.type), ['reply', 'like', 'like', 'reply']);
+    const notifications = db.prepare("SELECT type, link, related_article_id, related_message_id FROM notifications WHERE user_id = 'notify-owner' ORDER BY id").all();
+    assert.deepEqual(notifications.map(item => item.type), ['reply', 'like', 'reply', 'like', 'reply', 'reply', 'reply']);
+    const articleNotification = notifications.find(item => item.related_message_id === articleComment.body.data.id);
+    assert.equal(articleNotification.related_article_id, articleId);
+    assert.ok(articleNotification.link.endsWith(`#comment-${articleComment.body.data.id}`));
 });

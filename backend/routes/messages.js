@@ -4,7 +4,7 @@ const { createRateLimiter } = require('../middleware/security');
 const messageRepository = require('../repositories/message-repository');
 const notificationRepository = require('../repositories/notification-repository');
 const { queueNotificationEmail } = require('../services/notification-email');
-const { notifyApprovedReply } = require('../services/approved-reply-notification');
+const { notifyApprovedMessage } = require('../services/approved-reply-notification');
 const articleRepository = require('../repositories/article-repository');
 const socialRepository = require('../repositories/social-repository');
 const { reviewMessageContent } = require('../services/message-moderation');
@@ -241,6 +241,7 @@ router.post('/', authenticateToken, messageWriteLimiter, (req, res) => {
             responseCache.delPrefix(article_id ? `public:article-messages:${article_id}` : 'public:plaza-messages');
             responseCache.delPrefix('public:message-topics');
             responseCache.delPrefix('public:stats');
+            notifyApprovedMessage(newMessage.id);
             notifyMentions({ message: newMessage, actor: req.user });
         }
         const growth = review.status === 'approved' && !article_id
@@ -323,7 +324,7 @@ router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => 
             responseCache.delPrefix(originalMessage.article_id ? `public:article-messages:${originalMessage.article_id}` : 'public:plaza-messages');
             responseCache.delPrefix('public:message-topics');
             responseCache.delPrefix('public:stats');
-            notifyApprovedReply(newMessage.id);
+            notifyApprovedMessage(newMessage.id);
             notifyMentions({ message: newMessage, actor: req.user });
         }
         const growth = review.status === 'approved' && !originalMessage.article_id
@@ -355,6 +356,7 @@ router.patch('/:id', authenticateToken, messageWriteLimiter, (req, res) => {
             status: review.status
         });
         clearMessageCaches(existing.article_id);
+        if (existing.status !== 'approved' && updated.status === 'approved') notifyApprovedMessage(id);
         res.json({
             success: true,
             data: updated,

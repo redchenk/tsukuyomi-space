@@ -1241,12 +1241,12 @@ onUnmounted(() => {
               <div class="terminal-notification-options">
                 <label class="terminal-notification-option">
                   <span class="terminal-notification-icon" aria-hidden="true"><TsIcon name="message" :size="20" /></span>
-                  <span class="terminal-notification-copy"><strong>新回复</strong><small>用户的留言或评论收到公开回复时，向原作者发送邮件。</small></span>
-                  <input v-model="terminal.settings.emailNotifyReplies" type="checkbox" aria-label="新回复邮件通知">
+                  <span class="terminal-notification-copy"><strong>新评论与回复</strong><small>文章收到评论、留言或评论收到回复时，在内容公开后向作者发送邮件。</small></span>
+                  <input v-model="terminal.settings.emailNotifyReplies" type="checkbox" aria-label="新评论与回复邮件通知">
                 </label>
                 <label class="terminal-notification-option">
                   <span class="terminal-notification-icon" aria-hidden="true"><TsIcon name="heart" :size="20" /></span>
-                  <span class="terminal-notification-copy"><strong>新点赞</strong><small>用户的留言或文章收到新点赞时，向内容作者发送邮件。</small></span>
+                  <span class="terminal-notification-copy"><strong>新点赞</strong><small>文章、留言、评论或像素画收到新点赞时，向内容作者发送邮件。</small></span>
                   <input v-model="terminal.settings.emailNotifyLikes" type="checkbox" aria-label="新点赞邮件通知">
                 </label>
                 <label class="terminal-notification-option">

@@ -54,6 +54,20 @@ describe('verification email template', () => {
         assert.doesNotMatch(email.html, /<123&456>/);
     });
 
+    it('puts the verification details first in previews without repeating the moon glyph', () => {
+        const email = renderVerificationEmail({
+            code: '123456',
+            purpose: 'login',
+            ttlMinutes: 10,
+            siteUrl: 'https://yachiyo.hk'
+        });
+
+        assert.match(email.text, /^登录验证码：123456，10 分钟内有效。/);
+        assert.match(email.html, /aria-hidden="true" style="[^"]*mso-hide:all/);
+        assert.match(email.html, />☾<\/div>/);
+        assert.doesNotMatch(email.html, />月<\/div>\s*<\/td>/);
+    });
+
     it('builds a standards-compatible multipart message with text and HTML fallbacks', async () => {
         const message = buildVerificationMessage({
             fromName: '月读空间',
@@ -112,6 +126,10 @@ describe('notification email template', () => {
             assert.match(content.html, /background-color:#0b1020/);
             assert.match(content.html, /月读空间/);
             assert.match(content.html, /border-radius:24px/);
+            assert.ok(content.text.startsWith('月下有新消息\r\n'));
+            assert.match(content.html, /aria-hidden="true" style="[^"]*mso-hide:all/);
+            assert.match(content.html, />☾<\/div>/);
+            assert.doesNotMatch(content.html, />月<\/div>\s*<\/td>/);
             assert.match(content.text, /https:\/\/yachiyo\.hk\/notifications/);
             assert.doesNotMatch(content.html, /<script|<img/i);
             const parsed = await PostalMime.parse(Buffer.from(buildNotificationMessage({
@@ -123,6 +141,7 @@ describe('notification email template', () => {
             assert.match(parsed.subject, /月下有新消息/);
             assert.match(parsed.html, /月读空间/);
             assert.match(parsed.text, /月下有新消息/);
+            if (type === 'reply') assert.match(parsed.html, /新评论或回复/);
             if (type === 'login_alert') assert.match(parsed.text, /江苏/);
         }
     });

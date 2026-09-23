@@ -78,11 +78,8 @@ function renderVerificationEmail({
     const safeSiteUrl = normalizeSiteUrl(siteUrl);
     const subject = `【月读空间】${copy.title}`;
     const text = [
-        `月读空间 · ${copy.title}`,
+        `${copy.title}：${safeCode}，${safeTtlMinutes} 分钟内有效。`,
         `${copy.lead} ${copy.englishLead}.`,
-        '',
-        `验证码：${safeCode}`,
-        `有效时间：${safeTtlMinutes} 分钟`,
         '',
         `打开月读空间：${safeSiteUrl}`,
         '如果不是你本人操作，请忽略这封邮件，不要将验证码告诉任何人。',
@@ -109,7 +106,7 @@ function renderVerificationEmail({
   </style>
 </head>
 <body style="margin:0; padding:0; background-color:#0b1020; color:#f4f1ff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei','PingFang SC',Arial,sans-serif;">
-  <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
+  <div aria-hidden="true" style="display:none!important; visibility:hidden; mso-hide:all; max-height:0; max-width:0; overflow:hidden; opacity:0; color:transparent; font-size:1px; line-height:1px;">
     ${escapeHtml(copy.title)}：${escapeHtml(safeCode)}，${safeTtlMinutes} 分钟内有效。
   </div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:#0b1020;">
@@ -121,7 +118,7 @@ function renderVerificationEmail({
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td width="52" valign="middle">
-                    <div style="width:44px; height:44px; line-height:44px; border:1px solid #bdb0ff; border-radius:50%; text-align:center; background-color:#6f5bbb; color:#ffffff; font-size:20px; font-weight:800;">月</div>
+                    <div style="width:44px; height:44px; line-height:44px; border:1px solid #bdb0ff; border-radius:50%; text-align:center; background-color:#6f5bbb; color:#ffffff; font-size:24px; font-weight:700;">☾</div>
                   </td>
                   <td valign="middle" style="padding-left:12px;">
                     <div style="color:#ffffff; font-size:18px; line-height:1.35; font-weight:750;">月读空间</div>
@@ -188,10 +185,10 @@ function renderVerificationEmail({
 
 const NOTIFICATION_COPY = Object.freeze({
     reply: {
-        label: 'NEW REPLY / 新回复',
-        defaultTitle: '有人回复了你',
-        lead: '你在月读空间收到一条新回复。',
-        action: '查看回复',
+        label: 'NEW COMMENT OR REPLY / 新评论或回复',
+        defaultTitle: '你的内容有了新评论或回复',
+        lead: '你分享的内容收到了新评论或回复。',
+        action: '查看内容',
         defaultPath: '/notifications'
     },
     like: {
@@ -273,7 +270,7 @@ function renderNotificationEmail({
     const description = type === 'login_alert' ? copy.lead : (safeContent || copy.lead);
     const subject = `【月读空间】${safeTitle}`;
     const text = [
-        `月读空间 · ${safeTitle}`,
+        safeTitle,
         copy.lead,
         safeActorName && type !== 'login_alert' ? `来自：${safeActorName}` : '',
         safeContent ? `\n${safeContent}` : '',
@@ -309,7 +306,7 @@ function renderNotificationEmail({
   </style>
 </head>
 <body style="margin:0; padding:0; background-color:#0b1020; color:#f4f1ff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei','PingFang SC',Arial,sans-serif;">
-  <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">${escapeHtml(copy.lead)} ${escapeHtml(safeContent)}</div>
+  <div aria-hidden="true" style="display:none!important; visibility:hidden; mso-hide:all; max-height:0; max-width:0; overflow:hidden; opacity:0; color:transparent; font-size:1px; line-height:1px;">${escapeHtml(copy.lead)} ${escapeHtml(safeContent)}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:#0b1020;">
     <tr>
       <td align="center" style="padding:32px 14px;">
@@ -319,7 +316,7 @@ function renderNotificationEmail({
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td width="52" valign="middle">
-                    <div style="width:44px; height:44px; line-height:44px; border:1px solid #bdb0ff; border-radius:50%; text-align:center; background-color:#6f5bbb; color:#ffffff; font-size:22px; font-weight:700;">月</div>
+                    <div style="width:44px; height:44px; line-height:44px; border:1px solid #bdb0ff; border-radius:50%; text-align:center; background-color:#6f5bbb; color:#ffffff; font-size:24px; font-weight:700;">☾</div>
                   </td>
                   <td valign="middle" style="padding-left:13px;">
                     <div style="color:#ffffff; font-size:18px; line-height:1.35; font-weight:700;">月读空间</div>
