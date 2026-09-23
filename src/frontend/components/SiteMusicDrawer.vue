@@ -8,7 +8,7 @@ defineProps({
 
 <template>
   <div class="site-music-drawer" :class="{ 'is-open': music.drawer.open, 'is-playing': music.playing.value }">
-    <section class="site-music-panel" data-material="popover" aria-label="Music player">
+    <section class="site-music-panel" :data-material="music.drawer.open ? 'popover' : null" aria-label="Music player">
       <div class="site-music-summary">
         <div
           class="music-cover site-music-cover"

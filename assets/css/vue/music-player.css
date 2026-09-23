@@ -49,8 +49,14 @@
 
 .site-music-drawer:not(.is-open) .site-music-panel {
     opacity: 1;
-    pointer-events: auto;
-    border-radius: 15px;
+    pointer-events: none;
+    overflow: visible;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     transform: translate3d(0, 0, 0);
 }
 
@@ -298,15 +304,7 @@
 }
 
 .site-music-drawer:not(.is-open) .site-music-mini-progress {
-    position: absolute;
-    left: 50%;
-    bottom: 0.34rem;
-    z-index: 1;
-    width: 1.72rem;
-    height: 2px;
-    margin: 0;
-    background: rgba(255, 255, 255, 0.28);
-    transform: translateX(-50%);
+    display: none;
 }
 
 .site-music-body {
@@ -542,11 +540,12 @@ html[data-theme="light"] .site-music-playlist-drawer select option {
     }
 
     .app-shell:not(.room-shell) .site-music-drawer:not(.is-open) {
-        width: 3.4rem;
+        width: 2.75rem;
     }
 
     .app-shell:not(.room-shell) .site-music-drawer:not(.is-open) .site-music-summary {
-        min-height: 3.4rem;
+        min-height: 2.75rem;
+        padding: 0;
     }
 
     .app-shell:not(.room-shell) .site-music-drawer:not(.is-open) .site-music-handle {
@@ -601,7 +600,7 @@ html[data-theme="light"] .site-music-playlist-drawer select option {
     }
 
     .app-shell:not(.room-shell) .site-music-drawer {
-        left: max(0.55rem, env(safe-area-inset-left));
+        left: max(0.85rem, env(safe-area-inset-left));
     }
 
     .app-shell:not(.room-shell) .site-music-drawer.is-open {
