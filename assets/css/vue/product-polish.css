@@ -1032,6 +1032,15 @@ body::before {
     border-radius: var(--ts-unified-button-radius-compact);
 }
 
+/* The Plaza author button is a pill with three text rows. Keep its date
+   clear of the curved right and bottom edges of the global button skin. */
+.page.plaza-page .plaza-author-link {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+    padding: 0.4rem 1.25rem 0.55rem 0.7rem;
+}
+
 .page :where(.icon-btn, .uc-icon-action, .profile-icon-action, .music-icon-btn, .site-music-play, .live2d-icon-btn, .chat-attach-btn, .chat-tts-btn, .gallery-card-actions button, .hub-plaza-form button):not(.primary-btn):not(.ghost-btn):not(.danger-btn) {
     min-width: var(--ts-unified-button-height);
     width: var(--ts-unified-button-height);
