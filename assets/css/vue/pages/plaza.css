@@ -177,7 +177,7 @@
 .plaza-moods { display: flex; gap: 0.45rem; flex-wrap: wrap; margin: 0.75rem 0; }
 .plaza-composer-actions { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
 
-.plaza-messages { display: grid; gap: 0.8rem; min-height: 280px; }
+.plaza-messages { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; min-height: 280px; }
 .plaza-empty {
     min-height: 220px;
     display: grid;
@@ -191,6 +191,7 @@
 }
 
 .plaza-msg-card {
+    min-width: 0;
     background: rgba(255,255,255,0.043);
     border: 1px solid rgba(255,183,197,0.13);
     border-radius: 8px;
@@ -210,12 +211,13 @@
 }
 
 .plaza-msg-meta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
-.plaza-msg-author { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
+.plaza-msg-author { display: flex; flex: 1 1 auto; align-items: center; gap: 0.65rem; min-width: 0; }
 .plaza-author-link {
     display: flex;
     align-items: center;
     gap: 0.65rem;
     min-width: 0;
+    max-width: 100%;
     padding: 0;
     border: 0;
     background: transparent;
@@ -224,6 +226,7 @@
     text-align: left;
     cursor: pointer;
 }
+.plaza-author-link > div:last-child { min-width: 0; }
 .plaza-author-link:hover .plaza-author-name {
     color: #fff;
     text-decoration: underline;
@@ -258,8 +261,9 @@
     width: 100%;
     height: 100%;
 }
-.plaza-author-name { color: #ffb7c5; font-size: 0.9rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plaza-author-name { max-width: 100%; color: #ffb7c5; font-size: 0.9rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plaza-msg-date { color: rgba(255,225,235,0.42); font-size: 0.74rem; margin-top: 0.12rem; }
+.plaza-author-link .plaza-msg-date { overflow-wrap: anywhere; }
 .plaza-msg-content { display: block; color: rgba(255,255,255,0.86); line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 0.8rem; }
 .plaza-msg-footer { display: flex; gap: 0.55rem; align-items: center; flex-wrap: wrap; }
 
@@ -336,6 +340,7 @@
     border-left: 2px solid rgba(255,183,197,0.14);
 }
 .plaza-reply-card {
+    min-width: 0;
     background: rgba(255,255,255,0.035);
     border: 1px solid rgba(255,255,255,0.07);
     border-radius: 8px;
