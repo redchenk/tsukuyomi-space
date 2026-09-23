@@ -98,7 +98,7 @@
 .room-setup-summary,
 .room-setup-help {
     border: 1px solid rgba(139, 168, 205, 0.2);
-    border-radius: 14px;
+    border-radius: var(--ts-radius-card);
     background: rgba(255, 255, 255, 0.46);
 }
 
@@ -546,8 +546,13 @@
     grid-template-columns: auto minmax(0, 1fr);
     gap: 0.55rem;
     align-items: center;
-    border-top: 1px solid rgba(139, 168, 205, 0.14);
-    padding: 0.68rem 0;
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-md);
+    padding: 0.68rem 0.75rem;
+}
+
+.room-setup-summary-item + .room-setup-summary-item {
+    margin-top: var(--ts-space-2);
 }
 
 .room-setup-summary-item > span {
