@@ -3,6 +3,8 @@ const { authenticateToken } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
 const messageRepository = require('../repositories/message-repository');
 const notificationRepository = require('../repositories/notification-repository');
+const { queueNotificationEmail } = require('../services/notification-email');
+const { notifyApprovedReply } = require('../services/approved-reply-notification');
 const articleRepository = require('../repositories/article-repository');
 const socialRepository = require('../repositories/social-repository');
 const { reviewMessageContent } = require('../services/message-moderation');
@@ -60,19 +62,29 @@ function messageLink(message) {
 
 function notifyMessageOwner({ targetMessage, actor, type, title, content, relatedMessageId }) {
     if (!targetMessage?.user_id || targetMessage.user_id === actor.id) return;
-    notificationRepository.createNotification({
+    const link = messageLink(targetMessage);
+    const notification = notificationRepository.createNotification({
         userId: targetMessage.user_id,
         actorId: actor.id,
         type,
         title,
         content,
-        link: messageLink(targetMessage),
+        link,
         relatedMessageId: relatedMessageId || targetMessage.id,
         relatedArticleId: targetMessage.article_id || null,
         metadata: {
             actorName: actorName(actor),
             messageId: targetMessage.id
         }
+    });
+    if (notification) queueNotificationEmail({
+        userId: targetMessage.user_id,
+        actorId: actor.id,
+        type,
+        title,
+        content,
+        link,
+        actorName: actorName(actor)
     });
 }
 
@@ -311,14 +323,7 @@ router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => 
             responseCache.delPrefix(originalMessage.article_id ? `public:article-messages:${originalMessage.article_id}` : 'public:plaza-messages');
             responseCache.delPrefix('public:message-topics');
             responseCache.delPrefix('public:stats');
-            notifyMessageOwner({
-                targetMessage: originalMessage,
-                actor: req.user,
-                type: 'reply',
-                title: `${actorName(req.user)} 回复了你的${messageNoun(originalMessage)}`,
-                content: review.content,
-                relatedMessageId: newMessage.id
-            });
+            notifyApprovedReply(newMessage.id);
             notifyMentions({ message: newMessage, actor: req.user });
         }
         const growth = review.status === 'approved' && !originalMessage.article_id

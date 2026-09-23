@@ -792,6 +792,106 @@ body .page.terminal-page .terminal-check input {
     accent-color: var(--terminal-ui-primary);
 }
 
+body .page.terminal-page .terminal-notification-settings {
+    max-width: 820px;
+}
+
+body .page.terminal-page .terminal-notification-options {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0;
+}
+
+body .page.terminal-page .terminal-mail-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 4px;
+    padding: 10px 13px;
+    border: 1px solid var(--terminal-ui-border-soft);
+    border-radius: 14px;
+    color: var(--terminal-ui-muted);
+    background: var(--terminal-ui-surface-subtle);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+body .page.terminal-page .terminal-mail-status.ready { color: var(--terminal-ui-success); }
+body .page.terminal-page .terminal-mail-status.missing { color: var(--terminal-ui-warning); }
+
+body .page.terminal-page .terminal-notification-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    padding: 15px 17px;
+    border: 1px solid var(--terminal-ui-border-soft);
+    border-radius: 18px;
+    background: var(--terminal-ui-surface-subtle);
+    cursor: pointer;
+}
+
+body .page.terminal-page .terminal-notification-option:focus-within {
+    outline: 2px solid var(--terminal-ui-primary);
+    outline-offset: 2px;
+}
+
+body .page.terminal-page .terminal-notification-icon {
+    display: grid;
+    flex: 0 0 40px;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    color: var(--terminal-ui-primary);
+    background: var(--terminal-ui-primary-soft);
+}
+
+body .page.terminal-page .terminal-notification-copy {
+    display: grid;
+    flex: 1 1 auto;
+    gap: 4px;
+    min-width: 0;
+}
+
+body .page.terminal-page .terminal-notification-copy strong {
+    color: var(--terminal-ui-text);
+    font-size: 14px;
+    font-weight: 650;
+}
+
+body .page.terminal-page .terminal-notification-copy small {
+    color: var(--terminal-ui-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+body .page.terminal-page .terminal-notification-option input[type="checkbox"] {
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    min-height: 20px;
+    margin: 0;
+    accent-color: var(--terminal-ui-primary);
+}
+
+body .page.terminal-page .terminal-notification-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 560px) {
+    body .page.terminal-page .terminal-notification-option {
+        gap: 10px;
+        padding: 13px;
+    }
+    body .page.terminal-page .terminal-notification-icon {
+        flex-basis: 34px;
+        width: 34px;
+        height: 34px;
+    }
+}
+
 body .page.terminal-page .terminal-account-grid {
     grid-template-columns: minmax(220px, 0.72fr) minmax(300px, 1.28fr);
     gap: 16px;

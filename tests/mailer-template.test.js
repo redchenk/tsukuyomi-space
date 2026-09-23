@@ -6,7 +6,9 @@ process.env.NODE_ENV = 'test';
 
 const {
     buildVerificationMessage,
-    renderVerificationEmail
+    renderVerificationEmail,
+    buildNotificationMessage,
+    renderNotificationEmail
 } = require('../backend/services/mailer');
 
 describe('verification email template', () => {
@@ -87,6 +89,61 @@ describe('verification email template', () => {
             purpose: 'login',
             ttlMinutes: 10,
             siteUrl: 'https://yachiyo.hk'
+        }), /Invalid mailbox address/);
+    });
+});
+
+describe('notification email template', () => {
+    it('renders branded reply, like and login alerts with readable text fallbacks', async () => {
+        for (const type of ['reply', 'like', 'login_alert']) {
+            const notification = {
+                type,
+                title: '月下有新消息',
+                content: '一条新的站内动态',
+                link: '/notifications',
+                actorName: '八千代',
+                location: 'CN · 江苏 · 苏州',
+                device: 'Safari / iPhone',
+                ip: '203.0.113.2',
+                occurredAt: '2026-09-23T12:00:00Z',
+                siteUrl: 'https://yachiyo.hk'
+            };
+            const content = renderNotificationEmail(notification);
+            assert.match(content.html, /background-color:#0b1020/);
+            assert.match(content.html, /月读空间/);
+            assert.match(content.html, /border-radius:24px/);
+            assert.match(content.text, /https:\/\/yachiyo\.hk\/notifications/);
+            assert.doesNotMatch(content.html, /<script|<img/i);
+            const parsed = await PostalMime.parse(Buffer.from(buildNotificationMessage({
+                fromName: '月读空间',
+                fromEmail: 'notice@example.com',
+                toEmail: 'user@example.com',
+                notification
+            })));
+            assert.match(parsed.subject, /月下有新消息/);
+            assert.match(parsed.html, /月读空间/);
+            assert.match(parsed.text, /月下有新消息/);
+            if (type === 'login_alert') assert.match(parsed.text, /江苏/);
+        }
+    });
+
+    it('escapes user content and confines action links to the configured site', () => {
+        const content = renderNotificationEmail({
+            type: 'reply',
+            title: '<img src=x onerror=alert(1)>',
+            content: '<script>alert(1)</script>',
+            actorName: '"坏人"',
+            link: 'https://attacker.example/phish',
+            siteUrl: 'https://yachiyo.hk'
+        });
+        assert.match(content.html, /&lt;script&gt;/);
+        assert.match(content.html, /&quot;坏人&quot;/);
+        assert.doesNotMatch(content.html, /<script|<img|attacker\.example/i);
+        assert.match(content.html, /href="https:\/\/yachiyo\.hk\/notifications"/);
+        assert.throws(() => buildNotificationMessage({
+            fromEmail: 'notice@example.com',
+            toEmail: 'user@example.com\r\nBcc: attacker@example.com',
+            notification: { type: 'like' }
         }), /Invalid mailbox address/);
     });
 });

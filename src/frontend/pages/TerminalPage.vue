@@ -16,7 +16,8 @@ const panels = [
   { id: 'links', label: '友链审核', icon: 'external', code: '05', group: '内容', desc: '处理友链申请与收录状态' },
   { id: 'users', label: '用户', icon: 'users', code: '06', group: '系统', desc: '用户检索、角色和密码' },
   { id: 'account', label: '账号安全', icon: 'shield', code: '07', group: '系统', desc: '当前管理员安全设置' },
-  { id: 'settings', label: '设置', icon: 'settings', code: '08', group: '系统', desc: '站点、备案和对象存储' }
+  { id: 'notifications', label: '通知设置', icon: 'bell', code: '08', group: '系统', desc: '管理全站邮件通知范围' },
+  { id: 'settings', label: '设置', icon: 'settings', code: '09', group: '系统', desc: '站点、备案和对象存储' }
 ];
 
 const terminal = reactive({
@@ -29,6 +30,8 @@ const terminal = reactive({
   message: '',
   messageType: 'success',
   loadError: '',
+  notificationSaving: false,
+  mailConfigured: false,
   clock: '',
   login: { username: '', password: '' },
   stats: { articles: 0, pendingMessages: 0, todayViews: 0, users: 0 },
@@ -72,6 +75,9 @@ const terminal = reactive({
     visitPopupContent: '',
     visitPopupButton: '我知道了',
     messageReviewKeywords: '',
+    emailNotifyReplies: false,
+    emailNotifyLikes: false,
+    emailNotifyUnusualLogin: false,
     beianText: '',
     beianUrl: '',
     mpsBeianText: '',
@@ -136,7 +142,9 @@ const SITE_SETTING_KEYS = [
 ];
 const authed = computed(() => Boolean(terminal.admin));
 const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin');
-const visiblePanels = computed(() => terminal.siteSession ? panels.filter((panel) => panel.id === 'articles') : panels);
+const visiblePanels = computed(() => terminal.siteSession
+  ? panels.filter((panel) => panel.id === 'articles')
+  : panels.filter((panel) => panel.id !== 'notifications' || canManageAccounts.value));
 const groupedPanels = computed(() => ['巡检', '内容', '系统']
   .map((group) => ({ group, items: visiblePanels.value.filter((panel) => panel.group === group) }))
   .filter((entry) => entry.items.length));
@@ -360,7 +368,11 @@ async function loadPanel(panel = terminal.activePanel) {
     }
     if (panel === 'links') terminal.links = await adminApi('/links') || [];
     if (panel === 'analytics') terminal.analytics = { ...terminal.analytics, ...(await adminApi('/analytics') || {}) };
-    if (panel === 'settings') terminal.settings = { ...terminal.settings, ...(await adminApi('/settings') || {}) };
+    if (panel === 'settings' || panel === 'notifications') {
+      const { mailConfigured, ...settings } = await adminApi('/settings') || {};
+      terminal.mailConfigured = mailConfigured === true;
+      terminal.settings = { ...terminal.settings, ...settings };
+    }
   } catch (error) {
     terminal.loadError = error.message || '后台数据读取失败';
   } finally {
@@ -598,6 +610,26 @@ async function saveSettings() {
     : Object.fromEntries(SITE_SETTING_KEYS.map((key) => [key, terminal.settings[key]]));
   await adminApi('/settings', { method: 'POST', body: JSON.stringify(settings) });
   showMessage('配置已保存');
+}
+
+async function saveNotificationSettings() {
+  if (!canManageAccounts.value || terminal.notificationSaving) return;
+  terminal.notificationSaving = true;
+  try {
+    await adminApi('/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        emailNotifyReplies: terminal.settings.emailNotifyReplies,
+        emailNotifyLikes: terminal.settings.emailNotifyLikes,
+        emailNotifyUnusualLogin: terminal.settings.emailNotifyUnusualLogin
+      })
+    });
+    showMessage('邮件通知范围已保存');
+  } catch (error) {
+    showMessage(error.message || '邮件通知设置保存失败', 'error');
+  } finally {
+    terminal.notificationSaving = false;
+  }
 }
 
 async function testOssSettings() {
@@ -865,6 +897,7 @@ onUnmounted(() => {
               </button>
               <button v-if="terminal.activePanel === 'articles'" class="primary-btn" type="button" @click="$emit('go', '/editor')"><TsIcon name="plus" :size="16" />新建文章</button>
               <button v-if="terminal.activePanel === 'settings'" class="primary-btn" type="button" @click="saveSettings"><TsIcon name="bookmark" :size="16" />保存配置</button>
+              <button v-if="terminal.activePanel === 'notifications'" class="primary-btn" type="button" :disabled="terminal.notificationSaving" @click="saveNotificationSettings"><TsIcon name="bookmark" :size="16" />{{ terminal.notificationSaving ? '保存中' : '保存通知设置' }}</button>
             </div>
           </div>
           <div v-if="terminal.message" class="form-message terminal-alert" :class="terminal.messageType" role="status">
@@ -1194,6 +1227,38 @@ onUnmounted(() => {
               <div class="terminal-card terminal-stat-card terminal-stat-static"><span class="terminal-stat-icon warning"><TsIcon name="sparkles" :size="18" /></span><span class="terminal-stat-copy"><small>总访问</small><strong>{{ terminal.analytics.totalViews || 0 }}</strong></span></div>
             </div>
           </div>
+
+          <form v-if="!terminal.loading && !terminal.loadError && terminal.activePanel === 'notifications' && canManageAccounts" class="terminal-settings terminal-notification-settings" :aria-busy="terminal.notificationSaving" @submit.prevent="saveNotificationSettings">
+            <div class="terminal-settings-block">
+              <div class="terminal-settings-title">
+                <strong>全站邮件通知</strong>
+                <span>选择哪些站内事件同时发送邮件给相关用户。站内通知仍会正常保留。</span>
+              </div>
+              <p class="terminal-mail-status" :class="terminal.mailConfigured ? 'ready' : 'missing'" role="status">
+                <TsIcon :name="terminal.mailConfigured ? 'userCheck' : 'shield'" :size="16" />
+                {{ terminal.mailConfigured ? '邮件通道已配置' : '邮件通道未配置：请先在服务器设置 SMTP_USER 和 SMTP_PASS' }}
+              </p>
+              <div class="terminal-notification-options">
+                <label class="terminal-notification-option">
+                  <span class="terminal-notification-icon" aria-hidden="true"><TsIcon name="message" :size="20" /></span>
+                  <span class="terminal-notification-copy"><strong>新回复</strong><small>用户的留言或评论收到公开回复时，向原作者发送邮件。</small></span>
+                  <input v-model="terminal.settings.emailNotifyReplies" type="checkbox" aria-label="新回复邮件通知">
+                </label>
+                <label class="terminal-notification-option">
+                  <span class="terminal-notification-icon" aria-hidden="true"><TsIcon name="heart" :size="20" /></span>
+                  <span class="terminal-notification-copy"><strong>新点赞</strong><small>用户的留言或文章收到新点赞时，向内容作者发送邮件。</small></span>
+                  <input v-model="terminal.settings.emailNotifyLikes" type="checkbox" aria-label="新点赞邮件通知">
+                </label>
+                <label class="terminal-notification-option">
+                  <span class="terminal-notification-icon" aria-hidden="true"><TsIcon name="shield" :size="20" /></span>
+                  <span class="terminal-notification-copy"><strong>异地登录提醒</strong><small>识别到与上次成功登录不同的可靠地点时，向账户邮箱发送安全提醒。</small></span>
+                  <input v-model="terminal.settings.emailNotifyUnusualLogin" type="checkbox" aria-label="异地登录邮件提醒">
+                </label>
+              </div>
+              <p class="terminal-setting-note">邮件只会发送到用户已绑定的真实邮箱；异地判断依据 IP 定位，首次登录只建立基线。此处控制全站邮件范围，不会关闭站内信。</p>
+            </div>
+            <div class="terminal-notification-actions"><button class="primary-btn" type="submit" :disabled="terminal.notificationSaving">{{ terminal.notificationSaving ? '保存中…' : '保存通知设置' }}</button></div>
+          </form>
 
           <form v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'settings'" class="terminal-settings" :aria-busy="terminal.ossTest.loading || terminal.ossImport.loading || terminal.ossImport.scanning" @submit.prevent="saveSettings">
             <div class="terminal-settings-block terminal-settings-grid">

@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const notificationRepository = require('../repositories/notification-repository');
+const { queueNotificationEmail } = require('../services/notification-email');
 const pixelArtRepository = require('../repositories/pixel-art-repository');
 const responseCache = require('../services/response-cache');
 const userGrowth = require('../services/user-growth');
@@ -70,17 +71,28 @@ function normalizePixels(value, width, height, paletteLength) {
 
 function notifyArtworkOwner({ artwork, actor }) {
     if (!artwork?.author_id || artwork.author_id === actor.id) return;
-    notificationRepository.createNotification({
+    const title = `${actorName(actor)} 点赞了你的像素画`;
+    const link = `/pixel?art=${artwork.id}#pixel-art-${artwork.id}`;
+    const notification = notificationRepository.createNotification({
         userId: artwork.author_id,
         actorId: actor.id,
         type: 'pixel_art_like',
-        title: `${actorName(actor)} 点赞了你的像素画`,
+        title,
         content: artwork.title,
-        link: `/pixel?art=${artwork.id}#pixel-art-${artwork.id}`,
+        link,
         metadata: {
             actorName: actorName(actor),
             artworkId: artwork.id
         }
+    });
+    if (notification) queueNotificationEmail({
+        userId: artwork.author_id,
+        actorId: actor.id,
+        type: 'like',
+        title,
+        content: artwork.title,
+        link,
+        actorName: actorName(actor)
     });
 }
 

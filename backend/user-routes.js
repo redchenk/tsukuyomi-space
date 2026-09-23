@@ -7,6 +7,7 @@ const userRepository = require('./repositories/user-repository');
 const adminRepository = require('./repositories/admin-repository');
 const authRepository = require('./repositories/auth-repository');
 const notificationRepository = require('./repositories/notification-repository');
+const { queueNotificationEmail } = require('./services/notification-email');
 const socialRepository = require('./repositories/social-repository');
 const articleMedia = require('./services/article-media');
 const responseCache = require('./services/response-cache');
@@ -209,8 +210,32 @@ for (const method of ['post', 'delete']) {
         try {
             const article = articleRepository.findPublishedArticleById(req.params.articleId);
             if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
+            const wasLiked = method === 'post' && socialRepository.articleLikeStatus(req.user.id, article.id).liked;
             const data = socialRepository.setArticleLike(req.user.id, article.id, method === 'post');
             responseCache.delPrefix('public:articles:');
+            if (method === 'post' && !wasLiked && article.author_id && article.author_id !== req.user.id) {
+                const title = `${req.user.username || '访客'} 点赞了你的文章`;
+                const link = articlePath(article);
+                const notification = notificationRepository.createNotification({
+                    userId: article.author_id,
+                    actorId: req.user.id,
+                    type: 'like',
+                    title,
+                    content: article.title,
+                    link,
+                    relatedArticleId: article.id,
+                    metadata: { actorName: req.user.username || '', articleId: article.id }
+                });
+                if (notification) queueNotificationEmail({
+                    userId: article.author_id,
+                    actorId: req.user.id,
+                    type: 'like',
+                    title,
+                    content: article.title,
+                    link,
+                    actorName: req.user.username || '访客'
+                });
+            }
             res.json({ success: true, data });
         } catch (error) {
             console.error('Article like failed:', error);

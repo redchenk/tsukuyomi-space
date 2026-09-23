@@ -100,7 +100,7 @@ function renderVerificationEmail({
   <style>
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0; mso-table-rspace: 0; }
-    table { border-collapse: collapse !important; }
+    table { border-collapse: separate; border-spacing: 0; }
     @media only screen and (max-width: 620px) {
       .mail-shell { width: 100% !important; }
       .mail-pad { padding-left: 22px !important; padding-right: 22px !important; }
@@ -108,24 +108,24 @@ function renderVerificationEmail({
     }
   </style>
 </head>
-<body style="margin:0; padding:0; background-color:#edf6ff; color:#263044; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei','PingFang SC',Arial,sans-serif;">
+<body style="margin:0; padding:0; background-color:#0b1020; color:#f4f1ff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei','PingFang SC',Arial,sans-serif;">
   <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
     ${escapeHtml(copy.title)}：${escapeHtml(safeCode)}，${safeTtlMinutes} 分钟内有效。
   </div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:#edf6ff;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:#0b1020;">
     <tr>
       <td align="center" style="padding:32px 14px;">
-        <table role="presentation" class="mail-shell" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; overflow:hidden; background-color:#ffffff; border:1px solid #d8e6f3; border-radius:20px; box-shadow:0 18px 48px rgba(38,48,68,0.12);">
+        <table role="presentation" class="mail-shell" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; overflow:hidden; background-color:#171e34; border:1px solid #454c70; border-radius:24px;">
           <tr>
-            <td class="mail-pad" style="padding:28px 36px; background-color:#111827; background-image:linear-gradient(120deg,#0b1020 0%,#172033 58%,#2a2240 100%);">
+            <td class="mail-pad" style="padding:28px 36px; background-color:#1e2742; background-image:linear-gradient(120deg,#172034 0%,#293057 58%,#392851 100%); border-bottom:1px solid #4f587f;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td width="52" valign="middle">
-                    <div style="width:44px; height:44px; line-height:44px; border-radius:50%; text-align:center; background-color:#aef2ff; color:#172033; font-size:20px; font-weight:800;">月</div>
+                    <div style="width:44px; height:44px; line-height:44px; border:1px solid #bdb0ff; border-radius:50%; text-align:center; background-color:#6f5bbb; color:#ffffff; font-size:20px; font-weight:800;">月</div>
                   </td>
                   <td valign="middle" style="padding-left:12px;">
                     <div style="color:#ffffff; font-size:18px; line-height:1.35; font-weight:750;">月读空间</div>
-                    <div style="margin-top:2px; color:#aef2ff; font-size:11px; line-height:1.4; letter-spacing:1.4px;">TSUKUYOMI SPACE</div>
+                    <div style="margin-top:2px; color:#c2b5ff; font-size:11px; line-height:1.4; letter-spacing:1.4px;">TSUKUYOMI SPACE</div>
                   </td>
                 </tr>
               </table>
@@ -133,19 +133,19 @@ function renderVerificationEmail({
           </tr>
           <tr>
             <td class="mail-pad" style="padding:38px 42px 18px;">
-              <div style="color:#6f62d9; font-size:11px; line-height:1.4; font-weight:800; letter-spacing:1.4px;">SECURE VERIFICATION</div>
-              <h1 style="margin:10px 0 12px; color:#111827; font-size:28px; line-height:1.35; font-weight:760;">${escapeHtml(copy.title)}</h1>
-              <p style="margin:0; color:#647086; font-size:15px; line-height:1.75;">${escapeHtml(copy.lead)}</p>
-              <p style="margin:2px 0 0; color:#8791a3; font-size:13px; line-height:1.65;">${escapeHtml(copy.englishLead)}.</p>
+              <div style="color:#c2b5ff; font-size:11px; line-height:1.4; font-weight:800; letter-spacing:1.4px;">SECURE VERIFICATION</div>
+              <h1 style="margin:10px 0 12px; color:#faf9ff; font-size:28px; line-height:1.35; font-weight:760;">${escapeHtml(copy.title)}</h1>
+              <p style="margin:0; color:#cbd3eb; font-size:15px; line-height:1.75;">${escapeHtml(copy.lead)}</p>
+              <p style="margin:2px 0 0; color:#9ca9cc; font-size:13px; line-height:1.65;">${escapeHtml(copy.englishLead)}.</p>
             </td>
           </tr>
           <tr>
             <td class="mail-pad" style="padding:16px 42px 18px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border:1px solid #d7c2ff; border-radius:14px; background-color:#f5f0ff;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border:1px solid #586184; border-radius:16px; background-color:#242b45;">
                 <tr>
                   <td align="center" style="padding:24px 16px 22px;">
-                    <div class="mail-code" style="color:#5c4db4; font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace; font-size:40px; line-height:1.2; font-weight:800; letter-spacing:9px; white-space:nowrap;">${escapeHtml(safeCode)}</div>
-                    <div style="margin-top:12px; color:#6f62d9; font-size:12px; line-height:1.5; font-weight:700;">${safeTtlMinutes} 分钟内有效 · Valid for ${safeTtlMinutes} minutes</div>
+                    <div class="mail-code" style="color:#e5ddff; font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace; font-size:40px; line-height:1.2; font-weight:800; letter-spacing:9px; white-space:nowrap;">${escapeHtml(safeCode)}</div>
+                    <div style="margin-top:12px; color:#c2b5ff; font-size:12px; line-height:1.5; font-weight:700;">${safeTtlMinutes} 分钟内有效 · Valid for ${safeTtlMinutes} minutes</div>
                   </td>
                 </tr>
               </table>
@@ -155,25 +155,25 @@ function renderVerificationEmail({
             <td class="mail-pad" style="padding:4px 42px 34px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td align="center" style="border-radius:999px; background-color:#7b8cf6; background-image:linear-gradient(135deg,#7b8cf6,#a481ff);">
+                  <td align="center" style="border:1px solid #ad9ef3; border-radius:999px; background-color:#816ed1; background-image:linear-gradient(135deg,#6f5bbb,#9279db);">
                     <a href="${escapeHtml(safeSiteUrl)}" target="_blank" style="display:inline-block; padding:13px 24px; border-radius:999px; color:#ffffff; font-size:14px; line-height:1.2; font-weight:750; text-decoration:none;">前往月读空间&nbsp; Open Tsukuyomi Space</a>
                   </td>
                 </tr>
               </table>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-top:26px; border-top:1px solid #e6edf5;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-top:26px; border-top:1px solid #454c70;">
                 <tr>
                   <td style="padding-top:20px;">
-                    <p style="margin:0; color:#647086; font-size:12px; line-height:1.75;">为了你的账户安全，请勿向任何人透露验证码。月读空间不会通过邮件索要密码。</p>
-                    <p style="margin:2px 0 0; color:#98a2b3; font-size:11px; line-height:1.65;">Never share this code. Tsukuyomi Space will never ask for your password by email.</p>
+                    <p style="margin:0; color:#cbd3eb; font-size:12px; line-height:1.75;">为了你的账户安全，请勿向任何人透露验证码。月读空间不会通过邮件索要密码。</p>
+                    <p style="margin:2px 0 0; color:#9ca9cc; font-size:11px; line-height:1.65;">Never share this code. Tsukuyomi Space will never ask for your password by email.</p>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td class="mail-pad" style="padding:18px 42px 22px; background-color:#f7faff; border-top:1px solid #e6edf5;">
-              <p style="margin:0; color:#8791a3; font-size:11px; line-height:1.6;">此邮件由月读空间自动发送，请勿直接回复。</p>
-              <p style="margin:2px 0 0; color:#a0a9b8; font-size:10px; line-height:1.6;">Automated message from Tsukuyomi Space · yachiyo.hk</p>
+            <td class="mail-pad" style="padding:18px 42px 22px; background-color:#11182b; border-top:1px solid #454c70;">
+              <p style="margin:0; color:#aeb9d8; font-size:11px; line-height:1.6;">此邮件由月读空间自动发送，请勿直接回复。</p>
+              <p style="margin:2px 0 0; color:#8f9bbd; font-size:10px; line-height:1.6;">Automated message from Tsukuyomi Space · yachiyo.hk</p>
             </td>
           </tr>
         </table>
@@ -184,6 +184,223 @@ function renderVerificationEmail({
 </html>`;
 
     return { subject, text, html };
+}
+
+const NOTIFICATION_COPY = Object.freeze({
+    reply: {
+        label: 'NEW REPLY / 新回复',
+        defaultTitle: '有人回复了你',
+        lead: '你在月读空间收到一条新回复。',
+        action: '查看回复',
+        defaultPath: '/notifications'
+    },
+    like: {
+        label: 'NEW LIKE / 新点赞',
+        defaultTitle: '你的创作收到了新点赞',
+        lead: '有人喜欢你在月读空间分享的内容。',
+        action: '查看动态',
+        defaultPath: '/notifications'
+    },
+    login_alert: {
+        label: 'ACCOUNT SECURITY / 账户安全',
+        defaultTitle: '新地点登录提醒',
+        lead: '你的账户从新的地点登录。若这是你本人操作，无需处理；若不是，请尽快检查账户并修改密码。',
+        action: '检查账户',
+        defaultPath: '/user-center'
+    }
+});
+
+function mailPreview(value, maxLength = 360) {
+    const clean = String(value ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (clean.length <= maxLength) return clean;
+    return `${clean.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function notificationActionUrl(link, siteUrl, defaultPath) {
+    const base = new URL(normalizeSiteUrl(siteUrl));
+    try {
+        const candidate = String(link || defaultPath).trim();
+        const target = new URL(candidate, base);
+        if (target.origin !== base.origin || !['http:', 'https:'].includes(target.protocol)) {
+            return new URL(defaultPath, base).href;
+        }
+        return target.href;
+    } catch (_) {
+        return new URL(defaultPath, base).href;
+    }
+}
+
+function notificationDate(value) {
+    if (!value) return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    return new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    }).format(date);
+}
+
+function renderNotificationEmail({
+    type = 'reply',
+    title,
+    content,
+    link,
+    actorName,
+    location,
+    device,
+    ip,
+    occurredAt,
+    siteUrl = config.publicSiteUrl
+} = {}) {
+    const copy = NOTIFICATION_COPY[type] || NOTIFICATION_COPY.reply;
+    const safeTitle = mailPreview(title, 100) || copy.defaultTitle;
+    const safeContent = mailPreview(content);
+    const safeActorName = mailPreview(actorName, 80);
+    const actionUrl = notificationActionUrl(link, siteUrl, copy.defaultPath);
+    const details = type === 'login_alert'
+        ? [
+            ['登录地点', mailPreview(location, 120) || '未知地点'],
+            ['设备 / 浏览器', mailPreview(device, 160) || '未知设备'],
+            ['IP 地址', mailPreview(ip, 80) || '未提供'],
+            ['登录时间', notificationDate(occurredAt) || '未提供']
+        ]
+        : [];
+    const description = type === 'login_alert' ? copy.lead : (safeContent || copy.lead);
+    const subject = `【月读空间】${safeTitle}`;
+    const text = [
+        `月读空间 · ${safeTitle}`,
+        copy.lead,
+        safeActorName && type !== 'login_alert' ? `来自：${safeActorName}` : '',
+        safeContent ? `\n${safeContent}` : '',
+        ...details.map(([label, value]) => `${label}：${value}`),
+        '',
+        `${copy.action}：${actionUrl}`,
+        type === 'login_alert' ? '如果这不是你本人操作，请立即修改密码。' : '你可以在网站中查看完整通知。',
+        '',
+        '月读空间 · Tsukuyomi Space'
+    ].filter((line, index, lines) => line !== '' || (index > 0 && lines[index - 1] !== '')).join('\r\n');
+    const detailRows = details.map(([label, value], index) => `
+                    <tr>
+                      <td width="112" valign="top" style="padding:${index === 0 ? '16px' : '4px'} 12px 4px 18px; color:#9ca9cc; font-size:12px; line-height:1.7;">${escapeHtml(label)}</td>
+                      <td valign="top" style="padding:${index === 0 ? '16px' : '4px'} 18px 4px 0; color:#f4f1ff; font-size:13px; line-height:1.7; word-break:break-word;">${escapeHtml(value)}</td>
+                    </tr>`).join('');
+    const html = `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <title>${escapeHtml(subject)}</title>
+  <style>
+    body, table, td, a { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table, td { mso-table-lspace:0; mso-table-rspace:0; }
+    table { border-collapse:separate; border-spacing:0; }
+    @media only screen and (max-width:620px) {
+      .mail-shell { width:100% !important; }
+      .mail-pad { padding-left:24px !important; padding-right:24px !important; }
+      .mail-title { font-size:25px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#0b1020; color:#f4f1ff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei','PingFang SC',Arial,sans-serif;">
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">${escapeHtml(copy.lead)} ${escapeHtml(safeContent)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:#0b1020;">
+    <tr>
+      <td align="center" style="padding:32px 14px;">
+        <table role="presentation" class="mail-shell" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; overflow:hidden; background-color:#171e34; border:1px solid #454c70; border-radius:24px;">
+          <tr>
+            <td class="mail-pad" style="padding:29px 38px; background-color:#1e2742; background-image:linear-gradient(115deg,#172034 0%,#293057 62%,#392851 100%); border-bottom:1px solid #4f587f;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="52" valign="middle">
+                    <div style="width:44px; height:44px; line-height:44px; border:1px solid #bdb0ff; border-radius:50%; text-align:center; background-color:#6f5bbb; color:#ffffff; font-size:22px; font-weight:700;">月</div>
+                  </td>
+                  <td valign="middle" style="padding-left:13px;">
+                    <div style="color:#ffffff; font-size:18px; line-height:1.35; font-weight:700;">月读空间</div>
+                    <div style="margin-top:3px; color:#c2b5ff; font-size:11px; line-height:1.4; letter-spacing:1.4px;">TSUKUYOMI SPACE</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="mail-pad" style="padding:38px 42px 18px;">
+              <div style="color:#c2b5ff; font-size:11px; line-height:1.5; font-weight:700; letter-spacing:1.3px;">${escapeHtml(copy.label)}</div>
+              <h1 class="mail-title" style="margin:12px 0 14px; color:#faf9ff; font-size:29px; line-height:1.35; font-weight:750;">${escapeHtml(safeTitle)}</h1>
+              <p style="margin:0; color:#cbd3eb; font-size:15px; line-height:1.8;">${escapeHtml(copy.lead)}</p>
+            </td>
+          </tr>
+          ${safeActorName && type !== 'login_alert' ? `<tr><td class="mail-pad" style="padding:0 42px 14px; color:#9ca9cc; font-size:13px; line-height:1.7;">来自 <span style="color:#e5ddff; font-weight:700;">${escapeHtml(safeActorName)}</span></td></tr>` : ''}
+          ${type === 'login_alert' ? `<tr><td class="mail-pad" style="padding:4px 42px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:#242b45; border:1px solid #586184; border-radius:16px;">${detailRows}<tr><td colspan="2" style="height:12px; line-height:12px; font-size:0;">&nbsp;</td></tr></table></td></tr>` : `<tr><td class="mail-pad" style="padding:5px 42px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:#242b45; border:1px solid #586184; border-radius:16px;"><tr><td style="padding:20px 23px; color:#f4f1ff; font-size:15px; line-height:1.8; word-break:break-word;">${escapeHtml(description)}</td></tr></table></td></tr>`}
+          <tr>
+            <td class="mail-pad" style="padding:8px 42px 35px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr><td align="center" style="background-color:#816ed1; border:1px solid #ad9ef3; border-radius:999px;"><a href="${escapeHtml(actionUrl)}" target="_blank" style="display:inline-block; padding:14px 26px; border-radius:999px; color:#ffffff; font-size:14px; line-height:1.2; font-weight:700; text-decoration:none;">${escapeHtml(copy.action)} &nbsp; ↗</a></td></tr>
+              </table>
+              ${type === 'login_alert' ? '<p style="margin:22px 0 0; color:#eac6cf; font-size:12px; line-height:1.7;">若非本人登录，请立即修改密码，保护你的账户。</p>' : '<p style="margin:22px 0 0; color:#9ca9cc; font-size:12px; line-height:1.7;">你可以在网站中查看完整内容和站内信。</p>'}
+            </td>
+          </tr>
+          <tr>
+            <td class="mail-pad" style="padding:19px 42px 24px; background-color:#11182b; border-top:1px solid #454c70;">
+              <p style="margin:0; color:#aeb9d8; font-size:11px; line-height:1.7;">此邮件由月读空间自动发送，请勿直接回复。</p>
+              <p style="margin:3px 0 0; color:#8f9bbd; font-size:10px; line-height:1.7;">Automated message from Tsukuyomi Space</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    return { subject, text, html };
+}
+
+function buildMultipartMessage({ fromName, fromEmail, toEmail, content }) {
+    const sender = normalizeMailboxAddress(fromEmail);
+    const recipient = normalizeMailboxAddress(toEmail);
+    const boundary = `tsukuyomi_${crypto.randomBytes(18).toString('hex')}`;
+    const messageId = `${crypto.randomBytes(18).toString('hex')}@${sender.split('@')[1]}`;
+
+    return [
+        `From: ${encodeMimeWord(fromName || '月读空间')} <${sender}>`,
+        `To: <${recipient}>`,
+        `Subject: ${encodeMimeWord(content.subject)}`,
+        `Date: ${new Date().toUTCString()}`,
+        `Message-ID: <${messageId}>`,
+        'Auto-Submitted: auto-generated',
+        'X-Auto-Response-Suppress: All',
+        'MIME-Version: 1.0',
+        `Content-Type: multipart/alternative; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+        '',
+        wrapBase64(content.text),
+        `--${boundary}`,
+        'Content-Type: text/html; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+        '',
+        wrapBase64(content.html),
+        `--${boundary}--`,
+        ''
+    ].join('\r\n');
+}
+
+function buildNotificationMessage({ fromName, fromEmail, toEmail, notification = {} }) {
+    return buildMultipartMessage({
+        fromName,
+        fromEmail,
+        toEmail,
+        content: renderNotificationEmail(notification)
+    });
 }
 
 function buildVerificationMessage({
@@ -236,9 +453,20 @@ function createSmtpClient() {
         rejectUnauthorized: true
     });
     socket.setEncoding('utf8');
+    socket.setTimeout(15000);
 
     let buffer = '';
     const pending = [];
+
+    const failPending = (error) => {
+        while (pending.length) pending.shift().reject(error);
+    };
+    socket.on('error', failPending);
+    socket.on('timeout', () => {
+        failPending(new Error('SMTP connection timed out'));
+        socket.destroy();
+    });
+    socket.on('close', () => failPending(new Error('SMTP connection closed')));
 
     socket.on('data', (chunk) => {
         buffer += chunk;
@@ -278,7 +506,6 @@ async function sendVerificationEmail(email, code, purpose) {
         throw new Error('SMTP credentials are not configured');
     }
 
-    const client = createSmtpClient();
     const message = buildVerificationMessage({
         fromName: smtp.fromName,
         fromEmail: smtp.user,
@@ -289,6 +516,13 @@ async function sendVerificationEmail(email, code, purpose) {
         siteUrl: config.publicSiteUrl
     });
 
+    await sendSmtpMessage(email, message);
+}
+
+async function sendSmtpMessage(email, message) {
+    const smtp = config.smtp;
+    const recipient = normalizeMailboxAddress(email);
+    const client = createSmtpClient();
     try {
         await client.read([220]);
         await client.write(`EHLO ${smtp.host}`, [250]);
@@ -296,7 +530,7 @@ async function sendVerificationEmail(email, code, purpose) {
         await client.write(Buffer.from(smtp.user).toString('base64'), [334]);
         await client.write(Buffer.from(smtp.pass).toString('base64'), [235]);
         await client.write(`MAIL FROM:<${smtp.user}>`, [250]);
-        await client.write(`RCPT TO:<${email}>`, [250, 251]);
+        await client.write(`RCPT TO:<${recipient}>`, [250, 251]);
         await client.write('DATA', [354]);
         client.socket.write(`${message}\r\n.\r\n`);
         await client.read([250]);
@@ -306,10 +540,25 @@ async function sendVerificationEmail(email, code, purpose) {
     }
 }
 
+async function sendNotificationEmail(toEmail, notification) {
+    const smtp = config.smtp;
+    if (!smtp.user || !smtp.pass) throw new Error('SMTP credentials are not configured');
+    const message = buildNotificationMessage({
+        fromName: smtp.fromName,
+        fromEmail: smtp.user,
+        toEmail,
+        notification: { ...notification, siteUrl: config.publicSiteUrl }
+    });
+    await sendSmtpMessage(toEmail, message);
+}
+
 module.exports = {
     EMAIL_CODE_TTL_MS,
     EMAIL_CODE_COOLDOWN_MS,
     buildVerificationMessage,
+    buildNotificationMessage,
     renderVerificationEmail,
-    sendVerificationEmail
+    renderNotificationEmail,
+    sendVerificationEmail,
+    sendNotificationEmail
 };

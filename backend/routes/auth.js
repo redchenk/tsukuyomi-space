@@ -16,6 +16,7 @@ const {
 const authRepository = require('../repositories/auth-repository');
 const adminRepository = require('../repositories/admin-repository');
 const authState = require('../services/auth-state');
+const { queueLoginLocationCheck } = require('../services/login-location-alert');
 const qqOAuth = require('../services/qq-oauth');
 const { EMAIL_CODE_TTL_MS, EMAIL_CODE_COOLDOWN_MS, sendVerificationEmail } = require('../services/mailer');
 const { normalizeEmail, isEmail, isOAuthPlaceholderEmail, publicEmail } = require('../validators');
@@ -56,6 +57,7 @@ function setUserLoginSession(req, res, user) {
     const token = issueTokenForUser(user);
     clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
     setAuthCookie(req, res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+    queueLoginLocationCheck(req, user);
     return userResponse(user);
 }
 

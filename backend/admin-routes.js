@@ -7,6 +7,8 @@ const friendLinkRepository = require('./repositories/friend-link-repository');
 const articleRepository = require('./repositories/article-repository');
 const statsRepository = require('./repositories/stats-repository');
 const authState = require('./services/auth-state');
+const { queueLoginLocationCheck } = require('./services/login-location-alert');
+const { notifyApprovedReply } = require('./services/approved-reply-notification');
 const articleMedia = require('./services/article-media');
 const objectStorage = require('./services/object-storage');
 const responseCache = require('./services/response-cache');
@@ -15,6 +17,11 @@ const { normalizeFriendLinkUrl, validateFriendLinkApplication } = require('./ser
 const friendLinkAvatarService = require('./services/friend-link-avatar');
 const friendLinkMonitorService = require('./services/friend-link-monitor');
 const { readModerationSettings, reviewMessageContent } = require('./services/message-moderation');
+const {
+    EMAIL_NOTIFICATION_KEYS,
+    EMAIL_NOTIFICATION_KEY_SET,
+    emailNotificationSettings
+} = require('./services/notification-settings');
 const {
     authenticateToken,
     requireAdmin,
@@ -242,6 +249,7 @@ router.post('/login', async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000,
             sameSite: 'strict'
         });
+        queueLoginLocationCheck(req, siteUser);
         ok(res, {
             admin: {
                 id: admin.id,
@@ -480,6 +488,7 @@ router.post('/messages/:id/approve', (req, res) => {
         }
         if (!adminRepository.approveMessage(id)) return fail(res, 404, '留言不存在');
         clearPublicMessageCache();
+        if (message.status !== 'approved') notifyApprovedReply(id);
         ok(res, null, '留言已通过');
     } catch (error) {
         console.error('Admin message approve error:', error);
@@ -715,11 +724,15 @@ router.delete('/links/:id', (req, res) => {
 
 router.get('/settings', (req, res) => {
     try {
-        const allowed = req.user.role === 'super_admin' ? null : new Set(SITE_SETTING_KEYS);
+        const superAdmin = req.user.role === 'super_admin';
+        const allowed = superAdmin ? null : new Set(SITE_SETTING_KEYS);
         const rows = adminRepository.listSettings().filter(row => (
             row.key !== 'ossAccessKeySecret' && (!allowed || allowed.has(row.key))
         ));
-        ok(res, Object.fromEntries(rows.map(row => [row.key, parseSettingValue(row.value)])));
+        ok(res, {
+            ...Object.fromEntries(rows.map(row => [row.key, parseSettingValue(row.value)])),
+            ...(superAdmin ? { ...emailNotificationSettings(), mailConfigured: Boolean(config.smtp.user && config.smtp.pass) } : {})
+        });
     } catch (error) {
         console.error('Admin settings get error:', error);
         fail(res, 500, '无法读取系统配置');
@@ -730,10 +743,17 @@ router.post('/settings', async (req, res) => {
     try {
         const settings = { ...(req.body || {}) };
         const superAdmin = req.user.role === 'super_admin';
-        if (!superAdmin && Object.keys(settings).some(key => OSS_SETTING_KEY_SET.has(key))) {
+        if (!superAdmin && Object.keys(settings).some(key => OSS_SETTING_KEY_SET.has(key) || EMAIL_NOTIFICATION_KEY_SET.has(key))) {
             return fail(res, 403, '需要超级管理员权限');
         }
-        const allowed = superAdmin ? [...SITE_SETTING_KEYS, ...OSS_SETTING_KEYS] : SITE_SETTING_KEYS;
+        if (superAdmin && EMAIL_NOTIFICATION_KEYS.some(key =>
+            Object.prototype.hasOwnProperty.call(settings, key) && typeof settings[key] !== 'boolean'
+        )) {
+            return fail(res, 400, '邮件通知设置必须为布尔值');
+        }
+        const allowed = superAdmin
+            ? [...SITE_SETTING_KEYS, ...OSS_SETTING_KEYS, ...EMAIL_NOTIFICATION_KEYS]
+            : SITE_SETTING_KEYS;
         if (superAdmin && !String(settings.ossAccessKeySecret || '').trim()) {
             delete settings.ossAccessKeySecret;
         }
