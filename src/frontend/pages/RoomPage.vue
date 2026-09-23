@@ -143,7 +143,7 @@ watch(() => props.shareId, loadSharedConversation);
     <div class="room-conversation-surface">
       <section class="room-companion-bar" aria-label="角色与房间工具">
         <div class="room-companion-identity">
-          <img :src="'/assets/images/wiki/entries/characters/yachiyo-tsukuyomi.webp'" alt="" width="42" height="42">
+          <img :src="'/assets/images/wiki/entries/characters/yachiyo-tsukuyomi.webp'" alt="" width="42" height="42" data-image-bloom="subtle">
           <div><h1>{{ room.chat.characterName.value }}</h1><p :class="{ 'is-ready': room.live2d.ready.value }">{{ companionStatus }}</p></div>
           <details ref="mobileToolsMenu" class="room-tools-disclosure">
             <summary aria-label="房间功能"><TsIcon name="grid" :size="17" /><span>工具</span><TsIcon name="chevronDown" :size="12" /></summary>

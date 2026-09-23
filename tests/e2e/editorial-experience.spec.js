@@ -76,6 +76,57 @@ test('image bloom keeps a themed placeholder until the article cover is decoded'
     await expect.poll(() => cover.evaluate((node) => node.naturalWidth)).toBe(1600);
 });
 
+test('global image bloom covers dynamic images and avoids replaying cached images', async ({ page }) => {
+    let releaseSecond;
+    const secondGate = new Promise((resolve) => { releaseSecond = resolve; });
+    await page.route('**/e2e-global-first.svg', (route) => route.fulfill({
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90"></svg>'
+    }));
+    await page.route('**/e2e-global-second.svg', async (route) => {
+        await secondGate;
+        await route.fulfill({
+            contentType: 'image/svg+xml',
+            body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"></svg>'
+        });
+    });
+
+    await page.goto('/hub');
+    await page.evaluate(() => {
+        const image = document.createElement('img');
+        image.id = 'global-image-probe';
+        image.width = 320;
+        image.height = 180;
+        image.src = '/e2e-global-first.svg';
+        document.body.append(image);
+    });
+    const image = page.locator('#global-image-probe');
+    await expect(image).toHaveAttribute('data-image-state', 'loaded');
+
+    await image.evaluate((node) => {
+        node.className = 'avatar-probe';
+        node.src = '/e2e-global-second.svg';
+    });
+    await expect(image).toHaveAttribute('data-image-state', 'pending');
+    expect(await image.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain('gradient');
+    expect(await image.evaluate((node) => getComputedStyle(node).filter)).toBe('none');
+    releaseSecond();
+    await expect(image).toHaveAttribute('data-image-state', 'loaded');
+    await expect.poll(() => image.evaluate((node) => node.naturalWidth)).toBe(320);
+
+    await page.evaluate(async () => {
+        const cached = document.createElement('img');
+        cached.id = 'cached-image-probe';
+        cached.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"></svg>';
+        await cached.decode();
+        document.body.append(cached);
+    });
+    const cached = page.locator('#cached-image-probe');
+    await expect(cached).toHaveAttribute('data-image-state', 'loaded');
+    await expect(cached).toHaveAttribute('data-image-reveal', 'skip');
+    expect(await cached.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
+});
+
 test('pinned articles stay first while featured and latest keep their own order', async ({ page }) => {
     const articles = [
         { ...article, id: 'featured', title: '精选旧文', pinned_at: null, featured_score: 72, like_count: 20, bookmark_count: 12, created_at: '2026-01-01', published_at: '2026-01-01', excerpt: '旧文摘要' },

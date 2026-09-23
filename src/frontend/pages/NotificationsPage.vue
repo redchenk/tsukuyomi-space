@@ -206,7 +206,7 @@ onMounted(loadNotifications);
           :class="{ unread: item.unread }"
         >
           <div class="notification-avatar">
-            <img v-if="item.actor_avatar" :src="item.actor_avatar" alt="">
+            <img v-if="item.actor_avatar" :src="item.actor_avatar" alt="" loading="lazy" decoding="async">
             <span v-else>{{ actorInitial(item) }}</span>
           </div>
           <div class="notification-main">

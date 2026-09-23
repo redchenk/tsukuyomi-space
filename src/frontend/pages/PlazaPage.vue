@@ -616,7 +616,7 @@ onMounted(refreshPlaza);
               <div class="plaza-msg-author">
                 <button class="plaza-author-link" type="button" @click="plazaOpenProfile(msg.author)">
                 <div class="plaza-avatar">
-                  <img v-if="msg.avatar" :src="msg.avatar" :alt="plazaAvatarAlt(msg.author)">
+                  <img v-if="msg.avatar" :src="msg.avatar" :alt="plazaAvatarAlt(msg.author)" loading="lazy" decoding="async">
                   <span v-else>{{ plazaInitial(msg.author) }}</span>
                 </div>
                 <div>
@@ -663,7 +663,7 @@ onMounted(refreshPlaza);
                   <div class="plaza-msg-author">
                     <button class="plaza-author-link" type="button" @click="plazaOpenProfile(reply.author)">
                     <div class="plaza-avatar small">
-                      <img v-if="reply.avatar" :src="reply.avatar" :alt="plazaAvatarAlt(reply.author)">
+                      <img v-if="reply.avatar" :src="reply.avatar" :alt="plazaAvatarAlt(reply.author)" loading="lazy" decoding="async">
                       <span v-else>{{ plazaInitial(reply.author) }}</span>
                     </div>
                     <div>

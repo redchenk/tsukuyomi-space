@@ -1662,7 +1662,7 @@ onBeforeUnmount(() => {
             <p v-if="artwork.description">{{ artwork.description }}</p>
             <div class="pixel-art-author">
               <span class="pixel-art-avatar">
-                <img v-if="artwork.avatar" :src="artwork.avatar" :alt="artwork.author">
+                <img v-if="artwork.avatar" :src="artwork.avatar" :alt="artwork.author" loading="lazy" decoding="async">
                 <span v-else>{{ artworkInitial(artwork.author) }}</span>
               </span>
               <span>{{ copy.by }} {{ artwork.author || props.t.brand }}</span>

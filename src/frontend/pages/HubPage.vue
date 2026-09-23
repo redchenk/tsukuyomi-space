@@ -501,7 +501,7 @@ onBeforeUnmount(() => {
         </div>
 
         <figure class="hub-character" :aria-label="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'">
-          <img :src="'/assets/images/yachiyo-hub-stand.png'" :alt="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'" loading="eager" decoding="async" fetchpriority="high">
+          <img :src="'/assets/images/yachiyo-hub-stand.png'" :alt="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'" width="1923" height="1081" loading="eager" decoding="async" fetchpriority="high">
         </figure>
       </div>
     </section>
