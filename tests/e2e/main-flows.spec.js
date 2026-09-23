@@ -552,6 +552,8 @@ test('desktop pixel controls scroll independently from the page', async ({ page 
     const controls = page.locator('.arena-controls');
     await expect(controls).toBeVisible();
     const controlsToggle = page.locator('[aria-controls="arena-controls-panel"]');
+    await expect(controlsToggle).toHaveAttribute('aria-expanded', 'true');
+    await controlsToggle.click();
     await expect(controlsToggle).toHaveAttribute('aria-expanded', 'false');
     await controlsToggle.click();
     await expect(controlsToggle).toHaveAttribute('aria-expanded', 'true');

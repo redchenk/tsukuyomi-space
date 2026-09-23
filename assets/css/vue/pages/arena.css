@@ -3724,3 +3724,864 @@ html[data-theme="light"] body .page.arena-page.is-gallery-open .arena-gallery {
         transition: none;
     }
 }
+
+/* Painting-first studio: keep the active tool, colors and history next to the canvas. */
+body .page.arena-page {
+    --arena-chrome: rgba(255, 255, 255, 0.055);
+    --arena-chrome-strong: rgba(255, 255, 255, 0.085);
+    --arena-chrome-border: rgba(231, 249, 255, 0.12);
+    --arena-chrome-text: #eff7ff;
+    --arena-chrome-muted: rgba(239, 247, 255, 0.72);
+}
+
+html[data-theme="light"] body .page.arena-page {
+    --arena-chrome: rgba(255, 255, 255, 0.6);
+    --arena-chrome-strong: rgba(255, 255, 255, 0.82);
+    --arena-chrome-border: rgba(45, 64, 98, 0.16);
+    --arena-chrome-text: #263044;
+    --arena-chrome-muted: rgba(38, 48, 68, 0.74);
+}
+
+body .page.arena-page .arena-hero-copy,
+body .page.arena-page .arena-status,
+body .page.arena-page .arena-canvas-panel,
+body .page.arena-page .arena-controls,
+body .page.arena-page .arena-gallery {
+    border-radius: 20px;
+}
+
+body .page.arena-page .arena-canvas-panel {
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+    background: var(--ts-readable-panel-bg);
+}
+
+html[data-theme="light"] body .page.arena-page .arena-canvas-panel {
+    background: var(--ts-readable-panel-bg);
+}
+
+body .page.arena-page .arena-canvas-panel > .arena-section-head {
+    grid-row: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.8rem;
+    min-height: 58px;
+    padding: 0.58rem 0.75rem;
+}
+
+body .page.arena-page .arena-canvas-panel > .arena-section-head > div:first-child {
+    flex: 1 1 auto;
+}
+
+body .page.arena-page .arena-grid-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid var(--arena-chrome-border);
+    border-radius: 999px;
+    color: var(--arena-chrome-muted);
+    background: var(--arena-chrome);
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+body .page.arena-page .arena-tool-toggle {
+    flex: 0 1 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-left: auto;
+}
+
+body .page.arena-page .arena-tool-toggle .icon-btn {
+    width: auto;
+    min-width: 0;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.42rem 0.72rem;
+    border-radius: 999px;
+    color: var(--arena-chrome-text);
+    white-space: nowrap;
+}
+
+body .page.arena-page .arena-tool-toggle .icon-btn span,
+body .page.arena-page .arena-history-actions .icon-btn span {
+    font-size: 0.79rem;
+    font-weight: 750;
+}
+
+body .page.arena-page .arena-tool-toggle .icon-btn.active {
+    border-color: rgba(123, 140, 246, 0.64);
+    color: #fff;
+    background: var(--ts-gradient-brand);
+    box-shadow: 0 6px 18px rgba(78, 67, 151, 0.22);
+}
+
+body .page.arena-page .arena-paint-strip {
+    grid-row: 2;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.62rem;
+    padding: 0.52rem 0.75rem;
+    border-bottom: 1px solid var(--arena-chrome-border);
+    background: var(--arena-chrome);
+}
+
+body .page.arena-page .arena-paint-current {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    color: var(--arena-chrome-muted);
+    font-size: 0.72rem;
+    line-height: 1.25;
+}
+
+body .page.arena-page .arena-paint-current > span:last-child {
+    display: grid;
+    gap: 0.06rem;
+}
+
+body .page.arena-page .arena-paint-current strong {
+    color: var(--arena-chrome-text);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+}
+
+body .page.arena-page .arena-paint-current-swatch {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border: 2px solid var(--arena-chrome-text);
+    border-radius: 10px;
+    box-shadow: 0 0 0 1px var(--arena-chrome-border);
+}
+
+body .page.arena-page .arena-paint-colors {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    overflow-x: auto;
+    padding: 0.25rem 0.2rem;
+    scrollbar-width: thin;
+}
+
+body .page.arena-page .arena-quick-swatch {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(130, 145, 177, 0.62);
+    border-radius: 10px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    cursor: pointer;
+}
+
+body .page.arena-page .arena-quick-swatch.active {
+    outline: 2px solid var(--ts-cyan);
+    outline-offset: 2px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 0 0 4px var(--arena-chrome-strong);
+}
+
+body .page.arena-page .arena-quick-swatch:focus-visible,
+body .page.arena-page .arena-more-colors:focus-visible,
+body .page.arena-page .arena-fit-btn:focus-visible,
+body .page.arena-page .arena-canvas-hint button:focus-visible,
+body .page.arena-page .arena-drawing-guide summary:focus-visible {
+    outline: 2px solid var(--ts-cyan);
+    outline-offset: 3px;
+}
+
+body .page.arena-page .arena-more-colors,
+body .page.arena-page .arena-fit-btn,
+body .page.arena-page .arena-canvas-hint button {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--arena-chrome-border);
+    border-radius: 999px;
+    color: var(--arena-chrome-text);
+    background: var(--arena-chrome-strong);
+    font-size: 0.78rem;
+    font-weight: 750;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+body .page.arena-page .arena-more-colors:hover,
+body .page.arena-page .arena-fit-btn:hover,
+body .page.arena-page .arena-canvas-hint button:hover {
+    border-color: var(--ts-border-strong);
+    background: var(--ts-readable-control-hover);
+}
+
+body .page.arena-page .arena-canvas-actions {
+    grid-row: 3;
+    min-height: 48px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.4rem 0.7rem;
+    overflow: visible;
+    padding: 0.42rem 0.75rem;
+    background: var(--arena-chrome);
+}
+
+body .page.arena-page .arena-history-actions,
+body .page.arena-page .arena-zoom-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    min-width: 0;
+}
+
+body .page.arena-page .arena-brush-size-inline {
+    flex: 0 1 190px;
+    min-width: 145px;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--arena-chrome-text);
+    font-size: 0.77rem;
+    font-weight: 720;
+}
+
+body .page.arena-page .arena-brush-size-inline svg {
+    flex: 0 0 auto;
+    color: var(--ts-cyan);
+}
+
+body .page.arena-page .arena-brush-size-inline input {
+    flex: 1 1 auto;
+    min-width: 42px;
+    margin: 0;
+    accent-color: var(--ts-accent);
+}
+
+body .page.arena-page .arena-brush-size-inline strong {
+    flex: 0 0 auto;
+    min-width: 30px;
+    color: var(--arena-chrome-muted);
+    font-size: 0.73rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+body .page.arena-page .arena-history-actions .icon-btn,
+body .page.arena-page .arena-zoom-controls .icon-btn {
+    width: auto;
+    min-width: 38px;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.28rem;
+    padding: 0.42rem 0.62rem;
+    border: 1px solid var(--arena-chrome-border);
+    border-radius: 999px;
+    color: var(--arena-chrome-text);
+    background: var(--arena-chrome-strong);
+}
+
+body .page.arena-page .arena-zoom-controls .icon-btn {
+    width: 38px;
+    padding: 0;
+}
+
+body .page.arena-page .arena-zoom-controls strong {
+    min-width: 45px;
+    color: var(--arena-chrome-text);
+    font-variant-numeric: tabular-nums;
+}
+
+body .page.arena-page .arena-canvas-viewport {
+    grid-row: 4;
+    min-height: 0;
+}
+
+body .page.arena-page .arena-canvas-hint {
+    grid-row: 5;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.48rem 0.78rem;
+    border-top: 1px solid var(--arena-chrome-border);
+    color: var(--arena-chrome-muted);
+    background: var(--arena-chrome);
+    font-size: 0.79rem;
+    line-height: 1.35;
+}
+
+body .page.arena-page .arena-canvas-hint > span {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+body .page.arena-page .arena-canvas-hint svg {
+    flex: 0 0 auto;
+    color: var(--ts-cyan);
+}
+
+body .page.arena-page .arena-canvas-hint button {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 0.25rem 0.68rem;
+}
+
+body .page.arena-page .arena-finish-actions {
+    grid-row: 6;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    padding: 0.55rem 0.75rem;
+    border-top: 1px solid var(--arena-chrome-border);
+    background: var(--arena-chrome-strong);
+}
+
+body .page.arena-page .arena-content-actions,
+body .page.arena-page .arena-output-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-width: 0;
+}
+
+body .page.arena-page .arena-finish-actions .ghost-btn,
+body .page.arena-page .arena-finish-actions .arena-publish-btn {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.38rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+body .page.arena-page .arena-finish-actions .arena-publish-btn {
+    color: #fff;
+    border-color: transparent;
+    background: var(--ts-gradient-brand);
+}
+
+body .page.arena-page .arena-finish-actions .arena-publish-btn:hover {
+    color: #fff;
+    background: var(--ts-gradient-brand-hover);
+}
+
+body .page.arena-page .arena-finish-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+body .page.arena-page .arena-drawing-guide {
+    grid-row: 7;
+    min-width: 0;
+    padding: 0.38rem 0.78rem 0.52rem;
+    border-top: 1px solid var(--arena-chrome-border);
+    color: var(--arena-chrome-muted);
+    background: var(--arena-chrome);
+    font-size: 0.78rem;
+}
+
+body .page.arena-page .arena-drawing-guide summary {
+    width: fit-content;
+    min-height: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    color: var(--arena-chrome-text);
+    font-weight: 750;
+    cursor: pointer;
+}
+
+body .page.arena-page .arena-drawing-guide ol {
+    margin: 0.25rem 0 0.2rem;
+    padding-left: 1.35rem;
+    line-height: 1.5;
+}
+
+body .page.arena-page .arena-drawing-guide li + li {
+    margin-top: 0.22rem;
+}
+
+body .page.arena-page .arena-draft-form {
+    order: 0;
+}
+
+body .page.arena-page .arena-draft-form h3 {
+    margin: 0;
+    color: var(--ts-text-strong);
+    font-size: 0.91rem;
+    font-weight: 800;
+}
+
+body .page.arena-page .arena-draft-form .arena-share-btn {
+    width: 100%;
+    min-height: 42px;
+    border: 0;
+    border-radius: 999px;
+    color: #fff;
+    background: var(--ts-gradient-brand);
+    font-weight: 800;
+}
+
+body .page.arena-page .arena-draft-form .arena-share-btn:hover {
+    color: #fff;
+    background: var(--ts-gradient-brand-hover);
+}
+
+body .page.arena-page .arena-gallery-sort {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.14rem;
+    border: 1px solid var(--arena-chrome-border);
+    border-radius: 999px;
+    background: var(--arena-chrome);
+}
+
+body .page.arena-page .arena-gallery-sort .chip {
+    min-height: 32px;
+    padding: 0.32rem 0.62rem;
+    border-radius: 999px;
+}
+
+body .page.arena-page .arena-notes-empty {
+    margin: 0;
+    padding: 1rem;
+    border: 1px dashed var(--arena-chrome-border);
+    border-radius: 14px;
+    color: var(--arena-chrome-muted);
+    background: var(--arena-chrome);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+body .page.arena-page.is-controls-open .arena-controls,
+body .page.arena-page.is-gallery-open .arena-gallery {
+    border-radius: 20px;
+}
+
+body .page.arena-page .arena-panel-toggle {
+    gap: 0.5rem;
+    border-radius: 16px;
+}
+
+body .page.arena-page .arena-panel-toggle span {
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+body .page.arena-page:not(.is-controls-open) .arena-controls .arena-panel-toggle span,
+body .page.arena-page:not(.is-gallery-open) .arena-gallery .arena-panel-toggle span {
+    display: none;
+}
+
+body .page.arena-page.is-controls-open .arena-controls-toggle,
+body .page.arena-page.is-gallery-open .arena-gallery-toggle {
+    width: auto;
+    min-height: 38px;
+    padding: 0.42rem 0.65rem;
+    border-radius: 999px;
+}
+
+@media (max-width: 1180px) and (min-width: 761px) {
+    body .page.arena-page .arena-canvas-panel > .arena-section-head {
+        gap: 0.45rem;
+    }
+
+    body .page.arena-page .arena-tool-toggle {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    body .page.arena-page {
+        --arena-panel-rail: 50px;
+        gap: 0.6rem;
+    }
+
+    body .page.arena-page .arena-hero-copy,
+    body .page.arena-page .arena-canvas-panel,
+    body .page.arena-page .arena-controls,
+    body .page.arena-page .arena-gallery {
+        border-radius: 19px;
+    }
+
+    body .page.arena-page .arena-canvas-panel {
+        grid-template-rows: auto auto auto minmax(300px, 1fr) auto auto auto;
+        overflow: hidden;
+    }
+
+    body .page.arena-page .arena-canvas-panel > .arena-section-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.45rem;
+        padding: 0.52rem;
+    }
+
+    body .page.arena-page .arena-tool-toggle {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        width: 100%;
+        margin: 0;
+        gap: 0.35rem;
+    }
+
+    body .page.arena-page .arena-tool-toggle .icon-btn {
+        width: 100%;
+        min-width: 0;
+        min-height: 50px;
+        flex-direction: column;
+        gap: 0.12rem;
+        padding: 0.27rem 0.16rem;
+        border-radius: 13px;
+    }
+
+    body .page.arena-page .arena-tool-toggle .icon-btn span {
+        max-width: 100%;
+        overflow: hidden;
+        font-size: 0.73rem;
+        line-height: 1.1;
+        text-overflow: ellipsis;
+    }
+
+    body .page.arena-page .arena-paint-strip {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.5rem 0.58rem;
+    }
+
+    body .page.arena-page .arena-paint-current {
+        order: 1;
+        min-height: 38px;
+    }
+
+    body .page.arena-page .arena-more-colors {
+        order: 2;
+        min-height: 40px;
+        margin-left: auto;
+    }
+
+    body .page.arena-page .arena-paint-colors {
+        order: 3;
+        flex-basis: 100%;
+        min-height: 48px;
+    }
+
+    body .page.arena-page .arena-quick-swatch {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+    }
+
+    body .page.arena-page .arena-canvas-actions {
+        flex-wrap: wrap;
+        min-height: 48px;
+        gap: 0.25rem;
+        padding: 0.36rem 0.55rem;
+    }
+
+    body .page.arena-page .arena-brush-size-inline {
+        order: 3;
+        flex: 1 1 100%;
+        width: 100%;
+        min-width: 0;
+        min-height: 38px;
+        padding: 0.25rem 0.3rem 0;
+        border-top: 1px solid var(--arena-chrome-border);
+    }
+
+    body .page.arena-page .arena-history-actions {
+        order: 1;
+    }
+
+    body .page.arena-page .arena-zoom-controls {
+        order: 2;
+        margin-left: auto;
+    }
+
+    body .page.arena-page .arena-history-actions,
+    body .page.arena-page .arena-zoom-controls {
+        gap: 0.18rem;
+    }
+
+    body .page.arena-page .arena-history-actions .icon-btn,
+    body .page.arena-page .arena-zoom-controls .icon-btn {
+        min-width: 38px;
+        min-height: 40px;
+    }
+
+    body .page.arena-page .arena-canvas-viewport {
+        grid-row: 4;
+        height: clamp(320px, 55dvh, 560px);
+        min-height: 320px;
+        max-height: none;
+        padding: 0.48rem;
+    }
+
+    body .page.arena-page .arena-canvas-hint {
+        align-items: flex-start;
+        padding: 0.52rem 0.62rem;
+    }
+
+    body .page.arena-page .arena-canvas-hint button {
+        min-height: 36px;
+    }
+
+    body .page.arena-page .arena-finish-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+        padding: 0.55rem;
+    }
+
+    body .page.arena-page .arena-content-actions,
+    body .page.arena-page .arena-output-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.4rem;
+        width: 100%;
+    }
+
+    body .page.arena-page .arena-finish-actions .ghost-btn,
+    body .page.arena-page .arena-finish-actions .arena-publish-btn {
+        width: 100%;
+        min-height: 44px;
+        padding-inline: 0.42rem;
+    }
+
+    body .page.arena-page .arena-drawing-guide {
+        padding: 0.38rem 0.6rem 0.55rem;
+    }
+
+    body .page.arena-page:not(.is-controls-open) .arena-controls,
+    body .page.arena-page:not(.is-gallery-open) .arena-gallery {
+        max-height: none;
+    }
+
+    body .page.arena-page .arena-controls .arena-panel-toggle,
+    body .page.arena-page .arena-gallery .arena-panel-toggle {
+        width: 100%;
+        min-height: 50px;
+        justify-content: space-between;
+        padding-inline: 0.82rem;
+    }
+
+    body .page.arena-page:not(.is-controls-open) .arena-controls .arena-panel-toggle span,
+    body .page.arena-page:not(.is-gallery-open) .arena-gallery .arena-panel-toggle span {
+        display: inline;
+    }
+
+    body .page.arena-page.is-controls-open .arena-controls,
+    body .page.arena-page.is-gallery-open .arena-gallery {
+        padding: 0.6rem;
+        border-color: var(--ts-border-strong);
+        background: var(--ts-readable-panel-bg);
+    }
+
+    body .page.arena-page .arena-gallery-sort .chip {
+        min-height: 38px;
+    }
+
+    body .page.arena-page.is-controls-open .arena-controls-toggle,
+    body .page.arena-page.is-gallery-open .arena-gallery-toggle {
+        min-width: 44px;
+        min-height: 44px;
+        padding-inline: 0.7rem;
+    }
+}
+
+@media (max-width: 430px) {
+    body .page.arena-page .arena-canvas-panel {
+        grid-template-rows: auto auto auto minmax(300px, 1fr) auto auto auto;
+    }
+
+    body .page.arena-page .arena-canvas-viewport {
+        min-height: 300px;
+        height: clamp(300px, 52dvh, 480px);
+    }
+
+    body .page.arena-page .arena-history-actions .icon-btn span {
+        display: none;
+    }
+
+    body .page.arena-page .arena-history-actions .icon-btn,
+    body .page.arena-page .arena-zoom-controls .icon-btn {
+        width: 38px;
+        padding: 0;
+    }
+
+    body .page.arena-page .arena-zoom-controls strong {
+        min-width: 38px;
+        font-size: 0.81rem;
+    }
+
+    body .page.arena-page .arena-fit-btn {
+        min-height: 38px;
+        padding-inline: 0.42rem;
+        font-size: 0.72rem;
+    }
+
+    body .page.arena-page .arena-canvas-hint {
+        flex-wrap: wrap;
+    }
+
+    body .page.arena-page .arena-canvas-hint button {
+        margin-left: auto;
+    }
+}
+
+@media (pointer: coarse) {
+    body .page.arena-page .arena-quick-swatch,
+    body .page.arena-page .arena-more-colors,
+    body .page.arena-page .arena-fit-btn,
+    body .page.arena-page .arena-finish-actions button {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+/* On phones, put the drawing surface directly below its tools instead of
+   vertically centering a short canvas inside the scrollable viewport. */
+@media (max-width: 760px) {
+    body .page.arena-page .pixel-canvas-zoom-surface {
+        margin: 0 auto auto;
+    }
+}
+
+@media (max-width: 430px) {
+    body .page.arena-page .arena-hero-copy {
+        min-height: 44px;
+        padding-block: 0.35rem;
+    }
+
+    body .page.arena-page .arena-canvas-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+    }
+
+    body .page.arena-page .arena-history-actions {
+        grid-column: 1;
+    }
+
+    body .page.arena-page .arena-zoom-controls {
+        grid-column: 2;
+        margin-left: 0;
+    }
+
+    body .page.arena-page .arena-brush-size-inline {
+        grid-column: 1 / -1;
+        min-width: 0;
+        width: 100%;
+    }
+}
+
+body .page.arena-page .arena-import-panel {
+    order: 0;
+}
+
+body .page.arena-page .arena-history-actions .icon-btn,
+body .page.arena-page .arena-brush-size-inline,
+body .page.arena-page .arena-brush-size-inline > span {
+    white-space: nowrap;
+}
+
+body .page.arena-page .arena-brush-size-inline > span {
+    flex: 0 0 auto;
+}
+
+body .page.arena-page .arena-tool-toggle .icon-btn span {
+    color: var(--arena-chrome-text) !important;
+}
+
+body .page.arena-page .arena-tool-toggle .icon-btn.active span {
+    color: #fff !important;
+}
+
+@media (min-width: 761px) {
+    body .page.arena-page {
+        height: auto;
+        min-height: 100dvh;
+        grid-template-rows: 64px minmax(690px, calc(100dvh - 176px));
+        overflow: visible;
+    }
+
+    body .page.arena-page .arena-canvas-panel {
+        min-height: 690px;
+    }
+
+    body .page.arena-page .arena-tool-toggle .icon-btn {
+        width: auto !important;
+        min-width: 76px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        aspect-ratio: auto !important;
+        padding-inline: 0.68rem !important;
+    }
+
+    body .page.arena-page .arena-history-actions .icon-btn {
+        width: auto !important;
+        min-width: 72px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        aspect-ratio: auto !important;
+        padding-inline: 0.62rem !important;
+    }
+
+    body .page.arena-page.is-controls-open.is-gallery-open .arena-canvas-panel > .arena-section-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    body .page.arena-page.is-controls-open.is-gallery-open .arena-tool-toggle {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    body .page.arena-page .arena-canvas-panel {
+        grid-template-rows: auto auto auto auto auto auto auto;
+    }
+
+    body .page.arena-page .arena-canvas-viewport {
+        height: clamp(205px, 58vw, 320px);
+        min-height: 205px;
+        max-height: none;
+    }
+
+    body .page.arena-page .arena-tool-toggle .icon-btn {
+        width: 100% !important;
+        height: 50px !important;
+        min-height: 50px !important;
+        aspect-ratio: auto !important;
+    }
+}

@@ -143,12 +143,15 @@ describe('constrained-device performance policy', () => {
         assert.match(arena, /@media \(max-width: 760px\)[\s\S]*body \.page\.arena-page \.arena-controls\s*\{[^}]*overflow:\s*visible/s);
     });
 
-    it('opens Pixel as a canvas-first studio with both side panels collapsed', () => {
+    it('opens Pixel as a painting-first studio with visible desktop colors and a compact mobile layout', () => {
         const arena = source('assets/css/vue/pages/arena.css');
         const arenaPage = source('src/frontend/pages/ArenaPage.vue');
 
-        assert.match(arenaPage, /const controlsOpen = ref\(false\)/);
+        assert.match(arenaPage, /const controlsOpen = ref\(typeof window !== 'undefined'[\s\S]*matchMedia\('\(min-width: 1181px\)'\)/);
         assert.match(arenaPage, /const galleryOpen = ref\(false\)/);
+        assert.match(arenaPage, /class="arena-paint-strip"[\s\S]*class="arena-quick-swatch"/);
+        assert.match(arenaPage, /class="arena-canvas-hint"[\s\S]*class="arena-finish-actions"/);
+        assert.match(arenaPage, /ref="titleInputRef"[\s\S]*class="primary-btn arena-share-btn"/);
         assert.match(arenaPage, /'is-controls-open': controlsOpen[\s\S]*'is-gallery-open': galleryOpen/);
         assert.match(arenaPage, /class="arena-panel-toggle arena-controls-toggle"[\s\S]*:aria-expanded="controlsOpen"/);
         assert.match(arenaPage, /class="arena-panel-toggle arena-gallery-toggle"[\s\S]*:aria-expanded="galleryOpen"/);
