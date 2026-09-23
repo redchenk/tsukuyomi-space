@@ -841,6 +841,52 @@ body .page.plaza-page .plaza-reply-card {
         color-mix(in srgb, var(--plaza-card-bg) 82%, transparent);
 }
 
+body .page.plaza-page .plaza-reply-card.is-preview .plaza-msg-content {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    max-height: calc(1.72em * 4);
+    overflow: hidden;
+}
+
+body .page.plaza-page .plaza-replies-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    gap: 0.42rem;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 38px;
+    padding: 0.38rem 0.82rem;
+    border: 1px solid var(--plaza-control-border);
+    border-radius: var(--plaza-control-radius);
+    background: var(--plaza-control-bg);
+    color: var(--plaza-text);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 800;
+    line-height: 1.35;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+body .page.plaza-page .plaza-replies-toggle .ts-icon {
+    flex: 0 0 auto;
+}
+
+body .page.plaza-page .plaza-replies-toggle:hover,
+body .page.plaza-page .plaza-replies-toggle:focus-visible {
+    border-color: var(--plaza-control-border-hover);
+    background: var(--plaza-control-bg-hover);
+    color: var(--plaza-text-strong);
+}
+
+body .page.plaza-page .plaza-replies-toggle:focus-visible {
+    outline: 2px solid var(--plaza-accent);
+    outline-offset: 2px;
+}
+
 body .page.plaza-page .plaza-page-btn,
 body .page.plaza-page .plaza-page-gap {
     flex: 0 0 auto;
@@ -992,6 +1038,10 @@ html[data-theme="light"] body .page.plaza-page .plaza-msg-card:hover {
 
     body .page.plaza-page .plaza-replies {
         padding-left: 0.7rem;
+    }
+
+    body .page.plaza-page .plaza-replies-toggle {
+        white-space: normal;
     }
 
     body .page.plaza-page .plaza-page-btn,

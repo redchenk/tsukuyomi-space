@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
@@ -32,7 +32,8 @@ const plaza = reactive({
   page: 1,
   loading: true,
   loadError: '',
-  replyOpen: {}
+  replyOpen: {},
+  repliesExpanded: {}
 });
 const plazaToast = reactive({ text: '', type: 'success', visible: false });
 let plazaToastTimer = 0;
@@ -102,7 +103,10 @@ const fallback = computed(() => isEn.value ? {
   prevPage: 'Previous',
   nextPage: 'Next',
   jumpToPage: 'Go to page',
-  messageRangeUnit: 'messages'
+  messageRangeUnit: 'messages',
+  moreReplies: 'Show all {count} replies',
+  fullReply: 'Read full reply',
+  collapseReplies: 'Collapse replies'
 } : isZh.value ? {
   anonymous: '\u533f\u540d\u8bbf\u5ba2',
   visitor: '\u8bbf\u5ba2',
@@ -123,7 +127,10 @@ const fallback = computed(() => isEn.value ? {
   prevPage: '\u4e0a\u4e00\u9875',
   nextPage: '\u4e0b\u4e00\u9875',
   jumpToPage: '\u8df3\u5230\u7b2c',
-  messageRangeUnit: '\u6761'
+  messageRangeUnit: '\u6761',
+  moreReplies: '\u5c55\u5f00\u5168\u90e8 {count} \u6761\u56de\u590d',
+  fullReply: '\u5c55\u5f00\u5b8c\u6574\u56de\u590d',
+  collapseReplies: '\u6536\u8d77\u56de\u590d'
 } : {
   anonymous: '\u533f\u540d\u30b2\u30b9\u30c8',
   visitor: '\u8a2a\u554f\u8005',
@@ -144,7 +151,10 @@ const fallback = computed(() => isEn.value ? {
   prevPage: '\u524d\u3078',
   nextPage: '\u6b21\u3078',
   jumpToPage: '\u30da\u30fc\u30b8\u3078\u79fb\u52d5',
-  messageRangeUnit: '\u4ef6'
+  messageRangeUnit: '\u4ef6',
+  moreReplies: '\u8fd4\u4fe1 {count} \u4ef6\u3092\u3059\u3079\u3066\u8868\u793a',
+  fullReply: '\u8fd4\u4fe1\u306e\u5168\u6587\u3092\u8868\u793a',
+  collapseReplies: '\u8fd4\u4fe1\u3092\u6298\u308a\u305f\u305f\u3080'
 });
 
 const plazaMessages = computed(() => {
@@ -156,7 +166,8 @@ const plazaMessages = computed(() => {
 
   let top = plaza.messages.filter((item) => !item.parent_id).map((item) => ({
     ...item,
-    replies: (repliesByParent[item.id] || []).sort((a, b) => compareAppDate(a.created_at, b.created_at))
+    replies: (repliesByParent[item.id] || []).sort((a, b) =>
+      compareAppDate(b.created_at, a.created_at) || Number(b.id || 0) - Number(a.id || 0))
   }));
 
   if (plaza.query) {
@@ -209,6 +220,16 @@ const pagedPlazaMessages = computed(() => {
   const start = (plazaCurrentPage.value - 1) * PLAZA_PAGE_SIZE;
   return plazaMessages.value.slice(start, start + PLAZA_PAGE_SIZE);
 });
+
+function plazaVisibleReplies(message) {
+  return plaza.repliesExpanded[message.id] ? message.replies : message.replies.slice(0, 1);
+}
+
+function plazaRepliesToggleLabel(message) {
+  if (plaza.repliesExpanded[message.id]) return fallback.value.collapseReplies;
+  if (message.replies.length === 1) return fallback.value.fullReply;
+  return fallback.value.moreReplies.replace('{count}', plazaFormatNumber(message.replies.length));
+}
 
 const plazaPageItems = computed(() => {
   const total = plazaTotalPages.value;
@@ -270,9 +291,13 @@ function plazaSyncPageWithHash() {
   if (!topLevelId) return;
   const index = plazaMessages.value.findIndex((item) => String(item.id) === String(topLevelId));
   if (index < 0) return;
+  if (target?.parent_id) {
+    const replies = plazaMessages.value[index].replies;
+    if (String(replies[0]?.id) !== anchorId) plaza.repliesExpanded[topLevelId] = true;
+  }
   plazaSetPage(Math.floor(index / PLAZA_PAGE_SIZE) + 1, { scroll: false });
   nextTick(() => {
-    document.getElementById(`msg-${topLevelId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    document.getElementById(`msg-${anchorId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   });
 }
 
@@ -456,6 +481,10 @@ function plazaToggleReply(id) {
   plaza.replyOpen = { ...plaza.replyOpen, [id]: !plaza.replyOpen[id] };
 }
 
+function plazaToggleReplies(id) {
+  plaza.repliesExpanded[id] = !plaza.repliesExpanded[id];
+}
+
 function plazaOpenProfile(username) {
   const value = String(username || '').trim();
   if (!value) return;
@@ -529,7 +558,11 @@ watch(plazaTotalPages, (total) => {
   if (plaza.page < 1) plaza.page = 1;
 });
 watch(() => route.query.topic, applyRouteTopic, { immediate: true });
-onMounted(refreshPlaza);
+onMounted(() => {
+  window.addEventListener('hashchange', plazaSyncPageWithHash);
+  refreshPlaza();
+});
+onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash));
 </script>
 
 <template>
@@ -658,8 +691,8 @@ onMounted(refreshPlaza);
             <div v-if="plaza.replyOpen[msg.id]" class="plaza-reply-form">
               <PlazaReplyForm :t="t" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
             </div>
-            <div v-if="(msg.replies || []).length" class="plaza-replies">
-              <div v-for="reply in msg.replies" :key="reply.id" class="plaza-reply-card">
+            <div v-if="(msg.replies || []).length" :id="'plaza-replies-' + msg.id" class="plaza-replies">
+              <div v-for="reply in plazaVisibleReplies(msg)" :id="'msg-' + reply.id" :key="reply.id" class="plaza-reply-card" :class="{ 'is-preview': !plaza.repliesExpanded[msg.id] }">
                 <div class="plaza-msg-meta" style="margin-bottom:0.45rem;">
                   <div class="plaza-msg-author">
                     <button class="plaza-author-link" type="button" @click="plazaOpenProfile(reply.author)">
@@ -675,7 +708,9 @@ onMounted(refreshPlaza);
                     </button>
                   </div>
                 </div>
+                <span v-if="!plaza.repliesExpanded[msg.id]" class="plaza-msg-content" style="margin-bottom:0;">{{ reply.content }}</span>
                 <SocialText
+                  v-else
                   class="plaza-msg-content"
                   style="margin-bottom:0;"
                   :content="reply.content"
@@ -684,6 +719,17 @@ onMounted(refreshPlaza);
                 />
               </div>
             </div>
+            <button
+              v-if="(msg.replies || []).length"
+              class="plaza-replies-toggle"
+              type="button"
+              :aria-expanded="Boolean(plaza.repliesExpanded[msg.id])"
+              :aria-controls="'plaza-replies-' + msg.id"
+              @click="plazaToggleReplies(msg.id)"
+            >
+              <span>{{ plazaRepliesToggleLabel(msg) }}</span>
+              <TsIcon :name="plaza.repliesExpanded[msg.id] ? 'chevronUp' : 'chevronDown'" :size="16" />
+            </button>
           </article>
           <nav v-if="plazaTotalPages > 1" class="plaza-pagination" aria-label="Plaza messages pagination">
             <div class="plaza-pagination-info">{{ plazaPageSummary }}</div>

@@ -334,6 +334,76 @@ test('user can publish a plaza message', async ({ page }) => {
     await expectLikedHeart(messageLikeButton);
 });
 
+test('plaza shows the latest reply first and lets readers expand the rest', async ({ page }) => {
+    await loginAsUser(page);
+    const marker = `E2E plaza replies ${Date.now()}`;
+    const createResponse = await page.request.post('/api/messages', {
+        headers: sameOriginWriteHeaders(page),
+        data: { content: marker }
+    });
+    expect(createResponse.status()).toBe(201);
+    const messageId = (await createResponse.json()).data.id;
+
+    const replyTexts = [
+        `${marker} oldest reply`,
+        `${marker} middle reply`,
+        `${marker} latest reply ${'A longer answer should stay readable without taking over the message wall. '.repeat(18)}`
+    ];
+    const replyIds = [];
+    for (const content of replyTexts) {
+        const replyResponse = await page.request.post(`/api/messages/${messageId}/reply`, {
+            headers: sameOriginWriteHeaders(page),
+            data: { content }
+        });
+        expect(replyResponse.status()).toBe(201);
+        replyIds.push((await replyResponse.json()).data.id);
+    }
+
+    await page.goto('/plaza');
+    await page.locator('.plaza-search').fill(marker);
+    const card = page.locator(`#msg-${messageId}`);
+    await expect(card).toBeVisible();
+    const replies = card.locator('.plaza-reply-card');
+    const toggle = card.locator('.plaza-replies-toggle');
+    await expect(replies).toHaveCount(1);
+    await expect(replies.first()).toContainText(`${marker} latest reply`);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    const preview = replies.first().locator('.plaza-msg-content');
+    const previewHeight = await preview.evaluate((element) => element.getBoundingClientRect().height);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(replies).toHaveCount(3);
+    await expect(replies.nth(0)).toContainText(`${marker} latest reply`);
+    await expect(replies.nth(1)).toContainText(`${marker} middle reply`);
+    await expect(replies.nth(2)).toContainText(`${marker} oldest reply`);
+    const expandedHeight = await replies.first().locator('.plaza-msg-content').evaluate((element) => element.getBoundingClientRect().height);
+    expect(expandedHeight).toBeGreaterThan(previewHeight + 20);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(replies).toHaveCount(1);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobilePreview = await preview.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+            height: element.getBoundingClientRect().height,
+            lineHeight: Number.parseFloat(style.lineHeight),
+            clamp: style.webkitLineClamp
+        };
+    });
+    expect(mobilePreview.clamp).toBe('4');
+    expect(mobilePreview.height).toBeLessThanOrEqual(mobilePreview.lineHeight * 4 + 2);
+    await expect(toggle).toBeVisible();
+    if (process.env.CODEX_CAPTURE_PLAZA) {
+        await card.screenshot({ path: process.env.CODEX_CAPTURE_PLAZA });
+    }
+
+    await page.goto(`/plaza#msg-${replyIds[0]}`);
+    await expect(page.locator(`#msg-${messageId} .plaza-reply-card`)).toHaveCount(3);
+    await expect(page.locator(`#msg-${replyIds[0]}`)).toContainText(`${marker} oldest reply`);
+});
+
 test('user can edit and delete their own message from user center', async ({ page }) => {
     await loginAsUser(page);
     const original = `E2E managed message ${Date.now()}`;
