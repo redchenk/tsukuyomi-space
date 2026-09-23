@@ -699,6 +699,24 @@ export function dispatchRoomLive2D(intent) {
   return normalized;
 }
 
+export function dispatchRoomLive2DExpression(intent) {
+  const normalized = normalizeLive2DIntent(intent);
+  const expression = normalized?.expression;
+  if (!expression) return null;
+  // A reply can appear well before the user presses play. Show its face now,
+  // leaving body actions and mouth movement to the actual audio playback.
+  window.dispatchEvent(new CustomEvent('tsukuyomi:live2d-character-state', {
+    detail: {
+      source: 'reply-expression',
+      expressionOnly: true,
+      expression,
+      emotion: normalized.emotion || expression,
+      emotionHoldMs: normalized.durationMs
+    }
+  }));
+  return expression;
+}
+
 export function queueRoomLive2DForNextRoom(intent) {
   const normalized = normalizeLive2DIntent(intent);
   if (!normalized || typeof localStorage === 'undefined') return null;

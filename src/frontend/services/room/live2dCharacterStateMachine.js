@@ -648,6 +648,16 @@ export function createLive2DCharacterStateMachine() {
   }
 
   function onExternalState(detail = {}, at = nowMs()) {
+    if (detail.expressionOnly) {
+      const emotion = detail.emotion || detail.expression;
+      if (emotion) {
+        state.emotion = normalizeEmotion(emotion);
+        state.emotionUntil = state.emotion === 'neutral'
+          ? 0
+          : at + clamp(detail.emotionHoldMs || detail.durationMs, 900, 12000, 5000);
+      }
+      return;
+    }
     setMode(detail.mode || detail.status || 'idle', {
       now: at,
       holdMs: detail.holdMs,

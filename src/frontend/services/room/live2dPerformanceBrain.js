@@ -74,6 +74,8 @@ export function createLive2DPerformanceBrain() {
   let lastRoomActDetail = null;
   let lastRoomActAt = -Infinity;
   let lastRoomActResult = null;
+  let replyExpression = '';
+  let replyExpressionUntil = 0;
 
   function invalidateFrameCache() {
     cachedFrameKey = -1;
@@ -333,6 +335,12 @@ export function createLive2DPerformanceBrain() {
 
   function onExternalState(detail = {}, at = nowMs()) {
     invalidateFrameCache();
+    if (detail.expressionOnly) {
+      replyExpression = resolveExpression(detail);
+      replyExpressionUntil = replyExpression
+        ? at + clamp(detail.emotionHoldMs || detail.durationMs, 900, 12000, 5000)
+        : 0;
+    }
     characterState.onExternalState(detail, at);
   }
 
@@ -343,6 +351,10 @@ export function createLive2DPerformanceBrain() {
     const currentPlan = behaviorPlan;
     if (recentReleasedPlan && now > Number(recentReleasedPlan.expiresAt || 0)) {
       recentReleasedPlan = null;
+    }
+    if (replyExpressionUntil && now >= replyExpressionUntil) {
+      replyExpression = '';
+      replyExpressionUntil = 0;
     }
     const elapsedMs = currentPlan ? now - currentPlan.startedAt : 0;
     if (currentPlan && elapsedMs >= currentPlan.durationMs) {
@@ -374,7 +386,7 @@ export function createLive2DPerformanceBrain() {
       elapsedMs: activePlan ? activeElapsedMs : elapsedMs,
       samples,
       dominant,
-      expression: activePlan?.expression || outgoingExpression || character.emotion,
+      expression: activePlan?.expression || outgoingExpression || replyExpression || character.emotion,
       active: Boolean(activePlan || trailingSamples.length || handoffActive),
       handoffActive,
       completed: Boolean(currentPlan && !activePlan)

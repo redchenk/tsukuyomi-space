@@ -3,6 +3,7 @@ import { apiFetch, authFetch, authHeaders, noStoreUrl, parseResponse } from '../
 import { knowledgeContext } from '../../services/room/roomKnowledge';
 import {
   dispatchRoomLive2D,
+  dispatchRoomLive2DExpression,
   inferLive2DIntentFromText
 } from '../../services/room/live2dControl';
 import { compileBehaviorIntent } from '../../services/room/live2dBehaviorController';
@@ -1155,7 +1156,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
       const structured = parseAssistantPayload(result.reply || fallbackReply(message, image));
       const reply = structured.reply || fallbackReply(message, image);
       const ttsSettings = readJson('roomTTSSettings', {});
-      if (!ttsSettings.enabled) applyRoomAct(structured.live2d);
+      if (ttsSettings.enabled) dispatchRoomLive2DExpression(structured.live2d);
+      else applyRoomAct(structured.live2d);
       messages.value = messages.value.filter((item) => item.id !== typingId);
       addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d, turnId });
       if (!opener) currentSessionMessages.value.push({ role: 'user', content: message || '请看这张图片。' });

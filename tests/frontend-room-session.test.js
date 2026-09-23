@@ -32,7 +32,7 @@ async function setup(overrides = {}) {
     writeRoomConversation() {}, saveRoomConversationTurn: async () => {}, clearLocalRoomConversation() {},
     clearRoomConversation: async () => { clearCount++; },
     readJson: (key, fallback) => key === 'roomMemorySettings' ? { enabled: false } : fallback,
-    releaseAsyncAudioPlayback() {}, dispatchRoomLive2D() {},
+    releaseAsyncAudioPlayback() {}, dispatchRoomLive2D() {}, dispatchRoomLive2DExpression() {},
     compileBehaviorIntent: () => null, inferLive2DIntentFromText: () => null,
     generateDiaryEntry: async (turns) => {
       requests.push(turns);
@@ -47,6 +47,40 @@ async function setup(overrides = {}) {
   return { chat: context.chat, context, saved, requests, sync: () => onUpdate({}), clearCount: () => clearCount };
 }
 async function send(chat, text) { chat.input.value = text; await chat.send(); await tick(); }
+
+test('a TTS-enabled reply shows its expression without starting a body act before playback', async () => {
+  const face = [];
+  const body = [];
+  const intent = { emotion: 'shy', expression: 'shy', behaviorActions: [{ type: 'head_tilt' }] };
+  const h = await setup({
+    readJson: (key, fallback) => key === 'roomTTSSettings'
+      ? { enabled: true }
+      : key === 'roomMemorySettings' ? { enabled: false } : fallback,
+    compileBehaviorIntent: () => intent,
+    dispatchRoomLive2DExpression: value => face.push(value),
+    dispatchRoomLive2D: value => body.push(value)
+  });
+  await send(h.chat, '你好');
+  assert.deepEqual(face, [intent]);
+  assert.deepEqual(body, []);
+  assert.equal(h.chat.messages.value.find(item => item.role === 'assistant')?.live2d, intent);
+  h.chat.destroy();
+});
+
+test('a TTS-disabled reply retains its full Live2D act', async () => {
+  const face = [];
+  const body = [];
+  const intent = { emotion: 'shy', expression: 'shy', behaviorActions: [{ type: 'head_tilt' }] };
+  const h = await setup({
+    compileBehaviorIntent: () => intent,
+    dispatchRoomLive2DExpression: value => face.push(value),
+    dispatchRoomLive2D: value => body.push(value)
+  });
+  await send(h.chat, '你好');
+  assert.deepEqual(face, []);
+  assert.deepEqual(body, [intent]);
+  h.chat.destroy();
+});
 
 test('opener preserves the draft, saves only the assistant and enters the diary once', async () => {
   const turns = [];
