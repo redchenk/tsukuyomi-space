@@ -1593,10 +1593,36 @@ html[data-theme="dark"] .room-settings-card .field-hint.error {
 .memory-editor {
     display: grid;
     gap: 0.8rem;
+    scroll-margin-block: 6rem;
     padding: 0.9rem;
     border: 1px solid rgba(139, 168, 205, 0.18);
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.58);
+}
+
+.memory-editor-status {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.65rem;
+    color: var(--muted);
+}
+
+.memory-editor-status span {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 0.25rem 0.58rem;
+    color: var(--cyan);
+    background: rgba(102, 197, 223, 0.1);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.memory-editor-status strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--text);
 }
 
 .knowledge-editor {

@@ -75,6 +75,12 @@ function normalizeMemoryText(text) {
         .trim();
 }
 
+function normalizeEditedMemoryText(text) {
+    return String(text ?? '')
+        .replace(/<\|ACT:[\s\S]*?\|>/g, '')
+        .replace(/<\|DELAY:\d+(?:\.\d+)?\|>/g, '');
+}
+
 function cleanText(text, limit = MAX_MEMORY_CONTENT_LENGTH) {
     return normalizeMemoryText(text).slice(0, limit);
 }
@@ -786,9 +792,9 @@ async function updateMemory(userId, id, payload = {}) {
     if (!existing) return null;
     const oldMetadata = parseJson(existing.metadata || '{}', {});
     const type = normalizeType(payload.type || existing.memory_type);
-    const summary = payload.summary == null ? existing.summary : normalizeMemoryText(payload.summary);
-    const content = payload.content == null ? existing.content : normalizeMemoryText(payload.content);
-    if (!summary || !content) {
+    const summary = payload.summary == null ? existing.summary : normalizeEditedMemoryText(payload.summary);
+    const content = payload.content == null ? existing.content : normalizeEditedMemoryText(payload.content);
+    if (!summary.trim() || !content.trim()) {
         const error = new Error('记忆摘要和内容不能为空');
         error.statusCode = 400;
         throw error;
@@ -801,10 +807,10 @@ async function updateMemory(userId, id, payload = {}) {
     const tags = payload.tags ? uniqueTags(payload.tags) : uniqueTags(oldMetadata.tags || []);
     const importance = Number.isFinite(Number(payload.importance))
         ? Math.max(0, Math.min(1, Number(payload.importance)))
-        : Number(existing.importance || 0.5);
+        : Number(existing.importance ?? 0.5);
     const confidence = Number.isFinite(Number(payload.confidence))
         ? Math.max(0, Math.min(1, Number(payload.confidence)))
-        : Number(oldMetadata.confidence || 0.8);
+        : Number(oldMetadata.confidence ?? 0.8);
     const embedding = await createMemoryEmbeddingDetailed(`${summary}\n${content}`);
     const metadata = memoryEmbeddingMetadata({ ...oldMetadata, tags, confidence, editedAt: new Date().toISOString() }, embedding);
     const vector = embedding.vector;
@@ -814,7 +820,8 @@ async function updateMemory(userId, id, payload = {}) {
             updated_at = CURRENT_TIMESTAMP, vector_synced_at = NULL, vector_sync_error = ''
         WHERE id = ? AND user_id = ?
     `).run(type, summary, content, JSON.stringify(vector), importance, JSON.stringify(metadata), id, userId);
-    await syncMemoryRow(userId, db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId));
+    // A vector store is optional. The edit is complete once SQLite commits;
+    // status and search retry rows marked as pending without delaying PATCH.
     return getMemory(userId, id);
 }
 

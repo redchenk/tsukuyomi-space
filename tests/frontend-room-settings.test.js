@@ -64,13 +64,13 @@ test('Chinese partial matches retrieve custom entries beyond the default ten', (
   assert.equal(h.knowledgeContext('海盐蛋糕', { enabled: false, entries }), '');
 });
 
-test('save all persists an active knowledge draft, switch and memory together', () => {
+test('save all persists an active knowledge draft, switch and memory together', async () => {
   const h = setup();
   h.knowledge.draft = { title: '测试知识', content: '测试内容', enabled: true };
   h.knowledge.enabled = false;
   h.memory.enabled = false;
   assert.equal(h.hasUnsavedSettings.value, true);
-  assert.equal(h.saveAllSettings(), true);
+  assert.equal(await h.saveAllSettings(), true);
   assert.equal(h.read('roomKnowledgeSettings').entries[0].title, '测试知识');
   assert.equal(h.read('roomKnowledgeSettings').enabled, false);
   assert.equal(h.read('roomMemorySettings').enabled, false);
@@ -90,16 +90,16 @@ test('third setup step saves both switches and empty knowledge survives reload',
   assert.equal(h.memory.enabled, false);
 });
 
-test('invalid or failed saves retain drafts and prevent return navigation', () => {
+test('invalid or failed saves retain drafts and prevent return navigation', async () => {
   const h = setup();
   h.knowledge.draft = { title: '不能丢失', content: '' };
-  h.enterRoom();
+  await h.enterRoom();
   assert.equal(h.navigation.length, 0);
   assert.equal(h.knowledge.draft.title, '不能丢失');
   assert.match(h.toast.text, /标题和内容/);
   h.knowledge.draft.content = '完整内容';
   h.fail();
-  h.enterRoom();
+  await h.enterRoom();
   assert.equal(h.navigation.length, 0);
   assert.equal(h.knowledge.draft.content, '完整内容');
   assert.match(h.toast.text, /保存失败/);
@@ -107,14 +107,14 @@ test('invalid or failed saves retain drafts and prevent return navigation', () =
   assert.equal(h.leave(), false);
 });
 
-test('LLM and model saves preserve existing instructions and extra runtime settings', () => {
+test('LLM and model saves preserve existing instructions and extra runtime settings', async () => {
   const h = setup();
   h.set('roomLLMSettings', { apiUrl: 'https://example.test/v1/chat/completions', model: 'model-a', systemPrompt: '仅聊天指令', custom: 1 });
   h.set('roomModelSettings', { scale: 1.2, stageFloatEnabled: false, stageMotionScale: 0.8 });
   h.loadSettings();
   h.llm.model = 'model-b';
   h.model.xOffset = 20;
-  assert.equal(h.saveAllSettings(), true);
+  assert.equal(await h.saveAllSettings(), true);
   assert.equal(h.read('roomLLMSettings').systemPrompt, '仅聊天指令');
   assert.equal(h.read('roomLLMSettings').custom, 1);
   assert.equal(h.read('roomModelSettings').stageFloatEnabled, false);

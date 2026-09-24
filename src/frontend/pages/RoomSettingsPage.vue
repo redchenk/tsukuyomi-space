@@ -22,7 +22,7 @@ import {
   primeAsyncAudioPlayback,
   releaseAsyncAudioPlayback
 } from '../services/room/audioPlayback';
-import { refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
+import { publishLocalRoomMemoryUpdate, refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
 import { requestTtsAudioBlob } from '../services/room/ttsTransport';
 import {
   activePersonaPrompt,
@@ -169,6 +169,7 @@ const memoryHasMore = ref(false);
 const memoryContentLimit = ref(12000);
 const MEMORY_PAGE_SIZE = 80;
 let memoryListRequestId = 0;
+let memoryEditRequestId = 0;
 const memoryVector = reactive({ backend: '', enabled: false, pending: 0, failed: 0, embedding: '' });
 const storedUser = ref(readStoredUser());
 const modelCatalog = reactive({ loading: false, message: '', error: '', updatedAt: '', models: [] });
@@ -206,6 +207,11 @@ const tts = reactive({
 });
 const initialTtsSettings = { ...tts };
 const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
+const memoryEditor = ref(null);
+const memorySummaryInput = ref(null);
+const memoryEditingOriginal = ref('');
+const memorySavePending = ref(false);
+const memorySaveError = ref('');
 const knowledge = reactive({
   enabled: true,
   managerOpen: false,
@@ -263,7 +269,20 @@ function sectionSnapshot(section) {
 function rememberSaved(section) { savedSections[section] = sectionSnapshot(section); }
 const pendingSections = computed(() => settingsSections.filter((section) => savedSections[section] !== undefined && savedSections[section] !== sectionSnapshot(section)));
 const hasKnowledgeDraft = computed(() => Boolean(knowledge.editingId || [knowledge.draft.title, knowledge.draft.content, knowledge.draft.tags].some((value) => String(value || '').trim())));
-const hasUnsavedSettings = computed(() => pendingSections.value.length > 0 || hasKnowledgeDraft.value);
+function memoryEditSnapshot(value) {
+  if (!value) return '';
+  return JSON.stringify({
+    id: value.id,
+    type: value.type,
+    summary: value.summary,
+    content: value.content,
+    importance: Number(value.importance),
+    confidence: Number(value.confidence),
+    tags: value.tags
+  });
+}
+const hasMemoryDraft = computed(() => Boolean(memory.editing && memoryEditSnapshot(memory.editing) !== memoryEditingOriginal.value));
+const hasUnsavedSettings = computed(() => pendingSections.value.length > 0 || hasKnowledgeDraft.value || hasMemoryDraft.value);
 
 function persistSettings(key, value, label) {
   try {
@@ -275,17 +294,18 @@ function persistSettings(key, value, label) {
   }
 }
 
-function saveAllSettings() {
+async function saveAllSettings() {
   const sections = new Set(pendingSections.value);
   if (hasKnowledgeDraft.value) sections.add('knowledge');
   const actions = { model: saveModel, llm: () => saveLLM(false), tts: () => saveTTS(false), memory: saveMemory, knowledge: () => saveKnowledge(false), mcp: () => saveMCP(false), diary: saveDiaryPersona };
   for (const section of sections) if (actions[section]() === false) return false;
-  showToast('所有修改已保存到当前浏览器');
+  if (hasMemoryDraft.value && !(await saveMemoryEdit())) return false;
+  showToast('所有修改已保存');
   return true;
 }
 
-function enterRoom() {
-  if (saveAllSettings()) emit('go', '/room');
+async function enterRoom() {
+  if (await saveAllSettings()) emit('go', '/room');
 }
 
 function warnBeforeUnload(event) {
@@ -719,8 +739,11 @@ function onRoomMemoryUpdated(event) {
   const action = String(event?.detail?.action || '');
   const memoryIds = Array.isArray(event?.detail?.memoryIds) ? event.detail.memoryIds.map(String) : [];
   const editingId = String(memory.editing?.id || '');
-  if (editingId && (action === 'cleared' || memoryIds.includes(editingId))) {
+  if (editingId && (action === 'cleared' || (action === 'deleted' && memoryIds.includes(editingId)))) {
+    memoryEditRequestId += 1;
     memory.editing = null;
+    memoryEditingOriginal.value = '';
+    memorySaveError.value = '';
     memory.expanded[editingId] = false;
   }
   clearTimeout(memoryRefreshTimer);
@@ -1859,7 +1882,7 @@ async function openMemoryItem(item) {
     return detail;
   } catch (error) {
     showToast(`读取原文失败：${error.message}`, 'error');
-    return item;
+    return null;
   }
 }
 
@@ -1874,16 +1897,29 @@ async function fetchMemoryDetail(id) {
 }
 
 async function editMemory(item) {
+  if (memorySavePending.value) return;
+  if (hasMemoryDraft.value && memory.editing?.id !== item.id
+    && !window.confirm('当前记忆尚未保存，切换会丢失修改。确定继续吗？')) return;
+  const requestId = ++memoryEditRequestId;
   const detail = await openMemoryItem(item);
+  if (!detail || requestId !== memoryEditRequestId) return;
   memory.editing = {
     id: detail.id,
     type: detail.type || 'conversation',
     summary: detail.summary || '',
     content: detail.content || '',
-    importance: Number(detail.importance || 0.5),
-    confidence: Number(detail.confidence || 0.8),
+    importance: Number(detail.importance ?? 0.5),
+    confidence: Number(detail.confidence ?? 0.8),
     tags: (detail.tags || []).join(', ')
   };
+  memoryEditingOriginal.value = memoryEditSnapshot(memory.editing);
+  memorySaveError.value = '';
+  await nextTick();
+  memoryEditor.value?.scrollIntoView({
+    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'center'
+  });
+  memorySummaryInput.value?.focus({ preventScroll: true });
 }
 
 async function toggleMemoryContent(item) {
@@ -1895,53 +1931,68 @@ async function toggleMemoryContent(item) {
 }
 
 function cancelMemoryEdit() {
+  memoryEditRequestId += 1;
   memory.editing = null;
+  memoryEditingOriginal.value = '';
+  memorySaveError.value = '';
 }
 
 async function saveMemoryEdit() {
-  if (!memory.editing) return;
+  if (!memory.editing || memorySavePending.value) return false;
+  memorySaveError.value = '';
+  const draft = {
+    id: memory.editing.id,
+    type: memory.editing.type,
+    summary: String(memory.editing.summary ?? ''),
+    content: String(memory.editing.content ?? ''),
+    importance: Number(memory.editing.importance),
+    confidence: Number(memory.editing.confidence),
+    tags: String(memory.editing.tags || '').split(',').map((item) => item.trim()).filter(Boolean)
+  };
   try {
+    if (!draft.summary.trim() || !draft.content.trim()) throw new Error('记忆摘要和内容不能为空');
+    if (draft.summary.length > 800) throw new Error('记忆摘要不能超过 800 字');
+    if (canUseServerMemory.value && draft.content.length > memoryContentLimit.value) {
+      throw new Error(`单条记忆内容不能超过 ${memoryContentLimit.value} 字，原记录未修改`);
+    }
+    memorySavePending.value = true;
     if (!canUseServerMemory.value) {
       const db = await openMemoryDb();
       if (!db) throw new Error('IndexedDB 不可用');
-      const existing = memoryList.value.find((item) => item.id === memory.editing.id);
-      if (!existing) throw new Error('记忆不存在');
+      const existing = await requestToPromise(db.transaction(MEMORY_STORE, 'readonly').objectStore(MEMORY_STORE).get(draft.id));
+      if (!existing || existing.userKey !== visitorKey.value) throw new Error('记忆不存在');
       const tx = db.transaction(MEMORY_STORE, 'readwrite');
       tx.objectStore(MEMORY_STORE).put({
         ...existing,
-        type: memory.editing.type,
-        summary: memory.editing.summary,
-        content: memory.editing.content,
-        importance: Number(memory.editing.importance),
-        confidence: Number(memory.editing.confidence),
-        tags: String(memory.editing.tags || '').split(',').map((item) => item.trim()).filter(Boolean),
+        ...draft,
         updatedAt: new Date().toISOString()
       });
       await txToPromise(tx);
-      showToast('本地记忆已更新');
       memory.editing = null;
+      memoryEditingOriginal.value = '';
+      publishLocalRoomMemoryUpdate({ id: draft.id });
       await loadLocalMemories();
-      return;
+      showToast('本地记忆已更新');
+      return true;
     }
-    const response = await authFetch(`/api/room/memory/${encodeURIComponent(memory.editing.id)}`, {
+    const response = await authFetch(`/api/room/memory/${encodeURIComponent(draft.id)}`, {
       method: 'PATCH',
       headers: memoryAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
-        type: memory.editing.type,
-        summary: memory.editing.summary,
-        content: memory.editing.content,
-        importance: Number(memory.editing.importance),
-        confidence: Number(memory.editing.confidence),
-        tags: String(memory.editing.tags || '').split(',').map((item) => item.trim()).filter(Boolean)
-      })
+      body: JSON.stringify(draft)
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
-    showToast('记忆已更新');
     memory.editing = null;
+    memoryEditingOriginal.value = '';
     await loadVisibleMemories();
+    showToast('记忆已更新');
+    return true;
   } catch (error) {
+    memorySaveError.value = error.message || '请稍后重试';
     showToast(`保存失败：${error.message}`, 'error');
+    return false;
+  } finally {
+    memorySavePending.value = false;
   }
 }
 
@@ -1954,6 +2005,7 @@ async function deleteMemoryItem(item) {
       const tx = db.transaction(MEMORY_STORE, 'readwrite');
       tx.objectStore(MEMORY_STORE).delete(item.id);
       await txToPromise(tx);
+      publishLocalRoomMemoryUpdate(item, 'deleted');
       showToast('本地记忆已删除');
       await loadLocalMemories();
       return;
@@ -1983,7 +2035,10 @@ async function clearMemory() {
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
       memoryCount.value = 0;
       memoryList.value = [];
+      memoryEditRequestId += 1;
       memory.editing = null;
+      memoryEditingOriginal.value = '';
+      memorySaveError.value = '';
       memory.expanded = {};
       showToast(`已清空 ${result.data?.count || 0} 条服务端记忆`);
       return;
@@ -1997,8 +2052,12 @@ async function clearMemory() {
     await txToPromise(tx);
     memoryCount.value = 0;
     memoryList.value = [];
+    memoryEditRequestId += 1;
     memory.editing = null;
+    memoryEditingOriginal.value = '';
+    memorySaveError.value = '';
     memory.expanded = {};
+    publishLocalRoomMemoryUpdate(null, 'cleared');
     showToast(`已清空 ${records.length} 条本地记忆`);
   } catch (error) {
     showToast(`清空失败：${error.message}`, 'error');
@@ -2777,23 +2836,25 @@ onBeforeUnmount(() => {
             </select>
             <button class="ghost-btn" type="button" :disabled="memoryLoading" :aria-busy="memoryLoading" @click="loadVisibleMemories">{{ memoryLoading ? '读取中...' : '检索' }}</button>
           </div>
-          <form v-if="memory.editing" class="memory-editor" @submit.prevent="saveMemoryEdit">
+          <form v-if="memory.editing" ref="memoryEditor" class="memory-editor" :aria-busy="memorySavePending" @submit.prevent="saveMemoryEdit">
+          <div class="memory-editor-status" role="status"><span>正在编辑</span><strong>{{ memory.editing.summary || '未命名记忆' }}</strong></div>
           <label>类型
-            <select v-model="memory.editing.type">
+            <select v-model="memory.editing.type" :disabled="memorySavePending">
               <option v-for="item in memoryTypeOptions.filter((option) => option.value)" :key="item.value" :value="item.value">{{ item.label }}</option>
             </select>
           </label>
-          <label>摘要<input v-model="memory.editing.summary" type="text"></label>
-          <label>内容<textarea v-model="memory.editing.content"></textarea></label>
+          <label>摘要<input ref="memorySummaryInput" v-model="memory.editing.summary" type="text" :disabled="memorySavePending"></label>
+          <label>内容<textarea v-model="memory.editing.content" rows="8" :disabled="memorySavePending"></textarea></label>
           <small v-if="canUseServerMemory" class="field-hint">{{ memory.editing.content.length }} / {{ memoryContentLimit }} 字；超出上限时保存会被拒绝，原记录不会被截断。</small>
-          <label>标签<input v-model="memory.editing.tags" type="text" placeholder="逗号分隔"></label>
+          <label>标签<input v-model="memory.editing.tags" type="text" placeholder="逗号分隔" :disabled="memorySavePending"></label>
           <div class="memory-score-row">
-            <label>重要度 <strong>{{ Number(memory.editing.importance).toFixed(2) }}</strong><input v-model="memory.editing.importance" type="range" min="0" max="1" step="0.05"></label>
-            <label>置信度 <strong>{{ Number(memory.editing.confidence).toFixed(2) }}</strong><input v-model="memory.editing.confidence" type="range" min="0" max="1" step="0.05"></label>
+            <label>重要度 <strong>{{ Number(memory.editing.importance).toFixed(2) }}</strong><input v-model="memory.editing.importance" type="range" min="0" max="1" step="0.05" :disabled="memorySavePending"></label>
+            <label>置信度 <strong>{{ Number(memory.editing.confidence).toFixed(2) }}</strong><input v-model="memory.editing.confidence" type="range" min="0" max="1" step="0.05" :disabled="memorySavePending"></label>
           </div>
+          <div v-if="memorySaveError" class="field-hint error" role="alert">保存失败：{{ memorySaveError }}</div>
           <div class="button-row">
-            <button class="primary-btn" type="submit">保存记忆</button>
-            <button class="ghost-btn" type="button" @click="cancelMemoryEdit">取消</button>
+            <button class="primary-btn" type="submit" :disabled="memorySavePending">{{ memorySavePending ? '保存中...' : '保存记忆' }}</button>
+            <button class="ghost-btn" type="button" :disabled="memorySavePending" @click="cancelMemoryEdit">取消</button>
           </div>
           </form>
           <LoadingSkeleton v-if="memoryLoading && !memoryList.length" variant="list" :count="4" label="正在读取记忆" />

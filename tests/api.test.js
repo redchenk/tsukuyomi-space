@@ -28,7 +28,8 @@ const authState = require('../backend/services/auth-state');
 const { ROOM_SYSTEM_PROMPT, buildChatPayload, createChatCompletion, isOllamaChatUrl, normalizeChatUrl } = require('../backend/services/llm');
 const { createEmbedding } = require('../backend/services/room-embedding');
 const { requireUserId, similarity } = require('../backend/services/room-memory');
-const { scopeFilter, truncateUtf8 } = require('../backend/services/room-milvus-store');
+const milvusStore = require('../backend/services/room-milvus-store');
+const { scopeFilter, truncateUtf8 } = milvusStore;
 const objectStorage = require('../backend/services/object-storage');
 const friendLinkAvatarService = require('../backend/services/friend-link-avatar');
 const friendLinkMonitorService = require('../backend/services/friend-link-monitor');
@@ -2608,6 +2609,84 @@ describe('room memory API', () => {
             const secondDetail = await request(`/api/room/memory/${second.body.data.id}`, { headers: jsonHeaders(userToken) });
             assert.equal(secondDetail.body.data.content, secondContent);
         } finally {
+            await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
+        }
+    });
+
+    it('preserves edited paragraphs and zero-valued scores across partial edits', async () => {
+        try {
+            const created = await postJson('/api/room/memory', {
+                type: 'project', summary: '画室安排', content: '请记住画室的长期安排。', force: true
+            }, userToken);
+            assert.equal(created.response.status, 201);
+            const id = created.body.data.id;
+            const content = '    第一段：周一整理画具。\n\n  第二段：周五检查  颜料库存。\n';
+            const edited = await request(`/api/room/memory/${id}`, {
+                method: 'PATCH', headers: jsonHeaders(userToken),
+                body: JSON.stringify({ content, importance: 0, confidence: 0, tags: [] })
+            });
+            assert.equal(edited.response.status, 200);
+            assert.equal(edited.body.data.content, content);
+            assert.equal(edited.body.data.importance, 0);
+            assert.equal(edited.body.data.confidence, 0);
+            assert.deepEqual(edited.body.data.tags, []);
+
+            const partial = await request(`/api/room/memory/${id}`, {
+                method: 'PATCH', headers: jsonHeaders(userToken),
+                body: JSON.stringify({ summary: '画室  长期安排' })
+            });
+            assert.equal(partial.response.status, 200);
+            assert.equal(partial.body.data.summary, '画室  长期安排');
+            assert.equal(partial.body.data.content, content);
+            assert.equal(partial.body.data.importance, 0);
+            assert.equal(partial.body.data.confidence, 0);
+            assert.equal((await request(`/api/room/memory/${id}`, { headers: jsonHeaders(userToken) })).body.data.content, content);
+
+            const blank = await request(`/api/room/memory/${id}`, {
+                method: 'PATCH', headers: jsonHeaders(userToken),
+                body: JSON.stringify({ content: '  \n  ' })
+            });
+            assert.equal(blank.response.status, 400);
+            assert.equal((await request(`/api/room/memory/${id}`, { headers: jsonHeaders(userToken) })).body.data.content, content);
+        } finally {
+            await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
+        }
+    });
+
+    it('acknowledges a persisted edit without waiting for optional vector sync', async () => {
+        const originalStatus = milvusStore.status;
+        const originalUpsert = milvusStore.upsertUserMemory;
+        let releaseSync;
+        let timeout;
+        try {
+            const created = await postJson('/api/room/memory', {
+                type: 'project', summary: '月光计划', content: '请记住月光计划的安排。', force: true
+            }, userToken);
+            assert.equal(created.response.status, 201);
+            const id = created.body.data.id;
+            milvusStore.status = () => ({ ...originalStatus(), enabled: true });
+            milvusStore.upsertUserMemory = () => new Promise((resolve) => { releaseSync = resolve; });
+
+            const updated = await Promise.race([
+                request(`/api/room/memory/${id}`, {
+                    method: 'PATCH', headers: jsonHeaders(userToken),
+                    body: JSON.stringify({ content: '第一段：整理记录。\n\n第二段：确认完成。' })
+                }),
+                new Promise((_, reject) => {
+                    timeout = setTimeout(() => reject(new Error('PATCH waited for optional vector sync')), 1500);
+                })
+            ]);
+            clearTimeout(timeout);
+            assert.equal(updated.response.status, 200);
+            assert.equal(updated.body.data.content, '第一段：整理记录。\n\n第二段：确认完成。');
+            assert.equal(updated.body.data.vectorPending, true);
+            assert.equal(db.prepare('SELECT content FROM room_memories WHERE id = ?').get(id).content, updated.body.data.content);
+            assert.equal(db.prepare('SELECT vector_synced_at FROM room_memories WHERE id = ?').get(id).vector_synced_at, null);
+        } finally {
+            clearTimeout(timeout);
+            releaseSync?.(false);
+            milvusStore.status = originalStatus;
+            milvusStore.upsertUserMemory = originalUpsert;
             await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
         }
     });
