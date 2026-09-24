@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TsIcon from '../TsIcon.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
 import { isEnglishSite } from '../../utils/siteVariant';
@@ -12,6 +12,11 @@ const props = defineProps({
 const emit = defineEmits(['close', 'focus', 'drag-start', 'share', 'growth', 'open-diary']);
 const imageInputRef = ref(null);
 const transcriptRef = ref(null);
+const composerRef = ref(null);
+const editingMessageId = ref('');
+const editDraft = ref('');
+const editSubmitting = ref(false);
+const editError = ref('');
 let transcriptObserver;
 let followingLatestMessage = true;
 
@@ -28,6 +33,7 @@ function rememberTranscriptPosition() {
 onMounted(() => {
   // Keep the newest reply in view when the keyboard or stage changes height,
   // while preserving the position of someone reading earlier messages.
+  if (typeof ResizeObserver === 'undefined') return;
   transcriptObserver = new ResizeObserver(() => {
     const node = transcriptRef.value;
     if (node && followingLatestMessage && hasConversation.value) node.scrollTop = node.scrollHeight;
@@ -35,6 +41,90 @@ onMounted(() => {
   if (transcriptRef.value) transcriptObserver.observe(transcriptRef.value);
 });
 onBeforeUnmount(() => transcriptObserver?.disconnect());
+
+const generationState = computed(() => props.chat.generationState?.value || { status: 'idle', error: '' });
+const generationBusy = computed(() => ['preparing', 'streaming', 'saving'].includes(generationState.value.status) || props.chat.sending.value);
+const generationStoppable = computed(() => generationBusy.value && generationState.value.status !== 'saving');
+const generationInterrupted = computed(() => ['error', 'stopped'].includes(generationState.value.status));
+const generationMessage = computed(() => {
+  if (generationState.value.status === 'error') return generationState.value.error || '回复未能完成，请重试。';
+  if (generationState.value.status === 'stopped') return '已停止生成。你可以重试这轮对话。';
+  if (generationState.value.status === 'preparing') return '正在准备回复…';
+  if (generationState.value.status === 'saving') return '正在保存回复…';
+  return '';
+});
+
+function canEditMessage(message) {
+  return !generationBusy.value && typeof props.chat.canEditAndResend === 'function' && props.chat.canEditAndResend(message);
+}
+
+function canRegenerateMessage(message) {
+  return !generationBusy.value && typeof props.chat.canRegenerateReply === 'function' && props.chat.canRegenerateReply(message);
+}
+
+function beginEdit(message) {
+  if (!canEditMessage(message)) return;
+  editingMessageId.value = message.id;
+  editDraft.value = message.content || '';
+  editError.value = '';
+  nextTick(() => document.getElementById(`chat-edit-${message.id}`)?.focus());
+}
+
+function cancelEdit() {
+  if (editSubmitting.value) return;
+  editingMessageId.value = '';
+  editDraft.value = '';
+  editError.value = '';
+}
+
+async function submitEdit(message) {
+  const nextText = editDraft.value.trim();
+  if (!nextText || editSubmitting.value || generationBusy.value) return;
+  editSubmitting.value = true;
+  editError.value = '';
+  try {
+    const result = await props.chat.editAndResend(message.id, nextText);
+    if (result !== false) {
+      editingMessageId.value = '';
+      editDraft.value = '';
+    } else {
+      editError.value = '未能重发，请检查连接后再试。';
+    }
+  } catch (error) {
+    editError.value = error?.message || '未能重发，请检查连接后再试。';
+  } finally {
+    editSubmitting.value = false;
+  }
+}
+
+function handleEditKeydown(event, message) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    cancelEdit();
+  } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.isComposing) {
+    event.preventDefault();
+    submitEdit(message);
+  }
+}
+
+function resizeComposer() {
+  const node = composerRef.value;
+  if (!node) return;
+  node.style.height = 'auto';
+  node.style.height = `${Math.min(node.scrollHeight, 112)}px`;
+}
+
+function handleComposerKeydown(event) {
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229 || event.shiftKey) return;
+  event.preventDefault();
+  if (!generationBusy.value && !generationInterrupted.value && !props.chat.resetting.value && !endChatBusy.value) props.chat.send();
+}
+
+watch(() => props.chat.input.value, () => nextTick(resizeComposer));
+watch(() => props.chat.messages.value.map((message) => message.id), (ids) => {
+  if (editingMessageId.value && !ids.includes(editingMessageId.value)) cancelEdit();
+});
+onMounted(() => nextTick(resizeComposer));
 
 const endChat = computed(() => props.chat.endChatState?.value || { status: 'idle', visible: false });
 const endChatBusy = computed(() => endChat.value.status === 'generating');
@@ -155,7 +245,7 @@ function endChatStatusLabel() {
           <button
             class="chat-session-new-btn"
             type="button"
-            :disabled="chat.resetting.value || endChatBusy"
+            :disabled="generationBusy || chat.resetting.value || endChatBusy"
             :aria-busy="chat.resetting.value"
             title="新建会话"
             aria-label="新建会话"
@@ -166,20 +256,45 @@ function endChatStatusLabel() {
           </button>
         </div>
       </div>
-      <div id="chatMessages" :ref="bindTranscript" class="room-chat-messages" :aria-busy="chat.sending.value" @scroll.passive="rememberTranscriptPosition">
+      <div id="chatMessages" :ref="bindTranscript" class="room-chat-messages" :aria-busy="generationBusy" @scroll.passive="rememberTranscriptPosition">
         <div v-if="!hasConversation" class="room-chat-welcome">
           <TsIcon name="message" :size="23" />
           <strong>这一刻，慢慢聊</strong>
           <p>今天的小事、想说的话，都可以留在这里。</p>
         </div>
-        <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="message.role" :aria-busy="message.pending || undefined">
+        <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="[message.role, { 'is-failed': message.failed, 'is-streaming': message.pending }]" :aria-busy="message.pending || undefined">
           <span class="chat-role">{{ message.role === 'assistant' ? characterName : message.role === 'user' ? '你' : '系统' }}</span>
           <img v-if="message.image?.dataUrl" class="chat-image-thumb" :src="message.image.dataUrl" :alt="message.image.name || 'image'">
-          <StatusLoader v-if="message.pending" :label="message.content" compact />
-          <div v-else class="chat-content">{{ message.content }}</div>
+          <template v-if="editingMessageId === message.id">
+            <label class="chat-edit-label" :for="`chat-edit-${message.id}`">修改这条消息</label>
+            <textarea
+              :id="`chat-edit-${message.id}`"
+              v-model="editDraft"
+              class="chat-edit-input"
+              rows="3"
+              :disabled="editSubmitting"
+              @keydown="handleEditKeydown($event, message)"
+            ></textarea>
+            <p v-if="editError" class="chat-edit-error" role="alert">{{ editError }}</p>
+            <div class="chat-edit-actions">
+              <button class="chat-tts-btn" type="button" :disabled="editSubmitting || !editDraft.trim()" @click="submitEdit(message)">保存并重发</button>
+              <button class="chat-tts-btn" type="button" :disabled="editSubmitting" @click="cancelEdit">取消</button>
+            </div>
+          </template>
+          <template v-else>
+            <StatusLoader v-if="message.pending && !message.content" label="正在回应…" compact />
+            <div v-else class="chat-content">{{ message.content }}</div>
+            <span v-if="message.pending && message.content" class="chat-stream-marker" role="status" aria-label="正在生成回复"></span>
+          </template>
           <div class="chat-message-footer">
             <time v-if="message.role !== 'system' && !message.pending && messageTime(message.createdAt)" class="chat-message-time">{{ messageTime(message.createdAt) }}</time>
+            <div v-if="message.role === 'user' && !message.pending && editingMessageId !== message.id" class="chat-message-actions">
+              <span v-if="message.failed" class="chat-message-failed">未送达</span>
+              <button v-if="canEditMessage(message)" class="chat-tts-btn" type="button" :aria-label="'编辑并重发这条消息'" @click="beginEdit(message)">编辑重发</button>
+              <button v-if="message.failed && !generationBusy" class="chat-tts-btn" type="button" @click="chat.retryLastTurn()">重试</button>
+            </div>
             <div v-if="message.role === 'assistant' && !message.pending" class="chat-message-actions">
+              <button v-if="canRegenerateMessage(message)" class="chat-tts-btn" type="button" @click="chat.regenerateReply(message.id)">重新生成</button>
               <button
                 class="chat-tts-btn"
                 :class="{ loading: ttsStatus(chat, message.id) === 'loading', playing: ttsStatus(chat, message.id) === 'playing' }"
@@ -204,6 +319,12 @@ function endChatStatusLabel() {
             </div>
           </div>
         </div>
+        <div v-if="generationInterrupted" class="chat-generation-notice" :class="generationState.status" :role="generationState.status === 'error' ? 'alert' : 'status'">
+          <span>{{ generationMessage }} 请重试或放弃后再发送新消息。</span>
+          <button class="chat-tts-btn" type="button" :disabled="generationBusy" @click="chat.retryLastTurn()">重试这轮</button>
+          <button class="chat-tts-btn" type="button" :disabled="generationBusy" @click="chat.discardFailedTurn()">放弃这轮</button>
+        </div>
+        <div v-else-if="generationState.status === 'preparing' && !chat.messages.value.some((message) => message.pending)" class="chat-generation-notice preparing" role="status">{{ generationMessage }}</div>
       </div>
       <div v-if="!hasConversation" class="room-chat-suggestions" aria-label="聊天开场建议">
         <button v-for="message in quickMessages" :key="message" type="button" @click="useQuickMessage(message)">{{ message }}</button>
@@ -219,10 +340,15 @@ function endChatStatusLabel() {
           <TsIcon name="image" :size="22" :stroke-width="2" />
           <span>&#22270;&#29255;</span>
         </button>
-        <input id="chatInput" v-model="chat.input.value" type="text" :aria-label="englishRoom ? 'Message' : '输入消息'" enterkeyhint="send" :placeholder="englishRoom ? 'Message, Enter to send' : '输入消息，Enter 发送'" @keydown.enter="!$event.isComposing && $event.keyCode !== 229 && chat.send()">
-        <button id="sendChatBtn" class="panel-btn" type="button" :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :aria-busy="chat.sending.value" aria-label="&#21457;&#36865;" @click="chat.send">
+        <textarea id="chatInput" ref="composerRef" v-model="chat.input.value" rows="1" :aria-label="englishRoom ? 'Message' : '输入消息'" enterkeyhint="send" :placeholder="englishRoom ? 'Message, Enter to send' : '输入消息，Enter 发送；Shift+Enter 换行'" @keydown="handleComposerKeydown"></textarea>
+        <button v-if="generationStoppable" id="stopChatBtn" class="panel-btn chat-stop-btn" type="button" aria-label="停止生成" title="停止生成" @click="chat.stopGeneration()">
+          <span class="chat-stop-icon" aria-hidden="true"></span>
+          <span>停止</span>
+        </button>
+        <button v-else-if="generationBusy" class="panel-btn chat-stop-btn" type="button" disabled aria-label="正在保存回复"><TsIcon name="loader" :size="20" class="ts-status-loader-icon" /><span>保存中</span></button>
+        <button v-else id="sendChatBtn" class="panel-btn" type="button" :disabled="generationInterrupted || chat.resetting.value || endChatBusy || (!chat.input.value.trim() && !chat.imageAttachment.value)" aria-label="发送" @click="chat.send">
           <TsIcon name="send" :size="22" :stroke-width="2.1" />
-          <span>&#21457;&#36865;</span>
+          <span>发送</span>
         </button>
       </div>
       <div class="chat-end-row">

@@ -6,19 +6,53 @@ const LEGACY_HISTORY_KEY = 'roomChatHistory';
 const LEGACY_MIGRATED_KEY = 'roomChatHistory:migrated';
 const MAX_HISTORY_MESSAGES = 24;
 const inFlightTurns = new Map();
+const scheduledTurns = new Map();
+const saveQueues = new Map();
+const saveEpochs = new Map();
 
 function currentUserId() {
   return String(getSession()?.user?.id || '').trim();
 }
 
-function historyKey() {
-  const userId = currentUserId();
+function historyKey(userId = currentUserId()) {
   return userId ? `roomChatHistory:${userId}` : 'roomChatHistory:guest';
 }
 
-function pendingKey() {
-  const userId = currentUserId();
+function pendingKey(userId = currentUserId()) {
   return userId ? `roomChatPending:${userId}` : 'roomChatPending:guest';
+}
+
+function generationDraftKey() {
+  const userId = currentUserId();
+  return userId ? `roomChatGeneration:${userId}` : 'roomChatGeneration:guest';
+}
+
+export function readRoomGenerationDraft() {
+  try {
+    const draft = JSON.parse(localStorage.getItem(generationDraftKey()));
+    if (!draft?.turnId || typeof draft.message !== 'string') return null;
+    return draft;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function writeRoomGenerationDraft(draft) {
+  const image = draft?.image && String(draft.image.dataUrl || '').length <= 750_000
+    ? draft.image
+    : draft?.image ? { name: draft.image.name || 'image', unavailable: true } : null;
+  const value = { turnId: draft.turnId, message: String(draft.message || ''), opener: draft.opener === true, image, createdAt: Date.now() };
+  try {
+    localStorage.setItem(generationDraftKey(), JSON.stringify(value));
+  } catch (_) {
+    // The user can still retry in the current tab if storage is full.
+    try { localStorage.setItem(generationDraftKey(), JSON.stringify({ ...value, image: image ? { name: image.name, unavailable: true } : null })); } catch (_) {}
+  }
+}
+
+export function clearRoomGenerationDraft(turnId = '') {
+  if (turnId && readRoomGenerationDraft()?.turnId !== turnId) return;
+  localStorage.removeItem(generationDraftKey());
 }
 
 function resetKey() {
@@ -39,6 +73,27 @@ function normalizeHistory(messages) {
     }))
     .filter((message) => message.content)
     .slice(-MAX_HISTORY_MESSAGES);
+}
+
+function accountChanged() {
+  return new Error('登录账号已切换，请重新载入当前会话');
+}
+
+function requireSameAccount(userId) {
+  if (currentUserId() !== userId) throw accountChanged();
+}
+
+function requireCurrentSession(userId, epoch) {
+  requireSameAccount(userId);
+  if (saveEpoch(userId) !== epoch) throw new Error('会话已清空，旧请求不会覆盖新会话');
+}
+
+function saveEpoch(userId) {
+  return saveEpochs.get(userId) || 0;
+}
+
+function turnKey(userId, turnId) {
+  return `${userId}:${turnId}`;
 }
 
 function readStoredHistory(key) {
@@ -68,29 +123,32 @@ export function writeRoomConversation(messages) {
   return history;
 }
 
-function readPendingTurns() {
+function readPendingTurns(userId = currentUserId()) {
   try {
-    const turns = JSON.parse(localStorage.getItem(pendingKey()));
+    const turns = JSON.parse(localStorage.getItem(pendingKey(userId)));
     return Array.isArray(turns) ? turns.filter((turn) => turn?.turnId).slice(-20) : [];
   } catch (_) {
     return [];
   }
 }
 
-function queuePendingTurn(turn) {
-  const turns = readPendingTurns().filter((item) => item.turnId !== turn.turnId);
+function queuePendingTurn(turn, userId = currentUserId()) {
+  const turns = readPendingTurns(userId).filter((item) => item.turnId !== turn.turnId);
   turns.push(turn);
-  localStorage.setItem(pendingKey(), JSON.stringify(turns.slice(-20)));
+  localStorage.setItem(pendingKey(userId), JSON.stringify(turns.slice(-20)));
 }
 
-function removePendingTurn(turnId) {
-  const turns = readPendingTurns().filter((turn) => turn.turnId !== turnId);
-  if (turns.length) localStorage.setItem(pendingKey(), JSON.stringify(turns));
-  else localStorage.removeItem(pendingKey());
+function removePendingTurn(turnId, userId = currentUserId()) {
+  const turns = readPendingTurns(userId).filter((turn) => turn.turnId !== turnId);
+  if (turns.length) localStorage.setItem(pendingKey(userId), JSON.stringify(turns));
+  else localStorage.removeItem(pendingKey(userId));
 }
 
-async function postConversationTurn(turn) {
-  const existing = inFlightTurns.get(turn.turnId);
+async function postConversationTurn(turn, userId, epoch) {
+  requireSameAccount(userId);
+  if (saveEpoch(userId) !== epoch) throw new Error('会话已清空，旧消息不会重新发送');
+  const key = turnKey(userId, turn.turnId);
+  const existing = inFlightTurns.get(key);
   if (existing) return existing.promise;
 
   const controller = new AbortController();
@@ -103,37 +161,75 @@ async function postConversationTurn(turn) {
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
-    if (result.growth) applyGrowthResult(result.growth);
-    removePendingTurn(turn.turnId);
+    if (saveEpoch(userId) !== epoch) throw new Error('会话已清空，旧消息不会重新发送');
+    if (currentUserId() === userId && result.growth) applyGrowthResult(result.growth);
+    removePendingTurn(turn.turnId, userId);
     return normalizeHistory(result.data);
   })();
 
   const pending = { controller, promise: request };
-  inFlightTurns.set(turn.turnId, pending);
+  inFlightTurns.set(key, pending);
   try {
     return await request;
   } finally {
-    if (inFlightTurns.get(turn.turnId) === pending) inFlightTurns.delete(turn.turnId);
+    if (inFlightTurns.get(key) === pending) inFlightTurns.delete(key);
   }
 }
 
-async function flushPendingTurns() {
+function scheduleTurnSave(turn, userId) {
+  const key = turnKey(userId, turn.turnId);
+  if (scheduledTurns.has(key)) return scheduledTurns.get(key);
+  const epoch = saveEpoch(userId);
+  const previous = saveQueues.get(userId) || Promise.resolve();
+  // A turn can finish generating while the previous turn is still being saved.
+  // Send them in order so the server row order matches the visible conversation.
+  const request = previous.catch(() => {}).then(() => postConversationTurn(turn, userId, epoch));
+  const settled = request.catch(() => {});
+  saveQueues.set(userId, settled);
+  scheduledTurns.set(key, request);
+  request.then(() => {
+    if (scheduledTurns.get(key) === request) scheduledTurns.delete(key);
+  }, () => {
+    if (scheduledTurns.get(key) === request) scheduledTurns.delete(key);
+  });
+  return request;
+}
+
+function applySavedHistory(userId, serverHistory, preserveTurnIds = new Set()) {
+  requireSameAccount(userId);
+  const saved = normalizeHistory(serverHistory);
+  const savedTurns = new Set(saved.map((item) => item.turnId));
+  const pendingTurns = new Set(readPendingTurns(userId).map((turn) => turn.turnId));
+  const localOnly = readStoredHistory(historyKey(userId)).filter((item) => (
+    item.turnId && (preserveTurnIds.has(item.turnId) || (pendingTurns.has(item.turnId) && !savedTurns.has(item.turnId)))
+  ));
+  const history = normalizeHistory([...saved.filter((item) => !preserveTurnIds.has(item.turnId)), ...localOnly]);
+  localStorage.setItem(historyKey(userId), JSON.stringify(history));
+  return history;
+}
+
+async function flushPendingTurns(userId = currentUserId()) {
   let history = null;
-  for (const turn of readPendingTurns()) history = await postConversationTurn(turn);
+  for (const turn of readPendingTurns(userId)) history = await scheduleTurnSave(turn, userId);
   return history;
 }
 
 export async function loadRoomConversation() {
+  const userId = currentUserId();
+  const epoch = saveEpoch(userId);
   const localHistory = readRoomConversation();
-  if (!currentUserId()) return localHistory;
+  if (!userId) return localHistory;
 
-  await flushPendingTurns();
+  await flushPendingTurns(userId);
+  requireCurrentSession(userId, epoch);
+  const historyAtRequest = readStoredHistory(historyKey(userId));
 
   const response = await authFetch(noStoreUrl('/api/room/chat?limit=24'), {
     headers: authHeaders({ Accept: 'application/json' }),
     cache: 'no-store'
   });
   const result = await parseResponse(response);
+  requireCurrentSession(userId, epoch);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
 
   let history = normalizeHistory(result.data);
@@ -144,26 +240,81 @@ export async function loadRoomConversation() {
       body: JSON.stringify({ messages: localHistory })
     });
     const imported = await parseResponse(importResponse);
+    requireCurrentSession(userId, epoch);
     if (!importResponse.ok || !imported.success) {
       throw new Error(imported.message || `HTTP ${importResponse.status}`);
     }
     history = normalizeHistory(imported.data);
   }
-  return writeRoomConversation(history);
+  // A GET can start before a newly generated turn and finish after its POST.
+  // Preserve turns created or edited during that request even when their outbox
+  // entry has already been acknowledged and removed.
+  const preserved = new Set(readStoredHistory(historyKey(userId))
+    .filter((item) => !historyAtRequest.some((before) => (
+      before.turnId === item.turnId && before.role === item.role && before.content === item.content
+    )))
+    .map((item) => item.turnId).filter(Boolean));
+  return applySavedHistory(userId, history, preserved);
 }
 
 export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, opener = false }) {
-  if (!currentUserId()) return readRoomConversation();
+  const userId = currentUserId();
+  if (!userId) return readRoomConversation();
   const turn = { turnId, userMessage, assistantMessage, ...(opener ? { opener: true } : {}) };
-  queuePendingTurn(turn);
-  return writeRoomConversation(await postConversationTurn(turn));
+  queuePendingTurn(turn, userId);
+  // A previously failed turn must be retried before this new one. The outbox
+  // order is the conversation order, including after an offline interruption.
+  return applySavedHistory(userId, await flushPendingTurns(userId));
+}
+
+/** Replace only the most recent complete turn, leaving earlier history intact. */
+export async function replaceRoomConversationTurn({ turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage }) {
+  const userId = currentUserId();
+  const epoch = saveEpoch(userId);
+  const history = readRoomConversation();
+  const matching = history.filter((item) => item.turnId === turnId);
+  const lastTurnId = history.at(-1)?.turnId;
+  if (!turnId || lastTurnId !== turnId || !matching.some((item) => item.role === 'assistant')) {
+    throw new Error('只能修改当前会话最后一轮对话');
+  }
+  const previousUser = matching.find((item) => item.role === 'user')?.content || '';
+  const previousAssistant = matching.find((item) => item.role === 'assistant')?.content || '';
+  if (previousUser !== expectedUserMessage || previousAssistant !== expectedAssistantMessage) {
+    throw new Error('对话已在其他设备更新，请刷新后重试');
+  }
+  let next = history.map((item) => item.turnId !== turnId ? item : {
+    ...item,
+    content: item.role === 'user' ? userMessage : assistantMessage
+  });
+  if (userId) {
+    // A newly generated turn may still be in the durable local outbox. Wait for
+    // that save before replacing it, rather than racing the two requests.
+    await flushPendingTurns(userId);
+    requireCurrentSession(userId, epoch);
+    const response = await authFetch(`/api/room/chat/turn/${encodeURIComponent(turnId)}`, {
+      method: 'PUT',
+      headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
+      body: JSON.stringify({ expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage })
+    });
+    const result = await parseResponse(response);
+    requireCurrentSession(userId, epoch);
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    next = normalizeHistory(result.data);
+  }
+  return userId ? applySavedHistory(userId, next) : writeRoomConversation(next);
 }
 
 export function clearLocalRoomConversation({ broadcast = false } = {}) {
-  for (const pending of inFlightTurns.values()) pending.controller.abort();
-  inFlightTurns.clear();
+  const userId = currentUserId();
+  saveEpochs.set(userId, saveEpoch(userId) + 1);
+  for (const [key, pending] of inFlightTurns) {
+    if (!key.startsWith(`${userId}:`)) continue;
+    pending.controller.abort();
+    inFlightTurns.delete(key);
+  }
   localStorage.removeItem(historyKey());
   localStorage.removeItem(pendingKey());
+  clearRoomGenerationDraft();
   localStorage.removeItem(LEGACY_HISTORY_KEY);
   localStorage.setItem(LEGACY_MIGRATED_KEY, '1');
   if (broadcast) {
@@ -173,10 +324,15 @@ export function clearLocalRoomConversation({ broadcast = false } = {}) {
 }
 
 export async function clearRoomConversation() {
-  const authenticated = Boolean(currentUserId());
-  const pendingRequests = [...inFlightTurns.values()].map(({ promise }) => promise);
-  for (const pending of inFlightTurns.values()) pending.controller.abort();
-  await Promise.allSettled(pendingRequests);
+  const userId = currentUserId();
+  const authenticated = Boolean(userId);
+  saveEpochs.set(userId, saveEpoch(userId) + 1);
+  const pendingRequests = [...inFlightTurns].filter(([key]) => key.startsWith(`${userId}:`)).map(([, pending]) => pending.promise);
+  for (const [key, pending] of inFlightTurns) {
+    if (key.startsWith(`${userId}:`)) pending.controller.abort();
+  }
+  await Promise.allSettled([...pendingRequests, saveQueues.get(userId)]);
+  requireSameAccount(userId);
   if (!authenticated) {
     clearLocalRoomConversation({ broadcast: true });
     return { deletedCount: 0 };
@@ -187,6 +343,7 @@ export async function clearRoomConversation() {
     headers: authHeaders({ Accept: 'application/json' })
   });
   const result = await parseResponse(response);
+  requireSameAccount(userId);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
   clearLocalRoomConversation({ broadcast: true });
   return result.data || { deletedCount: 0 };

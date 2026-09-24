@@ -19,8 +19,9 @@ async function setup(overrides = {}) {
   const context = {
     console, Date, URL, AbortController,
     ref: (value) => ({ value }), nextTick: (fn) => Promise.resolve().then(fn),
+    selectRecentRoomConversation: (messages) => messages,
     isEnglishSite: () => false,
-    window: { addEventListener() {}, removeEventListener() {}, confirm: () => true },
+    window: { addEventListener() {}, removeEventListener() {}, confirm: () => true, setTimeout, clearTimeout },
     startRoomMemorySync: () => () => {},
     startRoomConversationUpdates: (fn) => { onUpdate = fn; return () => {}; },
     getCachedGrowth: () => null, loadGrowth: async () => null, GROWTH_UPDATED_EVENT: 'growth',
@@ -28,8 +29,9 @@ async function setup(overrides = {}) {
     readDiaryArchive: () => ({}), activePersonaPrompt: () => ({ data: { name: 'Aoi' } }),
     diaryArchiveKey: () => 'guest',
     readRoomConversation: () => [{ role: 'user', content: 'old' }],
+    readRoomGenerationDraft: () => null, writeRoomGenerationDraft() {}, clearRoomGenerationDraft() {},
     loadRoomConversation: async () => [{ role: 'user', content: 'old' }],
-    writeRoomConversation() {}, saveRoomConversationTurn: async () => {}, clearLocalRoomConversation() {},
+    writeRoomConversation() {}, saveRoomConversationTurn: async () => {}, replaceRoomConversationTurn: async () => {}, clearLocalRoomConversation() {},
     clearRoomConversation: async () => { clearCount++; },
     readJson: (key, fallback) => key === 'roomMemorySettings' ? { enabled: false } : fallback,
     releaseAsyncAudioPlayback() {}, dispatchRoomLive2D() {}, dispatchRoomLive2DExpression() {},
@@ -47,11 +49,19 @@ async function setup(overrides = {}) {
     diaryTimestampLabel: () => 'today',
     ...overrides
   };
-  vm.runInNewContext(code + '\nbuildRoomContext = async () => ""; globalThis.chat = useRoomChat({}); globalThis.tts = cleanTtsText;', context);
+  vm.runInNewContext(code + '\nbuildRoomContext = async () => ""; globalThis.chat = useRoomChat({}); globalThis.tts = cleanTtsText; globalThis.streamingVisible = streamingVisibleText;', context);
   await tick();
   return { chat: context.chat, context, saved, requests, sync: () => onUpdate({}), clearCount: () => clearCount };
 }
 async function send(chat, text) { chat.input.value = text; await chat.send(); await tick(); }
+
+test('streaming display never exposes unfinished model reasoning or a half-written JSON wrapper', async () => {
+  const h = await setup();
+  assert.equal(h.context.streamingVisible('你好<think>internal reasoning'), '你好');
+  assert.equal(h.context.streamingVisible('你好<think>internal</think>，我在'), '你好，我在');
+  assert.equal(h.context.streamingVisible('{"reply":"你好'), '');
+  h.chat.destroy();
+});
 
 test('a TTS-enabled reply shows its expression without starting a body act before playback', async () => {
   const face = [];
@@ -203,4 +213,218 @@ test('switching accounts while generating cannot save a diary to the new account
   assert.equal(h.clearCount(), 0);
   assert.equal(h.chat.endChatState.value.status, 'idle');
   h.chat.destroy();
+});
+
+test('a failed Room reply retains the original message and retry saves exactly one turn', async () => {
+  let attempts = 0;
+  const saved = [];
+  let history = [];
+  const h = await setup({
+    readRoomConversation: () => history,
+    loadRoomConversation: async () => history,
+    writeRoomConversation: (value) => { history = value; },
+    saveRoomConversationTurn: async (value) => { saved.push(value); }
+  });
+  h.context.requestRoomReply = async ({ onDelta }) => {
+    attempts++;
+    if (attempts === 1) throw new Error('offline');
+    onDelta('恢复成功');
+    return { reply: '恢复成功' };
+  };
+  h.chat.input.value = '请记住这句话';
+  assert.equal(await h.chat.send(), false);
+  const user = h.chat.messages.value.find(item => item.role === 'user');
+  assert.equal(user.content, '请记住这句话');
+  assert.equal(user.failed, true);
+  assert.equal(h.chat.generationState.value.status, 'error');
+  assert.equal(saved.length, 0);
+  assert.equal(await h.chat.retryLastTurn(), true);
+  assert.equal(h.chat.messages.value.filter(item => item.role === 'user').length, 1);
+  assert.equal(h.chat.messages.value.find(item => item.role === 'assistant').content, '恢复成功');
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].turnId, user.turnId);
+  h.chat.destroy();
+});
+
+test('stopping generation aborts the response and never saves a late completion', async () => {
+  const delayed = deferred();
+  const saved = [];
+  const h = await setup({
+    readRoomConversation: () => [], loadRoomConversation: async () => [],
+    saveRoomConversationTurn: async (turn) => saved.push(turn)
+  });
+  h.context.requestRoomReply = async ({ onDelta, signal }) => {
+    onDelta('半句');
+    await delayed.promise;
+    assert.equal(signal.aborted, true);
+    return { reply: '半句后继续' };
+  };
+  h.chat.input.value = '停止测试';
+  const pending = h.chat.send();
+  await tick();
+  assert.equal(h.chat.generationState.value.status, 'streaming');
+  assert.equal(h.chat.stopGeneration(), true);
+  delayed.resolve();
+  assert.equal(await pending, false);
+  assert.equal(saved.length, 0);
+  assert.equal(h.chat.messages.value.some(item => item.role === 'assistant'), false);
+  assert.equal(h.chat.messages.value.find(item => item.role === 'user').failed, true);
+  h.chat.destroy();
+});
+
+test('editing the latest complete turn replaces it only after server confirmation', async () => {
+  let history = [
+    { id: 'u1', turnId: 'turn-0001', role: 'user', content: '旧问题' },
+    { id: 'a1', turnId: 'turn-0001', role: 'assistant', content: '旧答案' }
+  ];
+  const replacements = [];
+  const h = await setup({
+    readRoomConversation: () => history,
+    loadRoomConversation: async () => history,
+    replaceRoomConversationTurn: async (replacement) => {
+      replacements.push(replacement);
+      history = history.map(item => item.role === 'user' ? { ...item, content: replacement.userMessage } : { ...item, content: replacement.assistantMessage });
+    }
+  });
+  h.context.requestRoomReply = async ({ onDelta }) => { onDelta('新答案'); return { reply: '新答案' }; };
+  const user = h.chat.messages.value.find(item => item.role === 'user');
+  assert.equal(h.chat.canEditAndResend(user), true);
+  assert.equal(await h.chat.editAndResend(user.id, '新问题'), true);
+  assert.equal(replacements.length, 1);
+  assert.equal(replacements[0].expectedAssistantMessage, '旧答案');
+  assert.equal(h.chat.messages.value.filter(item => item.role === 'assistant').map(item => item.content).join('|'), '新答案');
+  assert.equal(h.chat.messages.value.find(item => item.role === 'user').content, '新问题');
+  h.chat.destroy();
+});
+
+test('refresh restores an unfinished text turn and clears its draft after retry succeeds', async () => {
+  let draft = { turnId: 'draft-0001', message: '刷新前未完成', opener: false, image: null, createdAt: Date.now() };
+  let history = [];
+  const h = await setup({
+    readRoomGenerationDraft: () => draft,
+    clearRoomGenerationDraft: () => { draft = null; },
+    readRoomConversation: () => history,
+    loadRoomConversation: async () => history,
+    writeRoomConversation: (value) => { history = value; }
+  });
+  const restored = h.chat.messages.value.find(item => item.role === 'user');
+  assert.equal(restored.content, '刷新前未完成');
+  assert.equal(restored.failed, true);
+  h.context.requestRoomReply = async ({ onDelta }) => { onDelta('已经恢复'); return { reply: '已经恢复' }; };
+  assert.equal(await h.chat.retryLastTurn(), true);
+  assert.equal(draft, null);
+  assert.equal(h.chat.messages.value.filter(item => item.role === 'user').length, 1);
+  assert.equal(history.at(-1).content, '已经恢复');
+  h.chat.destroy();
+});
+
+function conversationSyncHarness(authFetch) {
+  const source = fs.readFileSync('src/frontend/services/room/roomConversationSync.js', 'utf8')
+    .replace(/^import .*;$/gm, '')
+    .replace(/^export /gm, '');
+  const storage = new Map();
+  const localStorage = {
+    getItem: key => storage.has(key) ? storage.get(key) : null,
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: key => storage.delete(key)
+  };
+  let account = 'account-a';
+  const context = {
+    AbortController, console, localStorage, Map, Set,
+    getSession: () => ({ user: { id: account } }),
+    authFetch,
+    authHeaders: value => value,
+    noStoreUrl: value => value,
+    parseResponse: async response => JSON.parse(await response.text()),
+    applyGrowthResult() {},
+    window: { addEventListener() {}, removeEventListener() {} }
+  };
+  vm.runInNewContext(source + '\nglobalThis.sync = { readRoomConversation, writeRoomConversation, saveRoomConversationTurn, loadRoomConversation };', context);
+  return { sync: context.sync, storage, setAccount: value => { account = value; } };
+}
+
+function savedTurn(turnId, userText, assistantText) {
+  return [
+    { id: `u-${turnId}`, turnId, role: 'user', content: userText },
+    { id: `a-${turnId}`, turnId, role: 'assistant', content: assistantText }
+  ];
+}
+
+function successfulHistory(messages) {
+  return {
+    ok: true,
+    status: 201,
+    text: async () => JSON.stringify({ success: true, data: messages })
+  };
+}
+
+test('Room turn sync serializes overlapping saves and retains a newer local turn while the first save settles', async () => {
+  const firstResponse = deferred();
+  const requests = [];
+  const first = savedTurn('turn-0001', '第一问', '第一答');
+  const second = savedTurn('turn-0002', '第二问', '第二答');
+  const h = conversationSyncHarness(async (url, options) => {
+    assert.equal(url, '/api/room/chat/turn');
+    const turn = JSON.parse(options.body);
+    requests.push(turn.turnId);
+    return turn.turnId === 'turn-0001' ? firstResponse.promise : successfulHistory([...first, ...second]);
+  });
+
+  h.sync.writeRoomConversation(first);
+  const savingFirst = h.sync.saveRoomConversationTurn({ turnId: 'turn-0001', userMessage: '第一问', assistantMessage: '第一答' });
+  h.sync.writeRoomConversation([...first, ...second]);
+  const savingSecond = h.sync.saveRoomConversationTurn({ turnId: 'turn-0002', userMessage: '第二问', assistantMessage: '第二答' });
+  await tick();
+  assert.deepEqual(requests, ['turn-0001']);
+
+  firstResponse.resolve(successfulHistory(first));
+  await savingFirst;
+  assert.equal(h.sync.readRoomConversation().at(-1).content, '第二答');
+  await savingSecond;
+  assert.deepEqual(requests, ['turn-0001', 'turn-0002']);
+  assert.equal(h.sync.readRoomConversation().map(item => item.turnId).join(','),
+    'turn-0001,turn-0001,turn-0002,turn-0002');
+});
+
+test('a late Room save cannot write old-account messages into a newly signed-in account', async () => {
+  const firstResponse = deferred();
+  const requests = [];
+  const first = savedTurn('turn-0003', '旧账号问题', '旧账号回答');
+  const queued = savedTurn('turn-0004', '旧账号后续', '旧账号后续回答');
+  const h = conversationSyncHarness(async (url, options) => {
+    requests.push(JSON.parse(options.body).turnId);
+    return firstResponse.promise;
+  });
+
+  h.sync.writeRoomConversation(first);
+  const savingFirst = h.sync.saveRoomConversationTurn({ turnId: 'turn-0003', userMessage: '旧账号问题', assistantMessage: '旧账号回答' });
+  h.sync.writeRoomConversation([...first, ...queued]);
+  const savingQueued = h.sync.saveRoomConversationTurn({ turnId: 'turn-0004', userMessage: '旧账号后续', assistantMessage: '旧账号后续回答' });
+  await tick();
+  h.setAccount('account-b');
+  h.sync.writeRoomConversation(savedTurn('turn-0005', '新账号问题', '新账号回答'));
+  firstResponse.resolve(successfulHistory(first));
+  await assert.rejects(savingFirst, /登录账号已切换/);
+  await assert.rejects(savingQueued, /登录账号已切换/);
+  assert.deepEqual(requests, ['turn-0003']);
+  assert.equal(h.sync.readRoomConversation().at(-1).content, '新账号回答');
+  assert.equal(JSON.parse(h.storage.get('roomChatHistory:account-a')).at(-1).content, '旧账号后续回答');
+});
+
+test('a stale Room history GET does not erase a turn saved while that GET was in flight', async () => {
+  const delayedGet = deferred();
+  const first = savedTurn('turn-0006', '原有问题', '原有回答');
+  const next = savedTurn('turn-0007', '新问题', '新回答');
+  const h = conversationSyncHarness(async (url) => (
+    url.startsWith('/api/room/chat?') ? delayedGet.promise : successfulHistory([...first, ...next])
+  ));
+  h.sync.writeRoomConversation(first);
+  const loading = h.sync.loadRoomConversation();
+  await tick();
+  h.sync.writeRoomConversation([...first, ...next]);
+  await h.sync.saveRoomConversationTurn({ turnId: 'turn-0007', userMessage: '新问题', assistantMessage: '新回答' });
+  delayedGet.resolve(successfulHistory(first));
+  const loaded = await loading;
+  assert.equal(loaded.at(-1).content, '新回答');
+  assert.equal(h.sync.readRoomConversation().at(-1).turnId, 'turn-0007');
 });

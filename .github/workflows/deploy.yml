@@ -163,7 +163,12 @@ jobs:
             test "$(git rev-parse FETCH_HEAD)" = "${{ github.sha }}"
             git -c core.hooksPath=/dev/null merge --ff-only FETCH_HEAD
             install -d -m 0755 "$app/dist/frontend"
-            cp -a "$domestic/." "$app/dist/frontend/"
+            install -d -m 0700 /var/backups/tsukuyomi-space/frontend
+            if [ -f "$app/dist/frontend/index.html" ]; then
+              cp -p "$app/dist/frontend/index.html" "/var/backups/tsukuyomi-space/frontend/domestic-${{ github.run_id }}.html"
+            fi
+            # Keep older hashed assets for rollback and transfer only changed files.
+            rsync -r --checksum "$domestic/" "$app/dist/frontend/"
             INSTALL_NGINX_CONFIG=true HARDEN_OPENRESTY_ORIGIN=true bash deploy/deploy.sh
 
       - name: Deploy overseas site via SSH
@@ -186,4 +191,18 @@ jobs:
             trap 'rm -rf -- "$prebuilt"' EXIT
             test -f "$overseas/index.html" || { echo "Overseas frontend artifact is missing" >&2; exit 1; }
             test -d "$overseas_root" || { echo "Overseas frontend directory is missing" >&2; exit 1; }
-            cp -a "$overseas/." "$overseas_root/"
+            install -d -m 0700 /var/backups/tsukuyomi-space/frontend
+            if [ -f "$overseas_root/index.html" ]; then
+              cp -p "$overseas_root/index.html" "/var/backups/tsukuyomi-space/frontend/overseas-${{ github.run_id }}.html"
+            fi
+            if command -v rsync >/dev/null 2>&1; then
+              rsync -r --checksum "$overseas/" "$overseas_root/"
+            else
+              (cd "$overseas" && find . -type f) | while IFS= read -r relative; do
+                target="$overseas_root/$relative"
+                install -d "$(dirname "$target")"
+                if ! cmp -s "$overseas/$relative" "$target"; then
+                  cp "$overseas/$relative" "$target"
+                fi
+              done
+            fi

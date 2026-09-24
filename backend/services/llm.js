@@ -10,6 +10,8 @@ const CHAT_SYSTEM_PROMPT = [
 
 const ROOM_SYSTEM_PROMPT = '请始终用温柔、从容、克制的中文回应。先接住对方的情绪，再根据问题需要给出完整、有温度的回应。不要人为限制回复长度，不要提及系统设定。';
 const ANTHROPIC_REQUIRED_MAX_TOKENS = Math.max(4096, Number.parseInt(process.env.ROOM_ANTHROPIC_MAX_TOKENS || '16384', 10) || 16384);
+const CHAT_STREAM_TIMEOUT_MS = Math.min(600000, Math.max(1000, Number.parseInt(process.env.CHAT_STREAM_TIMEOUT_MS || '180000', 10) || 180000));
+const MAX_STREAM_EVENT_BYTES = 4 * 1024 * 1024;
 
 const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.moonshot.cn', path: /^\/v1\/chat\/completions\/?$/ },
@@ -354,11 +356,189 @@ async function createChatCompletion({ message, conversation = [], apiKey, apiUrl
     return { reply, model: data.model || useModel };
 }
 
+function streamDelta(data, event = '') {
+    if (!data || typeof data !== 'object') return '';
+    if (event === 'response.output_text.delta' || data.type === 'response.output_text.delta') {
+        return typeof data.delta === 'string' ? data.delta : '';
+    }
+    if (event === 'content_block_delta' || data.type === 'content_block_delta') {
+        return data.delta?.type === 'text_delta' && typeof data.delta.text === 'string' ? data.delta.text : '';
+    }
+    if (Array.isArray(data.choices)) {
+        return data.choices.map(choice => {
+            const content = choice?.delta?.content ?? choice?.delta?.text;
+            if (typeof content === 'string') return content;
+            if (Array.isArray(content)) return content.filter(part => part?.type === 'text').map(part => part.text || '').join('');
+            return '';
+        }).join('');
+    }
+    if (typeof data.message?.content === 'string' && data.done !== true) return data.message.content;
+    if (typeof data.response === 'string' && data.done !== true) return data.response;
+    return '';
+}
+
+function streamUsage(data) {
+    if (data?.usage && typeof data.usage === 'object') return data.usage;
+    if (data?.response?.usage && typeof data.response.usage === 'object') return data.response.usage;
+    if (Number.isFinite(data?.prompt_eval_count) || Number.isFinite(data?.eval_count)) {
+        return {
+            prompt_tokens: data.prompt_eval_count || 0,
+            completion_tokens: data.eval_count || 0
+        };
+    }
+    return null;
+}
+
+function streamError(data, event = '') {
+    const finishReasons = Array.isArray(data?.choices)
+        ? data.choices.map(choice => choice?.finish_reason).filter(Boolean)
+        : [];
+    if (finishReasons.includes('length') || data?.delta?.stop_reason === 'max_tokens'
+        || data?.message?.stop_reason === 'max_tokens' || data?.type === 'response.incomplete') {
+        return new Error('模型输出达到长度上限，回复未保存，请重试');
+    }
+    if (finishReasons.some(reason => ['content_filter', 'tool_calls', 'function_call'].includes(reason))
+        || data?.delta?.stop_reason === 'tool_use' || data?.type === 'response.failed') {
+        return new Error('模型没有完成可显示的回复，请重试');
+    }
+    if (event !== 'error' && data?.type !== 'error' && !data?.error) return null;
+    const detail = data?.error?.message || data?.message;
+    return new Error(typeof detail === 'string' ? detail.slice(0, 300) : '模型流式响应失败');
+}
+
+async function createChatCompletionStream({
+    message, conversation = [], apiKey, apiUrl, model, systemPrompt = CHAT_SYSTEM_PROMPT, image,
+    signal, onDelta = () => {}
+}) {
+    const useApiKey = apiKey || LLM_API_KEY;
+    const useModel = model || LLM_MODEL;
+    const history = Array.isArray(conversation)
+        ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12)
+        : [];
+    const chatUrl = normalizeChatUrl(apiUrl, useModel);
+    if (!useApiKey && !isOllamaChatUrl(chatUrl)) {
+        const reply = fallbackChatReply();
+        if (signal?.aborted) throw signal.reason || new Error('请求已取消');
+        await onDelta(reply);
+        return { reply, model: 'preset' };
+    }
+
+    const controller = new AbortController();
+    const abortFromCaller = () => controller.abort(signal.reason || new Error('请求已取消'));
+    if (signal?.aborted) abortFromCaller();
+    else signal?.addEventListener('abort', abortFromCaller, { once: true });
+    const timeout = setTimeout(() => controller.abort(new Error('模型响应超时')), CHAT_STREAM_TIMEOUT_MS);
+    let reader;
+    try {
+        const payload = { ...buildChatPayload({ chatUrl, model: useModel, systemPrompt, history, message, image }), stream: true };
+        const response = await fetch(chatUrl, {
+            method: 'POST',
+            headers: chatHeaders(chatUrl, useApiKey, useModel),
+            body: JSON.stringify(payload),
+            signal: controller.signal
+        });
+        if (!response.ok) {
+            const error = new Error(`模型请求失败（HTTP ${response.status}）`);
+            error.statusCode = response.status;
+            throw error;
+        }
+        if (!response.body?.getReader) throw new Error('模型没有返回可读取的流');
+
+        reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const isNdjson = isOllamaNativeChatUrl(chatUrl) || /(?:x-ndjson|ndjson)/i.test(response.headers?.get?.('content-type') || '');
+        let buffer = '';
+        let reply = '';
+        let usage = null;
+        let finalModel = useModel;
+        let streamFinished = false;
+
+        const applyPayload = async (data, event) => {
+            if (data === '[DONE]') {
+                streamFinished = true;
+                return;
+            }
+            const parsed = JSON.parse(data);
+            const providerError = streamError(parsed, event);
+            if (providerError) throw providerError;
+            const delta = streamDelta(parsed, event);
+            if (delta) {
+                reply += delta;
+                await onDelta(delta);
+            }
+            usage = streamUsage(parsed) || usage;
+            finalModel = parsed?.model || parsed?.response?.model || finalModel;
+            if (event === 'message_stop' || parsed?.type === 'message_stop'
+                || event === 'response.completed' || parsed?.type === 'response.completed'
+                || (Array.isArray(parsed?.choices) && parsed.choices.some(choice => choice?.finish_reason != null))) {
+                streamFinished = true;
+            }
+            if (!reply && (event === 'response.completed' || parsed?.type === 'response.completed')) {
+                const finalText = pickReply(parsed.response || parsed);
+                if (finalText) {
+                    reply = finalText;
+                    await onDelta(finalText);
+                }
+            }
+            if (parsed?.done === true) streamFinished = true;
+        };
+
+        const applySsePacket = async (packet) => {
+            let event = 'message';
+            const lines = [];
+            for (const line of packet.split(/\r?\n/)) {
+                if (line.startsWith('event:')) event = line.slice(6).trim() || 'message';
+                else if (line.startsWith('data:')) lines.push(line.slice(5).trimStart());
+            }
+            if (lines.length) await applyPayload(lines.join('\n'), event);
+        };
+
+        while (!streamFinished) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            if (isNdjson) {
+                let end;
+                while (!streamFinished && (end = buffer.indexOf('\n')) >= 0) {
+                    const line = buffer.slice(0, end).trim();
+                    buffer = buffer.slice(end + 1);
+                    if (line) await applyPayload(line, 'message');
+                }
+            } else {
+                let boundary;
+                while (!streamFinished && (boundary = /\r?\n\r?\n/.exec(buffer))) {
+                    const packet = buffer.slice(0, boundary.index);
+                    buffer = buffer.slice(boundary.index + boundary[0].length);
+                    await applySsePacket(packet);
+                }
+            }
+            if (Buffer.byteLength(buffer, 'utf8') > MAX_STREAM_EVENT_BYTES) throw new Error('模型流式事件过大');
+        }
+        buffer += decoder.decode();
+        if (!streamFinished && buffer.trim()) {
+            if (isNdjson) await applyPayload(buffer.trim(), 'message');
+            else await applySsePacket(buffer);
+        }
+        if (controller.signal.aborted) throw controller.signal.reason || new Error('请求已取消');
+        if (!streamFinished) throw new Error('模型流式响应中断，请重试本轮对话');
+        if (!reply) throw new Error('模型没有返回可显示的回复');
+        return { reply, model: finalModel, ...(usage ? { usage } : {}) };
+    } catch (error) {
+        if (controller.signal.aborted) throw controller.signal.reason || error;
+        throw error;
+    } finally {
+        clearTimeout(timeout);
+        signal?.removeEventListener('abort', abortFromCaller);
+        if (reader) await reader.cancel().catch(() => {});
+    }
+}
+
 module.exports = {
     ALLOWED_CHAT_ENDPOINTS,
     LLMEndpointError,
     ROOM_SYSTEM_PROMPT,
     createChatCompletion,
+    createChatCompletionStream,
     fallbackRoomReply,
     buildChatPayload,
     chatTemperatureFor,

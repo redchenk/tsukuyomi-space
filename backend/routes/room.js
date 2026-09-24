@@ -109,6 +109,11 @@ function normalizeChatContent(value, field) {
     return content;
 }
 
+function normalizeOptionalChatContent(value, field) {
+    if (value === '') return '';
+    return normalizeChatContent(value, field);
+}
+
 function normalizeTurnId(value) {
     const turnId = String(value || '').trim();
     if (!/^[A-Za-z0-9._:-]{8,128}$/.test(turnId)) {
@@ -647,7 +652,7 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
         if (messageIds.length) {
             roomMemoryEvents.publishChat(req.user.id, { action: 'turn-saved', messageIds });
         }
-        const growth = opener ? null : userGrowth.recordRoomChat(req.user.id);
+        const growth = opener || !messageIds.length ? null : userGrowth.recordRoomChat(req.user.id);
         setNoStore(res);
         res.status(messageIds.length ? 201 : 200).json({
             success: true,
@@ -656,6 +661,30 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
         });
     } catch (error) {
         res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Chat turn sync failed' });
+    }
+});
+
+router.put('/chat/turn/:turnId', authenticateToken, (req, res) => {
+    try {
+        const turnId = normalizeTurnId(req.params.turnId);
+        const expectedUserMessage = normalizeOptionalChatContent(req.body?.expectedUserMessage, 'expectedUserMessage');
+        const expectedAssistantMessage = normalizeChatContent(req.body?.expectedAssistantMessage, 'expectedAssistantMessage');
+        const userMessage = normalizeOptionalChatContent(req.body?.userMessage, 'userMessage');
+        const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
+        const result = roomChatRepository.replaceLatestTurn(req.user.id, {
+            turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage
+        }, () => roomMemory.invalidateAutoTurnMemories(req.user.id, turnId));
+        if (result.changed) {
+            roomMemoryEvents.publishChat(req.user.id, { action: 'turn-replaced', messageIds: result.messageIds });
+            if (result.invalidatedMemoryIds?.length) {
+                roomMemoryEvents.publish(req.user.id, { action: 'deleted', memoryIds: result.invalidatedMemoryIds });
+                roomMemory.syncPendingUserMemories(req.user.id, { limit: 20 }).catch(() => {});
+            }
+        }
+        setNoStore(res);
+        res.json({ success: true, data: roomChatRepository.listMessages(req.user.id, 24), growth: null });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Chat turn replace failed' });
     }
 });
 

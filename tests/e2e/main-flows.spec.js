@@ -292,9 +292,10 @@ test('user can read an article and post a comment', async ({ page }) => {
 
     await expect(feedback).toHaveClass(/success/);
     await expect(feedback).toHaveAttribute('role', 'status');
-    const successBorder = await feedback.evaluate((element) => getComputedStyle(element).borderColor.match(/[\d.]+/g).slice(0, 3).map(Number));
-    expect(successBorder[1]).toBeGreaterThan(successBorder[0]);
-    expect(successBorder[1]).toBeGreaterThan(successBorder[2]);
+    await expect.poll(async () => feedback.evaluate((element) => {
+        const [red, green, blue] = getComputedStyle(element).borderColor.match(/[\d.]+/g).slice(0, 3).map(Number);
+        return green > red && green > blue;
+    })).toBe(true);
     await expect(page.getByText(comment)).toBeVisible();
     const commentItem = page.locator('.comment-item').filter({ hasText: comment }).first();
     await commentItem.getByRole('button', { name: '回复' }).click();
@@ -658,6 +659,7 @@ test('pixel canvas switches between mobile scrolling and uninterrupted drawing',
 test('desktop pixel controls scroll independently from the page', async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await page.goto('/pixel');
+    await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
 
     const controls = page.locator('.arena-controls');
     await expect(controls).toBeVisible();
@@ -677,9 +679,10 @@ test('desktop pixel controls scroll independently from the page', async ({ page 
     expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
 
     await controls.hover();
+    const pageScrollBeforeWheel = await page.evaluate(() => window.scrollY);
     await page.mouse.wheel(0, 480);
     await expect.poll(() => controls.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(pageScrollBeforeWheel);
 });
 
 test('game leaderboard loads every score into a vertical scroll region', async ({ page }) => {

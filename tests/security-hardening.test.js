@@ -419,9 +419,10 @@ describe('deployment privilege boundary', () => {
         assert.match(workflow, /port: \$\{\{ secrets\.OVERSEAS_SERVER_PORT \|\| 47388 \}\}/);
         assert.match(workflow, /source: deployment-artifacts\/domestic/);
         assert.match(workflow, /source: deployment-artifacts\/overseas/);
-        assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*cp -a "\$domestic\/\." "\$app\/dist\/frontend\/"/);
+        assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*rsync -r --checksum "\$domestic\/" "\$app\/dist\/frontend\/"/);
         assert.match(workflow, /overseas_root=\/opt\/1panel\/www\/sites\/tsukuyomi-space\.com\/frontend/);
-        assert.match(workflow, /test -d "\$overseas_root"[\s\S]*cp -a "\$overseas\/\." "\$overseas_root\/"/);
+        assert.match(workflow, /test -d "\$overseas_root"[\s\S]*rsync -r --checksum "\$overseas\/" "\$overseas_root\/"/);
+        assert.doesNotMatch(workflow, /rsync[^\n]*--delete/);
     });
 
     it('updates the Nginx configuration that the host actually includes', () => {

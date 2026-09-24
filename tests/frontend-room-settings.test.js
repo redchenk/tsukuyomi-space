@@ -153,7 +153,7 @@ test('chat context reads the saved knowledge switch on every turn, never diary a
     readDiaryArchive: () => { throw new Error('Live chat must not read diary content'); },
     loadGrowth: async () => null, growthContext: () => '', corpus: async () => { corpusCalls++; return []; }
   };
-  vm.runInNewContext(knowledgeCode + '\n' + strip(source('src/frontend/composables/room/useRoomChat.js')) + `
+  vm.runInNewContext(knowledgeCode + '\n' + strip(source('src/frontend/services/room/roomContext.mjs')) + '\n' + strip(source('src/frontend/composables/room/useRoomChat.js')) + `
     fetchSiteFeedContext = async () => '';
     fetchPersonaMemories = corpus;
     fetchRelevantMemories = async () => [];

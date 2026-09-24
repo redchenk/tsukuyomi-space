@@ -3,6 +3,7 @@ const { after, before, describe, it } = require('node:test');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const http = require('node:http');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -25,9 +26,10 @@ const { createApp } = require('../backend/app');
 const config = require('../backend/config');
 const db = require('../backend/db');
 const authState = require('../backend/services/auth-state');
-const { ROOM_SYSTEM_PROMPT, buildChatPayload, createChatCompletion, isOllamaChatUrl, normalizeChatUrl } = require('../backend/services/llm');
+const { ROOM_SYSTEM_PROMPT, buildChatPayload, createChatCompletion, createChatCompletionStream, isOllamaChatUrl, normalizeChatUrl } = require('../backend/services/llm');
 const { createEmbedding } = require('../backend/services/room-embedding');
-const { requireUserId, similarity } = require('../backend/services/room-memory');
+const roomMemoryService = require('../backend/services/room-memory');
+const { requireUserId, similarity } = roomMemoryService;
 const milvusStore = require('../backend/services/room-milvus-store');
 const { scopeFilter, truncateUtf8 } = milvusStore;
 const objectStorage = require('../backend/services/object-storage');
@@ -154,6 +156,23 @@ async function postJson(pathname, body, token) {
         method: 'POST',
         headers: jsonHeaders(token),
         body: JSON.stringify(body)
+    });
+}
+
+async function postEventStream(pathname, body) {
+    return new Promise((resolve, reject) => {
+        const request = http.request(new URL(pathname, baseUrl), {
+            method: 'POST',
+            headers: jsonHeaders()
+        }, response => {
+            let text = '';
+            response.setEncoding('utf8');
+            response.on('data', chunk => { text += chunk; });
+            response.on('end', () => resolve({ response, text }));
+            response.on('error', reject);
+        });
+        request.on('error', reject);
+        request.end(JSON.stringify(body));
     });
 }
 
@@ -2082,6 +2101,279 @@ describe('room diary account sync', () => {
 });
 
 describe('room memory API', () => {
+    it('keeps a hand-edited auto memory when an older vector sync finishes late', async () => {
+        const turnId = `memory-sync-race-${Date.now()}`;
+        const userMessage = '请记住我正在布置新的画室。';
+        const assistantMessage = '我会记住新的画室安排。';
+        const remoteUrl = 'https://room-memory-embedding-race.test/v1/embeddings';
+        const originalFetch = global.fetch;
+        const originalStatus = milvusStore.status;
+        const originalUpsert = milvusStore.upsertUserMemory;
+        const originalApiUrl = process.env.ROOM_MEMORY_EMBEDDING_API_URL;
+        const originalApiKey = process.env.ROOM_MEMORY_EMBEDDING_API_KEY;
+        let releaseSyncEmbedding;
+        let releaseEditEmbedding;
+        let embeddingStarted;
+        const started = new Promise(resolve => { embeddingStarted = resolve; });
+        let remoteRequests = 0;
+        let syncPromise;
+        try {
+            await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
+            assert.equal((await postJson('/api/room/chat/turn', {
+                turnId, userMessage, assistantMessage
+            }, userToken)).response.status, 201);
+            const captured = await postJson('/api/room/memory', {
+                turnId, userMessage, assistantReply: assistantMessage, captureChat: false, force: true
+            }, userToken);
+            assert.equal(captured.response.status, 201);
+            const memoryId = captured.body.data.id;
+
+            process.env.ROOM_MEMORY_EMBEDDING_API_URL = remoteUrl;
+            process.env.ROOM_MEMORY_EMBEDDING_API_KEY = 'test-embedding-key';
+            milvusStore.status = () => ({ ...originalStatus(), enabled: true });
+            milvusStore.upsertUserMemory = async () => true;
+            global.fetch = (input, options) => {
+                if (String(input) !== remoteUrl) return originalFetch(input, options);
+                remoteRequests += 1;
+                const requestNumber = remoteRequests;
+                return new Promise(resolve => {
+                    const release = () => resolve(new Response(JSON.stringify({
+                        data: [{ embedding: createEmbedding(requestNumber === 1 ? 'delayed old memory' : 'new edited memory') }]
+                    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+                    if (requestNumber === 1) {
+                        releaseSyncEmbedding = release;
+                        embeddingStarted();
+                    } else releaseEditEmbedding = release;
+                });
+            };
+
+            syncPromise = roomMemoryService.syncPendingUserMemories('user-001', { force: true, limit: 1 });
+            await started;
+            const edited = await request(`/api/room/memory/${memoryId}`, {
+                method: 'PATCH', headers: jsonHeaders(userToken),
+                body: JSON.stringify({ summary: '用户手动修正的画室安排' })
+            });
+            assert.equal(edited.response.status, 200);
+            assert.equal(edited.body.data.metadata.sourceKind, undefined);
+            assert.equal(remoteRequests, 2, 'PATCH must finish while its remote embedding remains pending');
+            const replaced = await putJson(`/api/room/chat/turn/${turnId}`, {
+                expectedUserMessage: userMessage, expectedAssistantMessage: assistantMessage,
+                userMessage: '画室安排后来做了调整。', assistantMessage: '我会按新安排回答。'
+            }, userToken);
+            assert.equal(replaced.response.status, 200);
+            releaseSyncEmbedding();
+            await syncPromise;
+            releaseEditEmbedding();
+            await new Promise(resolve => setImmediate(resolve));
+
+            const afterSync = await request(`/api/room/memory/${memoryId}`, { headers: jsonHeaders(userToken) });
+            assert.equal(afterSync.response.status, 200);
+            assert.equal(afterSync.body.data.summary, '用户手动修正的画室安排');
+            assert.equal(afterSync.body.data.metadata.sourceKind, undefined);
+        } finally {
+            releaseSyncEmbedding?.();
+            releaseEditEmbedding?.();
+            await syncPromise?.catch(() => {});
+            global.fetch = originalFetch;
+            milvusStore.status = originalStatus;
+            milvusStore.upsertUserMemory = originalUpsert;
+            if (originalApiUrl === undefined) delete process.env.ROOM_MEMORY_EMBEDDING_API_URL;
+            else process.env.ROOM_MEMORY_EMBEDDING_API_URL = originalApiUrl;
+            if (originalApiKey === undefined) delete process.env.ROOM_MEMORY_EMBEDDING_API_KEY;
+            else process.env.ROOM_MEMORY_EMBEDDING_API_KEY = originalApiKey;
+            await request('/api/room/chat', { method: 'DELETE', headers: jsonHeaders(userToken) });
+            await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
+        }
+    });
+
+    it('keeps vector sync pending when only memory metadata or importance changes in flight', async () => {
+        const originalStatus = milvusStore.status;
+        const originalUpsert = milvusStore.upsertUserMemory;
+        let releaseUpsert;
+        let startedUpsert;
+        const started = new Promise(resolve => { startedUpsert = resolve; });
+        let syncPromise;
+        try {
+            const created = await postJson('/api/room/memory', {
+                type: 'project', summary: '画室清单', content: '请记住画室的初始清单。', force: true
+            }, userToken);
+            assert.equal(created.response.status, 201);
+            const id = created.body.data.id;
+            milvusStore.status = () => ({ ...originalStatus(), enabled: true });
+            milvusStore.upsertUserMemory = () => new Promise(resolve => {
+                releaseUpsert = () => resolve(true);
+                startedUpsert();
+            });
+            syncPromise = roomMemoryService.syncPendingUserMemories('user-001', { limit: 1 });
+            await started;
+            const edited = await request(`/api/room/memory/${id}`, {
+                method: 'PATCH', headers: jsonHeaders(userToken),
+                body: JSON.stringify({ tags: ['手动确认'], importance: 0.95 })
+            });
+            assert.equal(edited.response.status, 200);
+            releaseUpsert();
+            await syncPromise;
+            const row = db.prepare('SELECT vector_synced_at, vector_sync_error, importance FROM room_memories WHERE id = ?').get(id);
+            assert.equal(row.vector_synced_at, null);
+            assert.equal(row.vector_sync_error, 'Memory changed during vector sync');
+            assert.equal(row.importance, 0.95);
+        } finally {
+            releaseUpsert?.();
+            await syncPromise?.catch(() => {});
+            milvusStore.status = originalStatus;
+            milvusStore.upsertUserMemory = originalUpsert;
+            await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
+        }
+    });
+
+    it('saves two identical modern chat turns with distinct turn IDs', async () => {
+        const firstId = `repeat-first-${Date.now()}`;
+        const secondId = `repeat-second-${Date.now()}`;
+        const payload = { userMessage: '同一句问题', assistantMessage: '同一句回答' };
+        try {
+            assert.equal((await postJson('/api/room/chat/turn', {
+                turnId: firstId, ...payload
+            }, userToken)).response.status, 201);
+            assert.equal((await postJson('/api/room/chat/turn', {
+                turnId: secondId, ...payload
+            }, userToken)).response.status, 201);
+            const turns = db.prepare(`
+                SELECT turn_id, COUNT(*) AS count FROM room_chat_messages
+                WHERE user_id = ? AND turn_id IN (?, ?) GROUP BY turn_id
+            `).all('user-001', firstId, secondId);
+            assert.deepEqual(turns.map(row => [row.turn_id, row.count]).sort(), [[firstId, 2], [secondId, 2]].sort());
+        } finally {
+            await request('/api/room/chat', { method: 'DELETE', headers: jsonHeaders(userToken) });
+        }
+    });
+
+    it('retires only generated memories for a replaced turn and rejects stale capture', async () => {
+        const marker = `auto-turn-memory-${Date.now()}`;
+        const turnId = `memory-replace-${Date.now()}`;
+        const userMessage = `请记住我喜欢银蓝屋顶，偏好标识 ${marker}。`;
+        const assistantMessage = `我会记住银蓝屋顶和偏好标识 ${marker}。`;
+        const savedIds = [];
+        try {
+            const saved = await postJson('/api/room/chat/turn', { turnId, userMessage, assistantMessage }, userToken);
+            assert.equal(saved.response.status, 201);
+            const manual = await postJson('/api/room/memory', {
+                userMessage,
+                assistantReply: assistantMessage,
+                captureChat: false,
+                force: true,
+                metadata: { sourceKind: 'chat-turn-auto', sourceTurnId: turnId }
+            }, userToken);
+            assert.equal(manual.response.status, 201);
+            savedIds.push(manual.body.data.id);
+            assert.notEqual(manual.body.data.metadata.sourceKind, 'chat-turn-auto');
+
+            const autoPayload = { turnId, userMessage, assistantReply: assistantMessage, captureChat: false, force: true };
+            const generated = await postJson('/api/room/memory', autoPayload, userToken);
+            assert.equal(generated.response.status, 201);
+            const generatedId = generated.body.data.id;
+            savedIds.push(generatedId);
+            assert.notEqual(generatedId, manual.body.data.id);
+            assert.equal(generated.body.data.metadata.sourceKind, 'chat-turn-auto');
+            assert.equal(generated.body.data.metadata.sourceTurnId, turnId);
+            const duplicate = await postJson('/api/room/memory', autoPayload, userToken);
+            assert.equal(duplicate.response.status, 200);
+            assert.equal(duplicate.body.data.id, generatedId);
+
+            const promoted = await request(`/api/room/memory/${generatedId}`, {
+                method: 'PATCH',
+                headers: jsonHeaders(userToken),
+                body: JSON.stringify({ summary: `用户手动调整的记忆 ${marker}` })
+            });
+            assert.equal(promoted.response.status, 200);
+            assert.equal(promoted.body.data.metadata.sourceKind, undefined);
+            const replaceable = await postJson('/api/room/memory', autoPayload, userToken);
+            assert.equal(replaceable.response.status, 201);
+            const replaceableId = replaceable.body.data.id;
+            savedIds.push(replaceableId);
+
+            const updatedUserMessage = `我现在改成喜欢月白屋顶，偏好标识 ${marker}。`;
+            const updatedAssistantMessage = `我会以月白屋顶为准，偏好标识 ${marker}。`;
+            assert.equal((await putJson(`/api/room/chat/turn/${turnId}`, {
+                expectedUserMessage: 'stale message',
+                expectedAssistantMessage: assistantMessage,
+                userMessage: updatedUserMessage,
+                assistantMessage: updatedAssistantMessage
+            }, userToken)).response.status, 409);
+            assert.equal((await request(`/api/room/memory/${replaceableId}`, {
+                headers: jsonHeaders(userToken)
+            })).response.status, 200);
+            const replacement = await putJson(`/api/room/chat/turn/${turnId}`, {
+                expectedUserMessage: userMessage,
+                expectedAssistantMessage: assistantMessage,
+                userMessage: updatedUserMessage,
+                assistantMessage: updatedAssistantMessage
+            }, userToken);
+            assert.equal(replacement.response.status, 200);
+            assert.equal((await request(`/api/room/memory/${replaceableId}`, {
+                headers: jsonHeaders(userToken)
+            })).response.status, 404);
+            assert.equal((await request(`/api/room/memory/${generatedId}`, {
+                headers: jsonHeaders(userToken)
+            })).response.status, 200);
+            assert.equal((await request(`/api/room/memory/${manual.body.data.id}`, {
+                headers: jsonHeaders(userToken)
+            })).response.status, 200);
+
+            const stale = await postJson('/api/room/memory', autoPayload, userToken);
+            assert.equal(stale.response.status, 202);
+            assert.equal(stale.body.data, null);
+            const fresh = await postJson('/api/room/memory', {
+                turnId,
+                userMessage: updatedUserMessage,
+                assistantReply: updatedAssistantMessage,
+                captureChat: false,
+                force: true
+            }, userToken);
+            assert.equal(fresh.response.status, 201);
+            savedIds.push(fresh.body.data.id);
+            assert.equal(fresh.body.data.metadata.sourceTurnId, turnId);
+        } finally {
+            await request('/api/room/chat', { method: 'DELETE', headers: jsonHeaders(userToken) });
+            for (const id of savedIds) {
+                await request(`/api/room/memory/${id}`, { method: 'DELETE', headers: jsonHeaders(userToken) });
+            }
+        }
+    });
+
+    it('replaces only the latest owned complete turn and rejects stale edits', async () => {
+        const firstId = `edit-first-${Date.now()}`;
+        const latestId = `edit-latest-${Date.now()}`;
+        try {
+            assert.equal((await postJson('/api/room/chat/turn', {
+                turnId: firstId, userMessage: 'first', assistantMessage: 'first answer'
+            }, userToken)).response.status, 201);
+            assert.equal((await postJson('/api/room/chat/turn', {
+                turnId: latestId, userMessage: 'old question', assistantMessage: 'old answer'
+            }, userToken)).response.status, 201);
+            const payload = {
+                expectedUserMessage: 'old question', expectedAssistantMessage: 'old answer',
+                userMessage: 'edited question', assistantMessage: 'new answer'
+            };
+            assert.equal((await putJson(`/api/room/chat/turn/${firstId}`, {
+                expectedUserMessage: 'first', expectedAssistantMessage: 'first answer',
+                userMessage: 'earlier edit', assistantMessage: 'earlier reply'
+            }, userToken)).response.status, 409);
+            assert.equal((await putJson(`/api/room/chat/turn/${latestId}`, payload, managedUserToken)).response.status, 409);
+            const updated = await putJson(`/api/room/chat/turn/${latestId}`, payload, userToken);
+            assert.equal(updated.response.status, 200);
+            assert.deepEqual(updated.body.data.filter(item => item.turnId === latestId).map(item => item.content), ['edited question', 'new answer']);
+            assert.equal((await putJson(`/api/room/chat/turn/${latestId}`, payload, userToken)).response.status, 200);
+            assert.equal((await putJson(`/api/room/chat/turn/${latestId}`, {
+                ...payload, assistantMessage: 'stale overwrite'
+            }, userToken)).response.status, 409);
+            assert.equal((await postJson('/api/room/chat/turn', {
+                turnId: latestId, userMessage: 'old question', assistantMessage: 'old answer'
+            }, userToken)).response.status, 409);
+        } finally {
+            await request('/api/room/chat', { method: 'DELETE', headers: jsonHeaders(userToken) });
+        }
+    });
+
     it('syncs an assistant opener once without a synthetic user message or growth reward', async () => {
         const turnId = `opener-${Date.now()}`;
         const payload = { turnId, opener: true, assistantMessage: 'Good evening. How was your day?' };
@@ -2785,6 +3077,169 @@ describe('MCP bridge API', () => {
 });
 
 describe('chat API endpoint allowlist', () => {
+    it('rejects a truncated provider stream instead of saving a partial reply', async () => {
+        const originalFetch = globalThis.fetch;
+        try {
+            globalThis.fetch = async () => new Response('data: {"choices":[{"delta":{"content":"半句"}}]}\n\n', {
+                headers: { 'Content-Type': 'text/event-stream' }
+            });
+            await assert.rejects(() => createChatCompletionStream({
+                message: 'hello', apiKey: 'test-key', apiUrl: 'https://api.deepseek.com/chat/completions',
+                model: 'deepseek-chat'
+            }), /模型流式响应中断/);
+            globalThis.fetch = async () => new Response('data: {"choices":[{"delta":{"content":"半句"},"finish_reason":"length"}]}\n\n', {
+                headers: { 'Content-Type': 'text/event-stream' }
+            });
+            await assert.rejects(() => createChatCompletionStream({
+                message: 'hello', apiKey: 'test-key', apiUrl: 'https://api.deepseek.com/chat/completions',
+                model: 'deepseek-chat'
+            }), /长度上限/);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
+    it('normalizes OpenAI, Anthropic, Responses, and Ollama streams to incremental text', async () => {
+        const originalFetch = globalThis.fetch;
+        const fixtures = [
+            {
+                apiUrl: 'https://api.deepseek.com/chat/completions',
+                contentType: 'text/event-stream',
+                chunks: [
+                    'data: {"model":"deepseek-chat","choices":[{"delta":{"content":"你"}}]}\n\n',
+                    'data: {"choices":[{"delta":{"content":"好"}}]}\n\n',
+                    'data: {"usage":{"prompt_tokens":3,"completion_tokens":2},"choices":[]}\n\n',
+                    'data: [DONE]\n\n'
+                ],
+                expectedModel: 'deepseek-chat',
+                expectedUsage: { prompt_tokens: 3, completion_tokens: 2 }
+            },
+            {
+                apiUrl: 'https://api.anthropic.com/v1/messages',
+                contentType: 'text/event-stream',
+                chunks: [
+                    'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"你"}}\n\n',
+                    'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"好"}}\n\n',
+                    'event: message_stop\ndata: {"type":"message_stop"}\n\n'
+                ]
+            },
+            {
+                apiUrl: 'https://api.openai.com/v1/responses',
+                contentType: 'text/event-stream',
+                chunks: [
+                    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"你"}\n\n',
+                    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"好"}\n\n',
+                    'event: response.completed\ndata: {"type":"response.completed","response":{"usage":{"input_tokens":2,"output_tokens":2}}}\n\n'
+                ],
+                expectedUsage: { input_tokens: 2, output_tokens: 2 }
+            },
+            {
+                apiUrl: 'http://127.0.0.1:11434/api/chat',
+                contentType: 'application/x-ndjson',
+                chunks: [
+                    '{"model":"qwen2.5:7b","message":{"content":"你"},"done":false}\n',
+                    '{"message":{"content":"好"},"done":false}\n',
+                    '{"done":true,"prompt_eval_count":2,"eval_count":2}\n'
+                ],
+                expectedModel: 'qwen2.5:7b',
+                expectedUsage: { prompt_tokens: 2, completion_tokens: 2 }
+            }
+        ];
+
+        try {
+            for (const fixture of fixtures) {
+                let posted;
+                const source = fixture.chunks.join('');
+                const bytes = new TextEncoder().encode(source);
+                globalThis.fetch = async (url, options) => {
+                    posted = { url, options };
+                    return new Response(new ReadableStream({
+                        start(controller) {
+                            // Split a multibyte character to exercise incremental UTF-8 decoding.
+                            const midpoint = Math.max(1, bytes.indexOf(0xe4) + 1);
+                            controller.enqueue(bytes.slice(0, midpoint));
+                            controller.enqueue(bytes.slice(midpoint));
+                            controller.close();
+                        }
+                    }), { headers: { 'Content-Type': fixture.contentType } });
+                };
+                const deltas = [];
+                const result = await createChatCompletionStream({
+                    message: 'hello', apiKey: 'test-key', apiUrl: fixture.apiUrl, model: 'test-model',
+                    onDelta: text => deltas.push(text)
+                });
+                assert.equal(result.reply, '你好');
+                assert.deepEqual(deltas, ['你', '好']);
+                assert.equal(posted.url, fixture.apiUrl);
+                assert.equal(JSON.parse(posted.options.body).stream, true);
+                assert.equal(result.model, fixture.expectedModel || 'test-model');
+                if (fixture.expectedUsage) assert.deepEqual(result.usage, fixture.expectedUsage);
+            }
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
+    it('serves stream events and cancels upstream on caller abort', async () => {
+        const originalFetch = globalThis.fetch;
+        try {
+            globalThis.fetch = async () => new Response(new ReadableStream({
+                start(controller) {
+                    controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'));
+                    controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+                    controller.close();
+                }
+            }), { headers: { 'Content-Type': 'text/event-stream' } });
+            const streamed = await postEventStream('/api/chat/stream', {
+                message: 'hello', apiKey: 'test-key', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'test-model'
+            });
+            assert.equal(streamed.response.statusCode, 200);
+            assert.match(streamed.response.headers['content-type'], /text\/event-stream/);
+            assert.match(streamed.text, /event: delta\ndata: \{"text":"Hello"\}/);
+            assert.match(streamed.text, /event: done\ndata: \{"reply":"Hello","model":"test-model"\}/);
+
+            let upstreamAborted = false;
+            globalThis.fetch = async (_, options) => new Response(new ReadableStream({
+                start(controller) {
+                    options.signal.addEventListener('abort', () => {
+                        upstreamAborted = true;
+                        controller.error(options.signal.reason);
+                    }, { once: true });
+                }
+            }), { headers: { 'Content-Type': 'text/event-stream' } });
+            const abortController = new AbortController();
+            const pending = createChatCompletionStream({
+                message: 'hello', apiKey: 'test-key', apiUrl: 'https://api.deepseek.com/chat/completions',
+                signal: abortController.signal
+            });
+            abortController.abort(new Error('user stopped'));
+            await assert.rejects(pending, /user stopped/);
+            assert.equal(upstreamAborted, true);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
+    it('keeps stream endpoint validation and provider errors bounded', async () => {
+        const rejected = await postEventStream('/api/chat/stream', {
+            message: 'hello', apiKey: 'test-key', apiUrl: 'https://example.com/chat/completions', model: 'test-model'
+        });
+        assert.equal(rejected.response.statusCode, 400);
+
+        const originalFetch = globalThis.fetch;
+        try {
+            globalThis.fetch = async () => new Response('sensitive upstream body', { status: 401 });
+            const failed = await postEventStream('/api/chat/stream', {
+                message: 'hello', apiKey: 'test-key', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'test-model'
+            });
+            assert.equal(failed.response.statusCode, 200);
+            assert.match(failed.text, /event: error\ndata: \{"message":"模型请求失败（HTTP 401）"\}/);
+            assert.doesNotMatch(failed.text, /sensitive upstream body/);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
     it('normalizes supported provider chat endpoints', () => {
         assert.equal(
             normalizeChatUrl('https://api.openai.com/v1', 'gpt-4o-mini'),

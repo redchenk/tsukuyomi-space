@@ -47,6 +47,20 @@ function findOwnedTurn(userId, turnId) {
     };
 }
 
+function conflict(message) {
+    const error = new Error(message);
+    error.statusCode = 409;
+    return error;
+}
+
+function turnRows(userId, turnId) {
+    return db.prepare(`
+        SELECT id, role, content FROM room_chat_messages
+        WHERE user_id = ? AND turn_id = ?
+        ORDER BY CASE role WHEN 'user' THEN 0 ELSE 1 END
+    `).all(userId, turnId);
+}
+
 function pruneMessages(userId) {
     db.prepare(`
         DELETE FROM room_chat_messages
@@ -70,7 +84,7 @@ function insertMessage({ userId, turnId, role, content }) {
     return result.changes ? id : null;
 }
 
-function findRecentMatchingTurn(userId, userMessage, assistantMessage) {
+function findRecentMatchingLegacyTurn(userId, userMessage, assistantMessage) {
     return db.prepare(`
         SELECT user_message.turn_id
         FROM room_chat_messages AS user_message
@@ -80,6 +94,7 @@ function findRecentMatchingTurn(userId, userMessage, assistantMessage) {
          AND assistant_message.role = 'assistant'
         WHERE user_message.user_id = ?
           AND user_message.role = 'user'
+          AND user_message.turn_id LIKE 'memory-%'
           AND user_message.content = ?
           AND assistant_message.content = ?
           AND user_message.created_at >= datetime('now', '-2 minutes')
@@ -90,7 +105,20 @@ function findRecentMatchingTurn(userId, userMessage, assistantMessage) {
 
 function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = false }) {
     const save = db.transaction(() => {
-        const matchingTurnId = findRecentMatchingTurn(userId, userMessage, assistantMessage);
+        const existing = turnRows(userId, turnId);
+        if (existing.length) {
+            const expected = opener
+                ? [{ role: 'assistant', content: assistantMessage }]
+                : [{ role: 'user', content: userMessage }, { role: 'assistant', content: assistantMessage }];
+            if (existing.length !== expected.length || existing.some((row, index) => (
+                row.role !== expected[index].role || row.content !== expected[index].content
+            ))) throw conflict('此轮对话已由其他内容保存，请刷新后重试');
+            return [];
+        }
+        // Legacy clients can save a turn through the memory endpoint first,
+        // then retry it through the modern chat endpoint under a new ID.
+        // Distinct modern turn IDs may legitimately have identical text.
+        const matchingTurnId = findRecentMatchingLegacyTurn(userId, userMessage, assistantMessage);
         if (matchingTurnId && matchingTurnId !== turnId) return [];
 
         const messageIds = [
@@ -101,6 +129,40 @@ function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = fals
         return messageIds;
     });
     return save();
+}
+
+function replaceLatestTurn(userId, { turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage }, onReplaced = null) {
+    const replace = db.transaction(() => {
+        const latest = db.prepare(`
+            SELECT turn_id FROM room_chat_messages WHERE user_id = ? ORDER BY rowid DESC LIMIT 1
+        `).get(userId);
+        if (!latest || latest.turn_id !== turnId) throw conflict('只能修改当前最新一轮对话');
+        const rows = turnRows(userId, turnId);
+        const opener = rows.length === 1 && rows[0].role === 'assistant';
+        if (!opener && (rows.length !== 2 || rows[0].role !== 'user' || rows[1].role !== 'assistant')) {
+            throw conflict('当前对话记录不完整，请刷新后重试');
+        }
+        if (opener && (expectedUserMessage || userMessage)) throw conflict('开场白不能包含用户消息');
+        const actualUser = opener ? '' : rows[0].content;
+        const actualAssistant = rows.at(-1).content;
+        if (actualUser === userMessage && actualAssistant === assistantMessage) {
+            return { changed: false, messageIds: [] };
+        }
+        if (actualUser !== expectedUserMessage || actualAssistant !== expectedAssistantMessage) {
+            throw conflict('该轮对话已在其他设备更新，请刷新后重试');
+        }
+        if (!opener) {
+            db.prepare('UPDATE room_chat_messages SET content = ? WHERE id = ? AND user_id = ?')
+                .run(userMessage, rows[0].id, userId);
+        }
+        db.prepare('UPDATE room_chat_messages SET content = ? WHERE id = ? AND user_id = ?')
+            .run(assistantMessage, rows.at(-1).id, userId);
+        // Keep chat replacement and retirement of its generated memories in
+        // the same SQLite transaction. A failed edit cannot erase memories.
+        const invalidatedMemoryIds = typeof onReplaced === 'function' ? onReplaced() : [];
+        return { changed: true, messageIds: rows.map(row => row.id), invalidatedMemoryIds };
+    });
+    return replace();
 }
 
 function importHistoryIfEmpty(userId, messages) {
@@ -134,5 +196,6 @@ module.exports = {
     findOwnedTurn,
     listMessages,
     saveTurn,
+    replaceLatestTurn,
     importHistoryIfEmpty
 };

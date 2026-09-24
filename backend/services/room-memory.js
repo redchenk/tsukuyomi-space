@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const db = require('../db');
+const roomChatRepository = require('../repositories/room-chat-repository');
 const { chatTemperatureFor, normalizeChatUrl } = require('./llm');
 const {
     LOCAL_EMBEDDING_VERSION,
@@ -322,7 +323,10 @@ function shouldMergeMemory(type, score, overlap) {
 }
 
 function findMergeTarget(userId, candidate) {
-    if (candidate.metadata?.fragmentGroupId) return null;
+    // A generated memory belongs to one exact chat turn. Merging it into a
+    // hand-written memory (or a different turn) would make it impossible to
+    // retire safely when that turn is edited.
+    if (candidate.metadata?.fragmentGroupId || candidate.metadata?.sourceKind === 'chat-turn-auto') return null;
     const candidateText = `${candidate.summary}\n${candidate.content}`;
     const vector = candidate.vector || createEmbedding(candidateText);
     const rows = db.prepare(`
@@ -330,7 +334,8 @@ function findMergeTarget(userId, candidate) {
         WHERE user_id = ? AND memory_type = ?
         ORDER BY updated_at DESC
         LIMIT 300
-    `).all(userId, candidate.type);
+    `).all(userId, candidate.type)
+        .filter(row => parseJson(row.metadata || '{}', {}).sourceKind !== 'chat-turn-auto');
     return rows
         .map(row => ({
             row,
@@ -385,6 +390,24 @@ async function syncMemoryRow(userId, row) {
         importance: Number(row.importance || 0),
         vector: parseJson(row.embedding, [])
     });
+    // The vector write can finish after a chat edit has retired this memory.
+    // Requeue deletion even if an earlier deletion request already ran, so a
+    // late upsert cannot leave an orphaned vector behind.
+    const current = db.prepare('SELECT summary, content, embedding, memory_type, importance, metadata FROM room_memories WHERE id = ? AND user_id = ?')
+        .get(row.id, userId);
+    if (!current) {
+        if (synced) {
+            queueVectorDeletion(userId, row.id);
+            await flushPendingVectorDeletions(userId, 20);
+        }
+        return { synced: false, skipped: false, error: 'Memory was retired before vector sync completed' };
+    }
+    if (current.summary !== row.summary || current.content !== row.content || current.embedding !== row.embedding
+        || current.memory_type !== row.memory_type || Number(current.importance) !== Number(row.importance)
+        || current.metadata !== row.metadata) {
+        markVectorSync(userId, row.id, false, 'Memory changed during vector sync');
+        return { synced: false, skipped: false, error: 'Memory changed during vector sync' };
+    }
     const error = synced ? '' : (milvusStore.status().lastError || 'Milvus is temporarily unavailable');
     markVectorSync(userId, row.id, synced, error);
     return { synced, skipped: false, error };
@@ -454,11 +477,22 @@ async function syncPendingUserMemories(userId, { limit = 50, force = false } = {
         if (force || !Array.isArray(parseJson(row.embedding, null)) || metadata.embeddingVersion !== expectedEmbeddingVersion()) {
             const embedding = await createMemoryEmbeddingDetailed(`${row.summary}\n${row.content}`);
             const nextMetadata = memoryEmbeddingMetadata(metadata, embedding);
-            db.prepare(`
+            const updated = db.prepare(`
                 UPDATE room_memories
                 SET embedding = ?, metadata = ?, vector_synced_at = NULL, vector_sync_error = ''
                 WHERE id = ? AND user_id = ?
-            `).run(JSON.stringify(embedding.vector), JSON.stringify(nextMetadata), row.id, scopedUserId);
+                  AND summary = ? AND content = ? AND metadata = ? AND embedding = ?
+                  AND memory_type = ? AND importance = ?
+            `).run(
+                JSON.stringify(embedding.vector), JSON.stringify(nextMetadata), row.id, scopedUserId,
+                row.summary, row.content, row.metadata, row.embedding, row.memory_type, row.importance
+            );
+            // Embedding may be remote and slow. A person could have edited the
+            // memory while it was in flight; never restore its old provenance.
+            if (!updated.changes) {
+                failed += 1;
+                continue;
+            }
             nextRow = { ...row, embedding: JSON.stringify(embedding.vector), metadata: JSON.stringify(nextMetadata) };
         }
         const result = await syncMemoryRow(scopedUserId, nextRow);
@@ -473,7 +507,15 @@ async function syncPendingUserMemories(userId, { limit = 50, force = false } = {
     return { enabled: true, attempted: rows.length, synced, failed, pending, deletions };
 }
 
-async function upsertCandidate(userId, candidate) {
+function matchesSavedAutoTurn(userId, autoTurn) {
+    if (!autoTurn) return true;
+    const saved = roomChatRepository.findOwnedTurn(userId, autoTurn.turnId);
+    return Boolean(saved
+        && saved.userMessage === autoTurn.userMessage
+        && saved.assistantMessage === autoTurn.assistantReply);
+}
+
+async function upsertCandidate(userId, candidate, { autoTurn = null } = {}) {
     userId = requireUserId(userId);
     if (!candidate?.content || !candidate?.summary) {
         const error = new Error('Memory content is empty');
@@ -491,6 +533,24 @@ async function upsertCandidate(userId, candidate) {
     const vector = embedding.vector;
     candidate.vector = vector;
     candidate.metadata = memoryEmbeddingMetadata(candidate.metadata, embedding);
+    // Embedding and extraction can await remote services. Check immediately
+    // before the synchronous SQLite write so a replaced turn cannot be
+    // reintroduced by an older in-flight memory request.
+    if (!matchesSavedAutoTurn(userId, autoTurn)) return null;
+    if (autoTurn) {
+        const duplicate = db.prepare(`
+            SELECT * FROM room_memories WHERE user_id = ? AND memory_type = ?
+            ORDER BY created_at DESC LIMIT 300
+        `).all(userId, candidate.type).find(row => {
+            const metadata = parseJson(row.metadata || '{}', {});
+            return metadata.sourceKind === 'chat-turn-auto'
+                && metadata.sourceTurnId === autoTurn.turnId
+                && metadata.sourceRevision === autoTurn.revision
+                && row.summary === candidate.summary
+                && row.content === candidate.content;
+        });
+        if (duplicate) return { memory: toPublicMemory(duplicate, undefined, { includeContent: true }), action: 'merged' };
+    }
     const target = findMergeTarget(userId, candidate);
     if (target) {
         const oldMetadata = parseJson(target.metadata || '{}', {});
@@ -551,11 +611,44 @@ async function upsertCandidate(userId, candidate) {
         JSON.stringify(candidate.metadata)
     );
     await syncMemoryRow(userId, db.prepare('SELECT * FROM room_memories WHERE id = ? AND user_id = ?').get(id, userId));
-    return { memory: getMemory(userId, id), action: 'created' };
+    const memory = getMemory(userId, id);
+    return memory ? { memory, action: 'created' } : null;
 }
 
 async function recordMemory(userId, payload = {}) {
     userId = requireUserId(userId);
+    const metadata = payload.metadata && typeof payload.metadata === 'object' && !Array.isArray(payload.metadata)
+        ? { ...payload.metadata }
+        : {};
+    // These fields are server-owned; callers must not be able to mark a
+    // hand-written memory as disposable turn output.
+    delete metadata.sourceKind;
+    delete metadata.sourceTurnId;
+    delete metadata.sourceRevision;
+    const turnId = typeof payload.turnId === 'string' ? payload.turnId.trim() : '';
+    const autoTurn = payload.captureChat === false && turnId
+        && typeof payload.userMessage === 'string'
+        && typeof payload.assistantReply === 'string'
+        && !payload.content
+        ? {
+            turnId,
+            userMessage: payload.userMessage,
+            assistantReply: payload.assistantReply,
+            revision: crypto.createHash('sha256')
+                .update(JSON.stringify([payload.userMessage, payload.assistantReply]))
+                .digest('hex')
+        }
+        : null;
+    if (payload.captureChat === false && turnId && !autoTurn) return null;
+    if (!matchesSavedAutoTurn(userId, autoTurn)) return null;
+    if (autoTurn) {
+        Object.assign(metadata, {
+            sourceKind: 'chat-turn-auto',
+            sourceTurnId: turnId,
+            sourceRevision: autoTurn.revision
+        });
+    }
+    payload = { ...payload, metadata };
     const source = normalizeMemoryText(payload.content || `用户：${payload.userMessage || ''}\n八千代：${payload.assistantReply || ''}`);
     if (SENSITIVE_PATTERN.test(source)) return null;
     let candidates = [];
@@ -603,11 +696,30 @@ async function recordMemory(userId, payload = {}) {
     if (!candidates.length) return null;
     const results = [];
     for (const candidate of candidates) {
-        results.push(await upsertCandidate(userId, candidate));
+        const result = await upsertCandidate(userId, candidate, { autoTurn });
+        if (result) results.push(result);
     }
+    if (!results.length) return null;
     return results.length === 1
         ? results[0]
         : { memory: results.map(item => item.memory), action: results.some(item => item.action === 'merged') ? 'merged' : 'created' };
+}
+
+function invalidateAutoTurnMemories(userId, turnId) {
+    userId = requireUserId(userId);
+    const scopedTurnId = String(turnId || '').trim();
+    if (!scopedTurnId) return [];
+    const rows = db.prepare('SELECT id, metadata FROM room_memories WHERE user_id = ?').all(userId);
+    const ids = rows.filter(row => {
+        const metadata = parseJson(row.metadata || '{}', {});
+        return metadata.sourceKind === 'chat-turn-auto' && metadata.sourceTurnId === scopedTurnId;
+    }).map(row => row.id);
+    const remove = db.prepare('DELETE FROM room_memories WHERE id = ? AND user_id = ?');
+    ids.forEach(id => {
+        remove.run(id, userId);
+        queueVectorDeletion(userId, id);
+    });
+    return ids;
 }
 
 function touchMemories(userId, ids) {
@@ -811,15 +923,44 @@ async function updateMemory(userId, id, payload = {}) {
     const confidence = Number.isFinite(Number(payload.confidence))
         ? Math.max(0, Math.min(1, Number(payload.confidence)))
         : Number(oldMetadata.confidence ?? 0.8);
-    const embedding = await createMemoryEmbeddingDetailed(`${summary}\n${content}`);
-    const metadata = memoryEmbeddingMetadata({ ...oldMetadata, tags, confidence, editedAt: new Date().toISOString() }, embedding);
-    const vector = embedding.vector;
+    // Once a person edits a generated memory it becomes intentional content:
+    // replacing the source chat turn must not delete their edit.
+    delete oldMetadata.sourceKind;
+    delete oldMetadata.sourceTurnId;
+    delete oldMetadata.sourceRevision;
+    // Commit the edit before any remote embedding await. Otherwise a turn
+    // replacement can retire this row while the user's PATCH is in flight.
+    // Vector sync will upgrade the local embedding when configured.
+    const vector = createEmbedding(`${summary}\n${content}`);
+    const metadata = memoryEmbeddingMetadata({ ...oldMetadata, tags, confidence, source: 'manual-edit', editedAt: new Date().toISOString() }, {
+        provider: 'local', model: LOCAL_EMBEDDING_VERSION, version: LOCAL_EMBEDDING_VERSION
+    });
+    const vectorJson = JSON.stringify(vector);
+    const metadataJson = JSON.stringify(metadata);
     db.prepare(`
         UPDATE room_memories
         SET memory_type = ?, summary = ?, content = ?, embedding = ?, importance = ?, metadata = ?,
             updated_at = CURRENT_TIMESTAMP, vector_synced_at = NULL, vector_sync_error = ''
         WHERE id = ? AND user_id = ?
-    `).run(type, summary, content, JSON.stringify(vector), importance, JSON.stringify(metadata), id, userId);
+    `).run(type, summary, content, vectorJson, importance, metadataJson, id, userId);
+    if (embeddingStatus().configuredProvider === 'remote') {
+        // Upgrade the immediately saved local vector without holding up PATCH.
+        // Compare against the edit we just wrote so a later edit or sync cannot
+        // be overwritten by this older embedding request.
+        createMemoryEmbeddingDetailed(`${summary}\n${content}`).then((remoteEmbedding) => {
+            if (remoteEmbedding.provider !== 'remote') return;
+            const remoteMetadata = memoryEmbeddingMetadata(metadata, remoteEmbedding);
+            db.prepare(`
+                UPDATE room_memories
+                SET embedding = ?, metadata = ?, vector_synced_at = NULL, vector_sync_error = ''
+                WHERE id = ? AND user_id = ?
+                  AND summary = ? AND content = ? AND metadata = ? AND embedding = ?
+            `).run(
+                JSON.stringify(remoteEmbedding.vector), JSON.stringify(remoteMetadata), id, userId,
+                summary, content, metadataJson, vectorJson
+            );
+        }).catch((error) => console.warn('Room memory edited embedding refresh:', error.message));
+    }
     // A vector store is optional. The edit is complete once SQLite commits;
     // status and search retry rows marked as pending without delaying PATCH.
     return getMemory(userId, id);
@@ -884,6 +1025,7 @@ module.exports = {
     similarity,
     buildMemoryCandidate,
     recordMemory,
+    invalidateAutoTurnMemories,
     searchMemories,
     searchPersonaMemories,
     listMemories,

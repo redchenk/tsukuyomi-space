@@ -1,6 +1,8 @@
 import { nextTick, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, noStoreUrl, parseResponse } from '../../api/client';
-import { knowledgeContext } from '../../services/room/roomKnowledge';
+import { selectRoomKnowledgeEntries } from '../../services/room/roomKnowledge';
+import { packRoomContext, selectRecentRoomConversation } from '../../services/room/roomContext.mjs';
+import { readRoomChatStream } from '../../services/room/roomChatStream.mjs';
 import {
   dispatchRoomLive2D,
   dispatchRoomLive2DExpression,
@@ -18,11 +20,15 @@ import {
 import { requestTtsAudioBlob } from '../../services/room/ttsTransport';
 import {
   clearLocalRoomConversation,
+  clearRoomGenerationDraft,
   clearRoomConversation,
   loadRoomConversation,
+  readRoomGenerationDraft,
   readRoomConversation,
+  replaceRoomConversationTurn,
   saveRoomConversationTurn,
   startRoomConversationUpdates,
+  writeRoomGenerationDraft,
   writeRoomConversation
 } from '../../services/room/roomConversationSync';
 import { publishLocalRoomMemoryUpdate, startRoomMemorySync } from '../../services/room/roomMemorySync';
@@ -41,6 +47,7 @@ import { syncDiaryArchive } from '../../services/room/roomDiarySync';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
 const SITE_FEED_TIMEOUT_MS = 2000;
+const ROOM_GENERATION_TIMEOUT_MS = 180000;
 const ROOM_ENGLISH = isEnglishSite();
 let siteFeedContextCache = { value: '', expiresAt: 0 };
 
@@ -51,9 +58,18 @@ function uid() {
 function stripControlTags(text) {
   return String(text || '')
     .replace(/<\|ACT:[\s\S]*?\|>/g, '')
+    .replace(/<\|ACT:[\s\S]*$/g, '')
     .replace(/<\|DELAY:\d+(?:\.\d+)?\|>/g, '')
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/gi, '')
     .trim();
+}
+
+function streamingVisibleText(text) {
+  const visible = stripControlTags(text).replace(/<[^>]*$/u, '').trimStart();
+  // Some models stream a JSON wrapper despite the plain-text instruction.
+  // Wait for the completed response so readers never see half a JSON object.
+  return /^(?:\{|```(?:json)?)/iu.test(visible) ? '' : visible;
 }
 
 /**
@@ -474,7 +490,7 @@ function openAIResponsesContent(text, image) {
   return content;
 }
 
-function makeLLMRequestBody(settings, systemPrompt, conversation, message, image) {
+function makeLLMRequestBody(settings, systemPrompt, conversation, message, image, stream = false) {
   const apiUrl = normalizeOpenAIUrl(settings.apiUrl || '');
   const model = isOllamaApi(apiUrl) ? (settings.model || 'qwen2.5:7b') : (settings.model || 'gpt-4o-mini');
   if (isOllamaNativeApi(apiUrl)) {
@@ -491,7 +507,7 @@ function makeLLMRequestBody(settings, systemPrompt, conversation, message, image
         ...conversation.map((item) => ({ role: item.role, content: String(item.content || '') })),
         userMessage
       ],
-      stream: false,
+      stream,
       options: {
         temperature: chatTemperatureFor(apiUrl, model, 0.4)
       }
@@ -504,7 +520,8 @@ function makeLLMRequestBody(settings, systemPrompt, conversation, message, image
       input: [
         ...conversation.map((item) => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: String(item.content || '') })),
         { role: 'user', content: openAIResponsesContent(message, image) }
-      ]
+      ],
+      ...(stream ? { stream: true } : {})
     };
   }
   if (isAnthropicChatApi(apiUrl, model)) {
@@ -531,7 +548,7 @@ function makeLLMRequestBody(settings, systemPrompt, conversation, message, image
       ],
       max_tokens: 16384,
       temperature: 1,
-      stream: false
+      stream
     };
   }
   const userContent = image?.dataUrl
@@ -547,7 +564,8 @@ function makeLLMRequestBody(settings, systemPrompt, conversation, message, image
       ...conversation.map((item) => ({ role: item.role, content: String(item.content || '') })),
       { role: 'user', content: userContent }
     ],
-    ...(isKimiChatTarget(apiUrl, model) ? { temperature: 1 } : {})
+    ...(isKimiChatTarget(apiUrl, model) ? { temperature: 1 } : {}),
+    ...(stream ? { stream: true } : {})
   };
 }
 
@@ -619,6 +637,85 @@ async function postJson(path, payload) {
   return result.data || {};
 }
 
+function roomProvider(apiUrl, model = '') {
+  if (isOllamaNativeApi(apiUrl)) return 'ollama';
+  if (isOpenAIResponsesApi(apiUrl)) return 'responses';
+  if (isAnthropicChatApi(apiUrl, model)) return 'anthropic';
+  return 'openai';
+}
+
+async function requestRoomReply({ settings, systemPrompt, conversation, message, image, signal, onDelta }) {
+  const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
+  const useLocalOllama = isOllamaApi(apiUrl);
+  if (!settings.apiUrl && !settings.useProxy) {
+    const reply = fallbackReply(message, image);
+    onDelta(reply);
+    return { reply, model: 'preset' };
+  }
+
+  const proxyPayload = {
+    message: message || (image ? '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
+    conversation,
+    apiKey: settings.apiKey,
+    apiUrl: settings.apiUrl,
+    model: settings.model,
+    systemPrompt,
+    image: settings.visionMode === 'mcp' ? null : image
+  };
+  if (settings.useProxy && !useLocalOllama) {
+    // Older WebViews without readable response bodies still use the established
+    // one-shot proxy. This also keeps the legacy Room transport compatible.
+    if (typeof ReadableStream === 'undefined') {
+      const result = await postJson('/api/chat', proxyPayload);
+      onDelta(result.reply || '');
+      return result;
+    }
+    const response = await authFetch('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify(proxyPayload),
+      signal
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.message || `LLM ${response.status}`);
+    }
+    return readRoomChatStream(response, { provider: 'proxy', onDelta, signal });
+  }
+
+  if (!settings.apiUrl || (!settings.apiKey && !useLocalOllama)) {
+    const reply = fallbackReply(message, image);
+    onDelta(reply);
+    return { reply, model: 'preset' };
+  }
+  const provider = roomProvider(apiUrl, settings.model);
+  const providerImage = settings.visionMode === 'mcp' ? null : image;
+  const body = makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, true);
+  const options = {
+    method: 'POST',
+    headers: chatRequestHeaders(apiUrl, settings.apiKey),
+    body: JSON.stringify(body),
+    signal
+  };
+  let response = await fetchWithLocalOllamaGuidance(apiUrl, options);
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    // Some OpenAI-compatible providers reject the stream flag. A no-stream
+    // retry is safe only when the response explicitly says that is why it
+    // rejected the request, before any reply bytes have been accepted.
+    if ([400, 422].includes(response.status) && /(?:stream[^.]{0,80}(?:unsupported|not supported|not available)|(?:unsupported|not supported)[^.]{0,80}stream)/i.test(errorText)) {
+      response = await fetchWithLocalOllamaGuidance(apiUrl, {
+        ...options,
+        body: JSON.stringify(makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, false))
+      });
+      if (!response.ok) throw new Error(`LLM ${response.status}`);
+    } else {
+      throw new Error(`LLM ${response.status}，请检查模型设置或稍后重试`);
+    }
+  }
+  return readRoomChatStream(response, { provider, onDelta, signal });
+}
+
 function fallbackReply(message, image) {
   if (image) return '\u6211\u6536\u5230\u56fe\u7247\u4e86\u3002\u5982\u679c\u5f53\u524d\u6a21\u578b\u6216 MCP \u8fd8\u4e0d\u80fd\u89e3\u6790\u5b83\uff0c\u6211\u4f1a\u5148\u628a\u8fd9\u6b21\u753b\u9762\u8bb0\u5728\u5bf9\u8bdd\u91cc\u3002';
   return message ? `\u6211\u542c\u89c1\u4e86\uff1a${message}` : '\u6211\u5728\u8fd9\u91cc\u3002';
@@ -654,7 +751,7 @@ function mcpResultText(result) {
   return compactText(JSON.stringify(result));
 }
 
-async function callMcpTool(settings, name, args = {}) {
+async function callMcpTool(settings, name, args = {}, signal = null) {
   if (!settings.enabled || !settings.endpoint || !mcpToolAllowed(settings, name)) return '';
   const localTokenPlan = settings.endpoint === '/api/mcp/token-plan';
   const headers = makeMcpHeaders(settings);
@@ -664,76 +761,69 @@ async function callMcpTool(settings, name, args = {}) {
     });
   }
   const request = localTokenPlan ? authFetch : fetch;
-  const response = await request(settings.endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: Date.now(),
-      method: 'tools/call',
-      params: {
-        name,
-        arguments: args,
-        meta: {
-          auth: {
-            api_key: settings.apiKey,
-            api_host: settings.apiHost,
-            base_path: settings.basePath,
-            resource_mode: settings.resourceMode || 'url'
+  const controller = new AbortController();
+  const abortFromParent = () => controller.abort();
+  signal?.addEventListener('abort', abortFromParent, { once: true });
+  if (signal?.aborted) controller.abort();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await request(settings.endpoint, {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'tools/call',
+        params: {
+          name,
+          arguments: args,
+          meta: {
+            auth: {
+              api_key: settings.apiKey,
+              api_host: settings.apiHost,
+              base_path: settings.basePath,
+              resource_mode: settings.resourceMode || 'url'
+            }
           }
         }
-      }
-    })
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.error) throw new Error(data?.error?.message || `MCP ${response.status}`);
-  return mcpResultText(data.result || data);
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.error) throw new Error(data?.error?.message || `MCP ${response.status}`);
+    return mcpResultText(data.result || data);
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', abortFromParent);
+  }
 }
 
-async function fetchRelevantMemories(message) {
+async function fetchRelevantMemories(message, signal = null) {
   const memorySettings = readJson('roomMemorySettings', { enabled: true });
   if (memorySettings.enabled === false) return [];
   if (!String(message || '').trim()) return [];
   const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
   const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
     headers: authHeaders({ Accept: 'application/json' }),
-    cache: 'no-store'
+    cache: 'no-store',
+    signal
   });
   const result = await parseResponse(response);
   if (!response.ok || !result.success) return [];
   return Array.isArray(result.data) ? result.data : [];
 }
 
-async function fetchPersonaMemories(message) {
+async function fetchPersonaMemories(message, signal = null) {
   if (!String(message || '').trim()) return [];
   const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
   const response = await authFetch(noStoreUrl(`/api/room/persona-memory?${params}`), {
     headers: authHeaders({ Accept: 'application/json' }),
-    cache: 'no-store'
+    cache: 'no-store',
+    signal
   });
   const result = await parseResponse(response);
   if (!response.ok || !result.success) return [];
   return Array.isArray(result.data) ? result.data : [];
-}
-
-function readKnowledgeContext(message) {
-  return knowledgeContext(message, readJson('roomKnowledgeSettings', null));
-}
-
-function memoryContext(memories) {
-  if (!memories.length) return '';
-  return [
-    '\u4e0e\u5f53\u524d\u7528\u6237\u76f8\u5173\u7684\u957f\u671f\u8bb0\u5fc6\uff08\u53ea\u5728\u672c\u6b21\u56de\u590d\u4e2d\u4f5c\u4e3a\u80cc\u666f\uff09\uff1a',
-    ...memories.map((item, index) => `${index + 1}. [${item.type || 'memory'}] ${compactText(item.summary || item.content || '', 220)}`)
-  ].join('\n');
-}
-
-function personaMemoryContext(memories) {
-  if (!memories.length) return '';
-  return [
-    '\u516b\u5343\u4ee3\u4eba\u683c\u8bed\u6599\u7684\u76f8\u5173\u7247\u6bb5\uff08\u7528\u4e8e\u4fdd\u6301\u4eba\u683c\u3001\u8bed\u6c14\u548c\u56de\u5e94\u8fde\u7eed\u6027\uff09\uff1a',
-    ...memories.map((item, index) => `${index + 1}. ${compactText(item.summary || item.content || '', 260)}`)
-  ].join('\n');
 }
 
 function siteFeedContext(feed) {
@@ -758,11 +848,14 @@ function siteFeedContext(feed) {
   ].join('\n');
 }
 
-async function fetchSiteFeedContext() {
+async function fetchSiteFeedContext(signal = null) {
   if (siteFeedContextCache.value && siteFeedContextCache.expiresAt > Date.now()) {
     return siteFeedContextCache.value;
   }
   const controller = new AbortController();
+  const abortFromParent = () => controller.abort();
+  signal?.addEventListener('abort', abortFromParent, { once: true });
+  if (signal?.aborted) controller.abort();
   const timer = window.setTimeout(() => controller.abort(), SITE_FEED_TIMEOUT_MS);
   try {
     const response = await apiFetch(noStoreUrl('/api/site-feed?limit=20'), {
@@ -780,6 +873,7 @@ async function fetchSiteFeedContext() {
     return siteFeedContextCache.value;
   } finally {
     window.clearTimeout(timer);
+    signal?.removeEventListener('abort', abortFromParent);
   }
 }
 
@@ -878,39 +972,41 @@ export function roomEnvironmentContext(worldState) {
   ].join('\n');
 }
 
-async function buildRoomContext(message, image, llmSettings, environment = '') {
+async function buildRoomContext(message, image, llmSettings, environment = '', signal = null) {
   const mcpSettings = readJson('roomMCPSettings', {});
   const knowledgeEnabled = readJson('roomKnowledgeSettings', null)?.enabled !== false;
-  const context = [currentTimeContext(), environment, readKnowledgeContext(message)];
+  const toolResults = [];
   const [siteText, personaMemories, memories, growthState] = await Promise.all([
-    fetchSiteFeedContext(),
-    knowledgeEnabled ? fetchPersonaMemories(message).catch(() => []) : [],
-    fetchRelevantMemories(message).catch(() => []),
+    fetchSiteFeedContext(signal),
+    knowledgeEnabled ? fetchPersonaMemories(message, signal).catch(() => []) : [],
+    fetchRelevantMemories(message, signal).catch(() => []),
     loadGrowth().catch(() => null)
   ]);
-  if (siteText) context.push(siteText);
-  const personaText = personaMemoryContext(personaMemories);
-  if (personaText) context.push(personaText);
-  const memoryText = memoryContext(memories);
-  if (memoryText) context.push(memoryText);
-  const userGrowthText = growthContext(growthState);
-  if (userGrowthText) context.push(userGrowthText);
 
   if (mcpSettings.enabled && mcpSettings.endpoint) {
     if (image && (llmSettings.visionMode === 'mcp' || llmSettings.visionMode === 'auto')) {
       const imageText = await callMcpTool(mcpSettings, 'understand_image', {
         image_data: image.dataUrl,
         prompt: message || '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\uff0c\u5e76\u6307\u51fa\u548c\u5bf9\u8bdd\u76f8\u5173\u7684\u5185\u5bb9\u3002'
-      }).catch(() => '');
-      if (imageText) context.push(`MCP understand_image \u7ed3\u679c\uff1a\n${imageText}`);
+      }, signal).catch(() => '');
+      if (imageText) toolResults.push({ id: 'understand_image', content: imageText });
     }
     if (!image && shouldUseWebSearch(message)) {
-      const searchText = await callMcpTool(mcpSettings, 'web_search', { query: message }).catch(() => '');
-      if (searchText) context.push(`MCP web_search \u7ed3\u679c\uff1a\n${searchText}`);
+      const searchText = await callMcpTool(mcpSettings, 'web_search', { query: message }, signal).catch(() => '');
+      if (searchText) toolResults.push({ id: 'web_search', content: searchText });
     }
   }
 
-  return context.filter(Boolean).join('\n\n');
+  return packRoomContext({
+    time: currentTimeContext(),
+    environment,
+    knowledge: selectRoomKnowledgeEntries(message, readJson('roomKnowledgeSettings', null)),
+    toolResults,
+    memories: memories.map((item) => ({ id: item.id || item.memoryId || item.type || 'memory', content: item.summary || item.content || '' })),
+    personaMemories: personaMemories.map((item) => ({ id: item.id || item.memoryId || 'persona', content: item.summary || item.content || '' })),
+    growth: growthContext(growthState),
+    site: siteText
+  }, { maxChars: isOllamaApi(llmSettings.apiUrl) ? 4_000 : 8_000 }).text;
 }
 
 export function useRoomChat({ live2d, world, diary = null }) {
@@ -919,6 +1015,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   const input = ref('');
   const sending = ref(false);
   const resetting = ref(false);
+  const generationState = ref({ status: 'idle', turnId: '', error: '' });
   const imageAttachment = ref(null);
   const messageListRef = ref(null);
   const ttsState = ref({ messageId: '', status: 'idle' });
@@ -935,6 +1032,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
   let stopRoomConversationUpdates = () => {};
   let sessionStartedAt = Date.now();
   const currentSessionMessages = ref([]);
+  let activeGeneration = null;
+  let lastFailedTurn = null;
   let destroyed = false;
 
   function handleGrowthUpdate(event) {
@@ -962,12 +1061,34 @@ export function useRoomChat({ live2d, world, diary = null }) {
 
   function renderHistory(history) {
     messages.value = [];
+    lastFailedTurn = null;
+    generationState.value = { status: 'idle', turnId: '', error: '' };
     addMessage('system', 'Live2D 已就绪');
     history.forEach((message) => addMessage(message.role, message.content, {
       id: message.id,
       turnId: message.turnId,
       createdAt: message.createdAt
     }));
+    const draft = readRoomGenerationDraft();
+    if (!draft) return;
+    if (history.some((item) => item.turnId === draft.turnId)) {
+      clearRoomGenerationDraft(draft.turnId);
+      return;
+    }
+    if (draft.image?.unavailable) {
+      input.value = draft.message;
+      addMessage('system', '上次未完成的图片消息已恢复文字，请重新添加图片后发送。', { shareable: false });
+      clearRoomGenerationDraft(draft.turnId);
+      return;
+    }
+    let userMessageId = '';
+    if (!draft.opener) {
+      const restored = addMessage('user', draft.message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image: draft.image, turnId: draft.turnId, createdAt: draft.createdAt });
+      restored.failed = true;
+      userMessageId = restored.id;
+    }
+    lastFailedTurn = { kind: 'new', turnId: draft.turnId, message: draft.message, image: draft.image, opener: draft.opener, userMessageId };
+    generationState.value = { status: 'error', turnId: draft.turnId, error: '上次回复未完成，已恢复原消息。' };
   }
 
   async function refreshSyncedHistory() {
@@ -995,6 +1116,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   function resetConversationView() {
+    if (activeGeneration) stopGeneration();
     conversationRevision += 1;
     historyLoadRevision += 1;
     refreshHistoryAfterSend = false;
@@ -1002,6 +1124,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
     imageAttachment.value = null;
     input.value = '';
     stopTTS();
+    lastFailedTurn = null;
+    generationState.value = { status: 'idle', turnId: '', error: '' };
     renderHistory([]);
     markSessionStart();
   }
@@ -1022,6 +1146,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       : '新建会话会清空当前聊天记录和待同步消息，但会保留长期记忆与角色知识库。是否继续？');
     if (!confirmed) return;
 
+    if (activeGeneration && !stopGeneration()) return;
     resetting.value = true;
     try {
       await clearRoomConversation();
@@ -1085,101 +1210,271 @@ export function useRoomChat({ live2d, world, diary = null }) {
     return send({ opener: true });
   }
 
-  async function send({ opener = false } = {}) {
+  function stopGeneration() {
+    const operation = activeGeneration;
+    if (!operation || operation.committing) return false;
+    operation.controller.abort();
+    activeGeneration = null;
+    sending.value = false;
+    messages.value = messages.value.filter((item) => item.id !== operation.pendingId);
+    const userMessage = messages.value.find((item) => item.id === operation.userMessageId);
+    if (userMessage && !operation.replacement) userMessage.failed = true;
+    lastFailedTurn = operation.replacement
+      ? { kind: 'replacement', replacement: operation.replacement }
+      : { kind: 'new', turnId: operation.turnId, message: operation.message, image: operation.image, opener: operation.opener, userMessageId: operation.userMessageId };
+    generationState.value = { status: 'stopped', turnId: operation.turnId, error: '' };
+    return true;
+  }
+
+  function discardFailedTurn() {
+    if (sending.value || !lastFailedTurn) return false;
+    if (lastFailedTurn.kind === 'new') {
+      messages.value = messages.value.filter((item) => item.id !== lastFailedTurn.userMessageId);
+      clearRoomGenerationDraft(lastFailedTurn.turnId);
+    }
+    lastFailedTurn = null;
+    generationState.value = { status: 'idle', turnId: '', error: '' };
+    return true;
+  }
+
+  function retryLastTurn() {
+    if (!lastFailedTurn || sending.value) return false;
+    if (lastFailedTurn.kind === 'replacement') return send({ replacement: lastFailedTurn.replacement });
+    return send({ retry: lastFailedTurn });
+  }
+
+  function canEditAndResend(message) {
+    if (sending.value || resetting.value || sharedConversation.value || !message || message.role !== 'user' || message.image || /\[image: [^\]]+\]$/u.test(message.content)) return false;
+    const visible = messages.value.filter((item) => ['user', 'assistant'].includes(item.role) && !item.pending);
+    if (visible.at(-1)?.turnId !== message.turnId) return false;
+    if (lastFailedTurn?.kind === 'new' && lastFailedTurn.userMessageId === message.id) return true;
+    const history = readRoomConversation();
+    return Boolean(message.turnId && history.at(-1)?.turnId === message.turnId
+      && history.some((item) => item.turnId === message.turnId && item.role === 'assistant'));
+  }
+
+  function canRegenerateReply(message) {
+    if (sending.value || resetting.value || sharedConversation.value || !message || message.role !== 'assistant' || message.pending) return false;
+    const visible = messages.value.filter((item) => ['user', 'assistant'].includes(item.role) && !item.pending);
+    if (visible.at(-1)?.id !== message.id) return false;
+    const history = readRoomConversation();
+    return Boolean(message.turnId && history.at(-1)?.turnId === message.turnId
+      && history.some((item) => item.turnId === message.turnId && item.role === 'assistant' && item.content === message.content));
+  }
+
+  async function editAndResend(messageId, nextText) {
+    const user = messages.value.find((item) => item.id === messageId);
+    const text = String(nextText || '').trim();
+    if (!text || !canEditAndResend(user)) return false;
+    if (lastFailedTurn?.kind === 'new' && lastFailedTurn.userMessageId === user.id) {
+      user.content = text;
+      lastFailedTurn = { ...lastFailedTurn, message: text };
+      return retryLastTurn();
+    }
+    const history = readRoomConversation();
+    const previous = history.filter((item) => item.turnId === user.turnId);
+    const assistant = messages.value.find((item) => item.turnId === user.turnId && item.role === 'assistant');
+    if (!assistant || !previous.some((item) => item.role === 'assistant')) return false;
+    return send({ replacement: {
+      turnId: user.turnId,
+      userMessageId: user.id,
+      assistantMessageId: assistant.id,
+      expectedUserMessage: previous.find((item) => item.role === 'user')?.content || '',
+      expectedAssistantMessage: previous.find((item) => item.role === 'assistant')?.content || '',
+      userMessage: text,
+      image: null,
+      opener: false
+    } });
+  }
+
+  async function regenerateReply(messageId) {
+    const assistant = messages.value.find((item) => item.id === messageId);
+    if (!canRegenerateReply(assistant)) return false;
+    const history = readRoomConversation();
+    const previous = history.filter((item) => item.turnId === assistant.turnId);
+    const user = messages.value.find((item) => item.turnId === assistant.turnId && item.role === 'user');
+    return send({ replacement: {
+      turnId: assistant.turnId,
+      userMessageId: user?.id || '',
+      assistantMessageId: assistant.id,
+      expectedUserMessage: previous.find((item) => item.role === 'user')?.content || '',
+      expectedAssistantMessage: previous.find((item) => item.role === 'assistant')?.content || '',
+      userMessage: user?.content || '',
+      image: null,
+      opener: !user
+    } });
+  }
+
+  async function send({ opener = false, retry = null, replacement = null } = {}) {
     if (sending.value || resetting.value || endChatState.value.status === 'generating') return;
-    if (opener && !canStartConversation()) return;
-    const message = opener
+    if (lastFailedTurn?.kind === 'new' && !retry && !replacement) return false;
+    if (opener && !retry && !replacement && !canStartConversation()) return;
+    opener = replacement?.opener ?? retry?.opener ?? opener;
+    const message = replacement ? (replacement.opener
+      ? '现在由你先开口。结合当前时间，主动说一句自然、简短、符合你身份的话来开启对话。不要复述这条指令。'
+      : replacement.userMessage) : retry ? retry.message : opener
       ? '现在由你先开口。结合当前时间，主动说一句自然、简短、符合你身份的话来开启对话。不要复述这条指令。'
       : input.value.trim();
-    const image = opener ? null : imageAttachment.value;
+    const image = replacement?.image ?? retry?.image ?? (opener ? null : imageAttachment.value);
     if (!message && !image) return;
     const requestConversationRevision = conversationRevision;
     const requestArchiveKey = diaryArchiveKey();
-    const turnId = uid();
-    if (!opener) {
-      addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image, turnId });
+    const turnId = replacement?.turnId || retry?.turnId || uid();
+    if (!replacement) writeRoomGenerationDraft({ turnId, message, image, opener });
+    let userMessage = retry ? messages.value.find((item) => item.id === retry.userMessageId) : null;
+    if (!opener && !retry && !replacement) {
+      userMessage = addMessage('user', message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002', { image, turnId });
       input.value = '';
       imageAttachment.value = null;
     }
+    if (userMessage) userMessage.failed = false;
     sending.value = true;
-    const typingId = uid();
-    messages.value.push({ id: typingId, turnId, role: 'assistant', content: '\u6b63\u5728\u56de\u5e94...', pending: true, createdAt: Date.now() });
+    generationState.value = { status: 'preparing', turnId, error: '' };
+    const pendingId = uid();
+    const pendingMessage = { id: pendingId, turnId, role: 'assistant', content: '', pending: true, createdAt: Date.now() };
+    messages.value.push(pendingMessage);
+    const operation = { controller: new AbortController(), pendingId, turnId, message, image, opener, userMessageId: userMessage?.id || '', replacement, committing: false, timedOut: false };
+    activeGeneration = operation;
+    const generationTimeout = window.setTimeout(() => {
+      if (activeGeneration !== operation || operation.committing) return;
+      operation.timedOut = true;
+      operation.controller.abort(new Error('模型响应超时，请重试本轮对话'));
+    }, ROOM_GENERATION_TIMEOUT_MS);
+    lastFailedTurn = null;
 
     try {
       const settings = readJson('roomLLMSettings', {});
-      const storedConversation = readRoomConversation().slice(-12);
+      const storedConversation = readRoomConversation().filter((item) => !replacement || item.turnId !== replacement.turnId).slice(-12);
       const sharedContext = sharedConversation.value ? [
         { role: 'user', content: sharedConversation.value.userMessage },
         { role: 'assistant', content: sharedConversation.value.assistantMessage }
       ] : [];
-      const conversation = [...storedConversation, ...sharedContext].slice(-12);
+      const conversation = selectRecentRoomConversation([...storedConversation, ...sharedContext], {
+        maxChars: isOllamaApi(settings.apiUrl) ? 4_000 : 6_000,
+        maxMessages: 12
+      });
       const environment = roomEnvironmentContext(world?.world?.value);
-      const roomContext = await buildRoomContext(message, image, settings, environment);
+      const roomContext = await buildRoomContext(message, image, settings, environment, operation.controller.signal);
+      if (operation.controller.signal.aborted || activeGeneration !== operation) return false;
       const systemPrompt = resolveRoomSystemPrompt({
         userPrompt: settings.systemPrompt,
         context: roomContext
       });
-      const mcpEnhancedMessage = roomContext && image && (settings.visionMode === 'mcp' || settings.visionMode === 'auto')
+      const visionToolSucceeded = roomContext.includes('"id":"understand_image"');
+      if (image && settings.visionMode === 'mcp' && !visionToolSucceeded) {
+        throw new Error('图片理解服务暂不可用，请检查 Room 的 MCP 设置后重试。');
+      }
+      const mcpEnhancedMessage = visionToolSucceeded && image && (settings.visionMode === 'mcp' || settings.visionMode === 'auto')
         ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n\n\u4e0a\u4e0b\u6587\u5df2\u5305\u542b MCP \u5bf9\u56fe\u7247\u7684\u7406\u89e3\u7ed3\u679c\uff0c\u8bf7\u7ed3\u5408\u5b83\u56de\u7b54\u3002`
         : message;
+      let streamedText = '';
+      let renderFrame = 0;
+      const renderDelta = () => {
+        renderFrame = 0;
+        if (activeGeneration === operation) pendingMessage.content = streamingVisibleText(streamedText);
+      };
+      const onDelta = (delta) => {
+        if (activeGeneration !== operation || operation.controller.signal.aborted) return;
+        streamedText += delta;
+        generationState.value = { status: 'streaming', turnId, error: '' };
+        if (typeof window.requestAnimationFrame === 'function') {
+          if (!renderFrame) renderFrame = window.requestAnimationFrame(renderDelta);
+        } else renderDelta();
+      };
       let result;
-      const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
-      const useLocalOllama = isOllamaApi(apiUrl);
-      if (settings.useProxy && !useLocalOllama) {
-        result = await postJson('/api/chat', {
-          message: mcpEnhancedMessage || (image ? '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
-          conversation,
-          apiKey: settings.apiKey,
-          apiUrl: settings.apiUrl,
-          model: settings.model,
+      try {
+        result = await requestRoomReply({
+          settings,
           systemPrompt,
-          image: settings.visionMode === 'mcp' ? null : image
+          conversation,
+          message: mcpEnhancedMessage || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
+          image,
+          signal: operation.controller.signal,
+          onDelta
         });
-      } else if (settings.apiUrl && (settings.apiKey || useLocalOllama)) {
-        const response = await fetchWithLocalOllamaGuidance(apiUrl, {
-          method: 'POST',
-          headers: chatRequestHeaders(apiUrl, settings.apiKey),
-          body: JSON.stringify(makeLLMRequestBody(
-            { ...settings, apiUrl },
-            systemPrompt,
-            conversation,
-            mcpEnhancedMessage || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
-            image
-          ))
-        });
-        if (!response.ok) throw new Error(`LLM ${response.status}`);
-        result = { reply: pickReply(await response.json()) };
-      } else {
-        result = { reply: fallbackReply(message, image) };
+      } finally {
+        if (renderFrame) window.cancelAnimationFrame?.(renderFrame);
       }
-      if (destroyed || requestConversationRevision !== conversationRevision || requestArchiveKey !== diaryArchiveKey()) return;
-      const structured = parseAssistantPayload(result.reply || fallbackReply(message, image));
+      if (destroyed || activeGeneration !== operation || operation.controller.signal.aborted
+        || requestConversationRevision !== conversationRevision || requestArchiveKey !== diaryArchiveKey()) return false;
+      if (!stripActionHints(stripControlTags(unwrapJsonEnvelope(result.reply))).trim()) {
+        throw new Error('模型没有返回可显示的回复，请重试');
+      }
+      const structured = parseAssistantPayload(result.reply);
       const reply = structured.reply || fallbackReply(message, image);
+      if (replacement) {
+        operation.committing = true;
+        generationState.value = { status: 'saving', turnId, error: '' };
+        await replaceRoomConversationTurn({
+          turnId,
+          expectedUserMessage: replacement.expectedUserMessage,
+          expectedAssistantMessage: replacement.expectedAssistantMessage,
+          userMessage: replacement.userMessage,
+          assistantMessage: reply
+        });
+        if (destroyed || activeGeneration !== operation || requestArchiveKey !== diaryArchiveKey()) return false;
+        if (!replacement.opener) remember(replacement.userMessage, reply, turnId).catch((error) => {
+          if (error.name !== 'AbortError') console.warn('Room replacement memory capture failed:', error);
+        });
+      }
       const ttsSettings = readJson('roomTTSSettings', {});
       if (ttsSettings.enabled) dispatchRoomLive2DExpression(structured.live2d);
       else applyRoomAct(structured.live2d);
-      messages.value = messages.value.filter((item) => item.id !== typingId);
-      addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d, turnId });
-      if (!opener) currentSessionMessages.value.push({ role: 'user', content: message || '请看这张图片。' });
-      currentSessionMessages.value.push({ role: 'assistant', content: reply });
-      const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
-      const nextHistory = [...storedConversation, ...(!opener ? [{ role: 'user', content: userContent, turnId }] : []), { role: 'assistant', content: reply, turnId }].slice(-24);
-      writeRoomConversation(nextHistory);
+      messages.value = messages.value.filter((item) => item.id !== pendingId);
+      if (replacement) {
+        const oldUser = messages.value.find((item) => item.id === replacement.userMessageId);
+        const oldAssistant = messages.value.find((item) => item.id === replacement.assistantMessageId);
+        if (oldUser) oldUser.content = replacement.userMessage;
+        if (oldAssistant) Object.assign(oldAssistant, { content: reply, speechText: reply, live2d: structured.live2d, failed: false });
+        const session = currentSessionMessages.value;
+        const last = session.at(-1);
+        if (last?.role === 'assistant' && last.content === replacement.expectedAssistantMessage) {
+          last.content = reply;
+          if (session.at(-2)?.role === 'user' && session.at(-2)?.content === replacement.expectedUserMessage) session.at(-2).content = replacement.userMessage;
+        }
+      } else {
+        addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d, turnId });
+        if (!opener) currentSessionMessages.value.push({ role: 'user', content: message || '请看这张图片。' });
+        currentSessionMessages.value.push({ role: 'assistant', content: reply });
+        const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
+        const nextHistory = [...storedConversation, ...(!opener ? [{ role: 'user', content: userContent, turnId }] : []), { role: 'assistant', content: reply, turnId }].slice(-24);
+        writeRoomConversation(nextHistory);
+        const savedTurn = saveRoomConversationTurn({ turnId, userMessage: opener ? '' : userContent, assistantMessage: reply, opener });
+        savedTurn.catch((error) => {
+          if (error.name !== 'AbortError') console.warn('Room conversation save failed:', error);
+        });
+        if (!opener) savedTurn.then(() => remember(userContent, reply, turnId)).catch((error) => {
+          if (error.name !== 'AbortError') console.warn('Room memory capture deferred:', error);
+        });
+      }
       sharedConversation.value = null;
-      saveRoomConversationTurn({ turnId, userMessage: opener ? '' : userContent, assistantMessage: reply, opener }).catch((error) => {
-        if (error.name !== 'AbortError') console.warn('Room conversation save failed:', error);
-      });
-      if (!opener) remember(userContent, reply, turnId).catch((error) => {
-        console.warn('Room memory save failed:', error);
-      });
+      lastFailedTurn = null;
+      if (!replacement) clearRoomGenerationDraft(turnId);
+      generationState.value = { status: 'idle', turnId: '', error: '' };
+      return true;
     } catch (error) {
-      messages.value = messages.value.filter((item) => item.id !== typingId);
-      addMessage('system', `\u53d1\u9001\u5931\u8d25\uff1a${error.message}`);
+      if (destroyed || activeGeneration !== operation || requestConversationRevision !== conversationRevision
+        || requestArchiveKey !== diaryArchiveKey()) return false;
+      messages.value = messages.value.filter((item) => item.id !== pendingId);
+      if (userMessage && !replacement) userMessage.failed = true;
+      lastFailedTurn = replacement
+        ? { kind: 'replacement', replacement }
+        : { kind: 'new', turnId, message, image, opener, userMessageId: userMessage?.id || '' };
+      generationState.value = {
+        status: error?.name === 'AbortError' && !operation.timedOut ? 'stopped' : 'error',
+        turnId,
+        error: operation.timedOut ? '模型响应超时，请重试本轮对话' : error?.name === 'AbortError' ? '' : String(error?.message || '回复未能完成，请重试。')
+      };
+      return false;
     } finally {
-      sending.value = false;
-      if (refreshHistoryAfterSend) {
-        refreshHistoryAfterSend = false;
-        refreshSyncedHistory();
+      window.clearTimeout(generationTimeout);
+      if (activeGeneration === operation) {
+        activeGeneration = null;
+        sending.value = false;
+        if (refreshHistoryAfterSend) {
+          refreshHistoryAfterSend = false;
+          refreshSyncedHistory();
+        }
       }
     }
   }
@@ -1525,6 +1820,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
 
   function destroy() {
     destroyed = true;
+    if (activeGeneration) stopGeneration();
     stopRoomConversationUpdates();
     stopRoomMemorySync();
     stopTTS();
@@ -1543,6 +1839,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     input,
     sending,
     resetting,
+    generationState,
     ttsState,
     sharedConversation,
     growth,
@@ -1558,6 +1855,13 @@ export function useRoomChat({ live2d, world, diary = null }) {
     startConversation,
     canStartConversation,
     send,
+    stopGeneration,
+    discardFailedTurn,
+    retryLastTurn,
+    canEditAndResend,
+    canRegenerateReply,
+    editAndResend,
+    regenerateReply,
     playTTS,
     stopTTS,
     onDrop,

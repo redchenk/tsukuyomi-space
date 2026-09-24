@@ -129,28 +129,27 @@ test('Room input remains above an overlay keyboard and composition never sends a
     await expect(page.locator('.mobile-bottom-nav')).toHaveCSS('visibility', 'visible');
 });
 
-test('Room tools use a collapsed upper-right drawer on mobile', async ({ page }) => {
+test('Room tools stay collapsed in the mobile companion header', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openPage(page, '/room');
 
-    const dock = page.locator('.room-dock');
-    const trigger = page.getByRole('button', { name: '房间工具', exact: true });
-    const menu = page.locator('#roomDockMenu');
+    const disclosure = page.locator('.room-tools-disclosure');
+    const trigger = disclosure.locator('summary');
+    const menu = disclosure.locator('.room-mobile-tools');
     await expect(trigger).toBeVisible();
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(disclosure).not.toHaveAttribute('open', '');
     await expect(menu).toBeHidden();
 
     const triggerBox = await trigger.boundingBox();
-    expect(triggerBox.x + triggerBox.width).toBeGreaterThan(360);
-    expect(triggerBox.y).toBeLessThan(260);
+    expect(triggerBox.x).toBeGreaterThanOrEqual(0);
+    expect(triggerBox.x + triggerBox.width).toBeLessThanOrEqual(390);
 
     await trigger.click();
-    await expect(dock).toHaveClass(/is-mobile-open/);
-    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(disclosure).toHaveAttribute('open', '');
     await expect(page.getByRole('button', { name: '日记', exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: '日记', exact: true }).click();
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(disclosure).not.toHaveAttribute('open', '');
     await expect(menu).toBeHidden();
     await expect(page.locator('#diaryPanel')).toBeVisible();
 });

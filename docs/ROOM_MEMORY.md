@@ -55,6 +55,8 @@ The Room chat context fetches the most relevant persona chunks from `/api/room/p
 ## Runtime Behavior
 
 - Recording, editing, deleting, and clearing memories update SQLite first, then synchronize the matching Milvus vector row.
+- Automatically extracted chat memories are linked to the exact saved turn and its content revision. Replacing the latest turn retires only those generated memories; manually created or edited memories remain. A delayed extraction from the old revision cannot write it back.
+- Older memories created before source-turn tagging cannot be attributed safely to one turn and are left intact when that turn is replaced.
 - Each row records `vector_synced_at` and `vector_sync_error`. Failed writes remain pending and are retried by status checks, searches, or `POST /api/room/memory/vector-sync` for the current authenticated account.
 - Failed vector deletions are retained in a per-user deletion queue and retried until Milvus confirms removal.
 - Search fuses Milvus cosine similarity with SQLite similarity, importance, recency, access, and memory type signals. Every Milvus id is resolved again through `WHERE user_id = ?` before it can enter an LLM prompt.

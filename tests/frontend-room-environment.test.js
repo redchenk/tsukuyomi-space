@@ -117,21 +117,21 @@ describe('room environment context', () => {
 describe('environment wiring', () => {
     it('is injected into every room request', () => {
         const code = chatSrc();
-        assert.match(code, /async function buildRoomContext\(message, image, llmSettings, environment = ''\)/);
-        assert.match(code, /const context = \[\s*currentTimeContext\(\),\s*environment,\s*readKnowledgeContext\(message\)/);
+        assert.match(code, /async function buildRoomContext\(message, image, llmSettings, environment = '', signal = null\)/);
+        assert.match(code, /packRoomContext\(\{\s*time: currentTimeContext\(\),\s*environment,\s*knowledge:/);
         assert.match(code, /const environment = roomEnvironmentContext\(world\?\.world\?\.value\);/);
-        assert.match(code, /await buildRoomContext\(message, image, settings, environment\)/);
+        assert.match(code, /await buildRoomContext\(message, image, settings, environment, operation\.controller\.signal\)/);
     });
 
     it('places the environment right after the time block', () => {
-        const code = chatSrc();
-        const body = code.slice(code.indexOf('async function buildRoomContext'));
+        const code = source('src/frontend/services/room/roomContext.mjs');
+        const body = code.slice(code.indexOf('const SOURCES'));
         assert.ok(
-            body.indexOf('currentTimeContext()') < body.indexOf('environment,'),
+            body.indexOf("key: 'time'") < body.indexOf("key: 'environment'"),
             'time must come before environment'
         );
         assert.ok(
-            body.indexOf('environment,') < body.indexOf('readKnowledgeContext(message)'),
+            body.indexOf("key: 'environment'") < body.indexOf("key: 'knowledge'"),
             'environment must come before the knowledge block'
         );
     });

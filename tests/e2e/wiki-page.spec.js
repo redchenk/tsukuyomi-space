@@ -20,7 +20,8 @@ test('Wiki loads as a production route and core interactions work', async ({ pag
   await expect(kaguyaCard).toHaveCSS('scale', '1.018');
   await kaguyaCard.click();
   await expect(page).toHaveURL(/\/wiki\/characters\/kaguya$/);
-  await page.goBack();
+  await page.goto('/wiki');
+  await expect(page.getByRole('heading', { level: 1, name: '超辉夜姬！Wiki' })).toBeVisible();
 
   await page.getByRole('button', { name: '虚拟空间“月读”' }).click();
   const dialog = page.getByRole('dialog', { name: '月读／TSUKUYOMI' });

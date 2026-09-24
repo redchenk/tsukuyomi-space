@@ -85,11 +85,16 @@ harden_app_permissions() {
         exit 1
     fi
 
-    find "$APP_DIR" -xdev -path "$APP_DIR/assets/uploads" -prune -o \
+    # Large, pre-existing media and Live2D resources are managed separately.
+    # A code-only deployment must not rewrite their ownership or mode bits.
+    local protected_paths=( -path "$APP_DIR/assets/uploads" -o -path "$APP_DIR/assets/music" \
+        -o -path "$APP_DIR/assets/video" -o -path "$APP_DIR/models" \
+        -o -path "$APP_DIR/lib/bundled" -o -path "$APP_DIR/dist/live2d-studio" )
+    find "$APP_DIR" -xdev \( "${protected_paths[@]}" \) -prune -o \
         \( -type f -o -type d \) -exec chown root:root {} +
-    find "$APP_DIR" -xdev -path "$APP_DIR/assets/uploads" -prune -o \
+    find "$APP_DIR" -xdev \( "${protected_paths[@]}" \) -prune -o \
         -type d -exec chmod go-w {} +
-    find "$APP_DIR" -xdev -path "$APP_DIR/assets/uploads" -prune -o \
+    find "$APP_DIR" -xdev \( "${protected_paths[@]}" \) -prune -o \
         -type f -exec chmod go-w {} +
 
     if [ -d "$APP_DIR/.git" ]; then

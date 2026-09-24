@@ -14,12 +14,21 @@ for (const width of [1280, 390]) {
       } }));
     });
     const chatRequests = [];
+    await page.route('**/api/chat/stream', async (route) => {
+      const body = route.request().postDataJSON();
+      chatRequests.push(body);
+      const reply = '（轻轻挥手）欢迎来到书店。';
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: `event: delta\ndata: ${JSON.stringify({ text: reply })}\n\nevent: done\ndata: ${JSON.stringify({ reply, model: 'test' })}\n\n`
+      });
+    });
     await page.route('**/api/chat', async (route) => {
       const body = route.request().postDataJSON();
-      const isDiary = body.systemPrompt.includes('私人日记');
       chatRequests.push(body);
       await route.fulfill({ json: { success: true, data: {
-        reply: isDiary ? '今天我们又在旧书店聊了很久。窗外的阳光很暖，我也会记得这一段愉快的时光。' : '（轻轻挥手）欢迎来到书店。'
+        reply: '今天我们又在旧书店聊了很久。窗外的阳光很暖，我也会记得这一段愉快的时光。'
       } } });
     });
     await page.goto('/room');

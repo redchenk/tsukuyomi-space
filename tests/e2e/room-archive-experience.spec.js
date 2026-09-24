@@ -11,7 +11,7 @@ test('mobile diary selection, persona switching and confirmed deletion preserve 
         }));
     });
     await page.goto('/room');
-    await page.getByRole('button', { name: '房间工具', exact: true }).click();
+    await page.locator('.room-tools-disclosure > summary').click();
     await page.getByRole('button', { name: '日记', exact: true }).click();
     const diary = page.locator('#diaryPanel');
     await diary.getByRole('combobox').selectOption('b');

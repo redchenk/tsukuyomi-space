@@ -108,7 +108,8 @@ describe('frontend room memory API client usage', () => {
         assert.match(code, /JSON\.stringify\(publicData\)/);
         assert.match(code, /\\u4e0d\\u5f97\\u6267\\u884c/);
         assert.match(code, /await Promise\.all\(\[/);
-        assert.match(code, /if \(siteText\) context\.push\(siteText\);/);
+        assert.match(code, /site: siteText/);
+        assert.match(code, /packRoomContext\(\{/);
     });
 
     it('routes settings memory management through the shared API client', () => {
@@ -192,9 +193,9 @@ describe('frontend room memory API client usage', () => {
         assert.match(conversation, /localStorage\.removeItem\(pendingKey\(\)\)/);
         assert.match(conversation, /`roomChatReset:\$\{userId\}`/);
         assert.match(conversation, /pending\.controller\.abort\(\)/);
-        assert.match(conversation, /await Promise\.allSettled\(pendingRequests\)/);
+        assert.match(conversation, /await Promise\.allSettled\(\[\.\.\.pendingRequests, saveQueues\.get\(userId\)\]\)/);
         assert.match(conversation, /const inFlightTurns = new Map\(\)/);
-        assert.match(chat, /readRoomConversation\(\)\.slice\(-12\)/);
+        assert.match(chat, /readRoomConversation\(\)\.filter\(\(item\) => !replacement \|\| item\.turnId !== replacement\.turnId\)\.slice\(-12\)/);
         assert.match(chat, /saveRoomConversationTurn\(/);
         assert.match(chat, /startNewSession/);
         assert.match(chat, /requestConversationRevision !== conversationRevision/);
