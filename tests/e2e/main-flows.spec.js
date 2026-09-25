@@ -630,14 +630,23 @@ test('pixel canvas switches between mobile scrolling and uninterrupted drawing',
             }
         });
 
+        // The preceding swipe can still be scrolling, and clicking the toolbar
+        // can move the canvas. Wait for a stable, reachable drawing point before
+        // dispatching raw CDP coordinates (CDP has no locator auto-waiting).
+        await canvas.scrollIntoViewIfNeeded();
+        await canvas.click({ trial: true, position: { x: 120, y: 120 } });
         const drawingBox = await canvas.boundingBox();
         expect(drawingBox).not.toBeNull();
         const drawX = drawingBox.x + Math.min(drawingBox.width / 2, 120);
         const drawStartY = drawingBox.y + Math.min(drawingBox.height * 0.3, 120);
+        await expect.poll(() => canvas.evaluate((element, point) =>
+            element.contains(document.elementFromPoint(point.x, point.y)), { x: drawX, y: drawStartY }))
+            .toBe(true);
         await session.send('Input.dispatchTouchEvent', {
             type: 'touchStart',
             touchPoints: [{ x: drawX, y: drawStartY }]
         });
+        await expect.poll(() => page.evaluate(() => window.__pixelPointerTrace)).toContain('pointerdown');
         for (const y of [drawStartY + 30, drawStartY + 60, drawStartY + 90, drawStartY + 120]) {
             await session.send('Input.dispatchTouchEvent', {
                 type: 'touchMove',
@@ -646,6 +655,7 @@ test('pixel canvas switches between mobile scrolling and uninterrupted drawing',
         }
         await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
+        await expect.poll(() => page.evaluate(() => window.__pixelPointerTrace)).toContain('pointerup');
         const pointerTrace = await page.evaluate(() => window.__pixelPointerTrace);
         expect(pointerTrace).toContain('pointerdown');
         expect(pointerTrace).toContain('pointermove');
