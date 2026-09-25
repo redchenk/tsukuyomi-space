@@ -2726,6 +2726,7 @@ onBeforeUnmount(() => {
           <div v-show="tts.enabled" class="settings-section-fields">
             <label
               >语音服务<select
+                aria-label="语音服务"
                 :value="
                   Object.keys(TTS_PRESETS).find(
                     (key) => TTS_PRESETS[key].provider === tts.provider,

@@ -292,3 +292,13 @@ No remaining P0, P1 or P2 design findings in the reviewed scope.
   Their final results are recorded by the release pipeline, separately from this
   visual review. No live paid model/TTS provider request or physical iOS device
   test was performed for this redesign.
+
+### Release regression follow-up
+
+The first pipeline run passed 70 of 72 browser cases. Two failures identified an
+outdated save-button selector in a memory test and an ambiguous accessible name
+on the voice-provider select. Updated the selector to the unified save bar and
+added the select's explicit `aria-label`. The voice draft was then configured in
+the local browser, saved from the memory category, and returned to Room
+successfully. The 243 frontend tests and production build passed again; the full
+pipeline is rerun before deployment.

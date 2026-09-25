@@ -103,7 +103,7 @@ for (const width of [1280, 390]) {
       await reopenedEditor.locator('input[type="text"]').first().fill(savedAllSummary);
       const savedAll = page.waitForResponse((response) => response.request().method() === 'PUT'
         && response.url().includes(`/api/room/memory/${memoryId}`));
-      await page.locator('.room-settings-actions .primary-btn').first().click();
+      await page.locator('.settings-savebar .primary-btn').click();
       expect((await savedAll).status()).toBe(200);
       await expect(reopenedEditor).toHaveCount(0);
       const afterSaveAll = await page.request.get(`/api/room/memory/${memoryId}`);
