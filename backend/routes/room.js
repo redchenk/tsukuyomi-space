@@ -930,7 +930,11 @@ router.post('/memory', authenticateToken, async (req, res) => {
     }
 });
 
-router.patch('/memory/:id', authenticateToken, async (req, res) => {
+// The public CDN rejects PATCH before it reaches the origin. Accept PUT for
+// the settings editor while retaining PATCH for existing direct API clients.
+router.route('/memory/:id').put(authenticateToken, updateMemory).patch(authenticateToken, updateMemory);
+
+async function updateMemory(req, res) {
     try {
         const memory = await roomMemory.updateMemory(req.user.id, String(req.params.id || ''), req.body || {});
         if (memory) roomMemoryEvents.publish(req.user.id, { action: 'updated', memoryIds: [memory.id] });
@@ -939,7 +943,7 @@ router.patch('/memory/:id', authenticateToken, async (req, res) => {
     } catch (error) {
         res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : '无法更新记忆' });
     }
-});
+}
 
 router.delete('/memory/:id', authenticateToken, async (req, res) => {
     const count = await roomMemory.deleteMemory(req.user.id, String(req.params.id || ''));

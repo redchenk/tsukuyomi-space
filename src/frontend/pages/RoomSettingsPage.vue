@@ -1979,7 +1979,7 @@ async function saveMemoryEdit() {
       return true;
     }
     const response = await authFetch(`/api/room/memory/${encodeURIComponent(draft.id)}`, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: memoryAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(draft)
     });

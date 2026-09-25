@@ -2920,45 +2920,55 @@ describe('room memory API', () => {
         }
     });
 
-    it('preserves edited paragraphs and zero-valued scores across partial edits', async () => {
-        try {
-            const created = await postJson('/api/room/memory', {
-                type: 'project', summary: '画室安排', content: '请记住画室的长期安排。', force: true
-            }, userToken);
-            assert.equal(created.response.status, 201);
-            const id = created.body.data.id;
-            const content = '    第一段：周一整理画具。\n\n  第二段：周五检查  颜料库存。\n';
-            const edited = await request(`/api/room/memory/${id}`, {
-                method: 'PATCH', headers: jsonHeaders(userToken),
-                body: JSON.stringify({ content, importance: 0, confidence: 0, tags: [] })
-            });
-            assert.equal(edited.response.status, 200);
-            assert.equal(edited.body.data.content, content);
-            assert.equal(edited.body.data.importance, 0);
-            assert.equal(edited.body.data.confidence, 0);
-            assert.deepEqual(edited.body.data.tags, []);
+    for (const method of ['PUT', 'PATCH']) {
+        it(`preserves edited paragraphs and zero-valued scores across ${method} edits`, async () => {
+            try {
+                const created = await postJson('/api/room/memory', {
+                    type: 'project', summary: '画室安排', content: '请记住画室的长期安排。', force: true
+                }, userToken);
+                assert.equal(created.response.status, 201);
+                const id = created.body.data.id;
+                const originalContent = created.body.data.content;
+                for (const [headers, status] of [[jsonHeaders(managedUserToken), 404], [jsonHeaders(), 401]]) {
+                    const denied = await request(`/api/room/memory/${id}`, {
+                        method, headers, body: JSON.stringify({ content: 'Unauthorized edit' })
+                    });
+                    assert.equal(denied.response.status, status);
+                }
+                assert.equal((await request(`/api/room/memory/${id}`, { headers: jsonHeaders(userToken) })).body.data.content, originalContent);
+                const content = '    第一段：周一整理画具。\n\n  第二段：周五检查  颜料库存。\n';
+                const edited = await request(`/api/room/memory/${id}`, {
+                    method, headers: jsonHeaders(userToken),
+                    body: JSON.stringify({ content, importance: 0, confidence: 0, tags: [] })
+                });
+                assert.equal(edited.response.status, 200);
+                assert.equal(edited.body.data.content, content);
+                assert.equal(edited.body.data.importance, 0);
+                assert.equal(edited.body.data.confidence, 0);
+                assert.deepEqual(edited.body.data.tags, []);
 
-            const partial = await request(`/api/room/memory/${id}`, {
-                method: 'PATCH', headers: jsonHeaders(userToken),
-                body: JSON.stringify({ summary: '画室  长期安排' })
-            });
-            assert.equal(partial.response.status, 200);
-            assert.equal(partial.body.data.summary, '画室  长期安排');
-            assert.equal(partial.body.data.content, content);
-            assert.equal(partial.body.data.importance, 0);
-            assert.equal(partial.body.data.confidence, 0);
-            assert.equal((await request(`/api/room/memory/${id}`, { headers: jsonHeaders(userToken) })).body.data.content, content);
+                const partial = await request(`/api/room/memory/${id}`, {
+                    method, headers: jsonHeaders(userToken),
+                    body: JSON.stringify({ summary: '画室  长期安排' })
+                });
+                assert.equal(partial.response.status, 200);
+                assert.equal(partial.body.data.summary, '画室  长期安排');
+                assert.equal(partial.body.data.content, content);
+                assert.equal(partial.body.data.importance, 0);
+                assert.equal(partial.body.data.confidence, 0);
+                assert.equal((await request(`/api/room/memory/${id}`, { headers: jsonHeaders(userToken) })).body.data.content, content);
 
-            const blank = await request(`/api/room/memory/${id}`, {
-                method: 'PATCH', headers: jsonHeaders(userToken),
-                body: JSON.stringify({ content: '  \n  ' })
-            });
-            assert.equal(blank.response.status, 400);
-            assert.equal((await request(`/api/room/memory/${id}`, { headers: jsonHeaders(userToken) })).body.data.content, content);
-        } finally {
-            await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
-        }
-    });
+                const blank = await request(`/api/room/memory/${id}`, {
+                    method, headers: jsonHeaders(userToken),
+                    body: JSON.stringify({ content: '  \n  ' })
+                });
+                assert.equal(blank.response.status, 400);
+                assert.equal((await request(`/api/room/memory/${id}`, { headers: jsonHeaders(userToken) })).body.data.content, content);
+            } finally {
+                await request('/api/room/memory', { method: 'DELETE', headers: jsonHeaders(userToken) });
+            }
+        });
+    }
 
     it('acknowledges a persisted edit without waiting for optional vector sync', async () => {
         const originalStatus = milvusStore.status;

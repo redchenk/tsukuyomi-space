@@ -93,7 +93,7 @@ test('disable, editing, replacement, deletion and clear are reflected in real Me
     assert.equal(result.data.some(row => row.context.includes('白桃')), false);
     const item = result.data.find(row => row.context.includes('青梅'));
     assert.ok(item);
-    await request('/memory/' + item.id, 'PATCH', { content: '用户的名字是星河。', summary: '名字：星河', type: 'profile', importance: 0.8, confidence: 1, tags: [] });
+    await request('/memory/' + item.id, 'PUT', { content: '用户的名字是星河。', summary: '名字：星河', type: 'profile', importance: 0.8, confidence: 1, tags: [] });
     result = await request('/memory?purpose=chat&q=' + encodeURIComponent('我叫什么名字'));
     assert.equal(result.data.some(row => row.context.includes('青梅')), false);
     assert.ok(result.data.some(row => row.context.includes('星河')));

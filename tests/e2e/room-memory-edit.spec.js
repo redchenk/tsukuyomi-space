@@ -46,6 +46,12 @@ for (const width of [1280, 390]) {
     expect(created.status()).toBe(201);
     const memoryId = (await created.json()).data.id;
 
+    // Reproduce the public edge: PATCH fails with an empty HTTP 400 response.
+    // PUT still goes to the real backend, so persistence is verified below.
+    await page.route('**/api/room/memory/**', (route) => route.request().method() === 'PATCH'
+      ? route.fulfill({ status: 400, contentType: 'text/html', body: '' })
+      : route.continue());
+
     await page.goto('/room/settings');
     const manager = await openMemoryManager(page);
     const item = manager.locator('.memory-item').filter({ hasText: initialSummary });
@@ -65,7 +71,7 @@ for (const width of [1280, 390]) {
     await scores.first().press('Home');
     await scores.nth(1).focus();
     await scores.nth(1).press('Home');
-    const saved = page.waitForResponse((response) => response.request().method() === 'PATCH'
+    const saved = page.waitForResponse((response) => response.request().method() === 'PUT'
       && response.url().includes(`/api/room/memory/${memoryId}`));
     await editor.locator('button[type="submit"]').click();
     expect((await saved).status()).toBe(200);
@@ -94,7 +100,7 @@ for (const width of [1280, 390]) {
     if (width === 1280) {
       const savedAllSummary = `${marker} saved all`;
       await reopenedEditor.locator('input[type="text"]').first().fill(savedAllSummary);
-      const savedAll = page.waitForResponse((response) => response.request().method() === 'PATCH'
+      const savedAll = page.waitForResponse((response) => response.request().method() === 'PUT'
         && response.url().includes(`/api/room/memory/${memoryId}`));
       await page.locator('.room-settings-actions .primary-btn').first().click();
       expect((await savedAll).status()).toBe(200);
