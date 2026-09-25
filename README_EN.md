@@ -88,7 +88,8 @@ The default port is bound to the server loopback address at `127.0.0.1:3280`. Co
 | `MAIL_CREDENTIAL_KEY` | Encryption key for aggregated mailbox credentials; generate and retain a separate stable key |
 | `DATA_DIR` / `DB_PATH` | SQLite persistence paths; Docker uses `/data` by default |
 | `REDIS_URL` | Optional; stores verification codes, rate limits, weather cache data, and token revocations |
-| `ROOM_MEMORY_VECTOR_BACKEND` | Uses local SQLite vector search by default; Milvus is optional |
+| `ROOM_MEMORY_BACKEND` | `mem0` by default: embedded OSS SDK with local SQLite; `sqlite` selects fallback retrieval |
+| `ROOM_MEM0_DB_PATH` | Index file; defaults to `room-mem0.db` beside the main database |
 
 See [`.env.example`](.env.example) and [`.env.docker.example`](.env.docker.example) for the full configuration. Never commit real environment files, passwords, or API keys.
 
@@ -105,7 +106,7 @@ The detailed documents are currently maintained in Chinese.
 | --- | --- |
 | [Deployment and operations](docs/DEPLOY.md) | Docker, PM2, reverse proxies, asset mounts, backup, and recovery |
 | [Permission model](docs/PERMISSIONS.md) | User, administrator, and super administrator boundaries |
-| [Room long-term memory](docs/ROOM_MEMORY.md) | Memory storage, retrieval, and user isolation |
+| [Room long-term memory](docs/room-memory.md) | Memory storage, retrieval, and user isolation |
 | [Room rendering performance](docs/room-rendering-performance.md) | Live2D rendering and performance strategy |
 | [Wiki maintenance](docs/WIKI.md) | Wiki content and page maintenance |
 | [Article ranking](docs/article-ranking.md) | Article ranking and reader engagement signals |
@@ -184,7 +185,7 @@ The Room is evolving toward a personal Agent experience. Current capabilities in
 
 - LLM and TTS requests are sent directly from the user's browser by default, reducing the amount of conversation data and API credentials relayed through the site backend.
 - Signed-in conversations and long-term memories are stored server-side, isolated by account, and synchronized across devices through account sessions and real-time events. Signed-out visitors fall back to browser storage.
-- Memory retrieval supports local vectors and optional Milvus integration. Database boundaries and vector queries always carry user scope.
+- Completed turns and full memory content are saved in one transaction. The embedded Mem0 OSS SDK indexes all stored memories; relevant excerpts enter the model context with an actual reference count. Database boundaries and index queries always carry user scope.
 - The Room settings page includes a collapsed Memory Management section where users can search, inspect, edit, and delete their own memories.
 - The character knowledge base is stored in browser `localStorage`. It includes default entries for Yachiyo's identity, persona, speaking style, relationships, and boundaries, which users can add to, edit, disable, or reset.
 - Chat context combines relevant long-term memories, character knowledge, real weather, recent site activity, and available MCP tools.
@@ -240,7 +241,7 @@ VITE_SITE_LANGUAGE=en npm run build:web
 - External links in public content are checked for protocol and risk. Messages, articles, gallery items, attachments, and friend links have separate moderation boundaries.
 - SQLite is stored under `DATA_DIR` by default and must not be committed to Git.
 - See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for the permission model.
-- See [docs/ROOM_MEMORY.md](docs/ROOM_MEMORY.md) for Room long-term memory details.
+- See [docs/room-memory.md](docs/room-memory.md) for Room long-term memory details.
 
 ## Support the project
 
@@ -255,6 +256,8 @@ If Tsukuyomi Space has been useful to you, you can support its server, object-st
 <p align="center"><a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">Support Tsukuyomi Space on Afdian</a></p>
 
 ## Technology and asset credits
+
+- Thanks to [Mem0](https://github.com/mem0ai/mem0) (Apache-2.0) for its open-source memory system. Room embeds `mem0ai/oss` in the backend with a local SQLite index, account-scoped retrieval and full-source excerpts. No separate Mem0 service or cloud key is needed. Local feature hashing and keyword search are the default; remote embeddings are optional. Guests use IndexedDB. See [Room memory](docs/room-memory.md).
 
 - Parts of the frontend, including seamless client-side navigation, Markdown editing enhancements, and progressive image loading, were informed by [LyraVoid/Shirone](https://github.com/LyraVoid/Shirone). Refer to that repository for its code and license details.
 - The music app implementation on the Agent OS page is based on [firefly20041001/Yachiyo](https://github.com/firefly20041001/yachiyo), an Electron, React, and TypeScript project released under Apache-2.0.

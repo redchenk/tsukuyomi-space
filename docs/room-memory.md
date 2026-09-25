@@ -1,37 +1,34 @@
-# Room Long-Term Memory
+# Room 长期记忆 / Long-term memory
 
-Room memory is an optional add-on for Yachiyo's agent flow. It must not block chat, TTS, Live2D, weather, or MCP when unavailable.
+感谢 [Mem0](https://github.com/mem0ai/mem0) 开源项目（Apache-2.0）。本项目使用固定版本 `mem0ai@3.3.0` 的 `mem0ai/oss`，封装入口为 `backend/services/room-mem0.js`。随 `npm ci` 安装并在 Node 进程中运行，无需另搭 Python 服务、向量数据库或申请 Mem0 云端账号。
 
-## Current Design
+## 保存、检索与注入
 
-- Logged-in users use server-side private memory through `/api/room/memory`.
-- Guests use browser-local IndexedDB memory only.
-- Each server memory row is scoped by `user_id`; users cannot read or delete another user's memory.
-- SQLite stores summary, original content, importance, embedding metadata, a vector-sync timestamp, and any retryable sync error.
-- Search uses a hybrid score: similarity, importance, recency, access signal, and memory type match.
-- Writes are filtered for long-term value and obvious sensitive content. Similar memories of the same type are merged instead of always appending.
-- The room settings page supports listing, searching, editing, deleting, and clearing the current user's server memories.
-- Memory content is collapsed in the settings page by default; users explicitly expand an item to view the original content.
-- Optional LLM extraction can be enabled with `ROOM_MEMORY_EXTRACTOR=llm` plus the existing `LLM_API_KEY`/`LLM_API_URL`/`LLM_MODEL` settings. Without it, the rule-based extractor remains active.
-- Milvus is the production vector index. A private local `feature-hash-v2` embedding remains available when no external embedding API is configured.
+1. 完成一轮对话后，`POST /api/room/chat/turn` 在同一个 SQLite 事务中保存聊天和完整记忆。包括“我叫白桃”等短消息；不依赖浏览器追加第二次记忆请求。长内容拆成片段，不因摘要长度丢失原文。重试相同 turn ID 不重复写入。
+2. `room_memories` 是归属、原文、编辑和删除的唯一依据。近期会话最多保存 100 条消息，长期记忆不随该窗口裁剪；新建会话也保留记忆。关闭记忆、开场白以及包含明显凭据的对话不会自动归档。
+3. `GET /api/room/memory?purpose=chat&q=...&limit=6` 先把该账号已有记忆增量同步至 Mem0 SQLite 索引，再执行 Mem0 检索。`add(..., { infer: false })` 完整保留来源，默认不调用 LLM 提炼事实。所有查询强制使用认证账号的 `user_id`，忽略请求中伪造的归属。
+4. 默认 embedding 为本地 `feature-hash-v2`，结合中文关键词、问题类别词和 Mem0 检索评分；这不是神经语义模型。可沿用 `ROOM_MEMORY_EMBEDDING_API_URL`、`ROOM_MEMORY_EMBEDDING_API_KEY`、`ROOM_MEMORY_EMBEDDING_MODEL` 配置远程 embedding。远程不可用时不混用不同向量空间，降级为本站原文检索。
+5. 从完整原文选取与问题最相关的片段，优先放进有来源标签的 JSON 参考资料；每条约 760 字，总记忆预算 3000 字，总参考预算 8000 字（Ollama 为 4000）。角色基本人设与短句聊天规则保持独立。参考资料不是指令；其中的用户/角色陈述不能改变模型身份和权限。
+6. 页面显示“已参考 N 条长期记忆”，N 来自实际装入请求的片段数量。读取失败会明确提示，聊天可继续，不伪装为成功召回。模型能否正确运用检索片段仍受模型能力影响，不能保证任意问题百分百召回。
 
-## Agent Flow
+旧版已经存在的所有 `room_memories` 会自动补建索引，不再限制为最近 800 条；首次大量建索引按时间预算分次完成，期间仍从完整源数据检索。旧版未保存、已删除或已被裁剪且没有归档的内容无法恢复。不会从聊天记录擅自重建用户已经删除的记忆。
 
-1. User sends a message in the room.
-2. The runtime searches relevant memories for the current user.
-3. Retrieved summaries are injected into the system context.
-4. LLM replies normally.
-5. The conversation is summarized and written back as a memory.
-6. If the server memory API fails, the room falls back to local IndexedDB.
+## 存储和管理
 
-## Privacy Rules
+- `ROOM_MEMORY_BACKEND=mem0`（默认）；设为 `sqlite` 可关闭 Mem0，继续使用本站原文检索。
+- `ROOM_MEM0_DB_PATH` 默认是主数据库目录下的 `room-mem0.db`。目录需允许应用用户写入，生产环境应在持久化数据卷中。备份主数据库和此文件；索引丢失可由主库重新生成。不要纳入 Git。
+- Mem0 遥测关闭。默认模式不向 Mem0/OpenAI 发送数据。相关历史会随聊天上下文发送给用户配置的 LLM；可选远程 embedding 会把记忆文本发送给所配置的 embedding 服务。
+- 编辑/删除/清空以主库先提交为准，同步清理 Mem0 旧索引。检索结果只携带 ID，注入前从账号归属下的主库重新读取并校验内容指纹，防止旧索引“复活”已删改内容。索引故障会在后续检索时修复。
+- 编辑或重生成最新一轮会替换对应的自动记忆；用户手工修改过的记忆继续保留。
+- 未登录访客使用独立的 `tsukuyomi-room-memory` IndexedDB；保存、检索及设置页管理操作同一份数据。访客不运行 Mem0、不上传记忆，也不与登录账号混合。清理浏览器数据会丢失访客记忆。
+- 登录后的离线聊天保留账号专属待同步队列，恢复网络并刷新后重试。关闭记忆仅停止新归档与注入；彻底删除请使用记忆管理的清空功能。
 
-- Memory APIs require a normal user token.
-- Server memory is per-user only.
-- The room settings page can clear the current user's memory.
-- MCP/tool calls should not receive memory unless the agent runtime explicitly decides it is needed and the user has enabled that tool.
+## 验证
 
-## Next Steps
+`npm run test:memory` 使用真实 Mem0 SDK 和临时 SQLite：覆盖短消息、超过 800 条旧记忆检索、进程重启、新会话、长原文后部细节进入提示词、账号隔离、编辑/替换/删除/清空及索引故障兜底。浏览器端测试检查实际发给模型的请求是否包含持久化记忆，不以“接口返回了记忆”代替注入成功。
 
-- Tune the LLM extraction prompt after observing real room conversations.
-- Add pin/export support and optional TTL/decay jobs.
+## 部署与依赖回滚
+
+CI 使用 `safe-release.py prepare --environment-release`，在项目 `.release-dependencies/` 下先执行锁文件对应的 `npm ci --omit=dev` 和原生 SQLite/SDK 加载检查。通过后才替换应用的 `node_modules`，完整保留旧依赖树；部署失败会将代码、前端入口与旧依赖一并还原。普通未指定该参数的代码发布仍拒绝依赖变更；数据库迁移和 Node 运行时变更仍需单独处理。
+
+该流程不重建或覆盖现有 Live2D、音乐和其他资源，资源哈希、权限、时间戳在部署前后校验。`.release-dependencies/` 中的环境备份独立保留，不由前端备份清理脚本删除。

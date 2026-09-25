@@ -103,7 +103,7 @@ function findRecentMatchingLegacyTurn(userId, userMessage, assistantMessage) {
     `).get(userId, userMessage, assistantMessage)?.turn_id || '';
 }
 
-function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = false }) {
+function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = false }, onSaved = null) {
     const save = db.transaction(() => {
         const existing = turnRows(userId, turnId);
         if (existing.length) {
@@ -125,6 +125,7 @@ function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = fals
             !opener && insertMessage({ userId, turnId, role: 'user', content: userMessage }),
             insertMessage({ userId, turnId, role: 'assistant', content: assistantMessage })
         ].filter(Boolean);
+        if (messageIds.length && typeof onSaved === 'function') onSaved();
         pruneMessages(userId);
         return messageIds;
     });

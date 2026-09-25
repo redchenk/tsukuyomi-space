@@ -2140,7 +2140,7 @@ describe('room memory API', () => {
             const captured = await postJson('/api/room/memory', {
                 turnId, userMessage, assistantReply: assistantMessage, captureChat: false, force: true
             }, userToken);
-            assert.equal(captured.response.status, 201);
+            assert.equal(captured.response.status, 200);
             const memoryId = captured.body.data.id;
 
             process.env.ROOM_MEMORY_EMBEDDING_API_URL = remoteUrl;
@@ -2284,7 +2284,7 @@ describe('room memory API', () => {
 
             const autoPayload = { turnId, userMessage, assistantReply: assistantMessage, captureChat: false, force: true };
             const generated = await postJson('/api/room/memory', autoPayload, userToken);
-            assert.equal(generated.response.status, 201);
+            assert.equal(generated.response.status, 200);
             const generatedId = generated.body.data.id;
             savedIds.push(generatedId);
             assert.notEqual(generatedId, manual.body.data.id);
@@ -2344,7 +2344,7 @@ describe('room memory API', () => {
                 captureChat: false,
                 force: true
             }, userToken);
-            assert.equal(fresh.response.status, 201);
+            assert.equal(fresh.response.status, 200);
             savedIds.push(fresh.body.data.id);
             assert.equal(fresh.body.data.metadata.sourceTurnId, turnId);
         } finally {

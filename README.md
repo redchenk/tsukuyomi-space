@@ -88,7 +88,8 @@ curl http://127.0.0.1:3280/api/health
 | `MAIL_CREDENTIAL_KEY` | 聚合邮箱凭据加密密钥，建议独立生成并保持稳定 |
 | `DATA_DIR` / `DB_PATH` | SQLite 持久化路径；Docker 默认使用 `/data` |
 | `REDIS_URL` | 可选，用于验证码、限流、天气缓存及 token 黑名单 |
-| `ROOM_MEMORY_VECTOR_BACKEND` | 默认使用 SQLite 本地向量检索，可选接入 Milvus |
+| `ROOM_MEMORY_BACKEND` | 默认 `mem0`，项目内嵌 Mem0 开源 SDK + 本机 SQLite；`sqlite` 可切换到兜底检索 |
+| `ROOM_MEM0_DB_PATH` | Mem0 索引文件，默认与主数据库同目录的 `room-mem0.db` |
 
 完整配置见 [`.env.example`](.env.example) 与 [`.env.docker.example`](.env.docker.example)。真实环境文件、密码和 API Key 不应提交到仓库。
 
@@ -103,7 +104,7 @@ curl http://127.0.0.1:3280/api/health
 | --- | --- |
 | [部署与运维](docs/DEPLOY.md) | Docker、PM2、反向代理、资源挂载、备份与恢复 |
 | [权限模型](docs/PERMISSIONS.md) | 用户、管理员与超级管理员的权限边界 |
-| [Room 长期记忆](docs/ROOM_MEMORY.md) | 记忆存储、检索与用户隔离 |
+| [Room 长期记忆](docs/room-memory.md) | 记忆存储、检索与用户隔离 |
 | [Room 渲染性能](docs/room-rendering-performance.md) | Live2D 渲染与性能策略 |
 | [Wiki 维护](docs/WIKI.md) | 百科内容与页面维护 |
 | [文章排序](docs/article-ranking.md) | 文章排序与读者互动指标 |
@@ -184,7 +185,7 @@ Room 页面正在向个人 Agent 方向演进，当前能力包括：
 - LLM 与 TTS 请求默认从用户浏览器侧发出，减少用户对话和 API Key 经由站点后端转发。
 - 登录用户的会话与长期记忆保存在服务端并按账号隔离，通过账号会话和实时事件跨设备同步；未登录访客退回浏览器本地存储。
 - 聊天支持流式显示、停止、失败后重试，以及编辑或重新生成最新一轮。未完成的回复不会写入历史；刷新页面后可恢复未完成的用户消息。
-- 记忆检索支持本地向量，并可选接入 Milvus；数据库边界和向量查询都会携带用户作用域。
+- 完成的对话与长期记忆在同一事务中保存，短消息和完整内容也会保留。内嵌 Mem0 开源 SDK 持久化检索索引，检索全部历史记忆；相关原文按预算注入模型，并显示实际参考条数。无需另搭 Mem0 服务或配置云端密钥。
 - 房间设置页提供“记忆管理”，默认折叠，展开后可搜索、查看、编辑、删除当前用户的记忆。
 - 角色知识库保存在浏览器 `localStorage`，默认内置八千代身份、人设、说话风格、关系和限制条目，用户可自行新增、编辑、停用或恢复默认。
 - 聊天时会按来源和长度预算组织相关长期记忆、角色知识、真实天气、最新站点动态及可用 MCP 工具结果；日记人设与日记正文不会作为聊天身份注入。
@@ -240,7 +241,7 @@ VITE_SITE_LANGUAGE=en npm run build:web
 - 公开内容中的外部链接会经过协议与风险处理，留言、文章、图库、附件和友链提供独立审核边界。
 - SQLite 默认存放在 `DATA_DIR`，不应提交到 Git。
 - 权限模型见 [docs/PERMISSIONS.md](docs/PERMISSIONS.md)。
-- Room 长期记忆说明见 [docs/ROOM_MEMORY.md](docs/ROOM_MEMORY.md)。
+- Room 长期记忆说明见 [docs/room-memory.md](docs/room-memory.md)。
 
 ## 支持项目
 
@@ -255,6 +256,8 @@ VITE_SITE_LANGUAGE=en npm run build:web
 <p align="center"><a href="https://www.ifdian.net/a/redchenk?utm_source=copylink&amp;utm_medium=link">前往爱发电支持月读空间</a></p>
 
 ## 技术与素材来源
+
+- 感谢 [Mem0](https://github.com/mem0ai/mem0)（Apache-2.0）提供开源长期记忆能力。Room 将 `mem0ai/oss` 直接封装进后端，使用本站 SQLite 索引、账号隔离检索及原文片段注入；未使用 Mem0 云服务。默认使用本地特征哈希与关键词检索，可选远程 embedding；访客使用浏览器 IndexedDB。详见 [长期记忆说明](docs/room-memory.md)。
 
 - 本站的无刷新平滑切页、Markdown 编辑增强和图片渐显加载等部分前端技术，参考了 [LyraVoid/Shirone](https://github.com/LyraVoid/Shirone)；原项目的代码与许可证信息请以其仓库说明为准。
 - Agent OS 页面音乐 App 的技术实现来源于 [firefly20041001/Yachiyo](https://github.com/firefly20041001/yachiyo)，原项目采用 Electron、React、TypeScript，并以 Apache-2.0 许可证发布。

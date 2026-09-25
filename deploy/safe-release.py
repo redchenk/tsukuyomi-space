@@ -58,7 +58,7 @@ def changed_paths(root, before, after):
     return [os.fsdecode(p) for p in git(root, 'diff', '--no-renames', '--name-only', '-z', before, after).split(b'\0') if p]
 
 
-def check_git(root, before, after):
+def check_git(root, before, after, environment_release=False):
     git(root, 'merge-base', '--is-ancestor', before, after)
     paths = changed_paths(root, before, after)
     forbidden = [p for p in paths if not code_path(p)]
@@ -72,12 +72,15 @@ def check_git(root, before, after):
     # automatic code rollback against an unknown database schema.
     migrations = [p for p in paths if p.startswith('backend/db/migrations/')]
     require(not migrations, 'Database migration changes require a separate migration release: ' + ', '.join(migrations))
-    require(not any(p in ('package-lock.json', 'backend/package.json', 'backend/package-lock.json') for p in paths),
+    require(not any(p in ('backend/package.json', 'backend/package-lock.json') for p in paths)
+            and (environment_release or 'package-lock.json' not in paths),
             'Dependency changes require a separate environment release with a dependency rollback plan')
     if 'package.json' in paths:
         old_package = json.loads(git(root, 'show', before + ':package.json'))
         new_package = json.loads(git(root, 'show', after + ':package.json'))
         for key in ('dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies', 'overrides', 'engines'):
+            if environment_release and key != 'engines':
+                continue
             require(old_package.get(key) == new_package.get(key), 'Dependency/runtime changes require a separate environment release: ' + key)
     for entry in git(root, 'ls-tree', '-r', '-z', after).split(b'\0'):
         if not entry:
@@ -86,6 +89,54 @@ def check_git(root, before, after):
         if os.fsdecode(name) in paths:
             require(metadata.split()[0] in (b'100644', b'100755'), 'Code release cannot install symlinks or submodules: ' + os.fsdecode(name))
     return paths
+
+
+def prepare_dependencies(state):
+    """Install a locked dependency tree without touching the running application.
+
+    The active tree is moved to the release backup only during activation; a
+    rollback moves it back verbatim. No npm command runs in the live checkout.
+    """
+    root = Path(state['root'])
+    dependency_root = root / '.release-dependencies'
+    require(not dependency_root.is_symlink(), 'Dependency staging cannot be a symlink')
+    dependency_root.mkdir(exist_ok=True)
+    stage = Path(tempfile.mkdtemp(prefix='environment-', dir=dependency_root))
+    require((root / 'node_modules').is_dir() and not (root / 'node_modules').is_symlink(),
+            'Environment release requires a regular existing node_modules tree')
+    for name in ('package.json', 'package-lock.json'):
+        (stage / name).write_bytes(git(root, 'show', state['target'] + ':' + name))
+    subprocess.check_call(['npm', 'ci', '--omit=dev', '--no-audit', '--no-fund'], cwd=stage,
+                          env=dict(os.environ, npm_config_jobs='1'))
+    subprocess.check_call(['npm', 'ls', '--omit=dev', '--depth=0'], cwd=stage)
+    subprocess.check_call(['node', '-e', "const D=require('better-sqlite3');const d=new D(':memory:');d.prepare('select 1').get();d.close();if(require('./package.json').dependencies?.mem0ai)require('mem0ai/oss');"], cwd=stage,
+                          env=dict(os.environ, MEM0_TELEMETRY='false', DOTENV_CONFIG_QUIET='true'))
+    state['dependencies'] = {'stage': str(stage), 'lock_hash': sha(stage / 'package-lock.json'),
+                             'previous': str(stage / 'previous-node_modules')}
+
+
+def activate_dependencies(state):
+    dependency = state.get('dependencies')
+    if not dependency:
+        return
+    root, stage = Path(state['root']), Path(dependency['stage'])
+    require(sha(root / 'package-lock.json') == dependency['lock_hash'], 'Prepared dependency lock does not match release')
+    require(not Path(dependency['previous']).exists(), 'Dependency backup already exists')
+    # Persist the plan before either rename so rollback also handles a process
+    # interruption between the two operations. Both paths are on one filesystem.
+    os.replace(root / 'node_modules', dependency['previous'])
+    os.replace(stage / 'node_modules', root / 'node_modules')
+
+
+def rollback_dependencies(state):
+    dependency = state.get('dependencies')
+    if not dependency or not Path(dependency['previous']).exists():
+        return
+    root, stage = Path(state['root']), Path(dependency['stage'])
+    if (root / 'node_modules').exists():
+        require(not (stage / 'failed-node_modules').exists(), 'Failed dependency tree already exists')
+        os.replace(root / 'node_modules', stage / 'failed-node_modules')
+    os.replace(dependency['previous'], root / 'node_modules')
 
 
 def sha(path):
@@ -220,7 +271,8 @@ def prepare(args):
         target = git(root, 'rev-parse', 'FETCH_HEAD').decode().strip()
         require(target == args.commit, 'Bundle commit does not match requested commit')
         before = git(root, 'rev-parse', 'HEAD').decode().strip()
-        paths = check_git(root, before, target)
+        environment_release = bool(getattr(args, 'environment_release', False))
+        paths = check_git(root, before, target, environment_release)
         require(not git(root, 'diff', '--cached', '--name-only'), 'Staged server edits need review before deployment')
         dirty = [os.fsdecode(p) for p in git(root, 'diff', '--name-only', '-z').split(b'\0') if p]
         adopted = []
@@ -235,6 +287,7 @@ def prepare(args):
         untracked = {os.fsdecode(p) for p in git(root, 'ls-files', '--others', '--exclude-standard', '-z').split(b'\0') if p}
         require(not any(beneath(name, untracked) for name in paths), 'Incoming code collides with untracked server files')
         state.update(before=before, target=target, paths=paths, adopted=adopted,
+                     environment_release=environment_release,
                      worktree_patch=hashlib.sha256(git(root, 'diff', '--binary', 'HEAD')).hexdigest())
     state_dir.mkdir(parents=True, mode=0o700)
     os.chmod(state_dir, 0o700)
@@ -246,6 +299,8 @@ def prepare(args):
         index = git(root, 'rev-parse', '--git-path', 'index').decode().strip()
         state['git_index'] = str((root / index).resolve())
         shutil.copy2(state['git_index'], state_dir / 'git-index.before')
+        if state.get('environment_release') and any(name in state['paths'] for name in ('package.json', 'package-lock.json')):
+            prepare_dependencies(state)
     state['status'] = 'prepared'
     save(state)
     return state
@@ -265,7 +320,7 @@ def activate(state):
     frontend_files(state['artifact'], state['frontend_real'])
     if state['site'] == 'domestic':
         require(git(state['root'], 'rev-parse', 'HEAD').decode().strip() == state['before'], 'Server HEAD changed after preparation')
-        check_git(state['root'], state['before'], state['target'])
+        check_git(state['root'], state['before'], state['target'], state.get('environment_release', False))
         require(hashlib.sha256(git(state['root'], 'diff', '--binary', 'HEAD')).hexdigest() == state['worktree_patch'], 'Server edit changed after preparation')
         require(not git(state['root'], 'diff', '--cached', '--name-only'), 'Server index changed after preparation')
         untracked = {os.fsdecode(p) for p in git(state['root'], 'ls-files', '--others', '--exclude-standard', '-z').split(b'\0') if p}
@@ -278,6 +333,7 @@ def activate(state):
             require((Path(state['root']) / name).read_bytes() == git(state['root'], 'show', state['target'] + ':' + name), 'Server edit changed after preparation')
             git(state['root'], 'add', '--', name)
         git(state['root'], 'merge', '--ff-only', state['target'])
+        activate_dependencies(state)
     for name in state['files']:
         if name != 'index.html' and not (Path(state['frontend_real']) / name).exists():
             copy_atomic(Path(state['artifact']) / name, Path(state['frontend_real']) / name)
@@ -351,6 +407,7 @@ def rollback(state):
         if patch.stat().st_size:
             git(state['root'], 'apply', str(patch))
         shutil.copy2(Path(state['state_dir']) / 'git-index.before', state['git_index'])
+        rollback_dependencies(state)
     copy_atomic(Path(state['state_dir']) / 'index.before.html', Path(state['frontend_real']) / 'index.html')
     restart(state)
     state['status'] = 'rolled_back'
@@ -373,6 +430,7 @@ def main():
     parser.add_argument('--base-url')
     parser.add_argument('--resolve', default='')
     parser.add_argument('--extra-resource', action='append', default=[])
+    parser.add_argument('--environment-release', action='store_true', help='Stage locked dependencies with verbatim rollback of the prior tree')
     args = parser.parse_args()
     if args.command == 'check-git':
         check_git(args.root or '.', args.before, args.commit or 'HEAD')

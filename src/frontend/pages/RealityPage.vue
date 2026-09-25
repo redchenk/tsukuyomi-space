@@ -35,7 +35,7 @@ const privacyRows = computed(() => isJa.value ? [
   {
     type: '\u30eb\u30fc\u30e0\u306e\u30ed\u30fc\u30ab\u30eb\u8a2d\u5b9a',
     purpose: 'Live2D \u30eb\u30fc\u30e0\u306e\u30e2\u30c7\u30eb\u4f4d\u7f6e\u3001\u30c1\u30e3\u30c3\u30c8\u5c65\u6b74\u3001LLM/TTS \u8a2d\u5b9a\u306a\u3069\u306e\u500b\u4eba\u4f53\u9a13\u8a2d\u5b9a\u306e\u4fdd\u5b58\u306b\u4f7f\u7528\u3057\u307e\u3059\u3002',
-    storage: '\u3053\u308c\u3089\u306e\u30c7\u30fc\u30bf\u306f\u4e3b\u306b\u30d6\u30e9\u30a6\u30b6\u306e localStorage \u306b\u4fdd\u5b58\u3055\u308c\u307e\u3059\u3002\u30d6\u30e9\u30a6\u30b6\u306e\u30b5\u30a4\u30c8\u30c7\u30fc\u30bf\u3092\u524a\u9664\u3059\u308b\u3068\u524a\u9664\u3055\u308c\u307e\u3059\u3002'
+    storage: '設定は localStorage、ゲストの会話記憶は IndexedDB に保存します。ログイン利用者の会話と長期記憶はアカウント別に当サイトのサーバーへ保存し、設定画面で管理できます。'
   },
   {
     type: '\u30b5\u30fc\u30c9\u30d1\u30fc\u30c6\u30a3 API \u8a2d\u5b9a',
@@ -61,7 +61,7 @@ const privacyRows = computed(() => isJa.value ? [
   {
     type: '\u623f\u95f4\u672c\u5730\u8bbe\u7f6e',
     purpose: '\u7528\u4e8e\u4fdd\u5b58 Live2D \u623f\u95f4\u7684\u6a21\u578b\u4f4d\u7f6e\u3001\u804a\u5929\u5386\u53f2\u3001LLM/TTS \u914d\u7f6e\u7b49\u4e2a\u4eba\u4f53\u9a8c\u8bbe\u7f6e\u3002',
-    storage: '\u8fd9\u7c7b\u6570\u636e\u4e3b\u8981\u4fdd\u5b58\u5728\u4f60\u7684\u6d4f\u89c8\u5668 localStorage \u4e2d\u3002\u6e05\u7406\u6d4f\u89c8\u5668\u7ad9\u70b9\u6570\u636e\u4f1a\u5220\u9664\u5b83\u4eec\u3002'
+    storage: '设置保存在 localStorage，访客长期记忆保存在 IndexedDB；登录用户的会话与长期记忆按账号私有保存在本站服务器，可在房间设置中管理。'
   },
   {
     type: '\u7b2c\u4e09\u65b9\u63a5\u53e3\u914d\u7f6e',
@@ -268,6 +268,15 @@ function go(path) {
           <p><strong>{{ noticePrefixes.update }}</strong>{{ t.realityNoticeUpdate }}</p>
         </div>
         <div class="reality-source-note">
+          <p v-if="isEnglish">
+            <strong>Long-term memory — thank you:</strong> Room embeds the open-source <a href="https://github.com/mem0ai/mem0" target="_blank" rel="noopener noreferrer">Mem0</a> SDK (Apache-2.0). Signed-in chat memories and the retrieval index are stored privately on this site's server; relevant excerpts are sent to your selected chat model. We do not use Mem0's cloud service. Guest memories stay in this browser. You can disable, edit or delete memories in Room Settings.
+          </p>
+          <p v-else-if="!isJa">
+            <strong>长期记忆致谢：</strong>感谢 <a href="https://github.com/mem0ai/mem0" target="_blank" rel="noopener noreferrer">Mem0</a>（Apache-2.0）提供开源记忆能力。Room 将其 SDK 直接封装进后端：登录用户的对话记忆及检索索引私有保存在本站服务器，相关片段会发送给你选择的聊天模型；不使用 Mem0 云服务。访客记忆保存在当前浏览器，可在房间设置中关闭、编辑或删除记忆。
+          </p>
+          <p v-else>
+            <strong>長期記憶への謝辞：</strong><a href="https://github.com/mem0ai/mem0" target="_blank" rel="noopener noreferrer">Mem0</a>（Apache-2.0）の開発者に感謝します。Room は SDK をバックエンドに組み込み、ログイン利用者の会話記憶と検索索引を当サイトのサーバーに非公開で保存します。関連する抜粋は選択した会話モデルに送信されます。Mem0 のクラウドサービスは使用しません。ゲストの記憶はブラウザに保存され、Room 設定で無効化・編集・削除できます。
+          </p>
           <p v-if="isEnglish">
             <strong>Materials and copyright:</strong> Visuals, characters and music related to Cosmic Princess Kaguya belong to their respective rights holders. This non-commercial site exists for personal interest and community exchange.
           </p>

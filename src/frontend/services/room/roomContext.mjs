@@ -11,9 +11,9 @@ const MAX_BUDGET = 20_000;
 const SOURCES = [
   { key: 'time', limit: 220, itemLimit: 220 },
   { key: 'environment', limit: 600, itemLimit: 600 },
+  { key: 'memories', limit: 3_000, itemLimit: 850 },
   { key: 'knowledge', limit: 2_400, itemLimit: 700 },
   { key: 'toolResults', limit: 1_200, itemLimit: 900 },
-  { key: 'memories', limit: 1_300, itemLimit: 360 },
   { key: 'personaMemories', limit: 900, itemLimit: 320 },
   { key: 'growth', limit: 400, itemLimit: 400 },
   { key: 'site', limit: 850, itemLimit: 850 }

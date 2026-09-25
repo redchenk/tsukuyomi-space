@@ -164,12 +164,12 @@ test('chat context reads the saved knowledge switch on every turn, never diary a
   vm.runInNewContext(knowledgeCode + '\n' + strip(source('src/frontend/services/room/roomContext.mjs')) + '\n' + strip(source('src/frontend/composables/room/useRoomChat.js')) + `
     fetchSiteFeedContext = async () => '';
     fetchPersonaMemories = corpus;
-    fetchRelevantMemories = async () => [];
+    fetchRelevantMemories = async () => ({ data: [], retrieval: {} });
     globalThis.build = buildRoomContext;
   `, ctx);
-  assert.match(await ctx.build('知识', null, {}, '环境'), /已保存的修改/);
+  assert.match((await ctx.build('知识', null, {}, '环境')).text, /已保存的修改/);
   enabled = false;
-  assert.doesNotMatch(await ctx.build('知识', null, {}, '环境'), /已保存的修改/);
+  assert.doesNotMatch((await ctx.build('知识', null, {}, '环境')).text, /已保存的修改/);
   assert.equal(corpusCalls, 1);
 });
 

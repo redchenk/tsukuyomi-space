@@ -53,8 +53,8 @@ test('knowledge list keeps separate references and source trace without exposing
     ],
     memories: [{ id: 'mem-a', content: '用户的旧密码是 123' }]
   });
-  assert.deepEqual(result.trace.map(item => item.id), ['kb-a', 'kb-b', 'mem-a']);
-  assert.equal(result.trace[0].source, 'knowledge');
+  assert.deepEqual(result.trace.map(item => item.id), ['mem-a', 'kb-a', 'kb-b']);
+  assert.equal(result.trace[0].source, 'memories');
   assert.equal(JSON.stringify(result.trace).includes('123'), false);
   assert.equal(result.text.split('\n').slice(2).every(line => JSON.parse(line).source), true);
 });

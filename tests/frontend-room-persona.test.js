@@ -32,7 +32,7 @@ test('chat keeps explicit user instructions, context and plain-text protocol', (
 });
 
 test('chat builds prompts independently while diary generation keeps its own persona', () => {
-  const send = chat.slice(chat.indexOf('async function send('), chat.indexOf('async function remember('));
+  const send = chat.slice(chat.indexOf('async function send('), chat.indexOf('  const endChatState ='));
   assert.match(send, /userPrompt: settings.systemPrompt/);
   assert.doesNotMatch(send, /activePersonaPrompt|recentDiaryContext/);
   assert.match(chat, /generateDiaryEntry\(/);

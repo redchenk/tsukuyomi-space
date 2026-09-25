@@ -10,6 +10,8 @@ const {
     embeddingStatus
 } = require('./room-embedding');
 const milvusStore = require('./room-milvus-store');
+const mem0Store = require('./room-mem0');
+const { lexicalScore, memoryExcerpt, searchTerms } = require('../../shared/room-memory-retrieval.cjs');
 
 const MAX_MEMORY_CONTENT_LENGTH = Math.max(4000, Number.parseInt(process.env.ROOM_MEMORY_CONTENT_LIMIT || '12000', 10) || 12000);
 // Milvus stores at most 8192 UTF-8 bytes of a memory's text. Keeping automatic
@@ -155,6 +157,63 @@ function hasLongTermValue(text) {
     if (SENSITIVE_PATTERN.test(source)) return false;
     return /记住|以后|下次|上次|喜欢|讨厌|偏好|希望|不要|名字|叫我|我是|项目|网站|计划|正在|功能|风格|习惯|设定|继续|完成|报错|使用|开发/.test(source)
         || source.length > 80;
+}
+
+// Called synchronously inside the chat transaction. The source survives tab
+// closure, a process restart, and pruning the short recent-conversation window.
+function captureChatTurn(userId, { turnId, userMessage, assistantMessage, opener = false, memoryEnabled = true }) {
+    userId = requireUserId(userId);
+    if (!memoryEnabled || opener || !userMessage) return [];
+    const content = normalizeMemoryText(`用户：${userMessage}\n八千代：${assistantMessage}`);
+    if (SENSITIVE_PATTERN.test(content)) return [];
+    const revision = crypto.createHash('sha256').update(JSON.stringify([userMessage, assistantMessage])).digest('hex');
+    const type = inferMemoryType(userMessage);
+    const fragments = splitMemoryText(content);
+    const insert = db.prepare(`INSERT OR IGNORE INTO room_memories
+        (id, user_id, memory_type, summary, content, embedding, importance, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+    return fragments.flatMap((part, index) => {
+        const id = `turn-${crypto.createHash('sha256').update(JSON.stringify([userId, turnId, revision, index])).digest('hex')}`;
+        const metadata = memoryEmbeddingMetadata({ source: 'chat-archive', sourceKind: 'chat-turn-auto',
+            sourceTurnId: turnId, sourceRevision: revision, fragmentIndex: index + 1, fragmentCount: fragments.length,
+            tags: extractTags(userMessage, type), confidence: 1 }, {
+            provider: 'local', model: LOCAL_EMBEDDING_VERSION, version: LOCAL_EMBEDDING_VERSION
+        });
+        const result = insert.run(id, userId, type, part.slice(0, 280), part, JSON.stringify(createEmbedding(part)),
+            estimateImportance(userMessage), JSON.stringify(metadata));
+        return result.changes ? [id] : [];
+    });
+}
+
+function ownedMemoryRows(userId) {
+    return db.prepare('SELECT * FROM room_memories WHERE user_id = ? ORDER BY updated_at DESC, rowid DESC').all(userId);
+}
+
+function reconcileMem0(userId) {
+    return mem0Store.reconcile(userId, () => ownedMemoryRows(userId)).catch(() => {});
+}
+
+async function retrieveChatMemories(userId, query, limit = 6) {
+    userId = requireUserId(userId);
+    const safeLimit = Math.max(1, Math.min(12, Number(limit) || 6));
+    const expanded = `${query}\n${searchTerms(query).join(' ')}`;
+    const index = await mem0Store.search(userId, expanded, () => ownedMemoryRows(userId), Math.max(20, safeLimit * 4));
+    const semantic = new Map(index.results.map(item => [item.id, item.score]));
+    const queryVector = createEmbedding(expanded);
+    const ranked = ownedMemoryRows(userId).map(row => {
+        const lexical = lexicalScore(query, row.content);
+        const vector = similarity(queryVector, createEmbedding(row.content));
+        const score = Math.min(1, lexical * 3) * 0.75 + Math.max(0, vector) * 0.1 + Math.min(1, semantic.get(row.id) || 0) * 0.15;
+        return { row, score, lexical };
+    }).filter(item => item.lexical > 0 || (embeddingStatus().configuredProvider === 'remote' && (semantic.get(item.row.id) || 0) >= 0.5))
+        .sort((a, b) => b.score - a.score || String(b.row.updated_at).localeCompare(String(a.row.updated_at)))
+        .slice(0, safeLimit);
+    touchMemories(userId, ranked.map(item => item.row.id));
+    return {
+        memories: ranked.map(({ row, score }) => ({ ...toPublicMemory(row, score),
+            context: memoryExcerpt(row.content, query), source: index.backend })),
+        retrieval: { backend: index.backend, fallback: index.fallback, count: ranked.length }
+    };
 }
 
 function summarizeMemory({ userMessage, assistantReply, content }) {
@@ -890,6 +949,7 @@ async function clearMemories(userId) {
     userId = requireUserId(userId);
     const ids = db.prepare('SELECT id FROM room_memories WHERE user_id = ?').all(userId).map(row => row.id);
     const count = db.prepare('DELETE FROM room_memories WHERE user_id = ?').run(userId).changes;
+    await reconcileMem0(userId);
     ids.forEach(id => queueVectorDeletion(userId, id));
     if (milvusStore.status().enabled) {
         const cleared = await milvusStore.clearUserMemories(userId);
@@ -963,6 +1023,7 @@ async function updateMemory(userId, id, payload = {}) {
     }
     // A vector store is optional. The edit is complete once SQLite commits;
     // status and search retry rows marked as pending without delaying PATCH.
+    await reconcileMem0(userId);
     return getMemory(userId, id);
 }
 
@@ -970,6 +1031,7 @@ async function deleteMemory(userId, id) {
     userId = requireUserId(userId);
     const count = db.prepare('DELETE FROM room_memories WHERE id = ? AND user_id = ?').run(id, userId).changes;
     if (count) {
+        await reconcileMem0(userId);
         queueVectorDeletion(userId, id);
         await flushPendingVectorDeletions(userId, 20);
     }
@@ -1009,6 +1071,7 @@ function memoryStats(userId) {
         maxPerUser: null,
         maxContentLength: MAX_MEMORY_CONTENT_LENGTH,
         vectorStore,
+        mem0: mem0Store.status(),
         embedding: embeddingStatus(),
         vectorSync: {
             pending: Number(vectorSync.pending || 0),
@@ -1021,6 +1084,9 @@ function memoryStats(userId) {
 }
 
 module.exports = {
+    captureChatTurn,
+    retrieveChatMemories,
+    reconcileMem0,
     createEmbedding,
     similarity,
     buildMemoryCandidate,

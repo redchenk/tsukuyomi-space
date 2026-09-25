@@ -1,5 +1,6 @@
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { applyGrowthResult } from '../userGrowth';
+import { saveGuestMemory } from './roomLocalMemory';
 
 const CHAT_EVENT_NAME = 'tsukuyomi:room-chat-updated';
 const LEGACY_HISTORY_KEY = 'roomChatHistory';
@@ -126,7 +127,7 @@ export function writeRoomConversation(messages) {
 function readPendingTurns(userId = currentUserId()) {
   try {
     const turns = JSON.parse(localStorage.getItem(pendingKey(userId)));
-    return Array.isArray(turns) ? turns.filter((turn) => turn?.turnId).slice(-20) : [];
+    return Array.isArray(turns) ? turns.filter((turn) => turn?.turnId) : [];
   } catch (_) {
     return [];
   }
@@ -135,7 +136,7 @@ function readPendingTurns(userId = currentUserId()) {
 function queuePendingTurn(turn, userId = currentUserId()) {
   const turns = readPendingTurns(userId).filter((item) => item.turnId !== turn.turnId);
   turns.push(turn);
-  localStorage.setItem(pendingKey(userId), JSON.stringify(turns.slice(-20)));
+  localStorage.setItem(pendingKey(userId), JSON.stringify(turns));
 }
 
 function removePendingTurn(turnId, userId = currentUserId()) {
@@ -218,7 +219,15 @@ export async function loadRoomConversation() {
   const userId = currentUserId();
   const epoch = saveEpoch(userId);
   const localHistory = readRoomConversation();
-  if (!userId) return localHistory;
+  if (!userId) {
+    for (const turn of readPendingTurns(userId)) {
+      requireCurrentSession(userId, epoch);
+      await saveGuestMemory(turn);
+      requireCurrentSession(userId, epoch);
+      removePendingTurn(turn.turnId, userId);
+    }
+    return localHistory;
+  }
 
   await flushPendingTurns(userId);
   requireCurrentSession(userId, epoch);
@@ -257,18 +266,23 @@ export async function loadRoomConversation() {
   return applySavedHistory(userId, history, preserved);
 }
 
-export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, opener = false }) {
+export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, opener = false, memoryEnabled = true }) {
   const userId = currentUserId();
-  if (!userId) return readRoomConversation();
-  const turn = { turnId, userMessage, assistantMessage, ...(opener ? { opener: true } : {}) };
+  const turn = { turnId, userMessage, assistantMessage, memoryEnabled, ...(opener ? { opener: true } : {}) };
   queuePendingTurn(turn, userId);
+  if (!userId) {
+    await saveGuestMemory(turn);
+    requireSameAccount(userId);
+    removePendingTurn(turn.turnId, userId);
+    return readRoomConversation();
+  }
   // A previously failed turn must be retried before this new one. The outbox
   // order is the conversation order, including after an offline interruption.
   return applySavedHistory(userId, await flushPendingTurns(userId));
 }
 
 /** Replace only the most recent complete turn, leaving earlier history intact. */
-export async function replaceRoomConversationTurn({ turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage }) {
+export async function replaceRoomConversationTurn({ turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage, memoryEnabled = true }) {
   const userId = currentUserId();
   const epoch = saveEpoch(userId);
   const history = readRoomConversation();
@@ -294,12 +308,15 @@ export async function replaceRoomConversationTurn({ turnId, expectedUserMessage,
     const response = await authFetch(`/api/room/chat/turn/${encodeURIComponent(turnId)}`, {
       method: 'PUT',
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify({ expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage })
+      body: JSON.stringify({ expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage, memoryEnabled })
     });
     const result = await parseResponse(response);
     requireCurrentSession(userId, epoch);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     next = normalizeHistory(result.data);
+  } else {
+    await saveGuestMemory({ turnId, userMessage, assistantMessage, memoryEnabled, replace: true });
+    requireCurrentSession(userId, epoch);
   }
   return userId ? applySavedHistory(userId, next) : writeRoomConversation(next);
 }

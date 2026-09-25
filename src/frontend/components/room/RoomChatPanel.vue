@@ -341,6 +341,13 @@ function endChatStatusLabel() {
       <div v-if="!hasConversation" class="room-chat-suggestions" aria-label="聊天开场建议">
         <button v-for="message in quickMessages" :key="message" type="button" @click="useQuickMessage(message)">{{ message }}</button>
       </div>
+      <div v-if="chat.memoryTrace?.value.count" class="chat-generation-notice room-memory-trace" role="status">
+        {{ englishRoom ? `Referenced ${chat.memoryTrace.value.count} long-term memories` : `已参考 ${chat.memoryTrace.value.count} 条长期记忆` }}
+      </div>
+      <div v-else-if="chat.memoryTrace?.value.backend === 'unavailable'" class="chat-generation-notice room-memory-trace" role="status">
+        {{ englishRoom ? 'Long-term memory is temporarily unavailable' : '长期记忆暂时无法读取' }}
+      </div>
+      <div v-if="chat.memorySaveError?.value" class="chat-generation-notice" role="status">{{ chat.memorySaveError.value }}</div>
       <div v-if="chat.imageAttachment.value" id="chatImagePreview" class="chat-image-preview">
         <img :src="chat.imageAttachment.value.dataUrl" :alt="chat.imageAttachment.value.name">
         <span>{{ chat.imageAttachment.value.name }}</span>

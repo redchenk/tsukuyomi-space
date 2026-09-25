@@ -148,7 +148,7 @@ jobs:
               --artifact "$stage/deployment-artifacts/domestic" \
               --base-url https://yachiyo.hk --resolve yachiyo.hk:443:127.0.0.1 \
               --bundle /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle \
-              --commit ${{ github.sha }} --extra-resource /var/www/tsukuyomi-game-assets
+              --commit ${{ github.sha }} --extra-resource /var/www/tsukuyomi-game-assets --environment-release
 
       - name: Prepare overseas release
         id: prepare_overseas

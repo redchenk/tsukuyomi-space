@@ -51,7 +51,7 @@ async function setup(overrides = {}) {
     diaryTimestampLabel: () => 'today',
     ...overrides
   };
-  vm.runInNewContext(code + '\nbuildRoomContext = async () => ""; globalThis.chat = useRoomChat({}); globalThis.tts = cleanTtsText; globalThis.streamingVisible = streamingVisibleText;', context);
+  vm.runInNewContext(code + '\nbuildRoomContext = async () => ({ text: "", trace: [], retrieval: {} }); globalThis.chat = useRoomChat({}); globalThis.tts = cleanTtsText; globalThis.streamingVisible = streamingVisibleText;', context);
   await tick();
   return { chat: context.chat, context, saved, requests, sync: () => onUpdate({}), clearCount: () => clearCount };
 }

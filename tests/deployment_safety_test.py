@@ -131,6 +131,31 @@ class DeploymentSafetyTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'separate environment release'):
             release.check_git(self.root, self.before, 'HEAD')
 
+    def test_environment_release_restores_the_original_dependency_tree(self):
+        original_resources = release.resource_manifest(self.root, 'domestic')
+        self.write(self.root / 'node_modules/native/build.node', 'old native dependency')
+        old_mtime = (self.root / 'node_modules/native/build.node').stat().st_mtime_ns
+        stage = self.root / '.release-dependencies/fixture'
+        self.write(stage / 'node_modules/native/build.node', 'new native dependency')
+        self.write(self.root / 'package-lock.json', 'new locked dependencies')
+        state = {'root': str(self.root), 'dependencies': {'stage': str(stage),
+                 'previous': str(stage / 'previous-node_modules'), 'lock_hash': release.sha(self.root / 'package-lock.json')}}
+        release.activate_dependencies(state)
+        self.assertEqual((self.root / 'node_modules/native/build.node').read_text(), 'new native dependency')
+        release.rollback_dependencies(state)
+        self.assertEqual((self.root / 'node_modules/native/build.node').read_text(), 'old native dependency')
+        self.assertEqual((self.root / 'node_modules/native/build.node').stat().st_mtime_ns, old_mtime)
+        self.assertEqual(release.resource_manifest(self.root, 'domestic'), original_resources)
+
+    def test_dependency_rollback_recovers_an_interruption_between_renames(self):
+        stage = self.root / '.release-dependencies/fixture'
+        self.write(stage / 'previous-node_modules/native/build.node', 'old dependency')
+        self.write(stage / 'node_modules/native/build.node', 'new dependency')
+        state = {'root': str(self.root), 'dependencies': {'stage': str(stage), 'previous': str(stage / 'previous-node_modules')}}
+        release.rollback_dependencies(state)
+        self.assertEqual((self.root / 'node_modules/native/build.node').read_text(), 'old dependency')
+        self.assertEqual((stage / 'node_modules/native/build.node').read_text(), 'new dependency')
+
     def test_code_checkout_cannot_follow_a_server_symlink(self):
         target, _ = self.candidate()
         moved = self.base / 'operator-code'

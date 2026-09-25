@@ -11,6 +11,7 @@ assets/images/beian-mps.png
 
 # Node modules
 node_modules/
+.release-dependencies/
 npm-debug.log*
 
 # Database

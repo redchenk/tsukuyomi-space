@@ -648,10 +648,15 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
         const userMessage = opener && !req.body?.userMessage ? '' : normalizeChatContent(req.body?.userMessage, 'userMessage');
         if (opener && userMessage) return res.status(400).json({ success: false, message: 'An opener cannot include a user message' });
         const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
-        const messageIds = roomChatRepository.saveTurn(req.user.id, { turnId, userMessage, assistantMessage, opener });
+        const turn = { turnId, userMessage, assistantMessage, opener, memoryEnabled: req.body?.memoryEnabled !== false };
+        let memoryIds = [];
+        const messageIds = roomChatRepository.saveTurn(req.user.id, turn, () => {
+            memoryIds = roomMemory.captureChatTurn(req.user.id, turn);
+        });
         if (messageIds.length) {
             roomMemoryEvents.publishChat(req.user.id, { action: 'turn-saved', messageIds });
         }
+        if (memoryIds.length) roomMemoryEvents.publish(req.user.id, { action: 'created', memoryIds });
         const growth = opener || !messageIds.length ? null : userGrowth.recordRoomChat(req.user.id);
         setNoStore(res);
         res.status(messageIds.length ? 201 : 200).json({
@@ -673,7 +678,12 @@ router.put('/chat/turn/:turnId', authenticateToken, (req, res) => {
         const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
         const result = roomChatRepository.replaceLatestTurn(req.user.id, {
             turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage
-        }, () => roomMemory.invalidateAutoTurnMemories(req.user.id, turnId));
+        }, () => {
+            const retired = roomMemory.invalidateAutoTurnMemories(req.user.id, turnId);
+            roomMemory.captureChatTurn(req.user.id, { turnId, userMessage, assistantMessage,
+                memoryEnabled: req.body?.memoryEnabled !== false });
+            return retired;
+        });
         if (result.changed) {
             roomMemoryEvents.publishChat(req.user.id, { action: 'turn-replaced', messageIds: result.messageIds });
             if (result.invalidatedMemoryIds?.length) {
@@ -845,6 +855,10 @@ async function sendMemoryList(req, res) {
     }
     const query = String(req.query.q || '').trim();
     const limit = req.query.limit || 50;
+    if (query && req.query.purpose === 'chat') {
+        const result = await roomMemory.retrieveChatMemories(req.user.id, query, req.query.limit || 6);
+        return res.json({ success: true, data: result.memories, retrieval: result.retrieval });
+    }
     const memories = query
         ? await roomMemory.searchMemories(req.user.id, query, limit)
         : await roomMemory.listMemories(req.user.id, { limit, type: req.query.type });

@@ -349,13 +349,14 @@ const recommendedModelText = computed(() => {
 const memoryModeLabel = computed(() => canUseServerMemory.value ? '服务端私有记忆' : '本地浏览器记忆');
 const memoryVectorLabel = computed(() => {
   if (!canUseServerMemory.value) return '本地记忆';
+  if (memoryVector.mem0?.enabled) return memoryVector.mem0.lastError ? 'Mem0 暂不可用 · 本地检索兜底' : 'Mem0 本机持久化检索';
   if (!memoryVector.enabled) return 'SQLite 向量检索';
   if (memoryVector.failed) return `Milvus ${memoryVector.failed} 条同步失败`;
   if (memoryVector.pending) return `Milvus ${memoryVector.pending} 条待同步`;
   return 'Milvus 已同步';
 });
 const memoryLocationText = computed(() => canUseServerMemory.value
-  ? '记忆保存在服务端 SQLite 向量记忆库，按登录用户隔离；未登录时自动退回本机 IndexedDB。'
+  ? '完整对话记忆与聊天一并保存在本站 SQLite，Mem0 开源版在本站建立检索索引，按登录用户隔离。访客使用独立的本机 IndexedDB。'
   : '当前未登录，记忆仅保存在本机 IndexedDB，不上传服务器。');
 const memoryTypeOptions = [
   { value: '', label: '全部类型' },
@@ -1101,9 +1102,10 @@ async function loadMemoryCount() {
       memoryVector.pending = Number(result.data?.vectorSync?.pending || 0);
       memoryVector.failed = Number(result.data?.vectorSync?.failed || 0);
       memoryVector.embedding = result.data?.embedding?.activeModel || '';
+      memoryVector.mem0 = result.data?.mem0 || null;
       return;
     }
-    Object.assign(memoryVector, { backend: '', enabled: false, pending: 0, failed: 0, embedding: '' });
+    Object.assign(memoryVector, { backend: '', enabled: false, pending: 0, failed: 0, embedding: '', mem0: null });
     const db = await openMemoryDb();
     if (!db) return;
     const tx = db.transaction(MEMORY_STORE, 'readonly');
@@ -1965,6 +1967,7 @@ async function saveMemoryEdit() {
       tx.objectStore(MEMORY_STORE).put({
         ...existing,
         ...draft,
+        manuallyEdited: true,
         updatedAt: new Date().toISOString()
       });
       await txToPromise(tx);

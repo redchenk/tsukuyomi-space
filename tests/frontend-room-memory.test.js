@@ -91,11 +91,11 @@ describe('frontend room memory API client usage', () => {
     it('routes chat memory requests through the shared API client', () => {
         const code = source('src/frontend/composables/room/useRoomChat.js');
 
-        assert.match(code, /import \{ apiFetch, authFetch, authHeaders, noStoreUrl, parseResponse \} from '\.\.\/\.\.\/api\/client';/);
+        assert.match(code, /import \{ apiFetch, authFetch, authHeaders, getSession, noStoreUrl, parseResponse \} from '\.\.\/\.\.\/api\/client';/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/persona-memory\?\$\{params\}`\)/);
-        assert.match(code, /authFetch\('\/api\/room\/memory'/);
-        assert.match(code, /publishLocalRoomMemoryUpdate\(result\.data/);
+        assert.match(code, /purpose: 'chat'/);
+        assert.match(code, /retrieveGuestMemories\(message\)/);
         assertNoRawRoomMemoryFetch('src/frontend/composables/room/useRoomChat.js');
     });
 
@@ -200,7 +200,7 @@ describe('frontend room memory API client usage', () => {
         assert.match(chat, /startNewSession/);
         assert.match(chat, /requestConversationRevision !== conversationRevision/);
         assert.match(chat, /detail\.action === 'cleared'/);
-        assert.match(chat, /remember\(userContent, reply, turnId\)/);
+        assert.match(chat, /memoryEnabled: readJson/);
         assert.match(chat, /startRoomConversationUpdates\(/);
         assert.doesNotMatch(chat, /readJson\('roomChatHistory'/);
         assert.match(panel, /chat-session-new-btn/);

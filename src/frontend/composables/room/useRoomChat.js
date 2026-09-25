@@ -1,5 +1,5 @@
 import { nextTick, ref } from 'vue';
-import { apiFetch, authFetch, authHeaders, noStoreUrl, parseResponse } from '../../api/client';
+import { apiFetch, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { selectRoomKnowledgeEntries } from '../../services/room/roomKnowledge';
 import { packRoomContext, selectRecentRoomConversation } from '../../services/room/roomContext.mjs';
 import { readRoomChatStream } from '../../services/room/roomChatStream.mjs';
@@ -32,7 +32,7 @@ import {
   writeRoomGenerationDraft,
   writeRoomConversation
 } from '../../services/room/roomConversationSync';
-import { publishLocalRoomMemoryUpdate, startRoomMemorySync } from '../../services/room/roomMemorySync';
+import { startRoomMemorySync } from '../../services/room/roomMemorySync';
 import { GROWTH_UPDATED_EVENT, getCachedGrowth, growthContext, loadGrowth } from '../../services/userGrowth';
 import { isEnglishSite } from '../../utils/siteVariant';
 import {
@@ -45,6 +45,8 @@ import {
 } from '../../services/room/roomDiaryArchive';
 import { generateDiaryEntry } from '../../services/room/roomDiaryGeneration';
 import { syncDiaryArchive } from '../../services/room/roomDiarySync';
+
+import { retrieveGuestMemories } from '../../services/room/roomLocalMemory';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
 const SITE_FEED_TIMEOUT_MS = 2000;
@@ -808,17 +810,32 @@ async function callMcpTool(settings, name, args = {}, signal = null) {
 
 async function fetchRelevantMemories(message, signal = null) {
   const memorySettings = readJson('roomMemorySettings', { enabled: true });
-  if (memorySettings.enabled === false) return [];
-  if (!String(message || '').trim()) return [];
-  const params = new URLSearchParams({ q: String(message || '').trim(), limit: '5' });
-  const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
-    headers: authHeaders({ Accept: 'application/json' }),
-    cache: 'no-store',
-    signal
-  });
-  const result = await parseResponse(response);
-  if (!response.ok || !result.success) return [];
-  return Array.isArray(result.data) ? result.data : [];
+  if (memorySettings.enabled === false) return { data: [], retrieval: { backend: 'disabled' } };
+  if (!String(message || '').trim()) return { data: [], retrieval: { backend: 'none' } };
+  const accountId = getSession()?.user?.id || '';
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  signal?.addEventListener('abort', cancel, { once: true });
+  if (signal?.aborted) cancel();
+  const timeout = window.setTimeout(cancel, 8000);
+  try {
+    let result;
+    if (!accountId) {
+      result = { data: await retrieveGuestMemories(message), retrieval: { backend: 'indexeddb' } };
+    } else {
+      const params = new URLSearchParams({ q: String(message).trim(), limit: '6', purpose: 'chat' });
+      const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
+        headers: authHeaders({ Accept: 'application/json' }), cache: 'no-store', signal: controller.signal
+      });
+      result = await parseResponse(response);
+      if (!response.ok || !result.success) throw new Error('Memory retrieval unavailable');
+    }
+    if ((getSession()?.user?.id || '') !== accountId) throw new Error('Memory account changed');
+    return { data: Array.isArray(result.data) ? result.data : [], retrieval: result.retrieval || {} };
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', cancel);
+  }
 }
 
 async function fetchPersonaMemories(message, signal = null) {
@@ -984,10 +1001,10 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
   const mcpSettings = readJson('roomMCPSettings', {});
   const knowledgeEnabled = readJson('roomKnowledgeSettings', null)?.enabled !== false;
   const toolResults = [];
-  const [siteText, personaMemories, memories, growthState] = await Promise.all([
+  const [siteText, personaMemories, memoryResult, growthState] = await Promise.all([
     fetchSiteFeedContext(signal),
     knowledgeEnabled ? fetchPersonaMemories(message, signal).catch(() => []) : [],
-    fetchRelevantMemories(message, signal).catch(() => []),
+    fetchRelevantMemories(message, signal).catch(() => ({ data: [], retrieval: { backend: 'unavailable' } })),
     loadGrowth().catch(() => null)
   ]);
 
@@ -1005,16 +1022,17 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
     }
   }
 
-  return packRoomContext({
+  const packed = packRoomContext({
     time: currentTimeContext(),
     environment,
     knowledge: selectRoomKnowledgeEntries(message, readJson('roomKnowledgeSettings', null)),
     toolResults,
-    memories: memories.map((item) => ({ id: item.id || item.memoryId || item.type || 'memory', content: item.summary || item.content || '' })),
+    memories: memoryResult.data.map((item) => ({ id: item.id || item.memoryId || 'memory', content: `[${item.createdAt || '历史聊天'}] ${item.context || item.content || item.summary || ''}` })),
     personaMemories: personaMemories.map((item) => ({ id: item.id || item.memoryId || 'persona', content: item.summary || item.content || '' })),
     growth: growthContext(growthState),
     site: siteText
-  }, { maxChars: isOllamaApi(llmSettings.apiUrl) ? 4_000 : 8_000 }).text;
+  }, { maxChars: isOllamaApi(llmSettings.apiUrl) ? 4_000 : 8_000 });
+  return { ...packed, retrieval: memoryResult.retrieval };
 }
 
 export function useRoomChat({ live2d, world, diary = null }) {
@@ -1024,6 +1042,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
   const sending = ref(false);
   const resetting = ref(false);
   const generationState = ref({ status: 'idle', turnId: '', error: '' });
+  const memoryTrace = ref({ backend: 'none', count: 0 });
+  const memorySaveError = ref('');
   const imageAttachment = ref(null);
   const messageListRef = ref(null);
   const ttsState = ref({ messageId: '', status: 'idle' });
@@ -1134,6 +1154,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
     stopTTS();
     lastFailedTurn = null;
     generationState.value = { status: 'idle', turnId: '', error: '' };
+    memoryTrace.value = { backend: 'none', count: 0 };
+    memorySaveError.value = '';
     renderHistory([]);
     markSessionStart();
   }
@@ -1376,9 +1398,10 @@ export function useRoomChat({ live2d, world, diary = null }) {
       if (operation.controller.signal.aborted || activeGeneration !== operation) return false;
       const systemPrompt = resolveRoomSystemPrompt({
         userPrompt: settings.systemPrompt,
-        context: roomContext
+        context: roomContext.text
       });
-      const visionToolSucceeded = roomContext.includes('"id":"understand_image"');
+      memoryTrace.value = { ...roomContext.retrieval, count: roomContext.trace.filter(item => item.source === 'memories').length };
+      const visionToolSucceeded = roomContext.text.includes('"id":"understand_image"');
       if (image && settings.visionMode === 'mcp' && !visionToolSucceeded) {
         throw new Error('图片理解服务暂不可用，请检查 Room 的 MCP 设置后重试。');
       }
@@ -1431,12 +1454,11 @@ export function useRoomChat({ live2d, world, diary = null }) {
           expectedUserMessage: replacement.expectedUserMessage,
           expectedAssistantMessage: replacement.expectedAssistantMessage,
           userMessage: replacement.userMessage,
-          assistantMessage: reply
+          assistantMessage: reply,
+          memoryEnabled: readJson('roomMemorySettings', { enabled: true }).enabled !== false
         });
         if (destroyed || activeGeneration !== operation || requestArchiveKey !== diaryArchiveKey()) return false;
-        if (!replacement.opener) remember(replacement.userMessage, reply, turnId).catch((error) => {
-          if (error.name !== 'AbortError') console.warn('Room replacement memory capture failed:', error);
-        });
+
       }
       const ttsSettings = readJson('roomTTSSettings', {});
       if (ttsSettings.enabled) dispatchRoomLive2DExpression(structured.live2d);
@@ -1460,12 +1482,13 @@ export function useRoomChat({ live2d, world, diary = null }) {
         const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
         const nextHistory = [...storedConversation, ...(!opener ? [{ role: 'user', content: userContent, turnId }] : []), { role: 'assistant', content: reply, turnId }].slice(-24);
         writeRoomConversation(nextHistory);
-        const savedTurn = saveRoomConversationTurn({ turnId, userMessage: opener ? '' : userContent, assistantMessage: reply, opener });
-        savedTurn.catch((error) => {
-          if (error.name !== 'AbortError') console.warn('Room conversation save failed:', error);
-        });
-        if (!opener) savedTurn.then(() => remember(userContent, reply, turnId)).catch((error) => {
-          if (error.name !== 'AbortError') console.warn('Room memory capture deferred:', error);
+        operation.committing = true;
+        generationState.value = { status: 'saving', turnId, error: '' };
+        memorySaveError.value = '';
+        await saveRoomConversationTurn({ turnId, userMessage: opener ? '' : userContent, assistantMessage: reply, opener,
+          memoryEnabled: readJson('roomMemorySettings', { enabled: true }).enabled !== false
+        }).catch(() => {
+          memorySaveError.value = ROOM_ENGLISH ? 'Memory save incomplete. Please reconnect and reload.' : '本轮记忆尚未保存成功，请恢复连接后刷新重试。';
         });
       }
       sharedConversation.value = null;
@@ -1501,21 +1524,6 @@ export function useRoomChat({ live2d, world, diary = null }) {
     }
   }
 
-  async function remember(userMessage, assistantReply, turnId = '') {
-    const memorySettings = readJson('roomMemorySettings', { enabled: true });
-    if (memorySettings.enabled === false) return;
-    const response = await authFetch('/api/room/memory', {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify({ turnId, userMessage, assistantReply, captureChat: false })
-    });
-    const result = await parseResponse(response);
-    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
-    if (result.data) {
-      publishLocalRoomMemoryUpdate(result.data, response.status === 201 ? 'created' : 'merged');
-    }
-    return result.data || null;
-  }
 
   /**
    * Everything the "结束聊天" interaction needs: the messages produced since
@@ -1862,6 +1870,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
     sending,
     resetting,
     generationState,
+    memoryTrace,
+    memorySaveError,
     ttsState,
     sharedConversation,
     growth,
