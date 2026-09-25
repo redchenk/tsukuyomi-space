@@ -23,7 +23,32 @@ const props = defineProps({
 const emit = defineEmits(['go']);
 const room = useRoomState();
 const mobileRoom = ref(window.matchMedia('(max-width: 860px)').matches);
+const desktopPanel = ref('chatPanel');
+const panelHostReady = ref(false);
+const desktopTabs = [
+  { id: 'chatPanel', label: '聊天', icon: 'message' },
+  { id: 'diaryPanel', label: '日记', icon: 'book' },
+  { id: 'profilePanel', label: '资料', icon: 'user' },
+  { id: 'notePanel', label: '便签', icon: 'note' }
+];
+function openDiary() {
+  if (mobileRoom.value) room.panels.openPanel('diaryPanel');
+  else desktopPanel.value = 'diaryPanel';
+}
+function closeUtility(panelId) {
+  if (mobileRoom.value) room.panels.closePanel(panelId);
+  else desktopPanel.value = 'chatPanel';
+}
+function changeDesktopTab(event, index) {
+  const key = event.key;
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return;
+  event.preventDefault();
+  const next = key === 'Home' ? 0 : key === 'End' ? desktopTabs.length - 1 : (index + (key === 'ArrowRight' ? 1 : -1) + desktopTabs.length) % desktopTabs.length;
+  desktopPanel.value = desktopTabs[next].id;
+  event.currentTarget.parentElement.querySelectorAll('[role="tab"]')[next]?.focus();
+}
 const mobileTools = computed(() => room.panels.panelButtons.filter((button) => button.id !== 'chatPanel'));
+const companionName = computed(() => room.chat.characterName.value === '八千代辉夜姬' ? '八千代' : room.chat.characterName.value);
 const companionStatus = computed(() => room.live2d.error.value ? '角色暂未连接' : room.live2d.ready.value ? '在这里，陪着你' : '正在准备与你见面…');
 const mobileToolsMenu = ref(null);
 let mobileQuery;
@@ -49,6 +74,7 @@ function selectMobilePanel(panelId) {
 }
 
 onMounted(() => {
+  panelHostReady.value = true;
   mobileQuery = window.matchMedia('(max-width: 860px)');
   mobileQuery.addEventListener('change', updateMobileRoom);
   document.addEventListener('pointerdown', closeMobileTools);
@@ -100,7 +126,7 @@ watch(() => props.shareId, loadSharedConversation);
 <template>
   <main
     class="room-page room-conversation-layout"
-    :class="{ 'room-companion-only': !room.panels.activePanels.chatPanel }"
+    :class="{ 'room-companion-only': mobileRoom && !room.panels.activePanels.chatPanel }"
     aria-label="&#31169;&#20154;&#23621;&#25152;"
     :data-room-user-id="roomUserId"
     :data-room-user-name="roomUserName"
@@ -131,7 +157,7 @@ watch(() => props.shareId, loadSharedConversation);
       <div><strong>私人居所</strong><span>留一点时间，与你相伴</span></div>
       <button class="room-mobile-music" type="button" aria-label="房间音乐" :aria-expanded="room.music.drawer.open" @click="room.music.toggleShell"><TsIcon name="audioLines" :size="20" /></button>
     </header>
-    <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" />
+    <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" :music="room.music" :weather="room.world.weatherCard.value" @settings="emit('go', '/room/settings')" />
     <RoomWeatherCard :weather="room.world.weatherCard.value" />
     <RoomDock
       :buttons="room.panels.panelButtons"
@@ -144,7 +170,8 @@ watch(() => props.shareId, loadSharedConversation);
       <section class="room-companion-bar" aria-label="角色与房间工具">
         <div class="room-companion-identity">
           <img :src="'/assets/images/wiki/entries/characters/yachiyo-tsukuyomi.webp'" alt="" width="42" height="42" data-image-bloom="subtle">
-          <div><h1>{{ room.chat.characterName.value }}</h1><p :class="{ 'is-ready': room.live2d.ready.value }">{{ companionStatus }}</p></div>
+          <span class="room-companion-avatar" aria-hidden="true"></span>
+          <div><h1>{{ companionName }}</h1><p :class="{ 'is-ready': room.live2d.ready.value }">{{ companionStatus }}</p></div>
           <details ref="mobileToolsMenu" class="room-tools-disclosure">
             <summary aria-label="房间功能"><TsIcon name="grid" :size="17" /><span>工具</span><TsIcon name="chevronDown" :size="12" /></summary>
             <nav class="room-mobile-tools" aria-label="房间功能">
@@ -160,44 +187,55 @@ watch(() => props.shareId, loadSharedConversation);
           </button>
         </div>
       </section>
-      <RoomChatPanel
-        v-if="room.panels.activePanels.chatPanel"
-        :chat="room.chat"
-        :panel-style="mobileRoom ? {} : room.panels.panelStyle('chatPanel')"
-        @close="room.panels.closePanel('chatPanel')"
-        @focus="!mobileRoom && room.panels.bringPanelForward('chatPanel')"
-        @drag-start="room.panels.startPanelDrag('chatPanel', $event)"
-        @share="openConversationShare"
-        @growth="emit('go', '/growth')"
-        @open-diary="room.panels.openPanel('diaryPanel')"
-      />
+      <nav class="room-desktop-tabs" role="tablist" aria-label="房间工作区">
+        <button v-for="(tab, index) in desktopTabs" :id="`room-tab-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-selected="desktopPanel === tab.id" :aria-controls="tab.id === 'chatPanel' ? 'room-chat-workspace' : 'room-desktop-panel-host'" :tabindex="desktopPanel === tab.id ? 0 : -1" @click="desktopPanel = tab.id" @keydown="changeDesktopTab($event, index)">
+          <TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span>
+        </button>
+        <a class="room-desktop-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="18" /></a>
+      </nav>
+      <div id="room-chat-workspace" v-show="mobileRoom || desktopPanel === 'chatPanel'" class="room-chat-workspace" :role="mobileRoom ? undefined : 'tabpanel'" :aria-labelledby="mobileRoom ? undefined : 'room-tab-chatPanel'">
+        <RoomChatPanel
+          v-if="!mobileRoom || room.panels.activePanels.chatPanel"
+          :chat="room.chat"
+          :panel-style="{}"
+          @close="room.panels.closePanel('chatPanel')"
+          @focus="mobileRoom && room.panels.bringPanelForward('chatPanel')"
+          @drag-start="mobileRoom && room.panels.startPanelDrag('chatPanel', $event)"
+          @share="openConversationShare"
+          @growth="emit('go', '/growth')"
+          @open-diary="openDiary"
+        />
+      </div>
+      <div id="room-desktop-panel-host" v-show="!mobileRoom && desktopPanel !== 'chatPanel'" role="tabpanel" :aria-labelledby="`room-tab-${desktopPanel}`"></div>
     </div>
-    <RoomDiaryPanel
-      v-if="room.panels.activePanels.diaryPanel"
-      :diary="room.diary"
-      :panel-style="room.panels.panelStyle('diaryPanel')"
-      @close="room.panels.closePanel('diaryPanel')"
-      @focus="room.panels.bringPanelForward('diaryPanel')"
-      @drag-start="room.panels.startPanelDrag('diaryPanel', $event)"
-    />
-    <RoomProfilePanel
-      v-if="room.panels.activePanels.profilePanel"
-      :profile="room.profile.profile"
-      :panel-style="room.panels.panelStyle('profilePanel')"
-      @close="room.panels.closePanel('profilePanel')"
-      @focus="room.panels.bringPanelForward('profilePanel')"
-      @drag-start="room.panels.startPanelDrag('profilePanel', $event)"
-      @save="room.profile.saveProfile()"
-    />
-    <RoomNotePanel
-      v-if="room.panels.activePanels.notePanel"
-      :note="room.note.note"
-      :panel-style="room.panels.panelStyle('notePanel')"
-      @close="room.panels.closePanel('notePanel')"
-      @focus="room.panels.bringPanelForward('notePanel')"
-      @drag-start="room.panels.startPanelDrag('notePanel', $event)"
-      @save="room.note.saveNote()"
-    />
+    <Teleport v-if="panelHostReady" to="#room-desktop-panel-host" :disabled="mobileRoom">
+      <RoomDiaryPanel
+        v-if="mobileRoom ? room.panels.activePanels.diaryPanel : desktopPanel === 'diaryPanel'"
+        :diary="room.diary"
+        :panel-style="mobileRoom ? room.panels.panelStyle('diaryPanel') : {}"
+        @close="closeUtility('diaryPanel')"
+        @focus="mobileRoom && room.panels.bringPanelForward('diaryPanel')"
+        @drag-start="mobileRoom && room.panels.startPanelDrag('diaryPanel', $event)"
+      />
+      <RoomProfilePanel
+        v-if="mobileRoom ? room.panels.activePanels.profilePanel : desktopPanel === 'profilePanel'"
+        :profile="room.profile.profile"
+        :panel-style="mobileRoom ? room.panels.panelStyle('profilePanel') : {}"
+        @close="closeUtility('profilePanel')"
+        @focus="mobileRoom && room.panels.bringPanelForward('profilePanel')"
+        @drag-start="mobileRoom && room.panels.startPanelDrag('profilePanel', $event)"
+        @save="room.profile.saveProfile()"
+      />
+      <RoomNotePanel
+        v-if="mobileRoom ? room.panels.activePanels.notePanel : desktopPanel === 'notePanel'"
+        :note="room.note.note"
+        :panel-style="mobileRoom ? room.panels.panelStyle('notePanel') : {}"
+        @close="closeUtility('notePanel')"
+        @focus="mobileRoom && room.panels.bringPanelForward('notePanel')"
+        @drag-start="mobileRoom && room.panels.startPanelDrag('notePanel', $event)"
+        @save="room.note.saveNote()"
+      />
+    </Teleport>
     <RoomLoadingOverlay :active="room.loading.active" :error="room.loading.error" :title="room.loading.title" :detail="room.loading.detail" />
     <RoomShareDialog
       :open="shareDialogOpen"

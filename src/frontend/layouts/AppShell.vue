@@ -27,6 +27,7 @@ const props = defineProps({
 defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
 
 const navOpen = ref(false);
+const roomSearch = ref('');
 const navigationRef = ref(null);
 const { keyboardOpen, viewportStyle } = useMobileKeyboard();
 let releaseNavigationScroll = null;
@@ -327,6 +328,17 @@ onUnmounted(() => {
         </a>
       </div>
     </aside>
+
+    <header v-if="showChrome && isRoom" class="room-desktop-commandbar" aria-label="月读空间导航">
+      <a class="room-desktop-brand" href="/hub" @click.prevent="$emit('go', '/hub')">{{ t.brand }}</a>
+      <span class="room-desktop-breadcrumb">房间 <span>/ ROOM</span></span>
+      <form class="room-desktop-search" role="search" @submit.prevent="$emit('go', roomSearch.trim() ? `/stage?q=${encodeURIComponent(roomSearch.trim())}` : '/stage')">
+        <TsIcon name="search" :size="16" /><input v-model="roomSearch" type="search" maxlength="120" aria-label="搜索月读空间文章" placeholder="搜索月读空间"><button type="submit" aria-label="搜索"><TsIcon name="arrowRight" :size="14" /></button>
+      </form>
+      <button v-if="showNotifications" class="room-command-icon" type="button" :aria-label="notificationsActionLabel" @click="$emit('go', '/notifications')"><TsIcon name="bell" :size="19" /><i v-if="unreadNotifications" class="room-unread-dot"></i></button>
+      <button class="room-command-icon" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'moon' : 'sun'" :size="19" /></button>
+      <a class="room-desktop-account" :href="isAuthed ? '/user-center' : '/login'" @click.prevent="$emit('go', isAuthed ? '/user-center' : '/login')"><img v-if="user?.avatar" :src="user.avatar" alt="" width="28" height="28"><span v-else class="room-account-initial">{{ userInitial() }}</span><span>{{ isAuthed ? user?.username || accountLabel : accountLabel }}</span><TsIcon name="chevronDown" :size="12" /></a>
+    </header>
 
     <header v-if="showChrome && !isRoom" class="topbar site-commandbar" data-material="header">
       <a href="/hub" class="brand room-brand site-brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @pointerdown="warmRoutePath('/hub')" @click.prevent="$emit('go', '/hub')">

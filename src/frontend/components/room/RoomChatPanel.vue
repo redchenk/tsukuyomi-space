@@ -18,6 +18,17 @@ const editingMessageId = ref('');
 const editDraft = ref('');
 const editSubmitting = ref(false);
 const editError = ref('');
+const copiedMessageId = ref('');
+async function copyMessage(message) {
+  try {
+    await navigator.clipboard.writeText(message.content || '');
+    copiedMessageId.value = message.id;
+  } catch (_) { copiedMessageId.value = `failed:${message.id}`; }
+}
+function readEarlierMessages() {
+  followingLatestMessage = false;
+  transcriptRef.value?.scrollTo({ top: 0, behavior: 'smooth' });
+}
 let transcriptObserver;
 let followingLatestMessage = true;
 
@@ -248,9 +259,8 @@ function endChatStatusLabel() {
         </button>
         <div class="chat-session-toolbar">
           <span class="chat-session-label">当前会话</span>
-          <button v-if="chat.canStartConversation()" class="chat-session-new-btn chat-opener-btn" type="button"
-            :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :title="`让${characterName}先开口`"
-            @click="chat.startConversation()"><TsIcon name="sparkles" :size="15" /><span>我先说</span></button>
+          <button class="room-desktop-history" type="button" :disabled="!hasConversation" aria-label="查看本次对话开头" title="查看本次对话开头" @click="readEarlierMessages"><TsIcon name="undo" :size="18" /></button>
+
           <button
             class="chat-session-new-btn"
             type="button"
@@ -270,9 +280,14 @@ function endChatStatusLabel() {
           <TsIcon name="message" :size="23" />
           <strong>这一刻，慢慢聊</strong>
           <p>今天的小事、想说的话，都可以留在这里。</p>
+          <button v-if="chat.canStartConversation()" class="chat-session-new-btn chat-opener-btn" type="button"
+            :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :title="`让${characterName}先开口`"
+            @click="chat.startConversation()"><TsIcon name="sparkles" :size="15" /><span>我先说</span></button>
         </div>
         <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="[message.role, { 'is-failed': message.failed, 'is-streaming': message.pending }]" :aria-busy="message.pending || undefined">
+          <span v-if="message.role === 'assistant'" class="room-message-avatar" aria-hidden="true"></span>
           <span class="chat-role">{{ message.role === 'assistant' ? characterName : message.role === 'user' ? '你' : '系统' }}</span>
+          <span v-if="message.role === 'assistant'" class="room-message-ai">AI</span>
           <img v-if="message.image?.dataUrl" class="chat-image-thumb" :src="message.image.dataUrl" :alt="message.image.name || 'image'">
           <template v-if="editingMessageId === message.id">
             <label class="chat-edit-label" :for="`chat-edit-${message.id}`">修改这条消息</label>
@@ -306,6 +321,7 @@ function endChatStatusLabel() {
               <button v-if="message.failed && !generationBusy" class="chat-tts-btn" type="button" @click="chat.retryLastTurn()">重试</button>
             </div>
             <div v-if="message.role === 'assistant' && !message.pending" class="chat-message-actions">
+              <button class="chat-tts-btn room-copy-message" type="button" aria-label="复制这条回复" @click="copyMessage(message)"><TsIcon name="copy" :size="13" /><span v-if="copiedMessageId === message.id">已复制</span><span v-else-if="copiedMessageId === `failed:${message.id}`">请选中文字复制</span></button>
               <button v-if="canRegenerateMessage(message)" class="chat-tts-btn" type="button" @click="chat.regenerateReply(message.id)">重新生成</button>
               <button
                 class="chat-tts-btn"
@@ -359,7 +375,8 @@ function endChatStatusLabel() {
           <TsIcon name="image" :size="22" :stroke-width="2" />
           <span>&#22270;&#29255;</span>
         </button>
-        <textarea id="chatInput" ref="composerRef" v-model="chat.input.value" rows="1" :aria-label="englishRoom ? 'Message' : '输入消息'" enterkeyhint="send" :placeholder="englishRoom ? 'Message, Enter to send' : '输入消息，Enter 发送；Shift+Enter 换行'" @keydown="handleComposerKeydown"></textarea>
+        <textarea id="chatInput" ref="composerRef" v-model="chat.input.value" rows="1" :aria-label="englishRoom ? 'Message' : '输入消息'" enterkeyhint="send" :placeholder="englishRoom ? 'Message, Enter to send' : `和${characterName}说点什么…`" @keydown="handleComposerKeydown"></textarea>
+        <span class="room-composer-keyhint">Enter 发送 · Shift + Enter 换行</span>
         <button v-if="generationStoppable" id="stopChatBtn" class="panel-btn chat-stop-btn" type="button" aria-label="停止生成" title="停止生成" @click="chat.stopGeneration()">
           <span class="chat-stop-icon" aria-hidden="true"></span>
           <span>停止</span>
@@ -389,6 +406,7 @@ function endChatStatusLabel() {
         <span class="chat-end-hint">
           {{ sessionTurns ? (englishRoom ? `${sessionTurns} messages saved` : `本次已记录 ${sessionTurns} 条对话`) : (englishRoom ? 'Start a conversation' : '先说几句，再结束聊天') }}
         </span>
+        <span class="room-ai-disclaimer">AI 角色对话 · 请理性判断生成内容</span>
       </div>
     </div>
 
