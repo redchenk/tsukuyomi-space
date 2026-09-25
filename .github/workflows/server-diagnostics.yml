@@ -1,0 +1,45 @@
+name: Server diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read domestic host resource pressure
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          timeout: 60s
+          command_timeout: 90s
+          script: |
+            export LC_ALL=C
+            date -u
+            uptime
+            free -m
+            df -h / /tmp
+            vmstat 1 3
+            ps -eo pid,ppid,comm,rss,pcpu,stat,wchan:24 --sort=-pcpu | head -20
+            ps -eo pid,ppid,comm,rss,pcpu,stat --sort=-rss | head -15
+            for pressure in cpu memory io; do
+              head -2 "/proc/pressure/$pressure" 2>/dev/null || true
+            done
+            systemctl list-jobs --no-pager
+            systemctl list-units --type=service --state=running --no-pager
+            systemctl list-timers --all --no-pager
+            journalctl -k -b --no-pager -g 'oom-kill|Out of memory|Killed process|I/O error|EXT4-fs error' -n 12 || true
+            journalctl -k -b -1 --no-pager -g 'oom-kill|Out of memory|Killed process|I/O error|EXT4-fs error' -n 12 || true
+            systemd --version | head -1
+            stat -fc %T /sys/fs/cgroup
