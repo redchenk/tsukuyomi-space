@@ -38,7 +38,7 @@ before(async () => {
 after(async () => { await new Promise(resolve => server.close(resolve)); db.close(); fs.rmSync(dataDir, { recursive: true, force: true }); });
 
 test('chat transaction preserves short facts; real Mem0 survives restart, pruning and new conversations', async () => {
-    const first = { turnId: 'mem0-cat', userMessage: '我的猫叫雪糕', assistantMessage: '雪糕，好可爱的名字。' };
+    const first = { memoryEnabled: true, turnId: 'mem0-cat', userMessage: '我的猫叫雪糕', assistantMessage: '雪糕，好可爱的名字。' };
     await request('/chat/turn', 'POST', first);
     await request('/chat/turn', 'POST', first);
     assert.equal(memory.memoryStats('mem0-one').count, 1, 'idempotent save must not duplicate memories');
@@ -67,7 +67,7 @@ test('chat transaction preserves short facts; real Mem0 survives restart, prunin
 
 test('full-content excerpts reach the prompt beyond the old summary limit', async () => {
     const detail = '今天聊了一会儿日常。'.repeat(100) + '我的观星约定是周六晚上八点，在青岚天文台见。';
-    await request('/chat/turn', 'POST', { turnId: 'mem0-detail', userMessage: detail, assistantMessage: '好，到时见。' });
+    await request('/chat/turn', 'POST', { memoryEnabled: true, turnId: 'mem0-detail', userMessage: detail, assistantMessage: '好，到时见。' });
     const result = await request('/memory?purpose=chat&q=' + encodeURIComponent('观星约定几点在哪里'));
     assert.match(result.data[0].context, /周六晚上八点.*青岚天文台/);
     const { packRoomContext } = await import('../src/frontend/services/room/roomContext.mjs');
@@ -82,11 +82,13 @@ test('disable, editing, replacement, deletion and clear are reflected in real Me
     const before = memory.memoryStats('mem0-one').count;
     await request('/chat/turn', 'POST', { turnId: 'memory-off', userMessage: '我的代号是霜月', assistantMessage: '收到。', memoryEnabled: false });
     assert.equal(memory.memoryStats('mem0-one').count, before);
-    const turn = { turnId: 'mem0-replace', userMessage: '我叫白桃', assistantMessage: '白桃，晚上好。' };
+    await request('/chat/turn', 'POST', { turnId: 'legacy-no-opt-in', userMessage: '旧页面没有发送记忆开关', assistantMessage: '收到。' });
+    assert.equal(memory.memoryStats('mem0-one').count, before, 'legacy clients retain their own memory opt-in behavior');
+    const turn = { memoryEnabled: true, turnId: 'mem0-replace', userMessage: '我叫白桃', assistantMessage: '白桃，晚上好。' };
     await request('/chat/turn', 'POST', turn);
     await request('/memory?purpose=chat&q=' + encodeURIComponent('我叫什么名字'));
     await request('/chat/turn/mem0-replace', 'PUT', { expectedUserMessage: turn.userMessage, expectedAssistantMessage: turn.assistantMessage,
-        userMessage: '我叫青梅', assistantMessage: '青梅，晚上好。' });
+        userMessage: '我叫青梅', assistantMessage: '青梅，晚上好。', memoryEnabled: true });
     let result = await request('/memory?purpose=chat&q=' + encodeURIComponent('我叫什么名字'));
     assert.equal(result.data.some(row => row.context.includes('白桃')), false);
     const item = result.data.find(row => row.context.includes('青梅'));

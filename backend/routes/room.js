@@ -648,7 +648,7 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
         const userMessage = opener && !req.body?.userMessage ? '' : normalizeChatContent(req.body?.userMessage, 'userMessage');
         if (opener && userMessage) return res.status(400).json({ success: false, message: 'An opener cannot include a user message' });
         const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
-        const turn = { turnId, userMessage, assistantMessage, opener, memoryEnabled: req.body?.memoryEnabled !== false };
+        const turn = { turnId, userMessage, assistantMessage, opener, memoryEnabled: req.body?.memoryEnabled === true };
         let memoryIds = [];
         const messageIds = roomChatRepository.saveTurn(req.user.id, turn, () => {
             memoryIds = roomMemory.captureChatTurn(req.user.id, turn);
@@ -681,7 +681,7 @@ router.put('/chat/turn/:turnId', authenticateToken, (req, res) => {
         }, () => {
             const retired = roomMemory.invalidateAutoTurnMemories(req.user.id, turnId);
             roomMemory.captureChatTurn(req.user.id, { turnId, userMessage, assistantMessage,
-                memoryEnabled: req.body?.memoryEnabled !== false });
+                memoryEnabled: req.body?.memoryEnabled === true });
             return retired;
         });
         if (result.changed) {
