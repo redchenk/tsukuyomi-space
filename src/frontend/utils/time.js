@@ -1,8 +1,19 @@
 export const UTC8_TIME_ZONE = 'Asia/Shanghai';
 
 const SQLITE_UTC_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/;
+const timeMinuteFormatter = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: UTC8_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23'
+});
 
 export function parseAppDate(value) {
+  // Live Room messages use epoch milliseconds; saved API history uses UTC text.
+  if (typeof value === 'number') {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
   if (!value) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
   const source = String(value).trim();
@@ -10,6 +21,11 @@ export function parseAppDate(value) {
   const normalized = SQLITE_UTC_PATTERN.test(source) ? `${source.replace(' ', 'T')}Z` : source;
   const date = new Date(normalized);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function formatTimeMinute(value) {
+  const date = parseAppDate(value);
+  return date ? timeMinuteFormatter.format(date) : '';
 }
 
 export function compareAppDate(left, right) {

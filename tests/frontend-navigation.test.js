@@ -6,6 +6,37 @@ const vm = require('node:vm');
 
 const projectRoot = path.resolve(__dirname, '..');
 
+describe('UTC+8 message timestamps', () => {
+    const context = { Date, Intl };
+    const code = fs.readFileSync(path.join(projectRoot, 'src/frontend/utils/time.js'), 'utf8')
+        .replace(/export (const|function) /g, '$1 ')
+        .concat('\nglobalThis.time = { parseAppDate, formatTimeMinute };');
+    vm.runInNewContext(code, context);
+    const { parseAppDate, formatTimeMinute } = context.time;
+
+    it('treats SQLite history as UTC and keeps explicit offsets intact', () => {
+        assert.equal(parseAppDate('2026-09-25 09:42:00').toISOString(), '2026-09-25T09:42:00.000Z');
+        for (const input of ['2026-09-25 09:42:00', '2026-09-25T09:42:00Z', '2026-09-25T17:42:00+08:00']) {
+            assert.equal(formatTimeMinute(input), '17:42');
+        }
+    });
+
+    it('accepts live epoch timestamps and renders midnight as 00 instead of 24', () => {
+        const midnight = Date.UTC(2026, 8, 25, 16, 5);
+        assert.equal(formatTimeMinute(midnight), '00:05');
+        assert.equal(formatTimeMinute(new Date(midnight)), '00:05');
+        assert.equal(formatTimeMinute('2026-09-25 16:05:00.123'), '00:05');
+        assert.equal(parseAppDate(0).getTime(), 0);
+        assert.equal(formatTimeMinute(0), '08:00');
+    });
+
+    it('omits unusable timestamps instead of showing Invalid Date', () => {
+        for (const input of [null, undefined, '', ' ', 'invalid date', NaN, Infinity, new Date(NaN)]) {
+            assert.equal(formatTimeMinute(input), '');
+        }
+    });
+});
+
 describe('dynamic article categories', () => {
     it('refreshes the category snapshot after a failed subscription before listening again', async () => {
         const calls = [];

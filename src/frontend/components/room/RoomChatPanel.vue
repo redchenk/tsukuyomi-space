@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import TsIcon from '../TsIcon.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
 import { isEnglishSite } from '../../utils/siteVariant';
+import { formatTimeMinute as messageTime } from '../../utils/time';
 import { splitRoomReply } from '../../services/room/roomReplyPresentation.mjs';
 
 const props = defineProps({
@@ -191,12 +192,6 @@ function useQuickMessage(message) {
   document.getElementById('chatInput')?.focus();
 }
 
-function messageTime(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-}
-
 // Only a finished entry opens the centred overlay; confirm/progress/error stay
 // inside the chat panel so they never cover the room.
 const diaryPreviewOpen = computed(() => Boolean(endChat.value.entry) && endChat.value.status === 'done');
@@ -343,7 +338,7 @@ function endChatStatusLabel() {
             <span v-if="message.pending && message.content" class="chat-stream-marker" role="status" aria-label="正在生成回复"></span>
           </template>
           <div class="chat-message-footer">
-            <time v-if="message.role !== 'system' && !message.pending && messageTime(message.createdAt)" class="chat-message-time">{{ messageTime(message.createdAt) }}</time>
+            <time v-if="message.role !== 'system' && !message.pending && messageTime(message.createdAt)" class="chat-message-time" title="UTC+8">{{ messageTime(message.createdAt) }}</time>
             <details v-if="message.role !== 'system' && !message.pending && editingMessageId !== message.id" class="room-message-options" :open="!mobile">
               <summary :aria-label="message.role === 'user' ? '这条消息的操作' : '这条回复的操作'"><TsIcon name="ellipsis" :size="18" /></summary>
             <div v-if="message.role === 'user' && !message.pending && editingMessageId !== message.id" class="chat-message-actions">

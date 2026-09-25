@@ -1,5 +1,32 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
 
+for (const timezoneId of ['Asia/Shanghai', 'America/Los_Angeles']) {
+    test.describe(`Room bubble times on a ${timezoneId} device`, () => {
+        test.use({ timezoneId });
+
+        test('saved UTC history and live timestamps stay UTC+8 after reload and desktop resize', async ({ page }) => {
+            await page.setViewportSize({ width: 390, height: 844 });
+            await page.addInitScript(() => {
+                localStorage.setItem('roomChatHistory:guest', JSON.stringify([
+                    { id: 'utc-sqlite', role: 'user', content: '数据库历史时间', createdAt: '2026-09-25 09:42:00' },
+                    { id: 'utc-iso', role: 'assistant', content: '跨过午夜的回复', createdAt: '2026-09-25T16:05:00Z' },
+                    { id: 'explicit-offset', role: 'user', content: '带时区的时间', createdAt: '2026-09-26T00:06:00+08:00' },
+                    { id: 'live-epoch', role: 'assistant', content: '即时消息时间', createdAt: Date.UTC(2026, 8, 25, 16, 7) }
+                ]));
+            });
+            await page.goto('/room');
+            const times = page.locator('.chat-message-time');
+            const expected = ['17:42', '00:05', '00:06', '00:07'];
+            await expect(times).toHaveText(expected);
+            await expect(times.first()).toHaveAttribute('title', 'UTC+8');
+            await page.reload();
+            await expect(times).toHaveText(expected);
+            await page.setViewportSize({ width: 1440, height: 1000 });
+            await expect(times).toHaveText(expected);
+        });
+    });
+}
+
 test('mobile history stays in place during a reply and returns to the latest bubble', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(() => {
