@@ -8,6 +8,7 @@
 .room-message-options > summary { display: none; }
 
 @media (max-width: 860px) {
+  body.vue-room-route { position: fixed; inset: 0; width: 100%; height: 100%; overscroll-behavior: none; }
   .room-shell {
     --room-bubble-glass: color-mix(in srgb, var(--ts-surface-strong) 92%, transparent);
     --room-compose-glass: color-mix(in srgb, var(--ts-surface-strong) 94%, transparent);
@@ -17,16 +18,17 @@
   .room-shell .room-conversation-layout {
     --room-mobile-top-clearance: calc(84px + env(safe-area-inset-top));
     position: fixed;
-    inset: 0;
+    inset: var(--ts-visual-offset-top, 0px) 0 auto;
     display: block;
     width: 100%;
-    height: 100dvh;
+    height: var(--ts-room-scene-height, 100dvh);
     min-height: 0;
     padding: 0;
     overflow: clip;
     color: var(--ts-text);
   }
   .room-shell :is(button, a, summary):focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 3px; }
+  .room-shell .room-conversation-layout > .room-backdrop { position: absolute; }
   .room-shell :is(button, summary) { -webkit-tap-highlight-color: transparent; }
   .room-shell .room-mobile-header {
     position: absolute;
@@ -166,6 +168,7 @@
   .room-chat-suggestions button { flex-shrink: 0; min-height: 36px; padding: 7px 10px; border: 1px solid var(--ts-border-strong); border-radius: var(--ts-radius-button); color: var(--ts-text); background: var(--room-bubble-glass); font: inherit; font-size: 11px; cursor: pointer; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-input-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; flex: 0 0 auto; align-items: end; gap: 4px; min-height: 58px; margin: 4px 12px 0; padding: 6px; border: 1px solid var(--ts-border-strong); border-radius: 30px; background: var(--room-compose-glass); box-shadow: var(--ts-shadow-sm); pointer-events: auto; }
   .room-shell .room-conversation-layout .room-chat-panel #chatInput { --ts-readable-input-bg: transparent; display: block; min-width: 0; width: 100%; min-height: 44px; max-height: 112px; padding: 10px 5px; margin: 0; border: 0; border-radius: 0; color: var(--ts-text); background: transparent; box-shadow: none; outline: none; font: inherit; font-size: 16px; line-height: 24px; resize: none; }
+  .room-shell .room-conversation-layout :is(input, textarea) { scroll-margin-block: 0; }
   .room-shell .room-conversation-layout .room-chat-panel #chatInput::placeholder { font-size: 14px; color: var(--ts-muted); opacity: 1; }
   .room-shell .room-conversation-layout .room-chat-panel .chat-input-row:focus-within { border-color: var(--ts-accent); }
   .room-shell .room-conversation-layout .room-chat-panel .chat-input-row .panel-btn { display: grid; place-items: center; width: 44px; min-width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: var(--ts-radius-button); color: var(--ts-text); background: transparent; box-shadow: none; }
@@ -179,11 +182,11 @@
   .room-shell .room-conversation-layout .diary-body { height: auto; max-height: none; }
   .room-shell .room-conversation-layout .diary-detail-content { max-height: 32dvh; overflow-y: auto; }
   .room-shell .room-conversation-layout.room-companion-only .room-conversation-surface { display: none; }
-  .room-shell.is-keyboard-open .room-conversation-layout { height: var(--ts-visual-height, 100dvh); }
-  .room-shell.is-keyboard-open .room-conversation-layout .room-conversation-surface { top: 72px; bottom: 8px; }
+  /* Safari pans its visual viewport to the focused input. Compensate the pan
+     on the fixed root, keep the full-size scene, and resize only the transcript. */
+  .room-shell.is-keyboard-open .room-conversation-layout .room-conversation-surface { top: max(84px, calc(var(--ts-visual-height) * .24)); bottom: calc(var(--ts-room-scene-height) - var(--ts-visual-height) + 8px); }
   .room-shell.is-keyboard-open .room-conversation-layout .room-stage-scene { display: none; }
   .room-shell.is-keyboard-open .room-conversation-layout .room-chat-suggestions { display: none; }
-  .room-shell.is-keyboard-open .room-conversation-layout .room-live2d-container { height: calc(118dvh - 56px); }
   @media (max-height: 700px) {
     .room-shell .room-conversation-surface { top: 39%; }
     .room-shell .room-stage-scene { top: calc(78px + env(safe-area-inset-top)); }

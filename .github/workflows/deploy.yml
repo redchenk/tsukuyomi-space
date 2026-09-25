@@ -52,7 +52,7 @@ jobs:
           npm run build:web
           mkdir -p deployment-artifacts/domestic
           cp -a dist/frontend/. deployment-artifacts/domestic/
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
 
       - name: Build overseas frontend

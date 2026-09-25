@@ -3,15 +3,18 @@ const FRAME_INTERVAL_60_FPS = 1000 / 60;
 const FRAME_PROFILES = Object.freeze({
   balanced: Object.freeze({
     activeIntervalMs: FRAME_INTERVAL_60_FPS,
-    idleIntervalMs: 1000 / 45,
+    idleIntervalMs: FRAME_INTERVAL_60_FPS,
     activeDutyRatio: 0.58,
     idleDutyRatio: 0.48,
     activeMinimumFps: 15,
     idleMinimumFps: 12
   }),
   reduced: Object.freeze({
-    activeIntervalMs: 1000 / 30,
-    idleIntervalMs: 1000 / 24,
+    // The site-wide reduced profile primarily disables decorative effects.
+    // Do not cap smooth model motion just because Safari omits hardware data;
+    // measured render cost below still reserves main-thread headroom.
+    activeIntervalMs: FRAME_INTERVAL_60_FPS,
+    idleIntervalMs: FRAME_INTERVAL_60_FPS,
     activeDutyRatio: 0.48,
     idleDutyRatio: 0.38,
     activeMinimumFps: 10,

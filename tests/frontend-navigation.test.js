@@ -93,6 +93,17 @@ describe('mobile keyboard viewport', () => {
         assert.equal(read({ viewportHeight: 430, editable: false }).open, false);
         assert.equal(read({ viewportHeight: 430, mobile: false }).open, false);
     });
+
+    it('tracks iOS viewport panning without resizing the scene, including keyboard dismissal', () => {
+        const panned = read({ viewportHeight: 430, offsetTop: 176 });
+        assert.equal(panned.open, true);
+        assert.equal(panned.offsetTop, 176);
+        assert.equal(panned.layoutHeight, 844);
+        assert.equal(read({ viewportHeight: 430, editable: false, wasOpen: true }).open, true);
+        assert.equal(read({ viewportHeight: 844, editable: false, wasOpen: true }).open, false);
+        assert.equal(read({ viewportHeight: 844, offsetTop: 176 }).offsetTop, 0);
+        assert.equal(read({ viewportHeight: 430, offsetTop: 176, scale: 2 }).offsetTop, 0);
+    });
 });
 
 function source(relativePath) {

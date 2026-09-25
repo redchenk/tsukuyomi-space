@@ -17,7 +17,7 @@ intensity or target frame rates are reduced by this change.
 ## Rebuild and deployment
 
 Run `npm run build:room-runtime` after changing the renderer. It creates the new
-versioned r10 runtime without compressing models or overwriting the existing r9
+versioned r11 runtime without compressing models or overwriting the existing r9/r10
 runtime. The frontend imports r10 as a Vite URL asset, so `npm run build:web` and
 `npm run build:web:overseas` include it in their hashed frontend assets.
 
@@ -46,3 +46,35 @@ old assets for open tabs and rollback. Music, `/models*`, Cubism Core and existi
   with maximum channel error 4/255 and no visible detail loss.
 - Native Safari was unavailable while the Mac was locked; no physical iOS
   device was available for verification.
+
+## Mobile keyboard and render budget (2026-09-25, r11)
+
+The mobile scene now retains its pre-keyboard height and compensates
+`visualViewport.offsetTop`. Only the conversation area contracts above the
+keyboard. The page cannot scroll underneath it; focus/blur, delayed viewport
+scroll events and keyboard dismissal preserve the scene size. A restored viewport
+clears stale offsets. Pinch zoom does not activate keyboard compensation.
+This follows the distinction between the layout and visual viewports in the
+[Visual Viewport API](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport).
+
+Unlike the r10 resolution policy above, r11 caps the dedicated touch-device
+canvas at DPR 2 and approximately 2 million pixels. A 585 × 940 CSS-pixel canvas
+on a DPR 3 phone therefore draws about 60% fewer pixels. This is a render-buffer
+budget, not a reduction of model textures, mesh detail, expressions or physics.
+Desktop and shared SDK canvases retain native DPR. Unchanged backing dimensions
+are no longer assigned again, avoiding redundant WebGL allocation/clearing.
+
+Both performance profiles start from a 60 fps target, including idle motion;
+the measured render-cost budget still lowers it under load. This removes the
+unconditional 24 fps mobile idle ceiling and 45 fps balanced idle cadence. The
+target is not a measured or guaranteed physical-device frame rate.
+
+Validation: 237 frontend tests pass. The keyboard pan/dismissal and history
+regressions pass in Chromium and WebKit with an iPhone 13 viewport. They cover
+a 176px pan, unchanged scene/canvas layout height, input visibility, locked
+document scrolling and restoration after dismissal. No physical iPhone was
+available; real iOS keyboard animation and device frame rate remain to be checked
+on hardware. CI repeats these cases before deployment.
+
+The r11 runtime is imported into hashed frontend assets. Existing server `/lib`,
+Live2D model, texture and music resources remain outside the release allowlist.

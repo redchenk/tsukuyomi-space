@@ -267,7 +267,7 @@ describe('constrained-device performance policy', () => {
         assert.match(pet, /role="dialog"/);
     });
 
-    it('reduces compositing work without changing Live2D canvas pixel density', () => {
+    it('uses the Room render budget while keeping the original model loading path', () => {
         const styles = source('src/frontend/styles/performance.css');
         const room = source('src/live2d/main-room.ts');
         const pacing = source('src/live2d/room-frame-pacing.mjs');
@@ -279,13 +279,12 @@ describe('constrained-device performance policy', () => {
         assert.match(styles, /backdrop-filter: none !important/);
         assert.match(styles, /content-visibility: auto/);
         assert.match(room, /computeRoomFrameInterval\(/);
-        assert.match(pacing, /idleIntervalMs: 1000 \/ 24/);
         assert.match(pacing, /activeMinimumFps: 10/);
         assert.match(pacing, /idleMinimumFps: 8/);
         assert.match(bridge, /currentFrameInterval\(\)/);
         assert.match(subdelegate, /window\.devicePixelRatio \|\| 1/);
         assert.match(subdelegate, /clientWidth \* ratio/);
-        assert.doesNotMatch(subdelegate, /Math\.min\([^\n]*devicePixelRatio/);
+        assert.match(subdelegate, /mobile: this\.exclusiveContext/);
         assert.match(loader, /loadScript\(CORE_SCRIPT\).*loadScript\(ROOM_SCRIPT\)/s);
         assert.doesNotMatch(loader, /loadScript\(assetUrl\(/);
         assert.doesNotMatch(loader, /assetUrl/);
@@ -294,7 +293,7 @@ describe('constrained-device performance policy', () => {
         assert.match(loader, /window\.DecompressionStream/);
     });
 
-    it('keeps Room responsive by reserving main-thread headroom without reducing resolution', async () => {
+    it('reserves main-thread headroom based on render cost instead of capping capable phones at 24 fps', async () => {
         const moduleUrl = pathToFileURL(path.join(root, 'src/live2d/room-frame-pacing.mjs')).href;
         const pacing = await import(`${moduleUrl}?test=${Date.now()}`);
 
@@ -305,7 +304,16 @@ describe('constrained-device performance policy', () => {
             renderCostMs: 10.6,
             currentIntervalMs: 1000 / 60
         });
-        assert.ok(reducedIdle >= 1000 / 24);
+        assert.ok(reducedIdle > 1000 / 60);
+        assert.ok(reducedIdle < 1000 / 24);
+        for (const profile of ['balanced', 'reduced']) {
+            for (const active of [false, true]) {
+                assert.equal(pacing.computeRoomFrameInterval({
+                    profile, active, averageRenderCostMs: 3, renderCostMs: 3,
+                    currentIntervalMs: 1000 / 60
+                }), 1000 / 60);
+            }
+        }
 
         const balancedActive = pacing.computeRoomFrameInterval({
             profile: 'balanced',

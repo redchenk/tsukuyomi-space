@@ -8,6 +8,18 @@ const esbuild = require('esbuild');
 const root = path.resolve(__dirname, '..');
 const rendering = import(pathToFileURL(path.join(root, 'src/live2d/room-rendering.mjs')).href);
 
+test('phone canvas bounds GPU pixel work without changing desktop density or model proportions', async () => {
+  const { roomRenderPixelRatio } = await import(pathToFileURL(path.join(root, 'src/live2d/room-render-resolution.mjs')).href);
+  const phone = { width: 585, height: 940, devicePixelRatio: 3, mobile: true };
+  const ratio = roomRenderPixelRatio(phone);
+  assert.ok(ratio > 1.8 && ratio <= 2);
+  assert.ok(phone.width * ratio * phone.height * ratio <= 2_000_001);
+  assert.ok(ratio ** 2 / phone.devicePixelRatio ** 2 < .41);
+  assert.equal(roomRenderPixelRatio({ ...phone, mobile: false }), 3);
+  assert.equal(roomRenderPixelRatio({ ...phone, devicePixelRatio: 1 }), 1);
+  assert.equal(roomRenderPixelRatio({ width: 390, height: 500, mobile: true, devicePixelRatio: 3 }), 2);
+});
+
 test('GPU buffers preserve deformed vertices while reusing UVs and indices across frames and mask passes', () => {
   const code = esbuild.buildSync({
     entryPoints: [path.join(root, 'lib/Framework/src/rendering/cubismdrawablebuffers.ts')],

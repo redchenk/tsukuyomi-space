@@ -102,33 +102,6 @@ test('mobile content, settings controls and empty states stay compact and usable
     await expect(page.locator('.room-setup-stepper button').nth(1)).toHaveAttribute('aria-current', 'step');
 });
 
-test('Room input remains above an overlay keyboard and composition never sends a message', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.addInitScript(() => {
-        const viewport = new EventTarget();
-        Object.assign(viewport, { height: 844, width: 390, offsetTop: 0, offsetLeft: 0, scale: 1 });
-        Object.defineProperty(window, 'visualViewport', { value: viewport, configurable: true });
-    });
-    await openPage(page, '/room');
-    const input = page.locator('#chatInput');
-    await expect(input).toBeVisible();
-    await input.fill('中文输入测试');
-    await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', isComposing: true, keyCode: 229, bubbles: true });
-    await expect(input).toHaveValue('中文输入测试');
-    await page.evaluate(() => {
-        window.visualViewport.height = 430;
-        window.visualViewport.dispatchEvent(new Event('resize'));
-    });
-    await expect(page.locator('.app-shell')).toHaveClass(/is-keyboard-open/);
-    await expect(page.locator('.mobile-bottom-nav')).toHaveCSS('visibility', 'hidden');
-    const box = await input.boundingBox();
-    expect(box.y).toBeGreaterThanOrEqual(0);
-    expect(box.y + box.height).toBeLessThanOrEqual(430);
-    await input.evaluate((node) => node.blur());
-    await expect(page.locator('.app-shell')).not.toHaveClass(/is-keyboard-open/);
-    await expect(page.locator('.mobile-bottom-nav')).toHaveCSS('visibility', 'visible');
-});
-
 test('Room tools stay collapsed in the mobile companion header', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openPage(page, '/room');

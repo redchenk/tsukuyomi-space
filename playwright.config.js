@@ -16,6 +16,11 @@ module.exports = defineConfig({
             // PW_CHANNEL lets local runs borrow a system browser (e.g. msedge)
             // when the Playwright browser download is unavailable; CI leaves it unset.
             use: { ...devices['Desktop Chrome'], channel: process.env.PW_CHANNEL || undefined }
+        },
+        {
+            name: 'webkit-mobile',
+            testMatch: /room-mobile-(keyboard|scene)\.spec\.js/,
+            use: { ...devices['iPhone 13'] }
         }
     ],
     webServer: process.env.E2E_BASE_URL ? undefined : {

@@ -11,10 +11,7 @@ import { LAppLive2DManager } from './lapplive2dmanager';
 import { LAppPal } from './lapppal';
 import { LAppTextureManager } from './lapptexturemanager';
 import { LAppView } from './lappview';
-
-function live2dRenderPixelRatio(): number {
-  return window.devicePixelRatio || 1;
-}
+import { roomRenderPixelRatio } from './room-render-resolution.mjs';
 
 /**
  * Canvasに関連する操作を取りまとめるクラス
@@ -262,10 +259,18 @@ export class LAppSubdelegate {
    * Resize the canvas to fill the screen.
    */
   private resizeCanvas(): void {
-    const ratio = live2dRenderPixelRatio();
+    const ratio = roomRenderPixelRatio({
+      width: this._canvas.clientWidth,
+      height: this._canvas.clientHeight,
+      devicePixelRatio: window.devicePixelRatio || 1,
+      mobile: this.exclusiveContext && window.matchMedia('(pointer: coarse)').matches
+    });
     (window as any).TSUKUYOMI_LIVE2D_DPR = ratio;
-    this._canvas.width = Math.max(1, Math.round(this._canvas.clientWidth * ratio));
-    this._canvas.height = Math.max(1, Math.round(this._canvas.clientHeight * ratio));
+    const width = Math.max(1, Math.round(this._canvas.clientWidth * ratio));
+    const height = Math.max(1, Math.round(this._canvas.clientHeight * ratio));
+    // Writing unchanged dimensions still reallocates/clears a WebGL buffer.
+    if (this._canvas.width !== width) this._canvas.width = width;
+    if (this._canvas.height !== height) this._canvas.height = height;
 
     const gl = this._glManager.getGl();
 

@@ -1,8 +1,14 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
-export function readKeyboardViewport({ height, viewportHeight, restingHeight = height, offsetTop = 0, scale = 1, editable, mobile }) {
+export function readKeyboardViewport({ height, viewportHeight, restingHeight = height, offsetTop = 0, scale = 1, editable, mobile, wasOpen = false }) {
   const inset = Math.max(0, height - viewportHeight - offsetTop);
-  return { open: Boolean(mobile && editable && scale === 1 && Math.max(inset, restingHeight - viewportHeight) > 120), inset, height: viewportHeight };
+  const anchored = Boolean(mobile && scale === 1 && (editable || wasOpen));
+  return {
+    open: anchored && Math.max(inset, restingHeight - viewportHeight) > 120,
+    anchored, inset, height: viewportHeight,
+    offsetTop: anchored && viewportHeight < restingHeight - 1 ? Math.max(0, offsetTop) : 0,
+    layoutHeight: restingHeight
+  };
 }
 
 export function useMobileKeyboard() {
@@ -17,7 +23,9 @@ export function useMobileKeyboard() {
       const viewport = window.visualViewport;
       const active = document.activeElement;
       const editable = active?.matches('textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="color"]), [contenteditable="true"]');
-      if (!editable || restingWidth !== window.innerWidth) {
+      // Keep the pre-keyboard scene size through focus/blur and the closing
+      // animation. Android may resize innerHeight; iOS pans offsetTop instead.
+      if (!restingHeight || (!editable && !state.value.open) || restingWidth !== window.innerWidth) {
         restingHeight = window.innerHeight;
         restingWidth = window.innerWidth;
       }
@@ -28,9 +36,11 @@ export function useMobileKeyboard() {
         offsetTop: viewport?.offsetTop ?? 0,
         scale: viewport?.scale ?? 1,
         editable,
-        mobile: mobileQuery?.matches
+        mobile: mobileQuery?.matches,
+        wasOpen: state.value.open
       });
-      if (state.value.open !== next.open || (next.open && (state.value.inset !== next.inset || state.value.height !== next.height))) {
+      if (!next.open && !editable) next.anchored = false;
+      if (Object.keys(next).some(key => state.value[key] !== next[key])) {
         state.value = next;
       }
     });
@@ -54,9 +64,11 @@ export function useMobileKeyboard() {
   });
   return {
     keyboardOpen: computed(() => state.value.open),
-    viewportStyle: computed(() => state.value.open ? {
+    viewportStyle: computed(() => state.value.anchored ? {
       '--ts-keyboard-inset': `${state.value.inset}px`,
-      '--ts-visual-height': `${state.value.height}px`
+      '--ts-visual-height': `${state.value.height}px`,
+      '--ts-visual-offset-top': `${state.value.offsetTop}px`,
+      '--ts-room-scene-height': `${state.value.layoutHeight}px`
     } : {})
   };
 }
