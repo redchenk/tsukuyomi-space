@@ -1,7 +1,7 @@
 import { dispatchRoomLive2D } from './live2dControl';
 import { alignLive2DIntentToStreamingSpeech } from './live2dStreamingSpeechSession';
 import { readJson } from './roomStorage';
-import ROOM_SCRIPT from '../../../../lib/bundled/live2d-room-neuro-live.20260925-mobile-r11.iife.js?url';
+import ROOM_SCRIPT from '../../runtime/live2d-room-neuro-live.20260925-mobile-r11.iife.js?url';
 
 const CORE_SCRIPT = '/lib/live2dcubismcore-v5.min.js';
 const MODEL_BASE = '/models-v4/tsukimi-yachiyo';

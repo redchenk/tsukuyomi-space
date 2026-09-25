@@ -27,7 +27,7 @@
     "test:e2e": "playwright test",
     "test": "npm run check && npm run check:seo && npm run check:moderation && npm run check:memory-sync && npm run check:migrations && npm run check:mail && npm run check:notifications && npm run test:api && node --test tests/mail.test.js tests/mailer-template.test.js && npm run test:frontend && npm run test:memory",
     "import:yachiyo": "node scripts/import-yachiyo-corpus-to-milvus.js",
-    "build:room-runtime": "LIVE2D_BUNDLE_NAME=live2d-room-neuro-live.20260925-mobile-r11 vite build --config vite.config.js",
+    "build:room-runtime": "LIVE2D_BUNDLE_DIR=src/frontend/runtime LIVE2D_BUNDLE_NAME=live2d-room-neuro-live.20260925-mobile-r11 vite build --config vite.config.js",
     "test:memory": "node --test tests/room-mem0.test.js"
   },
   "keywords": [

@@ -16,7 +16,7 @@ export default defineConfig({
       formats: ['iife'],
       fileName: process.env.LIVE2D_BUNDLE_NAME || 'live2d-room-neuro-live'
     },
-    outDir: 'lib/bundled',
+    outDir: process.env.LIVE2D_BUNDLE_DIR || 'lib/bundled',
     emptyOutDir: false
   }
 })

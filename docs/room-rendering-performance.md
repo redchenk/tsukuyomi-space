@@ -17,8 +17,8 @@ intensity or target frame rates are reduced by this change.
 ## Rebuild and deployment
 
 Run `npm run build:room-runtime` after changing the renderer. It creates the new
-versioned r11 runtime without compressing models or overwriting the existing r9/r10
-runtime. The frontend imports r10 as a Vite URL asset, so `npm run build:web` and
+versioned r11 runtime under `src/frontend/runtime`, without compressing models or
+writing to the protected `lib` directory. The frontend imports r11 as a Vite URL asset, so `npm run build:web` and
 `npm run build:web:overseas` include it in their hashed frontend assets.
 
 Deploy only the generated frontend assets and switch `index.html` last. Retain
@@ -76,5 +76,5 @@ document scrolling and restoration after dismissal. No physical iPhone was
 available; real iOS keyboard animation and device frame rate remain to be checked
 on hardware. CI repeats these cases before deployment.
 
-The r11 runtime is imported into hashed frontend assets. Existing server `/lib`,
+The r11 runtime is stored in `src/frontend/runtime` and imported into hashed frontend assets. Existing server `/lib`,
 Live2D model, texture and music resources remain outside the release allowlist.
