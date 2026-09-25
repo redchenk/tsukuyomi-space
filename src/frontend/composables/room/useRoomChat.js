@@ -1060,6 +1060,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   let stopRoomConversationUpdates = () => {};
   let sessionStartedAt = Date.now();
   const currentSessionMessages = ref([]);
+  const diaryRecordingError = ref('');
   let activeGeneration = null;
   let lastFailedTurn = null;
   let destroyed = false;
@@ -1069,8 +1070,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   function addMessage(role, content, options = {}) {
-    const list = messageListRef.value;
-    const followReply = !list || role === 'user' || list.scrollHeight - list.scrollTop - list.clientHeight < 24;
+    const followReply = options.scroll !== false && role === 'user';
     const nextMessage = {
       id: options.id || uid(),
       turnId: options.turnId || '',
@@ -1089,16 +1089,22 @@ export function useRoomChat({ live2d, world, diary = null }) {
     return nextMessage;
   }
 
-  function renderHistory(history) {
+  function renderHistory(history, { preservePosition = false } = {}) {
+    const previous = messages.value;
+    const scrollTop = messageListRef.value?.scrollTop || 0;
     messages.value = [];
     lastFailedTurn = null;
     generationState.value = { status: 'idle', turnId: '', error: '' };
-    addMessage('system', 'Live2D 已就绪');
+    addMessage('system', 'Live2D 已就绪', { id: previous.find(item => item.role === 'system')?.id, scroll: false });
     history.forEach((message) => addMessage(message.role, message.content, {
-      id: message.id,
+      id: previous.find(item => message.turnId && item.turnId === message.turnId && item.role === message.role)?.id || message.id,
       turnId: message.turnId,
-      createdAt: message.createdAt
+      createdAt: message.createdAt,
+      scroll: !preservePosition
     }));
+    if (preservePosition) nextTick(() => {
+      if (messageListRef.value) messageListRef.value.scrollTop = scrollTop;
+    });
     const draft = readRoomGenerationDraft();
     if (!draft) return;
     if (history.some((item) => item.turnId === draft.turnId)) {
@@ -1131,7 +1137,14 @@ export function useRoomChat({ live2d, world, diary = null }) {
     try {
       const history = await loadRoomConversation();
       if (revision !== historyLoadRevision || sending.value) return;
-      renderHistory(history);
+      // A save echo must not rebuild the transcript under someone reading it.
+      const visibleTail = messages.value.filter(item => ['user', 'assistant'].includes(item.role) && !item.pending).slice(-history.length);
+      if (history.length && history.every((item, index) => {
+        const current = visibleTail[index];
+        return current?.role === item.role && current.content === item.content
+          && (!item.turnId || !current.turnId || current.turnId === item.turnId);
+      })) return;
+      renderHistory(history, { preservePosition: messages.value.some(item => item.role !== 'system') });
     } catch (error) {
       console.warn('Room conversation sync failed:', error);
     }
@@ -1139,9 +1152,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
 
   function loadHistory() {
     renderHistory(readRoomConversation());
-    // Local history is pre-existing, but the server load may replace it, so the
-    // boundary is (re)established once the authoritative history has rendered.
-    markSessionStart();
+    restoreDiaryRecording();
     refreshSyncedHistory();
   }
 
@@ -1465,8 +1476,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
       const ttsSettings = readJson('roomTTSSettings', {});
       if (ttsSettings.enabled) dispatchRoomLive2DExpression(structured.live2d);
       else applyRoomAct(structured.live2d);
-      messages.value = messages.value.filter((item) => item.id !== pendingId);
       if (replacement) {
+        messages.value = messages.value.filter((item) => item.id !== pendingId);
         const oldUser = messages.value.find((item) => item.id === replacement.userMessageId);
         const oldAssistant = messages.value.find((item) => item.id === replacement.assistantMessageId);
         if (oldUser) oldUser.content = replacement.userMessage;
@@ -1477,10 +1488,14 @@ export function useRoomChat({ live2d, world, diary = null }) {
           last.content = reply;
           if (session.at(-2)?.role === 'user' && session.at(-2)?.content === replacement.expectedUserMessage) session.at(-2).content = replacement.userMessage;
         }
+        persistDiaryRecording();
       } else {
-        addMessage('assistant', reply, { speechText: reply, live2d: structured.live2d, turnId });
-        if (!opener) currentSessionMessages.value.push({ role: 'user', content: message || '请看这张图片。' });
-        currentSessionMessages.value.push({ role: 'assistant', content: reply });
+        // Finish the same bubble in place, preserving its DOM identity and
+        // the reader's scroll position while controls/timestamps appear.
+        Object.assign(pendingMessage, { content: reply, speechText: reply, live2d: structured.live2d, pending: false });
+        if (!opener) currentSessionMessages.value.push({ turnId, role: 'user', content: message || '请看这张图片。' });
+        currentSessionMessages.value.push({ turnId, role: 'assistant', content: reply });
+        persistDiaryRecording();
         const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
         const nextHistory = [...storedConversation, ...(!opener ? [{ role: 'user', content: userContent, turnId }] : []), { role: 'assistant', content: reply, turnId }].slice(-24);
         writeRoomConversation(nextHistory);
@@ -1638,6 +1653,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
         mode: 'Deepseek'
       }, { now }).entry;
       pendingDiaryEntry = { entry, revision, archiveKey };
+      persistDiaryRecording();
       diary?.refresh?.();
       endChatState.value = { ...endChatState.value, entry };
       await syncDiaryArchive({ ensureDiaryId: entry.diaryId });
@@ -1686,9 +1702,37 @@ export function useRoomChat({ live2d, world, diary = null }) {
     }
   }
 
+  function recordingKey() { return `${diaryArchiveKey()}:recording`; }
+
+  function persistDiaryRecording() {
+    try {
+      writeJson(recordingKey(), { version: 1, startedAt: sessionStartedAt,
+        messages: currentSessionMessages.value, pendingEntry: pendingDiaryEntry?.entry || null });
+      diaryRecordingError.value = '';
+    } catch (_) {
+      diaryRecordingError.value = '本机存储空间不足，日记对话记录尚未保存。请先生成日记或释放空间后重试，暂时不要关闭页面。';
+    }
+  }
+
+  function restoreDiaryRecording() {
+    const recording = readJson(recordingKey(), null);
+    currentSessionMessages.value = (Array.isArray(recording?.messages) ? recording.messages : [])
+      .filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string' && !item.pending);
+    sessionStartedAt = Number(recording?.startedAt) || Date.now();
+    pendingDiaryEntry = recording?.pendingEntry?.diaryId
+      ? { entry: recording.pendingEntry, revision: conversationRevision, archiveKey: diaryArchiveKey() } : null;
+    characterName.value = roomCharacterName();
+  }
+
+  function onDiaryRecordingStorage(event) {
+    if (event.key === recordingKey() && !sending.value && endChatState.value.status !== 'generating') restoreDiaryRecording();
+  }
+
   function markSessionStart() {
     currentSessionMessages.value = [];
+    pendingDiaryEntry = null;
     sessionStartedAt = Date.now();
+    persistDiaryRecording();
     // The archive may have been replaced by an import, so re-read the name.
     characterName.value = roomCharacterName();
     endChatState.value = {
@@ -1859,9 +1903,11 @@ export function useRoomChat({ live2d, world, diary = null }) {
     if (ttsUrl) URL.revokeObjectURL(ttsUrl);
     ttsUrl = '';
     window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthUpdate);
+    window.removeEventListener('storage', onDiaryRecordingStorage);
   }
 
   window.addEventListener(GROWTH_UPDATED_EVENT, handleGrowthUpdate);
+  window.addEventListener('storage', onDiaryRecordingStorage);
   loadGrowth().then((state) => { growth.value = state || growth.value; }).catch(() => {});
   stopRoomConversationUpdates = startRoomConversationUpdates(handleConversationUpdate);
   loadHistory();
@@ -1874,6 +1920,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     generationState,
     memoryTrace,
     memorySaveError,
+    diaryRecordingError,
     ttsState,
     sharedConversation,
     growth,

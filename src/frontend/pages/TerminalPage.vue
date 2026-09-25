@@ -1274,7 +1274,7 @@ onUnmounted(() => {
                 <input v-model="terminal.moderationPreference.emailNotifyModeration" type="checkbox" aria-label="待审核留言邮件提醒" :disabled="!terminal.moderationPreference.canReceive && !terminal.moderationPreference.emailNotifyModeration">
               </label>
               <p class="terminal-setting-note">{{ terminal.moderationPreference.email ? `接收邮箱：${terminal.moderationPreference.email}` : '当前账号未绑定可接收邮件的真实邮箱，请先绑定邮箱。' }}</p>
-              <p class="terminal-setting-note">默认关闭，保存后对新进入审核的内容生效。持续待审核的修改不会重复提醒，也不会补发历史积压内容。</p>
+              <p class="terminal-setting-note">邮件默认关闭；待审核内容始终通过站内信通知管理员。邮件保存后对新进入审核的内容生效，不补发历史积压。</p>
             </div>
             <div v-if="canManageAccounts" class="terminal-settings-block">
               <div class="terminal-settings-title">

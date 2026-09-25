@@ -54,7 +54,7 @@ test('all Room settings categories fit mobile light and dark layouts', async ({ 
       await category(page, label);
       await expect(page.locator(selector)).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      expect(await page.locator(selector).evaluate(el => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(70);
+      await expect.poll(() => page.locator(selector).evaluate(el => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(70);
     }
     const save = await page.locator('.settings-savebar').boundingBox();
     const nav = await page.locator('.mobile-bottom-nav').boundingBox();

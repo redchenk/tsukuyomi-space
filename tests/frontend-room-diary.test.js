@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { describe, it } = require('node:test');
+const { describe, it, test } = require('node:test');
 const vm = require('node:vm');
 
 const rootDir = path.resolve(__dirname, '..');
@@ -504,4 +504,15 @@ it('preserves extension fields when a persona archive is imported and exported',
     const imported = Object.values(restored.data.prompts)[0];
     assert.equal(imported.extensions.source, 'test');
     assert.equal(imported.data.first_mes, persona.data.first_mes);
+});
+
+
+test('all-day diary prompts retain morning and evening instead of only the last 60 exchanges', () => {
+    const generation = loadGeneration();
+    const turns = Array.from({ length: 240 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `moment-${i} ` + '今天的细节'.repeat(300) }));
+    const result = generation.normalizeDiaryConversation(turns);
+    assert.equal(result.length, 240);
+    assert.match(result[0].content, /^moment-0 /);
+    assert.match(result.at(-1).content, /^moment-239 /);
+    assert.ok(result.reduce((sum, turn) => sum + turn.content.length, 0) <= 180240);
 });

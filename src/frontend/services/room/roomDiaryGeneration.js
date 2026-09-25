@@ -136,7 +136,11 @@ export function normalizeDiaryConversation(messages) {
     if (previous && previous.role === message.role && previous.content === content) continue;
     turns.push({ role: message.role, content });
   }
-  return turns.slice(-DIARY_MAX_CONVERSATION_TURNS * 2);
+  // Keep the whole day's chronology, including morning turns. Bound the
+  // prompt by sharing the existing character budget instead of dropping its
+  // beginning once a conversation exceeds 60 exchanges.
+  const perMessageLimit = Math.max(1, Math.floor(DIARY_MAX_CONVERSATION_TURNS * 2 * DIARY_MAX_CHARS_PER_MESSAGE / Math.max(1, turns.length)));
+  return turns.map(turn => ({ ...turn, content: compact(turn.content, Math.min(DIARY_MAX_CHARS_PER_MESSAGE, perMessageLimit)) }));
 }
 
 export function diaryConversationLength(turns) {

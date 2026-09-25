@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const db = require('../db');
 const notificationRepository = require('../repositories/notification-repository');
-const { moderationEmailPreference, MODERATION_EMAIL_PREFIX } = require('./notification-settings');
+const { moderationEmailPreference } = require('./notification-settings');
 const { reviewMessageContent, messageModerationFeedback } = require('./message-moderation');
 const { sendNotificationEmail } = require('./mailer');
 
@@ -31,16 +31,15 @@ function notifyPendingMessage(messageId, { send = sendNotificationEmail, schedul
             link: `/terminal?panel=messages&review=${message.id}`,
             actorName: message.author || '访客'
         };
-        const recipients = db.prepare(`SELECT u.id FROM users u JOIN site_settings s ON s.key = ? || u.id
-            WHERE u.role IN ('admin', 'super_admin') AND s.value = 'true'`).all(MODERATION_EMAIL_PREFIX);
+        const recipients = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'super_admin')").all();
         let queued = 0;
         for (const { id } of recipients) {
-            const preference = moderationEmailPreference(id);
-            if (!preference.canReceive) continue;
             const notification = claimNotification({
                 userId: id, ...event, relatedMessageId: message.id, relatedArticleId: message.article_id || null
             }, digest);
             if (!notification) continue;
+            const preference = moderationEmailPreference(id);
+            if (!preference.emailNotifyModeration || !preference.canReceive) continue;
             schedule(() => {
                 Promise.resolve().then(() => {
                     // Opt-outs, role changes, approval and deletion take effect

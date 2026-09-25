@@ -67,13 +67,9 @@ function rememberTranscriptPosition() {
 onMounted(() => {
   document.addEventListener('pointerdown', closeMessageMenus);
   document.addEventListener('keydown', closeMessageMenus);
-  // Keep the newest reply in view when the keyboard or stage changes height,
-  // while preserving the position of someone reading earlier messages.
+  // Resizes update the unread/latest affordance without moving the reader.
   if (typeof ResizeObserver === 'undefined') return;
-  transcriptObserver = new ResizeObserver(() => {
-    const node = transcriptRef.value;
-    if (node && followingLatestMessage && hasConversation.value) node.scrollTop = node.scrollHeight;
-  });
+  transcriptObserver = new ResizeObserver(rememberTranscriptPosition);
   if (transcriptRef.value) transcriptObserver.observe(transcriptRef.value);
 });
 onBeforeUnmount(() => {
@@ -165,10 +161,18 @@ watch(() => props.chat.messages.value.map((message) => message.id), (ids) => {
   if (editingMessageId.value && !ids.includes(editingMessageId.value)) cancelEdit();
 });
 watch(() => props.chat.messages.value.map(message => `${message.id}:${message.content.length}`), () => {
-  const node = transcriptRef.value;
-  if (node && followingLatestMessage) node.scrollTop = node.scrollHeight;
+  // Content grows below the current reading position. Only an explicit send,
+  // initial history load or 'latest message' action scrolls the transcript.
+  rememberTranscriptPosition();
 }, { flush: 'post' });
-onMounted(() => nextTick(resizeComposer));
+onMounted(() => nextTick(() => {
+  resizeComposer();
+  // Initial restored history opens at the latest turn once. Later stream
+  // updates and resize observations never reposition the transcript.
+  const node = transcriptRef.value;
+  if (node && hasConversation.value) node.scrollTop = node.scrollHeight;
+  rememberTranscriptPosition();
+}));
 
 function replyParts(message) {
   return message.pending && Array.isArray(message.parts) ? message.parts : splitRoomReply(message.content);
@@ -299,7 +303,7 @@ function endChatStatusLabel() {
         </div>
       </div>
       <div class="room-transcript-viewport">
-      <div id="chatMessages" :ref="bindTranscript" class="room-chat-messages" tabindex="0" aria-label="聊天记录" :aria-busy="generationBusy" @scroll.passive="rememberTranscriptPosition">
+      <div id="chatMessages" :ref="bindTranscript" class="room-chat-messages" style="overflow-anchor: none" tabindex="0" aria-label="聊天记录" :aria-busy="generationBusy" @scroll.passive="rememberTranscriptPosition">
         <div v-if="!hasConversation" class="room-chat-welcome">
           <TsIcon name="message" :size="23" />
           <strong>这一刻，慢慢聊</strong>
@@ -394,6 +398,7 @@ function endChatStatusLabel() {
       <div v-else-if="chat.memoryTrace?.value.backend === 'unavailable'" class="chat-generation-notice room-memory-trace" role="status">
         {{ englishRoom ? 'Long-term memory is temporarily unavailable' : '长期记忆暂时无法读取' }}
       </div>
+      <div v-if="chat.diaryRecordingError?.value" class="chat-generation-notice" role="alert">{{ chat.diaryRecordingError.value }}</div>
       <div v-if="chat.memorySaveError?.value" class="chat-generation-notice" role="status">{{ chat.memorySaveError.value }}</div>
       <div v-if="chat.imageAttachment.value" id="chatImagePreview" class="chat-image-preview">
         <img :src="chat.imageAttachment.value.dataUrl" :alt="chat.imageAttachment.value.name">

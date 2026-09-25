@@ -35,6 +35,7 @@ async function setup(overrides = {}) {
     loadRoomConversation: async () => [{ role: 'user', content: 'old' }],
     writeRoomConversation() {}, saveRoomConversationTurn: async () => {}, replaceRoomConversationTurn: async () => {}, clearLocalRoomConversation() {},
     clearRoomConversation: async () => { clearCount++; },
+    writeJson() {},
     readJson: (key, fallback) => key === 'roomMemorySettings' ? { enabled: false } : fallback,
     releaseAsyncAudioPlayback() {}, dispatchRoomLive2D() {}, dispatchRoomLive2DExpression() {},
     compileBehaviorIntent: () => null, inferLive2DIntentFromText: () => null,
@@ -456,4 +457,70 @@ test('a stale Room history GET does not erase a turn saved while that GET was in
   const loaded = await loading;
   assert.equal(loaded.at(-1).content, '新回答');
   assert.equal(h.sync.readRoomConversation().at(-1).turnId, 'turn-0007');
+});
+
+
+test('diary recording survives a reload beyond the 24-message chat cache and stays account-scoped', async () => {
+  const storage = new Map();
+  let account = 'morning-user';
+  const persisted = {
+    diaryArchiveKey: () => `roomDiaryArchive:${account}`,
+    writeJson: (key, value) => storage.set(key, JSON.stringify(value)),
+    readJson: (key, fallback) => storage.has(key) ? JSON.parse(storage.get(key)) : fallback
+  };
+  const morning = await setup(persisted);
+  for (let i = 0; i < 16; i++) await send(morning.chat, `morning-${i}`);
+  assert.equal(morning.chat.sessionTurnCount(), 32);
+  morning.chat.destroy();
+  const evening = await setup(persisted);
+  assert.equal(evening.chat.sessionTurnCount(), 32);
+  await send(evening.chat, 'evening');
+  evening.chat.destroy();
+  account = 'another-user';
+  const other = await setup(persisted);
+  assert.equal(other.chat.sessionTurnCount(), 0);
+  other.chat.destroy();
+  account = 'morning-user';
+  const restored = await setup(persisted);
+  await restored.chat.confirmEndChat();
+  assert.equal(restored.requests[0].length, 34);
+  assert.equal(restored.requests[0][0].content, 'morning-0');
+  assert.equal(restored.requests[0].at(-2).content, 'evening');
+  restored.chat.destroy();
+  const ended = await setup(persisted);
+  assert.equal(ended.chat.sessionTurnCount(), 0);
+  ended.chat.destroy();
+});
+
+test('a diary recording storage failure is visible and does not mark a complete reply failed', async () => {
+  const h = await setup({ writeJson: () => { throw new Error('quota exceeded'); } });
+  await send(h.chat, 'Please remember this');
+  assert.equal(h.chat.sessionTurnCount(), 2);
+  assert.match(h.chat.diaryRecordingError.value, /尚未保存/);
+  assert.equal(h.chat.generationState.value.status, 'idle');
+  h.chat.destroy();
+});
+
+test('refreshing after diary sync failure reuses the saved entry without generating it twice', async () => {
+  const storage = new Map();
+  const persisted = {
+    writeJson: (key, value) => storage.set(key, JSON.stringify(value)),
+    readJson: (key, fallback) => storage.has(key) ? JSON.parse(storage.get(key)) : fallback
+  };
+  const first = await setup({ ...persisted, syncDiaryArchive: async options => {
+    if (options?.ensureDiaryId) throw new Error('offline');
+    return { synced: true };
+  } });
+  await send(first.chat, 'A whole day together');
+  await first.chat.confirmEndChat();
+  assert.equal(first.saved.length, 1);
+  assert.equal(first.chat.sessionTurnCount(), 2);
+  first.chat.destroy();
+  const reopened = await setup(persisted);
+  await reopened.chat.confirmEndChat();
+  assert.equal(reopened.requests.length, 0);
+  assert.equal(reopened.saved.length, 0);
+  assert.equal(reopened.clearCount(), 1);
+  assert.equal(reopened.chat.sessionTurnCount(), 0);
+  reopened.chat.destroy();
 });

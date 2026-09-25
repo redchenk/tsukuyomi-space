@@ -322,7 +322,7 @@ test('pending messages, comments, replies and newly pending edits notify opted-i
     assert.equal((await call(`/api/messages/${events[0]}`, { method: 'PATCH', token, body: { content: 'https://review.example/new-cycle' } })).status, 200);
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(alerts().length, 10);
-    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM notifications WHERE type = 'moderation'").get().n, 10);
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM notifications WHERE type = 'moderation' AND related_message_id IN (${[...events, base.body.data.id].map(() => '?').join(',')})`).get(...events, base.body.data.id).n, 10);
 });
 
 test('moderation dispatch rechecks opt-out, role and review state and tolerates mail failures', async () => {
@@ -361,4 +361,28 @@ test('moderation dispatch rechecks opt-out, role and review state and tolerates 
     assert.equal(notifyPendingMessage(id), 0);
     saveModerationEmailPreference(staff, false);
     assert.equal(notifyPendingMessage(insert()), 0);
+});
+
+
+test('all administrators receive a deduplicated inbox alert even with mail off or no mailbox', async () => {
+    const { notifyPendingMessage } = require('../backend/services/pending-message-notification');
+    const { saveModerationEmailPreference } = require('../backend/services/notification-settings');
+    const admins = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'super_admin')").all();
+    for (const admin of admins) saveModerationEmailPreference(admin.id, false);
+    db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
+        .run('no-mail-admin', 'no-mail-admin', 'admin-99@admin.yachiyo.local', 'test', 'super_admin');
+    const id = db.prepare("INSERT INTO messages (author, content, status) VALUES ('inbox-test', 'https://review.example/', 'pending')").run().lastInsertRowid;
+    const beforeMails = sentByRoutes.length;
+    assert.equal(notifyPendingMessage(id), 0);
+    assert.equal(notifyPendingMessage(id), 0);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(sentByRoutes.length, beforeMails);
+    const alerts = db.prepare("SELECT user_id, title, link FROM notifications WHERE type = 'moderation' AND related_message_id = ?").all(id);
+    assert.equal(alerts.length, admins.length + 1);
+    assert.ok(alerts.some(alert => alert.user_id === 'no-mail-admin'));
+    assert.ok(alerts.every(alert => alert.link.endsWith(`review=${id}`)));
+    const staff = db.prepare("SELECT * FROM users WHERE username = 'staff'").get();
+    const inbox = await call('/api/user/notifications', { token: generateToken(staff) });
+    assert.equal(inbox.status, 200);
+    assert.ok(JSON.stringify(inbox.body).includes(`review=${id}`));
 });
