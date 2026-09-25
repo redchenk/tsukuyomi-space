@@ -10,6 +10,7 @@
     --ts-cyan: #226582;
     --ts-editorial-line: #e5e1ef;
     --ts-editorial-shadow: 0 8px 28px rgb(48 37 74 / 5%);
+    --ts-site-background: linear-gradient(rgb(245 244 250 / 82%), rgb(245 244 250 / 82%)), url('../assets/moonlit-lake.png') center top / cover no-repeat;
 }
 html[data-theme="dark"] {
     --ts-editorial-bg: #10121c;
@@ -21,6 +22,7 @@ html[data-theme="dark"] {
     --ts-cyan: #aef2ff;
     --ts-editorial-line: #343448;
     --ts-editorial-shadow: 0 8px 28px rgb(0 0 0 / 12%);
+    --ts-site-background: linear-gradient(rgb(9 17 36 / 72%), rgb(9 17 36 / 72%)), url('../assets/moonlit-lake.png') center top / cover no-repeat;
 }
 .content-shell {
     --ts-material-content-bg: var(--ts-editorial-surface);
@@ -59,14 +61,11 @@ html[data-theme="dark"] {
     height: 100lvh;
     z-index: 0;
     pointer-events: none;
-    background: linear-gradient(rgb(245 244 250 / 82%), rgb(245 244 250 / 82%)), url('../assets/moonlit-lake.png') center top / cover no-repeat;
+    background: var(--ts-site-background);
     animation: none;
     transform: none;
     opacity: 1;
     filter: none;
-}
-html[data-theme="dark"] .site-background-shell > .site-global-bg {
-    background-image: linear-gradient(rgb(9 17 36 / 72%), rgb(9 17 36 / 72%)), url('../assets/moonlit-lake.png');
 }
 .site-background-shell > .site-global-bg::after { content: none; }
 .site-background-shell :is(.auth-page, .auth-shell, .auth-visual, .live2d-page) { background: none; }
