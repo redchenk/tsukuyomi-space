@@ -191,6 +191,36 @@ html[data-performance="reduced"][data-theme="light"] .room-utility-panel { --roo
 
 /* Chat actions stay inside the existing glass surface, so they do not cover
    the Live2D stage or add another backdrop-filter to every message. */
+.room-shell .room-conversation-layout .room-chat-panel .chat-message.assistant {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    width: fit-content;
+    max-width: 96%;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.room-shell .room-conversation-layout .room-chat-panel .assistant .chat-role { margin: 0 10px; }
+.room-shell .room-conversation-layout .room-chat-panel .chat-reply-part {
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 9px 12px;
+    border: 1px solid var(--ts-border);
+    border-radius: 5px 16px 16px 16px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, .07), transparent 65%), var(--room-bubble-glass, var(--ts-card));
+    color: var(--ts-text);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-weight: 400;
+    line-height: 1.7;
+}
+.room-shell .room-conversation-layout .room-chat-panel .assistant .chat-message-footer { align-self: flex-end; margin-top: 0; }
+
 .room-chat-panel .chat-message-footer {
     display: flex;
     align-items: center;

@@ -39,6 +39,17 @@ test('chat builds prompts independently while diary generation keeps its own per
   assert.match(chat, /activePersonaPrompt\(readDiaryArchive\(\)\)/);
 });
 
+test('private chat defaults to short exchanges while allowing requested detail and canon complexity', () => {
+  const prompt = p.resolveRoomSystemPrompt();
+  assert.match(prompt, /1–3 条短消息/);
+  assert.match(prompt, /空行分隔/);
+  assert.match(prompt, /明确要求详细解释/);
+  assert.match(prompt, /同一人的不同时间阶段/);
+  assert.match(prompt, /不要把普通用户自动当成彩叶/);
+  assert.match(prompt, /装傻|耍赖/);
+  assert.doesNotMatch(prompt, /每次回复尽量包含 2-3 个元素/);
+});
+
 test('backup fixture remains synthetic and usable for diary tests', () => {
   assert.equal(archive.data.prompts['sample-persona'].data.name, 'Aoi');
   assert.ok(archive.data.diary.length > 0);

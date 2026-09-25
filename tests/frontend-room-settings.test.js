@@ -64,6 +64,14 @@ test('Chinese partial matches retrieve custom entries beyond the default ten', (
   assert.equal(h.knowledgeContext('海盐蛋糕', { enabled: false, entries }), '');
 });
 
+test('an unrelated greeting does not fill the context with every character subplot', () => {
+  const h = setup();
+  const context = h.knowledgeContext('hello', null);
+  assert.match(context, /基础身份/);
+  assert.doesNotMatch(context, /原作后段的身世与重逢|歌曲与 Remember/);
+  assert.match(h.knowledgeContext('时间旅行的真相是什么', null), /原作后段的身世与重逢/);
+});
+
 test('save all persists an active knowledge draft, switch and memory together', async () => {
   const h = setup();
   h.knowledge.draft = { title: '测试知识', content: '测试内容', enabled: true };

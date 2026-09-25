@@ -37,6 +37,7 @@ export function selectRoomKnowledgeEntries(message, settings, limit = 10) {
       const hits = tokens.reduce((total, token) => total + (haystack.includes(token) ? 1 : 0), 0);
       return { ...item, index, score: hits * 4 + (coreIds.has(item.id) ? 3 : 0) };
     })
+    .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index).slice(0, Math.max(0, Math.min(20, Number(limit) || 10)));
 }
 

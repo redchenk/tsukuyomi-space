@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import TsIcon from '../TsIcon.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
 import { isEnglishSite } from '../../utils/siteVariant';
+import { splitRoomReply } from '../../services/room/roomReplyPresentation.mjs';
 
 const props = defineProps({
   chat: { type: Object, required: true },
@@ -124,7 +125,15 @@ watch(() => props.chat.input.value, () => nextTick(resizeComposer));
 watch(() => props.chat.messages.value.map((message) => message.id), (ids) => {
   if (editingMessageId.value && !ids.includes(editingMessageId.value)) cancelEdit();
 });
+watch(() => props.chat.messages.value.map(message => `${message.id}:${message.content.length}`), () => {
+  const node = transcriptRef.value;
+  if (node && followingLatestMessage) node.scrollTop = node.scrollHeight;
+}, { flush: 'post' });
 onMounted(() => nextTick(resizeComposer));
+
+function replyParts(message) {
+  return message.pending && Array.isArray(message.parts) ? message.parts : splitRoomReply(message.content);
+}
 
 const endChat = computed(() => props.chat.endChatState?.value || { status: 'idle', visible: false });
 const endChatBusy = computed(() => endChat.value.status === 'generating');
@@ -282,7 +291,10 @@ function endChatStatusLabel() {
             </div>
           </template>
           <template v-else>
-            <StatusLoader v-if="message.pending && !message.content" label="正在回应…" compact />
+            <StatusLoader v-if="message.pending && !message.content" :label="`${characterName}正在输入…`" compact />
+            <template v-else-if="message.role === 'assistant'">
+              <div v-for="(part, index) in replyParts(message)" :key="index" class="chat-content chat-reply-part">{{ part }}</div>
+            </template>
             <div v-else class="chat-content">{{ message.content }}</div>
             <span v-if="message.pending && message.content" class="chat-stream-marker" role="status" aria-label="正在生成回复"></span>
           </template>

@@ -12,6 +12,7 @@ function deferred() {
   return { promise, resolve };
 }
 async function setup(overrides = {}) {
+  const { createRoomReplyPresenter } = await import('../src/frontend/services/room/roomReplyPresentation.mjs');
   let onUpdate;
   let clearCount = 0;
   const saved = [];
@@ -20,6 +21,7 @@ async function setup(overrides = {}) {
     console, Date, URL, AbortController,
     ref: (value) => ({ value }), nextTick: (fn) => Promise.resolve().then(fn),
     selectRecentRoomConversation: (messages) => messages,
+    createRoomReplyPresenter: options => createRoomReplyPresenter({ ...options, immediate: true }),
     isEnglishSite: () => false,
     window: { addEventListener() {}, removeEventListener() {}, confirm: () => true, setTimeout, clearTimeout },
     startRoomMemorySync: () => () => {},
@@ -269,6 +271,33 @@ test('stopping generation aborts the response and never saves a late completion'
   assert.equal(saved.length, 0);
   assert.equal(h.chat.messages.value.some(item => item.role === 'assistant'), false);
   assert.equal(h.chat.messages.value.find(item => item.role === 'user').failed, true);
+  h.chat.destroy();
+});
+
+test('stopping while short messages are queued never commits an incomplete turn', async () => {
+  const { createRoomReplyPresenter } = await import('../src/frontend/services/room/roomReplyPresentation.mjs');
+  const scheduled = new Map();
+  let id = 0;
+  let saved = 0;
+  const h = await setup({
+    createRoomReplyPresenter: options => createRoomReplyPresenter({
+      ...options,
+      schedule(fn) { scheduled.set(++id, fn); return id; },
+      unschedule(id) { scheduled.delete(id); }
+    }),
+    saveRoomConversationTurn: async () => { saved++; }
+  });
+  h.context.requestRoomReply = async () => ({ reply: '第一句。第二句。第三句。' });
+  h.chat.input.value = '聊聊';
+  const sending = h.chat.send();
+  await tick();
+  assert.equal(h.chat.messages.value.find(item => item.pending).content, '第一句。');
+  assert.equal(scheduled.size, 1);
+  h.chat.stopGeneration();
+  assert.equal(await sending, false);
+  assert.equal(scheduled.size, 0);
+  assert.equal(saved, 0);
+  assert.equal(h.chat.messages.value.filter(item => item.role === 'assistant').length, 0);
   h.chat.destroy();
 });
 
