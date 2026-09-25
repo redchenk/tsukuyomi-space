@@ -46,6 +46,12 @@ test('Room renders live words, presents short messages and persists one complete
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('roomChatHistory:guest')));
     expect(saved.map(item => item.role)).toEqual(['user', 'assistant']);
     expect(saved[1].content).toBe(reply);
+    // The live stage extends beyond the phone viewport. Browser focus must not
+    // pan the room horizontally and clip the conversation alongside that canvas.
+    const room = page.locator('.room-conversation-layout');
+    await room.evaluate(node => { node.scrollLeft = 120; });
+    expect(await room.evaluate(node => node.scrollLeft)).toBe(0);
+    expect(await assistant.evaluate(node => node.getBoundingClientRect().left >= 0)).toBe(true);
     expect(await assistant.evaluate(node => node.getBoundingClientRect().right <= innerWidth)).toBe(true);
     await expect(page.locator('#loadingOverlay')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('room-chat-mobile.png') });

@@ -19,6 +19,9 @@
         flex-direction: column;
         min-height: 0;
         height: 100dvh;
+        /* The wide Live2D canvas must not make focus scroll the whole room.
+           Conversation scrolling belongs to the transcript inside this shell. */
+        overflow: clip;
         padding: 0 0 calc(5.2rem + env(safe-area-inset-bottom));
         background-color: var(--ts-bg);
         color: var(--ts-text);
