@@ -133,3 +133,11 @@ this CSS-only fix.
 - Validation: 235/235 frontend tests and domestic production build pass. No new tests added for this CSS-only refinement. Existing CI browser/deployment checks continue to gate release.
 
 **Final result: passed — website palette aligned in both themes.**
+
+### Follow-up: shared button geometry
+
+- User requested the same button corners as the rest of the site. Room now uses `--ts-radius-button` for all desktop buttons and rail controls. Workspace tabs use the site's pill-shaped selected state; icon-only header and stage controls have equal width and height.
+- Compared the Stage reference and `.codex_tmp/room-redesign/buttons-room-dark.png` together at 1280 × 720. All visible chat controls, profile controls and expanded expression-menu buttons resolve to `999px`; no remaining square-button exceptions were found. Keyboard Home still switches and focuses the first workspace tab.
+- Typography, copy, palette and assets remain unchanged. Tab spacing was tightened to preserve room for all four tabs and settings on smaller desktop widths. Existing frontend checks pass 235/235; production build passes.
+
+**Final result: passed — button geometry follows the shared site token.**
