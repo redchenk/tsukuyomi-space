@@ -31,6 +31,9 @@ CODE_FILES = ('package.json', 'package-lock.json', 'Dockerfile', '.dockerignore'
               'vite.config.js', 'vite.frontend.config.js', 'playwright.config.js',
               'README.md', 'README_EN.md', 'LICENSE', 'design.md', 'design-qa.md')
 ASSET_NAME = re.compile(r'^[^/\\]+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9.]+$')
+DEPENDENCY_FIELDS = ('dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies',
+                     'peerDependenciesMeta', 'overrides', 'workspaces', 'config', 'os', 'cpu', 'libc', 'packageManager')
+INSTALL_SCRIPTS = ('preinstall', 'install', 'postinstall', 'prepublish', 'preprepare', 'prepare', 'postprepare')
 
 
 def require(condition, message):
@@ -43,7 +46,12 @@ def run(args, cwd=None):
 
 
 def git(root, *args):
-    return run(['git', '-c', 'core.hooksPath=/dev/null', *args], cwd=root)
+    # Production only imports a CI bundle. Never start a repository-wide GC or
+    # use one pack/index worker per CPU on the small production host.
+    return run(['git', '-c', 'core.hooksPath=/dev/null', '-c', 'gc.auto=0',
+                '-c', 'maintenance.auto=false', '-c', 'pack.threads=1',
+                '-c', 'index.threads=1', '-c', 'pack.windowMemory=32m',
+                '-c', 'core.deltaBaseCacheLimit=32m', *args], cwd=root)
 
 
 def beneath(name, roots):
@@ -56,6 +64,17 @@ def code_path(name):
 
 def changed_paths(root, before, after):
     return [os.fsdecode(p) for p in git(root, 'diff', '--no-renames', '--name-only', '-z', before, after).split(b'\0') if p]
+
+
+def dependency_install_needed(root, before, after, paths):
+    if 'package-lock.json' in paths:
+        return True
+    if 'package.json' not in paths:
+        return False
+    old = json.loads(git(root, 'show', before + ':package.json'))
+    new = json.loads(git(root, 'show', after + ':package.json'))
+    return (any(old.get(key) != new.get(key) for key in DEPENDENCY_FIELDS)
+            or any(old.get('scripts', {}).get(key) != new.get('scripts', {}).get(key) for key in INSTALL_SCRIPTS))
 
 
 def check_git(root, before, after, environment_release=False):
@@ -73,15 +92,13 @@ def check_git(root, before, after, environment_release=False):
     migrations = [p for p in paths if p.startswith('backend/db/migrations/')]
     require(not migrations, 'Database migration changes require a separate migration release: ' + ', '.join(migrations))
     require(not any(p in ('backend/package.json', 'backend/package-lock.json') for p in paths)
-            and (environment_release or 'package-lock.json' not in paths),
+            and (environment_release or not dependency_install_needed(root, before, after, paths)),
             'Dependency changes require a separate environment release with a dependency rollback plan')
     if 'package.json' in paths:
         old_package = json.loads(git(root, 'show', before + ':package.json'))
         new_package = json.loads(git(root, 'show', after + ':package.json'))
-        for key in ('dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies', 'overrides', 'engines'):
-            if environment_release and key != 'engines':
-                continue
-            require(old_package.get(key) == new_package.get(key), 'Dependency/runtime changes require a separate environment release: ' + key)
+        require(old_package.get('engines') == new_package.get('engines'),
+                'Dependency/runtime changes require a separate environment release: engines')
     for entry in git(root, 'ls-tree', '-r', '-z', after).split(b'\0'):
         if not entry:
             continue
@@ -299,7 +316,7 @@ def prepare(args):
         index = git(root, 'rev-parse', '--git-path', 'index').decode().strip()
         state['git_index'] = str((root / index).resolve())
         shutil.copy2(state['git_index'], state_dir / 'git-index.before')
-        if state.get('environment_release') and any(name in state['paths'] for name in ('package.json', 'package-lock.json')):
+        if state.get('environment_release') and dependency_install_needed(root, state['before'], state['target'], state['paths']):
             prepare_dependencies(state)
     state['status'] = 'prepared'
     save(state)

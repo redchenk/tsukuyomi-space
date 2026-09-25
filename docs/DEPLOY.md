@@ -265,10 +265,14 @@ curl http://your-domain.example/hub
 
 正常更新只发布业务代码和中英文 web 产物。不要直接在生产目录执行 `git pull`、`git reset --hard`、`git clean`，也不要对站点根目录执行 `rsync --delete`。`deploy/deploy.sh` 禁止服务器构建 Live2D；既有资源的内容、权限和软链接必须保持原样。
 
+国内 2 核 2 GB 主机使用轻量发布：构建、测试及依赖安装都在 CI；日常发布复用服务器现有 `node_modules`，不默认启用 `--environment-release`。修改构建脚本不会触发 `npm ci`。依赖、安装生命周期脚本或锁文件有变更时，必须另行安排环境发布，不能在日常发布中临时安装。
+
+两站预检通过 `prepare-lightweight-release.sh` 在独立 systemd scope 内运行：内存高水位 384 MiB、硬上限 512 MiB、交换上限 128 MiB、最多一个 CPU 核、64 个任务，并设 5 分钟超时。需要 systemd 与可用的内存/CPU cgroup 控制器；无法建立限制会直接失败，不回退为无约束执行。发布的 Git 命令禁用自动 GC/maintenance，pack/index 使用单线程和较小缓存；既有全局 Git 配置不变。限制只覆盖发布预检，不改变正在运行的 API。服务器重启或资源不足时，先确认服务恢复再重试发布。
+
 ### 两站发布顺序
 
 1. CI 完成应用测试、部署安全测试、Docker 构建和容器冒烟测试，以及 Playwright E2E；分别构建国内和海外前端。
-2. 上传前端、Git bundle 和独立的 `safe-release.py` 至 `/tmp/tsukuyomi-prebuilt-<run>-<attempt>/`。
+2. 上传前端、Git bundle、`safe-release.py` 和轻量预检脚本至 `/tmp/tsukuyomi-prebuilt-<run>-<attempt>/`。
 3. 两站都先运行 `prepare`，备份首页、记录资源校验清单，国内额外校验 Git 快进和服务器差异。任何预检失败都不激活站点。
 4. 国内更新代码并重载 PM2，海外更新英文前端。先写入新的哈希文件，最后原子替换首页；同名哈希文件内容不一致时拒绝发布，旧资源不删除。
 5. 校验两站 API 的 `status=ok`、HTTP 首页内容及入口引用的 JS/CSS 文件哈希，并复核受保护资源。HTTPS 检查通过 `--resolve` 直达本机 OpenResty，仍验证真实域名的 TLS 证书。

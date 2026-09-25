@@ -38,6 +38,7 @@ class DeploymentSafetyTest(unittest.TestCase):
         self.write(self.artifact / 'assets/main-new12345.js', 'new script')
         self.write(self.root / 'backend/server.js', 'old code')
         self.write(self.root / 'backend/hotfix.js', 'old hotfix')
+        self.write(self.root / 'package.json', json.dumps({'scripts': {'build:web': 'vite build'}, 'dependencies': {}}))
         for name in ('assets/music/song.flac', 'assets/audio/speech.wav', 'models/character.moc3', 'lib/core.js'):
             self.write(self.root / name, 'original resource\n')
         self.write(self.root / '.gitignore', 'dist/\n')
@@ -69,12 +70,12 @@ class DeploymentSafetyTest(unittest.TestCase):
         (self.root / 'lib/core.js').write_bytes(b'original resource\r\n')
         return target, bundle
 
-    def prepare(self):
+    def prepare(self, environment_release=False):
         target, bundle = self.candidate()
         args = argparse.Namespace(state=str(self.base / 'backups/1-1-domestic'), site='domestic',
                                   root=str(self.root), frontend=str(self.front), artifact=str(self.artifact),
                                   bundle=str(bundle), commit=target, extra_resource=[],
-                                  base_url='https://example.invalid', resolve='')
+                                  base_url='https://example.invalid', resolve='', environment_release=environment_release)
         return release.prepare(args)
 
     def mock_fetch(self, state, path):
@@ -130,6 +131,39 @@ class DeploymentSafetyTest(unittest.TestCase):
         self.git('commit', '-qm', 'dependency update')
         with self.assertRaisesRegex(RuntimeError, 'separate environment release'):
             release.check_git(self.root, self.before, 'HEAD')
+
+    def test_build_script_edit_reuses_dependencies_in_code_release(self):
+        self.write(self.root / 'package.json', json.dumps({'scripts': {'build:web': 'vite build --mode overseas'}, 'dependencies': {}}))
+        with patch.object(release, 'prepare_dependencies') as install:
+            state = self.prepare()
+        install.assert_not_called()
+        self.assertEqual(state['status'], 'prepared')
+        self.assertNotIn('dependencies', state)
+
+    def test_build_script_edit_also_skips_install_in_environment_release(self):
+        self.write(self.root / 'package.json', json.dumps({'scripts': {'build:web': 'vite build --mode overseas'}, 'dependencies': {}}))
+        with patch.object(release, 'prepare_dependencies') as install:
+            state = self.prepare(environment_release=True)
+        install.assert_not_called()
+        self.assertEqual(state['status'], 'prepared')
+
+    def test_dependency_or_install_hook_change_cannot_use_code_only_release(self):
+        for package in ({'dependencies': {'example': '1.0.0'}},
+                        {'scripts': {'postinstall': 'node install.js'}},
+                        {'workspaces': ['packages/*']}):
+            with self.subTest(package=package):
+                self.git('checkout', '--detach', self.before)
+                self.write(self.root / 'package.json', json.dumps(package))
+                self.git('commit', '-qam', 'install inputs')
+                with self.assertRaisesRegex(RuntimeError, 'separate environment release'):
+                    release.check_git(self.root, self.before, 'HEAD')
+
+    def test_locked_dependency_change_is_staged_only_in_explicit_environment_release(self):
+        self.write(self.root / 'package-lock.json', '{"lockfileVersion":3}')
+        self.git('add', 'package-lock.json')
+        with patch.object(release, 'prepare_dependencies') as install:
+            state = self.prepare(environment_release=True)
+        install.assert_called_once_with(state)
 
     def test_environment_release_restores_the_original_dependency_tree(self):
         original_resources = release.resource_manifest(self.root, 'domestic')

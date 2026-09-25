@@ -30,6 +30,8 @@
 
 ## 部署与依赖回滚
 
-CI 使用 `safe-release.py prepare --environment-release`，在项目 `.release-dependencies/` 下先执行锁文件对应的 `npm ci --omit=dev` 和原生 SQLite/SDK 加载检查。通过后才替换应用的 `node_modules`，完整保留旧依赖树；部署失败会将代码、前端入口与旧依赖一并还原。普通未指定该参数的代码发布仍拒绝依赖变更；数据库迁移和 Node 运行时变更仍需单独处理。
+日常 CI 发布复用已安装的 Mem0 和 SQLite 依赖，不运行服务器端 `npm ci`，避免 2 核 2 GB 主机因无关的构建脚本改动重复安装依赖。依赖或锁文件变更会阻止普通代码发布；数据库迁移和 Node 运行时变更仍需单独处理。
+
+确需更新依赖时，单独安排有资源余量的环境发布。`safe-release.py prepare --environment-release` 仅在锁文件、依赖声明或安装生命周期等输入变化时，在 `.release-dependencies/` 下执行 `npm ci --omit=dev` 和原生 SQLite/SDK 加载检查。通过后才替换应用的 `node_modules`，完整保留旧依赖树；部署失败将代码、前端入口与旧依赖一并还原。该选项不在日常 CI 中自动开启。
 
 该流程不重建或覆盖现有 Live2D、音乐和其他资源，资源哈希、权限、时间戳在部署前后校验。`.release-dependencies/` 中的环境备份独立保留，不由前端备份清理脚本删除。
