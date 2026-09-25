@@ -120,3 +120,5 @@ this CSS-only fix.
 - Resource safeguard: fresh domestic/overseas protected manifests are stored under `.codex_tmp/room-redesign/*-before.json`; deployment uses the existing allowlist and manifest checks. Only frontend source, browser tests and this report are changed.
 
 **Final result: passed — desktop visual and local interaction QA.** Production rollout and the new CI browser cases are verified as part of the release, after this report's commit.
+
+- First release CI passed 58/59 browser cases, including all three new workspace tests. The existing direct-TTS test selected the first generic action and clicked the new copy button; it now selects the explicit playback label and still asserts the provider request/auth/payload. Reply actions also place playback before copy. Legacy-position fixtures use real CSS `left`/`top` values.

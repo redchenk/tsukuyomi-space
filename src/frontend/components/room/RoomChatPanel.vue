@@ -321,7 +321,7 @@ function endChatStatusLabel() {
               <button v-if="message.failed && !generationBusy" class="chat-tts-btn" type="button" @click="chat.retryLastTurn()">重试</button>
             </div>
             <div v-if="message.role === 'assistant' && !message.pending" class="chat-message-actions">
-              <button class="chat-tts-btn room-copy-message" type="button" aria-label="复制这条回复" @click="copyMessage(message)"><TsIcon name="copy" :size="13" /><span v-if="copiedMessageId === message.id">已复制</span><span v-else-if="copiedMessageId === `failed:${message.id}`">请选中文字复制</span></button>
+
               <button v-if="canRegenerateMessage(message)" class="chat-tts-btn" type="button" @click="chat.regenerateReply(message.id)">重新生成</button>
               <button
                 class="chat-tts-btn"
@@ -334,6 +334,7 @@ function endChatStatusLabel() {
                 <TsIcon v-if="ttsStatus(chat, message.id) === 'loading'" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
                 <span :role="ttsStatus(chat, message.id) === 'loading' ? 'status' : undefined">{{ ttsLabel(chat, message.id) }}</span>
               </button>
+              <button class="chat-tts-btn room-copy-message" type="button" aria-label="复制这条回复" @click="copyMessage(message)"><TsIcon name="copy" :size="13" /><span v-if="copiedMessageId === message.id">已复制</span><span v-else-if="copiedMessageId === `failed:${message.id}`">请选中文字复制</span></button>
               <button
                 v-if="chat.getShareTurn(message)"
                 class="chat-tts-btn chat-share-btn"

@@ -238,7 +238,7 @@ test('Room TTS plays through the saved direct provider transport', async ({ page
     });
 
     await page.goto('/room');
-    await page.locator('.chat-message.assistant .chat-tts-btn').first().click();
+    await page.locator('.chat-message.assistant').getByRole('button', { name: '播放语音', exact: true }).first().click();
     await expect.poll(() => providerRequests.length).toBe(1);
 
     expect(providerRequests[0].headers.authorization).toBe('Bearer browser-direct-test-key');
