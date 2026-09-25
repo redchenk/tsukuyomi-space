@@ -239,3 +239,126 @@ test('both moderation APIs accept approval retries but reject a digest after a c
         assert.equal(db.prepare('SELECT status FROM messages WHERE id = ?').get(id).status, 'pending');
     }
 });
+
+test('admins manage only their own moderation mail preference and real mailbox is required', async () => {
+    const defaults = await call('/api/admin/notification-preferences', { cookie: staffCookie });
+    assert.equal(defaults.status, 200);
+    assert.equal(defaults.body.data.emailNotifyModeration, false);
+    assert.equal(defaults.body.data.canReceive, false);
+    assert.equal((await call('/api/admin/notification-preferences', {
+        method: 'POST', cookie: staffCookie, body: { emailNotifyModeration: true }
+    })).status, 400);
+    db.prepare("UPDATE users SET email = ? WHERE username = ?").run('staff@example.com', 'staff');
+    db.prepare("UPDATE users SET email = ? WHERE username = ?").run('super@example.com', 'admin');
+    for (const cookie of [staffCookie, superCookie]) {
+        const invalid = await call('/api/admin/notification-preferences', { method: 'POST', cookie, body: { emailNotifyModeration: 'false' } });
+        assert.equal(invalid.status, 400);
+        const other = await call('/api/admin/notification-preferences', { method: 'POST', cookie, body: { emailNotifyModeration: true, userId: 'someone-else' } });
+        assert.equal(other.status, 400);
+    }
+    const saved = await call('/api/admin/notification-preferences', { method: 'POST', cookie: staffCookie, body: { emailNotifyModeration: true } });
+    assert.equal(saved.body.data.emailNotifyModeration, true);
+    assert.equal(saved.body.data.email, 'staff@example.com');
+    assert.equal((await call('/api/admin/notification-preferences', { cookie: staffCookie })).body.data.emailNotifyModeration, true);
+    assert.equal((await call('/api/admin/notification-preferences', { cookie: superCookie })).body.data.emailNotifyModeration, false);
+    const global = await call('/api/admin/settings', { cookie: superCookie });
+    assert.ok(Object.keys(global.body.data).every(key => !key.startsWith('emailNotifyModeration:')));
+    const normalToken = generateToken({ id: 'notify-owner', username: 'notify-owner', role: 'user' });
+    assert.equal((await call('/api/moderation/notification-preferences', { token: normalToken })).status, 403);
+    assert.equal((await call('/api/moderation/notification-preferences', { method: 'POST', token: normalToken, body: { emailNotifyModeration: true } })).status, 403);
+    assert.equal((await call('/api/admin/notification-preferences')).status, 401);
+    const staff = db.prepare("SELECT * FROM users WHERE username = 'staff'").get();
+    const staffToken = generateToken(staff);
+    assert.equal((await call('/api/moderation/notification-preferences', { token: staffToken })).body.data.emailNotifyModeration, true);
+    assert.equal((await call('/api/moderation/notification-preferences', {
+        method: 'POST', token: staffToken, body: { emailNotifyModeration: false }
+    })).status, 200);
+    assert.equal((await call('/api/admin/notification-preferences', { cookie: staffCookie })).body.data.emailNotifyModeration, false);
+});
+
+test('pending messages, comments, replies and newly pending edits notify opted-in admins once', async () => {
+    for (const cookie of [staffCookie, superCookie]) {
+        assert.equal((await call('/api/admin/notification-preferences', {
+            method: 'POST', cookie, body: { emailNotifyModeration: true }
+        })).status, 200);
+    }
+    db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
+        .run('review-actor', 'review-actor', 'review@example.com', bcrypt.hashSync('review-password', 4), 'user');
+    const token = generateToken({ id: 'review-actor', username: 'review-actor', role: 'user' });
+    const base = await call('/api/messages', { method: 'POST', token, body: { content: '月色真美😭' } });
+    assert.equal(base.status, 201);
+    const articleId = db.prepare("SELECT id FROM articles WHERE status = 'published' LIMIT 1").get().id;
+    const events = [];
+    for (const [path, body] of [
+        ['/api/messages', { content: 'https://review.example/one' }],
+        ['/api/messages', { content: '这篇讨论政治', article_id: articleId }],
+        [`/api/messages/${base.body.data.id}/reply`, { content: 'https://reply.example/two' }]
+    ]) {
+        const result = await call(path, { method: 'POST', token, body });
+        assert.equal(result.status, 201);
+        assert.equal(result.body.data.status, 'pending');
+        events.push(result.body.data.id);
+    }
+    await new Promise(resolve => setImmediate(resolve));
+    const alerts = () => sentByRoutes.filter(item => item.event.type === 'moderation');
+    assert.equal(alerts().length, 6);
+    assert.deepEqual([...new Set(alerts().map(item => item.to))].sort(), ['staff@example.com', 'super@example.com']);
+    assert.ok(alerts().every(item => /审核原因/.test(item.event.content) && /\/terminal\?panel=messages&review=\d+$/.test(item.event.link)));
+    assert.ok(alerts().some(item => /有回复/.test(item.event.title)));
+    assert.ok(alerts().some(item => /有评论/.test(item.event.title)));
+    const { notifyPendingMessage } = require('../backend/services/pending-message-notification');
+    for (const id of events) assert.equal(notifyPendingMessage(id), 0);
+    const stillPending = await call(`/api/messages/${events[0]}`, { method: 'PATCH', token, body: { content: 'https://review.example/edited' } });
+    assert.equal(stillPending.status, 200);
+    const newlyPending = await call(`/api/messages/${base.body.data.id}`, { method: 'PATCH', token, body: { content: 'https://edited.example/review' } });
+    assert.equal(newlyPending.status, 200);
+    const rejected = await call('/api/messages', { method: 'POST', token, body: { content: 'javascript:alert(1)' } });
+    assert.equal(rejected.status, 422);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(alerts().length, 8);
+    // A later review of different content can notify again, unlike an edit
+    // while the same item is already waiting in the moderation queue.
+    db.prepare("UPDATE messages SET status = 'approved' WHERE id = ?").run(events[0]);
+    assert.equal((await call(`/api/messages/${events[0]}`, { method: 'PATCH', token, body: { content: 'https://review.example/new-cycle' } })).status, 200);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(alerts().length, 10);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM notifications WHERE type = 'moderation'").get().n, 10);
+});
+
+test('moderation dispatch rechecks opt-out, role and review state and tolerates mail failures', async () => {
+    const { notifyPendingMessage } = require('../backend/services/pending-message-notification');
+    const { saveModerationEmailPreference } = require('../backend/services/notification-settings');
+    const staff = db.prepare("SELECT id FROM users WHERE username = 'staff'").get().id;
+    const superId = db.prepare("SELECT id FROM users WHERE username = 'admin'").get().id;
+    saveModerationEmailPreference(superId, false);
+    const insert = () => db.prepare("INSERT INTO messages (author, content, status) VALUES ('dispatch-test', 'https://review.example/', 'pending')").run().lastInsertRowid;
+    const sent = [];
+    for (const change of ['opt-out', 'role', 'approved', 'deleted']) {
+        saveModerationEmailPreference(staff, true);
+        db.prepare("UPDATE users SET role = 'admin' WHERE id = ?").run(staff);
+        const callbacks = [];
+        const id = insert();
+        assert.equal(notifyPendingMessage(id, { schedule: fn => callbacks.push(fn), send: async (...args) => sent.push(args) }), 1);
+        if (change === 'opt-out') saveModerationEmailPreference(staff, false);
+        if (change === 'role') db.prepare("UPDATE users SET role = 'user' WHERE id = ?").run(staff);
+        if (change === 'approved') db.prepare("UPDATE messages SET status = 'approved' WHERE id = ?").run(id);
+        if (change === 'deleted') {
+            db.prepare('DELETE FROM notifications WHERE related_message_id = ?').run(id);
+            db.prepare('DELETE FROM messages WHERE id = ?').run(id);
+        }
+        callbacks.forEach(fn => fn());
+        await new Promise(resolve => setImmediate(resolve));
+    }
+    assert.equal(sent.length, 0);
+    saveModerationEmailPreference(staff, true);
+    db.prepare("UPDATE users SET role = 'admin' WHERE id = ?").run(staff);
+    const id = insert();
+    let failed = 0;
+    assert.equal(notifyPendingMessage(id, { send: async () => { failed += 1; throw new Error('test SMTP failure'); } }), 1);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(failed, 1);
+    assert.equal(db.prepare('SELECT status FROM messages WHERE id = ?').get(id).status, 'pending');
+    assert.equal(notifyPendingMessage(id), 0);
+    saveModerationEmailPreference(staff, false);
+    assert.equal(notifyPendingMessage(insert()), 0);
+});

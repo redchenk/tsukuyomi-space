@@ -109,7 +109,7 @@ describe('verification email template', () => {
 
 describe('notification email template', () => {
     it('renders branded reply, like and login alerts with readable text fallbacks', async () => {
-        for (const type of ['reply', 'like', 'login_alert']) {
+        for (const type of ['reply', 'like', 'login_alert', 'moderation']) {
             const notification = {
                 type,
                 title: '月下有新消息',
@@ -141,6 +141,11 @@ describe('notification email template', () => {
             assert.match(parsed.subject, /月下有新消息/);
             assert.match(parsed.html, /月读空间/);
             assert.match(parsed.text, /月下有新消息/);
+            if (type === 'moderation') {
+                assert.match(parsed.html, /待审核留言/);
+                assert.match(parsed.text, /通知设置中关闭/);
+                assert.match(parsed.html, /前往审核/);
+            }
             if (type === 'reply') assert.match(parsed.html, /新评论或回复/);
             if (type === 'login_alert') assert.match(parsed.text, /江苏/);
         }

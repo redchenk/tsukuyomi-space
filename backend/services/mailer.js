@@ -184,6 +184,13 @@ function renderVerificationEmail({
 }
 
 const NOTIFICATION_COPY = Object.freeze({
+    moderation: {
+        label: 'CONTENT REVIEW / 待审核留言',
+        defaultTitle: '有新的内容需要审核',
+        lead: '网站有留言、评论或回复等待人工审核。请核对内容和审核原因后再决定是否公开。',
+        action: '前往审核',
+        defaultPath: '/terminal?panel=messages'
+    },
     reply: {
         label: 'NEW COMMENT OR REPLY / 新评论或回复',
         defaultTitle: '你的内容有了新评论或回复',
@@ -277,7 +284,7 @@ function renderNotificationEmail({
         ...details.map(([label, value]) => `${label}：${value}`),
         '',
         `${copy.action}：${actionUrl}`,
-        type === 'login_alert' ? '如果这不是你本人操作，请立即修改密码。' : '你可以在网站中查看完整通知。',
+        type === 'moderation' ? '你已开启审核邮件提醒，可在 Terminal → 通知设置中关闭。' : type === 'login_alert' ? '如果这不是你本人操作，请立即修改密码。' : '你可以在网站中查看完整通知。',
         '',
         '月读空间 · Tsukuyomi Space'
     ].filter((line, index, lines) => line !== '' || (index > 0 && lines[index - 1] !== '')).join('\r\n');
@@ -340,7 +347,7 @@ function renderNotificationEmail({
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr><td align="center" style="background-color:#816ed1; border:1px solid #ad9ef3; border-radius:999px;"><a href="${escapeHtml(actionUrl)}" target="_blank" style="display:inline-block; padding:14px 26px; border-radius:999px; color:#ffffff; font-size:14px; line-height:1.2; font-weight:700; text-decoration:none;">${escapeHtml(copy.action)} &nbsp; ↗</a></td></tr>
               </table>
-              ${type === 'login_alert' ? '<p style="margin:22px 0 0; color:#eac6cf; font-size:12px; line-height:1.7;">若非本人登录，请立即修改密码，保护你的账户。</p>' : '<p style="margin:22px 0 0; color:#9ca9cc; font-size:12px; line-height:1.7;">你可以在网站中查看完整内容和站内信。</p>'}
+              ${type === 'moderation' ? '<p style="margin:22px 0 0; color:#9ca9cc; font-size:12px; line-height:1.7;">你已开启审核邮件提醒，可在 Terminal → 通知设置中关闭。</p>' : type === 'login_alert' ? '<p style="margin:22px 0 0; color:#eac6cf; font-size:12px; line-height:1.7;">若非本人登录，请立即修改密码，保护你的账户。</p>' : '<p style="margin:22px 0 0; color:#9ca9cc; font-size:12px; line-height:1.7;">你可以在网站中查看完整内容和站内信。</p>'}
             </td>
           </tr>
           <tr>

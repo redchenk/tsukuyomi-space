@@ -20,7 +20,8 @@ const { readModerationSettings, reviewMessageContent } = require('./services/mes
 const {
     EMAIL_NOTIFICATION_KEYS,
     EMAIL_NOTIFICATION_KEY_SET,
-    emailNotificationSettings
+    emailNotificationSettings,
+    MODERATION_EMAIL_PREFIX
 } = require('./services/notification-settings');
 const {
     authenticateToken,
@@ -273,6 +274,7 @@ router.post('/logout', async (req, res) => {
 
 router.use(authenticateToken);
 router.use(requireAdmin);
+router.use('/notification-preferences', require('./routes/moderation-notification-settings'));
 router.use('/article-categories', require('./routes/article-categories').managementRouter);
 
 router.get('/me', (req, res) => {
@@ -727,7 +729,7 @@ router.get('/settings', (req, res) => {
         const superAdmin = req.user.role === 'super_admin';
         const allowed = superAdmin ? null : new Set(SITE_SETTING_KEYS);
         const rows = adminRepository.listSettings().filter(row => (
-            row.key !== 'ossAccessKeySecret' && (!allowed || allowed.has(row.key))
+            row.key !== 'ossAccessKeySecret' && !row.key.startsWith(MODERATION_EMAIL_PREFIX) && (!allowed || allowed.has(row.key))
         ));
         ok(res, {
             ...Object.fromEntries(rows.map(row => [row.key, parseSettingValue(row.value)])),

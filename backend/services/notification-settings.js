@@ -1,4 +1,20 @@
 const db = require('../db');
+const { isEmail, publicEmail } = require('../validators');
+
+const MODERATION_EMAIL_PREFIX = 'emailNotifyModeration:';
+
+function moderationEmailPreference(userId) {
+    const user = db.prepare('SELECT role, email FROM users WHERE id = ?').get(userId || '');
+    const email = publicEmail(user?.email);
+    const eligible = ['admin', 'super_admin'].includes(user?.role) && isEmail(email);
+    const row = db.prepare('SELECT value FROM site_settings WHERE key = ?').get(`${MODERATION_EMAIL_PREFIX}${userId}`);
+    return { emailNotifyModeration: row?.value === 'true', email: eligible ? email : '', canReceive: Boolean(eligible) };
+}
+
+function saveModerationEmailPreference(userId, enabled) {
+    db.prepare('INSERT INTO site_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+        .run(`${MODERATION_EMAIL_PREFIX}${userId}`, String(enabled));
+}
 
 const EMAIL_NOTIFICATION_KEYS = Object.freeze([
     'emailNotifyReplies',
@@ -25,6 +41,9 @@ function isEmailNotificationEnabled(key) {
 }
 
 module.exports = {
+    MODERATION_EMAIL_PREFIX,
+    moderationEmailPreference,
+    saveModerationEmailPreference,
     EMAIL_NOTIFICATION_KEYS,
     EMAIL_NOTIFICATION_KEY_SET,
     emailNotificationSettings,

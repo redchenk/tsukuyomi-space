@@ -16,7 +16,7 @@ const panels = [
   { id: 'links', label: '友链审核', icon: 'external', code: '05', group: '内容', desc: '处理友链申请与收录状态' },
   { id: 'users', label: '用户', icon: 'users', code: '06', group: '系统', desc: '用户检索、角色和密码' },
   { id: 'account', label: '账号安全', icon: 'shield', code: '07', group: '系统', desc: '当前管理员安全设置' },
-  { id: 'notifications', label: '通知设置', icon: 'bell', code: '08', group: '系统', desc: '管理全站邮件通知范围' },
+  { id: 'notifications', label: '通知设置', icon: 'bell', code: '08', group: '系统', desc: '审核提醒与邮件通知偏好' },
   { id: 'settings', label: '设置', icon: 'settings', code: '09', group: '系统', desc: '站点、备案和对象存储' }
 ];
 
@@ -32,6 +32,7 @@ const terminal = reactive({
   loadError: '',
   notificationSaving: false,
   mailConfigured: false,
+  moderationPreference: { emailNotifyModeration: false, email: '', canReceive: false },
   clock: '',
   login: { username: '', password: '' },
   stats: { articles: 0, pendingMessages: 0, todayViews: 0, users: 0 },
@@ -141,10 +142,10 @@ const SITE_SETTING_KEYS = [
   'mpsBeianIcon'
 ];
 const authed = computed(() => Boolean(terminal.admin));
-const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin');
+const canManageAccounts = computed(() => terminal.admin?.role === 'super_admin' && !terminal.siteSession);
 const visiblePanels = computed(() => terminal.siteSession
-  ? panels.filter((panel) => panel.id === 'articles')
-  : panels.filter((panel) => panel.id !== 'notifications' || canManageAccounts.value));
+  ? panels.filter((panel) => ['articles', 'messages', 'notifications'].includes(panel.id))
+  : panels);
 const groupedPanels = computed(() => ['巡检', '内容', '系统']
   .map((group) => ({ group, items: visiblePanels.value.filter((panel) => panel.group === group) }))
   .filter((entry) => entry.items.length));
@@ -265,7 +266,7 @@ async function adminApi(path, options = {}) {
     headers.set('Content-Type', 'application/json');
   }
   let method = String(options.method || 'GET').toUpperCase();
-  if (terminal.siteSession && method === 'DELETE' && /^\/articles\/\d+$/.test(path)) {
+  if (terminal.siteSession && method === 'DELETE' && /^\/(?:articles|messages)\/\d+$/.test(path)) {
     path += '/delete';
     method = 'POST';
   }
@@ -282,7 +283,7 @@ async function verifySession() {
     if (localStorage.getItem('admin_user')) {
       try {
         terminal.admin = await adminApi('/me');
-        await loadPanel('dashboard');
+        await loadPanel(initialPanel('dashboard'));
         return;
       } catch (error) {
         localStorage.removeItem('admin_token');
@@ -295,7 +296,7 @@ async function verifySession() {
       try {
         terminal.admin = await adminApi('/me');
         terminal.loginMessage = '';
-        await loadPanel('articles');
+        await loadPanel(initialPanel('articles'));
       } catch (error) {
         terminal.admin = null;
         terminal.siteSession = false;
@@ -327,7 +328,7 @@ async function login() {
     localStorage.setItem('admin_user', JSON.stringify(terminal.admin));
     saveUserSession('', result.data.user, { preserveAdmin: true });
     emit('auth-changed');
-    await loadPanel('dashboard');
+    await loadPanel(initialPanel('dashboard'));
   } catch (error) {
     terminal.loginMessage = error.message;
   } finally {
@@ -349,8 +350,13 @@ async function logout() {
   emit('auth-changed');
 }
 
+function initialPanel(fallback) {
+  const panel = new URLSearchParams(window.location.search).get('panel');
+  return ['messages', 'notifications'].includes(panel) ? panel : fallback;
+}
+
 async function loadPanel(panel = terminal.activePanel) {
-  if (terminal.siteSession) panel = 'articles';
+  if (terminal.siteSession && !['articles', 'messages', 'notifications'].includes(panel)) panel = 'articles';
   terminal.activePanel = panel;
   terminal.loading = true;
   terminal.message = '';
@@ -358,7 +364,22 @@ async function loadPanel(panel = terminal.activePanel) {
   try {
     if (panel === 'dashboard') terminal.stats = { ...terminal.stats, ...(await adminApi('/stats') || {}) };
     if (panel === 'articles') terminal.articles = await readTerminalArticles();
-    if (panel === 'messages') terminal.messages = await adminApi('/messages') || [];
+    if (panel === 'messages') {
+      if (terminal.siteSession) {
+        const messages = [];
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const result = await adminApi(`/messages?limit=40&page=${page}`);
+          messages.push(...(result?.items || []));
+          totalPages = result?.pagination?.totalPages || 1;
+          page += 1;
+        } while (page <= totalPages);
+        terminal.messages = messages;
+      } else terminal.messages = await adminApi('/messages') || [];
+      const reviewId = new URLSearchParams(window.location.search).get('review');
+      if (/^\d+$/.test(reviewId || '')) terminal.messageSearch = reviewId;
+    }
     if (panel === 'users') {
       terminal.users = await adminApi('/users') || [];
       terminal.userPage = 1;
@@ -368,10 +389,15 @@ async function loadPanel(panel = terminal.activePanel) {
     }
     if (panel === 'links') terminal.links = await adminApi('/links') || [];
     if (panel === 'analytics') terminal.analytics = { ...terminal.analytics, ...(await adminApi('/analytics') || {}) };
-    if (panel === 'settings' || panel === 'notifications') {
+    if (panel === 'settings' || (panel === 'notifications' && canManageAccounts.value)) {
       const { mailConfigured, ...settings } = await adminApi('/settings') || {};
       terminal.mailConfigured = mailConfigured === true;
       terminal.settings = { ...terminal.settings, ...settings };
+    }
+    if (panel === 'notifications') {
+      const { mailConfigured, ...preference } = await adminApi('/notification-preferences');
+      terminal.moderationPreference = preference;
+      terminal.mailConfigured = mailConfigured === true;
     }
   } catch (error) {
     terminal.loadError = error.message || '后台数据读取失败';
@@ -613,10 +639,14 @@ async function saveSettings() {
 }
 
 async function saveNotificationSettings() {
-  if (!canManageAccounts.value || terminal.notificationSaving) return;
+  if (terminal.notificationSaving) return;
   terminal.notificationSaving = true;
   try {
-    await adminApi('/settings', {
+    terminal.moderationPreference = await adminApi('/notification-preferences', {
+      method: 'POST',
+      body: JSON.stringify({ emailNotifyModeration: terminal.moderationPreference.emailNotifyModeration })
+    });
+    if (canManageAccounts.value) await adminApi('/settings', {
       method: 'POST',
       body: JSON.stringify({
         emailNotifyReplies: terminal.settings.emailNotifyReplies,
@@ -624,7 +654,7 @@ async function saveNotificationSettings() {
         emailNotifyUnusualLogin: terminal.settings.emailNotifyUnusualLogin
       })
     });
-    showMessage('邮件通知范围已保存');
+    showMessage('通知设置已保存');
   } catch (error) {
     showMessage(error.message || '邮件通知设置保存失败', 'error');
   } finally {
@@ -1228,8 +1258,25 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <form v-if="!terminal.loading && !terminal.loadError && terminal.activePanel === 'notifications' && canManageAccounts" class="terminal-settings terminal-notification-settings" :aria-busy="terminal.notificationSaving" @submit.prevent="saveNotificationSettings">
+          <form v-if="!terminal.loading && !terminal.loadError && terminal.activePanel === 'notifications'" class="terminal-settings terminal-notification-settings" :aria-busy="terminal.notificationSaving" @submit.prevent="saveNotificationSettings">
             <div class="terminal-settings-block">
+              <div class="terminal-settings-title">
+                <strong>我的审核提醒</strong>
+                <span>仅影响当前管理员账号，其他管理员可以自行选择是否接收。</span>
+              </div>
+              <p class="terminal-mail-status" :class="terminal.mailConfigured ? 'ready' : 'missing'" role="status">
+                <TsIcon :name="terminal.mailConfigured ? 'userCheck' : 'shield'" :size="16" />
+                {{ terminal.mailConfigured ? '邮件通道已配置' : '邮件通道未配置，请联系超级管理员配置邮件服务；配置完成后才会发送提醒。' }}
+              </p>
+              <label class="terminal-notification-option">
+                <span class="terminal-notification-icon" aria-hidden="true"><TsIcon name="message" :size="20" /></span>
+                <span class="terminal-notification-copy"><strong>待审核留言邮件提醒</strong><small>留言、文章评论或回复进入人工审核时，向我的邮箱发送审核原因和处理入口。</small></span>
+                <input v-model="terminal.moderationPreference.emailNotifyModeration" type="checkbox" aria-label="待审核留言邮件提醒" :disabled="!terminal.moderationPreference.canReceive && !terminal.moderationPreference.emailNotifyModeration">
+              </label>
+              <p class="terminal-setting-note">{{ terminal.moderationPreference.email ? `接收邮箱：${terminal.moderationPreference.email}` : '当前账号未绑定可接收邮件的真实邮箱，请先绑定邮箱。' }}</p>
+              <p class="terminal-setting-note">默认关闭，保存后对新进入审核的内容生效。持续待审核的修改不会重复提醒，也不会补发历史积压内容。</p>
+            </div>
+            <div v-if="canManageAccounts" class="terminal-settings-block">
               <div class="terminal-settings-title">
                 <strong>全站邮件通知</strong>
                 <span>选择哪些站内事件同时发送邮件给相关用户。站内通知仍会正常保留。</span>

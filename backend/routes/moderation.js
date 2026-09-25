@@ -97,6 +97,7 @@ function messageModerationView(message, settings) {
 }
 
 router.use(authenticateToken, requireAdmin);
+router.use('/notification-preferences', require('./moderation-notification-settings'));
 router.use('/article-categories', require('./article-categories').managementRouter);
 
 router.get('/me', (req, res) => {

@@ -4,6 +4,7 @@ const { createRateLimiter } = require('../middleware/security');
 const messageRepository = require('../repositories/message-repository');
 const notificationRepository = require('../repositories/notification-repository');
 const { queueNotificationEmail } = require('../services/notification-email');
+const { notifyPendingMessage } = require('../services/pending-message-notification');
 const { notifyApprovedMessage } = require('../services/approved-reply-notification');
 const articleRepository = require('../repositories/article-repository');
 const socialRepository = require('../repositories/social-repository');
@@ -250,6 +251,7 @@ router.post('/', authenticateToken, messageWriteLimiter, (req, res) => {
             notifyApprovedMessage(newMessage.id);
             notifyMentions({ message: newMessage, actor: req.user });
         }
+        if (review.status === 'pending') notifyPendingMessage(newMessage.id);
         const growth = review.status === 'approved' && !article_id
             ? recordPlazaGrowth(req.user.id, 'plaza_message', newMessage.id)
             : null;
@@ -334,6 +336,7 @@ router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => 
             notifyApprovedMessage(newMessage.id);
             notifyMentions({ message: newMessage, actor: req.user });
         }
+        if (review.status === 'pending') notifyPendingMessage(newMessage.id);
         const growth = review.status === 'approved' && !originalMessage.article_id
             ? recordPlazaGrowth(req.user.id, 'plaza_message', newMessage.id)
             : null;
@@ -364,6 +367,7 @@ router.patch('/:id', authenticateToken, messageWriteLimiter, (req, res) => {
             status: review.status
         });
         clearMessageCaches(existing.article_id);
+        if (existing.status !== 'pending' && updated.status === 'pending') notifyPendingMessage(id);
         if (existing.status !== 'approved' && updated.status === 'approved') notifyApprovedMessage(id);
         res.json({
             success: true,

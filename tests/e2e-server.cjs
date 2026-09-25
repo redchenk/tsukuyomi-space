@@ -30,9 +30,15 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
-for (const username of ['mem0-browser', 'mem0-isolated']) {
+for (const username of ['mem0-browser', 'mem0-isolated', 'feedback-browser']) {
     db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
       .run(username, username, username + '@example.test', bcrypt.hashSync('mem0-test-password', 4), 'user');
+}
+db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)')
+    .run('notify-staff', bcrypt.hashSync('notify-staff-password', 4), 'admin');
+for (const username of ['notify-staff', 'notify-site-admin']) {
+    db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
+        .run(username, username, username + '@example.test', bcrypt.hashSync('notify-staff-password', 4), 'admin');
 }
 if (process.env.UI_PREVIEW_FIXTURES === 'true') {
     const article = require('./fixtures/editorial-article.cjs');
