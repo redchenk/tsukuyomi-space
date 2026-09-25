@@ -63,6 +63,9 @@ const desktopItems = computed(() => ['hub', 'stage', 'plaza', 'wiki'].map((key) 
 const mobilePrimaryItems = computed(() => navItems.value.slice(0, 4));
 const mobileSecondaryItems = computed(() => navItems.value.slice(4));
 const mobileNavLabel = (item) => props.lang === 'en' ? ({ room: 'Room', plaza: 'Plaza' }[item.key] || item.label) : item.label;
+const railNavLabel = (item) => isRoom.value && props.lang === 'en'
+  ? ({ room: 'Room', plaza: 'Plaza', stage: 'Stage', game: 'Game', growth: 'Bond', reality: 'Reality' }[item.key] || item.label)
+  : item.label;
 const activeNavItem = computed(() => navItems.value.find((item) => item.active));
 const currentPageLabel = computed(() => ({
   notifications: props.t.notifications,
@@ -250,7 +253,7 @@ onUnmounted(() => {
           @click="expandRail(item.key); item.spa && ($event.preventDefault(), $emit('go', item.path))"
         >
           <span class="rail-icon"><TsIcon :name="item.icon" :size="20" /></span>
-          <span class="rail-label">{{ item.label }}</span>
+          <span class="rail-label">{{ railNavLabel(item) }}</span>
         </a>
       </nav>
 
