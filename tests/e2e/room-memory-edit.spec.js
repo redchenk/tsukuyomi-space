@@ -3,9 +3,10 @@ const { test, expect } = require('../e2e-fixtures.cjs');
 test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 
 async function openMemoryManager(page) {
-  await page.locator('.room-advanced-settings > summary').click();
+  const menu = page.locator('.settings-mobile-menu');
+  if (await menu.isVisible()) await menu.click();
+  await page.getByRole('button', { name: '长期记忆', exact: true }).click();
   const manager = page.locator('.room-memory-manager');
-  await manager.locator('.memory-manager-toggle').click();
   return manager;
 }
 

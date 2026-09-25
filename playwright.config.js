@@ -19,7 +19,7 @@ module.exports = defineConfig({
         },
         {
             name: 'webkit-mobile',
-            testMatch: /room-mobile-(keyboard|scene)\.spec\.js/,
+            testMatch: /(?:room-mobile-(?:keyboard|scene)|room-settings-redesign)\.spec\.js/,
             use: { ...devices['iPhone 13'] }
         }
     ],

@@ -189,3 +189,106 @@ Browser console: no errors in the checked Room state. Both frontend variants bui
 Follow-up polish: none required for this scope.
 
 final result: passed
+
+# Room settings redesign QA — 2026-09-25
+
+final result: **passed** (design and local interaction review).
+
+## Scope and source
+
+Rebuild `/room/settings` around the supplied desktop, mobile and all-sections
+references, while retaining the site's purple palette, pill buttons and existing
+navigation. Source: `/Users/yxy/Downloads/yachiyo-room-settings.html` and the three
+`yachiyo-room-settings-*.png` files in that directory. The linked “重新设计设置页面”
+conversation was read for context. Its demonstration handlers and fabricated
+configuration states were not used in the production implementation.
+
+## Comparison method and evidence
+
+The supplied HTML was rendered at the same CSS viewport as the implementation.
+Source and implementation screenshots were opened together in one comparison
+input for desktop (1280 × 720) and mobile (390 × 844), both in light mode. These
+are viewport captures at equal CSS scale; no stretched images or full-page
+stitching were used for the comparisons. Additional views cover mobile form
+fields, dark memory management and the 768 × 1024 tablet breakpoint. Browser
+screenshots were normalized by the screenshot API to CSS pixels; the source PNGs
+were also inspected for the full-page section order.
+
+Local evidence, under `.codex_tmp/settings-redesign/`:
+
+- `reference-desktop.png` / `implementation-desktop.png`
+- `reference-mobile.png` / `implementation-mobile.png`
+- `implementation-mobile-fields.png`
+- `implementation-mobile-dark-memory.png`
+- `implementation-tablet-dark.png`
+
+State differences are intentional: the source shows a fabricated configured
+model and unsaved state; the implementation shows the actual unconfigured model
+and real saved state. The memory view uses disposable local test data. No
+production user data or API credentials appear in the captures.
+
+## Required comparison surfaces
+
+- **Typography:** Site typography and readable text colors replace the source's
+  pale blue-gray styling. Headings, field labels, secondary English labels and
+  helper text have distinct hierarchy. Model and key fields use 16px text on
+  mobile to avoid iOS focus zoom. The previously stacked English labels are now
+  inline; button labels do not wrap into vertical characters.
+- **Spacing and layout:** Desktop has category navigation, one active form and
+  contextual status. Mobile has a collapsed category selector and one form.
+  Advanced fields are disclosed only when needed. The fixed save bar clears the
+  site's bottom navigation; at 768px its bottom is 940px and navigation starts at
+  948px. No horizontal overflow was found at 390, 768 or 1280px.
+- **Colors and shapes:** Existing theme tokens supply the purple accent, surfaces,
+  borders and text in both themes. Actions use the site's 999px button radius;
+  form cards retain 18px corners. Selected states, switches, errors, muted helper
+  text and disabled actions are visually distinct.
+- **Assets and icons:** Existing site background, branding and icon component are
+  retained. Six missing utility icons use upstream Lucide paths with its license
+  in `docs/licenses/lucide.txt`. No illustrative placeholder or custom image substitute
+  was introduced. The prototype's fake global rail is intentionally replaced by
+  the real site's header and mobile navigation.
+- **Copy and content:** Eight categories preserve all existing configuration
+  areas. Model setup is required for chat; voice, knowledge and tools are optional.
+  Status and storage wording describe actual browser/account behavior. Test
+  results come from the real request; testing the LLM does not save its draft.
+
+## Iterations and resolved findings
+
+- **P2, cascade:** Global button/readability rules overrode selected navigation,
+  input surfaces and switches. Put route styling in the existing editorial layer
+  and supplied local input background tokens; recaptured both themes.
+- **P2, navigation alignment:** Global button centering displaced category labels.
+  Added explicit start alignment and flexible label width.
+- **P2, mobile controls:** Global input minimum height expanded switches to 46px.
+  Set switch height/min-height to 22px and removed inherited padding.
+- **P2, mobile overlap:** The floating music control collided with the save bar.
+  Place the closed control in the settings header, retain its expanded drawer,
+  and keep the save bar above the existing bottom navigation.
+- **P2, field labels:** A general label selector stacked bilingual field labels.
+  Scoped an inline layout to the LLM labels and recaptured the mobile fields.
+- **P2, memory edit state:** A saved expanded memory kept a stale expanded flag,
+  leaving its unloaded content displaying a loading message. Collapse that entry
+  after successful save before refreshing the list.
+- **P2, dialog keyboard use:** Focus now enters the connection result dialog,
+  stays within its controls, supports Escape and returns to the triggering button.
+
+No remaining P0, P1 or P2 design findings in the reviewed scope.
+
+## Functional validation and limits
+
+- Production frontend build passed using the project's Node 20 environment.
+- All 243 frontend tests passed, including 15 settings tests. Added checks cover
+  independent category saving, invalid hidden section selection, draft-aware
+  connection status and settings search.
+- Local browser checks covered category switching, light/dark layouts, knowledge
+  editor opening/focus/cancel, mobile fields and validation-dialog focus/Escape.
+- An authenticated local memory was edited through the real backend, saved,
+  reloaded and verified. No mocked save handler was used for that check.
+- Browser console inspection returned no error entries.
+- Existing end-to-end tests were adapted to the new category navigation. New
+  Chromium and WebKit cases cover cross-category saving, intercepted connection
+  responses, state invalidation, all eight sections and mobile footer geometry.
+  Their final results are recorded by the release pipeline, separately from this
+  visual review. No live paid model/TTS provider request or physical iOS device
+  test was performed for this redesign.

@@ -29,8 +29,8 @@ function setup() {
   };
   vm.runInNewContext(knowledgeCode + '\n' + pageCode + `
     loadMemoryCount = () => {};
-    globalThis.api = { loadSettings, llm, tts, model, mcp, knowledge, diary, memory, setupStep, toast, pendingSections, hasUnsavedSettings,
-      saveLLM, saveTTS, saveMCP, saveModel, saveKnowledge, saveKnowledgeEntry, saveSetupStep, saveAllSettings, enterRoom,
+    globalThis.api = { loadSettings, llm, tts, model, mcp, knowledge, diary, memory, activeSection, savingSettings, settingsSearch, filteredSettingsGroups, connectionCheck, testedConnectionStatus, toast, pendingSections, hasUnsavedSettings,
+      saveLLM, saveTTS, saveMCP, saveModel, saveKnowledge, saveKnowledgeEntry, discardSettings, testLLM, selectSettingsSection, saveAllSettings, enterRoom,
       onDiaryImportFile, normalizeRoomKnowledge, knowledgeContext, applyKnowledgeDraft, defaultKnowledgeEntries };
   `, ctx);
   ctx.api.loadSettings();
@@ -85,13 +85,12 @@ test('save all persists an active knowledge draft, switch and memory together', 
   assert.equal(h.hasUnsavedSettings.value, false);
 });
 
-test('third setup step saves both switches and empty knowledge survives reload', () => {
+test('independent memory settings save both switches and empty knowledge survives reload', async () => {
   const h = setup();
-  h.setupStep.value = 3;
   h.knowledge.enabled = false;
   h.knowledge.entries = [];
   h.memory.enabled = false;
-  assert.equal(h.saveSetupStep(), true);
+  assert.equal(await h.saveAllSettings(), true);
   h.loadSettings();
   assert.equal(h.knowledge.enabled, false);
   assert.equal(h.knowledge.entries.length, 0);
@@ -205,4 +204,38 @@ test('TTS save and reload preserve custom local endpoints and Unicode reference 
   h.loadSettings();
   assert.equal(h.tts.refAudioPath, refPath);
   assert.equal(h.tts.apiUrl, endpoint);
+});
+
+
+test('saving an invalid hidden section reveals it without navigating or dropping the draft', async () => {
+  const h = setup();
+  h.activeSection.value = 'memory';
+  h.llm.apiUrl = 'invalid'; h.llm.model = 'keep-this-draft';
+  await h.enterRoom();
+  assert.equal(h.activeSection.value, 'llm');
+  assert.equal(h.savingSettings.value, false);
+  assert.equal(h.llm.model, 'keep-this-draft');
+  assert.equal(h.navigation.length, 0);
+});
+
+test('connection status expires when model settings change, and invalid tests never save', async () => {
+  const h = setup();
+  h.connectionCheck.status = 'success';
+  h.connectionCheck.snapshot = JSON.stringify(h.llm);
+  assert.equal(h.testedConnectionStatus.value, 'success');
+  h.llm.model = 'changed';
+  assert.equal(h.testedConnectionStatus.value, 'idle');
+  await h.testLLM();
+  assert.equal(h.store.has('roomLLMSettings'), false);
+  assert.equal(h.hasUnsavedSettings.value, true);
+});
+
+test('settings search finds fields inside their category and supports no results', () => {
+  const h = setup();
+  h.settingsSearch.value = 'API';
+  assert.equal(h.filteredSettingsGroups.value[0].items[0].id, 'llm');
+  h.settingsSearch.value = '权重';
+  assert.equal(h.filteredSettingsGroups.value[0].items[0].id, 'tts');
+  h.settingsSearch.value = 'no-such-settings';
+  assert.equal(h.filteredSettingsGroups.value.length, 0);
 });

@@ -160,11 +160,9 @@ test('user can start a clean Room conversation without deleting long-term memory
 test('Room knowledge entries open a visible editor and persist user changes', async ({ page }) => {
     await page.goto('/room/settings');
 
-    const advanced = page.locator('details.room-advanced-settings');
-    if (!(await advanced.getAttribute('open'))) await advanced.locator(':scope > summary').click();
+    await page.getByRole('button', { name: '角色知识库', exact: true }).click();
 
     const manager = page.locator('#room-knowledge-settings');
-    await manager.locator('.memory-manager-toggle').click();
     const target = manager.locator('.knowledge-item').last();
     const originalTitle = (await target.locator('strong').textContent()).trim();
     await target.locator('.button-row .ghost-btn').click();
@@ -247,29 +245,22 @@ test('Room TTS plays through the saved direct provider transport', async ({ page
     await expect(page.locator('body')).not.toContainText('play() can only be initiated by a user gesture');
 });
 
-test('mobile Room settings saves provider TTS and advances with visible feedback', async ({ page }) => {
+test('mobile Room settings saves voice configuration across categories', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/room/settings');
-    await page.locator('.room-setup-stepper button').nth(1).click();
-    await page.locator('input[name="setup-tts-mode"]').nth(1).check();
-    await page.locator('.room-simple-form select').first().selectOption('openai');
-    await page.locator('.room-simple-form input[type="password"]').fill('mobile-save-test-key');
-
-    await page.locator('.room-setup-step-panel .room-setup-actions .primary-btn').click();
-
-    await expect(page.locator('.room-setup-stepper button').nth(2)).toHaveClass(/active/);
-    await expect(page.locator('.plaza-toast.show')).toContainText('TTS 设置已保存');
+    await page.locator('.settings-mobile-menu').click();
+    await page.getByRole('button', { name: '语音与朗读 可选', exact: true }).click();
+    await page.getByRole('switch', { name: '开启语音合成' }).check();
+    const voice = page.locator('#room-tts-settings');
+    await voice.getByLabel('语音服务', { exact: true }).selectOption('openai');
+    await voice.getByLabel('API 密钥', { exact: true }).fill('mobile-save-test-key');
+    await page.locator('.settings-mobile-menu').click();
+    await page.getByRole('button', { name: '长期记忆', exact: true }).click();
+    await expect(page.locator('#room-memory-settings')).toBeVisible();
+    await page.locator('.settings-savebar .primary-btn').click();
+    await expect(page).toHaveURL(/\/room$/);
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('roomTTSSettings') || 'null'));
-    expect(saved).toMatchObject({
-        enabled: true,
-        provider: 'openai',
-        apiKey: 'mobile-save-test-key',
-        useProxy: false
-    });
-    await expect.poll(() => page.locator('.room-setup-card').evaluate((element) => element.getBoundingClientRect().top))
-        .toBeGreaterThanOrEqual(-1);
-    const cardTop = await page.locator('.room-setup-card').evaluate((element) => element.getBoundingClientRect().top);
-    expect(cardTop).toBeLessThan(180);
+    expect(saved).toMatchObject({ enabled: true, provider: 'openai', apiKey: 'mobile-save-test-key', useProxy: false });
 });
 
 test('user can read an article and post a comment', async ({ page }) => {

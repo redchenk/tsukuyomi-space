@@ -137,12 +137,6 @@ const BEGINNER_LLM_PROVIDERS = [
   { value: 'openrouter', label: 'OpenRouter', detail: '模型丰富' },
   { value: 'zhipu', label: '智谱 GLM', detail: '国内服务' }
 ];
-const BEGINNER_TTS_PROVIDERS = [
-  { value: 'mimo', label: 'MiMo 语音' },
-  { value: 'openai', label: 'OpenAI TTS' },
-  { value: 'minimax', label: 'MiniMax TTS' },
-  { value: 'gptSovitsLocal', label: '本机 GPT-SoVITS' }
-];
 const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt';
 const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth';
 const GPT_SOVITS_LANGUAGE_OPTIONS = [
@@ -159,6 +153,8 @@ const MINIMAX_TOKEN_PLAN_TOOLS = 'web_search,understand_image';
 const toast = reactive({ text: '', type: 'success', visible: false });
 const modelSaveNotice = reactive({ visible: false, text: '', detail: '' });
 const testDialog = reactive({ visible: false, target: '', status: 'idle', title: '', message: '', detail: '' });
+const testDialogCard = ref(null);
+let testDialogTrigger = null;
 let ttsTestPlayback = null;
 const memoryCount = ref(0);
 const memoryList = ref([]);
@@ -173,10 +169,57 @@ let memoryEditRequestId = 0;
 const memoryVector = reactive({ backend: '', enabled: false, pending: 0, failed: 0, embedding: '' });
 const storedUser = ref(readStoredUser());
 const modelCatalog = reactive({ loading: false, message: '', error: '', updatedAt: '', models: [] });
-const setupStep = ref(1);
 const setupLlmMode = ref('ollama');
 const setupCloudProvider = ref('openaiChat');
-const globalAdvancedOpen = ref(false);
+const activeSection = ref('llm');
+const mobileSectionsOpen = ref(false);
+const settingsSearch = ref('');
+const setupGuideVisible = ref(true);
+const showLlmKey = ref(false);
+const savingSettings = ref(false);
+const knowledgeDraftOpen = ref(false);
+const knowledgeExpanded = reactive({});
+const settingsPanel = ref(null);
+const connectionCheck = reactive({ status: 'idle', snapshot: '' });
+const settingsNavigation = [
+  { id: 'llm', label: '聊天模型', icon: 'message', group: '基础与陪伴', badge: '必需', keywords: 'API 密钥 模型 端点 代理 图片 补充指令 Ollama' },
+  { id: 'tts', label: '语音与朗读', icon: 'audioLines', group: '基础与陪伴', badge: '可选', keywords: 'TTS 音色 GPT SoVITS 语言 权重' },
+  { id: 'memory', label: '长期记忆', icon: 'bookmark', group: '基础与陪伴', keywords: 'Mem0 检索 同步 偏好' },
+  { id: 'knowledge', label: '角色知识库', icon: 'book', group: '基础与陪伴', keywords: '八千代 人格 条目 注入' },
+  { id: 'model', label: '角色与布局', icon: 'layers', group: '房间个性化', keywords: '大小 位置 浮窗' },
+  { id: 'diary', label: '日记与存档', icon: 'fileText', group: '房间个性化', keywords: '人设 导入 导出 备份 好感度' },
+  { id: 'mcp', label: '工具与扩展', icon: 'grid', group: '进阶功能', badge: 'MCP', keywords: '搜索 白名单 鉴权 MiniMax' },
+  { id: 'debug', label: 'Live2D 调试', icon: 'code', group: '进阶功能', keywords: '表情 动作 队列 JSON' }
+];
+const filteredSettingsGroups = computed(() => ['基础与陪伴', '房间个性化', '进阶功能'].map(label => ({
+  label,
+  items: settingsNavigation.filter(item => item.group === label && `${item.label} ${item.keywords}`.toLowerCase().includes(settingsSearch.value.trim().toLowerCase()))
+})).filter(group => group.items.length));
+const currentSection = computed(() => settingsNavigation.find(item => item.id === activeSection.value));
+const testedConnectionStatus = computed(() => connectionCheck.snapshot === sectionSnapshot('llm') ? connectionCheck.status : 'idle');
+const connectionStatusText = computed(() => ({ idle: llmSetupReady.value ? '尚未测试连接' : '待完成配置', loading: '正在测试连接', success: '连接测试通过', warning: '已响应，未返回文本', error: '连接测试失败' })[testedConnectionStatus.value]);
+
+async function selectSettingsSection(id) {
+  if (!settingsNavigation.some(item => item.id === id)) return;
+  activeSection.value = id;
+  mobileSectionsOpen.value = false;
+  if (id === 'memory' && !memory.managerOpen) {
+    memory.managerOpen = true;
+    void loadVisibleMemories();
+  }
+  await nextTick();
+  settingsPanel.value?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  settingsPanel.value?.focus({ preventScroll: true });
+}
+
+function discardSettings() {
+  if (!hasUnsavedSettings.value || savingSettings.value || memorySavePending.value) return;
+  if (!window.confirm('放弃尚未保存的修改，恢复到上次保存的设置？已保存的记忆和条目不会撤销。')) return;
+  cancelMemoryEdit();
+  loadSettings();
+  knowledgeDraftOpen.value = false;
+  showToast('已恢复到上次保存的设置');
+}
 const ollamaRepairCommand = computed(() => localOllamaWindowsCommand(
   typeof window === 'undefined' ? '' : window.location.origin
 ));
@@ -295,13 +338,27 @@ function persistSettings(key, value, label) {
 }
 
 async function saveAllSettings() {
-  const sections = new Set(pendingSections.value);
-  if (hasKnowledgeDraft.value) sections.add('knowledge');
-  const actions = { model: saveModel, llm: () => saveLLM(false), tts: () => saveTTS(false), memory: saveMemory, knowledge: () => saveKnowledge(false), mcp: () => saveMCP(false), diary: saveDiaryPersona };
-  for (const section of sections) if (actions[section]() === false) return false;
-  if (hasMemoryDraft.value && !(await saveMemoryEdit())) return false;
-  showToast('所有修改已保存');
-  return true;
+  if (savingSettings.value || memorySavePending.value) return false;
+  savingSettings.value = true;
+  try {
+    const sections = new Set(pendingSections.value);
+    if (hasKnowledgeDraft.value) sections.add('knowledge');
+    const actions = { model: saveModel, llm: () => saveLLM(false), tts: () => saveTTS(false), memory: saveMemory, knowledge: () => saveKnowledge(false), mcp: () => saveMCP(false), diary: saveDiaryPersona };
+    for (const section of sections) {
+      if (actions[section]() === false) {
+        await selectSettingsSection(section);
+        return false;
+      }
+    }
+    if (hasMemoryDraft.value && !(await saveMemoryEdit())) {
+      await selectSettingsSection('memory');
+      return false;
+    }
+    showToast('所有修改已保存');
+    return true;
+  } finally {
+    savingSettings.value = false;
+  }
 }
 
 async function enterRoom() {
@@ -321,12 +378,6 @@ const llmConnectionLabel = computed(() => llm.model || '待配置');
 const ttsConnectionLabel = computed(() => tts.enabled ? (tts.voice || tts.provider || '已启用') : '未启用');
 const llmSetupReady = computed(() => Boolean(llm.apiUrl && llm.model) && (!llmNeedsApiKey(llm.apiUrl) || Boolean(llm.apiKey)));
 const ttsSetupReady = computed(() => !tts.enabled || (Boolean(tts.apiUrl) && (tts.provider === 'gpt-sovits' || Boolean(tts.apiKey))));
-const setupProgress = computed(() => [llmSetupReady.value, ttsSetupReady.value, true].filter(Boolean).length);
-const setupStatusItems = computed(() => [
-  { icon: 'message', label: '聊天模型', value: llmSetupReady.value ? llmConnectionLabel.value : '待完成', ready: llmSetupReady.value },
-  { icon: 'audioLines', label: '语音', value: tts.enabled ? (ttsSetupReady.value ? ttsConnectionLabel.value : '待完成') : '暂不开启', ready: ttsSetupReady.value },
-  { icon: 'bookmark', label: '记忆', value: memory.enabled ? memoryModeLabel.value : '已关闭', ready: true }
-]);
 const visitorKey = computed(() => {
   if (roomUser.value?.id) return `user:${roomUser.value.id}`;
   let id = localStorage.getItem('roomMemoryGuestId');
@@ -356,8 +407,8 @@ const memoryVectorLabel = computed(() => {
   return 'Milvus 已同步';
 });
 const memoryLocationText = computed(() => canUseServerMemory.value
-  ? '完整对话记忆与聊天一并保存在本站 SQLite，Mem0 开源版在本站建立检索索引，按登录用户隔离。访客使用独立的本机 IndexedDB。'
-  : '当前未登录，记忆仅保存在本机 IndexedDB，不上传服务器。');
+  ? '记忆保存在当前账号中，并用于后续对话。访客记忆与账号记忆分别保存。'
+  : '当前为访客，记忆仅保存在这台设备的当前浏览器中。');
 const memoryTypeOptions = [
   { value: '', label: '全部类型' },
   { value: 'profile', label: '用户画像' },
@@ -670,16 +721,28 @@ function showModelSaveNotice() {
 }
 
 function openTestDialog(target, status, title, message, detail = '') {
+  if (!testDialog.visible && typeof document !== 'undefined') testDialogTrigger = document.activeElement;
   testDialog.visible = true;
   testDialog.target = target;
   testDialog.status = status;
   testDialog.title = title;
   testDialog.message = message;
   testDialog.detail = detail;
+  nextTick(() => testDialogCard.value?.querySelector('button')?.focus());
 }
 
 function closeTestDialog() {
   testDialog.visible = false;
+  testDialogTrigger?.focus?.({ preventScroll: true });
+}
+
+function handleTestDialogKey(event) {
+  if (event.key === 'Escape') { event.preventDefault(); closeTestDialog(); return; }
+  if (event.key !== 'Tab') return;
+  const buttons = [...(testDialogCard.value?.querySelectorAll('button:not(:disabled)') || [])];
+  const first = buttons[0], last = buttons[buttons.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
 }
 
 function testDialogTargetLabel(target = testDialog.target) {
@@ -1470,51 +1533,6 @@ function applySetupTtsProvider(provider) {
   tts.enabled = true;
 }
 
-function moveToSetupStep(step, message) {
-  setupStep.value = step;
-  if (message) showToast(message);
-  nextTick(() => {
-    const revealStep = () => {
-      document.querySelector('.room-setup-card')?.scrollIntoView({ behavior: 'auto', block: 'start' });
-    };
-    window.requestAnimationFrame(() => window.requestAnimationFrame(revealStep));
-  });
-}
-
-function saveSetupStep() {
-  if (setupStep.value === 1) {
-    if (!saveLLM(false)) return false;
-    if (!llmSetupReady.value) {
-      showToast(llmNeedsApiKey(llm.apiUrl) ? '请填写 API Key 后继续' : '请先选择模型', 'error');
-      return;
-    }
-    moveToSetupStep(2, '聊天模型已保存，继续设置语音');
-    return;
-  }
-  if (setupStep.value === 2) {
-    if (!saveTTS(false)) return;
-    if (!ttsSetupReady.value) {
-      showToast('请补全语音设置，或关闭语音后继续', 'error');
-      return;
-    }
-    moveToSetupStep(3, 'TTS 设置已保存，继续设置记忆');
-    return;
-  }
-  if (!saveKnowledge(false) || !saveMemory()) return false;
-  showToast('记忆和角色知识库设置已保存');
-  return true;
-}
-
-function openGlobalAdvanced(target) {
-  globalAdvancedOpen.value = true;
-  if (target === 'memory') memory.managerOpen = true;
-  if (target === 'knowledge') knowledge.managerOpen = true;
-  requestAnimationFrame(() => {
-    const selector = target === 'knowledge' ? '#room-knowledge-settings' : '.room-memory-manager';
-    document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-}
-
 function resetPanels() {
   localStorage.removeItem('roomPanelPositions');
   showToast('房间浮窗位置已重置');
@@ -1615,8 +1633,16 @@ function saveLLM(showDialog = true) {
 }
 
 async function testLLM() {
-  if (!saveLLM()) return;
+  if (connectionCheck.status === 'loading') return;
   const settings = normalizedLLMSettings();
+  connectionCheck.snapshot = sectionSnapshot('llm');
+  connectionCheck.status = 'error';
+  try {
+    if (!['http:', 'https:'].includes(new URL(settings.apiUrl).protocol) || !settings.model) throw new Error();
+  } catch (_) {
+    openTestDialog('llm', 'error', 'LLM 连接测试', '请填写有效的 API 端点和模型名称。');
+    return;
+  }
   if (settings.needsApiKey && !settings.apiKey) {
     openTestDialog('llm', 'error', 'LLM 连接测试', '请先填写 LLM API Key。', 'API Key 只保存在当前浏览器，用于直接请求你选择的模型供应商。');
     showToast('请先填写 LLM API Key', 'error');
@@ -1627,9 +1653,13 @@ async function testLLM() {
     ? (options) => apiFetch('/api/chat', options)
     : (options) => fetchWithLocalOllamaGuidance(requestUrl, options);
   openTestDialog('llm', 'loading', 'LLM 连接测试', settings.useProxy ? '正在通过站内受限代理请求模型供应商...' : '正在请求模型供应商...', `${requestUrl}\n模型：${settings.model || '未填写'}`);
+  connectionCheck.status = 'loading';
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
   try {
     const response = await requestFetch({
       method: 'POST',
+      signal: controller.signal,
       headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model),
       body: JSON.stringify(settings.useProxy
         ? { message: '请用一句话回复连接测试。', apiKey: settings.apiKey, apiUrl: settings.apiUrl, model: settings.model }
@@ -1639,6 +1669,7 @@ async function testLLM() {
     const data = settings.useProxy ? raw.data || raw : raw;
     if (!response.ok) throw new Error(data?.error?.message || `HTTP ${response.status}`);
     const reply = pickChatReply(data);
+    connectionCheck.status = reply ? 'success' : 'warning';
     openTestDialog(
       'llm',
       reply ? 'success' : 'warning',
@@ -1648,11 +1679,14 @@ async function testLLM() {
     );
     showToast(reply ? 'LLM 连接测试成功' : 'LLM 已响应，但未返回文本', reply ? 'success' : 'error');
   } catch (error) {
+    connectionCheck.status = 'error';
     const corsHint = settings.needsApiKey
       ? '如果浏览器控制台显示 CORS，说明该供应商不允许浏览器直连，需要改用受限后端桥接。'
       : `请允许浏览器访问本地网络。Windows PowerShell 运行：\n${ollamaRepairCommand.value}\n\n然后从任务栏完全退出并重新打开 Ollama。`;
     openTestDialog('llm', 'error', 'LLM 连接测试', '连接失败。', `${error.message}\n\n${corsHint}`);
     showToast(`LLM 测试失败：${error.message}`, 'error');
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -1973,6 +2007,7 @@ async function saveMemoryEdit() {
       await txToPromise(tx);
       memory.editing = null;
       memoryEditingOriginal.value = '';
+      memory.expanded[draft.id] = false;
       publishLocalRoomMemoryUpdate({ id: draft.id });
       await loadLocalMemories();
       showToast('本地记忆已更新');
@@ -1987,6 +2022,7 @@ async function saveMemoryEdit() {
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     memory.editing = null;
     memoryEditingOriginal.value = '';
+    memory.expanded[draft.id] = false;
     await loadVisibleMemories();
     showToast('记忆已更新');
     return true;
@@ -2231,759 +2267,1612 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="page room-settings-page">
-    <header class="room-setup-header">
+    <header class="settings-page-heading">
       <div>
+        <nav class="settings-breadcrumb" aria-label="当前位置">
+          <a href="/room" @click.prevent="emit('go', '/room')">私人居所</a
+          ><TsIcon name="chevronRight" :size="14" /><span>房间设置</span>
+        </nav>
         <h1>房间设置</h1>
-        <p>三步完成基础配置</p>
+        <p>先连接聊天模型，其他功能可以稍后设置。</p>
       </div>
-      <div class="room-settings-actions">
-        <span v-if="hasUnsavedSettings" class="field-hint room-settings-unsaved" role="status">有尚未保存的修改</span>
-        <button class="primary-btn" type="button" :disabled="!hasUnsavedSettings" @click="saveAllSettings">保存全部修改</button>
-        <button class="ghost-btn" type="button" @click="loadSettings">
-          <TsIcon name="refresh" :size="17" />
-          <span>重新读取</span>
-        </button>
-        <a class="primary-btn" href="/room" @click.prevent="enterRoom">
-          <TsIcon name="home" :size="17" />
-          <span>{{ hasUnsavedSettings ? '保存并返回房间' : '返回房间' }}</span>
-        </a>
-      </div>
+      <a class="ghost-btn" href="/room" @click.prevent="emit('go', '/room')"
+        ><TsIcon name="arrowLeft" :size="17" />返回房间</a
+      >
     </header>
-
-    <section class="room-setup-shell">
-      <nav class="room-setup-stepper" aria-label="房间设置进度">
-        <button
-          v-for="item in [{ step: 1, label: '聊天模型', icon: 'message' }, { step: 2, label: '语音', icon: 'audioLines' }, { step: 3, label: '记忆', icon: 'bookmark' }]"
-          :key="item.step"
-          type="button"
-          :class="{ active: setupStep === item.step, complete: setupStep > item.step }"
-          :aria-current="setupStep === item.step ? 'step' : undefined"
-          @click="setupStep = item.step"
+    <section v-if="setupGuideVisible" class="settings-welcome">
+      <span class="settings-welcome-icon"
+        ><TsIcon name="sparkles" :size="24"
+      /></span>
+      <div>
+        <strong>只需连接一个模型，就能开始聊天</strong>
+        <p>语音、记忆和外观按需调整，不必一次填完所有设置。</p>
+      </div>
+      <ol class="settings-flow" aria-label="模型连接步骤">
+        <li><b>1</b>选择服务</li>
+        <li><b>2</b>填写密钥</li>
+        <li><b>3</b>测试连接</li>
+      </ol>
+      <button
+        class="ghost-btn"
+        type="button"
+        aria-label="收起配置提示"
+        @click="setupGuideVisible = false"
+      >
+        <TsIcon name="x" :size="16" />
+      </button>
+    </section>
+    <div class="settings-workspace">
+      <button
+        class="ghost-btn settings-mobile-menu"
+        type="button"
+        :aria-expanded="mobileSectionsOpen"
+        aria-controls="settings-navigation"
+        @click="mobileSectionsOpen = !mobileSectionsOpen"
+      >
+        <TsIcon :name="currentSection.icon" :size="20" /><strong>{{
+          currentSection.label
+        }}</strong
+        ><span>全部设置</span><TsIcon name="chevronDown" :size="18" />
+      </button>
+      <aside
+        id="settings-navigation"
+        class="settings-navigation"
+        :class="{ 'is-open': mobileSectionsOpen }"
+      >
+        <label class="settings-search"
+          ><TsIcon name="search" :size="17" /><input
+            v-model="settingsSearch"
+            type="search"
+            aria-label="搜索设置"
+            placeholder="搜索设置"
+        /></label>
+        <nav aria-label="设置分类">
+          <section v-for="group in filteredSettingsGroups" :key="group.label">
+            <h2>{{ group.label }}</h2>
+            <button
+              v-for="item in group.items"
+              :key="item.id"
+              type="button"
+              class="settings-nav-button"
+              :class="{ active: activeSection === item.id }"
+              :aria-current="activeSection === item.id ? 'page' : undefined"
+              @click="selectSettingsSection(item.id)"
+            >
+              <TsIcon :name="item.icon" :size="18" /><span>{{
+                item.label
+              }}</span
+              ><small v-if="item.badge">{{ item.badge }}</small
+              ><span
+                v-if="pendingSections.includes(item.id)"
+                class="settings-unsaved-mark"
+                aria-label="有未保存修改"
+              ></span>
+            </button>
+          </section>
+          <p v-if="!filteredSettingsGroups.length" class="field-hint">
+            没有匹配的设置，试试“语音”或“密钥”。
+          </p>
+        </nav>
+        <div class="settings-nav-help">
+          <TsIcon name="helpCircle" :size="18" />
+          <div>
+            <small>第一次配置？</small
+            ><button
+              class="ghost-btn settings-text-btn"
+              type="button"
+              @click="
+                setupGuideVisible = true;
+                selectSettingsSection('llm');
+              "
+            >
+              查看配置指引<TsIcon name="arrowRight" :size="14" />
+            </button>
+          </div>
+        </div>
+      </aside>
+      <div
+        ref="settingsPanel"
+        class="settings-main"
+        tabindex="-1"
+        :aria-label="currentSection.label"
+      >
+        <article
+          v-show="activeSection === 'llm'"
+          id="room-llm-settings"
+          class="room-settings-card"
         >
-          <span class="room-setup-step-number">{{ item.step }}</span>
-          <TsIcon :name="item.icon" :size="17" />
-          <strong>{{ item.label }}</strong>
-        </button>
-      </nav>
-
-      <div class="room-setup-layout">
-        <article class="room-setup-card">
-          <section v-if="setupStep === 1" class="room-setup-step-panel">
-            <div class="room-setup-title">
-              <span>第 1 步，共 3 步</span>
-              <h2>选择聊天模型</h2>
-              <p>这是必填项，配置完成后八千代才能回复你。</p>
+          <div class="room-card-head">
+            <span class="room-card-icon"
+              ><TsIcon name="message" :size="23"
+            /></span>
+            <div>
+              <h2>聊天模型<span class="settings-badge">必需</span></h2>
+              <p>连接一个模型，让八千代开始回应你。</p>
             </div>
-
-            <div class="room-choice-grid">
-              <label class="room-choice-card" :class="{ selected: setupLlmMode === 'ollama' }">
-                <input class="room-choice-radio" type="radio" name="setup-llm-mode" value="ollama" :checked="setupLlmMode === 'ollama'" @change="chooseSetupLlmMode('ollama')">
-                <span class="room-choice-icon"><TsIcon name="layers" :size="22" /></span>
-                <span>
-                  <strong>本机 Ollama <em>推荐</em></strong>
-                  <small>无需密钥，数据留在设备上</small>
-                </span>
-              </label>
-              <label class="room-choice-card" :class="{ selected: setupLlmMode === 'cloud' }">
-                <input class="room-choice-radio" type="radio" name="setup-llm-mode" value="cloud" :checked="setupLlmMode === 'cloud'" @change="chooseSetupLlmMode('cloud')">
-                <span class="room-choice-icon"><TsIcon name="cloud" :size="22" /></span>
-                <span>
-                  <strong>云端 API</strong>
-                  <small>无需安装，填写密钥即可使用</small>
-                </span>
-              </label>
+          </div>
+          <div class="settings-mode-grid">
+            <label
+              class="settings-mode"
+              :class="{ selected: setupLlmMode === 'cloud' }"
+              ><TsIcon name="cloud" :size="26" /><span
+                ><strong>云端 API</strong
+                ><small>无需安装 · 使用服务商密钥</small></span
+              ><input
+                type="radio"
+                name="settings-llm-mode"
+                :checked="setupLlmMode === 'cloud'"
+                @change="chooseSetupLlmMode('cloud')"
+            /></label>
+            <label
+              class="settings-mode"
+              :class="{ selected: setupLlmMode === 'ollama' }"
+              ><TsIcon name="layers" :size="26" /><span
+                ><strong>本机 Ollama</strong
+                ><small>已安装本机模型 · 无需密钥</small></span
+              ><input
+                type="radio"
+                name="settings-llm-mode"
+                :checked="setupLlmMode === 'ollama'"
+                @change="chooseSetupLlmMode('ollama')"
+            /></label>
+          </div>
+          <div v-if="setupLlmMode === 'cloud'" class="settings-field">
+            <div class="settings-field-title">
+              <span>服务商</span><small>选择后自动填写接口地址</small>
             </div>
+            <div class="settings-providers">
+              <button
+                class="ghost-btn"
+                type="button"
+                :class="{ selected: llmProviderKey === 'deepseek' }"
+                :aria-pressed="llmProviderKey === 'deepseek'"
+                @click="applySetupCloudProvider('deepseek')"
+              >
+                DeepSeek<TsIcon
+                  v-if="llmProviderKey === 'deepseek'"
+                  name="check"
+                  :size="16"
+                />
+              </button>
+              <button
+                class="ghost-btn"
+                type="button"
+                :class="{ selected: llmProviderKey === 'openai' }"
+                :aria-pressed="llmProviderKey === 'openai'"
+                @click="applySetupCloudProvider('openaiChat')"
+              >
+                OpenAI<TsIcon
+                  v-if="llmProviderKey === 'openai'"
+                  name="check"
+                  :size="16"
+                />
+              </button>
+              <button
+                class="ghost-btn"
+                type="button"
+                :class="{ selected: llmProviderKey === 'aliyun' }"
+                :aria-pressed="llmProviderKey === 'aliyun'"
+                @click="applyAliyunPreset('cn')"
+              >
+                阿里云百炼<TsIcon
+                  v-if="llmProviderKey === 'aliyun'"
+                  name="check"
+                  :size="16"
+                />
+              </button>
+              <select
+                aria-label="更多服务商"
+                :value="''"
+                @change="applyAdvancedLlmPreset($event.target.value)"
+              >
+                <option value="">更多服务商</option>
+                <optgroup label="服务商">
+                  <option
+                    v-for="(preset, name) in LLM_PRESETS"
+                    :key="name"
+                    :value="`llm:${name}`"
+                  >
+                    {{ preset.label }}
+                  </option>
+                </optgroup>
+                <optgroup label="阿里云百炼">
+                  <option
+                    v-for="(preset, name) in ALIYUN_LLM_PRESETS"
+                    :key="name"
+                    :value="`aliyun:${name}`"
+                  >
+                    {{ preset.label }}
+                  </option>
+                </optgroup>
+                <optgroup label="Xiaomi MiMo">
+                  <option
+                    v-for="(preset, name) in MIMO_LLM_PRESETS"
+                    :key="name"
+                    :value="`mimo:${name}`"
+                  >
+                    {{ preset.label }}
+                  </option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+          <div v-if="setupLlmMode === 'cloud'" class="settings-field">
+            <label for="settings-llm-key"
+              >API 密钥 <small>API Key</small></label
+            >
+            <div class="settings-secret">
+              <TsIcon name="lock" :size="18" /><input
+                id="settings-llm-key"
+                v-model="llm.apiKey"
+                :type="showLlmKey ? 'text' : 'password'"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="粘贴服务商提供的密钥"
+              /><button
+                type="button"
+                class="ghost-btn"
+                :aria-label="showLlmKey ? '隐藏 API 密钥' : '显示 API 密钥'"
+                :aria-pressed="showLlmKey"
+                @click="showLlmKey = !showLlmKey"
+              >
+                <TsIcon :name="showLlmKey ? 'eyeOff' : 'eye'" :size="18" />
+              </button>
+            </div>
+            <p class="field-hint">
+              <TsIcon
+                name="shield"
+                :size="14"
+              />密钥保存在当前浏览器，调用时发送给所选服务。
+            </p>
+          </div>
+          <div class="settings-field">
+            <div class="settings-field-title">
+              <label for="settings-llm-model">模型 <small>Model</small></label
+              ><button
+                class="ghost-btn settings-text-btn"
+                type="button"
+                :disabled="modelCatalog.loading"
+                @click="syncModelCatalog"
+              >
+                <TsIcon name="refresh" :size="15" />{{
+                  modelCatalog.loading ? '刷新中…' : '刷新模型'
+                }}
+              </button>
+            </div>
+            <input
+              id="settings-llm-model"
+              v-model="llm.model"
+              type="text"
+              list="llmSyncedModels"
+              spellcheck="false"
+              placeholder="输入完整模型名称"
+            /><datalist id="llmSyncedModels">
+              <option
+                v-for="option in syncedModelOptions"
+                :key="`${option.source}-${option.id}`"
+                :value="syncedModelSelectValue(option)"
+              >
+                {{ option.label }}
+              </option>
+            </datalist>
+            <p class="field-hint">
+              {{
+                setupLlmMode === 'ollama'
+                  ? '填写当前设备中已下载的模型名称。'
+                  : '选择服务商提供的模型，或粘贴完整模型名称。'
+              }}
+            </p>
+            <p v-if="modelCatalog.error" class="field-hint error" role="alert">
+              {{ modelCatalog.error }}
+            </p>
+          </div>
+          <div v-if="setupLlmMode === 'ollama'" class="settings-note">
+            <TsIcon name="info" :size="19" />
+            <div>
+              <strong>在访问设备上运行 Ollama</strong>
+              <p>
+                手机上的 localhost
+                指手机本身。连接电脑模型时，请在高级设置填写可访问的地址，并允许本站跨域访问。
+              </p>
+              <button
+                class="ghost-btn compact"
+                type="button"
+                @click="copyOllamaRepairCommand"
+              >
+                复制 Windows 配置命令
+              </button>
+            </div>
+          </div>
+          <details class="settings-disclosure">
+            <summary>
+              <TsIcon name="sliders" :size="18" /><span
+                ><strong>高级连接设置</strong
+                ><small>API 端点 · 图片理解 · 代理 · 补充指令</small></span
+              ><TsIcon name="chevronDown" :size="17" />
+            </summary>
+            <div class="settings-disclosure-body form-grid">
+              <label
+                >API 端点<input
+                  v-model="llm.apiUrl"
+                  type="url"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="https://…/chat/completions"
+              /></label>
+              <label v-if="setupLlmMode === 'ollama'"
+                >API 密钥（可选）<input
+                  v-model="llm.apiKey"
+                  type="password"
+                  autocomplete="off"
+                  placeholder="本机 Ollama 可留空"
+              /></label>
+              <label
+                >图片理解<select v-model="llm.visionMode">
+                  <option value="auto">自动识别视觉模型</option>
+                  <option value="llm">强制发送给 LLM</option>
+                  <option value="mcp">使用 MCP understand_image</option>
+                </select></label
+              >
+              <label class="check-row"
+                ><input
+                  v-model="llm.useProxy"
+                  type="checkbox"
+                  :disabled="llmProviderKey === 'ollama'"
+                />使用服务器受限代理</label
+              >
+              <p class="field-hint">
+                关闭时由浏览器直连服务商；开启时请求经过本站后端，仅支持已允许的服务商。Ollama
+                从当前设备直接连接。
+              </p>
+              <label
+                >对话补充指令<textarea
+                  v-model="llm.systemPrompt"
+                  placeholder="可选：回复长度、语言或交流偏好"
+                ></textarea>
+              </label>
+              <p class="field-hint">只用于聊天，与日记人设分开保存。</p>
+              <label
+                >模型目录<select
+                  :value="llm.model"
+                  @change="applySyncedModelById($event.target.value)"
+                >
+                  <option value="">选择目录中的模型</option>
+                  <option
+                    v-for="option in syncedModelOptions"
+                    :key="`${option.source}-${option.id}`"
+                    :value="syncedModelSelectValue(option)"
+                  >
+                    {{ option.label }} · {{ option.detail }}
+                  </option>
+                </select></label
+              >
+              <p class="field-hint">
+                目录来自
+                OpenRouter，并按当前服务商筛选。实际可用模型以服务商账号为准。{{
+                  modelCatalog.message
+                }}
+              </p>
+              <div class="model-recommend-card">
+                <span>推荐模型</span><strong>{{ recommendedModelText }}</strong
+                ><button
+                  class="ghost-btn"
+                  type="button"
+                  :disabled="!recommendedModelOption"
+                  @click="applyRecommendedModel"
+                >
+                  应用推荐
+                </button>
+              </div>
+            </div>
+          </details>
+          <div class="settings-test-footer">
+            <div class="settings-connection" role="status">
+              <span class="settings-status" :class="testedConnectionStatus"
+                ><TsIcon
+                  :name="
+                    testedConnectionStatus === 'success' ? 'check' : 'info'
+                  "
+                  :size="16"
+                />{{ connectionStatusText }}</span
+              ><small>使用当前表单测试，修改后记得保存。</small>
+            </div>
+            <button
+              class="ghost-btn"
+              type="button"
+              :disabled="connectionCheck.status === 'loading'"
+              @click="testLLM"
+            >
+              <TsIcon name="play" :size="16" />{{
+                testedConnectionStatus === 'loading' ? '测试中…' : '测试连接'
+              }}
+            </button>
+          </div>
+        </article>
+        <article
+          v-show="activeSection === 'tts'"
+          id="room-tts-settings"
+          class="room-settings-card"
+        >
+          <div class="room-card-head">
+            <span class="room-card-icon"
+              ><TsIcon name="audioLines" :size="23"
+            /></span>
+            <div>
+              <h2>语音与朗读<span class="settings-badge">可选</span></h2>
+              <p>让回复拥有声音；关闭语音也能正常聊天。</p>
+            </div>
+          </div>
+          <label class="settings-toggle-row"
+            ><span
+              ><strong>开启语音合成</strong
+              ><small>为八千代的回复播放合成语音。</small></span
+            ><input
+              v-model="tts.enabled"
+              type="checkbox"
+              role="switch"
+              aria-label="开启语音合成"
+          /></label>
+          <div class="settings-note">
+            <TsIcon name="info" :size="18" />
+            <p>
+              {{
+                tts.enabled
+                  ? '语音服务独立配置，保存后生效。'
+                  : '先用文字聊天也很好，需要时再开启声音。'
+              }}
+            </p>
+          </div>
+          <div v-show="tts.enabled" class="settings-section-fields">
+            <label
+              >语音服务<select
+                :value="
+                  Object.keys(TTS_PRESETS).find(
+                    (key) => TTS_PRESETS[key].provider === tts.provider,
+                  ) || 'custom'
+                "
+                @change="applySetupTtsProvider($event.target.value)"
+              >
+                <option
+                  v-for="(preset, name) in TTS_PRESETS"
+                  :key="name"
+                  :value="name"
+                >
+                  {{ preset.label }}
+                </option>
+              </select></label
+            >
+            <label v-if="tts.provider !== 'gpt-sovits'"
+              >API 密钥<input
+                v-model="tts.apiKey"
+                type="password"
+                autocomplete="off"
+                placeholder="粘贴语音服务密钥" /></label
+            ><label
+              >音色 / Voice ID<input
+                v-model="tts.voice"
+                type="text"
+                placeholder="音色名称或 Voice ID"
+            /></label>
+            <details class="settings-disclosure">
+              <summary>
+                <TsIcon name="sliders" :size="18" /><span
+                  ><strong>高级语音设置</strong
+                  ><small>端点、模型、语言与本机参数</small></span
+                ><TsIcon name="chevronDown" :size="17" />
+              </summary>
+              <div class="settings-disclosure-body form-grid">
+                <label
+                  >API 端点<input
+                    v-model="tts.apiUrl"
+                    type="url"
+                    spellcheck="false"
+                    placeholder="https://…/audio/speech" /></label
+                ><label
+                  >模型名称<input
+                    v-model="tts.model"
+                    type="text"
+                    placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"
+                /></label>
 
-            <div class="room-simple-form">
-              <label v-if="setupLlmMode === 'cloud'">提供方
-                <select v-model="setupCloudProvider" @change="applySetupCloudProvider(setupCloudProvider)">
-                  <option v-for="provider in BEGINNER_LLM_PROVIDERS" :key="provider.value" :value="provider.value">{{ provider.label }} · {{ provider.detail }}</option>
+                <template
+                  v-if="
+                    tts.provider === 'gpt-sovits' || tts.provider === 'minimax'
+                  "
+                >
+                  <label
+                    >文本语言<select v-model="tts.textLang">
+                      <option
+                        v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS"
+                        :key="`text-${option.value}`"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </option>
+                    </select></label
+                  >
+                </template>
+                <template v-if="tts.provider === 'gpt-sovits'">
+                  <label
+                    >参考音频路径<input
+                      v-model="tts.refAudioPath"
+                      type="text"
+                      placeholder="E:\\visualstudio\\tts\\xxx.wav"
+                  /></label>
+                  <label
+                    >参考音频文本<input
+                      v-model="tts.promptText"
+                      type="text"
+                      placeholder="参考音频里说的话"
+                  /></label>
+                  <label
+                    >参考音频语言<select v-model="tts.promptLang">
+                      <option
+                        v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS"
+                        :key="`prompt-${option.value}`"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </option>
+                    </select></label
+                  >
+                  <label
+                    >GPT 权重路径<input
+                      v-model="tts.gptWeightPath"
+                      type="text"
+                      placeholder="GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt"
+                  /></label>
+                  <label
+                    >SoVITS 权重路径<input
+                      v-model="tts.sovitsWeightPath"
+                      type="text"
+                      placeholder="SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth"
+                  /></label>
+                  <p
+                    v-if="gptSovitsPathWarning(tts.refAudioPath)"
+                    class="field-hint warning-text"
+                  >
+                    {{ gptSovitsPathWarning(tts.refAudioPath) }}
+                  </p>
+                </template>
+                <label v-if="tts.provider !== 'gpt-sovits'" class="check-row"
+                  ><input v-model="tts.useProxy" type="checkbox" />
+                  使用服务器受限代理规避 CORS</label
+                >
+                <p class="field-hint" v-if="tts.provider === 'gpt-sovits'">
+                  本机 GPT-SoVITS 仅支持浏览器直连
+                  http://localhost:9880/tts。请在访问设备上启动 GPT-SoVITS
+                  API，网站服务器不会代为连接 GPT-SoVITS。
+                </p>
+                <p class="field-hint" v-else>
+                  关闭时由浏览器直连供应商；开启后请求会经过本站后端，仅允许预设供应商域名，用于处理
+                  CORS 限制。
+                </p>
+              </div>
+            </details>
+            <div class="button-row">
+              <button class="ghost-btn" type="button" @click="testTTS">
+                <TsIcon name="play" :size="16" />保存并试听
+              </button>
+            </div>
+          </div>
+        </article>
+        <article
+          v-show="activeSection === 'memory'"
+          id="room-memory-settings"
+          class="room-settings-card room-memory-manager"
+        >
+          <div class="room-card-head">
+            <span class="room-card-icon"
+              ><TsIcon name="bookmark" :size="23"
+            /></span>
+            <div>
+              <h2>长期记忆</h2>
+              <p>记住聊过的事情，让对话更有连续性。</p>
+            </div>
+          </div>
+          <label class="settings-toggle-row"
+            ><span
+              ><strong>开启长期记忆</strong
+              ><small>允许保存与注入当前身份的长期记忆。</small></span
+            ><input
+              v-model="memory.enabled"
+              type="checkbox"
+              role="switch"
+              aria-label="开启长期记忆"
+          /></label>
+          <div class="settings-note">
+            <TsIcon name="shield" :size="18" />
+            <div>
+              <strong>{{ roomIdentityLabel }} · {{ memoryModeLabel }}</strong>
+              <p>{{ memoryLocationText }}</p>
+            </div>
+          </div>
+          <div class="settings-field-title">
+            <h3>记忆管理</h3>
+            <span class="settings-badge">{{ memoryCount }} 条记忆</span>
+          </div>
+          <div class="memory-manager-body" :aria-busy="memoryLoading">
+            <div class="memory-toolbar">
+              <input
+                aria-label="搜索记忆"
+                v-model="memory.query"
+                type="text"
+                placeholder="搜索记忆内容、偏好或项目"
+              />
+              <select aria-label="记忆类型" v-model="memory.type">
+                <option
+                  v-for="item in memoryTypeOptions"
+                  :key="item.value"
+                  :value="item.value"
+                >
+                  {{ item.label }}
+                </option>
+              </select>
+              <button
+                class="ghost-btn"
+                type="button"
+                :disabled="memoryLoading"
+                :aria-busy="memoryLoading"
+                @click="loadVisibleMemories"
+              >
+                {{ memoryLoading ? '读取中...' : '搜索' }}
+              </button>
+            </div>
+            <form
+              v-if="memory.editing"
+              ref="memoryEditor"
+              class="memory-editor"
+              :aria-busy="memorySavePending"
+              @submit.prevent="saveMemoryEdit"
+            >
+              <div class="memory-editor-status" role="status">
+                <span>正在编辑</span
+                ><strong>{{ memory.editing.summary || '未命名记忆' }}</strong>
+              </div>
+              <label
+                >类型
+                <select
+                  v-model="memory.editing.type"
+                  :disabled="memorySavePending"
+                >
+                  <option
+                    v-for="item in memoryTypeOptions.filter(
+                      (option) => option.value,
+                    )"
+                    :key="item.value"
+                    :value="item.value"
+                  >
+                    {{ item.label }}
+                  </option>
                 </select>
               </label>
-              <label v-if="setupLlmMode === 'cloud'">API Key
-                <input v-model="llm.apiKey" type="password" autocomplete="off" placeholder="粘贴服务商提供的密钥">
-                <small><TsIcon name="lock" :size="14" /> 只保存在当前浏览器</small>
+              <label
+                >摘要<input
+                  ref="memorySummaryInput"
+                  v-model="memory.editing.summary"
+                  type="text"
+                  :disabled="memorySavePending"
+              /></label>
+              <label
+                >内容<textarea
+                  v-model="memory.editing.content"
+                  rows="8"
+                  :disabled="memorySavePending"
+                ></textarea>
               </label>
-              <label>模型
-                <input v-model="llm.model" type="text" :placeholder="setupLlmMode === 'ollama' ? 'qwen2.5:7b' : '模型名称'">
-                <small v-if="setupLlmMode === 'ollama'">填写你已经在 Ollama 中下载的模型</small>
-              </label>
-            </div>
-
-            <div v-if="setupLlmMode === 'ollama'" class="ollama-origin-guide">
-              <div>
-                <strong>首次连接需要允许本站</strong>
-                <p>复制命令到 Windows PowerShell 运行，然后完全退出并重新打开 Ollama。</p>
+              <small v-if="canUseServerMemory" class="field-hint"
+                >{{ memory.editing.content.length }} /
+                {{
+                  memoryContentLimit
+                }}
+                字；超出上限时保存会被拒绝，原记录不会被截断。</small
+              >
+              <label
+                >标签<input
+                  v-model="memory.editing.tags"
+                  type="text"
+                  placeholder="逗号分隔"
+                  :disabled="memorySavePending"
+              /></label>
+              <div class="memory-score-row">
+                <label
+                  >重要度
+                  <strong>{{
+                    Number(memory.editing.importance).toFixed(2)
+                  }}</strong
+                  ><input
+                    v-model="memory.editing.importance"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    :disabled="memorySavePending"
+                /></label>
+                <label
+                  >置信度
+                  <strong>{{
+                    Number(memory.editing.confidence).toFixed(2)
+                  }}</strong
+                  ><input
+                    v-model="memory.editing.confidence"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    :disabled="memorySavePending"
+                /></label>
               </div>
-              <button class="ghost-btn compact" type="button" @click="copyOllamaRepairCommand"><TsIcon name="copy" :size="16" />复制修复命令</button>
+              <div v-if="memorySaveError" class="field-hint error" role="alert">
+                保存失败：{{ memorySaveError }}
+              </div>
+              <div class="button-row">
+                <button
+                  class="primary-btn"
+                  type="submit"
+                  :disabled="memorySavePending"
+                >
+                  {{ memorySavePending ? '保存中...' : '保存记忆' }}
+                </button>
+                <button
+                  class="ghost-btn"
+                  type="button"
+                  :disabled="memorySavePending"
+                  @click="cancelMemoryEdit"
+                >
+                  取消
+                </button>
+              </div>
+            </form>
+            <LoadingSkeleton
+              v-if="memoryLoading && !memoryList.length"
+              variant="list"
+              :count="4"
+              label="正在读取记忆"
+            />
+            <div
+              v-else-if="memoryError && !memoryList.length"
+              class="field-hint error"
+              role="alert"
+            >
+              {{ memoryError }}
             </div>
-
-            <details class="room-step-advanced">
-              <summary>
-                <span><TsIcon name="settings" :size="18" /><strong>高级设置</strong><small>端点、模型目录、视觉与代理</small></span>
-                <TsIcon name="chevronDown" :size="18" class="room-step-advanced-chevron" />
-              </summary>
-              <div class="room-step-advanced-body room-step-form">
-                <label>全部服务商
-                  <select value="" @change="applyAdvancedLlmPreset($event.target.value)">
-                    <option value="">选择预设</option>
-                    <optgroup label="常用服务商">
-                      <option v-for="(preset, name) in LLM_PRESETS" :key="`advanced-llm-${name}`" :value="`llm:${name}`">{{ preset.label }}</option>
-                    </optgroup>
-                    <optgroup label="阿里云百炼">
-                      <option v-for="(preset, name) in ALIYUN_LLM_PRESETS" :key="`advanced-aliyun-${name}`" :value="`aliyun:${name}`">{{ preset.label }}</option>
-                    </optgroup>
-                    <optgroup label="Xiaomi MiMo">
-                      <option v-for="(preset, name) in MIMO_LLM_PRESETS" :key="`advanced-mimo-${name}`" :value="`mimo:${name}`">{{ preset.label }}</option>
-                    </optgroup>
-                  </select>
-                </label>
-                <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="https://.../chat/completions"></label>
-                <label>API Key<input v-model="llm.apiKey" type="password" autocomplete="off" placeholder="Ollama 可留空"></label>
-                <label>模型名称<input v-model="llm.model" type="text" list="llmSyncedModels" placeholder="模型名称"></label>
-                <label>已同步模型
-                  <select :value="llm.model" @change="applySyncedModelById($event.target.value)">
-                    <option value="">选择已同步模型</option>
-                    <option v-for="option in syncedModelOptions" :key="`wizard-${option.source}-${option.id}`" :value="syncedModelSelectValue(option)">{{ option.label }} · {{ option.detail }}</option>
-                  </select>
-                </label>
-                <label>图片理解
-                  <select v-model="llm.visionMode">
-                    <option value="auto">自动识别视觉模型</option>
-                    <option value="llm">强制发送给 LLM</option>
-                    <option value="mcp">使用 MCP understand_image</option>
-                  </select>
-                </label>
-                <label class="room-step-check"><input v-model="llm.useProxy" type="checkbox" :disabled="llmProviderKey === 'ollama'"> 使用服务器受限代理</label>
-                <div class="model-recommend-card">
-                  <span>推荐模型</span>
-                  <strong>{{ recommendedModelText }}</strong>
-                  <button class="ghost-btn compact" type="button" :disabled="!recommendedModelOption" @click="applyRecommendedModel">应用推荐</button>
+            <div v-else-if="!memoryList.length" class="field-hint">
+              {{ `还没有可显示的${memoryModeLabel}。` }}
+            </div>
+            <div v-else class="memory-list">
+              <article
+                v-for="item in memoryList"
+                :key="item.id"
+                class="memory-item"
+              >
+                <div class="memory-item-head">
+                  <span class="chip">{{ memoryTypeLabel(item.type) }}</span>
+                  <span class="field-hint"
+                    >重要度 {{ Number(item.importance || 0).toFixed(2) }} ·
+                    置信度 {{ Number(item.confidence || 0).toFixed(2) }}</span
+                  >
+                </div>
+                <strong>{{ item.summary }}</strong>
+                <button
+                  class="memory-expand-btn"
+                  type="button"
+                  @click="toggleMemoryContent(item)"
+                >
+                  {{ memory.expanded[item.id] ? '收起原文' : '展开原文' }}
+                </button>
+                <p v-if="memory.expanded[item.id]">
+                  {{ item.content || '正在读取原文...' }}
+                </p>
+                <div v-if="item.tags?.length" class="memory-tags">
+                  <span v-for="tag in item.tags" :key="`${item.id}-${tag}`">{{
+                    tag
+                  }}</span>
                 </div>
                 <div class="button-row">
-                  <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" :aria-busy="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
-                  <StatusLoader v-if="modelCatalog.loading" label="正在同步模型列表" compact />
-                  <p v-else-if="modelCatalog.error" class="field-hint error" role="alert">{{ modelCatalog.error }}</p>
+                  <button
+                    class="ghost-btn"
+                    type="button"
+                    @click="editMemory(item)"
+                  >
+                    编辑
+                  </button>
+                  <button
+                    class="danger-btn"
+                    type="button"
+                    @click="deleteMemoryItem(item)"
+                  >
+                    删除
+                  </button>
                 </div>
+              </article>
+            </div>
+            <div
+              v-if="memoryError && memoryList.length"
+              class="field-hint error"
+              role="alert"
+            >
+              {{ memoryError }}
+            </div>
+            <div v-if="memoryList.length" class="button-row memory-list-more">
+              <span class="field-hint"
+                >已显示 {{ memoryList.length }} / {{ memoryFilteredTotal }} 条{{
+                  memory.query || memory.type ? '匹配记忆' : '记忆'
+                }}</span
+              >
+              <button
+                v-if="memoryHasMore"
+                class="ghost-btn"
+                type="button"
+                :disabled="memoryLoading"
+                @click="loadMoreMemories"
+              >
+                {{ memoryLoading ? '加载中...' : '加载更多' }}
+              </button>
+            </div>
+          </div>
+          <details class="settings-disclosure">
+            <summary>
+              <TsIcon name="sliders" :size="18" /><span
+                ><strong>同步与存储</strong
+                ><small>查看记忆检索与同步状态</small></span
+              ><TsIcon name="chevronDown" :size="17" />
+            </summary>
+            <div class="settings-disclosure-body form-grid">
+              <p class="field-hint">
+                {{ memoryVectorLabel
+                }}<template v-if="memoryVector.embedding">
+                  · {{ memoryVector.embedding }}</template
+                >
+              </p>
+              <div class="button-row">
+                <button
+                  class="ghost-btn"
+                  type="button"
+                  @click="loadVisibleMemories"
+                >
+                  刷新记忆</button
+                ><button
+                  v-if="canUseServerMemory"
+                  class="ghost-btn"
+                  type="button"
+                  @click="syncMemoryVectors"
+                >
+                  同步向量库
+                </button>
               </div>
-            </details>
-
-            <div class="room-setup-actions">
-              <button class="ghost-btn" type="button" @click="testLLM"><TsIcon name="play" :size="16" />测试连接</button>
-              <button class="primary-btn" type="button" @click="saveSetupStep">保存并继续<TsIcon name="arrowRight" :size="17" /></button>
             </div>
-          </section>
-
-          <section v-else-if="setupStep === 2" class="room-setup-step-panel">
-            <div class="room-setup-title">
-              <span>第 2 步，共 3 步 · 可选</span>
-              <h2>让八千代开口</h2>
-              <p>不需要语音也可以直接跳过，聊天功能不受影响。</p>
+          </details>
+          <div class="settings-danger">
+            <div>
+              <strong>清空当前身份的记忆</strong>
+              <p>不会清除其他用户的记忆，操作前需确认。</p>
             </div>
-
-            <div class="room-choice-grid">
-              <label class="room-choice-card" :class="{ selected: !tts.enabled }">
-                <input class="room-choice-radio" type="radio" name="setup-tts-mode" :checked="!tts.enabled" @change="tts.enabled = false">
-                <span class="room-choice-icon"><TsIcon name="volume" :size="22" /></span>
-                <span><strong>暂不开启</strong><small>只使用文字聊天</small></span>
-              </label>
-              <label class="room-choice-card" :class="{ selected: tts.enabled }">
-                <input class="room-choice-radio" type="radio" name="setup-tts-mode" :checked="tts.enabled" @change="tts.enabled = true">
-                <span class="room-choice-icon"><TsIcon name="audioLines" :size="22" /></span>
-                <span><strong>开启语音</strong><small>为回复播放合成语音</small></span>
-              </label>
-            </div>
-
-            <div v-if="tts.enabled" class="room-simple-form">
-              <label>语音服务
-                <select :value="Object.keys(TTS_PRESETS).find((key) => TTS_PRESETS[key].provider === tts.provider) || 'mimo'" @change="applySetupTtsProvider($event.target.value)">
-                  <option v-for="provider in BEGINNER_TTS_PROVIDERS" :key="provider.value" :value="provider.value">{{ provider.label }}</option>
-                </select>
-              </label>
-              <label v-if="tts.provider !== 'gpt-sovits'">API Key
-                <input v-model="tts.apiKey" type="password" autocomplete="off" placeholder="粘贴语音服务密钥">
-                <small><TsIcon name="lock" :size="14" /> 只保存在当前浏览器</small>
-              </label>
-              <label v-else>参考音频
-                <input v-model="tts.refAudioPath" type="text" placeholder="本机参考音频路径">
-                <small>GPT-SoVITS 在当前设备上运行</small>
-              </label>
-              <label>音色
-                <input v-model="tts.voice" type="text" placeholder="使用默认音色即可">
-              </label>
-            </div>
-
-            <details class="room-step-advanced">
-              <summary>
-                <span><TsIcon name="settings" :size="18" /><strong>高级设置</strong><small>端点、模型、语言与本机参数</small></span>
-                <TsIcon name="chevronDown" :size="18" class="room-step-advanced-chevron" />
-              </summary>
-              <div class="room-step-advanced-body room-step-form">
-                <label class="room-step-check"><input v-model="tts.enabled" type="checkbox"> 启用语音合成</label>
-                <label>全部语音服务
-                  <select :value="Object.keys(TTS_PRESETS).find((key) => TTS_PRESETS[key].provider === tts.provider) || 'custom'" @change="applyTtsPreset($event.target.value)">
-                    <option v-for="(preset, name) in TTS_PRESETS" :key="`advanced-tts-${name}`" :value="name">{{ preset.label }}</option>
-                  </select>
-                </label>
-                <label>API 端点<input v-model="tts.apiUrl" type="text" placeholder="https://.../audio/speech"></label>
-                <label>API Key<input v-model="tts.apiKey" type="password" autocomplete="off" placeholder="本机服务可留空"></label>
-                <label>模型名称<input v-model="tts.model" type="text" placeholder="tts-1 / speech-2.8-hd"></label>
-                <label>音色 / Voice ID<input v-model="tts.voice" type="text" placeholder="音色名称或 Voice ID"></label>
-                <label v-if="tts.provider === 'gpt-sovits' || tts.provider === 'minimax'">文本语言
-                  <select v-model="tts.textLang">
-                    <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`wizard-text-${option.value}`" :value="option.value">{{ option.label }}</option>
-                  </select>
-                </label>
-                <template v-if="tts.provider === 'gpt-sovits'">
-                  <label>参考音频路径<input v-model="tts.refAudioPath" type="text" placeholder="本机 wav 文件路径"></label>
-                  <label>参考音频文本<input v-model="tts.promptText" type="text" placeholder="参考音频里说的话"></label>
-                  <label>参考音频语言
-                    <select v-model="tts.promptLang">
-                      <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`wizard-prompt-${option.value}`" :value="option.value">{{ option.label }}</option>
-                    </select>
-                  </label>
-                  <label>GPT 权重路径<input v-model="tts.gptWeightPath" type="text"></label>
-                  <label>SoVITS 权重路径<input v-model="tts.sovitsWeightPath" type="text"></label>
-                </template>
-                <label v-if="tts.provider !== 'gpt-sovits'" class="room-step-check"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理</label>
-              </div>
-            </details>
-
-            <div class="room-setup-actions">
-              <button class="ghost-btn" type="button" @click="setupStep = 1"><TsIcon name="arrowLeft" :size="17" />上一步</button>
-              <button v-if="tts.enabled" class="ghost-btn" type="button" @click="testTTS"><TsIcon name="play" :size="16" />试听</button>
-              <button class="primary-btn" type="button" @click="saveSetupStep">{{ tts.enabled ? '保存并继续' : '跳过并继续' }}<TsIcon name="arrowRight" :size="17" /></button>
-            </div>
-          </section>
-
-          <section v-else class="room-setup-step-panel">
-            <div class="room-setup-title">
-              <span>第 3 步，共 3 步</span>
-              <h2>确认记忆方式</h2>
-              <p>开启后，八千代会逐渐记住你的偏好和重要对话。</p>
-            </div>
-
-            <div class="room-choice-grid">
-              <label class="room-choice-card" :class="{ selected: memory.enabled }">
-                <input class="room-choice-radio" type="radio" name="setup-memory-mode" :checked="memory.enabled" @change="memory.enabled = true">
-                <span class="room-choice-icon"><TsIcon name="bookmark" :size="22" /></span>
-                <span><strong>开启记忆 <em>推荐</em></strong><small>{{ memoryModeLabel }}，已有 {{ memoryCount }} 条</small></span>
-              </label>
-              <label class="room-choice-card" :class="{ selected: !memory.enabled }">
-                <input class="room-choice-radio" type="radio" name="setup-memory-mode" :checked="!memory.enabled" @change="memory.enabled = false">
-                <span class="room-choice-icon"><TsIcon name="lock" :size="22" /></span>
-                <span><strong>关闭记忆</strong><small>每次对话都从当前上下文开始</small></span>
-              </label>
-            </div>
-
-            <div class="room-memory-note">
-              <TsIcon name="shield" :size="20" />
-              <div><strong>{{ roomIdentityLabel }}</strong><p>{{ memoryLocationText }}</p></div>
-            </div>
-
-            <details class="room-step-advanced">
-              <summary>
-                <span><TsIcon name="settings" :size="18" /><strong>高级设置</strong><small>存储、知识库与记忆数据</small></span>
-                <TsIcon name="chevronDown" :size="18" class="room-step-advanced-chevron" />
-              </summary>
-              <div class="room-step-advanced-body room-step-form">
-                <label class="room-step-check"><input v-model="memory.enabled" type="checkbox"> 启用长期记忆</label>
-                <label class="room-step-check"><input v-model="knowledge.enabled" type="checkbox"> 注入角色知识库</label>
-                <div class="room-step-info">
-                  <TsIcon name="bookmark" :size="18" />
-                  <div><strong>{{ memoryModeLabel }} · {{ memoryVectorLabel }}</strong><p>{{ memoryLocationText }}<template v-if="memoryVector.embedding"> 当前向量：{{ memoryVector.embedding }}。</template></p></div>
-                </div>
-                <div class="room-step-data-actions">
-                  <button class="ghost-btn" type="button" @click="loadVisibleMemories">刷新记忆</button>
-                  <button v-if="canUseServerMemory" class="ghost-btn" type="button" @click="syncMemoryVectors">同步向量库</button>
-                  <button class="ghost-btn" type="button" @click="openGlobalAdvanced('memory')">完整记忆管理</button>
-                  <button class="ghost-btn" type="button" @click="openGlobalAdvanced('knowledge')">完整知识库管理</button>
-                  <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>
-                </div>
-                <p class="field-hint">知识库当前有 {{ knowledge.entries.length }} 条，长期记忆当前有 {{ memoryCount }} 条。展开完整设置后可逐条编辑。</p>
-              </div>
-            </details>
-
-            <div class="room-setup-actions">
-              <button class="ghost-btn" type="button" @click="setupStep = 2"><TsIcon name="arrowLeft" :size="17" />上一步</button>
-              <button class="primary-btn" type="button" @click="saveSetupStep">保存设置</button>
-              <a class="primary-btn room-enter-btn" href="/room" @click.prevent="enterRoom">进入房间<TsIcon name="arrowRight" :size="17" /></a>
-            </div>
-          </section>
+            <button class="danger-btn" type="button" @click="clearMemory">
+              清空记忆
+            </button>
+          </div>
         </article>
-
-        <aside class="room-setup-aside">
-          <section class="room-setup-summary">
-            <div class="room-setup-summary-head">
-              <span><TsIcon name="settings" :size="18" /> 当前设置</span>
-              <strong>{{ setupProgress }}/3</strong>
-            </div>
-            <div v-for="item in setupStatusItems" :key="item.label" class="room-setup-summary-item" :class="{ ready: item.ready }">
-              <span><TsIcon :name="item.icon" :size="18" /></span>
-              <div><small>{{ item.label }}</small><strong>{{ item.value }}</strong></div>
-            </div>
-          </section>
-          <section class="room-setup-help">
-            <TsIcon name="sparkles" :size="19" />
-            <div>
-              <strong>不知道怎么选？</strong>
-              <p v-if="setupStep === 1">电脑已安装 Ollama 就选本机；否则选常用的云端服务。</p>
-              <p v-else-if="setupStep === 2">语音完全可选，先跳过也不影响聊天。</p>
-              <p v-else>游客记忆只留在当前浏览器，登录后会使用私有服务端记忆。</p>
-            </div>
-          </section>
-        </aside>
-      </div>
-    </section>
-
-    <details class="room-advanced-settings" :open="globalAdvancedOpen" @toggle="globalAdvancedOpen = $event.currentTarget.open">
-      <summary>
-        <span class="room-advanced-icon"><TsIcon name="settings" :size="20" /></span>
-        <span><strong>高级设置</strong><small>模型位置、代理、视觉策略、知识库、MCP 与 Live2D 调试</small></span>
-        <TsIcon name="chevronDown" :size="19" class="room-advanced-chevron" />
-      </summary>
-      <section class="room-settings-grid">
-      <article id="room-model-settings" class="room-settings-card room-settings-card-primary">
-        <div class="room-card-head">
-          <span class="room-card-icon"><TsIcon name="layers" :size="20" /></span>
-          <div>
-            <span>01 · Space</span>
-            <h2>模型与浮窗</h2>
-            <p>只调整房间里的视觉位置和浮窗布局，不影响聊天、语音或记忆数据。</p>
-          </div>
-        </div>
-        <div class="form-grid">
-          <label>模型大小 <strong>{{ model.scale }}%</strong><input v-model="model.scale" type="range" min="60" max="160"></label>
-          <label>水平位置 <strong>{{ model.xOffset }}</strong><input v-model="model.xOffset" type="range" min="-240" max="240"></label>
-          <label>垂直位置 <strong>{{ model.yOffset }}</strong><input v-model="model.yOffset" type="range" min="-180" max="180"></label>
-          <p class="field-hint">Live2D 现在移动端与桌面端保持同一套标准模型、真实设备 DPR、浏览器原生刷新率和完整物理效果。</p>
-          <div v-if="modelSaveNotice.visible" class="model-save-notice" role="status" aria-live="polite">
-            <span class="room-test-status success">已保存</span>
-            <div>
-              <strong>{{ modelSaveNotice.text }}</strong>
-              <p>{{ modelSaveNotice.detail }}</p>
-            </div>
-          </div>
-          <div class="button-row">
-            <button class="primary-btn" type="button" @click="saveModel">保存模型设置</button>
-            <button class="ghost-btn" type="button" @click="resetModel">重置模型</button>
-            <button class="ghost-btn" type="button" @click="resetPanels">重置浮窗位置</button>
-          </div>
-        </div>
-      </article>
-
-      <article id="room-live2d-debug" class="room-settings-card room-live2d-debug-card">
-        <div class="room-card-head">
-          <span class="room-card-icon"><TsIcon name="star" :size="20" /></span>
-          <div>
-            <span>07 · Debug</span>
-            <h2>Live2D 调试</h2>
-            <p>用于临时排查表情、动作队列和恢复时间，正常使用时可以跳过。</p>
-          </div>
-        </div>
-        <div class="live2d-debug-summary">
-          <span class="room-test-status" :class="live2dDebug.status === 'playing' ? 'loading' : live2dDebug.status === 'pending' ? 'warning' : 'success'">
-            {{ live2DStatusLabel() }}
-          </span>
-          <span class="field-hint">最近更新：{{ formatDebugTime(live2dDebug.updatedAt) }}</span>
-          <span class="field-hint">队列进度：{{ live2dDebug.activeIndex }} / {{ live2dDebug.total }}</span>
-        </div>
-        <div class="form-grid">
-          <label>表情
-            <select v-model="live2dTest.expression">
-              <option v-for="item in live2dExpressionOptions" :key="item.id" :value="item.id">{{ item.label }} / {{ item.id }}</option>
-            </select>
-          </label>
-          <label>动作
-            <select v-model="live2dTest.motion">
-              <option v-for="item in live2dMotionOptions" :key="item.id || 'none'" :value="item.id">{{ item.label }}{{ item.id ? ` / ${item.id}` : '' }}</option>
-            </select>
-          </label>
-          <label>恢复时间 <strong>{{ live2dTest.durationMs }}ms</strong><input v-model="live2dTest.durationMs" type="range" min="800" max="12000" step="100"></label>
-          <div class="button-row">
-            <button class="primary-btn" type="button" @click="queueCustomLive2DTest">测试当前组合</button>
-            <button class="ghost-btn" type="button" @click="queuePresetLive2DSequence('greeting')">问候队列</button>
-            <button class="ghost-btn" type="button" @click="queuePresetLive2DSequence('shy')">害羞队列</button>
-            <button class="ghost-btn" type="button" @click="queuePresetLive2DSequence('tears')">落泪队列</button>
-            <button class="danger-btn" type="button" @click="clearLive2DDebugQueue">清空队列</button>
-          </div>
-          <p class="field-hint">调试指令会写入待执行队列。返回房间后自动播放；如果房间在另一个标签页打开，也会通过 storage 事件执行。</p>
-          <details class="live2d-debug-details">
-            <summary>最近一次控制 JSON</summary>
-            <pre>{{ live2dDebugJson }}</pre>
-          </details>
-          <div v-if="live2dDebug.history.length" class="live2d-debug-history">
-            <article v-for="item in live2dDebug.history" :key="item.id" class="memory-item">
-              <div class="memory-item-head">
-                <span class="chip">{{ item.source || 'debug' }}</span>
-                <span class="field-hint">{{ formatDebugTime(item.createdAt) }}</span>
-              </div>
-              <pre>{{ JSON.stringify(item.normalized, null, 2) }}</pre>
-            </article>
-          </div>
-        </div>
-      </article>
-
-      <article id="room-llm-settings" class="room-settings-card room-settings-card-primary" :aria-busy="modelCatalog.loading">
-        <div class="room-card-head">
-          <span class="room-card-icon"><TsIcon name="message" :size="20" /></span>
-          <div>
-            <span>02 · Intelligence</span>
-            <h2>LLM API</h2>
-            <p>房间能否对话的第一步。选预设或本机 Ollama，保存后先测试连接。</p>
-          </div>
-        </div>
-        <div class="button-row preset-row">
-          <details class="preset-menu">
-            <summary class="chip">阿里云百炼</summary>
-            <div class="preset-submenu">
-              <button v-for="(preset, name) in ALIYUN_LLM_PRESETS" :key="name" class="chip" type="button" @click="applyAliyunPreset(name)">{{ preset.label }}</button>
-            </div>
-          </details>
-          <details class="preset-menu">
-            <summary class="chip">Xiaomi MiMo</summary>
-            <div class="preset-submenu">
-              <button v-for="(preset, name) in MIMO_LLM_PRESETS" :key="name" class="chip" type="button" @click="applyMimoPreset(name)">{{ preset.label }}</button>
-            </div>
-          </details>
-          <button v-for="(preset, name) in LLM_PRESETS" :key="name" class="chip" type="button" @click="applyPreset(name)">{{ preset.label }}</button>
-        </div>
-        <div class="form-grid">
-          <label>API 端点<input v-model="llm.apiUrl" type="text" placeholder="http://localhost:11434/api/chat"></label>
-          <label>API Key<input v-model="llm.apiKey" type="password" placeholder="Ollama 可留空 / sk-..."></label>
-          <p class="field-hint warning-text">API Key 仅保存在当前浏览器。localhost / 127.0.0.1 指当前设备，手机不会自动连接电脑上的服务；跨设备使用请填写手机可访问的服务地址。</p>
-          <label>模型名称<input v-model="llm.model" type="text" list="llmSyncedModels" placeholder="gpt-4o-mini"></label>
-          <label>对话补充指令<textarea v-model="llm.systemPrompt" placeholder="可选：回复长度、语言或交流偏好"></textarea></label>
-          <p class="field-hint">仅用于聊天，日记人设保存在独立存档中。接口设置与知识库保存在当前浏览器，不会自动同步到另一台设备。</p>
-          <datalist id="llmSyncedModels">
-            <option v-for="option in syncedModelOptions" :key="`${option.source}-${option.id}`" :value="syncedModelSelectValue(option)">{{ option.label }}</option>
-          </datalist>
-          <label>同步模型列表<select :value="llm.model" @change="applySyncedModelById($event.target.value)">
-            <option value="">选择已同步模型</option>
-            <option v-for="option in syncedModelOptions" :key="`${option.source}-select-${option.id}`" :value="syncedModelSelectValue(option)">
-              {{ option.label }} · {{ option.detail }}
-            </option>
-          </select></label>
-          <p class="field-hint" :class="{ error: modelCatalog.error }" :role="modelCatalog.error ? 'alert' : undefined">
-            当前识别供应商：{{ llmProviderKey }}。OpenRouter 会同步完整模型目录；其他供应商会按模型前缀筛选并转换为原生模型名，无法确定时保留本地预设。
-            {{ modelCatalog.message }}
-          </p>
-          <div class="model-recommend-card">
-            <span>最新推荐模型</span>
-            <strong>{{ recommendedModelText }}</strong>
-            <button class="ghost-btn compact" type="button" :disabled="!recommendedModelOption" @click="applyRecommendedModel">应用最新模型</button>
-          </div>
-          <label>图片理解策略<select v-model="llm.visionMode">
-            <option value="auto">自动识别视觉模型</option>
-            <option value="llm">强制发送给 LLM</option>
-            <option value="mcp">使用 MCP understand_image</option>
-          </select></label>
-          <label class="check-row"><input v-model="llm.useProxy" type="checkbox" :disabled="llmProviderKey === 'ollama'"> 使用服务器受限代理规避 CORS</label>
-          <p class="field-hint" v-if="llmProviderKey === 'ollama'">Ollama 本机模式会从当前浏览器直连 http://localhost:11434，网站服务器不会代为连接你的本机模型。</p>
-          <p class="field-hint" v-else>关闭时由浏览器直连供应商，更保护隐私；开启后请求会经过本站后端，仅允许预设供应商域名，用于处理 CORS 限制。</p>
-          <div class="button-row">
-            <button class="primary-btn" type="button" @click="saveLLM">保存 LLM</button>
-            <button class="ghost-btn" type="button" @click="testLLM">测试连接</button>
-            <button v-if="llmProviderKey === 'ollama'" class="ghost-btn" type="button" @click="copyOllamaRepairCommand"><TsIcon name="copy" :size="16" />复制 Ollama 修复命令</button>
-            <button class="ghost-btn" type="button" :disabled="modelCatalog.loading" :aria-busy="modelCatalog.loading" @click="syncModelCatalog">{{ modelCatalog.loading ? '同步中...' : '同步模型列表' }}</button>
-            <StatusLoader v-if="modelCatalog.loading" label="正在同步模型列表" compact />
-          </div>
-        </div>
-      </article>
-
-      <article id="room-tts-settings" class="room-settings-card">
-        <div class="room-card-head">
-          <span class="room-card-icon"><TsIcon name="audioLines" :size="20" /></span>
-          <div>
-            <span>03 · Voice</span>
-            <h2>TTS 语音</h2>
-            <p>语音是增强项。先确认 LLM 能回复，再启用 TTS 并播放测试音频。</p>
-          </div>
-        </div>
-        <div class="button-row preset-row">
-          <button v-for="(preset, name) in TTS_PRESETS" :key="name" class="chip" type="button" @click="applyTtsPreset(name)">{{ preset.label }}</button>
-        </div>
-        <div class="form-grid">
-          <label class="check-row"><input v-model="tts.enabled" type="checkbox"> 启用语音合成</label>
-          <label>Provider<select v-model="tts.provider">
-            <option value="mimo">MiMo-V2.5-TTS</option>
-            <option value="openai">OpenAI TTS</option>
-            <option value="openai-compatible">OpenAI Compatible</option>
-            <option value="minimax">MiniMax TTS</option>
-            <option value="elevenlabs">ElevenLabs</option>
-            <option value="gpt-sovits">本地 GPT-SoVITS</option>
-            <option value="custom">自定义 OpenAI 兼容</option>
-          </select></label>
-          <label>API 端点<input v-model="tts.apiUrl" type="text" placeholder="https://api.openai.com/v1/audio/speech"></label>
-          <label>API Key<input v-model="tts.apiKey" type="password" placeholder="sk-..."></label>
-          <p class="field-hint warning-text">API Key 仅保存在当前浏览器本地，不会写入服务器；不建议在公共电脑使用，用完请清除浏览器站点数据。</p>
-          <label>模型名称<input v-model="tts.model" type="text" placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"></label>
-          <label>音色 / Voice ID<input v-model="tts.voice" type="text" placeholder="alloy / female-shaonv / ElevenLabs voice id"></label>
-          <template v-if="tts.provider === 'gpt-sovits' || tts.provider === 'minimax'">
-            <label>文本语言<select v-model="tts.textLang">
-              <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`text-${option.value}`" :value="option.value">{{ option.label }}</option>
-            </select></label>
-          </template>
-          <template v-if="tts.provider === 'gpt-sovits'">
-            <label>参考音频路径<input v-model="tts.refAudioPath" type="text" placeholder="E:\\visualstudio\\tts\\xxx.wav"></label>
-            <label>参考音频文本<input v-model="tts.promptText" type="text" placeholder="参考音频里说的话"></label>
-            <label>参考音频语言<select v-model="tts.promptLang">
-              <option v-for="option in GPT_SOVITS_LANGUAGE_OPTIONS" :key="`prompt-${option.value}`" :value="option.value">{{ option.label }}</option>
-            </select></label>
-            <label>GPT 权重路径<input v-model="tts.gptWeightPath" type="text" placeholder="GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt"></label>
-            <label>SoVITS 权重路径<input v-model="tts.sovitsWeightPath" type="text" placeholder="SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth"></label>
-            <p v-if="gptSovitsPathWarning(tts.refAudioPath)" class="field-hint warning-text">{{ gptSovitsPathWarning(tts.refAudioPath) }}</p>
-          </template>
-          <label v-if="tts.provider !== 'gpt-sovits'" class="check-row"><input v-model="tts.useProxy" type="checkbox"> 使用服务器受限代理规避 CORS</label>
-          <p class="field-hint" v-if="tts.provider === 'gpt-sovits'">本机 GPT-SoVITS 仅支持浏览器直连 http://localhost:9880/tts。请在访问设备上启动 GPT-SoVITS API，网站服务器不会代为连接 GPT-SoVITS。</p>
-          <p class="field-hint" v-else>关闭时由浏览器直连供应商；开启后请求会经过本站后端，仅允许预设供应商域名，用于处理 CORS 限制。</p>
-          <div class="button-row">
-            <button class="primary-btn" type="button" @click="saveTTS">保存 TTS</button>
-            <button class="ghost-btn" type="button" @click="testTTS">测试语音</button>
-          </div>
-        </div>
-      </article>
-
-      <article id="room-memory-settings" class="room-settings-card">
-        <div class="room-card-head">
-          <span class="room-card-icon"><TsIcon name="bookmark" :size="20" /></span>
-          <div>
-            <span>04 · Memory</span>
-            <h2>长期记忆</h2>
-            <p>控制对话是否写入长期记忆；登录用户与游客记忆位置不同。</p>
-          </div>
-        </div>
-        <div class="form-grid">
-          <label class="check-row"><input v-model="memory.enabled" type="checkbox"> 启用长期记忆</label>
-          <p class="field-hint">{{ memoryLocationText }} 当前身份已有 {{ memoryCount }} 条记忆。</p>
-          <div class="button-row">
-            <button class="primary-btn" type="button" @click="saveMemory">保存记忆设置</button>
-            <button class="ghost-btn" type="button" @click="loadVisibleMemories">刷新记忆</button>
-            <button class="danger-btn" type="button" @click="clearMemory">清空本用户记忆</button>
-          </div>
-        </div>
-      </article>
-
-      <article id="room-knowledge-settings" class="room-settings-card room-knowledge-manager" :class="{ collapsed: !knowledge.managerOpen }">
-        <button
-          class="memory-manager-toggle"
-          type="button"
-          :aria-expanded="knowledge.managerOpen"
-          @click="toggleKnowledgeManager"
+        <article
+          v-show="activeSection === 'knowledge'"
+          id="room-knowledge-settings"
+          class="room-settings-card room-knowledge-manager"
         >
-          <span>
-            <strong><TsIcon name="book" :size="20" /> 角色知识库</strong>
-            <small>用于还原八千代的人格、说话方式和关系设定。当前有 {{ knowledge.entries.length }} 条知识。</small>
-          </span>
-          <span class="memory-manager-icon">{{ knowledge.managerOpen ? '收起' : '展开' }}</span>
-        </button>
-        <div v-if="knowledge.managerOpen" class="memory-manager-body">
-          <label class="check-row"><input v-model="knowledge.enabled" type="checkbox"> 启用角色知识库注入</label>
-          <p class="field-hint">知识库保存在当前浏览器 localStorage。聊天时会按用户问题选取相关条目注入 LLM，不会覆盖每个用户独立的长期记忆。</p>
+          <div class="room-card-head">
+            <span class="room-card-icon"
+              ><TsIcon name="book" :size="23"
+            /></span>
+            <div>
+              <h2>角色知识库</h2>
+              <p>角色设定与长期记忆分开管理，避免相互覆盖。</p>
+            </div>
+          </div>
+          <label class="settings-toggle-row"
+            ><span
+              ><strong>启用角色知识库注入</strong
+              ><small>聊天时选取相关条目，补充八千代的设定。</small></span
+            ><input
+              v-model="knowledge.enabled"
+              type="checkbox"
+              role="switch"
+              aria-label="启用角色知识库注入"
+          /></label>
+          <div class="settings-note">
+            <TsIcon name="lock" :size="18" />
+            <p>
+              保存在当前浏览器，不自动同步到其他设备，也不会覆盖你的长期记忆。
+            </p>
+          </div>
+          <div class="settings-field-title">
+            <h3>
+              知识条目 <small>{{ knowledge.entries.length }} 条</small>
+            </h3>
+            <button
+              class="ghost-btn"
+              type="button"
+              @click="knowledgeDraftOpen = true"
+            >
+              <TsIcon name="plus" :size="16" />添加条目
+            </button>
+          </div>
           <form
             ref="knowledgeEditor"
+            v-if="knowledgeDraftOpen || knowledge.editingId"
             class="knowledge-editor"
             :class="{ 'is-editing': knowledge.editingId }"
             @submit.prevent="saveKnowledgeEntry"
           >
-            <div v-if="knowledge.editingId" class="knowledge-editor-status" role="status" aria-live="polite">
+            <div
+              v-if="knowledge.editingId"
+              class="knowledge-editor-status"
+              role="status"
+              aria-live="polite"
+            >
               <span>正在编辑</span>
               <strong>{{ knowledge.draft.title }}</strong>
             </div>
-            <label>标题<input ref="knowledgeTitleInput" v-model="knowledge.draft.title" type="text" placeholder="例如：月见八千代的说话方式"></label>
-            <label>内容<textarea v-model="knowledge.draft.content" placeholder="写入角色事实、人设规则、口吻或行为边界"></textarea></label>
-            <label>标签<input v-model="knowledge.draft.tags" type="text" placeholder="逗号分隔，如 温柔, 月读, 创作者"></label>
-            <label class="check-row"><input v-model="knowledge.draft.enabled" type="checkbox"> 启用这条知识</label>
+            <label
+              >标题<input
+                ref="knowledgeTitleInput"
+                v-model="knowledge.draft.title"
+                type="text"
+                placeholder="例如：月见八千代的说话方式"
+            /></label>
+            <label
+              >内容<textarea
+                v-model="knowledge.draft.content"
+                placeholder="写入角色事实、人设规则、口吻或行为边界"
+              ></textarea>
+            </label>
+            <label
+              >标签<input
+                v-model="knowledge.draft.tags"
+                type="text"
+                placeholder="逗号分隔，如 温柔, 月读, 创作者"
+            /></label>
+            <label class="check-row"
+              ><input v-model="knowledge.draft.enabled" type="checkbox" />
+              启用这条知识</label
+            >
             <div class="button-row">
-              <button class="primary-btn" type="submit">{{ knowledge.editingId ? '保存条目' : '添加条目' }}</button>
-              <button class="ghost-btn" type="button" @click="resetKnowledgeDraft">{{ knowledge.editingId ? '取消编辑' : '清空表单' }}</button>
-              <button class="ghost-btn" type="button" @click="saveKnowledge">保存知识库</button>
-              <button class="danger-btn" type="button" @click="resetKnowledgeDefaults">恢复默认</button>
+              <button class="primary-btn" type="submit">
+                {{ knowledge.editingId ? '保存条目' : '添加条目' }}
+              </button>
+              <button
+                class="ghost-btn"
+                type="button"
+                @click="
+                  resetKnowledgeDraft();
+                  knowledgeDraftOpen = false;
+                "
+              >
+                {{ knowledge.editingId ? '取消编辑' : '清空表单' }}
+              </button>
             </div>
           </form>
           <div class="knowledge-list">
-            <article v-for="item in knowledge.entries" :key="item.id" class="memory-item knowledge-item" :class="{ disabled: !item.enabled }">
+            <article
+              v-for="item in knowledge.entries"
+              :key="item.id"
+              class="memory-item knowledge-item"
+              :class="{ disabled: !item.enabled }"
+            >
               <div class="memory-item-head">
                 <span class="chip">{{ item.enabled ? '启用' : '停用' }}</span>
                 <span class="field-hint">{{ item.tags || '未设置标签' }}</span>
               </div>
               <strong>{{ item.title }}</strong>
-              <p>{{ item.content }}</p>
+              <p>
+                {{
+                  knowledgeExpanded[item.id]
+                    ? item.content
+                    : item.content.slice(0, 160)
+                }}{{
+                  !knowledgeExpanded[item.id] && item.content.length > 160
+                    ? '…'
+                    : ''
+                }}
+              </p>
+              <button
+                v-if="item.content.length > 160"
+                class="memory-expand-btn"
+                type="button"
+                @click="
+                  knowledgeExpanded[item.id] = !knowledgeExpanded[item.id]
+                "
+              >
+                {{ knowledgeExpanded[item.id] ? '收起内容' : '查看完整内容' }}
+              </button>
               <div class="button-row">
-                <button class="ghost-btn" type="button" @click="editKnowledgeEntry(item)">编辑</button>
-                <button class="danger-btn" type="button" @click="deleteKnowledgeEntry(item)">删除</button>
+                <button
+                  class="ghost-btn"
+                  type="button"
+                  @click="editKnowledgeEntry(item)"
+                >
+                  编辑
+                </button>
+                <button
+                  class="danger-btn"
+                  type="button"
+                  @click="deleteKnowledgeEntry(item)"
+                >
+                  删除
+                </button>
               </div>
             </article>
           </div>
-        </div>
-      </article>
-
-      <article class="room-settings-card room-memory-manager" :class="{ collapsed: !memory.managerOpen }">
-        <button
-          class="memory-manager-toggle"
-          type="button"
-          :aria-expanded="memory.managerOpen"
-          @click="toggleMemoryManager"
-        >
-          <span>
-            <strong><TsIcon name="bookmark" :size="20" /> 记忆管理</strong>
-            <small>{{ memoryModeLabel }}已有 {{ memoryCount }} 条，展开后可搜索、编辑和删除。</small>
-          </span>
-          <span class="memory-manager-icon">{{ memory.managerOpen ? '收起' : '展开' }}</span>
-        </button>
-        <div v-if="memory.managerOpen" class="memory-manager-body" :aria-busy="memoryLoading">
-          <div class="memory-toolbar">
-            <input v-model="memory.query" type="text" placeholder="搜索记忆内容、偏好或项目">
-            <select v-model="memory.type">
-              <option v-for="item in memoryTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
-            </select>
-            <button class="ghost-btn" type="button" :disabled="memoryLoading" :aria-busy="memoryLoading" @click="loadVisibleMemories">{{ memoryLoading ? '读取中...' : '检索' }}</button>
-          </div>
-          <form v-if="memory.editing" ref="memoryEditor" class="memory-editor" :aria-busy="memorySavePending" @submit.prevent="saveMemoryEdit">
-          <div class="memory-editor-status" role="status"><span>正在编辑</span><strong>{{ memory.editing.summary || '未命名记忆' }}</strong></div>
-          <label>类型
-            <select v-model="memory.editing.type" :disabled="memorySavePending">
-              <option v-for="item in memoryTypeOptions.filter((option) => option.value)" :key="item.value" :value="item.value">{{ item.label }}</option>
-            </select>
-          </label>
-          <label>摘要<input ref="memorySummaryInput" v-model="memory.editing.summary" type="text" :disabled="memorySavePending"></label>
-          <label>内容<textarea v-model="memory.editing.content" rows="8" :disabled="memorySavePending"></textarea></label>
-          <small v-if="canUseServerMemory" class="field-hint">{{ memory.editing.content.length }} / {{ memoryContentLimit }} 字；超出上限时保存会被拒绝，原记录不会被截断。</small>
-          <label>标签<input v-model="memory.editing.tags" type="text" placeholder="逗号分隔" :disabled="memorySavePending"></label>
-          <div class="memory-score-row">
-            <label>重要度 <strong>{{ Number(memory.editing.importance).toFixed(2) }}</strong><input v-model="memory.editing.importance" type="range" min="0" max="1" step="0.05" :disabled="memorySavePending"></label>
-            <label>置信度 <strong>{{ Number(memory.editing.confidence).toFixed(2) }}</strong><input v-model="memory.editing.confidence" type="range" min="0" max="1" step="0.05" :disabled="memorySavePending"></label>
-          </div>
-          <div v-if="memorySaveError" class="field-hint error" role="alert">保存失败：{{ memorySaveError }}</div>
-          <div class="button-row">
-            <button class="primary-btn" type="submit" :disabled="memorySavePending">{{ memorySavePending ? '保存中...' : '保存记忆' }}</button>
-            <button class="ghost-btn" type="button" :disabled="memorySavePending" @click="cancelMemoryEdit">取消</button>
-          </div>
-          </form>
-          <LoadingSkeleton v-if="memoryLoading && !memoryList.length" variant="list" :count="4" label="正在读取记忆" />
-          <div v-else-if="memoryError && !memoryList.length" class="field-hint error" role="alert">{{ memoryError }}</div>
-          <div v-else-if="!memoryList.length" class="field-hint">{{ `还没有可显示的${memoryModeLabel}。` }}</div>
-          <div v-else class="memory-list">
-            <article v-for="item in memoryList" :key="item.id" class="memory-item">
-            <div class="memory-item-head">
-              <span class="chip">{{ memoryTypeLabel(item.type) }}</span>
-              <span class="field-hint">重要度 {{ Number(item.importance || 0).toFixed(2) }} · 置信度 {{ Number(item.confidence || 0).toFixed(2) }}</span>
+          <div class="settings-danger">
+            <div>
+              <strong>恢复默认知识库</strong>
+              <p>将替换自定义条目，操作前需确认。</p>
             </div>
-            <strong>{{ item.summary }}</strong>
-            <button class="memory-expand-btn" type="button" @click="toggleMemoryContent(item)">
-              {{ memory.expanded[item.id] ? '收起原文' : '展开原文' }}
+            <button
+              class="danger-btn"
+              type="button"
+              @click="resetKnowledgeDefaults"
+            >
+              恢复默认
             </button>
-            <p v-if="memory.expanded[item.id]">{{ item.content || '正在读取原文...' }}</p>
-            <div v-if="item.tags?.length" class="memory-tags">
-              <span v-for="tag in item.tags" :key="`${item.id}-${tag}`">{{ tag }}</span>
+          </div>
+        </article>
+        <article
+          v-show="activeSection === 'model'"
+          id="room-model-settings"
+          class="room-settings-card"
+        >
+          <div class="room-card-head">
+            <span class="room-card-icon"
+              ><TsIcon name="layers" :size="23"
+            /></span>
+            <div>
+              <h2>角色与布局</h2>
+              <p>只调整模型和浮窗的位置，不影响聊天或记忆。</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <label
+              >模型大小 <strong>{{ model.scale }}%</strong
+              ><input v-model="model.scale" type="range" min="60" max="160"
+            /></label>
+            <label
+              >水平位置 <strong>{{ model.xOffset }} px</strong
+              ><input v-model="model.xOffset" type="range" min="-240" max="240"
+            /></label>
+            <label
+              >垂直位置 <strong>{{ model.yOffset }} px</strong
+              ><input v-model="model.yOffset" type="range" min="-180" max="180"
+            /></label>
+            <div class="settings-note">
+              <TsIcon name="info" :size="18" />
+              <p>
+                保存后返回房间查看效果。表情与动作测试位于独立的 Live2D
+                调试分类。
+              </p>
+            </div>
+            <div
+              v-if="modelSaveNotice.visible"
+              class="model-save-notice"
+              role="status"
+              aria-live="polite"
+            >
+              <span class="room-test-status success">已保存</span>
+              <div>
+                <strong>{{ modelSaveNotice.text }}</strong>
+                <p>{{ modelSaveNotice.detail }}</p>
+              </div>
             </div>
             <div class="button-row">
-              <button class="ghost-btn" type="button" @click="editMemory(item)">编辑</button>
-              <button class="danger-btn" type="button" @click="deleteMemoryItem(item)">删除</button>
+              <button class="ghost-btn" type="button" @click="resetModel">
+                重置模型
+              </button>
+              <button class="ghost-btn" type="button" @click="resetPanels">
+                重置浮窗位置
+              </button>
             </div>
-            </article>
           </div>
-          <div v-if="memoryError && memoryList.length" class="field-hint error" role="alert">{{ memoryError }}</div>
-          <div v-if="memoryList.length" class="button-row memory-list-more">
-            <span class="field-hint">已显示 {{ memoryList.length }} / {{ memoryFilteredTotal }} 条{{ memory.query || memory.type ? '匹配记忆' : '记忆' }}</span>
-            <button v-if="memoryHasMore" class="ghost-btn" type="button" :disabled="memoryLoading" @click="loadMoreMemories">{{ memoryLoading ? '加载中...' : '加载更多' }}</button>
+        </article>
+        <article
+          v-show="activeSection === 'diary'"
+          id="room-diary-settings"
+          class="room-settings-card"
+        >
+          <div class="room-card-head">
+            <span class="room-card-icon"
+              ><TsIcon name="fileText" :size="23"
+            /></span>
+            <div>
+              <h2>日记与存档</h2>
+              <p>管理日记人设与备份；与聊天补充指令分开。</p>
+            </div>
           </div>
-        </div>
-      </article>
-
-      <article id="room-mcp-settings" class="room-settings-card">
-        <div class="room-card-head">
-          <span class="room-card-icon"><TsIcon name="grid" :size="20" /></span>
-          <div>
-            <span>06 · Tools</span>
-            <h2>MCP 工具接入</h2>
-            <p>给 LLM 增加外部工具能力。没有搜索、图像理解或生成需求时可保持关闭。</p>
+          <div class="diary-archive-summary">
+            <span class="room-test-status success"
+              >槽位 {{ diary.slotId }}</span
+            >
+            <span class="field-hint"
+              >角色：{{ diary.personaName || '未设置' }}</span
+            >
+            <span class="field-hint">日记：{{ diary.entryCount }} 篇</span>
+            <span class="field-hint">好感度：{{ diary.affection }}</span>
+            <span v-if="diary.lastDiaryAt" class="field-hint"
+              >最近一篇：{{ diary.lastDiaryAt }}</span
+            >
           </div>
-        </div>
-        <div class="form-grid">
-          <label class="check-row"><input v-model="mcp.enabled" type="checkbox"> 允许 LLM 调用 MCP 工具</label>
-          <label>提供商
-            <select v-model="mcp.provider" @change="applyMcpProvider(mcp.provider)">
-              <option value="custom">自定义 MCP</option>
-              <option value="minimax-global">MiniMax MCP JS - Global</option>
-              <option value="minimax-mainland">MiniMax MCP JS - Mainland</option>
-              <option value="minimax-token-plan">MiniMax Token Plan MCP</option>
-            </select>
-          </label>
-          <label>MCP HTTP 端点<input v-model="mcp.endpoint" type="text" placeholder="https://example.com/mcp"></label>
-          <label>鉴权头<input v-model="mcp.authHeader" type="text" placeholder="Authorization"></label>
-          <label>访问密钥<input v-model="mcp.apiKey" type="password" placeholder="Bearer ..."></label>
-          <p class="field-hint warning-text">访问密钥仅保存在当前浏览器本地，不会写入服务器；不建议在公共电脑使用，用完请清除浏览器站点数据。</p>
-          <template v-if="mcp.provider.startsWith('minimax')">
-            <label>MiniMax API Host<input v-model="mcp.apiHost" type="text" placeholder="https://api.minimaxi.chat"></label>
-            <label>输出目录 / Base Path<input v-model="mcp.basePath" type="text" placeholder="可选，留空由 MCP 服务决定"></label>
-            <label>资源模式
-              <select v-model="mcp.resourceMode">
-                <option value="url">url</option>
-                <option value="local">local</option>
+          <div class="button-row">
+            <span v-if="diarySyncStatus" class="field-hint" role="status">{{
+              diarySyncStatus
+            }}</span>
+            <button class="ghost-btn" type="button" @click="syncDiarySettings">
+              同步账号日记
+            </button>
+          </div>
+          <details
+            class="diary-persona-editor settings-disclosure"
+            :open="diary.open"
+            @toggle="diary.open = $event.currentTarget.open"
+          >
+            <summary>
+              <TsIcon name="book" :size="18" /><span
+                ><strong>编辑日记人设</strong
+                ><small>角色名、性格、背景与写作偏好</small></span
+              ><TsIcon name="chevronDown" :size="17" />
+            </summary>
+            <div class="form-grid">
+              <label
+                >角色名<input
+                  v-model="diary.persona.name"
+                  type="text"
+                  placeholder="例如：八千代"
+              /></label>
+              <label
+                >角色简介<textarea
+                  v-model="diary.persona.description"
+                  placeholder="身份、外貌、与对方的关系"
+                ></textarea>
+              </label>
+              <label
+                >性格与口吻<textarea
+                  v-model="diary.persona.personality"
+                  placeholder="说话习惯、情绪基调、称呼方式"
+                ></textarea>
+              </label>
+              <label
+                >相处背景<textarea
+                  v-model="diary.persona.scenario"
+                  placeholder="日常场景与关系设定"
+                ></textarea>
+              </label>
+              <label
+                >补充设定<textarea
+                  v-model="diary.persona.creatorNotes"
+                  placeholder="可选：写作偏好、禁忌、口头禅"
+                ></textarea>
+              </label>
+              <label
+                >标签<input
+                  v-model="diary.persona.tags"
+                  type="text"
+                  placeholder="用顿号或逗号分隔"
+              /></label>
+              <div class="button-row">
+                <button
+                  class="primary-btn"
+                  type="button"
+                  @click="saveDiaryPersona"
+                >
+                  保存人设
+                </button>
+              </div>
+            </div>
+          </details>
+          <div class="form-grid">
+            <input
+              ref="diaryFileInput"
+              type="file"
+              accept="application/json,.json"
+              hidden
+              @change="onDiaryImportFile"
+            />
+            <div class="button-row">
+              <button
+                class="ghost-btn"
+                type="button"
+                @click="exportDiaryArchiveFile"
+              >
+                导出存档 JSON
+              </button>
+              <button class="ghost-btn" type="button" @click="pickDiaryFile">
+                导入存档 JSON
+              </button>
+              <button
+                class="ghost-btn"
+                type="button"
+                @click="copyDiaryArchivePreview"
+              >
+                复制存档 JSON
+              </button>
+            </div>
+            <p class="field-hint">
+              登录后日记与日记人设同步到当前账号，访客存档保留在本机。导出的
+              JSON 格式与桌面版备份一致（version / timestamp / exportDate /
+              slotId / data.gameData / data.diary / data.settings / data.prompts
+              / data.other），可直接导入继续累积。
+            </p>
+          </div>
+          <div class="settings-danger">
+            <div>
+              <strong>清空日记存档</strong>
+              <p>清空前，请先导出备份。</p>
+            </div>
+            <button
+              class="danger-btn"
+              type="button"
+              @click="resetDiaryArchiveData"
+            >
+              清空存档
+            </button>
+          </div>
+        </article>
+        <article
+          v-show="activeSection === 'mcp'"
+          id="room-mcp-settings"
+          class="room-settings-card"
+        >
+          <div class="room-card-head">
+            <span class="room-card-icon"
+              ><TsIcon name="grid" :size="23"
+            /></span>
+            <div>
+              <h2>工具与扩展<span class="settings-badge">进阶</span></h2>
+              <p>有搜索、图片理解或生成需求时，再开启外部工具。</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <label class="settings-toggle-row"
+              ><span
+                ><strong>允许模型调用 MCP 工具</strong
+                ><small>只连接你信任的工具服务。</small></span
+              ><input
+                v-model="mcp.enabled"
+                type="checkbox"
+                role="switch"
+                aria-label="允许模型调用 MCP 工具"
+            /></label>
+            <label
+              >提供商
+              <select
+                v-model="mcp.provider"
+                @change="applyMcpProvider(mcp.provider)"
+              >
+                <option value="custom">自定义 MCP</option>
+                <option value="minimax-global">MiniMax MCP JS - Global</option>
+                <option value="minimax-mainland">
+                  MiniMax MCP JS - Mainland
+                </option>
+                <option value="minimax-token-plan">
+                  MiniMax Token Plan MCP
+                </option>
               </select>
             </label>
-          </template>
-          <label>工具白名单<input v-model="mcp.toolAllowlist" type="text" placeholder="留空允许全部，或用逗号分隔工具名"></label>
-          <p class="field-hint">MCP 请求由浏览器直接发出，端点需要支持 CORS 与 JSON-RPC 的 tools/list、tools/call。MiniMax MCP JS 预设按 REST 模式传 meta.auth；Token Plan MCP 使用本站受限桥接 /api/mcp/token-plan，后端只启动官方 minimax-coding-plan-mcp，不会请求任意地址。</p>
-          <div v-if="mcp.tools.length" class="mcp-tool-list">
-            <span v-for="tool in mcp.tools" :key="tool.name" class="chip">{{ tool.name }}</span>
-          </div>
-          <div class="button-row">
-            <button class="primary-btn" type="button" @click="saveMCP">保存 MCP</button>
-            <button class="ghost-btn" type="button" @click="testMCPWithDialog">测试并发现工具</button>
-          </div>
-        </div>
-      </article>
-
-      <article id="room-diary-settings" class="room-settings-card">
-        <div class="room-card-head">
-          <span class="room-card-icon"><TsIcon name="book" :size="20" /></span>
-          <div>
-            <span>08 · Diary</span>
-            <h2>人设与日记存档</h2>
-            <p>这里的人设只用于结束聊天后的日记写作。导入、编辑或切换存档不会改变聊天角色、系统提示词、知识库或聊天记录，旧日记也不会自动注入对话。</p>
-          </div>
-        </div>
-        <div class="diary-archive-summary">
-          <span class="room-test-status success">槽位 {{ diary.slotId }}</span>
-          <span class="field-hint">角色：{{ diary.personaName || '未设置' }}</span>
-          <span class="field-hint">日记：{{ diary.entryCount }} 篇</span>
-          <span class="field-hint">好感度：{{ diary.affection }}</span>
-          <span v-if="diary.lastDiaryAt" class="field-hint">最近一篇：{{ diary.lastDiaryAt }}</span>
-        </div>
-        <div class="button-row">
-          <span v-if="diarySyncStatus" class="field-hint" role="status">{{ diarySyncStatus }}</span>
-          <button class="ghost-btn" type="button" @click="syncDiarySettings">同步账号日记</button>
-        </div>
-        <details class="diary-persona-editor" :open="diary.open" @toggle="diary.open = $event.currentTarget.open">
-          <summary>编辑日记人设</summary>
-          <div class="form-grid">
-            <label>角色名<input v-model="diary.persona.name" type="text" placeholder="例如：八千代"></label>
-            <label>角色简介<textarea v-model="diary.persona.description" placeholder="身份、外貌、与对方的关系"></textarea></label>
-            <label>性格与口吻<textarea v-model="diary.persona.personality" placeholder="说话习惯、情绪基调、称呼方式"></textarea></label>
-            <label>相处背景<textarea v-model="diary.persona.scenario" placeholder="日常场景与关系设定"></textarea></label>
-            <label>补充设定<textarea v-model="diary.persona.creatorNotes" placeholder="可选：写作偏好、禁忌、口头禅"></textarea></label>
-            <label>标签<input v-model="diary.persona.tags" type="text" placeholder="用顿号或逗号分隔"></label>
+            <label
+              >MCP HTTP 端点<input
+                v-model="mcp.endpoint"
+                type="text"
+                placeholder="https://example.com/mcp"
+            /></label>
+            <label
+              >鉴权头<input
+                v-model="mcp.authHeader"
+                type="text"
+                placeholder="Authorization"
+            /></label>
+            <label
+              >访问密钥<input
+                v-model="mcp.apiKey"
+                type="password"
+                placeholder="Bearer ..."
+            /></label>
+            <p class="field-hint warning-text">
+              密钥保存在当前浏览器，调用时用于连接所选工具服务。
+            </p>
+            <template v-if="mcp.provider.startsWith('minimax')">
+              <label
+                >MiniMax API Host<input
+                  v-model="mcp.apiHost"
+                  type="text"
+                  placeholder="https://api.minimaxi.chat"
+              /></label>
+              <label
+                >输出目录 / Base Path<input
+                  v-model="mcp.basePath"
+                  type="text"
+                  placeholder="可选，留空由 MCP 服务决定"
+              /></label>
+              <label
+                >资源模式
+                <select v-model="mcp.resourceMode">
+                  <option value="url">url</option>
+                  <option value="local">local</option>
+                </select>
+              </label>
+            </template>
+            <label
+              >工具白名单<input
+                v-model="mcp.toolAllowlist"
+                type="text"
+                placeholder="留空允许全部，或用逗号分隔工具名"
+            /></label>
+            <p class="field-hint">
+              MCP 请求由浏览器直接发出，端点需要支持 CORS 与 JSON-RPC 的
+              tools/list、tools/call。MiniMax MCP JS 预设按 REST 模式传
+              meta.auth；Token Plan MCP 使用本站受限桥接
+              /api/mcp/token-plan，后端只启动官方
+              minimax-coding-plan-mcp，不会请求任意地址。
+            </p>
+            <div v-if="mcp.tools.length" class="mcp-tool-list">
+              <span v-for="tool in mcp.tools" :key="tool.name" class="chip">{{
+                tool.name
+              }}</span>
+            </div>
             <div class="button-row">
-              <button class="primary-btn" type="button" @click="saveDiaryPersona">保存人设</button>
+              <button
+                class="ghost-btn"
+                type="button"
+                @click="testMCPWithDialog"
+              >
+                测试并发现工具
+              </button>
             </div>
           </div>
-        </details>
-        <div class="form-grid">
-          <input ref="diaryFileInput" type="file" accept="application/json,.json" hidden @change="onDiaryImportFile">
-          <div class="button-row">
-            <button class="ghost-btn" type="button" @click="exportDiaryArchiveFile">导出存档 JSON</button>
-            <button class="ghost-btn" type="button" @click="pickDiaryFile">导入存档 JSON</button>
-            <button class="ghost-btn" type="button" @click="copyDiaryArchivePreview">复制存档 JSON</button>
-            <button class="danger-btn" type="button" @click="resetDiaryArchiveData">清空存档</button>
+        </article>
+        <article
+          v-show="activeSection === 'debug'"
+          id="room-live2d-debug"
+          class="room-settings-card"
+        >
+          <div class="room-card-head">
+            <span class="room-card-icon"
+              ><TsIcon name="code" :size="23"
+            /></span>
+            <div>
+              <h2>Live2D 调试<span class="settings-badge">开发调试</span></h2>
+              <p>排查表情、动作与队列；正常使用时无需配置。</p>
+            </div>
           </div>
-          <p class="field-hint">登录后日记与日记人设同步到当前账号，访客存档保留在本机。导出的 JSON 格式与桌面版备份一致（version / timestamp / exportDate / slotId / data.gameData / data.diary / data.settings / data.prompts / data.other），可直接导入继续累积。</p>
+          <div class="live2d-debug-summary">
+            <span
+              class="room-test-status"
+              :class="
+                live2dDebug.status === 'playing'
+                  ? 'loading'
+                  : live2dDebug.status === 'pending'
+                    ? 'warning'
+                    : 'success'
+              "
+            >
+              {{ live2DStatusLabel() }}
+            </span>
+            <span class="field-hint"
+              >最近更新：{{ formatDebugTime(live2dDebug.updatedAt) }}</span
+            >
+            <span class="field-hint"
+              >队列进度：{{ live2dDebug.activeIndex }} /
+              {{ live2dDebug.total }}</span
+            >
+          </div>
+          <div class="form-grid">
+            <label
+              >表情
+              <select v-model="live2dTest.expression">
+                <option
+                  v-for="item in live2dExpressionOptions"
+                  :key="item.id"
+                  :value="item.id"
+                >
+                  {{ item.label }} / {{ item.id }}
+                </option>
+              </select>
+            </label>
+            <label
+              >动作
+              <select v-model="live2dTest.motion">
+                <option
+                  v-for="item in live2dMotionOptions"
+                  :key="item.id || 'none'"
+                  :value="item.id"
+                >
+                  {{ item.label }}{{ item.id ? ` / ${item.id}` : '' }}
+                </option>
+              </select>
+            </label>
+            <label
+              >恢复时间 <strong>{{ live2dTest.durationMs }}ms</strong
+              ><input
+                v-model="live2dTest.durationMs"
+                type="range"
+                min="800"
+                max="12000"
+                step="100"
+            /></label>
+            <div class="button-row">
+              <button
+                class="primary-btn"
+                type="button"
+                @click="queueCustomLive2DTest"
+              >
+                测试当前组合
+              </button>
+              <button
+                class="ghost-btn"
+                type="button"
+                @click="queuePresetLive2DSequence('greeting')"
+              >
+                问候队列
+              </button>
+              <button
+                class="ghost-btn"
+                type="button"
+                @click="queuePresetLive2DSequence('shy')"
+              >
+                害羞队列
+              </button>
+              <button
+                class="ghost-btn"
+                type="button"
+                @click="queuePresetLive2DSequence('tears')"
+              >
+                落泪队列
+              </button>
+            </div>
+            <p class="field-hint">
+              调试指令会写入待执行队列。返回房间后自动播放；如果房间在另一个标签页打开，也会通过
+              storage 事件执行。
+            </p>
+            <details class="live2d-debug-details">
+              <summary>最近一次控制 JSON</summary>
+              <pre>{{ live2dDebugJson }}</pre>
+            </details>
+            <div v-if="live2dDebug.history.length" class="live2d-debug-history">
+              <article
+                v-for="item in live2dDebug.history"
+                :key="item.id"
+                class="memory-item"
+              >
+                <div class="memory-item-head">
+                  <span class="chip">{{ item.source || 'debug' }}</span>
+                  <span class="field-hint">{{
+                    formatDebugTime(item.createdAt)
+                  }}</span>
+                </div>
+                <pre>{{ JSON.stringify(item.normalized, null, 2) }}</pre>
+              </article>
+            </div>
+          </div>
+          <div class="settings-danger">
+            <div>
+              <strong>清空待执行队列</strong>
+              <p>停止尚未执行的调试指令。</p>
+            </div>
+            <button
+              class="danger-btn"
+              type="button"
+              @click="clearLive2DDebugQueue"
+            >
+              清空队列
+            </button>
+          </div>
+        </article>
+        <p class="settings-caption">TSUKUYOMI SPACE · ROOM SETTINGS</p>
+      </div>
+      <aside class="settings-context">
+        <section class="settings-context-card">
+          <h2>
+            当前房间
+            <small>{{
+              hasUnsavedSettings ? '含未保存修改' : '已保存的配置'
+            }}</small>
+          </h2>
+          <div class="settings-context-item">
+            <TsIcon name="message" :size="18" />
+            <div>
+              <span>聊天模型</span><small>{{ llmConnectionLabel }}</small>
+            </div>
+            <span class="settings-badge" :class="testedConnectionStatus">{{
+              {
+                idle: llmSetupReady ? '待测试' : '待配置',
+                loading: '测试中',
+                success: '已连接',
+                warning: '待检查',
+                error: '失败',
+              }[testedConnectionStatus]
+            }}</span>
+          </div>
+          <div class="settings-context-item">
+            <TsIcon name="audioLines" :size="18" />
+            <div>
+              <span>语音朗读</span
+              ><small>{{
+                tts.enabled ? ttsConnectionLabel : '先用文字，也很好'
+              }}</small>
+            </div>
+            <span class="settings-badge">{{
+              tts.enabled ? '已开启' : '未开启'
+            }}</span>
+          </div>
+          <div class="settings-context-item">
+            <TsIcon name="bookmark" :size="18" />
+            <div>
+              <span>长期记忆</span><small>{{ memoryModeLabel }}</small>
+            </div>
+            <span class="settings-badge" :class="{ success: memory.enabled }">{{
+              memory.enabled ? '已开启' : '已关闭'
+            }}</span>
+          </div>
+          <p class="settings-context-foot">
+            <TsIcon name="info" :size="14" />聊天仅需完成模型连接
+          </p>
+        </section>
+        <section class="settings-context-card settings-reminder">
+          <span><TsIcon name="sparkles" :size="15" /> A LITTLE REMINDER</span>
+          <p>先聊起来，<br />再慢慢变成你的房间。</p>
+          <small>大部分选项保持默认就好，<br />之后随时可以回来调整。</small>
+        </section>
+        <section class="settings-context-card settings-privacy">
+          <h2><TsIcon name="shield" :size="18" />数据存在哪里？</h2>
+          <strong>密钥、接口与知识库</strong>
+          <p>保存在当前浏览器，不自动跨设备同步。</p>
+          <strong>记忆、日记与日记人设</strong>
+          <p>
+            {{
+              canUseServerMemory
+                ? '登录后使用当前账号的私有数据并同步。'
+                : '访客保存在本机；登录后使用账号私有数据。'
+            }}
+          </p>
+          <small>记忆和条目的单独保存会立即生效。</small>
+        </section>
+      </aside>
+    </div>
+    <footer class="settings-savebar">
+      <div class="settings-savebar-inner">
+        <div class="settings-save-state" role="status">
+          <TsIcon :name="hasUnsavedSettings ? 'penLine' : 'check'" :size="16" />
+          <div>
+            <span>{{
+              hasUnsavedSettings ? '有尚未保存的修改' : '所有修改已保存'
+            }}</span
+            ><small>{{
+              hasUnsavedSettings ? '修改后记得保存' : '可以安心返回房间'
+            }}</small>
+          </div>
         </div>
-      </article>
-      </section>
-    </details>
-
+        <div class="button-row">
+          <button
+            class="ghost-btn settings-discard"
+            type="button"
+            :disabled="
+              !hasUnsavedSettings || savingSettings || memorySavePending
+            "
+            @click="discardSettings"
+          >
+            放弃修改</button
+          ><button
+            class="primary-btn"
+            type="button"
+            :disabled="savingSettings || memorySavePending"
+            @click="enterRoom"
+          >
+            <TsIcon name="arrowRight" :size="17" />{{
+              savingSettings
+                ? '保存中…'
+                : hasUnsavedSettings
+                  ? '保存并返回房间'
+                  : '返回房间'
+            }}
+          </button>
+        </div>
+      </div>
+    </footer>
     <Teleport to="body">
       <div
         v-if="testDialog.visible"
@@ -2992,24 +3881,57 @@ onBeforeUnmount(() => {
         aria-modal="true"
         :aria-label="testDialog.title || testDialogTargetLabel()"
         @click.self="closeTestDialog"
+        @keydown="handleTestDialogKey"
       >
-        <section class="room-test-modal-card" data-material="popover" :aria-busy="testDialog.status === 'loading'">
+        <section
+          ref="testDialogCard"
+          class="room-test-modal-card"
+          data-material="popover"
+          :aria-busy="testDialog.status === 'loading'"
+        >
           <div class="room-test-dialog-head">
-            <span class="room-test-status" :class="testDialog.status">{{ testStatusLabel(testDialog.status) }}</span>
-            <button class="ghost-btn compact" type="button" @click="closeTestDialog">关闭</button>
+            <span class="room-test-status" :class="testDialog.status">{{
+              testStatusLabel(testDialog.status)
+            }}</span>
+            <button
+              class="ghost-btn compact"
+              type="button"
+              @click="closeTestDialog"
+            >
+              关闭
+            </button>
           </div>
           <small class="room-test-target">{{ testDialogTargetLabel() }}</small>
           <h3>{{ testDialog.title }}</h3>
-          <StatusLoader v-if="testDialog.status === 'loading'" :label="testDialog.message" :detail="testDialog.detail" />
+          <StatusLoader
+            v-if="testDialog.status === 'loading'"
+            :label="testDialog.message"
+            :detail="testDialog.detail"
+          />
           <template v-else>
             <p>{{ testDialog.message }}</p>
             <pre v-if="testDialog.detail">{{ testDialog.detail }}</pre>
-            <button v-if="showOllamaRepairAction" class="ghost-btn room-test-repair" type="button" @click="copyOllamaRepairCommand"><TsIcon name="copy" :size="16" />复制 Windows 修复命令</button>
+            <button
+              v-if="showOllamaRepairAction"
+              class="ghost-btn room-test-repair"
+              type="button"
+              @click="copyOllamaRepairCommand"
+            >
+              <TsIcon name="copy" :size="16" />复制 Windows 修复命令
+            </button>
           </template>
         </section>
       </div>
     </Teleport>
 
-    <div v-if="toast.visible" class="plaza-toast show" :class="toast.type" :role="toast.type === 'error' ? 'alert' : 'status'" aria-live="polite">{{ toast.text }}</div>
+    <div
+      v-if="toast.visible"
+      class="plaza-toast show"
+      :class="toast.type"
+      :role="toast.type === 'error' ? 'alert' : 'status'"
+      aria-live="polite"
+    >
+      {{ toast.text }}
+    </div>
   </main>
 </template>

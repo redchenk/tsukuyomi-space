@@ -1,0 +1,1356 @@
+/* Room settings uses the site's shared palette, typography and pill buttons. */
+.content-shell .room-settings-page {
+  --settings-surface: var(--ts-editorial-surface, var(--panel-strong));
+  --settings-soft: var(--ts-editorial-soft, var(--ts-bg-soft));
+  --settings-line: var(--ts-editorial-line, var(--line));
+  max-width: 1600px;
+  margin: 0 auto;
+  padding-bottom: 150px;
+}
+.room-settings-page :where(h1, h2, h3, p) {
+  margin: 0;
+}
+.room-settings-page :where(button, a, input, select, textarea) {
+  -webkit-tap-highlight-color: transparent;
+}
+.room-settings-page :where(button, .ghost-btn, .primary-btn, .danger-btn) {
+  border-radius: var(--ts-radius-button);
+}
+.room-settings-page :where(.ghost-btn, .primary-btn, .danger-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 9px 16px;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.room-settings-page .ts-icon {
+  flex-shrink: 0;
+}
+.room-settings-page :where(button:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.settings-page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin: 10px 0 26px;
+}
+.settings-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.settings-breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+.settings-breadcrumb a:hover {
+  color: var(--ts-accent);
+}
+.settings-page-heading h1 {
+  font-size: 32px;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  font-weight: 650;
+}
+.settings-page-heading p {
+  color: var(--muted);
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.settings-welcome {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 26px;
+  margin-bottom: 26px;
+  background: color-mix(
+    in srgb,
+    var(--settings-surface) 86%,
+    var(--settings-soft)
+  );
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-card);
+}
+.settings-welcome-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--settings-soft);
+  color: var(--ts-accent);
+  flex-shrink: 0;
+}
+.settings-welcome strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.settings-welcome p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 5px;
+}
+.settings-welcome > button {
+  align-self: flex-start;
+  padding: 0;
+  min-height: 32px;
+  width: 32px;
+  border: 0;
+  background: transparent;
+}
+.settings-flow {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+}
+.settings-flow li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.settings-flow b {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--settings-line);
+  border-radius: 50%;
+  font-weight: 500;
+  color: var(--ts-accent);
+  background: var(--settings-soft);
+}
+.settings-workspace {
+  display: grid;
+  grid-template-columns: 204px minmax(0, 1fr) 252px;
+  gap: 24px;
+  align-items: start;
+}
+.settings-navigation {
+  position: sticky;
+  top: 102px;
+  padding: 16px 12px;
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-card);
+  background: var(--settings-surface);
+}
+.settings-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--settings-line);
+  background: var(--settings-soft);
+  border-radius: var(--ts-radius-control);
+  color: var(--muted);
+}
+.room-settings-page .settings-search input {
+  min-width: 0;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 0;
+  font-size: 12px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.settings-navigation nav h2 {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  margin: 24px 12px 9px;
+  letter-spacing: 0.06em;
+}
+.settings-nav-button {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 12px;
+  gap: 10px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  margin: 3px 0;
+}
+.settings-nav-button span {
+  white-space: nowrap;
+}
+.settings-nav-button small {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 400;
+}
+.settings-nav-button.active,
+.settings-nav-button:hover {
+  color: var(--ts-accent);
+  background: var(--settings-soft);
+}
+.settings-nav-button.active {
+  font-weight: 600;
+}
+.settings-unsaved-mark {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ts-accent);
+  flex: 0 0 auto;
+}
+.settings-nav-help {
+  display: flex;
+  gap: 9px;
+  padding: 20px 10px 6px;
+  margin-top: 24px;
+  border-top: 1px solid var(--settings-line);
+  color: var(--muted);
+}
+.settings-nav-help small {
+  font-size: 11px;
+}
+.room-settings-page .settings-text-btn {
+  padding: 5px 0;
+  min-height: 30px;
+  color: var(--ts-accent);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  font-size: 12px;
+}
+.settings-nav-help .settings-text-btn {
+  display: flex;
+}
+.settings-main {
+  min-width: 0;
+  scroll-margin-top: 105px;
+  outline: none;
+}
+.room-settings-page .room-settings-card {
+  padding: 28px;
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-card);
+  background: var(--settings-surface);
+  box-shadow: var(--ts-editorial-shadow);
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.room-card-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--settings-line);
+}
+.room-card-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  background: var(--settings-soft);
+  color: var(--ts-accent);
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+.room-card-head h2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.room-card-head p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+  margin-top: 6px;
+}
+.settings-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--settings-soft);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.settings-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.settings-mode {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 100px;
+  padding: 18px;
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-card);
+  cursor: pointer;
+  color: var(--muted);
+}
+.settings-mode.selected {
+  border-color: var(--ts-accent);
+  background: var(--settings-soft);
+  color: var(--ts-accent);
+}
+.settings-mode span {
+  min-width: 0;
+}
+.settings-mode strong {
+  display: block;
+  color: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+.settings-mode small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 5px;
+  color: var(--muted);
+}
+.settings-mode input[type='radio'] {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  accent-color: var(--ts-accent);
+}
+.settings-field,
+.settings-section-fields,
+.room-settings-card .form-grid,
+.memory-manager-body {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.room-settings-card .form-grid {
+  gap: 20px;
+}
+.settings-field-title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+.settings-field-title h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.settings-field-title small,
+.settings-field > label small {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.settings-field > label small {
+  margin-left: 8px;
+}
+.settings-providers {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.room-settings-page .settings-providers .ghost-btn {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  justify-content: center;
+}
+.settings-providers .selected {
+  background: var(--settings-soft);
+  border-color: var(--ts-accent);
+  color: var(--ts-accent);
+}
+.room-settings-page .settings-providers select {
+  border-radius: var(--ts-radius-button);
+  font-size: 12px;
+}
+.room-settings-page :where(label, .settings-field-title) {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.room-settings-card
+  label:not(.settings-mode):not(.settings-toggle-row):not(.check-row) {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.room-settings-page
+  :where(
+    input:not([type='radio']):not([type='checkbox']):not([type='range']):not(
+        [type='file']
+      ),
+    select,
+    textarea
+  ) {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 12px 14px;
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-control);
+  background: var(--settings-surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: none;
+}
+.room-settings-page textarea {
+  min-height: 116px;
+  resize: vertical;
+}
+.room-settings-page input::placeholder,
+.room-settings-page textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+.room-settings-page input[type='range'] {
+  width: 100%;
+  height: 24px;
+  accent-color: var(--ts-accent);
+  padding: 0;
+}
+.room-settings-page label:has(input[type='range']) {
+  grid-template-columns: 1fr auto;
+}
+.room-settings-page label:has(input[type='range']) input {
+  grid-column: 1/-1;
+}
+.room-settings-page label:has(input[type='range']) strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ts-accent);
+}
+.settings-secret {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-control);
+  padding: 0 9px 0 14px;
+  color: var(--muted);
+}
+.room-settings-page .settings-secret input {
+  border: 0;
+  min-width: 0;
+  padding-inline: 0;
+  background: transparent;
+}
+.room-settings-page .settings-secret button {
+  border: 0;
+  width: 36px;
+  padding: 0;
+  background: transparent;
+}
+.room-settings-page .field-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.field-hint .ts-icon {
+  margin-top: 3px;
+}
+.settings-disclosure {
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-control);
+  background: color-mix(
+    in srgb,
+    var(--settings-soft) 32%,
+    var(--settings-surface)
+  );
+  min-width: 0;
+}
+.settings-disclosure summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  min-height: 66px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+}
+.settings-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+.settings-disclosure summary > span {
+  flex: 1;
+  min-width: 0;
+}
+.settings-disclosure summary strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.settings-disclosure summary small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 3px;
+}
+.settings-disclosure[open] summary > .ts-icon:last-child {
+  transform: rotate(180deg);
+}
+.settings-disclosure-body,
+.diary-persona-editor > .form-grid {
+  padding: 8px 18px 20px;
+}
+.model-recommend-card {
+  display: grid;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.model-recommend-card strong {
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.model-recommend-card button {
+  justify-self: start;
+}
+.settings-test-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--settings-line);
+  padding-top: 22px;
+}
+.settings-connection {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.settings-connection small {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.settings-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--settings-line);
+}
+.settings-toggle-row strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+.settings-toggle-row small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+.room-settings-page input[role='switch'] {
+  appearance: none;
+  position: relative;
+  width: 36px;
+  height: 22px;
+  flex: 0 0 36px;
+  border-radius: var(--ts-radius-pill);
+  border: 1px solid var(--settings-line);
+  background: var(--settings-soft);
+  cursor: pointer;
+  margin: 0;
+}
+.room-settings-page input[role='switch']::after {
+  content: '';
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 2px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s;
+}
+.room-settings-page input[role='switch']:checked {
+  background: var(--ts-accent);
+  border-color: var(--ts-accent);
+}
+.room-settings-page input[role='switch']:checked::after {
+  background: var(--settings-surface);
+  transform: translateX(14px);
+}
+.settings-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-control);
+  background: var(--settings-soft);
+  color: var(--muted);
+}
+.settings-note .ts-icon {
+  color: var(--ts-accent);
+  margin-top: 2px;
+}
+.settings-note strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.settings-note p {
+  font-size: 12px;
+  line-height: 1.8;
+}
+.settings-note strong + p {
+  margin-top: 5px;
+}
+.settings-note button {
+  margin-top: 12px;
+}
+.room-settings-page .check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.room-settings-page .check-row input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--ts-accent);
+}
+.room-settings-page .button-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.settings-danger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid
+    color-mix(in srgb, var(--ts-color-pink-600) 22%, var(--settings-line));
+  background: color-mix(
+    in srgb,
+    var(--ts-color-pink-600) 3%,
+    var(--settings-surface)
+  );
+  border-radius: var(--ts-radius-control);
+}
+.settings-danger strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.settings-danger p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 5px;
+}
+.room-settings-page .danger-btn {
+  background: transparent;
+  color: var(--ts-color-pink-600);
+  border-color: color-mix(
+    in srgb,
+    var(--ts-color-pink-600) 30%,
+    var(--settings-line)
+  );
+  box-shadow: none;
+}
+.memory-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 126px auto;
+  gap: 8px;
+}
+.memory-toolbar select {
+  font-size: 12px;
+}
+.memory-editor,
+.knowledge-editor {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--ts-accent);
+  border-radius: var(--ts-radius-control);
+  background: var(--settings-soft);
+  scroll-margin-top: 112px;
+}
+.memory-editor-status,
+.knowledge-editor-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--ts-accent);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.memory-score-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.memory-list,
+.knowledge-list {
+  display: grid;
+  gap: 12px;
+}
+.memory-item {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-control);
+  padding: 18px;
+  background: var(--settings-surface);
+}
+.memory-item strong {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.memory-item p {
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.memory-item-head,
+.memory-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.room-settings-page .memory-item-head .chip,
+.memory-tags span {
+  min-height: 0;
+  padding: 3px 8px;
+  background: var(--settings-soft);
+  border: 0;
+  color: var(--muted);
+  border-radius: 6px;
+  font-size: 10px;
+}
+.room-settings-page .memory-item .button-row {
+  justify-content: flex-end;
+}
+.room-settings-page .memory-item .button-row button {
+  min-height: 34px;
+  padding: 6px 13px;
+  font-size: 12px;
+}
+.memory-expand-btn {
+  justify-self: start;
+  border: 0;
+  color: var(--ts-accent);
+  background: var(--settings-soft);
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.knowledge-item.disabled {
+  opacity: 0.65;
+}
+.diary-archive-summary {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 18px;
+  border-radius: var(--ts-radius-control);
+  background: var(--settings-soft);
+}
+.live2d-debug-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.room-settings-page pre {
+  max-height: 340px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--settings-soft);
+  border-radius: var(--ts-radius-control);
+  padding: 16px;
+  font: 12px/1.7 monospace;
+}
+.live2d-debug-details summary {
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.live2d-debug-history,
+.model-save-notice {
+  display: grid;
+  gap: 10px;
+}
+.model-save-notice p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.mcp-tool-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.settings-context {
+  display: grid;
+  gap: 18px;
+  position: sticky;
+  top: 102px;
+}
+.settings-context-card {
+  border: 1px solid var(--settings-line);
+  border-radius: var(--ts-radius-card);
+  background: var(--settings-surface);
+  padding: 22px 20px;
+}
+.settings-context-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+.settings-context-card h2 small {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.settings-context-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 18px 0;
+  color: var(--muted);
+}
+.settings-context-item > div {
+  min-width: 0;
+  flex: 1;
+}
+.settings-context-item div span {
+  display: block;
+  font-size: 12px;
+}
+.settings-context-item div small {
+  display: block;
+  margin-top: 5px;
+  line-height: 1.7;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.settings-context-foot {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  border-top: 1px solid var(--settings-line);
+  padding-top: 16px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.settings-reminder {
+  background: var(--settings-soft);
+}
+.settings-reminder > span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  letter-spacing: 0.12em;
+  font-size: 9px;
+  color: var(--muted);
+}
+.settings-reminder > p {
+  font-family: var(--ts-font-serif);
+  font-size: 18px;
+  line-height: 1.9;
+  margin: 16px 0;
+}
+.settings-reminder > small {
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+.settings-privacy strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 16px;
+}
+.settings-privacy p,
+.settings-privacy > small {
+  font-size: 11px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+.settings-privacy > small {
+  display: block;
+  margin-top: 16px;
+}
+.settings-caption {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  margin: 20px 2px 0 !important;
+}
+.settings-savebar {
+  position: fixed;
+  z-index: 80;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 32px max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--settings-line);
+  background: var(--settings-surface);
+  box-shadow: 0 -6px 20px rgb(0 0 0 / 3%);
+}
+.settings-savebar-inner {
+  max-width: 1536px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: space-between;
+}
+.settings-save-state {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.settings-save-state small {
+  display: block;
+  font-size: 10px;
+  margin-top: 4px;
+}
+.settings-mobile-menu {
+  display: none !important;
+}
+.room-settings-page .error,
+.settings-badge.error {
+  color: var(--ts-color-pink-600);
+}
+.settings-status.success,
+.settings-badge.success {
+  color: var(--ts-cyan);
+}
+.room-test-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--ts-radius-pill);
+  padding: 5px 10px;
+  font-size: 12px;
+  background: var(--ts-editorial-soft);
+  color: var(--ts-editorial-muted);
+}
+.room-test-status.success {
+  color: var(--ts-cyan);
+}
+.room-test-status.error {
+  color: var(--ts-color-pink-600);
+}
+.room-test-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(10 14 28 / 48%);
+}
+.room-test-modal-card {
+  width: min(560px, 100%);
+  max-height: 80dvh;
+  overflow: auto;
+  padding: 26px;
+  border: 1px solid var(--ts-editorial-line);
+  border-radius: var(--ts-radius-card);
+  background: var(--ts-editorial-surface);
+  color: var(--ts-editorial-ink);
+  box-shadow: var(--ts-shadow-lg);
+}
+.room-test-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.room-test-target {
+  display: block;
+  margin-top: 18px;
+  font-size: 11px;
+  color: var(--ts-editorial-muted);
+}
+.room-test-modal-card h3 {
+  margin: 8px 0 14px;
+  font-size: 20px;
+}
+.room-test-modal-card p {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.room-test-modal-card pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 300px;
+  overflow: auto;
+  padding: 16px;
+  border-radius: var(--ts-radius-control);
+  background: var(--ts-editorial-soft);
+  color: var(--ts-editorial-ink);
+  font: 12px/1.7 monospace;
+}
+.room-test-modal-card button {
+  border-radius: var(--ts-radius-button);
+}
+.room-test-repair {
+  margin-top: 14px;
+}
+@media (max-width: 1250px) {
+  .settings-workspace {
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 20px;
+  }
+  .settings-context {
+    display: none;
+  }
+  .settings-flow {
+    gap: 12px;
+  }
+}
+@media (max-width: 860px) {
+  .content-shell .room-settings-page {
+    padding-bottom: 155px;
+  }
+  .settings-page-heading {
+    margin: 4px 0 22px;
+    gap: 12px;
+    align-items: center;
+  }
+  .settings-page-heading h1 {
+    font-size: 28px;
+  }
+  .settings-page-heading p {
+    font-size: 13px;
+    max-width: 28em;
+  }
+  .settings-welcome {
+    padding: 18px;
+    gap: 12px;
+    position: relative;
+  }
+  .settings-welcome strong {
+    font-size: 14px;
+  }
+  .settings-welcome p {
+    font-size: 12px;
+  }
+  .settings-welcome > button {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    width: 26px;
+    min-height: 26px;
+  }
+  .settings-flow {
+    display: none;
+  }
+  .settings-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .room-settings-page .settings-mobile-menu {
+    display: flex !important;
+    width: 100%;
+    justify-content: flex-start;
+    min-height: 52px;
+    padding: 14px 18px;
+    background: var(--settings-surface);
+  }
+  .settings-mobile-menu strong {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .settings-mobile-menu > span {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .settings-navigation {
+    display: none;
+    position: static;
+  }
+  .settings-navigation.is-open {
+    display: block;
+  }
+  .settings-nav-button {
+    min-height: 48px;
+    font-size: 14px;
+  }
+  .settings-main {
+    scroll-margin-top: 88px;
+  }
+  .room-settings-page .room-settings-card {
+    padding: 22px 18px;
+    gap: 24px;
+  }
+  .room-card-head h2 {
+    font-size: 21px;
+  }
+  .room-card-head {
+    gap: 12px;
+    padding-bottom: 22px;
+  }
+  .room-card-head p {
+    font-size: 12px;
+  }
+  .settings-mode-grid {
+    gap: 10px;
+  }
+  .settings-mode {
+    display: block;
+    min-height: 132px;
+    padding: 18px 14px;
+  }
+  .settings-mode > .ts-icon {
+    margin-bottom: 8px;
+  }
+  .settings-mode input[type='radio'] {
+    position: absolute;
+    top: 15px;
+    right: 12px;
+  }
+  .settings-mode small {
+    font-size: 11px;
+  }
+  .settings-providers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .room-settings-page
+    :where(
+      input:not([type='radio']):not([type='checkbox']):not([type='range']):not(
+          [type='file']
+        ),
+      select,
+      textarea
+    ) {
+    font-size: 16px;
+    min-height: 48px;
+  }
+  .room-settings-page .settings-providers select {
+    font-size: 14px;
+  }
+  .room-settings-page .settings-search input {
+    font-size: 16px;
+  }
+  .room-settings-page .settings-secret input {
+    font-size: 16px;
+  }
+  .settings-field-title > small {
+    font-size: 10px;
+  }
+  .settings-secret {
+    gap: 8px;
+  }
+  .settings-disclosure summary {
+    padding: 15px;
+  }
+  .settings-disclosure-body {
+    padding: 4px 14px 18px;
+  }
+  .settings-test-footer {
+    gap: 10px;
+  }
+  .settings-test-footer button {
+    padding-inline: 13px;
+  }
+  .settings-connection small {
+    max-width: 17em;
+  }
+  .settings-savebar {
+    padding: 12px 16px;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+  .settings-savebar-inner {
+    gap: 8px;
+  }
+  .settings-save-state {
+    font-size: 11px;
+    gap: 6px;
+  }
+  .settings-save-state > .ts-icon {
+    display: none;
+  }
+  .settings-save-state small {
+    font-size: 10px;
+  }
+  .room-settings-page .settings-savebar .button-row {
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .room-settings-page .settings-savebar .primary-btn {
+    padding-inline: 13px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+  .room-settings-page .settings-savebar .settings-discard {
+    padding: 8px 3px;
+    font-size: 11px;
+    border: 0;
+    background: transparent;
+  }
+  .memory-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .memory-toolbar input {
+    grid-column: 1/-1;
+  }
+  .memory-editor,
+  .knowledge-editor {
+    padding: 14px;
+    scroll-margin-top: 90px;
+  }
+  .settings-danger {
+    padding: 14px;
+    gap: 12px;
+  }
+  .room-settings-page .settings-danger button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .room-settings-page input[role='switch']::after {
+    transition: none;
+  }
+}
+/* Keep labels and icons aligned while inheriting the global control skin. */
+.settings-nav-button {
+  justify-content: flex-start;
+}
+.room-settings-card .settings-field > label,
+.room-settings-card .settings-field-title label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 500;
+}
+.room-settings-card label {
+  margin-bottom: 0;
+  font-weight: 500;
+}
+.settings-search,
+.settings-secret {
+  --ts-readable-input-bg: transparent;
+}
+.room-settings-page .settings-search {
+  margin-bottom: 0;
+}
+@media (max-width: 860px) {
+  .settings-page-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .settings-page-heading > div {
+    display: contents;
+  }
+  .settings-page-heading .settings-breadcrumb {
+    grid-column: 1/-1;
+    margin-bottom: 0;
+  }
+  .settings-page-heading h1 {
+    grid-row: 2;
+  }
+  .settings-page-heading > a {
+    grid-row: 2;
+    grid-column: 2;
+  }
+  .settings-page-heading p {
+    grid-row: 3;
+    grid-column: 1/-1;
+    margin-top: 0;
+  }
+  .settings-savebar {
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+  .app-shell:has(.room-settings-page) .site-music-drawer:not(.is-open) {
+    top: calc(20px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    left: auto;
+    right: 113px;
+  }
+}
+.room-settings-page input[role='switch'] {
+  min-height: 22px;
+  padding: 0;
+  --ts-readable-input-bg: var(--settings-soft);
+}
+.room-settings-page input[role='switch']:checked {
+  --ts-readable-input-bg: var(--ts-accent);
+}
+.room-settings-page input[type='radio'] {
+  min-height: 17px;
+  padding: 0;
+}
+@media (max-width: 860px) {
+  .app-shell:has(.room-settings-page) .site-music-drawer:not(.is-open) {
+    z-index: 300;
+  }
+}
+#room-llm-settings label[for] { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 500; }

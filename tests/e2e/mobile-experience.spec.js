@@ -94,12 +94,11 @@ test('mobile content, settings controls and empty states stay compact and usable
     await expect(page.locator('.ts-empty-title').first()).toHaveCSS('border-top-width', '0px');
     await page.goto('/room/settings');
     await expect(page.locator('.site-brand small')).toHaveText('房间设置');
-    for (const label of await page.locator('.room-setup-stepper strong').all()) {
-        expect(await label.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-    }
-    await expect(page.locator('.room-simple-form select').first()).toHaveCSS('font-size', '16px');
-    await page.getByRole('button', { name: '2 语音', exact: true }).click();
-    await expect(page.locator('.room-setup-stepper button').nth(1)).toHaveAttribute('aria-current', 'step');
+    await expect(page.locator('#settings-llm-model')).toHaveCSS('font-size', '16px');
+    await page.locator('.settings-mobile-menu').click();
+    await page.getByRole('button', { name: '语音与朗读 可选', exact: true }).click();
+    await expect(page.locator('#room-tts-settings')).toBeVisible();
+    await expect(page.locator('.settings-mobile-menu')).toContainText('语音与朗读');
 });
 
 test('Room tools stay collapsed in the mobile companion header', async ({ page }) => {
