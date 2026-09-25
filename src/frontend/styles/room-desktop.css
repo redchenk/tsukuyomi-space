@@ -73,7 +73,6 @@
   .room-desktop-search button, .room-command-icon { position: relative; display: grid; place-items: center; flex-shrink: 0; padding: 0; width: 30px; height: 30px; border: 0; border-radius: var(--ts-radius-button); color: var(--room-ui-muted); background: transparent; cursor: pointer; }
   .room-desktop-search button { width: 20px; height: 20px; }
   .room-command-icon:hover { color: var(--room-ui-accent); background: var(--room-ui-selected); }
-  .room-unread-dot { position: absolute; right: 3px; top: 4px; width: 5px; height: 5px; border-radius: 50%; background: #cf8295; }
   .room-desktop-account { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 210px; padding-left: 15px; border-left: 1px solid var(--room-ui-line); color: var(--room-ui-text); font-size: 11px; text-decoration: none; }
   .room-desktop-account > span:not(.room-account-initial) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .room-desktop-account img, .room-account-initial { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; background: var(--room-ui-selected); object-fit: cover; color: var(--room-ui-accent); }

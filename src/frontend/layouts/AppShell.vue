@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
+import NotificationBell from '../components/NotificationBell.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { alternateLanguage } from '../i18n';
@@ -272,9 +273,8 @@ onUnmounted(() => {
           @blur="collapseRail('notifications')"
           @click="expandRail('notifications'); $emit('go', '/notifications')"
         >
-          <span class="rail-icon"><TsIcon name="bell" :size="20" /></span>
+          <span class="rail-icon"><NotificationBell :unread="unreadNotifications > 0" /></span>
           <span class="rail-label">{{ railNotificationsLabel }}</span>
-          <i v-if="unreadNotifications" class="rail-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</i>
         </button>
 
         <button
@@ -338,7 +338,7 @@ onUnmounted(() => {
       <form class="room-desktop-search" role="search" @submit.prevent="$emit('go', roomSearch.trim() ? `/stage?q=${encodeURIComponent(roomSearch.trim())}` : '/stage')">
         <TsIcon name="search" :size="16" /><input v-model="roomSearch" type="search" maxlength="120" aria-label="搜索月读空间文章" placeholder="搜索月读空间"><button type="submit" aria-label="搜索"><TsIcon name="arrowRight" :size="14" /></button>
       </form>
-      <button v-if="showNotifications" class="room-command-icon" type="button" :aria-label="notificationsActionLabel" @click="$emit('go', '/notifications')"><TsIcon name="bell" :size="19" /><i v-if="unreadNotifications" class="room-unread-dot"></i></button>
+      <button v-if="showNotifications" class="room-command-icon" type="button" :aria-label="notificationsActionLabel" @click="$emit('go', '/notifications')"><NotificationBell :size="19" :unread="unreadNotifications > 0" /></button>
       <button class="room-command-icon" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'moon' : 'sun'" :size="19" /></button>
       <a class="room-desktop-account" :href="isAuthed ? '/user-center' : '/login'" @click.prevent="$emit('go', isAuthed ? '/user-center' : '/login')"><img v-if="user?.avatar" :src="user.avatar" alt="" width="28" height="28"><span v-else class="room-account-initial">{{ userInitial() }}</span><span>{{ isAuthed ? user?.username || accountLabel : accountLabel }}</span><TsIcon name="chevronDown" :size="12" /></a>
     </header>
@@ -371,8 +371,7 @@ onUnmounted(() => {
           :aria-label="notificationsActionLabel"
           @click="$emit('go', '/notifications')"
         >
-          <TsIcon name="bell" :size="18" />
-          <span v-if="unreadNotifications" class="mobile-command-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
+          <NotificationBell :size="18" :unread="unreadNotifications > 0" />
         </button>
         <a
           class="mobile-command-btn mobile-account-btn"
@@ -428,11 +427,11 @@ onUnmounted(() => {
             href="/notifications"
             class="nav-link"
             :class="{ 'router-link-active': routeName === 'notifications' }"
+            :aria-label="notificationsActionLabel"
             @click.prevent="navOpen = false; $emit('go', '/notifications')"
           >
-            <TsIcon class="nav-icon" name="bell" :size="18" />
+            <NotificationBell class="nav-icon" :size="18" :unread="unreadNotifications > 0" />
             <span>{{ t.notifications }}</span>
-            <span v-if="unreadNotifications" class="nav-inline-badge">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
           </a>
           <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' || routeName === 'userProfile' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">
             <TsIcon class="nav-icon" name="user" :size="18" />
