@@ -312,8 +312,11 @@ def verify(state, attempts=15):
             require(health.get('status') == 'ok', 'API health response is not ok')
             html = fetch(state, '/?release-check=' + expected[:16])
             require(hashlib.sha256(html).hexdigest() == expected, 'HTTP frontend entry is stale or incorrect')
-            # Verify real module/style references, not only a successful SPA fallback.
-            references = re.findall(rb'(?:src|href)="(/assets/[^"?]+)', html)
+            # Only hashed build assets live in frontend_real. Static icons/media
+            # are served from the resource root (or an upstream on overseas).
+            # Their local contents remain covered by verify_resources above.
+            references = [reference for reference in re.findall(rb'(?:src|href)="(/assets/[^"?]+)', html)
+                          if reference.count(b'/') == 2 and ASSET_NAME.fullmatch(reference.rsplit(b'/', 1)[1].decode())]
             require(references, 'Frontend has no built asset references')
             for reference in set(references):
                 name = reference.decode().lstrip('/')

@@ -188,6 +188,34 @@ class DeploymentSafetyTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'stale or incorrect'):
                 release.verify(state, attempts=1)
 
+    def test_static_icons_outside_build_root_do_not_break_release_or_rollback(self):
+        icon = '<link rel="icon" href="/assets/icons/icon-32.png">'
+        self.write(self.root / 'assets/icons/icon-32.png', 'existing static icon')
+        for directory in (self.front, self.artifact):
+            index = directory / 'index.html'
+            index.write_text(icon + index.read_text())
+        self.write(self.artifact / 'assets/theme-new12345.css', 'new style')
+        index = self.artifact / 'index.html'
+        index.write_text(index.read_text() + '<link rel="stylesheet" href="/assets/theme-new12345.css">')
+        state = self.prepare()
+        original = release.resource_manifest(self.root, 'domestic')
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch) as fetch:
+            release.activate(state)
+            self.assertIn('/assets/theme-new12345.css', [call.args[1] for call in fetch.call_args_list])
+            release.rollback(state)
+            self.assertNotIn('/assets/icons/icon-32.png', [call.args[1] for call in fetch.call_args_list])
+        self.assertEqual(original, release.resource_manifest(self.root, 'domestic'))
+
+    def test_incorrect_http_build_asset_still_fails_verification(self):
+        state = self.prepare()
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+        def wrong_asset(state, path):
+            return b'wrong script' if path.endswith('.js') else self.mock_fetch(state, path)
+        with patch.object(release, 'fetch', side_effect=wrong_asset):
+            with self.assertRaisesRegex(RuntimeError, 'HTTP asset mismatch'):
+                release.verify(state, attempts=1)
+
     def test_newer_release_is_not_overwritten_by_rollback(self):
         state = self.prepare()
         state['status'] = 'active'
