@@ -6,7 +6,7 @@ test('desktop tabs preserve a pending reply and drafts through utility panels an
         localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
         localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
         // Old floating panel positions must not displace the new workspace.
-        localStorage.setItem('roomPanelPositions', JSON.stringify({ chatPanel: { x: 9000, y: 9000 } }));
+        localStorage.setItem('roomPanelPositions', JSON.stringify({ chatPanel: { left: '9000px', top: '9000px', right: 'auto' }, profilePanel: { left: '-9000px', top: '-9000px', right: 'auto' } }));
     });
     let completeReply;
     const replyReady = new Promise(resolve => { completeReply = resolve; });
