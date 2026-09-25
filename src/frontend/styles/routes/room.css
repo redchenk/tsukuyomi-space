@@ -1,4 +1,4 @@
 @import url("../../../../assets/css/vue/pages/room.css") layer(ts-page);
-@import url("../room-mobile.css") layer(ts-editorial);
 @import url("../room-panels.css") layer(ts-editorial);
+@import url("../room-mobile.css") layer(ts-editorial);
 @import url("../room-desktop.css") layer(ts-editorial);

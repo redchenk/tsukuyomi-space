@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TsIcon from '../components/TsIcon.vue';
 import { apiFetch, parseResponse } from '../api/client';
 import RoomChatPanel from '../components/room/RoomChatPanel.vue';
@@ -51,7 +51,28 @@ const mobileTools = computed(() => room.panels.panelButtons.filter((button) => b
 const companionName = computed(() => room.chat.characterName.value === '八千代辉夜姬' ? '八千代' : room.chat.characterName.value);
 const companionStatus = computed(() => room.live2d.error.value ? '角色暂未连接' : room.live2d.ready.value ? '在这里，陪着你' : '正在准备与你见面…');
 const mobileToolsMenu = ref(null);
+const chatPanel = ref(null);
+const mobileSessionBusy = computed(() => room.chat.sending.value || room.chat.resetting.value || room.chat.endChatState.value.status === 'generating');
 let mobileQuery;
+
+async function newMobileConversation() {
+  closeMobileTools();
+  room.panels.openPanel('chatPanel');
+  await room.chat.startNewSession();
+}
+
+async function showMobileHistory() {
+  closeMobileTools();
+  room.panels.openPanel('chatPanel');
+  await nextTick();
+  chatPanel.value?.readEarlierMessages();
+}
+
+function endMobileConversation() {
+  closeMobileTools();
+  room.panels.openPanel('chatPanel');
+  room.chat.openEndChatDialog();
+}
 
 function closeMobileTools(event) {
   const menu = mobileToolsMenu.value;
@@ -153,9 +174,21 @@ watch(() => props.shareId, loadSharedConversation);
     </div>
 
     <header class="room-mobile-header">
-      <a href="/hub" aria-label="返回大厅" @click.prevent="emit('go', '/hub')"><TsIcon name="arrowLeft" :size="21" /></a>
-      <div><strong>私人居所</strong><span>留一点时间，与你相伴</span></div>
-      <button class="room-mobile-music" type="button" aria-label="房间音乐" :aria-expanded="room.music.drawer.open" @click="room.music.toggleShell"><TsIcon name="audioLines" :size="20" /></button>
+      <details ref="mobileToolsMenu" class="room-tools-disclosure">
+        <summary aria-label="房间功能"><TsIcon name="message" :size="22" /></summary>
+        <nav class="room-mobile-tools" aria-label="房间功能">
+          <span class="room-tools-heading">这一刻，慢慢聊</span>
+          <button type="button" :disabled="mobileSessionBusy" @click="newMobileConversation"><TsIcon name="plus" :size="18" /><span>{{ room.chat.resetting.value ? '正在新建' : '新建会话' }}</span></button>
+          <button type="button" @click="showMobileHistory"><TsIcon name="undo" :size="18" /><span>查看对话开头</span></button>
+          <button v-for="button in mobileTools" :key="button.id" type="button" :aria-pressed="room.panels.activePanels[button.id]" @click="selectMobilePanel(button.id)"><TsIcon :name="button.icon" :size="18" /><span>{{ button.label }}</span></button>
+          <button type="button" :disabled="mobileSessionBusy" aria-label="结束聊天" @click="endMobileConversation"><TsIcon name="book" :size="18" /><span>结束并写日记</span></button>
+          <button type="button" @click="closeMobileTools(); room.music.toggleShell()"><TsIcon name="audioLines" :size="18" /><span>房间音乐</span></button>
+          <button type="button" @click="closeMobileTools(); emit('go', '/growth')"><TsIcon name="sparkles" :size="18" /><span>月契成长</span></button>
+          <button type="button" :aria-pressed="!room.panels.activePanels.chatPanel" @click="closeMobileTools(); room.panels.togglePanel('chatPanel')"><TsIcon :name="room.panels.activePanels.chatPanel ? 'maximize' : 'message'" :size="18" /><span>{{ room.panels.activePanels.chatPanel ? '安静陪伴' : '返回聊天' }}</span></button>
+        </nav>
+      </details>
+      <div class="room-mobile-heading"><strong>{{ companionName }}</strong><span>与你一起，把时间慢下来。</span></div>
+      <a class="room-mobile-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="23" /></a>
     </header>
     <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" :music="room.music" :weather="room.world.weatherCard.value" @settings="emit('go', '/room/settings')" />
     <RoomWeatherCard :weather="room.world.weatherCard.value" />
@@ -172,19 +205,6 @@ watch(() => props.shareId, loadSharedConversation);
           <img :src="'/assets/images/wiki/entries/characters/yachiyo-tsukuyomi.webp'" alt="" width="42" height="42" data-image-bloom="subtle">
           <span class="room-companion-avatar" aria-hidden="true"></span>
           <div><h1>{{ companionName }}</h1><p :class="{ 'is-ready': room.live2d.ready.value }">{{ companionStatus }}</p></div>
-          <details ref="mobileToolsMenu" class="room-tools-disclosure">
-            <summary aria-label="房间功能"><TsIcon name="grid" :size="17" /><span>工具</span><TsIcon name="chevronDown" :size="12" /></summary>
-            <nav class="room-mobile-tools" aria-label="房间功能">
-              <button v-for="button in mobileTools" :key="button.id" type="button" :aria-pressed="room.panels.activePanels[button.id]" @click="selectMobilePanel(button.id)">
-                <TsIcon :name="button.icon" :size="17" /><span>{{ button.label }}</span>
-              </button>
-              <button type="button" @click="closeMobileTools(); emit('go', '/room/settings')"><TsIcon name="settings" :size="17" /><span>设置</span></button>
-              <button class="room-tools-music" type="button" @click="closeMobileTools(); room.music.toggleShell()"><TsIcon name="audioLines" :size="17" /><span>房间音乐</span></button>
-            </nav>
-          </details>
-          <button type="button" class="room-companion-mode" :aria-label="room.panels.activePanels.chatPanel ? '展开角色舞台' : '返回聊天'" @click="room.panels.togglePanel('chatPanel')">
-            <TsIcon :name="room.panels.activePanels.chatPanel ? 'maximize' : 'message'" :size="18" />
-          </button>
         </div>
       </section>
       <nav class="room-desktop-tabs" role="tablist" aria-label="房间工作区">
@@ -196,7 +216,9 @@ watch(() => props.shareId, loadSharedConversation);
       <div id="room-chat-workspace" v-show="mobileRoom || desktopPanel === 'chatPanel'" class="room-chat-workspace" :role="mobileRoom ? undefined : 'tabpanel'" :aria-labelledby="mobileRoom ? undefined : 'room-tab-chatPanel'">
         <RoomChatPanel
           v-if="!mobileRoom || room.panels.activePanels.chatPanel"
+          ref="chatPanel"
           :chat="room.chat"
+          :mobile="mobileRoom"
           :panel-style="{}"
           @close="room.panels.closePanel('chatPanel')"
           @focus="mobileRoom && room.panels.bringPanelForward('chatPanel')"

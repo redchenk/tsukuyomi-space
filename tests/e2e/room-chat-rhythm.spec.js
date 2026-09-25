@@ -42,7 +42,9 @@ test('Room renders live words, presents short messages and persists one complete
     const assistant = page.locator('.chat-message.assistant:not([aria-busy="true"])');
     await expect(assistant).toHaveCount(1);
     await expect(assistant.locator('.chat-reply-part')).toHaveText(['八千代也会紧张。', '只是藏得好一点～']);
-    await expect(assistant.getByRole('button', { name: '重新生成' })).toHaveCount(1);
+    await assistant.locator('.room-message-options > summary').click();
+    await expect(assistant.getByRole('button', { name: '重新生成' })).toBeVisible();
+    await assistant.locator('.room-message-options > summary').click();
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('roomChatHistory:guest')));
     expect(saved.map(item => item.role)).toEqual(['user', 'assistant']);
     expect(saved[1].content).toBe(reply);

@@ -1069,6 +1069,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   function addMessage(role, content, options = {}) {
+    const list = messageListRef.value;
+    const followReply = !list || role === 'user' || list.scrollHeight - list.scrollTop - list.clientHeight < 24;
     const nextMessage = {
       id: options.id || uid(),
       turnId: options.turnId || '',
@@ -1082,7 +1084,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     };
     messages.value.push(nextMessage);
     nextTick(() => {
-      if (messageListRef.value) messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+      if (followReply && messageListRef.value) messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
     });
     return nextMessage;
   }

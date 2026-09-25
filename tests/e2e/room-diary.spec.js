@@ -39,7 +39,12 @@ for (const width of [1280, 390]) {
     expect(chatRequests[0].systemPrompt).not.toContain('蓝色的海');
     expect(chatRequests[0].systemPrompt).not.toContain('Aoi');
     expect(chatRequests[0].systemPrompt).toContain('你是月见八千代');
-    await page.locator('#endChatBtn').click();
+    if (width <= 860) {
+      await page.locator('.room-tools-disclosure > summary').click();
+      await page.getByRole('button', { name: '结束聊天', exact: true }).click();
+    } else {
+      await page.locator('#endChatBtn').click();
+    }
     const dialog = page.getByRole('dialog', { name: '结束聊天', exact: true });
     await expect(dialog).toBeVisible();
     const box = await dialog.boundingBox();

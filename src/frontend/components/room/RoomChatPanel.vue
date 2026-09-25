@@ -7,6 +7,7 @@ import { splitRoomReply } from '../../services/room/roomReplyPresentation.mjs';
 
 const props = defineProps({
   chat: { type: Object, required: true },
+  mobile: { type: Boolean, default: false },
   panelStyle: { type: Object, required: true }
 });
 
@@ -19,6 +20,7 @@ const editDraft = ref('');
 const editSubmitting = ref(false);
 const editError = ref('');
 const copiedMessageId = ref('');
+const readingHistory = ref(false);
 async function copyMessage(message) {
   try {
     await navigator.clipboard.writeText(message.content || '');
@@ -27,10 +29,26 @@ async function copyMessage(message) {
 }
 function readEarlierMessages() {
   followingLatestMessage = false;
+  readingHistory.value = true;
   transcriptRef.value?.scrollTo({ top: 0, behavior: 'smooth' });
 }
+function returnToLatest() {
+  followingLatestMessage = true;
+  readingHistory.value = false;
+  transcriptRef.value?.scrollTo({ top: transcriptRef.value.scrollHeight, behavior: 'smooth' });
+}
+defineExpose({ readEarlierMessages });
 let transcriptObserver;
 let followingLatestMessage = true;
+
+function closeMessageMenus(event) {
+  if (!props.mobile || (event.type === 'keydown' && event.key !== 'Escape')) return;
+  for (const menu of transcriptRef.value?.querySelectorAll('.room-message-options[open]') || []) {
+    if (event.type === 'pointerdown' && menu.contains(event.target)) continue;
+    menu.open = false;
+    if (event.type === 'keydown') menu.querySelector('summary')?.focus();
+  }
+}
 
 function bindTranscript(node) {
   transcriptRef.value = node;
@@ -39,10 +57,15 @@ function bindTranscript(node) {
 
 function rememberTranscriptPosition() {
   const node = transcriptRef.value;
-  if (node) followingLatestMessage = node.scrollHeight - node.scrollTop - node.clientHeight < 24;
+  if (node) {
+    followingLatestMessage = node.scrollHeight - node.scrollTop - node.clientHeight < 24;
+    readingHistory.value = !followingLatestMessage;
+  }
 }
 
 onMounted(() => {
+  document.addEventListener('pointerdown', closeMessageMenus);
+  document.addEventListener('keydown', closeMessageMenus);
   // Keep the newest reply in view when the keyboard or stage changes height,
   // while preserving the position of someone reading earlier messages.
   if (typeof ResizeObserver === 'undefined') return;
@@ -52,7 +75,11 @@ onMounted(() => {
   });
   if (transcriptRef.value) transcriptObserver.observe(transcriptRef.value);
 });
-onBeforeUnmount(() => transcriptObserver?.disconnect());
+onBeforeUnmount(() => {
+  transcriptObserver?.disconnect();
+  document.removeEventListener('pointerdown', closeMessageMenus);
+  document.removeEventListener('keydown', closeMessageMenus);
+});
 
 const generationState = computed(() => props.chat.generationState?.value || { status: 'idle', error: '' });
 const generationBusy = computed(() => ['preparing', 'streaming', 'saving'].includes(generationState.value.status) || props.chat.sending.value);
@@ -153,6 +180,7 @@ const sessionTurns = computed(() => (typeof props.chat.sessionTurnCount === 'fun
 const characterName = computed(() => String(props.chat.characterName?.value || '').trim() || '角色');
 const panelTitle = computed(() => `与${characterName.value}聊天`);
 const hasConversation = computed(() => props.chat.messages.value.some((message) => message.role !== 'system'));
+const displayedMessages = computed(() => props.chat.messages.value.filter(message => !props.mobile || message.role !== 'system' || !['Live2D 已就绪', 'Live2D is ready'].includes(message.content)));
 const englishRoom = isEnglishSite();
 const quickMessages = englishRoom
   ? ['How was your day?', 'Let’s talk', 'A little encouragement']
@@ -275,7 +303,8 @@ function endChatStatusLabel() {
           </button>
         </div>
       </div>
-      <div id="chatMessages" :ref="bindTranscript" class="room-chat-messages" :aria-busy="generationBusy" @scroll.passive="rememberTranscriptPosition">
+      <div class="room-transcript-viewport">
+      <div id="chatMessages" :ref="bindTranscript" class="room-chat-messages" tabindex="0" aria-label="聊天记录" :aria-busy="generationBusy" @scroll.passive="rememberTranscriptPosition">
         <div v-if="!hasConversation" class="room-chat-welcome">
           <TsIcon name="message" :size="23" />
           <strong>这一刻，慢慢聊</strong>
@@ -284,7 +313,7 @@ function endChatStatusLabel() {
             :disabled="chat.sending.value || chat.resetting.value || endChatBusy" :title="`让${characterName}先开口`"
             @click="chat.startConversation()"><TsIcon name="sparkles" :size="15" /><span>我先说</span></button>
         </div>
-        <div v-for="message in chat.messages.value" :key="message.id" class="chat-message" :class="[message.role, { 'is-failed': message.failed, 'is-streaming': message.pending }]" :aria-busy="message.pending || undefined">
+        <div v-for="message in displayedMessages" :key="message.id" class="chat-message" :class="[message.role, { 'is-failed': message.failed, 'is-streaming': message.pending }]" :aria-busy="message.pending || undefined">
           <span v-if="message.role === 'assistant'" class="room-message-avatar" aria-hidden="true"></span>
           <span class="chat-role">{{ message.role === 'assistant' ? characterName : message.role === 'user' ? '你' : '系统' }}</span>
           <span v-if="message.role === 'assistant'" class="room-message-ai">AI</span>
@@ -315,6 +344,8 @@ function endChatStatusLabel() {
           </template>
           <div class="chat-message-footer">
             <time v-if="message.role !== 'system' && !message.pending && messageTime(message.createdAt)" class="chat-message-time">{{ messageTime(message.createdAt) }}</time>
+            <details v-if="message.role !== 'system' && !message.pending && editingMessageId !== message.id" class="room-message-options" :open="!mobile">
+              <summary :aria-label="message.role === 'user' ? '这条消息的操作' : '这条回复的操作'"><TsIcon name="ellipsis" :size="18" /></summary>
             <div v-if="message.role === 'user' && !message.pending && editingMessageId !== message.id" class="chat-message-actions">
               <span v-if="message.failed" class="chat-message-failed">未送达</span>
               <button v-if="canEditMessage(message)" class="chat-tts-btn" type="button" :aria-label="'编辑并重发这条消息'" @click="beginEdit(message)">编辑重发</button>
@@ -346,6 +377,7 @@ function endChatStatusLabel() {
                 <span>分享</span>
               </button>
             </div>
+            </details>
           </div>
         </div>
         <div v-if="generationInterrupted" class="chat-generation-notice" :class="generationState.status" :role="generationState.status === 'error' ? 'alert' : 'status'">
@@ -355,6 +387,9 @@ function endChatStatusLabel() {
         </div>
         <div v-else-if="generationState.status === 'preparing' && !chat.messages.value.some((message) => message.pending)" class="chat-generation-notice preparing" role="status">{{ generationMessage }}</div>
       </div>
+      <div class="room-transcript-fade" aria-hidden="true"></div>
+      </div>
+      <button v-if="mobile && readingHistory && hasConversation" class="room-return-latest" type="button" @click="returnToLatest"><TsIcon name="message" :size="14" /><span>回到最新消息</span></button>
       <div v-if="!hasConversation" class="room-chat-suggestions" aria-label="聊天开场建议">
         <button v-for="message in quickMessages" :key="message" type="button" @click="useQuickMessage(message)">{{ message }}</button>
       </div>

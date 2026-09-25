@@ -141,3 +141,51 @@ this CSS-only fix.
 - Typography, copy, palette and assets remain unchanged. Tab spacing was tightened to preserve room for all four tabs and settings on smaller desktop widths. Existing frontend checks pass 235/235; production build passes.
 
 **Final result: passed — button geometry follows the shared site token.**
+
+# Mobile Room floating conversation — 2026-09-25
+
+Source visual truth: `/Users/yxy/Downloads/ChatGPT 图像 2026年9月25日 15_44_09.png`.
+Implementation: `http://127.0.0.1:4174/room`, authenticated local fixture, latest reply, light theme.
+Reference is 941 × 1672 pixels, normalized to 393 × 698; browser capture is 393 × 698 CSS/pixels at density 1. The reference's OS status bar is not app UI and is not reproduced. This is an adaptation using the site's existing Yachiyo model, scene, theme tokens and bottom navigation, as requested.
+
+## Initial comparison
+
+Full view: `.codex_tmp/room-redesign/mobile-scene-comparison.png`.
+Focused header/chat/composer: `.codex_tmp/room-redesign/mobile-scene-details.png`.
+
+- P2: The character occupied too little of the scene compared with the reference. Increase the mobile canvas's height and move it upward while keeping the face clear of the header and transcript.
+- P2, already corrected during rendering checks: global strong-text styling made the mobile title dark on the scene; a scoped text token now keeps it readable in both themes.
+- P2, already corrected: inherited diary body height left a large empty sheet; restored content-driven height with bounded internal scrolling.
+- P2, already corrected: the empty conversation's title could scroll into the fade due to redundant Live2D-ready system text. Hide that technical startup notice on phones and keep the welcome compact.
+
+final result: blocked
+
+## Final comparison and resolution
+
+The second combined comparison was opened and reviewed after enlarging the character:
+`.codex_tmp/room-redesign/mobile-scene-comparison-final.png` (full view) and
+`.codex_tmp/room-redesign/mobile-scene-details-final.png` (header, bubbles and composer).
+The larger canvas now gives the character the intended presence, with the face clear of the conversation. No actionable P0/P1/P2 findings remain.
+
+Required surfaces:
+- Typography: site serif heading, inherited UI/body font, 14px chat with 1.75 line height, 16px editable input. No compressed controls or unintended vertical wrapping; heading contrast corrected in both themes. Larger chat type than the reference is intentional for phone readability.
+- Layout: no conversation card/background/border/blur; only message bubbles and composer have surfaces. Transcript begins around the center, fades over 40–56px, scrolls independently, and leaves the newest reply above the composer. Header actions and composer buttons are 44–46px. Bottom site navigation remains reachable with a 6px minimum composer gap.
+- Color/tokens: existing `--ts-*` surfaces, accent, text and `--ts-radius-button`; no separate blue palette. Light/dark checked. The single small blur strip softens fading history; reduced-transparency/performance modes retain opacity fading without costly blur.
+- Assets: existing protected room background, live Yachiyo model and source character portrait. No artwork/model/music files changed or generated; the reference's brown-haired illustration and OS chrome are deliberately not substituted into this existing site. Existing icon system retained.
+- Copy/content: real Room actions, familiar labels and current short-reply presentation; left menu contains new chat, history, diary, profile, notes, end/journal, music, growth and quiet company. Right settings link uses the existing route. New labels also included in the overseas static translation map.
+
+Interaction checks in the in-app browser: history-to-start and return-to-latest; bubble action menu; diary and note panels; music open/close; settings navigation; site navigation and theme switch; empty conversation; multi-line draft with independent send button. New conversation uses the existing reset path; long-term memory logic is unchanged. Existing diary-after-send and keyboard tests are retained with updated mobile entry points. Added a regression for reading older messages while a new reply arrives.
+
+Responsive evidence: 360×640, 393×698, 390×844, 740×390 landscape, and 1440×810 desktop. No horizontal overflow or composer/navigation overlap. Physical iOS keyboard not exercised here; the existing visual-viewport keyboard regression remains in CI.
+- `.codex_tmp/room-redesign/mobile-scene-light-360.png`
+- `.codex_tmp/room-redesign/mobile-scene-light-reference-size-final.png`
+- `.codex_tmp/room-redesign/mobile-scene-light-390-final.png`
+- `.codex_tmp/room-redesign/mobile-scene-dark-390-final.png`
+- `.codex_tmp/room-redesign/mobile-scene-diary-final.png`
+- `.codex_tmp/room-redesign/mobile-change-desktop-regression.png`
+
+Browser console: no errors in the checked Room state. Both frontend variants build, 235 frontend tests pass, `git diff --check` passes. Full browser regressions and protected-resource release verification run in the existing deployment workflow.
+
+Follow-up polish: none required for this scope.
+
+final result: passed
