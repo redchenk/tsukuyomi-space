@@ -1,0 +1,35 @@
+/* These actions include labels; the global square icon-button skin does not fit them. */
+.page.uc-page .uc-article-actions {
+    display: flex;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.page.uc-page .uc-article-actions > .uc-icon-action,
+.page.user-profile-page .profile-article > .profile-icon-action {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: max-content;
+    min-height: 38px;
+    padding: 0.5rem 0.75rem;
+    aspect-ratio: auto;
+    white-space: nowrap;
+}
+
+.page.uc-page .uc-article-actions > .uc-icon-action > span,
+.page.user-profile-page .profile-article > .profile-icon-action > span {
+    flex: 0 0 auto;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+.page.uc-page .uc-pixel-actions > .uc-icon-action {
+    flex-grow: 1;
+}
+
+@media (max-width: 720px) {
+    .page.uc-page .uc-article-actions > .uc-icon-action {
+        flex-grow: 1;
+    }
+}
