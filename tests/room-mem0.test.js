@@ -52,7 +52,17 @@ test('chat transaction preserves short facts; real Mem0 survives restart, prunin
     fill();
     assert.equal(chat.listMessages('mem0-one', 100).some(row => row.content.includes('雪糕')), false);
     await request('/chat', 'DELETE');
-    const result = await request('/memory?purpose=chat&q=' + encodeURIComponent('我的猫叫什么名字'));
+    const query = '/memory?purpose=chat&q=' + encodeURIComponent('我的猫叫什么名字');
+    let result;
+    // Production bounds each catch-up pass to four seconds. A cold, slower CI
+    // disk may need several passes for 806 records; each pass keeps its writes.
+    // Still require the real Mem0 path, and verify the fact survives even while
+    // the authoritative-source fallback serves the unfinished index.
+    for (let attempt = 0; attempt < 8; attempt++) {
+        result = await request(query);
+        assert.match(result.data[0]?.context || '', /雪糕/);
+        if (result.retrieval.backend === 'mem0') break;
+    }
     assert.equal(result.retrieval.backend, 'mem0');
     assert.equal(result.retrieval.fallback, false);
     assert.match(result.data[0].context, /雪糕/);
