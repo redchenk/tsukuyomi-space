@@ -203,7 +203,9 @@ function countAdminMessages(options = {}) {
 }
 
 function approveMessage(id) {
-    return db.prepare("UPDATE messages SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id).changes;
+    // Approval does not edit the reviewed content. Preserve its revision so a
+    // retry with the same review digest stays valid even across a second boundary.
+    return db.prepare("UPDATE messages SET status = 'approved' WHERE id = ?").run(id).changes;
 }
 
 function findAdminMessageById(id) {

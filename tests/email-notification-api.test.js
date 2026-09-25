@@ -162,6 +162,9 @@ test('published replies, article comments and new likes mail the owner once when
     });
     assert.equal(pendingArticleComment.status, 201);
     assert.equal(pendingArticleComment.body.data.status, 'pending');
+    // Force the review revision into a different second, without a timing sleep.
+    db.prepare("UPDATE messages SET updated_at = '2000-01-01 00:00:00' WHERE id = ?")
+        .run(pendingArticleComment.body.data.id);
     await new Promise(resolve => setTimeout(resolve, 10));
     assert.deepEqual(sentByRoutes.map(item => item.event.type).sort(), ['like', 'like', 'reply', 'reply']);
     assert.equal(sentByRoutes.filter(item => item.event.title.includes('评论了你的文章《月下文章》')).length, 1);
@@ -187,6 +190,7 @@ test('published replies, article comments and new likes mail the owner once when
         body: { reviewDigest: reviewedArticleComment.moderation.reviewDigest }
     });
     assert.equal(approvedAgain.status, 200);
+    assert.equal(db.prepare('SELECT updated_at FROM messages WHERE id = ?').get(reviewedArticleComment.id).updated_at, '2000-01-01 00:00:00');
     const selfComment = await call('/api/messages', {
         method: 'POST', body: { content: '感谢大家阅读', article_id: articleId }, token: ownerToken
     });
@@ -209,4 +213,29 @@ test('published replies, article comments and new likes mail the owner once when
     const articleNotification = notifications.find(item => item.related_message_id === articleComment.body.data.id);
     assert.equal(articleNotification.related_article_id, articleId);
     assert.ok(articleNotification.link.endsWith(`#comment-${articleComment.body.data.id}`));
+});
+
+test('both moderation APIs accept approval retries but reject a digest after a content edit', async () => {
+    const siteAdminToken = generateToken({ id: 'admin-001', username: 'admin', role: 'admin' });
+    for (const [prefix, auth] of [
+        ['/api/admin', { cookie: superCookie }],
+        ['/api/moderation', { token: siteAdminToken }]
+    ]) {
+        const id = db.prepare("INSERT INTO messages (author, content, status, updated_at) VALUES ('review-test', '待审核内容', 'pending', '2000-01-01 00:00:00')")
+            .run().lastInsertRowid;
+        const list = await call(`${prefix}/messages`, auth);
+        assert.equal(list.status, 200);
+        const items = Array.isArray(list.body.data) ? list.body.data : list.body.data.items;
+        const digest = items.find(item => item.id === Number(id)).moderation.reviewDigest;
+        const body = { reviewDigest: digest };
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            const result = await call(`${prefix}/messages/${id}/approve`, { method: 'POST', ...auth, body });
+            assert.equal(result.status, 200, prefix);
+        }
+        db.prepare("UPDATE messages SET content = '已修改的内容', status = 'pending', updated_at = '2001-01-01 00:00:00' WHERE id = ?").run(id);
+        const stale = await call(`${prefix}/messages/${id}/approve`, { method: 'POST', ...auth, body });
+        assert.equal(stale.status, 409, prefix);
+        assert.equal(stale.body.code, 'MESSAGE_REVIEW_STALE');
+        assert.equal(db.prepare('SELECT status FROM messages WHERE id = ?').get(id).status, 'pending');
+    }
 });

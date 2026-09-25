@@ -560,7 +560,20 @@ async function listObjects({ prefix = '', maxKeys = 100, settings: providedSetti
     return { objects: parseListObjectsXml(text), prefix: cleanPrefix };
 }
 
-async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', settings: providedSettings = null, requireEnabled = true }) {
+async function putObject({
+    buffer,
+    mimeType,
+    ext,
+    role,
+    id,
+    uploadPath = '',
+    settings: providedSettings = null,
+    requireEnabled = true,
+    inline = false,
+    contentEncoding = '',
+    cacheControl = '',
+    publicRead = false
+}) {
     const settings = providedSettings || getSettings();
     if ((requireEnabled && !settings.ossEnabled) || !hasUploadParams(settings)) return null;
     const objectKey = buildObjectKey({ settings, id, ext, role, uploadPath });
@@ -568,7 +581,13 @@ async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', set
     if (!url) return null;
     const normalizedMimeType = String(mimeType || 'application/octet-stream').split(';')[0].trim().toLowerCase();
     const contentDisposition = attachmentDisposition(objectKey.split('/').pop() || 'attachment')
-        .replace(/^attachment/, INLINE_OBJECT_MIME_TYPES.has(normalizedMimeType) ? 'inline' : 'attachment');
+        .replace(/^attachment/, inline === true || INLINE_OBJECT_MIME_TYPES.has(normalizedMimeType) ? 'inline' : 'attachment');
+    const uploadHeaders = {
+        'Content-Disposition': contentDisposition
+    };
+    if (contentEncoding) uploadHeaders['Content-Encoding'] = String(contentEncoding);
+    if (cacheControl) uploadHeaders['Cache-Control'] = String(cacheControl);
+    if (publicRead === true) uploadHeaders['X-Oss-Object-Acl'] = 'public-read';
     const response = await signedFetch({
         method: 'PUT',
         url,
@@ -577,9 +596,7 @@ async function putObject({ buffer, mimeType, ext, role, id, uploadPath = '', set
         accessKeySecret: settings.ossAccessKeySecret,
         body: buffer,
         contentType: mimeType || 'application/octet-stream',
-        headers: {
-            'Content-Disposition': contentDisposition
-        },
+        headers: uploadHeaders,
         settings
     });
     if (!response.ok) {

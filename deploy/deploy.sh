@@ -12,6 +12,11 @@ ENV_FILE="$ENV_DIR/tsukuyomi-space.env"
 
 cd "$APP_DIR"
 
+if [ "${BUILD_ON_SERVER:-false}" = "true" ]; then
+    echo "Code-only deployment requires prebuilt web artifacts; server-side builds are disabled to preserve Live2D resources." >&2
+    exit 1
+fi
+
 mkdir -p "$ENV_DIR" "$DATA_DIR" "$LOG_DIR"
 
 if [ "${INSTALL_SERVER_MAINTENANCE:-true}" = "true" ] && [ "$(id -u)" -eq 0 ]; then
@@ -30,6 +35,12 @@ set -a
 # shellcheck disable=SC1090
 . "$ENV_FILE"
 set +a
+
+if [ "${1:-}" = "--code-only" ]; then
+    BUILD_ON_SERVER=false
+    INSTALL_NGINX_CONFIG=false
+    HARDEN_OPENRESTY_ORIGIN=false
+fi
 
 DB_FILE="${DB_PATH:-$DATA_DIR/tsukuyomi.db}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/tsukuyomi-space/deploy}"
@@ -53,9 +64,15 @@ backup_sqlite() {
     if command -v sqlite3 >/dev/null 2>&1; then
         sqlite3 "$DB_FILE" ".backup '$backup_file'"
     else
-        cp -p "$DB_FILE" "$backup_file"
-        [ -f "$DB_FILE-wal" ] && cp -p "$DB_FILE-wal" "$backup_file-wal"
-        [ -f "$DB_FILE-shm" ] && cp -p "$DB_FILE-shm" "$backup_file-shm"
+        node - "$DB_FILE" "$backup_file" <<'NODE'
+const Database = require('better-sqlite3');
+const db = new Database(process.argv[2], { readonly: true });
+db.backup(process.argv[3]).then(() => db.close()).catch(error => {
+    console.error(error);
+    db.close();
+    process.exitCode = 1;
+});
+NODE
     fi
 
     chmod 600 "$backup_file"*
@@ -75,9 +92,12 @@ if ! id "$APP_USER" >/dev/null 2>&1; then
     useradd --system --gid "$APP_GROUP" --home-dir "$DATA_DIR" --shell /usr/sbin/nologin "$APP_USER"
 fi
 
-install -d -o "$APP_USER" -g "$APP_GROUP" -m 750 "$DATA_DIR" "$LOG_DIR" "$APP_DIR/assets/uploads"
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 750 "$DATA_DIR" "$LOG_DIR"
+if [ ! -e "$APP_DIR/assets/uploads" ] && [ ! -L "$APP_DIR/assets/uploads" ]; then
+    install -d -o "$APP_USER" -g "$APP_GROUP" -m 750 "$APP_DIR/assets/uploads"
+fi
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 700 "$DATA_DIR/mcp-home"
-chown -R "$APP_USER:$APP_GROUP" "$DATA_DIR" "$LOG_DIR" "$APP_DIR/assets/uploads"
+chown -R "$APP_USER:$APP_GROUP" "$DATA_DIR" "$LOG_DIR"
 
 harden_app_permissions() {
     if [ -L "$APP_DIR/assets/uploads" ]; then
@@ -87,9 +107,11 @@ harden_app_permissions() {
 
     # Large, pre-existing media and Live2D resources are managed separately.
     # A code-only deployment must not rewrite their ownership or mode bits.
-    local protected_paths=( -path "$APP_DIR/assets/uploads" -o -path "$APP_DIR/assets/music" \
-        -o -path "$APP_DIR/assets/video" -o -path "$APP_DIR/models" \
-        -o -path "$APP_DIR/lib/bundled" -o -path "$APP_DIR/dist/live2d-studio" )
+    local protected_paths=( -path "$APP_DIR/assets" -o -path "$APP_DIR/models" \
+        -o -path "$APP_DIR/models-v3" -o -path "$APP_DIR/models-v4" \
+        -o -path "$APP_DIR/lib" -o -path "$APP_DIR/live2d-core.js" \
+        -o -path "$APP_DIR/game-assets" -o -path "$APP_DIR/game-runtime" \
+        -o -path "$APP_DIR/dist/live2d-studio" )
     find "$APP_DIR" -xdev \( "${protected_paths[@]}" \) -prune -o \
         \( -type f -o -type d \) -exec chown root:root {} +
     find "$APP_DIR" -xdev \( "${protected_paths[@]}" \) -prune -o \
@@ -108,14 +130,15 @@ harden_app_permissions() {
         find "$APP_DIR/node_modules" -xdev -type f -exec chmod u+rw,g+r,o-rwx {} +
     fi
 
-    chown -R "$APP_USER:$APP_GROUP" "$APP_DIR/assets/uploads"
-    find "$APP_DIR/assets/uploads" -xdev -type d -exec chmod 750 {} +
-    find "$APP_DIR/assets/uploads" -xdev -type f -exec chmod 640 {} +
 }
 
 harden_app_permissions
 
 if [ "${INSTALL_DEPS:-false}" = "true" ] || ! npm ls --omit=dev --depth=0 >/dev/null 2>&1; then
+    if [ "${1:-}" = "--code-only" ]; then
+        echo "Existing production dependencies must be ready before a code-only release; dependency installs require a separate environment release." >&2
+        exit 1
+    fi
     echo "Production dependencies are missing or out of date; installing with a single worker."
     npm_config_jobs="${npm_config_jobs:-1}" \
         NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=384}" \
@@ -123,9 +146,8 @@ if [ "${INSTALL_DEPS:-false}" = "true" ] || ! npm ls --omit=dev --depth=0 >/dev/
 fi
 
 if [ "${BUILD_ON_SERVER:-false}" = "true" ]; then
-    npm run build:web
-    npm run build:live2d
-    npm run build:live2d-studio
+    echo "BUILD_ON_SERVER=true is not supported by code-only deployment." >&2
+    exit 1
 fi
 
 for output in dist/frontend/index.html lib/bundled/live2d-room-neuro-live.iife.js lib/bundled/live2d-room-neuro-live.20260727-adaptive-perf-r9.iife.js dist/live2d-studio/index.html; do
@@ -166,3 +188,14 @@ fi
 if [ "${HARDEN_OPENRESTY_ORIGIN:-false}" = "true" ]; then
     bash deploy/install-openresty-hardening.sh
 fi
+
+healthy=false
+for _ in $(seq 1 20); do
+    if curl --fail --silent --show-error --max-time 5 "http://127.0.0.1:${PORT:-3000}/api/health" \
+        | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>{try{process.exit(JSON.parse(s).status==="ok"?0:1)}catch{process.exit(1)}})'; then
+        healthy=true
+        break
+    fi
+    sleep 2
+done
+[ "$healthy" = true ] || { echo "Application health check failed after reload." >&2; exit 1; }

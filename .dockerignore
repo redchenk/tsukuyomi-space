@@ -1,6 +1,9 @@
 .git
 .github
+.codex_tmp
 .DS_Store
+._*
+__pycache__
 .env
 .env.*
 !.env.example
@@ -17,6 +20,9 @@ test-results
 backups
 assets/uploads
 assets/music
+assets/video
+assets/audio
+models
 Start-Live2D-Studio.exe
 tools
 tools/live2d-launcher/bin

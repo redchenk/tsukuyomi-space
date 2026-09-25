@@ -42,6 +42,7 @@ fi
 prune_archives /var/backups/tsukuyomi-space/frontend "$BACKUP_RETENTION"
 prune_archives /var/backups/tsukuyomi-space/releases "$BACKUP_RETENTION"
 prune_archives /var/backups/agent-os "$BACKUP_RETENTION"
+python3 "$APP_DIR/deploy/prune-release-backups.py" --retention "$BACKUP_RETENTION"
 
 find /tmp -maxdepth 1 -type f -name 'tsukuyomi-deployment-*.bundle' -mtime +2 -delete
 find /tmp -maxdepth 1 -type d -name 'tsukuyomi-prebuilt-*' -mtime +2 -exec rm -rf -- {} +

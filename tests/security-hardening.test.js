@@ -405,7 +405,7 @@ describe('deployment privilege boundary', () => {
         assert.match(compose, /MINIO_ACCESS_KEY_ID: \$\{MILVUS_MINIO_ACCESS_KEY:/);
     });
 
-    it('stages only the two prebuilt frontends outside the Git worktree before merging', () => {
+    it('stages both prebuilt frontends and uses the guarded release workflow', () => {
         const workflow = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'deploy.yml'), 'utf8');
         assert.match(workflow, /target: \/tmp\/tsukuyomi-prebuilt-\$\{\{ github\.run_id \}\}/);
         assert.match(workflow, /path: deployment-artifacts/);
@@ -419,9 +419,10 @@ describe('deployment privilege boundary', () => {
         assert.match(workflow, /port: \$\{\{ secrets\.OVERSEAS_SERVER_PORT \|\| 47388 \}\}/);
         assert.match(workflow, /source: deployment-artifacts\/domestic/);
         assert.match(workflow, /source: deployment-artifacts\/overseas/);
-        assert.match(workflow, /git .*merge --ff-only FETCH_HEAD[\s\S]*rsync -r --checksum "\$domestic\/" "\$app\/dist\/frontend\/"/);
-        assert.match(workflow, /overseas_root=\/opt\/1panel\/www\/sites\/tsukuyomi-space\.com\/frontend/);
-        assert.match(workflow, /test -d "\$overseas_root"[\s\S]*rsync -r --checksum "\$overseas\/" "\$overseas_root\/"/);
+        assert.match(workflow, /Prepare domestic release[\s\S]*Prepare overseas release[\s\S]*Activate domestic release/);
+        assert.match(workflow, /--frontend \/opt\/1panel\/www\/sites\/tsukuyomi-space\.com\/frontend/);
+        assert.match(workflow, /failure\(\) && steps\.prepare_domestic\.outcome == 'success'/);
+        assert.match(workflow, /failure\(\) && steps\.prepare_overseas\.outcome == 'success'/);
         assert.doesNotMatch(workflow, /rsync[^\n]*--delete/);
     });
 

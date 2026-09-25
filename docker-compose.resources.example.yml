@@ -5,4 +5,5 @@ services:
       # docker compose -f docker-compose.yml -f docker-compose.resources.yml up -d --build
       - ./assets/music:/app/assets/music:ro
       - ./assets/video:/app/assets/video:ro
+      - ./assets/audio:/app/assets/audio:ro
       - ./models:/app/models:ro

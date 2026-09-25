@@ -3,6 +3,8 @@ name: Deploy
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -11,6 +13,7 @@ concurrency:
 
 jobs:
   deployment-targets:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Validate domestic and overseas server configuration
@@ -28,18 +31,22 @@ jobs:
           }
 
   check:
-    needs: deployment-targets
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.20.2
           cache: npm
 
       - run: npm ci
       - run: npm test
+      - run: python3 -m unittest discover -s tests -p 'deployment_safety_test.py'
+      - name: Build and smoke-test Docker runtime
+        run: |
+          docker build --target runtime -t tsukuyomi-ci:${{ github.sha }} .
+          bash tests/docker-smoke.sh tsukuyomi-ci:${{ github.sha }}
       - name: Build domestic frontend
         run: |
           npm run build:web
@@ -61,7 +68,7 @@ jobs:
           if-no-files-found: error
 
   deploy:
-    needs: check
+    needs: [check, deployment-targets]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -81,7 +88,7 @@ jobs:
           cd deployment-source
           git branch -f codex-deploy "$GITHUB_SHA"
           base="$(git rev-list --first-parent --max-count=100 "$GITHUB_SHA" | tail -1)"
-          bundle="../tsukuyomi-deployment-${GITHUB_RUN_ID}.bundle"
+          bundle="../tsukuyomi-deployment-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.bundle"
           if [ "$base" = "$GITHUB_SHA" ]; then
             git bundle create "$bundle" refs/heads/codex-deploy
           else
@@ -96,8 +103,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: deployment-artifacts/domestic
-          target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}
+          source: deployment-artifacts/domestic,deployment-source/deploy/safe-release.py,deployment-source/deploy/prune-release-backups.py
+          target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
           overwrite: true
 
       - name: Upload overseas frontend
@@ -108,8 +115,8 @@ jobs:
           password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
           key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
           port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
-          source: deployment-artifacts/overseas
-          target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}
+          source: deployment-artifacts/overseas,deployment-source/deploy/safe-release.py,deployment-source/deploy/prune-release-backups.py
+          target: /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
           overwrite: true
 
       - name: Upload deployment bundle
@@ -119,26 +126,12 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: tsukuyomi-deployment-${{ github.run_id }}.bundle
+          source: tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle
           target: /tmp
           overwrite: true
 
-      - name: Validate overseas deployment target
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
-          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
-          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
-          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
-          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
-          script: |
-            set -e
-            overseas=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}/deployment-artifacts/overseas
-            overseas_root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
-            test -f "$overseas/index.html" || { echo "Overseas frontend artifact is missing" >&2; exit 1; }
-            test -d "$overseas_root" || { echo "Overseas frontend directory is missing" >&2; exit 1; }
-
-      - name: Deploy domestic site via SSH
+      - name: Prepare domestic release
+        id: prepare_domestic
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -146,32 +139,19 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
-            set -e
-            app=/var/www/tsukuyomi-space
-            bundle=/tmp/tsukuyomi-deployment-${{ github.run_id }}.bundle
-            prebuilt=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}
-            domestic="$prebuilt/deployment-artifacts/domestic"
-            case "$prebuilt" in
-              /tmp/tsukuyomi-prebuilt-[0-9]*) ;;
-              *) echo "Invalid prebuilt path" >&2; exit 1 ;;
-            esac
-            trap 'rm -f "$bundle"; rm -rf -- "$prebuilt"' EXIT
-            test -d "$app" || { echo "Application directory is missing" >&2; exit 1; }
-            test -f "$domestic/index.html" || { echo "Domestic frontend artifact is missing" >&2; exit 1; }
-            cd "$app"
-            git fetch "$bundle" refs/heads/codex-deploy
-            test "$(git rev-parse FETCH_HEAD)" = "${{ github.sha }}"
-            git -c core.hooksPath=/dev/null merge --ff-only FETCH_HEAD
-            install -d -m 0755 "$app/dist/frontend"
-            install -d -m 0700 /var/backups/tsukuyomi-space/frontend
-            if [ -f "$app/dist/frontend/index.html" ]; then
-              cp -p "$app/dist/frontend/index.html" "/var/backups/tsukuyomi-space/frontend/domestic-${{ github.run_id }}.html"
-            fi
-            # Keep older hashed assets for rollback and transfer only changed files.
-            rsync -r --checksum "$domestic/" "$app/dist/frontend/"
-            INSTALL_NGINX_CONFIG=true HARDEN_OPENRESTY_ORIGIN=true bash deploy/deploy.sh
+            set -eu
+            stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
+            state=/var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-domestic
+            python3 "$stage/deployment-source/deploy/safe-release.py" prepare \
+              --site domestic --state "$state" \
+              --root /var/www/tsukuyomi-space --frontend /var/www/tsukuyomi-space/dist/frontend \
+              --artifact "$stage/deployment-artifacts/domestic" \
+              --base-url https://yachiyo.hk --resolve yachiyo.hk:443:127.0.0.1 \
+              --bundle /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle \
+              --commit ${{ github.sha }} --extra-resource /var/www/tsukuyomi-game-assets
 
-      - name: Deploy overseas site via SSH
+      - name: Prepare overseas release
+        id: prepare_overseas
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.OVERSEAS_SERVER_HOST }}
@@ -180,29 +160,144 @@ jobs:
           key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
           port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
           script: |
-            set -e
-            prebuilt=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}
-            overseas="$prebuilt/deployment-artifacts/overseas"
-            overseas_root=/opt/1panel/www/sites/tsukuyomi-space.com/frontend
-            case "$prebuilt" in
-              /tmp/tsukuyomi-prebuilt-[0-9]*) ;;
-              *) echo "Invalid prebuilt path" >&2; exit 1 ;;
-            esac
-            trap 'rm -rf -- "$prebuilt"' EXIT
-            test -f "$overseas/index.html" || { echo "Overseas frontend artifact is missing" >&2; exit 1; }
-            test -d "$overseas_root" || { echo "Overseas frontend directory is missing" >&2; exit 1; }
-            install -d -m 0700 /var/backups/tsukuyomi-space/frontend
-            if [ -f "$overseas_root/index.html" ]; then
-              cp -p "$overseas_root/index.html" "/var/backups/tsukuyomi-space/frontend/overseas-${{ github.run_id }}.html"
-            fi
-            if command -v rsync >/dev/null 2>&1; then
-              rsync -r --checksum "$overseas/" "$overseas_root/"
-            else
-              (cd "$overseas" && find . -type f) | while IFS= read -r relative; do
-                target="$overseas_root/$relative"
-                install -d "$(dirname "$target")"
-                if ! cmp -s "$overseas/$relative" "$target"; then
-                  cp "$overseas/$relative" "$target"
-                fi
-              done
-            fi
+            set -eu
+            stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
+            state=/var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-overseas
+            python3 "$stage/deployment-source/deploy/safe-release.py" prepare \
+              --site overseas --state "$state" \
+              --root /opt/1panel/www/sites/tsukuyomi-space.com/frontend --frontend /opt/1panel/www/sites/tsukuyomi-space.com/frontend \
+              --artifact "$stage/deployment-artifacts/overseas" \
+              --base-url https://tsukuyomi-space.com --resolve tsukuyomi-space.com:443:127.0.0.1
+
+      - name: Activate domestic release
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            set -eu
+            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py activate \
+              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-domestic
+
+      - name: Activate overseas release
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          script: |
+            set -eu
+            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py activate \
+              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-overseas
+
+      - name: Verify domestic release
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            set -eu
+            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py verify \
+              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-domestic
+
+      - name: Verify overseas release
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          script: |
+            set -eu
+            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py verify \
+              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-overseas
+
+      - name: Rollback overseas release
+        if: failure() && steps.prepare_overseas.outcome == 'success'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          script: |
+            set -eu
+            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py rollback \
+              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-overseas
+
+      - name: Rollback domestic release
+        if: failure() && steps.prepare_domestic.outcome == 'success'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            set -eu
+            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/safe-release.py rollback \
+              --state /var/backups/tsukuyomi-space/releases/${{ github.run_id }}-${{ github.run_attempt }}-domestic
+
+      - name: Prune domestic completed backups
+        if: success()
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/prune-release-backups.py --retention 10
+
+      - name: Clean domestic staging
+        if: always()
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
+            case "$stage" in /tmp/tsukuyomi-prebuilt-[0-9]*-[0-9]*) ;; *) exit 1 ;; esac
+            rm -rf -- "$stage"
+            rm -f -- /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle
+
+      - name: Prune overseas completed backups
+        if: success()
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          script: |
+            python3 /tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}/deployment-source/deploy/prune-release-backups.py --retention 10
+
+      - name: Clean overseas staging
+        if: always()
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OVERSEAS_SERVER_HOST }}
+          username: ${{ secrets.OVERSEAS_SERVER_USER || 'root' }}
+          password: ${{ secrets.OVERSEAS_SERVER_PASSWORD }}
+          key: ${{ secrets.OVERSEAS_SERVER_SSH_KEY }}
+          port: ${{ secrets.OVERSEAS_SERVER_PORT || 47388 }}
+          script: |
+            stage=/tmp/tsukuyomi-prebuilt-${{ github.run_id }}-${{ github.run_attempt }}
+            case "$stage" in /tmp/tsukuyomi-prebuilt-[0-9]*-[0-9]*) ;; *) exit 1 ;; esac
+            rm -rf -- "$stage"
+            rm -f -- /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle

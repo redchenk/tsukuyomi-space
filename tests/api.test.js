@@ -1297,6 +1297,21 @@ describe('gallery API', () => {
 
             assert.match(requests[0].options.headers['content-disposition'], /^inline;/);
             assert.match(requests[1].options.headers['content-disposition'], /^attachment;/);
+            assert.equal(requests[0].options.headers['x-oss-object-acl'], undefined);
+            assert.equal(requests[0].options.headers['content-encoding'], undefined);
+            await objectStorage.putObject({
+                buffer: Buffer.from('compressed operator-owned resource'),
+                mimeType: 'application/octet-stream', ext: 'bin', role: 'resource',
+                id: 'operator-resource', settings, inline: true,
+                contentEncoding: 'gzip', cacheControl: 'public, max-age=31536000, immutable',
+                publicRead: true
+            });
+            const headers = requests[2].options.headers;
+            assert.match(headers['content-disposition'], /^inline;/);
+            assert.equal(headers['content-encoding'], 'gzip');
+            assert.equal(headers['cache-control'], 'public, max-age=31536000, immutable');
+            assert.equal(headers['x-oss-object-acl'], 'public-read');
+            assert.match(headers.Authorization, /^OSS4-HMAC-SHA256 /);
         } finally {
             globalThis.fetch = originalFetch;
         }
