@@ -6,6 +6,7 @@ import { useRoute } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import SocialShareDialog from '../components/SocialShareDialog.vue';
 import SocialText from '../components/SocialText.vue';
+import ModerationNotice from '../components/ModerationNotice.vue';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
@@ -38,6 +39,8 @@ const messageType = ref('error');
 const commentText = ref('');
 const replyText = reactive({});
 const openReplies = reactive({});
+const commentModeration = ref(null);
+const replyModeration = reactive({});
 const session = ref(getSession());
 const articleShareOpen = ref(false);
 const articleLike = reactive({ loading: false, liked: false, count: 0 });
@@ -191,6 +194,8 @@ function showMessage(text, type = 'error') {
 }
 
 async function loadArticle() {
+  commentModeration.value = null;
+  Object.keys(replyModeration).forEach(key => delete replyModeration[key]);
   loading.value = true;
   showMessage('');
   article.value = null;
@@ -329,6 +334,7 @@ function requireLogin() {
 }
 
 async function submitComment() {
+  commentModeration.value = null;
   if (!requireLogin()) return;
   const content = commentText.value.trim();
   if (!content) {
@@ -343,9 +349,10 @@ async function submitComment() {
       body: JSON.stringify({ content, article_id: articleId.value })
     });
     const result = await parseResponse(response);
+    commentModeration.value = result.moderation || null;
     if (!result.success) throw new Error(result.message || '发布失败');
     commentText.value = '';
-    showMessage(result.message || '评论已提交', 'success');
+    showMessage(result.moderation?.status === 'pending' ? '评论已提交，等待人工审核。' : result.message || '评论已提交', 'success');
     if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
   } catch (error) {
     showMessage(error.message || '发布失败');
@@ -353,6 +360,7 @@ async function submitComment() {
 }
 
 async function submitReply(commentId) {
+  replyModeration[commentId] = null;
   if (!requireLogin()) return;
   const content = String(replyText[commentId] || '').trim();
   if (!content) {
@@ -367,10 +375,11 @@ async function submitReply(commentId) {
       body: JSON.stringify({ content })
     });
     const result = await parseResponse(response);
+    replyModeration[commentId] = result.moderation || null;
     if (!result.success) throw new Error(result.message || '回复失败');
     replyText[commentId] = '';
     openReplies[commentId] = false;
-    showMessage(result.message || '回复已提交', 'success');
+    showMessage(result.moderation?.status === 'pending' ? '回复已提交，等待人工审核。' : result.message || '回复已提交', 'success');
     if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
   } catch (error) {
     showMessage(error.message || '回复失败');
@@ -506,6 +515,7 @@ watch(articleId, loadArticle);
           </div>
 
           <div v-if="message" class="form-message" :class="messageType" :role="messageType === 'error' ? 'alert' : 'status'">{{ message }}</div>
+          <ModerationNotice :feedback="commentModeration" />
 
           <div v-if="session" class="comment-form">
             <textarea v-model="commentText" class="comment-input" placeholder="写下你的评论..."></textarea>
@@ -566,6 +576,7 @@ watch(articleId, loadArticle);
                 </div>
               </div>
 
+              <ModerationNotice :feedback="replyModeration[comment.id]" />
               <div v-if="repliesFor(comment.id).length" class="reply-list">
                 <div v-for="reply in repliesFor(comment.id)" :id="'comment-' + reply.id" :key="reply.id" class="comment-item reply-item">
                   <div class="comment-header">

@@ -26,11 +26,13 @@ const { reviewMessageContent } = require('../backend/services/message-moderation
 
 let server;
 let baseUrl;
+let clientIp = '';
 
 function jsonHeaders(token) {
     return {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
+        ...(clientIp ? { 'X-Real-IP': clientIp } : {}),
         ...(baseUrl ? { Origin: baseUrl, 'Sec-Fetch-Site': 'same-origin' } : {}),
         ...(token ? authHeader(token) : {})
     };
@@ -143,6 +145,20 @@ async function main() {
     }
     assert.equal(reviewMessageContent('站内说明 https://yachiyo.hk/reality').status, 'approved');
 
+    const holidayMessage = '“假期将尽，书案蒙尘。非吾生性疏懒，实乃开学之日，令吾肝肠寸断，痛不欲生也。”😭';
+    for (const content of [holidayMessage, '今天好开心。谢谢你 🥰', '(OwO.OwO)', 'T.T o.O ಠ.ಠ', '👩🏽‍💻 👨‍👩‍👧‍👦 🏳️‍🌈 ❤️', 'Hello. Today is a good day.', 'metadata: 普通文本', 'https://yachiyo.hk🥰', 'https://tsukuyomi-space.com/room']) {
+        const review = reviewMessageContent(content);
+        assert.equal(review.status, 'approved', content);
+        assert.deepEqual(review.externalHosts, [], content);
+        assert.equal(review.content, content, 'inspection must not alter displayed text or emoji');
+    }
+    for (const content of ['例子.中国', '例子。中国', 'ｅｖｉｌ．ｃｏｍ', 'evil.com。谢谢', 'https://evil.example🥰', holidayMessage + ' https://evil.example/login', 'https://yachiyo.hk.evil.com', 'https://yachiyo.hk@evil.com', 'https://yachiyo.hk🥰.evil.com']) {
+        assert.equal(reviewMessageContent(content).status, 'pending', content);
+    }
+    for (const content of ['javascript:alert(1)', 'j a v a s c r i p t:alert(1)', '[点我](data:text/html,test)', 'file:///etc/passwd', 'java\u200bscript:alert(1)', 'javascript%3Aalert(1)', '请打开javascript:alert(1)']) {
+        assert.equal(reviewMessageContent(content).code, 'DANGEROUS_LINK', content);
+    }
+
     const harmlessAngleText = await postJson('/api/messages', { content: '今天也很开心 <3' }, userToken);
     assert.equal(harmlessAngleText.response.status, 201);
 
@@ -247,6 +263,43 @@ async function main() {
     }
     const rateLimited = await postJson('/api/messages', { content: 'rate-limit-blocked' }, rateToken);
     assert.equal(rateLimited.response.status, 429);
+
+    clientIp = '2001:db8::123'; // Independent fixture must not exhaust the earlier IP quota.
+    db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
+        .run('feedback-user', 'feedback-user', 'feedback@example.test', bcrypt.hashSync('feedback-password', 10), 'user');
+    const feedbackToken = generateToken({ id: 'feedback-user', username: 'feedback-user', role: 'user' });
+    const emojiPost = await postJson('/api/messages', { content: holidayMessage }, feedbackToken);
+    assert.equal(emojiPost.response.status, 201);
+    assert.equal(emojiPost.body.data.status, 'approved');
+    assert.equal(emojiPost.body.data.content, holidayMessage);
+    const articleId = Number(db.prepare("INSERT INTO articles (title, content, status) VALUES ('Moderation test', 'Test article', 'published')").run().lastInsertRowid);
+    const comment = await postJson('/api/messages', { content: holidayMessage, article_id: articleId }, feedbackToken);
+    assert.equal(comment.body.data.status, 'approved');
+    assert.equal(comment.body.message, '评论已发布');
+    for (const parent of [emojiPost.body.data.id, comment.body.data.id]) {
+        const pendingReply = await postJson(`/api/messages/${parent}/reply`, { content: '请留意诈骗风险 https://review.example/info' }, feedbackToken);
+        assert.equal(pendingReply.response.status, 201);
+        assert.equal(pendingReply.body.moderation.status, 'pending');
+        assert.deepEqual(pendingReply.body.moderation.reasons.map(reason => reason.code), ['keyword', 'external_link']);
+        assert.match(pendingReply.body.message, /诈骗/);
+        assert.match(pendingReply.body.message, /review\.example/);
+        assert.match(pendingReply.body.moderation.nextStep, /暂不公开/);
+        const visible = await request(`/api/messages${parent === comment.body.data.id ? '?article_id=' + articleId : ''}`);
+        assert.equal(visible.body.data.some(item => item.id === pendingReply.body.data.id), false);
+    }
+    const changed = await request(`/api/messages/${emojiPost.body.data.id}`, {
+        method: 'PATCH', headers: jsonHeaders(feedbackToken), body: JSON.stringify({ content: 'https://review.example/changed' })
+    });
+    assert.equal(changed.body.moderation.reasons[0].code, 'external_link');
+    const mine = await request('/api/messages/mine', { headers: jsonHeaders(feedbackToken) });
+    assert.match(mine.response.headers.get('cache-control'), /no-store/);
+    assert.equal(mine.body.data.find(item => item.id === emojiPost.body.data.id).moderation.status, 'pending');
+    assert.match(mine.body.data.find(item => item.id === emojiPost.body.data.id).moderation.reasons[0].message, /review\.example/);
+    const rejected = await postJson('/api/messages', { content: 'javascript:alert(1)' }, feedbackToken);
+    assert.equal(rejected.response.status, 422);
+    assert.equal(rejected.body.moderation.status, 'rejected');
+    assert.equal(rejected.body.moderation.reasons[0].code, 'DANGEROUS_LINK');
+    assert.match(rejected.body.moderation.nextStep, /未保存/);
 
     assert.equal(getClientIp({
         socket: { remoteAddress: '127.0.0.1' },

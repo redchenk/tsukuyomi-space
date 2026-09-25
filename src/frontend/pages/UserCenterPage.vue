@@ -1,4 +1,5 @@
 <script setup>
+import ModerationNotice from '../components/ModerationNotice.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { authFetch, authHeaders, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
@@ -576,6 +577,7 @@ function ucCancelMessageEdit(id) {
 }
 
 async function ucSaveMessage(message) {
+  message.moderation = null;
   const content = String(uc.messageDrafts[message.id] || '').trim();
   if (!content) {
     ucShowToast('留言内容不能为空', 'error');
@@ -589,11 +591,12 @@ async function ucSaveMessage(message) {
       body: JSON.stringify({ content })
     });
     const result = await parseResponse(response);
+    message.moderation = result.moderation || null;
     if (!result.success) throw new Error(result.message || '留言更新失败');
     const index = uc.messages.findIndex(item => item.id === message.id);
     if (index >= 0) uc.messages.splice(index, 1, { ...uc.messages[index], ...result.data });
     ucCancelMessageEdit(message.id);
-    ucShowToast(result.message || '留言已更新');
+    ucShowToast(result.moderation?.status === 'pending' ? '内容已更新，等待人工审核。请查看原因提示。' : result.message || '留言已更新');
   } catch (error) {
     ucShowToast(error.message || '留言更新失败', 'error');
   } finally {
@@ -960,6 +963,7 @@ onMounted(async () => {
                     <span v-if="message.reply_count">{{ message.reply_count }} 回复</span>
                     <span>{{ ucFormatDate(message.updated_at || message.created_at) }}</span>
                   </div>
+                  <ModerationNotice :feedback="message.moderation" />
                 </div>
                 <div class="uc-article-actions">
                   <template v-if="uc.messageEditing === message.id">

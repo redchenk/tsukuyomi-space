@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
+import ModerationNotice from '../components/ModerationNotice.vue';
 import SocialText from '../components/SocialText.vue';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
@@ -36,6 +37,8 @@ const plaza = reactive({
   repliesExpanded: {}
 });
 const plazaToast = reactive({ text: '', type: 'success', visible: false });
+const messageModeration = ref(null);
+const replyModeration = reactive({});
 let plazaToastTimer = 0;
 const PLAZA_PAGE_SIZE = 8;
 const user = computed(() => session.value?.user || null);
@@ -372,6 +375,7 @@ async function refreshPlaza() {
 }
 
 async function plazaSubmitMessage(content) {
+  messageModeration.value = null;
   if (!isAuthed.value) {
     go('/login');
     return false;
@@ -387,9 +391,10 @@ async function plazaSubmitMessage(content) {
       body: JSON.stringify({ content: content.trim() })
     });
     const result = await parseResponse(response);
+    messageModeration.value = result.moderation || null;
     if (!result.success) throw new Error(result.message || props.t.publishFailed);
     if (result.growth) applyGrowthResult(result.growth);
-    showPlazaToast(result.message || (isEn.value ? 'Message submitted. It will appear after review.' : '留言已提交，审核通过后会公开显示'));
+    showPlazaToast(result.moderation?.status === 'pending' ? '已提交，等待人工审核。请查看原因提示。' : result.message || (isEn.value ? 'Message submitted.' : '留言已提交'));
     if (result.data?.id && (result.data.status || 'approved') === 'approved') {
       plaza.page = 1;
       upsertPlazaMessage(result.data);
@@ -397,12 +402,13 @@ async function plazaSubmitMessage(content) {
     } else await loadPlazaStats();
     return true;
   } catch (error) {
-    showPlazaToast(error.message || props.t.publishFailed, 'error');
+    showPlazaToast(messageModeration.value?.status === 'rejected' ? '未能提交，请查看原因提示。' : error.message || props.t.publishFailed, 'error');
     return false;
   }
 }
 
 async function plazaSubmitReply(parentId, content) {
+  replyModeration[parentId] = null;
   if (!isAuthed.value) {
     go('/login');
     return false;
@@ -418,9 +424,10 @@ async function plazaSubmitReply(parentId, content) {
       body: JSON.stringify({ content: content.trim() })
     });
     const result = await parseResponse(response);
+    replyModeration[parentId] = result.moderation || null;
     if (!result.success) throw new Error(result.message || props.t.replyFailed);
     if (result.growth) applyGrowthResult(result.growth);
-    showPlazaToast(result.message || (isEn.value ? 'Reply submitted. It will appear after review.' : '回复已提交，审核通过后会公开显示'));
+    showPlazaToast(result.moderation?.status === 'pending' ? '回复已提交，等待人工审核。请查看原因提示。' : result.message || (isEn.value ? 'Reply submitted.' : '回复已提交'));
     if (result.data?.id && (result.data.status || 'approved') === 'approved') {
       upsertPlazaMessage(result.data);
       loadTrendingTopics();
@@ -428,7 +435,7 @@ async function plazaSubmitReply(parentId, content) {
     plaza.replyOpen = { ...plaza.replyOpen, [parentId]: false };
     return true;
   } catch (error) {
-    showPlazaToast(error.message || props.t.replyFailed, 'error');
+    showPlazaToast(replyModeration[parentId]?.status === 'rejected' ? '未能提交，请查看原因提示。' : error.message || props.t.replyFailed, 'error');
     return false;
   }
 }
@@ -636,6 +643,7 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
         </div>
         <div v-else class="plaza-composer">
           <PlazaComposer :t="t" :on-submit="plazaSubmitMessage" />
+          <ModerationNotice :feedback="messageModeration" />
         </div>
 
         <LoadingSkeleton v-if="plaza.loading" variant="list" :count="6" :label="t.plazaConnecting" />
@@ -691,6 +699,7 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
             <div v-if="plaza.replyOpen[msg.id]" class="plaza-reply-form">
               <PlazaReplyForm :t="t" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
             </div>
+            <ModerationNotice :feedback="replyModeration[msg.id]" />
             <div v-if="(msg.replies || []).length" :id="'plaza-replies-' + msg.id" class="plaza-replies">
               <div v-for="reply in plazaVisibleReplies(msg)" :id="'msg-' + reply.id" :key="reply.id" class="plaza-reply-card" :class="{ 'is-preview': !plaza.repliesExpanded[msg.id] }">
                 <div class="plaza-msg-meta" style="margin-bottom:0.45rem;">

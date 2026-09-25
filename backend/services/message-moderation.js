@@ -108,6 +108,39 @@ function reviewMessageContent(content, settings = readModerationSettings()) {
     };
 }
 
+function messageModerationFeedback(review) {
+    const reasons = [];
+    const rejection = {
+        EMPTY_CONTENT: '内容不能为空，请填写后再提交。',
+        INVALID_CONTENT: '内容格式无效，请使用纯文本提交。',
+        CONTENT_TOO_LONG: '内容超过长度限制（2000 个字符或 8000 字节），请缩短后重试。',
+        ACTIVE_MARKUP: '内容包含 HTML 标签、事件属性或可执行代码，请移除后重试。',
+        DANGEROUS_LINK: '内容包含 javascript:、data:、file: 等不允许发布的链接协议，请移除后重试。'
+    };
+    if (!review.accepted) reasons.push({ code: review.code, message: rejection[review.code] || '内容无效，请修改后重试。' });
+    if (review.matchedKeywords?.length) reasons.push({
+        code: 'keyword',
+        message: `包含需人工确认的关键词：${review.matchedKeywords.slice(0, 5).map(word => `“${word}”`).join('、')}${review.matchedKeywords.length > 5 ? '等' : ''}。命中关键词不代表内容违规。`
+    });
+    if (review.externalHosts?.length) reasons.push({
+        code: 'external_link',
+        message: `包含需核实的站外链接：${review.externalHosts.slice(0, 3).join('、')}${review.externalHosts.length > 3 ? '等' : ''}。确认链接安全后才能公开。`
+    });
+    return {
+        status: review.status,
+        reasons,
+        nextStep: review.status === 'pending'
+            ? '内容已保存，暂不公开。请等待人工审核，也可以在用户中心修改后重新提交。'
+            : review.status === 'rejected' ? '本次内容未保存，请修改后重新提交。' : ''
+    };
+}
+
+function messageSubmissionText(review, noun, updated = false) {
+    if (review.status === 'approved') return `${noun}已${updated ? '更新' : '发布'}`;
+    const feedback = messageModerationFeedback(review);
+    return `${noun}已${updated ? '更新' : '提交'}，等待审核。${feedback.reasons.map(reason => reason.message).join('')}${feedback.nextStep}`;
+}
+
 module.exports = {
     MAX_MESSAGE_LENGTH,
     MAX_MESSAGE_BYTES,
@@ -117,5 +150,7 @@ module.exports = {
     normalizeKeywordList,
     readModerationSettings,
     moderationKeywords,
-    reviewMessageContent
+    reviewMessageContent,
+    messageModerationFeedback,
+    messageSubmissionText
 };

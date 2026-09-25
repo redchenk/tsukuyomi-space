@@ -7,7 +7,7 @@ const { queueNotificationEmail } = require('../services/notification-email');
 const { notifyApprovedMessage } = require('../services/approved-reply-notification');
 const articleRepository = require('../repositories/article-repository');
 const socialRepository = require('../repositories/social-repository');
-const { reviewMessageContent } = require('../services/message-moderation');
+const { reviewMessageContent, readModerationSettings, messageModerationFeedback, messageSubmissionText } = require('../services/message-moderation');
 const { articlePath } = require('../seo/render-article');
 const responseCache = require('../services/response-cache');
 const userGrowth = require('../services/user-growth');
@@ -22,16 +22,11 @@ const messageWriteLimiter = createRateLimiter({
 });
 
 function rejectInvalidContent(res, review) {
-    const messages = {
-        EMPTY_CONTENT: '留言内容不能为空',
-        INVALID_CONTENT: '留言格式无效',
-        CONTENT_TOO_LONG: '留言不能超过 2000 字',
-        ACTIVE_MARKUP: '留言包含不安全的活动内容',
-        DANGEROUS_LINK: '留言包含禁止发布的危险链接'
-    };
+    const moderation = messageModerationFeedback(review);
     return res.status(422).json({
         success: false,
-        message: messages[review.code] || '留言内容无效',
+        message: moderation.reasons.map(reason => reason.message).join(''),
+        moderation,
         code: review.code || 'INVALID_CONTENT'
     });
 }
@@ -208,12 +203,23 @@ router.get('/liked', authenticateToken, (req, res) => {
 router.get('/mine', authenticateToken, (req, res) => {
     try {
         res.set('Cache-Control', 'private, no-store');
+        const settings = readModerationSettings();
         res.json({
             success: true,
             data: messageRepository.listUserMessages(req.user.id, {
                 limit: req.query.limit,
                 offset: req.query.offset
-            })
+            }).map(message => ({
+                ...message,
+                // Existing records have no historical reason snapshot. Label
+                // this as a current-rule explanation; never auto-approve them.
+                moderation: message.status === 'approved' ? null : {
+                    ...messageModerationFeedback(reviewMessageContent(message.content, settings)),
+                    status: 'pending',
+                    basis: '以下原因按当前审核规则说明',
+                    nextStep: '内容已保存，正在等待人工审核。你可以修改后重新提交。'
+                }
+            }))
         });
     } catch (error) {
         console.error('List user messages failed:', error);
@@ -249,9 +255,10 @@ router.post('/', authenticateToken, messageWriteLimiter, (req, res) => {
             : null;
         res.status(201).json({
             success: true,
-            data: newMessage,
+            data: { ...newMessage, moderation: messageModerationFeedback(review) },
             growth,
-            message: review.status === 'approved' ? '留言已发布' : '留言已提交，审核通过后会公开显示'
+            moderation: messageModerationFeedback(review),
+            message: messageSubmissionText(review, article_id ? '评论' : '留言')
         });
     } catch (error) {
         console.error('Create message failed:', error);
@@ -332,9 +339,10 @@ router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => 
             : null;
         res.status(201).json({
             success: true,
-            data: newMessage,
+            data: { ...newMessage, moderation: messageModerationFeedback(review) },
             growth,
-            message: review.status === 'approved' ? '回复已发布' : '回复已提交，审核通过后会公开显示'
+            moderation: messageModerationFeedback(review),
+            message: messageSubmissionText(review, '回复')
         });
     } catch (error) {
         console.error('Reply message failed:', error);
@@ -359,8 +367,9 @@ router.patch('/:id', authenticateToken, messageWriteLimiter, (req, res) => {
         if (existing.status !== 'approved' && updated.status === 'approved') notifyApprovedMessage(id);
         res.json({
             success: true,
-            data: updated,
-            message: review.status === 'approved' ? '留言已更新' : '留言已更新，审核通过后会公开显示'
+            data: { ...updated, moderation: messageModerationFeedback(review) },
+            moderation: messageModerationFeedback(review),
+            message: messageSubmissionText(review, existing.parent_id ? '回复' : messageNoun(existing), true)
         });
     } catch (error) {
         console.error('Update user message failed:', error);
