@@ -2,6 +2,10 @@ const { test, expect } = require('../e2e-fixtures.cjs');
 
 test('Room input remains above an overlay keyboard and composition never sends a message', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
+    // This test measures viewport/IME behavior, not Cubism startup. Exercise
+    // the supported unavailable-model state so cold WebKit/WebGL asset loads
+    // cannot consume the keyboard test's readiness timeout in CI.
+    await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ status: 404, body: '' }));
     await page.addInitScript(() => {
         const viewport = new EventTarget();
         Object.assign(viewport, { height: 844, width: 390, offsetTop: 0, offsetLeft: 0, scale: 1 });
