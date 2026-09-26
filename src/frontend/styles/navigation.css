@@ -58,8 +58,8 @@
 .site-nav-section { display: grid; align-content: start; gap: 5px; min-width: 0; }
 .site-nav-section h3, .site-search-results h3 { margin: 4px 0 8px; font-size: 11px; font-weight: 500; color: var(--ts-muted); }
 .site-menu-link { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 10px; border: 1px solid transparent; border-radius: var(--ts-radius-button); color: var(--ts-text); background: transparent; text-decoration: none; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
-.site-menu-link > svg { flex-shrink: 0; color: var(--ts-accent); }
-.site-menu-link > span { flex: 1; min-width: 0; }
+.site-menu-link > :is(svg, .notification-bell) { flex: 0 0 auto; color: var(--ts-accent); }
+.site-menu-link > .site-menu-label { flex: 1; min-width: 0; }
 .site-menu-link strong { display: block; font-weight: 500; line-height: 1.5; }
 .site-menu-link small { display: block; margin-top: 4px; color: var(--ts-muted); font-size: 10px; line-height: 1.6; }
 .site-menu-link > svg:last-child:not(:first-child) { color: var(--ts-muted); opacity: .6; width: 12px; }

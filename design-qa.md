@@ -388,3 +388,38 @@ exceeded the shared 30-second budget while checking sixteen transitions across
 two themes. Each theme now has its own eight-category test with named steps;
 all visibility, geometry, scroll and button-shape assertions remain in place.
 The complete release pipeline is rerun before activation.
+
+
+# Account menu alignment correction — 2026-09-26
+
+final result: passed
+
+The user screenshot showed the inbox row displaced from the other account rows.
+The target is the existing left-aligned icon and label columns already used by
+User Center, Bond Growth, Attachments and Sign Out. This is a scoped correction;
+font, purple tokens, pill radii, labels and notification-dot behavior remain.
+
+The fault was the generic `.site-menu-link > span` flex rule applying to the
+NotificationBell wrapper as well as the label. Labels now have an explicit
+`.site-menu-label` class; icons retain intrinsic width and a shared accent color.
+
+Paired before/after captures were opened together from
+`.codex_tmp/account-menu-fix/before-desktop.png` and `after-desktop.png`:
+1280 × 800 CSS/image pixels, signed-in test account, dark theme, open account
+menu. The screenshot supplied by the user is a cropped, differently scaled
+production view; the local before image reproduces its same inbox displacement.
+The post-fix mobile capture is `after-mobile.png`, 390 × 844 CSS/image pixels.
+All local captures are at 1:1 density, with no browser frame. At native size the
+menu's typography and alignment remain readable without further cropping.
+
+**P2 fixed:** At 1280px, the inbox label previously began at x=1092 while all
+other rows began at x=984. All five labels now begin at x=984, with all five
+20px icons at x=952. At 390px, all labels begin at x=71 and icons at x=43.
+No remaining P0/P1/P2 findings in the requested scope.
+
+The five fidelity surfaces were checked: existing typography and copy remain;
+row spacing and icon/label columns align; existing color tokens are retained;
+existing vector icons remain sharp, with no new images. The actual inbox link
+was clicked and opened `/notifications`. The 247 existing frontend tests and
+production frontend build passed. No new test suite is needed for this limited
+style correction; the normal release pipeline still runs before deployment.

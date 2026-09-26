@@ -282,14 +282,14 @@ onUnmounted(() => {
         <div class="site-explore-columns">
           <section v-for="group in exploreGroups" :key="group.title" class="site-nav-section">
             <h3>{{ group.title }}</h3>
-            <a v-for="item in group.items" :key="item.key" :href="item.path" class="site-menu-link" :aria-current="item.active ? 'page' : undefined" @pointerenter="item.spa && warmRoutePath(item.path)" @focus="item.spa && warmRoutePath(item.path)" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="21" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a>
+            <a v-for="item in group.items" :key="item.key" :href="item.path" class="site-menu-link" :aria-current="item.active ? 'page' : undefined" @pointerenter="item.spa && warmRoutePath(item.path)" @focus="item.spa && warmRoutePath(item.path)" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="21" /><span class="site-menu-label"><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a>
           </section>
         </div>
       </template>
       <div v-else class="site-account-links">
         <p v-if="isAuthed" class="site-account-greeting">{{ user?.username || accountLabel }}</p>
-        <a v-for="item in accountItems" :key="item.key" :href="item.path" class="site-menu-link" @click="navigate($event, item)"><NotificationBell v-if="item.key === 'notifications'" :unread="unreadNotifications > 0" /><TsIcon v-else :name="item.icon" :size="20" /><span>{{ item.label }}</span></a>
-        <button v-if="isAuthed" class="site-menu-link" type="button" @click="navOpen = false; $emit('logout')"><TsIcon name="arrowLeft" :size="20" /><span>{{ t.logout }}</span></button>
+        <a v-for="item in accountItems" :key="item.key" :href="item.path" class="site-menu-link" @click="navigate($event, item)"><NotificationBell v-if="item.key === 'notifications'" :unread="unreadNotifications > 0" /><TsIcon v-else :name="item.icon" :size="20" /><span class="site-menu-label">{{ item.label }}</span></a>
+        <button v-if="isAuthed" class="site-menu-link" type="button" @click="navOpen = false; $emit('logout')"><TsIcon name="arrowLeft" :size="20" /><span class="site-menu-label">{{ t.logout }}</span></button>
       </div>
       <div class="site-menu-preferences">
         <button class="site-preference-button" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" /><span>{{ theme === 'dark' ? t.lightTheme : t.darkTheme }}</span></button>
