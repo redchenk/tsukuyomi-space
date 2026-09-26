@@ -302,3 +302,76 @@ added the select's explicit `aria-label`. The voice draft was then configured in
 the local browser, saved from the memory category, and returned to Room
 successfully. The 243 frontend tests and production build passed again; the full
 pipeline is rerun before deployment.
+
+
+# Unified navigation — 2026-09-26
+
+final result: passed
+
+## Scope and visual references
+
+Applied the supplied navigation conversation and
+`/Users/yxy/Downloads/tsukuyomi-navigation-demo.html` to the existing Vue shell.
+The scope is shared navigation and search, not the reference's replacement home
+page or its blue-gray palette. The site's purple accent, serif brand, pill
+buttons, backgrounds and Room assets remain the intended visual system.
+
+Reference and implementation were opened together in paired image comparisons:
+
+- Desktop, 1280 × 800 CSS pixels / 1280 × 800 image pixels: `.codex_tmp/navigation-design/reference-desktop-light.png` with `hub-desktop-light.png`; `reference-desktop-menu.png` with `desktop-menu-light.png`.
+- Mobile, 390 × 844 CSS pixels / 390 × 844 image pixels: `reference-mobile-menu.png` with `mobile-menu-light.png` in the same evidence directory.
+- Additional implementation evidence: `room-desktop-light.png`, `room-mobile-dark.png`, `mobile-menu-dark.png`, `desktop-search-light.png`, `english-861.png` and `english-320.png`.
+
+All captures are unframed browser content at 1:1 pixel density. Primary paired
+comparisons use the signed-out, light-theme state. Supplementary Room and
+narrow English captures use the isolated local test account. Existing home
+content and the brand/color differences are deliberate, user-requested
+adaptations; only navigation regions are compared for structural fidelity.
+Header labels, controls and menu spacing are readable at native capture size,
+so no additional crop was required.
+
+## Findings and completed fixes
+
+- **P1, readability:** A global reduced-performance material fallback made the
+  navigation sheet translucent over high-contrast page content. Pin the material
+  background token to the site's opaque surface. Both light and dark sheets
+  were recaptured; the computed light surface is `rgb(255, 255, 255)`.
+- **P2, hierarchy:** A duplicate desktop Wiki group left a mostly empty third
+  column. Keep Wiki in the primary desktop bar and use two balanced Explore
+  groups. On mobile, keep Wiki in the sheet and arrange entries in compact pairs.
+- **P2, responsive width:** Signed-in Japanese navigation overflowed at 861px.
+  Use short visible primary labels, preserve full accessible names, and allow
+  the brand to truncate at intermediate widths. The English signed-in header
+  was then checked at 861px and 320px with no horizontal overflow.
+- **P2, Room overlap:** Remove the separate global side rail and place Room's
+  local tools below the shared header. Desktop stage and chat reclaim the rail
+  space. Mobile composer and five-item bottom navigation remain usable.
+
+No remaining P0, P1 or P2 findings in this navigation scope.
+
+## Required visual surfaces
+
+- Typography: existing serif wordmark and body fonts retained; compact menu copy
+  remains legible. Full control names are exposed to assistive technology.
+- Spacing: shared 44px controls, 68px desktop / 60px mobile header, two-column
+  desktop Explore, stacked mobile groups and safe-area spacing verified.
+- Colors: existing light/dark purple tokens and notification red dot retained.
+- Images: existing TsIcon, account avatars, backgrounds and Live2D reused;
+  no new raster images or replacement media assets are introduced.
+- Content: real route names and public article results, with loading, empty,
+  error and retry states. No mock navigation target is shipped.
+
+## Functional checks
+
+- Local production frontend build and 247 frontend tests passed.
+- CUA checks verified real article search and detail navigation, account login
+  and account actions, Chinese/Japanese switching, English build widths,
+  light/dark themes, modal focus/escape/scroll locking, and Room draft retention.
+- Shared search supports page aliases, Ctrl/Cmd+K, arrow-key selection and
+  ordinary links. Agent OS remains a native document navigation.
+- Chromium and WebKit release regression cases cover shared search, API failure
+  recovery, mobile/desktop bounds, Room tool clearance and signed-in Japanese
+  navigation. Release CI is the authoritative record for their automated run.
+- No external AI provider was called. No physical iPhone keyboard test was
+  performed; existing mobile keyboard behavior and the WebKit regression suite
+  are retained.

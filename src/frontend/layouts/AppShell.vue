@@ -1,11 +1,13 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import NotificationBell from '../components/NotificationBell.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { alternateLanguage } from '../i18n';
+import { navigationCopy } from '../services/siteNavigation';
+const SiteSearch = defineAsyncComponent(() => import('../components/SiteSearch.vue'));
 import { warmRoutePath } from '../router';
 import { useMobileKeyboard } from '../composables/useMobileKeyboard';
 import {
@@ -25,16 +27,17 @@ const props = defineProps({
   user: { type: Object, default: null }
 });
 
-defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
+const emit = defineEmits(['go', 'logout', 'set-lang', 'toggle-theme']);
 
 const navOpen = ref(false);
-const roomSearch = ref('');
+const searchOpen = ref(false);
+const menuMode = ref('explore');
+const copy = computed(() => navigationCopy(props.lang));
+let lastNavigationTrigger = null;
 const navigationRef = ref(null);
 const { keyboardOpen, viewportStyle } = useMobileKeyboard();
 let releaseNavigationScroll = null;
 let mobileNavigationQuery = null;
-const railExpandedKey = ref(null);
-const railRef = ref(null);
 const unreadNotifications = ref(0);
 const UNREAD_POLL_INTERVAL_MS = 60000;
 let unreadPollId = 0;
@@ -49,24 +52,21 @@ const growthLabel = computed(() => props.lang === 'ja' ? '月契成長' : props.
 const navItems = computed(() => [
   { path: '/hub', key: 'hub', label: props.t.hub, icon: 'home', active: props.routeName === 'hub', spa: true },
   { path: '/room', key: 'room', label: props.t.room, icon: 'moon', active: isRoom.value || props.routeName === 'roomSettings', spa: true },
-  { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza' || props.routeName === 'friendLinkApply', spa: true },
+  { path: '/plaza', key: 'plaza', label: props.t.plaza, icon: 'plaza', active: props.routeName === 'plaza', spa: true },
   { path: '/stage', key: 'stage', label: props.t.stage, icon: 'book', active: props.routeName === 'stage' || ['article', 'articleDetail', 'editor'].includes(props.routeName), spa: true },
   { path: '/wiki', key: 'wiki', label: props.t.wiki, icon: 'crown', active: ['wiki', 'wikiCharacter', 'wikiTerm'].includes(props.routeName), spa: true },
   { path: '/gallery', key: 'gallery', label: props.t.gallery, icon: 'image', active: props.routeName === 'gallery' || props.routeName === 'galleryManage', spa: true },
   { path: '/pixel', key: 'pixel', label: props.t.arena, icon: 'palette', active: props.routeName === 'pixel', spa: true },
   { path: '/game', key: 'game', label: props.t.game, icon: 'gamepad', active: props.routeName === 'game', spa: true },
   ...(props.isAuthed ? [{ path: '/growth', key: 'growth', label: growthLabel.value, icon: 'sparkles', active: props.routeName === 'growth', spa: true }] : []),
+  { path: '/friend-links', key: 'friendLinks', label: copy.value.friendLinks, icon: 'external', active: ['friendLinks', 'friendLinkApply'].includes(props.routeName), spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true },
   { path: '/agent-os', key: 'agentOs', label: props.t.agentOs, icon: 'bot', active: false, spa: false }
 ]);
 
 const desktopItems = computed(() => ['hub', 'stage', 'plaza', 'wiki'].map((key) => navItems.value.find((item) => item.key === key)));
 const mobilePrimaryItems = computed(() => navItems.value.slice(0, 4));
-const mobileSecondaryItems = computed(() => navItems.value.slice(4));
-const mobileNavLabel = (item) => props.lang === 'en' ? ({ room: 'Room', plaza: 'Plaza' }[item.key] || item.label) : item.label;
-const railNavLabel = (item) => isRoom.value && props.lang === 'en'
-  ? ({ room: 'Room', plaza: 'Plaza', stage: 'Stage', game: 'Game', growth: 'Bond', reality: 'Reality' }[item.key] || item.label)
-  : item.label;
+const mobileNavLabel = (item) => copy.value.shortLabels[item.key] || item.label;
 const activeNavItem = computed(() => navItems.value.find((item) => item.active));
 const currentPageLabel = computed(() => ({
   notifications: props.t.notifications,
@@ -79,20 +79,12 @@ const currentPageLabel = computed(() => ({
 const moreActive = computed(() => navOpen.value || !mobilePrimaryItems.value.some((item) => item.active));
 const accountLabel = computed(() => (props.isAuthed ? props.t.ucTitle : props.t.login));
 const themeLabel = computed(() => (props.theme === 'dark' ? props.t.switchLightTheme : props.t.switchDarkTheme));
-const railThemeLabel = computed(() => (props.theme === 'dark' ? props.t.lightTheme : props.t.darkTheme));
-const railNotificationsLabel = computed(() => props.t.notifications);
 const moreLabel = computed(() => props.t.more);
-const languageTargetLabel = computed(() => (props.lang === 'zh' ? '日本語' : '中文'));
-const languageActionLabel = computed(() => (props.lang === 'zh' ? props.t.switchToJapanese : props.t.switchToChinese));
 const notificationsActionLabel = computed(() => (props.lang === 'ja'
   ? `${props.t.notifications}、未読 ${unreadNotifications.value} 件`
   : props.lang === 'en'
     ? `${props.t.notifications}, ${unreadNotifications.value} unread`
     : `${props.t.notifications}，${unreadNotifications.value} 条未读`));
-
-function userInitial() {
-  return String(props.user?.username || props.user?.email || props.t.brand || '月').slice(0, 1).toUpperCase();
-}
 
 async function loadUnreadNotifications() {
   if (!props.isAuthed) {
@@ -142,17 +134,46 @@ function restartUnreadPolling() {
   unreadPollId = window.setInterval(refreshUnreadWhenVisible, UNREAD_POLL_INTERVAL_MS);
 }
 
-function expandRail(key) {
-  railExpandedKey.value = key;
-}
+const accountItems = computed(() => props.isAuthed ? [
+  { key: 'account', path: '/user-center', label: props.t.ucTitle, icon: 'user', spa: true },
+  { key: 'growth', path: '/growth', label: growthLabel.value, icon: 'sparkles', spa: true },
+  { key: 'notifications', path: '/notifications', label: props.t.notifications, icon: 'bell', spa: true },
+  { key: 'attachments', path: '/attachments', label: props.t.attachments, icon: 'image', spa: true }
+] : [
+  { key: 'login', path: '/login', label: props.t.login, icon: 'user', spa: true },
+  { key: 'register', path: '/register', label: props.t.register, icon: 'badge', spa: true }
+]);
+const searchItems = computed(() => [...navItems.value.filter(item => item.key !== 'growth'), ...accountItems.value]);
+const exploreGroups = computed(() => [
+  { title: copy.value.discover, keys: ['wiki'] },
+  { title: copy.value.create, keys: ['gallery', 'pixel', 'game'] },
+  { title: copy.value.spaces, keys: ['agentOs', 'reality', 'friendLinks'] }
+].map(group => ({ ...group, items: navItems.value.filter(item => group.keys.includes(item.key)) }))
+  .filter(group => group.items.length));
+const exploreActive = computed(() => navItems.value.some(item => item.active && ['gallery', 'pixel', 'game', 'agentOs', 'reality', 'friendLinks'].includes(item.key)));
 
-function collapseRail(key) {
-  if (railExpandedKey.value === key) railExpandedKey.value = null;
+function navigate(event, item) {
+  if (event && (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0)) return;
+  navOpen.value = false;
+  if (item.spa !== false) {
+    event?.preventDefault();
+    emit('go', item.path);
+  }
 }
-
-function closeRailOnOutside(event) {
-  if (!railRef.value || railRef.value.contains(event.target)) return;
-  railExpandedKey.value = null;
+function openNavigation(mode, event) {
+  lastNavigationTrigger = event?.currentTarget || document.activeElement;
+  menuMode.value = mode;
+  navOpen.value = true;
+}
+async function openSearch() {
+  navOpen.value = false;
+  await nextTick();
+  searchOpen.value = true;
+}
+function searchShortcut(event) {
+  if (!props.showChrome || event.isComposing || !(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
+  event.preventDefault();
+  if (!searchOpen.value) openSearch();
 }
 
 function closeNavigationOnResize(event) {
@@ -166,7 +187,7 @@ function closeNavigationOnBackdrop(event) {
 }
 
 function cycleNavigationFocus(event) {
-  const controls = [...navigationRef.value.querySelectorAll('a[href], button:not(:disabled)')].filter((node) => node.getClientRects().length);
+  const controls = [...navigationRef.value.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled)')].filter((node) => node.getClientRects().length);
   const target = event.shiftKey ? controls.at(-1) : controls[0];
   if (document.activeElement === (event.shiftKey ? controls[0] : controls.at(-1))) {
     event.preventDefault();
@@ -189,16 +210,17 @@ watch(navOpen, (open) => {
     dialog?.close();
     releaseNavigationScroll?.();
     releaseNavigationScroll = null;
+    if (lastNavigationTrigger?.isConnected) lastNavigationTrigger.focus({ preventScroll: true });
   }
 }, { flush: 'post' });
 
 watch(() => props.showChrome, (visible) => {
-  if (!visible) navOpen.value = false;
+  if (!visible) { navOpen.value = false; searchOpen.value = false; }
 });
 
 watch(() => props.routeName, () => {
   navOpen.value = false;
-  railExpandedKey.value = null;
+  searchOpen.value = false;
   loadUnreadNotifications();
 });
 
@@ -210,7 +232,7 @@ onMounted(() => {
   mobileNavigationQuery = window.matchMedia('(max-width: 860px)');
   mobileNavigationQuery.addEventListener('change', closeNavigationOnResize);
   loadUnreadNotifications();
-  document.addEventListener('pointerdown', closeRailOnOutside, { passive: true });
+  document.addEventListener('keydown', searchShortcut);
   document.addEventListener('visibilitychange', refreshUnreadWhenVisible, { passive: true });
   window.addEventListener(NOTIFICATION_BADGE_EVENT, handleNotificationBadge);
 });
@@ -219,270 +241,63 @@ onUnmounted(() => {
   releaseNavigationScroll?.();
   mobileNavigationQuery?.removeEventListener('change', closeNavigationOnResize);
   if (unreadPollId) window.clearInterval(unreadPollId);
-  document.removeEventListener('pointerdown', closeRailOnOutside);
+  document.removeEventListener('keydown', searchShortcut);
   document.removeEventListener('visibilitychange', refreshUnreadWhenVisible);
   window.removeEventListener(NOTIFICATION_BADGE_EVENT, handleNotificationBadge);
 });
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'room-shell': isRoom, 'site-background-shell': hasGlobalBackground, 'content-shell': showChrome && !isRoom, 'pixel-shell': routeName === 'pixel', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
+  <div class="app-shell unified-navigation" :class="{ 'room-shell': isRoom, 'site-background-shell': hasGlobalBackground, 'content-shell': showChrome && !isRoom, 'pixel-shell': routeName === 'pixel', 'is-keyboard-open': keyboardOpen }" :style="viewportStyle">
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && !isRoom && routeName !== 'game'" class="moon" aria-hidden="true"></div>
 
-    <aside v-if="showChrome" ref="railRef" class="site-rail" data-material="sidebar" :aria-label="t.navigation">
-      <a href="/hub" class="rail-mark" :aria-label="t.brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @pointerdown="warmRoutePath('/hub')" @click.prevent="$emit('go', '/hub')">
-        <TsIcon name="eclipse" :size="24" :stroke-width="1.9" />
-        <span class="rail-mark-label">{{ t.brand }}</span>
+    <header v-if="showChrome" class="topbar site-commandbar" data-material="header">
+      <a href="/hub" class="site-brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @click="navigate($event, { path: '/hub' })">
+        <span class="site-brand-symbol"><TsIcon name="eclipse" :size="23" /></span>
+        <span><strong>{{ t.brand }}</strong><small>{{ currentPageLabel }}</small></span>
       </a>
-
-      <nav class="rail-nav">
-        <a
-          v-for="item in navItems"
-          :key="item.key"
-          :href="item.path"
-          class="rail-link"
-          :class="{ active: item.active, expanded: railExpandedKey === item.key }"
-          :aria-current="item.active ? 'page' : undefined"
-          :aria-label="item.label"
-          :title="item.label"
-          @pointerenter="item.spa && warmRoutePath(item.path); expandRail(item.key)"
-          @pointerleave="collapseRail(item.key)"
-          @focus="item.spa && warmRoutePath(item.path); expandRail(item.key)"
-          @pointerdown="item.spa && warmRoutePath(item.path)"
-          @blur="collapseRail(item.key)"
-          @click="expandRail(item.key); item.spa && ($event.preventDefault(), $emit('go', item.path))"
-        >
-          <span class="rail-icon"><TsIcon :name="item.icon" :size="20" /></span>
-          <span class="rail-label">{{ railNavLabel(item) }}</span>
-        </a>
-      </nav>
-
-      <div class="rail-footer">
-        <button
-          v-if="showNotifications"
-          class="rail-link rail-notifications"
-          :class="{ active: routeName === 'notifications', expanded: railExpandedKey === 'notifications' }"
-          type="button"
-          :aria-label="notificationsActionLabel"
-          :title="notificationsActionLabel"
-          @pointerenter="warmRoutePath('/notifications'); expandRail('notifications')"
-          @pointerleave="collapseRail('notifications')"
-          @focus="warmRoutePath('/notifications'); expandRail('notifications')"
-          @pointerdown="warmRoutePath('/notifications')"
-          @blur="collapseRail('notifications')"
-          @click="expandRail('notifications'); $emit('go', '/notifications')"
-        >
-          <span class="rail-icon"><NotificationBell :unread="unreadNotifications > 0" /></span>
-          <span class="rail-label">{{ railNotificationsLabel }}</span>
-        </button>
-
-        <button
-          class="rail-link rail-theme"
-          type="button"
-          :aria-label="themeLabel"
-          :title="themeLabel"
-          :class="{ expanded: railExpandedKey === 'theme' }"
-          @pointerenter="expandRail('theme')"
-          @pointerleave="collapseRail('theme')"
-          @focus="expandRail('theme')"
-          @blur="collapseRail('theme')"
-          @click="expandRail('theme'); $emit('toggle-theme', $event)"
-        >
-          <span class="rail-icon"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="20" /></span>
-          <span class="rail-label">{{ railThemeLabel }}</span>
-        </button>
-
-        <button
-          v-if="lang !== 'en'"
-          class="rail-link rail-language"
-          type="button"
-          :aria-label="languageActionLabel"
-          :title="languageActionLabel"
-          :class="{ expanded: railExpandedKey === 'language' }"
-          @pointerenter="expandRail('language')"
-          @pointerleave="collapseRail('language')"
-          @focus="expandRail('language')"
-          @blur="collapseRail('language')"
-          @click="expandRail('language'); $emit('set-lang', alternateLanguage(lang))"
-        >
-          <span class="rail-icon"><TsIcon name="languages" :size="20" /></span>
-          <span class="rail-label" :lang="lang === 'zh' ? 'ja' : 'zh-CN'">{{ languageTargetLabel }}</span>
-        </button>
-
-        <a
-          class="rail-link rail-account"
-          :class="{ active: routeName === 'userCenter' || routeName === 'userProfile' || routeName === 'login', expanded: railExpandedKey === 'account' }"
-          :href="isAuthed ? '/user-center' : '/login'"
-          :aria-label="accountLabel"
-          :title="accountLabel"
-          @pointerenter="warmRoutePath(isAuthed ? '/user-center' : '/login'); expandRail('account')"
-          @pointerleave="collapseRail('account')"
-          @focus="warmRoutePath(isAuthed ? '/user-center' : '/login'); expandRail('account')"
-          @pointerdown="warmRoutePath(isAuthed ? '/user-center' : '/login')"
-          @blur="collapseRail('account')"
-          @click.prevent="expandRail('account'); $emit('go', isAuthed ? '/user-center' : '/login')"
-        >
-          <span class="rail-icon rail-account-icon">
-            <img v-if="user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
-            <span v-else aria-hidden="true">{{ userInitial() }}</span>
-          </span>
-          <span class="rail-label">{{ accountLabel }}</span>
-        </a>
-      </div>
-    </aside>
-
-    <header v-if="showChrome && isRoom" class="room-desktop-commandbar" aria-label="月读空间导航">
-      <a class="room-desktop-brand" href="/hub" @click.prevent="$emit('go', '/hub')">{{ t.brand }}</a>
-      <span class="room-desktop-breadcrumb">房间 <span>/ ROOM</span></span>
-      <form class="room-desktop-search" role="search" @submit.prevent="$emit('go', roomSearch.trim() ? `/stage?q=${encodeURIComponent(roomSearch.trim())}` : '/stage')">
-        <TsIcon name="search" :size="16" /><input v-model="roomSearch" type="search" maxlength="120" aria-label="搜索月读空间文章" placeholder="搜索月读空间"><button type="submit" aria-label="搜索"><TsIcon name="arrowRight" :size="14" /></button>
-      </form>
-      <button v-if="showNotifications" class="room-command-icon" type="button" :aria-label="notificationsActionLabel" @click="$emit('go', '/notifications')"><NotificationBell :size="19" :unread="unreadNotifications > 0" /></button>
-      <button class="room-command-icon" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'moon' : 'sun'" :size="19" /></button>
-      <a class="room-desktop-account" :href="isAuthed ? '/user-center' : '/login'" @click.prevent="$emit('go', isAuthed ? '/user-center' : '/login')"><img v-if="user?.avatar" :src="user.avatar" alt="" width="28" height="28"><span v-else class="room-account-initial">{{ userInitial() }}</span><span>{{ isAuthed ? user?.username || accountLabel : accountLabel }}</span><TsIcon name="chevronDown" :size="12" /></a>
-    </header>
-
-    <header v-if="showChrome && !isRoom" class="topbar site-commandbar" data-material="header">
-      <a href="/hub" class="brand room-brand site-brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @pointerdown="warmRoutePath('/hub')" @click.prevent="$emit('go', '/hub')">
-        <span class="room-brand-mark site-brand-mark site-brand-icon" aria-hidden="true">
-          <TsIcon name="eclipse" :size="21" :stroke-width="1.9" />
-        </span>
-        <span>
-          <strong>{{ t.brand }}</strong>
-          <small>{{ currentPageLabel }}</small>
-        </span>
-      </a>
-
       <nav class="desktop-navigation" :aria-label="t.navigation">
-        <a v-for="item in desktopItems" :key="item.key" :href="item.path" :aria-current="item.active ? 'page' : undefined" @pointerenter="warmRoutePath(item.path)" @focus="warmRoutePath(item.path)" @click.prevent="$emit('go', item.path)">{{ item.label }}</a>
-        <button type="button" :aria-expanded="navOpen" aria-controls="site-navigation" @click="navOpen = !navOpen">{{ moreLabel }} <TsIcon name="chevronDown" :size="14" /></button>
+        <a v-for="item in desktopItems" :key="item.key" :href="item.path" :aria-label="item.label" :aria-current="item.active ? 'page' : undefined" @pointerenter="warmRoutePath(item.path)" @focus="warmRoutePath(item.path)" @click="navigate($event, item)">{{ mobileNavLabel(item) }}</a>
+        <button type="button" :class="{ active: exploreActive }" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)">{{ copy.explore }}<TsIcon name="chevronDown" :size="14" /></button>
       </nav>
-      <div class="desktop-actions">
-        <button type="button" class="desktop-theme" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="19" /></button>
-        <a class="desktop-room-link" href="/room" @pointerenter="warmRoutePath('/room')" @click.prevent="$emit('go', '/room')"><TsIcon name="moon" :size="17" />{{ t.room }}</a>
-      </div>
-      <div class="mobile-command-actions" :aria-label="t.mobileQuickActions">
-        <button
-          v-if="showNotifications"
-          class="mobile-command-btn"
-          type="button"
-          :class="{ active: routeName === 'notifications' }"
-          :aria-label="notificationsActionLabel"
-          @click="$emit('go', '/notifications')"
-        >
-          <NotificationBell :size="18" :unread="unreadNotifications > 0" />
+      <div class="site-header-tools">
+        <button class="site-search-trigger" type="button" :aria-label="copy.search" aria-haspopup="dialog" aria-controls="site-search" @click="openSearch"><TsIcon name="search" :size="19" /><span>{{ copy.search }}</span><kbd>⌘ K</kbd></button>
+        <button v-if="showNotifications" class="site-tool-button" type="button" :aria-label="notificationsActionLabel" @click="$emit('go', '/notifications')"><NotificationBell :size="19" :unread="unreadNotifications > 0" /></button>
+        <button class="site-tool-button site-theme-button" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="19" /></button>
+        <button class="site-account-trigger" type="button" :aria-label="copy.account" :aria-expanded="navOpen && menuMode === 'account'" aria-controls="site-navigation" @click="openNavigation('account', $event)">
+          <img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28"><span v-else class="site-account-avatar"><TsIcon name="user" :size="18" /></span><span class="site-account-name">{{ isAuthed ? user?.username || accountLabel : t.login }}</span><TsIcon name="chevronDown" :size="12" />
         </button>
-        <a
-          class="mobile-command-btn mobile-account-btn"
-          :href="isAuthed ? '/user-center' : '/login'"
-          :class="{ active: routeName === 'userCenter' || routeName === 'userProfile' || routeName === 'login' }"
-          :aria-label="accountLabel"
-          @click.prevent="$emit('go', isAuthed ? '/user-center' : '/login')"
-        >
-          <img v-if="isAuthed && user?.avatar" :src="user.avatar" :alt="user?.username || user?.email || t.brand">
-          <span v-else-if="isAuthed">{{ userInitial() }}</span>
-          <TsIcon v-else name="user" :size="18" />
-        </a>
+        <a class="site-room-cta" href="/room" :aria-current="isRoom || routeName === 'roomSettings' ? 'page' : undefined" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })"><TsIcon name="moon" :size="17" /><span>{{ copy.enterRoom }}</span></a>
       </div>
     </header>
 
-    <dialog v-if="showChrome" ref="navigationRef" id="site-navigation" class="nav-actions room-nav-links site-nav-links" :class="{ open: navOpen }" data-material="popover" role="dialog" :aria-label="moreLabel" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="closeNavigationOnBackdrop" @keydown.tab="cycleNavigationFocus">
+    <dialog v-if="showChrome" ref="navigationRef" id="site-navigation" class="site-navigation-dialog" :class="{ 'is-account-menu': menuMode === 'account' }" data-material="popover" role="dialog" :aria-label="menuMode === 'account' ? copy.account : moreLabel" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="closeNavigationOnBackdrop" @keydown.tab="cycleNavigationFocus">
       <div class="site-nav-drawer-head">
-        <div>
-          <strong>{{ moreLabel }}</strong>
-          <span>{{ currentPageLabel }}</span>
-        </div>
-        <button class="site-nav-close" type="button" autofocus :aria-label="t.closeNavigation" @click="navOpen = false">
-          <TsIcon name="x" :size="18" />
-        </button>
+        <div><small>{{ menuMode === 'account' ? 'YOUR SPACE' : 'EXPLORE' }}</small><strong>{{ menuMode === 'account' ? copy.account : copy.exploreTitle }}</strong></div>
+        <button class="site-tool-button" type="button" autofocus :aria-label="t.closeNavigation" @click="navOpen = false"><TsIcon name="x" :size="20" /></button>
       </div>
-
-      <section class="site-nav-section">
-        <span class="site-nav-section-title">{{ t.explore }}</span>
-        <div class="site-nav-grid">
-          <a
-            v-for="item in mobileSecondaryItems"
-            :key="item.key"
-            :href="item.path"
-            class="nav-link"
-            :class="{ 'router-link-active': item.active }"
-            :aria-current="item.active ? 'page' : undefined"
-            @pointerenter="item.spa && warmRoutePath(item.path)"
-            @focus="item.spa && warmRoutePath(item.path)"
-            @pointerdown="item.spa && warmRoutePath(item.path)"
-            @click="navOpen = false; item.spa && ($event.preventDefault(), $emit('go', item.path))"
-          >
-            <TsIcon class="nav-icon" :name="item.icon" :size="18" />
-            <span>{{ item.label }}</span>
-          </a>
+      <template v-if="menuMode === 'explore'">
+        <button class="site-menu-search" type="button" @click="openSearch"><TsIcon name="search" :size="18" /><span>{{ copy.searchHint }}</span><kbd>⌘ K</kbd></button>
+        <div class="site-explore-columns">
+          <section v-for="group in exploreGroups" :key="group.title" class="site-nav-section">
+            <h3>{{ group.title }}</h3>
+            <a v-for="item in group.items" :key="item.key" :href="item.path" class="site-menu-link" :aria-current="item.active ? 'page' : undefined" @pointerenter="item.spa && warmRoutePath(item.path)" @focus="item.spa && warmRoutePath(item.path)" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="21" /><span><strong>{{ item.label }}</strong><small>{{ copy.descriptions[item.key] }}</small></span><TsIcon name="arrowRight" :size="15" /></a>
+          </section>
         </div>
-      </section>
-
-      <section v-if="showNotifications || isAuthed" class="site-nav-section">
-        <span class="site-nav-section-title">{{ t.accountSection }}</span>
-        <div class="site-nav-grid">
-          <a
-            v-if="showNotifications"
-            href="/notifications"
-            class="nav-link"
-            :class="{ 'router-link-active': routeName === 'notifications' }"
-            :aria-label="notificationsActionLabel"
-            @click.prevent="navOpen = false; $emit('go', '/notifications')"
-          >
-            <NotificationBell class="nav-icon" :size="18" :unread="unreadNotifications > 0" />
-            <span>{{ t.notifications }}</span>
-          </a>
-          <a v-if="isAuthed" href="/user-center" class="nav-link user-chip" :class="{ 'router-link-active': routeName === 'userCenter' || routeName === 'userProfile' }" @click.prevent="navOpen = false; $emit('go', '/user-center')">
-            <TsIcon class="nav-icon" name="user" :size="18" />
-            <span>{{ t.ucTitle }}</span>
-          </a>
-          <a v-if="isAuthed" href="/attachments" class="nav-link" :class="{ 'router-link-active': routeName === 'attachments' }" @click.prevent="navOpen = false; $emit('go', '/attachments')">
-            <TsIcon class="nav-icon" name="image" :size="18" />
-            <span>{{ t.attachments }}</span>
-          </a>
-          <button v-if="isAuthed" class="ghost-btn nav-link" type="button" @click="navOpen = false; $emit('logout')">
-            <TsIcon class="nav-icon" name="x" :size="18" />
-            <span>{{ t.logout }}</span>
-          </button>
-        </div>
-      </section>
-
-      <section v-else class="site-nav-section">
-        <span class="site-nav-section-title">{{ t.accountSection }}</span>
-        <div class="site-nav-grid">
-          <a href="/login" class="nav-link" :class="{ 'router-link-active': routeName === 'login' }" @click.prevent="navOpen = false; $emit('go', '/login')">
-            <TsIcon class="nav-icon" name="user" :size="18" />
-            <span>{{ t.login }}</span>
-          </a>
-          <a href="/register" class="nav-link" :class="{ 'router-link-active': routeName === 'register' }" @click.prevent="navOpen = false; $emit('go', '/register')">
-            <TsIcon class="nav-icon" name="badge" :size="18" />
-            <span>{{ t.register }}</span>
-          </a>
-        </div>
-      </section>
-
-      <section class="site-nav-section">
-        <span class="site-nav-section-title">{{ t.preferences }}</span>
-        <div class="site-nav-preferences">
-          <button
-            class="theme-toggle nav-link"
-            type="button"
-            :aria-label="themeLabel"
-            :title="themeLabel"
-            @click="$emit('toggle-theme', $event)"
-          >
-            <TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />
-            <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
-          </button>
-
-          <div v-if="lang !== 'en'" class="lang-switcher" :aria-label="t.language">
-            <button class="lang-btn" :class="{ active: lang === 'zh' }" :aria-pressed="lang === 'zh'" lang="zh-CN" type="button" @click="$emit('set-lang', 'zh')">中文</button>
-            <button class="lang-btn" :class="{ active: lang === 'ja' }" :aria-pressed="lang === 'ja'" lang="ja" type="button" @click="$emit('set-lang', 'ja')">日本語</button>
-          </div>
-        </div>
-      </section>
+      </template>
+      <div v-else class="site-account-links">
+        <p v-if="isAuthed" class="site-account-greeting">{{ user?.username || accountLabel }}</p>
+        <a v-for="item in accountItems" :key="item.key" :href="item.path" class="site-menu-link" @click="navigate($event, item)"><NotificationBell v-if="item.key === 'notifications'" :unread="unreadNotifications > 0" /><TsIcon v-else :name="item.icon" :size="20" /><span>{{ item.label }}</span></a>
+        <button v-if="isAuthed" class="site-menu-link" type="button" @click="navOpen = false; $emit('logout')"><TsIcon name="arrowLeft" :size="20" /><span>{{ t.logout }}</span></button>
+      </div>
+      <div class="site-menu-preferences">
+        <button class="site-preference-button" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" /><span>{{ theme === 'dark' ? t.lightTheme : t.darkTheme }}</span></button>
+        <button v-if="lang !== 'en'" class="site-preference-button" type="button" :aria-label="lang === 'zh' ? '日本語' : '中文'" @click="$emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" /><span>{{ lang === 'zh' ? '日本語' : '中文' }}</span></button>
+        <button v-if="menuMode === 'explore'" class="site-preference-button site-menu-account" type="button" @click="menuMode = 'account'"><TsIcon name="user" :size="18" /><span>{{ accountLabel }}</span></button>
+      </div>
     </dialog>
+    <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="$emit('go', $event)" />
 
     <nav v-if="showChrome" class="mobile-bottom-nav" data-material="header" :aria-label="t.mobilePrimaryNavigation">
       <a
@@ -496,7 +311,7 @@ onUnmounted(() => {
         @pointerenter="item.spa && warmRoutePath(item.path)"
         @focus="item.spa && warmRoutePath(item.path)"
         @pointerdown="item.spa && warmRoutePath(item.path)"
-        @click="navOpen = false; item.spa && ($event.preventDefault(), $emit('go', item.path))"
+        @click="navigate($event, item)"
       >
         <TsIcon :name="item.icon" :size="20" />
         <span>{{ mobileNavLabel(item) }}</span>
@@ -508,7 +323,7 @@ onUnmounted(() => {
         :aria-label="moreLabel"
         :aria-expanded="navOpen"
         aria-controls="site-navigation"
-        @click="navOpen = !navOpen"
+        @click="openNavigation('explore', $event)"
       >
         <TsIcon name="menu" :size="20" />
         <span>{{ moreLabel }}</span>

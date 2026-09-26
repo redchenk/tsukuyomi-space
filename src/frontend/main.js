@@ -10,6 +10,7 @@ import { enableEnglishStaticInterface } from './i18n/englishStaticInterface';
 import './styles/global.css';
 import './styles/image-bloom.css';
 import './styles/performance.css';
+import './styles/navigation.css';
 
 initializePerformanceProfile();
 configureAssetCssVars();

@@ -37,7 +37,7 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     expect(await dialog.evaluate((node) => node.matches(':modal'))).toBe(true);
     await expect(page.locator('body')).toHaveCSS('position', 'fixed');
     await page.keyboard.press('Shift+Tab');
-    await expect(dialog.getByRole('button', { name: '日本語', exact: true })).toBeFocused();
+    await expect(dialog.locator('.site-menu-account')).toBeFocused();
     for (let i = 0; i < 18; i++) {
         await page.keyboard.press('Tab');
         expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
@@ -47,7 +47,7 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     await expect(trigger).toBeFocused();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY);
     await trigger.click();
-    await dialog.getByRole('link', { name: '图库', exact: true }).click();
+    await dialog.getByRole('link', { name: /^图库/ }).click();
     await expect(page).toHaveURL(/\/gallery$/);
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
@@ -72,8 +72,8 @@ test('navigation fits a landscape viewport and releases the page on desktop resi
     await page.setViewportSize({ width: 1280, height: 600 });
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
-    await page.locator('.desktop-navigation').getByRole('button', { name: '更多' }).click();
-    const agentLink = dialog.getByRole('link', { name: 'Agent OS', exact: true });
+    await page.locator('.desktop-navigation').getByRole('button', { name: '探索' }).click();
+    const agentLink = dialog.getByRole('link', { name: /^Agent OS/ });
     await agentLink.focus();
     await expect(agentLink).toBeInViewport();
     await page.keyboard.press('Escape');

@@ -206,10 +206,10 @@ describe('frontend navigation routes', () => {
         const packageJson = JSON.parse(source('package.json'));
         const overseasEnv = source('.env.overseas');
 
-        assert.match(shell, /class="rail-link rail-language"/);
+        assert.match(shell, /class="site-preference-button"/);
         assert.match(shell, /<TsIcon name="languages"/);
         assert.match(shell, /\$emit\('set-lang', alternateLanguage\(lang\)\)/);
-        assert.match(shell, /class="lang-switcher" :aria-label="t\.language"/);
+        assert.match(shell, /lang === 'zh' \? '日本語' : '中文'/);
         assert.match(app, /normalizeLanguage\(localStorage\.getItem\('lang'\)\)/);
         assert.match(app, /documentLanguage\(lang\.value\)/);
         assert.match(i18nModule, /SUPPORTED_LANGUAGES = Object\.freeze\(\['zh', 'ja', 'en'\]\)/);
@@ -646,7 +646,7 @@ describe('platform material surfaces', () => {
         const main = source('src/frontend/main.js');
 
         assert.match(appStyles, /materials\.css/);
-        assert.match(shell, /class="site-rail" data-material="sidebar"/);
+        assert.doesNotMatch(shell, /class="site-rail"/);
         assert.match(shell, /class="topbar site-commandbar" data-material="header"/);
         assert.match(shell, /data-material="popover" role="dialog"/);
         assert.match(materials, /\[data-material="hud"\]/);
