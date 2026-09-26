@@ -461,3 +461,9 @@ tokens; existing live model/background/vector assets are unchanged; only the
 requested mobile heading copy was removed. `after-light.png` confirms the
 same layout in light mode. No console errors were captured. Frontend build
 and all 247 frontend tests passed; full release checks run before activation.
+
+The first release run passed both keyboard cases and 97/98 browser cases.
+The remaining WebKit settings case called `isVisible()` before the lazy page
+mounted, skipped opening its category drawer and timed out. Its helper now
+waits for the menu to be attached before checking the desktop/mobile layout;
+all category, geometry and save assertions remain. The pipeline is rerun.

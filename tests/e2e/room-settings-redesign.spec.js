@@ -2,6 +2,9 @@ const { test, expect } = require('../e2e-fixtures.cjs');
 
 async function category(page, label) {
   const menu = page.locator('.settings-mobile-menu');
+  // isVisible() does not wait for the lazy-loaded settings page to mount.
+  // Otherwise a cold page can skip opening the mobile category drawer.
+  await expect(menu).toBeAttached();
   if (await menu.isVisible()) await menu.click();
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: label }).click();
 }
