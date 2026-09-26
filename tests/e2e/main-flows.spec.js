@@ -110,7 +110,8 @@ test.beforeEach(async ({ page }) => {
 
 test('user can log in and reach the hub', async ({ page }) => {
     await loginAsUser(page);
-    await expect(page.getByRole('link', { name: '用户中心' })).toBeVisible();
+    await page.getByRole('button', { name: '账号菜单', exact: true }).click();
+    await expect(page.locator('#site-navigation').getByRole('link', { name: '用户中心', exact: true })).toBeVisible();
     const sessionResponse = await page.request.get('/api/auth/me');
     expect(sessionResponse.status()).toBe(200);
     const session = await sessionResponse.json();

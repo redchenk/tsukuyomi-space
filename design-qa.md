@@ -375,3 +375,16 @@ No remaining P0, P1 or P2 findings in this navigation scope.
 - No external AI provider was called. No physical iPhone keyboard test was
   performed; existing mobile keyboard behavior and the WebKit regression suite
   are retained.
+
+
+### Unified navigation release regression follow-up
+
+The first release run passed 92 of 96 browser cases. The login assertion still
+expected a permanently visible user-center link; it now opens the account menu.
+The search failure fixture did not match the existing `/api/live/<nonce>/articles`
+URL, so both browsers received real empty results instead of the injected error;
+its route matcher now covers both public article paths. The WebKit settings test
+exceeded the shared 30-second budget while checking sixteen transitions across
+two themes. Each theme now has its own eight-category test with named steps;
+all visibility, geometry, scroll and button-shape assertions remain in place.
+The complete release pipeline is rerun before activation.

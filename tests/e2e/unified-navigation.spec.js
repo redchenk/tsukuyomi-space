@@ -26,7 +26,7 @@ test('shared search finds navigation aliases, supports keyboard selection and pr
 
 test('search displays real API results, survives an error and follows the selected article', async ({ page }) => {
     const queries = [];
-    await page.route('**/api/articles?*', route => {
+    await page.route(/\/api\/(?:live\/[^/]+\/)?articles\?/, route => {
         const q = new URL(route.request().url()).searchParams.get('q');
         queries.push(q);
         return route.fulfill({ json: q === '故障'

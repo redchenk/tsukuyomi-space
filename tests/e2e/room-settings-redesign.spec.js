@@ -39,7 +39,10 @@ for (const width of [1280, 390]) {
   });
 }
 
-test('all Room settings categories fit mobile light and dark layouts', async ({ page }) => {
+// Keep each theme's eight category transitions within its own test budget,
+// especially on WebKit's slower mobile layout and smooth-scroll path.
+for (const theme of ['light', 'dark']) {
+test(`all Room settings categories fit the mobile ${theme} layout`, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/room/settings');
   const sections = [
@@ -48,13 +51,14 @@ test('all Room settings categories fit mobile light and dark layouts', async ({ 
     ['角色与布局', '#room-model-settings'], ['日记与存档', '#room-diary-settings'],
     ['工具与扩展', '#room-mcp-settings'], ['Live2D 调试', '#room-live2d-debug']
   ];
-  for (const theme of ['light', 'dark']) {
     await page.evaluate(value => document.documentElement.dataset.theme = value, theme);
     for (const [label, selector] of sections) {
-      await category(page, label);
-      await expect(page.locator(selector)).toBeVisible();
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await expect.poll(() => page.locator(selector).evaluate(el => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(70);
+      await test.step(`${theme}: ${label}`, async () => {
+        await category(page, label);
+        await expect(page.locator(selector)).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await expect.poll(() => page.locator(selector).evaluate(el => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(70);
+      });
     }
     const save = await page.locator('.settings-savebar').boundingBox();
     const nav = await page.locator('.mobile-bottom-nav').boundingBox();
@@ -62,5 +66,5 @@ test('all Room settings categories fit mobile light and dark layouts', async ({ 
     expect(save.y + save.height).toBeLessThanOrEqual(nav.y);
     expect(music.y + music.height).toBeLessThan(save.y);
     await expect(page.locator('.settings-savebar .primary-btn')).toHaveCSS('border-radius', '999px');
-  }
 });
+}
