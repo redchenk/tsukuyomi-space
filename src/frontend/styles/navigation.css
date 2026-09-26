@@ -133,7 +133,10 @@
   .unified-navigation.room-shell .room-mobile-header { top: calc(82px + env(safe-area-inset-top)); }
   .unified-navigation.room-shell .room-conversation-layout { --room-mobile-top-clearance: calc(146px + env(safe-area-inset-top)); }
   .unified-navigation.room-shell .room-stage-scene { top: calc(150px + env(safe-area-inset-top)); }
-  .unified-navigation.room-shell.is-keyboard-open .site-commandbar { visibility: hidden; pointer-events: none; }
+  /* Rebuild the fixed navigation's paint tree after the keyboard closes.
+     Keeping it laid out with visibility:hidden can leave iOS text layers blank. */
+  .unified-navigation.is-keyboard-open .site-commandbar,
+  .unified-navigation.is-keyboard-open .mobile-bottom-nav { display: none; }
 }
 @media (max-width: 374px) {
   .site-theme-button { display: none; }

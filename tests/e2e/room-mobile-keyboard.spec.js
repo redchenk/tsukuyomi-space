@@ -21,6 +21,7 @@ test('Room input remains above an overlay keyboard and composition never sends a
     const initialStage = await stage.boundingBox();
     const initialCanvasHeight = await canvasContainer.evaluate(node => node.clientHeight);
     const initialHeader = await header.boundingBox();
+    await expect(page.locator('.room-mobile-heading')).toHaveCount(0);
     await input.fill('中文输入测试');
     await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', isComposing: true, keyCode: 229, bubbles: true });
     await expect(input).toHaveValue('中文输入测试');
@@ -30,6 +31,8 @@ test('Room input remains above an overlay keyboard and composition never sends a
     });
     await expect(page.locator('.app-shell')).toHaveClass(/is-keyboard-open/);
     await expect(page.locator('.mobile-bottom-nav')).toHaveCSS('visibility', 'hidden');
+    expect(await page.locator('.mobile-bottom-nav').boundingBox()).toBeNull();
+    expect(await page.locator('.site-commandbar').boundingBox()).toBeNull();
     const box = await input.boundingBox();
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(430);
@@ -60,4 +63,29 @@ test('Room input remains above an overlay keyboard and composition never sends a
     await expect(page.locator('.mobile-bottom-nav')).toHaveCSS('visibility', 'visible');
     expect((await header.boundingBox()).y).toBeCloseTo(initialHeader.y, 0);
     expect((await stage.boundingBox()).height).toBeCloseTo(initialStage.height, 0);
+    // A second IME cycle must restore the labels as well as the icon surfaces.
+    await input.focus();
+    await page.evaluate(() => {
+        window.visualViewport.offsetTop = 0;
+        window.visualViewport.height = 430;
+        window.visualViewport.dispatchEvent(new Event('resize'));
+    });
+    await expect(page.locator('.mobile-bottom-nav')).toBeHidden();
+    await input.blur();
+    await page.evaluate(() => {
+        window.visualViewport.height = 844;
+        window.visualViewport.dispatchEvent(new Event('resize'));
+    });
+    await expect(page.locator('.app-shell')).not.toHaveClass(/is-keyboard-open/);
+    const labels = page.locator('.mobile-bottom-link > span');
+    await expect(labels).toHaveText(['中枢', '房间', '广场', '舞台', '更多']);
+    for (const label of await labels.all()) {
+        await expect(label).toBeVisible();
+        await expect(label).toBeInViewport();
+        expect((await label.boundingBox()).height).toBeGreaterThanOrEqual(10);
+    }
+    await expect(page.locator('.site-brand strong')).toBeVisible();
+    await expect(input).toHaveValue('中文输入测试');
+    await page.locator('.mobile-bottom-nav button').click();
+    await expect(page.locator('#site-navigation')).toBeVisible();
 });

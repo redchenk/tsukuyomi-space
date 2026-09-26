@@ -423,3 +423,41 @@ existing vector icons remain sharp, with no new images. The actual inbox link
 was clicked and opened `/notifications`. The 247 existing frontend tests and
 production frontend build passed. No new test suite is needed for this limited
 style correction; the normal release pipeline still runs before deployment.
+
+# Mobile navigation keyboard recovery — 2026-09-26
+
+final result: passed
+
+The source is the user's IMG_5783.png attachment (1206 × 2622 including
+iOS browser chrome), showing missing navigation labels after input and the
+mobile character heading covering Live2D. The target is the existing Room
+with all five navigation labels restored and that heading removed.
+
+Local before/after images were opened together:
+`.codex_tmp/mobile-nav-keyboard/before.png` and `after.png`, both 402 × 714
+CSS/image pixels at 1:1 density, dark theme, guest Room. The local before
+reproduces the heading overlap; desktop Chromium does not reproduce the
+physical iOS text-paint failure. The after image contains an unsent test draft.
+This comparison excludes native browser chrome, signed-in account controls,
+chat-history differences and Live2D's changing animation pose. Labels and
+heading region are readable at native size without additional cropping.
+
+**P2 fixed:** The fixed navigation now leaves the paint/layout tree while the
+keyboard is open, instead of only switching visibility, so restoration
+rebuilds its text surfaces. Two local viewport contraction/recovery cycles
+kept all five labels and the site title visible, preserved the unsent draft,
+and the More menu opened successfully afterward. The existing WebKit and
+Chromium keyboard regression now covers a second cycle, restored labels,
+the site title and menu interaction. Physical iOS repaint verification remains
+a device-specific coverage limit; simulated viewport checks cannot prove it.
+
+**P2 fixed:** Removed the mobile-only character name and subtitle. A two-column
+header keeps the 46px function and settings controls at the left/right edges.
+Desktop character headings remain. No actionable visual findings remain in scope.
+
+Fidelity surfaces: remaining font family/weight/size are unchanged; navigation
+spacing and pill radii are unchanged; dark/light colors continue to use site
+tokens; existing live model/background/vector assets are unchanged; only the
+requested mobile heading copy was removed. `after-light.png` confirms the
+same layout in light mode. No console errors were captured. Frontend build
+and all 247 frontend tests passed; full release checks run before activation.

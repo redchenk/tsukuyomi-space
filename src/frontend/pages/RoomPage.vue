@@ -187,7 +187,6 @@ watch(() => props.shareId, loadSharedConversation);
           <button type="button" :aria-pressed="!room.panels.activePanels.chatPanel" @click="closeMobileTools(); room.panels.togglePanel('chatPanel')"><TsIcon :name="room.panels.activePanels.chatPanel ? 'maximize' : 'message'" :size="18" /><span>{{ room.panels.activePanels.chatPanel ? '安静陪伴' : '返回聊天' }}</span></button>
         </nav>
       </details>
-      <div class="room-mobile-heading"><strong>{{ companionName }}</strong><span>与你一起，把时间慢下来。</span></div>
       <a class="room-mobile-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="23" /></a>
     </header>
     <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" :music="room.music" :weather="room.world.weatherCard.value" @settings="emit('go', '/room/settings')" />
