@@ -1,1 +1,25 @@
 @import url("../../../../assets/css/vue/pages/article.css") layer(ts-page);
+
+#article-comments, .article-page .comment-item { scroll-margin-top: 106px; }
+.article-quick-nav {
+  position: fixed; z-index: 180; right: max(24px, env(safe-area-inset-right));
+  bottom: calc(var(--site-companion-bottom, 12px) + var(--site-companion-width, 152px) * 208 / 192 + 16px);
+  display: grid; gap: 8px;
+}
+.article-quick-button {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-width: 44px; min-height: 44px; padding: 10px 16px;
+  border: 1px solid var(--ts-border); border-radius: 999px;
+  background: var(--ts-editorial-surface); color: var(--ts-editorial-ink);
+  box-shadow: var(--ts-shadow-sm); font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.article-quick-button:hover { color: var(--ts-accent); border-color: var(--ts-accent); }
+.article-quick-button:focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 3px; }
+@media (max-width: 860px) {
+  .article-page .comment-header { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .article-page .comment-author-link { max-width: 100%; }
+  .article-quick-nav { left: 50%; right: auto; bottom: calc(86px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; }
+  .article-quick-button { width: 44px; padding: 10px; }
+  .article-quick-button span { display: none; }
+  .is-keyboard-open .article-quick-nav { display: none; }
+}

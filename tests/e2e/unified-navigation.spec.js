@@ -21,7 +21,7 @@ test('shared search finds navigation aliases, supports keyboard selection and pr
     await search.getByRole('searchbox').press('Enter');
     await expect(page).toHaveURL(/\/gallery$/);
     await expect(search).not.toBeVisible();
-    await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
 });
 
 test('search displays real API results, survives an error and follows the selected article', async ({ page }) => {
@@ -130,12 +130,20 @@ for (const width of [390, 1280]) {
             });
         });
         await page.goto('/stage');
+        await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+        await page.locator('main').evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished.catch(() => {}))));
         await page.evaluate(() => {
             // Short menu transitions remain available in the automatic low-power profile.
             document.documentElement.dataset.performance = 'reduced';
-            window.scrollTo(0, 200);
+            window.scrollTo({ top: 200, behavior: 'instant' });
         });
         const scrollY = await page.evaluate(() => window.scrollY);
+        const geometry = () => page.evaluate(() => ({
+            scrollY: window.scrollY,
+            header: document.querySelector('.site-commandbar').getBoundingClientRect().toJSON(),
+            main: document.querySelector('main').getBoundingClientRect().toJSON()
+        }));
+        const before = await geometry();
         const menu = page.locator('#site-navigation');
         const explore = width <= 860
             ? page.locator('.mobile-bottom-nav button')
@@ -145,12 +153,16 @@ for (const width of [390, 1280]) {
             await trigger.click();
             await expect.poll(() => page.evaluate(() => window.menuMotionEvents.length)).toBe(++completed);
             await expect(menu).toBeVisible();
-            await expect(page.locator('body')).toHaveCSS('position', 'fixed');
+            await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
+            expect(await geometry()).toEqual(before);
+            await page.mouse.move(2, 400);
+            await page.mouse.wheel(0, 350);
+            expect(await geometry()).toEqual(before);
             await page.keyboard.press('Escape');
             await expect(menu).not.toBeVisible();
             await expect.poll(() => page.evaluate(() => window.menuMotionEvents.length)).toBe(++completed);
             await expect(trigger).toBeFocused();
-            await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+            await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
             expect(Math.abs(await page.evaluate(() => window.scrollY) - scrollY)).toBeLessThan(2);
         }
         const events = await page.evaluate(() => window.menuMotionEvents);
@@ -164,10 +176,12 @@ for (const width of [390, 1280]) {
         const search = page.getByRole('dialog', { name: '想找些什么？' });
         await expect(menu).not.toBeVisible();
         await expect(search.getByRole('searchbox')).toBeFocused();
-        await expect(page.locator('body')).toHaveCSS('position', 'fixed');
+        await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
+        expect(await geometry()).toEqual(before);
         await page.keyboard.press('Escape');
         await expect(search).not.toBeVisible();
-        await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+        await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+        expect(await geometry()).toEqual(before);
 
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await explore.click();
@@ -181,7 +195,7 @@ for (const width of [390, 1280]) {
         await explore.click();
         await menu.getByRole('link', { name: /^图库/ }).click();
         await expect(page).toHaveURL(/\/gallery$/);
-        await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+        await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
         await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     });
 }

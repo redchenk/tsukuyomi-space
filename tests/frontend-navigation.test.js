@@ -858,3 +858,24 @@ describe('user center message management', () => {
         assert.match(userCenter, /<TsIcon name="trash"/);
     });
 });
+
+describe('directed message threads', () => {
+    it('groups old nested replies and preserves explicit or deleted reply recipients', async () => {
+        const { messageThreads } = await import('../src/frontend/services/messageThreads.mjs');
+        const result = messageThreads([
+            { id: 1, author: '甲' },
+            { id: 2, parent_id: 1, author: '乙' },
+            { id: 3, parent_id: 2, author: '丙' },
+            { id: 4, parent_id: 1, reply_to_id: 3, reply_to_author: '旧名字' },
+            { id: 5, parent_id: 1, reply_to_id: null, reply_to_author: '已删除回复的作者' },
+            { id: 6, parent_id: 99 },
+            { id: 7, parent_id: 8 }, { id: 8, parent_id: 7 }
+        ]);
+        assert.deepEqual(result.replies.get('1').map(item => item.id), [2, 3, 4, 5]);
+        assert.equal(result.rootId(3), '1');
+        assert.deepEqual(result.target(result.replies.get('1')[2]), { id: 3, name: '丙' });
+        assert.deepEqual(result.target(result.replies.get('1')[3]), { id: null, name: '已删除回复的作者' });
+        assert.equal(result.rootId(6), null);
+        assert.equal(result.rootId(7), null);
+    });
+});

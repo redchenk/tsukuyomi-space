@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import TsIcon from './TsIcon.vue';
 import { loadStageArticles } from '../services/stageArticles';
 import { filterNavigationItems, navigationCopy } from '../services/siteNavigation';
+import { lockPageScroll } from '../utils/pageScrollLock';
 
 const props = defineProps({ items: { type: Array, required: true }, lang: { type: String, default: 'zh' } });
 const emit = defineEmits(['close', 'go']);
@@ -79,13 +80,8 @@ function moveResult(event) {
 }
 onMounted(async () => {
   previousFocus = document.activeElement;
-  const y = window.scrollY;
-  const previous = ['position', 'top', 'width', 'overflow'].map(key => [key, document.body.style[key]]);
-  Object.assign(document.body.style, { position: 'fixed', top: `-${y}px`, width: '100%', overflow: 'hidden' });
-  restoreScroll = () => {
-    for (const [key, value] of previous) document.body.style[key] = value;
-    window.scrollTo({ top: y, behavior: 'instant' });
-  };
+  const path = location.pathname + location.search;
+  restoreScroll = lockPageScroll(() => location.pathname + location.search === path);
   dialog.value.showModal();
   await nextTick();
   input.value.focus({ preventScroll: true });

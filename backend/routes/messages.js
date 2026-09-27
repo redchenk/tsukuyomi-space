@@ -321,11 +321,16 @@ router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => 
             return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         }
 
+        const thread = messageRepository.findReplyThreadRoot(originalMessage);
+        if (!thread) return res.status(404).json({ success: false, message: '这条讨论不存在或仍在审核中' });
+
         const newMessage = messageRepository.createMessage({
             author: req.user.username,
             content: review.content,
             userId: req.user.id,
-            parentId: messageId,
+            parentId: thread.id,
+            replyToId: originalMessage.id,
+            replyToAuthor: originalMessage.author,
             articleId: originalMessage.article_id || null,
             status: review.status
         });

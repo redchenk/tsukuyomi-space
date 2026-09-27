@@ -19,6 +19,8 @@ const MESSAGE_SELECT_FIELDS = `
            m.content,
            m.user_id,
            m.parent_id,
+           m.reply_to_id,
+           COALESCE(target_user.username, target.author, m.reply_to_author) AS reply_to_author,
            m.like_count,
            m.article_id,
            m.status,
@@ -28,6 +30,8 @@ const MESSAGE_SELECT_FIELDS = `
            COALESCE(u.updated_at, u.created_at) AS avatar_updated_at
     FROM messages m
     LEFT JOIN users u ON m.user_id = u.id
+    LEFT JOIN messages target ON m.reply_to_id = target.id
+    LEFT JOIN users target_user ON target.user_id = target_user.id
 `;
 
 function listMessages({ articleId, includePending = false } = {}) {
@@ -61,13 +65,13 @@ function listRecentPublicMessages(limit = 8) {
     `).all(safeLimit).map(compactMessageRow);
 }
 
-function createMessage({ author, content, userId, articleId = null, parentId = null, status = 'pending' }) {
+function createMessage({ author, content, userId, articleId = null, parentId = null, replyToId = null, replyToAuthor = null, status = 'pending' }) {
     const normalizedStatus = status === 'approved' ? 'approved' : 'pending';
     const result = parentId
         ? db.prepare(`
-            INSERT INTO messages (author, content, user_id, parent_id, article_id, status)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `).run(author, content, userId, parentId, articleId, normalizedStatus)
+            INSERT INTO messages (author, content, user_id, parent_id, article_id, reply_to_id, reply_to_author, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(author, content, userId, parentId, articleId, replyToId, replyToAuthor, normalizedStatus)
         : db.prepare(`
             INSERT INTO messages (author, content, user_id, article_id, status)
             VALUES (?, ?, ?, ?, ?)
@@ -83,6 +87,18 @@ function findMessageById(id) {
 function findApprovedMessageById(id) {
     const row = db.prepare(`${MESSAGE_SELECT_FIELDS} WHERE m.id = ? AND COALESCE(m.status, 'approved') = 'approved'`).get(id);
     return row ? compactMessageRow(row) : null;
+}
+
+function findReplyThreadRoot(target) {
+    const seen = new Set();
+    let current = target;
+    while (current?.parent_id) {
+        if (seen.has(current.id) || seen.size >= 100) return null;
+        seen.add(current.id);
+        current = findApprovedMessageById(current.parent_id);
+        if (!current || current.article_id !== target.article_id) return null;
+    }
+    return current;
 }
 
 function listUserMessages(userId, { limit = 100, offset = 0 } = {}) {
@@ -174,6 +190,7 @@ module.exports = {
     createMessage,
     findMessageById,
     findApprovedMessageById,
+    findReplyThreadRoot,
     listUserMessages,
     findUserMessageById,
     updateUserMessage,

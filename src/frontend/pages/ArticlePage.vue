@@ -7,6 +7,9 @@ import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../
 import SocialShareDialog from '../components/SocialShareDialog.vue';
 import SocialText from '../components/SocialText.vue';
 import ModerationNotice from '../components/ModerationNotice.vue';
+import PlazaReplyForm from '../components/PlazaReplyForm.vue';
+import ReplyRecipient from '../components/ReplyRecipient.vue';
+import { messageThreads, replyCopy } from '../services/messageThreads.mjs';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
@@ -37,7 +40,6 @@ const loading = ref(true);
 const message = ref('');
 const messageType = ref('error');
 const commentText = ref('');
-const replyText = reactive({});
 const openReplies = reactive({});
 const commentModeration = ref(null);
 const replyModeration = reactive({});
@@ -58,7 +60,9 @@ const articlePath = computed(() => {
   return `/articles/${encodeURIComponent(article.value.id)}${article.value.slug ? `/${encodeURIComponent(article.value.slug)}` : ''}`;
 });
 const articleBackPath = computed(() => normalizeStageReturnPath(route.query.from));
-const topComments = computed(() => comments.value.filter((item) => !item.parent_id));
+const threads = computed(() => messageThreads(comments.value));
+const topComments = computed(() => threads.value.top);
+const replyLabels = computed(() => replyCopy(props.lang));
 const bookmarkLabel = computed(() => {
   const count = bookmark.count ? ` ${Number(bookmark.count).toLocaleString('zh-CN')}` : '';
   return `${bookmark.bookmarked ? readerCopy.value.saved : readerCopy.value.bookmark}${count}`;
@@ -308,7 +312,7 @@ async function loadComments() {
 }
 
 function repliesFor(commentId) {
-  return comments.value.filter((item) => item.parent_id === commentId);
+  return [...(threads.value.replies.get(String(commentId)) || [])].sort((a, b) => Number(a.id) - Number(b.id));
 }
 
 function upsertComment(message) {
@@ -359,13 +363,13 @@ async function submitComment() {
   }
 }
 
-async function submitReply(commentId) {
+async function submitReply(commentId, text) {
   replyModeration[commentId] = null;
-  if (!requireLogin()) return;
-  const content = String(replyText[commentId] || '').trim();
+  if (!requireLogin()) return false;
+  const content = String(text || '').trim();
   if (!content) {
     showMessage('回复内容不能为空');
-    return;
+    return false;
   }
 
   try {
@@ -377,12 +381,13 @@ async function submitReply(commentId) {
     const result = await parseResponse(response);
     replyModeration[commentId] = result.moderation || null;
     if (!result.success) throw new Error(result.message || '回复失败');
-    replyText[commentId] = '';
     openReplies[commentId] = false;
     showMessage(result.moderation?.status === 'pending' ? '回复已提交，等待人工审核。' : result.message || '回复已提交', 'success');
     if (result.data?.id && (result.data.status || 'approved') === 'approved') upsertComment(result.data);
+    return true;
   } catch (error) {
     showMessage(error.message || '回复失败');
+    return false;
   }
 }
 
@@ -436,12 +441,24 @@ async function toggleBookmark() {
   }
 }
 
+function toggleReply(id) {
+  if (!requireLogin()) return;
+  openReplies[id] = !openReplies[id];
+}
+
+function jumpToArticleTarget(id) {
+  const target = document.getElementById(id);
+  if (!target) return;
+  target.focus({ preventScroll: true });
+  target.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+}
+
 onMounted(loadArticle);
 watch(articleId, loadArticle);
 </script>
 
 <template>
-  <main class="page article-page" :aria-busy="loading">
+  <main id="article-top" tabindex="-1" class="page article-page" :aria-busy="loading">
     <div class="article-progress" :style="{ transform: `scaleX(${progress})` }" aria-hidden="true"></div>
     <div class="article-shell">
       <a class="ghost-btn article-back" :href="articleBackPath" @click.prevent="goBackToStage">
@@ -508,7 +525,7 @@ watch(articleId, loadArticle);
           <section ref="articleContentRef" class="article-content" @click="handleMarkdownClick" v-html="renderedContent"></section>
         </div>
 
-        <section class="comments-section">
+        <section id="article-comments" tabindex="-1" class="comments-section">
           <div class="comments-head">
             <h2>{{ readerCopy.comments }}</h2>
             <span>{{ comments.length }}</span>
@@ -560,20 +577,14 @@ watch(articleId, loadArticle);
                   <TsIcon name="heart" :size="16" />
                   <span>喜欢 {{ comment.like_count || 0 }}</span>
                 </button>
-                <button class="icon-btn comment-tool-btn" type="button" @click="openReplies[comment.id] = !openReplies[comment.id]">
+                <button class="icon-btn comment-tool-btn" type="button" @click="toggleReply(comment.id)">
                   <TsIcon name="message" :size="16" />
                   <span>回复</span>
                 </button>
               </div>
 
               <div v-if="openReplies[comment.id]" class="reply-form">
-                <textarea v-model="replyText[comment.id]" class="comment-input" placeholder="写下回复..."></textarea>
-                <div class="comment-actions">
-                  <button class="primary-btn" type="button" @click="submitReply(comment.id)">
-                    <TsIcon name="send" :size="17" />
-                    <span>发布回复</span>
-                  </button>
-                </div>
+                <PlazaReplyForm :t="t" :lang="lang" :target="comment" :msg-id="comment.id" variant="article" :on-submit="submitReply" @cancel="toggleReply(comment.id)" />
               </div>
 
               <ModerationNotice :feedback="replyModeration[comment.id]" />
@@ -590,7 +601,15 @@ watch(articleId, loadArticle);
                     </button>
                     <span class="comment-time">{{ formatDate(reply.created_at) }}</span>
                   </div>
+                  <ReplyRecipient :target="threads.target(reply)" prefix="comment" :lang="lang" />
                   <SocialText class="comment-content" :content="reply.content" @mention="goProfile" @topic="goTopic" />
+                  <div class="comment-tools">
+                    <button class="icon-btn comment-tool-btn" type="button" :aria-label="`${replyLabels.to} ${commentAuthorName(reply)}`" @click="toggleReply(reply.id)"><TsIcon name="message" :size="16" /><span>{{ t.reply }}</span></button>
+                  </div>
+                  <div v-if="openReplies[reply.id]" class="reply-form">
+                    <PlazaReplyForm :t="t" :lang="lang" :target="reply" :msg-id="reply.id" variant="article" :on-submit="submitReply" @cancel="toggleReply(reply.id)" />
+                  </div>
+                  <ModerationNotice :feedback="replyModeration[reply.id]" />
                 </div>
               </div>
             </article>
@@ -599,6 +618,12 @@ watch(articleId, loadArticle);
       </article>
     </div>
   </main>
+  <Teleport to="body">
+    <nav v-if="article && !loading" class="article-quick-nav" :aria-label="replyLabels.navigation">
+      <button class="article-quick-button" type="button" :aria-label="replyLabels.comments" :title="replyLabels.comments" @click="jumpToArticleTarget('article-comments')"><TsIcon name="message" :size="19" /><span>{{ replyLabels.comments }}</span></button>
+      <button class="article-quick-button" type="button" :aria-label="replyLabels.top" :title="replyLabels.top" @click="jumpToArticleTarget('article-top')"><TsIcon name="chevronUp" :size="20" /><span>{{ replyLabels.top }}</span></button>
+    </nav>
+  </Teleport>
   <SocialShareDialog
     :open="articleShareOpen"
     :title="article?.title || '月读空间文章'"

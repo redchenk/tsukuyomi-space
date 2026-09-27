@@ -16,14 +16,19 @@ function notifyApprovedMessage(messageId) {
     let metadata;
 
     if (message.parent_id) {
-        const parent = messageRepository.findMessageById(message.parent_id);
+        // A deleted explicit target must not redirect private reply mail to the
+        // thread owner. Legacy replies without target metadata still use parent_id.
+        const targetId = message.reply_to_author ? message.reply_to_id : message.parent_id;
+        const parent = targetId ? messageRepository.findApprovedMessageById(targetId) : null;
         if (!parent?.user_id || parent.user_id === message.user_id) return null;
+        const thread = messageRepository.findApprovedMessageById(message.parent_id);
+        if (!thread || parent.article_id !== message.article_id || thread.article_id !== message.article_id) return null;
         const article = parent.article_id ? articleRepository.findPublishedArticleById(parent.article_id) : null;
         if (parent.article_id && !article) return null;
         const base = article ? articlePath(article) : '/plaza';
         recipientId = parent.user_id;
         title = `${actorName} 回复了你的${parent.article_id ? '评论' : '留言'}`;
-        link = `${base}#${parent.article_id ? 'comment' : 'msg'}-${parent.id}`;
+        link = `${base}#${parent.article_id ? 'comment' : 'msg'}-${message.id}`;
         relatedArticleId = parent.article_id || null;
         metadata = { actorName, messageId: parent.id };
     } else if (message.article_id) {

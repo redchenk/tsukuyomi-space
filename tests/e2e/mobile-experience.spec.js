@@ -35,7 +35,7 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     const dialog = page.getByRole('dialog', { name: '更多' });
     await expect(dialog).toBeVisible();
     expect(await dialog.evaluate((node) => node.matches(':modal'))).toBe(true);
-    await expect(page.locator('body')).toHaveCSS('position', 'fixed');
+    await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
     await page.keyboard.press('Shift+Tab');
     await expect(dialog.locator('.site-menu-account')).toBeFocused();
     for (let i = 0; i < 18; i++) {
@@ -50,13 +50,13 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     await dialog.getByRole('link', { name: /^图库/ }).click();
     await expect(page).toHaveURL(/\/gallery$/);
     await expect(dialog).not.toBeVisible();
-    await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
     await expect(trigger).toHaveClass(/active/);
     await expect(page.locator('.site-brand small')).toHaveText('图库');
     await trigger.click();
     await page.mouse.click(5, 5);
     await expect(dialog).not.toBeVisible();
-    await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
 });
 
 test('navigation fits a landscape viewport and releases the page on desktop resize', async ({ page }) => {
@@ -71,7 +71,7 @@ test('navigation fits a landscape viewport and releases the page on desktop resi
     await expect(dialog.getByRole('button', { name: '日本語', exact: true })).toBeInViewport();
     await page.setViewportSize({ width: 1280, height: 600 });
     await expect(dialog).not.toBeVisible();
-    await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
     await page.locator('.desktop-navigation').getByRole('button', { name: '探索' }).click();
     const agentLink = dialog.getByRole('link', { name: /^Agent OS/ });
     await agentLink.focus();

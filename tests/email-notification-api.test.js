@@ -386,3 +386,68 @@ test('all administrators receive a deduplicated inbox alert even with mail off o
     assert.equal(inbox.status, 200);
     assert.ok(JSON.stringify(inbox.body).includes(`review=${id}`));
 });
+
+test('directed replies keep one thread, notify the actual recipient and wait for approval', async () => {
+    db.prepare("UPDATE site_settings SET value = 'true' WHERE key = 'emailNotifyReplies'").run();
+    const tokens = {};
+    for (const name of ['thread-owner', 'thread-reader', 'thread-writer']) {
+        db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
+            .run(name, name, `${name}@example.com`, 'test', 'user');
+        tokens[name] = generateToken({ id: name, username: name, role: 'user' });
+    }
+    const repository = require('../backend/repositories/message-repository');
+    for (const isArticle of [false, true]) {
+        const articleId = isArticle ? Number(db.prepare("INSERT INTO articles (title, content, category, status, author_id) VALUES ('讨论关系', '正文', '其他', 'published', 'thread-owner')").run().lastInsertRowid) : null;
+        const root = repository.createMessage({ author: 'thread-owner', content: '根讨论', userId: 'thread-owner', articleId, status: 'approved' });
+        const first = await call(`/api/messages/${root.id}/reply`, { method: 'POST', token: tokens['thread-reader'], body: { content: '第一位读者的回复' } });
+        assert.equal(first.status, 201);
+        await new Promise(resolve => setImmediate(resolve));
+        const before = sentByRoutes.length;
+        const directed = await call(`/api/messages/${first.body.data.id}/reply`, {
+            method: 'POST', token: tokens['thread-writer'],
+            body: { content: '我想回应这位读者', parent_id: 999999, reply_to_id: root.id }
+        });
+        assert.equal(directed.status, 201);
+        assert.equal(directed.body.data.parent_id, root.id);
+        assert.equal(directed.body.data.reply_to_id, first.body.data.id);
+        assert.equal(directed.body.data.reply_to_author, 'thread-reader');
+        assert.equal(directed.body.data.article_id, articleId);
+        await new Promise(resolve => setImmediate(resolve));
+        const mails = sentByRoutes.slice(before);
+        assert.equal(mails.length, 1);
+        assert.equal(mails[0].to, 'thread-reader@example.com');
+        assert.ok(mails[0].event.link.endsWith(`#${isArticle ? 'comment' : 'msg'}-${directed.body.data.id}`));
+        const inbox = db.prepare('SELECT user_id, link FROM notifications WHERE related_message_id = ? AND type = ?').all(directed.body.data.id, 'reply');
+        assert.equal(inbox.length, 1);
+        assert.equal(inbox[0].user_id, 'thread-reader');
+        const publicList = await call(`/api/messages${articleId ? `?article_id=${articleId}` : ''}`);
+        assert.equal(publicList.body.data.find(item => item.id === directed.body.data.id).reply_to_author, 'thread-reader');
+
+        const pending = await call(`/api/messages/${first.body.data.id}/reply`, { method: 'POST', token: tokens['thread-writer'], body: { content: 'https://pending.example/discussion' } });
+        assert.equal(pending.body.data.status, 'pending');
+        const repliesBeforeApproval = sentByRoutes.filter(item => item.to === 'thread-reader@example.com').length;
+        const adminList = await call('/api/admin/messages', { cookie: superCookie });
+        const review = adminList.body.data.find(item => item.id === pending.body.data.id);
+        for (let retry = 0; retry < 2; retry++) {
+            const approved = await call(`/api/admin/messages/${review.id}/approve`, { method: 'POST', cookie: superCookie, body: { reviewDigest: review.moderation.reviewDigest, confirmExternalLink: true } });
+            assert.equal(approved.status, 200);
+        }
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(sentByRoutes.filter(item => item.to === 'thread-reader@example.com').length, repliesBeforeApproval + 1);
+        const self = await call(`/api/messages/${first.body.data.id}/reply`, { method: 'POST', token: tokens['thread-reader'], body: { content: '补充我的观点' } });
+        assert.equal(self.status, 201);
+        assert.equal(db.prepare("SELECT COUNT(*) AS n FROM notifications WHERE related_message_id = ? AND type = 'reply'").get(self.body.data.id).n, 0);
+
+        const waiting = repository.createMessage({ author: 'thread-writer', content: '等待审核', userId: 'thread-writer', parentId: root.id, articleId, replyToId: first.body.data.id, replyToAuthor: 'thread-reader' });
+        repository.deleteUserMessage(first.body.data.id, 'thread-reader');
+        const preserved = repository.findMessageById(waiting.id);
+        assert.equal(preserved.reply_to_id, null);
+        assert.equal(preserved.reply_to_author, 'thread-reader');
+        db.prepare("UPDATE messages SET status = 'approved' WHERE id = ?").run(waiting.id);
+        assert.equal(require('../backend/services/approved-reply-notification').notifyApprovedMessage(waiting.id), null);
+        assert.equal(db.prepare("SELECT COUNT(*) AS n FROM notifications WHERE related_message_id = ? AND type = 'reply'").get(waiting.id).n, 0);
+
+        db.prepare("UPDATE messages SET status = 'pending' WHERE id = ?").run(root.id);
+        assert.equal((await call(`/api/messages/${directed.body.data.id}/reply`, { method: 'POST', token: tokens['thread-writer'], body: { content: '不可回复隐藏的讨论' } })).status, 404);
+    }
+});

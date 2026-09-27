@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
+import ReplyRecipient from '../components/ReplyRecipient.vue';
+import { messageThreads, replyCopy } from '../services/messageThreads.mjs';
 import ModerationNotice from '../components/ModerationNotice.vue';
 import SocialText from '../components/SocialText.vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -160,16 +162,12 @@ const fallback = computed(() => isEn.value ? {
   collapseReplies: '\u8fd4\u4fe1\u3092\u6298\u308a\u305f\u305f\u3080'
 });
 
+const threads = computed(() => messageThreads(plaza.messages));
+const replyLabels = computed(() => replyCopy(props.lang));
 const plazaMessages = computed(() => {
-  const repliesByParent = {};
-  plaza.messages.forEach((item) => {
-    if (!item.parent_id) return;
-    (repliesByParent[item.parent_id] = repliesByParent[item.parent_id] || []).push(item);
-  });
-
-  let top = plaza.messages.filter((item) => !item.parent_id).map((item) => ({
+  let top = threads.value.top.map(item => ({
     ...item,
-    replies: (repliesByParent[item.id] || []).sort((a, b) =>
+    replies: [...(threads.value.replies.get(String(item.id)) || [])].sort((a, b) =>
       compareAppDate(b.created_at, a.created_at) || Number(b.id || 0) - Number(a.id || 0))
   }));
 
@@ -290,7 +288,7 @@ function plazaSyncPageWithHash() {
   if (!match) return;
   const anchorId = match[1];
   const target = plaza.messages.find((item) => String(item.id) === anchorId);
-  const topLevelId = target?.parent_id || target?.id;
+  const topLevelId = target && threads.value.rootId(target.id);
   if (!topLevelId) return;
   const index = plazaMessages.value.findIndex((item) => String(item.id) === String(topLevelId));
   if (index < 0) return;
@@ -433,6 +431,8 @@ async function plazaSubmitReply(parentId, content) {
       loadTrendingTopics();
     }
     plaza.replyOpen = { ...plaza.replyOpen, [parentId]: false };
+    const rootId = threads.value.rootId(parentId);
+    if (rootId) plaza.repliesExpanded[rootId] = true;
     return true;
   } catch (error) {
     showPlazaToast(replyModeration[parentId]?.status === 'rejected' ? '未能提交，请查看原因提示。' : error.message || props.t.replyFailed, 'error');
@@ -565,6 +565,7 @@ watch(plazaTotalPages, (total) => {
   if (plaza.page < 1) plaza.page = 1;
 });
 watch(() => route.query.topic, applyRouteTopic, { immediate: true });
+watch(() => route.hash, plazaSyncPageWithHash, { flush: 'post' });
 onMounted(() => {
   window.addEventListener('hashchange', plazaSyncPageWithHash);
   refreshPlaza();
@@ -697,7 +698,7 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
               </button>
             </div>
             <div v-if="plaza.replyOpen[msg.id]" class="plaza-reply-form">
-              <PlazaReplyForm :t="t" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
+              <PlazaReplyForm :t="t" :lang="lang" :target="msg" :msg-id="msg.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(msg.id)" />
             </div>
             <ModerationNotice :feedback="replyModeration[msg.id]" />
             <div v-if="(msg.replies || []).length" :id="'plaza-replies-' + msg.id" class="plaza-replies">
@@ -717,6 +718,7 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
                     </button>
                   </div>
                 </div>
+                <ReplyRecipient :target="threads.target(reply)" prefix="msg" :lang="lang" />
                 <span v-if="!plaza.repliesExpanded[msg.id]" class="plaza-msg-content" style="margin-bottom:0;">{{ reply.content }}</span>
                 <SocialText
                   v-else
@@ -726,6 +728,13 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
                   @mention="plazaOpenProfile"
                   @topic="plazaSelectTopic"
                 />
+                <div class="plaza-msg-footer">
+                  <button class="icon-btn" type="button" :aria-label="`${replyLabels.to} ${reply.author || replyLabels.unknown}`" @click="plazaToggleReply(reply.id)"><TsIcon name="message" :size="15" /><span>{{ t.reply }}</span></button>
+                </div>
+                <div v-if="plaza.replyOpen[reply.id]" class="plaza-reply-form">
+                  <PlazaReplyForm :t="t" :lang="lang" :target="reply" :msg-id="reply.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(reply.id)" />
+                </div>
+                <ModerationNotice :feedback="replyModeration[reply.id]" />
               </div>
             </div>
             <button

@@ -1096,3 +1096,12 @@ textarea::placeholder {
     box-shadow: 0 0 72px rgba(174, 242, 255, 0.28);
     animation: ts-soft-float 6s var(--ts-ease-standard) infinite;
 }
+
+/* Shared reply context in Plaza and article discussions. */
+.message-reply-recipient { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; font-size: 12px; line-height: 1.5; color: var(--ts-muted); overflow-wrap: anywhere; }
+.message-reply-recipient a { color: var(--ts-accent); text-decoration: none; }
+.message-reply-recipient a:hover { text-decoration: underline; }
+.message-reply-heading { margin: 0 0 8px; color: var(--ts-text); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.message-reply-quote { margin: 0 0 12px; padding: 8px 12px; border-left: 2px solid var(--ts-accent); border-radius: 0 10px 10px 0; background: var(--ts-surface); color: var(--ts-muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.message-reply-form textarea { display: block; width: 100%; margin-bottom: 12px; }
+.message-reply-form :is(.primary-btn, .ghost-btn) { white-space: nowrap; }

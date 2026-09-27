@@ -10,6 +10,7 @@ import { navigationCopy } from '../services/siteNavigation';
 const SiteSearch = defineAsyncComponent(() => import('../components/SiteSearch.vue'));
 import { warmRoutePath } from '../router';
 import { useMobileKeyboard } from '../composables/useMobileKeyboard';
+import { lockPageScroll } from '../utils/pageScrollLock';
 import {
   NOTIFICATION_BADGE_EVENT,
   normalizeNotificationCount,
@@ -211,14 +212,8 @@ async function transitionNavigation(open) {
     return;
   }
   if (open && !dialog.open) {
-    const scrollY = window.scrollY;
     const routeWhenOpened = props.routeName;
-    const previous = ['position', 'top', 'width', 'overflow'].map((key) => [key, document.body.style[key]]);
-    Object.assign(document.body.style, { position: 'fixed', top: `-${scrollY}px`, width: '100%', overflow: 'hidden' });
-    releaseNavigationScroll = () => {
-      for (const [key, value] of previous) document.body.style[key] = value;
-      if (props.routeName === routeWhenOpened) window.scrollTo({ top: scrollY, behavior: 'instant' });
-    };
+    releaseNavigationScroll = lockPageScroll(() => props.routeName === routeWhenOpened);
     dialog.showModal();
   }
   if (dialog.open) {
