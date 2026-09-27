@@ -100,19 +100,21 @@ async function isTokenBlacklisted(token) {
     return Boolean(await store.get(tokenBlacklistKey(token)));
 }
 
-async function createOAuthState({ state, provider, redirectPath = '/hub', ttlMs = config.oauth.stateTtlMs }) {
+async function createOAuthState({ state, provider, browserBinding, userId = '', redirectPath = '/hub', ttlMs = config.oauth.stateTtlMs }) {
     await store.setJson(oauthStateKey(state), {
         provider,
+        browserBinding,
+        userId,
         redirectPath,
         created_at: Date.now()
     }, Math.ceil(ttlMs / 1000));
 }
 
-async function consumeOAuthState(state, provider) {
+async function consumeOAuthState(state, provider, browserBinding, userId = '') {
     const key = oauthStateKey(state);
     const row = await store.getJson(key);
+    if (!browserBinding || !row || row.provider !== provider || row.browserBinding !== browserBinding || row.userId !== userId) return null;
     await store.del(key);
-    if (!row || row.provider !== provider) return null;
     return row;
 }
 
@@ -123,6 +125,7 @@ async function createOAuthPending({
     redirectPath = '/hub',
     mode = '',
     linkedUserId = '',
+    browserBinding,
     ttlMs = config.oauth.pendingTtlMs
 }) {
     await store.setJson(oauthPendingKey(ticket), {
@@ -131,21 +134,22 @@ async function createOAuthPending({
         redirectPath,
         mode,
         linkedUserId,
+        browserBinding,
         created_at: Date.now()
     }, Math.ceil(ttlMs / 1000));
 }
 
-async function getOAuthPending(ticket, provider) {
+async function getOAuthPending(ticket, provider, browserBinding) {
     const row = await store.getJson(oauthPendingKey(ticket));
-    if (!row || row.provider !== provider) return null;
+    if (!browserBinding || !row || row.provider !== provider || row.browserBinding !== browserBinding) return null;
     return row;
 }
 
-async function consumeOAuthPending(ticket, provider) {
+async function consumeOAuthPending(ticket, provider, browserBinding) {
     const key = oauthPendingKey(ticket);
-    const row = await store.getJson(key);
+    const row = await getOAuthPending(ticket, provider, browserBinding);
+    if (!row) return null;
     await store.del(key);
-    if (!row || row.provider !== provider) return null;
     return row;
 }
 

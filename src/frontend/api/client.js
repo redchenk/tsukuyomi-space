@@ -47,6 +47,20 @@ export function apiUrl(url) {
   return base ? `${base}${value}` : value;
 }
 
+export async function qqOAuthStartUrl(redirect = '/hub') {
+  const pathname = `/api/auth/oauth/qq/start?redirect=${encodeURIComponent(redirect)}`;
+  if (['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)) return apiUrl(pathname);
+  // OAuth must start on its registered callback origin so the browser-binding
+  // cookie survives the provider round trip, including from the overseas site.
+  const settings = await loadPublicSettings();
+  const endpoint = new URL(settings.qqOAuthStartUrl);
+  if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password
+      || endpoint.pathname !== '/api/auth/oauth/qq/start') throw new Error('QQ 登录入口配置无效');
+  endpoint.search = new URLSearchParams({ redirect }).toString();
+  endpoint.hash = '';
+  return endpoint.toString();
+}
+
 export function getAuthToken() {
   return getSession() ? 'cookie-session' : '';
 }

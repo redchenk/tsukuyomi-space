@@ -18,6 +18,7 @@ const adminRepository = require('../repositories/admin-repository');
 const authState = require('../services/auth-state');
 const { queueLoginLocationCheck } = require('../services/login-location-alert');
 const qqOAuth = require('../services/qq-oauth');
+const oauthBrowser = require('../services/oauth-browser');
 const { EMAIL_CODE_TTL_MS, EMAIL_CODE_COOLDOWN_MS, sendVerificationEmail } = require('../services/mailer');
 const { normalizeEmail, isEmail, isOAuthPlaceholderEmail, publicEmail } = require('../validators');
 
@@ -54,6 +55,7 @@ function userResponse(user) {
 
 function setUserLoginSession(req, res, user) {
     if (user?.role === 'banned') throw httpError(403, '账号已停用');
+    oauthBrowser.clear(res);
     const token = issueTokenForUser(user);
     clearAuthCookie(req, res, ADMIN_SESSION_COOKIE, 'strict');
     setAuthCookie(req, res, USER_SESSION_COOKIE, token, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
@@ -413,12 +415,14 @@ router.post('/password/reset', async (req, res) => {
     }
 });
 
-router.get('/oauth/qq/start', async (req, res) => {
+router.get('/oauth/qq/start', optionalAuth, async (req, res) => {
     try {
         const state = crypto.randomBytes(24).toString('hex');
         const redirectPath = safeRedirectPath(req.query.redirect || '/hub');
-        await authState.createOAuthState({ state, provider: 'qq', redirectPath });
-        res.redirect(qqOAuth.authorizationUrl({ state, display: oauthDisplayForRequest(req) }));
+        const authorizationUrl = qqOAuth.authorizationUrl({ state, display: oauthDisplayForRequest(req) });
+        const browserBinding = oauthBrowser.begin(res);
+        await authState.createOAuthState({ state, provider: 'qq', redirectPath, browserBinding, userId: req.user?.id || '' });
+        res.redirect(authorizationUrl);
     } catch (error) {
         console.error('Start QQ OAuth failed:', error);
         redirectToOAuthError(res, error.code === 'QQ_OAUTH_NOT_CONFIGURED' ? 'qq_not_configured' : 'qq_start_failed');
@@ -434,7 +438,7 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
         if (!state) return redirectToOAuthError(res, 'qq_invalid_state');
         if (!code) return redirectToOAuthError(res, 'qq_missing_code');
 
-        const statePayload = await authState.consumeOAuthState(state, 'qq');
+        const statePayload = await authState.consumeOAuthState(state, 'qq', oauthBrowser.readBinding(req), req.user?.id || '');
         if (!statePayload) return redirectToOAuthError(res, 'qq_invalid_state');
 
         const profile = compactOAuthProfile(await qqOAuth.getProfileFromCode(code));
@@ -445,6 +449,7 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
                 await authState.createOAuthPending({
                     ticket,
                     provider: 'qq',
+                    browserBinding: statePayload.browserBinding,
                     profile,
                     redirectPath: statePayload.redirectPath,
                     mode: 'bind_email',
@@ -471,6 +476,7 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
             await authState.createOAuthPending({
                 ticket,
                 provider: 'qq',
+                browserBinding: statePayload.browserBinding,
                 profile,
                 redirectPath: statePayload.redirectPath,
                 mode: 'bind'
@@ -483,6 +489,7 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
             await authState.createOAuthPending({
                 ticket,
                 provider: 'qq',
+                browserBinding: statePayload.browserBinding,
                 profile,
                 redirectPath: statePayload.redirectPath,
                 mode: 'bind_email'
@@ -502,7 +509,7 @@ router.get('/oauth/qq/callback', optionalAuth, async (req, res) => {
 router.get('/oauth/qq/pending', async (req, res) => {
     try {
         const ticket = String(req.query.ticket || '').trim();
-        const pending = await authState.getOAuthPending(ticket, 'qq');
+        const pending = await authState.getOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
         if (!pending) {
             return res.status(404).json({ success: false, message: 'QQ 登录状态已过期，请重新授权' });
         }
@@ -520,7 +527,7 @@ router.get('/oauth/qq/pending', async (req, res) => {
 router.post('/oauth/qq/create', async (req, res) => {
     try {
         const ticket = String(req.body.ticket || '').trim();
-        const pending = await authState.getOAuthPending(ticket, 'qq');
+        const pending = await authState.getOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
         if (!pending) {
             return res.status(404).json({ success: false, message: 'QQ 登录状态已过期，请重新授权' });
         }
@@ -531,13 +538,13 @@ router.post('/oauth/qq/create', async (req, res) => {
         }
         const linkedUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
         if (linkedUser) {
-            await authState.consumeOAuthPending(ticket, 'qq');
+            await authState.consumeOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
             const sessionUser = setUserLoginSession(req, res, linkedUser);
             return res.json({ success: true, message: '登录成功', data: { user: sessionUser, redirect: safeRedirectPath(pending.redirectPath) } });
         }
 
         const user = createUserFromOAuthProfile(profile, req.body.username);
-        await authState.consumeOAuthPending(ticket, 'qq');
+        await authState.consumeOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
         const sessionUser = setUserLoginSession(req, res, user);
         res.status(201).json({
             success: true,
@@ -556,7 +563,7 @@ router.post('/oauth/qq/create', async (req, res) => {
 router.post('/oauth/qq/email', async (req, res) => {
     try {
         const ticket = String(req.body.ticket || '').trim();
-        const pending = await authState.getOAuthPending(ticket, 'qq');
+        const pending = await authState.getOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
         if (!pending) {
             return res.status(404).json({ success: false, message: 'QQ 登录状态已过期，请重新授权' });
         }
@@ -607,7 +614,7 @@ router.post('/oauth/qq/email', async (req, res) => {
             user = authRepository.findUserById(user.id);
         }
 
-        await authState.consumeOAuthPending(ticket, 'qq');
+        await authState.consumeOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
         const sessionUser = setUserLoginSession(req, res, user);
         res.status(existingEmailUser ? 200 : 201).json({
             success: true,
@@ -626,7 +633,7 @@ router.post('/oauth/qq/email', async (req, res) => {
 router.post('/oauth/qq/bind', optionalAuth, async (req, res) => {
     try {
         const ticket = String(req.body.ticket || '').trim();
-        const pending = await authState.getOAuthPending(ticket, 'qq');
+        const pending = await authState.getOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
         if (!pending) {
             return res.status(404).json({ success: false, message: 'QQ 登录状态已过期，请重新授权' });
         }
@@ -634,7 +641,7 @@ router.post('/oauth/qq/bind', optionalAuth, async (req, res) => {
         const profile = compactOAuthProfile(pending.profile);
         const existingOAuthUser = authRepository.findUserByOAuthAccount('qq', profile.providerUserId);
         if (existingOAuthUser) {
-            await authState.consumeOAuthPending(ticket, 'qq');
+            await authState.consumeOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
             const sessionUser = setUserLoginSession(req, res, existingOAuthUser);
             return res.json({ success: true, message: '登录成功', data: { user: sessionUser, redirect: safeRedirectPath(pending.redirectPath) } });
         }
@@ -657,7 +664,7 @@ router.post('/oauth/qq/bind', optionalAuth, async (req, res) => {
         }
 
         const linkedUser = authRepository.linkOAuthAccount(oauthAccountFromProfile(profile, user.id));
-        await authState.consumeOAuthPending(ticket, 'qq');
+        await authState.consumeOAuthPending(ticket, 'qq', oauthBrowser.readBinding(req));
         const sessionUser = setUserLoginSession(req, res, linkedUser || user);
         res.json({
             success: true,

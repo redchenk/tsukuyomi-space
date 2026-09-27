@@ -187,11 +187,13 @@ function isAssetPubliclyReferenced(id) {
     const roomShare = db.prepare(`
         SELECT 1
         FROM room_conversation_shares
-        WHERE og_image_asset_id = ? AND revoked_at IS NULL
+        WHERE og_image_asset_id = ? AND revoked_at IS NULL AND user_id = ?
         LIMIT 1
-    `).get(id);
+    `).get(id, asset.owner_id);
     if (roomShare) return true;
 
+    // Attached IDs have already passed the publishing route's ownership check.
+    // A plain URL mention can only publish the article author's own attachment.
     const row = db.prepare(`
         SELECT 1
         FROM articles
@@ -199,18 +201,20 @@ function isAssetPubliclyReferenced(id) {
           AND (
             id = ?
             OR cover_image_asset_id = ?
-            OR instr(COALESCE(cover_image, ''), ?) > 0
-            OR instr(COALESCE(content, ''), ?) > 0
-            OR (
-                ? <> ''
-                AND (
-                    instr(COALESCE(cover_image, ''), ?) > 0
-                    OR instr(COALESCE(content, ''), ?) > 0
+            OR (author_id = ? AND (
+                instr(COALESCE(cover_image, ''), ?) > 0
+                OR instr(COALESCE(content, ''), ?) > 0
+                OR (
+                    ? <> ''
+                    AND (
+                        instr(COALESCE(cover_image, ''), ?) > 0
+                        OR instr(COALESCE(content, ''), ?) > 0
+                    )
                 )
-            )
+            ))
           )
         LIMIT 1
-    `).get(asset.article_id, id, proxyToken, proxyToken, directUrl, directUrl, directUrl);
+    `).get(asset.article_id, id, asset.owner_id, proxyToken, proxyToken, directUrl, directUrl, directUrl);
     return Boolean(row);
 }
 

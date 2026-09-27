@@ -1,5 +1,6 @@
 const express = require('express');
 const adminRepository = require('../repositories/admin-repository');
+const config = require('../config');
 
 const router = express.Router();
 
@@ -38,6 +39,7 @@ router.get('/settings', (req, res) => {
             mpsBeianUrl: settings.mpsBeianUrl || '',
             mpsBeianIcon: settings.mpsBeianIcon || '',
             publicAssetBaseUrl,
+            qqOAuthStartUrl: new URL('/api/auth/oauth/qq/start', config.oauth.qq.redirectUri).toString(),
             visitPopupButton: settings.visitPopupButton || '我知道了'
         }
     });

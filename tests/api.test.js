@@ -720,10 +720,13 @@ describe('auth API', () => {
 
     it('sets a usable password when a new QQ user binds an email', async () => {
         const ticket = 'qq-first-password-ticket';
+        const oauthBrowser = require('../backend/services/oauth-browser');
+        const browserToken = 'a'.repeat(64);
         const email = 'qq-first-password@example.test';
         await authState.createOAuthPending({
             ticket,
             provider: 'qq',
+            browserBinding: oauthBrowser.bindingForToken(browserToken),
             mode: 'bind_email',
             profile: {
                 provider: 'qq',
@@ -747,7 +750,7 @@ describe('auth API', () => {
             emailCode: '321654',
             username: 'qq-first-password',
             newPassword: 'qq-first-password-2026'
-        });
+        }, `${oauthBrowser.COOKIE_NAME}=${browserToken}`);
         assert.equal(bound.response.status, 201);
 
         const passwordLogin = await postJson('/api/auth/login', {

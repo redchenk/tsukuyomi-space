@@ -179,7 +179,12 @@ router.post('/token-plan', authenticateToken, async (req, res) => {
         return res.status(400).json(rpcError(id, -32602, `Unsupported MiniMax Token Plan tool: ${name || 'unknown'}`));
     }
 
-    const auth = extractAuth(req);
+    let auth;
+    try {
+        auth = extractAuth(req);
+    } catch (error) {
+        return res.status(400).json(rpcError(id, -32602, error.message));
+    }
     if (!auth.apiKey) {
         return res.status(400).json(rpcError(id, -32602, 'MiniMax API Key is required.'));
     }

@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
-import { apiFetch, apiUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import { apiFetch, qqOAuthStartUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 import { captureReferralCode } from '../services/userGrowth';
 import { getAuthRedirectFromLocation, withAuthRedirect } from '../utils/authRedirect';
 
@@ -104,9 +104,12 @@ function go(path) {
   emit('go', path);
 }
 
-function startQQLogin() {
-  const redirect = authRedirect.value;
-  window.location.href = apiUrl(`/api/auth/oauth/qq/start?redirect=${encodeURIComponent(redirect)}`);
+async function startQQLogin() {
+  try {
+    window.location.href = await qqOAuthStartUrl(authRedirect.value);
+  } catch (_) {
+    showMessage('error', isEnglish.value ? 'QQ sign-in is unavailable. Please try again.' : 'QQ 登录暂时无法连接，请稍后重试');
+  }
 }
 </script>
 

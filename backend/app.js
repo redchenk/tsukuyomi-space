@@ -6,6 +6,7 @@ const { securityHeaders, createRateLimiter, isAllowedOrigin, requireTrustedWrite
 const { serveStaticFiles } = require('./middleware/static');
 const { jsonParseError, errorHandler } = require('./middleware/error');
 const { rejectDuplicateJsonKeys } = require('./services/json-security');
+const { forwardAsyncErrors } = require('./middleware/async-errors');
 
 const healthRoutes = require('./routes/health');
 const authRoutes = require('./routes/auth');
@@ -160,6 +161,7 @@ function createApp() {
     app.use('/api/user', userRoutes);
 
     app.use(errorHandler);
+    forwardAsyncErrors(app);
     return app;
 }
 
