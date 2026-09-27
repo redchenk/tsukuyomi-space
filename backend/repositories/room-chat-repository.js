@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const db = require('../db');
+const roomImages = require('../services/room-chat-images');
 
 const MAX_STORED_MESSAGES = 100;
 
@@ -28,7 +29,9 @@ function listMessages(userId, limit = 24) {
             LIMIT ?
         ) recent
         ORDER BY sort_id ASC
-    `).all(userId, normalizeLimit(limit)).map(compactMessage);
+    `).all(userId, normalizeLimit(limit)).map(row => ({ ...compactMessage(row),
+        ...(row.role === 'user' ? { image: roomImages.descriptor(roomImages.find(userId, row.turn_id)) } : {})
+    }));
 }
 
 function findOwnedTurn(userId, turnId) {

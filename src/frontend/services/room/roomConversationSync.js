@@ -1,6 +1,7 @@
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { applyGrowthResult } from '../userGrowth';
 import { saveGuestMemory } from './roomLocalMemory';
+import { normalizeRoomImage, clearLocalRoomImages } from './roomChatImages';
 
 const CHAT_EVENT_NAME = 'tsukuyomi:room-chat-updated';
 const LEGACY_HISTORY_KEY = 'roomChatHistory';
@@ -70,6 +71,7 @@ function normalizeHistory(messages) {
       turnId: message.turnId ? String(message.turnId) : '',
       role: message.role,
       content: String(message.content || ''),
+      ...(message.image ? { image: normalizeRoomImage(message.image) } : {}),
       createdAt: message.createdAt || ''
     }))
     .filter((message) => message.content)
@@ -266,9 +268,9 @@ export async function loadRoomConversation() {
   return applySavedHistory(userId, history, preserved);
 }
 
-export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, opener = false, memoryEnabled = true }) {
+export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, imageId, opener = false, memoryEnabled = true }) {
   const userId = currentUserId();
-  const turn = { turnId, userMessage, assistantMessage, memoryEnabled, ...(opener ? { opener: true } : {}) };
+  const turn = { turnId, userMessage, assistantMessage, memoryEnabled, ...(imageId ? { imageId } : {}), ...(opener ? { opener: true } : {}) };
   queuePendingTurn(turn, userId);
   if (!userId) {
     await saveGuestMemory(turn);
@@ -351,6 +353,7 @@ export async function clearRoomConversation() {
   await Promise.allSettled([...pendingRequests, saveQueues.get(userId)]);
   requireSameAccount(userId);
   if (!authenticated) {
+    await clearLocalRoomImages();
     clearLocalRoomConversation({ broadcast: true });
     return { deletedCount: 0 };
   }

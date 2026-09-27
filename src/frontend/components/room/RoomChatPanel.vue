@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TsIcon from '../TsIcon.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
+import RoomChatImage from './RoomChatImage.vue';
 import { isEnglishSite } from '../../utils/siteVariant';
 import { formatTimeMinute as messageTime } from '../../utils/time';
 import { splitRoomReply } from '../../services/room/roomReplyPresentation.mjs';
@@ -316,7 +317,7 @@ function endChatStatusLabel() {
           <span v-if="message.role === 'assistant'" class="room-message-avatar" aria-hidden="true"></span>
           <span class="chat-role">{{ message.role === 'assistant' ? characterName : message.role === 'user' ? '你' : '系统' }}</span>
           <span v-if="message.role === 'assistant'" class="room-message-ai">AI</span>
-          <img v-if="message.image?.dataUrl" class="chat-image-thumb" :src="message.image.dataUrl" :alt="message.image.name || 'image'">
+          <RoomChatImage v-if="message.image" :image="message.image" />
           <template v-if="editingMessageId === message.id">
             <label class="chat-edit-label" :for="`chat-edit-${message.id}`">修改这条消息</label>
             <textarea

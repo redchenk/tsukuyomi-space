@@ -1,6 +1,7 @@
 @import url("../../../../assets/css/vue/pages/article.css") layer(ts-page);
 
 #article-comments, .article-page .comment-item { scroll-margin-top: 106px; }
+.article-page .article-replies-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 12px; white-space: nowrap; }
 .article-quick-nav {
   position: fixed; z-index: 180; right: max(24px, env(safe-area-inset-right));
   bottom: calc(var(--site-companion-bottom, 12px) + var(--site-companion-width, 152px) * 208 / 192 + 16px);

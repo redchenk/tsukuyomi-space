@@ -45,6 +45,7 @@ import {
 } from '../../services/room/roomDiaryArchive';
 import { generateDiaryEntry } from '../../services/room/roomDiaryGeneration';
 import { syncDiaryArchive } from '../../services/room/roomDiarySync';
+import { prepareRoomImage, persistRoomImage } from '../../services/room/roomChatImages';
 
 import { retrieveGuestMemories } from '../../services/room/roomLocalMemory';
 
@@ -1099,6 +1100,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     history.forEach((message) => addMessage(message.role, message.content, {
       id: previous.find(item => message.turnId && item.turnId === message.turnId && item.role === message.role)?.id || message.id,
       turnId: message.turnId,
+      image: message.image,
       createdAt: message.createdAt,
       scroll: !preservePosition
     }));
@@ -1230,15 +1232,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
 
   async function attachImage(file) {
     if (!file) return;
-    if (!/^image\//.test(file.type)) {
-      addMessage('system', '\u8bf7\u9009\u62e9\u56fe\u7247\u6587\u4ef6');
-      return;
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      addMessage('system', '\u56fe\u7247\u4e0d\u80fd\u8d85\u8fc7 4MB');
-      return;
-    }
-    imageAttachment.value = { name: file.name || 'image', type: file.type, size: file.size, dataUrl: await fileToDataUrl(file) };
+    try { imageAttachment.value = await prepareRoomImage(file); }
+    catch (error) { addMessage('system', error.message, { shareable: false }); }
   }
 
   function clearImage() {
@@ -1396,6 +1391,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
     lastFailedTurn = null;
 
     try {
+      const savedImage = image && !replacement ? await persistRoomImage(image, turnId, operation.controller.signal) : null;
+      if (operation.controller.signal.aborted || activeGeneration !== operation || destroyed) return false;
       const settings = readJson('roomLLMSettings', {});
       const storedConversation = readRoomConversation().filter((item) => !replacement || item.turnId !== replacement.turnId).slice(-12);
       const sharedContext = sharedConversation.value ? [
@@ -1496,13 +1493,13 @@ export function useRoomChat({ live2d, world, diary = null }) {
         if (!opener) currentSessionMessages.value.push({ turnId, role: 'user', content: message || '请看这张图片。' });
         currentSessionMessages.value.push({ turnId, role: 'assistant', content: reply });
         persistDiaryRecording();
-        const userContent = image ? `${message || '\u8bf7\u770b\u8fd9\u5f20\u56fe\u7247\u3002'}\n[image: ${image.name}]` : message;
-        const nextHistory = [...storedConversation, ...(!opener ? [{ role: 'user', content: userContent, turnId }] : []), { role: 'assistant', content: reply, turnId }].slice(-24);
+        const userContent = message || (image ? '请看这张图片。' : '');
+        const nextHistory = [...readRoomConversation(), ...(!opener ? [{ role: 'user', content: userContent, turnId, image: savedImage, createdAt: userMessage?.createdAt }] : []), { role: 'assistant', content: reply, turnId, createdAt: pendingMessage.createdAt }].slice(-24);
         writeRoomConversation(nextHistory);
         operation.committing = true;
         generationState.value = { status: 'saving', turnId, error: '' };
         memorySaveError.value = '';
-        await saveRoomConversationTurn({ turnId, userMessage: opener ? '' : userContent, assistantMessage: reply, opener,
+        await saveRoomConversationTurn({ turnId, userMessage: opener ? '' : userContent, assistantMessage: reply, opener, imageId: savedImage?.id,
           memoryEnabled: readJson('roomMemorySettings', { enabled: true }).enabled !== false
         }).catch(() => {
           memorySaveError.value = ROOM_ENGLISH ? 'Memory save incomplete. Please reconnect and reload.' : '本轮记忆尚未保存成功，请恢复连接后刷新重试。';

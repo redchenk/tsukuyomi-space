@@ -10,6 +10,7 @@ const roomShareRepository = require('../repositories/room-share-repository');
 const roomDiaryRepository = require('../repositories/room-diary-repository');
 const weatherCache = require('../services/weather-cache');
 const userGrowth = require('../services/user-growth');
+const roomImages = require('../services/room-chat-images');
 
 const router = express.Router();
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
@@ -599,7 +600,29 @@ router.get('/models/openrouter', async (req, res) => {
     }
 });
 
+router.post('/chat/images', authenticateToken, async (req, res) => {
+    setNoStore(res);
+    try {
+        const data = await roomImages.upload(req.user.id, normalizeTurnId(req.body?.turnId), req.body);
+        res.status(201).json({ success: true, data });
+    } catch (error) {
+        res.status(error.statusCode || 502).json({ success: false, message: error.statusCode ? error.message : '图片云同步失败，请重试' });
+    }
+});
+
+router.get('/chat/images/:id', authenticateToken, async (req, res) => {
+    setNoStore(res);
+    try {
+        const image = await roomImages.read(req.user.id, req.params.id);
+        res.set({ 'Content-Type': image.type, 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin' });
+        res.send(image.buffer);
+    } catch (error) {
+        res.status(error.statusCode || 502).json({ success: false, message: '图片不存在或暂时无法读取' });
+    }
+});
+
 router.get('/chat', authenticateToken, (req, res) => {
+    roomImages.cleanup().catch(() => {});
     setNoStore(res);
     res.json({
         success: true,
@@ -609,6 +632,7 @@ router.get('/chat', authenticateToken, (req, res) => {
 
 router.delete('/chat', authenticateToken, (req, res) => {
     const deletedCount = roomChatRepository.clearMessages(req.user.id);
+    roomImages.clear(req.user.id);
     roomMemoryEvents.publishChat(req.user.id, { action: 'cleared' });
     setNoStore(res);
     res.json({
@@ -645,6 +669,8 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
     try {
         const turnId = normalizeTurnId(req.body?.turnId);
         const opener = req.body?.opener === true;
+        if (opener && req.body?.imageId) return res.status(400).json({ success: false, message: '开场白不能包含图片' });
+        roomImages.validateReference(req.user.id, turnId, req.body?.imageId);
         const userMessage = opener && !req.body?.userMessage ? '' : normalizeChatContent(req.body?.userMessage, 'userMessage');
         if (opener && userMessage) return res.status(400).json({ success: false, message: 'An opener cannot include a user message' });
         const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');

@@ -2407,6 +2407,58 @@ describe('room memory API', () => {
         await request('/api/room/chat', { method: 'DELETE', headers: jsonHeaders(userToken) });
     });
 
+    it('keeps private OSS image previews after turn save and on another session, without inline database binaries', async () => {
+        const original = { isConfigured: objectStorage.isConfigured, putObject: objectStorage.putObject, getObject: objectStorage.getObject, deleteObject: objectStorage.deleteObject };
+        const binary = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
+        const objects = new Map();
+        const turnId = 'room-image-preview-regression';
+        const payload = { turnId, name: 'IMG_5320.jpeg', dataUrl: `data:image/png;base64,${binary.toString('base64')}` };
+        try {
+            objectStorage.isConfigured = () => false;
+            assert.equal((await postJson('/api/room/chat/images', payload, userToken)).response.status, 503);
+            objectStorage.isConfigured = () => true;
+            objectStorage.putObject = async options => {
+                assert.equal(options.privateRead, true);
+                assert.equal(options.uploadPath, 'room-private/${year}/${month}');
+                const key = `test-room/${options.id}`;
+                objects.set(key, options.buffer);
+                return { key };
+            };
+            objectStorage.getObject = async key => ({ buffer: objects.get(key) });
+            objectStorage.deleteObject = async key => { objects.delete(key); return true; };
+            assert.equal((await postJson('/api/room/chat/images', payload)).response.status, 401);
+            assert.equal((await postJson('/api/room/chat/images', { ...payload, dataUrl: 'data:image/png;base64,PHNjcmlwdD4=' }, userToken)).response.status, 400);
+            assert.equal((await postJson('/api/room/chat/images', { ...payload, dataUrl: 'a'.repeat(720000) }, userToken)).response.status, 413);
+            const uploaded = await postJson('/api/room/chat/images', payload, userToken);
+            assert.equal(uploaded.response.status, 201);
+            const image = uploaded.body.data;
+            assert.match(image.url, /^\/api\/room\/chat\/images\/[a-f0-9-]+$/);
+            assert.equal((await postJson('/api/room/chat/images', payload, userToken)).body.data.id, image.id);
+            assert.equal(objects.size, 1, 'retry does not upload twice');
+            assert.equal((await postJson('/api/room/chat/turn', { turnId, userMessage: '看这张图片', assistantMessage: '收到了', imageId: image.id }, managedUserToken)).response.status, 400);
+            const saved = await postJson('/api/room/chat/turn', { turnId, userMessage: '看这张图片', assistantMessage: '收到了', imageId: image.id }, userToken);
+            assert.equal(saved.response.status, 201);
+            assert.equal(saved.body.data.find(row => row.turnId === turnId && row.role === 'user').image.id, image.id);
+            const restored = await request('/api/room/chat', { headers: jsonHeaders(userToken) });
+            assert.equal(restored.body.data.find(row => row.turnId === turnId && row.role === 'user').image.url, image.url);
+            assert.doesNotMatch(JSON.stringify(restored.body), /data:image|\[image:|object_key/);
+            assert.equal((await fetch(`${baseUrl}${image.url}`, { headers: authHeader(managedUserToken) })).status, 404);
+            assert.equal((await fetch(`${baseUrl}${image.url}`)).status, 401);
+            const preview = await fetch(`${baseUrl}${image.url}`, { headers: authHeader(userToken) });
+            assert.equal(preview.headers.get('content-type'), 'image/png');
+            assert.match(preview.headers.get('cache-control'), /no-store/);
+            assert.deepEqual(Buffer.from(await preview.arrayBuffer()), binary);
+            assert.equal(db.prepare('SELECT COUNT(*) AS n FROM article_assets WHERE id = ?').get(image.id).n, 0);
+            await request('/api/room/chat', { method: 'DELETE', headers: jsonHeaders(userToken) });
+            assert.equal((await fetch(`${baseUrl}${image.url}`, { headers: authHeader(userToken) })).status, 404);
+            assert.equal(objects.size, 0);
+        } finally {
+            Object.assign(objectStorage, original);
+            db.prepare('DELETE FROM room_chat_images WHERE turn_id = ?').run(turnId);
+            db.prepare('DELETE FROM room_chat_messages WHERE turn_id = ?').run(turnId);
+        }
+    });
+
     it('persists room chat turns per account and broadcasts content-free updates', async () => {
         const unauthenticated = await request('/api/room/chat');
         assert.equal(unauthenticated.response.status, 401);

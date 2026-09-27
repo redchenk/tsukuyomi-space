@@ -572,7 +572,8 @@ async function putObject({
     inline = false,
     contentEncoding = '',
     cacheControl = '',
-    publicRead = false
+    publicRead = false,
+    privateRead = false
 }) {
     const settings = providedSettings || getSettings();
     if ((requireEnabled && !settings.ossEnabled) || !hasUploadParams(settings)) return null;
@@ -588,6 +589,7 @@ async function putObject({
     if (contentEncoding) uploadHeaders['Content-Encoding'] = String(contentEncoding);
     if (cacheControl) uploadHeaders['Cache-Control'] = String(cacheControl);
     if (publicRead === true) uploadHeaders['X-Oss-Object-Acl'] = 'public-read';
+    if (privateRead === true) uploadHeaders[isAliyunProvider(settings) ? 'X-Oss-Object-Acl' : 'X-Amz-Acl'] = 'private';
     const response = await signedFetch({
         method: 'PUT',
         url,

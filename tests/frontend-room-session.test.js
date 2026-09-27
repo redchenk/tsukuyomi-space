@@ -36,6 +36,7 @@ async function setup(overrides = {}) {
     writeRoomConversation() {}, saveRoomConversationTurn: async () => {}, replaceRoomConversationTurn: async () => {}, clearLocalRoomConversation() {},
     clearRoomConversation: async () => { clearCount++; },
     writeJson() {},
+    persistRoomImage: async image => ({ id: 'c6b5f9c0-e4b6-45ef-8bfb-6c71006bbc0a', name: image.name, url: '/api/room/chat/images/c6b5f9c0-e4b6-45ef-8bfb-6c71006bbc0a' }),
     readJson: (key, fallback) => key === 'roomMemorySettings' ? { enabled: false } : fallback,
     releaseAsyncAudioPlayback() {}, dispatchRoomLive2D() {}, dispatchRoomLive2DExpression() {},
     compileBehaviorIntent: () => null, inferLive2DIntentFromText: () => null,
@@ -57,6 +58,33 @@ async function setup(overrides = {}) {
   return { chat: context.chat, context, saved, requests, sync: () => onUpdate({}), clearCount: () => clearCount };
 }
 async function send(chat, text) { chat.input.value = text; await chat.send(); await tick(); }
+
+test('image messages retain previews after completion, history sync and reload; upload failure remains retryable', async () => {
+  let history = [];
+  let turn;
+  const h = await setup({
+    readRoomConversation: () => history, loadRoomConversation: async () => history,
+    writeRoomConversation: value => { history = value; },
+    saveRoomConversationTurn: async value => { turn = value; }
+  });
+  h.chat.imageAttachment.value = { name: 'IMG_5320.jpeg', dataUrl: 'data:image/png;base64,test' };
+  assert.equal(await h.chat.send(), true);
+  assert.equal(history[0].image.id, turn.imageId);
+  assert.doesNotMatch(history[0].content, /\[image:/);
+  assert.equal(history[0].image.dataUrl, undefined, 'persistent history carries only a reference');
+  h.sync(); await tick();
+  assert.ok(h.chat.messages.value.find(item => item.role === 'user').image);
+  h.chat.destroy();
+  const restored = await setup({ loadRoomConversation: async () => history });
+  assert.equal(restored.chat.messages.value.find(item => item.role === 'user').image.id, turn.imageId);
+  restored.chat.destroy();
+  const failed = await setup({ persistRoomImage: async () => { throw new Error('图片云同步失败'); } });
+  failed.chat.imageAttachment.value = { name: 'IMG.jpeg', dataUrl: 'data:image/png;base64,test' };
+  assert.equal(await failed.chat.send(), false);
+  assert.match(failed.chat.generationState.value.error, /图片云同步失败/);
+  assert.equal(failed.chat.messages.value.find(item => item.role === 'user' && item.failed).image.name, 'IMG.jpeg');
+  failed.chat.destroy();
+});
 
 test('streaming display never exposes unfinished model reasoning or a half-written JSON wrapper', async () => {
   const h = await setup();
@@ -369,6 +397,9 @@ function conversationSyncHarness(authFetch) {
     applyGrowthResult() {},
     window: { addEventListener() {}, removeEventListener() {} }
   };
+  const imagesSource = fs.readFileSync('src/frontend/services/room/roomChatImages.js', 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '');
+  vm.runInNewContext(imagesSource + '\nglobalThis.normalizeImage = normalizeRoomImage;', context);
+  context.normalizeRoomImage = context.normalizeImage;
   vm.runInNewContext(source + '\nglobalThis.sync = { readRoomConversation, writeRoomConversation, saveRoomConversationTurn, loadRoomConversation };', context);
   return { sync: context.sync, storage, setAccount: value => { account = value; } };
 }
@@ -387,6 +418,21 @@ function successfulHistory(messages) {
     text: async () => JSON.stringify({ success: true, data: messages })
   };
 }
+
+test('Room history normalization and save echoes keep image references, never inline image binaries', async () => {
+  const image = { id: 'c6b5f9c0-e4b6-45ef-8bfb-6c71006bbc0a', name: 'IMG_5320.jpeg', dataUrl: 'data:image/png;base64,large' };
+  const history = savedTurn('turn-image-sync', '看图片', '我看到了');
+  history[0].image = image;
+  const h = conversationSyncHarness(async (url, options) => {
+    if (options?.body) assert.equal(JSON.parse(options.body).imageId, image.id);
+    return successfulHistory(history);
+  });
+  h.sync.writeRoomConversation(history);
+  assert.equal(h.sync.readRoomConversation()[0].image.id, image.id);
+  assert.equal(h.sync.readRoomConversation()[0].image.dataUrl, undefined);
+  await h.sync.saveRoomConversationTurn({ turnId: 'turn-image-sync', userMessage: '看图片', assistantMessage: '我看到了', imageId: image.id });
+  assert.equal((await h.sync.loadRoomConversation())[0].image.url, `/api/room/chat/images/${image.id}`);
+});
 
 test('Room turn sync serializes overlapping saves and retains a newer local turn while the first save settles', async () => {
   const firstResponse = deferred();

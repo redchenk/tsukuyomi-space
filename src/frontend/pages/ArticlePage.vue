@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useQualifiedArticleRead } from '../composables/useQualifiedArticleRead';
 import { useArticleReading } from '../composables/useArticleReading';
 import { readingTimeLabel } from '../utils/reading';
@@ -45,6 +45,7 @@ const message = ref('');
 const messageType = ref('error');
 const commentText = ref('');
 const openReplies = reactive({});
+const expandedReplies = reactive({});
 const commentModeration = ref(null);
 const replyModeration = reactive({});
 const session = ref(getSession());
@@ -206,6 +207,8 @@ async function loadArticle() {
   readingReceipt.value = null;
   commentModeration.value = null;
   Object.keys(replyModeration).forEach(key => delete replyModeration[key]);
+  Object.keys(expandedReplies).forEach(key => delete expandedReplies[key]);
+  Object.keys(openReplies).forEach(key => delete openReplies[key]);
   loading.value = true;
   showMessage('');
   article.value = null;
@@ -235,6 +238,7 @@ async function loadArticle() {
     showMessage(error.message || props.t.loadFailed || '加载失败');
   } finally {
     loading.value = false;
+    await revealCommentHash();
   }
 }
 
@@ -320,7 +324,33 @@ async function loadComments() {
 }
 
 function repliesFor(commentId) {
-  return [...(threads.value.replies.get(String(commentId)) || [])].sort((a, b) => Number(a.id) - Number(b.id));
+  return [...(threads.value.replies.get(String(commentId)) || [])].sort((a, b) => Number(b.id) - Number(a.id));
+}
+
+function visibleReplies(commentId) {
+  const replies = repliesFor(commentId);
+  return expandedReplies[commentId] ? replies : replies.slice(0, 1);
+}
+
+function repliesToggleLabel(commentId) {
+  const count = repliesFor(commentId).length;
+  if (props.lang === 'en') return expandedReplies[commentId] ? 'Collapse replies' : `Show all ${count} replies`;
+  if (props.lang === 'ja') return expandedReplies[commentId] ? '返信を折りたたむ' : `${count} 件の返信をすべて表示`;
+  return expandedReplies[commentId] ? '收起回复' : `展开全部 ${count} 条回复`;
+}
+
+async function revealCommentHash() {
+  const match = String(route.hash || '').match(/^#comment-(\d+)$/);
+  if (!match || loading.value) return;
+  await revealComment(match[1]);
+}
+
+async function revealComment(id) {
+  const root = threads.value.rootId(id);
+  if (!root) return;
+  if (root !== String(id)) expandedReplies[root] = true;
+  await nextTick();
+  document.getElementById(`comment-${id}`)?.scrollIntoView({ block: 'center', behavior: 'instant' });
 }
 
 function upsertComment(message) {
@@ -463,6 +493,7 @@ function jumpToArticleTarget(id) {
 
 onMounted(loadArticle);
 watch(articleId, loadArticle);
+watch(() => route.hash, revealCommentHash);
 </script>
 
 <template>
@@ -596,8 +627,8 @@ watch(articleId, loadArticle);
               </div>
 
               <ModerationNotice :feedback="replyModeration[comment.id]" />
-              <div v-if="repliesFor(comment.id).length" class="reply-list">
-                <div v-for="reply in repliesFor(comment.id)" :id="'comment-' + reply.id" :key="reply.id" class="comment-item reply-item">
+              <div v-if="repliesFor(comment.id).length" :id="'article-replies-' + comment.id" class="reply-list">
+                <div v-for="reply in visibleReplies(comment.id)" :id="'comment-' + reply.id" :key="reply.id" class="comment-item reply-item">
                   <div class="comment-header">
                     <button class="comment-author-link" type="button" @click="goProfile(commentAuthorName(reply))">
                       <span class="comment-avatar small">
@@ -609,7 +640,7 @@ watch(articleId, loadArticle);
                     </button>
                     <span class="comment-time">{{ formatDate(reply.created_at) }}</span>
                   </div>
-                  <ReplyRecipient :target="threads.target(reply)" prefix="comment" :lang="lang" />
+                  <ReplyRecipient :target="threads.target(reply)" prefix="comment" :lang="lang" @navigate="revealComment" />
                   <SocialText class="comment-content" :content="reply.content" @mention="goProfile" @topic="goTopic" />
                   <div class="comment-tools">
                     <button class="icon-btn comment-tool-btn" type="button" :aria-label="`${replyLabels.to} ${commentAuthorName(reply)}`" @click="toggleReply(reply.id)"><TsIcon name="message" :size="16" /><span>{{ t.reply }}</span></button>
@@ -620,6 +651,12 @@ watch(articleId, loadArticle);
                   <ModerationNotice :feedback="replyModeration[reply.id]" />
                 </div>
               </div>
+              <button v-if="repliesFor(comment.id).length > 1" class="ghost-btn article-replies-toggle" type="button"
+                :aria-expanded="Boolean(expandedReplies[comment.id])" :aria-controls="'article-replies-' + comment.id"
+                @click="expandedReplies[comment.id] = !expandedReplies[comment.id]">
+                <TsIcon :name="expandedReplies[comment.id] ? 'chevronUp' : 'chevronDown'" :size="16" />
+                <span>{{ repliesToggleLabel(comment.id) }}</span>
+              </button>
             </article>
           </div>
         </section>
