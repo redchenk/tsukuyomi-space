@@ -1,1 +1,9 @@
 @import url("../../../../assets/css/vue/pages/plaza.css") layer(ts-page);
+
+@layer ts-page {
+  .plaza-activity-item {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--ts-radius-control);
+    overflow-wrap: anywhere;
+  }
+}

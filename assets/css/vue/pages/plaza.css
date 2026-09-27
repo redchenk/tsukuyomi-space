@@ -411,12 +411,9 @@
     display: grid;
     grid-template-columns: 9px minmax(0, 1fr);
     gap: 0.65rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--ts-radius-control);
     color: rgba(255,225,235,0.58);
     font-size: 0.8rem;
     line-height: 1.55;
-    overflow-wrap: anywhere;
 }
 .plaza-dot { width: 9px; height: 9px; border-radius: 50%; background: #ffb7c5; margin-top: 0.38rem; box-shadow: 0 0 14px rgba(255,183,197,0.6); }
 .plaza-rules { display: grid; gap: 0.55rem; color: rgba(255,225,235,0.58); font-size: 0.82rem; line-height: 1.6; }
