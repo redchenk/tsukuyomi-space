@@ -51,8 +51,10 @@ function trustedOrigins() {
     const origins = new Set(config.corsOrigins.map(normalizedOrigin).filter(Boolean));
     const publicOrigin = normalizedOrigin(config.publicSiteUrl);
     const oauthOrigin = normalizedOrigin(config.oauthRedirectBaseUrl);
+    const qqCallbackOrigin = normalizedOrigin(config.oauth.qq.redirectUri);
     if (publicOrigin) origins.add(publicOrigin);
     if (oauthOrigin) origins.add(oauthOrigin);
+    if (qqCallbackOrigin) origins.add(qqCallbackOrigin);
     if (publicOrigin) {
         const url = new URL(publicOrigin);
         if (url.hostname === 'yachiyo.hk') origins.add(`${url.protocol}//www.yachiyo.hk${url.port ? `:${url.port}` : ''}`);

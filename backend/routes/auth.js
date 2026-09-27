@@ -245,7 +245,12 @@ function pendingOAuthResponse(profile, pending = {}) {
 }
 
 function oauthPendingLoginUrl(ticket, mode = 'email') {
-    return siteUrl('/login', { oauth: 'qq', ticket, mode });
+    // The host-only binding cookie belongs to the registered callback origin.
+    // Keep email/account completion there even when the public site is another
+    // subdomain, otherwise its same-origin API requests would lose the binding.
+    const url = new URL('/login', config.oauth.qq.redirectUri);
+    url.search = new URLSearchParams({ oauth: 'qq', ticket, mode }).toString();
+    return url.toString();
 }
 
 function oauthProfileWithEmail(profile, email) {

@@ -13,7 +13,8 @@ Object.assign(process.env, {
     ADMIN_PASSWORD: 'security-test-password', ENABLE_FRONTEND_DIST: 'false',
     ROOM_WEATHER_OFFLINE: 'true', ROOM_WEATHER_IP_LOOKUP: 'false',
     QQ_CLIENT_ID: 'test-client', QQ_CLIENT_SECRET: 'test-secret',
-    QQ_REDIRECT_URI: 'https://yachiyo.hk/api/auth/oauth/qq/callback'
+    PUBLIC_SITE_URL: 'https://yachiyo.hk',
+    QQ_REDIRECT_URI: 'https://origin.yachiyo.hk/api/auth/oauth/qq/callback'
 });
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
@@ -104,7 +105,9 @@ test('QQ pending profile and binding remain bound to the initiating browser', as
     providerId = 'pending-provider-id';
     const flow = await start();
     const response = await callback(flow);
-    const ticket = new URL(response.headers.get('location')).searchParams.get('ticket');
+    const completionUrl = new URL(response.headers.get('location'));
+    assert.equal(completionUrl.origin, 'https://origin.yachiyo.hk');
+    const ticket = completionUrl.searchParams.get('ticket');
     assert.ok(ticket);
     const pendingPath = `${base}/api/auth/oauth/qq/pending?ticket=${ticket}`;
     assert.equal((await fetch(pendingPath)).status, 404);
@@ -122,8 +125,18 @@ test('QQ pending profile and binding remain bound to the initiating browser', as
 
 test('OAuth entry metadata uses the registered callback origin without credentials', async () => {
     const payload = await (await fetch(`${base}/api/settings`)).json();
-    assert.equal(payload.data.qqOAuthStartUrl, 'https://yachiyo.hk/api/auth/oauth/qq/start');
+    assert.equal(payload.data.qqOAuthStartUrl, 'https://origin.yachiyo.hk/api/auth/oauth/qq/start');
     assert.ok(!JSON.stringify(payload).includes('test-secret'));
+});
+
+test('OAuth completion accepts its configured callback origin but rejects unrelated sites', async () => {
+    const send = origin => fetch(`${base}/api/auth/oauth/qq/email`, {
+        method: 'POST', headers: { ...headers(), Origin: origin }, body: JSON.stringify({ ticket: 'missing' })
+    });
+    const trusted = await send('https://origin.yachiyo.hk');
+    assert.equal(trusted.status, 404); // The request reaches ticket validation.
+    assert.equal(trusted.headers.get('access-control-allow-origin'), 'https://origin.yachiyo.hk');
+    assert.equal((await send('https://unrelated.example')).status, 403);
 });
 
 test('an article cannot publish another users private attachment by referencing its URL', async () => {
