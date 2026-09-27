@@ -1,5 +1,9 @@
 /* One navigation shell for content pages and the Room, using site tokens. */
 @layer ts-navigation {
+#app {
+  --site-companion-width: clamp(6.5rem, 9vw, 9.5rem);
+  --site-companion-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
 .unified-navigation { --site-nav-edge: max(24px, calc((100vw - 1320px) / 2)); }
 .unified-navigation .topbar.site-commandbar {
   --ts-text: var(--ts-editorial-ink); --ts-muted: var(--ts-editorial-muted); --ts-border: var(--ts-editorial-line);
@@ -50,6 +54,21 @@
 }
 .site-navigation-dialog:not([open]), .site-search-dialog:not([open]) { display: none; }
 .site-navigation-dialog::backdrop, .site-search-dialog::backdrop { background: rgb(12 12 24 / 30%); }
+.site-navigation-dialog { --site-menu-shift: -8px; transform-origin: top right; }
+.site-navigation-dialog[data-motion="enter"] { --site-menu-duration: 240ms; animation: site-menu-in 240ms var(--ts-ease-lift) both; }
+.site-navigation-dialog[data-motion="leave"] { --site-menu-duration: 170ms; animation: site-menu-out 170ms ease-in both; }
+.site-navigation-dialog[data-motion="enter"]::backdrop { animation: site-menu-scrim-in 240ms ease-out both; }
+.site-navigation-dialog[data-motion="leave"]::backdrop { animation: site-menu-scrim-out 170ms ease-in both; }
+/* These brief opacity/transform transitions also work in the low-power
+   profile. The user's reduced-motion preference still disables them below. */
+.site-navigation-dialog[data-motion], .site-navigation-dialog[data-motion]::backdrop { animation-duration: var(--site-menu-duration) !important; animation-play-state: running !important; }
+@keyframes site-menu-in { from { opacity: 0; transform: translateY(var(--site-menu-shift)) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes site-menu-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(var(--site-menu-shift)) scale(.985); } }
+@keyframes site-menu-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes site-menu-scrim-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .site-navigation-dialog[data-motion], .site-navigation-dialog[data-motion]::backdrop { animation: none !important; }
+}
 .site-nav-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .site-nav-drawer-head > div { display: grid; gap: 8px; }
 .site-nav-drawer-head small { color: var(--ts-muted); font-size: 10px; letter-spacing: .16em; }
@@ -91,6 +110,7 @@
   .unified-navigation.room-shell .room-conversation-layout { right: 24px; bottom: 20px; }
   .unified-navigation .site-music-drawer { top: auto; bottom: 24px; right: 24px; }
   .unified-navigation .site-music-panel { top: auto; bottom: 0; right: 0; max-height: calc(100dvh - 120px); }
+  .unified-navigation:not(.room-shell) .site-music-drawer { left: 24px; right: auto; }
 }
 @media (min-width: 861px) and (max-width: 1220px) {
   .unified-navigation .topbar.site-commandbar { gap: 12px; padding-inline: 14px; }
@@ -104,6 +124,20 @@
   .site-room-cta { padding-inline: 12px; }
 }
 @media (max-width: 860px) {
+  #app {
+    --site-companion-width: clamp(5.15rem, 24vw, 6.35rem);
+    --site-companion-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  }
+  #app:has(.site-pet-route-hub) {
+    --site-companion-width: clamp(3.6rem, 16vw, 4.25rem);
+    --site-companion-bottom: calc(6.2rem + env(safe-area-inset-bottom));
+  }
+  /* Match the music button's center to the companion's center, including the
+     smaller Hub sprite. The open player keeps its existing available space. */
+  .unified-navigation:not(.room-shell):not(:has(.room-settings-page)) .site-music-drawer:not(.is-open) {
+    bottom: calc(var(--site-companion-bottom) + var(--site-companion-width) * 208 / 192 / 2 - 22px);
+  }
+  .site-navigation-dialog { --site-menu-shift: 16px; transform-origin: bottom center; }
   .unified-navigation { --site-nav-edge: 12px; }
   .unified-navigation .topbar.site-commandbar { inset: max(10px, env(safe-area-inset-top)) 12px auto; height: 60px; padding: 8px 10px 8px 14px; gap: 8px; border-radius: var(--ts-radius-lg, 24px); }
   .unified-navigation .site-brand { min-width: 0; flex: 1 1 auto; gap: 0; }

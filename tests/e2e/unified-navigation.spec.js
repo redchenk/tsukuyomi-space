@@ -86,3 +86,101 @@ for (const width of [360, 390, 860, 1024, 1440]) {
         await expect(menu).not.toBeVisible();
     });
 }
+
+for (const width of [390, 1280]) {
+    test(`music and Yachiyo stay separately accessible at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 });
+        for (const path of ['/stage', '/hub']) {
+            await page.goto(path);
+            const pet = page.getByRole('button', { name: '打开八千代 AI 使用向导' });
+            const music = page.getByRole('button', { name: 'Expand music drawer' });
+            await expect(pet).toBeVisible();
+            const petBox = await pet.boundingBox();
+            const musicBox = await music.boundingBox();
+            expect(musicBox.x + musicBox.width).toBeLessThan(petBox.x);
+            if (width <= 860) {
+                expect(Math.abs(musicBox.y + musicBox.height / 2 - petBox.y - petBox.height / 2)).toBeLessThan(2);
+            }
+            await music.click();
+            const panel = page.locator('.site-music-panel');
+            await expect(panel).toBeVisible();
+            const panelBox = await panel.boundingBox();
+            expect(panelBox.x).toBeGreaterThanOrEqual(0);
+            expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(petBox.x);
+            await page.getByRole('button', { name: 'Collapse music drawer' }).click();
+            await pet.click();
+            await expect(page.getByRole('button', { name: '关闭向导' })).toBeVisible();
+            await page.getByRole('button', { name: '关闭向导' }).click();
+        }
+    });
+
+    test(`menu motion preserves focus, scroll and search handoff at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 });
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await page.addInitScript(() => {
+            window.menuMotionEvents = [];
+            document.addEventListener('animationend', event => {
+                if (event.target.id === 'site-navigation' && !event.pseudoElement) {
+                    window.menuMotionEvents.push({
+                        name: event.animationName,
+                        elapsed: event.elapsedTime
+                    });
+                }
+            });
+        });
+        await page.goto('/stage');
+        await page.evaluate(() => {
+            // Short menu transitions remain available in the automatic low-power profile.
+            document.documentElement.dataset.performance = 'reduced';
+            window.scrollTo(0, 200);
+        });
+        const scrollY = await page.evaluate(() => window.scrollY);
+        const menu = page.locator('#site-navigation');
+        const explore = width <= 860
+            ? page.locator('.mobile-bottom-nav button')
+            : page.locator('.desktop-navigation').getByRole('button', { name: '探索' });
+        let completed = 0;
+        for (const trigger of [explore, page.getByRole('button', { name: '账号菜单', exact: true })]) {
+            await trigger.click();
+            await expect.poll(() => page.evaluate(() => window.menuMotionEvents.length)).toBe(++completed);
+            await expect(menu).toBeVisible();
+            await expect(page.locator('body')).toHaveCSS('position', 'fixed');
+            await page.keyboard.press('Escape');
+            await expect(menu).not.toBeVisible();
+            await expect.poll(() => page.evaluate(() => window.menuMotionEvents.length)).toBe(++completed);
+            await expect(trigger).toBeFocused();
+            await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+            expect(Math.abs(await page.evaluate(() => window.scrollY) - scrollY)).toBeLessThan(2);
+        }
+        const events = await page.evaluate(() => window.menuMotionEvents);
+        expect(events.map(event => event.name)).toEqual(['site-menu-in', 'site-menu-out', 'site-menu-in', 'site-menu-out']);
+        for (const event of events) {
+            expect(event.elapsed).toBeGreaterThan(0.1);
+        }
+
+        await explore.click();
+        await page.keyboard.press('Control+k');
+        const search = page.getByRole('dialog', { name: '想找些什么？' });
+        await expect(menu).not.toBeVisible();
+        await expect(search.getByRole('searchbox')).toBeFocused();
+        await expect(page.locator('body')).toHaveCSS('position', 'fixed');
+        await page.keyboard.press('Escape');
+        await expect(search).not.toBeVisible();
+        await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await explore.click();
+        await expect(menu).toBeVisible();
+        expect(await menu.evaluate(el => el.getAnimations().length)).toBe(0);
+        await page.keyboard.press('Escape');
+        await expect(menu).not.toBeVisible();
+        await expect(explore).toBeFocused();
+
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await explore.click();
+        await menu.getByRole('link', { name: /^图库/ }).click();
+        await expect(page).toHaveURL(/\/gallery$/);
+        await expect(page.locator('body')).not.toHaveCSS('position', 'fixed');
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    });
+}

@@ -405,12 +405,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .site-pet-wrap {
-  --site-pet-width: clamp(6.5rem, 9vw, 9.5rem);
   position: fixed;
   right: max(0.9rem, env(safe-area-inset-right));
-  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  bottom: var(--site-companion-bottom, max(0.75rem, env(safe-area-inset-bottom)));
   z-index: 220;
-  width: var(--site-pet-width);
+  width: var(--site-companion-width, clamp(6.5rem, 9vw, 9.5rem));
   pointer-events: none;
 }
 
@@ -578,8 +577,8 @@ onBeforeUnmount(() => {
 .site-guide-leave-to .site-guide-dialog { opacity: 0; transform: translateY(0.5rem) scale(0.985); }
 
 @media (max-width: 860px) {
-  .site-pet-wrap { --site-pet-width: clamp(5.15rem, 24vw, 6.35rem); right: max(0.45rem, env(safe-area-inset-right)); bottom: max(6.5rem, calc(env(safe-area-inset-bottom) + 6.5rem)); }
-  .site-pet-wrap.site-pet-route-hub { --site-pet-width: clamp(3.6rem, 16vw, 4.25rem); right: max(0.3rem, env(safe-area-inset-right)); bottom: max(6.2rem, calc(env(safe-area-inset-bottom) + 6.2rem)); }
+  .site-pet-wrap { right: max(0.45rem, env(safe-area-inset-right)); }
+  .site-pet-wrap.site-pet-route-hub { right: max(0.3rem, env(safe-area-inset-right)); }
 }
 
 @media (max-width: 640px) {

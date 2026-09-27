@@ -199,11 +199,11 @@ html[data-theme="dark"] .hub .hub-plaza-feedback.error { color: #ffd2dc; backgro
 .stage-card-excerpt { display: -webkit-box; -webkit-box-orient: vertical; flex: none; min-height: 1.85em; max-height: 3.7em; margin: 0; font-size: 14px; line-height: 1.85; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .stage-card-cover { min-height: 220px; }
 .stage-cover-img { position: absolute; inset: 0; }
-.stage-card-meta { gap: 8px; margin: 0; }
+.stage-card-meta { align-items: center; gap: 8px; margin: 0; }
 .stage-card-details { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: auto; padding-top: 4px; }
 .stage-card-details .stage-engagement { margin: 0; }
 .stage-card-details .stage-card-footer { flex-wrap: wrap; gap: 8px 12px; margin: 0; padding: 0; }
-.stage-card-meta .tag { border: 0; background: var(--ts-editorial-soft); }
+.stage-card-meta .tag { display: inline-flex; align-items: center; justify-content: center; min-height: 28px; line-height: 1.25; border: 0; background: var(--ts-editorial-soft); }
 .stage-featured-label { font-size: 11px; font-weight: 600; color: var(--ts-accent); }
 .stage-card-footer { font-size: 12px; color: var(--ts-editorial-muted); }
 

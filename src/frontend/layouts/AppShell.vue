@@ -38,6 +38,9 @@ const navigationRef = ref(null);
 const { keyboardOpen, viewportStyle } = useMobileKeyboard();
 let releaseNavigationScroll = null;
 let mobileNavigationQuery = null;
+let navigationMotionRun = 0;
+let navigationAnimations = [];
+let navigationTransition = Promise.resolve();
 const unreadNotifications = ref(0);
 const UNREAD_POLL_INTERVAL_MS = 60000;
 let unreadPollId = 0;
@@ -168,7 +171,9 @@ function openNavigation(mode, event) {
 async function openSearch() {
   navOpen.value = false;
   await nextTick();
-  searchOpen.value = true;
+  // Release the menu's scroll lock before search takes ownership of it.
+  await navigationTransition;
+  if (props.showChrome) searchOpen.value = true;
 }
 function searchShortcut(event) {
   if (!props.showChrome || event.isComposing || !(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
@@ -195,23 +200,48 @@ function cycleNavigationFocus(event) {
   }
 }
 
-watch(navOpen, (open) => {
+async function transitionNavigation(open) {
+  const run = ++navigationMotionRun;
+  navigationAnimations.forEach(animation => animation.cancel());
+  navigationAnimations = [];
   const dialog = navigationRef.value;
-  if (open && dialog && !dialog.open) {
+  if (!dialog) {
+    releaseNavigationScroll?.();
+    releaseNavigationScroll = null;
+    return;
+  }
+  if (open && !dialog.open) {
     const scrollY = window.scrollY;
+    const routeWhenOpened = props.routeName;
     const previous = ['position', 'top', 'width', 'overflow'].map((key) => [key, document.body.style[key]]);
     Object.assign(document.body.style, { position: 'fixed', top: `-${scrollY}px`, width: '100%', overflow: 'hidden' });
     releaseNavigationScroll = () => {
       for (const [key, value] of previous) document.body.style[key] = value;
-      window.scrollTo({ top: scrollY, behavior: 'instant' });
+      if (props.routeName === routeWhenOpened) window.scrollTo({ top: scrollY, behavior: 'instant' });
     };
     dialog.showModal();
-  } else if (!open) {
-    dialog?.close();
+  }
+  if (dialog.open) {
+    dialog.dataset.motion = open ? 'enter' : 'leave';
+    navigationAnimations = dialog.getAnimations();
+    await Promise.allSettled(navigationAnimations.map(animation => animation.finished));
+  }
+  if (run !== navigationMotionRun) return;
+  navigationAnimations = [];
+  delete dialog.dataset.motion;
+  if (!open) {
+    dialog.close();
     releaseNavigationScroll?.();
     releaseNavigationScroll = null;
     if (lastNavigationTrigger?.isConnected) lastNavigationTrigger.focus({ preventScroll: true });
   }
+}
+function syncNavigationClose() {
+  // A queued close event from a previous cycle must not close a reopened menu.
+  if (!navigationRef.value?.open) navOpen.value = false;
+}
+watch(navOpen, (open) => {
+  navigationTransition = transitionNavigation(open);
 }, { flush: 'post' });
 
 watch(() => props.showChrome, (visible) => {
@@ -237,6 +267,8 @@ onMounted(() => {
   window.addEventListener(NOTIFICATION_BADGE_EVENT, handleNotificationBadge);
 });
 onUnmounted(() => {
+  ++navigationMotionRun;
+  navigationAnimations.forEach(animation => animation.cancel());
   navigationRef.value?.close();
   releaseNavigationScroll?.();
   mobileNavigationQuery?.removeEventListener('change', closeNavigationOnResize);
@@ -272,7 +304,7 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <dialog v-if="showChrome" ref="navigationRef" id="site-navigation" class="site-navigation-dialog" :class="{ 'is-account-menu': menuMode === 'account' }" data-material="popover" role="dialog" :aria-label="menuMode === 'account' ? copy.account : moreLabel" @cancel.prevent="navOpen = false" @close="navOpen = false" @click="closeNavigationOnBackdrop" @keydown.tab="cycleNavigationFocus">
+    <dialog v-if="showChrome" ref="navigationRef" id="site-navigation" class="site-navigation-dialog" :class="{ 'is-account-menu': menuMode === 'account' }" data-material="popover" role="dialog" :aria-label="menuMode === 'account' ? copy.account : moreLabel" @cancel.prevent="navOpen = false" @close="syncNavigationClose" @click="closeNavigationOnBackdrop" @keydown.tab="cycleNavigationFocus">
       <div class="site-nav-drawer-head">
         <div><small>{{ menuMode === 'account' ? 'YOUR SPACE' : 'EXPLORE' }}</small><strong>{{ menuMode === 'account' ? copy.account : copy.exploreTitle }}</strong></div>
         <button class="site-tool-button" type="button" autofocus :aria-label="t.closeNavigation" @click="navOpen = false"><TsIcon name="x" :size="20" /></button>

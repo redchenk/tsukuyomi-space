@@ -467,3 +467,57 @@ The remaining WebKit settings case called `isVisible()` before the lazy page
 mounted, skipped opening its category drawer and timed out. Its helper now
 waits for the menu to be attached before checking the desktop/mobile layout;
 all category, geometry and save assertions remain. The pipeline is rerun.
+
+# Music, companion and menu polish — 2026-09-27
+
+final result: passed
+
+The visual target is the existing site with the four corrections requested by
+its owner: an unobstructed desktop music entry, aligned mobile floating controls,
+animated Explore/Account menus, and centered Stage category labels. Existing
+purple tokens, pill buttons, typography and assets are retained.
+
+Before/after captures were opened together in one comparison input:
+`.codex_tmp/site-polish/before-desktop.png` and `after-desktop.png` at 1280 × 800;
+`before-mobile.png` and `after-mobile.png` at 390 × 844. All are guest Stage,
+dark theme, collapsed player, 1:1 CSS/image pixels, without browser chrome.
+The mobile captures differ by about 1px in page scroll and the companion's
+animation pose; neither affects the fixed-control comparison. Small category
+labels are readable at native size and were additionally checked against their
+rendered flex alignment; a separate magnified crop was not needed.
+
+- **P2 fixed — desktop overlap:** The music control was behind the companion at
+  the lower right. It now occupies the lower left; its expanded panel stays
+  within the viewport and clear of the companion. Room's existing player
+  placement remains intact.
+- **P2 fixed — mobile alignment:** The music control was approximately 50px
+  below the companion's center. Both now share a vertical anchor. At 390px,
+  Stage centers are both y=689.305; Hub centers are y=711.000 and y=711.008.
+  The smaller Hub sprite is accounted for. Both controls remain clickable and
+  the expanded player leaves the companion available.
+- **P2 fixed — menu motion:** Explore and Account now fade and translate in
+  over 240ms and out over 170ms. Initial QA found the automatic low-power
+  profile shortening the transition to 0.01ms. After the scoped correction,
+  both menus report 240ms even in that profile. The system reduced-motion
+  preference still disables these animations. Exit waits for completion before
+  closing the native dialog and releasing its scroll lock. Escape restores the
+  trigger focus; menu-to-search handoff transfers the lock correctly. Navigating
+  to Gallery from a scrolled page restored normal body positioning at scroll 0.
+- **P2 fixed — category label alignment:** Stage's category and author pills
+  now use centered inline flex content with a 28px minimum height. The category
+  text sits at the center of its background instead of near its top.
+
+`after-mobile-light.png`, `after-hub-mobile.png` and `menu-mobile.png` additionally
+verify the light theme, smaller Hub companion and mobile bottom sheet. The five
+fidelity surfaces pass: fonts/weights/copy remain unchanged; spacing changes are
+limited to the requested alignment; colors and radii continue to use site tokens;
+existing illustrations, sprite and icons retain their quality and identity.
+No actionable P0/P1/P2 findings remain in this scope.
+
+The local production build and 247 frontend tests pass. No browser console errors
+were captured. Chromium and WebKit release regressions now cover music/guide
+access, mobile center alignment, actual menu animation completion, focus/scroll
+restoration, search handoff, reduced motion and navigation after scrolling.
+The full release pipeline must pass before activation. No physical iPhone test
+was performed. Server Live2D, music and other persistent resources are excluded
+from this code-only release.
