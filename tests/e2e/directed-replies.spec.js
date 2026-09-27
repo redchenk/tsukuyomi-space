@@ -2,6 +2,9 @@ const { test, expect } = require('../e2e-fixtures.cjs');
 
 for (const location of ['plaza', 'article']) {
     test(`${location} replies identify the selected recipient and survive reload`, async ({ page, baseURL }) => {
+        // Three user sessions plus submit/reload/navigation take about 25s on
+        // mobile WebKit; keep the per-assertion limits while allowing the flow to finish.
+        test.setTimeout(45_000);
         await page.setViewportSize({ width: 390, height: 844 });
         const headers = { Origin: new URL(baseURL).origin, 'Sec-Fetch-Site': 'same-origin', 'X-Requested-With': 'XMLHttpRequest' };
         const login = async username => {
@@ -47,6 +50,10 @@ for (const location of ['plaza', 'article']) {
         await page.reload();
         if (location === 'plaza') await page.locator('.plaza-search').fill(marker);
         await expect(result).toContainText(text);
+        // Scroll the thread itself into view before targeting a descendant:
+        // mobile WebKit may defer offscreen reply layout via content-visibility.
+        await thread.scrollIntoViewIfNeeded();
+        await expect(result.locator('.message-reply-recipient a')).toBeVisible();
         await result.locator('.message-reply-recipient a').click();
         await expect(target).toBeInViewport();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

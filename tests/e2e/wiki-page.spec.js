@@ -227,7 +227,7 @@ test('Wiki mobile layout retains navigation and spoiler protection', async ({ pa
   await expect(page.getByText('页面目录', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: '超辉夜姬！Wiki' })).toBeVisible();
   await expect(page.getByText('8000 年的时间闭环')).toBeHidden();
-  await expect(page.getByRole('button', { name: '更多' })).toBeVisible();
+  await expect(page.locator('.site-mobile-navigation-trigger')).toBeVisible();
   await page.getByText('页面目录', { exact: true }).click();
   await page.getByRole('searchbox', { name: '词条速查' }).fill('八千代');
   await expect(page.locator('.wiki-mobile-search').getByText(/找到 \d+ 个词条/)).toBeVisible();
