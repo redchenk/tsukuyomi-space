@@ -24,12 +24,15 @@ module.exports = {
             gid: 'www-data',
             instances: 1,
             exec_mode: 'fork',
+            // Collect the JS heap before PM2's RSS guard terminates the process.
+            // Leave room in RSS for SQLite, SDK buffers and other native memory.
+            node_args: ['--max-old-space-size=192'],
             env: {
                 ...loadEnv('/etc/tsukuyomi-space/tsukuyomi-space.env'),
                 HOME: '/var/lib/tsukuyomi-space',
                 MINIMAX_MCP_HOME: '/var/lib/tsukuyomi-space/mcp-home'
             },
-            max_memory_restart: '300M',
+            max_memory_restart: '384M',
             error_file: '/var/log/tsukuyomi-space/error.log',
             out_file: '/var/log/tsukuyomi-space/out.log',
             time: true
