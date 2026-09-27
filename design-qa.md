@@ -521,3 +521,14 @@ restoration, search handoff, reduced motion and navigation after scrolling.
 The full release pipeline must pass before activation. No physical iPhone test
 was performed. Server Live2D, music and other persistent resources are excluded
 from this code-only release.
+
+Release regression follow-up: the first full run passed 103/106 cases. One
+landscape check caught the mobile menu's initial 16px translation extending
+4px below a 390px viewport. The translation is now 8px, inside the existing
+12px bottom inset throughout the animation; the original strict bounds check
+is retained. A fresh 740 × 390 capture (`menu-landscape.png`) was inspected and
+an in-progress entrance measured bottom=379.56 with viewport height=390.
+The two WebKit motion checks counted backdrop events because that engine omitted
+`pseudoElement` metadata. They now select the menu's actual animation names,
+keeping completion, duration, focus, scroll, search and reduced-motion assertions.
+The complete release checks are rerun before activation.

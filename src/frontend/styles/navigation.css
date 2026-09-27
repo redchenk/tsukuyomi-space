@@ -137,7 +137,7 @@
   .unified-navigation:not(.room-shell):not(:has(.room-settings-page)) .site-music-drawer:not(.is-open) {
     bottom: calc(var(--site-companion-bottom) + var(--site-companion-width) * 208 / 192 / 2 - 22px);
   }
-  .site-navigation-dialog { --site-menu-shift: 16px; transform-origin: bottom center; }
+  .site-navigation-dialog { --site-menu-shift: 8px; transform-origin: bottom center; }
   .unified-navigation { --site-nav-edge: 12px; }
   .unified-navigation .topbar.site-commandbar { inset: max(10px, env(safe-area-inset-top)) 12px auto; height: 60px; padding: 8px 10px 8px 14px; gap: 8px; border-radius: var(--ts-radius-lg, 24px); }
   .unified-navigation .site-brand { min-width: 0; flex: 1 1 auto; gap: 0; }

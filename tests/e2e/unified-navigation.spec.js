@@ -120,7 +120,8 @@ for (const width of [390, 1280]) {
         await page.addInitScript(() => {
             window.menuMotionEvents = [];
             document.addEventListener('animationend', event => {
-                if (event.target.id === 'site-navigation' && !event.pseudoElement) {
+                // WebKit can report backdrop events without pseudoElement metadata.
+                if (event.target.id === 'site-navigation' && ['site-menu-in', 'site-menu-out'].includes(event.animationName)) {
                     window.menuMotionEvents.push({
                         name: event.animationName,
                         elapsed: event.elapsedTime
