@@ -114,7 +114,7 @@ for (const width of [390, 1280]) {
         }
     });
 
-    test(`menu motion preserves focus, scroll and search handoff at ${width}px`, async ({ page }) => {
+    test(`menu motion preserves focus, scroll and search handoff at ${width}px`, async ({ page, browserName }) => {
         await page.setViewportSize({ width, height: 844 });
         await page.emulateMedia({ reducedMotion: 'no-preference' });
         await page.addInitScript(() => {
@@ -138,6 +138,11 @@ for (const width of [390, 1280]) {
             document.documentElement.dataset.performance = 'reduced';
             window.scrollTo({ top: 200, behavior: 'instant' });
         });
+        // Card entrance animations are independent of the page animation.
+        // Finish them before comparing dialog-open geometry.
+        await page.locator('.stage-card').evaluateAll(cards => Promise.all(
+            cards.flatMap(card => card.getAnimations()).map(animation => animation.finished.catch(() => {}))
+        ));
         const scrollY = await page.evaluate(() => window.scrollY);
         const geometry = () => page.evaluate(() => ({
             scrollY: window.scrollY,
@@ -157,8 +162,13 @@ for (const width of [390, 1280]) {
             await expect(menu).toBeVisible();
             await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
             expect(await geometry()).toEqual(before);
-            await page.mouse.move(2, 400);
-            await page.mouse.wheel(0, 350);
+            if (browserName === 'webkit') {
+                // Playwright's mobile WebKit transport does not implement wheel.
+                await page.keyboard.press('PageDown');
+            } else {
+                await page.mouse.move(2, 400);
+                await page.mouse.wheel(0, 350);
+            }
             expect(await geometry()).toEqual(before);
             await page.keyboard.press('Escape');
             await expect(menu).not.toBeVisible();
