@@ -131,6 +131,37 @@ for (const megabytes of [40, 100]) test(`${megabytes} MiB uploads, resumes, fina
   await remove(s);
 });
 
+test('reports completion only after temporary-file cleanup releases the finalization lock', async () => {
+  const data = Buffer.from('%PDF-1.7\ncleanup fixture'); const s = await create(data.length);
+  await chunk(s, 0, data);
+  const target = path.join(temp, 'asset-upload-sessions', s.id, 'upload.bin');
+  const originalUnlink = fs.promises.unlink;
+  let releaseCleanup;
+  const cleanupStarted = new Promise(resolve => {
+    fs.promises.unlink = async file => {
+      if (file === target) {
+        await new Promise(release => { releaseCleanup = release; resolve(); });
+      }
+      return originalUnlink(file);
+    };
+  });
+  try {
+    assert.equal((await request('POST', `/uploads/${s.id}/complete`)).status, 202);
+    await cleanupStarted;
+    const pending = await request('GET', `/uploads/${s.id}`);
+    assert.equal(pending.data.completed, false);
+    assert.equal(pending.data.processing, true);
+    assert.equal((await request('POST', `/uploads/${s.id}/complete`)).status, 429);
+  } finally {
+    releaseCleanup?.();
+    fs.promises.unlink = originalUnlink;
+  }
+  assert.equal((await poll(s)).completed, true);
+  assert.equal(fs.existsSync(target), false);
+  assert.equal((await request('POST', `/uploads/${s.id}/complete`)).status, 202);
+  await remove(s);
+});
+
 test('finalization responds immediately, holds the lock, and retains chunks when OSS fails', async () => {
   const data = Buffer.from('%PDF-1.7\nfixture'); const s = await create(data.length);
   await chunk(s, 0, data); delayOss = true; failOss = true;

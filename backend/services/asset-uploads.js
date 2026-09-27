@@ -105,9 +105,12 @@ function list(ownerId) {
         .map(s => ({ ...publicState(s), fileName: s.fileName }));
 }
 function publicState(s) {
+    // A durable receipt can exist while finalization still holds the lock for
+    // temporary-file cleanup. Publish completion only once retries can proceed.
+    const finalizing = Boolean((s.processing || s.completed) && locks.has(s.id));
     return { id: s.id, size: s.size, chunkBytes: CHUNK_BYTES, parts: s.parts,
-        received: s.parts.reduce((n, p) => n + p.size, 0), expiresAt: s.expiresAt, completed: s.completed,
-        processing: Boolean(s.processing && locks.has(s.id)), error: s.error || '' };
+        received: s.parts.reduce((n, p) => n + p.size, 0), expiresAt: s.expiresAt, completed: s.completed && !finalizing,
+        processing: finalizing, error: s.error || '' };
 }
 // Admit before raw parsing, including when clients send a chunked HTTP body.
 function admit(req, res, next) {
