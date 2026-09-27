@@ -24,7 +24,11 @@ function validateReference(userId, turnId, imageId) {
 
 async function upload(userId, turnId, payload) {
     const existing = find(userId, turnId);
-    if (existing) return descriptor(existing);
+    if (existing) {
+        // A resumed draft may be older than the orphan retention window.
+        db.prepare('UPDATE room_chat_images SET created_at = CURRENT_TIMESTAMP WHERE id = ?').run(existing.id);
+        return descriptor(existing);
+    }
     if (!storage.isConfigured()) throw error('图片云同步尚未配置，请联系管理员启用 OSS 后重试', 503);
     const key = `${userId}:${turnId}`;
     if (uploads.has(key) || uploads.size >= 4) throw error('图片正在上传，请稍后重试', 429);
@@ -81,6 +85,12 @@ async function cleanup({ force = false } = {}) {
                 (SELECT 1 FROM room_chat_messages m WHERE m.user_id = i.user_id AND m.turn_id = i.turn_id))
             ORDER BY created_at LIMIT 20`).all();
         for (const row of rows) {
+            // Recheck after earlier network deletions: a draft may have been
+            // retried or committed while this cleanup batch was in flight.
+            const claimed = db.prepare(`UPDATE room_chat_images SET deleted = 1 WHERE id = ? AND
+                (deleted = 1 OR (created_at < datetime('now', '-1 day') AND NOT EXISTS
+                    (SELECT 1 FROM room_chat_messages m WHERE m.user_id = room_chat_images.user_id AND m.turn_id = room_chat_images.turn_id)))`).run(row.id);
+            if (!claimed.changes) continue;
             if (await storage.deleteObject(row.object_key).catch(() => false)) {
                 db.prepare('DELETE FROM room_chat_images WHERE id = ?').run(row.id);
             }

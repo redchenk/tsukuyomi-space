@@ -353,7 +353,7 @@ export async function clearRoomConversation() {
   await Promise.allSettled([...pendingRequests, saveQueues.get(userId)]);
   requireSameAccount(userId);
   if (!authenticated) {
-    await clearLocalRoomImages();
+    await clearLocalRoomImages().catch(() => {});
     clearLocalRoomConversation({ broadcast: true });
     return { deletedCount: 0 };
   }

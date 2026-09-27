@@ -2433,7 +2433,9 @@ describe('room memory API', () => {
             assert.equal(uploaded.response.status, 201);
             const image = uploaded.body.data;
             assert.match(image.url, /^\/api\/room\/chat\/images\/[a-f0-9-]+$/);
+            db.prepare("UPDATE room_chat_images SET created_at = datetime('now', '-2 days') WHERE id = ?").run(image.id);
             assert.equal((await postJson('/api/room/chat/images', payload, userToken)).body.data.id, image.id);
+            await require('../backend/services/room-chat-images').cleanup({ force: true });
             assert.equal(objects.size, 1, 'retry does not upload twice');
             assert.equal((await postJson('/api/room/chat/turn', { turnId, userMessage: '看这张图片', assistantMessage: '收到了', imageId: image.id }, managedUserToken)).response.status, 400);
             const saved = await postJson('/api/room/chat/turn', { turnId, userMessage: '看这张图片', assistantMessage: '收到了', imageId: image.id }, userToken);
