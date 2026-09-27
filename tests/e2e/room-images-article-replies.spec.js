@@ -31,7 +31,8 @@ test('article threads initially show only the latest reply and reveal hidden rec
         { id: 8101, article_id: 3, parent_id: 8100, reply_to_id: 8100, author: '甲', content: '较早的回复', created_at: '2026-09-27 02:00:00' },
         { id: 8102, article_id: 3, parent_id: 8100, reply_to_id: 8101, author: '乙', content: '最新的回复', created_at: '2026-09-27 03:00:00' }
     ];
-    await page.route('**/api/articles/3/messages', route => route.fulfill({ json: { success: true, data: messages } }));
+    // Public reads use a cache-busting /api/live/:nonce/ prefix.
+    await page.route(/\/api\/(?:live\/[^/]+\/)?articles\/3\/messages(?:\?.*)?$/, route => route.fulfill({ json: { success: true, data: messages } }));
     await page.goto('/article?id=3');
     await expect(page.locator('#comment-8102')).toBeVisible();
     await expect(page.locator('#comment-8101')).toHaveCount(0);
