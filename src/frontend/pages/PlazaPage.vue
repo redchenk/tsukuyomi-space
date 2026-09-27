@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { apiFetch, authFetch, authHeaders, getSession, loadPublicStats, parseResponse } from '../api/client';
+import { apiFetch, authFetch, authHeaders, getSession, loadCurrentSession, loadPublicStats, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
 import ReplyRecipient from '../components/ReplyRecipient.vue';
@@ -366,6 +366,10 @@ async function refreshPlaza() {
   session.value = getSession();
   loadPlazaStats();
   try {
+    if (!session.value) {
+      await loadCurrentSession();
+      session.value = getSession();
+    }
     await Promise.all([loadPlazaMessages(), loadTrendingTopics()]);
   } finally {
     plaza.loading = false;
@@ -481,6 +485,7 @@ async function plazaCopyLink(id) {
 }
 
 function plazaToggleReply(id) {
+  session.value = getSession();
   if (!isAuthed.value) {
     go('/login');
     return;

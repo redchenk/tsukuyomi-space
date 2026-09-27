@@ -292,7 +292,7 @@ test('user can read an article and post a comment', async ({ page }) => {
     const commentItem = page.locator('.comment-item').filter({ hasText: comment }).first();
     await commentItem.getByRole('button', { name: '回复' }).click();
     const reply = `E2E article reply ${Date.now()}`;
-    await commentItem.getByPlaceholder('写下回复...').fill(reply);
+    await commentItem.getByRole('textbox', { name: '回复 e2e-user', exact: true }).fill(reply);
     await commentItem.getByRole('button', { name: '发布回复' }).click();
     await expect(feedback).toHaveClass(/success/);
     await expect(page.getByText(reply)).toBeVisible();

@@ -132,6 +132,7 @@ for (const width of [390, 1280]) {
         await page.goto('/stage');
         await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
         await page.locator('main').evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished.catch(() => {}))));
+        await page.evaluate(() => document.fonts.ready);
         await page.evaluate(() => {
             // Short menu transitions remain available in the automatic low-power profile.
             document.documentElement.dataset.performance = 'reduced';
@@ -141,7 +142,8 @@ for (const width of [390, 1280]) {
         const geometry = () => page.evaluate(() => ({
             scrollY: window.scrollY,
             header: document.querySelector('.site-commandbar').getBoundingClientRect().toJSON(),
-            main: document.querySelector('main').getBoundingClientRect().toJSON()
+            main: document.querySelector('main').getBoundingClientRect().toJSON(),
+            cards: [...document.querySelectorAll('.stage-card')].map(el => el.getBoundingClientRect().toJSON())
         }));
         const before = await geometry();
         const menu = page.locator('#site-navigation');

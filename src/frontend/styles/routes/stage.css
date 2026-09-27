@@ -1,1 +1,5 @@
 @import url("../../../../assets/css/vue/pages/stage.css") layer(ts-page);
+
+/* Six cards per page: retain their actual height when a native dialog makes
+   the background inert. WebKit can otherwise swap in the intrinsic estimate. */
+.stage-card { content-visibility: visible; contain-intrinsic-size: none; }
