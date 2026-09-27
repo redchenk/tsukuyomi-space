@@ -375,6 +375,45 @@ function saveDataImageLocal(dataUrl, { articleId = null, ownerId = null, role = 
     return saveParsedImageLocal(parsed, { articleId, ownerId, role, alt, uploadPath });
 }
 
+// The resumable uploader owns this private staging path. Inspect only the header
+// and stream the file to storage so a 100 MB attachment never becomes a Buffer.
+async function saveUserFileFromPath({ filePath, id, ownerId, size, mimeType = '', fileName = '', alt = '', storage = 'auto' }) {
+    const existing = db.prepare('SELECT * FROM article_assets WHERE id = ? AND owner_id = ?').get(id, ownerId);
+    if (existing) return existing;
+    const file = await fs.promises.open(filePath, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
+    let stat, sample;
+    try {
+        stat = await file.stat();
+        if (!stat.isFile()) throw articleMediaError('文件无效');
+        if (stat.size !== size) throw articleMediaError('暂存文件大小不匹配，请重新上传', 409);
+        sample = Buffer.alloc(Math.min(stat.size, 4096));
+        await file.read(sample, 0, sample.length, 0);
+    } finally { await file.close(); }
+    const inspection = validateUserUpload({ buffer: sample, fileSize: stat.size, fileName, claimedMimeType: mimeType });
+    const trustedMime = inspection.trustedMimeType;
+    const ext = EXT_BY_MIME[trustedMime] || normalizeAssetExt({ fileName, mimeType: trustedMime });
+    const assetType = assetTypeFromMime(trustedMime);
+    const folder = userAssetUploadPath(ownerId, { mimeType: trustedMime, assetType });
+    const metadata = { role: 'attachment', alt, fileName, size: stat.size, folder, visibility: 'private' };
+    const settings = objectStorage.getSettings();
+    const mode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
+    if (mode === 'oss' && !objectStorage.hasUploadParams(settings)) throw articleMediaError('对象存储参数不完整', 503);
+    const useOss = mode !== 'local' && (mode === 'oss' || objectStorage.isConfigured(settings));
+    if (useOss) {
+        const uploaded = await objectStorage.putObject({ filePath, mimeType: trustedMime, ext, role: 'attachment',
+            id, uploadPath: folder, settings: { ...settings, ossFileNameMode: 'uuid' }, requireEnabled: mode !== 'oss', privateRead: true });
+        if (!uploaded?.url) throw articleMediaError('对象存储暂不可用，请重试；已接收的分块会保留', 503);
+        createAssetRecord({ id, ownerId, assetType, mimeType: trustedMime, url: uploaded.url,
+            storageKey: uploaded.key, metadata: { ...metadata, storage: 'oss' } });
+    } else {
+        const target = path.join(uploadFolder(folder), `${id}.${ext}`);
+        await fs.promises.copyFile(filePath, target);
+        createAssetRecord({ id, ownerId, assetType, mimeType: trustedMime, url: publicUrlForFile(target),
+            storageKey: path.relative(config.projectRoot, target).replace(/\\/g, '/'), metadata: { ...metadata, storage: 'local' } });
+    }
+    return db.prepare('SELECT * FROM article_assets WHERE id = ? AND owner_id = ?').get(id, ownerId);
+}
+
 async function replaceInlineDataImages(content, { articleId = null, ownerId = null } = {}) {
     const assetIds = [];
     const matches = [...String(content || '').matchAll(MARKDOWN_DATA_IMAGE_PATTERN)];
@@ -498,6 +537,7 @@ module.exports = {
     isDataImage,
     normalizeArticleMediaPayload,
     saveUserFileAsset,
+    saveUserFileFromPath,
     saveUserImageAsset,
     attachAssetsToArticle,
     migrateExistingArticleImages

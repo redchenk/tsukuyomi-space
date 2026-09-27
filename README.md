@@ -118,6 +118,9 @@ curl http://127.0.0.1:3280/api/health
 - 数据与缓存：SQLite、可选 Redis、可选 Milvus 向量库
 - 认证：JWT、Cookie、bcryptjs、QQ OAuth、邮箱验证码
 - 存储：本地受控上传、S3 兼容对象存储 / 阿里云 OSS
+- 附件库和文章编辑器附件上传：单文件最大 **100 MB（100 MiB）**，使用 4 MiB 二进制分块、SHA-256 校验和失败自动重试。中断后 24 小时内重新选择同一文件可续传，附件库可查看或取消未完成上传；图片保留原文件。支持 JPG、PNG、GIF、WebP、MP4、WebM、MOV、MP3、FLAC、WAV、OGG、M4A、PDF、TXT 和 Markdown。
+- 大附件使用 `/api/assets/uploads` 接口，原 Base64 接口保留 20 MiB 上限兼容图库等入口；代理只需容纳 4 MiB 分块，无需放大普通 JSON 请求限制。OSS 保存异步执行，客户端轮询结果，上传和下载均采用流式传输。
+- 上传暂存位于 `DATA_DIR/asset-upload-sessions` 私有目录。单实例最多 2 个并行写入或保存任务、每账号 2 个未完成上传、全站最多 8 个，暂存预约上限 800 MiB。超时自动清理，完成后立即删除暂存文件；配置 OSS 后失败会保留分块供重试，不会自动改用本地永久存储。部署继续保持单个 API 进程，多实例需增加共享协调和暂存实现。
 - 集成：Agent OS、MCP、RSS / JSON Feed、多邮箱聚合 API
 - 测试：node:test、Playwright
 - 部署：Docker Compose、PM2、Nginx / OpenResty、GitHub Actions、SSH、国内 / 海外双站

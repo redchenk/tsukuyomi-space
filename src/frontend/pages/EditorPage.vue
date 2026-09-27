@@ -1,7 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { uploadAttachment, ATTACHMENT_ACCEPT } from '../api/attachments';
 import { compressImage } from '../utils/image';
 import { renderMarkdown } from '../utils/markdown';
 import { handleMarkdownClick } from '../utils/markdownActions';
@@ -20,7 +21,8 @@ const editorCoverInput = ref(null);
 const editorContentInput = ref(null);
 const editorAssetUploadInput = ref(null);
 const session = ref(getSession());
-const uploadAccept = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/flac,audio/wav,audio/ogg,audio/mp4,application/pdf,text/plain,text/markdown';
+const uploadAccept = ATTACHMENT_ACCEPT;
+let assetUploadController = null;
 
 const { categories, revision: categoryRevision, refresh: refreshCategories } = useArticleCategories();
 const categoryLabelKeys = {
@@ -97,7 +99,7 @@ watch(() => editor.form.content, value => {
   previewTimer = setTimeout(() => { previewSource.value = serializeEditorContent(value); }, 180);
 });
 watch(editorView, () => { clearTimeout(previewTimer); previewSource.value = serializeEditorContent(editor.form.content); });
-onBeforeUnmount(() => clearTimeout(previewTimer));
+onBeforeUnmount(() => { clearTimeout(previewTimer); assetUploadController?.abort(); });
 
 function maskEditorContentImages(content) {
   return String(content || '');
@@ -344,50 +346,6 @@ function useAsset(asset) {
   closeAssetPicker();
 }
 
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
-    reader.readAsDataURL(file);
-  });
-}
-
-function postJsonWithProgress(url, payload, headers, onProgress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', apiUrl(url));
-    xhr.withCredentials = true;
-    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-    Object.entries(headers || {}).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
-    });
-    xhr.upload.onprogress = (event) => {
-      if (!event.lengthComputable) return;
-      onProgress(Math.round((event.loaded / event.total) * 100));
-    };
-    xhr.onload = () => {
-      resolve({
-        ok: xhr.status >= 200 && xhr.status < 300,
-        status: xhr.status,
-        text: () => Promise.resolve(xhr.responseText || '')
-      });
-    };
-    xhr.onerror = () => reject(new Error('附件上传失败，请检查网络后重试'));
-    xhr.send(JSON.stringify(payload));
-  });
-}
-
-function isSupportedAssetFile(file) {
-  const type = file.type || '';
-  const name = file.name || '';
-  return type.startsWith('image/')
-    || type.startsWith('video/')
-    || type.startsWith('audio/')
-    || ['application/pdf', 'text/plain', 'text/markdown', 'application/zip', 'application/json'].includes(type)
-    || /\.(md|txt|pdf|zip|json|mp4|webm|mov|m4v|mkv|mp3|flac|wav|ogg|m4a)$/i.test(name);
-}
-
 async function uploadEditorAsset(event) {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -395,42 +353,24 @@ async function uploadEditorAsset(event) {
     editor.assetPicker.message = '封面只能选择图片';
     return;
   }
-  if (!isSupportedAssetFile(file)) {
-    editor.assetPicker.message = '暂不支持这种文件类型';
-    return;
-  }
+  if (editor.assetPicker.uploading) return;
   editor.assetPicker.uploading = true;
-  editor.assetPicker.uploadProgress = 4;
-  editor.assetPicker.uploadPhase = file.type.startsWith('image/') ? '正在压缩图片...' : '正在读取文件...';
+  editor.assetPicker.uploadProgress = 0;
   editor.assetPicker.message = '';
+  assetUploadController = new AbortController();
   try {
-    const dataUrl = file.type.startsWith('image/')
-      ? await compressImage(file, { maxWidth: 1800, maxHeight: 1600, quality: 0.82 })
-      : await fileToDataUrl(file);
-    editor.assetPicker.uploadProgress = 8;
-    editor.assetPicker.uploadPhase = '正在上传...';
-    const response = await postJsonWithProgress(
-      '/api/assets',
-      {
-        dataUrl,
-        fileName: file.name,
-        mimeType: file.type || 'application/octet-stream',
-        alt: file.name.replace(/\.[^.]+$/, '')
-      },
-      authHeaders({ 'Content-Type': 'application/json' }),
-      (progress) => {
-        editor.assetPicker.uploadProgress = Math.max(8, Math.min(96, progress));
+    const asset = await uploadAttachment(file, {
+      ownerId: getSession()?.user?.id, signal: assetUploadController.signal,
+      onProgress: (progress, phase) => {
+        if (progress !== null) editor.assetPicker.uploadProgress = progress;
+        editor.assetPicker.uploadPhase = phase;
       }
-    );
-    editor.assetPicker.uploadPhase = '正在处理...';
-    const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || '附件上传失败');
-    editor.assetPicker.uploadProgress = 100;
+    });
     await loadAssetPicker();
-    useAsset(result.data);
-  } catch (error) {
-    editor.assetPicker.message = error.message || '附件上传失败';
-  } finally {
+    useAsset(asset);
+  } catch (error) { editor.assetPicker.message = error.message || '附件上传失败'; }
+  finally {
+    assetUploadController = null;
     editor.assetPicker.uploading = false;
     editor.assetPicker.uploadPhase = '';
     editor.assetPicker.uploadProgress = 0;
@@ -781,8 +721,10 @@ watch(currentArticleId, initEditor);
               <input ref="editorAssetUploadInput" type="file" :accept="uploadAccept" hidden @change="uploadEditorAsset">
               <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
             </div>
+            <p class="form-hint">单文件最大 100 MB。自动重试；24 小时内重新选择同一文件可续传。未完成的上传可在附件库取消。</p>
             <div v-if="editor.assetPicker.uploading" class="ts-loader-region" aria-busy="true">
               <StatusLoader :label="editor.assetPicker.uploadPhase || '正在上传...'" :progress="editor.assetPicker.uploadProgress" />
+              <button class="ghost-btn" type="button" @click="assetUploadController?.abort()">暂停上传</button>
             </div>
             <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
             <LoadingSkeleton v-if="editor.assetPicker.loading" variant="gallery" :count="6" label="正在加载附件" />

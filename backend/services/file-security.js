@@ -1,6 +1,6 @@
 const path = require('path');
 
-const MAX_USER_UPLOAD_BYTES = 20 * 1024 * 1024;
+const MAX_USER_UPLOAD_BYTES = 100 * 1024 * 1024;
 const SAFE_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 const ALLOWED_USER_MIME_TYPES = new Set([
     ...SAFE_IMAGE_MIME_TYPES,
@@ -95,9 +95,10 @@ function uploadError(message, status = 400) {
     return error;
 }
 
-function validateUserUpload({ buffer, fileName = '', claimedMimeType = '' } = {}) {
+function validateUserUpload({ buffer, fileName = '', claimedMimeType = '', fileSize = buffer?.length } = {}) {
     if (!Buffer.isBuffer(buffer) || !buffer.length) throw uploadError('文件内容为空');
-    if (buffer.length > MAX_USER_UPLOAD_BYTES) throw uploadError('文件不能超过 20MB', 413);
+    if (!Number.isSafeInteger(fileSize) || fileSize < buffer.length) throw uploadError('文件大小无效');
+    if (fileSize > MAX_USER_UPLOAD_BYTES) throw uploadError('文件不能超过 100MB', 413);
 
     const ext = extensionFromName(fileName);
     const claimedMime = cleanMime(claimedMimeType);

@@ -80,8 +80,8 @@ describe('file upload validation', () => {
             /不支持|声明类型/
         );
         assert.throws(
-            () => validateUserUpload({ buffer: Buffer.alloc(MAX_USER_UPLOAD_BYTES + 1), fileName: 'large.jpg', claimedMimeType: 'image/jpeg' }),
-            /20MB/
+            () => validateUserUpload({ buffer: Buffer.alloc(1), fileSize: MAX_USER_UPLOAD_BYTES + 1, fileName: 'large.jpg', claimedMimeType: 'image/jpeg' }),
+            /100MB/
         );
     });
 

@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const fs = require('fs');
 const adminRepository = require('../repositories/admin-repository');
 const { attachmentDisposition } = require('./file-security');
 const { fetchPinnedUrl, resolvePublicUrl } = require('./outbound-url-security');
@@ -323,14 +324,14 @@ function normalizeExtraHeaders(headers = {}) {
     );
 }
 
-async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', headers = {}, settings = null }) {
+async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', headers = {}, settings = null, payloadHash: providedHash, timeoutMs = 30000 }) {
     if (settings && isAliyunProvider(settings)) {
-        return aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body, contentType, headers, settings });
+        return aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body, contentType, headers, settings, timeoutMs });
     }
     const now = new Date();
     const requestDate = amzDate(now);
     const scopeDate = dateStamp(now);
-    const payloadHash = sha256(body);
+    const payloadHash = providedHash || sha256(body);
     const host = url.host;
     const extraHeaders = normalizeExtraHeaders(headers);
     const headersForCanonical = {
@@ -374,11 +375,13 @@ async function signedFetch({ method, url, region, accessKeyId, accessKeySecret, 
         },
         body: method === 'PUT' ? body : undefined,
         redirect: 'error',
-        signal: AbortSignal.timeout(30000)
+        signal: AbortSignal.timeout(timeoutMs),
+        timeoutMs,
+        ...(body instanceof require('stream').Readable ? { duplex: 'half' } : {})
     });
 }
 
-async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', headers = {}, settings }) {
+async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySecret, body = Buffer.alloc(0), contentType = 'application/octet-stream', headers = {}, settings, timeoutMs = 30000 }) {
     const now = new Date();
     const requestDate = amzDate(now);
     const scopeDate = dateStamp(now);
@@ -432,7 +435,9 @@ async function aliyunSignedFetch({ method, url, region, accessKeyId, accessKeySe
         },
         body: method === 'PUT' ? body : undefined,
         redirect: 'error',
-        signal: AbortSignal.timeout(30000)
+        signal: AbortSignal.timeout(timeoutMs),
+        timeoutMs,
+        ...(body instanceof require('stream').Readable ? { duplex: 'half' } : {})
     });
 }
 
@@ -573,7 +578,8 @@ async function putObject({
     contentEncoding = '',
     cacheControl = '',
     publicRead = false,
-    privateRead = false
+    privateRead = false,
+    filePath = ''
 }) {
     const settings = providedSettings || getSettings();
     if ((requireEnabled && !settings.ossEnabled) || !hasUploadParams(settings)) return null;
@@ -590,19 +596,34 @@ async function putObject({
     if (cacheControl) uploadHeaders['Cache-Control'] = String(cacheControl);
     if (publicRead === true) uploadHeaders['X-Oss-Object-Acl'] = 'public-read';
     if (privateRead === true) uploadHeaders[isAliyunProvider(settings) ? 'X-Oss-Object-Acl' : 'X-Amz-Acl'] = 'private';
-    const response = await signedFetch({
+    let payloadHash;
+    if (filePath) {
+        const stat = await fs.promises.stat(filePath);
+        uploadHeaders['Content-Length'] = String(stat.size);
+        if (!isAliyunProvider(settings)) {
+            const hash = crypto.createHash('sha256');
+            for await (const chunk of fs.createReadStream(filePath)) hash.update(chunk);
+            payloadHash = hash.digest('hex');
+        }
+    }
+    const payload = filePath ? fs.createReadStream(filePath) : buffer;
+    let response;
+    try { response = await signedFetch({
         method: 'PUT',
         url,
         region: normalizeRegion(settings.ossRegion),
         accessKeyId: settings.ossAccessKeyId,
         accessKeySecret: settings.ossAccessKeySecret,
-        body: buffer,
+        body: payload,
+        payloadHash,
+        timeoutMs: filePath ? 10 * 60 * 1000 : 30000,
         contentType: mimeType || 'application/octet-stream',
         headers: uploadHeaders,
         settings
     });
+    } finally { if (filePath) payload.destroy(); }
     if (!response.ok) {
-        const text = await response.text().catch(() => '');
+        const text = (await readBodyLimited(response, MAX_OSS_LIST_BYTES)).toString('utf8');
         throw new Error(`OSS upload failed: HTTP ${response.status} ${text.slice(0, 160)}`);
     }
     return {
@@ -629,7 +650,7 @@ async function deleteObject(objectKey, settings = getSettings()) {
     return response.ok || response.status === 204 || response.status === 404;
 }
 
-async function getObject(objectKey, { range = '', settings: providedSettings = null } = {}) {
+async function getObject(objectKey, { range = '', settings: providedSettings = null, stream = false } = {}) {
     const settings = providedSettings || getSettings();
     const key = normalizeObjectKey(objectKey);
     if (!hasUploadParams(settings) || !key) return null;
@@ -637,6 +658,7 @@ async function getObject(objectKey, { range = '', settings: providedSettings = n
     if (!url) return null;
     const response = await signedFetch({
         method: 'GET',
+        timeoutMs: stream ? 10 * 60 * 1000 : 30000,
         url,
         region: normalizeRegion(settings.ossRegion),
         accessKeyId: settings.ossAccessKeyId,
@@ -647,16 +669,17 @@ async function getObject(objectKey, { range = '', settings: providedSettings = n
         settings
     });
     if (!response.ok && response.status !== 206) {
-        if (range) {
+        if (range && !stream) {
             const fallback = await fullObjectSlice({ objectKey: key, range, settings }).catch(() => null);
             if (fallback) return fallback;
         }
-        const text = await response.text().catch(() => '');
+        const text = await readBodyLimited(response, MAX_OSS_LIST_BYTES).then(b => b.toString('utf8')).catch(() => '');
         throw new Error(`OSS get failed: HTTP ${response.status} ${text.slice(0, 160)}`);
     }
-    const buffer = await readBodyLimited(response, MAX_OSS_PROXY_BYTES);
+    const buffer = stream ? null : await readBodyLimited(response, MAX_OSS_PROXY_BYTES);
     return {
         buffer,
+        ...(stream ? { body: response.body } : {}),
         status: response.status,
         contentType: response.headers.get('content-type') || 'application/octet-stream',
         contentLength: response.headers.get('content-length') || '',

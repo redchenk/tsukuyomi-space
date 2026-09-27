@@ -60,7 +60,8 @@ async function fetchPinnedUrl(value, {
 } = {}) {
     const { url, records } = await resolvePublicUrl(value, { protocols, allowedHostnames });
     const transport = url.protocol === 'https:' ? https : http;
-    const payload = body === undefined || body === null
+    const streaming = body instanceof Readable;
+    const payload = streaming || body === undefined || body === null
         ? null
         : (Buffer.isBuffer(body) ? body : Buffer.from(body));
     const requestHeaders = { 'Accept-Encoding': 'identity', ...headers };
@@ -87,7 +88,9 @@ async function fetchPinnedUrl(value, {
                 responseHeaders.append(incoming.rawHeaders[index], incoming.rawHeaders[index + 1]);
             }
             const noBody = method.toUpperCase() === 'HEAD' || status === 204 || status === 304;
-            resolve(new Response(noBody ? null : Readable.toWeb(incoming), {
+            resolve(new Response(noBody ? null : Readable.toWeb(incoming, {
+                strategy: { highWaterMark: 64 * 1024, size: chunk => chunk.byteLength }
+            }), {
                 status,
                 statusText: incoming.statusMessage || '',
                 headers: responseHeaders
@@ -95,8 +98,14 @@ async function fetchPinnedUrl(value, {
         });
         request.setTimeout(timeoutMs, () => request.destroy(new Error('外部请求超时')));
         request.on('error', reject);
-        if (payload) request.write(payload);
-        request.end();
+        if (streaming) {
+            body.on('error', error => request.destroy(error));
+            request.on('close', () => body.destroy());
+            body.pipe(request);
+        } else {
+            if (payload) request.write(payload);
+            request.end();
+        }
     });
 }
 

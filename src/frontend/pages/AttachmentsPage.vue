@@ -1,8 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
-import { compressImage } from '../utils/image';
+import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { uploadAttachment, ATTACHMENT_ACCEPT } from '../api/attachments';
 
 const emit = defineEmits(['go']);
 const route = useRoute();
@@ -12,6 +12,7 @@ const session = ref(getSession());
 const state = reactive({
   loading: Boolean(session.value),
   uploading: false,
+  pendingUploads: [],
   uploadProgress: 0,
   uploadPhase: '',
   message: '',
@@ -28,7 +29,8 @@ const state = reactive({
 
 const isAuthed = computed(() => Boolean(session.value));
 const canManageAllAssets = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
-const uploadAccept = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/flac,audio/wav,audio/ogg,audio/mp4,application/pdf,text/plain,text/markdown';
+const uploadAccept = ATTACHMENT_ACCEPT;
+let uploadController = null;
 let assetLoadController = null;
 let assetLoadSequence = 0;
 
@@ -48,31 +50,6 @@ function assetAuthHeaders(extra = {}) {
 function showMessage(message, type = 'success') {
   state.message = message;
   state.messageType = type;
-}
-
-function postJsonWithProgress(url, payload, headers, onProgress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', apiUrl(url));
-    xhr.withCredentials = true;
-    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-    Object.entries(headers || {}).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
-    });
-    xhr.upload.onprogress = (event) => {
-      if (!event.lengthComputable) return;
-      onProgress(Math.round((event.loaded / event.total) * 100));
-    };
-    xhr.onload = () => {
-      resolve({
-        ok: xhr.status >= 200 && xhr.status < 300,
-        status: xhr.status,
-        text: () => Promise.resolve(xhr.responseText || '')
-      });
-    };
-    xhr.onerror = () => reject(new Error('附件上传失败，请检查网络后重试'));
-    xhr.send(JSON.stringify(payload));
-  });
 }
 
 function assetName(asset) {
@@ -136,69 +113,46 @@ async function loadAssets(page = 1) {
   }
 }
 
+async function loadPendingUploads() {
+  try {
+    const result = await parseResponse(await authFetch('/api/assets/uploads', { cache: 'no-store' }));
+    if (result.success) state.pendingUploads = result.data || [];
+  } catch (_) { /* The normal library remains usable while offline. */ }
+}
+
+async function cancelPendingUpload(upload) {
+  try {
+    const result = await parseResponse(await authFetch(`/api/assets/uploads/${encodeURIComponent(upload.id)}`, { method: 'DELETE' }));
+    if (!result.success) throw new Error(result.message);
+    await loadPendingUploads();
+  } catch (error) { showMessage(error.message, 'error'); }
+}
+
 async function uploadAsset(event) {
   const file = event.target.files?.[0];
-  if (!file) return;
-  if (!isSupportedFile(file)) {
-    showMessage('暂不支持这种文件类型', 'error');
-    return;
-  }
+  if (!file || state.uploading) return;
   state.uploading = true;
-  state.uploadProgress = 4;
-  state.uploadPhase = file.type.startsWith('image/') ? '正在压缩图片...' : '正在读取文件...';
+  state.uploadProgress = 0;
+  uploadController = new AbortController();
   try {
-    const dataUrl = file.type.startsWith('image/')
-      ? await compressImage(file, { maxWidth: 1800, maxHeight: 1600, quality: 0.82 })
-      : await fileToDataUrl(file);
-    state.uploadProgress = 8;
-    state.uploadPhase = '正在上传...';
-    const response = await postJsonWithProgress(
-      '/api/assets',
-      {
-        dataUrl,
-        fileName: file.name,
-        mimeType: file.type || 'application/octet-stream',
-        alt: file.name.replace(/\.[^.]+$/, ''),
-        storage: state.storage
-      },
-      assetAuthHeaders({ 'Content-Type': 'application/json' }),
-      (progress) => {
-        state.uploadProgress = Math.max(8, Math.min(96, progress));
+    await uploadAttachment(file, {
+      ownerId: session.value?.user?.id, storageMode: state.storage, signal: uploadController.signal,
+      onProgress: (progress, phase) => {
+        if (progress !== null) state.uploadProgress = progress;
+        state.uploadPhase = phase;
       }
-    );
-    state.uploadPhase = '正在处理...';
-    const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || '附件上传失败');
-    state.uploadProgress = 100;
+    });
     showMessage('附件已上传');
     await loadAssets(1);
-  } catch (error) {
-    showMessage(error.message || '附件上传失败', 'error');
-  } finally {
+  } catch (error) { showMessage(error.message || '附件上传失败', 'error'); }
+  finally {
+    uploadController = null;
     state.uploading = false;
     state.uploadPhase = '';
     state.uploadProgress = 0;
     if (fileInput.value) fileInput.value.value = '';
+    await loadPendingUploads();
   }
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
-    reader.readAsDataURL(file);
-  });
-}
-
-function isSupportedFile(file) {
-  const type = file.type || '';
-  const name = file.name || '';
-  return type.startsWith('image/')
-    || type.startsWith('video/')
-    || type.startsWith('audio/')
-    || ['application/pdf', 'text/plain', 'text/markdown', 'application/zip', 'application/json'].includes(type)
-    || /\.(md|txt|pdf|zip|json|mp4|webm|mov|m4v|mkv|mp3|flac|wav|ogg|m4a)$/i.test(name);
 }
 
 async function copyMarkdown(asset) {
@@ -243,9 +197,11 @@ onMounted(() => {
   session.value = getSession();
   syncDefaultScope();
   loadAssets();
+  loadPendingUploads();
 });
 
 onBeforeUnmount(() => {
+  uploadController?.abort();
   assetLoadSequence += 1;
   assetLoadController?.abort();
   assetLoadController = null;
@@ -265,7 +221,7 @@ onBeforeUnmount(() => {
         <div>
           <span class="attachments-kicker">Asset Library</span>
           <h1>附件库</h1>
-          <p>管理你上传的图片，写文章时可以快速复制 Markdown 或从编辑器直接插入。</p>
+          <p>管理图片、音视频与文档，支持复制 Markdown 或从编辑器插入。单文件最大 100 MB，支持自动重试和断点续传。</p>
         </div>
         <div class="attachments-actions">
           <button class="ghost-btn" type="button" @click="go('/editor')">写文章</button>
@@ -278,7 +234,16 @@ onBeforeUnmount(() => {
 
       <div v-if="state.uploading" class="ts-loader-region" aria-busy="true">
         <StatusLoader :label="state.uploadPhase || '正在上传...'" :progress="state.uploadProgress" />
+        <button class="ghost-btn" type="button" @click="uploadController?.abort()">暂停上传</button>
       </div>
+
+      <section v-if="state.pendingUploads.length && !state.uploading" class="panel attachments-pending" aria-label="未完成的上传">
+        <p>未完成的上传会保留 24 小时。点击“上传文件”重新选择同一文件，即可校验后继续。</p>
+        <div v-for="upload in state.pendingUploads" :key="upload.id" class="attachments-pending-row">
+          <span>{{ upload.fileName }} · {{ Math.round(upload.received / upload.size * 100) }}%{{ upload.processing ? ' · 正在保存' : '' }}</span>
+          <button class="ghost-btn" type="button" :disabled="upload.processing" @click="cancelPendingUpload(upload)">取消上传</button>
+        </div>
+      </section>
 
       <section class="panel attachments-toolbar">
         <input v-model="state.search" type="search" placeholder="搜索文件名、路径或备注" @keydown.enter="loadAssets(1)">
@@ -355,3 +320,10 @@ onBeforeUnmount(() => {
     </template>
   </main>
 </template>
+
+<style scoped>
+.attachments-pending { display: grid; gap: 12px; padding: 20px; }
+.attachments-pending-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.attachments-pending-row span { min-width: 0; overflow-wrap: anywhere; }
+.attachments-pending-row button { flex-shrink: 0; white-space: nowrap; }
+</style>

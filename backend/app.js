@@ -79,7 +79,10 @@ function createApp() {
     ], sensitiveAuthLimiter);
     app.use('/api/auth/email-code', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'email-code' }));
     app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
-    app.use('/api/assets', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 80, keyPrefix: 'assets' }));
+    const assetLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 80, keyPrefix: 'assets' });
+    const uploadLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 600, keyPrefix: 'asset-chunks' });
+    app.use('/api/assets', (req, res, next) => (req.path === '/uploads' || req.path.startsWith('/uploads/'))
+        ? uploadLimiter(req, res, next) : assetLimiter(req, res, next));
     app.use('/api/chat', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'chat' }));
     app.use('/api/tts', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' }));
     app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
@@ -99,6 +102,7 @@ function createApp() {
     app.use('/api/mail', strictJson('128kb'));
 
     // Data URL routes get explicit caps; ordinary JSON remains small on the 2GB host.
+    app.use('/api/assets/uploads', strictJson('16kb'));
     app.use('/api/assets', strictJson('28mb'));
     app.use('/api/mcp', strictJson('6mb'));
     app.use('/api/chat', strictJson('8mb'));

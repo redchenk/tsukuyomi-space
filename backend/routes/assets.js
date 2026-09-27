@@ -2,6 +2,8 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { Readable, Transform } = require('stream');
+const { pipeline } = require('stream/promises');
 const config = require('../config');
 const {
     authenticateToken,
@@ -15,11 +17,14 @@ const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
 const responseCache = require('../services/response-cache');
 const userGrowth = require('../services/user-growth');
+const uploads = require('../services/asset-uploads');
+const { createRateLimiter } = require('../middleware/security');
 const { setPublicReadCache } = require('../services/public-cache');
 const { attachmentDisposition, cleanMime, MAX_USER_UPLOAD_BYTES } = require('../services/file-security');
 const { parsePositiveInt } = require('../validators');
 
 const router = express.Router();
+const MAX_LEGACY_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 const MIME_BY_EXT = {
     jpg: 'image/jpeg',
@@ -184,7 +189,7 @@ function parsePositiveSize(value) {
 }
 
 function parseDataUrl(value = '') {
-    if (typeof value !== 'string' || value.length > Math.ceil(MAX_USER_UPLOAD_BYTES * 4 / 3) + 1024) {
+    if (typeof value !== 'string' || value.length > Math.ceil(MAX_LEGACY_UPLOAD_BYTES * 4 / 3) + 1024) {
         const error = new Error('文件不能超过 20MB');
         error.status = 413;
         throw error;
@@ -194,13 +199,13 @@ function parseDataUrl(value = '') {
     const encoded = match[2].replace(/\s/g, '');
     if (!encoded || encoded.length % 4 === 1 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) return null;
     const padding = encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0;
-    if (Math.floor(encoded.length * 3 / 4) - padding > MAX_USER_UPLOAD_BYTES) {
+    if (Math.floor(encoded.length * 3 / 4) - padding > MAX_LEGACY_UPLOAD_BYTES) {
         const error = new Error('文件不能超过 20MB');
         error.status = 413;
         throw error;
     }
     const buffer = Buffer.from(encoded, 'base64');
-    if (buffer.length > MAX_USER_UPLOAD_BYTES) {
+    if (buffer.length > MAX_LEGACY_UPLOAD_BYTES) {
         const error = new Error('文件不能超过 20MB');
         error.status = 413;
         throw error;
@@ -340,8 +345,8 @@ async function streamOssAsset(req, res, asset, metadata) {
             return res.redirect(302, redirectUrl);
         }
     }
-    const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '' });
-    if (!object?.buffer) return fail(res, 404, '附件不存在');
+    const object = await objectStorage.getObject(asset.storage_key, { range: req.headers.range || '', stream: true });
+    if (!object?.buffer && !object?.body) return fail(res, 404, '附件不存在');
     const streamedAsset = { ...asset, mime_type: asset.mime_type || object.contentType || 'application/octet-stream' };
     setAttachmentHeaders(res, streamedAsset, metadata, { inline: isBrowserPreviewMedia(streamedAsset) });
     if (object.contentLength) res.setHeader('Content-Length', object.contentLength);
@@ -350,8 +355,72 @@ async function streamOssAsset(req, res, asset, metadata) {
     if (object.etag) res.setHeader('ETag', object.etag);
     if (object.lastModified) res.setHeader('Last-Modified', object.lastModified);
     res.setHeader('Cache-Control', metadata.visibility === 'private' ? 'private, no-store' : 'public, max-age=300');
-    return res.status(object.status === 206 ? 206 : 200).send(object.buffer);
+    res.status(object.status === 206 ? 206 : 200);
+    if (!object.body) return res.send(object.buffer);
+    const source = Readable.fromWeb(object.body);
+    const stop = () => source.destroy();
+    res.once('close', stop);
+    let bytes = 0;
+    const limit = new Transform({ transform(chunk, encoding, callback) {
+        bytes += chunk.length;
+        callback(bytes > MAX_USER_UPLOAD_BYTES ? new Error('附件超过下载大小限制') : null, chunk);
+    } });
+    try { await pipeline(source, limit, res); }
+    finally { res.off('close', stop); }
 }
+
+function uploadOperation(handler) {
+    return async (req, res, next) => {
+        req.uploadHandlerStarted = true;
+        try { await handler(req, res); }
+        catch (e) {
+            if (res.headersSent || res.destroyed) return;
+            if (!e.status) console.error('Resumable upload failed:', e.code || e.name);
+            fail(res, e.status || 503, e.status ? e.message : '上传暂时失败，已接收的分块会保留，请重试');
+        } finally { req.uploadFinished?.(); }
+    };
+}
+
+router.get('/uploads', authenticateToken, (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    ok(res, uploads.list(req.user.id));
+});
+router.post('/uploads', authenticateToken,
+    createRateLimiter({ windowMs: 60 * 60 * 1000, max: 20, keyPrefix: 'asset-upload-create', keyGenerator: req => req.user.id }),
+    uploads.admit, uploadOperation(async (req, res) => {
+        ok(res, uploads.publicState(uploads.create(req.user.id, req.body || {})), '上传已准备');
+    }));
+router.get('/uploads/:uploadId', authenticateToken, (req, res, next) => {
+    try {
+        const state = uploads.status(req.params.uploadId, req.user.id);
+        if (state.completed) {
+            const asset = assetRepository.findAssetForOwner(state.id, req.user.id);
+            if (!asset) return fail(res, 410, '已完成的附件已被删除');
+            state.asset = normalizeAsset(asset, { signUrl: true });
+        }
+        res.set('Cache-Control', 'private, no-store');
+        ok(res, state);
+    } catch (e) { fail(res, e.status || 500, e.message); }
+});
+router.put('/uploads/:uploadId/:part', authenticateToken, uploads.admit,
+    express.raw({ type: 'application/octet-stream', limit: uploads.CHUNK_BYTES, inflate: false }),
+    uploadOperation(async (req, res) => {
+        ok(res, await uploads.append(req.params.uploadId, req.user.id, Number(req.params.part), req.body, req.get('X-Upload-SHA256')));
+    }));
+router.post('/uploads/:uploadId/complete', authenticateToken, uploads.admit, uploadOperation(async (req, res) => {
+    const state = uploads.status(req.params.uploadId, req.user.id);
+    if (state.received !== state.size) return fail(res, 409, '还有未上传的分块，请继续上传');
+    // The browser polls status; slow OSS transfers outlive proxy request timeouts.
+    // Keep the admission slot until this operation finishes, even after HTTP 202.
+    const operation = uploads.complete(req.params.uploadId, req.user.id);
+    res.status(202);
+    ok(res, { processing: true }, '正在保存附件');
+    try { await operation; } catch (e) { console.error('Attachment finalize failed:', e.code || e.name); }
+}));
+router.delete('/uploads/:uploadId', authenticateToken, uploads.admit, uploadOperation(async (req, res) => {
+    uploads.cancel(req.params.uploadId, req.user.id);
+    ok(res);
+}));
 
 router.get('/', authenticateToken, (req, res) => {
     try {
@@ -564,8 +633,9 @@ router.get('/proxy/:id', optionalAuth, async (req, res) => {
         const metadata = asset.metadata || {};
         if (!canAccessAsset(req, asset)) return rejectAssetAccess(req, res);
         if (metadata.storage !== 'oss') return streamLocalAsset(req, res, asset, metadata);
-        return streamOssAsset(req, res, asset, metadata);
+        return await streamOssAsset(req, res, asset, metadata);
     } catch (error) {
+        if (res.headersSent || res.destroyed) return;
         console.error('Proxy OSS asset failed:', error);
         fail(res, 502, '对象存储资源读取失败');
     }
