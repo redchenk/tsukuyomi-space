@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useQualifiedArticleRead } from '../composables/useQualifiedArticleRead';
 import { useArticleReading } from '../composables/useArticleReading';
 import { readingTimeLabel } from '../utils/reading';
 import { useRoute } from 'vue-router';
@@ -27,6 +28,9 @@ const props = defineProps({
 const emit = defineEmits(['go']);
 const route = useRoute();
 const article = ref(null);
+const readingReceipt = ref(null);
+useQualifiedArticleRead(article, readingReceipt);
+let articleLoadRevision = 0;
 const articleContentRef = ref(null);
 const renderedContent = computed(() => article.value ? formatContent(article.value.content, article.value.content_format) : '');
 const { headings, activeHeading, progress, plainText, tocOpen, goToHeading } = useArticleReading(articleContentRef, renderedContent);
@@ -96,7 +100,7 @@ function normalizeStageReturnPath(value) {
     if (url.pathname !== '/stage') return '/stage';
 
     const params = new URLSearchParams();
-    if (url.searchParams.get('sort') === 'latest') params.set('sort', 'latest');
+    if (['latest', 'daily'].includes(url.searchParams.get('sort'))) params.set('sort', url.searchParams.get('sort'));
     const page = Number(url.searchParams.get('page'));
     if (Number.isFinite(page) && page > 1) params.set('page', String(Math.trunc(page)));
 
@@ -198,6 +202,8 @@ function showMessage(text, type = 'error') {
 }
 
 async function loadArticle() {
+  const revision = ++articleLoadRevision;
+  readingReceipt.value = null;
   commentModeration.value = null;
   Object.keys(replyModeration).forEach(key => delete replyModeration[key]);
   loading.value = true;
@@ -211,12 +217,14 @@ async function loadArticle() {
   }
 
   try {
-    const response = await apiFetch(`/api/articles/${encodeURIComponent(articleId.value)}/live/${Date.now()}`, {
+    const response = await authFetch(`/api/articles/${encodeURIComponent(articleId.value)}/live/${Date.now()}`, {
       cache: 'no-store'
     });
     const result = await parseResponse(response);
+    if (revision !== articleLoadRevision) return;
     if (!result.success || !result.data) throw new Error(result.message || '文章不存在');
     article.value = result.data;
+    readingReceipt.value = result.reading || null;
     applySeo(articleSeo(result.data, articlePath.value));
     await Promise.all([loadComments(), loadBookmarkStatus(), loadArticleLikeStatus()]);
     await hydrateUserLevels([

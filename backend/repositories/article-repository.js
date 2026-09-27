@@ -1,12 +1,12 @@
 const db = require('../db');
 const articleCategories = require('./article-category-repository');
+const { ensureDailyRecommendations } = require('../services/article-recommendations');
 const { createSlug } = require('../utils/slug');
 const { publicAvatarUrl } = require('../utils/avatar');
-const { contentQuality, featuredScore, MAX_CONTENT_LENGTH } = require('../services/article-ranking');
+const { contentQuality, MAX_CONTENT_LENGTH } = require('../services/article-ranking');
 const { summarizeArticle, resolveArticleExcerpt } = require('../services/article-summary');
 
 db.function('article_content_quality', { deterministic: true }, (content, format) => contentQuality(content, format));
-db.function('article_featured_score', { deterministic: true }, (quality, views, likes, bookmarks, date, now) => featuredScore(quality, views, likes, bookmarks, date, now));
 db.function('article_auto_excerpt', { deterministic: true }, (content, format) => summarizeArticle(content, format));
 
 const ARTICLE_EXCERPT = `CASE WHEN trim(COALESCE(a.excerpt, '')) = ''
@@ -65,24 +65,32 @@ function compactArticleRows(rows) {
 }
 
 function listArticles({ category, query: searchQuery, limit, offset, sort = 'pinned', now = Date.now() }) {
+    const ranked = sort === 'featured' || sort === 'daily';
+    const day = ranked ? ensureDailyRecommendations(now) : '';
     let query = `
         SELECT a.id, a.title, a.slug, ${ARTICLE_EXCERPT}, a.category, a.tags, a.author_id,
             a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
             ${ARTICLE_COUNTS},
-            ${sort === 'featured' ? `article_content_quality(CASE WHEN a.content_format = 'block' THEN a.content ELSE substr(a.content, 1, ${MAX_CONTENT_LENGTH}) END, a.content_format)` : '0'} AS content_quality,
+            ${ranked ? `article_content_quality(CASE WHEN a.content_format = 'block' THEN a.content ELSE substr(a.content, 1, ${MAX_CONTENT_LENGTH}) END, a.content_format)` : '0'} AS content_quality,
+            ${ranked ? 'r.score AS featured_score, r.recommended AS daily_recommended,' : ''}
             u.username AS author_username,
             u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
             cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
         FROM articles a
+        ${ranked ? `JOIN article_daily_recommendations r ON r.article_id = a.id AND r.day = '${day}'` : ''}
         LEFT JOIN users u ON a.author_id = u.id
         LEFT JOIN article_assets cover_asset ON cover_asset.id = a.cover_image_asset_id
         WHERE COALESCE(a.status, 'published') = 'published'
     `;
     let countQuery = "SELECT COUNT(*) AS total FROM articles WHERE COALESCE(status, 'published') = 'published'";
     const params = [];
+    if (sort === 'daily') {
+        query += ' AND r.recommended = 1';
+        countQuery += ` AND id IN (SELECT article_id FROM article_daily_recommendations WHERE day = '${day}' AND recommended = 1)`;
+    }
 
     if (category) {
         query += ' AND a.category = ?';
@@ -100,23 +108,16 @@ function listArticles({ category, query: searchQuery, limit, offset, sort = 'pin
         params.push(normalizedSearch, normalizedSearch);
     }
 
-    if (sort === 'featured') {
-        // Rank the entire published candidate set before pagination, never a single page.
-        query = `WITH candidates AS (${query})
-            SELECT *, article_featured_score(content_quality, view_count, like_count, bookmark_count,
-                COALESCE(published_at, created_at, publish_date), ?) AS featured_score
-            FROM candidates
-            ORDER BY pinned_at IS NULL, pinned_at DESC, featured_score DESC,
-                COALESCE(published_at, created_at, publish_date) DESC, id DESC
-            LIMIT ? OFFSET ?`;
+    if (ranked) {
+        query += ' ORDER BY r.position ASC, a.id DESC LIMIT ? OFFSET ?';
     } else {
-        query += ` ORDER BY a.pinned_at IS NULL, a.pinned_at DESC,
+        query += ` ORDER BY ${sort === 'pinned' ? 'a.pinned_at IS NULL, a.pinned_at DESC,' : ''}
             COALESCE(a.published_at, a.created_at, a.publish_date) DESC, a.id DESC LIMIT ? OFFSET ?`;
     }
 
     return {
         total: db.prepare(countQuery).get(...params).total,
-        articles: compactArticleRows(db.prepare(query).all(...params, ...(sort === 'featured' ? [now] : []), limit, offset))
+        articles: compactArticleRows(db.prepare(query).all(...params, limit, offset))
     };
 }
 
@@ -192,10 +193,6 @@ function findPublishedArticleById(id) {
         WHERE a.id = ?
           AND COALESCE(a.status, 'published') = 'published'
     `).get(id));
-}
-
-function incrementArticleViews(id) {
-    return db.prepare('UPDATE articles SET view_count = view_count + 1 WHERE id = ?').run(id).changes;
 }
 
 function updateArticle(id, article) {
@@ -339,7 +336,6 @@ module.exports = {
     createArticle,
     findArticleById,
     findPublishedArticleById,
-    incrementArticleViews,
     updateArticle,
     deleteArticle,
     listUserArticles,

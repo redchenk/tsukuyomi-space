@@ -36,6 +36,7 @@ function strictJson(limit) {
 
 function createApp() {
     initDatabase();
+    require('./services/article-engagement').backfillHistorical();
 
     const app = express();
     app.disable('x-powered-by');

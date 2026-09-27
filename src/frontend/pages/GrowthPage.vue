@@ -41,6 +41,22 @@ const copy = computed(() => props.lang === 'ja' ? {
   retry: '重新加载', done: '已完成', go: '去完成', max: '已到最高等级', xp: '经验', rotating: '每日轮换', streakReward: '每连续 7 天额外 +20 经验'
 });
 
+const articleCopy = computed(() => props.lang === 'en' ? {
+  title: 'Your work keeps growing', total: 'Article XP', history: 'Historical XP credited',
+  labels: ['Qualified reads', 'Likes received', 'Bookmarks received'], rule: 'Per reader: +1 for a qualified read, +2 for a first like, +5 for a first bookmark. Reads are deduplicated by account and device after 12 visible seconds. Your own interactions and repeated likes or saves earn no extra XP.'
+} : props.lang === 'ja' ? {
+  title: '創作から育つ経験値', total: '記事の経験値', history: '過去分の付与済み経験値',
+  labels: ['有効な閲覧', '受け取ったいいね', '受け取った保存'], rule: '12秒以上の閲覧 +1、初回のいいね +2、初回の保存 +5。閲覧はアカウントと端末で重複を除外。自分の操作や再操作では追加付与されません。'
+} : {
+  title: '让创作持续获得回应', total: '文章累计经验', history: '已补发历史经验',
+  labels: ['有效阅读', '收到点赞', '收到收藏'], rule: '每位读者有效阅读 +1、首次点赞 +2、首次收藏 +5。阅读需前台停留 12 秒，按账号与设备去重；自己的阅读与互动、取消后再次点赞或收藏不重复获得经验。'
+});
+const articleRewards = computed(() => [
+  { icon: 'eye', rate: 1, xp: state.value?.articles?.viewXp || 0 },
+  { icon: 'heart', rate: 2, xp: state.value?.articles?.likeXp || 0 },
+  { icon: 'bookmark', rate: 5, xp: state.value?.articles?.bookmarkXp || 0 }
+]);
+
 const localizedLevelTitles = {
   zh: ['初次连接', '微光相识', '月下同行', '心声共鸣', '记忆同调', '星海相伴', '月之眷属', '永恒月契', '八千代之约'],
   ja: ['初めての接続', '微光の出会い', '月下の同行', '心の共鳴', '記憶の同調', '星海の絆', '月の眷属', '永遠の月契', '八千代の契り'],
@@ -70,6 +86,8 @@ function taskIcon(key) {
 }
 
 function eventText(item) {
+  const articleLabels = { zh: { article_view: '文章获得有效阅读', article_like: '文章获得点赞', article_bookmark: '文章获得收藏', article_history: '文章历史经验补发' }, en: { article_view: 'Qualified article read', article_like: 'Article liked', article_bookmark: 'Article bookmarked', article_history: 'Historical article XP' }, ja: { article_view: '記事の有効閲覧', article_like: '記事にいいね', article_bookmark: '記事が保存されました', article_history: '過去の記事経験値' } };
+  if (articleLabels[props.lang]?.[item.key]) return articleLabels[props.lang][item.key];
   const labels = props.lang === 'ja'
     ? { checkin: '毎日のサインイン', daily_chat: '八千代との会話', daily_share: '月読空間を共有', daily_article_publish: 'ステージに記事を投稿', daily_plaza_engage: 'プラザで交流', daily_pixel_engage: 'ピクセル絵で交流', daily_gallery_upload: 'ギャラリーに画像を追加', daily_kaguya_run: 'かぐやランで100点を獲得', referral_joined: '招待を受け取りました', referral_invite: '友達が初回会話を完了' }
     : props.lang === 'en'
@@ -246,6 +264,22 @@ onUnmounted(() => window.removeEventListener(GROWTH_UPDATED_EVENT, handleGrowthU
               <span>{{ task.completed ? copy.done : copy.go }}</span>
             </button>
           </div>
+        </section>
+
+        <section v-if="state.articles" class="growth-section growth-articles" data-material="content">
+          <div class="growth-section-head">
+            <div><span>{{ articleCopy.total }}</span><h2>{{ articleCopy.title }}</h2></div>
+            <strong>+{{ state.articles.totalXp.toLocaleString() }} {{ copy.xp }}</strong>
+          </div>
+          <div class="growth-article-rewards">
+            <div v-for="(item, index) in articleRewards" :key="item.icon">
+              <TsIcon :name="item.icon" :size="20" />
+              <strong>{{ articleCopy.labels[index] }} <b>+{{ item.rate }}</b></strong>
+              <span>{{ item.xp.toLocaleString() }} {{ copy.xp }}</span>
+            </div>
+          </div>
+          <p>{{ articleCopy.rule }}</p>
+          <small>{{ articleCopy.history }} · +{{ state.articles.historyXp.toLocaleString() }} {{ copy.xp }}</small>
         </section>
 
         <section class="growth-grid">

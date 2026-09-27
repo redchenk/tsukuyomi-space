@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, optionalAuth } = require('../middleware/auth');
 const articleRepository = require('../repositories/article-repository');
 const articleCategories = require('../repositories/article-category-repository');
 const messageRepository = require('../repositories/message-repository');
@@ -9,6 +9,8 @@ const userGrowth = require('../services/user-growth');
 const { setPublicReadCache } = require('../services/public-cache');
 const { parsePositiveInt, safeJsonParse } = require('../validators');
 
+const engagement = require('../services/article-engagement');
+const { createRateLimiter } = require('../middleware/security');
 const router = express.Router();
 
 router.post('/summarize', authenticateToken, require('./article-summary'));
@@ -37,7 +39,7 @@ function listArticlesPayload(req) {
     const limit = Math.min(parsePositiveInt(req.query.limit, 100), 100);
     const offset = (page - 1) * limit;
 
-    const sort = ['featured', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
+    const sort = ['featured', 'daily', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
     const result = articleRepository.listArticles({ category, query, limit, offset, sort });
     const categoryIds = new Map(articleCategories.list().map(item => [item.name, item.id]));
     const articles = result.articles.map(article => withParsedTags(article, categoryIds));
@@ -45,6 +47,7 @@ function listArticlesPayload(req) {
     return {
         success: true,
         data: articles,
+        recommendationDate: ['featured', 'daily'].includes(sort) ? userGrowth.hongKongDate() : null,
         pagination: {
             page,
             limit,
@@ -56,9 +59,9 @@ function listArticlesPayload(req) {
 
 function articleListCacheKey(req) {
     const limit = Math.min(parsePositiveInt(req.query.limit, 100), 100);
-    const sort = ['featured', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
+    const sort = ['featured', 'daily', 'latest'].includes(req.query.sort) ? req.query.sort : 'pinned';
     const query = String(req.query.q || '').trim().slice(0, 120);
-    return `public:articles:${sort}:${String(req.query.category || '')}:${query}:${parsePositiveInt(req.query.page, 1)}:${limit}`;
+    return `public:articles:${userGrowth.hongKongDate()}:${sort}:${String(req.query.category || '')}:${query}:${parsePositiveInt(req.query.page, 1)}:${limit}`;
 }
 
 function sendArticleList(req, res) {
@@ -149,38 +152,30 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-// 单篇文章读取会顺便累计阅读数。
 router.get('/:id/messages', sendArticleMessages);
-
 router.get('/:id/messages/live/:nonce', sendArticleMessages);
 
-router.get('/:id/live/:nonce', (req, res) => {
+function sendArticle(req, res) {
     try {
         const article = findPublicArticle(req.params.id);
-        if (!article) {
-            return res.status(404).json({ success: false, message: 'Article not found' });
-        }
-
-        articleRepository.incrementArticleViews(req.params.id);
-        res.json({ success: true, data: withParsedTags(article) });
+        if (!article) return res.status(404).json({ success: false, message: '文章不存在或未公开' });
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({ success: true, data: withParsedTags(article), reading: engagement.beginRead(req, res, article.id) });
     } catch (error) {
         console.error('Get article failed:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        res.status(500).json({ success: false, message: '文章加载失败' });
     }
-});
-
-router.get('/:id', (req, res) => {
+}
+router.get('/:id/live/:nonce', optionalAuth, sendArticle);
+router.get('/:id', optionalAuth, sendArticle);
+router.post('/:id/read', optionalAuth, createRateLimiter({ windowMs: 60000, max: 30, keyPrefix: 'article-read' }), (req, res) => {
     try {
-        const article = findPublicArticle(req.params.id);
-        if (!article) {
-            return res.status(404).json({ success: false, message: '请求处理失败' });
-        }
-
-        articleRepository.incrementArticleViews(req.params.id);
-        res.json({ success: true, data: withParsedTags(article) });
+        const result = engagement.completeRead(req);
+        if (result.counted) responseCache.delPrefix('public:articles:');
+        res.json({ success: true, data: result });
     } catch (error) {
-        console.error('Get article failed:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        console.error('Record article read failed:', error);
+        res.status(500).json({ success: false, message: '阅读记录暂未保存' });
     }
 });
 

@@ -10,7 +10,7 @@ function normalizedOptions(options = {}) {
   return {
     page: Math.max(1, Number.parseInt(options.page, 10) || 1),
     limit: Math.max(1, Math.min(Number.parseInt(options.limit, 10) || STAGE_PAGE_SIZE, 24)),
-    sort: options.sort === 'featured' ? 'featured' : 'latest',
+    sort: ['latest', 'daily'].includes(options.sort) ? options.sort : 'featured',
     category: String(options.category || '').trim().slice(0, 48),
     search: String(options.search || '').trim().slice(0, 120)
   };
@@ -49,6 +49,7 @@ export async function loadStageArticles(options = {}, { force = false } = {}) {
       .then((result) => {
         if (!result.success) throw new Error(result.message || 'Unable to load articles');
         return rememberPage(key, {
+          recommendationDate: result.recommendationDate || '',
           articles: Array.isArray(result.data) ? result.data : [],
           pagination: {
             page: Math.max(1, Number.parseInt(result.pagination?.page, 10) || normalized.page),

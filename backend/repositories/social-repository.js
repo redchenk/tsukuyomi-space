@@ -1,4 +1,5 @@
 const db = require('../db');
+const { rewardInteraction } = require('../services/article-engagement');
 const { compactAvatar } = require('../utils/avatar');
 
 const MENTION_PATTERN = /@([A-Za-z0-9_\-\u4e00-\u9fff\u3040-\u30ff]{2,32})/gu;
@@ -80,13 +81,15 @@ function followStats(userId) {
     };
 }
 
-function bookmarkArticle(userId, articleId) {
+const bookmarkArticle = db.transaction((userId, articleId) => {
     if (!userId || !articleId) return 0;
-    return db.prepare(`
+    const added = db.prepare(`
         INSERT OR IGNORE INTO article_bookmarks (user_id, article_id)
         VALUES (?, ?)
     `).run(userId, articleId).changes;
-}
+    if (added) rewardInteraction(articleId, userId, 'bookmark');
+    return added;
+});
 
 function articleLikeStatus(userId, articleId) {
     return {
@@ -95,11 +98,14 @@ function articleLikeStatus(userId, articleId) {
     };
 }
 
-function setArticleLike(userId, articleId, liked) {
-    if (liked) db.prepare('INSERT OR IGNORE INTO article_likes (user_id, article_id) VALUES (?, ?)').run(userId, articleId);
+const setArticleLike = db.transaction((userId, articleId, liked) => {
+    if (liked) {
+        const added = db.prepare('INSERT OR IGNORE INTO article_likes (user_id, article_id) VALUES (?, ?)').run(userId, articleId);
+        if (added.changes) rewardInteraction(articleId, userId, 'like');
+    }
     else db.prepare('DELETE FROM article_likes WHERE user_id = ? AND article_id = ?').run(userId, articleId);
     return articleLikeStatus(userId, articleId);
-}
+});
 
 function unbookmarkArticle(userId, articleId) {
     return db.prepare(`

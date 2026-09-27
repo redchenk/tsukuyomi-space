@@ -127,7 +127,7 @@ test('global image bloom covers dynamic images and avoids replaying cached image
     expect(await cached.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
 });
 
-test('pinned articles stay first while featured and latest keep their own order', async ({ page }) => {
+test('stage defaults to featured and preserves daily and latest selections', async ({ page }) => {
     const articles = [
         { ...article, id: 'featured', title: '精选旧文', pinned_at: null, featured_score: 72, like_count: 20, bookmark_count: 12, created_at: '2026-01-01', published_at: '2026-01-01', excerpt: '旧文摘要' },
         { ...article, id: 'pinned', title: '置顶文章', pinned_at: '2026-09-10', featured_score: 8, like_count: 0, bookmark_count: 0, created_at: '2025-01-01', published_at: '2025-01-01', excerpt: '置顶摘要' },
@@ -139,26 +139,29 @@ test('pinned articles stay first while featured and latest keep their own order'
         const sort = params.get('sort');
         requestedSorts.push(sort);
         expect(params.get('limit')).toBe('6');
-        const data = sort === 'featured'
-            ? [articles[1], articles[0], articles[2]]
-            : [articles[1], articles[2], articles[0]];
-        return route.fulfill({ json: { success: true, data, pagination: { page: 1, limit: 6, totalPages: 1, total: 3 } } });
+        const data = sort === 'daily' ? [articles[0], articles[2]] : sort === 'featured'
+            ? [articles[0], articles[2], articles[1]] : [articles[2], articles[0], articles[1]];
+        return route.fulfill({ json: { success: true, data, recommendationDate: '2026-09-27', pagination: { page: 1, limit: 6, totalPages: 1, total: data.length } } });
     });
     await page.goto('/stage');
-    await expect(page.getByRole('button', { name: '最新优先', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '最新文章', '精选旧文']);
-    await expect(page.locator('.stage-card').nth(2).getByLabel('20 点赞')).toBeVisible();
-    await expect(page.locator('.stage-card').nth(2).getByLabel('12 收藏')).toBeVisible();
+    await expect(page.getByRole('button', { name: '精选优先', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.stage-card-title')).toHaveText(['精选旧文', '最新文章', '置顶文章']);
+    await expect(page.locator('.stage-card').first().getByLabel('20 点赞')).toBeVisible();
+    await expect(page.locator('.stage-card').first().getByLabel('12 收藏')).toBeVisible();
     await expect(page.locator('.stage-card .read-time')).toHaveCount(0);
     await expect(page.locator('.stage-card').first()).toHaveAttribute('href', /from=%2Fstage$/);
-    await page.getByRole('button', { name: '精选优先', exact: true }).click();
-    await expect(page).toHaveURL(/sort=featured/);
-    await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '精选旧文', '最新文章']);
-    await expect(page.locator('.stage-card').first()).toHaveAttribute('href', /from=.*sort%3Dfeatured/);
+    await page.getByRole('button', { name: '最新优先', exact: true }).click();
+    await expect(page).toHaveURL(/sort=latest/);
+    await expect(page.locator('.stage-card-title')).toHaveText(['最新文章', '精选旧文', '置顶文章']);
+    await page.getByRole('button', { name: '每日推荐', exact: true }).click();
+    await expect(page).toHaveURL(/sort=daily/);
+    await expect(page.locator('.stage-card-title')).toHaveText(['精选旧文', '最新文章']);
+    await expect(page.locator('.stage-ranking-hint')).toContainText('2026-09-27');
+    await expect(page.locator('.stage-card').first()).toHaveAttribute('href', /from=.*sort%3Ddaily/);
     await page.reload();
-    await expect(page.getByRole('button', { name: '精选优先', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('.stage-card-title')).toHaveText(['置顶文章', '精选旧文', '最新文章']);
-    expect(requestedSorts).toEqual(['latest', 'featured', 'featured']);
+    await expect(page.getByRole('button', { name: '每日推荐', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.stage-card-title')).toHaveText(['精选旧文', '最新文章']);
+    expect(requestedSorts).toEqual(['featured', 'latest', 'daily', 'daily']);
 });
 
 test('stage requests only the current server page', async ({ page }) => {
@@ -269,4 +272,20 @@ test('image cards retain readable text in the mobile light theme', async ({ page
     await page.goto('/hub');
     await expect(page.locator('.scene-card').first().locator('.scene-name')).toHaveCSS('color', 'rgb(255, 255, 255)');
     await expect(page.locator('.site-global-bg')).toHaveCSS('opacity', '1');
+});
+
+
+test('growth shows article reward rules and survives a direct refresh on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/login?redirect=%2Fgrowth');
+    await page.getByLabel('用户名或邮箱', { exact: true }).fill('e2e-user');
+    await page.getByLabel('密码', { exact: true }).fill('e2e-password');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page).toHaveURL(/\/growth$/);
+    await expect(page.locator('.growth-articles')).toContainText('有效阅读 +1');
+    await page.reload();
+    await expect(page.locator('.growth-articles')).toContainText('首次点赞 +2');
+    await expect(page.locator('.growth-articles')).toContainText('首次收藏 +5');
+    await expect(page.locator('.growth-articles')).toContainText('已补发历史经验');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

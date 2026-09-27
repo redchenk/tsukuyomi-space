@@ -32,6 +32,10 @@ const RANDOM_DAILY_TASKS = Object.freeze([
 const DAILY_ACTIVITY_KEYS = new Set(RANDOM_DAILY_TASKS.flatMap((task) => task.activities));
 
 const EVENT_LABELS = Object.freeze({
+    article_view: '文章获得有效阅读',
+    article_like: '文章获得点赞',
+    article_bookmark: '文章获得收藏',
+    article_history: '文章历史经验补发',
     checkin: '每日签到',
     daily_chat: '与八千代聊天',
     daily_share: '分享月读空间',
@@ -222,6 +226,17 @@ function buildState(userId, now = new Date()) {
 
     return {
         serverDate: today,
+        articles: {
+            rates: { view: 1, like: 2, bookmark: 5 },
+            ...db.prepare(`SELECT
+                COALESCE(SUM(CASE WHEN event_key = 'article_view' THEN xp WHEN event_key = 'article_history' THEN COALESCE(json_extract(metadata_json, '$.views'), 0) * 1 ELSE 0 END), 0) AS viewXp,
+                COALESCE(SUM(CASE WHEN event_key = 'article_like' THEN xp WHEN event_key = 'article_history' THEN COALESCE(json_extract(metadata_json, '$.likes'), 0) * 2 ELSE 0 END), 0) AS likeXp,
+                COALESCE(SUM(CASE WHEN event_key = 'article_bookmark' THEN xp WHEN event_key = 'article_history' THEN COALESCE(json_extract(metadata_json, '$.bookmarks'), 0) * 5 ELSE 0 END), 0) AS bookmarkXp,
+                COALESCE(SUM(CASE WHEN event_key = 'article_history' THEN xp ELSE 0 END), 0) AS historyXp,
+                COALESCE(SUM(xp), 0) AS totalXp
+                FROM user_growth_events WHERE user_id = ?
+                AND event_key IN ('article_view', 'article_like', 'article_bookmark', 'article_history')`).get(userId)
+        },
         level,
         streak: {
             current: activeStreak,
@@ -490,6 +505,8 @@ function getPublicLevels(userIds = []) {
 }
 
 module.exports = {
+    ensureProfile,
+    insertEvent,
     DAILY_ACTIONS,
     LEVELS,
     RANDOM_DAILY_TASKS,

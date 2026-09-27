@@ -26,12 +26,13 @@ const articlePagination = ref({ page: 1, limit: STAGE_PAGE_SIZE, total: 0, total
 const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
-const stageOrder = ref('latest');
-const stageSortCopy = computed(() => ({ zh: ['精选优先', '最新优先', '编辑推荐'], ja: ['おすすめ順', '新着順', '編集部おすすめ'], en: ['Featured first', 'Latest first', 'Editor pick'] }[props.lang]));
+const stageOrder = ref('featured');
+const recommendationDate = ref('');
+const stageSortCopy = computed(() => ({ zh: ['精选优先', '每日推荐', '最新优先', '编辑推荐'], ja: ['おすすめ順', '今日のおすすめ', '新着順', '編集部おすすめ'], en: ['Featured first', 'Daily picks', 'Latest first', 'Editor pick'] }[props.lang]));
 const stageRankingCopy = computed(() => ({
-  zh: { hint: '综合正文内容、阅读、点赞与收藏排序，兼顾新文章。', views: '阅读', likes: '点赞', bookmarks: '收藏' },
-  ja: { hint: '本文・閲覧・いいね・保存を総合し、新しい記事も考慮します。', views: '閲覧', likes: 'いいね', bookmarks: '保存' },
-  en: { hint: 'Ranked by content, readership, likes and bookmarks, with room for new articles.', views: 'views', likes: 'likes', bookmarks: 'bookmarks' }
+  zh: { hint: '综合内容、有效阅读、点赞与收藏，每日轮换推荐，也让新作与较少曝光的创作被看见。', views: '阅读', likes: '点赞', bookmarks: '收藏' },
+  ja: { hint: '本文・閲覧・いいね・保存から毎日更新。新作やまだ見つかっていない作品も紹介します。', views: '閲覧', likes: 'いいね', bookmarks: '保存' },
+  en: { hint: 'Daily rotation balances content, qualified reads, likes and saves, making room for new and less-seen work.', views: 'views', likes: 'likes', bookmarks: 'bookmarks' }
 }[props.lang]));
 let applyingStageQuery = false;
 const { categories: articleCategories, revision: categoryRevision } = useArticleCategories();
@@ -91,7 +92,7 @@ const stageRangeSummary = computed(() => stageTotalArticles.value
 const stagePageSummary = computed(() => `${stagePageCopy.value.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.value.pageSuffix} / ${stagePageCopy.value.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.value.pageSuffix}`);
 const stageReturnPath = computed(() => {
   const params = new URLSearchParams();
-  if (stageOrder.value === 'featured') params.set('sort', 'featured');
+  if (stageOrder.value !== 'featured') params.set('sort', stageOrder.value);
   if (stageCurrentPage.value > 1) params.set('page', String(stageCurrentPage.value));
   if (stageCategory.value !== 'all') params.set('category', stageCategory.value);
   const search = stageSearch.value.trim();
@@ -112,7 +113,7 @@ function queryPage(value) {
 
 function applyStageQuery(query = {}) {
   applyingStageQuery = true;
-  stageOrder.value = queryValue(query.sort) === 'featured' ? 'featured' : 'latest';
+  stageOrder.value = ['daily', 'latest'].includes(queryValue(query.sort)) ? queryValue(query.sort) : 'featured';
   const category = queryValue(query.category);
   stageCategory.value = category && (!categoryRevision.value || categories.value.includes(category)) ? category : 'all';
   stageSearch.value = String(queryValue(query.q)).slice(0, 120);
@@ -194,6 +195,7 @@ async function loadArticles() {
     if (requestRevision !== stageRequestRevision) return;
     articles.value = reconcileArticleCategories(result.articles);
     articlePagination.value = result.pagination;
+    recommendationDate.value = result.recommendationDate;
     if (stagePage.value > result.pagination.totalPages) {
       stagePage.value = result.pagination.totalPages;
       return;
@@ -330,10 +332,10 @@ onBeforeUnmount(() => {
       </button>
     </div>
       <div class="stage-order" :aria-label="lang === 'en' ? 'Sort articles' : lang === 'ja' ? '記事の並び順' : '文章排序'">
-        <button v-for="(order, index) in ['featured', 'latest']" :key="order" type="button" :aria-pressed="stageOrder === order" @click="stageOrder = order">{{ stageSortCopy[index] }}</button>
+        <button v-for="(order, index) in ['featured', 'daily', 'latest']" :key="order" type="button" :aria-pressed="stageOrder === order" @click="stageOrder = order">{{ stageSortCopy[index] }}</button>
       </div>
     </div>
-    <p v-if="stageOrder === 'featured'" class="stage-ranking-hint">{{ stageRankingCopy.hint }}</p>
+    <p v-if="stageOrder !== 'latest'" class="stage-ranking-hint"><span v-if="recommendationDate">{{ recommendationDate }} · </span>{{ stageRankingCopy.hint }}</p>
     <div v-if="!articlesLoading && filteredArticles.length" class="stage-result-strip">
       <div>
         <span class="stage-result-count">{{ stageResultSummary }}</span>
@@ -358,7 +360,7 @@ onBeforeUnmount(() => {
       >
         <div class="stage-card-body">
           <div class="stage-card-meta">
-            <span v-if="article.pinned_at" class="stage-featured-label">{{ stageSortCopy[2] }}</span>
+            <span v-if="article.pinned_at" class="stage-featured-label">{{ stageSortCopy[3] }}</span>
             <span class="tag">{{ article.category }}</span>
             <span
               class="tag tag-author stage-author stage-author-link"

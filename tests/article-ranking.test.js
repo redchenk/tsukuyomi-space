@@ -68,7 +68,7 @@ before(async () => {
     baseUrl = `http://127.0.0.1:${server.address().port}`;
     const insert = db.prepare(`INSERT INTO articles (title, content, category, view_count, published_at, status, pinned_at)
         VALUES (?, ?, 'ranking-fixture', ?, ?, ?, ?)`);
-    emptyId = Number(insert.run('置顶空文', 'wu', 1000000, '2026-09-15', 'published', '2026-09-15').lastInsertRowid);
+    emptyId = Number(insert.run('置顶空文', 'wu', 1000000, '2026-01-15', 'published', '2026-09-15').lastInsertRowid);
     for (let i = 0; i < 105; i++) insert.run(`短文${i}`, '一句记录', 10, '2026-09-10', 'published', null);
     strongId = Number(insert.run('实质内容', prose, 50, '2026-09-01', 'published', null).lastInsertRowid);
     draftId = Number(insert.run('未发布内容', prose, 1000000, '2026-09-15', 'draft', null).lastInsertRowid);
@@ -92,17 +92,20 @@ async function call(url, { method = 'GET', body, authenticated = false } = {}) {
     return { response, body: await response.json() };
 }
 
-test('pins stay first while featured and latest preserve their own order before pagination', async () => {
+test('featured rotation ranks substance above empty pins with stable pagination', async () => {
     const query = '/api/articles?category=ranking-fixture&limit=2';
     const pinned = await call(query);
     const latest = await call(query + '&sort=latest');
     const featured = await call(query + '&sort=featured');
     assert.equal(pinned.body.data[0].id, emptyId);
-    assert.equal(latest.body.data[0].id, emptyId);
-    assert.equal(featured.body.data[0].id, emptyId);
-    assert.equal(featured.body.data[1].id, strongId);
+    assert.notEqual(latest.body.data[0].id, emptyId); // old pins do not override latest
+    assert.equal(featured.body.data[0].id, strongId);
+    assert.equal(featured.body.data[1].id, emptyId);
     assert.equal(featured.body.pagination.total, 107);
-    assert.ok(featured.body.data[1].featured_score > featured.body.data[0].featured_score);
+    const daily = await call(query + '&sort=daily');
+    assert.deepEqual(daily.body.data.map(a => a.id), [strongId]);
+    assert.equal(daily.body.pagination.total, 1);
+    assert.ok(featured.body.data[0].featured_score > featured.body.data[1].featured_score);
     assert.equal(featured.body.data[1].like_count, 0);
     assert.equal(featured.body.data[1].bookmark_count, 0);
     assert.equal('content' in featured.body.data[0], false);
@@ -112,7 +115,7 @@ test('pins stay first while featured and latest preserve their own order before 
     assert.equal(new Set(pages.map(row => row.id)).size, 107);
     assert.ok(!pages.some(row => row.id === draftId));
     const live = await call('/api/live/ranking/articles?category=ranking-fixture&limit=1&sort=featured');
-    assert.equal(live.body.data[0].id, emptyId);
+    assert.equal(live.body.data[0].id, strongId);
 });
 
 test('server-side article search keeps pagination compact and searches titles and generated excerpts', async () => {
@@ -145,7 +148,7 @@ test('article likes are authenticated, idempotent, reversible and invalidate the
     assert.deepEqual((await call(route + '/status', { authenticated: true })).body.data, liked.body.data);
     const after = (await call(listing)).body.data.find(row => row.id === strongId);
     assert.equal(after.like_count, 1);
-    assert.ok(after.featured_score > before.featured_score);
+    assert.equal(after.featured_score, before.featured_score); // daily snapshot stays stable
     const detail = await call(`/api/articles/${strongId}`);
     assert.equal(detail.body.data.like_count, 1);
     assert.equal(detail.body.data.bookmark_count, 0);
@@ -154,13 +157,13 @@ test('article likes are authenticated, idempotent, reversible and invalidate the
     assert.equal((await call(listing)).body.data.find(row => row.id === strongId).like_count, 0);
 });
 
-test('bookmarks refresh featured scores immediately and article deletion removes endorsements', async () => {
+test('bookmarks refresh counts immediately while retaining the daily snapshot and article deletion removes endorsements', async () => {
     const listing = '/api/articles?category=ranking-fixture&sort=featured';
     const before = (await call(listing)).body.data.find(row => row.id === strongId);
     await call(`/api/user/bookmarks/${strongId}`, { method: 'POST', authenticated: true });
     const saved = (await call(listing)).body.data.find(row => row.id === strongId);
     assert.equal(saved.bookmark_count, 1);
-    assert.ok(saved.featured_score > before.featured_score);
+    assert.equal(saved.featured_score, before.featured_score); // new signals feed tomorrow's snapshot
     await call(`/api/user/bookmarks/${strongId}`, { method: 'DELETE', authenticated: true });
     assert.equal((await call(listing)).body.data.find(row => row.id === strongId).bookmark_count, 0);
     await call(`/api/user/article-likes/${emptyId}`, { method: 'POST', authenticated: true });
