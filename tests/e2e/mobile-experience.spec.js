@@ -30,7 +30,7 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
     await openPage(page, '/stage');
     await page.evaluate(() => window.scrollTo({ top: 200, behavior: 'instant' }));
     const scrollY = await page.evaluate(() => window.scrollY);
-    const trigger = page.locator('.mobile-bottom-nav button');
+    const trigger = page.locator('.site-mobile-navigation-trigger');
     await trigger.click();
     const dialog = page.getByRole('dialog', { name: '更多' });
     await expect(dialog).toBeVisible();
@@ -62,7 +62,7 @@ test('mobile navigation traps focus, locks scroll, restores focus and follows ro
 test('navigation fits a landscape viewport and releases the page on desktop resize', async ({ page }) => {
     await page.setViewportSize({ width: 740, height: 390 });
     await openPage(page, '/plaza');
-    await page.locator('.mobile-bottom-nav button').click();
+    await page.locator('.site-mobile-navigation-trigger').click();
     const dialog = page.locator('#site-navigation');
     const box = await dialog.boundingBox();
     expect(box.y).toBeGreaterThanOrEqual(0);

@@ -65,7 +65,8 @@ test('mobile history stays in place during a reply and returns to the latest bub
     await expect.poll(remaining).toBeLessThan(24);
     await expect(page.getByRole('button', { name: '回到最新消息', exact: true })).toBeHidden();
     const composer = await page.locator('.chat-input-row').boundingBox();
-    const nav = await page.locator('.mobile-bottom-nav').boundingBox();
-    expect(composer.y + composer.height).toBeLessThanOrEqual(nav.y);
+    await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
+    expect(composer.y + composer.height).toBeLessThanOrEqual(844 - 12);
+    expect(composer.y + composer.height).toBeGreaterThan(844 - 40);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

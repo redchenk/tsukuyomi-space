@@ -295,6 +295,7 @@ onUnmounted(() => {
         <button class="site-account-trigger" type="button" :aria-label="copy.account" :aria-expanded="navOpen && menuMode === 'account'" aria-controls="site-navigation" @click="openNavigation('account', $event)">
           <img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28"><span v-else class="site-account-avatar"><TsIcon name="user" :size="18" /></span><span class="site-account-name">{{ isAuthed ? user?.username || accountLabel : t.login }}</span><TsIcon name="chevronDown" :size="12" />
         </button>
+        <button class="site-mobile-navigation-trigger" :class="{ active: moreActive }" type="button" :aria-label="copy.explore" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" aria-haspopup="dialog" @click="openNavigation('explore', $event)"><TsIcon name="menu" :size="19" /><span>{{ copy.explore }}</span></button>
         <a class="site-room-cta" href="/room" :aria-current="isRoom || routeName === 'roomSettings' ? 'page' : undefined" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })"><TsIcon name="moon" :size="17" /><span>{{ copy.enterRoom }}</span></a>
       </div>
     </header>
@@ -306,6 +307,9 @@ onUnmounted(() => {
       </div>
       <template v-if="menuMode === 'explore'">
         <button class="site-menu-search" type="button" @click="openSearch"><TsIcon name="search" :size="18" /><span>{{ copy.searchHint }}</span><kbd>⌘ K</kbd></button>
+        <nav class="site-mobile-shortcuts" :aria-label="t.mobilePrimaryNavigation">
+          <a v-for="item in mobilePrimaryItems" :key="item.key" :href="item.path" :aria-current="item.active ? 'page' : undefined" @pointerenter="warmRoutePath(item.path)" @focus="warmRoutePath(item.path)" @pointerdown="item.spa && warmRoutePath(item.path)" @click="navigate($event, item)"><TsIcon :name="item.icon" :size="20" /><span>{{ item.label }}</span></a>
+        </nav>
         <div class="site-explore-columns">
           <section v-for="group in exploreGroups" :key="group.title" class="site-nav-section">
             <h3>{{ group.title }}</h3>
@@ -325,37 +329,6 @@ onUnmounted(() => {
       </div>
     </dialog>
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="$emit('go', $event)" />
-
-    <nav v-if="showChrome" class="mobile-bottom-nav" data-material="header" :aria-label="t.mobilePrimaryNavigation">
-      <a
-        v-for="item in mobilePrimaryItems"
-        :key="item.key"
-        :href="item.path"
-        class="mobile-bottom-link"
-        :class="{ active: item.active }"
-        :aria-current="item.active ? 'page' : undefined"
-        :aria-label="item.label"
-        @pointerenter="item.spa && warmRoutePath(item.path)"
-        @focus="item.spa && warmRoutePath(item.path)"
-        @pointerdown="item.spa && warmRoutePath(item.path)"
-        @click="navigate($event, item)"
-      >
-        <TsIcon :name="item.icon" :size="20" />
-        <span>{{ mobileNavLabel(item) }}</span>
-      </a>
-      <button
-        class="mobile-bottom-link"
-        :class="{ active: moreActive }"
-        type="button"
-        :aria-label="moreLabel"
-        :aria-expanded="navOpen"
-        aria-controls="site-navigation"
-        @click="openNavigation('explore', $event)"
-      >
-        <TsIcon name="menu" :size="20" />
-        <span>{{ moreLabel }}</span>
-      </button>
-    </nav>
 
     <SiteMusicDrawer v-if="showChrome && music && routeName !== 'game'" :music="music" />
     <slot></slot>

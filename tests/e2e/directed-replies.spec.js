@@ -63,7 +63,7 @@ for (const width of [390, 1280]) {
         await expect(shortcuts).toBeInViewport();
         const quick = await shortcuts.boundingBox();
         expect(quick.y + quick.height).toBeLessThanOrEqual(844);
-        for (const element of [page.getByRole('button', { name: 'Expand music drawer' }), page.getByRole('button', { name: '打开八千代 AI 使用向导' }), ...(width < 861 ? [page.locator('.mobile-bottom-nav')] : [])]) {
+        for (const element of [page.getByRole('button', { name: 'Expand music drawer' }), page.getByRole('button', { name: '打开八千代 AI 使用向导' })]) {
             const box = await element.boundingBox();
             expect(box).not.toBeNull();
             expect(quick.x < box.x + box.width && quick.x + quick.width > box.x && quick.y < box.y + box.height && quick.y + quick.height > box.y).toBe(false);

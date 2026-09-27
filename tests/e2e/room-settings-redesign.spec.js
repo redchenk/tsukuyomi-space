@@ -64,10 +64,14 @@ test(`all Room settings categories fit the mobile ${theme} layout`, async ({ pag
       });
     }
     const save = await page.locator('.settings-savebar').boundingBox();
-    const nav = await page.locator('.mobile-bottom-nav').boundingBox();
+    await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
     const music = await page.locator('.site-music-panel').boundingBox();
-    expect(save.y + save.height).toBeLessThanOrEqual(nav.y);
+    expect(save.y + save.height).toBeCloseTo(844, 0);
     expect(music.y + music.height).toBeLessThan(save.y);
+    await page.getByRole('button', { name: 'Expand music drawer', exact: true }).click();
+    const player = await page.locator('.site-music-panel').boundingBox();
+    expect(player.y + player.height).toBeLessThan(save.y);
+    await page.getByRole('button', { name: 'Collapse music drawer', exact: true }).click();
     await expect(page.locator('.settings-savebar .primary-btn')).toHaveCSS('border-radius', '999px');
 });
 }

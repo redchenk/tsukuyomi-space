@@ -26,6 +26,7 @@
 .unified-navigation .desktop-navigation :is(a[aria-current], button.active, button[aria-expanded="true"]) { color: var(--ts-accent); }
 .unified-navigation .desktop-navigation a[aria-current]::after { content: ''; position: absolute; bottom: 1px; left: calc(50% - 8px); width: 16px; height: 2px; border-radius: 2px; background: var(--ts-accent); }
 .site-header-tools { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.site-mobile-navigation-trigger, .site-mobile-shortcuts { display: none; }
 .site-tool-button, .site-account-trigger, .site-search-trigger, .site-preference-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 8px; min-height: 44px; border: 1px solid transparent; border-radius: var(--ts-radius-button); background: transparent; color: var(--ts-text); font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; }
 .site-tool-button { width: 44px; padding: 0; }
 .site-search-trigger { padding: 0 12px; border-color: var(--ts-border); background: var(--ts-editorial-soft); color: var(--ts-muted); }
@@ -126,32 +127,38 @@
 @media (max-width: 860px) {
   #app {
     --site-companion-width: clamp(5.15rem, 24vw, 6.35rem);
-    --site-companion-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    --site-companion-bottom: max(12px, env(safe-area-inset-bottom));
   }
   #app:has(.site-pet-route-hub) {
     --site-companion-width: clamp(3.6rem, 16vw, 4.25rem);
-    --site-companion-bottom: calc(6.2rem + env(safe-area-inset-bottom));
+    --site-companion-bottom: max(12px, env(safe-area-inset-bottom));
   }
   /* Match the music button's center to the companion's center, including the
      smaller Hub sprite. The open player keeps its existing available space. */
   .unified-navigation:not(.room-shell):not(:has(.room-settings-page)) .site-music-drawer:not(.is-open) {
     bottom: calc(var(--site-companion-bottom) + var(--site-companion-width) * 208 / 192 / 2 - 22px);
   }
-  .site-navigation-dialog { --site-menu-shift: 8px; transform-origin: bottom center; }
+  .unified-navigation:not(.room-shell):not(:has(.room-settings-page)) .site-music-drawer.is-open { bottom: var(--site-companion-bottom); max-height: calc(100dvh - 100px); }
+  .unified-navigation:not(.room-shell) .site-music-drawer.is-open .site-music-panel { max-height: calc(100dvh - 100px); overflow-y: auto; }
+  .site-navigation-dialog { --site-menu-shift: -8px; transform-origin: top right; }
   .unified-navigation { --site-nav-edge: 12px; }
   .unified-navigation .topbar.site-commandbar { inset: max(10px, env(safe-area-inset-top)) 12px auto; height: 60px; padding: 8px 10px 8px 14px; gap: 8px; border-radius: var(--ts-radius-lg, 24px); }
   .unified-navigation .site-brand { min-width: 0; flex: 1 1 auto; gap: 0; }
-  .unified-navigation .site-brand-symbol, .unified-navigation .desktop-navigation, .site-room-cta, .site-account-name, .site-account-trigger > svg, .site-search-trigger :is(span, kbd) { display: none; }
+  .unified-navigation .site-brand-symbol, .unified-navigation .desktop-navigation, .site-room-cta, .site-account-name, .site-account-trigger > svg, .site-search-trigger :is(span, kbd), .site-theme-button { display: none; }
   .unified-navigation .site-brand strong { font-size: 19px; letter-spacing: .06em; overflow: hidden; text-overflow: ellipsis; }
   .unified-navigation .site-brand small { max-width: 150px; overflow: hidden; text-overflow: ellipsis; font-size: 9px; }
-  .site-header-tools { gap: 0; }
+  .site-header-tools { gap: 0; flex-shrink: 0; }
   .site-search-trigger { width: 44px; padding: 0; border: 0; background: transparent; color: var(--ts-text); }
   .site-account-trigger { width: 44px; padding: 0; }
   .unified-navigation.content-shell .page { padding-top: calc(94px + env(safe-area-inset-top)); }
-  .unified-navigation .mobile-bottom-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; border-radius: var(--ts-radius-lg, 24px); background: var(--ts-editorial-surface); }
-  .unified-navigation .mobile-bottom-link { min-width: 0; border-radius: var(--ts-radius-button); }
-  .unified-navigation .mobile-bottom-link span { white-space: nowrap; font-size: 10px; }
-  .site-navigation-dialog, .site-navigation-dialog.is-account-menu { inset: auto 12px max(12px, env(safe-area-inset-bottom)); width: auto; max-height: calc(var(--ts-visual-height, 100dvh) - 36px); padding: 20px; }
+  .site-mobile-navigation-trigger { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 44px; height: 44px; padding: 3px; border: 1px solid transparent; border-radius: var(--ts-radius-button); color: var(--ts-text); background: transparent; font: inherit; cursor: pointer; }
+  .site-mobile-navigation-trigger span { font-size: 9px; line-height: 12px; white-space: nowrap; }
+  .site-mobile-navigation-trigger:is(.active, :hover, [aria-expanded="true"]) { color: var(--ts-accent); background: var(--ts-editorial-soft); }
+  .site-mobile-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 20px; }
+  .site-mobile-shortcuts a { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 10px 14px; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-button); background: var(--ts-editorial-soft); color: var(--ts-text); text-decoration: none; font-size: 13px; }
+  .site-mobile-shortcuts a svg { flex: 0 0 auto; color: var(--ts-accent); }
+  .site-mobile-shortcuts a[aria-current] { color: var(--ts-accent); border-color: var(--ts-accent); }
+  .site-navigation-dialog, .site-navigation-dialog.is-account-menu { inset: calc(max(10px, env(safe-area-inset-top)) + 68px) 12px auto; width: auto; max-height: calc(var(--ts-visual-height, 100dvh) - max(10px, env(safe-area-inset-top)) - 80px - env(safe-area-inset-bottom)); padding: 20px; }
   .site-explore-columns { grid-template-columns: 1fr; gap: 16px; }
   .site-nav-section { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 8px; }
   .site-nav-section h3 { grid-column: 1 / -1; }
@@ -169,8 +176,11 @@
   .unified-navigation.room-shell .room-stage-scene { top: calc(150px + env(safe-area-inset-top)); }
   /* Rebuild the fixed navigation's paint tree after the keyboard closes.
      Keeping it laid out with visibility:hidden can leave iOS text layers blank. */
-  .unified-navigation.is-keyboard-open .site-commandbar,
-  .unified-navigation.is-keyboard-open .mobile-bottom-nav { display: none; }
+  .unified-navigation.is-keyboard-open .site-commandbar { display: none; }
+}
+@media (max-width: 340px) {
+  .unified-navigation .site-brand strong { font-size: 17px; }
+  .unified-navigation:not(.room-shell):not(:has(.room-settings-page)) .site-music-drawer.is-open { bottom: calc(var(--site-companion-bottom) + var(--site-companion-width) * 208 / 192 + 12px); }
 }
 @media (max-width: 374px) {
   .site-theme-button { display: none; }

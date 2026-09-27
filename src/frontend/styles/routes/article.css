@@ -18,8 +18,9 @@
 @media (max-width: 860px) {
   .article-page .comment-header { align-items: flex-start; flex-direction: column; gap: 6px; }
   .article-page .comment-author-link { max-width: 100%; }
-  .article-quick-nav { left: 50%; right: auto; bottom: calc(86px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; }
+  .article-quick-nav { left: 50%; right: auto; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; }
   .article-quick-button { width: 44px; padding: 10px; }
   .article-quick-button span { display: none; }
   .is-keyboard-open .article-quick-nav { display: none; }
+  body:has(.site-music-drawer.is-open) .article-quick-nav { visibility: hidden; }
 }

@@ -1222,8 +1222,8 @@
     max-width: 17em;
   }
   .settings-savebar {
-    padding: 12px 16px;
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    bottom: 0;
   }
   .settings-savebar-inner {
     gap: 8px;
@@ -1326,14 +1326,11 @@
     grid-column: 1/-1;
     margin-top: 0;
   }
-  .settings-savebar {
-    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-  }
-  .app-shell:has(.room-settings-page) .site-music-drawer:not(.is-open) {
-    top: calc(20px + env(safe-area-inset-top, 0px));
-    bottom: auto;
-    left: auto;
-    right: 113px;
+  .app-shell:has(.room-settings-page) .site-music-drawer {
+    top: auto;
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    left: max(12px, env(safe-area-inset-left));
+    right: auto;
   }
 }
 .room-settings-page input[role='switch'] {

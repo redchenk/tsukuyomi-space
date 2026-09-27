@@ -30,8 +30,7 @@ test('Room input remains above an overlay keyboard and composition never sends a
         window.visualViewport.dispatchEvent(new Event('resize'));
     });
     await expect(page.locator('.app-shell')).toHaveClass(/is-keyboard-open/);
-    await expect(page.locator('.mobile-bottom-nav')).toHaveCSS('visibility', 'hidden');
-    expect(await page.locator('.mobile-bottom-nav').boundingBox()).toBeNull();
+    await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
     expect(await page.locator('.site-commandbar').boundingBox()).toBeNull();
     const box = await input.boundingBox();
     expect(box.y).toBeGreaterThanOrEqual(0);
@@ -60,7 +59,7 @@ test('Room input remains above an overlay keyboard and composition never sends a
         window.visualViewport.dispatchEvent(new Event('resize'));
     });
     await expect(page.locator('.app-shell')).not.toHaveClass(/is-keyboard-open/);
-    await expect(page.locator('.mobile-bottom-nav')).toHaveCSS('visibility', 'visible');
+    await expect(page.locator('.site-commandbar')).toBeVisible();
     expect((await header.boundingBox()).y).toBeCloseTo(initialHeader.y, 0);
     expect((await stage.boundingBox()).height).toBeCloseTo(initialStage.height, 0);
     // A second IME cycle must restore the labels as well as the icon surfaces.
@@ -70,15 +69,15 @@ test('Room input remains above an overlay keyboard and composition never sends a
         window.visualViewport.height = 430;
         window.visualViewport.dispatchEvent(new Event('resize'));
     });
-    await expect(page.locator('.mobile-bottom-nav')).toBeHidden();
+    await expect(page.locator('.site-commandbar')).toBeHidden();
     await input.blur();
     await page.evaluate(() => {
         window.visualViewport.height = 844;
         window.visualViewport.dispatchEvent(new Event('resize'));
     });
     await expect(page.locator('.app-shell')).not.toHaveClass(/is-keyboard-open/);
-    const labels = page.locator('.mobile-bottom-link > span');
-    await expect(labels).toHaveText(['中枢', '房间', '广场', '舞台', '更多']);
+    const labels = page.locator('.site-mobile-navigation-trigger > span');
+    await expect(labels).toHaveText(['探索']);
     for (const label of await labels.all()) {
         await expect(label).toBeVisible();
         await expect(label).toBeInViewport();
@@ -86,6 +85,6 @@ test('Room input remains above an overlay keyboard and composition never sends a
     }
     await expect(page.locator('.site-brand strong')).toBeVisible();
     await expect(input).toHaveValue('中文输入测试');
-    await page.locator('.mobile-bottom-nav button').click();
+    await page.locator('.site-mobile-navigation-trigger').click();
     await expect(page.locator('#site-navigation')).toBeVisible();
 });

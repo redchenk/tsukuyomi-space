@@ -74,8 +74,9 @@ for (const width of [360, 390, 860, 1024, 1440]) {
         if (width <= 860) {
             const tools = await page.locator('.room-mobile-header').boundingBox();
             expect(tools.y).toBeGreaterThanOrEqual(header.y + header.height);
-            await expect(page.locator('.mobile-bottom-nav')).toBeVisible();
-            await page.locator('.mobile-bottom-nav button').click();
+            await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
+            await expect(page.locator('.site-mobile-navigation-trigger')).toBeVisible();
+            await page.locator('.site-mobile-navigation-trigger').click();
         } else {
             await page.locator('.desktop-navigation').getByRole('button', { name: '探索' }).click();
         }
@@ -100,6 +101,8 @@ for (const width of [390, 1280]) {
             expect(musicBox.x + musicBox.width).toBeLessThan(petBox.x);
             if (width <= 860) {
                 expect(Math.abs(musicBox.y + musicBox.height / 2 - petBox.y - petBox.height / 2)).toBeLessThan(2);
+                expect(petBox.y + petBox.height).toBeGreaterThan(844 - 40);
+                expect(petBox.y + petBox.height).toBeLessThanOrEqual(844);
             }
             await music.click();
             const panel = page.locator('.site-music-panel');
@@ -153,7 +156,7 @@ for (const width of [390, 1280]) {
         const before = await geometry();
         const menu = page.locator('#site-navigation');
         const explore = width <= 860
-            ? page.locator('.mobile-bottom-nav button')
+            ? page.locator('.site-mobile-navigation-trigger')
             : page.locator('.desktop-navigation').getByRole('button', { name: '探索' });
         const openMenu = trigger => browserName === 'webkit' ? trigger.tap() : trigger.click();
         let completed = 0;
@@ -218,3 +221,39 @@ for (const width of [390, 1280]) {
         await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     });
 }
+
+test('mobile top navigation keeps primary routes, account, notifications and search reachable', async ({ page, browserName }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    // Navigation does not need a cold Cubism model load in this narrow-screen check.
+    await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ status: 404, body: '' }));
+    const activate = locator => browserName === 'webkit' ? locator.tap() : locator.click();
+    await page.goto('/login');
+    await page.locator('#loginAccount').fill('e2e-user');
+    await page.locator('#loginPassword').fill('e2e-password');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page).toHaveURL(/\/hub$/);
+    await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
+    for (const locator of [page.locator('.site-brand'), page.locator('.site-search-trigger'), page.getByRole('button', { name: /^站内信，/ }), page.locator('.site-account-trigger'), page.locator('.site-mobile-navigation-trigger')]) {
+        await expect(locator).toBeVisible();
+        await expect(locator).toBeInViewport();
+    }
+    expect(await page.locator('.site-commandbar').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    for (const path of ['/room', '/plaza', '/stage', '/hub']) {
+        await activate(page.locator('.site-mobile-navigation-trigger'));
+        const menu = page.locator('#site-navigation');
+        await expect(menu).toBeVisible();
+        const header = await page.locator('.site-commandbar').boundingBox();
+        await expect(menu).not.toHaveAttribute('data-motion', /enter|leave/);
+        expect((await menu.boundingBox()).y).toBeGreaterThanOrEqual(header.y + header.height);
+        await activate(menu.locator(`.site-mobile-shortcuts a[href="${path}"]`));
+        await expect(page).toHaveURL(new RegExp(`${path}$`));
+        await expect(menu).not.toBeVisible();
+    }
+    await activate(page.locator('.site-account-trigger'));
+    await expect(page.locator('#site-navigation').getByRole('link', { name: '用户中心', exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await activate(page.getByRole('button', { name: /^站内信，/ }));
+    await expect(page).toHaveURL(/\/notifications$/);
+    await activate(page.locator('.site-search-trigger'));
+    await expect(page.getByRole('dialog', { name: '想找些什么？' }).getByRole('searchbox')).toBeFocused();
+});

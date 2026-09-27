@@ -35,9 +35,9 @@
 @media (max-width: 860px) {
     .app-shell {
         --ts-mobile-top: calc(max(0.65rem, env(safe-area-inset-top)) + 4.5rem);
-        --ts-mobile-bottom: calc(5.75rem + env(safe-area-inset-bottom));
+        --ts-mobile-bottom: calc(1.5rem + env(safe-area-inset-bottom));
     }
-    html { scroll-padding-block: 5.5rem 6rem; }
+    html { scroll-padding-block: 5.5rem 1.5rem; }
     .app-shell .page:not(.room-page):not(.access-page):not(.center-page) {
         padding-top: var(--ts-mobile-top);
         padding-inline: max(0.875rem, env(safe-area-inset-left)) max(0.875rem, env(safe-area-inset-right));
@@ -87,7 +87,6 @@
     .uc-page .uc-tabs-panel { top: var(--ts-mobile-top); }
     .uc-page .uc-tabs .tab-btn { min-height: 44px; }
 
-    .is-keyboard-open .mobile-bottom-nav,
     .is-keyboard-open .topbar.site-commandbar,
     .is-keyboard-open .site-music-drawer,
     .is-keyboard-open .room-dock { visibility: hidden; pointer-events: none; }

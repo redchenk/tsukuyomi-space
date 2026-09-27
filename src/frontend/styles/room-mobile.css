@@ -12,9 +12,8 @@
   .room-shell {
     --room-bubble-glass: color-mix(in srgb, var(--ts-surface-strong) 92%, transparent);
     --room-compose-glass: color-mix(in srgb, var(--ts-surface-strong) 94%, transparent);
-    --room-mobile-nav-clearance: calc(82px + env(safe-area-inset-bottom));
+    --room-mobile-nav-clearance: max(12px, env(safe-area-inset-bottom));
   }
-  .room-shell:not(.is-keyboard-open) .mobile-bottom-nav { animation: none; opacity: 1; transform: none; }
   .room-shell .room-conversation-layout {
     --room-mobile-top-clearance: calc(84px + env(safe-area-inset-top));
     position: fixed;
