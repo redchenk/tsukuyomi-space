@@ -874,7 +874,9 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  margin: 18px 0;
+  margin: 12px 0;
+  padding: 8px 10px;
+  border-radius: var(--ts-radius-control);
   color: var(--muted);
 }
 .settings-context-item > div {
