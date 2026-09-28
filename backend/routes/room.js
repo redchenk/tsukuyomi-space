@@ -882,7 +882,8 @@ async function sendMemoryList(req, res) {
     const query = String(req.query.q || '').trim();
     const limit = req.query.limit || 50;
     if (query && req.query.purpose === 'chat') {
-        const result = await roomMemory.retrieveChatMemories(req.user.id, query, req.query.limit || 6);
+        const result = await roomMemory.retrieveChatMemories(req.user.id, query, req.query.limit || 6,
+            { sourceOnly: req.query.retrieval === 'source' });
         return res.json({ success: true, data: result.memories, retrieval: result.retrieval });
     }
     const memories = query

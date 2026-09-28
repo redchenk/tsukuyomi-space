@@ -7,6 +7,8 @@ const { VECTOR_SIZE, createMemoryEmbeddingDetailed, embeddingStatus } = require(
 process.env.MEM0_TELEMETRY = 'false';
 process.env.DOTENV_CONFIG_QUIET = 'true';
 const queues = new Map();
+const activeSearches = new Set();
+const SEARCH_TIMEOUT_MS = 5000;
 let instance;
 let initialized = false;
 let lastError = '';
@@ -65,7 +67,8 @@ function serialized(userId, work) {
 
 // SQLite remains authoritative for ownership, edits and deletion. Index records
 // are only references: search callers must hydrate them from owned source rows.
-async function sync(userId, getRows, indexNew = true) {
+async function sync(userId, getRows, indexNew = true, deadline = Infinity) {
+    if (Date.now() >= deadline) throw Object.assign(new Error('Mem0 deadline'), { code: 'MEM0_TIMEOUT' });
     const sdk = memory();
     const rows = getRows();
     const sources = new Map(rows.map(row => [row.id, row]));
@@ -78,12 +81,12 @@ async function sync(userId, getRows, indexNew = true) {
         else bySource.set(sourceId, item);
     }
     let written = 0;
-    const deadline = Date.now() + 4000;
+    const indexDeadline = Math.min(deadline, Date.now() + 4000);
     for (const row of indexNew ? rows : []) {
         const hash = sourceHash(row);
         const previous = bySource.get(row.id);
         if (previous?.metadata?.sourceHash === hash) continue;
-        if (Date.now() > deadline) throw new Error('Mem0 index catch-up pending');
+        if (Date.now() > indexDeadline) throw Object.assign(new Error('Mem0 index catch-up pending'), { code: 'MEM0_INDEX_PENDING' });
         const metadata = { sourceId: row.id, sourceHash: hash, sourceDate: row.created_at, type: row.memory_type };
         // Replace the index entry so a changed embedder cannot leave stale text.
         if (previous) await sdk.delete(previous.id);
@@ -98,9 +101,16 @@ async function sync(userId, getRows, indexNew = true) {
 
 async function search(userId, query, getRows, limit = 20) {
     if (!enabled) return { results: [], backend: 'sqlite', fallback: true };
-    return serialized(userId, async () => {
+    const fallback = reason => ({ results: [], backend: 'sqlite', fallback: true, reason });
+    // Timed-out SDK work may still be finishing. Do not queue more searches
+    // behind it or grow remote embedding work on the small production host.
+    if (activeSearches.has(userId) || activeSearches.size >= 2) return fallback('index_busy');
+    activeSearches.add(userId);
+    const deadline = Date.now() + SEARCH_TIMEOUT_MS;
+    const pending = serialized(userId, async () => {
         try {
-            const index = await sync(userId, getRows);
+            const index = await sync(userId, getRows, true, deadline);
+            if (Date.now() >= deadline) return fallback('index_timeout');
             const found = await memory().search(query, { filters: { user_id: userId }, topK: limit, threshold: 0.05 });
             // Re-read after every await: an edit/deletion during embedding must
             // never inject the old index text into a subsequent model request.
@@ -115,9 +125,17 @@ async function search(userId, query, getRows, limit = 20) {
             lastError = error?.code || error?.name || 'Mem0Unavailable';
             // Never log private text, provider responses or credentials.
             console.warn('Room Mem0 unavailable; using source-memory retrieval:', lastError);
-            return { results: [], backend: 'sqlite', fallback: true };
+            return fallback(error?.code === 'MEM0_TIMEOUT' ? 'index_timeout'
+                : error?.code === 'MEM0_INDEX_PENDING' ? 'index_pending' : 'index_unavailable');
         }
     });
+    pending.finally(() => activeSearches.delete(userId)).catch(() => {});
+    let timer;
+    try {
+        return await Promise.race([pending, new Promise(resolve => {
+            timer = setTimeout(() => resolve(fallback('index_timeout')), SEARCH_TIMEOUT_MS);
+        })]);
+    } finally { clearTimeout(timer); }
 }
 
 function reconcile(userId, getRows) {

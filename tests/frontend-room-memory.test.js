@@ -94,7 +94,7 @@ describe('frontend room memory API client usage', () => {
         assert.match(code, /import \{ apiFetch, authFetch, authHeaders, getSession, noStoreUrl, parseResponse \} from '\.\.\/\.\.\/api\/client';/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/persona-memory\?\$\{params\}`\)/);
-        assert.match(code, /purpose: 'chat'/);
+        assert.match(source('src/frontend/services/room/roomMemoryRetrieval.mjs'), /purpose: 'chat'/);
         assert.match(code, /retrieveGuestMemories\(message\)/);
         assertNoRawRoomMemoryFetch('src/frontend/composables/room/useRoomChat.js');
     });
@@ -431,5 +431,105 @@ describe('room model and voice defaults', () => {
         assert.match(roomChat, /max_tokens:\s*16384/);
         assert.doesNotMatch(llmService, /max_output_tokens:\s*360|max_tokens:\s*240/);
         assert.doesNotMatch(llmService, /每次回复不超过\s*\d+\s*字/);
+    });
+});
+
+describe('bounded memory retrieval and fallback', () => {
+    async function setup(overrides = {}) {
+        const { createRoomMemoryRetriever } = await import('../src/frontend/services/room/roomMemoryRetrieval.mjs');
+        const calls = [], warnings = [];
+        let account = 'user-a', enabled = true;
+        const run = createRoomMemoryRetriever({ getAccountId: () => account, isEnabled: () => enabled,
+            retrieveGuest: async () => [], timeoutMs: 25, fallbackTimeoutMs: 25,
+            request: async (params, signal) => { calls.push(params); return overrides.request(params, signal); },
+            warn: (...args) => warnings.push(args), ...overrides
+        });
+        return { run, calls, warnings, account: value => { account = value; }, enable: value => { enabled = value; } };
+    }
+    const fact = { id: 'fact', context: '我的猫叫雪团' };
+    const good = { success: true, data: [fact], retrieval: { backend: 'mem0' } };
+
+    it('retries transport errors through the source endpoint and injects the returned full excerpt', async () => {
+        const calls = [];
+        const h = await setup({ request: async params => {
+            calls.push(params);
+            if (!params.has('retrieval')) throw Object.assign(new Error('private provider text'), { status: 503 });
+            return good;
+        } });
+        const result = await h.run('我的猫叫什么');
+        assert.equal(calls.length, 2);
+        assert.equal(calls[1].get('retrieval'), 'source');
+        assert.equal(result.retrieval.reason, 'http_503');
+        assert.equal(result.retrieval.fallback, true);
+        const { packRoomContext } = await import('../src/frontend/services/room/roomContext.mjs');
+        assert.match(packRoomContext({ memories: result.data.map(item => ({ ...item, content: item.context })) }).text, /雪团/);
+        assert.doesNotMatch(JSON.stringify(h.warnings), /private provider|我的猫|雪团|user-a/);
+    });
+    it('times out a stalled request and uses the independent bounded fallback', async () => {
+        let firstSignal;
+        const h = await setup({ request: async (params, signal) => {
+            if (params.has('retrieval')) return good;
+            firstSignal = signal;
+            return new Promise((_, reject) => signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true }));
+        } });
+        const result = await h.run('猫');
+        assert.equal(firstSignal.aborted, true);
+        assert.equal(result.retrieval.reason, 'timeout');
+        assert.equal(result.data[0].id, 'fact');
+    });
+    it('bounds both attempts and reports the final failure without claiming recall', async () => {
+        const h = await setup({ request: () => new Promise(() => {}) });
+        const result = await h.run('猫');
+        assert.deepEqual(result.data, []);
+        assert.equal(result.retrieval.backend, 'unavailable');
+        assert.equal(result.retrieval.fallbackReason, 'timeout');
+    });
+    it('does not retry authentication failures or successful empty results', async () => {
+        for (const status of [401, 403, 200]) {
+            let calls = 0;
+            const h = await setup({ request: async () => {
+                calls++;
+                if (status !== 200) throw Object.assign(new Error('denied'), { status });
+                return { success: true, data: [], retrieval: { backend: 'mem0' } };
+            } });
+            const result = await h.run('猫');
+            assert.equal(calls, 1);
+            assert.equal(result.retrieval.backend, status === 200 ? 'mem0' : 'unavailable');
+        }
+    });
+    it('falls back for malformed or success:false responses', async () => {
+        for (const response of [{ success: false }, { success: true, data: {} }]) {
+            const h = await setup({ request: async params => params.has('retrieval') ? good : response });
+            assert.equal((await h.run('猫')).retrieval.fallback, true);
+        }
+    });
+    it('cancellation stops retrieval without starting a fallback', async () => {
+        const controller = new AbortController(); let calls = 0;
+        const h = await setup({ request: async () => { calls++; controller.abort(); return good; } });
+        await assert.rejects(h.run('猫', controller.signal), { name: 'AbortError' });
+        assert.equal(calls, 1);
+    });
+    it('account switches discard both primary and fallback results', async () => {
+        for (const onFallback of [false, true]) {
+            const h = await setup({ request: async params => {
+                if (onFallback && !params.has('retrieval')) throw new TypeError('network');
+                h.account('user-b'); return good;
+            } });
+            await assert.rejects(h.run('猫'), { reason: 'account_changed' });
+        }
+    });
+    it('disabled memory and guests never read authenticated or cached memories', async () => {
+        const h = await setup({ request: async () => { throw new Error('must not request'); }, retrieveGuest: async () => [fact] });
+        h.enable(false); assert.equal((await h.run('猫')).retrieval.backend, 'disabled');
+        h.enable(true); h.account(''); assert.equal((await h.run('猫')).retrieval.backend, 'indexeddb');
+        const pending = await setup({ request: async () => { pending.enable(false); return good; } });
+        assert.deepEqual((await pending.run('猫')).data, []);
+    });
+    it('labels actual packed counts, fallback and unavailable reasons separately', async () => {
+        const { memoryRetrievalNotice: label } = await import('../src/frontend/services/room/roomMemoryRetrieval.mjs');
+        assert.equal(label({ backend: 'mem0', count: 0 }), '');
+        assert.match(label({ count: 2, fallback: true }), /已参考 2 条.*备用检索/);
+        assert.match(label({ backend: 'unavailable', reason: 'timeout' }), /请求超时/);
+        assert.match(label({ backend: 'unavailable', reason: 'http_401' }), /重新登录/);
     });
 });

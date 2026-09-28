@@ -81,3 +81,34 @@ test('guest memory persists in IndexedDB and reaches the next model request afte
     await expect(page.locator('.room-memory-trace')).toContainText('已参考 1 条长期记忆');
     await expect(page.locator('.chat-message.assistant').last()).toContainText('雪团');
 });
+
+test('failed retrieval uses owned source excerpts in the real model request and reports both failed attempts', async ({ page }) => {
+    const requests = await configure(page);
+    await login(page, 'mem0-fallback-browser');
+    await page.goto('/room');
+    await send(page, '我的猫叫雪团');
+    await newChat(page);
+    await page.reload();
+    let sourceCalls = 0, failSource = false;
+    await page.route('**/api/room/memory?**', route => {
+        const params = new URL(route.request().url()).searchParams;
+        if (params.get('purpose') !== 'chat') return route.continue();
+        if (params.get('retrieval') === 'source') {
+            sourceCalls++;
+            if (!failSource) return route.continue();
+        }
+        return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ success: false }) });
+    });
+    await send(page, '我的猫叫什么名字');
+    expect(sourceCalls).toBe(1);
+    expect(requests.at(-1).systemPrompt).toContain('雪团');
+    expect(JSON.stringify(requests.at(-1).messages || requests.at(-1).history || [])).not.toContain('雪团');
+    await expect(page.locator('.room-memory-trace')).toContainText('备用检索');
+    await expect(page.locator('.room-memory-trace')).toHaveAttribute('title', 'http_503');
+    await newChat(page);
+    failSource = true;
+    await send(page, '我的猫叫什么名字');
+    expect(sourceCalls).toBe(2);
+    expect(requests.at(-1).systemPrompt).not.toContain('雪团');
+    await expect(page.locator('.room-memory-trace')).toContainText('长期记忆暂时无法读取（HTTP 503）');
+});

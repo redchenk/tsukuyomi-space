@@ -150,3 +150,49 @@ test('a deletion during Mem0 search cannot inject stale indexed text', async () 
         assert.deepEqual((await pending).memories, []);
     } finally { release(); Memory.prototype.search = original; }
 });
+
+test('source-only retry bypasses Mem0, uses full excerpts and enforces account ownership', async () => {
+    const turn = { turnId: 'source-retry', userMessage: '日常记录。'.repeat(180) + '我的雨伞放在青岚天文台前台', assistantMessage: '记下啦。' };
+    chat.saveTurn('mem0-one', turn, () => memory.captureChatTurn('mem0-one', turn));
+    const { Memory } = require('mem0ai/oss');
+    const original = Memory.prototype.search;
+    Memory.prototype.search = async () => { throw new Error('source-only must not call the index'); };
+    try {
+        const result = await request('/memory?purpose=chat&retrieval=source&q=' + encodeURIComponent('雨伞放在哪里'));
+        assert.equal(result.retrieval.backend, 'sqlite');
+        assert.equal(result.retrieval.fallback, true);
+        assert.match(result.data[0].context, /青岚天文台前台/);
+        const other = await memory.retrieveChatMemories('mem0-two', '雨伞放在哪里', 6, { sourceOnly: true });
+        assert.deepEqual(other.memories, []);
+        const recent = await memory.retrieveChatMemories('mem0-one', 'unmatched-query', 6, { sourceOnly: true });
+        assert.equal(recent.retrieval.selection, 'recent');
+        assert.ok(recent.memories.length > 0);
+    } finally { Memory.prototype.search = original; }
+});
+
+test('a stalled Mem0 search falls back within its deadline without queuing repeated work or reviving deleted facts', async (t) => {
+    const { Memory } = require('mem0ai/oss');
+    const original = Memory.prototype.search;
+    let release, started, calls = 0;
+    const gate = new Promise(resolve => { release = resolve; });
+    const searching = new Promise(resolve => { started = resolve; });
+    Memory.prototype.search = async () => { calls++; started(); await gate; return { results: [] }; };
+    try {
+        t.mock.timers.enable(['setTimeout']);
+        const pending = memory.retrieveChatMemories('mem0-one', '雨伞放在哪里');
+        await searching;
+        const busy = await memory.retrieveChatMemories('mem0-one', '雨伞放在哪里');
+        assert.equal(busy.retrieval.reason, 'index_busy');
+        assert.match(busy.memories[0].context, /青岚天文台前台/);
+        db.prepare('DELETE FROM room_memories WHERE user_id = ?').run('mem0-one');
+        t.mock.timers.tick(5000);
+        const result = await pending;
+        assert.equal(result.retrieval.reason, 'index_timeout');
+        assert.deepEqual(result.memories, []);
+        assert.equal(calls, 1);
+    } finally {
+        t.mock.timers.reset();
+        release(); Memory.prototype.search = original;
+        await new Promise(resolve => setTimeout(resolve, 30));
+    }
+});

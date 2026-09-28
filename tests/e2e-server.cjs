@@ -30,7 +30,7 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
-for (const username of ['mem0-browser', 'mem0-isolated', 'feedback-browser', 'reply-owner', 'reply-reader', 'reply-writer']) {
+for (const username of ['mem0-browser', 'mem0-isolated', 'mem0-fallback-browser', 'feedback-browser', 'reply-owner', 'reply-reader', 'reply-writer']) {
     db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
       .run(username, username, username + '@example.test', bcrypt.hashSync('mem0-test-password', 4), 'user');
 }

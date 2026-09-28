@@ -193,14 +193,16 @@ function reconcileMem0(userId) {
     return mem0Store.reconcile(userId, () => ownedMemoryRows(userId)).catch(() => {});
 }
 
-async function retrieveChatMemories(userId, query, limit = 6) {
+async function retrieveChatMemories(userId, query, limit = 6, { sourceOnly = false } = {}) {
     userId = requireUserId(userId);
     const safeLimit = Math.max(1, Math.min(12, Number(limit) || 6));
     const expanded = `${query}\n${searchTerms(query).join(' ')}`;
-    const index = await mem0Store.search(userId, expanded, () => ownedMemoryRows(userId), Math.max(20, safeLimit * 4));
+    const index = sourceOnly ? { results: [], backend: 'sqlite', fallback: true, reason: 'source_requested' }
+        : await mem0Store.search(userId, expanded, () => ownedMemoryRows(userId), Math.max(20, safeLimit * 4));
     const semantic = new Map(index.results.map(item => [item.id, item.score]));
     const queryVector = createEmbedding(expanded);
-    const ranked = ownedMemoryRows(userId).map(row => {
+    const rows = ownedMemoryRows(userId);
+    let ranked = rows.map(row => {
         const lexical = lexicalScore(query, row.content);
         const vector = similarity(queryVector, createEmbedding(row.content));
         const score = Math.min(1, lexical * 3) * 0.75 + Math.max(0, vector) * 0.1 + Math.min(1, semantic.get(row.id) || 0) * 0.15;
@@ -208,11 +210,14 @@ async function retrieveChatMemories(userId, query, limit = 6) {
     }).filter(item => item.lexical > 0 || (embeddingStatus().configuredProvider === 'remote' && (semantic.get(item.row.id) || 0) >= 0.5))
         .sort((a, b) => b.score - a.score || String(b.row.updated_at).localeCompare(String(a.row.updated_at)))
         .slice(0, safeLimit);
+    const recentFallback = index.fallback && !ranked.length && rows.length > 0;
+    if (recentFallback) ranked = rows.slice(0, safeLimit).map(row => ({ row, score: 0 }));
     touchMemories(userId, ranked.map(item => item.row.id));
     return {
         memories: ranked.map(({ row, score }) => ({ ...toPublicMemory(row, score),
             context: memoryExcerpt(row.content, query), source: index.backend })),
-        retrieval: { backend: index.backend, fallback: index.fallback, count: ranked.length }
+        retrieval: { backend: index.backend, fallback: index.fallback, count: ranked.length,
+            ...(index.reason ? { reason: index.reason } : {}), ...(recentFallback ? { selection: 'recent' } : {}) }
     };
 }
 

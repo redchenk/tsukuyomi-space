@@ -6,6 +6,7 @@ import RoomChatImage from './RoomChatImage.vue';
 import { isEnglishSite } from '../../utils/siteVariant';
 import { formatTimeMinute as messageTime } from '../../utils/time';
 import { splitRoomReply } from '../../services/room/roomReplyPresentation.mjs';
+import { memoryRetrievalNotice } from '../../services/room/roomMemoryRetrieval.mjs';
 
 const props = defineProps({
   chat: { type: Object, required: true },
@@ -393,11 +394,9 @@ function endChatStatusLabel() {
       <div v-if="!hasConversation" class="room-chat-suggestions" aria-label="聊天开场建议">
         <button v-for="message in quickMessages" :key="message" type="button" @click="useQuickMessage(message)">{{ message }}</button>
       </div>
-      <div v-if="chat.memoryTrace?.value.count" class="chat-generation-notice room-memory-trace" role="status">
-        {{ englishRoom ? `Referenced ${chat.memoryTrace.value.count} long-term memories` : `已参考 ${chat.memoryTrace.value.count} 条长期记忆` }}
-      </div>
-      <div v-else-if="chat.memoryTrace?.value.backend === 'unavailable'" class="chat-generation-notice room-memory-trace" role="status">
-        {{ englishRoom ? 'Long-term memory is temporarily unavailable' : '长期记忆暂时无法读取' }}
+      <div v-if="memoryRetrievalNotice(chat.memoryTrace?.value, englishRoom)" class="chat-generation-notice room-memory-trace" role="status"
+        :title="[chat.memoryTrace?.value.reason, chat.memoryTrace?.value.fallbackReason].filter(Boolean).join(' / ')">
+        {{ memoryRetrievalNotice(chat.memoryTrace?.value, englishRoom) }}
       </div>
       <div v-if="chat.diaryRecordingError?.value" class="chat-generation-notice" role="alert">{{ chat.diaryRecordingError.value }}</div>
       <div v-if="chat.memorySaveError?.value" class="chat-generation-notice" role="status">{{ chat.memorySaveError.value }}</div>

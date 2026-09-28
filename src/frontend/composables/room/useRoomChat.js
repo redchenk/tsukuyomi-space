@@ -48,6 +48,7 @@ import { syncDiaryArchive } from '../../services/room/roomDiarySync';
 import { prepareRoomImage, persistRoomImage } from '../../services/room/roomChatImages';
 
 import { retrieveGuestMemories } from '../../services/room/roomLocalMemory';
+import { createRoomMemoryRetriever } from '../../services/room/roomMemoryRetrieval.mjs';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
 const SITE_FEED_TIMEOUT_MS = 2000;
@@ -809,34 +810,19 @@ async function callMcpTool(settings, name, args = {}, signal = null) {
   }
 }
 
-async function fetchRelevantMemories(message, signal = null) {
-  const memorySettings = readJson('roomMemorySettings', { enabled: true });
-  if (memorySettings.enabled === false) return { data: [], retrieval: { backend: 'disabled' } };
-  if (!String(message || '').trim()) return { data: [], retrieval: { backend: 'none' } };
-  const accountId = getSession()?.user?.id || '';
-  const controller = new AbortController();
-  const cancel = () => controller.abort();
-  signal?.addEventListener('abort', cancel, { once: true });
-  if (signal?.aborted) cancel();
-  const timeout = window.setTimeout(cancel, 8000);
-  try {
-    let result;
-    if (!accountId) {
-      result = { data: await retrieveGuestMemories(message), retrieval: { backend: 'indexeddb' } };
-    } else {
-      const params = new URLSearchParams({ q: String(message).trim(), limit: '6', purpose: 'chat' });
+function fetchRelevantMemories(message, signal = null) {
+  return createRoomMemoryRetriever({
+    getAccountId: () => getSession()?.user?.id || '',
+    isEnabled: () => readJson('roomMemorySettings', { enabled: true }).enabled !== false,
+    retrieveGuest: message => retrieveGuestMemories(message),
+    async request(params, signal) {
       const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
-        headers: authHeaders({ Accept: 'application/json' }), cache: 'no-store', signal: controller.signal
+        headers: authHeaders({ Accept: 'application/json' }), cache: 'no-store', signal
       });
-      result = await parseResponse(response);
-      if (!response.ok || !result.success) throw new Error('Memory retrieval unavailable');
+      if (!response.ok) throw Object.assign(new Error('Memory HTTP error'), { status: response.status });
+      return parseResponse(response);
     }
-    if ((getSession()?.user?.id || '') !== accountId) throw new Error('Memory account changed');
-    return { data: Array.isArray(result.data) ? result.data : [], retrieval: result.retrieval || {} };
-  } finally {
-    clearTimeout(timeout);
-    signal?.removeEventListener('abort', cancel);
-  }
+  })(message, signal);
 }
 
 async function fetchPersonaMemories(message, signal = null) {
@@ -1005,7 +991,7 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
   const [siteText, personaMemories, memoryResult, growthState] = await Promise.all([
     fetchSiteFeedContext(signal),
     knowledgeEnabled ? fetchPersonaMemories(message, signal).catch(() => []) : [],
-    fetchRelevantMemories(message, signal).catch(() => ({ data: [], retrieval: { backend: 'unavailable' } })),
+    fetchRelevantMemories(message, signal),
     loadGrowth().catch(() => null)
   ]);
 
@@ -1405,7 +1391,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
       });
       const environment = roomEnvironmentContext(world?.world?.value);
       const roomContext = await buildRoomContext(message, image, settings, environment, operation.controller.signal);
-      if (operation.controller.signal.aborted || activeGeneration !== operation) return false;
+      if (operation.controller.signal.aborted || activeGeneration !== operation
+        || requestArchiveKey !== diaryArchiveKey() || requestConversationRevision !== conversationRevision) return false;
       const systemPrompt = resolveRoomSystemPrompt({
         userPrompt: settings.systemPrompt,
         context: roomContext.text
