@@ -68,10 +68,11 @@ function ensureDefaultAdminUser() {
     }
 
     db.prepare(`
-        INSERT INTO users (id, username, email, password_hash, role)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO users (id, username, nickname, email, password_hash, role)
+        VALUES (?, ?, ?, ?, ?, ?)
     `).run(
         'admin-001',
+        config.defaultAdmin.username,
         config.defaultAdmin.username,
         config.defaultAdmin.email,
         bcrypt.hashSync(config.defaultAdmin.password || 'admin123', 10),
