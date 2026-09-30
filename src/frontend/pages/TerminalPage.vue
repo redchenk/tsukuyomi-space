@@ -53,6 +53,7 @@ const terminal = reactive({
   userPage: 1,
   userPageSize: 8,
   usernameDrafts: {},
+  userUsernameSaving: {},
   roleDrafts: {},
   userRoleSaving: {},
   passwordDrafts: {},
@@ -501,17 +502,33 @@ async function changeUserRole(user) {
 }
 
 async function changeUserUsername(user) {
+  if (!canManageAccounts.value || terminal.userUsernameSaving[user.id]) return;
   const username = String(terminal.usernameDrafts[user.id] || '').trim();
   if (!username) {
     showMessage('请输入昵称', 'error');
     return;
   }
-  await adminApi(`/users/${encodeURIComponent(user.id)}/username`, {
-    method: 'PATCH',
-    body: JSON.stringify({ username })
-  });
-  showMessage(`用户 ${user.username} 的昵称已更新为 ${username}`);
-  await loadPanel('users');
+  if (username.length > 32) {
+    showMessage('昵称不能超过 32 个字符', 'error');
+    return;
+  }
+  if (username === user.username) return;
+  const previousUsername = user.username;
+  terminal.userUsernameSaving[user.id] = true;
+  terminal.message = '';
+  try {
+    const result = await adminApi(`/users/${encodeURIComponent(user.id)}/username`, {
+      method: 'POST',
+      body: JSON.stringify({ username })
+    });
+    user.username = result?.username || username;
+    terminal.usernameDrafts[user.id] = user.username;
+    showMessage(`用户 ${previousUsername} 的昵称已更新为 ${user.username}`);
+  } catch (error) {
+    showMessage(error.message || '用户昵称保存失败，请重试', 'error');
+  } finally {
+    terminal.userUsernameSaving[user.id] = false;
+  }
 }
 
 async function resetUserPassword(user) {
@@ -1139,8 +1156,10 @@ onUnmounted(() => {
                       data-1p-ignore="true"
                       maxlength="32"
                       placeholder="编辑昵称"
+                      :aria-label="`编辑 ${item.username} 的昵称`"
+                      :disabled="terminal.userUsernameSaving[item.id]"
                     >
-                    <button class="ghost-btn compact" type="button" :disabled="!terminal.usernameDrafts[item.id] || terminal.usernameDrafts[item.id] === item.username || item.username === 'admin'" @click="changeUserUsername(item)">保存昵称</button>
+                    <button class="ghost-btn compact" type="button" :disabled="terminal.userUsernameSaving[item.id] || !String(terminal.usernameDrafts[item.id] || '').trim() || String(terminal.usernameDrafts[item.id] || '').trim() === item.username || item.username === 'admin'" :aria-busy="Boolean(terminal.userUsernameSaving[item.id])" @click="changeUserUsername(item)">{{ terminal.userUsernameSaving[item.id] ? '保存中' : '保存昵称' }}</button>
                   </div>
                 </td>
                 <td>{{ item.email || '未绑定邮箱' }}</td>

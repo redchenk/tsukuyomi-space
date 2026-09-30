@@ -1,3 +1,5 @@
+const { fetchPinnedUrl, resolvePublicUrl } = require('./outbound-url-security');
+
 const TTS_API_KEY = process.env.TTS_API_KEY || '';
 const TTS_API_URL = process.env.TTS_API_URL || '';
 const TTS_VOICE = process.env.TTS_VOICE || '';
@@ -23,11 +25,6 @@ const ALLOWED_TTS_ENDPOINTS = [
     { hostname: 'api.elevenlabs.io', path: /^\/v1\/text-to-speech(?:\/[^/?#]+)?\/?$/ }
 ];
 
-const ALLOWED_GPT_SOVITS_ENDPOINTS = [
-    { hostname: '127.0.0.1', path: /^\/tts\/?$/ },
-    { hostname: 'localhost', path: /^\/tts\/?$/ }
-];
-
 function pickAudioBase64(data) {
     return data?.choices?.[0]?.message?.audio?.data
         || data?.choices?.[0]?.message?.audio
@@ -45,14 +42,14 @@ function validateTtsUrl(url, provider) {
         throw error;
     }
     if (provider === 'gpt-sovits') {
-        if (parsed.protocol !== 'http:' || parsed.username || parsed.password || parsed.search || parsed.hash) {
+        if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash
+            || !/^\/tts\/?$/.test(parsed.pathname)) {
             const error = new Error('不支持的 GPT-SoVITS API 端点');
             error.status = 400;
             throw error;
         }
-        const allowedLocal = ALLOWED_GPT_SOVITS_ENDPOINTS.some(endpoint => parsed.hostname.toLowerCase() === endpoint.hostname && endpoint.path.test(parsed.pathname));
-        if (!allowedLocal) {
-            const error = new Error('GPT-SoVITS 仅允许访问本机 /tts 端点');
+        if (isLocalGptSovitsUrl(parsed) && parsed.protocol !== 'http:') {
+            const error = new Error('本机 GPT-SoVITS 请使用 HTTP /tts 端点');
             error.status = 400;
             throw error;
         }
@@ -70,6 +67,63 @@ function validateTtsUrl(url, provider) {
         throw error;
     }
     return parsed.toString();
+}
+
+function isLocalGptSovitsUrl(value) {
+    try {
+        return ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(value).hostname.toLowerCase());
+    } catch (_) {
+        return false;
+    }
+}
+
+function remoteReferencePath(value) {
+    const text = String(value || '').trim();
+    const normalized = text.replace(/\\/g, '/');
+    if (!text || text.length > 1000 || /[\u0000-\u001f\u007f]/.test(text)
+        || normalized.split('/').includes('..')
+        || (/^[a-z][a-z0-9+.-]*:/i.test(normalized) && !/^[a-z]:\//i.test(normalized))
+        || !/\.(?:wav|mp3|flac|ogg|m4a)$/i.test(text)) {
+        const error = new Error('参考音频路径无效，请填写 GPT-SoVITS 设备上的音频文件路径');
+        error.status = 400;
+        throw error;
+    }
+    return text;
+}
+
+async function fetchPublicGptSovits(url, options = {}) {
+    try {
+        return await fetchPinnedUrl(url, {
+            ...options,
+            protocols: ['http:', 'https:'],
+            timeoutMs: 60000,
+            signal: AbortSignal.timeout(60000),
+            redirect: 'error'
+        });
+    } catch (cause) {
+        const error = new Error(`无法连接公网 GPT-SoVITS：${cause.message}`);
+        error.status = 502;
+        throw error;
+    }
+}
+
+async function readProviderError(response) {
+    if (!response.body) return '';
+    const reader = response.body.getReader();
+    const chunks = [];
+    let size = 0;
+    try {
+        while (size < 16384) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = Buffer.from(value).subarray(0, 16384 - size);
+            chunks.push(chunk);
+            size += chunk.length;
+        }
+    } finally {
+        await reader.cancel().catch(() => {});
+    }
+    return Buffer.concat(chunks).toString('utf8');
 }
 
 function makeAudioBufferFromEncoded(value) {
@@ -94,7 +148,10 @@ function fetchTts(url, options = {}) {
 
 async function readAudioBuffer(response) {
     const declaredLength = Number(response.headers.get('content-length') || 0);
-    if (declaredLength > MAX_TTS_AUDIO_BYTES) throw new Error('TTS 音频响应过大');
+    if (declaredLength > MAX_TTS_AUDIO_BYTES) {
+        await response.body?.cancel().catch(() => {});
+        throw new Error('TTS 音频响应过大');
+    }
     if (!response.body) return Buffer.alloc(0);
     const reader = response.body.getReader();
     const chunks = [];
@@ -114,7 +171,7 @@ async function readAudioBuffer(response) {
 
 function runGptSovitsExclusive(task) {
     if (gptSovitsPending >= 3) {
-        const error = new Error('本地语音服务正忙，请稍后重试');
+        const error = new Error('语音服务正忙，请稍后重试');
         error.status = 429;
         throw error;
     }
@@ -230,7 +287,7 @@ function minimaxLanguageBoost(textLang) {
     return values[lang] || 'Japanese';
 }
 
-async function loadGptSovitsWeights(baseUrl, gptWeightPath, sovitsWeightPath) {
+async function loadGptSovitsWeights(baseUrl, gptWeightPath, sovitsWeightPath, request = fetchTts) {
     const url = new URL(baseUrl);
     const gptPath = managedResourcePath(gptWeightPath || GPT_SOVITS_GPT_WEIGHT_PATH, {
         label: 'GPT 权重路径',
@@ -242,21 +299,25 @@ async function loadGptSovitsWeights(baseUrl, gptWeightPath, sovitsWeightPath) {
         extensions: ['pth'],
         rootPattern: /^SoVITS_weights(?:_|$)/i
     });
-    if (gptPath && gptPath !== loadedGptWeightPath) {
+    const gptKey = `${url.origin}\n${gptPath}`;
+    const sovitsKey = `${url.origin}\n${sovitsPath}`;
+    if (gptPath && gptKey !== loadedGptWeightPath) {
         url.pathname = '/set_gpt_weights';
         url.search = '';
         url.searchParams.set('weights_path', gptPath);
-        const response = await fetchTts(url);
-        if (!response.ok) throw makeProviderError('GPT-SoVITS set_gpt_weights', response.status, await response.text());
-        loadedGptWeightPath = gptPath;
+        const response = await request(url);
+        if (!response.ok) throw makeProviderError('GPT-SoVITS set_gpt_weights', response.status, await readProviderError(response));
+        await response.body?.cancel().catch(() => {});
+        loadedGptWeightPath = gptKey;
     }
-    if (sovitsPath && sovitsPath !== loadedSovitsWeightPath) {
+    if (sovitsPath && sovitsKey !== loadedSovitsWeightPath) {
         url.pathname = '/set_sovits_weights';
         url.search = '';
         url.searchParams.set('weights_path', sovitsPath);
-        const response = await fetchTts(url);
-        if (!response.ok) throw makeProviderError('GPT-SoVITS set_sovits_weights', response.status, await response.text());
-        loadedSovitsWeightPath = sovitsPath;
+        const response = await request(url);
+        if (!response.ok) throw makeProviderError('GPT-SoVITS set_sovits_weights', response.status, await readProviderError(response));
+        await response.body?.cancel().catch(() => {});
+        loadedSovitsWeightPath = sovitsKey;
     }
 }
 
@@ -289,25 +350,36 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
     }
 
     if (useProvider === 'gpt-sovits') {
+        const remote = !isLocalGptSovitsUrl(useApiUrl);
+        if (remote) {
+            try {
+                await resolvePublicUrl(useApiUrl, { protocols: ['http:', 'https:'] });
+            } catch (cause) {
+                const error = new Error(`GPT-SoVITS 端点无效：${cause.message}`);
+                error.status = 400;
+                throw error;
+            }
+        }
         return runGptSovitsExclusive(async () => {
             try {
-                await loadGptSovitsWeights(useApiUrl, gptWeightPath, sovitsWeightPath);
                 const useRefAudioPath = refAudioPath || useVoice || GPT_SOVITS_REF_AUDIO_PATH;
                 if (!useRefAudioPath) {
                     const error = new Error('GPT-SoVITS 需要填写参考音频路径');
                     error.status = 400;
                     throw error;
                 }
-                const safeRefAudioPath = managedResourcePath(useRefAudioPath, {
+                const safeRefAudioPath = remote ? remoteReferencePath(useRefAudioPath) : managedResourcePath(useRefAudioPath, {
                     label: '参考音频路径',
                     extensions: ['wav', 'mp3', 'flac', 'ogg', 'm4a']
                 });
-                const response = await fetchTts(useApiUrl, {
+                const request = remote ? fetchPublicGptSovits : fetchTts;
+                await loadGptSovitsWeights(useApiUrl, gptWeightPath, sovitsWeightPath, request);
+                const response = await request(useApiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         text: normalizedText,
-                        text_lang: normalizeGptSovitsLang(textLang || model || GPT_SOVITS_TEXT_LANG, 'zh'),
+                        text_lang: detectTtsLanguage(normalizedText, textLang || model || GPT_SOVITS_TEXT_LANG),
                         ref_audio_path: safeRefAudioPath,
                         prompt_text: String(promptText || promptAudio || GPT_SOVITS_PROMPT_TEXT).slice(0, 2000),
                         prompt_lang: normalizeGptSovitsLang(promptLang || GPT_SOVITS_PROMPT_LANG, 'zh'),
@@ -319,12 +391,19 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
                     })
                 });
                 if (!response.ok) {
-                    const errorText = await response.text();
+                    const errorText = await readProviderError(response);
                     throw makeProviderError('GPT-SoVITS', response.status, errorText);
+                }
+                const contentType = response.headers.get('content-type') || 'audio/wav';
+                if (remote && !/^audio\//i.test(contentType)) {
+                    await response.body?.cancel().catch(() => {});
+                    const error = new Error('公网 GPT-SoVITS 未返回音频，请检查 /tts 端点配置');
+                    error.status = 502;
+                    throw error;
                 }
                 return {
                     audioBuffer: await readAudioBuffer(response),
-                    contentType: response.headers.get('content-type') || 'audio/wav'
+                    contentType
                 };
             } catch (error) {
                 loadedGptWeightPath = '';
@@ -438,5 +517,6 @@ async function synthesizeSpeech({ text, apiKey, apiUrl, voice, model, provider, 
 }
 
 module.exports = {
-    synthesizeSpeech
+    synthesizeSpeech,
+    isLocalGptSovitsUrl
 };

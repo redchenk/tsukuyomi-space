@@ -17,13 +17,14 @@ function loadTtsTransport() {
         JSON,
         Number,
         String,
+        URL,
         Uint8Array,
         atob
     };
     const code = source('src/frontend/services/room/ttsTransport.js')
         .replace(/export async function /g, 'async function ')
         .replace(/export function /g, 'function ')
-        .concat('\nglobalThis.__transport = { buildDirectTtsRequest, requestTtsAudioBlob };\n');
+        .concat('\nglobalThis.__transport = { buildDirectTtsRequest, requestTtsAudioBlob, ttsUsesProxy };\n');
 
     vm.runInNewContext(code, context, { filename: 'src/frontend/services/room/ttsTransport.js' });
     return context.__transport;
@@ -50,8 +51,37 @@ describe('Room TTS transport selection', () => {
         assert.match(live2dSpeech, /requestTtsAudioBlob/);
         assert.match(settingsPage, /requestTtsAudioBlob/);
         assert.doesNotMatch(roomChat, /\\u5f53\\u524d Vue \\u7248 TTS \\u5efa\\u8bae\\u5148\\u5f00\\u542f\\u670d\\u52a1\\u5668\\u4ee3\\u7406/);
-        assert.match(roomChat, /if \(settings\.provider === 'gpt-sovits'\) settings\.useProxy = false/);
-        assert.match(live2dSpeech, /const directLocalGptSovits = settings\.provider === 'gpt-sovits'/);
+        assert.match(roomChat, /settings\.useProxy = ttsUsesProxy\(settings\)/);
+        assert.match(live2dSpeech, /settings\.provider === 'gpt-sovits' && !ttsUsesProxy\(settings\)/);
+        assert.match(settingsPage, /tts\.useProxy = ttsUsesProxy\(tts\)/);
+    });
+
+    it('upgrades old remote GPT-SoVITS settings to proxy while keeping loopback direct', async () => {
+        const { requestTtsAudioBlob, ttsUsesProxy } = loadTtsTransport();
+        for (const apiUrl of ['http://localhost:9880/tts', 'http://127.0.0.1:9988/tts', 'http://[::1]:9880/tts']) {
+            assert.equal(ttsUsesProxy({ provider: 'gpt-sovits', apiUrl, useProxy: true }), false);
+        }
+        for (const apiUrl of ['http://39.105.82.185:9880/tts', 'https://speech.example.test/tts']) {
+            const settings = { provider: 'gpt-sovits', apiUrl, refAudioPath: 'E:\\声音\\参考.wav', useProxy: false };
+            assert.equal(ttsUsesProxy(settings), true);
+            let calls = 0;
+            const expected = new Blob(['wave'], { type: 'audio/wav' });
+            const result = await requestTtsAudioBlob('你好', settings, {
+                fetchDirect: async () => { throw new Error('Remote GPT-SoVITS must not send mixed-content browser requests'); },
+                fetchProxy: async (url, options) => {
+                    calls++;
+                    assert.equal(url, '/api/tts');
+                    const body = JSON.parse(options.body);
+                    assert.equal(body.apiUrl, apiUrl);
+                    assert.equal(body.refAudioPath, settings.refAudioPath);
+                    assert.equal(body.text, '你好');
+                    return response({ contentType: 'audio/wav', blob: expected });
+                }
+            });
+            assert.equal(result, expected);
+            assert.equal(calls, 1);
+        }
+        await assert.rejects(requestTtsAudioBlob('你好', { provider: 'gpt-sovits' }), /local playback path/);
     });
 
     it('sends provider TTS directly when proxying is disabled', async () => {

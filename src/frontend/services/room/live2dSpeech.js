@@ -1,6 +1,6 @@
 import { apiFetch } from '../../api/client';
 import { readJson } from './roomStorage';
-import { requestTtsAudioBlob } from './ttsTransport';
+import { requestTtsAudioBlob, ttsUsesProxy } from './ttsTransport';
 
 const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt';
 const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth';
@@ -256,7 +256,7 @@ export function createLive2DSpeechPlayer({ onState } = {}) {
   }
 
   async function makeAudio(text, settings) {
-    const directLocalGptSovits = settings.provider === 'gpt-sovits';
+    const directLocalGptSovits = settings.provider === 'gpt-sovits' && !ttsUsesProxy(settings);
     if (directLocalGptSovits) {
       await ensureGptSovitsWeights(settings);
       const audio = new Audio(buildGptSovitsAudioUrl(text, settings));

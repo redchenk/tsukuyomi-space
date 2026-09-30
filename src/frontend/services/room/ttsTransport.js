@@ -1,12 +1,23 @@
 const MINIMAX_DEFAULT_VOICE_ID = 'female-shaonv';
 
 function defaultTtsUrl(provider) {
+  if (provider === 'gpt-sovits') return 'http://localhost:9880/tts';
   if (provider === 'openai' || provider === 'openai-compatible' || provider === 'custom') {
     return 'https://api.openai.com/v1/audio/speech';
   }
   if (provider === 'elevenlabs') return 'https://api.elevenlabs.io/v1/text-to-speech';
   if (provider === 'minimax') return 'https://api.minimaxi.com/v1/t2a_v2';
   return 'https://api.xiaomimimo.com/v1/chat/completions';
+}
+
+export function ttsUsesProxy(settings = {}) {
+  if (settings.provider !== 'gpt-sovits') return Boolean(settings.useProxy);
+  let endpoint;
+  try { endpoint = new URL(String(settings.apiUrl || defaultTtsUrl('gpt-sovits')).trim()); }
+  catch (_) { return true; }
+  // Remote HTTP audio is blocked on HTTPS pages. Old saved configurations
+  // forced useProxy=false, so select the transport from the endpoint instead.
+  return !['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname.toLowerCase());
 }
 
 function detectTtsLanguage(text, configuredLanguage) {
@@ -168,12 +179,12 @@ async function responseToAudioBlob(response, jsonAudioType) {
 }
 
 export async function requestTtsAudioBlob(text, settings = {}, transports = {}) {
-  if (settings.provider === 'gpt-sovits') {
+  const useProxy = ttsUsesProxy(settings);
+  if (settings.provider === 'gpt-sovits' && !useProxy) {
     throw new Error('Local GPT-SoVITS must use the local playback path');
   }
 
   const directRequest = buildDirectTtsRequest(text, settings);
-  const useProxy = Boolean(settings.useProxy);
   const fetchDirect = transports.fetchDirect || globalThis.fetch;
   const fetchProxy = transports.fetchProxy;
   let response;

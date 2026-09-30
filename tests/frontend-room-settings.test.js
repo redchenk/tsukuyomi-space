@@ -6,6 +6,7 @@ const strip = s => s.replace(/^import [\s\S]*?from '[^']*';$/gm, '').replace(/^e
 const source = path => fs.readFileSync(path, 'utf8');
 const knowledgeCode = strip(source('src/frontend/constants/room/knowledgeEntries.js')) + '\n' + strip(source('src/frontend/services/room/roomKnowledge.js'));
 const pageCode = strip(source('src/frontend/pages/RoomSettingsPage.vue').split('<script setup>')[1].split('</script>')[0]);
+const ttsUsesProxy = vm.runInNewContext(strip(source('src/frontend/services/room/ttsTransport.js')) + '\nttsUsesProxy;', { URL });
 function setup() {
   const store = new Map();
   let failWrites = false;
@@ -17,6 +18,7 @@ function setup() {
   const navigation = [];
   const ctx = {
     URL, console, setTimeout: () => 0, clearTimeout() {},
+    ttsUsesProxy,
     reactive: x => x, ref: value => ({ value }), computed: get => ({ get value() { return get(); } }),
     defineProps: () => ({}), defineEmits: () => (...args) => navigation.push(args),
     onMounted() {}, onBeforeUnmount() {}, watch() {}, onBeforeRouteLeave: fn => { routeGuard = fn; },
@@ -220,6 +222,20 @@ test('TTS save and reload preserve custom local endpoints and Unicode reference 
   assert.equal(h.tts.apiUrl, endpoint);
   assert.equal(h.saveTTS(false), true);
   h.loadSettings();
+  assert.equal(h.tts.refAudioPath, refPath);
+  assert.equal(h.tts.apiUrl, endpoint);
+});
+
+test('saved remote GPT-SoVITS endpoints select the proxy after reload without changing device paths', () => {
+  const h = setup();
+  const endpoint = 'http://39.105.82.185:9880/tts';
+  const refPath = 'E:\\声音\\月见八千代.wav';
+  h.set('roomTTSSettings', { enabled: true, provider: 'gpt-sovits', apiUrl: endpoint, refAudioPath: refPath, useProxy: false });
+  h.loadSettings();
+  assert.equal(h.tts.useProxy, true);
+  assert.equal(h.saveTTS(false), true);
+  h.loadSettings();
+  assert.equal(h.tts.useProxy, true);
   assert.equal(h.tts.refAudioPath, refPath);
   assert.equal(h.tts.apiUrl, endpoint);
 });

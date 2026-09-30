@@ -543,7 +543,7 @@ function updateUserRole(req, res) {
 router.patch('/users/:id/role', updateUserRole);
 router.post('/users/:id/role', updateUserRole);
 
-router.patch('/users/:id/username', (req, res) => {
+function updateUserUsername(req, res) {
     try {
         if (!requireSuperAdminUser(req, res)) return;
         const userId = String(req.params.id || '').trim();
@@ -567,7 +567,11 @@ router.patch('/users/:id/username', (req, res) => {
         console.error('Admin user username update error:', error);
         fail(res, 500, '无法更新用户昵称');
     }
-});
+}
+
+// Use POST through the public CDN; retain PATCH for existing API clients.
+router.post('/users/:id/username', updateUserUsername);
+router.patch('/users/:id/username', updateUserUsername);
 
 router.post('/users/:id/password', (req, res) => {
     try {

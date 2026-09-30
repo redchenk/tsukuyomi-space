@@ -18,7 +18,7 @@ import {
   primeAsyncAudioPlayback,
   releaseAsyncAudioPlayback
 } from '../../services/room/audioPlayback';
-import { requestTtsAudioBlob } from '../../services/room/ttsTransport';
+import { requestTtsAudioBlob, ttsUsesProxy } from '../../services/room/ttsTransport';
 import {
   clearLocalRoomConversation,
   clearRoomGenerationDraft,
@@ -1805,7 +1805,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
 
   async function playTTS(text, messageId = '', live2dIntent = null) {
     const settings = readJson('roomTTSSettings', {});
-    if (settings.provider === 'gpt-sovits') settings.useProxy = false;
+    if (settings.provider === 'gpt-sovits') settings.useProxy = ttsUsesProxy(settings);
     if (!settings.enabled) {
       addMessage('system', '\u8bf7\u5148\u5728 TTS \u8bbe\u7f6e\u4e2d\u542f\u7528\u8bed\u97f3\u5408\u6210');
       return;
@@ -1831,7 +1831,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
         currentAudio = audio;
         audio.onerror = () => {
           if (currentAudio === audio) stopTTS();
-          addMessage('system', 'TTS 播放失败：无法直接访问本机 GPT-SoVITS 9880 端口，请确认 API 已启动且浏览器允许访问本机服务。');
+          addMessage('system', `TTS 播放失败：无法直接访问本机 GPT-SoVITS ${settings.apiUrl || defaultTtsUrl(settings.provider)}，请确认 API 已启动且浏览器允许访问本机服务。`);
         };
         const previousErrorHandler = audio.onerror;
         const playbackBinding = bindTtsAudioPlayback(audio, messageId, ttsText, messageLive2D);
@@ -1842,13 +1842,13 @@ export function useRoomChat({ live2d, world, diary = null }) {
         await audio.play().then(playbackBinding.watchPlaybackStart);
         return;
       }
-      const ttsText = settings.provider === 'minimax' && wantsJapaneseTts(settings)
+      const ttsText = settings.provider === 'gpt-sovits' || (settings.provider === 'minimax' && wantsJapaneseTts(settings))
         ? await translateForJapaneseTts(text)
         : cleanTtsText(text);
       if (!ttsText) throw new Error('TTS 文本为空，已取消语音播放。');
       const audioBlob = await requestTtsAudioBlob(ttsText, {
         ...settings,
-        textLang: settings.textLang || 'auto'
+        textLang: settings.provider === 'gpt-sovits' ? 'ja' : (settings.textLang || 'auto')
       }, {
         fetchDirect: fetch,
         fetchProxy: apiFetch

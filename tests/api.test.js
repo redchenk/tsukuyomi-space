@@ -3609,6 +3609,17 @@ describe('request and upload security', () => {
         assert.equal(result.response.status, 400);
         assert.match(result.body.message, /相对路径|权重路径/);
     });
+
+    it('requires login and rejects private targets for the public GPT-SoVITS bridge', async () => {
+        const settings = { text: '测试', provider: 'gpt-sovits', apiUrl: 'http://39.105.82.185:9880/tts', refAudioPath: 'reference_audio/yachiyo.wav' };
+        const anonymous = await postJson('/api/tts', settings);
+        assert.equal(anonymous.response.status, 401);
+        for (const apiUrl of ['http://10.0.0.1:9880/tts', 'http://169.254.169.254/tts', 'http://2130706433:9880/tts?target=unsafe', 'http://39.105.82.185:9880/control']) {
+            const result = await postJson('/api/tts', { ...settings, apiUrl }, userToken);
+            assert.equal(result.response.status, 400);
+            assert.equal(result.body.success, false);
+        }
+    });
 });
 
 describe('friend link applications API', () => {
@@ -3946,6 +3957,57 @@ describe('admin API permissions', () => {
 
         const restored = await patchJson(`/api/admin/users/${managed.id}/role`, { role: 'admin' }, adminToken);
         assert.equal(restored.response.status, 200);
+    });
+
+    it('persists user nicknames with POST and retains PATCH compatibility', async () => {
+        const id = 'terminal-nickname-api';
+        db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
+            .run(id, 'nickname-original', 'nickname@example.test', bcrypt.hashSync('nickname-test-password', 4), 'user');
+        const messageId = db.prepare("INSERT INTO messages (author, content, user_id, status) VALUES (?, ?, ?, 'approved')")
+            .run('nickname-original', 'nickname propagation test', id).lastInsertRowid;
+        try {
+            const saved = await postJson(`/api/admin/users/${id}/username`, { username: '  新昵称  ' }, adminToken);
+            assert.equal(saved.response.status, 200);
+            assert.equal(saved.body.data.username, '新昵称');
+            const list = await request('/api/admin/users', { headers: jsonHeaders(adminToken) });
+            assert.equal(list.body.data.find(user => user.id === id).username, '新昵称');
+            assert.equal(db.prepare('SELECT author FROM messages WHERE id = ?').get(messageId).author, '新昵称');
+            const signedIn = await postJson('/api/auth/login', { username: '新昵称', password: 'nickname-test-password' });
+            assert.equal(signedIn.response.status, 200);
+            assert.equal(signedIn.body.data.user.id, id);
+
+            const compatible = await patchJson(`/api/admin/users/${id}/username`, { username: 'nickname-compatible' }, adminToken);
+            assert.equal(compatible.response.status, 200);
+            assert.equal(db.prepare('SELECT username FROM users WHERE id = ?').get(id).username, 'nickname-compatible');
+        } finally {
+            db.prepare('DELETE FROM messages WHERE id = ?').run(messageId);
+            db.prepare('DELETE FROM users WHERE id = ?').run(id);
+        }
+    });
+
+    it('applies nickname validation and administrator protection to POST', async () => {
+        const id = 'terminal-nickname-guard';
+        db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
+            .run(id, 'nickname-guard', 'nickname-guard@example.test', 'unused', 'user');
+        try {
+            for (const username of [' ', 'a'.repeat(33)]) {
+                const invalid = await postJson(`/api/admin/users/${id}/username`, { username }, adminToken);
+                assert.equal(invalid.response.status, 400);
+            }
+            const duplicate = await postJson(`/api/admin/users/${id}/username`, { username: 'normal-user' }, adminToken);
+            assert.equal(duplicate.response.status, 409);
+            assert.equal(duplicate.body.message, '该昵称已被占用');
+            const forbidden = await postJson(`/api/admin/users/${id}/username`, { username: 'blocked-nickname' }, staffAdminToken);
+            assert.equal(forbidden.response.status, 403);
+            const staffUser = db.prepare('SELECT id FROM users WHERE username = ?').get('staff-admin');
+            const protectedAdmin = await postJson(`/api/admin/users/${staffUser.id}/username`, { username: 'renamed-admin' }, adminToken);
+            assert.equal(protectedAdmin.response.status, 403);
+            assert.equal(protectedAdmin.body.message, '不能修改管理员昵称');
+            assert.equal(db.prepare('SELECT username FROM users WHERE id = ?').get(id).username, 'nickname-guard');
+            assert.equal(db.prepare('SELECT username FROM users WHERE id = ?').get(staffUser.id).username, 'staff-admin');
+        } finally {
+            db.prepare('DELETE FROM users WHERE id = ?').run(id);
+        }
     });
 
     it('prevents non-super admins from changing user permissions or passwords', async () => {

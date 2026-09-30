@@ -23,7 +23,7 @@ import {
   releaseAsyncAudioPlayback
 } from '../services/room/audioPlayback';
 import { publishLocalRoomMemoryUpdate, refreshRoomMemorySync, startRoomMemorySync } from '../services/room/roomMemorySync';
-import { requestTtsAudioBlob } from '../services/room/ttsTransport';
+import { requestTtsAudioBlob, ttsUsesProxy } from '../services/room/ttsTransport';
 import {
   activePersonaPrompt,
   clearDiaryArchive,
@@ -129,7 +129,7 @@ const TTS_PRESETS = {
   openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
   minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimaxi.com/v1/t2a_v2', model: 'speech-2.8-hd', voice: MINIMAX_DEFAULT_VOICE_ID, textLang: 'ja' },
   elevenlabs: { label: 'ElevenLabs', provider: 'elevenlabs', apiUrl: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2', voice: '21m00Tcm4TlvDq8ikWAM' },
-  gptSovitsLocal: { label: '本机 GPT-SoVITS 直连', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth' },
+  gptSovitsLocal: { label: 'GPT-SoVITS（本机 / 公网）', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
 };
 const BEGINNER_LLM_PROVIDERS = [
@@ -1472,8 +1472,8 @@ function loadSettings() {
   }
   Object.assign(tts, { ...initialTtsSettings, ...readJson('roomTTSSettings', {}) });
   if (tts.provider === 'gpt-sovits') {
-    tts.useProxy = false;
     if (!tts.apiUrl) tts.apiUrl = defaultTtsUrl('gpt-sovits');
+    tts.useProxy = ttsUsesProxy(tts);
   }
   if (tts.provider === 'minimax') {
     if (!tts.apiUrl || /api\.minimax\.chat/.test(tts.apiUrl)) tts.apiUrl = defaultTtsUrl('minimax');
@@ -1729,7 +1729,7 @@ function applyTtsPreset(name) {
   if ('promptLang' in preset) tts.promptLang = preset.promptLang;
   if ('gptWeightPath' in preset) tts.gptWeightPath = preset.gptWeightPath;
   if ('sovitsWeightPath' in preset) tts.sovitsWeightPath = preset.sovitsWeightPath;
-  if (tts.provider === 'gpt-sovits') tts.useProxy = false;
+  if (tts.provider === 'gpt-sovits') tts.useProxy = ttsUsesProxy(tts);
 }
 
 function normalizedLLMSettings() {
@@ -1863,7 +1863,7 @@ function saveTTS(showDialog = true) {
     tts.refAudioPath = normalizeGptSovitsRefAudioPath(tts.refAudioPath || tts.voice);
     tts.gptWeightPath = String(tts.gptWeightPath || DEFAULT_GPT_SOVITS_GPT_WEIGHT).trim();
     tts.sovitsWeightPath = String(tts.sovitsWeightPath || DEFAULT_GPT_SOVITS_SOVITS_WEIGHT).trim();
-    tts.useProxy = false;
+    tts.useProxy = ttsUsesProxy(tts);
   }
   if (tts.provider === 'minimax') {
     tts.textLang = normalizeGptSovitsLang(tts.textLang || 'ja', 'ja');
@@ -1884,7 +1884,7 @@ function saveTTS(showDialog = true) {
     promptLang: tts.provider === 'gpt-sovits' ? normalizeGptSovitsLang(tts.promptLang, 'ja') : String(tts.promptLang || '').trim(),
     gptWeightPath: String(tts.gptWeightPath || '').trim(),
     sovitsWeightPath: String(tts.sovitsWeightPath || '').trim(),
-    useProxy: tts.provider === 'gpt-sovits' ? false : Boolean(tts.useProxy)
+    useProxy: Boolean(tts.useProxy)
   };
   try {
     writeJson('roomTTSSettings', settings);
@@ -1932,7 +1932,7 @@ async function testTTS() {
       const audioUrl = buildGptSovitsAudioUrl(testText, tts);
       const audio = await prepareAsyncAudioSource(audioPlayback, audioUrl);
       await audio.play();
-      openTestDialog('tts', 'success', 'TTS 语音测试', '已直接请求本机 GPT-SoVITS 9880 端口并开始播放。', audioUrl);
+      openTestDialog('tts', 'success', 'TTS 语音测试', '已直接请求本机 GPT-SoVITS 并开始播放。', audioUrl);
       showToast('TTS 测试成功');
       return;
     }
@@ -3067,9 +3067,8 @@ onBeforeUnmount(() => {
                   使用服务器受限代理规避 CORS</label
                 >
                 <p class="field-hint" v-if="tts.provider === 'gpt-sovits'">
-                  本机 GPT-SoVITS 仅支持浏览器直连
-                  http://localhost:9880/tts。请在访问设备上启动 GPT-SoVITS
-                  API，网站服务器不会代为连接 GPT-SoVITS。
+                  localhost / 127.0.0.1 使用浏览器直连；公网 IP 或域名自动使用站内代理，支持 HTTP(S) /tts 端点，需要登录账号。
+                  公网服务须允许网站服务器连接对应端口；参考音频路径属于运行 GPT-SoVITS 的设备。
                 </p>
                 <p class="field-hint" v-else>
                   关闭时由浏览器直连供应商；开启后请求会经过本站后端，仅允许预设供应商域名，用于处理

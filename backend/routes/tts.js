@@ -1,9 +1,17 @@
 const express = require('express');
-const { synthesizeSpeech } = require('../services/tts');
+const { synthesizeSpeech, isLocalGptSovitsUrl } = require('../services/tts');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+router.post('/', (req, res, next) => {
+    const provider = req.body?.provider || process.env.TTS_PROVIDER || 'mimo';
+    const endpoint = req.body?.apiUrl || process.env.GPT_SOVITS_API_URL || 'http://127.0.0.1:9880/tts';
+    if (provider === 'gpt-sovits' && !isLocalGptSovitsUrl(endpoint)) {
+        return authenticateToken(req, res, next);
+    }
+    next();
+}, async (req, res) => {
     try {
         const { text, apiKey, apiUrl, voice, model, provider, promptAudio, refAudioPath, promptText, textLang, promptLang, gptWeightPath, sovitsWeightPath } = req.body;
         if (!text) {
