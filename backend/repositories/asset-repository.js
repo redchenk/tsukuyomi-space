@@ -55,7 +55,8 @@ function listAssetsByOwner(ownerId, { limit = 60, offset = 0, type = '', search 
     }
     const rows = db.prepare(`
         SELECT id, article_id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at, updated_at,
-               (SELECT username FROM users WHERE id = article_assets.owner_id) AS owner_username
+               (SELECT username FROM users WHERE id = article_assets.owner_id) AS owner_username,
+               (SELECT COALESCE(NULLIF(nickname, ''), username) FROM users WHERE id = article_assets.owner_id) AS owner_nickname
         FROM article_assets
         WHERE ${where}
         ORDER BY created_at DESC
@@ -108,6 +109,7 @@ function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '' }
             assets.id, assets.article_id, assets.owner_id, assets.asset_type, assets.mime_type,
             assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
             owner.username AS owner_username,
+            COALESCE(NULLIF(owner.nickname, ''), owner.username) AS owner_nickname,
             CASE WHEN owner.avatar IS NOT NULL AND owner.avatar <> '' THEN 1 ELSE 0 END AS owner_has_avatar,
             CASE
                 WHEN owner.avatar LIKE 'https://%' THEN owner.avatar
@@ -132,6 +134,7 @@ function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '' } = {}) 
             assets.id, assets.article_id, assets.owner_id, assets.asset_type, assets.mime_type,
             assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
             owner.username AS owner_username,
+            COALESCE(NULLIF(owner.nickname, ''), owner.username) AS owner_nickname,
             CASE WHEN owner.avatar IS NOT NULL AND owner.avatar <> '' THEN 1 ELSE 0 END AS owner_has_avatar,
             CASE
                 WHEN owner.avatar LIKE 'https://%' THEN owner.avatar

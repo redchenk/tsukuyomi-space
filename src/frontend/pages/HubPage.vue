@@ -139,8 +139,8 @@ const sceneLinks = computed(() => [
     name: latestPixelArtwork.value?.title || props.t.arena || '月光像素工坊',
     desc: latestPixelArtwork.value
       ? (isEnglish.value
-        ? `Published by ${latestPixelArtwork.value.author || 'Guest'} on ${formatPixelDate(latestPixelArtwork.value) || 'a recent date'}`
-        : `${latestPixelArtwork.value.author || '访客'} 发布于 ${formatPixelDate(latestPixelArtwork.value) || '近期'}`)
+        ? `Published by ${latestPixelArtwork.value.author_nickname || latestPixelArtwork.value.author || 'Guest'} on ${formatPixelDate(latestPixelArtwork.value) || 'a recent date'}`
+        : `${latestPixelArtwork.value.author_nickname || latestPixelArtwork.value.author || '访客'} 发布于 ${formatPixelDate(latestPixelArtwork.value) || '近期'}`)
       : (isEnglish.value ? 'Draw, publish and like moonlit pixel art' : '绘制、发布、点赞月光像素画'),
     code: latestPixelArtwork.value ? `${artworkWidth(latestPixelArtwork.value)}x${artworkHeight(latestPixelArtwork.value)}` : 'Arena',
     icon: 'palette',
@@ -600,10 +600,10 @@ onBeforeUnmount(() => {
               <a v-for="msg in plazaPreviewMessages" :key="msg.id" class="hub-plaza-message" :href="scene.href" @click.prevent="$emit('go', scene.href)">
                 <span class="hub-plaza-author">
                   <span class="hub-plaza-avatar" aria-hidden="true">
-                    <span>{{ [...(msg.author || (isEnglish ? 'Guest' : '访客'))][0] }}</span>
+                    <span>{{ [...(msg.author_nickname || msg.author || (isEnglish ? 'Guest' : '访客'))][0] }}</span>
                     <img v-if="msg.avatar" :src="msg.avatar" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true">
                   </span>
-                  <strong>{{ msg.author || (isEnglish ? 'Guest' : '访客') }}</strong>
+                  <strong>{{ msg.author_nickname || msg.author || (isEnglish ? 'Guest' : '访客') }}</strong>
                 </span>
                 <p class="hub-plaza-content">{{ msg.content }}</p>
               </a>

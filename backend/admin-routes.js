@@ -12,7 +12,7 @@ const { notifyApprovedMessage } = require('./services/approved-reply-notificatio
 const articleMedia = require('./services/article-media');
 const objectStorage = require('./services/object-storage');
 const responseCache = require('./services/response-cache');
-const { publicEmail } = require('./validators');
+const { publicEmail, validateNickname } = require('./validators');
 const { normalizeFriendLinkUrl, validateFriendLinkApplication } = require('./services/friend-links');
 const friendLinkAvatarService = require('./services/friend-link-avatar');
 const friendLinkMonitorService = require('./services/friend-link-monitor');
@@ -208,6 +208,7 @@ function sanitizeUser(user) {
     return {
         id: user.id,
         username: user.username,
+        nickname: user.nickname || user.username,
         email,
         has_real_email: Boolean(email),
         role: user.role || 'user',
@@ -283,6 +284,7 @@ router.get('/me', (req, res) => {
     ok(res, {
         id: req.user.adminId || req.user.id,
         username: req.user.username,
+        nickname: req.user.nickname || req.user.username,
         role: req.user.role,
         scope: req.user.scope || 'admin'
     });
@@ -543,35 +545,36 @@ function updateUserRole(req, res) {
 router.patch('/users/:id/role', updateUserRole);
 router.post('/users/:id/role', updateUserRole);
 
-function updateUserUsername(req, res) {
+function updateUserNickname(req, res) {
     try {
         if (!requireSuperAdminUser(req, res)) return;
         const userId = String(req.params.id || '').trim();
-        const username = String(req.body?.username || '').trim();
         if (!userId) return fail(res, 400, '用户 ID 无效');
-        if (!username) return fail(res, 400, '请输入昵称');
-        if (username.length > 32) return fail(res, 400, '昵称不能超过 32 个字符');
+        const nickname = validateNickname(req.body?.nickname);
 
         const user = adminRepository.findUserForAdmin(userId);
         if (!user) return fail(res, 404, '用户不存在');
-        if (adminRepository.findAdminByUsername(user.username)) return fail(res, 403, '不能修改管理员昵称');
-
-        const duplicate = adminRepository.findUserByUsername(username);
-        if (duplicate && duplicate.id !== userId) {
-            return fail(res, 409, '该昵称已被占用');
+        if ((req.body?.id !== undefined && req.body.id !== user.id)
+            || (req.body?.username !== undefined && req.body.username !== user.username)) {
+            return fail(res, 400, '用户 ID 和登录用户名不可修改');
         }
-
-        adminRepository.updateUserUsername(userId, username);
-        ok(res, { username }, '用户昵称已更新');
+        adminRepository.updateUserNickname(userId, nickname);
+        responseCache.delPrefix('public:');
+        ok(res, { id: userId, username: user.username, nickname }, '用户昵称已更新');
     } catch (error) {
-        console.error('Admin user username update error:', error);
+        if (error.status === 400) return fail(res, 400, error.message);
+        console.error('Admin user nickname update error:', error);
         fail(res, 500, '无法更新用户昵称');
     }
 }
 
 // Use POST through the public CDN; retain PATCH for existing API clients.
-router.post('/users/:id/username', updateUserUsername);
-router.patch('/users/:id/username', updateUserUsername);
+router.post('/users/:id/nickname', updateUserNickname);
+router.patch('/users/:id/nickname', updateUserNickname);
+
+// Old clients must not accidentally rename login accounts while editing a nickname.
+router.post('/users/:id/username', (_req, res) => fail(res, 403, '登录用户名不可修改，请使用昵称'));
+router.patch('/users/:id/username', (_req, res) => fail(res, 403, '登录用户名不可修改，请使用昵称'));
 
 router.post('/users/:id/password', (req, res) => {
     try {

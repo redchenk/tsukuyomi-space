@@ -16,7 +16,7 @@ const text = ref('');
 const submitting = ref(false);
 const input = ref(null);
 const copy = computed(() => replyCopy(props.lang));
-const label = computed(() => `${copy.value.to} ${props.target.author || copy.value.unknown}`);
+const label = computed(() => `${copy.value.to} ${props.target.author_nickname || props.target.author || copy.value.unknown}`);
 onMounted(() => input.value?.focus({ preventScroll: true }));
 
 async function submit() {

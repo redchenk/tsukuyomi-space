@@ -381,7 +381,7 @@ function warnBeforeUnload(event) {
 onBeforeRouteLeave(() => !memoryChoice.pending && (!hasUnsavedSettings.value || window.confirm('设置尚未保存，离开会丢失这些修改。确定离开吗？')));
 
 const roomUser = computed(() => storedUser.value);
-const roomIdentityLabel = computed(() => roomUser.value?.username || '访客身份');
+const roomIdentityLabel = computed(() => roomUser.value?.nickname || roomUser.value?.username || '访客身份');
 const llmConnectionLabel = computed(() => llm.model || '待配置');
 const ttsConnectionLabel = computed(() => tts.enabled ? (tts.voice || tts.provider || '已启用') : '未启用');
 const llmSetupReady = computed(() => Boolean(llm.apiUrl && llm.model) && (!llmNeedsApiKey(llm.apiUrl) || Boolean(llm.apiKey)));

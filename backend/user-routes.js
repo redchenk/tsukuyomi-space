@@ -12,7 +12,7 @@ const socialRepository = require('./repositories/social-repository');
 const articleMedia = require('./services/article-media');
 const responseCache = require('./services/response-cache');
 const { articlePath } = require('./seo/render-article');
-const { parsePositiveInt, publicEmail } = require('./validators');
+const { parsePositiveInt, publicEmail, validateNickname } = require('./validators');
 const { validateAvatar } = require('./utils/avatar');
 
 const { authenticateToken, optionalAuth } = require('./middleware/auth');
@@ -140,10 +140,10 @@ router.post('/follow/:id', authenticateToken, (req, res) => {
                 userId: target.id,
                 actorId: req.user.id,
                 type: 'follow',
-                title: `${req.user.username || '访客'} 关注了你`,
+                title: `${req.user.nickname || req.user.username || '访客'} 关注了你`,
                 content: '新的访客正在关注你的创作动态。',
                 link: `/users/${encodeURIComponent(req.user.username || '')}`,
-                metadata: { actorName: req.user.username || '' }
+                metadata: { actorName: req.user.nickname || req.user.username || '' }
             });
         }
         res.json({
@@ -214,7 +214,7 @@ for (const method of ['post', 'delete']) {
             const data = socialRepository.setArticleLike(req.user.id, article.id, method === 'post');
             responseCache.delPrefix('public:articles:');
             if (method === 'post' && !wasLiked && article.author_id && article.author_id !== req.user.id) {
-                const title = `${req.user.username || '访客'} 点赞了你的文章`;
+                const title = `${req.user.nickname || req.user.username || '访客'} 点赞了你的文章`;
                 const link = articlePath(article);
                 const notification = notificationRepository.createNotification({
                     userId: article.author_id,
@@ -224,7 +224,7 @@ for (const method of ['post', 'delete']) {
                     content: article.title,
                     link,
                     relatedArticleId: article.id,
-                    metadata: { actorName: req.user.username || '', articleId: article.id }
+                    metadata: { actorName: req.user.nickname || req.user.username || '', articleId: article.id }
                 });
                 if (notification) queueNotificationEmail({
                     userId: article.author_id,
@@ -233,7 +233,7 @@ for (const method of ['post', 'delete']) {
                     title,
                     content: article.title,
                     link,
-                    actorName: req.user.username || '访客'
+                    actorName: req.user.nickname || req.user.username || '访客'
                 });
             }
             res.json({ success: true, data });
@@ -272,11 +272,11 @@ router.post('/bookmarks/:articleId', authenticateToken, (req, res) => {
                 userId: article.author_id,
                 actorId: req.user.id,
                 type: 'bookmark',
-                title: `${req.user.username || '访客'} 收藏了你的文章`,
+                title: `${req.user.nickname || req.user.username || '访客'} 收藏了你的文章`,
                 content: article.title,
                 link: articlePath(article),
                 relatedArticleId: article.id,
-                metadata: { actorName: req.user.username || '', articleId: article.id }
+                metadata: { actorName: req.user.nickname || req.user.username || '', articleId: article.id }
             });
         }
         res.json({
@@ -338,6 +338,7 @@ router.get('/profile', authenticateToken, (req, res) => {
             data: {
                 id: user.id,
                 username: user.username,
+                nickname: user.nickname || user.username,
                 email,
                 has_real_email: Boolean(email),
                 avatar: user.avatar || '',
@@ -356,11 +357,19 @@ router.get('/profile', authenticateToken, (req, res) => {
 // 鏇存柊鐢ㄦ埛璧勬枡
 router.put('/profile', authenticateToken, (req, res) => {
     try {
-        const bio = String(req.body?.bio || '').trim().slice(0, 500);
-
-        userRepository.updateBio(req.user.id, bio);
-        res.json({ success: true, message: '操作成功' });
+        const user = userRepository.findProfileById(req.user.id);
+        if (!user) return res.status(404).json({ success: false, message: '用户不存在' });
+        if ((req.body?.id !== undefined && req.body.id !== user.id)
+            || (req.body?.username !== undefined && req.body.username !== user.username)) {
+            return res.status(400).json({ success: false, message: '用户 ID 和登录用户名不可修改' });
+        }
+        const nickname = req.body?.nickname === undefined ? user.nickname : validateNickname(req.body.nickname);
+        const bio = req.body?.bio === undefined ? user.bio || '' : String(req.body.bio || '').trim().slice(0, 500);
+        userRepository.updateProfile(req.user.id, { nickname, bio });
+        responseCache.delPrefix('public:');
+        res.json({ success: true, data: { id: user.id, username: user.username, nickname, bio }, message: '个人资料已保存' });
     } catch (error) {
+        if (error.status === 400) return res.status(400).json({ success: false, message: error.message });
         console.error('鏇存柊鐢ㄦ埛璧勬枡澶辫触:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }

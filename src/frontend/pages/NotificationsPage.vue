@@ -1,4 +1,5 @@
 <script setup>
+import { nameInitial } from '../utils/userName.mjs';
 import { computed, onMounted, reactive } from 'vue';
 import { authFetch, authHeaders, noStoreUrl, parseResponse } from '../api/client';
 import { formatDateTime } from '../utils/time';
@@ -85,7 +86,7 @@ function notificationIcon(type) {
 }
 
 function actorInitial(item) {
-  return String(item.actor_username || item.metadata?.actorName || '月').slice(0, 1).toUpperCase();
+  return nameInitial(item.actor_nickname || item.actor_username || item.metadata?.actorName);
 }
 
 async function loadNotifications(page = inbox.page) {

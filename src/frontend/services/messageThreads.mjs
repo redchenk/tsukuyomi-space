@@ -27,7 +27,7 @@ export function messageThreads(messages = []) {
   function target(item) {
     const id = item.reply_to_author ? item.reply_to_id : item.reply_to_id || item.parent_id;
     const recipient = byId.get(String(id));
-    return { id: recipient?.id || null, name: recipient?.author || item.reply_to_author || '' };
+    return { id: recipient?.id || null, name: recipient?.author_nickname || recipient?.author || item.reply_to_nickname || item.reply_to_author || '' };
   }
   return { rootId, target, replies, top: messages.filter(item => !item.parent_id) };
 }

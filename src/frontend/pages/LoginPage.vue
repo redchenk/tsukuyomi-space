@@ -555,7 +555,7 @@ onMounted(() => {
                   <label for="qqCreateUsername">用户名</label>
                   <div class="auth-input-shell">
                     <TsIcon class="auth-field-icon" name="user" :size="18" />
-                    <input id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于站内展示的用户名">
+                    <input id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于登录与主页链接，注册后不可修改">
                   </div>
                 </div>
                 <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '一键开通并进入' }}</button>

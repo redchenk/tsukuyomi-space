@@ -45,7 +45,7 @@ function clearMessageCaches(articleId = null) {
 }
 
 function actorName(user) {
-    return user?.username || '访客';
+    return user?.nickname || user?.username || '访客';
 }
 
 function messageLink(message) {
@@ -155,6 +155,7 @@ router.get('/plaza/latest', (req, res) => {
             data: messageRepository.listRecentPublicMessages(limit).map(message => ({
                 id: message.id,
                 author: message.author,
+                author_nickname: message.author_nickname,
                 avatar: message.avatar,
                 content: message.content,
                 created_at: message.created_at

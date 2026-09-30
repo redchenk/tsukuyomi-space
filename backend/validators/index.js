@@ -31,11 +31,30 @@ function safeJsonParse(value, fallback) {
     }
 }
 
+function validateNickname(value) {
+    const nickname = typeof value === 'string' ? value.trim() : '';
+    const message = !nickname ? '请输入昵称'
+        : [...nickname].length > 32 ? '昵称不能超过 32 个字符'
+        : /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(nickname) ? '昵称不能包含控制字符' : '';
+    if (/[\ud800-\udfff]/u.test(nickname)) {
+        const error = new Error('昵称包含无效字符');
+        error.status = 400;
+        throw error;
+    }
+    if (message) {
+        const error = new Error(message);
+        error.status = 400;
+        throw error;
+    }
+    return nickname;
+}
+
 module.exports = {
     normalizeEmail,
     isEmail,
     isOAuthPlaceholderEmail,
     publicEmail,
     parsePositiveInt,
-    safeJsonParse
+    safeJsonParse,
+    validateNickname
 };

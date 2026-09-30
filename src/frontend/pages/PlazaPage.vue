@@ -1,4 +1,5 @@
 <script setup>
+import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, loadCurrentSession, loadPublicStats, parseResponse } from '../api/client';
@@ -174,19 +175,19 @@ const plazaMessages = computed(() => {
   if (plaza.query) {
     const q = plaza.query.toLowerCase();
     top = top.filter((item) => {
-      const replyText = item.replies.map((reply) => `${reply.author || ''} ${reply.content || ''}`).join(' ');
-      return `${item.author || ''} ${item.content || ''} ${replyText}`.toLowerCase().includes(q);
+      const replyText = item.replies.map((reply) => `${reply.author_nickname || reply.author || ''} ${reply.content || ''}`).join(' ');
+      return `${item.author_nickname || item.author || ''} ${item.content || ''} ${replyText}`.toLowerCase().includes(q);
     });
   }
 
-  const currentUsername = user.value?.username;
+  const currentUserId = user.value?.id;
   if (plaza.filter === 'hot') {
     top.sort((a, b) => (b.like_count || 0) - (a.like_count || 0) || compareAppDate(b.created_at, a.created_at));
   } else if (plaza.filter === 'replied') {
     top = top.filter((item) => item.replies.length > 0);
     top.sort((a, b) => b.replies.length - a.replies.length || compareAppDate(b.created_at, a.created_at));
   } else if (plaza.filter === 'mine') {
-    top = top.filter((item) => currentUsername && item.author === currentUsername);
+    top = top.filter((item) => currentUserId && item.user_id === currentUserId);
     top.sort((a, b) => compareAppDate(b.created_at, a.created_at));
   } else {
     top.sort((a, b) => compareAppDate(b.created_at, a.created_at));
@@ -523,7 +524,7 @@ function isPlazaMessageLiked(message) {
 }
 
 function plazaInitial(name) {
-  return String(name || fallback.value.visitor).trim().slice(0, 1).toUpperCase();
+  return nameInitial(name, fallback.value.visitor);
 }
 
 function plazaAvatarAlt(name) {
@@ -590,7 +591,7 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
         <div class="plaza-status-line"><span>{{ t.channelStatus }}</span><span class="plaza-status-value">{{ t.channelValue }}</span></div>
         <div class="plaza-status-line"><span>{{ t.plazaStatusLabel }}</span><span class="plaza-status-value">{{ plaza.loading ? t.syncing : t.online }}</span></div>
         <div v-if="isAuthed" class="plaza-login-card">
-          <strong>{{ user.username }}</strong>
+          <strong>{{ user.nickname || user.username }}</strong>
           <p>{{ t.loggedInDesc }}</p>
         </div>
         <div v-else class="plaza-login-card">
@@ -664,11 +665,11 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
               <div class="plaza-msg-author">
                 <button class="plaza-author-link" type="button" @click="plazaOpenProfile(msg.author)">
                 <div class="plaza-avatar">
-                  <img v-if="msg.avatar" :src="msg.avatar" :alt="plazaAvatarAlt(msg.author)" loading="lazy" decoding="async">
-                  <span v-else>{{ plazaInitial(msg.author) }}</span>
+                  <img v-if="msg.avatar" :src="msg.avatar" :alt="plazaAvatarAlt(msg.author_nickname || msg.author)" loading="lazy" decoding="async">
+                  <span v-else>{{ plazaInitial(msg.author_nickname || msg.author) }}</span>
                 </div>
                 <div>
-                  <div class="plaza-author-name">{{ msg.author || fallback.anonymous }}</div>
+                  <div class="plaza-author-name">{{ msg.author_nickname || msg.author || fallback.anonymous }}</div>
                   <UserLevelBadge v-if="msg.user_id" :level="userLevel(msg.user_id)" :lang="lang" compact :show-title="false" />
                   <div class="plaza-msg-date">{{ plazaFormatDate(msg.created_at) }}</div>
                 </div>
@@ -712,11 +713,11 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
                   <div class="plaza-msg-author">
                     <button class="plaza-author-link" type="button" @click="plazaOpenProfile(reply.author)">
                     <div class="plaza-avatar small">
-                      <img v-if="reply.avatar" :src="reply.avatar" :alt="plazaAvatarAlt(reply.author)" loading="lazy" decoding="async">
-                      <span v-else>{{ plazaInitial(reply.author) }}</span>
+                      <img v-if="reply.avatar" :src="reply.avatar" :alt="plazaAvatarAlt(reply.author_nickname || reply.author)" loading="lazy" decoding="async">
+                      <span v-else>{{ plazaInitial(reply.author_nickname || reply.author) }}</span>
                     </div>
                     <div>
-                      <div class="plaza-author-name" style="font-size:0.82rem;">{{ reply.author || fallback.anonymous }}</div>
+                      <div class="plaza-author-name" style="font-size:0.82rem;">{{ reply.author_nickname || reply.author || fallback.anonymous }}</div>
                       <UserLevelBadge v-if="reply.user_id" :level="userLevel(reply.user_id)" :lang="lang" compact :show-title="false" />
                       <div class="plaza-msg-date">{{ plazaFormatDate(reply.created_at) }}</div>
                     </div>
@@ -734,7 +735,7 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
                   @topic="plazaSelectTopic"
                 />
                 <div class="plaza-msg-footer">
-                  <button class="icon-btn" type="button" :aria-label="`${replyLabels.to} ${reply.author || replyLabels.unknown}`" @click="plazaToggleReply(reply.id)"><TsIcon name="message" :size="15" /><span>{{ t.reply }}</span></button>
+                  <button class="icon-btn" type="button" :aria-label="`${replyLabels.to} ${reply.author_nickname || reply.author || replyLabels.unknown}`" @click="plazaToggleReply(reply.id)"><TsIcon name="message" :size="15" /><span>{{ t.reply }}</span></button>
                 </div>
                 <div v-if="plaza.replyOpen[reply.id]" class="plaza-reply-form">
                   <PlazaReplyForm :t="t" :lang="lang" :target="reply" :msg-id="reply.id" :on-submit="plazaSubmitReply" @cancel="plazaToggleReply(reply.id)" />
@@ -832,7 +833,7 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
             <div v-if="!plazaActivity.length" class="plaza-activity-item"><span class="plaza-dot"></span><span>{{ t.plazaJustOpened }}</span></div>
             <div v-for="item in plazaActivity" :key="item.id" class="plaza-activity-item">
               <span class="plaza-dot"></span>
-              <span>{{ item.author || fallback.visitor }} {{ item.parent_id ? fallback.replied : fallback.posted }} · {{ plazaFormatRelative(item.created_at) }}</span>
+              <span>{{ item.author_nickname || item.author || fallback.visitor }} {{ item.parent_id ? fallback.replied : fallback.posted }} · {{ plazaFormatRelative(item.created_at) }}</span>
             </div>
           </div>
         </div>

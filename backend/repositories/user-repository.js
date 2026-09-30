@@ -2,7 +2,7 @@ const db = require('../db');
 
 function findProfileById(id) {
     return db.prepare(`
-        SELECT id, username, email, avatar, bio, role, created_at
+        SELECT id, username, COALESCE(NULLIF(nickname, ''), username) AS nickname, email, avatar, bio, role, created_at
         FROM users WHERE id = ?
     `).get(id);
 }
@@ -25,6 +25,11 @@ function updateBio(id, bio) {
     return db.prepare('UPDATE users SET bio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(bio || '', id).changes;
 }
 
+function updateProfile(id, { nickname, bio }) {
+    return db.prepare('UPDATE users SET nickname = ?, bio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(nickname, bio, id).changes;
+}
+
 function updateAvatar(id, avatar) {
     return db.prepare('UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(avatar, id).changes;
 }
@@ -38,6 +43,7 @@ module.exports = {
     findUserById,
     findPublicAvatarByUsername,
     updateBio,
+    updateProfile,
     updateAvatar,
     updatePassword
 };

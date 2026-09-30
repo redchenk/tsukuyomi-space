@@ -16,11 +16,13 @@ function compactMessageRow(row) {
 const MESSAGE_SELECT_FIELDS = `
     SELECT m.id,
            COALESCE(u.username, m.author) AS author,
+           COALESCE(NULLIF(u.nickname, ''), u.username, m.author) AS author_nickname,
            m.content,
            m.user_id,
            m.parent_id,
            m.reply_to_id,
            COALESCE(target_user.username, target.author, m.reply_to_author) AS reply_to_author,
+           COALESCE(NULLIF(target_user.nickname, ''), target_user.username, target.author, m.reply_to_author) AS reply_to_nickname,
            m.like_count,
            m.article_id,
            m.status,
@@ -107,6 +109,7 @@ function listUserMessages(userId, { limit = 100, offset = 0 } = {}) {
     return db.prepare(`
         SELECT m.id,
                COALESCE(u.username, m.author) AS author,
+               COALESCE(NULLIF(u.nickname, ''), u.username, m.author) AS author_nickname,
                m.content,
                m.user_id,
                m.parent_id,

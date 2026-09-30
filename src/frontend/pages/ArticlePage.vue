@@ -1,4 +1,5 @@
 <script setup>
+import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useQualifiedArticleRead } from '../composables/useQualifiedArticleRead';
 import { useArticleReading } from '../composables/useArticleReading';
@@ -186,11 +187,11 @@ function goTopic(topic) {
 }
 
 function commentAuthorName(item) {
-  return item?.author || item?.username || '访客';
+  return item?.author_nickname || item?.author || item?.username || '访客';
 }
 
 function commentInitial(item) {
-  return String(commentAuthorName(item)).trim().slice(0, 1).toUpperCase();
+  return nameInitial(commentAuthorName(item));
 }
 
 function commentAvatarAlt(item) {
@@ -518,7 +519,7 @@ watch(() => route.hash, revealCommentHash);
               class="article-author-link"
               :href="`/users/${encodeURIComponent(article.author_username || 'admin')}`"
               @click.prevent="goProfile(article.author_username || 'admin')"
-            >{{ article.author_username || 'admin' }}</a>
+            >{{ article.author_nickname || article.author_username || 'admin' }}</a>
             <UserLevelBadge v-if="article.author_id" :level="userLevel(article.author_id)" :lang="lang" compact />
             <span>{{ readingTimeLabel(article, lang, plainText) }}</span>
             <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} {{ readerCopy.views }}</span>
@@ -594,7 +595,7 @@ watch(() => route.hash, revealCommentHash);
           <div v-else class="comment-list">
             <article v-for="comment in topComments" :id="'comment-' + comment.id" :key="comment.id" class="comment-item">
               <div class="comment-header">
-                <button class="comment-author-link" type="button" @click="goProfile(commentAuthorName(comment))">
+                <button class="comment-author-link" type="button" @click="goProfile(comment.author || comment.username)">
                   <span class="comment-avatar">
                     <img v-if="comment.avatar" :src="comment.avatar" :alt="commentAvatarAlt(comment)" loading="lazy" decoding="async">
                     <span v-else>{{ commentInitial(comment) }}</span>
@@ -630,7 +631,7 @@ watch(() => route.hash, revealCommentHash);
               <div v-if="repliesFor(comment.id).length" :id="'article-replies-' + comment.id" class="reply-list">
                 <div v-for="reply in visibleReplies(comment.id)" :id="'comment-' + reply.id" :key="reply.id" class="comment-item reply-item">
                   <div class="comment-header">
-                    <button class="comment-author-link" type="button" @click="goProfile(commentAuthorName(reply))">
+                    <button class="comment-author-link" type="button" @click="goProfile(reply.author || reply.username)">
                       <span class="comment-avatar small">
                         <img v-if="reply.avatar" :src="reply.avatar" :alt="commentAvatarAlt(reply)" loading="lazy" decoding="async">
                         <span v-else>{{ commentInitial(reply) }}</span>

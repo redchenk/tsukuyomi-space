@@ -74,7 +74,7 @@ function listArticles({ category, query: searchQuery, limit, offset, sort = 'pin
             ${ARTICLE_COUNTS},
             ${ranked ? `article_content_quality(CASE WHEN a.content_format = 'block' THEN a.content ELSE substr(a.content, 1, ${MAX_CONTENT_LENGTH}) END, a.content_format)` : '0'} AS content_quality,
             ${ranked ? 'r.score AS featured_score, r.recommended AS daily_recommended,' : ''}
-            u.username AS author_username,
+            u.username AS author_username, COALESCE(NULLIF(u.nickname, ''), u.username) AS author_nickname,
             u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
             cover_asset.url AS cover_asset_url,
@@ -127,7 +127,7 @@ function listRecentPublishedArticles(limit = 8) {
         SELECT a.id, a.title, a.slug, ${ARTICLE_EXCERPT}, a.category, a.tags, a.author_id,
             a.publish_date, a.published_at, a.read_time, a.view_count, a.cover_image, a.cover_image_asset_id,
             a.content_format, a.status, a.pinned_at, a.created_at, a.updated_at,
-            u.username AS author_username,
+            u.username AS author_username, COALESCE(NULLIF(u.nickname, ''), u.username) AS author_nickname,
             u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
             cover_asset.url AS cover_asset_url,
@@ -170,7 +170,7 @@ function createArticle(article) {
 
 function findArticleById(id) {
     return compactArticleRow(db.prepare(`
-        SELECT a.*, ${ARTICLE_COUNTS}, u.username AS author_username, u.avatar AS author_avatar,
+        SELECT a.*, ${ARTICLE_COUNTS}, u.username AS author_username, COALESCE(NULLIF(u.nickname, ''), u.username) AS author_nickname, u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
             cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
@@ -183,7 +183,7 @@ function findArticleById(id) {
 
 function findPublishedArticleById(id) {
     return compactArticleRow(db.prepare(`
-        SELECT a.*, ${ARTICLE_COUNTS}, u.username AS author_username, u.avatar AS author_avatar,
+        SELECT a.*, ${ARTICLE_COUNTS}, u.username AS author_username, COALESCE(NULLIF(u.nickname, ''), u.username) AS author_nickname, u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
             cover_asset.url AS cover_asset_url,
             CASE WHEN cover_asset.id IS NULL THEN 0 ELSE 1 END AS cover_asset_exists
@@ -283,7 +283,7 @@ function listSeoArticles(limit = 500) {
     return compactArticleRows(db.prepare(`
         SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.content_format, a.publish_date, a.published_at, a.created_at, a.updated_at,
             a.cover_image, a.cover_image_asset_id, a.category, a.tags, a.read_time,
-            u.username AS author_username,
+            u.username AS author_username, COALESCE(NULLIF(u.nickname, ''), u.username) AS author_nickname,
             u.avatar AS author_avatar,
             COALESCE(u.updated_at, u.created_at) AS author_avatar_updated_at,
             cover_asset.url AS cover_asset_url,

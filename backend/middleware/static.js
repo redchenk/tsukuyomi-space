@@ -323,7 +323,7 @@ function sendImageSitemap(req, res) {
         images: galleryAssets.map((asset, index) => ({
             loc: asset.display_url || asset.access_url || asset.url,
             title: galleryImageTitle(asset, index),
-            caption: asset.owner_username ? `${galleryImageTitle(asset, index)}，上传者：${asset.owner_username}` : galleryImageTitle(asset, index)
+            caption: asset.owner_username ? `${galleryImageTitle(asset, index)}，上传者：${asset.owner_nickname || asset.owner_username}` : galleryImageTitle(asset, index)
         }))
     });
     setNoStore(res);

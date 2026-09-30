@@ -1,4 +1,5 @@
 <script setup>
+import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, parseResponse } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
@@ -494,7 +495,7 @@ function sendLocalMessage() {
   if (!text) return;
   chatMessages.value.push({
     id: Date.now(),
-    author: session.value?.user?.username || session.value?.username || '我',
+    author: session.value?.user?.nickname || session.value?.user?.username || session.value?.nickname || session.value?.username || '我',
     time: new Date().toLocaleTimeString(props.lang === 'en' ? 'en-US' : (props.lang === 'ja' ? 'ja-JP' : 'zh-CN'), { hour: '2-digit', minute: '2-digit' }),
     text
   });
@@ -1194,7 +1195,7 @@ async function openArtworkShare(artwork) {
     const imageUrl = new URL(`/api/pixel-art/${id}/image.png?v=${version}`, location.origin).href;
     artworkSharePayload.value = {
       title: fullArtwork.title || copy.value.gallery,
-      text: fullArtwork.description || `${copy.value.by} ${fullArtwork.author || props.t.brand}`,
+      text: fullArtwork.description || `${copy.value.by} ${fullArtwork.author_nickname || fullArtwork.author || props.t.brand}`,
       url,
       imageUrl,
       downloadUrl: imageUrl,
@@ -1428,7 +1429,7 @@ function handleArenaKeyup(event) {
 }
 
 function artworkInitial(name) {
-  return String(name || props.t.brand || '月').slice(0, 1).toUpperCase();
+  return nameInitial(name, props.t.brand || '月');
 }
 
 watch(() => gallery.sort, () => loadArtworks(1));
@@ -1836,10 +1837,10 @@ onBeforeUnmount(() => {
             <p v-if="artwork.description">{{ artwork.description }}</p>
             <div class="pixel-art-author">
               <span class="pixel-art-avatar">
-                <img v-if="artwork.avatar" :src="artwork.avatar" :alt="artwork.author" loading="lazy" decoding="async">
-                <span v-else>{{ artworkInitial(artwork.author) }}</span>
+                <img v-if="artwork.avatar" :src="artwork.avatar" :alt="artwork.author_nickname || artwork.author" loading="lazy" decoding="async">
+                <span v-else>{{ artworkInitial(artwork.author_nickname || artwork.author) }}</span>
               </span>
-              <span>{{ copy.by }} {{ artwork.author || props.t.brand }}</span>
+              <span>{{ copy.by }} {{ artwork.author_nickname || artwork.author || props.t.brand }}</span>
               <UserLevelBadge v-if="artwork.author_id" :level="userLevel(artwork.author_id)" :lang="lang" compact :show-title="false" />
               <time>{{ formatDate(artwork.created_at) }}</time>
             </div>
@@ -1923,7 +1924,7 @@ onBeforeUnmount(() => {
           <footer class="arena-art-lightbox-footer">
             <div>
               <strong>{{ previewArtwork.title || copy.gallery }}</strong>
-              <span>{{ copy.by }} {{ previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }}x{{ artworkHeight(previewArtwork) }}</span>
+              <span>{{ copy.by }} {{ previewArtwork.author_nickname || previewArtwork.author || props.t.brand }} · {{ artworkWidth(previewArtwork) }}x{{ artworkHeight(previewArtwork) }}</span>
             </div>
             <div class="arena-art-lightbox-actions">
               <button class="ghost-btn" type="button" @click="openArtworkShare(previewArtwork)">

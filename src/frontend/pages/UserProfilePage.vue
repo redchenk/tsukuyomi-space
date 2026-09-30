@@ -1,4 +1,5 @@
 <script setup>
+import { nameInitial, encodedAvatarInitial } from '../utils/userName.mjs';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
@@ -37,7 +38,7 @@ const roleText = computed(() => {
   if (profileUser.value.role === 'admin') return props.lang === 'zh' ? '管理员' : 'Admin';
   return props.lang === 'zh' ? '创作者' : 'Creator';
 });
-const profileInitial = computed(() => String(profileUser.value?.username || '月').trim().slice(0, 1).toUpperCase());
+const profileInitial = computed(() => nameInitial(profileUser.value?.nickname || profileUser.value?.username));
 const latestArticle = computed(() => profileArticles.value[0] || null);
 const profileCategoryChips = computed(() => {
   const categories = profileArticles.value.map((article) => String(article.category || '').trim()).filter(Boolean);
@@ -60,7 +61,7 @@ function formatDate(value) {
 
 function avatarSrc(user) {
   if (user?.avatar) return user.avatar;
-  const initial = encodeURIComponent(String(user?.username || '\u6708').slice(0, 1));
+  const initial = encodedAvatarInitial(user?.nickname || user?.username);
   return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23ffb7c5'/%3E%3Cstop offset='1' stop-color='%237edbe8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='50' fill='url(%23g)'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='42' font-family='Arial' fill='%231a1025'%3E${initial}%3C/text%3E%3C/svg%3E`;
 }
 
@@ -108,22 +109,22 @@ async function loadProfile() {
     const publicUser = result.data?.user || {};
     await hydrateUserLevels([publicUser.id]).catch(() => {});
     const publicArticles = Array.isArray(result.data?.articles) ? result.data.articles : [];
-    const description = String(publicUser.bio || `${publicUser.username || username.value} 在月读空间发布的公开文章与创作资料。`).trim();
+    const description = String(publicUser.bio || `${publicUser.nickname || publicUser.username || username.value} 在月读空间发布的公开文章与创作资料。`).trim();
     applySeo({
-      title: `${publicUser.username || username.value}的公开主页`,
+      title: `${publicUser.nickname || publicUser.username || username.value}的公开主页`,
       description,
-      keywords: [publicUser.username, '月读空间创作者', ...publicArticles.map((article) => article.category)].filter(Boolean),
+      keywords: [publicUser.nickname, publicUser.username, '月读空间创作者', ...publicArticles.map((article) => article.category)].filter(Boolean),
       path: `/users/${encodeURIComponent(publicUser.username || username.value)}`,
       image: /^https?:\/\//i.test(publicUser.avatar || '') ? publicUser.avatar : undefined,
       structuredData: {
         '@context': 'https://schema.org',
         '@type': 'ProfilePage',
-        name: `${publicUser.username || username.value}的公开主页`,
+        name: `${publicUser.nickname || publicUser.username || username.value}的公开主页`,
         description,
         url: `https://yachiyo.hk/users/${encodeURIComponent(publicUser.username || username.value)}`,
         mainEntity: {
           '@type': 'Person',
-          name: publicUser.username || username.value,
+          name: publicUser.nickname || publicUser.username || username.value,
           description
         }
       }
@@ -191,16 +192,17 @@ onMounted(loadProfile);
       <section class="profile-hero">
         <div class="profile-avatar-wrap">
           <div class="profile-avatar">
-            <img :src="avatarSrc(profileUser)" :alt="profileUser?.username || ''">
+            <img :src="avatarSrc(profileUser)" :alt="profileUser?.nickname || profileUser?.username || ''">
           </div>
           <span class="profile-avatar-initial">{{ profileInitial }}</span>
         </div>
         <div class="profile-main">
           <div class="profile-kicker"><TsIcon name="star" :size="15" /> User Profile</div>
-          <h1>{{ profileUser?.username }}</h1>
+          <h1>{{ profileUser?.nickname || profileUser?.username }}</h1>
           <UserLevelBadge v-if="profileUser?.id" :level="userLevel(profileUser.id)" :lang="lang" />
           <p>{{ profileUser?.bio || '这位创作者还没有写下个人简介。' }}</p>
           <div class="profile-meta">
+            <span>@{{ profileUser?.username }}</span>
             <span><TsIcon :name="roleIcon" :size="15" /> {{ roleText }}</span>
             <span><TsIcon name="calendar" :size="15" /> {{ formatDate(profileUser?.created_at) }}</span>
             <span><TsIcon name="book" :size="15" /> {{ formatNumber(profileStats.articles) }} 篇公开文章</span>

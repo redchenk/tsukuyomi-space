@@ -431,7 +431,7 @@ onUnmounted(() => {
       <section v-else-if="state.active === 'messages'" class="admin-list" aria-label="留言审核">
         <article v-for="item in state.messages" :key="item.id" class="admin-row admin-message-row">
           <div class="admin-row-main">
-            <strong>{{ item.username }}</strong>
+            <strong>{{ item.nickname || item.username }}</strong>
             <p>{{ item.content }}</p>
             <span>{{ item.article_title || '留言板' }} · {{ formatDate(item.created_at) }}</span>
             <div v-if="messageRiskHosts(item).length" class="admin-risk" role="alert">外链：{{ messageRiskHosts(item).join('、') }}</div>
@@ -442,7 +442,7 @@ onUnmounted(() => {
           </div>
           <div class="admin-row-actions">
             <button v-if="item.status !== 'approved' && !item.moderation?.blocked" class="primary-btn compact" type="button" :disabled="isBusy(`message-approve-${item.id}`)" @click="approveMessage(item)"><TsIcon name="userCheck" :size="16" />通过</button>
-            <button class="danger-btn compact" type="button" title="删除留言" :aria-label="`删除 ${item.username} 的留言`" :disabled="isBusy(`message-delete-${item.id}`)" @click="deleteMessage(item)"><TsIcon name="trash" :size="16" /></button>
+            <button class="danger-btn compact" type="button" title="删除留言" :aria-label="`删除 ${item.nickname || item.username} 的留言`" :disabled="isBusy(`message-delete-${item.id}`)" @click="deleteMessage(item)"><TsIcon name="trash" :size="16" /></button>
           </div>
         </article>
         <div v-if="!state.messages.length" class="admin-empty">{{ state.messageFilter === 'all' ? '暂无留言' : '当前状态暂无留言' }}</div>
@@ -453,7 +453,7 @@ onUnmounted(() => {
           <img :src="assetUrl(asset)" :alt="assetName(asset)" loading="lazy" decoding="async" data-image-bloom>
           <div>
             <strong>{{ assetName(asset) }}</strong>
-            <span>{{ asset.owner_username || '站点资源' }} · {{ formatDate(asset.created_at) }}</span>
+            <span>{{ asset.owner_nickname || asset.owner_username || '站点资源' }} · {{ formatDate(asset.created_at) }}</span>
           </div>
           <div class="admin-media-actions">
             <a class="icon-btn" :href="assetUrl(asset)" target="_blank" rel="noopener noreferrer" title="预览"><TsIcon name="eye" :size="17" /></a>
@@ -471,7 +471,7 @@ onUnmounted(() => {
           </div>
           <div class="admin-row-main">
             <strong>{{ assetName(asset) }}</strong>
-            <span>{{ asset.owner_username || '站点资源' }} · {{ asset.mime_type || asset.asset_type }} · {{ formatDate(asset.created_at) }}</span>
+            <span>{{ asset.owner_nickname || asset.owner_username || '站点资源' }} · {{ asset.mime_type || asset.asset_type }} · {{ formatDate(asset.created_at) }}</span>
           </div>
           <div class="admin-row-actions">
             <a class="icon-btn" :href="assetUrl(asset)" target="_blank" rel="noopener noreferrer" title="打开"><TsIcon name="external" :size="17" /></a>

@@ -23,7 +23,7 @@ function normalizeShare(row) {
         scene: parseScene(row.scene_json),
         ogImageAssetId: row.og_image_asset_id || '',
         ogImageUrl: row.og_image_asset_id ? `/api/assets/proxy/${encodeURIComponent(row.og_image_asset_id)}` : '',
-        author: row.username || '月读空间访客',
+        author: row.nickname || row.username || '月读空间访客',
         avatar: publicAvatarUrl({
             avatar: row.avatar,
             username: row.username,
@@ -38,6 +38,7 @@ function normalizeShare(row) {
 const shareSelect = `
     SELECT shares.*,
            users.username,
+           users.nickname,
            users.avatar,
            COALESCE(users.updated_at, users.created_at) AS avatar_updated_at
     FROM room_conversation_shares AS shares

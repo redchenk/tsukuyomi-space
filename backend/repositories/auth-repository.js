@@ -17,18 +17,18 @@ function findUserByUsernameOrEmailPair(username, email) {
 }
 
 function findCurrentUserById(id) {
-    return db.prepare('SELECT id, username, email, role, avatar, created_at FROM users WHERE id = ?').get(id);
+    return db.prepare("SELECT id, username, COALESCE(NULLIF(nickname, ''), username) AS nickname, email, role, avatar, bio, created_at FROM users WHERE id = ?").get(id);
 }
 
 function isUsernameTaken(username) {
     return Boolean(db.prepare('SELECT id FROM users WHERE username = ?').get(username));
 }
 
-function createUser({ id, username, email, passwordHash, role = 'user', avatar = '' }) {
+function createUser({ id, username, nickname = username, email, passwordHash, role = 'user', avatar = '' }) {
     return db.prepare(`
-        INSERT INTO users (id, username, email, password_hash, role, avatar)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, username, email, passwordHash, role, avatar || '');
+        INSERT INTO users (id, username, nickname, email, password_hash, role, avatar)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, username, nickname || username, email, passwordHash, role, avatar || '');
 }
 
 function findUserByOAuthAccount(provider, providerUserId) {

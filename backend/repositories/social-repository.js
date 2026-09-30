@@ -26,7 +26,7 @@ function findUsersByUsernames(usernames = []) {
     if (!names.length) return [];
     const lowerNames = names.map(name => name.toLowerCase());
     return db.prepare(`
-        SELECT id, username, avatar, bio, role, created_at
+        SELECT id, username, COALESCE(NULLIF(nickname, ''), username) AS nickname, avatar, bio, role, created_at
         FROM users
         WHERE lower(username) IN (${placeholders(lowerNames)})
     `).all(...lowerNames).map(row => ({ ...row, avatar: compactAvatar(row.avatar) }));
@@ -36,7 +36,7 @@ function findUserByUsername(username) {
     const value = String(username || '').trim().toLowerCase();
     if (!value) return null;
     const row = db.prepare(`
-        SELECT id, username, avatar, bio, role, created_at
+        SELECT id, username, COALESCE(NULLIF(nickname, ''), username) AS nickname, avatar, bio, role, created_at
         FROM users
         WHERE lower(username) = ?
     `).get(value);
@@ -133,6 +133,7 @@ function listBookmarkedArticles(userId, { limit = 80, offset = 0 } = {}) {
         SELECT a.id, a.title, a.slug, a.excerpt, a.category, a.read_time, a.view_count,
                a.cover_image, a.cover_image_asset_id, a.publish_date, a.published_at, a.created_at,
                u.username AS author_username,
+               COALESCE(NULLIF(u.nickname, ''), u.username) AS author_nickname,
                u.avatar AS author_avatar,
                b.created_at AS bookmarked_at
         FROM article_bookmarks b

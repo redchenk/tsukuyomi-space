@@ -30,6 +30,7 @@ function listAdminLinks() {
     return db.prepare(`
         SELECT f.*,
                u.username AS applicant_username,
+               COALESCE(NULLIF(u.nickname, ''), u.username) AS applicant_nickname,
                u.email AS applicant_email
         FROM friend_links f
         LEFT JOIN users u ON u.id = f.user_id

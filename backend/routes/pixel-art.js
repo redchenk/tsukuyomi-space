@@ -24,7 +24,7 @@ function recordPixelGrowth(userId, activityKey, artworkId) {
 }
 
 function actorName(user) {
-    return user?.username || '访客';
+    return user?.nickname || user?.username || '访客';
 }
 
 function cleanText(value, maxLength) {

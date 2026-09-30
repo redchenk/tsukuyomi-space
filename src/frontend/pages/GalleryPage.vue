@@ -94,7 +94,7 @@ function imageDate(asset) {
 }
 
 function uploaderName(asset) {
-  return String(asset?.owner_username || '').trim() || '站点归档';
+  return String(asset?.owner_nickname || asset?.owner_username || '').trim() || '站点归档';
 }
 
 function uploaderPath(asset) {

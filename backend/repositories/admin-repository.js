@@ -20,10 +20,11 @@ function ensureSiteUserForAdmin(admin) {
         let user = db.prepare('SELECT * FROM users WHERE username = ?').get(admin.username);
         if (!user) {
             db.prepare(`
-                INSERT INTO users (id, username, email, password_hash, role)
-                VALUES (?, ?, ?, ?, 'admin')
+                INSERT INTO users (id, username, nickname, email, password_hash, role)
+                VALUES (?, ?, ?, ?, ?, 'admin')
             `).run(
                 crypto.randomUUID(),
+                admin.username,
                 admin.username,
                 `admin-${admin.id}@admin.yachiyo.local`,
                 admin.password_hash
@@ -160,9 +161,9 @@ function buildAdminMessageFilter({ search = '', status = 'all' } = {}) {
     if (status === 'pending') where.push("COALESCE(m.status, 'approved') <> 'approved'");
     if (status === 'approved') where.push("COALESCE(m.status, 'approved') = 'approved'");
     if (search) {
-        where.push("(m.content LIKE ? OR COALESCE(u.username, m.author, '匿名') LIKE ? OR COALESCE(a.title, '') LIKE ?)");
+        where.push("(m.content LIKE ? OR COALESCE(NULLIF(u.nickname, ''), u.username, m.author, '匿名') LIKE ? OR COALESCE(u.username, m.author, '匿名') LIKE ? OR COALESCE(a.title, '') LIKE ?)");
         const keyword = `%${search}%`;
-        params.push(keyword, keyword, keyword);
+        params.push(keyword, keyword, keyword, keyword);
     }
     return { sql: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
 }
@@ -174,6 +175,7 @@ function listAdminMessages({ limit = 0, offset = 0, search = '', status = 'all' 
     return db.prepare(`
         SELECT m.id,
                COALESCE(u.username, m.author, '匿名') AS username,
+               COALESCE(NULLIF(u.nickname, ''), u.username, m.author, '匿名') AS nickname,
                m.content,
                m.parent_id,
                m.article_id,
@@ -242,33 +244,26 @@ function deleteMessage(id) {
 
 function listUsers() {
     return db.prepare(`
-        SELECT id, username, email, role, avatar, bio, created_at, updated_at
+        SELECT id, username, COALESCE(NULLIF(nickname, ''), username) AS nickname, email, role, avatar, bio, created_at, updated_at
         FROM users
         ORDER BY created_at DESC
     `).all();
 }
 
 function findUserForAdmin(id) {
-    return db.prepare('SELECT username, role FROM users WHERE id = ?').get(id);
+    return db.prepare('SELECT id, username, nickname, role FROM users WHERE id = ?').get(id);
 }
 
 function findUserByUsername(username) {
-    return db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    return db.prepare('SELECT id, nickname FROM users WHERE username = ?').get(username);
 }
 
 function updateUserRole(id, role) {
     return db.prepare('UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(role, id).changes;
 }
 
-function updateUserUsername(id, username) {
-    const tx = db.transaction(() => {
-        const user = db.prepare('SELECT username FROM users WHERE id = ?').get(id);
-        if (!user) return 0;
-        const changes = db.prepare('UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(username, id).changes;
-        db.prepare('UPDATE messages SET author = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(username, id);
-        return changes;
-    });
-    return tx();
+function updateUserNickname(id, nickname) {
+    return db.prepare('UPDATE users SET nickname = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(nickname, id).changes;
 }
 
 function resetUserPassword(id, passwordHash) {
@@ -346,7 +341,7 @@ module.exports = {
     findUserForAdmin,
     findUserByUsername,
     updateUserRole,
-    updateUserUsername,
+    updateUserNickname,
     resetUserPassword,
     deleteUser,
     listLinks,

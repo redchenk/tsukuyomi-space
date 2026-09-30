@@ -212,7 +212,7 @@ export function articleSeo(article, path) {
       dateModified: article?.updated_at || article?.created_at || article?.publish_date,
       author: {
         '@type': 'Person',
-        name: article?.author_username || 'redchenk'
+        name: article?.author_nickname || article?.author_username || 'redchenk'
       },
       publisher: {
         '@type': 'Organization',

@@ -1,4 +1,5 @@
 <script setup>
+import { encodedAvatarInitial } from '../utils/userName.mjs';
 import ModerationNotice from '../components/ModerationNotice.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { authFetch, authHeaders, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
@@ -64,6 +65,7 @@ const uc = reactive({
   messageDrafts: {},
   avatarUploading: false,
   profileBio: '',
+  profileNickname: '',
   password: {
     current: '',
     next: '',
@@ -75,7 +77,7 @@ const isAuthed = computed(() => Boolean(ucUser.value));
 const ucRefreshing = computed(() => uc.profileLoading || uc.articleLoading || uc.messageLoading || uc.bookmarkLoading || uc.pixelLoading);
 const isAdminUser = computed(() => ['admin', 'super_admin'].includes(ucUser.value?.role) || ucUser.value?.scope === 'admin');
 const locale = computed(() => props.lang === 'en' ? 'en-US' : (props.lang === 'zh' ? 'zh-CN' : 'ja-JP'));
-const ucAvatarSrc = computed(() => ucUser.value?.avatar || ucDefaultAvatar(ucUser.value?.username));
+const ucAvatarSrc = computed(() => ucUser.value?.avatar || ucDefaultAvatar(ucUser.value?.nickname || ucUser.value?.username));
 const ucRoleText = computed(() => {
   if (!ucUser.value) return '';
   return isAdminUser.value ? props.t.ucAdmin : props.t.ucUser;
@@ -123,7 +125,7 @@ const ucFilteredMessages = computed(() => {
 const ucFilteredBookmarks = computed(() => {
   if (!uc.bookmarkQuery) return uc.bookmarks;
   const q = uc.bookmarkQuery.toLowerCase();
-  return uc.bookmarks.filter((article) => `${article.title || ''} ${article.category || ''} ${article.author_username || ''}`.toLowerCase().includes(q));
+  return uc.bookmarks.filter((article) => `${article.title || ''} ${article.category || ''} ${article.author_nickname || article.author_username || ''}`.toLowerCase().includes(q));
 });
 const ucFilteredPixelArtworks = computed(() => {
   if (!uc.pixelQuery) return uc.pixelArtworks;
@@ -188,7 +190,7 @@ function ucShowMessage(scope, msg, variant = 'error') {
 }
 
 function ucDefaultAvatar(name) {
-  const initial = encodeURIComponent((name || '\u6708').slice(0, 1));
+  const initial = encodedAvatarInitial(name);
   return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23ffb7c5'/%3E%3Cstop offset='1' stop-color='%23ff6b9d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='50' fill='url(%23g)'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='42' font-family='Arial' fill='%231a1025'%3E${initial}%3C/text%3E%3C/svg%3E`;
 }
 
@@ -256,6 +258,7 @@ async function ucLoadProfile() {
     if (!result.success) throw new Error(result.message || props.t.ucProfileLoadFailed);
     ucUser.value = result.data;
     uc.profileBio = result.data?.bio || '';
+    uc.profileNickname = result.data?.nickname || result.data?.username || '';
     loadedUserId = result.data?.id || '';
     updateStoredUser(result.data);
   } catch (error) {
@@ -396,6 +399,7 @@ async function ucEnsureSession() {
 
   ucUser.value = null;
   uc.profileBio = '';
+  uc.profileNickname = '';
   uc.articles = [];
   uc.messages = [];
   uc.bookmarks = [];
@@ -413,18 +417,26 @@ async function ucEnsureSession() {
 }
 
 async function ucSaveProfile() {
+  if (uc.profileSaving) return;
   const bio = uc.profileBio.trim();
+  const nickname = uc.profileNickname.trim();
+  if (!nickname || [...nickname].length > 32) {
+    ucShowMessage('profile', props.t.ucNicknameHint);
+    return;
+  }
   uc.profileSaving = true;
   try {
     const response = await authFetch('/api/user/profile', {
       method: 'PUT',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ bio })
+      body: JSON.stringify({ bio, nickname })
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.ucProfileSaveFailed);
-    if (ucUser.value) ucUser.value.bio = bio;
+    ucUser.value = { ...ucUser.value, ...result.data };
+    uc.profileNickname = result.data.nickname;
     updateStoredUser(ucUser.value);
+    emit('auth-changed', ucUser.value);
     ucShowMessage('profile', props.t.ucProfileSaved, 'success');
     ucShowToast(props.t.ucProfileSaved);
   } catch (error) {
@@ -656,6 +668,7 @@ watch(() => props.user, (nextUser) => {
   sessionChecking.value = false;
   ucUser.value = nextUser;
   uc.profileBio = nextUser.bio || '';
+  uc.profileNickname = nextUser.nickname || nextUser.username || '';
   const nextUserId = nextUser.id || '';
   if (nextUserId && nextUserId !== loadedUserId) ucRefresh();
 });
@@ -701,7 +714,7 @@ onMounted(async () => {
             <TsIcon :name="ucUser?.role === 'admin' ? 'crown' : 'user'" :size="15" />
             <span>{{ ucRoleText }}</span>
           </div>
-          <h1 class="uc-username">{{ ucUser?.username || '-' }}</h1>
+          <h1 class="uc-username">{{ ucUser?.nickname || ucUser?.username || '-' }}</h1>
           <a v-if="ucGrowth?.level" class="uc-level-link" href="/growth" @click.prevent="go('/growth')">
             <UserLevelBadge :level="ucGrowth.level" :lang="lang" />
           </a>
@@ -814,9 +827,18 @@ onMounted(async () => {
             <div v-if="uc.profileMsg" class="form-message" :class="uc.profileMsgType">{{ uc.profileMsg }}</div>
             <div class="form-grid">
               <div class="form-group">
-                <label>{{ t.ucUsername }}</label>
-                <input type="text" disabled :value="ucUser?.username || ''">
+                <label for="ucNickname">{{ t.ucNickname }}</label>
+                <input id="ucNickname" v-model="uc.profileNickname" type="text" autocomplete="nickname" :disabled="uc.profileSaving" required>
+                <div class="help-text">{{ t.ucNicknameHint }}</div>
+              </div>
+              <div class="form-group">
+                <label for="ucUsername">{{ t.ucUsername }}</label>
+                <input id="ucUsername" type="text" disabled :value="ucUser?.username || ''">
                 <div class="help-text">{{ t.ucUsernameHint }}</div>
+              </div>
+              <div class="form-group">
+                <label for="ucUserId">{{ t.ucUserId }}</label>
+                <input id="ucUserId" type="text" disabled :value="ucUser?.id || ''">
               </div>
               <div class="form-group">
                 <label>{{ t.ucEmail }}</label>
@@ -912,7 +934,7 @@ onMounted(async () => {
                   <div class="uc-article-meta">
                     <span class="uc-status-pill">bookmarked</span>
                     <span>{{ article.category || '' }}</span>
-                    <span>{{ article.author_username || 'admin' }}</span>
+                    <span>{{ article.author_nickname || article.author_username || 'admin' }}</span>
                     <span>{{ ucFormatDate(article.bookmarked_at) }}</span>
                   </div>
                 </div>
@@ -1043,7 +1065,7 @@ onMounted(async () => {
                   <p v-if="artwork.description">{{ artwork.description }}</p>
                   <div class="uc-article-meta">
                     <span class="uc-status-pill">{{ pixelArtworkWidth(artwork) }}x{{ pixelArtworkHeight(artwork) }}</span>
-                    <span v-if="isAdminUser">{{ artwork.author || '未知作者' }}</span>
+                    <span v-if="isAdminUser">{{ artwork.author_nickname || artwork.author || '未知作者' }}</span>
                     <span>{{ (artwork.like_count || 0).toLocaleString(locale) }} 喜欢</span>
                     <span>{{ ucFormatDate(artwork.created_at) }}</span>
                   </div>

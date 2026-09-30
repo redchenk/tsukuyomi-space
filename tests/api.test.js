@@ -401,6 +401,25 @@ describe('article category management', () => {
 });
 
 describe('database initialization', () => {
+    it('adds and backfills nickname on a legacy database without altering account identities', () => {
+        const Database = require('better-sqlite3');
+        const legacy = new Database(':memory:');
+        try {
+            legacy.exec("CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL)");
+            legacy.prepare('INSERT INTO users VALUES (?, ?, ?)').run('stable-id', '原用户名', 'keep-password');
+            const migration = require('../backend/db/migrations/039_add_user_nickname');
+            migration.up(legacy);
+            assert.deepEqual(legacy.prepare('SELECT * FROM users').get(), {
+                id: 'stable-id', username: '原用户名', password_hash: 'keep-password', nickname: '原用户名'
+            });
+            legacy.prepare('UPDATE users SET nickname = ?').run('新昵称');
+            migration.up(legacy);
+            assert.equal(legacy.prepare('SELECT nickname FROM users').get().nickname, '新昵称');
+        } finally {
+            legacy.close();
+        }
+    });
+
     it('creates core tables and seeds defaults', () => {
         const tables = db.prepare(`
             SELECT name FROM sqlite_master
@@ -3959,54 +3978,129 @@ describe('admin API permissions', () => {
         assert.equal(restored.response.status, 200);
     });
 
-    it('persists user nicknames with POST and retains PATCH compatibility', async () => {
+    it('persists independent nicknames through POST and PATCH without renaming login accounts', async () => {
         const id = 'terminal-nickname-api';
         db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
             .run(id, 'nickname-original', 'nickname@example.test', bcrypt.hashSync('nickname-test-password', 4), 'user');
         const messageId = db.prepare("INSERT INTO messages (author, content, user_id, status) VALUES (?, ?, ?, 'approved')")
             .run('nickname-original', 'nickname propagation test', id).lastInsertRowid;
         try {
-            const saved = await postJson(`/api/admin/users/${id}/username`, { username: '  新昵称  ' }, adminToken);
+            const saved = await postJson(`/api/admin/users/${id}/nickname`, { nickname: '  新昵称  ' }, adminToken);
             assert.equal(saved.response.status, 200);
-            assert.equal(saved.body.data.username, '新昵称');
+            assert.equal(saved.body.data.nickname, '新昵称');
+            assert.equal(saved.body.data.username, 'nickname-original');
             const list = await request('/api/admin/users', { headers: jsonHeaders(adminToken) });
-            assert.equal(list.body.data.find(user => user.id === id).username, '新昵称');
-            assert.equal(db.prepare('SELECT author FROM messages WHERE id = ?').get(messageId).author, '新昵称');
-            const signedIn = await postJson('/api/auth/login', { username: '新昵称', password: 'nickname-test-password' });
+            assert.equal(list.body.data.find(user => user.id === id).nickname, '新昵称');
+            const message = require('../backend/repositories/message-repository').findMessageById(messageId);
+            assert.equal(message.author, 'nickname-original');
+            assert.equal(message.author_nickname, '新昵称');
+            const signedIn = await postJson('/api/auth/login', { username: 'nickname-original', password: 'nickname-test-password' });
             assert.equal(signedIn.response.status, 200);
             assert.equal(signedIn.body.data.user.id, id);
-
-            const compatible = await patchJson(`/api/admin/users/${id}/username`, { username: 'nickname-compatible' }, adminToken);
+            assert.equal(signedIn.body.data.user.nickname, '新昵称');
+            const nicknameLogin = await postJson('/api/auth/login', { username: '新昵称', password: 'nickname-test-password' });
+            assert.equal(nicknameLogin.response.status, 401);
+            const compatible = await patchJson(`/api/admin/users/${id}/nickname`, { nickname: 'nickname-compatible' }, adminToken);
             assert.equal(compatible.response.status, 200);
-            assert.equal(db.prepare('SELECT username FROM users WHERE id = ?').get(id).username, 'nickname-compatible');
+            assert.equal(db.prepare('SELECT username FROM users WHERE id = ?').get(id).username, 'nickname-original');
+            for (const method of [postJson, patchJson]) {
+                const legacy = await method(`/api/admin/users/${id}/username`, { username: 'rename-attempt' }, adminToken);
+                assert.equal(legacy.response.status, 403);
+            }
         } finally {
             db.prepare('DELETE FROM messages WHERE id = ?').run(messageId);
             db.prepare('DELETE FROM users WHERE id = ?').run(id);
         }
     });
 
-    it('applies nickname validation and administrator protection to POST', async () => {
+    it('allows duplicate and linked-admin nicknames while enforcing validation and management permissions', async () => {
         const id = 'terminal-nickname-guard';
         db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
             .run(id, 'nickname-guard', 'nickname-guard@example.test', 'unused', 'user');
+        const staffUser = db.prepare('SELECT id, nickname FROM users WHERE username = ?').get('staff-admin');
         try {
-            for (const username of [' ', 'a'.repeat(33)]) {
-                const invalid = await postJson(`/api/admin/users/${id}/username`, { username }, adminToken);
+            for (const nickname of [' ', 'a'.repeat(33), 'name\nspoof', '\u202eadmin', null, {}]) {
+                const invalid = await postJson(`/api/admin/users/${id}/nickname`, { nickname }, adminToken);
                 assert.equal(invalid.response.status, 400);
             }
-            const duplicate = await postJson(`/api/admin/users/${id}/username`, { username: 'normal-user' }, adminToken);
-            assert.equal(duplicate.response.status, 409);
-            assert.equal(duplicate.body.message, '该昵称已被占用');
-            const forbidden = await postJson(`/api/admin/users/${id}/username`, { username: 'blocked-nickname' }, staffAdminToken);
+            const duplicate = await postJson(`/api/admin/users/${id}/nickname`, { nickname: 'normal-user' }, adminToken);
+            assert.equal(duplicate.response.status, 200);
+            const unicode = await postJson(`/api/admin/users/${id}/nickname`, { nickname: '🌙'.repeat(32) }, adminToken);
+            assert.equal(unicode.response.status, 200);
+            const forbidden = await postJson(`/api/admin/users/${id}/nickname`, { nickname: 'blocked-nickname' }, staffAdminToken);
             assert.equal(forbidden.response.status, 403);
-            const staffUser = db.prepare('SELECT id FROM users WHERE username = ?').get('staff-admin');
-            const protectedAdmin = await postJson(`/api/admin/users/${staffUser.id}/username`, { username: 'renamed-admin' }, adminToken);
-            assert.equal(protectedAdmin.response.status, 403);
-            assert.equal(protectedAdmin.body.message, '不能修改管理员昵称');
-            assert.equal(db.prepare('SELECT username FROM users WHERE id = ?').get(id).username, 'nickname-guard');
+            const ownName = await postJson(`/api/admin/users/${staffUser.id}/nickname`, { nickname: '管理员昵称' }, adminToken);
+            assert.equal(ownName.response.status, 200);
+            const loginResult = await postJson('/api/admin/login', { username: 'staff-admin', password: 'staff-test-password' });
+            assert.equal(loginResult.response.status, 200);
+            assert.equal(loginResult.body.data.user.nickname, '管理员昵称');
             assert.equal(db.prepare('SELECT username FROM users WHERE id = ?').get(staffUser.id).username, 'staff-admin');
+            const spoof = await postJson(`/api/admin/users/${id}/nickname`, { nickname: 'new', username: 'hijack' }, adminToken);
+            assert.equal(spoof.response.status, 400);
         } finally {
+            db.prepare('UPDATE users SET nickname = ? WHERE id = ?').run(staffUser.nickname, staffUser.id);
             db.prepare('DELETE FROM users WHERE id = ?').run(id);
+        }
+    });
+
+    it('lets users edit their own nickname and propagates it while keeping IDs, ownership and public links stable', async () => {
+        const id = 'nickname-self-api';
+        const username = 'nickname-self-handle';
+        db.prepare('INSERT INTO users (id, username, nickname, email, password_hash, role, bio) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            .run(id, username, '最初昵称', 'nickname-self@example.test', bcrypt.hashSync('nickname-self-password', 4), 'user', 'keep bio');
+        const articleId = db.prepare("INSERT INTO articles (title, content, author_id, status) VALUES (?, ?, ?, 'published')")
+            .run('Nickname article', 'Nickname article content', id).lastInsertRowid;
+        const messageId = db.prepare("INSERT INTO messages (author, content, user_id, status) VALUES (?, ?, ?, 'approved')")
+            .run(username, 'Nickname message', id).lastInsertRowid;
+        const replyId = db.prepare("INSERT INTO messages (author, content, user_id, parent_id, reply_to_id, reply_to_author, status) VALUES (?, ?, ?, ?, ?, ?, 'approved')")
+            .run('normal-user', 'Nickname reply', 'user-001', messageId, messageId, username).lastInsertRowid;
+        const ownReplyId = db.prepare("INSERT INTO messages (author, content, user_id, parent_id, reply_to_id, reply_to_author, status) VALUES (?, ?, ?, ?, ?, ?, 'approved')")
+            .run(username, 'Nickname notification', id, messageId, replyId, 'normal-user').lastInsertRowid;
+        try {
+            const token = await login('/api/auth/login', username, 'nickname-self-password');
+            await request('/api/messages'); // Prime the public cache before the rename.
+            const saved = await putJson('/api/user/profile', { nickname: '  月下新名字 🌙  ' }, token);
+            assert.equal(saved.response.status, 200);
+            assert.equal(saved.body.data.nickname, '月下新名字 🌙');
+            assert.equal(saved.body.data.username, username);
+            const profile = await request('/api/user/profile', { headers: jsonHeaders(token) });
+            assert.equal(profile.body.data.id, id);
+            assert.equal(profile.body.data.bio, 'keep bio');
+            const me = await request('/api/auth/me', { headers: jsonHeaders(token) });
+            assert.equal(me.body.data.nickname, '月下新名字 🌙');
+            const publicProfile = await request(`/api/user/public/${username}`);
+            assert.equal(publicProfile.body.data.user.nickname, '月下新名字 🌙');
+            assert.equal(publicProfile.body.data.user.username, username);
+            const article = require('../backend/repositories/article-repository').findPublishedArticleById(articleId);
+            assert.equal(article.author_nickname, '月下新名字 🌙');
+            assert.equal(article.author_username, username);
+            const messages = await request('/api/messages');
+            assert.equal(messages.body.data.find(item => item.id === Number(messageId)).author_nickname, '月下新名字 🌙');
+            const reply = require('../backend/repositories/message-repository').findMessageById(replyId);
+            assert.equal(reply.reply_to_nickname, '月下新名字 🌙');
+            assert.equal(reply.reply_to_author, username);
+            const notification = require('../backend/services/approved-reply-notification').notifyApprovedMessage(ownReplyId);
+            assert.ok(notification);
+            const notice = db.prepare('SELECT title, metadata FROM notifications WHERE related_message_id = ?').get(ownReplyId);
+            assert.equal(notice.title, '月下新名字 🌙 回复了你的留言');
+            assert.equal(JSON.parse(notice.metadata).actorName, '月下新名字 🌙');
+            for (const body of [{ nickname: 'new', id: 'user-001' }, { nickname: 'new', username: 'hijacked' }, { nickname: '' }, { nickname: 'x\ny' }, { nickname: 'x'.repeat(33) }]) {
+                const rejected = await putJson('/api/user/profile', body, token);
+                assert.equal(rejected.response.status, 400);
+            }
+            const beforeOther = db.prepare('SELECT nickname FROM users WHERE id = ?').get('user-001');
+            const duplicate = await putJson('/api/user/profile', { nickname: 'normal-user', role: 'super_admin' }, token);
+            assert.equal(duplicate.response.status, 200);
+            assert.equal(db.prepare('SELECT role FROM users WHERE id = ?').get(id).role, 'user');
+            assert.deepEqual(db.prepare('SELECT nickname FROM users WHERE id = ?').get('user-001'), beforeOther);
+            const unauth = await putJson('/api/user/profile', { nickname: 'anonymous' });
+            assert.equal(unauth.response.status, 401);
+        } finally {
+            db.prepare('DELETE FROM notifications WHERE related_message_id = ?').run(ownReplyId);
+            db.prepare('DELETE FROM messages WHERE id IN (?, ?, ?)').run(ownReplyId, replyId, messageId);
+            db.prepare('DELETE FROM articles WHERE id = ?').run(articleId);
+            db.prepare('DELETE FROM users WHERE id = ?').run(id);
+            require('../backend/services/response-cache').clear();
         }
     });
 

@@ -112,7 +112,7 @@ function readStoredUser() {
 }
 
 const roomUser = computed(() => readStoredUser() || (props.user?.id ? props.user : null));
-const roomUserName = computed(() => roomUser.value?.username || roomUser.value?.email || 'Guest');
+const roomUserName = computed(() => roomUser.value?.nickname || roomUser.value?.username || roomUser.value?.email || 'Guest');
 const roomUserId = computed(() => roomUser.value?.id || roomUser.value?.username || roomUser.value?.email || '');
 const shareDialogOpen = ref(false);
 const selectedShareTurn = ref(null);

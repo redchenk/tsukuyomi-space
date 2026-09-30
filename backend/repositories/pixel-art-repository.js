@@ -86,6 +86,7 @@ function artworkSelect(viewerId = '') {
                a.created_at,
                a.updated_at,
                u.username AS author,
+               COALESCE(NULLIF(u.nickname, ''), u.username) AS author_nickname,
                u.avatar,
                COALESCE(u.updated_at, u.created_at) AS avatar_updated_at,
                CASE

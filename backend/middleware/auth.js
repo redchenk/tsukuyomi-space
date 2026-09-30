@@ -119,6 +119,7 @@ function currentUserForClaims(claims) {
             adminId: admin.id,
             siteUserId: siteUser?.id || null,
             username: admin.username,
+            nickname: siteUser?.nickname || admin.username,
             role: admin.role,
             scope: 'admin'
         };
@@ -126,7 +127,7 @@ function currentUserForClaims(claims) {
 
     const user = authRepository.findUserById(claims?.id);
     if (!user || user.role === 'banned' || !hasCurrentCredentials(claims, user.password_hash)) return null;
-    return { ...claims, id: user.id, username: user.username, role: user.role };
+    return { ...claims, id: user.id, username: user.username, nickname: user.nickname || user.username, role: user.role };
 }
 
 function requestRequiresAdminSession(req) {

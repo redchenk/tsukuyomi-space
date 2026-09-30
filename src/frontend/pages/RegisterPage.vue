@@ -145,7 +145,7 @@ async function startQQLogin() {
           <div v-if="register.message" class="form-message" :class="register.type">{{ register.message }}</div>
           <form :aria-busy="register.submitting" @submit.prevent="submitRegister">
             <div class="form-group">
-              <label for="registerUsername">{{ t.username }}</label>
+              <label for="registerUsername">{{ t.ucUsername }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="user" :size="18" />
                 <input id="registerUsername" v-model="register.username" required maxlength="32" :placeholder="t.usernamePh" autocomplete="username">

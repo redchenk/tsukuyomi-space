@@ -20,7 +20,8 @@ const claimNotification = db.transaction((notification, digest) => {
 
 function notifyPendingMessage(messageId, { send = sendNotificationEmail, schedule = setImmediate } = {}) {
     try {
-        const message = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId);
+        const message = db.prepare(`SELECT m.*, COALESCE(NULLIF(u.nickname, ''), u.username, m.author) AS author_nickname
+            FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE m.id = ?`).get(messageId);
         if (message?.status !== 'pending') return 0;
         const digest = crypto.createHash('sha256').update(message.content).digest('hex');
         const noun = message.parent_id ? '回复' : message.article_id ? '评论' : '留言';
@@ -29,7 +30,7 @@ function notifyPendingMessage(messageId, { send = sendNotificationEmail, schedul
             type: 'moderation', title: `有${noun}需要审核 #${message.id}`,
             content: `审核原因：${reasons.join('；') || '需要人工确认'}。内容尚未公开，请登录后台核对完整内容。`,
             link: `/terminal?panel=messages&review=${message.id}`,
-            actorName: message.author || '访客'
+            actorName: message.author_nickname || message.author || '访客'
         };
         const recipients = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'super_admin')").all();
         let queued = 0;

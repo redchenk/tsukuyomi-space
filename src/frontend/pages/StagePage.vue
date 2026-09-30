@@ -1,4 +1,5 @@
 <script setup>
+import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { getAuthToken } from '../api/client';
@@ -231,11 +232,11 @@ function articlePath(article) {
 }
 
 function stageAuthorName(article) {
-  return article.author_username || 'admin';
+  return article.author_nickname || article.author_username || 'admin';
 }
 
 function stageAuthorInitial(article) {
-  return String(stageAuthorName(article)).trim().slice(0, 1).toUpperCase();
+  return nameInitial(stageAuthorName(article));
 }
 
 function stageAuthorAlt(article) {

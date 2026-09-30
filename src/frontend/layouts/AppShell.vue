@@ -293,7 +293,7 @@ onUnmounted(() => {
         <button v-if="showNotifications" class="site-tool-button" type="button" :aria-label="notificationsActionLabel" @click="$emit('go', '/notifications')"><NotificationBell :size="19" :unread="unreadNotifications > 0" /></button>
         <button class="site-tool-button site-theme-button" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="19" /></button>
         <button class="site-account-trigger" type="button" :aria-label="copy.account" :aria-expanded="navOpen && menuMode === 'account'" aria-controls="site-navigation" @click="openNavigation('account', $event)">
-          <img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28"><span v-else class="site-account-avatar"><TsIcon name="user" :size="18" /></span><span class="site-account-name">{{ isAuthed ? user?.username || accountLabel : t.login }}</span><TsIcon name="chevronDown" :size="12" />
+          <img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28"><span v-else class="site-account-avatar"><TsIcon name="user" :size="18" /></span><span class="site-account-name">{{ isAuthed ? user?.nickname || user?.username || accountLabel : t.login }}</span><TsIcon name="chevronDown" :size="12" />
         </button>
         <button class="site-mobile-navigation-trigger" :class="{ active: moreActive }" type="button" :aria-label="copy.explore" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" aria-haspopup="dialog" @click="openNavigation('explore', $event)"><TsIcon name="menu" :size="19" /><span>{{ copy.explore }}</span></button>
         <a class="site-room-cta" href="/room" :aria-current="isRoom || routeName === 'roomSettings' ? 'page' : undefined" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })"><TsIcon name="moon" :size="17" /><span>{{ copy.enterRoom }}</span></a>
@@ -318,7 +318,7 @@ onUnmounted(() => {
         </div>
       </template>
       <div v-else class="site-account-links">
-        <p v-if="isAuthed" class="site-account-greeting">{{ user?.username || accountLabel }}</p>
+        <p v-if="isAuthed" class="site-account-greeting">{{ user?.nickname || user?.username || accountLabel }}</p>
         <a v-for="item in accountItems" :key="item.key" :href="item.path" class="site-menu-link" @click="navigate($event, item)"><NotificationBell v-if="item.key === 'notifications'" :unread="unreadNotifications > 0" /><TsIcon v-else :name="item.icon" :size="20" /><span class="site-menu-label">{{ item.label }}</span></a>
         <button v-if="isAuthed" class="site-menu-link" type="button" @click="navOpen = false; $emit('logout')"><TsIcon name="arrowLeft" :size="20" /><span class="site-menu-label">{{ t.logout }}</span></button>
       </div>

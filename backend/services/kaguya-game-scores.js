@@ -38,6 +38,7 @@ function publicEntry(row) {
         rank: Number(row.rank) || 0,
         userId: row.user_id,
         username: row.username,
+        nickname: row.nickname || row.username,
         avatar: publicAvatarUrl({
             avatar: row.avatar,
             username: row.username,
@@ -56,6 +57,7 @@ function rankedUser(userId) {
             scores.best_score,
             scores.updated_at AS score_updated_at,
             users.username,
+            users.nickname,
             users.avatar,
             users.updated_at AS user_updated_at,
             (
@@ -85,6 +87,7 @@ function listLeaderboard({ page: rawPage, limit: rawLimit, userId = '' } = {}) {
             ranked.best_score,
             ranked.score_updated_at,
             ranked.username,
+            ranked.nickname,
             ranked.avatar,
             ranked.user_updated_at,
             ranked.rank
@@ -94,6 +97,7 @@ function listLeaderboard({ page: rawPage, limit: rawLimit, userId = '' } = {}) {
                 scores.best_score,
                 scores.updated_at AS score_updated_at,
                 users.username,
+                users.nickname,
                 users.avatar,
                 users.updated_at AS user_updated_at,
                 RANK() OVER (ORDER BY scores.best_score DESC) AS rank

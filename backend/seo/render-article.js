@@ -140,7 +140,7 @@ function articleSchema(article) {
         dateModified: article.updated_at || article.created_at || article.publish_date,
         author: {
             '@type': 'Person',
-            name: article.author_username || 'redchenk'
+            name: article.author_nickname || article.author_username || 'redchenk'
         },
         publisher: {
             '@type': 'Organization',
@@ -199,7 +199,7 @@ function renderArticleHtml(article) {
   <main>
     <article>
       <h1>${escapeHtml(article.title)}</h1>
-      <div class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.published_at || article.created_at || article.publish_date || '')} · ${escapeHtml(article.author_username || 'redchenk')}</div>
+      <div class="meta">${escapeHtml(article.category || '文章')} · ${escapeHtml(article.published_at || article.created_at || article.publish_date || '')} · ${escapeHtml(article.author_nickname || article.author_username || 'redchenk')}</div>
       ${article.cover_image ? `<img class="cover" src="${escapeHtml(article.cover_image)}" alt="${escapeHtml(article.title)}" loading="eager" decoding="async">` : ''}
       <p class="summary"><strong>${escapeHtml(description)}</strong></p>
       <section class="article-body">

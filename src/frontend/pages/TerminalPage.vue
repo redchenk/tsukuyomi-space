@@ -52,8 +52,8 @@ const terminal = reactive({
   userSearch: '',
   userPage: 1,
   userPageSize: 8,
-  usernameDrafts: {},
-  userUsernameSaving: {},
+  nicknameDrafts: {},
+  userNicknameSaving: {},
   roleDrafts: {},
   userRoleSaving: {},
   passwordDrafts: {},
@@ -173,7 +173,7 @@ const filteredMessages = computed(() => {
       || (terminal.messageStatusFilter === 'approved' ? item.status === 'approved' : item.status !== 'approved');
     const sourceMatches = terminal.messageSourceFilter === 'all'
       || (terminal.messageSourceFilter === 'articles' ? Boolean(item.article_id) : !item.article_id);
-    const keywordMatches = !keyword || [item.id, item.username, item.author, item.content, item.article_title]
+    const keywordMatches = !keyword || [item.id, item.nickname, item.username, item.author, item.content, item.article_title]
       .some((value) => String(value || '').toLowerCase().includes(keyword));
     return statusMatches && sourceMatches && keywordMatches;
   });
@@ -187,7 +187,7 @@ const pagedMessages = computed(() => {
 const filteredUsers = computed(() => {
   const keyword = terminal.userSearch.trim().toLowerCase();
   if (!keyword) return terminal.users;
-  return terminal.users.filter((item) => [item.username, item.email, item.role, item.id].some((value) => String(value || '').toLowerCase().includes(keyword)));
+  return terminal.users.filter((item) => [item.nickname, item.username, item.email, item.role, item.id].some((value) => String(value || '').toLowerCase().includes(keyword)));
 });
 const userTotalPages = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / Number(terminal.userPageSize || 8))));
 const userCurrentPage = computed(() => Math.min(Math.max(Number(terminal.userPage) || 1, 1), userTotalPages.value));
@@ -384,7 +384,7 @@ async function loadPanel(panel = terminal.activePanel) {
     if (panel === 'users') {
       terminal.users = await adminApi('/users') || [];
       terminal.userPage = 1;
-      terminal.usernameDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.username || '']));
+      terminal.nicknameDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.nickname || user.username || '']));
       terminal.roleDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.role || 'user']));
       terminal.passwordDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, '']));
     }
@@ -501,33 +501,33 @@ async function changeUserRole(user) {
   }
 }
 
-async function changeUserUsername(user) {
-  if (!canManageAccounts.value || terminal.userUsernameSaving[user.id]) return;
-  const username = String(terminal.usernameDrafts[user.id] || '').trim();
-  if (!username) {
+async function changeUserNickname(user) {
+  if (!canManageAccounts.value || terminal.userNicknameSaving[user.id]) return;
+  const nickname = String(terminal.nicknameDrafts[user.id] || '').trim();
+  if (!nickname) {
     showMessage('请输入昵称', 'error');
     return;
   }
-  if (username.length > 32) {
+  if ([...nickname].length > 32) {
     showMessage('昵称不能超过 32 个字符', 'error');
     return;
   }
-  if (username === user.username) return;
-  const previousUsername = user.username;
-  terminal.userUsernameSaving[user.id] = true;
+  if (nickname === (user.nickname || user.username)) return;
+  const previousNickname = user.nickname || user.username;
+  terminal.userNicknameSaving[user.id] = true;
   terminal.message = '';
   try {
-    const result = await adminApi(`/users/${encodeURIComponent(user.id)}/username`, {
+    const result = await adminApi(`/users/${encodeURIComponent(user.id)}/nickname`, {
       method: 'POST',
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ nickname })
     });
-    user.username = result?.username || username;
-    terminal.usernameDrafts[user.id] = user.username;
-    showMessage(`用户 ${previousUsername} 的昵称已更新为 ${user.username}`);
+    user.nickname = result?.nickname || nickname;
+    terminal.nicknameDrafts[user.id] = user.nickname;
+    showMessage(`用户 ${previousNickname} 的昵称已更新为 ${user.nickname}`);
   } catch (error) {
     showMessage(error.message || '用户昵称保存失败，请重试', 'error');
   } finally {
-    terminal.userUsernameSaving[user.id] = false;
+    terminal.userNicknameSaving[user.id] = false;
   }
 }
 
@@ -1061,7 +1061,7 @@ onUnmounted(() => {
             </div>
             <div class="terminal-table-wrap terminal-message-table" tabindex="0" role="region" aria-label="留言列表，可横向滚动"><table><thead><tr><th>作者</th><th>来源</th><th>内容</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in pagedMessages" :key="item.id">
-                <td>{{ item.username || item.author }}</td>
+                <td>{{ item.nickname || item.username || item.author }}</td>
                 <td>
                   <span class="terminal-badge" :class="item.article_id ? 'hot' : 'ok'">{{ messageSourceLabel(item) }}</span>
                   <a v-if="item.article_id" class="terminal-source-link" href="#" @click.prevent="$emit('go', messageArticlePath(item))">{{ item.article_title || `文章 #${item.article_id}` }}</a>
@@ -1143,23 +1143,23 @@ onUnmounted(() => {
               <tr v-for="item in pagedUsers" :key="item.id">
                 <td>{{ String(item.id).slice(0, 8) }}</td>
                 <td>
-                  <strong>{{ item.username }}</strong>
+                  <strong>{{ item.nickname || item.username }}</strong>
+                  <small>登录账号：{{ item.username }}</small>
                   <small>{{ item.bio || '未填写简介' }}</small>
-                  <div v-if="canManageAccounts && item.username !== 'admin'" class="terminal-inline-edit">
+                  <div v-if="canManageAccounts" class="terminal-inline-edit">
                     <input
-                      v-model="terminal.usernameDrafts[item.id]"
+                      v-model="terminal.nicknameDrafts[item.id]"
                       type="text"
                       name="terminal-display-name"
                       autocomplete="off"
                       data-form-type="other"
                       data-lpignore="true"
                       data-1p-ignore="true"
-                      maxlength="32"
                       placeholder="编辑昵称"
-                      :aria-label="`编辑 ${item.username} 的昵称`"
-                      :disabled="terminal.userUsernameSaving[item.id]"
+                      :aria-label="`编辑 ${item.nickname || item.username} 的昵称`"
+                      :disabled="terminal.userNicknameSaving[item.id]"
                     >
-                    <button class="ghost-btn compact" type="button" :disabled="terminal.userUsernameSaving[item.id] || !String(terminal.usernameDrafts[item.id] || '').trim() || String(terminal.usernameDrafts[item.id] || '').trim() === item.username || item.username === 'admin'" :aria-busy="Boolean(terminal.userUsernameSaving[item.id])" @click="changeUserUsername(item)">{{ terminal.userUsernameSaving[item.id] ? '保存中' : '保存昵称' }}</button>
+                    <button class="ghost-btn compact" type="button" :disabled="terminal.userNicknameSaving[item.id] || !String(terminal.nicknameDrafts[item.id] || '').trim() || String(terminal.nicknameDrafts[item.id] || '').trim() === (item.nickname || item.username)" :aria-busy="Boolean(terminal.userNicknameSaving[item.id])" @click="changeUserNickname(item)">{{ terminal.userNicknameSaving[item.id] ? '保存中' : '保存昵称' }}</button>
                   </div>
                 </td>
                 <td>{{ item.email || '未绑定邮箱' }}</td>
@@ -1249,7 +1249,7 @@ onUnmounted(() => {
             <div class="terminal-table-wrap terminal-review-table" tabindex="0" role="region" aria-label="友链列表，可横向滚动"><table><thead><tr><th>站点</th><th>申请人</th><th>简介</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in pagedReviewLinks" :key="item.id">
                 <td><div class="terminal-link-site"><span class="terminal-link-avatar" aria-hidden="true"><span>{{ item.name?.slice(0, 1) || '?' }}</span><img v-if="item.avatar_url" :src="item.avatar_url" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true"></span><div><strong>{{ item.name }}</strong><a :href="item.url" :title="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a></div></div></td>
-                <td>{{ item.applicant_username || '管理员' }}<br><small v-if="item.applicant_email">{{ item.applicant_email }}</small></td>
+                <td>{{ item.applicant_nickname || item.applicant_username || '管理员' }}<br><small v-if="item.applicant_email">{{ item.applicant_email }}</small></td>
                 <td>{{ item.description || '—' }}<br><a v-if="item.backlink_url" :href="item.backlink_url" target="_blank" rel="noopener noreferrer">检查回链</a><small v-if="item.note" class="terminal-review-note">{{ item.note }}</small></td>
                 <td><span class="terminal-badge" :class="{ ok: item.status === 'active', warn: item.status === 'pending', hot: item.status === 'rejected' }">{{ item.status === 'pending' ? '待审核' : (item.status === 'active' ? '已通过' : '未通过') }}</span><small v-if="item.status === 'active'" class="terminal-link-monitor" :class="`is-${item.monitor_status || 'unchecked'}`">{{ linkMonitorLabel(item) }} · {{ item.has_backlink ? '有回链' : '无回链' }}</small></td>
                 <td>{{ formatDate(item.updated_at || item.created_at) }}</td>

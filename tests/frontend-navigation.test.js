@@ -257,7 +257,7 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(publicGallery, /noindex:\s*true/);
         assert.match(router, /path: '\/gallery\/manage'[\s\S]{0,300}?noindex:\s*true/);
         assert.match(wikiEntry, /applySeo\(\{[\s\S]*keywords,[\s\S]*wikiEntryPath/);
-        assert.match(userProfile, /title: `\$\{publicUser\.username \|\| username\.value\}的公开主页`/);
+        assert.match(userProfile, /title: `\$\{publicUser\.nickname \|\| publicUser\.username \|\| username\.value\}的公开主页`/);
     });
 
     it('loads only the visible stage page and sends filters to the server', () => {
@@ -860,6 +860,25 @@ describe('user center message management', () => {
 });
 
 describe('directed message threads', () => {
+    it('keeps emoji and XML-sensitive nickname initials valid in fallback avatars', async () => {
+        const { nameInitial, encodedAvatarInitial } = await import('../src/frontend/utils/userName.mjs');
+        assert.equal(nameInitial('🌙 月下旅人'), '🌙');
+        assert.equal(decodeURIComponent(encodedAvatarInitial('🌙 月下旅人')), '🌙');
+        assert.equal(decodeURIComponent(encodedAvatarInitial('<nickname>')), '&lt;');
+        assert.equal(decodeURIComponent(encodedAvatarInitial('&nickname')), '&amp;');
+        assert.equal(nameInitial('  '), '月');
+    });
+    it('displays mutable nicknames for explicit reply targets without changing their handles', async () => {
+        const { messageThreads } = await import('../src/frontend/services/messageThreads.mjs');
+        const result = messageThreads([
+            { id: 1, author: 'stable-handle', author_nickname: '新昵称' },
+            { id: 2, parent_id: 1, author: 'another-handle', reply_to_id: 1, reply_to_author: 'stable-handle' },
+            { id: 3, parent_id: 1, reply_to_id: null, reply_to_author: 'deleted-handle', reply_to_nickname: '旧昵称' }
+        ]);
+        assert.deepEqual(result.target(result.replies.get('1')[0]), { id: 1, name: '新昵称' });
+        assert.deepEqual(result.target(result.replies.get('1')[1]), { id: null, name: '旧昵称' });
+        assert.equal(result.top[0].author, 'stable-handle');
+    });
     it('groups old nested replies and preserves explicit or deleted reply recipients', async () => {
         const { messageThreads } = await import('../src/frontend/services/messageThreads.mjs');
         const result = messageThreads([

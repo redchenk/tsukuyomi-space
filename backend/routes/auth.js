@@ -44,10 +44,12 @@ function userResponse(user) {
     return {
         id: user.id,
         username: user.username,
+        nickname: user.nickname || user.username,
         email,
         has_real_email: Boolean(email),
         role: user.role,
         avatar: user.avatar || '',
+        bio: user.bio || '',
         created_at: user.created_at,
         oauth_accounts: publicOAuthAccounts(user.id)
     };
@@ -222,6 +224,7 @@ function createUserFromOAuthProfile(profile, preferredUsername = '', initialPass
         user: {
             id: userId,
             username,
+            nickname: [...(profile.nickname || username)].slice(0, 32).join(''),
             email,
             passwordHash,
             avatar: profile.avatar
@@ -351,7 +354,7 @@ router.post('/register', async (req, res) => {
             success: true,
             message: '注册成功',
             data: {
-                user: { id: userId, username, email, role: 'user' }
+                user: { id: userId, username, nickname: username, email, role: 'user' }
             }
         });
     } catch (error) {

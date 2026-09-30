@@ -47,7 +47,7 @@ function createNotification({
 
 function listNotifications(userId, { limit = 50, offset = 0 } = {}) {
     return db.prepare(`
-        SELECT n.*, u.username AS actor_username, u.avatar AS actor_avatar
+        SELECT n.*, u.username AS actor_username, COALESCE(NULLIF(u.nickname, ''), u.username) AS actor_nickname, u.avatar AS actor_avatar
         FROM notifications n
         LEFT JOIN users u ON n.actor_id = u.id
         WHERE n.user_id = ?
@@ -80,7 +80,7 @@ function unreadCount(userId) {
 
 function findNotificationById(id, userId) {
     return normalizeNotification(db.prepare(`
-        SELECT n.*, u.username AS actor_username, u.avatar AS actor_avatar
+        SELECT n.*, u.username AS actor_username, COALESCE(NULLIF(u.nickname, ''), u.username) AS actor_nickname, u.avatar AS actor_avatar
         FROM notifications n
         LEFT JOIN users u ON n.actor_id = u.id
         WHERE n.id = ? AND n.user_id = ?

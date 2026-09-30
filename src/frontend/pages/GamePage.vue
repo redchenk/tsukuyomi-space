@@ -1,4 +1,5 @@
 <script setup>
+import { nameInitial } from '../utils/userName.mjs';
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TsIcon from '../components/TsIcon.vue';
 import { getSession } from '../api/client';
@@ -68,7 +69,7 @@ function formatScore(value) {
 }
 
 function playerInitial(player) {
-  return String(player?.username || '月').trim().slice(0, 1).toUpperCase();
+  return nameInitial(player?.nickname || player?.username);
 }
 
 function applyLeaderboard(data) {
@@ -308,10 +309,10 @@ watch(currentUserId, (nextUserId, previousUserId) => {
           >
             <span class="game-rank-position" :aria-label="`${copy.rank} ${player.rank}`">{{ player.rank }}</span>
             <span class="game-rank-avatar">
-              <img v-if="player.avatar" :src="player.avatar" :alt="player.username" loading="lazy">
+              <img v-if="player.avatar" :src="player.avatar" :alt="player.nickname || player.username" loading="lazy">
               <span v-else aria-hidden="true">{{ playerInitial(player) }}</span>
             </span>
-            <span class="game-rank-name">{{ player.username }}</span>
+            <span class="game-rank-name">{{ player.nickname || player.username }}</span>
             <strong class="game-rank-score">{{ formatScore(player.score) }}</strong>
           </li>
         </ol>

@@ -67,7 +67,7 @@ function articleItems(limit) {
         type: article.category === '\u516c\u544a' ? 'announcement' : 'article',
         title: article.title,
         summary: article.excerpt,
-        author: article.author_username || SITE_NAME,
+        author: article.author_nickname || article.author_username || SITE_NAME,
         category: article.category,
         publishedAt: article.updated_at || article.created_at || article.publish_date,
         url: articlePath(article)
@@ -78,9 +78,9 @@ function plazaItems(limit) {
     return messageRepository.listRecentPublicMessages(limit).map(message => makeItem({
         id: message.id,
         type: 'plaza',
-        title: `${message.author || '\u8bbf\u5ba2'}\u7684\u7559\u8a00`,
+        title: `${message.author_nickname || message.author || '\u8bbf\u5ba2'}\u7684\u7559\u8a00`,
         summary: message.content,
-        author: message.author,
+        author: message.author_nickname || message.author,
         publishedAt: message.updated_at || message.created_at,
         url: `/plaza#msg-${message.id}`
     }));
@@ -94,7 +94,7 @@ function galleryItems(limit) {
             type: 'gallery',
             title: metadata.title || metadata.fileName || '\u56fe\u5e93\u65b0\u4f5c\u54c1',
             summary: metadata.description || '\u56fe\u5e93\u6536\u5f55\u4e86\u65b0\u4f5c\u54c1',
-            author: metadata.author || SITE_NAME,
+            author: metadata.author || asset.owner_nickname || asset.owner_username || SITE_NAME,
             publishedAt: asset.updated_at || asset.created_at,
             url: '/gallery'
         });
@@ -107,7 +107,7 @@ function pixelItems(limit) {
         type: 'pixel',
         title: artwork.title,
         summary: artwork.description || '\u516c\u5f00\u50cf\u7d20\u753b\u5eca\u7684\u65b0\u4f5c\u54c1',
-        author: artwork.author || SITE_NAME,
+        author: artwork.author_nickname || artwork.author || SITE_NAME,
         publishedAt: artwork.updated_at || artwork.created_at,
         url: `/pixel?art=${encodeURIComponent(artwork.id)}#pixel-art-${encodeURIComponent(artwork.id)}`
     }));

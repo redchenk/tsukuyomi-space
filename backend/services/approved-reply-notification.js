@@ -8,7 +8,7 @@ function notifyApprovedMessage(messageId) {
     const message = messageRepository.findMessageById(messageId);
     if (!message?.user_id || message.status !== 'approved') return null;
 
-    const actorName = message.author || '访客';
+    const actorName = message.author_nickname || message.author || '访客';
     let recipientId;
     let title;
     let link;

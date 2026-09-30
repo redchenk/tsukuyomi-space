@@ -23,7 +23,7 @@ for (const [width, account] of [[1280, 'terminal-nickname-desktop'], [390, 'term
         let holdSave = true;
         let failSave = false;
         const methods = [];
-        await page.route('**/api/admin/users/*/username', async route => {
+        await page.route('**/api/admin/users/*/nickname', async route => {
             const method = route.request().method();
             methods.push(method);
             if (method === 'PATCH' || failSave) {
@@ -35,7 +35,7 @@ for (const [width, account] of [[1280, 'terminal-nickname-desktop'], [390, 'term
         });
 
         await draft.fill(`  ${nextName}  `);
-        const requestStarted = page.waitForRequest(request => request.url().endsWith('/username') && request.method() === 'POST');
+        const requestStarted = page.waitForRequest(request => request.url().endsWith('/nickname') && request.method() === 'POST');
         await save.click();
         await requestStarted;
         try {
@@ -47,6 +47,7 @@ for (const [width, account] of [[1280, 'terminal-nickname-desktop'], [390, 'term
         }
         await expect(page.getByRole('status')).toContainText(`的昵称已更新为 ${nextName}`);
         await expect(row.locator('strong')).toHaveText(nextName);
+        await expect(row).toContainText(`登录账号：${account}`);
         await expect(draft).toHaveValue(nextName);
         await expect(save).toBeDisabled();
         expect(methods).toEqual(['POST']);
@@ -57,10 +58,10 @@ for (const [width, account] of [[1280, 'terminal-nickname-desktop'], [390, 'term
         await expect(row.locator('strong')).toHaveText(nextName);
         await draft.fill('e2e-user');
         await save.click();
-        await expect(page.getByRole('status')).toContainText('该昵称已被占用');
+        await expect(page.getByRole('status')).toContainText('的昵称已更新为 e2e-user');
         await expect(draft).toHaveValue('e2e-user');
-        await expect(save).toBeEnabled();
-        await expect(row.locator('strong')).toHaveText(nextName);
+        await expect(save).toBeDisabled();
+        await expect(row.locator('strong')).toHaveText('e2e-user');
 
         failSave = true;
         await draft.fill(`${nextName}-重试`);
@@ -68,7 +69,7 @@ for (const [width, account] of [[1280, 'terminal-nickname-desktop'], [390, 'term
         await expect(page.getByRole('status')).toContainText('HTTP 400');
         await expect(draft).toBeEnabled();
         await expect(save).toBeEnabled();
-        await expect(row.locator('strong')).toHaveText(nextName);
+        await expect(row.locator('strong')).toHaveText('e2e-user');
         failSave = false;
         await save.click();
         await expect(page.getByRole('status')).toContainText(`的昵称已更新为 ${nextName}-重试`);
