@@ -50,8 +50,14 @@ PW_CHANNEL=chrome npx playwright test --project=chromium \
   --grep 'assistant consent|denied assistant|selected recipient|read an article and post|publish a plaza|admin can open|moderation'
 ```
 
-## 生产仍需验收
+## 生产 HTTP 与发布验收
+
+2026-10-01，应用 `fa9611d` 已启用。040 在线备份与独立迁移完成，原有用户身份及六类内容数量在事务内核验一致。两站发布工具确认 API 健康、前端文件及受保护资源一致；11 项公网 OAuth/未授权入口检查通过。生产继续使用 heap 192 MiB / RSS 384 MiB；国内 API 空闲观察 RSS 约 176 MiB，可用内存约 1867 MiB，未出现负载拉满。该观察不是流量压力测试。
+
+ChatGPT 创建连接的页面已成功读取生产元数据，确认三个 scope、`none` token 鉴权及稳定回调 URI。平台连接尚未创建，浏览器最终授权等待确认；没有为测试在生产网站发布评论或复制浏览器 Cookie。
+
+## 真实 dot 仍需验收
 
 站长已批准账号绑定、受限 OAuth 和秘密配置。国内生产出站获取官方客户端 JSON 未成功；官方稳定 OAuth 回跳地址已通过本机 HTTPS 获取官方 JSON 核验，生产以预登记 public client 模式连接，保留精确匹配。上线后仍需在插件中进行首次登录授权和真实 dot 闭环验收。
 
-尚未测试真实平台回调验证/签名接收、dot 唤醒/读取/回复闭环、平台主动续订/停止订阅，以及生产流量下的 RSS/CPU。模拟接收端不会代替这些验收。上线继续使用现有 Node/PM2 内存上限，并先检查网站健康；原有 Live2D、音乐、模型、媒体资源不会参与发布。
+尚未测试真实平台回调验证/签名接收、dot 唤醒/读取/回复闭环、平台主动续订/停止订阅，以及生产流量压力下的 RSS/CPU。模拟接收端不会代替这些验收。上线健康与资源保护已经核验；原有 Live2D、音乐、模型、媒体资源没有参与发布。
