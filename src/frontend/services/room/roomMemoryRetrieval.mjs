@@ -4,13 +4,15 @@ const failure = (reason, status) => Object.assign(new Error(reason === 'account_
 // No memory cache: edits, deletion, logout and account switches must take effect
 // immediately. Both attempts read the authenticated source at request time.
 export function createRoomMemoryRetriever({ getAccountId, isEnabled, retrieveGuest, request,
-  warn = (...args) => console.warn(...args), timeoutMs = 8000, fallbackTimeoutMs = 4000 }) {
+  useLocal = () => false, warn = (...args) => console.warn(...args), timeoutMs = 8000, fallbackTimeoutMs = 4000 }) {
   return async function retrieve(message, signal = null) {
     const accountId = getAccountId();
+    const local = !accountId || useLocal();
     const started = Date.now();
     const check = () => {
       if (signal?.aborted) throw new DOMException('Memory request cancelled', 'AbortError');
       if (getAccountId() !== accountId) throw failure('account_changed');
+      if ((!getAccountId() || useLocal()) !== local) throw failure('account_changed');
       if (!isEnabled()) throw failure('disabled');
     };
     const attempt = async (sourceOnly = false) => {
@@ -23,7 +25,7 @@ export function createRoomMemoryRetriever({ getAccountId, isEnabled, retrieveGue
         timer = setTimeout(() => { timedOut = true; controller.abort(); reject(failure('timeout')); }, sourceOnly ? fallbackTimeoutMs : timeoutMs);
       });
       try {
-        const operation = accountId
+        const operation = !local
           ? request(new URLSearchParams({ q: String(message).trim(), limit: '6', purpose: 'chat',
               ...(sourceOnly ? { retrieval: 'source' } : {}) }), controller.signal)
           : retrieveGuest(message).then(data => ({ success: true, data, retrieval: { backend: 'indexeddb' } }));
@@ -58,7 +60,7 @@ export function createRoomMemoryRetriever({ getAccountId, isEnabled, retrieveGue
       canContinue(error);
       diagnose(error, 'search');
       const reason = reasonFor(error);
-      if (!accountId || [401, 403].includes(error.status)) return empty('unavailable', { reason });
+      if (local || [401, 403].includes(error.status)) return empty('unavailable', { reason });
       try {
         // One bounded retry against SQLite, bypassing a slow/broken vector index.
         const result = await attempt(true);

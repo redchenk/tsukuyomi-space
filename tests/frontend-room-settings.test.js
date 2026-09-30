@@ -11,6 +11,8 @@ function setup() {
   let failWrites = false;
   let owner = 'guest';
   let imported = false;
+  let session = null;
+  let memoryWrites = 0;
   let routeGuard;
   const navigation = [];
   const ctx = {
@@ -18,7 +20,9 @@ function setup() {
     reactive: x => x, ref: value => ({ value }), computed: get => ({ get value() { return get(); } }),
     defineProps: () => ({}), defineEmits: () => (...args) => navigation.push(args),
     onMounted() {}, onBeforeUnmount() {}, watch() {}, onBeforeRouteLeave: fn => { routeGuard = fn; },
-    nextTick: fn => fn?.(), getSession: () => null,
+    nextTick: fn => fn?.(), getSession: () => session,
+    readMemorySource: id => id ? JSON.parse(store.get(`roomMemorySource:${id}`) || '{"mode":"cloud","fingerprint":""}') : ({ mode: 'local', fingerprint: '' }),
+    authFetch: async () => { memoryWrites++; throw new Error('Unexpected memory mutation'); },
     roomLive2DManifest: { expressions: [], motions: [] },
     localStorage: { getItem: k => store.get(k) || null, setItem(k, value) { if (failWrites) throw new Error('QuotaExceededError'); store.set(k, value); } },
     window: { confirm: () => false, location: { origin: 'https://example.test' } },
@@ -29,13 +33,27 @@ function setup() {
   };
   vm.runInNewContext(knowledgeCode + '\n' + pageCode + `
     loadMemoryCount = () => {};
-    globalThis.api = { loadSettings, llm, tts, model, mcp, knowledge, diary, memory, activeSection, savingSettings, settingsSearch, filteredSettingsGroups, connectionCheck, testedConnectionStatus, toast, pendingSections, hasUnsavedSettings,
+    globalThis.api = { loadSettings, llm, tts, model, mcp, knowledge, diary, memory, activeSection, savingSettings, settingsSearch, filteredSettingsGroups, connectionCheck, testedConnectionStatus, toast, pendingSections, hasUnsavedSettings, storedUser, memorySourceMode, clearMemory,
       saveLLM, saveTTS, saveMCP, saveModel, saveKnowledge, saveKnowledgeEntry, discardSettings, testLLM, selectSettingsSection, saveAllSettings, enterRoom,
       onDiaryImportFile, normalizeRoomKnowledge, knowledgeContext, applyKnowledgeDraft, defaultKnowledgeEntries };
   `, ctx);
   ctx.api.loadSettings();
-  return { ...ctx.api, store, navigation, read: k => JSON.parse(store.get(k)), set: (k,v) => store.set(k,JSON.stringify(v)), fail: () => { failWrites = true; }, switchAccount: () => { owner = 'user:2'; }, imported: () => imported, leave: () => routeGuard() };
+  return { ...ctx.api, store, navigation, read: k => JSON.parse(store.get(k)), set: (k,v) => store.set(k,JSON.stringify(v)), fail: () => { failWrites = true; }, switchAccount: () => { owner = 'user:2'; }, liveAccount: id => { session = { user: { id } }; }, memoryWrites: () => memoryWrites, imported: () => imported, leave: () => routeGuard() };
 }
+
+test('stale settings cannot clear cloud memories after a cross-tab source or account switch', async () => {
+  const h = setup();
+  h.storedUser.value = { id: 'one' };
+  h.memorySourceMode.value = 'cloud';
+  h.liveAccount('one');
+  h.set('roomMemorySource:one', { mode: 'local' });
+  await h.clearMemory();
+  assert.equal(h.memoryWrites(), 0);
+  assert.match(h.toast.text, /来源已变化/);
+  h.liveAccount('two');
+  await h.clearMemory();
+  assert.equal(h.memoryWrites(), 0);
+});
 
 test('editing built-in knowledge reaches context, and removed/disabled entries stay removed', () => {
   const h = setup();

@@ -14,6 +14,8 @@ const mem0Store = require('./room-mem0');
 const { lexicalScore, memoryExcerpt, searchTerms } = require('../../shared/room-memory-retrieval.cjs');
 
 const MAX_MEMORY_CONTENT_LENGTH = Math.max(4000, Number.parseInt(process.env.ROOM_MEMORY_CONTENT_LIMIT || '12000', 10) || 12000);
+const MAX_MEMORY_IMPORT_RECORDS = 200;
+const MAX_MEMORY_IMPORT_BYTES = 1024 * 1024;
 // Milvus stores at most 8192 UTF-8 bytes of a memory's text. Keeping automatic
 // fragments below both limits leaves room for multibyte CJK and emoji text.
 const MAX_AUTO_MEMORY_FRAGMENT_LENGTH = Math.min(MAX_MEMORY_CONTENT_LENGTH, 2500);
@@ -950,6 +952,176 @@ function getMemory(userId, id) {
     return row ? toPublicMemory(row, undefined, { includeContent: true }) : null;
 }
 
+function memoryInputError(message, statusCode = 400) {
+    return Object.assign(new Error(message), { statusCode });
+}
+
+function memoryScore(payload, field, fallback) {
+    if (!Object.prototype.hasOwnProperty.call(payload, field)) return fallback;
+    const value = payload[field];
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+        throw memoryInputError(`${field} 必须是 0 到 1 之间的数字`);
+    }
+    return value;
+}
+
+function importTimestamp(value, field, fallback, now) {
+    if (value === undefined) return fallback;
+    if (typeof value !== 'string'
+        || !/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})?$/.test(value)) {
+        throw memoryInputError(`${field} 时间无效`);
+    }
+    // SQLite timestamps have no zone; interpret them as UTC, like its defaults.
+    const date = new Date(/[Z]|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value.replace(' ', 'T')}Z`);
+    const time = date.getTime();
+    const calendarDate = value.slice(0, 10);
+    const calendarTime = new Date(`${calendarDate}T00:00:00Z`);
+    if (!Number.isFinite(time) || time < 0 || time > now + 5 * 60 * 1000
+        || !Number.isFinite(calendarTime.getTime()) || calendarTime.toISOString().slice(0, 10) !== calendarDate) {
+        throw memoryInputError(`${field} 时间无效`);
+    }
+    return date.toISOString();
+}
+
+function importHash(value) {
+    return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function validateMemoryImport(payload, now) {
+    if (!Array.isArray(payload.records)) throw memoryInputError('records 必须是记忆数组');
+    if (payload.records.length > MAX_MEMORY_IMPORT_RECORDS) {
+        throw memoryInputError(`每次最多导入 ${MAX_MEMORY_IMPORT_RECORDS} 条记忆`, 413);
+    }
+    let bytes;
+    try { bytes = Buffer.byteLength(JSON.stringify(payload), 'utf8'); }
+    catch (_) { throw memoryInputError('导入数据无效'); }
+    if (bytes > MAX_MEMORY_IMPORT_BYTES) throw memoryInputError('导入请求内容过大', 413);
+    const identities = new Map();
+    return payload.records.map((record) => {
+        if (!record || typeof record !== 'object' || Array.isArray(record)) throw memoryInputError('记忆记录无效');
+        if (record.id !== undefined && (typeof record.id !== 'string' || !record.id.trim() || record.id.length > 256)) {
+            throw memoryInputError('记忆来源标识无效');
+        }
+        if (typeof record.type !== 'string' || !MEMORY_TYPES.has(record.type)) throw memoryInputError('记忆类型无效');
+        if (typeof record.summary !== 'string' || typeof record.content !== 'string'
+            || !record.summary.trim() || !record.content.trim()) {
+            throw memoryInputError('记忆摘要和内容不能为空');
+        }
+        if (record.summary.length > 800 || record.content.length > MAX_MEMORY_CONTENT_LENGTH) {
+            throw memoryInputError(`单条记忆摘要最多 800 字、内容最多 ${MAX_MEMORY_CONTENT_LENGTH} 字；未导入任何记录`, 413);
+        }
+        const tags = record.tags === undefined ? [] : record.tags;
+        if (!Array.isArray(tags) || tags.length > 12
+            || tags.some(tag => typeof tag !== 'string' || !tag.trim() || tag.length > 80)) {
+            throw memoryInputError('tags 必须是最多 12 个非空标签，每个最多 80 字');
+        }
+        const contentFingerprint = importHash([record.type, record.content]);
+        const identity = importHash(record.id === undefined ? ['content', contentFingerprint] : ['guest-id', record.id]);
+        const candidate = {
+            identity, type: record.type, summary: record.summary, content: record.content,
+            importance: memoryScore(record, 'importance', 0.5), confidence: memoryScore(record, 'confidence', 0.8),
+            tags: [...new Set(tags)],
+            createdAt: importTimestamp(record.createdAt, 'createdAt', new Date(now).toISOString(), now)
+        };
+        candidate.updatedAt = importTimestamp(record.updatedAt, 'updatedAt', candidate.createdAt, now);
+        if (candidate.updatedAt < candidate.createdAt) throw memoryInputError('updatedAt 不能早于 createdAt');
+        // Reject conflicting copies of the same guest row rather than silently
+        // dropping one of them in the import transaction.
+        const revision = importHash([candidate.type, candidate.summary, candidate.content,
+            candidate.importance, candidate.confidence, candidate.tags, record.createdAt, record.updatedAt]);
+        if (identities.has(identity) && identities.get(identity) !== revision) throw memoryInputError('同一来源的记忆内容冲突');
+        identities.set(identity, revision);
+        candidate.revision = revision;
+        return candidate;
+    });
+}
+
+function importMemories(userId, payload = {}) {
+    userId = requireUserId(userId);
+    if (typeof payload.expectedUserId !== 'string' || !payload.expectedUserId) {
+        throw memoryInputError('expectedUserId 必须指定当前账号');
+    }
+    if (payload.expectedUserId !== userId) throw memoryInputError('登录账号已变更，请重新选择记忆来源', 409);
+    // No write or remote await occurs until the entire bounded batch validates.
+    const candidates = validateMemoryImport(payload, Date.now());
+    const batch = importHash(candidates.map(candidate => [candidate.identity, candidate.revision])
+        .sort((left, right) => left[0].localeCompare(right[0]) || left[1].localeCompare(right[1])));
+    const transaction = db.transaction(() => {
+        const receipts = db.prepare(`SELECT id, metadata FROM room_memories
+            WHERE user_id = ? AND instr(metadata, '"guestImport"') > 0`).all(userId);
+        const receiptOwners = new Map();
+        const seenBatches = new Set();
+        for (const row of receipts) {
+            const provenance = parseJson(row.metadata, {}).guestImport;
+            if (Array.isArray(provenance?.identities)) provenance.identities.forEach(id => receiptOwners.set(id, row.id));
+            if (Array.isArray(provenance?.batches)) provenance.batches.forEach(id => seenBatches.add(id));
+        }
+        const count = () => db.prepare('SELECT COUNT(*) AS count FROM room_memories WHERE user_id = ?').get(userId).count;
+        // A receipt on any surviving row covers the whole original request. A
+        // retry cannot resurrect another row the person has since deleted.
+        // Deleting every receipt loses this history; durable tombstones would
+        // require a separate persistence model.
+        if (seenBatches.has(batch)) return { imported: 0, skipped: candidates.length, count: count(), memoryIds: [] };
+        const findId = db.prepare('SELECT id, metadata FROM room_memories WHERE id = ? AND user_id = ?');
+        const findContent = db.prepare('SELECT id, metadata FROM room_memories WHERE user_id = ? AND memory_type = ? AND content = ? LIMIT 1');
+        const insert = db.prepare(`INSERT INTO room_memories
+            (id, user_id, memory_type, summary, content, embedding, importance, metadata, created_at, updated_at,
+                vector_synced_at, vector_sync_error)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, '')`);
+        const receipt = db.prepare('UPDATE room_memories SET metadata = ? WHERE id = ? AND user_id = ?');
+        let imported = 0;
+        const memoryIds = [];
+        for (const candidate of candidates) {
+            const id = `guest-import-${importHash([userId, candidate.identity])}`;
+            // Provenance survives manual edits. Guest data never overwrites an
+            // existing cloud row, including a previously imported edited row.
+            const knownId = receiptOwners.get(candidate.identity);
+            const duplicate = findId.get(knownId || id, userId)
+                || findContent.get(userId, candidate.type, candidate.content);
+            if (duplicate) {
+                const metadata = parseJson(duplicate.metadata, {});
+                if (metadata.sourceKind === 'chat-turn-auto') {
+                    // Explicitly importing this fact makes it intentional
+                    // content, just like editing an automatic memory does.
+                    delete metadata.sourceKind;
+                    delete metadata.sourceTurnId;
+                    delete metadata.sourceRevision;
+                    metadata.source = 'manual-import';
+                }
+                const prior = metadata.guestImport || {};
+                metadata.guestImport = {
+                    identities: [...new Set([...(Array.isArray(prior.identities) ? prior.identities : []), candidate.identity])],
+                    batches: [...new Set([...(Array.isArray(prior.batches) ? prior.batches : []), batch])]
+                };
+                // Only bookkeeping changes: preserve content, scores, original
+                // timestamps and any manually edited cloud provenance.
+                receipt.run(JSON.stringify(metadata), duplicate.id, userId);
+                receiptOwners.set(candidate.identity, duplicate.id);
+            } else {
+                const metadata = memoryEmbeddingMetadata({
+                    source: 'manual-import', tags: candidate.tags, confidence: candidate.confidence,
+                    importedAt: new Date().toISOString(),
+                    guestImport: { identities: [candidate.identity], batches: [batch] }
+                }, { provider: 'local', model: LOCAL_EMBEDDING_VERSION, version: LOCAL_EMBEDDING_VERSION });
+                insert.run(id, userId, candidate.type, candidate.summary, candidate.content,
+                    JSON.stringify(createEmbedding(`${candidate.summary}\n${candidate.content}`)), candidate.importance,
+                    JSON.stringify(metadata), candidate.createdAt, candidate.updatedAt);
+                imported += 1;
+                memoryIds.push(id);
+                receiptOwners.set(candidate.identity, id);
+            }
+        }
+        return { imported, skipped: candidates.length - imported, count: count(), memoryIds };
+    });
+    const result = transaction();
+    if (result.imported) {
+        // Retire stale Mem0 references without waiting behind a long index
+        // build. New rows remain locally searchable and vector-pending.
+        setImmediate(() => reconcileMem0(userId)).unref?.();
+    }
+    return result;
+}
+
 async function clearMemories(userId) {
     userId = requireUserId(userId);
     const ids = db.prepare('SELECT id FROM room_memories WHERE user_id = ?').all(userId).map(row => row.id);
@@ -982,12 +1154,8 @@ async function updateMemory(userId, id, payload = {}) {
         throw error;
     }
     const tags = payload.tags ? uniqueTags(payload.tags) : uniqueTags(oldMetadata.tags || []);
-    const importance = Number.isFinite(Number(payload.importance))
-        ? Math.max(0, Math.min(1, Number(payload.importance)))
-        : Number(existing.importance ?? 0.5);
-    const confidence = Number.isFinite(Number(payload.confidence))
-        ? Math.max(0, Math.min(1, Number(payload.confidence)))
-        : Number(oldMetadata.confidence ?? 0.8);
+    const importance = memoryScore(payload, 'importance', Number(existing.importance ?? 0.5));
+    const confidence = memoryScore(payload, 'confidence', Number(oldMetadata.confidence ?? 0.8));
     // Once a person edits a generated memory it becomes intentional content:
     // replacing the source chat turn must not delete their edit.
     delete oldMetadata.sourceKind;
@@ -1102,6 +1270,7 @@ module.exports = {
     listMemories,
     listMemoriesForManagement,
     getMemory,
+    importMemories,
     updateMemory,
     deleteMemory,
     clearMemories,

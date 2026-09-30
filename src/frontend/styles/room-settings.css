@@ -737,6 +737,28 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
 }
+.memory-score-control {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.memory-score-control label small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+.memory-score-summary { grid-column: 1 / -1; color: var(--muted); }
+.memory-source-status { margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+.memory-source-status > div { flex: 1; min-width: min(240px, 100%); }
+.memory-source-status .ghost-btn { flex-shrink: 0; }
+.memory-source-choice { margin-bottom: 24px; }
+.memory-source-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.memory-source-options .ghost-btn { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 8px; padding: 16px; text-align: left; white-space: normal; min-width: 0; height: auto; }
+.memory-source-options strong { font-size: 14px; }
+.memory-source-options span { color: var(--muted); font-size: 12px; line-height: 1.7; font-weight: 400; }
+@media (max-width: 720px) { .memory-source-options { grid-template-columns: 1fr; } }
 .memory-list,
 .knowledge-list {
   display: grid;

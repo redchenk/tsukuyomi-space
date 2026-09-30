@@ -376,32 +376,43 @@ test('refresh restores an unfinished text turn and clears its draft after retry 
   h.chat.destroy();
 });
 
-function conversationSyncHarness(authFetch) {
+function conversationSyncHarness(authFetch, overrides = {}) {
   const source = fs.readFileSync('src/frontend/services/room/roomConversationSync.js', 'utf8')
     .replace(/^import .*;$/gm, '')
     .replace(/^export /gm, '');
-  const storage = new Map();
+  const storage = overrides.storage || new Map();
   const localStorage = {
     getItem: key => storage.has(key) ? storage.get(key) : null,
     setItem: (key, value) => storage.set(key, String(value)),
     removeItem: key => storage.delete(key)
   };
   let account = 'account-a';
+  const localSaves = [];
   const context = {
-    AbortController, console, localStorage, Map, Set,
+    AbortController, console, localStorage, Map, Set, Date,
     getSession: () => ({ user: { id: account } }),
+    usesLocalRoomMemory: () => !account || storage.get(`roomMemorySource:${account}`) === 'local',
+    accountLocalMemoryKey: userId => `user-local:${userId}`,
+    guestMemoryKey: () => 'guest:test-guest',
+    saveGuestMemory: async (turn, scope) => {
+      assert.equal(scope.accountId, account);
+      assert.equal(scope.userKey, account ? `user-local:${account}` : 'guest:test-guest');
+      localSaves.push(JSON.parse(JSON.stringify({ turn, scope })));
+    },
     authFetch,
     authHeaders: value => value,
     noStoreUrl: value => value,
     parseResponse: async response => JSON.parse(await response.text()),
     applyGrowthResult() {},
-    window: { addEventListener() {}, removeEventListener() {} }
+    window: { addEventListener() {}, removeEventListener() {} },
+    ...overrides
   };
   const imagesSource = fs.readFileSync('src/frontend/services/room/roomChatImages.js', 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '');
   vm.runInNewContext(imagesSource + '\nglobalThis.normalizeImage = normalizeRoomImage;', context);
   context.normalizeRoomImage = context.normalizeImage;
-  vm.runInNewContext(source + '\nglobalThis.sync = { readRoomConversation, writeRoomConversation, saveRoomConversationTurn, loadRoomConversation };', context);
-  return { sync: context.sync, storage, setAccount: value => { account = value; } };
+  vm.runInNewContext(source + '\nglobalThis.sync = { readRoomConversation, writeRoomConversation, saveRoomConversationTurn, replaceRoomConversationTurn, loadRoomConversation };', context);
+  return { sync: context.sync, storage, localSaves, setAccount: value => { account = value; },
+    setMemoryMode: mode => storage.set(`roomMemorySource:${account}`, mode) };
 }
 
 function savedTurn(turnId, userText, assistantText) {
@@ -503,6 +514,151 @@ test('a stale Room history GET does not erase a turn saved while that GET was in
   const loaded = await loading;
   assert.equal(loaded.at(-1).content, '新回答');
   assert.equal(h.sync.readRoomConversation().at(-1).turnId, 'turn-0007');
+});
+
+test('local account memory is saved in its browser scope while cloud chat capture stays disabled', async () => {
+  const history = savedTurn('turn-local', '本地问题', '本地回答');
+  let request;
+  const h = conversationSyncHarness(async (url, options) => {
+    request = { url, body: JSON.parse(options.body) };
+    return successfulHistory(history);
+  });
+  h.setMemoryMode('local');
+  h.sync.writeRoomConversation(history);
+  await h.sync.saveRoomConversationTurn({ turnId: 'turn-local', userMessage: '本地问题', assistantMessage: '本地回答' });
+  assert.equal(request.url, '/api/room/chat/turn');
+  assert.equal(request.body.memorySource, 'local');
+  assert.equal(request.body.memoryEnabled, false);
+  assert.equal(request.body.localMemoryKey, undefined, 'browser ownership keys are not uploaded');
+  assert.equal(h.localSaves.length, 1);
+  assert.equal(h.localSaves[0].turn.memoryEnabled, true);
+  assert.equal(h.localSaves[0].scope.userKey, 'user-local:account-a');
+  assert.equal(h.sync.readRoomConversation().at(-1).content, '本地回答');
+  assert.equal(h.storage.get('roomChatPending:account-a'), undefined);
+});
+
+test('a local turn remains local after failed cloud chat sync, a source change and reload before retry', async () => {
+  const history = savedTurn('turn-local-retry', '保留本地', '记住了');
+  const requests = [];
+  let offline = true;
+  const request = async (url, options) => {
+    if (options?.body) requests.push(JSON.parse(options.body));
+    if (offline) throw new Error('offline');
+    return successfulHistory(history);
+  };
+  const h = conversationSyncHarness(request);
+  h.setMemoryMode('local');
+  h.sync.writeRoomConversation(history);
+  await assert.rejects(h.sync.saveRoomConversationTurn({ turnId: 'turn-local-retry', userMessage: '保留本地', assistantMessage: '记住了' }), /offline/);
+  const pending = JSON.parse(h.storage.get('roomChatPending:account-a'));
+  assert.equal(pending[0].memorySource, 'local');
+  assert.equal(pending[0].localMemoryKey, 'user-local:account-a');
+  h.setMemoryMode('cloud');
+  offline = false;
+  const reloaded = conversationSyncHarness(request, { storage: h.storage });
+  await reloaded.sync.loadRoomConversation();
+  assert.equal(requests.length, 2);
+  assert.ok(requests.every(turn => turn.memorySource === 'local' && turn.memoryEnabled === false));
+  assert.equal(reloaded.localSaves.length, 1);
+  assert.equal(reloaded.localSaves[0].scope.userKey, 'user-local:account-a');
+  assert.equal(h.storage.get('roomChatPending:account-a'), undefined);
+});
+
+test('retrying a cloud outbox after selecting local disables cloud capture and persists that choice', async () => {
+  const old = savedTurn('turn-old-cloud', '离线问题', '离线回答');
+  const next = savedTurn('turn-new-local', '新问题', '新回答');
+  const requests = [];
+  let offline = true;
+  const h = conversationSyncHarness(async (url, options) => {
+    const turn = JSON.parse(options.body);
+    requests.push(turn);
+    if (offline) throw new Error('offline');
+    return successfulHistory(turn.turnId === 'turn-old-cloud' ? old : [...old, ...next]);
+  });
+  h.sync.writeRoomConversation(old);
+  await assert.rejects(h.sync.saveRoomConversationTurn({ turnId: 'turn-old-cloud', userMessage: '离线问题', assistantMessage: '离线回答' }), /offline/);
+  h.setMemoryMode('local');
+  h.sync.writeRoomConversation([...old, ...next]);
+  await assert.rejects(h.sync.saveRoomConversationTurn({ turnId: 'turn-new-local', userMessage: '新问题', assistantMessage: '新回答' }), /offline/);
+  const pending = JSON.parse(h.storage.get('roomChatPending:account-a'));
+  assert.deepEqual(pending.map(turn => turn.turnId), ['turn-old-cloud', 'turn-new-local']);
+  assert.ok(pending.every(turn => turn.memorySource === 'local'));
+  h.setMemoryMode('cloud');
+  offline = false;
+  await h.sync.saveRoomConversationTurn({ turnId: 'turn-last-cloud', userMessage: '最后一问', assistantMessage: '最后一答' });
+  assert.deepEqual(requests.slice(2).map(turn => turn.turnId), ['turn-old-cloud', 'turn-new-local', 'turn-last-cloud']);
+  assert.ok(requests.slice(1, 4).every(turn => turn.memoryEnabled === false && turn.memorySource === 'local'));
+  assert.equal(requests.at(-1).memoryEnabled, true);
+  assert.equal(requests.at(-1).memorySource, undefined);
+});
+
+test('explicitly retrying the same pending local turn preserves its source and queue position', async () => {
+  const requests = [];
+  let offline = true;
+  const h = conversationSyncHarness(async (url, options) => {
+    requests.push(JSON.parse(options.body));
+    if (offline) throw new Error('offline');
+    return successfulHistory([]);
+  });
+  h.setMemoryMode('local');
+  const turn = { turnId: 'turn-explicit-retry', userMessage: '本地旧问题', assistantMessage: '本地旧回答' };
+  await assert.rejects(h.sync.saveRoomConversationTurn(turn), /offline/);
+  await assert.rejects(h.sync.saveRoomConversationTurn({ turnId: 'turn-later', userMessage: '后续问题', assistantMessage: '后续回答' }), /offline/);
+  h.setMemoryMode('cloud');
+  offline = false;
+  await h.sync.saveRoomConversationTurn(turn);
+  assert.deepEqual(requests.slice(-2).map(item => item.turnId), ['turn-explicit-retry', 'turn-later']);
+  assert.ok(requests.every(item => item.memorySource === 'local' && item.memoryEnabled === false));
+});
+
+test('logout during local capture keeps the outbox and prevents a cloud chat request', async () => {
+  const capture = deferred();
+  let requests = 0;
+  const h = conversationSyncHarness(async () => {
+    requests++;
+    return successfulHistory([]);
+  }, { saveGuestMemory: () => capture.promise });
+  h.setMemoryMode('local');
+  const saving = h.sync.saveRoomConversationTurn({ turnId: 'turn-local-logout', userMessage: '私有问题', assistantMessage: '私有回答' });
+  await tick();
+  h.setAccount('');
+  capture.resolve();
+  await assert.rejects(saving, /登录账号已切换/);
+  assert.equal(requests, 0);
+  assert.equal(JSON.parse(h.storage.get('roomChatPending:account-a'))[0].localMemoryKey, 'user-local:account-a');
+  assert.equal(h.storage.get('roomChatPending:guest'), undefined);
+});
+
+test('local account regeneration replaces only scoped local memory and disables server retirement', async () => {
+  const previous = savedTurn('turn-local-edit', '旧问题', '旧回答');
+  const updated = savedTurn('turn-local-edit', '新问题', '新回答');
+  let payload;
+  const h = conversationSyncHarness(async (url, options) => {
+    assert.equal(url, '/api/room/chat/turn/turn-local-edit');
+    payload = JSON.parse(options.body);
+    return successfulHistory(updated);
+  });
+  h.setMemoryMode('local');
+  h.sync.writeRoomConversation(previous);
+  await h.sync.replaceRoomConversationTurn({ turnId: 'turn-local-edit', expectedUserMessage: '旧问题', expectedAssistantMessage: '旧回答',
+    userMessage: '新问题', assistantMessage: '新回答' });
+  assert.equal(payload.memorySource, 'local');
+  assert.equal(payload.memoryEnabled, false);
+  assert.equal(h.localSaves.length, 1);
+  assert.equal(h.localSaves[0].turn.replace, true);
+  assert.equal(h.localSaves[0].scope.userKey, 'user-local:account-a');
+  assert.equal(h.sync.readRoomConversation().at(-1).content, '新回答');
+});
+
+test('guest captures stay guest-scoped and never send cloud chat requests', async () => {
+  const h = conversationSyncHarness(async () => { throw new Error('unexpected cloud request'); });
+  h.setAccount('');
+  h.sync.writeRoomConversation(savedTurn('turn-guest-local', '访客问题', '访客回答'));
+  await h.sync.saveRoomConversationTurn({ turnId: 'turn-guest-local', userMessage: '访客问题', assistantMessage: '访客回答' });
+  assert.equal(h.localSaves.length, 1);
+  assert.equal(h.localSaves[0].scope.accountId, '');
+  assert.equal(h.localSaves[0].scope.userKey, 'guest:test-guest');
+  assert.equal(h.storage.get('roomChatPending:guest'), undefined);
 });
 
 

@@ -1,6 +1,7 @@
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { applyGrowthResult } from '../userGrowth';
-import { saveGuestMemory } from './roomLocalMemory';
+import { guestMemoryKey, saveGuestMemory, usesLocalRoomMemory } from './roomLocalMemory';
+import { accountLocalMemoryKey } from './roomMemorySource.mjs';
 import { normalizeRoomImage, clearLocalRoomImages } from './roomChatImages';
 
 const CHAT_EVENT_NAME = 'tsukuyomi:room-chat-updated';
@@ -136,15 +137,45 @@ function readPendingTurns(userId = currentUserId()) {
 }
 
 function queuePendingTurn(turn, userId = currentUserId()) {
-  const turns = readPendingTurns(userId).filter((item) => item.turnId !== turn.turnId);
-  turns.push(turn);
+  const turns = readPendingTurns(userId);
+  const index = turns.findIndex(item => item.turnId === turn.turnId);
+  const previous = turns[index];
+  const queued = previous?.memorySource === 'local'
+    ? { ...turn, memorySource: 'local', localMemoryKey: previous.localMemoryKey }
+    : turn;
+  if (index < 0) turns.push(queued);
+  else turns[index] = queued;
   localStorage.setItem(pendingKey(userId), JSON.stringify(turns));
+  return queued;
 }
 
 function removePendingTurn(turnId, userId = currentUserId()) {
   const turns = readPendingTurns(userId).filter((turn) => turn.turnId !== turnId);
   if (turns.length) localStorage.setItem(pendingKey(userId), JSON.stringify(turns));
   else localStorage.removeItem(pendingKey(userId));
+}
+
+function withLocalMemorySource(turn, userId) {
+  if (turn.memorySource === 'local') return turn;
+  if (!usesLocalRoomMemory()) return turn;
+  return { ...turn, memorySource: 'local', localMemoryKey: userId ? accountLocalMemoryKey(userId) : guestMemoryKey() };
+}
+
+function localMemoryOptions(turn, userId) {
+  return { accountId: userId, userKey: turn.localMemoryKey };
+}
+
+function rememberLocalMemorySource(turn, userId) {
+  const turns = readPendingTurns(userId);
+  const index = turns.findIndex(item => item.turnId === turn.turnId);
+  if (index < 0) return;
+  turns[index] = turn;
+  localStorage.setItem(pendingKey(userId), JSON.stringify(turns));
+}
+
+function cloudTurnPayload(turn) {
+  const { localMemoryKey, ...payload } = turn;
+  return turn.memorySource === 'local' ? { ...payload, memoryEnabled: false } : payload;
 }
 
 async function postConversationTurn(turn, userId, epoch) {
@@ -156,10 +187,18 @@ async function postConversationTurn(turn, userId, epoch) {
 
   const controller = new AbortController();
   const request = (async () => {
+    // A queued cloud turn follows a newly selected local source. Persist that
+    // decision before saving so a later retry cannot upload its local memory.
+    const captureTurn = withLocalMemorySource(turn, userId);
+    if (captureTurn.memorySource === 'local') {
+      rememberLocalMemorySource(captureTurn, userId);
+      await saveGuestMemory(captureTurn, localMemoryOptions(captureTurn, userId));
+      requireCurrentSession(userId, epoch);
+    }
     const response = await authFetch('/api/room/chat/turn', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify(turn),
+      body: JSON.stringify(cloudTurnPayload(captureTurn)),
       signal: controller.signal
     });
     const result = await parseResponse(response);
@@ -224,7 +263,8 @@ export async function loadRoomConversation() {
   if (!userId) {
     for (const turn of readPendingTurns(userId)) {
       requireCurrentSession(userId, epoch);
-      await saveGuestMemory(turn);
+      const captureTurn = withLocalMemorySource(turn, userId);
+      await saveGuestMemory(captureTurn, localMemoryOptions(captureTurn, userId));
       requireCurrentSession(userId, epoch);
       removePendingTurn(turn.turnId, userId);
     }
@@ -270,10 +310,9 @@ export async function loadRoomConversation() {
 
 export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, imageId, opener = false, memoryEnabled = true }) {
   const userId = currentUserId();
-  const turn = { turnId, userMessage, assistantMessage, memoryEnabled, ...(imageId ? { imageId } : {}), ...(opener ? { opener: true } : {}) };
-  queuePendingTurn(turn, userId);
+  const turn = queuePendingTurn(withLocalMemorySource({ turnId, userMessage, assistantMessage, memoryEnabled, ...(imageId ? { imageId } : {}), ...(opener ? { opener: true } : {}) }, userId), userId);
   if (!userId) {
-    await saveGuestMemory(turn);
+    await saveGuestMemory(turn, localMemoryOptions(turn, userId));
     requireSameAccount(userId);
     removePendingTurn(turn.turnId, userId);
     return readRoomConversation();
@@ -287,6 +326,7 @@ export async function saveRoomConversationTurn({ turnId, userMessage, assistantM
 export async function replaceRoomConversationTurn({ turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage, memoryEnabled = true }) {
   const userId = currentUserId();
   const epoch = saveEpoch(userId);
+  let captureTurn = withLocalMemorySource({ turnId, userMessage, assistantMessage, memoryEnabled, replace: true }, userId);
   const history = readRoomConversation();
   const matching = history.filter((item) => item.turnId === turnId);
   const lastTurnId = history.at(-1)?.turnId;
@@ -307,17 +347,24 @@ export async function replaceRoomConversationTurn({ turnId, expectedUserMessage,
     // that save before replacing it, rather than racing the two requests.
     await flushPendingTurns(userId);
     requireCurrentSession(userId, epoch);
+    captureTurn = withLocalMemorySource(captureTurn, userId);
     const response = await authFetch(`/api/room/chat/turn/${encodeURIComponent(turnId)}`, {
       method: 'PUT',
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify({ expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage, memoryEnabled })
+      body: JSON.stringify({ expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage,
+        memoryEnabled: captureTurn.memorySource === 'local' ? false : memoryEnabled,
+        ...(captureTurn.memorySource === 'local' ? { memorySource: 'local' } : {}) })
     });
     const result = await parseResponse(response);
     requireCurrentSession(userId, epoch);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     next = normalizeHistory(result.data);
+    if (captureTurn.memorySource === 'local') {
+      await saveGuestMemory(captureTurn, localMemoryOptions(captureTurn, userId));
+      requireCurrentSession(userId, epoch);
+    }
   } else {
-    await saveGuestMemory({ turnId, userMessage, assistantMessage, memoryEnabled, replace: true });
+    await saveGuestMemory(captureTurn, localMemoryOptions(captureTurn, userId));
     requireCurrentSession(userId, epoch);
   }
   return userId ? applySavedHistory(userId, next) : writeRoomConversation(next);

@@ -36,6 +36,8 @@ import {
 } from '../services/room/roomDiaryArchive';
 import { DIARY_SYNC_UPDATED_EVENT, syncDiaryArchive } from '../services/room/roomDiarySync';
 import { formatDateTime } from '../utils/time';
+import { accountLocalMemoryKey, guestMemoryFingerprint, memoryImportBatches, readMemorySource, writeMemorySource } from '../services/room/roomMemorySource.mjs';
+import { copyGuestMemoriesToAccount, readLocalMemoryRecords } from '../services/room/roomLocalMemory';
 
 const props = defineProps({
   user: { type: Object, default: null }
@@ -166,8 +168,14 @@ const memoryContentLimit = ref(12000);
 const MEMORY_PAGE_SIZE = 80;
 let memoryListRequestId = 0;
 let memoryEditRequestId = 0;
+let memoryCountRequestId = 0;
+let memoryChoiceRequestId = 0;
+let memoryImportController = null;
+let memoryPageDisposed = false;
 const memoryVector = reactive({ backend: '', enabled: false, pending: 0, failed: 0, embedding: '' });
 const storedUser = ref(readStoredUser());
+const memorySourceMode = ref(readMemorySource(storedUser.value?.id || '').mode);
+const memoryChoice = reactive({ visible: false, loading: false, pending: false, guestRows: [], localCount: 0, cloudCount: null, fingerprint: '', error: '', progress: '' });
 const modelCatalog = reactive({ loading: false, message: '', error: '', updatedAt: '', models: [] });
 const setupLlmMode = ref('ollama');
 const setupCloudProvider = ref('openaiChat');
@@ -338,7 +346,7 @@ function persistSettings(key, value, label) {
 }
 
 async function saveAllSettings() {
-  if (savingSettings.value || memorySavePending.value) return false;
+  if (savingSettings.value || memorySavePending.value || memoryChoice.pending) return false;
   savingSettings.value = true;
   try {
     const sections = new Set(pendingSections.value);
@@ -370,16 +378,16 @@ function warnBeforeUnload(event) {
   event.preventDefault();
   event.returnValue = '';
 }
-onBeforeRouteLeave(() => !hasUnsavedSettings.value || window.confirm('设置尚未保存，离开会丢失这些修改。确定离开吗？'));
+onBeforeRouteLeave(() => !memoryChoice.pending && (!hasUnsavedSettings.value || window.confirm('设置尚未保存，离开会丢失这些修改。确定离开吗？')));
 
-const roomUser = computed(() => storedUser.value || (props.user?.id ? props.user : null));
+const roomUser = computed(() => storedUser.value);
 const roomIdentityLabel = computed(() => roomUser.value?.username || '访客身份');
 const llmConnectionLabel = computed(() => llm.model || '待配置');
 const ttsConnectionLabel = computed(() => tts.enabled ? (tts.voice || tts.provider || '已启用') : '未启用');
 const llmSetupReady = computed(() => Boolean(llm.apiUrl && llm.model) && (!llmNeedsApiKey(llm.apiUrl) || Boolean(llm.apiKey)));
 const ttsSetupReady = computed(() => !tts.enabled || (Boolean(tts.apiUrl) && (tts.provider === 'gpt-sovits' || Boolean(tts.apiKey))));
 const visitorKey = computed(() => {
-  if (roomUser.value?.id) return `user:${roomUser.value.id}`;
+  if (roomUser.value?.id) return memorySourceMode.value === 'local' ? accountLocalMemoryKey(roomUser.value.id) : `user:${roomUser.value.id}`;
   let id = localStorage.getItem('roomMemoryGuestId');
   if (!id) {
     id = `guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -387,7 +395,7 @@ const visitorKey = computed(() => {
   }
   return `guest:${id}`;
 });
-const canUseServerMemory = computed(() => Boolean(roomUser.value?.id));
+const canUseServerMemory = computed(() => Boolean(roomUser.value?.id) && memorySourceMode.value === 'cloud');
 const llmProviderKey = computed(() => detectLLMProvider(llm.apiUrl, llm.model));
 const syncedModelOptions = computed(() => modelOptionsForProvider(llmProviderKey.value));
 const recommendedModelOption = computed(() => recommendedModelForProvider(llmProviderKey.value));
@@ -407,8 +415,9 @@ const memoryVectorLabel = computed(() => {
   return 'Milvus 已同步';
 });
 const memoryLocationText = computed(() => canUseServerMemory.value
-  ? '记忆保存在当前账号中，并用于后续对话。访客记忆与账号记忆分别保存。'
-  : '当前为访客，记忆仅保存在这台设备的当前浏览器中。');
+  ? '记忆保存在当前账号中，并用于后续对话。登录前的本地记忆只有选择合并后才会上传。'
+  : roomUser.value?.id ? '当前使用此账号在本浏览器的本地记忆，不上传新记忆；已有云端记忆继续保留。'
+    : '当前为访客，记忆仅保存在这台设备的当前浏览器中。');
 const memoryTypeOptions = [
   { value: '', label: '全部类型' },
   { value: 'profile', label: '用户画像' },
@@ -794,8 +803,139 @@ function onLive2DDebugEvent(event) {
 
 function refreshMemoryState() {
   storedUser.value = readStoredUser();
+  memorySourceMode.value = readMemorySource(storedUser.value?.id || '').mode;
   loadMemoryCount();
   if (memory.managerOpen) loadVisibleMemories();
+}
+
+function memoryIdentity() {
+  const id = String(getSession()?.user?.id || '');
+  return `${id}|${readMemorySource(id).mode}`;
+}
+
+function requireMemoryIdentity(identity) {
+  if (memoryPageDisposed || identity !== memoryIdentity()) throw new Error('登录身份或记忆来源已变化，请重新操作');
+}
+
+function requireDisplayedMemoryIdentity(identity) {
+  requireMemoryIdentity(identity);
+  if (identity !== `${String(roomUser.value?.id || '')}|${memorySourceMode.value}`) {
+    throw new Error('登录身份或记忆来源已变化，请刷新后重新操作');
+  }
+}
+
+function resetMemoryIdentity() {
+  memoryListRequestId += 1;
+  memoryEditRequestId += 1;
+  memoryCountRequestId += 1;
+  memoryChoiceRequestId += 1;
+  memoryImportController?.abort();
+  memoryList.value = [];
+  memoryCount.value = 0;
+  memoryLoading.value = false;
+  memory.expanded = {};
+  cancelMemoryEdit();
+  memoryChoice.visible = false;
+  memoryChoice.error = '';
+  refreshMemoryState();
+  void refreshMemoryChoice();
+}
+
+async function refreshMemoryChoice(force = false) {
+  const accountId = String(getSession()?.user?.id || '');
+  if (!accountId || memoryPageDisposed) { memoryChoice.visible = false; return; }
+  const requestId = ++memoryChoiceRequestId;
+  let localLoaded = false;
+  memoryChoice.loading = true;
+  try {
+    const guestId = localStorage.getItem('roomMemoryGuestId');
+    const [guestRows, localRows] = await Promise.all([
+      readLocalMemoryRecords(guestId ? `guest:${guestId}` : ''),
+      readLocalMemoryRecords(accountLocalMemoryKey(accountId))
+    ]);
+    const fingerprint = await guestMemoryFingerprint(guestRows);
+    if (requestId !== memoryChoiceRequestId || String(getSession()?.user?.id || '') !== accountId || memoryPageDisposed) return;
+    Object.assign(memoryChoice, { guestRows, localCount: localRows.length, fingerprint, error: '' });
+    localLoaded = true;
+    memoryChoice.visible = force || Boolean(guestRows.length && readMemorySource(accountId).fingerprint !== fingerprint);
+    memoryChoice.loading = false;
+    if (!memoryChoice.visible) return;
+    const response = await authFetch(noStoreUrl('/api/room/memory/status'), { headers: memoryAuthHeaders(), cache: 'no-store', signal: AbortSignal.timeout(8000) });
+    const result = await parseResponse(response);
+    if (requestId !== memoryChoiceRequestId || String(getSession()?.user?.id || '') !== accountId || memoryPageDisposed) return;
+    memoryChoice.cloudCount = response.ok && result.success ? Number(result.data?.count || 0) : null;
+    if (response.ok && result.success) memoryContentLimit.value = Number(result.data?.maxContentLength) || 12000;
+  } catch (error) {
+    if (!localLoaded && requestId === memoryChoiceRequestId && !memoryPageDisposed) {
+      memoryChoice.visible = true;
+      memoryChoice.error = `读取记忆状态失败：${error.message}。原数据仍保留，请重试。`;
+    }
+  } finally {
+    if (requestId === memoryChoiceRequestId) memoryChoice.loading = false;
+  }
+}
+
+async function chooseMemorySource(choice) {
+  if (memoryChoice.pending || memorySavePending.value) return;
+  if (hasMemoryDraft.value) { memoryChoice.error = '请先保存或取消正在编辑的记忆，再切换来源。'; return; }
+  const accountId = String(getSession()?.user?.id || '');
+  if (!accountId) return;
+  const identity = memoryIdentity();
+  memoryChoice.pending = true;
+  memoryChoice.error = '';
+  memoryChoice.progress = '';
+  try {
+    requireDisplayedMemoryIdentity(identity);
+    const guestId = localStorage.getItem('roomMemoryGuestId');
+    const guestRows = await readLocalMemoryRecords(guestId ? `guest:${guestId}` : '');
+    const fingerprint = await guestMemoryFingerprint(guestRows);
+    requireMemoryIdentity(identity);
+    if (choice === 'local') {
+      await copyGuestMemoriesToAccount(accountId, guestRows);
+    } else if (choice === 'merge') {
+      const localRows = await readLocalMemoryRecords(accountLocalMemoryKey(accountId));
+      requireMemoryIdentity(identity);
+      // Account-local edited copies take precedence over their guest originals.
+      const copiedGuestIds = new Set(localRows.map(row => row.id.startsWith(`user-local:${accountId}:import:`) ? row.id.slice(`user-local:${accountId}:import:`.length) : ''));
+      const rows = [...guestRows.filter(row => !copiedGuestIds.has(row.id)), ...localRows];
+      const batches = memoryImportBatches(rows, memoryContentLimit.value);
+      for (let index = 0; index < batches.length; index++) {
+        requireMemoryIdentity(identity);
+        memoryChoice.progress = `正在合并第 ${index + 1} / ${batches.length} 批记忆…`;
+        memoryImportController = new AbortController();
+        const timer = setTimeout(() => memoryImportController?.abort(), 20000);
+        try {
+          const response = await authFetch('/api/room/memory/import', { method: 'POST',
+            headers: memoryAuthHeaders({ 'Content-Type': 'application/json' }), signal: memoryImportController.signal,
+            body: JSON.stringify({ expectedUserId: accountId, records: batches[index] }) });
+          const result = await parseResponse(response);
+          requireMemoryIdentity(identity);
+          if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+        } finally { clearTimeout(timer); memoryImportController = null; }
+      }
+    }
+    requireMemoryIdentity(identity);
+    writeMemorySource(accountId, { mode: choice === 'local' ? 'local' : 'cloud', fingerprint });
+    memoryChoiceRequestId += 1;
+    memorySourceMode.value = choice === 'local' ? 'local' : 'cloud';
+    memoryChoice.visible = false;
+    cancelMemoryEdit();
+    memory.expanded = {};
+    memoryListRequestId += 1;
+    memoryList.value = [];
+    memoryChoice.progress = '';
+    window.dispatchEvent(new CustomEvent('tsukuyomi:room-memory-source-updated'));
+    publishLocalRoomMemoryUpdate(null, 'source-changed');
+    // The selection is already committed. A slow status/list refresh must not
+    // keep the chooser busy or prevent returning to the room.
+    refreshMemoryState();
+    showToast(choice === 'local' ? '已使用当前浏览器的本地记忆，云端记忆保留' : choice === 'merge' ? '本地记忆已合并至当前账号，可跨设备使用' : '已使用云端记忆，本地原件仍保留');
+  } catch (error) {
+    if (String(getSession()?.user?.id || '') === accountId && !memoryPageDisposed) {
+      memoryChoice.error = error.name === 'AbortError' ? '合并请求超时或已中止，请重试。本地原件保留，已成功的批次不会重复导入。'
+        : `操作未完成：${error.message}。本地原件保留，重试不会重复导入已成功的批次。`;
+    }
+  } finally { memoryChoice.pending = false; memoryChoice.progress = ''; }
 }
 
 function onRoomMemoryUpdated(event) {
@@ -819,7 +959,9 @@ function onRoomSettingsStorageEvent(event) {
   if (event?.key === 'tsukuyomi_user' || event?.key === 'admin_user') {
     refreshRoomMemorySync();
     loadDiaryArchive();
+    resetMemoryIdentity();
   }
+  if (event?.key?.startsWith('roomMemorySource:')) resetMemoryIdentity();
   if (event?.key === diaryArchiveKey() && !pendingSections.value.includes('diary')) loadDiaryArchive();
   if (event?.key === ROOM_MEMORY_UPDATED_KEY || event?.key === 'tsukuyomi_user' || event?.key === 'admin_user') {
     onRoomMemoryUpdated();
@@ -1145,11 +1287,13 @@ function requestToPromise(request) {
 function txToPromise(tx) {
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'));
+    tx.onabort = tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'));
   });
 }
 
 async function loadMemoryCount() {
+  const requestId = ++memoryCountRequestId, identity = memoryIdentity();
+  let db;
   try {
     if (canUseServerMemory.value) {
       const response = await authFetch(noStoreUrl('/api/room/memory/status'), {
@@ -1158,6 +1302,8 @@ async function loadMemoryCount() {
       });
       const result = await parseResponse(response);
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+      requireMemoryIdentity(identity);
+      if (requestId !== memoryCountRequestId) return;
       memoryCount.value = result.data?.count || 0;
       memoryContentLimit.value = Number(result.data?.maxContentLength) || 12000;
       memoryVector.backend = result.data?.vectorStore?.backend || '';
@@ -1169,15 +1315,18 @@ async function loadMemoryCount() {
       return;
     }
     Object.assign(memoryVector, { backend: '', enabled: false, pending: 0, failed: 0, embedding: '', mem0: null });
-    const db = await openMemoryDb();
+    db = await openMemoryDb();
     if (!db) return;
+    requireMemoryIdentity(identity);
     const tx = db.transaction(MEMORY_STORE, 'readonly');
     const index = tx.objectStore(MEMORY_STORE).index('userKey');
     const records = await requestToPromise(index.getAll(IDBKeyRange.only(visitorKey.value)));
+    requireMemoryIdentity(identity);
+    if (requestId !== memoryCountRequestId) return;
     memoryCount.value = records.length;
   } catch (_) {
-    memoryCount.value = 0;
-  }
+    if (requestId === memoryCountRequestId && identity === memoryIdentity()) memoryCount.value = 0;
+  } finally { db?.close(); }
 }
 
 async function loadServerMemories({ append = false } = {}) {
@@ -1188,6 +1337,7 @@ async function loadServerMemories({ append = false } = {}) {
   }
   if (append && (memoryLoading.value || !memoryHasMore.value)) return;
   const requestId = ++memoryListRequestId;
+  const identity = memoryIdentity();
   memoryLoading.value = true;
   memoryError.value = '';
   try {
@@ -1204,7 +1354,7 @@ async function loadServerMemories({ append = false } = {}) {
     });
     const result = await parseResponse(response);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
-    if (requestId !== memoryListRequestId) return;
+    if (requestId !== memoryListRequestId || identity !== memoryIdentity()) return;
     const page = Array.isArray(result.data?.items) ? result.data.items : [];
     memoryList.value = append ? [...memoryList.value, ...page] : page;
     memoryFilteredTotal.value = Number(result.data?.total) || 0;
@@ -1241,10 +1391,12 @@ function buildGptSovitsAudioUrl(text, settings) {
 async function loadLocalMemories({ append = false } = {}) {
   if (append && (memoryLoading.value || !memoryHasMore.value)) return;
   const requestId = ++memoryListRequestId;
+  const identity = memoryIdentity(), userKey = visitorKey.value;
+  let db;
   memoryLoading.value = true;
   memoryError.value = '';
   try {
-    const db = await openMemoryDb();
+    db = await openMemoryDb();
     if (!db) {
       memoryList.value = [];
       memoryCount.value = 0;
@@ -1254,7 +1406,8 @@ async function loadLocalMemories({ append = false } = {}) {
     }
     const tx = db.transaction(MEMORY_STORE, 'readonly');
     const index = tx.objectStore(MEMORY_STORE).index('userKey');
-    const records = await requestToPromise(index.getAll(IDBKeyRange.only(visitorKey.value)));
+    requireMemoryIdentity(identity);
+    const records = await requestToPromise(index.getAll(IDBKeyRange.only(userKey)));
     const query = memory.query.trim().toLowerCase();
     const type = memory.type.trim();
     const filtered = records
@@ -1264,7 +1417,7 @@ async function loadLocalMemories({ append = false } = {}) {
         return `${item.summary || ''}\n${item.content || ''}\n${item.visitorName || ''}`.toLowerCase().includes(query);
       })
       .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
-    if (requestId !== memoryListRequestId) return;
+    if (requestId !== memoryListRequestId || identity !== memoryIdentity()) return;
     const offset = append ? memoryList.value.length : 0;
     const page = filtered.slice(offset, offset + MEMORY_PAGE_SIZE)
       .map((item) => ({
@@ -1288,6 +1441,7 @@ async function loadLocalMemories({ append = false } = {}) {
     memoryError.value = error.message || '读取本地记忆失败';
     showToast(`读取本地记忆失败：${error.message}`, 'error');
   } finally {
+    db?.close();
     if (requestId === memoryListRequestId) memoryLoading.value = false;
   }
 }
@@ -1910,8 +2064,11 @@ async function toggleMemoryManager() {
 }
 
 async function openMemoryItem(item) {
+  const identity = memoryIdentity();
   try {
+    requireDisplayedMemoryIdentity(identity);
     const detail = item.content || !canUseServerMemory.value ? item : await fetchMemoryDetail(item.id);
+    requireMemoryIdentity(identity);
     memory.expanded[item.id] = true;
     const index = memoryList.value.findIndex((entry) => entry.id === item.id);
     if (index >= 0) memoryList.value[index] = { ...memoryList.value[index], ...detail };
@@ -1933,7 +2090,7 @@ async function fetchMemoryDetail(id) {
 }
 
 async function editMemory(item) {
-  if (memorySavePending.value) return;
+  if (memorySavePending.value || memoryChoice.pending) return;
   if (hasMemoryDraft.value && memory.editing?.id !== item.id
     && !window.confirm('当前记忆尚未保存，切换会丢失修改。确定继续吗？')) return;
   const requestId = ++memoryEditRequestId;
@@ -1974,8 +2131,10 @@ function cancelMemoryEdit() {
 }
 
 async function saveMemoryEdit() {
-  if (!memory.editing || memorySavePending.value) return false;
+  if (!memory.editing || memorySavePending.value || memoryChoice.pending) return false;
   memorySaveError.value = '';
+  const identity = memoryIdentity(), userKey = visitorKey.value;
+  const requestId = memoryEditRequestId;
   const draft = {
     id: memory.editing.id,
     type: memory.editing.type,
@@ -1986,6 +2145,11 @@ async function saveMemoryEdit() {
     tags: String(memory.editing.tags || '').split(',').map((item) => item.trim()).filter(Boolean)
   };
   try {
+    requireDisplayedMemoryIdentity(identity);
+    if ([memory.editing.importance, memory.editing.confidence].some(value => value === '' || value == null)
+      || ![draft.importance, draft.confidence].every(value => Number.isFinite(value) && value >= 0 && value <= 1)) {
+      throw new Error('重要度和置信度请填写 0 到 1 的数值');
+    }
     if (!draft.summary.trim() || !draft.content.trim()) throw new Error('记忆摘要和内容不能为空');
     if (draft.summary.length > 800) throw new Error('记忆摘要不能超过 800 字');
     if (canUseServerMemory.value && draft.content.length > memoryContentLimit.value) {
@@ -1995,8 +2159,11 @@ async function saveMemoryEdit() {
     if (!canUseServerMemory.value) {
       const db = await openMemoryDb();
       if (!db) throw new Error('IndexedDB 不可用');
+      try {
+      requireMemoryIdentity(identity);
       const existing = await requestToPromise(db.transaction(MEMORY_STORE, 'readonly').objectStore(MEMORY_STORE).get(draft.id));
-      if (!existing || existing.userKey !== visitorKey.value) throw new Error('记忆不存在');
+      requireMemoryIdentity(identity);
+      if (!existing || existing.userKey !== userKey) throw new Error('记忆不存在');
       const tx = db.transaction(MEMORY_STORE, 'readwrite');
       tx.objectStore(MEMORY_STORE).put({
         ...existing,
@@ -2005,6 +2172,8 @@ async function saveMemoryEdit() {
         updatedAt: new Date().toISOString()
       });
       await txToPromise(tx);
+      requireMemoryIdentity(identity);
+      if (requestId !== memoryEditRequestId) return false;
       memory.editing = null;
       memoryEditingOriginal.value = '';
       memory.expanded[draft.id] = false;
@@ -2012,6 +2181,7 @@ async function saveMemoryEdit() {
       await loadLocalMemories();
       showToast('本地记忆已更新');
       return true;
+      } finally { db.close(); }
     }
     const response = await authFetch(`/api/room/memory/${encodeURIComponent(draft.id)}`, {
       method: 'PUT',
@@ -2019,6 +2189,8 @@ async function saveMemoryEdit() {
       body: JSON.stringify(draft)
     });
     const result = await parseResponse(response);
+    requireMemoryIdentity(identity);
+    if (requestId !== memoryEditRequestId) return false;
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     memory.editing = null;
     memoryEditingOriginal.value = '';
@@ -2036,24 +2208,36 @@ async function saveMemoryEdit() {
 }
 
 async function deleteMemoryItem(item) {
+  if (memoryChoice.pending || memorySavePending.value) return;
   if (!confirm('确定删除这条长期记忆吗？')) return;
+  const identity = memoryIdentity(), userKey = visitorKey.value;
   try {
+    requireDisplayedMemoryIdentity(identity);
     if (!canUseServerMemory.value) {
       const db = await openMemoryDb();
       if (!db) throw new Error('IndexedDB 不可用');
+      try {
+      requireMemoryIdentity(identity);
       const tx = db.transaction(MEMORY_STORE, 'readwrite');
-      tx.objectStore(MEMORY_STORE).delete(item.id);
+      const store = tx.objectStore(MEMORY_STORE), request = store.get(item.id);
+      request.onsuccess = () => {
+        if (identity !== memoryIdentity() || request.result?.userKey !== userKey) { tx.abort(); return; }
+        store.delete(item.id);
+      };
       await txToPromise(tx);
+      requireMemoryIdentity(identity);
       publishLocalRoomMemoryUpdate(item, 'deleted');
       showToast('本地记忆已删除');
       await loadLocalMemories();
       return;
+      } finally { db.close(); }
     }
     const response = await authFetch(`/api/room/memory/${encodeURIComponent(item.id)}`, {
       method: 'DELETE',
       headers: memoryAuthHeaders()
     });
     const result = await parseResponse(response);
+    requireMemoryIdentity(identity);
     if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
     showToast('记忆已删除');
     await loadMemoryCount();
@@ -2064,13 +2248,17 @@ async function deleteMemoryItem(item) {
 }
 
 async function clearMemory() {
+  if (memoryChoice.pending || memorySavePending.value) return;
+  const identity = memoryIdentity(), userKey = visitorKey.value;
   try {
+    requireDisplayedMemoryIdentity(identity);
     if (canUseServerMemory.value) {
-      const response = await authFetch('/api/room/memory', {
+      const response = await authFetch(`/api/room/memory?expectedUserId=${encodeURIComponent(roomUser.value.id)}`, {
         method: 'DELETE',
         headers: memoryAuthHeaders()
       });
       const result = await parseResponse(response);
+      requireMemoryIdentity(identity);
       if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
       memoryCount.value = 0;
       memoryList.value = [];
@@ -2084,11 +2272,15 @@ async function clearMemory() {
     }
     const db = await openMemoryDb();
     if (!db) return;
+    try {
+    requireMemoryIdentity(identity);
     const tx = db.transaction(MEMORY_STORE, 'readwrite');
     const index = tx.objectStore(MEMORY_STORE).index('userKey');
-    const records = await requestToPromise(index.getAll(IDBKeyRange.only(visitorKey.value)));
+    const records = await requestToPromise(index.getAll(IDBKeyRange.only(userKey)));
+    if (identity !== memoryIdentity()) { tx.abort(); throw new Error('登录身份或记忆来源已变化'); }
     records.forEach((record) => tx.objectStore(MEMORY_STORE).delete(record.id));
     await txToPromise(tx);
+    requireMemoryIdentity(identity);
     memoryCount.value = 0;
     memoryList.value = [];
     memoryEditRequestId += 1;
@@ -2098,6 +2290,7 @@ async function clearMemory() {
     memory.expanded = {};
     publishLocalRoomMemoryUpdate(null, 'cleared');
     showToast(`已清空 ${records.length} 条本地记忆`);
+    } finally { db.close(); }
   } catch (error) {
     showToast(`清空失败：${error.message}`, 'error');
   }
@@ -2229,7 +2422,7 @@ async function testMCPWithDialog() {
 watch(() => props.user?.id || '', (userId, previousUserId) => {
   if (userId === previousUserId) return;
   refreshRoomMemorySync();
-  refreshMemoryState();
+  resetMemoryIdentity();
   loadDiaryArchive();
   void syncDiarySettings();
 });
@@ -2237,6 +2430,7 @@ watch(() => props.user?.id || '', (userId, previousUserId) => {
 onMounted(() => {
   stopRoomMemorySync = startRoomMemorySync();
   loadSettings();
+  void refreshMemoryChoice();
   window.addEventListener(DIARY_SYNC_UPDATED_EVENT, onDiarySyncUpdated);
   window.addEventListener('focus', onDiaryVisibilityChange);
   document.addEventListener('visibilitychange', onDiaryVisibilityChange);
@@ -2249,6 +2443,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  memoryPageDisposed = true;
+  memoryImportController?.abort();
   stopRoomMemorySync();
   releaseAsyncAudioPlayback(ttsTestPlayback);
   ttsTestPlayback = null;
@@ -2280,6 +2476,36 @@ onBeforeUnmount(() => {
         ><TsIcon name="arrowLeft" :size="17" />返回房间</a
       >
     </header>
+    <section v-if="roomUser?.id" class="memory-source-status settings-note" role="status">
+      <TsIcon name="shield" :size="18" />
+      <div>
+        <strong>当前记忆来源：{{ memorySourceMode === 'local' ? '本地数据' : '云端数据' }}</strong>
+        <p>{{ memoryLocationText }}</p>
+      </div>
+      <button class="ghost-btn" type="button" :disabled="memoryChoice.pending || memoryChoice.loading" @click="refreshMemoryChoice(true)">重新选择</button>
+    </section>
+    <section v-if="roomUser?.id && memoryChoice.visible" class="memory-source-choice room-settings-card" aria-labelledby="memory-source-heading" :aria-busy="memoryChoice.pending || memoryChoice.loading">
+      <div class="room-card-head">
+        <span class="room-card-icon"><TsIcon name="bookmark" :size="23" /></span>
+        <div><h2 id="memory-source-heading">登录后，如何使用这台设备的记忆？</h2>
+          <p>登录前的访客记忆 {{ memoryChoice.guestRows.length }} 条<span v-if="memoryChoice.localCount"> · 当前账号的本地记忆 {{ memoryChoice.localCount }} 条</span> · 云端记忆 {{ memoryChoice.cloudCount == null ? '待读取' : `${memoryChoice.cloudCount} 条` }}</p>
+        </div>
+      </div>
+      <div class="memory-source-options">
+        <button class="ghost-btn" type="button" aria-label="使用本地数据" :disabled="memoryChoice.pending || memoryChoice.loading" @click="chooseMemorySource('local')">
+          <strong>使用本地数据</strong><span>在当前浏览器使用本地记忆。云端原有记忆保留，新记忆不上传。</span>
+        </button>
+        <button class="ghost-btn" type="button" aria-label="合并本地与云端数据" :disabled="memoryChoice.pending || memoryChoice.loading" @click="chooseMemorySource('merge')">
+          <strong>合并本地与云端数据</strong><span>将本地记忆导入当前账号，保留云端记忆并去重，其他设备也能使用。</span>
+        </button>
+        <button class="ghost-btn" type="button" aria-label="使用云端数据" :disabled="memoryChoice.pending || memoryChoice.loading" @click="chooseMemorySource('cloud')">
+          <strong>使用云端数据</strong><span>继续使用账号已有记忆，本地原件保留，不导入。</span>
+        </button>
+      </div>
+      <p class="field-hint">选择仅针对当前账号和浏览器；清理浏览器数据会丢失本地记忆。稍后可通过“重新选择”调整。</p>
+      <p v-if="memoryChoice.progress" class="field-hint" role="status">{{ memoryChoice.progress }}</p>
+      <div v-if="memoryChoice.error" class="field-hint error" role="alert">{{ memoryChoice.error }} <button class="ghost-btn" type="button" :disabled="memoryChoice.pending" @click="refreshMemoryChoice(true)">重新读取</button></div>
+    </section>
     <section v-if="setupGuideVisible" class="settings-welcome">
       <span class="settings-welcome-icon"
         ><TsIcon name="sparkles" :size="24"
@@ -2977,32 +3203,33 @@ onBeforeUnmount(() => {
                   :disabled="memorySavePending"
               /></label>
               <div class="memory-score-row">
-                <label
-                  >重要度
-                  <strong>{{
-                    Number(memory.editing.importance).toFixed(2)
-                  }}</strong
-                  ><input
-                    v-model="memory.editing.importance"
+                <div class="memory-score-control">
+                  <label for="memory-importance-number">重要度 <small>影响检索优先级</small></label>
+                  <input id="memory-importance-number" aria-label="重要度数值" v-model.number="memory.editing.importance" type="number" min="0" max="1" step="0.01" required :disabled="memorySavePending" />
+                  <input
+                    aria-label="重要度滑块"
+                    v-model.number="memory.editing.importance"
                     type="range"
                     min="0"
                     max="1"
-                    step="0.05"
+                    step="0.01"
                     :disabled="memorySavePending"
-                /></label>
-                <label
-                  >置信度
-                  <strong>{{
-                    Number(memory.editing.confidence).toFixed(2)
-                  }}</strong
-                  ><input
-                    v-model="memory.editing.confidence"
+                  />
+                </div>
+                <div class="memory-score-control">
+                  <label for="memory-confidence-number">置信度 <small>记忆内容的可靠程度</small></label>
+                  <input id="memory-confidence-number" aria-label="置信度数值" v-model.number="memory.editing.confidence" type="number" min="0" max="1" step="0.01" required :disabled="memorySavePending" />
+                  <input
+                    aria-label="置信度滑块"
+                    v-model.number="memory.editing.confidence"
                     type="range"
                     min="0"
                     max="1"
-                    step="0.05"
+                    step="0.01"
                     :disabled="memorySavePending"
-                /></label>
+                  />
+                </div>
+                <small class="memory-score-summary">重要度 {{ Number(memory.editing.importance).toFixed(2) }} · 置信度 {{ Number(memory.editing.confidence).toFixed(2) }}</small>
               </div>
               <div v-if="memorySaveError" class="field-hint error" role="alert">
                 保存失败：{{ memorySaveError }}

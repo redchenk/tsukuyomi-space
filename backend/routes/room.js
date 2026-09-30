@@ -674,7 +674,8 @@ router.post('/chat/turn', authenticateToken, (req, res) => {
         const userMessage = opener && !req.body?.userMessage ? '' : normalizeChatContent(req.body?.userMessage, 'userMessage');
         if (opener && userMessage) return res.status(400).json({ success: false, message: 'An opener cannot include a user message' });
         const assistantMessage = normalizeChatContent(req.body?.assistantMessage, 'assistantMessage');
-        const turn = { turnId, userMessage, assistantMessage, opener, memoryEnabled: req.body?.memoryEnabled === true };
+        const turn = { turnId, userMessage, assistantMessage, opener,
+            memoryEnabled: req.body?.memorySource !== 'local' && req.body?.memoryEnabled === true };
         let memoryIds = [];
         const messageIds = roomChatRepository.saveTurn(req.user.id, turn, () => {
             memoryIds = roomMemory.captureChatTurn(req.user.id, turn);
@@ -705,6 +706,9 @@ router.put('/chat/turn/:turnId', authenticateToken, (req, res) => {
         const result = roomChatRepository.replaceLatestTurn(req.user.id, {
             turnId, expectedUserMessage, expectedAssistantMessage, userMessage, assistantMessage
         }, () => {
+            // Local memory mode still synchronizes chat text, while preserving
+            // the account's cloud memories until cloud mode is chosen again.
+            if (req.body?.memorySource === 'local') return [];
             const retired = roomMemory.invalidateAutoTurnMemories(req.user.id, turnId);
             roomMemory.captureChatTurn(req.user.id, { turnId, userMessage, assistantMessage,
                 memoryEnabled: req.body?.memoryEnabled === true });
@@ -921,6 +925,22 @@ router.post('/memory/vector-sync', authenticateToken, async (req, res) => {
     }
 });
 
+router.post('/memory/import', authenticateToken, (req, res) => {
+    try {
+        const result = roomMemory.importMemories(req.user.id, req.body || {});
+        if (result.imported) roomMemoryEvents.publish(req.user.id, { action: 'imported', memoryIds: result.memoryIds });
+        setNoStore(res);
+        res.status(result.imported ? 201 : 200).json({
+            success: true,
+            data: { imported: result.imported, skipped: result.skipped, count: result.count }
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false, message: error.statusCode ? error.message : '无法导入记忆'
+        });
+    }
+});
+
 router.get('/memory/:id', authenticateToken, (req, res) => {
     setNoStore(res);
     const memory = roomMemory.getMemory(req.user.id, String(req.params.id || ''));
@@ -980,6 +1000,9 @@ router.delete('/memory/:id', authenticateToken, async (req, res) => {
 });
 
 router.delete('/memory', authenticateToken, async (req, res) => {
+    if (req.query.expectedUserId !== undefined && req.query.expectedUserId !== req.user.id) {
+        return res.status(409).json({ success: false, message: '登录账号已变更，请重新确认要清空的记忆' });
+    }
     const count = await roomMemory.clearMemories(req.user.id);
     roomMemoryEvents.publish(req.user.id, { action: 'cleared' });
     res.json({ success: true, data: { count }, message: '记忆已清空' });

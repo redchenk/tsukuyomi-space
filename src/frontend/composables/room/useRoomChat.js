@@ -47,7 +47,7 @@ import { generateDiaryEntry } from '../../services/room/roomDiaryGeneration';
 import { syncDiaryArchive } from '../../services/room/roomDiarySync';
 import { prepareRoomImage, persistRoomImage } from '../../services/room/roomChatImages';
 
-import { retrieveGuestMemories } from '../../services/room/roomLocalMemory';
+import { retrieveGuestMemories, usesLocalRoomMemory } from '../../services/room/roomLocalMemory';
 import { createRoomMemoryRetriever } from '../../services/room/roomMemoryRetrieval.mjs';
 
 const SITE_FEED_CONTEXT_TTL_MS = 30000;
@@ -813,6 +813,7 @@ async function callMcpTool(settings, name, args = {}, signal = null) {
 function fetchRelevantMemories(message, signal = null) {
   return createRoomMemoryRetriever({
     getAccountId: () => getSession()?.user?.id || '',
+    useLocal: usesLocalRoomMemory,
     isEnabled: () => readJson('roomMemorySettings', { enabled: true }).enabled !== false,
     retrieveGuest: message => retrieveGuestMemories(message),
     async request(params, signal) {
