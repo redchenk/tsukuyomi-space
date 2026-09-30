@@ -24,25 +24,29 @@ function createNotification({
     if (!userId || !type || !title) return null;
     if (actorId && actorId === userId) return null;
 
-    const result = db.prepare(`
-        INSERT INTO notifications (
-            user_id, actor_id, type, title, content, link,
-            related_message_id, related_article_id, metadata
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-        userId,
-        actorId,
-        type,
-        title,
-        content || '',
-        link || '',
-        relatedMessageId,
-        relatedArticleId,
-        JSON.stringify(metadata || {})
-    );
+    return db.transaction(() => {
+        const result = db.prepare(`
+            INSERT INTO notifications (
+                user_id, actor_id, type, title, content, link,
+                related_message_id, related_article_id, metadata
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            userId,
+            actorId,
+            type,
+            title,
+            content || '',
+            link || '',
+            relatedMessageId,
+            relatedArticleId,
+            JSON.stringify(metadata || {})
+        );
 
-    return findNotificationById(result.lastInsertRowid, userId);
+        const notification = findNotificationById(result.lastInsertRowid, userId);
+        require('../services/fushi-events').enqueueNotification(notification);
+        return notification;
+    })();
 }
 
 function listNotifications(userId, { limit = 50, offset = 0 } = {}) {

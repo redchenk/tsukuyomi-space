@@ -523,7 +523,7 @@ function serveStaticFiles(app) {
 
         const vueRoutes = new Set(['/', '/access', '/hub', '/login', '/register', '/stage', '/article', '/wiki', '/room', '/room/settings', '/room-settings', '/plaza', '/friend-links', '/friend-links/apply', '/reality', '/editor', '/attachments', '/gallery', '/gallery/manage', '/user-center', '/growth', '/notifications', '/admin', '/terminal', '/pixel', '/pixel/', '/game']);
         const wikiEntryRoute = req.path.startsWith('/wiki/characters/') || req.path.startsWith('/wiki/terms/');
-        if (vueRoutes.has(req.path) || req.path.startsWith('/users/') || wikiEntryRoute) {
+        if (vueRoutes.has(req.path) || req.path === '/fushi/connect' || req.path.startsWith('/users/') || wikiEntryRoute) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');
             }

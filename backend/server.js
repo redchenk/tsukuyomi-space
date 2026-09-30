@@ -9,5 +9,6 @@ const { createApp } = require('./app');
 const app = createApp();
 
 app.listen(config.port, config.host, () => {
+    require('./services/fushi-events').start();
     console.log('Tsukuyomi Space API server ready');
 });

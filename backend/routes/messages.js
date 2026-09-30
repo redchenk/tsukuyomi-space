@@ -1,4 +1,5 @@
 const express = require('express');
+const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
 const messageRepository = require('../repositories/message-repository');
@@ -13,6 +14,7 @@ const { articlePath } = require('../seo/render-article');
 const responseCache = require('../services/response-cache');
 const userGrowth = require('../services/user-growth');
 const { setPublicReadCache } = require('../services/public-cache');
+const { commitMessage, submitReply } = require('../services/message-submission');
 
 const router = express.Router();
 const messageWriteLimiter = createRateLimiter({
@@ -86,34 +88,6 @@ function notifyMessageOwner({ targetMessage, actor, type, title, content, relate
 
 function messageNoun(message) {
     return message?.article_id ? '评论' : '留言';
-}
-
-function notifyMentions({ message, actor }) {
-    const mentionedUsers = socialRepository.findUsersByUsernames(
-        socialRepository.extractMentionNames(message?.content || '')
-    );
-    mentionedUsers.forEach((user) => {
-        if (!user?.id || user.id === actor.id) return;
-        socialRepository.recordMessageMention({
-            messageId: message.id,
-            mentionedUserId: user.id,
-            actorId: actor.id
-        });
-        notificationRepository.createNotification({
-            userId: user.id,
-            actorId: actor.id,
-            type: 'mention',
-            title: `${actorName(actor)} 在${messageNoun(message)}中提到了你`,
-            content: message.content,
-            link: messageLink(message),
-            relatedMessageId: message.id,
-            relatedArticleId: message.article_id || null,
-            metadata: {
-                actorName: actorName(actor),
-                messageId: message.id
-            }
-        });
-    });
 }
 
 function sendMessageList(req, res, articleId) {
@@ -238,21 +212,13 @@ router.post('/', authenticateToken, messageWriteLimiter, (req, res) => {
             return res.status(404).json({ success: false, message: '文章不存在或未公开' });
         }
 
-        const newMessage = messageRepository.createMessage({
+        const newMessage = commitMessage({
             author: req.user.username,
             content: review.content,
             userId: req.user.id,
             articleId: article_id || null,
             status: review.status
-        });
-        if (review.status === 'approved') {
-            responseCache.delPrefix(article_id ? `public:article-messages:${article_id}` : 'public:plaza-messages');
-            responseCache.delPrefix('public:message-topics');
-            responseCache.delPrefix('public:stats');
-            notifyApprovedMessage(newMessage.id);
-            notifyMentions({ message: newMessage, actor: req.user });
-        }
-        if (review.status === 'pending') notifyPendingMessage(newMessage.id);
+        }, req.user);
         const growth = review.status === 'approved' && !article_id
             ? recordPlazaGrowth(req.user.id, 'plaza_message', newMessage.id)
             : null;
@@ -309,41 +275,8 @@ router.post('/:id/like', authenticateToken, (req, res) => {
 
 router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => {
     try {
-        const messageId = req.params.id;
-        const { content } = req.body || {};
-        const review = reviewMessageContent(content);
-        if (!review.accepted) return rejectInvalidContent(res, review);
-
-        const originalMessage = messageRepository.findApprovedMessageById(messageId);
-        if (!originalMessage) {
-            return res.status(404).json({ success: false, message: '请求处理失败' });
-        }
-        if (originalMessage.article_id && !articleRepository.findPublishedArticleById(originalMessage.article_id)) {
-            return res.status(404).json({ success: false, message: '文章不存在或未公开' });
-        }
-
-        const thread = messageRepository.findReplyThreadRoot(originalMessage);
-        if (!thread) return res.status(404).json({ success: false, message: '这条讨论不存在或仍在审核中' });
-
-        const newMessage = messageRepository.createMessage({
-            author: req.user.username,
-            content: review.content,
-            userId: req.user.id,
-            parentId: thread.id,
-            replyToId: originalMessage.id,
-            replyToAuthor: originalMessage.author,
-            articleId: originalMessage.article_id || null,
-            status: review.status
-        });
-        if (review.status === 'approved') {
-            responseCache.delPrefix(originalMessage.article_id ? `public:article-messages:${originalMessage.article_id}` : 'public:plaza-messages');
-            responseCache.delPrefix('public:message-topics');
-            responseCache.delPrefix('public:stats');
-            notifyApprovedMessage(newMessage.id);
-            notifyMentions({ message: newMessage, actor: req.user });
-        }
-        if (review.status === 'pending') notifyPendingMessage(newMessage.id);
-        const growth = review.status === 'approved' && !originalMessage.article_id
+        const { message: newMessage, review } = submitReply({ user: req.user, targetId: req.params.id, content: req.body?.content });
+        const growth = review.status === 'approved' && !newMessage.article_id
             ? recordPlazaGrowth(req.user.id, 'plaza_message', newMessage.id)
             : null;
         res.status(201).json({
@@ -354,6 +287,8 @@ router.post('/:id/reply', authenticateToken, messageWriteLimiter, (req, res) => 
             message: messageSubmissionText(review, '回复')
         });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message,
+            code: error.code, ...(error.moderation ? { moderation: error.moderation } : {}) });
         console.error('Reply message failed:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
@@ -368,13 +303,13 @@ router.patch('/:id', authenticateToken, messageWriteLimiter, (req, res) => {
 
         const review = reviewMessageContent(req.body?.content);
         if (!review.accepted) return rejectInvalidContent(res, review);
-        const updated = messageRepository.updateUserMessage(id, req.user.id, {
-            content: review.content,
-            status: review.status
-        });
+        const updated = db.transaction(() => {
+            const changed = messageRepository.updateUserMessage(id, req.user.id, { content: review.content, status: review.status });
+            if (existing.status !== 'pending' && changed.status === 'pending') notifyPendingMessage(id);
+            if (existing.status !== 'approved' && changed.status === 'approved') notifyApprovedMessage(id);
+            return changed;
+        })();
         clearMessageCaches(existing.article_id);
-        if (existing.status !== 'pending' && updated.status === 'pending') notifyPendingMessage(id);
-        if (existing.status !== 'approved' && updated.status === 'approved') notifyApprovedMessage(id);
         res.json({
             success: true,
             data: { ...updated, moderation: messageModerationFeedback(review) },

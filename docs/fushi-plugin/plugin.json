@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "tsukuyomi-fushi",
+  "version": "0.1.0",
+  "description": "Read relevant public replies and submit moderated, idempotent replies as the Fushi community assistant.",
+  "author": { "name": "redchenk" },
+  "homepage": "https://yachiyo.hk",
+  "repository": "https://github.com/redchenk/tsukuyomi-space",
+  "license": "MIT"
+}

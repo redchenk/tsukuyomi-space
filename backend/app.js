@@ -28,6 +28,7 @@ const adminRoutes = require('./routes/admin');
 const moderationRoutes = require('./routes/moderation');
 const mailRoutes = require('./routes/mail');
 const userRoutes = require('./user-routes');
+const fushiRoutes = require('./routes/fushi');
 
 const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '1mb';
 
@@ -38,6 +39,7 @@ function strictJson(limit) {
 function createApp() {
     initDatabase();
     require('./services/article-engagement').backfillHistorical();
+    require('./services/fushi-config').validateConfig();
 
     const app = express();
     app.disable('x-powered-by');
@@ -52,6 +54,9 @@ function createApp() {
             credentials: true
         })(req, res, next);
     });
+    // Reject unauthenticated MCP calls with an OAuth discovery challenge before
+    // the general write guard. Authorized calls still pass the unchanged guard.
+    app.use('/api/fushi/mcp', fushiRoutes.mcpAuthorization);
     app.use('/api', requireTrustedWrite);
 
     // 分层限流：API 总量、认证入口、后台登录分别控制。
@@ -95,6 +100,9 @@ function createApp() {
     app.use('/api/messages', (req, res, next) => req.method === 'POST' ? messageIpLimiter(req, res, next) : next());
     app.use('/api/messages', strictJson('16kb'));
     app.use('/api/messages', express.urlencoded({ limit: '16kb', extended: true }));
+    app.use('/api/fushi', strictJson('16kb'));
+    app.use('/api/fushi', fushiRoutes.jsonError);
+    app.use('/fushi/oauth', strictJson('4kb'), express.urlencoded({ limit: '4kb', extended: false }));
 
     const friendLinkIpLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 12, keyPrefix: 'friend-link-ip' });
     app.use('/api/friend-links', (req, res, next) => req.method === 'POST' ? friendLinkIpLimiter(req, res, next) : next());
@@ -166,6 +174,9 @@ function createApp() {
     app.use('/api/moderation', moderationRoutes);
     app.use('/api/mail', mailRoutes);
     app.use('/api/user', userRoutes);
+    app.use('/api/fushi', fushiRoutes.apiRouter);
+    app.use('/fushi/oauth', fushiRoutes.oauthRouter);
+    app.use('/.well-known', fushiRoutes.metadataRouter);
 
     app.use(errorHandler);
     forwardAsyncErrors(app);

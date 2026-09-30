@@ -74,6 +74,12 @@ export const routes = [
     }
   },
   {
+    path: '/fushi/connect',
+    name: 'fushi-connect',
+    component: () => import('../pages/FushiConnectPage.vue'),
+    meta: { title: '连接 Fushi 社区助手', noindex: true }
+  },
+  {
     path: '/login',
     name: 'login',
     component: LoginPage,

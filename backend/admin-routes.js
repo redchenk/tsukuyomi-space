@@ -8,7 +8,7 @@ const articleRepository = require('./repositories/article-repository');
 const statsRepository = require('./repositories/stats-repository');
 const authState = require('./services/auth-state');
 const { queueLoginLocationCheck } = require('./services/login-location-alert');
-const { notifyApprovedMessage } = require('./services/approved-reply-notification');
+const { approveAndNotify } = require('./services/approved-reply-notification');
 const articleMedia = require('./services/article-media');
 const objectStorage = require('./services/object-storage');
 const responseCache = require('./services/response-cache');
@@ -490,9 +490,8 @@ router.post('/messages/:id/approve', (req, res) => {
                 code: 'EXTERNAL_LINK_CONFIRMATION_REQUIRED'
             });
         }
-        if (!adminRepository.approveMessage(id)) return fail(res, 404, '留言不存在');
+        if (!approveAndNotify(id)) return fail(res, 404, '留言不存在');
         clearPublicMessageCache();
-        if (message.status !== 'approved') notifyApprovedMessage(id);
         ok(res, null, '留言已通过');
     } catch (error) {
         console.error('Admin message approve error:', error);

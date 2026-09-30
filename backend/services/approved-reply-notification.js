@@ -62,8 +62,26 @@ function notifyApprovedMessage(messageId) {
         content: message.content,
         link,
         actorName
-    });
+    }, { schedule(callback) {
+        setImmediate(() => {
+            // A surrounding reply/idempotency transaction can still roll back.
+            // Never send mail for a notification that did not commit.
+            if (notificationRepository.findNotificationById(notification.id, recipientId)
+                && messageRepository.findApprovedMessageById(messageId)) callback();
+        });
+    } });
     return notification;
 }
 
-module.exports = { notifyApprovedMessage };
+function approveAndNotify(messageId) {
+    const db = require('../db');
+    return db.transaction(() => {
+        const before = messageRepository.findMessageById(messageId);
+        if (!before) return false;
+        db.prepare("UPDATE messages SET status = 'approved' WHERE id = ?").run(messageId);
+        if (before.status !== 'approved') notifyApprovedMessage(messageId);
+        return true;
+    })();
+}
+
+module.exports = { notifyApprovedMessage, approveAndNotify };

@@ -7,7 +7,7 @@ const assetRepository = require('../repositories/asset-repository');
 const articleMedia = require('../services/article-media');
 const responseCache = require('../services/response-cache');
 const { readModerationSettings, reviewMessageContent } = require('../services/message-moderation');
-const { notifyApprovedMessage } = require('../services/approved-reply-notification');
+const { approveAndNotify } = require('../services/approved-reply-notification');
 const { parsePositiveInt } = require('../validators');
 
 const router = express.Router();
@@ -251,9 +251,8 @@ router.post('/messages/:id/approve', (req, res) => {
         if (review.externalHosts?.length && req.body?.confirmExternalLink !== true) {
             return fail(res, 409, '留言包含外部链接，需要明确确认后才能通过', 'EXTERNAL_LINK_CONFIRMATION_REQUIRED');
         }
-        if (!adminRepository.approveMessage(id)) return fail(res, 404, '留言不存在');
+        if (!approveAndNotify(id)) return fail(res, 404, '留言不存在');
         clearMessageCache();
-        if (message.status !== 'approved') notifyApprovedMessage(id);
         ok(res, null, '留言已通过');
     } catch (error) {
         console.error('Moderation message approve error:', error);

@@ -301,6 +301,7 @@ function verifyToken(token) {
 }
 
 module.exports = {
+    credentialVersion,
     authenticateToken,
     authenticateAdminToken,
     requireAdmin,
