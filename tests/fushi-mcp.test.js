@@ -10,13 +10,22 @@ Object.assign(process.env, { NODE_ENV: 'test', DATA_DIR: dir, DB_PATH: path.join
     JWT_SECRET: 'fushi-test-only-session-key-never-production', REDIS_URL: '', ADMIN_PASSWORD: 'fixture-only-password',
     ENABLE_FRONTEND_DIST: 'false', ROOM_WEATHER_OFFLINE: 'true', PUBLIC_SITE_URL: 'https://site.example.test',
     FUSHI_ENABLED: 'true', FUSHI_USER_ID: 'fixture-fushi', FUSHI_ORIGIN: 'https://site.example.test',
-    FUSHI_OAUTH_CLIENT_ID: 'fixture-public-client', FUSHI_OAUTH_REDIRECT_URI: 'https://client.example.test/return',
+    FUSHI_OAUTH_CLIENT_MODE: 'predefined', FUSHI_OAUTH_CLIENT_ID: 'fixture-public-client', FUSHI_OAUTH_REDIRECT_URI: 'https://client.example.test/return',
     FUSHI_SECRET_KEY: Buffer.alloc(32, 9).toString('base64') });
 
 const deliveries = [];
 let responseStatus = 200, invalidSignature = false, timeout = false, verifications = 0;
+let changePasswordDuringMetadata = false;
+const clientDocument = () => ({ client_id: 'https://chatgpt.com/oauth/client.json',
+    redirect_uris: ['https://chatgpt.com/connector_platform_oauth_redirect'],
+    token_endpoint_auth_methods_supported: ['none', 'private_key_jwt'], token_endpoint_auth_method: 'private_key_jwt',
+    grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] });
 // This independent receiver checks Standard Webhooks framing, not the project's signing helper.
 async function receiver(url, options) {
+    if (url === 'https://chatgpt.com/oauth/client.json') {
+        if (changePasswordDuringMetadata) db.prepare('UPDATE users SET password_hash=? WHERE id=?').run('fixture-concurrent-password-change',fushi.id);
+        return new Response(JSON.stringify(clientDocument()), { headers: { 'Content-Type':'application/json' } });
+    }
     if (timeout) { const e = new Error('fixture timeout'); e.name = 'TimeoutError'; throw e; }
     assert.equal(new URL(url).protocol, 'https:');
     assert.equal(options.redirect, 'error');
@@ -41,6 +50,7 @@ const auth = require('../backend/services/fushi-auth');
 const events = require('../backend/services/fushi-events');
 const community = require('../backend/services/fushi-community');
 const hooks = require('../backend/services/fushi-webhooks');
+const clients = require('../backend/services/fushi-client');
 const { commitMessage, submitReply } = require('../backend/services/message-submission');
 const { approveAndNotify, notifyApprovedMessage } = require('../backend/services/approved-reply-notification');
 const { generateToken } = require('../backend/middleware/auth');
@@ -107,7 +117,10 @@ before(async () => {
 beforeEach(() => {
     events.stop(); deliveries.length = 0; responseStatus = 200; invalidSignature = false; timeout = false; verifications = 0;
     process.env.FUSHI_ENABLED = 'true'; process.env.FUSHI_USER_ID = fushi.id;
-    db.prepare("UPDATE users SET role='user' WHERE id=?").run(fushi.id);
+    process.env.FUSHI_OAUTH_CLIENT_MODE='predefined'; process.env.FUSHI_OAUTH_CLIENT_ID='fixture-public-client';
+    process.env.FUSHI_OAUTH_REDIRECT_URI='https://client.example.test/return';
+    clients.clearCache(); changePasswordDuringMetadata=false;
+    db.prepare("UPDATE users SET role='user', password_hash=? WHERE id=?").run(fushi.password_hash,fushi.id);
     for (const table of ['fushi_deliveries','fushi_subscriptions','fushi_oauth_codes','fushi_oauth_tokens','fushi_grants','fushi_reply_submissions','fushi_events','fushi_history','notifications','messages']) db.prepare(`DELETE FROM ${table}`).run();
     const link = grant(); context = link.context; bearer = link.tokens.access_token;
 });
@@ -487,4 +500,63 @@ test('callback deadline includes stalled DNS resolution, not just a connected so
     await assert.rejects(()=>hooks.postSigned({id:'fixture',url:'https://receiver.example.test/callback',secret},'fixture-event',{},
         {timeoutMs:20,fetch:async(_url,options)=>{signal=options.signal;return new Promise(()=>{});}}),e=>e.name==='TimeoutError');
     assert.equal(signal.aborted,true);
+});
+
+test('automatic refresh remains usable past the old monthly cutoff and extends inactivity expiry', () => {
+    const now=Date.now(), day=86400000, linked=grant();
+    const params={grant_type:'refresh_token',client_id:requestParams().client_id,resource:requestParams().resource};
+    const first=auth.exchange({...params,refresh_token:linked.tokens.refresh_token},now+179*day);
+    assert.equal(first.expires_in,900); assert.ok(auth.authenticate(first.access_token,null,now+179*day));
+    const second=auth.exchange({...params,refresh_token:first.refresh_token},now+358*day);
+    const current=auth.authenticate(second.access_token,null,now+358*day);
+    assert.equal(current.user.id,fushi.id); assert.equal(current.grant.id,linked.context.grant.id);
+    assert.equal(current.grant.expires_at,now+538*day);
+    assert.equal(auth.authenticate(second.access_token,null,now+538*day),null);
+    assert.throws(()=>auth.exchange({...params,refresh_token:second.refresh_token},now+539*day),/invalid_grant/);
+});
+test('CIMD verifies the official publisher, exact redirects, public auth method and bounded cache', async () => {
+    process.env.FUSHI_OAUTH_CLIENT_MODE='cimd'; process.env.FUSHI_OAUTH_CLIENT_ID=clientDocument().client_id;
+    const params=requestParams({redirect_uri:clientDocument().redirect_uris[0]});
+    let requests=0;const fetch=async(url,options)=>{
+        requests++;assert.equal(url,clientDocument().client_id);assert.equal(options.redirect,'error');
+        assert.deepEqual(options.allowedHostnames,['chatgpt.com']);
+        return new Response(JSON.stringify(clientDocument()),{headers:{'Content-Type':'application/json'}});
+    };
+    const now=Date.now(),proof=await clients.verifyClient(params,{fetch,now});
+    await clients.verifyClient(params,{fetch,now:now+14*60000});assert.equal(requests,1);
+    await clients.verifyClient(params,{fetch,now:now+16*60000});assert.equal(requests,2);
+    assert.throws(()=>auth.issueCode(fushi.id,params,now),/invalid_client/);
+    assert.ok(new URL(auth.issueCode(fushi.id,params,now,proof).redirect).searchParams.get('code'));
+    assert.throws(()=>auth.issueCode(fushi.id,{...params,redirect_uri:'https://evil.example.test/callback'},now,proof),/invalid_client/);
+    await assert.rejects(()=>clients.verifyClient({...params,client_id:'https://127.0.0.1/client.json'},{fetch}),/invalid_client/);
+    assert.equal(requests,2);
+});
+test('CIMD rejects replaced identity, unsafe redirects, missing none method and oversized documents', async () => {
+    process.env.FUSHI_OAUTH_CLIENT_MODE='cimd'; process.env.FUSHI_OAUTH_CLIENT_ID=clientDocument().client_id;
+    for(const replacement of [
+        {...clientDocument(),client_id:'https://evil.example.test/client.json'},
+        {...clientDocument(),redirect_uris:['http://127.0.0.1/callback']},
+        {...clientDocument(),token_endpoint_auth_methods_supported:['private_key_jwt']},
+        {...clientDocument(),padding:'x'.repeat(33000)}
+    ]){
+        clients.clearCache();
+        await assert.rejects(()=>clients.verifyClient(requestParams(),{fetch:async()=>new Response(JSON.stringify(replacement),{headers:{'Content-Type':'application/json'}})}),/invalid_client/);
+    }
+});
+test('CIMD browser consent works without manually configuring redirect and rechecks concurrent password changes', async () => {
+    process.env.FUSHI_OAUTH_CLIENT_MODE='cimd'; process.env.FUSHI_OAUTH_CLIENT_ID=clientDocument().client_id;
+    process.env.FUSHI_OAUTH_REDIRECT_URI='';
+    assert.equal((await call('/.well-known/oauth-authorization-server')).data.client_id_metadata_document_supported,true);
+    const params=requestParams({redirect_uri:clientDocument().redirect_uris[0]});
+    const token=generateToken({id:fushi.id});
+    const headers={Cookie:`tsukuyomi_session=${token}`,Origin:base,'X-Requested-With':'XMLHttpRequest'};
+    const approved=await call('/api/fushi/oauth/authorize',{method:'POST',body:params,headers});
+    assert.equal(approved.status,200);const code=new URL(approved.data.data.redirect).searchParams.get('code');
+    const exchanged=await call('/fushi/oauth/token',{method:'POST',body:{grant_type:'authorization_code',client_id:params.client_id,
+        resource:params.resource,redirect_uri:params.redirect_uri,code,code_verifier:'v'.repeat(48)}});
+    assert.equal(exchanged.status,200); assert.equal(auth.authenticate(exchanged.data.access_token).user.id,fushi.id);
+    clients.clearCache();changePasswordDuringMetadata=true;
+    const stale=await call('/api/fushi/oauth/authorize',{method:'POST',body:params,headers});
+    assert.equal(stale.status,403);
+    assert.equal(auth.authenticate(exchanged.data.access_token),null);
 });

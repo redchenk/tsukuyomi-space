@@ -1,7 +1,7 @@
 const crypto = require('node:crypto');
 const db = require('../db');
 const { credentialVersion } = require('../middleware/auth');
-const { readConfig, SCOPES } = require('./fushi-config');
+const { readConfig, SCOPES, GRANT_IDLE_MS } = require('./fushi-config');
 const hash = value => crypto.createHash('sha256').update(String(value)).digest('hex');
 const random = () => crypto.randomBytes(32).toString('base64url');
 function fail(code = 'invalid_grant') { const e = new Error(code); e.code = code; throw e; }
@@ -21,10 +21,13 @@ function grantFor(id, scope, now = Date.now()) {
         || (scope && !grant.scopes.split(' ').includes(scope))) return null;
     return { grant, user };
 }
-function authorizeRequest(params, now = Date.now()) {
+function authorizeRequest(params, now = Date.now(), clientProof = null) {
     const cfg = readConfig();
     if (!account()) fail('access_denied');
-    if (params.client_id !== cfg.clientId || params.redirect_uri !== cfg.redirectUri) fail('invalid_client');
+    const redirectAllowed = cfg.clientMode === 'cimd'
+        ? clientProof?.clientId === cfg.clientId && clientProof.redirectUris.includes(params.redirect_uri)
+        : params.redirect_uri === cfg.redirectUri;
+    if (params.client_id !== cfg.clientId || !redirectAllowed) fail('invalid_client');
     if (params.response_type !== 'code' || params.resource !== cfg.resource || params.code_challenge_method !== 'S256'
         || !/^[A-Za-z0-9_-]{43}$/.test(params.code_challenge || '') || typeof params.state !== 'string'
         || !params.state || params.state.length > 1024) fail('invalid_request');
@@ -32,8 +35,8 @@ function authorizeRequest(params, now = Date.now()) {
     if (!scopes.length || scopes.some(scope => !SCOPES.includes(scope))) fail('invalid_scope');
     return { ...params, scopes: [...new Set(scopes)].sort(), now };
 }
-function issueCode(userId, params, now = Date.now()) {
-    const request = authorizeRequest(params, now);
+function issueCode(userId, params, now = Date.now(), clientProof = null) {
+    const request = authorizeRequest(params, now, clientProof);
     const user = account();
     if (params.approve === false) {
         const destination = new URL(request.redirect_uri);
@@ -47,7 +50,7 @@ function issueCode(userId, params, now = Date.now()) {
     db.transaction(() => {
         db.prepare(`INSERT INTO fushi_grants VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`)
             .run(grantId, user.id, readConfig().clientId, credentialVersion(user.password_hash), readConfig().origin, readConfig().resource,
-                request.scopes.join(' '), now, now + 30 * 86400000);
+                request.scopes.join(' '), now, now + GRANT_IDLE_MS);
         db.prepare('INSERT INTO fushi_oauth_codes VALUES (?, ?, ?, ?, ?, NULL)')
             .run(hash(code), grantId, request.redirect_uri, request.code_challenge, now + 90000);
     })();
@@ -93,7 +96,11 @@ function exchange(params, now = Date.now()) {
             const context = token && grantFor(token.grant_id, null, now);
             if (!context || token.expires_at <= now) return null;
             db.prepare('UPDATE fushi_oauth_tokens SET used_at = ? WHERE hash = ?').run(now, token.hash);
-            return tokens(context.grant, now);
+            // Successful rotation extends inactivity expiry, with no absolute
+            // monthly cutoff. Access tokens and subscriptions remain short-lived.
+            const expiresAt = now + GRANT_IDLE_MS;
+            db.prepare('UPDATE fushi_grants SET expires_at = ? WHERE id = ?').run(expiresAt, context.grant.id);
+            return tokens({ ...context.grant, expires_at: expiresAt }, now);
         })();
         if (!result) fail();
         return result;

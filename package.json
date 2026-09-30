@@ -29,7 +29,7 @@
     "import:yachiyo": "node scripts/import-yachiyo-corpus-to-milvus.js",
     "build:room-runtime": "LIVE2D_BUNDLE_DIR=src/frontend/runtime LIVE2D_BUNDLE_NAME=live2d-room-neuro-live.20260925-mobile-r11 vite build --config vite.config.js",
     "test:memory": "node --test tests/room-mem0.test.js tests/room-memory-import.test.js",
-    "check:fushi": "node --check backend/db/migrations/040_create_fushi_mcp.js && node --check backend/routes/fushi.js && node --check backend/services/fushi-auth.js && node --check backend/services/fushi-community.js && node --check backend/services/fushi-config.js && node --check backend/services/fushi-events.js && node --check backend/services/fushi-webhooks.js && node --check backend/services/message-submission.js && node --check tests/fushi-mcp.test.js && node --check tests/e2e/fushi-connect.spec.js",
+    "check:fushi": "node --check backend/db/migrations/040_create_fushi_mcp.js && node --check backend/routes/fushi.js && node --check backend/services/fushi-auth.js && node --check backend/services/fushi-community.js && node --check backend/services/fushi-config.js && node --check backend/services/fushi-events.js && node --check backend/services/fushi-webhooks.js && node --check backend/services/message-submission.js && node --check tests/fushi-mcp.test.js && node --check tests/e2e/fushi-connect.spec.js && node --check backend/services/fushi-client.js",
     "test:fushi": "node --test tests/fushi-mcp.test.js"
   },
   "keywords": [

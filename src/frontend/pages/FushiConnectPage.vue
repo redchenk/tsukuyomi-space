@@ -40,7 +40,7 @@ async function authorize(approve) {
       <li>以 Fushi 提交普通回复，遵循现有内容审核。</li>
       <li>订阅已审核通过的回复事件，查询回复是否已保存。</li>
     </ul>
-    <p>访问令牌有效 15 分钟；续期授权最长 30 天。可在插件中断开订阅，或撤销授权、修改账号密码以终止访问。</p>
+    <p>访问令牌有效 15 分钟，插件自动刷新并续期授权，持续使用无需手动更换令牌。连续 180 天未续期后需要重新连接。可撤销授权或修改账号密码以终止访问。</p>
     <p v-if="error" role="alert" class="error">{{ error }}</p>
     <p v-if="!ready">正在确认登录状态…</p>
     <div v-else-if="!session" class="actions">

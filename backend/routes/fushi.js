@@ -3,6 +3,7 @@ const { authenticateToken, readBearerToken } = require('../middleware/auth');
 const { createRateLimiter, isAllowedOrigin } = require('../middleware/security');
 const { readConfig, SCOPES } = require('../services/fushi-config');
 const auth = require('../services/fushi-auth');
+const { verifyClient } = require('../services/fushi-client');
 const community = require('../services/fushi-community');
 const events = require('../services/fushi-events');
 const VERSION = '2026-07-28';
@@ -75,10 +76,18 @@ function mirroredName(value) {
 const apiRouter = express.Router();
 apiRouter.use(enabled);
 apiRouter.use(createRateLimiter({ windowMs: 600000, max: 120, keyPrefix: 'fushi-ip' }));
-apiRouter.post('/oauth/authorize', authenticateToken, (req, res) => {
+apiRouter.post('/oauth/authorize', authenticateToken, async (req, res) => {
     try {
-        if (req.user.scope === 'admin') return res.status(403).json({ success: false, message: '请使用专属普通账号登录' });
-        res.json({ success: true, data: auth.issueCode(req.user.id, req.body) });
+        if (req.user.scope === 'admin' || req.user.role !== 'user' || req.user.id !== readConfig().userId) {
+            return res.status(403).json({ success: false, message: 'access_denied' });
+        }
+        const proof = await verifyClient(req.body || {});
+        // Metadata fetch can take seconds: recheck the browser session after it,
+        // so a concurrent password change cannot upgrade an obsolete session.
+        await authenticateToken(req, res, () => {
+            try { res.json({ success: true, data: auth.issueCode(req.user.id, req.body, Date.now(), proof) }); }
+            catch (error) { res.status(400).json({ success: false, message: error.code || 'invalid_request' }); }
+        });
     } catch (error) { res.status(400).json({ success: false, message: error.code || 'invalid_request' }); }
 });
 apiRouter.post('/mcp', async (req, res) => {
@@ -171,6 +180,7 @@ metadataRouter.get('/oauth-authorization-server', (req, res) => {
     res.json({ issuer: origin, authorization_endpoint: `${origin}/fushi/connect`, token_endpoint: `${origin}/fushi/oauth/token`,
         revocation_endpoint: `${origin}/fushi/oauth/revoke`, token_endpoint_auth_methods_supported: ['none'],
         revocation_endpoint_auth_methods_supported: ['none'], authorization_response_iss_parameter_supported: true,
+        ...(readConfig().clientMode === 'cimd' ? { client_id_metadata_document_supported: true } : {}),
         response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'],
         code_challenge_methods_supported: ['S256'], scopes_supported: SCOPES });
 });
