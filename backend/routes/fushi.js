@@ -6,6 +6,7 @@ const auth = require('../services/fushi-auth');
 const { verifyClient } = require('../services/fushi-client');
 const community = require('../services/fushi-community');
 const events = require('../services/fushi-events');
+const diagnostics = require('../services/fushi-diagnostics');
 const VERSION = '2026-07-28';
 const objectSchema = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const id = { type: 'string', pattern: '^[1-9][0-9]*$', maxLength: 16 };
@@ -22,7 +23,7 @@ const tools = [
     tool('fushi_reply', '以 Fushi 回复', '对通知所在讨论中的指定用户内容提交普通回复，遵循网站审核。先读取上下文。保留同一幂等键；超时先查询 fushi_reply_result，不能换键盲目重发。每条互动最多保存一次助手回复。',
         { notification_id: id, target_id: id, content: { type: 'string', minLength: 1, maxLength: 8000 }, idempotency_key: key },
         ['notification_id', 'target_id', 'content', 'idempotency_key'], true),
-    tool('fushi_reply_result', '查询回复结果', '按原幂等键查询 published、pending_review、removed 或 not_found。not_found 时可用完全相同的键和内容重试。',
+    tool('fushi_reply_result', '查询回复结果', '按原幂等键查询 published、pending_review、removed 或 not_found。not_found 只说明此键没有 MCP 记录，不能排除网页端已回复；先读取通知和线程检查 existing_reply，不能换键盲目重发。',
         { idempotency_key: key }, ['idempotency_key'])
 ];
 const eventDefinition = { name: events.NAME, description: '其他用户对 Fushi 留言、回复或文章的新回复已经审核通过；不含正文、私信或 Fushi 自己的操作。',
@@ -93,6 +94,7 @@ apiRouter.post('/oauth/authorize', authenticateToken, async (req, res) => {
 apiRouter.post('/mcp', async (req, res) => {
     const context = req.fushiContext;
     const body = req.body;
+    diagnostics.rpcMetadata(body?.method, body?.params?.name);
     if (!body || Array.isArray(body) || body.jsonrpc !== '2.0' || typeof body.method !== 'string'
         || !(typeof body.id === 'string' || Number.isSafeInteger(body.id))) return rpcError(res, null, -32600, 'Invalid request', null, 400);
     const params = body.params;
@@ -108,6 +110,7 @@ apiRouter.post('/mcp', async (req, res) => {
     if (!accept.includes('application/json') || !accept.includes('text/event-stream')) return rpcError(res, body.id, -32600, 'Accept must include JSON and event-stream', null, 406);
     const args = Object.fromEntries(Object.entries(params).filter(([k]) => k !== '_meta'));
     const resultMeta = { 'io.modelcontextprotocol/serverInfo': { name: 'tsukuyomi-fushi', version: '1.0.0' } };
+    let subscriptionEntered = false;
     try {
         let result;
         switch (body.method) {
@@ -130,6 +133,7 @@ apiRouter.post('/mcp', async (req, res) => {
             case 'events/unsubscribe':
                 if (!auth.grantFor(context.grant.id, 'fushi:events')) throw new Error('Insufficient scope');
                 if (Object.keys(args).some(k => !['name', 'arguments', 'delivery', 'cursor', 'ttlMs'].includes(k))) throw new Error('Invalid subscription parameters');
+                subscriptionEntered = true;
                 result = body.method === 'events/subscribe' ? await events.subscribe(context, args) : events.unsubscribe(context, args); break;
             case 'tools/call': {
                 if (Object.keys(args).some(k => !['name', 'arguments'].includes(k))) throw new Error('Invalid tool call');
@@ -155,6 +159,8 @@ apiRouter.post('/mcp', async (req, res) => {
         }
         return res.json({ jsonrpc: '2.0', id: body.id, result: { resultType: 'complete', _meta: resultMeta, ...result } });
     } catch (error) {
+        if (body.method === 'events/subscribe' && !subscriptionEntered) diagnostics.emit('subscription_stage', {
+            stage: 'parameters', outcome: 'failed', reason: 'invalid_parameters', committed: false });
         // Do not expose callback URLs, credentials, SQL errors or request bodies in diagnostics.
         return rpcError(res, body.id, error.rpcCode || -32602, error.rpcCode ? error.message : 'Invalid or unauthorized parameters', error.reason ? { reason: error.reason } : null);
     }

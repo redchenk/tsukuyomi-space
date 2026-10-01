@@ -51,6 +51,9 @@ const events = require('../backend/services/fushi-events');
 const community = require('../backend/services/fushi-community');
 const hooks = require('../backend/services/fushi-webhooks');
 const clients = require('../backend/services/fushi-client');
+const diagnostics = require('../backend/services/fushi-diagnostics');
+const diagnosticRecords = [];
+const originalInfo = console.info;
 const { commitMessage, submitReply } = require('../backend/services/message-submission');
 const { approveAndNotify, notifyApprovedMessage } = require('../backend/services/approved-reply-notification');
 const { generateToken } = require('../backend/middleware/auth');
@@ -104,6 +107,10 @@ function replyArgs(item, extra = {}) {
         idempotency_key: 'fixture_reply_key_0001', ...extra };
 }
 before(async () => {
+    console.info = value => {
+        const record = JSON.parse(value);
+        diagnosticRecords.push(record);
+    };
     server = createApp().listen(0, '127.0.0.1');
     await new Promise(resolve => server.once('listening', resolve));
     base = `http://127.0.0.1:${server.address().port}`;
@@ -115,6 +122,7 @@ before(async () => {
     siteBearer = generateToken({ id: actor.id });
 });
 beforeEach(() => {
+    diagnosticRecords.length = 0;
     events.stop(); deliveries.length = 0; responseStatus = 200; invalidSignature = false; timeout = false; verifications = 0;
     process.env.FUSHI_ENABLED = 'true'; process.env.FUSHI_USER_ID = fushi.id;
     process.env.FUSHI_OAUTH_CLIENT_MODE='predefined'; process.env.FUSHI_OAUTH_CLIENT_ID='fixture-public-client';
@@ -124,7 +132,7 @@ beforeEach(() => {
     for (const table of ['fushi_deliveries','fushi_subscriptions','fushi_oauth_codes','fushi_oauth_tokens','fushi_grants','fushi_reply_submissions','fushi_events','fushi_history','notifications','messages']) db.prepare(`DELETE FROM ${table}`).run();
     const link = grant(); context = link.context; bearer = link.tokens.access_token;
 });
-after(async () => { events.stop(); await new Promise(resolve => server.close(resolve)); db.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+after(async () => { events.stop(); await new Promise(resolve => server.close(resolve)); db.close(); fs.rmSync(dir, { recursive: true, force: true }); console.info = originalInfo; });
 
 test('MCP 2.0 discover, four tools and webhook event schemas are available', async () => {
     const discovery = await rpc('server/discover');
@@ -236,7 +244,7 @@ test('callback verification, encrypted storage, refresh identity and unsubscribe
 test('bad signature and callback timeout never activate subscriptions', async () => {
     invalidSignature=true;
     const bad=await rpc('events/subscribe',subscription());
-    assert.equal(bad.data.error.code,-32015); assert.equal(bad.data.error.data.reason,'challenge_failed');
+    assert.equal(bad.data.error.code,-32015); assert.equal(bad.data.error.data.reason,'http_status');
     assert.equal(db.prepare('SELECT count(*) AS n FROM fushi_subscriptions').get().n,0);
     invalidSignature=false; timeout=true;
     const timed=await rpc('events/subscribe',subscription());
@@ -297,6 +305,7 @@ test('restart/lease recovery resends persisted event and preserves same ID', asy
     await events.drain({fetch:receiver,now}); const first=deliveries[0].payload.eventId;
     db.prepare("UPDATE fushi_deliveries SET status='inflight',lease_until=?,next_attempt=?,received_at=NULL").run(now-1,now);
     const output=require('node:child_process').execFileSync(process.execPath,['-e',`
+        console.info=()=>{};
         const outgoing=[];
         require('./backend/services/outbound-url-security').fetchPinnedUrl=async(url,opts)=>{
             outgoing.push(JSON.parse(opts.body).eventId); return new Response('{}',{status:200});
@@ -357,7 +366,9 @@ test('idempotency conflicts, account spoofing, unauthorized reads/replies and se
     const root=commitMessage({userId:other.id,author:other.username,content:'unrelated',status:'approved'},other);
     assert.throws(()=>community.reply(fushi,{...args,idempotency_key:'fixture_other_key_0001',target_id:String(root.id)}),/授权范围/);
     assert.throws(()=>community.reply(fushi,{...args,idempotency_key:'fixture_self_key_0001',target_id:String(item.message.parent_id)}),/授权范围/);
-    assert.deepEqual(community.result(actor.id,args.idempotency_key),{status:'not_found',idempotency_key:args.idempotency_key});
+    const missing = community.result(actor.id,args.idempotency_key);
+    assert.equal(missing.status, 'not_found'); assert.equal(missing.idempotency_key, args.idempotency_key);
+    assert.equal(missing.lookup_scope, 'idempotency_key');
 });
 test('assistant replies use ordinary moderation and never create a self-trigger event', () => {
     const item=interaction();const initial=db.prepare('SELECT count(*) AS n FROM fushi_events').get().n;
@@ -500,6 +511,144 @@ test('callback deadline includes stalled DNS resolution, not just a connected so
     await assert.rejects(()=>hooks.postSigned({id:'fixture',url:'https://receiver.example.test/callback',secret},'fixture-event',{},
         {timeoutMs:20,fetch:async(_url,options)=>{signal=options.signal;return new Promise(()=>{});}}),e=>e.name==='TimeoutError');
     assert.equal(signal.aborted,true);
+});
+
+test('request diagnostics distinguish HTTP 200 RPC failures, tool errors, auth and parse failures', async () => {
+    const denied = await call('/api/fushi/mcp', { method: 'POST', body: {}, headers: { 'Mcp-Method': 'events/subscribe', 'X-Fushi-Request-Id': 'attacker-supplied' } });
+    const deniedId = denied.response.headers.get('x-fushi-request-id');
+    assert.match(deniedId, /^[0-9a-f-]{36}$/); assert.notEqual(deniedId, 'attacker-supplied');
+    const recordFor = response => diagnosticRecords.find(r => r.event === 'request_completed' && r.request_id === response.response.headers.get('x-fushi-request-id'));
+    assert.deepEqual([recordFor(denied).http_status, recordFor(denied).auth_error, recordFor(denied).rpc_method], [401, 'invalid_token', 'events/subscribe']);
+    assert.equal(recordFor(denied).rpc_success, false);
+    const bad = await rpc('events/subscribe', subscription({ ttlMs: -1 }));
+    assert.equal(bad.status, 200); assert.equal(recordFor(bad).rpc_error_code, -32602); assert.equal(recordFor(bad).rpc_success, false);
+    const toolError = await rpc('tools/call', { name: 'fushi_thread', arguments: { notification_id: '999999', thread_id: '999999' } });
+    assert.equal(recordFor(toolError).tool_name, 'fushi_thread'); assert.equal(recordFor(toolError).tool_is_error, true); assert.equal(recordFor(toolError).rpc_success, false);
+    const ok = await rpc('tools/call', { name: 'fushi_notifications', arguments: {} });
+    assert.equal(recordFor(ok).tool_is_error, false); assert.equal(recordFor(ok).rpc_success, true);
+    const parsed = await fetch(`${base}/api/fushi/mcp`, { method: 'POST', headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json', 'Mcp-Method': 'tools/list' }, body: '{bad json' });
+    await parsed.text();
+    const parseRecord = diagnosticRecords.find(r => r.event === 'request_completed' && r.request_id === parsed.headers.get('x-fushi-request-id'));
+    assert.equal(parseRecord.rpc_error_code, -32700); assert.equal(parseRecord.http_status, 400);
+    for (const record of diagnosticRecords) { assert.match(record.timestamp, /Z$/); if (record.event === 'request_completed') assert.equal(record.connection_closed_early, false); }
+});
+
+test('diagnostic field whitelist never serializes headers, secrets, URLs, challenge, content or raw errors', async () => {
+    const marker = 'fixture-secret-never-log';
+    diagnostics.emit('network_stage', { stage: 'dns', outcome: 'failed', token: marker, cookie: marker, secret: marker,
+        challenge: marker, url: `https://example.test/${marker}`, content: marker, body: marker, error: new Error(marker), error_code: marker,
+        rpc_method: marker, tool_name: marker, reason: marker, request_id: marker, http_status: marker });
+    await call('/api/fushi/mcp', { method: 'POST', token: marker, body: { content: marker }, headers: { 'Mcp-Method': marker, 'Mcp-Name': marker } });
+    const output = JSON.stringify(diagnosticRecords);
+    assert.ok(!output.includes(marker)); assert.ok(!output.includes(secret)); assert.ok(!output.includes(bearer));
+    assert.ok(diagnosticRecords.some(r => r.rpc_method === 'unknown'));
+});
+
+test('client disconnect during parsing records premature close with server correlation ID', async () => {
+    const http = require('node:http');
+    await new Promise(resolve => {
+        const request = http.request(`${base}/api/fushi/mcp`, { method: 'POST', headers: { Authorization: `Bearer ${bearer}`,
+            'Content-Type': 'application/json', 'Content-Length': '10000', 'Mcp-Method': 'tools/list' } });
+        request.on('error', () => {}); request.once('close', resolve);
+        request.write('{'); setTimeout(() => request.destroy(), 30);
+    });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const closed = diagnosticRecords.find(r => r.event === 'request_completed' && r.connection_closed_early);
+    assert.ok(closed); assert.equal(closed.rpc_method, 'tools/list'); assert.match(closed.request_id, /^[0-9a-f-]{36}$/);
+});
+
+test('subscription phase diagnostics confirm validation, callback cache and committed persistence', async () => {
+    const first = await rpc('events/subscribe', subscription());
+    assert.ok(first.data.result.id);
+    const requestId = first.response.headers.get('x-fushi-request-id');
+    const phases = diagnosticRecords.filter(r => r.event === 'subscription_stage' && r.request_id === requestId);
+    assert.deepEqual(phases.map(r => [r.stage, r.outcome]), [['parameters','started'],['parameters','success'],['callback','started'],['callback','success'],['persistence','started'],['persistence','committed']]);
+    assert.equal(phases.at(-1).committed, true);
+    await rpc('events/subscribe', subscription());
+    assert.ok(diagnosticRecords.some(r => r.stage === 'callback' && r.outcome === 'cached'));
+    assert.equal(verifications, 1);
+    const bad = await rpc('events/subscribe', subscription({ cursor: 'invalid-cursor' }));
+    assert.equal(bad.data.error.code, -32602); assert.equal(verifications, 1);
+    assert.ok(diagnosticRecords.some(r => r.stage === 'parameters' && r.outcome === 'failed'));
+});
+
+for (const [name, fetch, reason] of [
+    ['DNS', async () => { const e = new Error('unsafe URL details'); e.code = 'ENOTFOUND'; throw e; }, 'dns_error'],
+    ['TLS', async () => { const e = new Error('unsafe certificate details'); e.code = 'CERT_HAS_EXPIRED'; throw e; }, 'tls_error'],
+    ['socket', async () => { const e = new Error('socket timeout'); e.code = 'ETIMEDOUT'; throw e; }, 'timeout'],
+    ['connection', async () => { const e = new Error('connection failed'); e.code = 'ECONNRESET'; throw e; }, 'network_error'],
+    ['non-2xx', async () => new Response('{}', { status: 503 }), 'http_status'],
+    ['wrong echo', async () => new Response('{"challenge":"wrong"}'), 'challenge_failed'],
+    ['invalid JSON', async () => new Response('{'), 'invalid_json'],
+    ['oversized JSON', async () => new Response(JSON.stringify({ challenge: 'x'.repeat(4096) })), 'response_too_large'],
+    ['wrong JSON shape', async () => new Response('[]'), 'invalid_response']
+]) test(`callback ${name} has its own diagnostic category and leaves no subscription`, async () => {
+    await assert.rejects(() => events.subscribe(context, subscription(), { fetch }), e => e.rpcCode === -32015 && e.reason === reason);
+    assert.equal(db.prepare('SELECT count(*) AS n FROM fushi_subscriptions').get().n, 0);
+    assert.ok(diagnosticRecords.some(r => r.event === 'subscription_stage' && r.stage === 'callback' && r.outcome === 'failed' && r.reason === reason));
+    assert.ok(!JSON.stringify(diagnosticRecords).includes('unsafe'));
+});
+
+test('callback deadline covers a body stalled after response headers even when cancellation stalls', async () => {
+    const started = performance.now();
+    const fetch = async () => new Response(new ReadableStream({ start(controller) { controller.enqueue(Buffer.from('{')); }, cancel() { return new Promise(() => {}); } }));
+    await assert.rejects(() => hooks.postSigned({ id: 'fixture', url: subscription().delivery.url, secret }, 'fixture', { type: 'verification' },
+        { fetch, verification: true, timeoutMs: 30 }), e => e.name === 'TimeoutError' && e.code === 'ETIMEDOUT' && e.networkStage === 'body');
+    assert.ok(performance.now() - started < 500);
+    assert.ok(diagnosticRecords.some(r => r.event === 'webhook_completed' && r.stage === 'body' && r.reason === 'timeout'));
+});
+
+test('reply lookup missing key does not disprove a browser reply, which is reused without posting', async () => {
+    const item = interaction();
+    const browser = submitReply({ user: fushi, targetId: item.message.id, content: '网页端已回复。' }).message;
+    const args = replyArgs(item);
+    const missing = community.result(fushi.id, args.idempotency_key);
+    assert.equal(missing.status, 'not_found'); assert.equal(missing.lookup_scope, 'idempotency_key');
+    assert.equal(community.listNotifications(fushi.id).items[0].processed, true);
+    const thread = community.readThread(fushi.id, { notification_id: args.notification_id, thread_id: String(item.message.parent_id) });
+    assert.equal(thread.existing_reply.message_id, String(browser.id));
+    const count = db.prepare('SELECT count(*) AS n FROM messages').get().n;
+    const reused = community.reply(fushi, args);
+    assert.equal(reused.already_processed, true); assert.equal(reused.source, 'existing_reply'); assert.equal(reused.message_id, String(browser.id));
+    assert.equal(community.result(fushi.id, args.idempotency_key).message_id, String(browser.id));
+    assert.equal(community.reply(fushi, { ...args, idempotency_key: 'fixture_second_browser_key' }).message_id, String(browser.id));
+    assert.equal(db.prepare('SELECT count(*) AS n FROM messages').get().n, count);
+    assert.ok(diagnosticRecords.some(r => r.event === 'reply_transaction' && r.source === 'existing_reply' && r.committed && r.idempotency_hit));
+});
+
+test('unrelated browser reply does not suppress a new relevant reply and pending directed reply prevents duplication', () => {
+    const item = interaction();
+    const unrelated = submitReply({ user: actor, targetId: item.message.parent_id, content: '另一条公开回复' }).message;
+    submitReply({ user: fushi, targetId: unrelated.id, content: '仅回复另一条' });
+    assert.equal(community.listNotifications(fushi.id).items.find(r => r.id === String(item.message.id)).processed, false);
+    const pending = submitReply({ user: fushi, targetId: item.message.id, content: '关于诈骗的讨论' }).message;
+    const saved = community.reply(fushi, replyArgs(item));
+    assert.equal(saved.message_id, String(pending.id)); assert.equal(saved.status, 'pending_review'); assert.equal(saved.already_processed, true);
+});
+
+test('transaction rollback and committed/lost-response lookup are separately diagnosed', () => {
+    const item = interaction(), args = replyArgs(item);
+    db.exec("CREATE TEMP TRIGGER fail_fushi_receipt BEFORE INSERT ON fushi_reply_submissions BEGIN SELECT RAISE(ABORT,'fixture'); END");
+    const count = db.prepare('SELECT count(*) AS n FROM messages').get().n;
+    try { assert.throws(() => community.reply(fushi, args)); } finally { db.exec('DROP TRIGGER fail_fushi_receipt'); }
+    assert.equal(db.prepare('SELECT count(*) AS n FROM messages').get().n, count);
+    assert.ok(diagnosticRecords.some(r => r.event === 'reply_transaction' && r.outcome === 'rolled_back' && r.committed === false));
+    const saved = community.reply(fushi, args); // Client discards response, then queries.
+    assert.equal(community.result(fushi.id, args.idempotency_key).message_id, saved.message_id);
+    community.reply(fushi, args);
+    assert.ok(diagnosticRecords.some(r => r.event === 'reply_transaction' && r.committed && r.source === 'new_reply'));
+    assert.ok(diagnosticRecords.some(r => r.event === 'reply_transaction' && r.committed && r.source === 'idempotency_key'));
+    assert.ok(diagnosticRecords.some(r => r.event === 'reply_lookup' && r.record_found));
+});
+
+test('delivery diagnostics show attempt, retry deadline and acceptance separately from handling', async () => {
+    await events.subscribe(context, subscription(), { fetch: receiver }); interaction(); const now = Date.now();
+    responseStatus = 500; await events.drain({ fetch: receiver, now });
+    responseStatus = 200; await events.drain({ fetch: receiver, now: now + 31000 });
+    const logs = diagnosticRecords.filter(r => r.event === 'delivery_completed');
+    assert.deepEqual(logs.map(r => [r.attempt, r.status, r.http_status]), [[1,'pending',500],[2,'accepted',200]]);
+    assert.equal(logs[0].next_retry_at, new Date(now + 30000).toISOString()); assert.equal(logs[1].next_retry_at, null);
+    assert.equal(logs[0].event_id, logs[1].event_id); assert.equal(community.listNotifications(fushi.id).items[0].processed, false);
 });
 
 test('automatic refresh remains usable past the old monthly cutoff and extends inactivity expiry', () => {

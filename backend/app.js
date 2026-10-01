@@ -45,6 +45,8 @@ function createApp() {
     app.disable('x-powered-by');
     if (config.trustProxy) app.set('trust proxy', 1);
 
+    // Correlate even requests rejected by CORS, Origin, auth, rate limits or JSON parsing.
+    app.use(require('./services/fushi-diagnostics').middleware);
     app.use(securityHeaders);
     app.use((req, res, next) => {
         cors({

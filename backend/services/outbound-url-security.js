@@ -5,6 +5,29 @@ const net = require('net');
 const { Readable } = require('stream');
 const ipaddr = require('ipaddr.js');
 
+function timeoutError(stage = 'request') {
+    const error = new Error('外部请求超时');
+    Object.assign(error, { name: 'TimeoutError', code: 'ETIMEDOUT', networkStage: stage });
+    return error;
+}
+const safeCodes = new Set(['ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'EPIPE', 'ENETUNREACH', 'EHOSTUNREACH',
+    'ABORT_ERR', 'CERT_HAS_EXPIRED', 'CERT_NOT_YET_VALID', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN',
+    'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'ERR_TLS_CERT_ALTNAME_INVALID',
+    'ERR_SSL_WRONG_VERSION_NUMBER', 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR', 'URL_REJECTED', 'REDIRECT_REJECTED',
+    'INVALID_JSON', 'RESPONSE_TOO_LARGE', 'INVALID_RESPONSE', 'CHALLENGE_FAILED', 'HTTP_STATUS']);
+function classifyError(error) {
+    const timeout = error?.name === 'TimeoutError' || error?.code === 'ETIMEDOUT'
+        || error?.cause?.name === 'TimeoutError' || error?.cause?.code === 'ETIMEDOUT';
+    const code = timeout ? 'ETIMEDOUT' : safeCodes.has(error?.code) ? error.code : 'NETWORK_ERROR';
+    const reason = timeout ? 'timeout' : ['ENOTFOUND', 'EAI_AGAIN'].includes(code) ? 'dns_error'
+        : /^(?:CERT_|DEPTH_|SELF_|UNABLE_|ERR_TLS_|ERR_SSL_)/.test(code) ? 'tls_error'
+            : ({ URL_REJECTED: 'url_rejected', REDIRECT_REJECTED: 'redirect_rejected', INVALID_JSON: 'invalid_json',
+                RESPONSE_TOO_LARGE: 'response_too_large', INVALID_RESPONSE: 'invalid_response', CHALLENGE_FAILED: 'challenge_failed', HTTP_STATUS: 'http_status' })[code] || 'network_error';
+    return { reason, error_code: code };
+}
+function rejectedUrl(message) { const error = new Error(message); error.code = 'URL_REJECTED'; return error; }
+function observe(callback, data) { try { callback?.(data); } catch (_) { /* Observability must not change network behavior. */ } }
+
 function isPrivateAddress(value = '') {
     const address = String(value || '').toLowerCase().split('%')[0];
     if (!net.isIP(address)) return true;
@@ -24,17 +47,17 @@ async function resolvePublicUrl(value, { protocols = ['https:'], allowedHostname
     try {
         url = new URL(String(value || ''));
     } catch (_) {
-        throw new Error('不支持的外部地址');
+        throw rejectedUrl('不支持的外部地址');
     }
-    if (!protocols.includes(url.protocol) || url.username || url.password) throw new Error('不支持的外部地址');
+    if (!protocols.includes(url.protocol) || url.username || url.password) throw rejectedUrl('不支持的外部地址');
     const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
-    if (allowedHostnames.length && !allowedHostnames.includes(hostname)) throw new Error('外部地址不在允许列表中');
+    if (allowedHostnames.length && !allowedHostnames.includes(hostname)) throw rejectedUrl('外部地址不在允许列表中');
 
     const records = net.isIP(hostname)
         ? [{ address: hostname, family: net.isIP(hostname) }]
         : await dns.lookup(hostname, { all: true, verbatim: true });
     if (!records.length || records.some(record => isPrivateAddress(record.address))) {
-        throw new Error('禁止访问本机、内网或保留地址');
+        throw rejectedUrl('禁止访问本机、内网或保留地址');
     }
     return { url, records };
 }
@@ -56,9 +79,28 @@ async function fetchPinnedUrl(value, {
     timeoutMs = 30000,
     redirect = 'error',
     protocols = ['https:'],
-    allowedHostnames = []
+    allowedHostnames = [],
+    onTrace
 } = {}) {
-    const { url, records } = await resolvePublicUrl(value, { protocols, allowedHostnames });
+    const dnsStarted = performance.now();
+    observe(onTrace, { stage: 'dns', outcome: 'started' });
+    let resolved, onAbort;
+    try {
+        if (signal?.aborted) throw signal.reason;
+        resolved = await Promise.race([
+            resolvePublicUrl(value, { protocols, allowedHostnames }),
+            ...(signal ? [new Promise((_, reject) => {
+                onAbort = () => reject(signal.reason);
+                signal.addEventListener('abort', onAbort, { once: true });
+            })] : [])
+        ]);
+        if (signal?.aborted) throw signal.reason;
+        observe(onTrace, { stage: 'dns', outcome: 'success', duration_ms: Math.round(performance.now() - dnsStarted), address_count: resolved.records.length });
+    } catch (error) {
+        observe(onTrace, { stage: 'dns', outcome: 'failed', duration_ms: Math.round(performance.now() - dnsStarted), ...classifyError(error) });
+        throw error;
+    } finally { if (onAbort) signal.removeEventListener('abort', onAbort); }
+    const { url, records } = resolved;
     const transport = url.protocol === 'https:' ? https : http;
     const streaming = body instanceof Readable;
     const payload = streaming || body === undefined || body === null
@@ -70,16 +112,28 @@ async function fetchPinnedUrl(value, {
     }
 
     return new Promise((resolve, reject) => {
+        let incomingResponse, stage = 'connect', stageStarted = performance.now(), bodyFinished = false;
+        const trace = (outcome, error, extra = {}) => observe(onTrace, { stage, outcome,
+            duration_ms: Math.round(performance.now() - stageStarted), ...(error ? classifyError(error) : {}), ...extra });
+        trace('started');
         const request = transport.request(url, {
             method,
             headers: requestHeaders,
             lookup: pinnedLookup(records),
             signal
         }, (incoming) => {
+            trace('success', null, { http_status: incoming.statusCode || 502 });
+            stage = 'body'; stageStarted = performance.now(); incomingResponse = incoming;
+            trace('started');
+            const finishBody = (outcome, error) => { if (!bodyFinished) { bodyFinished = true; trace(outcome, error); } };
+            incoming.once('end', () => finishBody('success'));
+            incoming.once('error', error => finishBody('failed', error));
+            incoming.once('close', () => finishBody('cancelled'));
             const status = incoming.statusCode || 502;
             if (redirect === 'error' && status >= 300 && status < 400) {
-                incoming.resume();
-                reject(new Error('外部地址不允许重定向'));
+                const error = new Error('外部地址不允许重定向'); error.code = 'REDIRECT_REJECTED';
+                incoming.destroy(error);
+                reject(error);
                 return;
             }
 
@@ -96,8 +150,33 @@ async function fetchPinnedUrl(value, {
                 headers: responseHeaders
             }));
         });
-        request.setTimeout(timeoutMs, () => request.destroy(new Error('外部请求超时')));
-        request.on('error', reject);
+        request.on('socket', socket => {
+            const connected = () => {
+                trace('success'); stage = url.protocol === 'https:' ? 'tls' : 'headers'; stageStarted = performance.now();
+                if (url.protocol === 'https:' && request.reusedSocket && socket.encrypted && socket.authorized) {
+                    trace('cached'); stage = 'headers'; stageStarted = performance.now();
+                }
+                trace('started');
+            };
+            if (socket.connecting) socket.once('connect', connected);
+            else connected();
+            if (url.protocol === 'https:' && !request.reusedSocket) socket.once('secureConnect', () => {
+                trace('success'); stage = 'headers'; stageStarted = performance.now();
+                trace('started');
+            });
+        });
+        request.setTimeout(timeoutMs, () => {
+            const error = timeoutError(stage);
+            // After headers, the fetch promise has resolved: fail the body as well.
+            incomingResponse?.destroy(error);
+            request.destroy(error);
+        });
+        request.on('error', cause => {
+            const error = classifyError(cause).reason === 'timeout' ? timeoutError(stage) : cause;
+            if (stage !== 'body') trace('failed', error);
+            incomingResponse?.destroy(error);
+            reject(error);
+        });
         if (streaming) {
             body.on('error', error => request.destroy(error));
             request.on('close', () => body.destroy());
@@ -113,5 +192,7 @@ module.exports = {
     fetchPinnedUrl,
     isPrivateAddress,
     pinnedLookup,
-    resolvePublicUrl
+    resolvePublicUrl,
+    timeoutError,
+    classifyError
 };

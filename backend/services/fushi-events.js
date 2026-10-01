@@ -3,6 +3,8 @@ const db = require('../db');
 const { readConfig } = require('./fushi-config');
 const auth = require('./fushi-auth');
 const webhooks = require('./fushi-webhooks');
+const diagnostics = require('./fushi-diagnostics');
+const { classifyError } = require('./outbound-url-security');
 const NAME = 'community.reply.approved';
 const DAY = 86400000;
 const cursor = seq => `f1.${seq}`;
@@ -66,68 +68,86 @@ function enqueueNotification(notification) {
     wake();
 }
 async function subscribe(context, params, options = {}) {
-    const now = options.now ?? Date.now();
-    if (params.name !== NAME || params.delivery?.mode !== 'webhook') throw new Error('Unsupported event or delivery');
-    const args = validateArguments(params.arguments, context.user.id);
-    const url = webhooks.validateCallback(params.delivery.url);
-    webhooks.signingKey(params.delivery.secret);
-    if (params.ttlMs !== undefined && params.ttlMs !== null && (!Number.isSafeInteger(params.ttlMs) || params.ttlMs <= 0)) throw new Error('Invalid ttlMs');
-    const id = subscriptionId(context.user.id, NAME, url, args);
-    const callbackHash = auth.hash(url);
-    const existing = db.prepare('SELECT * FROM fushi_subscriptions WHERE id = ?').get(id);
-    const activeCount = db.prepare('SELECT count(*) AS n FROM fushi_subscriptions WHERE owner_id = ? AND active = 1 AND expires_at > ?').get(context.user.id, now).n;
-    if ((!existing || !existing.active || existing.expires_at <= now) && activeCount >= 5) throw new Error('Subscription limit exceeded');
-    const oldSecret = existing?.secret_box ? webhooks.unseal(existing.secret_box, id) : null;
-    const cached = db.prepare('SELECT * FROM fushi_subscriptions WHERE owner_id=? AND callback_hash=? AND active=1 AND verified_at>? ORDER BY verified_at DESC LIMIT 1')
-        .get(context.user.id, callbackHash, now - 5 * 60000);
-    let verifiedAt = cached?.verified_at;
-    // The cache is durable, owner + URL scoped, and invalidated by secret replacement.
-    if (!cached?.secret_box || webhooks.unseal(cached.secret_box, cached.id) !== params.delivery.secret) {
-        const challenge = crypto.randomBytes(32).toString('base64url');
-        try {
+    let stage = 'parameters', started = performance.now(), id;
+    const log = (outcome, extra = {}) => diagnostics.emit('subscription_stage', { stage, outcome, subscription_id: id,
+        duration_ms: Math.round(performance.now() - started), ...extra });
+    log('started');
+    try {
+        const now = options.now ?? Date.now();
+        if (params.name !== NAME || params.delivery?.mode !== 'webhook') throw new Error('Unsupported event or delivery');
+        if (Object.keys(params.delivery).some(key => !['mode', 'url', 'secret'].includes(key))) throw new Error('Invalid delivery parameters');
+        const args = validateArguments(params.arguments, context.user.id);
+        const url = webhooks.validateCallback(params.delivery.url);
+        webhooks.signingKey(params.delivery.secret);
+        if (params.ttlMs !== undefined && params.ttlMs !== null && (!Number.isSafeInteger(params.ttlMs) || params.ttlMs <= 0)) throw new Error('Invalid ttlMs');
+        if (params.cursor != null) parseCursor(params.cursor);
+        id = subscriptionId(context.user.id, NAME, url, args);
+        const callbackHash = auth.hash(url);
+        const existing = db.prepare('SELECT * FROM fushi_subscriptions WHERE id = ?').get(id);
+        const activeCount = db.prepare('SELECT count(*) AS n FROM fushi_subscriptions WHERE owner_id = ? AND active = 1 AND expires_at > ?').get(context.user.id, now).n;
+        if ((!existing || !existing.active || existing.expires_at <= now) && activeCount >= 5) throw new Error('Subscription limit exceeded');
+        const oldSecret = existing?.secret_box ? webhooks.unseal(existing.secret_box, id) : null;
+        const cached = db.prepare('SELECT * FROM fushi_subscriptions WHERE owner_id=? AND callback_hash=? AND active=1 AND verified_at>? ORDER BY verified_at DESC LIMIT 1')
+            .get(context.user.id, callbackHash, now - 5 * 60000);
+        let verifiedAt = cached?.verified_at;
+        log('success'); stage = 'callback'; started = performance.now(); log('started');
+        // The cache is durable, owner + URL scoped, and invalidated by secret replacement.
+        if (!cached?.secret_box || webhooks.unseal(cached.secret_box, cached.id) !== params.delivery.secret) {
+            const challenge = crypto.randomBytes(32).toString('base64url');
             const response = await webhooks.postSigned({ id, url, secret: params.delivery.secret }, `msg_verification_${crypto.randomUUID()}`,
                 { type: 'verification', challenge }, { fetch: options.fetch, now, verification: true });
+            if (!response.accepted) {
+                const error = new Error('Callback rejected'); error.code = 'HTTP_STATUS'; error.httpStatus = response.status; throw error;
+            }
             const actual = Buffer.from(typeof response.data?.challenge === 'string' ? response.data.challenge : '');
             const expected = Buffer.from(challenge);
-            if (!response.accepted || expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) throw new Error('challenge_failed');
+            if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
+                const error = new Error('Callback echo mismatch'); error.code = 'CHALLENGE_FAILED'; throw error;
+            }
             verifiedAt = now;
-        } catch (cause) {
-            const error = new Error('Callback verification failed');
-            error.rpcCode = -32015;
-            error.reason = cause.name === 'TimeoutError' || cause.name === 'AbortError' ? 'timeout' : 'challenge_failed';
-            throw error;
+            log('success');
+        } else log('cached');
+        // Callback verification may have taken seconds; authorization must still be current.
+        if (!auth.grantFor(context.grant.id, 'fushi:events', options.now ?? Date.now())) {
+            const error = new Error('Authorization revoked'); error.reason = 'authorization_revoked'; throw error;
         }
+        stage = 'persistence'; started = performance.now(); log('started');
+        const saved = db.transaction(() => {
+            const current = db.prepare('SELECT * FROM fushi_subscriptions WHERE id=?').get(id);
+            const activeCount = db.prepare('SELECT count(*) AS n FROM fushi_subscriptions WHERE owner_id=? AND active=1 AND expires_at>?').get(context.user.id, now).n;
+            if ((!current?.active || current.expires_at <= now) && activeCount >= 5) throw new Error('Subscription limit exceeded');
+            const floor = db.prepare('SELECT floor_seq FROM fushi_history WHERE owner_id = ?').get(context.user.id)?.floor_seq || 0;
+            const max = Math.max(latest(context.user.id), floor);
+            const requested = params.cursor == null ? (existing?.scan_cursor ?? max) : parseCursor(params.cursor);
+            if (requested > max) throw new Error('Cursor is ahead of retained history');
+            const start = Math.max(requested, floor);
+            const ttl = Math.max(60000, Math.min(params.ttlMs ?? DAY, DAY));
+            const expiry = Math.min(now + ttl, context.grant.expires_at);
+            const rotate = oldSecret && oldSecret !== params.delivery.secret;
+            db.prepare(`INSERT INTO fushi_subscriptions
+                (id,owner_id,grant_id,name,arguments,callback_box,callback_hash,secret_box,previous_secret_box,rotate_until,expires_at,active,verified_at,scan_cursor,base_cursor,updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?) ON CONFLICT(id) DO UPDATE SET grant_id=excluded.grant_id,
+                secret_box=excluded.secret_box, previous_secret_box=excluded.previous_secret_box,rotate_until=excluded.rotate_until,
+                expires_at=excluded.expires_at,active=1,verified_at=excluded.verified_at,
+                scan_cursor=MIN(fushi_subscriptions.scan_cursor,excluded.scan_cursor), updated_at=excluded.updated_at`)
+                .run(id, context.user.id, context.grant.id, NAME, canonical(args), webhooks.seal(url, `${id}:callback`), callbackHash, webhooks.seal(params.delivery.secret, id),
+                    rotate ? existing.secret_box : existing?.previous_secret_box || null,
+                    rotate ? now + 5 * 60000 : existing?.rotate_until || null, expiry, verifiedAt, start, start, now);
+            // Explicit replay also retries dead letters, but never discards pending deliveries.
+            if (params.cursor != null) db.prepare("UPDATE fushi_deliveries SET status = 'pending', attempts = 0, next_attempt = ? WHERE subscription_id = ? AND event_seq > ? AND status IN ('dead','accepted','cancelled')").run(now, id, start);
+            const sub = db.prepare('SELECT * FROM fushi_subscriptions WHERE id = ?').get(id);
+            refill(sub, now);
+            return { id, refreshBefore: new Date(expiry).toISOString(), cursor: watermark(sub), truncated: requested < floor };
+        })();
+        log('committed', { committed: true }); wake();
+        return saved;
+    } catch (cause) {
+        const reason = cause.reason || (stage === 'parameters' ? 'invalid_parameters' : stage === 'persistence' ? 'persistence_failed' : classifyError(cause).reason);
+        log('failed', { ...(stage === 'callback' ? classifyError(cause) : {}), reason, http_status: cause.httpStatus, committed: false });
+        if (stage !== 'callback' || cause.reason === 'authorization_revoked') throw cause;
+        const error = new Error('Callback verification failed'); error.rpcCode = -32015; error.reason = reason;
+        throw error;
     }
-    // Callback verification may have taken seconds; authorization must still be current.
-    if (!auth.grantFor(context.grant.id, 'fushi:events', options.now ?? Date.now())) throw new Error('Authorization revoked');
-    return db.transaction(() => {
-        const current = db.prepare('SELECT * FROM fushi_subscriptions WHERE id=?').get(id);
-        const activeCount = db.prepare('SELECT count(*) AS n FROM fushi_subscriptions WHERE owner_id=? AND active=1 AND expires_at>?').get(context.user.id, now).n;
-        if ((!current?.active || current.expires_at <= now) && activeCount >= 5) throw new Error('Subscription limit exceeded');
-        const floor = db.prepare('SELECT floor_seq FROM fushi_history WHERE owner_id = ?').get(context.user.id)?.floor_seq || 0;
-        const max = Math.max(latest(context.user.id), floor);
-        const requested = params.cursor == null ? (existing?.scan_cursor ?? max) : parseCursor(params.cursor);
-        if (requested > max) throw new Error('Cursor is ahead of retained history');
-        const start = Math.max(requested, floor);
-        const ttl = Math.max(60000, Math.min(params.ttlMs ?? DAY, DAY));
-        const expiry = Math.min(now + ttl, context.grant.expires_at);
-        const rotate = oldSecret && oldSecret !== params.delivery.secret;
-        db.prepare(`INSERT INTO fushi_subscriptions
-            (id,owner_id,grant_id,name,arguments,callback_box,callback_hash,secret_box,previous_secret_box,rotate_until,expires_at,active,verified_at,scan_cursor,base_cursor,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?) ON CONFLICT(id) DO UPDATE SET grant_id=excluded.grant_id,
-            secret_box=excluded.secret_box, previous_secret_box=excluded.previous_secret_box,rotate_until=excluded.rotate_until,
-            expires_at=excluded.expires_at,active=1,verified_at=excluded.verified_at,
-            scan_cursor=MIN(fushi_subscriptions.scan_cursor,excluded.scan_cursor), updated_at=excluded.updated_at`)
-            .run(id, context.user.id, context.grant.id, NAME, canonical(args), webhooks.seal(url, `${id}:callback`), callbackHash, webhooks.seal(params.delivery.secret, id),
-                rotate ? existing.secret_box : existing?.previous_secret_box || null,
-                rotate ? now + 5 * 60000 : existing?.rotate_until || null, expiry, verifiedAt, start, start, now);
-        // Explicit replay also retries dead letters, but never discards pending deliveries.
-        if (params.cursor != null) db.prepare("UPDATE fushi_deliveries SET status = 'pending', attempts = 0, next_attempt = ? WHERE subscription_id = ? AND event_seq > ? AND status IN ('dead','accepted','cancelled')").run(now, id, start);
-        const sub = db.prepare('SELECT * FROM fushi_subscriptions WHERE id = ?').get(id);
-        refill(sub, now);
-        wake();
-        return { id, refreshBefore: new Date(expiry).toISOString(), cursor: watermark(sub), truncated: requested < floor };
-    })();
 }
 function unsubscribe(context, params) {
     if (params.name !== NAME || params.delivery?.mode !== 'webhook') throw new Error('Unsupported event or delivery');
@@ -145,6 +165,7 @@ async function drain({ fetch, now = Date.now(), batch = 8 } = {}) {
     for (const sub of subs) {
         if (sub.expires_at <= now || !auth.grantFor(sub.grant_id, 'fushi:events', now)) {
             db.prepare('UPDATE fushi_subscriptions SET active=0,secret_box=NULL,previous_secret_box=NULL WHERE id=?').run(sub.id);
+            diagnostics.emit('subscription_stopped', { subscription_id: sub.id, outcome: 'cancelled' });
             continue;
         }
         backlog = db.transaction(() => refill(sub, now))() || backlog;
@@ -167,7 +188,8 @@ async function drain({ fetch, now = Date.now(), batch = 8 } = {}) {
         const claimed = db.prepare("UPDATE fushi_deliveries SET status='inflight',attempts=attempts+1,lease_until=? WHERE subscription_id=? AND event_seq=? AND status='pending' AND next_attempt<=?")
             .run(realNow + 60000, sub.id, event.seq, realNow).changes;
         if (!claimed) continue;
-        let accepted = false, status = null, reason = null;
+        let accepted = false, status = null, reason = null, errorCode;
+        const started = performance.now();
         try {
             const secret = webhooks.unseal(sub.secret_box, sub.id);
             const previousSecret = sub.previous_secret_box && sub.rotate_until > realNow ? webhooks.unseal(sub.previous_secret_box, sub.id) : null;
@@ -176,14 +198,18 @@ async function drain({ fetch, now = Date.now(), batch = 8 } = {}) {
                     data: { content_id: String(event.message_id), thread_id: String(event.thread_id), kind: event.kind,
                         notification_id: String(event.notification_id), url: community.link(context) }, cursor: watermark(sub, event.seq) }, { fetch, now: realNow });
             accepted = response.accepted; status = response.status;
-        } catch (_) { reason = 'transport_failed'; }
+        } catch (error) { const failure = classifyError(error); reason = failure.reason; errorCode = failure.error_code; }
         const attempts = db.prepare('SELECT attempts FROM fushi_deliveries WHERE subscription_id=? AND event_seq=?').get(sub.id, event.seq).attempts;
         const transient = status == null || status === 408 || status === 429 || status >= 500;
         const state = accepted ? 'accepted' : transient && attempts < 6 ? 'pending' : 'dead';
+        const nextAttempt = realNow + Math.min(3600000, 30000 * 2 ** (attempts - 1));
         db.prepare(`UPDATE fushi_deliveries SET status=?,next_attempt=?,lease_until=NULL,received_at=?,last_status=?,last_error=?
             WHERE subscription_id=? AND event_seq=? AND status='inflight'`)
-            .run(state, realNow + Math.min(3600000, 30000 * 2 ** (attempts - 1)), accepted ? realNow : null, status,
+            .run(state, nextAttempt, accepted ? realNow : null, status,
                 accepted ? null : reason || 'callback_rejected', sub.id, event.seq);
+        diagnostics.emit('delivery_completed', { subscription_id: sub.id, event_id: event.event_id, attempt: attempts,
+            status: state, http_status: status, reason: accepted ? undefined : reason || 'http_status', error_code: errorCode,
+            duration_ms: Math.round(performance.now() - started), next_retry_at: state === 'pending' ? new Date(nextAttempt).toISOString() : null });
         if (status === 410) db.prepare('UPDATE fushi_subscriptions SET active=0,secret_box=NULL,previous_secret_box=NULL WHERE id=?').run(sub.id);
     }
     return { attempted: due.length, backlog: backlog || due.length === batch };
@@ -208,7 +234,7 @@ function wake(delay = 0) {
     if (!enabled) return;
     if (running) { dirty = true; return; }
     if (timer) clearTimeout(timer);
-    timer = setTimeout(tick, delay); timer.unref();
+    timer = setTimeout(() => diagnostics.detached(tick), delay); timer.unref();
 }
 async function tick() {
     timer = null; running = true; dirty = false;
@@ -216,7 +242,7 @@ async function tick() {
     try {
         const result = await drain(); backlog = result.backlog;
         if (Date.now() - lastCleanup > 3600000) { cleanup(); lastCleanup = Date.now(); }
-    } catch (_) { console.warn('Fushi queue worker failed; retry scheduled'); }
+    } catch (_) { diagnostics.emit('worker_failed', { reason: 'internal_error', outcome: 'failed' }); }
     finally { running = false; if (enabled) wake(backlog || dirty ? 0 : 30000); }
 }
 function start() { if (readConfig().enabled && !enabled) { enabled = true; wake(); } }

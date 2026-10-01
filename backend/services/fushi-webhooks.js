@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
-const { fetchPinnedUrl } = require('./outbound-url-security');
+const { fetchPinnedUrl, timeoutError, classifyError } = require('./outbound-url-security');
+const diagnostics = require('./fushi-diagnostics');
 const { readConfig } = require('./fushi-config');
 function signingKey(secret) {
     if (typeof secret !== 'string' || !/^whsec_[A-Za-z0-9+/]+={0,2}$/.test(secret)) throw new Error('Invalid signing secret');
@@ -40,37 +41,57 @@ async function postSigned({ id, url, secret, previousSecret }, eventId, payload,
     const timestamp = String(Math.floor(now / 1000));
     const signatures = [signature(secret, eventId, timestamp, body)];
     if (previousSecret) signatures.push(signature(previousSecret, eventId, timestamp, body));
-    const signal = AbortSignal.timeout(timeoutMs);
+    const started = performance.now();
+    const controller = new AbortController();
+    const signal = controller.signal;
+    let stage = 'request', response, reader;
+    const timer = setTimeout(() => controller.abort(timeoutError(stage)), timeoutMs);
     let onAbort;
-    let response;
+    const deadline = new Promise((_, reject) => {
+        onAbort = () => reject(signal.reason);
+        signal.addEventListener('abort', onAbort, { once: true });
+    });
+    const bounded = operation => Promise.race([operation, deadline]);
+    const invalid = code => { const error = new Error('Invalid verification response'); error.code = code; return error; };
     try {
         // DNS resolution itself is not cancellable in Node's lookup API. Bound
         // the wait as well as the socket; a late connection still sees the aborted signal.
-        response = await Promise.race([
-            fetch(validateCallback(url), {
+        response = await bounded(fetch(validateCallback(url), {
                 method: 'POST', redirect: 'error', signal, timeoutMs,
+                onTrace: trace => { stage = trace.stage; diagnostics.emit('network_stage', { ...trace, subscription_id: id, event_id: eventId }); },
                 headers: { 'Content-Type': 'application/json', 'webhook-id': eventId,
                     'webhook-timestamp': timestamp, 'webhook-signature': signatures.join(' '), 'X-MCP-Subscription-Id': id }, body
-            }),
-            new Promise((_, reject) => { onAbort = () => reject(signal.reason); signal.addEventListener('abort', onAbort, { once: true }); })
-        ]);
-    } finally { if (onAbort) signal.removeEventListener('abort', onAbort); }
-    if (!verification || !response.ok) {
-        await response.body?.cancel();
-        return { status: response.status, accepted: response.ok };
-    }
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error('Invalid verification response');
-    const chunks = []; let size = 0;
-    try {
+            }));
+        if (!verification || !response.ok) {
+            diagnostics.emit('webhook_completed', { subscription_id: id, event_id: eventId, http_status: response.status,
+                outcome: response.ok ? 'success' : 'failed', ...(response.ok ? {} : { reason: 'http_status' }), duration_ms: Math.round(performance.now() - started) });
+            return { status: response.status, accepted: response.ok };
+        }
+        stage = 'body';
+        reader = response.body?.getReader();
+        if (!reader) throw invalid('INVALID_RESPONSE');
+        const chunks = []; let size = 0;
         for (;;) {
-            const { done, value } = await reader.read();
+            const { done, value } = await bounded(reader.read());
             if (done) break;
             size += value.length;
-            if (size > 4096) throw new Error('Verification response too large');
+            if (size > 4096) throw invalid('RESPONSE_TOO_LARGE');
             chunks.push(Buffer.from(value));
         }
-        return { status: response.status, accepted: true, data: JSON.parse(Buffer.concat(chunks).toString('utf8')) };
-    } finally { await reader.cancel().catch(() => {}); }
+        let data;
+        try { data = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch (_) { throw invalid('INVALID_JSON'); }
+        if (!data || Array.isArray(data) || typeof data !== 'object' || typeof data.challenge !== 'string') throw invalid('INVALID_RESPONSE');
+        diagnostics.emit('webhook_completed', { subscription_id: id, http_status: response.status, outcome: 'success', bytes: size, duration_ms: Math.round(performance.now() - started) });
+        return { status: response.status, accepted: true, data };
+    } catch (error) {
+        diagnostics.emit('webhook_completed', { subscription_id: id, stage, http_status: response?.status,
+            outcome: 'failed', ...classifyError(error), duration_ms: Math.round(performance.now() - started) });
+        throw error;
+    } finally {
+        clearTimeout(timer); signal.removeEventListener('abort', onAbort);
+        // Cancellation must not hold up a success/error response if a broken peer stalls.
+        if (reader) reader.cancel().catch(() => {});
+        else response?.body?.cancel().catch(() => {});
+    }
 }
 module.exports = { signingKey, signature, seal, unseal, validateCallback, postSigned };

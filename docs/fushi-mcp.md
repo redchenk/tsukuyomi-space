@@ -29,6 +29,8 @@ MCP URL：`https://yachiyo.hk/api/fushi/mcp`，只接受 POST。鉴权为专属 
 
 所有数值内容 ID、通知 ID 和读取游标使用十进制字符串。幂等键为 16–128 位字母、数字、`_` 或 `-`。正文仍受网站 2000 字符、8000 字节限制。`processed` 代表已保存助手回复，即使还在审核；`processing_status` 显示当前发布状态。
 
+网页端已经针对该互动回复时，通知和线程返回 `existing_reply`（回复 ID、状态、链接），`processed` 也为 true。再次调用回复工具会关联原回复并保存幂等记录，不重新发帖。`fushi_reply_result` 的 `not_found` 只说明该幂等键无 MCP 记录，返回 `lookup_scope: idempotency_key`；不能据此排除网页回复，必须先检查通知和线程。
+
 通知的 `id` 是回复内容 ID，`notification_id` 是通知 ID。`timestamp` 是回复创建时间，`notification_timestamp` 是审核通过后通知创建时间，均带 UTC 时区。公开链接以配置的 HTTPS 站点为准。文章上下文最多 16000 字符，截断会明确返回 `content_truncated`。
 
 读取分页返回 `cursor`（当前增量位置）和 `next_cursor`（还有下一页时存在，否则 null）。即使一页中的旧内容已隐藏，仍推进通知扫描游标，避免卡在无权读取的记录上。下一次增量读取沿用最后的 `cursor`，不能把内容 ID 当通知游标。
@@ -135,4 +137,16 @@ CIMD 模式固定使用官方 `https://chatgpt.com/oauth/client.json`，每次�
 
 公网检查 11 项通过：授权/资源元数据、401 OAuth challenge、MCP 与 OAuth 的 Cookie/非可信 Origin 拒绝、无效授权码拒绝、授权页面以及网站健康。国内 API 在上线后的空闲观察中 RSS 约 176 MiB，MemAvailable 约 1867 MiB，负载约 0.15；继续保留 heap 192 MiB / RSS 384 MiB 上限。这是上线健康检查，不代表生产压力测试。
 
-ChatGPT 首次连接表单已实际发现上述 OAuth 端点、三个 scope、`none` 鉴权方法，显示的回调 URI 与服务器精确配置一致。尚未完成首次平台授权、真实订阅和 dot 回复闭环；不能把 HTTP 验收或本地模拟等同于真实唤醒成功。GitHub 与开发工作区均只保留 `main`，原有已合并分支的提交历史仍可从主线访问。
+ChatGPT 首次连接表单已实际发现上述 OAuth 端点、三个 scope、`none` 鉴权方法，显示的回调 URI 与服务器精确配置一致。平台授权已于北京时间 08:12 完成；08:13–08:15 的四次 MCP POST 有 HTTP 200，但旧日志无 RPC 方法/错误体，不能认定成功或回调失败，08:27 的只读核查确认订阅数为零。真实订阅和 dot 回复闭环仍待验收。GitHub 与开发工作区均只保留 `main`，原有已合并分支的提交历史仍可从主线访问。
+
+## 脱敏诊断与故障恢复
+
+每次 Fushi 请求在鉴权前生成服务端 UUID，响应头为 `X-Fushi-Request-Id`。`request_started` / `request_completed` 使用 UTC ISO 时间，记录已知 RPC 方法/工具名、HTTP 状态、RPC 错误码、工具 `isError`、耗时与提前关闭；未知方法/工具只记 `unknown`。HTTP 200 必须同时核对 `rpc_success`、`rpc_error_code`、`tool_is_error`，不能直接作为成功依据。
+
+`subscription_stage` 依次记录 `parameters`、`callback`、`persistence`；最后 `committed: true` 才表示保存完成。回调错误 `-32015` 的 `reason` 区分 `dns_error`、`tls_error`、`network_error`、`timeout`、`http_status`、`invalid_json`、`response_too_large`、`invalid_response`、`challenge_failed`。同一 ID 可关联 `network_stage` 的 DNS、连接、TLS、响应头与正文耗时及白名单错误码。
+
+回调验证总预算仍为 10 秒，包含 DNS、连接、TLS、响应头和完整验证正文；正文最多 4096 字节。socket 超时为 `TimeoutError / ETIMEDOUT`，收到响应头后超时也会使正文读取失败，取消流不额外阻塞接口。HTTPS、每次连接的公有地址校验、DNS 钉扎、禁止重定向、TLS 验证和 Standard Webhooks 签名保持开启。[当前官方 MCP Events 规范](https://developers.openai.com/plugins/build/mcp-events) 核对日期：2026-10-01；使用 `2026-07-28`、平台提供的 `delivery`、签名 challenge 回声和 `id/refreshBefore/cursor/truncated` 返回格式。
+
+`delivery_completed` 记录事件/订阅 ID、尝试次数、状态、HTTP 状态和下次重试 UTC 时间。`accepted` 仅代表平台接收；`reply_transaction` 在事务返回后记录实际提交/回滚、幂等命中来源和回复 ID，`reply_lookup` 单独记录幂等查询命中/未命中。后台投递清除网页请求上下文，不把旧请求 ID 错配到新投递。
+
+所有诊断经字段及枚举白名单输出到现有应用日志，不打印任意 Error、请求或响应对象，不记录令牌、Cookie、签名密钥、challenge、完整回调 URL、正文或原始请求体。凭证/权限不随诊断部署改变。无新增依赖或迁移；使用既有轻量发布工具上线/回滚代码，保留 SQLite 数据与当前授权，禁止整库覆盖。真实平台重试应在诊断版本上线后执行，按请求 ID 排查，不能重新回复已经处理的历史互动。
