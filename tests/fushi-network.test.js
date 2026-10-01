@@ -122,6 +122,22 @@ test('mixed DNS answers and every private address fail before HTTPS is invoked',
     }
     assert.equal(connections, 0);
 });
+test('DNS policy rejection reports bounded categories without recording addresses or callback paths', async t => {
+    let connections = 0; t.mock.method(https, 'request', () => { connections++; });
+    for (const [records, expected] of [
+        [[], { url_rejection: 'dns_empty' }],
+        [[{ address: '93.184.216.34', family: 4 }, { address: '100.100.2.1', family: 4 },
+            { address: 'fc00::1', family: 6 }], { url_rejection: 'dns_non_public', address_ranges: ['unicast', 'carrierGradeNat', 'uniqueLocal'] }]
+    ]) {
+        const traces = []; t.mock.method(dns, 'lookup', async () => records);
+        await assert.rejects(() => network.fetchPinnedUrl('https://receiver.example.test/secret-path?key=secret-value',
+            { onTrace: r => traces.push(r) }), { code: 'URL_REJECTED' });
+        for (const [key, value] of Object.entries(expected)) assert.deepEqual(traces.at(-1)[key], value);
+        const output = JSON.stringify(traces);
+        assert.ok(!output.includes('secret')); for (const record of records) assert.ok(!output.includes(record.address));
+    }
+    assert.equal(connections, 0);
+});
 test('observability callback exceptions do not disrupt a safe response', async t => {
     transport(t);
     const response = await network.fetchPinnedUrl(callback.url, { onTrace() { throw new Error('observer failure'); } });

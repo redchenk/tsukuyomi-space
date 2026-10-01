@@ -1,5 +1,6 @@
 const { AsyncLocalStorage } = require('node:async_hooks');
 const { randomUUID } = require('node:crypto');
+const { isIP } = require('node:net');
 const context = new AsyncLocalStorage();
 const methods = new Set(['server/discover', 'tools/list', 'tools/call', 'events/list', 'events/subscribe', 'events/unsubscribe']);
 const tools = new Set(['fushi_notifications', 'fushi_thread', 'fushi_reply', 'fushi_reply_result']);
@@ -13,6 +14,7 @@ const enums = {
         'content_unavailable', 'callback_rejected', 'internal_error', 'url_rejected', 'redirect_rejected', 'connection_refused', 'http_4xx', 'http_5xx']),
     status: new Set(['pending', 'inflight', 'accepted', 'dead', 'cancelled', 'not_found', 'published', 'pending_review', 'removed', 'unprocessed']),
     source: new Set(['idempotency_key', 'source_message', 'existing_reply', 'new_reply']),
+    url_rejection: new Set(['invalid_url', 'hostname_not_allowed', 'dns_empty', 'dns_non_public']),
     auth_error: new Set(['invalid_token', 'untrusted_request', 'invalid_request', 'invalid_client', 'invalid_grant', 'invalid_scope', 'access_denied']),
     error_code: new Set(['ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'EPIPE', 'ENETUNREACH', 'EHOSTUNREACH',
         'ABORT_ERR', 'CERT_HAS_EXPIRED', 'CERT_NOT_YET_VALID', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN',
@@ -20,6 +22,9 @@ const enums = {
         'ERR_SSL_WRONG_VERSION_NUMBER', 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR', 'URL_REJECTED', 'REDIRECT_REJECTED',
         'INVALID_JSON', 'RESPONSE_TOO_LARGE', 'INVALID_RESPONSE', 'CHALLENGE_FAILED', 'HTTP_STATUS', 'NETWORK_ERROR', 'INTERNAL_ERROR'])
 };
+const addressRanges = new Set(['invalid', 'unicast', 'unspecified', 'broadcast', 'multicast', 'linkLocal', 'loopback',
+    'carrierGradeNat', 'private', 'reserved', 'as112', 'amt', 'uniqueLocal', 'ipv4Mapped', 'deprecatedSiteLocal',
+    'discard', 'rfc6145', 'rfc6052', '6to4', 'teredo', 'benchmarking', 'orchid2']);
 const numbers = new Set(['http_status', 'rpc_error_code', 'duration_ms', 'attempt', 'address_count', 'item_count', 'bytes']);
 const booleans = new Set(['tool_is_error', 'rpc_success', 'connection_closed_early', 'committed', 'idempotency_hit', 'record_found']);
 const ids = new Set(['request_id', 'operation_id', 'subscription_id', 'event_id', 'key_hash', 'message_id', 'thread_id', 'notification_id']);
@@ -35,6 +40,12 @@ function emit(event, fields = {}) {
         else if (enums[key]?.has(value)) record[key] = value;
         else if (key === 'address_family' && [4, 6].includes(value)) record[key] = value;
         else if (key === 'error_codes' && Array.isArray(value)) record[key] = value.slice(0, 8).map(code => enums.error_code.has(code) ? code : 'NETWORK_ERROR');
+        else if (key === 'address_ranges' && Array.isArray(value)) record[key] = value.slice(0, 8).filter(range => addressRanges.has(range));
+        // The user authorized hostname/port diagnosis. Never allow a URL,
+        // userinfo, path, query, headers or an arbitrary string in these fields.
+        else if (key === 'callback_host' && typeof value === 'string' && value.length <= 253 && !isIP(value)
+            && /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value)) record[key] = value;
+        else if (key === 'callback_port' && Number.isInteger(value) && value >= 1 && value <= 65535) record[key] = value;
         else if (numbers.has(key) && Number.isFinite(value)) record[key] = value;
         else if (booleans.has(key) && typeof value === 'boolean') record[key] = value;
         else if (ids.has(key) && typeof value === 'string' && /^(?:[0-9a-f-]{36}|[0-9a-f]{64}|sub_[0-9a-f]{64}|evt_[0-9a-f-]{36}|notification:\d+|\d{1,16})$/.test(value)) record[key] = value;

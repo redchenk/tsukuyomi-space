@@ -44,7 +44,7 @@ async function postSigned({ id, url, secret, previousSecret }, eventId, payload,
     const started = performance.now();
     const controller = new AbortController();
     const signal = controller.signal;
-    let stage = 'request', response, reader;
+    let stage = 'request', response, reader, callbackTarget;
     const timer = setTimeout(() => controller.abort(timeoutError(stage)), timeoutMs);
     let onAbort;
     const deadline = new Promise((_, reject) => {
@@ -54,9 +54,12 @@ async function postSigned({ id, url, secret, previousSecret }, eventId, payload,
     const bounded = operation => Promise.race([operation, deadline]);
     const invalid = code => { const error = new Error('Invalid verification response'); error.code = code; return error; };
     try {
+        const callbackUrl = validateCallback(url);
+        const endpoint = new URL(callbackUrl);
+        callbackTarget = { callback_host: endpoint.hostname.toLowerCase().replace(/\.$/, ''), callback_port: Number(endpoint.port || 443) };
         // DNS resolution itself is not cancellable in Node's lookup API. Bound
         // the wait as well as the socket; a late connection still sees the aborted signal.
-        response = await bounded(fetch(validateCallback(url), {
+        response = await bounded(fetch(callbackUrl, {
                 method: 'POST', redirect: 'error', signal, timeoutMs, connectStrategy: 'race-pinned',
                 onTrace: trace => { stage = trace.stage; diagnostics.emit('network_stage', { ...trace, subscription_id: id, event_id: eventId }); },
                 headers: { 'Content-Type': 'application/json', 'webhook-id': eventId,
@@ -85,7 +88,7 @@ async function postSigned({ id, url, secret, previousSecret }, eventId, payload,
         return { status: response.status, accepted: true, data };
     } catch (error) {
         diagnostics.emit('webhook_completed', { subscription_id: id, stage, http_status: response?.status,
-            outcome: 'failed', ...classifyError(error), duration_ms: Math.round(performance.now() - started) });
+            outcome: 'failed', ...classifyError(error), ...callbackTarget, duration_ms: Math.round(performance.now() - started) });
         throw error;
     } finally {
         clearTimeout(timer); signal.removeEventListener('abort', onAbort);

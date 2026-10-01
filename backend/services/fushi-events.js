@@ -21,7 +21,7 @@ function callbackReason(cause) {
     const failure = classifyError(cause);
     if (failure.reason === 'timeout' || failure.reason === 'tls_error') return failure.reason;
     if (failure.reason === 'http_status') return cause.httpStatus >= 500 ? 'http_5xx' : 'http_4xx';
-    if (['dns_error', 'network_error'].includes(failure.reason)) return 'connection_refused';
+    if (['dns_error', 'network_error', 'url_rejected'].includes(failure.reason)) return 'connection_refused';
     return 'challenge_failed';
 }
 function watermark(sub, assumingAccepted = null) {

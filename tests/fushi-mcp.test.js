@@ -537,11 +537,26 @@ test('diagnostic field whitelist never serializes headers, secrets, URLs, challe
     const marker = 'fixture-secret-never-log';
     diagnostics.emit('network_stage', { stage: 'dns', outcome: 'failed', token: marker, cookie: marker, secret: marker,
         challenge: marker, url: `https://example.test/${marker}`, content: marker, body: marker, error: new Error(marker), error_code: marker,
-        rpc_method: marker, tool_name: marker, reason: marker, request_id: marker, http_status: marker });
+        rpc_method: marker, tool_name: marker, reason: marker, request_id: marker, http_status: marker,
+        callback_host: `https://example.test/${marker}`, callback_port: marker, url_rejection: marker, address_ranges: [marker] });
+    diagnostics.emit('webhook_completed', { callback_host: '127.0.0.1', callback_port: 0 });
+    assert.equal(diagnosticRecords.at(-1).callback_host, undefined); assert.equal(diagnosticRecords.at(-1).callback_port, undefined);
     await call('/api/fushi/mcp', { method: 'POST', token: marker, body: { content: marker }, headers: { 'Mcp-Method': marker, 'Mcp-Name': marker } });
     const output = JSON.stringify(diagnosticRecords);
     assert.ok(!output.includes(marker)); assert.ok(!output.includes(secret)); assert.ok(!output.includes(bearer));
     assert.ok(diagnosticRecords.some(r => r.rpc_method === 'unknown'));
+});
+
+test('failed callback logs only normalized hostname and port with whitelisted DNS rejection categories', async () => {
+    const url = 'https://RECEIVER.example.test:9443/secret-path?secret=never-output';
+    const fetch = async () => { const e = new Error('unsafe raw DNS answer');
+        Object.assign(e, { code: 'URL_REJECTED', urlRejection: 'dns_non_public', addressRanges: ['private', 'reserved'] }); throw e; };
+    await assert.rejects(() => hooks.postSigned({ id: 'fixture', url, secret }, 'fixture', { type: 'verification' }, { fetch, verification: true }), { code: 'URL_REJECTED' });
+    const record = diagnosticRecords.find(r => r.event === 'webhook_completed');
+    assert.equal(record.callback_host, 'receiver.example.test'); assert.equal(record.callback_port, 9443);
+    assert.equal(record.url_rejection, 'dns_non_public'); assert.deepEqual(record.address_ranges, ['private', 'reserved']);
+    const output = JSON.stringify(diagnosticRecords);
+    for (const forbidden of [url, 'secret-path', 'never-output', secret, 'unsafe']) assert.ok(!output.includes(forbidden));
 });
 
 test('client disconnect during parsing records premature close with server correlation ID', async () => {
@@ -577,6 +592,7 @@ for (const [name, fetch, reason] of [
     ['TLS', async () => { const e = new Error('unsafe certificate details'); e.code = 'CERT_HAS_EXPIRED'; throw e; }, 'tls_error'],
     ['socket', async () => { const e = new Error('socket timeout'); e.code = 'ETIMEDOUT'; throw e; }, 'timeout'],
     ['connection', async () => { const e = new Error('connection failed'); e.code = 'ECONNRESET'; throw e; }, 'network_error'],
+    ['non-public DNS', async () => { const e = new Error('unsafe resolved address'); e.code = 'URL_REJECTED'; throw e; }, 'url_rejected'],
     ['non-2xx', async () => new Response('{}', { status: 503 }), 'http_status'],
     ['wrong echo', async () => new Response('{"challenge":"wrong"}'), 'challenge_failed'],
     ['invalid JSON', async () => new Response('{'), 'invalid_json'],
@@ -584,7 +600,7 @@ for (const [name, fetch, reason] of [
     ['wrong JSON shape', async () => new Response('[]'), 'invalid_response']
 ]) test(`callback ${name} has its own diagnostic category and leaves no subscription`, async () => {
     const wireReason = reason === 'timeout' || reason === 'tls_error' ? reason : reason === 'http_status' ? 'http_5xx'
-        : ['dns_error','network_error'].includes(reason) ? 'connection_refused' : 'challenge_failed';
+        : ['dns_error','network_error','url_rejected'].includes(reason) ? 'connection_refused' : 'challenge_failed';
     await assert.rejects(() => events.subscribe(context, subscription(), { fetch }), e => e.rpcCode === -32015 && e.reason === wireReason);
     assert.equal(db.prepare('SELECT count(*) AS n FROM fushi_subscriptions').get().n, 0);
     assert.ok(diagnosticRecords.some(r => r.event === 'subscription_stage' && r.stage === 'callback' && r.outcome === 'failed' && r.reason === reason));

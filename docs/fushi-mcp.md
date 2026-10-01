@@ -147,7 +147,9 @@ ChatGPT 首次连接表单已实际发现上述 OAuth 端点、三个 scope、`n
 
 回调验证总预算仍为 10 秒，包含 DNS、连接、TLS、响应头和完整验证正文；正文最多 4096 字节。socket 超时为 `TimeoutError / ETIMEDOUT`，收到响应头后超时也会使正文读取失败，取消流不额外阻塞接口。HTTPS、每次连接的公有地址校验、DNS 钉扎、禁止重定向、TLS 验证和 Standard Webhooks 签名保持开启。[当前官方 MCP Events 规范](https://developers.openai.com/plugins/build/mcp-events) 核对日期：2026-10-01；使用 `2026-07-28`、平台提供的 `delivery`、签名 challenge 回声和 `id/refreshBefore/cursor/truncated` 返回格式。
 
-Fushi 回调单独使用保留候选连接的 TCP 竞速：250 ms 后启动下一地址，保留较慢的首次尝试，连接成功后关闭其他候选。每次 DNS 的所有记录先做公网地址校验；最多尝试 8 个已校验地址、同时最多 2 条 TCP 连接。TLS 在获胜的固定地址 socket 上继续使用原域名和证书验证，每次只发送一次 HTTP 请求正文。全流程预算仍为 10 秒，其他 OSS/TTS 等调用继续使用原连接策略。逐地址日志只增加 `address_family`、`attempt`、耗时与白名单 `error_codes`，不记录目标地址或任意错误对象。真实回调验证失败前不会保存其 URL 或密钥，旧失败记录无法用于重放；订阅目标只能来自平台。
+Fushi 回调单独使用保留候选连接的 TCP 竞速：250 ms 后启动下一地址，保留较慢的首次尝试，连接成功后关闭其他候选。每次 DNS 的所有记录先做公网地址校验；最多尝试 8 个已校验地址、同时最多 2 条 TCP 连接。TLS 在获胜的固定地址 socket 上继续使用原域名和证书验证，每次只发送一次 HTTP 请求正文。全流程预算仍为 10 秒，其他 OSS/TTS 等调用继续使用原连接策略。逐地址日志增加 `address_family`、`attempt`、耗时与白名单 `error_codes`，不记录实际 IP 或任意错误对象。真实回调验证失败前不会保存其完整 URL 或密钥，旧失败记录无法用于重放；订阅目标只能来自平台。
+
+失败的 `webhook_completed` 仅保留经白名单格式检查的 `callback_host` 与 `callback_port`（站长已授权域名/端口诊断），不含路径、查询或签名材料。`URL_REJECTED` 附加固定枚举 `url_rejection`：`invalid_url`、`hostname_not_allowed`、`dns_empty`、`dns_non_public`；`address_ranges` 只含最多八类固定地址分类，例如 `private`、`carrierGradeNat`、`reserved`，不含 IP。对外仍使用规范允许的 `connection_refused`，原始 DNS/目标细节仅在服务端安全诊断中，不构成响应探测接口。拒绝非公网解析后不会开 socket 或发送 challenge；不得通过忽略危险 DNS 答案、临时允许内网或关闭 TLS 来修通订阅。
 
 `delivery_completed` 记录事件/订阅 ID、尝试次数、状态、HTTP 状态和下次重试 UTC 时间。`accepted` 仅代表平台接收；`reply_transaction` 在事务返回后记录实际提交/回滚、幂等命中来源和回复 ID，`reply_lookup` 单独记录幂等查询命中/未命中。后台投递清除网页请求上下文，不把旧请求 ID 错配到新投递。
 

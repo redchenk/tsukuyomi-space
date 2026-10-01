@@ -26,41 +26,51 @@ function classifyError(error) {
                 RESPONSE_TOO_LARGE: 'response_too_large', INVALID_RESPONSE: 'invalid_response', CHALLENGE_FAILED: 'challenge_failed', HTTP_STATUS: 'http_status' })[code] || 'network_error';
     const children = error?.errors || error?.cause?.errors;
     const errorCodes = Array.isArray(children) ? [...new Set(children.slice(0, 8).map(e => safeCodes.has(e?.code) ? e.code : 'NETWORK_ERROR'))] : [];
-    return { reason, error_code: code, ...(errorCodes.length ? { error_codes: errorCodes } : {}) };
+    return { reason, error_code: code, ...(errorCodes.length ? { error_codes: errorCodes } : {}),
+        ...(code === 'URL_REJECTED' && error?.urlRejection ? { url_rejection: error.urlRejection } : {}),
+        ...(code === 'URL_REJECTED' && error?.addressRanges ? { address_ranges: error.addressRanges } : {}) };
 }
-function rejectedUrl(message) { const error = new Error(message); error.code = 'URL_REJECTED'; return error; }
+function rejectedUrl(message, urlRejection, addressRanges) {
+    const error = new Error(message); error.code = 'URL_REJECTED';
+    if (urlRejection) error.urlRejection = urlRejection;
+    if (addressRanges) error.addressRanges = addressRanges;
+    return error;
+}
 function observe(callback, data) { try { callback?.(data); } catch (_) { /* Observability must not change network behavior. */ } }
 
-function isPrivateAddress(value = '') {
+function addressRange(value = '') {
     const address = String(value || '').toLowerCase().split('%')[0];
-    if (!net.isIP(address)) return true;
+    if (!net.isIP(address)) return 'invalid';
     try {
         const parsed = ipaddr.parse(address);
         if (parsed.kind() === 'ipv6' && parsed.isIPv4MappedAddress()) {
-            return parsed.toIPv4Address().range() !== 'unicast';
+            return parsed.toIPv4Address().range();
         }
-        return parsed.range() !== 'unicast';
+        return parsed.range();
     } catch (_) {
-        return true;
+        return 'invalid';
     }
 }
+const isPrivateAddress = value => addressRange(value) !== 'unicast';
 
 async function resolvePublicUrl(value, { protocols = ['https:'], allowedHostnames = [] } = {}) {
     let url;
     try {
         url = new URL(String(value || ''));
     } catch (_) {
-        throw rejectedUrl('不支持的外部地址');
+        throw rejectedUrl('不支持的外部地址', 'invalid_url');
     }
-    if (!protocols.includes(url.protocol) || url.username || url.password) throw rejectedUrl('不支持的外部地址');
+    if (!protocols.includes(url.protocol) || url.username || url.password) throw rejectedUrl('不支持的外部地址', 'invalid_url');
     const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
-    if (allowedHostnames.length && !allowedHostnames.includes(hostname)) throw rejectedUrl('外部地址不在允许列表中');
+    if (allowedHostnames.length && !allowedHostnames.includes(hostname)) throw rejectedUrl('外部地址不在允许列表中', 'hostname_not_allowed');
 
     const records = net.isIP(hostname)
         ? [{ address: hostname, family: net.isIP(hostname) }]
         : await dns.lookup(hostname, { all: true, verbatim: true });
-    if (!records.length || records.some(record => isPrivateAddress(record.address))) {
-        throw rejectedUrl('禁止访问本机、内网或保留地址');
+    if (!records.length) throw rejectedUrl('没有可用地址', 'dns_empty');
+    const ranges = [...new Set(records.map(record => addressRange(record.address)))];
+    if (ranges.some(range => range !== 'unicast')) {
+        throw rejectedUrl('禁止访问本机、内网或保留地址', 'dns_non_public', ranges.slice(0, 8));
     }
     return { url, records };
 }
