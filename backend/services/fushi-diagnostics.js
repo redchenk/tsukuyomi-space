@@ -10,7 +10,7 @@ const enums = {
     outcome: new Set(['started', 'success', 'failed', 'cached', 'committed', 'rolled_back', 'hit', 'miss', 'closed', 'cancelled']),
     reason: new Set(['timeout', 'network_error', 'dns_error', 'tls_error', 'http_status', 'invalid_json', 'response_too_large',
         'invalid_response', 'challenge_failed', 'invalid_parameters', 'authorization_revoked', 'persistence_failed',
-        'content_unavailable', 'callback_rejected', 'internal_error', 'url_rejected', 'redirect_rejected']),
+        'content_unavailable', 'callback_rejected', 'internal_error', 'url_rejected', 'redirect_rejected', 'connection_refused', 'http_4xx', 'http_5xx']),
     status: new Set(['pending', 'inflight', 'accepted', 'dead', 'cancelled', 'not_found', 'published', 'pending_review', 'removed', 'unprocessed']),
     source: new Set(['idempotency_key', 'source_message', 'existing_reply', 'new_reply']),
     auth_error: new Set(['invalid_token', 'untrusted_request', 'invalid_request', 'invalid_client', 'invalid_grant', 'invalid_scope', 'access_denied']),

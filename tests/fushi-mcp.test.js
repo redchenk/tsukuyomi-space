@@ -244,7 +244,7 @@ test('callback verification, encrypted storage, refresh identity and unsubscribe
 test('bad signature and callback timeout never activate subscriptions', async () => {
     invalidSignature=true;
     const bad=await rpc('events/subscribe',subscription());
-    assert.equal(bad.data.error.code,-32015); assert.equal(bad.data.error.data.reason,'http_status');
+    assert.equal(bad.data.error.code,-32015); assert.equal(bad.data.error.data.reason,'http_4xx');
     assert.equal(db.prepare('SELECT count(*) AS n FROM fushi_subscriptions').get().n,0);
     invalidSignature=false; timeout=true;
     const timed=await rpc('events/subscribe',subscription());
@@ -583,7 +583,9 @@ for (const [name, fetch, reason] of [
     ['oversized JSON', async () => new Response(JSON.stringify({ challenge: 'x'.repeat(4096) })), 'response_too_large'],
     ['wrong JSON shape', async () => new Response('[]'), 'invalid_response']
 ]) test(`callback ${name} has its own diagnostic category and leaves no subscription`, async () => {
-    await assert.rejects(() => events.subscribe(context, subscription(), { fetch }), e => e.rpcCode === -32015 && e.reason === reason);
+    const wireReason = reason === 'timeout' || reason === 'tls_error' ? reason : reason === 'http_status' ? 'http_5xx'
+        : ['dns_error','network_error'].includes(reason) ? 'connection_refused' : 'challenge_failed';
+    await assert.rejects(() => events.subscribe(context, subscription(), { fetch }), e => e.rpcCode === -32015 && e.reason === wireReason);
     assert.equal(db.prepare('SELECT count(*) AS n FROM fushi_subscriptions').get().n, 0);
     assert.ok(diagnosticRecords.some(r => r.event === 'subscription_stage' && r.stage === 'callback' && r.outcome === 'failed' && r.reason === reason));
     assert.ok(!JSON.stringify(diagnosticRecords).includes('unsafe'));
@@ -649,6 +651,46 @@ test('delivery diagnostics show attempt, retry deadline and acceptance separatel
     assert.deepEqual(logs.map(r => [r.attempt, r.status, r.http_status]), [[1,'pending',500],[2,'accepted',200]]);
     assert.equal(logs[0].next_retry_at, new Date(now + 30000).toISOString()); assert.equal(logs[1].next_retry_at, null);
     assert.equal(logs[0].event_id, logs[1].event_id); assert.equal(community.listNotifications(fushi.id).items[0].processed, false);
+});
+
+test('omitted optional event arguments normalize to the same subscription identity', async () => {
+    const without = await rpc('events/subscribe', subscription({ arguments: undefined }));
+    const explicit = await rpc('events/subscribe', subscription());
+    assert.ok(without.data.result.id); assert.equal(without.data.result.id, explicit.data.result.id); assert.equal(verifications, 1);
+    const invalid = await rpc('events/subscribe', subscription({ arguments: null }));
+    assert.equal(invalid.data.error.code, -32602);
+    events.unsubscribe(context, subscription({ arguments: undefined }));
+    assert.equal(db.prepare('SELECT active FROM fushi_subscriptions').get().active, 0);
+});
+test('standard maxAgeMs bounds replay and explicit refresh cancels aged pending deliveries', async () => {
+    const old = interaction(); const fresh = interaction(); const now = Date.now();
+    db.prepare('UPDATE fushi_events SET occurred_at=? WHERE message_id=?').run(now - 60000, old.message.id);
+    const subscribed = await rpc('events/subscribe', subscription({ maxAgeMs: 1000, cursor: 'f1.0' }));
+    assert.ok(subscribed.data.result.id); assert.equal(subscribed.data.result.truncated, true);
+    const queued = db.prepare('SELECT d.*,e.message_id FROM fushi_deliveries d JOIN fushi_events e ON e.seq=d.event_seq').all();
+    assert.equal(queued.length, 1); assert.equal(queued[0].message_id, fresh.message.id);
+    const refreshed = await events.subscribe(context, subscription({ maxAgeMs: 1000, cursor: 'f1.0' }), { now: now + 2000, fetch: receiver });
+    assert.equal(refreshed.id, subscribed.data.result.id); assert.equal(refreshed.truncated, true);
+    assert.equal(db.prepare('SELECT status FROM fushi_deliveries').get().status, 'cancelled');
+    await events.drain({ fetch: receiver, now: now + 2000 }); assert.equal(deliveries.length, 0);
+});
+test('invalid maxAgeMs is rejected before DNS and callback verification', async () => {
+    for (const maxAgeMs of [-1, '1000', null, 1.5]) {
+        const response = await rpc('events/subscribe', subscription({ maxAgeMs }));
+        assert.equal(response.data.error.code, -32602);
+    }
+    assert.equal(verifications, 0); assert.equal(db.prepare('SELECT count(*) AS n FROM fushi_subscriptions').get().n, 0);
+});
+test('unsubscribe during an inflight delivery does not log reception as a persisted acceptance', async () => {
+    await events.subscribe(context, subscription(), { fetch: receiver }); interaction();
+    await events.drain({ fetch: async () => {
+        events.unsubscribe(context, subscription());
+        return new Response('{}', { status: 200 });
+    } });
+    const row = db.prepare('SELECT status,received_at FROM fushi_deliveries').get();
+    assert.equal(row.status, 'cancelled'); assert.equal(row.received_at, null);
+    const record = diagnosticRecords.find(r => r.event === 'delivery_completed');
+    assert.equal(record.http_status, 200); assert.equal(record.status, 'cancelled'); assert.equal(record.committed, false); assert.equal(record.next_retry_at, null);
 });
 
 test('automatic refresh remains usable past the old monthly cutoff and extends inactivity expiry', () => {

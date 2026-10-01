@@ -60,7 +60,7 @@ MCP URL：`https://yachiyo.hk/api/fushi/mcp`，只接受 POST。鉴权为专属 
 
 ### 订阅与事件
 
-`events/subscribe` 参数为事件名、`arguments`、`delivery`、可选 `cursor` 和 `ttlMs`。`arguments` 只支持可选 `kind: plaza|article` 与 `thread_id`；指定线程必须与 Fushi 相关。`delivery` 由平台提供，形如 `{ "mode": "webhook", "url": "<平台 HTTPS 回调 URL>", "secret": "whsec_<平台签名材料>" }`。不要填写 dot 地址，不要把浏览器 WebSocket URL 当回调地址。
+`events/subscribe` 参数为事件名、`arguments`、`delivery`、可选 `cursor`、`maxAgeMs` 和 `ttlMs`。`arguments` 只支持可选 `kind: plaza|article` 与 `thread_id`；指定线程必须与 Fushi 相关。`delivery` 由平台提供，形如 `{ "mode": "webhook", "url": "<平台 HTTPS 回调 URL>", "secret": "whsec_<平台签名材料>" }`。不要填写 dot 地址，不要把浏览器 WebSocket URL 当回调地址。
 
 回调验证发送随机一次性 challenge，要求 2xx 与恒定时间比较的正确回声。验证缓存按账号、URL 和当前密钥检查，最多五分钟，刷新缓存命中不会延长验证有效期。URL 必须 HTTPS、不含用户信息或 fragment；连接时重新解析 DNS，拒绝混合内外网地址，固定已验证的公网地址连接并保留原 TLS 主机校验，不跟随重定向。验证失败使用 `-32015`，原因区分 challenge 失败与超时。
 
@@ -143,10 +143,12 @@ ChatGPT 首次连接表单已实际发现上述 OAuth 端点、三个 scope、`n
 
 每次 Fushi 请求在鉴权前生成服务端 UUID，响应头为 `X-Fushi-Request-Id`。`request_started` / `request_completed` 使用 UTC ISO 时间，记录已知 RPC 方法/工具名、HTTP 状态、RPC 错误码、工具 `isError`、耗时与提前关闭；未知方法/工具只记 `unknown`。HTTP 200 必须同时核对 `rpc_success`、`rpc_error_code`、`tool_is_error`，不能直接作为成功依据。
 
-`subscription_stage` 依次记录 `parameters`、`callback`、`persistence`；最后 `committed: true` 才表示保存完成。回调错误 `-32015` 的 `reason` 区分 `dns_error`、`tls_error`、`network_error`、`timeout`、`http_status`、`invalid_json`、`response_too_large`、`invalid_response`、`challenge_failed`。同一 ID 可关联 `network_stage` 的 DNS、连接、TLS、响应头与正文耗时及白名单错误码。
+`subscription_stage` 依次记录 `parameters`、`callback`、`persistence`；最后 `committed: true` 才表示保存完成。内部诊断 `reason` 区分 `dns_error`、`tls_error`、`network_error`、`timeout`、`http_status`、`invalid_json`、`response_too_large`、`invalid_response`、`challenge_failed`。对外 `-32015.data.reason` 遵循关联事件规范的类别：`connection_refused`、`timeout`、`tls_error`、`http_4xx`、`http_5xx`、`challenge_failed`，避免客户端因未知枚举无法解码。同一 ID 可关联 `network_stage` 的 DNS、连接、TLS、响应头与正文耗时及白名单错误码。
 
 回调验证总预算仍为 10 秒，包含 DNS、连接、TLS、响应头和完整验证正文；正文最多 4096 字节。socket 超时为 `TimeoutError / ETIMEDOUT`，收到响应头后超时也会使正文读取失败，取消流不额外阻塞接口。HTTPS、每次连接的公有地址校验、DNS 钉扎、禁止重定向、TLS 验证和 Standard Webhooks 签名保持开启。[当前官方 MCP Events 规范](https://developers.openai.com/plugins/build/mcp-events) 核对日期：2026-10-01；使用 `2026-07-28`、平台提供的 `delivery`、签名 challenge 回声和 `id/refreshBefore/cursor/truncated` 返回格式。
 
 `delivery_completed` 记录事件/订阅 ID、尝试次数、状态、HTTP 状态和下次重试 UTC 时间。`accepted` 仅代表平台接收；`reply_transaction` 在事务返回后记录实际提交/回滚、幂等命中来源和回复 ID，`reply_lookup` 单独记录幂等查询命中/未命中。后台投递清除网页请求上下文，不把旧请求 ID 错配到新投递。
 
 所有诊断经字段及枚举白名单输出到现有应用日志，不打印任意 Error、请求或响应对象，不记录令牌、Cookie、签名密钥、challenge、完整回调 URL、正文或原始请求体。凭证/权限不随诊断部署改变。无新增依赖或迁移；使用既有轻量发布工具上线/回滚代码，保留 SQLite 数据与当前授权，禁止整库覆盖。真实平台重试应在诊断版本上线后执行，按请求 ID 排查，不能重新回复已经处理的历史互动。
+
+未传 `arguments` 时按空过滤对象处理，显式 `null`、未知字段及非法值仍拒绝。`maxAgeMs` 为可选非负安全整数，只限制持久事件队列的历史回放窗口；年龄截断返回 `truncated: true`，显式刷新取消已超龄的待投递事件，避免重放陈旧互动。没有全站扫描或新增存储。

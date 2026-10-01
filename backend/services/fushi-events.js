@@ -17,6 +17,13 @@ function subscriptionId(userId, name, url, args) {
 }
 function canonical(args) { return JSON.stringify(Object.fromEntries(Object.keys(args).sort().map(key => [key, args[key]]))); }
 function latest(userId) { return db.prepare('SELECT COALESCE(MAX(seq), 0) AS n FROM fushi_events WHERE owner_id = ?').get(userId).n; }
+function callbackReason(cause) {
+    const failure = classifyError(cause);
+    if (failure.reason === 'timeout' || failure.reason === 'tls_error') return failure.reason;
+    if (failure.reason === 'http_status') return cause.httpStatus >= 500 ? 'http_5xx' : 'http_4xx';
+    if (['dns_error', 'network_error'].includes(failure.reason)) return 'connection_refused';
+    return 'challenge_failed';
+}
 function watermark(sub, assumingAccepted = null) {
     const earliest = db.prepare(`SELECT MIN(event_seq) AS n FROM fushi_deliveries
         WHERE subscription_id = ? AND status IN ('pending','inflight','dead') AND event_seq != ?`).get(sub.id, assumingAccepted || -1).n;
@@ -76,11 +83,12 @@ async function subscribe(context, params, options = {}) {
         const now = options.now ?? Date.now();
         if (params.name !== NAME || params.delivery?.mode !== 'webhook') throw new Error('Unsupported event or delivery');
         if (Object.keys(params.delivery).some(key => !['mode', 'url', 'secret'].includes(key))) throw new Error('Invalid delivery parameters');
-        const args = validateArguments(params.arguments, context.user.id);
+        const args = validateArguments(params.arguments === undefined ? {} : params.arguments, context.user.id);
         const url = webhooks.validateCallback(params.delivery.url);
         webhooks.signingKey(params.delivery.secret);
         if (params.ttlMs !== undefined && params.ttlMs !== null && (!Number.isSafeInteger(params.ttlMs) || params.ttlMs <= 0)) throw new Error('Invalid ttlMs');
         if (params.cursor != null) parseCursor(params.cursor);
+        if (params.maxAgeMs !== undefined && (!Number.isSafeInteger(params.maxAgeMs) || params.maxAgeMs < 0)) throw new Error('Invalid maxAgeMs');
         id = subscriptionId(context.user.id, NAME, url, args);
         const callbackHash = auth.hash(url);
         const existing = db.prepare('SELECT * FROM fushi_subscriptions WHERE id = ?').get(id);
@@ -120,7 +128,9 @@ async function subscribe(context, params, options = {}) {
             const max = Math.max(latest(context.user.id), floor);
             const requested = params.cursor == null ? (existing?.scan_cursor ?? max) : parseCursor(params.cursor);
             if (requested > max) throw new Error('Cursor is ahead of retained history');
-            const start = Math.max(requested, floor);
+            const ageFloor = params.maxAgeMs === undefined ? 0 : db.prepare('SELECT COALESCE(MAX(seq),0) AS n FROM fushi_events WHERE owner_id=? AND occurred_at<?')
+                .get(context.user.id, now - params.maxAgeMs).n;
+            const start = Math.max(requested, floor, ageFloor);
             const ttl = Math.max(60000, Math.min(params.ttlMs ?? DAY, DAY));
             const expiry = Math.min(now + ttl, context.grant.expires_at);
             const rotate = oldSecret && oldSecret !== params.delivery.secret;
@@ -136,8 +146,14 @@ async function subscribe(context, params, options = {}) {
             // Explicit replay also retries dead letters, but never discards pending deliveries.
             if (params.cursor != null) db.prepare("UPDATE fushi_deliveries SET status = 'pending', attempts = 0, next_attempt = ? WHERE subscription_id = ? AND event_seq > ? AND status IN ('dead','accepted','cancelled')").run(now, id, start);
             const sub = db.prepare('SELECT * FROM fushi_subscriptions WHERE id = ?').get(id);
+            if (params.maxAgeMs !== undefined && ageFloor > 0) {
+                db.prepare("UPDATE fushi_deliveries SET status='cancelled',lease_until=NULL WHERE subscription_id=? AND event_seq<=? AND status IN ('pending','inflight','dead')")
+                    .run(id, ageFloor);
+                sub.scan_cursor = Math.max(sub.scan_cursor, ageFloor);
+                db.prepare('UPDATE fushi_subscriptions SET scan_cursor=? WHERE id=?').run(sub.scan_cursor, id);
+            }
             refill(sub, now);
-            return { id, refreshBefore: new Date(expiry).toISOString(), cursor: watermark(sub), truncated: requested < floor };
+            return { id, refreshBefore: new Date(expiry).toISOString(), cursor: watermark(sub), truncated: requested < start };
         })();
         log('committed', { committed: true }); wake();
         return saved;
@@ -145,13 +161,14 @@ async function subscribe(context, params, options = {}) {
         const reason = cause.reason || (stage === 'parameters' ? 'invalid_parameters' : stage === 'persistence' ? 'persistence_failed' : classifyError(cause).reason);
         log('failed', { ...(stage === 'callback' ? classifyError(cause) : {}), reason, http_status: cause.httpStatus, committed: false });
         if (stage !== 'callback' || cause.reason === 'authorization_revoked') throw cause;
-        const error = new Error('Callback verification failed'); error.rpcCode = -32015; error.reason = reason;
+        // Keep internal diagnosis precise, while honoring the wire-level category enum.
+        const error = new Error('Callback verification failed'); error.rpcCode = -32015; error.reason = callbackReason(cause);
         throw error;
     }
 }
 function unsubscribe(context, params) {
     if (params.name !== NAME || params.delivery?.mode !== 'webhook') throw new Error('Unsupported event or delivery');
-    const args = validateArguments(params.arguments, context.user.id, false);
+    const args = validateArguments(params.arguments === undefined ? {} : params.arguments, context.user.id, false);
     const id = subscriptionId(context.user.id, NAME, webhooks.validateCallback(params.delivery.url), args);
     db.transaction(() => {
         db.prepare('UPDATE fushi_subscriptions SET active=0,secret_box=NULL,previous_secret_box=NULL WHERE id=? AND owner_id=?').run(id, context.user.id);
@@ -203,13 +220,14 @@ async function drain({ fetch, now = Date.now(), batch = 8 } = {}) {
         const transient = status == null || status === 408 || status === 429 || status >= 500;
         const state = accepted ? 'accepted' : transient && attempts < 6 ? 'pending' : 'dead';
         const nextAttempt = realNow + Math.min(3600000, 30000 * 2 ** (attempts - 1));
-        db.prepare(`UPDATE fushi_deliveries SET status=?,next_attempt=?,lease_until=NULL,received_at=?,last_status=?,last_error=?
+        const updated = db.prepare(`UPDATE fushi_deliveries SET status=?,next_attempt=?,lease_until=NULL,received_at=?,last_status=?,last_error=?
             WHERE subscription_id=? AND event_seq=? AND status='inflight'`)
             .run(state, nextAttempt, accepted ? realNow : null, status,
-                accepted ? null : reason || 'callback_rejected', sub.id, event.seq);
+                accepted ? null : reason || 'callback_rejected', sub.id, event.seq).changes;
+        const recordedState = updated ? state : db.prepare('SELECT status FROM fushi_deliveries WHERE subscription_id=? AND event_seq=?').get(sub.id, event.seq)?.status || 'cancelled';
         diagnostics.emit('delivery_completed', { subscription_id: sub.id, event_id: event.event_id, attempt: attempts,
-            status: state, http_status: status, reason: accepted ? undefined : reason || 'http_status', error_code: errorCode,
-            duration_ms: Math.round(performance.now() - started), next_retry_at: state === 'pending' ? new Date(nextAttempt).toISOString() : null });
+            status: recordedState, committed: Boolean(updated), http_status: status, reason: accepted ? undefined : reason || 'http_status', error_code: errorCode,
+            duration_ms: Math.round(performance.now() - started), next_retry_at: updated && state === 'pending' ? new Date(nextAttempt).toISOString() : null });
         if (status === 410) db.prepare('UPDATE fushi_subscriptions SET active=0,secret_box=NULL,previous_secret_box=NULL WHERE id=?').run(sub.id);
     }
     return { attempted: due.length, backlog: backlog || due.length === batch };

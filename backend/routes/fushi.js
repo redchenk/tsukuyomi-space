@@ -132,7 +132,7 @@ apiRouter.post('/mcp', async (req, res) => {
             case 'events/subscribe':
             case 'events/unsubscribe':
                 if (!auth.grantFor(context.grant.id, 'fushi:events')) throw new Error('Insufficient scope');
-                if (Object.keys(args).some(k => !['name', 'arguments', 'delivery', 'cursor', 'ttlMs'].includes(k))) throw new Error('Invalid subscription parameters');
+                if (Object.keys(args).some(k => !['name', 'arguments', 'delivery', 'cursor', 'ttlMs', ...(body.method === 'events/subscribe' ? ['maxAgeMs'] : [])].includes(k))) throw new Error('Invalid subscription parameters');
                 subscriptionEntered = true;
                 result = body.method === 'events/subscribe' ? await events.subscribe(context, args) : events.unsubscribe(context, args); break;
             case 'tools/call': {
