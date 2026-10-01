@@ -127,3 +127,9 @@ test('observability callback exceptions do not disrupt a safe response', async t
     const response = await network.fetchPinnedUrl(callback.url, { onTrace() { throw new Error('observer failure'); } });
     assert.equal(response.status, 200); await response.text();
 });
+test('Fushi webhook selects bounded pinned racing while the shared default remains unchanged', async t => {
+    const fake = transport(t);
+    const response = await hooks.postSigned(callback, 'fixture', { type: 'verification' }, { verification: true });
+    assert.equal(response.accepted, true); assert.ok(fake.options().agent instanceof https.Agent);
+    assert.equal(fake.options().agent.keepAlive, false);
+});

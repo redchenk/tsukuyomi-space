@@ -4,6 +4,7 @@ const https = require('https');
 const net = require('net');
 const { Readable } = require('stream');
 const ipaddr = require('ipaddr.js');
+const { createPinnedAgent } = require('./pinned-connection');
 
 function timeoutError(stage = 'request') {
     const error = new Error('外部请求超时');
@@ -23,7 +24,9 @@ function classifyError(error) {
         : /^(?:CERT_|DEPTH_|SELF_|UNABLE_|ERR_TLS_|ERR_SSL_)/.test(code) ? 'tls_error'
             : ({ URL_REJECTED: 'url_rejected', REDIRECT_REJECTED: 'redirect_rejected', INVALID_JSON: 'invalid_json',
                 RESPONSE_TOO_LARGE: 'response_too_large', INVALID_RESPONSE: 'invalid_response', CHALLENGE_FAILED: 'challenge_failed', HTTP_STATUS: 'http_status' })[code] || 'network_error';
-    return { reason, error_code: code };
+    const children = error?.errors || error?.cause?.errors;
+    const errorCodes = Array.isArray(children) ? [...new Set(children.slice(0, 8).map(e => safeCodes.has(e?.code) ? e.code : 'NETWORK_ERROR'))] : [];
+    return { reason, error_code: code, ...(errorCodes.length ? { error_codes: errorCodes } : {}) };
 }
 function rejectedUrl(message) { const error = new Error(message); error.code = 'URL_REJECTED'; return error; }
 function observe(callback, data) { try { callback?.(data); } catch (_) { /* Observability must not change network behavior. */ } }
@@ -80,6 +83,7 @@ async function fetchPinnedUrl(value, {
     redirect = 'error',
     protocols = ['https:'],
     allowedHostnames = [],
+    connectStrategy = 'default',
     onTrace
 } = {}) {
     const dnsStarted = performance.now();
@@ -102,6 +106,9 @@ async function fetchPinnedUrl(value, {
     } finally { if (onAbort) signal.removeEventListener('abort', onAbort); }
     const { url, records } = resolved;
     const transport = url.protocol === 'https:' ? https : http;
+    if (!['default', 'race-pinned'].includes(connectStrategy) || (connectStrategy === 'race-pinned' && url.protocol !== 'https:')) throw rejectedUrl('Invalid connection strategy');
+    const agent = connectStrategy === 'race-pinned' ? createPinnedAgent(records, { signal, timeoutMs,
+        onAttempt: ({ error, ...attempt }) => observe(onTrace, { stage: 'connect', ...attempt, ...(error ? classifyError(error) : {}) }) }) : null;
     const streaming = body instanceof Readable;
     const payload = streaming || body === undefined || body === null
         ? null
@@ -120,6 +127,7 @@ async function fetchPinnedUrl(value, {
             method,
             headers: requestHeaders,
             lookup: pinnedLookup(records),
+            ...(agent ? { agent } : {}),
             signal
         }, (incoming) => {
             trace('success', null, { http_status: incoming.statusCode || 502 });
@@ -173,10 +181,12 @@ async function fetchPinnedUrl(value, {
         });
         request.on('error', cause => {
             const error = classifyError(cause).reason === 'timeout' ? timeoutError(stage) : cause;
+            if (error !== cause) error.cause = cause;
             if (stage !== 'body') trace('failed', error);
             incomingResponse?.destroy(error);
             reject(error);
         });
+        if (agent) request.once('close', () => agent.destroy());
         if (streaming) {
             body.on('error', error => request.destroy(error));
             request.on('close', () => body.destroy());

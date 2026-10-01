@@ -33,6 +33,8 @@ function emit(event, fields = {}) {
         if (key === 'rpc_method') record[key] = methods.has(value) ? value : 'unknown';
         else if (key === 'tool_name') record[key] = tools.has(value) ? value : 'unknown';
         else if (enums[key]?.has(value)) record[key] = value;
+        else if (key === 'address_family' && [4, 6].includes(value)) record[key] = value;
+        else if (key === 'error_codes' && Array.isArray(value)) record[key] = value.slice(0, 8).map(code => enums.error_code.has(code) ? code : 'NETWORK_ERROR');
         else if (numbers.has(key) && Number.isFinite(value)) record[key] = value;
         else if (booleans.has(key) && typeof value === 'boolean') record[key] = value;
         else if (ids.has(key) && typeof value === 'string' && /^(?:[0-9a-f-]{36}|[0-9a-f]{64}|sub_[0-9a-f]{64}|evt_[0-9a-f-]{36}|notification:\d+|\d{1,16})$/.test(value)) record[key] = value;

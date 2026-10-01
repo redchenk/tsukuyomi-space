@@ -85,3 +85,15 @@ ChatGPT 创建连接的页面已成功读取生产元数据，确认三个 scope
 真实插件已成功读取通知、广场线程、文章线程和幂等结果。通知正确识别评论 1122 已由回复 1123 处理；文章线程返回该原回复 ID。一次只读诊断键查询返回 `not_found / lookup_scope: idempotency_key`，没有创建任何帖子或提交记录。四次已到达的读取在应用记录为 `rpc_success: true`、`tool_is_error: false`，耗时 18–52 ms；自动 OAuth 刷新记录 HTTP 200、14 ms。
 
 仍复现部分 `Connection failed` 和一次客户端 `-32603 Internal error`；对应失败未出现在应用或国内 origin 访问日志中，不能归因为回调验证或应用 RPC 错误。公开域名有 CDN，中间入口 `origin.yachiyo.hk` 才记录成功回源；主域名 server 的空日志不是请求未达 origin 的证据。服务器只读检查授权有效，订阅数仍为零；诊断上线后尚未收到真实 `events/subscribe`，需要实际平台重试后才可核对回调验证及持久化，不能宣称订阅/唤醒闭环完成。
+
+## 13:21 实际订阅与连接修复
+
+北京时间 2026-10-01 13:21:48 的实际 `events/subscribe` 到达应用和公开 origin。参数成功、DNS 成功（11 ms、两个地址），connect 在 258 ms 报 ETIMEDOUT；RPC 返回 `-32015 / reason: timeout`，未进入 persistence。13:21:50 收到 unsubscribe，数据库没有订阅。Node 20.20.2 的地址尝试预算为 250 ms，独立受控实验复现首地址超时、后续无路由的 AggregateError，热运行 264 ms；历史记录缺少地址族和子错误，不把模拟原因等同于那一次实际目标根因。
+
+主机 IPv4 默认路由和 OUTPUT 放行，IPv6 没有公网地址或默认路由。以应用 UID 检查的两个已知 HTTPS 对照目标完成 TLS；这不等同于未知真实回调可达。服务器不存在失败订阅的 URL 留存，未猜测地址或复制浏览器 Cookie。Fushi 在 13:45 被发现改为 admin，此后站长恢复为普通账号，13:51 只读核验有效 grant 为 1；没有自动改权限或重新授权。
+
+连接修复保留首个未完成 TCP 尝试，在 250 ms 启动下一候选；最多同时两条，最多八个全部已校验的公网地址，获胜后仅在一个 socket 上进行原域名 TLS 和签名 HTTP 请求。10 秒总预算、正文大小、SSRF/DNS 钉扎/重定向/TLS/签名检查保持不变。新增回归覆盖 350 ms IPv4 在无路由 IPv6 后仍能成功、快速失败立即切换、候选上限与并发上限、取消/超时清理、TLS 原域名和证书检查、聚合子错误及日志白名单。原有共享模块的默认策略保持不变。
+
+发布前国内以应用 UID 验证新连接模块：developers.openai.com 完成 TCP/TLS 并返回 HTTP 403（对照站 HTTP 响应，不是回调状态）；tsukuyomi-space.com 第二 IPv4 候选获胜、首次候选取消，完成 TLS 并返回 HTTP 200。这里只确认真实 HTTPS 传输兼容性，没有真实订阅、事件接收或 dot 回复验收。对照探测主动取消未读正文，其后正文 ECONNRESET 不表示订阅失败。
+
+本轮 `check:fushi` 和 `git diff --check` 通过，`test:fushi` 为 88 项通过，`test:api` 为 246 项 TAP 及留言审核脚本通过，部署安全测试为 20 项通过。角色恢复后实际原生插件通知读取成功；没有改 OAuth、权限或凭证。没有可调用的平台事件任务创建工具，旧失败没有回调材料，不能用假订阅、站内数据库测试记录或侧车控制台代替真实 dot 唤醒验收。

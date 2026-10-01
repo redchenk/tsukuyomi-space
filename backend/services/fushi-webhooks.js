@@ -57,7 +57,7 @@ async function postSigned({ id, url, secret, previousSecret }, eventId, payload,
         // DNS resolution itself is not cancellable in Node's lookup API. Bound
         // the wait as well as the socket; a late connection still sees the aborted signal.
         response = await bounded(fetch(validateCallback(url), {
-                method: 'POST', redirect: 'error', signal, timeoutMs,
+                method: 'POST', redirect: 'error', signal, timeoutMs, connectStrategy: 'race-pinned',
                 onTrace: trace => { stage = trace.stage; diagnostics.emit('network_stage', { ...trace, subscription_id: id, event_id: eventId }); },
                 headers: { 'Content-Type': 'application/json', 'webhook-id': eventId,
                     'webhook-timestamp': timestamp, 'webhook-signature': signatures.join(' '), 'X-MCP-Subscription-Id': id }, body

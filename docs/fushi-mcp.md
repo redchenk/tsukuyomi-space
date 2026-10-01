@@ -147,6 +147,8 @@ ChatGPT 首次连接表单已实际发现上述 OAuth 端点、三个 scope、`n
 
 回调验证总预算仍为 10 秒，包含 DNS、连接、TLS、响应头和完整验证正文；正文最多 4096 字节。socket 超时为 `TimeoutError / ETIMEDOUT`，收到响应头后超时也会使正文读取失败，取消流不额外阻塞接口。HTTPS、每次连接的公有地址校验、DNS 钉扎、禁止重定向、TLS 验证和 Standard Webhooks 签名保持开启。[当前官方 MCP Events 规范](https://developers.openai.com/plugins/build/mcp-events) 核对日期：2026-10-01；使用 `2026-07-28`、平台提供的 `delivery`、签名 challenge 回声和 `id/refreshBefore/cursor/truncated` 返回格式。
 
+Fushi 回调单独使用保留候选连接的 TCP 竞速：250 ms 后启动下一地址，保留较慢的首次尝试，连接成功后关闭其他候选。每次 DNS 的所有记录先做公网地址校验；最多尝试 8 个已校验地址、同时最多 2 条 TCP 连接。TLS 在获胜的固定地址 socket 上继续使用原域名和证书验证，每次只发送一次 HTTP 请求正文。全流程预算仍为 10 秒，其他 OSS/TTS 等调用继续使用原连接策略。逐地址日志只增加 `address_family`、`attempt`、耗时与白名单 `error_codes`，不记录目标地址或任意错误对象。真实回调验证失败前不会保存其 URL 或密钥，旧失败记录无法用于重放；订阅目标只能来自平台。
+
 `delivery_completed` 记录事件/订阅 ID、尝试次数、状态、HTTP 状态和下次重试 UTC 时间。`accepted` 仅代表平台接收；`reply_transaction` 在事务返回后记录实际提交/回滚、幂等命中来源和回复 ID，`reply_lookup` 单独记录幂等查询命中/未命中。后台投递清除网页请求上下文，不把旧请求 ID 错配到新投递。
 
 所有诊断经字段及枚举白名单输出到现有应用日志，不打印任意 Error、请求或响应对象，不记录令牌、Cookie、签名密钥、challenge、完整回调 URL、正文或原始请求体。凭证/权限不随诊断部署改变。无新增依赖或迁移；使用既有轻量发布工具上线/回滚代码，保留 SQLite 数据与当前授权，禁止整库覆盖。真实平台重试应在诊断版本上线后执行，按请求 ID 排查，不能重新回复已经处理的历史互动。
