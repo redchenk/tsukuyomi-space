@@ -1,7 +1,8 @@
 const crypto = require('node:crypto');
-const { fetchPinnedUrl, timeoutError, classifyError } = require('./outbound-url-security');
+const { timeoutError, classifyError } = require('./outbound-url-security');
 const diagnostics = require('./fushi-diagnostics');
 const { readConfig } = require('./fushi-config');
+const { fetchFushiUrl } = require('./fushi-egress');
 function signingKey(secret) {
     if (typeof secret !== 'string' || !/^whsec_[A-Za-z0-9+/]+={0,2}$/.test(secret)) throw new Error('Invalid signing secret');
     const key = Buffer.from(secret.slice(6), 'base64');
@@ -34,7 +35,7 @@ function validateCallback(value) {
     return url.toString();
 }
 async function postSigned({ id, url, secret, previousSecret }, eventId, payload, {
-    fetch = fetchPinnedUrl, now = Date.now(), verification = false, timeoutMs = 10000
+    fetch = fetchFushiUrl, now = Date.now(), verification = false, timeoutMs = 10000
 } = {}) {
     const body = JSON.stringify(payload);
     if (Buffer.byteLength(body) > 262144) throw new Error('Payload too large');

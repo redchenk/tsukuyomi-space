@@ -53,7 +53,17 @@ function addressRange(value = '') {
 }
 const isPrivateAddress = value => addressRange(value) !== 'unicast';
 
-async function resolvePublicUrl(value, { protocols = ['https:'], allowedHostnames = [] } = {}) {
+function validatePublicRecords(records) {
+    if (!Array.isArray(records) || !records.length) throw rejectedUrl('没有可用地址', 'dns_empty');
+    const ranges = [...new Set(records.map(record => addressRange(record?.address)))];
+    if (records.some(record => ![4, 6].includes(record?.family) || net.isIP(record.address) !== record.family)
+        || ranges.some(range => range !== 'unicast')) {
+        throw rejectedUrl('禁止访问本机、内网或保留地址', 'dns_non_public', ranges.slice(0, 8));
+    }
+    return records.map(({ address, family }) => ({ address, family }));
+}
+
+async function resolvePublicUrl(value, { protocols = ['https:'], allowedHostnames = [], lookup } = {}) {
     let url;
     try {
         url = new URL(String(value || ''));
@@ -66,13 +76,8 @@ async function resolvePublicUrl(value, { protocols = ['https:'], allowedHostname
 
     const records = net.isIP(hostname)
         ? [{ address: hostname, family: net.isIP(hostname) }]
-        : await dns.lookup(hostname, { all: true, verbatim: true });
-    if (!records.length) throw rejectedUrl('没有可用地址', 'dns_empty');
-    const ranges = [...new Set(records.map(record => addressRange(record.address)))];
-    if (ranges.some(range => range !== 'unicast')) {
-        throw rejectedUrl('禁止访问本机、内网或保留地址', 'dns_non_public', ranges.slice(0, 8));
-    }
-    return { url, records };
+        : await (lookup || ((...args) => dns.lookup(...args)))(hostname, { all: true, verbatim: true });
+    return { url, records: validatePublicRecords(records) };
 }
 
 function pinnedLookup(records = []) {
@@ -94,7 +99,9 @@ async function fetchPinnedUrl(value, {
     protocols = ['https:'],
     allowedHostnames = [],
     connectStrategy = 'default',
-    onTrace
+    onTrace,
+    lookup,
+    agentFactory
 } = {}) {
     const dnsStarted = performance.now();
     observe(onTrace, { stage: 'dns', outcome: 'started' });
@@ -102,7 +109,7 @@ async function fetchPinnedUrl(value, {
     try {
         if (signal?.aborted) throw signal.reason;
         resolved = await Promise.race([
-            resolvePublicUrl(value, { protocols, allowedHostnames }),
+            resolvePublicUrl(value, { protocols, allowedHostnames, lookup }),
             ...(signal ? [new Promise((_, reject) => {
                 onAbort = () => reject(signal.reason);
                 signal.addEventListener('abort', onAbort, { once: true });
@@ -117,7 +124,7 @@ async function fetchPinnedUrl(value, {
     const { url, records } = resolved;
     const transport = url.protocol === 'https:' ? https : http;
     if (!['default', 'race-pinned'].includes(connectStrategy) || (connectStrategy === 'race-pinned' && url.protocol !== 'https:')) throw rejectedUrl('Invalid connection strategy');
-    const agent = connectStrategy === 'race-pinned' ? createPinnedAgent(records, { signal, timeoutMs,
+    const agent = agentFactory ? agentFactory(records, url) : connectStrategy === 'race-pinned' ? createPinnedAgent(records, { signal, timeoutMs,
         onAttempt: ({ error, ...attempt }) => observe(onTrace, { stage: 'connect', ...attempt, ...(error ? classifyError(error) : {}) }) }) : null;
     const streaming = body instanceof Readable;
     const payload = streaming || body === undefined || body === null
@@ -213,6 +220,7 @@ module.exports = {
     isPrivateAddress,
     pinnedLookup,
     resolvePublicUrl,
+    validatePublicRecords,
     timeoutError,
     classifyError
 };

@@ -15,6 +15,7 @@ function readConfig() {
 }
 function validateConfig(value = readConfig()) {
     if (!value.enabled) return value;
+    require('./fushi-egress').readEgressConfig();
     const origin = new URL(value.origin);
     const redirect = value.clientMode === 'predefined' ? new URL(value.redirectUri) : null;
     if (origin.protocol !== 'https:' || origin.origin !== value.origin || origin.username || origin.password
