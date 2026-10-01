@@ -31,7 +31,7 @@
 
 1. 按既有轻量发布流程发布应用代码，保留 SQLite、Live2D、音乐和上传目录；不用服务器 npm install 或编译。
 2. 海外使用已有 `/usr/bin/python3`，仅复制已校验的 worker（不安装运行时或依赖），文件由 root 持有且普通账号不可写。
-3. 新建无密码普通账号。专用 `AuthorizedKeysFile` 由 root 控制；公钥选项为 `from="<国内公网IP>",restrict`。配置专用 `Match User fushi-egress`，固定 `ForceCommand /usr/bin/python3 -I -u <worker路径>`，禁用密码、键盘交互、TTY、agent、X11、TCP/Unix socket 转发、用户 rc 和 tunnel。不改变现有 root/管理用户规则。先 `sshd -t`，再 reload。
+3. 新建无密码普通账号。专用 `AuthorizedKeysFile` 由 root 控制且为 `0644`（公钥不是秘密，sshd 需以该用户身份读取）；公钥选项为 `from="<国内公网IP>",restrict`。配置专用 `Match User fushi-egress`，固定 `ForceCommand /usr/bin/python3 -I -u <worker路径>`，禁用密码、键盘交互、TTY、agent、X11、TCP/Unix socket 转发、用户 rc 和 tunnel。不改变现有 root/管理用户规则。专用 Match 的 Include 放在主配置所有全局指令之后；不要在文件顶部 Include 的目录里放入会改变后续解析上下文的 Match。先 `sshd -t` 并比较原 root 有效配置，再 reload。
 4. 海外专用用户 slice 限制内存 128 MiB、CPU 25%、Tasks 16；不是修改全机或已有网站上限。国内继续原 heap 192 MiB / API RSS 384 MiB，并限制最多两个短时 SSH 子进程。
 5. 先以 API 运行身份完成无授权、无 challenge 的真实 HTTPS 根路径检查，核对证书、清理及上限；随后仅将 Fushi 模式切为 SSH，OAuth 的 issuer、resource、用户绑定、scope 和现有授权不变。
 6. 让平台提供真实订阅，确认参数→回调→持久化全部成功，再用新的真实互动验证 signed webhook→dot→一次站内幂等回复→查询。历史 1122 已由 1123 回答，禁止重发。接收与助手完成处理分开验收。
@@ -43,3 +43,7 @@
 `npm run check:fushi`、`npm run test:fushi` 覆盖配置约束、主机密钥/凭证文件保护、私网与混合 DNS、固定地址、原 TLS 主机校验、SSH 退出与取消清理、控制帧大小/重复字段、错误端口和超量字节。修改共享 URL 安全模块后另运行 `npm run test:api`。临时真实出站探测使用既有 SSH 授权，不创建生产账号/凭证、不发帖、不创建事件订阅；真实平台闭环须单独验收。
 
 2026-10-01 验证结果：语法检查通过；99 项 Node Fushi 测试、10 项 Python 转发测试通过；246 项 API 测试及审核脚本通过。临时真实探测在海外使用已有 `nobody` 运行身份，不安装账号或密钥；通过完整控制帧和 TLS 字节通道，以原域名完成证书验证，得到 `404 / tls_verified: true`，总耗时 5122 ms。未发送真实签名或 challenge。生产模式仍为 direct、订阅为零，因此不宣称 dot 唤醒或回复链路已完成。
+
+## 生产启用与真实验收
+
+站长批准后已启用 `FUSHI_EGRESS_MODE=ssh`。私钥在国内服务器直接生成，未导出；客户端文件位于 `/etc/tsukuyomi-fushi-egress-client/`，原环境目录仍为 `0700`。API 身份 TLS 检查通过；海外普通账号 UID 998 的 worker 实际处于资源受限的 user slice。真实平台 challenge 成功，订阅已保存，首次签名事件投递后 dot 自动读取上下文、发布一次普通回复并查询确认。详细 UTC/北京时间、稳定 ID、去重证据与测试结果见 [2026-10-01 真实联通验收](fushi-mcp-verification-20261001.md)。
