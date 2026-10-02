@@ -48,6 +48,13 @@ function createApp() {
     // Correlate even requests rejected by CORS, Origin, auth, rate limits or JSON parsing.
     app.use(require('./services/fushi-diagnostics').middleware);
     app.use(securityHeaders);
+    app.use('/fushi/astrbot/callback', (req, res, next) => {
+        res.set('Cache-Control', 'private, no-store');
+        res.set('Surrogate-Control', 'no-store');
+        res.set('Referrer-Policy', 'no-referrer');
+        res.set('X-Robots-Tag', 'noindex, nofollow');
+        next();
+    });
     app.use((req, res, next) => {
         cors({
             origin(origin, callback) {

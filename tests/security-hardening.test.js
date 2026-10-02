@@ -356,6 +356,20 @@ describe('stage delivery hardening', () => {
         assert.match(apiBlock, /private, no-store/);
     });
 
+    it('retains every site security header while preventing callback URL retention', () => {
+        const original = sourceFile('deploy/security-headers.inc').trim();
+        const callback = sourceFile('deploy/fushi-callback-security-headers.inc')
+            .split('\n').filter(line => !line.startsWith('#')).join('\n').trim();
+        assert.equal(callback,original.replace('Referrer-Policy strict-origin-when-cross-origin','Referrer-Policy no-referrer'));
+        const block = locationBlocks(sourceFile('deploy/nginx.conf'))
+            .find(value => value.includes('location = /fushi/astrbot/callback'));
+        assert.match(block,/try_files \/dist\/frontend\/index\.html =404/);
+        assert.match(block,/access_log off/);
+        assert.match(block,/error_log \/dev\/null crit/);
+        assert.match(block,/private, no-store/);
+        assert.match(block,/fushi-callback-security-headers\.inc/);
+    });
+
     it('bounds the overseas Wiki translation and crawler rendering surface', () => {
         const nginx = sourceFile('deploy/overseas-openresty.conf');
         const service = sourceFile('deploy/overseas-translation-service.py');

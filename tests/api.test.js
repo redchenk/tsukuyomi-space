@@ -1875,6 +1875,25 @@ describe('social API', () => {
 });
 
 describe('stats API', () => {
+    it('strips authorization queries, fragments and URL credentials from persistent visit analytics', async () => {
+        for (const [source,body,referer] of [
+            ['body',{path:'/fushi/astrbot/callback?code=fixture-secret&state=one-time#private'},''],
+            ['referer',{},'https://user:password@site.example.test/fushi/astrbot/callback?code=fixture-secret&state=one-time#private']
+        ]) {
+            const agent = `oauth-analytics-fixture-${source}`;
+            const response = await request('/api/stats/view', {
+                method:'POST',headers:{...jsonHeaders(),'user-agent':agent,
+                    cookie:`tsukuyomi_visitor=analytics-fixture-visitor-${source}`,referer},
+                body:JSON.stringify(body)
+            });
+            assert.equal(response.response.status,200);
+            const row = db.prepare('SELECT event_data,page_path FROM stats WHERE user_agent=?').get(agent);
+            assert.ok(row);
+            assert.equal(row.page_path,'/fushi/astrbot/callback');
+            assert.equal(JSON.parse(row.event_data).path,'/fushi/astrbot/callback');
+            assert.doesNotMatch(JSON.stringify(row),/fixture-secret|one-time|private|password/);
+        }
+    });
     it('counts plaza top-level messages without counting replies', async () => {
         const before = await request('/api/stats');
         assert.equal(before.response.status, 200);

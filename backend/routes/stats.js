@@ -104,6 +104,16 @@ function setLiveStatsHeaders(res) {
     });
 }
 
+function publicViewPath(value) {
+    if (typeof value !== 'string' || value.length > 4096) return '';
+    try {
+        const url = new URL(value, 'https://stats.invalid');
+        return ['http:', 'https:'].includes(url.protocol) ? url.pathname.slice(0, 2048) : '';
+    } catch (_) {
+        return '';
+    }
+}
+
 function sendStats(req, res) {
     try {
         setLiveStatsHeaders(res);
@@ -123,7 +133,8 @@ router.get('/live/:nonce', sendStats);
 router.post('/view', optionalAuth, (req, res) => {
     try {
         const identity = visitorIdentity(req, res);
-        const path = req.body?.path || req.headers.referer || '';
+        // OAuth queries and URL credentials must never enter persistent analytics.
+        const path = publicViewPath(req.body?.path || req.headers.referer || '');
         const eventData = JSON.stringify({
             path,
             userAgent: identity.userAgent,

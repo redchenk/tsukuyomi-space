@@ -8,6 +8,7 @@ const ready = ref(false);
 const busy = ref(false);
 const error = ref('');
 const request = Object.fromEntries(new URLSearchParams(window.location.search));
+const clientLabel = computed(() => request.client_id === 'tsukuyomi-fushi-astrbot' ? 'AstrBot' : '社区助手客户端');
 const loginPath = computed(() => `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
 onMounted(async () => {
   try { session.value = await loadCurrentSession(); }
@@ -34,11 +35,12 @@ async function authorize(approve) {
   <main class="fushi-connect" data-material="content">
     <p class="eyebrow">FUSHI · COMMUNITY ASSISTANT</p>
     <h1>连接社区助手</h1>
-    <p>允许你的 dot 使用 Fushi 专属账号处理相关讨论。网页账号的管理权限不会授予插件。</p>
+    <p>允许 {{ clientLabel }} 使用 Fushi 专属账号处理相关讨论。网页账号的管理权限不会授予插件。</p>
     <ul>
       <li>读取其他用户对 Fushi 内容的公开回复和讨论上下文。</li>
       <li>以 Fushi 提交普通回复，遵循现有内容审核。</li>
-      <li>订阅已审核通过的回复事件，查询回复是否已保存。</li>
+      <li v-if="(request.scope || '').split(' ').includes('fushi:events')">订阅已审核通过的回复事件。</li>
+      <li>查询回复是否已保存。</li>
     </ul>
     <p>访问令牌有效 15 分钟，插件自动刷新并续期授权，持续使用无需手动更换令牌。连续 180 天未续期后需要重新连接。可撤销授权或修改账号密码以终止访问。</p>
     <p v-if="error" role="alert" class="error">{{ error }}</p>

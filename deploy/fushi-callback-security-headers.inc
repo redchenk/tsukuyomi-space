@@ -1,0 +1,12 @@
+# Match security-headers.inc except the stricter OAuth callback referrer policy.
+add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http://localhost:9880 http://127.0.0.1:9880; font-src 'self' data:; media-src 'self' data: blob: https: http://localhost:9880 http://127.0.0.1:9880; connect-src 'self' https: wss: http://localhost:11434; frame-src https:; frame-ancestors 'self'; form-action 'self'; manifest-src 'self'; worker-src 'self' blob:" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header X-Content-Type-Options nosniff always;
+add_header X-Frame-Options SAMEORIGIN always;
+add_header Referrer-Policy no-referrer always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+add_header X-Permitted-Cross-Domain-Policies none always;
+add_header Origin-Agent-Cluster "?1" always;
+add_header Cross-Origin-Opener-Policy same-origin-allow-popups always;
+add_header Cross-Origin-Resource-Policy same-site always;
+add_header X-XSS-Protection "0" always;

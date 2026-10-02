@@ -98,6 +98,7 @@ function dailyViewMarker() {
 
 function recordDailyView() {
   if (typeof window === 'undefined') return Promise.resolve(null);
+  if (route.path === '/fushi/astrbot/callback') return Promise.resolve(null);
   const marker = dailyViewMarker();
   if (localStorage.getItem(VIEW_RECORDED_KEY) === marker) return Promise.resolve(null);
   if (viewRecordRequests.has(marker)) return viewRecordRequests.get(marker);
@@ -105,7 +106,7 @@ function recordDailyView() {
   const request = authFetch('/api/stats/view', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: route.fullPath || '/' }),
+    body: JSON.stringify({ path: route.path || '/' }),
     keepalive: true
   })
     .then(async (response) => {

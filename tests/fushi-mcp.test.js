@@ -127,6 +127,7 @@ beforeEach(() => {
     process.env.FUSHI_ENABLED = 'true'; process.env.FUSHI_USER_ID = fushi.id;
     process.env.FUSHI_OAUTH_CLIENT_MODE='predefined'; process.env.FUSHI_OAUTH_CLIENT_ID='fixture-public-client';
     process.env.FUSHI_OAUTH_REDIRECT_URI='https://client.example.test/return';
+    delete process.env.FUSHI_OAUTH_EXTRA_CLIENTS_JSON;
     clients.clearCache(); changePasswordDuringMetadata=false;
     db.prepare("UPDATE users SET role='user', password_hash=? WHERE id=?").run(fushi.password_hash,fushi.id);
     for (const table of ['fushi_deliveries','fushi_subscriptions','fushi_oauth_codes','fushi_oauth_tokens','fushi_grants','fushi_reply_submissions','fushi_events','fushi_history','notifications','messages']) db.prepare(`DELETE FROM ${table}`).run();
@@ -766,4 +767,63 @@ test('CIMD browser consent works without manually configuring redirect and reche
     const stale=await call('/api/fushi/oauth/authorize',{method:'POST',body:params,headers});
     assert.equal(stale.status,403);
     assert.equal(auth.authenticate(exchanged.data.access_token),null);
+});
+
+function astrbotGrant() {
+    process.env.FUSHI_OAUTH_EXTRA_CLIENTS_JSON = JSON.stringify([{ client_id:'tsukuyomi-fushi-astrbot', redirect_uris:['https://site.example.test/fushi/astrbot/callback'] }]);
+    const params = requestParams({ client_id:'tsukuyomi-fushi-astrbot', redirect_uri:'https://site.example.test/fushi/astrbot/callback', scope:'fushi:read fushi:reply' });
+    const code = new URL(auth.issueCode(fushi.id,params).redirect).searchParams.get('code');
+    const exchange = { grant_type:'authorization_code', client_id:params.client_id, redirect_uri:params.redirect_uri, resource:params.resource, code, code_verifier:'v'.repeat(48) };
+    return { tokens:auth.exchange(exchange), exchange, params };
+}
+test('AstrBot PKCE grants coexist with original ChatGPT client and preserve its access', async () => {
+    const secondary = astrbotGrant();
+    assert.ok(auth.authenticate(bearer));
+    assert.equal(auth.authenticate(secondary.tokens.access_token).grant.client_id,'tsukuyomi-fushi-astrbot');
+    assert.equal(auth.authenticate(secondary.tokens.access_token,'fushi:events'),null);
+    assert.equal(await clients.verifyClient(secondary.params),null);
+    const rotated = auth.exchange({ grant_type:'refresh_token', client_id:secondary.params.client_id, resource:secondary.params.resource, refresh_token:secondary.tokens.refresh_token });
+    assert.ok(auth.authenticate(rotated.access_token));
+    assert.ok(auth.authenticate(bearer));
+    delete process.env.FUSHI_OAUTH_EXTRA_CLIENTS_JSON;
+    assert.equal(auth.authenticate(rotated.access_token),null);
+    assert.ok(auth.authenticate(bearer));
+});
+test('clients cannot exchange, refresh or revoke each other\'s credentials', () => {
+    const secondary = astrbotGrant();
+    assert.throws(()=>auth.exchange({...secondary.exchange,client_id:process.env.FUSHI_OAUTH_CLIENT_ID}),/invalid_grant/);
+    assert.ok(auth.authenticate(secondary.tokens.access_token));
+    assert.throws(()=>auth.exchange({grant_type:'refresh_token',client_id:process.env.FUSHI_OAUTH_CLIENT_ID,resource:secondary.params.resource,refresh_token:secondary.tokens.refresh_token}),/invalid_grant/);
+    auth.revokeToken(secondary.tokens.refresh_token,process.env.FUSHI_OAUTH_CLIENT_ID);
+    assert.ok(auth.authenticate(secondary.tokens.access_token));
+    auth.revokeToken(secondary.tokens.refresh_token,secondary.params.client_id);
+    assert.equal(auth.authenticate(secondary.tokens.access_token),null);
+    assert.ok(auth.authenticate(bearer));
+});
+test('additional clients cannot retain an out-of-policy scope in a stored grant', () => {
+    const secondary = astrbotGrant();
+    const context = auth.authenticate(secondary.tokens.access_token);
+    db.prepare('UPDATE fushi_grants SET scopes=? WHERE id=?')
+        .run('fushi:read fushi:reply fushi:events',context.grant.id);
+    assert.equal(auth.authenticate(secondary.tokens.access_token),null);
+    assert.throws(()=>auth.exchange({grant_type:'refresh_token',client_id:secondary.params.client_id,
+        resource:secondary.params.resource,refresh_token:secondary.tokens.refresh_token}),/invalid_grant/);
+    assert.ok(auth.authenticate(bearer));
+});
+test('secondary registration keeps exact redirects and the dedicated ordinary account boundary', () => {
+    const secondary = astrbotGrant();
+    assert.throws(()=>auth.issueCode(fushi.id,{...secondary.params,redirect_uri:secondary.params.redirect_uri+'/evil'}),/invalid_client/);
+    assert.throws(()=>auth.issueCode(actor.id,secondary.params),/access_denied/);
+    assert.throws(()=>auth.issueCode(fushi.id,{...secondary.params,scope:'admin'}),/invalid_scope/);
+    assert.throws(()=>auth.issueCode(fushi.id,{...secondary.params,scope:'fushi:events'}),/invalid_scope/);
+    assert.throws(()=>auth.issueCode(fushi.id,{...secondary.params,scope:'fushi:read fushi:reply fushi:events'}),/invalid_scope/);
+    for (const invalid of [
+        [{client_id:process.env.FUSHI_OAUTH_CLIENT_ID,redirect_uris:['https://bot.example.test/callback']}],
+        [{client_id:'bot',redirect_uris:['http://localhost/callback']}],
+        [{client_id:'bot',redirect_uris:['https://bot.example.test/callback#fragment']}],
+        [{client_id:'bot',redirect_uris:['https://user:password@bot.example.test/callback']}]
+    ]) {
+        process.env.FUSHI_OAUTH_EXTRA_CLIENTS_JSON=JSON.stringify(invalid);
+        assert.throws(()=>require('../backend/services/fushi-config').clients(),/Invalid Fushi/);
+    }
 });

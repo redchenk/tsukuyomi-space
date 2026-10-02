@@ -74,6 +74,12 @@ export const routes = [
     }
   },
   {
+    path: '/fushi/astrbot/callback',
+    name: 'fushi-astrbot-callback',
+    component: () => import('../pages/FushiAstrBotCallbackPage.vue'),
+    meta: { title: '完成 AstrBot 授权', noindex: true }
+  },
+  {
     path: '/fushi/connect',
     name: 'fushi-connect',
     component: () => import('../pages/FushiConnectPage.vue'),

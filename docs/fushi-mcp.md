@@ -10,6 +10,8 @@
 
 ## 接口
 
+AstrBot v1.2.0 的轮询与人工回复接入、独立 OAuth client 登记及网站自有回跳页见 [AstrBot 接入说明](astrbot-fushi-integration.md)。本实现新增额外 public clients，并保留原 ChatGPT 客户端；各客户端不能交换、刷新或撤销其他客户端的令牌。
+
 MCP URL：`https://yachiyo.hk/api/fushi/mcp`，只接受 POST。鉴权为专属 OAuth Bearer，拒绝浏览器 Cookie、网站会话 JWT 和非可信 Origin。现有 `/api` 写入保护继续执行；授权确认通过现有网站登录及 Origin/CSRF 保护完成，机器端 OAuth 换码使用 PKCE，不能使用 Cookie。
 
 | 方法 | 作用 |

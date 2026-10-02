@@ -51,7 +51,8 @@ export function installRouteLinks({ router, navigate, prefetch, root = document 
 
 export function routeViewKey(route) {
   // These pages own their filters. Query/anchor changes retain unsaved forms.
-  if (route.name === 'wiki' || route.name === 'plaza') return route.path;
+  // The OAuth callback clears its query while retaining the one-use code in memory.
+  if (['wiki', 'plaza', 'fushi-astrbot-callback'].includes(route.name)) return route.path;
   return route.fullPath.split('#')[0];
 }
 

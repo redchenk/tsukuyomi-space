@@ -1,12 +1,13 @@
 const { fetchPinnedUrl } = require('./outbound-url-security');
-const { readConfig } = require('./fushi-config');
+const { readConfig, clientFor } = require('./fushi-config');
 
 let cached = null;
 function invalid() { const error = new Error('invalid_client'); error.code = 'invalid_client'; throw error; }
 async function verifyClient(params, { fetch = fetchPinnedUrl, now = Date.now() } = {}) {
     const cfg = readConfig();
-    if (params.client_id !== cfg.clientId) invalid();
-    if (cfg.clientMode === 'predefined') return null;
+    const client = clientFor(params.client_id);
+    if (!client) invalid();
+    if (client.clientMode === 'predefined') return null;
     // Only the configured OpenAI publisher may supply client metadata. Request
     // parameters cannot turn this endpoint into an arbitrary JSON fetch proxy.
     if (!/^https:\/\/chatgpt\.com\/oauth\/(?:[A-Za-z0-9_-]{1,128}\/)?client\.json$/.test(cfg.clientId)) invalid();
