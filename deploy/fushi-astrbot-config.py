@@ -90,6 +90,13 @@ def callback_location(include, frontend=None):
 
 
 def plans(site):
+    if site == 'domestic-cdn-origin':
+        header = Path('/opt/1panel/www/sites/yachiyo.hk/proxy/_tsukuyomi-fushi-callback-security-headers.inc')
+        target = Path('/opt/1panel/www/sites/origin.yachiyo.hk/proxy/04-astrbot-fushi-callback.conf')
+        require(header.is_file() and not header.is_symlink() and 'Referrer-Policy no-referrer' in header.read_text(),
+                'Install the domestic callback header protection first')
+        require(not target.exists(), 'CDN origin callback config already exists')
+        return [(target, callback_location('/www/sites/yachiyo.hk/proxy/' + header.name))]
     if site == 'domestic':
         env = Path('/etc/tsukuyomi-space/tsukuyomi-space.env')
         require(env.stat().st_uid == 0 and env.stat().st_mode & 0o077 == 0, 'Environment must be root-only')
@@ -160,7 +167,7 @@ def prepare(folder, site):
 
 
 def validate_and_reload(site):
-    container = '1Panel-openresty-h9Tv' if site == 'domestic' else '1Panel-openresty-HX9X'
+    container = '1Panel-openresty-h9Tv' if site.startswith('domestic') else '1Panel-openresty-HX9X'
     public = ['docker', 'exec', container, OPENRESTY]
     commands = ([['nginx', '-t']] if site == 'domestic' else []) + [[*public, '-t']]
     # Validate all configs before any live process reload.
@@ -212,7 +219,7 @@ def change(folder, state, rollback=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=('prepare', 'activate', 'rollback'))
-    parser.add_argument('--site', choices=('domestic', 'overseas'))
+    parser.add_argument('--site', choices=('domestic', 'domestic-cdn-origin', 'overseas'))
     parser.add_argument('--state', required=True)
     args = parser.parse_args()
     require(os.geteuid() == 0, 'Run as root on the target host')

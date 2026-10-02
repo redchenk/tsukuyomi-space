@@ -51,7 +51,7 @@ git diff --check
 
 ## 本地验证
 
-2026-10-02 补强后验证：插件 33 项（包括真实网站源码 HTTP/SQLite 联调）；网站 Fushi 103 项 Node + 10 项 Python；API 回归 248 项；前端 283 项；代理配置与回滚 Python 8 项；Vite 构建。浏览器实际核验 390px / 1280px 回跳页、复制、清除 query 后保留指令、刷新失效、伪造 issuer、取消与重复参数拒绝。浏览器验收使用 CUA，未在本轮运行 Playwright 测试命令；仓库保留相应自动化用例供 CI 使用。联调使用临时数据库及虚构账号，验证授权→通知→线程→一次站内回复→相同结果→重载→独立退出，确认原客户端仍有效。未向生产发帖或执行生产授权。
+2026-10-02 补强后验证：插件 33 项（包括真实网站源码 HTTP/SQLite 联调）；网站 Fushi 103 项 Node + 10 项 Python；API 回归 248 项；前端 283 项；代理配置与回滚 Python 9 项；Vite 构建。浏览器实际核验 390px / 1280px 回跳页、复制、清除 query 后保留指令、刷新失效、伪造 issuer、取消与重复参数拒绝。浏览器验收使用 CUA，未在本轮运行 Playwright 测试命令；仓库保留相应自动化用例供 CI 使用。联调使用临时数据库及虚构账号，验证授权→通知→线程→一次站内回复→相同结果→重载→独立退出，确认原客户端仍有效。未向生产发帖或执行生产授权。
 
 插件真实网站联调可复现：
 
@@ -70,6 +70,7 @@ python -m unittest discover -s astrbot_plugin_yachiyo_feed/tests -v
 生产有两层国内代理，不能直接覆盖自定义站点配置。`deploy/fushi-astrbot-config.py` 提供本次已核验拓扑的定点变更：
 
 - 国内：内部 Nginx 的 Fushi snippet、新的 1Panel `04-astrbot-fushi-callback.conf`、各层从原安全头派生的回跳专用 include，以及合并原受限 env。原 CSP、TLS、其他路径日志和缓存保持不变；仅回跳精确路径禁止访问/错误日志和共享缓存。
+- 国内 CDN 回源：控制台核验实际回源使用 `origin.yachiyo.hk`。国内配置激活后，另以 `--site domestic-cdn-origin` 准备和激活该主机的精确 callback 路由，复用已保护的专用安全头；只 reload 国内公开代理，不重启 API。
 - 海外：在已有 HTTPS server 中加入精确回跳静态路由，保留其他服务器内容及代理。海外不是另一个可授权 redirect URI，AstrBot 授权仍以 `https://yachiyo.hk` 为 issuer。
 - 前后端访问统计只保留 pathname，回跳页不发送页面访问统计，防止一次性码进入持久统计。
 
@@ -81,11 +82,11 @@ python3 /path/to/staged/fushi-astrbot-config.py prepare --site domestic --state 
 python3 /var/backups/tsukuyomi-space/releases/<release>-domestic-config/config.py activate --state /var/backups/tsukuyomi-space/releases/<release>-domestic-config
 ```
 
-备份目录 0700、文件 0600，含原 env，只保留在对应服务器，禁止上传到日志或仓库。激活前比对配置哈希及权限，校验两层 Nginx 后才 reload，最后 reload PM2；失败会尝试原配置恢复。回滚先恢复配置，再使用对应代码发布状态回滚；已有代码回滚不会自动撤回外部代理或 env：
+备份目录 0700、文件 0600，含原 env，只保留在对应服务器，禁止上传到日志或仓库。激活前比对配置哈希及权限，校验两层 Nginx 后才 reload，最后 reload PM2；失败会尝试原配置恢复。回滚先恢复独立的 `domestic-cdn-origin` 配置，再恢复国内主配置（先删除引用、后删除其安全头），海外使用自己的配置目录；最后使用对应代码发布状态回滚；已有代码回滚不会自动撤回外部代理或 env：
 
 ```bash
 python3 /var/backups/tsukuyomi-space/releases/<release>-domestic-config/config.py rollback --state /var/backups/tsukuyomi-space/releases/<release>-domestic-config
 python3 /var/backups/tsukuyomi-space/releases/<release>-domestic/release.py rollback --state /var/backups/tsukuyomi-space/releases/<release>-domestic
 ```
 
-上线核验源站及公网回跳响应的 no-store/no-referrer、授权/回跳关键 chunk、未授权 MCP 401、原 grant 可用、Fushi 仍是普通账号、资源哈希不变。CDN 若另有 URL 查询参数日志，应在 CDN 端对该路径单独关闭或脱敏；代理配置无法替代 CDN 控制台的日志设置，不能据源站保护推断 CDN 已完成配置。未验证 CDN 日志设置时不要声称全链路不留码。一次性码仍受 90 秒、PKCE、随机 state 和 issuer 保护。
+上线核验内部源站、公开域名、实际 CDN 回源主机及公网回跳响应的 no-store/no-referrer、授权/回跳关键 chunk、未授权 MCP 401、原 grant 可用、Fushi 仍是普通账号、资源哈希不变。CDN 若另有 URL 查询参数日志，应在 CDN 端对该路径单独关闭或脱敏；代理配置无法替代 CDN 控制台的日志设置，不能据源站保护推断 CDN 已完成配置。未验证 CDN 日志设置时不要声称全链路不留码。一次性码仍受 90 秒、PKCE、随机 state 和 issuer 保护。

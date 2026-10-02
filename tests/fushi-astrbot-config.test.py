@@ -60,6 +60,14 @@ class ConfigTests(unittest.TestCase):
             state = config.prepare(folder, 'overseas')
         return old, new, folder, state
 
+    def test_cdn_origin_reloads_only_the_domestic_public_proxy(self):
+        with patch.object(config.subprocess, 'run') as run:
+            run.return_value.returncode = 0
+            config.validate_and_reload('domestic-cdn-origin')
+            self.assertEqual([call.args[0] for call in run.call_args_list], [
+                ['docker', 'exec', '1Panel-openresty-h9Tv', config.OPENRESTY, '-t'],
+                ['docker', 'exec', '1Panel-openresty-h9Tv', config.OPENRESTY, '-s', 'reload']])
+
     def test_activation_and_exact_rollback(self):
         with tempfile.TemporaryDirectory() as temporary, patch.object(config.os, 'fchown'), patch.object(config, 'validate_and_reload'):
             old, new, folder, state = self.configured(Path(temporary))
