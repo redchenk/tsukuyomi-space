@@ -105,10 +105,14 @@
   .uc-growth-progress > span { display: block; height: 100%; border-radius: inherit; background: var(--ts-accent); }
   .uc-support-card .uc-growth-value { margin: 0 0 22px; font-size: 11px; }
   .uc-page .uc-support-card .uc-icon-action { justify-content: space-between; width: 100%; font-size: 12px; padding-inline: 12px; }
-  .uc-binding-status { display: grid; gap: 16px; font-size: 12px; margin: 0 0 22px; }
-  .uc-binding-status > div { display: flex; justify-content: space-between; gap: 10px; }
-  .uc-binding-status dt { color: var(--uc-muted); }
-  .uc-binding-status dd { margin: 0; }
+  .uc-binding-status { display: grid; gap: 10px; font-size: 12px; margin: 0 0 22px; }
+  .uc-binding-status > div {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0;
+    padding: 10px 12px; border: 1px solid var(--uc-line); border-radius: var(--ts-radius-md, 12px);
+    background: var(--ts-editorial-soft);
+  }
+  .uc-binding-status dt { min-width: 0; color: var(--uc-muted); overflow-wrap: anywhere; }
+  .uc-binding-status dd { flex-shrink: 0; margin: 0; white-space: nowrap; }
   .uc-page .uc-room-link { display: flex; align-items: flex-start; gap: 12px; padding: 22px; text-decoration: none; color: var(--uc-text); }
   .uc-room-link > svg { color: var(--uc-accent); flex-shrink: 0; }
   .uc-room-link strong { font-size: 13px; font-weight: 600; }
