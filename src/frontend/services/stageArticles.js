@@ -10,7 +10,7 @@ function normalizedOptions(options = {}) {
   return {
     page: Math.max(1, Number.parseInt(options.page, 10) || 1),
     limit: Math.max(1, Math.min(Number.parseInt(options.limit, 10) || STAGE_PAGE_SIZE, 24)),
-    sort: ['latest', 'daily'].includes(options.sort) ? options.sort : 'featured',
+    sort: ['featured', 'daily'].includes(options.sort) ? options.sort : 'latest',
     category: String(options.category || '').trim().slice(0, 48),
     search: String(options.search || '').trim().slice(0, 120)
   };

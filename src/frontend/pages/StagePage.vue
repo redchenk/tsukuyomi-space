@@ -28,7 +28,7 @@ const articlePagination = ref({ page: 1, limit: STAGE_PAGE_SIZE, total: 0, total
 const stageCategory = ref('all');
 const stageSearch = ref('');
 const stagePage = ref(1);
-const stageOrder = ref('featured');
+const stageOrder = ref('latest');
 const recommendationDate = ref('');
 const stageSortCopy = computed(() => ({ zh: ['精选优先', '每日推荐', '最新优先', '编辑推荐'], ja: ['おすすめ順', '今日のおすすめ', '新着順', '編集部おすすめ'], en: ['Featured first', 'Daily picks', 'Latest first', 'Editor pick'] }[props.lang]));
 const stageRankingCopy = computed(() => ({
@@ -94,7 +94,7 @@ const stageRangeSummary = computed(() => stageTotalArticles.value
 const stagePageSummary = computed(() => `${stagePageCopy.value.page} ${stageFormatNumber(stageCurrentPage.value)} ${stagePageCopy.value.pageSuffix} / ${stagePageCopy.value.totalPages} ${stageFormatNumber(stageTotalPages.value)} ${stagePageCopy.value.pageSuffix}`);
 const stageReturnPath = computed(() => {
   const params = new URLSearchParams();
-  if (stageOrder.value !== 'featured') params.set('sort', stageOrder.value);
+  if (stageOrder.value !== 'latest') params.set('sort', stageOrder.value);
   if (stageCurrentPage.value > 1) params.set('page', String(stageCurrentPage.value));
   if (stageCategory.value !== 'all') params.set('category', stageCategory.value);
   const search = stageSearch.value.trim();
@@ -115,7 +115,7 @@ function queryPage(value) {
 
 function applyStageQuery(query = {}) {
   applyingStageQuery = true;
-  stageOrder.value = ['daily', 'latest'].includes(queryValue(query.sort)) ? queryValue(query.sort) : 'featured';
+  stageOrder.value = ['featured', 'daily'].includes(queryValue(query.sort)) ? queryValue(query.sort) : 'latest';
   const category = queryValue(query.category);
   stageCategory.value = category && (!categoryRevision.value || categories.value.includes(category)) ? category : 'all';
   stageSearch.value = String(queryValue(query.q)).slice(0, 120);

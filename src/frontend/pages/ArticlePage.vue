@@ -102,7 +102,7 @@ function normalizeStageReturnPath(value) {
     if (url.pathname !== '/stage') return '/stage';
 
     const params = new URLSearchParams();
-    if (['latest', 'daily'].includes(url.searchParams.get('sort'))) params.set('sort', url.searchParams.get('sort'));
+    if (['featured', 'latest', 'daily'].includes(url.searchParams.get('sort'))) params.set('sort', url.searchParams.get('sort'));
     const page = Number(url.searchParams.get('page'));
     if (Number.isFinite(page) && page > 1) params.set('page', String(Math.trunc(page)));
 
