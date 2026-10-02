@@ -713,7 +713,8 @@ describe('unified async loading states', () => {
         assert.match(stage, /LoadingSkeleton v-if="articlesLoading"[\s\S]*v-else-if="articlesError"[^>]*role="alert"[\s\S]*v-else-if="!filteredArticles\.length"/);
         assert.match(notifications, /LoadingSkeleton v-if="inbox\.loading"[\s\S]*v-else-if="inbox\.message"[^>]*role="alert"[\s\S]*v-else-if="!inbox\.items\.length"/);
         assert.match(plaza, /LoadingSkeleton v-if="plaza\.loading"[\s\S]*v-else-if="plaza\.loadError"[^>]*role="alert"[\s\S]*v-else-if="!plazaMessages\.length"/);
-        assert.match(userCenter, /LoadingSkeleton v-if="uc\.articleLoading"[\s\S]*v-else-if="uc\.articleError"[^>]*role="alert"/);
+        assert.match(userCenter, /LoadingSkeleton v-if="uc\.articleLoading && !uc\.articles\.length"[\s\S]*v-else-if="uc\.articleError && !uc\.articles\.length"[^>]*role="alert"/);
+        assert.match(userCenter, /v-if="uc\.articleError && uc\.articles\.length"[^>]*role="alert"/);
         assert.match(hub, /LoadingSkeleton v-if="previewLoading" variant="hub"[\s\S]*v-else-if="previewError"[^>]*role="alert"/);
     });
 
