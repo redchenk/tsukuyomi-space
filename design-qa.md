@@ -594,3 +594,77 @@ not exercised; responsive checks used the in-app browser. Existing production
 resource hashes must pass deployment verification before the release is accepted.
 
 final result: passed
+
+
+## User center workspace refinement — 2026-10-02
+
+Reference: the selected conversation “重新设计用户中心页面”
+(`6abf503e-b178-83e8-a6a1-d4133a99dc25`) and captures of the existing user center.
+The conversation describes compact identity, grouped navigation, a focused
+profile editor and real growth/security/Room support. Its sandbox mockup images
+were not exposed. This implements the described structure using current site
+tokens; it does not claim pixel fidelity to unavailable images.
+
+Evidence is in `.codex_tmp/user-center-redesign/`. Source and revised desktop
+light captures were opened together at 1440×1000; source and revised mobile
+light captures were opened together at 390×844, authenticated/profile state.
+The same fixture user is used; additional seeded articles/bookmarks/pixel art
+change counts from the baseline. The built preview loads the existing site
+background while the initial Vite capture did not. Those content/runtime
+differences are excluded from fidelity judgments. Screenshots are at 1×.
+Readable form/navigation details are inspected at mobile scale in addition to
+the overall desktop comparison.
+
+Resolved findings:
+- P2: oversized identity/stat panels pushed editing below the first screen.
+  Identity and statistics now share one compact header; immutable account
+  information is a native disclosure below nickname/bio/save.
+- P2: mixed labels and a horizontal mobile tab strip concealed destinations.
+  Desktop navigation is grouped and searchable; mobile uses a labelled native
+  section selector and a materials disclosure with real gallery/assets links.
+- P2: tiny pixel canvases and squeezed mobile search hid useful content.
+  Pixel previews now scale without smoothing; searches use a full mobile row.
+- P2: no-match searches claimed that no content existed. Article, message,
+  bookmark and pixel collections distinguish no matches and provide recovery.
+- P2: the support security action changed content above the mobile viewport.
+  It now scrolls to and focuses the selected section, respecting the top bar.
+- P2: the bottom-right companion occupied the mobile primary save position.
+  The primary save button is placed first on the left; persistent widgets keep
+  their existing bottom positions and page content remains scrollable.
+
+Required surfaces:
+- Typography: existing MiSans/PingFang/system fonts and token colors; compact
+  heading, name/level alignment, readable labels and meta. Long titles wrap;
+  action labels keep their full horizontal text.
+- Spacing/layout: 210/main/250 desktop grid; intermediate two-column layout;
+  single mobile column. Inspected 1440, 1024, 390 and 320px. No horizontal
+  overflow at 320/1024px; cards use site radii and controls retain pill shapes.
+- Colors: existing editorial surface/border/ink and purple primary tokens.
+  Light and dark previews inspected; no alternate reference palette introduced.
+- Images/icons: existing avatars, music, Yachiyo companion and TsIcon preserved.
+  PixelCanvasCells remains the real artwork renderer; no generated replacements.
+- Copy/content: grouped Chinese/English/Japanese navigation and support labels;
+  real XP and binding status. The growth link opens existing tasks rather than
+  pretending a click performs check-in. Username and ID stay read-only.
+
+Isolated local UI writes verified nickname/bio save and refresh persistence,
+reset, draft retention across section changes, message editing and moderation
+feedback. Verified section/search recovery, readonly disclosure, password-field
+labels and missing-field feedback (no password changed), materials disclosure,
+gallery and attachment destinations, and the article editor with seeded content.
+The Vite preview twice failed to fetch the editor's lazy module; the production
+build successfully loaded the same edit route and content. Built-preview console
+inspection returned no warnings/errors. This development-preview limitation
+is recorded separately from shipped route acceptance.
+
+All 283 frontend checks pass. Build and release health/asset/resource checks
+accompany activation. Physical iOS hardware and production account writes were
+not exercised. Production resources are excluded from the release and hash
+verification is required before accepting deployment. Unrelated in-progress
+Fushi files are excluded from the commit and clean release builds.
+
+Implementation checklist: compact header, grouped/mobile navigation, working
+profile form and reset, read-only identity, real support state, readable content
+actions, theme/viewport review, bounded prebuilt release.
+
+final result: passed

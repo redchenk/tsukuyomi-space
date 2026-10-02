@@ -1,7 +1,7 @@
 <script setup>
 import { encodedAvatarInitial } from '../utils/userName.mjs';
 import ModerationNotice from '../components/ModerationNotice.vue';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { authFetch, authHeaders, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -20,6 +20,8 @@ const emit = defineEmits(['auth-changed', 'go']);
 const ucAvatarInput = ref(null);
 const ucUser = ref(props.user || null);
 const ucGrowth = ref(null);
+const ucNavigationQuery = ref('');
+const ucContentPanel = ref(null);
 const sessionChecking = ref(!props.user);
 const ucToast = reactive({ text: '', type: 'success', visible: false });
 let ucToastTimer = 0;
@@ -93,6 +95,80 @@ const ucJoinDate = computed(() => {
   if (!ucUser.value?.created_at) return '-';
   return formatDateOnly(ucUser.value.created_at, locale.value);
 });
+const ucCopy = computed(() => props.lang === 'en' ? {
+  account: 'My account', creative: 'Create & connect', materials: 'My materials',
+  search: 'Find a section', noSections: 'No matching sections', clearSearch: 'Clear search',
+  messages: 'My messages', bookmarks: 'Bookmarks', pixels: 'Pixel art', gallery: 'Gallery', attachments: 'Attachments',
+  publicProfile: 'Public profile', accountInfo: 'View account information',
+  profileHint: 'Choose the name and introduction people see.', avatarHint: 'Update your avatar',
+  discard: 'Reset changes', unsaved: 'Unsaved changes', saved: 'Your profile is up to date',
+  growth: 'Bond growth', growthHint: 'A little connection, every day.', growthOpen: 'Check in & view tasks',
+  growthUnavailable: 'Growth is unavailable right now.', maxLevel: 'Max level', xp: 'XP',
+  security: 'Account security', email: 'Email', qq: 'QQ login', linked: 'Linked', unlinked: 'Not linked',
+  securityOpen: 'Manage account security', room: 'Yachiyo is here', roomHint: 'Take a moment, make yourself at home.',
+  roomOpen: 'Enter room', navigation: 'User center sections', refresh: 'Refresh account data', noMatches: 'No matching results', searchHint: 'Try another keyword or clear the search.'
+} : props.lang === 'ja' ? {
+  account: 'マイアカウント', creative: '創作と交流', materials: 'マイ素材',
+  search: '機能を探す', noSections: '該当する機能はありません', clearSearch: '検索を解除',
+  messages: '自分の投稿', bookmarks: 'ブックマーク', pixels: 'ピクセルアート', gallery: 'ギャラリー', attachments: '添付ファイル',
+  publicProfile: '公開プロフィール', accountInfo: 'アカウント情報を見る',
+  profileHint: '表示する名前と自己紹介を編集できます。', avatarHint: 'アバターを変更',
+  discard: '変更を戻す', unsaved: '未保存の変更', saved: 'プロフィールは保存されています',
+  growth: '月契成長', growthHint: '毎日の小さなつながり。', growthOpen: 'チェックインとタスク',
+  growthUnavailable: '成長記録を読み込めません。', maxLevel: '最高レベル', xp: 'EXP',
+  security: 'アカウント安全', email: 'メール', qq: 'QQ ログイン', linked: '連携済み', unlinked: '未連携',
+  securityOpen: '安全設定へ', room: '八千代はここにいます', roomHint: 'ひと息ついて、ゆっくり過ごしましょう。',
+  roomOpen: '部屋へ', navigation: 'ユーザーセンターの機能', refresh: 'アカウント情報を更新', noMatches: '該当する結果はありません', searchHint: '別のキーワードを試すか、検索を解除してください。'
+} : {
+  account: '我的账号', creative: '创作与互动', materials: '我的素材',
+  search: '搜索功能', noSections: '没有找到相关功能', clearSearch: '清除搜索',
+  messages: '我的留言', bookmarks: '我的收藏', pixels: '像素画', gallery: '图库管理', attachments: '附件库',
+  publicProfile: '公开主页', accountInfo: '查看账号信息',
+  profileHint: '让大家通过昵称和简介认识你。', avatarHint: '更换头像',
+  discard: '还原修改', unsaved: '有尚未保存的修改', saved: '资料已保存',
+  growth: '月契成长', growthHint: '每天一点相伴，慢慢积累。', growthOpen: '签到与查看任务',
+  growthUnavailable: '暂时无法读取成长记录。', maxLevel: '已到最高等级', xp: '经验',
+  security: '账号安全', email: '邮箱', qq: 'QQ 登录', linked: '已绑定', unlinked: '未绑定',
+  securityOpen: '管理账号安全', room: '八千代在这里', roomHint: '和八千代一起，把时间慢下来。',
+  roomOpen: '进入房间', navigation: '用户中心功能', refresh: '刷新账号资料', noMatches: '没有匹配的内容', searchHint: '换一个关键词，或清除搜索查看全部。'
+});
+const ucNavigationGroups = computed(() => [
+  { label: ucCopy.value.account, entries: [
+    { key: 'profile', icon: 'user', label: props.t.ucProfile, keywords: 'profile nickname 资料 昵称' },
+    { key: 'security', icon: 'shield', label: props.t.ucSecurity, keywords: 'security password email 安全 密码 邮箱 QQ' }
+  ] },
+  { label: ucCopy.value.creative, entries: [
+    { key: 'articles', icon: 'fileText', label: props.t.ucArticlesTab, count: uc.articles.length, keywords: 'articles posts 文章' },
+    { key: 'messages', icon: 'message', label: ucCopy.value.messages, count: uc.messages.length, keywords: 'messages replies 留言 评论 回复' },
+    { key: 'bookmarks', icon: 'bookmark', label: ucCopy.value.bookmarks, count: uc.bookmarks.length, keywords: 'bookmarks 收藏' },
+    { key: 'pixelArt', icon: 'palette', label: ucCopy.value.pixels, count: uc.pixelArtworks.length, keywords: 'pixel art 像素画' }
+  ] },
+  { label: ucCopy.value.materials, entries: [
+    { key: 'gallery', icon: 'image', label: ucCopy.value.gallery, path: '/gallery/manage', keywords: 'gallery 图库 图片' },
+    { key: 'attachments', icon: 'paperclip', label: ucCopy.value.attachments, path: '/attachments', keywords: 'attachments files 附件 文件' }
+  ] }
+]);
+const ucFilteredNavigation = computed(() => {
+  const query = ucNavigationQuery.value.trim().toLowerCase();
+  return ucNavigationGroups.value.map(group => ({ ...group, entries: group.entries.filter(entry =>
+    !query || `${group.label} ${entry.label} ${entry.keywords}`.toLowerCase().includes(query)
+  ) })).filter(group => group.entries.length);
+});
+const ucProfileDirty = computed(() => uc.profileNickname !== (ucUser.value?.nickname || ucUser.value?.username || '')
+  || uc.profileBio !== (ucUser.value?.bio || ''));
+const ucProfileValid = computed(() => Boolean(uc.profileNickname.trim()) && [...uc.profileNickname.trim()].length <= 32);
+const ucGrowthProgress = computed(() => Math.min(100, Math.max(0, Number(ucGrowth.value?.level?.progressPercent) || 0)));
+function ucResetProfile() {
+  uc.profileNickname = ucUser.value?.nickname || ucUser.value?.username || '';
+  uc.profileBio = ucUser.value?.bio || '';
+  uc.profileMsg = '';
+}
+async function ucOpenSecurity() {
+  uc.tab = 'security';
+  await nextTick();
+  ucContentPanel.value?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  ucContentPanel.value?.focus({ preventScroll: true });
+}
 const ucOAuthAccounts = computed(() => Array.isArray(ucUser.value?.oauth_accounts) ? ucUser.value.oauth_accounts : []);
 const ucQQAccount = computed(() => ucOAuthAccounts.value.find((account) => account?.provider === 'qq') || null);
 const ucQQSyncing = computed(() => uc.profileLoading && !Array.isArray(ucUser.value?.oauth_accounts));
@@ -697,173 +773,94 @@ onMounted(async () => {
       <template v-else>
       <section class="uc-hero" :aria-busy="uc.avatarUploading">
         <div class="uc-avatar-block">
-          <div class="uc-avatar-upload" :title="t.ucChangeAvatar" @click="ucAvatarInput?.click()">
+          <button class="uc-avatar-upload" type="button" :disabled="uc.avatarUploading" :aria-label="ucCopy.avatarHint" :title="ucCopy.avatarHint" @click="ucAvatarInput?.click()">
             <img :src="ucAvatarSrc" alt="">
-            <span class="uc-avatar-edit" aria-hidden="true">
-              <TsIcon name="penLine" :size="17" />
-            </span>
-          </div>
-          <input ref="ucAvatarInput" type="file" accept="image/*" style="display:none;" @change="ucUploadAvatar">
-          <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.avatarUploading" :aria-busy="uc.avatarUploading" @click="ucAvatarInput?.click()">
-            <TsIcon :class="{ 'ts-status-loader-icon': uc.avatarUploading }" :name="uc.avatarUploading ? 'loader' : 'upload'" :size="17" />
-            <span :role="uc.avatarUploading ? 'status' : undefined">{{ uc.avatarUploading ? '正在上传头像' : t.ucUploadAvatar }}</span>
+            <span class="uc-avatar-edit" aria-hidden="true"><TsIcon :name="uc.avatarUploading ? 'loader' : 'penLine'" :size="14" /></span>
           </button>
+          <input ref="ucAvatarInput" type="file" accept="image/*" hidden @change="ucUploadAvatar">
         </div>
         <div class="uc-hero-info">
-          <div class="uc-role-badge">
-            <TsIcon :name="ucUser?.role === 'admin' ? 'crown' : 'user'" :size="15" />
-            <span>{{ ucRoleText }}</span>
+          <div class="uc-eyebrow">YOUR SPACE</div>
+          <div class="uc-identity-line">
+            <h1 class="uc-username">{{ ucUser?.nickname || ucUser?.username || '-' }}</h1>
+            <a v-if="ucGrowth?.level" class="uc-level-link" href="/growth" @click.prevent="go('/growth')"><UserLevelBadge :level="ucGrowth.level" :lang="lang" /></a>
           </div>
-          <h1 class="uc-username">{{ ucUser?.nickname || ucUser?.username || '-' }}</h1>
-          <a v-if="ucGrowth?.level" class="uc-level-link" href="/growth" @click.prevent="go('/growth')">
-            <UserLevelBadge :level="ucGrowth.level" :lang="lang" />
-          </a>
-          <div class="uc-email">{{ ucEmailText }}</div>
           <p class="uc-bio-preview">{{ ucUser?.bio || t.ucNoBio }}</p>
+          <dl class="uc-inline-stats">
+            <div><dt>{{ t.ucMyArticles }}</dt><dd>{{ ucArticlesCount }}</dd></div>
+            <div><dt>{{ t.ucTotalViews }}</dt><dd>{{ ucTotalViews }}</dd></div>
+            <div><dt>{{ ucCopy.bookmarks }}</dt><dd>{{ uc.bookmarks.length.toLocaleString(locale) }}</dd></div>
+          </dl>
         </div>
         <div class="uc-hero-actions">
-          <a class="primary-btn uc-icon-action" href="/editor" @click.prevent="go('/editor')">
-            <TsIcon name="penLine" :size="17" />
-            <span>{{ t.ucNewPost }}</span>
-          </a>
-          <a class="ghost-btn uc-icon-action" :href="`/users/${encodeURIComponent(ucUser?.username || '')}`" @click.prevent="go(`/users/${encodeURIComponent(ucUser?.username || '')}`)">
-            <TsIcon name="user" :size="17" />
-            <span>&#20844;&#24320;&#20027;&#39029;</span>
-          </a>
-          <a class="ghost-btn uc-icon-action" href="/stage" @click.prevent="go('/stage')">
-            <TsIcon name="book" :size="17" />
-            <span>{{ t.ucViewStage }}</span>
-          </a>
-          <button class="ghost-btn uc-icon-action" type="button" :disabled="ucRefreshing" :aria-busy="ucRefreshing" @click="ucRefresh">
-            <TsIcon name="refresh" :size="17" />
-            <span>{{ t.ucRefresh }}</span>
-          </button>
-          <button class="danger-btn uc-icon-action" type="button" @click="logout">
-            <TsIcon name="logOut" :size="17" />
-            <span>{{ t.ucLogout }}</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="uc-stats">
-        <div class="uc-stat-card">
-          <div class="uc-stat-icon"><TsIcon name="fileText" :size="27" /></div>
-          <div>
-            <div class="uc-stat-label">{{ t.ucMyArticles }}</div>
-            <div class="uc-stat-value">{{ ucArticlesCount }}</div>
-            <div class="uc-stat-note">{{ t.ucPostsTotal }}</div>
-          </div>
-        </div>
-        <div class="uc-stat-card">
-          <div class="uc-stat-icon"><TsIcon name="layers" :size="28" /></div>
-          <div>
-            <div class="uc-stat-label">{{ t.ucTotalViews }}</div>
-            <div class="uc-stat-value">{{ ucTotalViews }}</div>
-            <div class="uc-stat-note">{{ t.ucArticleViews }}</div>
-          </div>
-        </div>
-        <div class="uc-stat-card">
-          <div class="uc-stat-icon"><TsIcon name="crown" :size="29" /></div>
-          <div>
-            <div class="uc-stat-label">{{ t.ucAccountRole }}</div>
-            <div class="uc-stat-value">{{ ucRoleText }}</div>
-            <div class="uc-stat-note">{{ t.ucPermLevel }}</div>
-          </div>
-        </div>
-        <div class="uc-stat-card">
-          <div class="uc-stat-icon"><TsIcon name="calendar" :size="27" /></div>
-          <div>
-            <div class="uc-stat-label">{{ t.ucJoinDate }}</div>
-            <div class="uc-stat-value">{{ ucJoinDate }}</div>
-            <div class="uc-stat-note">{{ t.ucTsukuyomiJoin }}</div>
-          </div>
+          <a class="ghost-btn uc-icon-action" :href="`/users/${encodeURIComponent(ucUser?.username || '')}`" @click.prevent="go(`/users/${encodeURIComponent(ucUser?.username || '')}`)"><TsIcon name="user" :size="17" /><span>{{ ucCopy.publicProfile }}</span></a>
+          <a class="primary-btn uc-icon-action" href="/editor" @click.prevent="go('/editor')"><TsIcon name="penLine" :size="17" /><span>{{ t.ucNewPost }}</span></a>
+          <button class="ghost-btn uc-refresh-action" type="button" :disabled="ucRefreshing || ucProfileDirty" :aria-busy="ucRefreshing" :aria-label="ucCopy.refresh" :title="ucCopy.refresh" @click="ucRefresh"><TsIcon :name="ucRefreshing ? 'loader' : 'refresh'" :size="17" /></button>
         </div>
       </section>
       </template>
 
       <section class="uc-layout">
         <aside class="panel uc-tabs-panel">
-          <div class="uc-tabs">
-            <button class="tab-btn" :class="{ active: uc.tab === 'profile' }" type="button" @click="uc.tab = 'profile'">
-              <span><TsIcon name="user" :size="18" /> {{ t.ucProfile }}</span>
-              <small>Profile</small>
-            </button>
-            <button class="tab-btn" :class="{ active: uc.tab === 'articles' }" type="button" @click="uc.tab = 'articles'">
-              <span><TsIcon name="fileText" :size="18" /> {{ t.ucArticlesTab }}</span>
-              <small>Posts</small>
-            </button>
-            <button class="tab-btn" :class="{ active: uc.tab === 'messages' }" type="button" @click="uc.tab = 'messages'">
-              <span><TsIcon name="message" :size="18" /> 我的留言</span>
-              <small>{{ uc.messages.length }}</small>
-            </button>
-            <button class="tab-btn" :class="{ active: uc.tab === 'bookmarks' }" type="button" @click="uc.tab = 'bookmarks'">
-              <span><TsIcon name="bookmark" :size="18" /> &#25105;&#30340;&#25910;&#34255;</span>
-              <small>Bookmarks</small>
-            </button>
-            <button class="tab-btn" :class="{ active: uc.tab === 'pixelArt' }" type="button" @click="uc.tab = 'pixelArt'">
-              <span><TsIcon name="palette" :size="18" /> 像素画</span>
-              <small>{{ isAdminUser ? 'All Pixel Art' : ucPixelArtworkCount }}</small>
-            </button>
-            <button class="tab-btn uc-asset-tab" type="button" @click="go('/gallery/manage')">
-              <span><TsIcon name="image" :size="18" /> &#22270;&#24211;&#31649;&#29702;</span>
-              <small>Gallery</small>
-            </button>
-            <button class="tab-btn uc-asset-tab" type="button" @click="go('/attachments')">
-              <span><TsIcon name="paperclip" :size="18" /> &#38468;&#20214;&#24211;</span>
-              <small>Assets</small>
-            </button>
-            <button class="tab-btn" :class="{ active: uc.tab === 'security' }" type="button" @click="uc.tab = 'security'">
-              <span><TsIcon name="shield" :size="18" /> {{ t.ucSecurity }}</span>
-              <small>Security</small>
-            </button>
-          </div>
+          <label class="uc-navigation-search"><TsIcon name="search" :size="16" /><input v-model="ucNavigationQuery" type="search" :aria-label="ucCopy.search" :placeholder="ucCopy.search"></label>
+          <nav class="uc-tabs" :aria-label="ucCopy.navigation">
+            <section v-for="group in ucFilteredNavigation" :key="group.label" class="uc-nav-group">
+              <h2>{{ group.label }}</h2>
+              <template v-for="entry in group.entries" :key="entry.key">
+                <a v-if="entry.path" class="tab-btn uc-asset-tab" :href="entry.path" @click.prevent="go(entry.path)"><span><TsIcon :name="entry.icon" :size="18" />{{ entry.label }}</span><TsIcon name="chevronRight" :size="14" /></a>
+                <button v-else class="tab-btn" :class="{active: uc.tab === entry.key}" type="button" :aria-current="uc.tab === entry.key ? 'page' : undefined" @click="uc.tab = entry.key"><span><TsIcon :name="entry.icon" :size="18" />{{ entry.label }}</span><small v-if="entry.count !== undefined">{{ entry.count }}</small></button>
+              </template>
+            </section>
+            <div v-if="!ucFilteredNavigation.length" class="uc-nav-empty"><p>{{ ucCopy.noSections }}</p><button class="ghost-btn" type="button" @click="ucNavigationQuery = ''">{{ ucCopy.clearSearch }}</button></div>
+          </nav>
+          <button class="ghost-btn uc-icon-action uc-nav-logout" type="button" @click="logout"><TsIcon name="logOut" :size="17" /><span>{{ t.ucLogout }}</span></button>
         </aside>
+        <div class="uc-mobile-navigation">
+          <label for="ucSection">{{ ucCopy.navigation }}</label>
+          <select id="ucSection" v-model="uc.tab">
+            <optgroup v-for="group in ucNavigationGroups.slice(0, 2)" :key="group.label" :label="group.label"><option v-for="entry in group.entries" :key="entry.key" :value="entry.key">{{ entry.label }}</option></optgroup>
+          </select>
+          <details class="uc-mobile-more"><summary>{{ ucCopy.materials }}<TsIcon name="chevronDown" :size="15" /></summary><div><a href="/gallery/manage" @click.prevent="go('/gallery/manage')"><TsIcon name="image" :size="17" />{{ ucCopy.gallery }}</a><a href="/attachments" @click.prevent="go('/attachments')"><TsIcon name="paperclip" :size="17" />{{ ucCopy.attachments }}</a><button type="button" @click="logout"><TsIcon name="logOut" :size="17" />{{ t.ucLogout }}</button></div></details>
+        </div>
 
-        <section class="panel uc-content-panel">
-          <div v-if="uc.tab === 'profile'" :aria-busy="uc.profileSaving">
-            <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>01</span> {{ t.ucProfile }}</h2>
-            </div>
-            <div v-if="uc.profileMsg" class="form-message" :class="uc.profileMsgType">{{ uc.profileMsg }}</div>
+        <section ref="ucContentPanel" class="panel uc-content-panel" tabindex="-1">
+          <form v-if="uc.tab === 'profile'" :aria-busy="uc.profileSaving" @submit.prevent="ucSaveProfile">
+            <div class="uc-section-head"><div><h2 class="uc-section-title">{{ t.ucProfile }}</h2><p class="uc-section-intro">{{ ucCopy.profileHint }}</p></div><TsIcon name="user" :size="24" /></div>
+            <div v-if="uc.profileMsg" class="form-message" :class="uc.profileMsgType" :role="uc.profileMsgType === 'error' ? 'alert' : 'status'">{{ uc.profileMsg }}</div>
             <div class="form-grid">
               <div class="form-group">
                 <label for="ucNickname">{{ t.ucNickname }}</label>
-                <input id="ucNickname" v-model="uc.profileNickname" type="text" autocomplete="nickname" :disabled="uc.profileSaving" required>
-                <div class="help-text">{{ t.ucNicknameHint }}</div>
+                <input id="ucNickname" v-model="uc.profileNickname" type="text" autocomplete="nickname" :disabled="uc.profileSaving" required aria-describedby="ucNicknameHint">
+                <div id="ucNicknameHint" class="help-text">{{ t.ucNicknameHint }}</div>
               </div>
               <div class="form-group">
-                <label for="ucUsername">{{ t.ucUsername }}</label>
-                <input id="ucUsername" type="text" disabled :value="ucUser?.username || ''">
-                <div class="help-text">{{ t.ucUsernameHint }}</div>
+                <label for="ucBio">{{ t.ucBio }}</label>
+                <textarea id="ucBio" v-model="uc.profileBio" class="uc-profile-bio" maxlength="300" :disabled="uc.profileSaving" :placeholder="t.ucBioPlaceholder" aria-describedby="ucBioCount"></textarea>
+                <div id="ucBioCount" class="help-text uc-character-count">{{ uc.profileBio.length || 0 }} / 300</div>
               </div>
-              <div class="form-group">
-                <label for="ucUserId">{{ t.ucUserId }}</label>
-                <input id="ucUserId" type="text" disabled :value="ucUser?.id || ''">
+              <div class="uc-profile-footer">
+                <span class="uc-save-status"><TsIcon :name="ucProfileDirty ? 'penLine' : 'check'" :size="15" />{{ ucProfileDirty ? ucCopy.unsaved : ucCopy.saved }}</span>
+                <div class="uc-profile-buttons"><button class="ghost-btn" type="button" :disabled="!ucProfileDirty || uc.profileSaving" @click="ucResetProfile">{{ ucCopy.discard }}</button><button class="primary-btn uc-icon-action uc-save-btn" type="submit" :disabled="!ucProfileDirty || !ucProfileValid || uc.profileSaving"><TsIcon :name="uc.profileSaving ? 'loader' : 'check'" :size="17" /><span>{{ t.ucSaveProfile }}</span></button></div>
               </div>
-              <div class="form-group">
-                <label>{{ t.ucEmail }}</label>
-                <input type="text" disabled :value="ucEmailText">
-              </div>
-              <div class="form-group">
-                <label>{{ t.ucBio }}</label>
-                <textarea v-model="uc.profileBio" class="uc-profile-bio" maxlength="300" :placeholder="t.ucBioPlaceholder"></textarea>
-                <div class="help-text">{{ uc.profileBio.length || 0 }} / 300</div>
-              </div>
-              <div>
-                <button class="primary-btn uc-icon-action uc-save-btn" type="button" :disabled="uc.profileSaving" :aria-busy="uc.profileSaving" @click="ucSaveProfile">
-                  <TsIcon name="penLine" :size="17" />
-                  <span>{{ t.ucSaveProfile }}</span>
-                </button>
-                <StatusLoader v-if="uc.profileSaving" label="正在保存个人资料" compact />
-              </div>
+              <StatusLoader v-if="uc.profileSaving" :label="t.ucSaveProfile" compact />
             </div>
-          </div>
+            <details class="uc-account-information">
+              <summary>{{ ucCopy.accountInfo }}<TsIcon name="chevronDown" :size="16" /></summary>
+              <dl>
+                <div><dt>{{ t.ucUsername }}</dt><dd>{{ ucUser?.username || '-' }}<small>{{ t.ucUsernameHint }}</small></dd></div>
+                <div><dt>{{ t.ucUserId }}</dt><dd>{{ ucUser?.id || '-' }}</dd></div>
+                <div><dt>{{ t.ucEmail }}</dt><dd>{{ ucEmailText }}</dd></div>
+                <div><dt>{{ t.ucJoinDate }}</dt><dd>{{ ucJoinDate }}</dd></div>
+                <div><dt>{{ t.ucAccountRole }}</dt><dd>{{ ucRoleText }}</dd></div>
+              </dl>
+            </details>
+          </form>
 
           <div v-if="uc.tab === 'articles'" :aria-busy="uc.articleLoading">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>02</span> {{ t.ucArticlesTab }}</h2>
+              <h2 class="uc-section-title">{{ t.ucArticlesTab }}</h2>
               <div class="uc-article-tools">
-                <input v-model="uc.articleQuery" class="uc-search" type="search" :placeholder="t.ucSearchArticles">
+                <input v-model="uc.articleQuery" class="uc-search" type="search" :aria-label="t.ucSearchArticles" :placeholder="t.ucSearchArticles">
                 <a class="primary-btn uc-icon-action" href="/editor" @click.prevent="go('/editor')">
                   <TsIcon name="penLine" :size="17" />
                   <span>{{ t.ucWriteNew }}</span>
@@ -872,6 +869,9 @@ onMounted(async () => {
             </div>
             <LoadingSkeleton v-if="uc.articleLoading" variant="list" :count="5" :label="t.ucLoadingArticles" />
             <div v-else-if="uc.articleError" class="uc-empty error" role="alert">{{ uc.articleError }}</div>
+            <div v-else-if="uc.articles.length && !ucFilteredArticles.length" class="uc-empty">
+              <div class="ts-empty-title">{{ ucCopy.noMatches }}</div><div class="ts-empty-desc">{{ ucCopy.searchHint }}</div><button class="ghost-btn" type="button" @click="uc.articleQuery = ''">{{ ucCopy.clearSearch }}</button>
+            </div>
             <div v-else-if="!ucFilteredArticles.length" class="uc-empty">
               <div class="ts-empty-title">{{ t.ucNoArticles }}</div>
               <div class="ts-empty-desc">{{ t.ucNoArticlesHint }}</div>
@@ -911,9 +911,9 @@ onMounted(async () => {
 
           <div v-if="uc.tab === 'bookmarks'" :aria-busy="uc.bookmarkLoading">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>04</span> 我的收藏</h2>
+              <h2 class="uc-section-title">{{ ucCopy.bookmarks }}</h2>
               <div class="uc-article-tools">
-                <input v-model="uc.bookmarkQuery" class="uc-search" type="search" placeholder="搜索收藏文章">
+                <input v-model="uc.bookmarkQuery" class="uc-search" type="search" :aria-label="ucCopy.bookmarks" placeholder="搜索收藏文章">
                 <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.bookmarkLoading" :aria-busy="uc.bookmarkLoading" @click="ucLoadBookmarks">
                   <TsIcon name="refresh" :size="17" />
                   <span>&#21047;&#26032;</span>
@@ -922,6 +922,9 @@ onMounted(async () => {
             </div>
             <LoadingSkeleton v-if="uc.bookmarkLoading" variant="list" :count="5" label="正在加载收藏列表" />
             <div v-else-if="uc.bookmarkError" class="uc-empty error" role="alert">{{ uc.bookmarkError }}</div>
+            <div v-else-if="uc.bookmarks.length && !ucFilteredBookmarks.length" class="uc-empty">
+              <div class="ts-empty-title">{{ ucCopy.noMatches }}</div><div class="ts-empty-desc">{{ ucCopy.searchHint }}</div><button class="ghost-btn" type="button" @click="uc.bookmarkQuery = ''">{{ ucCopy.clearSearch }}</button>
+            </div>
             <div v-else-if="!ucFilteredBookmarks.length" class="uc-empty">
               <div class="ts-empty-title">还没有收藏文章</div>
               <div class="ts-empty-desc">在文章页点击收藏后，会在这里形成你的阅读清单。</div>
@@ -950,9 +953,9 @@ onMounted(async () => {
 
           <div v-if="uc.tab === 'messages'" :aria-busy="uc.messageLoading">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>03</span> 我的留言</h2>
+              <h2 class="uc-section-title">{{ ucCopy.messages }}</h2>
               <div class="uc-article-tools">
-                <input v-model="uc.messageQuery" class="uc-search" type="search" placeholder="搜索留言">
+                <input v-model="uc.messageQuery" class="uc-search" type="search" :aria-label="ucCopy.messages" placeholder="搜索留言">
                 <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.messageLoading" :aria-busy="uc.messageLoading" @click="ucLoadMessages">
                   <TsIcon name="refresh" :size="17" />
                   <span>刷新</span>
@@ -961,6 +964,9 @@ onMounted(async () => {
             </div>
             <LoadingSkeleton v-if="uc.messageLoading" variant="list" :count="5" label="正在加载留言列表" />
             <div v-else-if="uc.messageError" class="uc-empty error" role="alert">{{ uc.messageError }}</div>
+            <div v-else-if="uc.messages.length && !ucFilteredMessages.length" class="uc-empty">
+              <div class="ts-empty-title">{{ ucCopy.noMatches }}</div><div class="ts-empty-desc">{{ ucCopy.searchHint }}</div><button class="ghost-btn" type="button" @click="uc.messageQuery = ''">{{ ucCopy.clearSearch }}</button>
+            </div>
             <div v-else-if="!ucFilteredMessages.length" class="uc-empty">
               <div class="ts-empty-title">还没有留言</div>
               <a class="primary-btn uc-icon-action" href="/plaza" @click.prevent="go('/plaza')">
@@ -1019,9 +1025,9 @@ onMounted(async () => {
 
           <div v-if="uc.tab === 'pixelArt'" :aria-busy="uc.pixelLoading">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>05</span> {{ isAdminUser ? '全站像素画管理' : '我的像素画' }}</h2>
+              <h2 class="uc-section-title">{{ isAdminUser ? '全站像素画管理' : '我的像素画' }}</h2>
               <div class="uc-article-tools">
-                <input v-model="uc.pixelQuery" class="uc-search" type="search" placeholder="搜索像素画">
+                <input v-model="uc.pixelQuery" class="uc-search" type="search" :aria-label="ucCopy.pixels" placeholder="搜索像素画">
                 <a class="primary-btn uc-icon-action" href="/pixel" @click.prevent="go('/pixel')">
                   <TsIcon name="palette" :size="17" />
                   <span>新建像素画</span>
@@ -1034,6 +1040,9 @@ onMounted(async () => {
             </div>
             <LoadingSkeleton v-if="uc.pixelLoading" variant="pixel" :count="4" label="正在加载像素画列表" />
             <div v-else-if="uc.pixelError" class="uc-empty error" role="alert">{{ uc.pixelError }}</div>
+            <div v-else-if="uc.pixelArtworks.length && !ucFilteredPixelArtworks.length" class="uc-empty">
+              <div class="ts-empty-title">{{ ucCopy.noMatches }}</div><div class="ts-empty-desc">{{ ucCopy.searchHint }}</div><button class="ghost-btn" type="button" @click="uc.pixelQuery = ''">{{ ucCopy.clearSearch }}</button>
+            </div>
             <div v-else-if="!ucFilteredPixelArtworks.length" class="uc-empty">
               <div class="ts-empty-title">还没有像素画</div>
               <div class="ts-empty-desc">从月光像素工坊开始新建作品，发布后会在这里管理。</div>
@@ -1090,27 +1099,27 @@ onMounted(async () => {
 
           <div v-if="uc.tab === 'security'" :aria-busy="uc.passwordChanging">
             <div class="uc-section-head">
-              <h2 class="uc-section-title"><span>06</span> {{ t.ucSecurity }}</h2>
+              <h2 class="uc-section-title">{{ t.ucSecurity }}</h2>
             </div>
             <div v-if="uc.passwordMsg" class="form-message" :class="uc.passwordMsgType">{{ uc.passwordMsg }}</div>
             <div class="uc-security-grid">
               <div>
                 <div class="form-grid">
                   <div class="form-group">
-                    <label>{{ t.ucCurrentPassword }}</label>
-                    <input v-model="uc.password.current" type="password" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh">
+                    <label for="ucCurrentPassword">{{ t.ucCurrentPassword }}</label>
+                    <input id="ucCurrentPassword" v-model="uc.password.current" type="password" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh">
                     <button v-if="ucUser?.has_real_email" class="uc-password-reset-link" type="button" @click="go('/login?forgot=1&redirect=%2Fuser-center')">
                       <TsIcon name="mail" :size="14" />
                       <span>没有当前密码？使用邮箱验证</span>
                     </button>
                   </div>
                   <div class="form-group">
-                    <label>{{ t.ucNewPassword }}</label>
-                    <input v-model="uc.password.next" type="password" autocomplete="new-password" :placeholder="t.ucNewPasswordPh">
+                    <label for="ucNewPassword">{{ t.ucNewPassword }}</label>
+                    <input id="ucNewPassword" v-model="uc.password.next" type="password" autocomplete="new-password" :placeholder="t.ucNewPasswordPh">
                   </div>
                   <div class="form-group">
-                    <label>{{ t.ucConfirmNewPassword }}</label>
-                    <input v-model="uc.password.confirm" type="password" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
+                    <label for="ucConfirmNewPassword">{{ t.ucConfirmNewPassword }}</label>
+                    <input id="ucConfirmNewPassword" v-model="uc.password.confirm" type="password" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
                   </div>
                   <div>
                     <button class="primary-btn uc-icon-action" type="button" :disabled="uc.passwordChanging" :aria-busy="uc.passwordChanging" @click="ucChangePassword">
@@ -1175,6 +1184,24 @@ onMounted(async () => {
             </div>
           </div>
         </section>
+        <aside class="uc-support" :aria-label="ucCopy.account">
+          <section class="panel uc-support-card">
+            <h2><TsIcon name="sparkles" :size="19" />{{ ucCopy.growth }}</h2>
+            <template v-if="ucGrowth?.level">
+              <UserLevelBadge :level="ucGrowth.level" :lang="lang" />
+              <div class="uc-growth-progress" role="progressbar" :aria-label="ucCopy.growth" :aria-valuenow="ucGrowthProgress" aria-valuemin="0" aria-valuemax="100"><span :style="{width: `${ucGrowthProgress}%`}"></span></div>
+              <p class="uc-growth-value">{{ ucGrowth.level.nextLevel ? `${ucGrowth.level.progressXp} / ${ucGrowth.level.requiredXp} ${ucCopy.xp}` : ucCopy.maxLevel }}</p>
+            </template>
+            <p v-else>{{ ucCopy.growthUnavailable }}</p>
+            <a class="ghost-btn uc-icon-action" href="/growth" @click.prevent="go('/growth')"><span>{{ ucCopy.growthOpen }}</span><TsIcon name="arrowRight" :size="16" /></a>
+          </section>
+          <section class="panel uc-support-card">
+            <h2><TsIcon name="shield" :size="19" />{{ ucCopy.security }}</h2>
+            <dl class="uc-binding-status"><div><dt>{{ ucCopy.email }}</dt><dd>{{ ucUser?.has_real_email ? ucCopy.linked : ucCopy.unlinked }}</dd></div><div><dt>{{ ucCopy.qq }}</dt><dd>{{ ucQQBound ? ucCopy.linked : ucCopy.unlinked }}</dd></div></dl>
+            <button class="ghost-btn uc-icon-action" type="button" @click="ucOpenSecurity"><span>{{ ucCopy.securityOpen }}</span><TsIcon name="arrowRight" :size="16" /></button>
+          </section>
+          <a class="panel uc-room-link" href="/room" @click.prevent="go('/room')"><TsIcon name="moonStar" :size="24" /><div><strong>{{ ucCopy.room }}</strong><p>{{ ucCopy.roomHint }}</p><span>{{ ucCopy.roomOpen }}<TsIcon name="arrowRight" :size="15" /></span></div></a>
+        </aside>
       </section>
     </template>
 
