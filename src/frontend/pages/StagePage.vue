@@ -1,7 +1,7 @@
 <script setup>
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { getAuthToken } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
@@ -18,6 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits(['go']);
 const route = useRoute();
+const router = useRouter();
 const { hydrateUserLevels, userLevel } = useUserLevels();
 
 const articles = ref([]);
@@ -125,13 +126,11 @@ function applyStageQuery(query = {}) {
 }
 
 function syncStageUrl() {
-  if (applyingStageQuery || typeof window === 'undefined') return;
+  if (applyingStageQuery || route.name !== 'stage') return;
   const nextPath = stageReturnPath.value;
-  if (`${window.location.pathname}${window.location.search}` === nextPath) return;
-  const state = window.history.state && typeof window.history.state === 'object'
-    ? { ...window.history.state, current: nextPath }
-    : window.history.state;
-  window.history.replaceState(state, '', nextPath);
+  if (route.fullPath === nextPath) return;
+  // Keep router state in sync so entering /stage resets a previous sort/filter.
+  router.replace(nextPath);
 }
 
 function stageCategoryLabel(category) {

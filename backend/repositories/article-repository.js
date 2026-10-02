@@ -272,10 +272,11 @@ function deleteArticle(id) {
 }
 
 function listUserArticles(userId) {
+    // Personal publishing history follows publication time; Stage pins are global.
     return db.prepare(`
         SELECT id, title, slug, category, view_count, status, pinned_at, content_format, cover_image_asset_id, created_at, updated_at
         FROM articles WHERE author_id = ?
-        ORDER BY pinned_at IS NULL, pinned_at DESC, created_at DESC
+        ORDER BY COALESCE(datetime(published_at), datetime(created_at), datetime(publish_date)) DESC, id DESC
     `).all(userId);
 }
 

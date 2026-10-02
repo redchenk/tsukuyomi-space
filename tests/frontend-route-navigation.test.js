@@ -51,6 +51,8 @@ test('anchors and Wiki section queries preserve instances while different articl
     assert.equal(routeViewKey({ name: 'wiki', path: '/wiki', fullPath: '/wiki?section=characters' }), '/wiki');
     assert.equal(routeViewKey({ name: 'plaza', path: '/plaza', fullPath: '/plaza?topic=moon#msg-4' }),
       routeViewKey({ name: 'plaza', path: '/plaza', fullPath: '/plaza' }));
+    assert.equal(routeViewKey({ name: 'stage', path: '/stage', fullPath: '/stage?sort=latest&page=2&q=moon' }),
+      routeViewKey({ name: 'stage', path: '/stage', fullPath: '/stage' }));
     assert.notEqual(routeViewKey({ fullPath: '/editor?id=1' }), routeViewKey({ fullPath: '/editor?id=2' }));
     assert.equal(routeViewKey({ name:'fushi-astrbot-callback',path:'/fushi/astrbot/callback',
       fullPath:'/fushi/astrbot/callback?code=one-use&state=private' }),

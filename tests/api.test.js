@@ -990,6 +990,53 @@ describe('articles API', () => {
         assert.ok(JSON.stringify(list.body).length < 128 * 1024);
     });
 
+    it('shows newly published articles in both owner lists without accepting a forged author', async () => {
+        const created = await postJson('/api/articles', {
+            title: 'Newly published owner article', content: 'Owner list regression.',
+            category: '随笔', read_time: '1 min', author_id: 'user-002', authorId: 'user-002'
+        }, userToken);
+        assert.equal(created.response.status, 201);
+        const id = created.body.data.id;
+        try {
+            assert.equal(db.prepare('SELECT author_id FROM articles WHERE id = ?').get(id).author_id, 'user-001');
+            for (const url of ['/api/user/articles', '/api/user/articles/live/owner-list-regression']) {
+                const own = await request(url, { headers: authHeader(userToken) });
+                assert.equal(own.response.status, 200);
+                assert.ok(own.body.data.some(article => article.id === id));
+                assert.match(own.response.headers.get('cache-control'), /private.*no-store/);
+                const other = await request(url, { headers: authHeader(managedUserToken) });
+                assert.equal(other.response.status, 200);
+                assert.ok(!other.body.data.some(article => article.id === id));
+                const anonymous = await request(url);
+                assert.equal(anonymous.response.status, 401);
+            }
+        } finally {
+            require('../backend/repositories/article-repository').deleteArticle(id);
+        }
+    });
+
+    it('orders personal articles by normalized publication time rather than Stage pins', async () => {
+        const insert = db.prepare(`
+            INSERT INTO articles (title, content, author_id, status, published_at, created_at, pinned_at)
+            VALUES (?, 'Ordering regression.', 'user-001', 'published', ?, ?, ?)
+        `);
+        const ids = [
+            insert.run('Old globally pinned article', '2099-01-01T00:00:00.000Z', '2099-01-01 00:00:00', '2099-03-01').lastInsertRowid,
+            insert.run('Morning publication', '2099-02-01T08:00:00.000Z', '2099-01-01 00:00:00', null).lastInsertRowid,
+            insert.run('Evening publication', '2099-02-01 12:00:00', '2099-01-01 00:00:00', null).lastInsertRowid,
+            insert.run('Same-time newer ID', '2099-02-01T12:00:00.000Z', '2099-01-01 00:00:00', null).lastInsertRowid,
+            insert.run('Legacy publication without published_at', null, '2099-02-02 00:00:00', null).lastInsertRowid
+        ];
+        try {
+            const own = await request('/api/user/articles/live/latest-personal-articles', { headers: authHeader(userToken) });
+            assert.equal(own.response.status, 200);
+            assert.deepEqual(own.body.data.slice(0, 5).map(article => article.id), ids.slice().reverse());
+            assert.equal(db.prepare('SELECT pinned_at FROM articles WHERE id = ?').get(ids[0]).pinned_at, '2099-03-01');
+        } finally {
+            for (const id of ids) db.prepare('DELETE FROM articles WHERE id = ?').run(id);
+        }
+    });
+
     it('persists OSS article covers through a durable same-origin asset URL', async () => {
         const originalGetSettings = objectStorage.getSettings;
         const originalPutObject = objectStorage.putObject;

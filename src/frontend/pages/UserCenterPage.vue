@@ -1,7 +1,7 @@
 <script setup>
 import { encodedAvatarInitial } from '../utils/userName.mjs';
 import ModerationNotice from '../components/ModerationNotice.vue';
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { authFetch, authHeaders, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
@@ -26,6 +26,9 @@ const sessionChecking = ref(!props.user);
 const ucToast = reactive({ text: '', type: 'success', visible: false });
 let ucToastTimer = 0;
 let loadedUserId = '';
+let articleLoadSequence = 0;
+let articleLoadUserId = '';
+let lastArticleRefreshAt = 0;
 const pixelFallbackPalette = ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#ff9aba', '#f1d98e'];
 const decodedPixelPreviews = new WeakMap();
 
@@ -97,7 +100,7 @@ const ucJoinDate = computed(() => {
 });
 const ucCopy = computed(() => props.lang === 'en' ? {
   account: 'My account', creative: 'Create & connect', materials: 'My materials',
-  search: 'Find a section', noSections: 'No matching sections', clearSearch: 'Clear search',
+  search: 'Find a section', noSections: 'No matching sections', clearSearch: 'Clear search', refreshArticles: 'Refresh articles',
   messages: 'My messages', bookmarks: 'Bookmarks', pixels: 'Pixel art', gallery: 'Gallery', attachments: 'Attachments',
   publicProfile: 'Public profile', accountInfo: 'View account information',
   profileHint: 'Choose the name and introduction people see.', avatarHint: 'Update your avatar',
@@ -109,7 +112,7 @@ const ucCopy = computed(() => props.lang === 'en' ? {
   roomOpen: 'Enter room', navigation: 'User center sections', refresh: 'Refresh account data', noMatches: 'No matching results', searchHint: 'Try another keyword or clear the search.'
 } : props.lang === 'ja' ? {
   account: 'マイアカウント', creative: '創作と交流', materials: 'マイ素材',
-  search: '機能を探す', noSections: '該当する機能はありません', clearSearch: '検索を解除',
+  search: '機能を探す', noSections: '該当する機能はありません', clearSearch: '検索を解除', refreshArticles: '記事を更新',
   messages: '自分の投稿', bookmarks: 'ブックマーク', pixels: 'ピクセルアート', gallery: 'ギャラリー', attachments: '添付ファイル',
   publicProfile: '公開プロフィール', accountInfo: 'アカウント情報を見る',
   profileHint: '表示する名前と自己紹介を編集できます。', avatarHint: 'アバターを変更',
@@ -121,7 +124,7 @@ const ucCopy = computed(() => props.lang === 'en' ? {
   roomOpen: '部屋へ', navigation: 'ユーザーセンターの機能', refresh: 'アカウント情報を更新', noMatches: '該当する結果はありません', searchHint: '別のキーワードを試すか、検索を解除してください。'
 } : {
   account: '我的账号', creative: '创作与互动', materials: '我的素材',
-  search: '搜索功能', noSections: '没有找到相关功能', clearSearch: '清除搜索',
+  search: '搜索功能', noSections: '没有找到相关功能', clearSearch: '清除搜索', refreshArticles: '刷新文章',
   messages: '我的留言', bookmarks: '我的收藏', pixels: '像素画', gallery: '图库管理', attachments: '附件库',
   publicProfile: '公开主页', accountInfo: '查看账号信息',
   profileHint: '让大家通过昵称和简介认识你。', avatarHint: '更换头像',
@@ -346,12 +349,18 @@ async function ucLoadProfile() {
 }
 
 async function ucLoadArticles() {
-  uc.articleLoading = true;
-  uc.articleError = '';
-  if (!isAuthed.value) {
+  const accountId = ucUser.value?.id || '';
+  if (!accountId) {
     uc.articleLoading = false;
     return;
   }
+  if (uc.articleLoading && articleLoadUserId === accountId) return;
+  const sequence = ++articleLoadSequence;
+  articleLoadUserId = accountId;
+  lastArticleRefreshAt = Date.now();
+  uc.articleLoading = true;
+  uc.articleError = '';
+  const isCurrent = () => sequence === articleLoadSequence && ucUser.value?.id === accountId;
   try {
     const response = await authFetch(`/api/user/articles/live/${Date.now()}`, {
       headers: authHeaders(),
@@ -359,14 +368,24 @@ async function ucLoadArticles() {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.ucArticleLoadFailed);
-    uc.articles = result.data || [];
+    if (isCurrent()) uc.articles = Array.isArray(result.data) ? result.data : [];
   } catch (error) {
-    uc.articles = [];
+    if (!isCurrent()) return;
     uc.articleError = error.message || props.t.ucArticleLoadFailed;
     ucShowToast(error.message || props.t.ucArticleLoadFailed, 'error');
   } finally {
-    uc.articleLoading = false;
+    if (isCurrent()) {
+      uc.articleLoading = false;
+      articleLoadUserId = '';
+    }
   }
+}
+
+function ucReloadVisibleArticles(event) {
+  if (event?.type === 'pageshow' && !event.persisted) return;
+  if (document.visibilityState !== 'visible' || uc.tab !== 'articles' || !isAuthed.value) return;
+  if (Date.now() - lastArticleRefreshAt < 1500) return;
+  ucLoadArticles();
 }
 
 async function ucLoadBookmarks() {
@@ -474,6 +493,9 @@ async function ucEnsureSession() {
   }
 
   ucUser.value = null;
+  articleLoadSequence += 1;
+  articleLoadUserId = '';
+  loadedUserId = '';
   uc.profileBio = '';
   uc.profileNickname = '';
   uc.articles = [];
@@ -736,6 +758,10 @@ async function ucDeletePixelArtwork(artwork) {
   }
 }
 
+watch(() => uc.tab, (tab) => {
+  if (tab === 'articles') ucLoadArticles();
+});
+
 watch(() => props.user, (nextUser) => {
   if (!nextUser) {
     ucEnsureSession();
@@ -750,7 +776,18 @@ watch(() => props.user, (nextUser) => {
 });
 
 onMounted(async () => {
+  window.addEventListener('focus', ucReloadVisibleArticles);
+  window.addEventListener('pageshow', ucReloadVisibleArticles);
+  document.addEventListener('visibilitychange', ucReloadVisibleArticles);
   if (await ucEnsureSession()) await ucRefresh();
+});
+
+onUnmounted(() => {
+  articleLoadSequence += 1;
+  clearTimeout(ucToastTimer);
+  window.removeEventListener('focus', ucReloadVisibleArticles);
+  window.removeEventListener('pageshow', ucReloadVisibleArticles);
+  document.removeEventListener('visibilitychange', ucReloadVisibleArticles);
 });
 </script>
 
@@ -861,14 +898,19 @@ onMounted(async () => {
               <h2 class="uc-section-title">{{ t.ucArticlesTab }}</h2>
               <div class="uc-article-tools">
                 <input v-model="uc.articleQuery" class="uc-search" type="search" :aria-label="t.ucSearchArticles" :placeholder="t.ucSearchArticles">
+                <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.articleLoading" :aria-busy="uc.articleLoading" @click="ucLoadArticles">
+                  <TsIcon name="refresh" :size="17" />
+                  <span>{{ ucCopy.refreshArticles }}</span>
+                </button>
                 <a class="primary-btn uc-icon-action" href="/editor" @click.prevent="go('/editor')">
                   <TsIcon name="penLine" :size="17" />
                   <span>{{ t.ucWriteNew }}</span>
                 </a>
               </div>
             </div>
-            <LoadingSkeleton v-if="uc.articleLoading" variant="list" :count="5" :label="t.ucLoadingArticles" />
-            <div v-else-if="uc.articleError" class="uc-empty error" role="alert">{{ uc.articleError }}</div>
+            <div v-if="uc.articleError && uc.articles.length" class="form-message error" role="alert">{{ uc.articleError }}</div>
+            <LoadingSkeleton v-if="uc.articleLoading && !uc.articles.length" variant="list" :count="5" :label="t.ucLoadingArticles" />
+            <div v-else-if="uc.articleError && !uc.articles.length" class="uc-empty error" role="alert">{{ uc.articleError }}</div>
             <div v-else-if="uc.articles.length && !ucFilteredArticles.length" class="uc-empty">
               <div class="ts-empty-title">{{ ucCopy.noMatches }}</div><div class="ts-empty-desc">{{ ucCopy.searchHint }}</div><button class="ghost-btn" type="button" @click="uc.articleQuery = ''">{{ ucCopy.clearSearch }}</button>
             </div>
