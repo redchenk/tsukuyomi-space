@@ -50,8 +50,8 @@ export function installRouteLinks({ router, navigate, prefetch, root = document 
 }
 
 export function routeViewKey(route) {
-  // Wiki owns section queries. Anchor jumps retain the reader and unsaved forms.
-  if (route.name === 'wiki') return route.path;
+  // These pages own their filters. Query/anchor changes retain unsaved forms.
+  if (route.name === 'wiki' || route.name === 'plaza') return route.path;
   return route.fullPath.split('#')[0];
 }
 

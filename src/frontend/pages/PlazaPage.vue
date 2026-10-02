@@ -1,7 +1,7 @@
 <script setup>
 import { nameInitial } from '../utils/userName.mjs';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, loadCurrentSession, loadPublicStats, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
 import PlazaReplyForm from '../components/PlazaReplyForm.vue';
@@ -23,6 +23,7 @@ const props = defineProps({
 
 const emit = defineEmits(['go']);
 const route = useRoute();
+const router = useRouter();
 const { hydrateUserLevels, userLevel } = useUserLevels();
 const session = ref(getSession());
 const plaza = reactive({
@@ -41,6 +42,9 @@ const plaza = reactive({
 });
 const plazaToast = reactive({ text: '', type: 'success', visible: false });
 const messageModeration = ref(null);
+const compact = ref(false);
+let compactQuery;
+const updateCompact = () => { compact.value = compactQuery?.matches || false; };
 const replyModeration = reactive({});
 let plazaToastTimer = 0;
 const PLAZA_PAGE_SIZE = 8;
@@ -49,16 +53,10 @@ const isAuthed = computed(() => Boolean(session.value));
 const isZh = computed(() => props.lang === 'zh');
 const isEn = computed(() => props.lang === 'en');
 const plazaCopy = computed(() => isEn.value ? {
-  subtitle: 'A public channel where visitors, creators and passing observers exchange messages.',
-  loginToPostDesc: 'Greetings and feedback appear in the plaza. Use the dedicated partner-site entry for link exchanges.',
   friendRule: 'Apply for a link exchange through the dedicated entry above and track its review status there.'
 } : isZh.value ? {
-  subtitle: '\u8bbf\u5ba2\u3001\u521b\u4f5c\u8005\u548c\u8def\u8fc7\u7684\u89c2\u6d4b\u8005\u5728\u8fd9\u91cc\u4ea4\u6362\u7559\u8a00\u3002\u95ee\u5019\u3001\u53cd\u9988\u548c\u7075\u611f\u90fd\u53ef\u4ee5\u843d\u5728\u8fd9\u91cc\u3002',
-  loginToPostDesc: '\u53d1\u5e03\u95ee\u5019\u548c\u53cd\u9988\u4f1a\u51fa\u73b0\u5728\u5e7f\u573a\u7559\u8a00\u5899\u3002\u53cb\u94fe\u7533\u8bf7\u8bf7\u4f7f\u7528\u5e38\u9a7b\u8bbf\u5ba2\u533a\u5165\u53e3\u3002',
   friendRule: '\u53cb\u94fe\u7533\u8bf7\u8bf7\u4f7f\u7528\u4e0a\u65b9\u72ec\u7acb\u5165\u53e3\uff0c\u5ba1\u6838\u72b6\u6001\u53ef\u968f\u65f6\u67e5\u770b\u3002'
 } : {
-  subtitle: '\u8a2a\u554f\u8005\u3001\u30af\u30ea\u30a8\u30a4\u30bf\u30fc\u3001\u901a\u308a\u3059\u304c\u308a\u306e\u89b3\u6e2c\u8005\u304c\u30e1\u30c3\u30bb\u30fc\u30b8\u3092\u4ea4\u308f\u3059\u516c\u958b\u30c1\u30e3\u30f3\u30cd\u30eb\u3067\u3059\u3002',
-  loginToPostDesc: '\u6328\u62f6\u3084\u30d5\u30a3\u30fc\u30c9\u30d0\u30c3\u30af\u306f\u5e83\u5834\u306b\u8868\u793a\u3055\u308c\u307e\u3059\u3002\u76f8\u4e92\u30ea\u30f3\u30af\u306f\u5c02\u7528\u5165\u53e3\u3092\u3054\u5229\u7528\u304f\u3060\u3055\u3044\u3002',
   friendRule: '\u76f8\u4e92\u30ea\u30f3\u30af\u306f\u4e0a\u306e\u5c02\u7528\u5165\u53e3\u304b\u3089\u7533\u8acb\u3057\u3001\u5be9\u67fb\u72b6\u6cc1\u3092\u78ba\u8a8d\u3067\u304d\u307e\u3059\u3002'
 });
 
@@ -76,36 +74,48 @@ const friends = computed(() => {
     { name: '\u8f1d\u591c\u59eb\u30d6\u30ed\u30b0', desc: '\u8a18\u4e8b\u3001\u304a\u77e5\u3089\u305b\u3001\u5275\u4f5c\u30ce\u30fc\u30c8', url: '/stage', avatar: '\u6587' },
     { name: '\u6708\u5149\u30d4\u30af\u30bb\u30eb\u5de5\u623f', desc: '\u30d4\u30af\u30bb\u30eb\u30a2\u30fc\u30c8\u3092\u63cf\u3044\u3066\u5171\u6709\u30ae\u30e3\u30e9\u30ea\u30fc\u3078', url: '/pixel/', avatar: '\u753b' }
   ];
-  const directory = isEn.value
-    ? { name: 'Partner Sites', desc: 'Browse listed friendly sites', url: '/friend-links', avatar: 'F' }
-    : isZh.value
-    ? { name: '\u53cb\u94fe', desc: '\u67e5\u770b\u5df2\u6536\u5f55\u7684\u53cb\u597d\u7ad9\u70b9', url: '/friend-links', avatar: '\u53cb' }
-    : { name: '\u76f8\u4e92\u30ea\u30f3\u30af', desc: '\u63b2\u8f09\u4e2d\u306e\u53cb\u597d\u30b5\u30a4\u30c8\u4e00\u89a7', url: '/friend-links', avatar: '\u53cb' };
-  const application = isEn.value
-    ? { name: 'Link Exchange Application', desc: 'Submit site details and track the review', url: '/friend-links/apply', avatar: 'L' }
-    : isZh.value
-    ? { name: '\u53cb\u94fe\u7533\u8bf7', desc: '\u586b\u5199\u7ad9\u70b9\u4fe1\u606f\u5e76\u67e5\u770b\u5ba1\u6838\u72b6\u6001', url: '/friend-links/apply', avatar: '\u94fe' }
-    : { name: '\u76f8\u4e92\u30ea\u30f3\u30af\u7533\u8acb', desc: '\u30b5\u30a4\u30c8\u60c5\u5831\u3068\u5be9\u67fb\u72b6\u6cc1\u3092\u78ba\u8a8d', url: '/friend-links/apply', avatar: '\u30ea' };
-  return [...builtIn, directory, application];
+  return builtIn;
+});
+
+const designCopy = computed(() => isEn.value ? {
+  intro: 'A little hello, a shared idea. Leave a moment of your day here.',
+  composer: 'What’s on your mind?', composerNote: 'Greetings, feedback and inspiration are all welcome.',
+  topics: 'Trending topics', sites: 'Around the plaza', info: 'About the plaza',
+  directory: 'Partner sites', apply: 'Apply for a link exchange', clear: 'Clear search',
+  topicCount: 'messages', search: 'Search messages, people or topics',
+  refresh: 'Refresh messages', signIn: 'Sign in to join the conversation',
+  guestHint: 'Browse freely. Sign in to post, reply and like.', allMessages: 'Show all messages'
+} : isZh.value ? {
+  intro: '留下一句问候，分享一点灵感。在这里，遇见同频的朋友。',
+  composer: '今天有什么想分享的？', composerNote: '问候、反馈、灵感，都可以留在这里。',
+  topics: '热门话题', sites: '广场周边', info: '关于广场',
+  directory: '浏览友链', apply: '申请友链', clear: '清除搜索',
+  topicCount: '条留言', search: '搜索留言、用户或话题',
+  refresh: '刷新留言', signIn: '登录，加入这场对话',
+  guestHint: '可以自由浏览，登录后即可发布、回复和点赞。', allMessages: '查看全部留言'
+} : {
+  intro: '挨拶も、ひらめきも。ここで同じ気持ちの仲間に出会う。',
+  composer: '今日は何を話しましょう？', composerNote: '挨拶、フィードバック、アイデアを気軽に。',
+  topics: '人気の話題', sites: '広場の周辺', info: '広場について',
+  directory: '相互リンク一覧', apply: '相互リンクを申請', clear: '検索をクリア',
+  topicCount: '件', search: 'メッセージ、ユーザー、話題を検索',
+  refresh: '投稿を更新', signIn: 'ログインして会話に参加',
+  guestHint: '閲覧は自由です。ログインして投稿、返信、いいね。', allMessages: 'すべての投稿を表示'
 });
 
 const fallback = computed(() => isEn.value ? {
   anonymous: 'Anonymous guest',
   visitor: 'Visitor',
-  search: 'Search...',
   justNow: 'just now',
   minutesAgo: 'minutes ago',
   hoursAgo: 'hours ago',
   daysAgo: 'days ago',
   posted: 'posted a message',
   replied: 'replied',
-  arrow: '→',
-  filteredMessages: 'matching messages',
   showing: 'Showing',
   page: 'Page',
   pageSuffix: '',
   totalPages: 'of',
-  pageSize: '8 per page',
   prevPage: 'Previous',
   nextPage: 'Next',
   jumpToPage: 'Go to page',
@@ -116,20 +126,16 @@ const fallback = computed(() => isEn.value ? {
 } : isZh.value ? {
   anonymous: '\u533f\u540d\u8bbf\u5ba2',
   visitor: '\u8bbf\u5ba2',
-  search: '\u641c\u7d22...',
   justNow: '\u521a\u521a',
   minutesAgo: '\u5206\u949f\u524d',
   hoursAgo: '\u5c0f\u65f6\u524d',
   daysAgo: '\u5929\u524d',
   posted: '\u53d1\u5e03\u4e86\u7559\u8a00',
   replied: '\u56de\u590d\u4e86\u7559\u8a00',
-  arrow: '\u2192',
-  filteredMessages: '\u6761\u5339\u914d\u7559\u8a00',
   showing: '\u5f53\u524d',
   page: '\u7b2c',
   pageSuffix: '\u9875',
   totalPages: '\u5171',
-  pageSize: '\u6bcf\u9875 8 \u6761',
   prevPage: '\u4e0a\u4e00\u9875',
   nextPage: '\u4e0b\u4e00\u9875',
   jumpToPage: '\u8df3\u5230\u7b2c',
@@ -140,20 +146,16 @@ const fallback = computed(() => isEn.value ? {
 } : {
   anonymous: '\u533f\u540d\u30b2\u30b9\u30c8',
   visitor: '\u8a2a\u554f\u8005',
-  search: '\u691c\u7d22...',
   justNow: '\u305f\u3063\u305f\u4eca',
   minutesAgo: '\u5206\u524d',
   hoursAgo: '\u6642\u9593\u524d',
   daysAgo: '\u65e5\u524d',
   posted: '\u30e1\u30c3\u30bb\u30fc\u30b8\u3092\u6295\u7a3f',
   replied: '\u30e1\u30c3\u30bb\u30fc\u30b8\u306b\u8fd4\u4fe1',
-  arrow: '\u2192',
-  filteredMessages: '\u4ef6\u306e\u30e1\u30c3\u30bb\u30fc\u30b8',
   showing: '\u8868\u793a\u4e2d',
   page: '\u30da\u30fc\u30b8',
   pageSuffix: '',
   totalPages: '\u5168',
-  pageSize: '1\u30da\u30fc\u30b8 8 \u4ef6',
   prevPage: '\u524d\u3078',
   nextPage: '\u6b21\u3078',
   jumpToPage: '\u30da\u30fc\u30b8\u3078\u79fb\u52d5',
@@ -208,7 +210,7 @@ const plazaMessageNumbers = computed(() => {
 
 const plazaActivity = computed(() => [...plaza.messages]
   .sort((a, b) => compareAppDate(b.created_at, a.created_at))
-  .slice(0, 6));
+  .slice(0, 4));
 
 const plazaTotalMessages = computed(() => plazaMessages.value.length);
 const plazaTotalPages = computed(() => Math.max(1, Math.ceil(plazaTotalMessages.value / PLAZA_PAGE_SIZE)));
@@ -248,7 +250,6 @@ const plazaPageItems = computed(() => {
   return pages;
 });
 
-const plazaResultSummary = computed(() => `${plazaFormatNumber(plazaTotalMessages.value)} ${fallback.value.filteredMessages}`);
 const plazaRangeSummary = computed(() => plazaTotalMessages.value
   ? `${fallback.value.showing} ${plazaFormatNumber(plazaPageStart.value)}-${plazaFormatNumber(plazaPageEnd.value)} ${fallback.value.messageRangeUnit}`
   : '');
@@ -509,14 +510,25 @@ function plazaSelectTopic(topic) {
   if (!value) return;
   plaza.query = `#${value}`;
   plaza.filter = 'latest';
-  try {
-    history.replaceState(null, '', `/plaza?topic=${encodeURIComponent(value)}`);
-  } catch (_) {}
+  if (route.query.topic !== value) router.replace({ query: { ...route.query, topic: value }, hash: route.hash });
+}
+
+function clearPlazaSearch() {
+  plaza.query = '';
+  if (route.query.topic) router.replace({ query: { ...route.query, topic: undefined }, hash: route.hash });
+}
+
+function plazaOpenActivity(id) {
+  plaza.query = '';
+  plaza.filter = 'latest';
+  router.replace({ query: { ...route.query, topic: undefined }, hash: `#msg-${id}` })
+    .then(plazaSyncPageWithHash);
 }
 
 function applyRouteTopic() {
   const topic = Array.isArray(route.query.topic) ? route.query.topic[0] : route.query.topic;
   if (topic) plazaSelectTopic(topic);
+  else plaza.query = '';
 }
 
 function isPlazaMessageLiked(message) {
@@ -573,84 +585,67 @@ watch(plazaTotalPages, (total) => {
 watch(() => route.query.topic, applyRouteTopic, { immediate: true });
 watch(() => route.hash, plazaSyncPageWithHash, { flush: 'post' });
 onMounted(() => {
+  compactQuery = window.matchMedia('(max-width: 900px)');
+  updateCompact();
+  compactQuery.addEventListener('change', updateCompact);
   window.addEventListener('hashchange', plazaSyncPageWithHash);
   refreshPlaza();
 });
-onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash));
+onUnmounted(() => {
+  window.removeEventListener('hashchange', plazaSyncPageWithHash);
+  compactQuery?.removeEventListener('change', updateCompact);
+  clearTimeout(plazaToastTimer);
+});
 </script>
 
 <template>
   <main class="page plaza-page">
-    <section class="plaza-hero">
-      <div class="plaza-hero-main">
+    <header class="plaza-intro">
+      <div>
         <div class="plaza-eyebrow">{{ t.plazaEyebrow }}</div>
         <h1 class="plaza-title">{{ t.plazaTitle }}</h1>
-        <p class="plaza-sub">{{ plazaCopy.subtitle }}</p>
+        <p class="plaza-sub">{{ designCopy.intro }}</p>
       </div>
-      <aside class="plaza-status panel">
-        <div class="plaza-status-line"><span>{{ t.channelStatus }}</span><span class="plaza-status-value">{{ t.channelValue }}</span></div>
-        <div class="plaza-status-line"><span>{{ t.plazaStatusLabel }}</span><span class="plaza-status-value">{{ plaza.loading ? t.syncing : t.online }}</span></div>
-        <div v-if="isAuthed" class="plaza-login-card">
-          <strong>{{ user.nickname || user.username }}</strong>
-          <p>{{ t.loggedInDesc }}</p>
-        </div>
-        <div v-else class="plaza-login-card">
-          <strong>{{ t.guestMode }}</strong>
-          <p>{{ t.guestDesc }}</p>
-          <div style="margin-top:0.8rem;"><a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.goLogin }}</a></div>
-        </div>
-      </aside>
-    </section>
-
-    <section class="plaza-stats">
-      <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsArticles }}</div><div class="plaza-stat-value">{{ plazaFormatNumber(plaza.stats?.articles || 0) }}</div><div class="plaza-stat-note">{{ t.statsArticlesNote }}</div></div>
-      <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsUsers }}</div><div class="plaza-stat-value">{{ plazaFormatNumber(plaza.stats?.users || 0) }}</div><div class="plaza-stat-note">{{ t.statsUsersNote }}</div></div>
-      <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsMessages }}</div><div class="plaza-stat-value">{{ plazaFormatNumber(plaza.stats?.messages || 0) }}</div><div class="plaza-stat-note">{{ t.statsMessagesNote }}</div></div>
-      <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsUptime }}</div><div class="plaza-stat-value">{{ plazaFormatUptime(plaza.stats?.uptime || 0) }}</div><div class="plaza-stat-note">{{ t.statsUptimeNote }}</div></div>
-    </section>
+      <span class="plaza-channel"><TsIcon name="message" :size="16" />{{ t.channelValue }}</span>
+    </header>
 
     <section class="plaza-layout">
-      <div class="panel plaza-wall" :aria-busy="plaza.loading">
-        <div class="plaza-section-head">
-          <h2 class="plaza-section-title"><span>01</span> {{ t.wallTitle }}</h2>
-          <div class="plaza-toolbar">
-            <label class="plaza-search-wrap">
-              <TsIcon name="search" :size="16" />
-              <input v-model="plaza.query" class="plaza-search" type="search" :aria-label="fallback.search" :placeholder="fallback.search">
-            </label>
-            <button class="ghost-btn plaza-refresh-btn" type="button" :disabled="plaza.loading" :aria-busy="plaza.loading" @click="refreshPlaza">
-              <TsIcon name="refresh" :size="16" />
-              <span>{{ t.refresh }}</span>
-            </button>
-          </div>
-        </div>
-        <div class="plaza-filters">
-          <button class="chip" :class="{ active: plaza.filter === 'latest' }" type="button" @click="plaza.filter = 'latest'">{{ t.filterLatest }}</button>
-          <button class="chip" :class="{ active: plaza.filter === 'hot' }" type="button" @click="plaza.filter = 'hot'">{{ t.filterHot }}</button>
-          <button class="chip" :class="{ active: plaza.filter === 'replied' }" type="button" @click="plaza.filter = 'replied'">{{ t.filterReplied }}</button>
-          <button class="chip" :class="{ active: plaza.filter === 'mine' }" type="button" @click="plaza.filter = 'mine'">{{ t.filterMine }}</button>
-        </div>
-        <div v-if="!plaza.loading && plazaMessages.length" class="plaza-result-strip">
-          <div>
-            <strong>{{ plazaResultSummary }}</strong>
-            <span>{{ plazaRangeSummary }}</span>
-          </div>
-          <div class="plaza-result-page">
-            <span>{{ plazaPageSummary }}</span>
-            <small>{{ fallback.pageSize }}</small>
-          </div>
-        </div>
-
+      <section class="panel plaza-compose-panel" :aria-label="t.publish">
         <div v-if="!isAuthed" class="plaza-composer plaza-composer-locked">
-          <div class="plaza-empty">
-            <div class="ts-empty-title">{{ t.loginToPost }}</div>
-            <div class="ts-empty-desc">{{ plazaCopy.loginToPostDesc }}</div>
-            <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.goLogin }}</a>
-          </div>
+          <div class="plaza-compose-icon"><TsIcon name="message" :size="24" /></div>
+          <div class="plaza-guest-copy"><h2>{{ designCopy.signIn }}</h2><p>{{ designCopy.guestHint }}</p></div>
+          <a class="primary-btn" href="/login" @click.prevent="go('/login')">{{ t.goLogin }}<TsIcon name="chevronRight" :size="16" /></a>
         </div>
         <div v-else class="plaza-composer">
-          <PlazaComposer :t="t" :on-submit="plazaSubmitMessage" />
+          <div class="plaza-compose-heading">
+            <div class="plaza-avatar"><img v-if="user.avatar" :src="user.avatar" :alt="plazaAvatarAlt(user.nickname || user.username)" /><span v-else>{{ plazaInitial(user.nickname || user.username) }}</span></div>
+            <div><h2>{{ designCopy.composer }}</h2><p>{{ user.nickname || user.username }} · {{ designCopy.composerNote }}</p></div>
+          </div>
+          <PlazaComposer :t="t" :lang="lang" :on-submit="plazaSubmitMessage" />
           <ModerationNotice :feedback="messageModeration" />
+        </div>
+      </section>
+
+      <section class="plaza-wall" :aria-busy="plaza.loading" :aria-label="t.wallTitle">
+        <div class="plaza-section-head">
+          <h2 class="plaza-section-title">{{ t.wallTitle }}<span v-if="!plaza.loading" class="plaza-count">{{ plazaFormatNumber(plazaTotalMessages) }}</span></h2>
+          <button class="ghost-btn plaza-refresh-btn" type="button" :disabled="plaza.loading" :aria-busy="plaza.loading" :aria-label="designCopy.refresh" @click="refreshPlaza"><TsIcon name="refresh" :size="16" /><span>{{ t.refresh }}</span></button>
+        </div>
+        <div class="plaza-feed-controls">
+          <div class="plaza-filters" :aria-label="t.wallTitle">
+            <button class="chip" :class="{ active: plaza.filter === 'latest' }" :aria-pressed="plaza.filter === 'latest'" type="button" @click="plaza.filter = 'latest'">{{ t.filterLatest }}</button>
+            <button class="chip" :class="{ active: plaza.filter === 'hot' }" :aria-pressed="plaza.filter === 'hot'" type="button" @click="plaza.filter = 'hot'">{{ t.filterHot }}</button>
+            <button class="chip" :class="{ active: plaza.filter === 'replied' }" :aria-pressed="plaza.filter === 'replied'" type="button" @click="plaza.filter = 'replied'">{{ t.filterReplied }}</button>
+            <button class="chip" :class="{ active: plaza.filter === 'mine' }" :aria-pressed="plaza.filter === 'mine'" type="button" @click="isAuthed ? plaza.filter = 'mine' : go('/login')">{{ t.filterMine }}</button>
+          </div>
+          <label class="plaza-search-wrap">
+            <TsIcon name="search" :size="16" />
+            <input v-model="plaza.query" class="plaza-search" type="search" :aria-label="designCopy.search" :placeholder="designCopy.search">
+          </label>
+        </div>
+        <div v-if="plaza.query" class="plaza-active-query"><span>{{ plaza.query }}</span><button class="ghost-btn" type="button" :aria-label="designCopy.clear" @click="clearPlazaSearch"><TsIcon name="x" :size="14" />{{ designCopy.clear }}</button></div>
+        <div v-if="!plaza.loading && plazaMessages.length" class="plaza-result-strip" role="status" aria-live="polite">
+          <span>{{ plazaRangeSummary }}</span><span>{{ plazaPageSummary }}</span>
         </div>
 
         <LoadingSkeleton v-if="plaza.loading" variant="list" :count="6" :label="t.plazaConnecting" />
@@ -658,6 +653,7 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
         <div v-else-if="!plazaMessages.length" class="plaza-empty">
           <div class="ts-empty-title">{{ t.noMessages }}</div>
           <div>{{ t.noMessagesHint }}</div>
+          <button v-if="plaza.query || plaza.filter !== 'latest'" class="ghost-btn" type="button" @click="clearPlazaSearch(); plaza.filter = 'latest'">{{ designCopy.allMessages }}</button>
         </div>
         <div v-else class="plaza-messages plaza-message-region">
           <article v-for="msg in pagedPlazaMessages" :id="'msg-' + msg.id" :key="msg.id" class="plaza-msg-card">
@@ -669,8 +665,8 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
                   <span v-else>{{ plazaInitial(msg.author_nickname || msg.author) }}</span>
                 </div>
                 <div>
-                  <div class="plaza-author-name">{{ msg.author_nickname || msg.author || fallback.anonymous }}</div>
-                  <UserLevelBadge v-if="msg.user_id" :level="userLevel(msg.user_id)" :lang="lang" compact :show-title="false" />
+                  <div class="plaza-author-heading"><span class="plaza-author-name">{{ msg.author_nickname || msg.author || fallback.anonymous }}</span>
+                  <UserLevelBadge v-if="msg.user_id" :level="userLevel(msg.user_id)" :lang="lang" compact :show-title="false" /></div>
                   <div class="plaza-msg-date">{{ plazaFormatDate(msg.created_at) }}</div>
                 </div>
                 </button>
@@ -698,9 +694,8 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
                 <TsIcon name="message" :size="15" />
                 <span>{{ t.reply }} {{ (msg.replies || []).length }}</span>
               </button>
-              <button class="icon-btn" type="button" @click="plazaCopyLink(msg.id)">
+              <button class="icon-btn plaza-copy-action" type="button" :aria-label="t.copyLink" :title="t.copyLink" @click="plazaCopyLink(msg.id)">
                 <TsIcon name="copy" :size="15" />
-                <span>{{ t.copyLink }}</span>
               </button>
             </div>
             <div v-if="plaza.replyOpen[msg.id]" class="plaza-reply-form">
@@ -717,8 +712,8 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
                       <span v-else>{{ plazaInitial(reply.author_nickname || reply.author) }}</span>
                     </div>
                     <div>
-                      <div class="plaza-author-name" style="font-size:0.82rem;">{{ reply.author_nickname || reply.author || fallback.anonymous }}</div>
-                      <UserLevelBadge v-if="reply.user_id" :level="userLevel(reply.user_id)" :lang="lang" compact :show-title="false" />
+                      <div class="plaza-author-heading"><span class="plaza-author-name">{{ reply.author_nickname || reply.author || fallback.anonymous }}</span>
+                      <UserLevelBadge v-if="reply.user_id" :level="userLevel(reply.user_id)" :lang="lang" compact :show-title="false" /></div>
                       <div class="plaza-msg-date">{{ plazaFormatDate(reply.created_at) }}</div>
                     </div>
                     </button>
@@ -791,60 +786,48 @@ onUnmounted(() => window.removeEventListener('hashchange', plazaSyncPageWithHash
             </div>
           </nav>
         </div>
-      </div>
+      </section>
 
-      <aside class="plaza-side">
-        <div class="panel">
-          <div class="panel-title">{{ isEn ? 'Trending topics' : '热门话题' }} <span>{{ plaza.topics.length }}</span></div>
+      <aside class="plaza-side" :aria-label="designCopy.info">
+        <details class="panel plaza-discovery" :open="!compact">
+          <summary class="plaza-disclosure-heading"><span><TsIcon name="message" :size="18" />{{ designCopy.topics }}</span><span class="plaza-summary-end"><small>{{ plaza.topics.length }}</small><TsIcon name="chevronDown" :size="16" /></span></summary>
           <div class="plaza-topic-list" :aria-busy="plaza.topicsLoading">
-            <LoadingSkeleton v-if="plaza.topicsLoading" variant="topics" :count="4" :label="isEn ? 'Syncing topics' : '正在同步话题'" />
+            <LoadingSkeleton v-if="plaza.topicsLoading" variant="topics" :count="3" :label="t.syncing" />
             <div v-else-if="plaza.topicsError" class="plaza-topic-empty error" role="alert">{{ plaza.topicsError }}</div>
             <template v-else>
-              <button
-                v-for="topic in plaza.topics"
-                :key="topic.topic"
-                class="plaza-topic-chip"
-                type="button"
-                @click="plazaSelectTopic(topic.topic)"
-              >
-                <span>#{{ topic.topic }}</span>
-                <small>{{ plazaFormatNumber(topic.count) }} · {{ plazaFormatNumber(topic.score) }}</small>
-              </button>
-              <div v-if="!plaza.topics.length" class="plaza-topic-empty">{{ isEn ? 'No topics yet. Try posting #TsukuyomiTea#' : '还没有话题，试试发布 #月读茶会#' }}</div>
+              <button v-for="topic in plaza.topics" :key="topic.topic" class="plaza-topic-chip" :class="{ active: plaza.query === '#' + topic.topic }" :aria-pressed="plaza.query === '#' + topic.topic" type="button" @click="plazaSelectTopic(topic.topic)"><span>#{{ topic.topic }}</span><small>{{ plazaFormatNumber(topic.count) }} {{ designCopy.topicCount }}</small><TsIcon name="chevronRight" :size="14" /></button>
+              <div v-if="!plaza.topics.length" class="plaza-topic-empty">{{ isEn ? 'No topics yet. Try posting #TsukuyomiTea#' : isZh ? '还没有话题，试试发布 #月读茶会#' : '最初の #話題# を投稿してみましょう。' }}</div>
             </template>
           </div>
-        </div>
-        <div class="panel">
-          <div class="panel-title">{{ t.residents }} <span>{{ friends.length }}</span></div>
+        </details>
+        <details class="panel plaza-discovery" :open="!compact">
+          <summary class="plaza-disclosure-heading"><span><TsIcon name="compass" :size="18" />{{ designCopy.sites }}</span><TsIcon name="chevronDown" :size="16" /></summary>
           <div class="plaza-friends">
-            <a v-for="f in friends" :key="`${f.name}-${f.url}`" class="plaza-friend-card" :href="f.url" :target="f.external ? '_blank' : undefined" :rel="f.external ? 'noopener noreferrer' : undefined" @click="f.url.startsWith('/') && !f.external && ($event.preventDefault(), go(f.url))">
-              <div class="plaza-friend-avatar">{{ f.avatar }}</div>
-              <div>
-                <div class="plaza-friend-name">{{ f.name }}</div>
-                <div class="plaza-friend-desc">{{ f.desc }}</div>
-              </div>
-              <div class="plaza-friend-arrow">{{ fallback.arrow }}</div>
+            <a v-for="f in friends" :key="f.url" class="plaza-friend-card" :href="f.url" :target="f.external ? '_blank' : undefined" :rel="f.external ? 'noopener noreferrer' : undefined" @click="f.url.startsWith('/') && !f.external && ($event.preventDefault(), go(f.url))">
+              <TsIcon :name="f.external ? 'code' : f.url === '/stage' ? 'book' : 'image'" :size="22" />
+              <div><div class="plaza-friend-name">{{ f.name }}</div><div class="plaza-friend-desc">{{ f.desc }}</div></div>
+              <TsIcon name="chevronRight" :size="16" />
             </a>
           </div>
-        </div>
-        <div class="panel">
-          <div class="panel-title">{{ t.activity }}</div>
-          <div class="plaza-activities">
-            <div v-if="!plazaActivity.length" class="plaza-activity-item"><span class="plaza-dot"></span><span>{{ t.plazaJustOpened }}</span></div>
-            <div v-for="item in plazaActivity" :key="item.id" class="plaza-activity-item">
-              <span class="plaza-dot"></span>
-              <span>{{ item.author_nickname || item.author || fallback.visitor }} {{ item.parent_id ? fallback.replied : fallback.posted }} · {{ plazaFormatRelative(item.created_at) }}</span>
-            </div>
+          <div class="plaza-friend-actions"><a class="ghost-btn" href="/friend-links" @click.prevent="go('/friend-links')">{{ designCopy.directory }}</a><a class="ghost-btn" href="/friend-links/apply" @click.prevent="go('/friend-links/apply')"><TsIcon name="plus" :size="14" />{{ designCopy.apply }}</a></div>
+        </details>
+        <details class="panel plaza-info">
+          <summary class="plaza-disclosure-heading"><span><TsIcon name="info" :size="18" />{{ designCopy.info }}</span><TsIcon name="chevronDown" :size="16" /></summary>
+          <div class="plaza-info-content">
+            <section><h3>{{ t.activity }}</h3><div class="plaza-activities">
+              <p v-if="!plazaActivity.length" class="plaza-topic-empty">{{ t.plazaJustOpened }}</p>
+              <a v-for="item in plazaActivity" :key="item.id" class="plaza-activity-item" :href="'#msg-' + item.id" @click.prevent="plazaOpenActivity(item.id)"><TsIcon name="message" :size="14" /><span>{{ item.author_nickname || item.author || fallback.visitor }} {{ item.parent_id ? fallback.replied : fallback.posted }}<small>{{ plazaFormatRelative(item.created_at) }}</small></span></a>
+            </div></section>
+            <section><h3>{{ t.rulesTitle }}</h3><div class="plaza-rules"><p>{{ t.rule1 }}</p><p>{{ plazaCopy.friendRule }}</p><p>{{ t.rule3 }}</p></div></section>
+            <section class="plaza-stats" :aria-label="t.plazaStatusLabel">
+              <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsArticles }}</div><div class="plaza-stat-value">{{ plazaFormatNumber(plaza.stats?.articles) }}</div></div>
+              <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsUsers }}</div><div class="plaza-stat-value">{{ plazaFormatNumber(plaza.stats?.users) }}</div></div>
+              <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsMessages }}</div><div class="plaza-stat-value">{{ plazaFormatNumber(plaza.stats?.messages) }}</div></div>
+              <div class="plaza-stat-card"><div class="plaza-stat-label">{{ t.statsUptime }}</div><div class="plaza-stat-value">{{ plazaFormatUptime(plaza.stats?.uptime) }}</div></div>
+            </section>
+            <div class="plaza-status-line"><span>{{ t.plazaStatusLabel }}</span><span class="plaza-status-value">{{ plaza.loading ? t.syncing : plaza.loadError ? t.plazaLoadFailed : t.online }}</span></div>
           </div>
-        </div>
-        <div class="panel">
-          <div class="panel-title">{{ t.rulesTitle }}</div>
-          <div class="plaza-rules">
-            <p>{{ t.rule1 }}</p>
-            <p>{{ plazaCopy.friendRule }}</p>
-            <p>{{ t.rule3 }}</p>
-          </div>
-        </div>
+        </details>
       </aside>
     </section>
 

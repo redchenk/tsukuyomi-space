@@ -532,3 +532,65 @@ The two WebKit motion checks counted backdrop events because that engine omitted
 `pseudoElement` metadata. They now select the menu's actual animation names,
 keeping completion, duration, focus, scroll, search and reduced-motion assertions.
 The complete release checks are rerun before activation.
+
+## Plaza layout refinement — 2026-10-02
+
+Reference: the selected conversation “重新设计Plaza页面”
+(`6abf385d-f004-83e9-b2c9-a63c7a590de9`) and the current production Plaza.
+The conversation's written layout decisions were readable; its sandbox mockup
+attachments were not exposed. This is an adaptation of that layout to the
+existing production design system, not a claim of pixel fidelity to those images.
+The user's current palette, pill buttons, top mobile navigation and persistent
+music/companion placement take precedence over the reference's alternate colors
+and bottom navigation.
+
+Evidence is in `.codex_tmp/plaza-redesign/`: `source-desktop-dark.png` and
+`desktop-dark-guest.png` were opened together at 1440×1000, guest/default-feed
+state. Production and isolated fixture content differ; counts, authors and
+background availability are not compared as layout drift. Additional inspected
+views cover 1280px desktop, 390×844 mobile in both themes, 320px narrow mobile,
+and the authenticated composer. Screenshots use CSS-pixel dimensions at 1×.
+
+Resolved findings:
+- P2: the original hero/status/statistics consumed the first screen. The short
+  intro and composer now precede the feed; statistics, rules and recent activity
+  remain available in “关于广场”.
+- P2: the first preview inherited the old panel's fixed width and a button-like
+  author frame. The composer now fills its grid track and author/level/time have
+  one shared alignment without an extra frame.
+- P2: three expanded mobile support panels pushed the feed down. Their closed
+  controls share one row; each opens on demand as a native disclosure.
+- P2: query navigation remounted the page and discarded an unpublished draft.
+  Plaza now owns topic-query changes without a remount. Selecting a topic and
+  clearing it preserves the draft while correctly updating the URL.
+- P2: legacy important dark-surface styles created a second composer background.
+  A Plaza-only cascade bridge removes the inner frame and retains site tokens.
+
+Required surfaces checked:
+- Typography: existing MiSans/PingFang/system family; smaller heading and clear
+  author/body/meta hierarchy. Long content wraps; levels stay adjacent to names.
+- Spacing/layout: 24px desktop gutter, 300px support rail, single mobile column,
+  rounded site cards and pill controls. No horizontal overflow at 320/390px.
+- Colors: existing editorial surface/text/border/accent tokens and brand button
+  gradient; light and dark states inspected. No new palette introduced.
+- Images/icons: existing user avatars, music and companion retained; established
+  TsIcon library used. No generated art, replacement illustrations or resource
+  changes. Local fixture background differs from live settings, intentionally.
+- Copy/content: focused Chinese/English/Japanese labels; explicit guest action,
+  empty-search recovery, character count and real friend-link destinations.
+
+The isolated local website was used for all writes. Verified login, publication,
+like state, reply to a message, reply to a reply, latest-reply preview/full
+expansion, topic filtering, draft retention, clear search, empty recovery and
+8-item pagination (13 roots: eight on page one, five on page two). Support panels
+and account/top navigation remain usable. Inputs have labels, copy has an
+accessible icon-only label, filter state uses aria-pressed and disclosure state
+is native. Reduced-motion removes the new chevron transition. Browser console
+inspection returned no warnings/errors. All 283 frontend checks pass; build and
+production asset/health/resource verification accompany release.
+
+No actionable P0/P1/P2 issues remain in this scope. Physical iOS hardware was
+not exercised; responsive checks used the in-app browser. Existing production
+resource hashes must pass deployment verification before the release is accepted.
+
+final result: passed

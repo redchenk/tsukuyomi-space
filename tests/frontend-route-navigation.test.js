@@ -49,6 +49,8 @@ test('anchors and Wiki section queries preserve instances while different articl
     const { routeViewKey } = loadModule('src/frontend/utils/routeNavigation.js', navigationExports);
     assert.equal(routeViewKey({ fullPath: '/articles/15/story#chapter' }), '/articles/15/story');
     assert.equal(routeViewKey({ name: 'wiki', path: '/wiki', fullPath: '/wiki?section=characters' }), '/wiki');
+    assert.equal(routeViewKey({ name: 'plaza', path: '/plaza', fullPath: '/plaza?topic=moon#msg-4' }),
+      routeViewKey({ name: 'plaza', path: '/plaza', fullPath: '/plaza' }));
     assert.notEqual(routeViewKey({ fullPath: '/editor?id=1' }), routeViewKey({ fullPath: '/editor?id=2' }));
 });
 

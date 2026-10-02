@@ -317,8 +317,8 @@ describe('frontend navigation routes', () => {
         assert.match(router, /name: 'friendLinks'/);
         assert.match(router, /path: '\/friend-links\/apply'/);
         assert.match(router, /name: 'friendLinkApply'/);
-        assert.match(plaza, /url: '\/friend-links'/);
-        assert.match(plaza, /url: '\/friend-links\/apply'/);
+        assert.match(plaza, /href="\/friend-links"[^>]*go\('\/friend-links'\)/);
+        assert.match(plaza, /href="\/friend-links\/apply"[^>]*go\('\/friend-links\/apply'\)/);
         assert.doesNotMatch(plaza, /approvedFriendLinks/);
         assert.match(directory, /apiFetch\(noStoreUrl\('\/api\/friend-links'\)/);
         assert.match(directory, /<StatusLoader/);
