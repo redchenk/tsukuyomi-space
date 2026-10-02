@@ -79,7 +79,13 @@ function countAssetsByOwner(ownerId, { type = '', search = '', includePublic = f
     return db.prepare(`SELECT COUNT(*) AS count FROM article_assets WHERE ${where}`).get(...params).count;
 }
 
-function buildGalleryWhere({ search = '', ownerId = '' } = {}) {
+const galleryCategoryKeywords = Object.freeze({
+    wallpaper: ['wallpaper', '壁纸'],
+    screenshot: ['screenshot', '截图', '截屏'],
+    character: ['character', '角色', '八千代', 'yachiyo']
+});
+
+function buildGalleryWhere({ search = '', ownerId = '', category = '' } = {}) {
     const params = [];
     let where = `
         (assets.mime_type LIKE 'image/%' OR assets.asset_type LIKE '%image%')
@@ -99,11 +105,17 @@ function buildGalleryWhere({ search = '', ownerId = '' } = {}) {
         const keyword = `%${search}%`;
         params.push(keyword, keyword, keyword);
     }
+    const keywords = galleryCategoryKeywords[category];
+    if (Array.isArray(keywords)) {
+        where += ` AND (${keywords.map(() => '(assets.storage_key LIKE ? OR assets.metadata LIKE ?)').join(' OR ')})`;
+        for (const keyword of keywords) params.push(`%${keyword}%`, `%${keyword}%`);
+    }
     return { where, params };
 }
 
-function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '' } = {}) {
-    const galleryFilter = buildGalleryWhere({ search, ownerId });
+function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '', category = '', sort = 'latest' } = {}) {
+    const galleryFilter = buildGalleryWhere({ search, ownerId, category });
+    const order = sort === 'oldest' ? 'ASC' : 'DESC';
     const rows = db.prepare(`
         SELECT
             assets.id, assets.article_id, assets.owner_id, assets.asset_type, assets.mime_type,
@@ -121,7 +133,7 @@ function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '' }
         FROM article_assets AS assets
         LEFT JOIN users AS owner ON owner.id = assets.owner_id
         WHERE ${galleryFilter.where}
-        ORDER BY assets.created_at DESC
+        ORDER BY assets.created_at ${order}, assets.id ${order}
         LIMIT ? OFFSET ?
     `).all(...galleryFilter.params, limit, offset);
     return rows.map(parseGalleryAsset);
@@ -152,8 +164,8 @@ function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '' } = {}) 
     return rows.map(parseGalleryAsset);
 }
 
-function countGalleryAssets({ search = '', ownerId = '' } = {}) {
-    const galleryFilter = buildGalleryWhere({ search, ownerId });
+function countGalleryAssets({ search = '', ownerId = '', category = '' } = {}) {
+    const galleryFilter = buildGalleryWhere({ search, ownerId, category });
     return db.prepare(`SELECT COUNT(*) AS count FROM article_assets AS assets WHERE ${galleryFilter.where}`).get(...galleryFilter.params).count;
 }
 

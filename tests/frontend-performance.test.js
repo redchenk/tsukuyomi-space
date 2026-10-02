@@ -181,15 +181,12 @@ describe('constrained-device performance policy', () => {
         assert.match(arena, /class="pixel-art-preview"[\s\S]*?<PixelCanvasCells[\s\S]*?defer-offscreen/);
     });
 
-    it('rotates Gallery feature media only while visible and decodes it before swapping', () => {
+    it('loads Gallery random media only on demand without background polling', () => {
         const gallery = source('src/frontend/pages/GalleryPage.vue');
-
-        assert.match(gallery, /const RANDOM_FEATURE_INTERVAL_MS = 30000/);
-        assert.match(gallery, /new IntersectionObserver/);
-        assert.match(gallery, /document\.visibilityState === 'visible' && randomFeatureVisible/);
-        assert.match(gallery, /await image\.decode\?\.\(\)/);
-        assert.match(gallery, /stopRandomFeatureRotation\(\)/);
-        assert.doesNotMatch(gallery, /setInterval\(loadRandomFeatureImage, 7000\)/);
+        assert.match(gallery, /@click="browseRandom"/);
+        assert.match(gallery, /loading="lazy" decoding="async"/);
+        assert.doesNotMatch(gallery, /setInterval|loadRandomFeatureImage|loadLatestImage/);
+        assert.match(gallery, /requestId !== listRequestId/);
     });
 
     it('keeps mobile content and immersive controls inside the viewport', () => {

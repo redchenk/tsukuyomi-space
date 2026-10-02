@@ -1191,6 +1191,56 @@ describe('articles API', () => {
 });
 
 describe('gallery API', () => {
+    it('filters multilingual names and paginates chronological results without crossing owner scope', async () => {
+        const prefix = `gallery-browse-${Date.now()}`;
+        const rows = [
+            ['a', 'user-001', '桌面壁纸', '2026-01-01 10:00:00'],
+            ['b', 'user-001', 'wallpaper blue', '2026-01-02 10:00:00'],
+            ['c', 'user-001', 'wallpaper violet', '2026-01-02 10:00:00'],
+            ['d', 'user-001', '房间截屏', '2026-01-03 10:00:00'],
+            ['e', 'user-001', '八千代', '2026-01-04 10:00:00'],
+            ['f', null, 'wallpaper public', '2026-01-05 10:00:00']
+        ];
+        const insert = db.prepare(`INSERT INTO article_assets (id, owner_id, asset_type, mime_type, url, storage_key, metadata, created_at)
+            VALUES (?, ?, 'gallery-image', 'image/png', ?, ?, ?, ?)`);
+        for (const [id, owner, title, date] of rows) insert.run(`${prefix}-${id}`, owner, `/assets/${prefix}-${id}.png`, `${prefix}-${id}.png`, JSON.stringify({ collection: 'gallery', title: `${prefix} ${title}` }), date);
+        const query = `/api/assets/gallery?search=${prefix}&category=wallpaper&limit=1`;
+        try {
+            const latest = await request(query);
+            const oldest = await request(`${query}&sort=oldest`);
+            assert.equal(latest.body.data.assets[0].id, `${prefix}-f`);
+            assert.equal(oldest.body.data.assets[0].id, `${prefix}-a`);
+            assert.equal(oldest.body.data.pagination.total, 4);
+            const second = await request(`${query}&sort=oldest&page=2`);
+            assert.equal(second.body.data.assets[0].id, `${prefix}-b`);
+            const third = await request(`${query}&sort=oldest&page=3`);
+            assert.equal(third.body.data.assets[0].id, `${prefix}-c`);
+            const mine = await request(`${query}&scope=mine`, { headers: authHeader(userToken) });
+            assert.equal(mine.body.data.assets[0].id, `${prefix}-c`);
+            assert.equal(mine.body.data.pagination.total, 3);
+            const screenshots = await request(`/api/assets/gallery?search=${prefix}&category=screenshot`);
+            assert.deepEqual(screenshots.body.data.assets.map(row => row.id), [`${prefix}-d`]);
+            const characters = await request(`/api/assets/gallery?search=${prefix}&category=character`);
+            assert.deepEqual(characters.body.data.assets.map(row => row.id), [`${prefix}-e`]);
+            const invalid = await request(`/api/assets/gallery?search=${prefix}&category=constructor&sort=DROP%20TABLE`);
+            assert.equal(invalid.body.data.pagination.total, 6);
+            assert.equal((await request(`${query}&scope=mine`)).response.status, 401);
+            assert.equal((await request(`${query}&scope=all`, { headers: authHeader(userToken) })).response.status, 403);
+        } finally {
+            for (const [id] of rows) db.prepare('DELETE FROM article_assets WHERE id = ?').run(`${prefix}-${id}`);
+        }
+    });
+
+    it('keeps public cached filters and sort orders separate', async () => {
+        const first = await request('/api/assets/gallery?limit=2');
+        const reverse = await request('/api/assets/gallery?limit=2&sort=oldest');
+        for (const result of [first, reverse]) assert.equal(result.response.status, 200);
+        const wallpaper = await request('/api/assets/gallery?limit=2&category=wallpaper');
+        assert.equal(wallpaper.response.status, 200);
+        for (const asset of wallpaper.body.data.assets) assert.match(JSON.stringify(asset.metadata) + asset.storage_key, /wallpaper|壁纸/i);
+        if (first.body.data.pagination.total > 2) assert.notDeepEqual(first.body.data.assets.map(asset => asset.id), reverse.body.data.assets.map(asset => asset.id));
+    });
+
     it('includes the public uploader name without exposing account details', async () => {
         const assetId = `gallery-owner-${Date.now()}`;
         const originalAvatar = db.prepare('SELECT avatar FROM users WHERE id = ?').get('user-001').avatar;

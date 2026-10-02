@@ -480,6 +480,8 @@ router.get('/gallery', optionalAuth, (req, res) => {
         const limit = Math.min(parsePositiveInt(req.query.limit, 48), 120);
         const offset = (page - 1) * limit;
         const search = String(req.query.search || '').trim().slice(0, 80);
+        const category = ['wallpaper', 'screenshot', 'character'].includes(req.query.category) ? req.query.category : '';
+        const sort = req.query.sort === 'oldest' ? 'oldest' : 'latest';
         const requestedScope = String(req.query.scope || '').trim().toLowerCase();
         if (requestedScope === 'all' && !isAdminUser(req.user)) {
             return fail(res, 403, 'Forbidden');
@@ -491,9 +493,9 @@ router.get('/gallery', optionalAuth, (req, res) => {
         const cacheablePublicList = !req.user && !requestedScope && !search;
         if (cacheablePublicList) setPublicReadCache(res, { maxAge: 15, stale: 30 });
         const payload = cacheablePublicList
-            ? responseCache.remember(`public:gallery:list:${page}:${limit}`, 15000, () => {
-                const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId }).map((asset) => normalizeAsset(asset));
-                const total = assetRepository.countGalleryAssets({ search, ownerId });
+            ? responseCache.remember(`public:gallery:list:${page}:${limit}:${category}:${sort}`, 15000, () => {
+                const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId, category, sort }).map((asset) => normalizeAsset(asset));
+                const total = assetRepository.countGalleryAssets({ search, ownerId, category });
                 return {
                     assets,
                     pagination: {
@@ -505,8 +507,8 @@ router.get('/gallery', optionalAuth, (req, res) => {
                 };
             })
             : (() => {
-                const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId }).map((asset) => normalizeAsset(asset, { signUrl: Boolean(req.user) }));
-                const total = assetRepository.countGalleryAssets({ search, ownerId });
+                const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId, category, sort }).map((asset) => normalizeAsset(asset, { signUrl: Boolean(req.user) }));
+                const total = assetRepository.countGalleryAssets({ search, ownerId, category });
                 return {
                     assets,
                     pagination: {

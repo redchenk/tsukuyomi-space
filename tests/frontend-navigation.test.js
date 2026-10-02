@@ -527,7 +527,7 @@ describe('frontend navigation routes', () => {
         assert.match(pixelApi, /const MAX_PALETTE_COLORS = 64/);
     });
 
-    it('shows each gallery image uploader on cards, features, and the lightbox', () => {
+    it('shows each gallery image uploader on cards and in the preview', () => {
         const gallery = source('src/frontend/pages/GalleryPage.vue');
         const repository = source('backend/repositories/asset-repository.js');
 
@@ -542,7 +542,6 @@ describe('frontend navigation routes', () => {
         assert.match(gallery, /class="gallery-uploader-avatar"/);
         assert.match(gallery, /@error="markUploaderAvatarFailed\(asset\)"/);
         assert.match(gallery, /class="gallery-uploader"/);
-        assert.match(gallery, /class="gallery-uploader gallery-feature-uploader"/);
         assert.match(gallery, /class="gallery-uploader gallery-lightbox-uploader"/);
         assert.match(gallery, /<time :datetime="imageDate\(asset\)">/);
         assert.match(gallery, /asset\?\.preview_url \|\| asset\?\.access_url/);

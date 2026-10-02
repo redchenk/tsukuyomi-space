@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
@@ -7,6 +7,7 @@ import { useUserLevels } from '../composables/useUserLevels';
 import { compressImage } from '../utils/image';
 import { applyGrowthResult } from '../services/userGrowth';
 import { isEnglishSite } from '../utils/siteVariant';
+import { lockPageScroll } from '../utils/pageScrollLock';
 
 const emit = defineEmits(['go']);
 const props = defineProps({
@@ -17,15 +18,13 @@ const englishSite = isEnglishSite();
 const siteLanguage = computed(() => englishSite ? 'en' : props.lang);
 const { hydrateUserLevels, userLevel } = useUserLevels();
 const fileInput = ref(null);
-const galleryMainRef = ref(null);
+const viewer = ref(null);
 const session = ref(getSession());
-let randomFeatureTimer = 0;
-let randomFeatureTransitionTimer = 0;
-let randomFeatureRequestId = 0;
-let randomFeatureObserver = null;
-let randomFeatureVisible = true;
-
-const RANDOM_FEATURE_INTERVAL_MS = 30000;
+const t = (zh, en) => siteLanguage.value === 'en' ? en : zh;
+let listRequestId = 0;
+let randomRequestId = 0;
+let releaseViewerScroll;
+let previousFocus;
 
 const state = reactive({
   loading: true,
@@ -41,9 +40,11 @@ const state = reactive({
   page: 1,
   totalPages: 1,
   total: 0,
-  latest: null,
-  randomFeatured: null,
-  randomFeatureFading: false,
+  category: '',
+  sort: 'latest',
+  columns: 4,
+  randomLoading: false,
+  dimensions: {},
   selected: null,
   avatarFailures: {}
 });
@@ -57,9 +58,15 @@ const manageScopeLabel = computed(() => {
   return canManageAllImages.value ? '全部图库' : '我的图库';
 });
 const shownImages = computed(() => state.images);
-const latestImage = computed(() => state.latest || null);
-const randomFeatureImage = computed(() => state.randomFeatured || null);
-const heroImage = computed(() => latestImage.value ? reliableImageUrl(latestImage.value) : '/assets/images/tsukuyomi-bg.webp');
+const filters = computed(() => [
+  { value: '', label: t('全部图片', 'All images') },
+  { value: 'wallpaper', label: t('壁纸', 'Wallpapers') },
+  { value: 'screenshot', label: t('截图', 'Screenshots') },
+  { value: 'character', label: t('角色', 'Characters') }
+]);
+const extraTags = computed(() => siteLanguage.value === 'en' ? ['Yachiyo', 'Moon', 'Night', 'Stars'] : ['八千代', '月读', '星空', '夜景']);
+const selectedIndex = computed(() => shownImages.value.findIndex(asset => asset.id === state.selected?.id));
+const canBrowseSelection = computed(() => selectedIndex.value >= 0 && shownImages.value.length > 1);
 
 function imageName(asset) {
   return asset.metadata?.title || asset.metadata?.fileName || asset.metadata?.alt || asset.storage_key?.split('/').pop() || asset.id;
@@ -82,9 +89,17 @@ function handleImageError(event, asset) {
 }
 
 function imageTitle(asset) {
-  const date = imageDate(asset);
-  if (englishSite) return date ? `Gallery image · ${date}` : 'Gallery image';
-  return date ? `图库影像 · ${date}` : '图库影像';
+  return String(imageName(asset) || t('图库影像', 'Gallery image')).replace(/\.(?:png|jpe?g|webp|gif|avif|heic)$/i, '');
+}
+
+function imageTags(asset) {
+  const tags = asset?.metadata?.tags;
+  return Array.isArray(tags) ? tags.filter(tag => typeof tag === 'string').slice(0, 12) : [];
+}
+
+function rememberDimensions(event, asset) {
+  const image = event.currentTarget;
+  if (image.naturalWidth && image.naturalHeight) state.dimensions[asset.id] = `${image.naturalWidth} × ${image.naturalHeight}`;
 }
 
 function imageDate(asset) {
@@ -94,7 +109,7 @@ function imageDate(asset) {
 }
 
 function uploaderName(asset) {
-  return String(asset?.owner_nickname || asset?.owner_username || '').trim() || '站点归档';
+  return String(asset?.owner_nickname || asset?.owner_username || '').trim() || t('站点归档', 'Site archive');
 }
 
 function uploaderPath(asset) {
@@ -162,101 +177,68 @@ function postJsonWithProgress(url, payload, headers, onProgress) {
   });
 }
 
-async function loadLatestImage() {
+// Random browsing is requested by the user; there is no background image polling.
+async function browseRandom() {
+  if (state.randomLoading) return;
+  const requestId = ++randomRequestId;
+  state.randomLoading = true;
   try {
-    const response = await apiFetch('/api/assets/gallery/public?limit=1', {
-      headers: { Accept: 'application/json' }
-    });
+    const response = await apiFetch('/api/assets/gallery/public?limit=1&random=1', { headers: { Accept: 'application/json' } });
     const result = await parseResponse(response);
-    const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
-    state.latest = assets[0] || null;
-    await hydrateUserLevels(assets.map((asset) => asset.owner_id)).catch(() => {});
-  } catch (_) {
-    state.latest = null;
+    if (!result.success) throw new Error(result.message || t('无法读取随机图片', 'Unable to load a random image'));
+    const asset = result.data?.assets?.[0];
+    if (requestId !== randomRequestId) return;
+    if (!asset) { showMessage(t('图库暂时还没有图片', 'No images in the gallery yet')); return; }
+    state.selected = asset;
+    hydrateUserLevels([asset.owner_id]).catch(() => {});
+  } catch (error) {
+    if (requestId === randomRequestId) showMessage(error.message, 'error');
+  } finally {
+    if (requestId === randomRequestId) state.randomLoading = false;
   }
 }
 
-async function loadRandomFeatureImage() {
-  const requestId = ++randomFeatureRequestId;
-  try {
-    const response = await apiFetch('/api/assets/gallery/public?limit=1&random=1', {
-      headers: { Accept: 'application/json' }
-    });
-    const result = await parseResponse(response);
-    const assets = result.success && Array.isArray(result.data?.assets) ? result.data.assets : [];
-    await hydrateUserLevels(assets.map((asset) => asset.owner_id)).catch(() => {});
-    const nextAsset = assets[0] || null;
-    if (requestId !== randomFeatureRequestId) return;
-    if (nextAsset) await preloadImage(imageUrl(nextAsset));
-    if (requestId !== randomFeatureRequestId) return;
-    if (!state.randomFeatured || !nextAsset || state.randomFeatured.id === nextAsset.id) {
-      state.randomFeatured = nextAsset;
-      return;
-    }
-    state.randomFeatureFading = true;
-    window.clearTimeout(randomFeatureTransitionTimer);
-    randomFeatureTransitionTimer = window.setTimeout(() => {
-      if (requestId !== randomFeatureRequestId) return;
-      state.randomFeatured = nextAsset;
-      requestAnimationFrame(() => {
-        state.randomFeatureFading = false;
-      });
-    }, 420);
-  } catch (_) {
-    state.randomFeatured = null;
-    state.randomFeatureFading = false;
+function selectFilter(category) {
+  state.category = category;
+  loadImages(1);
+}
+function selectTag(tag, event) {
+  event?.currentTarget?.closest('details')?.removeAttribute('open');
+  state.search = tag;
+  state.category = '';
+  loadImages(1);
+}
+function browseSelection(direction) {
+  if (!canBrowseSelection.value) return;
+  const index = (selectedIndex.value + direction + shownImages.value.length) % shownImages.value.length;
+  state.selected = shownImages.value[index];
+}
+function viewerKeydown(event) {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    browseSelection(event.key === 'ArrowRight' ? 1 : -1);
   }
 }
-
-function preloadImage(url) {
-  if (!url || typeof Image !== 'function') return Promise.resolve();
-  return new Promise((resolve) => {
-    const image = new Image();
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeoutId);
-      resolve();
-    };
-    const timeoutId = window.setTimeout(finish, 8000);
-    image.onload = async () => {
-      try {
-        await image.decode?.();
-      } catch (_) {
-        // A decoded network image is still usable when decode() is unavailable.
-      }
-      finish();
-    };
-    image.onerror = finish;
-    image.src = url;
-  });
-}
-
-function stopRandomFeatureRotation() {
-  if (randomFeatureTimer) window.clearInterval(randomFeatureTimer);
-  randomFeatureTimer = 0;
-}
-
-function startRandomFeatureRotation() {
-  stopRandomFeatureRotation();
-  if (
-    isManageMode.value ||
-    document.visibilityState !== 'visible' ||
-    !randomFeatureVisible
-  ) return;
-  randomFeatureTimer = window.setInterval(() => {
-    if (document.visibilityState === 'visible' && randomFeatureVisible) {
-      loadRandomFeatureImage();
-    }
-  }, RANDOM_FEATURE_INTERVAL_MS);
-}
-
-function handleGalleryVisibility() {
-  startRandomFeatureRotation();
-}
+function closeViewer() { state.selected = null; }
+watch(() => Boolean(state.selected), async (open) => {
+  if (open) {
+    previousFocus = document.activeElement;
+    const path = location.pathname;
+    releaseViewerScroll = lockPageScroll(() => location.pathname === path);
+    await nextTick();
+    if (!viewer.value || !state.selected) return;
+    viewer.value.showModal();
+    viewer.value.querySelector('.gallery-viewer-close')?.focus({ preventScroll: true });
+  } else {
+    viewer.value?.close();
+    releaseViewerScroll?.();
+    releaseViewerScroll = null;
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+  }
+});
 
 async function loadImages(page = 1) {
+  const requestId = ++listRequestId;
   if (isManageMode.value && !isAuthed.value) {
     state.images = [];
     state.page = 1;
@@ -271,7 +253,9 @@ async function loadImages(page = 1) {
     const params = new URLSearchParams({
       page: String(page),
       limit: '12',
-      search: state.search.trim()
+      search: state.search.trim(),
+      category: state.category,
+      sort: state.sort
     });
     if (isManageMode.value) params.set('scope', canManageAllImages.value ? 'all' : 'mine');
     const response = isManageMode.value
@@ -284,16 +268,18 @@ async function loadImages(page = 1) {
       });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '图库读取失败');
+    if (requestId !== listRequestId) return;
     state.images = result.data?.assets || [];
-    await hydrateUserLevels(state.images.map((asset) => asset.owner_id)).catch(() => {});
+    hydrateUserLevels(state.images.map((asset) => asset.owner_id)).catch(() => {});
     state.page = result.data?.pagination?.page || 1;
     state.totalPages = result.data?.pagination?.totalPages || 1;
     state.total = result.data?.pagination?.total || state.images.length;
   } catch (error) {
+    if (requestId !== listRequestId) return;
     state.images = [];
     state.loadError = error.message || '图库读取失败';
   } finally {
-    state.loading = false;
+    if (requestId === listRequestId) state.loading = false;
   }
 }
 
@@ -334,7 +320,9 @@ async function uploadFile(file) {
     if (result.growth) applyGrowthResult(result.growth);
     state.uploadProgress = 100;
     showMessage('图片已加入图库');
-    await Promise.all([loadLatestImage(), loadRandomFeatureImage()]);
+    state.search = '';
+    state.category = '';
+    state.sort = 'latest';
     await loadImages(1);
   } catch (error) {
     showMessage(error.message || '图片上传失败', 'error');
@@ -398,6 +386,7 @@ async function deleteImage(asset) {
 
 function resetSearch() {
   state.search = '';
+  state.category = '';
   loadImages(1);
 }
 
@@ -407,320 +396,257 @@ function go(path) {
 
 onMounted(() => {
   session.value = getSession();
-  loadLatestImage();
-  loadRandomFeatureImage();
   loadImages();
-  document.addEventListener('visibilitychange', handleGalleryVisibility, { passive: true });
-  if (typeof IntersectionObserver === 'function' && galleryMainRef.value) {
-    randomFeatureObserver = new IntersectionObserver((entries) => {
-      randomFeatureVisible = entries.some((entry) => entry.isIntersecting);
-      startRandomFeatureRotation();
-    }, {
-      rootMargin: '500px 0px',
-      threshold: 0.01
-    });
-    randomFeatureObserver.observe(galleryMainRef.value);
-  }
-  startRandomFeatureRotation();
 });
 
 onUnmounted(() => {
-  stopRandomFeatureRotation();
-  if (randomFeatureTransitionTimer) window.clearTimeout(randomFeatureTransitionTimer);
-  document.removeEventListener('visibilitychange', handleGalleryVisibility);
-  randomFeatureObserver?.disconnect();
-  randomFeatureObserver = null;
+  ++listRequestId;
+  ++randomRequestId;
+  viewer.value?.close();
+  releaseViewerScroll?.();
 });
 </script>
 
 <template>
-  <main class="page gallery-page" :class="{ 'gallery-page-manage': isManageMode }" :aria-busy="state.loading || state.uploading">
+  <main class="page gallery-page gallery-workspace" :class="{ 'gallery-page-manage': isManageMode }" :aria-busy="state.loading || state.uploading">
     <section v-if="isManageMode && !isAuthed" class="panel gallery-empty">
-      <span class="gallery-kicker">Gallery</span>
-      <h1>图库管理</h1>
-      <p>公开图库无需登录即可查看。上传图片入口在图库管理页，登录后可以上传、管理并复制图片 Markdown。</p>
+      <span class="gallery-kicker">GALLERY</span>
+      <h1>{{ t('我的图库', 'My gallery') }}</h1>
+      <p>{{ t('登录后上传图片、管理自己的图库，或复制图片 Markdown。公开图库无需登录即可浏览。', 'Sign in to upload images, manage your gallery and copy image Markdown. The public gallery is open to everyone.') }}</p>
       <div class="gallery-empty-actions">
-        <button class="primary-btn" type="button" @click="go('/login')">去登录</button>
-        <button class="ghost-btn" type="button" @click="go('/gallery')">查看公开图库</button>
+        <button class="primary-btn" type="button" @click="go('/login')">{{ t('去登录', 'Sign in') }}</button>
+        <button class="ghost-btn" type="button" @click="go('/gallery')">{{ t('查看公开图库', 'Browse gallery') }}</button>
       </div>
     </section>
-
-    <template v-else>
-      <section ref="galleryMainRef" class="gallery-main">
-        <header class="gallery-hero" :class="{ 'gallery-hero-manage': isManageMode }" :style="{ '--gallery-hero-image': `url(${heroImage})` }">
-          <div class="gallery-breadcrumb">首页 / 图库</div>
-          <h1>图库</h1>
-          <strong>{{ isManageMode ? 'Gallery Manager' : 'Gallery' }}</strong>
-          <div v-if="isManageMode" class="gallery-manage-badge">
-            <TsIcon name="settings" :size="16" />
-            <span>管理模式</span>
-            <b>{{ manageScopeLabel }}</b>
-          </div>
-          <p v-if="isManageMode">管理你上传到图库的图片。管理员可管理全站图库图片。</p>
-          <p>收藏插画、截图、设定图与站点视觉记录。</p>
-
-          <div class="gallery-toolbar">
-            <label class="gallery-search">
-              <TsIcon name="search" :size="18" />
-              <input v-model="state.search" type="search" placeholder="搜索标签、描述或路径..." @keydown.enter="loadImages(1)">
-            </label>
-            <button class="chip active" type="button" @click="loadImages(1)">{{ isManageMode ? manageScopeLabel : '全站图库' }}</button>
-            <button class="ghost-btn" type="button" @click="resetSearch">重置</button>
-            <button v-if="isManageMode" class="ghost-btn" type="button" @click="go('/gallery')">查看图库</button>
-            <button v-else-if="isAuthed" class="primary-btn gallery-upload-btn" type="button" @click="go('/gallery/manage')">
-              <TsIcon name="upload" :size="18" />
-              <span>上传图片</span>
-            </button>
-            <button v-else class="ghost-btn" type="button" @click="go('/login')">登录后上传</button>
-            <button v-if="isManageMode" class="primary-btn gallery-upload-btn" type="button" :disabled="state.uploading" :aria-busy="state.uploading" @click="fileInput?.click()">
-              <TsIcon name="upload" :size="18" />
-              <span>{{ state.uploading ? '上传中...' : '上传图片' }}</span>
-            </button>
-            <input ref="fileInput" type="file" accept="image/*" hidden @change="uploadImage">
-          </div>
-        </header>
-
-        <div v-if="isManageMode && state.uploading" class="ts-loader-region" aria-busy="true">
-          <StatusLoader :label="state.uploadPhase || '正在上传...'" :progress="state.uploadProgress" />
-        </div>
-
-        <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>
-
-        <section v-if="isManageMode" class="gallery-manage-strip">
+    <div v-else class="gallery-main">
+      <header class="gallery-heading">
+        <nav class="gallery-breadcrumb" :aria-label="t('当前位置', 'Breadcrumb')">
+          <a href="/hub" @click.prevent="go('/hub')">{{ t('首页', 'Home') }}</a>
+          <TsIcon name="chevronRight" :size="13" />
+          <span>{{ t('图库', 'Gallery') }}</span>
+          <template v-if="isManageMode">
+            <TsIcon name="chevronRight" :size="13" />
+            <span>{{ manageScopeLabel }}</span>
+          </template>
+        </nav>
+        <div class="gallery-heading-row">
           <div>
-            <span>管理范围</span>
-            <strong>{{ manageScopeLabel }}</strong>
-          </div>
-          <div>
-            <span>当前图片</span>
-            <strong>{{ state.total }}</strong>
-          </div>
-          <div>
-            <span>本页展示</span>
-            <strong>{{ shownImages.length }}</strong>
-          </div>
-          <button class="primary-btn" type="button" :disabled="state.uploading" :aria-busy="state.uploading" @click="fileInput?.click()">
-            <TsIcon name="upload" :size="18" />
-            上传图片
-          </button>
-        </section>
-
-        <button
-          v-if="isManageMode"
-          class="gallery-dropzone"
-          :class="{ active: state.dragActive, busy: state.uploading }"
-          type="button"
-          :disabled="state.uploading"
-          :aria-busy="state.uploading"
-          @click="fileInput?.click()"
-          @dragover.prevent="handleDragOver"
-          @dragenter.prevent="handleDragOver"
-          @dragleave.prevent="handleDragLeave"
-          @drop.prevent="handleDrop"
-        >
-          <TsIcon name="upload" :size="26" />
-          <strong>{{ state.uploading ? '正在上传图片' : '拖拽图片到这里上传' }}</strong>
-          <span>支持常见图片格式，存储位置跟随管理员设置</span>
-        </button>
-
-        <section v-if="randomFeatureImage && !isManageMode" class="gallery-feature" :class="{ 'is-fading': state.randomFeatureFading }">
-          <button class="gallery-feature-image" type="button" @click="state.selected = randomFeatureImage">
-            <img :src="imageUrl(randomFeatureImage)" :alt="imageName(randomFeatureImage)" loading="eager" decoding="async" fetchpriority="high" data-image-bloom @error="handleImageError($event, randomFeatureImage)">
-          </button>
-          <article>
-            <span class="gallery-feature-badge">随机影像</span>
-            <h2>{{ imageTitle(randomFeatureImage) }}</h2>
-            <a
-              v-if="uploaderPath(randomFeatureImage)"
-              class="gallery-uploader gallery-feature-uploader"
-              :href="uploaderPath(randomFeatureImage)"
-              @click.prevent="go(uploaderPath(randomFeatureImage))"
-            >
-              <span class="gallery-uploader-avatar" aria-hidden="true">
-                <span>{{ uploaderInitial(randomFeatureImage) }}</span>
-                <img
-                  v-if="showUploaderAvatar(randomFeatureImage)"
-                  :src="uploaderAvatarUrl(randomFeatureImage)"
-                  alt=""
-                  decoding="async"
-                  @error="markUploaderAvatarFailed(randomFeatureImage)"
-                >
-              </span>
-              <span class="gallery-uploader-name">{{ uploaderName(randomFeatureImage) }}</span>
-              <UserLevelBadge v-if="randomFeatureImage.owner_id" :level="userLevel(randomFeatureImage.owner_id)" :lang="siteLanguage" compact :show-title="false" />
-            </a>
-            <span v-else class="gallery-uploader gallery-feature-uploader gallery-uploader-static">
-              <span class="gallery-uploader-avatar" aria-hidden="true">
-                <span>{{ uploaderInitial(randomFeatureImage) }}</span>
-              </span>
-              <span class="gallery-uploader-name">{{ uploaderName(randomFeatureImage) }}</span>
-            </span>
-            <p>由注册用户上传并加入图库的公开图片，不包含普通附件库图片。</p>
-            <div class="gallery-feature-actions">
-              <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(randomFeatureImage)">
-                <TsIcon name="copy" :size="16" /> 复制 Markdown
-              </button>
-              <a class="ghost-btn" :href="reliableImageUrl(randomFeatureImage)" target="_blank" rel="noopener noreferrer">
-                <TsIcon name="external" :size="16" /> 打开
-              </a>
-              <a class="ghost-btn" :href="reliableImageUrl(randomFeatureImage)" download="gallery-image" rel="noopener noreferrer">
-                <TsIcon name="download" :size="16" /> 下载
-              </a>
+            <div class="gallery-title-line">
+              <h1>{{ isManageMode ? manageScopeLabel : t('图库', 'Gallery') }}</h1>
+              <span class="gallery-kicker">{{ isManageMode ? 'GALLERY MANAGER' : 'GALLERY' }}</span>
             </div>
-          </article>
-        </section>
-
-        <LoadingSkeleton v-if="state.loading" variant="gallery" :count="8" label="正在读取图库" />
-        <section v-else-if="state.loadError" class="gallery-status error" role="alert">{{ state.loadError }}</section>
-        <section v-else-if="!shownImages.length" class="panel gallery-empty">
-          <h2>还没有图片</h2>
-          <p>只有选择“上传到图库”的图片会出现在这里，普通附件库图片不会自动展示。</p>
-        </section>
-        <section v-else class="gallery-grid">
-          <article v-for="asset in shownImages" :key="asset.id" class="gallery-card">
-            <button class="gallery-card-image" type="button" @click="state.selected = asset">
-              <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy" decoding="async" data-image-bloom @error="handleImageError($event, asset)">
+            <p>{{ isManageMode ? t('上传喜欢的画面，管理图库里的每一张图片。', 'Upload favourite moments and manage your images.') : t('收藏插画、截图与壁纸，把喜欢的画面留在这里。', 'A home for illustrations, screenshots and wallpapers you love.') }}</p>
+          </div>
+          <div class="gallery-heading-actions">
+            <button class="ghost-btn" type="button" @click="go(isManageMode ? '/gallery' : '/gallery/manage')">
+              <TsIcon :name="isManageMode ? 'image' : 'grid'" :size="17" />
+              {{ isManageMode ? t('公开图库', 'Public gallery') : t('我的图库', 'My gallery') }}
             </button>
-            <div class="gallery-card-body">
-              <a
-                v-if="uploaderPath(asset)"
-                class="gallery-uploader"
-                :href="uploaderPath(asset)"
-                :title="`查看 ${uploaderName(asset)} 的主页`"
-                @click.prevent="go(uploaderPath(asset))"
-              >
+            <button class="primary-btn" type="button" :disabled="state.uploading" @click="isAuthed ? fileInput?.click() : go('/login')">
+              <TsIcon name="upload" :size="17" />
+              {{ state.uploading ? t('正在上传', 'Uploading') : t('上传图片', 'Upload image') }}
+            </button>
+          </div>
+        </div>
+        <input ref="fileInput" class="gallery-file-input" type="file" accept="image/*" :disabled="state.uploading" :aria-label="t('选择图库图片', 'Choose gallery image')" @change="uploadImage">
+      </header>
+      <div v-if="state.uploading" class="gallery-upload-progress" role="status" aria-live="polite">
+        <StatusLoader :label="state.uploadPhase" :detail="`${state.uploadProgress}%`" compact />
+        <progress :value="state.uploadProgress" max="100" :aria-label="t('上传进度', 'Upload progress')" />
+      </div>
+      <div v-if="state.message" class="gallery-notice" :class="{ error: state.messageType === 'error' }" role="status">
+        <span>{{ state.message }}</span>
+        <button class="gallery-icon-button" type="button" :aria-label="t('关闭提示', 'Dismiss message')" @click="state.message = ''">
+          <TsIcon name="x" :size="16" />
+        </button>
+      </div>
+      <div v-if="isManageMode" class="gallery-dropzone" :class="{ 'is-drag-active': state.dragActive }" @dragover.prevent="handleDragOver" @dragleave="handleDragLeave" @drop.prevent="handleDrop">
+        <TsIcon name="upload" :size="20" />
+        <p>{{ t('把图片拖到这里，或点击「上传图片」。图库图片将公开展示。', 'Drop an image here, or choose Upload image. Gallery uploads are public.') }}</p>
+      </div>
+      <section class="gallery-discovery panel" :aria-label="t('图库筛选', 'Gallery filters')">
+        <div class="gallery-discovery-top">
+          <div class="gallery-result-title">
+            <h2>{{ isManageMode ? t('管理图片', 'Manage images') : t('发现图片', 'Discover images') }}</h2>
+            <span role="status">{{ state.loading ? t('读取中…', 'Loading…') : t(`共 ${state.total} 张图片`, `${state.total} images`) }}</span>
+          </div>
+          <div class="gallery-discovery-actions">
+            <form class="gallery-search-field" role="search" @submit.prevent="loadImages(1)">
+              <TsIcon name="search" :size="17" />
+              <input v-model="state.search" type="search" maxlength="80" :aria-label="t('搜索图库', 'Search gallery')" :placeholder="t('搜索名称、标签或描述…', 'Search names, tags or descriptions…')">
+              <button v-if="state.search" class="gallery-icon-button" type="button" :aria-label="t('清空搜索', 'Clear search')" @click="state.search = ''; loadImages(1)">
+                <TsIcon name="x" :size="15" />
+              </button>
+              <button class="gallery-icon-button" type="submit" :aria-label="t('搜索', 'Search')">
+                <TsIcon name="arrowRight" :size="17" />
+              </button>
+            </form>
+            <button v-if="!isManageMode" class="ghost-btn gallery-random-button" type="button" :disabled="state.randomLoading" @click="browseRandom">
+              <TsIcon name="compass" :size="17" />
+              {{ state.randomLoading ? t('寻找中…', 'Finding…') : t('随机看看', 'Surprise me') }}
+            </button>
+          </div>
+        </div>
+        <div class="gallery-discovery-bottom">
+          <div class="gallery-filter-group" :aria-label="t('按名称与描述筛选', 'Filter by name and description')">
+            <button v-for="filter in filters" :key="filter.value" class="gallery-filter-button" type="button" :aria-pressed="state.category === filter.value" @click="selectFilter(filter.value)">
+              <TsIcon v-if="!filter.value" name="image" :size="15" />
+              {{ filter.label }}
+            </button>
+            <details class="gallery-more-tags">
+              <summary>
+                {{ t('更多标签', 'More tags') }}
+                <TsIcon name="chevronDown" :size="13" />
+              </summary>
+              <div class="gallery-tag-options">
+                <p>{{ t('按图片名称、标签与描述查找', 'Search image names, tags and descriptions') }}</p>
+                <button v-for="tag in extraTags" :key="tag" type="button" @click="selectTag(tag, $event)">{{ tag }}</button>
+              </div>
+            </details>
+          </div>
+          <div class="gallery-view-options">
+            <select v-model="state.sort" :aria-label="t('图片排序', 'Sort images')" @change="loadImages(1)">
+              <option value="latest">{{ t('最新上传', 'Newest first') }}</option>
+              <option value="oldest">{{ t('最早上传', 'Oldest first') }}</option>
+            </select>
+            <div class="gallery-column-toggle" role="group" :aria-label="t('图库视图', 'Gallery view')">
+              <button type="button" :aria-label="t('紧凑四列视图', 'Compact four column view')" :aria-pressed="state.columns === 4" @click="state.columns = 4">
+                <TsIcon name="grid" :size="16" />
+              </button>
+              <button type="button" :aria-label="t('宽松三列视图', 'Spacious three column view')" :aria-pressed="state.columns === 3" @click="state.columns = 3">
+                <TsIcon name="image" :size="16" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <LoadingSkeleton v-if="state.loading" variant="gallery" :count="12" :label="t('正在读取图库…', 'Loading gallery…')" />
+      <div v-else-if="state.loadError" class="panel gallery-empty" role="alert">
+        <TsIcon name="image" :size="30" />
+        <h2>{{ t('图片暂时没能加载', 'Unable to load images') }}</h2>
+        <p>{{ state.loadError }}</p>
+        <button class="ghost-btn" type="button" @click="loadImages(state.page)">{{ t('重新加载', 'Try again') }}</button>
+      </div>
+      <div v-else-if="!shownImages.length" class="panel gallery-empty">
+        <TsIcon name="image" :size="30" />
+        <h2>{{ state.search || state.category ? t('没有找到匹配的图片', 'No matching images') : t('还没有图片', 'No images yet') }}</h2>
+        <p>{{ state.search || state.category ? t('筛选会匹配图片的名称、标签和描述。试试其他关键词，或查看全部图片。', 'Filters match image names, tags and descriptions. Try another keyword, or browse all images.') : t('从「上传图片」开始，分享喜欢的画面。', 'Upload an image to share a favourite moment.') }}</p>
+        <button v-if="state.search || state.category" class="ghost-btn" type="button" @click="resetSearch">{{ t('查看全部图片', 'Show all images') }}</button>
+      </div>
+      <div v-else class="gallery-grid" :class="{ 'gallery-grid-spacious': state.columns === 3 }">
+        <article v-for="asset in shownImages" :key="asset.id" class="gallery-card">
+          <button class="gallery-thumb" type="button" :aria-label="t(`查看大图：${imageTitle(asset)}`, `View image: ${imageTitle(asset)}`)" @click="state.selected = asset">
+            <img :src="imageUrl(asset)" :alt="imageName(asset)" loading="lazy" decoding="async" data-image-bloom @error="handleImageError($event, asset)" @load="rememberDimensions($event, asset)">
+            <span v-if="imageTags(asset).length" class="gallery-image-tag">{{ imageTags(asset)[0] }}</span>
+          </button>
+          <div class="gallery-card-body">
+            <h3 class="gallery-card-title" :title="imageTitle(asset)">{{ imageTitle(asset) }}</h3>
+            <div class="gallery-card-meta">
+              <a v-if="uploaderPath(asset)" class="gallery-uploader" :href="uploaderPath(asset)" :title="uploaderName(asset)" @click.prevent="go(uploaderPath(asset))">
                 <span class="gallery-uploader-avatar" aria-hidden="true">
                   <span>{{ uploaderInitial(asset) }}</span>
-                  <img
-                    v-if="showUploaderAvatar(asset)"
-                    :src="uploaderAvatarUrl(asset)"
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    @error="markUploaderAvatarFailed(asset)"
-                  >
+                  <img v-if="showUploaderAvatar(asset)" :src="uploaderAvatarUrl(asset)" alt="" loading="lazy" decoding="async" @error="markUploaderAvatarFailed(asset)">
                 </span>
                 <span class="gallery-uploader-name">{{ uploaderName(asset) }}</span>
                 <UserLevelBadge v-if="asset.owner_id" :level="userLevel(asset.owner_id)" :lang="siteLanguage" compact :show-title="false" />
               </a>
-              <span v-else class="gallery-uploader gallery-uploader-static">
-                <span class="gallery-uploader-avatar" aria-hidden="true">
-                  <span>{{ uploaderInitial(asset) }}</span>
-                </span>
+              <span v-else class="gallery-uploader">
+                <span class="gallery-uploader-avatar" aria-hidden="true">{{ uploaderInitial(asset) }}</span>
                 <span class="gallery-uploader-name">{{ uploaderName(asset) }}</span>
               </span>
-              <time :datetime="imageDate(asset)">{{ imageDate(asset) }}</time>
+              <time :datetime="imageDate(asset)">{{ imageDate(asset).slice(5).replace('-', ' / ') }}</time>
             </div>
-            <div class="gallery-card-actions">
-              <button v-if="isManageMode" type="button" title="复制 Markdown" @click="copyMarkdown(asset)">
-                <TsIcon name="copy" :size="17" />
+            <div v-if="isManageMode" class="gallery-card-actions">
+              <button class="ghost-btn" type="button" @click="copyMarkdown(asset)">
+                <TsIcon name="copy" :size="15" />
+                Markdown
               </button>
-              <a :href="reliableImageUrl(asset)" target="_blank" rel="noopener noreferrer" title="打开图片">
-                <TsIcon name="external" :size="17" />
-              </a>
-              <a :href="reliableImageUrl(asset)" download="gallery-image" rel="noopener noreferrer" title="下载图片">
-                <TsIcon name="download" :size="17" />
-              </a>
-              <button v-if="isManageMode && canDeleteImage(asset)" type="button" title="删除图片" @click="deleteImage(asset)">
-                <TsIcon name="trash" :size="17" />
+              <button v-if="canDeleteImage(asset)" class="danger-btn" type="button" @click="deleteImage(asset)">
+                <TsIcon name="trash" :size="15" />
+                {{ t('删除', 'Delete') }}
               </button>
             </div>
-          </article>
-        </section>
-
-        <div class="gallery-pager">
-          <button class="ghost-btn" type="button" :disabled="state.page <= 1" @click="loadImages(state.page - 1)">上一页</button>
-          <span>{{ state.page }} / {{ state.totalPages || 1 }}</span>
-          <button class="ghost-btn" type="button" :disabled="state.page >= state.totalPages" @click="loadImages(state.page + 1)">下一页</button>
-        </div>
-      </section>
-
-      <aside v-if="!isManageMode" class="gallery-side">
-        <section class="gallery-side-card">
-          <div class="gallery-side-title">
-            <h2>图库概览</h2>
-            <TsIcon name="audioLines" :size="22" />
           </div>
-          <div class="gallery-stats">
-            <div><span>当前图片</span><strong>{{ state.total }}</strong><small>张</small></div>
-            <div><span>本页展示</span><strong>{{ shownImages.length }}</strong><small>张</small></div>
-          </div>
-
-          <div class="gallery-quick">
-            <h3>快速筛选</h3>
-            <button class="active" type="button" @click="state.search = ''; loadImages(1)">
-              <TsIcon name="image" :size="16" /> 全部图片 <span>{{ state.total }}</span>
-            </button>
-            <button type="button" @click="state.search = 'wallpaper'; loadImages(1)">
-              <TsIcon name="star" :size="16" /> 壁纸
-            </button>
-            <button type="button" @click="state.search = 'screenshot'; loadImages(1)">
-              <TsIcon name="grid" :size="16" /> 截图
-            </button>
-          </div>
-
-          <div class="gallery-upload-entry">
-            <h3>图库上传入口</h3>
-            <p>登录后进入「图库管理」页面上传图片；上传到图库的公开图片会显示在当前页面。</p>
-            <button class="primary-btn" type="button" @click="go(isAuthed ? '/gallery/manage' : '/login')">
-              <TsIcon name="upload" :size="16" />
-              <span>{{ isAuthed ? '进入图库管理' : '登录后上传' }}</span>
-            </button>
-          </div>
-
-          <div class="gallery-tags">
-            <h3>常用标签</h3>
-            <button type="button" @click="state.search = '月读'; loadImages(1)">月读</button>
-            <button type="button" @click="state.search = '星空'; loadImages(1)">星空</button>
-            <button type="button" @click="state.search = '夜景'; loadImages(1)">夜景</button>
-            <button type="button" @click="state.search = '角色'; loadImages(1)">角色</button>
-          </div>
-        </section>
-      </aside>
-
-      <Teleport to="body">
-        <div v-if="state.selected" class="gallery-lightbox" role="presentation" @click.self="state.selected = null">
-        <section data-material="popover" role="dialog" aria-modal="true" :aria-label="imageName(state.selected)">
-          <button class="gallery-lightbox-close" type="button" @click="state.selected = null">
-            <TsIcon name="x" :size="18" />
+        </article>
+      </div>
+      <footer class="gallery-results-footer">
+        <p>
+          <TsIcon name="maximize" :size="15" />
+          {{ t('点击图片查看大图，下载与图片信息都在预览中。', 'Open an image for a full preview, details and downloads.') }}
+        </p>
+        <nav class="gallery-pagination" :aria-label="t('图库分页', 'Gallery pages')">
+          <button class="gallery-icon-button" type="button" :disabled="state.loading || state.page <= 1" :aria-label="t('上一页', 'Previous page')" @click="loadImages(state.page - 1)">
+            <TsIcon name="arrowLeft" :size="17" />
           </button>
-          <img :src="reliableImageUrl(state.selected)" :alt="imageName(state.selected)" decoding="async" data-image-bloom @error="handleImageError($event, state.selected)">
-          <footer>
-            <div>
-              <strong>{{ imageTitle(state.selected) }}</strong>
-              <a
-                v-if="uploaderPath(state.selected)"
-                class="gallery-uploader gallery-lightbox-uploader"
-                :href="uploaderPath(state.selected)"
-                @click.prevent="go(uploaderPath(state.selected)); state.selected = null"
-              >
+          <span>{{ state.page }} / {{ Math.max(1, state.totalPages) }}</span>
+          <button class="gallery-icon-button" type="button" :disabled="state.loading || state.page >= state.totalPages" :aria-label="t('下一页', 'Next page')" @click="loadImages(state.page + 1)">
+            <TsIcon name="arrowRight" :size="17" />
+          </button>
+        </nav>
+      </footer>
+    </div>
+    <Teleport to="body">
+      <dialog v-if="state.selected" ref="viewer" class="gallery-viewer" :aria-label="imageTitle(state.selected)" @cancel.prevent="closeViewer" @click="($event.target === viewer) && closeViewer()" @keydown="viewerKeydown">
+        <header class="gallery-viewer-head">
+          <span>{{ t('图片预览', 'Image preview') }}</span>
+          <div class="gallery-viewer-controls">
+            <template v-if="canBrowseSelection">
+              <button class="gallery-icon-button" type="button" :aria-label="t('上一张图片', 'Previous image')" @click="browseSelection(-1)">
+                <TsIcon name="arrowLeft" :size="18" />
+              </button>
+              <span>{{ selectedIndex + 1 }} / {{ shownImages.length }}</span>
+              <button class="gallery-icon-button" type="button" :aria-label="t('下一张图片', 'Next image')" @click="browseSelection(1)">
+                <TsIcon name="arrowRight" :size="18" />
+              </button>
+            </template>
+            <button class="gallery-icon-button gallery-viewer-close" type="button" :aria-label="t('关闭图片预览', 'Close image preview')" @click="closeViewer">
+              <TsIcon name="x" :size="20" />
+            </button>
+          </div>
+        </header>
+        <div class="gallery-viewer-image">
+          <img :key="state.selected.id" :src="reliableImageUrl(state.selected)" :alt="imageName(state.selected)" decoding="async" data-image-bloom @error="handleImageError($event, state.selected)" @load="rememberDimensions($event, state.selected)">
+        </div>
+        <footer class="gallery-viewer-footer">
+          <div class="gallery-viewer-info">
+            <h2>{{ imageTitle(state.selected) }}</h2>
+            <div class="gallery-viewer-meta">
+              <a v-if="uploaderPath(state.selected)" class="gallery-uploader gallery-lightbox-uploader" :href="uploaderPath(state.selected)" @click.prevent="go(uploaderPath(state.selected)); closeViewer()">
                 <span class="gallery-uploader-avatar" aria-hidden="true">
                   <span>{{ uploaderInitial(state.selected) }}</span>
-                  <img
-                    v-if="showUploaderAvatar(state.selected)"
-                    :src="uploaderAvatarUrl(state.selected)"
-                    alt=""
-                    decoding="async"
-                    @error="markUploaderAvatarFailed(state.selected)"
-                  >
+                  <img v-if="showUploaderAvatar(state.selected)" :src="uploaderAvatarUrl(state.selected)" alt="" decoding="async" @error="markUploaderAvatarFailed(state.selected)">
                 </span>
                 <span class="gallery-uploader-name">{{ uploaderName(state.selected) }}</span>
                 <UserLevelBadge v-if="state.selected.owner_id" :level="userLevel(state.selected.owner_id)" :lang="siteLanguage" compact :show-title="false" />
               </a>
-              <span v-else class="gallery-uploader gallery-lightbox-uploader gallery-uploader-static">
-                <span class="gallery-uploader-avatar" aria-hidden="true">
-                  <span>{{ uploaderInitial(state.selected) }}</span>
-                </span>
-                <span class="gallery-uploader-name">{{ uploaderName(state.selected) }}</span>
-              </span>
+              <span v-else>{{ uploaderName(state.selected) }}</span>
+              <time :datetime="imageDate(state.selected)">{{ imageDate(state.selected) }}</time>
+              <span v-if="state.dimensions[state.selected.id]">{{ state.dimensions[state.selected.id] }}</span>
             </div>
-            <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">复制 Markdown</button>
-            <a class="ghost-btn" :href="reliableImageUrl(state.selected)" download="gallery-image" rel="noopener noreferrer">下载</a>
-            <button v-if="isManageMode && canDeleteImage(state.selected)" class="danger-btn" type="button" @click="deleteImage(state.selected)">删除</button>
-          </footer>
-        </section>
-        </div>
-      </Teleport>
-    </template>
+            <div v-if="imageTags(state.selected).length" class="gallery-viewer-tags">
+              <span v-for="tag in imageTags(state.selected)" :key="tag">{{ tag }}</span>
+            </div>
+          </div>
+          <div class="gallery-viewer-actions">
+            <button v-if="isManageMode" class="ghost-btn" type="button" @click="copyMarkdown(state.selected)">
+              <TsIcon name="copy" :size="16" />
+              Markdown
+            </button>
+            <a class="ghost-btn" :href="reliableImageUrl(state.selected)" target="_blank" rel="noopener noreferrer">
+              <TsIcon name="external" :size="16" />
+              {{ t('打开原图', 'Open original') }}
+            </a>
+            <a class="primary-btn" :href="reliableImageUrl(state.selected)" :download="imageName(state.selected)" rel="noopener noreferrer">
+              <TsIcon name="download" :size="16" />
+              {{ t('下载', 'Download') }}
+            </a>
+            <button v-if="isManageMode && canDeleteImage(state.selected)" class="danger-btn" type="button" @click="deleteImage(state.selected)">
+              <TsIcon name="trash" :size="16" />
+              {{ t('删除', 'Delete') }}
+            </button>
+          </div>
+        </footer>
+      </dialog>
+    </Teleport>
   </main>
 </template>

@@ -190,6 +190,88 @@ Follow-up polish: none required for this scope.
 
 final result: passed
 
+---
+
+## Gallery redesign QA — 2026-10-02
+
+Scope: `/gallery` and `/gallery/manage`. The selected ChatGPT conversation is
+`6abfb12f-0ac4-83e8-b427-81a81e30079b` (重新设计Gallery页面). Its supplied visual
+is the source of truth for compact heading, consolidated discovery controls,
+four-column cards and preview actions. Existing website colors, backgrounds,
+fonts and pill buttons take precedence over the reference's alternate palette.
+
+Source: `/Users/yxy/Downloads/gallery-redesign.png` (3200 × 2276, 2× visual).
+Implementation evidence: `.codex_tmp/gallery-redesign/desktop-final-1600.png`,
+`mobile-light-final.png`, `mobile-dark-final.png`, `tablet-dark-final.png` and
+`lightbox-desktop-v2.png` in the same directory. Desktop browser viewport was
+1600 × 1138 at 1×; screenshot export contains 1600 × 1078 visible pixels. The
+reference was normalized to 1600 × 1138, with the shorter implementation capture
+padded rather than stretched. Mobile viewport: 390 × 844; additional overflow
+checks at 320px and 820px. Local content and login are isolated test fixtures;
+image titles, dates, counts, avatars and artwork are dynamic, not source copy.
+
+Combined full-frame comparison: `comparison-final.jpg` (source left, current
+implementation right). Focused toolbar/card comparison:
+`comparison-focused-final.jpg`. Both combined inputs were visually inspected.
+
+### Iterations and resolved findings
+
+1. P2, spacing: inherited select and button minimum heights enlarged the toolbar;
+   inherited grid margins widened the toolbar-to-card gap. Scoped heights and
+   grid margin restore the compact hierarchy.
+2. P2, typography/layout: the inherited card layout shrank metadata tracks and
+   a title button's minimum height inflated card bodies. Explicit grid tracks,
+   a semantic title heading and single-line metadata restore alignment.
+3. P1, preview: the original image could overflow and push preview actions out
+   of view. The image now fits a constrained container; the dialog scrolls and
+   its actions wrap on mobile.
+4. P2, mobile density: component-level badge styles defeated a layered hide
+   rule. Narrow cards now omit the level badge while preserving uploader name,
+   avatar and upload date. Full details remain in the preview.
+5. Evidence refresh: one screenshot captured failed local fixture image loads.
+   After reload all first-row images had nonzero natural dimensions; both final
+   desktop/mobile evidence and combined comparisons were recaptured. No broken
+   image capture is used as final acceptance evidence.
+
+### Final comparison and interaction acceptance
+
+- Fonts: existing MiSans/site fallbacks; compact 13px desktop card titles,
+  readable one-line uploader/date metadata, clear heading and control hierarchy.
+- Layout: four columns by default, optional three-column desktop view,
+  automatic three columns on tablet and two on mobile. No horizontal overflow
+  at 320/390/820/1600px. Cards use the site's 18px radius; buttons use pill tokens.
+- Colors: existing editorial surface/ink/border and purple primary tokens;
+  both themes reviewed. The site's background and global navigation remain.
+- Images: real existing media displayed with lazy loading and cropped thumbnails;
+  original aspect ratios remain intact in preview. No generated replacements,
+  fake assets or invented image categories are shipped. Filter categories match
+  real filename/metadata keywords; only existing metadata tags appear on cards.
+- Icons: existing TsIcon library, consistent sizes and visible controls for
+  upload, search, random browse, layout, paging, original view and download.
+- Copy: clear public/manage separation, matching-filter explanation, loading,
+  empty, retry and upload feedback. Counts and author credit use actual API data.
+- Accessibility: labelled search/sort/buttons, pressed filter states, focus
+  outlines, native modal focus handling, Escape/arrow navigation and focus return.
+  Reduced-motion overrides and 16px mobile search prevent unnecessary motion
+  and iOS input zoom. Physical iOS hardware was not exercised.
+
+Verified with the real isolated backend: pagination, chronological sorting,
+category/tag/search, empty reset, random preview, keyboard close/navigation,
+login gate, upload and Markdown clipboard copy. Existing owner/admin permissions
+are preserved; no production account writes were used for QA. Browser console
+inspection returned no warnings/errors. Random browsing is user-triggered;
+the previous background image polling was removed.
+
+Automated checks: 198 frontend/API regression tests passed; the focused
+frontend/security/upload run passed 85 tests, including after template formatting.
+These counts overlap and are not added together. Domestic and overseas builds
+passed. Release uses prebuilt assets and the existing memory-bounded safe release
+helper, with protected resource hashes required before accepting activation.
+
+Open actionable findings in this scope: none.
+
+final result: passed
+
 # Room settings redesign QA — 2026-09-25
 
 final result: **passed** (design and local interaction review).
