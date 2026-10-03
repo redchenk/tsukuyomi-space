@@ -88,7 +88,10 @@ async function search(userId, query, getRows, limit) {
 async function index(row) {
     const hash = local.sourceHash(row);
     const chunks = [];
-    for (let offset = 0; offset < row.content.length; offset += 350) chunks.push(unicodeSlice(row.content, offset, offset + 400));
+    for (let offset = 0; offset < row.content.length; offset += 350) {
+        const chunk = unicodeSlice(row.content, offset, offset + 400);
+        if (chunk) chunks.push(chunk);
+    }
     let facts = [];
     try { facts = JSON.parse(row.metadata || '{}').analysis?.evidence || []; } catch {}
     for (const fact of facts.filter(item => item.confidence >= 0.5)) {

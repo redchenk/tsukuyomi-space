@@ -53,7 +53,10 @@ test('long emoji-bearing memories index every overlapping window without sending
         assert.ok(embedded.some(text => text.includes('😀'))); assert.ok(embedded.some(text => text.includes('😭')));
         assert.equal(bad(unicodeSlice('x'.repeat(599) + '😀', 0, 600)), false);
         assert.equal(bad(unicodeSlice('x'.repeat(499) + '😀' + 'x'.repeat(599), 500, 1100)), false);
-    } finally { local.request = original; for (const [id, point] of records) if (point.payload.sourceId === 'emoji-long') records.delete(id); }
+        const count = embedded.length;
+        await require('../backend/services/room-local-mem0').index({ id: 'emoji-final', user_id: 'one', content: 'x'.repeat(349) + '😀', summary: '', metadata: '{}', created_at: '2026-10-03' });
+        assert.equal(embedded.length, count + 1, 'a trailing low surrogate must not become an empty extra vector');
+    } finally { local.request = original; for (const [id, point] of records) if (['emoji-long', 'emoji-final'].includes(point.payload.sourceId)) records.delete(id); }
 });
 
 test('source, queue and evidence enqueue share the caller transaction and save is idempotent', () => {
