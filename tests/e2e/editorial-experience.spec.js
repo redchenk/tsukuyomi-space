@@ -275,17 +275,17 @@ test('image cards retain readable text in the mobile light theme', async ({ page
 });
 
 
-test('growth shows article reward rules and survives a direct refresh on mobile', async ({ page }) => {
+test('growth keeps recent activity without a separate article XP panel after mobile refresh', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/login?redirect=%2Fgrowth');
     await page.getByLabel('用户名或邮箱', { exact: true }).fill('e2e-user');
     await page.getByLabel('密码', { exact: true }).fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/growth$/);
-    await expect(page.locator('.growth-articles')).toContainText('有效阅读 +1');
+    await expect(page.locator('.growth-history')).toBeVisible();
+    await expect(page.locator('.growth-articles')).toHaveCount(0);
     await page.reload();
-    await expect(page.locator('.growth-articles')).toContainText('首次点赞 +2');
-    await expect(page.locator('.growth-articles')).toContainText('首次收藏 +5');
-    await expect(page.locator('.growth-articles')).toContainText('已补发历史经验');
+    await expect(page.locator('.growth-history')).toContainText('最近记录');
+    await expect(page.locator('.growth-articles')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

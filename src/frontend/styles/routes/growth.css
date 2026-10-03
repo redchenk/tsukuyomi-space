@@ -79,7 +79,6 @@
 }
 
 .growth-overview,
-.growth-articles,
 .growth-invite,
 .growth-history,
 .growth-path {
@@ -316,7 +315,6 @@ html[data-theme="dark"] .growth-error {
   gap: 0.8rem;
 }
 
-.growth-articles,
 .growth-invite,
 .growth-history,
 .growth-path {
@@ -551,11 +549,3 @@ html[data-theme="dark"] .growth-error {
 }
 
 .growth-checkin:hover:not(:disabled) { background: var(--ts-unified-primary-bg-hover); }
-
-.growth-article-rewards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
-.growth-article-rewards > div { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: 1rem; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-card, 20px); }
-.growth-article-rewards svg, .growth-article-rewards b { color: var(--ts-accent); }
-.growth-article-rewards > div > span { flex-basis: 100%; color: var(--ts-muted); }
-.growth-articles > p { color: var(--ts-muted); line-height: 1.8; margin: 1rem 0 .5rem; }
-.growth-articles > small { color: var(--ts-accent); }
-@media (max-width: 600px) { .growth-article-rewards { grid-template-columns: 1fr; } .growth-article-rewards > div > span { flex-basis: auto; margin-left: auto; } .growth-articles .growth-section-head { flex-wrap: wrap; gap: .6rem; } }
