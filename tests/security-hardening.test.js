@@ -334,7 +334,7 @@ describe('stage delivery hardening', () => {
         assert.match(staticMiddleware, /composePage/);
         assert.doesNotMatch(seoRenderer, /articles\.slice\(0, 24\)/);
         assert.match(nginxConfig, /location = \/sitemap-images\.xml \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
-        assert.match(nginxConfig, /location ~ \^\/.*hub[\s\S]*?pixel[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
+        assert.match(nginxConfig, /location ~ "\^\/.*hub[\s\S]*?pixel[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
     });
 
     it('keeps versioned friend previews cacheable without weakening API cache isolation', () => {

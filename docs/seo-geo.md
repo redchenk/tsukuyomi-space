@@ -51,7 +51,7 @@ Migration 042 创建 SQLite `seo_indexnow_outbox`。公开文章、像素画、�
 
 本地构建两个站点，服务器不运行 npm build、安装依赖或重建媒体资源。准备阶段继续使用现有 384 MiB / 512 MiB cgroup 限额。
 
-Schema 单独分阶段发布：先备份 SQLite 和受保护资源指纹，核对差异仅为 042 迁移及其静态页面清单，ff-only 更新并在事务中应用迁移。随后通过现有 safe-release 发布普通代码和预构建资源。不要绕过 code-only 发布器对 migration 的拒绝检查。Nginx / OpenResty 和翻译脚本各自保留备份，配置测试通过再 reload；只修改月读空间相应路由块，保留共同托管应用。
+Schema 单独分阶段发布：先备份 SQLite 和受保护资源指纹，核对差异仅为 042 迁移及其静态页面清单，ff-only 更新并在事务中应用迁移。随后通过现有 safe-release 发布普通代码和预构建资源。不要绕过 code-only 发布器对 migration 的拒绝检查。Nginx / OpenResty 和翻译脚本各自保留备份，配置测试通过再 reload；只修改月读空间相应路由块，保留共同托管应用。先用 `nginx -T` 确认实际加载路径：当前国内运行配置为 `/etc/nginx/conf.d/tsukuyomi-space.conf`，不能仅修改 sites-available 的未加载副本。带 `{48}` 的 Nginx 正则必须用引号包围，并对实际配置运行语法检查。
 
 回滚普通代码/前端使用对应发布 state；还原本次 Nginx 与翻译脚本备份。IndexNow 先停用。042 是额外队列及触发器，旧应用可保留它继续运行；彻底撤销时仅删除 sqlite_master 中 `seo_` 前缀的本次触发器、`seo_indexnow_outbox` 表和 schema_migrations 的 `042` 记录。先检查名称和备份，不能恢复旧全库覆盖发布后产生的用户数据。
 
