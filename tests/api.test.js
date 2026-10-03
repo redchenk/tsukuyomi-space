@@ -4094,6 +4094,48 @@ describe('admin API permissions', () => {
         assert.equal(restored.response.status, 200);
     });
 
+    it('pages terminal users without transferring unused inline avatars and searches beyond the first page', async () => {
+        const ids = Array.from({ length: 30 }, (_, i) => `terminal-paged-${String(i).padStart(2, '0')}`);
+        const insert = db.prepare('INSERT INTO users (id, username, nickname, email, password_hash, avatar, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        db.transaction(() => ids.forEach((id, i) => insert.run(id, id, `分页%用户_${i}`, `${id}@example.test`, 'never-expose-password-hash', `data:image/png;base64,${'A'.repeat(40000)}`, 'user', '2026-10-03 00:00:00')))();
+        try {
+            const query = (page, search = '分页') => request(`/api/admin/users?limit=8&page=${page}&search=${encodeURIComponent(search)}`, { headers: jsonHeaders(adminToken) });
+            const first = await query(1);
+            const second = await query(2);
+            assert.equal(first.response.status, 200);
+            assert.deepEqual(first.body.data.pagination, { page: 1, limit: 8, total: 30, totalPages: 4 });
+            assert.equal(first.body.data.items.length, 8);
+            assert.equal(second.body.data.items.length, 8);
+            assert.equal(new Set([...first.body.data.items, ...second.body.data.items].map(user => user.id)).size, 16);
+            assert.ok(JSON.stringify(first.body).length < 5000);
+            assert.ok(first.body.data.items.every(user => !user.avatar && !user.password_hash));
+            const outsideFirstPage = ids.find(id => !first.body.data.items.some(user => user.id === id));
+            const searched = await query(1, outsideFirstPage);
+            assert.equal(searched.body.data.pagination.total, 1);
+            assert.equal(searched.body.data.items[0].id, outsideFirstPage);
+            const last = await query(9999);
+            assert.equal(last.body.data.pagination.page, 4);
+            assert.equal(last.body.data.items.length, 6);
+            assert.equal((await query(1, '%')).body.data.pagination.total, 30, 'percent must be a literal search character');
+            assert.equal((await query(1, 'does_not_exist_%')).body.data.pagination.total, 0);
+            assert.equal((await query(1, "' OR 1=1 --")).body.data.pagination.total, 0);
+        } finally {
+            db.transaction(() => ids.forEach(id => db.prepare('DELETE FROM users WHERE id = ?').run(id)))();
+        }
+    });
+
+    it('rejects invalid user pagination and preserves administrator-only access', async () => {
+        for (const query of ['limit=0', 'limit=101', 'page=-1', 'page=1.5', 'limit=8&limit=12', 'search[x]=bad', `search=${'x'.repeat(201)}`]) {
+            const result = await request(`/api/admin/users?${query}`, { headers: jsonHeaders(adminToken) });
+            assert.equal(result.response.status, 400, query);
+        }
+        const anonymous = await request('/api/admin/users?limit=8&page=1');
+        assert.equal(anonymous.response.status, 401);
+        const normal = await request('/api/admin/users?limit=8&page=1', { headers: jsonHeaders(userToken) });
+        assert.equal(normal.response.status, 401);
+        assert.equal(normal.body.code, 'UNAUTHORIZED');
+    });
+
     it('persists independent nicknames through POST and PATCH without renaming login accounts', async () => {
         const id = 'terminal-nickname-api';
         db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')

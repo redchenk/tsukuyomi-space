@@ -634,6 +634,11 @@ body .page.terminal-page .terminal-table-wrap small {
 
 body .page.terminal-page .terminal-badge {
     min-height: 22px;
+    flex-shrink: 0;
+    width: max-content;
+    white-space: nowrap;
+    word-break: keep-all;
+    overflow-wrap: normal;
     padding: 0 7px;
     border: 1px solid var(--terminal-ui-border);
     border-radius: 10px;
@@ -659,6 +664,11 @@ body .page.terminal-page .terminal-badge.hot {
     border-color: color-mix(in srgb, var(--terminal-ui-purple) 28%, var(--terminal-ui-border));
     color: var(--terminal-ui-purple);
     background: color-mix(in srgb, var(--terminal-ui-purple) 7%, var(--terminal-ui-surface));
+}
+
+body .page.terminal-page .terminal-article-table td:is(:nth-child(1), :nth-child(3), :nth-child(4), :nth-child(5), :nth-child(6)),
+body .page.terminal-page .terminal-message-table td:nth-child(4) {
+    white-space: nowrap;
 }
 
 body .page.terminal-page .terminal-actions,

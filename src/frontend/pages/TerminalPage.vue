@@ -49,6 +49,8 @@ const terminal = reactive({
   messagePage: 1,
   messagePageSize: 10,
   users: [],
+  userTotal: 0,
+  usersLoaded: false,
   userSearch: '',
   userPage: 1,
   userPageSize: 8,
@@ -125,6 +127,10 @@ const terminal = reactive({
 });
 
 let clockTimer = 0;
+let panelLoadSequence = 0;
+let panelController = null;
+let userSearchTimer = 0;
+let loadedUserQuery = '';
 const TERMINAL_USER_PAGE_SIZES = [8, 12, 20];
 const SITE_SETTING_KEYS = [
   'siteTitle',
@@ -184,20 +190,11 @@ const pagedMessages = computed(() => {
   const start = (messageCurrentPage.value - 1) * terminal.messagePageSize;
   return filteredMessages.value.slice(start, start + terminal.messagePageSize);
 });
-const filteredUsers = computed(() => {
-  const keyword = terminal.userSearch.trim().toLowerCase();
-  if (!keyword) return terminal.users;
-  return terminal.users.filter((item) => [item.nickname, item.username, item.email, item.role, item.id].some((value) => String(value || '').toLowerCase().includes(keyword)));
-});
-const userTotalPages = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / Number(terminal.userPageSize || 8))));
+const userTotalPages = computed(() => Math.max(1, Math.ceil(terminal.userTotal / Number(terminal.userPageSize || 8))));
 const userCurrentPage = computed(() => Math.min(Math.max(Number(terminal.userPage) || 1, 1), userTotalPages.value));
-const userPageStart = computed(() => filteredUsers.value.length ? (userCurrentPage.value - 1) * Number(terminal.userPageSize || 8) + 1 : 0);
-const userPageEnd = computed(() => Math.min(userCurrentPage.value * Number(terminal.userPageSize || 8), filteredUsers.value.length));
-const pagedUsers = computed(() => {
-  const size = Number(terminal.userPageSize || 8);
-  const start = (userCurrentPage.value - 1) * size;
-  return filteredUsers.value.slice(start, start + size);
-});
+const userPageStart = computed(() => terminal.userTotal ? (userCurrentPage.value - 1) * Number(terminal.userPageSize || 8) + 1 : 0);
+const userPageEnd = computed(() => Math.min(userCurrentPage.value * Number(terminal.userPageSize || 8), terminal.userTotal));
+const pagedUsers = computed(() => terminal.users);
 const pendingMessageCount = computed(() => terminal.messages.filter((item) => item.status !== 'approved').length);
 const plazaMessageCount = computed(() => terminal.messages.filter((item) => !item.article_id).length);
 const articleMessageCount = computed(() => terminal.messages.filter((item) => item.article_id).length);
@@ -250,6 +247,34 @@ function setUserPage(page) {
   const numericPage = Number(page);
   if (!Number.isFinite(numericPage)) return;
   terminal.userPage = Math.min(Math.max(Math.trunc(numericPage), 1), userTotalPages.value);
+}
+
+function userQuery() {
+  return new URLSearchParams({ page: String(terminal.userPage), limit: String(terminal.userPageSize), search: terminal.userSearch.trim() }).toString();
+}
+
+function userPageResult(result) {
+  if (!Array.isArray(result)) return result;
+  // During a rolling release an older API process can still return the array.
+  const keyword = terminal.userSearch.trim().toLowerCase();
+  const matching = keyword ? result.filter(user => [user.nickname, user.username, user.email, user.role, user.id]
+    .some(value => String(value || '').toLowerCase().includes(keyword))) : result;
+  const total = matching.length;
+  const limit = terminal.userPageSize;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const page = Math.min(terminal.userPage, totalPages);
+  return { items: matching.slice((page - 1) * limit, page * limit), pagination: { page, limit, total, totalPages } };
+}
+
+function scheduleUserLoad(delay = 0) {
+  if (!authed.value || terminal.activePanel !== 'users') return;
+  window.clearTimeout(userSearchTimer);
+  panelLoadSequence += 1;
+  panelController?.abort();
+  userSearchTimer = window.setTimeout(() => {
+    userSearchTimer = 0;
+    loadPanel('users');
+  }, delay);
 }
 
 async function parseJsonResponse(response) {
@@ -338,6 +363,13 @@ async function login() {
 }
 
 async function logout() {
+  panelLoadSequence += 1;
+  panelController?.abort();
+  window.clearTimeout(userSearchTimer);
+  terminal.users = [];
+  terminal.userTotal = 0;
+  terminal.usersLoaded = false;
+  loadedUserQuery = '';
   try {
     await apiFetch(terminal.siteSession ? '/api/auth/logout' : '/api/admin/logout', { method: 'POST', credentials: 'include' });
   } catch (_) {
@@ -358,52 +390,68 @@ function initialPanel(fallback) {
 
 async function loadPanel(panel = terminal.activePanel) {
   if (terminal.siteSession && !['articles', 'messages', 'notifications'].includes(panel)) panel = 'articles';
+  window.clearTimeout(userSearchTimer);
+  userSearchTimer = 0;
+  panelController?.abort();
+  const controller = new AbortController();
+  panelController = controller;
+  const sequence = ++panelLoadSequence;
+  const read = async (path) => {
+    const data = await adminApi(path, { signal: controller.signal });
+    if (sequence !== panelLoadSequence || controller.signal.aborted) throw new DOMException('Superseded panel request', 'AbortError');
+    return data;
+  };
   terminal.activePanel = panel;
   terminal.loading = true;
   terminal.message = '';
   terminal.loadError = '';
   try {
-    if (panel === 'dashboard') terminal.stats = { ...terminal.stats, ...(await adminApi('/stats') || {}) };
-    if (panel === 'articles') terminal.articles = await readTerminalArticles();
+    if (panel === 'dashboard') terminal.stats = { ...terminal.stats, ...(await read('/stats') || {}) };
+    if (panel === 'articles') terminal.articles = await readTerminalArticles(read);
     if (panel === 'messages') {
       if (terminal.siteSession) {
         const messages = [];
         let page = 1;
         let totalPages = 1;
         do {
-          const result = await adminApi(`/messages?limit=40&page=${page}`);
+          const result = await read(`/messages?limit=40&page=${page}`);
           messages.push(...(result?.items || []));
           totalPages = result?.pagination?.totalPages || 1;
           page += 1;
         } while (page <= totalPages);
         terminal.messages = messages;
-      } else terminal.messages = await adminApi('/messages') || [];
+      } else terminal.messages = await read('/messages') || [];
       const reviewId = new URLSearchParams(window.location.search).get('review');
       if (/^\d+$/.test(reviewId || '')) terminal.messageSearch = reviewId;
     }
     if (panel === 'users') {
-      terminal.users = await adminApi('/users') || [];
-      terminal.userPage = 1;
+      const result = userPageResult(await read(`/users?${userQuery()}`));
+      if (!Array.isArray(result?.items) || !Number.isSafeInteger(result?.pagination?.total)) throw new Error('用户列表响应无效，请刷新重试');
+      terminal.users = result?.items || [];
+      terminal.userTotal = result?.pagination?.total || 0;
+      terminal.userPage = result?.pagination?.page || 1;
+      terminal.usersLoaded = true;
+      loadedUserQuery = userQuery();
       terminal.nicknameDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.nickname || user.username || '']));
       terminal.roleDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, user.role || 'user']));
       terminal.passwordDrafts = Object.fromEntries(terminal.users.map((user) => [user.id, '']));
     }
-    if (panel === 'links') terminal.links = await adminApi('/links') || [];
-    if (panel === 'analytics') terminal.analytics = { ...terminal.analytics, ...(await adminApi('/analytics') || {}) };
+    if (panel === 'links') terminal.links = await read('/links') || [];
+    if (panel === 'analytics') terminal.analytics = { ...terminal.analytics, ...(await read('/analytics') || {}) };
     if (panel === 'settings' || (panel === 'notifications' && canManageAccounts.value)) {
-      const { mailConfigured, ...settings } = await adminApi('/settings') || {};
+      const { mailConfigured, ...settings } = await read('/settings') || {};
       terminal.mailConfigured = mailConfigured === true;
       terminal.settings = { ...terminal.settings, ...settings };
     }
     if (panel === 'notifications') {
-      const { mailConfigured, ...preference } = await adminApi('/notification-preferences');
+      const { mailConfigured, ...preference } = await read('/notification-preferences');
       terminal.moderationPreference = preference;
       terminal.mailConfigured = mailConfigured === true;
     }
   } catch (error) {
-    terminal.loadError = error.message || '后台数据读取失败';
+    if (sequence === panelLoadSequence && error.name !== 'AbortError') terminal.loadError = error.message || '后台数据读取失败';
   } finally {
-    terminal.loading = false;
+    if (sequence === panelLoadSequence) terminal.loading = false;
   }
 }
 
@@ -413,13 +461,13 @@ async function toggleArticle(id) {
   await loadPanel('articles');
 }
 
-async function readTerminalArticles() {
-  if (!terminal.siteSession) return await adminApi('/articles') || [];
+async function readTerminalArticles(read = adminApi) {
+  if (!terminal.siteSession) return await read('/articles') || [];
   const articles = [];
   let page = 1;
   let totalPages = 1;
   do {
-    const result = await adminApi(`/articles?limit=40&page=${page}`);
+    const result = await read(`/articles?limit=40&page=${page}`);
     articles.push(...(result?.items || []));
     totalPages = result?.pagination?.totalPages || 1;
     page += 1;
@@ -810,10 +858,16 @@ onMounted(() => {
 
 watch(() => terminal.userSearch, () => {
   terminal.userPage = 1;
+  scheduleUserLoad(250);
 });
 
 watch(() => terminal.userPageSize, () => {
   terminal.userPage = 1;
+  scheduleUserLoad();
+});
+
+watch(() => terminal.userPage, () => {
+  if (!userSearchTimer && userQuery() !== loadedUserQuery) scheduleUserLoad();
 });
 
 watch([() => terminal.articleSearch, () => terminal.articleStatusFilter], () => {
@@ -844,13 +898,11 @@ watch(linkTotalPages, (total) => {
   if (terminal.linkPage > total) terminal.linkPage = total;
 });
 
-watch(userTotalPages, (total) => {
-  if (terminal.userPage > total) terminal.userPage = total;
-  if (terminal.userPage < 1) terminal.userPage = 1;
-});
-
 onUnmounted(() => {
   window.clearInterval(clockTimer);
+  window.clearTimeout(userSearchTimer);
+  panelLoadSequence += 1;
+  panelController?.abort();
 });
 </script>
 
@@ -951,8 +1003,8 @@ onUnmounted(() => {
             <TsIcon :name="terminal.messageType === 'error' ? 'shield' : 'userCheck'" :size="17" />
             <span>{{ terminal.message }}</span>
           </div>
-          <LoadingSkeleton v-if="terminal.loading" variant="list" :count="6" label="正在同步后台数据" />
-          <div v-else-if="terminal.loadError" class="terminal-empty error" role="alert">{{ terminal.loadError }}</div>
+          <LoadingSkeleton v-if="terminal.loading && (terminal.activePanel !== 'users' || !terminal.usersLoaded)" variant="list" :count="6" label="正在同步后台数据" />
+          <div v-else-if="terminal.loadError && (terminal.activePanel !== 'users' || !terminal.usersLoaded)" class="terminal-empty error" role="alert">{{ terminal.loadError }}</div>
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'dashboard'">
             <div class="terminal-hero">
@@ -1013,7 +1065,7 @@ onUnmounted(() => {
               </div>
               <span class="terminal-toolbar-count">{{ filteredArticles.length }} 篇</span>
             </div>
-            <div class="terminal-table-wrap" tabindex="0" role="region" aria-label="文章列表，可横向滚动"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>置顶</th><th>更新时间</th><th>操作</th></tr></thead><tbody>
+            <div class="terminal-table-wrap terminal-article-table" tabindex="0" role="region" aria-label="文章列表，可横向滚动"><table><thead><tr><th>ID</th><th>标题</th><th>分类</th><th>阅读</th><th>状态</th><th>置顶</th><th>更新时间</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in pagedArticles" :key="item.id">
                 <td>{{ item.id }}</td><td><a href="#" @click.prevent="$emit('go', articlePath(item))">{{ item.title }}</a></td><td>{{ item.category || '未分类' }}</td><td>{{ item.view_count || 0 }}</td>
                 <td><span class="terminal-badge" :class="item.status === 'published' ? 'ok' : 'warn'">{{ item.status === 'published' ? '已发布' : '草稿' }}</span></td>
@@ -1111,7 +1163,7 @@ onUnmounted(() => {
             />
           </div>
 
-          <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'users'">
+          <div v-show="terminal.activePanel === 'users' && (terminal.usersLoaded || (!terminal.loading && !terminal.loadError))">
             <div class="terminal-toolbar terminal-users-toolbar">
               <form id="terminal-users-search-form" class="terminal-search-field" role="search" autocomplete="off" @submit.prevent>
                 <TsIcon name="search" :size="16" aria-hidden="true" />
@@ -1136,9 +1188,11 @@ onUnmounted(() => {
                 </select>
               </label>
               <span class="terminal-toolbar-note">仅 super_admin 可修改角色或重置密码</span>
-              <span class="terminal-toolbar-count">{{ userPageStart }}-{{ userPageEnd }} / {{ filteredUsers.length }}</span>
+              <span class="terminal-toolbar-count">{{ userPageStart }}-{{ userPageEnd }} / {{ terminal.userTotal }}</span>
             </div>
-            <div v-if="!filteredUsers.length" class="terminal-empty">没有匹配的用户，试试更换搜索条件。</div>
+            <LoadingSkeleton v-if="terminal.loading && terminal.usersLoaded" variant="list" :count="terminal.userPageSize" label="正在读取用户" />
+            <div v-else-if="terminal.loadError && terminal.usersLoaded" class="terminal-empty error" role="alert">{{ terminal.loadError }}</div>
+            <div v-else-if="!terminal.users.length" class="terminal-empty">没有匹配的用户，试试更换搜索条件。</div>
             <div v-else class="terminal-table-wrap" tabindex="0" role="region" aria-label="用户列表，可横向滚动"><table><thead><tr><th>ID</th><th>用户</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>权限</th><th>密码</th><th>操作</th></tr></thead><tbody>
               <tr v-for="item in pagedUsers" :key="item.id">
                 <td>{{ String(item.id).slice(0, 8) }}</td>
@@ -1190,9 +1244,10 @@ onUnmounted(() => {
               </tr>
             </tbody></table></div>
             <TerminalPagination
+              v-if="!terminal.loading && !terminal.loadError"
               :current="userCurrentPage"
               :total-pages="userTotalPages"
-              :total-items="filteredUsers.length"
+              :total-items="terminal.userTotal"
               :page-size="terminal.userPageSize"
               item-label="名用户"
               aria-label="用户分页"

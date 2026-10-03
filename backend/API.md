@@ -553,6 +553,26 @@ Authorization: Bearer <token>
 
 ### 获取用户列表
 
+Terminal 使用分页接口，沿用现有管理员会话、Origin 和 CSRF 保护，不扩大权限：
+
+```http
+GET /api/admin/users?limit=8&page=1&search=旅人
+```
+
+`limit` 为 1–100，默认 8；`page` 从 1 开始，超过末页时返回末页。`search` 最多 200 字符，按昵称、登录用户名、邮箱、角色和 ID 匹配字面子串，`%`、`_` 不作为通配符。查询经过参数绑定。分页结果不读取或传输未显示的头像数据，也不返回密码字段：
+
+```json
+{
+    "success": true,
+    "data": {
+        "items": [{ "id": "example-user", "username": "traveler", "nickname": "月下旅人", "role": "user" }],
+        "pagination": { "page": 1, "limit": 8, "total": 1, "totalPages": 1 }
+    }
+}
+```
+
+不带分页或搜索参数时，保留下方旧数组格式兼容已有调用方；网站界面使用上方分页格式。
+
 **请求:**
 ```http
 GET /api/admin/users

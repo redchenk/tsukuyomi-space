@@ -514,7 +514,20 @@ router.delete('/messages/:id', (req, res) => {
 
 router.get('/users', (req, res) => {
     try {
-        ok(res, adminRepository.listUsers().map(sanitizeUser));
+        const paginated = ['page', 'limit', 'search'].some(key => Object.hasOwn(req.query, key));
+        if (!paginated) return ok(res, adminRepository.listUsers().map(sanitizeUser));
+        const { page: pageValue = '1', limit: limitValue = '8', search: searchValue = '' } = req.query;
+        const requestedPage = Number(pageValue);
+        const limit = Number(limitValue);
+        if (typeof pageValue !== 'string' || !Number.isSafeInteger(requestedPage) || requestedPage < 1
+            || typeof limitValue !== 'string' || !Number.isSafeInteger(limit) || limit < 1 || limit > 100
+            || typeof searchValue !== 'string' || searchValue.length > 200) return fail(res, 400, '用户分页或搜索参数无效');
+        const search = searchValue.trim();
+        const total = adminRepository.countUsers(search);
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        const page = Math.min(requestedPage, totalPages);
+        const items = adminRepository.listUsers({ search, limit, offset: (page - 1) * limit }).map(sanitizeUser);
+        ok(res, { items, pagination: { page, limit, total, totalPages } });
     } catch (error) {
         console.error('Admin user list error:', error);
         fail(res, 500, '无法读取用户列表');

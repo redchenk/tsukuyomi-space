@@ -242,12 +242,31 @@ function deleteMessage(id) {
     return ids.length;
 }
 
-function listUsers() {
+function buildAdminUserFilter(search = '') {
+    if (!search) return { sql: '', params: [] };
+    // Match literal substrings, as the terminal's previous client filter did.
+    const keyword = `%${search.replace(/[\\%_]/g, '\\$&')}%`;
+    const fields = ['nickname', 'username', 'email', 'role', 'id'];
+    return {
+        sql: `WHERE (${fields.map(field => `${field} LIKE ? ESCAPE '\\'`).join(' OR ')})`,
+        params: fields.map(() => keyword)
+    };
+}
+
+function listUsers({ limit = 0, offset = 0, search = '' } = {}) {
+    const filter = buildAdminUserFilter(search);
     return db.prepare(`
-        SELECT id, username, COALESCE(NULLIF(nickname, ''), username) AS nickname, email, role, avatar, bio, created_at, updated_at
+        SELECT id, username, COALESCE(NULLIF(nickname, ''), username) AS nickname, email, role, bio, created_at, updated_at${limit > 0 ? '' : ', avatar'}
         FROM users
-        ORDER BY created_at DESC
-    `).all();
+        ${filter.sql}
+        ORDER BY created_at DESC, id DESC
+        ${limit > 0 ? 'LIMIT ? OFFSET ?' : ''}
+    `).all(...filter.params, ...(limit > 0 ? [limit, offset] : []));
+}
+
+function countUsers(search = '') {
+    const filter = buildAdminUserFilter(search);
+    return db.prepare(`SELECT COUNT(*) AS count FROM users ${filter.sql}`).get(...filter.params).count;
 }
 
 function findUserForAdmin(id) {
@@ -338,6 +357,7 @@ module.exports = {
     approveMessage,
     deleteMessage,
     listUsers,
+    countUsers,
     findUserForAdmin,
     findUserByUsername,
     updateUserRole,
