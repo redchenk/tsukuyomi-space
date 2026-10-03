@@ -1,4 +1,6 @@
 import { documentLanguage } from '../i18n';
+import pageCopy from '../../../shared/seo-pages.json';
+import englishPageCopy from '../../../shared/seo-pages-en.json';
 import { isEnglishSite } from './siteVariant';
 
 const ENGLISH_SITE = isEnglishSite();
@@ -40,9 +42,20 @@ const ENGLISH_ROUTE_SEO = Object.freeze({
   notifications: ['Notifications', 'View replies, likes and account notifications.'],
   admin: ['Content Management', 'Review articles, messages, gallery images and attachments.'],
   terminal: ['Administration Terminal', 'Tsukuyomi Space administration terminal.'],
-  pixel: ['192 × 108 Moonlit Pixel Workshop', 'Create, publish, browse, like and export fixed-size pixel artwork.'],
+  pixel: ['Moonlit Pixel Workshop | Online Pixel Art Editor', 'Create pixel art with multiple canvas sizes, brushes, fill tools and palettes. Import images, save drafts, export PNG files and share artwork with the community.'],
   game: ['Kaguya Run Rhythm Game', 'Play Kaguya Run with desktop keyboard, mobile touch and fullscreen controls.']
 });
+
+export function canonicalSeoPath(value = '/') {
+  const url = new URL(value, SITE_URL);
+  if (ENGLISH_SITE && /^\/articles\/\d+/.test(url.pathname)) return url.pathname.match(/^\/articles\/\d+/)[0];
+  if (url.pathname === '/pixel' && /^[1-9]\d*$/.test(url.searchParams.get('art') || '')) return `/pixel?art=${url.searchParams.get('art')}`;
+  if (url.pathname === '/stage') {
+    const page = Number.parseInt(url.searchParams.get('page'), 10);
+    return page > 1 ? `/stage?page=${Math.min(page, 10000)}` : '/stage';
+  }
+  return url.pathname;
+}
 
 function absoluteUrl(path = '/') {
   try {
@@ -83,7 +96,7 @@ function upsertAlternate(language, href) {
 }
 
 function removeStructuredData(id) {
-  document.head.querySelector(`script[data-seo-json="${id}"]`)?.remove();
+  document.head.querySelectorAll(`script[data-seo-json="${id}"]`).forEach(node => node.remove());
 }
 
 function upsertStructuredData(id, payload) {
@@ -94,6 +107,13 @@ function upsertStructuredData(id, payload) {
   node.dataset.seoJson = id;
   node.textContent = JSON.stringify(payload);
   document.head.appendChild(node);
+}
+
+function seoDate(value) {
+  if (!value) return undefined;
+  const text = String(value);
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T00:00:00Z` : /(?:Z|[+-]\d{2}:?\d{2})$/i.test(text) ? text : text.replace(' ', 'T') + 'Z');
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
 function normalizeTags(value) {
@@ -139,14 +159,15 @@ export function applySeo({
   const pageDescription = String(description || DEFAULT_DESCRIPTION).trim() || DEFAULT_DESCRIPTION;
   const fullTitle = pageTitle.includes(SITE_NAME) ? pageTitle : `${pageTitle} | ${SITE_NAME}`;
   const keywordContent = normalizeKeywords(keywords) || normalizeKeywords(DEFAULT_KEYWORDS);
-  const url = absoluteUrl(path);
+  const canonicalPath = canonicalSeoPath(path);
+  const url = absoluteUrl(canonicalPath);
   const imageUrl = absoluteUrl(image);
 
   document.title = fullTitle;
   document.documentElement.lang = documentLanguage(language);
   upsertMeta('meta[name="description"]', { name: 'description', content: pageDescription });
   upsertMeta('meta[name="keywords"]', { name: 'keywords', content: keywordContent });
-  upsertMeta('meta[name="robots"]', { name: 'robots', content: noindex ? 'noindex,nofollow' : 'index,follow' });
+  upsertMeta('meta[name="robots"]', { name: 'robots', content: noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large' });
   upsertLink('canonical', url);
 
   upsertMeta('meta[property="og:type"]', { property: 'og:type', content: type });
@@ -162,38 +183,44 @@ export function applySeo({
   upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: pageDescription });
   upsertMeta('meta[name="twitter:image"]', { name: 'twitter:image', content: imageUrl });
 
-  if (ENGLISH_SITE) {
-    const languagePath = String(path || '/').split('#', 1)[0];
+  if (ENGLISH_SITE && !canonicalPath.startsWith('/articles/')) {
+    const languagePath = canonicalPath;
     upsertAlternate('en', absoluteUrl(languagePath));
     upsertAlternate('zh-Hans', new URL(languagePath, 'https://yachiyo.hk').toString());
     upsertAlternate('x-default', absoluteUrl(languagePath));
   }
 
+  if (!structuredData) removeStructuredData('breadcrumb');
   upsertStructuredData('page', structuredData);
 }
 
 export function applyRouteSeo(route) {
   const meta = route.meta || {};
   const english = ENGLISH_SITE ? ENGLISH_ROUTE_SEO[route.name] : null;
+  const publicCopy = (ENGLISH_SITE ? englishPageCopy : pageCopy)[route.path];
   applySeo({
-    title: english?.[0] || meta.title || SITE_NAME,
-    description: english?.[1] || meta.description || DEFAULT_DESCRIPTION,
+    title: publicCopy?.title || english?.[0] || meta.title || SITE_NAME,
+    description: publicCopy?.description || english?.[1] || meta.description || DEFAULT_DESCRIPTION,
     keywords: ENGLISH_SITE ? DEFAULT_KEYWORDS : (meta.keywords || DEFAULT_KEYWORDS),
-    path: route.path || route.fullPath || '/',
-    noindex: Boolean(meta.noindex)
+    path: route.fullPath || route.path || '/',
+    noindex: Boolean(meta.noindex || route.path === '/access' || (route.path === '/stage' && (route.query.q || route.query.category || (route.query.sort && route.query.sort !== 'latest'))))
   });
 }
 
 export function articleSeo(article, path) {
   const title = String(article?.title || '文章').trim();
-  const description = String(article?.excerpt || article?.content || DEFAULT_DESCRIPTION)
+  const descriptionText = String(article?.excerpt || article?.content || DEFAULT_DESCRIPTION)
     .replace(/!\[[^\]]*]\([^)]+\)/g, '')
     .replace(/[#>*_`~\[\]()]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 160) || DEFAULT_DESCRIPTION;
+    .slice(0, 170) || DEFAULT_DESCRIPTION;
+  const author = article?.author_nickname || article?.author_username || SITE_NAME;
+  const context = ENGLISH_SITE ? `${title}: a public ${article?.category || 'community'} article by ${author}. Read the full article, view the author and join the discussion.` : `${title}：${author}的${article?.category || '公开'}文章，可阅读正文、查看作者并参与评论。`;
+  const description = descriptionText.length < 60 ? `${descriptionText} ${context}`.slice(0, 170) : descriptionText;
   const image = article?.cover_image || DEFAULT_IMAGE;
-  const url = absoluteUrl(path);
+  const canonicalPath = canonicalSeoPath(path);
+  const url = absoluteUrl(canonicalPath);
   const tags = normalizeTags(article?.tags);
   return {
     title,
@@ -208,11 +235,12 @@ export function articleSeo(article, path) {
       headline: title,
       description,
       image: [absoluteUrl(image)],
-      datePublished: article?.published_at || article?.created_at || article?.publish_date,
-      dateModified: article?.updated_at || article?.created_at || article?.publish_date,
+      datePublished: seoDate(article?.published_at || article?.created_at || article?.publish_date),
+      dateModified: seoDate(article?.updated_at || article?.published_at || article?.created_at || article?.publish_date),
       author: {
         '@type': 'Person',
-        name: article?.author_nickname || article?.author_username || 'redchenk'
+        name: article?.author_nickname || article?.author_username || 'redchenk',
+        ...(article?.author_username ? { url: absoluteUrl(`/users/${encodeURIComponent(article.author_username)}`) } : {})
       },
       publisher: {
         '@type': 'Organization',

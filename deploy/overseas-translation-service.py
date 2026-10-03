@@ -10,6 +10,8 @@ import http.client
 import ipaddress
 import json
 import os
+from pathlib import Path
+import queue
 import re
 import sqlite3
 import socket
@@ -44,6 +46,7 @@ CACHE_VERSION = "v3"
 MAX_REQUEST_BYTES = 256 * 1024
 MAX_BATCH_TEXTS = 50
 MAX_BATCH_CHARS = 20_000
+FRONTEND_INDEX = os.environ.get("TSUKUYOMI_FRONTEND_INDEX", "/opt/1panel/www/sites/tsukuyomi-space.com/frontend/index.html")
 MAX_SEO_URI_BYTES = 2_048
 MAX_TRANSLATION_CACHE_ROWS = 20_000
 MAX_DOCUMENT_CACHE_ROWS = 2_048
@@ -204,8 +207,8 @@ SEO_ROUTE_COPY = {
         "Browse public Cosmic Princess Kaguya fan art, illustrations, screenshots and community gallery uploads.",
     ),
     "/pixel": (
-        "192 × 108 Pixel Art Community | Tsukuyomi Space",
-        "Create, share and explore 192 × 108 pixel art from the Tsukuyomi Space creative community.",
+        "Moonlit Pixel Workshop | Online Pixel Art and Community",
+        "Create pixel art with multiple canvas sizes, brushes, fill tools and palettes. Import images, save drafts, export PNG files and share your artwork with the community.",
     ),
     "/game": (
         "Kaguya Run Rhythm Game | Tsukuyomi Space",
@@ -220,6 +223,23 @@ SEO_ROUTE_COPY = {
         "Discover approved independent sites, blogs and creative partners connected with Tsukuyomi Space.",
     ),
 }
+
+
+# Share truthful route copy with the frontend. Production installs this small
+# readonly document beside the service; repository tests use the source file.
+seo_copy_path = Path(__file__).with_name("seo-pages-en.json")
+if not seo_copy_path.is_file():
+    seo_copy_path = Path(__file__).resolve().parent.parent / "shared/seo-pages-en.json"
+if seo_copy_path.is_file():
+    with seo_copy_path.open(encoding="utf-8") as source:
+        seo_copy = json.loads(source.read(64000))
+    if set(seo_copy) != set(SEO_ROUTE_COPY) or not all(isinstance(v, dict) and isinstance(v.get("title"), str) and isinstance(v.get("description"), str) for v in seo_copy.values()):
+        raise ValueError("Invalid public SEO copy")
+    SEO_ROUTE_COPY = {path: (value["title"], value["description"]) for path, value in seo_copy.items()}
+
+
+def safe_json_for_html(value):
+    return json.dumps(value, ensure_ascii=False).replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
 def english_slug(value: str) -> str:
@@ -239,7 +259,9 @@ def split_safe_local_uri(value: str) -> urllib.parse.SplitResult:
     if parsed.scheme or parsed.netloc or parsed.fragment or not path.startswith("/") or path.startswith("//"):
         raise ValueError("Invalid local URI")
     decoded_path = urllib.parse.unquote(path, errors="strict")
-    if decoded_path != path or any(segment in {".", ".."} for segment in path.split("/")):
+    public_profile = decoded_path.startswith("/users/") and re.fullmatch(r"/users/[^/\\<>\x00-\x1f\x7f]{1,32}/?", decoded_path) and decoded_path.rstrip("/").split("/")[-1] not in {".", ".."}
+    public_article = re.fullmatch(r"/articles/[1-9]\d{0,18}(?:/[^/\\<>\x00-\x1f\x7f]{1,240})?/?", decoded_path)
+    if (decoded_path != path and not (public_profile or public_article)) or any(segment in {".", ".."} for segment in decoded_path.split("/")):
         raise ValueError("Non-canonical URI")
     return parsed
 
@@ -247,10 +269,26 @@ def split_safe_local_uri(value: str) -> urllib.parse.SplitResult:
 def normalize_public_seo_path(value: str) -> str:
     parsed = split_safe_local_uri(value)
     path = parsed.path.rstrip("/") or "/"
+    decoded_article = urllib.parse.unquote(path, errors="strict")
+    if re.fullmatch(r"/articles/[1-9]\d{0,18}(?:/[^/\\<>\x00-\x1f\x7f]{1,240})?", decoded_article):
+        return re.match(r"/articles/[1-9]\d*", decoded_article).group(0)
+    if path.startswith("/users/"):
+        username = urllib.parse.unquote(path[len("/users/"):], errors="strict")
+        if not re.fullmatch(r"[^/\\<>\x00-\x1f\x7f]{1,32}", username) or username in {".", ".."}:
+            raise ValueError("Invalid public profile")
+        return "/users/" + urllib.parse.quote(username, safe="")
+    if path == "/stage" and parsed.query:
+        query = urllib.parse.parse_qs(parsed.query, max_num_fields=12)
+        pages = query.get("page", ["1"])
+        if len(pages) != 1 or not re.fullmatch(r"[1-9]\d{0,3}", pages[0]):
+            raise ValueError("Invalid page")
+        return "/stage" if pages[0] == "1" else f"/stage?page={pages[0]}"
     if path == "/pixel" and parsed.query:
-        query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True, strict_parsing=True)
+        query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True, max_num_fields=12)
         artwork_ids = query.get("art", [])
-        if set(query) != {"art"} or len(artwork_ids) != 1 or not re.fullmatch(r"[1-9]\d{0,18}", artwork_ids[0]):
+        if not artwork_ids and set(query) <= {"spa", "release"}:
+            return "/pixel"
+        if not set(query) <= {"art", "spa", "from", "release"} or len(artwork_ids) != 1 or not re.fullmatch(r"[1-9]\d{0,18}", artwork_ids[0]):
             raise ValueError("Invalid pixel artwork query")
         return f"/pixel?art={artwork_ids[0]}"
     if path in PUBLIC_SEO_PATHS or PUBLIC_ARTICLE_PATH_RE.fullmatch(path):
@@ -612,8 +650,18 @@ class EnglishTranslator:
             if str(tag.get("type", "")).lower() != "application/ld+json" or not tag.string:
                 continue
             try:
-                payload = json.loads(tag.string)
-                tag.string.replace_with(json.dumps(self.translate_json(payload), ensure_ascii=False))
+                payload = self.translate_json(json.loads(tag.string))
+                def languages(value):
+                    if isinstance(value, dict):
+                        if "inLanguage" in value:
+                            value["inLanguage"] = "en"
+                        for child in value.values():
+                            languages(child)
+                    elif isinstance(value, list):
+                        for child in value:
+                            languages(child)
+                languages(payload)
+                tag.string.replace_with(safe_json_for_html(payload))
             except (TypeError, ValueError):
                 pass
 
@@ -641,7 +689,9 @@ class EnglishTranslator:
                     tag[attribute] = str(tag[attribute]).replace(UPSTREAM, OVERSEAS)
 
         canonical = soup.find("link", rel=lambda value: value and "canonical" in value)
-        canonical_url = f"{OVERSEAS}{path.split('#', 1)[0]}"
+        identity = re.match(r"^/articles/([1-9]\d*)", path)
+        canonical_path = f"/articles/{identity.group(1)}" if identity else path.split("#", 1)[0]
+        canonical_url = f"{OVERSEAS}{canonical_path}"
         if canonical:
             canonical["href"] = canonical_url
         elif soup.head:
@@ -652,9 +702,9 @@ class EnglishTranslator:
             if alternate.get("hreflang"):
                 alternate.decompose()
         if soup.head:
-            for language, base in (("en", OVERSEAS), ("zh-Hans", UPSTREAM), ("x-default", OVERSEAS)):
+            for language, base in (() if identity else (("en", OVERSEAS), ("zh-Hans", UPSTREAM), ("x-default", OVERSEAS))):
                 alternate = soup.new_tag("link", rel="alternate", hreflang=language)
-                alternate["href"] = f"{base}{path.split('?', 1)[0]}"
+                alternate["href"] = f"{base}{canonical_path}"
                 soup.head.append(alternate)
             language_meta = soup.new_tag("meta")
             language_meta["http-equiv"] = "content-language"
@@ -665,13 +715,16 @@ class EnglishTranslator:
             seo_key = clean_path
             if clean_path.startswith("/wiki/"):
                 seo_key = "/wiki"
-            elif clean_path.startswith("/stage/"):
+            elif clean_path.startswith("/articles/"):
                 seo_key = "/stage/article"
             route_title, route_description = SEO_ROUTE_COPY.get(seo_key, (None, None))
             if clean_path == "/pixel" and urllib.parse.parse_qs(parsed_route.query).get("art"):
                 route_title = None
                 route_description = None
             title_tag = soup.find("title")
+            if clean_path.startswith("/wiki/") or clean_path.startswith("/articles/"):
+                route_title = None
+                route_description = None
             if route_title and title_tag:
                 title_tag.string = route_title
             elif title_tag and "Tsukuyomi Space" not in title_tag.get_text():
@@ -691,7 +744,8 @@ class EnglishTranslator:
                     tag = soup.new_tag("meta")
                     tag["name"] = name
                     soup.head.append(tag)
-                tag["content"] = value
+                if name != "robots" or "noindex" not in tag.get("content", "").lower():
+                    tag["content"] = value
             social_values = {
                 "og:site_name": "Tsukuyomi Space",
                 "og:title": final_title,
@@ -709,7 +763,10 @@ class EnglishTranslator:
                     tag[attribute] = name
                     soup.head.append(tag)
                 tag["content"] = value
-        return str(soup)
+        # Links and schemas use stable English article IDs, including entries
+        # beyond the first API page. No title-translation lookup or slug scan.
+        rendered = str(soup)
+        return re.sub(re.escape(OVERSEAS) + r"/articles/([1-9]\d*)(?:/[^\s\"<>?#]+)?", lambda m: f"{OVERSEAS}/articles/{m.group(1)}", rendered)
 
 
 STORE = TranslationStore(DB_PATH)
@@ -805,33 +862,162 @@ def translated_api(path: str) -> tuple[int, str, bytes]:
         return (200, cached[0], cached[1]) if cached else translate_uncached()
 
 
+def attach_frontend(rendered: bytes) -> bytes:
+    soup = BeautifulSoup(rendered.decode("utf-8", "replace"), "html.parser")
+    canonical = soup.find("link", attrs={"rel": "canonical"})
+    if canonical and urllib.parse.urlsplit(canonical.get("href", "")).path.startswith("/topics/"):
+        return rendered  # Existing standalone topic pages have no Vue route.
+    with open(FRONTEND_INDEX, "r", encoding="utf-8") as source:
+        shell = source.read(128_000)
+    base = BeautifulSoup(shell, "html.parser")
+    if soup.body and not soup.find(id="app"):
+        app = soup.new_tag("div", id="app")
+        fallback = soup.new_tag("noscript")
+        for child in list(soup.body.contents):
+            fallback.append(child.extract())
+        app.append(fallback)
+        soup.body.append(app)
+    if not soup.head or not soup.body or not base.head:
+        raise ValueError("Missing frontend document")
+    for node in list(soup.head.find_all(["script", "link", "meta"])):
+        if ((node.name == "script" and node.get("type") != "application/ld+json")
+            or (node.name == "link" and node.get("rel") and any(r in node.get("rel") for r in ("stylesheet", "modulepreload")))
+            or (node.name == "meta" and str(node.get("http-equiv", "")).lower() == "content-security-policy")):
+            node.decompose()
+    for node in list(base.head.find_all(["script", "link", "meta"])):
+        if ((node.name == "script" and node.get("type") != "application/ld+json")
+            or (node.name == "link" and node.get("rel") and any(r in node.get("rel") for r in ("stylesheet", "modulepreload")))
+            or (node.name == "meta" and str(node.get("http-equiv", "")).lower() == "content-security-policy")):
+            soup.head.append(node.extract())
+    return str(soup).encode("utf-8")
+
+
+SEO_REFRESH_QUEUE = queue.Queue(maxsize=32)
+SEO_REFRESH_PENDING = set()
+SEO_REFRESH_LOCK = threading.Lock()
+SEO_REFRESH_THREAD = None
+SEO_REFRESH_RETRY = {}
+
+
+def cached_seo_payload(cached):
+    content_type, body = cached
+    match = re.search(r";status=(404|410)$", content_type)
+    if match:
+        return int(match.group(1)), content_type.split(";", 1)[0], body
+    return 200, content_type, attach_frontend(body)
+
+
+def refresh_seo_worker():
+    while True:
+        path = SEO_REFRESH_QUEUE.get()
+        failed = False
+        try:
+            status, _, _ = render_translated_seo(path)
+            failed = status not in {200, 404, 410}
+        except Exception:
+            failed = True
+            print('{"event":"seo_refresh_failed"}', flush=True)
+        finally:
+            with SEO_REFRESH_LOCK:
+                SEO_REFRESH_PENDING.discard(path)
+                if failed:
+                    SEO_REFRESH_RETRY[path] = time.monotonic() + 120
+                    if len(SEO_REFRESH_RETRY) > MAX_DOCUMENT_CACHE_ROWS:
+                        SEO_REFRESH_RETRY.pop(next(iter(SEO_REFRESH_RETRY)))
+                else:
+                    SEO_REFRESH_RETRY.pop(path, None)
+            SEO_REFRESH_QUEUE.task_done()
+
+
+def schedule_seo_refresh(path):
+    global SEO_REFRESH_THREAD
+    with SEO_REFRESH_LOCK:
+        if path in SEO_REFRESH_PENDING or SEO_REFRESH_RETRY.get(path, 0) > time.monotonic():
+            return
+        try:
+            SEO_REFRESH_QUEUE.put_nowait(path)
+        except queue.Full:
+            return
+        SEO_REFRESH_PENDING.add(path)
+        if SEO_REFRESH_THREAD is None:
+            SEO_REFRESH_THREAD = threading.Thread(target=refresh_seo_worker, daemon=True)
+            SEO_REFRESH_THREAD.start()
+
+
+def untranslated_public_shell(body, path):
+    # A cold document uses real upstream public content immediately. Translation
+    # runs in the bounded background worker; interactive UI remains the same.
+    soup = BeautifulSoup(body.decode("utf-8", "replace"), "html.parser")
+    identity = re.match(r"^/articles/([1-9]\d*)", path)
+    canonical_path = f"/articles/{identity.group(1)}" if identity else path
+    for tag in soup.find_all(["meta", "link"]):
+        for attr in ("href", "content"):
+            if tag.has_attr(attr):
+                tag[attr] = str(tag[attr]).replace(UPSTREAM, OVERSEAS)
+        if tag.name == "link" and tag.get("rel") == ["canonical"]:
+            tag["href"] = OVERSEAS + canonical_path
+    title, description = SEO_ROUTE_COPY.get(path.split("?", 1)[0], (None, None))
+    if title and soup.title:
+        soup.title.string = title
+    if description:
+        meta = soup.find("meta", attrs={"name": "description"})
+        if meta:
+            meta["content"] = description
+    return attach_frontend(str(soup).encode("utf-8"))
+
+
 def translated_seo(path: str) -> tuple[int, str, bytes]:
     path = normalize_public_seo_path(path)
-    key = f"seo-v6:{path}"
+    key = f"seo-v8:{path}"
+    fresh = STORE.get_document(key, 600)
+    if fresh:
+        return cached_seo_payload(fresh)
+    stale = STORE.get_document(key, 7 * 86400)
+    if stale:
+        schedule_seo_refresh(path)
+        return cached_seo_payload(stale)
+    raw_key = f"seo-base-v8:{path}"
+    raw = STORE.get_document(raw_key, 600)
+    if raw:
+        schedule_seo_refresh(path)
+        return 200, "text/html", untranslated_public_shell(raw[1], path)
+    status, content_type, body = fetch_upstream(path)
+    if status != 200 or "html" not in content_type:
+        return status, content_type, body
+    STORE.put_document(raw_key, "text/html", body)
+    schedule_seo_refresh(path)
+    return 200, "text/html", untranslated_public_shell(body, path)
+
+
+def render_translated_seo(path: str) -> tuple[int, str, bytes]:
+    path = normalize_public_seo_path(path)
+    key = f"seo-v8:{path}"
     cached = STORE.get_document(key, 600)
     if cached:
-        return 200, cached[0], cached[1]
+        return cached_seo_payload(cached)
     acquire_translation_slot()
     try:
         with SEO_RENDER_LOCK:
             cached = STORE.get_document(key, 600)
             if cached:
-                return 200, cached[0], cached[1]
+                return cached_seo_payload(cached)
             status, content_type, body = fetch_upstream(
                 path,
                 "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
             )
             if status != 200 or "html" not in content_type:
+                if status in {404, 410}:
+                    STORE.put_document(key, f"{content_type};status={status}", body)
                 return status, content_type, body
             rendered = translator().translate_html(body.decode("utf-8", "replace"), path).encode("utf-8")
             STORE.put_document(key, "text/html", rendered)
-            return status, "text/html", rendered
+            return status, "text/html", attach_frontend(rendered)
     finally:
         TRANSLATION_SLOTS.release()
 
 
 def translated_xml(path: str) -> tuple[int, str, bytes]:
-    key = f"xml-v7:{path}"
+    key = f"xml-v8:{path}"
     cached = STORE.get_document(key, 600)
     if cached:
         return 200, cached[0], cached[1]
@@ -847,20 +1033,9 @@ def translated_xml(path: str) -> tuple[int, str, bytes]:
                 ElementTree.register_namespace(prefix or "", namespace)
             root = ElementTree.fromstring(source)
             if path == "/sitemap.xml":
-                article_status, article_type, article_body = fetch_upstream("/api/articles?limit=100")
-                article_slugs: dict[str, str] = {}
-                if article_status == 200 and "json" in article_type:
-                    article_payload = translator().translate_json(json.loads(article_body))
-                    for article in article_payload.get("data", []):
-                        if isinstance(article, dict) and article.get("id"):
-                            article_slugs[str(article["id"])] = english_slug(article.get("title", ""))
                 for location in root.iter():
-                    if str(location.tag).split("}")[-1].lower() != "loc":
-                        continue
-                    current = str(location.text or "")
-                    match = re.search(r"/articles/(\d+)(?:/[^<]*)?$", urllib.parse.unquote(current))
-                    if match and match.group(1) in article_slugs:
-                        location.text = f"{OVERSEAS}/articles/{match.group(1)}/{article_slugs[match.group(1)]}"
+                    if str(location.tag).split("}")[-1].lower() == "loc" and location.text:
+                        location.text = re.sub(re.escape(OVERSEAS) + r"/articles/([1-9]\d*)(?:/[^<]*)?$", lambda m: f"{OVERSEAS}/articles/{m.group(1)}", location.text)
             for element in root.iter():
                 name = str(element.tag).split("}")[-1].lower()
                 if name not in {"title", "description", "summary", "content", "caption", "category"}:
@@ -962,7 +1137,13 @@ class Handler(BaseHTTPRequestHandler):
                         b'{"error":"Not found"}',
                         {"X-Robots-Tag": "noindex, nofollow"},
                     )
-                return self.send_payload(*translated_seo(normalized))
+                query = urllib.parse.parse_qs(urllib.parse.urlsplit(original).query, max_num_fields=12)
+                filtered = normalized.split("?", 1)[0] == "/stage" and (
+                    query.get("q", [""])[0] or query.get("category", [""])[0]
+                    or query.get("sort", ["latest"])[0] != "latest"
+                )
+                headers = {"X-Robots-Tag": "noindex, follow"} if filtered else None
+                return self.send_payload(*translated_seo(normalized), extra_headers=headers)
             if parsed.path in {"/feed.xml", "/sitemap.xml", "/sitemap-images.xml"}:
                 if not rate_allowed(client, "xml", XML_REQUESTS_PER_MINUTE):
                     return self.send_payload(429, "application/json", b'{"error":"Too many requests"}')
@@ -974,6 +1155,9 @@ class Handler(BaseHTTPRequestHandler):
                     "Disallow: /room/settings\nDisallow: /room-settings\n"
                     "Disallow: /user-center\nDisallow: /notifications\n"
                     "Disallow: /login\nDisallow: /register\nDisallow: /gallery/manage\n"
+                    "Disallow: /attachments\nDisallow: /fushi/\nDisallow: /room/shared/\n"
+                    "Disallow: /friend-links/apply\nDisallow: /api/\nDisallow: /en-api/\n"
+                    "Allow: /api/pixel-art/*/image.png\nAllow: /api/assets/proxy/\n"
                     f"Sitemap: {OVERSEAS}/sitemap.xml\n"
                     f"Sitemap: {OVERSEAS}/sitemap-images.xml\n"
                 ).encode()

@@ -1,4 +1,5 @@
 const config = require('../config');
+const pageCopy = require('../../shared/seo-pages.json');
 const { safeJsonForHtml } = require('../services/html-sanitizer');
 const { articlePath } = require('./render-article');
 const { wikiEntryPath } = require('./wiki-content');
@@ -42,9 +43,12 @@ function renderSeoCollectionPage({
     heading = title,
     image = DEFAULT_IMAGE,
     items = [],
-    actions = []
+    actions = [],
+    sections = [], facts = [], sources = [], verifiedAt = ''
 }) {
     const url = absoluteUrl(path);
+    const routeCopy = pageCopy[path];
+    if (routeCopy) { title = routeCopy.title; description = routeCopy.description; }
     const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
     const primaryImage = absoluteUrl(image || items.find(item => item.image)?.image || DEFAULT_IMAGE);
     const normalizedItems = items.filter(item => item?.title && item?.href);
@@ -73,8 +77,9 @@ function renderSeoCollectionPage({
     }).join('');
     const schema = {
         '@context': 'https://schema.org',
-        '@type': 'CollectionPage',
+        '@type': sections.length ? 'WebPage' : 'CollectionPage',
         name: fullTitle,
+        ...(sources.length ? { citation: sources.map(s => s.url) } : {}),
         description,
         url,
         inLanguage: 'zh-CN',
@@ -117,8 +122,11 @@ function renderSeoCollectionPage({
     <header class="hero">
       <h1>${escapeHtml(heading)}</h1>
       <p>${escapeHtml(description)}</p>
+      ${facts.length ? `<dl>${facts.map(([name, value]) => `<dt>${escapeHtml(name)}</dt><dd>${escapeHtml(value)}</dd>`).join('')}</dl>` : ''}
       <nav class="actions" aria-label="页面入口">${actionLinks}</nav>
     </header>
+    ${sections.map(s => `<section><h2>${escapeHtml(s.title)}</h2>${s.html ? require('../services/html-sanitizer').sanitizeRenderedHtml(s.html) : (s.paragraphs || []).map(p => `<p>${escapeHtml(p)}</p>`).join('')}</section>`).join('')}
+    ${sources.length ? `<section><h2>资料来源</h2><ul>${sources.map(s => `<li><a href="${escapeHtml(absoluteUrl(s.url))}" rel="noopener noreferrer">${escapeHtml(s.label)}</a></li>`).join('')}</ul><p>资料核验日期：${escapeHtml(verifiedAt)}。本站为非官方粉丝资料库。</p></section>` : ''}
     <section class="grid" aria-label="${escapeHtml(heading)}内容">
       ${cards || '<p>公开内容正在整理中。</p>'}
     </section>
@@ -133,7 +141,7 @@ function renderHubHtml(articles = []) {
         { href: '/wiki', title: '超时空辉夜姬 Wiki', description: '角色、世界观、音乐和发行资料。' },
         { href: '/room', title: '月见八千代 Live2D 房间', description: '高清 Live2D、AI 对话、语音与长期记忆。' },
         { href: '/gallery', title: '公开图库', description: '用户公开上传的插画与站点影像。' },
-        { href: '/pixel', title: '192×108 像素画工坊', description: '在线创作、分享与浏览像素作品。' },
+        { href: '/pixel', title: '在线像素画工坊', description: '在线创作、分享与浏览像素作品。' },
         { href: '/game', title: '辉夜快跑', description: '辉夜姬主题节奏跑酷游戏。' },
         { href: '/friend-links', title: '友链导航', description: '月读空间审核收录的友好站点。' }
     ];
@@ -159,14 +167,14 @@ function renderPixelHtml(artworks = []) {
     const items = artworks.map(artwork => ({
         href: `/pixel?art=${encodeURIComponent(artwork.id)}`,
         title: artwork.title || `像素作品 ${artwork.id}`,
-        description: artwork.description || '月读空间用户公开分享的 192×108 像素作品。',
+        description: artwork.description || '月读空间用户公开分享的 像素作品。',
         meta: `${artwork.author || '匿名创作者'} · ${Number(artwork.width || 192)}×${Number(artwork.height || 108)}`
     }));
     return renderSeoCollectionPage({
         path: '/pixel',
-        title: '192×108 月光像素画工坊',
-        heading: '192×108 月光像素画工坊',
-        description: '使用月读空间在线像素画工具创作固定 192×108 画布，公开分享、浏览、点赞并导出像素作品。',
+        title: '月光像素画工坊',
+        heading: '月光像素画工坊',
+        description: '使用月读空间在线像素画工具创作多种尺寸画布，公开分享、浏览、点赞并导出像素作品。',
         keywords: ['在线像素画', '192×108 像素画', '月光像素工坊', 'Pixel Art 编辑器', '像素画社区'],
         items,
         actions: [{ href: '/pixel?spa=1', label: '打开像素画工具' }]
@@ -230,14 +238,16 @@ function renderWikiHtml(entries = []) {
 function renderWikiEntryHtml(entry) {
     const kindLabel = entry.kind === 'character' ? '角色词条' : '世界观／音乐词条';
     return renderSeoCollectionPage({
+        ...require('./wiki-documents.json')[`${entry.kind}/${entry.slug}`],
         path: wikiEntryPath(entry),
         title: `${entry.title} - ${kindLabel} - 超时空辉夜姬 Wiki`,
         heading: entry.title,
-        description: entry.description,
+        description: `${entry.description} 本页整理${entry.title}在《超时空辉夜姬！》中的角色或设定资料，并提供相关词条与官方来源。本站为非官方粉丝 Wiki，资料核验日期为 ${require('./wiki-content').WIKI_VERIFIED_AT}，原作内容以官方发布为准。`,
         keywords: [...entry.keywords, '超时空辉夜姬 Wiki'],
         image: entry.image,
         items: [
             { href: '/wiki', title: '超时空辉夜姬 Wiki', description: '返回角色与世界观词条总览。' },
+            { href: entry.kind === 'character' ? 'https://www.cho-kaguyahime.com/character/' : 'https://www.cho-kaguyahime.com/', title: '原作官方资料', description: '作品与角色资料请以《超かぐや姫！》官方网站发布为准。' },
             { href: '/topics/cosmic-princess-kaguya-wiki', title: '角色与世界观专题', description: '浏览 Wiki 角色、设定、音乐与相关公开文章。' }
         ],
         actions: [{ href: `${wikiEntryPath(entry)}?spa=1`, label: '阅读完整互动词条' }]

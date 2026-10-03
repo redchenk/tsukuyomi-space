@@ -251,6 +251,7 @@ module.exports = {
     isArticleBookmarked,
     articleBookmarkCount,
     listBookmarkedArticles,
+    listPublicArticlesByAuthor,
     publicProfile,
     listTrendingTopics
 };

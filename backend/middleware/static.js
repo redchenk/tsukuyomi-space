@@ -5,28 +5,24 @@ const config = require('../config');
 const articleRepository = require('../repositories/article-repository');
 const assetRepository = require('../repositories/asset-repository');
 const friendLinkRepository = require('../repositories/friend-link-repository');
-const pixelArtRepository = require('../repositories/pixel-art-repository');
 const roomShareRepository = require('../repositories/room-share-repository');
 const objectStorage = require('../services/object-storage');
-const { articlePath, renderArticleHtml, renderArticleSpaHtml, renderGalleryHtml, renderNotFoundHtml, renderStageHtml, renderTopicLandingHtml } = require('../seo/render-article');
+const { articlePath, renderArticleHtml, renderGalleryHtml, renderNotFoundHtml, renderTopicLandingHtml } = require('../seo/render-article');
 const { renderRoomShareHtml } = require('../seo/render-room-share');
 const { WIKI_ENTRIES, WIKI_VERIFIED_AT, findWikiEntry, wikiEntryPath } = require('../seo/wiki-content');
 const {
     renderFriendLinksHtml,
-    renderFriendLinksSpaHtml,
     renderGameHtml,
-    renderHubHtml,
     renderPixelArtworkHtml,
     renderPixelHtml,
     renderWikiEntryHtml,
     renderWikiHtml
 } = require('../seo/render-pages');
 
-const CRAWLER_USER_AGENT = /(?:bot|crawler|spider|slurp|bingpreview|facebookexternalhit|twitterbot|linkedinbot|telegrambot|whatsapp|discordbot)/i;
-
-function isCrawlerRequest(req) {
-    return CRAWLER_USER_AGENT.test(String(req.get('user-agent') || ''));
-}
+const { composePage, addDiscovery } = require('../seo/compose-page');
+const { renderPublicPage, renderStagePage, renderProfilePage } = require('../seo/render-public');
+const seoRepository = require('../repositories/seo-repository');
+const indexNow = require('../services/indexnow');
 
 function sharePageOrigin(req) {
     const allowedHosts = new Set(['yachiyo.hk', 'www.yachiyo.hk', 'tsukuyomi-space.com', 'www.tsukuyomi-space.com']);
@@ -63,7 +59,7 @@ const TOPIC_ROUTES = [
         keywords: ['超时空辉夜姬', '超かぐや姫', '超时空辉夜姬小说', '超时空辉夜姬二创', '月读空间'],
         match: ['超', '辉夜', '姫', '小说', '电影'],
         categories: ['传说', '二创'],
-        points: ['小说、电影、二创与图库集中入口', '收录公开文章和图片，适合搜索引擎抓取', '通过主舞台继续阅读完整互动文章'],
+        points: ['小说、电影、二创与图库集中入口', '按主题阅读公开创作，了解作者与作品来源', '通过主舞台继续阅读完整互动文章'],
         actions: [
             { label: '浏览主舞台文章', href: '/stage' },
             { label: '查看公开图库', href: '/gallery' },
@@ -78,7 +74,7 @@ const TOPIC_ROUTES = [
         keywords: ['八千代 Live2D', 'Live2D 房间', '八千代房间', '月读空间 room', 'AI 角色互动'],
         match: ['八千代', 'Live2D', '房间', '模型', '语音'],
         categories: ['技术', '公告', '二创'],
-        points: ['面向八千代角色互动的稳定入口', '聚合 Live2D、TTS、AI 对话与房间设置说明', '适合作为“八千代 Live2D”关键词落地页'],
+        points: ['面向八千代角色互动的稳定入口', '聚合 Live2D、TTS、AI 对话与房间设置说明', '在房间设置中连接聊天模型和语音服务'],
         actions: [
             { label: '进入八千代房间', href: '/room' },
             { label: '阅读相关文章', href: '/stage' },
@@ -93,7 +89,7 @@ const TOPIC_ROUTES = [
         keywords: ['月读空间 AI', 'AI 角色互动', '八千代 AI 聊天', 'TTS 语音', 'MCP 工具'],
         match: ['AI', 'LLM', 'TTS', 'MCP', '记忆', '语音', '角色'],
         categories: ['技术', '公告'],
-        points: ['面向 AI 角色聊天、语音和记忆功能', '连接房间体验与技术文章', '帮助搜索引擎理解月读空间的互动工具定位'],
+        points: ['面向 AI 角色聊天、语音和记忆功能', '连接房间体验与技术文章', '私人聊天、日记与记忆按用户隔离'],
         actions: [
             { label: '进入 AI 房间', href: '/room' },
             { label: '查看房间设置', href: '/room/settings' },
@@ -108,7 +104,7 @@ const TOPIC_ROUTES = [
         keywords: ['超时空辉夜姬 八千代', '八千代', '超かぐや姫 八千代', '月读空间八千代', '八千代二创'],
         match: ['八千代', '辉夜', '二创', '现实', 'Live2D'],
         categories: ['二创', '传说'],
-        points: ['八千代相关内容的稳定聚合页', '连接二创文章、图库和现实锚点', '强化“超时空辉夜姬 八千代”搜索入口'],
+        points: ['八千代相关内容的稳定聚合页', '连接二创文章、图库和现实锚点', '原作资料与粉丝创作分别注明来源'],
         actions: [
             { label: '查看八千代房间', href: '/room' },
             { label: '浏览图库', href: '/gallery' },
@@ -133,12 +129,12 @@ const TOPIC_ROUTES = [
     },
     {
         path: '/topics/pixel-art-community',
-        title: '192×108 在线像素画与作品社区',
-        description: '月读空间提供固定 192×108 画布的在线像素画工具，并支持公开发布、作品浏览、点赞和 PNG 导出。',
+        title: '在线像素画工坊与作品社区',
+        description: '月读空间提供多种尺寸画布的在线像素画工具，并支持公开发布、作品浏览、点赞和 PNG 导出。',
         keywords: ['在线像素画', '192×108 像素画', 'Pixel Art 编辑器', '像素画社区', 'PNG 导出'],
         match: ['像素', 'pixel', '画布', '绘画', '作品'],
         categories: ['技术', '二创'],
-        points: ['固定 192×108 像素画布', '支持鼠标、触控笔与数位板创作', '公开作品展示、点赞与 PNG 导出'],
+        points: ['可选画布尺寸与缩放、撤销重做', '支持鼠标、触控笔与数位板创作', '公开作品展示、点赞与 PNG 导出'],
         actions: [
             { label: '打开像素画工具', href: '/pixel' },
             { label: '浏览创作文章', href: '/stage' },
@@ -208,8 +204,6 @@ function sitemapImageUrl({ loc, lastmod, images = [] }) {
         .map(image => [
             '    <image:image>',
             `      <image:loc>${xmlEscape(absoluteSiteUrl(image.loc))}</image:loc>`,
-            image.title ? `      <image:title>${xmlEscape(image.title)}</image:title>` : '',
-            image.caption ? `      <image:caption>${xmlEscape(image.caption)}</image:caption>` : '',
             '    </image:image>'
         ].filter(Boolean).join('\n'))
         .join('\n');
@@ -239,6 +233,13 @@ function sendRobots(req, res) {
         'Disallow: /login',
         'Disallow: /register',
         'Disallow: /gallery/manage',
+        'Disallow: /attachments',
+        'Disallow: /fushi/',
+        'Disallow: /room/shared/',
+        'Disallow: /friend-links/apply',
+        'Disallow: /api/',
+        'Allow: /api/pixel-art/*/image.png',
+        'Allow: /api/assets/proxy/',
         `Sitemap: ${absoluteSiteUrl('/sitemap.xml')}`,
         `Sitemap: ${absoluteSiteUrl('/sitemap-images.xml')}`,
         ''
@@ -261,16 +262,13 @@ function seoGalleryAssets(limit = 48) {
 }
 
 function sendSitemap(req, res) {
-    const today = new Date().toISOString().slice(0, 10);
     const staticUrls = SEO_ROUTES.map(route => sitemapUrl({
         loc: absoluteSiteUrl(route.path),
-        lastmod: today,
         changefreq: route.changefreq,
         priority: route.priority
     }));
     const topicUrls = TOPIC_ROUTES.map(route => sitemapUrl({
         loc: absoluteSiteUrl(route.path),
-        lastmod: today,
         changefreq: 'weekly',
         priority: route.priority
     }));
@@ -280,9 +278,9 @@ function sendSitemap(req, res) {
         changefreq: 'monthly',
         priority: entry.kind === 'character' ? '0.72' : '0.68'
     }));
-    const articleUrls = articleRepository.listSeoArticles().map(article => sitemapUrl({
+    const articleUrls = seoRepository.sitemapArticles().map(article => sitemapUrl({
         loc: absoluteSiteUrl(articlePath(article)),
-        lastmod: String(article.updated_at || article.created_at || article.publish_date || today).slice(0, 10),
+        lastmod: String(article.updated_at || article.published_at || article.created_at || article.publish_date || '').slice(0, 10),
         changefreq: 'monthly',
         priority: '0.7'
     }));
@@ -295,6 +293,7 @@ function sendSitemap(req, res) {
         ...topicUrls,
         ...wikiUrls,
         ...articleUrls,
+        ...seoRepository.pixelSummaries(10000).map(art => sitemapUrl({ loc: absoluteSiteUrl(`/pixel?art=${art.id}`), lastmod: String(art.updated_at || art.created_at || "").slice(0, 10) })),
         '</urlset>',
         ''
     ].join('\n'));
@@ -306,7 +305,7 @@ function galleryImageTitle(asset, index) {
 }
 
 function sendImageSitemap(req, res) {
-    const articles = articleRepository.listSeoArticles();
+    const articles = seoRepository.sitemapArticles();
     const articleImages = articles.map(article => sitemapImageUrl({
         loc: absoluteSiteUrl(articlePath(article)),
         lastmod: String(article.updated_at || article.created_at || article.publish_date || '').slice(0, 10),
@@ -319,7 +318,6 @@ function sendImageSitemap(req, res) {
     const galleryAssets = seoGalleryAssets(1000);
     const galleryImages = sitemapImageUrl({
         loc: absoluteSiteUrl('/gallery'),
-        lastmod: String(galleryAssets[0]?.updated_at || galleryAssets[0]?.created_at || '').slice(0, 10),
         images: galleryAssets.map((asset, index) => ({
             loc: asset.display_url || asset.access_url || asset.url,
             title: galleryImageTitle(asset, index),
@@ -375,90 +373,55 @@ function serveStaticFiles(app) {
             origin: sharePageOrigin(req)
         }));
     });
-    app.get('/hub', (req, res, next) => {
-        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
-        res.vary('User-Agent');
+    const sendPublic = (req, res, html) => {
         setNoStore(res);
-        return res.type('html').send(renderHubHtml(articleRepository.listSeoArticles(12)));
+        res.set('Content-Language', 'zh-CN');
+        return res.type('html').send(addDiscovery(composePage(frontendIndexHtml, html), req.path));
+    };
+    app.get('/indexnow-:key.txt', (req, res, next) => indexNow.serveKey(req, res, next));
+    for (const pathname of ['/', '/hub', '/plaza', '/room', '/reality']) {
+        app.get(pathname, (req, res) => sendPublic(req, res, renderPublicPage(pathname)));
+    }
+    app.get('/stage', (req, res) => {
+        const result = renderStagePage(req.query);
+        if (result.noindex) res.set('X-Robots-Tag', 'noindex, follow');
+        return sendPublic(req, res, result.html);
     });
-    app.get('/stage', (req, res, next) => {
-        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
-        res.vary('User-Agent');
-        setNoStore(res);
-        return res.type('html').send(renderStageHtml(articleRepository.listSeoArticles()));
-    });
-    app.get('/gallery', (req, res, next) => {
-        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
-        res.vary('User-Agent');
-        setNoStore(res);
-        return res.type('html').send(renderGalleryHtml(seoGalleryAssets(48)));
-    });
-    app.get('/pixel', (req, res, next) => {
-        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
-        res.vary('User-Agent');
-        setNoStore(res);
+    app.get('/gallery', (req, res) => sendPublic(req, res, renderGalleryHtml(seoGalleryAssets(48))));
+    app.get('/pixel', (req, res) => {
         const artworkId = String(req.query?.art || '').trim();
         if (artworkId) {
-            const artwork = pixelArtRepository.findArtworkById(artworkId);
-            if (artwork) return res.type('html').send(renderPixelArtworkHtml(artwork));
+            const artwork = /^[1-9]\d{0,18}$/.test(artworkId) && seoRepository.pixelById(artworkId);
+            if (!artwork) return res.status(404).set('X-Robots-Tag', 'noindex, follow').type('html').send(renderNotFoundHtml());
+            return sendPublic(req, res, renderPixelArtworkHtml(artwork));
         }
-        const artworks = pixelArtRepository.listArtworks({ limit: 24, preview: 'compact' }).items;
-        return res.type('html').send(renderPixelHtml(artworks));
+        return sendPublic(req, res, renderPixelHtml(seoRepository.pixelSummaries(24)));
     });
-    app.get('/game', (req, res, next) => {
-        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
-        res.vary('User-Agent');
-        setNoStore(res);
-        return res.type('html').send(renderGameHtml());
-    });
-    app.get('/wiki', (req, res, next) => {
-        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
-        res.vary('User-Agent');
-        setNoStore(res);
-        return res.type('html').send(renderWikiHtml(WIKI_ENTRIES));
-    });
-    app.get('/wiki/characters/:slug', (req, res, next) => {
-        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
-        const entry = findWikiEntry('character', req.params.slug);
-        if (!entry) return next();
-        res.vary('User-Agent');
-        setNoStore(res);
-        return res.type('html').send(renderWikiEntryHtml(entry));
-    });
-    app.get('/wiki/terms/:slug', (req, res, next) => {
-        if (req.query?.spa === '1' || !isCrawlerRequest(req)) return next();
-        const entry = findWikiEntry('term', req.params.slug);
-        if (!entry) return next();
-        res.vary('User-Agent');
-        setNoStore(res);
-        return res.type('html').send(renderWikiEntryHtml(entry));
-    });
-    app.get('/friend-links', (req, res, next) => {
-        if (req.query?.spa === '1') return next();
-        const links = friendLinkRepository.listActiveLinks();
-        setNoStore(res);
-        if (isCrawlerRequest(req) || !frontendIndexHtml) {
-            res.vary('User-Agent');
-            return res.type('html').send(renderFriendLinksHtml(links));
-        }
-        return res.type('html').send(renderFriendLinksSpaHtml(frontendIndexHtml, links));
-    });
-    app.get('/gallery/manage', (req, res, next) => {
-        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-        if (!useFrontendDist) return next();
-        setNoStore(res);
-        return res.sendFile(path.join(frontendDistRoot, 'index.html'));
+    app.get('/game', (req, res) => sendPublic(req, res, renderGameHtml()));
+    app.get('/wiki', (req, res) => sendPublic(req, res, renderWikiHtml(WIKI_ENTRIES)));
+    for (const [segment, kind] of [['characters', 'character'], ['terms', 'term']]) {
+        app.get(`/wiki/${segment}/:slug`, (req, res) => {
+            const entry = findWikiEntry(kind, req.params.slug);
+            if (!entry) return res.status(404).set('X-Robots-Tag', 'noindex, follow').type('html').send(renderNotFoundHtml());
+            return sendPublic(req, res, renderWikiEntryHtml(entry));
+        });
+    }
+    app.get('/friend-links', (req, res) => sendPublic(req, res, renderFriendLinksHtml(friendLinkRepository.listActiveLinks())));
+    app.get('/users/:username', (req, res) => {
+        const html = renderProfilePage(req.params.username);
+        if (!html) return res.status(404).set('X-Robots-Tag', 'noindex, follow').type('html').send(renderNotFoundHtml());
+        return sendPublic(req, res, html);
     });
     for (const topic of TOPIC_ROUTES) {
         app.get(topic.path, (req, res) => {
             setNoStore(res);
-            return res.type('html').send(renderTopicLandingHtml(topic, topicArticles(topic), seoGalleryAssets(12)));
+            // Topic landings are standalone documents, not Vue routes.
+            return res.type('html').send(addDiscovery(renderTopicLandingHtml(topic, topicArticles(topic), seoGalleryAssets(12)), req.path));
         });
     }
     app.get('/article', (req, res, next) => {
         const id = req.query?.id;
-        if (!id) return next();
-        if (req.query?.spa === '1') return next();
+        if (!id) return res.status(404).set('X-Robots-Tag', 'noindex, follow').type('html').send(renderNotFoundHtml());
         const article = articleRepository.findPublishedArticleById(id);
         if (!article) return res.status(404).type('html').send(renderNotFoundHtml());
         const from = typeof req.query.from === 'string' ? req.query.from.slice(0, 512) : '';
@@ -472,10 +435,7 @@ function serveStaticFiles(app) {
             return res.redirect(301, articlePath(article) + (from ? `?${new URLSearchParams({ from })}` : ''));
         }
         setNoStore(res);
-        res.vary('User-Agent');
-        return res.type('html').send(frontendIndexHtml && !isCrawlerRequest(req)
-            ? renderArticleSpaHtml(frontendIndexHtml, article)
-            : renderArticleHtml(article));
+        return sendPublic(req, res, renderArticleHtml(article));
     });
 
     app.use((req, res, next) => {
@@ -527,8 +487,9 @@ function serveStaticFiles(app) {
             if (!useFrontendDist) {
                 return res.status(503).send('Frontend build is missing. Run npm run build:web.');
             }
+            res.set('X-Robots-Tag', 'noindex, follow');
             setNoStore(res);
-            return res.sendFile(path.join(frontendDistRoot, 'index.html'));
+            return res.type('html').send(frontendIndexHtml.replace(/<meta name="robots"[^>]*>/i, '<meta name="robots" content="noindex,follow">'));
         }
 
         next();

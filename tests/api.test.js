@@ -4396,19 +4396,19 @@ describe('legacy page paths', () => {
         assert.match(response.headers.get('cache-control') || '', /no-store/);
     });
 
-    it('routes public profile paths through the Vue fallback', async () => {
+    it('serves public profile documents without requiring a frontend build', async () => {
         const { response, body } = await request('/users/normal-user');
 
-        assert.equal(response.status, 503);
-        assert.match(body, /Frontend build is missing/);
+        assert.equal(response.status, 200);
+        assert.match(body, /<h1/);
     });
 
-    it('routes browser stage requests through Vue and renders every article for crawlers', async () => {
+    it('serves readable public stage documents and paginates every article without JavaScript', async () => {
         const browser = await request('/stage', {
             headers: { 'User-Agent': 'Mozilla/5.0' }
         });
-        assert.equal(browser.response.status, 503);
-        assert.match(browser.body, /Frontend build is missing/);
+        assert.equal(browser.response.status, 200);
+        assert.match(browser.body, /<h1[ >]/);
 
         const insert = db.prepare(`
             INSERT INTO articles (title, excerpt, content, publish_date, status)
@@ -4431,9 +4431,11 @@ describe('legacy page paths', () => {
                 headers: { 'User-Agent': 'Googlebot/2.1' }
             });
             assert.equal(crawler.response.status, 200);
-            assert.match(crawler.response.headers.get('vary') || '', /User-Agent/i);
-            assert.match(crawler.body, /Stage complete article 01/);
+            assert.doesNotMatch(crawler.response.headers.get('vary') || '', /User-Agent/i);
             assert.match(crawler.body, /Stage complete article 30/);
+            const older = await request('/stage?page=6', { headers: { 'User-Agent': 'ChatGPT-User' } });
+            assert.match(older.body, /Stage complete article 01/);
+            assert.match(older.body, /canonical" href="https:\/\/yachiyo.hk\/stage\?page=6"/);
         } finally {
             const remove = db.prepare('DELETE FROM articles WHERE id = ?');
             for (const id of ids) remove.run(id);
@@ -4505,26 +4507,26 @@ describe('legacy page paths', () => {
     it('serves crawler snapshots for Hub, Pixel, Wiki entries, and public friend links', async () => {
         const crawlerHeaders = { 'User-Agent': 'Googlebot/2.1' };
         const pages = [
-            ['/hub', /月读空间中枢大厅/],
-            ['/pixel', /192×108 月光像素画工坊/],
+            ['/hub', /中枢大厅/],
+            ['/pixel', /月光像素画工坊/],
             ['/wiki', /超时空辉夜姬角色与世界观 Wiki/],
             ['/wiki/characters/kaguya', /辉夜 - 角色词条/],
             ['/wiki/terms/tsukuyomi', /月读／TSUKUYOMI/],
-            ['/friend-links', /月读空间友链导航/]
+            ['/friend-links', /友链导航/]
         ];
 
         for (const [pathname, expected] of pages) {
             const crawler = await request(pathname, { headers: crawlerHeaders });
             assert.equal(crawler.response.status, 200, pathname);
-            assert.match(crawler.response.headers.get('vary') || '', /User-Agent/i, pathname);
+            assert.doesNotMatch(crawler.response.headers.get('vary') || '', /User-Agent/i, pathname);
             assert.match(crawler.body, expected, pathname);
-            assert.match(crawler.body, /<meta name="keywords" content="[^"]+">/, pathname);
+            assert.match(crawler.body, /<meta name="description" content="[^"]+">/, pathname);
             assert.match(crawler.body, /<link rel="canonical" href="https:\/\/yachiyo\.hk\//, pathname);
         }
 
         const browserHub = await request('/hub', { headers: { 'User-Agent': 'Mozilla/5.0' } });
-        assert.equal(browserHub.response.status, 503);
-        assert.match(browserHub.body, /Frontend build is missing/);
+        assert.equal(browserHub.response.status, 200);
+        assert.match(browserHub.body, /<h1[ >]/);
     });
 
     it('exposes active friend links as literal hrefs to non-bot link checkers', async () => {
@@ -4607,8 +4609,8 @@ describe('legacy page paths', () => {
             assert.match(imageSitemap.body, /xmlns:image="http:\/\/www\.google\.com\/schemas\/sitemap-image\/1\.1"/);
             assert.match(imageSitemap.body, /article-cover\.webp\?version=1&amp;source=test/);
             assert.match(imageSitemap.body, /gallery-image\.webp\?version=2&amp;source=test/);
-            assert.match(imageSitemap.body, /<image:title>SEO image sitemap article<\/image:title>/);
-            assert.match(imageSitemap.body, /<image:title>SEO gallery image<\/image:title>/);
+            assert.doesNotMatch(imageSitemap.body, /<image:title>|<image:caption>/);
+            assert.doesNotMatch(imageSitemap.body, /<image:title>|<image:caption>/);
 
             const robots = await request('/robots.txt');
             assert.match(robots.body, /Sitemap: https:\/\/yachiyo\.hk\/sitemap-images\.xml/);

@@ -1,0 +1,46 @@
+{
+  "/": {
+    "title": "Tsukuyomi Space | Live2D, Wiki and Creative Community",
+    "description": "Explore the Cosmic Princess Kaguya fan wiki, Tsukimi Yachiyo Live2D AI room, translated articles, fan art, pixel art and community posts."
+  },
+  "/hub": {
+    "title": "Central Hub | Tsukuyomi Space",
+    "description": "See the latest translated announcements, articles, gallery images, plaza messages and pixel art from the Tsukuyomi Space community."
+  },
+  "/stage": {
+    "title": "Translated Articles and Announcements | Tsukuyomi Space",
+    "description": "Read public announcements, technical notes, fan works, translations and creative journals. Browse by date, category or recommendation and join article discussions."
+  },
+  "/wiki": {
+    "title": "Cosmic Princess Kaguya Wiki | Tsukuyomi Space",
+    "description": "Explore an unofficial Cosmic Princess Kaguya fan archive covering characters, music and world lore, with sources, verified facts and links to related entries."
+  },
+  "/room": {
+    "title": "Tsukimi Yachiyo Live2D AI Room | Tsukuyomi Space",
+    "description": "Meet Tsukimi Yachiyo in the Live2D AI room with streaming chat, optional voice and long-term memory. Configure your model while keeping personal conversations private."
+  },
+  "/plaza": {
+    "title": "Community Plaza | Tsukuyomi Space",
+    "description": "Read approved public messages and replies from Tsukuyomi Space visitors. Share ideas, follow conversations and reply to specific community members after signing in."
+  },
+  "/gallery": {
+    "title": "Fan Art Gallery | Tsukuyomi Space",
+    "description": "Browse publicly shared fan art, illustrations and creative images. View previews, authors and descriptions, download images and join the gallery conversation."
+  },
+  "/pixel": {
+    "title": "Moonlit Pixel Workshop | Online Pixel Art and Community",
+    "description": "Create pixel art with multiple canvas sizes, brushes, fill tools and palettes. Import images, save drafts, export PNG files and share your artwork with the community."
+  },
+  "/game": {
+    "title": "Kaguya Run Rhythm Game | Tsukuyomi Space",
+    "description": "Play Kaguya Run, a themed rhythm runner with desktop keyboard and mobile touch controls. Switch to fullscreen, challenge your score and explore the character wiki."
+  },
+  "/reality": {
+    "title": "Project, Privacy and Credits | Tsukuyomi Space",
+    "description": "Learn about Tsukuyomi Space, its source code and open-source credits. Read resource and privacy notes, copyright boundaries and the limits of AI-generated replies."
+  },
+  "/friend-links": {
+    "title": "Partner Sites | Tsukuyomi Space",
+    "description": "Discover approved independent blogs, websites and creative partners. Read their introductions, check link previews and visit the original sites from Tsukuyomi Space."
+  }
+}

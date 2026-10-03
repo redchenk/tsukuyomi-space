@@ -1,4 +1,5 @@
 const config = require('../config');
+const pageCopy = require('../../shared/seo-pages.json');
 const { renderMarkdown: renderMarkdownContent } = require('../../shared/markdown.cjs');
 const { renderMediaCard, renderIframeEmbed, sanitizeMarkdownUrl } = require('../../shared/markdown-media.cjs');
 const markdownStyles = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../shared/article-markdown.css'), 'utf8');
@@ -114,7 +115,11 @@ function articleUrl(article) {
 }
 
 function articleDescription(article) {
-    return stripMarkdown(article.excerpt || plainArticleContent(article) || DEFAULT_DESCRIPTION).slice(0, 160) || DEFAULT_DESCRIPTION;
+    const excerpt = stripMarkdown(article.excerpt || '');
+    const content = stripMarkdown(plainArticleContent(article));
+    const summary = excerpt.length >= 60 ? excerpt : `${excerpt}${excerpt && content ? ' · ' : ''}${content}`;
+    const context = `${article.title}：由${article.author_nickname || article.author_username || '月读空间创作者'}发布的${article.category || '公开'}文章，可阅读正文、查看作者并参与评论。`;
+    return ((summary.length < 60 ? `${summary} ${context}` : summary) || `${article.title}：由${article.author_nickname || article.author_username || '月读空间创作者'}发布的${article.category || '公开'}文章。阅读正文，并查看作者资料与相关讨论。`).slice(0, 170);
 }
 
 function renderPlainContent(content, limit = 12) {
@@ -127,6 +132,13 @@ function renderPlainContent(content, limit = 12) {
         .join('\n');
 }
 
+function isoDate(value) {
+    if (!value) return undefined;
+    const text = String(value);
+    const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T00:00:00Z` : /(?:Z|[+-]\d{2}:?\d{2})$/i.test(text) ? text : text.replace(' ', 'T') + 'Z');
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
 function articleSchema(article) {
     const url = articleUrl(article);
     const tags = parseTags(article.tags);
@@ -136,11 +148,12 @@ function articleSchema(article) {
         headline: article.title,
         description: articleDescription(article),
         image: [absoluteUrl(article.cover_image || DEFAULT_IMAGE)],
-        datePublished: article.published_at || article.created_at || article.publish_date,
-        dateModified: article.updated_at || article.created_at || article.publish_date,
+        datePublished: isoDate(article.published_at || article.created_at || article.publish_date),
+        dateModified: isoDate(article.updated_at || article.published_at || article.created_at || article.publish_date),
         author: {
             '@type': 'Person',
-            name: article.author_nickname || article.author_username || 'redchenk'
+            name: article.author_nickname || article.author_username || 'redchenk',
+            ...(article.author_username ? { url: absoluteUrl(`/users/${encodeURIComponent(article.author_username)}`) } : {})
         },
         publisher: {
             '@type': 'Organization',
@@ -205,7 +218,7 @@ function renderArticleHtml(article) {
       <section class="article-body">
         ${body}
       </section>
-      <a class="enter" href="/article?id=${encodeURIComponent(article.id)}&spa=1">进入完整互动文章页</a>
+      <a class="enter" href="${escapeHtml(articlePath(article))}#article-comments">查看评论与参与讨论</a>
     </article>
   </main>
 </body>
@@ -213,7 +226,7 @@ function renderArticleHtml(article) {
 }
 
 function renderStageHtml(articles = []) {
-    const title = `主舞台 | ${SITE_NAME}`;
+    const title = `${pageCopy['/stage'].title} | ${SITE_NAME}`;
     const description = '浏览月读空间的文章、公告、技术记录、二创作品与创作日志，内容包括 Live2D、AI 角色、个人网站开发、二次元网页设计与日常记录。';
     const url = absoluteUrl('/stage');
     const itemList = articles.map((article, index) => ({
@@ -394,8 +407,8 @@ function galleryImageAlt(asset, index) {
 }
 
 function renderGalleryHtml(assets = []) {
-    const title = `图库 | ${SITE_NAME}`;
-    const description = '浏览月读空间公开图库中的插画、二创图片与站点影像记录。';
+    const title = `${pageCopy['/gallery'].title} | ${SITE_NAME}`;
+    const description = pageCopy['/gallery'].description;
     const url = absoluteUrl('/gallery');
     const images = assets
         .filter(asset => asset?.url || asset?.display_url || asset?.access_url)

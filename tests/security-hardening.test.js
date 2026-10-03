@@ -325,16 +325,16 @@ describe('sensitive error handling', () => {
 });
 
 describe('stage delivery hardening', () => {
-    it('does not truncate SEO articles and reserves static HTML for crawlers', () => {
+    it('keeps public HTML independent of UA and bounds crawlable pagination', () => {
         const staticMiddleware = sourceFile('backend/middleware/static.js');
         const seoRenderer = sourceFile('backend/seo/render-article.js');
         const nginxConfig = sourceFile('deploy/nginx.conf');
 
-        assert.match(staticMiddleware, /CRAWLER_USER_AGENT/);
-        assert.match(staticMiddleware, /!isCrawlerRequest\(req\)/);
+        assert.doesNotMatch(staticMiddleware, /CRAWLER_USER_AGENT/);
+        assert.match(staticMiddleware, /composePage/);
         assert.doesNotMatch(seoRenderer, /articles\.slice\(0, 24\)/);
         assert.match(nginxConfig, /location = \/sitemap-images\.xml \{[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
-        assert.match(nginxConfig, /location ~ \^\/\(\?:hub\|pixel\|gallery\|friend-links\|wiki[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
+        assert.match(nginxConfig, /location ~ \^\/.*hub[\s\S]*?pixel[\s\S]*?proxy_pass http:\/\/127\.0\.0\.1:3000;/);
     });
 
     it('keeps versioned friend previews cacheable without weakening API cache isolation', () => {
@@ -383,7 +383,7 @@ describe('stage delivery hardening', () => {
         assert.match(seoBlock, /X-Original-URI \$english_original_uri/);
         assert.doesNotMatch(seoBlock, /X-Original-URI \$request_uri/);
         assert.match(service, /def normalize_public_seo_path/);
-        assert.match(service, /set\(query\) != \{"art"\}/);
+        assert.match(service, /set\(query\) <= \{"art", "spa", "from", "release"\}/);
         assert.match(service, /re\.fullmatch\(r"\[1-9\]\\d\{0,18\}"/);
         assert.match(service, /PUBLIC_SEO_PATHS/);
         assert.match(service, /MAX_TRANSLATION_CACHE_ROWS/);
