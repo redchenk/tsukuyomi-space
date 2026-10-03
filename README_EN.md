@@ -191,7 +191,8 @@ The Room is evolving toward a personal Agent experience. Current capabilities in
 - Chat context combines relevant long-term memories, character knowledge, real weather, recent site activity, and available MCP tools.
 - Yachiyo can read the current user's level, check-in, and task status. A “Today's Promise” growth entry appears once before the first conversation of each day.
 - Signed-in users can publish a selected question-and-answer turn as a public conversation card. The shared link restores the matching scene and has its own title, description, and Open Graph image.
-- MCP supports custom JSON-RPC endpoints and a restricted in-site bridge for the MiniMax Token Plan. If the selected LLM lacks multimodal support, image understanding can fall back to MCP.
+- Inspired by AstrBot's Provider / Agent separation, Room uses one bounded decoder for OpenAI-compatible, Responses, Anthropic and Ollama replies, with native tool continuation, validated arguments, deadlines and per-turn deduplication. Reasoning and intermediate tool messages stay out of chat history.
+- MCP supports the existing REST bridge, initialized Streamable HTTP with sessions and JSON / SSE responses, and the restricted MiniMax Token Plan bridge. Automatic loops only use authorized search and the current attachment's image analysis. See [LLM / Agent configuration, limits and verification](docs/llm-agent-protocol.md).
 - The LLM can connect directly to approved cloud providers or to a user's local Ollama service at `http://localhost:11434`. Local mode does not relay conversations through this site's servers.
 - The Room music card reads songs from the server's `/assets/music/` directory. These large files are deployed separately and are not committed to Git.
 - The weather card prioritizes the user's browser location and includes local weather in chat context.

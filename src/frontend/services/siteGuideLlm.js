@@ -34,7 +34,7 @@ function isResponsesApi(endpoint = '') {
 }
 
 function isAnthropicApi(endpoint = '', model = '') {
-  return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i
+  return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages/i
     .test(`${endpoint} ${model}`);
 }
 

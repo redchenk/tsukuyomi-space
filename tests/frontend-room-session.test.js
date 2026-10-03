@@ -18,6 +18,7 @@ async function setup(overrides = {}) {
   const saved = [];
   const requests = [];
   const context = {
+    agentProtocol: require('../shared/agent-protocol.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'),
     console, Date, URL, AbortController,
     ref: (value) => ({ value }), nextTick: (fn) => Promise.resolve().then(fn),
     selectRecentRoomConversation: (messages) => messages,

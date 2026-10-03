@@ -1,135 +1,81 @@
 const { spawn } = require('child_process');
+const { StringDecoder } = require('string_decoder');
 const os = require('os');
 
-const DEFAULT_PROTOCOL_VERSION = '2024-11-05';
-
-function createMessageParser(onMessage, onOverflow = () => {}) {
-    let buffer = '';
-
-    return (chunk) => {
-        buffer += chunk.toString('utf8');
-        if (Buffer.byteLength(buffer, 'utf8') > 1024 * 1024) {
-            buffer = '';
-            onOverflow();
-            return;
-        }
-        let newlineIndex = buffer.indexOf('\n');
-        while (newlineIndex !== -1) {
-            const line = buffer.slice(0, newlineIndex).trim();
-            buffer = buffer.slice(newlineIndex + 1);
-            newlineIndex = buffer.indexOf('\n');
-            if (!line) continue;
-            try {
-                onMessage(JSON.parse(line));
-            } catch (_) {
-                // Ignore malformed child output and wait for the next JSON-RPC line.
-            }
-        }
-    };
+const VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
+function failure(code) {
+    return Object.assign(new Error(`MCP ${code}`), { code });
 }
 
-function requestOverStdio({
-    command,
-    args = [],
-    env = {},
-    method,
-    params = {},
-    timeoutMs = 30000
-}) {
+// Only a trusted, server-configured executable may use this transport. Child
+// stderr is drained, never included in errors: it can contain provider secrets.
+function requestOverStdio({ command, args = [], env = {}, method, params = {}, timeoutMs = 30000, signal }) {
+    if (signal?.aborted) return Promise.reject(failure('MCP_ABORTED'));
     return new Promise((resolve, reject) => {
-        const childEnv = {
-            PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
-            HOME: process.env.MINIMAX_MCP_HOME || os.tmpdir(),
-            LANG: process.env.LANG || 'C.UTF-8',
-            ...env
-        };
         const child = spawn(command, args, {
-            env: childEnv,
-            stdio: ['pipe', 'pipe', 'pipe'],
-            shell: false,
-            windowsHide: true,
-            detached: process.platform !== 'win32'
+            env: { PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin', HOME: process.env.MINIMAX_MCP_HOME || os.tmpdir(), LANG: process.env.LANG || 'C.UTF-8', ...env },
+            stdio: ['pipe', 'pipe', 'pipe'], shell: false, windowsHide: true, detached: process.platform !== 'win32'
         });
-        let nextId = 1;
-        let stderr = '';
-        let settled = false;
-        const pending = new Map();
-
-        const finish = (error, result) => {
+        let nextId = 1, settled = false, buffer = '', total = 0;
+        const decoder = new StringDecoder('utf8'), pending = new Map();
+        const abort = () => finish(failure('MCP_ABORTED'));
+        const timer = setTimeout(() => finish(failure('MCP_TIMEOUT')), Math.max(1, Math.min(45000, timeoutMs)));
+        function finish(error, result) {
             if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            try {
-                if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, 'SIGKILL');
-                else child.kill();
-            } catch (_) {
-                child.kill();
-            }
-            if (error) reject(error);
-            else resolve(result);
-        };
-
-        const timer = setTimeout(() => {
-            finish(new Error(`MCP stdio timeout after ${timeoutMs}ms${stderr ? `: ${stderr.slice(-300)}` : ''}`));
-        }, timeoutMs);
-
-        const send = (payload) => {
-            child.stdin.write(`${JSON.stringify(payload)}\n`);
-        };
-
-        const sendRequest = (requestMethod, requestParams) => {
-            const id = nextId;
-            nextId += 1;
-            send({ jsonrpc: '2.0', id, method: requestMethod, params: requestParams });
+            settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort);
+            for (const handlers of pending.values()) handlers.reject(error || failure('MCP_CLOSED'));
+            pending.clear();
+            try { if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, 'SIGKILL'); else child.kill(); } catch { child.kill(); }
+            if (error) reject(error); else resolve(result);
+        }
+        signal?.addEventListener('abort', abort, { once: true });
+        function send(payload) {
+            if (settled) throw failure('MCP_CLOSED');
+            child.stdin.write(`${JSON.stringify(payload)}\n`, error => { if (error) finish(failure('MCP_WRITE')); });
+        }
+        function request(requestMethod, requestParams) {
+            const id = nextId++;
             return new Promise((requestResolve, requestReject) => {
                 pending.set(id, { resolve: requestResolve, reject: requestReject });
+                try { send({ jsonrpc: '2.0', id, method: requestMethod, params: requestParams }); }
+                catch (error) { finish(error); }
             });
-        };
-
-        child.stdout.on('data', createMessageParser((message) => {
-            if (!message || message.id == null || !pending.has(message.id)) return;
-            const handlers = pending.get(message.id);
-            pending.delete(message.id);
-            if (message.error) {
-                handlers.reject(new Error(message.error.message || `MCP error ${message.error.code || ''}`.trim()));
-            } else {
-                handlers.resolve(message.result);
-            }
-        }, () => finish(new Error('MCP process output exceeded 1MB'))));
-
-        child.stderr.on('data', (chunk) => {
-            stderr = (stderr + chunk.toString('utf8')).slice(-64 * 1024);
-        });
-
-        child.on('error', (error) => {
-            finish(new Error(error.code === 'ENOENT'
-                ? `MCP command not found: ${command}. Please install uvx on the server.`
-                : error.message));
-        });
-
-        child.on('exit', (code) => {
-            if (!settled && code !== 0) {
-                finish(new Error(`MCP process exited with code ${code}${stderr ? `: ${stderr.slice(-300)}` : ''}`));
+        }
+        child.stdin.on('error', () => finish(failure('MCP_WRITE')));
+        child.stdout.on('data', chunk => {
+            if (settled) return;
+            total += chunk.length; buffer += decoder.write(chunk);
+            if (total > 2 * 1024 * 1024 || Buffer.byteLength(buffer) > 1024 * 1024) return finish(failure('MCP_SIZE'));
+            let newline;
+            while ((newline = buffer.indexOf('\n')) !== -1) {
+                const line = buffer.slice(0, newline).trim(); buffer = buffer.slice(newline + 1);
+                if (!line) continue;
+                let message;
+                try { message = JSON.parse(line); } catch { return finish(failure('MCP_JSON')); }
+                if (message?.jsonrpc !== '2.0') return finish(failure('MCP_RPC'));
+                if (message.method) {
+                    if (message.id != null) return finish(failure('MCP_SERVER_REQUEST'));
+                    continue;
+                }
+                const handlers = pending.get(message.id);
+                if (!handlers) return finish(failure('MCP_RPC_ID'));
+                pending.delete(message.id);
+                if (message.error) handlers.reject(failure('MCP_RPC_ERROR'));
+                else if (!Object.hasOwn(message, 'result')) handlers.reject(failure('MCP_RPC'));
+                else handlers.resolve(message.result);
             }
         });
-
+        child.stderr.on('data', () => {});
+        child.on('error', error => finish(failure(error.code === 'ENOENT' ? 'MCP_COMMAND_MISSING' : 'MCP_PROCESS')));
+        child.on('close', () => { if (!settled) finish(failure('MCP_INCOMPLETE')); });
         (async () => {
             try {
-                await sendRequest('initialize', {
-                    protocolVersion: DEFAULT_PROTOCOL_VERSION,
-                    capabilities: {},
-                    clientInfo: { name: 'tsukuyomi-space', version: '2.1.0' }
-                });
-                send({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} });
-                const result = await sendRequest(method, params);
-                finish(null, result);
-            } catch (error) {
-                finish(error);
-            }
+                const initialized = await request('initialize', { protocolVersion: VERSIONS[0], capabilities: {}, clientInfo: { name: 'tsukuyomi-space', version: '2.1.0' } });
+                if (!VERSIONS.includes(initialized?.protocolVersion)) throw failure('MCP_VERSION');
+                send({ jsonrpc: '2.0', method: 'notifications/initialized' });
+                finish(null, await request(method, params));
+            } catch (error) { finish(error); }
         })();
     });
 }
-
-module.exports = {
-    requestOverStdio
-};
+module.exports = { requestOverStdio };

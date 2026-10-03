@@ -1,3 +1,6 @@
+import { callRoomMcp, mcpResultText as normalizeMcpResult } from '../../services/room/roomMcp.mjs';
+import llmProtocol from '../../../../shared/llm-protocol.cjs';
+import agentProtocol from '../../../../shared/agent-protocol.cjs';
 import { nextTick, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { selectRoomKnowledgeEntries } from '../../services/room/roomKnowledge';
@@ -446,8 +449,8 @@ function isOpenRouterApi(apiUrl = '') {
 }
 
 function isAnthropicChatApi(apiUrl = '', modelName = '') {
-  return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i
-    .test(`${apiUrl || ''} ${modelName || ''}`);
+  return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages/i
+    .test(String(apiUrl || ''));
 }
 
 function isKimiChatTarget(apiUrl = '', modelName = '') {
@@ -502,7 +505,7 @@ function openAIResponsesContent(text, image) {
   return content;
 }
 
-function makeLLMRequestBody(settings, systemPrompt, conversation, message, image, stream = false) {
+function makeBaseLLMRequestBody(settings, systemPrompt, conversation, message, image, stream = false) {
   const apiUrl = normalizeOpenAIUrl(settings.apiUrl || '');
   const model = isOllamaApi(apiUrl) ? (settings.model || 'qwen2.5:7b') : (settings.model || 'gpt-4o-mini');
   if (isOllamaNativeApi(apiUrl)) {
@@ -581,6 +584,13 @@ function makeLLMRequestBody(settings, systemPrompt, conversation, message, image
   };
 }
 
+function makeLLMRequestBody(settings, systemPrompt, conversation, message, image, stream = false, { tools = [], agentTurns = [] } = {}) {
+  const body = makeBaseLLMRequestBody(settings, systemPrompt, conversation, message, image, stream);
+  const provider = roomProvider(normalizeOpenAIUrl(settings.apiUrl || ''), settings.model);
+  const validated = agentProtocol.wireOptions(tools, agentTurns, provider);
+  return validated.tools.length || validated.turns.length ? llmProtocol.withTools(body, provider, validated.tools, validated.turns) : body;
+}
+
 async function translateForJapaneseTts(text) {
   const source = cleanTtsText(text);
   if (!source) return '';
@@ -638,13 +648,13 @@ function fileToDataUrl(file) {
   });
 }
 
-async function postJson(path, payload) {
+async function postJson(path, payload, signal) {
   const response = await authFetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload), signal
   });
-  const result = await response.json().catch(() => ({}));
+  const result = await llmProtocol.readJson(response, signal);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
   return result.data || {};
 }
@@ -656,7 +666,7 @@ function roomProvider(apiUrl, model = '') {
   return 'openai';
 }
 
-async function requestRoomReply({ settings, systemPrompt, conversation, message, image, signal, onDelta }) {
+async function requestRoomReply({ settings, systemPrompt, conversation, message, image, signal, onDelta, tools = [], agentTurns = [] }) {
   const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
   const useLocalOllama = isOllamaApi(apiUrl);
   if (!settings.apiUrl && !settings.useProxy) {
@@ -672,13 +682,14 @@ async function requestRoomReply({ settings, systemPrompt, conversation, message,
     apiUrl: settings.apiUrl,
     model: settings.model,
     systemPrompt,
-    image: settings.visionMode === 'mcp' ? null : image
+    image: settings.visionMode === 'mcp' ? null : image,
+    tools, agentTurns
   };
   if (settings.useProxy && !useLocalOllama) {
     // Older WebViews without readable response bodies still use the established
     // one-shot proxy. This also keeps the legacy Room transport compatible.
     if (typeof ReadableStream === 'undefined') {
-      const result = await postJson('/api/chat', proxyPayload);
+      const result = await postJson('/api/chat', proxyPayload, signal);
       onDelta(result.reply || '');
       return result;
     }
@@ -689,10 +700,10 @@ async function requestRoomReply({ settings, systemPrompt, conversation, message,
       signal
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
+      const data = await llmProtocol.readJson(response, signal).catch(() => ({}));
       throw new Error(data.message || `LLM ${response.status}`);
     }
-    return readRoomChatStream(response, { provider: 'proxy', onDelta, signal });
+    return readRoomChatStream(response, { provider: 'proxy', onDelta, signal, allowTools: Boolean(tools.length) });
   }
 
   if (!settings.apiUrl || (!settings.apiKey && !useLocalOllama)) {
@@ -702,7 +713,7 @@ async function requestRoomReply({ settings, systemPrompt, conversation, message,
   }
   const provider = roomProvider(apiUrl, settings.model);
   const providerImage = settings.visionMode === 'mcp' ? null : image;
-  const body = makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, true);
+  const body = makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, true, { tools, agentTurns });
   const options = {
     method: 'POST',
     headers: chatRequestHeaders(apiUrl, settings.apiKey),
@@ -711,21 +722,21 @@ async function requestRoomReply({ settings, systemPrompt, conversation, message,
   };
   let response = await fetchWithLocalOllamaGuidance(apiUrl, options);
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
+    const errorText = await llmProtocol.readText(response, signal, 8192).catch(() => '');
     // Some OpenAI-compatible providers reject the stream flag. A no-stream
     // retry is safe only when the response explicitly says that is why it
     // rejected the request, before any reply bytes have been accepted.
     if ([400, 422].includes(response.status) && /(?:stream[^.]{0,80}(?:unsupported|not supported|not available)|(?:unsupported|not supported)[^.]{0,80}stream)/i.test(errorText)) {
       response = await fetchWithLocalOllamaGuidance(apiUrl, {
         ...options,
-        body: JSON.stringify(makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, false))
+        body: JSON.stringify(makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, false, { tools, agentTurns }))
       });
       if (!response.ok) throw new Error(`LLM ${response.status}`);
     } else {
       throw new Error(`LLM ${response.status}，请检查模型设置或稍后重试`);
     }
   }
-  return readRoomChatStream(response, { provider, onDelta, signal });
+  return readRoomChatStream(response, { provider, onDelta, signal, allowTools: Boolean(tools.length) });
 }
 
 function fallbackReply(message, image) {
@@ -742,72 +753,13 @@ function mcpToolAllowed(settings, toolName) {
   return !allowlist.length || allowlist.includes(toolName);
 }
 
-function makeMcpHeaders(settings) {
-  const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
-  const key = String(settings.apiKey || '').trim();
-  const headerName = String(settings.authHeader || 'Authorization').trim();
-  if (key && headerName) {
-    headers[headerName] = /^Bearer\s+/i.test(key) || headerName.toLowerCase() !== 'authorization' ? key : `Bearer ${key}`;
-  }
-  return headers;
-}
-
-function mcpResultText(result) {
-  if (!result) return '';
-  if (typeof result === 'string') return compactText(result);
-  if (Array.isArray(result.content)) {
-    return compactText(result.content.map((item) => item.text || item.content || '').filter(Boolean).join('\n'));
-  }
-  if (result.structuredContent) return compactText(JSON.stringify(result.structuredContent));
-  if (result.text) return compactText(result.text);
-  return compactText(JSON.stringify(result));
-}
-
-async function callMcpTool(settings, name, args = {}, signal = null) {
-  if (!settings.enabled || !settings.endpoint || !mcpToolAllowed(settings, name)) return '';
-  const localTokenPlan = settings.endpoint === '/api/mcp/token-plan';
-  const headers = makeMcpHeaders(settings);
-  if (localTokenPlan) {
-    Object.keys(headers).forEach((key) => {
-      if (key.toLowerCase() === 'authorization') delete headers[key];
-    });
-  }
-  const request = localTokenPlan ? authFetch : fetch;
-  const controller = new AbortController();
-  const abortFromParent = () => controller.abort();
-  signal?.addEventListener('abort', abortFromParent, { once: true });
-  if (signal?.aborted) controller.abort();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-  try {
-    const response = await request(settings.endpoint, {
-      method: 'POST',
-      headers,
-      signal: controller.signal,
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: Date.now(),
-        method: 'tools/call',
-        params: {
-          name,
-          arguments: args,
-          meta: {
-            auth: {
-              api_key: settings.apiKey,
-              api_host: settings.apiHost,
-              base_path: settings.basePath,
-              resource_mode: settings.resourceMode || 'url'
-            }
-          }
-        }
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.error) throw new Error(data?.error?.message || `MCP ${response.status}`);
-    return mcpResultText(data.result || data);
-  } finally {
-    clearTimeout(timeout);
-    signal?.removeEventListener('abort', abortFromParent);
-  }
+async function callMcpTool(settings, name, args = {}, signal = null, structured = false) {
+  if (!settings.enabled || !settings.endpoint || !mcpToolAllowed(settings, name)) return structured ? { content: '', isError: true } : '';
+  const result = await callRoomMcp(settings, 'tools/call', { name, arguments: args }, {
+    signal, request: settings.endpoint === '/api/mcp/token-plan' ? authFetch : fetch
+  });
+  const content = normalizeMcpResult(result, structured ? 4000 : 1200);
+  return structured ? { content, isError: false } : content;
 }
 
 function fetchRelevantMemories(message, signal = null) {
@@ -1440,15 +1392,26 @@ export function useRoomChat({ live2d, world, diary = null }) {
       };
       let result;
       try {
-        result = await requestRoomReply({
+        const mcpSettings = readJson('roomMCPSettings', {});
+        const tools = agentProtocol.allowedTools(mcpSettings, Boolean(image));
+        const complete = extra => requestRoomReply({
           settings,
-          systemPrompt,
+          systemPrompt: systemPrompt + (tools.length ? agentProtocol.AGENT_PROMPT : ''),
           conversation,
           message: mcpEnhancedMessage || (image ? '\u8bf7\u63cf\u8ff0\u8fd9\u5f20\u56fe\u7247\u3002' : ''),
           image,
           signal: operation.controller.signal,
-          onDelta
+          onDelta,
+          ...extra
         });
+        result = tools.length ? await agentProtocol.runAgent({
+          complete, tools, signal: operation.controller.signal, onDelta,
+          onState(status) {
+            if (activeGeneration === operation) generationState.value = { status: status === 'tools' ? 'preparing' : 'streaming', turnId, error: '' };
+          },
+          execute: (name, args, signal) => callMcpTool(mcpSettings, name,
+            name === 'understand_image' ? { ...args, image_data: image.dataUrl } : args, signal, true)
+        }) : await complete({});
       } finally {
         if (renderFrame) window.cancelAnimationFrame?.(renderFrame);
       }

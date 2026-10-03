@@ -1,4 +1,5 @@
 <script setup>
+import { callRoomMcp, validateMcpEndpoint } from '../services/room/roomMcp.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
@@ -275,6 +276,7 @@ const knowledgeTitleInput = ref(null);
 const mcp = reactive({
   enabled: false,
   provider: 'custom',
+  transport: 'rest',
   endpoint: '',
   apiKey: '',
   authHeader: 'Authorization',
@@ -1027,11 +1029,12 @@ function normalizeChatUrl(apiUrl, modelName) {
   if (isOllamaApi(url)) return normalizeOllamaUrl(url);
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/responses\/?$/i.test(url)) return url.replace(/\/$/, '');
   if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) return url.replace(/\/$/, '') + '/responses';
-  if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${modelName || ''}`)) {
+  if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages/i.test(url)) {
     return url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages');
   }
-  if (/anthropic/i.test(`${url} ${modelName || ''}`) && !/\/v1\/messages\/?$/.test(url)) {
-    return url.replace(/\/$/, '') + '/v1/messages';
+  if (/\/v1\/messages\/?$/.test(url)) return url;
+  if (/api\.anthropic\.com/i.test(url)) {
+    return url.replace(/\/$/, '') + (/\/v1\/?$/.test(url) ? '/messages' : '/v1/messages');
   }
   const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|minimax|minimaxi|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage|xiaomimimo|token-plan-cn/i.test(`${url} ${modelName || ''}`)
     && !/\/chat\/completions\/?$/.test(url);
@@ -1080,11 +1083,11 @@ function openRouterHeaders(apiUrl) {
 }
 
 function isMiniMaxAnthropic(apiUrl, modelName) {
-  return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${apiUrl || ''} ${modelName || ''}`);
+  return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages/i.test(String(apiUrl || ''));
 }
 
 function isAnthropicChatApi(apiUrl, modelName) {
-  return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${apiUrl || ''} ${modelName || ''}`);
+  return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages/i.test(String(apiUrl || ''));
 }
 
 function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiUrl) {
@@ -2311,32 +2314,8 @@ async function clearMemory() {
   }
 }
 
-function makeMcpHeaders() {
-  const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
-  const key = String(mcp.apiKey || '').trim();
-  const headerName = String(mcp.authHeader || 'Authorization').trim();
-  if (key && headerName) {
-    headers[headerName] = /^Bearer\s+/i.test(key) || headerName.toLowerCase() !== 'authorization' ? key : `Bearer ${key}`;
-  }
-  return headers;
-}
-
 async function callMcp(method, params = {}) {
-  const endpoint = String(mcp.endpoint || '').trim();
-  if (!endpoint) throw new Error('请先填写 MCP HTTP 端点');
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: makeMcpHeaders(),
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: Date.now(),
-      method,
-      params
-    })
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.error) throw new Error(data?.error?.message || `HTTP ${response.status}`);
-  return data.result || data;
+  return callRoomMcp(mcp, method, params, { request: mcp.endpoint === '/api/mcp/token-plan' ? authFetch : fetch });
 }
 
 function saveMCP(showDialog = true) {
@@ -2344,8 +2323,7 @@ function saveMCP(showDialog = true) {
   if (mcp.enabled) {
     try {
       if (!endpoint) throw new Error();
-      const url = new URL(endpoint, window.location.origin);
-      if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
+      validateMcpEndpoint(endpoint);
     } catch (_) {
       showToast('请填写有效的 MCP 端点，或关闭 MCP', 'error');
       return false;
@@ -2355,6 +2333,7 @@ function saveMCP(showDialog = true) {
   if (!persistSettings('roomMCPSettings', {
     enabled: Boolean(mcp.enabled),
     provider: String(mcp.provider || 'custom'),
+    transport: mcp.transport === 'streamable-http' ? 'streamable-http' : 'rest',
     endpoint,
     apiKey: String(mcp.apiKey || '').trim(),
     authHeader: String(mcp.authHeader || 'Authorization').trim() || 'Authorization',
@@ -2372,7 +2351,7 @@ function saveMCP(showDialog = true) {
     mcp.enabled
       ? (endpoint ? 'MCP 设置已保存并启用。' : 'MCP 已启用并保存，但还没有填写端点。')
       : 'MCP 设置已保存，当前未启用。',
-    `Provider：${mcp.provider || 'custom'}\n端点：${endpoint || '未填写'}\n认证头：${String(mcp.authHeader || 'Authorization').trim() || 'Authorization'}\n工具白名单：${toolAllowlist || '允许全部'}\n已发现工具：${Array.isArray(mcp.tools) ? mcp.tools.length : 0}`
+    `Provider：${mcp.provider || 'custom'}\n端点：${endpoint || '未填写'}\n认证头：${String(mcp.authHeader || 'Authorization').trim() || 'Authorization'}\n工具白名单：${toolAllowlist || '仅搜索与当前图片理解'}\n已发现工具：${Array.isArray(mcp.tools) ? mcp.tools.length : 0}`
   );
   showToast(mcp.enabled ? 'MCP 设置已保存并启用' : 'MCP 设置已保存（当前未启用）');
   return true;
@@ -3818,6 +3797,13 @@ onBeforeUnmount(() => {
                 </option>
               </select>
             </label>
+            <label>
+              连接协议
+              <select v-model="mcp.transport" :disabled="mcp.endpoint === '/api/mcp/token-plan'">
+                <option value="rest">REST 桥接（兼容原设置）</option>
+                <option value="streamable-http">MCP Streamable HTTP</option>
+              </select>
+            </label>
             <label
               >MCP HTTP 端点<input
                 v-model="mcp.endpoint"
@@ -3864,14 +3850,14 @@ onBeforeUnmount(() => {
               >工具白名单<input
                 v-model="mcp.toolAllowlist"
                 type="text"
-                placeholder="留空允许全部，或用逗号分隔工具名"
+                placeholder="留空启用搜索与图片理解，或用逗号限定工具名"
             /></label>
             <p class="field-hint">
-              MCP 请求由浏览器直接发出，端点需要支持 CORS 与 JSON-RPC 的
-              tools/list、tools/call。MiniMax MCP JS 预设按 REST 模式传
-              meta.auth；Token Plan MCP 使用本站受限桥接
-              /api/mcp/token-plan，后端只启动官方
-              minimax-coding-plan-mcp，不会请求任意地址。
+              已启用的搜索与当前图片理解支持模型自主调用，每轮最多 3 次模型请求、4 次工具执行。
+              自定义服务可选 Streamable HTTP，支持初始化、会话头及 JSON/SSE 响应；需要服务允许浏览器 CORS。
+              REST 桥接保留原 meta.auth 格式；Token Plan 使用本站受限桥接 /api/mcp/token-plan。
+              工具失败不会当作成功结果，回复不会在工具调用阶段提前保存。
+
             </p>
             <div v-if="mcp.tools.length" class="mcp-tool-list">
               <span v-for="tool in mcp.tools" :key="tool.name" class="chip">{{

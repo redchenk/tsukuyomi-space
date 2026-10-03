@@ -9,7 +9,7 @@ function streamEvent(res, event, data) {
 }
 
 router.post('/stream', async (req, res) => {
-    const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image } = req.body || {};
+    const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image, tools = [], agentTurns = [] } = req.body || {};
     if (!message && !image) {
         return res.status(400).json({ success: false, message: '消息内容不能为空' });
     }
@@ -34,7 +34,7 @@ router.post('/stream', async (req, res) => {
     res.flushHeaders();
     try {
         const data = await createChatCompletionStream({
-            message, conversation, apiKey, apiUrl, model, systemPrompt, image,
+            message, conversation, apiKey, apiUrl, model, systemPrompt, image, tools, agentTurns,
             signal: controller.signal,
             onDelta: text => streamEvent(res, 'delta', { text })
         });
@@ -53,24 +53,27 @@ router.post('/stream', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
+    const controller = new AbortController();
+    const onClose = () => { if (!res.writableEnded) controller.abort(new Error('客户端已断开连接')); };
+    res.once('close', onClose);
     try {
-        const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image } = req.body;
+        const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image, tools = [], agentTurns = [] } = req.body;
         if (!message && !image) {
             return res.status(400).json({ success: false, message: '消息内容不能为空' });
         }
 
-        const data = await createChatCompletion({ message, conversation, apiKey, apiUrl, model, systemPrompt, image });
+        const data = await createChatCompletion({ message, conversation, apiKey, apiUrl, model, systemPrompt, image, tools, agentTurns, signal: controller.signal });
         res.json({ success: true, data });
     } catch (error) {
         const statusCode = error.statusCode || 500;
         if (statusCode >= 500) {
-            console.error('Chat API error:', error);
+            console.error('Chat API error:', /^[A-Z0-9_]{1,48}$/.test(error.code || '') ? error.code : 'LLM_REQUEST_FAILED');
         }
         res.status(statusCode).json({
             success: false,
             message: statusCode === 500 ? '操作失败' : error.message
         });
-    }
+    } finally { res.off('close', onClose); }
 });
 
 module.exports = router;

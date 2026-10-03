@@ -192,25 +192,32 @@ router.post('/token-plan', authenticateToken, async (req, res) => {
     let cleanup = null;
     if (activeMcpRequests >= 1) return res.status(429).json(rpcError(id, -32001, 'MCP 正忙，请稍后重试。'));
     activeMcpRequests += 1;
+    const controller = new AbortController();
+    const close = () => { if (!res.writableEnded) controller.abort(); };
+    res.once('close', close);
     try {
         const prepared = name === 'understand_image'
             ? await writeTempImageIfNeeded(params.arguments || {})
             : { args: { query: String(params.arguments?.query || '').trim().slice(0, 500) }, cleanup: null };
         if (name === 'web_search' && !prepared.args.query) return res.status(400).json(rpcError(id, -32602, 'Search query is required.'));
         cleanup = prepared.cleanup;
+        if (controller.signal.aborted) throw Object.assign(new Error('MCP MCP_ABORTED'), { code: 'MCP_ABORTED' });
         const result = await requestOverStdio({
             command: process.env.MINIMAX_TOKEN_PLAN_MCP_COMMAND || defaultUvxCommand(),
             args: (process.env.MINIMAX_TOKEN_PLAN_MCP_ARGS || 'minimax-coding-plan-mcp -y').split(/\s+/).filter(Boolean),
             env: buildMcpEnv(auth),
             method: 'tools/call',
             params: { name, arguments: prepared.args },
-            timeoutMs: 45000
+            timeoutMs: 45000,
+            signal: controller.signal
         });
         return res.json(rpcResult(id, result));
     } catch (error) {
-        console.error('MiniMax Token Plan MCP error:', error.message);
-        return res.status(502).json(rpcError(id, -32000, error.message));
+        const code = /^MCP_[A-Z_]{1,40}$/.test(error.code || '') ? error.code : 'MCP_FAILED';
+        console.error('MiniMax Token Plan MCP error:', code);
+        if (!res.destroyed) return res.status(502).json(rpcError(id, -32000, `工具调用失败：${code}`));
     } finally {
+        res.removeListener('close', close);
         cleanup?.();
         activeMcpRequests = Math.max(0, activeMcpRequests - 1);
     }

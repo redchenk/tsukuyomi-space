@@ -1,3 +1,5 @@
+const protocol = require('../../shared/llm-protocol.cjs');
+const agentProtocol = require('../../shared/agent-protocol.cjs');
 const LLM_API_KEY = process.env.LLM_API_KEY || '';
 const LLM_API_URL = process.env.LLM_API_URL || '';
 const LLM_MODEL = process.env.LLM_MODEL || 'kimi-k2.6';
@@ -11,7 +13,6 @@ const CHAT_SYSTEM_PROMPT = [
 const ROOM_SYSTEM_PROMPT = '请始终用温柔、从容、克制的中文回应。先接住对方的情绪，再根据问题需要给出完整、有温度的回应。不要人为限制回复长度，不要提及系统设定。';
 const ANTHROPIC_REQUIRED_MAX_TOKENS = Math.max(4096, Number.parseInt(process.env.ROOM_ANTHROPIC_MAX_TOKENS || '16384', 10) || 16384);
 const CHAT_STREAM_TIMEOUT_MS = Math.min(600000, Math.max(1000, Number.parseInt(process.env.CHAT_STREAM_TIMEOUT_MS || '180000', 10) || 180000));
-const MAX_STREAM_EVENT_BYTES = 4 * 1024 * 1024;
 
 const ALLOWED_CHAT_ENDPOINTS = [
     { hostname: 'api.moonshot.cn', path: /^\/v1\/chat\/completions\/?$/ },
@@ -59,11 +60,12 @@ function normalizeChatUrl(apiUrl, model) {
     if (/(api\.openai\.com|api\.x\.ai)\/v1\/?$/i.test(url)) {
         return validateChatUrl(url.replace(/\/$/, '') + '/responses');
     }
-    if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages|MiniMax-M2/i.test(`${url} ${model || ''}`)) {
+    if (/minimaxi\.com\/anthropic|\/anthropic\/v1\/messages/i.test(url)) {
         return validateChatUrl(url.replace(/\/$/, '').replace(/\/anthropic$/, '/anthropic/v1/messages'));
     }
-    if (/anthropic/i.test(url + model) && !/\/v1\/messages\/?$/.test(url)) {
-        url = url.replace(/\/$/, '') + '/v1/messages';
+    if (/\/v1\/messages\/?$/.test(url)) return validateChatUrl(url);
+    if (/api\.anthropic\.com/i.test(url)) {
+        return validateChatUrl(url.replace(/\/$/, '') + (/\/v1\/?$/.test(url) ? '/messages' : '/v1/messages'));
     }
     const needsChatPath = /deepseek|dashscope|aliyuncs|openai|openrouter|moonshot|bigmodel|zhipu|siliconflow|volces|ark|groq|mistral|together|perplexity|x\.ai|generativelanguage|xiaomimimo|token-plan-cn/i.test(url + model) && !/\/chat\/completions\/?$/.test(url);
     if (needsChatPath) url = url.replace(/\/$/, '') + '/chat/completions';
@@ -189,8 +191,7 @@ function pickReply(data) {
 }
 
 function isAnthropicChatUrl(chatUrl, model) {
-    return /\/anthropic\/v1\/messages\/?$|anthropic\.com\/v1\/messages\/?$/i.test(String(chatUrl || ''))
-        || /MiniMax-M2/i.test(String(model || ''));
+    return /\/anthropic\/v1\/messages\/?$|anthropic\.com\/v1\/messages\/?$/i.test(String(chatUrl || ''));
 }
 
 function isOpenAIResponsesUrl(chatUrl) {
@@ -210,7 +211,7 @@ function chatTemperatureFor(chatUrl, model, fallback) {
 }
 
 function isMiniMaxAnthropicText(chatUrl, model) {
-    return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages\/?$|MiniMax-M2/i.test(`${chatUrl || ''} ${model || ''}`);
+    return /minimaxi\.com\/anthropic|\/anthropic\/v1\/messages\/?$/i.test(String(chatUrl || ''));
 }
 
 function parseDataUrl(dataUrl = '') {
@@ -237,7 +238,7 @@ function buildAnthropicUserContent(message, image, allowImage) {
     ];
 }
 
-function buildChatPayload({ chatUrl, model, systemPrompt, history, message, image }) {
+function buildBaseChatPayload({ chatUrl, model, systemPrompt, history, message, image }) {
     if (isOllamaNativeChatUrl(chatUrl)) {
         const userMessage = {
             role: 'user',
@@ -326,95 +327,26 @@ function chatHeaders(chatUrl, apiKey, model) {
     return headers;
 }
 
-async function createChatCompletion({ message, conversation = [], apiKey, apiUrl, model, systemPrompt = CHAT_SYSTEM_PROMPT, image }) {
-    const useApiKey = apiKey || LLM_API_KEY;
-    const useModel = model || LLM_MODEL;
-
-    const history = Array.isArray(conversation)
-        ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12)
-        : [];
-    const chatUrl = normalizeChatUrl(apiUrl, useModel);
-
-    if (!useApiKey && !isOllamaChatUrl(chatUrl)) {
-        return { reply: fallbackChatReply(), model: 'preset' };
-    }
-
-    const response = await fetch(chatUrl, {
-        method: 'POST',
-        headers: chatHeaders(chatUrl, useApiKey, useModel),
-        body: JSON.stringify(buildChatPayload({ chatUrl, model: useModel, systemPrompt, history, message, image }))
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`LLM request failed (${response.status}): ${errorText.substring(0, 200)}`);
-    }
-
-    const data = await response.json();
-    const reply = pickReply(data);
-    if (!reply) throw new Error('LLM response did not contain a reply');
-    return { reply, model: data.model || useModel };
+function providerFor(chatUrl, model) {
+    if (isOllamaNativeChatUrl(chatUrl)) return 'ollama';
+    if (isOpenAIResponsesUrl(chatUrl)) return 'responses';
+    if (isAnthropicChatUrl(chatUrl, model)) return 'anthropic';
+    return 'openai';
 }
 
-function streamDelta(data, event = '') {
-    if (!data || typeof data !== 'object') return '';
-    if (event === 'response.output_text.delta' || data.type === 'response.output_text.delta') {
-        return typeof data.delta === 'string' ? data.delta : '';
-    }
-    if (event === 'content_block_delta' || data.type === 'content_block_delta') {
-        return data.delta?.type === 'text_delta' && typeof data.delta.text === 'string' ? data.delta.text : '';
-    }
-    if (Array.isArray(data.choices)) {
-        return data.choices.map(choice => {
-            const content = choice?.delta?.content ?? choice?.delta?.text;
-            if (typeof content === 'string') return content;
-            if (Array.isArray(content)) return content.filter(part => part?.type === 'text').map(part => part.text || '').join('');
-            return '';
-        }).join('');
-    }
-    if (typeof data.message?.content === 'string' && data.done !== true) return data.message.content;
-    if (typeof data.response === 'string' && data.done !== true) return data.response;
-    return '';
+function buildChatPayload(args) {
+    const base = buildBaseChatPayload(args);
+    const provider = providerFor(args.chatUrl, args.model);
+    const options = agentProtocol.wireOptions(args.tools, args.agentTurns, provider);
+    return options.tools.length || options.turns.length ? protocol.withTools(base, provider, options.tools, options.turns) : base;
 }
 
-function streamUsage(data) {
-    if (data?.usage && typeof data.usage === 'object') return data.usage;
-    if (data?.response?.usage && typeof data.response.usage === 'object') return data.response.usage;
-    if (Number.isFinite(data?.prompt_eval_count) || Number.isFinite(data?.eval_count)) {
-        return {
-            prompt_tokens: data.prompt_eval_count || 0,
-            completion_tokens: data.eval_count || 0
-        };
-    }
-    return null;
-}
-
-function streamError(data, event = '') {
-    const finishReasons = Array.isArray(data?.choices)
-        ? data.choices.map(choice => choice?.finish_reason).filter(Boolean)
-        : [];
-    if (finishReasons.includes('length') || data?.delta?.stop_reason === 'max_tokens'
-        || data?.message?.stop_reason === 'max_tokens' || data?.type === 'response.incomplete') {
-        return new Error('模型输出达到长度上限，回复未保存，请重试');
-    }
-    if (finishReasons.some(reason => ['content_filter', 'tool_calls', 'function_call'].includes(reason))
-        || data?.delta?.stop_reason === 'tool_use' || data?.type === 'response.failed') {
-        return new Error('模型没有完成可显示的回复，请重试');
-    }
-    if (event !== 'error' && data?.type !== 'error' && !data?.error) return null;
-    const detail = data?.error?.message || data?.message;
-    return new Error(typeof detail === 'string' ? detail.slice(0, 300) : '模型流式响应失败');
-}
-
-async function createChatCompletionStream({
-    message, conversation = [], apiKey, apiUrl, model, systemPrompt = CHAT_SYSTEM_PROMPT, image,
-    signal, onDelta = () => {}
-}) {
+async function requestCompletion({ message, conversation = [], apiKey, apiUrl, model,
+    systemPrompt = CHAT_SYSTEM_PROMPT, image, signal, onDelta = () => {}, tools = [], agentTurns = [] }, stream) {
     const useApiKey = apiKey || LLM_API_KEY;
     const useModel = model || LLM_MODEL;
     const history = Array.isArray(conversation)
-        ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12)
-        : [];
+        ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12) : [];
     const chatUrl = normalizeChatUrl(apiUrl, useModel);
     if (!useApiKey && !isOllamaChatUrl(chatUrl)) {
         const reply = fallbackChatReply();
@@ -422,116 +354,35 @@ async function createChatCompletionStream({
         await onDelta(reply);
         return { reply, model: 'preset' };
     }
-
     const controller = new AbortController();
-    const abortFromCaller = () => controller.abort(signal.reason || new Error('请求已取消'));
-    if (signal?.aborted) abortFromCaller();
-    else signal?.addEventListener('abort', abortFromCaller, { once: true });
+    const abort = () => controller.abort(signal.reason || new Error('请求已取消'));
+    if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, { once: true });
     const timeout = setTimeout(() => controller.abort(new Error('模型响应超时')), CHAT_STREAM_TIMEOUT_MS);
-    let reader;
     try {
-        const payload = { ...buildChatPayload({ chatUrl, model: useModel, systemPrompt, history, message, image }), stream: true };
-        const response = await fetch(chatUrl, {
-            method: 'POST',
-            headers: chatHeaders(chatUrl, useApiKey, useModel),
-            body: JSON.stringify(payload),
-            signal: controller.signal
-        });
+        const payload = { ...buildChatPayload({ chatUrl, model: useModel, systemPrompt, history, message, image, tools, agentTurns }), stream };
+        const send = body => fetch(chatUrl, { method: 'POST', redirect: 'error', headers: chatHeaders(chatUrl, useApiKey, useModel), body: JSON.stringify(body), signal: controller.signal });
+        let response = await send(payload);
+        if (stream && [400, 422].includes(response.status)) {
+            const detail = await protocol.readJson(response, controller.signal, 8192).catch(() => null);
+            if (/stream[^.]{0,80}(unsupported|not supported|not available)|(unsupported|not supported)[^.]{0,80}stream/i.test(detail?.error?.message || detail?.message || ''))
+                response = await send({ ...payload, stream: false });
+        }
         if (!response.ok) {
+            await response.body?.cancel?.().catch(() => {});
             const error = new Error(`模型请求失败（HTTP ${response.status}）`);
-            error.statusCode = response.status;
-            throw error;
+            error.statusCode = response.status; throw error;
         }
-        if (!response.body?.getReader) throw new Error('模型没有返回可读取的流');
-
-        reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        const isNdjson = isOllamaNativeChatUrl(chatUrl) || /(?:x-ndjson|ndjson)/i.test(response.headers?.get?.('content-type') || '');
-        let buffer = '';
-        let reply = '';
-        let usage = null;
-        let finalModel = useModel;
-        let streamFinished = false;
-
-        const applyPayload = async (data, event) => {
-            if (data === '[DONE]') {
-                streamFinished = true;
-                return;
-            }
-            const parsed = JSON.parse(data);
-            const providerError = streamError(parsed, event);
-            if (providerError) throw providerError;
-            const delta = streamDelta(parsed, event);
-            if (delta) {
-                reply += delta;
-                await onDelta(delta);
-            }
-            usage = streamUsage(parsed) || usage;
-            finalModel = parsed?.model || parsed?.response?.model || finalModel;
-            if (event === 'message_stop' || parsed?.type === 'message_stop'
-                || event === 'response.completed' || parsed?.type === 'response.completed'
-                || (Array.isArray(parsed?.choices) && parsed.choices.some(choice => choice?.finish_reason != null))) {
-                streamFinished = true;
-            }
-            if (!reply && (event === 'response.completed' || parsed?.type === 'response.completed')) {
-                const finalText = pickReply(parsed.response || parsed);
-                if (finalText) {
-                    reply = finalText;
-                    await onDelta(finalText);
-                }
-            }
-            if (parsed?.done === true) streamFinished = true;
-        };
-
-        const applySsePacket = async (packet) => {
-            let event = 'message';
-            const lines = [];
-            for (const line of packet.split(/\r?\n/)) {
-                if (line.startsWith('event:')) event = line.slice(6).trim() || 'message';
-                else if (line.startsWith('data:')) lines.push(line.slice(5).trimStart());
-            }
-            if (lines.length) await applyPayload(lines.join('\n'), event);
-        };
-
-        while (!streamFinished) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            if (isNdjson) {
-                let end;
-                while (!streamFinished && (end = buffer.indexOf('\n')) >= 0) {
-                    const line = buffer.slice(0, end).trim();
-                    buffer = buffer.slice(end + 1);
-                    if (line) await applyPayload(line, 'message');
-                }
-            } else {
-                let boundary;
-                while (!streamFinished && (boundary = /\r?\n\r?\n/.exec(buffer))) {
-                    const packet = buffer.slice(0, boundary.index);
-                    buffer = buffer.slice(boundary.index + boundary[0].length);
-                    await applySsePacket(packet);
-                }
-            }
-            if (Buffer.byteLength(buffer, 'utf8') > MAX_STREAM_EVENT_BYTES) throw new Error('模型流式事件过大');
-        }
-        buffer += decoder.decode();
-        if (!streamFinished && buffer.trim()) {
-            if (isNdjson) await applyPayload(buffer.trim(), 'message');
-            else await applySsePacket(buffer);
-        }
-        if (controller.signal.aborted) throw controller.signal.reason || new Error('请求已取消');
-        if (!streamFinished) throw new Error('模型流式响应中断，请重试本轮对话');
-        if (!reply) throw new Error('模型没有返回可显示的回复');
-        return { reply, model: finalModel, ...(usage ? { usage } : {}) };
+        const options = { provider: providerFor(chatUrl, useModel), allowTools: Boolean(tools.length), signal: controller.signal, onDelta };
+        const result = stream ? await protocol.readStream(response, options) : protocol.fromJson(await protocol.readJson(response, controller.signal), options);
+        return { ...result, model: result.model || useModel };
     } catch (error) {
         if (controller.signal.aborted) throw controller.signal.reason || error;
+        if (error.code === 'LLM_STREAM_INCOMPLETE') error.message = '模型流式响应中断，请重试本轮对话';
         throw error;
-    } finally {
-        clearTimeout(timeout);
-        signal?.removeEventListener('abort', abortFromCaller);
-        if (reader) await reader.cancel().catch(() => {});
-    }
+    } finally { clearTimeout(timeout); signal?.removeEventListener('abort', abort); }
 }
+function createChatCompletion(options) { return requestCompletion(options, false); }
+function createChatCompletionStream(options) { return requestCompletion(options, true); }
 
 module.exports = {
     ALLOWED_CHAT_ENDPOINTS,

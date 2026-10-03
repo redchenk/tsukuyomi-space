@@ -7,6 +7,8 @@ const source = path => fs.readFileSync(path, 'utf8');
 const knowledgeCode = strip(source('src/frontend/constants/room/knowledgeEntries.js')) + '\n' + strip(source('src/frontend/services/room/roomKnowledge.js'));
 const pageCode = strip(source('src/frontend/pages/RoomSettingsPage.vue').split('<script setup>')[1].split('</script>')[0]);
 const ttsUsesProxy = vm.runInNewContext(strip(source('src/frontend/services/room/ttsTransport.js')) + '\nttsUsesProxy;', { URL });
+let validateMcpEndpoint;
+test.before(async () => { ({ validateMcpEndpoint } = await import('../src/frontend/services/room/roomMcp.mjs')); });
 function setup() {
   const store = new Map();
   let failWrites = false;
@@ -18,7 +20,7 @@ function setup() {
   const navigation = [];
   const ctx = {
     URL, console, setTimeout: () => 0, clearTimeout() {},
-    ttsUsesProxy,
+    ttsUsesProxy, validateMcpEndpoint,
     reactive: x => x, ref: value => ({ value }), computed: get => ({ get value() { return get(); } }),
     defineProps: () => ({}), defineEmits: () => (...args) => navigation.push(args),
     onMounted() {}, onBeforeUnmount() {}, watch() {}, onBeforeRouteLeave: fn => { routeGuard = fn; },
