@@ -143,26 +143,17 @@ describe('constrained-device performance policy', () => {
         assert.match(arena, /@media \(max-width: 760px\)[\s\S]*body \.page\.arena-page \.arena-controls\s*\{[^}]*overflow:\s*visible/s);
     });
 
-    it('opens Pixel as a painting-first studio with visible desktop colors and a compact mobile layout', () => {
-        const arena = source('assets/css/vue/pages/arena.css');
-        const arenaPage = source('src/frontend/pages/ArenaPage.vue');
-
-        assert.match(arenaPage, /const controlsOpen = ref\(typeof window !== 'undefined'[\s\S]*matchMedia\('\(min-width: 1181px\)'\)/);
-        assert.match(arenaPage, /const galleryOpen = ref\(false\)/);
-        assert.match(arenaPage, /class="arena-paint-strip"[\s\S]*class="arena-quick-swatch"/);
-        assert.match(arenaPage, /class="arena-canvas-hint"[\s\S]*class="arena-finish-actions"/);
-        assert.match(arenaPage, /ref="titleInputRef"[\s\S]*class="primary-btn arena-share-btn"/);
-        assert.match(arenaPage, /'is-controls-open': controlsOpen[\s\S]*'is-gallery-open': galleryOpen/);
-        assert.match(arenaPage, /class="arena-panel-toggle arena-controls-toggle"[\s\S]*:aria-expanded="controlsOpen"/);
-        assert.match(arenaPage, /class="arena-panel-toggle arena-gallery-toggle"[\s\S]*:aria-expanded="galleryOpen"/);
-        assert.match(arena, /--arena-panel-rail:\s*52px[\s\S]*grid-template-columns:\s*var\(--arena-panel-rail\) minmax\(0, 1fr\) var\(--arena-panel-rail\)/);
-        assert.match(arena, /\.arena-page\.is-controls-open\s*\{[^}]*grid-template-columns:\s*var\(--arena-controls-open\) minmax\(0, 1fr\) var\(--arena-panel-rail\)/s);
-        assert.match(arena, /\.arena-page\.is-gallery-open\s*\{[^}]*grid-template-columns:\s*var\(--arena-panel-rail\) minmax\(0, 1fr\) var\(--arena-gallery-open\)/s);
-        assert.match(arena, /\.arena-page:not\(\.is-controls-open\) \.arena-controls > :not\(\.arena-panel-toggle\)/);
-        assert.match(arena, /\.arena-page:not\(\.is-gallery-open\) \.arena-gallery > :not\(\.arena-panel-toggle\)/);
-        assert.match(arena, /\.arena-page\.is-controls-open \.arena-controls\s*\{[^}]*background:\s*#0d1220[^}]*backdrop-filter:\s*none/s);
-        assert.match(arena, /\.arena-page \.arena-controls,[\s\S]*\.arena-page \.arena-gallery\s*\{[^}]*z-index:\s*20[^}]*isolation:\s*isolate/s);
-        assert.match(arena, /@media \(max-width: 760px\)[\s\S]*body \.page\.arena-page\s*\{[^}]*height:\s*auto[^}]*overflow-y:\s*visible/s);
+    it('opens Pixel with a central canvas and on-demand community/publishing panels', () => {
+        const styles = source('src/frontend/styles/routes/arena.css');
+        const page = source('src/frontend/pages/ArenaPage.vue');
+        assert.match(page, /const galleryOpen = ref\(false\)/);
+        assert.match(page, /ref="publishDialogRef"[\s\S]*@submit\.prevent="shareArtwork"/);
+        assert.match(page, /ref="galleryDialogRef"/);
+        assert.match(page, /const PIXEL_GALLERY_PAGE_SIZE = 12/);
+        assert.match(styles, /grid-template-columns:\s*68px minmax\(0, 1fr\) 256px/);
+        assert.match(styles, /\.arena-controls\.pw-properties[^}]*overflow-y:\s*auto/s);
+        assert.match(styles, /@media \(max-width: 760px\)/);
+        assert.match(page, /new ResizeObserver\(handleCanvasViewportResize\)/);
     });
 
     it('defers offscreen gallery canvases without delaying the editable pixel canvas', () => {

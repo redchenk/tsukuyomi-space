@@ -583,7 +583,7 @@ test('pixel canvas switches between mobile scrolling and uninterrupted drawing',
     try {
         await page.goto('/pixel');
         const canvas = page.getByRole('img', { name: 'pixel canvas', exact: true });
-        const toolButtons = page.locator('.arena-tool-toggle .icon-btn');
+        const toolButtons = page.locator('.pw-tools .pw-tool');
         const brushButton = toolButtons.first();
         const moveButton = toolButtons.last();
         await expect(canvas).toBeVisible();
@@ -665,13 +665,14 @@ test('desktop pixel controls scroll independently from the page', async ({ page 
 
     const controls = page.locator('.arena-controls');
     await expect(controls).toBeVisible();
-    const controlsToggle = page.locator('[aria-controls="arena-controls-panel"]');
+    const controlsToggle = page.locator('.pw-properties-head [aria-controls="arena-controls-panel"]');
     await expect(controlsToggle).toHaveAttribute('aria-expanded', 'true');
     await controlsToggle.click();
     await expect(controlsToggle).toHaveAttribute('aria-expanded', 'false');
-    await controlsToggle.click();
+    await page.getByRole('button', { name: '颜色', exact: true }).click();
     await expect(controlsToggle).toHaveAttribute('aria-expanded', 'true');
 
+    await controls.locator('summary').filter({ hasText: '触控笔设置' }).click();
     const metrics = await controls.evaluate((element) => ({
         clientHeight: element.clientHeight,
         scrollHeight: element.scrollHeight,
@@ -774,4 +775,39 @@ test('admin can open the terminal dashboard and user panel', async ({ page }) =>
     await expect(page.getByRole('heading', { name: '用户', exact: true })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'e2e-user' }).first()).toBeVisible();
     await expect(page.locator('select option[value="banned"]').first()).toHaveText('banned');
+});
+
+
+test('pixel workspace restores strokes after reload and exports the same PNG', async ({ page }) => {
+    await page.goto('/pixel');
+    const canvas = page.getByRole('img', { name: 'pixel canvas', exact: true });
+    const bounds = await canvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    await page.mouse.move(bounds.x + 30, bounds.y + 30);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + 90, bounds.y + 60, { steps: 10 });
+    await page.mouse.up();
+    await expect(page.getByRole('button', { name: '撤销', exact: true })).toBeEnabled();
+
+    const exportPixels = async () => {
+        await page.getByRole('button', { name: '导出 PNG', exact: true }).click();
+        const dialog = page.getByRole('dialog', { name: '导出 PNG', exact: true });
+        await expect(dialog).toBeVisible();
+        const png = await dialog.locator('img').getAttribute('src');
+        expect(png).toMatch(/^data:image\/png;base64,/);
+        await dialog.getByRole('button', { name: '关闭', exact: true }).first().click();
+        return png;
+    };
+    const before = await exportPixels();
+    await page.reload();
+    expect(await exportPixels()).toBe(before);
+
+    await page.getByRole('button', { name: '新建', exact: true }).click();
+    const newCanvas = page.getByRole('dialog', { name: '新建画布', exact: true });
+    await newCanvas.getByRole('combobox').selectOption('64x36');
+    await newCanvas.getByRole('button', { name: '新建画布', exact: true }).click();
+    await expect(canvas).toHaveAttribute('width', '384');
+    await page.getByRole('button', { name: '撤销', exact: true }).click();
+    await expect(canvas).toHaveAttribute('width', '1152');
+    expect(await exportPixels()).toBe(before);
 });

@@ -1,3 +1,95 @@
+# Pixel workbench redesign QA — 2026-10-03
+
+final result: passed
+
+## Source and implementation
+
+Source: user-supplied `/Users/yxy/Downloads/pixel-redesign.png` (3840 × 2160)
+and `/Users/yxy/Downloads/pixel-redesign.html`, plus the retrieved design
+conversation “重绘Pixel界面” (`6ac0a9ad-53fc-83ee-9d44-4433fa9f12a4`).
+The supplied files supersede the earlier missing-source preflight.
+
+Implementation: the existing `/pixel` route (`ArenaPage.vue`) and a scoped
+workbench stylesheet. Local running app: `http://127.0.0.1:4180/pixel`.
+No parallel community, authentication, or navigation system was introduced.
+
+## Visual comparison
+
+The source PNG was normalized to 1920 × 1080, the same viewport as the
+implementation capture. Full-view and focused colors/tools comparisons were
+captured and inspected in `.codex_tmp/pixel-redesign/`:
+
+- `comparison-desktop.jpg`, `comparison-properties.jpg`, `comparison-tools.jpg`.
+- `desktop-light.jpg`, `desktop-dark.jpg`, `desktop-1366.jpg`.
+- `tablet-light.jpg` (768 × 1024), `mobile-light.jpg`, `mobile-dark.jpg`
+  (390 × 844), `mobile-publish.jpg`, `mobile-gallery-final.jpg`.
+
+The drawing occupies the central workspace; document actions are compact,
+left drawing tools remain labeled, colors stay on the right, and secondary
+settings collapse. The supplied 192 × 108 moon-house artwork was extracted
+from the HTML's raster data as a 4.7 KB, 40-color PNG and is an optional,
+fully editable example. Existing artwork palette indices remain compatible.
+
+Intentional deviations requested by the user: retain the existing global TOP
+navigation (desktop and mobile), site MiSans typography, purple accent tokens,
+light/dark surfaces, pill action buttons, and floating music/companion. The
+reference's global side navigation was omitted. Canvas aspect ratio and exact
+example artwork were preserved; the canvas fits the space left by the existing
+header. No horizontal overflow at 390, 768, or 1366 px was observed.
+
+## Iteration and resolved findings
+
+- P1: legacy grid-row rules separated tools and canvas — explicit workbench
+  columns/rows restore one contiguous editor.
+- P2: canvas paint containment clipped rulers — containment removed on the
+  zoom surface; rulers remain visible around the fitted canvas.
+- P2: native hue range appearance was blank in WebKit — functional accessible
+  native range now overlays a rendered gradient track and hue cursor.
+- P2: global input height made the context bar oversized — brush range height
+  scoped to 20 px.
+- P2: mobile tool buttons wrapped into four tall rows — independent tool
+  classes and a four-column mobile row prevent legacy style collisions.
+- P2: icon-only mobile document buttons lost accessible names — explicit
+  localized labels retain names when visible text is hidden.
+- P2: gallery sort and artwork actions became tall on mobile — compact pill
+  controls and non-growing action buttons restore a single usable row.
+- Property panels scroll independently, including a bottom reserve so their
+  contents can be moved clear of the site's existing floating companion.
+
+No outstanding P0/P1/P2 design finding was identified in the final views.
+
+## Interaction and checks
+
+In-app browser interaction on the local fixture server verified brush strokes,
+fill, eraser, exact undo/redo screenshot restoration, refresh restoration,
+fit/zoom, focus mode with the global header retained, HEX entry, keyboard hue
+adjustment, native image file import, changing canvas dimensions and undoing
+that change, guest draft carry-through at login, publication through the real
+API with a local synthetic account, gallery preview/close, and mobile dialogs.
+No test content was posted to production.
+
+PNG export now provides a generated image preview and explicit download link;
+mobile users can long-press the preview to save. The browser-generated PNG was
+read from the visible preview and decoded successfully: PNG, 1536 × 864,
+41 colors for the test drawing. The in-app browser's download event did not
+report a native download, so OS download UI and physical iOS saving remain
+real-device acceptance boundaries; the generated file/preview were verified.
+
+Automated checks: `npm run test:frontend` passed 283/283; color conversion
+boundary/round-trip tests passed 3/3. Domestic and overseas frontend builds
+are performed locally. Existing Playwright regressions were updated for the
+new controls and draft/export recovery; Playwright CLI was not run because
+this skill requires separate permission, and equivalent browser interactions
+were performed through the allowed in-app browser. No console warnings/errors
+were observed during the verified interactions.
+
+The draft is bounded, device-local and account-scoped. Restoring a draft never
+authorizes updating a previously published artwork. Publishing retains the
+existing API authentication and moderation paths. No dependency, database,
+secret, server resource limit, Live2D, or music change is included.
+
+---
+
 # Room settings summary card QA — 2026-09-23
 
 Status: **passed**.

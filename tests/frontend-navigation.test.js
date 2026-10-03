@@ -515,15 +515,15 @@ describe('frontend navigation routes', () => {
         assert.doesNotMatch(arena, /\/api\/pixel-art\?sort=.*limit=36/);
     });
 
-    it('previews native color-picker input without filling the saved palette', () => {
+    it('previews color selections without filling the saved palette', () => {
         const arena = source('src/frontend/pages/ArenaPage.vue');
+        const picker = source('src/frontend/components/PixelColorPicker.vue');
         const pixelApi = source('backend/routes/pixel-art.js');
-
+        const chooseColor = arena.match(/function chooseColor[\s\S]*?\n}/)?.[0] || '';
         assert.match(arena, /const MAX_CUSTOM_COLORS = 52/);
-        assert.match(arena, /function previewCustomColor\(event\)/);
-        assert.match(arena, /type="color" @input="previewCustomColor"/);
-        assert.doesNotMatch(arena, /type="color" @input="selectCustomColor"/);
-        assert.match(arena, /@click="selectCustomColor"/);
+        assert.match(arena, /@update:model-value="chooseColor"/);
+        assert.doesNotMatch(chooseColor, /addCustomColor|customColors\.value\s*=/);
+        assert.match(picker, /type="color"[\s\S]*@input="emit\('update:modelValue'/);
         assert.match(pixelApi, /const MAX_PALETTE_COLORS = 64/);
     });
 
