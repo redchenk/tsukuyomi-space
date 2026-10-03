@@ -120,6 +120,15 @@ test('model outage returns a bounded explicit source fallback; vectors require e
     assert.throws(() => local.vector(Array(512).fill(NaN)), /Invalid/);
 });
 
+test('an edited existing vector is reported as pending until its new source is indexed', async () => {
+    const row = db.prepare("SELECT * FROM room_memories WHERE json_extract(metadata,'$.sourceTurnId')='stable'").get();
+    const before = memory.memoryStats('one');
+    await memory.updateMemory('one', row.id, { summary: '身体反应', content: '花生会让我身体出现红疹。', importance: 0.9, confidence: 0.94 });
+    const after = memory.memoryStats('one');
+    assert.equal(after.localIntelligence.indexed, before.localIntelligence.indexed - 1);
+    assert.equal(after.vectorSync.pending, before.vectorSync.pending + 1);
+});
+
 test('relationship and retries require site authentication, retain CSRF and only touch the authenticated owner', async () => {
     const bcrypt = require('bcryptjs');
     db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(bcrypt.hashSync('local-test-password', 4), 'one');

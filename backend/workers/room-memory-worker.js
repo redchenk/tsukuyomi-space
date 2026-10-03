@@ -18,12 +18,16 @@ function backfill() {
     const rows = db.prepare('SELECT rowid AS cursor,* FROM room_memories WHERE rowid>? ORDER BY rowid LIMIT 12').all(cursor);
     db.transaction(() => {
         for (const row of rows) {
-            db.prepare("INSERT OR IGNORE INTO room_memory_jobs(id,kind,user_id,memory_id) VALUES(?,'index',?,?)").run('index:' + row.id, row.user_id, row.id);
-            const meta = JSON.parse(row.metadata || '{}');
+            const indexed = db.prepare('SELECT source_hash,model FROM room_memory_local_index WHERE memory_id=? AND user_id=?').get(row.id, row.user_id);
+            if (!indexed || indexed.model !== local.MODEL || indexed.source_hash !== local.sourceHash(row)) {
+                db.prepare("INSERT OR IGNORE INTO room_memory_jobs(id,kind,user_id,memory_id) VALUES(?,'index',?,?)").run('index:' + row.id, row.user_id, row.id);
+            }
+            let meta = {};
+            try { meta = JSON.parse(row.metadata || '{}'); } catch {}
             if (meta.sourceKind !== 'chat-turn-auto' || !meta.sourceTurnId || !meta.sourceRevision) continue;
             const existing = db.prepare('SELECT 1 FROM room_turn_analysis WHERE user_id=? AND turn_id=?').get(row.user_id, meta.sourceTurnId);
             if (existing) continue;
-            const group = db.prepare("SELECT * FROM room_memories WHERE user_id=? AND json_extract(metadata,'$.sourceTurnId')=? AND json_extract(metadata,'$.sourceRevision')=? ORDER BY json_extract(metadata,'$.fragmentIndex') LIMIT 32")
+            const group = db.prepare("SELECT * FROM room_memories WHERE user_id=? AND json_extract(CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END,'$.sourceTurnId')=? AND json_extract(CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END,'$.sourceRevision')=? ORDER BY json_extract(CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END,'$.fragmentIndex') LIMIT 32")
                 .all(row.user_id, meta.sourceTurnId, meta.sourceRevision);
             const content = group.map(item => item.content).join('');
             const text = content.match(/^用户：[\s\S]*?(?=八千代：)/)?.[0]?.slice(3).trim();
@@ -115,7 +119,9 @@ async function main() {
     while (!stopping) {
         await tick().catch(error => console.warn(JSON.stringify({ component: 'room-local-worker', code: error.code === 'SQLITE_BUSY' ? 'SQLITE_BUSY' : 'WORKER_TICK_FAILED' })));
         const queued = db.prepare("SELECT 1 FROM room_memory_jobs WHERE state='pending' AND available_at<? LIMIT 1").get(Date.now());
-        await sleep(queued && resourceGate().allowed ? 500 : 15000);
+        // Drain existing work without an arbitrary half-second pause. CPU
+        // quota, nice priority and the reserve gate remain the hard bounds.
+        await sleep(queued && resourceGate().allowed ? 50 : 15000);
     }
 }
 if (require.main === module) main().catch(() => { console.error('LOCAL_WORKER_START_FAILED'); process.exitCode = 1; });

@@ -1254,6 +1254,10 @@ function memoryStats(userId) {
         WHERE user_id = ?
         GROUP BY memory_type
     `).all(userId);
+    const localIndexed = localIntelligence.enabled ? db.prepare(`SELECT COUNT(*) AS count FROM room_memory_local_index i
+        JOIN room_memories m ON m.id=i.memory_id WHERE i.user_id=? AND i.model=?
+        AND NOT EXISTS(SELECT 1 FROM room_memory_jobs j WHERE j.memory_id=i.memory_id)`)
+        .get(userId, localIntelligence.MODEL).count : 0;
     const vectorStore = localIntelligence.enabled ? { enabled: true, backend: 'sqlite-vec', model: localIntelligence.MODEL } : milvusStore.status();
     const vectorSync = vectorStore.enabled
         ? db.prepare(`
@@ -1277,7 +1281,7 @@ function memoryStats(userId) {
         mem0: mem0Store.status(),
         ...(localIntelligence.enabled ? { localIntelligence: {
             embedding: localIntelligence.MODEL,
-            indexed: db.prepare('SELECT COUNT(*) AS count FROM room_memory_local_index WHERE user_id=?').get(userId).count,
+            indexed: localIndexed,
             pending: db.prepare("SELECT COUNT(*) AS count FROM room_memory_jobs WHERE user_id=? AND state IN ('pending','running')").get(userId).count,
             failed: db.prepare("SELECT COUNT(*) AS count FROM room_memory_jobs WHERE user_id=? AND state='failed'").get(userId).count,
             analysisFailed: db.prepare("SELECT COUNT(*) AS count FROM room_turn_analysis WHERE user_id=? AND state='failed'").get(userId).count,
@@ -1285,7 +1289,7 @@ function memoryStats(userId) {
         } } : {}),
         embedding: embeddingStatus(),
         vectorSync: {
-            pending: localIntelligence.enabled ? stats.count - db.prepare('SELECT COUNT(*) AS count FROM room_memory_local_index WHERE user_id=?').get(userId).count : Number(vectorSync.pending || 0),
+            pending: localIntelligence.enabled ? Math.max(0, stats.count - localIndexed) : Number(vectorSync.pending || 0),
             failed: localIntelligence.enabled ? db.prepare("SELECT COUNT(*) AS count FROM room_memory_jobs WHERE user_id=? AND state='failed'").get(userId).count : Number(vectorSync.failed || 0),
             pendingDeletions: Number(pendingDeletions || 0),
             lastSyncedAt: vectorSync.lastSyncedAt || ''
