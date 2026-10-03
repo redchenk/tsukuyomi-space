@@ -26,6 +26,7 @@ FRONTEND_PROTECTED = ('assets/music', 'assets/video', 'assets/audio', 'assets/up
                       'lib', 'models', 'models-v3', 'models-v4', 'live2d-core.js',
                       'live2d-studio', 'game-assets', 'game-runtime')
 CODE_DIRS = ('backend', 'shared', 'src', 'scripts', 'tests', 'deploy', 'docs', '.github', 'live2d-studio')
+SOURCE_STYLE_DIR = 'assets/css/vue'
 CODE_FILES = ('package.json', 'package-lock.json', 'Dockerfile', '.dockerignore', '.gitignore',
               '.gitattributes', '.env.example', '.env.docker.example', '.env.overseas',
               'docker-compose.yml', 'docker-compose.resources.example.yml',
@@ -60,7 +61,10 @@ def beneath(name, roots):
 
 
 def code_path(name):
-    return not beneath(name, PROTECTED) and (name in CODE_FILES or beneath(name, CODE_DIRS))
+    # These tracked stylesheet sources are compiled into the local frontend
+    # artifact. Music, uploads, models and other assets remain protected.
+    return (beneath(name, (SOURCE_STYLE_DIR,)) and name.endswith('.css')) or (
+        not beneath(name, PROTECTED) and (name in CODE_FILES or beneath(name, CODE_DIRS)))
 
 
 def changed_paths(root, before, after):
@@ -174,9 +178,10 @@ def resource_manifest(root, site, extra=()):
             return
         info = path.lstat()
         item = {'mode': stat.S_IMODE(info.st_mode), 'uid': info.st_uid, 'gid': info.st_gid}
-        # Uploads can change while the application is serving users. Protect the
-        # deployment boundary and directory identity, not live user data hashes.
-        if name == 'assets/uploads':
+        # Uploads can change during service; tracked Vue styles are released as
+        # source code. Protect their directory identity, rather than recording
+        # live upload hashes or treating a source edit as a media change.
+        if name in ('assets/uploads', SOURCE_STYLE_DIR):
             item['link'] = os.readlink(path) if path.is_symlink() else None
             result[name] = item
             return

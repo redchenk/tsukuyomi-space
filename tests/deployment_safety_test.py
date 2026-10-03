@@ -117,6 +117,24 @@ class DeploymentSafetyTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'migration release'):
             release.check_git(self.root, self.before, 'HEAD')
 
+    def test_vue_stylesheet_sources_can_release_and_rollback_without_touching_media(self):
+        name = 'assets/css/vue/pages/terminal-workspace.css'
+        self.write(self.root / name, 'old styles')
+        self.git('add', name)
+        self.git('commit', '-qm', 'stylesheet source')
+        self.before = self.git('rev-parse', 'HEAD').decode().strip()
+        self.write(self.root / name, 'new styles')
+        state = self.prepare()
+        original = release.resource_manifest(self.root, 'domestic')
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+            self.assertEqual((self.root / name).read_text(), 'new styles')
+            release.rollback(state)
+        self.assertEqual((self.root / name).read_text(), 'old styles')
+        self.assertEqual(original, release.resource_manifest(self.root, 'domestic'))
+        self.assertFalse(release.code_path('assets/css/vue/model.moc3'))
+        self.assertFalse(release.code_path('assets/music/song.css'))
+
     def test_conflicting_server_edit_is_not_discarded(self):
         state = self.prepare()
         self.write(self.root / 'backend/hotfix.js', 'new operator edit')
