@@ -268,6 +268,8 @@ function go(path) {
           <p><strong>{{ noticePrefixes.update }}</strong>{{ t.realityNoticeUpdate }}</p>
         </div>
         <div class="reality-source-note">
+          <p v-if="isEnglish">Local semantic memory uses <a href="https://huggingface.co/BAAI/bge-small-zh-v1.5" target="_blank" rel="noopener noreferrer">BGE</a>, <a href="https://github.com/microsoft/onnxruntime" target="_blank" rel="noopener noreferrer">ONNX Runtime</a> and <a href="https://github.com/asg017/sqlite-vec" target="_blank" rel="noopener noreferrer">sqlite-vec</a>. Vectors and evidence scoring stay on the server. Relationship progress is a fictional interaction record; your selected chat provider still generates replies.</p>
+          <p v-else-if="!isJa">本地语义记忆感谢 <a href="https://huggingface.co/BAAI/bge-small-zh-v1.5" target="_blank" rel="noopener noreferrer">BGE</a>、<a href="https://github.com/microsoft/onnxruntime" target="_blank" rel="noopener noreferrer">ONNX Runtime</a> 与 <a href="https://github.com/asg017/sqlite-vec" target="_blank" rel="noopener noreferrer">sqlite-vec</a>。向量和证据评分仅在服务器本地计算。好感度是角色互动记录，聊天回复仍由你配置的模型生成。</p>
           <p v-if="isEnglish">
             <strong>Long-term memory — thank you:</strong> Room embeds the open-source <a href="https://github.com/mem0ai/mem0" target="_blank" rel="noopener noreferrer">Mem0</a> SDK (Apache-2.0). Signed-in chat memories and the retrieval index are stored privately on this site's server; relevant excerpts are sent to your selected chat model. We do not use Mem0's cloud service. Guest memories stay in this browser. You can disable, edit or delete memories in Room Settings.
           </p>

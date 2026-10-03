@@ -665,6 +665,23 @@ router.post('/chat/import', authenticateToken, (req, res) => {
     }
 });
 
+router.get('/relationship', authenticateToken, (req, res) => {
+    setNoStore(res);
+    res.json({ success: true, data: require('../services/room-local-analysis').relationship(req.user.id) });
+});
+
+router.post('/memory/local/retry', authenticateToken, (req, res) => {
+    setNoStore(res);
+    if (!require('../services/room-local-client').enabled) return res.status(409).json({ success: false, message: '本地语义服务未启用' });
+    const db = require('../db');
+    const result = db.transaction(() => {
+        const indexed = db.prepare("UPDATE room_memory_jobs SET state='pending',attempts=0,available_at=0,lease_until=0,error_code='' WHERE id IN (SELECT id FROM room_memory_jobs WHERE user_id=? AND state='failed' LIMIT 100)").run(req.user.id).changes;
+        const analyzed = db.prepare("UPDATE room_turn_analysis SET state='pending',attempts=0,available_at=0,lease_until=0,error_code='' WHERE rowid IN (SELECT rowid FROM room_turn_analysis WHERE user_id=? AND state='failed' LIMIT 20)").run(req.user.id).changes;
+        return { indexed, analyzed };
+    })();
+    res.json({ success: true, data: result });
+});
+
 router.post('/chat/turn', authenticateToken, (req, res) => {
     try {
         const turnId = normalizeTurnId(req.body?.turnId);
@@ -859,12 +876,18 @@ async function sendMemoryStatus(req, res) {
         failed: 1,
         error: error.message
     }));
+    const stats = roomMemory.memoryStats(req.user.id);
+    if (stats.localIntelligence) {
+        try {
+            stats.localIntelligence.ready = (await require('../services/room-local-client').request('/health', {}, 350)).ready === true;
+        } catch { stats.localIntelligence.ready = false; }
+    }
     res.json({
         success: true,
         data: {
             mode: 'server-vector',
             scope: 'per-user',
-            ...roomMemory.memoryStats(req.user.id),
+            ...stats,
             sync
         }
     });

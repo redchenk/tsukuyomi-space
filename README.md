@@ -88,7 +88,8 @@ curl http://127.0.0.1:3280/api/health
 | `MAIL_CREDENTIAL_KEY` | 聚合邮箱凭据加密密钥，建议独立生成并保持稳定 |
 | `DATA_DIR` / `DB_PATH` | SQLite 持久化路径；Docker 默认使用 `/data` |
 | `REDIS_URL` | 可选，用于验证码、限流、天气缓存及 token 黑名单 |
-| `ROOM_MEMORY_BACKEND` | 默认 `mem0`，项目内嵌 Mem0 开源 SDK + 本机 SQLite；`sqlite` 可切换到兜底检索 |
+| `ROOM_MEMORY_BACKEND` | 默认 `mem0`，项目内嵌 Mem0 开源 SDK；未启用本地语义服务时使用旧 SQLite 检索 |
+| `ROOM_LOCAL_INTELLIGENCE` | `true` 启用项目内置 BGE 中文语义向量、SQLite 向量库、证据评分与好感度；先安装受内存限制的本地运行时，详见 [部署说明](docs/room-local-intelligence.md) |
 | `ROOM_MEM0_DB_PATH` | Mem0 索引文件，默认与主数据库同目录的 `room-mem0.db` |
 
 完整配置见 [`.env.example`](.env.example) 与 [`.env.docker.example`](.env.docker.example)。真实环境文件、密码和 API Key 不应提交到仓库。
@@ -264,7 +265,7 @@ VITE_SITE_LANGUAGE=en npm run build:web
 
 ## 技术与素材来源
 
-- 感谢 [Mem0](https://github.com/mem0ai/mem0)（Apache-2.0）提供开源长期记忆能力。Room 将 `mem0ai/oss` 直接封装进后端，使用本站 SQLite 索引、账号隔离检索及原文片段注入；未使用 Mem0 云服务。默认使用本地特征哈希与关键词检索，可选远程 embedding；访客使用浏览器 IndexedDB。详见 [长期记忆说明](docs/room-memory.md)。
+- 感谢 [Mem0](https://github.com/mem0ai/mem0)（Apache-2.0）、[BGE](https://huggingface.co/BAAI/bge-small-zh-v1.5)（MIT）、[ONNX Runtime](https://github.com/microsoft/onnxruntime)（MIT）与 [sqlite-vec](https://github.com/asg017/sqlite-vec)（MIT/Apache-2.0）。Room 内嵌 Mem0 SDK，使用账号隔离的本地中文语义向量和 SQLite 索引，并保留原话证据；不使用 Mem0 云服务。未安装语义运行时的开发环境仍可使用旧检索；访客使用 IndexedDB。详见 [本地语义记忆与好感度](docs/room-local-intelligence.md)。
 
 - 本站的无刷新平滑切页、Markdown 编辑增强和图片渐显加载等部分前端技术，参考了 [LyraVoid/Shirone](https://github.com/LyraVoid/Shirone)；原项目的代码与许可证信息请以其仓库说明为准。
 - Agent OS 页面音乐 App 的技术实现来源于 [firefly20041001/Yachiyo](https://github.com/firefly20041001/yachiyo)，原项目采用 Electron、React、TypeScript，并以 Apache-2.0 许可证发布。

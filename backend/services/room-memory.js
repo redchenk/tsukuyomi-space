@@ -11,6 +11,7 @@ const {
 } = require('./room-embedding');
 const milvusStore = require('./room-milvus-store');
 const mem0Store = require('./room-mem0');
+const localIntelligence = require('./room-local-client');
 const { lexicalScore, memoryExcerpt, searchTerms } = require('../../shared/room-memory-retrieval.cjs');
 
 const MAX_MEMORY_CONTENT_LENGTH = Math.max(4000, Number.parseInt(process.env.ROOM_MEMORY_CONTENT_LIMIT || '12000', 10) || 12000);
@@ -174,21 +175,30 @@ function captureChatTurn(userId, { turnId, userMessage, assistantMessage, opener
     const insert = db.prepare(`INSERT OR IGNORE INTO room_memories
         (id, user_id, memory_type, summary, content, embedding, importance, metadata)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-    return fragments.flatMap((part, index) => {
+    const ids = fragments.flatMap((part, index) => {
         const id = `turn-${crypto.createHash('sha256').update(JSON.stringify([userId, turnId, revision, index])).digest('hex')}`;
         const metadata = memoryEmbeddingMetadata({ source: 'chat-archive', sourceKind: 'chat-turn-auto',
             sourceTurnId: turnId, sourceRevision: revision, fragmentIndex: index + 1, fragmentCount: fragments.length,
-            tags: extractTags(userMessage, type), confidence: 1 }, {
+            tags: extractTags(userMessage, type), confidence: localIntelligence.enabled ? 0.5 : 1,
+            ...(localIntelligence.enabled ? { analysis: { state: 'pending' } } : {}) }, {
             provider: 'local', model: LOCAL_EMBEDDING_VERSION, version: LOCAL_EMBEDDING_VERSION
         });
         const result = insert.run(id, userId, type, part.slice(0, 280), part, JSON.stringify(createEmbedding(part)),
             estimateImportance(userMessage), JSON.stringify(metadata));
         return result.changes ? [id] : [];
     });
+    require('./room-local-analysis').enqueueTurn(userId, { turnId, userMessage, assistantMessage }, ids);
+    return ids;
 }
 
-function ownedMemoryRows(userId) {
-    return db.prepare('SELECT * FROM room_memories WHERE user_id = ? ORDER BY updated_at DESC, rowid DESC').all(userId);
+function ownedMemoryRows(userId, ids) {
+    if (localIntelligence.enabled && Array.isArray(ids)) {
+        return [...new Set(ids)].slice(0, 60).flatMap(id => {
+            const row = db.prepare('SELECT * FROM room_memories WHERE user_id=? AND id=?').get(userId, id);
+            return row ? [row] : [];
+        });
+    }
+    return db.prepare(`SELECT * FROM room_memories WHERE user_id = ? ORDER BY updated_at DESC, rowid DESC ${localIntelligence.enabled ? 'LIMIT 120' : ''}`).all(userId);
 }
 
 function reconcileMem0(userId) {
@@ -200,24 +210,36 @@ async function retrieveChatMemories(userId, query, limit = 6, { sourceOnly = fal
     const safeLimit = Math.max(1, Math.min(12, Number(limit) || 6));
     const expanded = `${query}\n${searchTerms(query).join(' ')}`;
     const index = sourceOnly ? { results: [], backend: 'sqlite', fallback: true, reason: 'source_requested' }
-        : await mem0Store.search(userId, expanded, () => ownedMemoryRows(userId), Math.max(20, safeLimit * 4));
+        : await mem0Store.search(userId, expanded, ids => ownedMemoryRows(userId, ids), Math.max(20, safeLimit * 4));
     const semantic = new Map(index.results.map(item => [item.id, item.score]));
+    const semanticChunks = new Map(index.results.map(item => [item.id, item.context]));
     const queryVector = createEmbedding(expanded);
-    const rows = ownedMemoryRows(userId);
+    const rows = localIntelligence.enabled ? [...new Map([...ownedMemoryRows(userId), ...ownedMemoryRows(userId, index.results.map(item => item.id))].map(row => [row.id, row])).values()] : ownedMemoryRows(userId);
     let ranked = rows.map(row => {
         const lexical = lexicalScore(query, row.content);
-        const vector = similarity(queryVector, createEmbedding(row.content));
-        const score = Math.min(1, lexical * 3) * 0.75 + Math.max(0, vector) * 0.1 + Math.min(1, semantic.get(row.id) || 0) * 0.15;
+        const vector = localIntelligence.enabled ? 0 : similarity(queryVector, createEmbedding(row.content));
+        const metadata = parseJson(row.metadata, {});
+        const score = localIntelligence.enabled
+            ? (semantic.get(row.id) || 0) * 0.70 + Math.min(1, lexical * 3) * 0.16 + Number(row.importance || 0) * 0.08 + Number(metadata.confidence || 0.5) * 0.06
+            : Math.min(1, lexical * 3) * 0.75 + Math.max(0, vector) * 0.1 + Math.min(1, semantic.get(row.id) || 0) * 0.15;
         return { row, score, lexical };
-    }).filter(item => item.lexical > 0 || (embeddingStatus().configuredProvider === 'remote' && (semantic.get(item.row.id) || 0) >= 0.5))
+    }).filter(item => item.lexical > 0 || (localIntelligence.enabled && (semantic.get(item.row.id) || 0) >= 0.25)
+        || (embeddingStatus().configuredProvider === 'remote' && (semantic.get(item.row.id) || 0) >= 0.5))
         .sort((a, b) => b.score - a.score || String(b.row.updated_at).localeCompare(String(a.row.updated_at)))
         .slice(0, safeLimit);
     const recentFallback = index.fallback && !ranked.length && rows.length > 0;
     if (recentFallback) ranked = rows.slice(0, safeLimit).map(row => ({ row, score: 0 }));
     touchMemories(userId, ranked.map(item => item.row.id));
     return {
-        memories: ranked.map(({ row, score }) => ({ ...toPublicMemory(row, score),
-            context: memoryExcerpt(row.content, query), source: index.backend })),
+        memories: ranked.flatMap(({ row, score }) => {
+            const facts = localIntelligence.enabled ? db.prepare('SELECT quote,active FROM room_memory_facts WHERE memory_id=? AND user_id=?').all(row.id, userId) : [];
+            // An old singleton identity remains in the archive, but must not
+            // overwrite a later correction in the actual prompt.
+            if (facts.length && !facts.some(fact => fact.active)) return [];
+            const context = facts.length ? facts.filter(fact => fact.active).map(fact => fact.quote).join('\n')
+                : semanticChunks.get(row.id) || memoryExcerpt(row.content, query);
+            return [{ ...toPublicMemory(row, score), context, source: index.backend }];
+        }),
         retrieval: { backend: index.backend, fallback: index.fallback, count: ranked.length,
             ...(index.reason ? { reason: index.reason } : {}), ...(recentFallback ? { selection: 'recent' } : {}) }
     };
@@ -302,6 +324,7 @@ function buildMemoryCandidate(payload = {}) {
 }
 
 async function extractMemoryCandidatesWithLLM(payload = {}) {
+    if (localIntelligence.enabled) return [];
     if (!LLM_EXTRACTOR_ENABLED || !process.env.LLM_API_KEY) return [];
     const userMessage = cleanText(payload.userMessage || '', 4000);
     const assistantReply = cleanText(payload.assistantReply || '', 8000);
@@ -446,6 +469,7 @@ function markVectorSync(userId, id, synced, error = '') {
 }
 
 async function syncMemoryRow(userId, row) {
+    if (localIntelligence.enabled) return { synced: false, skipped: true, backend: 'local-background' };
     if (!milvusStore.status().enabled) return { synced: false, skipped: true };
     const synced = await milvusStore.upsertUserMemory({
         id: row.id,
@@ -516,6 +540,7 @@ async function flushPendingVectorDeletions(userId, limit = 100) {
 }
 
 async function syncPendingUserMemories(userId, { limit = 50, force = false } = {}) {
+    if (localIntelligence.enabled) return { enabled: true, backend: 'local-background', attempted: 0, synced: 0, failed: 0 };
     const scopedUserId = requireUserId(userId);
     const vectorStatus = milvusStore.status();
     if (!vectorStatus.enabled) {
@@ -843,6 +868,7 @@ function searchSqliteMemories(userId, query, vector, limit = 5, { touch = true }
 }
 
 async function searchMemories(userId, query, limit = 5) {
+    if (localIntelligence.enabled) return (await retrieveChatMemories(userId, query, Math.min(12, Number(limit) || 5))).memories;
     userId = requireUserId(userId);
     const safeLimit = Math.max(1, Math.min(20, Number(limit) || 5));
     const vector = await createMemoryEmbedding(query);
@@ -1161,6 +1187,10 @@ async function updateMemory(userId, id, payload = {}) {
     delete oldMetadata.sourceKind;
     delete oldMetadata.sourceTurnId;
     delete oldMetadata.sourceRevision;
+    if (localIntelligence.enabled) {
+        oldMetadata.analysis = { state: 'manual', version: 'user-edit' };
+        db.prepare('DELETE FROM room_memory_facts WHERE memory_id=? AND user_id=?').run(id, userId);
+    }
     // Commit the edit before any remote embedding await. Otherwise a turn
     // replacement can retire this row while the user's PATCH is in flight.
     // Vector sync will upgrade the local embedding when configured.
@@ -1224,7 +1254,7 @@ function memoryStats(userId) {
         WHERE user_id = ?
         GROUP BY memory_type
     `).all(userId);
-    const vectorStore = milvusStore.status();
+    const vectorStore = localIntelligence.enabled ? { enabled: true, backend: 'sqlite-vec', model: localIntelligence.MODEL } : milvusStore.status();
     const vectorSync = vectorStore.enabled
         ? db.prepare(`
             SELECT
@@ -1235,7 +1265,7 @@ function memoryStats(userId) {
             WHERE user_id = ?
         `).get(userId)
         : { pending: 0, failed: 0, lastSyncedAt: null };
-    const pendingDeletions = vectorStore.enabled
+    const pendingDeletions = !localIntelligence.enabled && vectorStore.enabled
         ? db.prepare('SELECT COUNT(*) AS count FROM room_memory_vector_deletions WHERE user_id = ?').get(userId).count
         : 0;
     return {
@@ -1245,10 +1275,18 @@ function memoryStats(userId) {
         maxContentLength: MAX_MEMORY_CONTENT_LENGTH,
         vectorStore,
         mem0: mem0Store.status(),
+        ...(localIntelligence.enabled ? { localIntelligence: {
+            embedding: localIntelligence.MODEL,
+            indexed: db.prepare('SELECT COUNT(*) AS count FROM room_memory_local_index WHERE user_id=?').get(userId).count,
+            pending: db.prepare("SELECT COUNT(*) AS count FROM room_memory_jobs WHERE user_id=? AND state IN ('pending','running')").get(userId).count,
+            failed: db.prepare("SELECT COUNT(*) AS count FROM room_memory_jobs WHERE user_id=? AND state='failed'").get(userId).count,
+            analysisFailed: db.prepare("SELECT COUNT(*) AS count FROM room_turn_analysis WHERE user_id=? AND state='failed'").get(userId).count,
+            relationship: require('./room-local-analysis').relationship(userId)
+        } } : {}),
         embedding: embeddingStatus(),
         vectorSync: {
-            pending: Number(vectorSync.pending || 0),
-            failed: Number(vectorSync.failed || 0),
+            pending: localIntelligence.enabled ? stats.count - db.prepare('SELECT COUNT(*) AS count FROM room_memory_local_index WHERE user_id=?').get(userId).count : Number(vectorSync.pending || 0),
+            failed: localIntelligence.enabled ? db.prepare("SELECT COUNT(*) AS count FROM room_memory_jobs WHERE user_id=? AND state='failed'").get(userId).count : Number(vectorSync.failed || 0),
             pendingDeletions: Number(pendingDeletions || 0),
             lastSyncedAt: vectorSync.lastSyncedAt || ''
         },

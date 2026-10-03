@@ -100,6 +100,7 @@ async function sync(userId, getRows, indexNew = true, deadline = Infinity) {
 }
 
 async function search(userId, query, getRows, limit = 20) {
+    if (require('./room-local-client').enabled) return require('./room-local-mem0').search(userId, query, getRows, limit);
     if (!enabled) return { results: [], backend: 'sqlite', fallback: true };
     const fallback = reason => ({ results: [], backend: 'sqlite', fallback: true, reason });
     // Timed-out SDK work may still be finishing. Do not queue more searches
@@ -139,6 +140,9 @@ async function search(userId, query, getRows, limit = 20) {
 }
 
 function reconcile(userId, getRows) {
+    // Durable SQLite triggers schedule semantic replacement/deletion. Never
+    // load a model or await index catch-up in an interactive request.
+    if (require('./room-local-client').enabled) return Promise.resolve();
     if (!enabled) return Promise.resolve();
     // Editing/deletion retires stale index text immediately; embedding new text
     // is deferred to retrieval so an offline remote embedder cannot block edits.
@@ -149,6 +153,7 @@ function reconcile(userId, getRows) {
 }
 
 function status() {
+    if (require('./room-local-client').enabled) return { enabled: true, backend: 'mem0-local-semantic', storage: 'sqlite-vec', mode: 'local-evidence', model: require('./room-local-client').MODEL };
     return { enabled, backend: enabled ? 'mem0' : 'sqlite', initialized, storage: 'local-sqlite', mode: 'verbatim', lastError, lastSyncedAt };
 }
 

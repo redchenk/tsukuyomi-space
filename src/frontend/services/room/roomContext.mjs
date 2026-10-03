@@ -12,6 +12,7 @@ const SOURCES = [
   { key: 'time', limit: 220, itemLimit: 220 },
   { key: 'environment', limit: 600, itemLimit: 600 },
   { key: 'memories', limit: 3_000, itemLimit: 850 },
+  { key: 'relationship', limit: 300, itemLimit: 300 },
   { key: 'knowledge', limit: 2_400, itemLimit: 700 },
   { key: 'toolResults', limit: 1_200, itemLimit: 900 },
   { key: 'personaMemories', limit: 900, itemLimit: 320 },

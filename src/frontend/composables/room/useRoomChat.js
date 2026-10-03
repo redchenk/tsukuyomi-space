@@ -989,11 +989,12 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
   const mcpSettings = readJson('roomMCPSettings', {});
   const knowledgeEnabled = readJson('roomKnowledgeSettings', null)?.enabled !== false;
   const toolResults = [];
-  const [siteText, personaMemories, memoryResult, growthState] = await Promise.all([
+  const [siteText, personaMemories, memoryResult, growthState, relationshipState] = await Promise.all([
     fetchSiteFeedContext(signal),
     knowledgeEnabled ? fetchPersonaMemories(message, signal).catch(() => []) : [],
     fetchRelevantMemories(message, signal),
-    loadGrowth().catch(() => null)
+    loadGrowth().catch(() => null),
+    fetchRelationship(signal)
   ]);
 
   if (mcpSettings.enabled && mcpSettings.endpoint) {
@@ -1018,9 +1019,26 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
     memories: memoryResult.data.map((item) => ({ id: item.id || item.memoryId || 'memory', content: `[${item.createdAt || '历史聊天'}] ${item.context || item.content || item.summary || ''}` })),
     personaMemories: personaMemories.map((item) => ({ id: item.id || item.memoryId || 'persona', content: item.summary || item.content || '' })),
     growth: growthContext(growthState),
+    relationship: relationshipState?.enabled ? `角色互动进度：${relationshipState.stage}，${relationshipState.score}/1000。这是互动记录，不是真人情感。保持八千代原作身份和个性，语气可以随熟悉程度自然亲近；不要主动播报分数，也不要因用户缺席、悲伤或拒绝而责备。` : '',
     site: siteText
   }, { maxChars: isOllamaApi(llmSettings.apiUrl) ? 4_000 : 8_000 });
   return { ...packed, retrieval: memoryResult.retrieval };
+}
+
+async function fetchRelationship(signal) {
+  const accountId = getSession()?.user?.id;
+  if (!accountId || usesLocalRoomMemory() || readJson('roomMemorySettings', {}).enabled === false) return null;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) controller.abort();
+  const timer = setTimeout(abort, 1200);
+  try {
+    const response = await authFetch(noStoreUrl('/api/room/relationship'), { headers: authHeaders(), signal: controller.signal });
+    const result = await parseResponse(response);
+    return response.ok && result.success && getSession()?.user?.id === accountId ? result.data : null;
+  } catch { return null; }
+  finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
 }
 
 export function useRoomChat({ live2d, world, diary = null }) {

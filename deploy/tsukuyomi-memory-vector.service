@@ -1,0 +1,33 @@
+[Unit]
+Description=Private Room semantic embedding and SQLite vector service
+After=local-fs.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+User=tsukuyomi
+Group=www-data
+Slice=tsukuyomi-memory.slice
+EnvironmentFile=/etc/tsukuyomi-space/tsukuyomi-space.env
+RuntimeDirectory=tsukuyomi-memory
+RuntimeDirectoryMode=0700
+WorkingDirectory=/var/www/tsukuyomi-space
+ExecStart=/var/lib/tsukuyomi-space/local-memory/venv/bin/python backend/local-memory/vector_service.py
+Restart=on-failure
+RestartSec=30
+MemoryHigh=320M
+MemoryMax=448M
+MemorySwapMax=0
+OOMScoreAdjust=800
+Nice=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tsukuyomi-space/local-memory /run/tsukuyomi-memory
+RestrictAddressFamilies=AF_UNIX
+TasksMax=24
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

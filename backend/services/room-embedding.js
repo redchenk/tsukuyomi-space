@@ -58,6 +58,7 @@ function embeddingConfig() {
 }
 
 async function createRemoteEmbedding(text) {
+    if (require('./room-local-client').enabled) return null;
     const { apiUrl, apiKey, model } = embeddingConfig();
     if (!apiUrl || !apiKey || typeof fetch !== 'function') return null;
 
@@ -122,6 +123,8 @@ async function createMemoryEmbeddingDetailed(text) {
 }
 
 function embeddingStatus() {
+    if (require('./room-local-client').enabled) return { configuredProvider: 'local-neural', configuredModel: require('./room-local-client').MODEL,
+        activeProvider: 'local-neural', activeModel: require('./room-local-client').MODEL, dimension: 512, indexing: 'background', sourceEmbedding: LOCAL_EMBEDDING_VERSION };
     const config = embeddingConfig();
     return {
         configuredProvider: config.apiUrl && config.apiKey ? 'remote' : 'local',

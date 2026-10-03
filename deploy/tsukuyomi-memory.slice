@@ -1,0 +1,12 @@
+[Unit]
+Description=Bounded local Room intelligence (website runs outside this slice)
+
+[Slice]
+MemoryAccounting=yes
+MemoryHigh=512M
+MemoryMax=640M
+MemorySwapMax=0
+CPUAccounting=yes
+CPUQuota=75%
+CPUWeight=10
+TasksMax=96

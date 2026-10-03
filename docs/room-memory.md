@@ -1,5 +1,7 @@
 # Room 长期记忆 / Long-term memory
 
+生产部署已提供项目内置的本地语义向量与证据评分方案，开启 `ROOM_LOCAL_INTELLIGENCE=true` 后使用 BGE + ONNX Runtime + sqlite-vec 的账号分区，取代下述旧特征哈希索引。聊天模型不变，记忆计算不调用外部模型。详见 [本地语义记忆与好感度](room-local-intelligence.md)；本文件中的特征哈希、同步入库和远程 embedding 描述仅适用于未开启新方案的兼容模式。
+
 感谢 [Mem0](https://github.com/mem0ai/mem0) 开源项目（Apache-2.0）。本项目使用固定版本 `mem0ai@3.3.0` 的 `mem0ai/oss`，封装入口为 `backend/services/room-mem0.js`。随 `npm ci` 安装并在 Node 进程中运行，无需另搭 Python 服务、向量数据库或申请 Mem0 云端账号。
 
 ## 保存、检索与注入

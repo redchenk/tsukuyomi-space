@@ -1,0 +1,33 @@
+[Unit]
+Description=Durable and resource-gated Room memory jobs
+After=tsukuyomi-memory-vector.service
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+User=tsukuyomi
+Group=www-data
+Slice=tsukuyomi-memory.slice
+EnvironmentFile=/etc/tsukuyomi-space/tsukuyomi-space.env
+WorkingDirectory=/var/www/tsukuyomi-space
+ExecStart=/usr/bin/node --max-old-space-size=96 backend/workers/room-memory-worker.js
+Restart=on-failure
+RestartSec=30
+MemoryHigh=112M
+MemoryMax=160M
+MemorySwapMax=0
+OOMScoreAdjust=800
+Nice=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tsukuyomi-space /run/tsukuyomi-memory
+RestrictAddressFamilies=AF_INET AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+TasksMax=24
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

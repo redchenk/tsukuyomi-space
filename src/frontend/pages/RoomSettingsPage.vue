@@ -172,7 +172,7 @@ let memoryCountRequestId = 0;
 let memoryChoiceRequestId = 0;
 let memoryImportController = null;
 let memoryPageDisposed = false;
-const memoryVector = reactive({ backend: '', enabled: false, pending: 0, failed: 0, embedding: '' });
+const memoryVector = reactive({ backend: '', enabled: false, pending: 0, failed: 0, embedding: '', local: null });
 const storedUser = ref(readStoredUser());
 const memorySourceMode = ref(readMemorySource(storedUser.value?.id || '').mode);
 const memoryChoice = reactive({ visible: false, loading: false, pending: false, guestRows: [], localCount: 0, cloudCount: null, fingerprint: '', error: '', progress: '' });
@@ -408,6 +408,7 @@ const recommendedModelText = computed(() => {
 const memoryModeLabel = computed(() => canUseServerMemory.value ? '服务端私有记忆' : '本地浏览器记忆');
 const memoryVectorLabel = computed(() => {
   if (!canUseServerMemory.value) return '本地记忆';
+  if (memoryVector.local) return `${memoryVector.local.ready ? '本地语义向量' : '语义服务暂不可用 · 原文检索兜底'} · ${memoryVector.local.indexed} 条已索引${memoryVector.pending ? ` · ${memoryVector.pending} 条待处理` : ''}`;
   if (memoryVector.mem0?.enabled) return memoryVector.mem0.lastError ? 'Mem0 暂不可用 · 本地检索兜底' : 'Mem0 本机持久化检索';
   if (!memoryVector.enabled) return 'SQLite 向量检索';
   if (memoryVector.failed) return `Milvus ${memoryVector.failed} 条同步失败`;
@@ -1312,9 +1313,10 @@ async function loadMemoryCount() {
       memoryVector.failed = Number(result.data?.vectorSync?.failed || 0);
       memoryVector.embedding = result.data?.embedding?.activeModel || '';
       memoryVector.mem0 = result.data?.mem0 || null;
+      memoryVector.local = result.data?.localIntelligence || null;
       return;
     }
-    Object.assign(memoryVector, { backend: '', enabled: false, pending: 0, failed: 0, embedding: '', mem0: null });
+    Object.assign(memoryVector, { backend: '', enabled: false, pending: 0, failed: 0, embedding: '', mem0: null, local: null });
     db = await openMemoryDb();
     if (!db) return;
     requireMemoryIdentity(identity);
@@ -1327,6 +1329,19 @@ async function loadMemoryCount() {
   } catch (_) {
     if (requestId === memoryCountRequestId && identity === memoryIdentity()) memoryCount.value = 0;
   } finally { db?.close(); }
+}
+
+async function retryLocalMemory() {
+  const identity = memoryIdentity();
+  if (!canUseServerMemory.value) return;
+  try {
+    const response = await authFetch('/api/room/memory/local/retry', { method: 'POST', headers: memoryAuthHeaders() });
+    const result = await parseResponse(response);
+    requireMemoryIdentity(identity);
+    if (!response.ok || !result.success) throw new Error(result.message || '重试失败');
+    await loadMemoryCount();
+    showToast('已将失败任务重新加入后台队列');
+  } catch { showToast('暂时无法重新处理，请稍后再试', 'error'); }
 }
 
 async function loadServerMemories({ append = false } = {}) {
@@ -3118,6 +3133,23 @@ onBeforeUnmount(() => {
             <h3>记忆管理</h3>
             <span class="settings-badge">{{ memoryCount }} 条记忆</span>
           </div>
+          <div v-if="memoryVector.local" class="settings-note local-memory-status">
+            <TsIcon name="sparkles" :size="18" />
+            <div>
+              <strong>{{ memoryVectorLabel }}</strong>
+              <p>向量与对话分析只在服务器本地执行。后台繁忙时使用已有记忆检索，聊天保存不等待模型。</p>
+              <p>{{ memoryVector.local.relationship.stage }} · 好感度 {{ memoryVector.local.relationship.score }}/1000
+                <span v-if="memoryVector.local.relationship.pending"> · {{ memoryVector.local.relationship.pending }} 轮待分析</span></p>
+              <small>这是角色互动进度。重复刷屏不加分，缺席、悲伤和拒绝不扣分；每天最多增长 10 点。</small>
+              <p v-if="memoryVector.local.analysisFailed">{{ memoryVector.local.analysisFailed }} 轮分析暂未完成，评分与互动进度可能尚未更新。可重新处理失败任务。</p>
+              <details v-if="memoryVector.local.relationship.records.length">
+                <summary>最近互动记录</summary>
+                <p v-for="(record,index) in memoryVector.local.relationship.records" :key="index">{{ record.reason }} · +{{ record.delta }} · {{ new Date(record.createdAt.endsWith('Z') ? record.createdAt : `${record.createdAt}Z`).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai'}) }}</p>
+              </details>
+              <button type="button" class="ghost-btn" @click="loadMemoryCount">刷新处理状态</button>
+              <button v-if="memoryVector.failed || memoryVector.local.analysisFailed" type="button" class="ghost-btn" @click="retryLocalMemory">重新处理失败任务</button>
+            </div>
+          </div>
           <div class="memory-manager-body" :aria-busy="memoryLoading">
             <div class="memory-toolbar">
               <input
@@ -3281,6 +3313,11 @@ onBeforeUnmount(() => {
                   >
                 </div>
                 <strong>{{ item.summary }}</strong>
+                <small v-if="item.metadata?.analysis" class="field-hint">{{ ({pending:'等待本地分析', complete:'已根据对话证据分析', manual:'使用手动评分'}[item.metadata.analysis.state] || '本地分析') }}</small>
+                <details v-if="item.metadata?.analysis?.evidence?.length" class="field-hint">
+                  <summary>评分依据</summary>
+                  <p v-for="(fact,index) in item.metadata.analysis.evidence" :key="index">{{ ({identity:'身份信息', safety:'健康与安全', preference:'长期偏好', commitment:'计划与约定', temporary:'临时情况', casual:'日常交流'}[fact.reason] || '对话证据') }}：{{ fact.quote }}（{{ ({explicit:'直接陈述', correction:'明确更正', tentative:'尚不确定', hypothetical:'假设或引述', quoted:'第三方引述'}[fact.modality] || '证据') }}）</p>
+                </details>
                 <button
                   class="memory-expand-btn"
                   type="button"

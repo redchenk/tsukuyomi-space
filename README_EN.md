@@ -257,7 +257,7 @@ If Tsukuyomi Space has been useful to you, you can support its server, object-st
 
 ## Technology and asset credits
 
-- Thanks to [Mem0](https://github.com/mem0ai/mem0) (Apache-2.0) for its open-source memory system. Room embeds `mem0ai/oss` in the backend with a local SQLite index, account-scoped retrieval and full-source excerpts. No separate Mem0 service or cloud key is needed. Local feature hashing and keyword search are the default; remote embeddings are optional. Guests use IndexedDB. See [Room memory](docs/room-memory.md).
+- Thanks to [Mem0](https://github.com/mem0ai/mem0) (Apache-2.0), [BGE](https://huggingface.co/BAAI/bge-small-zh-v1.5) (MIT), [ONNX Runtime](https://github.com/microsoft/onnxruntime) (MIT) and [sqlite-vec](https://github.com/asg017/sqlite-vec) (MIT/Apache-2.0). Room embeds the Mem0 SDK with local semantic vectors, account-partitioned SQLite retrieval and original evidence. Enable the bundled, resource-limited runtime for semantic scoring and relationship progress; unconfigured environments retain legacy retrieval. Guests use IndexedDB. No Mem0 cloud key is needed. See [local intelligence](docs/room-local-intelligence.md).
 
 - Parts of the frontend, including seamless client-side navigation, Markdown editing enhancements, and progressive image loading, were informed by [LyraVoid/Shirone](https://github.com/LyraVoid/Shirone). Refer to that repository for its code and license details.
 - The music app implementation on the Agent OS page is based on [firefly20041001/Yachiyo](https://github.com/firefly20041001/yachiyo), an Electron, React, and TypeScript project released under Apache-2.0.

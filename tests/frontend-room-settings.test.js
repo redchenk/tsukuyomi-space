@@ -174,7 +174,7 @@ test('a delayed archive import cannot write into a different account', async () 
 test('chat context reads the saved knowledge switch on every turn, never diary archives', async () => {
   let enabled = true;
   let corpusCalls = 0;
-  const ctx = { URL, console,
+  const ctx = { URL, console, getSession: () => null,
     isEnglishSite: () => false,
     readJson: (key, fallback) => key === 'roomKnowledgeSettings' ? { enabled, entries: [{ title: '当前知识', content: '已保存的修改' }] } : fallback,
     readDiaryArchive: () => { throw new Error('Live chat must not read diary content'); },
