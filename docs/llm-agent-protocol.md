@@ -50,8 +50,8 @@ npm run build:web
 npm run build:web:overseas
 ```
 
-测试包括四种模型线路、碎片化 UTF-8 / 参数、usage 尾帧、Opaque reasoning / thinking 签名、截断与超大响应、响应正文停滞、错误 / 重复工具、超限和取消、JSON / SSE MCP 握手、RPC ID 不符、错误版本、stdio 提前退出和错误脱敏。浏览器测试验证「模型调用工具→结果回传→最终气泡→刷新恢复」和失败结果不泄露到历史。本次完整回归 703 项与 8 项浏览器测试通过，国内 / 海外构建通过。测试使用模拟服务，不消耗用户 API 配额；真实服务仍须具有工具调用能力与适当 CORS / 网络配置。
+测试包括四种模型线路、碎片化 UTF-8 / 参数、usage 尾帧、Opaque reasoning / thinking 签名、截断与超大响应、响应正文停滞、错误 / 重复工具、超限和取消、JSON / SSE MCP 握手、RPC ID 不符、错误版本、stdio 提前退出和错误脱敏。浏览器测试验证「模型调用工具→结果回传→最终气泡→刷新恢复」和失败结果不泄露到历史。本次协议完整回归 703 项与 8 项浏览器测试通过，国内 / 海外构建通过；补建 emoji 分片另有 10 项本地记忆回归通过。测试使用模拟服务，不消耗用户 API 配额；真实服务仍须具有工具调用能力与适当 CORS / 网络配置。
 
-部署不新增依赖、环境变量、数据迁移或常驻服务。前端在本地构建；服务端使用现有受限内存代码发布流程，保留所有 Live2D / 音乐 / 上传资源和无关本地修改。回滚使用该次 release state 的 `safe-release.py rollback --state ...`；本次没有数据库结构变更。历史记忆索引与分析仍由原 worker 分批执行，沿用 SQLite 游标、低内存暂停和 640 MiB slice 限制；本次不重置任务或重启该 worker。
+部署不新增依赖、环境变量、数据迁移或常驻服务。前端在本地构建；服务端使用现有受限内存代码发布流程，保留所有 Live2D / 音乐 / 上传资源和无关本地修改。回滚使用该次 release state 的 `safe-release.py rollback --state ...`；本次没有数据库结构变更。历史记忆索引与分析仍由原 worker 分批执行，沿用 SQLite 游标、低内存暂停和 640 MiB slice 限制；本次修复了 UTF-16 分片切断 emoji 导致分词失败的问题，worker 短暂重载后按原游标继续；仅重新排入受此问题影响的失败任务，不重建现有索引。
 
 协议依据：[OpenAI 工具调用](https://developers.openai.com/api/docs/guides/function-calling)、[Responses reasoning](https://developers.openai.com/api/docs/guides/reasoning)、[MCP Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)。

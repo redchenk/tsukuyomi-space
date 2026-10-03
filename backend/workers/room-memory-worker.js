@@ -3,6 +3,7 @@ const db = require('../db');
 const local = require('../services/room-local-client');
 const mem0 = require('../services/room-local-mem0');
 const analysis = require('../services/room-local-analysis');
+const { unicodeSlice } = require('../../shared/unicode-slice.cjs');
 let stopping = false;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -71,7 +72,7 @@ async function processAnalysis(job) {
     const stillOwned = ids.some(id => db.prepare('SELECT 1 FROM room_memories WHERE id=? AND user_id=?').get(id, job.user_id));
     if (!stillOwned) { db.prepare("UPDATE room_turn_analysis SET state='cancelled',user_text='',evidence='[]' WHERE user_id=? AND turn_id=? AND revision=?").run(job.user_id, job.turn_id, job.revision); return; }
     const start = job.window_cursor;
-    const text = job.user_text.slice(start, start + 600);
+    const text = unicodeSlice(job.user_text, start, start + 600);
     const evidence = await analysis.analyze(text);
     if (start + 600 < job.user_text.length) {
         const accumulated = [...JSON.parse(job.evidence), evidence];

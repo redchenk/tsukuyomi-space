@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const local = require('./room-local-client');
+const { unicodeSlice } = require('../../shared/unicode-slice.cjs');
 let instance;
 let inFlight = 0;
 
@@ -65,7 +66,7 @@ async function search(userId, query, getRows, limit) {
     inFlight++;
     try {
         const sdk = memory();
-        const embedding = await sdk.embedder.embed(query.slice(0, 700), 'search');
+        const embedding = await sdk.embedder.embed(unicodeSlice(query, 0, 700), 'search');
         // Room performs its own relevance/evidence ranking. Use Mem0's native
         // vector contract directly: no unused entity graph, duplicate hybrid
         // reranking, extra embedding work, or graph-provider fallback.
@@ -87,7 +88,7 @@ async function search(userId, query, getRows, limit) {
 async function index(row) {
     const hash = local.sourceHash(row);
     const chunks = [];
-    for (let offset = 0; offset < row.content.length; offset += 350) chunks.push(row.content.slice(offset, offset + 400));
+    for (let offset = 0; offset < row.content.length; offset += 350) chunks.push(unicodeSlice(row.content, offset, offset + 400));
     let facts = [];
     try { facts = JSON.parse(row.metadata || '{}').analysis?.evidence || []; } catch {}
     for (const fact of facts.filter(item => item.confidence >= 0.5)) {

@@ -37,6 +37,25 @@ after(() => { db.close(); fs.rmSync(directory, { recursive: true, force: true })
 const save = (turnId, text, assistant = '收到。') => memory.captureChatTurn('one', { turnId, userMessage: text, assistantMessage: assistant });
 const evidence = (quote, attribute = 'preference', importance = 'preference') => ({ facts: [{ quote, attribute, modality: 'explicit', importance }], relationship: 'none', relationshipQuote: '' });
 
+test('long emoji-bearing memories index every overlapping window without sending broken surrogate pairs', async () => {
+    const { unicodeSlice } = require('../shared/unicode-slice.cjs');
+    const original = local.request;
+    const content = 'x'.repeat(399) + '😀' + 'x'.repeat(7998) + '😭' + 'x'.repeat(3600);
+    const bad = text => Array.from(text).some(char => char.length === 1 && char.charCodeAt(0) >= 0xd800 && char.charCodeAt(0) <= 0xdfff);
+    const embedded = [];
+    local.request = async (route, body) => {
+        if (route === '/embed') { assert.equal(bad(body.text), false); assert.ok(body.text.length <= 400); embedded.push(body.text); }
+        return original(route, body);
+    };
+    try {
+        await require('../backend/services/room-local-mem0').index({ id: 'emoji-long', user_id: 'one', content, summary: '', metadata: '{}', created_at: '2026-10-03' });
+        assert.equal(embedded.length, Math.ceil(content.length / 350));
+        assert.ok(embedded.some(text => text.includes('😀'))); assert.ok(embedded.some(text => text.includes('😭')));
+        assert.equal(bad(unicodeSlice('x'.repeat(599) + '😀', 0, 600)), false);
+        assert.equal(bad(unicodeSlice('x'.repeat(499) + '😀' + 'x'.repeat(599), 500, 1100)), false);
+    } finally { local.request = original; for (const [id, point] of records) if (point.payload.sourceId === 'emoji-long') records.delete(id); }
+});
+
 test('source, queue and evidence enqueue share the caller transaction and save is idempotent', () => {
     assert.throws(() => db.transaction(() => { save('rollback', '我喜欢阅读科幻小说。'); throw new Error('rollback'); })());
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM room_memories').get().n, 0);
