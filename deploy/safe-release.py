@@ -7,6 +7,7 @@ Only Python's standard library is required, including on the overseas frontend h
 import argparse
 import fcntl
 import hashlib
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
@@ -373,6 +374,33 @@ def fetch(state, path):
     return run([*args, state['base_url'].rstrip('/') + path])
 
 
+def frontend_entry_references(html):
+    class Entries(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.in_head = False
+            self.references = []
+
+        def handle_starttag(self, tag, attrs):
+            values = dict(attrs)
+            if tag == 'head':
+                self.in_head = True
+            if not self.in_head:
+                return
+            if tag == 'script' and values.get('type') == 'module' and values.get('src'):
+                self.references.append(values['src'])
+            if tag == 'link' and values.get('rel') in ('stylesheet', 'modulepreload') and values.get('href'):
+                self.references.append(values['href'])
+
+        def handle_endtag(self, tag):
+            if tag == 'head':
+                self.in_head = False
+
+    parser = Entries()
+    parser.feed(html.decode('utf-8'))
+    return sorted(parser.references)
+
+
 def verify(state, attempts=15):
     require(state['status'] in ('active', 'rolled_back'), 'Only an activated or rolled-back release can be verified')
     check_frontend_target(state)
@@ -384,12 +412,23 @@ def verify(state, attempts=15):
             health = json.loads(fetch(state, '/api/health'))
             require(health.get('status') == 'ok', 'API health response is not ok')
             html = fetch(state, '/?release-check=' + expected[:16])
-            require(hashlib.sha256(html).hexdigest() == expected, 'HTTP frontend entry is stale or incorrect')
+            if hashlib.sha256(html).hexdigest() != expected:
+                # Public documents may compose metadata and an inert noscript
+                # fallback around the unchanged app shell. Require the exact
+                # current module/style entry set rather than a full-body hash.
+                require(b'data-seo-fallback' in html and b'<noscript>' in html,
+                        'HTTP frontend entry is stale or incorrect')
+                current_entries = frontend_entry_references((Path(state['frontend_real']) / 'index.html').read_bytes())
+                require(current_entries and frontend_entry_references(html) == current_entries,
+                        'HTTP frontend resource entries are stale or incorrect')
             # Only hashed build assets live in frontend_real. Static icons/media
             # are served from the resource root (or an upstream on overseas).
             # Their local contents remain covered by verify_resources above.
-            references = [reference for reference in re.findall(rb'(?:src|href)="(/assets/[^"?]+)', html)
-                          if reference.count(b'/') == 2 and ASSET_NAME.fullmatch(reference.rsplit(b'/', 1)[1].decode())]
+            entries = frontend_entry_references(html)
+            if not entries and hashlib.sha256(html).hexdigest() == expected:
+                entries = [value.decode() for value in re.findall(rb'(?:src|href)="(/assets/[^"?]+)', html)]
+            references = [reference.encode() for reference in entries
+                          if reference.count('/') == 2 and ASSET_NAME.fullmatch(reference.rsplit('/', 1)[1])]
             require(references, 'Frontend has no built asset references')
             for reference in set(references):
                 name = reference.decode().lstrip('/')

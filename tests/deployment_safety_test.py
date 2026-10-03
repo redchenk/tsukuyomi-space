@@ -281,7 +281,23 @@ class DeploymentSafetyTest(unittest.TestCase):
         self.git('add', 'backend/hotfix.js')
         self.git('commit', '-qm', 'operator commit')
         with self.assertRaisesRegex(RuntimeError, 'newer server commit'):
-            release.rollback(state)
+                release.rollback(state)
+
+    def test_composed_public_documents_require_exact_current_resource_entries(self):
+        index = '<html><head><script type="module" src="/assets/main-new12345.js"></script></head><body><div id="app"></div></body></html>'
+        self.write(self.artifact / 'index.html', index)
+        state = self.prepare()
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+        composed = index.replace('<div id="app"></div>', '<div id="app"><noscript><h1 data-seo-fallback>Public content</h1><img src="/assets/public-other12345.png"></noscript></div>')
+        def page(state, path):
+            return composed.encode() if path.startswith('/?') else self.mock_fetch(state, path)
+        with patch.object(release, 'fetch', side_effect=page):
+            release.verify(state, attempts=1)
+        composed = composed.replace('main-new12345.js', 'main-old12345.js')
+        with patch.object(release, 'fetch', side_effect=page):
+            with self.assertRaisesRegex(RuntimeError, 'resource entries are stale'):
+                release.verify(state, attempts=1)
 
     def test_manually_updated_frontend_is_not_overwritten_by_rollback(self):
         state = self.prepare()
