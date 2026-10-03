@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
       </section>
 
       <section class="panel attachments-toolbar">
-        <input v-model="state.search" type="search" placeholder="搜索文件名、路径或备注" @keydown.enter="loadAssets(1)">
+        <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="attachments-page-state-search-query" v-model="state.search" type="search" placeholder="搜索文件名、路径或备注" @keydown.enter="loadAssets(1)">
         <select v-model="state.type" @change="loadAssets(1)">
           <option value="all">全部</option>
           <option value="image">图片</option>

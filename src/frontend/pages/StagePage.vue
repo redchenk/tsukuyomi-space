@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
     <div class="stage-controls">
       <div class="search-box">
         <TsIcon class="stage-search-icon" name="search" :size="17" />
-        <input v-model="stageSearch" type="search" :aria-label="t.searchPlaceholder" :placeholder="t.searchPlaceholder">
+        <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="stage-page-stagesearch-query" v-model="stageSearch" type="search" :aria-label="t.searchPlaceholder" :placeholder="t.searchPlaceholder">
       </div>
       <a href="/editor" class="stage-new-btn" @click="checkEditorAuth">
         <TsIcon name="penLine" :size="17" />

@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
             </nav>
             <div class="wiki-mobile-search">
               <label for="wiki-mobile-search"><TsIcon name="search" :size="15" /> 词条速查</label>
-              <input id="wiki-mobile-search" v-model="searchQuery" type="search" placeholder="角色、歌曲、术语…" autocomplete="off">
+              <input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="wiki-page-searchquery-query" id="wiki-mobile-search" v-model="searchQuery" type="search" placeholder="角色、歌曲、术语…" autocomplete="off">
               <span class="wiki-search-status" aria-live="polite">{{ normalizedSearch ? `找到 ${searchResults.length} 个词条` : '输入关键词开始查找' }}</span>
               <div v-if="normalizedSearch" class="wiki-search-results">
                 <RouterLink v-for="entry in searchResults.slice(0, 6)" :key="`mobile-search-${entry.id}`" :to="entry.route" @click="mobileToc.open = false">
@@ -312,7 +312,7 @@ onBeforeUnmount(() => {
 
             <div class="wiki-quick-search">
               <label for="wiki-search"><TsIcon name="search" :size="15" /> 词条速查</label>
-              <input id="wiki-search" v-model="searchQuery" type="search" placeholder="角色、歌曲、术语…" autocomplete="off">
+              <input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="wiki-page-searchquery-query" id="wiki-search" v-model="searchQuery" type="search" placeholder="角色、歌曲、术语…" autocomplete="off">
               <span class="wiki-search-status" aria-live="polite">{{ normalizedSearch ? `找到 ${searchResults.length} 个词条` : '显示推荐词条' }}</span>
               <div class="wiki-search-results">
                 <RouterLink v-for="entry in searchResults" :key="entry.id" :to="entry.route">

@@ -640,7 +640,7 @@ onUnmounted(() => {
           </div>
           <label class="plaza-search-wrap">
             <TsIcon name="search" :size="16" />
-            <input v-model="plaza.query" class="plaza-search" type="search" :aria-label="designCopy.search" :placeholder="designCopy.search">
+            <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="plaza-page-plaza-query-query" v-model="plaza.query" class="plaza-search" type="search" :aria-label="designCopy.search" :placeholder="designCopy.search">
           </label>
         </div>
         <div v-if="plaza.query" class="plaza-active-query"><span>{{ plaza.query }}</span><button class="ghost-btn" type="button" :aria-label="designCopy.clear" @click="clearPlazaSearch"><TsIcon name="x" :size="14" />{{ designCopy.clear }}</button></div>

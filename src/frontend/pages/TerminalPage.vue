@@ -870,8 +870,8 @@ onUnmounted(() => {
           <p>管理员安全工作区</p>
         </div>
         <div v-if="terminal.loginMessage" class="form-message error">{{ terminal.loginMessage }}</div>
-        <label>管理员账号<input v-model="terminal.login.username" autocomplete="username" required></label>
-        <label>密码<input v-model="terminal.login.password" type="password" autocomplete="current-password" required></label>
+        <label>管理员账号<input name="terminal-login-username" v-model="terminal.login.username" autocomplete="username" required></label>
+        <label>密码<input name="terminal-login-password" v-model="terminal.login.password" type="password" autocomplete="current-password" required></label>
         <button class="primary-btn" type="submit" :disabled="terminal.loading" :aria-busy="terminal.loading">{{ terminal.loading ? '连接中...' : '连接终端' }}</button>
         <StatusLoader v-if="terminal.loading" label="正在连接终端" compact />
       </form>
@@ -1002,10 +1002,10 @@ onUnmounted(() => {
               <span>总阅读 {{ terminal.articles.reduce((sum, item) => sum + Number(item.view_count || 0), 0) }}</span>
             </div>
             <div class="terminal-toolbar terminal-filter-toolbar">
-              <label class="terminal-search-field">
+              <form id="terminal-articles-search-form" class="terminal-search-field" role="search" autocomplete="off" @submit.prevent>
                 <TsIcon name="search" :size="16" aria-hidden="true" />
-                <input v-model="terminal.articleSearch" type="search" autocomplete="off" placeholder="搜索标题、分类或 ID">
-              </label>
+                <input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="terminal-page-terminal-articlesearch-query" v-model="terminal.articleSearch" type="search" autocomplete="off" placeholder="搜索标题、分类或 ID">
+              </form>
               <div class="terminal-segmented" aria-label="文章状态">
                 <button type="button" :class="{ active: terminal.articleStatusFilter === 'all' }" @click="terminal.articleStatusFilter = 'all'">全部</button>
                 <button type="button" :class="{ active: terminal.articleStatusFilter === 'published' }" @click="terminal.articleStatusFilter = 'published'">已发布</button>
@@ -1043,10 +1043,10 @@ onUnmounted(() => {
               <span>总留言 {{ terminal.messages.length }}</span>
             </div>
             <div class="terminal-toolbar terminal-filter-toolbar terminal-message-toolbar">
-              <label class="terminal-search-field">
+              <form id="terminal-messages-search-form" class="terminal-search-field" role="search" autocomplete="off" @submit.prevent>
                 <TsIcon name="search" :size="16" aria-hidden="true" />
-                <input v-model="terminal.messageSearch" type="search" autocomplete="off" placeholder="搜索作者、内容或文章">
-              </label>
+                <input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="terminal-page-terminal-messagesearch-query" v-model="terminal.messageSearch" type="search" autocomplete="off" placeholder="搜索作者、内容或文章">
+              </form>
               <div class="terminal-segmented" aria-label="留言状态">
                 <button type="button" :class="{ active: terminal.messageStatusFilter === 'all' }" @click="terminal.messageStatusFilter = 'all'">全部状态</button>
                 <button type="button" :class="{ active: terminal.messageStatusFilter === 'pending' }" @click="terminal.messageStatusFilter = 'pending'">待审核</button>
@@ -1113,7 +1113,7 @@ onUnmounted(() => {
 
           <div v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'users'">
             <div class="terminal-toolbar terminal-users-toolbar">
-              <label class="terminal-search-field">
+              <form id="terminal-users-search-form" class="terminal-search-field" role="search" autocomplete="off" @submit.prevent>
                 <TsIcon name="search" :size="16" aria-hidden="true" />
                 <input
                   v-model="terminal.userSearch"
@@ -1128,7 +1128,7 @@ onUnmounted(() => {
                   data-1p-ignore="true"
                   placeholder="搜索用户名、邮箱、角色或 ID"
                 >
-              </label>
+              </form>
               <label class="terminal-page-size">
                 <span>每页</span>
                 <select v-model.number="terminal.userPageSize">
@@ -1208,11 +1208,12 @@ onUnmounted(() => {
                 <strong>{{ terminal.admin?.username }}</strong>
                 <span class="terminal-badge ok">{{ terminal.admin?.role }}</span>
               </article>
-              <form class="terminal-card terminal-password-card" @submit.prevent="saveAdminPassword">
+              <form class="terminal-card terminal-password-card" autocomplete="on" @submit.prevent="saveAdminPassword">
+                <input type="hidden" name="username" :value="terminal.admin?.username" autocomplete="username">
                 <strong>修改管理员密码</strong>
-                <label>当前密码<input v-model="terminal.adminPassword.currentPassword" type="password" autocomplete="current-password" required></label>
-                <label>新密码<input v-model="terminal.adminPassword.newPassword" type="password" autocomplete="new-password" required></label>
-                <label>确认新密码<input v-model="terminal.adminPassword.confirmPassword" type="password" autocomplete="new-password" required></label>
+                <label>当前密码<input name="terminal-adminpassword-currentpassword" v-model="terminal.adminPassword.currentPassword" type="password" autocomplete="current-password" required></label>
+                <label>新密码<input name="terminal-adminpassword-newpassword" v-model="terminal.adminPassword.newPassword" type="password" autocomplete="new-password" required></label>
+                <label>确认新密码<input name="terminal-adminpassword-confirmpassword" v-model="terminal.adminPassword.confirmPassword" type="password" autocomplete="new-password" required></label>
                 <button class="primary-btn" type="submit">更新密码</button>
               </form>
             </div>
@@ -1230,10 +1231,10 @@ onUnmounted(() => {
               </div>
               <div class="terminal-link-create-fields">
                 <label>站点名称<input v-model.trim="terminal.newLink.name" type="text" minlength="2" maxlength="40" autocomplete="off" required></label>
-                <label>站点链接<input v-model.trim="terminal.newLink.url" type="url" maxlength="2048" inputmode="url" placeholder="https://" autocomplete="url" required></label>
-                <label>头像链接<input v-model.trim="terminal.newLink.avatar_url" type="url" maxlength="2048" inputmode="url" placeholder="留空自动获取" autocomplete="url"></label>
+                <label>站点链接<input name="terminal-newlink-url" v-model.trim="terminal.newLink.url" type="url" maxlength="2048" inputmode="url" placeholder="https://" autocomplete="url" required></label>
+                <label>头像链接<input name="terminal-newlink-avatar-url" v-model.trim="terminal.newLink.avatar_url" type="url" maxlength="2048" inputmode="url" placeholder="留空自动获取" autocomplete="url"></label>
                 <label>站点描述<input v-model.trim="terminal.newLink.description" type="text" minlength="6" maxlength="160" autocomplete="off" required></label>
-                <label>友链页<input v-model.trim="terminal.newLink.backlink_url" type="url" maxlength="2048" inputmode="url" placeholder="用于自动检查回链" autocomplete="url"></label>
+                <label>友链页<input name="terminal-newlink-backlink-url" v-model.trim="terminal.newLink.backlink_url" type="url" maxlength="2048" inputmode="url" placeholder="用于自动检查回链" autocomplete="url"></label>
                 <button class="primary-btn" type="submit" :disabled="terminal.linkCreating">
                   <TsIcon :name="terminal.linkCreating ? 'loader' : 'plus'" :size="16" />
                   {{ terminal.linkCreating ? '添加中' : '添加友链' }}
@@ -1326,7 +1327,7 @@ onUnmounted(() => {
             <div class="terminal-notification-actions"><button class="primary-btn" type="submit" :disabled="terminal.notificationSaving">{{ terminal.notificationSaving ? '保存中…' : '保存通知设置' }}</button></div>
           </form>
 
-          <form v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'settings'" class="terminal-settings" :aria-busy="terminal.ossTest.loading || terminal.ossImport.loading || terminal.ossImport.scanning" @submit.prevent="saveSettings">
+          <form v-show="!terminal.loading && !terminal.loadError && terminal.activePanel === 'settings'" class="terminal-settings" autocomplete="off" :aria-busy="terminal.ossTest.loading || terminal.ossImport.loading || terminal.ossImport.scanning" @submit.prevent="saveSettings">
             <div class="terminal-settings-block terminal-settings-grid">
               <div class="terminal-settings-title">
                 <strong>基础信息</strong>
@@ -1400,8 +1401,8 @@ onUnmounted(() => {
                   <option value="timestamp">时间戳 + UUID</option>
                 </select>
               </label>
-              <label>AccessKey ID<input v-model="terminal.settings.ossAccessKeyId" autocomplete="off"></label>
-              <label>AccessKey Secret<input v-model="terminal.settings.ossAccessKeySecret" type="password" autocomplete="new-password"></label>
+              <label>AccessKey ID<input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="oss-access-key-id" v-model="terminal.settings.ossAccessKeyId" autocomplete="off"></label>
+              <label>AccessKey Secret<input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="oss-access-key-secret" v-model="terminal.settings.ossAccessKeySecret" type="password" autocomplete="off"></label>
               <label class="terminal-check"><input v-model="terminal.settings.ossForcePathStyle" type="checkbox"> 使用路径风格访问</label>
               <div class="terminal-oss-actions">
                 <button class="primary-btn" type="submit">保存对象存储设置</button>

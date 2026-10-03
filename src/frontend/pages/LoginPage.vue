@@ -508,7 +508,7 @@ onMounted(() => {
                 <label for="qqBindEmail">绑定邮箱</label>
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="mail" :size="18" />
-                  <input id="qqBindEmail" v-model="oauth.email" required type="email" autocomplete="email" placeholder="请输入要绑定的邮箱">
+                  <input name="qqBindEmail" id="qqBindEmail" v-model="oauth.email" required type="email" autocomplete="email" placeholder="请输入要绑定的邮箱">
                 </div>
               </div>
               <div class="form-group">
@@ -516,7 +516,7 @@ onMounted(() => {
                 <div class="code-row">
                   <div class="auth-input-shell">
                     <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
-                    <input id="qqEmailBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                    <input autocomplete="one-time-code" name="qqEmailBindCode" id="qqEmailBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                   </div>
                   <button class="code-btn" type="button" :disabled="oauth.sending.loading" :aria-busy="oauth.sending.loading" @click="sendOAuthEmailCode">
                     <TsIcon v-if="oauth.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
@@ -528,7 +528,7 @@ onMounted(() => {
                 <label for="qqEmailPassword">{{ t.setLoginPassword }}</label>
                 <div class="auth-input-shell has-action">
                   <TsIcon class="auth-field-icon" name="lock" :size="18" />
-                  <input id="qqEmailPassword" v-model="oauth.newPassword" required minlength="8" maxlength="128" :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.newPasswordPh" autocomplete="new-password">
+                  <input name="qqEmailPassword" id="qqEmailPassword" v-model="oauth.newPassword" required minlength="8" maxlength="128" :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.newPasswordPh" autocomplete="new-password">
                   <button class="auth-password-toggle" type="button" :aria-label="showOAuthPassword ? t.hidePassword : t.showPassword" :aria-pressed="showOAuthPassword" @click="showOAuthPassword = !showOAuthPassword">
                     <TsIcon :name="showOAuthPassword ? 'eyeOff' : 'eye'" :size="18" />
                   </button>
@@ -538,7 +538,7 @@ onMounted(() => {
                 <label for="qqEmailPasswordConfirm">{{ t.confirmPassword }}</label>
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="shield" :size="18" />
-                  <input id="qqEmailPasswordConfirm" v-model="oauth.confirmPassword" required minlength="8" maxlength="128" :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
+                  <input name="qqEmailPasswordConfirm" id="qqEmailPasswordConfirm" v-model="oauth.confirmPassword" required minlength="8" maxlength="128" :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
                 </div>
               </div>
               <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定邮箱并进入' }}</button>
@@ -555,7 +555,7 @@ onMounted(() => {
                   <label for="qqCreateUsername">用户名</label>
                   <div class="auth-input-shell">
                     <TsIcon class="auth-field-icon" name="user" :size="18" />
-                    <input id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于登录与主页链接，注册后不可修改">
+                    <input name="qqCreateUsername" id="qqCreateUsername" v-model="oauth.createUsername" required maxlength="24" autocomplete="username" placeholder="用于登录与主页链接，注册后不可修改">
                   </div>
                 </div>
                 <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '一键开通并进入' }}</button>
@@ -570,14 +570,14 @@ onMounted(() => {
                   <label for="qqBindAccount">{{ t.account }}</label>
                   <div class="auth-input-shell">
                     <TsIcon class="auth-field-icon" name="user" :size="18" />
-                    <input id="qqBindAccount" v-model="oauth.identity" required :placeholder="oauth.bindMethod === 'code' ? t.emailPh : t.accountPh" autocomplete="username">
+                    <input name="qqBindAccount" id="qqBindAccount" v-model="oauth.identity" required :placeholder="oauth.bindMethod === 'code' ? t.emailPh : t.accountPh" :autocomplete="oauth.bindMethod === 'code' ? 'email' : 'username'">
                   </div>
                 </div>
                 <div v-if="oauth.bindMethod === 'password'" class="form-group">
                   <label for="qqBindPassword">{{ t.password }}</label>
                   <div class="auth-input-shell has-action">
                     <TsIcon class="auth-field-icon" name="lock" :size="18" />
-                    <input id="qqBindPassword" v-model="oauth.password" required :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
+                    <input name="qqBindPassword" id="qqBindPassword" v-model="oauth.password" required :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
                     <button class="auth-password-toggle" type="button" :aria-pressed="showOAuthPassword" @click="showOAuthPassword = !showOAuthPassword">
                       <TsIcon :name="showOAuthPassword ? 'eyeOff' : 'eye'" :size="18" />
                     </button>
@@ -588,7 +588,7 @@ onMounted(() => {
                   <div class="code-row">
                     <div class="auth-input-shell">
                       <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
-                      <input id="qqBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                      <input autocomplete="one-time-code" name="qqBindCode" id="qqBindCode" v-model="oauth.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                     </div>
                     <button class="code-btn" type="button" :disabled="oauth.sending.loading" :aria-busy="oauth.sending.loading" @click="sendOAuthBindCode">
                       <TsIcon v-if="oauth.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
@@ -619,7 +619,7 @@ onMounted(() => {
               <label for="forgotEmail">{{ t.email }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="mail" :size="18" />
-                <input id="forgotEmail" v-model="forgot.email" required type="email" autocomplete="email" :placeholder="t.emailPh">
+                <input name="forgotEmail" id="forgotEmail" v-model="forgot.email" required type="email" autocomplete="email" :placeholder="t.emailPh">
               </div>
             </div>
             <div class="form-group">
@@ -627,7 +627,7 @@ onMounted(() => {
               <div class="code-row">
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
-                  <input id="forgotCode" v-model="forgot.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                  <input autocomplete="one-time-code" name="forgotCode" id="forgotCode" v-model="forgot.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                 </div>
                 <button class="code-btn" type="button" :disabled="forgot.sending.loading" :aria-busy="forgot.sending.loading" @click="sendForgotCode">
                   <TsIcon v-if="forgot.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
@@ -639,7 +639,7 @@ onMounted(() => {
               <label for="forgotNewPassword">{{ t.newPassword }}</label>
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
-                <input id="forgotNewPassword" v-model="forgot.newPassword" required minlength="8" maxlength="128" :type="showForgotPassword ? 'text' : 'password'" :placeholder="t.newPasswordPh" autocomplete="new-password">
+                <input name="forgotNewPassword" id="forgotNewPassword" v-model="forgot.newPassword" required minlength="8" maxlength="128" :type="showForgotPassword ? 'text' : 'password'" :placeholder="t.newPasswordPh" autocomplete="new-password">
                 <button class="auth-password-toggle" type="button" :aria-label="showForgotPassword ? t.hidePassword : t.showPassword" :aria-pressed="showForgotPassword" @click="showForgotPassword = !showForgotPassword">
                   <TsIcon :name="showForgotPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
@@ -649,7 +649,7 @@ onMounted(() => {
               <label for="forgotConfirmPassword">{{ t.confirmPassword }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="shield" :size="18" />
-                <input id="forgotConfirmPassword" v-model="forgot.confirmPassword" required minlength="8" maxlength="128" :type="showForgotPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
+                <input name="forgotConfirmPassword" id="forgotConfirmPassword" v-model="forgot.confirmPassword" required minlength="8" maxlength="128" :type="showForgotPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
               </div>
             </div>
             <button class="primary-btn" type="submit" :disabled="forgot.submitting" :aria-busy="forgot.submitting">{{ t.resetAndLogin }}</button>
@@ -666,14 +666,14 @@ onMounted(() => {
               <label for="loginAccount">{{ t.account }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="user" :size="18" />
-                <input id="loginAccount" v-model="login.username" required :placeholder="loginPlaceholder" autocomplete="username">
+                <input name="loginAccount" id="loginAccount" v-model="login.username" required :placeholder="loginPlaceholder" :autocomplete="login.method === 'code' ? 'email' : 'username'">
               </div>
             </div>
             <div v-if="login.method === 'password'" class="form-group">
               <label for="loginPassword">{{ t.password }}</label>
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
-                <input id="loginPassword" v-model="login.password" required :type="showLoginPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
+                <input name="loginPassword" id="loginPassword" v-model="login.password" required :type="showLoginPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="current-password">
                 <button class="auth-password-toggle" type="button" :aria-pressed="showLoginPassword" @click="showLoginPassword = !showLoginPassword">
                   <TsIcon :name="showLoginPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
@@ -690,7 +690,7 @@ onMounted(() => {
               <div class="code-row">
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
-                  <input id="loginCode" v-model="login.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                  <input autocomplete="one-time-code" name="loginCode" id="loginCode" v-model="login.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
                 </div>
                 <button class="code-btn" type="button" :disabled="login.sending.loading" :aria-busy="login.sending.loading" @click="sendCode">
                   <TsIcon v-if="login.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />

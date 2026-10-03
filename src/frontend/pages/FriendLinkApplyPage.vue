@@ -294,11 +294,11 @@ watch(() => form.avatar_url, () => {
           <div class="friend-link-field-grid">
             <label class="friend-link-field">
               <span>{{ copy.name }}</span>
-              <input v-model="form.name" type="text" maxlength="40" minlength="2" autocomplete="organization" :placeholder="copy.namePlaceholder" required>
+              <input name="form-name" v-model="form.name" type="text" maxlength="40" minlength="2" autocomplete="organization" :placeholder="copy.namePlaceholder" required>
             </label>
             <label class="friend-link-field">
               <span>{{ copy.url }}</span>
-              <input v-model="form.url" type="url" maxlength="2048" inputmode="url" autocomplete="url" :placeholder="copy.urlPlaceholder" required>
+              <input name="form-url" v-model="form.url" type="url" maxlength="2048" inputmode="url" autocomplete="url" :placeholder="copy.urlPlaceholder" required>
             </label>
           </div>
 

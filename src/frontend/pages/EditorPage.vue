@@ -713,7 +713,7 @@ watch(currentArticleId, initEditor);
               <button class="ghost-btn" type="button" @click="closeAssetPicker">关闭</button>
             </header>
             <div class="editor-asset-tools">
-              <input v-model="editor.assetPicker.search" type="search" placeholder="搜索附件" @keydown.enter="loadAssetPicker">
+              <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="editor-page-editor-assetpicker-search-query" v-model="editor.assetPicker.search" type="search" placeholder="搜索附件" @keydown.enter="loadAssetPicker">
               <button class="ghost-btn" type="button" @click="loadAssetPicker">搜索</button>
               <button class="primary-btn" type="button" :disabled="editor.assetPicker.uploading" :aria-busy="editor.assetPicker.uploading" @click="editorAssetUploadInput?.click()">
                 {{ editor.assetPicker.uploading ? '上传中...' : '上传附件' }}

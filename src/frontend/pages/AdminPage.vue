@@ -381,7 +381,7 @@ onUnmounted(() => {
       <div class="admin-toolbar">
         <label class="admin-search">
           <TsIcon name="search" :size="17" />
-          <input v-model="state.search" type="search" autocomplete="off" placeholder="搜索" aria-label="搜索当前内容" @input="scheduleSearch">
+          <input autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="admin-page-state-search-query" v-model="state.search" type="search" autocomplete="off" placeholder="搜索" aria-label="搜索当前内容" @input="scheduleSearch">
         </label>
         <div class="admin-toolbar-actions">
           <template v-if="state.active === 'articles'">

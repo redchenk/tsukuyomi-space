@@ -12,10 +12,11 @@ for (const [width, account] of [[1280, 'nickname-own-desktop'], [390, 'nickname-
         await expect(page).toHaveURL(/\/hub$/);
         await page.goto('/user-center');
         await expect(page.locator('#ucNickname')).toBeEnabled();
-        await expect(page.locator('#ucUsername')).toHaveValue(account);
-        await expect(page.locator('#ucUsername')).toBeDisabled();
-        await expect(page.locator('#ucUserId')).toHaveValue(account);
-        await expect(page.locator('#ucUserId')).toBeDisabled();
+        await page.locator('.uc-account-information summary').click();
+        const accountInfo = page.locator('.uc-account-information');
+        await expect(accountInfo.locator('dd').nth(0)).toContainText(account);
+        await expect(accountInfo.locator('dd').nth(1)).toHaveText(account);
+        await expect(accountInfo.locator('input')).toHaveCount(0);
 
         const nickname = `🌙 月下旅人 ${width}`;
         await page.locator('#ucNickname').fill(`  ${nickname}  `);
@@ -28,7 +29,8 @@ for (const [width, account] of [[1280, 'nickname-own-desktop'], [390, 'nickname-
         expect(session.data.nickname).toBe(nickname);
         await page.reload();
         await expect(page.locator('#ucNickname')).toHaveValue(nickname);
-        await expect(page.locator('#ucUsername')).toHaveValue(account);
+        await page.locator('.uc-account-information summary').click();
+        await expect(accountInfo.locator('dd').nth(0)).toContainText(account);
 
         await page.getByRole('button', { name: '账号菜单', exact: true }).click();
         await expect(page.locator('.site-account-greeting')).toHaveText(nickname);

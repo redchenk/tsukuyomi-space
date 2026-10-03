@@ -839,7 +839,7 @@ onUnmounted(() => {
 
       <section class="uc-layout">
         <aside class="panel uc-tabs-panel">
-          <label class="uc-navigation-search"><TsIcon name="search" :size="16" /><input v-model="ucNavigationQuery" type="search" :aria-label="ucCopy.search" :placeholder="ucCopy.search"></label>
+          <form id="uc-search-form" class="uc-navigation-search" role="search" autocomplete="off" @submit.prevent><TsIcon name="search" :size="16" /><input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="user-center-page-ucnavigationquery-query" v-model="ucNavigationQuery" type="search" :aria-label="ucCopy.search" :placeholder="ucCopy.search"></form>
           <nav class="uc-tabs" :aria-label="ucCopy.navigation">
             <section v-for="group in ucFilteredNavigation" :key="group.label" class="uc-nav-group">
               <h2>{{ group.label }}</h2>
@@ -867,12 +867,12 @@ onUnmounted(() => {
             <div class="form-grid">
               <div class="form-group">
                 <label for="ucNickname">{{ t.ucNickname }}</label>
-                <input id="ucNickname" v-model="uc.profileNickname" type="text" autocomplete="nickname" :disabled="uc.profileSaving" required aria-describedby="ucNicknameHint">
+                <input id="ucNickname" name="nickname" v-model="uc.profileNickname" type="text" autocomplete="nickname" :disabled="uc.profileSaving" required aria-describedby="ucNicknameHint">
                 <div id="ucNicknameHint" class="help-text">{{ t.ucNicknameHint }}</div>
               </div>
               <div class="form-group">
                 <label for="ucBio">{{ t.ucBio }}</label>
-                <textarea id="ucBio" v-model="uc.profileBio" class="uc-profile-bio" maxlength="300" :disabled="uc.profileSaving" :placeholder="t.ucBioPlaceholder" aria-describedby="ucBioCount"></textarea>
+                <textarea id="ucBio" v-model="uc.profileBio" class="uc-profile-bio" autocomplete="off" maxlength="300" :disabled="uc.profileSaving" :placeholder="t.ucBioPlaceholder" aria-describedby="ucBioCount"></textarea>
                 <div id="ucBioCount" class="help-text uc-character-count">{{ uc.profileBio.length || 0 }} / 300</div>
               </div>
               <div class="uc-profile-footer">
@@ -897,7 +897,7 @@ onUnmounted(() => {
             <div class="uc-section-head">
               <h2 class="uc-section-title">{{ t.ucArticlesTab }}</h2>
               <div class="uc-article-tools">
-                <input v-model="uc.articleQuery" class="uc-search" type="search" :aria-label="t.ucSearchArticles" :placeholder="t.ucSearchArticles">
+                <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="user-center-page-uc-articlequery-query" form="uc-search-form" v-model="uc.articleQuery" class="uc-search" type="search" :aria-label="t.ucSearchArticles" :placeholder="t.ucSearchArticles">
                 <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.articleLoading" :aria-busy="uc.articleLoading" @click="ucLoadArticles">
                   <TsIcon name="refresh" :size="17" />
                   <span>{{ ucCopy.refreshArticles }}</span>
@@ -955,7 +955,7 @@ onUnmounted(() => {
             <div class="uc-section-head">
               <h2 class="uc-section-title">{{ ucCopy.bookmarks }}</h2>
               <div class="uc-article-tools">
-                <input v-model="uc.bookmarkQuery" class="uc-search" type="search" :aria-label="ucCopy.bookmarks" placeholder="搜索收藏文章">
+                <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="user-center-page-uc-bookmarkquery-query" form="uc-search-form" v-model="uc.bookmarkQuery" class="uc-search" type="search" :aria-label="ucCopy.bookmarks" placeholder="搜索收藏文章">
                 <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.bookmarkLoading" :aria-busy="uc.bookmarkLoading" @click="ucLoadBookmarks">
                   <TsIcon name="refresh" :size="17" />
                   <span>&#21047;&#26032;</span>
@@ -997,7 +997,7 @@ onUnmounted(() => {
             <div class="uc-section-head">
               <h2 class="uc-section-title">{{ ucCopy.messages }}</h2>
               <div class="uc-article-tools">
-                <input v-model="uc.messageQuery" class="uc-search" type="search" :aria-label="ucCopy.messages" placeholder="搜索留言">
+                <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="user-center-page-uc-messagequery-query" form="uc-search-form" v-model="uc.messageQuery" class="uc-search" type="search" :aria-label="ucCopy.messages" placeholder="搜索留言">
                 <button class="ghost-btn uc-icon-action" type="button" :disabled="uc.messageLoading" :aria-busy="uc.messageLoading" @click="ucLoadMessages">
                   <TsIcon name="refresh" :size="17" />
                   <span>刷新</span>
@@ -1069,7 +1069,7 @@ onUnmounted(() => {
             <div class="uc-section-head">
               <h2 class="uc-section-title">{{ isAdminUser ? '全站像素画管理' : '我的像素画' }}</h2>
               <div class="uc-article-tools">
-                <input v-model="uc.pixelQuery" class="uc-search" type="search" :aria-label="ucCopy.pixels" placeholder="搜索像素画">
+                <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="user-center-page-uc-pixelquery-query" form="uc-search-form" v-model="uc.pixelQuery" class="uc-search" type="search" :aria-label="ucCopy.pixels" placeholder="搜索像素画">
                 <a class="primary-btn uc-icon-action" href="/pixel" @click.prevent="go('/pixel')">
                   <TsIcon name="palette" :size="17" />
                   <span>新建像素画</span>
@@ -1145,11 +1145,12 @@ onUnmounted(() => {
             </div>
             <div v-if="uc.passwordMsg" class="form-message" :class="uc.passwordMsgType">{{ uc.passwordMsg }}</div>
             <div class="uc-security-grid">
-              <div>
+              <form id="uc-password-form" autocomplete="on" @submit.prevent="ucChangePassword">
+                <input type="hidden" name="username" :value="ucUser?.username" autocomplete="username">
                 <div class="form-grid">
                   <div class="form-group">
                     <label for="ucCurrentPassword">{{ t.ucCurrentPassword }}</label>
-                    <input id="ucCurrentPassword" v-model="uc.password.current" type="password" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh">
+                    <input id="ucCurrentPassword" name="current-password" v-model="uc.password.current" type="password" autocomplete="current-password" :placeholder="t.ucCurrentPasswordPh">
                     <button v-if="ucUser?.has_real_email" class="uc-password-reset-link" type="button" @click="go('/login?forgot=1&redirect=%2Fuser-center')">
                       <TsIcon name="mail" :size="14" />
                       <span>没有当前密码？使用邮箱验证</span>
@@ -1157,21 +1158,21 @@ onUnmounted(() => {
                   </div>
                   <div class="form-group">
                     <label for="ucNewPassword">{{ t.ucNewPassword }}</label>
-                    <input id="ucNewPassword" v-model="uc.password.next" type="password" autocomplete="new-password" :placeholder="t.ucNewPasswordPh">
+                    <input id="ucNewPassword" name="new-password" v-model="uc.password.next" type="password" autocomplete="new-password" :placeholder="t.ucNewPasswordPh">
                   </div>
                   <div class="form-group">
                     <label for="ucConfirmNewPassword">{{ t.ucConfirmNewPassword }}</label>
-                    <input id="ucConfirmNewPassword" v-model="uc.password.confirm" type="password" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
+                    <input id="ucConfirmNewPassword" name="confirm-password" v-model="uc.password.confirm" type="password" autocomplete="new-password" :placeholder="t.ucConfirmNewPasswordPh">
                   </div>
                   <div>
-                    <button class="primary-btn uc-icon-action" type="button" :disabled="uc.passwordChanging" :aria-busy="uc.passwordChanging" @click="ucChangePassword">
+                    <button class="primary-btn uc-icon-action" type="submit" :disabled="uc.passwordChanging" :aria-busy="uc.passwordChanging">
                       <TsIcon name="lock" :size="17" />
                       <span>{{ t.ucChangePassword }}</span>
                     </button>
                     <StatusLoader v-if="uc.passwordChanging" label="正在更新密码" compact />
                   </div>
                 </div>
-              </div>
+              </form>
               <aside class="uc-security-card">
                 <div class="uc-oauth-status" :class="{ bound: ucQQBound }">
                   <div class="uc-oauth-icon">
@@ -1189,19 +1190,20 @@ onUnmounted(() => {
                         <TsIcon name="x" :size="16" />
                         <span>解绑 QQ</span>
                       </button>
-                      <div v-else class="uc-oauth-unlink-form" :aria-busy="uc.qqUnlinking">
+                      <form v-else class="uc-oauth-unlink-form" autocomplete="on" :aria-busy="uc.qqUnlinking" @submit.prevent="ucUnlinkQQ">
+                        <input type="hidden" name="username" :value="ucUser?.username" autocomplete="username">
                         <label for="ucQqUnlinkPassword">输入当前密码确认解绑</label>
                         <input
                           id="ucQqUnlinkPassword"
+                          name="current-password"
                           v-model="uc.qqPassword"
                           type="password"
                           maxlength="128"
                           autocomplete="current-password"
                           placeholder="当前密码"
-                          @keyup.enter="ucUnlinkQQ"
                         >
                         <div class="uc-oauth-unlink-buttons">
-                          <button class="danger-btn uc-icon-action" type="button" :disabled="uc.qqUnlinking" @click="ucUnlinkQQ">
+                          <button class="danger-btn uc-icon-action" type="submit" :disabled="uc.qqUnlinking">
                             <TsIcon name="x" :size="16" />
                             <span>{{ uc.qqUnlinking ? '正在解绑' : '确认解绑' }}</span>
                           </button>
@@ -1210,7 +1212,7 @@ onUnmounted(() => {
                           </button>
                         </div>
                         <div v-if="uc.qqMsg" class="form-message" :class="uc.qqMsgType" role="status">{{ uc.qqMsg }}</div>
-                      </div>
+                      </form>
                     </div>
                   </div>
                 </div>

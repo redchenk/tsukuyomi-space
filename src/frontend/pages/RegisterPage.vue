@@ -148,7 +148,7 @@ async function startQQLogin() {
               <label for="registerUsername">{{ t.ucUsername }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="user" :size="18" />
-                <input id="registerUsername" v-model="register.username" required maxlength="32" :placeholder="t.usernamePh" autocomplete="username">
+                <input name="registerUsername" id="registerUsername" v-model="register.username" required maxlength="32" :placeholder="t.usernamePh" autocomplete="username">
               </div>
             </div>
             <div class="form-group">
@@ -156,7 +156,7 @@ async function startQQLogin() {
               <div class="code-row">
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="mail" :size="18" />
-                  <input id="registerEmail" v-model="register.email" required type="email" :placeholder="t.emailInputPh" autocomplete="email">
+                  <input name="registerEmail" id="registerEmail" v-model="register.email" required type="email" :placeholder="t.emailInputPh" autocomplete="email">
                 </div>
                 <button class="code-btn" type="button" :disabled="register.sending.loading" :aria-busy="register.sending.loading" @click="sendCode">
                   <TsIcon v-if="register.sending.loading" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
@@ -168,14 +168,14 @@ async function startQQLogin() {
               <label for="registerCode">{{ t.emailCode }}</label>
               <div class="auth-input-shell">
                 <TsIcon class="auth-field-icon" name="keyRound" :size="18" />
-                <input id="registerCode" v-model="register.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
+                <input autocomplete="one-time-code" name="registerCode" id="registerCode" v-model="register.emailCode" required inputmode="numeric" maxlength="6" :placeholder="t.codePh">
               </div>
             </div>
             <div class="form-group">
               <label for="registerPassword">{{ t.password }}</label>
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
-                <input id="registerPassword" v-model="register.password" required minlength="8" :type="showPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="new-password">
+                <input name="registerPassword" id="registerPassword" v-model="register.password" required minlength="8" :type="showPassword ? 'text' : 'password'" :placeholder="t.passwordPh" autocomplete="new-password">
                 <button class="auth-password-toggle" type="button" :aria-pressed="showPassword" @click="showPassword = !showPassword">
                   <TsIcon :name="showPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>
@@ -185,7 +185,7 @@ async function startQQLogin() {
               <label for="registerConfirm">{{ t.confirmPassword }}</label>
               <div class="auth-input-shell has-action">
                 <TsIcon class="auth-field-icon" name="lock" :size="18" />
-                <input id="registerConfirm" v-model="register.confirmPassword" required minlength="6" :type="showConfirmPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
+                <input name="registerConfirm" id="registerConfirm" v-model="register.confirmPassword" required minlength="6" :type="showConfirmPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
                 <button class="auth-password-toggle" type="button" :aria-pressed="showConfirmPassword" @click="showConfirmPassword = !showConfirmPassword">
                   <TsIcon :name="showConfirmPassword ? 'eyeOff' : 'eye'" :size="18" />
                 </button>

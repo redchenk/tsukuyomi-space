@@ -2540,13 +2540,13 @@ onBeforeUnmount(() => {
         class="settings-navigation"
         :class="{ 'is-open': mobileSectionsOpen }"
       >
-        <label class="settings-search"
-          ><TsIcon name="search" :size="17" /><input
+        <form id="room-settings-search-form" class="settings-search" role="search" autocomplete="off" @submit.prevent
+          ><TsIcon name="search" :size="17" /><input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="room-settings-page-settingssearch-query"
             v-model="settingsSearch"
             type="search"
             aria-label="搜索设置"
             placeholder="搜索设置"
-        /></label>
+        /></form>
         <nav aria-label="设置分类">
           <section v-for="group in filteredSettingsGroups" :key="group.label">
             <h2>{{ group.label }}</h2>
@@ -2722,7 +2722,7 @@ onBeforeUnmount(() => {
               >API 密钥 <small>API Key</small></label
             >
             <div class="settings-secret">
-              <TsIcon name="lock" :size="18" /><input
+              <TsIcon name="lock" :size="18" /><input name="room-setting-llm-apikey" autocapitalize="off" autocorrect="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
                 id="settings-llm-key"
                 v-model="llm.apiKey"
                 :type="showLlmKey ? 'text' : 'password'"
@@ -2760,7 +2760,7 @@ onBeforeUnmount(() => {
                 }}
               </button>
             </div>
-            <input
+            <input autocomplete="off" name="room-setting-llm-model"
               id="settings-llm-model"
               v-model="llm.model"
               type="text"
@@ -2813,7 +2813,7 @@ onBeforeUnmount(() => {
             </summary>
             <div class="settings-disclosure-body form-grid">
               <label
-                >API 端点<input
+                >API 端点<input name="room-setting-llm-apiurl"
                   v-model="llm.apiUrl"
                   type="url"
                   autocomplete="off"
@@ -2821,7 +2821,7 @@ onBeforeUnmount(() => {
                   placeholder="https://…/chat/completions"
               /></label>
               <label v-if="setupLlmMode === 'ollama'"
-                >API 密钥（可选）<input
+                >API 密钥（可选）<input name="room-setting-llm-apikey" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
                   v-model="llm.apiKey"
                   type="password"
                   autocomplete="off"
@@ -2846,7 +2846,7 @@ onBeforeUnmount(() => {
                 从当前设备直接连接。
               </p>
               <label
-                >对话补充指令<textarea
+                >对话补充指令<textarea autocomplete="off"
                   v-model="llm.systemPrompt"
                   placeholder="可选：回复长度、语言或交流偏好"
                 ></textarea>
@@ -2964,13 +2964,13 @@ onBeforeUnmount(() => {
               </select></label
             >
             <label v-if="tts.provider !== 'gpt-sovits'"
-              >API 密钥<input
+              >API 密钥<input name="room-setting-tts-apikey" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
                 v-model="tts.apiKey"
                 type="password"
                 autocomplete="off"
                 placeholder="粘贴语音服务密钥" /></label
             ><label
-              >音色 / Voice ID<input
+              >音色 / Voice ID<input autocomplete="off" name="room-setting-tts-voice"
                 v-model="tts.voice"
                 type="text"
                 placeholder="音色名称或 Voice ID"
@@ -2984,13 +2984,13 @@ onBeforeUnmount(() => {
               </summary>
               <div class="settings-disclosure-body form-grid">
                 <label
-                  >API 端点<input
+                  >API 端点<input autocomplete="off" name="room-setting-tts-apiurl"
                     v-model="tts.apiUrl"
                     type="url"
                     spellcheck="false"
                     placeholder="https://…/audio/speech" /></label
                 ><label
-                  >模型名称<input
+                  >模型名称<input autocomplete="off" name="room-setting-tts-model"
                     v-model="tts.model"
                     type="text"
                     placeholder="tts-1 / speech-02-hd / eleven_multilingual_v2"
@@ -3015,13 +3015,13 @@ onBeforeUnmount(() => {
                 </template>
                 <template v-if="tts.provider === 'gpt-sovits'">
                   <label
-                    >参考音频路径<input
+                    >参考音频路径<input autocomplete="off" name="room-setting-tts-refaudiopath"
                       v-model="tts.refAudioPath"
                       type="text"
                       placeholder="E:\\visualstudio\\tts\\xxx.wav"
                   /></label>
                   <label
-                    >参考音频文本<input
+                    >参考音频文本<input autocomplete="off" name="room-setting-tts-prompttext"
                       v-model="tts.promptText"
                       type="text"
                       placeholder="参考音频里说的话"
@@ -3038,13 +3038,13 @@ onBeforeUnmount(() => {
                     </select></label
                   >
                   <label
-                    >GPT 权重路径<input
+                    >GPT 权重路径<input autocomplete="off" name="room-setting-tts-gptweightpath"
                       v-model="tts.gptWeightPath"
                       type="text"
                       placeholder="GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt"
                   /></label>
                   <label
-                    >SoVITS 权重路径<input
+                    >SoVITS 权重路径<input autocomplete="off" name="room-setting-tts-sovitsweightpath"
                       v-model="tts.sovitsWeightPath"
                       type="text"
                       placeholder="SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth"
@@ -3131,10 +3131,10 @@ onBeforeUnmount(() => {
           </div>
           <div class="memory-manager-body" :aria-busy="memoryLoading">
             <div class="memory-toolbar">
-              <input
+              <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="room-settings-page-memory-query-query" form="room-settings-search-form"
                 aria-label="搜索记忆"
                 v-model="memory.query"
-                type="text"
+                type="search"
                 placeholder="搜索记忆内容、偏好或项目"
               />
               <select aria-label="记忆类型" v-model="memory.type">
@@ -3185,14 +3185,14 @@ onBeforeUnmount(() => {
                 </select>
               </label>
               <label
-                >摘要<input
+                >摘要<input autocomplete="off" name="room-setting-memory-editing-summary"
                   ref="memorySummaryInput"
                   v-model="memory.editing.summary"
                   type="text"
                   :disabled="memorySavePending"
               /></label>
               <label
-                >内容<textarea
+                >内容<textarea autocomplete="off"
                   v-model="memory.editing.content"
                   rows="8"
                   :disabled="memorySavePending"
@@ -3206,7 +3206,7 @@ onBeforeUnmount(() => {
                 字；超出上限时保存会被拒绝，原记录不会被截断。</small
               >
               <label
-                >标签<input
+                >标签<input autocomplete="off" name="room-setting-memory-editing-tags"
                   v-model="memory.editing.tags"
                   type="text"
                   placeholder="逗号分隔"
@@ -3455,20 +3455,20 @@ onBeforeUnmount(() => {
               <strong>{{ knowledge.draft.title }}</strong>
             </div>
             <label
-              >标题<input
+              >标题<input autocomplete="off" name="room-setting-knowledge-draft-title"
                 ref="knowledgeTitleInput"
                 v-model="knowledge.draft.title"
                 type="text"
                 placeholder="例如：月见八千代的说话方式"
             /></label>
             <label
-              >内容<textarea
+              >内容<textarea autocomplete="off"
                 v-model="knowledge.draft.content"
                 placeholder="写入角色事实、人设规则、口吻或行为边界"
               ></textarea>
             </label>
             <label
-              >标签<input
+              >标签<input autocomplete="off" name="room-setting-knowledge-draft-tags"
                 v-model="knowledge.draft.tags"
                 type="text"
                 placeholder="逗号分隔，如 温柔, 月读, 创作者"
@@ -3662,37 +3662,37 @@ onBeforeUnmount(() => {
             </summary>
             <div class="form-grid">
               <label
-                >角色名<input
+                >角色名<input autocomplete="off" name="room-setting-diary-persona-name"
                   v-model="diary.persona.name"
                   type="text"
                   placeholder="例如：八千代"
               /></label>
               <label
-                >角色简介<textarea
+                >角色简介<textarea autocomplete="off"
                   v-model="diary.persona.description"
                   placeholder="身份、外貌、与对方的关系"
                 ></textarea>
               </label>
               <label
-                >性格与口吻<textarea
+                >性格与口吻<textarea autocomplete="off"
                   v-model="diary.persona.personality"
                   placeholder="说话习惯、情绪基调、称呼方式"
                 ></textarea>
               </label>
               <label
-                >相处背景<textarea
+                >相处背景<textarea autocomplete="off"
                   v-model="diary.persona.scenario"
                   placeholder="日常场景与关系设定"
                 ></textarea>
               </label>
               <label
-                >补充设定<textarea
+                >补充设定<textarea autocomplete="off"
                   v-model="diary.persona.creatorNotes"
                   placeholder="可选：写作偏好、禁忌、口头禅"
                 ></textarea>
               </label>
               <label
-                >标签<input
+                >标签<input autocomplete="off" name="room-setting-diary-persona-tags"
                   v-model="diary.persona.tags"
                   type="text"
                   placeholder="用顿号或逗号分隔"
@@ -3805,19 +3805,19 @@ onBeforeUnmount(() => {
               </select>
             </label>
             <label
-              >MCP HTTP 端点<input
+              >MCP HTTP 端点<input autocomplete="off" name="room-setting-mcp-endpoint"
                 v-model="mcp.endpoint"
                 type="text"
                 placeholder="https://example.com/mcp"
             /></label>
             <label
-              >鉴权头<input
+              >鉴权头<input autocomplete="off" name="room-setting-mcp-authheader"
                 v-model="mcp.authHeader"
                 type="text"
                 placeholder="Authorization"
             /></label>
             <label
-              >访问密钥<input
+              >访问密钥<input autocomplete="off" name="room-setting-mcp-apikey" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
                 v-model="mcp.apiKey"
                 type="password"
                 placeholder="Bearer ..."
@@ -3827,13 +3827,13 @@ onBeforeUnmount(() => {
             </p>
             <template v-if="mcp.provider.startsWith('minimax')">
               <label
-                >MiniMax API Host<input
+                >MiniMax API Host<input autocomplete="off" name="room-setting-mcp-apihost"
                   v-model="mcp.apiHost"
                   type="text"
                   placeholder="https://api.minimaxi.chat"
               /></label>
               <label
-                >输出目录 / Base Path<input
+                >输出目录 / Base Path<input autocomplete="off" name="room-setting-mcp-basepath"
                   v-model="mcp.basePath"
                   type="text"
                   placeholder="可选，留空由 MCP 服务决定"
@@ -3847,7 +3847,7 @@ onBeforeUnmount(() => {
               </label>
             </template>
             <label
-              >工具白名单<input
+              >工具白名单<input autocomplete="off" name="room-setting-mcp-toolallowlist"
                 v-model="mcp.toolAllowlist"
                 type="text"
                 placeholder="留空启用搜索与图片理解，或用逗号限定工具名"

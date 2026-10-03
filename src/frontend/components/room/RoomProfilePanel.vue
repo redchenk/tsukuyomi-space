@@ -23,7 +23,7 @@ const emit = defineEmits(['close', 'focus', 'drag-start', 'save']);
     <div class="panel-content">
       <div class="field">
         <label for="nicknameInput">&#26165;&#31216;</label>
-        <input id="nicknameInput" v-model="profile.nickname" type="text" placeholder="&#32473;&#33258;&#24049;&#36215;&#19968;&#20010;&#21517;&#23383;">
+        <input id="nicknameInput" name="nickname" autocomplete="nickname" v-model="profile.nickname" type="text" placeholder="&#32473;&#33258;&#24049;&#36215;&#19968;&#20010;&#21517;&#23383;">
       </div>
       <div class="field">
         <label for="signatureInput">&#31614;&#21517;</label>
