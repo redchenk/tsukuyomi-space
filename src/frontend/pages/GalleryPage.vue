@@ -576,10 +576,13 @@ onUnmounted(() => {
             </details>
           </div>
           <div class="gallery-view-options">
-            <select v-model="state.sort" :aria-label="t('图片排序', 'Sort images')" @change="loadImages(1)">
-              <option value="latest">{{ t('最新上传', 'Newest first') }}</option>
-              <option value="oldest">{{ t('最早上传', 'Oldest first') }}</option>
-            </select>
+            <div class="gallery-sort-control">
+              <select v-model="state.sort" :aria-label="t('图片排序', 'Sort images')" @change="loadImages(1)">
+                <option value="latest">{{ t('最新上传', 'Newest first') }}</option>
+                <option value="oldest">{{ t('最早上传', 'Oldest first') }}</option>
+              </select>
+              <TsIcon class="gallery-sort-chevron" name="chevronDown" :size="14" />
+            </div>
             <div class="gallery-column-toggle" role="group" :aria-label="t('图库视图', 'Gallery view')">
               <button type="button" :aria-label="t('紧凑四列视图', 'Compact four column view')" :aria-pressed="state.columns === 4" @click="state.columns = 4">
                 <TsIcon name="grid" :size="16" />

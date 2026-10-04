@@ -54,7 +54,13 @@
   .gallery-tag-options p { width: 100%; font-size: 10px; color: var(--ts-editorial-muted); line-height: 1.7; margin: 0 0 5px; }
   .gallery-tag-options button { color: var(--ts-accent); background: var(--ts-editorial-soft); border: 1px solid var(--ts-editorial-line); border-radius: var(--ts-radius-button); padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer; }
   .gallery-view-options { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-  .gallery-view-options select { color: var(--ts-editorial-muted); background: var(--ts-editorial-surface); border: 1px solid var(--ts-editorial-line); border-radius: var(--ts-radius-button); font: inherit; font-size: 12px; line-height: 1.4; height: 38px; padding: 8px 12px; min-height: 38px; }
+  .gallery-sort-control { position: relative; display: inline-flex; align-items: center; }
+  .gallery-view-options select { color: var(--ts-editorial-muted); background: var(--ts-editorial-surface); border: 1px solid var(--ts-editorial-line); border-radius: var(--ts-radius-button); font: inherit; font-size: 12px; line-height: 1.4; height: 38px; padding-block: 8px; padding-inline: 16px 40px; min-height: 38px; appearance: none; -webkit-appearance: none; cursor: pointer; }
+  .gallery-sort-chevron { position: absolute; inset-inline-end: 14px; top: 50%; transform: translateY(-50%); color: var(--ts-editorial-muted); pointer-events: none; }
+  @media (forced-colors: active) {
+    .gallery-view-options select { appearance: auto; -webkit-appearance: auto; padding-inline: 12px; }
+    .gallery-sort-chevron { display: none; }
+  }
   .gallery-column-toggle { display: flex; align-items: center; gap: 2px; padding: 3px; background: var(--ts-editorial-soft); border: 1px solid var(--ts-editorial-line); border-radius: var(--ts-radius-button); }
   .gallery-column-toggle button { width: 32px; height: 30px; min-height: 0; display: grid; place-items: center; border: 0; border-radius: var(--ts-radius-button); background: transparent; color: var(--ts-editorial-muted); cursor: pointer; }
   .gallery-column-toggle button[aria-pressed="true"] { color: var(--ts-accent); background: var(--ts-editorial-surface); box-shadow: var(--ts-shadow-sm); }
