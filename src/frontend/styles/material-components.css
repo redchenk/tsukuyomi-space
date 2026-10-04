@@ -18,7 +18,7 @@
 
   /* Text actions have one optical center; icon-only and canvas controls retain
      their dedicated sizing. Pills remain the site's button signature. */
-  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
     .code-btn, .mode-btn):not(.music-icon-btn):not(.room-chat-send) {
     display: inline-flex;
     align-items: center;
@@ -38,24 +38,24 @@
       color var(--ts-component-duration) var(--ts-ease-standard),
       box-shadow var(--ts-component-duration) var(--ts-ease-standard);
   }
-  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
     .code-btn, .mode-btn) > .ts-icon { flex-shrink: 0; }
-  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
     .code-btn, .mode-btn):hover { transform: none; }
-  :where(.page, .gallery-viewer, [data-material="popover"]) .primary-btn { box-shadow: none; }
-  :where(.page, .gallery-viewer, [data-material="popover"]) .primary-btn:hover { box-shadow: var(--ts-elevation-rest); }
-  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .panel-btn):hover > .ts-icon,
-  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .panel-btn):hover > span > .ts-icon { animation: none; }
-  :where(.page, .gallery-viewer, [data-material="popover"]) .primary-btn::after { content: none; }
-  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.ghost-btn, .panel-btn, .filter-btn, .code-btn, .mode-btn):not(.active):not(.selected):not([aria-pressed='true']):hover {
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) .primary-btn { box-shadow: none; }
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) .primary-btn:hover { box-shadow: var(--ts-elevation-rest); }
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .panel-btn):hover > .ts-icon,
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .panel-btn):hover > span > .ts-icon { animation: none; }
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) .primary-btn::after { content: none; }
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.ghost-btn, .panel-btn, .filter-btn, .code-btn, .mode-btn):not(.active):not(.selected):not([aria-pressed='true']):hover {
     background: var(--ts-state-hover);
     box-shadow: none;
   }
-  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.ghost-btn, .panel-btn, .filter-btn, .code-btn, .mode-btn):not(:disabled):active {
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.ghost-btn, .panel-btn, .filter-btn, .code-btn, .mode-btn):not(:disabled):active {
     background: var(--ts-state-pressed);
     box-shadow: none;
   }
-  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
     .code-btn, .mode-btn):disabled {
     cursor: not-allowed;
     opacity: .48;
@@ -167,7 +167,7 @@
     .site-account-trigger, .site-search-trigger, .site-preference-button) {
     transition: background-color var(--ts-component-duration) var(--ts-ease-standard), color var(--ts-component-duration) var(--ts-ease-standard);
   }
-  :where(.page, .gallery-viewer, [data-material="popover"], .site-navigation-dialog, .site-search-dialog, .site-commandbar)
+  :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"], .site-navigation-dialog, .site-search-dialog, .site-commandbar)
     :is(button, a, summary, [tabindex='0']):focus-visible {
     outline: 2px solid var(--ts-accent);
     outline-offset: 3px;
@@ -196,7 +196,7 @@
   }
 
   @media (max-width: 860px) {
-    :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+    :where(.page, .gallery-viewer, .fushi-connect, .fushi-callback, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
       .code-btn, .mode-btn):not(.music-icon-btn):not(.room-chat-send) { padding-inline: 16px; }
     .page :where(.plaza-msg-footer, .gallery-card-actions, .uc-article-actions,
       .memory-item) :is(.ghost-btn, .primary-btn, .danger-btn, .icon-btn) { min-height: 40px; padding-inline: 12px; }

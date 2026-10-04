@@ -1,3 +1,170 @@
+# All-page Material refinement and dark-theme QA — 2026-10-04
+
+final result: passed
+
+## Scope and current evidence
+
+User request: inspect and refine all existing pages with Google-inspired
+aesthetics, preserve the moon-white/rose palette and pill buttons, make dark
+mode more harmonious, and validate locally first. This record covers the UI
+implementation and local checks; it does not certify external integrations or
+production deployment. The earlier component QA is retained below.
+
+Official references consulted this turn:
+[Material Web buttons](https://material-web.dev/components/button/) and
+[color roles](https://material-web.dev/theming/color/). Hierarchy and semantic
+surfaces are adapted to the site's existing visual identity. No Material
+library, font, icon pack or replacement artwork was added.
+
+Current evidence is in `.codex_tmp/material-all-pages-20261004/`, with actual
+pre-edit `before/` screenshots from main `80bec75` and current `after/`
+screenshots. The permitted in-app browser rendered a disposable fixture server
+at http://127.0.0.1:4184. No production account or private user content was used.
+Desktop survey: 1280 × 800. Mobile survey: 390 × 844. Additional Pixel check:
+320 × 800. Density 1, no device frame. Measurements found document width equal
+to viewport width in the surveyed states.
+
+## Route coverage
+
+Both themes and desktop/mobile presentation were inspected for the existing
+route families. Not every permission-dependent subsection or workflow is
+represented by the initial-view screenshots.
+
+| Family | Local rendered coverage |
+| --- | --- |
+| Public community | Hub, Stage, Plaza, Gallery, article reader, public user profile |
+| Knowledge and information | Wiki index, character entry, term entry, Reality, friends, access page |
+| Room | Live2D scene, transparent mobile chat, settings and eight section navigation, valid public conversation share |
+| Account and creation | User center, Growth, notifications, attachments, Gallery management, article editor, friend application, Pixel |
+| Identity and assistant | Login, registration presentation, password/code modes, recovery presentation, Fushi connect/callback without real authorization |
+| Management | Local admin and Terminal presentation, article/message tables, notification settings |
+| Embedded runtime | Game site's frame and leaderboard only; local game iframe asset is unavailable |
+
+The unlinked legacy `/live2d` direct server route returns 404 before and after;
+it is excluded from rendered-page acceptance. Actual Live2D rendered in Room
+was verified. The local fixture role is admin, not super_admin, so super-admin
+system/user/security panes are not claimed as tested. External Agent OS and
+protected production runtime assets were not changed.
+
+## Full-view and focused preservation checks
+
+Created and visually inspected each matched before/after in a single input:
+
+- `comparison-gallery-dark.png`: guest, same eight images, four columns,
+  scrollY=0; calmer dark backdrop, retained image crops and rose controls.
+- `comparison-user-center-dark.png`: synthetic user, same profile and personal
+  section; consistent low input surface and removed old inner blue glow.
+- `comparison-growth-dark.png`: synthetic user, initial task state; rose
+  progress/icon roles, 24/16px nesting and pill primary check-in action.
+- `comparison-profile-dark.png`: guest public profile; removes legacy glossy
+  surfaces and hover lift while retaining article order and content.
+- `comparison-reality-dark.png`: guest; compact 340px hero, restrained title,
+  rounded cards, same explanatory copy and section links.
+- `comparison-login-filled-light.png`: guest with only synthetic test login
+  fields, masked password; immediate form rendering, quiet surface and a single
+  clear field focus boundary.
+
+Pairs preserve 1280 × 800 source pixels in a 2560 × 828 image including a 28px
+label strip. `focus-gallery-dark.png`, `focus-user-center-dark.png`,
+`focus-growth-dark.png` and `focus-login-filled-light.png` preserve native-density
+crops and were inspected separately for text, borders, padding and nested
+surfaces. Final mobile contact sheets and the original 320px Pixel screenshot
+were also inspected. Contact sheets are overview evidence, not substitutes for
+the native focused comparisons.
+
+Known fixture differences: before screenshots have one article read and its
+one-XP history entry; disposable server reseeding resets those to zero and
+regenerates the synthetic invite code. Relative timestamps and companion
+animation frames can also differ. These are not product logic edits or visual
+regressions. Guest/account headers are only compared where identity matches.
+
+## Findings and fixes
+
+- Resolved P2: old raw white/blue inputs and mixed dark backgrounds remain in
+  page-specific overrides. Map the existing overrides to semantic low/surface,
+  line and text tokens, rather than adding another important override layer.
+- Resolved P2: profiles, Growth, notifications and management retain mixed
+  gradients, strong shadows and different nesting. Named page adapters use
+  calm 24px outer surfaces, 16px inner surfaces and the existing rose emphasis.
+  Growth route CSS now participates in the existing page layer so shared
+  component rules apply consistently.
+- Resolved P2: attachment cards are too narrow for their actual actions.
+  Increase grid minimum to 264px and reserve padding; the real action row has
+  scrollWidth==clientWidth (287px), with 36px desktop controls and 40px mobile
+  controls.
+- Resolved P2: large Reality hero/title and legacy glossy auth surface clash
+  with the updated community pages. Refine the hero and form surfaces without
+  changing their content or workflows. Auth form entry no longer depends on
+  an animation completing in a foreground tab.
+- Resolved P2: Fushi pages sit too close to the fixed navigation. Add 112px top
+  spacing and include their existing actions in the shared component scope;
+  no OAuth, credential, permission or callback logic is modified.
+- Resolved P2 found in responsive interaction review: 320px Pixel publish text
+  is clipped in a crowded action row. At <=360px the primary action occupies
+  its own row; final button measures 270 × 44px with the complete label.
+- Resolved in final matched-view review: Growth check-in inherited a generic
+  tonal button after CSS layering. Explicitly restore rose fill/white text;
+  actual computed colors are rgb(172,77,109)/rgb(255,255,255), height 44px.
+
+Evidence corrections: early settings-section screenshots caught the existing
+340ms entry transition; settled views confirmed opacity 1 and valid section
+navigation. A rapid, repeated fixture survey also reached the existing feed
+rate limit and stale randomized image paths. Restart only the disposable local
+preview, keep security limits intact, use stable fixture image paths and
+recapture. Final Gallery images/avatars are loaded; no broken-image or 429
+frame is accepted as visual proof. A mobile theme capture caught the prior
+theme during transition; files were relabeled and dark captures repeated after
+reading the actual theme state.
+
+No unresolved P0/P1/P2 finding remains in the implemented UI scope.
+
+## Interaction and readability checks
+
+Verified through real local browser controls:
+
+- Global account/explore/search open and close with main x=0 and width=1280
+  unchanged. Search for 月光 opens the real filtered Stage; default sort stays
+  latest. A keyboard Tab focuses search with a visible 2px rose outline.
+- Local login, password/code mode and recovery presentation work. Synthetic
+  nickname save returns 资料已保存; nickname is restored. User article actions
+  are horizontal and do not overflow.
+- Markdown input renders the real preview heading and strong text. Asset
+  action layout fits. No article, friend request or artwork is published.
+- Gallery preview opens at desktop and phone sizes; the phone dialog is 366px
+  wide inside a 390px viewport with the original image loaded.
+- All eight settings sections are navigable; search 日记 filters to the diary
+  section. Existing provider, memory and advanced controls remain present.
+- Pixel canvas drawing enables Undo; Undo restores the previous state and
+  enables Redo. The 320px publish action opens the existing artwork-information
+  form. No real submission is made.
+- Room renders Live2D, and the seeded public share displays the expected
+  synthetic conversation. No live model, voice or mail provider is invoked.
+
+Native fonts, existing top navigation, logo, art, music/companion placement,
+Room scene, transparent phone chat and drawing canvas are retained. Dark
+background overlay is stronger so the main text surface is calm while the
+illustration remains visible. `text-contrast.json` records calculated token
+pairs: light main 14.04:1 / muted 5.14:1; dark main 12.92:1 / muted 7.73:1 /
+rose links 7.28:1; white-on-primary 5.20:1. These token measurements are not a
+full accessibility certification for dynamic content.
+
+## Build, tests and handoff boundaries
+
+- Domestic frontend build: passed.
+- Overseas frontend build: passed; domestic output restored for local preview.
+- `test:frontend`: 295 passed, 31 suites, zero failed, skipped or cancelled.
+  Repeated after the final Growth primary-action correction.
+- `git diff --check`: passed. No added dependencies or tracked media changes.
+- Build output retains existing asset-resolution/module warnings; no new build
+  failure. Logs are in this record's evidence directory.
+
+The preview remains available locally. No commit, push, deployment or production
+configuration change was made for this request. Real iPhone keyboard/FPS,
+external mail/OAuth/LLM/TTS, super-admin workflows and embedded game gameplay
+require their runtime/device environments and are not claimed as accepted.
+
+---
+
 # Material-inspired component QA — 2026-10-04
 
 final result: passed

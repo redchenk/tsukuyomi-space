@@ -18,12 +18,12 @@ body .page.terminal-page {
     --terminal-ui-shadow: var(--ts-editorial-shadow);
     --terminal-control-height: 42px;
     --terminal-control-radius: var(--ts-unified-button-radius, 12px);
-    --terminal-card-radius: 20px;
+    --terminal-card-radius: var(--ts-radius-card);
     --terminal-card-bg: var(--ts-editorial-surface);
     --terminal-panel-bg: var(--ts-editorial-surface);
     --terminal-control-bg: var(--ts-editorial-surface);
     --terminal-control-hover: var(--ts-editorial-soft);
-    --terminal-input-bg: var(--ts-editorial-surface);
+    --terminal-input-bg: var(--ts-editorial-low);
     --terminal-border: var(--ts-editorial-line);
     --terminal-border-strong: var(--ts-accent);
     color: var(--terminal-ui-text);

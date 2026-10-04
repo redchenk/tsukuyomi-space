@@ -1067,8 +1067,8 @@ body .page .comment-login,
 body .page .comment-input,
 body .page .reply-form,
 body .page .reply-list {
-    border-color: rgba(139, 168, 205, 0.18) !important;
-    background: rgba(255, 255, 255, 0.9) !important;
+    border-color: var(--ts-editorial-line) !important;
+    background: var(--ts-editorial-surface) !important;
 }
 
 body .page .plaza-search,
@@ -1081,8 +1081,8 @@ body .page .uc-search,
 body .page .uc-profile-bio {
     color: var(--text) !important;
     -webkit-text-fill-color: currentColor !important;
-    border-color: rgba(139, 168, 205, 0.24) !important;
-    background: rgba(255, 255, 255, 0.96) !important;
+    border-color: var(--ts-editorial-line) !important;
+    background: var(--ts-readable-input-bg) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
 }
 
@@ -1163,15 +1163,15 @@ html[data-theme="light"] body .article-page .comment-form,
 html[data-theme="light"] body .article-page .comment-login,
 html[data-theme="light"] body .article-page .reply-form,
 html[data-theme="light"] body .article-page .reply-list {
-    border-color: rgba(139, 168, 205, 0.16) !important;
-    background: rgba(255, 255, 255, 0.78) !important;
+    border-color: var(--ts-editorial-line) !important;
+    background: var(--ts-editorial-low) !important;
 }
 
 html[data-theme="light"] body .article-page .comment-input {
     color: #263348 !important;
     -webkit-text-fill-color: currentColor !important;
-    border-color: rgba(139, 168, 205, 0.24) !important;
-    background: rgba(255, 255, 255, 0.96) !important;
+    border-color: var(--ts-editorial-line) !important;
+    background: var(--ts-readable-input-bg) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
 }
 
@@ -1222,8 +1222,8 @@ html[data-theme="dark"] body .page .comment-login,
 html[data-theme="dark"] body .page .comment-input,
 html[data-theme="dark"] body .page .reply-form,
 html[data-theme="dark"] body .page .reply-list {
-    border-color: rgba(177, 205, 238, 0.16) !important;
-    background: rgba(17, 24, 39, 0.9) !important;
+    border-color: var(--ts-editorial-line) !important;
+    background: var(--ts-editorial-low) !important;
 }
 
 html[data-theme="dark"] body .page .plaza-search,
@@ -1236,8 +1236,8 @@ html[data-theme="dark"] body .page .uc-search,
 html[data-theme="dark"] body .page .uc-profile-bio {
     color: var(--text) !important;
     -webkit-text-fill-color: currentColor !important;
-    border-color: rgba(177, 205, 238, 0.22) !important;
-    background: rgba(15, 23, 42, 0.88) !important;
+    border-color: var(--ts-editorial-line) !important;
+    background: var(--ts-readable-input-bg) !important;
 }
 
 .room-page {

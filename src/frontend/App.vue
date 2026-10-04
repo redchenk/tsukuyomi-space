@@ -158,7 +158,7 @@ function setTheme(nextTheme) {
   theme.value = nextTheme === 'dark' ? 'dark' : 'light';
   localStorage.setItem('tsukuyomi_theme', theme.value);
   document.documentElement.dataset.theme = theme.value;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.value === 'dark' ? '#141b26' : '#f7f9fc');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.value === 'dark' ? '#151923' : '#f7f9fc');
 }
 
 function toggleTheme(event) {

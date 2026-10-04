@@ -1,0 +1,169 @@
+/* Page adapters use named components, not blanket surface rules: artwork,
+   transparent Room chat, the drawing canvas and embedded runtimes stay intact. */
+@layer ts-components {
+  body .page :is(.profile-hero, .profile-side-card, .profile-latest-card,
+    .notifications-hero, .notifications-empty, .notification-card,
+    .attachments-card, .attachments-toolbar, .attachments-upload-options,
+    .admin-tabs, .admin-toolbar, .admin-row, .admin-media-card, .admin-empty,
+    .friend-link-form-panel, .friend-link-side-panel, .friend-links-card,
+    .growth-overview, .growth-invite, .growth-history, .growth-path,
+    .settings-context-card) {
+    border: 1px solid var(--ts-editorial-line);
+    border-radius: var(--ts-radius-card);
+    background: var(--ts-editorial-surface);
+    box-shadow: var(--ts-elevation-rest);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  body .page :is(.profile-stat, .profile-article, .profile-empty,
+    .profile-side-metrics, .profile-presence-grid, .uc-article-item,
+    .editor-asset-card, .editor-preview-empty, .markdown-toolbar,
+    .settings-status, .model-recommend-card,
+    .memory-editor, .knowledge-editor, .growth-task, .growth-invite-code,
+    .growth-level-step, .attachments-upload-progress) {
+    border-color: var(--ts-editorial-line);
+    border-radius: var(--ts-radius-control);
+    background: var(--ts-editorial-low);
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+  body .page.user-profile-page {
+    --profile-accent: var(--ts-accent);
+    --profile-accent-soft: var(--ts-accent);
+  }
+  body .page.user-profile-page :is(.profile-hero, .profile-stat, .profile-article,
+    .profile-side-card, .profile-latest-card, .profile-empty) { transform: none; }
+  body .page :is(.profile-stat strong, .profile-meta span, .profile-side-title,
+    .profile-presence-grid b) { color: var(--ts-editorial-ink); }
+  .notification-card.unread {
+    background: var(--ts-state-hover);
+    border-color: color-mix(in srgb, var(--ts-accent) 40%, var(--ts-editorial-line));
+  }
+  .notifications-count { background: var(--ts-color-rose-600); box-shadow: none; }
+  .notification-tools .compact { min-height: var(--ts-control-height-small); }
+  body .page .uc-tabs .tab-btn { box-shadow: none; transform: none; }
+  body .page .profile-hero::before { content: none; }
+
+  /* Responsive asset cards reserve space for their real actions. */
+  .attachments-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 264px), 1fr)); gap: 20px; }
+  .attachments-card :is(img, video, audio, .attachments-file-preview) { background: var(--ts-editorial-low); }
+  .attachments-card-body { padding: 16px; }
+  .attachments-card-actions { padding: 0 16px 16px; gap: 8px; }
+  .attachments-card-actions :is(.ghost-btn, .danger-btn) {
+    min-height: var(--ts-control-height-small);
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+  .attachments-upload-progress-head strong { color: var(--ts-accent); }
+  .attachments-upload-progress-track { background: var(--ts-editorial-soft); }
+  .attachments-upload-progress-track span { background: var(--ts-color-rose-600); }
+
+  /* Dense management and writing controls use smaller inner shapes. */
+  .admin-tabs { padding: 8px; gap: 8px; }
+  .admin-tabs button { border-radius: var(--ts-radius-button); min-height: 44px; }
+  .admin-search { border-radius: var(--ts-radius-control); }
+  .admin-row { padding: 16px; gap: 16px; }
+  .admin-badge.ok { color: var(--ts-status-success); border-color: color-mix(in srgb, var(--ts-status-success) 32%, var(--ts-editorial-line)); }
+  .admin-badge.warn, .admin-risk { color: var(--ts-status-warning); }
+  .admin-badge.hot { color: var(--ts-status-danger); border-color: color-mix(in srgb, var(--ts-status-danger) 32%, var(--ts-editorial-line)); }
+  .editor-form .panel { border-color: var(--ts-editorial-line); background: var(--ts-editorial-surface); box-shadow: var(--ts-elevation-rest); }
+  .editor-cover-upload { border-color: var(--ts-editorial-line); background: var(--ts-editorial-low); border-radius: var(--ts-radius-control); }
+  .markdown-toolbar button { border-radius: var(--ts-radius-button); }
+  .markdown-toolbar button:hover { background: var(--ts-state-hover); transform: none; }
+
+  /* Growth is part of the same community, including progress and reward states. */
+  .growth-page :is(.growth-room-button, .growth-checkin) { border-radius: var(--ts-radius-button); font-weight: 500; border-color: var(--ts-editorial-line); }
+  .growth-page .growth-room-button { background: var(--ts-editorial-surface); min-height: 44px; }
+  .growth-page .growth-checkin { background: var(--ts-unified-primary-bg); color: var(--ts-unified-primary-text); border-color: var(--ts-unified-primary-bg); }
+  .growth-page :is(.growth-level-mark, .growth-task-icon), .growth-event > span {
+    background: var(--ts-accent-soft); color: var(--ts-accent); border-radius: var(--ts-radius-control);
+  }
+  .growth-progress-line { background: var(--ts-editorial-soft); }
+  .growth-progress-line span { background: var(--ts-color-rose-600); }
+  .growth-page :is(.growth-streaks div, .growth-event, .growth-level-step) { border-color: var(--ts-editorial-line); }
+  .growth-page .growth-level-step.current { background: var(--ts-accent-soft); border-color: var(--ts-accent); }
+  .growth-page :is(.growth-task, .growth-room-button):hover:not(:disabled) {
+    transform: none; background: var(--ts-state-hover); border-color: var(--ts-accent);
+  }
+  .growth-page .growth-checkin:hover:not(:disabled) { transform: none; background: var(--ts-unified-primary-bg-hover); }
+  .growth-page :is(.growth-task, .growth-room-button, .growth-checkin):focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 3px; }
+  .growth-page .growth-task.completed { opacity: 1; }
+  .growth-page .growth-message {
+    color: var(--ts-status-success);
+    border-color: color-mix(in srgb, var(--ts-status-success) 28%, var(--ts-editorial-line));
+    border-radius: var(--ts-radius-control);
+    background: color-mix(in srgb, var(--ts-status-success) 8%, var(--ts-editorial-surface));
+  }
+  .growth-page :is(.growth-message.error, .growth-error) {
+    color: var(--ts-status-danger);
+    border-color: color-mix(in srgb, var(--ts-status-danger) 28%, var(--ts-editorial-line));
+    border-radius: var(--ts-radius-control);
+    background: color-mix(in srgb, var(--ts-status-danger) 8%, var(--ts-editorial-surface));
+  }
+
+  /* Policy/help content has the same calm editorial hierarchy. */
+  body .page.reality-page {
+    --reality-title: var(--ts-editorial-ink);
+    --reality-text: var(--ts-editorial-ink);
+    --reality-muted: var(--ts-editorial-muted);
+    --reality-accent: var(--ts-accent);
+    --reality-blue: var(--ts-accent);
+    --reality-card-bg: var(--ts-editorial-surface);
+    --reality-soft-bg: var(--ts-editorial-low);
+    --reality-table-head: var(--ts-editorial-soft);
+    --reality-line: var(--ts-editorial-line);
+  }
+  body .page .reality-hero {
+    min-height: 340px; gap: 24px; padding: 32px;
+    border: 1px solid var(--ts-editorial-line);
+    border-radius: var(--ts-radius-card);
+    background: var(--ts-editorial-surface);
+  }
+  body .page .reality-hero h1 { font-size: clamp(36px, 5vw, 64px); line-height: 1.12; text-shadow: none; }
+  .reality-hero-kicker { border-radius: var(--ts-radius-button); }
+  body .page :is(.reality-card, .reality-support-card) { border-radius: var(--ts-radius-card); box-shadow: var(--ts-elevation-rest); backdrop-filter: none; }
+  body .page .reality-btn {
+    min-height: 44px; padding: 10px 20px; border-radius: var(--ts-radius-button);
+    border-color: var(--ts-editorial-line); background: var(--ts-accent-soft);
+    color: var(--ts-accent); font-weight: 500; line-height: 20px;
+  }
+  body .page .reality-btn.secondary { background: var(--ts-editorial-surface); color: var(--ts-editorial-ink); }
+  body .page .reality-btn:focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 3px; }
+
+  /* Inputs should appear immediately even if an inactive tab pauses animation. */
+  body .page.auth-page {
+    --ts-material-content-bg: var(--ts-editorial-surface);
+    --ts-material-highlight: transparent;
+    --ts-material-lowlight: transparent;
+    --ts-material-shadow: var(--ts-elevation-raised);
+    --ts-material-filter-thin: none;
+  }
+  body .page.auth-page .auth-form-stage { background: transparent; border-color: var(--ts-editorial-line); }
+  body .page.auth-page .auth-card { animation: none; opacity: 1; transform: none; border-radius: var(--ts-radius-card); background: var(--ts-editorial-surface); box-shadow: var(--ts-elevation-raised); }
+  body .page.auth-page .auth-card-head,
+  body .page.auth-page .auth-card :is(.form-message, .oauth-profile, .oauth-loading,
+    .mode-row, .form-group, .primary-btn, .oauth-login-section, .auth-card-footer,
+    .oauth-back-btn, .auth-home-link) { animation: none; opacity: 1; transform: none; }
+  body .page.auth-page .mode-row { background: var(--ts-editorial-low); border-radius: var(--ts-radius-button); box-shadow: none; }
+  body .page.auth-page .auth-input-shell { background: var(--ts-editorial-low); border-color: var(--ts-editorial-line); border-radius: var(--ts-radius-control); box-shadow: none; }
+  body .page.auth-page .auth-input-shell:focus-within { outline: 2px solid var(--ts-accent); outline-offset: 2px; }
+  body .page.auth-page .auth-input-shell input { box-shadow: none; }
+  body .page.auth-page .auth-input-shell input:focus-visible { outline: none; }
+
+  /* Embedded gameplay retains its own pixels; only the site frame is themed. */
+  .game-page .game-stage { border-color: var(--ts-editorial-line); border-radius: var(--ts-radius-card); box-shadow: var(--ts-elevation-rest); }
+  .game-page .game-leaderboard { border-radius: var(--ts-radius-card); background: var(--ts-editorial-surface); box-shadow: var(--ts-elevation-rest); backdrop-filter: none; }
+  .game-page :is(.game-icon-button, .game-author-link) { border-radius: var(--ts-radius-button); box-shadow: none; min-height: 44px; }
+
+  @media (max-width: 600px) {
+    .attachments-card-actions :is(.ghost-btn, .danger-btn) { min-height: 40px; }
+    .attachments-grid { gap: 16px; }
+    body .page .reality-hero { padding: 24px; min-height: 300px; }
+    .admin-row { gap: 12px; }
+  }
+  @media (max-width: 360px) {
+    .pixel-workspace .pw-document-actions { flex-wrap: wrap; gap: 8px; overflow: visible; }
+    .pixel-workspace .pw-document-actions > .primary-btn { flex: 1 0 100%; }
+  }
+}

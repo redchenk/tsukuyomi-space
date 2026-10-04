@@ -37,10 +37,10 @@ async function copy() {
 </template>
 
 <style scoped>
-.fushi-callback { max-width: 680px; margin: 48px auto; padding: clamp(24px, 5vw, 44px); border: 1px solid var(--ts-border); border-radius: var(--ts-radius-card); }
+.fushi-callback { width: min(680px, calc(100% - 32px)); margin: 112px auto 48px; padding: clamp(24px, 5vw, 44px); border: 1px solid var(--ts-border); border-radius: var(--ts-radius-card); }
 .eyebrow { font-size: .75rem; letter-spacing: .15em; opacity: .7; }
 p { line-height: 1.8; }
-textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: 16px; border: 1px solid var(--ts-border); border-radius: 12px; background: var(--ts-surface); color: inherit; overflow-wrap: anywhere; font: inherit; }
+textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: 16px; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-control); background: var(--ts-editorial-low); color: inherit; overflow-wrap: anywhere; font: inherit; }
 button { margin-top: 16px; padding: 12px 24px; border-radius: var(--ts-radius-button); }
 .hint { font-size: .85rem; opacity: .7; }
 </style>

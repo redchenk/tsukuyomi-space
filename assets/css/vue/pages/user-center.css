@@ -438,10 +438,10 @@ body .page.uc-page .uc-profile-bio {
     width: 100%;
     color: var(--ts-text) !important;
     -webkit-text-fill-color: currentColor !important;
-    border: 1px solid rgba(177, 205, 238, 0.2) !important;
+    border: 1px solid var(--ts-editorial-line) !important;
     border-radius: 8px;
     background: var(--ts-readable-input-bg) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    box-shadow: none !important;
     outline: none;
 }
 
@@ -491,8 +491,8 @@ body .page.uc-page .uc-profile-bio {
 body .page.uc-page .uc-search:focus,
 body .page.uc-page .uc-profile-bio:focus,
 body .page.uc-page .form-group input:focus {
-    border-color: rgba(131, 216, 236, 0.42) !important;
-    box-shadow: 0 0 0 4px rgba(102, 197, 223, 0.12) !important;
+    border-color: var(--ts-accent) !important;
+    box-shadow: none !important;
 }
 
 body .page.uc-page .uc-search::placeholder,
@@ -1120,7 +1120,7 @@ body .page.uc-page .form-group label {
 body .page.uc-page .form-group input,
 body .page.uc-page .uc-search,
 body .page.uc-page .uc-profile-bio {
-    border-color: rgba(231, 249, 255, 0.12) !important;
+    border-color: var(--ts-editorial-line) !important;
     background: var(--ts-readable-input-bg) !important;
 }
 

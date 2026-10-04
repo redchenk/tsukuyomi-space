@@ -12,6 +12,7 @@ import './styles/image-bloom.css';
 import './styles/performance.css';
 import './styles/navigation.css';
 import './styles/material-components.css';
+import './styles/material-pages.css';
 
 initializePerformanceProfile();
 configureAssetCssVars();

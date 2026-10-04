@@ -4,11 +4,15 @@
 :root {
     --ts-editorial-bg: #f7f9fc;
     --ts-editorial-surface: #ffffff;
+    --ts-editorial-low: #f8f9fc;
     --ts-editorial-soft: #eef2f8;
     --ts-editorial-ink: #202b46;
     --ts-editorial-muted: #626e84;
     --ts-editorial-line: #dfe6f0;
     --ts-editorial-shadow: 0 4px 16px rgb(37 48 70 / 4%);
+    --ts-status-success: #23734e;
+    --ts-status-warning: #8a6112;
+    --ts-status-danger: #ad344b;
     --ts-accent: var(--ts-color-rose-600);
     --ts-accent-2: var(--ts-color-rose-600);
     --ts-accent-soft: var(--ts-color-rose-50);
@@ -16,18 +20,22 @@
     --ts-site-background: linear-gradient(90deg, rgb(247 249 252 / 20%), rgb(247 249 252 / 82%) 24%, rgb(247 249 252 / 92%) 50%, rgb(247 249 252 / 82%) 76%, rgb(247 249 252 / 20%)), url('../assets/sakura/moonwhite-lake.webp') center / cover no-repeat;
 }
 html[data-theme="dark"] {
-    --ts-editorial-bg: #141b26;
-    --ts-editorial-surface: #1e2836;
-    --ts-editorial-soft: #293647;
-    --ts-editorial-ink: #edf1f6;
-    --ts-editorial-muted: #b3becd;
-    --ts-editorial-line: #3a4759;
+    --ts-editorial-bg: #151923;
+    --ts-editorial-low: #1b202c;
+    --ts-editorial-surface: #222836;
+    --ts-editorial-soft: #2c3342;
+    --ts-editorial-ink: #edf0f7;
+    --ts-editorial-muted: #b5bccb;
+    --ts-editorial-line: #394153;
+    --ts-status-success: #8ddab3;
+    --ts-status-warning: #efd196;
+    --ts-status-danger: #ffacba;
     --ts-editorial-shadow: 0 4px 16px rgb(0 0 0 / 14%);
     --ts-accent: var(--ts-color-rose-300);
     --ts-accent-2: var(--ts-color-rose-300);
     --ts-accent-soft: #3a2b39;
     --ts-cyan: #a9cadc;
-    --ts-site-background: linear-gradient(rgb(20 27 38 / 76%), rgb(20 27 38 / 76%)), url('../assets/sakura/moonlit-shrine.webp') center / cover no-repeat;
+    --ts-site-background: linear-gradient(90deg, rgb(21 25 35 / 84%), rgb(21 25 35 / 94%) 28%, rgb(21 25 35 / 94%) 72%, rgb(21 25 35 / 84%)), url('../assets/sakura/moonlit-shrine.webp') center / cover no-repeat;
 }
 :root,
 html[data-theme="light"],
@@ -51,7 +59,7 @@ html[data-theme="dark"] {
     --ts-unified-button-border-hover: var(--ts-accent);
     --ts-readable-control-bg: var(--ts-editorial-surface);
     --ts-readable-control-hover: var(--ts-editorial-soft);
-    --ts-readable-input-bg: var(--ts-editorial-surface);
+    --ts-readable-input-bg: var(--ts-editorial-low);
     --ts-readable-shadow: var(--ts-editorial-shadow);
     --ts-shadow-accent: none;
     --ts-unified-button-shadow: none;
