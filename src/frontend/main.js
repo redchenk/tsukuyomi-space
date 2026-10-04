@@ -11,6 +11,7 @@ import './styles/global.css';
 import './styles/image-bloom.css';
 import './styles/performance.css';
 import './styles/navigation.css';
+import './styles/material-components.css';
 
 initializePerformanceProfile();
 configureAssetCssVars();

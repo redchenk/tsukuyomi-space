@@ -1,0 +1,217 @@
+/* Material 3-inspired component geometry, adapted to Tsukuyomi's existing
+   moon-white/dusty-rose tokens. Keep route layouts and native controls intact. */
+@layer ts-components {
+  :root {
+    --ts-radius-card: 24px;
+    --ts-radius-control: 16px;
+    --ts-shape-dialog: 28px;
+    --ts-control-height: 44px;
+    --ts-control-height-small: 36px;
+    --ts-control-shadow: none;
+    --ts-elevation-rest: 0 1px 3px color-mix(in srgb, var(--ts-text) 5%, transparent);
+    --ts-elevation-raised: 0 4px 12px color-mix(in srgb, var(--ts-text) 8%, transparent);
+    --ts-elevation-overlay: 0 8px 28px color-mix(in srgb, var(--ts-text) 14%, transparent);
+    --ts-component-duration: 180ms;
+    --ts-state-hover: color-mix(in srgb, var(--ts-accent) 8%, var(--ts-editorial-surface));
+    --ts-state-pressed: color-mix(in srgb, var(--ts-accent) 12%, var(--ts-editorial-surface));
+  }
+
+  /* Text actions have one optical center; icon-only and canvas controls retain
+     their dedicated sizing. Pills remain the site's button signature. */
+  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+    .code-btn, .mode-btn):not(.music-icon-btn):not(.room-chat-send) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: var(--ts-control-height);
+    padding: 10px 20px;
+    border-radius: var(--ts-radius-button);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    letter-spacing: 0;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: background-color var(--ts-component-duration) var(--ts-ease-standard),
+      border-color var(--ts-component-duration) var(--ts-ease-standard),
+      color var(--ts-component-duration) var(--ts-ease-standard),
+      box-shadow var(--ts-component-duration) var(--ts-ease-standard);
+  }
+  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+    .code-btn, .mode-btn) > .ts-icon { flex-shrink: 0; }
+  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+    .code-btn, .mode-btn):hover { transform: none; }
+  :where(.page, .gallery-viewer, [data-material="popover"]) .primary-btn { box-shadow: none; }
+  :where(.page, .gallery-viewer, [data-material="popover"]) .primary-btn:hover { box-shadow: var(--ts-elevation-rest); }
+  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .panel-btn):hover > .ts-icon,
+  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .panel-btn):hover > span > .ts-icon { animation: none; }
+  :where(.page, .gallery-viewer, [data-material="popover"]) .primary-btn::after { content: none; }
+  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.ghost-btn, .panel-btn, .filter-btn, .code-btn, .mode-btn):not(.active):not(.selected):not([aria-pressed='true']):hover {
+    background: var(--ts-state-hover);
+    box-shadow: none;
+  }
+  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.ghost-btn, .panel-btn, .filter-btn, .code-btn, .mode-btn):not(:disabled):active {
+    background: var(--ts-state-pressed);
+    box-shadow: none;
+  }
+  :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+    .code-btn, .mode-btn):disabled {
+    cursor: not-allowed;
+    opacity: .48;
+    box-shadow: none;
+  }
+
+  /* Compact actions are still deliberate targets rather than tiny text pills.
+     Do not expand the fixed Room input dock or Pixel drawing toolbar. */
+  .page :where(.plaza-msg-footer, .gallery-card-actions, .uc-article-actions,
+    .terminal-table-wrap, .memory-item)
+    :is(.ghost-btn, .primary-btn, .danger-btn, .icon-btn) {
+    min-height: var(--ts-control-height-small);
+    padding: 7px 12px;
+    font-size: 12px;
+    line-height: 20px;
+  }
+  .page :where(.settings-providers, .gallery-hero-actions) :is(.ghost-btn, select) { font-size: 13px; }
+  .page :where(.gallery-icon-button, .plaza-copy-action) { padding: 0; }
+  .page .plaza-msg-footer .plaza-copy-action { padding: 0; }
+
+  /* Grouped selectors use a shared track and a quiet selected surface. No
+     transform or weight changes: the surrounding page never shifts on press. */
+  :where(.plaza-filters, .stage-order, .gallery-column-toggle, .lang-switcher) {
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: var(--ts-radius-pill);
+    background: var(--ts-editorial-soft);
+    box-shadow: none;
+  }
+  :where(.plaza-filters, .stage-order) :is(button, .chip) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 8px 16px;
+    border-radius: var(--ts-radius-button);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 20px;
+    white-space: nowrap;
+    transform: none;
+    box-shadow: none;
+  }
+  :where(.plaza-filters, .stage-order) :is(button, .chip):hover { transform: none; box-shadow: none; }
+  .gallery-column-toggle button { width: 36px; height: 36px; border-radius: var(--ts-radius-button); }
+  .gallery-column-toggle button[aria-pressed='true'] { box-shadow: var(--ts-elevation-rest); }
+
+  /* Rounded outlined fields. Composite fields own their border/focus, so an
+     input inside one must not acquire a second outline or padded rectangle. */
+  .page :where(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='hidden']), textarea, select) {
+    border-radius: var(--ts-radius-control);
+    transition: border-color var(--ts-component-duration) var(--ts-ease-standard),
+      background-color var(--ts-component-duration) var(--ts-ease-standard),
+      outline-color var(--ts-component-duration) var(--ts-ease-standard);
+  }
+  .page :where(input, textarea, select):focus-visible {
+    outline: 2px solid var(--ts-accent);
+    outline-offset: 2px;
+  }
+  :where(.settings-secret, .settings-search, .gallery-search-field, .uc-navigation-search,
+    .site-search-field) { border-radius: var(--ts-radius-control); }
+  :where(.settings-secret, .settings-search, .gallery-search-field, .uc-navigation-search,
+    .site-search-field):focus-within { outline: 2px solid var(--ts-accent); outline-offset: 2px; }
+  :where(.settings-secret, .settings-search, .gallery-search-field, .uc-navigation-search,
+    .site-search-field) input:focus-visible { outline: none; }
+  .room-settings-page :where(.settings-secret, .settings-search) input { border-radius: 0; }
+  .page :where(.plaza-search, .gallery-view-options select) { border-radius: var(--ts-radius-button); }
+
+  /* A larger outer shape and smaller inner shape make nesting legible while
+     preserving covers, thumbnails, the transparent Room and all current art. */
+  .page :where(.panel, .uc-hero, .uc-security-card, .uc-support-card,
+    .plaza-compose-panel, .plaza-msg-card, .gallery-card, .gallery-toolbar,
+    .room-settings-card, .settings-navigation, .settings-guide, .stage-card,
+    .notification-card, .attachment-card, .terminal-card, .terminal-panel,
+    .article-reader, .scene-card) {
+    border-radius: var(--ts-radius-card);
+    box-shadow: var(--ts-elevation-rest);
+  }
+  .page :where(.plaza-msg-card, .gallery-card, .stage-card, .notification-card,
+    .attachment-card, .scene-card):hover {
+    transform: none;
+    box-shadow: var(--ts-elevation-raised);
+  }
+  .page :where(.settings-note, .settings-advanced, .settings-mode, .memory-item,
+    .knowledge-item, .uc-article-item, .plaza-reply-card, .plaza-activity-item) { border-radius: var(--ts-radius-control); }
+  .settings-mode { padding: 20px; gap: 16px; transition: border-color var(--ts-component-duration), background-color var(--ts-component-duration); }
+  .settings-mode:focus-within { outline: 2px solid var(--ts-accent); outline-offset: 3px; }
+  .settings-mode.selected { background: var(--ts-accent-soft); }
+  .room-card-icon, .plaza-compose-icon { border-radius: var(--ts-radius-control); }
+
+  /* Dialogs and menus are clearly raised, with rounded inset list surfaces. */
+  :where(.site-navigation-dialog, .site-search-dialog, .gallery-viewer,
+    .visit-popup-card, .room-test-modal-card, .editor-asset-panel) {
+    border-radius: var(--ts-shape-dialog);
+    box-shadow: var(--ts-elevation-overlay);
+  }
+  .site-nav-drawer-head { margin-bottom: 16px; }
+  .site-menu-link { padding: 12px 16px; min-height: 52px; font-size: 14px; line-height: 20px; }
+  .site-menu-link:hover { border-color: transparent; background: var(--ts-state-hover); }
+  .site-search-result { padding: 12px 16px; font-size: 14px; }
+  .site-menu-preferences { padding-top: 12px; }
+  .site-preference-button { font-size: 13px; }
+  :where(.site-tool-button, .site-account-trigger, .site-search-trigger,
+    .site-mobile-navigation-trigger, .gallery-icon-button):hover { background: var(--ts-state-hover); }
+  :where(.site-tool-button, .site-account-trigger, .site-search-trigger,
+    .site-mobile-navigation-trigger, .gallery-icon-button):not(:disabled):active { background: var(--ts-state-pressed); }
+  :where(.site-menu-link, .site-search-result, .site-tool-button,
+    .site-account-trigger, .site-search-trigger, .site-preference-button) {
+    transition: background-color var(--ts-component-duration) var(--ts-ease-standard), color var(--ts-component-duration) var(--ts-ease-standard);
+  }
+  :where(.page, .gallery-viewer, [data-material="popover"], .site-navigation-dialog, .site-search-dialog, .site-commandbar)
+    :is(button, a, summary, [tabindex='0']):focus-visible {
+    outline: 2px solid var(--ts-accent);
+    outline-offset: 3px;
+  }
+
+  /* Native checkbox semantics and labels remain intact. A bigger switch track
+     communicates on/off more clearly without adding JS or per-frame work. */
+  .room-settings-page input[role='switch'] {
+    width: 48px;
+    height: 30px;
+    flex-basis: 48px;
+    border-width: 2px;
+    box-shadow: none;
+  }
+  .room-settings-page input[role='switch']::after {
+    width: 20px;
+    height: 20px;
+    margin: 3px;
+    transition: transform var(--ts-component-duration) var(--ts-ease-standard);
+  }
+  .room-settings-page input[role='switch']:checked::after { transform: translateX(18px); }
+
+  /* Reserve space for the existing music launcher without relocating it. */
+  @media (min-width: 861px) {
+    .room-settings-page .settings-save-state { padding-inline-start: 48px; }
+  }
+
+  @media (max-width: 860px) {
+    :where(.page, .gallery-viewer, [data-material="popover"]) :where(.primary-btn, .ghost-btn, .danger-btn, .panel-btn, .filter-btn,
+      .code-btn, .mode-btn):not(.music-icon-btn):not(.room-chat-send) { padding-inline: 16px; }
+    .page :where(.plaza-msg-footer, .gallery-card-actions, .uc-article-actions,
+      .memory-item) :is(.ghost-btn, .primary-btn, .danger-btn, .icon-btn) { min-height: 40px; padding-inline: 12px; }
+    .page :where(.plaza-msg-footer, .gallery-card-actions) .plaza-copy-action { padding: 0; }
+    .settings-mode { padding: 16px; gap: 10px; }
+    .site-menu-link { padding: 12px; }
+    .gallery-column-toggle button { width: 40px; height: 40px; }
+    .gallery-filter-button { min-height: 40px; }
+    .site-mobile-navigation-trigger:hover { background: transparent; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root { --ts-component-duration: 0s; }
+  }
+  @media (forced-colors: active) {
+    .room-settings-page input[role='switch'] { appearance: auto; }
+    .room-settings-page input[role='switch']::after { content: none; }
+  }
+}

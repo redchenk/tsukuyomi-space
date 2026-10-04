@@ -1,3 +1,185 @@
+# Material-inspired component QA — 2026-10-04
+
+final result: passed
+
+## Scope and visual truth
+
+User request: Google-inspired component aesthetics, retaining the site's palette,
+pill buttons and existing experience, with local validation first.
+This is a refinement of the existing Vue project, not a new app or a literal
+clone of Google's documentation site.
+
+Google's actual rendered button reference was captured from
+https://material-web.dev/components/button/#types in the permitted in-app browser:
+.codex_tmp/material-ui-20261004/material-buttons-reference.png.
+The hierarchy/shape adaptation is compared together with the site's rendered
+viewer in material-adaptation.png. Google's demonstration colors, fonts, English
+copy and document layout are intentionally not imported into Tsukuyomi.
+Official field/switch references:
+https://material-web.dev/components/text-field/ and
+https://material-web.dev/components/switch/.
+
+The preservation targets are the actual pre-edit website screenshots:
+before-gallery-light.png, before-settings-light.png, before-menu-light.png and
+before-plaza-light.png. Current implementation is http://127.0.0.1:4184/gallery
+and its existing routes, using a disposable fixture database. No production
+account, content, credential or deployment is involved.
+
+All evidence in this section is under .codex_tmp/material-ui-20261004/.
+Desktop pairs use 1280 × 720 CSS pixels and 1280 × 720 image pixels, density 1,
+no device frame. Each pair is composed into one 2560 × 748 input including a
+28px annotation strip, without resizing either screenshot. Main preservation
+comparisons use light theme, guest, scrollY=0, initial/empty model configuration,
+four-column gallery, and latest Plaza filter. Fixture text/counts/art match;
+Plaza's fixture time differs by eight hours after server reseeding, and the
+animated companion can occupy a different animation frame. Neither is an app
+code change or a typography/layout mismatch.
+
+## Full-view and focused comparisons
+
+Opened and visually inspected in the same comparison input:
+
+- comparison-gallery.png and focus-gallery.png: card/toolbar curvature,
+  search outline, action padding, segmented density, image crop and navigation.
+- comparison-settings.png and focus-settings.png: outer/inner shapes, selected
+  tonal surface, field/navigation shapes, provider layout and footer actions.
+- comparison-menu.png and focus-menu.png: 28px overlay, inset list alignment,
+  readable labels and backdrop/main positioning.
+- comparison-plaza.png and focus-plaza.png: unchanged hero/content composition,
+  controlled button density, pill filters, horizontal labels and card nesting.
+- material-adaptation.png: filled primary and outlined secondary actions retain
+  the official reference's hierarchy and pills using the site's rose palette.
+
+Focused regions are retained at original density; full comparisons were not
+used alone to judge small labels. Intentional differences are larger, more
+consistent button padding, 24/16/28px shape levels and restrained elevation.
+Gallery's first row moves down about 8px as the toolbar targets become clearer;
+no content region is reordered or removed. The three-column/four-column view
+switch still changes the real grid.
+
+## Findings and iterations
+
+- Resolved P2: inconsistent text-action sizing/spacing and strong inherited
+  glow/lift. Shared rules now center labels/icons, keep labels horizontal,
+  retain pill geometry, remove lift/shine, and use semantic state surfaces.
+- Resolved P2: overlay actions escaped page-only rules; the initial Gallery
+  viewer still displayed the legacy download glow. Extend action scope to the
+  existing viewer and data-material popovers, then rebuild and recapture.
+  after-gallery-viewer.png and after-gallery-viewer-mobile-light.png show a
+  44px primary action, pill radius, box-shadow:none and ::after content:none.
+- Resolved P2: use real account/memory/table containers rather than unused
+  selector names for compact actions. Final mobile account capture
+  after-user-center-mobile-light-final.png has horizontal View/Edit/Delete
+  actions, all 40px high and no internal overflow.
+- Evidence issue, resolved: an early Plaza capture caught an unsettled route
+  frame and appeared to add a large blank region. Recapture using the browser's
+  settled screenshot observation at scrollY=0. The final comparison-plaza.png
+  and focus-plaza.png confirm the original composition and density. No
+  production layout or arbitrary spacing fix was made in response to this
+  transient capture.
+
+- Resolved P2 in final handoff review: the existing desktop music launcher covered
+  the first part of the settings save-status label. Reserve 48px inside the status
+  component above 860px, retaining both music/companion positions. Inspect
+  before-save-state-fix.png against the final after-settings-light.png in
+  comparison-save-state.png and the revised comparison-settings.png. The launcher
+  ends at x=67.76; the status content begins at x=80, with its text after the icon.
+  Rebuild and all 295 frontend tests passed again after this fix.
+
+No open P0/P1/P2 visual or usability finding remains in this component scope.
+
+## Required fidelity surfaces
+
+- Fonts/typography: existing Chinese UI and serif display stacks retained; no
+  font downloads. Regular actions use 14px/20px/500, compact labels 12px/20px;
+  existing specialized icon/table text retains its optical weight. Compare
+  headers, nested labels, menu links, metadata and action rows in focused
+  captures. No squeezed vertical Chinese labels or clipped action text remains.
+- Spacing/layout: route layout and information order retained. Larger outer
+  cards, smaller inner surfaces and raised overlays distinguish nesting.
+  Desktop, tablet, 390px and 320px checks show no document horizontal overflow.
+  Menu/search keep the underlying main region at its measured pre-open position.
+  Dedicated Room composer and Pixel drawing controls keep their own sizing.
+- Colors/tokens: existing moon-white/dusty-rose light and blue-gray dark mappings
+  retained. Tonal selections and hover/pressed surfaces derive from semantic
+  tokens. Primary contrast remains the existing 5.20:1 white-on-rose pair;
+  disabled state is distinct and focus uses a visible rose outline. No foreign
+  Google yellow/blue palette or new gradients were introduced.
+- Assets/images: original logo, Yachiyo art, avatars, covers, backgrounds,
+  companion, rendered Live2D and pixel canvas retained. No custom SVG/CSS art
+  substitutes or generated placeholders. Hub check found zero broken images;
+  comparison crops retain original image subject, sharpness and proportions.
+- Copy/content: app labels, descriptions, navigation and functions unchanged;
+  no implementation prose enters the product. Synthetic local fixture posts
+  illustrate layout only and are never posted to production.
+
+## Responsive, state and interaction evidence
+
+Browser viewports: 1280 × 720, 768 × 1024, 390 × 844 and 320 × 800.
+All measured document widths match their viewport widths.
+
+Verified through actual UI:
+
+- Light/dark switching, account menu opening/closing, unified search focus and
+  Moonlight search results; Enter opens the real filtered Stage route.
+- Gallery view toggle produces three real grid tracks; viewer opens/closes,
+  three mobile actions fit inside a 366px dialog, cards contain 40px like pills.
+- Plaza search reduces the fixture list to one matching message; clearing restores
+  it. Reply filter shows the real empty state. Selection remains legible dark.
+- Room/settings provider selection and editable model field; visible 2px field
+  focus with no extra inner glow. Memory switch transitions checked/off/on with
+  a 48 × 30px track and correctly contained thumb.
+- Missing model configuration produces the real error dialog on a 320px screen;
+  the Close button is operable and content fits. No real provider keys used.
+- Local synthetic-user login, account sections and article View/Edit/Delete
+  layout. Final 390px actions are 40px high, approximately 90px wide, with
+  scrollWidth==clientWidth. No destructive action is clicked.
+- Local synthetic-admin login and read-only Terminal article table: status/pin
+  labels remain horizontal, specialized table actions retain compact 34px
+  geometry, and document width remains 1280px. Logout restored guest preview.
+- Room rendered Live2D at phone/desktop widths; transparent phone chat/composer
+  and desktop workspace remain intact. No LLM/TTS request was made.
+- Pixel tool selection switches Brush/Eraser correctly and returns to Brush.
+  Canvas and horizontally scrollable tool rail retain their dedicated behavior.
+- Hub phone hero retains the same artwork, clean text/buttons and existing cards.
+
+Additional screenshots: after-settings-fields.png, after-settings-tablet-light.png,
+after-settings-mobile-dark.png, after-settings-error-320.png,
+after-menu-mobile-dark.png, after-plaza-mobile-dark.png,
+after-gallery-mobile-light.png, after-user-center-dark.png,
+after-user-center-mobile-dark.png, after-user-center-mobile-light-final.png,
+after-terminal-light.png. Earlier captures remain diagnostic; final comparisons
+and final account/mobile-viewer captures are the handoff evidence.
+
+Boundary: native browser discard-confirm automation blocked one earlier test tab;
+that native confirmation was not certified. Work continued in a fresh tab of the
+same in-app browser without bypassing security. The relevant CSS/form/switch
+states were verified there. These are browser checks, not physical iOS keyboard,
+provider connection, native download or signed-app acceptance.
+
+## Code/build checks and delivery
+
+- Existing frontend regressions: 295 passed, 0 failed, 0 skipped.
+- Domestic production build: passed after the final CSS changes.
+- git diff --check: passed.
+- Browser console error/warning inspection: none observed in tested routes.
+- No new JS component library, backend change, database migration, font, image,
+  network service or dependency. Native semantics/handlers remain in place.
+- Reduced motion and forced-color switch fallbacks are explicitly supported by
+  CSS; physical accessibility-device acceptance was not claimed.
+- Local preview stays available on loopback with disposable data. No push,
+  release, server restart or production deployment was performed in this turn.
+
+Implementation checklist complete: shared component layer, compatible input
+shadow token, responsive shapes/actions, real interaction checks, matched
+comparisons, final build/tests and preserved existing resources.
+
+final result: passed
+
+---
+
+## Earlier theme QA retained for history
+
 # Moonwhite / sakura theme QA — 2026-10-04
 
 final result: passed
