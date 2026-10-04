@@ -71,10 +71,9 @@ const siteStats = ref(hubPreviewCache?.siteStats || null);
 const previewLoading = ref(!hubPreviewCache);
 const previewError = ref('');
 const renderedPixelArtworkId = ref('');
-const visitPopupPreview = ref({
-  title: isEnglish.value ? 'Welcome to Tsukuyomi Space' : '欢迎来到月读空间',
-  content: isEnglish.value ? 'The first-visit notice has not been configured yet.' : '首次访问弹窗尚未配置内容。'
-});
+// Keep the notice slot empty until settings resolve, so the bundled default
+// never flashes before the administrator's current announcement.
+const visitPopupPreview = ref(null);
 const plazaQuick = reactive({
   content: '',
   loading: false,
@@ -446,7 +445,7 @@ async function submitPlazaQuick() {
 
 async function loadVisitPopupPreview() {
   try {
-    const settings = await loadPublicSettings();
+    const settings = await loadPublicSettings({ force: true, maxAgeMs: 0 });
     const title = String(settings.visitPopupTitle || '').trim();
     const content = String(settings.visitPopupContent || '').trim();
     visitPopupPreview.value = {
@@ -466,15 +465,14 @@ async function loadVisitPopupPreview() {
 }
 
 onMounted(() => {
+  loadVisitPopupPreview();
   if (typeof window === 'undefined') {
     loadHubPreviewFast();
-    loadVisitPopupPreview();
     return;
   }
   window.addEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
   window.requestAnimationFrame(() => {
     loadHubPreviewFast();
-    loadVisitPopupPreview();
   });
 });
 
@@ -510,9 +508,9 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <details class="hub-notice">
-      <summary><TsIcon name="bell" :size="17" /><span>{{ hubCopy.notice }}</span><strong>{{ visitPopupPreview.title }}</strong><small>{{ hubCopy.expand }}</small></summary>
-      <p>{{ visitPopupPreview.content }}</p>
+    <details class="hub-notice" :aria-busy="!visitPopupPreview">
+      <summary @click="!visitPopupPreview && $event.preventDefault()"><TsIcon name="bell" :size="17" /><span>{{ hubCopy.notice }}</span><strong>{{ visitPopupPreview?.title || '' }}</strong><small>{{ visitPopupPreview ? hubCopy.expand : '' }}</small></summary>
+      <p v-if="visitPopupPreview">{{ visitPopupPreview.content }}</p>
     </details>
 
     <section class="hub-grid-wrap">
