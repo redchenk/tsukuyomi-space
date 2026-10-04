@@ -17,7 +17,8 @@
   --ts-current-material-shadow: var(--ts-shadow-sm);
 }
 .unified-navigation .site-brand { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; margin: 0 auto 0 0; color: var(--ts-text); text-decoration: none; letter-spacing: 0; }
-.site-brand-symbol { display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--ts-radius-button); background: var(--ts-editorial-soft); color: var(--ts-accent); }
+.site-brand-symbol { display: grid; flex-shrink: 0; place-items: center; width: 38px; height: 38px; }
+.site-brand-symbol img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .unified-navigation .site-brand > span:last-child { display: grid; gap: 3px; min-width: 0; }
 .unified-navigation .site-brand strong { font-family: 'Songti SC', 'Noto Serif SC', Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: .08em; white-space: nowrap; }
 .unified-navigation .site-brand small { font-size: 10px; line-height: 1.4; color: var(--ts-muted); white-space: nowrap; }

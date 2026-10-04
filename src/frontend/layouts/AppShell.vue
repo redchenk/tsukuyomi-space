@@ -5,6 +5,7 @@ import BeianLink from '../components/BeianLink.vue';
 import NotificationBell from '../components/NotificationBell.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
+import brandLogo from '../assets/sakura/sakura-moon-logo.webp';
 import { alternateLanguage } from '../i18n';
 import { navigationCopy } from '../services/siteNavigation';
 const SiteSearch = defineAsyncComponent(() => import('../components/SiteSearch.vue'));
@@ -281,7 +282,7 @@ onUnmounted(() => {
 
     <header v-if="showChrome" class="topbar site-commandbar" data-material="header">
       <a href="/hub" class="site-brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @click="navigate($event, { path: '/hub' })">
-        <span class="site-brand-symbol"><TsIcon name="eclipse" :size="23" /></span>
+        <span class="site-brand-symbol"><img :src="brandLogo" alt="" width="38" height="38"></span>
         <span><strong>{{ t.brand }}</strong><small>{{ currentPageLabel }}</small></span>
       </a>
       <nav class="desktop-navigation" :aria-label="t.navigation">
