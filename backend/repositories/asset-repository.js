@@ -19,7 +19,7 @@ function parseMetadata(row) {
 
 function parseGalleryAsset(row) {
     const asset = parseMetadata(row);
-    return asset ? { ...asset, owner_has_avatar: Boolean(asset.owner_has_avatar) } : asset;
+    return asset ? { ...asset, owner_has_avatar: Boolean(asset.owner_has_avatar), viewer_liked: Boolean(asset.viewer_liked) } : asset;
 }
 
 function normalizeTypeWhere(type, params) {
@@ -88,7 +88,7 @@ const galleryCategoryKeywords = Object.freeze({
 function buildGalleryWhere({ search = '', ownerId = '', category = '' } = {}) {
     const params = [];
     let where = `
-        (assets.mime_type LIKE 'image/%' OR assets.asset_type LIKE '%image%')
+        (assets.mime_type LIKE 'image/%' OR (COALESCE(assets.mime_type, '') = '' AND assets.asset_type LIKE '%image%'))
         AND (
             assets.metadata LIKE '%"collection":"gallery"%'
             OR assets.metadata LIKE '%"collection": "gallery"%'
@@ -96,6 +96,7 @@ function buildGalleryWhere({ search = '', ownerId = '', category = '' } = {}) {
             OR assets.metadata LIKE '%"gallery": true%'
         )
     `;
+    where += ` AND CASE WHEN json_valid(assets.metadata) THEN COALESCE(json_extract(assets.metadata, '$.visibility'), 'public') <> 'private' ELSE 0 END`;
     if (ownerId) {
         where += ' AND assets.owner_id = ?';
         params.push(ownerId);
@@ -113,11 +114,7 @@ function buildGalleryWhere({ search = '', ownerId = '', category = '' } = {}) {
     return { where, params };
 }
 
-function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '', category = '', sort = 'latest' } = {}) {
-    const galleryFilter = buildGalleryWhere({ search, ownerId, category });
-    const order = sort === 'oldest' ? 'ASC' : 'DESC';
-    const rows = db.prepare(`
-        SELECT
+const GALLERY_COLUMNS = `
             assets.id, assets.article_id, assets.owner_id, assets.asset_type, assets.mime_type,
             assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
             owner.username AS owner_username,
@@ -129,39 +126,58 @@ function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '', 
                 WHEN owner.avatar LIKE 'http://q.qlogo.cn/%' THEN 'https://' || substr(owner.avatar, 8)
                 ELSE ''
             END AS owner_avatar_url,
-            COALESCE(owner.updated_at, owner.created_at) AS owner_avatar_updated_at
+            COALESCE(owner.updated_at, owner.created_at) AS owner_avatar_updated_at,
+            (SELECT COUNT(*) FROM gallery_likes likes WHERE likes.asset_id = assets.id) AS like_count,
+            EXISTS(SELECT 1 FROM gallery_likes likes WHERE likes.asset_id = assets.id AND likes.user_id = ?) AS viewer_liked
+`;
+
+function listGalleryAssets({ limit = 60, offset = 0, search = '', ownerId = '', category = '', sort = 'latest', viewerId = '' } = {}) {
+    const galleryFilter = buildGalleryWhere({ search, ownerId, category });
+    const order = sort === 'oldest' ? 'ASC' : 'DESC';
+    const rows = db.prepare(`
+        SELECT ${GALLERY_COLUMNS}
         FROM article_assets AS assets
         LEFT JOIN users AS owner ON owner.id = assets.owner_id
         WHERE ${galleryFilter.where}
         ORDER BY assets.created_at ${order}, assets.id ${order}
         LIMIT ? OFFSET ?
-    `).all(...galleryFilter.params, limit, offset);
+    `).all(viewerId, ...galleryFilter.params, limit, offset);
     return rows.map(parseGalleryAsset);
 }
 
-function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '' } = {}) {
+function listRandomGalleryAssets({ limit = 1, search = '', ownerId = '', viewerId = '' } = {}) {
     const galleryFilter = buildGalleryWhere({ search, ownerId });
     const rows = db.prepare(`
-        SELECT
-            assets.id, assets.article_id, assets.owner_id, assets.asset_type, assets.mime_type,
-            assets.url, assets.storage_key, assets.metadata, assets.created_at, assets.updated_at,
-            owner.username AS owner_username,
-            COALESCE(NULLIF(owner.nickname, ''), owner.username) AS owner_nickname,
-            CASE WHEN owner.avatar IS NOT NULL AND owner.avatar <> '' THEN 1 ELSE 0 END AS owner_has_avatar,
-            CASE
-                WHEN owner.avatar LIKE 'https://%' THEN owner.avatar
-                WHEN owner.avatar LIKE 'http://thirdqq.qlogo.cn/%' THEN 'https://' || substr(owner.avatar, 8)
-                WHEN owner.avatar LIKE 'http://q.qlogo.cn/%' THEN 'https://' || substr(owner.avatar, 8)
-                ELSE ''
-            END AS owner_avatar_url,
-            COALESCE(owner.updated_at, owner.created_at) AS owner_avatar_updated_at
+        SELECT ${GALLERY_COLUMNS}
         FROM article_assets AS assets
         LEFT JOIN users AS owner ON owner.id = assets.owner_id
         WHERE ${galleryFilter.where}
         ORDER BY RANDOM()
         LIMIT ?
-    `).all(...galleryFilter.params, limit);
+    `).all(viewerId, ...galleryFilter.params, limit);
     return rows.map(parseGalleryAsset);
+}
+
+function findGalleryAssetById(id, viewerId = '') {
+    const filter = buildGalleryWhere();
+    return parseGalleryAsset(db.prepare(`
+        SELECT ${GALLERY_COLUMNS}
+        FROM article_assets AS assets
+        LEFT JOIN users AS owner ON owner.id = assets.owner_id
+        WHERE assets.id = ? AND ${filter.where}
+    `).get(viewerId, id, ...filter.params));
+}
+
+function galleryLikeStates(ids, viewerId = '') {
+    if (!ids.length) return [];
+    const filter = buildGalleryWhere();
+    return db.prepare(`
+        SELECT assets.id,
+            (SELECT COUNT(*) FROM gallery_likes likes WHERE likes.asset_id = assets.id) AS like_count,
+            EXISTS(SELECT 1 FROM gallery_likes likes WHERE likes.asset_id = assets.id AND likes.user_id = ?) AS viewer_liked
+        FROM article_assets AS assets
+        WHERE assets.id IN (${ids.map(() => '?').join(',')}) AND ${filter.where}
+    `).all(viewerId, ...ids, ...filter.params).map(row => ({ ...row, viewer_liked: Boolean(row.viewer_liked) }));
 }
 
 function countGalleryAssets({ search = '', ownerId = '', category = '' } = {}) {
@@ -271,6 +287,8 @@ module.exports = {
     deleteAssetById,
     deleteAssetForOwner,
     findAssetForAdmin,
+    findGalleryAssetById,
+    galleryLikeStates,
     findAssetByStorageKey,
     findAssetForOwner,
     isAssetPubliclyReferenced,

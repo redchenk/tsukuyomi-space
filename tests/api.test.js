@@ -1191,6 +1191,101 @@ describe('articles API', () => {
 });
 
 describe('gallery API', () => {
+    function seedLikeAsset(id, metadata = { collection: 'gallery', title: '点赞测试图片' }, mime = 'image/png') {
+        db.prepare(`INSERT INTO article_assets (id, owner_id, asset_type, mime_type, url, storage_key, metadata)
+            VALUES (?, 'user-002', 'gallery-image', ?, ?, ?, ?)`).run(id, mime, `/assets/${id}.png`, `${id}.png`, JSON.stringify(metadata));
+    }
+    function cleanLikeAsset(id) {
+        db.prepare('DELETE FROM notifications WHERE json_extract(metadata, \'$.assetId\') = ?').run(id);
+        db.prepare('DELETE FROM article_assets WHERE id = ?').run(id);
+    }
+
+    it('persists one like per account and exactly one owner notification, with personalized reads', async () => {
+        const id = 'gallery-like-api';
+        seedLikeAsset(id);
+        try {
+            await request('/api/assets/gallery?limit=120'); // Prime anonymous caches.
+            await request('/api/assets/gallery/public?limit=24');
+            const endpoint = `/api/assets/gallery/${id}/like`;
+            const responses = await Promise.all(Array.from({ length: 3 }, () => postJson(endpoint, { user_id: 'user-002', owner_id: 'user-001' }, userToken)));
+            assert.ok(responses.every(result => result.response.status === 200 && result.body.data.like_count === 1 && result.body.data.viewer_liked));
+            assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gallery_likes WHERE asset_id=?').get(id).n, 1);
+            const notifications = db.prepare("SELECT * FROM notifications WHERE json_extract(metadata, '$.assetId') = ?").all(id);
+            assert.equal(notifications.length, 1);
+            assert.equal(notifications[0].user_id, 'user-002');
+            assert.equal(notifications[0].actor_id, 'user-001');
+            assert.equal(notifications[0].type, 'like');
+            assert.equal(notifications[0].link, `/gallery?image=${id}`);
+            const inbox = await request('/api/user/notifications', { headers: authHeader(managedUserToken) });
+            assert.ok(inbox.body.data.some(item => item.id === notifications[0].id && item.unread));
+            const anonymous = await request(`/api/assets/gallery/${id}`);
+            const actor = await request(`/api/assets/gallery/${id}`, { headers: authHeader(userToken) });
+            const owner = await request(`/api/assets/gallery/${id}`, { headers: authHeader(managedUserToken) });
+            assert.equal(anonymous.body.data.like_count, 1);
+            assert.equal(anonymous.body.data.viewer_liked, false);
+            assert.equal(actor.body.data.viewer_liked, true);
+            assert.equal(owner.body.data.viewer_liked, false);
+            const list = await request('/api/assets/gallery?limit=120');
+            assert.equal(list.body.data.assets.find(asset => asset.id === id).like_count, 1);
+            assert.equal(list.body.data.assets.find(asset => asset.id === id).viewer_liked, false);
+            const preview = await request('/api/assets/gallery/public?limit=24', { headers: authHeader(userToken) });
+            assert.equal(preview.body.data.assets.find(asset => asset.id === id).viewer_liked, true);
+            const publicPreview = await request('/api/assets/gallery/public?limit=24');
+            assert.equal(publicPreview.body.data.assets.find(asset => asset.id === id).viewer_liked, false);
+            const states = await request(`/api/assets/gallery-likes?ids=${id}`, { headers: authHeader(userToken) });
+            assert.deepEqual(states.body.data, [{ id, like_count: 1, viewer_liked: true }]);
+            assert.match(states.response.headers.get('cache-control'), /no-store/);
+            const ownLike = await postJson(endpoint, {}, managedUserToken);
+            assert.equal(ownLike.body.data.like_count, 2);
+            assert.equal(db.prepare("SELECT COUNT(*) AS n FROM notifications WHERE json_extract(metadata, '$.assetId') = ?").get(id).n, 1);
+        } finally { cleanLikeAsset(id); }
+    });
+
+    it('rejects private or non-gallery likes, unauthenticated writes, CSRF and unbounded batch reads', async () => {
+        const ids = ['gallery-private-like', 'attachment-like', 'gallery-non-image-like'];
+        seedLikeAsset(ids[0], { collection: 'gallery', visibility: 'private' });
+        seedLikeAsset(ids[1], { visibility: 'public' });
+        seedLikeAsset(ids[2], { collection: 'gallery' }, 'application/pdf');
+        try {
+            for (const id of [...ids, 'gallery-missing-like', "' OR 1=1 --"]) {
+                assert.equal((await request(`/api/assets/gallery/${encodeURIComponent(id)}`)).response.status, 404);
+                assert.equal((await postJson(`/api/assets/gallery/${encodeURIComponent(id)}/like`, {}, userToken)).response.status, 404);
+            }
+            const states = await request(`/api/assets/gallery-likes?ids=${ids.join(',')}`, { headers: authHeader(userToken) });
+            assert.deepEqual(states.body.data, []);
+            const anonymous = await postJson('/api/assets/gallery/missing/like', {});
+            assert.equal(anonymous.response.status, 401);
+            const csrf = await request('/api/assets/gallery/missing/like', { method: 'POST', headers: { ...jsonHeaders(userToken), Origin: 'https://attacker.example' }, body: '{}' });
+            assert.equal(csrf.response.status, 403);
+            for (const query of ['ids=', 'ids=a&ids=b', `ids=${Array.from({ length: 25 }, (_, i) => `asset-${i}`).join(',')}`, `ids=${'a'.repeat(201)}`]) {
+                assert.equal((await request(`/api/assets/gallery-likes?${query}`)).response.status, 400);
+            }
+            const publicList = await request(`/api/assets/gallery?search=${ids[0]}`);
+            assert.equal(publicList.body.data.pagination.total, 0);
+            assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gallery_likes WHERE asset_id IN (?,?,?)').get(...ids).n, 0);
+        } finally { ids.forEach(cleanLikeAsset); }
+    });
+
+    it('rolls back a like if notification persistence fails and safely acknowledges a lost-response retry', async () => {
+        const id = 'gallery-atomic-like';
+        seedLikeAsset(id);
+        const repository = require('../backend/repositories/notification-repository');
+        const create = repository.createNotification;
+        try {
+            repository.createNotification = () => { throw new Error('Simulated notification persistence failure'); };
+            assert.equal((await postJson(`/api/assets/gallery/${id}/like`, {}, userToken)).response.status, 500);
+            assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gallery_likes WHERE asset_id=?').get(id).n, 0);
+            repository.createNotification = create;
+            await postJson(`/api/assets/gallery/${id}/like`, {}, userToken); // Treat the first response as lost.
+            const recovered = await postJson(`/api/assets/gallery/${id}/like`, {}, userToken);
+            assert.equal(recovered.body.data.like_count, 1);
+            assert.equal(db.prepare("SELECT COUNT(*) AS n FROM notifications WHERE json_extract(metadata, '$.assetId')=?").get(id).n, 1);
+            db.prepare('DELETE FROM article_assets WHERE id=?').run(id);
+            assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gallery_likes WHERE asset_id=?').get(id).n, 0);
+            assert.equal((await request(`/api/assets/gallery/${id}`)).response.status, 404);
+        } finally { repository.createNotification = create; cleanLikeAsset(id); }
+    });
+
     it('filters multilingual names and paginates chronological results without crossing owner scope', async () => {
         const prefix = `gallery-browse-${Date.now()}`;
         const rows = [

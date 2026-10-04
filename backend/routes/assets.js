@@ -17,6 +17,7 @@ const articleMedia = require('../services/article-media');
 const objectStorage = require('../services/object-storage');
 const responseCache = require('../services/response-cache');
 const userGrowth = require('../services/user-growth');
+const { likeGalleryImage } = require('../services/gallery-likes');
 const uploads = require('../services/asset-uploads');
 const { createRateLimiter } = require('../middleware/security');
 const { setPublicReadCache } = require('../services/public-cache');
@@ -455,19 +456,20 @@ router.get('/', authenticateToken, (req, res) => {
     }
 });
 
-router.get('/gallery/public', (req, res) => {
+router.get('/gallery/public', optionalAuth, (req, res) => {
     try {
         const limit = Math.min(parsePositiveInt(req.query.limit, 4), 24);
         const random = ['1', 'true', 'yes'].includes(String(req.query.random || '').trim().toLowerCase());
         const key = `public:gallery:preview:${random ? 'random' : 'latest'}:${limit}`;
         setPublicReadCache(res, { maxAge: random ? 5 : 20, stale: 30 });
-        res.json(responseCache.remember(key, random ? 5000 : 20000, () => {
+        const read = () => {
             const assets = (random
-                ? assetRepository.listRandomGalleryAssets({ limit })
-                : assetRepository.listGalleryAssets({ limit, offset: 0 }))
+                ? assetRepository.listRandomGalleryAssets({ limit, viewerId: req.user?.id || '' })
+                : assetRepository.listGalleryAssets({ limit, offset: 0, viewerId: req.user?.id || '' }))
                 .map((asset) => normalizeAsset(asset));
             return { success: true, message: 'OK', data: { assets } };
-        }));
+        };
+        res.json(req.user ? read() : responseCache.remember(key, random ? 5000 : 20000, read));
     } catch (error) {
         console.error('List public gallery assets failed:', error);
         fail(res, 500, '无法读取图库');
@@ -507,7 +509,7 @@ router.get('/gallery', optionalAuth, (req, res) => {
                 };
             })
             : (() => {
-                const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId, category, sort }).map((asset) => normalizeAsset(asset, { signUrl: Boolean(req.user) }));
+                const assets = assetRepository.listGalleryAssets({ limit, offset, search, ownerId, category, sort, viewerId: req.user?.id || '' }).map((asset) => normalizeAsset(asset, { signUrl: Boolean(req.user) }));
                 const total = assetRepository.countGalleryAssets({ search, ownerId, category });
                 return {
                     assets,
@@ -528,6 +530,46 @@ router.get('/gallery', optionalAuth, (req, res) => {
         fail(res, 500, '无法读取图库');
     }
 });
+
+router.get('/gallery-likes', optionalAuth, (req, res) => {
+    const input = req.query.ids;
+    if (typeof input !== 'string' || input.length > 5000) return fail(res, 400, '图片参数无效');
+    const ids = [...new Set(input.split(','))];
+    if (!ids.length || ids.length > 24 || ids.some(id => !id || id.length > 200)) return fail(res, 400, '图片参数无效');
+    try {
+        setPublicReadCache(res);
+        ok(res, assetRepository.galleryLikeStates(ids, req.user?.id || ''));
+    } catch (error) {
+        console.error('Read gallery likes failed:', error);
+        fail(res, 500, '无法读取点赞状态');
+    }
+});
+
+router.get('/gallery/:id', optionalAuth, (req, res) => {
+    try {
+        const asset = assetRepository.findGalleryAssetById(req.params.id, req.user?.id || '');
+        if (!asset) return fail(res, 404, '图库图片不存在或未公开');
+        setPublicReadCache(res);
+        ok(res, normalizeAsset(asset));
+    } catch (error) {
+        console.error('Read gallery image failed:', error);
+        fail(res, 500, '无法读取图库图片');
+    }
+});
+
+router.post('/gallery/:id/like', authenticateToken,
+    createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'gallery-like', keyGenerator: req => req.user.id }),
+    (req, res) => {
+        try {
+            const result = likeGalleryImage(req.params.id, req.user);
+            if (!result) return fail(res, 404, '图库图片不存在或未公开');
+            clearPublicGalleryCache();
+            ok(res, result, '已点赞');
+        } catch (error) {
+            console.error('Like gallery image failed:', error);
+            fail(res, 500, '点赞失败，请稍后重试');
+        }
+    });
 
 router.post('/oss-register', authenticateAdminToken, requireAdmin, requireSuperAdmin, (req, res) => {
     try {

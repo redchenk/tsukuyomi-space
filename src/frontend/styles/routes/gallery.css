@@ -79,6 +79,11 @@
   .gallery-card-meta .user-level-badge { flex-shrink: 0; }
   .gallery-workspace .gallery-card-actions { display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--ts-editorial-line); }
   .gallery-card-actions :is(.ghost-btn, .danger-btn) { padding: 7px 10px; min-height: 34px; font-size: 10px; }
+  :is(.gallery-workspace, .gallery-viewer) .gallery-like-button { white-space: nowrap; flex-shrink: 0; }
+  :is(.gallery-workspace, .gallery-viewer) .gallery-like-button.is-liked { opacity: 1; color: var(--ts-accent); background: var(--ts-editorial-soft); }
+  .gallery-like-button.is-liked svg { fill: currentColor; }
+  .gallery-like-count { font-variant-numeric: tabular-nums; }
+  .gallery-like-error { flex-basis: 100%; margin: 0; color: var(--ts-danger, #cc5275); font-size: 13px; }
   .gallery-results-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 0 0 20px; }
   .gallery-results-footer p { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11px; line-height: 1.7; color: var(--ts-editorial-muted); }
   .gallery-pagination { display: flex; align-items: center; gap: 12px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ts-editorial-muted); }
