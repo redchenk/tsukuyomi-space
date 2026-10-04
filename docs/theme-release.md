@@ -39,7 +39,10 @@ python3 /var/backups/tsukuyomi-space/releases/<release>-<site>/release.py rollba
 或符号链接变化时拒绝覆盖。国内先回滚代码/图标，海外随后回滚前端/图标。
 
 2026-10-04 的品牌图标来自用户提供的「樱伞下的白发少女-5」。HTML、
-favicon、Apple 图标及 manifest/图标 URL 使用 sakura-20261004 版本标记，
-让缓存客户端获取新资源。原始素材及压缩说明见
+根目录兼容图标继续保留 sakura-20261004 标记；构建入口中的 favicon、
+Apple 图标、PWA manifest 及其图标使用 Vite 内容指纹路径。实测国内 CDN
+忽略图标查询参数，所以发布验收须验证入口实际引用的指纹文件，而非只检查
+`?v=`。根目录旧图标缓存可在 CDN 控制台做指定 URL 刷新，但不影响新入口
+使用新图标。原始素材及压缩说明见
 src/frontend/assets/sakura/README.md。回归测试覆盖显式放行、媒体拒绝、
 产物/提交不一致、准备后被改动、符号链接、较新图标和两站恢复路径。

@@ -879,15 +879,17 @@ def attach_frontend(rendered: bytes) -> bytes:
         soup.body.append(app)
     if not soup.head or not soup.body or not base.head:
         raise ValueError("Missing frontend document")
+    def shell_asset(node):
+        return ((node.name == "script" and node.get("type") != "application/ld+json")
+            or (node.name == "link" and any(r in (node.get("rel") or []) for r in
+                ("stylesheet", "modulepreload", "icon", "apple-touch-icon", "manifest")))
+            or (node.name == "meta" and (str(node.get("http-equiv", "")).lower() == "content-security-policy"
+                or str(node.get("name", "")).lower() == "theme-color")))
     for node in list(soup.head.find_all(["script", "link", "meta"])):
-        if ((node.name == "script" and node.get("type") != "application/ld+json")
-            or (node.name == "link" and node.get("rel") and any(r in node.get("rel") for r in ("stylesheet", "modulepreload")))
-            or (node.name == "meta" and str(node.get("http-equiv", "")).lower() == "content-security-policy")):
+        if shell_asset(node):
             node.decompose()
     for node in list(base.head.find_all(["script", "link", "meta"])):
-        if ((node.name == "script" and node.get("type") != "application/ld+json")
-            or (node.name == "link" and node.get("rel") and any(r in node.get("rel") for r in ("stylesheet", "modulepreload")))
-            or (node.name == "meta" and str(node.get("http-equiv", "")).lower() == "content-security-policy")):
+        if shell_asset(node):
             soup.head.append(node.extract())
     return str(soup).encode("utf-8")
 

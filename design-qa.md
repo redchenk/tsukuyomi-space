@@ -47,8 +47,8 @@ in light mode; saved dark preferences remain effective.
 Dark adaptation uses asset 4 beneath a deep blue-gray wash, solid reading
 surfaces, brighter rose links and a dimmed hero illustration. It was reviewed
 as a complementary theme rather than a hue inversion of the light screenshot.
-On phones, asset 3 occupies its own space below the copy, preserving the face
-and preventing overlap with action buttons.
+On phones, the same lake illustration as desktop now occupies its own space
+below the copy, preserving the face and preventing overlap with action buttons.
 
 ## Iterations and resolved findings
 
@@ -123,9 +123,10 @@ Verified semantic foreground/background contrast:
 Artwork is not behind ordinary body text. Existing semantic status colors and
 focus outlines remain. All six user PNGs are converted to WebP (quality 88,
 method 6), retaining native dimensions/transparency: 1,692,432 bytes total,
-87.5% smaller than their 13,504,011-byte originals. Responsive picture selection
-uses the transparent figure on mobile; images have dimensions and decoding
-hints, with the hero prioritized and content images lazy-loaded.
+87.5% smaller than their 13,504,011-byte originals. Desktop and mobile share the lake hero; the transparent figure remains a
+source-only spare and is no longer imported into the build. Images have
+dimensions and decoding hints, with the hero prioritized and content images
+lazy-loaded.
 
 Favicon/PWA/Apple icons come from asset 5's (360,20,1160,820) face crop.
 The obsolete, fully replaced src/frontend/assets/moonlit-lake.png was removed
@@ -152,3 +153,47 @@ Wiki media and uploaded files remain untouched.
 No new browser console warning/error was observed during final captures.
 Production resource checks and real-device acceptance are outside this
 local-first handoff. This local report does not itself certify production deployment.
+
+
+## Authorized mobile follow-up and cache verification
+
+User steering during the authorized two-site release: mobile Hero must use the
+same character artwork as PC, and content cards must be shorter. These changes
+supersede the earlier transparent mobile figure and equal-height card layout.
+
+Resolved P2: inherited grid-auto-rows:1fr let the Plaza card stretch every phone
+card to 507px. Rows now size independently. At 390 × 844 and 360 × 800, the
+three content cards measure 142px high, with readable thumbnail/text columns,
+two-line title limit, one-line excerpt, and intact author/date links. Plaza
+retains all three latest messages and its single quick-message form, measuring
+377px / 393px instead of 507px. Document widths exactly match 390 / 360.
+
+Fidelity review: the serif headline and card names retain the selected source's
+hierarchy; phone card titles are 17px with 1.4 line-height. Spacing and rounded
+corners retain site tokens. Light/dark colors are unchanged. The same sharp
+lake/umbrella artwork renders on both devices, with phone object-position 65%
+and dimming in dark mode. All public copy and content links remain functional;
+only previews are clamped, and complete content remains on its destination.
+No new icons, placeholder art, synthetic production posts or routes were added.
+
+Desktop reference and revised implementation were compared in the same input,
+at 1487 × 1058, light mode and scrollY=0:
+.codex_tmp/sakura-theme/desktop-followup-comparison.jpg. Desktop content cards
+now measure 337px and the Plaza row 340px, without cross-row stretching.
+Mobile evidence: hub-mobile-hero-final.png, hub-mobile-cards-final.png and
+hub-mobile-dark-followup.png. These are local disposable-fixture screenshots.
+
+Live release checks found domestic CDN ignores favicon query parameters, and
+cached overseas SEO documents retained old icon links. The build now emits
+content-addressed icons plus a manifest whose icons point to those files.
+Overseas cached HTML attaches current icon/manifest/theme-color links alongside
+current scripts/styles, preserving translated content, CSP and noscript output.
+Three brand asset tests pass; 16 overseas HTML/cache/security regressions pass
+in an isolated temporary test tree using the existing server Python environment
+(no model loads, network calls, production DB access or dependency installation).
+All 295 frontend regressions (including the three new brand cases) pass. Both
+current builds pass.
+Browser console is clear. Existing 273 API and 28 deployment safety checks
+remain valid for unchanged code. No open P0/P1/P2 finding remains.
+
+final result: passed

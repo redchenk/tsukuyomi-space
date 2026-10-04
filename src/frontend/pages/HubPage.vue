@@ -514,7 +514,6 @@ onBeforeUnmount(() => {
 
         <figure class="hub-character" :aria-label="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'">
           <picture>
-            <source media="(max-width: 600px)" :srcset="siteArt.character" width="1487" height="1058">
             <img :src="siteArt.hero" :alt="isEnglish ? 'Yachiyo by the moonlit lake, beneath a cherry-blossom umbrella' : '樱伞下，坐在月光湖畔的八千代'" width="1672" height="941" loading="eager" decoding="async" fetchpriority="high">
           </picture>
         </figure>

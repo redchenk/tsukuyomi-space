@@ -63,6 +63,18 @@ class OverseasSeoTests(unittest.TestCase):
         self.assertEqual(self.service.attach_frontend(topic), topic)
         self.assertEqual(self.service.cached_seo_payload(("text/html;status=404", b"Not found")), (404, "text/html", b"Not found"))
 
+    def test_cached_brand_urls_and_theme_follow_the_current_shell(self):
+        stale = self.document.replace(b'</head>', b'<link rel="icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/old-apple.png"><link rel="manifest" href="/old.webmanifest"><meta name="theme-color" content="#old"></head>')
+        (self.folder / 'index.html').write_text('<html><head><link rel="icon" href="/assets/favicon-newhash.ico"><link rel="apple-touch-icon" href="/assets/apple-newhash.png"><link rel="manifest" href="/assets/site-newhash.webmanifest"><meta name="theme-color" content="#f7f9fc"></head><body><div id="app"></div></body></html>')
+        result = self.service.cached_seo_payload(('text/html', stale))[2]
+        soup = BeautifulSoup(result, 'html.parser')
+        self.assertEqual([tag['href'] for tag in soup.select('link[rel="icon"]')], ['/assets/favicon-newhash.ico'])
+        self.assertEqual(soup.select_one('link[rel="apple-touch-icon"]')['href'], '/assets/apple-newhash.png')
+        self.assertEqual(soup.select_one('link[rel="manifest"]')['href'], '/assets/site-newhash.webmanifest')
+        self.assertEqual(soup.select_one('meta[name="theme-color"]')['content'], '#f7f9fc')
+        self.assertIn(b'Public content', result)
+        self.assertIn(b'<noscript>', result)
+
     def test_fresh_and_stale_reads_never_wait_for_translation(self):
         with mock.patch.object(self.service.STORE, "get_document", return_value=("text/html", self.document)), mock.patch.object(self.service, "fetch_upstream") as fetch, mock.patch.object(self.service, "schedule_seo_refresh") as schedule:
             self.assertEqual(self.service.translated_seo("/pixel")[0], 200)

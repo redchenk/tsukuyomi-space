@@ -5,8 +5,8 @@
 | 原始文件 | 项目文件 | 尺寸 | 用途 |
 | --- | --- | --- | --- |
 | 樱花湖畔的月白春景-1.png | moonwhite-lake.webp | 1672 × 941 | 浅色全局背景，中央叠加月白遮罩 |
-| 月下樱花少女-2.png | yachiyo-lake.webp | 1672 × 941 | 大厅桌面主视觉，左侧渐隐 |
-| 白发少女与绛红纸伞-3.png | yachiyo-cutout.webp | 1487 × 1058 | 大厅手机主视觉，保留透明背景 |
+| 月下樱花少女-2.png | yachiyo-lake.webp | 1672 × 941 | 大厅桌面与手机主视觉 |
+| 白发少女与绛红纸伞-3.png | yachiyo-cutout.webp | 1487 × 1058 | 保留为备用原作素材，不参与当前构建 |
 | 月下樱花神社-4.png | moonlit-shrine.webp | 1672 × 941 | 暗色全局背景与文章缺省封面 |
 | 樱伞下的白发少女-5.png | yachiyo-portrait.webp | 1672 × 941 | 图库缺省封面与网站图标来源 |
 | 樱花海滨铁路站-6.png | sakura-station.webp | 1672 × 941 | 尚无像素作品时的缺省封面 |
@@ -17,7 +17,8 @@ WebP 使用 Pillow、quality=88、method=6，保留原始尺寸及透明通道�
 
 图标取第 5 张的 `(360, 20, 1160, 820)` 正方形区域，使用 LANCZOS 缩放。
 生成 `assets/icons/icon-{32,180,192,512}.png` 和 16/32/48/64 像素的 `favicon.ico`。
-HTML 与 manifest 的图标 URL 使用 `v=sakura-20261004` 更新缓存。
+构建时从这五个图标生成带内容指纹的资源，并生成引用对应资源的 manifest。
+HTML 指向这些不可变资源，不依赖 CDN 是否保留 `v=sakura-20261004` 查询参数。
 
 本轮只移除已被该背景替代、且不再被构建引用的
 `src/frontend/assets/moonlit-lake.png`。`yachiyo-hub-stand.png` 仍用于房间分享，

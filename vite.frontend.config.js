@@ -1,9 +1,45 @@
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
+import { readFileSync } from 'node:fs';
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url));
 const frontendRoot = fileURLToPath(new URL('./src/frontend', import.meta.url));
+
+// Some CDN rules ignore query strings. Put brand files in the immutable build
+// instead of relying on ?v=... to refresh cached favicon / PWA URLs.
+export function fingerprintedBrandAssets(englishSite = false) {
+  return {
+    name: 'tsukuyomi-fingerprinted-brand-assets',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      const replacements = new Map();
+      for (const path of ['favicon.ico', ...[32, 180, 192, 512].map(size => `assets/icons/icon-${size}.png`)]) {
+        const name = path.split('/').at(-1);
+        const reference = this.emitFile({ type: 'asset', name, source: readFileSync(new URL(path, import.meta.url)) });
+        replacements.set('/' + path, '/' + this.getFileName(reference));
+      }
+      const manifest = JSON.parse(readFileSync(new URL('./site.webmanifest', import.meta.url), 'utf8'));
+      for (const icon of manifest.icons) icon.src = replacements.get(icon.src.split('?')[0]);
+      if (englishSite) {
+        manifest.name = 'Tsukuyomi Space';
+        manifest.short_name = 'Tsukuyomi';
+        manifest.description = 'Stories, community, fan art, pixel art and the Tsukimi Yachiyo Live2D room.';
+        manifest.lang = 'en';
+      }
+      const reference = this.emitFile({ type: 'asset', name: 'site.webmanifest', source: JSON.stringify(manifest, null, 2) });
+      replacements.set('/site.webmanifest', '/' + this.getFileName(reference));
+      const index = bundle['index.html'];
+      if (!index || index.type !== 'asset') throw new Error('Missing frontend HTML for brand assets');
+      let html = String(index.source);
+      for (const [original, replacement] of replacements) {
+        html = html.replaceAll(original + '?v=sakura-20261004', replacement).replaceAll(original, replacement);
+      }
+      index.source = html;
+    }
+  };
+}
 
 function englishSiteHtml(englishSite) {
   return {
@@ -73,7 +109,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __TSUKUYOMI_ENGLISH_SITE__: JSON.stringify(englishSite)
     },
-    plugins: [vue(), englishSiteHtml(englishSite)],
+    plugins: [vue(), englishSiteHtml(englishSite), fingerprintedBrandAssets(englishSite)],
     resolve: {
       alias: {
         '@frontend': frontendRoot
