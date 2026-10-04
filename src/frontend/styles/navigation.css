@@ -23,7 +23,7 @@
 .unified-navigation .site-brand small { font-size: 10px; line-height: 1.4; color: var(--ts-muted); white-space: nowrap; }
 .unified-navigation .desktop-navigation { display: flex; align-items: center; gap: 3px; flex: 0 0 auto; }
 .unified-navigation .desktop-navigation :is(a, button) { position: relative; display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 10px 12px; border: 0; border-radius: var(--ts-radius-button); background: transparent; color: var(--ts-muted); font: inherit; font-size: 13px; line-height: 1.4; white-space: nowrap; cursor: pointer; text-decoration: none; }
-.unified-navigation .desktop-navigation :is(a[aria-current], button.active, button[aria-expanded="true"]) { color: var(--ts-accent); }
+.unified-navigation .desktop-navigation :is(a[aria-current], button.active, button[aria-expanded="true"]) { color: var(--ts-accent); background: var(--ts-accent-soft); }
 .unified-navigation .desktop-navigation a[aria-current]::after { content: ''; position: absolute; bottom: 1px; left: calc(50% - 8px); width: 16px; height: 2px; border-radius: 2px; background: var(--ts-accent); }
 .site-header-tools { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .site-mobile-navigation-trigger, .site-mobile-shortcuts { display: none; }

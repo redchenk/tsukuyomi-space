@@ -842,3 +842,45 @@ profile form and reset, read-only identity, real support state, readable content
 actions, theme/viewport review, bounded prebuilt release.
 
 final result: passed
+
+
+## 2026-10-04 — 月白樱粉配色（用户选择 ImageGen 第 1 张）
+
+### Evidence and scope
+
+- Source visual truth: first displayed ImageGen result, `exec-04535d24-5544-4316-8c2a-331a5cbcf648.png` (1487 × 1058); selected in the conversation. The exact selected visual remains attached to the task conversation.
+- Implementation evidence: desktop, mobile and dark browser screenshots retained in the task conversation; screenshot files are not published to the public repository.
+- Full-view comparison: conversation-local comparison image, source on the left, rendered implementation on the right. Reference uniformly rescaled to 1353 px wide, then vertically cropped to the 929 px implementation capture; no stretching.
+- Desktop CSS viewport: 1363 × 936; screenshot emitted by browser: 1353 × 929. Screenshot API omits scrollbar edge; no browser chrome included. Same normalized screenshot density used for comparison.
+- Mobile CSS viewport: 390 × 844 iframe with 380 px available content width after scrollbar; captured content only at 390 × 844. Browser-rendered responsive website, not a mobile-app simulation.
+- State: anonymous Chinese Hub, light theme, notice collapsed; dark Hub and mobile exploration menu also inspected. Local E2E fixture content differs from the mock and production database.
+- Scope is a palette implementation in the existing product, not replacement of content, illustration assets, icon family or the site's architecture. Existing moonlit artwork is reused instead of introducing the mock's generated cherry blossoms. All uploaded-content colors remain intact.
+
+### Findings and comparison history
+
+1. Initial browser pass: [P2] A historical important declaration left a cyan halo on the rose primary button. Replaced that declaration with `--ts-shadow-accent` and set the final theme's accent shadow to none. Post-fix browser computed style: primary background `rgb(172, 77, 109)`, text white, box-shadow `none`.
+2. Initial comparison: [P2] Excessive inherited row-gap plus notice margins pushed the white card bodies below the intended reading region. Removed the Hub row-gap, kept the component margins, and used a 380 px desktop hero. Final comparison shows three paper-surface cards under the announcement and section heading; mobile retains its existing separate sizing.
+3. Initial comparison: [P2] The original dark sky made the light surface feel gray. Increased the light overlay to 96%, preserving faint artwork without competing with text. Final screenshot and comparison reflect the corrected overlay.
+4. No actionable P0/P1/P2 color or responsive findings remain in the inspected Hub and Stage palette scope.
+
+### Required fidelity surfaces
+
+- Typography: retained the project's serif brand heading and sans-serif UI. Body text is 16 px in the hero; existing responsive heading scaling is preserved. The ImageGen heading weight is heavier than the existing product font; retaining the established font is intentional for this color-only task.
+- Layout rhythm: retained navigation and content order; corrected inherited spacing. Cards separate image covers from neutral text surfaces. Desktop and 390 px mobile have no horizontal overflow. No new controls or product routes added.
+- Colors/tokens: white surfaces, `#253046` main text, `#626E80` secondary text and `#AC4D6D` primary. Rose stays the primary in dark mode; links use lighter `#E5A4BC`. Measured contrast: white/primary 5.20:1, secondary/white 5.17:1, light rose/dark surface 7.34:1, dark secondary/dark surface 7.91:1. These are named flat-surface pairs, not a claim that every control on every route was audited.
+- Images: reused original Yachiyo and moonlit lake assets at natural aspect ratios. Cover content comes from fixture/API data rather than fictional mock articles. Images loaded successfully; mobile reveal blur cleared after iframe focus. No rasterized UI or fabricated art stand-ins.
+- Copy: preserved product text and API-driven content; did not adopt ImageGen's fictional article names, dates or authors. Announcement, navigation, and creation labels remain product-owned.
+
+### Browser interactions and checks
+
+- Verified default light theme, switch to dark and back, notice expansion/collapse, Hub to Stage navigation, mobile exploration menu open/close, and no horizontal overflow.
+- Production frontend build passed. Existing frontend navigation/performance tests: 69 passed, 0 failed. `git diff --check` passed.
+- Console checks: Hub and Stage do not show application errors after the preview backend is ready. A browser-extension metadata error is unrelated to the app.
+- Existing development-mode limitation: article detail cannot be visually verified because Vite reports that `shared/markdown-media.cjs?import` does not export `default`. The production build succeeds. This palette PR does not modify the markdown renderer or claim that article detail runtime has passed. Other uninspected routes and full authenticated workflows remain outside this palette QA.
+
+### Follow-up polish
+
+- [P3] A separate illustration update could add the mock's brighter cherry-blossom treatment; deliberately excluded to preserve current assets and the requested color scope.
+- [P3] Full-site authenticated, Room/Live2D and article-detail runtime visual regression checks should follow before release.
+
+final result: passed

@@ -2,54 +2,27 @@
 
 本文档总结当前站点的统一视觉风格。新增页面和组件应优先使用 `src/frontend/styles/tokens.css` 与 `src/frontend/styles/themes.css` 中的 `--ts-*` 变量；历史 `--pink`、`--cyan`、`--panel` 等变量仅作为兼容层使用。
 
-## 1. 配色
+## 1. 配色（2026-10-04：月白樱粉）
 
-### 品牌色
-
-| 用途 | Token / 变量 | 色值 |
-| --- | --- | --- |
-| 主色 / 紫丁香 | `--ts-color-lilac-500` | `#9b8cff` |
-| 主色深色 | `--ts-color-lilac-700` | `#6f62d9` |
-| 主按钮起始色 | 当前按钮渐变 | `#7b8cf6` |
-| 主按钮结束色 | 当前按钮渐变 | `#a481ff` |
-| 辅助蓝 | `--ts-color-blue-500` | `#56bfe8` |
-| 高亮青 | `--ts-cyan` | light `#6bd8f0` / dark `#aef2ff` |
-| 樱粉强调 | `--ts-color-pink-400` | `#ff9aba` |
-| 樱粉深色 | `--ts-color-pink-600` | `#e85f9b` |
-| 薄荷辅助 | `--ts-color-mint-300` | `#9ee2cf` |
-| 金色点缀 | `--ts-color-gold-300` | `#f1d98e` |
-
-### 背景色
+沿用现有主题和颜色变量，主色改为低饱和樱粉。颜色角色以 `src/frontend/styles/editorial.css` 的最终映射为准，避免历史样式层重新引入紫色主按钮。圆角与导航、表单交互保持既有体系。
 
 | 用途 | Light | Dark |
 | --- | --- | --- |
-| 页面主背景 | `--ts-bg: #edf6ff` | `--ts-bg: #0b1020` |
-| 柔和背景 | `--ts-bg-soft: #f4f0ff` | `--ts-bg-soft: #131a2f` |
-| 暖色背景 | `--ts-bg-warm: #fff9fd` | `--ts-bg-warm: #19162b` |
-| 普通玻璃面 | `--ts-surface: rgba(255,255,255,0.78)` | `rgba(12,18,36,0.72)` |
-| 强玻璃面 | `--ts-surface-strong: rgba(255,255,255,0.92)` | `rgba(8,13,28,0.86)` |
-| 卡片底 | `--ts-card: rgba(255,255,255,0.68)` | `rgba(255,255,255,0.08)` |
-| 卡片 hover | `--ts-card-hover: rgba(238,244,255,0.92)` | `rgba(123,140,246,0.16)` |
+| 页面背景 | `#F7F8FA` | `#141B26` |
+| 卡片、阅读面 | `#FFFFFF` | `#1E2836` |
+| 次级表面 | `#E8EFF5` | `#293647` |
+| 主文字 | `#253046` | `#EDF1F6` |
+| 次级文字 | `#626E80` | `#B3BECD` |
+| 链接、选中强调 | `#AC4D6D` | `#E5A4BC` |
+| 选中底色 | `#F4E6EC` | `#3A2B39` |
+| 细边框 | `#E0E5EC` | `#3A4759` |
+| 辅助雾蓝 | `#386C85` | `#A9CADC` |
 
-页面背景使用浅蓝、淡紫、暖白的多层渐变叠加站点图像：
+主按钮在两个主题都用 `#AC4D6D` 白字，悬停用 `#923D5B`。历史 `--ts-gradient-brand` 名称继续兼容原组件，但其值为纯色背景。小字链接与焦点在深色模式改用浅樱粉，而不是把浅色链接颜色直接照搬。
 
-```css
-background:
-  radial-gradient(circle at 50% -8%, rgba(123, 140, 246, 0.18), transparent 36%),
-  radial-gradient(circle at 86% 12%, rgba(255, 122, 200, 0.13), transparent 28%),
-  linear-gradient(135deg, rgba(237, 246, 255, 0.94), rgba(244, 240, 255, 0.91) 48%, rgba(255, 249, 253, 0.96)),
-  url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
-```
+背景复用现有月光湖畔素材，以浅色遮罩降低装饰图的干扰；保留八千代原插画和用户上传作品的色彩，不给内容图片整体改色。首页内容卡片将图片与文字分离，文字使用主题底面。状态成功、失败、危险操作仍保持语义色，不把所有状态都改成樱粉。
 
-### 文字色
-
-| 用途 | Light | Dark |
-| --- | --- | --- |
-| 主文字 | `--ts-text: #263044` | `#eff7ff` |
-| 强标题文字 | `--ts-text-strong: #111827` | `#ffffff` |
-| 次级文字 | `--ts-muted: rgba(38,48,68,0.68)` | `rgba(239,247,255,0.66)` |
-| 深墨色阶 | `--ts-color-ink-950` | `#0b1020` |
-| 表单 placeholder | light `#6b7280` | dark `#8ea2b8` |
+新用户默认浅色主题，已保存的主题偏好继续生效。主按钮和导航不添加彩色光晕，普通表面只用轻微中性阴影。新样式优先消费 `--ts-*` 语义变量，不新增互相覆盖的主题补丁层。
 
 ## 2. 字体
 

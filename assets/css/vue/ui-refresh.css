@@ -4,56 +4,30 @@
  * on top of the design system tokens (src/frontend/styles/tokens.css).
  */
 
-/* ---- 1. Brand unification: one lilac primary across music player, mobile nav, brand icon ----
- * design.md declares lilac (#9b8cff / #7b8cf6→#a481ff) as the brand primary; the patch layers
- * had drifted the "unified" tokens and light-theme accent to teal. Reclaim them here for both
- * themes so the brand no longer changes color when the theme toggles. Cyan stays as highlight.
- */
+/* ---- 1. One dusty-rose primary; editorial.css owns final surface tokens. */
 :root,
 html[data-theme="light"] {
-    --ts-accent: #7b74e8;
-    --ts-accent-2: #e85f9b;
-    --ts-border-strong: rgba(111, 98, 217, 0.36);
-    --ts-focus-ring: 0 0 0 3px rgba(123, 140, 246, 0.24);
+    --ts-accent: var(--ts-color-rose-600);
+    --ts-accent-2: var(--ts-color-rose-600);
     --ts-unified-primary-bg: var(--ts-gradient-brand);
     --ts-unified-primary-bg-hover: var(--ts-gradient-brand-hover);
     --ts-unified-primary-text: #ffffff;
     --ts-unified-button-radius: var(--ts-radius-button, 999px);
     --ts-unified-button-radius-compact: var(--ts-radius-button, 999px);
-    --ts-unified-button-hover: rgba(123, 140, 246, 0.12);
-    --ts-unified-button-border-hover: rgba(123, 110, 230, 0.42);
-    --ts-ink-gradient: linear-gradient(118deg, #3d3a78 0%, #6f62d9 46%, #b25f92 100%);
+    --ts-ink-gradient: linear-gradient(var(--ts-text), var(--ts-text));
 }
-
 html[data-theme="dark"] {
-    --ts-accent: #8f9dff;
-    --ts-accent-2: #ff7ac8;
-    --ts-focus-ring: 0 0 0 3px rgba(154, 160, 255, 0.24);
+    --ts-accent: var(--ts-color-rose-300);
+    --ts-accent-2: var(--ts-color-rose-300);
     --ts-unified-primary-bg: var(--ts-gradient-brand);
     --ts-unified-primary-bg-hover: var(--ts-gradient-brand-hover);
     --ts-unified-primary-text: #ffffff;
-    --ts-unified-button-hover: rgba(123, 140, 246, 0.2);
-    --ts-unified-button-border-hover: rgba(174, 165, 255, 0.46);
-    --ts-ink-gradient: linear-gradient(118deg, #eff7ff 0%, #c9c4ff 48%, #ffb9d9 100%);
+    --ts-ink-gradient: linear-gradient(var(--ts-text), var(--ts-text));
 }
-
-/* Rail brand mark: lilac halo instead of the teal one-off shadows. */
-.rail-mark,
-.rail-mark:hover,
-.rail-mark:focus-visible {
-    border-color: rgba(216, 209, 255, 0.5);
-    box-shadow: 0 12px 30px rgba(123, 110, 230, 0.3);
+.rail-mark, .rail-mark:hover, .rail-mark:focus-visible, .site-brand-icon {
+    border-color: var(--ts-border);
+    box-shadow: var(--ts-shadow-sm);
 }
-
-.rail-mark:focus-visible {
-    box-shadow: var(--ts-focus-ring), 0 16px 38px rgba(123, 110, 230, 0.3);
-}
-
-.site-brand-icon {
-    border-color: rgba(216, 209, 255, 0.5);
-    box-shadow: 0 12px 30px rgba(123, 110, 230, 0.24);
-}
-
 /* ---- 2. Base niceties: selection, scrollbars, keyboard focus ---- */
 ::selection {
     background: color-mix(in srgb, var(--ts-accent), transparent 64%);

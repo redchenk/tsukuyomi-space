@@ -23,7 +23,7 @@ const route = useRoute();
 const router = useRouter();
 const forcedLanguage = forcedSiteLanguage();
 const lang = ref(forcedLanguage || normalizeLanguage(localStorage.getItem('lang')));
-const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
+const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'light');
 const user = ref(null);
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const routeLoadingLabel = computed(() => lang.value === 'ja'
