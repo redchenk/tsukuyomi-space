@@ -1,8 +1,10 @@
-import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { apiUrl, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 
-export async function loadMessageLikeIds() {
+export async function loadMessageLikeIds(ids = null) {
   if (!getSession()?.user?.id) return new Set();
-  const response = await authFetch(noStoreUrl('/api/messages/liked'), {
+  const path = noStoreUrl(`/api/messages/liked${ids ? `?ids=${encodeURIComponent(ids.join(','))}` : ''}`);
+  const response = await fetch(apiUrl(path), {
+    credentials: 'include',
     headers: authHeaders({ Accept: 'application/json' }),
     cache: 'no-store'
   });
@@ -12,7 +14,9 @@ export async function loadMessageLikeIds() {
 }
 
 export async function applyMessageLikeState(messages) {
-  const likedIds = await loadMessageLikeIds();
+  const ids = [...new Set((Array.isArray(messages) ? messages : []).map(item => String(item.id)))];
+  if (!ids.length) return messages;
+  const likedIds = await loadMessageLikeIds(ids.length <= 64 ? ids : null);
   for (const message of Array.isArray(messages) ? messages : []) {
     message.viewer_liked = likedIds.has(String(message.id));
   }

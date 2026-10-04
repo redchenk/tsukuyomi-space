@@ -79,7 +79,10 @@
   .gallery-card-meta .user-level-badge { flex-shrink: 0; }
   .gallery-workspace .gallery-card-actions { display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--ts-editorial-line); }
   .gallery-card-actions :is(.ghost-btn, .danger-btn) { padding: 7px 10px; min-height: 34px; font-size: 10px; }
-  :is(.gallery-workspace, .gallery-viewer) .gallery-like-button { white-space: nowrap; flex-shrink: 0; }
+  :is(.gallery-workspace, .gallery-viewer) .gallery-like-button {
+    width: auto; min-width: max-content; height: auto; box-sizing: border-box;
+    white-space: nowrap; flex: 0 0 auto; aspect-ratio: auto;
+  }
   :is(.gallery-workspace, .gallery-viewer) .gallery-like-button.is-liked { opacity: 1; color: var(--ts-accent); background: var(--ts-editorial-soft); }
   .gallery-like-button.is-liked svg { fill: currentColor; }
   .gallery-like-count { font-variant-numeric: tabular-nums; }

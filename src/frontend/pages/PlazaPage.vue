@@ -13,6 +13,7 @@ import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
 import { applyMessageLikeState } from '../services/messageLikes';
+import { clearPlazaMessageCache, loadPlazaPage, loadPlazaReplies, PLAZA_PAGE_SIZE } from '../services/plazaMessages';
 import { applyGrowthResult } from '../services/userGrowth';
 import { compareAppDate, formatDateTime, parseAppDate } from '../utils/time';
 
@@ -28,6 +29,12 @@ const { hydrateUserLevels, userLevel } = useUserLevels();
 const session = ref(getSession());
 const plaza = reactive({
   messages: [],
+  activity: [],
+  pagination: { page: 1, total: 0, totalPages: 1 },
+  repliesCursor: {},
+  repliesLoaded: {},
+  repliesLoading: {},
+  repliesError: {},
   stats: null,
   topics: [],
   topicsLoading: true,
@@ -47,7 +54,11 @@ let compactQuery;
 const updateCompact = () => { compact.value = compactQuery?.matches || false; };
 const replyModeration = reactive({});
 let plazaToastTimer = 0;
-const PLAZA_PAGE_SIZE = 8;
+let plazaMounted = false;
+let applyingPlazaPage = false;
+let plazaRequestRevision = 0;
+let plazaReloadTimer = 0;
+const successfulLikes = new Map();
 const user = computed(() => session.value?.user || null);
 const isAuthed = computed(() => Boolean(session.value));
 const isZh = computed(() => props.lang === 'zh');
@@ -167,63 +178,22 @@ const fallback = computed(() => isEn.value ? {
 
 const threads = computed(() => messageThreads(plaza.messages));
 const replyLabels = computed(() => replyCopy(props.lang));
-const plazaMessages = computed(() => {
-  let top = threads.value.top.map(item => ({
-    ...item,
-    replies: [...(threads.value.replies.get(String(item.id)) || [])].sort((a, b) =>
-      compareAppDate(b.created_at, a.created_at) || Number(b.id || 0) - Number(a.id || 0))
-  }));
-
-  if (plaza.query) {
-    const q = plaza.query.toLowerCase();
-    top = top.filter((item) => {
-      const replyText = item.replies.map((reply) => `${reply.author_nickname || reply.author || ''} ${reply.content || ''}`).join(' ');
-      return `${item.author_nickname || item.author || ''} ${item.content || ''} ${replyText}`.toLowerCase().includes(q);
-    });
-  }
-
-  const currentUserId = user.value?.id;
-  if (plaza.filter === 'hot') {
-    top.sort((a, b) => (b.like_count || 0) - (a.like_count || 0) || compareAppDate(b.created_at, a.created_at));
-  } else if (plaza.filter === 'replied') {
-    top = top.filter((item) => item.replies.length > 0);
-    top.sort((a, b) => b.replies.length - a.replies.length || compareAppDate(b.created_at, a.created_at));
-  } else if (plaza.filter === 'mine') {
-    top = top.filter((item) => currentUserId && item.user_id === currentUserId);
-    top.sort((a, b) => compareAppDate(b.created_at, a.created_at));
-  } else {
-    top.sort((a, b) => compareAppDate(b.created_at, a.created_at));
-  }
-
-  return top;
-});
-
-const plazaMessageNumbers = computed(() => {
-  return plaza.messages
-    .filter((item) => !item.article_id && !item.parent_id)
-    .sort((a, b) => compareAppDate(a.created_at, b.created_at) || Number(a.id || 0) - Number(b.id || 0))
-    .reduce((numbers, item, index) => {
-      numbers[item.id] = index + 1;
-      return numbers;
-    }, {});
-});
-
-const plazaActivity = computed(() => [...plaza.messages]
-  .sort((a, b) => compareAppDate(b.created_at, a.created_at))
-  .slice(0, 4));
-
-const plazaTotalMessages = computed(() => plazaMessages.value.length);
-const plazaTotalPages = computed(() => Math.max(1, Math.ceil(plazaTotalMessages.value / PLAZA_PAGE_SIZE)));
+const plazaMessages = computed(() => threads.value.top.map(item => ({
+  ...item,
+  replies: [...(threads.value.replies.get(String(item.id)) || [])].sort((a, b) =>
+    compareAppDate(b.created_at, a.created_at) || Number(b.id || 0) - Number(a.id || 0))
+})));
+const plazaMessageNumbers = computed(() => Object.fromEntries(threads.value.top.map(item => [item.id, item.floor_number])));
+const plazaActivity = computed(() => plaza.activity);
+const plazaTotalMessages = computed(() => plaza.pagination.total);
+const plazaTotalPages = computed(() => Math.max(1, plaza.pagination.totalPages));
 const plazaCurrentPage = computed(() => Math.min(Math.max(plaza.page, 1), plazaTotalPages.value));
 const plazaPageStart = computed(() => plazaTotalMessages.value
   ? (plazaCurrentPage.value - 1) * PLAZA_PAGE_SIZE + 1
   : 0);
 const plazaPageEnd = computed(() => Math.min(plazaCurrentPage.value * PLAZA_PAGE_SIZE, plazaTotalMessages.value));
 
-const pagedPlazaMessages = computed(() => {
-  const start = (plazaCurrentPage.value - 1) * PLAZA_PAGE_SIZE;
-  return plazaMessages.value.slice(start, start + PLAZA_PAGE_SIZE);
-});
+const pagedPlazaMessages = computed(() => plazaMessages.value);
 
 function plazaVisibleReplies(message) {
   return plaza.repliesExpanded[message.id] ? message.replies : message.replies.slice(0, 1);
@@ -231,8 +201,8 @@ function plazaVisibleReplies(message) {
 
 function plazaRepliesToggleLabel(message) {
   if (plaza.repliesExpanded[message.id]) return fallback.value.collapseReplies;
-  if (message.replies.length === 1) return fallback.value.fullReply;
-  return fallback.value.moreReplies.replace('{count}', plazaFormatNumber(message.replies.length));
+  if (message.reply_count === 1) return fallback.value.fullReply;
+  return fallback.value.moreReplies.replace('{count}', plazaFormatNumber(message.reply_count));
 }
 
 const plazaPageItems = computed(() => {
@@ -285,23 +255,23 @@ function isPlazaPageGap(item) {
   return typeof item === 'string';
 }
 
-function plazaSyncPageWithHash() {
+async function plazaSyncPageWithHash() {
+  if (!plazaMounted) return;
   const match = String(location.hash || '').match(/^#msg-(\d+)$/);
   if (!match) return;
   const anchorId = match[1];
-  const target = plaza.messages.find((item) => String(item.id) === anchorId);
-  const topLevelId = target && threads.value.rootId(target.id);
-  if (!topLevelId) return;
-  const index = plazaMessages.value.findIndex((item) => String(item.id) === String(topLevelId));
-  if (index < 0) return;
-  if (target?.parent_id) {
-    const replies = plazaMessages.value[index].replies;
-    if (String(replies[0]?.id) !== anchorId) plaza.repliesExpanded[topLevelId] = true;
+  let target = plaza.messages.find(item => String(item.id) === anchorId);
+  if (!target) {
+    await loadPlazaMessages({ anchorId });
+    target = plaza.messages.find(item => String(item.id) === anchorId);
   }
-  plazaSetPage(Math.floor(index / PLAZA_PAGE_SIZE) + 1, { scroll: false });
-  nextTick(() => {
-    document.getElementById(`msg-${anchorId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  });
+  if (!target) return;
+  const rootId = threads.value.rootId(target.id);
+  if (target.parent_id && rootId) {
+    plaza.repliesExpanded[rootId] = true;
+    if (!plaza.repliesLoaded[rootId]) await fetchPlazaReplies(rootId);
+  }
+  nextTick(() => document.getElementById(`msg-${anchorId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
 }
 
 async function loadPlazaStats() {
@@ -310,22 +280,86 @@ async function loadPlazaStats() {
   } catch (_) {}
 }
 
-async function loadPlazaMessages() {
+function keepLikeResults(messages) {
+  return messages.map(item => {
+    const liked = successfulLikes.get(String(item.id));
+    return liked ? { ...item, viewer_liked: true, like_count: Math.max(Number(item.like_count || 0), liked.like_count) } : item;
+  });
+}
+
+function hydratePlazaMessages(messages, revision = plazaRequestRevision) {
+  hydrateUserLevels(messages.map(item => item.user_id)).catch(() => {});
+  const owner = user.value?.id;
+  const snapshot = messages.map(item => ({ ...item }));
+  if (owner) applyMessageLikeState(snapshot).then(() => {
+    if (revision !== plazaRequestRevision || owner !== user.value?.id) return;
+    const liked = new Map(snapshot.map(item => [String(item.id), item.viewer_liked]));
+    plaza.messages = keepLikeResults(plaza.messages.map(item => liked.has(String(item.id))
+      ? { ...item, viewer_liked: liked.get(String(item.id)) } : item));
+  }).catch(() => {});
+}
+
+async function loadPlazaMessages({ force = false, anchorId = null } = {}) {
+  const revision = ++plazaRequestRevision;
+  const owner = user.value?.id || '';
+  plaza.loading = true;
+  plaza.loadError = '';
   try {
-    const response = await apiFetch('/api/messages');
-    const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || props.t.plazaLoadFailed);
-    plaza.messages = Array.isArray(result.data)
-      ? result.data.filter((item) => !item.article_id)
-      : [];
-    await hydrateUserLevels(plaza.messages.map((item) => item.user_id)).catch(() => {});
-    if (isAuthed.value) await applyMessageLikeState(plaza.messages).catch(() => {});
-    plazaSyncPageWithHash();
+    const result = await loadPlazaPage({ page: plaza.page, sort: plaza.filter, search: plaza.query, anchorId }, { force });
+    if (revision !== plazaRequestRevision || owner !== (user.value?.id || '')) return;
+    plaza.messages = keepLikeResults(result.messages || []);
+    plaza.activity = result.activity || [];
+    plaza.pagination = result.pagination;
+    plaza.repliesExpanded = {};
+    plaza.repliesLoaded = {};
+    plaza.repliesCursor = {};
+    plaza.repliesError = {};
+    plaza.repliesLoading = {};
+    applyingPlazaPage = true;
+    plaza.page = result.pagination.page;
+    nextTick(() => { applyingPlazaPage = false; });
+    hydratePlazaMessages(plaza.messages, revision);
+    if (result.anchor_id) nextTick(plazaSyncPageWithHash);
   } catch (error) {
+    if (revision !== plazaRequestRevision) return;
     plaza.messages = [];
     plaza.loadError = error.message || props.t.plazaLoadFailed;
     showPlazaToast(props.t.plazaLoadFailed, 'error');
+  } finally {
+    if (revision === plazaRequestRevision) plaza.loading = false;
   }
+}
+
+function schedulePlazaReload(delay = 0) {
+  if (!plazaMounted) return;
+  clearTimeout(plazaReloadTimer);
+  // Invalidate a response as soon as the filter changes, before debounce ends.
+  ++plazaRequestRevision;
+  plazaReloadTimer = setTimeout(() => loadPlazaMessages(), delay);
+}
+
+async function fetchPlazaReplies(rootId, more = false) {
+  if (plaza.repliesLoading[rootId]) return;
+  const revision = plazaRequestRevision;
+  plaza.repliesLoading[rootId] = true;
+  plaza.repliesError[rootId] = '';
+  try {
+    const result = await loadPlazaReplies(rootId, more ? plaza.repliesCursor[rootId] : null);
+    if (revision !== plazaRequestRevision) return;
+    const merged = new Map(plaza.messages.map(item => [String(item.id), item]));
+    for (const reply of result.replies) merged.set(String(reply.id), { ...merged.get(String(reply.id)), ...reply });
+    plaza.messages = keepLikeResults([...merged.values()]);
+    plaza.repliesLoaded[rootId] = true;
+    plaza.repliesCursor[rootId] = result.next_before_id;
+    hydratePlazaMessages(plaza.messages, revision);
+  } catch (error) {
+    if (revision === plazaRequestRevision) plaza.repliesError[rootId] = error.message || props.t.plazaLoadFailed;
+  } finally { if (revision === plazaRequestRevision) delete plaza.repliesLoading[rootId]; }
+}
+
+function plazaReplyTarget(reply) {
+  const target = threads.value.target(reply);
+  return { ...target, id: target.id || (target.name ? reply.reply_to_id : null) };
 }
 
 async function loadTrendingTopics() {
@@ -362,20 +396,21 @@ function patchPlazaMessage(message) {
   if (index >= 0) plaza.messages.splice(index, 1, { ...plaza.messages[index], ...message });
 }
 
-async function refreshPlaza() {
-  plaza.loading = true;
-  plaza.loadError = '';
+async function refreshPlaza({ force = true } = {}) {
   session.value = getSession();
+  if (force) clearPlazaMessageCache();
   loadPlazaStats();
-  try {
-    if (!session.value) {
-      await loadCurrentSession();
-      session.value = getSession();
-    }
-    await Promise.all([loadPlazaMessages(), loadTrendingTopics()]);
-  } finally {
-    plaza.loading = false;
-  }
+  loadTrendingTopics();
+  const anchorId = String(location.hash || '').match(/^#msg-(\d+)$/)?.[1] || null;
+  // Public messages never wait for session recovery, levels, likes or topics.
+  const messages = loadPlazaMessages({ force, anchorId });
+  if (!session.value) loadCurrentSession().then(() => {
+    if (!plazaMounted) return;
+    session.value = getSession();
+    hydratePlazaMessages(plaza.messages);
+    if (plaza.loading && session.value) loadPlazaMessages({ anchorId });
+  }).catch(() => {});
+  await messages;
 }
 
 async function plazaSubmitMessage(content) {
@@ -400,10 +435,14 @@ async function plazaSubmitMessage(content) {
     if (result.growth) applyGrowthResult(result.growth);
     showPlazaToast(result.moderation?.status === 'pending' ? '已提交，等待人工审核。请查看原因提示。' : result.message || (isEn.value ? 'Message submitted.' : '留言已提交'));
     if (result.data?.id && (result.data.status || 'approved') === 'approved') {
+      clearPlazaMessageCache();
+      applyingPlazaPage = true;
       plaza.page = 1;
-      upsertPlazaMessage(result.data);
+      nextTick(() => { applyingPlazaPage = false; });
+      await loadPlazaMessages({ force: true });
       loadTrendingTopics();
-    } else await loadPlazaStats();
+    }
+    loadPlazaStats();
     return true;
   } catch (error) {
     showPlazaToast(messageModeration.value?.status === 'rejected' ? '未能提交，请查看原因提示。' : error.message || props.t.publishFailed, 'error');
@@ -433,7 +472,15 @@ async function plazaSubmitReply(parentId, content) {
     if (result.growth) applyGrowthResult(result.growth);
     showPlazaToast(result.moderation?.status === 'pending' ? '回复已提交，等待人工审核。请查看原因提示。' : result.message || (isEn.value ? 'Reply submitted.' : '回复已提交'));
     if (result.data?.id && (result.data.status || 'approved') === 'approved') {
+      clearPlazaMessageCache();
+      const rootId = threads.value.rootId(parentId);
       upsertPlazaMessage(result.data);
+      const root = plaza.messages.find(item => String(item.id) === rootId);
+      if (root) root.reply_count = Number(root.reply_count || 0) + 1;
+      if (rootId) {
+        plaza.repliesExpanded[rootId] = true;
+        fetchPlazaReplies(rootId);
+      }
       loadTrendingTopics();
     }
     plaza.replyOpen = { ...plaza.replyOpen, [parentId]: false };
@@ -464,7 +511,11 @@ async function plazaLikeMessage(id) {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.likeFailed);
     if (result.growth) applyGrowthResult(result.growth);
-    if (result.data?.id) patchPlazaMessage(result.data);
+    clearPlazaMessageCache();
+    if (result.data?.id) {
+      successfulLikes.set(String(result.data.id), result.data);
+      patchPlazaMessage(result.data);
+    }
     else {
       const target = plaza.messages.find((item) => item.id === id);
       if (target) target.like_count = Number(target.like_count || 0) + 1;
@@ -497,6 +548,7 @@ function plazaToggleReply(id) {
 
 function plazaToggleReplies(id) {
   plaza.repliesExpanded[id] = !plaza.repliesExpanded[id];
+  if (plaza.repliesExpanded[id] && !plaza.repliesLoaded[id]) fetchPlazaReplies(id);
 }
 
 function plazaOpenProfile(username) {
@@ -575,23 +627,27 @@ function plazaFormatUptime(seconds) {
   return days > 0 ? `${days}\u65e5${hours}\u6642\u9593` : `${hours}\u6642\u9593`;
 }
 
-watch(() => [plaza.filter, plaza.query], () => {
+watch(() => [plaza.filter, plaza.query], (current, previous) => {
+  applyingPlazaPage = true;
   plaza.page = 1;
+  nextTick(() => { applyingPlazaPage = false; });
+  schedulePlazaReload(current[1] !== previous[1] ? 180 : 0);
 });
-watch(plazaTotalPages, (total) => {
-  if (plaza.page > total) plaza.page = total;
-  if (plaza.page < 1) plaza.page = 1;
-});
+watch(() => plaza.page, () => { if (!applyingPlazaPage) schedulePlazaReload(); });
 watch(() => route.query.topic, applyRouteTopic, { immediate: true });
 watch(() => route.hash, plazaSyncPageWithHash, { flush: 'post' });
 onMounted(() => {
+  plazaMounted = true;
   compactQuery = window.matchMedia('(max-width: 900px)');
   updateCompact();
   compactQuery.addEventListener('change', updateCompact);
   window.addEventListener('hashchange', plazaSyncPageWithHash);
-  refreshPlaza();
+  refreshPlaza({ force: false });
 });
 onUnmounted(() => {
+  plazaMounted = false;
+  ++plazaRequestRevision;
+  clearTimeout(plazaReloadTimer);
   window.removeEventListener('hashchange', plazaSyncPageWithHash);
   compactQuery?.removeEventListener('change', updateCompact);
   clearTimeout(plazaToastTimer);
@@ -692,7 +748,7 @@ onUnmounted(() => {
               </button>
               <button class="icon-btn" type="button" @click="plazaToggleReply(msg.id)">
                 <TsIcon name="message" :size="15" />
-                <span>{{ t.reply }} {{ (msg.replies || []).length }}</span>
+                <span>{{ t.reply }} {{ msg.reply_count || 0 }}</span>
               </button>
               <button class="icon-btn plaza-copy-action" type="button" :aria-label="t.copyLink" :title="t.copyLink" @click="plazaCopyLink(msg.id)">
                 <TsIcon name="copy" :size="15" />
@@ -719,7 +775,7 @@ onUnmounted(() => {
                     </button>
                   </div>
                 </div>
-                <ReplyRecipient :target="threads.target(reply)" prefix="msg" :lang="lang" />
+                <ReplyRecipient :target="plazaReplyTarget(reply)" prefix="msg" :lang="lang" />
                 <span v-if="!plaza.repliesExpanded[msg.id]" class="plaza-msg-content" style="margin-bottom:0;">{{ reply.content }}</span>
                 <SocialText
                   v-else
@@ -749,6 +805,8 @@ onUnmounted(() => {
               <span>{{ plazaRepliesToggleLabel(msg) }}</span>
               <TsIcon :name="plaza.repliesExpanded[msg.id] ? 'chevronUp' : 'chevronDown'" :size="16" />
             </button>
+            <p v-if="plaza.repliesError[msg.id]" class="plaza-empty error" role="alert">{{ plaza.repliesError[msg.id] }}<button class="ghost-btn" type="button" @click="fetchPlazaReplies(msg.id)">{{ t.refresh }}</button></p>
+            <button v-if="plaza.repliesExpanded[msg.id] && (plaza.repliesCursor[msg.id] || plaza.repliesLoading[msg.id])" class="ghost-btn plaza-replies-more" type="button" :disabled="plaza.repliesLoading[msg.id]" :aria-busy="Boolean(plaza.repliesLoading[msg.id])" @click="fetchPlazaReplies(msg.id, true)">{{ isEn ? 'Load more replies' : isZh ? '加载更多回复' : '返信をもっと見る' }}</button>
           </article>
           <nav v-if="plazaTotalPages > 1" class="plaza-pagination" aria-label="Plaza messages pagination">
             <div class="plaza-pagination-info">{{ plazaPageSummary }}</div>

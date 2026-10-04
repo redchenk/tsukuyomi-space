@@ -9,6 +9,12 @@ function prefetchStageData(options = {}) {
     .catch(() => {});
 }
 
+function prefetchPlazaData(options = {}) {
+  import('../services/plazaMessages.js')
+    .then(({ prefetchPlazaMessages }) => prefetchPlazaMessages(options))
+    .catch(() => {});
+}
+
 function loadRoute(componentLoader, styleLoader) {
   let routePromise = null;
   return () => {
@@ -396,6 +402,9 @@ export function warmRoutePath(path) {
         category: resolved.query.category,
         search: resolved.query.q
       });
+    }
+    if (resolved.name === 'plaza' && !resolved.hash) {
+      prefetchPlazaData({ search: resolved.query.topic ? `#${resolved.query.topic}` : '' });
     }
   } catch (_) {
     // Navigation remains available when an optional intent prefetch cannot resolve.

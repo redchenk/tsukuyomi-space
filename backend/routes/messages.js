@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/security');
 const messageRepository = require('../repositories/message-repository');
 const notificationRepository = require('../repositories/notification-repository');
@@ -107,8 +107,46 @@ function sendMessageList(req, res, articleId) {
     }
 }
 
-router.get('/', (req, res) => {
-    sendMessageList(req, res, req.query.article_id);
+function positiveQuery(value, fallback, maximum = Number.MAX_SAFE_INTEGER) {
+    if (value === undefined) return fallback;
+    if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) throw new Error('Invalid pagination');
+    const number = Number(value);
+    if (!Number.isSafeInteger(number) || number > maximum) throw new Error('Invalid pagination');
+    return number;
+}
+
+router.get('/', optionalAuth, (req, res) => {
+    if (!req.query.view) return sendMessageList(req, res, req.query.article_id);
+    if (!['plaza', 'thread'].includes(req.query.view) || req.query.article_id !== undefined) {
+        return res.status(400).json({ success: false, message: '留言参数无效' });
+    }
+    let options;
+    try {
+        const limit = Math.min(positiveQuery(req.query.limit, req.query.view === 'plaza' ? 8 : 20), 24);
+        if (req.query.view === 'thread') {
+            options = { rootId: positiveQuery(req.query.thread_id, null), limit, beforeId: positiveQuery(req.query.before_id, null) };
+            if (!options.rootId) throw new Error('Missing thread');
+        } else {
+            const sort = req.query.sort || 'latest';
+            if (!['latest', 'hot', 'replied', 'mine'].includes(sort) || (req.query.q !== undefined && typeof req.query.q !== 'string')) throw new Error('Invalid filters');
+            if (sort === 'mine' && !req.user?.id) return res.status(401).json({ success: false, message: '请先登录' });
+            options = { page: positiveQuery(req.query.page, 1, 100000), limit, sort,
+                search: String(req.query.q || '').trim().slice(0, 120), userId: sort === 'mine' ? req.user.id : '',
+                anchorId: positiveQuery(req.query.anchor_id, null) };
+        }
+    } catch (_) { return res.status(400).json({ success: false, message: '留言参数无效' }); }
+    try {
+        setPublicReadCache(res);
+        const read = () => req.query.view === 'plaza'
+            ? messageRepository.listPlazaPage(options)
+            : messageRepository.listPlazaReplies(options.rootId, options);
+        const data = options.sort === 'mine' ? read() : responseCache.remember(`public:plaza-messages:${req.query.view}:${JSON.stringify(options)}`, 5000, read);
+        if (!data) return res.status(404).json({ success: false, message: '留言不存在或未公开' });
+        return res.json({ success: true, data });
+    } catch (error) {
+        console.error('Plaza page API error:', error);
+        return res.status(500).json({ success: false, message: '无法读取留言' });
+    }
 });
 
 function recordPlazaGrowth(userId, activityKey, messageId) {
@@ -164,12 +202,18 @@ router.get('/topics', (req, res) => {
 });
 
 router.get('/liked', authenticateToken, (req, res) => {
+    let ids = null;
+    if (req.query.ids !== undefined) {
+        if (typeof req.query.ids !== 'string' || req.query.ids.length > 1500) return res.status(400).json({ success: false, message: '留言参数无效' });
+        ids = [...new Set(req.query.ids.split(','))];
+        if (!ids.length || ids.length > 64 || ids.some(id => !/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id)))) return res.status(400).json({ success: false, message: '留言参数无效' });
+    }
     try {
         res.set({
             'Cache-Control': 'private, no-store',
             'Vary': 'Cookie, Authorization, Accept-Encoding'
         });
-        res.json({ success: true, data: messageRepository.listMessageLikeIds(req.user.id) });
+        res.json({ success: true, data: messageRepository.listMessageLikeIds(req.user.id, ids) });
     } catch (error) {
         console.error('List message likes failed:', error);
         res.status(500).json({ success: false, message: 'Unable to load liked messages' });

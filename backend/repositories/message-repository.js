@@ -67,6 +67,100 @@ function listRecentPublicMessages(limit = 8) {
     `).all(safeLimit).map(compactMessageRow);
 }
 
+// Traverse only the selected thread using the existing parent/status index.
+// An approved child below an unapproved parent never enters the public tree.
+function plazaReplyTree(root) {
+    return `WITH RECURSIVE reply_tree(id, depth) AS (
+        SELECT id, 1 FROM messages
+        WHERE parent_id = ${root} AND article_id IS NULL AND COALESCE(status, 'approved') = 'approved'
+        UNION ALL
+        SELECT child.id, tree.depth + 1 FROM messages child
+        JOIN reply_tree tree ON child.parent_id = tree.id
+        WHERE child.article_id IS NULL AND COALESCE(child.status, 'approved') = 'approved' AND tree.depth < 100
+    )`;
+}
+
+const PLAZA_REPLY_COUNT = `(${plazaReplyTree('m.id')} SELECT COUNT(*) FROM reply_tree)`;
+
+function plazaFilter({ sort, search, userId }) {
+    let where = "m.article_id IS NULL AND m.parent_id IS NULL AND COALESCE(m.status, 'approved') = 'approved'";
+    const params = [];
+    if (sort === 'mine') { where += ' AND m.user_id = ?'; params.push(userId); }
+    if (sort === 'replied') where += ` AND ${PLAZA_REPLY_COUNT} > 0`;
+    if (search) {
+        const text = "LOWER(COALESCE(NULLIF(u.nickname, ''), u.username, m.author) || ' ' || m.content) LIKE ? ESCAPE '\\'";
+        where += ` AND (${text} OR EXISTS (
+            ${plazaReplyTree('m.id')}
+            SELECT 1 FROM messages r LEFT JOIN users ru ON ru.id = r.user_id
+            WHERE r.id IN (SELECT id FROM reply_tree)
+              AND LOWER(COALESCE(NULLIF(ru.nickname, ''), ru.username, r.author) || ' ' || r.content) LIKE ? ESCAPE '\\'
+        ))`;
+        const term = `%${search.toLowerCase().replace(/[\\%_]/g, '\\$&')}%`;
+        params.push(term, term);
+    }
+    return { where, params };
+}
+
+function listPlazaPage({ page = 1, limit = 8, sort = 'latest', search = '', userId = '', anchorId = null } = {}) {
+    const { where, params } = plazaFilter({ sort, search, userId });
+    const total = db.prepare(`SELECT COUNT(*) AS count FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE ${where}`).get(...params).count;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    let currentPage = Math.min(page, totalPages);
+    const primary = sort === 'hot' ? 'COALESCE(m.like_count, 0)' : sort === 'replied' ? PLAZA_REPLY_COUNT : null;
+    let anchor = null;
+    let root = null;
+    if (anchorId) {
+        anchor = findApprovedMessageById(anchorId);
+        root = anchor && anchor.article_id == null ? findReplyThreadRoot(anchor) : null;
+        if (!root || !db.prepare(`SELECT 1 FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE ${where} AND m.id = ?`).get(...params, root.id)) return null;
+        const rank = primary
+            ? db.prepare(`SELECT ${primary} AS value FROM messages m WHERE m.id = ?`).get(root.id).value : null;
+        const preceding = db.prepare(`SELECT COUNT(*) AS count FROM messages m LEFT JOIN users u ON u.id = m.user_id
+            WHERE ${where} AND ${primary ? `(${primary}, m.created_at, m.id) > (?, ?, ?)` : '(m.created_at, m.id) > (?, ?)'}`)
+            .get(...params, ...(primary ? [rank] : []), root.created_at, root.id).count;
+        currentPage = Math.floor(preceding / limit) + 1;
+    }
+    const rows = db.prepare(`${MESSAGE_SELECT_FIELDS.replace('SELECT m.id,', `SELECT ${PLAZA_REPLY_COUNT} AS reply_count,
+        (SELECT COUNT(*) FROM messages older WHERE older.article_id IS NULL AND older.parent_id IS NULL
+            AND COALESCE(older.status, 'approved') = 'approved' AND (older.created_at, older.id) <= (m.created_at, m.id)) AS floor_number, m.id,`)}
+        WHERE ${where} ORDER BY ${primary ? primary + ' DESC,' : ''} m.created_at DESC, m.id DESC LIMIT ? OFFSET ?`)
+        .all(...params, limit, (currentPage - 1) * limit).map(compactMessageRow);
+    const messages = [...rows];
+    for (const message of rows) {
+        if (!message.reply_count) continue;
+        const latest = db.prepare(`${plazaReplyTree('?')} ${MESSAGE_SELECT_FIELDS}
+            WHERE m.id IN (SELECT id FROM reply_tree) ORDER BY m.created_at DESC, m.id DESC LIMIT 1`).get(message.id);
+        if (latest) messages.push({ ...compactMessageRow(latest), parent_id: message.id });
+    }
+    if (anchor?.parent_id && !messages.some(item => item.id === anchor.id)) messages.push({ ...anchor, parent_id: root.id });
+    const activity = db.prepare(`${MESSAGE_SELECT_FIELDS}
+        WHERE m.article_id IS NULL AND COALESCE(m.status, 'approved') = 'approved'
+        ORDER BY m.created_at DESC, m.id DESC LIMIT 4`).all().map(compactMessageRow)
+        .filter(item => !item.parent_id || findReplyThreadRoot(item))
+        .map(({ id, parent_id, author, author_nickname, created_at }) => ({ id, parent_id, author, author_nickname, created_at }));
+    return { messages, activity, anchor_id: anchor?.id || null,
+        pagination: { page: currentPage, limit, total, totalPages } };
+}
+
+function listPlazaReplies(rootId, { limit = 20, beforeId = null } = {}) {
+    const root = findApprovedMessageById(rootId);
+    if (!root || root.article_id != null || root.parent_id) return null;
+    let cursor = '';
+    const params = [rootId];
+    if (beforeId) {
+        const before = db.prepare(`${plazaReplyTree('?')} SELECT created_at, id FROM messages WHERE id = ? AND id IN (SELECT id FROM reply_tree)`).get(rootId, beforeId);
+        if (!before) return null;
+        cursor = ' AND (m.created_at, m.id) < (?, ?)';
+        params.push(before.created_at, before.id);
+    }
+    const rows = db.prepare(`${plazaReplyTree('?')} ${MESSAGE_SELECT_FIELDS}
+        WHERE m.id IN (SELECT id FROM reply_tree) ${cursor}
+        ORDER BY m.created_at DESC, m.id DESC LIMIT ?`).all(...params, limit + 1);
+    const hasMore = rows.length > limit;
+    const replies = rows.slice(0, limit).map(row => ({ ...compactMessageRow(row), parent_id: root.id }));
+    return { root_id: root.id, replies, has_more: hasMore, next_before_id: hasMore ? replies.at(-1).id : null };
+}
+
 function createMessage({ author, content, userId, articleId = null, parentId = null, replyToId = null, replyToAuthor = null, status = 'pending' }) {
     const normalizedStatus = status === 'approved' ? 'approved' : 'pending';
     const result = parentId
@@ -169,13 +263,13 @@ function findMessageLike(messageId, userId) {
     return db.prepare('SELECT id FROM message_likes WHERE message_id = ? AND user_id = ?').get(messageId, userId);
 }
 
-function listMessageLikeIds(userId) {
+function listMessageLikeIds(userId, ids = null) {
     return db.prepare(`
         SELECT message_id
         FROM message_likes
-        WHERE user_id = ?
+        WHERE user_id = ? ${ids ? `AND message_id IN (${ids.map(() => '?').join(',')})` : ''}
         ORDER BY id DESC
-    `).all(userId).map(row => row.message_id);
+    `).all(userId, ...(ids || [])).map(row => row.message_id);
 }
 
 function likeMessage(messageId, userId) {
@@ -190,6 +284,8 @@ function likeMessage(messageId, userId) {
 module.exports = {
     listMessages,
     listRecentPublicMessages,
+    listPlazaPage,
+    listPlazaReplies,
     createMessage,
     findMessageById,
     findApprovedMessageById,
