@@ -1789,6 +1789,14 @@ describe('pixel art API', () => {
         assert.equal(hubPreview.response.status, 200);
         assert.equal(hubPreview.body.success, true);
         assert.ok(hubPreview.body.data.article);
+        assert.equal(typeof hubPreview.body.data.article.author, 'string');
+        assert.equal(typeof hubPreview.body.data.article.avatar, 'string');
+        for (const preview of [hubPreview.body.data.article, hubPreview.body.data.gallery, hubPreview.body.data.pixel].filter(Boolean)) {
+            assert.doesNotMatch(JSON.stringify(preview), /data:image\//);
+            for (const field of ['owner_id', 'author_id', 'storage_key', 'metadata', 'email', 'password_hash']) {
+                assert.equal(Object.hasOwn(preview, field), false, `Hub preview must not expose ${field}`);
+            }
+        }
         assert.ok(Array.isArray(hubPreview.body.data.messages));
         assert.ok(hubPreview.body.data.messages.every(item => Object.hasOwn(item, 'avatar') && !Object.hasOwn(item, 'user_id')));
         assert.doesNotMatch(JSON.stringify(hubPreview.body.data.messages), /data:image\//);

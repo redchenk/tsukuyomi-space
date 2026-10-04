@@ -6,8 +6,9 @@ import CountUpValue from '../components/CountUpValue.vue';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
 import { warmRoutePath } from '../router';
-import { compareAppDate } from '../utils/time';
+import { compareAppDate, formatDateOnly } from '../utils/time';
 import { applyGrowthResult } from '../services/userGrowth';
+import { siteArt } from '../data/siteArt';
 
 const props = defineProps({
   lang: { type: String, default: 'zh' },
@@ -22,7 +23,7 @@ const hubCopy = computed(() => ({
 }[props.lang] || {}));
 const isEnglish = computed(() => props.lang === 'en');
 
-const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v3';
+const HUB_PREVIEW_CACHE_KEY = 'tsukuyomi_hub_preview_cache_v4';
 const HUB_PREVIEW_TTL_MS = 30000;
 const HUB_PREVIEW_TIMEOUT_MS = 8000;
 const STATS_UPDATED_EVENT = 'tsukuyomi:stats-updated';
@@ -117,12 +118,15 @@ const sceneLinks = computed(() => [
     icon: 'book',
     tone: 'blue',
     spa: true,
-    image: latestArticle.value?.cover_image || latestArticle.value?.cover_image_url || '/assets/images/room-bg.webp',
+    image: latestArticle.value?.cover_image || latestArticle.value?.cover_image_url || siteArt.articleCover,
+    author: latestArticle.value?.author || '',
+    avatar: latestArticle.value?.avatar || '',
+    date: latestArticle.value?.published_at || latestArticle.value?.publish_date || latestArticle.value?.created_at,
     label: props.t.stage
   },
   {
     href: '/gallery',
-    name: latestGalleryImage.value ? (isEnglish.value ? 'Latest gallery image' : '最新图库影像') : props.t.gallery,
+    name: latestGalleryImage.value?.title || (latestGalleryImage.value ? (isEnglish.value ? 'Latest gallery image' : '最新图库影像') : props.t.gallery),
     desc: latestGalleryImage.value
       ? (isEnglish.value ? `Published ${formatGalleryDate(latestGalleryImage.value) || 'recently'}` : `发布于 ${formatGalleryDate(latestGalleryImage.value) || '近期'}`)
       : (isEnglish.value ? 'Public images, illustrations and visual records' : '公开影像、插画与站点视觉记录'),
@@ -130,7 +134,10 @@ const sceneLinks = computed(() => [
     icon: 'image',
     tone: 'gold',
     spa: true,
-    image: galleryImageUrl(latestGalleryImage.value) || '/assets/images/tsukuyomi-bg.webp',
+    image: galleryImageUrl(latestGalleryImage.value) || siteArt.galleryCover,
+    author: latestGalleryImage.value?.author || '',
+    avatar: latestGalleryImage.value?.avatar || '',
+    date: latestGalleryImage.value?.created_at,
     label: props.t.gallery
   },
   {
@@ -145,7 +152,10 @@ const sceneLinks = computed(() => [
     icon: 'palette',
     tone: 'pink',
     spa: true,
-    image: '/assets/images/tsukuyomi-bg.webp',
+    image: siteArt.pixelCover,
+    author: latestPixelArtwork.value?.author_nickname || latestPixelArtwork.value?.author || '',
+    avatar: latestPixelArtwork.value?.avatar || '',
+    date: latestPixelArtwork.value?.created_at,
     label: latestPixelArtwork.value ? (isEnglish.value ? 'Latest pixel art' : '最新像素画') : props.t.arena,
     kind: 'arena',
     artwork: latestPixelArtwork.value
@@ -503,13 +513,16 @@ onBeforeUnmount(() => {
         </div>
 
         <figure class="hub-character" :aria-label="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'">
-          <img :src="'/assets/images/yachiyo-hub-stand.png'" :alt="isEnglish ? 'Tsukimi Yachiyo' : '月见八千代'" width="1923" height="1081" loading="eager" decoding="async" fetchpriority="high">
+          <picture>
+            <source media="(max-width: 600px)" :srcset="siteArt.character" width="1487" height="1058">
+            <img :src="siteArt.hero" :alt="isEnglish ? 'Yachiyo by the moonlit lake, beneath a cherry-blossom umbrella' : '樱伞下，坐在月光湖畔的八千代'" width="1672" height="941" loading="eager" decoding="async" fetchpriority="high">
+          </picture>
         </figure>
       </div>
     </section>
 
     <details class="hub-notice" :aria-busy="!visitPopupPreview">
-      <summary @click="!visitPopupPreview && $event.preventDefault()"><TsIcon name="bell" :size="17" /><span>{{ hubCopy.notice }}</span><strong>{{ visitPopupPreview?.title || '' }}</strong><small>{{ visitPopupPreview ? hubCopy.expand : '' }}</small></summary>
+      <summary @click="!visitPopupPreview && $event.preventDefault()"><TsIcon name="bell" :size="17" /><span>{{ hubCopy.notice }}</span><strong>{{ visitPopupPreview?.title || '' }}</strong><small>{{ visitPopupPreview ? hubCopy.expand : '' }} <TsIcon v-if="visitPopupPreview" name="chevronDown" :size="15" /></small></summary>
       <p v-if="visitPopupPreview">{{ visitPopupPreview.content }}</p>
     </details>
 
@@ -624,6 +637,13 @@ onBeforeUnmount(() => {
             </form>
             <span v-if="plazaQuick.message" class="hub-plaza-feedback" :class="plazaQuick.messageType" :role="plazaQuick.messageType === 'error' ? 'alert' : 'status'">{{ plazaQuick.message }}</span>
           </div>
+          <span v-if="scene.kind !== 'plaza' && (scene.author || scene.date)" class="scene-meta">
+            <span v-if="scene.author" class="scene-author">
+              <img v-if="scene.avatar" :src="scene.avatar" alt="" width="28" height="28" loading="lazy" decoding="async" referrerpolicy="no-referrer" @error="$event.currentTarget.hidden = true">
+              <span>{{ scene.author }}</span>
+            </span>
+            <time v-if="scene.date" :datetime="scene.date">{{ formatDateOnly(scene.date, isEnglish ? 'en-CA' : 'zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }}</time>
+          </span>
         </component>
         </template>
       </div>

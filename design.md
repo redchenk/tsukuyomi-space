@@ -1,261 +1,54 @@
-# Tsukuyomi Space 设计规范
+# 月读空间设计规范
 
-本文档总结当前站点的统一视觉风格。新增页面和组件应优先使用 `src/frontend/styles/tokens.css` 与 `src/frontend/styles/themes.css` 中的 `--ts-*` 变量；历史 `--pink`、`--cyan`、`--panel` 等变量仅作为兼容层使用。
+当前视觉基线：2026-10-04「月白樱粉」。新增页面应使用既有语义变量，避免单独硬编码旧紫色或荧光蓝主按钮。用户作品、Live2D 场景和状态色保留各自用途。
 
-## 1. 配色
+## 配色与主题
 
-### 品牌色
+src/frontend/styles/tokens.css 定义品牌与尺寸；src/frontend/styles/editorial.css 是最终主题映射。历史 --pink、--lilac、--panel 等变量只作为兼容层。
 
-| 用途 | Token / 变量 | 色值 |
+| 用途 | 浅色 | 暗色 |
 | --- | --- | --- |
-| 主色 / 紫丁香 | `--ts-color-lilac-500` | `#9b8cff` |
-| 主色深色 | `--ts-color-lilac-700` | `#6f62d9` |
-| 主按钮起始色 | 当前按钮渐变 | `#7b8cf6` |
-| 主按钮结束色 | 当前按钮渐变 | `#a481ff` |
-| 辅助蓝 | `--ts-color-blue-500` | `#56bfe8` |
-| 高亮青 | `--ts-cyan` | light `#6bd8f0` / dark `#aef2ff` |
-| 樱粉强调 | `--ts-color-pink-400` | `#ff9aba` |
-| 樱粉深色 | `--ts-color-pink-600` | `#e85f9b` |
-| 薄荷辅助 | `--ts-color-mint-300` | `#9ee2cf` |
-| 金色点缀 | `--ts-color-gold-300` | `#f1d98e` |
+| 页面基色 | #F7F9FC | #141B26 |
+| 卡片、阅读表面 | #FFFFFF | #1E2836 |
+| 次级表面 | #EEF2F8 | #293647 |
+| 主文字 | #202B46 | #EDF1F6 |
+| 次级文字 | #626E84 | #B3BECD |
+| 链接、选中强调 | #AC4D6D | #E5A4BC |
+| 选中底色 | #F4E6EC | #3A2B39 |
+| 细边框 | #DFE6F0 | #3A4759 |
+| 辅助雾蓝 | #386C85 | #A9CADC |
 
-### 背景色
+两个主题的主按钮均为 #AC4D6D 白字，悬停为 #923D5B。旧 --ts-gradient-brand 名称继续兼容组件，值为纯色。普通文字与主按钮对比度均超过 4.5:1；暗色小字链接使用浅樱粉。成功、失败、警告和危险操作继续使用语义状态色。
 
-| 用途 | Light | Dark |
-| --- | --- | --- |
-| 页面主背景 | `--ts-bg: #edf6ff` | `--ts-bg: #0b1020` |
-| 柔和背景 | `--ts-bg-soft: #f4f0ff` | `--ts-bg-soft: #131a2f` |
-| 暖色背景 | `--ts-bg-warm: #fff9fd` | `--ts-bg-warm: #19162b` |
-| 普通玻璃面 | `--ts-surface: rgba(255,255,255,0.78)` | `rgba(12,18,36,0.72)` |
-| 强玻璃面 | `--ts-surface-strong: rgba(255,255,255,0.92)` | `rgba(8,13,28,0.86)` |
-| 卡片底 | `--ts-card: rgba(255,255,255,0.68)` | `rgba(255,255,255,0.08)` |
-| 卡片 hover | `--ts-card-hover: rgba(238,244,255,0.92)` | `rgba(123,140,246,0.16)` |
+新访客默认浅色；已保存的主题偏好继续生效。切换同步浏览器 theme-color，浅色 #F7F9FC，暗色 #141B26。浅色用樱花湖畔背景与中央月白遮罩，暗色用月下神社与深蓝灰遮罩。正文、卡片和表单使用实色阅读面，不直接铺在复杂插画上。
 
-页面背景使用浅蓝、淡紫、暖白的多层渐变叠加站点图像：
+## 字体、空间与圆角
 
-```css
-background:
-  radial-gradient(circle at 50% -8%, rgba(123, 140, 246, 0.18), transparent 36%),
-  radial-gradient(circle at 86% 12%, rgba(255, 122, 200, 0.13), transparent 28%),
-  linear-gradient(135deg, rgba(237, 246, 255, 0.94), rgba(244, 240, 255, 0.91) 48%, rgba(255, 249, 253, 0.96)),
-  url("/assets/images/tsukuyomi-bg.png") center center / cover no-repeat fixed;
-```
+正文/UI 沿用 MiSans、HarmonyOS Sans SC、PingFang SC 等现有字体栈，不引入新的字体下载。大厅品牌标题采用 Songti SC / Noto Serif SC / 既有 serif 栈；英文装饰文字保留较宽字距。
 
-### 文字色
+- 大厅主标题：桌面最大 68px，手机 34–46px，字重 700。
+- 大厅副文案：桌面 18px / 1.7，手机 13px / 1.8。
+- 内容卡片标题：19px / 1.45；摘要桌面 15px / 1.65，最多两行。
+- 其余页面使用既有字号和布局，不为换色重新组织功能。
 
-| 用途 | Light | Dark |
-| --- | --- | --- |
-| 主文字 | `--ts-text: #263044` | `#eff7ff` |
-| 强标题文字 | `--ts-text-strong: #111827` | `#ffffff` |
-| 次级文字 | `--ts-muted: rgba(38,48,68,0.68)` | `rgba(239,247,255,0.66)` |
-| 深墨色阶 | `--ts-color-ink-950` | `#0b1020` |
-| 表单 placeholder | light `#6b7280` | dark `#8ea2b8` |
+优先复用 4/8/12/16/20/24/32px 间距 token。卡片 18–22px，输入框按既有 12–18px，操作按钮采用 --ts-radius-button 的 999px 胶囊形状。图标与文字保持水平对齐，按钮不挤压文字。装饰和选中背景保留柔和边框，避免彩色光晕。
 
-## 2. 字体
+## 导航与功能
 
-### 字体族
+桌面和手机均保留现有全局顶部导航，不增加侧边导航或底部导航。桌面提供主要入口、统一搜索、通知、主题、账号与进入房间；手机通过顶部探索和账号菜单访问同样的功能。通知沿用未读小红点，账号菜单条目统一左对齐。
 
-| 用途 | 字体 |
-| --- | --- |
-| 正文 / UI | `"Microsoft YaHei", "Noto Sans SC", "Segoe UI", Arial, sans-serif` |
-| 大标题 / 品牌标题 | `"Source Han Serif SC", "Noto Serif SC", "Microsoft YaHei", serif` |
-| 英文装饰标题 | `Georgia, "Times New Roman", serif` |
+音乐按钮与全局八千代继续留在底部。保持搜索、菜单键盘操作、可见焦点、控件名称、点击区域和安全区间距。Stage 默认最新优先不因视觉更新改变。
 
-### 字号、字重、行高
+## 大厅与美术素材
 
-| 层级 | 字号 | 字重 | 行高 | 用法 |
-| --- | --- | --- | --- | --- |
-| Hero H1 | `clamp(2.7rem, 6.8vw, 5.3rem)`，Hub 强视觉版可到 `clamp(3rem, 6.6vw, 5.85rem)` | `520-560` | `1.02-1.08` | 首页、Hub、Arena 主标题 |
-| 页面标题 | `clamp(1.7rem, 4vw, 3.4rem)` | `600-700` | `1.15` | 标准页面标题 |
-| 卡片标题 | `1.08rem-1.36rem` | `700-800` | `1.25-1.38` | 面板、列表卡片标题 |
-| 正文 | `0.94rem` | `400-500` | `1.6` | 常规正文、表单说明 |
-| 长文本 | `1rem` | `400-500` | `1.75-1.85` | 文章、说明文案 |
-| 辅助文字 | `0.72rem-0.82rem` | `700-900` | `1.3-1.5` | kicker、标签、状态文字 |
-| 按钮文字 | `0.82rem-0.86rem` | `700-800` | `1` 或继承 | 导航、操作按钮 |
+桌面大厅主视觉为左侧文字、右侧「月下樱花少女-2」；插画左侧渐隐，避免与文字竞争。主内容最大宽度 1392px，主视觉圆角 22px。601–1099px 的平板布局为左侧 46% 文字、右侧 54% 插画，正文留在实色表面。小于等于 600px 时，文字/操作置于上方，透明「白发少女与绛红纸伞-3」位于独立的下方区域，保持脸部完整可见。
 
-字号 token：
+公告采用单独的圆角条，可展开现有公告内容。新鲜事按文章、图库、像素画排列；封面与正文分离，卡片底部展示可用的公开作者、头像和日期。优先展示真实社区内容；仅在没有相应封面或作品时使用提供的缺省插画。广场快捷留言保留独立的完整功能卡片。
 
-```css
---ts-font-size-xs: 0.72rem;
---ts-font-size-sm: 0.82rem;
---ts-font-size-md: 0.94rem;
---ts-font-size-lg: 1.08rem;
---ts-font-size-xl: 1.36rem;
---ts-font-size-2xl: clamp(1.7rem, 4vw, 3.4rem);
---ts-line-tight: 1.15;
---ts-line-normal: 1.6;
---ts-line-loose: 1.85;
-```
+素材来源、映射、压缩与图标裁切见 src/frontend/assets/sakura/README.md。网站 favicon、Apple 图标及 PWA 图标来自「樱伞下的白发少女-5」，导航内原有月亮标识保留。六张 WebP 由 Vite 构建并生成哈希文件；不把原始 PNG 重复打包。
 
-## 3. 间距
+清理仅针对已经替换且核实不再使用的设计资源。房间分享、动态 Wiki 图片、Live2D、模型、音乐及上传内容仍受保护，不能凭一次静态搜索批量删除。
 
-### 基础间距 token
+## 验收
 
-| Token | 值 | 常见用途 |
-| --- | --- | --- |
-| `--ts-space-1` | `0.25rem` / 4px | 图标与文字的细小间隔 |
-| `--ts-space-2` | `0.5rem` / 8px | 紧凑按钮组、导航组 |
-| `--ts-space-3` | `0.75rem` / 12px | 卡片内部小间距 |
-| `--ts-space-4` | `1rem` / 16px | 标准模块间距 |
-| `--ts-space-5` | `1.25rem` / 20px | 表单段落、卡片分组 |
-| `--ts-space-6` | `1.5rem` / 24px | 区块内 padding |
-| `--ts-space-8` | `2rem` / 32px | 页面区块间距 |
-| `--ts-space-10` | `2.5rem` / 40px | 大区块间距 |
-
-### 页面和模块布局
-
-| 场景 | 推荐值 |
-| --- | --- |
-| 桌面页面左边距 | `padding-left: max(clamp(1rem, 4vw, 2rem), 6.2rem)`，给左侧 rail 预留空间 |
-| 桌面页面右边距 | `clamp(1rem, 3vw, 2rem)` |
-| 移动端页面边距 | `padding: 5.2rem 0.9rem max(6.4rem, env(safe-area-inset-bottom) + 5.6rem)` |
-| 顶部 commandbar | `top: 1rem; left: calc(5rem + clamp(1rem, 3vw, 2rem)); right: clamp(1rem, 3vw, 2rem)` |
-| 卡片内边距 | `clamp(1.1rem, 2.6vw, 1.8rem)`；复杂 Hero 可用 `clamp(1.35rem, 4vw, 4.8rem)` |
-| 卡片/栏间距 | `0.85rem-1.15rem` |
-| 按钮组间距 | `0.42rem-0.72rem` |
-| 表单字段间距 | `0.55rem-1rem` |
-| 列表卡片间距 | `0.8rem-1rem` |
-
-原则：普通运营/管理类页面保持紧凑、可扫描；Hero 和视觉展示页允许更大的 `clamp()` 间距，但不要让首屏只有装饰内容。
-
-## 4. 组件样式
-
-### 圆角
-
-| Token / 场景 | 值 |
-| --- | --- |
-| `--ts-radius-xs` | `6px` |
-| `--ts-radius-sm` | `8px` |
-| `--ts-radius-md` | `12px` |
-| `--ts-radius-lg` | `18px` |
-| `--ts-radius-xl` | `22px` |
-| `--ts-radius-pill` | `999px` |
-| 主导航 rail 图标按钮 | `12px` |
-| 顶部 commandbar / 侧边 rail | `18px` |
-| 大玻璃卡片 / Hub 面板 | `20px-22px` |
-| 管理类小卡片 | `8px-14px` |
-| 标签、胶囊按钮 | `999px` |
-
-### 阴影和玻璃效果
-
-| Token | 值 | 用途 |
-| --- | --- | --- |
-| `--ts-shadow-sm` | `0 10px 28px rgba(86,112,160,0.12)` | 轻卡片、按钮 |
-| `--ts-shadow-md` | `0 18px 48px rgba(86,112,160,0.16)` | 标准玻璃卡片 |
-| `--ts-shadow-lg` | `0 24px 76px rgba(0,0,0,0.28)` | 浮层、抽屉 |
-| `--ts-shadow-accent` | `0 14px 38px rgba(123,140,246,0.28)` | 主按钮 |
-| `--ts-blur-md` | `blur(18px) saturate(1.12)` | 常规玻璃 |
-| `--ts-blur-lg` | `blur(22px) saturate(1.18)` | 强视觉浮层 |
-
-卡片、导航栏、浮层的默认玻璃规则：
-
-```css
-border: 1px solid var(--ts-border);
-background:
-  linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.07)),
-  var(--ts-glass);
-box-shadow:
-  inset 0 1px 0 rgba(255,255,255,0.18),
-  inset 0 -1px 0 rgba(255,255,255,0.06),
-  var(--ts-shadow-md);
-backdrop-filter: blur(18px) saturate(1.12);
-```
-
-### 按钮
-
-通用按钮包括 `.nav-link`、`.ghost-btn`、`.lang-btn`、`.theme-toggle`、`.panel-btn`、`.filter-btn`、`.chip`、`.icon-btn`、`.mode-btn`、`.code-btn`。
-
-| 属性 | 规则 |
-| --- | --- |
-| 最小高度 | `36px`；重要 CTA 可用 `42px` |
-| 默认圆角 | `12px`，导航兼容层可为 `999px` |
-| 默认边框 | `1px solid var(--ts-border)` |
-| 默认背景 | 深色 `rgba(255,255,255,0.07)`；浅色 `rgba(255,255,255,0.68)` |
-| 默认文字 | `var(--ts-text)` |
-| 水平 padding | `0.72rem`，紧凑按钮可 `0.58rem-0.65rem` |
-| hover | `transform: translateY(-1px)`，边框改为 `var(--ts-border-strong)`，背景改为 `var(--ts-card-hover)` |
-
-主按钮：
-
-```css
-.primary-btn {
-  color: #fff;
-  border-color: rgba(174, 242, 255, 0.22);
-  background: linear-gradient(135deg, #7b8cf6, #a481ff);
-  box-shadow: 0 14px 38px rgba(123, 140, 246, 0.28);
-}
-```
-
-危险按钮：
-
-```css
-.danger-btn {
-  color: #fff;
-  border-color: rgba(255, 95, 150, 0.32);
-  background: rgba(255, 95, 150, 0.18);
-}
-```
-
-### 卡片
-
-标准卡片用于 `.panel`、`.stage-card`、`.scene-card`、`.uc-card`、`.plaza-*`、`.room-panel` 等。
-
-| 属性 | 规则 |
-| --- | --- |
-| 边框 | `1px solid var(--ts-border)` |
-| 背景 | `var(--ts-surface)` 或 `rgba(255,255,255,0.88-0.92)` |
-| 圆角 | 标准 `18px-22px`；管理类密集卡片可 `8px-14px` |
-| 阴影 | `var(--ts-shadow-md)`；列表子卡片可 `var(--ts-shadow-sm)` 或无阴影 |
-| 玻璃 | `backdrop-filter: var(--ts-blur-md)` |
-| hover | 轻微上浮 `translateY(-1px~-3px)`，边框增强，背景变为 `var(--ts-card-hover)` |
-
-大视觉卡片，如 Hub hero：
-
-```css
-border: 1px solid rgba(231, 249, 255, 0.16);
-border-radius: 22px;
-background: rgba(10, 16, 32, 0.66);
-box-shadow: 0 26px 80px rgba(0, 0, 0, 0.32);
-backdrop-filter: blur(18px) saturate(1.12);
-```
-
-### 导航栏
-
-桌面端采用左侧 rail + 顶部 commandbar 的组合。
-
-| 组件 | 规则 |
-| --- | --- |
-| 顶部 commandbar | 固定定位，最小高度 `62px`，圆角 `18px`，玻璃背景，`var(--ts-shadow-md)` |
-| 左侧 rail | 宽 `4rem`，上下左右 `1rem-clamp(1rem,3vw,2rem)`，圆角 `18px`，内部 gap `1rem` |
-| rail 图标按钮 | `2.35rem x 2.35rem`，圆角 `12px`，hover 上浮 `-1px` |
-| 品牌图标 | `2.35rem` 或 `2.5rem` 圆形，主色渐变 |
-| 移动端 commandbar | `top/left/right: 0.7rem`，最小高度 `58px`，圆角 `16px` |
-| 移动端底部/弹出导航 | 使用玻璃强背景 `var(--ts-glass-strong)`，圆角 `18px` |
-
-导航激活态：
-
-```css
-.nav-link.router-link-active,
-.terminal-nav-btn.active {
-  color: #fff;
-  border-color: rgba(174, 242, 255, 0.34);
-  background: linear-gradient(135deg, rgba(123, 140, 246, 0.92), rgba(164, 129, 255, 0.82));
-}
-```
-
-## 设计使用原则
-
-1. 新组件优先使用 `--ts-*` token，避免继续新增只服务单页的颜色变量。
-2. 视觉核心是“月夜、玻璃、浅蓝紫、樱粉点缀”，不使用大面积单一紫色或深蓝。
-3. 管理/工具页面要密集、清晰、可扫描；展示页面可以使用更强的图片背景、玻璃卡片和大标题。
-4. 按钮优先使用 lucide 图标加短文本；纯文本按钮只用于明确命令。
-5. 卡片不要嵌套卡片；页面区块应以全宽布局或单层玻璃容器组织。
-
-## 移动端交互约定
-
-- 共用视口规则集中在 `src/frontend/styles/mobile-experience.css` 的 `ts-mobile` 层，不再分散追加到历史页面样式中。
-- 导航和常用表单操作至少提供 44px 触控高度，文本输入使用 16px 字号，顶部和底部留白包含安全区域。
-- “更多”使用原生 `dialog`，支持 Escape、焦点循环与恢复、背景滚动锁定；切换页面或进入桌面宽度后自动关闭。
-- 文章与留言优先于辅助说明和统计；次要说明可折叠，空状态只有一个容器，标题与说明不重复套框。
-- Room 的软键盘适配由 `useMobileKeyboard` 提供视口变量，保留原来的 Live2D 分辨率、绘画精度和业务功能。
-- 验证包括 360px、390px、768px、横屏和桌面布局，以及深浅主题、中日英菜单和登录后的常用页面。
+换色需检查浅色与暗色、桌面/平板/手机、复杂背景上的阅读面以及导航和弹层。当前本地验收结果与截图记录在 design-qa.md；生产部署须另行核实服务器资源保护和图标缓存更新。

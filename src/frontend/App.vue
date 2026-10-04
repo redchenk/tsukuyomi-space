@@ -23,7 +23,7 @@ const route = useRoute();
 const router = useRouter();
 const forcedLanguage = forcedSiteLanguage();
 const lang = ref(forcedLanguage || normalizeLanguage(localStorage.getItem('lang')));
-const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'dark');
+const theme = ref(localStorage.getItem('tsukuyomi_theme') || 'light');
 const user = ref(null);
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const routeLoadingLabel = computed(() => lang.value === 'ja'
@@ -158,6 +158,7 @@ function setTheme(nextTheme) {
   theme.value = nextTheme === 'dark' ? 'dark' : 'light';
   localStorage.setItem('tsukuyomi_theme', theme.value);
   document.documentElement.dataset.theme = theme.value;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.value === 'dark' ? '#141b26' : '#f7f9fc');
 }
 
 function toggleTheme(event) {

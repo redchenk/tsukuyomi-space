@@ -27,6 +27,8 @@ FRONTEND_PROTECTED = ('assets/music', 'assets/video', 'assets/audio', 'assets/up
                       'live2d-studio', 'game-assets', 'game-runtime')
 CODE_DIRS = ('backend', 'shared', 'src', 'scripts', 'tests', 'deploy', 'docs', '.github', 'live2d-studio')
 SOURCE_STYLE_DIR = 'assets/css/vue'
+BRAND_FILES = ('favicon.ico', 'site.webmanifest', 'assets/icons/icon-32.png',
+               'assets/icons/icon-180.png', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png')
 CODE_FILES = ('package.json', 'package-lock.json', 'Dockerfile', '.dockerignore', '.gitignore',
               '.gitattributes', '.env.example', '.env.docker.example', '.env.overseas',
               'docker-compose.yml', 'docker-compose.resources.example.yml',
@@ -82,10 +84,10 @@ def dependency_install_needed(root, before, after, paths):
             or any(old.get('scripts', {}).get(key) != new.get('scripts', {}).get(key) for key in INSTALL_SCRIPTS))
 
 
-def check_git(root, before, after, environment_release=False):
+def check_git(root, before, after, environment_release=False, brand_release=False):
     git(root, 'merge-base', '--is-ancestor', before, after)
     paths = changed_paths(root, before, after)
-    forbidden = [p for p in paths if not code_path(p)]
+    forbidden = [p for p in paths if not code_path(p) and not (brand_release and p in BRAND_FILES)]
     require(not forbidden, 'Code-only release would change protected/unmanaged paths: ' + ', '.join(forbidden))
     for name in paths:
         current = Path(root)
@@ -110,6 +112,9 @@ def check_git(root, before, after, environment_release=False):
         metadata, name = entry.split(b'\t', 1)
         if os.fsdecode(name) in paths:
             require(metadata.split()[0] in (b'100644', b'100755'), 'Code release cannot install symlinks or submodules: ' + os.fsdecode(name))
+    if brand_release:
+        for name in set(paths) & set(BRAND_FILES):
+            require(bool(git(root, 'ls-tree', after, '--', name)), 'Brand release cannot delete icons: ' + name)
     return paths
 
 
@@ -169,10 +174,12 @@ def sha(path):
     return digest.hexdigest()
 
 
-def resource_manifest(root, site, extra=()):
+def resource_manifest(root, site, extra=(), brand_release=False):
     result = {}
 
     def visit(path, name, ancestors=()):
+        if brand_release and name in BRAND_FILES:
+            return  # The exact six brand files have their own hash/rollback checks.
         if not path.exists() and not path.is_symlink():
             result[name] = None
             return
@@ -185,7 +192,8 @@ def resource_manifest(root, site, extra=()):
             item['link'] = os.readlink(path) if path.is_symlink() else None
             result[name] = item
             return
-        item['mtime_ns'] = info.st_mtime_ns
+        if not (brand_release and name == 'assets/icons'):
+            item['mtime_ns'] = info.st_mtime_ns
         if path.is_symlink():
             item['link'] = os.readlink(path)
             result[name] = item
@@ -211,10 +219,68 @@ def resource_manifest(root, site, extra=()):
 
 
 def verify_resources(state):
-    actual = resource_manifest(state['root'], state['site'], state['extra_resources'])
+    actual = resource_manifest(state['root'], state['site'], state['extra_resources'], bool(state.get('brand')))
     expected = json.loads((Path(state['state_dir']) / 'resources.json').read_text())
     changes = [p for p in sorted(actual.keys() | expected.keys()) if actual.get(p) != expected.get(p)]
     require(not changes, 'Protected resources changed; no automatic resource restore will run: ' + ', '.join(changes[:20]))
+
+
+def brand_files(source, root):
+    source, root = Path(source), Path(root)
+    require(source.is_dir() and not source.is_symlink(), 'Brand artifact must be a regular directory')
+    entries = list(source.rglob('*'))
+    require(not any(p.is_symlink() for p in entries), 'Brand artifact symlinks are forbidden')
+    require(all(p.is_file() or (p.is_dir() and p.relative_to(source).as_posix() in ('assets', 'assets/icons'))
+                for p in entries), 'Brand artifact contains an unexpected directory or file type')
+    require({p.relative_to(source).as_posix() for p in entries if p.is_file()} == set(BRAND_FILES),
+            'Brand artifact must contain exactly the six approved icon/manifest files')
+    result = {}
+    for name in BRAND_FILES:
+        current = root
+        for part in Path(name).parts:
+            current /= part
+            require(not current.is_symlink(), 'Brand target crosses an existing symlink: ' + name)
+        require(not current.exists() or current.is_file(), 'Brand target is not a file: ' + name)
+        data = (source / name).read_bytes()
+        require(0 < len(data) <= 1024 * 1024, 'Brand file must be at most 1 MiB: ' + name)
+        if name.endswith('.png'):
+            require(data.startswith(b'\x89PNG\r\n\x1a\n'), 'Brand icon is not PNG: ' + name)
+        elif name.endswith('.ico'):
+            require(data.startswith(b'\x00\x00\x01\x00'), 'Brand favicon is not ICO')
+        else:
+            require(isinstance(json.loads(data), dict), 'Brand manifest must be a JSON object')
+        result[name] = dict(before=sha(current) if current.exists() else None, after=sha(source / name))
+    return result
+
+
+def verify_brand(state, phase=None, mixed=False):
+    brand = state.get('brand')
+    if not brand:
+        return
+    phase = phase or ('before' if state['status'] == 'rolled_back' else 'after')
+    for name, hashes in brand['files'].items():
+        path = Path(state['root'])
+        for part in Path(name).parts:
+            path /= part
+            require(not path.is_symlink(), 'Brand target became a symlink: ' + name)
+        actual = sha(path) if path.exists() else None
+        allowed = hashes.values() if mixed else (hashes[phase],)
+        require(actual in allowed, 'Brand file changed outside this release: ' + name)
+
+
+def publish_brand(state, rollback=False):
+    brand = state.get('brand')
+    if not brand:
+        return
+    source = Path(state['state_dir']) / 'brand.before' if rollback else Path(brand['source'])
+    for name, hashes in brand['files'].items():
+        target = Path(state['root']) / name
+        if rollback and hashes['before'] is None:
+            target.unlink(missing_ok=True)
+        else:
+            expected = hashes['before' if rollback else 'after']
+            require(sha(source / name) == expected, 'Brand artifact changed after preparation: ' + name)
+            copy_atomic(source / name, target)
 
 
 def frontend_files(source, destination):
@@ -288,6 +354,9 @@ def prepare(args):
                  artifact=str(Path(args.artifact).resolve()), state_dir=str(state_dir), status='preparing',
                  extra_resources=args.extra_resource, base_url=args.base_url, resolve=args.resolve,
                  files=files, index_before=sha(frontend / 'index.html'), index_after=sha(Path(args.artifact) / 'index.html'))
+    brand_source = getattr(args, 'brand_artifact', None)
+    if brand_source:
+        state['brand'] = dict(source=str(Path(brand_source).resolve()), files=brand_files(brand_source, root))
     if args.site == 'domestic':
         require(args.bundle and args.commit, 'Domestic release requires a bundle and commit')
         git(root, 'fetch', str(Path(args.bundle).resolve()), 'refs/heads/codex-deploy')
@@ -295,7 +364,13 @@ def prepare(args):
         require(target == args.commit, 'Bundle commit does not match requested commit')
         before = git(root, 'rev-parse', 'HEAD').decode().strip()
         environment_release = bool(getattr(args, 'environment_release', False))
-        paths = check_git(root, before, target, environment_release)
+        paths = check_git(root, before, target, environment_release, bool(brand_source))
+        if brand_source:
+            for name, hashes in state['brand']['files'].items():
+                require(hashlib.sha256(git(root, 'show', target + ':' + name)).hexdigest() == hashes['after'],
+                        'Brand artifact does not match requested commit: ' + name)
+                require((root / name).is_file() and sha(root / name) == hashlib.sha256(git(root, 'show', before + ':' + name)).hexdigest(),
+                        'Existing server brand edit needs review: ' + name)
         require(not git(root, 'diff', '--cached', '--name-only'), 'Staged server edits need review before deployment')
         dirty = [os.fsdecode(p) for p in git(root, 'diff', '--name-only', '-z').split(b'\0') if p]
         adopted = []
@@ -316,7 +391,11 @@ def prepare(args):
     os.chmod(state_dir, 0o700)
     shutil.copy2(__file__, state_dir / 'release.py')
     shutil.copy2(frontend / 'index.html', state_dir / 'index.before.html')
-    (state_dir / 'resources.json').write_text(json.dumps(resource_manifest(root, args.site, args.extra_resource), sort_keys=True))
+    if brand_source:
+        for name, hashes in state['brand']['files'].items():
+            if hashes['before'] is not None:
+                copy_atomic(root / name, state_dir / 'brand.before' / name)
+    (state_dir / 'resources.json').write_text(json.dumps(resource_manifest(root, args.site, args.extra_resource, bool(brand_source)), sort_keys=True))
     if args.site == 'domestic':
         (state_dir / 'server-edits.patch').write_bytes(git(root, 'diff', '--binary', 'HEAD', '--', *state['adopted']) if state['adopted'] else b'')
         index = git(root, 'rev-parse', '--git-path', 'index').decode().strip()
@@ -340,10 +419,11 @@ def activate(state):
     check_frontend_target(state)
     require(sha(Path(state['frontend_real']) / 'index.html') == state['index_before'], 'Frontend changed after preparation')
     verify_resources(state)
+    verify_brand(state, 'before')
     frontend_files(state['artifact'], state['frontend_real'])
     if state['site'] == 'domestic':
         require(git(state['root'], 'rev-parse', 'HEAD').decode().strip() == state['before'], 'Server HEAD changed after preparation')
-        check_git(state['root'], state['before'], state['target'], state.get('environment_release', False))
+        check_git(state['root'], state['before'], state['target'], state.get('environment_release', False), bool(state.get('brand')))
         require(hashlib.sha256(git(state['root'], 'diff', '--binary', 'HEAD')).hexdigest() == state['worktree_patch'], 'Server edit changed after preparation')
         require(not git(state['root'], 'diff', '--cached', '--name-only'), 'Server index changed after preparation')
         untracked = {os.fsdecode(p) for p in git(state['root'], 'ls-files', '--others', '--exclude-standard', '-z').split(b'\0') if p}
@@ -357,6 +437,7 @@ def activate(state):
             git(state['root'], 'add', '--', name)
         git(state['root'], 'merge', '--ff-only', state['target'])
         activate_dependencies(state)
+    publish_brand(state)
     for name in state['files']:
         if name != 'index.html' and not (Path(state['frontend_real']) / name).exists():
             copy_atomic(Path(state['artifact']) / name, Path(state['frontend_real']) / name)
@@ -412,6 +493,7 @@ def verify(state, attempts=15):
     expected = state['index_before'] if state['status'] == 'rolled_back' else state['index_after']
     require(sha(Path(state['frontend_real']) / 'index.html') == expected, 'Frontend entry does not match this release')
     verify_resources(state)
+    verify_brand(state)
     for attempt in range(attempts):
         try:
             health = json.loads(fetch(state, '/api/health'))
@@ -438,6 +520,11 @@ def verify(state, attempts=15):
             for reference in set(references):
                 name = reference.decode().lstrip('/')
                 require(hashlib.sha256(fetch(state, '/' + name)).hexdigest() == sha(Path(state['frontend_real']) / name), 'HTTP asset mismatch: ' + name)
+            for name, hashes in state.get('brand', {}).get('files', {}).items():
+                expected_hash = hashes['before' if state['status'] == 'rolled_back' else 'after']
+                if expected_hash is not None:
+                    require(hashlib.sha256(fetch(state, '/' + name + '?release=' + expected_hash[:16])).hexdigest() == expected_hash,
+                            'HTTP brand asset mismatch: ' + name)
             print('Health, frontend assets and protected resources verified:', state['site'])
             return
         except (RuntimeError, subprocess.CalledProcessError, ValueError) as error:
@@ -457,6 +544,7 @@ def rollback(state):
     check_frontend_target(state)
     require(sha(Path(state['frontend_real']) / 'index.html') in (state['index_before'], state['index_after']),
             'Refusing rollback over a newer or manually edited frontend entry')
+    verify_brand(state, mixed=True)
     if state['site'] == 'domestic':
         head = git(state['root'], 'rev-parse', 'HEAD').decode().strip()
         require(head in (state['before'], state['target']), 'Refusing rollback over a newer server commit')
@@ -469,6 +557,7 @@ def rollback(state):
             git(state['root'], 'apply', str(patch))
         shutil.copy2(Path(state['state_dir']) / 'git-index.before', state['git_index'])
         rollback_dependencies(state)
+    publish_brand(state, rollback=True)
     copy_atomic(Path(state['state_dir']) / 'index.before.html', Path(state['frontend_real']) / 'index.html')
     restart(state)
     state['status'] = 'rolled_back'
@@ -492,9 +581,10 @@ def main():
     parser.add_argument('--resolve', default='')
     parser.add_argument('--extra-resource', action='append', default=[])
     parser.add_argument('--environment-release', action='store_true', help='Stage locked dependencies with verbatim rollback of the prior tree')
+    parser.add_argument('--brand-artifact', help='Explicitly publish only six approved favicon/manifest/icon files, with hash checks and rollback')
     args = parser.parse_args()
     if args.command == 'check-git':
-        check_git(args.root or '.', args.before, args.commit or 'HEAD')
+        check_git(args.root or '.', args.before, args.commit or 'HEAD', brand_release=bool(args.brand_artifact))
         return
     require(args.state, '--state is required')
     parent = Path(args.state).absolute().parent

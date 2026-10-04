@@ -1351,7 +1351,7 @@ body .page.attachments-page .primary-btn {
     color: var(--ts-unified-primary-text) !important;
     border-color: rgba(151, 231, 242, 0.5) !important;
     background: var(--ts-unified-primary-bg) !important;
-    box-shadow: 0 14px 34px rgba(44, 125, 160, 0.24) !important;
+    box-shadow: var(--ts-shadow-accent) !important;
 }
 
 body .page :where(.primary-btn, .stage-new-btn, .arena-publish-btn, .gallery-upload-btn, .plaza-composer .primary-btn, .comment-form .primary-btn, .reply-form .primary-btn):not(:disabled):hover,
@@ -1367,7 +1367,7 @@ body .page.editor-page .primary-btn:not(:disabled):hover,
 body .page.attachments-page .primary-btn:not(:disabled):hover {
     color: var(--ts-unified-primary-text) !important;
     background: var(--ts-unified-primary-bg-hover) !important;
-    box-shadow: 0 16px 38px rgba(44, 125, 160, 0.28) !important;
+    box-shadow: var(--ts-shadow-accent) !important;
 }
 
 body .page :where(.filter-btn.active, .chip.active, .mode-btn.active, .tab-btn.active, .stage-page-btn.active, .plaza-page-btn.active),

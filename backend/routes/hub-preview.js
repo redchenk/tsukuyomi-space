@@ -38,6 +38,8 @@ function latestArticle() {
         slug: article.slug,
         excerpt: article.excerpt,
         category: article.category,
+        author: article.author_nickname || article.author_username || '',
+        avatar: article.author_avatar || '',
         publish_date: article.publish_date,
         published_at: article.published_at,
         cover_image: article.cover_image,
@@ -61,6 +63,10 @@ function latestGalleryImage() {
     if (!asset) return null;
     return {
         id: asset.id,
+        title: String(asset.metadata?.title || '').slice(0, 200),
+        author: asset.owner_nickname || asset.owner_username || '',
+        avatar: asset.owner_avatar_url || (asset.owner_has_avatar && asset.owner_username
+            ? `/api/user/public/${encodeURIComponent(asset.owner_username)}/avatar?v=${encodeURIComponent(asset.owner_avatar_updated_at || '')}` : ''),
         url: `/api/assets/proxy/${encodeURIComponent(String(asset.id))}`,
         created_at: asset.created_at,
         updated_at: asset.updated_at
@@ -80,6 +86,8 @@ function latestPixelArtwork() {
         id: artwork.id,
         title: artwork.title,
         author: artwork.author,
+        author_nickname: artwork.author_nickname,
+        avatar: artwork.avatar,
         width: artwork.preview_width,
         height: artwork.preview_height,
         background_color: artwork.background_color,

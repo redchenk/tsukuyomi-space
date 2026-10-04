@@ -70,12 +70,13 @@ class DeploymentSafetyTest(unittest.TestCase):
         (self.root / 'lib/core.js').write_bytes(b'original resource\r\n')
         return target, bundle
 
-    def prepare(self, environment_release=False):
+    def prepare(self, environment_release=False, brand_artifact=None):
         target, bundle = self.candidate()
         args = argparse.Namespace(state=str(self.base / 'backups/1-1-domestic'), site='domestic',
                                   root=str(self.root), frontend=str(self.front), artifact=str(self.artifact),
                                   bundle=str(bundle), commit=target, extra_resource=[],
-                                  base_url='https://example.invalid', resolve='', environment_release=environment_release)
+                                  base_url='https://example.invalid', resolve='', environment_release=environment_release,
+                                  brand_artifact=str(brand_artifact) if brand_artifact else None)
         return release.prepare(args)
 
     def mock_fetch(self, state, path):
@@ -83,7 +84,98 @@ class DeploymentSafetyTest(unittest.TestCase):
             return b'{"status":"ok"}'
         if path.startswith('/?'):
             return (Path(state['frontend_real']) / 'index.html').read_bytes()
-        return (Path(state['frontend_real']) / path.lstrip('/')).read_bytes()
+        name = path.split('?', 1)[0].lstrip('/')
+        root = state['root'] if name in release.BRAND_FILES else state['frontend_real']
+        return (Path(root) / name).read_bytes()
+
+    def brand_candidate(self):
+        source = self.base / 'brand'
+        for name in release.BRAND_FILES:
+            data = (b'\x89PNG\r\n\x1a\n' if name.endswith('.png') else
+                    b'\x00\x00\x01\x00' if name.endswith('.ico') else b'{"name":"old"}')
+            (self.root / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / name).write_bytes(data)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'original icons')
+        self.before = self.git('rev-parse', 'HEAD').decode().strip()
+        for name in release.BRAND_FILES:
+            data = (self.root / name).read_bytes()
+            data = data + b'new' if not name.endswith('.webmanifest') else b'{"name":"new"}'
+            (self.root / name).write_bytes(data)
+            (source / name).parent.mkdir(parents=True, exist_ok=True)
+            (source / name).write_bytes(data)
+        return source
+
+    def test_explicit_brand_release_and_rollback_preserve_other_resources(self):
+        source = self.brand_candidate()
+        expected = {name: self.git('show', self.before + ':' + name) for name in release.BRAND_FILES}
+        state = self.prepare(brand_artifact=source)
+        original = release.resource_manifest(self.root, 'domestic', brand_release=True)
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+            for name in release.BRAND_FILES:
+                self.assertEqual((self.root / name).read_bytes(), (source / name).read_bytes())
+            release.rollback(state)
+        self.assertEqual(original, release.resource_manifest(self.root, 'domestic', brand_release=True))
+        for name in release.BRAND_FILES:
+            self.assertEqual((self.root / name).read_bytes(), expected[name])
+
+    def test_brand_exception_is_explicit_and_cannot_include_music(self):
+        source = self.brand_candidate()
+        state = self.prepare(brand_artifact=source)
+        with self.assertRaisesRegex(RuntimeError, 'protected/unmanaged'):
+            release.check_git(self.root, state['before'], state['target'])
+        self.write(source / 'assets/music/song.flac', 'forbidden')
+        with self.assertRaisesRegex(RuntimeError, 'unexpected directory|exactly the six'):
+            release.brand_files(source, self.root)
+        self.write(self.root / 'assets/music/song.flac', 'changed')
+        self.git('commit', '-qam', 'music change')
+        with self.assertRaisesRegex(RuntimeError, 'protected/unmanaged'):
+            release.check_git(self.root, self.before, 'HEAD', brand_release=True)
+
+    def test_brand_release_rejects_preparation_tampering_and_symlink_parent(self):
+        source = self.brand_candidate()
+        state = self.prepare(brand_artifact=source)
+        self.write(self.root / 'assets/icons/icon-32.png', 'operator edit')
+        with self.assertRaisesRegex(RuntimeError, 'outside this release'):
+            release.activate(state)
+        shutil.rmtree(self.root / 'assets/icons')
+        (self.root / 'assets/icons').symlink_to(source / 'assets/icons', target_is_directory=True)
+        with self.assertRaisesRegex(RuntimeError, 'symlink'):
+            release.verify_brand(state, mixed=True)
+
+    def test_brand_rollback_never_overwrites_newer_operator_icons(self):
+        source = self.brand_candidate()
+        state = self.prepare(brand_artifact=source)
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+        self.write(self.root / 'favicon.ico', 'newer icon')
+        with self.assertRaisesRegex(RuntimeError, 'outside this release'):
+            release.rollback(state)
+        self.assertEqual((self.root / 'favicon.ico').read_text(), 'newer icon')
+
+    def test_brand_source_must_match_commit_and_have_valid_image_headers(self):
+        source = self.brand_candidate()
+        (source / 'favicon.ico').write_bytes(b'\x00\x00\x01\x00different')
+        with self.assertRaisesRegex(RuntimeError, 'does not match requested commit'):
+            self.prepare(brand_artifact=source)
+        (source / 'assets/icons/icon-32.png').write_bytes(b'not a PNG')
+        with self.assertRaisesRegex(RuntimeError, 'not PNG'):
+            release.brand_files(source, self.root)
+
+    def test_overseas_brand_release_rolls_back_preexisting_and_new_files(self):
+        source = self.brand_candidate()
+        self.write(self.front / 'favicon.ico', 'previous overseas favicon')
+        args = argparse.Namespace(state=str(self.base / 'backups/icons-overseas'), site='overseas',
+                                  root=str(self.front), frontend=str(self.front), artifact=str(self.artifact),
+                                  bundle=None, commit=None, extra_resource=[], base_url='https://example.invalid',
+                                  resolve='', brand_artifact=str(source))
+        state = release.prepare(args)
+        with patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+            release.rollback(state)
+        self.assertEqual((self.front / 'favicon.ico').read_text(), 'previous overseas favicon')
+        self.assertFalse((self.front / 'assets/icons/icon-32.png').exists())
 
     def test_release_and_rollback_preserve_resources_hotfix_and_old_assets(self):
         state = self.prepare()

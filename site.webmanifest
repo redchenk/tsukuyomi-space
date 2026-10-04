@@ -6,17 +6,17 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/assets/icons/icon-192.png",
+      "src": "/assets/icons/icon-192.png?v=sakura-20261004",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/assets/icons/icon-512.png",
+      "src": "/assets/icons/icon-512.png?v=sakura-20261004",
       "sizes": "512x512",
       "type": "image/png"
     }
   ],
-  "theme_color": "#7edbe8",
-  "background_color": "#1a1025",
+  "theme_color": "#f7f9fc",
+  "background_color": "#f7f9fc",
   "display": "standalone"
 }

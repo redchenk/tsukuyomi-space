@@ -7,7 +7,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 390, height: 844 
         const background = page.locator('.site-global-bg');
         await expect(background).toHaveCSS('position', 'fixed');
         await expect(background).toHaveCSS('animation-name', 'none');
-        await expect(background).toHaveCSS('background-image', /moonlit-lake.*\.png/);
+        await expect(background).toHaveCSS('background-image', /(?:moonwhite-lake|moonlit-shrine).*\.webp/);
         const before = await background.boundingBox();
         await page.mouse.move(viewport.width / 2, viewport.height / 2);
         await page.mouse.wheel(0, 600);
@@ -24,7 +24,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 390, height: 844 
 test('account pages share the artwork; entry video and Room scene are preserved', async ({ page }) => {
     for (const path of ['/login', '/register', '/stage', '/wiki', '/room/settings']) {
         await page.goto(path);
-        await expect(page.locator('.site-global-bg')).toHaveCSS('background-image', /moonlit-lake.*\.png/);
+        await expect(page.locator('.site-global-bg')).toHaveCSS('background-image', /(?:moonwhite-lake|moonlit-shrine).*\.webp/);
     }
     await page.goto('/');
     await expect(page.locator('.site-global-bg')).toHaveCount(0);
@@ -35,5 +35,5 @@ test('account pages share the artwork; entry video and Room scene are preserved'
     await expect(page.locator('.room-shell')).toBeVisible();
     await expect(page.locator('.site-global-bg')).toHaveCount(0);
     await page.goto('/hub');
-    await expect(page.locator('.site-global-bg')).toHaveCSS('background-image', /moonlit-lake.*\.png/);
+    await expect(page.locator('.site-global-bg')).toHaveCSS('background-image', /(?:moonwhite-lake|moonlit-shrine).*\.webp/);
 });
