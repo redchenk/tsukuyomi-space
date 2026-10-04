@@ -86,7 +86,10 @@ function plazaFilter({ sort, search, userId }) {
     let where = "m.article_id IS NULL AND m.parent_id IS NULL AND COALESCE(m.status, 'approved') = 'approved'";
     const params = [];
     if (sort === 'mine') { where += ' AND m.user_id = ?'; params.push(userId); }
-    if (sort === 'replied') where += ` AND ${PLAZA_REPLY_COUNT} > 0`;
+    // Every visible descendant has a visible immediate ancestor, so existence
+    // needs only the parent index rather than a full recursive count per root.
+    if (sort === 'replied') where += ` AND EXISTS (SELECT 1 FROM messages child
+        WHERE child.parent_id = m.id AND child.article_id IS NULL AND COALESCE(child.status, 'approved') = 'approved')`;
     if (search) {
         const text = "LOWER(COALESCE(NULLIF(u.nickname, ''), u.username, m.author) || ' ' || m.content) LIKE ? ESCAPE '\\'";
         where += ` AND (${text} OR EXISTS (
@@ -103,7 +106,8 @@ function plazaFilter({ sort, search, userId }) {
 
 function listPlazaPage({ page = 1, limit = 8, sort = 'latest', search = '', userId = '', anchorId = null } = {}) {
     const { where, params } = plazaFilter({ sort, search, userId });
-    const total = db.prepare(`SELECT COUNT(*) AS count FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE ${where}`).get(...params).count;
+    const userJoin = search ? ' LEFT JOIN users u ON u.id = m.user_id' : '';
+    const total = db.prepare(`SELECT COUNT(*) AS count FROM messages m${userJoin} WHERE ${where}`).get(...params).count;
     const totalPages = Math.max(1, Math.ceil(total / limit));
     let currentPage = Math.min(page, totalPages);
     const primary = sort === 'hot' ? 'COALESCE(m.like_count, 0)' : sort === 'replied' ? PLAZA_REPLY_COUNT : null;
@@ -112,18 +116,26 @@ function listPlazaPage({ page = 1, limit = 8, sort = 'latest', search = '', user
     if (anchorId) {
         anchor = findApprovedMessageById(anchorId);
         root = anchor && anchor.article_id == null ? findReplyThreadRoot(anchor) : null;
-        if (!root || !db.prepare(`SELECT 1 FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE ${where} AND m.id = ?`).get(...params, root.id)) return null;
+        if (!root || !db.prepare(`SELECT 1 FROM messages m${userJoin} WHERE ${where} AND m.id = ?`).get(...params, root.id)) return null;
         const rank = primary
             ? db.prepare(`SELECT ${primary} AS value FROM messages m WHERE m.id = ?`).get(root.id).value : null;
-        const preceding = db.prepare(`SELECT COUNT(*) AS count FROM messages m LEFT JOIN users u ON u.id = m.user_id
+        const preceding = db.prepare(`SELECT COUNT(*) AS count FROM messages m${userJoin}
             WHERE ${where} AND ${primary ? `(${primary}, m.created_at, m.id) > (?, ?, ?)` : '(m.created_at, m.id) > (?, ?)'}`)
             .get(...params, ...(primary ? [rank] : []), root.created_at, root.id).count;
         currentPage = Math.floor(preceding / limit) + 1;
     }
-    const rows = db.prepare(`${MESSAGE_SELECT_FIELDS.replace('SELECT m.id,', `SELECT ${PLAZA_REPLY_COUNT} AS reply_count,
+    const order = `${primary ? primary + ' DESC,' : ''} m.created_at DESC, m.id DESC`;
+    // Bound the candidate IDs before joining avatars or computing floor metadata.
+    // Materialization prevents SQLite from evaluating these fields for every row
+    // before a temporary ORDER BY/limit, especially on older message indexes.
+    const selection = `WITH selected AS MATERIALIZED (
+        SELECT m.id FROM messages m${userJoin}
+        WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?
+    )`;
+    const rows = db.prepare(`${selection} ${MESSAGE_SELECT_FIELDS.replace('SELECT m.id,', `SELECT ${PLAZA_REPLY_COUNT} AS reply_count,
         (SELECT COUNT(*) FROM messages older WHERE older.article_id IS NULL AND older.parent_id IS NULL
             AND COALESCE(older.status, 'approved') = 'approved' AND (older.created_at, older.id) <= (m.created_at, m.id)) AS floor_number, m.id,`)}
-        WHERE ${where} ORDER BY ${primary ? primary + ' DESC,' : ''} m.created_at DESC, m.id DESC LIMIT ? OFFSET ?`)
+        JOIN selected ON selected.id = m.id ORDER BY ${order}`)
         .all(...params, limit, (currentPage - 1) * limit).map(compactMessageRow);
     const messages = [...rows];
     for (const message of rows) {
