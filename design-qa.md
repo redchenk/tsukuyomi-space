@@ -1,3 +1,27 @@
+# Wiki navigation artwork QA — 2026-10-05
+
+final result: passed
+
+Replace the Wiki preview with the newly supplied `樱花月夜下的星辰书房.png`.
+The Stage preview retains the writing study. Existing route links, preview
+layout, text, colors, rounded surfaces and loading behavior are unchanged.
+
+Evidence: `.codex_tmp/navigation-wiki-20261005/`. `comparison-wiki.png` pairs
+the supplied image normalized to the 398 × 348 CSS cover slot with actual
+light and dark browser crops from 1280 × 720 screenshots. All three were
+inspected together. The character's face, books and star-map room remain
+visible without stretching. Both caption surfaces remain readable.
+
+Local production build and 80 related regressions passed. Keyboard navigation
+from Stage to Wiki selects the new hashed `wiki-study` asset; Stage continues
+to load the original `star-study` asset. All Discover images load successfully.
+No browser warnings/errors were observed. The added WebP is 1024 × 622,
+136,154 bytes, converted from the supplied original without creative edits.
+
+No outstanding P0/P1/P2 findings in this asset-only scope.
+
+---
+
 # Navigation preview artwork QA — 2026-10-05
 
 final result: passed

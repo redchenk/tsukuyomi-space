@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import TsIcon from './TsIcon.vue';
 import { warmRoutePath } from '../router';
 import studyArt from '../assets/navigation/star-study.webp';
+import wikiArt from '../assets/navigation/wiki-study.webp';
 import plazaArt from '../assets/navigation/plaza-gathering.webp';
 import galleryArt from '../assets/navigation/gallery-yachiyo.webp';
 import pixelArt from '../assets/navigation/pixel-workshop.webp';
@@ -40,7 +41,7 @@ const groups = computed(() => [
   { key: 'create', label: props.copy.menuLabels.create, keys: ['pixel', 'game'] },
   { key: 'spaces', label: props.copy.menuLabels.spaces, keys: ['agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => props.items.find(item => item.key === key)).filter(Boolean) })));
-const artwork = { stage: studyArt, wiki: studyArt, plaza: plazaArt, gallery: galleryArt, pixel: pixelArt, game: gameArt };
+const artwork = { stage: studyArt, wiki: wikiArt, plaza: plazaArt, gallery: galleryArt, pixel: pixelArt, game: gameArt };
 const preview = computed(() => groups.value[0].items.find(item => item.key === previewKey.value) || groups.value[0].items[0]);
 
 function cancelClose() {
