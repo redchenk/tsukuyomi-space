@@ -1545,6 +1545,7 @@ describe('site activity feed', () => {
         assert.ok(Number.isFinite(first.body.data.stats.articles));
         assert.match(first.body.data.feeds.json, /\/api\/site-feed$/);
         assert.match(first.body.data.feeds.rss, /\/api\/site-feed\/rss$/);
+        assert.match(first.body.data.feeds.rssCanonical, /\/rss\.xml$/);
         assert.match(first.body.data.feeds.rssAlias, /\/feed\.xml$/);
 
         const keys = new Set();
@@ -1592,6 +1593,17 @@ describe('site activity feed', () => {
         assert.equal(apiRss.response.status, 200);
         assert.match(apiRss.response.headers.get('content-type') || '', /application\/rss\+xml/);
         assert.match(apiRss.body, /<rss version="2\.0"/);
+
+        const canonicalRss = await request('/rss.xml?limit=2');
+        assert.equal(canonicalRss.response.status, 200);
+        assert.match(canonicalRss.response.headers.get('content-type') || '', /application\/rss\+xml/);
+        assert.equal(canonicalRss.body, apiRss.body, 'RSS aliases must share the same items and stable IDs');
+        assert.match(canonicalRss.body, /<atom:link href="https?:\/\/[^"\s]+\/rss\.xml" rel="self"/);
+        assert.doesNotMatch(canonicalRss.body, /<div id="app">/);
+        const unchangedRss = await request('/rss.xml?limit=2', {
+            headers: { 'If-None-Match': canonicalRss.response.headers.get('etag') }
+        });
+        assert.equal(unchangedRss.response.status, 304);
     });
 });
 

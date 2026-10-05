@@ -137,7 +137,7 @@ function createApp() {
     app.use(jsonParseError);
 
     const siteFeedLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 300, keyPrefix: 'site-feed' });
-    app.get('/feed.xml', siteFeedLimiter, siteFeedRoutes.sendRss);
+    app.get(['/rss.xml', '/feed.xml'], siteFeedLimiter, siteFeedRoutes.sendRss);
     app.use(
         '/friend-link-previews',
         createRateLimiter({ windowMs: 15 * 60 * 1000, max: 600, keyPrefix: 'friend-link-preview' }),

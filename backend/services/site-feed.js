@@ -156,6 +156,7 @@ function buildSiteFeed(limit = 20) {
         feeds: {
             json: absoluteUrl('/api/site-feed'),
             rss: absoluteUrl('/api/site-feed/rss'),
+            rssCanonical: absoluteUrl('/rss.xml'),
             rssAlias: absoluteUrl('/feed.xml')
         },
         items
@@ -208,7 +209,7 @@ function toRss(feed) {
         '  <channel>',
         `    <title>${xmlEscape(`${SITE_NAME}\u6700\u65b0\u52a8\u6001`)}</title>`,
         `    <link>${xmlEscape(feed.site.url)}</link>`,
-        `    <atom:link href="${xmlEscape(feed.feeds.rss)}" rel="self" type="application/rss+xml" />`,
+        `    <atom:link href="${xmlEscape(feed.feeds.rssCanonical || feed.feeds.rss)}" rel="self" type="application/rss+xml" />`,
         `    <description>${xmlEscape(`${SITE_NAME}\u516c\u544a\u3001\u6587\u7ae0\u3001\u7559\u8a00\u3001\u56fe\u5e93\u4e0e\u50cf\u7d20\u753b\u7684\u6700\u65b0\u516c\u5f00\u52a8\u6001`)}</description>`,
         '    <language>zh-CN</language>',
         `    <lastBuildDate>${xmlEscape(rssDate(feed.updatedAt))}</lastBuildDate>`,

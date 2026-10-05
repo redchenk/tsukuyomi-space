@@ -218,7 +218,7 @@ To connect from an HTTPS site to a local Ollama instance, allow local-network ac
 - Public lists such as articles, messages, gallery items, pixel art, and friend links use path-level cache busting and server-side invalidation so newly published content can be fetched immediately.
 - Article and pixel-art pages provide copy-link and social sharing actions. A user's share action can count toward a daily growth task, but the server awards it only once.
 - Room sharing publishes only the single turn selected by the user, never the entire private conversation or long-term memory.
-- The JSON activity feed is available at `/api/site-feed`; RSS is available at `/feed.xml` and `/api/site-feed/rss`.
+- Open “Explore → RSS feed”, or add `https://tsukuyomi-space.com/rss.xml` to your RSS reader for public articles, announcements, community posts, gallery items and pixel art. `/feed.xml` and `/api/site-feed/rss` remain compatible; the JSON activity feed is available at `/api/site-feed`.
 - Object storage is configured in the super administrator Terminal. The database stores controlled resource indexes, while public access continues through site asset endpoints or the configured CDN domain.
 - Deployment and database backups each retain the latest 10 copies by default; configure this with `BACKUP_RETENTION`.
 

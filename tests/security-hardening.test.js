@@ -171,10 +171,17 @@ describe('nginx static-file boundary', () => {
         const edge = sourceFile('deploy/hk-frontend-openresty.conf');
 
         for (const config of [origin, edge]) {
-            const block = config.match(/location = \/feed\.xml \{[\s\S]*?\n\s*\}/)?.[0] || '';
-            assert.match(block, /proxy_pass/);
-            assert.doesNotMatch(block, /try_files/);
+            for (const name of ['feed', 'rss']) {
+                const block = config.match(new RegExp(`location = /${name}\\.xml \\{[\\s\\S]*?\\n\\s*\\}`))?.[0] || '';
+                assert.match(block, /proxy_pass/);
+                assert.doesNotMatch(block, /try_files/);
+            }
         }
+        const overseas = sourceFile('deploy/overseas-openresty.conf');
+        const alias = overseas.match(/location = \/rss\.xml \{[\s\S]*?\n\s*\}/)?.[0] || '';
+        assert.match(alias, /rewrite \^ \/feed\.xml break;/);
+        assert.match(alias, /proxy_pass http:\/\/127\.0\.0\.1:8790;/);
+        assert.doesNotMatch(alias, /try_files/);
     });
 
     it('does not publish the origin hostname or server addresses in client and deploy defaults', () => {

@@ -31,6 +31,6 @@ function addDiscovery(html, pathname) {
     const scripts = [website, breadcrumb].map((value, i) => `<script type="application/ld+json" data-seo-json="${i ? 'breadcrumb' : 'website'}">${safeJsonForHtml(value)}</script>`).join('\n');
     const alternates = ['zh-Hans', 'en'].map((lang, i) => `<link rel="alternate" hreflang="${lang}" href="${i ? 'https://tsukuyomi-space.com' : origin}${pathname.replace(/&/g, '&amp;')}">`).join('\n');
     // Article slugs are translated independently; do not claim a wrong pair.
-    return html.replace('</head>', `${scripts}\n${pathname.startsWith('/articles/') ? '' : alternates}\n<link rel="alternate" type="application/rss+xml" title="月读空间公开动态" href="${origin}/feed.xml"></head>`);
+    return html.replace('</head>', `${scripts}\n${pathname.startsWith('/articles/') ? '' : alternates}\n<link rel="alternate" type="application/rss+xml" title="月读空间公开动态" href="${origin}/rss.xml"></head>`);
 }
 module.exports = { composePage, addDiscovery };

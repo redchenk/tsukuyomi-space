@@ -34,6 +34,8 @@ test('all visitors get the same readable public document, one canonical and the 
             assert.match(html, /data-seo-fallback/, route);
             assert.match(html, /app-fixture\.js/, route);
             assert.equal((html.match(/rel="canonical"/g) || []).length, 1, route);
+            assert.equal((html.match(/type="application\/rss\+xml"/g) || []).length, 1, route);
+            assert.match(html, /type="application\/rss\+xml"[^>]*href="https:\/\/yachiyo\.hk\/rss\.xml"/, route);
             assert.doesNotMatch(html, /PRIVATE BODY|PRIVATE DRAFT/);
             for (const schema of html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) assert.doesNotThrow(() => JSON.parse(schema[1]));
             if (baseline) assert.equal(html, baseline, `${route} content must not depend on UA`);

@@ -66,7 +66,8 @@ const navItems = computed(() => [
   ...(props.isAuthed ? [{ path: '/growth', key: 'growth', label: growthLabel.value, icon: 'sparkles', active: props.routeName === 'growth', spa: true }] : []),
   { path: '/friend-links', key: 'friendLinks', label: copy.value.friendLinks, icon: 'external', active: ['friendLinks', 'friendLinkApply'].includes(props.routeName), spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true },
-  { path: '/agent-os', key: 'agentOs', label: props.t.agentOs, icon: 'bot', active: false, spa: false }
+  { path: '/agent-os', key: 'agentOs', label: props.t.agentOs, icon: 'bot', active: false, spa: false },
+  { path: '/rss.xml', key: 'rss', label: copy.value.rss, icon: 'rss', active: false, spa: false }
 ]);
 
 const desktopItems = computed(() => ['hub', 'stage', 'plaza', 'wiki'].map((key) => navItems.value.find((item) => item.key === key)));
@@ -152,7 +153,7 @@ const searchItems = computed(() => [...navItems.value.filter(item => item.key !=
 const exploreGroups = computed(() => [
   { title: copy.value.discover, keys: ['wiki'] },
   { title: copy.value.create, keys: ['gallery', 'pixel', 'game'] },
-  { title: copy.value.spaces, keys: ['agentOs', 'reality', 'friendLinks'] }
+  { title: copy.value.spaces, keys: ['agentOs', 'reality', 'friendLinks', 'rss'] }
 ].map(group => ({ ...group, items: navItems.value.filter(item => group.keys.includes(item.key)) }))
   .filter(group => group.items.length));
 const exploreActive = computed(() => navItems.value.some(item => item.active && ['gallery', 'pixel', 'game', 'agentOs', 'reality', 'friendLinks'].includes(item.key)));
