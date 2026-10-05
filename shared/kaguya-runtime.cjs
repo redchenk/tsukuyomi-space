@@ -76,7 +76,17 @@
       }
     };
   }
-  const api = { attach, MAX_CLONES, MAX_SPEED };
+  function bindPageLifecycle(vm, stability, page = root) {
+    const onHide = (event) => {
+      // A restored back/forward-cache page must retain its engine hooks and state.
+      if (event.persisted) return;
+      stability.dispose(); vm.stopAll();
+      page.removeEventListener('pagehide', onHide);
+    };
+    page.addEventListener('pagehide', onHide);
+    return () => page.removeEventListener('pagehide', onHide);
+  }
+  const api = { attach, bindPageLifecycle, MAX_CLONES, MAX_SPEED };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TsukuyomiKaguyaRuntime = api;
 })(typeof window !== 'undefined' ? window : globalThis);

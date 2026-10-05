@@ -60,3 +60,11 @@ test('the real project patch acknowledges starts and preserves both score and he
   assert.equal(fen.blocks['tsukuyomi-start-ack'].fields.VARIABLE[0],'轮回启动完成');
   assert.equal(stage.blocks['tsukuyomi-reset-ack'].fields.VARIABLE[0],'轮回重置完成');
 });
+
+test('back/forward cache preserves the engine while a real page exit disposes it',()=>{
+ const {bindPageLifecycle}=require('../shared/kaguya-runtime.cjs');let handler,stops=0,disposals=0;
+ const page={addEventListener:(name,fn)=>handler=fn,removeEventListener:(name,fn)=>{if(handler===fn)handler=null;}};
+ bindPageLifecycle({stopAll:()=>stops++},{dispose:()=>disposals++},page);
+ handler({persisted:true});assert.equal(stops,0);assert.equal(disposals,0);assert.ok(handler);
+ handler({persisted:false});assert.equal(stops,1);assert.equal(disposals,1);assert.equal(handler,null);
+});

@@ -1,10 +1,10 @@
 const assert=require('node:assert/strict');const {test}=require('node:test');const fs=require('node:fs');const vm=require('node:vm');
-function fixture(load=async()=>({entries:[{userId:'a',rank:1,score:1}],page:1,totalPages:500})){
- const source=fs.readFileSync(require.resolve('../src/frontend/pages/GamePage.vue'),'utf8').split('<script setup>')[1].split('</script>')[0].replace(/^import .*;\n/gm,'').replace('import.meta.env.VITE_KAGUYA_GAME_URL',"''");
+function fixture(load=async()=>({entries:[{userId:'a',rank:1,score:1}],page:1,totalPages:500}), url=''){
+ const source=fs.readFileSync(require.resolve('../src/frontend/pages/GamePage.vue'),'utf8').split('<script setup>')[1].split('</script>')[0].replace(/^import .*;\n/gm,'').replace('import.meta.env.VITE_KAGUYA_GAME_URL',JSON.stringify(url));
  const calls=[],timers=new Map();let nextTimer=1,unmount,accountWatch;
  const ctx=vm.createContext({Number,Map,Date,Intl,AbortController,nameInitial:()=>'',computed:fn=>({get value(){return fn();}}),ref:value=>({value}),defineProps:()=>({lang:'zh',t:{},user:{id:'user-a'}}),defineEmits:()=>()=>{},inject:()=>null,getSession:()=>null,onMounted:()=>{},onBeforeUnmount:fn=>unmount=fn,watch:(_,fn)=>accountWatch=fn,
   window:{location:{hostname:'localhost'},setTimeout(fn){const id=nextTimer++;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},addEventListener(){},removeEventListener(){}},loadKaguyaLeaderboard:opts=>{calls.push(opts);return load(opts);},submitKaguyaScore:async score=>({current:{score,rank:2}})});
- vm.runInContext(source+'\nthis.game={refreshLeaderboard,flushScore,handleGameScore,leaderboard,leaderboardPage,leaderboardLoading,leaderboardError,bestScore,frame,props};',ctx);
+ vm.runInContext(source+'\nthis.game={refreshLeaderboard,flushScore,handleGameScore,handleLoad,handleGameStatus,loading,loadError,leaderboard,leaderboardPage,leaderboardLoading,leaderboardError,bestScore,frame,props};',ctx);
  return {g:ctx.game,calls,timers,unmount:()=>unmount(),change:(id)=>{ctx.game.props.user={id};return accountWatch(id,'user-a');}};
 }
 test('a 25000-player board loads one page, keeps the previous page on network failure, and is explicitly paged',async()=>{
@@ -23,4 +23,10 @@ test('score saves do not refresh the board or post a prior account\'s pending sc
  const f=fixture();const frameWindow={};f.g.frame.value={contentWindow:frameWindow};f.g.handleGameScore({source:frameWindow,data:{type:'tsukuyomi:kaguya-score',score:12500}});
  await Promise.resolve();await Promise.resolve();assert.equal(f.calls.length,0);assert.equal(f.g.bestScore.value,12500);
  f.change('user-b');await Promise.resolve();assert.equal(f.timers.size,0);
+});
+
+test('new runtimes wait for engine readiness and legacy overrides remain compatible',()=>{
+ const modern=fixture();modern.g.handleLoad();assert.equal(modern.g.loading.value,true);
+ const source={};modern.g.frame.value={contentWindow:source};modern.g.handleGameStatus({source,data:{type:'tsukuyomi:kaguya-status',status:'ready'}});assert.equal(modern.g.loading.value,false);
+ const legacy=fixture(undefined,'/game-runtime/kaguya-run-ef04c26b4900-r7.html');legacy.g.handleLoad();assert.equal(legacy.g.loading.value,false);
 });

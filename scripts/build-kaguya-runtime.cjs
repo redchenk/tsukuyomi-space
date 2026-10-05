@@ -20,7 +20,7 @@ for (const match of html.matchAll(/<script data="([^"]*)">decodeChunk\((\d+)\)<\
 }
 const project = Buffer.from(vm.runInContext('projectDecodeBuffer', context)).subarray(0, 73620642);
 const directory = path.resolve(destination); fs.mkdirSync(directory, { recursive: true });
-const stem = 'kaguya-run-ef04c26b4900-r8';
+const stem = 'kaguya-run-ef04c26b4900-r9';
 fs.writeFileSync(path.join(directory, stem + '.sb3.gz'), zlib.gzipSync(project, { level: 6 }));
 // Remove the 92 MB inline encoded archive. A public, anonymous binary fetch avoids its text/DOM overhead.
 html = html.replace(scripts[2][0], '').replace(/<script data="[^"]*">decodeChunk\(\d+\)<\/script>\s*/g, '');
@@ -40,7 +40,7 @@ run = run.slice(0, start) + `      const stability = TsukuyomiKaguyaRuntime.atta
         report: (score) => window.parent.postMessage({ type: 'tsukuyomi:kaguya-score', score }, '*')
       });
       window.__kaguyaStability = stability;
-      window.addEventListener('pagehide', () => { stability.dispose(); vm.stopAll(); }, { once: true });
+      TsukuyomiKaguyaRuntime.bindPageLifecycle(vm, stability);
 ` + run.slice(end);
 run = run.replace('      setProgress(1);', `      window.parent.postMessage({ type: 'tsukuyomi:kaguya-status', status: 'ready' }, '*');\n      setProgress(1);`).replace('run().catch(handleError);', `run().catch((error) => { handleError(error); window.parent.postMessage({ type: 'tsukuyomi:kaguya-status', status: 'error' }, '*'); });`);
 html = html.replace(scripts.at(-1)[0], '<script>\n' + fs.readFileSync(path.join(__dirname, '../shared/kaguya-runtime.cjs'), 'utf8') + '\n' + run + '\n</script>');

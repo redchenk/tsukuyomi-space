@@ -39,7 +39,7 @@
     "test:seo": "node --test tests/seo-geo.test.js tests/render-article.test.js && python3 -B tests/overseas_translation_security_test.py && python3 -B tests/overseas_seo_test.py",
     "build:wiki-seo": "node scripts/build-wiki-seo.cjs",
     "test:game": "node --test tests/kaguya-runtime.test.js tests/frontend-game.test.js tests/growth-api.test.js",
-    "check:game": "node --check shared/kaguya-runtime.cjs && node --check shared/kaguya-project-patch.cjs && node --check scripts/build-kaguya-runtime.cjs && node --check tests/kaguya-runtime.test.js && node --check tests/frontend-game.test.js"
+    "check:game": "node --check shared/kaguya-runtime.cjs && node --check shared/kaguya-project-patch.cjs && node --check scripts/build-kaguya-runtime.cjs && node --check tests/kaguya-runtime.test.js && node --check tests/frontend-game.test.js && python3 -c \"import ast,pathlib; ast.parse(pathlib.Path('deploy/configure-kaguya-routes.py').read_text())\""
   },
   "keywords": [
     "tsukuyomi",

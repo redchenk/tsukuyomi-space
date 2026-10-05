@@ -12,8 +12,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
-const defaultGameUrl = '/game-runtime/kaguya-run-ef04c26b4900-r8.html';
+const defaultGameUrl = '/game-runtime/kaguya-run-ef04c26b4900-r9.html';
 const GAME_URL = String(import.meta.env.VITE_KAGUYA_GAME_URL || defaultGameUrl).trim();
+const USE_ENGINE_READINESS = /\/kaguya-run-ef04c26b4900-r(?:8|9)\.html(?:[?#]|$)/.test(GAME_URL);
 const ORIGINAL_AUTHOR_URL = 'https://www.bilibili.com/video/BV1Bmgx6aEvJ/';
 const LOAD_TIMEOUT_MS = 120000;
 const SCORE_SAVE_INTERVAL_MS = 15000;
@@ -163,6 +164,12 @@ function beginLoadTimeout() {
 
 function handleLoad() {
   // HTML load is not engine readiness: the archive and audio may still be loading.
+  // Operator-supplied legacy/external games do not implement our readiness message.
+  if (!USE_ENGINE_READINESS) {
+    window.clearTimeout(loadTimer);
+    loading.value = false;
+    loadError.value = false;
+  }
 }
 
 function handleGameStatus(event) {
