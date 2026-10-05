@@ -162,6 +162,31 @@ describe('growth API', () => {
         assert.equal(publicRanking.body.data.total, 1);
     });
 
+    it('bounds a 10000-player leaderboard and keeps competition ranks across page ties', async () => {
+        const insertUser = db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)');
+        const insertScore = db.prepare('INSERT INTO kaguya_game_scores (user_id, best_score, updated_at) VALUES (?, ?, ?)');
+        db.transaction(() => {
+            for (let i = 0; i < 10000; i++) {
+                const id = `scale-game-${String(i).padStart(5, '0')}`;
+                insertUser.run(id, id, id + '@example.test', 'test-hash', 'user');
+                insertScore.run(id, 100000 - Math.floor(i / 3), '2026-10-05 00:00:00');
+            }
+        })();
+        const start = performance.now();
+        const first = await call('/api/growth/game/leaderboard?limit=50000', { headers: headers(false) });
+        const second = await call('/api/growth/game/leaderboard?limit=50&page=2', { headers: headers(false) });
+        const last = await call('/api/growth/game/leaderboard?limit=50&page=9999999999999999', { headers: headers(false) });
+        assert.equal(first.body.data.total, 10001);
+        assert.equal(first.body.data.entries.length, 50);
+        assert.equal(second.body.data.entries.length, 50);
+        assert.equal(second.body.data.entries[0].rank, 50);
+        assert.equal(last.response.status, 200);
+        assert.ok(performance.now() - start < 2000, 'bounded index queries should not stall the API');
+        const plan = db.prepare('EXPLAIN QUERY PLAN SELECT user_id FROM kaguya_game_scores WHERE best_score > 0 ORDER BY best_score DESC, updated_at ASC, user_id ASC LIMIT 50 OFFSET 50').all();
+        assert.ok(plan.some((row) => row.detail.includes('idx_kaguya_game_scores_ranking')));
+        assert.ok(!Object.hasOwn(first.body.data.entries[0], 'email'));
+    });
+
     it('awards the first complete room turn and returns the updated state', async () => {
         const result = await call('/api/room/chat/turn', {
             method: 'POST',

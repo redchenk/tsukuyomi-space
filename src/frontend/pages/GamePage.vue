@@ -12,12 +12,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go']);
-const overseasGameHost = typeof window !== 'undefined'
-  && /(^|\.)tsukuyomi-space\.com$/i.test(window.location.hostname);
-// Keep the encoded domestic URL so Ali CDN uses a fresh immutable cache key.
-const defaultGameUrl = overseasGameHost
-  ? '/game-runtime/kaguya-run-ef04c26b4900-r7.html'
-  : '/game-runtime/kaguya-run-ef04c26b4900-%72%33.h%74%6dl';
+const defaultGameUrl = '/game-runtime/kaguya-run-ef04c26b4900-r8.html';
 const GAME_URL = String(import.meta.env.VITE_KAGUYA_GAME_URL || defaultGameUrl).trim();
 const ORIGINAL_AUTHOR_URL = 'https://www.bilibili.com/video/BV1Bmgx6aEvJ/';
 const LOAD_TIMEOUT_MS = 120000;
@@ -43,6 +38,11 @@ let lastScoreSaveAt = 0;
 let scoreSaving = false;
 let resumeSiteMusic = false;
 let leaderboardRefreshId = 0;
+let leaderboardController = null;
+let disposed = false;
+let accountGeneration = 0;
+const leaderboardPage = ref(1);
+const leaderboardTotalPages = ref(1);
 
 const sessionUser = computed(() => props.user || getSession()?.user || null);
 const currentUserId = computed(() => String(sessionUser.value?.id || ''));
@@ -60,6 +60,8 @@ const copy = computed(() => ({
   empty: props.t.gameLeaderboardEmpty || (props.lang === 'ja' ? 'まだ記録がありません' : props.lang === 'en' ? 'No scores yet' : '还没有上榜记录'),
   leaderboardUnavailable: props.t.gameLeaderboardUnavailable || (props.lang === 'ja' ? 'ランキングを読み込めません' : props.lang === 'en' ? 'Unable to load the leaderboard' : '积分榜暂时无法加载'),
   loginToRank: props.t.gameLoginToRank || (props.lang === 'ja' ? 'ログインして記録を保存' : props.lang === 'en' ? 'Sign in to save your best score' : '登录后自动记录最高分'),
+  previous: props.lang === 'ja' ? '前へ' : props.lang === 'en' ? 'Previous' : '上一页',
+  next: props.lang === 'ja' ? '次へ' : props.lang === 'en' ? 'Next' : '下一页',
   rank: props.t.gameRank || (props.lang === 'ja' ? '順位' : props.lang === 'en' ? 'Rank' : '排名')
 }));
 
@@ -78,45 +80,24 @@ function applyLeaderboard(data) {
   currentRank.value = Number(data?.current?.rank) || 0;
 }
 
-async function refreshLeaderboard() {
+async function refreshLeaderboard(page = leaderboardPage.value) {
+  const targetPage = Number.isSafeInteger(page) ? Math.max(1, page) : leaderboardPage.value;
   const refreshId = ++leaderboardRefreshId;
+  leaderboardController?.abort();
+  const controller = new AbortController();
+  leaderboardController = controller;
   leaderboardLoading.value = true;
   leaderboardError.value = false;
   try {
-    const firstPage = await loadKaguyaLeaderboard({
-      page: 1,
-      limit: LEADERBOARD_PAGE_SIZE
-    });
-    const entriesByUser = new Map(
-      (Array.isArray(firstPage?.entries) ? firstPage.entries : [])
-        .map((entry) => [String(entry?.userId || ''), entry])
-    );
-    let totalPages = Math.max(1, Number(firstPage?.totalPages) || 1);
-
-    for (let page = 2; page <= totalPages; page += 1) {
-      const nextPage = await loadKaguyaLeaderboard({
-        page,
-        limit: LEADERBOARD_PAGE_SIZE
-      });
-      if (refreshId !== leaderboardRefreshId) return;
-      for (const entry of Array.isArray(nextPage?.entries) ? nextPage.entries : []) {
-        entriesByUser.set(String(entry?.userId || ''), entry);
-      }
-      totalPages = Math.max(totalPages, Number(nextPage?.totalPages) || 1);
-    }
-
-    if (refreshId !== leaderboardRefreshId) return;
-    applyLeaderboard({
-      ...firstPage,
-      entries: [...entriesByUser.values()].sort((left, right) => (
-        (Number(left?.rank) || Number.MAX_SAFE_INTEGER)
-        - (Number(right?.rank) || Number.MAX_SAFE_INTEGER)
-      ))
-    });
-  } catch (_) {
-    if (refreshId === leaderboardRefreshId) leaderboardError.value = true;
+    const data = await loadKaguyaLeaderboard({ page: targetPage, limit: LEADERBOARD_PAGE_SIZE, signal: controller.signal });
+    if (disposed || refreshId !== leaderboardRefreshId) return;
+    applyLeaderboard(data);
+    leaderboardPage.value = Number(data.page) || targetPage;
+    leaderboardTotalPages.value = Math.max(1, Number(data.totalPages) || 1);
+  } catch (error) {
+    if (!disposed && refreshId === leaderboardRefreshId && error.name !== 'AbortError') leaderboardError.value = true;
   } finally {
-    if (refreshId === leaderboardRefreshId) leaderboardLoading.value = false;
+    if (!disposed && refreshId === leaderboardRefreshId) leaderboardLoading.value = false;
   }
 }
 
@@ -131,21 +112,23 @@ function scheduleScoreSave(delay = SCORE_SAVE_INTERVAL_MS) {
 async function flushScore() {
   if (!currentUserId.value || scoreSaving || pendingScore <= lastSubmittedScore) return;
   const score = pendingScore;
+  const generation = accountGeneration;
   scoreSaving = true;
   lastScoreSaveAt = Date.now();
   try {
     const result = await submitKaguyaScore(score);
+    if (disposed || generation !== accountGeneration) return;
     if (result?.current) {
       bestScore.value = Math.max(bestScore.value, Number(result.current.score) || 0);
       currentRank.value = Number(result.current.rank) || 0;
     }
     lastSubmittedScore = Math.max(lastSubmittedScore, score);
-    refreshLeaderboard();
+    // Score acknowledgements update the summary without downloading the entire board.
   } catch (_) {
-    scheduleScoreSave(12000);
+    // Keep the best pending score; retry at the normal bounded save interval.
   } finally {
     scoreSaving = false;
-    if (pendingScore > lastSubmittedScore) scheduleScoreSave();
+    if (!disposed && pendingScore > lastSubmittedScore) scheduleScoreSave();
   }
 }
 
@@ -179,9 +162,16 @@ function beginLoadTimeout() {
 }
 
 function handleLoad() {
-  window.clearTimeout(loadTimer);
-  loading.value = false;
-  loadError.value = false;
+  // HTML load is not engine readiness: the archive and audio may still be loading.
+}
+
+function handleGameStatus(event) {
+  if (event.source !== frame.value?.contentWindow || event.data?.type !== 'tsukuyomi:kaguya-status') return;
+  if (event.data.status === 'ready') {
+    window.clearTimeout(loadTimer);
+    loading.value = false;
+    loadError.value = false;
+  } else if (event.data.status === 'error') handleError();
 }
 
 function handleError() {
@@ -210,24 +200,36 @@ onMounted(() => {
   resumeSiteMusic = Boolean(siteMusic?.playing?.value);
   if (resumeSiteMusic) siteMusic.togglePlay?.();
   window.addEventListener('message', handleGameScore);
+  window.addEventListener('message', handleGameStatus);
   beginLoadTimeout();
   refreshLeaderboard();
 });
 
 onBeforeUnmount(() => {
+  // The authenticated request keeps its CSRF headers and can finish while navigating away.
+  flushScore();
+  disposed = true;
+  accountGeneration += 1;
   leaderboardRefreshId += 1;
+  leaderboardController?.abort();
   window.clearTimeout(loadTimer);
   window.clearTimeout(scoreSaveTimer);
   window.removeEventListener('message', handleGameScore);
+  window.removeEventListener('message', handleGameStatus);
   if (resumeSiteMusic && !siteMusic?.playing?.value) siteMusic?.togglePlay?.();
 });
 
 watch(currentUserId, (nextUserId, previousUserId) => {
   if (nextUserId === previousUserId) return;
+  accountGeneration += 1;
+  window.clearTimeout(scoreSaveTimer);
+  scoreSaveTimer = 0;
+  pendingScore = 0;
   lastSubmittedScore = 0;
   lastScoreSaveAt = 0;
-  refreshLeaderboard();
-  if (nextUserId && pendingScore > 0) scheduleScoreSave(0);
+  bestScore.value = currentScore.value;
+  currentRank.value = 0;
+  refreshLeaderboard(1);
 });
 </script>
 
@@ -290,7 +292,7 @@ watch(currentUserId, (nextUserId, previousUserId) => {
             <span>{{ copy.currentScore }} <strong>{{ formatScore(currentScore) }}</strong></span>
             <span>{{ copy.bestScore }} <strong>{{ formatScore(bestScore) }}</strong></span>
             <span v-if="currentRank">#{{ currentRank }}</span>
-            <button class="game-rank-refresh" type="button" :title="copy.retry" :aria-label="copy.retry" :disabled="leaderboardLoading" @click="refreshLeaderboard">
+            <button class="game-rank-refresh" type="button" :title="copy.retry" :aria-label="copy.retry" :disabled="leaderboardLoading" @click="refreshLeaderboard()">
               <TsIcon name="refresh" :size="16" />
             </button>
           </div>
@@ -316,6 +318,12 @@ watch(currentUserId, (nextUserId, previousUserId) => {
             <strong class="game-rank-score">{{ formatScore(player.score) }}</strong>
           </li>
         </ol>
+        <div v-if="leaderboard.length" class="game-rank-pagination">
+          <button type="button" :disabled="leaderboardLoading || leaderboardPage <= 1" @click="refreshLeaderboard(leaderboardPage - 1)">{{ copy.previous }}</button>
+          <span>{{ leaderboardPage }} / {{ leaderboardTotalPages }}</span>
+          <button type="button" :disabled="leaderboardLoading || leaderboardPage >= leaderboardTotalPages" @click="refreshLeaderboard(leaderboardPage + 1)">{{ copy.next }}</button>
+        </div>
+        <p v-if="leaderboardError && leaderboard.length" class="game-rank-state" role="alert">{{ copy.leaderboardUnavailable }}</p>
         <a
           v-if="!currentUserId"
           class="game-rank-login"

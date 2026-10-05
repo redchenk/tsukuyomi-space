@@ -424,8 +424,8 @@ describe('frontend navigation routes', () => {
         assert.match(game, /sandbox="allow-scripts allow-pointer-lock allow-downloads"/);
         assert.doesNotMatch(game, /allow-same-origin/);
         assert.match(game, /VITE_KAGUYA_GAME_URL/);
-        assert.match(game, /kaguya-run-ef04c26b4900-r7\.html/);
-        assert.match(game, /kaguya-run-ef04c26b4900-%72%33\.h%74%6dl/);
+        assert.match(game, /kaguya-run-ef04c26b4900-r8\.html/);
+
         assert.match(game, /:aria-busy="loading"/);
         assert.match(game, /https:\/\/www\.bilibili\.com\/video\/BV1Bmgx6aEvJ\//);
         assert.match(game, /rel="noopener noreferrer"/);
@@ -434,8 +434,6 @@ describe('frontend navigation routes', () => {
         assert.match(game, /loadKaguyaLeaderboard/);
         assert.match(game, /submitKaguyaScore/);
         assert.match(game, /LEADERBOARD_PAGE_SIZE = 50/);
-        assert.match(game, /for \(let page = 2; page <= totalPages; page \+= 1\)/);
-        assert.match(game, /loadKaguyaLeaderboard\(\{\s*page,\s*limit: LEADERBOARD_PAGE_SIZE\s*\}\)/);
         assert.match(game, /class="game-rank-list"[^>]+tabindex="0"/);
         assert.match(gameCss, /\.game-rank-list\s*\{[\s\S]*max-height:[\s\S]*overflow-y: auto;[\s\S]*touch-action: pan-y;/);
         assert.match(gameCss, /content-visibility: auto;/);

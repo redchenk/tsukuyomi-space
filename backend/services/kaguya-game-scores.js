@@ -22,7 +22,7 @@ function normalizeScore(rawScore) {
 
 function normalizePage(rawPage) {
     const page = Number(rawPage);
-    return Number.isInteger(page) && page > 0 ? page : 1;
+    return Number.isSafeInteger(page) && page > 0 ? page : 1;
 }
 
 function normalizeLimit(rawLimit) {
@@ -73,41 +73,29 @@ function rankedUser(userId) {
 }
 
 function listLeaderboard({ page: rawPage, limit: rawLimit, userId = '' } = {}) {
-    const page = normalizePage(rawPage);
     const limit = normalizeLimit(rawLimit);
-    const offset = (page - 1) * limit;
     const total = Number(db.prepare(`
-        SELECT COUNT(*) AS count
-        FROM kaguya_game_scores
-        WHERE best_score > 0
+        SELECT COUNT(*) AS count FROM kaguya_game_scores WHERE best_score > 0
     `).get()?.count) || 0;
-    const entries = db.prepare(`
-        SELECT
-            ranked.user_id,
-            ranked.best_score,
-            ranked.score_updated_at,
-            ranked.username,
-            ranked.nickname,
-            ranked.avatar,
-            ranked.user_updated_at,
-            ranked.rank
-        FROM (
-            SELECT
-                scores.user_id,
-                scores.best_score,
-                scores.updated_at AS score_updated_at,
-                users.username,
-                users.nickname,
-                users.avatar,
-                users.updated_at AS user_updated_at,
-                RANK() OVER (ORDER BY scores.best_score DESC) AS rank
-            FROM kaguya_game_scores scores
-            JOIN users ON users.id = scores.user_id
-            WHERE scores.best_score > 0
-        ) ranked
-        ORDER BY ranked.best_score DESC, ranked.score_updated_at ASC, ranked.user_id ASC
-        LIMIT ? OFFSET ?
-    `).all(limit, offset).map(publicEntry);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const page = Math.min(normalizePage(rawPage), totalPages);
+    const offset = (page - 1) * limit;
+    // Limit through the ranking index before joining users; do not window/sort the whole board per page.
+    const rows = db.prepare(`
+        SELECT scores.user_id, scores.best_score, scores.updated_at AS score_updated_at,
+               users.username, users.nickname, users.avatar, users.updated_at AS user_updated_at
+        FROM (SELECT user_id, best_score, updated_at FROM kaguya_game_scores
+              WHERE best_score > 0 ORDER BY best_score DESC, updated_at ASC, user_id ASC
+              LIMIT ? OFFSET ?) scores
+        JOIN users ON users.id = scores.user_id
+        ORDER BY scores.best_score DESC, scores.updated_at ASC, scores.user_id ASC
+    `).all(limit, offset);
+    const ranks = new Map();
+    const rankQuery = db.prepare('SELECT COUNT(*) + 1 AS rank FROM kaguya_game_scores WHERE best_score > ?');
+    const entries = rows.map((row) => {
+        if (!ranks.has(row.best_score)) ranks.set(row.best_score, rankQuery.get(row.best_score).rank);
+        return publicEntry({ ...row, rank: ranks.get(row.best_score) });
+    });
 
     return {
         entries,

@@ -48,14 +48,7 @@ router.post('/game/score', authenticateToken, (req, res) => {
         const result = kaguyaGameScores.submitScore(req.user.id, req.body?.score);
         return res.json({
             success: true,
-            data: {
-                ...result,
-                leaderboard: kaguyaGameScores.listLeaderboard({
-                    page: 1,
-                    limit: 10,
-                    userId: req.user.id
-                })
-            }
+            data: result
         });
     } catch (error) {
         return sendError(res, error, '积分保存失败');

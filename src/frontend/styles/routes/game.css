@@ -493,3 +493,21 @@ html[data-theme="dark"] .game-rank-state[role="alert"] {
     animation-duration: 1.8s;
   }
 }
+
+.game-rank-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem .75rem;
+}
+.game-rank-pagination button {
+  min-height: 40px;
+  padding: .5rem 1rem;
+  border: 1px solid var(--ts-border);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--ts-glass);
+  color: var(--ts-text);
+  white-space: nowrap;
+}
+.game-rank-pagination button:disabled { opacity: .45; cursor: default; }

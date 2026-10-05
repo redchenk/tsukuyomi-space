@@ -1,0 +1,1912 @@
+{
+  "targets": [
+    {
+      "name": "Stage",
+      "isStage": true,
+      "variables": {
+        "p/`/;8rzBph3)]P/5]ih": [
+          "y速",
+          "0"
+        ],
+        "tiL3!axIrF_@JTS9)m6k": [
+          "y加速",
+          -2
+        ],
+        "%tm*Ccm0;KKab`Cpwi(,": [
+          "跳起？",
+          "0"
+        ],
+        "?.*M3=52?:2l%:bQi}r~": [
+          "背景速度（我跑步速度",
+          "8"
+        ],
+        "3h@pxuw0snM?kC3!K|Yy": [
+          "可以操作吗",
+          "1"
+        ],
+        "f]mIke}qqM?6sDcI+hH@": [
+          "心情值",
+          90
+        ],
+        "%mKh(,f^shJV|1:1[gQC": [
+          "分数",
+          20
+        ],
+        ";/28GuI9=KVQ((rX2MtT": [
+          "可以受伤吗",
+          "1"
+        ],
+        "UNL9hZRdIwYyz`_LgC_P": [
+          "背景x",
+          -18
+        ],
+        "?Nr-LyX4NQ.TO2]S(YXx": [
+          "游戏是否开始",
+          "1"
+        ],
+        "L572hc4{J*=n[A!cT9Ws": [
+          "辉夜是否消失",
+          "0"
+        ],
+        "Ccg4q93JO.Gh^GxfIw^a": [
+          "辉夜模型",
+          "1"
+        ],
+        "`jEk@4|i[#Fk?(8x)AV.-my variable": [
+          "sin",
+          "0"
+        ],
+        "O||f$xis$:6_[aLOX5Wk": [
+          "食物合成",
+          ""
+        ],
+        "a,ky0AijAlOf)[9OKnRO": [
+          "捡的第几个食物",
+          "0"
+        ],
+        "{?E)nC]+]Mf~mm%mM9l?": [
+          "自主扣血吗",
+          "1"
+        ],
+        "7@wWrWdm/5%x*S3q-SQY": [
+          "sin2",
+          150
+        ],
+        "E]k=XBiYs-[WN~y16P4}": [
+          "sin3",
+          880820
+        ],
+        "{I[};xRBh:=aXSJo-URb": [
+          "可以左右动吗",
+          "1"
+        ],
+        "Q:5tIP[7EjeT+ZBunlWU": [
+          "1212",
+          14
+        ],
+        "np.U`B7wPZrF^VOVKcNL": [
+          "攻击状态0",
+          "0"
+        ],
+        "ZZea={sjrM/kll/lNN5^": [
+          "攻击方向",
+          "下"
+        ],
+        "a.DOx.!dX!Cb]Sgap[7u": [
+          "是否造成伤害了刀子",
+          "0"
+        ],
+        "sbo!s0]?xGc9IV{`/=?~": [
+          "目前使用的武器 1鬼 2锤 3光",
+          "2"
+        ],
+        "S%z}:wEqw{AworK~c.9C": [
+          "顺序来",
+          280
+        ],
+        "RzpZ^x0T2eS5Mrj3[!20": [
+          "瞄准大小的变量",
+          5.739562824706934e-07
+        ],
+        "h(khSvSA:PItTEWQ[,Bt": [
+          "锤子方向",
+          "2"
+        ],
+        "-M2a.joZ3N,8N,2P|~!r": [
+          "1",
+          239.5
+        ],
+        "q*3V{c#_Fd^hT`mYy^W;": [
+          "2",
+          "0"
+        ],
+        "LNO+v9TEHv.KTiThz[uY": [
+          "sin4",
+          6785
+        ],
+        "$iQa}RofE!%q9W7iO6*8": [
+          "彩蛋局",
+          "0"
+        ]
+      },
+      "blocks": {
+        "C.": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "j(",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "音乐",
+              "H;(hL5c*WpTn3l/`D*T9"
+            ]
+          },
+          "topLevel": true
+        },
+        "j(": {
+          "opcode": "sound_setvolumeto",
+          "next": "j)",
+          "parent": "C.",
+          "inputs": {
+            "VOLUME": [
+              1,
+              [
+                4,
+                "100"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "j)": {
+          "opcode": "control_wait",
+          "next": "z",
+          "parent": "j(",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.1"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "z": {
+          "opcode": "control_if_else",
+          "next": null,
+          "parent": "j)",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "C/"
+            ],
+            "SUBSTACK": [
+              2,
+              "j*"
+            ],
+            "SUBSTACK2": [
+              2,
+              "j+"
+            ]
+          },
+          "fields": {}
+        },
+        "C/": {
+          "opcode": "operator_equals",
+          "next": null,
+          "parent": "z",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              [
+                12,
+                "彩蛋局",
+                "$iQa}RofE!%q9W7iO6*8"
+              ],
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "0"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "j*": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "z",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "j,"
+            ]
+          },
+          "fields": {}
+        },
+        "j,": {
+          "opcode": "sound_playuntildone",
+          "next": null,
+          "parent": "j*",
+          "inputs": {
+            "SOUND_MENU": [
+              1,
+              "C:"
+            ]
+          },
+          "fields": {}
+        },
+        "C:": {
+          "opcode": "sound_sounds_menu",
+          "next": null,
+          "parent": "j,",
+          "inputs": {},
+          "fields": {
+            "SOUND_MENU": [
+              "开始",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "j+": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "z",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "j-"
+            ]
+          },
+          "fields": {}
+        },
+        "j-": {
+          "opcode": "sound_playuntildone",
+          "next": null,
+          "parent": "j+",
+          "inputs": {
+            "SOUND_MENU": [
+              1,
+              "C;"
+            ]
+          },
+          "fields": {}
+        },
+        "C;": {
+          "opcode": "sound_sounds_menu",
+          "next": null,
+          "parent": "j-",
+          "inputs": {},
+          "fields": {
+            "SOUND_MENU": [
+              "新的开始",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "C=": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "j.",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "音乐死",
+              "FtqKeRa+7Yt7{C/Ig=W6"
+            ]
+          },
+          "topLevel": true
+        },
+        "j.": {
+          "opcode": "sound_setvolumeto",
+          "next": "bN",
+          "parent": "C=",
+          "inputs": {
+            "VOLUME": [
+              1,
+              [
+                4,
+                "100"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "bN": {
+          "opcode": "control_repeat",
+          "next": "C?",
+          "parent": "j.",
+          "inputs": {
+            "TIMES": [
+              1,
+              [
+                6,
+                "10"
+              ]
+            ],
+            "SUBSTACK": [
+              2,
+              "C@"
+            ]
+          },
+          "fields": {}
+        },
+        "C@": {
+          "opcode": "sound_changevolumeby",
+          "next": null,
+          "parent": "bN",
+          "inputs": {
+            "VOLUME": [
+              1,
+              [
+                4,
+                "-10"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "C?": {
+          "opcode": "sound_stopallsounds",
+          "next": null,
+          "parent": "bN",
+          "inputs": {},
+          "fields": {}
+        },
+        "C[": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "C]",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "死了拉！",
+              "W8V%pj/NyLZt9f^)Cm:x"
+            ]
+          },
+          "topLevel": true
+        },
+        "C]": {
+          "opcode": "control_stop",
+          "next": null,
+          "parent": "C[",
+          "inputs": {},
+          "fields": {
+            "STOP_OPTION": [
+              "other scripts in sprite",
+              null
+            ]
+          },
+          "mutation": {
+            "tagName": "mutation",
+            "children": [],
+            "hasnext": "true"
+          }
+        },
+        "C^": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "bO",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "换现实辉夜音乐",
+              "*`2Q_-r[vt+I^mY@2+K:"
+            ]
+          },
+          "topLevel": true
+        },
+        "bO": {
+          "opcode": "control_repeat",
+          "next": "j/",
+          "parent": "C^",
+          "inputs": {
+            "TIMES": [
+              1,
+              [
+                6,
+                "10"
+              ]
+            ],
+            "SUBSTACK": [
+              2,
+              "j:"
+            ]
+          },
+          "fields": {}
+        },
+        "j:": {
+          "opcode": "sound_changevolumeby",
+          "next": "C_",
+          "parent": "bO",
+          "inputs": {
+            "VOLUME": [
+              1,
+              [
+                4,
+                "-10"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "C_": {
+          "opcode": "control_wait",
+          "next": null,
+          "parent": "j:",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.1"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "j/": {
+          "opcode": "sound_stopallsounds",
+          "next": "j;",
+          "parent": "bO",
+          "inputs": {},
+          "fields": {}
+        },
+        "j;": {
+          "opcode": "control_stop",
+          "next": "j=",
+          "parent": "j/",
+          "inputs": {},
+          "fields": {
+            "STOP_OPTION": [
+              "other scripts in sprite",
+              null
+            ]
+          },
+          "mutation": {
+            "tagName": "mutation",
+            "children": [],
+            "hasnext": "true"
+          }
+        },
+        "j=": {
+          "opcode": "sound_setvolumeto",
+          "next": "j?",
+          "parent": "j;",
+          "inputs": {
+            "VOLUME": [
+              1,
+              [
+                4,
+                "100"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "j?": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "j=",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "j@"
+            ]
+          },
+          "fields": {}
+        },
+        "j@": {
+          "opcode": "sound_playuntildone",
+          "next": null,
+          "parent": "j?",
+          "inputs": {
+            "SOUND_MENU": [
+              1,
+              "C`"
+            ]
+          },
+          "fields": {}
+        },
+        "C`": {
+          "opcode": "sound_sounds_menu",
+          "next": null,
+          "parent": "j@",
+          "inputs": {},
+          "fields": {
+            "SOUND_MENU": [
+              "月度辉夜",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "C{": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "bP",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "换月度辉夜音乐",
+              "Y3SN(HccH.cM%YG??I~d"
+            ]
+          },
+          "topLevel": true
+        },
+        "bP": {
+          "opcode": "control_repeat",
+          "next": "j[",
+          "parent": "C{",
+          "inputs": {
+            "TIMES": [
+              1,
+              [
+                6,
+                "10"
+              ]
+            ],
+            "SUBSTACK": [
+              2,
+              "j]"
+            ]
+          },
+          "fields": {}
+        },
+        "j]": {
+          "opcode": "sound_changevolumeby",
+          "next": "C|",
+          "parent": "bP",
+          "inputs": {
+            "VOLUME": [
+              1,
+              [
+                4,
+                "-10"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "C|": {
+          "opcode": "control_wait",
+          "next": null,
+          "parent": "j]",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.1"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "j[": {
+          "opcode": "sound_stopallsounds",
+          "next": "j^",
+          "parent": "bP",
+          "inputs": {},
+          "fields": {}
+        },
+        "j^": {
+          "opcode": "control_stop",
+          "next": "j_",
+          "parent": "j[",
+          "inputs": {},
+          "fields": {
+            "STOP_OPTION": [
+              "other scripts in sprite",
+              null
+            ]
+          },
+          "mutation": {
+            "tagName": "mutation",
+            "children": [],
+            "hasnext": "true"
+          }
+        },
+        "j_": {
+          "opcode": "sound_setvolumeto",
+          "next": "bQ",
+          "parent": "j^",
+          "inputs": {
+            "VOLUME": [
+              1,
+              [
+                4,
+                "100"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "bQ": {
+          "opcode": "sound_playuntildone",
+          "next": "A",
+          "parent": "j_",
+          "inputs": {
+            "SOUND_MENU": [
+              1,
+              "C}"
+            ]
+          },
+          "fields": {}
+        },
+        "C}": {
+          "opcode": "sound_sounds_menu",
+          "next": null,
+          "parent": "bQ",
+          "inputs": {},
+          "fields": {
+            "SOUND_MENU": [
+              "月人来了",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "A": {
+          "opcode": "control_if",
+          "next": "j`",
+          "parent": "bQ",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "C~"
+            ],
+            "SUBSTACK": [
+              2,
+              "bR"
+            ]
+          },
+          "fields": {}
+        },
+        "C~": {
+          "opcode": "operator_lt",
+          "next": null,
+          "parent": "A",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              [
+                12,
+                "分数",
+                "%mKh(,f^shJV|1:1[gQC"
+              ],
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "8000"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "bR": {
+          "opcode": "data_setvariableto",
+          "next": "j{",
+          "parent": "A",
+          "inputs": {
+            "VALUE": [
+              3,
+              "j|",
+              [
+                10,
+                "0"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "1",
+              "-M2a.joZ3N,8N,2P|~!r"
+            ]
+          }
+        },
+        "j|": {
+          "opcode": "operator_divide",
+          "next": null,
+          "parent": "bR",
+          "inputs": {
+            "NUM1": [
+              3,
+              "Da",
+              [
+                4,
+                ""
+              ]
+            ],
+            "NUM2": [
+              1,
+              [
+                4,
+                "20"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "Da": {
+          "opcode": "operator_subtract",
+          "next": null,
+          "parent": "j|",
+          "inputs": {
+            "NUM1": [
+              1,
+              [
+                4,
+                "8000"
+              ]
+            ],
+            "NUM2": [
+              3,
+              [
+                12,
+                "分数",
+                "%mKh(,f^shJV|1:1[gQC"
+              ],
+              [
+                4,
+                ""
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "j{": {
+          "opcode": "control_repeat",
+          "next": null,
+          "parent": "bR",
+          "inputs": {
+            "TIMES": [
+              1,
+              [
+                6,
+                "20"
+              ]
+            ],
+            "SUBSTACK": [
+              2,
+              "Db"
+            ]
+          },
+          "fields": {}
+        },
+        "Db": {
+          "opcode": "data_changevariableby",
+          "next": null,
+          "parent": "j{",
+          "inputs": {
+            "VALUE": [
+              3,
+              [
+                12,
+                "1",
+                "-M2a.joZ3N,8N,2P|~!r"
+              ],
+              [
+                4,
+                "1"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "分数",
+              "%mKh(,f^shJV|1:1[gQC"
+            ]
+          }
+        },
+        "j`": {
+          "opcode": "event_broadcast",
+          "next": "bS",
+          "parent": "A",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "标记跑路了",
+                "J}yv|?%ja4uz1t+i{(R^"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "bS": {
+          "opcode": "control_repeat",
+          "next": "j}",
+          "parent": "j`",
+          "inputs": {
+            "TIMES": [
+              1,
+              [
+                6,
+                "10"
+              ]
+            ],
+            "SUBSTACK": [
+              2,
+              "j~"
+            ]
+          },
+          "fields": {}
+        },
+        "j~": {
+          "opcode": "sound_changevolumeby",
+          "next": "Dc",
+          "parent": "bS",
+          "inputs": {
+            "VOLUME": [
+              1,
+              [
+                4,
+                "-10"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "Dc": {
+          "opcode": "control_wait",
+          "next": null,
+          "parent": "j~",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.1"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "j}": {
+          "opcode": "sound_stopallsounds",
+          "next": "ka",
+          "parent": "bS",
+          "inputs": {},
+          "fields": {}
+        },
+        "ka": {
+          "opcode": "control_stop",
+          "next": "kb",
+          "parent": "j}",
+          "inputs": {},
+          "fields": {
+            "STOP_OPTION": [
+              "other scripts in sprite",
+              null
+            ]
+          },
+          "mutation": {
+            "tagName": "mutation",
+            "children": [],
+            "hasnext": "true"
+          }
+        },
+        "kb": {
+          "opcode": "sound_setvolumeto",
+          "next": "kc",
+          "parent": "ka",
+          "inputs": {
+            "VOLUME": [
+              1,
+              [
+                4,
+                "100"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "kc": {
+          "opcode": "event_broadcast",
+          "next": "kd",
+          "parent": "kb",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "换八千代音乐",
+                "5=n=6ab.8$!,p[N.TZwu"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "kd": {
+          "opcode": "event_broadcast",
+          "next": "ke",
+          "parent": "kc",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "闪一下",
+                "(h|:||n?w6Yhr9vajCZ5"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "ke": {
+          "opcode": "event_broadcast",
+          "next": "kf",
+          "parent": "kd",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "音游结束",
+                "a~sfp2=S9iZWh/*.SJ{O"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "kf": {
+          "opcode": "event_broadcast",
+          "next": "kg",
+          "parent": "ke",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "换八千代",
+                "r$xJr2UL%Z#OH?K|BEty"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "kg": {
+          "opcode": "control_wait",
+          "next": "kh",
+          "parent": "kf",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.2"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "kh": {
+          "opcode": "event_broadcast",
+          "next": "ki",
+          "parent": "kg",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "闪一下",
+                "(h|:||n?w6Yhr9vajCZ5"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "ki": {
+          "opcode": "data_setvariableto",
+          "next": "Dd",
+          "parent": "kh",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "1"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "自主扣血吗",
+              "{?E)nC]+]Mf~mm%mM9l?"
+            ]
+          }
+        },
+        "Dd": {
+          "opcode": "event_broadcast",
+          "next": null,
+          "parent": "ki",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "切换第四阶段背景1",
+                "^/gPx18sY@Gm+a6eeuP["
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "De": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "kj",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "换八千代音乐",
+              "5=n=6ab.8$!,p[N.TZwu"
+            ]
+          },
+          "topLevel": true
+        },
+        "kj": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "De",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "kk"
+            ]
+          },
+          "fields": {}
+        },
+        "kk": {
+          "opcode": "sound_playuntildone",
+          "next": null,
+          "parent": "kj",
+          "inputs": {
+            "SOUND_MENU": [
+              1,
+              "Df"
+            ]
+          },
+          "fields": {}
+        },
+        "Df": {
+          "opcode": "sound_sounds_menu",
+          "next": null,
+          "parent": "kk",
+          "inputs": {},
+          "fields": {
+            "SOUND_MENU": [
+              "八千代",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "!{": {
+          "opcode": "data_setvariableto",
+          "next": null,
+          "parent": null,
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "0"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "自主扣血吗",
+              "{?E)nC]+]Mf~mm%mM9l?"
+            ]
+          },
+          "topLevel": true
+        },
+        "Dg": {
+          "opcode": "event_whenflagclicked",
+          "next": "Dh",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "topLevel": true
+        },
+        "Dh": {
+          "opcode": "event_broadcast",
+          "next": null,
+          "parent": "Dg",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "死亡重开",
+                "~r%-4fEJ|ArHghX1*^XL"
+              ]
+            ]
+          },
+          "fields": {}
+        }
+      }
+    },
+    {
+      "name": "xl1",
+      "isStage": false,
+      "variables": {},
+      "blocks": {
+        "I;": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "pj",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "黑1",
+              "*C:a{Sb]7caBO:f/bLR5"
+            ]
+          },
+          "topLevel": true
+        },
+        "pj": {
+          "opcode": "data_setvariableto",
+          "next": "pk",
+          "parent": "I;",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "1"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "自主扣血吗",
+              "{?E)nC]+]Mf~mm%mM9l?"
+            ]
+          }
+        },
+        "pk": {
+          "opcode": "data_setvariableto",
+          "next": "c~",
+          "parent": "pj",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "100"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "心情值",
+              "f]mIke}qqM?6sDcI+hH@"
+            ]
+          }
+        },
+        "c~": {
+          "opcode": "looks_switchcostumeto",
+          "next": "ad",
+          "parent": "pk",
+          "inputs": {
+            "COSTUME": [
+              1,
+              "I="
+            ]
+          },
+          "fields": {}
+        },
+        "I=": {
+          "opcode": "looks_costume",
+          "next": null,
+          "parent": "c~",
+          "inputs": {},
+          "fields": {
+            "COSTUME": [
+              "a11",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "ad": {
+          "opcode": "control_if_else",
+          "next": null,
+          "parent": "c~",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "I?"
+            ],
+            "SUBSTACK": [
+              2,
+              "pl"
+            ],
+            "SUBSTACK2": [
+              2,
+              "pm"
+            ]
+          },
+          "fields": {}
+        },
+        "I?": {
+          "opcode": "operator_equals",
+          "next": null,
+          "parent": "ad",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              [
+                12,
+                "彩蛋局",
+                "$iQa}RofE!%q9W7iO6*8"
+              ],
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "0"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "pl": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "ad",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "da"
+            ]
+          },
+          "fields": {}
+        },
+        "da": {
+          "opcode": "control_if",
+          "next": null,
+          "parent": "pl",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "db"
+            ],
+            "SUBSTACK": [
+              2,
+              "pn"
+            ]
+          },
+          "fields": {}
+        },
+        "db": {
+          "opcode": "operator_and",
+          "next": null,
+          "parent": "da",
+          "inputs": {
+            "OPERAND1": [
+              2,
+              "I@"
+            ],
+            "OPERAND2": [
+              2,
+              "I["
+            ]
+          },
+          "fields": {}
+        },
+        "I@": {
+          "opcode": "operator_equals",
+          "next": null,
+          "parent": "db",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              [
+                12,
+                "自主扣血吗",
+                "{?E)nC]+]Mf~mm%mM9l?"
+              ],
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "1"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "I[": {
+          "opcode": "operator_gt",
+          "next": null,
+          "parent": "db",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              [
+                12,
+                "心情值",
+                "f]mIke}qqM?6sDcI+hH@"
+              ],
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "0"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "pn": {
+          "opcode": "control_wait",
+          "next": "I]",
+          "parent": "da",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.25"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "I]": {
+          "opcode": "data_changevariableby",
+          "next": null,
+          "parent": "pn",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                4,
+                "-1"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "心情值",
+              "f]mIke}qqM?6sDcI+hH@"
+            ]
+          }
+        },
+        "pm": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "ad",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "dc"
+            ]
+          },
+          "fields": {}
+        },
+        "dc": {
+          "opcode": "control_if",
+          "next": null,
+          "parent": "pm",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "I^"
+            ],
+            "SUBSTACK": [
+              2,
+              "I_"
+            ]
+          },
+          "fields": {}
+        },
+        "I^": {
+          "opcode": "operator_lt",
+          "next": null,
+          "parent": "dc",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              [
+                12,
+                "心情值",
+                "f]mIke}qqM?6sDcI+hH@"
+              ],
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "100"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "I_": {
+          "opcode": "data_setvariableto",
+          "next": null,
+          "parent": "dc",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "100"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "心情值",
+              "f]mIke}qqM?6sDcI+hH@"
+            ]
+          }
+        },
+        "I`": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "po",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "黑1",
+              "*C:a{Sb]7caBO:f/bLR5"
+            ]
+          },
+          "topLevel": true
+        },
+        "po": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "I`",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "dd"
+            ]
+          },
+          "fields": {}
+        },
+        "dd": {
+          "opcode": "looks_switchcostumeto",
+          "next": null,
+          "parent": "po",
+          "inputs": {
+            "COSTUME": [
+              3,
+              "pp",
+              "I{"
+            ]
+          },
+          "fields": {}
+        },
+        "pp": {
+          "opcode": "operator_add",
+          "next": null,
+          "parent": "dd",
+          "inputs": {
+            "NUM1": [
+              3,
+              "pq",
+              [
+                4,
+                ""
+              ]
+            ],
+            "NUM2": [
+              1,
+              [
+                4,
+                "1"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "pq": {
+          "opcode": "operator_round",
+          "next": null,
+          "parent": "pp",
+          "inputs": {
+            "NUM": [
+              3,
+              "I|",
+              [
+                4,
+                ""
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "I|": {
+          "opcode": "operator_divide",
+          "next": null,
+          "parent": "pq",
+          "inputs": {
+            "NUM1": [
+              3,
+              [
+                12,
+                "心情值",
+                "f]mIke}qqM?6sDcI+hH@"
+              ],
+              [
+                4,
+                ""
+              ]
+            ],
+            "NUM2": [
+              1,
+              [
+                4,
+                "10"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "I{": {
+          "opcode": "looks_costume",
+          "next": null,
+          "parent": "dd",
+          "inputs": {},
+          "fields": {
+            "COSTUME": [
+              "a2",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "I}": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "I~",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "死了拉！",
+              "W8V%pj/NyLZt9f^)Cm:x"
+            ]
+          },
+          "topLevel": true
+        },
+        "I~": {
+          "opcode": "control_stop",
+          "next": null,
+          "parent": "I}",
+          "inputs": {},
+          "fields": {
+            "STOP_OPTION": [
+              "other scripts in sprite",
+              null
+            ]
+          },
+          "mutation": {
+            "tagName": "mutation",
+            "children": [],
+            "hasnext": "true"
+          }
+        },
+        "Ja": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "pr",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "游戏开始",
+              "rh];^o`iJS5{s]$AvQv8"
+            ]
+          },
+          "topLevel": true
+        },
+        "pr": {
+          "opcode": "data_setvariableto",
+          "next": "ps",
+          "parent": "Ja",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "1"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "自主扣血吗",
+              "{?E)nC]+]Mf~mm%mM9l?"
+            ]
+          }
+        },
+        "ps": {
+          "opcode": "data_setvariableto",
+          "next": "pt",
+          "parent": "pr",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "100"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "心情值",
+              "f]mIke}qqM?6sDcI+hH@"
+            ]
+          }
+        },
+        "pt": {
+          "opcode": "motion_gotoxy",
+          "next": "de",
+          "parent": "ps",
+          "inputs": {
+            "X": [
+              1,
+              [
+                4,
+                "-170"
+              ]
+            ],
+            "Y": [
+              1,
+              [
+                4,
+                "150"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "de": {
+          "opcode": "looks_switchcostumeto",
+          "next": "pu",
+          "parent": "pt",
+          "inputs": {
+            "COSTUME": [
+              1,
+              "Jb"
+            ]
+          },
+          "fields": {}
+        },
+        "Jb": {
+          "opcode": "looks_costume",
+          "next": null,
+          "parent": "de",
+          "inputs": {},
+          "fields": {
+            "COSTUME": [
+              "a9",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "pu": {
+          "opcode": "looks_gotofrontback",
+          "next": "Jc",
+          "parent": "de",
+          "inputs": {},
+          "fields": {
+            "FRONT_BACK": [
+              "front",
+              null
+            ]
+          }
+        },
+        "Jc": {
+          "opcode": "looks_show",
+          "next": null,
+          "parent": "pu",
+          "inputs": {},
+          "fields": {}
+        }
+      }
+    },
+    {
+      "name": "fen2",
+      "isStage": false,
+      "variables": {},
+      "blocks": {
+        "pI": {
+          "opcode": "motion_gotoxy",
+          "next": "dk",
+          "parent": "pJ",
+          "inputs": {
+            "X": [
+              1,
+              [
+                4,
+                "190"
+              ]
+            ],
+            "Y": [
+              1,
+              [
+                4,
+                "155"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "dk": {
+          "opcode": "looks_switchcostumeto",
+          "next": "pK",
+          "parent": "pI",
+          "inputs": {
+            "COSTUME": [
+              1,
+              "JA"
+            ]
+          },
+          "fields": {}
+        },
+        "JA": {
+          "opcode": "looks_costume",
+          "next": null,
+          "parent": "dk",
+          "inputs": {},
+          "fields": {
+            "COSTUME": [
+              "fen1",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "pK": {
+          "opcode": "looks_show",
+          "next": "pL",
+          "parent": "dk",
+          "inputs": {},
+          "fields": {}
+        },
+        "pL": {
+          "opcode": "looks_gotofrontback",
+          "next": "JB",
+          "parent": "pK",
+          "inputs": {},
+          "fields": {
+            "FRONT_BACK": [
+              "front",
+              null
+            ]
+          }
+        },
+        "pJ": {
+          "opcode": "data_setvariableto",
+          "next": "pI",
+          "parent": "JC",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "0"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "分数",
+              "%mKh(,f^shJV|1:1[gQC"
+            ]
+          }
+        },
+        "JD": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "JE",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "死了拉！",
+              "W8V%pj/NyLZt9f^)Cm:x"
+            ]
+          },
+          "topLevel": true
+        },
+        "JE": {
+          "opcode": "control_stop",
+          "next": null,
+          "parent": "JD",
+          "inputs": {},
+          "fields": {
+            "STOP_OPTION": [
+              "other scripts in sprite"
+            ]
+          },
+          "mutation": {
+            "tagName": "mutation",
+            "children": [],
+            "hasnext": "true"
+          }
+        },
+        "JC": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "pJ",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "游戏开始",
+              "rh];^o`iJS5{s]$AvQv8"
+            ]
+          },
+          "topLevel": true
+        },
+        "JB": {
+          "opcode": "looks_goforwardbackwardlayers",
+          "next": null,
+          "parent": "pL",
+          "inputs": {
+            "NUM": [
+              1,
+              [
+                7,
+                "10"
+              ]
+            ]
+          },
+          "fields": {
+            "FORWARD_BACKWARD": [
+              "backward",
+              null
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

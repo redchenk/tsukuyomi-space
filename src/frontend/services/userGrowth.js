@@ -124,30 +124,55 @@ export async function recordShareGrowth(platform = 'native') {
   return result;
 }
 
-export async function loadKaguyaLeaderboard({ page = 1, limit = 10 } = {}) {
+async function gameRequest(request, signal) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abort = () => controller.abort();
+  const timeout = window.setTimeout(() => { timedOut = true; abort(); }, 15000);
+  if (signal?.aborted) abort();
+  else signal?.addEventListener('abort', abort, { once: true });
+  try {
+    return await request(controller.signal);
+  } catch (error) {
+    if (timedOut) throw new Error('游戏积分请求超时，请重试');
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
+  }
+}
+
+export async function loadKaguyaLeaderboard({ page = 1, limit = 10, signal } = {}) {
   const query = new URLSearchParams({
     page: String(page),
     limit: String(limit),
     _: String(Date.now())
   });
+  return gameRequest(async (requestSignal) => {
   const response = await authFetch(`/api/growth/game/leaderboard?${query}`, {
     headers: authHeaders({ Accept: 'application/json' }),
-    cache: 'no-store'
+    cache: 'no-store',
+    signal: requestSignal
   });
   const result = await parseResponse(response);
   if (!response.ok || !result.success) {
     throw new Error(result.message || `HTTP ${response.status}`);
   }
   return result.data;
+  }, signal);
 }
 
 export async function submitKaguyaScore(score) {
   if (!currentUserId()) return null;
-  const result = await requestGrowth('/api/growth/game/score', {
+  const userId = currentUserId();
+  const result = await gameRequest((signal) => requestGrowth('/api/growth/game/score', {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-    body: JSON.stringify({ score })
-  });
+    body: JSON.stringify({ score }),
+    signal,
+    keepalive: true
+  }));
+  if (currentUserId() !== userId) return null;
   if (result.growth?.state) publish(result.growth.state, result.growth.award);
   return result;
 }

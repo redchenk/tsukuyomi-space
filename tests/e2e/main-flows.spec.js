@@ -688,8 +688,8 @@ test('desktop pixel controls scroll independently from the page', async ({ page 
     expect(await page.evaluate(() => window.scrollY)).toBe(pageScrollBeforeWheel);
 });
 
-test('game leaderboard loads every score into a vertical scroll region', async ({ page }) => {
-    const players = Array.from({ length: 63 }, (_, index) => ({
+test('game leaderboard pages a large ranking in a bounded vertical scroll region', async ({ page }) => {
+    const players = Array.from({ length: 25000 }, (_, index) => ({
         rank: index + 1,
         userId: `game-player-${index + 1}`,
         username: `Player ${index + 1}`,
@@ -730,7 +730,11 @@ test('game leaderboard loads every score into a vertical scroll region', async (
     await page.goto('/game');
 
     const list = page.locator('.game-rank-list');
-    await expect(list.locator('li')).toHaveCount(players.length);
+    await expect(list.locator('li')).toHaveCount(50);
+    expect(requestedPages).toEqual([1]);
+    await page.getByRole('button', { name: '下一页', exact: true }).click();
+    await expect(list.locator('li')).toHaveCount(50);
+    await expect(list).toContainText('Player 51');
     expect(requestedPages).toEqual([1, 2]);
 
     const metrics = await list.evaluate((element) => ({
