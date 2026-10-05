@@ -1,4 +1,4 @@
-/* One navigation shell for content pages and the Room, using site tokens. */
+/* Shared segmented navigation for content pages and the Room, using site tokens. */
 @layer ts-navigation {
 #app {
   --site-companion-width: clamp(6.5rem, 9vw, 9.5rem);
@@ -9,33 +9,43 @@
   --ts-text: var(--ts-editorial-ink); --ts-muted: var(--ts-editorial-muted); --ts-border: var(--ts-editorial-line);
   --ts-material-highlight: transparent; --ts-material-lowlight: transparent;
   position: fixed; z-index: 100; inset: 16px var(--site-nav-edge) auto;
-  display: flex; align-items: center; gap: 22px; height: 68px; min-height: 0;
-  padding: 10px 16px 10px 20px; margin: 0; border: 1px solid var(--ts-border);
-  border-radius: var(--ts-radius-lg, 24px); color: var(--ts-text);
-  background: var(--ts-editorial-surface) !important; box-shadow: var(--ts-shadow-sm);
+  display: grid; grid-template-columns: minmax(max-content, .9fr) minmax(max-content, 1.6fr) minmax(max-content, 2.3fr);
+  align-items: center; gap: 16px; height: 68px; min-height: 0;
+  padding: 0; margin: 0; border: 0; border-radius: 0; color: var(--ts-text);
+  background: transparent !important; box-shadow: none !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  /* The space between capsules belongs to the page underneath. */
+  pointer-events: none;
+}
+.unified-navigation .site-commandbar > :is(.site-brand, .desktop-navigation, .site-header-tools) {
+  min-width: 0; height: 68px; border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius-button); background: var(--ts-editorial-surface);
+  pointer-events: auto;
   --ts-current-material-bg: var(--ts-editorial-surface) !important;
   --ts-current-material-shadow: var(--ts-shadow-sm);
+  --ts-current-material-filter: none;
 }
-.unified-navigation .site-brand { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; margin: 0 auto 0 0; color: var(--ts-text); text-decoration: none; letter-spacing: 0; }
+.unified-navigation .site-brand { display: flex; align-items: center; gap: 10px; padding: 10px 20px; margin: 0; color: var(--ts-text); text-decoration: none; letter-spacing: 0; }
 .site-brand-symbol { display: grid; flex-shrink: 0; place-items: center; width: 38px; height: 38px; }
 .site-brand-symbol img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .unified-navigation .site-brand > span:last-child { display: grid; gap: 3px; min-width: 0; }
-.unified-navigation .site-brand strong { font-family: 'Songti SC', 'Noto Serif SC', Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: .08em; white-space: nowrap; }
+.unified-navigation .site-brand strong { overflow: hidden; text-overflow: ellipsis; font-family: 'Songti SC', 'Noto Serif SC', Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: .08em; white-space: nowrap; }
+.unified-navigation .site-brand-english strong { font-size: 20px; letter-spacing: .02em; }
 .unified-navigation .site-brand small { font-size: 10px; line-height: 1.4; color: var(--ts-muted); white-space: nowrap; }
-.unified-navigation .desktop-navigation { display: flex; align-items: center; gap: 3px; flex: 0 0 auto; }
+.unified-navigation .desktop-navigation { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; }
 .unified-navigation .desktop-navigation :is(a, button) { position: relative; display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 10px 12px; border: 0; border-radius: var(--ts-radius-button); background: transparent; color: var(--ts-muted); font: inherit; font-size: 13px; line-height: 1.4; white-space: nowrap; cursor: pointer; text-decoration: none; }
 .unified-navigation .desktop-navigation :is(a[aria-current], button.active, button[aria-expanded="true"]) { color: var(--ts-accent); background: var(--ts-accent-soft); }
 .unified-navigation .desktop-navigation a[aria-current]::after { content: ''; position: absolute; bottom: 1px; left: calc(50% - 8px); width: 16px; height: 2px; border-radius: 2px; background: var(--ts-accent); }
-.site-header-tools { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.site-header-tools { display: flex; align-items: center; justify-content: flex-end; gap: 4px; padding: 10px 12px; min-width: 0; }
 .site-mobile-navigation-trigger, .site-mobile-shortcuts { display: none; }
 .site-tool-button, .site-account-trigger, .site-search-trigger, .site-preference-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 8px; min-height: 44px; border: 1px solid transparent; border-radius: var(--ts-radius-button); background: transparent; color: var(--ts-text); font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; }
 .site-tool-button { width: 44px; padding: 0; }
-.site-search-trigger { padding: 0 12px; border-color: var(--ts-border); background: var(--ts-editorial-soft); color: var(--ts-muted); }
-.site-search-trigger span { white-space: nowrap; font-size: 12px; }
+.site-search-trigger { flex: 1 1 auto; min-width: 0; padding: 0 12px; border-color: var(--ts-border); background: var(--ts-editorial-soft); color: var(--ts-muted); }
+.site-search-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .site-search-trigger kbd, .site-menu-search kbd, .site-search-help kbd { margin-left: auto; border: 1px solid var(--ts-border); border-radius: 5px; padding: 2px 4px; color: var(--ts-muted); font: inherit; font-size: 10px; white-space: nowrap; }
-.site-account-trigger { max-width: 156px; padding: 0 7px; }
+.site-account-trigger { width: 52px; padding: 0; gap: 4px; }
 .site-account-trigger img, .site-account-avatar { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: var(--ts-radius-button); background: var(--ts-editorial-soft); object-fit: cover; color: var(--ts-accent); }
-.site-account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-account-name { display: none; }
 .site-room-cta { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 7px; min-height: 44px; padding: 10px 17px; margin-left: 4px; border: 1px solid transparent; border-radius: var(--ts-radius-button); background: var(--ts-unified-primary-bg); color: var(--ts-unified-primary-text); text-decoration: none; font-size: 13px; white-space: nowrap; }
 .site-room-cta:hover { background: var(--ts-unified-primary-bg-hover); }
 .site-room-cta[aria-current] { border-color: var(--ts-accent); background: var(--ts-editorial-soft); color: var(--ts-accent); }
@@ -115,14 +125,17 @@
   .unified-navigation:not(.room-shell) .site-music-drawer { left: 24px; right: auto; }
 }
 @media (min-width: 861px) and (max-width: 1220px) {
-  .unified-navigation .topbar.site-commandbar { gap: 12px; padding-inline: 14px; }
-  .unified-navigation .site-brand { flex: 1 1 0; min-width: 104px; }
-  .site-brand-symbol { flex-shrink: 0; }
-  .site-search-trigger { width: 44px; padding: 0; border-color: transparent; background: transparent; }
+  .unified-navigation .topbar.site-commandbar { grid-template-columns: minmax(104px, 1fr) auto auto; gap: 10px; }
+  .unified-navigation .site-brand { padding-inline: 12px; gap: 8px; }
+  .unified-navigation .site-brand-symbol { width: 32px; height: 32px; }
+  .unified-navigation .desktop-navigation, .site-header-tools { padding-inline: 8px; }
+  .site-search-trigger { flex: 0 0 auto; width: 44px; padding: 0; border-color: transparent; background: transparent; }
   .site-search-trigger :is(span, kbd), .site-account-name { display: none; }
-  .site-account-trigger { gap: 4px; padding-inline: 5px; }
+  .site-account-trigger { width: 48px; }
   .unified-navigation .desktop-navigation :is(a, button) { padding-inline: 8px; }
   .unified-navigation .site-brand strong { font-size: 18px; overflow: hidden; text-overflow: ellipsis; }
+  .unified-navigation .site-brand-english { gap: 6px; }
+  .unified-navigation .site-brand-english strong { font-size: 16px; }
   .site-room-cta { padding-inline: 12px; }
 }
 @media (max-width: 860px) {
@@ -143,13 +156,15 @@
   .unified-navigation:not(.room-shell) .site-music-drawer.is-open .site-music-panel { max-height: calc(100dvh - 100px); overflow-y: auto; }
   .site-navigation-dialog { --site-menu-shift: -8px; transform-origin: top right; }
   .unified-navigation { --site-nav-edge: 12px; }
-  .unified-navigation .topbar.site-commandbar { inset: max(10px, env(safe-area-inset-top)) 12px auto; height: 60px; padding: 8px 10px 8px 14px; gap: 8px; border-radius: var(--ts-radius-lg, 24px); }
-  .unified-navigation .site-brand { min-width: 0; flex: 1 1 auto; gap: 0; }
-  .unified-navigation .site-brand-symbol, .unified-navigation .desktop-navigation, .site-room-cta, .site-account-name, .site-account-trigger > svg, .site-search-trigger :is(span, kbd), .site-theme-button { display: none; }
-  .unified-navigation .site-brand strong { font-size: 19px; letter-spacing: .06em; overflow: hidden; text-overflow: ellipsis; }
-  .unified-navigation .site-brand small { max-width: 150px; overflow: hidden; text-overflow: ellipsis; font-size: 9px; }
-  .site-header-tools { gap: 0; flex-shrink: 0; }
-  .site-search-trigger { width: 44px; padding: 0; border: 0; background: transparent; color: var(--ts-text); }
+  .unified-navigation .topbar.site-commandbar { inset: max(10px, env(safe-area-inset-top)) var(--site-nav-edge) auto; display: flex; justify-content: space-between; height: 60px; padding: 0; gap: 10px; }
+  .unified-navigation .site-commandbar > :is(.site-brand, .site-header-tools) { height: 56px; }
+  .unified-navigation .site-brand { min-width: 0; flex: 0 1 auto; gap: 7px; padding: 8px 12px; }
+  .unified-navigation .site-brand-symbol { display: grid; width: 30px; height: 30px; }
+  .unified-navigation .desktop-navigation, .site-room-cta, .site-account-name, .site-account-trigger > svg, .site-search-trigger :is(span, kbd), .site-theme-button, .unified-navigation .site-brand small { display: none; }
+  .unified-navigation .site-brand strong { font-size: 18px; letter-spacing: .02em; }
+  .unified-navigation .site-brand-english strong { font-size: 16px; }
+  .site-header-tools { gap: 0; flex: 0 0 auto; padding: 4px; }
+  .site-search-trigger { flex: 0 0 auto; width: 44px; padding: 0; border: 0; background: transparent; color: var(--ts-text); }
   .site-account-trigger { width: 44px; padding: 0; }
   .unified-navigation.content-shell .page { padding-top: calc(94px + env(safe-area-inset-top)); }
   .site-mobile-navigation-trigger { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 44px; height: 44px; padding: 3px; border: 1px solid transparent; border-radius: var(--ts-radius-button); color: var(--ts-text); background: transparent; font: inherit; cursor: pointer; }
@@ -180,12 +195,23 @@
   .unified-navigation.is-keyboard-open .site-commandbar { display: none; }
 }
 @media (max-width: 340px) {
-  .unified-navigation .site-brand strong { font-size: 17px; }
+  .unified-navigation .site-brand strong { font-size: 15px; }
+  .unified-navigation .site-brand-symbol { width: 26px; height: 26px; }
+  .unified-navigation .site-brand { gap: 4px; }
+  .unified-navigation .site-brand.site-brand-english { padding-inline: 6px; }
+  .unified-navigation .site-brand-english strong { font-size: 14px; letter-spacing: 0; }
+  .unified-navigation .site-brand-english .site-brand-symbol { width: 24px; height: 24px; }
   .unified-navigation:not(.room-shell):not(:has(.room-settings-page)) .site-music-drawer.is-open { bottom: calc(var(--site-companion-bottom) + var(--site-companion-width) * 208 / 192 + 12px); }
 }
 @media (max-width: 374px) {
+  .unified-navigation { --site-nav-edge: 8px; }
+  .unified-navigation .topbar.site-commandbar { gap: 8px; }
+  .unified-navigation .site-brand { padding-inline: 8px; }
   .site-theme-button { display: none; }
   .site-navigation-dialog, .site-search-dialog { padding: 16px; }
+}
+@media (max-width: 1220px) {
+  .site-brand-suffix { display: none; }
 }
 
 .site-search-field:focus-within { outline: 2px solid var(--ts-accent); outline-offset: 2px; }

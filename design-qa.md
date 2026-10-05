@@ -1,3 +1,70 @@
+# Segmented global navigation QA — 2026-10-05
+
+final result: passed
+
+## Scope and reference
+
+Implement the user's selected B direction: three floating capsules for brand,
+desktop navigation and utilities; two capsules on mobile. Preserve the site's
+moon-white/rose palette, pill controls, existing icons, top navigation and
+navigation behavior. This is a local implementation and acceptance record;
+production deployment is not included.
+
+Selected reference: `.codex_tmp/navigation-references-20261005/B-segmented.png`.
+Rendered evidence: `.codex_tmp/navigation-segmented-20261005/`. The in-app
+browser used disposable fixture accounts and content at
+http://127.0.0.1:4186/hub. Both themes were inspected at 1440 × 900 and
+390 × 844, density 1, without a device frame.
+
+## Visual comparison and repairs
+
+Reference and rendered navigation were placed together and inspected in
+`comparison-desktop.png` and `comparison-mobile.png`. The concept board was
+normalized by width for comparison; it is not a pixel-exact viewport reference.
+The implementation retains the site's 68px desktop header, 56px mobile
+capsules, typography and 44px utility targets. Mobile retains the small Explore
+label to identify the navigation entry. The page offsets and artwork are
+unchanged.
+
+- P2, resolved: the first implementation capped the search control and left
+  excessive empty space in the utility capsule. Search now fills its group.
+- P2, resolved: the English brand clipped in its capsule. Desktop tracks now
+  accommodate content; narrow layouts use the visible name “Tsukuyomi” with
+  the full brand retained in its accessible label. The 320px signed-in layout
+  fits all four utility targets without clipping the brand.
+- Final review: no unresolved P0, P1 or P2 findings within this navigation
+  scope. The earlier QA records below retain their original scopes.
+
+## Interaction and responsive acceptance
+
+Chinese layouts were checked at 320, 360, 390, 768, 860, 861, 1024, 1280 and
+1440px widths. Japanese was checked at the 861px desktop breakpoint; English
+was checked with the overseas frontend build, including signed-in 320px and
+1440px layouts. The header controls remained within the viewport.
+
+Exploration opened without changing header/main geometry or scroll position.
+Account menu, theme selection, notification entry, search-to-Gallery navigation
+and Room entry worked. Opening and closing search in Room preserved the
+unsent test draft, which was then cleared without submitting a chat. At 390px
+the Room controls remained below the header, with a 12px gap. Console inspection
+at the final rendered state returned no warnings or errors. Physical iOS
+keyboard behavior was not re-certified by this desktop-browser check.
+
+## Verification and delivery
+
+All 295 existing frontend tests passed. Domestic and overseas Vite builds
+passed; `git diff --check` passed. Logs are `frontend-tests.log`, `build.log`
+and `build-overseas.log` in the evidence directory. Final screenshots include
+`desktop-light.png`, `desktop-dark.png`, `mobile-light.png`, `mobile-dark.png`,
+`english-320.png`, `english-1440.png`, `desktop-861-japanese.png` and
+`room-mobile-light.png`. `preview-proof.png` shows the header with Hub context.
+
+No new artwork, dependencies or production services were added. The domestic
+local preview remains available; the temporary overseas fixture preview was
+stopped after acceptance.
+
+---
+
 # All-page Material refinement and dark-theme QA — 2026-10-04
 
 final result: passed

@@ -280,16 +280,16 @@ onUnmounted(() => {
     <div v-if="hasGlobalBackground" class="site-global-bg" aria-hidden="true"></div>
     <div v-if="showChrome && !isRoom && routeName !== 'game'" class="moon" aria-hidden="true"></div>
 
-    <header v-if="showChrome" class="topbar site-commandbar" data-material="header">
-      <a href="/hub" class="site-brand" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @click="navigate($event, { path: '/hub' })">
+    <header v-if="showChrome" class="topbar site-commandbar">
+      <a href="/hub" class="site-brand" data-material="header" :class="{ 'site-brand-english': lang === 'en' }" :aria-label="`${t.brand} ${currentPageLabel}`" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @click="navigate($event, { path: '/hub' })">
         <span class="site-brand-symbol"><img :src="brandLogo" alt="" width="38" height="38"></span>
-        <span><strong>{{ t.brand }}</strong><small>{{ currentPageLabel }}</small></span>
+        <span><strong>{{ lang === 'en' ? 'Tsukuyomi' : t.brand }}<span v-if="lang === 'en'" class="site-brand-suffix"> Space</span></strong><small>{{ currentPageLabel }}</small></span>
       </a>
-      <nav class="desktop-navigation" :aria-label="t.navigation">
+      <nav class="desktop-navigation" data-material="header" :aria-label="t.navigation">
         <a v-for="item in desktopItems" :key="item.key" :href="item.path" :aria-label="item.label" :aria-current="item.active ? 'page' : undefined" @pointerenter="warmRoutePath(item.path)" @focus="warmRoutePath(item.path)" @click="navigate($event, item)">{{ mobileNavLabel(item) }}</a>
         <button type="button" :class="{ active: exploreActive }" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" @click="openNavigation('explore', $event)">{{ copy.explore }}<TsIcon name="chevronDown" :size="14" /></button>
       </nav>
-      <div class="site-header-tools">
+      <div class="site-header-tools" data-material="header">
         <button class="site-search-trigger" type="button" :aria-label="copy.search" aria-haspopup="dialog" aria-controls="site-search" @click="openSearch"><TsIcon name="search" :size="19" /><span>{{ copy.search }}</span><kbd>⌘ K</kbd></button>
         <button v-if="showNotifications" class="site-tool-button" type="button" :aria-label="notificationsActionLabel" @click="$emit('go', '/notifications')"><NotificationBell :size="19" :unread="unreadNotifications > 0" /></button>
         <button class="site-tool-button site-theme-button" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="19" /></button>
