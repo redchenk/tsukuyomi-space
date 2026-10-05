@@ -297,7 +297,7 @@ onUnmounted(() => {
           <img v-if="isAuthed && user?.avatar" :src="user.avatar" alt="" width="28" height="28"><span v-else class="site-account-avatar"><TsIcon name="user" :size="18" /></span><span class="site-account-name">{{ isAuthed ? user?.nickname || user?.username || accountLabel : t.login }}</span><TsIcon name="chevronDown" :size="12" />
         </button>
         <button class="site-mobile-navigation-trigger" :class="{ active: moreActive }" type="button" :aria-label="copy.explore" :aria-expanded="navOpen && menuMode === 'explore'" aria-controls="site-navigation" aria-haspopup="dialog" @click="openNavigation('explore', $event)"><TsIcon name="menu" :size="19" /><span>{{ copy.explore }}</span></button>
-        <a class="site-room-cta" href="/room" :aria-label="copy.enterRoom" :aria-current="isRoom || routeName === 'roomSettings' ? 'page' : undefined" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })"><TsIcon name="moon" :size="17" /><span>{{ copy.enterRoom }}</span></a>
+        <a class="site-room-cta" href="/room" :aria-current="isRoom || routeName === 'roomSettings' ? 'page' : undefined" @pointerenter="warmRoutePath('/room')" @click="navigate($event, { path: '/room' })"><TsIcon name="moon" :size="17" /><span>{{ copy.enterRoom }}</span></a>
       </div>
     </header>
 

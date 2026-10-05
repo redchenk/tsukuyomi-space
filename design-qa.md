@@ -1,3 +1,27 @@
+# Restored desktop navigation QA — 2026-10-05
+
+final result: passed
+
+Scope: restore the previous B navigation layout at the user's request. Both
+`navigation.css` and `AppShell.vue` match commit `6afbbaf` exactly. The three
+desktop capsules again use the previous proportions rather than viewport
+centering or a shortened utility capsule. Palette, rounded controls and mobile
+navigation retain the previous implementation.
+
+Evidence: `.codex_tmp/navigation-restored-20261005/`. The previous rendered
+navigation and restored implementation were compared together in
+`comparison.png` at 1440 × 900 in the light theme with a signed-in fixture.
+Capsule positions and widths match; the avatar differs because the fixture
+uses its default account avatar. Light/dark desktop and 390px mobile screenshots
+were inspected. Responsive checks at 861, 1024, 1440 and 1920px desktop and
+390px mobile found no overlapping capsules or horizontal document overflow.
+
+The 63 existing navigation, brand and route tests and local frontend build
+passed. No browser console warnings or errors. No unresolved P0/P1/P2 findings
+within this restoration. Earlier QA records below retain their original scope.
+
+---
+
 # Centered desktop navigation QA — 2026-10-05
 
 final result: passed
