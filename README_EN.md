@@ -10,17 +10,17 @@ Tsukuyomi Space is a nonprofit fan community inspired by the world of *Cosmic Pr
 
 [Preview](#preview) · [Core experiences](#core-experiences) · [Quick start](#quick-start) · [Deployment and configuration](#deployment-and-configuration) · [Developer documentation](#developer-documentation) · [Support the project](#support-the-project)
 
-[![The redesigned Tsukuyomi Space home page, featuring its moonlit theme, Room entrance, and latest community creations](assets/images/readme/hub.jpg)](https://tsukuyomi-space.com/hub)
+[![The redesigned Tsukuyomi Space home page, featuring its sakura theme, Room entrance, and latest community creations](docs/images/preview/hub.jpg)](https://tsukuyomi-space.com/hub)
 
 ## Preview
 
-These screenshots were captured from the public Chinese site on **September 16, 2026**, at a 1440 × 960 desktop viewport while signed out. Community content, time, and weather scenes may change.
+These screenshots were captured from the public Chinese site on **October 5, 2026**, at a 1280 × 720 desktop viewport in the light theme while signed out. The Stage shows its featured view, and the Pixel Atelier displays the built-in Moonlit house example. Community content, time, and weather scenes may change.
 
 | Live2D AI Room | Stage · Articles and creations |
 | --- | --- |
-| [![Live2D AI Room](assets/images/readme/room.jpg)](https://tsukuyomi-space.com/room) | [![Stage article listing](assets/images/readme/stage.jpg)](https://tsukuyomi-space.com/stage) |
+| [![Live2D AI Room](docs/images/preview/room.jpg)](https://tsukuyomi-space.com/room) | [![Featured Stage articles](docs/images/preview/stage.jpg)](https://tsukuyomi-space.com/stage?sort=featured) |
 | **192 × 108 Pixel Atelier** | **Cosmic Princess Kaguya! Wiki** |
-| [![Pixel Atelier canvas and drawing tools](assets/images/readme/pixel.jpg)](https://tsukuyomi-space.com/pixel) | [![Cosmic Princess Kaguya! Wiki home page](assets/images/readme/wiki.jpg)](https://tsukuyomi-space.com/wiki) |
+| [![Pixel Atelier canvas and drawing tools](docs/images/preview/pixel.jpg)](https://tsukuyomi-space.com/pixel) | [![Cosmic Princess Kaguya! Wiki home page](docs/images/preview/wiki.jpg)](https://tsukuyomi-space.com/wiki) |
 
 ## Core experiences
 

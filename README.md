@@ -10,17 +10,17 @@
 
 [项目预览](#项目预览) · [核心体验](#核心体验) · [快速开始](#快速开始) · [部署与配置](#部署与配置) · [开发文档](#开发文档) · [支持项目](#支持项目)
 
-[![月读空间新版首页：月光主题、私人居所入口与月下新鲜事](assets/images/readme/hub.jpg)](https://yachiyo.hk/hub)
+[![月读空间新版首页：月白樱粉主题、私人居所入口与月下新鲜事](docs/images/preview/hub.jpg)](https://yachiyo.hk/hub)
 
 ## 项目预览
 
-以下截图采集于 **2026-09-16**，来自国内站公开页面，使用 1440 × 960 桌面视口、未登录状态。站点内容与时间、天气场景会持续变化。
+以下截图采集于 **2026-10-05**，来自国内站公开页面，使用 1280 × 720 桌面视口、浅色主题、未登录状态。主舞台展示精选视图，像素工坊展示内置的月光小屋示例；社区内容与时间、天气场景会持续变化。
 
 | Live2D AI 私人居所 | 主舞台 · 文章与创作 |
 | --- | --- |
-| [![Live2D AI 私人居所](assets/images/readme/room.jpg)](https://yachiyo.hk/room) | [![主舞台文章列表](assets/images/readme/stage.jpg)](https://yachiyo.hk/stage) |
+| [![Live2D AI 私人居所](docs/images/preview/room.jpg)](https://yachiyo.hk/room) | [![主舞台精选文章](docs/images/preview/stage.jpg)](https://yachiyo.hk/stage?sort=featured) |
 | **192 × 108 像素工坊** | **超时空辉夜姬 Wiki** |
-| [![像素工坊画布与绘画工具](assets/images/readme/pixel.jpg)](https://yachiyo.hk/pixel) | [![超时空辉夜姬百科首页](assets/images/readme/wiki.jpg)](https://yachiyo.hk/wiki) |
+| [![像素工坊画布与绘画工具](docs/images/preview/pixel.jpg)](https://yachiyo.hk/pixel) | [![超时空辉夜姬百科首页](docs/images/preview/wiki.jpg)](https://yachiyo.hk/wiki) |
 
 ## 核心体验
 
