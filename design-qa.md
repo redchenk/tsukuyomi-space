@@ -1,3 +1,43 @@
+# Centered desktop navigation QA — 2026-10-05
+
+final result: passed
+
+Scope: the user's refinement of B, centering the desktop navigation capsule
+in the viewport and shortening the utility capsule. The existing palette,
+68px desktop capsules, pill buttons and wide-screen brand width are retained.
+Equal side tracks center the navigation independently of account state; the
+utility group fits its content with a 180px search control that can shrink.
+
+Evidence: `.codex_tmp/navigation-centered-20261005/`. Source and rendered
+implementation were compared together in `comparison.png`, using the same
+1440 × 900 light-theme, signed-in fixture state. The source is the current B
+implementation plus the user's position/width instruction. The tool capsule
+changed from 651.66px to 478px; navigation changed from center x=521.66 to
+x=720. The left brand capsule remains 255px on this viewport. The full-view
+captures are `before-desktop-light.png`, `after-desktop-light.png` and
+`after-desktop-dark.png`.
+
+Chinese signed-in layout checks: 861, 940, 941, 1024, 1060, 1061, 1220, 1221,
+1280, 1440 and 1920px desktop widths. The center offset measured 0px at each
+width; no capsules overlapped or extended outside the viewport. The 390px
+mobile layout retained two capsules without horizontal overflow. The actual
+overseas frontend build was checked at 861, 941, 1061, 1221 and 1440px,
+plus 320px mobile: no overlap or overflow, desktop center rounding under
+0.004px. Measurements are saved in `responsive.json` and
+`responsive-english.json`.
+
+At narrower desktop widths the Room action uses its existing moon icon and
+an explicit accessible label. At 861–940px, theme selection remains available
+in the existing navigation/account menus. Opening Explore preserved header
+geometry, main geometry and scroll position. Theme switching and menu closure
+worked after the theme transition settled.
+
+The 52 navigation, brand and route tests passed, and domestic/overseas builds
+passed. No unresolved P0/P1/P2 findings within this scoped refinement. Earlier
+QA records remain below with their original scopes.
+
+---
+
 # Segmented global navigation QA — 2026-10-05
 
 final result: passed
