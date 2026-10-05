@@ -80,6 +80,11 @@ only a saved `dark` choice selects dark mode. A separate local origin opened
 in light mode; switching to dark and refreshing retained that preference.
 The full 295 frontend tests and 28 deployment-safety tests passed before
 packaging the authorized two-site release.
+Public acceptance also found that older overseas SEO cache documents retained
+their initial HTML theme. The existing shell attachment now copies only the
+validated theme from the current frontend entry while preserving language and
+cached public content. All 9 overseas HTML/cache tests and 8 translation
+security regressions passed; no translation model or dependency was added.
 
 No unresolved P0/P1/P2 findings within this scope. No backend, production
 authorization, media/runtime resources or server configuration was modified.

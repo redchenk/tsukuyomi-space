@@ -879,6 +879,9 @@ def attach_frontend(rendered: bytes) -> bytes:
         soup.body.append(app)
     if not soup.head or not soup.body or not base.head:
         raise ValueError("Missing frontend document")
+    if soup.html:
+        shell_theme = base.html.get("data-theme") if base.html else None
+        soup.html["data-theme"] = "dark" if shell_theme == "dark" else "light"
     def shell_asset(node):
         return ((node.name == "script" and node.get("type") != "application/ld+json")
             or (node.name == "link" and any(r in (node.get("rel") or []) for r in

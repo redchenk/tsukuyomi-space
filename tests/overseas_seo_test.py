@@ -75,6 +75,18 @@ class OverseasSeoTests(unittest.TestCase):
         self.assertIn(b'Public content', result)
         self.assertIn(b'<noscript>', result)
 
+    def test_cached_initial_theme_follows_shell_without_changing_language(self):
+        stale = self.document.replace(b'<html>', b'<html lang="en" data-theme="dark">')
+        self.write_shell('new-release')
+        result = self.service.cached_seo_payload(('text/html', stale))[2]
+        soup = BeautifulSoup(result, 'html.parser')
+        self.assertEqual(soup.html['data-theme'], 'light')
+        self.assertEqual(soup.html['lang'], 'en')
+        shell = self.folder / 'index.html'
+        shell.write_text(shell.read_text().replace('<html>', '<html data-theme="dark">'))
+        result = self.service.attach_frontend(stale)
+        self.assertEqual(BeautifulSoup(result, 'html.parser').html['data-theme'], 'dark')
+
     def test_fresh_and_stale_reads_never_wait_for_translation(self):
         with mock.patch.object(self.service.STORE, "get_document", return_value=("text/html", self.document)), mock.patch.object(self.service, "fetch_upstream") as fetch, mock.patch.object(self.service, "schedule_seo_refresh") as schedule:
             self.assertEqual(self.service.translated_seo("/pixel")[0], 200)
