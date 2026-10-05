@@ -23,7 +23,7 @@ const floating = ref(null);
 const current = ref(null);
 const visible = ref(false);
 const instant = ref(true);
-const previewKey = ref('stage');
+const previewKey = ref('wiki');
 const loadedGroups = ref(new Set());
 const geometry = ref({});
 const triggers = new Map();
@@ -37,8 +37,8 @@ let desktopQuery;
 
 const home = computed(() => props.items.find(item => item.key === 'hub'));
 const groups = computed(() => [
-  { key: 'discover', label: props.copy.menuLabels.discover, keys: ['stage', 'wiki', 'plaza', 'gallery'] },
-  { key: 'create', label: props.copy.menuLabels.create, keys: ['pixel', 'game'] },
+  { key: 'discover', label: props.copy.menuLabels.discover, keys: ['wiki', 'plaza', 'gallery', 'game'] },
+  { key: 'create', label: props.copy.menuLabels.create, keys: ['stage', 'pixel'] },
   { key: 'spaces', label: props.copy.menuLabels.spaces, keys: ['agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => props.items.find(item => item.key === key)).filter(Boolean) })));
 const artwork = { stage: studyArt, wiki: wikiArt, plaza: plazaArt, gallery: galleryArt, pixel: pixelArt, game: gameArt };

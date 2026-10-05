@@ -115,7 +115,7 @@ test('desktop hover, keyboard, rapid switches and resize do not leave stale menu
     // The very first keyboard opening must focus a route, even before the
     // first animation frame or after a close/open race.
     await discover.press('ArrowDown');
-    await expect(menu.getByRole('link', { name: /^主舞台/ })).toBeFocused();
+    await expect(menu.getByRole('link', { name: /^百科/ })).toBeFocused();
     await page.keyboard.press('Escape');
     await discover.hover();
     await expect(discover).toHaveAttribute('aria-expanded', 'true');
@@ -125,10 +125,10 @@ test('desktop hover, keyboard, rapid switches and resize do not leave stale menu
     await expect(menu).not.toBeVisible();
     await discover.focus();
     await discover.press('ArrowDown');
-    await expect(menu.getByRole('link', { name: /^主舞台/ })).toBeFocused();
-    await page.keyboard.press('Tab');
     await expect(menu.getByRole('link', { name: /^百科/ })).toBeFocused();
-    await expect(page.locator('.site-route-preview.is-active strong')).toHaveText('百科');
+    await page.keyboard.press('Tab');
+    await expect(menu.getByRole('link', { name: /^月读广场/ })).toBeFocused();
+    await expect(page.locator('.site-route-preview.is-active strong')).toHaveText('月读广场');
     await page.keyboard.press('Escape');
     await expect(discover).toBeFocused();
     await discover.press('Enter');

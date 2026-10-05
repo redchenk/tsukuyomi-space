@@ -152,8 +152,8 @@ const accountItems = computed(() => props.isAuthed ? [
 ]);
 const searchItems = computed(() => [...navItems.value.filter(item => item.key !== 'growth'), ...accountItems.value]);
 const exploreGroups = computed(() => [
-  { title: copy.value.discover, keys: ['wiki', 'gallery'] },
-  { title: copy.value.create, keys: ['pixel', 'game'] },
+  { title: copy.value.discover, keys: ['wiki', 'gallery', 'game'] },
+  { title: copy.value.create, keys: ['stage', 'pixel'] },
   { title: copy.value.spaces, keys: ['agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => navItems.value.find(item => item.key === key)).filter(Boolean) }))
   .filter(group => group.items.length));
