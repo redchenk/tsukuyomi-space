@@ -36,6 +36,77 @@
 .unified-navigation .desktop-navigation :is(a, button) { position: relative; display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 10px 12px; border: 0; border-radius: var(--ts-radius-button); background: transparent; color: var(--ts-muted); font: inherit; font-size: 13px; line-height: 1.4; white-space: nowrap; cursor: pointer; text-decoration: none; }
 .unified-navigation .desktop-navigation :is(a[aria-current], button.active, button[aria-expanded="true"]) { color: var(--ts-accent); background: var(--ts-accent-soft); }
 .unified-navigation .desktop-navigation a[aria-current]::after { content: ''; position: absolute; bottom: 1px; left: calc(50% - 8px); width: 16px; height: 2px; border-radius: 2px; background: var(--ts-accent); }
+.unified-navigation .desktop-navigation button > svg { transition: transform 300ms var(--ts-ease-lift); }
+.unified-navigation .desktop-navigation button[aria-expanded="true"] > svg { transform: rotate(180deg); }
+/* One anchored surface morphs between the three desktop disclosures. It lives
+   outside the layout and never takes ownership of the page's scrollbar. */
+.site-morph-menu {
+  --ts-text: var(--ts-editorial-ink); --ts-muted: var(--ts-editorial-muted); --ts-border: var(--ts-editorial-line);
+  --morph-ease: cubic-bezier(.22, 1, .36, 1);
+  position: fixed; z-index: 101; left: 0; top: var(--morph-top, 94px);
+  width: var(--morph-width, 650px); height: var(--morph-height, 348px);
+  transform: translateX(var(--morph-x, 24px)) translateY(-6px) scale(.98);
+  transform-origin: top left; opacity: 0; visibility: hidden; pointer-events: none;
+  overflow: hidden; isolation: isolate; border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius-lg, 24px); background: var(--ts-editorial-surface);
+  color: var(--ts-text); box-shadow: var(--ts-shadow-lg);
+  transition-property: transform, width, height, opacity, visibility;
+  transition-duration: 520ms, 520ms, 520ms, 200ms, 0ms !important;
+  transition-timing-function: var(--morph-ease);
+  transition-delay: 0ms, 0ms, 0ms, 0ms, 200ms;
+}
+.site-morph-menu.is-open { transform: translateX(var(--morph-x)) translateY(0) scale(1); opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0ms; }
+.site-morph-menu.is-instant { transition-property: opacity, transform, visibility; transition-duration: 200ms, 200ms, 0ms !important; }
+.site-morph-panel {
+  position: absolute; inset: 0 auto auto 0; opacity: 0; visibility: hidden; pointer-events: none;
+  max-height: calc(100dvh - var(--morph-top, 94px) - 16px); overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin;
+  transform: translateX(var(--panel-shift, 32px)); filter: blur(5px);
+  transition-property: opacity, transform, filter, visibility;
+  transition-duration: 240ms, 520ms, 340ms, 0ms !important;
+  transition-timing-function: var(--morph-ease);
+  transition-delay: 0ms, 0ms, 0ms, 240ms;
+}
+.site-morph-panel.is-active { opacity: 1; visibility: visible; pointer-events: auto; transform: none; filter: none; transition-delay: 40ms, 0ms, 20ms, 0ms; }
+.site-morph-menu.is-instant .site-morph-panel { transition: none; }
+.site-morph-panel.is-discover { display: grid; grid-template-columns: 252px 1fr; width: min(650px, calc(100vw - 48px)); min-height: 348px; }
+.site-discover-list { display: flex; flex-direction: column; gap: 3px; padding: 10px; }
+.site-discover-link { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 6px; min-height: 76px; padding: 14px; border-radius: var(--ts-radius-control); color: var(--ts-text); text-decoration: none; transition: background 200ms ease, color 200ms ease; }
+.site-discover-link strong { font-size: 14px; font-weight: 600; line-height: 1.5; }
+.site-discover-link span { font-size: 11px; line-height: 1.6; color: var(--ts-muted); }
+.site-discover-link:is(:hover, .is-preview, [aria-current]) { background: var(--ts-editorial-soft); color: var(--ts-accent); }
+.site-discover-visual { position: relative; min-width: 0; overflow: hidden; border-radius: 0 var(--ts-radius-lg) var(--ts-radius-lg) 0; background: var(--ts-editorial-soft); }
+.site-route-preview { position: absolute; inset: 0; opacity: 0; transform: scale(1.035); filter: blur(6px); transition: opacity 360ms var(--morph-ease), transform 520ms var(--morph-ease), filter 340ms var(--morph-ease); }
+.site-route-preview.is-active { opacity: 1; transform: none; filter: none; }
+.site-route-preview img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.site-route-preview-copy { position: absolute; inset: auto 14px 14px; padding: 16px; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-card); background: var(--ts-editorial-surface); }
+.site-route-preview-copy small { display: inline-block; margin-bottom: 9px; color: var(--ts-accent); font-size: 10px; letter-spacing: .12em; }
+.site-route-preview-copy strong { display: block; color: var(--ts-text); font-family: 'Songti SC', 'Noto Serif SC', Georgia, serif; font-size: 24px; font-weight: 600; line-height: 1.4; }
+.site-route-preview-copy p { margin: 6px 0 0; font-size: 11px; line-height: 1.7; color: var(--ts-muted); }
+.site-morph-panel.is-create { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; width: min(486px, calc(100vw - 48px)); padding: 9px; min-height: 300px; }
+.site-create-link { position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-card); background: var(--ts-editorial-soft); color: var(--ts-text); text-decoration: none; transition: background 200ms ease, border-color 200ms ease; }
+.site-create-link > img { width: 100%; height: 168px; object-fit: cover; }
+.site-create-link > div { display: grid; grid-template-columns: 20px 1fr; gap: 7px 8px; padding: 16px 12px; }
+.site-create-link strong { align-self: center; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.site-create-link span { grid-column: 1 / -1; color: var(--ts-muted); font-size: 11px; line-height: 1.6; }
+.site-create-link svg { color: var(--ts-accent); }
+.site-create-link > svg { position: absolute; top: 12px; right: 12px; padding: 7px; width: 30px; height: 30px; border-radius: var(--ts-radius-button); background: var(--ts-editorial-surface); }
+.site-create-link:is(:hover, [aria-current]) { border-color: var(--ts-accent); background: var(--ts-accent-soft); }
+.site-morph-panel.is-spaces { display: grid; width: min(320px, calc(100vw - 48px)); padding: 10px; gap: 3px; }
+.site-space-link { display: flex; align-items: center; gap: 11px; min-height: 62px; padding: 10px 12px; border-radius: var(--ts-radius-control); color: var(--ts-text); text-decoration: none; transition: background 200ms ease; }
+.site-space-icon { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: var(--ts-radius-control); background: var(--ts-accent-soft); color: var(--ts-accent); }
+.site-space-link > span:last-of-type { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.site-space-link strong { font-size: 13px; font-weight: 600; line-height: 1.5; }
+.site-space-link small { color: var(--ts-muted); font-size: 10px; line-height: 1.6; }
+.site-space-link > svg { flex: 0 0 auto; color: var(--ts-muted); }
+.site-space-link:is(:hover, [aria-current]) { background: var(--ts-editorial-soft); color: var(--ts-accent); }
+.site-morph-menu a:focus-visible { outline: 2px solid var(--ts-accent); outline-offset: -3px; }
+/* Limit blur work to short menu switches, and honor reduced-motion outright. */
+html[data-performance="reduced"] :is(.site-morph-panel, .site-route-preview) { filter: none; }
+@media (prefers-reduced-motion: reduce) {
+  .site-morph-menu, .site-morph-panel, .site-route-preview { transition: none !important; filter: none; }
+}
+@media (max-width: 860px) { .site-morph-menu { display: none; } }
 .site-header-tools { display: flex; align-items: center; justify-content: flex-end; gap: 4px; padding: 10px 12px; min-width: 0; }
 .site-mobile-navigation-trigger, .site-mobile-shortcuts { display: none; }
 .site-tool-button, .site-account-trigger, .site-search-trigger, .site-preference-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 8px; min-height: 44px; border: 1px solid transparent; border-radius: var(--ts-radius-button); background: transparent; color: var(--ts-text); font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; }

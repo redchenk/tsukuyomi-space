@@ -647,7 +647,8 @@ describe('platform material surfaces', () => {
         assert.match(appStyles, /materials\.css/);
         assert.doesNotMatch(shell, /class="site-rail"/);
         assert.match(shell, /class="site-brand" data-material="header"/);
-        assert.match(shell, /class="desktop-navigation" data-material="header"/);
+        assert.match(shell, /<SiteMorphNavigation/);
+        assert.match(source('src/frontend/components/SiteMorphNavigation.vue'), /class="desktop-navigation" data-material="header"/);
         assert.match(shell, /class="site-header-tools" data-material="header"/);
         assert.match(shell, /data-material="popover" role="dialog"/);
         assert.match(materials, /\[data-material="hud"\]/);

@@ -1,3 +1,92 @@
+# Morphing global navigation QA — 2026-10-05
+
+final result: passed
+
+## Scope and selected reference
+
+Implement the shared Discover / Create / Spaces dropdown from
+`/Users/yxy/Downloads/tsukuyomi-navbar-morph-preview.html` and the referenced
+conversation `6ac3586c-6510-83e9-8627-d0cf1c19ea78`. The user explicitly excluded
+the proposed viewport-centering change. The existing three desktop capsule
+proportions, colors, rounded controls, top navigation and mobile drawer remain.
+This record covers local fixtures; no production deployment is included.
+
+## Visual evidence
+
+Evidence directory: `.codex_tmp/navigation-morph-20261005/`. Reference and
+implementation were captured at 1440 × 900, density 1, in matching light and
+dark themes with the same expanded menu. The paired images were inspected:
+`comparison-discover.png`, `comparison-create.png`, `comparison-spaces.png`,
+`comparison-dark.png` and the 650 × 348 menu crops in `comparison-focused.png`.
+Mobile light captures were paired at 390 × 844 in
+`comparison-mobile-light.png`; implementation dark mobile was also inspected.
+
+- Layout: one fixed dropdown surface changes position and size between menus.
+  Discover keeps a left route list and right visual preview; Create has two
+  cards; Spaces is a compact link list. Header and underlying page geometry
+  remain unchanged when navigation, search or account menus open and close.
+- Typography and copy: existing site fonts, line heights, localized names and
+  useful route descriptions are retained. No placeholder account status or
+  fake destination is introduced.
+- Color and shape: existing surface, text, border and accent tokens are used
+  in both themes, with the site's panel, card and control radii. The reference's
+  centered header and placeholder page are intentionally outside this scope.
+- Images and icons: real existing site artwork and the current icon component
+  replace the reference's CSS illustrations and glyph placeholders. Artwork
+  crops were inspected for stretching, clipping and text contrast.
+- The reference shows unconditional Growth; the implementation preserves its
+  actual login requirement and includes the existing RSS destination. The
+  Spaces panel is slightly wider to accommodate actual localized content.
+  Keyboard-focus outlines in some evidence captures are intentional.
+
+## Findings resolved during implementation
+
+- P2: measuring a transformed first-open panel produced 637px instead of its
+  650px layout width and clipped content. Geometry now uses layout dimensions.
+- P2: first keyboard opening could focus a link before WebKit exposed the
+  transitioning panel. Focus waits for its actual entrance animations, then
+  checks that the opening request is still current before moving focus.
+- P2: the reference's hover followed by click immediately closed the menu.
+  The first click now pins a hovered menu; a subsequent click closes it.
+- Rapid switching uses a generation guard. Inactive panels are inert and
+  hidden from accessibility navigation; stale animation completion cannot
+  move focus into a previously selected panel.
+
+## Local acceptance
+
+Actual in-app browser checks passed for hover, click, keyboard opening,
+left/right group switching, Tab traversal, Escape focus return, route-preview
+focus, rapid switching, search/account handoff, theme switching and menu closure
+on navigation. RSS and Agent OS retain their native destinations. Menus do
+not scroll-lock the desktop page. Fresh-page inspection confirmed zero menu
+artwork images loaded before a group first opens.
+
+Chinese guest checks at 320, 360, 390, 860, 861, 1024, 1440 and 1920px found
+no header overlap or horizontal document overflow. Signed-in Chinese,
+Japanese and actual overseas English builds were checked at narrow desktop
+and mobile widths. Short desktop 1024 × 360 menus scroll internally; mobile
+740 × 390 drawer contents, including preferences, remain reachable. Mobile
+Gallery navigation works and releases the existing drawer scroll lock.
+Reduced-motion and low-performance styles retain usable menus without blur.
+Current domestic desktop and mobile browser logs showed no warnings or errors.
+
+The 80 navigation, route, brand and performance Node tests passed. Domestic
+and overseas frontend builds passed. Browser regression specifications were
+updated; the Playwright CLI suite was not run. Interactive acceptance used
+the in-app browser and disposable local fixture data instead.
+
+Release refinement: initial HTML explicitly declares the light theme, and
+only a saved `dark` choice selects dark mode. A separate local origin opened
+in light mode; switching to dark and refreshing retained that preference.
+The full 295 frontend tests and 28 deployment-safety tests passed before
+packaging the authorized two-site release.
+
+No unresolved P0/P1/P2 findings within this scope. No backend, production
+authorization, media/runtime resources or server configuration was modified.
+Earlier QA records below retain their original scope.
+
+---
+
 # Restored desktop navigation QA — 2026-10-05
 
 final result: passed

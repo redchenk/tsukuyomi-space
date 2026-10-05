@@ -61,6 +61,99 @@ test('signed-in Japanese navigation fits a narrow desktop and keeps account acti
     await expect(page.getByRole('button', { name: /通知、未読/ })).toBeVisible();
 });
 
+test('desktop menus morph in one surface without moving the page and hand off to search', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.goto('/hub');
+    await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+    await page.evaluate(() => document.fonts.ready);
+    await page.locator('main').evaluate(el => Promise.all(el.getAnimations().map(a => a.finished.catch(() => {}))));
+    const geometry = () => page.evaluate(() => ({
+        scrollY: window.scrollY,
+        header: document.querySelector('.site-commandbar').getBoundingClientRect().toJSON(),
+        hero: document.querySelector('.hub-hero-panel').getBoundingClientRect().toJSON()
+    }));
+    const before = await geometry();
+    const menu = page.locator('#site-morph-navigation');
+    const shapes = [];
+    for (const [key, label] of [['discover', '发现'], ['create', '创作'], ['spaces', '空间']]) {
+        await page.locator('.desktop-navigation').getByRole('button', { name: label, exact: true }).click();
+        await expect(page.locator(`#site-panel-${key}`)).toHaveAttribute('aria-hidden', 'false');
+        await menu.evaluate(el => Promise.all(el.getAnimations().map(a => a.finished.catch(() => {}))));
+        shapes.push(await menu.boundingBox());
+        expect(await geometry()).toEqual(before);
+        await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+        await expect(page.locator('.site-morph-menu')).toHaveCount(1);
+    }
+    expect(shapes[0].width).toBeGreaterThan(shapes[1].width);
+    expect(shapes[1].width).toBeGreaterThan(shapes[2].width);
+    const rss = menu.getByRole('link', { name: /^RSS/ });
+    await expect(rss).toHaveAttribute('href', '/rss.xml');
+    await page.keyboard.press('Control+k');
+    await expect(menu).not.toBeVisible();
+    const search = page.getByRole('dialog', { name: '想找些什么？' });
+    await expect(search.getByRole('searchbox')).toBeFocused();
+    expect(await geometry()).toEqual(before);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+    const account = page.getByRole('button', { name: '账号菜单', exact: true });
+    await account.click();
+    await expect(page.locator('#site-navigation')).toBeVisible();
+    expect(await geometry()).toEqual(before);
+    await page.keyboard.press('Escape');
+    await expect(account).toBeFocused();
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+});
+
+test('desktop hover, keyboard, rapid switches and resize do not leave stale menus or focus', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 720 });
+    await page.goto('/stage');
+    const discover = page.locator('#site-nav-discover');
+    const create = page.locator('#site-nav-create');
+    const spaces = page.locator('#site-nav-spaces');
+    const menu = page.locator('#site-morph-navigation');
+    // The very first keyboard opening must focus a route, even before the
+    // first animation frame or after a close/open race.
+    await discover.press('ArrowDown');
+    await expect(menu.getByRole('link', { name: /^主舞台/ })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await discover.hover();
+    await expect(discover).toHaveAttribute('aria-expanded', 'true');
+    await create.hover();
+    await expect(create).toHaveAttribute('aria-expanded', 'true');
+    await page.mouse.move(2, 450);
+    await expect(menu).not.toBeVisible();
+    await discover.focus();
+    await discover.press('ArrowDown');
+    await expect(menu.getByRole('link', { name: /^主舞台/ })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(menu.getByRole('link', { name: /^百科/ })).toBeFocused();
+    await expect(page.locator('.site-route-preview.is-active strong')).toHaveText('百科');
+    await page.keyboard.press('Escape');
+    await expect(discover).toBeFocused();
+    await discover.press('Enter');
+    await discover.press('ArrowRight');
+    await expect(create).toBeFocused();
+    await expect(create).toHaveAttribute('aria-expanded', 'true');
+    await create.press('ArrowRight');
+    await expect(spaces).toHaveAttribute('aria-expanded', 'true');
+    await spaces.press('ArrowRight');
+    await expect(discover).toHaveAttribute('aria-expanded', 'true');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(menu).not.toBeVisible();
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+    await page.locator('.site-mobile-navigation-trigger').click();
+    await expect(page.locator('#site-navigation').getByRole('link', { name: /^图库/ })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 1024, height: 720 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await discover.press('ArrowDown');
+    expect(await menu.evaluate(el => el.getAnimations().length)).toBe(0);
+    await menu.getByRole('link', { name: /^图库/ }).click();
+    await expect(page).toHaveURL(/\/gallery$/);
+    await expect(menu).not.toBeVisible();
+});
+
 for (const width of [360, 390, 860, 1024, 1440]) {
     test(`navigation and Room controls fit ${width}px without a duplicate global rail`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 });
@@ -78,9 +171,9 @@ for (const width of [360, 390, 860, 1024, 1440]) {
             await expect(page.locator('.site-mobile-navigation-trigger')).toBeVisible();
             await page.locator('.site-mobile-navigation-trigger').click();
         } else {
-            await page.locator('.desktop-navigation').getByRole('button', { name: '探索' }).click();
+            await page.locator('.desktop-navigation').getByRole('button', { name: '空间', exact: true }).click();
         }
-        const menu = page.locator('#site-navigation');
+        const menu = page.locator(width <= 860 ? '#site-navigation' : '#site-morph-navigation');
         await expect(menu.getByRole('link', { name: /^友情链接/ })).toBeVisible();
         await expect(menu.getByRole('link', { name: /^Agent OS/ })).toHaveAttribute('href', '/agent-os');
         await page.keyboard.press('Escape');
@@ -117,6 +210,7 @@ for (const width of [390, 1280]) {
         }
     });
 
+    if (width > 860) continue; // Desktop disclosures have their own nonmodal morph acceptance below.
     test(`menu motion preserves focus, scroll and search handoff at ${width}px`, async ({ page, browserName }) => {
         await page.setViewportSize({ width, height: 844 });
         await page.emulateMedia({ reducedMotion: 'no-preference' });

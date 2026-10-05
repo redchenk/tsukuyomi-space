@@ -72,11 +72,12 @@ test('navigation fits a landscape viewport and releases the page on desktop resi
     await page.setViewportSize({ width: 1280, height: 600 });
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
-    await page.locator('.desktop-navigation').getByRole('button', { name: '探索' }).click();
-    const agentLink = dialog.getByRole('link', { name: /^Agent OS/ });
+    await page.locator('.desktop-navigation').getByRole('button', { name: '空间', exact: true }).click();
+    const agentLink = page.locator('#site-morph-navigation').getByRole('link', { name: /^Agent OS/ });
     await agentLink.focus();
     await expect(agentLink).toBeInViewport();
     await page.keyboard.press('Escape');
+    await expect(page.locator('#site-morph-navigation')).not.toBeVisible();
     await expect(dialog).not.toBeVisible();
 });
 
