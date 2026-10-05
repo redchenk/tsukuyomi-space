@@ -1,3 +1,45 @@
+# Navigation preview artwork QA — 2026-10-05
+
+final result: passed
+
+## Scope and mapping
+
+Replace only the artwork in the existing global navigation previews with the
+five supplied images. Pixel uses the seaside pixel workbench; Plaza uses the
+friends gathering; Gallery uses the Yachiyo portrait; Kaguya Run uses the
+outstretched-hand invitation; Stage and Wiki share the star-map study, matching
+writing and knowledge. Existing navigation position, transitions, route links,
+fonts, copy, colors and rounded controls remain unchanged.
+
+## Visual verification
+
+Evidence: `.codex_tmp/navigation-art-20261005/`. Full browser screenshots were
+captured at 1280 × 720. `comparison-all-five.png` pairs the supplied raster
+artwork, normalized to the actual CSS cover dimensions, with crops from the
+rendered browser screenshots. Both sides were inspected together. The
+398 × 348 Discover previews preserve faces and the study/gathering context;
+Create previews retain the painting tools and invitation's motion. No image
+stretching, broken images or inappropriate functional mapping was found.
+`create-dark.png` and `gallery-dark.png` were also inspected. Existing light
+and dark text surfaces remain readable over the new artwork.
+
+## Local acceptance
+
+- Production frontend build passed.
+- 80 navigation, route, brand-asset and performance regressions passed.
+- Opening Discover, keyboard focus through Stage / Wiki / Plaza / Gallery,
+  switching to Create, and theme switching were tested in the real browser.
+- All six image-bearing destinations load the intended hashed WebP assets.
+  Stage and Wiki share one asset. No preview image exists in the initial
+  closed menu DOM; the existing grouped lazy loading remains in use.
+- Browser warnings/errors: none observed during these checks.
+- Five compressed assets total 1,018,214 bytes, 91.8% smaller than the supplied
+  PNGs. Originals remain untouched; other site artwork remains in use.
+
+No outstanding P0/P1/P2 findings in this asset-only scope.
+
+---
+
 # Morphing global navigation QA — 2026-10-05
 
 final result: passed
