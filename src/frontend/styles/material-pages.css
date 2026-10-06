@@ -40,7 +40,7 @@
     background: var(--ts-state-hover);
     border-color: color-mix(in srgb, var(--ts-accent) 40%, var(--ts-editorial-line));
   }
-  .notifications-count { background: var(--ts-color-rose-600); box-shadow: none; }
+  .notifications-count { background: var(--ts-unified-primary-bg); box-shadow: none; }
   .notification-tools .compact { min-height: var(--ts-control-height-small); }
   body .page .uc-tabs .tab-btn { box-shadow: none; transform: none; }
   body .page .profile-hero::before { content: none; }
@@ -57,7 +57,7 @@
   }
   .attachments-upload-progress-head strong { color: var(--ts-accent); }
   .attachments-upload-progress-track { background: var(--ts-editorial-soft); }
-  .attachments-upload-progress-track span { background: var(--ts-color-rose-600); }
+  .attachments-upload-progress-track span { background: var(--ts-unified-primary-bg); }
 
   /* Dense management and writing controls use smaller inner shapes. */
   .admin-tabs { padding: 8px; gap: 8px; }
@@ -80,7 +80,7 @@
     background: var(--ts-accent-soft); color: var(--ts-accent); border-radius: var(--ts-radius-control);
   }
   .growth-progress-line { background: var(--ts-editorial-soft); }
-  .growth-progress-line span { background: var(--ts-color-rose-600); }
+  .growth-progress-line span { background: var(--ts-unified-primary-bg); }
   .growth-page :is(.growth-streaks div, .growth-event, .growth-level-step) { border-color: var(--ts-editorial-line); }
   .growth-page .growth-level-step.current { background: var(--ts-accent-soft); border-color: var(--ts-accent); }
   .growth-page :is(.growth-task, .growth-room-button):hover:not(:disabled) {

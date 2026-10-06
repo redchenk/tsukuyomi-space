@@ -1,9 +1,116 @@
-/* Seasonal art only: no palette, geometry, typography or component overrides. */
+/* Seasonal colors reuse the existing semantic tokens. No new rendering layers,
+   component geometry, animations, requests or JavaScript work. Spring inherits
+   the original Sakura palette; status colors and user artwork keep their meaning. */
+html[data-season="summer"] {
+  --ts-editorial-bg: #f3f8fa;
+  --ts-editorial-surface: #fcfeff;
+  --ts-editorial-low: #f4f8fb;
+  --ts-editorial-soft: #e7f0f5;
+  --ts-editorial-ink: #203443;
+  --ts-editorial-muted: #526b7a;
+  --ts-editorial-line: #d4e2e9;
+  --ts-season-accent: #28647d;
+  --ts-season-accent-soft: #e0edf4;
+  --ts-season-primary: #28647d;
+  --ts-season-primary-hover: #1e5269;
+  --ts-season-secondary: #377781;
+  --ts-season-wash: 243 248 250;
+}
+html[data-season="summer"][data-theme="dark"] {
+  --ts-editorial-bg: #111c25;
+  --ts-editorial-surface: #1c2b36;
+  --ts-editorial-low: #16242e;
+  --ts-editorial-soft: #263946;
+  --ts-editorial-ink: #e5f1f7;
+  --ts-editorial-muted: #abc1ce;
+  --ts-editorial-line: #3a5263;
+  --ts-season-accent: #a0cde2;
+  --ts-season-accent-soft: #263f50;
+  --ts-season-primary: #316b86;
+  --ts-season-primary-hover: #255b75;
+  --ts-season-secondary: #9ad4d9;
+  --ts-season-wash: 17 28 37;
+}
+html[data-season="autumn"] {
+  --ts-editorial-bg: #fbf7f1;
+  --ts-editorial-surface: #fffdf9;
+  --ts-editorial-low: #faf6ef;
+  --ts-editorial-soft: #f3eade;
+  --ts-editorial-ink: #43332a;
+  --ts-editorial-muted: #776555;
+  --ts-editorial-line: #e8dccc;
+  --ts-season-accent: #97562b;
+  --ts-season-accent-soft: #f5e7d8;
+  --ts-season-primary: #97562b;
+  --ts-season-primary-hover: #804720;
+  --ts-season-secondary: #627258;
+  --ts-season-wash: 251 247 241;
+}
+html[data-season="autumn"][data-theme="dark"] {
+  --ts-editorial-bg: #211b17;
+  --ts-editorial-surface: #302721;
+  --ts-editorial-low: #27201b;
+  --ts-editorial-soft: #40342a;
+  --ts-editorial-ink: #f6ebdc;
+  --ts-editorial-muted: #cfbca5;
+  --ts-editorial-line: #594839;
+  --ts-season-accent: #e5b481;
+  --ts-season-accent-soft: #493425;
+  --ts-season-primary: #9d602f;
+  --ts-season-primary-hover: #885025;
+  --ts-season-secondary: #b7c8a8;
+  --ts-season-wash: 33 27 23;
+}
+html[data-season="winter"] {
+  --ts-editorial-bg: #f5f8fc;
+  --ts-editorial-surface: #fdfeff;
+  --ts-editorial-low: #f2f6fb;
+  --ts-editorial-soft: #e8edf6;
+  --ts-editorial-ink: #2a3550;
+  --ts-editorial-muted: #586a84;
+  --ts-editorial-line: #d8e1ee;
+  --ts-season-accent: #46628d;
+  --ts-season-accent-soft: #e5ecf8;
+  --ts-season-primary: #46628d;
+  --ts-season-primary-hover: #354f78;
+  --ts-season-secondary: #487487;
+  --ts-season-wash: 245 248 252;
+}
+html[data-season="winter"][data-theme="dark"] {
+  --ts-editorial-bg: #151c2c;
+  --ts-editorial-surface: #222c40;
+  --ts-editorial-low: #1b2435;
+  --ts-editorial-soft: #2d3950;
+  --ts-editorial-ink: #eaf0ff;
+  --ts-editorial-muted: #b2bfd8;
+  --ts-editorial-line: #41516d;
+  --ts-season-accent: #b4c9f4;
+  --ts-season-accent-soft: #2c3c59;
+  --ts-season-primary: #4f6897;
+  --ts-season-primary-hover: #405784;
+  --ts-season-secondary: #a6cede;
+  --ts-season-wash: 21 28 44;
+}
 html:is([data-season="summer"], [data-season="autumn"], [data-season="winter"]) {
-  --ts-site-background: linear-gradient(90deg, rgb(247 249 252 / 20%), rgb(247 249 252 / 82%) 24%, rgb(247 249 252 / 92%) 50%, rgb(247 249 252 / 82%) 76%, rgb(247 249 252 / 20%)), var(--ts-season-background-light) center / cover no-repeat;
+  --ts-accent: var(--ts-season-accent);
+  --ts-accent-2: var(--ts-season-accent);
+  --ts-accent-soft: var(--ts-season-accent-soft);
+  --ts-cyan: var(--ts-season-secondary);
+  --ts-gradient-brand: var(--ts-season-primary);
+  --ts-gradient-brand-hover: var(--ts-season-primary-hover);
+  --ts-unified-primary-bg: var(--ts-season-primary);
+  --ts-unified-primary-bg-hover: var(--ts-season-primary-hover);
+  --ts-unified-primary-text: #ffffff;
+  --pink-strong: var(--ts-season-primary);
+  --ts-glow-accent: 0 0 0 1px color-mix(in srgb, var(--ts-accent) 20%, transparent);
+}
+
+/* Keep the existing background wash, matched to each season's surface tint. */
+html:is([data-season="summer"], [data-season="autumn"], [data-season="winter"]) {
+  --ts-site-background: linear-gradient(90deg, rgb(var(--ts-season-wash) / 20%), rgb(var(--ts-season-wash) / 82%) 24%, rgb(var(--ts-season-wash) / 92%) 50%, rgb(var(--ts-season-wash) / 82%) 76%, rgb(var(--ts-season-wash) / 20%)), var(--ts-season-background-light) center / cover no-repeat;
 }
 html:is([data-season="summer"], [data-season="autumn"], [data-season="winter"])[data-theme="dark"] {
-  --ts-site-background: linear-gradient(90deg, rgb(21 25 35 / 84%), rgb(21 25 35 / 94%) 28%, rgb(21 25 35 / 94%) 72%, rgb(21 25 35 / 84%)), var(--ts-season-background-dark) center / cover no-repeat;
+  --ts-site-background: linear-gradient(90deg, rgb(var(--ts-season-wash) / 84%), rgb(var(--ts-season-wash) / 94%) 28%, rgb(var(--ts-season-wash) / 94%) 72%, rgb(var(--ts-season-wash) / 84%)), var(--ts-season-background-dark) center / cover no-repeat;
 }
 html:is([data-season="summer"], [data-season="autumn"], [data-season="winter"]) .hub .hub-character img { object-position: 72% top; }
 @media (max-width: 600px) {

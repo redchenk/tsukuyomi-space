@@ -87,3 +87,59 @@ test('scheduled checks sleep until local midnight and respect daylight saving', 
   const delay = Number(execFileSync(process.execPath, ['--input-type=module', '-e', `import {nextSeasonCheckDelay} from '${moduleUrl}'; process.stdout.write(String(nextSeasonCheckDelay(new Date(2026, 2, 8))));`], { env: { ...process.env, TZ: 'America/New_York' }, encoding: 'utf8' }));
   assert.equal(delay, 23 * 3600000);
 });
+
+test('every seasonal light and dark palette keeps text, actions and status labels readable', () => {
+  const readCss = path => readFileSync(new URL(path, import.meta.url), 'utf8');
+  function declarations(css, selector) {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const block = css.match(new RegExp(`${escaped}\\s*\\{([^}]+)\\}`));
+    assert.ok(block, `Missing palette: ${selector}`);
+    return Object.fromEntries([...block[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(match => [match[1], match[2].trim()]));
+  }
+  const tokens = declarations(readCss('../src/frontend/styles/tokens.css'), ':root');
+  const editorial = readCss('../src/frontend/styles/editorial.css');
+  const seasons = readCss('../src/frontend/styles/seasons.css');
+  const light = { ...tokens, ...declarations(editorial, ':root') };
+  const dark = { ...light, ...declarations(editorial, 'html[data-theme="dark"]') };
+  function resolve(palette, key) {
+    const value = palette[key];
+    assert.ok(value, `Missing color: ${key}`);
+    const reference = value.match(/^var\((--[\w-]+)\)$/);
+    return reference ? resolve(palette, reference[1]) : value;
+  }
+  function luminance(hex) {
+    assert.match(hex, /^#[\da-f]{6}$/i);
+    const rgb = [1, 3, 5].map(index => parseInt(hex.slice(index, index + 2), 16) / 255);
+    const linear = rgb.map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+    return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+  }
+  function readable(foreground, background, label) {
+    const values = [luminance(foreground), luminance(background)].sort((a, b) => a - b);
+    const contrast = (values[1] + 0.05) / (values[0] + 0.05);
+    assert.ok(contrast >= 4.5, `${label}: ${contrast.toFixed(2)}:1`);
+  }
+  for (const season of AVAILABLE_SEASONS) {
+    for (const mode of ['light', 'dark']) {
+      const base = mode === 'dark' ? dark : light;
+      const palette = season === 'spring' ? base : {
+        ...base,
+        ...declarations(seasons, `html[data-season="${season}"]`),
+        ...(mode === 'dark' ? declarations(seasons, `html[data-season="${season}"][data-theme="dark"]`) : {})
+      };
+      const label = `${season}/${mode}`;
+      for (const surface of ['bg', 'surface', 'low', 'soft']) {
+        const background = resolve(palette, `--ts-editorial-${surface}`);
+        for (const foreground of ['--ts-editorial-ink', '--ts-editorial-muted', '--ts-status-success', '--ts-status-warning', '--ts-status-danger']) {
+          readable(resolve(palette, foreground), background, `${label}: ${foreground} on ${surface}`);
+        }
+      }
+      const accent = resolve(palette, season === 'spring' ? '--ts-accent' : '--ts-season-accent');
+      const soft = resolve(palette, season === 'spring' ? '--ts-accent-soft' : '--ts-season-accent-soft');
+      readable(accent, soft, `${label}: selected text`);
+      readable(accent, resolve(palette, '--ts-editorial-surface'), `${label}: links`);
+      for (const primary of (season === 'spring' ? ['--ts-gradient-brand', '--ts-gradient-brand-hover'] : ['--ts-season-primary', '--ts-season-primary-hover'])) {
+        readable('#ffffff', resolve(palette, primary), `${label}: filled action ${primary}`);
+      }
+    }
+  }
+});
