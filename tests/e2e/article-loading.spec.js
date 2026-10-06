@@ -29,7 +29,9 @@ test('long article is readable while comments, levels and private status request
     for (const pattern of routes) await page.route(pattern, async route => {
         seen.add(pattern);
         await pending.promise;
-        await route.fulfill({ json: { success: true, data: pattern === routes[2] ? { count: 4, liked: true, bookmarked: true } : [] } }).catch(() => {});
+        const data = pattern === routes[2] ? { count: 4, liked: true, bookmarked: true }
+            : pattern === levels ? [{ userId: 'e2e-user-001', level: 8 }] : [];
+        await route.fulfill({ json: { success: true, data } }).catch(() => {});
     });
     await reader(page);
     try {
@@ -41,6 +43,7 @@ test('long article is readable while comments, levels and private status request
         await expect(page.locator('.article-content code')).toContainText('const ready = true;');
         await expect(page.locator('.article-content .footnotes')).toContainText('文末说明');
         await expect(page.locator('.article-meta')).toContainText(/约 \d+ 分钟/);
+        await expect(page.locator('.article-meta .user-level-badge')).toHaveCount(0);
         await expect(page.locator('#article-comments')).toHaveAttribute('aria-busy', 'true');
         await expect(page.locator('.article-like-btn')).toBeDisabled();
         await expect(page.getByRole('button', { name: /^收藏/ })).toBeDisabled();
@@ -50,6 +53,7 @@ test('long article is readable while comments, levels and private status request
     await expect(page.locator('.article-like-btn')).toBeEnabled();
     await expect(page.locator('.article-like-btn')).toContainText('已点赞 4');
     await expect(page.getByRole('button', { name: /^已收藏/ })).toBeEnabled();
+    await expect(page.locator('.article-meta .user-level-badge')).toHaveAttribute('data-level', '8');
 });
 
 test('delayed comments still reveal the exact notification reply after the article appears', async ({ page }) => {

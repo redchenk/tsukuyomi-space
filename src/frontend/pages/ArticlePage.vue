@@ -552,7 +552,7 @@ watch(() => route.hash, revealCommentHash);
               :href="`/users/${encodeURIComponent(article.author_username || 'admin')}`"
               @click.prevent="goProfile(article.author_username || 'admin')"
             >{{ article.author_nickname || article.author_username || 'admin' }}</a>
-            <UserLevelBadge v-if="article.author_id" :level="userLevel(article.author_id)" :lang="lang" compact />
+            <UserLevelBadge v-if="userLevel(article.author_id)" :level="userLevel(article.author_id)" :lang="lang" compact />
             <span>{{ articleReadingTime }}</span>
             <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} {{ readerCopy.views }}</span>
           </div>
@@ -637,7 +637,7 @@ watch(() => route.hash, revealCommentHash);
                     <span v-else>{{ commentInitial(comment) }}</span>
                   </span>
                   <span class="comment-author-name">{{ commentAuthorName(comment) }}</span>
-                  <UserLevelBadge v-if="comment.user_id" :level="userLevel(comment.user_id)" :lang="lang" compact :show-title="false" />
+                  <UserLevelBadge v-if="userLevel(comment.user_id)" :level="userLevel(comment.user_id)" :lang="lang" compact :show-title="false" />
                 </button>
                 <span class="comment-time">{{ formatDate(comment.created_at) }}</span>
               </div>
@@ -673,7 +673,7 @@ watch(() => route.hash, revealCommentHash);
                         <span v-else>{{ commentInitial(reply) }}</span>
                       </span>
                       <span class="comment-author-name">{{ commentAuthorName(reply) }}</span>
-                      <UserLevelBadge v-if="reply.user_id" :level="userLevel(reply.user_id)" :lang="lang" compact :show-title="false" />
+                      <UserLevelBadge v-if="userLevel(reply.user_id)" :level="userLevel(reply.user_id)" :lang="lang" compact :show-title="false" />
                     </button>
                     <span class="comment-time">{{ formatDate(reply.created_at) }}</span>
                   </div>
