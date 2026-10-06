@@ -1,0 +1,11 @@
+/* Seasonal art only: no palette, geometry, typography or component overrides. */
+html:is([data-season="summer"], [data-season="autumn"], [data-season="winter"]) {
+  --ts-site-background: linear-gradient(90deg, rgb(247 249 252 / 20%), rgb(247 249 252 / 82%) 24%, rgb(247 249 252 / 92%) 50%, rgb(247 249 252 / 82%) 76%, rgb(247 249 252 / 20%)), var(--ts-season-background-light) center / cover no-repeat;
+}
+html:is([data-season="summer"], [data-season="autumn"], [data-season="winter"])[data-theme="dark"] {
+  --ts-site-background: linear-gradient(90deg, rgb(21 25 35 / 84%), rgb(21 25 35 / 94%) 28%, rgb(21 25 35 / 94%) 72%, rgb(21 25 35 / 84%)), var(--ts-season-background-dark) center / cover no-repeat;
+}
+html:is([data-season="summer"], [data-season="autumn"], [data-season="winter"]) .hub .hub-character img { object-position: 72% top; }
+@media (max-width: 600px) {
+  html:is([data-season="summer"], [data-season="autumn"], [data-season="winter"]) .hub .hub-character img { object-position: 75% center; }
+}

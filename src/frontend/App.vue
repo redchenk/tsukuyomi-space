@@ -4,6 +4,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
 import { documentLanguage, i18n, normalizeLanguage } from './i18n';
 import AppShell from './layouts/AppShell.vue';
+import { startSeasonTracking } from './composables/useSeasonTheme';
 import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
 import { isAuthPath, withAuthRedirect } from './utils/authRedirect';
@@ -24,6 +25,7 @@ const router = useRouter();
 const forcedLanguage = forcedSiteLanguage();
 const lang = ref(forcedLanguage || normalizeLanguage(localStorage.getItem('lang')));
 const theme = ref(localStorage.getItem('tsukuyomi_theme') === 'dark' ? 'dark' : 'light');
+let stopSeasonTracking;
 const user = ref(null);
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const routeLoadingLabel = computed(() => lang.value === 'ja'
@@ -363,6 +365,7 @@ router.isReady().then(() => {
 });
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
+  stopSeasonTracking = startSeasonTracking();
   removeRouteLinks = installRouteLinks({ router, navigate: go, prefetch: warmRoutePath });
   removeRouteProgressGuard = router.beforeEach((to, from) => scheduleRouteProgress(to, from));
   removeRouteProgressHook = router.afterEach((to, from, failure) => {
@@ -377,6 +380,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  stopSeasonTracking?.();
   if (typeof window === 'undefined') return;
   window.clearTimeout(routeProgressTimer);
   cancelPetWarmup?.();

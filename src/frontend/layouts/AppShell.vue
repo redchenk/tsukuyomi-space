@@ -6,6 +6,7 @@ import NotificationBell from '../components/NotificationBell.vue';
 import SiteMusicDrawer from '../components/SiteMusicDrawer.vue';
 import TsIcon from '../components/TsIcon.vue';
 import SiteMorphNavigation from '../components/SiteMorphNavigation.vue';
+import SeasonThemePicker from '../components/SeasonThemePicker.vue';
 import brandLogo from '../assets/sakura/sakura-moon-logo.webp';
 import { alternateLanguage } from '../i18n';
 import { navigationCopy } from '../services/siteNavigation';
@@ -198,7 +199,7 @@ function closeNavigationOnBackdrop(event) {
 }
 
 function cycleNavigationFocus(event) {
-  const controls = [...navigationRef.value.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled)')].filter((node) => node.getClientRects().length);
+  const controls = [...navigationRef.value.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), summary')].filter((node) => node.getClientRects().length);
   const target = event.shiftKey ? controls.at(-1) : controls[0];
   if (document.activeElement === (event.shiftKey ? controls[0] : controls.at(-1))) {
     event.preventDefault();
@@ -328,6 +329,7 @@ onUnmounted(() => {
         <button class="site-preference-button" type="button" :aria-label="themeLabel" @click="$emit('toggle-theme', $event)"><TsIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" /><span>{{ theme === 'dark' ? t.lightTheme : t.darkTheme }}</span></button>
         <button v-if="lang !== 'en'" class="site-preference-button" type="button" :aria-label="lang === 'zh' ? '日本語' : '中文'" @click="$emit('set-lang', alternateLanguage(lang))"><TsIcon name="languages" :size="18" /><span>{{ lang === 'zh' ? '日本語' : '中文' }}</span></button>
         <button v-if="menuMode === 'explore'" class="site-preference-button site-menu-account" type="button" @click="menuMode = 'account'"><TsIcon name="user" :size="18" /><span>{{ accountLabel }}</span></button>
+        <SeasonThemePicker :lang="lang" />
       </div>
     </dialog>
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="$emit('go', $event)" />

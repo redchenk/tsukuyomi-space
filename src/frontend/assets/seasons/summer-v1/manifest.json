@@ -1,0 +1,84 @@
+{
+  "theme": "summer",
+  "version": 1,
+  "display_name": "夏夜花火",
+  "status": "validated",
+  "generator": "built-in imagegen",
+  "assets": [
+    {
+      "name": "hero-cutout",
+      "webp": "hero-cutout.webp",
+      "width": 1536,
+      "height": 1024,
+      "alpha": true,
+      "png_bytes": 2331766,
+      "webp_bytes": 1265590,
+      "sha256": "8b3d7966745d6ac0adbee4c7095e6163e5a8315e2d114b7a5f0bea34fbe5700e"
+    },
+    {
+      "name": "background-light",
+      "webp": "background-light.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "png_bytes": 2669950,
+      "webp_bytes": 408622,
+      "sha256": "eeefd801a21e2c882f13bb2a3f8bb101de8b507298f3823f86851a95f37ee93f"
+    },
+    {
+      "name": "background-dark",
+      "webp": "background-dark.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "png_bytes": 2440159,
+      "webp_bytes": 322278,
+      "sha256": "013142c9c6085e0c9cb5bbbdf9c903abfe43842d7fbd8f8992a669838dcd20eb"
+    },
+    {
+      "name": "hero-scene",
+      "webp": "hero-scene.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "png_bytes": 2906062,
+      "webp_bytes": 483308,
+      "sha256": "5d3d126ab15f2feeb9c6d86c52dc7b3b8eec065edef451f19a3017279e0f0f27"
+    },
+    {
+      "name": "sparkler-cover",
+      "webp": "sparkler-cover.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "png_bytes": 2695098,
+      "webp_bytes": 396004,
+      "sha256": "065eee5499f937ba6a380f9086255f9ddda5a5c4f60ce27eefc5b0d200750591"
+    },
+    {
+      "name": "pixel-workshop",
+      "webp": "pixel-workshop.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "png_bytes": 2458511,
+      "webp_bytes": 437332,
+      "sha256": "4016c75a73d19ab862584432b8063172cd57955c6e6bfed2469a63d8861c2617"
+    }
+  ],
+  "roles": {
+    "backgroundLight": "background-light.webp",
+    "backgroundDark": "background-dark.webp",
+    "hero": "hero-scene.webp",
+    "heroCutout": "hero-cutout.webp",
+    "articleFallback": "sparkler-cover.webp",
+    "galleryFallback": "background-light.webp",
+    "pixelFallback": "pixel-workshop.webp"
+  },
+  "crop_hints": {
+    "hero": "right 72%",
+    "background": "center",
+    "sparkler": "right center",
+    "pixel": "center"
+  }
+}

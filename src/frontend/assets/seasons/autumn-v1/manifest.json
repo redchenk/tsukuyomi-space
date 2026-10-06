@@ -1,0 +1,84 @@
+{
+  "theme": "autumn",
+  "version": 1,
+  "display_name": "红叶月夜",
+  "status": "validated",
+  "generator": "built-in imagegen",
+  "assets": [
+    {
+      "name": "hero-scene",
+      "webp": "hero-scene.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 430558,
+      "png_bytes": 2713698,
+      "sha256": "85f102c46ca9504ccedcde01b2e2f8606145582c94c7aa129a1e6476ecca25d5"
+    },
+    {
+      "name": "background-light",
+      "webp": "background-light.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 462450,
+      "png_bytes": 2707213,
+      "sha256": "9c266ab54c356cedbd3fd5ae96addd64869da4e77dd815f3b7863f89e81c16e1"
+    },
+    {
+      "name": "background-dark",
+      "webp": "background-dark.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 345754,
+      "png_bytes": 2372708,
+      "sha256": "10f32cd7279625d95f45cb6c76e0567be52e848e33d680e65860675d94dbd889"
+    },
+    {
+      "name": "hero-cutout",
+      "webp": "hero-cutout.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": true,
+      "webp_bytes": 884678,
+      "png_bytes": 1186691,
+      "sha256": "609eebf678bb4fbb3aa8c64c8f16600eb2ed608632cc89c9c9fefa2fe3610e1d",
+      "alpha_bbox": [
+        258,
+        87,
+        1547,
+        915
+      ]
+    },
+    {
+      "name": "article-cover",
+      "webp": "article-cover.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 422912,
+      "png_bytes": 2689436,
+      "sha256": "655943209e243284abc59ef4e2a43170ee0c5c627c71036d4aa7c64109e37d20"
+    },
+    {
+      "name": "pixel-workshop",
+      "webp": "pixel-workshop.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 436652,
+      "png_bytes": 2466215,
+      "sha256": "8a2401576d656d10db0438dfd53f477d681ce86012fc5d99c9c8f78700c14416"
+    }
+  ],
+  "roles": {
+    "backgroundLight": "background-light.webp",
+    "backgroundDark": "background-dark.webp",
+    "hero": "hero-scene.webp",
+    "heroCutout": "hero-cutout.webp",
+    "articleFallback": "article-cover.webp",
+    "galleryFallback": "background-light.webp",
+    "pixelFallback": "pixel-workshop.webp"
+  }
+}

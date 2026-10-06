@@ -7,15 +7,18 @@ import { configureAssetCssVars } from './utils/assetUrl';
 import { installImageBloom } from './utils/imageBloom';
 import { initializePerformanceProfile } from './utils/performance';
 import { enableEnglishStaticInterface } from './i18n/englishStaticInterface';
+import { initializeSeasonTheme } from './composables/useSeasonTheme';
 import './styles/global.css';
 import './styles/image-bloom.css';
 import './styles/performance.css';
 import './styles/navigation.css';
 import './styles/material-components.css';
 import './styles/material-pages.css';
+import './styles/seasons.css';
 
 initializePerformanceProfile();
 configureAssetCssVars();
+initializeSeasonTheme();
 
 function syncWindowAppearance() {
   const isActive = document.visibilityState === 'visible' && document.hasFocus();

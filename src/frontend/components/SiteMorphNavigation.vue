@@ -8,6 +8,8 @@ import plazaArt from '../assets/navigation/plaza-gathering.webp';
 import galleryArt from '../assets/navigation/gallery-yachiyo.webp';
 import pixelArt from '../assets/navigation/pixel-workshop.webp';
 import gameArt from '../assets/navigation/kaguya-run.webp';
+import { activeSeason } from '../composables/useSeasonTheme';
+import { siteArt } from '../data/siteArt';
 
 const props = defineProps({
   items: { type: Array, required: true },
@@ -41,7 +43,10 @@ const groups = computed(() => [
   { key: 'create', label: props.copy.menuLabels.create, keys: ['stage', 'pixel'] },
   { key: 'spaces', label: props.copy.menuLabels.spaces, keys: ['agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => props.items.find(item => item.key === key)).filter(Boolean) })));
-const artwork = { stage: studyArt, wiki: wikiArt, plaza: plazaArt, gallery: galleryArt, pixel: pixelArt, game: gameArt };
+const artwork = computed(() => ({
+  stage: studyArt, wiki: wikiArt, plaza: plazaArt, gallery: galleryArt, pixel: pixelArt, game: gameArt,
+  ...(activeSeason.value !== 'spring' ? { stage: siteArt.articleCover, plaza: siteArt.galleryCover, gallery: siteArt.hero, pixel: siteArt.pixelCover } : {})
+}));
 const preview = computed(() => groups.value[0].items.find(item => item.key === previewKey.value) || groups.value[0].items[0]);
 
 function cancelClose() {

@@ -1,0 +1,90 @@
+{
+  "theme": "winter",
+  "version": 1,
+  "display_name": "雪夜灯语",
+  "status": "validated",
+  "generator": "built-in imagegen",
+  "assets": [
+    {
+      "name": "hero-scene",
+      "webp": "hero-scene.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 439840,
+      "png_bytes": 2863593,
+      "sha256": "7d15faa296f0b573b3f98b21f33d79bb534c82f50e712cb5b1a7afdecc1c81f1"
+    },
+    {
+      "name": "background-light",
+      "webp": "background-light.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 508444,
+      "png_bytes": 2959826,
+      "sha256": "1f2009a4a897d59ad0f016a575c3156c2fdae68e7763236a672b4e9fb424e970"
+    },
+    {
+      "name": "background-dark",
+      "webp": "background-dark.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 348504,
+      "png_bytes": 2536026,
+      "sha256": "149024aee130940d678d316db4ff725616c9994c489e86320321a5629b6a2ef0"
+    },
+    {
+      "name": "hero-cutout",
+      "webp": "hero-cutout.webp",
+      "width": 1254,
+      "height": 1254,
+      "alpha": true,
+      "webp_bytes": 1079312,
+      "png_bytes": 1524021,
+      "sha256": "5fd6015aae51275944c12accdbe909767b2fd1307f417fdcdfa921448cf6b097",
+      "alpha_bbox": [
+        0,
+        21,
+        1220,
+        1254
+      ],
+      "visible_alpha_bbox": [
+        87,
+        145,
+        1165,
+        1122
+      ]
+    },
+    {
+      "name": "article-cover",
+      "webp": "article-cover.webp",
+      "width": 1672,
+      "height": 940,
+      "alpha": false,
+      "webp_bytes": 462744,
+      "png_bytes": 2926429,
+      "sha256": "22a5328e1e91f6f216157d082891d3fcfc53633930f3e02d62b656ec21146012"
+    },
+    {
+      "name": "pixel-workshop",
+      "webp": "pixel-workshop.webp",
+      "width": 1672,
+      "height": 941,
+      "alpha": false,
+      "webp_bytes": 527812,
+      "png_bytes": 2818499,
+      "sha256": "0cb798523e98c6050755f24a0b82a26ed9fbb44dd035c22e94ec0a8e2bc36233"
+    }
+  ],
+  "roles": {
+    "backgroundLight": "background-light.webp",
+    "backgroundDark": "background-dark.webp",
+    "hero": "hero-scene.webp",
+    "heroCutout": "hero-cutout.webp",
+    "articleFallback": "article-cover.webp",
+    "galleryFallback": "background-light.webp",
+    "pixelFallback": "pixel-workshop.webp"
+  }
+}
