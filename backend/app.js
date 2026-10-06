@@ -117,6 +117,7 @@ function createApp() {
     app.use('/api/friend-links', (req, res, next) => req.method === 'POST' ? friendLinkIpLimiter(req, res, next) : next());
     app.use('/api/friend-links', strictJson('16kb'));
     app.use('/api/mail', strictJson('128kb'));
+    app.use('/api/music', strictJson('8kb'));
 
     // Data URL routes get explicit caps; ordinary JSON remains small on the 2GB host.
     app.use('/api/assets/uploads', strictJson('16kb'));
@@ -171,6 +172,7 @@ function createApp() {
     app.use('/api/stats', statsRoutes);
     app.use('/api/chat', chatRoutes);
     app.use('/api/tts', ttsRoutes);
+    app.use('/api/music', require('./routes/music').createMusicRouter());
     app.use('/api/assets', assetRoutes);
     app.use('/api/room', roomRoutes);
     app.use('/api/growth', growthRoutes);

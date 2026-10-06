@@ -26,7 +26,7 @@
     "test:memory:milvus": "node scripts/verify-room-memory-milvus.js",
     "test:e2e": "playwright test",
     "test:theme": "node --test tests/frontend-season-theme.test.js",
-    "test": "npm run check && npm run check:seo && npm run check:moderation && npm run check:memory-sync && npm run check:migrations && npm run check:mail && npm run check:notifications && npm run check:game && npm run test:game && npm run test:api && node --test tests/mail.test.js tests/mailer-template.test.js && npm run test:frontend && npm run test:memory && npm run check:fushi && npm run test:fushi && npm run check:memory-local && npm run check:llm-agent && npm run test:llm-agent && npm run test:memory-local",
+    "test": "npm run check && npm run check:seo && npm run check:moderation && npm run check:memory-sync && npm run check:migrations && npm run check:mail && npm run check:notifications && npm run check:game && npm run test:game && npm run test:api && node --test tests/mail.test.js tests/mailer-template.test.js && npm run test:frontend && npm run test:memory && npm run check:fushi && npm run test:fushi && npm run check:memory-local && npm run check:llm-agent && npm run test:llm-agent && npm run test:memory-local && npm run check:music && npm run test:music",
     "import:yachiyo": "node scripts/import-yachiyo-corpus-to-milvus.js",
     "build:room-runtime": "LIVE2D_BUNDLE_DIR=src/frontend/runtime LIVE2D_BUNDLE_NAME=live2d-room-neuro-live.20260925-mobile-r11 vite build --config vite.config.js",
     "test:memory": "node --test tests/room-mem0.test.js tests/room-memory-import.test.js tests/room-local-intelligence.test.js",
@@ -40,7 +40,9 @@
     "test:seo": "node --test tests/seo-geo.test.js tests/render-article.test.js && python3 -B tests/overseas_translation_security_test.py && python3 -B tests/overseas_seo_test.py",
     "build:wiki-seo": "node scripts/build-wiki-seo.cjs",
     "test:game": "node --test tests/kaguya-runtime.test.js tests/frontend-game.test.js tests/growth-api.test.js",
-    "check:game": "node --check shared/kaguya-runtime.cjs && node --check shared/kaguya-project-patch.cjs && node --check scripts/build-kaguya-runtime.cjs && node --check tests/kaguya-runtime.test.js && node --check tests/frontend-game.test.js && python3 -c \"import ast,pathlib; ast.parse(pathlib.Path('deploy/configure-kaguya-routes.py').read_text())\""
+    "check:game": "node --check shared/kaguya-runtime.cjs && node --check shared/kaguya-project-patch.cjs && node --check scripts/build-kaguya-runtime.cjs && node --check tests/kaguya-runtime.test.js && node --check tests/frontend-game.test.js && python3 -c \"import ast,pathlib; ast.parse(pathlib.Path('deploy/configure-kaguya-routes.py').read_text())\"",
+    "check:music": "node --check backend/services/netease-music.js && node --check backend/services/music-sessions.js && node --check backend/routes/music.js && node --check tests/netease-music.test.js && node --check tests/e2e/netease-music.spec.js",
+    "test:music": "node --test tests/netease-music.test.js"
   },
   "keywords": [
     "tsukuyomi",

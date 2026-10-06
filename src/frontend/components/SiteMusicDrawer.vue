@@ -1,8 +1,10 @@
 <script setup>
 import TsIcon from './TsIcon.vue';
+import SiteMusicLibrary from './SiteMusicLibrary.vue';
 
 defineProps({
-  music: { type: Object, required: true }
+  music: { type: Object, required: true },
+  lang: { type: String, default: 'zh' }
 });
 </script>
 
@@ -13,7 +15,7 @@ defineProps({
         <div
           class="music-cover site-music-cover"
           :class="{ 'has-cover': music.coverUrl.value }"
-          :style="music.coverUrl.value ? { '--music-cover-image': `url('${music.coverUrl.value}')` } : null"
+          :style="music.coverUrl.value ? { '--music-cover-image': `url(${JSON.stringify(music.coverUrl.value)})` } : null"
           role="img"
           aria-label="cover"
         >
@@ -23,13 +25,13 @@ defineProps({
         <div class="site-music-summary-main">
           <span class="site-music-kicker">
             <TsIcon name="audioLines" :size="13" :stroke-width="2.1" />
-            Music
+            {{ music.source.value === 'netease' ? '网易云 · Music' : 'Music' }}
           </span>
           <div class="music-title-row site-music-title-row">
             <strong>{{ music.currentTrack.value?.title || 'Remember' }}</strong>
           </div>
           <div class="music-meta-row site-music-meta-row">
-            <span>Track {{ String(music.trackIndex.value + 1).padStart(2, '0') }}</span>
+            <span>{{ music.currentTrack.value?.artist || `Track ${String(music.trackIndex.value + 1).padStart(2, '0')}` }}</span>
             <span>/</span>
             <span>{{ music.currentLabel.value }}</span>
             <span>/</span>
@@ -95,9 +97,11 @@ defineProps({
 
         <div v-if="music.drawer.playlist" class="music-drawer site-music-subdrawer site-music-playlist-drawer" data-material="popover">
           <select :value="music.trackIndex.value" aria-label="Track" @change="music.loadTrack(Number($event.target.value), { play: music.playing.value })">
-            <option v-for="(track, index) in music.tracks" :key="track.file" :value="index">{{ String(index + 1).padStart(2, '0') }} - {{ track.title }}</option>
+            <option v-for="(track, index) in music.tracks" :key="track.file || track.id" :value="index">{{ String(index + 1).padStart(2, '0') }} - {{ track.title }}</option>
           </select>
         </div>
+        <p v-if="music.loading.value || music.playbackError.value || music.preview.value" class="music-playback-status" role="status">{{ music.loading.value ? '正在准备音频…' : music.playbackError.value || '当前为网易云试听片段' }}</p>
+        <SiteMusicLibrary v-if="music.drawer.open" :music="music" :lang="lang" />
       </div>
     </section>
   </div>

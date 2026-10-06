@@ -334,7 +334,7 @@ onUnmounted(() => {
     </dialog>
     <SiteSearch v-if="searchOpen" :items="searchItems" :lang="lang" @close="searchOpen = false" @go="$emit('go', $event)" />
 
-    <SiteMusicDrawer v-if="showChrome && music && routeName !== 'game'" :music="music" />
+    <SiteMusicDrawer v-if="showChrome && music && routeName !== 'game'" :music="music" :lang="lang" />
     <slot></slot>
     <footer v-if="showSiteBeian" class="site-beian-footer">
       <BeianLink />

@@ -269,3 +269,7 @@ If Tsukuyomi Space has been useful to you, you can support its server, object-st
 ## License
 
 Original project code is released under the [MIT License](LICENSE). Third-party code, models, music, images, and character assets remain subject to their respective licenses and rights statements.
+
+### NetEase Cloud Music
+
+The shared site player supports QR login with the NetEase Cloud Music app, song search and your playlists. Fixed site tracks remain the default. Provider sessions are encrypted on the server; audio plays directly from the provider without a server music cache. See [setup, privacy, limits and rollback](docs/NETEASE-MUSIC.md). Inspired by [Yachiyo](https://github.com/firefly20041001/Yachiyo), with protocol references from [api-enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced) and the MIT-licensed [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator).

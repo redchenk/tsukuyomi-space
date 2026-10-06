@@ -715,12 +715,10 @@ html[data-theme="light"] .site-music-mini-btn {
 }
 
 .site-music-main-control {
-    border-color: rgba(182, 159, 255, 0.68) !important;
-    background:
-        radial-gradient(circle at 36% 22%, rgba(255, 255, 255, 0.18), transparent 32%),
-        linear-gradient(145deg, rgba(126, 111, 255, 0.66), rgba(89, 78, 168, 0.64)) !important;
-    box-shadow: 0 0 24px rgba(158, 134, 255, 0.28) !important;
-    color: #efeaff !important;
+    border-color: var(--ts-border-strong) !important;
+    background: var(--ts-unified-primary-bg) !important;
+    box-shadow: none !important;
+    color: var(--ts-unified-primary-text) !important;
     font-size: 1rem !important;
 }
 

@@ -203,6 +203,7 @@ Room 页面正在向个人 Agent 方向演进，当前能力包括：
 - MCP 支持原有 REST 桥接和带初始化、会话、JSON / SSE 响应的 Streamable HTTP，以及 MiniMax Token Plan 的站内受限桥接。自动循环仅使用已授权搜索和本轮图片理解；详见 [LLM / Agent 协议、配置与验证](docs/llm-agent-protocol.md)。
 - LLM 支持受控的云服务直连，也支持浏览器直连用户本机 `http://localhost:11434` 的 Ollama；本机模式不会把对话转发到本站服务器。
 - Room 音乐播放卡片读取服务器静态目录 `/assets/music/` 下的歌曲文件；音乐资源体积较大，不提交到 Git，部署时单独上传。
+- 全站播放器也支持网易云 App 扫码登录、搜索点歌及个人歌单；未登录时使用固定网站曲目。账号会话加密存于服务器，不缓存歌曲文件，播放遵循账号会员及地区权限。配置、隐私与回滚见[网易云播放器说明](docs/NETEASE-MUSIC.md)。
 - Room 天气卡片会优先使用用户浏览器定位获取所在地天气，并作为聊天上下文的一部分。
 
 Room 相关设置主要保存在浏览器本地，包括：
@@ -270,6 +271,7 @@ VITE_SITE_LANGUAGE=en npm run build:web
 
 - 本站的无刷新平滑切页、Markdown 编辑增强和图片渐显加载等部分前端技术，参考了 [LyraVoid/Shirone](https://github.com/LyraVoid/Shirone)；原项目的代码与许可证信息请以其仓库说明为准。
 - Agent OS 页面音乐 App 的技术实现来源于 [firefly20041001/Yachiyo](https://github.com/firefly20041001/yachiyo)，原项目采用 Electron、React、TypeScript，并以 Apache-2.0 许可证发布。
+- 全站网易云播放器参考 [Yachiyo](https://github.com/firefly20041001/Yachiyo) 的账号与播放流程，网页二维码与接口协议参考 [NeteaseCloudMusicApiEnhanced/api-enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)（MIT）；二维码生成使用 [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)（MIT）。不复制 Electron 登录窗口，也不提供版权解锁。
 - 站内 Live2D、角色视觉与音乐素材版权归原作者及相关权利方所有；项目仅用于非盈利个人展示与交流。
 - 右下角网页宠物来源于 [Petdex / Yachiyo](https://petdex.dev/zh/pets/yachiyo)，界面图标使用 [Lucide](https://lucide.dev/)。
 - 更完整的来源、隐私和责任边界请查看站内 [`/reality`](https://yachiyo.hk/reality) 页面。

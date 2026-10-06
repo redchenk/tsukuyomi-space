@@ -1,4 +1,5 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
+import { musicRequest, useMusicLibrary } from './useMusicLibrary';
 import { MUSIC_BASE_PATH, MUSIC_TRACKS } from '../../constants/room/musicTracks';
 
 function trackUrl(track) {
@@ -61,8 +62,15 @@ export function useRoomMusic() {
   let coverObjectUrl = '';
   let coverRequestId = 0;
   let loadedTrackIndex = -1;
+  let loadEpoch = 0;
+  let remoteExpiresAt = 0;
+  let coverController;
+  const source = ref('local');
+  const loading = ref(false);
+  const playbackError = ref('');
+  const preview = ref(false);
 
-  const tracks = MUSIC_TRACKS;
+  const tracks = reactive([...MUSIC_TRACKS]);
   const currentTrack = computed(() => tracks[trackIndex.value] || tracks[0]);
   const progress = computed({
     get: () => (duration.value > 0 ? Math.round((currentTime.value / duration.value) * 1000) : 0),
@@ -74,59 +82,114 @@ export function useRoomMusic() {
   });
 
   async function loadCover(track, requestId) {
+    coverController?.abort();
     if (coverObjectUrl) URL.revokeObjectURL(coverObjectUrl);
     coverObjectUrl = '';
-    coverUrl.value = '';
+    coverUrl.value = track.source === 'netease' ? track.cover || '' : '';
+    if (track.source === 'netease') return;
+    const controller = new AbortController();
+    coverController = controller;
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-      const response = await fetch(trackUrl(track), { headers: { Range: 'bytes=0-4194303' }, cache: 'force-cache' });
-      if (!response.ok && response.status !== 206) return;
-      const blob = parseFlacPicture(await response.arrayBuffer());
+      const response = await fetch(trackUrl(track), { headers: { Range: 'bytes=0-4194303' }, cache: 'force-cache', signal: controller.signal });
+      if (!response.ok || !response.body) return;
+      const reader = response.body.getReader();
+      const chunks = []; let size = 0;
+      try {
+        while (size < 4194304) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = value.subarray(0, 4194304 - size);
+          chunks.push(chunk); size += chunk.byteLength;
+        }
+      } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+      const bytes = new Uint8Array(size); let offset = 0;
+      for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+      const blob = parseFlacPicture(bytes.buffer);
       if (!blob || requestId !== coverRequestId) return;
       coverObjectUrl = URL.createObjectURL(blob);
       coverUrl.value = coverObjectUrl;
     } catch (_) {
-      coverUrl.value = '';
-    }
+      if (requestId === coverRequestId) coverUrl.value = '';
+    } finally { clearTimeout(timeout); }
   }
 
   function startPlayback() {
-    return audio.play().catch(() => {
+    return audio.play().catch((error) => {
       playing.value = false;
+      playbackError.value = error.name === 'NotAllowedError' ? '曲目已准备好，请再点一下播放' : '暂时无法播放，请重试或换一首';
     });
   }
 
-  function loadTrack(index, options = {}) {
+  async function loadTrack(index, options = {}) {
     if (!tracks.length) return;
     const wasPlaying = playing.value;
+    const epoch = ++loadEpoch;
+    audio.pause();
+    playbackError.value = ''; preview.value = false;
     trackIndex.value = (index + tracks.length) % tracks.length;
-    loadedTrackIndex = trackIndex.value;
-    localStorage.setItem('roomMusicTrackIndex', String(trackIndex.value));
-    audio.src = trackUrl(currentTrack.value);
-    audio.preload = 'metadata';
-    loadCover(currentTrack.value, ++coverRequestId);
-    if (options.play || wasPlaying) startPlayback();
-  }
-
-  function ensureTrackLoaded() {
-    if (loadedTrackIndex === trackIndex.value && audio.src) return;
-    loadTrack(trackIndex.value);
-  }
-
-  function togglePlay() {
-    if (audio.paused) {
-      ensureTrackLoaded();
-      startPlayback();
+    loadedTrackIndex = -1;
+    duration.value = 0; currentTime.value = 0;
+    const track = currentTrack.value;
+    loadCover(track, ++coverRequestId);
+    if (source.value === 'local') {
+      localStorage.setItem('roomMusicTrackIndex', String(trackIndex.value));
+      audio.src = trackUrl(track);
+      loadedTrackIndex = trackIndex.value;
+      audio.preload = 'metadata';
+      if (options.play || wasPlaying) await startPlayback();
+      return;
     }
-    else audio.pause();
+    audio.removeAttribute('src'); audio.load(); loading.value = true;
+    try {
+      const result = await musicRequest(`/tracks/${encodeURIComponent(track.id)}/playback`);
+      if (epoch !== loadEpoch) return;
+      audio.src = result.url; audio.preload = 'metadata';
+      remoteExpiresAt = Date.now() + (result.expiresIn - 10) * 1000;
+      loadedTrackIndex = trackIndex.value;
+      preview.value = result.preview;
+      if (options.play || wasPlaying) await startPlayback();
+    } catch (error) {
+      if (epoch !== loadEpoch) return;
+      playbackError.value = error.message || '音乐连接暂时失败';
+      cloud.failed(error);
+    } finally { if (epoch === loadEpoch) loading.value = false; }
   }
 
-  function next() {
-    loadTrack(trackIndex.value + 1, { play: playing.value });
+  async function ensureTrackLoaded() {
+    if (loadedTrackIndex === trackIndex.value && audio.src && (source.value === 'local' || Date.now() < remoteExpiresAt)) return;
+    await loadTrack(trackIndex.value);
   }
 
-  function prev() {
-    loadTrack(trackIndex.value - 1, { play: playing.value });
+  async function togglePlay() {
+    if (loading.value) return;
+    if (audio.paused) {
+      await ensureTrackLoaded();
+      if (loadedTrackIndex === trackIndex.value) await startPlayback();
+    } else audio.pause();
   }
+
+  function next() { return loadTrack(trackIndex.value + 1, { play: playing.value }); }
+  function prev() { return loadTrack(trackIndex.value - 1, { play: playing.value }); }
+  function useLocal() {
+    if (source.value === 'local') return;
+    ++loadEpoch; loading.value = false;
+    audio.pause(); audio.removeAttribute('src'); audio.load();
+    source.value = 'local'; tracks.splice(0, tracks.length, ...MUSIC_TRACKS);
+    trackIndex.value = Math.max(0, Math.min(MUSIC_TRACKS.length - 1, Number(localStorage.getItem('roomMusicTrackIndex')) || 0));
+    loadedTrackIndex = -1;
+    preview.value = false; duration.value = 0; currentTime.value = 0;
+    loadCover(currentTrack.value, ++coverRequestId);
+  }
+  const cloud = useMusicLibrary({ useLocal, selectTrack: async (track) => {
+    if (source.value !== 'netease') { tracks.splice(0); source.value = 'netease'; }
+    let index = tracks.findIndex(item => item.id === track.id);
+    if (index < 0) {
+      if (tracks.length >= 100) tracks.splice(0, 1);
+      tracks.push(track); index = tracks.length - 1;
+    }
+    await loadTrack(index, { play: true });
+  } });
 
   function setVolume(value) {
     volume.value = Math.max(0, Math.min(1, Number(value)));
@@ -145,6 +208,7 @@ export function useRoomMusic() {
   function toggleShell() {
     drawer.open = !drawer.open;
     if (drawer.open) ensureTrackLoaded();
+    cloud.setOpen(drawer.open);
     if (!drawer.open) {
       drawer.volume = false;
       drawer.playlist = false;
@@ -152,6 +216,9 @@ export function useRoomMusic() {
   }
 
   function destroy() {
+    ++loadEpoch;
+    cloud.destroy();
+    coverController?.abort();
     audio.pause();
     audio.removeAttribute('src');
     audio.load();
@@ -175,11 +242,14 @@ export function useRoomMusic() {
   });
   audio.addEventListener('error', () => {
     playing.value = false;
+    loadedTrackIndex = -1;
+    playbackError.value = '音频暂时无法加载，请点播放重试或换一首';
   });
   audio.addEventListener('ended', next);
   onBeforeUnmount(destroy);
 
   return {
+    source, loading, playbackError, preview, useLocal, cloud, resetAccount: cloud.resetAccount,
     tracks,
     trackIndex,
     currentTrack,

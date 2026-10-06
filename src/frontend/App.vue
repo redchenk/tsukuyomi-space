@@ -337,6 +337,9 @@ function handlePerformanceProfile(event) {
 }
 
 provide('siteMusic', music);
+// External music is scoped to the website identity as well as this browser.
+// Discard previous-account UI and queued audio immediately on account changes.
+watch(() => user.value?.id || '', () => music.resetAccount());
 
 watch(isAccessRoute, (next) => {
   document.body.classList.toggle('vue-access-route', next);
