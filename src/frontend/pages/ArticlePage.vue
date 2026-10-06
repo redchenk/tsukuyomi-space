@@ -1,6 +1,6 @@
 <script setup>
 import { nameInitial } from '../utils/userName.mjs';
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useQualifiedArticleRead } from '../composables/useQualifiedArticleRead';
 import { useArticleReading } from '../composables/useArticleReading';
 import { readingTimeLabel } from '../utils/reading';
@@ -32,15 +32,20 @@ const article = ref(null);
 const readingReceipt = ref(null);
 useQualifiedArticleRead(article, readingReceipt);
 let articleLoadRevision = 0;
+let articleRequests;
 const articleContentRef = ref(null);
 const renderedContent = computed(() => article.value ? formatContent(article.value.content, article.value.content_format) : '');
 const { headings, activeHeading, progress, plainText, tocOpen, goToHeading } = useArticleReading(articleContentRef, renderedContent);
+// Scrolling updates progress, not the text used to calculate reading time.
+const articleReadingTime = computed(() => readingTimeLabel(article.value, props.lang, plainText.value));
 const readerCopy = computed(() => ({
   zh: { back: '返回主舞台', toc: '文章目录', share: '分享', views: '次阅读', category: '未分类', bookmark: '收藏', saved: '已收藏', like: '点赞', liked: '已点赞', comments: '评论' },
   ja: { back: 'ステージに戻る', toc: '目次', share: 'シェア', views: '回閲覧', category: '未分類', bookmark: '保存', saved: '保存済み', like: 'いいね', liked: 'いいね済み', comments: 'コメント' },
   en: { back: 'Back to the Stage', toc: 'On this page', share: 'Share', views: 'views', category: 'Uncategorized', bookmark: 'Bookmark', saved: 'Bookmarked', like: 'Like', liked: 'Liked', comments: 'Comments' }
 }[props.lang]));
 const comments = ref([]);
+const commentsLoading = ref(false);
+const commentsError = ref(false);
 const loading = ref(true);
 const message = ref('');
 const messageType = ref('error');
@@ -205,7 +210,13 @@ function showMessage(text, type = 'error') {
 
 async function loadArticle() {
   const revision = ++articleLoadRevision;
+  articleRequests?.abort();
+  articleRequests = new AbortController();
+  const context = { revision, id: articleId.value, signal: articleRequests.signal };
   readingReceipt.value = null;
+  comments.value = [];
+  commentsLoading.value = false;
+  commentsError.value = false;
   commentModeration.value = null;
   Object.keys(replyModeration).forEach(key => delete replyModeration[key]);
   Object.keys(expandedReplies).forEach(key => delete expandedReplies[key]);
@@ -222,7 +233,7 @@ async function loadArticle() {
 
   try {
     const response = await authFetch(`/api/articles/${encodeURIComponent(articleId.value)}/live/${Date.now()}`, {
-      cache: 'no-store'
+      cache: 'no-store', signal: context.signal
     });
     const result = await parseResponse(response);
     if (revision !== articleLoadRevision) return;
@@ -230,63 +241,70 @@ async function loadArticle() {
     article.value = result.data;
     readingReceipt.value = result.reading || null;
     applySeo(articleSeo(result.data, articlePath.value));
-    await Promise.all([loadComments(), loadBookmarkStatus(), loadArticleLikeStatus()]);
-    await hydrateUserLevels([
-      result.data.author_id,
-      ...comments.value.map((item) => item.user_id)
-    ]).catch(() => {});
+    // Publish the body immediately. Slow or unavailable secondary services must
+    // not gate reading, and each result belongs to this navigation revision.
+    loading.value = false;
+    void loadComments(context);
+    void loadBookmarkStatus(context);
+    void loadArticleLikeStatus(context);
+    void hydrateUserLevels([result.data.author_id]).catch(() => {});
   } catch (error) {
+    if (revision !== articleLoadRevision) return;
     showMessage(error.message || props.t.loadFailed || '加载失败');
   } finally {
-    loading.value = false;
-    await revealCommentHash();
+    if (revision === articleLoadRevision) loading.value = false;
   }
 }
 
-async function loadBookmarkStatus() {
+function isCurrentArticle(context) {
+  return context.revision === articleLoadRevision && context.id === articleId.value && !context.signal?.aborted;
+}
+
+async function loadBookmarkStatus(context) {
   session.value = getSession();
   bookmark.ready = false;
   bookmark.bookmarked = false;
+  bookmark.loading = false;
   bookmark.count = Number(article.value?.bookmark_count || 0);
   if (!session.value || !articleId.value) return;
 
   bookmark.loading = true;
   try {
-    const response = await authFetch(`/api/user/bookmarks/${encodeURIComponent(articleId.value)}/status`, {
+    const response = await authFetch(`/api/user/bookmarks/${encodeURIComponent(context.id)}/status`, {
       headers: authHeaders(),
-      cache: 'no-store'
+      cache: 'no-store', signal: context.signal
     });
     const result = await parseResponse(response);
-    if (result.success) {
+    if (isCurrentArticle(context) && result.success) {
       bookmark.ready = true;
       bookmark.bookmarked = Boolean(result.data?.bookmarked);
       bookmark.count = Number(result.data?.count || 0);
     }
   } catch (_) {
-    bookmark.ready = false;
+    if (isCurrentArticle(context)) bookmark.ready = false;
   } finally {
-    bookmark.loading = false;
+    if (isCurrentArticle(context)) bookmark.loading = false;
   }
 }
 
-async function loadArticleLikeStatus() {
-  const id = articleId.value;
+async function loadArticleLikeStatus(context) {
+  const id = context.id;
   articleLike.liked = false;
   articleLike.count = Number(article.value?.like_count || 0);
   articleLike.loading = false;
   if (!getSession() || !id) return;
   articleLike.loading = true;
   try {
-    const response = await authFetch(`/api/user/article-likes/${encodeURIComponent(id)}/status`, { headers: authHeaders(), cache: 'no-store' });
+    const response = await authFetch(`/api/user/article-likes/${encodeURIComponent(id)}/status`, { headers: authHeaders(), cache: 'no-store', signal: context.signal });
     const result = await parseResponse(response);
-    if (id === articleId.value && result.success) {
+    if (isCurrentArticle(context) && result.success) {
       articleLike.liked = Boolean(result.data?.liked);
       articleLike.count = Number(result.data?.count || 0);
     }
   } catch (_) {
     // The public count remains visible when the private status cannot be read.
   } finally {
-    if (id === articleId.value) articleLike.loading = false;
+    if (isCurrentArticle(context)) articleLike.loading = false;
   }
 }
 
@@ -311,16 +329,26 @@ async function toggleArticleLike() {
   }
 }
 
-async function loadComments() {
+async function loadComments(context = { revision: articleLoadRevision, id: articleId.value, signal: articleRequests?.signal }) {
+  commentsLoading.value = true;
+  commentsError.value = false;
   try {
-    const response = await apiFetch(`/api/articles/${encodeURIComponent(articleId.value)}/messages`);
+    const response = await apiFetch(`/api/articles/${encodeURIComponent(context.id)}/messages`, { signal: context.signal });
     const result = await parseResponse(response);
-    comments.value = result.success && Array.isArray(result.data)
-      ? result.data.filter((item) => String(item.article_id) === String(articleId.value))
-      : [];
-    if (session.value) await applyMessageLikeState(comments.value).catch(() => {});
+    if (!isCurrentArticle(context)) return;
+    if (!result.success || !Array.isArray(result.data)) throw new Error('comments_unavailable');
+    const loaded = result.data.filter((item) => String(item.article_id) === context.id);
+    comments.value = loaded;
+    void hydrateUserLevels(loaded.map(item => item.user_id)).catch(() => {});
+    // Mutate only the captured list; an old like request cannot affect a new article.
+    if (session.value) void applyMessageLikeState(comments.value).catch(() => {});
   } catch (_) {
-    comments.value = [];
+    if (isCurrentArticle(context)) commentsError.value = true;
+  } finally {
+    if (isCurrentArticle(context)) {
+      commentsLoading.value = false;
+      await revealCommentHash();
+    }
   }
 }
 
@@ -342,7 +370,7 @@ function repliesToggleLabel(commentId) {
 
 async function revealCommentHash() {
   const match = String(route.hash || '').match(/^#comment-(\d+)$/);
-  if (!match || loading.value) return;
+  if (!match || loading.value || commentsLoading.value) return;
   await revealComment(match[1]);
 }
 
@@ -493,6 +521,10 @@ function jumpToArticleTarget(id) {
 }
 
 onMounted(loadArticle);
+onBeforeUnmount(() => {
+  articleLoadRevision += 1;
+  articleRequests?.abort();
+});
 watch(articleId, loadArticle);
 watch(() => route.hash, revealCommentHash);
 </script>
@@ -521,7 +553,7 @@ watch(() => route.hash, revealCommentHash);
               @click.prevent="goProfile(article.author_username || 'admin')"
             >{{ article.author_nickname || article.author_username || 'admin' }}</a>
             <UserLevelBadge v-if="article.author_id" :level="userLevel(article.author_id)" :lang="lang" compact />
-            <span>{{ readingTimeLabel(article, lang, plainText) }}</span>
+            <span>{{ articleReadingTime }}</span>
             <span>{{ Number(article.view_count || 0).toLocaleString('zh-CN') }} {{ readerCopy.views }}</span>
           </div>
           <section v-if="article.excerpt?.trim()" class="article-excerpt" :aria-label="t.editorFieldExcerpt">
@@ -565,7 +597,7 @@ watch(() => route.hash, revealCommentHash);
           <section ref="articleContentRef" class="article-content" @click="handleMarkdownClick" v-html="renderedContent"></section>
         </div>
 
-        <section id="article-comments" tabindex="-1" class="comments-section">
+        <section id="article-comments" tabindex="-1" class="comments-section" :aria-busy="commentsLoading">
           <div class="comments-head">
             <h2>{{ readerCopy.comments }}</h2>
             <span>{{ comments.length }}</span>
@@ -577,7 +609,7 @@ watch(() => route.hash, revealCommentHash);
           <div v-if="session" class="comment-form">
             <textarea v-model="commentText" class="comment-input" placeholder="写下你的评论..."></textarea>
             <div class="comment-actions">
-              <button class="primary-btn" type="button" @click="submitComment">
+              <button class="primary-btn" type="button" :disabled="commentsLoading" @click="submitComment">
                 <TsIcon name="send" :size="17" />
                 <span>发布评论</span>
               </button>
@@ -591,7 +623,11 @@ watch(() => route.hash, revealCommentHash);
             </a>
           </div>
 
-          <div v-if="!topComments.length" class="article-empty">暂无评论，快来发布第一条吧。</div>
+          <div v-if="commentsLoading && !topComments.length" class="article-empty" role="status">{{ t.loading }}</div>
+          <div v-else-if="commentsError" class="article-empty" role="status">
+            {{ t.loadFailed }} <button class="ghost-btn" type="button" @click="loadComments()">{{ lang === 'en' ? 'Retry' : lang === 'ja' ? '再試行' : '重试' }}</button>
+          </div>
+          <div v-else-if="!topComments.length" class="article-empty">暂无评论，快来发布第一条吧。</div>
           <div v-else class="comment-list">
             <article v-for="comment in topComments" :id="'comment-' + comment.id" :key="comment.id" class="comment-item">
               <div class="comment-header">
