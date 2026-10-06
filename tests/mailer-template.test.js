@@ -30,7 +30,7 @@ function assertInlineMessage(parsed, message) {
         assert.deepEqual(Buffer.from(attachment.content), asset.content);
         assert.match(parsed.html, new RegExp(`src="cid:${asset.cid}"`));
     }
-    assert.ok(Buffer.byteLength(message) < 240 * 1024, 'Mail exceeds the delivery size budget');
+    assert.ok(Buffer.byteLength(message) < 96 * 1024, 'Mail exceeds the delivery size budget');
 }
 
 describe('verification email template', () => {

@@ -2,8 +2,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const MAIL_ARTWORK = Object.freeze([
-    Object.freeze({ filename: 'sakura-logo-v1.png', contentType: 'image/png', cid: 'sakura-logo-v1@tsukuyomi' }),
-    Object.freeze({ filename: 'sakura-banner-v1.jpg', contentType: 'image/jpeg', cid: 'sakura-banner-v1@tsukuyomi' })
+    Object.freeze({ filename: 'sakura-logo-v2.png', contentType: 'image/png', cid: 'sakura-logo-v2@tsukuyomi', maxBytes: 16 * 1024 }),
+    Object.freeze({ filename: 'sakura-banner-v2.jpg', contentType: 'image/jpeg', cid: 'sakura-banner-v2@tsukuyomi', maxBytes: 36 * 1024 })
 ]);
 let artwork;
 
@@ -12,7 +12,7 @@ function getMailArtwork() {
     if (!artwork) {
         artwork = MAIL_ARTWORK.map(asset => {
             const content = fs.readFileSync(path.join(__dirname, 'mail-assets', asset.filename));
-            if (content.length > 160 * 1024) throw new Error('Mail artwork exceeds size budget');
+            if (content.length > asset.maxBytes) throw new Error('Mail artwork exceeds size budget');
             return Object.freeze({ ...asset, content });
         });
     }
