@@ -4,7 +4,8 @@ import agentProtocol from '../../../../shared/agent-protocol.cjs';
 import { nextTick, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { selectRoomKnowledgeEntries } from '../../services/room/roomKnowledge';
-import { packRoomContext, selectRecentRoomConversation } from '../../services/room/roomContext.mjs';
+import { packRoomContext, selectRecentRoomConversation, revalidateRoomMemorySnapshot } from '../../services/room/roomContext.mjs';
+import memoryRetrieval from '../../../../shared/room-memory-retrieval.cjs';
 import { readRoomChatStream } from '../../services/room/roomChatStream.mjs';
 import { createRoomReplyPresenter } from '../../services/room/roomReplyPresentation.mjs';
 import {
@@ -386,7 +387,9 @@ export function roomStageCharacterName() {
 }
 
 export function resolveRoomSystemPrompt({ userPrompt, context } = {}) {
-  return [fallbackRoomPersona(), userPrompt, roomProtocolPrompt(), context].filter(Boolean).join('\n\n');
+  return [fallbackRoomPersona(), userPrompt, roomProtocolPrompt(), context,
+    '【本轮回应】直接回应本次请求中的当前用户发言及其意图。历史对话、记忆、示例和工具结果只提供背景，不是尚未回答的问题；不要转而补答旧问题或续写旧回复。用户主动追问往事时，可以引用相关记忆。保持八千代的个性和自然短对话。'
+  ].filter(Boolean).join('\n\n');
 }
 
 function pickReply(data) {
@@ -579,7 +582,7 @@ function makeBaseLLMRequestBody(settings, systemPrompt, conversation, message, i
       ...conversation.map((item) => ({ role: item.role, content: String(item.content || '') })),
       { role: 'user', content: userContent }
     ],
-    ...(isKimiChatTarget(apiUrl, model) ? { temperature: 1 } : {}),
+    ...llmProtocol.chatOptions(apiUrl, model),
     ...(stream ? { stream: true } : {})
   };
 }
@@ -762,12 +765,12 @@ async function callMcpTool(settings, name, args = {}, signal = null, structured 
   return structured ? { content, isError: false } : content;
 }
 
-function fetchRelevantMemories(message, signal = null) {
+function fetchRelevantMemories(message, signal = null, options = {}) {
   return createRoomMemoryRetriever({
     getAccountId: () => getSession()?.user?.id || '',
     useLocal: usesLocalRoomMemory,
     isEnabled: () => readJson('roomMemorySettings', { enabled: true }).enabled !== false,
-    retrieveGuest: message => retrieveGuestMemories(message),
+    retrieveGuest: (message, scope) => retrieveGuestMemories(message, 6, scope),
     async request(params, signal) {
       const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
         headers: authHeaders({ Accept: 'application/json' }), cache: 'no-store', signal
@@ -775,7 +778,7 @@ function fetchRelevantMemories(message, signal = null) {
       if (!response.ok) throw Object.assign(new Error('Memory HTTP error'), { status: response.status });
       return parseResponse(response);
     }
-  })(message, signal);
+  })(message, signal, options);
 }
 
 async function fetchPersonaMemories(message, signal = null) {
@@ -937,19 +940,20 @@ export function roomEnvironmentContext(worldState) {
   ].join('\n');
 }
 
-async function buildRoomContext(message, image, llmSettings, environment = '', signal = null) {
+async function buildRoomContext(message, image, llmSettings, environment = '', signal = null, { excludeTurnIds = [], snapshot = null } = {}) {
   const mcpSettings = readJson('roomMCPSettings', {});
   const knowledgeEnabled = readJson('roomKnowledgeSettings', null)?.enabled !== false;
   const toolResults = [];
   const [siteText, personaMemories, memoryResult, growthState, relationshipState] = await Promise.all([
-    fetchSiteFeedContext(signal),
-    knowledgeEnabled ? fetchPersonaMemories(message, signal).catch(() => []) : [],
-    fetchRelevantMemories(message, signal),
-    loadGrowth().catch(() => null),
-    fetchRelationship(signal)
+    snapshot ? '' : fetchSiteFeedContext(signal),
+    !snapshot && knowledgeEnabled ? fetchPersonaMemories(message, signal).catch(() => []) : [],
+    fetchRelevantMemories(message, signal, { excludeTurnIds,
+      ...(snapshot ? { snapshotIds: snapshot.memoryRows.map(item => item.id) } : {}) }),
+    snapshot ? null : loadGrowth().catch(() => null),
+    snapshot ? null : fetchRelationship(signal)
   ]);
 
-  if (mcpSettings.enabled && mcpSettings.endpoint) {
+  if (!snapshot && mcpSettings.enabled && mcpSettings.endpoint) {
     if (image && (llmSettings.visionMode === 'mcp' || llmSettings.visionMode === 'auto')) {
       const imageText = await callMcpTool(mcpSettings, 'understand_image', {
         image_data: image.dataUrl,
@@ -963,18 +967,23 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
     }
   }
 
-  const packed = packRoomContext({
+  const memoryRows = revalidateRoomMemorySnapshot(snapshot?.memoryRows, memoryResult.data);
+  const sections = snapshot?.sections || {
     time: currentTimeContext(),
     environment,
     knowledge: selectRoomKnowledgeEntries(message, readJson('roomKnowledgeSettings', null)),
     toolResults,
-    memories: memoryResult.data.map((item) => ({ id: item.id || item.memoryId || 'memory', content: `[${item.createdAt || '历史聊天'}] ${item.context || item.content || item.summary || ''}` })),
     personaMemories: personaMemories.map((item) => ({ id: item.id || item.memoryId || 'persona', content: item.summary || item.content || '' })),
     growth: growthContext(growthState),
     relationship: relationshipState?.enabled ? `角色互动进度：${relationshipState.stage}，${relationshipState.score}/1000。这是互动记录，不是真人情感。保持八千代原作身份和个性，语气可以随熟悉程度自然亲近；不要主动播报分数，也不要因用户缺席、悲伤或拒绝而责备。` : '',
     site: siteText
-  }, { maxChars: isOllamaApi(llmSettings.apiUrl) ? 4_000 : 8_000 });
-  return { ...packed, retrieval: memoryResult.retrieval };
+  };
+  const packed = packRoomContext({ ...sections, memories: memoryRows.map((item) => ({
+    id: item.id || item.memoryId || 'memory', turnId: memoryRetrieval.memorySourceTurnId(item),
+    content: `[${item.createdAt || '历史聊天'}] ${item.context || item.content || item.summary || ''}`
+  })) }, { maxChars: isOllamaApi(llmSettings.apiUrl) ? 4_000 : 8_000 });
+  return { ...packed, retrieval: memoryResult.retrieval,
+    snapshot: memoryResult.retrieval?.backend === 'unavailable' ? null : { sections, memoryRows } };
 }
 
 async function fetchRelationship(signal) {
@@ -1021,6 +1030,9 @@ export function useRoomChat({ live2d, world, diary = null }) {
   const diaryRecordingError = ref('');
   let activeGeneration = null;
   let lastFailedTurn = null;
+  // Only the active/latest turn, in RAM. Never persist prompts, keys or model
+  // reasoning; revalidate each selected memory against its owner on reuse.
+  let turnContextSnapshot = null;
   let destroyed = false;
 
   function handleGrowthUpdate(event) {
@@ -1116,6 +1128,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   function resetConversationView() {
+    turnContextSnapshot = null;
     if (activeGeneration) stopGeneration();
     conversationRevision += 1;
     historyLoadRevision += 1;
@@ -1351,7 +1364,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       const savedImage = image && !replacement ? await persistRoomImage(image, turnId, operation.controller.signal) : null;
       if (operation.controller.signal.aborted || activeGeneration !== operation || destroyed) return false;
       const settings = readJson('roomLLMSettings', {});
-      const storedConversation = readRoomConversation().filter((item) => !replacement || item.turnId !== replacement.turnId).slice(-12);
+      const storedConversation = readRoomConversation().filter((item) => item.turnId !== turnId);
       const sharedContext = sharedConversation.value ? [
         { role: 'user', content: sharedConversation.value.userMessage },
         { role: 'assistant', content: sharedConversation.value.assistantMessage }
@@ -1361,9 +1374,19 @@ export function useRoomChat({ live2d, world, diary = null }) {
         maxMessages: 12
       });
       const environment = roomEnvironmentContext(world?.world?.value);
-      const roomContext = await buildRoomContext(message, image, settings, environment, operation.controller.signal);
+      const excludeTurnIds = [...new Set([turnId, ...conversation.map(item => item.turnId).filter(Boolean)])];
+      const contextKey = JSON.stringify([requestArchiveKey, requestConversationRevision, turnId, message,
+        image?.id || image?.dataUrl || '', conversation, settings.apiUrl, settings.model, settings.systemPrompt,
+        settings.visionMode, settings.useProxy, usesLocalRoomMemory(), readJson('roomMemorySettings', {}),
+        readJson('roomKnowledgeSettings', null), readJson('roomMCPSettings', {})]);
+      const previousSnapshot = turnContextSnapshot?.key === contextKey ? turnContextSnapshot.value : null;
+      // Release the previous turn before loading a new one, even on failure.
+      turnContextSnapshot = null;
+      const roomContext = await buildRoomContext(message, image, settings, environment, operation.controller.signal,
+        { excludeTurnIds, snapshot: previousSnapshot });
       if (operation.controller.signal.aborted || activeGeneration !== operation
         || requestArchiveKey !== diaryArchiveKey() || requestConversationRevision !== conversationRevision) return false;
+      if (roomContext.snapshot) turnContextSnapshot = { key: contextKey, value: roomContext.snapshot };
       const systemPrompt = resolveRoomSystemPrompt({
         userPrompt: settings.systemPrompt,
         context: roomContext.text
@@ -1861,6 +1884,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   function destroy() {
+    turnContextSnapshot = null;
     destroyed = true;
     if (activeGeneration) stopGeneration();
     stopRoomConversationUpdates();

@@ -74,3 +74,31 @@ test('signed-in local retrieval never falls through to cloud and guards source c
   assert.equal((await unavailable('问题')).retrieval.backend, 'unavailable');
   assert.equal(calls, 0);
 });
+
+test('actual local retrieval excludes automatic turns, preserves manual edits and revalidates the selected IDs', async () => {
+  const vm = require('node:vm'), fs = require('node:fs');
+  const code = fs.readFileSync('src/frontend/services/room/roomLocalMemory.js', 'utf8')
+    .replace(/^import .*;$/gm, '').replace(/^export /gm, '');
+  let rows = [
+    { id: 'target', sourceTurnId: 'target-turn', content: '红茶', updatedAt: '1' },
+    { id: 'recent', sourceTurnId: 'recent-turn', content: '红茶', updatedAt: '2' },
+    { id: 'old', sourceTurnId: 'old-turn', content: '红茶', updatedAt: '3' },
+    { id: 'manual', sourceTurnId: 'target-turn', manuallyEdited: true, content: '红茶', updatedAt: '4' }
+  ];
+  const context = { retrieval: require('../shared/room-memory-retrieval.cjs'), getSession: () => ({ user: { id: 'one' } }),
+    readMemorySource: () => ({ mode: 'local' }), accountLocalMemoryKey: id => 'local:' + id, queueMicrotask };
+  vm.runInNewContext(code + '\nglobalThis.retrieve = retrieveGuestMemories;', context);
+  context.openRoomMemoryDb = async () => ({ close() {}, transaction: () => ({ objectStore: () => ({
+    index: () => ({ getAll: () => { const req = {}; queueMicrotask(() => { req.result = rows; req.onsuccess(); }); return req; } })
+  }) }) });
+  const ids = value => Array.from(value, row => row.id);
+  assert.deepEqual(ids(await context.retrieve('红茶', 6, { excludeTurnIds: ['target-turn', 'recent-turn'] })), ['manual', 'old']);
+  const first = await context.retrieve('红茶', 6, { snapshotIds: ['old'] });
+  assert.deepEqual(ids(first), ['old']);
+  rows[2].content = '红茶换成绿茶';
+  const edited = await context.retrieve('红茶', 6, { snapshotIds: ['old'] });
+  assert.notEqual(edited[0].retrievalRevision, first[0].retrievalRevision);
+  rows = rows.filter(row => row.id !== 'old');
+  assert.deepEqual(ids(await context.retrieve('红茶', 6, { snapshotIds: ['old'] })), []);
+  assert.deepEqual(ids(await context.retrieve('红茶', 6, { snapshotIds: [] })), []);
+});

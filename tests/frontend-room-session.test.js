@@ -12,16 +12,20 @@ function deferred() {
   return { promise, resolve };
 }
 async function setup(overrides = {}) {
+  const { realContext = false, ...provided } = overrides;
   const { createRoomReplyPresenter } = await import('../src/frontend/services/room/roomReplyPresentation.mjs');
+  const { packRoomContext, selectRecentRoomConversation, revalidateRoomMemorySnapshot } = await import('../src/frontend/services/room/roomContext.mjs');
   let onUpdate;
   let clearCount = 0;
   const saved = [];
   const requests = [];
   const context = {
     agentProtocol: require('../shared/agent-protocol.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'),
+    memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), revalidateRoomMemorySnapshot, packRoomContext,
     console, Date, URL, AbortController,
     ref: (value) => ({ value }), nextTick: (fn) => Promise.resolve().then(fn),
     selectRecentRoomConversation: (messages) => messages,
+    usesLocalRoomMemory: () => true,
     createRoomReplyPresenter: options => createRoomReplyPresenter({ ...options, immediate: true }),
     isEnglishSite: () => false,
     window: { addEventListener() {}, removeEventListener() {}, confirm: () => true, setTimeout, clearTimeout },
@@ -52,9 +56,11 @@ async function setup(overrides = {}) {
       return { entry: savedEntry };
     },
     diaryTimestampLabel: () => 'today',
-    ...overrides
+    ...provided,
+    ...(realContext ? { selectRecentRoomConversation } : {})
   };
-  vm.runInNewContext(code + '\nbuildRoomContext = async () => ({ text: "", trace: [], retrieval: {} }); globalThis.chat = useRoomChat({}); globalThis.tts = cleanTtsText; globalThis.streamingVisible = streamingVisibleText;', context);
+  vm.runInNewContext(code + (realContext ? '' : '\nbuildRoomContext = async () => ({ text: "", trace: [], retrieval: {} });')
+    + '\nglobalThis.chat = useRoomChat({}); globalThis.tts = cleanTtsText; globalThis.streamingVisible = streamingVisibleText;', context);
   await tick();
   return { chat: context.chat, context, saved, requests, sync: () => onUpdate({}), clearCount: () => clearCount };
 }
@@ -353,6 +359,70 @@ test('editing the latest complete turn replaces it only after server confirmatio
   assert.equal(replacements[0].expectedAssistantMessage, '旧答案');
   assert.equal(h.chat.messages.value.filter(item => item.role === 'assistant').map(item => item.content).join('|'), '新答案');
   assert.equal(h.chat.messages.value.find(item => item.role === 'user').content, '新问题');
+  h.chat.destroy();
+});
+
+test('real context isolates saved target turns, freezes regeneration references and revalidates edits/deletion', async () => {
+  let history = [
+    { role: 'user', content: 'older question', turnId: 'recent-turn' },
+    { role: 'assistant', content: 'older answer', turnId: 'recent-turn' }
+  ];
+  let rows = [{ id: 'distant', context: 'stable remembered fact', retrievalRevision: 'v1',
+    metadata: { sourceKind: 'chat-turn-auto', sourceTurnId: 'distant-turn' } }];
+  let personaCalls = 0, siteCalls = 0, clock = 1, calls = 0;
+  const prompts = [], scopes = [];
+  const settings = { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen3.8-flash' };
+  const h = await setup({ realContext: true, growthContext: () => '', selectRoomKnowledgeEntries: () => [],
+    readJson: (key, fallback) => key === 'roomLLMSettings' ? settings : fallback,
+    readRoomConversation: () => history, loadRoomConversation: async () => history,
+    writeRoomConversation: value => { history = value; },
+    saveRoomConversationTurn: async value => {
+      rows.push({ id: 'target-auto', context: 'previous wrong answer must not return',
+        metadata: { sourceKind: 'chat-turn-auto', sourceTurnId: value.turnId }, retrievalRevision: 'target-v1' });
+    },
+    replaceRoomConversationTurn: async value => {
+      history = history.map(item => item.turnId === value.turnId ? { ...item,
+        content: item.role === 'user' ? value.userMessage : value.assistantMessage } : item);
+    }
+  });
+  h.context.currentTimeContext = () => 'time ' + clock;
+  h.context.fetchSiteFeedContext = async () => { siteCalls++; return 'site version ' + clock; };
+  h.context.fetchPersonaMemories = async () => { personaCalls++; return [{ id: 'canon', summary: 'canon version ' + clock }]; };
+  h.context.fetchRelationship = async () => null;
+  h.context.fetchRelevantMemories = async (message, signal, scope) => {
+    scopes.push(scope);
+    const selected = rows.filter(row => !scope.excludeTurnIds.includes(row.metadata?.sourceTurnId)
+      && (scope.snapshotIds === undefined || scope.snapshotIds.includes(row.id)));
+    return { data: selected, retrieval: { backend: 'sqlite' } };
+  };
+  h.context.requestRoomReply = async ({ onDelta, systemPrompt, conversation, message }) => {
+    prompts.push(systemPrompt); calls++;
+    assert.equal(message, 'current question');
+    assert.ok(conversation.every(item => item.turnId === 'recent-turn'));
+    onDelta('current answer ' + calls);
+    return { reply: 'current answer ' + calls };
+  };
+  await send(h.chat, 'current question');
+  const target = h.chat.messages.value.filter(item => item.role === 'assistant').at(-1);
+  clock = 2;
+  for (let attempt = 0; attempt < 5; attempt++) assert.equal(await h.chat.regenerateReply(target.id), true);
+  assert.ok(prompts.every(prompt => prompt === prompts[0]), 'repeated regeneration retains the original time and reference selection');
+  assert.equal(siteCalls, 1);
+  assert.equal(personaCalls, 1);
+  assert.ok(scopes.every(scope => scope.excludeTurnIds.includes(target.turnId) && scope.excludeTurnIds.includes('recent-turn')));
+  assert.ok(prompts.every(prompt => !prompt.includes('previous wrong answer')));
+  assert.equal(history.filter(item => item.turnId === target.turnId).length, 2);
+  rows[0] = { ...rows[0], context: 'edited remembered fact', retrievalRevision: 'v2' };
+  assert.equal(await h.chat.regenerateReply(target.id), true);
+  assert.match(prompts.at(-1), /edited remembered fact/);
+  assert.doesNotMatch(prompts.at(-1), /stable remembered fact/);
+  rows = rows.filter(row => row.id !== 'distant');
+  assert.equal(await h.chat.regenerateReply(target.id), true);
+  assert.doesNotMatch(prompts.at(-1), /edited remembered fact|stable remembered fact|previous wrong answer/);
+  settings.model = 'qwen3.8-max';
+  assert.equal(await h.chat.regenerateReply(target.id), true);
+  assert.equal(personaCalls, 2, 'changing model/settings starts a fresh scoped snapshot');
+  assert.match(prompts.at(-1), /time 2/);
   h.chat.destroy();
 });
 

@@ -75,3 +75,45 @@ test('recent conversation stays bounded and preserves the latest complete exchan
   assert.equal(selected.at(-1).content, '接着上次的话题');
   assert.equal(selected.some(item => item.content.startsWith('older-0')), false);
 });
+
+test('count and character boundaries preserve pairs and omit orphaned old answers', async () => {
+  const { selectRecentRoomConversation } = await modulePromise;
+  const history = [{ role: 'assistant', content: 'orphan', turnId: 'cut-off' }];
+  for (let i = 0; i < 10; i++) history.push(
+    { role: 'user', content: 'question-' + i, turnId: String(i) },
+    { role: 'assistant', content: 'answer-' + i, turnId: String(i) });
+  for (const count of [1, 3, 12, 20]) {
+    const selected = selectRecentRoomConversation(history, { maxMessages: count });
+    assert.ok(selected.length <= count);
+    assert.equal(selected.length % 2, 0);
+    for (let i = 0; i < selected.length; i += 2) {
+      assert.equal(selected[i].role, 'user');
+      assert.equal(selected[i + 1].role, 'assistant');
+      assert.equal(selected[i].turnId, selected[i + 1].turnId);
+    }
+  }
+  const long = selectRecentRoomConversation([
+    { role: 'user', content: 'question'.repeat(900), turnId: 'long' },
+    { role: 'assistant', content: 'answer'.repeat(900), turnId: 'long' }
+  ], { maxChars: 500 });
+  assert.deepEqual(long.map(item => item.role), ['user', 'assistant']);
+  assert.ok(long.reduce((sum, item) => sum + item.content.length, 0) <= 500);
+  assert.match(long[0].content, /question/);
+  assert.match(long[1].content, /answer/);
+});
+
+test('memory snapshot requires a fresh revision and cannot revive edits or deletion', async () => {
+  const { revalidateRoomMemorySnapshot, packRoomContext } = await modulePromise;
+  const saved = { id: 'fact', context: 'original excerpt', retrievalRevision: 'v1' };
+  assert.deepEqual(revalidateRoomMemorySnapshot([saved], [{ ...saved, context: 'index changed' }]), [saved]);
+  const edited = { ...saved, context: 'edited fact', retrievalRevision: 'v2' };
+  assert.deepEqual(revalidateRoomMemorySnapshot([saved], [edited]), [edited]);
+  assert.deepEqual(revalidateRoomMemorySnapshot([saved], []), []);
+  assert.equal(revalidateRoomMemorySnapshot([{ id: 'old', context: 'unversioned cache' }],
+    [{ id: 'old', context: 'fresh' }])[0].context, 'fresh');
+  const packed = packRoomContext({ memories: [{ id: 'old', turnId: 'older-turn', content: '用户：旧问题\n八千代：旧回复' }] });
+  assert.match(packed.text, /历史对话均已结束/);
+  const row = JSON.parse(packed.text.split('\n').at(-1));
+  assert.equal(row.kind, 'completed_dialogue');
+  assert.equal(row.turnId, 'older-turn');
+});

@@ -95,7 +95,7 @@ describe('frontend room memory API client usage', () => {
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/persona-memory\?\$\{params\}`\)/);
         assert.match(source('src/frontend/services/room/roomMemoryRetrieval.mjs'), /purpose: 'chat'/);
-        assert.match(code, /retrieveGuestMemories\(message\)/);
+        assert.match(code, /retrieveGuestMemories\(message, 6, scope\)/);
         assertNoRawRoomMemoryFetch('src/frontend/composables/room/useRoomChat.js');
     });
 
@@ -195,7 +195,8 @@ describe('frontend room memory API client usage', () => {
         assert.match(conversation, /pending\.controller\.abort\(\)/);
         assert.match(conversation, /await Promise\.allSettled\(\[\.\.\.pendingRequests, saveQueues\.get\(userId\)\]\)/);
         assert.match(conversation, /const inFlightTurns = new Map\(\)/);
-        assert.match(chat, /readRoomConversation\(\)\.filter\(\(item\) => !replacement \|\| item\.turnId !== replacement\.turnId\)\.slice\(-12\)/);
+        assert.match(chat, /readRoomConversation\(\)\.filter\(\(item\) => item\.turnId !== turnId\)/);
+        assert.doesNotMatch(chat, /readRoomConversation\(\).*slice\(-12\)/);
         assert.match(chat, /saveRoomConversationTurn\(/);
         assert.match(chat, /startNewSession/);
         assert.match(chat, /requestConversationRevision !== conversationRevision/);
@@ -448,6 +449,35 @@ describe('bounded memory retrieval and fallback', () => {
     }
     const fact = { id: 'fact', context: '我的猫叫雪团' };
     const good = { success: true, data: [fact], retrieval: { backend: 'mem0' } };
+
+    it('excludes target and recent automatic turns on both requests, preserving manual edits', async () => {
+        const auto = (id, turnId) => ({ id, metadata: { sourceKind: 'chat-turn-auto', sourceTurnId: turnId } });
+        const rows = [auto('target', 'target-turn'), auto('recent', 'recent-turn'), auto('older', 'old-turn'),
+            { id: 'manual', metadata: { source: 'manual-edit' } }];
+        const calls = [];
+        const h = await setup({ request: async params => {
+            calls.push(params);
+            if (!params.has('retrieval')) throw Object.assign(new Error('network'), { status: 503 });
+            return { success: true, data: rows };
+        } });
+        const result = await h.run('问题', null, { excludeTurnIds: ['target-turn', 'recent-turn'] });
+        assert.deepEqual(result.data.map(row => row.id), ['older', 'manual']);
+        for (const params of calls) assert.deepEqual(JSON.parse(params.get('excludeTurnIds')), ['target-turn', 'recent-turn']);
+        const legacy = await setup({ request: async () => ({ success: true, data: rows, retrieval: { selection: 'recent' } }) });
+        assert.deepEqual((await legacy.run('unmatched')).data, []);
+    });
+
+    it('snapshot revalidation stays narrowed after a failure and treats an empty snapshot as empty', async () => {
+        const calls = [];
+        const h = await setup({ request: async params => {
+            calls.push(params);
+            if (!params.has('retrieval')) throw new Error('offline index');
+            return { success: true, data: [{ id: 'chosen' }, { id: 'unrequested' }] };
+        } });
+        assert.deepEqual((await h.run('问题', null, { snapshotIds: ['chosen'] })).data, [{ id: 'chosen' }]);
+        for (const params of calls) assert.deepEqual(JSON.parse(params.get('memoryIds')), ['chosen']);
+        assert.deepEqual((await h.run('问题', null, { snapshotIds: [] })).data, []);
+    });
 
     it('retries transport errors through the source endpoint and injects the returned full excerpt', async () => {
         const calls = [];

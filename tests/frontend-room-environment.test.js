@@ -117,10 +117,11 @@ describe('room environment context', () => {
 describe('environment wiring', () => {
     it('is injected into every room request', () => {
         const code = chatSrc();
-        assert.match(code, /async function buildRoomContext\(message, image, llmSettings, environment = '', signal = null\)/);
-        assert.match(code, /packRoomContext\(\{\s*time: currentTimeContext\(\),\s*environment,\s*knowledge:/);
+        assert.match(code, /async function buildRoomContext\(message, image, llmSettings, environment = '', signal = null,/);
+        assert.match(code, /const sections = snapshot\?\.sections \|\| \{\s*time: currentTimeContext\(\),\s*environment,\s*knowledge:/);
+        assert.match(code, /packRoomContext\(\{ \.\.\.sections, memories:/);
         assert.match(code, /const environment = roomEnvironmentContext\(world\?\.world\?\.value\);/);
-        assert.match(code, /await buildRoomContext\(message, image, settings, environment, operation\.controller\.signal\)/);
+        assert.match(code, /await buildRoomContext\(message, image, settings, environment, operation\.controller\.signal,/);
     });
 
     it('places the environment right after the time block', () => {

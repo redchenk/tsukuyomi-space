@@ -3,6 +3,20 @@
 const LIMIT = 1024 * 1024;
 const bytes = value => new TextEncoder().encode(typeof value === 'string' ? value : JSON.stringify(value)).length;
 const error = (code, message) => Object.assign(new Error(message), { code });
+// Shared by direct browser calls and the server proxy. Do not send sampling
+// fields to reasoning-only OpenAI models or vendor extensions to other hosts.
+function chatOptions(chatUrl, model = '') {
+    let url;
+    try { url = new URL(chatUrl); } catch (_) { return {}; }
+    if (/\/responses\/?$|\/messages\/?$/.test(url.pathname)) return {};
+    if (/api\.moonshot\.cn|moonshot|kimi/i.test(url.hostname + ' ' + model)) return { temperature: 1 };
+    if (/^(?:o[1-9](?:-|$)|gpt-(?:[5-9]|[1-9]\d)(?:[.-]|$))/i.test(model)) return {};
+    const dashscope = ['dashscope.aliyuncs.com', 'dashscope-intl.aliyuncs.com', 'dashscope-us.aliyuncs.com'].includes(url.hostname);
+    const qwen38 = /^qwen3\.8-(?:flash|max)(?:-|$)/i.test(model);
+    return { temperature: dashscope && qwen38 ? 0.6 : 0.7,
+        // The site stores visible dialogue, not cross-turn hidden reasoning.
+        ...(dashscope && qwen38 ? { preserve_thinking: false } : {}) };
+}
 function bounded(value, limit = LIMIT) {
     if (bytes(value) > limit) throw error('LLM_SIZE_LIMIT', '模型响应过大，请缩短请求后重试');
     return value;
@@ -210,6 +224,9 @@ function withTools(payload, provider, tools = [], turns = []) {
         if (tools.length) result.tools = tools.map(p => ({ name: p.name, description: p.description, input_schema: p.inputSchema }));
     } else {
         result.messages = [...payload.messages];
+        // Within this agent turn opaque reasoning is available and remains in
+        // RAM. Qwen can use it for tool continuation without storing it in chat.
+        if (turns.length && result.preserve_thinking === false) result.preserve_thinking = true;
         for (const turn of turns) {
             const items = provider === 'ollama' ? turn.continuation.items.map(p => ({ ...p, tool_calls: p.tool_calls?.map(t => ({ function: { name: t.function.name, arguments: JSON.parse(t.function.arguments) } })) })) : turn.continuation.items;
             result.messages.push(...items, ...turn.results.map(p => provider === 'ollama' ? { role: 'tool', tool_name: p.name, content: p.content } : { role: 'tool', tool_call_id: p.id, content: p.content }));
@@ -218,4 +235,4 @@ function withTools(payload, provider, tools = [], turns = []) {
     }
     return result;
 }
-module.exports = { readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, error };
+module.exports = { chatOptions, readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, error };

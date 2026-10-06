@@ -7,6 +7,27 @@ const sse = items => new Response(items.map(p => `data: ${typeof p === 'string' 
 const tool = (id = 'call_1', query = '现在天气') => ({ id, name: 'web_search', arguments: JSON.stringify({ query }) });
 const completion = calls => ({ reply: '', toolCalls: calls, continuation: { protocol: 'openai', items: [{ role: 'assistant', content: null, tool_calls: calls.map(p => ({ id: p.id, type: 'function', function: { name: p.name, arguments: p.arguments } })) }] } });
 
+test('direct and proxy Qwen settings are controlled without exporting vendor fields or stored reasoning', () => {
+  const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+  assert.deepEqual(protocol.chatOptions(url, 'qwen3.8-flash'), { temperature: 0.6, preserve_thinking: false });
+  const payload = buildChatPayload({ chatUrl: url, model: 'qwen3.8-flash', systemPrompt: 'persona',
+    history: [{ role: 'assistant', content: 'visible history', reasoning_content: 'not stored history' }], message: 'current question' });
+  assert.equal(payload.temperature, 0.6);
+  assert.equal(payload.preserve_thinking, false);
+  assert.equal(payload.messages.at(-1).content, 'current question');
+  assert.equal(payload.messages[1].reasoning_content, undefined);
+  assert.equal(protocol.chatOptions('https://openrouter.ai/api/v1/chat/completions', 'qwen3.8-flash').preserve_thinking, undefined);
+  assert.deepEqual(protocol.chatOptions('https://api.openai.com/v1/chat/completions', 'o3'), {});
+  assert.deepEqual(protocol.chatOptions('https://api.openai.com/v1/responses', 'gpt-5.5'), {});
+  assert.deepEqual(protocol.chatOptions('https://api.moonshot.cn/v1/chat/completions', 'kimi-k2.6'), { temperature: 1 });
+  const continued = protocol.withTools(payload, 'openai', [], [{
+    continuation: { items: [{ role: 'assistant', reasoning_content: 'current turn opaque state', tool_calls: [] }] },
+    results: []
+  }]);
+  assert.equal(continued.preserve_thinking, true);
+  assert.equal(continued.messages.at(-1).reasoning_content, 'current turn opaque state');
+});
+
 test('OpenAI split calls preserve IDs, arguments, reasoning and post-finish usage without showing internals', async () => {
   const deltas = [];
   const result = await protocol.readStream(sse([

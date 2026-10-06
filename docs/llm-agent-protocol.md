@@ -15,6 +15,18 @@ Gemini 等服务继续使用现有 OpenAI 兼容入口。没有新增原生 Gemi
 
 `shared/llm-protocol.cjs` 同时用于后端代理和浏览器聊天；`shared/agent-protocol.cjs` 负责固定工具定义、参数校验、调用 ID 配对、轮数和去重。推理字段、工具参数、签名和工具中间消息只留在当前轮内存中，不写入气泡、日记或长期记忆。完成后仍只保存一轮用户消息与最终可见回复；中断或失败不会把半句保存为完成回复。保持流式气泡，生成过程中不主动滚动聊天视角。
 
+## 当前轮与历史资料
+
+当前用户消息始终放在请求末尾。系统提示明确区分本轮请求与已结束的历史对话，保持八千代原作身份与自然短回复。短期历史按完整的问答轮次选择，最多 12 条、6,000 字（Ollama 4,000 字），长消息在预算内保留首尾，不把旧回复单独截出来当成待续写的问题。
+
+云端向量检索、SQLite 备用检索和本地 IndexedDB 都排除当前轮的自动记忆，以及已经包含在短期历史中的轮次；用户手动编辑的独立记忆仍可参与。旧对话资料标记为 `completed_dialogue`，没有相关结果时返回空集合，不用最近的无关记忆填满上下文。
+
+同一轮重新生成只在浏览器内存中保留一份参考资料快照，固定时间、资料选择和工具预读结果。每次重试仍向当前账号的权威存储核验所选记忆 ID 与版本：删除的记录不再注入，编辑和事实纠正使用新版本；索引刷新不改变原始摘录。新消息、账号／记忆来源／模型及相关设置变化会重新检索，新增的其他记忆在下一轮参与。刷新页面不会保存提示词快照，恢复后依然执行轮次排除。校验失败不能拿旧缓存冒充成功读取。
+
+直连和后端代理共用采样参数策略：阿里云官方 Dashscope 端点上的 Qwen3.8 Flash / Max 使用 `temperature:0.6`，普通可见历史使用 `preserve_thinking:false`；当前轮工具接续时单独保留协议要求的 reasoning 字段。Kimi 沿用 `temperature:1`，已知 OpenAI 推理模型不发送不支持的温度参数，其他 Chat Completions 兼容线路沿用 `0.7`。不同时增加 `top_p`、seed 或回复长度限制。[Qwen 官方协议说明](https://www.alibabacloud.com/help/en/model-studio/qwen-api-via-openai-chat-completions)
+
+不按字面重合判定答非所问，也不自动缓存整段流式回复、调用额外收费模型或静默重发。提交时的 `expectedUserMessage` / `expectedAssistantMessage` 是防止并发覆盖的校验，不是语义判定。回归使用模拟模型验证实际请求、连续重生成、记忆编辑删除与刷新恢复，不将模拟服务结果当作真实模型每次回答正确的保证。
+
 ## Agent 使用与边界
 
 1. 在 `/room/settings` 配置聊天模型，打开「工具与扩展」。
@@ -45,12 +57,14 @@ Fushi 的 MCP 2.0 事件、OAuth、专属账号与审核流程保持独立，不
 npm run check:llm-agent
 npm run test:llm-agent
 npm test
-PW_CHANNEL=chrome npx playwright test tests/e2e/room-agent-protocol.spec.js tests/e2e/room-chat-reliability.spec.js --project=chromium
+PW_CHANNEL=chrome npx playwright test tests/e2e/room-turn-context.spec.js tests/e2e/room-agent-protocol.spec.js tests/e2e/room-chat-reliability.spec.js --project=chromium
 npm run build:web
 npm run build:web:overseas
 ```
 
 测试包括四种模型线路、碎片化 UTF-8 / 参数、usage 尾帧、Opaque reasoning / thinking 签名、截断与超大响应、响应正文停滞、错误 / 重复工具、超限和取消、JSON / SSE MCP 握手、RPC ID 不符、错误版本、stdio 提前退出和错误脱敏。浏览器测试验证「模型调用工具→结果回传→最终气泡→刷新恢复」和失败结果不泄露到历史。本次协议完整回归 703 项与 8 项浏览器测试通过，国内 / 海外构建通过；补建 emoji 分片另有 10 项本地记忆回归通过。测试使用模拟服务，不消耗用户 API 配额；真实服务仍须具有工具调用能力与适当 CORS / 网络配置。
+
+2026-10-06 轮次上下文修复验证：前端 312 项、记忆 31 项、协议与安全 58 项、API 274 项分别通过（各组含部分重叠安全用例），另有留言审核脚本与 23 项浏览器测试通过。浏览器覆盖移动／桌面、本地／账号记忆、连续重生成、删除记忆、降级读取、刷新恢复、图片预览、工具接续、流式阅读位置和日记记录。本次不重启记忆 worker，不修改索引或补建游标。
 
 部署不新增依赖、环境变量、数据迁移或常驻服务。前端在本地构建；服务端使用现有受限内存代码发布流程，保留所有 Live2D / 音乐 / 上传资源和无关本地修改。回滚使用该次 release state 的 `safe-release.py rollback --state ...`；本次没有数据库结构变更。历史记忆索引与分析仍由原 worker 分批执行，沿用 SQLite 游标、低内存暂停和 640 MiB slice 限制；本次修复了 UTF-16 分片切断 emoji 导致分词失败的问题，worker 短暂重载后按原游标继续；仅重新排入受此问题影响的失败任务，不重建现有索引。
 

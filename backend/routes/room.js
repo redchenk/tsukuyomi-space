@@ -910,7 +910,8 @@ async function sendMemoryList(req, res) {
     const limit = req.query.limit || 50;
     if (query && req.query.purpose === 'chat') {
         const result = await roomMemory.retrieveChatMemories(req.user.id, query, req.query.limit || 6,
-            { sourceOnly: req.query.retrieval === 'source' });
+            { sourceOnly: req.query.retrieval === 'source', excludeTurnIds: req.query.excludeTurnIds,
+                snapshotIds: req.query.memoryIds });
         return res.json({ success: true, data: result.memories, retrieval: result.retrieval });
     }
     const memories = query

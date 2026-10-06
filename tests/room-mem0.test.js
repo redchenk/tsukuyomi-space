@@ -37,6 +37,44 @@ before(async () => {
 });
 after(async () => { await new Promise(resolve => server.close(resolve)); db.close(); fs.rmSync(dataDir, { recursive: true, force: true }); });
 
+test('target/recent turn isolation and owned snapshot validation apply before source fallback', async () => {
+    const ids = [];
+    for (const turnId of ['scope-old', 'scope-recent', 'scope-target']) ids.push(...memory.captureChatTurn('mem0-one', {
+        turnId, userMessage: '边界试验观测站在周六开放。', assistantMessage: '这是已结束的旧回复。'
+    }));
+    const options = { sourceOnly: true, excludeTurnIds: ['scope-recent', 'scope-target'] };
+    const result = await memory.retrieveChatMemories('mem0-one', '边界试验观测站', 12, options);
+    assert.ok(result.memories.some(row => row.id === ids[0]));
+    assert.ok(result.memories.every(row => !ids.slice(1).includes(row.id)));
+    const semantic = await memory.retrieveChatMemories('mem0-one', '边界试验观测站', 1,
+        { excludeTurnIds: options.excludeTurnIds });
+    assert.equal(semantic.retrieval.backend, 'mem0');
+    assert.deepEqual(semantic.memories.map(row => row.id), [ids[0]], 'filter indexed target/recent sources before applying the limit');
+    const params = new URLSearchParams({ purpose: 'chat', q: '边界试验观测站', retrieval: 'source',
+        excludeTurnIds: JSON.stringify(options.excludeTurnIds), memoryIds: JSON.stringify(ids) });
+    const api = await request('/memory?' + params);
+    assert.deepEqual(api.data.map(row => row.id), [ids[0]]);
+    assert.equal(api.retrieval.selection, 'snapshot');
+    assert.deepEqual((await memory.retrieveChatMemories('mem0-two', '边界试验观测站', 6, { snapshotIds: ids })).memories, []);
+    assert.deepEqual((await memory.retrieveChatMemories('mem0-one', '边界试验观测站', 6, { snapshotIds: [] })).memories, []);
+    const original = api.data[0];
+    await memory.updateMemory('mem0-one', ids[0], { content: '边界试验观测站改为周日。', summary: '新安排' });
+    const edited = await memory.retrieveChatMemories('mem0-one', '边界试验观测站', 6, { snapshotIds: [ids[0]], excludeTurnIds: ['scope-old'] });
+    assert.match(edited.memories[0].context, /周日/);
+    assert.notEqual(edited.memories[0].retrievalRevision, original.retrievalRevision);
+    db.prepare('DELETE FROM room_memories WHERE user_id=? AND id=?').run('mem0-one', ids[0]);
+    assert.deepEqual((await memory.retrieveChatMemories('mem0-one', '边界试验观测站', 6, { snapshotIds: [ids[0]] })).memories, []);
+    db.prepare('DELETE FROM room_memories WHERE user_id=? AND id IN (?,?)').run('mem0-one', ids[1], ids[2]);
+});
+
+test('invalid retrieval scopes are rejected with HTTP 400 without broadening access', async () => {
+    for (const bad of ['not-json', 'null', JSON.stringify(Array(41).fill('turn')), JSON.stringify(['x'.repeat(161)])]) {
+        const response = await fetch(base + '/api/room/memory?purpose=chat&q=test&excludeTurnIds=' + encodeURIComponent(bad),
+            { headers: { Cookie: cookie } });
+        assert.equal(response.status, 400);
+    }
+});
+
 test('chat transaction preserves short facts; real Mem0 survives restart, pruning and new conversations', async () => {
     const first = { memoryEnabled: true, turnId: 'mem0-cat', userMessage: '我的猫叫雪糕', assistantMessage: '雪糕，好可爱的名字。' };
     await request('/chat/turn', 'POST', first);
@@ -164,9 +202,8 @@ test('source-only retry bypasses Mem0, uses full excerpts and enforces account o
         assert.match(result.data[0].context, /青岚天文台前台/);
         const other = await memory.retrieveChatMemories('mem0-two', '雨伞放在哪里', 6, { sourceOnly: true });
         assert.deepEqual(other.memories, []);
-        const recent = await memory.retrieveChatMemories('mem0-one', 'unmatched-query', 6, { sourceOnly: true });
-        assert.equal(recent.retrieval.selection, 'recent');
-        assert.ok(recent.memories.length > 0);
+        const unmatched = await memory.retrieveChatMemories('mem0-one', 'unmatched-query', 6, { sourceOnly: true });
+        assert.deepEqual(unmatched.memories, [], 'a broken index must not turn unrelated old dialogue into the current task');
     } finally { Memory.prototype.search = original; }
 });
 

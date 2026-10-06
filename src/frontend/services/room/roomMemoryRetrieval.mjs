@@ -1,11 +1,17 @@
+import retrieval from '../../../../shared/room-memory-retrieval.cjs';
+const { memoryRetrievalScope, memoryAllowedForTurns } = retrieval;
+
 const empty = (backend, extra = {}) => ({ data: [], retrieval: { backend, ...extra } });
 const failure = (reason, status) => Object.assign(new Error(reason === 'account_changed' ? '登录账号已变化，请重新发送' : reason), { reason, status });
 
-// No memory cache: edits, deletion, logout and account switches must take effect
-// immediately. Both attempts read the authenticated source at request time.
+// Every attempt reads the authenticated source, including snapshot validation.
+// A snapshot narrows selection but cannot bypass edits, deletion or ownership.
 export function createRoomMemoryRetriever({ getAccountId, isEnabled, retrieveGuest, request,
   useLocal = () => false, warn = (...args) => console.warn(...args), timeoutMs = 8000, fallbackTimeoutMs = 4000 }) {
-  return async function retrieve(message, signal = null) {
+  return async function retrieve(message, signal = null, options = {}) {
+    const scope = memoryRetrievalScope(options);
+    const excluded = new Set(scope.excludeTurnIds);
+    const selectedIds = scope.snapshotIds !== undefined ? new Set(scope.snapshotIds) : null;
     const accountId = getAccountId();
     const local = !accountId || useLocal();
     const started = Date.now();
@@ -27,13 +33,18 @@ export function createRoomMemoryRetriever({ getAccountId, isEnabled, retrieveGue
       try {
         const operation = !local
           ? request(new URLSearchParams({ q: String(message).trim(), limit: '6', purpose: 'chat',
+              ...(scope.excludeTurnIds.length ? { excludeTurnIds: JSON.stringify(scope.excludeTurnIds) } : {}),
+              ...(selectedIds ? { memoryIds: JSON.stringify(scope.snapshotIds) } : {}),
               ...(sourceOnly ? { retrieval: 'source' } : {}) }), controller.signal)
-          : retrieveGuest(message).then(data => ({ success: true, data, retrieval: { backend: 'indexeddb' } }));
+          : retrieveGuest(message, scope).then(data => ({ success: true, data, retrieval: { backend: 'indexeddb' } }));
         const result = await Promise.race([operation, interrupted]);
         check();
         if (!result?.success) throw failure('success_false');
         if (!Array.isArray(result.data)) throw failure('invalid_response');
-        return { data: result.data, retrieval: result.retrieval || {} };
+        // Defence in depth for a mixed-version rollout or a legacy fallback.
+        const data = result.retrieval?.selection === 'recent' ? [] : result.data.filter(row =>
+          memoryAllowedForTurns(row, excluded) && (!selectedIds || selectedIds.has(row.id))).slice(0, 6);
+        return { data, retrieval: { ...result.retrieval, count: data.length } };
       } catch (error) {
         if (timedOut && !signal?.aborted) throw failure('timeout');
         throw error;

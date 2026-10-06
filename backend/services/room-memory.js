@@ -12,7 +12,7 @@ const {
 const milvusStore = require('./room-milvus-store');
 const mem0Store = require('./room-mem0');
 const localIntelligence = require('./room-local-client');
-const { lexicalScore, memoryExcerpt, searchTerms } = require('../../shared/room-memory-retrieval.cjs');
+const { lexicalScore, memoryExcerpt, searchTerms, memoryRetrievalScope, memoryAllowedForTurns } = require('../../shared/room-memory-retrieval.cjs');
 
 const MAX_MEMORY_CONTENT_LENGTH = Math.max(4000, Number.parseInt(process.env.ROOM_MEMORY_CONTENT_LIMIT || '12000', 10) || 12000);
 const MAX_MEMORY_IMPORT_RECORDS = 200;
@@ -205,17 +205,24 @@ function reconcileMem0(userId) {
     return mem0Store.reconcile(userId, () => ownedMemoryRows(userId)).catch(() => {});
 }
 
-async function retrieveChatMemories(userId, query, limit = 6, { sourceOnly = false } = {}) {
+async function retrieveChatMemories(userId, query, limit = 6, options = {}) {
     userId = requireUserId(userId);
+    const { excludeTurnIds, snapshotIds } = memoryRetrievalScope(options);
+    const excluded = new Set(excludeTurnIds);
+    const snapshot = snapshotIds !== undefined;
     const safeLimit = Math.max(1, Math.min(12, Number(limit) || 6));
     const expanded = `${query}\n${searchTerms(query).join(' ')}`;
-    const index = sourceOnly ? { results: [], backend: 'sqlite', fallback: true, reason: 'source_requested' }
-        : await mem0Store.search(userId, expanded, ids => ownedMemoryRows(userId, ids), Math.max(20, safeLimit * 4));
+    const index = snapshot ? { results: [], backend: 'sqlite', fallback: false }
+        : options.sourceOnly ? { results: [], backend: 'sqlite', fallback: true, reason: 'source_requested' }
+        : await mem0Store.search(userId, expanded, ids => ownedMemoryRows(userId, ids), Math.min(60, Math.max(20, safeLimit * 4) + excluded.size * 2));
     const semantic = new Map(index.results.map(item => [item.id, item.score]));
     const semanticChunks = new Map(index.results.map(item => [item.id, item.context]));
     const queryVector = createEmbedding(expanded);
-    const rows = localIntelligence.enabled ? [...new Map([...ownedMemoryRows(userId), ...ownedMemoryRows(userId, index.results.map(item => item.id))].map(row => [row.id, row])).values()] : ownedMemoryRows(userId);
-    let ranked = rows.map(row => {
+    const candidates = snapshot
+        ? snapshotIds.flatMap(id => { const row = db.prepare('SELECT * FROM room_memories WHERE id=? AND user_id=?').get(id, userId); return row ? [row] : []; })
+        : localIntelligence.enabled ? [...new Map([...ownedMemoryRows(userId), ...ownedMemoryRows(userId, index.results.map(item => item.id))].map(row => [row.id, row])).values()] : ownedMemoryRows(userId);
+    const rows = candidates.filter(row => memoryAllowedForTurns(row, excluded));
+    const ranked = snapshot ? rows.slice(0, safeLimit).map(row => ({ row, score: 0 })) : rows.map(row => {
         const lexical = lexicalScore(query, row.content);
         const vector = localIntelligence.enabled ? 0 : similarity(queryVector, createEmbedding(row.content));
         const metadata = parseJson(row.metadata, {});
@@ -227,21 +234,29 @@ async function retrieveChatMemories(userId, query, limit = 6, { sourceOnly = fal
         || (embeddingStatus().configuredProvider === 'remote' && (semantic.get(item.row.id) || 0) >= 0.5))
         .sort((a, b) => b.score - a.score || String(b.row.updated_at).localeCompare(String(a.row.updated_at)))
         .slice(0, safeLimit);
-    const recentFallback = index.fallback && !ranked.length && rows.length > 0;
-    if (recentFallback) ranked = rows.slice(0, safeLimit).map(row => ({ row, score: 0 }));
     touchMemories(userId, ranked.map(item => item.row.id));
-    return {
-        memories: ranked.flatMap(({ row, score }) => {
+    const memories = ranked.flatMap(({ row, score }) => {
             const facts = localIntelligence.enabled ? db.prepare('SELECT quote,active FROM room_memory_facts WHERE memory_id=? AND user_id=?').all(row.id, userId) : [];
             // An old singleton identity remains in the archive, but must not
             // overwrite a later correction in the actual prompt.
             if (facts.length && !facts.some(fact => fact.active)) return [];
             const context = facts.length ? facts.filter(fact => fact.active).map(fact => fact.quote).join('\n')
                 : semanticChunks.get(row.id) || memoryExcerpt(row.content, query);
-            return [{ ...toPublicMemory(row, score), context, source: index.backend }];
-        }),
-        retrieval: { backend: index.backend, fallback: index.fallback, count: ranked.length,
-            ...(index.reason ? { reason: index.reason } : {}), ...(recentFallback ? { selection: 'recent' } : {}) }
+            // The snapshot is revalidated against the owned source on every
+            // retry. Index refreshes do not change the version; edits, source
+            // retirement and fact corrections do. No prompt text is logged.
+            const meta = parseJson(row.metadata, {});
+            const retrievalRevision = crypto.createHash('sha256').update(JSON.stringify([
+                row.memory_type, row.summary, row.content, row.importance, meta.confidence,
+                meta.sourceKind, meta.sourceTurnId, meta.sourceRevision, meta.tags,
+                facts.map(fact => [fact.quote, fact.active]).sort()
+            ])).digest('hex');
+            return [{ ...toPublicMemory(row, score), context, source: index.backend, retrievalRevision }];
+        });
+    return {
+        memories,
+        retrieval: { backend: index.backend, fallback: index.fallback, count: memories.length,
+            ...(index.reason ? { reason: index.reason } : {}), ...(snapshot ? { selection: 'snapshot' } : {}) }
     };
 }
 

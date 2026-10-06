@@ -1,5 +1,35 @@
 const SENSITIVE = /(password|api[_-]?key|secret|bearer\s+[a-z0-9._-]+|\btoken\b|sk-[a-z0-9._-]+|密码|密钥|令牌|身份证|银行卡)/i;
 
+// A caller may narrow its own retrieval, never choose a different owner. Keep
+// both query-string and internal callers bounded before touching the index.
+function memoryRetrievalScope({ excludeTurnIds = [], snapshotIds } = {}) {
+    const list = (value, max, maxLength) => {
+        if (typeof value === 'string') {
+            if (value.length > 12000) throw Object.assign(new Error('记忆检索参数过长'), { statusCode: 400 });
+            try { value = JSON.parse(value); } catch (_) { value = null; }
+        }
+        if (!Array.isArray(value) || value.length > max || value.some(id => typeof id !== 'string'
+            || !id.trim() || id.length > maxLength || /[\u0000-\u001f\u007f]/.test(id))) {
+            throw Object.assign(new Error('记忆检索参数无效'), { statusCode: 400 });
+        }
+        return [...new Set(value.map(id => id.trim()))];
+    };
+    return { excludeTurnIds: list(excludeTurnIds, 40, 160),
+        ...(snapshotIds !== undefined ? { snapshotIds: list(snapshotIds, 12, 256) } : {}) };
+}
+
+function memorySourceTurnId(row) {
+    if (row?.sourceTurnId && !row.manuallyEdited) return String(row.sourceTurnId);
+    let meta = row?.metadata || {};
+    if (typeof meta === 'string') { try { meta = JSON.parse(meta); } catch (_) { meta = {}; } }
+    return meta?.sourceKind === 'chat-turn-auto' ? String(meta.sourceTurnId || '') : '';
+}
+
+function memoryAllowedForTurns(row, excluded) {
+    const turnId = memorySourceTurnId(row);
+    return !turnId || !excluded.has(turnId);
+}
+
 function searchTerms(query) {
     const text = String(query || '').toLowerCase();
     const cleaned = text.replace(/还记得|记不记得|之前|以前|请问|什么|那个|一下|告诉|我们|我的|你的/g, ' ');
@@ -46,4 +76,4 @@ function memoryExcerpt(content, query, limit = 760) {
     return `${best.start ? '…' : ''}${text.slice(best.start, end)}${end < text.length ? '…' : ''}`;
 }
 
-module.exports = { SENSITIVE, searchTerms, lexicalScore, memoryExcerpt };
+module.exports = { SENSITIVE, searchTerms, lexicalScore, memoryExcerpt, memoryRetrievalScope, memorySourceTurnId, memoryAllowedForTurns };

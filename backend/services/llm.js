@@ -303,7 +303,7 @@ function buildBaseChatPayload({ chatUrl, model, systemPrompt, history, message, 
             ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
             { role: 'user', content: userContent }
         ],
-        temperature: chatTemperatureFor(chatUrl, model, 0.7),
+        ...protocol.chatOptions(chatUrl, model),
         stream: false
     };
 }
