@@ -1,4 +1,5 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { createArticleNavigation } from '../utils/articleNavigation';
 
 /** Index the sanitized, rendered article so block, HTML and Markdown posts share one reader. */
 export function useArticleReading(contentRef, renderedContent) {
@@ -13,6 +14,7 @@ export function useArticleReading(contentRef, renderedContent) {
   let nodes = [];
   let headingOffsets = [];
   let layoutChanged = true;
+  const navigation = createArticleNavigation(() => contentRef.value?.closest('.article-reader'));
 
   function measure() {
     frame = 0;
@@ -58,11 +60,13 @@ export function useArticleReading(contentRef, renderedContent) {
   function goToHeading(id) {
     const node = nodes.find((heading) => heading.id === id);
     if (!node) return;
-    node.focus({ preventScroll: true });
-    node.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    navigation.jump(node);
   }
 
-  watch([contentRef, renderedContent], indexHeadings, { flush: 'post' });
+  watch([contentRef, renderedContent], () => {
+    navigation.cancel();
+    void indexHeadings();
+  }, { flush: 'post' });
   onMounted(() => {
     tocOpen.value = window.matchMedia('(min-width: 1100px)').matches;
     resizeObserver = new ResizeObserver(onLayoutChange);
@@ -72,10 +76,11 @@ export function useArticleReading(contentRef, renderedContent) {
   });
   onBeforeUnmount(() => {
     alive = false;
+    navigation.cancel();
     if (frame) cancelAnimationFrame(frame);
     resizeObserver?.disconnect();
     window.removeEventListener('scroll', schedule);
     window.removeEventListener('resize', onLayoutChange);
   });
-  return { headings, activeHeading, progress, plainText, tocOpen, goToHeading };
+  return { headings, activeHeading, progress, plainText, tocOpen, goToHeading, scrollToTarget: navigation.jump };
 }

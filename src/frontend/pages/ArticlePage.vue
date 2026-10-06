@@ -35,7 +35,7 @@ let articleLoadRevision = 0;
 let articleRequests;
 const articleContentRef = ref(null);
 const renderedContent = computed(() => article.value ? formatContent(article.value.content, article.value.content_format) : '');
-const { headings, activeHeading, progress, plainText, tocOpen, goToHeading } = useArticleReading(articleContentRef, renderedContent);
+const { headings, activeHeading, progress, plainText, tocOpen, goToHeading, scrollToTarget } = useArticleReading(articleContentRef, renderedContent);
 // Scrolling updates progress, not the text used to calculate reading time.
 const articleReadingTime = computed(() => readingTimeLabel(article.value, props.lang, plainText.value));
 const readerCopy = computed(() => ({
@@ -379,7 +379,7 @@ async function revealComment(id) {
   if (!root) return;
   if (root !== String(id)) expandedReplies[root] = true;
   await nextTick();
-  document.getElementById(`comment-${id}`)?.scrollIntoView({ block: 'center', behavior: 'instant' });
+  scrollToTarget(document.getElementById(`comment-${id}`), { block: 'center', behavior: 'instant', focus: false });
 }
 
 function upsertComment(message) {
@@ -515,9 +515,7 @@ function toggleReply(id) {
 
 function jumpToArticleTarget(id) {
   const target = document.getElementById(id);
-  if (!target) return;
-  target.focus({ preventScroll: true });
-  target.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  scrollToTarget(target);
 }
 
 onMounted(loadArticle);
