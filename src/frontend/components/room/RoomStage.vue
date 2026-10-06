@@ -8,7 +8,8 @@ const props = defineProps({
   live2d: { type: Object, required: true },
   characterName: { type: String, default: '' },
   music: { type: Object, required: true },
-  weather: { type: Object, default: () => ({}) }
+  weather: { type: Object, default: () => ({}) },
+  scene: { type: Object, default: () => ({ label: '湖畔小屋', icon: 'moon' }) }
 });
 const emit = defineEmits(['settings']);
 const stage = ref(null);
@@ -106,9 +107,9 @@ onBeforeUnmount(() => {
     <div id="live2d-container" class="room-live2d-container"></div>
     <div class="room-stage-desktop-ui">
       <div class="room-stage-scene room-stage-menu-anchor">
-        <button type="button" class="room-scene-trigger" :aria-expanded="openMenu === 'scene'" @click="openMenu = openMenu === 'scene' ? '' : 'scene'"><TsIcon name="moon" :size="17" /><span>月夜小屋</span><TsIcon name="chevronDown" :size="12" /></button>
+        <button type="button" class="room-scene-trigger" :aria-label="scene.title || scene.label" :aria-expanded="openMenu === 'scene'" @click="openMenu = openMenu === 'scene' ? '' : 'scene'"><TsIcon :name="scene.icon" :size="17" /><span>{{ scene.label }}</span><TsIcon name="chevronDown" :size="12" /></button>
         <span class="room-mobile-presence">{{ live2d.ready.value ? '在这里，陪着你' : live2d.error.value ? '角色暂未连接' : '正在准备与你见面…' }}</span>
-        <div v-if="openMenu === 'scene'" class="room-stage-popover room-scene-info"><strong>窗外的此刻</strong><p>{{ weather.city }} · {{ weather.temperature }} {{ weather.label }}</p><small>{{ weather.detail }}</small><button type="button" @click="openMenu = ''; emit('settings')">房间与角色设置 <TsIcon name="arrowRight" :size="14" /></button></div>
+        <div v-if="openMenu === 'scene'" class="room-stage-popover room-scene-info"><strong>{{ scene.title || scene.label }}</strong><small>背景跟随季节主题；按设备本地时间，06:00–18:00 为白天，其余为夜晚。</small><p>{{ weather.city }} · {{ weather.temperature }} {{ weather.label }}</p><small>{{ weather.detail }}</small><button type="button" @click="openMenu = ''; emit('settings')">房间与角色设置 <TsIcon name="arrowRight" :size="14" /></button></div>
       </div>
       <div class="room-stage-greeting" aria-hidden="true"><span><TsIcon name="sparkles" :size="16" /></span><p>你来啦。刚好，<br>给自己留一点放空的时间。</p></div>
       <div class="room-stage-signature"><span>YACHIYO</span><strong>{{ displayName }}</strong><p><i :class="{ ready: live2d.ready.value }"></i>{{ live2d.ready.value ? '正在听你说' : '等待与你见面' }}</p></div>

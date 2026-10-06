@@ -13,6 +13,7 @@ import RoomWeatherCard from '../components/room/RoomWeatherCard.vue';
 import RoomShareDialog from '../components/room/RoomShareDialog.vue';
 import { getSession } from '../api/client';
 import { useRoomState } from '../composables/room/useRoomState';
+import { useRoomBackdrop } from '../composables/room/useRoomBackdrop';
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -22,6 +23,8 @@ const props = defineProps({
 
 const emit = defineEmits(['go']);
 const room = useRoomState();
+const backdrop = useRoomBackdrop();
+const roomStyle = computed(() => ({ ...room.roomStyle.value, ...backdrop.style.value }));
 const mobileRoom = ref(window.matchMedia('(max-width: 860px)').matches);
 const desktopPanel = ref('chatPanel');
 const panelHostReady = ref(false);
@@ -151,10 +154,11 @@ watch(() => props.shareId, loadSharedConversation);
     aria-label="&#31169;&#20154;&#23621;&#25152;"
     :data-room-user-id="roomUserId"
     :data-room-user-name="roomUserName"
-    :data-time-phase="room.world.world.value.timePhase"
-    :data-season="room.world.world.value.season"
+    :data-time-phase="backdrop.scene.value.time"
+    :data-season="backdrop.scene.value.season"
+    :data-room-scene="backdrop.scene.value.key"
     :data-weather="room.world.world.value.weather"
-    :style="room.roomStyle.value"
+    :style="roomStyle"
     :aria-busy="room.loading.active"
   >
     <div class="room-backdrop" aria-hidden="true"></div>
@@ -189,7 +193,7 @@ watch(() => props.shareId, loadSharedConversation);
       </details>
       <a class="room-mobile-settings" href="/room/settings" aria-label="房间设置与长期记忆" @click.prevent="emit('go', '/room/settings')"><TsIcon name="settings" :size="23" /></a>
     </header>
-    <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" :music="room.music" :weather="room.world.weatherCard.value" @settings="emit('go', '/room/settings')" />
+    <RoomStage :live2d="room.live2d" :character-name="room.stageCharacterName.value" :music="room.music" :weather="room.world.weatherCard.value" :scene="backdrop.scene.value" @settings="emit('go', '/room/settings')" />
     <RoomWeatherCard :weather="room.world.weatherCard.value" />
     <RoomDock
       :buttons="room.panels.panelButtons"

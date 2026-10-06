@@ -29,6 +29,12 @@ CODE_DIRS = ('backend', 'shared', 'src', 'scripts', 'tests', 'deploy', 'docs', '
 SOURCE_STYLE_DIR = 'assets/css/vue'
 BRAND_FILES = ('favicon.ico', 'site.webmanifest', 'assets/icons/icon-32.png',
                'assets/icons/icon-180.png', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png')
+# Only these two byte-exact, retired Room illustrations may be removed by the
+# explicit flag. Never accept arbitrary media paths or operator-modified files.
+RETIRED_ROOM_ARTWORK = {
+    'assets/images/room-bg.png': '60ec45e2a4c5298d97ab8dbba3e8f1c6986aee06feaaeda6a28817539a90fb37',
+    'assets/images/room-night-apartment-38e66dfa.webp': 'c49fddc6a4fc59760fc8bdf36632f858b20ecbacdd2098f4be80072966721922',
+}
 CODE_FILES = ('package.json', 'package-lock.json', 'Dockerfile', '.dockerignore', '.gitignore',
               '.gitattributes', '.env.example', '.env.docker.example', '.env.overseas',
               'docker-compose.yml', 'docker-compose.resources.example.yml',
@@ -84,10 +90,15 @@ def dependency_install_needed(root, before, after, paths):
             or any(old.get('scripts', {}).get(key) != new.get('scripts', {}).get(key) for key in INSTALL_SCRIPTS))
 
 
-def check_git(root, before, after, environment_release=False, brand_release=False):
+def check_git(root, before, after, environment_release=False, brand_release=False, retire_room_artwork=False):
     git(root, 'merge-base', '--is-ancestor', before, after)
     paths = changed_paths(root, before, after)
-    forbidden = [p for p in paths if not code_path(p) and not (brand_release and p in BRAND_FILES)]
+    retired = set(paths) & RETIRED_ROOM_ARTWORK.keys() if retire_room_artwork else set()
+    for name in retired:
+        require(not git(root, 'ls-tree', after, '--', name), 'Retired artwork can only be deleted: ' + name)
+        require(hashlib.sha256(git(root, 'show', before + ':' + name)).hexdigest() == RETIRED_ROOM_ARTWORK[name],
+                'Retired artwork does not match the approved original: ' + name)
+    forbidden = [p for p in paths if not code_path(p) and not (brand_release and p in BRAND_FILES) and p not in retired]
     require(not forbidden, 'Code-only release would change protected/unmanaged paths: ' + ', '.join(forbidden))
     for name in paths:
         current = Path(root)
@@ -174,12 +185,14 @@ def sha(path):
     return digest.hexdigest()
 
 
-def resource_manifest(root, site, extra=(), brand_release=False):
+def resource_manifest(root, site, extra=(), brand_release=False, retire_room_artwork=False):
     result = {}
 
     def visit(path, name, ancestors=()):
         if brand_release and name in BRAND_FILES:
             return  # The exact six brand files have their own hash/rollback checks.
+        if retire_room_artwork and name in RETIRED_ROOM_ARTWORK:
+            return  # Exact approved deletions have separate before/after checks.
         if not path.exists() and not path.is_symlink():
             result[name] = None
             return
@@ -192,7 +205,7 @@ def resource_manifest(root, site, extra=(), brand_release=False):
             item['link'] = os.readlink(path) if path.is_symlink() else None
             result[name] = item
             return
-        if not (brand_release and name == 'assets/icons'):
+        if not ((brand_release and name == 'assets/icons') or (retire_room_artwork and name == 'assets/images')):
             item['mtime_ns'] = info.st_mtime_ns
         if path.is_symlink():
             item['link'] = os.readlink(path)
@@ -219,10 +232,65 @@ def resource_manifest(root, site, extra=(), brand_release=False):
 
 
 def verify_resources(state):
-    actual = resource_manifest(state['root'], state['site'], state['extra_resources'], bool(state.get('brand')))
+    actual = resource_manifest(state['root'], state['site'], state['extra_resources'], bool(state.get('brand')),
+                               bool(state.get('retired_artwork')))
     expected = json.loads((Path(state['state_dir']) / 'resources.json').read_text())
     changes = [p for p in sorted(actual.keys() | expected.keys()) if actual.get(p) != expected.get(p)]
     require(not changes, 'Protected resources changed; no automatic resource restore will run: ' + ', '.join(changes[:20]))
+
+
+def retired_artwork_path(root, name):
+    require(name in RETIRED_ROOM_ARTWORK, 'Unapproved retired artwork path')
+    path = Path(root)
+    for part in Path(name).parts:
+        path /= part
+        require(not path.is_symlink(), 'Retired artwork path crosses a symlink: ' + name)
+    require(not path.exists() or path.is_file(), 'Retired artwork target is not a file: ' + name)
+    return path
+
+
+def retired_artwork_files(root):
+    files = {}
+    for name, expected in RETIRED_ROOM_ARTWORK.items():
+        path = retired_artwork_path(root, name)
+        actual = sha(path) if path.exists() else None
+        require(actual in (None, expected), 'Retired artwork has an existing server edit: ' + name)
+        info = path.stat() if path.exists() else None
+        files[name] = dict(before=actual, after=None,
+                           uid=info.st_uid if info else None, gid=info.st_gid if info else None)
+    return files
+
+
+def verify_retired_artwork(state, phase=None, mixed=False):
+    retired = state.get('retired_artwork')
+    if not retired:
+        return
+    require(set(retired['files']) == set(RETIRED_ROOM_ARTWORK), 'Invalid retired artwork state')
+    phase = phase or ('before' if state['status'] == 'rolled_back' else 'after')
+    for name, hashes in retired['files'].items():
+        require(hashes['before'] in (None, RETIRED_ROOM_ARTWORK[name]) and hashes['after'] is None,
+                'Invalid retired artwork hashes: ' + name)
+        if hashes['before'] is not None:
+            require(sha(Path(state['state_dir']) / 'retired.before' / name) == hashes['before'],
+                    'Retired artwork backup changed: ' + name)
+        path = retired_artwork_path(state['root'], name)
+        actual = sha(path) if path.exists() else None
+        require(actual in ((hashes['before'], None) if mixed else (hashes[phase],)),
+                'Retired artwork changed outside this release: ' + name)
+
+
+def publish_retired_artwork(state, rollback=False):
+    for name, hashes in state.get('retired_artwork', {}).get('files', {}).items():
+        target = retired_artwork_path(state['root'], name)
+        if rollback and hashes['before'] is not None:
+            source = Path(state['state_dir']) / 'retired.before' / name
+            require(sha(source) == hashes['before'], 'Retired artwork backup changed: ' + name)
+            copy_atomic(source, target)
+            info = target.stat()
+            if (info.st_uid, info.st_gid) != (hashes['uid'], hashes['gid']):
+                os.chown(target, hashes['uid'], hashes['gid'])
+        else:
+            target.unlink(missing_ok=True)
 
 
 def brand_files(source, root):
@@ -357,6 +425,9 @@ def prepare(args):
     brand_source = getattr(args, 'brand_artifact', None)
     if brand_source:
         state['brand'] = dict(source=str(Path(brand_source).resolve()), files=brand_files(brand_source, root))
+    retire_room_artwork = bool(getattr(args, 'retire_room_artwork', False))
+    if retire_room_artwork:
+        state['retired_artwork'] = dict(files=retired_artwork_files(root))
     if args.site == 'domestic':
         require(args.bundle and args.commit, 'Domestic release requires a bundle and commit')
         git(root, 'fetch', str(Path(args.bundle).resolve()), 'refs/heads/codex-deploy')
@@ -364,7 +435,7 @@ def prepare(args):
         require(target == args.commit, 'Bundle commit does not match requested commit')
         before = git(root, 'rev-parse', 'HEAD').decode().strip()
         environment_release = bool(getattr(args, 'environment_release', False))
-        paths = check_git(root, before, target, environment_release, bool(brand_source))
+        paths = check_git(root, before, target, environment_release, bool(brand_source), retire_room_artwork)
         if brand_source:
             for name, hashes in state['brand']['files'].items():
                 require(hashlib.sha256(git(root, 'show', target + ':' + name)).hexdigest() == hashes['after'],
@@ -395,7 +466,10 @@ def prepare(args):
         for name, hashes in state['brand']['files'].items():
             if hashes['before'] is not None:
                 copy_atomic(root / name, state_dir / 'brand.before' / name)
-    (state_dir / 'resources.json').write_text(json.dumps(resource_manifest(root, args.site, args.extra_resource, bool(brand_source)), sort_keys=True))
+    for name, hashes in state.get('retired_artwork', {}).get('files', {}).items():
+        if hashes['before'] is not None:
+            copy_atomic(root / name, state_dir / 'retired.before' / name)
+    (state_dir / 'resources.json').write_text(json.dumps(resource_manifest(root, args.site, args.extra_resource, bool(brand_source), retire_room_artwork), sort_keys=True))
     if args.site == 'domestic':
         (state_dir / 'server-edits.patch').write_bytes(git(root, 'diff', '--binary', 'HEAD', '--', *state['adopted']) if state['adopted'] else b'')
         index = git(root, 'rev-parse', '--git-path', 'index').decode().strip()
@@ -420,10 +494,12 @@ def activate(state):
     require(sha(Path(state['frontend_real']) / 'index.html') == state['index_before'], 'Frontend changed after preparation')
     verify_resources(state)
     verify_brand(state, 'before')
+    verify_retired_artwork(state, 'before')
     frontend_files(state['artifact'], state['frontend_real'])
     if state['site'] == 'domestic':
         require(git(state['root'], 'rev-parse', 'HEAD').decode().strip() == state['before'], 'Server HEAD changed after preparation')
-        check_git(state['root'], state['before'], state['target'], state.get('environment_release', False), bool(state.get('brand')))
+        check_git(state['root'], state['before'], state['target'], state.get('environment_release', False),
+                  bool(state.get('brand')), bool(state.get('retired_artwork')))
         require(hashlib.sha256(git(state['root'], 'diff', '--binary', 'HEAD')).hexdigest() == state['worktree_patch'], 'Server edit changed after preparation')
         require(not git(state['root'], 'diff', '--cached', '--name-only'), 'Server index changed after preparation')
         untracked = {os.fsdecode(p) for p in git(state['root'], 'ls-files', '--others', '--exclude-standard', '-z').split(b'\0') if p}
@@ -438,6 +514,7 @@ def activate(state):
         git(state['root'], 'merge', '--ff-only', state['target'])
         activate_dependencies(state)
     publish_brand(state)
+    publish_retired_artwork(state)
     for name in state['files']:
         if name != 'index.html' and not (Path(state['frontend_real']) / name).exists():
             copy_atomic(Path(state['artifact']) / name, Path(state['frontend_real']) / name)
@@ -494,6 +571,7 @@ def verify(state, attempts=15):
     require(sha(Path(state['frontend_real']) / 'index.html') == expected, 'Frontend entry does not match this release')
     verify_resources(state)
     verify_brand(state)
+    verify_retired_artwork(state)
     for attempt in range(attempts):
         try:
             health = json.loads(fetch(state, '/api/health'))
@@ -545,6 +623,7 @@ def rollback(state):
     require(sha(Path(state['frontend_real']) / 'index.html') in (state['index_before'], state['index_after']),
             'Refusing rollback over a newer or manually edited frontend entry')
     verify_brand(state, mixed=True)
+    verify_retired_artwork(state, mixed=True)
     if state['site'] == 'domestic':
         head = git(state['root'], 'rev-parse', 'HEAD').decode().strip()
         require(head in (state['before'], state['target']), 'Refusing rollback over a newer server commit')
@@ -558,6 +637,7 @@ def rollback(state):
         shutil.copy2(Path(state['state_dir']) / 'git-index.before', state['git_index'])
         rollback_dependencies(state)
     publish_brand(state, rollback=True)
+    publish_retired_artwork(state, rollback=True)
     copy_atomic(Path(state['state_dir']) / 'index.before.html', Path(state['frontend_real']) / 'index.html')
     restart(state)
     state['status'] = 'rolled_back'
@@ -582,9 +662,11 @@ def main():
     parser.add_argument('--extra-resource', action='append', default=[])
     parser.add_argument('--environment-release', action='store_true', help='Stage locked dependencies with verbatim rollback of the prior tree')
     parser.add_argument('--brand-artifact', help='Explicitly publish only six approved favicon/manifest/icon files, with hash checks and rollback')
+    parser.add_argument('--retire-room-artwork', action='store_true', help='Retire only the two hash-pinned obsolete Room illustrations, with backups and rollback')
     args = parser.parse_args()
     if args.command == 'check-git':
-        check_git(args.root or '.', args.before, args.commit or 'HEAD', brand_release=bool(args.brand_artifact))
+        check_git(args.root or '.', args.before, args.commit or 'HEAD', brand_release=bool(args.brand_artifact),
+                  retire_room_artwork=args.retire_room_artwork)
         return
     require(args.state, '--state is required')
     parent = Path(args.state).absolute().parent

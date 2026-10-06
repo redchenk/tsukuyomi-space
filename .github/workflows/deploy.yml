@@ -148,7 +148,8 @@ jobs:
               --artifact "$stage/deployment-artifacts/domestic" \
               --base-url https://yachiyo.hk --resolve yachiyo.hk:443:127.0.0.1 \
               --bundle /tmp/tsukuyomi-deployment-${{ github.run_id }}-${{ github.run_attempt }}.bundle \
-              --commit ${{ github.sha }} --extra-resource /var/www/tsukuyomi-game-assets
+              --commit ${{ github.sha }} --extra-resource /var/www/tsukuyomi-game-assets \
+              --retire-room-artwork
 
       - name: Prepare overseas release
         id: prepare_overseas
@@ -167,7 +168,8 @@ jobs:
               --site overseas --state "$state" \
               --root /opt/1panel/www/sites/tsukuyomi-space.com/frontend --frontend /opt/1panel/www/sites/tsukuyomi-space.com/frontend \
               --artifact "$stage/deployment-artifacts/overseas" \
-              --base-url https://tsukuyomi-space.com --resolve tsukuyomi-space.com:443:127.0.0.1
+              --base-url https://tsukuyomi-space.com --resolve tsukuyomi-space.com:443:127.0.0.1 \
+              --retire-room-artwork
 
       - name: Activate domestic release
         uses: appleboy/ssh-action@v1.0.3

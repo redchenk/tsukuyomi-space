@@ -226,7 +226,7 @@ describe('constrained-device performance policy', () => {
         const pet = source('src/frontend/components/SitePet.vue');
 
         assert.ok(bytes('assets/images/tsukuyomi-bg.webp') < bytes('assets/images/tsukuyomi-bg.png') * 0.15);
-        assert.ok(bytes('assets/images/room-bg.webp') < bytes('assets/images/room-bg.png') * 0.15);
+        assert.ok(bytes('assets/images/room-bg.webp') < 350 * 1024);
         assert.ok(bytes('assets/images/auth-visual-bg.webp') < bytes('assets/images/auth-visual-bg.png') * 0.05);
         assert.ok(bytes('assets/pets/yachiyo/spritesheet-perf-r2.webp') < 1.2 * 1024 * 1024);
         assert.ok(bytes('assets/pets/yachiyo/idle.webp') < 30 * 1024);
@@ -237,7 +237,7 @@ describe('constrained-device performance policy', () => {
         assert.match(pet, /spritesheet-perf-r2\.webp/);
         assert.doesNotMatch(runtime, /(?:tsukuyomi|room)-bg\.png/);
         assert.match(runtime, /tsukuyomi-bg\.webp/);
-        assert.match(runtime, /room-night-apartment-38e66dfa\.webp/);
+        assert.doesNotMatch(runtime, /room-night-apartment/);
         assert.doesNotMatch(baseThemes, /tsukuyomi-bg\.webp/);
         assert.doesNotMatch(productPolish, /body,\s*html\[data-theme="dark"\] body,\s*body\.vue-global-bg-route\s*\{[^}]*tsukuyomi-bg/s);
     });

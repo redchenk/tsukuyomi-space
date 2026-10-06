@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -70,13 +71,14 @@ class DeploymentSafetyTest(unittest.TestCase):
         (self.root / 'lib/core.js').write_bytes(b'original resource\r\n')
         return target, bundle
 
-    def prepare(self, environment_release=False, brand_artifact=None):
+    def prepare(self, environment_release=False, brand_artifact=None, retire_room_artwork=False):
         target, bundle = self.candidate()
         args = argparse.Namespace(state=str(self.base / 'backups/1-1-domestic'), site='domestic',
                                   root=str(self.root), frontend=str(self.front), artifact=str(self.artifact),
                                   bundle=str(bundle), commit=target, extra_resource=[],
                                   base_url='https://example.invalid', resolve='', environment_release=environment_release,
-                                  brand_artifact=str(brand_artifact) if brand_artifact else None)
+                                  brand_artifact=str(brand_artifact) if brand_artifact else None,
+                                  retire_room_artwork=retire_room_artwork)
         return release.prepare(args)
 
     def mock_fetch(self, state, path):
@@ -176,6 +178,114 @@ class DeploymentSafetyTest(unittest.TestCase):
             release.rollback(state)
         self.assertEqual((self.front / 'favicon.ico').read_text(), 'previous overseas favicon')
         self.assertFalse((self.front / 'assets/icons/icon-32.png').exists())
+
+    def retired_candidate(self):
+        original = {name: ('original Room artwork ' + name).encode() for name in release.RETIRED_ROOM_ARTWORK}
+        pins = {name: hashlib.sha256(data).hexdigest() for name, data in original.items()}
+        guard = patch.dict(release.RETIRED_ROOM_ARTWORK, pins)
+        guard.start()
+        self.addCleanup(guard.stop)
+        for name, data in original.items():
+            self.write(self.root / name, data.decode())
+        self.write(self.root / 'assets/images/room-bg.webp', 'still used by standalone Live2D')
+        self.git('add', '.')
+        self.git('commit', '-qm', 'original Room artwork')
+        self.before = self.git('rev-parse', 'HEAD').decode().strip()
+        for name in original:
+            (self.root / name).unlink()
+        return original
+
+    def test_room_artwork_retirement_and_rollback_preserve_all_other_resources(self):
+        original = self.retired_candidate()
+        state = self.prepare(retire_room_artwork=True)
+        resources = release.resource_manifest(self.root, 'domestic', retire_room_artwork=True)
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+            self.assertTrue(all(not (self.root / name).exists() for name in original))
+            self.assertEqual(resources, release.resource_manifest(self.root, 'domestic', retire_room_artwork=True))
+            release.rollback(state)
+        self.assertEqual(resources, release.resource_manifest(self.root, 'domestic', retire_room_artwork=True))
+        for name, data in original.items():
+            self.assertEqual((self.root / name).read_bytes(), data)
+        self.assertEqual(self.git('rev-parse', 'HEAD').decode().strip(), self.before)
+
+    def test_room_artwork_exception_requires_flag_and_rejects_other_media(self):
+        self.retired_candidate()
+        state = self.prepare(retire_room_artwork=True)
+        with self.assertRaisesRegex(RuntimeError, 'protected/unmanaged'):
+            release.check_git(self.root, state['before'], state['target'])
+        for name in ('assets/music/song.flac', 'assets/images/room-bg.webp'):
+            with self.subTest(name=name):
+                self.git('checkout', '--detach', state['before'])
+                (self.root / name).unlink()
+                self.git('commit', '-qam', 'unapproved deletion')
+                with self.assertRaisesRegex(RuntimeError, 'protected/unmanaged'):
+                    release.check_git(self.root, state['before'], 'HEAD', retire_room_artwork=True)
+
+    def test_room_artwork_exception_rejects_replacement_or_different_original(self):
+        self.retired_candidate()
+        name = next(iter(release.RETIRED_ROOM_ARTWORK))
+        self.git('checkout', '--detach', self.before)
+        self.write(self.root / name, 'replacement artwork')
+        self.git('commit', '-qam', 'replacement')
+        with self.assertRaisesRegex(RuntimeError, 'only be deleted'):
+            release.check_git(self.root, self.before, 'HEAD', retire_room_artwork=True)
+        modified_before = self.git('rev-parse', 'HEAD').decode().strip()
+        (self.root / name).unlink()
+        self.git('commit', '-qam', 'remove modified artwork')
+        with self.assertRaisesRegex(RuntimeError, 'approved original'):
+            release.check_git(self.root, modified_before, 'HEAD', retire_room_artwork=True)
+
+    def test_room_artwork_retirement_rejects_server_edit_and_symlink(self):
+        self.retired_candidate()
+        state = self.prepare(retire_room_artwork=True)
+        name = next(iter(release.RETIRED_ROOM_ARTWORK))
+        self.write(self.root / name, 'operator artwork edit')
+        with self.assertRaisesRegex(RuntimeError, 'existing server edit'):
+            release.retired_artwork_files(self.root)
+        with self.assertRaisesRegex(RuntimeError, 'outside this release'):
+            release.activate(state)
+        (self.root / name).unlink()
+        (self.root / name).symlink_to(self.root / 'assets/images/room-bg.webp')
+        with self.assertRaisesRegex(RuntimeError, 'symlink'):
+            release.verify_retired_artwork(state, mixed=True)
+
+    def test_room_artwork_retirement_rejects_backup_tampering_before_mutation(self):
+        self.retired_candidate()
+        state = self.prepare(retire_room_artwork=True)
+        name = next(iter(release.RETIRED_ROOM_ARTWORK))
+        self.write(Path(state['state_dir']) / 'retired.before' / name, 'corrupted backup')
+        with self.assertRaisesRegex(RuntimeError, 'backup changed'):
+            release.activate(state)
+        self.assertEqual(self.git('rev-parse', 'HEAD').decode().strip(), state['before'])
+
+    def test_room_artwork_rollback_rejects_new_operator_image(self):
+        self.retired_candidate()
+        state = self.prepare(retire_room_artwork=True)
+        with patch.object(release.subprocess, 'check_call'), patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+        name = next(iter(release.RETIRED_ROOM_ARTWORK))
+        self.write(self.root / name, 'new operator image')
+        with self.assertRaisesRegex(RuntimeError, 'outside this release'):
+            release.rollback(state)
+        self.assertEqual((self.root / name).read_text(), 'new operator image')
+        self.assertEqual(self.git('rev-parse', 'HEAD').decode().strip(), state['target'])
+
+    def test_overseas_room_artwork_retirement_handles_missing_and_existing_files(self):
+        original = self.retired_candidate()
+        name = next(iter(original))
+        self.write(self.front / name, original[name].decode())
+        args = argparse.Namespace(state=str(self.base / 'backups/retired-overseas'), site='overseas',
+                                  root=str(self.front), frontend=str(self.front), artifact=str(self.artifact),
+                                  bundle=None, commit=None, extra_resource=[], base_url='https://example.invalid',
+                                  resolve='', retire_room_artwork=True)
+        state = release.prepare(args)
+        with patch.object(release, 'fetch', side_effect=self.mock_fetch):
+            release.activate(state)
+            self.assertFalse((self.front / name).exists())
+            release.rollback(state)
+        self.assertEqual((self.front / name).read_bytes(), original[name])
+        self.assertTrue(all(not (self.front / other).exists() for other in original if other != name))
 
     def test_release_and_rollback_preserve_resources_hotfix_and_old_assets(self):
         state = self.prepare()

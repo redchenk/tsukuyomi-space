@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "generator": "built-in imagegen",
+  "approved": true,
+  "approvedAt": "2026-10-06",
+  "encoding": "WebP quality 90, original dimensions, no repaint or crop",
+  "dayHours": "06:00 inclusive to 18:00 exclusive, visitor local time",
+  "totalBytes": 1977030,
+  "assets": [
+    {
+      "season": "spring",
+      "time": "day",
+      "file": "spring-day.webp",
+      "width": 1672,
+      "height": 941,
+      "bytes": 206928,
+      "sha256": "a0526ceb407c9ddfcdfcfa32cf54cdb4cbce2870bacc96cf587563c477239631",
+      "source": "output/imagegen/room-lakeside-v1/spring-day.png",
+      "sourceSha256": "704f4ddd3e1b35a8c501bded444114d6e205d8109eda11fb36a26d6f4490bbca"
+    },
+    {
+      "season": "spring",
+      "time": "night",
+      "file": "spring-night.webp",
+      "width": 1672,
+      "height": 941,
+      "bytes": 225064,
+      "sha256": "e5c93a79891afee4b7a59e251010b6575c7f01ee97b511f8e7c8001448c41bf4",
+      "source": "output/imagegen/room-lakeside-v1/spring-night.png",
+      "sourceSha256": "ccb7eb74756e99ef512776d98efb1c8c93495a4abbd158c72d37b9ff94f657f8"
+    },
+    {
+      "season": "summer",
+      "time": "day",
+      "file": "summer-day.webp",
+      "width": 1672,
+      "height": 941,
+      "bytes": 282398,
+      "sha256": "615850f7185d32146f056253b3718d6878581b061fa456c297e348b37ae7159c",
+      "source": "output/imagegen/room-lakeside-v1/summer-day.png",
+      "sourceSha256": "8cde6dadb9b6368bde5f7ef0dd4208e3d141adb58535076067f7758ea41e0c6d"
+    },
+    {
+      "season": "summer",
+      "time": "night",
+      "file": "summer-night.webp",
+      "width": 1672,
+      "height": 941,
+      "bytes": 246444,
+      "sha256": "24699216e536a402a4371be17c23946e1e212f0f734d9d62e985a643d9232952",
+      "source": "output/imagegen/room-lakeside-v1/summer-night.png",
+      "sourceSha256": "7b91281ca08d7f7153295d7698ef232862346af65a2b929da5ea18c8392a3bda"
+    },
+    {
+      "season": "autumn",
+      "time": "day",
+      "file": "autumn-day.webp",
+      "width": 1672,
+      "height": 941,
+      "bytes": 272360,
+      "sha256": "b086425f9f1d6d4f05f65632af7f34c70471603079e21079586a2107c9aed7c8",
+      "source": "output/imagegen/room-lakeside-v1/autumn-day.png",
+      "sourceSha256": "379807568e39e55cddb168e3a36085a15a7ca3f3d07454c53afe1f83a37caef9"
+    },
+    {
+      "season": "autumn",
+      "time": "night",
+      "file": "autumn-night.webp",
+      "width": 1672,
+      "height": 941,
+      "bytes": 246262,
+      "sha256": "6d24a4bbef801a49010684d8abb335865c8c4f793f129988aacf3d0ab6064496",
+      "source": "output/imagegen/room-lakeside-v1/autumn-night.png",
+      "sourceSha256": "9ee979f0cef2a08306d73ba3b128c83f21fb85455562b7e0cdc0391eb09766ba"
+    },
+    {
+      "season": "winter",
+      "time": "day",
+      "file": "winter-day.webp",
+      "width": 1672,
+      "height": 941,
+      "bytes": 253604,
+      "sha256": "37098fb6a90a5ae33a7519eafd6504187c26c7b3b5d6d09a1dbd37ad6ba130cf",
+      "source": "output/imagegen/room-lakeside-v1/winter-day.png",
+      "sourceSha256": "92dd02ec29fa2d4db6e186d053bc6ccc2d9ec090aa374d390b91de835fbb58b5"
+    },
+    {
+      "season": "winter",
+      "time": "night",
+      "file": "winter-night.webp",
+      "width": 1672,
+      "height": 941,
+      "bytes": 243970,
+      "sha256": "324b1c3ee9f51129da0262dcf3a798fc112768ebb3462b802215270a811a3b86",
+      "source": "output/imagegen/room-lakeside-v1/winter-night.png",
+      "sourceSha256": "cb32a241418f1995e4e5f2d90c4da7e0a7b87e57809becec9eb996ddc0cd95f1"
+    }
+  ]
+}

@@ -50,7 +50,7 @@ body.vue-room-route {
     color: #fff7fb;
     background:
         linear-gradient(180deg, var(--room-top-shade), var(--room-bottom-shade)),
-        var(--ts-room-bg-image, url("/assets/images/room-night-apartment-38e66dfa.webp")) center / cover no-repeat;
+        var(--ts-room-bg-image, none) center / cover no-repeat;
     transition: background 0.8s ease;
 }
 
@@ -102,6 +102,26 @@ body.vue-room-route {
     --room-accent: #b9c4ff;
     --room-accent-rgb: 185, 196, 255;
     --room-gold: #d8ddff;
+}
+
+/* The new artwork already contains its daylight or moonlight. Keep the room's
+   overlays light enough to preserve that painting and its floor detail. */
+.room-page[data-room-scene] {
+    --room-top-shade: rgba(28, 38, 57, 0.04);
+    --room-bottom-shade: rgba(28, 38, 57, 0.16);
+    --room-side-shade: rgba(28, 38, 57, 0.1);
+    --room-stage-ink: #364257;
+    --room-stage-muted: #47556b;
+    --room-stage-text-shadow: 0 1px 6px rgba(255, 255, 255, 0.7);
+}
+
+.room-page[data-room-scene][data-time-phase="night"] {
+    --room-top-shade: rgba(7, 9, 21, 0.08);
+    --room-bottom-shade: rgba(4, 5, 12, 0.28);
+    --room-side-shade: rgba(2, 5, 16, 0.2);
+    --room-stage-ink: #fff7fb;
+    --room-stage-muted: #ece7f4;
+    --room-stage-text-shadow: 0 1px 8px rgba(15, 20, 40, 0.7);
 }
 
 .room-page[data-season="spring"] {
