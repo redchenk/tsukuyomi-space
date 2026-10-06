@@ -19,9 +19,12 @@ function local() { tab.value = 'local'; props.music.useLocal(); }
     <div v-if="tab === 'local'" class="music-local-library">
       <p>{{ tr('未连接账号时，继续听月读空间的固定曲目。', 'Enjoy the site collection without an account.', 'ログインせずにサイトの曲を楽しめます。') }}</p>
       <button v-if="music.source.value !== 'local'" type="button" @click="music.useLocal">{{ tr('切回网站曲目', 'Use site tracks', 'サイトの曲に切り替え') }}</button>
-      <select v-else :value="music.trackIndex.value" :aria-label="tr('网站曲目', 'Site tracks', 'サイトの曲')" @change="music.loadTrack(Number($event.target.value), { play: true })">
-        <option v-for="(track, index) in music.tracks" :key="track.file || track.id" :value="index">{{ index + 1 }} · {{ track.title }}</option>
-      </select>
+      <div v-else class="music-select-wrap">
+        <select :value="music.trackIndex.value" :aria-label="tr('网站曲目', 'Site tracks', 'サイトの曲')" @change="music.loadTrack(Number($event.target.value), { play: true })">
+          <option v-for="(track, index) in music.tracks" :key="track.file || track.id" :value="index">{{ index + 1 }} · {{ track.title }}</option>
+        </select>
+        <TsIcon name="chevronDown" :size="14" />
+      </div>
     </div>
     <div v-else class="music-cloud-library" :aria-busy="state.busy">
       <p v-if="!state.enabled" class="music-library-note">{{ tr('网易云暂未启用，可以继续听网站曲目。', 'NetEase is unavailable. Site tracks are ready.', 'NetEase は現在利用できません。サイトの曲をお楽しみください。') }}</p>

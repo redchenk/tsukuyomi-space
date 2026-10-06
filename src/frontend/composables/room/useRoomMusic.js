@@ -1,6 +1,7 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import { musicRequest, useMusicLibrary } from './useMusicLibrary';
 import { MUSIC_BASE_PATH, MUSIC_TRACKS } from '../../constants/room/musicTracks';
+import { createPlaybackOrder, playbackMode } from '../../services/musicPlaybackOrder.mjs';
 
 function trackUrl(track) {
   return `${MUSIC_BASE_PATH}/${track.file.split('/').map(encodeURIComponent).join('/')}`;
@@ -56,7 +57,13 @@ export function useRoomMusic() {
   const playing = ref(false);
   const duration = ref(0);
   const currentTime = ref(0);
-  const volume = ref(Math.max(0, Math.min(1, Number.parseFloat(localStorage.getItem('roomMusicVolume') || '0.72') || 0.72)));
+  const savedVolume = Number.parseFloat(localStorage.getItem('roomMusicVolume') ?? '0.72');
+  const volume = ref(Math.max(0, Math.min(1, Number.isFinite(savedVolume) ? savedVolume : 0.72)));
+  const mode = ref(playbackMode(localStorage.getItem('roomMusicPlaybackMode')));
+  const order = createPlaybackOrder();
+  const playIntent = ref(false);
+  let playAttempt = 0;
+  let destroyed = false;
   const coverUrl = ref('');
   const drawer = reactive({ volume: false, playlist: false, open: false });
   let coverObjectUrl = '';
@@ -114,8 +121,12 @@ export function useRoomMusic() {
     } finally { clearTimeout(timeout); }
   }
 
-  function startPlayback() {
+  function startPlayback(epoch = loadEpoch) {
+    if (destroyed || epoch !== loadEpoch || !playIntent.value) return;
+    const attempt = ++playAttempt;
     return audio.play().catch((error) => {
+      if (destroyed || epoch !== loadEpoch || attempt !== playAttempt || !playIntent.value) return;
+      playIntent.value = false;
       playing.value = false;
       playbackError.value = error.name === 'NotAllowedError' ? '曲目已准备好，请再点一下播放' : '暂时无法播放，请重试或换一首';
     });
@@ -123,11 +134,14 @@ export function useRoomMusic() {
 
   async function loadTrack(index, options = {}) {
     if (!tracks.length) return;
-    const wasPlaying = playing.value;
+    if (destroyed) return;
+    playIntent.value = options.play ?? playIntent.value;
     const epoch = ++loadEpoch;
+    playAttempt++;
     audio.pause();
     playbackError.value = ''; preview.value = false;
     trackIndex.value = (index + tracks.length) % tracks.length;
+    if (!options.keepOrder) order.reset(trackIndex.value, tracks.length);
     loadedTrackIndex = -1;
     duration.value = 0; currentTime.value = 0;
     const track = currentTrack.value;
@@ -137,7 +151,8 @@ export function useRoomMusic() {
       audio.src = trackUrl(track);
       loadedTrackIndex = trackIndex.value;
       audio.preload = 'metadata';
-      if (options.play || wasPlaying) await startPlayback();
+      loading.value = false;
+      if (playIntent.value) await startPlayback(epoch);
       return;
     }
     audio.removeAttribute('src'); audio.load(); loading.value = true;
@@ -148,46 +163,75 @@ export function useRoomMusic() {
       remoteExpiresAt = Date.now() + (result.expiresIn - 10) * 1000;
       loadedTrackIndex = trackIndex.value;
       preview.value = result.preview;
-      if (options.play || wasPlaying) await startPlayback();
+      if (playIntent.value) await startPlayback(epoch);
     } catch (error) {
       if (epoch !== loadEpoch) return;
+      playIntent.value = false;
       playbackError.value = error.message || '音乐连接暂时失败';
       cloud.failed(error);
     } finally { if (epoch === loadEpoch) loading.value = false; }
   }
 
   async function ensureTrackLoaded() {
+    if (loading.value) return;
     if (loadedTrackIndex === trackIndex.value && audio.src && (source.value === 'local' || Date.now() < remoteExpiresAt)) return;
     await loadTrack(trackIndex.value);
   }
 
   async function togglePlay() {
-    if (loading.value) return;
-    if (audio.paused) {
+    if (playIntent.value && (!audio.paused || loading.value)) {
+      playIntent.value = false;
+      playAttempt++;
+      audio.pause();
+    } else {
+      playIntent.value = true;
+      // A pending URL may still load, but only the latest play/pause intent can
+      // start it. Pausing during an automatic remote change never starts it late.
+      if (loading.value) return;
       await ensureTrackLoaded();
-      if (loadedTrackIndex === trackIndex.value) await startPlayback();
-    } else audio.pause();
+      if (loadedTrackIndex === trackIndex.value && playIntent.value && audio.paused) await startPlayback();
+    }
   }
 
-  function next() { return loadTrack(trackIndex.value + 1, { play: playing.value }); }
-  function prev() { return loadTrack(trackIndex.value - 1, { play: playing.value }); }
+  function next() {
+    const index = order.next(trackIndex.value, tracks.length, mode.value);
+    if (index !== null) return loadTrack(index, { play: playIntent.value, keepOrder: true });
+  }
+  function prev() {
+    const index = order.previous(trackIndex.value, tracks.length, mode.value);
+    if (index !== null) return loadTrack(index, { play: playIntent.value, keepOrder: true });
+  }
+  function ended() {
+    if (destroyed || !audio.ended || !playIntent.value || loadedTrackIndex !== trackIndex.value) return;
+    const index = order.next(trackIndex.value, tracks.length, mode.value, true);
+    if (index === null) { playIntent.value = false; playing.value = false; return; }
+    // ended/pause has already changed the UI state; continuation is an explicit
+    // intent, independent of the old audio element's paused/playing flags.
+    return loadTrack(index, { play: true, keepOrder: true });
+  }
+  function setMode(value) {
+    mode.value = playbackMode(value);
+    order.reset(trackIndex.value, tracks.length);
+    localStorage.setItem('roomMusicPlaybackMode', mode.value);
+  }
   function useLocal() {
     if (source.value === 'local') return;
-    ++loadEpoch; loading.value = false;
+    ++loadEpoch; playAttempt++; loading.value = false; playIntent.value = false;
     audio.pause(); audio.removeAttribute('src'); audio.load();
     source.value = 'local'; tracks.splice(0, tracks.length, ...MUSIC_TRACKS);
     trackIndex.value = Math.max(0, Math.min(MUSIC_TRACKS.length - 1, Number(localStorage.getItem('roomMusicTrackIndex')) || 0));
     loadedTrackIndex = -1;
+    order.reset(trackIndex.value, tracks.length);
     preview.value = false; duration.value = 0; currentTime.value = 0;
     loadCover(currentTrack.value, ++coverRequestId);
   }
-  const cloud = useMusicLibrary({ useLocal, selectTrack: async (track) => {
-    if (source.value !== 'netease') { tracks.splice(0); source.value = 'netease'; }
-    let index = tracks.findIndex(item => item.id === track.id);
-    if (index < 0) {
-      if (tracks.length >= 100) tracks.splice(0, 1);
-      tracks.push(track); index = tracks.length - 1;
-    }
+  const cloud = useMusicLibrary({ useLocal, selectTrack: async (track, pageTracks) => {
+    // Use only the already-loaded page, never fetch entire playlists or prefetch
+    // audio. Closing/browsing the library does not change this playback queue.
+    const queue = [...new Map([...(pageTracks || []), track].map(item => [item.id, item])).values()].slice(0, 100);
+    if (!queue.some(item => item.id === track.id)) queue[queue.length - 1] = track;
+    tracks.splice(0, tracks.length, ...queue); source.value = 'netease';
+    const index = tracks.findIndex(item => item.id === track.id);
     await loadTrack(index, { play: true });
   } });
 
@@ -216,6 +260,7 @@ export function useRoomMusic() {
   }
 
   function destroy() {
+    destroyed = true; playIntent.value = false; playAttempt++;
     ++loadEpoch;
     cloud.destroy();
     coverController?.abort();
@@ -235,21 +280,25 @@ export function useRoomMusic() {
     currentTime.value = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
   });
   audio.addEventListener('play', () => {
-    playing.value = true;
+    if (!playIntent.value || destroyed) { audio.pause(); return; }
+    playing.value = !audio.paused;
   });
   audio.addEventListener('pause', () => {
     playing.value = false;
   });
   audio.addEventListener('error', () => {
+    if (destroyed || !audio.getAttribute('src')) return;
+    playIntent.value = false;
     playing.value = false;
     loadedTrackIndex = -1;
     playbackError.value = '音频暂时无法加载，请点播放重试或换一首';
   });
-  audio.addEventListener('ended', next);
+  audio.addEventListener('ended', ended);
   onBeforeUnmount(destroy);
 
   return {
     source, loading, playbackError, preview, useLocal, cloud, resetAccount: cloud.resetAccount,
+    mode, setMode, playPending: computed(() => loading.value && playIntent.value),
     tracks,
     trackIndex,
     currentTrack,

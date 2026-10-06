@@ -6,9 +6,11 @@
     width: min(21.5rem, calc(100vw - 7rem));
     pointer-events: none;
     transition:
-        width 210ms var(--ts-ease-lift),
         transform 180ms var(--ts-ease-lift);
 }
+
+.site-music-drawer.is-morphing { overflow: hidden; border-radius: 18px; transition: none; }
+.site-music-drawer.is-morphing .site-music-panel { transition: none; transform: none; }
 
 .site-music-drawer:not(.is-open) {
     width: 3.05rem;
@@ -361,19 +363,19 @@
     display: grid;
     gap: 0.55rem;
     padding: 0 0.68rem 0.7rem;
-    animation: siteMusicBodyIn 180ms var(--ts-ease-lift) both;
 }
 
-@keyframes siteMusicBodyIn {
-    from {
-        opacity: 0;
-        transform: translate3d(0, -5px, 0);
-    }
-
-    to {
-        opacity: 1;
-        transform: translate3d(0, 0, 0);
-    }
+.site-music-order { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--ts-muted); font-size: 12px; }
+.site-music-order > span { flex-shrink: 0; }
+.music-select-wrap { position: relative; display: block; min-width: 0; width: 100%; }
+.site-music-order .music-select-wrap { flex: 1; flex-shrink: 1; }
+.site-music-panel .music-select-wrap select { width: 100%; appearance: none; -webkit-appearance: none; padding-right: 32px; border-radius: var(--ts-radius-button, 999px); }
+.music-select-wrap > .ts-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--ts-muted); }
+.site-music-order select { flex: 1; min-width: 0; min-height: 36px; padding: 6px 30px 6px 12px; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-button, 999px); background-color: var(--ts-surface-strong); color: var(--ts-text); font: inherit; color-scheme: light; }
+html[data-theme="dark"] .site-music-order select { color-scheme: dark; }
+@media (prefers-reduced-motion: reduce) {
+    .site-music-drawer, .site-music-panel, .site-music-handle, .site-music-play { transition: none; }
+    .site-music-drawer .site-music-handle .ts-icon { animation: none !important; }
 }
 
 .site-music-progress-row {

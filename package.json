@@ -42,7 +42,7 @@
     "test:game": "node --test tests/kaguya-runtime.test.js tests/frontend-game.test.js tests/growth-api.test.js",
     "check:game": "node --check shared/kaguya-runtime.cjs && node --check shared/kaguya-project-patch.cjs && node --check scripts/build-kaguya-runtime.cjs && node --check tests/kaguya-runtime.test.js && node --check tests/frontend-game.test.js && python3 -c \"import ast,pathlib; ast.parse(pathlib.Path('deploy/configure-kaguya-routes.py').read_text())\"",
     "check:music": "node --check backend/services/netease-music.js && node --check backend/services/music-sessions.js && node --check backend/routes/music.js && node --check tests/netease-music.test.js && node --check tests/e2e/netease-music.spec.js",
-    "test:music": "node --test tests/netease-music.test.js"
+    "test:music": "node --test tests/netease-music.test.js tests/music-playback-order.test.js"
   },
   "keywords": [
     "tsukuyomi",

@@ -132,7 +132,7 @@ export function useMusicLibrary({ selectTrack, useLocal }) {
   }
   async function play(track) {
     library.error = '';
-    try { await selectTrack(track); } catch (error) { failed(error); }
+    try { await selectTrack(track, library.results); } catch (error) { failed(error); }
   }
   function setOpen(value) {
     open = value;

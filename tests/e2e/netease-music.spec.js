@@ -130,3 +130,179 @@ test('a late remote playback response cannot replace the selected fixed tracks',
     await expect(page.getByRole('button', { name: 'Pause music', exact: true })).toHaveCount(0);
     await expect(page.getByRole('combobox', { name: '网站曲目' }).locator('option')).toHaveCount(10);
 });
+
+async function playbackFixture(page, { local = false, delaySecond = false } = {}) {
+    const songs = ['第一首', '第二首', '第三首'].map((title, index) => ({ id: String(123 + index), title, source: 'netease' }));
+    const calls = []; const media = [];
+    let release; let reached;
+    const pending = new Promise(resolve => { release = resolve; });
+    const requested = new Promise(resolve => { reached = resolve; });
+    const audioResponse = route => {
+        const bytes = wav(); const range = /^bytes=(\d+)-(\d*)$/.exec(route.request().headers().range || '');
+        if (!range) return route.fulfill({ contentType: 'audio/wav', headers: { 'Accept-Ranges': 'bytes' }, body: bytes });
+        const start = Number(range[1]); const end = Math.min(bytes.length - 1, range[2] ? Number(range[2]) : bytes.length - 1);
+        return route.fulfill({ status: 206, contentType: 'audio/wav', headers: { 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${start}-${end}/${bytes.length}` }, body: bytes.subarray(start, end + 1) });
+    };
+    await page.addInitScript(() => {
+        const NativeAudio = window.Audio;
+        window.__testAudios = [];
+        window.Audio = function (...args) {
+            const audio = new NativeAudio(...args); window.__testAudios.push(audio); return audio;
+        };
+        window.Audio.prototype = NativeAudio.prototype;
+        if (!localStorage.getItem('roomMusicPlaybackMode')) localStorage.setItem('roomMusicPlaybackMode', 'loop');
+    });
+    await page.route('**/api/music/**', async route => {
+        const path = new URL(route.request().url()).pathname;
+        if (path.endsWith('/status')) return route.fulfill({ json: { success: true, enabled: true, profile: local ? null : { id: '10001', nickname: '听歌测试' } } });
+        if (path.endsWith('/search')) return route.fulfill({ json: { success: true, tracks: songs, total: songs.length } });
+        if (path.endsWith('/playback')) {
+            const id = path.split('/').at(-2); calls.push(id);
+            if (delaySecond && id === '124') { reached(); await pending; }
+            return route.fulfill({ json: { success: true, url: `https://m801.music.126.net/${id}.wav`, expiresIn: 300, preview: false } });
+        }
+        throw new Error(`Unexpected music request ${path}`);
+    });
+    await page.route('https://m801.music.126.net/*.wav', route => {
+        media.push(route.request().url()); return audioResponse(route);
+    });
+    await page.route('**/assets/music/**', audioResponse);
+    await page.goto('/hub');
+    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    if (!local) {
+        await page.getByRole('button', { name: '网易云', exact: true }).click();
+        await expect(page.getByText('听歌测试', { exact: true })).toBeVisible();
+        await page.getByRole('searchbox', { name: '搜索网易云音乐' }).fill('测试');
+        await page.getByRole('button', { name: '搜索音乐', exact: true }).click();
+        await page.getByRole('button', { name: '播放 第一首' }).click();
+    } else await page.locator('.site-music-main-control').click();
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Pause music');
+    await expect.poll(() => page.evaluate(() => window.__testAudios.some(audio => Number.isFinite(audio.duration) && audio.duration > 0))).toBe(true);
+    return { calls, media, release, requested };
+}
+async function finishAudio(page) {
+    await expect.poll(() => page.evaluate(() => window.__testAudios.some(audio => Number.isFinite(audio.duration) && audio.duration > 0 && !audio.paused && audio.readyState >= 2))).toBe(true);
+    await page.evaluate(() => {
+        const audio = window.__testAudios.find(item => item.src.includes('/assets/music/') || item.src.includes('.music.126.net/'));
+        if (!audio || !Number.isFinite(audio.duration) || audio.paused) throw new Error('Audio is not playing');
+        // Seek near the end; the browser, rather than a synthetic DOM event,
+        // raises ended and its accompanying pause/timeupdate events.
+        audio.currentTime = Math.max(0, audio.duration - .08);
+    });
+}
+test('fixed site songs really continue playing after the browser ended event', async ({ page }) => {
+    await playbackFixture(page, { local: true });
+    await page.getByRole('combobox', { name: '播放顺序' }).selectOption('sequence');
+    await finishAudio(page);
+    await expect(page.locator('.site-music-title-row strong')).not.toHaveText('Remember');
+    await expect.poll(() => page.evaluate(() => window.__testAudios.some(audio => !audio.paused && !audio.ended && audio.currentTime < 5))).toBe(true);
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Pause music');
+});
+test('remote automatic continuation uses direct NetEase audio even with the drawer closed', async ({ page }) => {
+    const { calls, media } = await playbackFixture(page);
+    await page.getByRole('combobox', { name: '播放顺序' }).selectOption('sequence');
+    await page.getByRole('button', { name: 'Collapse music drawer' }).click();
+    await finishAudio(page);
+    await expect.poll(() => calls.join(',')).toBe('123,124');
+    await expect.poll(() => page.evaluate(() => window.__testAudios.some(audio => audio.src.endsWith('/124.wav') && !audio.paused && audio.currentTime < 5))).toBe(true);
+    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await expect(page.locator('.site-music-title-row strong')).toHaveText('第二首');
+    expect(media.every(url => new URL(url).hostname === 'm801.music.126.net')).toBe(true);
+    expect(media.some(url => url.endsWith('/124.wav'))).toBe(true);
+    await page.getByRole('button', { name: '播放 第三首' }).click();
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Pause music');
+    await finishAudio(page);
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Play music');
+    expect(calls.join(',')).toBe('123,124,125');
+});
+test('repeat queue wraps, repeat one repeats, and paused skipping stays paused', async ({ page }) => {
+    const { calls } = await playbackFixture(page);
+    await page.getByRole('button', { name: '播放 第三首' }).click();
+    await finishAudio(page);
+    await expect(page.locator('.site-music-title-row strong')).toHaveText('第一首');
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Pause music');
+    await page.getByRole('combobox', { name: '播放顺序' }).selectOption('single');
+    const before = calls.length;
+    await finishAudio(page);
+    await expect.poll(() => calls.length).toBe(before + 1);
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Pause music');
+    await expect(page.locator('.site-music-title-row strong')).toHaveText('第一首');
+    await page.locator('.site-music-main-control').click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await expect(page.locator('.site-music-title-row strong')).toHaveText('第二首');
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Play music');
+    await expect.poll(() => page.evaluate(() => window.__testAudios.every(audio => audio.paused))).toBe(true);
+});
+test('shuffle history works and the selected mode survives reload', async ({ page }) => {
+    await playbackFixture(page);
+    const select = page.getByRole('combobox', { name: '播放顺序' });
+    await select.selectOption('shuffle');
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    const second = await page.locator('.site-music-title-row strong').innerText();
+    expect(second).not.toBe('第一首');
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    const third = await page.locator('.site-music-title-row strong').innerText();
+    expect(new Set(['第一首', second, third]).size).toBe(3);
+    await page.getByRole('button', { name: 'Previous', exact: true }).click();
+    await expect(page.locator('.site-music-title-row strong')).toHaveText(second);
+    await page.evaluate(() => localStorage.setItem('roomMusicPlaybackMode', 'shuffle'));
+    await page.goto('/stage');
+    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await expect(select).toHaveValue('shuffle');
+});
+test('pausing during automatic remote resolution prevents late autoplay', async ({ page }) => {
+    const { requested, release, calls } = await playbackFixture(page, { delaySecond: true });
+    await finishAudio(page); await requested;
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Pause music');
+    await page.locator('.site-music-main-control').click();
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Play music');
+    const replied = page.waitForResponse(response => response.url().endsWith('/tracks/124/playback'));
+    release(); await (await replied).finished();
+    await expect(page.locator('.music-playback-status')).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => window.__testAudios.every(audio => audio.paused))).toBe(true);
+    expect(calls.join(',')).toBe('123,124');
+    await page.locator('.site-music-main-control').click();
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Pause music');
+    expect(calls.join(',')).toBe('123,124');
+});
+test('an unavailable next song stops with a reason and cannot start a retry loop', async ({ page }) => {
+    const { calls } = await playbackFixture(page);
+    let failed = 0;
+    await page.route('**/api/music/tracks/124/playback', route => {
+        failed++; return route.fulfill({ status: 422, json: { success: false, code: 'MUSIC_UNAVAILABLE', message: '这首歌暂时无法播放' } });
+    });
+    await finishAudio(page);
+    await expect(page.locator('.music-playback-status')).toHaveText('这首歌暂时无法播放');
+    await expect(page.locator('.site-music-main-control')).toHaveAttribute('aria-label', 'Play music');
+    await page.waitForTimeout(500);
+    expect(failed).toBe(1); expect(calls).toEqual(['123']);
+});
+test('drawer morphs both directions, cancels rapid reversals and respects reduced motion', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route('**/api/music/status', route => route.fulfill({ json: { success: true, enabled: true, profile: null } }));
+    await page.route('**/assets/music/**', route => route.fulfill({ contentType: 'audio/wav', body: wav() }));
+    await page.goto('/hub');
+    const drawer = page.locator('.site-music-drawer');
+    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await expect(drawer).toHaveClass(/is-morphing/);
+    await expect(drawer).not.toHaveClass(/is-morphing/);
+    await expect(page.getByRole('combobox', { name: '播放顺序' })).toBeVisible();
+    const from = await drawer.boundingBox();
+    await page.getByRole('button', { name: 'Collapse music drawer' }).click();
+    await expect(drawer).toHaveClass(/is-morphing/);
+    await expect(drawer).not.toHaveClass(/is-morphing/);
+    const to = await drawer.boundingBox(); expect(to.height).toBeLessThan(from.height); expect(to.width).toBeLessThan(from.width);
+    await expect(page.getByRole('combobox', { name: '播放顺序' })).not.toBeVisible();
+    await drawer.locator('.site-music-handle').evaluate(el => { el.click(); setTimeout(() => el.click(), 80); setTimeout(() => el.click(), 120); });
+    await expect(drawer).toHaveClass(/is-open/);
+    await expect(drawer).not.toHaveClass(/is-morphing/);
+    expect(await drawer.evaluate(el => el.style.height || el.style.width)).toBe('');
+    expect(await page.locator('.site-music-panel').evaluate(el => el.scrollWidth > el.clientWidth + 1)).toBe(false);
+    expect(await page.getByRole('combobox', { name: '播放顺序' }).evaluate(el => parseFloat(getComputedStyle(el).borderRadius))).toBeGreaterThan(15);
+    await page.screenshot({ path: path.resolve('.codex_tmp/music-playback-20261006', 'playback-390-light.png') });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.getByRole('button', { name: 'Collapse music drawer' }).click();
+    await expect(drawer).not.toHaveClass(/is-morphing|is-open/);
+    await page.getByRole('button', { name: 'Expand music drawer' }).click();
+    await expect(drawer).not.toHaveClass(/is-morphing/);
+});
