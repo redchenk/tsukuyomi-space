@@ -140,6 +140,22 @@
     transform: none;
     box-shadow: var(--ts-elevation-raised);
   }
+  .hub .scene-card:not(.scene-card-plaza) {
+    transition: transform var(--ts-component-duration) var(--ts-ease-standard),
+      box-shadow var(--ts-component-duration) var(--ts-ease-standard),
+      border-color var(--ts-component-duration) var(--ts-ease-standard);
+  }
+  .hub .scene-card:not(.scene-card-plaza):focus-visible {
+    outline: 2px solid var(--ts-accent);
+    outline-offset: 3px;
+    box-shadow: var(--ts-elevation-raised);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .hub .scene-card:not(.scene-card-plaza):is(:hover, :focus-visible) {
+      transform: translateY(-5px);
+      box-shadow: var(--ts-elevation-raised);
+    }
+  }
   .page :where(.settings-note, .settings-advanced, .settings-mode, .memory-item,
     .knowledge-item, .uc-article-item, .plaza-reply-card, .plaza-activity-item) { border-radius: var(--ts-radius-control); }
   .settings-mode { padding: 20px; gap: 16px; transition: border-color var(--ts-component-duration), background-color var(--ts-component-duration); }
@@ -209,6 +225,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     :root { --ts-component-duration: 0s; }
+    .hub .scene-card:not(.scene-card-plaza):is(:hover, :focus-visible) { transform: none; }
   }
   @media (forced-colors: active) {
     .room-settings-page input[role='switch'] { appearance: auto; }
