@@ -1,5 +1,6 @@
 <script setup>
 import { onBeforeUnmount, ref, watch } from 'vue';
+import { isReducedPerformance } from '../utils/performance';
 
 // Animates numeric strings (e.g. "1,234") from the previous value to the new
 // one; anything non-numeric ("--", "3天4时") renders as-is.
@@ -20,9 +21,9 @@ function parseNumeric(value) {
 }
 
 function reduceMotion() {
-  return typeof window !== 'undefined'
+  return isReducedPerformance() || (typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 }
 
 function animateTo(target) {
@@ -39,6 +40,12 @@ function animateTo(target) {
   const total = Math.max(160, props.duration);
 
   const tick = (now) => {
+    if (document.visibilityState === 'hidden' || reduceMotion()) {
+      currentNumber = target;
+      display.value = target.toLocaleString('zh-CN');
+      frame = 0;
+      return;
+    }
     const progress = Math.min(1, (now - start) / total);
     const eased = 1 - Math.pow(1 - progress, 3);
     const value = Math.round(from + (target - from) * eased);

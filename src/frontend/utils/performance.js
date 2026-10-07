@@ -12,6 +12,9 @@ const SLOW_FRAME_COUNT_LIMIT = 8;
 const SLOW_FRAME_EXCESS_LIMIT_MS = 240;
 const INITIAL_PRESSURE_GRACE_MS = 7000;
 const ROUTE_PRESSURE_GRACE_MS = 1500;
+const INTERACTION_PROBE_COOLDOWN_MS = 2000;
+const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'];
+const INTERACTION_LISTENER_OPTIONS = { passive: true, capture: true };
 
 let currentProfile = PROFILE_BALANCED;
 let initialized = false;
@@ -22,6 +25,8 @@ let frameProbeStartedAt = 0;
 let previousFrameAt = 0;
 let slowFrameSamples = [];
 let pressureGraceUntil = 0;
+let interactionObserversInstalled = false;
+let frameProbeCooldownUntil = 0;
 
 function readHardwareProfile() {
   if (typeof navigator === 'undefined') return PROFILE_BALANCED;
@@ -53,6 +58,37 @@ function stopPressureObservers() {
   longTaskObserver = null;
   longTaskSamples = [];
   stopFrameProbe();
+  if (interactionObserversInstalled) {
+    INTERACTION_EVENTS.forEach((type) => document.removeEventListener(type, probeInteractionPressure, INTERACTION_LISTENER_OPTIONS));
+    document.removeEventListener('visibilitychange', handleProbeVisibility);
+    interactionObserversInstalled = false;
+  }
+}
+
+function probeInteractionPressure() {
+  if (currentProfile === PROFILE_REDUCED
+    || document.visibilityState !== 'visible'
+    || frameProbeId
+    || performance.now() < frameProbeCooldownUntil) return;
+  // Recheck late scrolling and clicks without a permanent RAF loop. Repeated
+  // scroll events must not reset the current pressure window or its deadline.
+  startFrameProbe();
+}
+
+function handleProbeVisibility() {
+  if (document.visibilityState !== 'visible') {
+    stopFrameProbe();
+    return;
+  }
+  frameProbeCooldownUntil = 0;
+  refreshPerformanceProbe();
+}
+
+function observeInteractionPressure() {
+  if (interactionObserversInstalled) return;
+  interactionObserversInstalled = true;
+  INTERACTION_EVENTS.forEach((type) => document.addEventListener(type, probeInteractionPressure, INTERACTION_LISTENER_OPTIONS));
+  document.addEventListener('visibilitychange', handleProbeVisibility);
 }
 
 function publishProfile(nextProfile) {
@@ -115,6 +151,7 @@ function sampleFramePressure(now) {
   } else {
     previousFrameAt = 0;
     slowFrameSamples = [];
+    frameProbeCooldownUntil = now + INTERACTION_PROBE_COOLDOWN_MS;
   }
 }
 
@@ -148,6 +185,7 @@ export function initializePerformanceProfile() {
   document.documentElement.dataset.performance = currentProfile;
   window.TSUKUYOMI_PERFORMANCE_PROFILE = currentProfile;
   if (currentProfile !== PROFILE_REDUCED) {
+    observeInteractionPressure();
     observeLongTasks();
     startFrameProbe();
   }
@@ -165,14 +203,28 @@ export function isReducedPerformance() {
 
 export function scheduleIdleTask(callback, options = {}) {
   if (typeof window === 'undefined') return () => {};
+  // Older engines cannot report idle headroom. Omit speculative work rather
+  // than disguising a timer as an idle callback; required tasks keep fallback.
+  if (options.requireIdle && typeof window.requestIdleCallback !== 'function') return () => {};
   const delay = Math.max(0, Number(options.delay) || 0);
   const timeout = Math.max(250, Number(options.timeout) || 2500);
   let delayId = 0;
   let idleId = 0;
   let cancelled = false;
+  let idleDeferrals = 0;
+  const requireIdle = Boolean(options.requireIdle);
+  const minimumIdleMs = Math.max(1, Number(options.minimumIdleMs) || 8);
 
-  const run = () => {
+  const run = (deadline) => {
+    idleId = 0;
     if (cancelled || document.visibilityState === 'hidden') return;
+    if (requireIdle && deadline
+      && (deadline.didTimeout || deadline.timeRemaining() < minimumIdleMs)) {
+      // Speculative work may be omitted. A timeout is not an idle slot, and
+      // must not force route parsing into an already busy main thread.
+      if (idleDeferrals++ < 2) delayId = window.setTimeout(schedule, 500);
+      return;
+    }
     callback();
   };
   const schedule = () => {

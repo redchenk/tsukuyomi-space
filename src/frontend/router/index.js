@@ -374,15 +374,18 @@ const routeWarmups = {
   wikiTerm: [WikiPage]
 };
 const defaultRouteWarmups = [HubPage];
-const warmedRouteComponents = new WeakSet();
+const warmedRouteComponents = new WeakMap();
 let cancelPendingRouteWarmup = null;
+let routeWarmupRun = 0;
 
 function warmRouteComponent(loader) {
-  if (typeof loader !== 'function' || warmedRouteComponents.has(loader)) return;
-  warmedRouteComponents.add(loader);
-  loader().catch(() => {
+  if (typeof loader !== 'function') return;
+  if (warmedRouteComponents.has(loader)) return warmedRouteComponents.get(loader);
+  const request = loader().catch(() => {
     warmedRouteComponents.delete(loader);
   });
+  warmedRouteComponents.set(loader, request);
+  return request;
 }
 
 export function warmRoutePath(path) {
@@ -413,6 +416,7 @@ export function warmRoutePath(path) {
 
 function scheduleRouteWarmup(to) {
   if (typeof window === 'undefined') return;
+  const run = ++routeWarmupRun;
   cancelPendingRouteWarmup?.();
   cancelPendingRouteWarmup = null;
   const connection = window.navigator?.connection;
@@ -427,17 +431,26 @@ function scheduleRouteWarmup(to) {
   if (!loaders.length || to.name === 'room') return;
   const reduced = isReducedPerformance();
   const selectedLoaders = reduced ? loaders.slice(0, 1) : loaders;
-  cancelPendingRouteWarmup = scheduleIdleTask(() => {
-    cancelPendingRouteWarmup = null;
-    if (router.currentRoute.value.name !== to.name) return;
-    selectedLoaders.forEach(warmRouteComponent);
-    if (to.name === 'hub') prefetchStageData();
-  }, {
-    delay: reduced
+  let nextLoader = 0;
+  const stillCurrent = () => run === routeWarmupRun && router.currentRoute.value.name === to.name;
+  const queueNext = (delay) => {
+    cancelPendingRouteWarmup = scheduleIdleTask(() => {
+      cancelPendingRouteWarmup = null;
+      if (!stillCurrent()) return;
+      if (nextLoader === selectedLoaders.length) {
+        if (to.name === 'hub') prefetchStageData();
+        return;
+      }
+      // Parse one adjacent page at a time, yielding between speculative loads.
+      // Foreground navigation/intent prefetch remains immediate.
+      Promise.resolve(warmRouteComponent(selectedLoaders[nextLoader++])).then(() => {
+        if (stillCurrent()) queueNext(500);
+      });
+    }, { delay, timeout: 4000, requireIdle: true });
+  };
+  queueNext(reduced
       ? 2600
-      : (to.name === 'access' || to.name === 'accessAlias' ? 1600 : 900),
-    timeout: 4000
-  });
+      : (to.name === 'access' || to.name === 'accessAlias' ? 1600 : 900));
 }
 
 router.afterEach((to, from, failure) => {
