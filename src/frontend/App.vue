@@ -19,6 +19,7 @@ import {
 } from './utils/performance';
 
 const SitePet = defineAsyncComponent(() => import('./components/SitePet.vue'));
+const NoticeMarkdown = defineAsyncComponent(() => import('./components/NoticeMarkdown.vue'));
 
 const route = useRoute();
 const router = useRouter();
@@ -463,7 +464,7 @@ onUnmounted(() => {
     <section class="visit-popup-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="visitPopup.title">
       <span class="visit-popup-kicker">Tsukuyomi Notice</span>
       <h2>{{ visitPopup.title }}</h2>
-      <p>{{ visitPopup.content }}</p>
+      <NoticeMarkdown class="visit-popup-content" :content="visitPopup.content" @navigate="closeVisitPopup" />
       <button class="primary-btn" type="button" @click="closeVisitPopup">{{ visitPopup.button }}</button>
     </section>
   </div>

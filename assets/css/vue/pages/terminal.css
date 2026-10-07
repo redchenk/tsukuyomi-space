@@ -904,6 +904,15 @@ body .page.terminal-page textarea::placeholder {
     padding-bottom: 0.15rem;
 }
 
+.terminal-notice-preview {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.9rem;
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-md);
+    background: var(--ts-card);
+}
+
 .terminal-settings-title strong {
     color: var(--ink);
     font-size: 1rem;

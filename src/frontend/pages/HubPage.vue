@@ -5,6 +5,8 @@ import BeianLink from '../components/BeianLink.vue';
 import CountUpValue from '../components/CountUpValue.vue';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
+import NoticeMarkdown from '../components/NoticeMarkdown.vue';
+import { announcementContent, noticeSummary } from '../../../shared/notice-markdown.mjs';
 import { warmRoutePath } from '../router';
 import { compareAppDate, formatDateOnly } from '../utils/time';
 import { applyGrowthResult } from '../services/userGrowth';
@@ -456,8 +458,10 @@ async function submitPlazaQuick() {
 async function loadVisitPopupPreview() {
   try {
     const settings = await loadPublicSettings({ force: true, maxAgeMs: 0 });
-    const title = String(settings.visitPopupTitle || '').trim();
-    const content = String(settings.visitPopupContent || '').trim();
+    const content = announcementContent(settings);
+    const title = content && content === String(settings.siteAnnouncement || '').trim()
+      ? noticeSummary(content)
+      : String(settings.visitPopupTitle || '').trim();
     visitPopupPreview.value = {
       title: isEnglish.value && title === '欢迎来到月读空间'
         ? 'Welcome to Tsukuyomi Space'
@@ -522,7 +526,7 @@ onBeforeUnmount(() => {
 
     <details class="hub-notice" :aria-busy="!visitPopupPreview">
       <summary @click="!visitPopupPreview && $event.preventDefault()"><TsIcon name="bell" :size="17" /><span>{{ hubCopy.notice }}</span><strong>{{ visitPopupPreview?.title || '' }}</strong><small>{{ visitPopupPreview ? hubCopy.expand : '' }} <TsIcon v-if="visitPopupPreview" name="chevronDown" :size="15" /></small></summary>
-      <p v-if="visitPopupPreview">{{ visitPopupPreview.content }}</p>
+      <NoticeMarkdown v-if="visitPopupPreview" class="hub-notice-content" :content="visitPopupPreview.content" />
     </details>
 
     <section class="hub-grid-wrap">

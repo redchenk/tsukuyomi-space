@@ -1215,6 +1215,12 @@ body .page.terminal-page .terminal-table-wrap table { font-size: 13px; }
 body .page.terminal-page .terminal-table-wrap :is(.terminal-actions, .terminal-row-actions) :is(.ghost-btn, .danger-btn) { min-height: 34px; }
 body .page.terminal-page input::placeholder,
 body .page.terminal-page textarea::placeholder { color: var(--terminal-ui-muted); opacity: 1; }
+body .page.terminal-page textarea.terminal-notice-input {
+    height: auto;
+    min-height: 160px;
+    border-radius: var(--ts-radius-lg);
+    line-height: 1.7;
+}
 body .page.terminal-page :is(button, a, input, textarea, select, [tabindex]):focus-visible {
     outline: 2px solid var(--terminal-ui-primary);
     outline-offset: 3px;

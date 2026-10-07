@@ -42,11 +42,10 @@
     line-height: 1.2;
 }
 
-.visit-popup-card p {
+.visit-popup-card .visit-popup-content {
     margin: 0 0 1.25rem;
     color: var(--ts-text);
     line-height: 1.85;
-    white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 

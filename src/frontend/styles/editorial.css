@@ -162,7 +162,7 @@ html[data-theme="dark"] .hub .hub-character img { filter: brightness(.74) satura
 .hub-notice summary > small { display: inline-flex; align-items: center; gap: 8px; }
 .hub-notice[open] summary > small .ts-icon { transform: rotate(180deg); }
 .hub-notice[open] summary > strong { white-space: normal; }
-.hub-notice p { white-space: pre-wrap; line-height: 1.9; margin: 0 0 20px 30px; overflow-wrap: anywhere; }
+.hub-notice .hub-notice-content { margin: 0 0 20px 30px; line-height: 1.9; }
 .hub .hub-grid-wrap { margin-top: 0; padding: 0; border: 0; border-radius: var(--ts-radius-card); overflow: visible; background: transparent; background-clip: padding-box; box-shadow: none; }
 .hub .hub-section-head { display: flex; flex-direction: row; margin: 0 0 20px; padding: 0; align-items: center; }
 .hub .hub-section-head h2 { font-family: 'Songti SC', 'Noto Serif SC', var(--ts-font-serif); font-size: 28px; margin: 0 0 7px; color: var(--ts-editorial-ink); }

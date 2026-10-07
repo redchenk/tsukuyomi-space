@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { apiFetch, noStoreUrl, saveUserSession, getSession, clearSession } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
+import NoticeMarkdown from '../components/NoticeMarkdown.vue';
 import TerminalPagination from '../components/terminal/TerminalPagination.vue';
 import ArticleCategoryManager from '../components/terminal/ArticleCategoryManager.vue';
 import { formatDateTime } from '../utils/time';
@@ -1389,7 +1390,12 @@ onUnmounted(() => {
                 <span>站点标题、公告和轻量展示设置</span>
               </div>
               <label>站点标题<input v-model="terminal.settings.siteTitle"></label>
-              <label class="terminal-wide-field">公告内容<textarea v-model="terminal.settings.siteAnnouncement"></textarea></label>
+              <label class="terminal-wide-field">公告内容<textarea v-model="terminal.settings.siteAnnouncement" class="terminal-notice-input" rows="6" maxlength="20000" placeholder="支持基础 Markdown，例如：**最新公告** [前往主舞台](/stage)" aria-describedby="announcement-markdown-help"></textarea></label>
+              <p id="announcement-markdown-help" class="terminal-setting-note">支持标题、加粗、斜体、列表、引用、代码和链接。站内快速跳转：<code>[前往主舞台](/stage)</code> 或 <code>[进入房间](/room)</code>。留空时首页继续显示首次访问弹窗内容。</p>
+              <div v-if="terminal.settings.siteAnnouncement.trim()" class="terminal-wide-field terminal-notice-preview">
+                <span class="terminal-setting-note">实时预览 · 预览中的链接不会跳转</span>
+                <NoticeMarkdown :content="terminal.settings.siteAnnouncement" preview />
+              </div>
             </div>
             <div class="terminal-settings-block terminal-settings-grid">
               <div class="terminal-settings-title">
@@ -1398,7 +1404,12 @@ onUnmounted(() => {
               </div>
               <label class="terminal-check"><input v-model="terminal.settings.visitPopupEnabled" type="checkbox"> 启用访问弹窗</label>
               <label>弹窗标题<input v-model="terminal.settings.visitPopupTitle" placeholder="欢迎来到月读空间"></label>
-              <label class="terminal-wide-field">弹窗内容<textarea v-model="terminal.settings.visitPopupContent" placeholder="输入访客进入网站时看到的内容"></textarea></label>
+              <label class="terminal-wide-field">弹窗内容<textarea v-model="terminal.settings.visitPopupContent" class="terminal-notice-input" rows="6" maxlength="20000" placeholder="输入访客进入网站时看到的内容，支持基础 Markdown 和站内链接" aria-describedby="popup-markdown-help"></textarea></label>
+              <p id="popup-markdown-help" class="terminal-setting-note">支持与公告相同的 Markdown 格式；访客点击弹窗中的站内链接后会关闭弹窗并进入对应页面。</p>
+              <div v-if="terminal.settings.visitPopupContent.trim()" class="terminal-wide-field terminal-notice-preview">
+                <span class="terminal-setting-note">实时预览 · 预览中的链接不会跳转</span>
+                <NoticeMarkdown :content="terminal.settings.visitPopupContent" preview />
+              </div>
               <label>按钮文字<input v-model="terminal.settings.visitPopupButton" placeholder="我知道了"></label>
             </div>
             <div class="terminal-settings-block">
