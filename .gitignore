@@ -1,5 +1,7 @@
 # Large Media Files
 *.mp4
+!src/frontend/assets/access/moon-gate-desktop-v1.mp4
+!src/frontend/assets/access/moon-gate-mobile-v1.mp4
 *.mov
 *.avi
 *.zip

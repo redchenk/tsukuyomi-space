@@ -1,0 +1,27 @@
+{
+  "desktop": {
+    "file": "moon-gate-desktop-v1.mp4",
+    "bytes": 3019270,
+    "sha256": "f6606984b623f5a49d530ce5ec8735ae67688141936e4ea5bedee2c67f2022ee"
+  },
+  "mobile": {
+    "file": "moon-gate-mobile-v1.mp4",
+    "bytes": 1230049,
+    "sha256": "585dc6d15e79598640f52fba44364f0823d3cb450e0e77b4cb2a587a4c9b8c41"
+  },
+  "poster": {
+    "file": "moon-gate-poster-v1.webp",
+    "bytes": 234428,
+    "sha256": "06e4cb422570d529ce5d15ae01f32c5f68f2217a9ae9aeb2b373f41ceb13678d"
+  },
+  "source": {
+    "bytes": 11603582,
+    "sha256": "d5a25ce4ac3f6a91bcfc9bce991fe5cacd834702449d2d69790ad09936d99f92",
+    "duration_seconds": 7.06,
+    "size": [
+      1920,
+      1080
+    ],
+    "fps": 60
+  }
+}

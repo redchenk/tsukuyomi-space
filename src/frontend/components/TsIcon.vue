@@ -9,6 +9,14 @@ const props = defineProps({
 
 const iconPaths = {
   // Additional Lucide icons (ISC): https://github.com/lucide-icons/lucide
+  flower: [
+    ['circle', { cx: '12', cy: '12', r: '3' }],
+    ['path', { d: 'M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5' }],
+    ['path', { d: 'M12 7.5V9' }], ['path', { d: 'M7.5 12H9' }],
+    ['path', { d: 'M16.5 12H15' }], ['path', { d: 'M12 16.5V15' }],
+    ['path', { d: 'm8 8 1.88 1.88' }], ['path', { d: 'M14.12 9.88 16 8' }],
+    ['path', { d: 'm8 16 1.88-1.88' }], ['path', { d: 'M14.12 14.12 16 16' }]
+  ],
   rss: [['path', { d: 'M4 11a9 9 0 0 1 9 9' }], ['path', { d: 'M4 4a16 16 0 0 1 16 16' }], ['circle', { cx: '5', cy: '19', r: '1' }]],
   check: [["path", {"d": "M20 6 9 17l-5-5"}]],
   info: [["circle", {"cx": "12", "cy": "12", "r": "10"}], ["path", {"d": "M12 16v-4"}], ["path", {"d": "M12 8h.01"}]],
