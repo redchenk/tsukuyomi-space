@@ -57,10 +57,12 @@ function loadApiClient(fetchImpl) {
         Number,
         String,
         URL,
-        isEnglishSite: () => false
+        isEnglishSite: () => false,
+        translateFeedback: value => value,
+        uiText: (value, parameters = []) => value.replace(/\{(\d+)\}/g, (_, index) => parameters[index])
     };
     const code = source('src/frontend/api/client.js')
-        .replace(/^import \{ isEnglishSite \} from '\.\.\/utils\/siteVariant';\r?\n\r?\n/, '')
+        .replace(/^import[^\n]*;\r?\n/gm, '')
         .replace(/export async function /g, 'async function ')
         .replace(/export function /g, 'function ')
         .concat('\nglobalThis.__client = { getSession, saveUserSession, clearSession, loadCurrentSession };\n');

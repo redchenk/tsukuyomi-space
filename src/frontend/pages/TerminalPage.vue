@@ -6,6 +6,7 @@ import NoticeMarkdown from '../components/NoticeMarkdown.vue';
 import TerminalPagination from '../components/terminal/TerminalPagination.vue';
 import ArticleCategoryManager from '../components/terminal/ArticleCategoryManager.vue';
 import { formatDateTime } from '../utils/time';
+import { uiText } from '../i18n/runtime';
 
 const emit = defineEmits(['go', 'auth-changed']);
 
@@ -958,7 +959,7 @@ onUnmounted(() => {
             <span>{{ visiblePanels.length }}</span>
           </div>
           <div v-for="group in groupedPanels" :key="group.group" class="terminal-nav-group">
-            <span class="terminal-nav-group-label">{{ group.group }}</span>
+            <span class="terminal-nav-group-label">{{ uiText(group.group) }}</span>
             <button
               v-for="panel in group.items"
               :key="panel.id"
@@ -986,7 +987,7 @@ onUnmounted(() => {
         <section class="terminal-panel" :aria-busy="terminal.loading">
           <div class="terminal-context-bar">
             <div>
-              <span class="terminal-kicker">数据终端 / {{ activePanelMeta.group }}</span>
+              <span class="terminal-kicker">数据终端 / {{ uiText(activePanelMeta.group) }}</span>
               <h1>{{ activePanelMeta.label }}</h1>
               <p>{{ activePanelMeta.desc }}</p>
             </div>

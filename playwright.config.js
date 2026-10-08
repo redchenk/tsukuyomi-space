@@ -19,7 +19,7 @@ module.exports = defineConfig({
         },
         {
             name: 'webkit-mobile',
-            testMatch: /(?:room-mobile-(?:keyboard|scene)|room-season-scene|room-settings-redesign|room-model-catalog|room-reading-recording|room-images-article-replies|article-loading|article-jump|unified-navigation|directed-replies|user-nickname|search-password-forms|netease-music)\.spec\.js/,
+            testMatch: /(?:access-i18n|room-mobile-(?:keyboard|scene)|room-season-scene|room-settings-redesign|room-model-catalog|room-reading-recording|room-images-article-replies|article-loading|article-jump|unified-navigation|directed-replies|user-nickname|search-password-forms|netease-music)\.spec\.js/,
             use: { ...devices['iPhone 13'] }
         }
     ],

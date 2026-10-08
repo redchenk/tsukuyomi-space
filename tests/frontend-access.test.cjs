@@ -7,7 +7,7 @@ const script = parse(fs.readFileSync('src/frontend/pages/AccessPage.vue', 'utf8'
 
 // Exercise the real setup script with controlled media/lifecycle/clock boundaries.
 function setup({ mobile=false, reduced=false, saveData=false }={}) {
- const mounted=[],unmounted=[],frames=new Map(),timers=new Map(),docEvents=new Map(),changes=new Map();
+ const mounted=[],unmounted=[],frames=new Map(),timers=new Map(),docEvents=new Map(),windowEvents=new Map(),changes=new Map();
  let now=0,id=0,plays=0,pauses=0,loads=0;
  const query={matches:reduced,addEventListener:(k,f)=>changes.set('motion',f),removeEventListener:()=>changes.delete('motion')};
  const connection={saveData,addEventListener:(k,f)=>changes.set('data',f),removeEventListener:()=>changes.delete('data')};
@@ -18,15 +18,15 @@ function setup({ mobile=false, reduced=false, saveData=false }={}) {
   computed:fn=>({get value(){return fn();}}),nextTick:()=>Promise.resolve(),onMounted:fn=>mounted.push(fn),onBeforeUnmount:fn=>unmounted.push(fn),
   reactive:x=>x,ref:value=>({value}),defineProps:()=>{},defineEmits:()=> (...args)=>emitted.push(args),
   desktopVideo:'desktop.mp4',mobileVideo:'mobile.mp4',accessPosterSrc:'poster.webp',navigator:{connection},document,
-  window:{matchMedia:s=>s.includes('reduced')?query:{matches:mobile},setTimeout:fn=>{timers.set(++id,fn);return id;},clearTimeout:n=>timers.delete(n)},
+  window:{addEventListener:(k,f)=>windowEvents.set(k,f),removeEventListener:k=>windowEvents.delete(k),matchMedia:s=>s.includes('reduced')?query:{matches:mobile},setTimeout:fn=>{timers.set(++id,fn);return id;},clearTimeout:n=>timers.delete(n)},
   performance:{now:()=>now},requestAnimationFrame:fn=>{frames.set(++id,fn);return id;},cancelAnimationFrame:n=>frames.delete(n)
  });
- vm.runInContext(script+'\nthis.access={videoEl,accessVideoSrc,motionAllowed,userPaused,videoState,loading,tryPlayAccessVideo,toggleMotion,syncMotionPreference,startAccess,markVideoFailed};',context);
+ vm.runInContext(script+'\nthis.access={videoEl,accessVideoSrc,motionAllowed,userPaused,videoState,loading,tryPlayAccessVideo,toggleMotion,syncMotionPreference,startAccess,markVideoFailed,isLeaving,restoreEntry,preventVideoFullscreen};',context);
  const a=context.access;a.videoEl.value=video;
  const mount=async()=>{mounted.forEach(fn=>fn());await Promise.resolve();await Promise.resolve();};
  const advance=ms=>{now+=ms;for(const [key,fn] of [...frames]){frames.delete(key);fn();}};
  const finish=()=>{for(const [key,fn] of [...timers]){timers.delete(key);fn();}};
- return {a,video,query,connection,document,docEvents,changes,emitted,frames,timers,mount,advance,finish,unmount:()=>unmounted.forEach(fn=>fn()),counts:()=>({plays,pauses,loads})};
+ return {a,video,query,connection,document,docEvents,windowEvents,changes,emitted,frames,timers,mount,advance,finish,unmount:()=>unmounted.forEach(fn=>fn()),counts:()=>({plays,pauses,loads})};
 }
 const labels={connecting:'connect',loading:'loading',sync:'sync',welcome:'welcome'};
 for (const mobile of [false,true]) test(`selects exactly one ${mobile?'mobile':'desktop'} clip`,async()=>{
@@ -58,4 +58,11 @@ test('leaving cancels frames, timers, listeners and video decoding',async()=>{
 });
 test('unmount before the entry animation frame prevents delayed navigation',async()=>{
  const s=setup();await s.mount();s.a.startAccess(labels);s.unmount();s.advance(400);s.finish();assert.equal(s.emitted.length,0);assert.equal(s.frames.size,0);
+});
+
+test('BFCache restores the entry without needing a touch', async()=>{
+ const s=setup({mobile:true});await s.mount();s.a.startAccess(labels);s.advance(400);assert.equal(s.a.isLeaving.value,true);s.windowEvents.get('pageshow')({persisted:true});assert.equal(s.a.isLeaving.value,false);assert.equal(s.a.loading.active,false);s.finish();assert.equal(s.emitted.length,0);s.a.startAccess(labels);s.advance(400);s.finish();assert.deepEqual(s.emitted,[['go','/hub']]);
+});
+test('unexpected native video fullscreen falls back to the poster and preserves navigation',async()=>{
+ const s=setup({mobile:true});let exited=0;s.video.webkitExitFullscreen=()=>exited++;await s.mount();s.a.preventVideoFullscreen();assert.equal(exited,1);assert.equal(s.a.videoState.failed,true);s.a.startAccess(labels);s.advance(400);s.finish();assert.deepEqual(s.emitted,[['go','/hub']]);s.unmount();assert.equal(s.windowEvents.size,0);
 });

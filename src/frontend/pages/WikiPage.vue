@@ -278,7 +278,7 @@ onBeforeUnmount(() => {
                 :href="`#${entry.id}`"
                 :aria-current="activeSection === entry.id ? 'location' : undefined"
                 @click="setActiveSection(entry.id); mobileToc.open = false"
-              >{{ entry.index }} {{ entry.label }}</a>
+              >{{ entry.index }} {{ $ui(entry.label) }}</a>
             </nav>
             <div class="wiki-mobile-search">
               <label for="wiki-mobile-search"><TsIcon name="search" :size="15" /> 词条速查</label>
@@ -307,7 +307,7 @@ onBeforeUnmount(() => {
                 :class="{ active: activeSection === entry.id }"
                 :aria-current="activeSection === entry.id ? 'location' : undefined"
                 @click="setActiveSection(entry.id)"
-              ><span>{{ entry.index }}</span>{{ entry.label }}</a>
+              ><span>{{ entry.index }}</span>{{ $ui(entry.label) }}</a>
             </nav>
 
             <div class="wiki-quick-search">
@@ -372,7 +372,7 @@ onBeforeUnmount(() => {
                 type="button"
                 :aria-pressed="activeCharacterGroup === group.id"
                 @click="activeCharacterGroup = group.id"
-              >{{ group.label }}</button>
+              >{{ $ui(group.label) }}</button>
             </div>
             <p class="wiki-result-count" aria-live="polite">显示 {{ filteredCharacters.length }} 位角色</p>
             <div class="wiki-character-grid">
@@ -425,7 +425,7 @@ onBeforeUnmount(() => {
                 type="button"
                 :aria-pressed="activeMusicGroup === group.id"
                 @click="activeMusicGroup = group.id"
-              >{{ group.label }}</button>
+              >{{ $ui(group.label) }}</button>
             </div>
             <p class="wiki-result-count" aria-live="polite">显示 {{ filteredMusic.length }} 首曲目</p>
             <div class="wiki-music-list">
@@ -497,7 +497,7 @@ onBeforeUnmount(() => {
           <nav class="wiki-navigation-template" aria-label="相关词条导航">
             <div class="wiki-template-title"><span>超辉夜姬！Wiki</span><strong>相关词条索引</strong></div>
             <div v-for="group in navigationGroups" :key="group.title" class="wiki-template-group">
-              <strong>{{ group.title }}</strong>
+              <strong>{{ $ui(group.title) }}</strong>
               <div>
                 <RouterLink v-for="link in group.links.filter((item) => item.route)" :key="link.target" :to="link.route">{{ link.label }}</RouterLink>
                 <a v-for="link in group.links.filter((item) => !item.route)" :key="link.target" :href="`#${link.target}`">{{ link.label }}</a>
@@ -508,7 +508,7 @@ onBeforeUnmount(() => {
 
         <aside class="wiki-info-panel" data-material="sidebar" aria-label="作品信息">
           <div class="wiki-info-head"><span>作品档案</span><strong>超かぐや姫！</strong></div>
-          <dl><div v-for="([label, value]) in infoRows" :key="label"><dt>{{ label }}</dt><dd>{{ value }}</dd></div></dl>
+          <dl><div v-for="([label, value]) in infoRows" :key="label"><dt>{{ $ui(label) }}</dt><dd>{{ value }}</dd></div></dl>
           <a href="https://www.netflix.com/sg-zh/title/81756595" target="_blank" rel="noopener noreferrer">Netflix 作品页 <TsIcon name="external" :size="15" /></a>
           <small>资料核验至 {{ verifiedAt }}</small>
         </aside>

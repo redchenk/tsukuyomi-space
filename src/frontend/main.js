@@ -6,7 +6,7 @@ import { router } from './router';
 import { configureAssetCssVars } from './utils/assetUrl';
 import { installImageBloom } from './utils/imageBloom';
 import { initializePerformanceProfile } from './utils/performance';
-import { enableEnglishStaticInterface } from './i18n/englishStaticInterface';
+import { uiText, prepareInterfaceLanguage } from './i18n/runtime';
 import { initializeSeasonTheme } from './composables/useSeasonTheme';
 import './styles/global.css';
 import './styles/image-bloom.css';
@@ -30,9 +30,9 @@ window.addEventListener('blur', syncWindowAppearance, { passive: true });
 window.addEventListener('pageshow', syncWindowAppearance, { passive: true });
 document.addEventListener('visibilitychange', syncWindowAppearance, { passive: true });
 syncWindowAppearance();
-enableEnglishStaticInterface();
 
 const app = createApp(App);
+app.config.globalProperties.$ui = uiText;
 // Vue Teleport mounts dialogs beside #app, so observe the whole body to include
 // lightboxes and any future portal content that opts into image bloom.
 if (document.body) installImageBloom(document.body);
@@ -49,4 +49,14 @@ app.config.warnHandler = (msg, vm, info) => {
 };
 
 app.use(router);
-app.mount('#app');
+// The immersive entry has no catalog-dependent labels. Never wait for a
+// secondary locale download before exposing its navigation controls.
+if (/^\/(?:access\/?)?$/.test(window.location.pathname)) {
+  app.mount('#app');
+  prepareInterfaceLanguage().catch(() => {});
+} else {
+  let mounted = false;
+  const mount = () => { if (!mounted) { mounted = true; app.mount('#app'); } };
+  const fallback = window.setTimeout(mount, 800);
+  prepareInterfaceLanguage().catch(() => {}).finally(() => { window.clearTimeout(fallback); mount(); });
+}

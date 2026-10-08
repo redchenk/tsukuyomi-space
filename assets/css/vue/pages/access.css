@@ -16,6 +16,16 @@ body.vue-access-route { overflow-y: auto; }
     overflow: hidden;
     background: #263453;
     color: var(--access-ink);
+    animation: none;
+    opacity: 1;
+}
+.access-media, .access-content { position: absolute; inset: 0; }
+.access-media { z-index: 0; overflow: hidden; pointer-events: none; }
+/* Separate the inline-video plane from the interactive foreground on iOS. */
+.access-content { z-index: 3; transform: translateZ(0); isolation: isolate; }
+.access-page .access-hero, .access-page .access-enter {
+    visibility: visible;
+    animation: none;
 }
 .access-page .access-poster, .access-page .access-video, .access-page .access-overlay {
     position: absolute;

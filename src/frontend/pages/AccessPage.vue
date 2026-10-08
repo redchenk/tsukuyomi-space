@@ -70,6 +70,25 @@ function syncVisibility() {
   else tryPlayAccessVideo();
 }
 
+function restoreEntry(event) {
+  // Safari can restore a page captured during the exit fade from BFCache.
+  // Entry controls must never depend on video playback, focus, or a gesture.
+  if (event?.persisted || !document.hidden) {
+    window.clearTimeout(navigationTimer);
+    cancelAnimationFrame(animationFrame);
+    loading.active = false;
+    loading.progress = 0;
+    isLeaving.value = false;
+    tryPlayAccessVideo();
+  }
+}
+
+function preventVideoFullscreen() {
+  videoEl.value?.webkitExitFullscreen?.();
+  videoEl.value?.pause();
+  markVideoFailed();
+}
+
 function startAccess(t) {
   if (loading.active || isLeaving.value) return;
   loading.active = true;
@@ -101,6 +120,7 @@ onMounted(() => {
   reducedMotionQuery.addEventListener('change', syncMotionPreference);
   connection?.addEventListener?.('change', syncMotionPreference);
   document.addEventListener('visibilitychange', syncVisibility);
+  window.addEventListener('pageshow', restoreEntry);
   syncMotionPreference();
 });
 
@@ -112,6 +132,7 @@ onBeforeUnmount(() => {
   reducedMotionQuery?.removeEventListener('change', syncMotionPreference);
   connection?.removeEventListener?.('change', syncMotionPreference);
   document.removeEventListener('visibilitychange', syncVisibility);
+  window.removeEventListener('pageshow', restoreEntry);
   const video = videoEl.value;
   if (video) {
     video.pause();
@@ -125,13 +146,16 @@ onBeforeUnmount(() => {
   <main class="page center-page access-page"
     :class="{ 'video-ready': videoState.ready, 'video-failed': videoState.failed, 'is-leaving': isLeaving }"
     :aria-busy="loading.active">
+    <div class="access-media" aria-hidden="true">
     <img class="access-poster" :src="accessPosterSrc" alt="" fetchpriority="high" decoding="async" aria-hidden="true">
     <video v-if="motionAllowed" ref="videoEl" class="access-video" :src="accessVideoSrc"
       autoplay muted loop playsinline webkit-playsinline disablepictureinpicture disableremoteplayback
       controlslist="nodownload noplaybackrate noremoteplayback" x-webkit-airplay="deny" tabindex="-1"
       preload="metadata" :poster="accessPosterSrc" aria-hidden="true"
-      @playing="markVideoReady" @canplay="tryPlayAccessVideo" @error="markVideoFailed"></video>
+      @playing="markVideoReady" @canplay="tryPlayAccessVideo" @error="markVideoFailed" @webkitbeginfullscreen="preventVideoFullscreen"></video>
     <div class="access-overlay" aria-hidden="true"></div>
+    </div>
+    <div class="access-content">
     <header class="access-brand">
       <img :src="brandLogo" alt="" width="64" height="64" decoding="async">
       <span>{{ t.brand }}</span>
@@ -158,6 +182,7 @@ onBeforeUnmount(() => {
       <p class="access-copyright">{{ t.accessCopyright }}</p>
       <BeianLink />
     </footer>
+    </div>
     <div v-if="loading.active" class="access-loading-layer" :class="{ 'is-completing': isLeaving }" role="status" aria-live="polite">
       <div class="access-loading-box ts-loader-region"><StatusLoader :label="loading.text" :progress="loading.progress" /></div>
     </div>

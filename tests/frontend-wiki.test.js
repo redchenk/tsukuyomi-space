@@ -162,7 +162,7 @@ test('Every character and term receives a reusable secondary entry page', () => 
   assert.match(sourceComponent, /parseMediaWikiArticle/);
   assert.match(sourceComponent, /article\.value\.sections\.filter\(\(section\) => section\.id !== 'source-notes'\)/);
   assert.doesNotMatch(data, /\{ id: 'source-notes', label: '注释及外部链接' \}/);
-  assert.match(page, /<span v-if="!entry\.sourceArticle">\{\{ entry\.kindLabel \}\}<\/span>/);
+  assert.match(page, /<span v-if="!entry\.sourceArticle">\{\{ \$ui\(entry\.kindLabel\) \}\}<\/span>/);
   assert.match(page, /<figcaption v-if="activeImage\?\.imageSource && !entry\.sourceArticle">/);
   assert.match(page, /<div v-if="!entry\.sourceArticle" class="wiki-entry-notice" role="note">/);
   assert.match(sourceParser, /parseKaguyaMediaWiki/);

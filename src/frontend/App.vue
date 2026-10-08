@@ -3,6 +3,7 @@ import { computed, defineAsyncComponent, onMounted, onUnmounted, provide, ref, w
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
 import { documentLanguage, i18n, normalizeLanguage } from './i18n';
+import { setInterfaceLanguage } from './i18n/runtime';
 import AppShell from './layouts/AppShell.vue';
 import { startSeasonTracking } from './composables/useSeasonTheme';
 import { useRoomMusic } from './composables/room/useRoomMusic';
@@ -151,8 +152,9 @@ async function refreshUser(trustedUser = null) {
   recordDailyView();
 }
 
-function setLang(nextLang) {
-  lang.value = forcedLanguage || normalizeLanguage(nextLang);
+async function setLang(nextLang) {
+  const next = forcedLanguage || normalizeLanguage(nextLang);
+  try { lang.value = await setInterfaceLanguage(next); } catch (_) { return; }
   if (!forcedLanguage) localStorage.setItem('lang', lang.value);
   document.documentElement.lang = documentLanguage(lang.value);
 }

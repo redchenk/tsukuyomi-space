@@ -38,9 +38,9 @@ function go(page) {
 </script>
 
 <template>
-  <nav v-if="totalItems" class="terminal-pagination" :aria-label="ariaLabel">
+  <nav v-if="totalItems" class="terminal-pagination" :aria-label="$ui(ariaLabel)">
     <div class="terminal-pagination-info">
-      {{ rangeStart }}-{{ rangeEnd }} / {{ totalItems }} {{ itemLabel }}
+      {{ rangeStart }}-{{ rangeEnd }} / {{ totalItems }} {{ $ui(itemLabel) }}
     </div>
     <div class="terminal-pagination-controls">
       <button

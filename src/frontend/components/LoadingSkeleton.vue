@@ -4,7 +4,7 @@ import { computed } from 'vue';
 const props = defineProps({
   variant: { type: String, default: 'list' },
   count: { type: Number, default: 3 },
-  label: { type: String, default: 'Loading content' }
+  label: { type: String, default: '正在加载内容' }
 });
 
 const itemCount = computed(() => Math.min(12, Math.max(1, Math.trunc(props.count || 1))));
@@ -32,5 +32,5 @@ const showsMedia = computed(() => ['article', 'cards', 'editor', 'gallery', 'pix
       </div>
     </div>
   </div>
-  <span class="ts-visually-hidden" aria-live="polite">{{ label }}</span>
+  <span class="ts-visually-hidden" aria-live="polite">{{ $ui(label) }}</span>
 </template>

@@ -1,4 +1,5 @@
 import { isEnglishSite } from '../utils/siteVariant';
+import { translateFeedback, uiText } from '../i18n/runtime';
 
 export async function parseResponse(response) {
   const text = await response.text();
@@ -8,31 +9,15 @@ export async function parseResponse(response) {
   } catch (_) {
     return {
       success: false,
-      message: FORCED_ENGLISH_SITE ? `Request failed (HTTP ${response.status})` : `请求失败 (HTTP ${response.status})`
+      message: uiText('请求失败 (HTTP {0})', [response.status])
     };
   }
 }
-
 const FORCED_ENGLISH_SITE = isEnglishSite();
-const CJK_TEXT_RE = /[\u3400-\u9fff\u3040-\u30ff]/u;
 
 async function translateResponseMessage(result) {
-  if (!FORCED_ENGLISH_SITE || !result || typeof result !== 'object' || !CJK_TEXT_RE.test(String(result.message || ''))) {
-    return result;
-  }
-  try {
-    const response = await fetch('/en-translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texts: [String(result.message)] })
-    });
-    if (!response.ok) return result;
-    const payload = await response.json();
-    const translated = String(payload?.translations?.[0] || '').trim();
-    return translated ? { ...result, message: translated } : result;
-  } catch (_) {
-    return result;
-  }
+  if (!result || typeof result !== 'object' || typeof result.message !== 'string') return result;
+  return { ...result, message: translateFeedback(result.message) };
 }
 
 export function apiUrl(url) {

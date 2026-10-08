@@ -1,3 +1,4 @@
+import { uiText } from '../../i18n/runtime';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { activeSeason } from '../useSeasonTheme';
 import { roomSceneKey, trackRoomLighting } from '../../services/room/roomScene.mjs';
@@ -49,8 +50,8 @@ export function useRoomBackdrop() {
     const [season, time] = displayedKey.value.split('-');
     return {
       key: displayedKey.value, season, time,
-      label: names[season] + '小屋',
-      title: names[season] + ' · ' + (time === 'day' ? '白昼' : '月夜'),
+      label: uiText(names[season] + '小屋'),
+      title: uiText(names[season]) + ' · ' + uiText(time === 'day' ? '白昼' : '月夜'),
       icon: time === 'day' ? 'sun' : 'moon',
       image: artwork[displayedKey.value]
     };

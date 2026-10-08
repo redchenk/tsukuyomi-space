@@ -1,4 +1,5 @@
 <script setup>
+import { uiText } from '../i18n/runtime';
 import { detectProvider, catalogPlan, catalogScope, readCatalogCache, writeCatalogCache, fetchModelCatalog } from '../services/room/roomModelCatalog.mjs';
 import { callRoomMcp, validateMcpEndpoint } from '../services/room/roomMcp.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
@@ -165,9 +166,9 @@ const settingsNavigation = [
   { id: 'mcp', label: '工具与扩展', icon: 'grid', group: '进阶功能', badge: 'MCP', keywords: '搜索 白名单 鉴权 MiniMax' },
   { id: 'debug', label: 'Live2D 调试', icon: 'code', group: '进阶功能', keywords: '表情 动作 队列 JSON' }
 ];
-const filteredSettingsGroups = computed(() => ['基础与陪伴', '房间个性化', '进阶功能'].map(label => ({
-  label,
-  items: settingsNavigation.filter(item => item.group === label && `${item.label} ${item.keywords}`.toLowerCase().includes(settingsSearch.value.trim().toLowerCase()))
+const filteredSettingsGroups = computed(() => ['基础与陪伴', '房间个性化', '进阶功能'].map(groupId => ({
+  label: uiText(groupId),
+  items: settingsNavigation.filter(item => item.group === groupId && `${item.label} ${item.keywords}`.toLowerCase().includes(settingsSearch.value.trim().toLowerCase()))
 })).filter(group => group.items.length));
 const currentSection = computed(() => settingsNavigation.find(item => item.id === activeSection.value));
 const testedConnectionStatus = computed(() => connectionCheck.snapshot === sectionSnapshot('llm') ? connectionCheck.status : 'idle');

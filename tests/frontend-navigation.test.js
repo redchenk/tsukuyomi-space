@@ -200,7 +200,7 @@ describe('frontend navigation routes', () => {
         const icons = source('src/frontend/components/TsIcon.vue');
         const seo = source('src/frontend/utils/seo.js');
         const client = source('src/frontend/api/client.js');
-        const staticInterface = source('src/frontend/i18n/englishStaticInterface.js');
+        const runtimeInterface = source('src/frontend/i18n/runtime.js');
         const gallery = source('src/frontend/pages/GalleryPage.vue');
         const viteConfig = source('vite.frontend.config.js');
         const packageJson = JSON.parse(source('package.json'));
@@ -213,9 +213,11 @@ describe('frontend navigation routes', () => {
         assert.match(app, /normalizeLanguage\(localStorage\.getItem\('lang'\)\)/);
         assert.match(app, /documentLanguage\(lang\.value\)/);
         assert.match(i18nModule, /SUPPORTED_LANGUAGES = Object\.freeze\(\['zh', 'ja', 'en'\]\)/);
-        for (const content of [app, client, staticInterface, seo, gallery]) {
+        for (const content of [app, runtimeInterface, seo, gallery]) {
             assert.match(content, /isEnglishSite|forcedSiteLanguage/);
         }
+        assert.doesNotMatch(client, /en-translate/);
+        assert.doesNotMatch(source('src/frontend/main.js'), /enableEnglishStaticInterface/);
         assert.match(messages, /import \{ en \} from '\.\/messages\.en\.js'/);
         assert.match(i18nModule, /export function alternateLanguage/);
         assert.match(messages, /switchToJapanese: '切换为日语'/);

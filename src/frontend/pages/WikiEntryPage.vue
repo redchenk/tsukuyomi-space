@@ -125,7 +125,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
       <nav class="wiki-entry-breadcrumb" aria-label="面包屑导航">
         <RouterLink to="/wiki">超辉夜姬！Wiki</RouterLink>
         <TsIcon name="arrowRight" :size="14" />
-        <span>{{ entry.kindLabel }}</span>
+        <span>{{ $ui(entry.kindLabel) }}</span>
         <TsIcon name="arrowRight" :size="14" />
         <strong>{{ entry.title }}</strong>
       </nav>
@@ -133,7 +133,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
       <header class="wiki-entry-hero" data-material="content">
         <div class="wiki-entry-hero-copy">
           <p>{{ entry.kind === 'character' ? 'CHARACTER ARCHIVE' : 'TSUKUYOMI GLOSSARY' }}</p>
-          <span v-if="!entry.sourceArticle">{{ entry.kindLabel }}</span>
+          <span v-if="!entry.sourceArticle">{{ $ui(entry.kindLabel) }}</span>
           <h1>{{ entry.title }}</h1>
           <div class="wiki-entry-original">{{ entry.original }}</div>
           <p class="wiki-entry-headline">{{ entry.headline }}</p>
@@ -156,7 +156,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
               :aria-pressed="activeImageVariantId === variant.id"
               @click="activeImageVariantId = variant.id"
             >
-              {{ variant.label }}
+              {{ $ui(variant.label) }}
             </button>
           </div>
           <div class="wiki-entry-image-frame">
@@ -179,7 +179,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
           <strong>本页目录</strong>
           <nav aria-label="词条目录">
             <a v-for="(link, index) in sectionLinks" :key="link.id" :href="`#${link.id}`" @click="scrollToSection(link.id, $event)">
-              <span>{{ String(index + 1).padStart(2, '0') }}</span>{{ link.label }}
+              <span>{{ String(index + 1).padStart(2, '0') }}</span>{{ $ui(link.label) }}
             </a>
           </nav>
           <RouterLink class="wiki-entry-back" to="/wiki"><TsIcon name="arrowLeft" :size="15" /> 返回 Wiki 总览</RouterLink>
@@ -253,7 +253,7 @@ onUnmounted(() => document.body.classList.remove('wiki-entry-open'));
             <div class="wiki-entry-gallery">
               <div v-for="slot in entry.gallerySlots" :key="slot.label" class="wiki-entry-gallery-slot">
                 <TsIcon name="image" :size="28" />
-                <strong>{{ slot.label }}</strong>
+                <strong>{{ $ui(slot.label) }}</strong>
                 <span>{{ slot.suggestion }}</span>
                 <small>等待补充授权清晰的图片</small>
               </div>
