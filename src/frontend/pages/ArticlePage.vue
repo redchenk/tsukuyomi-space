@@ -26,7 +26,7 @@ const props = defineProps({
   t: { type: Object, required: true }
 });
 
-const emit = defineEmits(['go']);
+const emit = defineEmits(['go', 'return-to']);
 const route = useRoute();
 const article = ref(null);
 const readingReceipt = ref(null);
@@ -125,7 +125,7 @@ function normalizeStageReturnPath(value) {
 }
 
 function goBackToStage() {
-  emit('go', articleBackPath.value);
+  emit('return-to', articleBackPath.value);
 }
 
 function absoluteUrl(value) {

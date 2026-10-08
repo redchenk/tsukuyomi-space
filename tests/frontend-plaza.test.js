@@ -78,11 +78,11 @@ describe('Plaza page request cache', () => {
 function page(overrides = {}) {
     let currentSession = overrides.session || null;
     const timers = new Map(), calls = [];
-    const route = vue.reactive({ query: {}, hash: '' });
+    const route = vue.reactive({ name: 'plaza', query: {}, hash: '' });
     const location = { hash: '', origin: 'https://example.test' };
     const context = { ...vue, console, URL, Date,
         setTimeout: fn => { const id = Symbol(); timers.set(id, fn); return id; }, clearTimeout: id => timers.delete(id),
-        onMounted: () => {}, onUnmounted: () => {},
+        onMounted: () => {}, onUnmounted: () => {}, onActivated: () => {}, onDeactivated: () => {},
         defineProps: () => ({ lang: 'zh', t: { plazaLoadFailed: '无法读取留言', refresh: '刷新' } }), defineEmits: () => () => {},
         useRoute: () => route, useRouter: () => ({ replace: options => { location.hash = options.hash || ''; route.hash = location.hash; return Promise.resolve(); } }),
         getSession: () => currentSession, loadCurrentSession: () => new Promise(() => {}),
@@ -153,6 +153,21 @@ describe('Plaza progressive loading', () => {
         await p.loadPlazaMessages();
         pending.resolve({ replies: [{ id: 44, parent_id: 1 }], next_before_id: null }); await replies;
         assert.deepEqual(Array.from(p.plaza.messages, item => item.id), [2]);
+    });
+    it('ignores another page hash while a cached Plaza is inactive', async () => {
+        const p = page();
+        p.route.name = 'article'; p.location.hash = '#msg-12';
+        await p.plazaSyncPageWithHash();
+        assert.equal(p.calls.length, 0);
+    });
+    it('preserves visible messages while a background refresh fails', async () => {
+        let fail = false;
+        const p = page({ loadPlazaPage: async () => { if (fail) throw new Error('unavailable'); return payload(10); } });
+        await p.loadPlazaMessages(); fail = true;
+        await p.loadPlazaMessages({ background: true });
+        assert.equal(p.plaza.messages[0].id, 10);
+        assert.equal(p.plaza.loading, false);
+        assert.equal(p.plaza.loadError, '');
     });
     it('resolves a notification anchor on another page and retains its older reply', async () => {
         const calls = [];

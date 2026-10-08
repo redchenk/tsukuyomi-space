@@ -1,10 +1,12 @@
 <script setup>
-import { computed, defineAsyncComponent, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
 import { documentLanguage, i18n, normalizeLanguage } from './i18n';
 import { setInterfaceLanguage } from './i18n/runtime';
 import AppShell from './layouts/AppShell.vue';
+import RouteViewFrame from './components/RouteViewFrame.vue';
+import { createRouteHistory, ROUTE_CACHE_LIMIT, shouldCacheRoute } from './utils/routeHistory';
 import { startSeasonTracking } from './composables/useSeasonTheme';
 import { useRoomMusic } from './composables/room/useRoomMusic';
 import { setPublicAssetBaseUrl } from './utils/assetUrl';
@@ -24,11 +26,26 @@ const NoticeMarkdown = defineAsyncComponent(() => import('./components/NoticeMar
 
 const route = useRoute();
 const router = useRouter();
+const routeHistory = createRouteHistory(router);
+const CachedRouteFrame = { ...RouteViewFrame, name: 'CachedRouteFrame' };
+const frameForRoute = viewRoute => shouldCacheRoute(viewRoute) ? CachedRouteFrame : RouteViewFrame;
 const forcedLanguage = forcedSiteLanguage();
 const lang = ref(forcedLanguage || normalizeLanguage(localStorage.getItem('lang')));
 const theme = ref(localStorage.getItem('tsukuyomi_theme') === 'dark' ? 'dark' : 'light');
 let stopSeasonTracking;
 const user = ref(null);
+const routeCacheIdentity = computed(() => `${user.value?.scope || 'user'}:${user.value?.id || 'guest'}:${user.value?.role || ''}`);
+const routeCacheInclude = ref(['CachedRouteFrame']);
+let routeCacheRevision = 0;
+watch(routeCacheIdentity, async () => {
+  const revision = ++routeCacheRevision;
+  // Prune cached account views without destroying a login/callback in progress.
+  routeCacheInclude.value = [];
+  await nextTick();
+  if (revision === routeCacheRevision) routeCacheInclude.value = ['CachedRouteFrame'];
+});
+const componentCacheKey = viewRoute => shouldCacheRoute(viewRoute)
+  ? `${routeCacheIdentity.value}:${routeViewKey(viewRoute)}` : routeViewKey(viewRoute);
 const t = computed(() => i18n[lang.value] || i18n.zh);
 const routeLoadingLabel = computed(() => lang.value === 'ja'
   ? 'ページを読み込み中'
@@ -205,14 +222,18 @@ function go(path) {
   if (isAccessRoute.value && path === '/hub') {
     sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1');
   }
-  router.push(target);
+  if (target === '/hub' && !isAccessRoute.value) routeHistory.returnTo(target);
+  else router.push(target);
 }
+
+function returnTo(path) { routeHistory.returnTo(resolveNavigationPath(path)); }
+function goBack(fallback = '/hub') { routeHistory.back(resolveNavigationPath(fallback)); }
 
 function scheduleRouteProgress(to, from) {
   if (typeof window === 'undefined' || !from?.name || to.fullPath === from.fullPath) return;
   const routeOwnsLoading = ['access', 'accessAlias', 'room', 'live2d'].includes(String(from.name))
     || ['room', 'live2d'].includes(String(to.name));
-  routeMotionImmediate = ['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'live2d', 'pixel', 'game']
+  routeMotionImmediate = routeHistory.beforeNavigation(to) || ['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'live2d', 'pixel', 'game']
     .some(name => name === to.name || name === from.name);
   if (routeOwnsLoading) return;
   window.clearTimeout(routeProgressTimer);
@@ -263,6 +284,8 @@ function leaveRoute(element, done) {
 
 async function logout() {
   await logoutSession();
+  user.value = null;
+  lastTrustedAuthAt = 0;
   refreshUser();
   router.push('/');
 }
@@ -367,6 +390,7 @@ watch(isRoomRoute, (next) => {
 }, { immediate: true });
 router.isReady().then(() => {
   initialRouteReady = true;
+  routeHistory.remember(route);
   refreshUser();
 });
 watch(() => route.name, () => loadVisitPopup());
@@ -375,9 +399,10 @@ onMounted(() => {
   removeRouteLinks = installRouteLinks({ router, navigate: go, prefetch: warmRoutePath });
   removeRouteProgressGuard = router.beforeEach((to, from) => scheduleRouteProgress(to, from));
   removeRouteProgressHook = router.afterEach((to, from, failure) => {
+    routeHistory.afterNavigation(to, failure);
     if (failure || routeViewKey(to) === routeViewKey(from)) finishRouteProgress();
   });
-  removeRouteErrorHook = router.onError(() => finishRouteProgress());
+  removeRouteErrorHook = router.onError(() => { routeHistory.cancel(); finishRouteProgress(); });
   applyPublicSettings();
   scheduleSitePet();
   window.addEventListener('pageshow', handlePageShow);
@@ -425,27 +450,23 @@ onUnmounted(() => {
           @enter-cancelled="cancelRouteMotion"
           @leave-cancelled="cancelRouteMotion"
         >
-          <div
-            v-if="Component"
-            :key="routeViewKey(viewRoute)"
-            :data-route-key="routeViewKey(viewRoute)"
-            :data-route-name="viewRoute.name"
-            class="route-view-frame"
-          >
+          <KeepAlive :include="routeCacheInclude" :max="ROUTE_CACHE_LIMIT">
             <component
-              :is="Component"
-              class="route-view"
-              :lang="lang"
-              :t="t"
-              :theme="theme"
-              :user="user"
-              :route-name="route.name"
+              v-if="Component"
+              :is="frameForRoute(viewRoute)"
+              :key="componentCacheKey(viewRoute)"
+              :component="Component"
+              :route-key="routeViewKey(viewRoute)"
+              :route-name="String(viewRoute.name)"
+              :page-props="{ lang, t, theme, user }"
               @auth-changed="refreshUser"
               @go="go"
+              @back="goBack"
+              @return-to="returnTo"
               @logout="logout"
               @toggle-theme="toggleTheme"
             />
-          </div>
+          </KeepAlive>
         </Transition>
       </RouterView>
     </div>

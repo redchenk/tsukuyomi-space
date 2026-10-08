@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, loadPublicSettings, loadPublicStats, parseResponse, setPublicStatsCache } from '../api/client';
 import BeianLink from '../components/BeianLink.vue';
 import CountUpValue from '../components/CountUpValue.vue';
@@ -32,6 +32,9 @@ const STATS_UPDATED_EVENT = 'tsukuyomi:stats-updated';
 const fallbackPixelPalette = ['#0b1020', '#ffffff', '#aef2ff', '#7b8cf6', '#ff9aba', '#f1d98e'];
 const decodedPixelPreviews = new WeakMap();
 let hubPreviewCache = readHubPreviewCache();
+let previewFrame = 0;
+let hubPreviewPending = false;
+let hubWasDeactivated = false;
 
 function readHubPreviewCache() {
   if (typeof sessionStorage === 'undefined') return null;
@@ -274,11 +277,14 @@ function warmScene(scene) {
   if (scene?.spa) warmRoutePath(scene.href);
 }
 
-async function loadHubPreviewFast() {
+async function loadHubPreviewFast({ force = false } = {}) {
+  if (hubPreviewPending) return;
   const cached = hubPreviewCache || readHubPreviewCache();
   if (cached) applyHubPreviewCache(cached);
   previewLoading.value = !cached;
   previewError.value = '';
+  if (!force && cached?.cachedAt && Date.now() - cached.cachedAt < HUB_PREVIEW_TTL_MS) return;
+  hubPreviewPending = true;
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), HUB_PREVIEW_TIMEOUT_MS);
   try {
@@ -305,6 +311,7 @@ async function loadHubPreviewFast() {
     if (!cached) previewError.value = error.name === 'AbortError' ? '内容读取超时，请重试' : (error.message || '内容读取失败');
   } finally {
     window.clearTimeout(timeout);
+    hubPreviewPending = false;
     previewLoading.value = false;
   }
 }
@@ -457,7 +464,7 @@ async function submitPlazaQuick() {
 
 async function loadVisitPopupPreview() {
   try {
-    const settings = await loadPublicSettings({ force: true, maxAgeMs: 0 });
+    const settings = await loadPublicSettings();
     const content = announcementContent(settings);
     const title = content && content === String(settings.siteAnnouncement || '').trim()
       ? noticeSummary(content)
@@ -485,14 +492,30 @@ onMounted(() => {
     return;
   }
   window.addEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
-  window.requestAnimationFrame(() => {
+  previewFrame = window.requestAnimationFrame(() => {
+    previewFrame = 0;
     loadHubPreviewFast();
   });
+});
+
+onActivated(() => {
+  window.addEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
+  if (hubWasDeactivated) {
+    loadHubPreviewFast();
+    loadVisitPopupPreview();
+  }
+});
+onDeactivated(() => {
+  hubWasDeactivated = true;
+  window.removeEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
+  window.cancelAnimationFrame(previewFrame);
+  previewFrame = 0;
 });
 
 onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener(STATS_UPDATED_EVENT, handleStatsUpdated);
+    window.cancelAnimationFrame(previewFrame);
   }
 });
 </script>

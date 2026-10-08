@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue';
 import { apiFetch, noStoreUrl } from '../api/client';
 
 const categories = ref([]);
@@ -78,6 +78,7 @@ function resume() {
 
 export function useArticleCategories({ enabled = ref(true) } = {}) {
   let active = false;
+  let pageActive = true;
   let unwatch;
   function toggle(next) {
     if (active === Boolean(next)) return;
@@ -93,7 +94,9 @@ export function useArticleCategories({ enabled = ref(true) } = {}) {
       window.removeEventListener('online', resume);
     }
   }
-  onMounted(() => { unwatch = watch(enabled, toggle, { immediate: true }); });
+  onMounted(() => { unwatch = watch(enabled, value => toggle(pageActive && value), { immediate: true }); });
+  onActivated(() => { pageActive = true; toggle(enabled.value); });
+  onDeactivated(() => { pageActive = false; toggle(false); });
   onUnmounted(() => { unwatch?.(); toggle(false); });
   return { categories: computed(() => categories.value), revision, error, loading, refresh: refreshArticleCategories };
 }

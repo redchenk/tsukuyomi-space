@@ -1,6 +1,6 @@
 <script setup>
 import { nameInitial } from '../utils/userName.mjs';
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { apiFetch, authFetch, authHeaders, getSession, loadCurrentSession, loadPublicStats, parseResponse } from '../api/client';
 import PlazaComposer from '../components/PlazaComposer.vue';
@@ -58,6 +58,10 @@ let plazaMounted = false;
 let applyingPlazaPage = false;
 let plazaRequestRevision = 0;
 let plazaReloadTimer = 0;
+let plazaLoadedAt = 0;
+let plazaLoadedRequest = '';
+let appliedTopic = '';
+let renderedHash = '';
 const successfulLikes = new Map();
 const user = computed(() => session.value?.user || null);
 const isAuthed = computed(() => Boolean(session.value));
@@ -256,7 +260,8 @@ function isPlazaPageGap(item) {
 }
 
 async function plazaSyncPageWithHash() {
-  if (!plazaMounted) return;
+  if (!plazaMounted || route.name !== 'plaza') return;
+  renderedHash = route.hash;
   const match = String(location.hash || '').match(/^#msg-(\d+)$/);
   if (!match) return;
   const anchorId = match[1];
@@ -299,10 +304,14 @@ function hydratePlazaMessages(messages, revision = plazaRequestRevision) {
   }).catch(() => {});
 }
 
-async function loadPlazaMessages({ force = false, anchorId = null } = {}) {
+function plazaRequestKey() {
+  return JSON.stringify([plaza.page, plaza.filter, plaza.query]);
+}
+
+async function loadPlazaMessages({ force = false, anchorId = null, background = false } = {}) {
   const revision = ++plazaRequestRevision;
   const owner = user.value?.id || '';
-  plaza.loading = true;
+  if (!background) plaza.loading = true;
   plaza.loadError = '';
   try {
     const result = await loadPlazaPage({ page: plaza.page, sort: plaza.filter, search: plaza.query, anchorId }, { force });
@@ -310,18 +319,26 @@ async function loadPlazaMessages({ force = false, anchorId = null } = {}) {
     plaza.messages = keepLikeResults(result.messages || []);
     plaza.activity = result.activity || [];
     plaza.pagination = result.pagination;
-    plaza.repliesExpanded = {};
+    if (!background) plaza.repliesExpanded = {};
     plaza.repliesLoaded = {};
     plaza.repliesCursor = {};
     plaza.repliesError = {};
     plaza.repliesLoading = {};
     applyingPlazaPage = true;
     plaza.page = result.pagination.page;
+    plazaLoadedAt = Date.now();
+    plazaLoadedRequest = plazaRequestKey();
     nextTick(() => { applyingPlazaPage = false; });
     hydratePlazaMessages(plaza.messages, revision);
+    if (background) {
+      for (const message of result.messages || []) {
+        if (!message.parent_id && plaza.repliesExpanded[message.id]) void fetchPlazaReplies(message.id);
+      }
+    }
     if (result.anchor_id) nextTick(plazaSyncPageWithHash);
   } catch (error) {
     if (revision !== plazaRequestRevision) return;
+    if (background) return;
     plaza.messages = [];
     plaza.loadError = error.message || props.t.plazaLoadFailed;
     showPlazaToast(props.t.plazaLoadFailed, 'error');
@@ -578,9 +595,12 @@ function plazaOpenActivity(id) {
 }
 
 function applyRouteTopic() {
+  if (route.name !== 'plaza') return;
   const topic = Array.isArray(route.query.topic) ? route.query.topic[0] : route.query.topic;
+  if ((topic || '') === appliedTopic) return;
   if (topic) plazaSelectTopic(topic);
-  else plaza.query = '';
+  else if (appliedTopic) plaza.query = '';
+  appliedTopic = topic || '';
 }
 
 function isPlazaMessageLiked(message) {
@@ -644,13 +664,35 @@ onMounted(() => {
   window.addEventListener('hashchange', plazaSyncPageWithHash);
   refreshPlaza({ force: false });
 });
-onUnmounted(() => {
-  plazaMounted = false;
-  ++plazaRequestRevision;
+onActivated(() => {
+  if (plazaMounted) return;
+  plazaMounted = true;
+  session.value = getSession();
+  updateCompact();
+  compactQuery?.addEventListener('change', updateCompact);
+  window.addEventListener('hashchange', plazaSyncPageWithHash);
+  applyRouteTopic();
   clearTimeout(plazaReloadTimer);
+  const changed = plazaRequestKey() !== plazaLoadedRequest;
+  if (!plaza.loading && (changed || Date.now() - plazaLoadedAt > 30000)) {
+    loadPlazaMessages({ background: !changed });
+    loadPlazaStats();
+    loadTrendingTopics();
+  }
+  if (route.hash !== renderedHash) nextTick(plazaSyncPageWithHash);
+});
+function pausePlaza() {
+  plazaMounted = false;
+  clearTimeout(plazaReloadTimer);
+  clearTimeout(plazaToastTimer);
+  plazaToast.visible = false;
   window.removeEventListener('hashchange', plazaSyncPageWithHash);
   compactQuery?.removeEventListener('change', updateCompact);
-  clearTimeout(plazaToastTimer);
+}
+onDeactivated(pausePlaza);
+onUnmounted(() => {
+  pausePlaza();
+  ++plazaRequestRevision;
 });
 </script>
 

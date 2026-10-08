@@ -15,7 +15,7 @@ const props = defineProps({
   t: { type: Object, required: true }
 });
 
-const emit = defineEmits(['go']);
+const emit = defineEmits(['go', 'back']);
 const route = useRoute();
 const editorCoverInput = ref(null);
 const editorContentInput = ref(null);
@@ -541,7 +541,7 @@ function go(path) {
 }
 
 function cancelEdit() {
-  window.history.back();
+  emit('back', '/stage');
 }
 
 onMounted(initEditor);

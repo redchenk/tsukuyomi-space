@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
@@ -185,6 +185,7 @@ async function likeImage(asset) {
 }
 
 async function openLinkedImage() {
+  if (!galleryActive) return;
   const id = new URLSearchParams(window.location.search).get('image');
   if (!id || id.length > 200) return;
   const requestId = ++linkedRequestId;
@@ -195,7 +196,7 @@ async function openLinkedImage() {
       if (!result.success) throw new Error(result.message || t('图片已删除或未公开', 'This image is unavailable.'));
       asset = result.data;
     }
-    if (requestId !== linkedRequestId) return;
+    if (!galleryActive || requestId !== linkedRequestId) return;
     state.selected = applyImageLikes(asset);
     hydrateUserLevels([asset.owner_id]).catch(() => {});
   } catch (error) {
@@ -253,7 +254,7 @@ async function browseRandom() {
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || t('无法读取随机图片', 'Unable to load a random image'));
     const asset = (await personalizeImages(result.data?.assets || []))[0];
-    if (requestId !== randomRequestId) return;
+    if (!galleryActive || requestId !== randomRequestId) return;
     if (!asset) { showMessage(t('图库暂时还没有图片', 'No images in the gallery yet')); return; }
     state.selected = applyImageLikes(asset);
     hydrateUserLevels([asset.owner_id]).catch(() => {});
@@ -289,10 +290,10 @@ function closeViewer() { state.selected = null; }
 watch(() => Boolean(state.selected), async (open) => {
   if (open) {
     previousFocus = document.activeElement;
-    const path = location.pathname;
-    releaseViewerScroll = lockPageScroll(() => location.pathname === path);
+    const path = location.pathname + location.search;
+    releaseViewerScroll = lockPageScroll(() => location.pathname + location.search === path);
     await nextTick();
-    if (!viewer.value || !state.selected) return;
+    if (!galleryActive || !viewer.value || !state.selected) return;
     viewer.value.showModal();
     viewer.value.querySelector('.gallery-viewer-close')?.focus({ preventScroll: true });
   } else {
@@ -304,7 +305,10 @@ watch(() => Boolean(state.selected), async (open) => {
 });
 watch(() => state.selected?.id, () => { state.likeError = ''; });
 
-async function loadImages(page = 1) {
+let galleryLoadedAt = 0;
+let galleryActive = true;
+let galleryWasDeactivated = false;
+async function loadImages(page = 1, { background = false } = {}) {
   const requestId = ++listRequestId;
   if (isManageMode.value && !isAuthed.value) {
     state.images = [];
@@ -314,7 +318,7 @@ async function loadImages(page = 1) {
     state.loading = false;
     return;
   }
-  state.loading = true;
+  if (!background) state.loading = true;
   state.loadError = '';
   try {
     const params = new URLSearchParams({
@@ -342,8 +346,10 @@ async function loadImages(page = 1) {
     state.page = result.data?.pagination?.page || 1;
     state.totalPages = result.data?.pagination?.totalPages || 1;
     state.total = result.data?.pagination?.total || state.images.length;
+    galleryLoadedAt = Date.now();
   } catch (error) {
     if (requestId !== listRequestId) return;
+    if (background) return;
     state.images = [];
     state.loadError = error.message || '图库读取失败';
   } finally {
@@ -467,6 +473,23 @@ onMounted(async () => {
   const requestId = linkedRequestId;
   await loadImages();
   if (requestId === linkedRequestId) openLinkedImage();
+});
+onActivated(() => {
+  galleryActive = true;
+  session.value = getSession();
+  if (!state.loading && Date.now() - galleryLoadedAt > 30000) loadImages(state.page, { background: true });
+  if (galleryWasDeactivated) openLinkedImage();
+});
+onDeactivated(() => {
+  galleryActive = false;
+  galleryWasDeactivated = true;
+  ++linkedRequestId;
+  ++randomRequestId;
+  state.randomLoading = false;
+  state.selected = null;
+  viewer.value?.close();
+  releaseViewerScroll?.();
+  releaseViewerScroll = null;
 });
 
 onUnmounted(() => {

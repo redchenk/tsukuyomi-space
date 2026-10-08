@@ -1,6 +1,6 @@
 <script setup>
 import { nameInitial } from '../utils/userName.mjs';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getAuthToken } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
@@ -37,11 +37,13 @@ const stageRankingCopy = computed(() => ({
   en: { hint: 'Daily rotation balances content, qualified reads, likes and saves, making room for new and less-seen work.', views: 'views', likes: 'likes', bookmarks: 'bookmarks' }
 }[props.lang]));
 let applyingStageQuery = false;
-const { categories: articleCategories, revision: categoryRevision } = useArticleCategories();
+const { categories: articleCategories, revision: categoryRevision } = useArticleCategories({ enabled: computed(() => route.name === 'stage') });
 const categories = computed(() => ['all', ...articleCategories.value.map((item) => item.name)]);
 let stageMounted = false;
 let stageReloadTimer = 0;
 let stageRequestRevision = 0;
+let stageLoadedAt = 0;
+let stageLoadedRequest = '';
 
 const stagePageCopy = computed(() => props.lang === 'en' ? {
   resultUnit: 'articles', showing: 'Showing', page: 'Page', pageSuffix: '', totalPages: 'of',
@@ -186,16 +188,19 @@ function stageArticleRequest() {
   };
 }
 
-async function loadArticles() {
+async function loadArticles({ background = false } = {}) {
   const requestRevision = ++stageRequestRevision;
-  articlesLoading.value = true;
+  const options = stageArticleRequest();
+  if (!background) articlesLoading.value = true;
   articlesError.value = '';
   try {
-    const result = await loadStageArticles(stageArticleRequest());
+    const result = await loadStageArticles(options);
     if (requestRevision !== stageRequestRevision) return;
     articles.value = reconcileArticleCategories(result.articles);
     articlePagination.value = result.pagination;
     recommendationDate.value = result.recommendationDate;
+    stageLoadedAt = Date.now();
+    stageLoadedRequest = JSON.stringify(options);
     if (stagePage.value > result.pagination.totalPages) {
       stagePage.value = result.pagination.totalPages;
       return;
@@ -203,6 +208,7 @@ async function loadArticles() {
     hydrateUserLevels(result.articles.map((article) => article.author_id)).catch(() => {});
   } catch (error) {
     if (requestRevision !== stageRequestRevision) return;
+    if (background) return;
     articles.value = [];
     articlePagination.value = { page: 1, limit: STAGE_PAGE_SIZE, total: 0, totalPages: 1 };
     articlesError.value = error.message || props.t.loadFailed;
@@ -275,7 +281,9 @@ watch(stageTotalPages, (total) => {
 watch(() => route.query, (query) => {
   if (route.name !== 'stage') return;
   applyStageQuery(query);
-  nextTick(() => scheduleArticleReload());
+  nextTick(() => {
+    if (JSON.stringify(stageArticleRequest()) !== stageLoadedRequest) scheduleArticleReload();
+  });
 });
 applyStageQuery(route.query);
 watch(categoryRevision, () => {
@@ -285,6 +293,18 @@ watch(categoryRevision, () => {
 onMounted(() => {
   stageMounted = true;
   loadArticles();
+});
+onActivated(() => {
+  stageMounted = true;
+  window.clearTimeout(stageReloadTimer);
+  const changed = JSON.stringify(stageArticleRequest()) !== stageLoadedRequest;
+  if (!articlesLoading.value && (changed || Date.now() - stageLoadedAt > 30000)) {
+    loadArticles({ background: !changed });
+  }
+});
+onDeactivated(() => {
+  stageMounted = false;
+  window.clearTimeout(stageReloadTimer);
 });
 onBeforeUnmount(() => {
   stageMounted = false;

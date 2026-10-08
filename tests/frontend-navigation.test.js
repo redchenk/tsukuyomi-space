@@ -95,7 +95,7 @@ describe('dynamic article categories', () => {
         assert.match(read('src/frontend/pages/TerminalPage.vue'), /terminal\.siteSession \? '\/api\/moderation' : '\/api\/admin'/);
         assert.match(manager, /category\.protected/);
         assert.match(manager, /window\.confirm/);
-        assert.match(stage, /useArticleCategories\(\)/);
+        assert.match(stage, /useArticleCategories\(\{ enabled: computed\(\(\) => route.name === 'stage'\)/);
         assert.match(editor, /useArticleCategories\(\)/);
         assert.match(editor, /category\.name/);
         assert.match(sync, /document\.hidden/);
@@ -266,7 +266,8 @@ describe('frontend navigation routes', () => {
         const stage = source('src/frontend/pages/StagePage.vue');
         const service = source('src/frontend/services/stageArticles.js');
 
-        assert.match(stage, /loadStageArticles\(stageArticleRequest\(\)\)/);
+        assert.match(stage, /const options = stageArticleRequest\(\)/);
+        assert.match(stage, /loadStageArticles\(options\)/);
         assert.match(stage, /limit: STAGE_PAGE_SIZE/);
         assert.match(stage, /category: stageCategory\.value === 'all' \? '' : stageCategory\.value/);
         assert.match(stage, /search: stageSearch\.value/);

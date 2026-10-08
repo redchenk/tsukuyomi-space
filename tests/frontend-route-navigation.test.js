@@ -6,8 +6,8 @@ const path = require('node:path');
 
 function loadModule(file, exports, context = {}) {
     const code = fs.readFileSync(path.join(__dirname, '..', file), 'utf8')
-        .replace(/^import .*;\n/gm, '').replace(/export function /g, 'function ');
-    return vm.runInNewContext(code + `\n({ ${exports.join(',')} });`, { URL, AbortController, setTimeout, clearTimeout, queueMicrotask, ...context });
+        .replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
+    return vm.runInNewContext(code + `\n({ ${exports.join(',')} });`, { URL, URLSearchParams, AbortController, setTimeout, clearTimeout, queueMicrotask, ...context });
 }
 function anchor(href, extra = {}) {
     const attrs = { href, ...extra };
@@ -151,4 +151,122 @@ test('route fades finish once, clean up after cancellation and honor reduced mot
     reduced = false; element.matches = () => true; api.animateRouteEnter(element, () => completed++);
     await Promise.resolve();
     assert.equal(completed, 3); assert.equal(calls, 1);
+});
+
+
+function historyHarness(start = 5, limit = 32) {
+    const calls = [];
+    const state = { position: start, back: null };
+    const historyRouter = {
+        options: { history: { state } },
+        resolve(path) {
+            const url = new URL(path, 'https://example.test');
+            return { name: url.pathname === '/stage' ? 'stage' : url.pathname.startsWith('/fushi/') ? 'fushi-callback' : url.pathname.slice(1),
+                path: url.pathname, fullPath: url.pathname + url.search + url.hash,
+                query: Object.fromEntries(url.searchParams), hash: url.hash };
+        },
+        push: path => calls.push(['push', path]), go: delta => calls.push(['go', delta])
+    };
+    const api = loadModule('src/frontend/utils/routeHistory.js', ['createRouteHistory', 'shouldCacheRoute', 'ROUTE_CACHE_LIMIT']);
+    const manager = api.createRouteHistory(historyRouter, { limit });
+    function visit(path, position, { back = null, pop = false, failure } = {}) {
+        const to = historyRouter.resolve(path);
+        if (pop) state.position = position;
+        const immediate = manager.beforeNavigation(to);
+        state.position = position; state.back = back;
+        manager.afterNavigation(to, failure);
+        return immediate;
+    }
+    return { ...api, manager, state, calls, visit };
+}
+
+test('returns to the nearest real list and Hub history entries without adding a navigation loop', () => {
+    const h = historyHarness();
+    h.visit('/hub', 5);
+    h.visit('/stage?sort=latest&page=2', 6, { back: '/hub' });
+    h.visit('/articles/77/moon', 7, { back: '/stage?sort=latest&page=2' });
+    h.manager.returnTo('/stage?page=2');
+    h.manager.returnTo('/stage?page=2'); // Repeated clicks cannot overshoot.
+    assert.deepEqual(h.calls, [['go', -1]]);
+    assert.equal(h.visit('/stage?sort=latest&page=2', 6, { pop: true, back: '/hub' }), true);
+    h.manager.returnTo('/hub');
+    assert.deepEqual(h.calls.at(-1), ['go', -1]);
+    h.visit('/hub', 5, { pop: true });
+    h.manager.returnTo('/hub');
+    assert.equal(h.calls.length, 2);
+    // Native forward is still recognized as a pop and preserves its entry.
+    assert.equal(h.visit('/stage?sort=latest&page=2', 6, { pop: true, back: '/hub' }), true);
+    h.manager.back();
+    assert.deepEqual(h.calls.at(-1), ['go', -1]);
+});
+
+test('never leaves the site through an unknown previous entry and falls back after reload', () => {
+    const h = historyHarness(20);
+    h.visit('/editor', 20, { back: 'https://external.test/' });
+    h.manager.back('/stage');
+    assert.deepEqual(h.calls, [['push', '/stage']]);
+    h.manager.returnTo('/hub');
+    assert.deepEqual(h.calls.at(-1), ['push', '/hub']);
+});
+
+test('history tracking handles replacement, new branches, failed returns and a bounded visit list', () => {
+    const h = historyHarness(5, 3);
+    h.visit('/hub', 5);
+    h.visit('/stage', 6);
+    h.visit('/stage?q=moon', 6);
+    h.visit('/gallery', 7);
+    h.visit('/plaza', 8);
+    h.manager.returnTo('/hub'); // Evicted visit is not guessed.
+    assert.deepEqual(h.calls.at(-1), ['push', '/hub']);
+    h.visit('/stage?q=moon', 6, { pop: true });
+    h.visit('/wiki', 7); // Replaces the forward branch.
+    h.manager.returnTo('/gallery');
+    assert.deepEqual(h.calls.at(-1), ['push', '/gallery']);
+    h.manager.returnTo('/stage?q=moon');
+    assert.deepEqual(h.calls.at(-1), ['go', -1]);
+    h.visit('/stage?q=moon', 7, { failure: new Error('cancelled') });
+    h.manager.returnTo('/stage?q=moon');
+    assert.deepEqual(h.calls.at(-1), ['go', -1]);
+    h.manager.cancel();
+});
+
+test('does not retain sensitive callback routes or cache heavy and private pages', () => {
+    const h = historyHarness();
+    h.visit('/fushi/callback?code=one-use&state=private', 5);
+    h.visit('/hub', 6, { back: '/fushi/callback?code=one-use&state=private' });
+    h.manager.back();
+    assert.deepEqual(h.calls.at(-1), ['push', '/hub']);
+    h.visit('/login?token=private', 7);
+    h.visit('/stage', 8, { back: '/login?token=private' });
+    h.manager.back('/hub');
+    assert.deepEqual(h.calls.at(-1), ['push', '/hub']);
+    assert.equal(h.ROUTE_CACHE_LIMIT, 4);
+    for (const name of ['hub', 'stage', 'plaza', 'gallery']) assert.equal(h.shouldCacheRoute({ name }), true);
+    for (const name of ['room', 'live2d', 'game', 'pixel', 'editor', 'terminal', 'user-center', 'gallery-manage']) {
+        assert.equal(h.shouldCacheRoute({ name }), false);
+    }
+});
+
+
+test('cached category consumers stop long polling while inactive and resume without duplicating listeners', async () => {
+    const hooks = {}, listeners = new Set(), requests = [], scheduled = new Set();
+    const api = loadModule('src/frontend/composables/useArticleCategories.js', ['useArticleCategories'], {
+        ref: value => ({ value }), computed: fn => ({ get value() { return fn(); } }),
+        watch: (value, callback) => { callback(value.value); return () => {}; },
+        onMounted: fn => { hooks.mount = fn; }, onActivated: fn => { hooks.activate = fn; },
+        onDeactivated: fn => { hooks.deactivate = fn; }, onUnmounted: fn => { hooks.unmount = fn; },
+        document: { hidden: false, addEventListener: key => listeners.add(key), removeEventListener: key => listeners.delete(key) },
+        window: { addEventListener: key => listeners.add(key), removeEventListener: key => listeners.delete(key) },
+        noStoreUrl: path => path,
+        apiFetch: (path, options) => { requests.push(options.signal); return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(new Error('aborted')))); },
+        setTimeout: fn => { scheduled.add(fn); return fn; }, clearTimeout: fn => scheduled.delete(fn)
+    });
+    api.useArticleCategories(); hooks.mount(); hooks.activate();
+    assert.equal(requests.length, 1); assert.equal(listeners.size, 2);
+    hooks.deactivate(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests[0].aborted, true); assert.equal(listeners.size, 0); assert.equal(scheduled.size, 0);
+    hooks.activate(); hooks.activate();
+    assert.equal(requests.length, 2); assert.equal(listeners.size, 2);
+    hooks.unmount(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests[1].aborted, true); assert.equal(listeners.size, 0); assert.equal(scheduled.size, 0);
 });
