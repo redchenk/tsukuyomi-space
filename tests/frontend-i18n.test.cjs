@@ -1,11 +1,20 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const path = require('node:path');
 const vm = require('node:vm');
 const { parse, compileScript, compileTemplate, babelParse } = require('@vue/compiler-sfc');
 const { transformInterface } = require('../scripts/i18n-transform.cjs');
 const catalog = require('../src/frontend/i18n/interface-catalog.json');
-const files = require('node:child_process').execFileSync('rg', ['--files', 'src/frontend'], { encoding: 'utf8' }).trim().split('\n')
+function listFiles(directory) {
+ return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+  if (entry.name.startsWith('.') || ['dist', 'node_modules'].includes(entry.name)) return [];
+  const file = path.join(directory, entry.name);
+  if (entry.isDirectory()) return listFiles(file);
+  return entry.isFile() ? [file.split(path.sep).join('/')] : [];
+ });
+}
+const files = listFiles('src/frontend').sort()
  .filter(file => /\.(?:vue|js|mjs)$/.test(file) && !/\/(?:i18n|runtime|constants|data)\//.test(file));
 const normalize = text => text.trim().replace(/\s+/g,' ');
 const slots = text => [...text.matchAll(/\{\d+\}/g)].map(match=>match[0]).sort();
