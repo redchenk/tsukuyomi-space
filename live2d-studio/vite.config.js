@@ -1,12 +1,13 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import { interfaceLocalization } from '../scripts/i18n-plugin.mjs';
 import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   base: './',
   publicDir: false,
-  plugins: [vue()],
+  plugins: [interfaceLocalization({ transformSource: false }), vue()],
   resolve: {
     alias: {
       '@frontend': fileURLToPath(new URL('../../src/frontend', import.meta.url))

@@ -88,3 +88,16 @@ test('Wiki navigation imported from editorial data has localized labels without 
  for(const key of ctx.keys)for(const lang of ['en','ja'])assert.ok(catalog[key]?.[lang],`Wiki control: ${lang}: ${key}`);
  for(const file of ['src/frontend/pages/WikiPage.vue','src/frontend/pages/WikiEntryPage.vue'])assert.match(fs.readFileSync(file,'utf8'),/\$ui\(/);
 });
+test('shared language chunks resolve for the website and standalone Live2D studio', async()=>{
+ const { interfaceLocalization } = await import('../scripts/i18n-plugin.mjs');
+ const plugin = interfaceLocalization({ transformSource: false });
+ for (const language of ['en','ja']) {
+  const id = plugin.resolveId(`virtual:tsukuyomi-interface-${language}`);
+  assert.equal(id, `\0virtual:tsukuyomi-interface-${language}`);
+  const values = JSON.parse(plugin.load(id).replace('export default ', ''));
+  assert.deepEqual(values, Object.fromEntries(Object.entries(catalog).map(([key, entry])=>[key, entry[language]])));
+ }
+ assert.equal(plugin.resolveId('virtual:other-module'), undefined);
+ assert.equal(plugin.transform('<template>搜索</template>', path.resolve('src/frontend/App.vue')), null);
+ assert.match(fs.readFileSync('live2d-studio/vite.config.js','utf8'), /interfaceLocalization\(\{ transformSource: false \}\)/);
+});
