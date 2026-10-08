@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const express = require('express');
 const https = require('https');
 const { authenticateToken } = require('../middleware/auth');
+const { isAllowedOrigin } = require('../middleware/security');
 const roomMemory = require('../services/room-memory');
 const roomMemoryEvents = require('../services/room-memory-events');
 const assetRepository = require('../repositories/asset-repository');
@@ -11,9 +12,9 @@ const roomDiaryRepository = require('../repositories/room-diary-repository');
 const weatherCache = require('../services/weather-cache');
 const userGrowth = require('../services/user-growth');
 const roomImages = require('../services/room-chat-images');
+const modelCatalog = require('../services/room-model-catalog');
 
 const router = express.Router();
-const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 const DEFAULT_WEATHER = {
     lat: 22.3193,
@@ -554,50 +555,37 @@ router.get('/world', sendWorld);
 
 router.get('/world/live/:nonce', sendWorld);
 
+function catalogError(res, error) {
+    const status = error.statusCode || (error.code === 'RATE_LIMIT' ? 429 : ['KEY_REQUIRED', 'INVALID_KEY', 'INVALID_CURSOR', 'INVALID_ENDPOINT', 'UNSUPPORTED', 'WORKSPACE_REQUIRED'].includes(error.code) ? 400 : 502);
+    res.status(status).json({ success: false, code: error.code || 'NETWORK_FAILED', message: error.message });
+}
+router.post('/models/list', async (req, res) => {
+    setNoStore(res);
+    // Guests also use this read-only route. An arbitrary Bearer header must
+    // not exempt it from the browser's trusted context checks.
+    const origin = String(req.headers.origin || '');
+    if (req.headers['x-requested-with'] !== 'XMLHttpRequest'
+        || !(origin ? isAllowedOrigin(origin, req) : req.headers['sec-fetch-site'] === 'same-origin'))
+        return res.status(403).json({ success: false, code: 'UNTRUSTED_REQUEST', message: '模型列表请求来源不受信任。' });
+    if (!req.body || Array.isArray(req.body) || Object.keys(req.body).some(key => !['apiUrl', 'apiKey', 'workspaceId', 'cursor'].includes(key)))
+        return res.status(400).json({ success: false, code: 'INVALID_REQUEST', message: '模型列表参数无效。' });
+    const controller = new AbortController();
+    const closed = () => { if (!res.writableFinished) controller.abort(); };
+    res.once('close', closed);
+    try { res.json({ success: true, data: await modelCatalog.page(req.body, { signal: controller.signal }) }); }
+    catch (error) { if (!res.destroyed) catalogError(res, error); }
+    finally { res.removeListener('close', closed); }
+});
+// Preserve the existing public URL for old clients. Public data alone can be
+// shared; account-scoped lists are neither stored nor cached on this server.
 router.get('/models/openrouter', async (req, res) => {
     setNoStore(res);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-        const response = await fetch(OPENROUTER_MODELS_URL, {
-            signal: controller.signal,
-            headers: {
-                Accept: 'application/json',
-                'User-Agent': 'tsukuyomi-space/2.1 room-model-sync'
-            }
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            return res.status(response.status).json({
-                success: false,
-                message: payload?.error?.message || `OpenRouter models HTTP ${response.status}`
-            });
-        }
-        const models = Array.isArray(payload.data) ? payload.data : [];
-        res.json({
-            success: true,
-            data: {
-                models: models.map((model) => ({
-                    id: String(model.id || ''),
-                    name: String(model.name || model.id || ''),
-                    created: Number(model.created || 0),
-                    description: String(model.description || ''),
-                    context_length: Number(model.context_length || 0),
-                    architecture: model.architecture || {},
-                    pricing: model.pricing || {},
-                    supported_parameters: Array.isArray(model.supported_parameters) ? model.supported_parameters : []
-                })).filter((model) => model.id),
-                updatedAt: new Date().toISOString()
-            }
-        });
-    } catch (error) {
-        res.status(502).json({
-            success: false,
-            message: error.name === 'AbortError' ? 'OpenRouter 模型列表请求超时' : '无法同步 OpenRouter 模型列表'
-        });
-    } finally {
-        clearTimeout(timeout);
+        const data = await modelCatalog.publicOpenRouter();
+        res.json({ success: true, data: { ...data, models: data.models.map(model => ({ ...model, name: model.label, context_length: model.contextLength,
+            architecture: { input_modalities: model.inputModalities, output_modalities: model.outputModalities } })) } });
     }
+    catch (error) { catalogError(res, error); }
 });
 
 router.post('/chat/images', authenticateToken, async (req, res) => {

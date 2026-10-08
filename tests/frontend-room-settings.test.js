@@ -8,8 +8,9 @@ const knowledgeCode = strip(source('src/frontend/constants/room/knowledgeEntries
 const pageCode = strip(source('src/frontend/pages/RoomSettingsPage.vue').split('<script setup>')[1].split('</script>')[0]);
 const ttsUsesProxy = vm.runInNewContext(strip(source('src/frontend/services/room/ttsTransport.js')) + '\nttsUsesProxy;', { URL });
 let validateMcpEndpoint;
-test.before(async () => { ({ validateMcpEndpoint } = await import('../src/frontend/services/room/roomMcp.mjs')); });
-function setup() {
+let catalog;
+test.before(async () => { ({ validateMcpEndpoint } = await import('../src/frontend/services/room/roomMcp.mjs')); catalog = await import('../src/frontend/services/room/roomModelCatalog.mjs'); });
+function setup(options = {}) {
   const store = new Map();
   let failWrites = false;
   let owner = 'guest';
@@ -19,8 +20,9 @@ function setup() {
   let routeGuard;
   const navigation = [];
   const ctx = {
-    URL, console, setTimeout: () => 0, clearTimeout() {},
-    ttsUsesProxy, validateMcpEndpoint,
+    URL, console, AbortController, setTimeout: () => 0, clearTimeout() {},
+    ttsUsesProxy, validateMcpEndpoint, ...catalog,
+    ...(options.fetchCatalog ? { fetchModelCatalog: options.fetchCatalog, catalogScope: async () => 'fixture-scope', readCatalogCache: () => null, writeCatalogCache() {} } : {}),
     reactive: x => x, ref: value => ({ value }), computed: get => ({ get value() { return get(); } }),
     defineProps: () => ({}), defineEmits: () => (...args) => navigation.push(args),
     onMounted() {}, onBeforeUnmount() {}, watch() {}, onBeforeRouteLeave: fn => { routeGuard = fn; },
@@ -39,7 +41,7 @@ function setup() {
     loadMemoryCount = () => {};
     globalThis.api = { loadSettings, llm, tts, model, mcp, knowledge, diary, memory, activeSection, savingSettings, settingsSearch, filteredSettingsGroups, connectionCheck, testedConnectionStatus, toast, pendingSections, hasUnsavedSettings, storedUser, memorySourceMode, clearMemory,
       saveLLM, saveTTS, saveMCP, saveModel, saveKnowledge, saveKnowledgeEntry, discardSettings, testLLM, selectSettingsSection, saveAllSettings, enterRoom,
-      onDiaryImportFile, normalizeRoomKnowledge, knowledgeContext, applyKnowledgeDraft, defaultKnowledgeEntries };
+      onDiaryImportFile, normalizeRoomKnowledge, knowledgeContext, applyKnowledgeDraft, defaultKnowledgeEntries, applyPreset, modelCatalog, syncModelCatalog };
   `, ctx);
   ctx.api.loadSettings();
   return { ...ctx.api, store, navigation, read: k => JSON.parse(store.get(k)), set: (k,v) => store.set(k,JSON.stringify(v)), fail: () => { failWrites = true; }, switchAccount: () => { owner = 'user:2'; }, liveAccount: id => { session = { user: { id } }; }, memoryWrites: () => memoryWrites, imported: () => imported, leave: () => routeGuard() };
@@ -274,4 +276,33 @@ test('settings search finds fields inside their category and supports no results
   assert.equal(h.filteredSettingsGroups.value[0].items[0].id, 'tts');
   h.settingsSearch.value = 'no-such-settings';
   assert.equal(h.filteredSettingsGroups.value.length, 0);
+});
+
+test('native refresh preserves selected model and an old request cannot overwrite a newer catalogue', async () => {
+  let finish, calls = 0;
+  const entry = id => ({ id, nativeId: id, source: 'provider', created: 1 });
+  const h = setup({ fetchCatalog: async () => {
+    calls++;
+    if (calls === 1) return new Promise(resolve => { finish = resolve; });
+    return { models: [entry('vendor/newest')], updatedAt: new Date().toISOString() };
+  } });
+  Object.assign(h.llm, { apiUrl: 'https://api.siliconflow.cn/v1/chat/completions', apiKey: 'fixture-account-key', model: 'vendor/my-selection' });
+  const old = h.syncModelCatalog(false);
+  await new Promise(resolve => setImmediate(resolve));
+  await h.syncModelCatalog(true);
+  finish({ models: [entry('vendor/old')], updatedAt: new Date().toISOString() });
+  await old;
+  assert.equal(h.llm.model, 'vendor/my-selection');
+  assert.equal(h.modelCatalog.models[0].id, 'vendor/newest');
+});
+
+test('provider presets keep same-provider keys but cannot send an old provider key to another host', () => {
+  const h = setup();
+  h.llm.apiUrl = 'https://api.openai.com/v1/chat/completions';
+  h.llm.apiKey = 'fixture-openai-key';
+  h.applyPreset('openai');
+  assert.equal(h.llm.apiKey, 'fixture-openai-key');
+  h.applyPreset('deepseek');
+  assert.equal(h.llm.apiKey, '');
+  assert.equal(h.llm.model, 'deepseek-v4-flash');
 });

@@ -101,6 +101,7 @@ function createApp() {
     app.use('/api/tts', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' }));
     app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
     app.use('/api/room/shares', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, keyPrefix: 'room-shares' }));
+    app.use('/api/room/models', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 24, keyPrefix: 'room-models' }));
     app.use('/api/growth', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 120, keyPrefix: 'growth' }));
     app.use('/api/mail', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 180, keyPrefix: 'mail' }));
 
@@ -128,6 +129,7 @@ function createApp() {
     // Guest memory migration has a fixed cap even on deployments that raise
     // the general JSON limit for legacy media uploads.
     app.use('/api/room/memory/import', strictJson('1mb'));
+    app.use('/api/room/models', strictJson('4kb'));
     // Legacy diary archives are uploaded in bounded batches; keep this above
     // the ordinary 1 MB JSON limit without raising that limit for other APIs.
     app.use('/api/room/diary', strictJson('8mb'));

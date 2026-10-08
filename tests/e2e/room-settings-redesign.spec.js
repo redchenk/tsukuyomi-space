@@ -69,8 +69,11 @@ test(`all Room settings categories fit the mobile ${theme} layout`, async ({ pag
     expect(save.y + save.height).toBeCloseTo(844, 0);
     expect(music.y + music.height).toBeLessThan(save.y);
     await page.getByRole('button', { name: 'Expand music drawer', exact: true }).click();
-    const player = await page.locator('.site-music-panel').boundingBox();
-    expect(player.y + player.height).toBeLessThan(save.y);
+    // The drawer morphs its position/height; assert its settled layout.
+    await expect.poll(async () => {
+      const player = await page.locator('.site-music-panel').boundingBox();
+      return player.y + player.height;
+    }).toBeLessThan(save.y);
     await page.getByRole('button', { name: 'Collapse music drawer', exact: true }).click();
     await expect(page.locator('.settings-savebar .primary-btn')).toHaveCSS('border-radius', '999px');
 });

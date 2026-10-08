@@ -1,4 +1,5 @@
 <script setup>
+import { detectProvider, catalogPlan, catalogScope, readCatalogCache, writeCatalogCache, fetchModelCatalog } from '../services/room/roomModelCatalog.mjs';
 import { callRoomMcp, validateMcpEndpoint } from '../services/room/roomMcp.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
@@ -51,7 +52,10 @@ const MEMORY_STORE = 'memories';
 const ROOM_MEMORY_UPDATED_KEY = 'roomMemoryLastUpdatedAt';
 let stopRoomMemorySync = () => {};
 let memoryRefreshTimer = 0;
-const MODEL_CATALOG_CACHE_KEY = 'roomModelCatalogOpenRouter';
+let modelCatalogController = null;
+let modelCatalogRevision = 0;
+let modelCatalogReady = false;
+let modelCatalogTimer = 0;
 const LLM_PRESETS = {
   ollama: { label: 'Ollama 本机', apiUrl: 'http://localhost:11434/api/chat', model: 'qwen2.5:7b', useProxy: false, apiKey: '' },
   openai: { label: 'OpenAI Responses', apiUrl: 'https://api.openai.com/v1/responses', model: 'gpt-5.5' },
@@ -83,45 +87,6 @@ const MIMO_LLM_PRESETS = {
   tokenPlan: { label: 'Token Plan · mimo-v2.5', apiUrl: 'https://token-plan-cn.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5' },
   tokenPlanPro: { label: 'Token Plan · mimo-v2.5-pro', apiUrl: 'https://token-plan-cn.xiaomimimo.com/v1/chat/completions', model: 'mimo-v2.5-pro' }
 };
-const MODEL_PROVIDER_PREFIXES = {
-  openai: ['openai/'],
-  openrouter: [],
-  deepseek: ['deepseek/'],
-  kimi: ['moonshotai/', 'moonshot/'],
-  zhipu: ['z-ai/', 'thudm/'],
-  aliyun: ['qwen/', 'alibaba/'],
-  siliconflow: ['deepseek/', 'qwen/', 'meta-llama/', 'mistralai/'],
-  volcengine: ['bytedance/', 'doubao/'],
-  minimax: ['minimax/'],
-  groq: ['meta-llama/', 'openai/', 'qwen/'],
-  mistral: ['mistralai/'],
-  together: ['meta-llama/', 'mistralai/', 'qwen/', 'deepseek/'],
-  perplexity: ['perplexity/'],
-  xai: ['x-ai/'],
-  gemini: ['google/'],
-  mimo: ['xiaomi/', 'mimo/'],
-  ollama: []
-};
-const MODEL_RECOMMEND_PATTERNS = {
-  openai: ['gpt-5.5', 'gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-4.1', 'gpt-4o'],
-  openrouter: ['openai/gpt-5.5', 'openai/gpt-5.2', 'anthropic/claude-opus-4.5', 'google/gemini-3', 'x-ai/grok-4', 'deepseek/deepseek-chat'],
-  deepseek: ['deepseek-v4-flash', 'deepseek-chat', 'deepseek-v3', 'deepseek-r1'],
-  kimi: ['kimi-k2', 'moonshot-v1-128k', 'moonshot-v1-32k'],
-  zhipu: ['glm-5', 'glm-4.5', 'glm-4-plus'],
-  aliyun: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-vl-max', 'qwen-vl-plus'],
-  siliconflow: ['deepseek-v3', 'deepseek-r1', 'qwen3', 'qwen2.5'],
-  volcengine: ['doubao-1.5-pro', 'doubao-pro', 'doubao-lite'],
-  minimax: ['minimax-m2', 'minimax-01'],
-  groq: ['llama-3.3-70b', 'llama-3.1-8b', 'qwen'],
-  mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'],
-  together: ['llama-3.3-70b', 'deepseek-v3', 'qwen3', 'mistral-large'],
-  perplexity: ['sonar-pro', 'sonar'],
-  xai: ['grok-4', 'grok-3'],
-  gemini: ['gemini-3', 'gemini-2.5-pro', 'gemini-2.5-flash'],
-  mimo: ['mimo-v2.5-pro', 'mimo-v2.5', 'mimo-v2-flash'],
-  ollama: ['qwen2.5', 'llama3.1', 'llama3.2', 'gemma3', 'mistral']
-};
-const MODEL_NON_CHAT_PATTERN = /(embedding|moderation|tts|audio|whisper|image|vision-preview|rerank|reward|guard|ocr|video|speech)/i;
 const MINIMAX_DEFAULT_VOICE_ID = 'female-shaonv';
 const LEGACY_MINIMAX_DEFAULT_VOICE_IDS = ['yachiyo_jp_prompt_20260525c', 'English_expressive_narrator'];
 const TTS_PRESETS = {
@@ -241,7 +206,7 @@ let toastTimer = 0;
 let modelNoticeTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
-const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '' });
+const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '' });
 const tts = reactive({
   enabled: false,
   provider: 'mimo',
@@ -405,7 +370,7 @@ const recommendedModelText = computed(() => {
   const option = recommendedModelOption.value;
   if (!option) return '暂无可用推荐；请先同步模型列表，或使用供应商预设。';
   const value = syncedModelSelectValue(option);
-  return `${value}（${option.source === 'openrouter' ? '来自 OpenRouter 最新目录' : '来自本地预设'}）`;
+  return `${value}（${option.source === 'provider' ? '来自当前服务商目录；请测试可用性' : '本地预设示例'}）`;
 });
 const memoryModeLabel = computed(() => canUseServerMemory.value ? '服务端私有记忆' : '本地浏览器记忆');
 const memoryVectorLabel = computed(() => {
@@ -456,33 +421,7 @@ function writeJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-function compactModelPrice(value) {
-  const price = Number(value);
-  if (!Number.isFinite(price) || price <= 0) return 'free';
-  return `$${(price * 1000000).toFixed(price * 1000000 < 0.01 ? 4 : 2)}/M`;
-}
-
-function detectLLMProvider(apiUrl = '', modelName = '') {
-  const source = `${apiUrl || ''} ${modelName || ''}`.toLowerCase();
-  if (/localhost:11434|127\.0\.0\.1:11434|\[::1\]:11434|ollama/.test(source)) return 'ollama';
-  if (/openrouter/.test(source)) return 'openrouter';
-  if (/dashscope|aliyuncs|qwen|alibaba/.test(source)) return 'aliyun';
-  if (/xiaomimimo|token-plan-cn|mimo/.test(source)) return 'mimo';
-  if (/api\.openai\.com|^gpt-|^o\d|openai\//.test(source)) return 'openai';
-  if (/deepseek/.test(source)) return 'deepseek';
-  if (/moonshot|kimi/.test(source)) return 'kimi';
-  if (/bigmodel|zhipu|glm|z-ai/.test(source)) return 'zhipu';
-  if (/siliconflow/.test(source)) return 'siliconflow';
-  if (/volces|ark|doubao|bytedance/.test(source)) return 'volcengine';
-  if (/minimax|minimaxi/.test(source)) return 'minimax';
-  if (/groq/.test(source)) return 'groq';
-  if (/mistral/.test(source)) return 'mistral';
-  if (/together/.test(source)) return 'together';
-  if (/perplexity|sonar/.test(source)) return 'perplexity';
-  if (/x\.ai|grok|x-ai\//.test(source)) return 'xai';
-  if (/generativelanguage|gemini|google\//.test(source)) return 'gemini';
-  return 'custom';
-}
+function detectLLMProvider(apiUrl = '') { return detectProvider(apiUrl); }
 
 function normalizeLocalLLMUrl(apiUrl = '') {
   const value = String(apiUrl || '').trim();
@@ -519,135 +458,78 @@ function llmNeedsApiKey(apiUrl = llm.apiUrl) {
   return !isOllamaApi(apiUrl);
 }
 
-function nativeModelId(openRouterId, provider = llmProviderKey.value) {
-  const id = String(openRouterId || '').trim();
-  if (!id || provider === 'openrouter') return id;
-  const slashIndex = id.indexOf('/');
-  return slashIndex >= 0 ? id.slice(slashIndex + 1) : id;
-}
-
-function modelModalities(architecture, key) {
-  const values = architecture?.[key];
-  return Array.isArray(values) ? values.map((item) => String(item).toLowerCase()) : [];
-}
-
 function providerStaticModelOptions(provider) {
-  const presets = [
-    ...Object.values(LLM_PRESETS),
-    ...Object.values(ALIYUN_LLM_PRESETS),
-    ...Object.values(MIMO_LLM_PRESETS)
-  ];
-  return presets
-    .filter((preset) => detectLLMProvider(preset.apiUrl, preset.model) === provider)
-    .map((preset) => ({
-      id: preset.model,
-      nativeId: preset.model,
-      label: preset.label,
-      detail: preset.apiUrl,
-      contextLength: 0,
-      created: 0,
-      inputModalities: ['text'],
-      outputModalities: ['text'],
-      source: 'preset'
-    }));
+  return [...Object.values(LLM_PRESETS), ...Object.values(ALIYUN_LLM_PRESETS), ...Object.values(MIMO_LLM_PRESETS)]
+    .filter(preset => detectLLMProvider(preset.apiUrl) === provider)
+    .map(preset => ({ id: preset.model, nativeId: preset.model, label: preset.label, detail: '预设示例，实际可用性以服务商为准',
+      contextLength: 0, created: 0, inputModalities: ['text'], outputModalities: ['text'], source: 'preset' }));
 }
 
 function modelOptionsForProvider(provider) {
-  const prefixes = MODEL_PROVIDER_PREFIXES[provider] || [];
-  const synced = (modelCatalog.models || [])
-    .filter((model) => provider === 'openrouter' || prefixes.some((prefix) => model.id.toLowerCase().startsWith(prefix)))
-    .slice(0, provider === 'openrouter' ? 240 : 80)
-    .map((model) => {
-      const nativeId = nativeModelId(model.id, provider);
-      const context = model.context_length ? `${Math.round(model.context_length / 1000)}k ctx` : '';
-      const promptPrice = compactModelPrice(model.pricing?.prompt);
-      const outputPrice = compactModelPrice(model.pricing?.completion);
-      const modalities = Array.isArray(model.architecture?.input_modalities)
-        ? model.architecture.input_modalities.join('+')
-        : '';
-      return {
-        id: model.id,
-        nativeId,
-        label: model.name || model.id,
-        detail: [nativeId, context, modalities, `${promptPrice}/${outputPrice}`].filter(Boolean).join(' · '),
-        contextLength: Number(model.context_length || 0),
-        created: Number(model.created || 0),
-        inputModalities: modelModalities(model.architecture, 'input_modalities'),
-        outputModalities: modelModalities(model.architecture, 'output_modalities'),
-        source: 'openrouter'
-      };
-    });
-  const seen = new Set(synced.map((item) => item.nativeId));
-  return [
-    ...synced,
-    ...providerStaticModelOptions(provider).filter((item) => !seen.has(item.nativeId))
-  ];
-}
-
-function modelRecommendationScore(option, provider) {
-  if (!option) return -Infinity;
-  const id = String(option.id || '').toLowerCase();
-  const nativeId = String(option.nativeId || '').toLowerCase();
-  const label = String(option.label || '').toLowerCase();
-  const haystack = `${id} ${nativeId} ${label}`;
-  let score = option.source === 'openrouter' ? 80 : 20;
-  const inputModalities = option.inputModalities || [];
-  const outputModalities = option.outputModalities || [];
-  if (inputModalities.length && !inputModalities.includes('text')) score -= 700;
-  if (outputModalities.length && !outputModalities.includes('text')) score -= 900;
-  if (MODEL_NON_CHAT_PATTERN.test(haystack)) score -= 520;
-  if (/preview|experimental|beta|alpha|deprecated/i.test(haystack)) score -= 30;
-  if (/latest|stable/i.test(haystack)) score += 45;
-  if (/pro|max|large|opus/i.test(haystack)) score += 34;
-  if (/flash|mini|small|lite|instant/i.test(haystack)) score += 10;
-  const patterns = MODEL_RECOMMEND_PATTERNS[provider] || [];
-  patterns.forEach((pattern, index) => {
-    if (haystack.includes(pattern.toLowerCase())) score += 900 - index * 70;
-  });
-  if (option.contextLength) score += Math.min(90, Math.log2(Number(option.contextLength || 0) + 1) * 5);
-  if (option.created) score += Math.min(120, Number(option.created) / 100000000);
-  return score;
+  const synced = [...modelCatalog.models].sort((a, b) => b.created - a.created || a.id.localeCompare(b.id));
+  const options = synced.length ? synced.map(model => ({ ...model, detail: [model.id, model.contextLength ? `${Math.round(model.contextLength / 1000)}k ctx` : ''].filter(Boolean).join(' · ') })) : providerStaticModelOptions(provider);
+  const seen = new Set();
+  return options.filter(option => { if (seen.has(option.nativeId)) return false; seen.add(option.nativeId); return true; });
 }
 
 function recommendedModelForProvider(provider) {
+  // A catalogue cannot tell us which model is best for a user's budget/task.
+  // Prefer their current selection; never replace it during a refresh.
   const options = modelOptionsForProvider(provider);
-  if (!options.length) return null;
-  return [...options].sort((left, right) => modelRecommendationScore(right, provider) - modelRecommendationScore(left, provider))[0] || null;
+  return options.find(option => option.nativeId === llm.model) || options.find(option => /(?:latest|stable)$/.test(option.id)) || options[0] || null;
 }
 
-function loadModelCatalogCache() {
-  const cached = readJson(MODEL_CATALOG_CACHE_KEY, null);
-  if (!cached || !Array.isArray(cached.models)) return;
-  modelCatalog.models = cached.models;
-  modelCatalog.updatedAt = cached.updatedAt || '';
-  modelCatalog.message = cached.models.length ? `已载入缓存模型 ${cached.models.length} 个` : '';
+function cancelModelCatalog() {
+  modelCatalogRevision++;
+  modelCatalogController?.abort();
+  modelCatalogController = null;
+  modelCatalog.loading = false;
 }
 
-async function syncModelCatalog() {
-  modelCatalog.loading = true;
+function queueModelCatalogRefresh() {
+  if (!modelCatalogReady) return;
+  clearTimeout(modelCatalogTimer);
+  modelCatalogTimer = setTimeout(() => { void syncModelCatalog(false); }, 200);
+}
+
+async function syncModelCatalog(force = true) {
+  if (typeof force !== 'boolean') force = true; // Vue click event.
+  cancelModelCatalog();
+  const revision = modelCatalogRevision;
+  const settings = { apiUrl: llm.apiUrl, apiKey: llm.apiKey, workspaceId: llm.catalogWorkspaceId || '' };
   modelCatalog.error = '';
-  modelCatalog.message = '正在同步 OpenRouter 模型目录...';
+  try { catalogPlan(settings); }
+  catch (error) {
+    modelCatalog.models = []; modelCatalog.updatedAt = ''; modelCatalog.message = error.message;
+    if (force && !['UNSUPPORTED', 'KEY_REQUIRED', 'WORKSPACE_REQUIRED'].includes(error.code)) modelCatalog.error = error.message;
+    return;
+  }
+  modelCatalog.loading = true;
+  modelCatalogController = new AbortController();
+  const controller = modelCatalogController;
   try {
-    const response = await apiFetch(`/api/room/models/openrouter?_${Date.now()}`, {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store'
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
-    modelCatalog.models = Array.isArray(result.data?.models) ? result.data.models : [];
-    modelCatalog.updatedAt = result.data?.updatedAt || new Date().toISOString();
-    writeJson(MODEL_CATALOG_CACHE_KEY, {
-      models: modelCatalog.models,
-      updatedAt: modelCatalog.updatedAt
-    });
-    modelCatalog.message = `已同步 ${modelCatalog.models.length} 个模型；当前供应商匹配 ${syncedModelOptions.value.length} 个；最新推荐 ${recommendedModelOption.value ? syncedModelSelectValue(recommendedModelOption.value) : '暂无'}`;
-    showToast('模型目录已同步');
+    const scope = await catalogScope(settings);
+    if (revision !== modelCatalogRevision) return;
+    const cached = readCatalogCache(scope);
+    modelCatalog.models = cached?.models || [];
+    modelCatalog.updatedAt = cached?.updatedAt || '';
+    modelCatalog.message = cached ? `已载入当前账号的模型缓存 ${cached.models.length} 个${cached.fresh ? '' : '，正在更新…'}` : '正在读取当前服务商模型列表…';
+    if (!force && cached?.fresh) return;
+    const result = await fetchModelCatalog(settings, { signal: controller.signal,
+      relay: (body, signal) => apiFetch('/api/room/models/list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal }) });
+    if (revision !== modelCatalogRevision) return;
+    modelCatalog.models = result.models; modelCatalog.updatedAt = result.updatedAt;
+    writeCatalogCache(scope, result);
+    const missing = llm.model && !result.models.some(model => model.id === llm.model);
+    modelCatalog.message = `已更新 ${result.models.length} 个聊天模型${result.truncated ? '（目录较大，已限制条数）' : ''}。${missing ? '当前模型未出现在目录中，已保留原值，可测试或手动调整。' : '已保留当前模型。'}`;
+    if (force) showToast('模型列表已更新');
   } catch (error) {
-    modelCatalog.error = `模型目录同步失败：${error.message}`;
-    modelCatalog.message = modelCatalog.error;
-    showToast(`模型同步失败：${error.message}`, 'error');
+    if (revision !== modelCatalogRevision || controller.signal.aborted) return;
+    modelCatalog.error = `模型列表更新失败：${error.message} 已有模型与手动输入仍可使用。`;
+    modelCatalog.message = modelCatalog.models.length ? `保留 ${modelCatalog.models.length} 个缓存模型。` : '';
+    if (force) showToast('模型列表更新失败，请查看提示', 'error');
   } finally {
-    modelCatalog.loading = false;
+    if (revision === modelCatalogRevision) { modelCatalog.loading = false; modelCatalogController = null; }
   }
 }
 
@@ -667,14 +549,6 @@ function applyRecommendedModel() {
     return;
   }
   applySyncedModel(option);
-}
-
-function applyRecommendedModelForProvider(provider) {
-  const option = recommendedModelForProvider(provider);
-  if (!option || option.source !== 'openrouter') return false;
-  llm.model = option.source === 'openrouter' && provider === 'openrouter' ? option.id : option.nativeId;
-  showToast(`已应用最新模型：${llm.model}`);
-  return true;
 }
 
 function applySyncedModelById(modelId) {
@@ -1476,13 +1350,12 @@ function loadMoreMemories() {
 
 function loadSettings() {
   storedUser.value = readStoredUser();
-  loadModelCatalogCache();
   const modelSettings = readJson('roomModelSettings', {});
   model.scale = Math.round(Number(modelSettings.scale || 1) * 100);
   model.xOffset = Number(modelSettings.xOffset || 0);
   model.yOffset = Number(modelSettings.yOffset || 0);
 
-  Object.assign(llm, { apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', ...readJson('roomLLMSettings', {}) });
+  Object.assign(llm, { apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '', ...readJson('roomLLMSettings', {}) });
   if (isOllamaApi(llm.apiUrl)) {
     llm.apiUrl = normalizeOllamaUrl(llm.apiUrl);
     llm.useProxy = false;
@@ -1710,27 +1583,43 @@ function resetPanels() {
   showToast('房间浮窗位置已重置');
 }
 
+function safeModelOrigin(value) { try { return new URL(value).origin; } catch (_) { return ''; } }
+watch(() => llm.apiUrl, (value, previous) => {
+  if (!modelCatalogReady) return;
+  if (safeModelOrigin(value) !== safeModelOrigin(previous)) { llm.apiKey = ''; llm.catalogWorkspaceId = ''; }
+  cancelModelCatalog(); modelCatalog.models = []; modelCatalog.updatedAt = ''; modelCatalog.error = '';
+  queueModelCatalogRefresh();
+}, { flush: 'sync' });
+watch(() => llm.apiKey, () => {
+  if (!modelCatalogReady) return;
+  clearTimeout(modelCatalogTimer);
+  cancelModelCatalog(); modelCatalog.models = []; modelCatalog.updatedAt = ''; modelCatalog.error = '';
+  modelCatalog.message = '完成密钥输入后会更新模型列表。';
+}, { flush: 'sync' });
+watch(() => llm.catalogWorkspaceId, () => { if (modelCatalogReady) { cancelModelCatalog(); modelCatalog.models = []; queueModelCatalogRefresh(); } }, { flush: 'sync' });
+
 function applyPreset(name) {
   const preset = LLM_PRESETS[name];
   if (!preset) return;
+  if (new URL(preset.apiUrl).origin !== safeModelOrigin(llm.apiUrl)) llm.apiKey = '';
   llm.apiUrl = preset.apiUrl;
   llm.model = preset.model;
   if ('apiKey' in preset) llm.apiKey = preset.apiKey;
   if ('useProxy' in preset) llm.useProxy = Boolean(preset.useProxy);
-  applyRecommendedModelForProvider(detectLLMProvider(preset.apiUrl, preset.model));
 }
 
 function applyAliyunPreset(name) {
   const preset = ALIYUN_LLM_PRESETS[name];
   if (!preset) return;
+  if (new URL(preset.apiUrl).origin !== safeModelOrigin(llm.apiUrl)) llm.apiKey = '';
   llm.apiUrl = preset.apiUrl;
   llm.model = preset.model;
-  applyRecommendedModelForProvider('aliyun');
 }
 
 function applyMimoPreset(name) {
   const preset = MIMO_LLM_PRESETS[name];
   if (!preset) return;
+  if (new URL(preset.apiUrl).origin !== safeModelOrigin(llm.apiUrl)) llm.apiKey = '';
   llm.apiUrl = preset.apiUrl;
   llm.model = preset.model;
 }
@@ -1763,6 +1652,7 @@ function normalizedLLMSettings() {
     useProxy: needsApiKey ? Boolean(llm.useProxy) : false,
     visionMode: ['auto', 'llm', 'mcp'].includes(llm.visionMode) ? llm.visionMode : 'auto',
     systemPrompt: String(llm.systemPrompt || '').trim(),
+    catalogWorkspaceId: String(llm.catalogWorkspaceId || '').trim(),
     needsApiKey
   };
 }
@@ -1787,9 +1677,11 @@ function saveLLM(showDialog = true) {
     model: settings.model,
     useProxy: settings.useProxy,
     visionMode: settings.visionMode,
-    systemPrompt: settings.systemPrompt
+    systemPrompt: settings.systemPrompt,
+    catalogWorkspaceId: settings.catalogWorkspaceId
   }, 'LLM 设置')) return false;
   rememberSaved('llm');
+  queueModelCatalogRefresh();
   const ready = !settings.needsApiKey || Boolean(settings.apiKey);
   if (showDialog) {
     openTestDialog(
@@ -2424,6 +2316,8 @@ watch(() => props.user?.id || '', (userId, previousUserId) => {
 onMounted(() => {
   stopRoomMemorySync = startRoomMemorySync();
   loadSettings();
+  modelCatalogReady = true;
+  queueModelCatalogRefresh();
   void refreshMemoryChoice();
   window.addEventListener(DIARY_SYNC_UPDATED_EVENT, onDiarySyncUpdated);
   window.addEventListener('focus', onDiaryVisibilityChange);
@@ -2437,6 +2331,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  modelCatalogReady = false;
+  clearTimeout(modelCatalogTimer);
+  cancelModelCatalog();
   memoryPageDisposed = true;
   memoryImportController?.abort();
   stopRoomMemorySync();
@@ -2723,6 +2620,7 @@ onBeforeUnmount(() => {
             >
             <div class="settings-secret">
               <TsIcon name="lock" :size="18" /><input name="room-setting-llm-apikey" autocapitalize="off" autocorrect="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
+                @change="queueModelCatalogRefresh"
                 id="settings-llm-key"
                 v-model="llm.apiKey"
                 :type="showLlmKey ? 'text' : 'password'"
@@ -2783,6 +2681,7 @@ onBeforeUnmount(() => {
                   : '选择服务商提供的模型，或粘贴完整模型名称。'
               }}
             </p>
+            <p v-if="modelCatalog.message" class="field-hint" role="status">{{ modelCatalog.message }}</p>
             <p v-if="modelCatalog.error" class="field-hint error" role="alert">
               {{ modelCatalog.error }}
             </p>
@@ -2820,6 +2719,9 @@ onBeforeUnmount(() => {
                   spellcheck="false"
                   placeholder="https://…/chat/completions"
               /></label>
+              <label v-if="llmProviderKey === 'aliyun'">模型列表工作空间 ID（北京 / 美国地域）
+                <input v-model="llm.catalogWorkspaceId" autocomplete="off" name="room-model-catalog-workspace" spellcheck="false" placeholder="百炼控制台中的工作空间 ID" />
+              </label>
               <label v-if="setupLlmMode === 'ollama'"
                 >API 密钥（可选）<input name="room-setting-llm-apikey" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
                   v-model="llm.apiKey"
@@ -2868,10 +2770,7 @@ onBeforeUnmount(() => {
                 </select></label
               >
               <p class="field-hint">
-                目录来自
-                OpenRouter，并按当前服务商筛选。实际可用模型以服务商账号为准。{{
-                  modelCatalog.message
-                }}
+                目录优先直连当前服务商；跨域受限时经本站只读转发，密钥不保存。缓存有效 6 小时，进入设置自动更新；实际可用性请测试确认。
               </p>
               <div class="model-recommend-card">
                 <span>推荐模型</span><strong>{{ recommendedModelText }}</strong
