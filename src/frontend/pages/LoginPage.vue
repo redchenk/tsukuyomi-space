@@ -69,7 +69,7 @@ const isEnglish = computed(() => props.t.login === 'Sign in');
 const oauthProviderName = computed(() => oauth.provider === 'github' ? 'GitHub' : 'QQ');
 const oauthNeedsPassword = computed(() => !(oauth.provider === 'github' && oauth.profile?.hasEmailMatch && oauth.email.trim().toLowerCase() === oauth.profile?.email));
 const oauthCopy = computed(() => isEnglish.value ? { title: 'Verify your email', subtitle: `${oauthProviderName.value} authorization completed. Verify your email to create an account or link an existing account.`, hint: 'A verification code is required, even for a GitHub verified email.', note: 'A registered email links your existing account and keeps its password.', email: 'Email to link', enter: 'Link email and continue', loading: 'Reading authorization', completing: 'Completing sign-in' } : isJapanese.value ? { title: 'メールを確認', subtitle: `${oauthProviderName.value} の認証が完了しました。メールを確認して登録または既存アカウントに連携します。`, hint: 'GitHub で確認済みのメールでも確認コードが必要です。', note: '登録済みのメールは既存アカウントに連携し、パスワードは変更しません。', email: '連携するメール', enter: 'メールを連携して続行', loading: '認証情報を読み込み中', completing: 'ログイン処理中' } : { title: '绑定邮箱', subtitle: `${oauthProviderName.value} 授权已完成，请验证邮箱来完成账号绑定。邮箱若已注册，会绑定到已有账号。`, hint: '请验证可接收验证码的邮箱，GitHub 已验证邮箱也需验证码', note: '邮箱已注册时绑定到已有账号并保留原密码；未注册时创建新账号。', email: '绑定邮箱', enter: '绑定邮箱并进入', loading: '正在读取授权信息', completing: '正在完成登录' });
-const oauthRequiresEmailBinding = computed(() => oauth.mode === 'email' || Boolean(oauth.profile?.requiresEmailBinding));
+const oauthRequiresEmailBinding = computed(() => oauth.provider === 'github' || oauth.mode === 'email' || Boolean(oauth.profile?.requiresEmailBinding));
 const authTitle = computed(() => (
   hasOAuthTicket.value
     ? (oauthRequiresEmailBinding.value ? oauthCopy.value.title : `${oauthProviderName.value} 登录确认`)
@@ -321,7 +321,7 @@ async function loadOAuthPending(ticket) {
     if (!result.success) throw new Error(result.message || `${oauthProviderName.value} 登录状态读取失败`);
     oauth.profile = result.data;
     oauth.createUsername = result.data.suggestedUsername || result.data.nickname || '';
-    oauth.mode = result.data.requiresEmailBinding ? 'email' : (result.data.hasEmailMatch ? 'bind' : 'create');
+    oauth.mode = (oauth.provider === 'github' || result.data.requiresEmailBinding) ? 'email' : (result.data.hasEmailMatch ? 'bind' : 'create');
     oauth.email = result.data.email || '';
     if (result.data.email) oauth.identity = result.data.email;
   } catch (error) {
@@ -519,7 +519,7 @@ onMounted(() => {
             <div v-if="oauth.message" class="form-message" :class="oauth.type">{{ oauth.message }}</div>
             <StatusLoader v-if="oauth.submitting" :label="oauthCopy.completing" compact />
 
-            <form v-if="oauth.mode === 'email'" class="oauth-email-form" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthEmailBind">
+            <form v-if="oauth.profile && oauth.mode === 'email'" class="oauth-email-form" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthEmailBind">
               <div class="oauth-bind-note">
                 <TsIcon name="mail" :size="18" />
                 <span>{{ oauth.provider === 'github' ? oauthCopy.note : '邮箱已注册时会自动绑定到已有账号；邮箱未注册时会作为新的登录邮箱。' }}</span>
@@ -564,7 +564,7 @@ onMounted(() => {
               <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? oauthCopy.completing : oauthCopy.enter }}</button>
             </form>
 
-            <template v-else>
+            <template v-else-if="oauth.profile">
               <div class="mode-row">
                 <button class="mode-btn" :class="{ active: oauth.mode === 'create' }" type="button" @click="setOAuthMode('create')">QQ 一键进入</button>
                 <button class="mode-btn" :class="{ active: oauth.mode === 'bind' }" type="button" @click="setOAuthMode('bind')">绑定已有账号</button>

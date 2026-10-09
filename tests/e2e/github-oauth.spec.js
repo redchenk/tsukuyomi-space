@@ -91,6 +91,8 @@ test('expired GitHub authorization shows a recoverable error', async ({ page }) 
   await page.route('**/api/auth/oauth/github/pending?*', route => route.fulfill({ status: 404, json: { success: false, message: 'GitHub 登录状态已过期，请重新授权' } }));
   await page.goto('/login?oauth=github&ticket=expired');
   await expect(page.locator('.oauth-panel .form-message')).toContainText('GitHub 登录状态已过期');
+  await expect(page.locator('.oauth-panel form')).toHaveCount(0);
+  await expect(page.locator('.oauth-panel')).not.toContainText('QQ');
   await page.getByRole('button', { name: '返回普通登录', exact: true }).click();
   await expect(page.getByRole('button', { name: 'GitHub 登录', exact: true })).toBeVisible();
 });
