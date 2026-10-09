@@ -20,7 +20,7 @@ router.post('/stream', async (req, res) => {
         runtime.resolveParameters({ apiUrl, model, runtimeConfig });
     } catch (error) {
         return res.status(error.statusCode || 400).json({ success: false, message: error.message,
-            ...(/^[A-Z0-9_]{1,48}$/.test(error.code || '') ? { code: error.code } : {}) });
+            ...(diagnostic === true && /^[A-Z0-9_]{1,48}$/.test(error.code || '') ? { code: error.code } : {}) });
     }
 
     const controller = new AbortController();
@@ -48,8 +48,8 @@ router.post('/stream', async (req, res) => {
                 ? error.message
                 : (error.statusCode >= 400 ? error.message : '模型响应失败，请稍后重试');
             streamEvent(res, 'error', { message,
-                ...(/^[A-Z0-9_]{1,48}$/.test(error.code || '') ? { code: error.code } : {}),
-                ...(Number.isInteger(error.statusCode) && error.statusCode >= 400 && error.statusCode <= 599 ? { statusCode: error.statusCode } : {}) });
+                ...(diagnostic === true && /^[A-Z0-9_]{1,48}$/.test(error.code || '') ? { code: error.code } : {}),
+                ...(diagnostic === true && Number.isInteger(error.statusCode) && error.statusCode >= 400 && error.statusCode <= 599 ? { statusCode: error.statusCode } : {}) });
         }
     } finally {
         res.off('close', onClose);
@@ -77,7 +77,7 @@ router.post('/', async (req, res) => {
         res.status(statusCode).json({
             success: false,
             message: statusCode === 500 ? '操作失败' : error.message,
-            ...(/^[A-Z0-9_]{1,48}$/.test(error.code || '') ? { code: error.code } : {})
+            ...(req.body?.diagnostic === true && /^[A-Z0-9_]{1,48}$/.test(error.code || '') ? { code: error.code } : {})
         });
     } finally { res.off('close', onClose); }
 });

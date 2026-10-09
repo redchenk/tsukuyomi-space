@@ -3567,6 +3567,12 @@ describe('chat API endpoint allowlist', () => {
             assert.equal(failed.response.statusCode, 200);
             assert.match(failed.text, /event: error\ndata: \{"message":"模型请求失败（HTTP 401）"\}/);
             assert.doesNotMatch(failed.text, /sensitive upstream body/);
+            const diagnostic = await postEventStream('/api/chat/stream', {
+                message: 'hello', apiKey: 'test-key', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'test-model', diagnostic: true
+            });
+            const metadata = JSON.parse(diagnostic.text.match(/^data: (.+)$/m)[1]);
+            assert.deepEqual(metadata, { message: '模型请求失败（HTTP 401）', statusCode: 401 });
+            assert.doesNotMatch(diagnostic.text, /sensitive upstream body|test-key/);
         } finally {
             globalThis.fetch = originalFetch;
         }
