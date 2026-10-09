@@ -1,5 +1,5 @@
 import retrieval from '../../../../shared/room-memory-retrieval.cjs';
-const { memoryRetrievalScope, memoryAllowedForTurns } = retrieval;
+const { memoryRetrievalScope, memoryAllowedForTurns, normalizeMemoryRetrievalLimit } = retrieval;
 
 const empty = (backend, extra = {}) => ({ data: [], retrieval: { backend, ...extra } });
 const failure = (reason, status) => Object.assign(new Error(reason === 'account_changed' ? '登录账号已变化，请重新发送' : reason), { reason, status });
@@ -7,9 +7,10 @@ const failure = (reason, status) => Object.assign(new Error(reason === 'account_
 // Every attempt reads the authenticated source, including snapshot validation.
 // A snapshot narrows selection but cannot bypass edits, deletion or ownership.
 export function createRoomMemoryRetriever({ getAccountId, isEnabled, retrieveGuest, request,
-  useLocal = () => false, warn = (...args) => console.warn(...args), timeoutMs = 8000, fallbackTimeoutMs = 4000 }) {
+  getLimit = () => undefined, useLocal = () => false, warn = (...args) => console.warn(...args), timeoutMs = 8000, fallbackTimeoutMs = 4000 }) {
   return async function retrieve(message, signal = null, options = {}) {
     const scope = memoryRetrievalScope(options);
+    const limit = normalizeMemoryRetrievalLimit(getLimit());
     const excluded = new Set(scope.excludeTurnIds);
     const selectedIds = scope.snapshotIds !== undefined ? new Set(scope.snapshotIds) : null;
     const accountId = getAccountId();
@@ -32,18 +33,18 @@ export function createRoomMemoryRetriever({ getAccountId, isEnabled, retrieveGue
       });
       try {
         const operation = !local
-          ? request(new URLSearchParams({ q: String(message).trim(), limit: '6', purpose: 'chat',
+          ? request(new URLSearchParams({ q: String(message).trim(), limit: String(limit), purpose: 'chat',
               ...(scope.excludeTurnIds.length ? { excludeTurnIds: JSON.stringify(scope.excludeTurnIds) } : {}),
               ...(selectedIds ? { memoryIds: JSON.stringify(scope.snapshotIds) } : {}),
               ...(sourceOnly ? { retrieval: 'source' } : {}) }), controller.signal)
-          : retrieveGuest(message, scope).then(data => ({ success: true, data, retrieval: { backend: 'indexeddb' } }));
+          : retrieveGuest(message, scope, limit).then(data => ({ success: true, data, retrieval: { backend: 'indexeddb' } }));
         const result = await Promise.race([operation, interrupted]);
         check();
         if (!result?.success) throw failure('success_false');
         if (!Array.isArray(result.data)) throw failure('invalid_response');
         // Defence in depth for a mixed-version rollout or a legacy fallback.
         const data = result.retrieval?.selection === 'recent' ? [] : result.data.filter(row =>
-          memoryAllowedForTurns(row, excluded) && (!selectedIds || selectedIds.has(row.id))).slice(0, 6);
+          memoryAllowedForTurns(row, excluded) && (!selectedIds || selectedIds.has(row.id))).slice(0, limit);
         return { data, retrieval: { ...result.retrieval, count: data.length } };
       } catch (error) {
         if (timedOut && !signal?.aborted) throw failure('timeout');

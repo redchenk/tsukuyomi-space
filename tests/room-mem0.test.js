@@ -75,6 +75,29 @@ test('invalid retrieval scopes are rejected with HTTP 400 without broadening acc
     }
 });
 
+test('chat retrieval defaults to twelve, supports thirty and validates larger owned snapshots', async () => {
+    const ids = [];
+    for (let i = 0; i < 32; i++) {
+        const memory = await request('/memory', 'POST', { force: true, content: `多条回忆观测站记录编号${i}。`, summary: `观测站${i}` });
+        ids.push(memory.data.id);
+    }
+    const query = encodeURIComponent('多条回忆观测站');
+    const defaultResult = await request(`/memory?purpose=chat&retrieval=source&q=${query}`);
+    assert.equal(defaultResult.data.length, 12);
+    const large = await request(`/memory?purpose=chat&retrieval=source&q=${query}&limit=30`);
+    assert.equal(large.data.length, 30);
+    assert.equal((await request(`/memory?purpose=chat&retrieval=source&q=${query}&limit=100`)).data.length, 30);
+    const snapshot = ids.slice(0, 20);
+    const route = `/memory?purpose=chat&q=${query}&limit=20&memoryIds=${encodeURIComponent(JSON.stringify(snapshot))}`;
+    assert.deepEqual((await request(route)).data.map(row => row.id), snapshot);
+    assert.deepEqual((await memory.retrieveChatMemories('mem0-two', '多条回忆观测站', 20, { snapshotIds: snapshot })).memories, []);
+    await request('/memory/' + snapshot[0], 'DELETE');
+    assert.deepEqual((await request(route)).data.map(row => row.id), snapshot.slice(1));
+    const invalid = await fetch(base + `/api/room/memory?purpose=chat&q=${query}&limit=30&memoryIds=${encodeURIComponent(JSON.stringify(ids.slice(0, 31)))}`, { headers: { Cookie: cookie } });
+    assert.equal(invalid.status, 400);
+    for (const id of ids.slice(1)) await request('/memory/' + id, 'DELETE');
+});
+
 test('chat transaction preserves short facts; real Mem0 survives restart, pruning and new conversations', async () => {
     const first = { memoryEnabled: true, turnId: 'mem0-cat', userMessage: '我的猫叫雪糕', assistantMessage: '雪糕，好可爱的名字。' };
     await request('/chat/turn', 'POST', first);

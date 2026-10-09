@@ -21,7 +21,7 @@ function setup(options = {}) {
   const navigation = [];
   const ctx = {
     URL, console, AbortController, setTimeout: () => 0, clearTimeout() {}, uiText: value => value,
-    ttsUsesProxy, validateMcpEndpoint, llmRuntime: require('../shared/model-runtime.cjs'), ...catalog,
+    ttsUsesProxy, validateMcpEndpoint, llmRuntime: require('../shared/model-runtime.cjs'), memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), ...catalog,
     ...(options.fetchCatalog ? { fetchModelCatalog: options.fetchCatalog, catalogScope: async () => 'fixture-scope', readCatalogCache: () => null, writeCatalogCache() {} } : {}),
     reactive: x => x, ref: value => ({ value }), computed: get => ({ get value() { return get(); } }),
     defineProps: () => ({}), defineEmits: () => (...args) => navigation.push(args),
@@ -118,6 +118,27 @@ test('independent memory settings save both switches and empty knowledge survive
   h.loadSettings();
   assert.equal(h.knowledge.enabled, false);
   assert.equal(h.knowledge.entries.length, 0);
+  assert.equal(h.memory.enabled, false);
+});
+
+test('memory reference settings preserve legacy opt-out, track drafts and bound saved limits', async () => {
+  const h = setup();
+  h.set('roomMemorySettings', { enabled: false });
+  h.loadSettings();
+  assert.equal(h.memory.enabled, false);
+  assert.equal(h.memory.retrievalLimit, 12);
+  h.memory.retrievalLimit = 20;
+  assert.equal(h.hasUnsavedSettings.value, true);
+  assert.equal(await h.saveAllSettings(), true);
+  assert.deepEqual(h.read('roomMemorySettings'), { enabled: false, retrievalLimit: 20 });
+  h.loadSettings();
+  assert.equal(h.memory.retrievalLimit, 20);
+  h.memory.retrievalLimit = 99;
+  assert.equal(await h.saveAllSettings(), true);
+  assert.equal(h.read('roomMemorySettings').retrievalLimit, 30);
+  h.set('roomMemorySettings', { enabled: false, retrievalLimit: 'invalid' });
+  h.loadSettings();
+  assert.equal(h.memory.retrievalLimit, 12);
   assert.equal(h.memory.enabled, false);
 });
 

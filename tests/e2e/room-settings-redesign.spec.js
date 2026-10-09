@@ -9,6 +9,31 @@ async function category(page, label) {
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: label }).click();
 }
 
+for (const width of [1280, 390]) test(`memory retrieval limit saves, reloads and respects the off switch at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 844 });
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('roomMemorySettings')) localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: false }));
+  });
+  await page.goto('/room/settings');
+  await category(page, '长期记忆');
+  const limit = page.locator('#room-memory-retrieval-limit');
+  await expect(limit).toHaveValue('12');
+  await expect(limit).toBeDisabled();
+  await page.getByRole('switch', { name: '开启长期记忆' }).check();
+  await limit.fill('30');
+  await expect(page.getByRole('status').filter({ hasText: '有尚未保存的修改' })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('memory-limit-settings.png') });
+  await page.getByRole('button', { name: '保存并返回房间', exact: true }).click();
+  await expect(page).toHaveURL(/\/room$/);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('roomMemorySettings')))).toEqual({ enabled: true, retrievalLimit: 30 });
+  await page.goto('/room/settings');
+  await page.reload();
+  await category(page, '长期记忆');
+  await expect(limit).toHaveValue('30');
+  await expect(page.getByRole('switch', { name: '开启长期记忆' })).toBeChecked();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 for (const width of [1280, 390]) {
   test(`Room settings tests the draft and saves across categories at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });

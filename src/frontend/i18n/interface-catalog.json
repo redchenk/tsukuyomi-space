@@ -9022,5 +9022,13 @@
   "当前账号已绑定其他同类第三方账号，请先解绑": {
     "en": "This account already has another identity linked with this provider. Unlink it first.",
     "ja": "この認証サービスの別アカウントに連携済みです。先に解除してください。"
+  },
+  "每轮记忆参考上限": {
+    "en": "Memory references per turn",
+    "ja": "1ターンの記憶参照上限"
+  },
+  "可设置 1 至 {0} 条。实际参考数量取决于相关性和上下文长度；上限越大，每条片段可能越短。": {
+    "en": "Choose 1 to {0}. The actual count depends on relevance and context length; a higher limit may shorten each excerpt.",
+    "ja": "1〜{0}件に設定できます。実際の参照数は関連性とコンテキスト長によって変わり、上限を増やすと各抜粋が短くなる場合があります。"
   }
 }

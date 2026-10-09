@@ -71,13 +71,17 @@ export function packRoomContext(sections = {}, options = {}) {
 
   for (const { key, limit, itemLimit } of SOURCES) {
     let sourceUsed = 0;
-    for (const item of asItems(sections[key], key)) {
+    const items = asItems(sections[key], key);
+    // Share the memory budget across relevant records instead of letting the
+    // first few long excerpts consume it. The total prompt remains bounded.
+    const fairItemLimit = key === 'memories' ? Math.min(itemLimit, Math.max(24, Math.floor(limit / Math.max(1, items.length)))) : itemLimit;
+    for (const item of items) {
       if (!item.text) continue;
       const remainingSource = limit - sourceUsed;
       const remainingTotal = maxChars - used;
       // The JSON envelope varies with escaping and the source/id lengths.
       const emptyLine = toLine(key, item.id, '', item.turnId, item.provenance);
-      const available = Math.min(itemLimit, remainingSource, remainingTotal - emptyLine.length - 2);
+      const available = Math.min(fairItemLimit, remainingSource, remainingTotal - emptyLine.length - 2);
       if (available < 24) break;
       let content = item.text.slice(0, available);
       let line = toLine(key, item.id, content, item.turnId, item.provenance);

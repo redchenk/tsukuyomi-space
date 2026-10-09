@@ -1,6 +1,7 @@
 <script setup>
 import { uiText } from '../i18n/runtime';
 import llmRuntime from '../../../shared/model-runtime.cjs';
+import memoryRetrieval from '../../../shared/room-memory-retrieval.cjs';
 import RoomModelRuntimePanel from '../components/room/RoomModelRuntimePanel.vue';
 import { detectProvider, catalogPlan, catalogScope, readCatalogCache, writeCatalogCache, fetchModelCatalog } from '../services/room/roomModelCatalog.mjs';
 import { callRoomMcp, validateMcpEndpoint } from '../services/room/roomMcp.mjs';
@@ -51,6 +52,7 @@ const props = defineProps({
 const emit = defineEmits(['go']);
 
 const MEMORY_DB_NAME = 'tsukuyomi-room-memory';
+const { DEFAULT_MEMORY_RETRIEVAL_LIMIT, MAX_MEMORY_RETRIEVAL_LIMIT, normalizeMemoryRetrievalLimit } = memoryRetrieval;
 const MEMORY_STORE = 'memories';
 const ROOM_MEMORY_UPDATED_KEY = 'roomMemoryLastUpdatedAt';
 let stopRoomMemorySync = () => {};
@@ -227,7 +229,7 @@ const tts = reactive({
   useProxy: false
 });
 const initialTtsSettings = { ...tts };
-const memory = reactive({ enabled: true, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
+const memory = reactive({ enabled: true, retrievalLimit: DEFAULT_MEMORY_RETRIEVAL_LIMIT, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
 const memoryEditor = ref(null);
 const memorySummaryInput = ref(null);
 const memoryEditingOriginal = ref('');
@@ -285,7 +287,7 @@ const diarySyncStatus = ref('');
 const savedSections = reactive({});
 const settingsSections = ['model', 'llm', 'tts', 'memory', 'knowledge', 'mcp', 'diary'];
 function sectionSnapshot(section) {
-  const value = { model, llm, tts, memory: { enabled: memory.enabled }, knowledge: { enabled: knowledge.enabled, entries: knowledge.entries }, mcp, diary: diary.persona }[section];
+  const value = { model, llm, tts, memory: { enabled: memory.enabled, retrievalLimit: memory.retrievalLimit }, knowledge: { enabled: knowledge.enabled, entries: knowledge.entries }, mcp, diary: diary.persona }[section];
   return JSON.stringify(value);
 }
 function rememberSaved(section) { savedSections[section] = sectionSnapshot(section); }
@@ -1382,7 +1384,8 @@ function loadSettings() {
     if (!tts.voice || LEGACY_MINIMAX_DEFAULT_VOICE_IDS.includes(tts.voice)) tts.voice = MINIMAX_DEFAULT_VOICE_ID;
     if (!tts.textLang) tts.textLang = 'ja';
   }
-  Object.assign(memory, { enabled: true, ...readJson('roomMemorySettings', {}) });
+  Object.assign(memory, { enabled: true, retrievalLimit: DEFAULT_MEMORY_RETRIEVAL_LIMIT, ...readJson('roomMemorySettings', {}) });
+  memory.retrievalLimit = normalizeMemoryRetrievalLimit(memory.retrievalLimit);
   Object.assign(knowledge, normalizeRoomKnowledge(readJson('roomKnowledgeSettings', null)));
   knowledge.editingId = null;
   knowledge.draft = { title: '', content: '', tags: '', enabled: true };
@@ -1891,7 +1894,8 @@ async function testTTS() {
 }
 
 function saveMemory() {
-  if (!persistSettings('roomMemorySettings', { enabled: Boolean(memory.enabled) }, '记忆设置')) return false;
+  memory.retrievalLimit = normalizeMemoryRetrievalLimit(memory.retrievalLimit);
+  if (!persistSettings('roomMemorySettings', { enabled: Boolean(memory.enabled), retrievalLimit: memory.retrievalLimit }, '记忆设置')) return false;
   rememberSaved('memory');
   loadMemoryCount();
   showToast(memory.enabled ? '长期记忆已开启' : '长期记忆已关闭');
@@ -3021,6 +3025,14 @@ onBeforeUnmount(() => {
               role="switch"
               aria-label="开启长期记忆"
           /></label>
+          <div class="settings-field">
+            <label for="room-memory-retrieval-limit">每轮记忆参考上限
+              <input id="room-memory-retrieval-limit" v-model.number="memory.retrievalLimit"
+                type="number" min="1" :max="MAX_MEMORY_RETRIEVAL_LIMIT" step="1"
+                :disabled="!memory.enabled" />
+              <small>{{ uiText('可设置 1 至 {0} 条。实际参考数量取决于相关性和上下文长度；上限越大，每条片段可能越短。', [MAX_MEMORY_RETRIEVAL_LIMIT]) }}</small>
+            </label>
+          </div>
           <div class="settings-note">
             <TsIcon name="shield" :size="18" />
             <div>

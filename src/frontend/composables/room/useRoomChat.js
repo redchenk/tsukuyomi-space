@@ -793,7 +793,8 @@ function fetchRelevantMemories(message, signal = null, options = {}) {
     getAccountId: () => getSession()?.user?.id || '',
     useLocal: usesLocalRoomMemory,
     isEnabled: () => readJson('roomMemorySettings', { enabled: true }).enabled !== false,
-    retrieveGuest: (message, scope) => retrieveGuestMemories(message, 6, scope),
+    getLimit: () => readJson('roomMemorySettings', {}).retrievalLimit,
+    retrieveGuest: (message, scope, limit) => retrieveGuestMemories(message, limit, scope),
     async request(params, signal) {
       const response = await authFetch(noStoreUrl(`/api/room/memory?${params}`), {
         headers: authHeaders({ Accept: 'application/json' }), cache: 'no-store', signal
@@ -993,6 +994,7 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
   }
 
   const memoryRows = revalidateRoomMemorySnapshot(snapshot?.memoryRows, memoryResult.data);
+  const memoryExcerptChars = Math.max(80, Math.min(760, Math.floor(3_000 / Math.max(1, memoryRows.length)) - 40));
   const sections = snapshot?.sections || {
     time: currentTimeContext(),
     environment,
@@ -1005,7 +1007,7 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
   };
   const packed = packRoomContext({ ...sections, memories: memoryRows.map((item) => ({
     id: item.id || item.memoryId || 'memory', turnId: memoryRetrieval.memorySourceTurnId(item),
-    content: `[${item.createdAt || '历史聊天'}] ${item.context || item.content || item.summary || ''}`
+    content: `[${item.createdAt || '历史聊天'}] ${memoryRetrieval.memoryExcerpt(item.context || item.content || item.summary || '', message, memoryExcerptChars)}`
   })) }, { maxChars: isOllamaApi(llmSettings.apiUrl) ? 4_000 : 8_000 });
   return { ...packed, retrieval: memoryResult.retrieval,
     snapshot: memoryResult.retrieval?.backend === 'unavailable' ? null : { sections, memoryRows } };

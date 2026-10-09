@@ -31,6 +31,21 @@ test('retrieved tool text is JSON-quoted data and cannot turn into a new prompt 
   assert.equal(text.split('\n').filter(item => item.startsWith('SYSTEM:')).length, 0);
 });
 
+test('twelve long memories share the budget and preserve facts beyond the sixth record', async () => {
+  const { packRoomContext } = await modulePromise;
+  const { memoryExcerpt } = require('../shared/room-memory-retrieval.cjs');
+  const memories = Array.from({ length: 12 }, (_, i) => ({ id: `long-${i}`,
+    content: memoryExcerpt('无关的开头。'.repeat(120) + `观测站约定编号${i}，周六晚八点。` + '无关的末尾。'.repeat(120), '观测站约定', 210) }));
+  const result = packRoomContext({ memories, knowledge: [{ id: 'canon', content: '八千代是月夜见管理员。' }] });
+  assert.equal(result.trace.filter(row => row.source === 'memories').length, 12);
+  for (let i = 0; i < 12; i++) assert.match(result.text, new RegExp(`约定编号${i}，`));
+  assert.match(result.text, /月夜见管理员/);
+  assert.ok(result.usedChars <= 8000);
+  const huge = packRoomContext({ memories: Array.from({ length: 30 }, (_, i) => ({ id: `id-${i}`, content: '字'.repeat(2000) })) }, { maxChars: 4000 });
+  assert.ok(huge.usedChars <= 4000);
+  assert.ok(huge.trace.filter(row => row.source === 'memories').length > 6);
+});
+
 test('diary archive and diary persona are not accepted as chat context', async () => {
   const { packRoomContext } = await modulePromise;
   const result = packRoomContext({

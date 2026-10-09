@@ -3,7 +3,7 @@ import { getSession } from '../../api/client';
 import { publishLocalRoomMemoryUpdate } from './roomMemorySync';
 import { accountLocalMemoryKey, readMemorySource } from './roomMemorySource.mjs';
 
-const { SENSITIVE, lexicalScore, memoryExcerpt, memoryRetrievalScope, memoryAllowedForTurns } = retrieval;
+const { SENSITIVE, lexicalScore, memoryExcerpt, memoryRetrievalScope, memoryAllowedForTurns, normalizeMemoryRetrievalLimit } = retrieval;
 const STORE = 'memories';
 
 export function usesLocalRoomMemory() {
@@ -115,7 +115,7 @@ export async function saveGuestMemory({ turnId, userMessage, assistantMessage, m
   } finally { db.close(); }
 }
 
-export async function retrieveGuestMemories(query, limit = 6, options = {}) {
+export async function retrieveGuestMemories(query, limit, options = {}) {
   const scope = memoryRetrievalScope(options);
   const excluded = new Set(scope.excludeTurnIds);
   const userKey = roomLocalMemoryKey();
@@ -133,7 +133,7 @@ export async function retrieveGuestMemories(query, limit = 6, options = {}) {
       ? scope.snapshotIds.flatMap(id => { const row = owned.find(item => item.id === id); return row ? [{ ...row, score: 0 }] : []; })
       : owned.map(row => ({ ...row, score: lexicalScore(query, row.content) }))
         .filter(row => row.score > 0).sort((a, b) => b.score - a.score || b.updatedAt.localeCompare(a.updatedAt));
-    return selected.slice(0, Math.max(1, Math.min(12, Number(limit) || 6))).map(row => ({ ...row,
+    return selected.slice(0, normalizeMemoryRetrievalLimit(limit)).map(row => ({ ...row,
       context: memoryExcerpt(row.content, query), source: 'indexeddb',
       retrievalRevision: JSON.stringify([row.summary, row.content, row.importance, row.confidence, row.manuallyEdited, row.sourceTurnId]) }));
   } finally { db.close(); }

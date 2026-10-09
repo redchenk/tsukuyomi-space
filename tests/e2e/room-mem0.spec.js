@@ -4,7 +4,7 @@ test.use({ launchOptions: { args: ['--no-proxy-server'] } });
 async function configure(page) {
     await page.addInitScript(() => {
         localStorage.setItem('roomLLMSettings', JSON.stringify({ useProxy: true }));
-        localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: true }));
+        if (!localStorage.getItem('roomMemorySettings')) localStorage.setItem('roomMemorySettings', JSON.stringify({ enabled: true }));
     });
     const requests = [];
     await page.route('**/api/chat/stream', route => {
@@ -111,4 +111,62 @@ test('failed retrieval uses owned source excerpts in the real model request and 
     expect(sourceCalls).toBe(2);
     expect(requests.at(-1).systemPrompt).not.toContain('雪团');
     await expect(page.locator('.room-memory-trace')).toContainText('长期记忆暂时无法读取（HTTP 503）');
+});
+
+for (const local of [true, false]) test(`configured memory limit reaches the model and regeneration with ${local ? 'guest' : 'account'} records`, async ({ page }, testInfo) => {
+    test.setTimeout(60000);
+    const requests = await configure(page);
+    if (!local) await login(page, 'mem0-isolated');
+    await page.goto('/room');
+    if (local) {
+        await page.evaluate(async () => {
+            const id = localStorage.getItem('roomMemoryGuestId') || 'memory-limit-guest';
+            localStorage.setItem('roomMemoryGuestId', id);
+            const db = await new Promise((resolve, reject) => {
+                const open = indexedDB.open('tsukuyomi-room-memory', 1);
+                open.onupgradeneeded = () => {
+                    const store = open.result.createObjectStore('memories', { keyPath: 'id' });
+                    store.createIndex('userKey', 'userKey'); store.createIndex('createdAt', 'createdAt');
+                };
+                open.onsuccess = () => resolve(open.result); open.onerror = () => reject(open.error);
+            });
+            const tx = db.transaction('memories', 'readwrite');
+            for (let i = 0; i < 32; i++) tx.objectStore('memories').put({ id: `limit-fact-${i}`, userKey: `guest:${id}`,
+                content: `观测站记录编号${i}，第${i}次预约。`, summary: `观测站记录${i}`, type: 'episodic',
+                createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' });
+            await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); }); db.close();
+        });
+    } else {
+        for (let i = 0; i < 32; i++) {
+            const result = await page.request.post('/api/room/memory', {
+                headers: { Origin: new URL(page.url()).origin, 'X-Requested-With': 'XMLHttpRequest' }, data: { captureChat: false, force: true,
+                content: `观测站记录编号${i}，第${i}次预约。`, summary: `观测站记录${i}`, type: 'episodic' } });
+            expect(result.ok()).toBe(true);
+        }
+    }
+    const promptRows = () => requests.at(-1).systemPrompt.split('\n').flatMap(line => {
+        try { const item = JSON.parse(line); return item.source === 'memories' ? [item] : []; } catch { return []; }
+    });
+    await send(page, '请参考观测站记录');
+    expect(promptRows()).toHaveLength(12);
+    await expect(page.locator('.room-memory-trace')).toContainText('已参考 12 条长期记忆');
+
+    await page.goto('/room/settings');
+    await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '长期记忆' }).click();
+    await expect(page.locator('#room-memory-retrieval-limit')).toHaveValue('12');
+    await page.locator('#room-memory-retrieval-limit').fill('20');
+    await page.getByRole('button', { name: '保存并返回房间', exact: true }).click();
+    await expect(page).toHaveURL(/\/room$/);
+    await page.reload();
+    await send(page, '请参考观测站记录');
+    expect(promptRows()).toHaveLength(20);
+    expect(new Set(promptRows().map(item => item.id)).size).toBe(20);
+    await expect(page.locator('.room-memory-trace')).toContainText('已参考 20 条长期记忆');
+    const assistant = page.locator('.chat-message.assistant').last();
+    await assistant.hover();
+    await assistant.getByRole('button', { name: '重新生成', exact: true }).click();
+    await expect(page.locator('#chatInput')).toBeEnabled();
+    await expect.poll(() => promptRows().length).toBe(20);
+    await expect(page.locator('.chat-generation-notice.error')).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('memory-limit-injection.png') });
 });

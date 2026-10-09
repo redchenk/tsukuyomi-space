@@ -1,4 +1,13 @@
 const SENSITIVE = /(password|api[_-]?key|secret|bearer\s+[a-z0-9._-]+|\btoken\b|sk-[a-z0-9._-]+|密码|密钥|令牌|身份证|银行卡)/i;
+const DEFAULT_MEMORY_RETRIEVAL_LIMIT = 12;
+const MAX_MEMORY_RETRIEVAL_LIMIT = 30;
+
+function normalizeMemoryRetrievalLimit(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0
+        ? Math.max(1, Math.min(MAX_MEMORY_RETRIEVAL_LIMIT, Math.floor(number)))
+        : DEFAULT_MEMORY_RETRIEVAL_LIMIT;
+}
 
 // A caller may narrow its own retrieval, never choose a different owner. Keep
 // both query-string and internal callers bounded before touching the index.
@@ -15,7 +24,7 @@ function memoryRetrievalScope({ excludeTurnIds = [], snapshotIds } = {}) {
         return [...new Set(value.map(id => id.trim()))];
     };
     return { excludeTurnIds: list(excludeTurnIds, 40, 160),
-        ...(snapshotIds !== undefined ? { snapshotIds: list(snapshotIds, 12, 256) } : {}) };
+        ...(snapshotIds !== undefined ? { snapshotIds: list(snapshotIds, MAX_MEMORY_RETRIEVAL_LIMIT, 256) } : {}) };
 }
 
 function memorySourceTurnId(row) {
@@ -76,4 +85,5 @@ function memoryExcerpt(content, query, limit = 760) {
     return `${best.start ? '…' : ''}${text.slice(best.start, end)}${end < text.length ? '…' : ''}`;
 }
 
-module.exports = { SENSITIVE, searchTerms, lexicalScore, memoryExcerpt, memoryRetrievalScope, memorySourceTurnId, memoryAllowedForTurns };
+module.exports = { SENSITIVE, searchTerms, lexicalScore, memoryExcerpt, memoryRetrievalScope, memorySourceTurnId, memoryAllowedForTurns,
+    DEFAULT_MEMORY_RETRIEVAL_LIMIT, MAX_MEMORY_RETRIEVAL_LIMIT, normalizeMemoryRetrievalLimit };

@@ -12,7 +12,7 @@ const {
 const milvusStore = require('./room-milvus-store');
 const mem0Store = require('./room-mem0');
 const localIntelligence = require('./room-local-client');
-const { lexicalScore, memoryExcerpt, searchTerms, memoryRetrievalScope, memoryAllowedForTurns } = require('../../shared/room-memory-retrieval.cjs');
+const { lexicalScore, memoryExcerpt, searchTerms, memoryRetrievalScope, memoryAllowedForTurns, normalizeMemoryRetrievalLimit } = require('../../shared/room-memory-retrieval.cjs');
 
 const MAX_MEMORY_CONTENT_LENGTH = Math.max(4000, Number.parseInt(process.env.ROOM_MEMORY_CONTENT_LIMIT || '12000', 10) || 12000);
 const MAX_MEMORY_IMPORT_RECORDS = 200;
@@ -205,12 +205,12 @@ function reconcileMem0(userId) {
     return mem0Store.reconcile(userId, () => ownedMemoryRows(userId)).catch(() => {});
 }
 
-async function retrieveChatMemories(userId, query, limit = 6, options = {}) {
+async function retrieveChatMemories(userId, query, limit, options = {}) {
     userId = requireUserId(userId);
     const { excludeTurnIds, snapshotIds } = memoryRetrievalScope(options);
     const excluded = new Set(excludeTurnIds);
     const snapshot = snapshotIds !== undefined;
-    const safeLimit = Math.max(1, Math.min(12, Number(limit) || 6));
+    const safeLimit = normalizeMemoryRetrievalLimit(limit);
     const expanded = `${query}\n${searchTerms(query).join(' ')}`;
     const index = snapshot ? { results: [], backend: 'sqlite', fallback: false }
         : options.sourceOnly ? { results: [], backend: 'sqlite', fallback: true, reason: 'source_requested' }

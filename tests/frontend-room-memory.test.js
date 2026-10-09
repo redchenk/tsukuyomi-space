@@ -97,7 +97,7 @@ describe('frontend room memory API client usage', () => {
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/memory\?\$\{params\}`\)/);
         assert.match(code, /authFetch\(noStoreUrl\(`\/api\/room\/persona-memory\?\$\{params\}`\)/);
         assert.match(source('src/frontend/services/room/roomMemoryRetrieval.mjs'), /purpose: 'chat'/);
-        assert.match(code, /retrieveGuestMemories\(message, 6, scope\)/);
+        assert.match(code, /retrieveGuestMemories\(message, limit, scope\)/);
         assertNoRawRoomMemoryFetch('src/frontend/composables/room/useRoomChat.js');
     });
 
@@ -451,6 +451,36 @@ describe('bounded memory retrieval and fallback', () => {
     }
     const fact = { id: 'fact', context: '我的猫叫雪团' };
     const good = { success: true, data: [fact], retrieval: { backend: 'mem0' } };
+
+    it('uses the configured limit beyond six in normal, fallback and local retrieval', async () => {
+        const rows = Array.from({ length: 35 }, (_, i) => ({ id: `fact-${i}`, context: `记录 ${i}` }));
+        for (const limit of [undefined, 3, 20, 99]) {
+            const expected = limit === undefined ? 12 : Math.min(30, limit);
+            const calls = [];
+            const h = await setup({ getLimit: () => limit, request: async params => {
+                calls.push(params);
+                if (!params.has('retrieval')) throw new Error('temporary failure');
+                return { success: true, data: rows };
+            } });
+            assert.equal((await h.run('记录')).data.length, expected);
+            assert.deepEqual(calls.map(params => params.get('limit')), [String(expected), String(expected)]);
+            const normal = await setup({ getLimit: () => limit, request: async () => ({ success: true, data: rows }) });
+            assert.equal((await normal.run('记录')).data.length, expected);
+            let localLimit;
+            const local = await setup({ getAccountId: () => '', getLimit: () => limit,
+                retrieveGuest: async (_message, _scope, requested) => { localLimit = requested; return rows; } });
+            assert.equal((await local.run('记录')).data.length, expected);
+            assert.equal(localLimit, expected);
+        }
+    });
+
+    it('revalidates more than twelve selected IDs without adding unrequested records', async () => {
+        const snapshotIds = Array.from({ length: 20 }, (_, i) => `chosen-${i}`);
+        const h = await setup({ getLimit: () => 20, request: async () => ({ success: true,
+            data: [...snapshotIds.map(id => ({ id })), { id: 'unrequested' }] }) });
+        assert.deepEqual((await h.run('记录', null, { snapshotIds })).data.map(row => row.id), snapshotIds);
+        await assert.rejects(h.run('记录', null, { snapshotIds: Array.from({ length: 31 }, (_, i) => String(i)) }), /参数无效/);
+    });
 
     it('excludes target and recent automatic turns on both requests, preserving manual edits', async () => {
         const auto = (id, turnId) => ({ id, metadata: { sourceKind: 'chat-turn-auto', sourceTurnId: turnId } });

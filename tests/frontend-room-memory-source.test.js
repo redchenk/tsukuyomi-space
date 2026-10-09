@@ -101,4 +101,10 @@ test('actual local retrieval excludes automatic turns, preserves manual edits an
   rows = rows.filter(row => row.id !== 'old');
   assert.deepEqual(ids(await context.retrieve('红茶', 6, { snapshotIds: ['old'] })), []);
   assert.deepEqual(ids(await context.retrieve('红茶', 6, { snapshotIds: [] })), []);
+  rows = Array.from({ length: 35 }, (_, i) => ({ id: `large-${i}`, content: '红茶', updatedAt: String(i) }));
+  assert.equal((await context.retrieve('红茶')).length, 12);
+  assert.equal((await context.retrieve('红茶', 20)).length, 20);
+  assert.equal((await context.retrieve('红茶', 99)).length, 30);
+  const selectedIds = rows.slice(0, 20).map(row => row.id);
+  assert.deepEqual(ids(await context.retrieve('红茶', 20, { snapshotIds: selectedIds })), selectedIds);
 });
