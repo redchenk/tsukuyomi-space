@@ -8,7 +8,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { onBeforeRouteLeave } from 'vue-router';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
-import { cloneKnowledgeEntry, defaultKnowledgeEntries } from '../constants/room/knowledgeEntries';
+import { cloneKnowledgeEntry, defaultKnowledgeEntries, ROOM_KNOWLEDGE_VERSION } from '../constants/room/knowledgeEntries';
 import { applyKnowledgeDraft, normalizeRoomKnowledge } from '../services/room/roomKnowledge';
 import { roomLive2DManifest } from '../constants/room/live2dManifest';
 import {
@@ -1920,7 +1920,7 @@ async function syncMemoryVectors() {
 
 function persistKnowledge(entries, enabled = knowledge.enabled) {
   const next = entries.map(cloneKnowledgeEntry).filter(item => item.title || item.content);
-  if (!persistSettings('roomKnowledgeSettings', { enabled: Boolean(enabled), entries: next }, '角色知识库')) return false;
+  if (!persistSettings('roomKnowledgeSettings', { enabled: Boolean(enabled), builtinVersion: ROOM_KNOWLEDGE_VERSION, entries: next }, '角色知识库')) return false;
   knowledge.enabled = Boolean(enabled);
   knowledge.entries = next;
   rememberSaved('knowledge');
@@ -3422,6 +3422,7 @@ onBeforeUnmount(() => {
             >
               <div class="memory-item-head">
                 <span class="chip">{{ item.enabled ? '启用' : '停用' }}</span>
+                <span v-if="item.edition" class="chip" :title="item.references.join('；')">{{ item.edition }}</span>
                 <span class="field-hint">{{ item.tags || '未设置标签' }}</span>
               </div>
               <strong>{{ item.title }}</strong>

@@ -373,6 +373,7 @@ test('real context isolates saved target turns, freezes regeneration references 
   const prompts = [], scopes = [];
   const settings = { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen3.8-flash' };
   const h = await setup({ realContext: true, growthContext: () => '', selectRoomKnowledgeEntries: () => [],
+    shouldRetrieveRoomPersona: () => true, roomKnowledgeQuery: message => message,
     readJson: (key, fallback) => key === 'roomLLMSettings' ? settings : fallback,
     readRoomConversation: () => history, loadRoomConversation: async () => history,
     writeRoomConversation: value => { history = value; },

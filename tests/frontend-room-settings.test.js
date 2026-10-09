@@ -180,7 +180,7 @@ test('chat context reads the saved knowledge switch on every turn, never diary a
   let corpusCalls = 0;
   const ctx = { URL, console, getSession: () => null,
     isEnglishSite: () => false,
-    readJson: (key, fallback) => key === 'roomKnowledgeSettings' ? { enabled, entries: [{ title: '当前知识', content: '已保存的修改' }] } : fallback,
+    readJson: (key, fallback) => key === 'roomKnowledgeSettings' ? { enabled, entries: [{ title: '当前小说知识', content: '已保存的修改' }] } : fallback,
     readDiaryArchive: () => { throw new Error('Live chat must not read diary content'); },
     loadGrowth: async () => null, growthContext: () => '', corpus: async () => { corpusCalls++; return []; }
   };
@@ -190,9 +190,11 @@ test('chat context reads the saved knowledge switch on every turn, never diary a
     fetchRelevantMemories = async () => ({ data: [], retrieval: {} });
     globalThis.build = buildRoomContext;
   `, ctx);
-  assert.match((await ctx.build('知识', null, {}, '环境')).text, /已保存的修改/);
+  await ctx.build('你好', null, {}, '环境');
+  assert.equal(corpusCalls, 0);
+  assert.match((await ctx.build('小说知识', null, {}, '环境')).text, /已保存的修改/);
   enabled = false;
-  assert.doesNotMatch((await ctx.build('知识', null, {}, '环境')).text, /已保存的修改/);
+  assert.doesNotMatch((await ctx.build('小说知识', null, {}, '环境')).text, /已保存的修改/);
   assert.equal(corpusCalls, 1);
 });
 

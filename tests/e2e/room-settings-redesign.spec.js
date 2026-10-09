@@ -78,3 +78,38 @@ test(`all Room settings categories fit the mobile ${theme} layout`, async ({ pag
     await expect(page.locator('.settings-savebar .primary-btn')).toHaveCSS('border-radius', '999px');
 });
 }
+
+for (const width of [1280, 390]) test(`existing Room knowledge upgrades with editable source labels at ${width}px`, async ({ page }, testInfo) => {
+  const fs = require('node:fs');
+  const vm = require('node:vm');
+  const source = fs.readFileSync('src/frontend/constants/room/knowledgeEntries.js', 'utf8').replace(/^export /gm, '');
+  const entries = JSON.parse(JSON.stringify(vm.runInNewContext(source + '\nLEGACY_ROOM_KNOWLEDGE_ENTRIES')));
+  entries[0].content = '保留用户手动编写的身份';
+  entries[1].enabled = false;
+  await page.setViewportSize({ width, height: 844 });
+  await page.addInitScript(entries => {
+    // Seed just once: a reload must inspect the actual saved migration.
+    if (!localStorage.getItem('roomKnowledgeSettings')) localStorage.setItem('roomKnowledgeSettings', JSON.stringify({ enabled: true, entries }));
+  }, entries);
+  await page.goto('/room/settings');
+  await category(page, '角色知识库');
+  const panel = page.locator('#room-knowledge-settings');
+  await expect(panel.locator('.knowledge-item')).toHaveCount(81);
+  const identity = panel.locator('.knowledge-item').filter({ hasText: '保留用户手动编写的身份' });
+  await expect(identity).toBeVisible();
+  await expect(identity.locator('.chip')).toHaveCount(1);
+  await expect(panel.locator('.knowledge-item.disabled')).toHaveCount(1);
+  const ending = panel.locator('.knowledge-item').filter({ has: page.getByText('小说停在哪里', { exact: true }) });
+  await expect(ending.locator('.chip').filter({ hasText: '小说' })).toHaveAttribute('title', '新・终章 p-009.xhtml');
+  page.once('dialog', dialog => dialog.accept());
+  await ending.getByRole('button', { name: '删除', exact: true }).click();
+  await expect(panel.locator('.knowledge-item')).toHaveCount(80);
+  await page.reload();
+  await category(page, '角色知识库');
+  await expect(panel.locator('.knowledge-item')).toHaveCount(80);
+  await expect(panel.getByText('小说停在哪里', { exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await panel.locator('.knowledge-item').first().scrollIntoViewIfNeeded();
+  await expect(panel.locator('.knowledge-item').first()).toBeInViewport();
+  await page.screenshot({ path: testInfo.outputPath('room-canon-settings.png') });
+});
