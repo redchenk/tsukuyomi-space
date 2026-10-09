@@ -52,9 +52,15 @@ function trustedOrigins() {
     const publicOrigin = normalizedOrigin(config.publicSiteUrl);
     const oauthOrigin = normalizedOrigin(config.oauthRedirectBaseUrl);
     const qqCallbackOrigin = normalizedOrigin(config.oauth.qq.redirectUri);
+    const githubCallbackOrigin = normalizedOrigin(config.oauth.github.redirectUri);
     if (publicOrigin) origins.add(publicOrigin);
     if (oauthOrigin) origins.add(oauthOrigin);
     if (qqCallbackOrigin) origins.add(qqCallbackOrigin);
+    if (githubCallbackOrigin) origins.add(githubCallbackOrigin);
+    for (const uri of config.oauth.github.additionalRedirectUris) {
+        const origin = normalizedOrigin(uri);
+        if (origin) origins.add(origin);
+    }
     if (publicOrigin) {
         const url = new URL(publicOrigin);
         if (url.hostname === 'yachiyo.hk') origins.add(`${url.protocol}//www.yachiyo.hk${url.port ? `:${url.port}` : ''}`);

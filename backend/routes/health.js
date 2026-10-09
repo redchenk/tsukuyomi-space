@@ -40,6 +40,12 @@ router.get('/settings', (req, res) => {
             mpsBeianIcon: settings.mpsBeianIcon || '',
             publicAssetBaseUrl,
             qqOAuthStartUrl: new URL('/api/auth/oauth/qq/start', config.oauth.qq.redirectUri).toString(),
+            githubOAuthStartUrl: new URL('/api/auth/oauth/github/start', config.oauth.github.redirectUri).toString(),
+            githubOAuthStartUrls: require('../services/github-oauth').redirectUris().map(uri => {
+                const url = new URL('/api/auth/oauth/github/start', uri);
+                url.searchParams.set('site', new URL(uri).origin);
+                return url.toString();
+            }),
             visitPopupButton: settings.visitPopupButton || '我知道了'
         }
     });

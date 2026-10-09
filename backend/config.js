@@ -78,6 +78,12 @@ module.exports = {
     oauth: {
         stateTtlMs: Number(process.env.OAUTH_STATE_TTL_MS || 10 * 60 * 1000),
         pendingTtlMs: Number(process.env.OAUTH_PENDING_TTL_MS || 15 * 60 * 1000),
+        github: {
+            clientId: process.env.GITHUB_CLIENT_ID || '',
+            clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+            additionalRedirectUris: (process.env.GITHUB_ADDITIONAL_REDIRECT_URIS || '').split(',').map(value => value.trim()).filter(Boolean),
+            redirectUri: process.env.GITHUB_REDIRECT_URI || `${oauthRedirectBaseUrl}/api/auth/oauth/github/callback`
+        },
         qq: {
             clientId: process.env.QQ_CLIENT_ID || '',
             clientSecret: process.env.QQ_CLIENT_SECRET || '',

@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
-import { apiFetch, qqOAuthStartUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import { uiText } from '../i18n/runtime';
+import { apiFetch, qqOAuthStartUrl, githubOAuthStartUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 import { getAuthRedirectFromLocation, sanitizeAuthRedirect, withAuthRedirect } from '../utils/authRedirect';
 
 const props = defineProps({
@@ -42,6 +43,7 @@ const showForgotPassword = ref(false);
 const forgotMode = ref(false);
 
 const oauth = reactive({
+  provider: 'qq',
   ticket: '',
   mode: 'create',
   bindMethod: 'password',
@@ -64,10 +66,13 @@ const loginPlaceholder = computed(() => login.method === 'code' ? props.t.emailP
 const hasOAuthTicket = computed(() => Boolean(oauth.ticket));
 const isJapanese = computed(() => props.t.login === 'ログイン');
 const isEnglish = computed(() => props.t.login === 'Sign in');
+const oauthProviderName = computed(() => oauth.provider === 'github' ? 'GitHub' : 'QQ');
+const oauthNeedsPassword = computed(() => !(oauth.provider === 'github' && oauth.profile?.hasEmailMatch && oauth.email.trim().toLowerCase() === oauth.profile?.email));
+const oauthCopy = computed(() => isEnglish.value ? { title: 'Verify your email', subtitle: `${oauthProviderName.value} authorization completed. Verify your email to create an account or link an existing account.`, hint: 'A verification code is required, even for a GitHub verified email.', note: 'A registered email links your existing account and keeps its password.', email: 'Email to link', enter: 'Link email and continue', loading: 'Reading authorization', completing: 'Completing sign-in' } : isJapanese.value ? { title: 'メールを確認', subtitle: `${oauthProviderName.value} の認証が完了しました。メールを確認して登録または既存アカウントに連携します。`, hint: 'GitHub で確認済みのメールでも確認コードが必要です。', note: '登録済みのメールは既存アカウントに連携し、パスワードは変更しません。', email: '連携するメール', enter: 'メールを連携して続行', loading: '認証情報を読み込み中', completing: 'ログイン処理中' } : { title: '绑定邮箱', subtitle: `${oauthProviderName.value} 授权已完成，请验证邮箱来完成账号绑定。邮箱若已注册，会绑定到已有账号。`, hint: '请验证可接收验证码的邮箱，GitHub 已验证邮箱也需验证码', note: '邮箱已注册时绑定到已有账号并保留原密码；未注册时创建新账号。', email: '绑定邮箱', enter: '绑定邮箱并进入', loading: '正在读取授权信息', completing: '正在完成登录' });
 const oauthRequiresEmailBinding = computed(() => oauth.mode === 'email' || Boolean(oauth.profile?.requiresEmailBinding));
 const authTitle = computed(() => (
   hasOAuthTicket.value
-    ? (oauthRequiresEmailBinding.value ? '绑定邮箱' : 'QQ 登录确认')
+    ? (oauthRequiresEmailBinding.value ? oauthCopy.value.title : `${oauthProviderName.value} 登录确认`)
     : forgotMode.value
       ? props.t.resetPassword
       : (isEnglish.value ? 'Welcome back' : (isJapanese.value ? 'おかえりなさい' : '欢迎回来'))
@@ -75,7 +80,7 @@ const authTitle = computed(() => (
 const authSubtitle = computed(() => (
   hasOAuthTicket.value
     ? (oauthRequiresEmailBinding.value
-      ? 'QQ 授权已完成，请验证邮箱来完成账号绑定。邮箱若已注册，会自动合并到已有账号。'
+      ? oauthCopy.value.subtitle
       : oauth.profile?.hasEmailMatch
       ? '检测到相同邮箱账号，可验证后把 QQ 绑定到同一个账号，也可以直接开通新账号。'
       : 'QQ 授权已完成，可以直接进入，也可以绑定已有站内账号。')
@@ -83,7 +88,7 @@ const authSubtitle = computed(() => (
 ));
 const oauthProfileHint = computed(() => (
   oauthRequiresEmailBinding.value
-    ? 'QQ 未提供邮箱，请绑定一个可接收验证码的邮箱'
+    ? (oauth.provider === 'github' ? oauthCopy.value.hint : 'QQ 未提供邮箱，请绑定一个可接收验证码的邮箱')
     : (oauth.profile?.email || 'QQ 未返回邮箱，可手动绑定已有邮箱账号')
 ));
 const authVisualTitle = computed(() => (isEnglish.value ? 'Tsukuyomi Space' : (isJapanese.value ? '月読空間' : '月读空间')));
@@ -98,7 +103,16 @@ const oauthErrorText = {
   qq_denied: 'QQ 授权已取消',
   qq_missing_code: 'QQ 回调缺少授权码，请重新登录',
   qq_invalid_state: 'QQ 登录状态已过期，请重新授权',
-  qq_callback_failed: 'QQ 回调处理失败，请稍后再试'
+  qq_callback_failed: 'QQ 回调处理失败，请稍后再试',
+  github_not_configured: 'GitHub 登录暂未配置，请稍后再试',
+  github_start_failed: 'GitHub 登录启动失败，请稍后再试',
+  github_denied: 'GitHub 授权已取消',
+  github_missing_code: 'GitHub 回调缺少授权码，请重新登录',
+  github_invalid_state: 'GitHub 登录状态已过期，请重新授权',
+  github_callback_failed: 'GitHub 回调处理失败，请稍后再试',
+  github_already_bound: '该 GitHub 已绑定其他账号',
+  github_account_unavailable: '账号不可用',
+  github_login_required: '请先登录网站，再在用户中心绑定 GitHub'
 };
 
 function showMessage(type, message) {
@@ -275,6 +289,11 @@ async function startQQLogin() {
   }
 }
 
+async function startGitHubLogin() {
+  try { window.location.href = await githubOAuthStartUrl(authRedirect.value); }
+  catch (_) { showMessage('error', isEnglish.value ? 'GitHub sign-in is unavailable. Please try again.' : 'GitHub 登录暂时无法连接，请稍后重试'); }
+}
+
 function clearOAuthFlow() {
   oauth.ticket = '';
   oauth.profile = null;
@@ -294,19 +313,19 @@ async function loadOAuthPending(ticket) {
   oauth.loading = true;
   oauth.message = '';
   try {
-    const response = await apiFetch(`/api/auth/oauth/qq/pending?ticket=${encodeURIComponent(ticket)}`, {
+    const response = await apiFetch(`/api/auth/oauth/${oauth.provider}/pending?ticket=${encodeURIComponent(ticket)}`, {
       headers: { Accept: 'application/json' },
       cache: 'no-store'
     });
     const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || 'QQ 登录状态读取失败');
+    if (!result.success) throw new Error(result.message || `${oauthProviderName.value} 登录状态读取失败`);
     oauth.profile = result.data;
     oauth.createUsername = result.data.suggestedUsername || result.data.nickname || '';
     oauth.mode = result.data.requiresEmailBinding ? 'email' : (result.data.hasEmailMatch ? 'bind' : 'create');
     oauth.email = result.data.email || '';
     if (result.data.email) oauth.identity = result.data.email;
   } catch (error) {
-    showOAuthMessage('error', error.message || 'QQ 登录状态读取失败');
+    showOAuthMessage('error', error.message || `${oauthProviderName.value} 登录状态读取失败`);
   } finally {
     oauth.loading = false;
   }
@@ -379,18 +398,18 @@ async function submitOAuthBind() {
 }
 
 async function submitOAuthEmailBind() {
-  if (oauth.newPassword.length < 8) {
+  if (oauthNeedsPassword.value && oauth.newPassword.length < 8) {
     showOAuthMessage('error', props.t.passwordTooShort);
     return;
   }
-  if (oauth.newPassword !== oauth.confirmPassword) {
+  if (oauthNeedsPassword.value && oauth.newPassword !== oauth.confirmPassword) {
     showOAuthMessage('error', props.t.passwordMismatch);
     return;
   }
   oauth.submitting = true;
   oauth.message = '';
   try {
-    const response = await apiFetch('/api/auth/oauth/qq/email', {
+    const response = await apiFetch(`/api/auth/oauth/${oauth.provider}/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -403,8 +422,8 @@ async function submitOAuthEmailBind() {
       })
     });
     const result = await parseResponse(response);
-    if (!result.success) throw new Error(result.message || 'QQ 邮箱绑定失败');
-    await finishOAuthLogin(result, 'QQ 邮箱绑定成功');
+    if (!result.success) throw new Error(result.message || `${oauthProviderName.value} 邮箱绑定失败`);
+    await finishOAuthLogin(result, `${oauthProviderName.value} 邮箱绑定成功`);
   } catch (error) {
     showOAuthMessage('error', props.t.failedPrefix + error.message);
   } finally {
@@ -443,10 +462,11 @@ onMounted(() => {
   const params = new URLSearchParams(window.location.search || '');
   const oauthError = params.get('oauth_error');
   if (oauthError) {
-    showMessage('error', oauthErrorText[oauthError] || 'QQ 登录失败，请稍后再试');
+    showMessage('error', uiText(oauthErrorText[oauthError] || 'QQ 登录失败，请稍后再试'));
   }
 
-  if (params.get('oauth') === 'qq' && params.get('ticket')) {
+  if (['qq', 'github'].includes(params.get('oauth')) && params.get('ticket')) {
+    oauth.provider = params.get('oauth');
     oauth.ticket = params.get('ticket');
     loadOAuthPending(oauth.ticket);
   } else if (params.get('forgot') === '1') {
@@ -485,27 +505,27 @@ onMounted(() => {
             <p class="panel-subtitle">{{ authSubtitle }}</p>
           </div>
 
-          <StatusLoader v-if="oauth.loading" label="正在读取 QQ 授权信息" />
+          <StatusLoader v-if="oauth.loading" :label="oauthCopy.loading" />
           <template v-else>
             <div v-if="oauth.profile" class="oauth-profile">
               <img v-if="oauth.profile.avatar" :src="oauth.profile.avatar" :alt="oauth.profile.nickname">
-              <div v-else class="oauth-avatar">QQ</div>
+              <div v-else class="oauth-avatar">{{ oauthProviderName }}</div>
               <div>
-                <strong>{{ oauth.profile.nickname || 'QQ 用户' }}</strong>
+                <strong>{{ oauth.profile.nickname || oauthProviderName }}</strong>
                 <span>{{ oauthProfileHint }}</span>
               </div>
             </div>
 
             <div v-if="oauth.message" class="form-message" :class="oauth.type">{{ oauth.message }}</div>
-            <StatusLoader v-if="oauth.submitting" label="正在完成 QQ 登录" compact />
+            <StatusLoader v-if="oauth.submitting" :label="oauthCopy.completing" compact />
 
             <form v-if="oauth.mode === 'email'" class="oauth-email-form" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthEmailBind">
               <div class="oauth-bind-note">
                 <TsIcon name="mail" :size="18" />
-                <span>邮箱已注册时会自动绑定到已有账号；邮箱未注册时会作为新的登录邮箱。</span>
+                <span>{{ oauth.provider === 'github' ? oauthCopy.note : '邮箱已注册时会自动绑定到已有账号；邮箱未注册时会作为新的登录邮箱。' }}</span>
               </div>
               <div class="form-group">
-                <label for="qqBindEmail">绑定邮箱</label>
+                <label for="qqBindEmail">{{ oauthCopy.email }}</label>
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="mail" :size="18" />
                   <input name="qqBindEmail" id="qqBindEmail" v-model="oauth.email" required type="email" autocomplete="email" placeholder="请输入要绑定的邮箱">
@@ -524,7 +544,7 @@ onMounted(() => {
                   </button>
                 </div>
               </div>
-              <div class="form-group">
+              <div v-if="oauthNeedsPassword" class="form-group">
                 <label for="qqEmailPassword">{{ t.setLoginPassword }}</label>
                 <div class="auth-input-shell has-action">
                   <TsIcon class="auth-field-icon" name="lock" :size="18" />
@@ -534,14 +554,14 @@ onMounted(() => {
                   </button>
                 </div>
               </div>
-              <div class="form-group">
+              <div v-if="oauthNeedsPassword" class="form-group">
                 <label for="qqEmailPasswordConfirm">{{ t.confirmPassword }}</label>
                 <div class="auth-input-shell">
                   <TsIcon class="auth-field-icon" name="shield" :size="18" />
                   <input name="qqEmailPasswordConfirm" id="qqEmailPasswordConfirm" v-model="oauth.confirmPassword" required minlength="8" maxlength="128" :type="showOAuthPassword ? 'text' : 'password'" :placeholder="t.confirmPh" autocomplete="new-password">
                 </div>
               </div>
-              <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? '正在绑定...' : '绑定邮箱并进入' }}</button>
+              <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? oauthCopy.completing : oauthCopy.enter }}</button>
             </form>
 
             <template v-else>
@@ -707,6 +727,10 @@ onMounted(() => {
               <button class="oauth-icon-btn qq" type="button" :aria-label="isEnglish ? 'Sign in with QQ' : 'QQ 登录'" :title="isEnglish ? 'Sign in with QQ' : 'QQ 登录'" @click="startQQLogin">
                 <img :src="qqIconUrl" alt="">
                 <span>{{ isEnglish ? 'Sign in with QQ' : 'QQ 登录' }}</span>
+              </button>
+              <button class="oauth-icon-btn github" type="button" :aria-label="isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录'" @click="startGitHubLogin">
+                <TsIcon name="github" :size="22" />
+                <span>{{ isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录' }}</span>
               </button>
             </div>
           </div>

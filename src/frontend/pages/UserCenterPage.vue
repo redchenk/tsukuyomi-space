@@ -2,7 +2,7 @@
 import { encodedAvatarInitial } from '../utils/userName.mjs';
 import ModerationNotice from '../components/ModerationNotice.vue';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { authFetch, authHeaders, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
+import { authFetch, authHeaders, githubOAuthStartUrl, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
@@ -42,6 +42,12 @@ const uc = reactive({
   profileLoading: false,
   profileError: '',
   passwordChanging: false,
+  githubUnlinking: false,
+  githubUnlinkOpen: false,
+  githubPassword: '',
+  githubMsg: '',
+  githubMsgType: 'error',
+  githubStarting: false,
   qqUnlinking: false,
   qqUnlinkOpen: false,
   qqPassword: '',
@@ -191,6 +197,38 @@ const ucQQDescription = computed(() => {
     ? `已连接 ${ucQQDisplayName.value}，可使用 QQ 或邮箱登录同一账号。`
     : '未连接 QQ。登录页使用 QQ 授权后，可绑定到当前账号。';
 });
+const ucGitHubAccount = computed(() => ucOAuthAccounts.value.find(account => account?.provider === 'github') || null);
+const ucGitHubCopy = computed(() => props.lang === 'en' ? { title: 'GitHub login', bind: 'Link GitHub', unlink: 'Unlink GitHub', hint: 'Link your GitHub account to sign in to this account.', linked: 'GitHub and email sign in to the same account.', password: 'Current password', confirm: 'Confirm unlink', cancel: 'Cancel', unavailable: 'Unable to connect to GitHub. Please try again.' } : props.lang === 'ja' ? { title: 'GitHub ログイン', bind: 'GitHub を連携', unlink: 'GitHub の連携を解除', hint: 'GitHub を連携すると、このアカウントにログインできます。', linked: 'GitHub とメールで同じアカウントにログインできます。', password: '現在のパスワード', confirm: '連携解除を確認', cancel: 'キャンセル', unavailable: 'GitHub に接続できません。再試行してください。' } : { title: 'GitHub 登录', bind: '绑定 GitHub', unlink: '解绑 GitHub', hint: '手动连接 GitHub，之后可一键登录当前账号。', linked: '已连接 GitHub，可使用 GitHub 或邮箱登录同一账号。', password: '当前密码', confirm: '确认解绑', cancel: '取消', unavailable: 'GitHub 暂时无法连接，请稍后重试' });
+async function ucBindGitHub() {
+  uc.githubStarting = true;
+  uc.githubMsg = '';
+  try { window.location.href = await githubOAuthStartUrl('/user-center', 'bind'); }
+  catch (_) { ucShowMessage('github', ucGitHubCopy.value.unavailable); uc.githubStarting = false; }
+}
+function ucToggleGitHubUnlink() {
+  uc.githubUnlinkOpen = !uc.githubUnlinkOpen;
+  uc.githubPassword = '';
+  uc.githubMsg = '';
+}
+async function ucUnlinkGitHub() {
+  uc.githubUnlinking = true;
+  uc.githubMsg = '';
+  try {
+    const response = await authFetch('/api/auth/oauth/github/unlink', {
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ currentPassword: uc.githubPassword })
+    });
+    const result = await parseResponse(response);
+    if (!result.success) throw new Error(result.message || ucGitHubCopy.value.unavailable);
+    ucUser.value = result.data.user;
+    updateStoredUser(result.data.user);
+    uc.githubPassword = '';
+    uc.githubUnlinkOpen = false;
+    emit('auth-changed');
+    ucShowToast(result.message);
+  } catch (error) { ucShowMessage('github', error.message); }
+  finally { uc.githubUnlinking = false; }
+}
 const ucFilteredArticles = computed(() => {
   if (!uc.articleQuery) return uc.articles;
   const q = uc.articleQuery.toLowerCase();
@@ -776,6 +814,13 @@ watch(() => props.user, (nextUser) => {
 });
 
 onMounted(async () => {
+  const oauthParams = new URLSearchParams(window.location.search);
+  if (oauthParams.get('oauth_linked') === 'github' || oauthParams.get('oauth_error')?.startsWith('github_')) {
+    uc.tab = 'security';
+    if (oauthParams.has('oauth_error')) ucShowMessage('github', oauthParams.get('oauth_error') === 'github_already_bound' ? (props.lang === 'en' ? 'This GitHub is already linked to another account.' : '该 GitHub 或当前账号已有其他绑定，请检查后重试') : ucGitHubCopy.value.unavailable);
+    else ucShowToast(props.lang === 'en' ? 'GitHub linked' : props.lang === 'ja' ? 'GitHub を連携しました' : 'GitHub 已绑定');
+  }
+
   window.addEventListener('focus', ucReloadVisibleArticles);
   window.addEventListener('pageshow', ucReloadVisibleArticles);
   document.addEventListener('visibilitychange', ucReloadVisibleArticles);
@@ -1214,6 +1259,28 @@ onUnmounted(() => {
                         <div v-if="uc.qqMsg" class="form-message" :class="uc.qqMsgType" role="status">{{ uc.qqMsg }}</div>
                       </form>
                     </div>
+                  </div>
+                </div>
+                <div class="uc-oauth-status uc-github-status" :class="{ bound: ucGitHubAccount }">
+                  <div class="uc-oauth-icon"><TsIcon name="github" :size="20" /></div>
+                  <div class="uc-oauth-main">
+                    <div class="uc-oauth-title"><span>{{ ucGitHubCopy.title }}</span><strong>{{ ucGitHubAccount ? ucCopy.linked : ucCopy.unlinked }}</strong></div>
+                    <p>{{ ucGitHubAccount ? ucGitHubCopy.linked : ucGitHubCopy.hint }}</p>
+                    <small v-if="ucGitHubAccount?.nickname">{{ ucGitHubAccount.nickname }}</small>
+                    <div class="uc-oauth-actions">
+                      <button v-if="!ucGitHubAccount" class="icon-btn uc-icon-action" type="button" :disabled="uc.githubStarting || uc.profileLoading" @click="ucBindGitHub"><TsIcon name="link" :size="16" /><span>{{ ucGitHubCopy.bind }}</span></button>
+                      <button v-else-if="!uc.githubUnlinkOpen" class="danger-btn uc-icon-action" type="button" @click="ucToggleGitHubUnlink"><TsIcon name="x" :size="16" /><span>{{ ucGitHubCopy.unlink }}</span></button>
+                      <form v-else class="uc-oauth-unlink-form" :aria-busy="uc.githubUnlinking" @submit.prevent="ucUnlinkGitHub">
+                        <input type="hidden" name="username" :value="ucUser?.username" autocomplete="username">
+                        <label for="ucGitHubUnlinkPassword">{{ ucGitHubCopy.password }}</label>
+                        <input id="ucGitHubUnlinkPassword" v-model="uc.githubPassword" name="current-password" type="password" required maxlength="128" autocomplete="current-password">
+                        <div class="uc-oauth-unlink-buttons">
+                          <button class="danger-btn" type="submit" :disabled="uc.githubUnlinking">{{ ucGitHubCopy.confirm }}</button>
+                          <button class="icon-btn" type="button" :disabled="uc.githubUnlinking" @click="ucToggleGitHubUnlink">{{ ucGitHubCopy.cancel }}</button>
+                        </div>
+                      </form>
+                    </div>
+                    <div v-if="uc.githubMsg" class="form-message" :class="uc.githubMsgType" role="status">{{ uc.githubMsg }}</div>
                   </div>
                 </div>
                 <h3>{{ t.ucSecurityTip }}</h3>

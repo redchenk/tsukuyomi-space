@@ -549,10 +549,13 @@ body .page.auth-page .auth-divider span {
 body .page.auth-page .oauth-provider-row {
     justify-content: flex-start;
     min-height: auto;
+    flex-wrap: wrap;
+    gap: 0.7rem;
 }
 
 body .page.auth-page .oauth-icon-btn {
     width: min(100%, 14.5rem);
+    flex: 1 1 11rem;
     height: 3.6rem;
     display: inline-flex;
     align-items: center;
@@ -1883,4 +1886,3 @@ body .page.auth-page .oauth-back-btn {
         transition-duration: 0.001ms !important;
     }
 }
-

@@ -32,18 +32,31 @@ export function apiUrl(url) {
   return base ? `${base}${value}` : value;
 }
 
-export async function qqOAuthStartUrl(redirect = '/hub') {
-  const pathname = `/api/auth/oauth/qq/start?redirect=${encodeURIComponent(redirect)}`;
+export async function oauthStartUrl(provider, redirect = '/hub', action = 'login') {
+  if (!['qq', 'github'].includes(provider)) throw new Error('不支持的登录方式');
+  const query = new URLSearchParams({ redirect, ...(action === 'bind' ? { action } : {}) });
+  const pathname = `/api/auth/oauth/${provider}/start?${query}`;
   if (['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)) return apiUrl(pathname);
   // OAuth must start on its registered callback origin so the browser-binding
   // cookie survives the provider round trip, including from the overseas site.
   const settings = await loadPublicSettings();
-  const endpoint = new URL(settings.qqOAuthStartUrl);
+  const preferred = provider === 'github' && Array.isArray(settings.githubOAuthStartUrls)
+    ? settings.githubOAuthStartUrls.find(value => { try { return new URL(value).origin === window.location.origin; } catch (_) { return false; } }) : '';
+  const endpoint = new URL(preferred || settings[`${provider}OAuthStartUrl`]);
+  if (provider === 'github') query.set('site', endpoint.origin);
   if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password
-      || endpoint.pathname !== '/api/auth/oauth/qq/start') throw new Error('QQ 登录入口配置无效');
-  endpoint.search = new URLSearchParams({ redirect }).toString();
+      || endpoint.pathname !== `/api/auth/oauth/${provider}/start`) throw new Error('登录入口配置无效');
+  endpoint.search = query.toString();
   endpoint.hash = '';
   return endpoint.toString();
+}
+
+export function qqOAuthStartUrl(redirect = '/hub') {
+  return oauthStartUrl('qq', redirect);
+}
+
+export function githubOAuthStartUrl(redirect = '/hub', action = 'login') {
+  return oauthStartUrl('github', redirect, action);
 }
 
 export function getAuthToken() {

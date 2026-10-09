@@ -93,10 +93,24 @@ function createOAuthAccount({
 }
 
 function writeOAuthAccount(account) {
+    const other = listOAuthAccountsByUser(account.userId).find(row =>
+        row.provider === account.provider && row.provider_user_id !== account.providerUserId);
+    if (other) {
+        const error = new Error('当前账号已绑定其他同类第三方账号，请先解绑');
+        error.status = 409;
+        throw error;
+    }
     const existing = findOAuthAccount(account.provider, account.providerUserId);
     if (!existing) {
         createOAuthAccount(account);
         return;
+    }
+
+    // A provider identity cannot move between site accounts during linking.
+    if (existing.user_id !== account.userId) {
+        const error = new Error('该第三方账号已绑定其他账号');
+        error.status = 409;
+        throw error;
     }
 
     db.prepare(`

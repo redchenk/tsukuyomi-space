@@ -8886,5 +8886,141 @@
   "图片请求已完成；识别正确性请查看模型回复，本次不自动修改能力声明": {
     "en": "The image request completed. Check the reply for recognition accuracy. This test does not change capability declarations.",
     "ja": "画像リクエストが完了しました。認識の正確さはモデルの返信を確認してください。機能の宣言は変更しません。"
+  },
+  "GitHub 登录": {
+    "en": "GitHub sign-in",
+    "ja": "GitHub ログイン"
+  },
+  "{0} 授权已完成，请验证邮箱来完成账号绑定。邮箱若已注册，会绑定到已有账号。": {
+    "en": "{0} authorization is complete. Verify your email to create or link your account. A registered email links the existing account.",
+    "ja": "{0} の認証が完了しました。メールを確認して登録または既存アカウントに連携してください。"
+  },
+  "请验证可接收验证码的邮箱，GitHub 已验证邮箱也需验证码": {
+    "en": "Verify an email that can receive a code, even if it is verified on GitHub.",
+    "ja": "確認コードを受信できるメールを確認してください。GitHub で確認済みでもコードが必要です。"
+  },
+  "{0} 登录确认": {
+    "en": "Confirm {0} sign-in",
+    "ja": "{0} ログインの確認"
+  },
+  "GitHub 登录暂时无法连接，请稍后重试": {
+    "en": "GitHub sign-in is unavailable. Please try again.",
+    "ja": "GitHub に接続できません。再試行してください。"
+  },
+  "{0} 邮箱绑定失败": {
+    "en": "Could not link an email to {0}",
+    "ja": "{0} のメール連携に失敗しました"
+  },
+  "手动连接 GitHub，之后可一键登录当前账号。": {
+    "en": "Link GitHub to sign in to this account with one click.",
+    "ja": "GitHub を連携すると、このアカウントにワンクリックでログインできます。"
+  },
+  "该 GitHub 或当前账号已有其他绑定，请检查后重试": {
+    "en": "This GitHub or site account already has another link. Check the link and try again.",
+    "ja": "この GitHub またはサイトのアカウントには別の連携があります。確認して再試行してください。"
+  },
+  "GitHub 已绑定": {
+    "en": "GitHub linked",
+    "ja": "GitHub を連携しました"
+  },
+  "不支持的登录方式": {
+    "en": "Unsupported sign-in method",
+    "ja": "未対応のログイン方法です"
+  },
+  "登录入口配置无效": {
+    "en": "Invalid sign-in configuration",
+    "ja": "ログイン設定が無効です"
+  },
+  "GitHub 登录暂未配置，请稍后再试": {
+    "en": "GitHub sign-in is not configured yet. Please try later.",
+    "ja": "GitHub ログインはまだ設定されていません。後でもう一度お試しください。"
+  },
+  "GitHub 登录启动失败，请稍后再试": {
+    "en": "Could not start GitHub sign-in. Please try again.",
+    "ja": "GitHub ログインを開始できません。再試行してください。"
+  },
+  "GitHub 授权已取消": {
+    "en": "GitHub authorization cancelled",
+    "ja": "GitHub の認証をキャンセルしました"
+  },
+  "GitHub 回调缺少授权码，请重新登录": {
+    "en": "GitHub did not return an authorization code. Please sign in again.",
+    "ja": "GitHub の認証コードがありません。再度ログインしてください。"
+  },
+  "GitHub 登录状态已过期，请重新授权": {
+    "en": "GitHub sign-in expired. Please authorize again.",
+    "ja": "GitHub ログインの有効期限が切れました。再認証してください。"
+  },
+  "GitHub 回调处理失败，请稍后再试": {
+    "en": "Could not complete GitHub authorization. Please try again.",
+    "ja": "GitHub の認証を完了できません。再試行してください。"
+  },
+  "该 GitHub 已绑定其他账号": {
+    "en": "This GitHub is already linked to another account.",
+    "ja": "この GitHub は別のアカウントに連携済みです。"
+  },
+  "账号不可用": {
+    "en": "Account unavailable",
+    "ja": "アカウントを利用できません"
+  },
+  "请先登录网站，再在用户中心绑定 GitHub": {
+    "en": "Sign in to the site first, then link GitHub in the user center.",
+    "ja": "先にサイトにログインし、ユーザーセンターで GitHub を連携してください。"
+  },
+  "GitHub 登录处理失败，请重试": {
+    "en": "Could not complete GitHub sign-in. Please try again.",
+    "ja": "GitHub ログインを完了できません。再試行してください。"
+  },
+  "该 GitHub 或邮箱已绑定其他账号": {
+    "en": "This GitHub or email is already linked to another account.",
+    "ja": "この GitHub またはメールは別のアカウントに連携済みです。"
+  },
+  "请先为当前账号绑定邮箱": {
+    "en": "Link an email to your current account first.",
+    "ja": "先に現在のアカウントにメールを連携してください。"
+  },
+  "当前账号已绑定其他 GitHub，请先解绑": {
+    "en": "This account already has another GitHub linked. Unlink it first.",
+    "ja": "別の GitHub に連携済みです。先に連携を解除してください。"
+  },
+  "请输入有效的真实邮箱": {
+    "en": "Enter a valid email address.",
+    "ja": "有効なメールアドレスを入力してください。"
+  },
+  "该 GitHub 已绑定其他邮箱账号": {
+    "en": "This GitHub is already linked to another email account.",
+    "ja": "この GitHub は別のメールアカウントに連携済みです。"
+  },
+  "登录请求已处理，请重新授权": {
+    "en": "This sign-in request was already processed. Please authorize again.",
+    "ja": "このログイン要求は処理済みです。再認証してください。"
+  },
+  "GitHub 已绑定到已有邮箱账号": {
+    "en": "GitHub linked to your existing email account.",
+    "ja": "GitHub を既存のメールアカウントに連携しました。"
+  },
+  "邮箱已绑定，GitHub 登录成功": {
+    "en": "Email linked. GitHub sign-in successful.",
+    "ja": "メールを連携しました。GitHub ログインに成功しました。"
+  },
+  "请先绑定邮箱以保留登录方式": {
+    "en": "Link an email first so you can still sign in.",
+    "ja": "ログインできるよう、先にメールを連携してください。"
+  },
+  "当前账号未绑定 GitHub": {
+    "en": "This account has no GitHub linked.",
+    "ja": "このアカウントは GitHub に未連携です。"
+  },
+  "GitHub 已解绑": {
+    "en": "GitHub unlinked",
+    "ja": "GitHub の連携を解除しました"
+  },
+  "{0} 登录状态读取失败": {
+    "en": "Could not read {0} sign-in status",
+    "ja": "{0} のログイン情報を取得できませんでした"
+  },
+  "当前账号已绑定其他同类第三方账号，请先解绑": {
+    "en": "This account already has another identity linked with this provider. Unlink it first.",
+    "ja": "この認証サービスの別アカウントに連携済みです。先に解除してください。"
   }
 }

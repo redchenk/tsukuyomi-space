@@ -100,12 +100,15 @@ async function isTokenBlacklisted(token) {
     return Boolean(await store.get(tokenBlacklistKey(token)));
 }
 
-async function createOAuthState({ state, provider, browserBinding, userId = '', redirectPath = '/hub', ttlMs = config.oauth.stateTtlMs }) {
+async function createOAuthState({ state, provider, browserBinding, userId = '', redirectPath = '/hub', action = 'login', codeVerifier = '', redirectUri = '', ttlMs = config.oauth.stateTtlMs }) {
     await store.setJson(oauthStateKey(state), {
         provider,
         browserBinding,
         userId,
         redirectPath,
+        action,
+        codeVerifier,
+        redirectUri,
         created_at: Date.now()
     }, Math.ceil(ttlMs / 1000));
 }
@@ -114,7 +117,7 @@ async function consumeOAuthState(state, provider, browserBinding, userId = '') {
     const key = oauthStateKey(state);
     const row = await store.getJson(key);
     if (!browserBinding || !row || row.provider !== provider || row.browserBinding !== browserBinding || row.userId !== userId) return null;
-    await store.del(key);
+    if (!(await store.del(key))) return null;
     return row;
 }
 
@@ -149,7 +152,7 @@ async function consumeOAuthPending(ticket, provider, browserBinding) {
     const key = oauthPendingKey(ticket);
     const row = await getOAuthPending(ticket, provider, browserBinding);
     if (!row) return null;
-    await store.del(key);
+    if (!(await store.del(key))) return null;
     return row;
 }
 

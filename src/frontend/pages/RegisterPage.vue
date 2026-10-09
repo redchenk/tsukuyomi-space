@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue';
 import qqIconUrl from '../../../assets/icons/qq-login.png';
 import TsIcon from '../components/TsIcon.vue';
-import { apiFetch, qqOAuthStartUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
+import { apiFetch, qqOAuthStartUrl, githubOAuthStartUrl, countdown, loadCurrentSession, parseResponse, saveUserSession } from '../api/client';
 import { captureReferralCode } from '../services/userGrowth';
 import { getAuthRedirectFromLocation, withAuthRedirect } from '../utils/authRedirect';
 
@@ -98,6 +98,11 @@ async function submitRegister() {
   } finally {
     register.submitting = false;
   }
+}
+
+async function startGitHubLogin() {
+  try { window.location.href = await githubOAuthStartUrl(authRedirect.value); }
+  catch (_) { showMessage('error', isEnglish.value ? 'GitHub sign-in is unavailable. Please try again.' : 'GitHub 登录暂时无法连接，请稍后重试'); }
 }
 
 function go(path) {
@@ -200,6 +205,10 @@ async function startQQLogin() {
               <button class="oauth-icon-btn qq" type="button" :aria-label="isEnglish ? 'Continue with QQ' : 'QQ 登录'" :title="isEnglish ? 'Continue with QQ' : 'QQ 登录'" @click="startQQLogin">
                 <img :src="qqIconUrl" alt="">
                 <span>{{ isEnglish ? 'Continue with QQ' : 'QQ 登录' }}</span>
+              </button>
+              <button class="oauth-icon-btn github" type="button" :aria-label="isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录'" @click="startGitHubLogin">
+                <TsIcon name="github" :size="22" />
+                <span>{{ isEnglish ? 'Sign in with GitHub' : isJapanese ? 'GitHub でログイン' : 'GitHub 登录' }}</span>
               </button>
             </div>
           </div>

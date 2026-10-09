@@ -89,7 +89,10 @@ function createApp() {
         '/api/auth/oauth/qq/create',
         '/api/auth/oauth/qq/email',
         '/api/auth/oauth/qq/bind',
-        '/api/auth/oauth/qq/unlink'
+        '/api/auth/oauth/qq/unlink',
+        '/api/auth/oauth/github/start',
+        '/api/auth/oauth/github/email',
+        '/api/auth/oauth/github/unlink'
     ], sensitiveAuthLimiter);
     app.use('/api/auth/email-code', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'email-code' }));
     app.use('/api/admin/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'admin-login' }));
