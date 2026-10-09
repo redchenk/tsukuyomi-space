@@ -49,7 +49,7 @@ export function roomKnowledgeAllowsSpoilers(message) {
 export function shouldRetrieveRoomPersona(message, selected = []) {
   return !roomKnowledgeRequestsNoSpoilers(message)
     && /原作|电影|小说|剧情|设定|八千代|辉夜|彩叶|月夜见|remember|fushi|kassen|sengoku/i.test(knowledgeSearchText(message))
-    && !selected.some(item => item.id?.startsWith('yachiyo_canon_') && ['小说', '电影官方资料'].includes(item.edition));
+    && !selected.some(item => item.id?.startsWith('yachiyo_canon_') && /小说|电影字幕|电影官方资料/.test(item.edition || ''));
 }
 
 /** Rank precise titles/tags above shared vocabulary; keep spoilers opt-in. */
@@ -68,10 +68,15 @@ export function selectRoomKnowledgeEntries(message, settings, limit = 10, { rece
       && !(item.id === 'yachiyo_few_shots_001' && item.edition === '对话适配' && !/口吻|语气|说话方式|示例|台词风格/.test(query)))
     .map((item, index) => ({ ...item, index, label: knowledgeSearchText(`${item.title} ${item.tags}`), body: knowledgeSearchText(item.content) }));
   const frequencies = new Map(tokens.map(token => [token, records.filter(item => `${item.label} ${item.body}`.includes(token)).length]));
+  const asksMovie = /电影|字幕|片中|片末/.test(query);
+  const asksNovel = /小说|epub|书中/.test(query);
   const ranked = records.map(item => ({ ...item, score: tokens.reduce((sum, token) => {
     const weight = Math.log(1 + records.length / (1 + frequencies.get(token)));
     return sum + weight * (item.label.includes(token) ? 5 : item.body.includes(token) ? 1 : 0);
-  }, 0) })).filter(item => item.score > 1).sort((a, b) => b.score - a.score || a.index - b.index);
+  }, 0) })).filter(item => item.score > 1).map(item => ({ ...item,
+    score: item.score + (asksMovie && /电影字幕/.test(item.edition || '') ? 5 : 0)
+      + (asksNovel && /小说/.test(item.edition || '') ? 5 : 0)
+  })).sort((a, b) => b.score - a.score || a.index - b.index);
   // The fixed persona already supplies the voice. Leave most space for the topic.
   const selected = ranked.slice(0, count);
   const fallback = records.filter(item => coreIds.has(item.id)).slice(0, ranked.length ? 1 : 3);

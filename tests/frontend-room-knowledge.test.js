@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 const code = ['src/frontend/constants/room/knowledgeEntries.js', 'src/frontend/services/room/roomKnowledge.js']
   .map(file => fs.readFileSync(file, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, '')).join('\n');
-const api = vm.runInNewContext(code + '\n({shouldRetrieveRoomPersona, normalizeRoomKnowledge, selectRoomKnowledgeEntries, roomKnowledgeQuery, roomKnowledgeAllowsSpoilers, cloneKnowledgeEntry, legacy: LEGACY_ROOM_KNOWLEDGE_ENTRIES, defaults: DEFAULT_ROOM_KNOWLEDGE_ENTRIES, version: ROOM_KNOWLEDGE_VERSION})');
+const api = vm.runInNewContext(code + '\n({shouldRetrieveRoomPersona, normalizeRoomKnowledge, selectRoomKnowledgeEntries, roomKnowledgeQuery, roomKnowledgeAllowsSpoilers, cloneKnowledgeEntry, legacy: LEGACY_ROOM_KNOWLEDGE_ENTRIES, defaults: DEFAULT_ROOM_KNOWLEDGE_ENTRIES, version: ROOM_KNOWLEDGE_VERSION, previousIds: PREVIOUS_ROOM_KNOWLEDGE_IDS, previousOverrides: PREVIOUS_ROOM_KNOWLEDGE_OVERRIDES, previousVersion: PREVIOUS_ROOM_KNOWLEDGE_VERSION})');
 const copy = value => JSON.parse(JSON.stringify(value));
 const select = (q, settings, limit, options) => copy(api.selectRoomKnowledgeEntries(q, settings, limit, options));
 
@@ -83,7 +83,7 @@ test('short follow-ups retrieve the last human topic without treating assistant 
 });
 
 test('canon cards cover every story chapter with short paraphrases and edition boundaries', () => {
-  assert.equal(api.defaults.length, 81);
+  assert.equal(api.defaults.length, 101);
   for (const source of ['p-001.xhtml','p-010.xhtml','p-002.xhtml','p-003.xhtml','p-004.xhtml','p-005.xhtml','p-006.xhtml','p-007.xhtml','p-008.xhtml','p-009.xhtml']) {
     assert.ok(api.defaults.some(item => item.references.some(ref => ref.includes(source))), source);
   }
@@ -107,4 +107,57 @@ test('daily topics retrieve facts without feeding a matching scripted reply', ()
     assert.ok(!select(question, null).some(item => item.id === 'yachiyo_few_shots_001'));
   }
   assert.ok(select('给出八千代的语气示例', null).some(item => item.id === 'yachiyo_few_shots_001'));
+});
+
+const previousDefaults = () => copy(api.previousIds.map(id => api.previousOverrides[id] || api.defaults.find(item => item.id === id)));
+
+test('the complete previous 81-card edition upgrades to movie sources without overwriting edits', () => {
+  const previous = previousDefaults();
+  const speech = previous.find(item => item.id === 'yachiyo_speech_001');
+  speech.content = '用户希望八千代少用拖音';
+  previous.find(item => item.id === 'yachiyo_real_body_001').enabled = false;
+  previous.push({ id: 'custom-film-note', title: '我的电影笔记', content: '用户自己的观点', enabled: true });
+  const result = copy(api.normalizeRoomKnowledge({ builtinVersion: api.previousVersion, entries: previous }));
+  assert.equal(result.entries.length, 102);
+  const retained = result.entries.find(item => item.id === speech.id);
+  assert.equal(retained.content, speech.content);
+  assert.equal(retained.edition, undefined);
+  const body = result.entries.find(item => item.id === 'yachiyo_real_body_001');
+  assert.equal(body.enabled, false);
+  assert.match(body.references.join(' '), /电影字幕/);
+  assert.ok(result.entries.some(item => item.id === 'custom-film-note'));
+  assert.equal(result.entries.filter(item => item.id === 'yachiyo_canon_movie_ending').length, 1);
+  assert.equal(api.normalizeRoomKnowledge(result).entries.length, 102);
+});
+
+test('reduced previous libraries and deleted movie cards stay reduced across reloads', () => {
+  const reduced = previousDefaults().filter(item => item.id !== 'yachiyo_canon_research');
+  const result = copy(api.normalizeRoomKnowledge({ builtinVersion: api.previousVersion, entries: reduced }));
+  assert.equal(result.entries.length, 80);
+  assert.ok(!result.entries.some(item => item.id.startsWith('yachiyo_canon_movie_')));
+  const current = copy(api.defaults).filter(item => item.id !== 'yachiyo_canon_movie_ending');
+  const again = api.normalizeRoomKnowledge({ builtinVersion: api.version, entries: current });
+  assert.equal(again.entries.length, 100);
+  assert.ok(!again.entries.some(item => item.id === 'yachiyo_canon_movie_ending'));
+});
+
+test('movie questions retrieve timestamped sources and keep novel-only limits separate', () => {
+  for (const [question, id] of [
+    ['电影结尾机器人身体味觉恢复了吗', 'yachiyo_canon_movie_ending'],
+    ['电影里连续活动多久需要休眠，52小时在哪说的', 'yachiyo_canon_movie_sleep'],
+    ['电影后台泥鳅和螃蟹兔子是谁说的', 'yachiyo_canon_movie_backstage'],
+    ['电影的读心术握手故事有完整台词吗', 'yachiyo_canon_movie_handshake'],
+    ['电影Remember的歌词谁写的，可以剧透', 'yachiyo_canon_movie_lyrics']
+  ]) {
+    const entries = select(question, null, 5);
+    assert.ok(entries.some(item => item.id === id), `${question}: ${entries.map(item => item.id)}`);
+    assert.equal(api.shouldRetrieveRoomPersona(question, entries), false);
+  }
+  const sleep = api.defaults.find(item => item.id === 'yachiyo_canon_movie_sleep');
+  assert.match(sleep.content, /没有.*明确说明/);
+  assert.match(sleep.content, /来自小说/);
+  const movie = api.defaults.find(item => item.id === 'yachiyo_canon_movie_ending');
+  assert.equal(movie.edition, '电影字幕');
+  assert.match(movie.references[0], /02:07:53/);
+  assert.ok(select('不剧透，电影结局身体如何', null).every(item => !item.spoiler));
 });
