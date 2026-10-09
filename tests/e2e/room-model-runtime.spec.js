@@ -55,18 +55,17 @@ test('layered settings persist, declarations retain manual overrides, and actual
   await expect(result(page)).toContainText('测试完成');
   expect(requests.at(-1)).toMatchObject({ temperature: 0.3, max_completion_tokens: 256 });
   await expect(result(page)).toContainText('completion_tokens: 4');
-  const root = process.env.RUNTIME_QA_DIR || testInfo.outputPath('model-runtime-qa');
-  fs.mkdirSync(root, { recursive: true });
-  await page.screenshot({ path: `${root}/room-model-runtime-${testInfo.project.name}.png`, fullPage: true });
-  // Fixed navigation and save controls can overlap a multi-viewport element
-  // capture. Hide them only while capturing the isolated review artifacts.
-  const screenshotStyle = '.topbar, .site-music-drawer, .settings-savebar { display: none !important; }';
-  await page.locator('.runtime-panel').screenshot({ path: `${root}/room-model-controls-${testInfo.project.name}.png`, style: screenshotStyle, animations: 'disabled' });
-  await page.locator('.runtime-workbench').screenshot({ path: `${root}/room-model-diagnostic-${testInfo.project.name}.png`, style: screenshotStyle, animations: 'disabled' });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.evaluate(() => document.documentElement.dataset.theme = 'dark');
-  await page.locator('.runtime-workbench').screenshot({ path: `${root}/room-model-diagnostic-dark-${testInfo.project.name}.png`, style: screenshotStyle, animations: 'disabled' });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  // Review screenshots are an explicit artifact task. Keeping optional tall
+  // element captures out of the functional test avoids mobile WebKit spending
+  // the test timeout scrolling a multi-viewport element into a stable position.
+  if (process.env.RUNTIME_QA_DIR) {
+    fs.mkdirSync(process.env.RUNTIME_QA_DIR, { recursive: true });
+    await page.screenshot({ path: `${process.env.RUNTIME_QA_DIR}/room-model-runtime-dark-${testInfo.project.name}.png`,
+      fullPage: true, animations: 'disabled' });
+  }
 });
 test('tool protocol completes with a local fixture and report downloads exclude request content', async ({ page }) => {
   const requests = [];
