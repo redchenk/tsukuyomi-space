@@ -45,7 +45,8 @@
     "check:music": "node --check backend/services/netease-music.js && node --check backend/services/music-sessions.js && node --check backend/routes/music.js && node --check tests/netease-music.test.js && node --check tests/e2e/netease-music.spec.js",
     "test:music": "node --test tests/netease-music.test.js tests/music-playback-order.test.js",
     "preview:emails": "node scripts/preview-site-emails.js",
-    "test:i18n": "node --test tests/frontend-i18n.test.cjs"
+    "test:i18n": "node --test tests/frontend-i18n.test.cjs",
+    "test:model-runtime": "node --test tests/room-model-runtime.test.js tests/room-model-catalog.test.js tests/room-model-catalog-api.test.js tests/llm-agent-protocol.test.js tests/frontend-room-settings.test.js tests/frontend-room-diary.test.js tests/frontend-room-diary-flow.test.js"
   },
   "keywords": [
     "tsukuyomi",

@@ -1,5 +1,6 @@
 // Only documented, read-only model-list endpoints. Model authors do not
 // identify the service hosting them; keep provider IDs exactly as returned.
+const runtime = require('./model-runtime.cjs');
 const MAX_MODELS = 2000;
 const MAX_PAGE_BYTES = 2 * 1024 * 1024;
 const PROVIDERS = {
@@ -102,7 +103,7 @@ function normalizePage(payload, plan, cursor = '') {
         models.push({ id, nativeId: id, label: String(row.displayName || row.display_name || row.name || id).slice(0, 160),
             contextLength: Math.max(0, Number(row.context_length || row.context_window || row.max_context_length || row.inputTokenLimit || row.model_info?.max_input_tokens) || 0),
             created: Number.isFinite(created) ? created : 0, inputModalities: input.length ? input : vision ? ['text', 'image'] : ['text'],
-            outputModalities: output.length ? output : ['text'], source: 'provider' });
+            outputModalities: output.length ? output : ['text'], source: 'provider', capabilities: runtime.catalogCapabilities(row) });
     }
     let nextCursor = '';
     if (plan.provider === 'gemini') nextCursor = String(payload.nextPageToken || '');

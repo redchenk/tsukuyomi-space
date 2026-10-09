@@ -33,6 +33,7 @@ localStorage.setItem('roomLLMSettings', JSON.stringify({
 }));
 
 const context = {
+    llmRuntime: require('../shared/model-runtime.cjs'),
     console, Date, JSON, Number, String, Math, Object, Array, Boolean, URL, Promise, RegExp,
     localStorage,
     window: { location: { origin: 'https://example.test' }, setTimeout: () => 0 },

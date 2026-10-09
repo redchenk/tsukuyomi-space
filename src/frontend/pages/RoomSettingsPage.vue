@@ -1,5 +1,7 @@
 <script setup>
 import { uiText } from '../i18n/runtime';
+import llmRuntime from '../../../shared/model-runtime.cjs';
+import RoomModelRuntimePanel from '../components/room/RoomModelRuntimePanel.vue';
 import { detectProvider, catalogPlan, catalogScope, readCatalogCache, writeCatalogCache, fetchModelCatalog } from '../services/room/roomModelCatalog.mjs';
 import { callRoomMcp, validateMcpEndpoint } from '../services/room/roomMcp.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
@@ -207,7 +209,8 @@ let toastTimer = 0;
 let modelNoticeTimer = 0;
 
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
-const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '' });
+const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '', runtimeConfig: {} });
+const selectedModelDeclaration = computed(() => modelCatalog.models.find(item => item.nativeId === llm.model)?.capabilities);
 const tts = reactive({
   enabled: false,
   provider: 'mimo',
@@ -965,7 +968,7 @@ function isAnthropicChatApi(apiUrl, modelName) {
   return /api\.anthropic\.com|anthropic\.com\/v1\/messages|minimaxi\.com\/anthropic|\/anthropic\/v1\/messages/i.test(String(apiUrl || ''));
 }
 
-function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiUrl) {
+function makeBaseTestRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiUrl) {
   const defaultModel = /api\.moonshot\.cn|kimi/i.test(`${apiUrl || ''} ${modelName || ''}`) ? 'kimi-k2.6' : 'moonshot-v1-8k';
   if (isOllamaNativeApi(apiUrl)) {
     return {
@@ -1010,6 +1013,12 @@ function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiU
   };
   body.max_tokens = limit;
   return body;
+}
+
+function makeChatRequestBody(modelName, messages, limit = 240, apiUrl = llm.apiUrl) {
+  const settings = { ...normalizedLLMSettings(), apiUrl, model: modelName };
+  llmRuntime.requireCapability(settings, 'text');
+  return llmRuntime.applyParameters(makeBaseTestRequestBody(modelName, messages, limit, apiUrl), settings).payload;
 }
 
 function defaultTtsUrl(provider) {
@@ -1356,7 +1365,7 @@ function loadSettings() {
   model.xOffset = Number(modelSettings.xOffset || 0);
   model.yOffset = Number(modelSettings.yOffset || 0);
 
-  Object.assign(llm, { apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '', ...readJson('roomLLMSettings', {}) });
+  Object.assign(llm, { apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '', runtimeConfig: {}, ...readJson('roomLLMSettings', {}) });
   if (isOllamaApi(llm.apiUrl)) {
     llm.apiUrl = normalizeOllamaUrl(llm.apiUrl);
     llm.useProxy = false;
@@ -1646,6 +1655,9 @@ function normalizedLLMSettings() {
     : String(llm.apiUrl || '').trim();
   const modelName = String(llm.model || '').trim() || (isOllamaApi(apiUrl) ? 'qwen2.5:7b' : '');
   const needsApiKey = llmNeedsApiKey(apiUrl);
+  const runtimeConfig = llmRuntime.normalizeRuntime(llm.runtimeConfig);
+  const scope = llmRuntime.scopes({ apiUrl, model: modelName }).model;
+  if (scope && selectedModelDeclaration.value) runtimeConfig.declarations[scope] = llmRuntime.normalizeCapabilities(selectedModelDeclaration.value);
   return {
     apiUrl,
     apiKey: needsApiKey ? String(llm.apiKey || '').trim() : '',
@@ -1654,12 +1666,15 @@ function normalizedLLMSettings() {
     visionMode: ['auto', 'llm', 'mcp'].includes(llm.visionMode) ? llm.visionMode : 'auto',
     systemPrompt: String(llm.systemPrompt || '').trim(),
     catalogWorkspaceId: String(llm.catalogWorkspaceId || '').trim(),
+    runtimeConfig,
     needsApiKey
   };
 }
 
 function saveLLM(showDialog = true) {
-  const settings = normalizedLLMSettings();
+  let settings;
+  try { settings = normalizedLLMSettings(); llmRuntime.resolveParameters(settings); }
+  catch (error) { showToast(error.message, 'error'); return false; }
   try {
     const endpoint = new URL(settings.apiUrl);
     if (!['http:', 'https:'].includes(endpoint.protocol) || !settings.model) throw new Error();
@@ -1679,8 +1694,10 @@ function saveLLM(showDialog = true) {
     useProxy: settings.useProxy,
     visionMode: settings.visionMode,
     systemPrompt: settings.systemPrompt,
-    catalogWorkspaceId: settings.catalogWorkspaceId
+    catalogWorkspaceId: settings.catalogWorkspaceId,
+    runtimeConfig: settings.runtimeConfig
   }, 'LLM 设置')) return false;
+  llm.runtimeConfig = settings.runtimeConfig;
   rememberSaved('llm');
   queueModelCatalogRefresh();
   const ready = !settings.needsApiKey || Boolean(settings.apiKey);
@@ -1699,7 +1716,9 @@ function saveLLM(showDialog = true) {
 
 async function testLLM() {
   if (connectionCheck.status === 'loading') return;
-  const settings = normalizedLLMSettings();
+  let settings;
+  try { settings = normalizedLLMSettings(); llmRuntime.resolveParameters(settings); llmRuntime.requireCapability(settings, 'text'); }
+  catch (error) { openTestDialog('llm', 'error', 'LLM 连接测试', error.message); return; }
   connectionCheck.snapshot = sectionSnapshot('llm');
   connectionCheck.status = 'error';
   try {
@@ -1727,7 +1746,7 @@ async function testLLM() {
       signal: controller.signal,
       headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model),
       body: JSON.stringify(settings.useProxy
-        ? { message: '请用一句话回复连接测试。', apiKey: settings.apiKey, apiUrl: settings.apiUrl, model: settings.model }
+        ? { message: '请用一句话回复连接测试。', apiKey: settings.apiKey, apiUrl: settings.apiUrl, model: settings.model, runtimeConfig: llmRuntime.transportRuntime(settings) }
         : makeChatRequestBody(settings.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120, settings.apiUrl))
     });
     const raw = await response.json().catch(() => ({}));
@@ -2786,6 +2805,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </details>
+          <RoomModelRuntimePanel v-model="llm.runtimeConfig" :settings="llm" :declaration="selectedModelDeclaration" />
           <div class="settings-test-footer">
             <div class="settings-connection" role="status">
               <span class="settings-status" :class="testedConnectionStatus"

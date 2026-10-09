@@ -99,11 +99,12 @@ async function readBody(response, signal, maxBytes = LIMIT, json = true) {
 const readJson = (response, signal, maxBytes) => readBody(response, signal, maxBytes);
 const readText = (response, signal, maxBytes) => readBody(response, signal, maxBytes, false);
 
-async function readStream(response, { provider = 'openai', onDelta = () => {}, signal, allowTools = false } = {}) {
+async function readStream(response, { provider = 'openai', onDelta = () => {}, onEvent = () => {}, signal, allowTools = false } = {}) {
     if (!response?.ok) throw error('LLM_HTTP', `LLM ${response?.status || 'request failed'}`);
     const contentType = response.headers?.get?.('content-type') || '';
     if (!response.body?.getReader || /application\/json/i.test(contentType)) {
         const result = fromJson(await readJson(response, signal), { provider, allowTools });
+        onEvent('json');
         if (result.reply) await onDelta(result.reply);
         return result;
     }
@@ -113,13 +114,15 @@ async function readStream(response, { provider = 'openai', onDelta = () => {}, s
     const abort = () => { reader.cancel().catch(() => {}); };
     const emit = async value => { if (!value) return; reply = bounded(reply + value, 262144); await onDelta(value); };
     async function consume(raw, event = 'message') {
+        onEvent('event');
         if (raw === '[DONE]') { completed = terminal = true; return; }
         let data; try { data = JSON.parse(raw); } catch { throw error('LLM_JSON', '模型流式 JSON 无效'); }
         const reason = checkStatus(data);
         model = data.model || data.message?.model || data.response?.model || model;
         if (data.usage) usage = { ...(usage || {}), ...data.usage };
         if (provider === 'proxy') {
-            if (event === 'error') throw error('LLM_PROXY_ERROR', String(data.message || '模型服务返回错误').slice(0, 300));
+            if (event === 'error') throw Object.assign(error(/^[A-Z0-9_]{1,48}$/.test(data.code || '') ? data.code : 'LLM_PROXY_ERROR', String(data.message || '模型服务返回错误').slice(0, 300)),
+                Number.isInteger(data.statusCode) && data.statusCode >= 400 && data.statusCode <= 599 ? { statusCode: data.statusCode } : {});
             if (event === 'delta') await emit(data.text);
             if (event === 'done') { final = data; completed = terminal = true; }
         } else if (provider === 'responses') {
@@ -203,6 +206,8 @@ async function readStream(response, { provider = 'openai', onDelta = () => {}, s
                 ...(reasoning ? { reasoning_content: reasoning } : {}), tool_calls: toolCalls.map(p => ({ id: p.id, type: 'function', function: { name: p.name, arguments: p.arguments } })) }] } };
         }
         const result = finish({ reply: final?.reply || reply, model: final?.model || model, ...(usage || final?.usage ? { usage: usage || final.usage } : {}),
+            ...(provider === 'proxy' && final?.diagnostics ? { diagnostics: { httpStatus: Number(final.diagnostics.httpStatus) || null,
+                contentType: String(final.diagnostics.contentType || '').slice(0, 100), eventCount: Math.max(0, Number(final.diagnostics.eventCount) || 0) } } : {}),
             ...(final?.toolCalls?.length ? { toolCalls: final.toolCalls, continuation: final.continuation } : {}) }, allowTools);
         if (!reply && result.reply) await onDelta(result.reply);
         return result;
@@ -235,4 +240,4 @@ function withTools(payload, provider, tools = [], turns = []) {
     }
     return result;
 }
-module.exports = { chatOptions, readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, error };
+module.exports = { runtime: require('./model-runtime.cjs'), chatOptions, readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, error };

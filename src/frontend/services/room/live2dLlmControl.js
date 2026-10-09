@@ -6,6 +6,7 @@ import {
 } from './live2dControl';
 import { compileBehaviorIntent } from './live2dBehaviorController';
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
+import llmRuntime from '../../../../shared/model-runtime.cjs';
 import { readJson, writeJson } from './roomStorage';
 import { apiFetch } from '../../api/client';
 
@@ -608,7 +609,7 @@ function chatRequestHeaders(apiUrl = '', apiKey = '') {
   };
 }
 
-function buildDirectRequestBody(settings, systemPrompt, history, message) {
+function buildBaseDirectRequestBody(settings, systemPrompt, history, message) {
   const apiUrl = normalizeOpenAIUrl(settings.apiUrl || '');
   const model = isOllamaApi(apiUrl) ? (settings.model || 'qwen2.5:7b') : (settings.model || 'gpt-4o-mini');
   if (isOllamaNativeApi(apiUrl)) {
@@ -646,6 +647,11 @@ function buildDirectRequestBody(settings, systemPrompt, history, message) {
     temperature: isKimiChatTarget(apiUrl, model) ? 1 : 0.4,
     max_tokens: 320
   };
+}
+
+function buildDirectRequestBody(settings, systemPrompt, history, message) {
+  llmRuntime.requireCapability(settings, 'text');
+  return llmRuntime.applyParameters(buildBaseDirectRequestBody(settings, systemPrompt, history, message), settings).payload;
 }
 
 function buildStreamingDirectRequestBody(settings, systemPrompt, history, message) {
@@ -806,6 +812,7 @@ export async function requestLive2DControl(message) {
         apiKey: settings.apiKey,
         apiUrl: settings.apiUrl,
         model: settings.model,
+        runtimeConfig: llmRuntime.transportRuntime(settings),
         systemPrompt
       })
     });
@@ -840,7 +847,7 @@ export async function requestLive2DControlStream(message, handlers = {}) {
     throw new Error('Missing Room LLM settings. Configure LLM in /room/settings first.');
   }
 
-  if (useLocalOllama) {
+  if (useLocalOllama || llmRuntime.resolveCapabilities({ ...settings, apiUrl }).streaming.value === false) {
     const sentenceEmitter = createReplySentenceEmitter(handlers);
     const fallback = await requestLive2DControl(message);
     sentenceEmitter.flushReply(fallback.reply);
@@ -863,7 +870,8 @@ export async function requestLive2DControlStream(message, handlers = {}) {
         apiKey: settings.apiKey,
         apiUrl: settings.apiUrl,
         model: settings.model,
-        systemPrompt
+        systemPrompt,
+        runtimeConfig: llmRuntime.transportRuntime(settings)
       })
     });
     if (!response.ok) {

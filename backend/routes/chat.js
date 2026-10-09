@@ -2,6 +2,7 @@ const express = require('express');
 const { createChatCompletion, createChatCompletionStream, normalizeChatUrl } = require('../services/llm');
 
 const router = express.Router();
+const runtime = require('../../shared/model-runtime.cjs');
 
 function streamEvent(res, event, data) {
     if (res.destroyed || res.writableEnded) return;
@@ -9,15 +10,17 @@ function streamEvent(res, event, data) {
 }
 
 router.post('/stream', async (req, res) => {
-    const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image, tools = [], agentTurns = [] } = req.body || {};
+    const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image, tools = [], agentTurns = [], runtimeConfig, diagnostic } = req.body || {};
     if (!message && !image) {
         return res.status(400).json({ success: false, message: '消息内容不能为空' });
     }
     try {
         // Reject unsupported destinations before opening the event stream.
         normalizeChatUrl(apiUrl, model);
+        runtime.resolveParameters({ apiUrl, model, runtimeConfig });
     } catch (error) {
-        return res.status(error.statusCode || 400).json({ success: false, message: error.message });
+        return res.status(error.statusCode || 400).json({ success: false, message: error.message,
+            ...(/^[A-Z0-9_]{1,48}$/.test(error.code || '') ? { code: error.code } : {}) });
     }
 
     const controller = new AbortController();
@@ -34,7 +37,7 @@ router.post('/stream', async (req, res) => {
     res.flushHeaders();
     try {
         const data = await createChatCompletionStream({
-            message, conversation, apiKey, apiUrl, model, systemPrompt, image, tools, agentTurns,
+            message, conversation, apiKey, apiUrl, model, systemPrompt, image, tools, agentTurns, runtimeConfig, diagnostic: diagnostic === true,
             signal: controller.signal,
             onDelta: text => streamEvent(res, 'delta', { text })
         });
@@ -44,7 +47,9 @@ router.post('/stream', async (req, res) => {
             const message = error.message === '模型响应超时'
                 ? error.message
                 : (error.statusCode >= 400 ? error.message : '模型响应失败，请稍后重试');
-            streamEvent(res, 'error', { message });
+            streamEvent(res, 'error', { message,
+                ...(/^[A-Z0-9_]{1,48}$/.test(error.code || '') ? { code: error.code } : {}),
+                ...(Number.isInteger(error.statusCode) && error.statusCode >= 400 && error.statusCode <= 599 ? { statusCode: error.statusCode } : {}) });
         }
     } finally {
         res.off('close', onClose);
@@ -57,12 +62,12 @@ router.post('/', async (req, res) => {
     const onClose = () => { if (!res.writableEnded) controller.abort(new Error('客户端已断开连接')); };
     res.once('close', onClose);
     try {
-        const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image, tools = [], agentTurns = [] } = req.body;
+        const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image, tools = [], agentTurns = [], runtimeConfig, diagnostic } = req.body;
         if (!message && !image) {
             return res.status(400).json({ success: false, message: '消息内容不能为空' });
         }
 
-        const data = await createChatCompletion({ message, conversation, apiKey, apiUrl, model, systemPrompt, image, tools, agentTurns, signal: controller.signal });
+        const data = await createChatCompletion({ message, conversation, apiKey, apiUrl, model, systemPrompt, image, tools, agentTurns, runtimeConfig, diagnostic: diagnostic === true, signal: controller.signal });
         res.json({ success: true, data });
     } catch (error) {
         const statusCode = error.statusCode || 500;
@@ -71,7 +76,8 @@ router.post('/', async (req, res) => {
         }
         res.status(statusCode).json({
             success: false,
-            message: statusCode === 500 ? '操作失败' : error.message
+            message: statusCode === 500 ? '操作失败' : error.message,
+            ...(/^[A-Z0-9_]{1,48}$/.test(error.code || '') ? { code: error.code } : {})
         });
     } finally { res.off('close', onClose); }
 });

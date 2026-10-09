@@ -8494,5 +8494,397 @@
   "正在加载内容": {
     "en": "Loading content",
     "ja": "コンテンツを読み込み中"
+  },
+  "模型参数与能力": {
+    "en": "Model parameters and capabilities",
+    "ja": "モデルのパラメータと機能"
+  },
+  "参数继承 · 能力来源 · 人工覆盖": {
+    "en": "Parameter inheritance · Capability sources · Manual overrides",
+    "ja": "パラメータの継承 · 機能の出典 · 手動設定"
+  },
+  "参数按内置、供应商、当前模型依次覆盖；留空沿用上一级。修改后使用页面上的保存按钮。": {
+    "en": "Parameters inherit from built-in defaults, then the provider, then this model. Leave a value blank to inherit. Use the page’s Save button after editing.",
+    "ja": "内蔵の既定値、プロバイダー、現在のモデルの順に適用します。空欄は上位の値を継承します。編集後はページの保存ボタンを押してください。"
+  },
+  "编辑范围": {
+    "en": "Editing scope",
+    "ja": "編集範囲"
+  },
+  "当前模型": {
+    "en": "Current model",
+    "ja": "現在のモデル"
+  },
+  "当前供应商端点": {
+    "en": "Current provider endpoint",
+    "ja": "現在のプロバイダーのエンドポイント"
+  },
+  "恢复此范围的默认设置": {
+    "en": "Reset this scope to defaults",
+    "ja": "この範囲を既定値に戻す"
+  },
+  "当前协议：": {
+    "en": "Current protocol:",
+    "ja": "現在のプロトコル："
+  },
+  "。供应商配置适用于同一端点下的模型。": {
+    "en": ". Provider settings apply to models at the same endpoint.",
+    "ja": "。プロバイダー設定は同じエンドポイントのモデルに適用されます。"
+  },
+  "继承默认值": {
+    "en": "Inherit default",
+    "ja": "既定値を継承"
+  },
+  "开启": {
+    "en": "On",
+    "ja": "有効"
+  },
+  "映射": {
+    "en": " mapping",
+    "ja": "のマッピング"
+  },
+  "继承上一级映射": {
+    "en": "Inherit mapping",
+    "ja": "上位のマッピングを継承"
+  },
+  "不发送此参数": {
+    "en": "Omit this parameter",
+    "ja": "このパラメータを送信しない"
+  },
+  "生效：": {
+    "en": "Effective:",
+    "ja": "適用値："
+  },
+  "待修正": {
+    "en": "Needs correction",
+    "ja": "修正が必要"
+  },
+  "· 值：": {
+    "en": "· Value:",
+    "ja": "· 値："
+  },
+  "沿用请求默认值": {
+    "en": "Use the request default",
+    "ja": "リクエストの既定値を使用"
+  },
+  "· 值来源：": {
+    "en": "· Value source:",
+    "ja": "· 値の出典："
+  },
+  "· 映射来源：": {
+    "en": "· Mapping source:",
+    "ja": "· マッピングの出典："
+  },
+  "内置": {
+    "en": "Built-in",
+    "ja": "内蔵"
+  },
+  "供应商": {
+    "en": "Provider",
+    "ja": "プロバイダー"
+  },
+  "推理模型通常不接受温度与 Top P；关闭的映射不会发送参数。Token 留空不会新增回复长度限制。": {
+    "en": "Reasoning models often do not accept temperature or Top P. Omitted mappings are not sent. Leaving the token limit blank adds no new response limit.",
+    "ja": "推論モデルは通常、温度や Top P に対応しません。無効なマッピングは送信しません。Token を空欄にすると、新たな返信長の制限は追加されません。"
+  },
+  "当前模型能力": {
+    "en": "Current model capabilities",
+    "ja": "現在のモデルの機能"
+  },
+  "声明不等于实测。“未知”允许保留原有调用方式；人工覆盖仅作用于当前端点与模型，不会被目录刷新覆盖。": {
+    "en": "Declarations are not test results. Unknown capabilities retain the existing request behavior. Manual overrides apply only to this endpoint and model and survive catalog refreshes.",
+    "ja": "宣言は実測結果ではありません。「不明」は従来の呼び出し方法を維持します。手動設定は現在のエンドポイントとモデルにのみ適用され、一覧の更新では上書きされません。"
+  },
+  "未声明": {
+    "en": "Undeclared",
+    "ja": "未宣言"
+  },
+  "原始：": {
+    "en": "Original:",
+    "ja": "元の値："
+  },
+  "（供应商） ·": {
+    "en": "(provider) ·",
+    "ja": "（プロバイダー） ·"
+  },
+  "（内置）": {
+    "en": "(built-in)",
+    "ja": "（内蔵）"
+  },
+  "人工覆盖": {
+    "en": "Manual override",
+    "ja": "手動設定"
+  },
+  "使用能力声明": {
+    "en": "Use capability declarations",
+    "ja": "機能の宣言を使用"
+  },
+  "声明支持": {
+    "en": "Declare supported",
+    "ja": "対応すると設定"
+  },
+  "声明不支持": {
+    "en": "Declare unsupported",
+    "ja": "非対応と設定"
+  },
+  "支持": {
+    "en": "Supported",
+    "ja": "対応"
+  },
+  "不支持": {
+    "en": "Unsupported",
+    "ja": "非対応"
+  },
+  "模型诊断工作台": {
+    "en": "Model diagnostics",
+    "ja": "モデル診断"
+  },
+  "文本 · 流式 · 图片 · 工具协议": {
+    "en": "Text · Streaming · Images · Tool protocol",
+    "ja": "テキスト · ストリーミング · 画像 · ツールプロトコル"
+  },
+  "使用当前表单与参数，不必先保存。每次点击会请求当前模型；测试不写入聊天、日记或长期记忆。": {
+    "en": "Tests use the current form and parameters without saving. Each run calls the selected model. Results are not added to chat, diaries or long-term memory.",
+    "ja": "保存せずに現在のフォームとパラメータでテストします。実行ごとに現在のモデルへリクエストします。チャット、日記、長期記憶には書き込みません。"
+  },
+  "测试项目": {
+    "en": "Test type",
+    "ja": "テスト項目"
+  },
+  "文本回复": {
+    "en": "Text reply",
+    "ja": "テキスト返信"
+  },
+  "流式回复": {
+    "en": "Streaming reply",
+    "ja": "ストリーミング返信"
+  },
+  "图片输入": {
+    "en": "Image input",
+    "ja": "画像入力"
+  },
+  "工具调用与续轮": {
+    "en": "Tool call and continuation",
+    "ja": "ツール呼び出しと継続返信"
+  },
+  "测试消息": {
+    "en": "Test message",
+    "ja": "テストメッセージ"
+  },
+  "测试图片": {
+    "en": "Test image",
+    "ja": "テスト画像"
+  },
+  "测试图片预览": {
+    "en": "Test image preview",
+    "ja": "テスト画像のプレビュー"
+  },
+  "只测试模型生成工具参数与接续回复，工具结果由浏览器固定提供。": {
+    "en": "Tests only tool arguments and the follow-up reply. The browser supplies a fixed tool result.",
+    "ja": "ツール引数の生成と継続返信のみをテストします。ツールの結果はブラウザーが固定値を返します。"
+  },
+  "开始模型测试": {
+    "en": "Run model test",
+    "ja": "モデルテストを開始"
+  },
+  "取消测试": {
+    "en": "Cancel test",
+    "ja": "テストをキャンセル"
+  },
+  "模型诊断结果": {
+    "en": "Model diagnostic results",
+    "ja": "モデル診断結果"
+  },
+  "协议 / 请求": {
+    "en": "Protocol / transport",
+    "ja": "プロトコル / 接続"
+  },
+  "受限代理": {
+    "en": "Restricted proxy",
+    "ja": "制限付きプロキシ"
+  },
+  "首段文字": {
+    "en": "First text",
+    "ja": "最初のテキスト"
+  },
+  "总耗时": {
+    "en": "Total duration",
+    "ja": "合計時間"
+  },
+  "流事件": {
+    "en": "Stream events",
+    "ja": "ストリームイベント"
+  },
+  "响应格式": {
+    "en": "Response format",
+    "ja": "レスポンス形式"
+  },
+  "用量：": {
+    "en": "Usage:",
+    "ja": "使用量："
+  },
+  "查看测试阶段": {
+    "en": "View test stages",
+    "ja": "テストの段階を表示"
+  },
+  "发送请求": {
+    "en": "Sending request",
+    "ja": "リクエストを送信"
+  },
+  "接收响应": {
+    "en": "Receiving response",
+    "ja": "レスポンスを受信"
+  },
+  "降级为一次性响应": {
+    "en": "Falling back to a single response",
+    "ja": "単一レスポンスに切り替え"
+  },
+  "本地测试工具": {
+    "en": "Local test tool",
+    "ja": "ローカルのテストツール"
+  },
+  "模型生成": {
+    "en": "Model generation",
+    "ja": "モデルが生成"
+  },
+  "下载脱敏诊断报告": {
+    "en": "Download redacted report",
+    "ja": "機密情報を除いた診断レポートをダウンロード"
+  },
+  "报告只包含协议、参数、阶段与用量，不包含密钥、测试消息、回复正文或图片；测试结果不自动更改能力声明。": {
+    "en": "The report contains protocol, parameters, stages and usage, but no keys, test messages, reply text or images. Tests do not change capability declarations automatically.",
+    "ja": "レポートにはプロトコル、パラメータ、段階、使用量のみを含み、キー、テストメッセージ、返信本文、画像は含みません。機能の宣言は自動変更しません。"
+  },
+  "测试已取消": {
+    "en": "Test cancelled",
+    "ja": "テストをキャンセルしました"
+  },
+  "模型测试超时": {
+    "en": "Model test timed out",
+    "ja": "モデルテストがタイムアウトしました"
+  },
+  "请先选择测试图片": {
+    "en": "Select a test image first",
+    "ja": "先にテスト画像を選択してください"
+  },
+  "温度": {
+    "en": "Temperature",
+    "ja": "温度"
+  },
+  "最大输出 Token": {
+    "en": "Maximum output tokens",
+    "ja": "最大出力 Token"
+  },
+  "推理强度": {
+    "en": "Reasoning effort",
+    "ja": "推論の強度"
+  },
+  "思考模式": {
+    "en": "Thinking mode",
+    "ja": "思考モード"
+  },
+  "文本对话": {
+    "en": "Text chat",
+    "ja": "テキスト対話"
+  },
+  "工具调用": {
+    "en": "Tool calling",
+    "ja": "ツール呼び出し"
+  },
+  "流式输出": {
+    "en": "Streaming output",
+    "ja": "ストリーミング出力"
+  },
+  "请求默认值": {
+    "en": "Request default",
+    "ja": "リクエストの既定値"
+  },
+  "内置声明": {
+    "en": "Built-in declaration",
+    "ja": "内蔵の宣言"
+  },
+  "供应商声明": {
+    "en": "Provider declaration",
+    "ja": "プロバイダーの宣言"
+  },
+  "测试完成": {
+    "en": "Test complete",
+    "ja": "テスト完了"
+  },
+  "部分能力未验证": {
+    "en": "Some capabilities remain unverified",
+    "ja": "未確認の機能があります"
+  },
+  "测试失败": {
+    "en": "Test failed",
+    "ja": "テスト失敗"
+  },
+  "已取消": {
+    "en": "Cancelled",
+    "ja": "キャンセル済み"
+  },
+  "供应商未提供": {
+    "en": "Not provided by the provider",
+    "ja": "プロバイダーからの提供なし"
+  },
+  "当前能力声明不支持此测试，可更换模型或调整人工覆盖": {
+    "en": "The declared capability does not support this test. Select another model or adjust the manual override.",
+    "ja": "宣言された機能ではこのテストを実行できません。別のモデルを選ぶか、手動設定を変更してください。"
+  },
+  "参数配置或映射无效，请检查参数面板": {
+    "en": "Invalid parameters or mappings. Check the parameter panel.",
+    "ja": "パラメータまたはマッピングが無効です。パラメータパネルを確認してください。"
+  },
+  "流式响应未正常结束": {
+    "en": "The stream did not finish normally",
+    "ja": "ストリーミングが正常に終了しませんでした"
+  },
+  "模型响应格式无效、为空或不完整": {
+    "en": "The model response is invalid, empty or incomplete",
+    "ja": "モデルのレスポンスが無効、空、または不完全です"
+  },
+  "密钥无效或已过期": {
+    "en": "The key is invalid or expired",
+    "ja": "キーが無効または期限切れです"
+  },
+  "账号没有当前模型的访问权限": {
+    "en": "The account cannot access this model",
+    "ja": "このアカウントには現在のモデルへのアクセス権がありません"
+  },
+  "服务商限流，请稍后再试": {
+    "en": "Provider rate limit reached. Try again later.",
+    "ja": "プロバイダーのレート制限に達しました。しばらくしてから再試行してください。"
+  },
+  "连接或协议测试失败，请检查端点、跨域和模型配置": {
+    "en": "Connection or protocol test failed. Check the endpoint, CORS and model settings.",
+    "ja": "接続またはプロトコルのテストに失敗しました。エンドポイント、CORS、モデル設定を確認してください。"
+  },
+  "供应商与内置资料未声明这项能力，测试结果仅代表本次请求": {
+    "en": "Neither the provider nor built-in data declares this capability. The result applies only to this request.",
+    "ja": "プロバイダーと内蔵データにこの機能の宣言がありません。結果は今回のリクエストにのみ適用されます。"
+  },
+  "工具测试使用本地固定结果，不连接 MCP 或执行外部操作": {
+    "en": "The tool test uses a fixed local result without connecting to MCP or performing external actions.",
+    "ja": "ツールテストはローカルの固定結果を使用し、MCP への接続や外部操作は行いません。"
+  },
+  "模型返回了文字，但没有调用测试工具，本次未验证工具协议": {
+    "en": "The model returned text without calling the test tool. The tool protocol remains unverified.",
+    "ja": "モデルはテキストを返しましたが、テストツールを呼び出しませんでした。ツールプロトコルは未確認です。"
+  },
+  "本次返回一次性响应，未验证流式输出": {
+    "en": "This request returned a single response. Streaming output remains unverified.",
+    "ja": "今回は単一レスポンスが返りました。ストリーミング出力は未確認です。"
+  },
+  "{0}映射": {
+    "en": "{0} mapping",
+    "ja": "{0}のマッピング"
+  },
+  "{0}人工覆盖": {
+    "en": "{0} manual override",
+    "ja": "{0}の手動設定"
+  },
+  "图片请求已完成；识别正确性请查看模型回复，本次不自动修改能力声明": {
+    "en": "The image request completed. Check the reply for recognition accuracy. This test does not change capability declarations.",
+    "ja": "画像リクエストが完了しました。認識の正確さはモデルの返信を確認してください。機能の宣言は変更しません。"
   }
 }

@@ -1,4 +1,5 @@
 import { apiFetch } from '../../api/client';
+import llmRuntime from '../../../../shared/model-runtime.cjs';
 import { readJson } from './roomStorage';
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
 import { activePersonaPrompt, diaryTimestampLabel } from './roomDiaryArchive';
@@ -183,7 +184,7 @@ export function buildDiaryUserPrompt(turns, { timestampLabel = '', personaName =
   ].filter(Boolean).join('\n');
 }
 
-function makeDiaryRequestBody({ settings, apiUrl, model, systemPrompt, userPrompt }) {
+function makeBaseDiaryRequestBody({ settings, apiUrl, model, systemPrompt, userPrompt }) {
   if (isOllamaNativeApi(apiUrl)) {
     return {
       model,
@@ -287,6 +288,11 @@ export function isDiaryGenerationConfigured(settings = diarySettings()) {
  * Throws when the LLM is not configured or the reply is unusable, so the
  * caller can surface a concrete reason instead of saving an empty diary.
  */
+function makeDiaryRequestBody(args) {
+  llmRuntime.requireCapability({ ...args.settings, apiUrl: args.apiUrl, model: args.model }, 'text');
+  return llmRuntime.applyParameters(makeBaseDiaryRequestBody(args), { ...args.settings, apiUrl: args.apiUrl, model: args.model }).payload;
+}
+
 export async function generateDiaryEntry(turns, {
   persona = activePersonaPrompt(),
   now = new Date(),
@@ -312,7 +318,7 @@ export async function generateDiaryEntry(turns, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: userPrompt, conversation: [], systemPrompt,
-        apiUrl: settings.apiUrl, apiKey: settings.apiKey, model: settings.model })
+        apiUrl: settings.apiUrl, apiKey: settings.apiKey, model: settings.model, runtimeConfig: llmRuntime.transportRuntime(settings) })
     });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.message || '日记代理请求失败');

@@ -1375,3 +1375,25 @@
   }
 }
 #room-llm-settings label[for] { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 500; }
+
+/* Room model runtime configuration and ephemeral diagnostics. */
+.runtime-level-row, .runtime-workbench-actions { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.runtime-level-row label { flex: 1; min-width: 180px; }
+.runtime-parameter-list, .runtime-capability-list { display: grid; gap: 14px; margin-top: 18px; }
+.runtime-parameter-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 14px; }
+.runtime-parameter-row > small { grid-column: 1 / -1; overflow-wrap: anywhere; }
+.runtime-capability-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, .7fr); align-items: center; gap: 12px; }
+.runtime-capability-row small { display: block; margin-top: 5px; color: var(--muted); }
+.runtime-panel summary > span, .runtime-workbench summary > span { flex: 1; }
+.runtime-panel h3 { font-size: 15px; margin: 8px 0 0; }
+.diagnostic-result { margin-top: 18px; padding: 16px; border: 1px solid var(--settings-line); border-radius: 16px; }
+.diagnostic-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; font-size: 13px; }
+.diagnostic-metrics dt { color: var(--muted); }
+.diagnostic-metrics dd { margin: 5px 0 0; overflow-wrap: anywhere; }
+.diagnostic-preview { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; font: inherit; font-size: 14px; }
+.diagnostic-events { font-size: 13px; padding-left: 22px; }
+.diagnostic-image { width: 160px; max-height: 160px; object-fit: contain; border-radius: 12px; margin: 12px 0; }
+@media (max-width: 600px) {
+  .runtime-parameter-row, .runtime-capability-row { grid-template-columns: minmax(0, 1fr); }
+  .diagnostic-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

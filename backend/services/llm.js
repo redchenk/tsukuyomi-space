@@ -335,19 +335,24 @@ function providerFor(chatUrl, model) {
 }
 
 function buildChatPayload(args) {
-    const base = buildBaseChatPayload(args);
+    const settings = { apiUrl: args.chatUrl, model: args.model, runtimeConfig: args.runtimeConfig };
+    protocol.runtime.requireCapability(settings, 'text');
+    if (args.image) protocol.runtime.requireCapability(settings, 'image');
+    if (args.tools?.length) protocol.runtime.requireCapability(settings, 'tools');
+    const base = protocol.runtime.applyParameters(buildBaseChatPayload(args), settings).payload;
     const provider = providerFor(args.chatUrl, args.model);
     const options = agentProtocol.wireOptions(args.tools, args.agentTurns, provider);
     return options.tools.length || options.turns.length ? protocol.withTools(base, provider, options.tools, options.turns) : base;
 }
 
 async function requestCompletion({ message, conversation = [], apiKey, apiUrl, model,
-    systemPrompt = CHAT_SYSTEM_PROMPT, image, signal, onDelta = () => {}, tools = [], agentTurns = [] }, stream) {
+    systemPrompt = CHAT_SYSTEM_PROMPT, image, signal, onDelta = () => {}, tools = [], agentTurns = [], runtimeConfig, diagnostic = false }, stream) {
     const useApiKey = apiKey || LLM_API_KEY;
     const useModel = model || LLM_MODEL;
     const history = Array.isArray(conversation)
         ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12) : [];
     const chatUrl = normalizeChatUrl(apiUrl, useModel);
+    stream = stream && protocol.runtime.resolveCapabilities({ apiUrl: chatUrl, model: useModel, runtimeConfig }).streaming.value !== false;
     if (!useApiKey && !isOllamaChatUrl(chatUrl)) {
         const reply = fallbackChatReply();
         if (signal?.aborted) throw signal.reason || new Error('请求已取消');
@@ -359,7 +364,7 @@ async function requestCompletion({ message, conversation = [], apiKey, apiUrl, m
     if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, { once: true });
     const timeout = setTimeout(() => controller.abort(new Error('模型响应超时')), CHAT_STREAM_TIMEOUT_MS);
     try {
-        const payload = { ...buildChatPayload({ chatUrl, model: useModel, systemPrompt, history, message, image, tools, agentTurns }), stream };
+        const payload = { ...buildChatPayload({ chatUrl, model: useModel, systemPrompt, history, message, image, tools, agentTurns, runtimeConfig }), stream };
         const send = body => fetch(chatUrl, { method: 'POST', redirect: 'error', headers: chatHeaders(chatUrl, useApiKey, useModel), body: JSON.stringify(body), signal: controller.signal });
         let response = await send(payload);
         if (stream && [400, 422].includes(response.status)) {
@@ -372,9 +377,11 @@ async function requestCompletion({ message, conversation = [], apiKey, apiUrl, m
             const error = new Error(`模型请求失败（HTTP ${response.status}）`);
             error.statusCode = response.status; throw error;
         }
-        const options = { provider: providerFor(chatUrl, useModel), allowTools: Boolean(tools.length), signal: controller.signal, onDelta };
+        let eventCount = 0;
+        const options = { provider: providerFor(chatUrl, useModel), allowTools: Boolean(tools.length), signal: controller.signal, onDelta, onEvent: () => eventCount++ };
         const result = stream ? await protocol.readStream(response, options) : protocol.fromJson(await protocol.readJson(response, controller.signal), options);
-        return { ...result, model: result.model || useModel };
+        return { ...result, model: result.model || useModel, ...(diagnostic ? { diagnostics: { httpStatus: response.status,
+            contentType: (response.headers.get('content-type') || '').slice(0, 100), eventCount } } : {}) };
     } catch (error) {
         if (controller.signal.aborted) throw controller.signal.reason || error;
         if (error.code === 'LLM_STREAM_INCOMPLETE') error.message = '模型流式响应中断，请重试本轮对话';

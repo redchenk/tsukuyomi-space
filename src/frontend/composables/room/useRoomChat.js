@@ -588,7 +588,7 @@ function makeBaseLLMRequestBody(settings, systemPrompt, conversation, message, i
 }
 
 function makeLLMRequestBody(settings, systemPrompt, conversation, message, image, stream = false, { tools = [], agentTurns = [] } = {}) {
-  const body = makeBaseLLMRequestBody(settings, systemPrompt, conversation, message, image, stream);
+  const body = llmProtocol.runtime.applyParameters(makeBaseLLMRequestBody(settings, systemPrompt, conversation, message, image, stream), settings).payload;
   const provider = roomProvider(normalizeOpenAIUrl(settings.apiUrl || ''), settings.model);
   const validated = agentProtocol.wireOptions(tools, agentTurns, provider);
   return validated.tools.length || validated.turns.length ? llmProtocol.withTools(body, provider, validated.tools, validated.turns) : body;
@@ -609,6 +609,7 @@ async function translateForJapaneseTts(text) {
     '只输出日文正文，不要解释，不要 Markdown，不要括号里的动作提示，不要舞台提示。',
     '如果原文含有动作、表情、姿态、语气、旁白提示，请彻底删除，只保留角色真正要说出口的话。'
   ].join('\n');
+  llmProtocol.runtime.requireCapability({ ...settings, apiUrl }, 'text');
 
   if (settings.useProxy && !useLocalOllama) {
     const result = await postJson('/api/chat', {
@@ -617,7 +618,8 @@ async function translateForJapaneseTts(text) {
       apiKey: settings.apiKey,
       apiUrl: settings.apiUrl,
       model: settings.model,
-      systemPrompt
+      systemPrompt,
+      runtimeConfig: llmProtocol.runtime.transportRuntime(settings)
     });
     return cleanTtsText(result.reply || '');
   }
@@ -625,7 +627,7 @@ async function translateForJapaneseTts(text) {
   const response = await fetchWithLocalOllamaGuidance(apiUrl, {
     method: 'POST',
     headers: chatRequestHeaders(apiUrl, settings.apiKey),
-    body: JSON.stringify(isOllamaNativeApi(apiUrl)
+    body: JSON.stringify(llmProtocol.runtime.applyParameters(isOllamaNativeApi(apiUrl)
       ? makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, [], source, null)
       : (isOpenAIResponsesApi(apiUrl)
         ? { model: settings.model || 'gpt-5.5', instructions: systemPrompt, input: source, max_output_tokens: 240 }
@@ -636,7 +638,7 @@ async function translateForJapaneseTts(text) {
               { role: 'user', content: source }
             ],
             temperature: chatTemperatureFor(apiUrl, settings.model || 'gpt-4o-mini', 0.2)
-          }))
+          }), settings).payload)
   });
   if (!response.ok) throw new Error(`日文翻译失败：LLM ${response.status}`);
   return cleanTtsText(pickReply(await response.json()));
@@ -658,7 +660,8 @@ async function postJson(path, payload, signal) {
     body: JSON.stringify(payload), signal
   });
   const result = await llmProtocol.readJson(response, signal);
-  if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+  if (!response.ok || !result.success) throw Object.assign(new Error(result.message || `HTTP ${response.status}`), { statusCode: response.status,
+    ...(/^[A-Z0-9_]{1,48}$/.test(result.code || '') ? { code: result.code } : {}) });
   return result.data || {};
 }
 
@@ -669,9 +672,15 @@ function roomProvider(apiUrl, model = '') {
   return 'openai';
 }
 
-async function requestRoomReply({ settings, systemPrompt, conversation, message, image, signal, onDelta, tools = [], agentTurns = [] }) {
+export async function requestRoomReply({ settings, systemPrompt, conversation = [], message, image, signal, onDelta = () => {}, onDiagnostic = () => {}, stream = true, tools = [], agentTurns = [] }) {
   const apiUrl = settings.apiUrl ? normalizeOpenAIUrl(settings.apiUrl) : '';
   const useLocalOllama = isOllamaApi(apiUrl);
+  const activeSettings = { ...settings, apiUrl };
+  llmProtocol.runtime.requireCapability(activeSettings, 'text');
+  if (image && settings.visionMode !== 'mcp') llmProtocol.runtime.requireCapability(activeSettings, 'image');
+  if (tools.length) llmProtocol.runtime.requireCapability(activeSettings, 'tools');
+  stream = stream && llmProtocol.runtime.resolveCapabilities(activeSettings).streaming.value !== false;
+  onDiagnostic({ type: 'request', protocol: roomProvider(apiUrl, settings.model), parameters: llmProtocol.runtime.resolveParameters(activeSettings) });
   if (!settings.apiUrl && !settings.useProxy) {
     const reply = fallbackReply(message, image);
     onDelta(reply);
@@ -686,13 +695,16 @@ async function requestRoomReply({ settings, systemPrompt, conversation, message,
     model: settings.model,
     systemPrompt,
     image: settings.visionMode === 'mcp' ? null : image,
-    tools, agentTurns
+    tools, agentTurns, runtimeConfig: llmProtocol.runtime.transportRuntime(activeSettings), diagnostic: true
   };
   if (settings.useProxy && !useLocalOllama) {
     // Older WebViews without readable response bodies still use the established
     // one-shot proxy. This also keeps the legacy Room transport compatible.
-    if (typeof ReadableStream === 'undefined') {
-      const result = await postJson('/api/chat', proxyPayload, signal);
+    if (!stream || typeof ReadableStream === 'undefined') {
+      let result;
+      try { result = await postJson('/api/chat', proxyPayload, signal); }
+      catch (error) { if (error.statusCode) onDiagnostic({ type: 'response', httpStatus: error.statusCode }); throw error; }
+      onDiagnostic({ type: 'response', ...result.diagnostics });
       onDelta(result.reply || '');
       return result;
     }
@@ -702,11 +714,15 @@ async function requestRoomReply({ settings, systemPrompt, conversation, message,
       body: JSON.stringify(proxyPayload),
       signal
     });
+    onDiagnostic({ type: 'response', httpStatus: response.status, contentType: response.headers.get('content-type') || '' });
     if (!response.ok) {
       const data = await llmProtocol.readJson(response, signal).catch(() => ({}));
-      throw new Error(data.message || `LLM ${response.status}`);
+      throw Object.assign(new Error(data.message || `LLM ${response.status}`), { statusCode: response.status,
+        ...(/^[A-Z0-9_]{1,48}$/.test(data.code || '') ? { code: data.code } : {}) });
     }
-    return readRoomChatStream(response, { provider: 'proxy', onDelta, signal, allowTools: Boolean(tools.length) });
+    const result = await readRoomChatStream(response, { provider: 'proxy', onDelta, signal, allowTools: Boolean(tools.length), onEvent: () => onDiagnostic({ type: 'event' }) });
+    if (result.diagnostics) onDiagnostic({ type: 'response', ...result.diagnostics });
+    return result;
   }
 
   if (!settings.apiUrl || (!settings.apiKey && !useLocalOllama)) {
@@ -716,7 +732,7 @@ async function requestRoomReply({ settings, systemPrompt, conversation, message,
   }
   const provider = roomProvider(apiUrl, settings.model);
   const providerImage = settings.visionMode === 'mcp' ? null : image;
-  const body = makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, true, { tools, agentTurns });
+  const body = makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, stream, { tools, agentTurns });
   const options = {
     method: 'POST',
     headers: chatRequestHeaders(apiUrl, settings.apiKey),
@@ -724,6 +740,7 @@ async function requestRoomReply({ settings, systemPrompt, conversation, message,
     signal
   };
   let response = await fetchWithLocalOllamaGuidance(apiUrl, options);
+  onDiagnostic({ type: 'response', httpStatus: response.status, contentType: response.headers.get('content-type') || '' });
   if (!response.ok) {
     const errorText = await llmProtocol.readText(response, signal, 8192).catch(() => '');
     // Some OpenAI-compatible providers reject the stream flag. A no-stream
@@ -734,12 +751,14 @@ async function requestRoomReply({ settings, systemPrompt, conversation, message,
         ...options,
         body: JSON.stringify(makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, false, { tools, agentTurns }))
       });
+      onDiagnostic({ type: 'fallback' });
+      onDiagnostic({ type: 'response', httpStatus: response.status, contentType: response.headers.get('content-type') || '' });
       if (!response.ok) throw new Error(`LLM ${response.status}`);
     } else {
       throw new Error(`LLM ${response.status}，请检查模型设置或稍后重试`);
     }
   }
-  return readRoomChatStream(response, { provider, onDelta, signal, allowTools: Boolean(tools.length) });
+  return readRoomChatStream(response, { provider, onDelta, signal, allowTools: Boolean(tools.length), onEvent: () => onDiagnostic({ type: 'event' }) });
 }
 
 function fallbackReply(message, image) {
@@ -1363,7 +1382,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     try {
       const savedImage = image && !replacement ? await persistRoomImage(image, turnId, operation.controller.signal) : null;
       if (operation.controller.signal.aborted || activeGeneration !== operation || destroyed) return false;
-      const settings = readJson('roomLLMSettings', {});
+      let settings = readJson('roomLLMSettings', {});
       const storedConversation = readRoomConversation().filter((item) => item.turnId !== turnId);
       const sharedContext = sharedConversation.value ? [
         { role: 'user', content: sharedConversation.value.userMessage },
@@ -1377,7 +1396,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       const excludeTurnIds = [...new Set([turnId, ...conversation.map(item => item.turnId).filter(Boolean)])];
       const contextKey = JSON.stringify([requestArchiveKey, requestConversationRevision, turnId, message,
         image?.id || image?.dataUrl || '', conversation, settings.apiUrl, settings.model, settings.systemPrompt,
-        settings.visionMode, settings.useProxy, usesLocalRoomMemory(), readJson('roomMemorySettings', {}),
+        settings.visionMode, settings.useProxy, settings.runtimeConfig, usesLocalRoomMemory(), readJson('roomMemorySettings', {}),
         readJson('roomKnowledgeSettings', null), readJson('roomMCPSettings', {})]);
       const previousSnapshot = turnContextSnapshot?.key === contextKey ? turnContextSnapshot.value : null;
       // Release the previous turn before loading a new one, even on failure.
@@ -1393,6 +1412,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       });
       memoryTrace.value = { ...roomContext.retrieval, count: roomContext.trace.filter(item => item.source === 'memories').length };
       const visionToolSucceeded = roomContext.text.includes('"id":"understand_image"');
+      if (image && settings.visionMode === 'auto' && llmProtocol.runtime.resolveCapabilities(settings).image.value === false && visionToolSucceeded) settings = { ...settings, visionMode: 'mcp' };
       if (image && settings.visionMode === 'mcp' && !visionToolSucceeded) {
         throw new Error('图片理解服务暂不可用，请检查 Room 的 MCP 设置后重试。');
       }
@@ -1416,7 +1436,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       let result;
       try {
         const mcpSettings = readJson('roomMCPSettings', {});
-        const tools = agentProtocol.allowedTools(mcpSettings, Boolean(image));
+        const tools = llmProtocol.runtime.resolveCapabilities(settings).tools.value === false ? [] : agentProtocol.allowedTools(mcpSettings, Boolean(image));
         const complete = extra => requestRoomReply({
           settings,
           systemPrompt: systemPrompt + (tools.length ? agentProtocol.AGENT_PROMPT : ''),

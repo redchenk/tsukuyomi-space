@@ -79,6 +79,7 @@ function loadGeneration(llmSettings = {}) {
         URL,
         localStorage: storage,
         window: { location: { origin: 'https://example.test' } },
+        llmRuntime: require('../shared/model-runtime.cjs'),
         getSession: () => null,
         crypto: { randomUUID: () => 'uuid-test' },
         fetch: async () => { throw new Error('network disabled in unit test'); }
@@ -491,6 +492,25 @@ it('generates diaries through the existing server proxy without a client key', a
         }
     });
     assert.match(result.body, /温暖的时光/);
+});
+
+it('diary generation uses saved model mappings and refuses an unsupported text declaration before fetch', async () => {
+    const runtime = require('../shared/model-runtime.cjs');
+    const settings = { apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat', apiKey: 'fixture-key' };
+    const id = runtime.scopes(settings).model;
+    settings.runtimeConfig = { models: { [id]: { parameters: { maxOutputTokens: 1024 }, mappings: { maxOutputTokens: 'max_completion_tokens' } } } };
+    let calls = 0;
+    const fetchImpl = async (_, options) => {
+        calls++;
+        const body = JSON.parse(options.body);
+        assert.equal(body.max_completion_tokens, 1024);
+        assert.equal(body.max_tokens, undefined);
+        return { ok: true, json: async () => ({ choices: [{ message: { content: '今天我们聊了许多有趣的事，我会把这段温暖的时光记在心里。' } }] }) };
+    };
+    await loadGeneration(settings).generateDiaryEntry([{ role: 'user', content: 'hello' }], { fetchImpl });
+    settings.runtimeConfig.models[id].capabilities = { text: false };
+    await assert.rejects(loadGeneration(settings).generateDiaryEntry([{ role: 'user', content: 'hello' }], { fetchImpl }), { code: 'MODEL_CAPABILITY_UNSUPPORTED' });
+    assert.equal(calls, 1);
 });
 
 
