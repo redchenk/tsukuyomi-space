@@ -48,7 +48,10 @@ test('layered settings persist, declarations retain manual overrides, and actual
   await expect(page.locator('.chat-message.assistant:not([aria-busy="true"])')).toContainText('参数配置已生效');
   expect(requests[0]).toMatchObject({ temperature: 0.3, max_completion_tokens: 256 });
   expect(requests[0].max_tokens).toBeUndefined();
-  await page.goto('/room/settings'); await openRuntime(page);
+  await page.goto('/room/settings');
+  await page.getByRole('button', { name: '刷新模型', exact: true }).click();
+  await expect(page.getByText('已更新 1 个聊天模型', { exact: false })).toBeVisible();
+  await openRuntime(page);
   await expect(page.locator('[name="room-runtime-temperature"]')).toHaveValue('0.3');
   await expect(page.locator('[name="room-runtime-capability-image"]')).toHaveValue('true');
   await openWorkbench(page); await page.getByRole('button', { name: '开始模型测试' }).click();
@@ -158,10 +161,18 @@ for (const [locale, labels] of [['en', ['Model parameters and capabilities', 'Re
   test(`new model controls follow the ${locale} interface language`, async ({ page }) => {
     await setup(page, route => route.fulfill({ contentType: 'application/json', headers: cors, body: JSON.stringify({ choices: [{ message: { content: 'ok' } }] }) }));
     await page.evaluate(value => localStorage.setItem('lang', value), locale);
-    await page.reload(); await openRuntime(page); await openWorkbench(page);
+    await page.reload(); await openRuntime(page);
+    await page.locator('[name="room-runtime-temperature"]').fill('0.35');
+    await expect.poll(() => page.locator('.settings-savebar').evaluate(node => node.getBoundingClientRect().height)).toBeLessThan(160);
+    expect(await page.locator('.settings-savebar .button-row').evaluate(node => {
+      const rect = node.getBoundingClientRect(); return rect.left >= 0 && rect.right <= innerWidth;
+    })).toBe(true);
+    await openWorkbench(page);
     await expect(page.locator('.runtime-panel')).toContainText(labels[0]);
     await expect(page.locator('.runtime-panel')).toContainText(labels[1]);
     await expect(page.locator('.runtime-workbench')).toContainText(labels[2]);
     await expect(page.getByRole('button', { name: labels[3], exact: true })).toBeVisible();
+    await page.getByRole('button', { name: labels[3], exact: true }).click();
+    await expect(page.locator('.diagnostic-result')).toBeVisible();
   });
 }

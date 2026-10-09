@@ -1250,11 +1250,17 @@
     bottom: 0;
   }
   .settings-savebar-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
   .settings-save-state {
+    min-width: 0;
     font-size: 11px;
     gap: 6px;
+  }
+  .settings-save-state > div {
+    min-width: 0;
   }
   .settings-save-state > .ts-icon {
     display: none;
@@ -1263,8 +1269,17 @@
     font-size: 10px;
   }
   .room-settings-page .settings-savebar .button-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    min-width: 0;
+    width: 100%;
     gap: 6px;
-    flex-wrap: nowrap;
+  }
+  .room-settings-page .settings-savebar .button-row button {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
   }
   .room-settings-page .settings-savebar .primary-btn {
     padding-inline: 13px;
@@ -1352,7 +1367,7 @@
   }
   .app-shell:has(.room-settings-page) .site-music-drawer {
     top: auto;
-    bottom: calc(88px + env(safe-area-inset-bottom));
+    bottom: calc(144px + env(safe-area-inset-bottom));
     left: max(12px, env(safe-area-inset-left));
     right: auto;
   }
