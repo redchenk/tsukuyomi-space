@@ -64,7 +64,8 @@ export function selectRoomKnowledgeEntries(message, settings, limit = 10, { rece
     ? [word, ...Array.from({ length: word.length - 1 }, (_, i) => word.slice(i, i + 2))] : [word]))].filter(token => !stop.has(token)).slice(0, 100);
   const allowSpoilers = !roomKnowledgeRequestsNoSpoilers(message) && (roomKnowledgeAllowsSpoilers(message) || roomKnowledgeAllowsSpoilers(query));
   const coreIds = new Set(['yachiyo_identity_001', 'yachiyo_personality_001', 'yachiyo_speech_001', 'yachiyo_rules_001', 'yachiyo_limits_001']);
-  const records = knowledge.entries.filter(item => item.enabled && (item.title || item.content) && (!item.spoiler || allowSpoilers))
+  const records = knowledge.entries.filter(item => item.enabled && (item.title || item.content) && (!item.spoiler || allowSpoilers)
+      && !(item.id === 'yachiyo_few_shots_001' && item.edition === '对话适配' && !/口吻|语气|说话方式|示例|台词风格/.test(query)))
     .map((item, index) => ({ ...item, index, label: knowledgeSearchText(`${item.title} ${item.tags}`), body: knowledgeSearchText(item.content) }));
   const frequencies = new Map(tokens.map(token => [token, records.filter(item => `${item.label} ${item.body}`.includes(token)).length]));
   const ranked = records.map(item => ({ ...item, score: tokens.reduce((sum, token) => {

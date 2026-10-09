@@ -100,3 +100,11 @@ test('unversioned corpus cannot crowd out daily chat or verified current canon',
   assert.equal(api.shouldRetrieveRoomPersona('小说中的义体实验', select('小说结局义体实验', null)), false);
   assert.equal(api.shouldRetrieveRoomPersona('小说里的未覆盖设定', []), true);
 });
+
+
+test('daily topics retrieve facts without feeding a matching scripted reply', () => {
+  for (const question of ['松饼煎糊了，陪我吐槽一句', '你也会紧张吗', '别给我讲道理']) {
+    assert.ok(!select(question, null).some(item => item.id === 'yachiyo_few_shots_001'));
+  }
+  assert.ok(select('给出八千代的语气示例', null).some(item => item.id === 'yachiyo_few_shots_001'));
+});
