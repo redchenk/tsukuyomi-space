@@ -171,7 +171,7 @@ html[data-theme="dark"] .hub .hub-character img { filter: brightness(.74) satura
 }
 /* Feather the background glass alone; masking the section itself would also
    fade its text, cards and focus outlines. Keep the horizontal bounds intact. */
-.hub .hub-grid-wrap::before {
+.hub .hub-grid-wrap::before, .hub .hub-community-footer::before {
     content: ''; position: absolute; inset: -28px 0; z-index: -1; pointer-events: none;
     border-radius: inherit;
     background: color-mix(in srgb, var(--ts-editorial-surface) 24%, transparent);
@@ -181,7 +181,7 @@ html[data-theme="dark"] .hub .hub-character img { filter: brightness(.74) satura
     -webkit-mask-composite: source-in; mask-composite: intersect;
 }
 @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
-    .hub .hub-grid-wrap::before { display: none; }
+    .hub .hub-grid-wrap::before, .hub .hub-community-footer::before { display: none; }
 }
 .hub .hub-section-head { display: flex; flex-direction: row; margin: 0 0 20px; padding: 0; align-items: center; }
 .hub .hub-section-head h2 { font-family: 'Songti SC', 'Noto Serif SC', var(--ts-font-serif); font-size: 28px; margin: 0 0 7px; color: var(--ts-editorial-ink); }
@@ -269,7 +269,12 @@ html[data-theme="dark"] .hub .hub-character img { filter: brightness(.74) satura
 .hub .hub-plaza-feedback.error { color: #7f1d1d; border-color: rgba(244, 63, 94, .32); background: rgba(255, 228, 230, .92); }
 html[data-theme="dark"] .hub .hub-plaza-feedback.success { color: #c7f9d8; background: rgba(34, 197, 94, .16); }
 html[data-theme="dark"] .hub .hub-plaza-feedback.error { color: #ffd2dc; background: rgba(244, 63, 94, .16); }
-.hub-community-footer { padding: 40px 0 20px; border-radius: var(--ts-radius-card); background-clip: padding-box; -webkit-backdrop-filter: var(--ts-blur-sm); backdrop-filter: var(--ts-blur-sm); text-align: center; }
+.hub .hub-community-footer {
+    position: relative; isolation: isolate; padding: 40px 0 20px; border: 0;
+    border-radius: var(--ts-radius-card); overflow: visible; background: transparent;
+    background-clip: padding-box; box-shadow: none; text-align: center;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+}
 .hub-community-footer h2 { font-size: 14px; font-weight: 500; color: var(--ts-editorial-muted); }
 .hub-community-footer .hub-stat-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); padding: 18px 0 28px; border: 0; border-radius: inherit; background-clip: padding-box; gap: 12px; }
 .hub-community-footer .hub-stat-grid > div { padding: 0; min-height: 0; border: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
