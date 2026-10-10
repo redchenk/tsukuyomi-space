@@ -1,0 +1,120 @@
+/* Raster botanical engravings derived from the approved four-season boards.
+   Only the active custom-property image is painted/requested by the browser. */
+@layer ts-navigation {
+  :root {
+    --ts-nav-ornament: url('../assets/navigation/seasons-v1/spring-ornament.webp');
+    --ts-nav-glass-bg: color-mix(in srgb, var(--ts-editorial-surface) 76%, transparent);
+    --ts-nav-glass-filter: blur(22px) saturate(1.12);
+    --ts-nav-art-opacity: .78;
+  }
+  html[data-season="summer"] { --ts-nav-ornament: url('../assets/navigation/seasons-v1/summer-ornament.webp'); }
+  html[data-season="autumn"] { --ts-nav-ornament: url('../assets/navigation/seasons-v1/autumn-ornament.webp'); }
+  html[data-season="winter"] { --ts-nav-ornament: url('../assets/navigation/seasons-v1/winter-ornament.webp'); }
+  html[data-theme="dark"] {
+    --ts-nav-glass-bg: color-mix(in srgb, var(--ts-editorial-surface) 84%, transparent);
+    --ts-nav-art-opacity: .80;
+  }
+
+  .unified-navigation .site-commandbar::before,
+  :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog)::before,
+  :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog)::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    background-image: var(--ts-nav-ornament);
+    background-repeat: repeat-x;
+    background-position: center;
+    opacity: var(--ts-nav-art-opacity);
+  }
+  .unified-navigation .site-commandbar::before {
+    inset: 1px;
+    border-radius: inherit;
+    background-image: var(--ts-nav-ornament), var(--ts-nav-ornament);
+    background-size: auto 180px;
+    background-position: center top -76px, center bottom -76px;
+    /* Preserve a quiet text baseline while leaving fuller art at both rims. */
+    mask-image: linear-gradient(to bottom, #000 12%, rgb(0 0 0 / 10%) 42%, rgb(0 0 0 / 10%) 58%, #000 88%);
+  }
+  :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog) {
+    isolation: isolate;
+    --ts-current-material-bg: var(--ts-nav-glass-bg) !important;
+    --ts-current-material-filter: var(--ts-nav-glass-filter) !important;
+  }
+  :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog)::before,
+  :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog)::after {
+    inset: 0 0 auto;
+    height: 70px;
+    border-radius: inherit;
+    background-size: auto 180px;
+    background-position: center top -78px;
+    opacity: calc(var(--ts-nav-art-opacity) * .74);
+    mask-image: linear-gradient(#000, rgb(0 0 0 / 35%) 65%, transparent);
+  }
+  :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog)::after {
+    top: auto;
+    bottom: 0;
+    transform: rotate(180deg);
+  }
+  :is(.site-navigation-dialog, .site-search-dialog) > * { position: relative; z-index: 1; }
+  .site-morph-panel { z-index: 1; }
+
+  /* Retain the denser white veil when transparency is reduced or unavailable. */
+  html[data-window-active="false"] { --ts-nav-glass-filter: none; }
+  html[data-performance="reduced"] {
+    --ts-nav-glass-filter: none;
+    --ts-nav-glass-bg: color-mix(in srgb, var(--ts-editorial-surface) 92%, transparent);
+  }
+  /* One small fixed glass surface; avoid restoring blur across the page. */
+  html[data-performance="reduced"][data-window-active="true"] .unified-navigation .site-commandbar {
+    --ts-current-material-bg: color-mix(in srgb, var(--ts-editorial-surface) 84%, transparent) !important;
+    --ts-current-material-filter: blur(8px) saturate(1.08) !important;
+    -webkit-backdrop-filter: var(--ts-current-material-filter) !important;
+    backdrop-filter: var(--ts-current-material-filter) !important;
+  }
+  .unified-navigation .site-commandbar {
+    transition: background-color 450ms ease, border-color 450ms ease, color 450ms ease;
+  }
+  html[data-season-transition]::view-transition-group(root),
+  html[data-season-transition]::view-transition-old(root),
+  html[data-season-transition]::view-transition-new(root) {
+    animation-duration: 650ms !important;
+    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+  }
+  html[data-season-transition]::view-transition { pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-season-transition]::view-transition-group(root),
+    html[data-season-transition]::view-transition-old(root),
+    html[data-season-transition]::view-transition-new(root) { animation: none !important; }
+    .unified-navigation .site-commandbar { transition: none; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root, html[data-theme] { --ts-nav-glass-filter: none; --ts-nav-glass-bg: var(--ts-editorial-surface); }
+    html[data-performance="reduced"][data-window-active="true"] .unified-navigation .site-commandbar {
+      --ts-current-material-bg: var(--ts-editorial-surface) !important;
+      --ts-current-material-filter: none !important;
+    }
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root, html[data-theme] { --ts-nav-glass-filter: none; --ts-nav-glass-bg: var(--ts-editorial-surface); }
+    html[data-performance="reduced"][data-window-active="true"] .unified-navigation .site-commandbar {
+      --ts-current-material-bg: var(--ts-editorial-surface) !important;
+      --ts-current-material-filter: none !important;
+    }
+  }
+  @media (forced-colors: active) {
+    :root, html[data-theme] { --ts-nav-glass-filter: none; --ts-nav-glass-bg: Canvas; }
+    html[data-performance="reduced"][data-window-active="true"] .unified-navigation .site-commandbar {
+      --ts-current-material-bg: Canvas !important;
+      --ts-current-material-filter: none !important;
+    }
+    .unified-navigation .site-commandbar::before,
+    :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog)::before,
+    :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog)::after { display: none; }
+  }
+  @media (max-width: 860px) {
+    .unified-navigation .site-commandbar::before { background-size: auto 160px; background-position: center top -69px, center bottom -69px; }
+    :is(.site-navigation-dialog, .site-search-dialog)::before,
+    :is(.site-navigation-dialog, .site-search-dialog)::after { background-size: auto 150px; background-position: center top -64px; height: 60px; }
+  }
+}

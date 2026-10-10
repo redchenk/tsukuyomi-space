@@ -1,5 +1,12 @@
-import { computed, readonly, ref, watch } from 'vue';
+import { computed, nextTick, readonly, ref, watch } from 'vue';
 import { SEASON_STORAGE_KEY, readSeasonPreference, writeSeasonPreference, normalizeSeasonPreference, resolveSeason, nextSeasonCheckDelay } from '../services/seasonTheme.mjs';
+import { createSeasonTransition, decodeSeasonImages } from '../services/seasonTransition.mjs';
+import springBackground from '../assets/sakura/moonwhite-lake.webp';
+import springDarkBackground from '../assets/sakura/moonlit-shrine.webp';
+import springOrnament from '../assets/navigation/seasons-v1/spring-ornament.webp';
+import summerOrnament from '../assets/navigation/seasons-v1/summer-ornament.webp';
+import autumnOrnament from '../assets/navigation/seasons-v1/autumn-ornament.webp';
+import winterOrnament from '../assets/navigation/seasons-v1/winter-ornament.webp';
 import summerLight from '../assets/seasons/summer-v1/background-light.webp';
 import summerDark from '../assets/seasons/summer-v1/background-dark.webp';
 import autumnLight from '../assets/seasons/autumn-v1/background-light.webp';
@@ -8,6 +15,21 @@ import winterLight from '../assets/seasons/winter-v1/background-light.webp';
 import winterDark from '../assets/seasons/winter-v1/background-dark.webp';
 
 const seasonalBackgrounds = { summer: [summerLight, summerDark], autumn: [autumnLight, autumnDark], winter: [winterLight, winterDark] };
+const ornaments = { spring: springOrnament, summer: summerOrnament, autumn: autumnOrnament, winter: winterOrnament };
+const transitionSeason = createSeasonTransition({
+  document: typeof document === 'undefined' ? null : document,
+  reducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  prepare: async season => {
+    const { seasonalArt } = await import('../data/siteArt.js');
+    const themeIndex = document.documentElement.dataset.theme === 'dark' ? 1 : 0;
+    await decodeSeasonImages([
+      seasonalBackgrounds[season]?.[themeIndex] || (themeIndex ? springDarkBackground : springBackground),
+      ornaments[season],
+      ...['hero', 'articleCover', 'galleryCover', 'pixelCover'].map(key => seasonalArt(key, season))
+    ]);
+  },
+  flush: nextTick
+});
 
 function browserStorage() {
   try { return window.localStorage; } catch (_) { return null; }
@@ -37,9 +59,12 @@ watch(selection, initializeSeasonTheme, { flush: 'sync' });
 export function useSeasonTheme() {
   const saved = ref(true);
   function setPreference(value) {
-    preference.value = normalizeSeasonPreference({ ...preference.value, ...value });
-    currentDate.value = new Date();
-    saved.value = writeSeasonPreference(browserStorage(), preference.value);
+    const next = normalizeSeasonPreference({ ...preference.value, ...value });
+    return transitionSeason(resolveSeason(next, new Date()).artwork, () => {
+      preference.value = next;
+      currentDate.value = new Date();
+      saved.value = writeSeasonPreference(browserStorage(), preference.value);
+    });
   }
   return { preference: readonly(preference), selection, saved: readonly(saved), setPreference };
 }

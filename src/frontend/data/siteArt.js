@@ -24,7 +24,7 @@ const winter = { hero: winterHero, articleCover: winterArticle, galleryCover: wi
 const seasonalArtwork = { spring, summer, autumn, winter };
 // Getters track the reactive season inside Vue render/computed effects. URLs
 // alone do not fetch images; only artwork actually displayed is downloaded.
-export function seasonalArt(key) { return (seasonalArtwork[activeSeason.value] || spring)[key]; }
+export function seasonalArt(key, season = activeSeason.value) { return (seasonalArtwork[season] || spring)[key]; }
 export const siteArt = Object.freeze(Object.defineProperties({}, Object.fromEntries(
   Object.keys(spring).map(key => [key, { enumerable: true, get: () => seasonalArt(key) }])
 )));

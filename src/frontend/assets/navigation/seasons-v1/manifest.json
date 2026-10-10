@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "generator": "built-in imagegen",
+  "role": "transparent-navigation-ornaments",
+  "formatConversion": "sharp WebP; dimensions and alpha preserved",
+  "assets": [
+    {
+      "season": "spring",
+      "file": "spring-ornament.webp",
+      "width": 2172,
+      "height": 724,
+      "hasAlpha": true,
+      "bytes": 178406,
+      "sha256": "5e36531d0a7484932488ca1d3742c399fcb5f578ee8a8626cf122ea2a55dafb3",
+      "prompt": "spring-ornament.prompt.txt",
+      "reference": "design-assets/navigation-seasons-v1/spring.png"
+    },
+    {
+      "season": "summer",
+      "file": "summer-ornament.webp",
+      "width": 2172,
+      "height": 724,
+      "hasAlpha": true,
+      "bytes": 176816,
+      "sha256": "ede477d202ec223232791adbd80258eb76201b607e1319f50ecf09c64065e4e5",
+      "prompt": "summer-ornament.prompt.txt",
+      "reference": "design-assets/navigation-seasons-v1/summer.png"
+    },
+    {
+      "season": "autumn",
+      "file": "autumn-ornament.webp",
+      "width": 2172,
+      "height": 724,
+      "hasAlpha": true,
+      "bytes": 170190,
+      "sha256": "e94d8fb18a2ea6edcfb227a685597ea3616eb2a0caca8273d4305df1b209d3ff",
+      "prompt": "autumn-ornament.prompt.txt",
+      "reference": "design-assets/navigation-seasons-v1/autumn.png"
+    },
+    {
+      "season": "winter",
+      "file": "winter-ornament.webp",
+      "width": 2172,
+      "height": 724,
+      "hasAlpha": true,
+      "bytes": 232108,
+      "sha256": "41a9cd0a153149512f98f6973ca8bbe3b040e60456e4053ecad86e5f59ed5b0f",
+      "prompt": "winter-ornament.prompt.txt",
+      "reference": "design-assets/navigation-seasons-v1/winter.png"
+    }
+  ]
+}

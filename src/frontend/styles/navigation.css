@@ -1,4 +1,4 @@
-/* Shared segmented navigation for content pages and the Room, using site tokens. */
+/* Shared continuous navigation for content pages and the Room, using site tokens. */
 @layer ts-navigation {
 #app {
   --site-companion-width: clamp(6.5rem, 9vw, 9.5rem);
@@ -7,23 +7,22 @@
 .unified-navigation { --site-nav-edge: max(24px, calc((100vw - 1420px) / 2)); }
 .unified-navigation .topbar.site-commandbar {
   --ts-text: var(--ts-editorial-ink); --ts-muted: var(--ts-editorial-muted); --ts-border: var(--ts-editorial-line);
-  --ts-material-highlight: transparent; --ts-material-lowlight: transparent;
+  --ts-current-material-bg: var(--ts-nav-glass-bg) !important;
+  --ts-current-material-filter: var(--ts-nav-glass-filter) !important;
+  --ts-current-material-shadow: var(--ts-shadow-sm);
   position: fixed; z-index: 100; inset: 16px var(--site-nav-edge) auto;
-  display: grid; grid-template-columns: minmax(max-content, .9fr) minmax(max-content, 1.6fr) minmax(max-content, 2.3fr);
-  align-items: center; gap: 16px; height: 68px; min-height: 0;
-  padding: 0; margin: 0; border: 0; border-radius: 0; color: var(--ts-text);
-  background: transparent !important; box-shadow: none !important;
-  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
-  /* The space between capsules belongs to the page underneath. */
-  pointer-events: none;
+  display: grid; grid-template-columns: minmax(195px, .95fr) auto minmax(320px, 1.6fr);
+  align-items: center; gap: 8px; height: 68px; min-height: 0;
+  padding: 0 6px; margin: 0; border: 1px solid var(--ts-border); border-radius: 34px; color: var(--ts-text);
+  isolation: isolate;
 }
 .unified-navigation .site-commandbar > :is(.site-brand, .desktop-navigation, .site-header-tools) {
-  min-width: 0; height: 68px; border: 1px solid var(--ts-border);
-  border-radius: var(--ts-radius-button); background: var(--ts-editorial-surface);
-  pointer-events: auto;
-  --ts-current-material-bg: var(--ts-editorial-surface) !important;
-  --ts-current-material-shadow: var(--ts-shadow-sm);
-  --ts-current-material-filter: none;
+  position: relative; z-index: 1; min-width: 0; height: 66px; border: 0;
+  border-radius: 0;
+  --ts-material-highlight: transparent; --ts-material-lowlight: transparent;
+  --ts-current-material-bg: transparent !important;
+  --ts-current-material-shadow: none !important;
+  --ts-current-material-filter: none !important;
 }
 .unified-navigation .site-brand { display: flex; align-items: center; gap: 10px; padding: 10px 20px; margin: 0; color: var(--ts-text); text-decoration: none; letter-spacing: 0; }
 .site-brand-symbol { display: grid; flex-shrink: 0; place-items: center; width: 38px; height: 38px; }
@@ -31,7 +30,7 @@
 .unified-navigation .site-brand > span:last-child { display: grid; gap: 3px; min-width: 0; }
 .unified-navigation .site-brand strong { overflow: hidden; text-overflow: ellipsis; font-family: 'Songti SC', 'Noto Serif SC', Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: .08em; white-space: nowrap; }
 .unified-navigation .site-brand-english strong { font-size: 20px; letter-spacing: .02em; }
-.unified-navigation .site-brand small { font-size: 10px; line-height: 1.4; color: var(--ts-muted); white-space: nowrap; }
+.unified-navigation .site-brand small { font-size: 9px; line-height: 1.4; letter-spacing: .16em; color: var(--ts-muted); white-space: nowrap; }
 .unified-navigation .desktop-navigation { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; }
 .unified-navigation .desktop-navigation :is(a, button) { position: relative; display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 10px 12px; border: 0; border-radius: var(--ts-radius-button); background: transparent; color: var(--ts-muted); font: inherit; font-size: 13px; line-height: 1.4; white-space: nowrap; cursor: pointer; text-decoration: none; }
 .unified-navigation .desktop-navigation :is(a[aria-current], button.active, button[aria-expanded="true"]) { color: var(--ts-accent); background: var(--ts-accent-soft); }
@@ -43,6 +42,8 @@
 .site-morph-menu {
   --ts-text: var(--ts-editorial-ink); --ts-muted: var(--ts-editorial-muted); --ts-border: var(--ts-editorial-line);
   --morph-ease: cubic-bezier(.22, 1, .36, 1);
+  --ts-current-material-bg: var(--ts-nav-glass-bg) !important;
+  --ts-current-material-filter: var(--ts-nav-glass-filter) !important;
   position: fixed; z-index: 101; left: 0; top: var(--morph-top, 94px);
   width: var(--morph-width, 650px); height: var(--morph-height, 348px);
   transform: translateX(var(--morph-x, 24px)) translateY(-6px) scale(.98);
@@ -71,9 +72,11 @@
 .site-morph-menu.is-instant .site-morph-panel { transition: none; }
 .site-morph-panel.is-discover { display: grid; grid-template-columns: 252px 1fr; width: min(650px, calc(100vw - 48px)); min-height: 348px; }
 .site-discover-list { display: flex; flex-direction: column; gap: 3px; padding: 10px; }
-.site-discover-link { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 6px; min-height: 76px; padding: 14px; border-radius: var(--ts-radius-control); color: var(--ts-text); text-decoration: none; transition: background 200ms ease, color 200ms ease; }
+.site-discover-link { display: flex; flex: 1; align-items: center; gap: 14px; min-height: 76px; padding: 14px; border-radius: var(--ts-radius-control); color: var(--ts-text); text-decoration: none; transition: background 200ms ease, color 200ms ease; }
+.site-discover-link > svg { flex-shrink: 0; color: var(--ts-accent); }
+.site-discover-copy { display: grid; gap: 6px; min-width: 0; }
 .site-discover-link strong { font-size: 14px; font-weight: 600; line-height: 1.5; }
-.site-discover-link span { font-size: 11px; line-height: 1.6; color: var(--ts-muted); }
+.site-discover-link small { font-size: 11px; line-height: 1.6; color: var(--ts-muted); }
 .site-discover-link:is(:hover, .is-preview, [aria-current]) { background: var(--ts-editorial-soft); color: var(--ts-accent); }
 .site-discover-visual { position: relative; min-width: 0; overflow: hidden; border-radius: 0 var(--ts-radius-lg) var(--ts-radius-lg) 0; background: var(--ts-editorial-soft); }
 .site-route-preview { position: absolute; inset: 0; opacity: 0; transform: scale(1.035); filter: blur(6px); transition: opacity 360ms var(--morph-ease), transform 520ms var(--morph-ease), filter 340ms var(--morph-ease); }
@@ -131,9 +134,8 @@ html[data-performance="reduced"] :is(.site-morph-panel, .site-route-preview) { f
   padding: 24px; border: 1px solid var(--ts-border); border-radius: var(--ts-radius-lg, 24px);
   background: var(--ts-editorial-surface); color: var(--ts-text); box-shadow: var(--ts-shadow-lg);
   overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
-  /* Keep the surface opaque when the global low-power material fallback is active. */
-  --ts-current-material-bg: var(--ts-editorial-surface) !important;
-  --ts-material-highlight: transparent; --ts-material-lowlight: transparent;
+  --ts-current-material-bg: var(--ts-nav-glass-bg) !important;
+  --ts-current-material-filter: var(--ts-nav-glass-filter) !important;
 }
 .site-navigation-dialog:not([open]), .site-search-dialog:not([open]) { display: none; }
 .site-navigation-dialog::backdrop, .site-search-dialog::backdrop { background: rgb(12 12 24 / 30%); }
@@ -227,8 +229,8 @@ html[data-performance="reduced"] :is(.site-morph-panel, .site-route-preview) { f
   .unified-navigation:not(.room-shell) .site-music-drawer.is-open .site-music-panel { max-height: calc(100dvh - 100px); overflow-y: auto; }
   .site-navigation-dialog { --site-menu-shift: -8px; transform-origin: top right; }
   .unified-navigation { --site-nav-edge: 12px; }
-  .unified-navigation .topbar.site-commandbar { inset: max(10px, env(safe-area-inset-top)) var(--site-nav-edge) auto; display: flex; justify-content: space-between; height: 60px; padding: 0; gap: 10px; }
-  .unified-navigation .site-commandbar > :is(.site-brand, .site-header-tools) { height: 56px; }
+  .unified-navigation .topbar.site-commandbar { inset: max(10px, env(safe-area-inset-top)) var(--site-nav-edge) auto; display: flex; justify-content: space-between; height: 60px; padding: 0 3px; gap: 4px; border-radius: 28px; }
+  .unified-navigation .site-commandbar > :is(.site-brand, .site-header-tools) { height: 58px; }
   .unified-navigation .site-brand { min-width: 0; flex: 0 1 auto; gap: 7px; padding: 8px 12px; }
   .unified-navigation .site-brand-symbol { display: grid; width: 30px; height: 30px; }
   .unified-navigation .desktop-navigation, .site-room-cta, .site-account-name, .site-account-trigger > svg, .site-search-trigger :is(span, kbd), .site-theme-button, .unified-navigation .site-brand small { display: none; }
