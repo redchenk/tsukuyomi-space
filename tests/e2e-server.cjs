@@ -15,6 +15,7 @@ process.env.ADMIN_USERNAME = 'admin';
 process.env.ADMIN_EMAIL = 'admin@example.test';
 process.env.ADMIN_PASSWORD = 'admin-test-password';
 process.env.ROOM_WEATHER_OFFLINE = 'true';
+process.env.APP_RELEASES_OFFLINE = 'true';
 
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');

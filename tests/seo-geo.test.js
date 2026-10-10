@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuyomi-seo-'));
-Object.assign(process.env, { NODE_ENV: 'test', DATA_DIR: temp, DB_PATH: path.join(temp, 'seo.db'), REDIS_URL: '', ADMIN_PASSWORD: 'local-fixture-only', INDEXNOW_ENABLED: 'true' });
+Object.assign(process.env, { NODE_ENV: 'test', DATA_DIR: temp, DB_PATH: path.join(temp, 'seo.db'), REDIS_URL: '', ADMIN_PASSWORD: 'local-fixture-only', INDEXNOW_ENABLED: 'true', APP_RELEASES_OFFLINE: 'true' });
 const config = require('../backend/config');
 config.projectRoot = temp;
 config.enableFrontendDist = true;

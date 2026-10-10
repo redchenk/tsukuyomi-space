@@ -4,7 +4,7 @@ import TsIcon from '../components/TsIcon.vue';
 import appIcon from '../../../assets/icons/icon-512.png';
 import releaseSnapshot from '../../../shared/native-app-release.json';
 import { nativeAppCopy } from '../data/nativeAppCopy';
-import { APP_REPOSITORY, detectDownloadPlatform, loadAppReleases, selectAppReleases } from '../services/nativeAppRelease.mjs';
+import { APP_REPOSITORY, APP_RELEASE_REFRESH_MS, chooseAppRelease, detectDownloadPlatform, loadAppReleases, selectAppReleases } from '../services/nativeAppRelease.mjs';
 
 const props = defineProps({ lang: { type: String, required: true }, t: { type: Object, required: true } });
 const emit = defineEmits(['go']);
@@ -15,7 +15,7 @@ const source = ref('verified');
 const loading = ref(false);
 const failed = ref(false);
 const device = ref('');
-const release = computed(() => catalog.value[channel.value] || catalog.value.stable || catalog.value.preview);
+const release = computed(() => chooseAppRelease(catalog.value, channel.value));
 const sourceLabel = computed(() => copy.value[source.value === 'github' ? 'latest' : source.value === 'cache' ? 'cached' : 'verified']);
 const platforms = computed(() => ['windows', 'macos', 'android', 'linux', 'ios'].map(key => ({
   key, ...copy.value.platformsCopy[key], asset: release.value.assets[key],
@@ -30,6 +30,7 @@ const heroTarget = computed(() => device.value === 'androidEmulator' ? copy.valu
 const publishedDate = computed(() => new Intl.DateTimeFormat(props.lang === 'zh' ? 'zh-CN' : props.lang, { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(release.value.publishedAt)));
 let request = null;
 let disposed = false;
+let updateTimer = null;
 function size(bytes) { return `${new Intl.NumberFormat(props.lang, { maximumFractionDigits: 1 }).format(bytes / 1024 ** 2)} MB`; }
 function enterRoom(event) {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0) return;
@@ -40,12 +41,20 @@ async function refresh(force = false) {
   request = new AbortController(); loading.value = true; failed.value = false;
   try {
     const result = await loadAppReleases({ signal: request.signal, force });
-    if (!disposed) { catalog.value = result.catalog; source.value = result.source; }
+    if (!disposed) { catalog.value = result.catalog; source.value = result.source; failed.value = result.stale; }
   } catch (_) { if (!disposed) failed.value = true; }
   finally { if (!disposed) loading.value = false; request = null; }
 }
-onMounted(() => { device.value = detectDownloadPlatform(navigator); refresh(); });
-onUnmounted(() => { disposed = true; request?.abort(); });
+function refreshVisible() { if (document.visibilityState === 'visible') refresh(); }
+onMounted(() => {
+  device.value = detectDownloadPlatform(navigator); refresh();
+  updateTimer = setInterval(refreshVisible, APP_RELEASE_REFRESH_MS);
+  document.addEventListener('visibilitychange', refreshVisible);
+});
+onUnmounted(() => {
+  disposed = true; request?.abort(); clearInterval(updateTimer);
+  document.removeEventListener('visibilitychange', refreshVisible);
+});
 </script>
 
 <template>

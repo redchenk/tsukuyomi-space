@@ -170,6 +170,7 @@ function createApp() {
     app.use('/api/live/:nonce', liveContentRoutes);
 
     app.use('/api', healthRoutes);
+    app.use('/api/app', require('./routes/app-releases').createAppReleaseRouter());
     app.use('/api/auth', authRoutes);
     app.use('/api/articles', articleRoutes);
     app.use('/api/article-categories', require('./routes/article-categories').publicRouter);

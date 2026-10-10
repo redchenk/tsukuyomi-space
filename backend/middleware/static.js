@@ -380,9 +380,14 @@ function serveStaticFiles(app) {
         return res.type('html').send(addDiscovery(composePage(frontendIndexHtml, html), req.path));
     };
     app.get('/indexnow-:key.txt', (req, res, next) => indexNow.serveKey(req, res, next));
-    for (const pathname of ['/', '/hub', '/plaza', '/room', '/reality', '/download']) {
+    for (const pathname of ['/', '/hub', '/plaza', '/room', '/reality']) {
         app.get(pathname, (req, res) => sendPublic(req, res, renderPublicPage(pathname)));
     }
+    app.get('/download', async (req, res) => {
+        const result = await require('../services/native-app-release').getAppReleaseService().get();
+        const release = require('../../shared/native-app-release.cjs').selectAppReleases(result.releases).latest;
+        return sendPublic(req, res, renderPublicPage('/download', release));
+    });
     app.get('/stage', (req, res) => {
         const result = renderStagePage(req.query);
         if (result.noindex) res.set('X-Robots-Tag', 'noindex, follow');

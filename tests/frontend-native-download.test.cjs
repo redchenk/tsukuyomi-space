@@ -56,6 +56,10 @@ test('selects stable and beta independently by version rather than upload order'
   const catalog = selectAppReleases(values);
   assert.equal(catalog.stable.tag, 'v0.6.9');
   assert.equal(catalog.preview.tag, 'v0.6.10-beta.10');
+  assert.equal(catalog.latest.tag, 'v0.6.10-beta.10');
+  const { chooseAppRelease } = await service();
+  assert.equal(chooseAppRelease(catalog).tag, 'v0.6.10-beta.10');
+  assert.equal(chooseAppRelease(catalog, 'stable').tag, 'v0.6.9');
   assert.ok(compareAppReleases(normalizeAppRelease(release('v0.6.10')), catalog.preview) > 0);
   assert.equal(selectAppReleases([{ draft: true }]), null);
   assert.equal(selectAppReleases({}), null);
@@ -80,12 +84,12 @@ test('device suggestions distinguish phones, emulators, iPad desktop mode and un
 });
 
 test('fetches public metadata without cookies or redirects, reuses cache and permits explicit refresh', async () => {
-  const { loadAppReleases, RELEASES_API } = await freshService(); let calls = 0;
+  const { loadAppReleases, APP_RELEASE_API } = await freshService(); let calls = 0;
   const fetchImpl = async (url, options) => {
-    calls++; assert.equal(url, RELEASES_API);
+    calls++; assert.equal(url, APP_RELEASE_API);
     assert.equal(options.credentials, 'omit'); assert.equal(options.redirect, 'error');
     assert.equal(options.headers.Authorization, undefined);
-    return new Response(JSON.stringify([snapshot]), { headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ success: true, data: { releases: [snapshot], source: 'github', stale: false } }), { headers: { 'content-type': 'application/json' } });
   };
   assert.equal((await loadAppReleases({ fetchImpl, now: () => 100 })).source, 'github');
   assert.equal((await loadAppReleases({ fetchImpl, now: () => 200 })).source, 'cache');
@@ -100,6 +104,26 @@ test('failed, oversized or malformed GitHub responses never replace verified dat
     new Response('[]', { headers: { 'content-length': '1048577' } }), new Response(' '.repeat(1048577))]) {
     const { loadAppReleases } = await freshService();
     await assert.rejects(loadAppReleases({ fetchImpl: async () => response }));
+  }
+});
+
+test('server outage metadata stays visibly stale and retries sooner than the normal cache', async () => {
+  const { loadAppReleases } = await freshService(); let calls = 0;
+  const fetchImpl = async () => {
+    calls++;
+    return new Response(JSON.stringify({ success: true, data: { releases: [snapshot], source: 'verified', stale: true } }));
+  };
+  assert.equal((await loadAppReleases({ fetchImpl, now: () => 100 })).stale, true);
+  assert.equal((await loadAppReleases({ fetchImpl, now: () => 200 })).source, 'verified');
+  assert.equal(calls, 1);
+  await loadAppReleases({ fetchImpl, now: () => 60101 }); assert.equal(calls, 2);
+});
+
+test('successful status and trustworthy metadata are both required from the site endpoint', async () => {
+  for (const data of [{ releases: [snapshot], source: 'arbitrary', stale: false },
+    { releases: [snapshot], source: 'github' }, { releases: [], source: 'github', stale: false }]) {
+    const { loadAppReleases } = await freshService();
+    await assert.rejects(loadAppReleases({ fetchImpl: async () => new Response(JSON.stringify({ success: true, data })) }));
   }
 });
 

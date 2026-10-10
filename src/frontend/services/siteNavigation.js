@@ -2,7 +2,7 @@ const copy = {
   zh: {
     search: '搜索月读空间', searchHint: '搜索页面、文章…', account: '账号菜单', enterRoom: '进入房间',
     explore: '探索', exploreTitle: '还有一些值得逛逛的地方', discover: '阅读与发现', create: '创作与游玩', spaces: '更多空间', friendLinks: '友情链接',
-    rss: 'RSS 订阅', download: '应用下载', menuLabels: { discover: '发现', create: '创作', spaces: '空间' },
+    rss: 'RSS 订阅', download: '应用下载', downloadCta: '下载 App', menuLabels: { discover: '发现', create: '创作', spaces: '空间' },
     shortcuts: '页面入口', articles: '公开文章', searchTitle: '想找些什么？', close: '关闭搜索',
     loading: '正在查找文章…', empty: '没有找到匹配内容，换个关键词试试。', failed: '文章暂时加载失败，页面入口仍可使用。',
     allArticles: '查看全部文章结果', retry: '重试', searchHelp: '搜索公开文章或快速前往页面',
@@ -12,7 +12,7 @@ const copy = {
   en: {
     search: 'Search Tsukuyomi', searchHint: 'Search pages and articles…', account: 'Account menu', enterRoom: 'Enter room',
     explore: 'Explore', exploreTitle: 'A little more to discover', discover: 'Read & discover', create: 'Create & play', spaces: 'More spaces', friendLinks: 'Friend links',
-    rss: 'RSS feed', download: 'App download', menuLabels: { discover: 'Discover', create: 'Create', spaces: 'Spaces' },
+    rss: 'RSS feed', download: 'App download', downloadCta: 'Get App', menuLabels: { discover: 'Discover', create: 'Create', spaces: 'Spaces' },
     shortcuts: 'Pages', articles: 'Public articles', searchTitle: 'What are you looking for?', close: 'Close search',
     loading: 'Searching articles…', empty: 'No matches. Try another keyword.', failed: 'Articles could not be loaded. Page shortcuts are still available.',
     allArticles: 'View all article results', retry: 'Retry', searchHelp: 'Find public articles or jump to a page',
@@ -22,7 +22,7 @@ const copy = {
   ja: {
     search: '月読空間を検索', searchHint: 'ページ・記事を検索…', account: 'アカウント', enterRoom: '部屋に入る',
     explore: '探索', exploreTitle: 'まだ知らない場所へ', discover: '読む・見つける', create: 'つくる・遊ぶ', spaces: 'ほかの空間', friendLinks: 'リンク集',
-    rss: 'RSS フィード', download: 'アプリを入手', menuLabels: { discover: '発見', create: '創作', spaces: '空間' },
+    rss: 'RSS フィード', download: 'アプリを入手', downloadCta: 'アプリを入手', menuLabels: { discover: '発見', create: '創作', spaces: '空間' },
     shortcuts: 'ページ', articles: '公開記事', searchTitle: '何を探していますか？', close: '検索を閉じる',
     loading: '記事を検索中…', empty: '見つかりませんでした。別の言葉で検索してください。', failed: '記事を読み込めません。ページへの移動は利用できます。',
     allArticles: '記事の検索結果をすべて見る', retry: '再試行', searchHelp: '公開記事を検索、またはページへ移動',
