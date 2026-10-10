@@ -235,10 +235,10 @@ html[data-performance="reduced"] :is(.site-morph-panel, .site-route-preview) { f
   .unified-navigation { --site-nav-edge: 12px; }
   .unified-navigation .topbar.site-commandbar { inset: max(10px, env(safe-area-inset-top)) var(--site-nav-edge) auto; display: flex; justify-content: space-between; height: 60px; padding: 0 3px; gap: 4px; border-radius: 28px; }
   .unified-navigation .site-commandbar > :is(.site-brand, .site-header-tools) { height: 58px; }
-  .unified-navigation .site-brand { min-width: 0; flex: 0 1 auto; gap: 7px; padding: 8px 12px; }
+  .unified-navigation .site-brand { min-width: max-content; flex: 0 0 auto; gap: 7px; padding: 8px 12px; }
   .unified-navigation .site-brand-symbol { display: grid; width: 30px; height: 30px; }
   .unified-navigation .desktop-navigation, .site-room-cta, .site-account-name, .site-account-trigger > svg, .site-search-trigger :is(span, kbd), .site-theme-button, .unified-navigation .site-brand small { display: none; }
-  .unified-navigation .site-brand strong { font-size: 18px; letter-spacing: .02em; }
+  .unified-navigation .site-brand strong { overflow: visible; text-overflow: clip; font-size: 18px; letter-spacing: .02em; }
   .unified-navigation .site-brand-english strong { font-size: 16px; }
   .site-header-tools { gap: 0; flex: 0 0 auto; padding: 4px; }
   .site-search-trigger { flex: 0 0 auto; width: 44px; padding: 0; border: 0; background: transparent; color: var(--ts-text); }
@@ -274,21 +274,26 @@ html[data-performance="reduced"] :is(.site-morph-panel, .site-route-preview) { f
      Keeping it laid out with visibility:hidden can leave iOS text layers blank. */
   .unified-navigation.is-keyboard-open .site-commandbar { display: none; }
 }
-@media (max-width: 340px) {
-  .unified-navigation .site-brand strong { font-size: 15px; }
-  .unified-navigation .site-brand-symbol { width: 26px; height: 26px; }
-  .unified-navigation .site-brand { gap: 4px; }
-  .unified-navigation .site-brand.site-brand-english { padding-inline: 6px; }
-  .unified-navigation .site-brand-english strong { font-size: 14px; letter-spacing: 0; }
-  .unified-navigation .site-brand-english .site-brand-symbol { width: 24px; height: 24px; }
-  .unified-navigation:not(.room-shell):not(:has(.room-settings-page)) .site-music-drawer.is-open { bottom: calc(var(--site-companion-bottom) + var(--site-companion-width) * 208 / 192 + 12px); }
+@media (max-width: 430px) {
+  /* Search remains at the top of Explore; reserve the bar for the full brand
+     and the notification, account, download and Explore touch targets. */
+  .site-header-tools .site-search-trigger { display: none; }
 }
 @media (max-width: 374px) {
   .unified-navigation { --site-nav-edge: 8px; }
-  .unified-navigation .topbar.site-commandbar { gap: 8px; }
-  .unified-navigation .site-brand { padding-inline: 8px; }
+  .unified-navigation .site-brand { gap: 4px; padding-inline: 4px; }
+  .unified-navigation .site-brand strong { font-size: 16px; }
+  .unified-navigation .site-brand-symbol { width: 26px; height: 26px; }
   .site-theme-button { display: none; }
   .site-navigation-dialog, .site-search-dialog { padding: 16px; }
+}
+@media (max-width: 340px) {
+  .unified-navigation .site-brand strong { font-size: 15px; }
+  .unified-navigation .topbar.site-commandbar .site-header-tools { gap: 0; }
+  .unified-navigation .site-brand.site-brand-english { padding-inline: 4px; }
+  .unified-navigation .site-brand-english strong { font-size: 14px; letter-spacing: 0; }
+  .unified-navigation .site-brand-english .site-brand-symbol { width: 24px; height: 24px; }
+  .unified-navigation:not(.room-shell):not(:has(.room-settings-page)) .site-music-drawer.is-open { bottom: calc(var(--site-companion-bottom) + var(--site-companion-width) * 208 / 192 + 12px); }
 }
 @media (max-width: 1220px) {
   .site-brand-suffix { display: none; }

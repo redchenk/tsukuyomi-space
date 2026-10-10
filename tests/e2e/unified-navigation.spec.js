@@ -4,7 +4,10 @@ test('shared search finds navigation aliases, supports keyboard selection and pr
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/room');
     await page.locator('#chatInput').fill('尚未发送的消息');
-    await page.locator('.site-search-trigger').click();
+    // WebKit does not focus buttons on pointer clicks; start from keyboard
+    // focus so this check exercises the search dialog's focus restoration.
+    await page.locator('.site-search-trigger').focus();
+    await page.locator('.site-search-trigger').press('Enter');
     const search = page.getByRole('dialog', { name: '想找些什么？' });
     const input = search.getByRole('searchbox');
     await expect(input).toBeFocused();
@@ -25,6 +28,7 @@ test('shared search finds navigation aliases, supports keyboard selection and pr
 });
 
 test('search displays real API results, survives an error and follows the selected article', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
     const queries = [];
     await page.route(/\/api\/(?:live\/[^/]+\/)?articles\?/, route => {
         const q = new URL(route.request().url()).searchParams.get('q');
@@ -105,7 +109,7 @@ test('desktop menus morph in one surface without moving the page and hand off to
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
 });
 
-test('desktop hover, keyboard, rapid switches and resize do not leave stale menus or focus', async ({ page }) => {
+test('desktop hover, keyboard, rapid switches and resize do not leave stale menus or focus', async ({ page, browserName }) => {
     await page.setViewportSize({ width: 1024, height: 720 });
     await page.goto('/stage');
     const discover = page.locator('#site-nav-discover');
@@ -126,7 +130,8 @@ test('desktop hover, keyboard, rapid switches and resize do not leave stale menu
     await discover.focus();
     await discover.press('ArrowDown');
     await expect(menu.getByRole('link', { name: /^百科/ })).toBeFocused();
-    await page.keyboard.press('Tab');
+    // Option+Tab includes links in WebKit's keyboard focus order.
+    await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
     await expect(menu.getByRole('link', { name: /^月读广场/ })).toBeFocused();
     await expect(page.locator('.site-route-preview.is-active strong')).toHaveText('月读广场');
     await page.keyboard.press('Escape');
@@ -149,7 +154,7 @@ test('desktop hover, keyboard, rapid switches and resize do not leave stale menu
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await discover.press('ArrowDown');
     expect(await menu.evaluate(el => el.getAnimations().length)).toBe(0);
-    await menu.getByRole('link', { name: /^图库/ }).click();
+    await menu.getByRole('link', { name: /^图库/ }).press('Enter');
     await expect(page).toHaveURL(/\/gallery$/);
     await expect(menu).not.toBeVisible();
 });
@@ -327,7 +332,7 @@ test('mobile top navigation keeps primary routes, account, notifications and sea
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/hub$/);
     await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
-    for (const locator of [page.locator('.site-brand'), page.locator('.site-search-trigger'), page.getByRole('button', { name: /^站内信，/ }), page.locator('.site-account-trigger'), page.locator('.site-mobile-navigation-trigger')]) {
+    for (const locator of [page.locator('.site-brand'), page.getByRole('button', { name: /^站内信，/ }), page.locator('.site-account-trigger'), page.locator('.site-mobile-navigation-trigger')]) {
         await expect(locator).toBeVisible();
         await expect(locator).toBeInViewport();
     }
@@ -348,6 +353,62 @@ test('mobile top navigation keeps primary routes, account, notifications and sea
     await page.keyboard.press('Escape');
     await activate(page.getByRole('button', { name: /^站内信，/ }));
     await expect(page).toHaveURL(/\/notifications$/);
-    await activate(page.locator('.site-search-trigger'));
+    await activate(page.locator('.site-mobile-navigation-trigger'));
+    await activate(page.locator('#site-navigation .site-menu-search'));
     await expect(page.getByRole('dialog', { name: '想找些什么？' }).getByRole('searchbox')).toBeFocused();
 });
+
+for (const signedIn of [false, true]) {
+    test(`mobile brand stays complete with ${signedIn ? 'signed-in' : 'guest'} navigation in every language`, async ({ page }, testInfo) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.route('**/lib/live2dcubismcore-v5.min.js', route => route.fulfill({ status: 404, body: '' }));
+        if (signedIn) {
+            await page.goto('/login');
+            await page.locator('#loginAccount').fill('e2e-user');
+            await page.locator('#loginPassword').fill('e2e-password');
+            await page.getByRole('button', { name: '登录', exact: true }).click();
+            await expect(page).toHaveURL(/\/hub$/);
+        } else await page.goto('/hub');
+        for (const [language, brand] of [['zh', '月读空间'], ['ja', '月読空間'], ['en', 'Tsukuyomi']]) {
+            await page.evaluate(language => localStorage.setItem('lang', language), language);
+            await page.reload();
+            await expect(page.locator('.site-brand strong')).toContainText(brand);
+            await page.evaluate(() => document.fonts.ready);
+            for (const width of [320, 332, 360, 375, 390, 414, 430, 431, 480, 860]) {
+                await page.setViewportSize({ width, height: 844 });
+                // Viewport updates may arrive before the next browser style
+                // pass; assert the settled layout rather than the old frame.
+                await expect.poll(() => page.locator('.site-commandbar').evaluate(header => header.scrollWidth <= header.clientWidth), {
+                    message: `${language} navigation fits ${width}px`
+                }).toBe(true);
+                const geometry = await page.locator('.site-commandbar').evaluate(header => {
+                    const brand = header.querySelector('.site-brand');
+                    const text = brand.querySelector('strong');
+                    const tools = header.querySelector('.site-header-tools');
+                    return {
+                        textClipped: text.scrollWidth > text.clientWidth,
+                        headerOverflow: header.scrollWidth > header.clientWidth,
+                        overlap: brand.getBoundingClientRect().right > tools.getBoundingClientRect().left,
+                        widths: { header: header.clientWidth, content: header.scrollWidth, brand: brand.getBoundingClientRect().width, tools: tools.getBoundingClientRect().width },
+                        tools: [...tools.querySelectorAll('a, button')]
+                            .filter(el => getComputedStyle(el).display !== 'none')
+                            .map(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }))
+                    };
+                });
+                expect(geometry.textClipped, `${language} at ${width}px`).toBe(false);
+                expect(geometry.headerOverflow, `${language} at ${width}px: ${JSON.stringify(geometry.widths)}`).toBe(false);
+                expect(geometry.overlap, `${language} at ${width}px`).toBe(false);
+                for (const target of geometry.tools) {
+                    expect(target.width).toBeGreaterThanOrEqual(44);
+                    expect(target.height).toBeGreaterThanOrEqual(44);
+                }
+                await expect(page.locator('.site-download-cta')).toBeInViewport();
+                if (width <= 430) await expect(page.locator('.site-search-trigger')).toBeHidden();
+                else await expect(page.locator('.site-search-trigger')).toBeVisible();
+                if (language === 'zh' && [320, 390].includes(width)) {
+                    await page.screenshot({ path: testInfo.outputPath(`brand-${signedIn ? 'signed-in' : 'guest'}-${width}.png`) });
+                }
+            }
+        }
+    });
+}
