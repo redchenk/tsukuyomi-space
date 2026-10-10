@@ -163,7 +163,26 @@ html[data-theme="dark"] .hub .hub-character img { filter: brightness(.74) satura
 .hub-notice[open] summary > small .ts-icon { transform: rotate(180deg); }
 .hub-notice[open] summary > strong { white-space: normal; }
 .hub-notice .hub-notice-content { margin: 0 0 20px 30px; line-height: 1.9; }
-.hub .hub-grid-wrap { margin-top: 0; padding: 0; border: 0; border-radius: var(--ts-radius-card); overflow: visible; background: transparent; background-clip: padding-box; box-shadow: none; }
+.hub .hub-grid-wrap {
+    position: relative; isolation: isolate; margin-top: 0; padding: 0; border: 0;
+    border-radius: var(--ts-radius-card); overflow: visible; background: transparent;
+    background-clip: padding-box; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+/* Feather the background glass alone; masking the section itself would also
+   fade its text, cards and focus outlines. Keep the horizontal bounds intact. */
+.hub .hub-grid-wrap::before {
+    content: ''; position: absolute; inset: -28px 0; z-index: -1; pointer-events: none;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--ts-editorial-surface) 24%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.05); backdrop-filter: blur(14px) saturate(1.05);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 52px, #000 calc(100% - 56px), transparent), linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 52px, #000 calc(100% - 56px), transparent), linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+    -webkit-mask-composite: source-in; mask-composite: intersect;
+}
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    .hub .hub-grid-wrap::before { display: none; }
+}
 .hub .hub-section-head { display: flex; flex-direction: row; margin: 0 0 20px; padding: 0; align-items: center; }
 .hub .hub-section-head h2 { font-family: 'Songti SC', 'Noto Serif SC', var(--ts-font-serif); font-size: 28px; margin: 0 0 7px; color: var(--ts-editorial-ink); }
 .hub .hub-section-head > div > span { font-size: 13px; color: var(--ts-editorial-muted); }
