@@ -6,6 +6,7 @@
     --ts-nav-glass-bg: color-mix(in srgb, var(--ts-editorial-surface) 76%, transparent);
     --ts-nav-glass-filter: blur(22px) saturate(1.12);
     --ts-nav-art-opacity: .78;
+    --ts-nav-action-bg: color-mix(in srgb, var(--ts-editorial-surface) 94%, transparent);
   }
   html[data-season="summer"] { --ts-nav-ornament: url('../assets/navigation/seasons-v1/summer-ornament.webp'); }
   html[data-season="autumn"] { --ts-nav-ornament: url('../assets/navigation/seasons-v1/autumn-ornament.webp'); }
@@ -35,6 +36,21 @@
     background-position: center top -76px, center bottom -76px;
     /* Preserve a quiet text baseline while leaving fuller art at both rims. */
     mask-image: linear-gradient(to bottom, #000 12%, rgb(0 0 0 / 10%) 42%, rgb(0 0 0 / 10%) 58%, #000 88%);
+  }
+  /* Give each action its own quiet surface above the botanical engraving. */
+  .unified-navigation .site-commandbar :is(.desktop-navigation a, .desktop-navigation button,
+    .site-tool-button, .site-account-trigger, .site-search-trigger, .site-mobile-navigation-trigger) {
+    border: 1px solid color-mix(in srgb, var(--ts-editorial-ink) 18%, var(--ts-editorial-surface));
+    background: var(--ts-nav-action-bg);
+    color: var(--ts-editorial-ink);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+    font-weight: 600;
+  }
+  .unified-navigation .site-commandbar :is(.desktop-navigation a, .desktop-navigation button,
+    .site-tool-button, .site-account-trigger, .site-search-trigger, .site-mobile-navigation-trigger):is(:hover, [aria-expanded="true"], [aria-current], .active) {
+    border-color: color-mix(in srgb, var(--ts-accent) 55%, var(--ts-editorial-line));
+    background: var(--ts-accent-soft);
+    color: var(--ts-accent);
   }
   :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog) {
     isolation: isolate;
@@ -89,7 +105,7 @@
     .unified-navigation .site-commandbar { transition: none; }
   }
   @media (prefers-reduced-transparency: reduce) {
-    :root, html[data-theme] { --ts-nav-glass-filter: none; --ts-nav-glass-bg: var(--ts-editorial-surface); }
+    :root, html[data-theme] { --ts-nav-glass-filter: none; --ts-nav-glass-bg: var(--ts-editorial-surface); --ts-nav-action-bg: var(--ts-editorial-surface); }
     html[data-performance="reduced"][data-window-active="true"] .unified-navigation .site-commandbar {
       --ts-current-material-bg: var(--ts-editorial-surface) !important;
       --ts-current-material-filter: none !important;
@@ -111,10 +127,15 @@
     .unified-navigation .site-commandbar::before,
     :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog)::before,
     :is(.site-morph-menu, .site-navigation-dialog, .site-search-dialog)::after { display: none; }
+    .unified-navigation .site-commandbar :is(.desktop-navigation a, .desktop-navigation button,
+      .site-tool-button, .site-account-trigger, .site-search-trigger, .site-mobile-navigation-trigger) {
+      border-color: ButtonText; background: ButtonFace; color: ButtonText; box-shadow: none;
+    }
   }
   @media (max-width: 860px) {
     .unified-navigation .site-commandbar::before { background-size: auto 160px; background-position: center top -69px, center bottom -69px; }
     :is(.site-navigation-dialog, .site-search-dialog)::before,
     :is(.site-navigation-dialog, .site-search-dialog)::after { background-size: auto 150px; background-position: center top -64px; height: 60px; }
+    .unified-navigation .site-commandbar .site-header-tools { gap: 3px; }
   }
 }
