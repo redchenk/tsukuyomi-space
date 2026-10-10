@@ -8,6 +8,9 @@ const props = defineProps({
 });
 
 const iconPaths = {
+  monitor: [['rect', { x: '2', y: '3', width: '20', height: '14', rx: '2' }], ['path', { d: 'M8 21h8M12 17v4' }]],
+  laptop: [['path', { d: 'M20 16V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11M2 16h20l-1 4H3Z' }]],
+  smartphone: [['rect', { x: '6', y: '2', width: '12', height: '20', rx: '2' }], ['path', { d: 'M11 18h2' }]],
   github: [['path', { d: 'M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77a5.07 5.07 0 0 0-.09-3.77s-1.18-.35-3.91 1.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22' }]],
   // Additional Lucide icons (ISC): https://github.com/lucide-icons/lucide
   flower: [

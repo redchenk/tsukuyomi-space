@@ -22,6 +22,28 @@ function renderPublicPage(path) {
         { href: 'https://github.com/mem0ai/mem0', title: 'Mem0', description: '感谢 Mem0 的长期记忆设计参考与开源贡献。' },
         { href: '/wiki', title: '作品资料与版权', description: '本站是非官方粉丝项目，角色与作品版权归原作者和权利人所有。公开创作请注明来源与授权；AI 输出需自行判断。' }
     ];
+    if (path === '/download') {
+        const release = require('../../shared/native-app-release.json');
+        const version = release.tag_name.match(/^v(\d+\.\d+\.\d+)/)[1];
+        const packages = [
+            ['windows-x64-setup.exe', 'Windows 10 / 11 x64', '普通用户选择 EXE 安装器。便携 ZIP 用于解压运行。'],
+            ['macos-universal.dmg', 'macOS 通用版', '同一个 DMG 支持 Apple Silicon 与 Intel，将应用拖入 Applications。'],
+            ['android-arm64-v8a.apk', 'Android 常见手机', 'ARM64 APK 适合绝大多数手机；x86_64 文件用于对应模拟器。'],
+            ['linux-x64.deb', 'Linux x64', 'Ubuntu 22.04 / 兼容 Debian 环境推荐 DEB 安装包。'],
+            ['ios-arm64-unsigned.ipa', 'iPhone / iPad 自签包', '未签名 IPA 需要自己的 Apple 账号或证书签名，不能直接安装。']
+        ];
+        items = packages.map(([suffix, title, description]) => ({
+            title, description, meta: release.tag_name,
+            href: `https://github.com/redchenk/tsukuyomi-space-app/releases/download/${release.tag_name}/tsukuyomi-space-${version}-${suffix}`
+        }));
+        return renderSeoCollectionPage({ path, ...copy[path], items,
+            facts: [['已验证版本', release.tag_name], ['下载来源', '安装包直接由 GitHub 提供，本站不转存或代理。']],
+            actions: [
+                { href: release.html_url, label: 'GitHub 版本说明' },
+                { href: `https://github.com/redchenk/tsukuyomi-space-app/blob/${release.tag_name}/docs/release-guide.md`, label: '安装说明' },
+                { href: `https://github.com/redchenk/tsukuyomi-space-app/releases/download/${release.tag_name}/SHA256SUMS.txt`, label: 'SHA-256 校验清单' }
+            ] });
+    }
     return renderSeoCollectionPage({ path, ...copy[path], items });
 }
 function renderStagePage(query = {}) {

@@ -32,6 +32,7 @@ function loadRoute(componentLoader, styleLoader) {
 
 const AccessPage = loadRoute(() => import('../pages/AccessPage.vue'), () => import('../styles/routes/access.css'));
 const HubPage = loadRoute(() => import('../pages/HubPage.vue'), () => import('../styles/routes/hub.css'));
+const DownloadPage = loadRoute(() => import('../pages/DownloadPage.vue'), () => import('../styles/routes/download.css'));
 const LoginPage = loadRoute(() => import('../pages/LoginPage.vue'), () => import('../styles/routes/access.css'));
 const RegisterPage = loadRoute(() => import('../pages/RegisterPage.vue'), () => import('../styles/routes/access.css'));
 const StagePage = loadRoute(() => import('../pages/StagePage.vue'), () => import('../styles/routes/stage.css'));
@@ -77,6 +78,16 @@ export const routes = [
       title: '月读空间中枢大厅',
       description: '从中枢大厅快速浏览主舞台文章、公开图库、月读广场、最新像素画和八千代房间动态。',
       keywords: ['月读空间首页', '月读空间中枢大厅', '主舞台文章', '月读广场', '最新像素画']
+    }
+  },
+  {
+    path: '/download',
+    name: 'download',
+    component: DownloadPage,
+    meta: {
+      title: '月读空间原生应用下载',
+      description: '下载月读空间 Flutter 原生应用，按设备选择 Windows、macOS、Android、Linux 或 iOS 安装包，文件直接由 GitHub 提供。',
+      keywords: ['月读空间下载', 'Flutter 原生应用', 'Windows', 'macOS', 'Android', 'Linux', 'iOS']
     }
   },
   {

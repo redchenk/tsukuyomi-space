@@ -124,6 +124,8 @@ class OverseasSeoTests(unittest.TestCase):
         normalize = self.service.normalize_public_seo_path
         self.assertEqual(normalize("/users/%E5%88%9B%E4%BD%9C%E8%80%85"), "/users/%E5%88%9B%E4%BD%9C%E8%80%85")
         self.assertEqual(normalize("/articles/247/%E4%BD%9C%E5%93%81"), "/articles/247")
+        self.assertEqual(normalize("/download"), "/download")
+        self.assertIn("GitHub", self.service.SEO_ROUTE_COPY["/download"][1])
         for path in ("/users/../terminal", "/users/%2e%2e", "/users/x%2fy", "/users/x%00y", "/users/" + "x" * 33, "/articles/247/%2e%2e", "/articles/247/x%2f..%2fterminal"):
             with self.assertRaises(ValueError, msg=path):
                 normalize(path)

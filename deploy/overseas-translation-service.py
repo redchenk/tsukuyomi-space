@@ -68,7 +68,7 @@ PRIVATE_PATH_RE = re.compile(
 )
 PUBLIC_SEO_PATHS = frozenset({
     "/", "/hub", "/stage", "/plaza", "/wiki", "/gallery", "/pixel", "/game",
-    "/reality", "/room", "/friend-links",
+    "/reality", "/room", "/download", "/friend-links",
     "/topics/chou-kaguya-hime", "/topics/yachiyo-live2d",
     "/topics/ai-character-room", "/topics/kaguya-yachiyo",
     "/topics/cosmic-princess-kaguya-wiki", "/topics/pixel-art-community",
@@ -178,6 +178,10 @@ GLOSSARY = (
     ("公告", "Announcements"),
 )
 SEO_ROUTE_COPY = {
+    "/download": (
+        "Download the Native App | Tsukuyomi Space",
+        "Choose the Tsukuyomi Space Flutter app for Windows, macOS, Android, Linux or self-signed iOS. Download installers directly from GitHub Releases.",
+    ),
     "/": (
         "Tsukuyomi Space | Live2D, Wiki and Creative Community",
         "Explore the Cosmic Princess Kaguya fan wiki, Tsukimi Yachiyo Live2D AI room, translated articles, fan art, pixel art and community posts.",
@@ -1252,6 +1256,7 @@ def prewarm() -> None:
         "/game",
         "/reality",
         "/room",
+        "/download",
         "/friend-links",
     }
     for path in ("/feed.xml", "/sitemap.xml", "/sitemap-images.xml"):

@@ -1,0 +1,86 @@
+{
+  "tag_name": "v0.6.10-beta.1",
+  "html_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/tag/v0.6.10-beta.1",
+  "published_at": "2026-10-10T13:31:58Z",
+  "prerelease": true,
+  "draft": false,
+  "assets": [
+    {
+      "name": "INSTALL.md",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/INSTALL.md",
+      "size": 13896,
+      "state": "uploaded",
+      "digest": "sha256:125ecffd9b492b7321f390509a614176e9477aef59a2edd429b3263211a75c99"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/SHA256SUMS.txt",
+      "size": 1031,
+      "state": "uploaded",
+      "digest": "sha256:86eef315313bc492c5770557b08f9714d8abcb52214f8324fd7cac2f849aea06"
+    },
+    {
+      "name": "THIRD_PARTY_NOTICES.md",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/THIRD_PARTY_NOTICES.md",
+      "size": 5630,
+      "state": "uploaded",
+      "digest": "sha256:388aabab8504fbb24aec30e1a51f0a03030259f39b75629e0800a01413e32c4a"
+    },
+    {
+      "name": "tsukuyomi-space-0.6.10-android-arm64-v8a.apk",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/tsukuyomi-space-0.6.10-android-arm64-v8a.apk",
+      "size": 155057149,
+      "state": "uploaded",
+      "digest": "sha256:315d03529cea42cfcbb73cda7facb6fcb2bca59602f8dc0246dd6b495a7c2805"
+    },
+    {
+      "name": "tsukuyomi-space-0.6.10-android-x86_64.apk",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/tsukuyomi-space-0.6.10-android-x86_64.apk",
+      "size": 160172960,
+      "state": "uploaded",
+      "digest": "sha256:915094439e5900fc16515f77cdca6a226de7fe6de742a524256ea43361993cdd"
+    },
+    {
+      "name": "tsukuyomi-space-0.6.10-ios-arm64-unsigned.ipa",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/tsukuyomi-space-0.6.10-ios-arm64-unsigned.ipa",
+      "size": 127570826,
+      "state": "uploaded",
+      "digest": "sha256:a1b800a260ccd25edf295155cd43357e843dbd331a22164dcbea9e5c2415b1b2"
+    },
+    {
+      "name": "tsukuyomi-space-0.6.10-linux-x64.deb",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/tsukuyomi-space-0.6.10-linux-x64.deb",
+      "size": 261680812,
+      "state": "uploaded",
+      "digest": "sha256:b8c352f4e01690fda26dc3fa8ff6a966853298036feeebf1a5b6e4774d510ff1"
+    },
+    {
+      "name": "tsukuyomi-space-0.6.10-linux-x64.tar.gz",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/tsukuyomi-space-0.6.10-linux-x64.tar.gz",
+      "size": 319882929,
+      "state": "uploaded",
+      "digest": "sha256:043bba98b05fb6094714d12152281120846e2efcf61c58d08fd92820dcc52646"
+    },
+    {
+      "name": "tsukuyomi-space-0.6.10-macos-universal.dmg",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/tsukuyomi-space-0.6.10-macos-universal.dmg",
+      "size": 550267833,
+      "state": "uploaded",
+      "digest": "sha256:9027438399b06fe42909e38515aa5da7aa10cd3f37f8aa8adcf79859b268544e"
+    },
+    {
+      "name": "tsukuyomi-space-0.6.10-windows-x64-setup.exe",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/tsukuyomi-space-0.6.10-windows-x64-setup.exe",
+      "size": 268725547,
+      "state": "uploaded",
+      "digest": "sha256:d86c8fcfcbb2dffef0c5d64fc4238db1923252a6255159cee037264f8a88916d"
+    },
+    {
+      "name": "tsukuyomi-space-0.6.10-windows-x64.zip",
+      "browser_download_url": "https://github.com/redchenk/tsukuyomi-space-app/releases/download/v0.6.10-beta.1/tsukuyomi-space-0.6.10-windows-x64.zip",
+      "size": 363645411,
+      "state": "uploaded",
+      "digest": "sha256:e0817440887f3b9a51cdbf30f3640862ac2fd9e41718afc1491bf192ef7c2a71"
+    }
+  ]
+}

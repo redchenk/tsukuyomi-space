@@ -9030,5 +9030,13 @@
   "可设置 1 至 {0} 条。实际参考数量取决于相关性和上下文长度；上限越大，每条片段可能越短。": {
     "en": "Choose 1 to {0}. The actual count depends on relevance and context length; a higher limit may shorten each excerpt.",
     "ja": "1〜{0}件に設定できます。実際の参照数は関連性とコンテキスト長によって変わり、上限を増やすと各抜粋が短くなる場合があります。"
+  },
+  "月读空间原生应用下载": {
+    "en": "Tsukuyomi Space Native App Downloads",
+    "ja": "月読空間ネイティブアプリのダウンロード"
+  },
+  "下载月读空间 Flutter 原生应用，按设备选择 Windows、macOS、Android、Linux 或 iOS 安装包，文件直接由 GitHub 提供。": {
+    "en": "Download the native Flutter app for Tsukuyomi Space. Choose the Windows, macOS, Android, Linux or iOS package for your device. Files download directly from GitHub.",
+    "ja": "月読空間の Flutter ネイティブアプリをダウンロード。デバイスに合わせて Windows・macOS・Android・Linux・iOS のパッケージを選び、GitHub から直接取得します。"
   }
 }

@@ -42,5 +42,6 @@
   "/friend-links": {
     "title": "Partner Sites | Tsukuyomi Space",
     "description": "Discover approved independent blogs, websites and creative partners. Read their introductions, check link previews and visit the original sites from Tsukuyomi Space."
-  }
+  },
+  "/download": {"title":"Native App Downloads | Windows, macOS, Android, Linux and iOS","description":"Get the native Flutter app for Tsukuyomi Space. Open directly into Yachiyo’s room, chat, read and create with desktop Agent support. Choose the package for your device and read the installation guide. Installers download directly from GitHub."}
 }

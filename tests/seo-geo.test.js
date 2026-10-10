@@ -24,7 +24,7 @@ before(async () => {
 });
 after(async () => { await new Promise(resolve => server.close(resolve)); db.close(); fs.rmSync(temp, { recursive: true, force: true }); });
 test('all visitors get the same readable public document, one canonical and the interactive app', async () => {
-    for (const route of ['/', '/hub', '/stage', '/plaza', '/room', '/reality', '/wiki', '/wiki/characters/yachiyo', '/pixel', '/gallery', '/game', '/friend-links', `/articles/${articleId}/seo-test`]) {
+    for (const route of ['/', '/hub', '/stage', '/plaza', '/room', '/reality', '/download', '/wiki', '/wiki/characters/yachiyo', '/pixel', '/gallery', '/game', '/friend-links', `/articles/${articleId}/seo-test`]) {
         let baseline;
         for (const ua of ['Mozilla/5.0', 'bingbot', 'OAI-SearchBot', 'ChatGPT-User']) {
             const response = await fetch(base + route, { headers: { 'User-Agent': ua } });
@@ -42,6 +42,18 @@ test('all visitors get the same readable public document, one canonical and the 
             baseline = html;
         }
     }
+});
+test('native app downloads are public, usable without JavaScript and go directly to official GitHub assets', async () => {
+    const snapshot = require('../shared/native-app-release.json');
+    const html = await (await fetch(base + '/download')).text();
+    const downloads = [...html.matchAll(/href="(https:\/\/github\.com\/redchenk\/tsukuyomi-space-app\/releases\/download\/[^\"]+)"/g)].map(match => match[1]);
+    for (const suffix of ['windows-x64-setup.exe', 'macos-universal.dmg', 'android-arm64-v8a.apk', 'linux-x64.deb', 'ios-arm64-unsigned.ipa', 'SHA256SUMS.txt']) {
+        const asset = snapshot.assets.find(asset => asset.name.endsWith(suffix));
+        assert.ok(downloads.includes(asset.browser_download_url), suffix);
+    }
+    assert.match(html, /未签名|自行签名|需自签/);
+    assert.doesNotMatch(html, /href="[^\"]*\/(?:api|cdn)\/(?:download|installer)/);
+    assert.match(await (await fetch(base + '/sitemap.xml')).text(), /<loc>https:\/\/yachiyo.hk\/download<\/loc>/);
 });
 test('private pages stay noindex and missing public detail pages return 404', async () => {
     for (const route of ['/user-center', '/terminal', '/room/settings', '/attachments', '/login', '/gallery/manage']) {

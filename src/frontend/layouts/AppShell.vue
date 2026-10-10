@@ -68,6 +68,7 @@ const navItems = computed(() => [
   { path: '/game', key: 'game', label: props.t.game, icon: 'gamepad', active: props.routeName === 'game', spa: true },
   ...(props.isAuthed ? [{ path: '/growth', key: 'growth', label: growthLabel.value, icon: 'sparkles', active: props.routeName === 'growth', spa: true }] : []),
   { path: '/friend-links', key: 'friendLinks', label: copy.value.friendLinks, icon: 'external', active: ['friendLinks', 'friendLinkApply'].includes(props.routeName), spa: true },
+  { path: '/download', key: 'download', label: copy.value.download, icon: 'download', active: props.routeName === 'download', spa: true },
   { path: '/reality', key: 'reality', label: props.t.reality, icon: 'compass', active: props.routeName === 'reality', spa: true },
   { path: '/agent-os', key: 'agentOs', label: props.t.agentOs, icon: 'bot', active: false, spa: false },
   { path: '/rss.xml', key: 'rss', label: copy.value.rss, icon: 'rss', active: false, spa: false }
@@ -155,7 +156,7 @@ const searchItems = computed(() => [...navItems.value.filter(item => item.key !=
 const exploreGroups = computed(() => [
   { title: copy.value.discover, keys: ['wiki', 'gallery', 'game'] },
   { title: copy.value.create, keys: ['stage', 'pixel'] },
-  { title: copy.value.spaces, keys: ['agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
+  { title: copy.value.spaces, keys: ['download', 'agentOs', 'reality', 'friendLinks', 'growth', 'rss'] }
 ].map(group => ({ ...group, items: group.keys.map(key => navItems.value.find(item => item.key === key)).filter(Boolean) }))
   .filter(group => group.items.length));
 

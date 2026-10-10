@@ -2,32 +2,32 @@ const copy = {
   zh: {
     search: '搜索月读空间', searchHint: '搜索页面、文章…', account: '账号菜单', enterRoom: '进入房间',
     explore: '探索', exploreTitle: '还有一些值得逛逛的地方', discover: '阅读与发现', create: '创作与游玩', spaces: '更多空间', friendLinks: '友情链接',
-    rss: 'RSS 订阅', menuLabels: { discover: '发现', create: '创作', spaces: '空间' },
+    rss: 'RSS 订阅', download: '应用下载', menuLabels: { discover: '发现', create: '创作', spaces: '空间' },
     shortcuts: '页面入口', articles: '公开文章', searchTitle: '想找些什么？', close: '关闭搜索',
     loading: '正在查找文章…', empty: '没有找到匹配内容，换个关键词试试。', failed: '文章暂时加载失败，页面入口仍可使用。',
     allArticles: '查看全部文章结果', retry: '重试', searchHelp: '搜索公开文章或快速前往页面',
     shortLabels: { hub: '中枢', room: '房间', plaza: '广场', stage: '舞台' },
-    descriptions: { stage: '文章、故事与创作手记', plaza: '留言、回复与社区日常', growth: '签到、任务与成长记录', rss: '用 RSS 阅读器接收公开动态', wiki: '角色、音乐与月读世界', gallery: '收集与分享喜欢的创作', pixel: '把灵感画进小小像素', game: '跟着节拍，轻松玩一局', agentOs: '打开你的智能工作空间', reality: '关于本站与开源项目', friendLinks: '去看看同频的小站' }
+    descriptions: { download: '手机与电脑原生应用', stage: '文章、故事与创作手记', plaza: '留言、回复与社区日常', growth: '签到、任务与成长记录', rss: '用 RSS 阅读器接收公开动态', wiki: '角色、音乐与月读世界', gallery: '收集与分享喜欢的创作', pixel: '把灵感画进小小像素', game: '跟着节拍，轻松玩一局', agentOs: '打开你的智能工作空间', reality: '关于本站与开源项目', friendLinks: '去看看同频的小站' }
   },
   en: {
     search: 'Search Tsukuyomi', searchHint: 'Search pages and articles…', account: 'Account menu', enterRoom: 'Enter room',
     explore: 'Explore', exploreTitle: 'A little more to discover', discover: 'Read & discover', create: 'Create & play', spaces: 'More spaces', friendLinks: 'Friend links',
-    rss: 'RSS feed', menuLabels: { discover: 'Discover', create: 'Create', spaces: 'Spaces' },
+    rss: 'RSS feed', download: 'App download', menuLabels: { discover: 'Discover', create: 'Create', spaces: 'Spaces' },
     shortcuts: 'Pages', articles: 'Public articles', searchTitle: 'What are you looking for?', close: 'Close search',
     loading: 'Searching articles…', empty: 'No matches. Try another keyword.', failed: 'Articles could not be loaded. Page shortcuts are still available.',
     allArticles: 'View all article results', retry: 'Retry', searchHelp: 'Find public articles or jump to a page',
     shortLabels: { hub: 'Hub', room: 'Room', plaza: 'Plaza', stage: 'Stage' },
-    descriptions: { stage: 'Stories, articles and creative journals', plaza: 'Conversations and community moments', growth: 'Check-ins, tasks and your progress', rss: 'Follow public updates in your RSS reader', wiki: 'Characters, music and worlds', gallery: 'Discover and share artwork', pixel: 'Turn ideas into tiny pixels', game: 'Play along with the rhythm', agentOs: 'Your intelligent workspace', reality: 'About this site and its sources', friendLinks: 'Visit neighboring spaces' }
+    descriptions: { download: 'Native apps for phone and desktop', stage: 'Stories, articles and creative journals', plaza: 'Conversations and community moments', growth: 'Check-ins, tasks and your progress', rss: 'Follow public updates in your RSS reader', wiki: 'Characters, music and worlds', gallery: 'Discover and share artwork', pixel: 'Turn ideas into tiny pixels', game: 'Play along with the rhythm', agentOs: 'Your intelligent workspace', reality: 'About this site and its sources', friendLinks: 'Visit neighboring spaces' }
   },
   ja: {
     search: '月読空間を検索', searchHint: 'ページ・記事を検索…', account: 'アカウント', enterRoom: '部屋に入る',
     explore: '探索', exploreTitle: 'まだ知らない場所へ', discover: '読む・見つける', create: 'つくる・遊ぶ', spaces: 'ほかの空間', friendLinks: 'リンク集',
-    rss: 'RSS フィード', menuLabels: { discover: '発見', create: '創作', spaces: '空間' },
+    rss: 'RSS フィード', download: 'アプリを入手', menuLabels: { discover: '発見', create: '創作', spaces: '空間' },
     shortcuts: 'ページ', articles: '公開記事', searchTitle: '何を探していますか？', close: '検索を閉じる',
     loading: '記事を検索中…', empty: '見つかりませんでした。別の言葉で検索してください。', failed: '記事を読み込めません。ページへの移動は利用できます。',
     allArticles: '記事の検索結果をすべて見る', retry: '再試行', searchHelp: '公開記事を検索、またはページへ移動',
     shortLabels: { hub: 'ホーム', room: '部屋', plaza: '広場', stage: '舞台' },
-    descriptions: { stage: '記事・物語・創作ノート', plaza: 'メッセージ・返信・日々の交流', growth: 'チェックイン・タスク・成長記録', rss: 'RSS リーダーで公開更新を読む', wiki: 'キャラクター・音楽・世界観', gallery: '好きな作品を見つけて共有', pixel: '小さなピクセルで描こう', game: 'リズムに合わせて遊ぼう', agentOs: 'インテリジェントな作業空間', reality: 'このサイトとオープンソース', friendLinks: 'つながるサイトを訪ねよう' }
+    descriptions: { download: 'スマートフォンと PC のアプリ', stage: '記事・物語・創作ノート', plaza: 'メッセージ・返信・日々の交流', growth: 'チェックイン・タスク・成長記録', rss: 'RSS リーダーで公開更新を読む', wiki: 'キャラクター・音楽・世界観', gallery: '好きな作品を見つけて共有', pixel: '小さなピクセルで描こう', game: 'リズムに合わせて遊ぼう', agentOs: 'インテリジェントな作業空間', reality: 'このサイトとオープンソース', friendLinks: 'つながるサイトを訪ねよう' }
   }
 };
 
@@ -37,7 +37,8 @@ const aliases = {
   wiki: '百科 角色 音乐 wiki', gallery: '图库 图片 插画 gallery', pixel: '像素 工坊 pixel arena',
   game: '游戏 辉夜快跑 game', friendLinks: '友链 友情链接 friends', reality: '现实 关于 感谢 about',
   notifications: '通知 站内信 inbox notifications', account: '用户 个人中心 account profile',
-  growth: '成长 月契 bond growth', attachments: '附件 上传 attachment', agentOs: 'agent os 智能 工作空间'
+  growth: '成长 月契 bond growth', attachments: '附件 上传 attachment', agentOs: 'agent os 智能 工作空间',
+  download: '下载 原生 应用 安装 flutter app download windows macos android linux ios インストール アプリ ダウンロード'
 };
 
 export function navigationCopy(lang) { return copy[lang] || copy.zh; }
