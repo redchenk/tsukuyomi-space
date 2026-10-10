@@ -288,7 +288,7 @@ onUnmounted(() => {
     <header v-if="showChrome" class="topbar site-commandbar" data-material="header">
       <a href="/hub" class="site-brand" data-material="header" :class="{ 'site-brand-english': lang === 'en' }" :aria-label="`${t.brand} ${currentPageLabel}`" @pointerenter="warmRoutePath('/hub')" @focus="warmRoutePath('/hub')" @click="navigate($event, { path: '/hub' })">
         <span class="site-brand-symbol"><img :src="brandLogo" alt="" width="38" height="38"></span>
-        <span><strong>{{ lang === 'en' ? 'Tsukuyomi' : t.brand }}<span v-if="lang === 'en'" class="site-brand-suffix"> Space</span></strong><small aria-hidden="true">TSUKUYOMI SPACE</small></span>
+        <span><strong>{{ lang === 'en' ? 'Tsukuyomi' : t.brand }}<span v-if="lang === 'en'" class="site-brand-suffix"> Space</span></strong><small>{{ currentPageLabel }}</small></span>
       </a>
       <SiteMorphNavigation ref="morphNavigationRef" :items="navItems" :copy="copy" :label="t.navigation" :home-label="mobileNavLabel(navItems[0])" :route-name="routeName" @navigate="navigate" @open="navOpen = false" />
       <div class="site-header-tools" data-material="header">
