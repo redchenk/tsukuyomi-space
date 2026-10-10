@@ -2017,6 +2017,58 @@ describe('notifications API', () => {
 });
 
 describe('social API', () => {
+    it('keeps case-distinct public profiles and avatars attached to the exact account', async () => {
+        const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+        const insert = db.prepare('INSERT INTO users (id, username, nickname, email, password_hash, avatar, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        // Insert the empty lower-case account first, reproducing the reported lookup.
+        insert.run('case-avatar-lower', '回归p', '小写账号', 'case-lower@example.test', 'unused', '', '2026-10-10 14:45:55');
+        insert.run('case-avatar-upper', '回归P', '有头像的大写账号', 'case-upper@example.test', 'unused', avatar, '2026-10-10 14:45:55');
+        try {
+            for (const [name, id, nickname] of [['回归P', 'case-avatar-upper', '有头像的大写账号'], ['回归p', 'case-avatar-lower', '小写账号']]) {
+                const profile = await request(`/api/user/public/${encodeURIComponent(name)}`);
+                assert.equal(profile.response.status, 200);
+                assert.equal(profile.body.data.user.id, id);
+                assert.equal(profile.body.data.user.username, name);
+                assert.equal(profile.body.data.user.nickname, nickname);
+                const html = await request(`/users/${encodeURIComponent(name)}`);
+                assert.equal(html.response.status, 200);
+                assert.ok(html.body.includes(nickname));
+            }
+            const image = await fetch(`${baseUrl}/api/user/public/${encodeURIComponent('回归P')}/avatar?v=2026-10-10%2014%3A45%3A55`);
+            assert.equal(image.status, 200);
+            assert.equal(image.headers.get('content-type'), 'image/png');
+            assert.match(image.headers.get('cache-control'), /immutable/);
+            assert.deepEqual(Buffer.from(await image.arrayBuffer()), Buffer.from(avatar.split(',')[1], 'base64'));
+            const empty = await fetch(`${baseUrl}/api/user/public/${encodeURIComponent('回归p')}/avatar`);
+            assert.equal(empty.status, 404);
+        } finally {
+            db.prepare('DELETE FROM users WHERE id IN (?, ?)').run('case-avatar-lower', 'case-avatar-upper');
+        }
+    });
+
+    it('retains unique case-insensitive public lookups and rejects ambiguous spellings', async () => {
+        const insert = db.prepare('INSERT INTO users (id, username, email, password_hash, avatar) VALUES (?, ?, ?, ?, ?)');
+        const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+        insert.run('case-unique', 'UniqueCase', 'case-unique@example.test', 'unused', avatar);
+        insert.run('case-ambiguous-1', 'MixedCase', 'case-a1@example.test', 'unused', avatar);
+        insert.run('case-ambiguous-2', 'MIXEDCASE', 'case-a2@example.test', 'unused', avatar);
+        try {
+            const unique = await request('/api/user/public/uniquecase');
+            assert.equal(unique.response.status, 200);
+            assert.equal(unique.body.data.user.id, 'case-unique');
+            assert.equal((await fetch(`${baseUrl}/api/user/public/uniquecase/avatar`)).status, 200);
+            for (const [name, id] of [['MixedCase', 'case-ambiguous-1'], ['MIXEDCASE', 'case-ambiguous-2']]) {
+                const exact = await request('/api/user/public/' + name);
+                assert.equal(exact.response.status, 200);
+                assert.equal(exact.body.data.user.id, id);
+            }
+            assert.equal((await request('/api/user/public/mixedcase')).response.status, 404);
+            assert.equal((await fetch(`${baseUrl}/api/user/public/mixedcase/avatar`)).status, 404);
+        } finally {
+            db.prepare('DELETE FROM users WHERE id IN (?, ?, ?)').run('case-unique', 'case-ambiguous-1', 'case-ambiguous-2');
+        }
+    });
+
     it('creates mention notifications and returns trending topics', async () => {
         const created = await postJson('/api/messages', {
             content: '@managed-user 请来看看 #月读茶会# 的新话题。'

@@ -33,13 +33,16 @@ function findUsersByUsernames(usernames = []) {
 }
 
 function findUserByUsername(username) {
-    const value = String(username || '').trim().toLowerCase();
+    const value = String(username || '').trim();
     if (!value) return null;
-    const row = db.prepare(`
+    const rows = db.prepare(`
         SELECT id, username, COALESCE(NULLIF(nickname, ''), username) AS nickname, avatar, bio, role, created_at
         FROM users
-        WHERE lower(username) = ?
-    `).get(value);
+        WHERE username = ? COLLATE BINARY OR lower(username) = ?
+        ORDER BY (username = ? COLLATE BINARY) DESC
+        LIMIT 2
+    `).all(value, value.toLowerCase(), value);
+    const row = rows.find(item => item.username === value) || (rows.length === 1 ? rows[0] : null);
     return row ? { ...row, avatar: compactAvatar(row.avatar) } : null;
 }
 

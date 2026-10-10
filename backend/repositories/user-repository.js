@@ -12,13 +12,18 @@ function findUserById(id) {
 }
 
 function findPublicAvatarByUsername(username) {
-    const value = String(username || '').trim().toLowerCase();
+    const value = String(username || '').trim();
     if (!value) return null;
-    return db.prepare(`
+    const rows = db.prepare(`
         SELECT username, avatar, created_at, updated_at
         FROM users
-        WHERE lower(username) = ?
-    `).get(value);
+        WHERE username = ? COLLATE BINARY OR lower(username) = ?
+        ORDER BY (username = ? COLLATE BINARY) DESC
+        LIMIT 2
+    `).all(value, value.toLowerCase(), value);
+    // Legacy accounts can differ only in case. Never serve another account's
+    // avatar when an exact handle exists or the case-insensitive match is ambiguous.
+    return rows.find(row => row.username === value) || (rows.length === 1 ? rows[0] : null);
 }
 
 function updateBio(id, bio) {
