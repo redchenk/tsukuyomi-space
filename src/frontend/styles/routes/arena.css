@@ -188,9 +188,8 @@ body .pw-gallery-dialog .arena-gallery-head { padding: 0 44px 18px 0; border-bot
   .pw-brush-size input { width: 55px; }
   /* Overflowing tools can make focus scroll the entire canvas panel sideways. */
   .pw-context { min-height: 44px; flex-wrap: wrap; gap: 5px; padding: 5px 8px; }
-  .pixel-workspace .pw-context .pw-fit-top { display: none; }
   .pixel-workspace .pw-view-actions .ghost-btn { padding: 6px 7px; min-height: 34px; }
-  .pw-view-actions { gap: 0; }
+  .pw-view-actions { min-width: 0; flex-wrap: wrap; gap: 0; }
   .pixel-workspace .pw-view-actions button > span { font-size: 10px; }
   body .pixel-workspace .arena-canvas-viewport { flex: none; height: clamp(250px, 68vw, 420px); min-height: 250px; padding: 28px 16px 20px 32px; }
   .pw-canvas-world { align-items: flex-start; }
@@ -229,4 +228,10 @@ body .pw-gallery-dialog .arena-gallery-head { padding: 0 44px 18px 0; border-bot
 @layer ts-editorial {
 /* Keep every property reachable above the site's floating companion. */
 .pw-properties::after { content: ''; display: block; height: 96px; }
+}
+@layer ts-components {
+@media (max-width: 760px) {
+  /* The shared button component sets display in this later layer. */
+  .pixel-workspace .pw-context .pw-fit-top { display: none; }
+}
 }

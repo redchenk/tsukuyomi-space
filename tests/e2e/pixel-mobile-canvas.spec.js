@@ -116,3 +116,24 @@ test('drawing and move tools own canvas gestures while the surrounding page rema
     }
     expect(await page.locator('.arena-page').evaluate(el => getComputedStyle(el).touchAction)).toBe('pan-y pinch-zoom');
 });
+
+test('narrow phone toolbars stay inside the canvas panel at every zoom', async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.use.isMobile, 'Narrow phone overflow regression');
+    await page.setViewportSize({ width: 320, height: 844 });
+    await openWorkspace(page);
+    await expect(page.locator('.pw-fit-top')).toBeHidden();
+    for (const zoom of [20, 100, 260]) {
+        await setZoom(page, zoom);
+        const panel = await page.locator('.pw-center').evaluate(el => ({
+            left: el.scrollLeft, width: el.clientWidth, content: el.scrollWidth
+        }));
+        expect(panel.left).toBe(0);
+        expect(panel.content).toBeLessThanOrEqual(panel.width);
+        const context = await page.locator('.pw-context').boundingBox();
+        for (const name of ['网格', '专注绘画', '颜色']) {
+            const rect = await page.locator('.pw-context').getByRole('button', { name, exact: true }).boundingBox();
+            expect(rect.x).toBeGreaterThanOrEqual(context.x);
+            expect(rect.x + rect.width).toBeLessThanOrEqual(context.x + context.width);
+        }
+    }
+});
