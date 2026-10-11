@@ -708,6 +708,7 @@ watch(() => route.hash, revealCommentHash);
   </Teleport>
   <SocialShareDialog
     :open="articleShareOpen"
+    :lang="lang"
     :title="article?.title || '月读空间文章'"
     :text="article?.excerpt || ''"
     :url="absoluteUrl(articleSharePath)"

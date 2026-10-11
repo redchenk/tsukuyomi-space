@@ -18,6 +18,11 @@ module.exports = defineConfig({
             use: { ...devices['Desktop Chrome'], channel: process.env.PW_CHANNEL || undefined }
         },
         {
+            name: 'chromium-mobile',
+            testMatch: /article-sharing\.spec\.js/,
+            use: { ...devices['Pixel 7'], channel: process.env.PW_CHANNEL || undefined }
+        },
+        {
             name: 'webkit-mobile',
             testMatch: /(?:github-oauth|route-return|access-i18n|gallery-liked-feedback|room-oneclick-tts|room-gpt-sovits-remote|room-mobile-(?:keyboard|scene)|room-season-scene|room-settings-redesign|room-model-catalog|room-model-runtime|room-reading-recording|room-images-article-replies|article-loading|article-jump|article-sharing|unified-navigation|directed-replies|user-nickname|search-password-forms|netease-music)\.spec\.js/,
             use: { ...devices['iPhone 13'] }

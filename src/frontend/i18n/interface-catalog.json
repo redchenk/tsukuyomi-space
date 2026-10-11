@@ -1,4 +1,36 @@
 {
+  "QQ 未完成分享，请稍后重试。": {
+    "en": "QQ could not complete sharing. Please try again.",
+    "ja": "QQで共有できませんでした。再試行してください。"
+  },
+  "若 QQ 没有打开，请确认已安装 QQ，并在 QQ 内打开本页后重试。": {
+    "en": "If QQ did not open, check that QQ is installed, then open this page in QQ and try again.",
+    "ja": "QQがインストールされていることを確認し、QQ内でこのページを開いて再試行してください。"
+  },
+  "点击 QQ 打开好友选择页，选好友后点发送，即可分享文章卡片。": {
+    "en": "Tap QQ to open the recipient picker, choose a friend and send the article card.",
+    "ja": "QQをタップして相手を選び、記事のカードを送信してください。"
+  },
+  "用手机 QQ 扫描分享页的二维码，再选择好友发送。": {
+    "en": "Scan the code on the QQ share page with mobile QQ, then choose a recipient and send.",
+    "ja": "スマホのQQで共有ページのQRコードを読み取り、相手を選んで送信してください。"
+  },
+  "正在打开 QQ，请选择好友并点击发送。": {
+    "en": "Opening QQ. Choose a friend and tap Send.",
+    "ja": "QQを開いています。相手を選び、送信してください。"
+  },
+  "若 QQ 没有打开，可点「系统分享」选择 QQ，或在 QQ 内打开本页后重试。": {
+    "en": "If QQ did not open, tap Share and choose QQ, or open this page in QQ and try again.",
+    "ja": "QQが開かない場合は「共有」でQQを選ぶか、QQ内でこのページを開いて再試行してください。"
+  },
+  "QQ 未完成分享，请重试或点「系统分享」选择 QQ。": {
+    "en": "QQ could not complete sharing. Please try again or use Share to choose QQ.",
+    "ja": "QQで共有できませんでした。再試行するか「共有」でQQを選んでください。"
+  },
+  "QQ 已确认分享操作。": {
+    "en": "QQ confirmed the share action.",
+    "ja": "QQが共有操作を確認しました。"
+  },
   "/Fushi确认 {0}": {
     "en": "/Fushi确认 {0}",
     "ja": "/Fushi确认 {0}"
