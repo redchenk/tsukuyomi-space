@@ -403,6 +403,29 @@ describe('room diary generation', () => {
         assert.equal(result.conversationLength, 2);
         assert.equal(result.personaName, 'Aoi');
     });
+
+    it('never saves a refused or length-cut Claude diary in direct mode', async () => {
+        const generation = loadGeneration({
+            apiUrl: 'https://api.anthropic.com/v1/messages',
+            apiKey: 'test-key',
+            model: 'claude-opus-5-5',
+            catalogWorkspaceId: 'wrkspc_01Fixture'
+        });
+        const partial = '今天和你聊了很久，我们说到了月亮和那座城市的夜晚，然后';
+        let seen;
+        for (const [stopReason, code] of [['refusal', 'LLM_REFUSED'], ['max_tokens', 'LLM_INCOMPLETE']]) {
+            await assert.rejects(generation.generateDiaryEntry([{ role: 'user', content: '今天去看了画展' }], {
+                fetchImpl: async (url, options) => {
+                    seen = { url, headers: options.headers, body: JSON.parse(options.body) };
+                    return { ok: true, json: async () => ({ content: [{ type: 'thinking', thinking: '', signature: 'sig' }, { type: 'text', text: partial }], stop_reason: stopReason }) };
+                }
+            }), { code });
+        }
+        assert.equal(seen.body.temperature, undefined); assert.equal(seen.body.fallbacks, 'default');
+        assert.ok(seen.body.max_tokens >= 16000);
+        assert.equal(seen.headers['anthropic-dangerous-direct-browser-access'], 'true');
+        assert.equal(seen.headers['anthropic-workspace-id'], 'wrkspc_01Fixture');
+    });
 });
 
 describe('room chat end-chat wiring', () => {

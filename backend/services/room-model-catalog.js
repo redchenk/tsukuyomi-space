@@ -24,7 +24,7 @@ function createModelCatalogService({ fetch = fetchPinnedUrl, timeoutMs = 10000, 
             // checked at connection time; redirects may never forward secrets.
             response = await bounded(fetch(plan.url, { method: 'GET', headers: plan.headers, signal: controller.signal, timeoutMs,
                 protocols: ['https:'], allowedHostnames: [new URL(plan.url).hostname], redirect: 'error' }));
-            if (!response.ok) throw statusError(response.status);
+            if (!response.ok) throw statusError(response.status, plan.provider);
             if (Number(response.headers.get('content-length')) > MAX_PAGE_BYTES) throw Object.assign(new Error('模型列表响应过大。'), { code: 'RESPONSE_TOO_LARGE' });
             reader = response.body?.getReader();
             if (!reader) throw Object.assign(new Error('模型列表响应无效。'), { code: 'INVALID_RESPONSE' });
@@ -44,7 +44,7 @@ function createModelCatalogService({ fetch = fetchPinnedUrl, timeoutMs = 10000, 
             if (controller.signal.aborted) throw controller.signal.reason;
             if (classifyError(error).reason === 'timeout') throw Object.assign(new Error('模型列表请求超时，请稍后刷新。'), { code: 'TIMEOUT' });
             // Never echo upstream bodies, raw socket errors, URLs or keys.
-            const known = ['BUSY', 'TIMEOUT', 'AUTH_FAILED', 'ACCESS_DENIED', 'NOT_SUPPORTED', 'RATE_LIMIT', 'UPSTREAM_FAILED', 'INVALID_RESPONSE', 'RESPONSE_TOO_LARGE'];
+            const known = ['BUSY', 'TIMEOUT', 'AUTH_FAILED', 'ACCESS_DENIED', 'NOT_SUPPORTED', 'RATE_LIMIT', 'UPSTREAM_FAILED', 'INVALID_RESPONSE', 'RESPONSE_TOO_LARGE', 'WORKSPACE_REQUIRED'];
             if (known.includes(error.code)) throw error;
             throw Object.assign(new Error('无法连接模型列表服务；请检查连接或稍后重试。'), { code: 'NETWORK_FAILED' });
         } finally {

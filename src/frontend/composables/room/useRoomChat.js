@@ -482,10 +482,10 @@ function normalizeOpenAIUrl(apiUrl = '') {
   return url;
 }
 
-function chatRequestHeaders(apiUrl = '', apiKey = '', modelName = '') {
+function chatRequestHeaders(apiUrl = '', apiKey = '', modelName = '', workspaceId = '') {
   const normalized = normalizeOpenAIUrl(apiUrl);
   if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
-  if (llmProtocol.isClaudeApi(normalized)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true });
+  if (/api\.anthropic\.com/i.test(normalized)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true, workspaceId });
   return {
     'Content-Type': 'application/json',
     ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
@@ -587,7 +587,7 @@ function makeLLMRequestBody(settings, systemPrompt, conversation, message, image
   const body = llmProtocol.runtime.applyParameters(makeBaseLLMRequestBody(settings, systemPrompt, conversation, message, image, stream), settings).payload;
   const provider = roomProvider(normalizeOpenAIUrl(settings.apiUrl || ''), settings.model);
   const validated = agentProtocol.wireOptions(tools, agentTurns, provider);
-  return validated.tools.length || validated.turns.length ? llmProtocol.withTools(body, provider, validated.tools, validated.turns) : body;
+  return validated.tools.length || validated.turns.length ? llmProtocol.withTools(body, provider, validated.tools, validated.turns, validated) : body;
 }
 
 async function translateForJapaneseTts(text) {
@@ -614,6 +614,7 @@ async function translateForJapaneseTts(text) {
       apiKey: settings.apiKey,
       apiUrl: settings.apiUrl,
       model: settings.model,
+      workspaceId: settings.catalogWorkspaceId,
       systemPrompt,
       runtimeConfig: llmProtocol.runtime.transportRuntime(settings)
     });
@@ -622,7 +623,7 @@ async function translateForJapaneseTts(text) {
 
   const response = await fetchWithLocalOllamaGuidance(apiUrl, {
     method: 'POST',
-    headers: chatRequestHeaders(apiUrl, settings.apiKey, settings.model),
+    headers: chatRequestHeaders(apiUrl, settings.apiKey, settings.model, settings.catalogWorkspaceId),
     // Messages endpoints have no system role in messages; reuse the chat builder.
     body: JSON.stringify(llmProtocol.runtime.applyParameters(isOllamaNativeApi(apiUrl) || isAnthropicChatApi(apiUrl, settings.model)
       ? makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, [], source, null)
@@ -638,7 +639,10 @@ async function translateForJapaneseTts(text) {
           }), settings).payload)
   });
   if (!response.ok) throw new Error(`日文翻译失败：LLM ${response.status}`);
-  return cleanTtsText(pickReply(await response.json()));
+  const data = await response.json();
+  // Claude reports refusals and length cuts as HTTP 200; never speak a partial reply.
+  if (isAnthropicChatApi(apiUrl, settings.model)) llmProtocol.checkStatus(data);
+  return cleanTtsText(pickReply(data));
 }
 
 function fileToDataUrl(file) {
@@ -690,6 +694,7 @@ export async function requestRoomReply({ settings, systemPrompt, conversation = 
     apiKey: settings.apiKey,
     apiUrl: settings.apiUrl,
     model: settings.model,
+    workspaceId: settings.catalogWorkspaceId,
     systemPrompt,
     image: settings.visionMode === 'mcp' ? null : image,
     tools, agentTurns, runtimeConfig: llmProtocol.runtime.transportRuntime(activeSettings), diagnostic: true
@@ -732,7 +737,7 @@ export async function requestRoomReply({ settings, systemPrompt, conversation = 
   const body = makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, stream, { tools, agentTurns });
   const options = {
     method: 'POST',
-    headers: chatRequestHeaders(apiUrl, settings.apiKey, body.model),
+    headers: chatRequestHeaders(apiUrl, settings.apiKey, body.model, settings.catalogWorkspaceId),
     body: JSON.stringify(body),
     signal
   };

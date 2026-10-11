@@ -29,6 +29,11 @@ test('plans retain regions, fixed paths, Gemini header auth and workspace valida
     assert.equal(plan.headers.Authorization, undefined); assert.equal(plan.headers['anthropic-version'], '2023-06-01');
     assert.equal(new URL(plan.url).searchParams.get('after_id'), 'claude-haiku-4-5');
     assert.throws(() => registry.catalogPlan({ ...claude, cursor: 'bad cursor' }), { code: 'INVALID_CURSOR' });
+    assert.equal(plan.headers['anthropic-workspace-id'], undefined);
+    assert.equal(registry.catalogPlan({ ...claude, workspaceId: 'wrkspc_01Fixture' }).headers['anthropic-workspace-id'], 'wrkspc_01Fixture');
+    assert.throws(() => registry.catalogPlan({ ...claude, workspaceId: 'workspace\r\nInjected: x' }), { code: 'WORKSPACE_REQUIRED' });
+    assert.equal(registry.statusError(400, 'anthropic').code, 'WORKSPACE_REQUIRED');
+    assert.equal(registry.statusError(400, 'openai').code, 'UPSTREAM_FAILED');
     const page = registry.normalizePage({ data: [{ type: 'model', id: 'claude-opus-5-5', display_name: 'Claude Opus 5.5', created_at: '2026-09-01T00:00:00Z',
         max_input_tokens: 1000000, capabilities: { image_input: { supported: true } } }], has_more: true, last_id: 'claude-opus-5-5' }, plan);
     assert.equal(page.nextCursor, 'claude-opus-5-5');

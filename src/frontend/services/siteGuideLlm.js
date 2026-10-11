@@ -39,9 +39,9 @@ function isAnthropicApi(endpoint = '', model = '') {
     .test(`${endpoint} ${model}`);
 }
 
-function requestHeaders(endpoint, apiKey, model = '') {
+function requestHeaders(endpoint, apiKey, model = '', workspaceId = '') {
   if (isLocalOllamaUrl(endpoint)) return { 'Content-Type': 'application/json' };
-  if (llmProtocol.isClaudeApi(endpoint)) return llmProtocol.messagesHeaders(endpoint, apiKey, model, { browser: true });
+  if (/api\.anthropic\.com/i.test(endpoint)) return llmProtocol.messagesHeaders(endpoint, apiKey, model, { browser: true, workspaceId });
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
@@ -184,6 +184,7 @@ export async function askSiteGuide({ question, history = [], lang = 'zh', routeN
           apiKey: settings.apiKey,
           apiUrl: settings.apiUrl,
           model: settings.model,
+          workspaceId: settings.catalogWorkspaceId,
           systemPrompt
         }),
         signal: controller.signal
@@ -197,12 +198,15 @@ export async function askSiteGuide({ question, history = [], lang = 'zh', routeN
 
     const response = await fetchWithLocalOllamaGuidance(settings.apiUrl, {
       method: 'POST',
-      headers: requestHeaders(settings.apiUrl, settings.apiKey, String(settings.model || '').trim()),
+      headers: requestHeaders(settings.apiUrl, settings.apiKey, String(settings.model || '').trim(), settings.catalogWorkspaceId),
       body: JSON.stringify(makeRequestBody(settings, systemPrompt, conversation, cleanQuestion)),
       signal: controller.signal
     });
     if (!response.ok) throw new Error(`Model request failed (HTTP ${response.status})`);
-    const reply = pickReply(await response.json());
+    const data = await response.json();
+    // Claude reports refusals and length cuts as HTTP 200; never show a partial answer.
+    if (isAnthropicApi(normalizeEndpoint(settings.apiUrl), settings.model)) llmProtocol.checkStatus(data);
+    const reply = pickReply(data);
     if (!reply) throw new Error('The model returned an empty response.');
     return reply;
   } catch (error) {

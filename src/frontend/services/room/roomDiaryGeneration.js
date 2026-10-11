@@ -69,10 +69,10 @@ function normalizeOpenAIUrl(apiUrl = '') {
   return url;
 }
 
-function chatRequestHeaders(apiUrl = '', apiKey = '', modelName = '') {
+function chatRequestHeaders(apiUrl = '', apiKey = '', modelName = '', workspaceId = '') {
   const normalized = normalizeOpenAIUrl(apiUrl);
   if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
-  if (llmProtocol.isClaudeApi(normalized)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true });
+  if (/api\.anthropic\.com/i.test(normalized)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true, workspaceId });
   return {
     'Content-Type': 'application/json',
     ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
@@ -312,7 +312,7 @@ export async function generateDiaryEntry(turns, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: userPrompt, conversation: [], systemPrompt,
-        apiUrl: settings.apiUrl, apiKey: settings.apiKey, model: settings.model, runtimeConfig: llmRuntime.transportRuntime(settings) })
+        apiUrl: settings.apiUrl, apiKey: settings.apiKey, model: settings.model, workspaceId: settings.catalogWorkspaceId, runtimeConfig: llmRuntime.transportRuntime(settings) })
     });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.message || '日记代理请求失败');
@@ -327,11 +327,14 @@ export async function generateDiaryEntry(turns, {
     });
     const response = await fetchImpl(settings.apiUrl, {
       method: 'POST',
-      headers: chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model),
+      headers: chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model, settings.catalogWorkspaceId),
       body: JSON.stringify(requestBody)
     });
     if (!response.ok) throw new Error(`日记生成失败：LLM ${response.status}`);
-    reply = pickReply(await response.json());
+    const data = await response.json();
+    // Claude reports refusals and length cuts as HTTP 200; never save a partial diary.
+    if (isAnthropicChatApi(settings.apiUrl, settings.model)) llmProtocol.checkStatus(data);
+    reply = pickReply(data);
   }
 
   const content = cleanDiaryContent(reply);

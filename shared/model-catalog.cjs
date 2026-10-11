@@ -1,6 +1,7 @@
 // Only documented, read-only model-list endpoints. Model authors do not
 // identify the service hosting them; keep provider IDs exactly as returned.
 const runtime = require('./model-runtime.cjs');
+const { claudeWorkspaceId } = require('./llm-protocol.cjs');
 const MAX_MODELS = 2000;
 const MAX_PAGE_BYTES = 2 * 1024 * 1024;
 const PROVIDERS = {
@@ -64,9 +65,14 @@ function catalogPlan({ apiUrl, apiKey = '', workspaceId = '', cursor = '' } = {}
     if (typeof apiKey !== 'string' || apiKey.length > 2048 || /[\r\n\x00-\x1f\x7f]/.test(apiKey)) throw fail('INVALID_KEY', 'API 密钥格式无效。');
     const url = new URL(`https://${host}${path}`);
     const headers = { Accept: 'application/json' };
-    // Claude also needs its CORS opt-in so the browser can list models directly.
-    if (provider === 'anthropic') Object.assign(headers, { 'x-api-key': apiKey.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' });
-    else if (apiKey.trim()) headers[provider === 'gemini' ? 'x-goog-api-key' : 'Authorization'] = provider === 'gemini' ? apiKey.trim() : `Bearer ${apiKey.trim()}`;
+    // Claude also needs its CORS opt-in so the browser can list models directly,
+    // and keys not scoped to a workspace must name one.
+    if (provider === 'anthropic') {
+        const workspace = claudeWorkspaceId(workspaceId);
+        if (String(workspaceId || '').trim() && !workspace) throw fail('WORKSPACE_REQUIRED', 'Anthropic 工作区 ID 格式无效，应以 wrkspc_ 开头。');
+        Object.assign(headers, { 'x-api-key': apiKey.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true',
+            ...(workspace ? { 'anthropic-workspace-id': workspace } : {}) });
+    } else if (apiKey.trim()) headers[provider === 'gemini' ? 'x-goog-api-key' : 'Authorization'] = provider === 'gemini' ? apiKey.trim() : `Bearer ${apiKey.trim()}`;
     if (typeof cursor !== 'string' || cursor.length > 1024 || /[\x00-\x1f\x7f]/.test(cursor)) throw fail('INVALID_CURSOR', '模型列表分页游标无效。');
     for (const [key, value] of Object.entries(spec.query || {})) url.searchParams.set(key, value);
     if (provider === 'gemini') { url.searchParams.set('pageSize', '1000'); if (cursor) url.searchParams.set('pageToken', cursor); }
@@ -120,7 +126,9 @@ function normalizePage(payload, plan, cursor = '') {
     if (nextCursor.length > 1024) throw fail('INVALID_RESPONSE', '服务商返回了无效的分页游标。');
     return { models, nextCursor };
 }
-function statusError(status) {
+function statusError(status, provider = '') {
+    if (provider === 'anthropic' && status === 400)
+        return Object.assign(fail('WORKSPACE_REQUIRED', 'Claude 拒绝了模型列表请求；如果密钥未绑定工作区，请在高级连接设置填写 Anthropic 工作区 ID（wrkspc_…）。'), { status });
     const table = { 401: ['AUTH_FAILED', '密钥无效或已过期，请检查当前服务商和地域。'], 403: ['ACCESS_DENIED', '当前密钥没有模型列表权限，请检查账号授权和地域。'],
         404: ['NOT_SUPPORTED', '此服务商端点暂不支持模型列表，仍可手动填写模型。'], 429: ['RATE_LIMIT', '服务商请求限流，请稍后手动刷新。'] };
     const [code, message] = table[status] || ['UPSTREAM_FAILED', `模型列表服务暂不可用（HTTP ${status}），请稍后重试。`];

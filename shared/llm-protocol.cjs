@@ -23,7 +23,7 @@ function chatOptions(chatUrl, model = '') {
 // server-side refusal fallback let the API reroute a declined turn instead of
 // ending it.
 const CLAUDE_API_HOST = 'api.anthropic.com';
-const CLAUDE_MIN_OUTPUT_TOKENS = 4096;
+const CLAUDE_MIN_OUTPUT_TOKENS = 16000;
 const CLAUDE_FALLBACK_MODELS = /^claude-(?:fable-5-1|opus-5(?:-5)?|sonnet-5-5)$/;
 function isClaudeApi(chatUrl) {
     try { return new URL(chatUrl).hostname === CLAUDE_API_HOST; } catch (_) { return false; }
@@ -34,8 +34,16 @@ function messagesOptions(chatUrl, model = '', { maxTokens, temperature = 1 } = {
     return { ...(maxTokens ? { max_tokens: claude ? Math.max(maxTokens, CLAUDE_MIN_OUTPUT_TOKENS) : maxTokens } : {}),
         ...(!claude ? { temperature } : claudeFallback(chatUrl, model) ? { fallbacks: 'default' } : {}) };
 }
-function messagesHeaders(chatUrl, apiKey = '', model = '', { browser = false } = {}) {
+// Keys that are not scoped to a workspace must name one on every request.
+const CLAUDE_WORKSPACE_ID = /^wrkspc_[\w-]{1,120}$/;
+function claudeWorkspaceId(value) {
+    const id = String(value || '').trim();
+    return CLAUDE_WORKSPACE_ID.test(id) ? id : '';
+}
+function messagesHeaders(chatUrl, apiKey = '', model = '', { browser = false, workspaceId = '' } = {}) {
+    const workspace = isClaudeApi(chatUrl) ? claudeWorkspaceId(workspaceId) : '';
     return { 'Content-Type': 'application/json', ...(apiKey ? { 'x-api-key': apiKey } : {}), 'anthropic-version': '2023-06-01',
+        ...(workspace ? { 'anthropic-workspace-id': workspace } : {}),
         ...(claudeFallback(chatUrl, model) ? { 'anthropic-beta': 'server-side-fallback-2026-07-01' } : {}),
         // Anthropic's CORS opt-in. Direct mode sends the visitor's own key from their browser.
         ...(browser && isClaudeApi(chatUrl) ? { 'anthropic-dangerous-direct-browser-access': 'true' } : {}) };
@@ -226,7 +234,9 @@ async function readStream(response, { provider = 'openai', onDelta = () => {}, o
         if (signal?.aborted) throw signal.reason || error('LLM_ABORTED', '请求已取消');
         if (!completed) throw error('LLM_STREAM_INCOMPLETE', 'LLM stream ended before completion');
         if (provider === 'anthropic') {
-            const content = [...blocks.values()].map(({ partial, ...block }) => ({ ...block, ...(block.type === 'tool_use' && partial ? { input: JSON.parse(partial) } : {}) }));
+            // A declined attempt can stop mid tool input; fromJson drops blocks before the last fallback.
+            const ordered = [...blocks.values()], cut = ordered.map(p => p.type).lastIndexOf('fallback');
+            const content = ordered.map(({ partial, ...block }, i) => ({ ...block, ...(block.type === 'tool_use' && partial && i > cut ? { input: JSON.parse(partial) } : {}) }));
             final = content.length ? fromJson({ content, model }, { provider, allowTools }) : { reply, model }; // Compatible servers can omit block-start.
         }
         if (tools.size) {
@@ -243,7 +253,7 @@ async function readStream(response, { provider = 'openai', onDelta = () => {}, o
     } finally { signal?.removeEventListener('abort', abort); await reader.cancel().catch(() => {}); reader.releaseLock(); }
 }
 
-function withTools(payload, provider, tools = [], turns = []) {
+function withTools(payload, provider, tools = [], turns = [], { toolChoice } = {}) {
     if (tools.length > 6 || turns.length > 2) throw error('LLM_TOOL_LIMIT', '工具预算已用完');
     bounded(turns, 524288);
     const result = { ...payload };
@@ -256,6 +266,7 @@ function withTools(payload, provider, tools = [], turns = []) {
         result.messages = [...payload.messages];
         for (const turn of turns) result.messages.push({ role: 'assistant', content: turn.continuation.items }, { role: 'user', content: turn.results.map(p => ({ type: 'tool_result', tool_use_id: p.id, content: p.content, is_error: p.isError })) });
         if (tools.length) result.tools = tools.map(p => ({ name: p.name, description: p.description, input_schema: p.inputSchema }));
+        if (toolChoice === 'none') result.tool_choice = { type: 'none' };
     } else {
         result.messages = [...payload.messages];
         // Within this agent turn opaque reasoning is available and remains in
@@ -269,4 +280,4 @@ function withTools(payload, provider, tools = [], turns = []) {
     }
     return result;
 }
-module.exports = { runtime: require('./model-runtime.cjs'), chatOptions, isClaudeApi, messagesOptions, messagesHeaders, readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, error };
+module.exports = { runtime: require('./model-runtime.cjs'), chatOptions, isClaudeApi, claudeWorkspaceId, messagesOptions, messagesHeaders, readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, error };

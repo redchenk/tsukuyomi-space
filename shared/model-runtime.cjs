@@ -86,10 +86,12 @@ function defaultMappings(settings) {
     if (protocol === 'ollama') return { temperature: 'options.temperature', topP: 'options.top_p', maxOutputTokens: 'options.num_predict', reasoningEffort: 'omit', reasoningEnabled: 'think' };
     if (protocol === 'responses') return { temperature: reasoning ? 'omit' : 'temperature', topP: reasoning ? 'omit' : 'top_p', maxOutputTokens: 'max_output_tokens', reasoningEffort: 'reasoning.effort', reasoningEnabled: 'omit' };
     if (protocol === 'anthropic') {
-        // Current Claude models reject sampling fields; effort is their reasoning control.
+        // Current Claude models reject sampling fields; effort is their reasoning
+        // control, but Haiku 4.5, Sonnet 4.5 and older models reject it.
         const claude = hostOf(settings.apiUrl) === 'api.anthropic.com';
+        const effort = claude && /^claude-(?:(?:fable|mythos)-|opus-(?:4-[5-9]|[5-9])|sonnet-(?:4-[6-9]|[5-9])|haiku-[5-9])/.test(model);
         return { temperature: claude ? 'omit' : 'temperature', topP: claude ? 'omit' : 'top_p', maxOutputTokens: 'max_tokens',
-            reasoningEffort: claude ? 'output_config.effort' : 'omit', reasoningEnabled: 'omit' };
+            reasoningEffort: effort ? 'output_config.effort' : 'omit', reasoningEnabled: 'omit' };
     }
     let qwen = false;
     try { qwen = /^dashscope(?:-intl|-us)?\.aliyuncs\.com$/.test(new URL(settings.apiUrl).hostname); } catch (_) {}

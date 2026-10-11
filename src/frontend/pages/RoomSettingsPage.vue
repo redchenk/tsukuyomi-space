@@ -1090,10 +1090,10 @@ function normalizeGptSovitsLang(value, fallback = 'zh') {
     : fallback;
 }
 
-function chatRequestHeaders(apiUrl, apiKey, modelName = llm.model) {
+function chatRequestHeaders(apiUrl, apiKey, modelName = llm.model, workspaceId = llm.catalogWorkspaceId) {
   const normalized = normalizeChatUrl(apiUrl, modelName);
   if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
-  if (isAnthropicChatApi(normalized, modelName)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true });
+  if (isAnthropicChatApi(normalized, modelName)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true, workspaceId });
   return {
     'Content-Type': 'application/json',
     ...openRouterHeaders(normalized),
@@ -1762,14 +1762,15 @@ async function testLLM() {
     const response = await requestFetch({
       method: 'POST',
       signal: controller.signal,
-      headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model),
+      headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model, settings.catalogWorkspaceId),
       body: JSON.stringify(settings.useProxy
-        ? { message: '请用一句话回复连接测试。', apiKey: settings.apiKey, apiUrl: settings.apiUrl, model: settings.model, runtimeConfig: llmRuntime.transportRuntime(settings) }
+        ? { message: '请用一句话回复连接测试。', apiKey: settings.apiKey, apiUrl: settings.apiUrl, model: settings.model, workspaceId: settings.catalogWorkspaceId, runtimeConfig: llmRuntime.transportRuntime(settings) }
         : makeChatRequestBody(settings.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120, settings.apiUrl))
     });
     const raw = await response.json().catch(() => ({}));
     const data = settings.useProxy ? raw.data || raw : raw;
     if (!response.ok) throw new Error(data?.error?.message || `HTTP ${response.status}`);
+    if (!settings.useProxy && isAnthropicChatApi(settings.apiUrl, settings.model)) llmProtocol.checkStatus(data);
     const reply = pickChatReply(data);
     connectionCheck.status = reply ? 'success' : 'warning';
     openTestDialog(
@@ -2760,6 +2761,9 @@ onBeforeUnmount(() => {
               /></label>
               <label v-if="llmProviderKey === 'aliyun'">模型列表工作空间 ID（北京 / 美国地域）
                 <input v-model="llm.catalogWorkspaceId" autocomplete="off" name="room-model-catalog-workspace" spellcheck="false" placeholder="百炼控制台中的工作空间 ID" />
+              </label>
+              <label v-else-if="llmProviderKey === 'anthropic'">Anthropic 工作区 ID（可选，密钥未绑定工作区时填写）
+                <input v-model="llm.catalogWorkspaceId" autocomplete="off" name="room-model-catalog-workspace" spellcheck="false" placeholder="wrkspc_…" />
               </label>
               <label v-if="setupLlmMode === 'ollama'"
                 >API 密钥（可选）<input name="room-setting-llm-apikey" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"

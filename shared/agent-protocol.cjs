@@ -40,6 +40,12 @@ function wireOptions(tools = [], turns = [], provider) {
         if (!calls.length || calls.length !== ids.size || new Set(calls.map(p => p.id)).size !== calls.length
             || calls.some(p => !turn.results.some(r => r.id === p.id && r.name === p.name))) throw error('AGENT_ARGUMENTS', '工具调用与结果不匹配');
     }
+    // Messages APIs reject tool_use history without tool definitions. The
+    // final round keeps the tools already used this turn but forbids new calls.
+    if (provider === 'anthropic' && !definitions.length && turns.length) {
+        const used = new Set(turns.flatMap(turn => turn.results.map(p => p.name)));
+        return { tools: READ_TOOLS.filter(p => used.has(p.name)), turns, toolChoice: 'none' };
+    }
     return { tools: definitions, turns };
 }
 async function runAgent({ complete, execute, tools = [], signal, onDelta = () => {}, onState = () => {} }) {

@@ -10,7 +10,7 @@ function streamEvent(res, event, data) {
 }
 
 router.post('/stream', async (req, res) => {
-    const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image, tools = [], agentTurns = [], runtimeConfig, diagnostic } = req.body || {};
+    const { message, conversation = [], apiKey, apiUrl, model, workspaceId, systemPrompt, image, tools = [], agentTurns = [], runtimeConfig, diagnostic } = req.body || {};
     if (!message && !image) {
         return res.status(400).json({ success: false, message: '消息内容不能为空' });
     }
@@ -37,7 +37,7 @@ router.post('/stream', async (req, res) => {
     res.flushHeaders();
     try {
         const data = await createChatCompletionStream({
-            message, conversation, apiKey, apiUrl, model, systemPrompt, image, tools, agentTurns, runtimeConfig, diagnostic: diagnostic === true,
+            message, conversation, apiKey, apiUrl, model, workspaceId, systemPrompt, image, tools, agentTurns, runtimeConfig, diagnostic: diagnostic === true,
             signal: controller.signal,
             onDelta: text => streamEvent(res, 'delta', { text })
         });
@@ -62,12 +62,12 @@ router.post('/', async (req, res) => {
     const onClose = () => { if (!res.writableEnded) controller.abort(new Error('客户端已断开连接')); };
     res.once('close', onClose);
     try {
-        const { message, conversation = [], apiKey, apiUrl, model, systemPrompt, image, tools = [], agentTurns = [], runtimeConfig, diagnostic } = req.body;
+        const { message, conversation = [], apiKey, apiUrl, model, workspaceId, systemPrompt, image, tools = [], agentTurns = [], runtimeConfig, diagnostic } = req.body;
         if (!message && !image) {
             return res.status(400).json({ success: false, message: '消息内容不能为空' });
         }
 
-        const data = await createChatCompletion({ message, conversation, apiKey, apiUrl, model, systemPrompt, image, tools, agentTurns, runtimeConfig, diagnostic: diagnostic === true, signal: controller.signal });
+        const data = await createChatCompletion({ message, conversation, apiKey, apiUrl, model, workspaceId, systemPrompt, image, tools, agentTurns, runtimeConfig, diagnostic: diagnostic === true, signal: controller.signal });
         res.json({ success: true, data });
     } catch (error) {
         const statusCode = error.statusCode || 500;

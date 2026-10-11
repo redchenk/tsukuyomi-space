@@ -51,6 +51,10 @@ test('official Claude maps effort to output_config and leaves sampling fields un
   assert.equal(runtime.resolveParameters(minimax).temperature.field, 'temperature');
   assert.equal(runtime.resolveParameters(minimax).reasoningEffort.field, 'omit');
   assert.ok(!runtime.allowedMappings(settings, 'reasoningEffort').includes('output_config.effort'));
+  for (const model of ['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-1', 'claude-3-5-sonnet-20241022'])
+    assert.equal(runtime.resolveParameters({ ...claude, model }).reasoningEffort.field, 'omit', model);
+  for (const model of ['claude-sonnet-4-6', 'claude-opus-4-5', 'claude-sonnet-5', 'claude-haiku-5-5', 'claude-fable-5-1'])
+    assert.equal(runtime.resolveParameters({ ...claude, model }).reasoningEffort.field, 'output_config.effort', model);
   assert.equal(runtime.resolveCapabilities(claude).image.value, true);
   assert.equal(runtime.resolveCapabilities({ ...claude, model: 'claude' }).image.value, null);
   assert.deepEqual(runtime.catalogCapabilities({ capabilities: { image_input: { supported: false } } }), { image: false });

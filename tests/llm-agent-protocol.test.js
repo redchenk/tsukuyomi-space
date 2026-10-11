@@ -157,11 +157,11 @@ test('Claude Messages requests omit sampling fields, leave room for thinking and
   const url = 'https://api.anthropic.com/v1/messages', args = { chatUrl: url, systemPrompt: 'persona', history: [], message: '你好' };
   const opus = buildChatPayload({ ...args, model: 'claude-opus-5-5' });
   assert.equal(opus.temperature, undefined); assert.equal(opus.top_p, undefined);
-  assert.equal(opus.fallbacks, 'default'); assert.ok(opus.max_tokens >= 4096); assert.equal(opus.system, 'persona');
+  assert.equal(opus.fallbacks, 'default'); assert.ok(opus.max_tokens >= 16000); assert.equal(opus.system, 'persona');
   assert.equal(buildChatPayload({ ...args, model: 'claude-haiku-4-5' }).fallbacks, undefined);
   const minimax = buildChatPayload({ ...args, chatUrl: 'https://api.minimaxi.com/anthropic/v1/messages', model: 'MiniMax-M2.7' });
   assert.equal(minimax.temperature, 1); assert.equal(minimax.fallbacks, undefined);
-  assert.deepEqual(protocol.messagesOptions(url, 'claude-sonnet-5-5', { maxTokens: 240 }), { max_tokens: 4096, fallbacks: 'default' });
+  assert.deepEqual(protocol.messagesOptions(url, 'claude-sonnet-5-5', { maxTokens: 240 }), { max_tokens: 16000, fallbacks: 'default' });
   assert.deepEqual(protocol.messagesOptions('https://api.minimaxi.com/anthropic/v1/messages', 'MiniMax-M2.7', { maxTokens: 240, temperature: 0.25 }), { max_tokens: 240, temperature: 0.25 });
   const browser = protocol.messagesHeaders(url, 'fixture-key', 'claude-opus-5-5', { browser: true });
   assert.equal(browser['x-api-key'], 'fixture-key'); assert.equal(browser['anthropic-version'], '2023-06-01');
@@ -171,6 +171,10 @@ test('Claude Messages requests omit sampling fields, leave room for thinking and
   assert.equal(server['anthropic-beta'], undefined); assert.equal(server['anthropic-dangerous-direct-browser-access'], undefined);
   assert.equal(protocol.messagesHeaders('https://api.minimaxi.com/anthropic/v1/messages', 'k', 'MiniMax-M2.7', { browser: true })['anthropic-dangerous-direct-browser-access'], undefined);
   for (const lookalike of ['https://api.anthropic.com.attacker.test/v1/messages', 'not a url']) assert.equal(protocol.isClaudeApi(lookalike), false);
+  assert.equal(protocol.messagesHeaders(url, 'k', 'claude-opus-5-5', { workspaceId: ' wrkspc_01Fixture ' })['anthropic-workspace-id'], 'wrkspc_01Fixture');
+  for (const workspaceId of ['', 'not-a-workspace', 'wrkspc_x\r\nInjected: header'])
+    assert.equal(protocol.messagesHeaders(url, 'k', 'claude-opus-5-5', { workspaceId })['anthropic-workspace-id'], undefined);
+  assert.equal(protocol.messagesHeaders('https://api.minimaxi.com/anthropic/v1/messages', 'k', 'MiniMax-M2.7', { workspaceId: 'wrkspc_01Fixture' })['anthropic-workspace-id'], undefined);
 });
 
 test('Claude refusals fail the turn and fallback boundaries drop the declined attempt\'s internal blocks', async () => {
@@ -196,6 +200,27 @@ test('Claude refusals fail the turn and fallback boundaries drop the declined at
   ]), { provider: 'anthropic', allowTools: true });
   assert.deepEqual(result.continuation.items.map(p => p.type), ['text', 'tool_use']);
   assert.deepEqual(result.toolCalls, [{ id: 'toolu_1', name: 'web_search', arguments: '{"query":"今天"}' }]);
+  const cut = await protocol.readStream(sse([
+    { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'toolu_0', name: 'web_search', input: {} } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '{"query":"今' } },
+    { type: 'content_block_start', index: 1, content_block: { type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-4-8' } } },
+    { type: 'content_block_start', index: 2, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 2, delta: { type: 'text_delta', text: '你好呀' } },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+    { type: 'message_stop' }
+  ]), { provider: 'anthropic', allowTools: true });
+  assert.equal(cut.reply, '你好呀'); assert.equal(cut.toolCalls, undefined);
+});
+
+test('the final Claude agent round keeps the tools used this turn but forbids new calls', () => {
+  const turns = [{ continuation: { protocol: 'anthropic', items: [{ type: 'tool_use', id: 'toolu_1', name: 'web_search', input: { query: '今天' } }] },
+    results: [{ id: 'toolu_1', name: 'web_search', content: 'result', isError: false }] }];
+  const options = agent.wireOptions([], turns, 'anthropic');
+  assert.deepEqual(options.tools.map(p => p.name), ['web_search']); assert.equal(options.toolChoice, 'none');
+  assert.equal(agent.wireOptions(agent.READ_TOOLS, turns, 'anthropic').toolChoice, undefined);
+  const body = buildChatPayload({ chatUrl: 'https://api.anthropic.com/v1/messages', model: 'claude-opus-5-5', systemPrompt: 'persona', history: [], message: 'hi', tools: [], agentTurns: turns });
+  assert.deepEqual(body.tool_choice, { type: 'none' }); assert.deepEqual(body.tools.map(p => p.name), ['web_search']);
+  assert.equal(body.messages.at(-1).content[0].type, 'tool_result');
 });
 
 test('API proxy sends Claude requests with server headers and no sampling fields', async () => {
@@ -203,8 +228,9 @@ test('API proxy sends Claude requests with server headers and no sampling fields
   try {
     global.fetch = async (url, options) => { captured = { url, headers: options.headers, body: JSON.parse(options.body) };
       return new Response(JSON.stringify({ model: 'claude-opus-5-5', content: [{ type: 'text', text: '你好' }], stop_reason: 'end_turn' }), { headers: { 'Content-Type': 'application/json' } }); };
-    const result = await createChatCompletion({ message: 'hi', apiUrl: 'https://api.anthropic.com/v1', apiKey: 'synthetic', model: 'claude-opus-5-5' });
+    const result = await createChatCompletion({ message: 'hi', apiUrl: 'https://api.anthropic.com/v1', apiKey: 'synthetic', model: 'claude-opus-5-5', workspaceId: 'wrkspc_01Fixture' });
     assert.equal(result.reply, '你好'); assert.equal(captured.url, 'https://api.anthropic.com/v1/messages');
+    assert.equal(captured.headers['anthropic-workspace-id'], 'wrkspc_01Fixture');
     assert.equal(captured.headers['x-api-key'], 'synthetic'); assert.equal(captured.headers.Authorization, undefined);
     assert.equal(captured.headers['anthropic-beta'], 'server-side-fallback-2026-07-01');
     assert.equal(captured.headers['anthropic-dangerous-direct-browser-access'], undefined);
