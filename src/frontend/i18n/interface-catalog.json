@@ -9038,5 +9038,17 @@
   "下载月读空间 Flutter 原生应用，按设备选择 Windows、macOS、Android、Linux 或 iOS 安装包，文件直接由 GitHub 提供。": {
     "en": "Download the native Flutter app for Tsukuyomi Space. Choose the Windows, macOS, Android, Linux or iOS package for your device. Files download directly from GitHub.",
     "ja": "月読空間の Flutter ネイティブアプリをダウンロード。デバイスに合わせて Windows・macOS・Android・Linux・iOS のパッケージを選び、GitHub から直接取得します。"
+  },
+  "GPT-SoVITS（八千代一键包 / 本机）": {
+    "en": "GPT-SoVITS (Yachiyo one-click package / local)",
+    "ja": "GPT-SoVITS（八千代ワンクリックパッケージ / ローカル）"
+  },
+  "八千代一键包已自动连接，可以直接朗读。请保持启动器运行。": {
+    "en": "The Yachiyo one-click package is connected automatically and ready to read aloud. Keep the launcher running.",
+    "ja": "八千代ワンクリックパッケージに自動接続しました。そのまま読み上げを利用できます。ランチャーを起動したままにしてください。"
+  },
+  "无法保存八千代语音连接，请允许此网站使用浏览器存储后重新打开。": {
+    "en": "Unable to save the Yachiyo voice connection. Allow this website to use browser storage, then open the launch link again.",
+    "ja": "八千代の音声接続を保存できません。このサイトのブラウザー保存を許可してから、起動リンクを開き直してください。"
   }
 }

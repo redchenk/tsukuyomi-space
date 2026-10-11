@@ -23,6 +23,7 @@ import {
   releaseAsyncAudioPlayback
 } from '../../services/room/audioPlayback';
 import { requestTtsAudioBlob, ttsUsesProxy } from '../../services/room/ttsTransport';
+import { ONECLICK_TTS_DEFAULTS, buildGptSovitsControlRequest } from '../../services/room/oneclickTts.mjs';
 import {
   clearLocalRoomConversation,
   clearRoomGenerationDraft,
@@ -176,8 +177,8 @@ function defaultTtsUrl(provider) {
   return '';
 }
 
-const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt';
-const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth';
+const DEFAULT_GPT_SOVITS_GPT_WEIGHT = ONECLICK_TTS_DEFAULTS.gptWeightPath;
+const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = ONECLICK_TTS_DEFAULTS.sovitsWeightPath;
 
 function normalizeLocalGptSovitsUrl(url) {
   const parsed = new URL(url || defaultTtsUrl('gpt-sovits'));
@@ -188,14 +189,9 @@ function normalizeLocalGptSovitsUrl(url) {
 }
 
 function buildGptSovitsControlUrl(settings, pathname, params) {
-  const url = normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl(settings.provider));
-  url.pathname = pathname;
-  url.search = '';
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (String(value || '').trim()) url.searchParams.set(key, String(value).trim());
-  });
-  url.searchParams.set('_', String(Date.now()));
-  return url.toString();
+  return buildGptSovitsControlRequest(
+    normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl(settings.provider)), pathname, params
+  );
 }
 
 function requestLocalGptSovitsControl(url, timeout = 70000) {

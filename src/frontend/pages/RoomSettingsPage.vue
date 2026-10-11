@@ -1,4 +1,5 @@
 <script setup>
+import { ONECLICK_TTS_DEFAULTS, isOneclickApiUrl, buildGptSovitsControlRequest } from '../services/room/oneclickTts.mjs';
 import { uiText } from '../i18n/runtime';
 import llmRuntime from '../../../shared/model-runtime.cjs';
 import memoryRetrieval from '../../../shared/room-memory-retrieval.cjs';
@@ -100,7 +101,7 @@ const TTS_PRESETS = {
   openaiCompatible: { label: 'OpenAI Compatible', provider: 'openai-compatible', apiUrl: 'https://api.example.com/v1/audio/speech', model: 'tts-1', voice: 'alloy' },
   minimax: { label: 'MiniMax TTS', provider: 'minimax', apiUrl: 'https://api.minimaxi.com/v1/t2a_v2', model: 'speech-2.8-hd', voice: MINIMAX_DEFAULT_VOICE_ID, textLang: 'ja' },
   elevenlabs: { label: 'ElevenLabs', provider: 'elevenlabs', apiUrl: 'https://api.elevenlabs.io/v1/text-to-speech', model: 'eleven_multilingual_v2', voice: '21m00Tcm4TlvDq8ikWAM' },
-  gptSovitsLocal: { label: 'GPT-SoVITS（本机 / 公网）', provider: 'gpt-sovits', apiUrl: 'http://localhost:9880/tts', model: 'auto', voice: '', useProxy: false, textLang: 'auto', promptLang: 'ja', gptWeightPath: 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt', sovitsWeightPath: 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth' },
+  gptSovitsLocal: { ...ONECLICK_TTS_DEFAULTS, label: 'GPT-SoVITS（八千代一键包 / 本机）' },
   custom: { label: '自定义', provider: 'custom', apiUrl: '', model: '', voice: '' }
 };
 const BEGINNER_LLM_PROVIDERS = [
@@ -110,8 +111,8 @@ const BEGINNER_LLM_PROVIDERS = [
   { value: 'openrouter', label: 'OpenRouter', detail: '模型丰富' },
   { value: 'zhipu', label: '智谱 GLM', detail: '国内服务' }
 ];
-const DEFAULT_GPT_SOVITS_GPT_WEIGHT = 'GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt';
-const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = 'SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth';
+const DEFAULT_GPT_SOVITS_GPT_WEIGHT = ONECLICK_TTS_DEFAULTS.gptWeightPath;
+const DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = ONECLICK_TTS_DEFAULTS.sovitsWeightPath;
 const GPT_SOVITS_LANGUAGE_OPTIONS = [
   { value: 'zh', label: '中文 / zh' },
   { value: 'ja', label: '日语 / ja' },
@@ -213,21 +214,7 @@ let modelNoticeTimer = 0;
 const model = reactive({ scale: 100, xOffset: 0, yOffset: 0 });
 const llm = reactive({ apiUrl: '', apiKey: '', model: '', useProxy: false, visionMode: 'auto', systemPrompt: '', catalogWorkspaceId: '', runtimeConfig: {} });
 const selectedModelDeclaration = computed(() => modelCatalog.models.find(item => item.nativeId === llm.model)?.capabilities);
-const tts = reactive({
-  enabled: false,
-  provider: 'mimo',
-  apiUrl: '',
-  apiKey: '',
-  model: 'mimo-v2.5-tts',
-  voice: 'mimo_default',
-  refAudioPath: '',
-  promptText: '',
-  textLang: 'auto',
-  promptLang: 'ja',
-  gptWeightPath: DEFAULT_GPT_SOVITS_GPT_WEIGHT,
-  sovitsWeightPath: DEFAULT_GPT_SOVITS_SOVITS_WEIGHT,
-  useProxy: false
-});
+const tts = reactive({ ...ONECLICK_TTS_DEFAULTS });
 const initialTtsSettings = { ...tts };
 const memory = reactive({ enabled: true, retrievalLimit: DEFAULT_MEMORY_RETRIEVAL_LIMIT, query: '', type: '', editing: null, expanded: {}, managerOpen: false });
 const memoryEditor = ref(null);
@@ -1040,14 +1027,9 @@ function normalizeLocalGptSovitsUrl(url) {
 }
 
 function buildGptSovitsControlUrl(settings, pathname, params) {
-  const url = normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl('gpt-sovits'));
-  url.pathname = pathname;
-  url.search = '';
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (String(value || '').trim()) url.searchParams.set(key, String(value).trim());
-  });
-  url.searchParams.set('_', String(Date.now()));
-  return url.toString();
+  return buildGptSovitsControlRequest(
+    normalizeLocalGptSovitsUrl(settings.apiUrl || defaultTtsUrl('gpt-sovits')), pathname, params
+  );
 }
 
 function requestLocalGptSovitsControl(url, timeout = 70000) {
@@ -1640,13 +1622,16 @@ function applyMimoPreset(name) {
 function applyTtsPreset(name) {
   const preset = TTS_PRESETS[name];
   if (!preset) return;
+  const connectedUrl = preset.provider === 'gpt-sovits' && isOneclickApiUrl(tts.apiUrl) ? tts.apiUrl : '';
   tts.provider = preset.provider;
-  tts.apiUrl = preset.apiUrl;
+  tts.apiUrl = connectedUrl || preset.apiUrl;
   tts.model = preset.model;
   tts.voice = preset.voice;
   if ('useProxy' in preset) tts.useProxy = Boolean(preset.useProxy);
   if ('textLang' in preset) tts.textLang = preset.textLang;
   if ('promptLang' in preset) tts.promptLang = preset.promptLang;
+  if ('refAudioPath' in preset) tts.refAudioPath = preset.refAudioPath;
+  if ('promptText' in preset) tts.promptText = preset.promptText;
   if ('gptWeightPath' in preset) tts.gptWeightPath = preset.gptWeightPath;
   if ('sovitsWeightPath' in preset) tts.sovitsWeightPath = preset.sovitsWeightPath;
   if (tts.provider === 'gpt-sovits') tts.useProxy = ttsUsesProxy(tts);
@@ -2862,7 +2847,7 @@ onBeforeUnmount(() => {
             <p>
               {{
                 tts.enabled
-                  ? '语音服务独立配置，保存后生效。'
+                  ? (isOneclickApiUrl(tts.apiUrl) ? '八千代一键包已自动连接，可以直接朗读。请保持启动器运行。' : '语音服务独立配置，保存后生效。')
                   : '先用文字聊天也很好，需要时再开启声音。'
               }}
             </p>
@@ -2942,7 +2927,7 @@ onBeforeUnmount(() => {
                     >参考音频路径<input autocomplete="off" name="room-setting-tts-refaudiopath"
                       v-model="tts.refAudioPath"
                       type="text"
-                      placeholder="E:\\visualstudio\\tts\\xxx.wav"
+                      placeholder="reference/cankao.wav"
                   /></label>
                   <label
                     >参考音频文本<input autocomplete="off" name="room-setting-tts-prompttext"
@@ -2965,13 +2950,13 @@ onBeforeUnmount(() => {
                     >GPT 权重路径<input autocomplete="off" name="room-setting-tts-gptweightpath"
                       v-model="tts.gptWeightPath"
                       type="text"
-                      placeholder="GPT_weights_v2ProPlus/yachiyo-v2pro-e20.ckpt"
+                      placeholder="GPT_weights_v2ProPlus/yachiyo-new-e20.ckpt"
                   /></label>
                   <label
                     >SoVITS 权重路径<input autocomplete="off" name="room-setting-tts-sovitsweightpath"
                       v-model="tts.sovitsWeightPath"
                       type="text"
-                      placeholder="SoVITS_weights_v2ProPlus/yachiyo-v2pro_e12_s684.pth"
+                      placeholder="SoVITS_weights_v2ProPlus/yachiyo-new_e12_s684.pth"
                   /></label>
                   <p
                     v-if="gptSovitsPathWarning(tts.refAudioPath)"

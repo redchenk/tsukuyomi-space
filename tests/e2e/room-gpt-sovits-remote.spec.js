@@ -32,7 +32,10 @@ test('remote GPT-SoVITS settings use the same-origin bridge for preview and pers
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/hub$/);
     await page.goto('/room/settings');
-    await page.getByRole('button', { name: '语音与朗读 可选', exact: true }).click();
+    const menu = page.locator('.settings-mobile-menu');
+    await expect(menu).toBeAttached();
+    if (await menu.isVisible()) await menu.click();
+    await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '语音与朗读 可选', exact: true }).click();
     const card = page.locator('#room-tts-settings');
     await expect(card).toBeVisible();
     await card.locator('summary').click();

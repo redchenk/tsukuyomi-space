@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { initializeOneclickTts } from '../services/room/oneclickTts.mjs';
 import { applyRouteSeo } from '../utils/seo';
 import { cancelPendingRouteScroll, scrollToRoute } from '../utils/routeNavigation';
 import { isReducedPerformance, refreshPerformanceProbe, scheduleIdleTask } from '../utils/performance';
@@ -352,6 +353,9 @@ export const routes = [
     redirect: to => ({ path: '/pixel', query: to.query, hash: to.hash })
   }
 ];
+
+// Consume the fragment before createWebHistory captures the initial URL.
+initializeOneclickTts();
 
 export const router = createRouter({
   history: createWebHistory(),

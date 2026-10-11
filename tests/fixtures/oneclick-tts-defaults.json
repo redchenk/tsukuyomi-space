@@ -1,0 +1,15 @@
+{
+  "enabled": false,
+  "provider": "gpt-sovits",
+  "apiUrl": "http://localhost:9880/tts",
+  "apiKey": "",
+  "model": "auto",
+  "voice": "",
+  "textLang": "auto",
+  "promptLang": "ja",
+  "refAudioPath": "reference/cankao.wav",
+  "promptText": "八千年分の知識と経験で、どんなお悩み相談もお任せあれ。",
+  "gptWeightPath": "GPT_weights_v2ProPlus/yachiyo-new-e20.ckpt",
+  "sovitsWeightPath": "SoVITS_weights_v2ProPlus/yachiyo-new_e12_s684.pth",
+  "useProxy": false
+}

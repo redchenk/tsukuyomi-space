@@ -9,7 +9,8 @@ const pageCode = strip(source('src/frontend/pages/RoomSettingsPage.vue').split('
 const ttsUsesProxy = vm.runInNewContext(strip(source('src/frontend/services/room/ttsTransport.js')) + '\nttsUsesProxy;', { URL });
 let validateMcpEndpoint;
 let catalog;
-test.before(async () => { ({ validateMcpEndpoint } = await import('../src/frontend/services/room/roomMcp.mjs')); catalog = await import('../src/frontend/services/room/roomModelCatalog.mjs'); });
+let oneclickTts;
+test.before(async () => { ({ validateMcpEndpoint } = await import('../src/frontend/services/room/roomMcp.mjs')); catalog = await import('../src/frontend/services/room/roomModelCatalog.mjs'); oneclickTts = await import('../src/frontend/services/room/oneclickTts.mjs'); });
 function setup(options = {}) {
   const store = new Map();
   let failWrites = false;
@@ -21,7 +22,7 @@ function setup(options = {}) {
   const navigation = [];
   const ctx = {
     URL, console, AbortController, setTimeout: () => 0, clearTimeout() {}, uiText: value => value,
-    ttsUsesProxy, validateMcpEndpoint, llmRuntime: require('../shared/model-runtime.cjs'), memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), ...catalog,
+    ttsUsesProxy, validateMcpEndpoint, llmRuntime: require('../shared/model-runtime.cjs'), memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), ...catalog, ...oneclickTts,
     ...(options.fetchCatalog ? { fetchModelCatalog: options.fetchCatalog, catalogScope: async () => 'fixture-scope', readCatalogCache: () => null, writeCatalogCache() {} } : {}),
     reactive: x => x, ref: value => ({ value }), computed: get => ({ get value() { return get(); } }),
     defineProps: () => ({}), defineEmits: () => (...args) => navigation.push(args),
@@ -41,7 +42,7 @@ function setup(options = {}) {
     loadMemoryCount = () => {};
     globalThis.api = { loadSettings, llm, tts, model, mcp, knowledge, diary, memory, activeSection, savingSettings, settingsSearch, filteredSettingsGroups, connectionCheck, testedConnectionStatus, toast, pendingSections, hasUnsavedSettings, storedUser, memorySourceMode, clearMemory,
       saveLLM, saveTTS, saveMCP, saveModel, saveKnowledge, saveKnowledgeEntry, discardSettings, testLLM, selectSettingsSection, saveAllSettings, enterRoom,
-      onDiaryImportFile, normalizeRoomKnowledge, knowledgeContext, applyKnowledgeDraft, defaultKnowledgeEntries, applyPreset, modelCatalog, syncModelCatalog };
+      onDiaryImportFile, normalizeRoomKnowledge, knowledgeContext, applyKnowledgeDraft, defaultKnowledgeEntries, applyPreset, applyTtsPreset, modelCatalog, syncModelCatalog };
   `, ctx);
   ctx.api.loadSettings();
   return { ...ctx.api, store, navigation, read: k => JSON.parse(store.get(k)), set: (k,v) => store.set(k,JSON.stringify(v)), fail: () => { failWrites = true; }, switchAccount: () => { owner = 'user:2'; }, liveAccount: id => { session = { user: { id } }; }, memoryWrites: () => memoryWrites, imported: () => imported, leave: () => routeGuard() };
@@ -199,7 +200,7 @@ test('a delayed archive import cannot write into a different account', async () 
 test('chat context reads the saved knowledge switch on every turn, never diary archives', async () => {
   let enabled = true;
   let corpusCalls = 0;
-  const ctx = { URL, console, getSession: () => null,
+  const ctx = { URL, console, ...oneclickTts, getSession: () => null,
     isEnglishSite: () => false,
     readJson: (key, fallback) => key === 'roomKnowledgeSettings' ? { enabled, entries: [{ title: '当前小说知识', content: '已保存的修改' }] } : fallback,
     readDiaryArchive: () => { throw new Error('Live chat must not read diary content'); },
@@ -251,6 +252,31 @@ test('TTS save and reload preserve custom local endpoints and Unicode reference 
   h.loadSettings();
   assert.equal(h.tts.refAudioPath, refPath);
   assert.equal(h.tts.apiUrl, endpoint);
+});
+
+test('one-click defaults work without manual fields and a preset keeps the current launch token', () => {
+  const h = setup();
+  assert.equal(h.tts.enabled, false);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.tts)), oneclickTts.ONECLICK_TTS_DEFAULTS);
+  const connected = oneclickTts.makeOneclickTtsSettings('B'.repeat(43));
+  h.set('roomTTSSettings', connected);
+  h.loadSettings();
+  h.applyTtsPreset('gptSovitsLocal');
+  assert.equal(h.tts.enabled, true);
+  assert.equal(h.tts.apiUrl, connected.apiUrl);
+  assert.equal(h.tts.refAudioPath, 'reference/cankao.wav');
+  assert.equal(h.tts.promptText, connected.promptText);
+  assert.equal(h.saveTTS(false), true);
+  assert.deepEqual(h.read('roomTTSSettings'), connected);
+});
+
+test('normal reload preserves an existing non-GPT voice service', () => {
+  const h = setup();
+  const saved = { enabled: true, provider: 'mimo', apiUrl: 'https://api.example.test/tts', apiKey: 'saved-key', model: 'saved-model', voice: 'saved-voice' };
+  h.set('roomTTSSettings', saved);
+  h.loadSettings();
+  for (const [key, value] of Object.entries(saved)) assert.equal(h.tts[key], value);
+  assert.deepEqual(h.read('roomTTSSettings'), saved);
 });
 
 test('saved remote GPT-SoVITS endpoints select the proxy after reload without changing device paths', () => {

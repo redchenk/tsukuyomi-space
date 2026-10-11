@@ -414,12 +414,16 @@ describe('room model and voice defaults', () => {
         const roomChat = source('src/frontend/composables/room/useRoomChat.js');
         const live2dSpeech = source('src/frontend/services/room/live2dSpeech.js');
         const backendTts = source('backend/services/tts.js');
-        const sources = [settings, roomChat, live2dSpeech, backendTts];
+        const defaults = source('src/frontend/services/room/oneclickTts.mjs');
 
         assert.match(settings, /model: 'deepseek-v4-flash'/);
-        for (const content of sources) {
-            assert.match(content, /GPT_weights_v2ProPlus\/yachiyo-v2pro-e20\.ckpt/);
-            assert.match(content, /SoVITS_weights_v2ProPlus\/yachiyo-v2pro_e12_s684\.pth/);
+        for (const content of [settings, roomChat, live2dSpeech]) {
+            assert.match(content, /DEFAULT_GPT_SOVITS_GPT_WEIGHT = ONECLICK_TTS_DEFAULTS\.gptWeightPath/);
+            assert.match(content, /DEFAULT_GPT_SOVITS_SOVITS_WEIGHT = ONECLICK_TTS_DEFAULTS\.sovitsWeightPath/);
+        }
+        for (const content of [defaults, backendTts]) {
+            assert.match(content, /GPT_weights_v2ProPlus\/yachiyo-new-e20\.ckpt/);
+            assert.match(content, /SoVITS_weights_v2ProPlus\/yachiyo-new_e12_s684\.pth/);
             assert.doesNotMatch(content, /yachiyo-v2pro-e15\.ckpt|yachiyo-v2pro_e8_s456\.pth/);
         }
     });
