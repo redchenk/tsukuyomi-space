@@ -153,10 +153,10 @@ describe('mobile QQ article cards', () => {
         });
     });
 
-    it('gives the iOS QQ extension an article URL item without excerpt text replacing its title', () => {
+    it('gives the iOS QQ extension the article title as its text item with a short URL', () => {
         const { buildQQSystemPayload } = loadQQShare();
         assert.deepEqual(JSON.parse(JSON.stringify(buildQQSystemPayload(payload))), {
-            title: payload.title, url: 'https://yachiyo.hk/articles/282'
+            title: payload.title, text: payload.title, url: 'https://yachiyo.hk/articles/282'
         });
     });
 

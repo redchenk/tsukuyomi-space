@@ -130,7 +130,7 @@ for (const native of ['success', 'cancel', 'error']) {
         expect(await button.getAttribute('href')).toBeNull();
         await expect(dialog.locator('.social-share-hint')).toHaveText('iPhone、iPad 会打开系统分享面板，请选择 QQ，再选择好友发送文章卡片。');
         await button.click();
-        expect(await page.evaluate(() => window.testNativePayloads)).toEqual([{ title: article.title, url: shortUrl }]);
+        expect(await page.evaluate(() => window.testNativePayloads)).toEqual([{ title: article.title, text: article.title, url: shortUrl }]);
         if (native === 'success') {
             await expect(dialog.getByRole('status')).toHaveText('请在所选应用中确认收件人并发送。');
             await expect.poll(() => recorded).toEqual(['qq']);

@@ -68,9 +68,9 @@ export function buildQQBridgePayload(value = {}) {
 
 export function buildQQSystemPayload(value = {}) {
   const share = qqSharePayload(value);
-  // iOS QQ accepts URL items through its system extension. Extra text replaces
-  // the article title in the card, so let QQ read the short URL's page metadata.
-  return { title: share.title, url: share.url };
+  // QQ's iOS extension uses the text item for its card title, ignoring title.
+  // Send the article title there instead of the excerpt or the URL itself.
+  return { title: share.title, text: share.title, url: share.url };
 }
 
 export function qqShareResult(result) {
