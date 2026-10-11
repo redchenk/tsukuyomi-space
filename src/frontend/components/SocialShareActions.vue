@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import TsIcon from './TsIcon.vue';
 import { buildSocialShareLinks, normalizedSharePayload } from '../services/socialShare';
 import { recordShareGrowth } from '../services/userGrowth';
-import { buildQQAppLink, buildQQBridgePayload, launchQQApp, loadQQShareSdk, qqShareEnvironment, qqShareResult } from '../services/qqShare';
+import { buildQQAppLink, buildQQBridgePayload, buildQQSystemPayload, launchQQApp, loadQQShareSdk, qqShareEnvironment, qqShareResult } from '../services/qqShare';
 
 const props = defineProps({
   title: { type: String, default: '' },
@@ -26,11 +26,13 @@ const payload = computed(() => normalizedSharePayload(props));
 const links = computed(() => buildSocialShareLinks(payload.value));
 const qqAppLink = computed(() => buildQQAppLink(payload.value));
 const canNativeShare = computed(() => typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+const qqSystemShare = computed(() => qqEnvironment.ios && !qqEnvironment.insideQQ && canNativeShare.value);
 const labels = computed(() => props.lang === 'en' ? {
   system: 'Share', copy: 'Copy link', copied: 'Link copied', download: 'Download image',
   copyText: 'Copy share text', textCopied: 'Title and link copied. Paste into QQ and send.',
   copyFailed: 'Could not copy. Select and copy the link below.', link: 'Share link',
-  qqHint: qqEnvironment.mobile ? 'Tap QQ to open the recipient picker, choose a friend and send the article card.' : 'Scan the code on the QQ share page with mobile QQ, then choose a recipient and send.',
+  qqHint: qqSystemShare.value ? 'On iPhone or iPad, choose QQ in the share sheet, then choose a friend and send the article card.' : qqEnvironment.mobile ? 'Tap QQ to open the recipient picker, choose a friend and send the article card.' : 'Scan the code on the QQ share page with mobile QQ, then choose a recipient and send.',
+  qqSystemOpening: 'Choose QQ in the share sheet, then choose a friend and send.',
   qqOpening: 'Use mobile QQ to scan the code on the opened page, then choose a recipient and send.',
   qqAppOpening: 'Opening QQ. Choose a friend and tap Send.',
   qqUnavailable: canNativeShare.value ? 'If QQ did not open, tap Share and choose QQ, or open this page in QQ and try again.' : 'If QQ did not open, check that QQ is installed, then open this page in QQ and try again.',
@@ -41,7 +43,8 @@ const labels = computed(() => props.lang === 'en' ? {
   system: '共有', copy: 'リンクコピー', copied: 'コピーしました', download: '画像を保存',
   copyText: '共有テキストをコピー', textCopied: 'タイトルとリンクをコピーしました。QQに貼り付けて送信してください。',
   copyFailed: 'コピーできませんでした。下のリンクを選択してコピーしてください。', link: '共有リンク',
-  qqHint: qqEnvironment.mobile ? 'QQをタップして相手を選び、記事のカードを送信してください。' : 'スマホのQQで共有ページのQRコードを読み取り、相手を選んで送信してください。',
+  qqHint: qqSystemShare.value ? 'iPhone・iPadでは共有メニューでQQを選び、相手を選んで記事のカードを送信してください。' : qqEnvironment.mobile ? 'QQをタップして相手を選び、記事のカードを送信してください。' : 'スマホのQQで共有ページのQRコードを読み取り、相手を選んで送信してください。',
+  qqSystemOpening: '共有メニューでQQを選び、相手を選んで送信してください。',
   qqOpening: '開いたページのQRコードをスマホのQQで読み取り、相手を選んで送信してください。',
   qqAppOpening: 'QQを開いています。相手を選び、送信してください。',
   qqUnavailable: canNativeShare.value ? 'QQが開かない場合は「共有」でQQを選ぶか、QQ内でこのページを開いて再試行してください。' : 'QQがインストールされていることを確認し、QQ内でこのページを開いて再試行してください。',
@@ -52,7 +55,8 @@ const labels = computed(() => props.lang === 'en' ? {
   system: '系统分享', copy: '复制链接', copied: '链接已复制', download: '保存图片',
   copyText: '复制分享内容', textCopied: '标题和链接已复制，请粘贴到 QQ 聊天后发送。',
   copyFailed: '复制未成功，请选中下方链接手动复制。', link: '分享链接',
-  qqHint: qqEnvironment.mobile ? '点击 QQ 打开好友选择页，选好友后点发送，即可分享文章卡片。' : '用手机 QQ 扫描分享页的二维码，再选择好友发送。',
+  qqHint: qqSystemShare.value ? 'iPhone、iPad 会打开系统分享面板，请选择 QQ，再选择好友发送文章卡片。' : qqEnvironment.mobile ? '点击 QQ 打开好友选择页，选好友后点发送，即可分享文章卡片。' : '用手机 QQ 扫描分享页的二维码，再选择好友发送。',
+  qqSystemOpening: '请在系统分享面板选择 QQ，再选择好友发送。',
   qqOpening: '请用手机 QQ 扫描打开页面的二维码，再选择好友发送。',
   qqAppOpening: '正在打开 QQ，请选择好友并点击发送。',
   qqUnavailable: canNativeShare.value ? '若 QQ 没有打开，可点「系统分享」选择 QQ，或在 QQ 内打开本页后重试。' : '若 QQ 没有打开，请确认已安装 QQ，并在 QQ 内打开本页后重试。',
@@ -107,6 +111,7 @@ async function shareToQQ() {
   cancelQQLaunch?.();
   const attempt = ++qqAttempt;
   if (!qqEnvironment.mobile) return openComposer('qq', links.value.qq);
+  if (qqSystemShare.value) return nativeShare('qq');
   showStatus(labels.value.qqAppOpening);
   if (qqEnvironment.insideQQ) {
     qqLoading.value = true;
@@ -135,17 +140,18 @@ async function shareToQQ() {
   });
 }
 
-async function nativeShare() {
+async function nativeShare(platform = 'native') {
   if (!canNativeShare.value) return;
   cancelQQLaunch?.();
   qqAttempt++;
-  showStatus('');
+  showStatus(platform === 'qq' ? labels.value.qqSystemOpening : '');
   try {
-    await navigator.share({ title: payload.value.title, text: payload.value.text, url: payload.value.url });
+    await navigator.share(platform === 'qq' ? buildQQSystemPayload(payload.value) : { title: payload.value.title, text: payload.value.text, url: payload.value.url });
     showStatus(labels.value.nativeOpened);
-    await recordShareGrowth('native').catch(() => {});
+    await recordShareGrowth(platform).catch(() => {});
   } catch (error) {
-    if (error?.name !== 'AbortError') showStatus(error?.message || '');
+    if (error?.name === 'AbortError') showStatus('');
+    else showStatus(platform === 'qq' ? labels.value.qqFailed : error?.message || '');
   }
 }
 
@@ -177,11 +183,11 @@ function copyShareText() {
 
 <template>
   <div class="social-share-actions">
-    <button v-if="canNativeShare" class="social-share-button primary" type="button" @click="nativeShare">
+    <button v-if="canNativeShare" class="social-share-button primary" type="button" @click="nativeShare()">
       <TsIcon name="send" :size="17" />
       <span>{{ labels.system }}</span>
     </button>
-    <a v-if="qqEnvironment.mobile && !qqEnvironment.insideQQ" class="social-share-button" :href="qqAppLink" role="button" @click.prevent="shareToQQ" @keydown.space.prevent="shareToQQ">
+    <a v-if="qqEnvironment.mobile && !qqEnvironment.insideQQ && !qqSystemShare" class="social-share-button" :href="qqAppLink" role="button" @click.prevent="shareToQQ" @keydown.space.prevent="shareToQQ">
       <TsIcon name="message" :size="17" />
       <span>QQ</span>
     </a>

@@ -35,7 +35,7 @@ function loadQQShare(overrides = {}) {
     const code = source('src/frontend/services/qqShare.js')
         .replace(/^import .*;$/gm, '')
         .replace(/export function /g, 'function ')
-        .concat('\nglobalThis.__sharing = { qqShareEnvironment, qqSharePayload, buildQQAppLink, buildQQBridgePayload, qqShareResult, loadQQShareSdk, launchQQApp };\n');
+        .concat('\nglobalThis.__sharing = { qqShareEnvironment, qqSharePayload, buildQQAppLink, buildQQBridgePayload, buildQQSystemPayload, qqShareResult, loadQQShareSdk, launchQQApp };\n');
     vm.runInNewContext(code, context, { filename: 'src/frontend/services/qqShare.js' });
     return context.__sharing;
 }
@@ -112,6 +112,9 @@ describe('mobile QQ article cards', () => {
         }
         assert.equal(qqShareEnvironment({ userAgent: 'Android MQQBrowser/15.0' }).insideQQ, false);
         assert.equal(qqShareEnvironment({ userAgent: 'Macintosh', platform: 'MacIntel', maxTouchPoints: 5 }).mobile, true);
+        assert.equal(qqShareEnvironment({ userAgent: 'Macintosh', platform: 'MacIntel', maxTouchPoints: 5 }).ios, true);
+        assert.equal(qqShareEnvironment({ userAgent: 'iPhone OS 18 Safari/605' }).ios, true);
+        assert.equal(qqShareEnvironment({ userAgent: 'Android 15 Chrome/140' }).ios, false);
         assert.equal(qqShareEnvironment({ userAgent: 'Macintosh Chrome/140' }).mobile, false);
     });
 
@@ -147,6 +150,13 @@ describe('mobile QQ article cards', () => {
         assert.deepEqual(JSON.parse(JSON.stringify(buildQQBridgePayload(payload))), {
             title: payload.title, desc: payload.text, share_url: 'https://yachiyo.hk/articles/282',
             image_url: payload.imageUrl, share_type: 0, shareElement: 'news', appid: '1904951941', back: true
+        });
+    });
+
+    it('gives the iOS QQ extension an article URL item without excerpt text replacing its title', () => {
+        const { buildQQSystemPayload } = loadQQShare();
+        assert.deepEqual(JSON.parse(JSON.stringify(buildQQSystemPayload(payload))), {
+            title: payload.title, url: 'https://yachiyo.hk/articles/282'
         });
     });
 

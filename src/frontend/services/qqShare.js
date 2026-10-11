@@ -7,9 +7,11 @@ let sdkLoading;
 
 export function qqShareEnvironment(device = {}) {
   const ua = String(device.userAgent || '');
-  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua)
+  const ios = /iPhone|iPad|iPod/i.test(ua)
     || (device.platform === 'MacIntel' && device.maxTouchPoints > 1);
-  return { mobile, insideQQ: mobile && /\bQQ\/[\d.]+/i.test(ua) };
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua)
+    || ios;
+  return { mobile, ios, insideQQ: mobile && /\bQQ\/[\d.]+/i.test(ua) };
 }
 
 export function qqSharePayload(value = {}) {
@@ -62,6 +64,13 @@ export function buildQQBridgePayload(value = {}) {
     image_url: share.imageUrl, share_type: 0, shareElement: 'news',
     appid: QQ_APP_ID, back: true
   };
+}
+
+export function buildQQSystemPayload(value = {}) {
+  const share = qqSharePayload(value);
+  // iOS QQ accepts URL items through its system extension. Extra text replaces
+  // the article title in the card, so let QQ read the short URL's page metadata.
+  return { title: share.title, url: share.url };
 }
 
 export function qqShareResult(result) {

@@ -1,4 +1,12 @@
 {
+  "iPhone、iPad 会打开系统分享面板，请选择 QQ，再选择好友发送文章卡片。": {
+    "en": "On iPhone or iPad, choose QQ in the share sheet, then choose a friend and send the article card.",
+    "ja": "iPhone・iPadでは共有メニューでQQを選び、相手を選んで記事のカードを送信してください。"
+  },
+  "请在系统分享面板选择 QQ，再选择好友发送。": {
+    "en": "Choose QQ in the share sheet, then choose a friend and send.",
+    "ja": "共有メニューでQQを選び、相手を選んで送信してください。"
+  },
   "QQ 未完成分享，请稍后重试。": {
     "en": "QQ could not complete sharing. Please try again.",
     "ja": "QQで共有できませんでした。再試行してください。"

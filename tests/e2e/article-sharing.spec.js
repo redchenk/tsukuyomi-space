@@ -19,7 +19,8 @@ async function openShare(page, baseURL, { clipboard = 'success', native = 'unava
         window.testNativePayloads = [];
         window.testQQPayloads = [];
         if (qq) {
-            Object.defineProperty(navigator, 'userAgent', { configurable: true, value: navigator.userAgent + ' Mobile QQ/9.2.1' });
+            const qqVersion = /Android/.test(navigator.userAgent) ? ' V1_AND_SQ_9.2.1 Mobile QQ/9.2.1' : ' Mobile QQ/9.2.1';
+            Object.defineProperty(navigator, 'userAgent', { configurable: true, value: navigator.userAgent + qqVersion });
             if (qq === 'mock') window.mqq = { ui: { shareMessage: (payload, callback) => {
                 window.testQQPayloads.push(payload);
                 window.testQQCallback = callback;
@@ -37,6 +38,7 @@ async function openShare(page, baseURL, { clipboard = 'success', native = 'unava
         Object.defineProperty(navigator, 'share', { configurable: true, value: native === 'unavailable' ? undefined : async payload => {
             window.testNativePayloads.push(payload);
             if (native === 'cancel') throw new DOMException('Cancelled', 'AbortError');
+            if (native === 'error') throw new DOMException('Denied', 'NotAllowedError');
         } });
     }, { clipboard, native, legacy, qq });
     const recorded = [];
@@ -94,6 +96,7 @@ test('desktop QQ opens the official share page and gives no reward for launching
 
 test('mobile QQ launches an article card directly without a QR page or launch reward', async ({ page, baseURL }, testInfo) => {
     test.skip(!testInfo.project.use.isMobile, 'This transport is for Android and iOS');
+    test.skip(testInfo.project.name === 'webkit-mobile', 'iPhone uses its tested system extension');
     const { dialog, shortUrl, recorded } = await openShare(page, baseURL, { native: 'success' });
     const button = dialog.getByRole('button', { name: 'QQ', exact: true });
     const link = new URL(await button.getAttribute('href'));
@@ -118,6 +121,27 @@ test('mobile QQ launches an article card directly without a QR page or launch re
     // Desktop emulation verifies the outbound app URL and failure guidance.
     // Actual QQ handoff/delivery must be checked on a phone with QQ installed.
 });
+
+for (const native of ['success', 'cancel', 'error']) {
+    test(`iPhone QQ button uses the system extension and handles ${native}`, async ({ page, baseURL }, testInfo) => {
+        test.skip(testInfo.project.name !== 'webkit-mobile', 'This transport is for iPhone and iPad');
+        const { dialog, shortUrl, recorded } = await openShare(page, baseURL, { native });
+        const button = dialog.getByRole('button', { name: 'QQ', exact: true });
+        expect(await button.getAttribute('href')).toBeNull();
+        await expect(dialog.locator('.social-share-hint')).toHaveText('iPhone、iPad 会打开系统分享面板，请选择 QQ，再选择好友发送文章卡片。');
+        await button.click();
+        expect(await page.evaluate(() => window.testNativePayloads)).toEqual([{ title: article.title, url: shortUrl }]);
+        if (native === 'success') {
+            await expect(dialog.getByRole('status')).toHaveText('请在所选应用中确认收件人并发送。');
+            await expect.poll(() => recorded).toEqual(['qq']);
+        } else {
+            if (native === 'cancel') await expect(dialog.getByRole('status')).toBeEmpty();
+            else await expect(dialog.getByRole('status')).toHaveText('QQ 未完成分享，请稍后重试。');
+            expect(recorded).toEqual([]);
+        }
+        expect(await page.evaluate(() => window.testCopiedValues)).toEqual([]);
+    });
+}
 
 for (const [name, response, status, award] of [
     ['Android confirmation', { retCode: 0 }, 'QQ 已确认分享操作。', true],
@@ -158,6 +182,33 @@ test('QQ loads its official SDK under the existing CSP before sharing', async ({
     await dialog.getByRole('button', { name: 'QQ', exact: true }).click();
     expect(await page.evaluate(() => window.testQQPayloads.length)).toBe(1);
     await expect(dialog.getByRole('status')).toBeEmpty();
+    expect(recorded).toEqual([]);
+});
+
+test('the real QQ SDK native iframe is allowed by CSP', async ({ page, baseURL }, testInfo) => {
+    test.skip(!testInfo.project.use.isMobile, 'The native bridge runs in mobile QQ');
+    const { dialog, recorded } = await openShare(page, baseURL, { qq: 'real-sdk' });
+    await page.waitForFunction(() => typeof window.mqq?.ui?.shareMessage === 'function');
+    await page.evaluate(() => {
+        window.testBridgeFrames = [];
+        window.testBlockedBridges = [];
+        document.addEventListener('securitypolicyviolation', event => {
+            if (event.blockedURI.startsWith('jsbridge')) window.testBlockedBridges.push(event.effectiveDirective);
+        });
+        new MutationObserver(records => {
+            for (const record of records) for (const node of record.addedNodes) {
+                if (node.tagName === 'IFRAME' && node.src.startsWith('jsbridge:')) window.testBridgeFrames.push(node.src);
+            }
+        }).observe(document.documentElement, { childList: true, subtree: true });
+    });
+    await dialog.getByRole('button', { name: 'QQ', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.testBridgeFrames)).toEqual(expect.arrayContaining([
+        expect.stringMatching(/^jsbridge:\/\/(?:nav\/shareURLWebRichData|QQApi\/shareMsg)/)
+    ]));
+    // A desktop browser cannot execute QQ's native handler. It must still allow
+    // its frame navigation, rather than silently blocking it with our CSP.
+    await expect.poll(() => page.evaluate(() => document.querySelectorAll('iframe[src^="jsbridge:"]').length)).toBe(0);
+    expect(await page.evaluate(() => window.testBlockedBridges)).toEqual([]);
     expect(recorded).toEqual([]);
 });
 
