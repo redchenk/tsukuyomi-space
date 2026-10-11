@@ -4,7 +4,7 @@ const PARAMS = {
     temperature: { label: '温度', min: 0, max: 2, fields: ['temperature', 'options.temperature'] },
     topP: { label: 'Top P', min: 0.001, max: 1, fields: ['top_p', 'options.top_p'] },
     maxOutputTokens: { label: '最大输出 Token', min: 16, max: 131072, integer: true, fields: ['max_tokens', 'max_completion_tokens', 'max_output_tokens', 'options.num_predict'] },
-    reasoningEffort: { label: '推理强度', values: ['low', 'medium', 'high'], fields: ['reasoning_effort', 'reasoning.effort'] },
+    reasoningEffort: { label: '推理强度', values: ['low', 'medium', 'high'], fields: ['reasoning_effort', 'reasoning.effort', 'output_config.effort'] },
     reasoningEnabled: { label: '思考模式', values: [true, false], fields: ['think', 'enable_thinking'] }
 };
 const CAPABILITIES = { text: '文本对话', image: '图片输入', tools: '工具调用', streaming: '流式输出' };
@@ -85,7 +85,12 @@ function defaultMappings(settings) {
     const reasoning = /^(?:o[1-9](?:-|$)|gpt-(?:[5-9]|[1-9]\d)(?:[.-]|$))/i.test(model.split('/').at(-1));
     if (protocol === 'ollama') return { temperature: 'options.temperature', topP: 'options.top_p', maxOutputTokens: 'options.num_predict', reasoningEffort: 'omit', reasoningEnabled: 'think' };
     if (protocol === 'responses') return { temperature: reasoning ? 'omit' : 'temperature', topP: reasoning ? 'omit' : 'top_p', maxOutputTokens: 'max_output_tokens', reasoningEffort: 'reasoning.effort', reasoningEnabled: 'omit' };
-    if (protocol === 'anthropic') return { temperature: 'temperature', topP: 'top_p', maxOutputTokens: 'max_tokens', reasoningEffort: 'omit', reasoningEnabled: 'omit' };
+    if (protocol === 'anthropic') {
+        // Current Claude models reject sampling fields; effort is their reasoning control.
+        const claude = hostOf(settings.apiUrl) === 'api.anthropic.com';
+        return { temperature: claude ? 'omit' : 'temperature', topP: claude ? 'omit' : 'top_p', maxOutputTokens: 'max_tokens',
+            reasoningEffort: claude ? 'output_config.effort' : 'omit', reasoningEnabled: 'omit' };
+    }
     let qwen = false;
     try { qwen = /^dashscope(?:-intl|-us)?\.aliyuncs\.com$/.test(new URL(settings.apiUrl).hostname); } catch (_) {}
     return { temperature: reasoning ? 'omit' : 'temperature', topP: reasoning ? 'omit' : 'top_p', maxOutputTokens: reasoning ? 'max_completion_tokens' : 'max_tokens', reasoningEffort: 'reasoning_effort', reasoningEnabled: qwen ? 'enable_thinking' : 'omit' };
@@ -95,8 +100,8 @@ function allowedMappings(settings, key) {
     const all = PARAMS[key]?.fields || [];
     return ['inherit', 'omit', ...all.filter(field => protocol === 'ollama' ? field.startsWith('options.') || field === 'think'
         : protocol === 'responses' ? ['temperature', 'top_p', 'max_output_tokens', 'reasoning.effort'].includes(field)
-        : protocol === 'anthropic' ? ['temperature', 'top_p', 'max_tokens'].includes(field)
-        : !field.startsWith('options.') && !['max_output_tokens', 'reasoning.effort', 'think'].includes(field))];
+        : protocol === 'anthropic' ? ['temperature', 'top_p', 'max_tokens', 'output_config.effort'].includes(field)
+        : !field.startsWith('options.') && !['max_output_tokens', 'reasoning.effort', 'output_config.effort', 'think'].includes(field))];
 }
 function resolveParameters(settings = {}) {
     const runtime = normalizeRuntime(settings.runtimeConfig), ids = scopes(settings);
@@ -113,12 +118,17 @@ function resolveParameters(settings = {}) {
     }
     return result;
 }
+function hostOf(apiUrl) {
+    try { return new URL(apiUrl).hostname; } catch (_) { return ''; }
+}
 function builtinCapabilities(settings) {
-    let hostname = '';
-    try { hostname = new URL(settings.apiUrl).hostname; } catch (_) {}
+    const hostname = hostOf(settings.apiUrl);
     // Positive model declarations are deliberately narrow. A protocol or model
     // name alone is never proof that an unknown model supports a feature.
     if (hostname === 'api.openai.com' && /^gpt-4o(?:-mini)?(?:-\d{4}-\d{2}-\d{2})?$/i.test(settings.model || ''))
+        return { text: true, image: true, tools: true, streaming: true };
+    // Every Claude model family served by the Claude API accepts these.
+    if (hostname === 'api.anthropic.com' && /^claude-(?:fable|mythos|opus|sonnet|haiku)-\d/.test(settings.model || ''))
         return { text: true, image: true, tools: true, streaming: true };
     if (hostname === 'api.minimaxi.com' && protocolFor(settings.apiUrl) === 'anthropic') return { image: false };
     return {};
@@ -144,7 +154,8 @@ function deletePath(value, path) {
     if (target) delete target[parts.at(-1)];
 }
 function applyParameters(payload, settings = {}) {
-    const result = { ...payload, ...(payload.options ? { options: { ...payload.options } } : {}), ...(payload.reasoning ? { reasoning: { ...payload.reasoning } } : {}) };
+    const result = { ...payload, ...(payload.options ? { options: { ...payload.options } } : {}), ...(payload.reasoning ? { reasoning: { ...payload.reasoning } } : {}),
+        ...(payload.output_config ? { output_config: { ...payload.output_config } } : {}) };
     const resolved = resolveParameters(settings), warnings = [];
     for (const [key, spec] of Object.entries(PARAMS)) {
         const item = resolved[key];
@@ -172,6 +183,7 @@ function catalogCapabilities(row) {
     const input = row.architecture?.input_modalities || row.input_modalities || row.inputModalities;
     if (Array.isArray(input) && input.length) result.image = input.includes('image');
     if (typeof row.capabilities?.vision === 'boolean') result.image = row.capabilities.vision;
+    if (typeof row.capabilities?.image_input?.supported === 'boolean') result.image = row.capabilities.image_input.supported;
     if (typeof row.capabilities?.completion_chat === 'boolean') result.text = row.capabilities.completion_chat;
     if (typeof row.capabilities?.function_calling === 'boolean') result.tools = row.capabilities.function_calling;
     if (typeof row.capabilities?.streaming === 'boolean') result.streaming = row.capabilities.streaming;

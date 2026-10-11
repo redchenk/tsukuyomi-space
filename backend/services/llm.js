@@ -284,9 +284,8 @@ function buildBaseChatPayload({ chatUrl, model, systemPrompt, history, message, 
                 ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
                 { role: 'user', content: buildAnthropicUserContent(message, image, allowImage) }
             ],
-            temperature: 1,
-            // Anthropic-compatible APIs require this protocol field. Keep it high so the app does not impose a short reply cap.
-            max_tokens: ANTHROPIC_REQUIRED_MAX_TOKENS,
+            // Anthropic-compatible APIs require max_tokens. Keep it high so the app does not impose a short reply cap.
+            ...protocol.messagesOptions(chatUrl, model, { maxTokens: ANTHROPIC_REQUIRED_MAX_TOKENS }),
             stream: false
         };
     }
@@ -309,13 +308,7 @@ function buildBaseChatPayload({ chatUrl, model, systemPrompt, history, message, 
 }
 
 function chatHeaders(chatUrl, apiKey, model) {
-    if (isAnthropicChatUrl(chatUrl, model)) {
-        return {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01'
-        };
-    }
+    if (isAnthropicChatUrl(chatUrl, model)) return protocol.messagesHeaders(chatUrl, apiKey, model);
     const headers = {
         'Content-Type': 'application/json'
     };

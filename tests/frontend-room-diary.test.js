@@ -80,6 +80,7 @@ function loadGeneration(llmSettings = {}) {
         localStorage: storage,
         window: { location: { origin: 'https://example.test' } },
         llmRuntime: require('../shared/model-runtime.cjs'),
+        llmProtocol: require('../shared/llm-protocol.cjs'),
         getSession: () => null,
         crypto: { randomUUID: () => 'uuid-test' },
         fetch: async () => { throw new Error('network disabled in unit test'); }

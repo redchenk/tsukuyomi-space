@@ -22,7 +22,7 @@ function setup(options = {}) {
   const navigation = [];
   const ctx = {
     URL, console, AbortController, setTimeout: () => 0, clearTimeout() {}, uiText: value => value,
-    ttsUsesProxy, validateMcpEndpoint, llmRuntime: require('../shared/model-runtime.cjs'), memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), ...catalog, ...oneclickTts,
+    ttsUsesProxy, validateMcpEndpoint, llmRuntime: require('../shared/model-runtime.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'), memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), ...catalog, ...oneclickTts,
     ...(options.fetchCatalog ? { fetchModelCatalog: options.fetchCatalog, catalogScope: async () => 'fixture-scope', readCatalogCache: () => null, writeCatalogCache() {} } : {}),
     reactive: x => x, ref: value => ({ value }), computed: get => ({ get value() { return get(); } }),
     defineProps: () => ({}), defineEmits: () => (...args) => navigation.push(args),

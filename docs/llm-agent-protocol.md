@@ -13,6 +13,17 @@ Room 保留现有模型、角色、聊天历史、长期记忆、TTS 和图片�
 
 Gemini 等服务继续使用现有 OpenAI 兼容入口。没有新增原生 Gemini 协议。协议按端点判断，OpenRouter 上的 Claude / MiniMax 不会因为模型名字切换成 Anthropic 请求。
 
+### Claude（Anthropic 官方 API）
+
+`api.anthropic.com/v1/messages` 走同一个 Messages 解码器，差异集中在 `shared/llm-protocol.cjs` 的 `messagesOptions` / `messagesHeaders`，直连、后端代理、日记、站点向导和设置页测试共用：
+
+- 不发送 `temperature` / `top_p`（当前 Claude 模型拒绝采样参数）；MiniMax 等兼容网关保持原有温度。运行时映射对官方 Claude 默认「不发送此参数」，需要时可手动改回。
+- 「推理强度」映射为 `output_config.effort`（low / medium / high）。Claude 默认会先思考，思考计入 `max_tokens`，因此短请求的上限不低于 4096。
+- `claude-opus-5-5`、`claude-opus-5`、`claude-sonnet-5-5`、`claude-fable-5-1` 附带 `fallbacks: "default"` 与 `anthropic-beta: server-side-fallback-2026-07-01`：被安全策略拒绝的轮次由服务端按类别改用推荐模型继续，`message.model` 记录实际服务的模型。工具接续时丢弃回退分界前被拒尝试的 thinking / tool_use，只保留文字。
+- 整条回退链仍拒绝时 `stop_reason: "refusal"` 按 `LLM_REFUSED` 失败处理，半句不会保存为完成回复。
+- 浏览器直连加 `anthropic-dangerous-direct-browser-access: true` 以通过 CORS；密钥仍只保存在访客自己的浏览器。后端代理不发送该头。
+- 模型目录读取 `/v1/models`（`x-api-key`，`after_id` 分页），并采用 `max_input_tokens` 与 `capabilities.image_input`。
+
 `shared/llm-protocol.cjs` 同时用于后端代理和浏览器聊天；`shared/agent-protocol.cjs` 负责固定工具定义、参数校验、调用 ID 配对、轮数和去重。推理字段、工具参数、签名和工具中间消息只留在当前轮内存中，不写入气泡、日记或长期记忆。完成后仍只保存一轮用户消息与最终可见回复；中断或失败不会把半句保存为完成回复。保持流式气泡，生成过程中不主动滚动聊天视角。
 
 ## 当前轮与历史资料

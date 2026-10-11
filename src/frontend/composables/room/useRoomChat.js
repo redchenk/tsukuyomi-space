@@ -482,16 +482,10 @@ function normalizeOpenAIUrl(apiUrl = '') {
   return url;
 }
 
-function chatRequestHeaders(apiUrl = '', apiKey = '') {
+function chatRequestHeaders(apiUrl = '', apiKey = '', modelName = '') {
   const normalized = normalizeOpenAIUrl(apiUrl);
   if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
-  if (/api\.anthropic\.com/i.test(normalized)) {
-    return {
-      'Content-Type': 'application/json',
-      ...(apiKey ? { 'x-api-key': apiKey } : {}),
-      'anthropic-version': '2023-06-01'
-    };
-  }
+  if (llmProtocol.isClaudeApi(normalized)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true });
   return {
     'Content-Type': 'application/json',
     ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
@@ -567,7 +561,7 @@ function makeBaseLLMRequestBody(settings, systemPrompt, conversation, message, i
         { role: 'user', content: userContent }
       ],
       max_tokens: 16384,
-      temperature: 1,
+      ...llmProtocol.messagesOptions(apiUrl, model),
       stream
     };
   }
@@ -628,8 +622,9 @@ async function translateForJapaneseTts(text) {
 
   const response = await fetchWithLocalOllamaGuidance(apiUrl, {
     method: 'POST',
-    headers: chatRequestHeaders(apiUrl, settings.apiKey),
-    body: JSON.stringify(llmProtocol.runtime.applyParameters(isOllamaNativeApi(apiUrl)
+    headers: chatRequestHeaders(apiUrl, settings.apiKey, settings.model),
+    // Messages endpoints have no system role in messages; reuse the chat builder.
+    body: JSON.stringify(llmProtocol.runtime.applyParameters(isOllamaNativeApi(apiUrl) || isAnthropicChatApi(apiUrl, settings.model)
       ? makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, [], source, null)
       : (isOpenAIResponsesApi(apiUrl)
         ? { model: settings.model || 'gpt-5.5', instructions: systemPrompt, input: source, max_output_tokens: 240 }
@@ -737,7 +732,7 @@ export async function requestRoomReply({ settings, systemPrompt, conversation = 
   const body = makeLLMRequestBody({ ...settings, apiUrl }, systemPrompt, conversation, message, providerImage, stream, { tools, agentTurns });
   const options = {
     method: 'POST',
-    headers: chatRequestHeaders(apiUrl, settings.apiKey),
+    headers: chatRequestHeaders(apiUrl, settings.apiKey, body.model),
     body: JSON.stringify(body),
     signal
   };

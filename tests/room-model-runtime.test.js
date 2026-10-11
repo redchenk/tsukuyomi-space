@@ -41,6 +41,20 @@ test('protocol mappings handle nested Ollama/Responses fields and required Messa
   const messages = { apiUrl: 'https://api.anthropic.com/v1/messages', model: 'claude' }, mids = runtime.scopes(messages);
   assert.throws(() => runtime.resolveParameters({ ...messages, runtimeConfig: { models: { [mids.model]: { mappings: { maxOutputTokens: 'omit' } } } } }), { code: 'MODEL_RUNTIME_INVALID' });
 });
+test('official Claude maps effort to output_config and leaves sampling fields unsent by default', () => {
+  const claude = { apiUrl: 'https://api.anthropic.com/v1/messages', model: 'claude-opus-5-5' }, ids = runtime.scopes(claude);
+  const value = { ...claude, runtimeConfig: { models: { [ids.model]: { parameters: { reasoningEffort: 'high', temperature: 0.5 } } } } };
+  const result = runtime.applyParameters({ model: 'claude-opus-5-5', max_tokens: 16384, messages: [] }, value);
+  assert.deepEqual(result.payload.output_config, { effort: 'high' });
+  assert.equal(result.payload.temperature, undefined); assert.equal(result.warnings.length, 1);
+  const minimax = { apiUrl: 'https://api.minimaxi.com/anthropic/v1/messages', model: 'MiniMax-M2.7' };
+  assert.equal(runtime.resolveParameters(minimax).temperature.field, 'temperature');
+  assert.equal(runtime.resolveParameters(minimax).reasoningEffort.field, 'omit');
+  assert.ok(!runtime.allowedMappings(settings, 'reasoningEffort').includes('output_config.effort'));
+  assert.equal(runtime.resolveCapabilities(claude).image.value, true);
+  assert.equal(runtime.resolveCapabilities({ ...claude, model: 'claude' }).image.value, null);
+  assert.deepEqual(runtime.catalogCapabilities({ capabilities: { image_input: { supported: false } } }), { image: false });
+});
 test('base URLs and full endpoints share overrides; other models and endpoints stay isolated', () => {
   assert.deepEqual(runtime.scopes({ apiUrl: 'https://api.openai.com/v1', model: 'm' }), runtime.scopes({ apiUrl: 'https://api.openai.com/v1/responses', model: 'm' }));
   assert.deepEqual(runtime.scopes({ apiUrl: 'http://localhost:11434', model: 'm' }), runtime.scopes({ apiUrl: 'http://localhost:11434/api/chat', model: 'm' }));

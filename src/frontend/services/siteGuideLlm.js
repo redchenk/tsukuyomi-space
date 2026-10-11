@@ -1,3 +1,4 @@
+import llmProtocol from '../../../shared/llm-protocol.cjs';
 import { apiFetch, parseResponse } from '../api/client';
 import { fetchWithLocalOllamaGuidance, isLocalOllamaUrl, normalizeLocalOllamaBaseUrl } from './room/localOllamaTransport';
 import { readJson } from './room/roomStorage';
@@ -38,15 +39,9 @@ function isAnthropicApi(endpoint = '', model = '') {
     .test(`${endpoint} ${model}`);
 }
 
-function requestHeaders(endpoint, apiKey) {
+function requestHeaders(endpoint, apiKey, model = '') {
   if (isLocalOllamaUrl(endpoint)) return { 'Content-Type': 'application/json' };
-  if (/api\.anthropic\.com/i.test(endpoint)) {
-    return {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01'
-    };
-  }
+  if (llmProtocol.isClaudeApi(endpoint)) return llmProtocol.messagesHeaders(endpoint, apiKey, model, { browser: true });
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
@@ -118,8 +113,7 @@ function makeRequestBody(settings, systemPrompt, history, question) {
       model,
       system: systemPrompt,
       messages: [...history, { role: 'user', content: question }],
-      max_tokens: 900,
-      temperature: 0.25,
+      ...llmProtocol.messagesOptions(endpoint, model, { maxTokens: 900, temperature: 0.25 }),
       stream: false
     };
   }
@@ -203,7 +197,7 @@ export async function askSiteGuide({ question, history = [], lang = 'zh', routeN
 
     const response = await fetchWithLocalOllamaGuidance(settings.apiUrl, {
       method: 'POST',
-      headers: requestHeaders(settings.apiUrl, settings.apiKey),
+      headers: requestHeaders(settings.apiUrl, settings.apiKey, String(settings.model || '').trim()),
       body: JSON.stringify(makeRequestBody(settings, systemPrompt, conversation, cleanQuestion)),
       signal: controller.signal
     });

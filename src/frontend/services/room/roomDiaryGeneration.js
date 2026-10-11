@@ -1,5 +1,6 @@
 import { apiFetch } from '../../api/client';
 import llmRuntime from '../../../../shared/model-runtime.cjs';
+import llmProtocol from '../../../../shared/llm-protocol.cjs';
 import { readJson } from './roomStorage';
 import { fetchWithLocalOllamaGuidance, normalizeLocalOllamaBaseUrl } from './localOllamaTransport';
 import { activePersonaPrompt, diaryTimestampLabel } from './roomDiaryArchive';
@@ -68,16 +69,10 @@ function normalizeOpenAIUrl(apiUrl = '') {
   return url;
 }
 
-function chatRequestHeaders(apiUrl = '', apiKey = '') {
+function chatRequestHeaders(apiUrl = '', apiKey = '', modelName = '') {
   const normalized = normalizeOpenAIUrl(apiUrl);
   if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
-  if (/api\.anthropic\.com/i.test(normalized)) {
-    return {
-      'Content-Type': 'application/json',
-      ...(apiKey ? { 'x-api-key': apiKey } : {}),
-      'anthropic-version': '2023-06-01'
-    };
-  }
+  if (llmProtocol.isClaudeApi(normalized)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true });
   return {
     'Content-Type': 'application/json',
     ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
@@ -208,8 +203,7 @@ function makeBaseDiaryRequestBody({ settings, apiUrl, model, systemPrompt, userP
       model,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
-      max_tokens: 4096,
-      temperature: 1,
+      ...llmProtocol.messagesOptions(apiUrl, model, { maxTokens: 4096 }),
       stream: false
     };
   }
@@ -333,7 +327,7 @@ export async function generateDiaryEntry(turns, {
     });
     const response = await fetchImpl(settings.apiUrl, {
       method: 'POST',
-      headers: chatRequestHeaders(settings.apiUrl, settings.apiKey),
+      headers: chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model),
       body: JSON.stringify(requestBody)
     });
     if (!response.ok) throw new Error(`日记生成失败：LLM ${response.status}`);

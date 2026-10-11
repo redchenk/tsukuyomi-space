@@ -2,6 +2,7 @@
 import { ONECLICK_TTS_DEFAULTS, isOneclickApiUrl, buildGptSovitsControlRequest } from '../services/room/oneclickTts.mjs';
 import { uiText } from '../i18n/runtime';
 import llmRuntime from '../../../shared/model-runtime.cjs';
+import llmProtocol from '../../../shared/llm-protocol.cjs';
 import memoryRetrieval from '../../../shared/room-memory-retrieval.cjs';
 import RoomModelRuntimePanel from '../components/room/RoomModelRuntimePanel.vue';
 import { detectProvider, catalogPlan, catalogScope, readCatalogCache, writeCatalogCache, fetchModelCatalog } from '../services/room/roomModelCatalog.mjs';
@@ -66,6 +67,7 @@ const LLM_PRESETS = {
   ollama: { label: 'Ollama 本机', apiUrl: 'http://localhost:11434/api/chat', model: 'qwen2.5:7b', useProxy: false, apiKey: '' },
   openai: { label: 'OpenAI Responses', apiUrl: 'https://api.openai.com/v1/responses', model: 'gpt-5.5' },
   openaiChat: { label: 'OpenAI Chat', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
+  claude: { label: 'Claude (Anthropic)', apiUrl: 'https://api.anthropic.com/v1/messages', model: 'claude-opus-5-5' },
   openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-5.2' },
   deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-v4-flash' },
   kimi: { label: 'Kimi', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'kimi-k2.6' },
@@ -992,8 +994,7 @@ function makeBaseTestRequestBody(modelName, messages, limit = 240, apiUrl = llm.
       messages: messages
         .filter(item => item.role !== 'system')
         .map(item => ({ role: item.role, content: String(item.content || '') })),
-      max_tokens: limit,
-      temperature: 1,
+      ...llmProtocol.messagesOptions(apiUrl, modelName, { maxTokens: limit }),
       stream: false
     };
   }
@@ -1092,12 +1093,11 @@ function normalizeGptSovitsLang(value, fallback = 'zh') {
 function chatRequestHeaders(apiUrl, apiKey, modelName = llm.model) {
   const normalized = normalizeChatUrl(apiUrl, modelName);
   if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
+  if (isAnthropicChatApi(normalized, modelName)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true });
   return {
     'Content-Type': 'application/json',
     ...openRouterHeaders(normalized),
-    ...(isAnthropicChatApi(normalized, modelName)
-      ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
-      : { Authorization: `Bearer ${apiKey}` })
+    Authorization: `Bearer ${apiKey}`
   };
 }
 

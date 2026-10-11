@@ -17,6 +17,29 @@ function chatOptions(chatUrl, model = '') {
         // The site stores visible dialogue, not cross-turn hidden reasoning.
         ...(dashscope && qwen38 ? { preserve_thinking: false } : {}) };
 }
+// Claude on the official Messages API. Current Claude models reject sampling
+// fields and think before answering (thinking counts toward max_tokens), so
+// only compatible gateways such as MiniMax keep their temperature. Models with
+// server-side refusal fallback let the API reroute a declined turn instead of
+// ending it.
+const CLAUDE_API_HOST = 'api.anthropic.com';
+const CLAUDE_MIN_OUTPUT_TOKENS = 4096;
+const CLAUDE_FALLBACK_MODELS = /^claude-(?:fable-5-1|opus-5(?:-5)?|sonnet-5-5)$/;
+function isClaudeApi(chatUrl) {
+    try { return new URL(chatUrl).hostname === CLAUDE_API_HOST; } catch (_) { return false; }
+}
+const claudeFallback = (chatUrl, model) => isClaudeApi(chatUrl) && CLAUDE_FALLBACK_MODELS.test(String(model || '').trim());
+function messagesOptions(chatUrl, model = '', { maxTokens, temperature = 1 } = {}) {
+    const claude = isClaudeApi(chatUrl);
+    return { ...(maxTokens ? { max_tokens: claude ? Math.max(maxTokens, CLAUDE_MIN_OUTPUT_TOKENS) : maxTokens } : {}),
+        ...(!claude ? { temperature } : claudeFallback(chatUrl, model) ? { fallbacks: 'default' } : {}) };
+}
+function messagesHeaders(chatUrl, apiKey = '', model = '', { browser = false } = {}) {
+    return { 'Content-Type': 'application/json', ...(apiKey ? { 'x-api-key': apiKey } : {}), 'anthropic-version': '2023-06-01',
+        ...(claudeFallback(chatUrl, model) ? { 'anthropic-beta': 'server-side-fallback-2026-07-01' } : {}),
+        // Anthropic's CORS opt-in. Direct mode sends the visitor's own key from their browser.
+        ...(browser && isClaudeApi(chatUrl) ? { 'anthropic-dangerous-direct-browser-access': 'true' } : {}) };
+}
 function bounded(value, limit = LIMIT) {
     if (bytes(value) > limit) throw error('LLM_SIZE_LIMIT', '模型响应过大，请缩短请求后重试');
     return value;
@@ -38,6 +61,8 @@ function checkStatus(data) {
         throw error('LLM_INCOMPLETE', '模型输出达到长度上限，回复未保存，请重试');
     if (reason === 'content_filter' || data?.type === 'response.failed' || data?.status === 'failed')
         throw error('LLM_PROVIDER_FAILED', '模型没有完成可显示的回复，请重试');
+    // Claude reports policy declines as a normal stop; partial text is not a reply.
+    if (reason === 'refusal') throw error('LLM_REFUSED', '模型拒绝了本次请求，回复未保存，请换个说法再试');
     if (data?.error || data?.type === 'error') throw error('LLM_PROVIDER_FAILED', '模型服务返回错误，请稍后重试');
     return reason || '';
 }
@@ -65,8 +90,12 @@ function fromJson(data, { provider = 'openai', allowTools = false } = {}) {
         toolCalls = (data.output || []).filter(p => p.type === 'function_call').map(p => call(p.call_id, p.name, p.arguments));
         continuation = { protocol: provider, items: data.output || [] };
     } else if (provider === 'anthropic') {
-        toolCalls = (data.content || []).filter(p => p.type === 'tool_use').map(p => call(p.id, p.name, p.input));
-        continuation = { protocol: provider, items: data.content || [] };
+        // After a server-side fallback only the declined attempt's text is
+        // context; its thinking and tool calls must not be echoed back.
+        const content = data.content || [], cut = content.map(p => p?.type).lastIndexOf('fallback');
+        const items = cut < 0 ? content : [...content.slice(0, cut).filter(p => p?.type === 'text'), ...content.slice(cut + 1)];
+        toolCalls = items.filter(p => p.type === 'tool_use').map(p => call(p.id, p.name, p.input));
+        continuation = { protocol: provider, items };
     } else {
         const message = data.choices?.[0]?.message || data.message || {};
         toolCalls = (message.tool_calls || []).map((p, i) => call(p.id || (provider === 'ollama' ? `ollama_${i}` : ''), p.function?.name, p.function?.arguments));
@@ -240,4 +269,4 @@ function withTools(payload, provider, tools = [], turns = []) {
     }
     return result;
 }
-module.exports = { runtime: require('./model-runtime.cjs'), chatOptions, readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, error };
+module.exports = { runtime: require('./model-runtime.cjs'), chatOptions, isClaudeApi, messagesOptions, messagesHeaders, readStream, readJson, readText, fromJson, withTools, visible, checkStatus, bounded, error };
