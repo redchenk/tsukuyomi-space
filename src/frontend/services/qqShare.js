@@ -67,10 +67,10 @@ export function buildQQBridgePayload(value = {}) {
 }
 
 export function buildQQSystemPayload(value = {}) {
-  const share = qqSharePayload(value);
-  // QQ's iOS extension uses the text item for its card title, ignoring title.
-  // Send the article title there instead of the excerpt or the URL itself.
-  return { title: share.title, text: share.title, url: share.url };
+  const share = normalizedSharePayload(value);
+  // Keep the same title/text items as the verified system-share flow. QQ's
+  // iOS extension displays the excerpt as the card heading and retains its cover.
+  return { title: share.title, text: share.text, url: qqSharePayload(share).url };
 }
 
 export function qqShareResult(result) {

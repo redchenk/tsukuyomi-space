@@ -153,11 +153,13 @@ describe('mobile QQ article cards', () => {
         });
     });
 
-    it('gives the iOS QQ extension the article title as its text item with a short URL', () => {
+    it('keeps the verified system-share excerpt intact with a short URL for the iOS QQ extension', () => {
         const { buildQQSystemPayload } = loadQQShare();
         assert.deepEqual(JSON.parse(JSON.stringify(buildQQSystemPayload(payload))), {
-            title: payload.title, text: payload.title, url: 'https://yachiyo.hk/articles/282'
+            title: payload.title, text: payload.text, url: 'https://yachiyo.hk/articles/282'
         });
+        const excerpt = '完整的文章摘要。'.repeat(12);
+        assert.equal(buildQQSystemPayload({ ...payload, text: excerpt }).text, excerpt);
     });
 
     it('accepts explicit SDK confirmation only and distinguishes cancellation from unknown results', () => {
