@@ -43,6 +43,33 @@ test('all visitors get the same readable public document, one canonical and the 
         }
     }
 });
+test('short article shares redirect to the existing canonical, including renamed slugs, without indexing duplicates', async () => {
+    const slug = '语音合成一键包分享测试';
+    db.prepare('UPDATE articles SET slug=? WHERE id=?').run(slug, articleId);
+    try {
+        const canonicalPath = `/articles/${articleId}/${encodeURIComponent(slug)}`;
+        for (const route of [`/articles/${articleId}`, `/articles/${articleId}/seo-test`]) {
+            const redirect = await fetch(base + route, { redirect: 'manual' });
+            assert.equal(redirect.status, 301);
+            assert.equal(redirect.headers.get('location'), canonicalPath);
+            const document = await fetch(base + route);
+            assert.equal(document.status, 200);
+            const html = await document.text();
+            assert.equal((html.match(/rel="canonical"/g) || []).length, 1);
+            assert.ok(html.includes(`<link rel="canonical" href="https://yachiyo.hk${canonicalPath}">`));
+            assert.ok(html.includes(`property="og:url" content="https://yachiyo.hk${canonicalPath}"`));
+            assert.match(html, /actual public article about rendering/);
+        }
+        const sitemap = await (await fetch(base + '/sitemap.xml')).text();
+        assert.ok(sitemap.includes(`<loc>https://yachiyo.hk${canonicalPath}</loc>`));
+        assert.ok(!sitemap.includes(`<loc>https://yachiyo.hk/articles/${articleId}</loc>`));
+        assert.equal((await fetch(base + '/articles/9999999', { redirect: 'manual' })).status, 404);
+        const draft = db.prepare("SELECT id FROM articles WHERE slug='draft'").get();
+        assert.equal((await fetch(base + `/articles/${draft.id}`, { redirect: 'manual' })).status, 404);
+    } finally {
+        db.prepare("UPDATE articles SET slug='seo-test' WHERE id=?").run(articleId);
+    }
+});
 test('native app downloads are public, usable without JavaScript and go directly to official GitHub assets', async () => {
     const snapshot = require('../shared/native-app-release.json');
     const html = await (await fetch(base + '/download')).text();

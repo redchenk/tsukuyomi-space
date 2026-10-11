@@ -70,6 +70,8 @@ const articlePath = computed(() => {
   if (!article.value?.id) return `/article?id=${encodeURIComponent(articleId.value)}`;
   return `/articles/${encodeURIComponent(article.value.id)}${article.value.slug ? `/${encodeURIComponent(article.value.slug)}` : ''}`;
 });
+// Sharing uses the stable ID entry; the full slug remains the SEO canonical.
+const articleSharePath = computed(() => article.value?.id ? `/articles/${encodeURIComponent(article.value.id)}` : articlePath.value);
 const articleBackPath = computed(() => normalizeStageReturnPath(route.query.from));
 const threads = computed(() => messageThreads(comments.value));
 const topComments = computed(() => threads.value.top);
@@ -708,7 +710,7 @@ watch(() => route.hash, revealCommentHash);
     :open="articleShareOpen"
     :title="article?.title || '月读空间文章'"
     :text="article?.excerpt || ''"
-    :url="absoluteUrl(articlePath)"
+    :url="absoluteUrl(articleSharePath)"
     :image-url="absoluteUrl(article?.cover_image || '/assets/icons/icon-512.png')"
     @close="articleShareOpen = false"
   />

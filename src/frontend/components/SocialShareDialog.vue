@@ -95,20 +95,22 @@ function onKeydown(event) {
 }
 
 .social-share-dialog header span {
-  color: rgba(174, 242, 255, 0.7);
+  color: var(--ts-accent, #aef2ff);
   font-size: 0.7rem;
   font-weight: 900;
 }
 
 .social-share-dialog h2 { margin: 0.12rem 0 0; font-size: 1.18rem; }
 .social-share-close { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(218, 239, 255, 0.16); border-radius: var(--ts-radius-button, 999px); color: inherit; background: rgba(255, 255, 255, 0.07); cursor: pointer; }
-.social-share-preview { display: block; width: 100%; max-height: 300px; object-fit: contain; border-radius: 12px; background: rgba(0, 0, 0, 0.18); }
+.social-share-preview { display: block; width: 100%; height: 160px; object-fit: contain; border-radius: 12px; background: rgba(0, 0, 0, 0.08); }
 .social-share-copy { min-width: 0; display: grid; gap: 0.3rem; }
 .social-share-copy strong, .social-share-copy p { overflow-wrap: anywhere; }
-.social-share-copy p { margin: 0; color: rgba(231, 249, 255, 0.68); font-size: 0.86rem; line-height: 1.55; }
+.social-share-copy p { margin: 0; color: var(--ts-muted, #b8c7dc); font-size: 0.86rem; line-height: 1.55; }
 
 @media (max-width: 480px) {
   .social-share-overlay { align-items: end; padding: 0; }
-  .social-share-dialog { max-height: 88dvh; border-radius: 18px 18px 0 0; padding: 0.9rem; }
+  .social-share-dialog { max-height: 88dvh; border-radius: 18px 18px 0 0; padding: 0.9rem; gap: 0.65rem; }
+  .social-share-preview { height: 100px; }
+  .social-share-copy p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 }
 </style>
