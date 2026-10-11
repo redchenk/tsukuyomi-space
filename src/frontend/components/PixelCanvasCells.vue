@@ -276,7 +276,7 @@ function shouldAcceptPointer(event) {
   const pointerType = event.pointerType || 'mouse';
   const now = performance.now();
   if (pointerType === 'pen') lastPenAt = now;
-  if (pointerType === 'touch' && now - lastPenAt < PALM_REJECTION_MS) return false;
+  if (pointerType === 'touch' && lastPenAt > 0 && now - lastPenAt < PALM_REJECTION_MS) return false;
   if (props.inputMode === 'pen' && pointerType === 'touch') return false;
   if (props.inputMode === 'touch' && pointerType === 'pen') return false;
   return true;

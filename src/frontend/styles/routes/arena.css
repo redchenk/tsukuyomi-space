@@ -186,7 +186,9 @@ body .pw-gallery-dialog .arena-gallery-head { padding: 0 44px 18px 0; border-bot
   .pw-current-tool, .pw-brush-size > span, .pixel-workspace .pw-fit-top { display: none; }
   .pw-brush-size { border: 0; padding-left: 0; gap: 5px; }
   .pw-brush-size input { width: 55px; }
-  .pw-context { min-height: 44px; gap: 5px; padding: 5px 8px; }
+  /* Overflowing tools can make focus scroll the entire canvas panel sideways. */
+  .pw-context { min-height: 44px; flex-wrap: wrap; gap: 5px; padding: 5px 8px; }
+  .pixel-workspace .pw-context .pw-fit-top { display: none; }
   .pixel-workspace .pw-view-actions .ghost-btn { padding: 6px 7px; min-height: 34px; }
   .pw-view-actions { gap: 0; }
   .pixel-workspace .pw-view-actions button > span { font-size: 10px; }

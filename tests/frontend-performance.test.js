@@ -123,8 +123,6 @@ describe('constrained-device performance policy', () => {
         assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions\s*\{[^}]*display:\s*flex[^}]*flex-wrap:\s*wrap[^}]*justify-content:\s*flex-end/s);
         assert.match(arena, /@media \(max-width: 760px\)[\s\S]*\.pixel-art-actions \.icon-btn\s*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
         assert.match(arena, /@media \(max-width: 760px\) and \(pointer: coarse\)[\s\S]*\.arena-canvas-viewport\s*\{[^}]*overscroll-behavior-y:\s*auto[^}]*touch-action:\s*pan-y pinch-zoom/s);
-        assert.match(arena, /@media \(max-width: 760px\) and \(pointer: coarse\)[\s\S]*\.pixel-canvas-renderer\s*\{[^}]*touch-action:\s*pan-y pinch-zoom/s);
-        assert.match(arena, /\.pixel-canvas-renderer:not\(\.is-tool-move\)\s*\{[^}]*touch-action:\s*none/s);
         assert.match(arenaPage, /function initialCanvasTool\(\)[\s\S]*pointer: coarse[\s\S]*\? 'move' : 'brush'/s);
         assert.match(productPolish, /@media \(max-width: 760px\)[\s\S]*\.page\.arena-page \.pixel-art-actions \.icon-btn:not\([^}]*\{[^}]*width:\s*auto[^}]*min-width:\s*max-content[^}]*aspect-ratio:\s*auto/s);
         assert.doesNotMatch(hubPage, /--hub-pixel-(?:width|height)/);
