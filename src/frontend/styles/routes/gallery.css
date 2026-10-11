@@ -89,8 +89,6 @@
     width: auto; min-width: max-content; height: auto; box-sizing: border-box;
     white-space: nowrap; flex: 0 0 auto; aspect-ratio: auto;
   }
-  :is(.gallery-workspace, .gallery-viewer) .gallery-like-button.is-liked { opacity: 1; color: var(--ts-accent); background: var(--ts-editorial-soft); }
-  .gallery-like-button.is-liked svg { fill: currentColor; }
   .gallery-like-count { font-variant-numeric: tabular-nums; }
   .gallery-like-error { flex-basis: 100%; margin: 0; color: var(--ts-danger, #cc5275); font-size: 13px; }
   .gallery-results-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 0 0 20px; }
@@ -177,4 +175,18 @@
 /* Neutralize the earlier input skin without changing other routes. */
 @layer ts-base {
   .gallery-workspace .gallery-search-field input { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+}
+
+/* A completed like keeps its red feedback in every season, including when
+   disabled. Own this state alongside the shared component disabled styles. */
+@layer ts-components {
+  :is(.gallery-workspace, .gallery-viewer) .gallery-like-button.is-liked {
+    color: var(--ts-status-danger, #ad344b);
+    -webkit-text-fill-color: currentColor;
+    border-color: color-mix(in srgb, currentColor 45%, var(--ts-editorial-line));
+    background: color-mix(in srgb, currentColor 10%, var(--ts-editorial-surface));
+    opacity: 1;
+    cursor: default;
+  }
+  :is(.gallery-workspace, .gallery-viewer) .gallery-like-button.is-liked svg { fill: currentColor; }
 }
