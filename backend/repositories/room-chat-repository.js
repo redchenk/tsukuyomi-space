@@ -3,6 +3,8 @@ const db = require('../db');
 const roomImages = require('../services/room-chat-images');
 
 const MAX_STORED_MESSAGES = 100;
+const MAX_ACTIVE_MESSAGES = 10000;
+const DIARY_PAGE_SIZE = 200;
 
 function normalizeLimit(value, fallback = 24) {
     return Math.max(1, Math.min(Number.parseInt(value, 10) || fallback, MAX_STORED_MESSAGES));
@@ -32,6 +34,56 @@ function listMessages(userId, limit = 24) {
     `).all(userId, normalizeLimit(limit)).map(row => ({ ...compactMessage(row),
         ...(row.role === 'user' ? { image: roomImages.descriptor(roomImages.find(userId, row.turn_id)) } : {})
     }));
+}
+
+// The chat window is a short tail; the diary reads the whole active cloud
+// conversation. Message IDs identify a stable snapshot across devices, even
+// when timestamps coincide. Never accept another owner's cursor.
+function snapshotBoundary(userId, snapshot) {
+    if (!snapshot || typeof snapshot.lastId !== 'string' || snapshot.lastId.length > 128 || typeof snapshot.digest !== 'string' || !/^[a-f0-9]{64}$/.test(snapshot.digest))
+        throw conflict('日记对话快照无效，请重新读取会话');
+    const last = db.prepare('SELECT rowid AS position FROM room_chat_messages WHERE user_id=? AND id=?').get(userId, snapshot.lastId);
+    if (!last) throw conflict('会话已在其他设备结束，请重新读取会话');
+    const digest = crypto.createHash('sha256');
+    for (const row of db.prepare('SELECT id,role,content FROM room_chat_messages WHERE user_id=? AND rowid<=? ORDER BY rowid').iterate(userId, last.position))
+        digest.update(JSON.stringify([row.id, row.role, row.content]));
+    if (digest.digest('hex') !== snapshot.digest) throw conflict('对话已在其他设备修改，请重新读取后生成日记');
+    return last.position;
+}
+
+function listDiaryMessages(userId, { cursor = '', snapshot = null } = {}) {
+    return db.transaction(() => {
+        if (!snapshot) {
+            const last = db.prepare('SELECT id FROM room_chat_messages WHERE user_id=? ORDER BY rowid DESC LIMIT 1').get(userId);
+            if (!last) return { userId, messages: [], snapshot: null, total: 0, nextCursor: null };
+            const digest = crypto.createHash('sha256');
+            for (const row of db.prepare('SELECT id,role,content FROM room_chat_messages WHERE user_id=? ORDER BY rowid').iterate(userId))
+                digest.update(JSON.stringify([row.id, row.role, row.content]));
+            snapshot = { lastId: last.id, digest: digest.digest('hex') };
+        }
+        const boundary = snapshotBoundary(userId, snapshot);
+        const after = cursor ? db.prepare('SELECT rowid AS position FROM room_chat_messages WHERE user_id=? AND id=? AND rowid<=?').get(userId, cursor, boundary)?.position : 0;
+        if (after == null) throw conflict('日记分页位置已失效，请重新读取会话');
+        const rows = db.prepare('SELECT id,turn_id,role,content,created_at FROM room_chat_messages WHERE user_id=? AND rowid>? AND rowid<=? ORDER BY rowid LIMIT ?')
+            .all(userId, after, boundary, DIARY_PAGE_SIZE + 1);
+        const page = rows.slice(0, DIARY_PAGE_SIZE);
+        return { userId, messages: page.map(compactMessage), snapshot,
+            total: db.prepare('SELECT COUNT(*) AS n FROM room_chat_messages WHERE user_id=? AND rowid<=?').get(userId, boundary).n,
+            nextCursor: rows.length > DIARY_PAGE_SIZE ? page.at(-1).id : null };
+    })();
+}
+
+function clearDiarySnapshot(userId, snapshot) {
+    return db.transaction(() => {
+        const boundary = snapshotBoundary(userId, snapshot);
+        // A message sent by another device during generation belongs to the
+        // next diary. Keep both it and its private image reference.
+        db.prepare(`UPDATE room_chat_images SET deleted=1 WHERE user_id=? AND turn_id IN
+            (SELECT turn_id FROM room_chat_messages WHERE user_id=? AND rowid<=?)`).run(userId, userId, boundary);
+        const deletedCount = db.prepare('DELETE FROM room_chat_messages WHERE user_id=? AND rowid<=?').run(userId, boundary).changes;
+        const remainingCount = db.prepare('SELECT COUNT(*) AS n FROM room_chat_messages WHERE user_id=?').get(userId).n;
+        return { deletedCount, remainingCount };
+    })();
 }
 
 function findOwnedTurn(userId, turnId) {
@@ -64,18 +116,9 @@ function turnRows(userId, turnId) {
     `).all(userId, turnId);
 }
 
-function pruneMessages(userId) {
-    db.prepare(`
-        DELETE FROM room_chat_messages
-        WHERE user_id = ?
-          AND rowid NOT IN (
-              SELECT rowid
-              FROM room_chat_messages
-              WHERE user_id = ?
-              ORDER BY rowid DESC
-              LIMIT ?
-          )
-    `).run(userId, userId, MAX_STORED_MESSAGES);
+function requireCapacity(userId, additional) {
+    const count = db.prepare('SELECT COUNT(*) AS n FROM room_chat_messages WHERE user_id=?').get(userId).n;
+    if (count + additional > MAX_ACTIVE_MESSAGES) throw conflict('当前会话已达到 10000 条记录，请先结束会话并写日记；已有记录不会删除');
 }
 
 function insertMessage({ userId, turnId, role, content }) {
@@ -124,12 +167,12 @@ function saveTurn(userId, { turnId, userMessage, assistantMessage, opener = fals
         const matchingTurnId = findRecentMatchingLegacyTurn(userId, userMessage, assistantMessage);
         if (matchingTurnId && matchingTurnId !== turnId) return [];
 
+        requireCapacity(userId, opener ? 1 : 2);
         const messageIds = [
             !opener && insertMessage({ userId, turnId, role: 'user', content: userMessage }),
             insertMessage({ userId, turnId, role: 'assistant', content: assistantMessage })
         ].filter(Boolean);
         if (messageIds.length && typeof onSaved === 'function') onSaved();
-        pruneMessages(userId);
         return messageIds;
     });
     return save();
@@ -185,7 +228,6 @@ function importHistoryIfEmpty(userId, messages) {
             });
             if (id) messageIds.push(id);
         });
-        pruneMessages(userId);
         return messageIds;
     });
     return importHistory();
@@ -199,6 +241,8 @@ module.exports = {
     clearMessages,
     findOwnedTurn,
     listMessages,
+    listDiaryMessages,
+    clearDiarySnapshot,
     saveTurn,
     replaceLatestTurn,
     importHistoryIfEmpty

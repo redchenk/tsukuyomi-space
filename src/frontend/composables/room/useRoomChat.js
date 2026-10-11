@@ -29,6 +29,8 @@ import {
   clearRoomGenerationDraft,
   clearRoomConversation,
   loadRoomConversation,
+  loadRoomDiaryConversation,
+  validateRoomDiarySnapshot,
   readRoomGenerationDraft,
   readRoomConversation,
   replaceRoomConversationTurn,
@@ -1131,6 +1133,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     try {
       const history = await loadRoomConversation();
       if (revision !== historyLoadRevision || sending.value) return;
+      if (!history.length && getSession()?.user?.id && !pendingDiaryEntry) markSessionStart();
       // A save echo must not rebuild the transcript under someone reading it.
       const visibleTail = messages.value.filter(item => ['user', 'assistant'].includes(item.role) && !item.pending).slice(-history.length);
       if (history.length && history.every((item, index) => {
@@ -1574,35 +1577,48 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   function sessionTurnCount() {
-    return sessionMessages().length;
+    // The visible tail can already contain another device's turns. The end
+    // dialog replaces this estimate with the complete cloud snapshot count.
+    return getSession()?.user?.id
+      ? Math.max(sessionMessages().length, messages.value.filter(item => ['user', 'assistant'].includes(item.role) && !item.pending && !item.failed).length)
+      : sessionMessages().length;
   }
 
-  async function finishDiarySession() {
+  async function finishDiarySession(snapshot = null) {
     resetting.value = true;
+    let remainingCount = 0;
     try {
-      await clearRoomConversation();
+      const result = await clearRoomConversation({ snapshot });
+      remainingCount = result?.remainingCount || 0;
       resetConversationView();
-      addMessage('system', '新会话已开始，长期记忆已保留。', { shareable: false });
+      addMessage('system', remainingCount ? '日记已记录本次对话，其他设备随后发来的消息已保留在新会话中。' : '新会话已开始，长期记忆已保留。', { shareable: false });
     } finally {
       resetting.value = false;
     }
+    return remainingCount;
   }
 
-  function openEndChatDialog() {
+  async function openEndChatDialog() {
     if (sending.value || resetting.value || endChatState.value.status === 'generating') {
       addMessage('system', '\u6b63\u5728\u56de\u5e94\u4e2d\uff0c\u8bf7\u7a0d\u7b49\u7247\u523b\u518d\u7ed3\u675f\u804a\u5929\u3002');
       return;
     }
-    const turns = sessionTurnCount();
-    if (!turns) {
-      addMessage('system', '\u672c\u6b21\u8fd8\u6ca1\u6709\u804a\u8fc7\u5929\uff0c\u5148\u8bf4\u4e00\u53e5\u5427\u3002');
+    const revision = conversationRevision, archiveKey = diaryArchiveKey();
+    endChatState.value = { ...endChatState.value, visible: true, status: 'generating', entry: null, message: '正在读取本次完整对话...', detail: '会合并同一账号在各设备上的已同步消息。' };
+    let turns;
+    try {
+      turns = (await loadRoomDiaryConversation(sessionMessages())).messages.length;
+      if (destroyed || revision !== conversationRevision || archiveKey !== diaryArchiveKey()) return;
+      if (!turns && !pendingDiaryEntry) throw new Error('本次还没有可记录的对话，先说一句吧。');
+    } catch (error) {
+      if (!destroyed && revision === conversationRevision && archiveKey === diaryArchiveKey()) endChatState.value = { ...endChatState.value, status: 'error', message: error.message, detail: '对话仍保留；网络恢复后可以重试。' };
       return;
     }
     endChatState.value = {
       visible: true,
       status: 'confirm',
       message: '\u7ed3\u675f\u672c\u6b21\u804a\u5929\uff0c\u5e76\u5199\u4e00\u7bc7\u65e5\u8bb0\uff1f',
-      detail: `\u5c06\u6839\u636e\u672c\u6b21\u7684 ${turns} \u6761\u5bf9\u8bdd\u751f\u6210\u65e5\u8bb0\uff0c\u5199\u5165\u4eba\u8bbe\u4e0e\u65e5\u8bb0\u6df7\u5408\u7684\u5b58\u6863\u3002`,
+      detail: `将根据本次完整的 ${turns} 条对话生成日记（含其他设备已同步的聊天）。`,
       entry: null,
       turnCount: turns,
       sessionStartedAt: endChatState.value.sessionStartedAt || sessionStartedAt || Date.now()
@@ -1633,11 +1649,11 @@ export function useRoomChat({ live2d, world, diary = null }) {
     if (sending.value || resetting.value || endChatState.value.status === 'generating') return;
     const archiveKey = diaryArchiveKey();
     const revision = conversationRevision;
-    const turns = sessionMessages().map((message) => ({ role: message.role, content: message.content }));
-    if (!turns.length) {
-      endChatState.value = { ...endChatState.value, status: 'error', message: '\u672c\u6b21\u6ca1\u6709\u53ef\u8bb0\u5f55\u7684\u5bf9\u8bdd\u3002', detail: '' };
-      return;
-    }
+    const stillCurrent = () => {
+      if (!destroyed && revision === conversationRevision && archiveKey === diaryArchiveKey()) return true;
+      if (!destroyed) endChatState.value = { ...endChatState.value, status: 'idle', visible: false };
+      return false;
+    };
     const now = new Date();
     if (pendingDiaryEntry && (pendingDiaryEntry.revision !== revision || pendingDiaryEntry.archiveKey !== archiveKey)) {
       pendingDiaryEntry = null;
@@ -1648,13 +1664,23 @@ export function useRoomChat({ live2d, world, diary = null }) {
       ...endChatState.value,
       status: 'generating',
       message: existingEntry ? '正在确认日记已同步并结束会话...' : `\u6b63\u5728\u4e3a ${persona.data.name || '\u89d2\u8272'} \u5199\u65e5\u8bb0...`,
-      detail: existingEntry ? '已有日记不会再次生成。' : `\u6b63\u5728\u9605\u8bfb\u672c\u6b21 ${turns.length} \u6761\u5bf9\u8bdd\u3002`,
+      detail: existingEntry ? '已有日记不会再次生成。' : '正在同步各设备的完整对话...',
       entry: existingEntry
     };
     try {
+      const conversation = existingEntry
+        ? { messages: [], snapshot: pendingDiaryEntry.snapshot }
+        : await loadRoomDiaryConversation(sessionMessages());
+      if (!stillCurrent()) return null;
+      const turns = conversation.messages;
+      if (!existingEntry && !turns.length) throw new Error('本次没有可记录的对话。');
+      if (existingEntry && getSession()?.user?.id && !conversation.snapshot) throw new Error('旧版待同步日记已保留，请先检查存档，再选择“结束但不写日记”开始新会话。');
+      endChatState.value = { ...endChatState.value, detail: existingEntry ? '已有日记不会再次生成。' : `正在阅读本次完整的 ${turns.length} 条对话。`, turnCount: existingEntry ? existingEntry.conversationLength : turns.length };
       if (!existingEntry) await syncDiaryArchive();
+      if (!stillCurrent()) return null;
       const currentPersona = activePersonaPrompt(readDiaryArchive());
       const generated = existingEntry ? null : await generateDiaryEntry(turns, { persona: currentPersona, now });
+      await validateRoomDiarySnapshot(conversation.snapshot);
       if (destroyed || revision !== conversationRevision || archiveKey !== diaryArchiveKey()) {
         if (!destroyed) endChatState.value = { ...endChatState.value, status: 'idle', visible: false };
         return null;
@@ -1665,24 +1691,27 @@ export function useRoomChat({ live2d, world, diary = null }) {
         conversationLength: generated.conversationLength,
         mode: 'Deepseek'
       }, { now }).entry;
-      pendingDiaryEntry = { entry, revision, archiveKey };
+      pendingDiaryEntry = { entry, revision, archiveKey, snapshot: conversation.snapshot };
       persistDiaryRecording();
       diary?.refresh?.();
       endChatState.value = { ...endChatState.value, entry };
       await syncDiaryArchive({ ensureDiaryId: entry.diaryId });
+      if (!stillCurrent()) return null;
       // Keep the transcript until the account server confirms the diary.
-      await finishDiarySession();
+      const remainingCount = await finishDiarySession(conversation.snapshot);
       markSessionStart();
       pendingDiaryEntry = null;
       endChatState.value = {
         ...endChatState.value,
         status: 'done',
-        message: '\u65e5\u8bb0\u5df2\u5199\u5165\u5b58\u6863\uff0c\u5f53\u524d\u5bf9\u8bdd\u5df2\u7ed3\u675f\u3002',
+        message: remainingCount ? '日记已写入存档，其他设备随后发来的消息已保留在新会话中。' : '\u65e5\u8bb0\u5df2\u5199\u5165\u5b58\u6863\uff0c\u5f53\u524d\u5bf9\u8bdd\u5df2\u7ed3\u675f\u3002',
         detail: `${entry.characterName || currentPersona.data.name} \u00b7 ${diaryTimestampLabel(new Date(entry.timestamp))}`,
         entry
       };
+      if (remainingCount) await refreshSyncedHistory();
       return entry;
     } catch (error) {
+      if (!stillCurrent()) return null;
       endChatState.value = {
         ...endChatState.value,
         status: 'error',
@@ -1719,8 +1748,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
 
   function persistDiaryRecording() {
     try {
-      writeJson(recordingKey(), { version: 1, startedAt: sessionStartedAt,
-        messages: currentSessionMessages.value, pendingEntry: pendingDiaryEntry?.entry || null });
+      writeJson(recordingKey(), { version: 2, startedAt: sessionStartedAt,
+        messages: currentSessionMessages.value, pendingEntry: pendingDiaryEntry?.entry || null, snapshot: pendingDiaryEntry?.snapshot || null });
       diaryRecordingError.value = '';
     } catch (_) {
       diaryRecordingError.value = '本机存储空间不足，日记对话记录尚未保存。请先生成日记或释放空间后重试，暂时不要关闭页面。';
@@ -1733,7 +1762,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       .filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string' && !item.pending);
     sessionStartedAt = Number(recording?.startedAt) || Date.now();
     pendingDiaryEntry = recording?.pendingEntry?.diaryId
-      ? { entry: recording.pendingEntry, revision: conversationRevision, archiveKey: diaryArchiveKey() } : null;
+      ? { entry: recording.pendingEntry, revision: conversationRevision, archiveKey: diaryArchiveKey(), snapshot: recording.snapshot || null } : null;
     characterName.value = roomCharacterName();
   }
 

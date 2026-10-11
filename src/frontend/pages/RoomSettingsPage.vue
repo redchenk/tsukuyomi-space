@@ -141,6 +141,8 @@ const MEMORY_PAGE_SIZE = 80;
 let memoryListRequestId = 0;
 let memoryEditRequestId = 0;
 let memoryCountRequestId = 0;
+const relationshipLoading = ref(false);
+const relationshipError = ref('');
 let memoryChoiceRequestId = 0;
 let memoryImportController = null;
 let memoryPageDisposed = false;
@@ -1165,6 +1167,7 @@ function txToPromise(tx) {
 
 async function loadMemoryCount() {
   const requestId = ++memoryCountRequestId, identity = memoryIdentity();
+  relationshipError.value = '';
   let db;
   try {
     if (canUseServerMemory.value) {
@@ -1200,6 +1203,33 @@ async function loadMemoryCount() {
   } catch (_) {
     if (requestId === memoryCountRequestId && identity === memoryIdentity()) memoryCount.value = 0;
   } finally { db?.close(); }
+}
+
+async function loadOlderRelationship() {
+  const identity = memoryIdentity(), revision = memoryCountRequestId;
+  const current = memoryVector.local?.relationship, cursor = current?.nextCursor;
+  if (!cursor || relationshipLoading.value) return;
+  relationshipLoading.value = true;
+  relationshipError.value = '';
+  try {
+    const response = await authFetch(noStoreUrl(`/api/room/relationship?before=${encodeURIComponent(cursor)}`), { headers: memoryAuthHeaders(), cache: 'no-store' });
+    const result = await parseResponse(response);
+    requireMemoryIdentity(identity);
+    if (revision !== memoryCountRequestId) return;
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    // Refresh when an edit/retry changed the ledger while paging, so the
+    // displayed cumulative values all belong to the same score snapshot.
+    if (result.data.ledgerRevision !== current.ledgerRevision || result.data.totalDelta !== current.totalDelta || result.data.totalRecords !== current.totalRecords) {
+      await loadMemoryCount();
+      relationshipError.value = '互动记录已更新，请重新查看。';
+      return;
+    }
+    const ids = new Set(current.records.map(record => record.turnId));
+    current.records.push(...result.data.records.filter(record => !ids.has(record.turnId)));
+    current.nextCursor = result.data.nextCursor;
+  } catch (error) {
+    if (identity === memoryIdentity() && revision === memoryCountRequestId) relationshipError.value = error.message;
+  } finally { relationshipLoading.value = false; }
 }
 
 async function retryLocalMemory() {
@@ -3036,11 +3066,15 @@ onBeforeUnmount(() => {
               <p>向量与对话分析只在服务器本地执行。后台繁忙时使用已有记忆检索，聊天保存不等待模型。</p>
               <p>{{ memoryVector.local.relationship.stage }} · 好感度 {{ memoryVector.local.relationship.score }}/1000
                 <span v-if="memoryVector.local.relationship.pending"> · {{ memoryVector.local.relationship.pending }} 轮待分析</span></p>
-              <small>这是角色互动进度。重复刷屏不加分，缺席、悲伤和拒绝不扣分；每天最多增长 10 点。</small>
+              <small>这是角色互动进度。真诚感谢、主动关心各 +1；共同约定、表达信任各 +2。有具体内容且被语义分析确认的日常分享 +1，每天最多 3 次；所有互动每天最多增长 10 点。简单问候、重复内容、要求加分不计分，缺席、悲伤和拒绝不扣分。</small>
+              <p v-if="memoryVector.local.relationship.totalRecords != null">历史共 {{ memoryVector.local.relationship.totalRecords }} 条互动，累计 +{{ memoryVector.local.relationship.totalDelta }}；最近 12 条 +{{ memoryVector.local.relationship.recentDelta }}，更早记录 +{{ memoryVector.local.relationship.earlierDelta }}。今日 +{{ memoryVector.local.relationship.todayDelta }}/10。</p>
               <p v-if="memoryVector.local.analysisFailed">{{ memoryVector.local.analysisFailed }} 轮分析暂未完成，评分与互动进度可能尚未更新。可重新处理失败任务。</p>
               <details v-if="memoryVector.local.relationship.records.length">
                 <summary>最近互动记录</summary>
-                <p v-for="(record,index) in memoryVector.local.relationship.records" :key="index">{{ record.reason }} · +{{ record.delta }} · {{ new Date(record.createdAt.endsWith('Z') ? record.createdAt : `${record.createdAt}Z`).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai'}) }}</p>
+                <p v-for="(record,index) in memoryVector.local.relationship.records" :key="record.turnId || index">{{ record.reason }} · +{{ record.delta }}<span v-if="record.scoreBefore != null"> · {{ record.scoreBefore }} → {{ record.scoreAfter }}</span> · {{ new Date(record.createdAt.endsWith('Z') ? record.createdAt : `${record.createdAt}Z`).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai'}) }}</p>
+                <small>分数变化按当前完整账本累加；修改对话后，相关记录会随之更新。历史记录保留原有计分结果。</small>
+                <p v-if="relationshipError" role="status">{{ relationshipError }}</p>
+                <button v-if="memoryVector.local.relationship.nextCursor" type="button" class="ghost-btn" :disabled="relationshipLoading" @click="loadOlderRelationship">{{ relationshipLoading ? '正在读取...' : '查看更早记录' }}</button>
               </details>
               <button type="button" class="ghost-btn" @click="loadMemoryCount">刷新处理状态</button>
               <button v-if="memoryVector.failed || memoryVector.local.analysisFailed" type="button" class="ghost-btn" @click="retryLocalMemory">重新处理失败任务</button>

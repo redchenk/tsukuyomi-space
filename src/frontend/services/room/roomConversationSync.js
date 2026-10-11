@@ -284,7 +284,9 @@ export async function loadRoomConversation() {
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
 
   let history = normalizeHistory(result.data);
-  if (!history.length && localHistory.length) {
+  // Only migrate pre-sync history. A modern cached transcript on an offline
+  // device must not resurrect a session that another device already ended.
+  if (!history.length && localHistory.length && localHistory.every(item => !item.turnId)) {
     const importResponse = await authFetch('/api/room/chat/import', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
@@ -306,6 +308,58 @@ export async function loadRoomConversation() {
     )))
     .map((item) => item.turnId).filter(Boolean));
   return applySavedHistory(userId, history, preserved);
+}
+
+/** All devices share the server's active conversation, not a local start time.
+ * Flush the outbox before taking the snapshot; offline failure keeps the chat
+ * intact instead of silently generating a diary from a partial local copy.
+ */
+export async function loadRoomDiaryConversation(localMessages = []) {
+  const userId = currentUserId(), epoch = saveEpoch(userId);
+  if (!userId) return { messages: localMessages, snapshot: null };
+  await flushPendingTurns(userId);
+  requireCurrentSession(userId, epoch);
+  const messages = [], seen = new Set();
+  let snapshot = null, cursor = '', total = 0;
+  do {
+    const query = new URLSearchParams();
+    if (cursor) query.set('cursor', cursor);
+    if (snapshot) { query.set('lastId', snapshot.lastId); query.set('digest', snapshot.digest); }
+    const response = await authFetch(noStoreUrl(`/api/room/chat/diary?${query}`), {
+      headers: authHeaders({ Accept: 'application/json' }), cache: 'no-store'
+    });
+    const result = await parseResponse(response);
+    requireCurrentSession(userId, epoch);
+    if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
+    const data = result.data;
+    if (data?.userId !== userId || !Array.isArray(data.messages)) throw new Error('完整对话同步结果无效');
+    if (snapshot && (snapshot.lastId !== data.snapshot?.lastId || snapshot.digest !== data.snapshot?.digest))
+      throw new Error('读取期间对话已改变，请重试');
+    snapshot = data.snapshot;
+    total = data.total;
+    for (const item of data.messages) {
+      if (!item?.id || seen.has(item.id) || !['user', 'assistant'].includes(item.role) || typeof item.content !== 'string')
+        throw new Error('完整对话分页结果无效，请重试');
+      seen.add(item.id);
+      messages.push(item);
+    }
+    if (messages.length > 10000 || (data.nextCursor && data.nextCursor === cursor)) throw new Error('完整对话超过读取上限，请联系管理员');
+    cursor = data.nextCursor;
+  } while (cursor);
+  if (messages.length !== total) throw new Error('完整对话尚未同步，请重试');
+  return { messages, snapshot };
+}
+
+export async function validateRoomDiarySnapshot(snapshot) {
+  if (!snapshot) return;
+  const userId = currentUserId(), epoch = saveEpoch(userId);
+  const query = new URLSearchParams({ cursor: snapshot.lastId, lastId: snapshot.lastId, digest: snapshot.digest });
+  const response = await authFetch(noStoreUrl(`/api/room/chat/diary?${query}`), {
+    headers: authHeaders({ Accept: 'application/json' }), cache: 'no-store'
+  });
+  const result = await parseResponse(response);
+  requireCurrentSession(userId, epoch);
+  if (!response.ok || !result.success || result.data?.userId !== userId) throw new Error(result.message || '日记对话已改变，请重新读取');
 }
 
 export async function saveRoomConversationTurn({ turnId, userMessage, assistantMessage, imageId, opener = false, memoryEnabled = true }) {
@@ -389,7 +443,7 @@ export function clearLocalRoomConversation({ broadcast = false } = {}) {
   return [];
 }
 
-export async function clearRoomConversation() {
+export async function clearRoomConversation({ snapshot = null } = {}) {
   const userId = currentUserId();
   const authenticated = Boolean(userId);
   saveEpochs.set(userId, saveEpoch(userId) + 1);
@@ -407,12 +461,13 @@ export async function clearRoomConversation() {
 
   const response = await authFetch('/api/room/chat', {
     method: 'DELETE',
-    headers: authHeaders({ Accept: 'application/json' })
+    headers: authHeaders({ Accept: 'application/json', ...(snapshot ? { 'Content-Type': 'application/json' } : {}) }),
+    ...(snapshot ? { body: JSON.stringify({ snapshot }) } : {})
   });
   const result = await parseResponse(response);
   requireSameAccount(userId);
   if (!response.ok || !result.success) throw new Error(result.message || `HTTP ${response.status}`);
-  clearLocalRoomConversation({ broadcast: true });
+  clearLocalRoomConversation({ broadcast: !result.data?.remainingCount });
   return result.data || { deletedCount: 0 };
 }
 

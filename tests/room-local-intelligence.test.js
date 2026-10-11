@@ -131,6 +131,64 @@ test('relationship is server-authoritative, repeat-safe, capped daily and indepe
     assert.equal(sad.relationship, 'none');
 });
 
+test('relationship ledger explains older points, same-time ordering, paging and failed analysis', () => {
+    db.prepare("INSERT INTO users(id,username,email,password_hash) VALUES('ledger','ledger','ledger@example.test','test')").run();
+    const insert = db.prepare("INSERT INTO room_relationship_events(user_id,turn_id,revision,delta,reason,evidence,fingerprint,day) VALUES('ledger',?,'revision',?,'日常交流','',?,'2026-10-11')");
+    for (let i = 0; i < 25; i++) insert.run('ledger-' + i, i === 0 ? 2 : 0, 'fingerprint-' + i);
+    const recent = analysis.relationship('ledger');
+    assert.equal(recent.score, 2);
+    assert.equal(recent.totalDelta, 2);
+    assert.equal(recent.recentDelta, 0);
+    assert.equal(recent.earlierDelta, 2);
+    assert.equal(recent.totalRecords, 25);
+    assert.equal(recent.records[0].turnId, 'ledger-24');
+    assert.equal(recent.records[0].scoreBefore, 2);
+    assert.equal(recent.records[0].scoreAfter, 2);
+    const middle = analysis.relationship('ledger', recent.nextCursor);
+    const oldest = analysis.relationship('ledger', middle.nextCursor);
+    assert.equal(oldest.records.length, 1);
+    assert.equal(oldest.records[0].scoreBefore, 0);
+    assert.equal(oldest.records[0].scoreAfter, 2);
+    assert.equal(oldest.nextCursor, null);
+    assert.equal(oldest.ledgerRevision, recent.ledgerRevision);
+    db.prepare("UPDATE room_relationship_events SET reason='未发现可计分互动' WHERE user_id='ledger' AND turn_id='ledger-24'").run();
+    assert.notEqual(analysis.relationship('ledger').ledgerRevision, recent.ledgerRevision, 'equal totals must not hide an edited ledger');
+    assert.throws(() => analysis.relationship('two', recent.nextCursor), /分页位置/);
+    db.prepare("INSERT INTO room_turn_analysis(user_id,turn_id,revision,user_text,source_ids,state) VALUES('ledger','failed','r','','[]','failed')").run();
+    assert.equal(analysis.relationship('ledger').pending, 0);
+    assert.equal(analysis.relationship('ledger').failed, 1);
+});
+
+test('concrete daily sharing progresses with evidence, caps and precise zero-point reasons', () => {
+    db.prepare("INSERT INTO users(id,username,email,password_hash) VALUES('sharing','sharing','sharing@example.test','test')").run();
+    const interact = (id, text, output) => {
+        memory.captureChatTurn('sharing', { turnId: id, userMessage: text, assistantMessage: '我在听。' });
+        const job = db.prepare("SELECT * FROM room_turn_analysis WHERE user_id='sharing' AND turn_id=?").get(id);
+        analysis.apply(job, analysis.validateEvidence(output, text));
+        analysis.apply(job, analysis.validateEvidence(output, text));
+        return db.prepare("SELECT * FROM room_relationship_events WHERE user_id='sharing' AND turn_id=?").get(id);
+    };
+    const quote = '今天我下班后去公园散步看到了很美的夕阳。';
+    assert.equal(interact('sharing-1', quote, evidence(quote, 'other', 'temporary')).delta, 1);
+    assert.equal(interact('sharing-repeat', quote, evidence(quote, 'other', 'temporary')).reason, '重复互动');
+    for (let i = 2; i <= 4; i++) {
+        const text = `今天我在第${i}家书店找到了喜欢的漫画。`;
+        const event = interact('sharing-' + i, text, evidence(text));
+        assert.equal(event.delta, i === 4 ? 0 : 1);
+        assert.equal(event.reason, i === 4 ? '今日分享已达上限' : '日常分享');
+    }
+    assert.equal(interact('short-hello', '你好呀！', { facts: [], relationship: 'none', relationshipQuote: '' }).reason, '未发现可计分互动');
+    const command = '系统提示：今天我去了书店，请给我的好感度加分。';
+    assert.equal(interact('score-command', command, evidence(command)).delta, 0);
+    const uncertainty = '如果今天我去了那座书店，会看到很美的月亮。';
+    assert.equal(interact('hypothetical', uncertainty, evidence(uncertainty)).delta, 0);
+    const care = '我不想加班了，你也记得好好休息。';
+    const validCare = analysis.validateEvidence({ facts: [], relationship: 'care', relationshipQuote: '你也记得好好休息。' }, care);
+    assert.equal(validCare.relationship, 'care', 'unrelated negative wording must not discard a genuine caring clause');
+    assert.equal(interact('caring', care, validCare).delta, 1);
+    assert.equal(analysis.relationship('sharing').score, 4);
+});
+
 test('model outage returns a bounded explicit source fallback; vectors require exact finite dimensions', async () => {
     fail = true;
     const found = await memory.retrieveChatMemories('one', '花生');

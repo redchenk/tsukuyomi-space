@@ -416,8 +416,8 @@ describe('room chat end-chat wiring', () => {
         assert.match(code, /content: generated\.body/);
         assert.match(code, /conversationLength: generated\.conversationLength/);
         assert.match(code, /diary\?\.refresh\?\.\(\);/);
-        assert.match(code, /await syncDiaryArchive\(\{ ensureDiaryId: entry\.diaryId \}\);[\s\S]*?await finishDiarySession\(\);/);
-        assert.match(code, /pendingDiaryEntry = \{ entry, revision, archiveKey \}/);
+        assert.match(code, /await syncDiaryArchive\(\{ ensureDiaryId: entry\.diaryId \}\);[\s\S]*?await finishDiarySession\(conversation\.snapshot\);/);
+        assert.match(code, /pendingDiaryEntry = \{ entry, revision, archiveKey, snapshot: conversation\.snapshot \}/);
         assert.match(code, /status: 'done'/);
     });
 

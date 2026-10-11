@@ -23,7 +23,7 @@ async function setup(overrides = {}) {
   const context = {
     agentProtocol: require('../shared/agent-protocol.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'),
     memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), revalidateRoomMemorySnapshot, packRoomContext,
-    console, Date, URL, AbortController, ...oneclickTts,
+    console, Date, URL, AbortController, getSession: () => null, ...oneclickTts,
     ref: (value) => ({ value }), nextTick: (fn) => Promise.resolve().then(fn),
     selectRecentRoomConversation: (messages) => messages,
     usesLocalRoomMemory: () => true,
@@ -39,6 +39,7 @@ async function setup(overrides = {}) {
     readRoomConversation: () => [{ role: 'user', content: 'old' }],
     readRoomGenerationDraft: () => null, writeRoomGenerationDraft() {}, clearRoomGenerationDraft() {},
     loadRoomConversation: async () => [{ role: 'user', content: 'old' }],
+    loadRoomDiaryConversation: async messages => ({ messages, snapshot: null }), validateRoomDiarySnapshot: async () => {},
     writeRoomConversation() {}, saveRoomConversationTurn: async () => {}, replaceRoomConversationTurn: async () => {}, clearLocalRoomConversation() {},
     clearRoomConversation: async () => { clearCount++; },
     writeJson() {},
@@ -181,7 +182,7 @@ test('diary keeps only completed session turns across server refreshes and histo
   const h = await setup();
   for (let i = 0; i < 15; i++) { await send(h.chat, `new-${i}`); h.sync(); await tick(); }
   assert.equal(h.chat.sessionTurnCount(), 30);
-  h.chat.openEndChatDialog();
+  await h.chat.openEndChatDialog();
   await h.chat.confirmEndChat();
   assert.equal(h.requests[0].length, 30);
   assert.equal(h.requests[0][0].content, 'new-0');
@@ -462,7 +463,7 @@ function conversationSyncHarness(authFetch, overrides = {}) {
   let account = 'account-a';
   const localSaves = [];
   const context = {
-    AbortController, console, localStorage, Map, Set, Date,
+    AbortController, console, localStorage, Map, Set, Date, URLSearchParams,
     getSession: () => ({ user: { id: account } }),
     usesLocalRoomMemory: () => !account || storage.get(`roomMemorySource:${account}`) === 'local',
     accountLocalMemoryKey: userId => `user-local:${userId}`,
@@ -483,7 +484,7 @@ function conversationSyncHarness(authFetch, overrides = {}) {
   const imagesSource = fs.readFileSync('src/frontend/services/room/roomChatImages.js', 'utf8').replace(/^import .*;$/gm, '').replace(/^export /gm, '');
   vm.runInNewContext(imagesSource + '\nglobalThis.normalizeImage = normalizeRoomImage;', context);
   context.normalizeRoomImage = context.normalizeImage;
-  vm.runInNewContext(source + '\nglobalThis.sync = { readRoomConversation, writeRoomConversation, saveRoomConversationTurn, replaceRoomConversationTurn, loadRoomConversation };', context);
+  vm.runInNewContext(source + '\nglobalThis.sync = { readRoomConversation, writeRoomConversation, saveRoomConversationTurn, replaceRoomConversationTurn, loadRoomConversation, loadRoomDiaryConversation, validateRoomDiarySnapshot, clearRoomConversation };', context);
   return { sync: context.sync, storage, localSaves, setAccount: value => { account = value; },
     setMemoryMode: mode => storage.set(`roomMemorySource:${account}`, mode) };
 }
@@ -587,6 +588,16 @@ test('a stale Room history GET does not erase a turn saved while that GET was in
   const loaded = await loading;
   assert.equal(loaded.at(-1).content, '新回答');
   assert.equal(h.sync.readRoomConversation().at(-1).turnId, 'turn-0007');
+});
+
+test('an offline device cannot reimport a modern cached session already ended elsewhere', async () => {
+  const requests = [];
+  const h = conversationSyncHarness(async url => { requests.push(url); return successfulHistory([]); });
+  h.sync.writeRoomConversation(savedTurn('ended-cloud-turn', '旧会话', '已写过日记'));
+  const loaded = await h.sync.loadRoomConversation();
+  assert.equal(loaded.length, 0);
+  assert.equal(h.sync.readRoomConversation().length, 0);
+  assert.ok(requests.every(url => !url.includes('/import')));
 });
 
 test('local account memory is saved in its browser scope while cloud chat capture stays disabled', async () => {
@@ -798,4 +809,91 @@ test('refreshing after diary sync failure reuses the saved entry without generat
   assert.equal(reopened.clearCount(), 1);
   assert.equal(reopened.chat.sessionTurnCount(), 0);
   reopened.chat.destroy();
+});
+
+test('a second device with no recording writes all cloud turns and ignores stale local entries', async () => {
+  const cloud = Array.from({ length: 260 }, (_, i) => ({ id: `message-${i}`, turnId: `turn-${Math.floor(i / 2)}`, role: i % 2 ? 'assistant' : 'user', content: `cloud-${i}` }));
+  const snapshot = { lastId: 'message-259', digest: 'a'.repeat(64) };
+  let cleared;
+  const h = await setup({
+    loadRoomDiaryConversation: async () => ({ messages: cloud, snapshot }),
+    getSession: () => ({ user: { id: 'account-a' } }),
+    clearRoomConversation: async options => { cleared = options; return { remainingCount: 2 }; }
+  });
+  await h.chat.openEndChatDialog();
+  assert.equal(h.chat.endChatState.value.turnCount, 260);
+  await h.chat.confirmEndChat();
+  assert.equal(h.requests[0].length, 260);
+  assert.equal(h.requests[0][0].content, 'cloud-0');
+  assert.equal(h.requests[0].at(-1).content, 'cloud-259');
+  assert.equal(cleared.snapshot, snapshot);
+  assert.match(h.chat.endChatState.value.message, /随后发来的消息已保留/);
+  h.chat.destroy();
+});
+
+test('an unavailable or edited cloud snapshot cannot create a partial diary or clear the chat', async () => {
+  for (const failure of ['load', 'validate']) {
+    const h = await setup({
+      loadRoomDiaryConversation: async messages => {
+        if (failure === 'load') throw new Error('云端同步失败');
+        return { messages, snapshot: { lastId: 'last', digest: 'a'.repeat(64) } };
+      },
+      validateRoomDiarySnapshot: async () => { throw new Error('对话已修改'); }
+    });
+    await send(h.chat, '今天去山间看见了月亮');
+    await h.chat.confirmEndChat();
+    assert.equal(h.saved.length, 0);
+    assert.equal(h.clearCount(), 0);
+    assert.equal(h.chat.sessionTurnCount(), 2);
+    assert.equal(h.chat.endChatState.value.status, 'error');
+    h.chat.destroy();
+  }
+});
+
+test('cloud diary pagination preserves chronology beyond 200 messages and checks account changes', async () => {
+  const cloud = Array.from({ length: 402 }, (_, i) => ({ id: `m-${i}`, turnId: `t-${Math.floor(i / 2)}`, role: i % 2 ? 'assistant' : 'user', content: `cloud-${i}` }));
+  const snapshot = { lastId: 'm-401', digest: 'a'.repeat(64) };
+  const requested = [];
+  const h = conversationSyncHarness(async url => {
+    requested.push(url);
+    const query = new URL(url, 'https://test.invalid').searchParams;
+    const offset = query.has('cursor') ? Number(query.get('cursor').slice(2)) + 1 : 0;
+    const page = cloud.slice(offset, offset + 200);
+    return successfulHistory({ userId: 'account-a', messages: page, total: 402, snapshot, nextCursor: offset + page.length < cloud.length ? page.at(-1).id : null });
+  });
+  const result = await h.sync.loadRoomDiaryConversation([{ role: 'user', content: 'stale local' }]);
+  assert.equal(result.messages.length, 402);
+  assert.equal(result.messages[0].content, 'cloud-0');
+  assert.equal(result.messages.at(-1).content, 'cloud-401');
+  assert.equal(requested.length, 3);
+  assert.ok(requested[1].includes('digest='));
+  const d = deferred();
+  const changing = conversationSyncHarness(() => d.promise);
+  const reading = changing.sync.loadRoomDiaryConversation();
+  await tick();
+  changing.setAccount('account-b');
+  d.resolve(successfulHistory({ userId: 'account-a', messages: [], total: 0, snapshot: null, nextCursor: null }));
+  await assert.rejects(reading, /登录账号已切换/);
+});
+
+test('pending local turns are saved before the diary snapshot and failures keep the outbox', async () => {
+  let offline = true;
+  const requested = [];
+  const h = conversationSyncHarness(async (url, options) => {
+    requested.push(url);
+    if (url === '/api/room/chat/turn') {
+      if (offline) throw new Error('offline');
+      return successfulHistory(savedTurn('pending-diary', '今天分享经历', '我听到了'));
+    }
+    return successfulHistory({ userId: 'account-a', messages: savedTurn('pending-diary', '今天分享经历', '我听到了'), total: 2, snapshot: { lastId: 'a-pending-diary', digest: 'b'.repeat(64) }, nextCursor: null });
+  });
+  await assert.rejects(h.sync.saveRoomConversationTurn({ turnId: 'pending-diary', userMessage: '今天分享经历', assistantMessage: '我听到了' }), /offline/);
+  await assert.rejects(h.sync.loadRoomDiaryConversation(), /offline/);
+  assert.ok(h.storage.get('roomChatPending:account-a'));
+  assert.ok(requested.every(url => url === '/api/room/chat/turn'));
+  offline = false;
+  const result = await h.sync.loadRoomDiaryConversation();
+  assert.equal(result.messages.length, 2);
+  assert.equal(h.storage.get('roomChatPending:account-a'), undefined);
+  assert.match(requested.at(-1), /chat\/diary/);
 });

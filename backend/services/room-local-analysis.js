@@ -1,7 +1,7 @@
 const crypto = require('node:crypto');
 const db = require('../db');
 const local = require('./room-local-client');
-const VERSION = 'bge-small-zh-v1.5:semantic-evidence-v1';
+const VERSION = 'bge-small-zh-v1.5:semantic-evidence-v2';
 const hash = text => crypto.createHash('sha256').update(text).digest('hex');
 const parse = (value, fallback = {}) => { try { return JSON.parse(value); } catch { return fallback; } };
 const ATTRIBUTES = new Set(['name', 'birthday', 'preference', 'health', 'plan', 'project', 'other']);
@@ -9,6 +9,7 @@ const MODALITIES = new Set(['explicit', 'tentative', 'hypothetical', 'quoted', '
 const IMPORTANCE = { identity: 0.8, safety: 0.95, preference: 0.72, commitment: 0.78, temporary: 0.35, casual: 0.2 };
 const CONFIDENCE = { explicit: 0.88, correction: 0.92, tentative: 0.45, hypothetical: 0.15, quoted: 0.2 };
 const RELATIONSHIP = { gratitude: 1, care: 1, shared_activity: 2, trust: 2, none: 0 };
+const SCORE_COMMAND = /假如|假设|扮演|他说|她说|好感|加分|涨分|系统提示|忽略.*指令|system prompt/i;
 const SCHEMA = { type: 'object', additionalProperties: false, required: ['facts', 'relationship', 'relationshipQuote'], properties: {
     facts: { type: 'array', maxItems: 3, items: { type: 'object', additionalProperties: false,
         required: ['quote', 'attribute', 'modality', 'importance'], properties: {
@@ -43,7 +44,8 @@ function validateEvidence(output, userText) {
     });
     let relationship = output?.relationship in RELATIONSHIP ? output.relationship : 'none';
     const quote = String(output?.relationshipQuote || '').trim();
-    if (!quote || !userText.includes(quote) || /假如|假设|如果|开玩笑|扮演|他说|她说|好感|加分|涨分|不信任|不喜欢|不要|不想/.test(userText)) relationship = 'none';
+    if (!quote || quote.length > 400 || !userText.includes(quote) || SCORE_COMMAND.test(userText)
+        || /如果|开玩笑|不信任|不喜欢你|不相信你|不要.*(一起|约)|不想.*(一起|约)/.test(quote)) relationship = 'none';
     return { facts, relationship, relationshipQuote: relationship === 'none' ? '' : quote };
 }
 
@@ -51,15 +53,36 @@ async function analyze(userText) {
     return validateEvidence(await local.request('/analyze', { text: userText }, 10000), userText);
 }
 
-function relationship(userId) {
-    const sum = db.prepare('SELECT COALESCE(SUM(delta),0) AS score FROM room_relationship_events WHERE user_id=?').get(userId).score;
-    const score = Math.max(0, Math.min(1000, sum));
-    const stages = [[0, '初次相识'], [30, '渐渐熟悉'], [120, '月下同行'], [300, '相知相伴'], [600, '月之眷属']];
-    const stage = stages.filter(([min]) => score >= min).at(-1)[1];
-    const records = db.prepare('SELECT delta,reason,created_at AS createdAt FROM room_relationship_events WHERE user_id=? ORDER BY created_at DESC LIMIT 12').all(userId);
-    const pending = db.prepare("SELECT COUNT(*) AS count FROM room_turn_analysis WHERE user_id=? AND state IN ('pending','running')").get(userId).count;
-    return { enabled: local.enabled, score, max: 1000, stage, pending, records,
-        source: 'server-local-evidence', version: VERSION, description: '角色互动进度，不代表真人感情；重复刷屏不加分，缺席和负面情绪不扣分。' };
+function relationship(userId, before = '') {
+    return db.transaction(() => {
+        const stats = db.prepare('SELECT COALESCE(SUM(delta),0) AS score,COUNT(*) AS totalRecords FROM room_relationship_events WHERE user_id=?').get(userId);
+        const sum = stats.score;
+        const score = Math.max(0, Math.min(1000, sum));
+        const stages = [[0, '初次相识'], [30, '渐渐熟悉'], [120, '月下同行'], [300, '相知相伴'], [600, '月之眷属']];
+        const stage = stages.filter(([min]) => score >= min).at(-1)[1];
+        const boundary = before ? db.prepare('SELECT rowid AS position FROM room_relationship_events WHERE user_id=? AND turn_id=?').get(userId, before)?.position : Number.MAX_SAFE_INTEGER;
+        if (boundary == null) throw Object.assign(new Error('互动分页位置无效，请刷新'), { statusCode: 400 });
+        const rows = db.prepare(`SELECT * FROM (
+            SELECT rowid AS position,turn_id AS turnId,delta,reason,created_at AS createdAt,
+                SUM(delta) OVER (ORDER BY rowid) AS cumulative
+            FROM room_relationship_events WHERE user_id=?
+        ) ledger WHERE position<? ORDER BY position DESC LIMIT 13`).all(userId, boundary);
+        const records = rows.slice(0, 12).map(({ position, cumulative, ...record }) => ({ ...record,
+            scoreBefore: Math.max(0, Math.min(1000, cumulative - record.delta)), scoreAfter: Math.max(0, Math.min(1000, cumulative)) }));
+        const pending = db.prepare("SELECT COUNT(*) AS count FROM room_turn_analysis WHERE user_id=? AND state IN ('pending','running')").get(userId).count;
+        const failed = db.prepare("SELECT COUNT(*) AS count FROM room_turn_analysis WHERE user_id=? AND state='failed'").get(userId).count;
+        const day = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+        const todayDelta = db.prepare('SELECT COALESCE(SUM(delta),0) AS n FROM room_relationship_events WHERE user_id=? AND day=?').get(userId, day).n;
+        const recentDelta = records.reduce((n, record) => n + record.delta, 0);
+        const ledger = crypto.createHash('sha256');
+        for (const row of db.prepare('SELECT turn_id,revision,delta,reason FROM room_relationship_events WHERE user_id=? ORDER BY rowid').iterate(userId))
+            ledger.update(JSON.stringify(row));
+        return { enabled: local.enabled, score, max: 1000, stage, pending, failed, records, totalRecords: stats.totalRecords,
+            totalDelta: sum, recentDelta, earlierDelta: sum - recentDelta, todayDelta, ledgerRevision: ledger.digest('hex'),
+            nextCursor: rows.length > 12 ? records.at(-1).turnId : null,
+            rules: { dailyLimit: 10, dailySharingLimit: 3, gratitude: 1, care: 1, shared_activity: 2, trust: 2, dailySharing: 1 },
+            source: 'server-local-evidence', version: VERSION, description: '角色互动进度，不代表真人感情；重复刷屏不加分，缺席和负面情绪不扣分。' };
+    })();
 }
 
 function apply(job, evidence) {
@@ -94,16 +117,27 @@ function apply(job, evidence) {
                     .run(id, job.user_id, row.id, job.turn_id, fact.attribute, fact.quote, fact.quote, fact.confidence, fact.importance, row.source_order, active, row.created_at);
             }
         }
-        const signal = all.find(item => item.relationship !== 'none') || { relationship: 'none', relationshipQuote: '' };
+        const special = all.find(item => item.relationship !== 'none');
+        // Normal, concrete sharing can progress too. Require an original,
+        // confident semantic fact rather than rewarding every hello or emoji.
+        const sharing = facts.find(fact => fact.confidence >= 0.8 && fact.quote.replace(/[\s\p{P}\p{S}]/gu, '').length >= 8
+            && current.user_text.includes(fact.quote) && !SCORE_COMMAND.test(current.user_text)
+            && !/不想聊天|不要聊天|不想说|结束聊天/.test(fact.quote));
+        const signal = special || (sharing ? { relationship: 'daily_sharing', relationshipQuote: sharing.quote } : { relationship: 'none', relationshipQuote: '' });
         const fingerprint = hash(current.user_text.replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase());
         const day = new Date(new Date(current.created_at + (current.created_at.endsWith('Z') ? '' : 'Z')).getTime() + 8 * 3600000).toISOString().slice(0, 10);
         const duplicate = db.prepare('SELECT 1 FROM room_relationship_events WHERE user_id=? AND fingerprint=? AND turn_id<>?').get(job.user_id, fingerprint, job.turn_id);
         const today = db.prepare('SELECT COALESCE(SUM(delta),0) AS total FROM room_relationship_events WHERE user_id=? AND day=? AND turn_id<>?').get(job.user_id, day, job.turn_id).total;
-        const delta = duplicate ? 0 : Math.max(0, Math.min(RELATIONSHIP[signal.relationship] || 0, 10 - today));
+        const shares = db.prepare("SELECT COUNT(*) AS n FROM room_relationship_events WHERE user_id=? AND day=? AND turn_id<>? AND reason='日常分享' AND delta>0").get(job.user_id, day, job.turn_id).n;
+        const sharingCapped = signal.relationship === 'daily_sharing' && shares >= 3;
+        const award = signal.relationship === 'daily_sharing' ? 1 : RELATIONSHIP[signal.relationship] || 0;
+        const delta = duplicate || sharingCapped ? 0 : Math.max(0, Math.min(award, 10 - today));
+        const reason = duplicate ? '重复互动' : !award ? '未发现可计分互动' : today >= 10 ? '今日已达加分上限' : sharingCapped ? '今日分享已达上限'
+            : ({ gratitude: '真诚感谢', care: '主动关心', shared_activity: '共同约定', trust: '表达信任', daily_sharing: '日常分享' }[signal.relationship]);
         if (job.origin !== 'archive') db.prepare(`INSERT INTO room_relationship_events(user_id,turn_id,revision,delta,reason,evidence,fingerprint,day)
             VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(user_id,turn_id) DO UPDATE SET revision=excluded.revision,delta=excluded.delta,
             reason=excluded.reason,evidence=excluded.evidence,fingerprint=excluded.fingerprint,day=excluded.day`)
-            .run(job.user_id, job.turn_id, job.revision, delta, duplicate ? '重复互动' : ({ gratitude: '真诚感谢', care: '主动关心', shared_activity: '共同约定', trust: '表达信任', none: '日常交流' }[signal.relationship]), signal.relationshipQuote, fingerprint, day);
+            .run(job.user_id, job.turn_id, job.revision, delta, reason, signal.relationshipQuote, fingerprint, day);
         db.prepare("UPDATE room_turn_analysis SET state='complete',evidence=?,user_text='',lease_until=0,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND turn_id=? AND revision=?")
             .run(JSON.stringify(all), job.user_id, job.turn_id, job.revision);
         return true;

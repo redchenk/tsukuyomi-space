@@ -618,15 +618,30 @@ router.get('/chat', authenticateToken, (req, res) => {
     });
 });
 
+router.get('/chat/diary', authenticateToken, (req, res) => {
+    try {
+        const cursor = req.query.cursor || '';
+        if (typeof cursor !== 'string' || cursor.length > 128) return res.status(400).json({ success: false, message: '日记分页位置无效' });
+        const snapshot = req.query.lastId || req.query.digest ? { lastId: req.query.lastId, digest: req.query.digest } : null;
+        setNoStore(res);
+        res.json({ success: true, data: roomChatRepository.listDiaryMessages(req.user.id, { cursor, snapshot }) });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : '无法读取完整对话' });
+    }
+});
+
 router.delete('/chat', authenticateToken, (req, res) => {
-    const deletedCount = roomChatRepository.clearMessages(req.user.id);
-    roomImages.clear(req.user.id);
-    roomMemoryEvents.publishChat(req.user.id, { action: 'cleared' });
-    setNoStore(res);
-    res.json({
-        success: true,
-        data: { deletedCount }
-    });
+    try {
+        const data = req.body?.snapshot
+            ? roomChatRepository.clearDiarySnapshot(req.user.id, req.body.snapshot)
+            : { deletedCount: roomChatRepository.clearMessages(req.user.id), remainingCount: 0 };
+        if (!req.body?.snapshot) roomImages.clear(req.user.id);
+        roomMemoryEvents.publishChat(req.user.id, { action: data.remainingCount ? 'updated' : 'cleared' });
+        setNoStore(res);
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : '结束会话失败' });
+    }
 });
 
 router.post('/chat/import', authenticateToken, (req, res) => {
@@ -654,8 +669,14 @@ router.post('/chat/import', authenticateToken, (req, res) => {
 });
 
 router.get('/relationship', authenticateToken, (req, res) => {
-    setNoStore(res);
-    res.json({ success: true, data: require('../services/room-local-analysis').relationship(req.user.id) });
+    try {
+        if (req.query.before && (typeof req.query.before !== 'string' || req.query.before.length > 128))
+            return res.status(400).json({ success: false, message: '互动分页位置无效' });
+        setNoStore(res);
+        res.json({ success: true, data: require('../services/room-local-analysis').relationship(req.user.id, req.query.before || '') });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : '无法读取互动记录' });
+    }
 });
 
 router.post('/memory/local/retry', authenticateToken, (req, res) => {
