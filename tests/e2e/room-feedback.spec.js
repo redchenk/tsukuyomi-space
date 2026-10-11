@@ -1,5 +1,24 @@
 const { test, expect } = require('../e2e-fixtures.cjs');
 
+async function expectReadable(page, selector) {
+  const contrast = await page.locator(selector).evaluate(element => {
+    const rgba = value => value.match(/[\d.]+/g).map(Number);
+    const luminance = rgb => rgb.slice(0, 3).map(n => n / 255).map(n => n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4)
+      .reduce((sum, n, i) => sum + n * [0.2126, 0.7152, 0.0722][i], 0);
+    const fg = rgba(getComputedStyle(element).color);
+    const bg = rgba(getComputedStyle(element.closest('[role="dialog"]')).backgroundColor);
+    const alpha = bg[3] ?? 1;
+    // A translucent panel must remain readable over either a light or dark
+    // scene. Check both extremes instead of assuming a particular wallpaper.
+    return Math.min(...[0, 255].map(scene => {
+      const surface = bg.slice(0, 3).map(n => alpha * n + (1 - alpha) * scene);
+      const a = luminance(fg), b = luminance(surface);
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    }));
+  });
+  expect(contrast).toBeGreaterThan(4);
+}
+
 test('another device generates a complete cloud diary and retains messages sent during generation', async ({ page, browser, baseURL }, testInfo) => {
   const username = `diary-cross-device-${testInfo.project.name}`;
   const login = await page.request.post('/api/auth/login', { headers: { Origin: baseURL, 'X-Requested-With': 'XMLHttpRequest' }, data: { username, password: 'mem0-test-password' } });
@@ -29,7 +48,18 @@ test('another device generates a complete cloud diary and retains messages sent 
   } else await page.locator('#endChatBtn').click();
   const dialog = page.getByRole('dialog', { name: '结束聊天', exact: true });
   await expect(dialog).toContainText('260 条对话');
-  await page.screenshot({ path: testInfo.outputPath('cross-device-complete-diary.png') });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '确认结束并写日记' }).click({ trial: true });
+  const bounds = await dialog.boundingBox();
+  expect(bounds.y).toBeGreaterThanOrEqual(0);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(await page.evaluate(() => innerHeight));
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+    await expectReadable(page, '.endchat-title');
+    await expectReadable(page, '.endchat-detail');
+  }
+  await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+  await page.screenshot({ path: testInfo.outputPath('cross-device-complete-diary.png'), animations: 'disabled' });
   await dialog.getByRole('button', { name: '确认结束并写日记' }).click();
   await expect.poll(() => prompt).toContain('手机早上说的早餐和旅行计划');
   expect(prompt).toContain('手机晚上的月亮和晚安');
@@ -43,6 +73,10 @@ test('another device generates a complete cloud diary and retains messages sent 
     expect(late.status()).toBe(201);
     releaseDiary();
     await expect(page.getByRole('dialog', { name: '八千代的日记', exact: true })).toBeVisible();
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+      await expectReadable(page, '.diary-preview-body pre');
+    }
     const remaining = await phone.request.get('/api/room/chat/diary');
     expect(remaining.status()).toBe(200);
     const state = (await remaining.json()).data;

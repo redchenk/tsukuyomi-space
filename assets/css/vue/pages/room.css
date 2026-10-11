@@ -1941,12 +1941,12 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     margin: 0;
     font-size: 1rem;
     font-weight: 800;
-    color: #f6f2ff;
+    color: var(--ts-text-strong, #f6f2ff);
 }
 
 .endchat-detail {
     margin: 0;
-    color: rgba(226, 232, 255, 0.72);
+    color: var(--ts-text, rgba(226, 232, 255, 0.72));
     font-size: 0.82rem;
     line-height: 1.55;
 }
@@ -2020,14 +2020,14 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
 }
 
 .diary-preview-kicker {
-    color: rgba(174, 242, 255, 0.76);
+    color: var(--ts-text, rgba(174, 242, 255, 0.76));
     font-size: 0.72rem;
     font-weight: 800;
     letter-spacing: 0.06em;
 }
 
 .diary-preview-heading strong {
-    color: #f5f1ff;
+    color: var(--ts-text-strong, #f5f1ff);
     font-size: 0.92rem;
 }
 
@@ -2040,7 +2040,7 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 999px;
-    color: rgba(240, 244, 255, 0.9);
+    color: var(--ts-text-strong, rgba(240, 244, 255, 0.9));
     background: rgba(255, 255, 255, 0.08);
     font-size: 1.05rem;
     line-height: 1;
@@ -2065,7 +2065,7 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
-    color: rgba(238, 241, 255, 0.94);
+    color: var(--ts-text, rgba(238, 241, 255, 0.94));
     font-family: inherit;
     font-size: 0.94rem;
     line-height: 1.95;
