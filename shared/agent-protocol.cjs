@@ -41,8 +41,19 @@ function wireOptions(tools = [], turns = [], provider) {
             || calls.some(p => !turn.results.some(r => r.id === p.id && r.name === p.name))) throw error('AGENT_ARGUMENTS', '工具调用与结果不匹配');
     }
     // Messages APIs reject tool_use history without tool definitions. The
-    // final round keeps the tools already used this turn but forbids new calls.
+    // final round keeps the original definitions/order, including unused tools:
+    // changing them invalidates Claude's preserved thinking for new accounts.
     if (provider === 'anthropic' && !definitions.length && turns.length) {
+        const original = turns[0].continuation.toolDefinitions;
+        if (original !== undefined) {
+            if (!Array.isArray(original) || original.length > 2) throw error('AGENT_ARGUMENTS', '工具定义快照无效');
+            const declared = original.map(name => READ_TOOLS.find(p => p.name === name));
+            if (declared.some(p => !p) || new Set(original).size !== original.length
+                || turns.some(turn => turn.results.some(result => !original.includes(result.name))))
+                throw error('AGENT_TOOL_DENIED', '工具定义快照与结果不匹配');
+            return { tools: declared, turns, toolChoice: 'none' };
+        }
+        // Older clients did not retain definitions; keep their compatibility.
         const used = new Set(turns.flatMap(turn => turn.results.map(p => p.name)));
         return { tools: READ_TOOLS.filter(p => used.has(p.name)), turns, toolChoice: 'none' };
     }
@@ -87,7 +98,10 @@ async function runAgent({ complete, execute, tools = [], signal, onDelta = () =>
             }
             results.push({ id: tool.id, name: tool.name, ...output });
         }
-        turns.push({ continuation: result.continuation, results }); bounded(turns, 524288);
+        const continuation = result.continuation.protocol === 'anthropic'
+            ? { ...result.continuation, toolDefinitions: tools.map(tool => tool.name) }
+            : result.continuation;
+        turns.push({ continuation, results }); bounded(turns, 524288);
     }
     throw error('AGENT_BUDGET', '工具调用预算已用完');
 }

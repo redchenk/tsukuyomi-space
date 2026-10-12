@@ -170,7 +170,13 @@ async function readStream(response, { provider = 'openai', onDelta = () => {}, o
                 completed = terminal = true;
             }
         } else if (provider === 'anthropic') {
-            if (data.type === 'content_block_start') blocks.set(data.index, { ...data.content_block });
+            if (data.type === 'content_block_start') {
+                blocks.set(data.index, { ...data.content_block });
+                // A mid-output fallback cannot rewrite message_start. The
+                // handoff block identifies the model that serves this attempt.
+                if (data.content_block?.type === 'fallback' && typeof data.content_block.to?.model === 'string')
+                    model = data.content_block.to.model;
+            }
             if (data.type === 'content_block_delta') {
                 const block = blocks.get(data.index);
                 if (data.delta?.type === 'text_delta') { await emit(data.delta.text); if (block) block.text = bounded((block.text || '') + data.delta.text); }

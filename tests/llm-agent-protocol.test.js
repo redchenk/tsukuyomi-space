@@ -223,6 +223,52 @@ test('the final Claude agent round keeps the tools used this turn but forbids ne
   assert.equal(body.messages.at(-1).content[0].type, 'tool_result');
 });
 
+test('Claude finalization preserves the original tool set and order even when one tool was never used', async () => {
+  const definitions = [...agent.READ_TOOLS].reverse();
+  let rounds = 0;
+  await agent.runAgent({ tools: definitions, execute: async () => ({ content: 'fixture result', isError: false }), complete: async ({ tools, agentTurns }) => {
+    rounds++;
+    const options = agent.wireOptions(tools, agentTurns, 'anthropic');
+    if (rounds === 3) {
+      assert.deepEqual(options.tools, definitions);
+      assert.equal(options.toolChoice, 'none');
+      assert.equal(agentTurns[0].continuation.items[0].signature, 'fixture-signature');
+      const payload = protocol.withTools({ messages: [] }, 'anthropic', options.tools, options.turns, options);
+      assert.deepEqual(payload.tools.map(tool => tool.name), definitions.map(tool => tool.name));
+      return { reply: '完成。', model: 'fixture' };
+    }
+    const id = `toolu_${rounds}`;
+    return { reply: '', toolCalls: [tool(id, `query-${rounds}`)], continuation: { protocol: 'anthropic', items: [
+      { type: 'thinking', thinking: '', signature: 'fixture-signature' },
+      { type: 'tool_use', id, name: 'web_search', input: { query: `query-${rounds}` } }
+    ] } };
+  } });
+  assert.equal(rounds, 3);
+});
+
+test('Claude finalization rejects forged original tool declarations', () => {
+  const continuation = { protocol: 'anthropic', toolDefinitions: ['delete_user'], items: [{ type: 'tool_use', id: 'toolu_1', name: 'web_search', input: { query: 'test' } }] };
+  const results = [{ id: 'toolu_1', name: 'web_search', content: 'fixture', isError: false }];
+  assert.throws(() => agent.wireOptions([], [{ continuation, results }], 'anthropic'), { code: 'AGENT_TOOL_DENIED' });
+});
+
+test('Claude mid-output fallback reports the last serving model and preserves the streamed text', async () => {
+  let visible = '';
+  const result = await protocol.readStream(sse([
+    { type: 'message_start', message: { model: 'claude-opus-5-5' } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: '你好，' } },
+    { type: 'content_block_start', index: 1, content_block: { type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-5' } } },
+    { type: 'content_block_start', index: 2, content_block: { type: 'fallback', from: { model: 'claude-opus-5' }, to: { model: 'claude-opus-4-8' } } },
+    { type: 'content_block_start', index: 3, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 3, delta: { type: 'text_delta', text: '接着聊吧。' } },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' } }, { type: 'message_stop' }
+  ]), { provider: 'anthropic', onDelta: text => { visible += text; } });
+  assert.equal(result.model, 'claude-opus-4-8');
+  assert.equal(result.reply, '你好，接着聊吧。');
+  assert.equal(visible, result.reply);
+});
+
 test('API proxy sends Claude requests with server headers and no sampling fields', async () => {
   const original = global.fetch; let captured;
   try {
