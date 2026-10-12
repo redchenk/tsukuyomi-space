@@ -23,6 +23,23 @@ test('plans retain regions, fixed paths, Gemini header auth and workspace valida
     assert.equal(new URL(cn.url).hostname, 'workspace-123.cn-beijing.maas.aliyuncs.com');
     assert.throws(() => registry.catalogPlan({ ...silicon, cursor: 'https://attacker.test' }), { code: 'INVALID_CURSOR' });
     assert.throws(() => registry.catalogPlan({ ...silicon, apiKey: 'key\r\nInjected: bad' }), { code: 'INVALID_KEY' });
+    const claude = { ...silicon, apiUrl: 'https://api.anthropic.com/v1/messages' };
+    const plan = registry.catalogPlan({ ...claude, cursor: 'claude-haiku-4-5' });
+    assert.equal(plan.provider, 'anthropic'); assert.equal(plan.headers['x-api-key'], silicon.apiKey);
+    assert.equal(plan.headers.Authorization, undefined); assert.equal(plan.headers['anthropic-version'], '2023-06-01');
+    assert.equal(new URL(plan.url).searchParams.get('after_id'), 'claude-haiku-4-5');
+    assert.throws(() => registry.catalogPlan({ ...claude, cursor: 'bad cursor' }), { code: 'INVALID_CURSOR' });
+    assert.equal(plan.headers['anthropic-workspace-id'], undefined);
+    assert.equal(registry.catalogPlan({ ...claude, workspaceId: 'wrkspc_01Fixture' }).headers['anthropic-workspace-id'], 'wrkspc_01Fixture');
+    assert.throws(() => registry.catalogPlan({ ...claude, workspaceId: 'workspace\r\nInjected: x' }), { code: 'WORKSPACE_REQUIRED' });
+    assert.equal(registry.statusError(400, 'anthropic').code, 'WORKSPACE_REQUIRED');
+    assert.equal(registry.statusError(400, 'openai').code, 'UPSTREAM_FAILED');
+    const page = registry.normalizePage({ data: [{ type: 'model', id: 'claude-opus-5-5', display_name: 'Claude Opus 5.5', created_at: '2026-09-01T00:00:00Z',
+        max_input_tokens: 1000000, capabilities: { image_input: { supported: true } } }], has_more: true, last_id: 'claude-opus-5-5' }, plan);
+    assert.equal(page.nextCursor, 'claude-opus-5-5');
+    assert.equal(page.models[0].label, 'Claude Opus 5.5'); assert.equal(page.models[0].contextLength, 1000000);
+    assert.equal(page.models[0].created, Date.parse('2026-09-01T00:00:00Z') / 1000);
+    assert.deepEqual(page.models[0].inputModalities, ['text', 'image']); assert.equal(page.models[0].capabilities.image, true);
 });
 test('normalization preserves exact organization IDs, deduplicates and excludes explicit non-chat models', () => {
     const page = registry.normalizePage({ data: [{ id: 'deepseek-ai/DeepSeek-V3', name: 'DeepSeek', created: 100 }, { id: 'Qwen/Qwen3-VL' },

@@ -2,6 +2,7 @@
 import { ONECLICK_TTS_DEFAULTS, isOneclickApiUrl, buildGptSovitsControlRequest } from '../services/room/oneclickTts.mjs';
 import { uiText } from '../i18n/runtime';
 import llmRuntime from '../../../shared/model-runtime.cjs';
+import llmProtocol from '../../../shared/llm-protocol.cjs';
 import memoryRetrieval from '../../../shared/room-memory-retrieval.cjs';
 import RoomModelRuntimePanel from '../components/room/RoomModelRuntimePanel.vue';
 import { detectProvider, catalogPlan, catalogScope, readCatalogCache, writeCatalogCache, fetchModelCatalog } from '../services/room/roomModelCatalog.mjs';
@@ -66,6 +67,7 @@ const LLM_PRESETS = {
   ollama: { label: 'Ollama 本机', apiUrl: 'http://localhost:11434/api/chat', model: 'qwen2.5:7b', useProxy: false, apiKey: '' },
   openai: { label: 'OpenAI Responses', apiUrl: 'https://api.openai.com/v1/responses', model: 'gpt-5.5' },
   openaiChat: { label: 'OpenAI Chat', apiUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
+  claude: { label: 'Claude (Anthropic)', apiUrl: 'https://api.anthropic.com/v1/messages', model: 'claude-opus-5-5' },
   openrouter: { label: 'OpenRouter', apiUrl: 'https://openrouter.ai/api/v1/chat/completions', model: 'openai/gpt-5.2' },
   deepseek: { label: 'DeepSeek', apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-v4-flash' },
   kimi: { label: 'Kimi', apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'kimi-k2.6' },
@@ -992,8 +994,7 @@ function makeBaseTestRequestBody(modelName, messages, limit = 240, apiUrl = llm.
       messages: messages
         .filter(item => item.role !== 'system')
         .map(item => ({ role: item.role, content: String(item.content || '') })),
-      max_tokens: limit,
-      temperature: 1,
+      ...llmProtocol.messagesOptions(apiUrl, modelName, { maxTokens: limit }),
       stream: false
     };
   }
@@ -1089,15 +1090,14 @@ function normalizeGptSovitsLang(value, fallback = 'zh') {
     : fallback;
 }
 
-function chatRequestHeaders(apiUrl, apiKey, modelName = llm.model) {
+function chatRequestHeaders(apiUrl, apiKey, modelName = llm.model, workspaceId = llm.catalogWorkspaceId) {
   const normalized = normalizeChatUrl(apiUrl, modelName);
   if (isOllamaApi(normalized)) return { 'Content-Type': 'application/json' };
+  if (isAnthropicChatApi(normalized, modelName)) return llmProtocol.messagesHeaders(normalized, apiKey, modelName, { browser: true, workspaceId });
   return {
     'Content-Type': 'application/json',
     ...openRouterHeaders(normalized),
-    ...(isAnthropicChatApi(normalized, modelName)
-      ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
-      : { Authorization: `Bearer ${apiKey}` })
+    Authorization: `Bearer ${apiKey}`
   };
 }
 
@@ -1762,14 +1762,15 @@ async function testLLM() {
     const response = await requestFetch({
       method: 'POST',
       signal: controller.signal,
-      headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model),
+      headers: settings.useProxy ? { 'Content-Type': 'application/json' } : chatRequestHeaders(settings.apiUrl, settings.apiKey, settings.model, settings.catalogWorkspaceId),
       body: JSON.stringify(settings.useProxy
-        ? { message: '请用一句话回复连接测试。', apiKey: settings.apiKey, apiUrl: settings.apiUrl, model: settings.model, runtimeConfig: llmRuntime.transportRuntime(settings) }
+        ? { message: '请用一句话回复连接测试。', apiKey: settings.apiKey, apiUrl: settings.apiUrl, model: settings.model, workspaceId: settings.catalogWorkspaceId, runtimeConfig: llmRuntime.transportRuntime(settings) }
         : makeChatRequestBody(settings.model, [{ role: 'user', content: '请用一句话回复连接测试。' }], 120, settings.apiUrl))
     });
     const raw = await response.json().catch(() => ({}));
     const data = settings.useProxy ? raw.data || raw : raw;
     if (!response.ok) throw new Error(data?.error?.message || `HTTP ${response.status}`);
+    if (!settings.useProxy && isAnthropicChatApi(settings.apiUrl, settings.model)) llmProtocol.checkStatus(data);
     const reply = pickChatReply(data);
     connectionCheck.status = reply ? 'success' : 'warning';
     openTestDialog(
@@ -2760,6 +2761,9 @@ onBeforeUnmount(() => {
               /></label>
               <label v-if="llmProviderKey === 'aliyun'">模型列表工作空间 ID（北京 / 美国地域）
                 <input v-model="llm.catalogWorkspaceId" autocomplete="off" name="room-model-catalog-workspace" spellcheck="false" placeholder="百炼控制台中的工作空间 ID" />
+              </label>
+              <label v-else-if="llmProviderKey === 'anthropic'">Anthropic 工作区 ID（可选，密钥未绑定工作区时填写）
+                <input v-model="llm.catalogWorkspaceId" autocomplete="off" name="room-model-catalog-workspace" spellcheck="false" placeholder="wrkspc_…" />
               </label>
               <label v-if="setupLlmMode === 'ollama'"
                 >API 密钥（可选）<input name="room-setting-llm-apikey" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"

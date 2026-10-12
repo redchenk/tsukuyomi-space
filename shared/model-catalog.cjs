@@ -1,10 +1,12 @@
 // Only documented, read-only model-list endpoints. Model authors do not
 // identify the service hosting them; keep provider IDs exactly as returned.
 const runtime = require('./model-runtime.cjs');
+const { claudeWorkspaceId } = require('./llm-protocol.cjs');
 const MAX_MODELS = 2000;
 const MAX_PAGE_BYTES = 2 * 1024 * 1024;
 const PROVIDERS = {
     openai: { label: 'OpenAI', hosts: ['api.openai.com'], path: '/v1/models' },
+    anthropic: { label: 'Claude', hosts: ['api.anthropic.com'], path: '/v1/models', query: { limit: '1000' } },
     openrouter: { label: 'OpenRouter', hosts: ['openrouter.ai'], path: '/api/v1/models/user' },
     deepseek: { label: 'DeepSeek', hosts: ['api.deepseek.com'], path: '/models' },
     kimi: { label: 'Kimi', hosts: ['api.moonshot.cn', 'api.moonshot.ai'], path: '/v1/models' },
@@ -63,7 +65,14 @@ function catalogPlan({ apiUrl, apiKey = '', workspaceId = '', cursor = '' } = {}
     if (typeof apiKey !== 'string' || apiKey.length > 2048 || /[\r\n\x00-\x1f\x7f]/.test(apiKey)) throw fail('INVALID_KEY', 'API 密钥格式无效。');
     const url = new URL(`https://${host}${path}`);
     const headers = { Accept: 'application/json' };
-    if (apiKey.trim()) headers[provider === 'gemini' ? 'x-goog-api-key' : 'Authorization'] = provider === 'gemini' ? apiKey.trim() : `Bearer ${apiKey.trim()}`;
+    // Claude also needs its CORS opt-in so the browser can list models directly,
+    // and keys not scoped to a workspace must name one.
+    if (provider === 'anthropic') {
+        const workspace = claudeWorkspaceId(workspaceId);
+        if (String(workspaceId || '').trim() && !workspace) throw fail('WORKSPACE_REQUIRED', 'Anthropic 工作区 ID 格式无效，应以 wrkspc_ 开头。');
+        Object.assign(headers, { 'x-api-key': apiKey.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true',
+            ...(workspace ? { 'anthropic-workspace-id': workspace } : {}) });
+    } else if (apiKey.trim()) headers[provider === 'gemini' ? 'x-goog-api-key' : 'Authorization'] = provider === 'gemini' ? apiKey.trim() : `Bearer ${apiKey.trim()}`;
     if (typeof cursor !== 'string' || cursor.length > 1024 || /[\x00-\x1f\x7f]/.test(cursor)) throw fail('INVALID_CURSOR', '模型列表分页游标无效。');
     for (const [key, value] of Object.entries(spec.query || {})) url.searchParams.set(key, value);
     if (provider === 'gemini') { url.searchParams.set('pageSize', '1000'); if (cursor) url.searchParams.set('pageToken', cursor); }
@@ -73,6 +82,9 @@ function catalogPlan({ apiUrl, apiKey = '', workspaceId = '', cursor = '' } = {}
     } else if (provider === 'openrouter') {
         if (cursor && !/^\d{1,5}$/.test(cursor)) throw fail('INVALID_CURSOR', '模型列表分页游标无效。');
         url.searchParams.set('offset', cursor || '0'); url.searchParams.set('limit', '500');
+    } else if (provider === 'anthropic') {
+        if (cursor && !/^[\w.-]{1,240}$/.test(cursor)) throw fail('INVALID_CURSOR', '模型列表分页游标无效。');
+        if (cursor) url.searchParams.set('after_id', cursor);
     } else if (cursor) throw fail('INVALID_CURSOR', '此服务商不支持该分页游标。');
     return { provider, label: spec.label, url: url.toString(), headers, publicList };
 }
@@ -98,10 +110,11 @@ function normalizePage(payload, plan, cursor = '') {
         if (output.length && !output.includes('text')) continue;
         if (/(?:embedding|embed-|rerank|moderation|whisper|(?:^|[-/])tts(?:[-/]|$)|dall-e|image-generation|speech|(?:^|[-/])guard(?:[-/]|$))/i.test(id)) continue;
         seen.add(id);
-        const created = Number(row.created) || (row.published_time ? Date.parse(row.published_time.replace(' ', 'T') + '+08:00') / 1000 : 0);
-        const vision = row.capabilities?.vision === true;
+        const created = Number(row.created) || (row.published_time ? Date.parse(row.published_time.replace(' ', 'T') + '+08:00') / 1000
+            : row.created_at ? Date.parse(row.created_at) / 1000 : 0);
+        const vision = row.capabilities?.vision === true || row.capabilities?.image_input?.supported === true;
         models.push({ id, nativeId: id, label: String(row.displayName || row.display_name || row.name || id).slice(0, 160),
-            contextLength: Math.max(0, Number(row.context_length || row.context_window || row.max_context_length || row.inputTokenLimit || row.model_info?.max_input_tokens) || 0),
+            contextLength: Math.max(0, Number(row.context_length || row.context_window || row.max_context_length || row.inputTokenLimit || row.max_input_tokens || row.model_info?.max_input_tokens) || 0),
             created: Number.isFinite(created) ? created : 0, inputModalities: input.length ? input : vision ? ['text', 'image'] : ['text'],
             outputModalities: output.length ? output : ['text'], source: 'provider', capabilities: runtime.catalogCapabilities(row) });
     }
@@ -109,10 +122,13 @@ function normalizePage(payload, plan, cursor = '') {
     if (plan.provider === 'gemini') nextCursor = String(payload.nextPageToken || '');
     if (plan.provider === 'aliyun' && Number(payload.output?.total) > (Number(cursor) || 1) * 100) nextCursor = String((Number(cursor) || 1) + 1);
     if (plan.provider === 'openrouter' && rows.length === 500) nextCursor = String((Number(cursor) || 0) + 500);
+    if (plan.provider === 'anthropic' && payload.has_more === true) nextCursor = String(payload.last_id || '');
     if (nextCursor.length > 1024) throw fail('INVALID_RESPONSE', '服务商返回了无效的分页游标。');
     return { models, nextCursor };
 }
-function statusError(status) {
+function statusError(status, provider = '') {
+    if (provider === 'anthropic' && status === 400)
+        return Object.assign(fail('WORKSPACE_REQUIRED', 'Claude 拒绝了模型列表请求；如果密钥未绑定工作区，请在高级连接设置填写 Anthropic 工作区 ID（wrkspc_…）。'), { status });
     const table = { 401: ['AUTH_FAILED', '密钥无效或已过期，请检查当前服务商和地域。'], 403: ['ACCESS_DENIED', '当前密钥没有模型列表权限，请检查账号授权和地域。'],
         404: ['NOT_SUPPORTED', '此服务商端点暂不支持模型列表，仍可手动填写模型。'], 429: ['RATE_LIMIT', '服务商请求限流，请稍后手动刷新。'] };
     const [code, message] = table[status] || ['UPSTREAM_FAILED', `模型列表服务暂不可用（HTTP ${status}），请稍后重试。`];

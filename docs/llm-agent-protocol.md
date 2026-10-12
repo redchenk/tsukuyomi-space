@@ -13,6 +13,19 @@ Room 保留现有模型、角色、聊天历史、长期记忆、TTS 和图片�
 
 Gemini 等服务继续使用现有 OpenAI 兼容入口。没有新增原生 Gemini 协议。协议按端点判断，OpenRouter 上的 Claude / MiniMax 不会因为模型名字切换成 Anthropic 请求。
 
+### Claude（Anthropic 官方 API）
+
+`api.anthropic.com/v1/messages` 走同一个 Messages 解码器，差异集中在 `shared/llm-protocol.cjs` 的 `messagesOptions` / `messagesHeaders`，直连、后端代理、日记、站点向导和设置页测试共用：
+
+- 不发送 `temperature` / `top_p`（当前 Claude 模型拒绝采样参数）；MiniMax 等兼容网关保持原有温度。运行时映射对官方 Claude 默认「不发送此参数」，需要时可手动改回。
+- 「推理强度」映射为 `output_config.effort`（low / medium / high），仅默认用于支持 effort 的模型（Opus 4.5+、Sonnet 4.6+、Haiku 5.5+、Fable）；Haiku 4.5、Sonnet 4.5 等旧模型默认不发送。Claude 默认会先思考，思考计入 `max_tokens`，因此一次性请求的上限不低于 16000。
+- Agent 最后一轮不再开放工具时，Messages 请求仍带上本轮已用工具的定义并设 `tool_choice: {type: "none"}`：Messages API 要求含 `tool_use` / `tool_result` 的历史必须同时定义工具。
+- `claude-opus-5-5`、`claude-opus-5`、`claude-sonnet-5-5`、`claude-fable-5-1` 附带 `fallbacks: "default"` 与 `anthropic-beta: server-side-fallback-2026-07-01`：被安全策略拒绝的轮次由服务端按类别改用推荐模型继续，`message.model` 记录实际服务的模型。工具接续时丢弃回退分界前被拒尝试的 thinking / tool_use，只保留文字。
+- 整条回退链仍拒绝时 `stop_reason: "refusal"` 按 `LLM_REFUSED` 失败处理，`max_tokens` 截断按 `LLM_INCOMPLETE` 处理，半句不会保存为完成回复。直连的日记、站点向导、日文 TTS 翻译和设置页测试同样先经 `checkStatus` 校验 Messages 响应。回退前被拒尝试中未写完的工具参数不会被解析。
+- 浏览器直连加 `anthropic-dangerous-direct-browser-access: true` 以通过 CORS；密钥仍只保存在访客自己的浏览器。后端代理不发送该头。
+- 模型目录读取 `/v1/models`（`x-api-key`，`after_id` 分页），并采用 `max_input_tokens` 与 `capabilities.image_input`。
+- 未绑定工作区的密钥必须在每个请求带 `anthropic-workspace-id`，否则 Claude 返回 400。设置页「高级连接设置」选 Claude 后可填写「Anthropic 工作区 ID」（`wrkspc_…`，复用原工作空间字段保存），模型目录、直连、代理、日记、向导和测试都会附带；格式不符的值不会发送。服务端自带密钥使用 `ANTHROPIC_WORKSPACE_ID`，访客不能为站点密钥指定工作区。使用已绑定工作区的密钥时留空即可。
+
 `shared/llm-protocol.cjs` 同时用于后端代理和浏览器聊天；`shared/agent-protocol.cjs` 负责固定工具定义、参数校验、调用 ID 配对、轮数和去重。推理字段、工具参数、签名和工具中间消息只留在当前轮内存中，不写入气泡、日记或长期记忆。完成后仍只保存一轮用户消息与最终可见回复；中断或失败不会把半句保存为完成回复。保持流式气泡，生成过程中不主动滚动聊天视角。
 
 ## 当前轮与历史资料

@@ -3,6 +3,8 @@ const agentProtocol = require('../../shared/agent-protocol.cjs');
 const LLM_API_KEY = process.env.LLM_API_KEY || '';
 const LLM_API_URL = process.env.LLM_API_URL || '';
 const LLM_MODEL = process.env.LLM_MODEL || 'kimi-k2.6';
+// Only paired with the server's own key; visitors' keys use the workspace they send.
+const ANTHROPIC_WORKSPACE_ID = process.env.ANTHROPIC_WORKSPACE_ID || '';
 
 const CHAT_SYSTEM_PROMPT = [
     '你是月读空间中的温柔中文对话助手。',
@@ -284,9 +286,8 @@ function buildBaseChatPayload({ chatUrl, model, systemPrompt, history, message, 
                 ...history.map(item => ({ role: item.role, content: String(item.content || '') })),
                 { role: 'user', content: buildAnthropicUserContent(message, image, allowImage) }
             ],
-            temperature: 1,
-            // Anthropic-compatible APIs require this protocol field. Keep it high so the app does not impose a short reply cap.
-            max_tokens: ANTHROPIC_REQUIRED_MAX_TOKENS,
+            // Anthropic-compatible APIs require max_tokens. Keep it high so the app does not impose a short reply cap.
+            ...protocol.messagesOptions(chatUrl, model, { maxTokens: ANTHROPIC_REQUIRED_MAX_TOKENS }),
             stream: false
         };
     }
@@ -308,14 +309,8 @@ function buildBaseChatPayload({ chatUrl, model, systemPrompt, history, message, 
     };
 }
 
-function chatHeaders(chatUrl, apiKey, model) {
-    if (isAnthropicChatUrl(chatUrl, model)) {
-        return {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01'
-        };
-    }
+function chatHeaders(chatUrl, apiKey, model, workspaceId = '') {
+    if (isAnthropicChatUrl(chatUrl, model)) return protocol.messagesHeaders(chatUrl, apiKey, model, { workspaceId });
     const headers = {
         'Content-Type': 'application/json'
     };
@@ -342,12 +337,13 @@ function buildChatPayload(args) {
     const base = protocol.runtime.applyParameters(buildBaseChatPayload(args), settings).payload;
     const provider = providerFor(args.chatUrl, args.model);
     const options = agentProtocol.wireOptions(args.tools, args.agentTurns, provider);
-    return options.tools.length || options.turns.length ? protocol.withTools(base, provider, options.tools, options.turns) : base;
+    return options.tools.length || options.turns.length ? protocol.withTools(base, provider, options.tools, options.turns, options) : base;
 }
 
-async function requestCompletion({ message, conversation = [], apiKey, apiUrl, model,
+async function requestCompletion({ message, conversation = [], apiKey, apiUrl, model, workspaceId = '',
     systemPrompt = CHAT_SYSTEM_PROMPT, image, signal, onDelta = () => {}, tools = [], agentTurns = [], runtimeConfig, diagnostic = false }, stream) {
     const useApiKey = apiKey || LLM_API_KEY;
+    const useWorkspaceId = apiKey ? workspaceId : ANTHROPIC_WORKSPACE_ID;
     const useModel = model || LLM_MODEL;
     const history = Array.isArray(conversation)
         ? conversation.filter(item => item && ['user', 'assistant'].includes(item.role)).slice(-12) : [];
@@ -365,7 +361,7 @@ async function requestCompletion({ message, conversation = [], apiKey, apiUrl, m
     const timeout = setTimeout(() => controller.abort(new Error('模型响应超时')), CHAT_STREAM_TIMEOUT_MS);
     try {
         const payload = { ...buildChatPayload({ chatUrl, model: useModel, systemPrompt, history, message, image, tools, agentTurns, runtimeConfig }), stream };
-        const send = body => fetch(chatUrl, { method: 'POST', redirect: 'error', headers: chatHeaders(chatUrl, useApiKey, useModel), body: JSON.stringify(body), signal: controller.signal });
+        const send = body => fetch(chatUrl, { method: 'POST', redirect: 'error', headers: chatHeaders(chatUrl, useApiKey, useModel, useWorkspaceId), body: JSON.stringify(body), signal: controller.signal });
         let response = await send(payload);
         if (stream && [400, 422].includes(response.status)) {
             const detail = await protocol.readJson(response, controller.signal, 8192).catch(() => null);

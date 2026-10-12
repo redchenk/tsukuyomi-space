@@ -42,11 +42,11 @@ export function writeCatalogCache(scope, entry, storage = globalThis.localStorag
     if (text.length <= 1024 * 1024) storage.setItem(CATALOG_CACHE_KEY, text);
   } catch (_) { /* Quota/privacy restrictions must not turn a successful refresh into a failure. */ }
 }
-export async function readCatalogJson(response, signal, acceptErrorBody = false) {
+export async function readCatalogJson(response, signal, acceptErrorBody = false, provider = '') {
   let reader;
   const abort = () => { reader?.cancel().catch(() => {}); };
   try {
-    if (!response.ok && !acceptErrorBody) throw statusError(response.status);
+    if (!response.ok && !acceptErrorBody) throw statusError(response.status, provider);
     if (Number(response.headers.get('content-length')) > registry.MAX_PAGE_BYTES) throw Object.assign(new Error('模型列表响应过大。'), { code: 'RESPONSE_TOO_LARGE' });
     reader = response.body?.getReader();
     if (!reader) throw Object.assign(new Error('模型列表响应无效。'), { code: 'INVALID_RESPONSE' });
@@ -89,7 +89,7 @@ export async function fetchModelCatalog(settings, { fetch = globalThis.fetch, re
           if (!(error instanceof TypeError) || !relay) throw error;
           useRelay = true;
         }
-        if (response) result = normalizePage(await bounded(readCatalogJson(response, controller.signal)), plan, cursor);
+        if (response) result = normalizePage(await bounded(readCatalogJson(response, controller.signal, false, plan.provider)), plan, cursor);
       }
       if (useRelay) {
         const response = await bounded(relay({ apiUrl: settings.apiUrl, apiKey: settings.apiKey || '', workspaceId: settings.workspaceId || '', cursor }, controller.signal));

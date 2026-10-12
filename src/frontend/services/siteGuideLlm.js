@@ -1,3 +1,4 @@
+import llmProtocol from '../../../shared/llm-protocol.cjs';
 import { apiFetch, parseResponse } from '../api/client';
 import { fetchWithLocalOllamaGuidance, isLocalOllamaUrl, normalizeLocalOllamaBaseUrl } from './room/localOllamaTransport';
 import { readJson } from './room/roomStorage';
@@ -38,15 +39,9 @@ function isAnthropicApi(endpoint = '', model = '') {
     .test(`${endpoint} ${model}`);
 }
 
-function requestHeaders(endpoint, apiKey) {
+function requestHeaders(endpoint, apiKey, model = '', workspaceId = '') {
   if (isLocalOllamaUrl(endpoint)) return { 'Content-Type': 'application/json' };
-  if (/api\.anthropic\.com/i.test(endpoint)) {
-    return {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01'
-    };
-  }
+  if (/api\.anthropic\.com/i.test(endpoint)) return llmProtocol.messagesHeaders(endpoint, apiKey, model, { browser: true, workspaceId });
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
@@ -118,8 +113,7 @@ function makeRequestBody(settings, systemPrompt, history, question) {
       model,
       system: systemPrompt,
       messages: [...history, { role: 'user', content: question }],
-      max_tokens: 900,
-      temperature: 0.25,
+      ...llmProtocol.messagesOptions(endpoint, model, { maxTokens: 900, temperature: 0.25 }),
       stream: false
     };
   }
@@ -190,6 +184,7 @@ export async function askSiteGuide({ question, history = [], lang = 'zh', routeN
           apiKey: settings.apiKey,
           apiUrl: settings.apiUrl,
           model: settings.model,
+          workspaceId: settings.catalogWorkspaceId,
           systemPrompt
         }),
         signal: controller.signal
@@ -203,12 +198,15 @@ export async function askSiteGuide({ question, history = [], lang = 'zh', routeN
 
     const response = await fetchWithLocalOllamaGuidance(settings.apiUrl, {
       method: 'POST',
-      headers: requestHeaders(settings.apiUrl, settings.apiKey),
+      headers: requestHeaders(settings.apiUrl, settings.apiKey, String(settings.model || '').trim(), settings.catalogWorkspaceId),
       body: JSON.stringify(makeRequestBody(settings, systemPrompt, conversation, cleanQuestion)),
       signal: controller.signal
     });
     if (!response.ok) throw new Error(`Model request failed (HTTP ${response.status})`);
-    const reply = pickReply(await response.json());
+    const data = await response.json();
+    // Claude reports refusals and length cuts as HTTP 200; never show a partial answer.
+    if (isAnthropicApi(normalizeEndpoint(settings.apiUrl), settings.model)) llmProtocol.checkStatus(data);
+    const reply = pickReply(data);
     if (!reply) throw new Error('The model returned an empty response.');
     return reply;
   } catch (error) {

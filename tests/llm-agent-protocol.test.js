@@ -152,3 +152,134 @@ test('API streaming and JSON paths share the same normalized tool contract and r
     await assert.rejects(createChatCompletion({ message: 'hi', apiUrl: 'https://api.deepseek.com/chat/completions', apiKey: 'synthetic' }), error => error.statusCode === 401 && !error.message.includes('sensitive'));
   } finally { global.fetch = original; }
 });
+
+test('Claude Messages requests omit sampling fields, leave room for thinking and opt into refusal fallback', () => {
+  const url = 'https://api.anthropic.com/v1/messages', args = { chatUrl: url, systemPrompt: 'persona', history: [], message: '你好' };
+  const opus = buildChatPayload({ ...args, model: 'claude-opus-5-5' });
+  assert.equal(opus.temperature, undefined); assert.equal(opus.top_p, undefined);
+  assert.equal(opus.fallbacks, 'default'); assert.ok(opus.max_tokens >= 16000); assert.equal(opus.system, 'persona');
+  assert.equal(buildChatPayload({ ...args, model: 'claude-haiku-4-5' }).fallbacks, undefined);
+  const minimax = buildChatPayload({ ...args, chatUrl: 'https://api.minimaxi.com/anthropic/v1/messages', model: 'MiniMax-M2.7' });
+  assert.equal(minimax.temperature, 1); assert.equal(minimax.fallbacks, undefined);
+  assert.deepEqual(protocol.messagesOptions(url, 'claude-sonnet-5-5', { maxTokens: 240 }), { max_tokens: 16000, fallbacks: 'default' });
+  assert.deepEqual(protocol.messagesOptions('https://api.minimaxi.com/anthropic/v1/messages', 'MiniMax-M2.7', { maxTokens: 240, temperature: 0.25 }), { max_tokens: 240, temperature: 0.25 });
+  const browser = protocol.messagesHeaders(url, 'fixture-key', 'claude-opus-5-5', { browser: true });
+  assert.equal(browser['x-api-key'], 'fixture-key'); assert.equal(browser['anthropic-version'], '2023-06-01');
+  assert.equal(browser['anthropic-beta'], 'server-side-fallback-2026-07-01');
+  assert.equal(browser['anthropic-dangerous-direct-browser-access'], 'true');
+  const server = protocol.messagesHeaders(url, 'fixture-key', 'claude-haiku-4-5');
+  assert.equal(server['anthropic-beta'], undefined); assert.equal(server['anthropic-dangerous-direct-browser-access'], undefined);
+  assert.equal(protocol.messagesHeaders('https://api.minimaxi.com/anthropic/v1/messages', 'k', 'MiniMax-M2.7', { browser: true })['anthropic-dangerous-direct-browser-access'], undefined);
+  for (const lookalike of ['https://api.anthropic.com.attacker.test/v1/messages', 'not a url']) assert.equal(protocol.isClaudeApi(lookalike), false);
+  assert.equal(protocol.messagesHeaders(url, 'k', 'claude-opus-5-5', { workspaceId: ' wrkspc_01Fixture ' })['anthropic-workspace-id'], 'wrkspc_01Fixture');
+  for (const workspaceId of ['', 'not-a-workspace', 'wrkspc_x\r\nInjected: header'])
+    assert.equal(protocol.messagesHeaders(url, 'k', 'claude-opus-5-5', { workspaceId })['anthropic-workspace-id'], undefined);
+  assert.equal(protocol.messagesHeaders('https://api.minimaxi.com/anthropic/v1/messages', 'k', 'MiniMax-M2.7', { workspaceId: 'wrkspc_01Fixture' })['anthropic-workspace-id'], undefined);
+});
+
+test('Claude refusals fail the turn and fallback boundaries drop the declined attempt\'s internal blocks', async () => {
+  const deltas = [];
+  await assert.rejects(protocol.readStream(sse([
+    { type: 'message_start', message: { model: 'claude-opus-5-5', usage: { input_tokens: 3 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: '半句' } },
+    { type: 'message_delta', delta: { stop_reason: 'refusal', stop_details: { type: 'refusal', category: null } } },
+    { type: 'message_stop' }
+  ]), { provider: 'anthropic', onDelta: p => deltas.push(p) }), { code: 'LLM_REFUSED' });
+  assert.throws(() => protocol.fromJson({ content: [], stop_reason: 'refusal' }, { provider: 'anthropic' }), { code: 'LLM_REFUSED' });
+  const result = await protocol.readStream(sse([
+    { type: 'message_start', message: { model: 'claude-opus-5-5' } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '', signature: 'declined-signature' } },
+    { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: '先说' } },
+    { type: 'content_block_start', index: 2, content_block: { type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-4-8' } } },
+    { type: 'content_block_start', index: 3, content_block: { type: 'tool_use', id: 'toolu_1', name: 'web_search', input: {} } },
+    { type: 'content_block_delta', index: 3, delta: { type: 'input_json_delta', partial_json: '{"query":"今天"}' } },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+    { type: 'message_stop' }
+  ]), { provider: 'anthropic', allowTools: true });
+  assert.deepEqual(result.continuation.items.map(p => p.type), ['text', 'tool_use']);
+  assert.deepEqual(result.toolCalls, [{ id: 'toolu_1', name: 'web_search', arguments: '{"query":"今天"}' }]);
+  const cut = await protocol.readStream(sse([
+    { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'toolu_0', name: 'web_search', input: {} } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '{"query":"今' } },
+    { type: 'content_block_start', index: 1, content_block: { type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-4-8' } } },
+    { type: 'content_block_start', index: 2, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 2, delta: { type: 'text_delta', text: '你好呀' } },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+    { type: 'message_stop' }
+  ]), { provider: 'anthropic', allowTools: true });
+  assert.equal(cut.reply, '你好呀'); assert.equal(cut.toolCalls, undefined);
+});
+
+test('the final Claude agent round keeps the tools used this turn but forbids new calls', () => {
+  const turns = [{ continuation: { protocol: 'anthropic', items: [{ type: 'tool_use', id: 'toolu_1', name: 'web_search', input: { query: '今天' } }] },
+    results: [{ id: 'toolu_1', name: 'web_search', content: 'result', isError: false }] }];
+  const options = agent.wireOptions([], turns, 'anthropic');
+  assert.deepEqual(options.tools.map(p => p.name), ['web_search']); assert.equal(options.toolChoice, 'none');
+  assert.equal(agent.wireOptions(agent.READ_TOOLS, turns, 'anthropic').toolChoice, undefined);
+  const body = buildChatPayload({ chatUrl: 'https://api.anthropic.com/v1/messages', model: 'claude-opus-5-5', systemPrompt: 'persona', history: [], message: 'hi', tools: [], agentTurns: turns });
+  assert.deepEqual(body.tool_choice, { type: 'none' }); assert.deepEqual(body.tools.map(p => p.name), ['web_search']);
+  assert.equal(body.messages.at(-1).content[0].type, 'tool_result');
+});
+
+test('Claude finalization preserves the original tool set and order even when one tool was never used', async () => {
+  const definitions = [...agent.READ_TOOLS].reverse();
+  let rounds = 0;
+  await agent.runAgent({ tools: definitions, execute: async () => ({ content: 'fixture result', isError: false }), complete: async ({ tools, agentTurns }) => {
+    rounds++;
+    const options = agent.wireOptions(tools, agentTurns, 'anthropic');
+    if (rounds === 3) {
+      assert.deepEqual(options.tools, definitions);
+      assert.equal(options.toolChoice, 'none');
+      assert.equal(agentTurns[0].continuation.items[0].signature, 'fixture-signature');
+      const payload = protocol.withTools({ messages: [] }, 'anthropic', options.tools, options.turns, options);
+      assert.deepEqual(payload.tools.map(tool => tool.name), definitions.map(tool => tool.name));
+      return { reply: '完成。', model: 'fixture' };
+    }
+    const id = `toolu_${rounds}`;
+    return { reply: '', toolCalls: [tool(id, `query-${rounds}`)], continuation: { protocol: 'anthropic', items: [
+      { type: 'thinking', thinking: '', signature: 'fixture-signature' },
+      { type: 'tool_use', id, name: 'web_search', input: { query: `query-${rounds}` } }
+    ] } };
+  } });
+  assert.equal(rounds, 3);
+});
+
+test('Claude finalization rejects forged original tool declarations', () => {
+  const continuation = { protocol: 'anthropic', toolDefinitions: ['delete_user'], items: [{ type: 'tool_use', id: 'toolu_1', name: 'web_search', input: { query: 'test' } }] };
+  const results = [{ id: 'toolu_1', name: 'web_search', content: 'fixture', isError: false }];
+  assert.throws(() => agent.wireOptions([], [{ continuation, results }], 'anthropic'), { code: 'AGENT_TOOL_DENIED' });
+});
+
+test('Claude mid-output fallback reports the last serving model and preserves the streamed text', async () => {
+  let visible = '';
+  const result = await protocol.readStream(sse([
+    { type: 'message_start', message: { model: 'claude-opus-5-5' } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: '你好，' } },
+    { type: 'content_block_start', index: 1, content_block: { type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-5' } } },
+    { type: 'content_block_start', index: 2, content_block: { type: 'fallback', from: { model: 'claude-opus-5' }, to: { model: 'claude-opus-4-8' } } },
+    { type: 'content_block_start', index: 3, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 3, delta: { type: 'text_delta', text: '接着聊吧。' } },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' } }, { type: 'message_stop' }
+  ]), { provider: 'anthropic', onDelta: text => { visible += text; } });
+  assert.equal(result.model, 'claude-opus-4-8');
+  assert.equal(result.reply, '你好，接着聊吧。');
+  assert.equal(visible, result.reply);
+});
+
+test('API proxy sends Claude requests with server headers and no sampling fields', async () => {
+  const original = global.fetch; let captured;
+  try {
+    global.fetch = async (url, options) => { captured = { url, headers: options.headers, body: JSON.parse(options.body) };
+      return new Response(JSON.stringify({ model: 'claude-opus-5-5', content: [{ type: 'text', text: '你好' }], stop_reason: 'end_turn' }), { headers: { 'Content-Type': 'application/json' } }); };
+    const result = await createChatCompletion({ message: 'hi', apiUrl: 'https://api.anthropic.com/v1', apiKey: 'synthetic', model: 'claude-opus-5-5', workspaceId: 'wrkspc_01Fixture' });
+    assert.equal(result.reply, '你好'); assert.equal(captured.url, 'https://api.anthropic.com/v1/messages');
+    assert.equal(captured.headers['anthropic-workspace-id'], 'wrkspc_01Fixture');
+    assert.equal(captured.headers['x-api-key'], 'synthetic'); assert.equal(captured.headers.Authorization, undefined);
+    assert.equal(captured.headers['anthropic-beta'], 'server-side-fallback-2026-07-01');
+    assert.equal(captured.headers['anthropic-dangerous-direct-browser-access'], undefined);
+    assert.equal(captured.body.temperature, undefined); assert.equal(captured.body.fallbacks, 'default');
+  } finally { global.fetch = original; }
+});

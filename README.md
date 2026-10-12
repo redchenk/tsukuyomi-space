@@ -200,6 +200,7 @@ Room 页面正在向个人 Agent 方向演进，当前能力包括：
 - 八千代能够读取用户当前等级、签到与任务状态；每天第一次对话前会显示一次“今日约定”成长入口。
 - 登录用户可以选择一轮问答生成公开对话卡，分享链接会还原对应场景，并提供独立标题、描述和 OG 图片。
 - 参考 AstrBot 的 Provider / Agent 分层，统一 OpenAI 兼容、Responses、Anthropic 和 Ollama 的流式解析及原生工具接续。工具有参数、轮数、超时和去重限制；推理字段与工具中间消息不会进入聊天历史。
+- Claude（Anthropic 官方 API）：在 `/room/settings` 选择「Claude (Anthropic)」预设并填写自己的 API Key 即可，直连与后端代理都可用，模型列表自动同步；服务端默认模型可用 `LLM_API_URL=https://api.anthropic.com/v1/messages`、`LLM_MODEL=claude-opus-5-5` 配置。详见 [docs/llm-agent-protocol.md](docs/llm-agent-protocol.md)。
 - MCP 支持原有 REST 桥接和带初始化、会话、JSON / SSE 响应的 Streamable HTTP，以及 MiniMax Token Plan 的站内受限桥接。自动循环仅使用已授权搜索和本轮图片理解；详见 [LLM / Agent 协议、配置与验证](docs/llm-agent-protocol.md)。
 - LLM 支持受控的云服务直连，也支持浏览器直连用户本机 `http://localhost:11434` 的 Ollama；本机模式不会把对话转发到本站服务器。
 - Room 音乐播放卡片读取服务器静态目录 `/assets/music/` 下的歌曲文件；音乐资源体积较大，不提交到 Git，部署时单独上传。
