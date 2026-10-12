@@ -20,15 +20,16 @@ for (const match of html.matchAll(/<script data="([^"]*)">decodeChunk\((\d+)\)<\
 }
 const project = Buffer.from(vm.runInContext('projectDecodeBuffer', context)).subarray(0, 73620642);
 const directory = path.resolve(destination); fs.mkdirSync(directory, { recursive: true });
-const stem = 'kaguya-run-ef04c26b4900-r9';
-fs.writeFileSync(path.join(directory, stem + '.sb3.gz'), zlib.gzipSync(project, { level: 6 }));
+const stem = 'kaguya-run-ef04c26b4900-r10';
+// Reuse the immutable r9 archive: this release changes scripts, not media.
+const archiveStem = 'kaguya-run-ef04c26b4900-r9';
 // Remove the 92 MB inline encoded archive. A public, anonymous binary fetch avoids its text/DOM overhead.
 html = html.replace(scripts[2][0], '').replace(/<script data="[^"]*">decodeChunk\(\d+\)<\/script>\s*/g, '');
 const patchSource = patch.toString();
 const loader = `const patchGameProject = ${patchSource};\n` + scripts.at(-2)[2].slice(scripts.at(-2)[2].indexOf('const getProjectData ='));
 const oldDecode = /return \(\) => \(\(\) => \{[\s\S]*?\}\)\(\)\.then\(async \(data\) => \{/;
 if (!oldDecode.test(loader)) throw new Error('Missing archive loader');
-const newLoader = loader.replace(oldDecode, `return () => fetch(new URL('/game-runtime/${stem}.sb3', location.href), { credentials: 'omit', mode: 'cors' }).then(async (response) => {
+const newLoader = loader.replace(oldDecode, `return () => fetch(new URL('/game-runtime/${archiveStem}.sb3', location.href), { credentials: 'omit', mode: 'cors' }).then(async (response) => {
           if (!response.ok) throw new Error('Game archive HTTP ' + response.status);
           return new Uint8Array(await response.arrayBuffer());
         }).then(async (data) => {`);
@@ -47,4 +48,4 @@ html = html.replace(scripts.at(-1)[0], '<script>\n' + fs.readFileSync(path.join(
 html = html.replace('maxClones: 9999999999', 'maxClones: 300').replace('warpTimer: false', 'warpTimer: true');
 fs.writeFileSync(path.join(directory, stem + '.html.gz'), zlib.gzipSync(html, { level: 6 }));
 fs.writeFileSync(path.join(directory, stem + '.html'), html);
-console.log(JSON.stringify({ htmlBytes: Buffer.byteLength(html), archiveBytes: project.length, files: [stem + '.html.gz', stem + '.sb3.gz'] }));
+console.log(JSON.stringify({ htmlBytes: Buffer.byteLength(html), archiveBytes: project.length, archiveSha256: crypto.createHash('sha256').update(project).digest('hex'), archiveUrl: '/game-runtime/' + archiveStem + '.sb3', files: [stem + '.html.gz'] }));

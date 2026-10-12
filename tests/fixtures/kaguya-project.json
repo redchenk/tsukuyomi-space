@@ -1907,6 +1907,1370 @@
           }
         }
       }
+    },
+    {
+      "isStage": false,
+      "name": "feichua",
+      "variables": {},
+      "lists": {},
+      "broadcasts": {},
+      "blocks": {
+        "r]": {
+          "opcode": "motion_gotoxy",
+          "next": "Ns",
+          "parent": "Nr",
+          "inputs": {
+            "X": [
+              1,
+              [
+                4,
+                "0"
+              ]
+            ],
+            "Y": [
+              1,
+              [
+                4,
+                "-48"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "Ns": {
+          "opcode": "looks_hide",
+          "next": null,
+          "parent": "r]",
+          "inputs": {},
+          "fields": {}
+        },
+        "Nt": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "r^",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "辉夜消失",
+              "rO@~67qvm4GTTTG7r$Sn"
+            ]
+          },
+          "topLevel": true
+        },
+        "r^": {
+          "opcode": "looks_show",
+          "next": "er",
+          "parent": "Nt",
+          "inputs": {},
+          "fields": {}
+        },
+        "er": {
+          "opcode": "looks_switchcostumeto",
+          "next": "r_",
+          "parent": "r^",
+          "inputs": {
+            "COSTUME": [
+              1,
+              "Nu"
+            ]
+          },
+          "fields": {}
+        },
+        "Nu": {
+          "opcode": "looks_costume",
+          "next": null,
+          "parent": "er",
+          "inputs": {},
+          "fields": {
+            "COSTUME": [
+              "11118",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "r_": {
+          "opcode": "looks_setsizeto",
+          "next": "r`",
+          "parent": "er",
+          "inputs": {
+            "SIZE": [
+              1,
+              [
+                4,
+                "300"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "r`": {
+          "opcode": "looks_gotofrontback",
+          "next": "r{",
+          "parent": "r_",
+          "inputs": {},
+          "fields": {
+            "FRONT_BACK": [
+              "front",
+              null
+            ]
+          }
+        },
+        "r{": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "r`",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "r|"
+            ]
+          },
+          "fields": {}
+        },
+        "r|": {
+          "opcode": "control_wait",
+          "next": "r}",
+          "parent": "r{",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.05"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "r}": {
+          "opcode": "control_create_clone_of",
+          "next": null,
+          "parent": "r|",
+          "inputs": {
+            "CLONE_OPTION": [
+              1,
+              "Nv"
+            ]
+          },
+          "fields": {}
+        },
+        "Nv": {
+          "opcode": "control_create_clone_of_menu",
+          "next": null,
+          "parent": "r}",
+          "inputs": {},
+          "fields": {
+            "CLONE_OPTION": [
+              "_myself_",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "Nw": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "r~",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "辉夜出现",
+              "i^xJFqF`s9Q2LU6$lY/R"
+            ]
+          },
+          "topLevel": true
+        },
+        "r~": {
+          "opcode": "control_stop",
+          "next": "sa",
+          "parent": "Nw",
+          "inputs": {},
+          "fields": {
+            "STOP_OPTION": [
+              "other scripts in sprite",
+              null
+            ]
+          },
+          "mutation": {
+            "tagName": "mutation",
+            "children": [],
+            "hasnext": "true"
+          }
+        },
+        "sa": {
+          "opcode": "looks_hide",
+          "next": "Nx",
+          "parent": "r~",
+          "inputs": {},
+          "fields": {}
+        },
+        "Nx": {
+          "opcode": "control_delete_this_clone",
+          "next": null,
+          "parent": "sa",
+          "inputs": {},
+          "fields": {}
+        },
+        "Ny": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "sb",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "辉夜消失",
+              "rO@~67qvm4GTTTG7r$Sn"
+            ]
+          },
+          "topLevel": true
+        },
+        "sb": {
+          "opcode": "motion_setrotationstyle",
+          "next": "sc",
+          "parent": "Ny",
+          "inputs": {},
+          "fields": {
+            "STYLE": [
+              "don't rotate",
+              null
+            ]
+          }
+        },
+        "sc": {
+          "opcode": "motion_pointindirection",
+          "next": "sd",
+          "parent": "sb",
+          "inputs": {
+            "DIRECTION": [
+              1,
+              [
+                8,
+                "0"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "sd": {
+          "opcode": "motion_gotoxy",
+          "next": "se",
+          "parent": "sc",
+          "inputs": {
+            "X": [
+              1,
+              [
+                4,
+                "0"
+              ]
+            ],
+            "Y": [
+              1,
+              [
+                4,
+                "-48"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "se": {
+          "opcode": "control_wait",
+          "next": "sf",
+          "parent": "sd",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.1"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "sf": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "se",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "ay"
+            ]
+          },
+          "fields": {}
+        },
+        "ay": {
+          "opcode": "control_if",
+          "next": "es",
+          "parent": "sf",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "sg"
+            ],
+            "SUBSTACK": [
+              2,
+              "sh"
+            ]
+          },
+          "fields": {}
+        },
+        "sg": {
+          "opcode": "sensing_keypressed",
+          "next": null,
+          "parent": "ay",
+          "inputs": {
+            "KEY_OPTION": [
+              1,
+              "Nz"
+            ]
+          },
+          "fields": {}
+        },
+        "Nz": {
+          "opcode": "sensing_keyoptions",
+          "next": null,
+          "parent": "sg",
+          "inputs": {},
+          "fields": {
+            "KEY_OPTION": [
+              "up arrow",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "sh": {
+          "opcode": "motion_pointindirection",
+          "next": "si",
+          "parent": "ay",
+          "inputs": {
+            "DIRECTION": [
+              1,
+              [
+                8,
+                "0"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "es": {
+          "opcode": "control_if",
+          "next": null,
+          "parent": "ay",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "sj"
+            ],
+            "SUBSTACK": [
+              2,
+              "sk"
+            ]
+          },
+          "fields": {}
+        },
+        "sj": {
+          "opcode": "sensing_keypressed",
+          "next": null,
+          "parent": "es",
+          "inputs": {
+            "KEY_OPTION": [
+              1,
+              "NA"
+            ]
+          },
+          "fields": {}
+        },
+        "NA": {
+          "opcode": "sensing_keyoptions",
+          "next": null,
+          "parent": "sj",
+          "inputs": {},
+          "fields": {
+            "KEY_OPTION": [
+              "down arrow",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "sk": {
+          "opcode": "motion_pointindirection",
+          "next": "sl",
+          "parent": "es",
+          "inputs": {
+            "DIRECTION": [
+              1,
+              [
+                8,
+                "180"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "#g": {
+          "opcode": "data_setvariableto",
+          "next": null,
+          "parent": null,
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "8"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "背景速度（我跑步速度",
+              "?.*M3=52?:2l%:bQi}r~"
+            ]
+          },
+          "topLevel": true
+        },
+        "NB": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "sm",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "辉夜消失",
+              "rO@~67qvm4GTTTG7r$Sn"
+            ]
+          },
+          "topLevel": true
+        },
+        "et": {
+          "opcode": "control_repeat",
+          "next": "sn",
+          "parent": "sm",
+          "inputs": {
+            "TIMES": [
+              1,
+              [
+                6,
+                "4"
+              ]
+            ],
+            "SUBSTACK": [
+              2,
+              "NC"
+            ]
+          },
+          "fields": {}
+        },
+        "NC": {
+          "opcode": "data_changevariableby",
+          "next": null,
+          "parent": "et",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                4,
+                "1"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "背景速度（我跑步速度",
+              "?.*M3=52?:2l%:bQi}r~"
+            ]
+          }
+        },
+        "sn": {
+          "opcode": "control_wait",
+          "next": "eu",
+          "parent": "et",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "10"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "eu": {
+          "opcode": "control_repeat",
+          "next": "ev",
+          "parent": "sn",
+          "inputs": {
+            "TIMES": [
+              1,
+              [
+                6,
+                "3"
+              ]
+            ],
+            "SUBSTACK": [
+              2,
+              "so"
+            ]
+          },
+          "fields": {}
+        },
+        "so": {
+          "opcode": "looks_seteffectto",
+          "next": "sp",
+          "parent": "eu",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                4,
+                "10"
+              ]
+            ]
+          },
+          "fields": {
+            "EFFECT": [
+              "BRIGHTNESS",
+              null
+            ]
+          }
+        },
+        "sp": {
+          "opcode": "control_wait",
+          "next": "sq",
+          "parent": "so",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.2"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "sq": {
+          "opcode": "looks_seteffectto",
+          "next": "ND",
+          "parent": "sp",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                4,
+                "0"
+              ]
+            ]
+          },
+          "fields": {
+            "EFFECT": [
+              "BRIGHTNESS",
+              null
+            ]
+          }
+        },
+        "ND": {
+          "opcode": "control_wait",
+          "next": null,
+          "parent": "sq",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.2"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "ev": {
+          "opcode": "control_repeat",
+          "next": "NE",
+          "parent": "eu",
+          "inputs": {
+            "TIMES": [
+              1,
+              [
+                6,
+                "4"
+              ]
+            ],
+            "SUBSTACK": [
+              2,
+              "NF"
+            ]
+          },
+          "fields": {}
+        },
+        "NF": {
+          "opcode": "data_changevariableby",
+          "next": null,
+          "parent": "ev",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                4,
+                "-1"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "背景速度（我跑步速度",
+              "?.*M3=52?:2l%:bQi}r~"
+            ]
+          }
+        },
+        "NE": {
+          "opcode": "event_broadcast",
+          "next": null,
+          "parent": "ev",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "辉夜出现",
+                "i^xJFqF`s9Q2LU6$lY/R"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "NG": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "sr",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "辉夜消失",
+              "rO@~67qvm4GTTTG7r$Sn"
+            ]
+          },
+          "topLevel": true
+        },
+        "sr": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "NG",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "az"
+            ]
+          },
+          "fields": {}
+        },
+        "az": {
+          "opcode": "control_repeat_until",
+          "next": "aA",
+          "parent": "sr",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "ew"
+            ],
+            "SUBSTACK": [
+              2,
+              "NH"
+            ]
+          },
+          "fields": {}
+        },
+        "ew": {
+          "opcode": "operator_or",
+          "next": null,
+          "parent": "az",
+          "inputs": {
+            "OPERAND1": [
+              2,
+              "ss"
+            ],
+            "OPERAND2": [
+              2,
+              "st"
+            ]
+          },
+          "fields": {}
+        },
+        "ss": {
+          "opcode": "operator_lt",
+          "next": null,
+          "parent": "ew",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              "NI",
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "-47"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "NI": {
+          "opcode": "motion_yposition",
+          "next": null,
+          "parent": "ss",
+          "inputs": {},
+          "fields": {}
+        },
+        "st": {
+          "opcode": "operator_gt",
+          "next": null,
+          "parent": "ew",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              "NJ",
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "149"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "NJ": {
+          "opcode": "motion_yposition",
+          "next": null,
+          "parent": "st",
+          "inputs": {},
+          "fields": {}
+        },
+        "NH": {
+          "opcode": "motion_movesteps",
+          "next": null,
+          "parent": "az",
+          "inputs": {
+            "STEPS": [
+              1,
+              [
+                4,
+                "4"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "aA": {
+          "opcode": "control_if",
+          "next": "ex",
+          "parent": "az",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "su"
+            ],
+            "SUBSTACK": [
+              2,
+              "NK"
+            ]
+          },
+          "fields": {}
+        },
+        "su": {
+          "opcode": "operator_lt",
+          "next": null,
+          "parent": "aA",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              "NL",
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "-47"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "NL": {
+          "opcode": "motion_yposition",
+          "next": null,
+          "parent": "su",
+          "inputs": {},
+          "fields": {}
+        },
+        "NK": {
+          "opcode": "motion_sety",
+          "next": null,
+          "parent": "aA",
+          "inputs": {
+            "Y": [
+              1,
+              [
+                4,
+                "-47"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "ex": {
+          "opcode": "control_if",
+          "next": null,
+          "parent": "aA",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "sv"
+            ],
+            "SUBSTACK": [
+              2,
+              "NM"
+            ]
+          },
+          "fields": {}
+        },
+        "sv": {
+          "opcode": "operator_gt",
+          "next": null,
+          "parent": "ex",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              "NN",
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "149"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "NN": {
+          "opcode": "motion_yposition",
+          "next": null,
+          "parent": "sv",
+          "inputs": {},
+          "fields": {}
+        },
+        "NM": {
+          "opcode": "motion_sety",
+          "next": null,
+          "parent": "ex",
+          "inputs": {
+            "Y": [
+              1,
+              [
+                4,
+                "149"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "NO": {
+          "opcode": "control_start_as_clone",
+          "next": "sw",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "topLevel": true
+        },
+        "sw": {
+          "opcode": "looks_show",
+          "next": "sx",
+          "parent": "NO",
+          "inputs": {},
+          "fields": {}
+        },
+        "sx": {
+          "opcode": "control_wait",
+          "next": "ey",
+          "parent": "sw",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.05"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "ey": {
+          "opcode": "control_repeat",
+          "next": "NP",
+          "parent": "sx",
+          "inputs": {
+            "TIMES": [
+              1,
+              [
+                6,
+                "5"
+              ]
+            ],
+            "SUBSTACK": [
+              2,
+              "NQ"
+            ]
+          },
+          "fields": {}
+        },
+        "NQ": {
+          "opcode": "looks_changeeffectby",
+          "next": null,
+          "parent": "ey",
+          "inputs": {
+            "CHANGE": [
+              1,
+              [
+                4,
+                "20"
+              ]
+            ]
+          },
+          "fields": {
+            "EFFECT": [
+              "GHOST",
+              null
+            ]
+          }
+        },
+        "NP": {
+          "opcode": "control_delete_this_clone",
+          "next": null,
+          "parent": "ey",
+          "inputs": {},
+          "fields": {}
+        },
+        "NR": {
+          "opcode": "control_start_as_clone",
+          "next": "sy",
+          "parent": null,
+          "inputs": {},
+          "fields": {},
+          "topLevel": true
+        },
+        "sy": {
+          "opcode": "motion_changexby",
+          "next": "aB",
+          "parent": "NR",
+          "inputs": {
+            "DX": [
+              3,
+              [
+                12,
+                "背景速度（我跑步速度",
+                "?.*M3=52?:2l%:bQi}r~"
+              ],
+              [
+                4,
+                "-8"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "aB": {
+          "opcode": "control_repeat_until",
+          "next": "NS",
+          "parent": "sy",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "sz"
+            ],
+            "SUBSTACK": [
+              2,
+              "sA"
+            ]
+          },
+          "fields": {}
+        },
+        "sz": {
+          "opcode": "operator_lt",
+          "next": null,
+          "parent": "aB",
+          "inputs": {
+            "OPERAND1": [
+              3,
+              "NT",
+              [
+                10,
+                ""
+              ]
+            ],
+            "OPERAND2": [
+              1,
+              [
+                10,
+                "-320"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "NT": {
+          "opcode": "motion_xposition",
+          "next": null,
+          "parent": "sz",
+          "inputs": {},
+          "fields": {}
+        },
+        "sA": {
+          "opcode": "motion_changexby",
+          "next": null,
+          "parent": "aB",
+          "inputs": {
+            "DX": [
+              3,
+              "NU",
+              [
+                4,
+                "-8"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "NU": {
+          "opcode": "operator_subtract",
+          "next": null,
+          "parent": "sA",
+          "inputs": {
+            "NUM1": [
+              1,
+              [
+                4,
+                "0"
+              ]
+            ],
+            "NUM2": [
+              3,
+              [
+                12,
+                "背景速度（我跑步速度",
+                "?.*M3=52?:2l%:bQi}r~"
+              ],
+              [
+                4,
+                ""
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "NS": {
+          "opcode": "control_delete_this_clone",
+          "next": null,
+          "parent": "aB",
+          "inputs": {},
+          "fields": {}
+        },
+        "NV": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "sB",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "辉夜消失",
+              "rO@~67qvm4GTTTG7r$Sn"
+            ]
+          },
+          "topLevel": true
+        },
+        "sB": {
+          "opcode": "control_forever",
+          "next": null,
+          "parent": "NV",
+          "inputs": {
+            "SUBSTACK": [
+              2,
+              "sC"
+            ]
+          },
+          "fields": {}
+        },
+        "sC": {
+          "opcode": "looks_nextcostume",
+          "next": "NW",
+          "parent": "sB",
+          "inputs": {},
+          "fields": {}
+        },
+        "NW": {
+          "opcode": "control_wait",
+          "next": null,
+          "parent": "sC",
+          "inputs": {
+            "DURATION": [
+              1,
+              [
+                5,
+                "0.05"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "sm": {
+          "opcode": "event_broadcast",
+          "next": "et",
+          "parent": "NB",
+          "inputs": {
+            "BROADCAST_INPUT": [
+              1,
+              [
+                11,
+                "喷火",
+                "=1Dto#jV%}kU/i^$U}^!"
+              ]
+            ]
+          },
+          "fields": {}
+        },
+        "sl": {
+          "opcode": "control_wait_until",
+          "next": null,
+          "parent": "sk",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "sD"
+            ]
+          },
+          "fields": {}
+        },
+        "sD": {
+          "opcode": "operator_not",
+          "next": null,
+          "parent": "sl",
+          "inputs": {
+            "OPERAND": [
+              2,
+              "sE"
+            ]
+          },
+          "fields": {}
+        },
+        "si": {
+          "opcode": "control_wait_until",
+          "next": null,
+          "parent": "sh",
+          "inputs": {
+            "CONDITION": [
+              2,
+              "sF"
+            ]
+          },
+          "fields": {}
+        },
+        "sF": {
+          "opcode": "operator_not",
+          "next": null,
+          "parent": "si",
+          "inputs": {
+            "OPERAND": [
+              2,
+              "sG"
+            ]
+          },
+          "fields": {}
+        },
+        "sG": {
+          "opcode": "sensing_keypressed",
+          "next": null,
+          "parent": "sF",
+          "inputs": {
+            "KEY_OPTION": [
+              1,
+              "NX"
+            ]
+          },
+          "fields": {}
+        },
+        "NX": {
+          "opcode": "sensing_keyoptions",
+          "next": null,
+          "parent": "sG",
+          "inputs": {},
+          "fields": {
+            "KEY_OPTION": [
+              "up arrow",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "sE": {
+          "opcode": "sensing_keypressed",
+          "next": null,
+          "parent": "sD",
+          "inputs": {
+            "KEY_OPTION": [
+              1,
+              "NY"
+            ]
+          },
+          "fields": {}
+        },
+        "NY": {
+          "opcode": "sensing_keyoptions",
+          "next": null,
+          "parent": "sE",
+          "inputs": {},
+          "fields": {
+            "KEY_OPTION": [
+              "down arrow",
+              null
+            ]
+          },
+          "shadow": true
+        },
+        "NZ": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "N!",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "死了拉！",
+              "W8V%pj/NyLZt9f^)Cm:x"
+            ]
+          },
+          "topLevel": true
+        },
+        "N!": {
+          "opcode": "control_stop",
+          "next": null,
+          "parent": "NZ",
+          "inputs": {},
+          "fields": {
+            "STOP_OPTION": [
+              "other scripts in sprite"
+            ]
+          },
+          "mutation": {
+            "tagName": "mutation",
+            "children": [],
+            "hasnext": "true"
+          }
+        },
+        "Nr": {
+          "opcode": "event_whenbroadcastreceived",
+          "next": "r]",
+          "parent": null,
+          "inputs": {},
+          "fields": {
+            "BROADCAST_OPTION": [
+              "死亡重开",
+              "~r%-4fEJ|ArHghX1*^XL"
+            ]
+          },
+          "topLevel": true
+        }
+      },
+      "comments": {},
+      "currentCostume": 4,
+      "costumes": [
+        {
+          "name": "cat1",
+          "bitmapResolution": 2,
+          "dataFormat": "png",
+          "assetId": "c9f45211ea01c693cc2aff3535d1f3bd",
+          "md5ext": "c9f45211ea01c693cc2aff3535d1f3bd.png",
+          "rotationCenterX": 31,
+          "rotationCenterY": 64
+        },
+        {
+          "name": "cat2",
+          "bitmapResolution": 2,
+          "dataFormat": "png",
+          "assetId": "66f4535da66e2e33e385d4a6bc5c23c3",
+          "md5ext": "66f4535da66e2e33e385d4a6bc5c23c3.png",
+          "rotationCenterX": 33,
+          "rotationCenterY": 64
+        },
+        {
+          "name": "cat3",
+          "bitmapResolution": 2,
+          "dataFormat": "png",
+          "assetId": "62cbf5c15ff86fe68bc62c9f97de2f8d",
+          "md5ext": "62cbf5c15ff86fe68bc62c9f97de2f8d.png",
+          "rotationCenterX": 31,
+          "rotationCenterY": 64
+        },
+        {
+          "name": "cat4",
+          "bitmapResolution": 2,
+          "dataFormat": "png",
+          "assetId": "9347e3971edb8a0c4390b2bd4f7b847c",
+          "md5ext": "9347e3971edb8a0c4390b2bd4f7b847c.png",
+          "rotationCenterX": 31,
+          "rotationCenterY": 64
+        },
+        {
+          "name": "cat5",
+          "bitmapResolution": 2,
+          "dataFormat": "png",
+          "assetId": "124cdf9c21b399ae0b79a6940f7cb23e",
+          "md5ext": "124cdf9c21b399ae0b79a6940f7cb23e.png",
+          "rotationCenterX": 31,
+          "rotationCenterY": 64
+        },
+        {
+          "name": "cat6",
+          "bitmapResolution": 2,
+          "dataFormat": "png",
+          "assetId": "65a324198279f5083132c2db6eab1cc9",
+          "md5ext": "65a324198279f5083132c2db6eab1cc9.png",
+          "rotationCenterX": 31,
+          "rotationCenterY": 64
+        }
+      ],
+      "sounds": [],
+      "volume": 100,
+      "layerOrder": 51,
+      "visible": false,
+      "x": 0,
+      "y": -48,
+      "size": 300,
+      "direction": 180,
+      "draggable": false,
+      "rotationStyle": "don't rotate"
     }
   ]
 }

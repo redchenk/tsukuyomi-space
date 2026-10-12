@@ -62,8 +62,11 @@ const patchGameProject = (data) => {
           const upMovement = flightBlocks.sh;
           const downMovement = flightBlocks.sk;
           const upControl = flightBlocks.ay;
-          const downControl = flightBlocks.et;
+          const downControl = flightBlocks.es;
           if (upMovement && downMovement && upControl && downControl) {
+            if (upControl.opcode !== 'control_if' || downControl.opcode !== 'control_if' ||
+                !upControl.inputs.CONDITION || !downControl.inputs.CONDITION ||
+                flightBlocks.sr?.opcode !== 'control_forever') throw new Error('Unsupported Kaguya rider controls');
             const upConditionId = 'tsukuyomi-flight-up-in-bounds';
             const upPositionId = 'tsukuyomi-flight-up-position';
             const upLimitId = 'tsukuyomi-flight-up-limit';
@@ -75,6 +78,8 @@ const patchGameProject = (data) => {
 
             upControl.inputs.CONDITION = [2, upConditionId];
             downControl.inputs.CONDITION = [2, downConditionId];
+            flightBlocks[upKeyCondition[1]].parent = upConditionId;
+            flightBlocks[downKeyCondition[1]].parent = downConditionId;
             flightBlocks[upConditionId] = {
               opcode: 'operator_and',
               next: null,
@@ -111,7 +116,7 @@ const patchGameProject = (data) => {
             flightBlocks[downConditionId] = {
               opcode: 'operator_and',
               next: null,
-              parent: 'et',
+              parent: 'es',
               inputs: {
                 OPERAND1: downKeyCondition,
                 OPERAND2: [2, downLimitId]
@@ -150,6 +155,26 @@ const patchGameProject = (data) => {
             downMovement.next = null;
             downMovement.inputs = { DY: [1, [4, '-6']] };
             downMovement.fields = {};
+
+            // Direct key movement replaces the old direction/automatic ascent loop.
+            // Leaving that loop running would fight both controls and their bounds.
+            flightBlocks.sr.opcode = 'control_stop';
+            flightBlocks.sr.inputs = {};
+            flightBlocks.sr.fields = { STOP_OPTION: ['this script', null] };
+            flightBlocks.sr.next = null;
+
+            // The reset broadcast also reaches trail clones. Delete those before
+            // restoring the original sprite's appearance for the next pickup.
+            const reset = flightBlocks.Nr;
+            const costume = flightTarget.costumes?.[0]?.name;
+            if (!reset || !costume) throw new Error('Unsupported Kaguya rider reset');
+            const resetNext = reset.next;
+            reset.next = 'tsukuyomi-rider-delete-trail';
+            flightBlocks[reset.next] = { opcode: 'control_delete_this_clone', next: 'tsukuyomi-rider-stop-old-scripts', parent: 'Nr', inputs: {}, fields: {}, shadow: false, topLevel: false };
+            flightBlocks['tsukuyomi-rider-stop-old-scripts'] = { opcode: 'control_stop', next: 'tsukuyomi-rider-clear-effects', parent: reset.next, inputs: {}, fields: { STOP_OPTION: ['other scripts in sprite', null] }, mutation: { tagName: 'mutation', children: [], hasnext: 'true' }, shadow: false, topLevel: false };
+            flightBlocks['tsukuyomi-rider-clear-effects'] = { opcode: 'looks_cleargraphiceffects', next: 'tsukuyomi-rider-reset-costume', parent: 'tsukuyomi-rider-stop-old-scripts', inputs: {}, fields: {}, shadow: false, topLevel: false };
+            flightBlocks['tsukuyomi-rider-reset-costume'] = { opcode: 'looks_switchcostumeto', next: resetNext, parent: 'tsukuyomi-rider-clear-effects', inputs: { COSTUME: [1, [10, costume]] }, fields: {}, shadow: false, topLevel: false };
+            if (resetNext) flightBlocks[resetNext].parent = 'tsukuyomi-rider-reset-costume';
           }
         }
 

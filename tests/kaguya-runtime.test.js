@@ -68,3 +68,26 @@ test('back/forward cache preserves the engine while a real page exit disposes it
  handler({persisted:true});assert.equal(stops,0);assert.equal(disposals,0);assert.ok(handler);
  handler({persisted:false});assert.equal(stops,1);assert.equal(disposals,1);assert.equal(handler,null);
 });
+
+test('rider bounds wrap the actual key conditions and preserve the speed boost',()=>{
+ const patch=require('../shared/kaguya-project-patch.cjs');
+ const source=require('./fixtures/kaguya-project.json');
+ const result=JSON.parse(new TextDecoder().decode(patch(new TextEncoder().encode(JSON.stringify(source)))));
+ const original=source.targets.find(t=>t.name==='feichua').blocks;
+ const rider=result.targets.find(t=>t.name==='feichua'),b=rider.blocks;
+ for(const id of ['ay','es']){
+  const condition=b[b[id].inputs.CONDITION[1]];
+  assert.equal(condition.opcode,'operator_and');
+  assert.deepEqual(condition.inputs.OPERAND1,original[id].inputs.CONDITION);
+  assert.equal(condition.parent,id);
+ }
+ assert.deepEqual(b.et,original.et); // Four speed increments, independent of the down key.
+ assert.equal(b.sh.opcode,'motion_changeyby');assert.equal(b.sh.inputs.DY[1][1],'6');
+ assert.equal(b.sk.inputs.DY[1][1],'-6');
+ assert.equal(b.sr.opcode,'control_stop');assert.equal(b.sr.fields.STOP_OPTION[0],'this script');
+ const trail=b[b.Nr.next];assert.equal(trail.opcode,'control_delete_this_clone');
+ const stop=b[trail.next];assert.equal(stop.fields.STOP_OPTION[0],'other scripts in sprite');
+ const effects=b[stop.next];assert.equal(effects.opcode,'looks_cleargraphiceffects');
+ const costume=b[effects.next];assert.equal(costume.inputs.COSTUME[1][1],rider.costumes[0].name);
+ assert.equal(costume.next,original.Nr.next);
+});

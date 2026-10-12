@@ -1,7 +1,9 @@
 # Exact public game routes, including the independent CDN origin virtual host.
-# Usage: python3 deploy/configure-kaguya-routes.py <domestic|overseas> <prepare|apply|rollback> <release-id>
+# Usage: python3 deploy/configure-kaguya-routes.py <domestic|overseas> <prepare|apply|rollback> <release-id> [r9|r10]
 import hashlib,json,os,pathlib,re,shutil,subprocess,sys,tempfile
-site,command,rid=sys.argv[1:]
+site,command,rid=sys.argv[1:4]
+version=sys.argv[4] if len(sys.argv)>4 else 'r9'
+assert len(sys.argv) in (4,5) and version in ('r9','r10')
 assert site in ('domestic','overseas') and command in ('prepare','apply','rollback')
 assert re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,99}', rid)
 state_dir=pathlib.Path('/var/backups/tsukuyomi-space/releases')/(rid+'-game-proxy-'+site)
@@ -10,7 +12,7 @@ tests=[['nginx','-t'],['docker','exec','1Panel-openresty-h9Tv','nginx','-t']] if
 reloads=[['nginx','-s','reload'],['docker','exec','1Panel-openresty-h9Tv','nginx','-s','reload']] if site=='domestic' else [['docker','exec','1Panel-openresty-HX9X','nginx','-s','reload']]
 def sha(b):return hashlib.sha256(b).hexdigest()
 def install(p,source):
- info=p.stat();fd,name=tempfile.mkstemp(prefix='.game-r9-',dir=p.parent);os.close(fd)
+ info=p.stat();fd,name=tempfile.mkstemp(prefix='.game-runtime-',dir=p.parent);os.close(fd)
  try:
   shutil.copyfile(source,name);os.chmod(name,info.st_mode&0o777);os.chown(name,info.st_uid,info.st_gid);os.replace(name,p)
  finally:
@@ -18,17 +20,24 @@ def install(p,source):
 if command=='prepare':
  assert not state_dir.exists();state_dir.mkdir(parents=True,mode=0o700);entries=[]
  for i,p in enumerate(paths):
-  assert not p.is_symlink();before=p.read_bytes();s=before.decode();assert 'kaguya-run-ef04c26b4900-r9' not in s
-  match=re.search(r'(?m)^([ \t]*)location = /game-runtime/kaguya-run-ef04c26b4900-r7\.html \{[\s\S]*?^\1}',s);assert match, str(p)
-  block=match[0].replace('-r7.html','-r9.html');archive=block.replace('-r9.html','-r9.sb3').replace('default_type text/html','default_type application/octet-stream')
-  archive=re.sub(r'^.*Content-Disposition.*\n','',archive,flags=re.M)
-  if 'alias ' in archive:archive=archive.replace('add_header Content-Encoding gzip always;','add_header Content-Encoding gzip always;\n'+match[1]+'    add_header Access-Control-Allow-Origin "*" always;')
-  after=(s[:match.start()]+block+'\n\n'+archive+'\n\n'+s[match.start():]).encode()
+  assert not p.is_symlink();before=p.read_bytes();s=before.decode();assert 'kaguya-run-ef04c26b4900-'+version+'.html' not in s
+  source_version='r9' if version=='r10' else 'r7'
+  match=re.search(r'(?m)^([ \t]*)location = /game-runtime/kaguya-run-ef04c26b4900-'+source_version+r'\.html \{[\s\S]*?^\1}',s);assert match, str(p)
+  block=match[0].replace('-'+source_version+'.html','-'+version+'.html')
+  addition=block+'\n\n'
+  if version=='r9':
+   archive=block.replace('-r9.html','-r9.sb3').replace('default_type text/html','default_type application/octet-stream')
+   archive=re.sub(r'^.*Content-Disposition.*\n','',archive,flags=re.M)
+   if 'alias ' in archive:archive=archive.replace('add_header Content-Encoding gzip always;','add_header Content-Encoding gzip always;\n'+match[1]+'    add_header Access-Control-Allow-Origin "*" always;')
+   addition+=archive+'\n\n'
+  else:
+   assert 'location = /game-runtime/kaguya-run-ef04c26b4900-r9.sb3' in s, 'Missing reused r9 archive route'
+  after=(s[:match.start()]+addition+s[match.start():]).encode()
   (state_dir/f'{i}-before.conf').write_bytes(before);(state_dir/f'{i}-after.conf').write_bytes(after)
   entries.append({'path':str(p),'before':sha(before),'after':sha(after)})
- (state_dir/'state.json').write_text(json.dumps({'status':'prepared','entries':entries})+'\n');print(site,'prepared exact r9 routes:',len(entries))
+ (state_dir/'state.json').write_text(json.dumps({'status':'prepared','version':version,'entries':entries})+'\n');print(site,'prepared exact '+version+' routes:',len(entries))
 else:
- state=json.loads((state_dir/'state.json').read_text());assert [e['path'] for e in state['entries']]==[str(p) for p in paths]
+ state=json.loads((state_dir/'state.json').read_text());assert state.get('version','r9')==version;assert [e['path'] for e in state['entries']]==[str(p) for p in paths]
  key='after' if command=='apply' else 'before';previous='before' if command=='apply' else 'after'
  for i,(p,e) in enumerate(zip(paths,state['entries'])):
   assert sha(p.read_bytes())==e[previous], 'Unexpected configuration drift'

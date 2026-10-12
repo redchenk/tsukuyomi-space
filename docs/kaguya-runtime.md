@@ -7,6 +7,7 @@
 - 原有登录、Origin/CSRF、限流与每日任务奖励仍生效。游戏分数来自客户端，本补丁不将它宣称为可信的反作弊数据。
 - 游戏继续使用原 TurboWarp 项目及媒体。每一万分换关从固定浏览器计时器改为游戏引擎确认的重置、启动两个阶段，保留累计分数和当前心情值。死亡与手动重开会取消旧换关。
 - 克隆数上限为 300，跑步速度上限为 14，启用编译器 warp timer。页面真正退出时移除钩子并停止游戏；浏览器前进/后退缓存暂存时保留引擎，恢复后可继续。
+- 彩 P 的上下键分别修改纵向位置并限制在舞台内，旧的自动升降循环退出。向下键条件必须接到 `feichua.es`，不能改动 `et` 的四次速度加成。死亡重开会删除骑乘残影克隆，并清除原角色的图像效果。
 
 ## 构建与发布
 
@@ -16,12 +17,12 @@
 `65e9088158219516cfb851ee196304d3a8e2aada4844e95870ab27b765539639`。
 源文件及大媒体不纳入 Git。构建器只执行固定哈希来源的解码片段，并生成：
 
-- `kaguya-run-ef04c26b4900-r9.html.gz`：游戏引擎与补丁。
-- `kaguya-run-ef04c26b4900-r9.sb3.gz`：字节不变的原项目及媒体。
+- `kaguya-run-ef04c26b4900-r10.html.gz`：游戏引擎与补丁。
+- 继续读取已有的 `kaguya-run-ef04c26b4900-r9.sb3`，不复制或修改原项目及媒体；构建结果输出原项目的 SHA-256 供核验。
 
 HTML 从约 96.2 MB 降到约 4.1 MB，原项目改为二进制加载，减少大段文本与 DOM 的解析和驻留。媒体仍约 73.6 MB，首次加载还需要网络传输及纹理解码；本补丁不承诺低内存设备绝无闪退。
 
-在两站现有游戏资源目录仅新增以上版本文件，分别设置 `Content-Encoding: gzip`。HTML 使用现有 `game-security-headers.inc`；SB3 只对这一公开静态资源设置匿名 CORS，以支持不带 `allow-same-origin` 的隔离 iframe。不要给认证 API 增加通配 CORS，也不要扩大主站 CSP。
+在两站现有游戏资源目录仅新增 HTML 版本文件，设置 `Content-Encoding: gzip`。HTML 使用现有 `game-security-headers.inc`；已有 SB3 路由的匿名 CORS 支持不带 `allow-same-origin` 的隔离 iframe。不要给认证 API 增加通配 CORS，也不要扩大主站 CSP。
 
 先配置并验收新资源，再使用现有 `safe-release.py` 发布预构建前端与后端源码；服务器不构建、不安装依赖、不提高服务内存上限。旧版本与 Live2D、音乐等目录均保留。
 
@@ -37,4 +38,6 @@ HTML 从约 96.2 MB 降到约 4.1 MB，原项目改为二进制加载，减少�
 
 CDN 如配置了响应头覆盖，也须为上述精确的游戏 HTML 路径保留游戏专用 CSP；发布前同时检查源站与 CDN，不能仅凭 HTTP 200 验收。公开二进制文件不需要脚本权限。
 
-国内发布必须同时处理原生 Nginx、`yachiyo.hk` 与 CDN 实际回源的 `origin.yachiyo.hk` 三份路由。`deploy/configure-kaguya-routes.py <domestic|overseas> <prepare|apply|rollback> <release-id>` 备份并校验这些配置，只增加精确的当前游戏路径；源站与 CDN 的 CSP 均须匹配游戏专用策略。
+国内发布必须同时处理原生 Nginx、`yachiyo.hk` 与 CDN 实际回源的 `origin.yachiyo.hk` 三份路由。`deploy/configure-kaguya-routes.py <domestic|overseas> <prepare|apply|rollback> <release-id> r10` 备份并校验这些配置，只增加精确的当前 HTML 路径、复用 r9 二进制路由；源站与 CDN 的 CSP 均须匹配游戏专用策略。
+
+设置 `KAGUYA_HTML=<构建的 r10.html>`、`KAGUYA_ARCHIVE=<原 project.sb3 或 r9.sb3.gz>` 后运行 `node tests/kaguya-engine-server.cjs`，会在本机 4182 端口启动完整引擎夹具。再运行 `KAGUYA_ENGINE_FIXTURE=true E2E_BASE_URL=http://127.0.0.1:4182 npx playwright test tests/e2e/kaguya-ride.spec.js` 验证连续骑乘、上下边界、自动结束和骑乘中重开。夹具通过游戏原广播推进教程、模拟反馈中的 810 分并关闭自然扣血，以隔离骑乘行为；不会写入网站积分榜。普通 CI 不下载这些大文件；项目图回归包含真实骑乘脚本。
