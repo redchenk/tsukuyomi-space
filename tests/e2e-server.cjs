@@ -17,6 +17,40 @@ process.env.ADMIN_PASSWORD = 'admin-test-password';
 process.env.ROOM_WEATHER_OFFLINE = 'true';
 process.env.APP_RELEASES_OFFLINE = 'true';
 
+// Load configuration only after the test environment is set. Uploads and the
+// SQLite database belong to this disposable fixture, never the developer's data.
+const config = require('../backend/config');
+// Only progress tests emulate the private object store. The real image route,
+// authentication, validation and database receipt still run in this fixture.
+const fixtureRequest = new (require('node:async_hooks').AsyncLocalStorage)();
+const imageObjects = new Map();
+const objectStorage = require('../backend/services/object-storage');
+const realStorage = { ...objectStorage };
+objectStorage.isConfigured = () => fixtureRequest.getStore() === true || realStorage.isConfigured();
+objectStorage.putObject = async options => {
+    if (fixtureRequest.getStore() !== true || !options.privateRead) return realStorage.putObject(options);
+    const key = `private-fixture/${options.id}`;
+    imageObjects.set(key, { buffer: options.buffer, mimeType: options.mimeType });
+    return { key };
+};
+objectStorage.getObject = async key => imageObjects.get(key) || realStorage.getObject(key);
+objectStorage.deleteObject = async key => imageObjects.delete(key) || realStorage.deleteObject(key);
+const sourceRoot = config.projectRoot;
+const fixtureRoot = path.join(dataDir, 'public');
+fs.mkdirSync(path.join(fixtureRoot, 'dist'), { recursive: true });
+fs.symlinkSync(process.env.E2E_FRONTEND_ARTIFACT || path.join(sourceRoot, 'dist/frontend'), path.join(fixtureRoot, 'dist/frontend'), process.platform === 'win32' ? 'junction' : 'dir');
+for (const name of ['lib', 'models']) {
+    if (fs.existsSync(path.join(sourceRoot, name))) fs.symlinkSync(path.join(sourceRoot, name), path.join(fixtureRoot, name), process.platform === 'win32' ? 'junction' : 'dir');
+}
+fs.mkdirSync(path.join(fixtureRoot, 'assets/uploads'), { recursive: true });
+for (const entry of fs.readdirSync(path.join(sourceRoot, 'assets'), { withFileTypes: true })) {
+    if (entry.name === 'uploads') continue;
+    const source = path.join(sourceRoot, 'assets', entry.name), target = path.join(fixtureRoot, 'assets', entry.name);
+    if (entry.isDirectory()) fs.symlinkSync(source, target, process.platform === 'win32' ? 'junction' : 'dir');
+    else if (entry.isFile()) fs.copyFileSync(source, target);
+}
+for (const name of ['favicon.ico', 'site.webmanifest', 'live2d-core.js']) if (fs.existsSync(path.join(sourceRoot, name))) fs.copyFileSync(path.join(sourceRoot, name), path.join(fixtureRoot, name));
+config.projectRoot = fixtureRoot;
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
 
@@ -61,7 +95,16 @@ if (process.env.UI_PREVIEW_FIXTURES === 'true') {
         insertMessage.run('月下旅人', content, 'e2e-user-001', 'approved');
     }
 }
-const server = app.listen(Number(process.env.PORT), process.env.HOST, () => {
+const server = require('node:http').createServer((req, res) => {
+    // A test-only response delay lets native XHR send its body before the API
+    // acknowledgement. Other suites and all production servers stay unaffected.
+    if (req.headers['x-upload-fixture-delay'] === '1800' && ['POST', 'PUT'].includes(req.method)
+        && ['/api/assets', '/api/user/avatar', '/api/articles', '/api/room/chat/images'].includes(req.url.split('?')[0])) {
+        const end = res.end.bind(res);
+        res.end = (...args) => { setTimeout(() => end(...args), 1800); return res; };
+    }
+    fixtureRequest.run(req.headers['x-upload-fixture-delay'] === '1800' && req.url.split('?')[0] === '/api/room/chat/images', () => app(req, res));
+}).listen(Number(process.env.PORT), process.env.HOST, () => {
     const address = server.address();
     console.log(`E2E server listening on http://${address.address}:${address.port}`);
 });

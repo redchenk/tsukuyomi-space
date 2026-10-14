@@ -1,8 +1,12 @@
 <script setup>
+import UploadProgress from '../components/UploadProgress.vue';
+import { useUploadProgress } from '../composables/useUploadProgress';
+
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
+import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import { uploadAttachment, ATTACHMENT_ACCEPT } from '../api/attachments';
+import { uploadJson } from '../api/upload-json.mjs';
 import { compressImage } from '../utils/image';
 import { renderMarkdown } from '../utils/markdown';
 import { handleMarkdownClick } from '../utils/markdownActions';
@@ -16,6 +20,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['go', 'back']);
+const assetUpload = useUploadProgress();
+const coverPreparation = useUploadProgress();
+const articleUpload = useUploadProgress();
 const route = useRoute();
 const editorCoverInput = ref(null);
 const editorContentInput = ref(null);
@@ -46,8 +53,6 @@ const editor = reactive({
     open: false,
     loading: false,
     uploading: false,
-    uploadProgress: 0,
-    uploadPhase: '',
     mode: 'body',
     assets: [],
     search: '',
@@ -261,17 +266,21 @@ function insertRichEmbed(type) {
 
 async function handleEditorCoverUpload(event) {
   const file = event.target.files[0];
-  if (!file) return;
+  if (!file || coverPreparation.state.active || editor.submitting) return;
   if (!file.type.startsWith('image/')) {
     showMessage('error', props.t.editorImageOnly);
     return;
   }
 
+  coverPreparation.start(file, '正在处理封面图片…');
   try {
     editor.coverImageBase64 = await compressImage(file, { maxWidth: 1200, maxHeight: 630, quality: 0.72 });
     editor.coverImageAssetId = null;
     editor.coverImageSize = Math.round(editor.coverImageBase64.length * 3 / 4);
-  } catch (_) {
+    coverPreparation.complete('封面已准备好，发布文章时上传');
+    coverPreparation.state.progress = null;
+  } catch (error) {
+    coverPreparation.fail(error);
     showMessage('error', props.t.editorImageFailed);
   }
 }
@@ -296,6 +305,7 @@ async function openAssetPicker(mode = 'body') {
 }
 
 function closeAssetPicker() {
+  assetUploadController?.abort();
   editor.assetPicker.open = false;
 }
 
@@ -355,25 +365,22 @@ async function uploadEditorAsset(event) {
   }
   if (editor.assetPicker.uploading) return;
   editor.assetPicker.uploading = true;
-  editor.assetPicker.uploadProgress = 0;
+  assetUpload.start(file);
   editor.assetPicker.message = '';
   assetUploadController = new AbortController();
   try {
     const asset = await uploadAttachment(file, {
       ownerId: getSession()?.user?.id, signal: assetUploadController.signal,
-      onProgress: (progress, phase) => {
-        if (progress !== null) editor.assetPicker.uploadProgress = progress;
-        editor.assetPicker.uploadPhase = phase;
-      }
+      onProgress: assetUpload.update
     });
+    assetUpload.complete();
     await loadAssetPicker();
+    if (assetUploadController?.signal.aborted || !editor.assetPicker.open) return;
     useAsset(asset);
-  } catch (error) { editor.assetPicker.message = error.message || '附件上传失败'; }
+  } catch (error) { assetUpload.fail(error); if (error.name !== 'AbortError') editor.assetPicker.message = error.message || '附件上传失败'; }
   finally {
     assetUploadController = null;
     editor.assetPicker.uploading = false;
-    editor.assetPicker.uploadPhase = '';
-    editor.assetPicker.uploadProgress = 0;
     if (editorAssetUploadInput.value) editorAssetUploadInput.value.value = '';
   }
 }
@@ -387,6 +394,7 @@ function assetPreviewType(asset) {
 }
 
 function removeEditorCover() {
+  coverPreparation.clear();
   editor.coverImageBase64 = null;
   editor.coverImageAssetId = null;
   editor.coverImageSize = 0;
@@ -394,7 +402,7 @@ function removeEditorCover() {
 }
 
 async function handleEditorSubmit() {
-  if (editor.submitting || editor.summarizing) return;
+  if (editor.submitting || editor.summarizing || coverPreparation.state.active) return;
   const title = editor.form.title.trim();
   const category = editor.form.category;
   const readTime = editor.form.readTime.trim();
@@ -408,6 +416,7 @@ async function handleEditorSubmit() {
   }
 
   editor.submitting = true;
+  articleUpload.start({ name: title, size: editor.coverImageBase64 ? coverPreparation.state.fileSize : 0 }, '正在准备文章…');
   try {
     const id = currentArticleId.value;
     const body = {
@@ -437,18 +446,16 @@ async function handleEditorSubmit() {
       }
     }
 
-    const response = await authFetch(url, {
-      method,
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify(body)
-    });
+    const response = await uploadJson(apiUrl, url, body, { method, headers: authHeaders(), onProgress: articleUpload.update });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.unknown);
     if (result.growth) applyGrowthResult(result.growth);
 
+    articleUpload.complete(id ? props.t.editorSaved : props.t.editorPublished);
     showMessage('success', id ? props.t.editorSaved : props.t.editorPublished);
     setTimeout(() => emit('go', '/stage'), 1000);
   } catch (error) {
+    articleUpload.fail(error);
     showMessage('error', props.t.editorSubmitFailed + (error.message || props.t.editorNetworkFailed));
   } finally {
     editor.submitting = false;
@@ -575,11 +582,13 @@ watch(currentArticleId, initEditor);
 
         <div class="form-group">
           <label>{{ t.editorFieldCover }}</label>
+          <UploadProgress :state="coverPreparation.state" @dismiss="coverPreparation.clear" />
           <div class="editor-cover-upload" :class="{ 'has-image': editor.coverImageBase64 }">
             <input
               ref="editorCoverInput"
               type="file"
               accept="image/*"
+              :disabled="coverPreparation.state.active || editor.submitting"
               @change="handleEditorCoverUpload"
             >
             <div>
@@ -602,7 +611,7 @@ watch(currentArticleId, initEditor);
               {{ t.editorRemove }}
             </button>
           </div>
-          <button class="ghost-btn editor-asset-library-btn" type="button" @click="openAssetPicker('cover')">从附件库选择封面</button>
+          <button class="ghost-btn editor-asset-library-btn" type="button" :disabled="coverPreparation.state.active || editor.submitting" @click="openAssetPicker('cover')">从附件库选择封面</button>
         </div>
 
         <div class="form-group">
@@ -696,8 +705,9 @@ watch(currentArticleId, initEditor);
           </details>
         </section>
 
+        <UploadProgress :state="articleUpload.state" @dismiss="articleUpload.clear" />
         <div class="btn-group">
-          <button type="submit" class="primary-btn" :disabled="editor.submitting || editor.summarizing" :aria-busy="editor.submitting">{{ submitLabel }}</button>
+          <button type="submit" class="primary-btn" :disabled="editor.submitting || editor.summarizing || coverPreparation.state.active" :aria-busy="editor.submitting">{{ submitLabel }}</button>
           <button type="button" class="ghost-btn" @click="cancelEdit">{{ t.cancel }}</button>
         </div>
       </form>
@@ -722,10 +732,7 @@ watch(currentArticleId, initEditor);
               <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
             </div>
             <p class="form-hint">单文件最大 100 MB。自动重试；24 小时内重新选择同一文件可续传。未完成的上传可在附件库取消。</p>
-            <div v-if="editor.assetPicker.uploading" class="ts-loader-region" aria-busy="true">
-              <StatusLoader :label="editor.assetPicker.uploadPhase || '正在上传...'" :progress="editor.assetPicker.uploadProgress" />
-              <button class="ghost-btn" type="button" @click="assetUploadController?.abort()">暂停上传</button>
-            </div>
+            <UploadProgress :state="assetUpload.state" cancelable @cancel="assetUploadController?.abort()" @dismiss="assetUpload.clear" />
             <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
             <LoadingSkeleton v-if="editor.assetPicker.loading" variant="gallery" :count="6" label="正在加载附件" />
             <div v-else-if="editor.assetPicker.loadError" class="editor-asset-status error" role="alert">{{ editor.assetPicker.loadError }}</div>

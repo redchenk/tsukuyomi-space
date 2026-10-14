@@ -53,6 +53,7 @@ import {
 import { generateDiaryEntry } from '../../services/room/roomDiaryGeneration';
 import { syncDiaryArchive } from '../../services/room/roomDiarySync';
 import { prepareRoomImage, persistRoomImage } from '../../services/room/roomChatImages';
+import { useUploadProgress } from '../useUploadProgress';
 
 import { retrieveGuestMemories, usesLocalRoomMemory } from '../../services/room/roomLocalMemory';
 import { createRoomMemoryRetriever } from '../../services/room/roomMemoryRetrieval.mjs';
@@ -1037,6 +1038,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   const memoryTrace = ref({ backend: 'none', count: 0 });
   const memorySaveError = ref('');
   const imageAttachment = ref(null);
+  const imageUpload = useUploadProgress();
   const messageListRef = ref(null);
   const ttsState = ref({ messageId: '', status: 'idle' });
   const sharedConversation = ref(null);
@@ -1161,6 +1163,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     refreshHistoryAfterSend = false;
     sharedConversation.value = null;
     imageAttachment.value = null;
+    imageUpload.clear();
     input.value = '';
     stopTTS();
     lastFailedTurn = null;
@@ -1227,13 +1230,26 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   async function attachImage(file) {
-    if (!file) return;
-    try { imageAttachment.value = await prepareRoomImage(file); }
-    catch (error) { addMessage('system', error.message, { shareable: false }); }
+    if (!file || sending.value || imageUpload.state.active) return;
+    const preparationRevision = conversationRevision;
+    const preparationAccount = String(getSession()?.user?.id || '');
+    imageAttachment.value = null;
+    imageUpload.start(file, '正在处理图片…');
+    try {
+      const prepared = await prepareRoomImage(file);
+      if (destroyed || preparationRevision !== conversationRevision || preparationAccount !== String(getSession()?.user?.id || '')) return;
+      imageAttachment.value = prepared;
+      Object.assign(imageUpload.state, { stage: 'complete', active: false, progress: null, label: getSession()?.user?.id ? '图片已准备好，发送时上传' : '图片已准备好，发送时保存在本机' });
+    } catch (error) {
+      if (destroyed || preparationRevision !== conversationRevision || preparationAccount !== String(getSession()?.user?.id || '')) return;
+      imageUpload.fail(error);
+      addMessage('system', error.message, { shareable: false });
+    }
   }
 
   function clearImage() {
     imageAttachment.value = null;
+    imageUpload.clear();
   }
 
   function canStartConversation() {
@@ -1248,6 +1264,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
     const operation = activeGeneration;
     if (!operation || operation.committing) return false;
     operation.controller.abort();
+    if (imageUpload.state.active) imageUpload.fail(Object.assign(new Error('图片上传已停止，请重试这轮对话'), { name: 'AbortError' }));
     activeGeneration = null;
     sending.value = false;
     messages.value = messages.value.filter((item) => item.id !== operation.pendingId);
@@ -1340,7 +1357,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
   }
 
   async function send({ opener = false, retry = null, replacement = null } = {}) {
-    if (sending.value || resetting.value || endChatState.value.status === 'generating') return;
+    if (sending.value || imageUpload.state.active || resetting.value || endChatState.value.status === 'generating') return;
     if (lastFailedTurn?.kind === 'new' && !retry && !replacement) return false;
     if (opener && !retry && !replacement && !canStartConversation()) return;
     opener = replacement?.opener ?? retry?.opener ?? opener;
@@ -1387,7 +1404,22 @@ export function useRoomChat({ live2d, world, diary = null }) {
     lastFailedTurn = null;
 
     try {
-      const savedImage = image && !replacement ? await persistRoomImage(image, turnId, operation.controller.signal) : null;
+      let savedImage = null;
+      if (image && !replacement) {
+        const cloudImage = Boolean(getSession()?.user?.id);
+        const imageProgressCurrent = () => !destroyed && activeGeneration === operation && requestConversationRevision === conversationRevision && requestArchiveKey === diaryArchiveKey();
+        imageUpload.start({ name: image.name, size: image.originalSize || image.size }, cloudImage ? '正在上传…' : '正在保存图片…');
+        try {
+          savedImage = await persistRoomImage(image, turnId, operation.controller.signal, (...args) => { if (imageProgressCurrent()) imageUpload.update(...args); });
+          if (imageProgressCurrent()) {
+            if (cloudImage) imageUpload.complete('图片已上传');
+            else Object.assign(imageUpload.state, { stage: 'complete', active: false, progress: null, label: '图片已保存在本机' });
+          }
+        } catch (error) {
+          if (imageProgressCurrent()) imageUpload.fail(error);
+          throw error;
+        }
+      }
       if (operation.controller.signal.aborted || activeGeneration !== operation || destroyed) return false;
       let settings = readJson('roomLLMSettings', {});
       const storedConversation = readRoomConversation().filter((item) => item.turnId !== turnId);
@@ -1969,6 +2001,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
     growth,
     characterName,
     imageAttachment,
+    imageUploadState: imageUpload.state,
+    dismissImageUpload: imageUpload.clear,
     messageListRef,
     addMessage,
     getShareTurn,

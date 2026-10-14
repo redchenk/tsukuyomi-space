@@ -9090,5 +9090,129 @@
   "无法保存八千代语音连接，请允许此网站使用浏览器存储后重新打开。": {
     "en": "Unable to save the Yachiyo voice connection. Allow this website to use browser storage, then open the launch link again.",
     "ja": "八千代の音声接続を保存できません。このサイトのブラウザー保存を許可してから、起動リンクを開き直してください。"
+  },
+  "正在准备文件…": {
+    "en": "Preparing file…",
+    "ja": "ファイルを準備中…"
+  },
+  "正在检查文件…": {
+    "en": "Checking file…",
+    "ja": "ファイルを確認中…"
+  },
+  "正在上传…": {
+    "en": "Uploading…",
+    "ja": "アップロード中…"
+  },
+  "正在保存…": {
+    "en": "Saving…",
+    "ja": "保存中…"
+  },
+  "原文件": {
+    "en": "Original file",
+    "ja": "元のファイル"
+  },
+  "文件上传": {
+    "en": "File upload",
+    "ja": "ファイルアップロード"
+  },
+  "已传输": {
+    "en": "Transferred",
+    "ja": "転送済み"
+  },
+  "文件传输进度": {
+    "en": "File transfer progress",
+    "ja": "ファイル転送の進捗"
+  },
+  "收起": {
+    "en": "Dismiss",
+    "ja": "閉じる"
+  },
+  "传输完成，等待服务器确认": {
+    "en": "Transfer complete; waiting for server confirmation",
+    "ja": "転送完了・サーバーの確認を待っています"
+  },
+  "上传完成": {
+    "en": "Upload complete",
+    "ja": "アップロード完了"
+  },
+  "正在处理封面图片…": {
+    "en": "Preparing cover image…",
+    "ja": "カバー画像を処理中…"
+  },
+  "封面已准备好，发布文章时上传": {
+    "en": "Cover ready; it will upload when you publish",
+    "ja": "カバーを準備しました。記事の公開時にアップロードされます"
+  },
+  "正在准备文章…": {
+    "en": "Preparing article…",
+    "ja": "記事を準備中…"
+  },
+  "正在压缩图片…": {
+    "en": "Optimising image…",
+    "ja": "画像を圧縮中…"
+  },
+  "已恢复上传，正在校验…": {
+    "en": "Upload resumed; verifying…",
+    "ja": "アップロードを再開・確認中…"
+  },
+  "文件已接收，正在保存…": {
+    "en": "File received; saving…",
+    "ja": "ファイルを受信・保存中…"
+  },
+  "上传失败，请检查网络后重试": {
+    "en": "Upload failed. Check your connection and retry.",
+    "ja": "アップロードに失敗しました。接続を確認して再試行してください。"
+  },
+  "上传超时，请重试": {
+    "en": "Upload timed out. Please retry.",
+    "ja": "アップロードがタイムアウトしました。再試行してください。"
+  },
+  "上传已取消": {
+    "en": "Upload cancelled",
+    "ja": "アップロードをキャンセルしました"
+  },
+  "附件自动分类保存。你可以管理自己的文件，管理员可在全站附件管理中查看全部附件。": {
+    "en": "Files are organised automatically. Manage your own files here; administrators can manage all site attachments.",
+    "ja": "添付ファイルは自動で分類されます。自分のファイルを管理でき、管理者はサイト全体の添付ファイルを確認できます。"
+  },
+  "已确认": {
+    "en": "Confirmed",
+    "ja": "確認済み"
+  },
+  "图片已准备好，发送时上传": {
+    "en": "Image ready. It will upload when you send.",
+    "ja": "画像の準備ができました。送信時にアップロードします。"
+  },
+  "图片已准备好，发送时保存在本机": {
+    "en": "Image ready. It will save on this device when you send.",
+    "ja": "画像の準備ができました。送信時にこの端末へ保存します。"
+  },
+  "正在保存图片…": {
+    "en": "Saving image…",
+    "ja": "画像を保存中…"
+  },
+  "图片已上传": {
+    "en": "Image uploaded",
+    "ja": "画像をアップロードしました"
+  },
+  "图片已保存在本机": {
+    "en": "Image saved on this device",
+    "ja": "画像をこの端末に保存しました"
+  },
+  "图片已保存，正在创建分享链接…": {
+    "en": "Image saved. Creating share link…",
+    "ja": "画像を保存しました。共有リンクを作成中…"
+  },
+  "分享卡已上传": {
+    "en": "Share card uploaded",
+    "ja": "共有カードをアップロードしました"
+  },
+  "图片上传已停止，请重试这轮对话": {
+    "en": "Image upload stopped. Retry this conversation turn.",
+    "ja": "画像のアップロードを停止しました。この会話を再試行してください。"
+  },
+  "附件类型": {
+    "en": "Attachment type",
+    "ja": "添付ファイルの種類"
   }
 }

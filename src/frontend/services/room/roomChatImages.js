@@ -1,4 +1,5 @@
-import { authFetch, authHeaders, getSession, parseResponse } from '../../api/client';
+import { apiUrl, authHeaders, getSession, parseResponse } from '../../api/client';
+import { uploadJson } from '../../api/upload-json.mjs';
 
 const MAX_BYTES = 512 * 1024;
 const DATABASE = 'tsukuyomi-room-images';
@@ -69,7 +70,7 @@ export async function prepareRoomImage(file) {
           reader.onerror = () => reject(new Error('图片读取失败'));
           reader.readAsDataURL(blob);
         });
-        return { name: file.name || 'image', type: blob.type, size: blob.size, dataUrl };
+        return { name: file.name || 'image', type: blob.type, size: blob.size, originalSize: file.size, dataUrl };
       }
       edge = Math.floor(edge * 0.75);
     }
@@ -77,7 +78,7 @@ export async function prepareRoomImage(file) {
   } finally { URL.revokeObjectURL(source); }
 }
 
-export async function persistRoomImage(image, turnId, signal) {
+export async function persistRoomImage(image, turnId, signal, onProgress) {
   const userId = String(getSession()?.user?.id || '');
   if (!userId) {
     const localId = `guest:${turnId}`;
@@ -101,10 +102,9 @@ export async function persistRoomImage(image, turnId, signal) {
     if (getSession()?.user?.id) throw new Error('登录账号已切换，请重试');
     return { localId, name: image.name, type: image.type };
   }
-  const response = await authFetch('/api/room/chat/images', {
-    method: 'POST', signal,
+  const response = await uploadJson(apiUrl, '/api/room/chat/images', { turnId, name: image.name, dataUrl: image.dataUrl }, {
+    signal, onProgress,
     headers: authHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ turnId, name: image.name, dataUrl: image.dataUrl })
   });
   const result = await parseResponse(response);
   if (String(getSession()?.user?.id || '') !== userId) throw new Error('登录账号已切换，请重试');

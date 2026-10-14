@@ -74,3 +74,22 @@ test('changing a previously acknowledged chunk rejects the resume instead of mix
   assert.equal(f.calls.filter(c => c.method === 'PUT').length, 0);
   assert.equal(f.calls.at(-1).method, 'DELETE');
 });
+
+test('percentages measure file bytes and distinguish transfer completion from saved attachment confirmation', async () => {
+  const { createAttachmentUploader } = await modulePromise;
+  const file = new File([Buffer.alloc(100)], 'progress.txt');
+  const samples = [];
+  const state = { id: 'progress', size: 100, chunkBytes: CHUNK, parts: [], expiresAt: Date.now() + 86400000 };
+  let completed = false;
+  const request = async (method, path, opts = {}) => {
+    if (method === 'PUT') { opts.onProgress(25); opts.onProgress(null); opts.onProgress(75); return {}; }
+    if (path.endsWith('/complete')) { completed = true; return {}; }
+    return completed ? { ...state, completed: true, asset: { id: 'saved' } } : state;
+  };
+  await createAttachmentUploader({ request, hash: sha, randomId: randomUUID, sleep: async () => {} })(file, { ownerId: 'test', onProgress: (percent, label, details) => samples.push({ percent, details }) });
+  assert.ok(samples.some(s => s.percent === 25 && s.details.loaded === 25 && s.details.total === 100));
+  assert.ok(samples.some(s => s.percent === 75 && s.details.loaded === 75));
+  assert.ok(samples.some(s => s.percent === null && s.details.stage === 'uploading'));
+  assert.ok(samples.some(s => s.percent === 100 && s.details.stage === 'processing'));
+  assert.equal(samples.at(-1).details.stage, 'complete');
+});

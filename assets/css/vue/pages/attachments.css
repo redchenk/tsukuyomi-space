@@ -285,3 +285,21 @@
     }
 
 }
+
+.attachments-hero>div:first-child{min-width:0;flex:1}
+.attachments-actions{flex:none}.attachments-actions button{white-space:nowrap;min-height:42px}
+.attachments-toolbar{max-width:none;grid-template-columns:minmax(0,1fr);padding:1rem}
+.attachments-search-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,160px) auto auto;gap:.7rem;align-items:center;min-width:0}
+.attachments-search-tools :is(input,select),.attachments-upload-options select{box-sizing:border-box;min-height:44px;padding:.6rem .85rem;font-size:1rem;line-height:1.5}
+.attachments-search-tools select,.attachments-upload-options select{appearance:none;-webkit-appearance:none;padding-inline-end:2.5rem;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 16px) calc(50% - 2px),calc(100% - 11px) calc(50% - 2px);background-size:5px 5px;background-repeat:no-repeat}
+.attachments-scope-tools{display:flex;flex-wrap:wrap;gap:.6rem}
+.attachments-upload-options{max-width:none;grid-template-columns:minmax(180px,260px) minmax(0,1fr);align-items:center}
+.attachments-upload-options p{grid-column:auto}
+.attachments-pending{padding:1rem;margin-block:1rem;min-width:0}
+.attachments-pending>p{margin:0 0 .8rem;line-height:1.7;overflow-wrap:anywhere}
+.attachments-pending-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:.8rem;padding:.8rem 0;border-top:1px solid var(--line)}
+.attachments-pending-info{min-width:0;display:grid;gap:.25rem;overflow-wrap:anywhere;line-height:1.6}
+.attachments-pending-info>span{color:var(--muted);font-size:.85rem}.attachments-pending-row button{white-space:nowrap}
+.attachments-card-body strong{white-space:normal;overflow-wrap:anywhere;line-height:1.6}
+@media(max-width:760px){.attachments-search-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.attachments-search-tools input{grid-column:1/-1}.attachments-search-tools select{grid-column:1/-1}.attachments-upload-options{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:440px){.attachments-pending-row{grid-template-columns:minmax(0,1fr)}.attachments-pending-row button{justify-self:start}}

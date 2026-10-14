@@ -1,4 +1,7 @@
 <script setup>
+import UploadProgress from '../components/UploadProgress.vue';
+import { useUploadProgress } from '../composables/useUploadProgress';
+
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
@@ -13,8 +16,6 @@ const state = reactive({
   loading: Boolean(session.value),
   uploading: false,
   pendingUploads: [],
-  uploadProgress: 0,
-  uploadPhase: '',
   message: '',
   messageType: 'success',
   loadError: '',
@@ -30,6 +31,7 @@ const state = reactive({
 const isAuthed = computed(() => Boolean(session.value));
 const canManageAllAssets = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
 const uploadAccept = ATTACHMENT_ACCEPT;
+const assetUpload = useUploadProgress();
 let uploadController = null;
 let assetLoadController = null;
 let assetLoadSequence = 0;
@@ -132,24 +134,21 @@ async function uploadAsset(event) {
   const file = event.target.files?.[0];
   if (!file || state.uploading) return;
   state.uploading = true;
-  state.uploadProgress = 0;
+  state.message = '';
+  assetUpload.start(file);
   uploadController = new AbortController();
   try {
     await uploadAttachment(file, {
       ownerId: session.value?.user?.id, storageMode: state.storage, signal: uploadController.signal,
-      onProgress: (progress, phase) => {
-        if (progress !== null) state.uploadProgress = progress;
-        state.uploadPhase = phase;
-      }
+      onProgress: assetUpload.update
     });
+    assetUpload.complete('附件已上传');
     showMessage('附件已上传');
     await loadAssets(1);
-  } catch (error) { showMessage(error.message || '附件上传失败', 'error'); }
+  } catch (error) { assetUpload.fail(error); if (error.name !== 'AbortError') showMessage(error.message || '附件上传失败', 'error'); }
   finally {
     uploadController = null;
     state.uploading = false;
-    state.uploadPhase = '';
-    state.uploadProgress = 0;
     if (fileInput.value) fileInput.value.value = '';
     await loadPendingUploads();
   }
@@ -232,22 +231,20 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <div v-if="state.uploading" class="ts-loader-region" aria-busy="true">
-        <StatusLoader :label="state.uploadPhase || '正在上传...'" :progress="state.uploadProgress" />
-        <button class="ghost-btn" type="button" @click="uploadController?.abort()">暂停上传</button>
-      </div>
+      <UploadProgress :state="assetUpload.state" cancelable @cancel="uploadController?.abort()" @dismiss="assetUpload.clear" />
 
       <section v-if="state.pendingUploads.length && !state.uploading" class="panel attachments-pending" aria-label="未完成的上传">
         <p>未完成的上传会保留 24 小时。点击“上传文件”重新选择同一文件，即可校验后继续。</p>
         <div v-for="upload in state.pendingUploads" :key="upload.id" class="attachments-pending-row">
-          <span>{{ upload.fileName }} · {{ Math.round(upload.received / upload.size * 100) }}%{{ upload.processing ? ' · 正在保存' : '' }}</span>
+          <div class="attachments-pending-info"><strong>{{ upload.fileName }}</strong><span>已确认 {{ Math.floor(upload.received / upload.size * 100) }}%{{ upload.processing ? ' · 正在保存' : '' }}</span></div>
           <button class="ghost-btn" type="button" :disabled="upload.processing" @click="cancelPendingUpload(upload)">取消上传</button>
         </div>
       </section>
 
       <section class="panel attachments-toolbar">
+        <div class="attachments-search-tools">
         <input autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" name="attachments-page-state-search-query" v-model="state.search" type="search" placeholder="搜索文件名、路径或备注" @keydown.enter="loadAssets(1)">
-        <select v-model="state.type" @change="loadAssets(1)">
+        <select v-model="state.type" aria-label="附件类型" @change="loadAssets(1)">
           <option value="all">全部</option>
           <option value="image">图片</option>
           <option value="video">视频</option>
@@ -257,10 +254,11 @@ onBeforeUnmount(() => {
         </select>
         <button class="ghost-btn" type="button" @click="loadAssets(1)">搜索</button>
         <button class="ghost-btn" type="button" @click="state.search = ''; loadAssets(1)">重置</button>
-        <template v-if="canManageAllAssets">
+        </div>
+        <div v-if="canManageAllAssets" class="attachments-scope-tools">
           <button class="chip" type="button" :class="{ active: state.scope === 'mine' }" @click="state.scope = 'mine'; loadAssets(1)">我的附件</button>
           <button class="chip" type="button" :class="{ active: state.scope === 'all' }" @click="state.scope = 'all'; loadAssets(1)">全部附件</button>
-        </template>
+        </div>
       </section>
 
       <section class="panel attachments-upload-options">
@@ -271,7 +269,7 @@ onBeforeUnmount(() => {
             <option value="oss">对象存储</option>
           </select>
         </label>
-        <p>上传目录由系统自动按用户与文件类型分类：users/{用户ID}/image、video、audio、document、file。普通用户只能查看和管理自己的附件；管理员请从终端入口进入全站附件管理。</p>
+        <p>附件自动分类保存。你可以管理自己的文件，管理员可在全站附件管理中查看全部附件。</p>
       </section>
 
       <div v-if="state.message" class="form-message" :class="state.messageType">{{ state.message }}</div>

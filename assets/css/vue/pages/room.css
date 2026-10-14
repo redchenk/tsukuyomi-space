@@ -1169,6 +1169,7 @@ html[data-theme="dark"] .room-panel #musicTrackSelect {
 .chat-image-preview button {
     min-height: 30px;
     padding: 0.28rem 0.5rem;
+    flex-shrink: 0;
 }
 
 .chat-message-actions {

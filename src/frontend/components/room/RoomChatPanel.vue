@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import TsIcon from '../TsIcon.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
 import RoomChatImage from './RoomChatImage.vue';
+import UploadProgress from '../UploadProgress.vue';
 import { isEnglishSite } from '../../utils/siteVariant';
 import { formatTimeMinute as messageTime } from '../../utils/time';
 import { splitRoomReply } from '../../services/room/roomReplyPresentation.mjs';
@@ -400,14 +401,14 @@ function endChatStatusLabel() {
       </div>
       <div v-if="chat.diaryRecordingError?.value" class="chat-generation-notice" role="alert">{{ chat.diaryRecordingError.value }}</div>
       <div v-if="chat.memorySaveError?.value" class="chat-generation-notice" role="status">{{ chat.memorySaveError.value }}</div>
+      <UploadProgress v-if="chat.imageUploadState" class="room-image-upload" :state="chat.imageUploadState" @dismiss="chat.dismissImageUpload()" />
       <div v-if="chat.imageAttachment.value" id="chatImagePreview" class="chat-image-preview">
         <img :src="chat.imageAttachment.value.dataUrl" :alt="chat.imageAttachment.value.name">
-        <span>{{ chat.imageAttachment.value.name }}</span>
         <button class="panel-btn" type="button" @click="chat.clearImage">&#31227;&#38500;</button>
       </div>
       <div class="chat-input-row">
         <input ref="imageInputRef" id="chatImageInput" type="file" accept="image/*" hidden @change="chat.attachImage($event.target.files?.[0]); $event.target.value = ''">
-        <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" title="&#19978;&#20256;&#22270;&#29255;" aria-label="&#19978;&#20256;&#22270;&#29255;" @click="imageInputRef?.click()">
+        <button id="attachImageBtn" class="panel-btn chat-attach-btn" type="button" :disabled="generationBusy || chat.imageUploadState?.active" title="&#19978;&#20256;&#22270;&#29255;" aria-label="&#19978;&#20256;&#22270;&#29255;" @click="imageInputRef?.click()">
           <TsIcon name="image" :size="22" :stroke-width="2" />
           <span>&#22270;&#29255;</span>
         </button>
@@ -418,7 +419,7 @@ function endChatStatusLabel() {
           <span>停止</span>
         </button>
         <button v-else-if="generationBusy" class="panel-btn chat-stop-btn" type="button" disabled aria-label="正在保存回复"><TsIcon name="loader" :size="20" class="ts-status-loader-icon" /><span>保存中</span></button>
-        <button v-else id="sendChatBtn" class="panel-btn" type="button" :disabled="generationInterrupted || chat.resetting.value || endChatBusy || (!chat.input.value.trim() && !chat.imageAttachment.value)" aria-label="发送" @click="chat.send">
+        <button v-else id="sendChatBtn" class="panel-btn" type="button" :disabled="generationInterrupted || chat.resetting.value || chat.imageUploadState?.active || endChatBusy || (!chat.input.value.trim() && !chat.imageAttachment.value)" aria-label="发送" @click="chat.send">
           <TsIcon name="send" :size="22" :stroke-width="2.1" />
           <span>发送</span>
         </button>
@@ -520,3 +521,19 @@ function endChatStatusLabel() {
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+.room-image-upload.upload-progress-card {
+  --panel: var(--ts-surface-strong);
+  --text: var(--ts-text);
+  --line: var(--ts-border);
+  --muted: var(--ts-muted);
+  flex: 0 0 auto;
+  max-height: min(36dvh, 280px);
+  overflow: auto;
+  pointer-events: auto;
+}
+@media (max-width: 860px) {
+  .room-image-upload.upload-progress-card { width: calc(100% - 24px); margin: 4px 12px; padding: 10px; gap: 6px; }
+}
+</style>

@@ -1,9 +1,13 @@
 <script setup>
+import UploadProgress from '../components/UploadProgress.vue';
+import { useUploadProgress } from '../composables/useUploadProgress';
+
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { apiFetch, apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { useUserLevels } from '../composables/useUserLevels';
+import { uploadJson } from '../api/upload-json.mjs';
 import { compressImage } from '../utils/image';
 import { applyGrowthResult } from '../services/userGrowth';
 import { isEnglishSite } from '../utils/siteVariant';
@@ -18,6 +22,7 @@ const englishSite = isEnglishSite();
 const siteLanguage = computed(() => englishSite ? 'en' : props.lang);
 const { hydrateUserLevels, userLevel } = useUserLevels();
 const fileInput = ref(null);
+const imageUpload = useUploadProgress();
 const viewer = ref(null);
 const session = ref(getSession());
 const t = (zh, en) => siteLanguage.value === 'en' ? en : zh;
@@ -30,8 +35,6 @@ let previousFocus;
 const state = reactive({
   loading: true,
   uploading: false,
-  uploadProgress: 0,
-  uploadPhase: '',
   message: '',
   messageType: 'success',
   loadError: '',
@@ -218,32 +221,6 @@ async function personalizeImages(assets) {
   const states = new Map(result.data.map(item => [item.id, item]));
   return assets.map(asset => ({ ...asset, ...states.get(asset.id) }));
 }
-
-function postJsonWithProgress(url, payload, headers, onProgress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', apiUrl(url));
-    xhr.withCredentials = true;
-    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-    Object.entries(headers || {}).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) xhr.setRequestHeader(key, value);
-    });
-    xhr.upload.onprogress = (event) => {
-      if (!event.lengthComputable) return;
-      onProgress(Math.round((event.loaded / event.total) * 100));
-    };
-    xhr.onload = () => {
-      resolve({
-        ok: xhr.status >= 200 && xhr.status < 300,
-        status: xhr.status,
-        text: () => Promise.resolve(xhr.responseText || '')
-      });
-    };
-    xhr.onerror = () => reject(new Error('图片上传失败，请检查网络后重试'));
-    xhr.send(JSON.stringify(payload));
-  });
-}
-
 // Random browsing is requested by the user; there is no background image polling.
 async function browseRandom() {
   if (state.randomLoading) return;
@@ -358,7 +335,7 @@ async function loadImages(page = 1, { background = false } = {}) {
 }
 
 async function uploadFile(file) {
-  if (!file) return;
+  if (!file || state.uploading) return;
   if (!isAuthed.value) {
     showMessage('请先登录，然后从「图库管理」入口上传图片。', 'error');
     return;
@@ -368,14 +345,12 @@ async function uploadFile(file) {
     return;
   }
   state.uploading = true;
-  state.uploadProgress = 4;
-  state.uploadPhase = '正在压缩图片...';
+  imageUpload.start(file, '正在压缩图片…');
   try {
     const dataUrl = await compressImage(file, { maxWidth: 2200, maxHeight: 1800, quality: 0.86 });
-    state.uploadProgress = 8;
-    state.uploadPhase = '正在上传...';
-    const response = await postJsonWithProgress(
-      '/api/assets',
+    imageUpload.update(null, '正在上传…');
+    const response = await uploadJson(
+      apiUrl, '/api/assets',
       {
         dataUrl,
         fileName: file.name,
@@ -383,28 +358,23 @@ async function uploadFile(file) {
         alt: '图库图片',
         collection: 'gallery'
       },
-      authHeaders({ 'Content-Type': 'application/json' }),
-      (progress) => {
-        state.uploadProgress = Math.max(8, Math.min(96, progress));
-      }
+      { headers: authHeaders(), onProgress: imageUpload.update }
     );
-    state.uploadPhase = '正在整理图库...';
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || '图片上传失败');
     if (result.growth) applyGrowthResult(result.growth);
-    state.uploadProgress = 100;
+    imageUpload.complete('图片已加入图库');
     showMessage('图片已加入图库');
     state.search = '';
     state.category = '';
     state.sort = 'latest';
     await loadImages(1);
   } catch (error) {
+    imageUpload.fail(error);
     showMessage(error.message || '图片上传失败', 'error');
   } finally {
     state.uploading = false;
     state.dragActive = false;
-    state.uploadPhase = '';
-    state.uploadProgress = 0;
     if (fileInput.value) fileInput.value.value = '';
   }
 }
@@ -544,10 +514,7 @@ onUnmounted(() => {
         </div>
         <input ref="fileInput" class="gallery-file-input" type="file" accept="image/*" :disabled="state.uploading" :aria-label="t('选择图库图片', 'Choose gallery image')" @change="uploadImage">
       </header>
-      <div v-if="state.uploading" class="gallery-upload-progress" role="status" aria-live="polite">
-        <StatusLoader :label="state.uploadPhase" :detail="`${state.uploadProgress}%`" compact />
-        <progress :value="state.uploadProgress" max="100" :aria-label="t('上传进度', 'Upload progress')" />
-      </div>
+      <UploadProgress :state="imageUpload.state" @dismiss="imageUpload.clear" />
       <div v-if="state.message" class="gallery-notice" :class="{ error: state.messageType === 'error' }" role="status">
         <span>{{ state.message }}</span>
         <button class="gallery-icon-button" type="button" :aria-label="t('关闭提示', 'Dismiss message')" @click="state.message = ''">

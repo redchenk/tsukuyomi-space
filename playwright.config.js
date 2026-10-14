@@ -19,12 +19,12 @@ module.exports = defineConfig({
         },
         {
             name: 'chromium-mobile',
-            testMatch: /(?:article-sharing|pixel-mobile-canvas|room-feedback|kaguya-ride)\.spec\.js/,
+            testMatch: /(?:article-sharing|pixel-mobile-canvas|room-feedback|kaguya-ride|upload-ui|attachment-upload)\.spec\.js/,
             use: { ...devices['Pixel 7'], channel: process.env.PW_CHANNEL || undefined }
         },
         {
             name: 'webkit-mobile',
-            testMatch: /(?:github-oauth|route-return|access-i18n|gallery-liked-feedback|room-oneclick-tts|room-gpt-sovits-remote|room-mobile-(?:keyboard|scene)|room-season-scene|room-settings-redesign|room-model-catalog|room-model-runtime|room-reading-recording|room-images-article-replies|room-feedback|kaguya-ride|article-loading|article-jump|article-sharing|pixel-mobile-canvas|unified-navigation|directed-replies|user-nickname|search-password-forms|netease-music)\.spec\.js/,
+            testMatch: /(?:github-oauth|route-return|access-i18n|gallery-liked-feedback|room-oneclick-tts|room-gpt-sovits-remote|room-mobile-(?:keyboard|scene)|room-season-scene|room-settings-redesign|room-model-catalog|room-model-runtime|room-reading-recording|room-images-article-replies|room-feedback|kaguya-ride|upload-ui|attachment-upload|article-loading|article-jump|article-sharing|pixel-mobile-canvas|unified-navigation|directed-replies|user-nickname|search-password-forms|netease-music)\.spec\.js/,
             use: { ...devices['iPhone 13'] }
         }
     ],

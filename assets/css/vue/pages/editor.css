@@ -527,3 +527,17 @@ body .editor-asset-card {
   .editor-workbench #editorContent { min-height: 400px; }
   .editor-workbench .markdown-image-btn { margin-left: 0; }
 }
+
+/* Keep upload controls and labels at their natural height on small screens. */
+.editor-asset-modal{display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain}
+.editor-asset-modal>header,.editor-asset-modal>.editor-asset-tools,.editor-asset-modal>.form-hint,.editor-asset-modal>.upload-progress-card,.editor-asset-modal>.form-message{flex:none}
+.editor-asset-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start}
+.editor-asset-head h2{line-height:1.4;overflow-wrap:anywhere}
+.editor-asset-head button{white-space:nowrap;min-height:42px}
+.editor-asset-tools{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center}
+.editor-asset-tools input{min-width:0;width:100%;max-width:100%}
+.editor-asset-tools button{min-height:42px;white-space:nowrap}
+.editor-asset-modal>.form-hint,.editor-asset-modal>.form-message{margin:.75rem 1rem;line-height:1.7;overflow-wrap:anywhere}
+.editor-asset-grid{flex:1 1 auto;min-height:140px}
+.editor-asset-name{white-space:normal;overflow-wrap:anywhere;line-height:1.6}
+@media(max-width:760px){.editor-asset-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.editor-asset-tools input{grid-column:1/-1}.editor-asset-tools button{white-space:normal;line-height:1.5}.editor-asset-tools button:last-child{grid-column:1/-1}}

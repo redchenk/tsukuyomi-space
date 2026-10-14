@@ -1,6 +1,9 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue';
-import { authFetch, authHeaders, parseResponse } from '../../api/client';
+import { apiUrl, authFetch, authHeaders, parseResponse } from '../../api/client';
+import { uploadJson } from '../../api/upload-json.mjs';
+import { useUploadProgress } from '../../composables/useUploadProgress';
+import UploadProgress from '../UploadProgress.vue';
 import SocialShareActions from '../SocialShareActions.vue';
 import TsIcon from '../TsIcon.vue';
 import { renderRoomShareCard } from '../../services/room/roomShareCard';
@@ -20,6 +23,7 @@ const generatingPreview = ref(false);
 const publishing = ref(false);
 const error = ref('');
 const share = ref(null);
+const shareUpload = useUploadProgress();
 const closeButton = ref(null);
 let renderedTitle = '';
 
@@ -60,21 +64,19 @@ async function publishShare() {
     if (!previewUrl.value || renderedTitle !== title.value) await refreshPreview();
     if (!previewUrl.value) throw new Error('分享卡尚未生成');
 
-    const assetResponse = await authFetch('/api/assets', {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
+    shareUpload.start({ name: downloadName.value });
+    const assetResponse = await uploadJson(apiUrl, '/api/assets', {
         dataUrl: previewUrl.value,
         fileName: `${downloadName.value}`,
         mimeType: 'image/jpeg',
         alt: title.value,
         storage: 'auto',
         collection: 'share-card'
-      })
-    });
+      }, { headers: authHeaders(), onProgress: shareUpload.update });
     const assetResult = await parseResponse(assetResponse);
     if (!assetResponse.ok || !assetResult.success) throw new Error(assetResult.message || '分享卡上传失败');
     uploadedAssetId = assetResult.data?.id || '';
+    shareUpload.update(100, '图片已保存，正在创建分享链接…', { stage: 'processing' });
 
     const response = await authFetch('/api/room/shares', {
       method: 'POST',
@@ -90,7 +92,9 @@ async function publishShare() {
     if (!response.ok || !result.success) throw new Error(result.message || '分享链接创建失败');
     if (result.growth) applyGrowthResult(result.growth);
     share.value = result.data;
+    shareUpload.complete('分享卡已上传');
   } catch (err) {
+    shareUpload.fail(err);
     if (uploadedAssetId) {
       authFetch(`/api/assets/${encodeURIComponent(uploadedAssetId)}`, {
         method: 'DELETE', headers: authHeaders()
@@ -124,6 +128,7 @@ watch(() => props.open, async (open) => {
   if (!open || !props.turn) return;
   const sameTurn = share.value?.turnId === props.turn.turnId;
   if (!sameTurn) {
+    shareUpload.clear();
     share.value = null;
     previewUrl.value = '';
     title.value = defaultTitle();
@@ -158,6 +163,7 @@ watch(() => props.open, async (open) => {
           <img v-else-if="previewUrl" :src="previewUrl" :alt="title">
         </div>
 
+        <UploadProgress :state="shareUpload.state" @dismiss="shareUpload.clear" />
         <div v-if="error" class="room-share-error" role="alert">{{ error }}</div>
 
         <SocialShareActions

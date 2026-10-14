@@ -1,12 +1,16 @@
 <script setup>
+import UploadProgress from '../components/UploadProgress.vue';
+import { useUploadProgress } from '../composables/useUploadProgress';
+
 import { encodedAvatarInitial } from '../utils/userName.mjs';
 import ModerationNotice from '../components/ModerationNotice.vue';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { authFetch, authHeaders, githubOAuthStartUrl, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
+import { apiUrl, authFetch, authHeaders, githubOAuthStartUrl, loadCurrentSession, logoutSession, noStoreUrl, parseResponse, updateStoredUser } from '../api/client';
 import PixelCanvasCells from '../components/PixelCanvasCells.vue';
 import TsIcon from '../components/TsIcon.vue';
 import UserLevelBadge from '../components/UserLevelBadge.vue';
 import { loadGrowth } from '../services/userGrowth';
+import { uploadJson } from '../api/upload-json.mjs';
 import { compressImage } from '../utils/image';
 import { formatDateOnly } from '../utils/time';
 
@@ -18,6 +22,7 @@ const props = defineProps({
 
 const emit = defineEmits(['auth-changed', 'go']);
 const ucAvatarInput = ref(null);
+const avatarUpload = useUploadProgress();
 const ucUser = ref(props.user || null);
 const ucGrowth = ref(null);
 const ucNavigationQuery = ref('');
@@ -584,7 +589,7 @@ async function ucSaveProfile() {
 
 async function ucUploadAvatar(event) {
   const file = event.target.files[0];
-  if (!file) return;
+  if (!file || uc.avatarUploading) return;
   if (!file.type.startsWith('image/')) {
     ucShowToast(props.t.ucSelectImage, 'error');
     return;
@@ -595,20 +600,19 @@ async function ucUploadAvatar(event) {
   }
 
   uc.avatarUploading = true;
+  avatarUpload.start(file, '正在压缩图片…');
   try {
     const avatar = await compressImage(file, { maxWidth: 420, maxHeight: 420, quality: 0.82 });
-    const response = await authFetch('/api/user/avatar', {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ avatar })
-    });
+    const response = await uploadJson(apiUrl, '/api/user/avatar', { avatar }, { headers: authHeaders(), onProgress: avatarUpload.update });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.ucAvatarUploadFailed);
     if (ucUser.value) ucUser.value.avatar = avatar;
     updateStoredUser(ucUser.value);
     emit('auth-changed');
+    avatarUpload.complete(props.t.ucAvatarUpdated);
     ucShowToast(props.t.ucAvatarUpdated);
   } catch (error) {
+    avatarUpload.fail(error);
     ucShowToast(error.message || props.t.ucAvatarUploadFailed, 'error');
   } finally {
     uc.avatarUploading = false;
@@ -853,6 +857,7 @@ onUnmounted(() => {
       <LoadingSkeleton v-if="uc.profileLoading" variant="profile" :count="1" label="正在同步个人资料" />
       <div v-else-if="uc.profileError" class="uc-empty" role="alert">{{ uc.profileError }}</div>
       <template v-else>
+      <UploadProgress :state="avatarUpload.state" @dismiss="avatarUpload.clear" />
       <section class="uc-hero" :aria-busy="uc.avatarUploading">
         <div class="uc-avatar-block">
           <button class="uc-avatar-upload" type="button" :disabled="uc.avatarUploading" :aria-label="ucCopy.avatarHint" :title="ucCopy.avatarHint" @click="ucAvatarInput?.click()">

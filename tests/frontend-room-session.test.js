@@ -5,6 +5,8 @@ const { test } = require('node:test');
 const code = fs.readFileSync('src/frontend/composables/room/useRoomChat.js', 'utf8')
   .replace(/^import [\s\S]*?from '[^']*';$/gm, '')
   .replace(/^export /gm, '');
+const uploadProgressCode = fs.readFileSync('src/frontend/composables/useUploadProgress.js', 'utf8')
+  .replace(/^import .*;$/gm, '').replace(/^export /gm, '');
 const tick = () => new Promise(setImmediate);
 function deferred() {
   let resolve;
@@ -25,6 +27,7 @@ async function setup(overrides = {}) {
     memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), revalidateRoomMemorySnapshot, packRoomContext,
     console, Date, URL, AbortController, getSession: () => null, ...oneclickTts,
     ref: (value) => ({ value }), nextTick: (fn) => Promise.resolve().then(fn),
+    reactive: value => value,
     selectRecentRoomConversation: (messages) => messages,
     usesLocalRoomMemory: () => true,
     createRoomReplyPresenter: options => createRoomReplyPresenter({ ...options, immediate: true }),
@@ -61,7 +64,7 @@ async function setup(overrides = {}) {
     ...provided,
     ...(realContext ? { selectRecentRoomConversation } : {})
   };
-  vm.runInNewContext(code + (realContext ? '' : '\nbuildRoomContext = async () => ({ text: "", trace: [], retrieval: {} });')
+  vm.runInNewContext(uploadProgressCode + '\n' + code + (realContext ? '' : '\nbuildRoomContext = async () => ({ text: "", trace: [], retrieval: {} });')
     + '\nglobalThis.chat = useRoomChat({}); globalThis.tts = cleanTtsText; globalThis.streamingVisible = streamingVisibleText;', context);
   await tick();
   return { chat: context.chat, context, saved, requests, sync: () => onUpdate({}), clearCount: () => clearCount };
@@ -100,6 +103,52 @@ test('streaming display never exposes unfinished model reasoning or a half-writt
   assert.equal(h.context.streamingVisible('你好<think>internal reasoning'), '你好');
   assert.equal(h.context.streamingVisible('你好<think>internal</think>，我在'), '你好，我在');
   assert.equal(h.context.streamingVisible('{"reply":"你好'), '');
+  h.chat.destroy();
+});
+
+test('Room image transfer stays active at 100 percent until its private save is confirmed', async () => {
+  const saved = deferred();
+  const h = await setup({
+    getSession: () => ({ user: { id: 'image-owner' } }),
+    persistRoomImage: async (image, turnId, signal, progress) => {
+      progress(50, '正在上传…', { loaded: 50, total: 100, stage: 'uploading' });
+      await saved.promise;
+      progress(100, '正在保存…', { loaded: 100, total: 100, stage: 'processing' });
+      await tick();
+      assert.equal(h.chat.imageUploadState.active, true);
+      assert.equal(h.chat.imageUploadState.stage, 'processing');
+      return { id: 'c6b5f9c0-e4b6-45ef-8bfb-6c71006bbc0a', name: image.name };
+    }
+  });
+  h.chat.imageAttachment.value = { name: 'Image.png', dataUrl: 'data:image/png;base64,test', size: 60, originalSize: 300 };
+  const sending = h.chat.send();
+  await tick();
+  assert.equal(h.chat.imageUploadState.progress, 50);
+  assert.equal(h.chat.imageUploadState.fileSize, 300);
+  saved.resolve(); await sending;
+  assert.equal(h.chat.imageUploadState.stage, 'complete');
+  assert.equal(h.chat.imageUploadState.active, false);
+  h.chat.destroy();
+});
+
+test('a previous account upload cannot restore its filename after conversation reset', async () => {
+  const upload = deferred(); let updateProgress;
+  const h = await setup({ persistRoomImage: async (image, turnId, signal, onProgress) => {
+    updateProgress = onProgress;
+    await upload.promise;
+    throw new DOMException('Stopped', 'AbortError');
+  } });
+  h.chat.imageAttachment.value = { name: 'private-name.png', dataUrl: 'data:image/png;base64,test' };
+  const sending = h.chat.send(); await tick();
+  h.chat.stopGeneration();
+  assert.equal(h.chat.imageUploadState.stage, 'paused');
+  assert.equal(h.chat.imageUploadState.active, false);
+  await h.chat.startNewSession();
+  updateProgress(80, '正在上传…', { loaded: 80, total: 100, stage: 'uploading' });
+  upload.resolve(); await sending;
+  assert.equal(h.chat.imageUploadState.stage, 'idle');
+  assert.equal(h.chat.imageUploadState.active, false);
+  assert.equal(h.chat.imageUploadState.fileName, '');
   h.chat.destroy();
 });
 

@@ -31,7 +31,7 @@ export function uploadRequest(resolveUrl, method, path, { body, signal, onProgre
     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     if (body !== undefined) xhr.setRequestHeader('Content-Type', body instanceof Blob ? 'application/octet-stream' : 'application/json');
     for (const [key, value] of Object.entries(headers)) xhr.setRequestHeader(key, value);
-    xhr.upload.onprogress = event => { if (event.lengthComputable) onProgress?.(event.loaded); };
+    xhr.upload.onprogress = event => onProgress?.(event.lengthComputable ? event.loaded : null);
     xhr.onload = () => {
       let result;
       try { result = JSON.parse(xhr.responseText); } catch (_) { /* Proxy error pages are not JSON. */ }
@@ -54,7 +54,8 @@ export function createAttachmentUploader({ request, storage, hash = digest, slee
     if (!mimeType) throw new Error('暂不支持这种文件类型，请选择图片、音视频、PDF、TXT 或 Markdown');
     if (!ownerId) throw new Error('请先登录后上传附件');
     checkAbort(signal);
-    onProgress(0, '正在检查文件…');
+    const report = (loaded, stage, label, known = true) => onProgress(known ? Math.min(100, Math.floor(loaded / file.size * 100)) : null, label, { loaded, total: file.size, stage });
+    report(0, 'preparing', '正在检查文件…', false);
     // Store only a session reference. File bytes never enter localStorage.
     const key = `tsukuyomi_upload:${ownerId}:${await hash(new Blob([JSON.stringify([file.name, file.size, file.lastModified, storageMode]), await file.slice(0, 65536).arrayBuffer()]))}`;
     let saved = null;
@@ -68,7 +69,7 @@ export function createAttachmentUploader({ request, storage, hash = digest, slee
         try { return await request(method, path, { ...options, signal }); }
         catch (e) {
           if (e.name === 'AbortError' || attempt >= 5 || (e.status && ![408, 422, 429].includes(e.status) && e.status < 500)) throw e;
-          onProgress(null, `连接不稳定，正在重试（${attempt + 1}/5）…`);
+          onProgress(null, `连接不稳定，正在重试（${attempt + 1}/5）…`, { stage: 'retrying' });
           await sleep(Math.min(1000 * 2 ** attempt, 16000), signal);
         }
       }
@@ -87,24 +88,29 @@ export function createAttachmentUploader({ request, storage, hash = digest, slee
     try {
       if (state.size !== file.size || state.chunkBytes !== 4 * 1024 * 1024) throw Object.assign(new Error('上传记录不匹配，请重新选择文件'), { status: 409 });
       // Rehash acknowledged chunks before resuming, including completed receipts.
+      let confirmedBytes = 0;
       for (let index = 0; index < Math.ceil(file.size / state.chunkBytes); index++) {
         checkAbort(signal);
         const chunk = file.slice(index * state.chunkBytes, (index + 1) * state.chunkBytes);
         const checksum = await hash(chunk);
         if (state.parts[index]) {
           if (state.parts[index].hash !== checksum) throw Object.assign(new Error('文件已改变，请重新选择文件上传'), { status: 409 });
-          onProgress(Math.min(95, Math.round((index + 1) * state.chunkBytes / file.size * 95)), '已恢复上传，正在校验…');
+          confirmedBytes += chunk.size;
+          report(confirmedBytes, 'verifying', '已恢复上传，正在校验…');
           continue;
         }
         await retry('PUT', `${path}/${index}`, { body: chunk, headers: { 'X-Upload-SHA256': checksum },
-          onProgress: loaded => onProgress(Math.min(95, Math.round((index * state.chunkBytes + loaded) / file.size * 95)), '正在上传…') });
+          onProgress: loaded => report(confirmedBytes + (Number.isFinite(loaded) ? Math.max(0, Math.min(chunk.size, loaded)) : 0), 'uploading', '正在上传…', Number.isFinite(loaded)) });
+        confirmedBytes += chunk.size;
+        report(confirmedBytes, 'uploading', '正在上传…');
       }
-      onProgress(96, '文件已接收，正在保存…');
+      report(file.size, 'processing', '文件已接收，正在保存…');
       let starts = 0;
       const deadline = Date.now() + 12 * 60 * 1000;
       while (Date.now() < deadline) {
         state = await retry('GET', path);
-        if (state.completed && state.asset) { forget(); onProgress(100, '附件已上传'); return state.asset; }
+        if (state.completed && state.asset) { forget(); report(file.size, 'complete', '附件已上传'); return state.asset; }
+        report(file.size, 'processing', '文件已接收，正在保存…');
         if (!state.processing) {
           if (starts >= 3) throw new Error(state.error || '保存附件失败，重新选择同一文件可重试');
           starts++;
