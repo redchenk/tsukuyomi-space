@@ -356,3 +356,15 @@ test('provider presets keep same-provider keys but cannot send an old provider k
   assert.equal(h.llm.apiKey, '');
   assert.equal(h.llm.model, 'deepseek-v4-flash');
 });
+
+test('changing only public retrieval is tracked, saved, restored and discardable', async () => {
+  const h = setup();
+  h.knowledge.siteEnabled = false;
+  assert.equal(h.hasUnsavedSettings.value, true);
+  assert.ok(h.pendingSections.value.includes('knowledge'));
+  assert.equal(await h.saveAllSettings(), true);
+  assert.equal(h.read('roomKnowledgeSettings').siteEnabled, false);
+  assert.equal(h.hasUnsavedSettings.value, false);
+  h.knowledge.siteEnabled = true; h.loadSettings();
+  assert.equal(h.knowledge.siteEnabled, false);
+});

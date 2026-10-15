@@ -46,3 +46,21 @@ test('site guide grounds instructions and shows source links on desktop and mobi
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath('rag-guide-citations.png'), animations: 'disabled' });
 });
+
+test('the public knowledge switch saves when it is the only setting changed', async ({ page }) => {
+  await setup(page); await page.goto('/room/settings');
+  const selectKnowledge = async () => {
+    const menu = page.locator('.settings-mobile-menu'); await expect(menu).toBeAttached();
+    if (await menu.isVisible()) await menu.click();
+    await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '角色知识库', exact: true }).click();
+  };
+  await selectKnowledge();
+  const toggle = page.getByRole('switch', { name: '参考站内资料', exact: true });
+  await expect(toggle).toBeChecked(); await toggle.uncheck();
+  await expect(page.getByRole('status').filter({ hasText: '有尚未保存的修改' })).toBeVisible();
+  await page.getByRole('button', { name: '保存并返回房间', exact: true }).click();
+  await expect(page).toHaveURL(/\/room$/);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('roomKnowledgeSettings')).siteEnabled)).toBe(false);
+  await page.goto('/room/settings'); await page.reload(); await selectKnowledge();
+  await expect(toggle).not.toBeChecked();
+});

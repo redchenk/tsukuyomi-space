@@ -279,7 +279,7 @@ const diarySyncStatus = ref('');
 const savedSections = reactive({});
 const settingsSections = ['model', 'llm', 'tts', 'memory', 'knowledge', 'mcp', 'diary'];
 function sectionSnapshot(section) {
-  const value = { model, llm, tts, memory: { enabled: memory.enabled, retrievalLimit: memory.retrievalLimit }, knowledge: { enabled: knowledge.enabled, entries: knowledge.entries }, mcp, diary: diary.persona }[section];
+  const value = { model, llm, tts, memory: { enabled: memory.enabled, retrievalLimit: memory.retrievalLimit }, knowledge: { enabled: knowledge.enabled, siteEnabled: knowledge.siteEnabled, entries: knowledge.entries }, mcp, diary: diary.persona }[section];
   return JSON.stringify(value);
 }
 function rememberSaved(section) { savedSections[section] = sectionSnapshot(section); }
