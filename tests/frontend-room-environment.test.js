@@ -119,7 +119,7 @@ describe('environment wiring', () => {
         const code = chatSrc();
         assert.match(code, /async function buildRoomContext\(message, image, llmSettings, environment = '', signal = null,/);
         assert.match(code, /const sections = snapshot\?\.sections \|\| \{\s*time: currentTimeContext\(\),\s*environment,\s*knowledge:/);
-        assert.match(code, /packRoomContext\(\{ \.\.\.sections, memories:/);
+        assert.match(code, /packRoomContext\(\{ \.\.\.sections,[\s\S]*?memories:/);
         assert.match(code, /const environment = roomEnvironmentContext\(world\?\.world\?\.value\);/);
         assert.match(code, /await buildRoomContext\(message, image, settings, environment, operation\.controller\.signal,/);
     });

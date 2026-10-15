@@ -27,7 +27,7 @@
     "test:memory:milvus": "node scripts/verify-room-memory-milvus.js",
     "test:e2e": "playwright test",
     "test:theme": "node --test tests/frontend-season-theme.test.js",
-    "test": "npm run check && npm run test:models && npm run check:seo && npm run check:moderation && npm run check:memory-sync && npm run check:migrations && npm run check:mail && npm run check:notifications && npm run check:game && npm run test:game && npm run test:api && node --test tests/mail.test.js tests/mailer-template.test.js && npm run test:frontend && npm run test:memory && npm run check:fushi && npm run test:fushi && npm run check:memory-local && npm run check:llm-agent && npm run test:llm-agent && npm run test:memory-local && npm run check:music && npm run test:music",
+    "test": "npm run check && npm run test:models && npm run check:seo && npm run check:moderation && npm run check:memory-sync && npm run check:migrations && npm run check:mail && npm run check:notifications && npm run check:game && npm run test:game && npm run test:api && node --test tests/mail.test.js tests/mailer-template.test.js && npm run test:frontend && npm run test:memory && npm run check:fushi && npm run test:fushi && npm run check:memory-local && npm run check:llm-agent && npm run test:llm-agent && npm run test:memory-local && npm run check:music && npm run test:music && npm run test:knowledge",
     "import:yachiyo": "node scripts/import-yachiyo-corpus-to-milvus.js",
     "build:room-runtime": "LIVE2D_BUNDLE_DIR=src/frontend/runtime LIVE2D_BUNDLE_NAME=live2d-room-neuro-live.20260925-mobile-r11 vite build --config vite.config.js",
     "test:memory": "node --test tests/room-mem0.test.js tests/room-memory-import.test.js tests/room-local-intelligence.test.js",
@@ -47,7 +47,9 @@
     "preview:emails": "node scripts/preview-site-emails.js",
     "sync:app-release": "node scripts/sync-native-app-release.mjs",
     "test:i18n": "node --test tests/frontend-i18n.test.cjs",
-    "test:model-runtime": "node --test tests/room-model-runtime.test.js tests/room-model-catalog.test.js tests/room-model-catalog-api.test.js tests/llm-agent-protocol.test.js tests/frontend-room-settings.test.js tests/frontend-room-diary.test.js tests/frontend-room-diary-flow.test.js"
+    "test:model-runtime": "node --test tests/room-model-runtime.test.js tests/room-model-catalog.test.js tests/room-model-catalog-api.test.js tests/llm-agent-protocol.test.js tests/frontend-room-settings.test.js tests/frontend-room-diary.test.js tests/frontend-room-diary-flow.test.js",
+    "build:knowledge": "node scripts/build-site-knowledge.cjs",
+    "test:knowledge": "node scripts/build-site-knowledge.cjs --check && node --test tests/site-knowledge.test.cjs tests/frontend-site-knowledge.test.mjs && python3 -m unittest discover -s tests -p \"site_knowledge_test.py\""
   },
   "keywords": [
     "tsukuyomi",

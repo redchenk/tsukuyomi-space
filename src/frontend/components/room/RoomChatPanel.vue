@@ -1,4 +1,5 @@
 <script setup>
+import { splitKnowledgeReply } from '../../services/siteKnowledge.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TsIcon from '../TsIcon.vue';
 import RoomDraggablePanel from './RoomDraggablePanel.vue';
@@ -177,8 +178,16 @@ onMounted(() => nextTick(() => {
   rememberTranscriptPosition();
 }));
 
+const knowledgeReplyCache = new WeakMap();
+function knowledgeReply(message) {
+  const cached = knowledgeReplyCache.get(message);
+  if (cached?.content === message.content) return cached.value;
+  const value = splitKnowledgeReply(message.content);
+  knowledgeReplyCache.set(message, { content: message.content, value });
+  return value;
+}
 function replyParts(message) {
-  return message.pending && Array.isArray(message.parts) ? message.parts : splitRoomReply(message.content);
+  return message.pending && Array.isArray(message.parts) ? message.parts : splitRoomReply(knowledgeReply(message).text);
 }
 
 const endChat = computed(() => props.chat.endChatState?.value || { status: 'idle', visible: false });
@@ -342,6 +351,10 @@ function endChatStatusLabel() {
               <div v-for="(part, index) in replyParts(message)" :key="index" class="chat-content chat-reply-part">{{ part }}</div>
             </template>
             <div v-else class="chat-content">{{ message.content }}</div>
+            <div v-if="message.role === 'assistant' && !message.pending && knowledgeReply(message).sources.length" class="chat-knowledge-sources">
+              <span>{{ knowledgeReply(message).label }}：</span>
+              <a v-for="source in knowledgeReply(message).sources" :key="source.url" :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>
+            </div>
             <span v-if="message.pending && message.content" class="chat-stream-marker" role="status" aria-label="正在生成回复"></span>
           </template>
           <div class="chat-message-footer">
@@ -362,7 +375,7 @@ function endChatStatusLabel() {
                 type="button"
                 :disabled="ttsStatus(chat, message.id) === 'loading'"
                 :aria-busy="ttsStatus(chat, message.id) === 'loading'"
-                @click="chat.playTTS(message.speechText || message.content, message.id, message.live2d)"
+                @click="chat.playTTS(message.speechText || knowledgeReply(message).text, message.id, message.live2d)"
               >
                 <TsIcon v-if="ttsStatus(chat, message.id) === 'loading'" class="ts-status-loader-icon" name="loader" :size="15" aria-hidden="true" />
                 <span :role="ttsStatus(chat, message.id) === 'loading' ? 'status' : undefined">{{ ttsLabel(chat, message.id) }}</span>
@@ -523,6 +536,8 @@ function endChatStatusLabel() {
 </template>
 
 <style scoped>
+.chat-knowledge-sources { display: flex; flex-wrap: wrap; gap: 0.4em; margin-top: 0.5em; font-size: 0.85em; line-height: 1.6; }
+.chat-knowledge-sources a { color: inherit; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .room-image-upload.upload-progress-card {
   --panel: var(--ts-surface-strong);
   --text: var(--ts-text);

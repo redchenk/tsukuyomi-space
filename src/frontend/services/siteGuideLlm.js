@@ -2,6 +2,7 @@ import llmProtocol from '../../../shared/llm-protocol.cjs';
 import { apiFetch, parseResponse } from '../api/client';
 import { fetchWithLocalOllamaGuidance, isLocalOllamaUrl, normalizeLocalOllamaBaseUrl } from './room/localOllamaTransport';
 import { readJson } from './room/roomStorage';
+import { fetchSiteKnowledge, siteKnowledgePrompt } from './siteKnowledge.mjs';
 
 const MAX_QUESTION_LENGTH = 800;
 const MAX_HISTORY_ITEMS = 8;
@@ -161,7 +162,7 @@ export function readSiteGuideLlmStatus() {
   };
 }
 
-export async function askSiteGuide({ question, history = [], lang = 'zh', routeName = '' }) {
+export async function askSiteGuide({ question, history = [], lang = 'zh', routeName = '', onSources = () => {} }) {
   const cleanQuestion = String(question || '').trim().slice(0, MAX_QUESTION_LENGTH);
   if (!cleanQuestion) throw new Error(lang === 'en' ? 'Enter a question first.' : (lang === 'ja' ? '質問を入力してください。' : '请先输入问题。'));
 
@@ -170,10 +171,15 @@ export async function askSiteGuide({ question, history = [], lang = 'zh', routeN
 
   const settings = status.settings;
   const conversation = normalizedHistory(history);
-  const systemPrompt = guideSystemPrompt(lang, routeName);
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
+    const previousQuestion = conversation.filter(item => item.role === 'user').at(-1)?.content || '';
+    const lookupQuestion = /^(那|这个|然后|还有|为什么|why|what about|それ)/i.test(cleanQuestion)
+      ? `${previousQuestion.slice(0, 140)} ${cleanQuestion}` : cleanQuestion;
+    const knowledge = await fetchSiteKnowledge(lookupQuestion, { fetcher: apiFetch, signal: controller.signal, scope: 'guide', force: true });
+    const systemPrompt = `${guideSystemPrompt(lang, routeName)}\n\n${siteKnowledgePrompt(knowledge.sources)}`;
+    onSources(knowledge.sources);
     if (settings.useProxy && !status.local) {
       const response = await apiFetch('/api/chat', {
         method: 'POST',

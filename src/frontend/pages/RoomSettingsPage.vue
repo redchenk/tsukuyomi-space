@@ -228,6 +228,7 @@ const memorySavePending = ref(false);
 const memorySaveError = ref('');
 const knowledge = reactive({
   enabled: true,
+  siteEnabled: true,
   managerOpen: false,
   entries: [],
   editingId: null,
@@ -1940,7 +1941,7 @@ async function syncMemoryVectors() {
 
 function persistKnowledge(entries, enabled = knowledge.enabled) {
   const next = entries.map(cloneKnowledgeEntry).filter(item => item.title || item.content);
-  if (!persistSettings('roomKnowledgeSettings', { enabled: Boolean(enabled), builtinVersion: ROOM_KNOWLEDGE_VERSION, entries: next }, '角色知识库')) return false;
+  if (!persistSettings('roomKnowledgeSettings', { enabled: Boolean(enabled), siteEnabled: knowledge.siteEnabled !== false, builtinVersion: ROOM_KNOWLEDGE_VERSION, entries: next }, '角色知识库')) return false;
   knowledge.enabled = Boolean(enabled);
   knowledge.entries = next;
   rememberSaved('knowledge');
@@ -3375,6 +3376,7 @@ onBeforeUnmount(() => {
               role="switch"
               aria-label="启用角色知识库注入"
           /></label>
+          <label class="settings-toggle-row"><span><strong>参考站内资料</strong><small>提问涉及教程、百科或文章时检索公开资料，并显示来源链接；普通闲聊跳过。</small></span><input v-model="knowledge.siteEnabled" type="checkbox" role="switch" aria-label="参考站内资料" /></label>
           <div class="settings-note">
             <TsIcon name="lock" :size="18" />
             <p>

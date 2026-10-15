@@ -41,6 +41,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - name: Install the pinned vector extension for isolated knowledge tests
+        run: python3 -m pip install sqlite-vec==0.1.6
       - run: npm test
       - run: python3 -m unittest discover -s tests -p 'deployment_safety_test.py'
       - name: Build and smoke-test Docker runtime

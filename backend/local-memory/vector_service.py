@@ -6,6 +6,7 @@ import json
 import socketserver
 import sqlite3
 import threading
+import time
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 import numpy as np
@@ -19,6 +20,8 @@ SOCKET = os.environ.get("ROOM_LOCAL_SOCKET", "/run/tsukuyomi-memory/vector.sock"
 DB = os.environ.get("ROOM_LOCAL_VECTOR_DB", "/var/lib/tsukuyomi-space/local-memory/vectors.db")
 lock = threading.Lock()
 inference = threading.Lock()
+last_foreground = 0
+knowledge = None
 options = ort.SessionOptions()
 options.intra_op_num_threads = 1
 options.inter_op_num_threads = 1
@@ -55,11 +58,13 @@ RELATION_LABELS = {
 }
 prototypes = None
 
-def embed(text, query=False):
+def embed(text, query=False, opportunistic=False):
     if not isinstance(text, str) or len(text) > 2000:
         raise ValueError("INPUT_LIMIT")
     prefix = "为这个句子生成表示以用于检索相关文章：" if query else ""
-    with inference:
+    if not inference.acquire(blocking=not opportunistic):
+        return None
+    try:
         tokens = tokenizer.encode(prefix + text)
         feeds = {"input_ids": np.asarray([tokens.ids], dtype=np.int64),
                  "attention_mask": np.asarray([tokens.attention_mask], dtype=np.int64),
@@ -72,6 +77,8 @@ def embed(text, query=False):
         if norm <= 0:
             raise ValueError("ZERO_VECTOR")
         return (output / norm).tolist()
+    finally:
+        inference.release()
 
 def vector(v):
     a = np.asarray(v, dtype=np.float32)
@@ -132,6 +139,20 @@ def analyze(text):
     return {'facts': facts, 'relationship': relation, 'relationshipQuote': relation_quote}
 
 def handle(route, body):
+    global knowledge, last_foreground
+    if route.startswith('/knowledge/'):
+        if os.environ.get('SITE_KNOWLEDGE_ENABLED') != 'true':
+            return {'matches': [], 'mode': 'disabled', 'enabled': False}
+        if route == '/knowledge/index-next' and time.monotonic() - last_foreground < 2:
+            return {'indexed': False, 'pending': True, 'reason': 'foreground_priority'}
+        with lock:
+            if knowledge is None:
+                from knowledge_store import KnowledgeStore
+                knowledge = KnowledgeStore(os.environ.get('SITE_KNOWLEDGE_DB', str(Path(DB).with_name('knowledge.db'))),
+                    lambda text, query: embed(text, query, opportunistic=True), sqlite_vec.load)
+        return knowledge.handle(route, body)
+    if route in ('/embed', '/search', '/analyze'):
+        last_foreground = time.monotonic()
     if route == "/health":
         return {"model": MODEL, "dimension": 512, "storage": "sqlite-vec", "ready": True}
     if route == "/embed":

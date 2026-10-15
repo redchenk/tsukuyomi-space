@@ -9214,5 +9214,109 @@
   "附件类型": {
     "en": "Attachment type",
     "ja": "添付ファイルの種類"
+  },
+  "参考资料": {
+    "en": "Reference material",
+    "ja": "参考資料"
+  },
+  "会合并同一账号在各设备上的已同步消息。": {
+    "en": "Synced messages from all devices on this account will be combined.",
+    "ja": "同じアカウントで各端末から同期済みのメッセージをまとめます。"
+  },
+  "本次还没有可记录的对话，先说一句吧。": {
+    "en": "There is no conversation to record yet. Say something first.",
+    "ja": "まだ記録できる会話がありません。まず話しかけてください。"
+  },
+  "对话仍保留；网络恢复后可以重试。": {
+    "en": "Your conversation is preserved. Retry when the network recovers.",
+    "ja": "会話は保持されています。接続が復旧したら再試行できます。"
+  },
+  "将根据本次完整的 {0} 条对话生成日记（含其他设备已同步的聊天）。": {
+    "en": "Create a diary from all {0} messages in this session, including chats synced from other devices.",
+    "ja": "他の端末から同期済みの会話を含む、このセッションの全{0}件から日記を作成します。"
+  },
+  "本次没有可记录的对话。": {
+    "en": "There is no conversation to record in this session.",
+    "ja": "このセッションには記録できる会話がありません。"
+  },
+  "旧版待同步日记已保留，请先检查存档，再选择“结束但不写日记”开始新会话。": {
+    "en": "The older pending diary has been preserved. Check your archive, then choose End without a diary to start a new session.",
+    "ja": "旧版の未同期の日記は保持されています。保存データを確認し、日記を書かずに終了して新しい会話を始めてください。"
+  },
+  "Anthropic 工作区 ID（可选，密钥未绑定工作区时填写）": {
+    "en": "Anthropic workspace ID (optional; enter if the key is not bound to a workspace)",
+    "ja": "AnthropicワークスペースID（任意。キーがワークスペースに紐づいていない場合に入力）"
+  },
+  "这是角色互动进度。真诚感谢、主动关心各 +1；共同约定、表达信任各 +2。有具体内容且被语义分析确认的日常分享 +1，每天最多 3 次；所有互动每天最多增长 10 点。简单问候、重复内容、要求加分不计分，缺席、悲伤和拒绝不扣分。": {
+    "en": "This is character interaction progress. Sincere thanks or care earns +1; shared plans or trust earns +2. Specific everyday sharing confirmed by semantic analysis earns +1, up to three times daily. All interactions are capped at 10 points daily. Simple greetings, repeats and requests for points do not count. Absence, sadness and refusal never lose points.",
+    "ja": "キャラクターとの交流の進み具合です。感謝や気遣いは各+1、共通の約束や信頼は各+2。意味解析で確認された具体的な日常の共有は+1で1日3回まで、全体では1日最大10点です。単純な挨拶、繰り返し、加点の要求は対象外。不在、悲しみ、拒否で減点されません。"
+  },
+  "历史共": {
+    "en": "History:",
+    "ja": "履歴："
+  },
+  "条互动，累计 +": {
+    "en": " interactions, total +",
+    "ja": "件の交流、累計 +"
+  },
+  "；最近 12 条 +": {
+    "en": "; latest 12: +",
+    "ja": "、直近12件 +"
+  },
+  "，更早记录 +": {
+    "en": ", earlier records: +",
+    "ja": "、それ以前 +"
+  },
+  "。今日 +": {
+    "en": ". Today: +",
+    "ja": "。本日 +"
+  },
+  "分数变化按当前完整账本累加；修改对话后，相关记录会随之更新。历史记录保留原有计分结果。": {
+    "en": "Points are totaled from the complete current ledger. Editing a conversation updates its related records. Historical records retain their original scores.",
+    "ja": "点数は現在の完全な記録から集計されます。会話を編集すると関連記録も更新されます。過去の記録は当時の点数を保持します。"
+  },
+  "正在读取...": {
+    "en": "Loading...",
+    "ja": "読み込み中..."
+  },
+  "查看更早记录": {
+    "en": "View earlier records",
+    "ja": "以前の記録を見る"
+  },
+  "参考站内资料": {
+    "en": "Use site reference material",
+    "ja": "サイト内の資料を参照"
+  },
+  "提问涉及教程、百科或文章时检索公开资料，并显示来源链接；普通闲聊跳过。": {
+    "en": "Search public tutorials, Wiki entries and articles when relevant, and show source links. Skip ordinary small talk.",
+    "ja": "チュートリアル、百科、記事に関する質問では公開資料を検索し、出典リンクを表示します。通常の雑談では検索しません。"
+  },
+  "互动记录已更新，请重新查看。": {
+    "en": "Interaction records changed. Please reload them.",
+    "ja": "交流記録が更新されました。再度表示してください。"
+  },
+  "完整对话同步结果无效": {
+    "en": "The complete conversation sync result is invalid.",
+    "ja": "会話全体の同期結果が無効です。"
+  },
+  "读取期间对话已改变，请重试": {
+    "en": "The conversation changed while loading. Please retry.",
+    "ja": "読み込み中に会話が変更されました。再試行してください。"
+  },
+  "完整对话分页结果无效，请重试": {
+    "en": "The complete conversation page is invalid. Please retry.",
+    "ja": "会話全体のページ取得結果が無効です。再試行してください。"
+  },
+  "完整对话超过读取上限，请联系管理员": {
+    "en": "The conversation exceeds the read limit. Contact an administrator.",
+    "ja": "会話が読み込み上限を超えています。管理者にお問い合わせください。"
+  },
+  "完整对话尚未同步，请重试": {
+    "en": "The complete conversation has not synced yet. Please retry.",
+    "ja": "会話全体がまだ同期されていません。再試行してください。"
+  },
+  "日记对话已改变，请重新读取": {
+    "en": "The diary conversation changed. Please reload it.",
+    "ja": "日記の元の会話が変更されました。再読み込みしてください。"
   }
 }

@@ -1,0 +1,352 @@
+[
+  {
+    "query": "如何连接自己的聊天模型？",
+    "expected": "guide:model",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "API 地址和模型名称在哪填写？",
+    "expected": "guide:model",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "浏览器直连模型遇到跨域怎么办？",
+    "expected": "guide:model",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "怎么合并本地和云端记忆？",
+    "expected": "guide:memory",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "关闭记忆会删掉之前的记录吗？",
+    "expected": "guide:memory",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "新建会话会清除长期记忆吗？",
+    "expected": "guide:memory",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "登录时选择使用云端数据会上传访客记录吗？",
+    "expected": "guide:memory",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "能文字聊天但没声音，要怎么设置？",
+    "expected": "guide:voice",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "GPT-SoVITS 是网页帮我启动的吗？",
+    "expected": "guide:voice",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "语音连接失败需要检查哪些地方？",
+    "expected": "guide:voice",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "怎样添加自己的角色知识条目？",
+    "expected": "guide:knowledge",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "小说设定能当作电影情节吗？",
+    "expected": "guide:knowledge",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "聊天回复不满意怎么重新生成？",
+    "expected": "guide:chat",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "上传图片以后模型就一定能看图吗？",
+    "expected": "guide:chat",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "在哪里搜索和收藏文章？",
+    "expected": "guide:article",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "怎样发文章并插入视频附件？",
+    "expected": "guide:editor",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "上传附件为什么没在文章里出现？",
+    "expected": "guide:editor",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "附件库和公开图库有什么区别？",
+    "expected": "guide:attachments",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "怎么发布自己的图片到图库？",
+    "expected": "guide:gallery",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "广场留言没显示可以反复提交吗？",
+    "expected": "guide:plaza",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "像素工坊的画布分辨率是多少？",
+    "expected": "guide:pixel",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "每天签到和创作任务在哪里？",
+    "expected": "guide:growth",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "好感度和网站等级是同一个数值吗？",
+    "expected": "guide:growth",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "忘记登录密码怎么办？",
+    "expected": "guide:account",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "在哪里修改昵称和头像？",
+    "expected": "guide:account",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "导入房间存档前需要做什么？",
+    "expected": "guide:diary",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "网站账号能直接登录网易云吗？",
+    "expected": "guide:music",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "友情链接申请入口是什么？",
+    "expected": "guide:friend-links",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "打开 Agent OS 就能使用所有 MCP 工具吗？",
+    "expected": "guide:agent-os",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "八千代的声优是谁？",
+    "expected": "wiki:character/yachiyo",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "辉夜的生日是哪天？",
+    "expected": "wiki:character/kaguya",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "彩叶多大了？",
+    "expected": "wiki:character/iroha",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "驹泽雷和乃依是什么关系？",
+    "expected": "wiki:character/rai",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "FUSHI 的外形和声优？",
+    "expected": "wiki:character/fushi",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "帝明属于哪个团队？",
+    "expected": "wiki:character/akira",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "Black onyX 有哪些成员？",
+    "expected": "wiki:term/black-onyx",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "KASSEN 是什么类型的游戏？",
+    "expected": "wiki:term/kassen",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "Remember 是谁作曲的？",
+    "expected": "wiki:term/remember",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "Reply 是谁演唱的？",
+    "expected": "wiki:term/reply",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "月读虚拟空间有哪些活动？",
+    "expected": "wiki:term/tsukuyomi",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "允许剧透，八千代杯的目标是什么？",
+    "expected": "wiki:term/yachiyo-cup",
+    "allowSpoilers": true,
+    "split": "calibration"
+  },
+  {
+    "query": "允许剧透，竹取物语在动画中有哪些改写？",
+    "expected": "wiki:term/taketori",
+    "allowSpoilers": true,
+    "split": "calibration"
+  },
+  {
+    "query": "站内有没有月读空间零基础教程？",
+    "expected": "article:258",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "八千代语音合成一键包新手教程在哪里？",
+    "expected": "article:282",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "Where do I configure my chat model?",
+    "expected": "guide:model",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "Room の音声はどこで設定しますか？",
+    "expected": "guide:voice",
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "火星量子龙虾养殖许可证如何办理？",
+    "expected": null,
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "阿根廷今天比特币的实时汇率是多少？",
+    "expected": null,
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "邻居家的门锁密码是多少？",
+    "expected": null,
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "解释光合作用中卡尔文循环的化学计量。",
+    "expected": null,
+    "allowSpoilers": false,
+    "split": "calibration"
+  },
+  {
+    "query": "日记导出的存档应该怎样备份？",
+    "expected": "guide:diary",
+    "split": "holdout"
+  },
+  {
+    "query": "想让聊天模型看懂图片需要什么能力？",
+    "expected": "guide:chat",
+    "split": "holdout"
+  },
+  {
+    "query": "每轮参考的记忆条数是不是固定数量？",
+    "expected": "guide:memory",
+    "split": "holdout"
+  },
+  {
+    "query": "公开图库里怎样管理我上传的图片？",
+    "expected": "guide:gallery",
+    "split": "holdout"
+  },
+  {
+    "query": "月契的创作任务每天都一样吗？",
+    "expected": "guide:growth",
+    "split": "holdout"
+  },
+  {
+    "query": "乙事照琴从事什么工作？",
+    "expected": "wiki:character/terukoto",
+    "split": "holdout"
+  },
+  {
+    "query": "谏山真实的声优名字？",
+    "expected": "wiki:character/mami",
+    "split": "holdout"
+  },
+  {
+    "query": "How do I upload an article?",
+    "expected": "guide:editor",
+    "split": "holdout"
+  },
+  {
+    "query": "木星卫星欧罗巴的地下海盐度精确值？",
+    "expected": null,
+    "split": "holdout"
+  },
+  {
+    "query": "我的银行存款余额是多少？",
+    "expected": null,
+    "split": "holdout"
+  }
+]

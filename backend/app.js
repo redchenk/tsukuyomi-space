@@ -103,6 +103,8 @@ function createApp() {
     app.use('/api/chat', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'chat' }));
     app.use('/api/tts', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: 'tts' }));
     app.use('/api/mcp', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 12, keyPrefix: 'mcp' }));
+    app.use('/api/knowledge', createRateLimiter({ windowMs: 60 * 1000, max: 30, keyPrefix: 'site-knowledge' }));
+    app.use('/api/knowledge', strictJson('4kb'));
     app.use('/api/room/shares', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40, keyPrefix: 'room-shares' }));
     app.use('/api/room/models', createRateLimiter({ windowMs: 10 * 60 * 1000, max: 24, keyPrefix: 'room-models' }));
     app.use('/api/growth', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 120, keyPrefix: 'growth' }));
@@ -187,6 +189,7 @@ function createApp() {
     app.use('/api/hub-preview', hubPreviewRoutes);
     app.use('/api/friend-links', friendLinkRoutes);
     app.use('/api/site-feed', siteFeedRoutes.router);
+    app.use('/api/knowledge', require('./routes/site-knowledge'));
     app.use('/api/admin', adminRoutes);
     app.use('/api/moderation', moderationRoutes);
     app.use('/api/mail', mailRoutes);

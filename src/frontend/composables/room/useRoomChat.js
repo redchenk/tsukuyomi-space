@@ -5,6 +5,7 @@ import { nextTick, ref } from 'vue';
 import { apiFetch, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../../api/client';
 import { selectRoomKnowledgeEntries, shouldRetrieveRoomPersona, roomKnowledgeQuery } from '../../services/room/roomKnowledge';
 import { packRoomContext, selectRecentRoomConversation, revalidateRoomMemorySnapshot } from '../../services/room/roomContext.mjs';
+import { fetchSiteKnowledge, appendKnowledgeSources } from '../../services/siteKnowledge.mjs';
 import memoryRetrieval from '../../../../shared/room-memory-retrieval.cjs';
 import { readRoomChatStream } from '../../services/room/roomChatStream.mjs';
 import { createRoomReplyPresenter } from '../../services/room/roomReplyPresentation.mjs';
@@ -969,13 +970,15 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
   const selectedKnowledge = selectRoomKnowledgeEntries(message, readJson('roomKnowledgeSettings', null), 10, { recentMessages });
   const corpusQuery = roomKnowledgeQuery(message, recentMessages);
   const toolResults = [];
-  const [siteText, personaMemories, memoryResult, growthState, relationshipState] = await Promise.all([
+  const [siteText, personaMemories, memoryResult, growthState, relationshipState, publicKnowledge] = await Promise.all([
     snapshot ? '' : fetchSiteFeedContext(signal),
     !snapshot && knowledgeEnabled && shouldRetrieveRoomPersona(corpusQuery, selectedKnowledge) ? fetchPersonaMemories(corpusQuery, signal).catch(() => []) : [],
     fetchRelevantMemories(message, signal, { excludeTurnIds,
       ...(snapshot ? { snapshotIds: snapshot.memoryRows.map(item => item.id) } : {}) }),
     snapshot ? null : loadGrowth().catch(() => null),
-    snapshot ? null : fetchRelationship(signal)
+    snapshot ? null : fetchRelationship(signal),
+    readJson('roomKnowledgeSettings', null)?.siteEnabled !== false
+      ? fetchSiteKnowledge(corpusQuery, { fetcher: apiFetch, signal }) : { sources: [], mode: 'disabled' }
   ]);
 
   if (!snapshot && mcpSettings.enabled && mcpSettings.endpoint) {
@@ -1004,11 +1007,16 @@ async function buildRoomContext(message, image, llmSettings, environment = '', s
     relationship: relationshipState?.enabled ? `角色互动进度：${relationshipState.stage}，${relationshipState.score}/1000。这是互动记录，不是真人情感。保持八千代原作身份和个性，语气可以随熟悉程度自然亲近；不要主动播报分数，也不要因用户缺席、悲伤或拒绝而责备。` : '',
     site: siteText
   };
-  const packed = packRoomContext({ ...sections, memories: memoryRows.map((item) => ({
+  // Re-fetch public sources even for regeneration; deleted/edited documents cannot survive in snapshots.
+  const packed = packRoomContext({ ...sections, siteKnowledge: publicKnowledge.sources,
+    siteKnowledgeStatus: !publicKnowledge.sources.length && !['disabled', 'skipped'].includes(publicKnowledge.mode)
+      ? '本次站内资料检索没有可用依据。不得声称已查到资料；站内操作或原作细节不确定时请明确说明。' : '',
+    memories: memoryRows.map((item) => ({
     id: item.id || item.memoryId || 'memory', turnId: memoryRetrieval.memorySourceTurnId(item),
     content: `[${item.createdAt || '历史聊天'}] ${memoryRetrieval.memoryExcerpt(item.context || item.content || item.summary || '', message, memoryExcerptChars)}`
   })) }, { maxChars: isOllamaApi(llmSettings.apiUrl) ? 4_000 : 8_000 });
-  return { ...packed, retrieval: memoryResult.retrieval,
+  const included = new Set(packed.trace.filter(item => item.source === 'siteKnowledge').map(item => item.id));
+  return { ...packed, retrieval: memoryResult.retrieval, knowledgeSources: publicKnowledge.sources.filter(item => included.has(item.id)),
     snapshot: memoryResult.retrieval?.backend === 'unavailable' ? null : { sections, memoryRows } };
 }
 
@@ -1503,7 +1511,8 @@ export function useRoomChat({ live2d, world, diary = null }) {
         throw new Error('模型没有返回可显示的回复，请重试');
       }
       const structured = parseAssistantPayload(result.reply);
-      const reply = structured.reply || fallbackReply(message, image);
+      const spokenReply = structured.reply || fallbackReply(message, image);
+      const reply = appendKnowledgeSources(spokenReply, roomContext.knowledgeSources, document.documentElement.lang || (ROOM_ENGLISH ? 'en' : 'zh'));
       await presenter.finish(reply);
       if (destroyed || activeGeneration !== operation || operation.controller.signal.aborted
         || requestConversationRevision !== conversationRevision || requestArchiveKey !== diaryArchiveKey()) return false;
@@ -1529,7 +1538,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
         const oldUser = messages.value.find((item) => item.id === replacement.userMessageId);
         const oldAssistant = messages.value.find((item) => item.id === replacement.assistantMessageId);
         if (oldUser) oldUser.content = replacement.userMessage;
-        if (oldAssistant) Object.assign(oldAssistant, { content: reply, speechText: reply, live2d: structured.live2d, failed: false });
+        if (oldAssistant) Object.assign(oldAssistant, { content: reply, speechText: spokenReply, live2d: structured.live2d, failed: false });
         const session = currentSessionMessages.value;
         const last = session.at(-1);
         if (last?.role === 'assistant' && last.content === replacement.expectedAssistantMessage) {
@@ -1540,7 +1549,7 @@ export function useRoomChat({ live2d, world, diary = null }) {
       } else {
         // Finish the same bubble in place, preserving its DOM identity and
         // the reader's scroll position while controls/timestamps appear.
-        Object.assign(pendingMessage, { content: reply, speechText: reply, live2d: structured.live2d, pending: false });
+        Object.assign(pendingMessage, { content: reply, speechText: spokenReply, live2d: structured.live2d, pending: false });
         if (!opener) currentSessionMessages.value.push({ turnId, role: 'user', content: message || '请看这张图片。' });
         currentSessionMessages.value.push({ turnId, role: 'assistant', content: reply });
         persistDiaryRecording();

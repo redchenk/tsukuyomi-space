@@ -36,7 +36,8 @@ describe('growth frontend integration', () => {
         const roomPanel = source('src/frontend/components/room/RoomChatPanel.vue');
 
         assert.match(share, /recordShareGrowth\(platform\)/);
-        assert.match(share, /recordShareGrowth\('native'\)/);
+        assert.match(share, /async function nativeShare\(platform = 'native'\)/);
+        assert.match(share, /await navigator\.share[\s\S]*?await recordShareGrowth\(platform\)/);
         assert.match(roomChat, /growthContext\(growthState\)/);
         assert.match(roomChat, /GROWTH_UPDATED_EVENT/);
         assert.match(roomPanel, /room-growth-strip/);

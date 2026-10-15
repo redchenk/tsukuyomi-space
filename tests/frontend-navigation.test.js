@@ -427,7 +427,7 @@ describe('frontend navigation routes', () => {
         assert.match(game, /sandbox="allow-scripts allow-pointer-lock allow-downloads"/);
         assert.doesNotMatch(game, /allow-same-origin/);
         assert.match(game, /VITE_KAGUYA_GAME_URL/);
-        assert.match(game, /kaguya-run-ef04c26b4900-r9\.html/);
+        assert.match(game, /kaguya-run-ef04c26b4900-r10\.html/);
 
         assert.match(game, /:aria-busy="loading"/);
         assert.match(game, /https:\/\/www\.bilibili\.com\/video\/BV1Bmgx6aEvJ\//);

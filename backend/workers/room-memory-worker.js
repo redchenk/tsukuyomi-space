@@ -3,6 +3,7 @@ const db = require('../db');
 const local = require('../services/room-local-client');
 const mem0 = require('../services/room-local-mem0');
 const analysis = require('../services/room-local-analysis');
+const knowledgeIndexer = require('./site-knowledge-indexer').createIndexer({ db, request: local.request });
 const { unicodeSlice } = require('../../shared/unicode-slice.cjs');
 let stopping = false;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -110,6 +111,11 @@ async function tick() {
     const indexing = db.prepare("SELECT 1 FROM room_memory_jobs WHERE state IN ('pending','running') LIMIT 1").get();
     const job = claim('room_turn_analysis', !indexing);
     if (job) try { await processAnalysis(job); } catch (error) { failure('room_turn_analysis', job, error); }
+    // Public indexing yields completely to account memory/analysis work.
+    if (!indexing && !job && resourceGate().allowed) {
+        try { await knowledgeIndexer.tick(); }
+        catch { knowledgeIndexer.defer(); console.warn(JSON.stringify({ component: 'site-knowledge', code: 'INDEX_RETRY' })); }
+    }
 }
 
 async function main() {
@@ -122,7 +128,7 @@ async function main() {
         const queued = db.prepare("SELECT 1 FROM room_memory_jobs WHERE state='pending' AND available_at<? LIMIT 1").get(Date.now());
         // Drain existing work without an arbitrary half-second pause. CPU
         // quota, nice priority and the reserve gate remain the hard bounds.
-        await sleep(queued && resourceGate().allowed ? 50 : 15000);
+        await sleep(queued && resourceGate().allowed ? 50 : knowledgeIndexer.busy() && resourceGate().allowed ? 1000 : 15000);
     }
 }
 if (require.main === module) main().catch(() => { console.error('LOCAL_WORKER_START_FAILED'); process.exitCode = 1; });

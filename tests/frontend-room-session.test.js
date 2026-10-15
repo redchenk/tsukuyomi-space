@@ -18,6 +18,7 @@ async function setup(overrides = {}) {
   const { createRoomReplyPresenter } = await import('../src/frontend/services/room/roomReplyPresentation.mjs');
   const { packRoomContext, selectRecentRoomConversation, revalidateRoomMemorySnapshot } = await import('../src/frontend/services/room/roomContext.mjs');
   const oneclickTts = await import('../src/frontend/services/room/oneclickTts.mjs');
+  const siteKnowledge = await import('../src/frontend/services/siteKnowledge.mjs');
   let onUpdate;
   let clearCount = 0;
   const saved = [];
@@ -25,7 +26,10 @@ async function setup(overrides = {}) {
   const context = {
     agentProtocol: require('../shared/agent-protocol.cjs'), llmProtocol: require('../shared/llm-protocol.cjs'),
     memoryRetrieval: require('../shared/room-memory-retrieval.cjs'), revalidateRoomMemorySnapshot, packRoomContext,
-    console, Date, URL, AbortController, getSession: () => null, ...oneclickTts,
+    console, Date, URL, AbortController, getSession: () => null, ...oneclickTts, ...siteKnowledge,
+    document: { documentElement: { lang: 'zh' } },
+    fetchSiteKnowledge: async () => ({ sources: [], mode: 'skipped' }),
+    apiFetch: async () => ({ ok: false }),
     ref: (value) => ({ value }), nextTick: (fn) => Promise.resolve().then(fn),
     reactive: value => value,
     selectRecentRoomConversation: (messages) => messages,

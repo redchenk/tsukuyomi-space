@@ -230,8 +230,10 @@ async function submitQuestion(preset = '') {
   asking.value = true;
   await scrollMessages();
   try {
-    const reply = await askSiteGuide({ question: prompt, history, lang: props.lang, routeName: props.routeName });
-    messages.value.push({ role: 'assistant', content: reply });
+    let sources = [];
+    const reply = await askSiteGuide({ question: prompt, history, lang: props.lang, routeName: props.routeName,
+      onSources(value) { sources = value; } });
+    messages.value.push({ role: 'assistant', content: reply, sources });
   } catch (requestError) {
     error.value = requestError.message || 'Unable to load the guide response.';
   } finally {
@@ -372,6 +374,9 @@ onBeforeUnmount(() => {
                 <div v-for="(item, index) in messages" :key="`${item.role}-${index}`" class="site-guide-message" :class="item.role">
                   <span>{{ item.role === 'assistant' ? copy.title : (lang === 'en' ? 'You' : lang === 'ja' ? 'あなた' : '你') }}</span>
                   <p>{{ item.content }}</p>
+                  <div v-if="item.sources?.length" class="site-guide-sources" aria-label="参考资料">
+                    <a v-for="(source, sourceIndex) in item.sources" :key="source.id" :href="source.url" target="_blank" rel="noopener noreferrer">[{{ sourceIndex + 1 }}] {{ source.title }}<span v-if="source.section"> · {{ source.section }}</span></a>
+                  </div>
                 </div>
                 <div v-if="asking" class="site-guide-message assistant site-guide-thinking" role="status">
                   <span>{{ copy.title }}</span>
@@ -548,6 +553,8 @@ onBeforeUnmount(() => {
 .site-guide-suggestions button:hover { border-color: var(--ts-border-strong, rgba(174, 242, 255, 0.38)); background: var(--ts-readable-control-hover, rgba(255, 255, 255, 0.14)); }
 
 .site-guide-messages { max-height: 17rem; min-height: 5rem; overflow: auto; overscroll-behavior: contain; padding: 0.25rem; }
+.site-guide-sources { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.6rem; font-size: 0.78rem; }
+.site-guide-sources a { color: var(--color-primary, #6373bd); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .site-guide-empty { margin: 1.2rem 0; color: var(--guide-muted); font-size: 0.82rem; line-height: 1.55; text-align: center; }
 .site-guide-message { width: fit-content; max-width: 88%; margin: 0 0 0.58rem; }
 .site-guide-message.user { margin-left: auto; }

@@ -5,6 +5,7 @@ export function normalizeRoomKnowledge(settings) {
   const saved = Array.isArray(settings?.entries) ? settings.entries.filter(entry => entry && typeof entry === 'object') : null;
   return {
     enabled: settings?.enabled !== false,
+    siteEnabled: settings?.siteEnabled !== false,
     builtinVersion: ROOM_KNOWLEDGE_VERSION,
     entries: (saved ? upgradeRoomKnowledgeEntries(saved, settings?.builtinVersion) : defaultKnowledgeEntries()).map(cloneKnowledgeEntry)
   };
