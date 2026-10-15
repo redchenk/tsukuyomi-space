@@ -536,7 +536,7 @@ function endChatStatusLabel() {
 </template>
 
 <style scoped>
-.chat-knowledge-sources { display: flex; flex-wrap: wrap; gap: 0.4em; margin-top: 0.5em; font-size: 0.85em; line-height: 1.6; }
+.chat-knowledge-sources { display: flex; flex-wrap: wrap; gap: 0.4em; width: fit-content; max-width: 100%; margin-top: 0.5em; padding: 0.35em 0.7em; border: 1px solid var(--ts-border); border-radius: 12px; color: var(--ts-text); background: var(--ts-surface-strong); font-size: 0.85em; line-height: 1.6; }
 .chat-knowledge-sources a { color: inherit; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .room-image-upload.upload-progress-card {
   --panel: var(--ts-surface-strong);
