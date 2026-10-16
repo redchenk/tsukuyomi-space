@@ -32,3 +32,6 @@
 .room-entry-actions button:hover { background: #dfb2c41a; }
 .room-entry-actions button:focus-visible { outline: 2px solid #edc5d3; outline-offset: 4px; }
 .room-entry-splash[data-phase="error"] .boot-splash-line::after { animation: none; }
+
+/* Programmatic entry focus names the room without outlining the whole scene. */
+.room-page[tabindex="-1"]:focus { outline: none; }
