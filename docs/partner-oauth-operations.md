@@ -36,6 +36,9 @@ node -e 'if (!process.env.DB_PATH || !require("node:fs").existsSync(process.env.
 | 源站内部 Nginx | `deploy/nginx.conf` | `/var/www/tsukuyomi-space/deploy/partner-oauth-security-headers.inc` |
 | 源站公开 OpenResty | `deploy/openresty-root-proxy.conf` | `/www/sites/yachiyo.hk/proxy/_tsukuyomi-partner-oauth-security-headers.inc` |
 | 国内前端 OpenResty | `deploy/hk-frontend-openresty.conf` | `/usr/local/openresty/nginx/conf/conf.d/_tsukuyomi-partner-oauth-security-headers.inc` |
+| 海外站 OpenResty | `deploy/overseas-openresty.conf` | `/usr/local/openresty/nginx/conf/conf.d/_tsukuyomi-partner-oauth-security-headers.inc` |
+
+海外站 `/oauth/` 顶层跳转到国内授权域名，避免“已授权应用”落入 SPA 循环；海外站 `/api/partner/oauth/` 返回 400，不转发或重定向客户端凭据。实际未启用的代理层无需改动。
 
 专用头文件源文件为 `deploy/partner-oauth-security-headers.inc`。公开源站文件对应宿主机 `/opt/1panel/www/sites/yachiyo.hk/proxy/`；前端文件对应宿主机 `/opt/1panel/www/conf.d/`。按现场挂载核实，先安装头文件，再启用引用它的 location。现有两个安装／同步脚本也包含该文件，但本功能的窄范围发布不需要运行整个站点同步或资源复制流程。
 
