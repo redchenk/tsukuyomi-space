@@ -1,5 +1,6 @@
 <script setup>
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import { installSmoothScroll } from './utils/smoothScroll';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { authFetch, getSession, loadCurrentSession, loadPublicSettings, logoutSession, parseResponse, setPublicStatsCache } from './api/client';
 import { documentLanguage, i18n, normalizeLanguage } from './i18n';
@@ -36,6 +37,7 @@ const forcedLanguage = forcedSiteLanguage();
 const lang = ref(forcedLanguage || normalizeLanguage(localStorage.getItem('lang')));
 const theme = ref(localStorage.getItem('tsukuyomi_theme') === 'dark' ? 'dark' : 'light');
 let stopSeasonTracking;
+let stopSmoothScroll;
 const user = ref(null);
 const routeCacheIdentity = computed(() => `${user.value?.scope || 'user'}:${user.value?.id || 'guest'}:${user.value?.role || ''}`);
 const routeCacheInclude = ref(['CachedRouteFrame']);
@@ -406,6 +408,7 @@ router.isReady().then(() => {
 });
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
+  stopSmoothScroll = installSmoothScroll(router);
   // Direct links also boot behind the splash. Access waits for its poster;
   // other routes are ready once the initial route has rendered.
   router.isReady().then(async () => {
@@ -428,6 +431,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  stopSmoothScroll?.();
   stopSeasonTracking?.();
   if (typeof window === 'undefined') return;
   window.clearTimeout(routeProgressTimer);

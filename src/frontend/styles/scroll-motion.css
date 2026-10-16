@@ -1,0 +1,6 @@
+/* Let Lenis interpolate the native scroll position without a second CSS easing. */
+html.lenis, html.lenis body { scroll-behavior: auto !important; }
+.scroll-reveal-active { will-change: opacity, translate; }
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal-active { will-change: auto; }
+}

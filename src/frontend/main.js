@@ -16,6 +16,8 @@ import './styles/navigation-art.css';
 import './styles/material-components.css';
 import './styles/material-pages.css';
 import './styles/seasons.css';
+import 'lenis/dist/lenis.css';
+import './styles/scroll-motion.css';
 
 initializePerformanceProfile();
 configureAssetCssVars();

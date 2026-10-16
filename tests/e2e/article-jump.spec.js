@@ -75,6 +75,9 @@ test('manual scrolling cancels comment alignment even when images finish loading
         if (browserName === 'webkit') await page.keyboard.press('PageUp');
         else await page.mouse.wheel(0, -700);
         await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(atComments - 400);
+        // Measure the reader's final position after wheel inertia has settled.
+        // Releasing images mid-animation would include intentional smooth motion.
+        await expect(page.locator('html')).not.toHaveClass(/lenis-scrolling/);
         const manualPosition = await page.evaluate(() => scrollY);
         f.release();
         await expect.poll(f.loaded).toBeGreaterThan(0);

@@ -12,6 +12,7 @@ test('Room input remains above an overlay keyboard and composition never sends a
         Object.defineProperty(window, 'visualViewport', { value: viewport, configurable: true });
     });
     await page.goto('/room');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await expect(page.locator('#loadingOverlay')).toHaveCount(0);
     const input = page.locator('#chatInput');
     await expect(input).toBeVisible();
