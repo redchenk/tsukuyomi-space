@@ -2,7 +2,7 @@
 
 日期：2026 年 10 月 16 日。本文供月读运维使用；对方开发者使用 [接入规范](partner-oauth-yachiyo.md)。授权域名固定为 `https://yachiyo.hk`。
 
-当前代码包含授权、换令牌、资料读取、撤销接口和用户中心入口。正式开通需要先部署，再登记对方确认的完整 HTTPS 回调地址。文档中的回调地址仅为示例，没有预先登记的正式客户端，也没有写入代码的真实密钥。
+授权、换令牌、资料读取、撤销接口和用户中心入口已于 2026 年 10 月 16 日部署。国内公网已通过 Chrome 桌面及 WebKit 移动视口的临时客户端验证，海外授权入口已指向国内主域名；测试账号及凭据已删除。正式开通仍需登记对方确认的完整 HTTPS 回调地址并交付客户端凭据。文档中的回调地址仅为示例，没有预先登记的正式客户端，也没有写入代码的真实密钥。
 
 ## 发布边界
 
@@ -16,7 +16,7 @@
 1. 确认正在运行的服务目录、数据库绝对路径及环境变量。对当前 SQLite 数据库做一致性备份并校验备份的 `PRAGMA integrity_check`；使用 SQLite 备份 API 或 `.backup`，不要在写入中只复制主 `.db` 文件而遗漏 WAL。记录当前代码、代理配置和前端版本。
 2. 在隔离副本上应用迁移，验证原业务数据仍可读。生产应用在启动时自动运行未应用迁移；需要提前单独迁移时，在同一服务环境内执行下面的 `runMigrations`。它不会创建默认账号或种子数据。先核对待应用迁移清单，避免顺带应用其他未确认迁移。
 3. 发布本功能的后端文件与前端构建产物；确认服务环境中的 `PARTNER_OAUTH_ISSUER=https://yachiyo.hk`（不带末尾 `/`）。默认值相同；正式环境拒绝 HTTP issuer。数据库路径沿用原 `DB_PATH`。
-4. 对实际生效的各层代理添加下面两个路径及专用头文件；先 `nginx -t`／`openresty -t`，成功后再重载。保留现有站点配置及不相关路由，不能直接用模板覆盖现场配置。
+4. 用 `nginx -T`／`openresty -T` 确认实际加载的配置文件，再为各层代理添加下面两个路径及专用头文件；先通过语法检查，成功后再重载。国内本次实际加载的是 `/etc/nginx/conf.d/tsukuyomi-space.conf`，不能仅凭 `sites-enabled` 的符号链接推断生效文件。保留现有站点配置及不相关路由，不能直接用模板覆盖现场配置。
 5. 验证健康检查、本站登录、文章读取和 Fushi 原有路由，再使用测试客户端跑完整授权。确认实际公网响应的安全头、缓存策略、跳转及限流行为后，登记正式客户端并交付凭据。
 
 下列命令在目标代码目录、正确服务环境内运行；`DB_PATH` 必须已经指向现有数据库：
@@ -43,6 +43,8 @@ node -e 'if (!process.env.DB_PATH || !require("node:fs").existsSync(process.env.
 专用头文件源文件为 `deploy/partner-oauth-security-headers.inc`。公开源站文件对应宿主机 `/opt/1panel/www/sites/yachiyo.hk/proxy/`；前端文件对应宿主机 `/opt/1panel/www/conf.d/`。按现场挂载核实，先安装头文件，再启用引用它的 location。现有两个安装／同步脚本也包含该文件，但本功能的窄范围发布不需要运行整个站点同步或资源复制流程。
 
 这些路径关闭缓存、访问日志和包含 URL 的错误日志，限制请求体 8 KiB，保留后端 `Content-Security-Policy`，并设置 `no-store`、`no-referrer` 和 `DENY`。各层代理必须保留真实 Host 为 `yachiyo.hk`、原始 `Origin`、`Sec-Fetch-Site`、Cookie 和 Authorization；不要把 Origin 改成受信任来源，也不要给后端客户端附加 Cookie。CDN 对这两个路径同样绕过缓存，不注入脚本或记录完整查询参数。
+
+CDN 可能使用 `origin.yachiyo.hk` 作为回源 Host。此时必须同时为 `yachiyo.hk` 和 `origin.yachiyo.hk` 实际生效的公开代理配置安装上述两个 location，并在这两个路径中固定 `proxy_set_header Host yachiyo.hk`。只更新主域名的配置不足以覆盖 CDN 回源；其余路径仍沿用现场配置。不要放宽后端对 issuer、Origin 或客户端请求的校验。
 
 授权页的 CSP 仅允许本站表单和已登记回调源。专用代理策略与其叠加，允许授权 POST 的 303 最终跳转；不能套用普通站点仅 `form-action 'self'` 的策略。`proxy_pass_header` 的行为见 [Nginx 官方文档](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass_header)。隐藏来源信息可能让浏览器原生表单携带 `Origin: null`，后端仅在 `Sec-Fetch-Site: same-origin` 且一次性凭据绑定当前登录会话时接受；见 [Origin 请求头说明](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Origin#description)。
 
