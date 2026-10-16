@@ -9,6 +9,9 @@ const { pipeline } = require('node:stream/promises');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'asset-upload-test-'));
 Object.assign(process.env, { NODE_ENV: 'test', DATA_DIR: temp, DB_PATH: path.join(temp, 'test.db'), REDIS_URL: '',
   JWT_SECRET: 'upload-tests-secret-long-enough-for-production', ADMIN_PASSWORD: 'test-password', ROOM_WEATHER_OFFLINE: 'true', ENABLE_FRONTEND_DIST: 'false' });
+const config = require('../backend/config');
+config.projectRoot = path.join(temp, 'public');
+fs.mkdirSync(config.projectRoot);
 const { createApp } = require('../backend/app');
 const db = require('../backend/db');
 const uploads = require('../backend/services/asset-uploads');
@@ -18,6 +21,7 @@ const { CHUNK_BYTES: CHUNK, MAX_USER_UPLOAD_BYTES: MAX } = uploads;
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 let api, mock, base, settings, token, otherToken, failOss = false, delayOss = false;
 let releaseOss;
+const roleTokens = {};
 const stored = new Map();
 const originalSettings = storage.getSettings;
 async function listen(server) { await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); return `http://127.0.0.1:${server.address().port}`; }
@@ -28,23 +32,28 @@ async function request(method, suffix = '', body, auth = token, extra = {}) {
     body: body === undefined ? undefined : Buffer.isBuffer(body) ? body : JSON.stringify(body) });
   return { status: response.status, ...(await response.json()) };
 }
-async function create(size, extra = {}) {
-  const response = await request('POST', '/uploads', { size, fileName: 'test.pdf', mimeType: 'application/pdf', ...extra });
+async function create(size, extra = {}, auth = token) {
+  const response = await request('POST', '/uploads', { size, fileName: 'test.pdf', mimeType: 'application/pdf', ...extra }, auth);
   assert.equal(response.status, 200, JSON.stringify(response)); return response.data;
 }
 async function chunk(s, n, buffer, checksum = hash(buffer), auth = token) { return request('PUT', `/uploads/${s.id}/${n}`, buffer, auth, { 'X-Upload-SHA256': checksum }); }
-async function poll(s) {
+async function poll(s, auth = token) {
   for (let n = 0; n < 400; n++) {
-    const response = await request('GET', `/uploads/${s.id}`);
+    const response = await request('GET', `/uploads/${s.id}`, undefined, auth);
     if (response.data.completed || response.data.error) return response.data;
     await new Promise(resolve => setTimeout(resolve, 15));
   }
   throw new Error('Finalize did not finish');
 }
-async function remove(s) { await request('DELETE', `/uploads/${s.id}`); if (stored.has(s.id)) stored.delete(s.id); }
+async function remove(s, auth = token) { await request('DELETE', `/uploads/${s.id}`, undefined, auth); if (stored.has(s.id)) stored.delete(s.id); }
 before(async () => {
   api = http.createServer(createApp()); base = await listen(api);
   for (const id of ['upload-user', 'upload-other']) db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)').run(id, id, id + '@example.test', 'unused-hash', 'user');
+  for (const role of ['admin', 'super_admin']) {
+    const id = 'upload-' + role;
+    db.prepare('INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)').run(id, id, id + '@example.test', 'unused-hash', role);
+    roleTokens[role] = generateToken({ id });
+  }
   token = generateToken({ id: 'upload-user' }); otherToken = generateToken({ id: 'upload-other' });
   mock = http.createServer(async (req, res) => {
     const key = new URL(req.url, 'http://mock').pathname;
@@ -103,32 +112,34 @@ test('rejects wrong hashes, unsafe file types, oversized chunks, and out-of-orde
   await remove(unsafe);
 });
 
-for (const megabytes of [40, 100]) test(`${megabytes} MiB uploads, resumes, finalizes idempotently and downloads with matching SHA-256`, async () => {
-  const s = await create(megabytes * 1024 * 1024);
+for (const [megabytes, role, mode] of [[40, 'user', 'oss'], [100, 'user', 'oss'], [104, 'admin', 'oss'], [108, 'super_admin', 'local']]) test(`${role}: ${megabytes} MiB ${mode} uploads, resumes, finalizes and downloads with matching SHA-256`, async () => {
+  const auth = roleTokens[role] || token;
+  const ownerId = 'upload-' + role;
+  const s = await create(megabytes * 1024 * 1024, { storage: mode }, auth);
   const data = Buffer.alloc(CHUNK, 65); data.write('%PDF-1.7');
   const expected = crypto.createHash('sha256');
   for (let n = 0; n < s.size / CHUNK; n++) {
-    assert.equal((await chunk(s, n, data)).status, 200); expected.update(data);
+    assert.equal((await chunk(s, n, data, hash(data), auth)).status, 200); expected.update(data);
     if (n === 1) {
       // Reload module as after a process restart: acknowledged bytes live on disk.
       delete require.cache[require.resolve('../backend/services/asset-uploads')];
       const reopened = require('../backend/services/asset-uploads');
-      assert.equal(reopened.status(s.id, 'upload-user').received, 2 * CHUNK);
+      assert.equal(reopened.status(s.id, ownerId).received, 2 * CHUNK);
     }
   }
-  assert.equal((await request('POST', `/uploads/${s.id}/complete`)).status, 202);
-  const complete = await poll(s); assert.equal(complete.completed, true, complete.error);
+  assert.equal((await request('POST', `/uploads/${s.id}/complete`, undefined, auth)).status, 202);
+  const complete = await poll(s, auth); assert.equal(complete.completed, true, complete.error);
   assert.equal(complete.asset.metadata.size, s.size);
   assert.equal(fs.existsSync(path.join(temp, 'asset-upload-sessions', s.id, 'upload.bin')), false);
-  assert.equal((await request('POST', `/uploads/${s.id}/complete`)).status, 202);
+  assert.equal((await request('POST', `/uploads/${s.id}/complete`, undefined, auth)).status, 202);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM article_assets WHERE id = ?').get(s.id).n, 1);
-  const response = await fetch(base + `/api/assets/proxy/${s.id}`, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await fetch(base + complete.asset.access_url, { headers: { Authorization: `Bearer ${otherToken}` } });
   assert.equal(response.status, 200); assert.equal(Number(response.headers.get('content-length')), s.size);
   const actual = crypto.createHash('sha256'); let received = 0;
   for await (const part of response.body) { actual.update(part); received += part.length; }
   assert.equal(received, s.size); assert.equal(actual.digest('hex'), expected.digest('hex'));
   assert.equal((await fetch(base + `/api/assets/proxy/${s.id}`)).status, 401);
-  await remove(s);
+  await remove(s, auth);
 });
 
 test('reports completion only after temporary-file cleanup releases the finalization lock', async () => {
@@ -189,4 +200,38 @@ test('limits per-account temporary disk reservations and cleans expired sessions
   uploads.cleanup(true);
   assert.equal(fs.existsSync(statePath), false);
   await remove(b);
+});
+
+
+test('body and token role claims cannot exempt regular users, while admin sizes remain valid numbers', async () => {
+  const forged = generateToken({ id: 'upload-user', role: 'super_admin' });
+  assert.equal((await request('POST', '/uploads', { size: MAX + 1, role: 'admin', unlimited: true, maxBytes: null }, forged)).status, 413);
+  for (const size of [-1, 0, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.equal((await request('POST', '/uploads', { size }, roleTokens.admin)).status, 400);
+  }
+  // Verify the removed cap was not merely replaced with another arbitrary cap.
+  const large = await create(8 * 1024 ** 3, {}, roleTokens.admin);
+  await remove(large, roleTokens.admin);
+});
+
+test('current role is rechecked on resume and final save, and admins still have type validation', async () => {
+  const auth = roleTokens.admin;
+  const s = await create(MAX + 1, {}, auth);
+  const data = Buffer.alloc(CHUNK, 65); data.write('<html>');
+  assert.equal((await chunk(s, 0, data, hash(data), auth)).status, 400);
+  data.write('%PDF-1.7');
+  assert.equal((await chunk(s, 0, data, hash(data), auth)).status, 200);
+  db.prepare("UPDATE users SET role = 'user' WHERE id = 'upload-admin'").run();
+  try {
+    assert.equal((await chunk(s, 1, data, hash(data), auth)).status, 413);
+    assert.equal((await request('POST', `/uploads/${s.id}/complete`, undefined, auth)).status, 413);
+    const filePath = path.join(temp, 'demoted.pdf');
+    fs.writeFileSync(filePath, '%PDF-1.7'); fs.truncateSync(filePath, MAX + 1);
+    await assert.rejects(require('../backend/services/article-media').saveUserFileFromPath({
+      filePath, id: crypto.randomUUID(), ownerId: 'upload-admin', size: MAX + 1, fileName: 'demoted.pdf', storage: 'local'
+    }), { status: 413 });
+  } finally {
+    db.prepare("UPDATE users SET role = 'admin' WHERE id = 'upload-admin'").run();
+    await remove(s, auth);
+  }
 });

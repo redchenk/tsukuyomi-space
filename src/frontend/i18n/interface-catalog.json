@@ -9318,5 +9318,13 @@
   "日记对话已改变，请重新读取": {
     "en": "The diary conversation changed. Please reload it.",
     "ja": "日記の元の会話が変更されました。再読み込みしてください。"
+  },
+  "管理图片、音视频与文档，支持复制 Markdown 或从编辑器插入。管理员上传不限制文件大小，支持自动重试和断点续传。": {
+    "en": "Manage images, audio, video and documents. Copy Markdown or insert them from the editor. Admin uploads have no file size limit, with automatic retries and resumable uploads.",
+    "ja": "画像・音声・動画・文書を管理し、Markdown のコピーやエディターからの挿入ができます。管理者のアップロードはファイルサイズ制限なし。自動再試行と再開可能なアップロードに対応します。"
+  },
+  "管理员上传不限制文件大小。自动重试；24 小时内重新选择同一文件可续传。未完成的上传可在附件库取消。": {
+    "en": "Admin uploads have no file size limit. Automatic retries; select the same file within 24 hours to resume. Cancel incomplete uploads in Attachments.",
+    "ja": "管理者のアップロードはファイルサイズ制限なし。自動再試行に対応し、24 時間以内に同じファイルを選ぶと再開できます。未完了のアップロードは添付ファイル管理で取り消せます。"
   }
 }

@@ -5,7 +5,7 @@ import { useUploadProgress } from '../composables/useUploadProgress';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiUrl, authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
-import { uploadAttachment, ATTACHMENT_ACCEPT } from '../api/attachments';
+import { uploadAttachment, ATTACHMENT_ACCEPT, hasUnlimitedAttachmentSize } from '../api/attachments';
 import { uploadJson } from '../api/upload-json.mjs';
 import { compressImage } from '../utils/image';
 import { renderMarkdown } from '../utils/markdown';
@@ -29,6 +29,7 @@ const editorContentInput = ref(null);
 const editorAssetUploadInput = ref(null);
 const session = ref(getSession());
 const uploadAccept = ATTACHMENT_ACCEPT;
+const unlimitedAttachmentSize = computed(() => hasUnlimitedAttachmentSize(session.value?.user?.role));
 let assetUploadController = null;
 
 const { categories, revision: categoryRevision, refresh: refreshCategories } = useArticleCategories();
@@ -731,7 +732,7 @@ watch(currentArticleId, initEditor);
               <input ref="editorAssetUploadInput" type="file" :accept="uploadAccept" hidden @change="uploadEditorAsset">
               <button class="primary-btn" type="button" @click="go('/attachments')">管理附件</button>
             </div>
-            <p class="form-hint">单文件最大 100 MB。自动重试；24 小时内重新选择同一文件可续传。未完成的上传可在附件库取消。</p>
+            <p class="form-hint">{{ unlimitedAttachmentSize ? '管理员上传不限制文件大小。自动重试；24 小时内重新选择同一文件可续传。未完成的上传可在附件库取消。' : '单文件最大 100 MB。自动重试；24 小时内重新选择同一文件可续传。未完成的上传可在附件库取消。' }}</p>
             <UploadProgress :state="assetUpload.state" cancelable @cancel="assetUploadController?.abort()" @dismiss="assetUpload.clear" />
             <p v-if="editor.assetPicker.message" class="form-message error">{{ editor.assetPicker.message }}</p>
             <LoadingSkeleton v-if="editor.assetPicker.loading" variant="gallery" :count="6" label="正在加载附件" />

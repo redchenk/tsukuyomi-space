@@ -1,4 +1,5 @@
 export const MAX_ATTACHMENT_BYTES = 100 * 1024 * 1024;
+export const hasUnlimitedAttachmentSize = role => role === 'admin' || role === 'super_admin';
 export const ATTACHMENT_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.mp4,.m4v,.webm,.mov,.mp3,.flac,.wav,.ogg,.m4a,.pdf,.txt,.md,.markdown';
 const MIMES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp',
   mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', mp3: 'audio/mpeg',
@@ -47,9 +48,9 @@ export function uploadRequest(resolveUrl, method, path, { body, signal, onProgre
 }
 
 export function createAttachmentUploader({ request, storage, hash = digest, sleep = delay, randomId = () => crypto.randomUUID() }) {
-  return async function upload(file, { ownerId, storageMode = 'auto', signal, onProgress = () => {} } = {}) {
+  return async function upload(file, { ownerId, accountRole, storageMode = 'auto', signal, onProgress = () => {} } = {}) {
     if (!file.size) throw new Error('文件内容为空');
-    if (file.size > MAX_ATTACHMENT_BYTES) throw new Error('单个文件不能超过 100 MB');
+    if (!hasUnlimitedAttachmentSize(accountRole) && file.size > MAX_ATTACHMENT_BYTES) throw new Error('单个文件不能超过 100 MB');
     const mimeType = attachmentMime(file);
     if (!mimeType) throw new Error('暂不支持这种文件类型，请选择图片、音视频、PDF、TXT 或 Markdown');
     if (!ownerId) throw new Error('请先登录后上传附件');

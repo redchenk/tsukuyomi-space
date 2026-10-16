@@ -5,7 +5,7 @@ import { useUploadProgress } from '../composables/useUploadProgress';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { authFetch, authHeaders, getSession, noStoreUrl, parseResponse } from '../api/client';
-import { uploadAttachment, ATTACHMENT_ACCEPT } from '../api/attachments';
+import { uploadAttachment, ATTACHMENT_ACCEPT, hasUnlimitedAttachmentSize } from '../api/attachments';
 
 const emit = defineEmits(['go']);
 const route = useRoute();
@@ -31,6 +31,7 @@ const state = reactive({
 const isAuthed = computed(() => Boolean(session.value));
 const canManageAllAssets = computed(() => Boolean(session.value?.admin || ['admin', 'super_admin'].includes(session.value?.user?.role)));
 const uploadAccept = ATTACHMENT_ACCEPT;
+const unlimitedAttachmentSize = computed(() => hasUnlimitedAttachmentSize(session.value?.user?.role));
 const assetUpload = useUploadProgress();
 let uploadController = null;
 let assetLoadController = null;
@@ -220,7 +221,7 @@ onBeforeUnmount(() => {
         <div>
           <span class="attachments-kicker">Asset Library</span>
           <h1>附件库</h1>
-          <p>管理图片、音视频与文档，支持复制 Markdown 或从编辑器插入。单文件最大 100 MB，支持自动重试和断点续传。</p>
+          <p>{{ unlimitedAttachmentSize ? '管理图片、音视频与文档，支持复制 Markdown 或从编辑器插入。管理员上传不限制文件大小，支持自动重试和断点续传。' : '管理图片、音视频与文档，支持复制 Markdown 或从编辑器插入。单文件最大 100 MB，支持自动重试和断点续传。' }}</p>
         </div>
         <div class="attachments-actions">
           <button class="ghost-btn" type="button" @click="go('/editor')">写文章</button>

@@ -6,6 +6,7 @@ const config = require('../config');
 const objectStorage = require('./object-storage');
 const { resolveArticleExcerpt } = require('./article-summary');
 const { detectMimeFromMagic, validateUserUpload } = require('./file-security');
+const { maxUploadBytesForOwner } = require('./attachment-policy');
 
 const DATA_IMAGE_PATTERN = /^data:image\/(png|jpe?g|gif|webp);base64,([\s\S]+)$/i;
 const MARKDOWN_DATA_IMAGE_PATTERN = /!\[([^\]\n]*)\]\((data:image\/(?:png|jpe?g|gif|webp);base64,[^)]+)\)/gi;
@@ -376,7 +377,7 @@ function saveDataImageLocal(dataUrl, { articleId = null, ownerId = null, role = 
 }
 
 // The resumable uploader owns this private staging path. Inspect only the header
-// and stream the file to storage so a 100 MB attachment never becomes a Buffer.
+// and stream the file to storage without loading a whole attachment into memory.
 async function saveUserFileFromPath({ filePath, id, ownerId, size, mimeType = '', fileName = '', alt = '', storage = 'auto' }) {
     const existing = db.prepare('SELECT * FROM article_assets WHERE id = ? AND owner_id = ?').get(id, ownerId);
     if (existing) return existing;
@@ -389,7 +390,7 @@ async function saveUserFileFromPath({ filePath, id, ownerId, size, mimeType = ''
         sample = Buffer.alloc(Math.min(stat.size, 4096));
         await file.read(sample, 0, sample.length, 0);
     } finally { await file.close(); }
-    const inspection = validateUserUpload({ buffer: sample, fileSize: stat.size, fileName, claimedMimeType: mimeType });
+    const inspection = validateUserUpload({ buffer: sample, fileSize: stat.size, fileName, claimedMimeType: mimeType }, { maxBytes: maxUploadBytesForOwner(ownerId) });
     const trustedMime = inspection.trustedMimeType;
     const ext = EXT_BY_MIME[trustedMime] || normalizeAssetExt({ fileName, mimeType: trustedMime });
     const assetType = assetTypeFromMime(trustedMime);

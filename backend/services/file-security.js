@@ -95,10 +95,15 @@ function uploadError(message, status = 400) {
     return error;
 }
 
-function validateUserUpload({ buffer, fileName = '', claimedMimeType = '', fileSize = buffer?.length } = {}) {
+function validateUploadSize(fileSize, maxBytes = MAX_USER_UPLOAD_BYTES) {
+    if (!Number.isSafeInteger(fileSize) || fileSize <= 0) throw uploadError('文件大小无效');
+    if (fileSize > maxBytes) throw uploadError('文件不能超过 100MB', 413);
+}
+
+function validateUserUpload({ buffer, fileName = '', claimedMimeType = '', fileSize = buffer?.length } = {}, { maxBytes = MAX_USER_UPLOAD_BYTES } = {}) {
     if (!Buffer.isBuffer(buffer) || !buffer.length) throw uploadError('文件内容为空');
     if (!Number.isSafeInteger(fileSize) || fileSize < buffer.length) throw uploadError('文件大小无效');
-    if (fileSize > MAX_USER_UPLOAD_BYTES) throw uploadError('文件不能超过 100MB', 413);
+    validateUploadSize(fileSize, maxBytes);
 
     const ext = extensionFromName(fileName);
     const claimedMime = cleanMime(claimedMimeType);
@@ -143,5 +148,6 @@ module.exports = {
     cleanMime,
     detectMimeFromMagic,
     validateUserUpload,
+    validateUploadSize,
     attachmentDisposition
 };

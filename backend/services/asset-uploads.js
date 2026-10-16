@@ -5,6 +5,7 @@ const config = require('../config');
 const articleMedia = require('./article-media');
 const assetRepository = require('../repositories/asset-repository');
 const { MAX_USER_UPLOAD_BYTES, validateUserUpload } = require('./file-security');
+const { maxUploadBytesForOwner, validateUploadSizeForOwner } = require('./attachment-policy');
 
 const CHUNK_BYTES = 4 * 1024 * 1024;
 const TTL_MS = 24 * 60 * 60 * 1000;
@@ -76,7 +77,7 @@ function create(ownerId, input) {
     cleanup(true);
     const size = Number(input.size);
     if (!Number.isSafeInteger(size) || size <= 0) throw error('文件内容为空或大小无效');
-    if (size > MAX_USER_UPLOAD_BYTES) throw error('文件不能超过 100MB', 413);
+    validateUploadSizeForOwner(ownerId, size);
     const requestId = UUID.test(String(input.requestId)) ? input.requestId : '';
     const rows = sessions();
     const previous = requestId && rows.find(s => s.ownerId === ownerId && s.requestId === requestId);
@@ -139,6 +140,7 @@ function admit(req, res, next) {
 async function append(id, ownerId, index, buffer, suppliedHash) {
     const s = read(id, ownerId);
     if (s.completed) throw error('此上传已完成', 409);
+    validateUploadSizeForOwner(ownerId, s.size);
     if (!Number.isSafeInteger(index) || index < 0 || index >= Math.ceil(s.size / CHUNK_BYTES)) throw error('分块编号无效');
     if (!Buffer.isBuffer(buffer) || buffer.length !== Math.min(CHUNK_BYTES, s.size - index * CHUNK_BYTES)) throw error('分块大小不匹配');
     const hash = crypto.createHash('sha256').update(buffer).digest('hex');
@@ -148,7 +150,7 @@ async function append(id, ownerId, index, buffer, suppliedHash) {
         return publicState(s);
     }
     if (index !== s.parts.length) throw error('请按顺序上传分块', 409);
-    if (index === 0) validateUserUpload({ buffer: buffer.subarray(0, 4096), fileSize: s.size, fileName: s.fileName, claimedMimeType: s.mimeType });
+    if (index === 0) validateUserUpload({ buffer: buffer.subarray(0, 4096), fileSize: s.size, fileName: s.fileName, claimedMimeType: s.mimeType }, { maxBytes: maxUploadBytesForOwner(ownerId) });
     const file = await fs.promises.open(path.join(directory(id), 'upload.bin'), fs.constants.O_RDWR | (fs.constants.O_NOFOLLOW || 0));
     try {
         let written = 0;
@@ -171,6 +173,7 @@ async function complete(id, ownerId) {
         if (!asset) throw error('已完成的附件已被删除', 410);
         return asset;
     }
+    validateUploadSizeForOwner(ownerId, s.size);
     if (s.parts.reduce((n, p) => n + p.size, 0) !== s.size) throw error('还有未上传的分块，请继续上传', 409);
     const filePath = path.join(directory(id), 'upload.bin');
     s.processing = true;

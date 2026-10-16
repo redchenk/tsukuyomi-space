@@ -93,3 +93,27 @@ test('percentages measure file bytes and distinguish transfer completion from sa
   assert.ok(samples.some(s => s.percent === 100 && s.details.stage === 'processing'));
   assert.equal(samples.at(-1).details.stage, 'complete');
 });
+
+
+for (const accountRole of ['admin', 'super_admin']) test(`${accountRole} uploads above 100 MiB in bounded chunks with byte progress`, async () => {
+  const { createAttachmentUploader, MAX_ATTACHMENT_BYTES } = await modulePromise;
+  const size = MAX_ATTACHMENT_BYTES + 123;
+  const file = { size, name: 'large.pdf', lastModified: 1,
+    slice(start, end) { return new Blob([Buffer.alloc(Math.min(end, size) - start, 65)]); } };
+  let uploaded = 0, complete = false;
+  const samples = [];
+  const state = { id: randomUUID(), size, chunkBytes: CHUNK, parts: [], expiresAt: Date.now() + 86400000 };
+  const request = async (method, path, opts = {}) => {
+    if (method === 'PUT') {
+      assert.ok(opts.body.size <= CHUNK);
+      uploaded += opts.body.size; opts.onProgress(opts.body.size);
+    }
+    if (path.endsWith('/complete')) complete = true;
+    return { ...state, completed: complete, asset: complete ? { id: 'saved' } : undefined };
+  };
+  const upload = createAttachmentUploader({ request, hash: sha, randomId: randomUUID, sleep: async () => {} });
+  const result = await upload(file, { ownerId: 'test', accountRole, onProgress: (percent, label, details) => samples.push(details) });
+  assert.equal(result.id, 'saved'); assert.equal(uploaded, size);
+  assert.equal(samples.at(-1).loaded, size); assert.equal(samples.at(-1).total, size);
+  await assert.rejects(upload(new File(['<svg>'], 'evil.svg'), { ownerId: 'test', accountRole }), /不支持/);
+});

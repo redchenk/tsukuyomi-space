@@ -19,6 +19,7 @@ const responseCache = require('../services/response-cache');
 const userGrowth = require('../services/user-growth');
 const { likeGalleryImage } = require('../services/gallery-likes');
 const uploads = require('../services/asset-uploads');
+const { validateUploadSizeForOwner } = require('../services/attachment-policy');
 const { createRateLimiter } = require('../middleware/security');
 const { setPublicReadCache } = require('../services/public-cache');
 const { attachmentDisposition, cleanMime, MAX_USER_UPLOAD_BYTES } = require('../services/file-security');
@@ -362,9 +363,13 @@ async function streamOssAsset(req, res, asset, metadata) {
     const stop = () => source.destroy();
     res.once('close', stop);
     let bytes = 0;
+    // The recorded size comes from the saved file, not from the downloading user.
+    // Large admin attachments must also download fully for their authorized readers.
+    const maxBytes = Number.isSafeInteger(metadata.size) && metadata.size > 0
+        ? Math.max(MAX_USER_UPLOAD_BYTES, metadata.size) : MAX_USER_UPLOAD_BYTES;
     const limit = new Transform({ transform(chunk, encoding, callback) {
         bytes += chunk.length;
-        callback(bytes > MAX_USER_UPLOAD_BYTES ? new Error('附件超过下载大小限制') : null, chunk);
+        callback(bytes > maxBytes ? new Error('附件超过下载大小限制') : null, chunk);
     } });
     try { await pipeline(source, limit, res); }
     finally { res.off('close', stop); }
@@ -410,6 +415,7 @@ router.put('/uploads/:uploadId/:part', authenticateToken, uploads.admit,
     }));
 router.post('/uploads/:uploadId/complete', authenticateToken, uploads.admit, uploadOperation(async (req, res) => {
     const state = uploads.status(req.params.uploadId, req.user.id);
+    if (!state.completed) validateUploadSizeForOwner(req.user.id, state.size);
     if (state.received !== state.size) return fail(res, 409, '还有未上传的分块，请继续上传');
     // The browser polls status; slow OSS transfers outlive proxy request timeouts.
     // Keep the admission slot until this operation finishes, even after HTTP 202.
