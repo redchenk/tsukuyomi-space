@@ -19,15 +19,19 @@ async function pauseReveal(page) {
   });
 }
 
-test('first visit shows the brand splash; returning and refreshing do not replay it', async ({ page }) => {
+test('every full entry reload shows the brand splash, even with the legacy session marker', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('tsukuyomi_entry_splash_seen', '1'));
   let releasePoster;
-  const poster = new Promise(resolve => { releasePoster = resolve; });
+  let poster = new Promise(resolve => { releasePoster = resolve; });
   await page.route('**/*moon-gate-poster*.webp', async route => { await poster; await route.continue(); });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#boot-splash')).toBeVisible();
   releasePoster();
   await expect(page.locator('#boot-splash')).toHaveCount(0);
-  await page.reload();
+  poster = new Promise(resolve => { releasePoster = resolve; });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#boot-splash')).toBeVisible();
+  releasePoster();
   await expect(page.locator('#boot-splash')).toHaveCount(0);
   await expect(page.locator('.access-enter')).toBeEnabled();
 });
@@ -151,10 +155,23 @@ for (const size of [{ width: 320, height: 568 }, { width: 844, height: 390 }]) {
   });
 }
 
-test('direct Hub visits do not show an entry layer or splash', async ({ page }) => {
-  await page.goto('/hub');
+test('direct Hub visits and full reloads show splash until the app is ready', async ({ page }) => {
+  let releaseBundle;
+  let bundle = new Promise(resolve => { releaseBundle = resolve; });
+  await page.route('**/assets/index-*.js', async route => { await bundle; await route.continue(); });
+  await page.goto('/hub', { waitUntil: 'commit' });
+  await expect(page.locator('#boot-splash')).toBeVisible();
+  releaseBundle();
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   await expect(page.locator('.hub')).toBeVisible();
   await expect(page.locator('#boot-splash, .access-gate')).toHaveCount(0);
+  bundle = new Promise(resolve => { releaseBundle = resolve; });
+  await page.reload({ waitUntil: 'commit' });
+  await expect(page.locator('#boot-splash')).toBeVisible();
+  releaseBundle();
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
+  await expect(page.locator('.hub')).toBeVisible();
+  await expect(page.locator('.access-gate')).toHaveCount(0);
 });
 
 test('a failed application bundle exposes a reload action instead of an endless splash', async ({ page }) => {

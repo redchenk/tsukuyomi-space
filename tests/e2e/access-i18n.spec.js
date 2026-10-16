@@ -49,6 +49,7 @@ for(const lang of ['en','ja'])test(`all public destinations render localized con
 });
 for(const lang of ['en','ja'])test(`signed-in destinations retain translations and access (${lang})`,async({page})=>{
  await language(page,lang);await page.goto('/login');
+ await expect(page.locator('#boot-splash')).toHaveCount(0);
  await page.locator('#loginAccount').fill('e2e-user');await page.locator('#loginPassword').fill('e2e-password');
  await page.locator('#loginPassword').press('Enter');await expect(page).toHaveURL(/\/hub$/);
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
@@ -62,7 +63,7 @@ test('switching language preserves room settings drafts, keys and user-owned kno
 
  // Values are data, including words that also happen to be interface keys.
  await page.evaluate(()=>{localStorage.setItem('roomKnowledgeSettings',JSON.stringify({enabled:true,entries:[{id:'owned',title:'保存设置',content:'删除 你好 搜索',tags:['保存'],enabled:true}]}));});
- await page.reload();const input=page.locator('#settings-llm-key');await input.fill('fixture-only-key-not-a-real-secret');
+ await page.reload();await expect(page.locator('#boot-splash')).toHaveCount(0);const input=page.locator('#settings-llm-key');await input.fill('fixture-only-key-not-a-real-secret');
  await page.getByRole('button',{name:'账号菜单',exact:true}).click();
  await page.getByRole('button',{name:'日本語',exact:true}).click();
  await expect(page.locator('html')).toHaveAttribute('lang','ja');await expect(input).toHaveValue('fixture-only-key-not-a-real-secret');
@@ -80,6 +81,7 @@ test('entry remains usable when its optional locale chunk cannot load',async({pa
 });
 for(const lang of ['en','ja']) test(`terminal panels keep localized controls (${lang})`,async({page})=>{
  await language(page,lang);await page.goto('/terminal');
+ await expect(page.locator('#boot-splash')).toHaveCount(0);
  await page.locator('input[autocomplete="username"]').fill('admin');
  await page.locator('input[autocomplete="current-password"]').fill('admin-test-password');
  await page.locator('.terminal-login-card button[type="submit"]').click();

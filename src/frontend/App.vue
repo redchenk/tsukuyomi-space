@@ -406,6 +406,12 @@ router.isReady().then(() => {
 });
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
+  // Direct links also boot behind the splash. Access waits for its poster;
+  // other routes are ready once the initial route has rendered.
+  router.isReady().then(async () => {
+    await nextTick();
+    if (!isAccessRoute.value) window.dispatchEvent(new Event('tsukuyomi:entry-ready'));
+  });
   stopSeasonTracking = startSeasonTracking();
   removeRouteLinks = installRouteLinks({ router, navigate: go, prefetch: warmRoutePath });
   removeRouteProgressGuard = router.beforeEach((to, from) => scheduleRouteProgress(to, from));

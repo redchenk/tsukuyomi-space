@@ -117,6 +117,7 @@ test('stale cached Hub remains readable while refreshing and on refresh failure'
 test('Plaza drafts survive a public page return and are discarded after logout', async ({ page }) => {
     await content(page);
     await page.goto('/login');
+    await expect(page.locator('#boot-splash')).toHaveCount(0);
     await page.locator('#loginAccount').fill('e2e-user');
     await page.locator('#loginPassword').fill('e2e-password');
     await page.getByRole('button', { name: '登录', exact: true }).click();
