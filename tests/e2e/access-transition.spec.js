@@ -36,6 +36,36 @@ test('every full entry reload shows the brand splash, even with the legacy sessi
   await expect(page.locator('.access-enter')).toBeEnabled();
 });
 
+for (const reducedMotion of ['no-preference', 'reduce']) {
+  test(`fast homepage loads and cached reloads keep a readable splash (${reducedMotion})`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion });
+    // Observe actual topmost, fully opaque frames without delaying any resource.
+    await page.addInitScript(() => {
+      window.brandFrames = [];
+      const observe = () => {
+        const splash = document.getElementById('boot-splash');
+        if (splash && getComputedStyle(splash).opacity === '1'
+          && document.elementFromPoint(innerWidth / 2, innerHeight / 2)?.closest('#boot-splash')) {
+          window.brandFrames.push(performance.now());
+        }
+        if (splash || document.readyState === 'loading') requestAnimationFrame(observe);
+      };
+      requestAnimationFrame(observe);
+    });
+    for (const reload of [false, true]) {
+      if (reload) await page.reload({ waitUntil: 'domcontentloaded' });
+      else await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('#boot-splash')).toBeVisible();
+      if (!reload) await page.screenshot({ path: `output/access-transition/${test.info().project.name}-boot-${reducedMotion}.png` });
+      await expect(page.locator('#boot-splash')).toHaveCount(0);
+      const duration = await page.evaluate(() => window.brandFrames.at(-1) - window.brandFrames[0]);
+      expect(duration).toBeGreaterThanOrEqual(800);
+      await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
+      await expect(page.locator('.access-enter')).toBeEnabled();
+    }
+  });
+}
+
 test('the circle reveals a single live Hub that updates and survives the transition', async ({ page }) => {
   await pauseReveal(page);
   let releaseData;
