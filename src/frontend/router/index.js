@@ -474,3 +474,5 @@ router.afterEach((to, from, failure) => {
   refreshPerformanceProbe();
   scheduleRouteWarmup(to);
 });
+
+export { AccessPage as loadAccessPage, HubPage as loadHubPage };

@@ -741,10 +741,13 @@ describe('unified async loading states', () => {
         const roomOverlay = source('src/frontend/components/room/RoomLoadingOverlay.vue');
         const roomState = source('src/frontend/composables/room/useRoomState.js');
 
-        for (const content of [access, login, terminal, roomOverlay]) {
+        for (const content of [login, terminal, roomOverlay]) {
             assert.match(content, /<StatusLoader/);
             assert.match(content, /aria-busy/);
         }
+        assert.match(access, /aria-busy="entering"/);
+        assert.match(access, /role="status" aria-live="polite"/);
+        assert.match(access, /role="alert"/);
         assert.match(roomState, /error: false/);
         assert.match(roomState, /loading\.error = true/);
         assert.doesNotMatch(roomOverlay, /status-progress/);

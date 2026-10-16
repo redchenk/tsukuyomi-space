@@ -31,6 +31,9 @@ export function fingerprintedBrandAssets(englishSite = false) {
       }
       const reference = this.emitFile({ type: 'asset', name: 'site.webmanifest', source: JSON.stringify(manifest, null, 2) });
       replacements.set('/site.webmanifest', '/' + this.getFileName(reference));
+      // Keep the tiny boot controller independent of the application module graph.
+      const boot = this.emitFile({ type: 'asset', name: 'boot-splash.js', source: readFileSync(new URL('./src/frontend/boot-splash.js', import.meta.url), 'utf8') });
+      replacements.set('/boot-splash.js', '/' + this.getFileName(boot));
       const index = bundle['index.html'];
       if (!index || index.type !== 'asset') throw new Error('Missing frontend HTML for brand assets');
       let html = String(index.source);
@@ -82,6 +85,8 @@ function englishSiteHtml(englishSite) {
       return html
         .replace(/<html\s+lang="[^"]*"/, '<html lang="en"')
         .replaceAll('https://yachiyo.hk', 'https://tsukuyomi-space.com')
+        .replace('<p class="boot-splash-name">月读空间</p>', '<p class="boot-splash-name">Tsukuyomi Space</p>')
+        .replace('重新加载 · Reload', 'Reload')
         .replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`)
         .replace(/<meta\s+name="description"[^>]*>/i, `<meta name="description" content="${description}">`)
         .replace(/<meta\s+name="keywords"[^>]*>/i, `<meta name="keywords" content="${keywords}">`)
@@ -129,6 +134,16 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
+      modulePreload: {
+        // WebKit 270357 can retain failed modulepreloads even after a reload.
+        // The entry already warms this route with import(); retain CSS preloads
+        // but let Hub's scripts use normal module loading so retry can recover.
+        resolveDependencies(filename, dependencies) {
+          return /(?:^|\/)HubPage-/.test(filename)
+            ? dependencies.filter(dependency => dependency.endsWith('.css'))
+            : dependencies;
+        }
+      },
       outDir: fileURLToPath(new URL('./dist/frontend', import.meta.url)),
       emptyOutDir: true,
       cssCodeSplit: true,

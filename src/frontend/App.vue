@@ -13,7 +13,9 @@ import { setPublicAssetBaseUrl } from './utils/assetUrl';
 import { isAuthPath, withAuthRedirect } from './utils/authRedirect';
 import { animateRouteEnter, animateRouteLeave, cancelRouteMotion } from './utils/motion';
 import { focusRouteHeading, installRouteLinks, routeViewKey } from './utils/routeNavigation';
-import { warmRoutePath } from './router';
+import { loadAccessPage, warmRoutePath } from './router';
+import { useAccessTransition } from './composables/useAccessTransition';
+import './styles/access-transition.css';
 import { forcedSiteLanguage } from './utils/siteVariant';
 import {
   getPerformanceProfile,
@@ -21,6 +23,7 @@ import {
   scheduleIdleTask
 } from './utils/performance';
 
+const AccessPage = defineAsyncComponent(loadAccessPage);
 const SitePet = defineAsyncComponent(() => import('./components/SitePet.vue'));
 const NoticeMarkdown = defineAsyncComponent(() => import('./components/NoticeMarkdown.vue'));
 
@@ -51,6 +54,14 @@ const routeLoadingLabel = computed(() => lang.value === 'ja'
   ? 'ページを読み込み中'
   : lang.value === 'en' ? 'Loading page' : '页面加载中');
 const isAccessRoute = computed(() => route.name === 'access' || route.name === 'accessAlias');
+const { gate: accessGate, phase: entryPhase, failed: entryFailed, enter: enterSpace } = useAccessTransition({
+  route, router, onEntered: () => {
+    try { sessionStorage.setItem(VISIT_POPUP_PENDING_KEY, '1'); } catch (_) { /* Optional notice. */ }
+    focusRouteHeading(document.querySelector('[data-route-name="hub"]'));
+    loadVisitPopup();
+  }
+});
+const entryActive = computed(() => entryPhase.value !== 'idle');
 const isAuthRoute = computed(() => route.name === 'login' || route.name === 'register');
 const isLive2DRoute = computed(() => route.name === 'live2d');
 const isRoomRoute = computed(() => route.name === 'room' || route.name === 'roomShared');
@@ -299,7 +310,7 @@ function makePopupSignature(settings) {
 }
 
 async function loadVisitPopup() {
-  if (route.name !== 'hub' || sessionStorage.getItem(VISIT_POPUP_PENDING_KEY) !== '1') return;
+  if (entryActive.value || route.name !== 'hub' || sessionStorage.getItem(VISIT_POPUP_PENDING_KEY) !== '1') return;
   sessionStorage.removeItem(VISIT_POPUP_PENDING_KEY);
   try {
     const settings = await loadPublicSettings();
@@ -426,7 +437,15 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <div v-if="isAccessRoute || entryActive" ref="accessGate" class="access-gate"
+    :data-phase="entryPhase" :inert="entryPhase === 'revealing'">
+    <AccessPage :t="t" :entering="entryActive" :entry-failed="entryFailed"
+      @enter="enterSpace" @warm="warmRoutePath('/hub')" />
+  </div>
   <AppShell
+    :class="{ 'entry-destination-preparing': entryActive }"
+    :inert="isAccessRoute || entryActive"
+    :aria-hidden="isAccessRoute || entryActive ? 'true' : undefined"
     :lang="lang"
     :route-name="route.name"
     :show-chrome="!isImmersiveRoute"
@@ -452,7 +471,7 @@ onUnmounted(() => {
         >
           <KeepAlive :include="routeCacheInclude" :max="ROUTE_CACHE_LIMIT">
             <component
-              v-if="Component"
+              v-if="Component && !isAccessRoute"
               :is="frameForRoute(viewRoute)"
               :key="componentCacheKey(viewRoute)"
               :component="Component"
@@ -481,7 +500,7 @@ onUnmounted(() => {
     aria-busy="true"
   ><span aria-hidden="true"></span></div>
 
-  <SitePet v-if="showSitePet && petReady" :lang="lang" :route-name="route.name" :reduced="petReduced" @go="go" />
+  <SitePet v-if="showSitePet && petReady && !entryActive" :lang="lang" :route-name="route.name" :reduced="petReduced" @go="go" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
     <section class="visit-popup-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="visitPopup.title">

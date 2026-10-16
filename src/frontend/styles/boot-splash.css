@@ -1,0 +1,25 @@
+.boot-splash {
+  position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center;
+  background: radial-gradient(ellipse at 50% 43%, #34364f 0%, #222d47 48%, #182137 100%);
+  color: #fff5ed; opacity: 1; transition: opacity 320ms ease;
+}
+.boot-splash.is-ready { opacity: 0; pointer-events: none; }
+.boot-splash-content { display: grid; justify-items: center; text-align: center; padding: 24px; }
+.boot-splash-seal { width: 142px; height: 142px; display: grid; place-items: center; position: relative; margin-bottom: 26px; }
+.boot-splash-seal::before { content: ''; position: absolute; inset: 0; border: 1px solid #dfb2c42e; border-radius: 50%; }
+.boot-splash-seal::after { content: ''; position: absolute; inset: 0; border: 1px solid transparent; border-top-color: #edc5d3b3; border-radius: 50%; animation: boot-orbit 2.4s linear infinite; }
+.boot-splash-seal img { width: 96px; height: 96px; object-fit: contain; filter: drop-shadow(0 0 22px #cfb5e329); }
+.boot-splash-name { margin: 0; font-family: 'Songti SC', 'Noto Serif SC', Georgia, serif; font-size: 32px; font-weight: 400; letter-spacing: .2em; text-indent: .2em; }
+:lang(en) .boot-splash-name { font-size: clamp(22px, 5vw, 32px); letter-spacing: .04em; text-indent: .04em; }
+.boot-splash-caption { margin: 14px 0 30px; font: 10px/1.5 Georgia, serif; letter-spacing: .36em; text-indent: .36em; color: #e9dce4b3; }
+.boot-splash-line { width: 68px; height: 1px; background: #dfb2c42e; position: relative; overflow: hidden; }
+.boot-splash-line::after { content: ''; position: absolute; inset: 0; background: #e2a9be; animation: boot-line 1.6s ease-in-out infinite; }
+.boot-splash-retry { margin-top: 24px; color: #fff5ed; font: 13px/1.5 sans-serif; text-underline-offset: 5px; }
+.boot-splash-retry[hidden] { display: none; }
+.boot-splash[data-stalled] .boot-splash-line::after { animation: none; }
+@keyframes boot-orbit { to { transform: rotate(360deg); } }
+@keyframes boot-line { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .boot-splash { transition: none; }
+  .boot-splash-seal::after, .boot-splash-line::after { animation: none; }
+}

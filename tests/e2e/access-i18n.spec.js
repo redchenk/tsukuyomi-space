@@ -16,6 +16,7 @@ for (const size of [{width:390,height:844},{width:320,height:568},{width:844,hei
   await page.setViewportSize(size);
   await page.route('**/*moon-gate*.mp4',route=>route.abort());
   await page.goto('/');
+  await expect(page.locator('#boot-splash')).toHaveCount(0);
   const enter=page.locator('.access-enter');await expect(enter).toBeVisible();await expect(enter).toBeInViewport();
   expect(await enter.evaluate(node=>{const r=node.getBoundingClientRect();return node.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
   await page.screenshot({path:`.codex_tmp/access-i18n-20261008/access-${test.info().project.name}-${size.width}.png`});

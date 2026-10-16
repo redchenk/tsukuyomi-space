@@ -174,17 +174,6 @@ body.vue-access-route { overflow-y: auto; }
 .access-page .access-beian .beian-links { flex-direction: row; flex-wrap: wrap; gap: 10px 28px; }
 .access-page .access-beian .beian-link { font-size: 12px; line-height: 1.6; white-space: nowrap; }
 .access-page .access-beian .mps-beian-icon { width: 16px; height: 16px; }
-.access-page .access-loading-layer {
-    position: fixed;
-    inset: 0;
-    z-index: 40;
-    display: grid;
-    place-items: center;
-    background: #15213ee6;
-    transition: opacity 100ms ease;
-}
-.access-loading-box { width: min(80vw, 320px); }
-.access-loading-layer.is-completing, .access-page.is-leaving .access-hero { opacity: 0; }
 :lang(en) .access-title { font-size: clamp(46px, 5vw, 82px); letter-spacing: .02em; white-space: normal; }
 :lang(en) .access-subtitle { letter-spacing: .05em; }
 @media (hover: hover) and (pointer: fine) {
@@ -224,6 +213,6 @@ body.vue-access-route { overflow-y: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
     .access-page .access-video { display: none; }
-    .access-page .access-enter, .access-page .access-hero, .access-page .access-loading-layer { transition: none; }
+    .access-page .access-enter, .access-page .access-hero { transition: none; }
     .access-page .access-enter:hover { transform: none; }
 }

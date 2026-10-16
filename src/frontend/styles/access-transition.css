@@ -1,0 +1,12 @@
+/* The entry stays above the live destination until its circular aperture has
+   covered the viewport. Only this temporary layer owns a clipping context. */
+.access-gate { position: fixed; inset: 0; z-index: 10000; overflow: auto; background: #263453; }
+.access-gate[data-phase="revealing"] { overflow: hidden; pointer-events: none; will-change: clip-path; }
+.access-gate .access-page { min-height: 100%; }
+.entry-destination-preparing .hub img[data-image-state="loaded"] { animation: none; }
+.access-enter-spinner { width: 22px; height: 22px; flex: 0 0 22px; border: 1px solid #fff5ed55; border-top-color: #fff5ed; border-radius: 50%; animation: access-pending 1s linear infinite; }
+.access-entry-error { color: #fff5ed; font-size: 14px; line-height: 1.6; text-shadow: 0 1px 8px #15213e; }
+.access-entry-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.access-page .access-enter:disabled { opacity: 1; cursor: wait; }
+@keyframes access-pending { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .access-enter-spinner { animation: none; } }
