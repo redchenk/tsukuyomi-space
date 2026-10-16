@@ -22,7 +22,6 @@ const state = reactive({
   assets: [],
   search: '',
   type: 'all',
-  storage: 'auto',
   scope: 'mine',
   page: 1,
   totalPages: 1
@@ -140,7 +139,7 @@ async function uploadAsset(event) {
   uploadController = new AbortController();
   try {
     await uploadAttachment(file, {
-      ownerId: session.value?.user?.id, storageMode: state.storage, signal: uploadController.signal,
+      ownerId: session.value?.user?.id, signal: uploadController.signal,
       onProgress: assetUpload.update
     });
     assetUpload.complete('附件已上传');
@@ -263,13 +262,10 @@ onBeforeUnmount(() => {
       </section>
 
       <section class="panel attachments-upload-options">
-        <label>存储位置
-          <select v-model="state.storage">
-            <option value="auto">跟随站点默认</option>
-            <option value="local">本地存储</option>
-            <option value="oss">对象存储</option>
-          </select>
-        </label>
+        <div>
+          <strong>存储位置由站点统一管理</strong>
+          <p>启用并配置 OSS 后，所有附件统一保存到对象存储；未启用时使用本地存储。</p>
+        </div>
         <p>附件自动分类保存。你可以管理自己的文件，管理员可在全站附件管理中查看全部附件。</p>
       </section>
 

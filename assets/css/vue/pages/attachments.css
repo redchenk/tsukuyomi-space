@@ -303,3 +303,7 @@
 .attachments-card-body strong{white-space:normal;overflow-wrap:anywhere;line-height:1.6}
 @media(max-width:760px){.attachments-search-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.attachments-search-tools input{grid-column:1/-1}.attachments-search-tools select{grid-column:1/-1}.attachments-upload-options{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:440px){.attachments-pending-row{grid-template-columns:minmax(0,1fr)}.attachments-pending-row button{justify-self:start}}
+
+.attachments-upload-options{grid-template-columns:minmax(0,1fr)}
+.attachments-upload-options>div{min-width:0}
+.attachments-upload-options strong{display:block;margin-bottom:.35rem;overflow-wrap:anywhere}

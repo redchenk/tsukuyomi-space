@@ -9326,5 +9326,21 @@
   "管理员上传不限制文件大小。自动重试；24 小时内重新选择同一文件可续传。未完成的上传可在附件库取消。": {
     "en": "Admin uploads have no file size limit. Automatic retries; select the same file within 24 hours to resume. Cancel incomplete uploads in Attachments.",
     "ja": "管理者のアップロードはファイルサイズ制限なし。自動再試行に対応し、24 時間以内に同じファイルを選ぶと再開できます。未完了のアップロードは添付ファイル管理で取り消せます。"
+  },
+  "对象存储参数不完整，请联系管理员": {
+    "en": "Object storage configuration is incomplete. Please contact an administrator.",
+    "ja": "オブジェクトストレージの設定が不完全です。管理者にお問い合わせください。"
+  },
+  "存储位置由站点统一管理": {
+    "en": "Storage is managed by the site",
+    "ja": "保存先はサイトが一括管理します"
+  },
+  "启用并配置 OSS 后，所有附件统一保存到对象存储；未启用时使用本地存储。": {
+    "en": "When OSS is enabled and configured, all attachments use object storage. Otherwise, local storage is used.",
+    "ja": "OSS が有効で設定済みの場合、すべての添付ファイルはオブジェクトストレージに保存されます。無効の場合はローカルに保存されます。"
+  },
+  "对象存储上传失败，请稍后重试或联系管理员": {
+    "en": "Object storage upload failed. Try again later or contact an administrator.",
+    "ja": "オブジェクトストレージへのアップロードに失敗しました。後でもう一度試すか、管理者にお問い合わせください。"
   }
 }

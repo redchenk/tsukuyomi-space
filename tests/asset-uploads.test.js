@@ -112,7 +112,7 @@ test('rejects wrong hashes, unsafe file types, oversized chunks, and out-of-orde
   await remove(unsafe);
 });
 
-for (const [megabytes, role, mode] of [[40, 'user', 'oss'], [100, 'user', 'oss'], [104, 'admin', 'oss'], [108, 'super_admin', 'local']]) test(`${role}: ${megabytes} MiB ${mode} uploads, resumes, finalizes and downloads with matching SHA-256`, async () => {
+for (const [megabytes, role, mode] of [[40, 'user', 'oss'], [100, 'user', 'oss'], [104, 'admin', 'local'], [108, 'super_admin', 'local']]) test(`${role}: ${megabytes} MiB ${mode} uploads, resumes, finalizes and downloads with matching SHA-256`, async () => {
   const auth = roleTokens[role] || token;
   const ownerId = 'upload-' + role;
   const s = await create(megabytes * 1024 * 1024, { storage: mode }, auth);
@@ -130,6 +130,7 @@ for (const [megabytes, role, mode] of [[40, 'user', 'oss'], [100, 'user', 'oss']
   assert.equal((await request('POST', `/uploads/${s.id}/complete`, undefined, auth)).status, 202);
   const complete = await poll(s, auth); assert.equal(complete.completed, true, complete.error);
   assert.equal(complete.asset.metadata.size, s.size);
+  assert.equal(complete.asset.metadata.storage, 'oss');
   assert.equal(fs.existsSync(path.join(temp, 'asset-upload-sessions', s.id, 'upload.bin')), false);
   assert.equal((await request('POST', `/uploads/${s.id}/complete`, undefined, auth)).status, 202);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM article_assets WHERE id = ?').get(s.id).n, 1);
@@ -234,4 +235,56 @@ test('current role is rechecked on resume and final save, and admins still have 
     db.prepare("UPDATE users SET role = 'admin' WHERE id = 'upload-admin'").run();
     await remove(s, auth);
   }
+});
+
+
+test('unconfigured storage uses local files, enabled but incomplete OSS never falls back', async () => {
+  const configured = settings;
+  const data = Buffer.from('%PDF-1.7\nlocal fallback');
+  try {
+    settings = { ossEnabled: false };
+    const s = await create(data.length);
+    await chunk(s, 0, data);
+    await request('POST', `/uploads/${s.id}/complete`);
+    const done = await poll(s);
+    assert.equal(done.completed, true, done.error);
+    assert.equal(done.asset.metadata.storage, 'local');
+    const response = await fetch(base + done.asset.access_url);
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), data);
+    await remove(s);
+    settings = { ...configured, ossAccessKeySecret: '' };
+    const failed = await create(data.length, { storage: 'local' }, roleTokens.admin);
+    await chunk(failed, 0, data, hash(data), roleTokens.admin);
+    await request('POST', `/uploads/${failed.id}/complete`, undefined, roleTokens.admin);
+    assert.ok((await poll(failed, roleTokens.admin)).error);
+    assert.equal(db.prepare('SELECT id FROM article_assets WHERE id = ?').get(failed.id), undefined);
+    assert.ok(fs.existsSync(path.join(temp, 'asset-upload-sessions', failed.id, 'upload.bin')));
+    await remove(failed, roleTokens.admin);
+  } finally { settings = configured; }
+});
+
+test('configured OSS overrides local requests and defaults for gallery, covers and inline images; failure creates no local assets', async () => {
+  const configured = settings;
+  const put = storage.putObject;
+  const media = require('../backend/services/article-media');
+  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNk+M/wn4GBgYGJAQoAHgQCAQb7R3sAAAAASUVORK5CYII=', 'base64');
+  const dataUrl = 'data:image/png;base64,' + image.toString('base64');
+  const sent = [];
+  try {
+    settings = { ...configured, ossDefaultStorage: 'local' };
+    storage.putObject = async options => { sent.push(options); return { url: 'https://oss.example.test/' + options.id, key: 'test/' + options.id, storage: 'oss' }; };
+    const gallery = await media.saveUserFileAsset({ ownerId:'upload-user', buffer:image, fileName:'gallery.png', mimeType:'image/png', collection:'gallery', storage:'local' });
+    assert.equal(JSON.parse(gallery.metadata).storage, 'oss');
+    const article = await media.normalizeArticleMediaPayload({ coverImage:dataUrl, content:'![image](' + dataUrl + ')' }, { ownerId:'upload-user' });
+    assert.equal(new Set(article.mediaAssetIds).size, 2);
+    assert.deepEqual(sent.map(x => x.role), ['attachment', 'cover', 'body']);
+    for (const id of article.mediaAssetIds) assert.equal(JSON.parse(db.prepare('SELECT metadata FROM article_assets WHERE id = ?').get(id).metadata).storage, 'oss');
+    const count = db.prepare('SELECT count(*) n FROM article_assets').get().n;
+    storage.putObject = async () => { throw new Error('offline'); };
+    await assert.rejects(media.saveUserFileAsset({ ownerId:'upload-user', buffer:image, fileName:'failure.png', mimeType:'image/png', storage:'local' }), { status:503 });
+    await assert.rejects(media.normalizeArticleMediaPayload({ coverImage:dataUrl }, { ownerId:'upload-user' }), { status:503 });
+    storage.putObject = async () => null;
+    await assert.rejects(media.saveUserImageAsset(dataUrl, { ownerId:'upload-user', storage:'local' }), { status:503 });
+    assert.equal(db.prepare('SELECT count(*) n FROM article_assets').get().n, count);
+  } finally { storage.putObject = put; settings = configured; }
 });

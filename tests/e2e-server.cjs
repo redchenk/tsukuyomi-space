@@ -66,6 +66,8 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
+db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
+    .run('upload-super-admin', 'upload-super-admin', 'upload-super-admin@example.test', bcrypt.hashSync('upload-super-password', 4), 'super_admin');
 require('../backend/services/partner-oauth').registerClient({
     id: 'e2e-partner', name: '第八千代测试应用', redirectUris: ['https://partner.example.test/callback'], secret: 'e'.repeat(43)
 });

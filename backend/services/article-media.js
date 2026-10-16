@@ -236,13 +236,9 @@ async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role =
 
     const id = crypto.randomUUID();
     const settings = objectStorage.getSettings();
-    const storageMode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
-    if (storageMode === 'oss' && !objectStorage.hasUploadParams(settings)) {
-        throw new Error('对象存储未启用或参数不完整');
-    }
-    const shouldTryOss = storageMode !== 'local' && (storageMode === 'oss' || (settings.ossEnabled === true && objectStorage.hasUploadParams(settings)));
+    const storageMode = objectStorage.resolveUploadStorage(settings);
 
-    if (shouldTryOss) try {
+    if (storageMode === 'oss') try {
         const uploaded = await objectStorage.putObject({
             buffer: parsed.buffer,
             mimeType: parsed.mimeType,
@@ -250,7 +246,7 @@ async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role =
             role,
             id,
             uploadPath,
-            requireEnabled: storageMode !== 'oss'
+            settings
         });
         if (uploaded?.url) {
             createAssetRecord({
@@ -265,9 +261,9 @@ async function saveDataImage(dataUrl, { articleId = null, ownerId = null, role =
             });
             return { id, url: durableAssetUrl(id) };
         }
+        throw articleMediaError('对象存储暂不可用，请稍后重试', 503);
     } catch (error) {
-        if (storageMode === 'oss') throw new Error('对象存储上传失败，请检查后台配置或上传路径');
-        console.warn('OSS image upload failed, falling back to local storage:', error.message);
+        throw articleMediaError('对象存储上传失败，请稍后重试或联系管理员', 503);
     }
 
     return saveParsedImageLocal(parsed, { id, articleId, ownerId, role, alt, uploadPath });
@@ -320,13 +316,9 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
         ...(isGallery ? { collection: 'gallery', gallery: true, visibility: 'public' } : {})
     };
     const settings = objectStorage.getSettings();
-    const storageMode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
-    if (storageMode === 'oss' && !objectStorage.hasUploadParams(settings)) {
-        throw new Error('对象存储未启用或参数不完整');
-    }
-    const shouldTryOss = storageMode !== 'local' && (storageMode === 'oss' || (settings.ossEnabled === true && objectStorage.hasUploadParams(settings)));
+    const storageMode = objectStorage.resolveUploadStorage(settings);
 
-    if (shouldTryOss) try {
+    if (storageMode === 'oss') try {
         const uploaded = await objectStorage.putObject({
             buffer,
             mimeType: normalizedMimeType,
@@ -334,7 +326,7 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
             role: 'attachment',
             id,
             uploadPath: managedUploadPath,
-            requireEnabled: storageMode !== 'oss'
+            settings
         });
         if (uploaded?.url) {
             createAssetRecord({
@@ -353,9 +345,9 @@ async function saveUserFileAsset({ buffer, ownerId, mimeType = 'application/octe
                 WHERE id = ?
             `).get(id);
         }
+        throw articleMediaError('对象存储暂不可用，请稍后重试', 503);
     } catch (error) {
-        if (storageMode === 'oss') throw new Error('对象存储上传失败，请检查后台配置或上传路径');
-        console.warn('OSS file upload failed, falling back to local storage:', error.message);
+        throw articleMediaError('对象存储上传失败，请稍后重试或联系管理员', 503);
     }
 
     saveBufferLocal({ buffer, mimeType: normalizedMimeType, ext, id, ownerId, role: assetRole, alt, fileName, uploadPath: managedUploadPath });
@@ -397,12 +389,10 @@ async function saveUserFileFromPath({ filePath, id, ownerId, size, mimeType = ''
     const folder = userAssetUploadPath(ownerId, { mimeType: trustedMime, assetType });
     const metadata = { role: 'attachment', alt, fileName, size: stat.size, folder, visibility: 'private' };
     const settings = objectStorage.getSettings();
-    const mode = objectStorage.normalizeStorageMode(storage === 'auto' ? settings.ossDefaultStorage : storage);
-    if (mode === 'oss' && !objectStorage.hasUploadParams(settings)) throw articleMediaError('对象存储参数不完整', 503);
-    const useOss = mode !== 'local' && (mode === 'oss' || objectStorage.isConfigured(settings));
-    if (useOss) {
+    const mode = objectStorage.resolveUploadStorage(settings);
+    if (mode === 'oss') {
         const uploaded = await objectStorage.putObject({ filePath, mimeType: trustedMime, ext, role: 'attachment',
-            id, uploadPath: folder, settings: { ...settings, ossFileNameMode: 'uuid' }, requireEnabled: mode !== 'oss', privateRead: true });
+            id, uploadPath: folder, settings: { ...settings, ossFileNameMode: 'uuid' }, privateRead: true });
         if (!uploaded?.url) throw articleMediaError('对象存储暂不可用，请重试；已接收的分块会保留', 503);
         createAssetRecord({ id, ownerId, assetType, mimeType: trustedMime, url: uploaded.url,
             storageKey: uploaded.key, metadata: { ...metadata, storage: 'oss' } });

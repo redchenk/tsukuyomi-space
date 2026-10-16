@@ -316,6 +316,15 @@ function isConfigured(settings = getSettings()) {
     return Boolean(settings.ossEnabled === true && hasUploadParams(settings));
 }
 
+function resolveUploadStorage(settings = getSettings()) {
+    // Per-upload choices and legacy defaults cannot bypass enabled OSS storage.
+    if (settings.ossEnabled !== true) return 'local';
+    if (!hasUploadParams(settings)) {
+        throw Object.assign(new Error('对象存储参数不完整，请联系管理员'), { status: 503 });
+    }
+    return 'oss';
+}
+
 function normalizeExtraHeaders(headers = {}) {
     return Object.fromEntries(
         Object.entries(headers || {})
@@ -727,6 +736,7 @@ module.exports = {
     getSettings,
     hasUploadParams,
     isConfigured,
+    resolveUploadStorage,
     listObjects,
     normalizeObjectKey,
     normalizeStorageMode,

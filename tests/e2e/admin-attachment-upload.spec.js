@@ -3,13 +3,14 @@ const { test, expect } = require('../e2e-fixtures.cjs');
 const SIZE = 104 * 1024 * 1024;
 
 async function login(page, username, password, role) {
-  await page.goto('/login');
-  await page.locator('#loginAccount').fill(username);
-  await page.locator('#loginPassword').fill(password);
-  await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page).toHaveURL(/\/hub$/);
+  const base = test.info().project.use.baseURL || process.env.E2E_BASE_URL || 'http://127.0.0.1:4174';
+  const response = await page.request.post('/api/auth/login', {
+    data: { username, password }, headers: { Origin:base, 'X-Requested-With':'XMLHttpRequest' }
+  });
+  expect(response.ok()).toBe(true);
   const me = await (await page.request.get('/api/auth/me')).json();
   expect(me.data.role).toBe(role);
+  await page.addInitScript(user => localStorage.setItem('tsukuyomi_user', JSON.stringify(user)), me.data);
 }
 function largeFile(info) {
   const file = info.outputPath(`admin-large-${info.project.name}.pdf`);
@@ -20,7 +21,7 @@ function largeFile(info) {
 
 for (const role of ['admin', 'super_admin']) test(`${role} can upload 104 MiB through the library and editor`, async ({ page }, info) => {
   test.setTimeout(90000);
-  await login(page, role === 'admin' ? 'notify-site-admin' : 'admin', role === 'admin' ? 'notify-staff-password' : 'admin-test-password', role);
+  await login(page, role === 'admin' ? 'notify-site-admin' : 'upload-super-admin', role === 'admin' ? 'notify-staff-password' : 'upload-super-password', role);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/attachments');
   await expect(page.locator('.attachments-hero')).toContainText('管理员上传不限制文件大小');
