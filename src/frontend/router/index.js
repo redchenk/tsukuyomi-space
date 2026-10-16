@@ -364,6 +364,13 @@ export const router = createRouter({
 });
 
 router.beforeEach(() => { cancelPendingRouteScroll(); });
+// Consent and grant management are server-rendered pages with no SPA analytics.
+router.beforeEach(to => {
+  if (/^\/oauth\/(?:authorize|connections)$/.test(to.path)) {
+    window.location.assign(to.fullPath);
+    return false;
+  }
+});
 
 const routeWarmups = {
   access: [HubPage],

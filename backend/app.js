@@ -40,6 +40,7 @@ function createApp() {
     initDatabase();
     require('./services/article-engagement').backfillHistorical();
     require('./services/fushi-config').validateConfig();
+    require('./services/partner-oauth').issuer();
 
     const app = express();
     app.disable('x-powered-by');
@@ -48,6 +49,11 @@ function createApp() {
     // Correlate even requests rejected by CORS, Origin, auth, rate limits or JSON parsing.
     app.use(require('./services/fushi-diagnostics').middleware);
     app.use(securityHeaders);
+    // Isolated protocol routers own parsing, authentication, origin checks and
+    // OAuth errors. Keep them outside the site's cookie/AJAX write guard/CORS.
+    const partnerOAuth = require('./routes/partner-oauth').createRouters();
+    app.use('/oauth', partnerOAuth.browser);
+    app.use('/api/partner/oauth', partnerOAuth.api);
     app.use('/fushi/astrbot/callback', (req, res, next) => {
         res.set('Cache-Control', 'private, no-store');
         res.set('Surrogate-Control', 'no-store');

@@ -1192,6 +1192,7 @@ onUnmounted(() => {
           <div v-if="uc.tab === 'security'" :aria-busy="uc.passwordChanging">
             <div class="uc-section-head">
               <h2 class="uc-section-title">{{ t.ucSecurity }}</h2>
+              <button type="button" class="ghost-btn" @click="go('/oauth/connections')">{{ lang === 'en' ? 'Authorized apps' : lang === 'ja' ? '連携アプリ' : '已授权应用' }}</button>
             </div>
             <div v-if="uc.passwordMsg" class="form-message" :class="uc.passwordMsgType">{{ uc.passwordMsg }}</div>
             <div class="uc-security-grid">

@@ -18,6 +18,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $frontendDist = Join-Path $repoRoot "dist\frontend"
 $nginxConf = Join-Path $repoRoot "deploy\hk-frontend-openresty.conf"
 $securityHeaders = Join-Path $repoRoot "deploy\security-headers.inc"
+$partnerOauthHeaders = Join-Path $repoRoot "deploy\partner-oauth-security-headers.inc"
 $renderedNginxConf = Join-Path ([System.IO.Path]::GetTempPath()) "tsukuyomi-hk-openresty-$PID.conf"
 
 if (!(Test-Path $frontendDist)) {
@@ -29,6 +30,7 @@ scp -i $KeyPath -P $Port -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL -
 $renderedConfig = (Get-Content -LiteralPath $nginxConf -Raw).Replace('__ORIGIN_HOST__', $OriginHost)
 [System.IO.File]::WriteAllText($renderedNginxConf, $renderedConfig, [System.Text.UTF8Encoding]::new($false))
 scp -i $KeyPath -P $Port -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "$securityHeaders" "$User@$HostName`:/opt/1panel/www/conf.d/_tsukuyomi-security-headers.inc"
+scp -i $KeyPath -P $Port -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "$partnerOauthHeaders" "$User@$HostName`:/opt/1panel/www/conf.d/_tsukuyomi-partner-oauth-security-headers.inc"
 scp -i $KeyPath -P $Port -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "$renderedNginxConf" "$User@$HostName`:/opt/1panel/www/conf.d/yachiyo-space.conf"
 
 $resourceArchiveCommand = "cd '$OriginRoot' && tar -czf - assets/music assets/video assets/audio models lib"

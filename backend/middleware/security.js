@@ -136,7 +136,7 @@ function rateLimitKey(prefix, identity) {
     return `${prefix}:${digest}`;
 }
 
-function createRateLimiter({ windowMs, max, keyPrefix = 'rate', keyGenerator = getClientIp }) {
+function createRateLimiter({ windowMs, max, keyPrefix = 'rate', keyGenerator = getClientIp, onLimit }) {
     const hits = new Map();
 
     setInterval(() => {
@@ -155,6 +155,7 @@ function createRateLimiter({ windowMs, max, keyPrefix = 'rate', keyGenerator = g
             const bucket = await store.incrementWithTtl(key, ttlSeconds);
             if (bucket.count > max) {
                 res.setHeader('Retry-After', Math.max(1, bucket.ttl || ttlSeconds));
+                if (onLimit) return onLimit(req, res);
                 return res.status(429).json({ success: false, message: '请求过于频繁，请稍后再试' });
             }
             return next();
@@ -170,6 +171,7 @@ function createRateLimiter({ windowMs, max, keyPrefix = 'rate', keyGenerator = g
         bucket.count += 1;
         if (bucket.count > max) {
             res.setHeader('Retry-After', Math.ceil((bucket.resetAt - now) / 1000));
+            if (onLimit) return onLimit(req, res);
             return res.status(429).json({ success: false, message: '请求过于频繁，请稍后再试' });
         }
 

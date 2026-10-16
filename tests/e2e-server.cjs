@@ -16,6 +16,7 @@ process.env.ADMIN_EMAIL = 'admin@example.test';
 process.env.ADMIN_PASSWORD = 'admin-test-password';
 process.env.ROOM_WEATHER_OFFLINE = 'true';
 process.env.APP_RELEASES_OFFLINE = 'true';
+process.env.PARTNER_OAUTH_ISSUER = `http://127.0.0.1:${process.env.PORT}`;
 
 // Load configuration only after the test environment is set. Uploads and the
 // SQLite database belong to this disposable fixture, never the developer's data.
@@ -65,6 +66,9 @@ function seedE2EUser() {
 
 const app = createApp();
 seedE2EUser();
+require('../backend/services/partner-oauth').registerClient({
+    id: 'e2e-partner', name: '第八千代测试应用', redirectUris: ['https://partner.example.test/callback'], secret: 'e'.repeat(43)
+});
 for (const project of ['chromium', 'chromium-mobile', 'webkit-mobile']) {
     const id = `diary-cross-device-${project}`;
     db.prepare('INSERT INTO users(id,username,email,password_hash,role) VALUES(?,?,?,?,?)')
