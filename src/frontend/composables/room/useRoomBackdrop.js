@@ -23,13 +23,14 @@ export function useRoomBackdrop() {
   const clock = ref(new Date());
   const requestedKey = computed(() => roomSceneKey(activeSeason.value, clock.value));
   const displayedKey = ref(requestedKey.value);
+  const ready = ref(false);
   let stopTracking;
 
   // URL imports are just strings. Decode only the selected replacement, then
   // swap the CSS image. The previous image remains visible on failure or while
   // downloading; rapid selections cannot install an older, late response.
   watch(requestedKey, (key, _previous, onCleanup) => {
-    if (key === displayedKey.value) return;
+    if (key === displayedKey.value && ready.value) return;
     const image = new Image();
     let cancelled = false;
     onCleanup(() => {
@@ -42,10 +43,11 @@ export function useRoomBackdrop() {
         await image.decode();
         if (!cancelled && image.naturalWidth > 0) displayedKey.value = key;
       } catch (_) { /* Keep the last usable room. */ }
+      if (!cancelled) ready.value = true;
     };
-    image.onerror = () => { /* Keep the last usable room. */ };
+    image.onerror = () => { if (!cancelled) ready.value = true; /* The room's base color remains usable. */ };
     image.src = artwork[key];
-  });
+  }, { immediate: true });
   const scene = computed(() => {
     const [season, time] = displayedKey.value.split('-');
     return {
@@ -59,5 +61,5 @@ export function useRoomBackdrop() {
   const style = computed(() => ({ '--ts-room-bg-image': 'url("' + scene.value.image + '")' }));
   onMounted(() => { stopTracking = trackRoomLighting(date => { clock.value = date; }); });
   onBeforeUnmount(() => { stopTracking?.(); });
-  return { scene, style };
+  return { scene, style, ready };
 }

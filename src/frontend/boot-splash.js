@@ -13,10 +13,16 @@ watchdog = window.setTimeout(() => {
   splash.querySelector('.boot-splash-retry').hidden = false;
 }, 10000);
 
-function completeBootSplash() {
+function completeBootSplash(event) {
   if (dismissed) return;
   dismissed = true;
   window.clearTimeout(watchdog);
+  if (event?.detail?.handoff) {
+    // The room splash is already painted underneath and now owns readiness.
+    splash?.remove();
+    document.getElementById('app')?.removeAttribute('inert');
+    return;
+  }
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   timer = window.setTimeout(() => {
     document.getElementById('app')?.removeAttribute('inert');

@@ -136,10 +136,10 @@ export default defineConfig(({ mode }) => {
     build: {
       modulePreload: {
         // WebKit 270357 can retain failed modulepreloads even after a reload.
-        // The entry already warms this route with import(); retain CSS preloads
-        // but let Hub's scripts use normal module loading so retry can recover.
+        // These entrances expose a reload action. Retain CSS preloads but let
+        // their scripts use normal module loading so retry can recover.
         resolveDependencies(filename, dependencies) {
-          return /(?:^|\/)HubPage-/.test(filename)
+          return /(?:^|\/)(?:Hub|Room)Page-/.test(filename)
             ? dependencies.filter(dependency => dependency.endsWith('.css'))
             : dependencies;
         }

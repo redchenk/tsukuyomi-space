@@ -14,6 +14,8 @@ const LIVE2D_READY_TIMEOUT = 210000;
 let loadingPromise = null;
 let initialized = false;
 let initPromise = null;
+let roomGeneration = 0;
+let cancelPendingReady = null;
 let speechFrameId = 0;
 let speechEndsAt = 0;
 let speechLastFrameAt = 0;
@@ -247,6 +249,7 @@ function waitForLive2DReady() {
 
   return new Promise((resolve, reject) => {
     const cleanup = () => {
+      cancelPendingReady = null;
       window.clearTimeout(timeoutId);
       window.removeEventListener(LIVE2D_READY_EVENT, onReady);
       window.removeEventListener(LIVE2D_ERROR_EVENT, onError);
@@ -266,6 +269,7 @@ function waitForLive2DReady() {
       reject(new Error(event?.detail?.message || 'Live2D texture loading failed'));
     }
 
+    cancelPendingReady = () => { cleanup(); reject(new Error('Room entry cancelled')); };
     window.addEventListener(LIVE2D_READY_EVENT, onReady, { once: true });
     window.addEventListener(LIVE2D_ERROR_EVENT, onError, { once: true });
   });
@@ -274,8 +278,10 @@ function waitForLive2DReady() {
 export async function initLive2DRoom() {
   if (initPromise) return initPromise;
 
-  initPromise = (async () => {
+  const generation = roomGeneration;
+  const pending = (async () => {
     await ensureLive2DScripts();
+    if (generation !== roomGeneration) return;
     window.TSUKUYOMI_LIVE2D_READY = false;
     if (initialized) window.destroyTsukuyomiLive2DRoom?.();
     if (typeof window.initTsukuyomiLive2DRoom !== 'function') {
@@ -285,6 +291,7 @@ export async function initLive2DRoom() {
     window.initTsukuyomiLive2DRoom();
     initialized = true;
     await readyPromise;
+    if (generation !== roomGeneration) return;
     // Apply once to the fresh view matrix; repeating would accumulate offsets.
     const settings = readJson('roomModelSettings', {});
     window.setLive2DModelSettings?.(
@@ -294,14 +301,17 @@ export async function initLive2DRoom() {
     );
   })();
 
+  initPromise = pending;
   try {
-    await initPromise;
+    await pending;
   } finally {
-    initPromise = null;
+    if (initPromise === pending) initPromise = null;
   }
 }
 
 export function destroyLive2DRoom() {
+  roomGeneration++;
+  cancelPendingReady?.();
   window.destroyTsukuyomiLive2DRoom?.();
   initialized = false;
   initPromise = null;

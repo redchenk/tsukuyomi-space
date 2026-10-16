@@ -738,10 +738,10 @@ describe('unified async loading states', () => {
         const access = source('src/frontend/pages/AccessPage.vue');
         const login = source('src/frontend/pages/LoginPage.vue');
         const terminal = source('src/frontend/pages/TerminalPage.vue');
-        const roomOverlay = source('src/frontend/components/room/RoomLoadingOverlay.vue');
+        const roomOverlay = source('src/frontend/components/RoomEntrySplash.vue');
         const roomState = source('src/frontend/composables/room/useRoomState.js');
 
-        for (const content of [login, terminal, roomOverlay]) {
+        for (const content of [login, terminal]) {
             assert.match(content, /<StatusLoader/);
             assert.match(content, /aria-busy/);
         }
@@ -751,8 +751,10 @@ describe('unified async loading states', () => {
         assert.match(roomState, /error: false/);
         assert.match(roomState, /loading\.error = true/);
         assert.doesNotMatch(roomOverlay, /status-progress/);
-        assert.match(roomOverlay, /class="ts-loader-region"[\s\S]*<StatusLoader/);
-        assert.match(roomOverlay, /v-if="active"[\s\S]*v-else-if="error"[\s\S]*role="alert"/);
+        assert.match(roomOverlay, /aria-busy="phase === 'loading'"/);
+        assert.match(roomOverlay, /role="status"/);
+        assert.match(roomOverlay, /phase === 'error' \|\| phase === 'stalled'/);
+        assert.match(roomOverlay, /\$emit\('retry'\)/);
     });
 });
 

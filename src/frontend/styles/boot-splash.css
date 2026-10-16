@@ -23,3 +23,12 @@
   .boot-splash { transition: none; }
   .boot-splash-seal::after, .boot-splash-line::after { animation: none; }
 }
+
+.room-entry-splash { overflow: hidden; transition: none; }
+.room-entry-splash[data-phase="revealing"] { will-change: clip-path; pointer-events: none; }
+.room-entry-detail { margin: 24px 0 0; color: #e9dce4b3; font: 13px/1.7 sans-serif; letter-spacing: .08em; }
+.room-entry-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 22px; }
+.room-entry-actions button { border: 1px solid #dfb2c44d; border-radius: 999px; padding: 10px 18px; background: #ffffff08; color: #fff5ed; font: 13px/1.5 sans-serif; cursor: pointer; }
+.room-entry-actions button:hover { background: #dfb2c41a; }
+.room-entry-actions button:focus-visible { outline: 2px solid #edc5d3; outline-offset: 4px; }
+.room-entry-splash[data-phase="error"] .boot-splash-line::after { animation: none; }

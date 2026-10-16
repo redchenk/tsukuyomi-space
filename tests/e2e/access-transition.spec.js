@@ -58,6 +58,7 @@ test('the circle reveals a single live Hub that updates and survives the transit
   await expect(page.locator('.hub')).toHaveCount(1);
   await expect(page.locator('.app-shell')).toHaveAttribute('inert', '');
   await expect(gate).toHaveCSS('clip-path', /^path\(evenodd/);
+  expect(await gate.evaluate(node => node.getAnimations()[0].effect.getTiming().duration)).toBe(650);
   const hub = await page.locator('.hub').elementHandle();
   releaseData();
   await expect(page.locator('.hub')).toContainText('圆形展开时实时到达的文章');

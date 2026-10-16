@@ -16,6 +16,8 @@ import { animateRouteEnter, animateRouteLeave, cancelRouteMotion } from './utils
 import { focusRouteHeading, installRouteLinks, routeViewKey } from './utils/routeNavigation';
 import { loadAccessPage, warmRoutePath } from './router';
 import { useAccessTransition } from './composables/useAccessTransition';
+import { useRoomEntryTransition } from './composables/useRoomEntryTransition';
+import RoomEntrySplash from './components/RoomEntrySplash.vue';
 import './styles/access-transition.css';
 import { forcedSiteLanguage } from './utils/siteVariant';
 import {
@@ -63,6 +65,7 @@ const { gate: accessGate, phase: entryPhase, failed: entryFailed, enter: enterSp
     loadVisitPopup();
   }
 });
+const { splash: roomSplash, phase: roomEntryPhase, active: roomEntryActive, roomReady, reveal: revealRoom, retry: retryRoom, leave: leaveRoom } = useRoomEntryTransition({ route, router });
 const entryActive = computed(() => entryPhase.value !== 'idle');
 const isAuthRoute = computed(() => route.name === 'login' || route.name === 'register');
 const isLive2DRoute = computed(() => route.name === 'live2d');
@@ -244,8 +247,8 @@ function goBack(fallback = '/hub') { routeHistory.back(resolveNavigationPath(fal
 
 function scheduleRouteProgress(to, from) {
   if (typeof window === 'undefined' || !from?.name || to.fullPath === from.fullPath) return;
-  const routeOwnsLoading = ['access', 'accessAlias', 'room', 'live2d'].includes(String(from.name))
-    || ['room', 'live2d'].includes(String(to.name));
+  const routeOwnsLoading = ['access', 'accessAlias', 'room', 'roomShared', 'live2d'].includes(String(from.name))
+    || ['room', 'roomShared', 'live2d'].includes(String(to.name));
   routeMotionImmediate = routeHistory.beforeNavigation(to) || ['access', 'accessAlias', 'login', 'register', 'room', 'roomShared', 'live2d', 'pixel', 'game']
     .some(name => name === to.name || name === from.name);
   if (routeOwnsLoading) return;
@@ -409,11 +412,11 @@ router.isReady().then(() => {
 watch(() => route.name, () => loadVisitPopup());
 onMounted(() => {
   stopSmoothScroll = installSmoothScroll(router);
-  // Direct links also boot behind the splash. Access waits for its poster;
-  // other routes are ready once the initial route has rendered.
+  // Access waits for its poster; Room hands boot off to its own asset splash.
+  // Other direct routes are ready once the initial route has rendered.
   router.isReady().then(async () => {
     await nextTick();
-    if (!isAccessRoute.value) window.dispatchEvent(new Event('tsukuyomi:entry-ready'));
+    if (!isAccessRoute.value && !isRoomRoute.value) window.dispatchEvent(new Event('tsukuyomi:entry-ready'));
   });
   stopSeasonTracking = startSeasonTracking();
   removeRouteLinks = installRouteLinks({ router, navigate: go, prefetch: warmRoutePath });
@@ -452,10 +455,12 @@ onUnmounted(() => {
     <AccessPage :t="t" :entering="entryActive" :entry-failed="entryFailed"
       @enter="enterSpace" @warm="warmRoutePath('/hub')" />
   </div>
+  <RoomEntrySplash v-if="roomEntryActive" ref="roomSplash" :phase="roomEntryPhase" :lang="lang"
+    :can-enter="isRoomRoute" @retry="retryRoom" @leave="leaveRoom" @continue="revealRoom" />
   <AppShell
     :class="{ 'entry-destination-preparing': entryActive }"
-    :inert="isAccessRoute || entryActive"
-    :aria-hidden="isAccessRoute || entryActive ? 'true' : undefined"
+    :inert="isAccessRoute || entryActive || roomEntryActive"
+    :aria-hidden="isAccessRoute || entryActive || roomEntryActive ? 'true' : undefined"
     :lang="lang"
     :route-name="route.name"
     :show-chrome="!isImmersiveRoute"
@@ -488,6 +493,7 @@ onUnmounted(() => {
               :route-key="routeViewKey(viewRoute)"
               :route-name="String(viewRoute.name)"
               :page-props="{ lang, t, theme, user }"
+              @room-ready="roomReady"
               @auth-changed="refreshUser"
               @go="go"
               @back="goBack"
@@ -510,7 +516,7 @@ onUnmounted(() => {
     aria-busy="true"
   ><span aria-hidden="true"></span></div>
 
-  <SitePet v-if="showSitePet && petReady && !entryActive" :lang="lang" :route-name="route.name" :reduced="petReduced" @go="go" />
+  <SitePet v-if="showSitePet && petReady && !entryActive && !roomEntryActive" :lang="lang" :route-name="route.name" :reduced="petReduced" @go="go" />
 
   <div v-if="visitPopup.visible" class="visit-popup-backdrop" role="presentation">
     <section class="visit-popup-card" data-material="popover" role="dialog" aria-modal="true" :aria-label="visitPopup.title">

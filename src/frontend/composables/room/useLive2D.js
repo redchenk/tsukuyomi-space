@@ -18,11 +18,14 @@ export function useLive2D() {
   const loading = ref(false);
   const ready = ref(false);
   const error = ref('');
+  let destroyed = false;
+  let pendingIntentTimer;
   let destroyCubismBridge = null;
   let destroyStageBodyActuator = null;
 
   function consumePendingSoon() {
-    window.setTimeout(() => consumePendingRoomLive2DIntent(), 250);
+    window.clearTimeout(pendingIntentTimer);
+    pendingIntentTimer = window.setTimeout(() => { if (!destroyed) consumePendingRoomLive2DIntent(); }, 250);
   }
 
   function onStorage(event) {
@@ -40,6 +43,7 @@ export function useLive2D() {
     preloadLive2DResources();
     try {
       await initLive2DRoom();
+      if (destroyed) return false;
       destroyCubismBridge?.();
       destroyStageBodyActuator?.();
       destroyStageBodyActuator = mountLive2DStageBodyActuator('#live2d-container', {
@@ -53,6 +57,7 @@ export function useLive2D() {
       consumePendingSoon();
       return true;
     } catch (err) {
+      if (destroyed) return false;
       error.value = err?.message || 'Live2D init failed';
       ready.value = false;
       loading.value = false;
@@ -69,6 +74,8 @@ export function useLive2D() {
   }
 
   function destroy() {
+    destroyed = true;
+    window.clearTimeout(pendingIntentTimer);
     ready.value = false;
     loading.value = false;
     destroyCubismBridge?.();

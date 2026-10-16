@@ -22,7 +22,7 @@ defineProps({
   routeName: { type: String, required: true },
   pageProps: { type: Object, required: true }
 });
-const emit = defineEmits(['auth-changed', 'go', 'back', 'return-to', 'logout', 'toggle-theme']);
+const emit = defineEmits(['room-ready', 'auth-changed', 'go', 'back', 'return-to', 'logout', 'toggle-theme']);
 </script>
 
 <template>
@@ -32,6 +32,7 @@ const emit = defineEmits(['auth-changed', 'go', 'back', 'return-to', 'logout', '
       class="route-view"
       v-bind="pageProps"
       :route-name="routeName"
+      @room-ready="emit('room-ready', { ...$event, routeKey })"
       @auth-changed="emit('auth-changed', $event)"
       @go="emit('go', $event)"
       @back="emit('back', $event)"

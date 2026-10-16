@@ -13,6 +13,7 @@ test('Room input remains above an overlay keyboard and composition never sends a
     });
     await page.goto('/room');
     await expect(page.locator('#boot-splash')).toHaveCount(0);
+    await page.getByRole('button', { name: '先进入房间', exact: true }).click();
     await expect(page.locator('#loadingOverlay')).toHaveCount(0);
     const input = page.locator('#chatInput');
     await expect(input).toBeVisible();

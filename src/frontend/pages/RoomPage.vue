@@ -5,7 +5,6 @@ import { apiFetch, parseResponse } from '../api/client';
 import RoomChatPanel from '../components/room/RoomChatPanel.vue';
 import RoomDiaryPanel from '../components/room/RoomDiaryPanel.vue';
 import RoomDock from '../components/room/RoomDock.vue';
-import RoomLoadingOverlay from '../components/room/RoomLoadingOverlay.vue';
 import RoomNotePanel from '../components/room/RoomNotePanel.vue';
 import RoomProfilePanel from '../components/room/RoomProfilePanel.vue';
 import RoomStage from '../components/room/RoomStage.vue';
@@ -21,9 +20,12 @@ const props = defineProps({
   lang: { type: String, default: 'zh' }
 });
 
-const emit = defineEmits(['go']);
+const emit = defineEmits(['go', 'room-ready']);
 const room = useRoomState();
 const backdrop = useRoomBackdrop();
+watch(() => !room.loading.active && backdrop.ready.value, ready => {
+  if (ready) emit('room-ready', { error: room.live2d.error.value });
+}, { flush: 'post' });
 const roomStyle = computed(() => ({ ...room.roomStyle.value, ...backdrop.style.value }));
 const mobileRoom = ref(window.matchMedia('(max-width: 860px)').matches);
 const desktopPanel = ref('chatPanel');
@@ -150,6 +152,7 @@ watch(() => props.shareId, loadSharedConversation);
 <template>
   <main
     class="room-page room-conversation-layout"
+    tabindex="-1"
     :class="{ 'room-companion-only': mobileRoom && !room.panels.activePanels.chatPanel }"
     aria-label="&#31169;&#20154;&#23621;&#25152;"
     :data-room-user-id="roomUserId"
@@ -261,7 +264,6 @@ watch(() => props.shareId, loadSharedConversation);
         @save="room.note.saveNote()"
       />
     </Teleport>
-    <RoomLoadingOverlay :active="room.loading.active" :error="room.loading.error" :title="room.loading.title" :detail="room.loading.detail" />
     <RoomShareDialog
       :open="shareDialogOpen"
       :turn="selectedShareTurn"

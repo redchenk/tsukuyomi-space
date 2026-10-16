@@ -1,12 +1,7 @@
 import { nextTick, onUnmounted, ref, watch } from 'vue';
 import { loadHubPage } from '../router';
 import { lockPageScroll } from '../utils/pageScrollLock';
-
-// The hole is cut out of the original entry page. The one, live RouterView
-// underneath keeps its DOM, requests and state when the reveal finishes.
-function portalPath(width, height, x, y, radius) {
-  return `path(evenodd, "M0 0H${width}V${height}H0Z M${x - radius} ${y}a${radius} ${radius} 0 1 0 ${radius * 2} 0a${radius} ${radius} 0 1 0 ${-radius * 2} 0Z")`;
-}
+import { animateCircleReveal } from '../utils/circleReveal';
 
 export function useAccessTransition({ route, router, onEntered }) {
   const gate = ref(null);
@@ -66,24 +61,8 @@ export function useAccessTransition({ route, router, onEntered }) {
       }
       if (run !== revision || route.name !== 'hub') return;
       const element = gate.value;
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      const x = Math.max(0, Math.min(width, origin.x));
-      const y = Math.max(0, Math.min(height, origin.y));
-      const radius = Math.hypot(Math.max(x, width - x), Math.max(y, height - y)) + 2;
       phase.value = 'revealing';
-      const from = portalPath(width, height, x, y, 0.1);
-      const to = portalPath(width, height, x, y, radius);
-      // Reduced motion and browsers without path clipping get a short fade.
-      const circular = !reduced && CSS.supports('clip-path', from);
-      animation = element.animate(circular
-        ? [{ clipPath: from }, { clipPath: to }]
-        : [{ opacity: 1 }, { opacity: 0 }], {
-        duration: circular ? 1150 : 140,
-        easing: circular ? 'cubic-bezier(.64, 0, .2, 1)' : 'ease-out',
-        fill: 'forwards'
-      });
+      animation = animateCircleReveal(element, origin);
       await animation.finished;
       if (run !== revision) return;
       reset();

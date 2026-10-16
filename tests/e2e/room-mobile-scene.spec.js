@@ -110,6 +110,7 @@ test('mobile history stays in place during a reply and returns to the latest bub
         await route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'event: done\ndata: {"reply":"我在这里，慢慢看。"}\n\n' });
     });
     await page.goto('/room');
+    await expect(page.locator('#loadingOverlay')).toHaveCount(0);
     const transcript = page.locator('#chatMessages');
     await expect(transcript.locator('.assistant')).toHaveCount(6);
     const remaining = () => transcript.evaluate(node => node.scrollHeight - node.scrollTop - node.clientHeight);
