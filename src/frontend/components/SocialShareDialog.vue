@@ -1,5 +1,6 @@
 <script setup>
-import { nextTick, ref, watch } from 'vue';
+import { useModalDialog } from '../composables/useModalDialog';
+import { ref } from 'vue';
 import SocialShareActions from './SocialShareActions.vue';
 import TsIcon from './TsIcon.vue';
 
@@ -16,29 +17,21 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 const closeButton = ref(null);
+const modal = useModalDialog(() => props.open);
 const heading = () => props.lang === 'en' ? 'Share' : props.lang === 'ja' ? '共有' : '分享';
 
-watch(() => props.open, async (open) => {
-  if (!open) return;
-  await nextTick();
-  closeButton.value?.focus();
-});
-
-function onKeydown(event) {
-  if (event.key === 'Escape') emit('close');
-}
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="social-share-overlay" role="presentation" @click.self="emit('close')" @keydown="onKeydown">
-      <section class="social-share-dialog" data-material="popover" role="dialog" aria-modal="true" :aria-labelledby="'social-share-title'">
+    <dialog v-if="open" ref="modal" class="social-share-overlay ts-modal-overlay" aria-labelledby="social-share-title" @cancel.prevent="emit('close')" @click.self="emit('close')">
+      <section class="social-share-dialog" data-material="popover" :aria-labelledby="'social-share-title'">
         <header>
           <div>
             <span>TSUKUYOMI SHARE</span>
             <h2 id="social-share-title">{{ heading() }}</h2>
           </div>
-          <button ref="closeButton" class="social-share-close" type="button" aria-label="关闭" @click="emit('close')">
+          <button ref="closeButton" data-modal-close class="social-share-close" type="button" aria-label="关闭" @click="emit('close')">
             <TsIcon name="x" :size="18" />
           </button>
         </header>
@@ -57,7 +50,7 @@ function onKeydown(event) {
           :lang="lang"
         />
       </section>
-    </div>
+    </dialog>
   </Teleport>
 </template>
 

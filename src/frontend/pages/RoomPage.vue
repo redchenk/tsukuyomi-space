@@ -213,7 +213,7 @@ watch(() => props.shareId, loadSharedConversation);
           <div><h1>{{ companionName }}</h1><p :class="{ 'is-ready': room.live2d.ready.value }">{{ companionStatus }}</p></div>
         </div>
       </section>
-      <nav class="room-desktop-tabs" role="tablist" aria-label="房间工作区">
+      <nav v-segmented class="room-desktop-tabs" role="tablist" aria-label="房间工作区">
         <button v-for="(tab, index) in desktopTabs" :id="`room-tab-${tab.id}`" :key="tab.id" type="button" role="tab" :aria-selected="desktopPanel === tab.id" :aria-controls="tab.id === 'chatPanel' ? 'room-chat-workspace' : 'room-desktop-panel-host'" :tabindex="desktopPanel === tab.id ? 0 : -1" @click="desktopPanel = tab.id" @keydown="changeDesktopTab($event, index)">
           <TsIcon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span>
         </button>

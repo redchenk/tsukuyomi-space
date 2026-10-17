@@ -1,4 +1,5 @@
 <script setup>
+import { useModalDialog } from '../composables/useModalDialog';
 import UploadProgress from '../components/UploadProgress.vue';
 import { useUploadProgress } from '../composables/useUploadProgress';
 
@@ -298,6 +299,8 @@ function assetMarkdownUrl(asset) {
   return asset.markdown_url || asset.display_url || asset.url;
 }
 
+const assetModal = useModalDialog(() => editor.assetPicker.open);
+
 async function openAssetPicker(mode = 'body') {
   editor.assetPicker.open = true;
   editor.assetPicker.mode = mode;
@@ -578,7 +581,7 @@ watch(currentArticleId, initEditor);
 
       <div v-else-if="editor.loadError" class="editor-status error" role="alert">{{ editor.loadError }}</div>
 
-      <form v-else class="editor-form" :aria-busy="editor.submitting" @submit.prevent="handleEditorSubmit">
+      <form v-field-validation v-else class="editor-form" :aria-busy="editor.submitting" @submit.prevent="handleEditorSubmit">
         <div v-if="editor.message" class="form-message" :class="editor.messageType">{{ editor.message }}</div>
 
         <div class="form-group">
@@ -714,8 +717,8 @@ watch(currentArticleId, initEditor);
       </form>
 
       <Teleport to="body">
-        <div v-if="editor.assetPicker.open" class="editor-asset-backdrop" role="presentation" @click.self="closeAssetPicker">
-          <section class="editor-asset-modal" data-material="popover" role="dialog" aria-modal="true" aria-label="附件库" :aria-busy="editor.assetPicker.loading || editor.assetPicker.uploading">
+        <dialog v-if="editor.assetPicker.open" ref="assetModal" class="editor-asset-backdrop ts-modal-overlay" aria-label="附件库" @cancel.prevent="closeAssetPicker" @click.self="closeAssetPicker">
+          <section class="editor-asset-modal" data-material="popover" :aria-busy="editor.assetPicker.loading || editor.assetPicker.uploading">
             <header class="editor-asset-head">
               <div>
                 <span>Asset Library</span>
@@ -758,7 +761,7 @@ watch(currentArticleId, initEditor);
               </button>
             </div>
           </section>
-        </div>
+        </dialog>
       </Teleport>
     </div>
   </main>

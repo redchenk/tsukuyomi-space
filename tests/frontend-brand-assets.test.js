@@ -23,12 +23,14 @@ function render(englishSite = false) {
 
 test('HTML icons and manifest use content-addressed files even when CDN ignores queries', () => {
   const { html, assets } = render();
-  assert.equal(assets.length, 6);
+  assert.equal(assets.length, 7);
   assert.doesNotMatch(html, /(?:favicon\.ico|assets\/icons\/icon-\d+\.png|site\.webmanifest)(?:\?v=|["<])/);
-  for (const name of ['favicon.ico', 'icon-32.png', 'icon-180.png', 'site.webmanifest']) {
+  for (const name of ['favicon.ico', 'icon-32.png', 'icon-180.png', 'site.webmanifest', 'boot-splash.js']) {
     assert.ok(html.includes('/' + assets.find(asset => asset.name === name).fileName));
   }
-  for (const asset of assets.filter(asset => asset.name !== 'site.webmanifest')) {
+  const boot = assets.find(asset => asset.name === 'boot-splash.js');
+  assert.equal(boot.source, readFileSync(new URL('../src/frontend/boot-splash.js', import.meta.url), 'utf8'));
+  for (const asset of assets.filter(asset => asset.name !== 'site.webmanifest' && asset.name !== 'boot-splash.js')) {
     const original = asset.name === 'favicon.ico' ? '../favicon.ico' : '../assets/icons/' + asset.name;
     assert.deepEqual(asset.source, readFileSync(new URL(original, import.meta.url)));
   }

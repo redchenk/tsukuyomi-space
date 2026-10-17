@@ -4,7 +4,8 @@ import { computed } from 'vue';
 const props = defineProps({
   variant: { type: String, default: 'list' },
   count: { type: Number, default: 3 },
-  label: { type: String, default: '正在加载内容' }
+  label: { type: String, default: '正在加载内容' },
+  delay: { type: Number, default: 200 }
 });
 
 const itemCount = computed(() => Math.min(12, Math.max(1, Math.trunc(props.count || 1))));
@@ -13,7 +14,7 @@ const showsMedia = computed(() => ['article', 'cards', 'editor', 'gallery', 'pix
 </script>
 
 <template>
-  <div class="ts-skeleton" :data-skeleton-variant="variant" aria-hidden="true">
+  <div class="ts-skeleton ts-skeleton-delayed" :style="{ '--skeleton-delay': `${Math.max(0, delay)}ms` }" :data-skeleton-variant="variant" aria-hidden="true">
     <div v-for="index in itemCount" :key="index" class="ts-skeleton-item">
       <span v-if="showsMedia" class="ts-skeleton-block ts-skeleton-media"></span>
       <div class="ts-skeleton-body">

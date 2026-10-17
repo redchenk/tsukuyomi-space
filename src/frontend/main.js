@@ -1,3 +1,5 @@
+import { fieldValidation } from './directives/fieldValidation';
+import { segmented } from './directives/segmented';
 import { createApp } from 'vue';
 import App from './App.vue';
 import LoadingSkeleton from './components/LoadingSkeleton.vue';
@@ -18,6 +20,7 @@ import './styles/material-pages.css';
 import './styles/seasons.css';
 import 'lenis/dist/lenis.css';
 import './styles/scroll-motion.css';
+import './styles/interaction.css';
 
 initializePerformanceProfile();
 configureAssetCssVars();
@@ -35,6 +38,8 @@ document.addEventListener('visibilitychange', syncWindowAppearance, { passive: t
 syncWindowAppearance();
 
 const app = createApp(App);
+app.directive('segmented', segmented);
+app.directive('field-validation', fieldValidation);
 app.config.globalProperties.$ui = uiText;
 // Vue Teleport mounts dialogs beside #app, so observe the whole body to include
 // lightboxes and any future portal content that opts into image bloom.

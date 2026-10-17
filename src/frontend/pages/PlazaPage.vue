@@ -63,6 +63,7 @@ let plazaLoadedRequest = '';
 let appliedTopic = '';
 let renderedHash = '';
 const successfulLikes = new Map();
+const pendingLikes = reactive({});
 const user = computed(() => session.value?.user || null);
 const isAuthed = computed(() => Boolean(session.value));
 const isZh = computed(() => props.lang === 'zh');
@@ -287,7 +288,7 @@ async function loadPlazaStats() {
 
 function keepLikeResults(messages) {
   return messages.map(item => {
-    const liked = successfulLikes.get(String(item.id));
+    const liked = successfulLikes.get(String(item.id)) || pendingLikes[item.id];
     return liked ? { ...item, viewer_liked: true, like_count: Math.max(Number(item.like_count || 0), liked.like_count) } : item;
   });
 }
@@ -516,10 +517,15 @@ async function plazaLikeMessage(id) {
     return;
   }
   const current = plaza.messages.find((item) => item.id === id);
-  if (current?.viewer_liked) {
+  if (!current || pendingLikes[id]) return;
+  if (current.viewer_liked) {
     showPlazaToast(props.t.alreadyLiked, 'error');
     return;
   }
+  const owner = user.value?.id;
+  const previous = { viewer_liked: Boolean(current.viewer_liked), like_count: Number(current.like_count || 0) };
+  pendingLikes[id] = { like_count: previous.like_count + 1 };
+  patchPlazaMessage({ id, viewer_liked: true, like_count: previous.like_count + 1 });
   try {
     const response = await authFetch(`/api/messages/${id}/like`, {
       method: 'POST',
@@ -527,6 +533,7 @@ async function plazaLikeMessage(id) {
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.likeFailed);
+    if (owner !== user.value?.id) return;
     if (result.growth) applyGrowthResult(result.growth);
     clearPlazaMessageCache();
     if (result.data?.id) {
@@ -535,11 +542,15 @@ async function plazaLikeMessage(id) {
     }
     else {
       const target = plaza.messages.find((item) => item.id === id);
-      if (target) target.like_count = Number(target.like_count || 0) + 1;
+      if (target) successfulLikes.set(String(id), { like_count: target.like_count });
     }
     showPlazaToast(props.t.likedToast);
   } catch (error) {
+    if (owner !== user.value?.id) return;
+    patchPlazaMessage({ id, ...previous });
     showPlazaToast(error.message || props.t.likeFailed, 'error');
+  } finally {
+    delete pendingLikes[id];
   }
 }
 
@@ -730,7 +741,7 @@ onUnmounted(() => {
           <button class="ghost-btn plaza-refresh-btn" type="button" :disabled="plaza.loading" :aria-busy="plaza.loading" :aria-label="designCopy.refresh" @click="refreshPlaza"><TsIcon name="refresh" :size="16" /><span>{{ t.refresh }}</span></button>
         </div>
         <div class="plaza-feed-controls">
-          <div class="plaza-filters" :aria-label="t.wallTitle">
+          <div v-segmented class="plaza-filters" :aria-label="t.wallTitle">
             <button class="chip" :class="{ active: plaza.filter === 'latest' }" :aria-pressed="plaza.filter === 'latest'" type="button" @click="plaza.filter = 'latest'">{{ t.filterLatest }}</button>
             <button class="chip" :class="{ active: plaza.filter === 'hot' }" :aria-pressed="plaza.filter === 'hot'" type="button" @click="plaza.filter = 'hot'">{{ t.filterHot }}</button>
             <button class="chip" :class="{ active: plaza.filter === 'replied' }" :aria-pressed="plaza.filter === 'replied'" type="button" @click="plaza.filter = 'replied'">{{ t.filterReplied }}</button>
@@ -782,6 +793,8 @@ onUnmounted(() => {
                 class="icon-btn like-btn"
                 :class="{ liked: isPlazaMessageLiked(msg) }"
                 :aria-pressed="isPlazaMessageLiked(msg)"
+                :aria-busy="Boolean(pendingLikes[msg.id])"
+                :disabled="Boolean(pendingLikes[msg.id])"
                 type="button"
                 @click="plazaLikeMessage(msg.id)"
               >

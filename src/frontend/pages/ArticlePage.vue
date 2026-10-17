@@ -313,21 +313,28 @@ async function loadArticleLikeStatus(context) {
 async function toggleArticleLike() {
   if (articleLike.loading || !requireLogin()) return;
   const id = articleId.value;
+  const context = { id, revision: articleLoadRevision };
+  const previous = { liked: articleLike.liked, count: articleLike.count };
   articleLike.loading = true;
+  articleLike.liked = !previous.liked;
+  articleLike.count = Math.max(0, previous.count + (previous.liked ? -1 : 1));
   try {
     const response = await authFetch(`/api/user/article-likes/${encodeURIComponent(id)}`, {
-      method: articleLike.liked ? 'DELETE' : 'POST', headers: authHeaders()
+      method: previous.liked ? 'DELETE' : 'POST', headers: authHeaders()
     });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || props.t.loadFailed);
-    if (id !== articleId.value) return;
+    if (!isCurrentArticle(context)) return;
     articleLike.liked = Boolean(result.data?.liked);
     articleLike.count = Number(result.data?.count || 0);
     showMessage('');
   } catch (error) {
-    if (id === articleId.value) showMessage(error.message || props.t.loadFailed);
+    if (isCurrentArticle(context)) {
+      Object.assign(articleLike, previous);
+      showMessage(error.message || props.t.loadFailed);
+    }
   } finally {
-    if (id === articleId.value) articleLike.loading = false;
+    if (isCurrentArticle(context)) articleLike.loading = false;
   }
 }
 

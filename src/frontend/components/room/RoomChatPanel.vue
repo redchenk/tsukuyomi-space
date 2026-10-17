@@ -35,12 +35,12 @@ async function copyMessage(message) {
 function readEarlierMessages() {
   followingLatestMessage = false;
   readingHistory.value = true;
-  transcriptRef.value?.scrollTo({ top: 0, behavior: 'smooth' });
+  transcriptRef.value?.scrollTo({ top: 0, behavior: 'instant' });
 }
 function returnToLatest() {
   followingLatestMessage = true;
   readingHistory.value = false;
-  transcriptRef.value?.scrollTo({ top: transcriptRef.value.scrollHeight, behavior: 'smooth' });
+  transcriptRef.value?.scrollTo({ top: transcriptRef.value.scrollHeight, behavior: 'instant' });
 }
 defineExpose({ readEarlierMessages });
 let transcriptObserver;
@@ -60,10 +60,16 @@ function bindTranscript(node) {
   props.chat.messageListRef.value = node;
 }
 
+function followTranscript() {
+  const node = transcriptRef.value;
+  if (node && followingLatestMessage) node.scrollTop = node.scrollHeight;
+  rememberTranscriptPosition();
+}
+
 function rememberTranscriptPosition() {
   const node = transcriptRef.value;
   if (node) {
-    followingLatestMessage = node.scrollHeight - node.scrollTop - node.clientHeight < 24;
+    followingLatestMessage = node.scrollHeight - node.scrollTop - node.clientHeight <= 80;
     readingHistory.value = !followingLatestMessage;
   }
 }
@@ -71,9 +77,9 @@ function rememberTranscriptPosition() {
 onMounted(() => {
   document.addEventListener('pointerdown', closeMessageMenus);
   document.addEventListener('keydown', closeMessageMenus);
-  // Resizes update the unread/latest affordance without moving the reader.
+  // Keep the bottom anchored only while the reader is following the conversation.
   if (typeof ResizeObserver === 'undefined') return;
-  transcriptObserver = new ResizeObserver(rememberTranscriptPosition);
+  transcriptObserver = new ResizeObserver(followTranscript);
   if (transcriptRef.value) transcriptObserver.observe(transcriptRef.value);
 });
 onBeforeUnmount(() => {
@@ -165,14 +171,12 @@ watch(() => props.chat.messages.value.map((message) => message.id), (ids) => {
   if (editingMessageId.value && !ids.includes(editingMessageId.value)) cancelEdit();
 });
 watch(() => props.chat.messages.value.map(message => `${message.id}:${message.content.length}`), () => {
-  // Content grows below the current reading position. Only an explicit send,
-  // initial history load or 'latest message' action scrolls the transcript.
-  rememberTranscriptPosition();
+  // Appending stream chunks follows the bottom, never the reader scrolling history.
+  followTranscript();
 }, { flush: 'post' });
 onMounted(() => nextTick(() => {
   resizeComposer();
-  // Initial restored history opens at the latest turn once. Later stream
-  // updates and resize observations never reposition the transcript.
+  // Initial restored history opens at the latest turn once.
   const node = transcriptRef.value;
   if (node && hasConversation.value) node.scrollTop = node.scrollHeight;
   rememberTranscriptPosition();

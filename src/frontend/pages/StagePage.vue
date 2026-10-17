@@ -351,7 +351,7 @@ onBeforeUnmount(() => {
         {{ stageCategoryLabel(category) }}
       </button>
     </div>
-      <div class="stage-order" :aria-label="lang === 'en' ? 'Sort articles' : lang === 'ja' ? '記事の並び順' : '文章排序'">
+      <div v-segmented class="stage-order" :aria-label="lang === 'en' ? 'Sort articles' : lang === 'ja' ? '記事の並び順' : '文章排序'">
         <button v-for="(order, index) in ['featured', 'daily', 'latest']" :key="order" type="button" :aria-pressed="stageOrder === order" @click="stageOrder = order">{{ stageSortCopy[index] }}</button>
       </div>
     </div>

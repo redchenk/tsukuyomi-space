@@ -148,7 +148,7 @@ async function startQQLogin() {
             <p class="panel-subtitle">{{ t.registerSubtitle }}</p>
           </div>
           <div v-if="register.message" class="form-message" :class="register.type">{{ register.message }}</div>
-          <form :aria-busy="register.submitting" @submit.prevent="submitRegister">
+          <form v-field-validation :aria-busy="register.submitting" @submit.prevent="submitRegister">
             <div class="form-group">
               <label for="registerUsername">{{ t.ucUsername }}</label>
               <div class="auth-input-shell">

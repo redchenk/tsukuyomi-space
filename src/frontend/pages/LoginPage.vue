@@ -519,7 +519,7 @@ onMounted(() => {
             <div v-if="oauth.message" class="form-message" :class="oauth.type">{{ oauth.message }}</div>
             <StatusLoader v-if="oauth.submitting" :label="oauthCopy.completing" compact />
 
-            <form v-if="oauth.profile && oauth.mode === 'email'" class="oauth-email-form" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthEmailBind">
+            <form v-field-validation v-if="oauth.profile && oauth.mode === 'email'" class="oauth-email-form" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthEmailBind">
               <div class="oauth-bind-note">
                 <TsIcon name="mail" :size="18" />
                 <span>{{ oauth.provider === 'github' ? oauthCopy.note : '邮箱已注册时会自动绑定到已有账号；邮箱未注册时会作为新的登录邮箱。' }}</span>
@@ -570,7 +570,7 @@ onMounted(() => {
                 <button class="mode-btn" :class="{ active: oauth.mode === 'bind' }" type="button" @click="setOAuthMode('bind')">绑定已有账号</button>
               </div>
 
-              <form v-if="oauth.mode === 'create'" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthCreate">
+              <form v-field-validation v-if="oauth.mode === 'create'" :aria-busy="oauth.submitting" @submit.prevent="submitOAuthCreate">
                 <div class="form-group">
                   <label for="qqCreateUsername">用户名</label>
                   <div class="auth-input-shell">
@@ -581,7 +581,7 @@ onMounted(() => {
                 <button class="primary-btn" type="submit" :disabled="oauth.submitting" :aria-busy="oauth.submitting">{{ oauth.submitting ? '正在进入...' : '一键开通并进入' }}</button>
               </form>
 
-              <form v-else :aria-busy="oauth.submitting" @submit.prevent="submitOAuthBind">
+              <form v-field-validation v-else :aria-busy="oauth.submitting" @submit.prevent="submitOAuthBind">
                 <div class="mode-row compact">
                   <button class="mode-btn" :class="{ active: oauth.bindMethod === 'password' }" type="button" @click="setOAuthBindMethod('password')">{{ t.passwordLogin }}</button>
                   <button class="mode-btn" :class="{ active: oauth.bindMethod === 'code' }" type="button" @click="setOAuthBindMethod('code')">{{ t.codeLogin }}</button>
@@ -634,7 +634,7 @@ onMounted(() => {
           <div v-if="forgotMode && forgot.message" class="form-message" :class="forgot.type">{{ forgot.message }}</div>
           <div v-else-if="!forgotMode && login.message" class="form-message" :class="login.type">{{ login.message }}</div>
 
-          <form v-if="forgotMode" class="forgot-password-form" :aria-busy="forgot.submitting" @submit.prevent="submitForgotPassword">
+          <form v-field-validation v-if="forgotMode" class="forgot-password-form" :aria-busy="forgot.submitting" @submit.prevent="submitForgotPassword">
             <div class="form-group">
               <label for="forgotEmail">{{ t.email }}</label>
               <div class="auth-input-shell">
@@ -677,7 +677,7 @@ onMounted(() => {
           </form>
 
           <template v-else>
-          <form :aria-busy="login.submitting" @submit.prevent="submitLogin">
+          <form v-field-validation :aria-busy="login.submitting" @submit.prevent="submitLogin">
             <div class="mode-row">
               <button class="mode-btn" :class="{ active: login.method === 'password' }" type="button" @click="setMethod('password')">{{ t.passwordLogin }}</button>
               <button class="mode-btn" :class="{ active: login.method === 'code' }" type="button" @click="setMethod('code')">{{ t.codeLogin }}</button>

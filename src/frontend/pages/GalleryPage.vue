@@ -160,7 +160,7 @@ function showMessage(message, type = 'success') {
 }
 
 function applyImageLikes(asset) {
-  const liked = state.likedResults[asset.id];
+  const liked = state.likedResults[asset.id] || state.liking[asset.id];
   return liked ? { ...asset, viewer_liked: true, like_count: Math.max(Number(asset.like_count || 0), liked.like_count) } : asset;
 }
 
@@ -170,16 +170,29 @@ async function likeImage(asset) {
     return;
   }
   if (asset.viewer_liked || state.liking[asset.id]) return;
-  state.liking[asset.id] = true;
+  const owner = currentUserId.value;
+  const previous = { viewer_liked: Boolean(asset.viewer_liked), like_count: Number(asset.like_count || 0) };
+  state.liking[asset.id] = { like_count: previous.like_count + 1 };
+  state.images = state.images.map(applyImageLikes);
+  if (state.selected?.id === asset.id) state.selected = applyImageLikes(state.selected);
   state.likeError = '';
   try {
     const response = await authFetch(`/api/assets/gallery/${encodeURIComponent(asset.id)}/like`, { method: 'POST' });
     const result = await parseResponse(response);
     if (!result.success) throw new Error(result.message || t('点赞失败，请稍后重试', 'Unable to like this image. Please try again.'));
+    if (owner !== currentUserId.value) return;
     state.likedResults[asset.id] = result.data;
+    // Replace the optimistic count with the authoritative response (including deduped likes).
+    const settle = item => item.id === asset.id ? { ...item, ...result.data, viewer_liked: true } : item;
+    state.images = state.images.map(settle);
+    if (state.selected?.id === asset.id) state.selected = settle(state.selected);
     state.images = state.images.map(applyImageLikes);
     if (state.selected?.id === asset.id) state.selected = applyImageLikes(state.selected);
   } catch (error) {
+    if (owner !== currentUserId.value) return;
+    const rollback = item => item.id === asset.id ? { ...item, ...previous } : item;
+    state.images = state.images.map(rollback);
+    if (state.selected?.id === asset.id) state.selected = rollback(state.selected);
     state.likeError = error.message;
     showMessage(error.message, 'error');
   } finally {
@@ -573,7 +586,7 @@ onUnmounted(() => {
               </select>
               <TsIcon class="gallery-sort-chevron" name="chevronDown" :size="14" />
             </div>
-            <div class="gallery-column-toggle" role="group" :aria-label="t('图库视图', 'Gallery view')">
+            <div v-segmented class="gallery-column-toggle" role="group" :aria-label="t('图库视图', 'Gallery view')">
               <button type="button" :aria-label="t('紧凑四列视图', 'Compact four column view')" :aria-pressed="state.columns === 4" @click="state.columns = 4">
                 <TsIcon name="grid" :size="16" />
               </button>

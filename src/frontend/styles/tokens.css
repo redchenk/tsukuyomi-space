@@ -71,9 +71,10 @@
     --ts-gradient-brand-hover: var(--ts-color-rose-700);
     --ts-gradient-aurora: linear-gradient(120deg, #8fdcff 0%, #9b8cff 42%, #ff9aba 100%);
 
-    --ts-motion-fast: 0.16s;
-    --ts-motion-base: 0.22s;
-    --ts-motion-slow: 0.36s;
+    --ts-motion-fast: 0.12s;
+    --ts-motion-base: 0.18s;
+    --ts-motion-slow: 0.28s;
+    --ts-motion-page: 0.36s;
     --ts-motion-slower: 0.6s;
     --ts-ease-standard: cubic-bezier(0.2, 0, 0, 1);
     --ts-ease-lift: cubic-bezier(0.22, 1, 0.36, 1);

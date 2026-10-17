@@ -1,0 +1,80 @@
+/* Shared interaction rhythm; seasonal artwork and glass keep their own motion. */
+:is(.primary-btn, .ghost-btn, .icon-btn, .site-tool-button, .site-preference-button,
+  .site-mobile-navigation-trigger, .gallery-like-button, .social-share-button) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :is(.primary-btn, .ghost-btn, .icon-btn, .site-tool-button, .site-preference-button,
+    .site-mobile-navigation-trigger, .gallery-like-button):not(:disabled):active {
+    scale: .97;
+  }
+}
+.ts-skeleton-delayed {
+  visibility: hidden;
+  animation: ts-reveal-skeleton 1ms step-end var(--skeleton-delay, 200ms) forwards;
+}
+@keyframes ts-reveal-skeleton { to { visibility: visible; } }
+.site-search-result[aria-selected='true'] {
+  background: var(--ts-accent-soft);
+  outline: 2px solid var(--ts-accent);
+  outline-offset: -2px;
+}
+.site-search-result > span { min-width: 0; overflow-wrap: anywhere; }
+.site-search-dialog { display: flex; flex-direction: column; }
+.site-search-dialog > :is(.site-nav-drawer-head, .site-search-field, .site-search-help) { flex: 0 0 auto; }
+.site-search-results { flex: 1 1 auto; min-height: 0; }
+.site-search-help { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; }
+@media (min-width: 861px) {
+  .site-search-dialog { max-height: calc(100dvh - 130px); }
+}
+
+/* Full-screen native dialog shell preserves the established card/bottom sheet. */
+dialog.ts-modal-overlay {
+  box-sizing: border-box;
+  width: 100%; height: 100%; max-width: none; max-height: none;
+  margin: 0; border: 0; color: inherit;
+  overscroll-behavior: contain;
+}
+dialog.ts-modal-overlay:not([open]) { display: none; }
+dialog.ts-modal-overlay::backdrop { background: transparent; }
+dialog.ts-modal-overlay > section { overscroll-behavior: contain; }
+.editor-asset-tools :is(button, a) { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+@media (prefers-reduced-motion: no-preference) {
+  dialog.ts-modal-overlay[open] > section { animation: ts-dialog-enter var(--ts-motion-slow) var(--ts-ease-standard) both; }
+}
+@keyframes ts-dialog-enter { from { opacity: 0; translate: 0 12px; } to { opacity: 1; translate: 0 0; } }
+@media (max-width: 600px) {
+  dialog.ts-modal-overlay { align-items: end; padding: 0; }
+  dialog.ts-modal-overlay > section {
+    width: 100%; max-height: 90dvh; border-radius: 24px 24px 0 0;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  :is(.social-share-close, .room-share-close) { min-width: 44px; min-height: 44px; }
+  .page :is(.plaza-msg-footer, .gallery-card-actions) .icon-btn { min-height: 44px; }
+  .page :is(.plaza-filters, .stage-order, .gallery-column-toggle) button { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The delay avoids loading flashes even when animation is disabled globally. */
+  .ts-skeleton-delayed { animation: ts-reveal-skeleton 1ms step-end var(--skeleton-delay, 200ms) forwards !important; }
+}
+
+.ts-segmented { position: relative; isolation: isolate; }
+.ts-segmented-indicator {
+  position: absolute; inset: 0 auto auto 0; z-index: -1; pointer-events: none;
+  border-radius: inherit; background: var(--ts-editorial-surface, var(--ts-surface));
+  box-shadow: var(--ts-elevation-rest); opacity: 0;
+  transition: transform var(--ts-motion-slow) var(--ts-ease-standard), width var(--ts-motion-slow) var(--ts-ease-standard), opacity var(--ts-motion-fast);
+}
+.ts-segmented-ready > .ts-segmented-indicator { opacity: 1; }
+.ts-segmented-ready > button:is([aria-selected='true'], [aria-pressed='true']) {
+  background: transparent; box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ts-segmented-indicator { transition: none; }
+}
+
+.ts-field-error { display: block; min-block-size: 1.3em; margin-top: 4px; color: var(--ts-danger, #b82f4b); font-size: .78rem; line-height: 1.3; overflow-wrap: anywhere; }
+.auth-input-shell:has([aria-invalid='true']) { border-color: var(--ts-danger, #b82f4b); }
+html[data-theme='dark'] .ts-field-error { color: #ffabbc; }
+html[data-theme='dark'] .auth-input-shell:has([aria-invalid='true']) { border-color: #ffabbc; }

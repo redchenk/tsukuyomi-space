@@ -1,4 +1,12 @@
 {
+  "已授权应用": {
+    "en": "Authorized apps",
+    "ja": "認可済みアプリ"
+  },
+  "↑ ↓ 选择 · Enter 打开": {
+    "en": "↑ ↓ Choose · Enter Open",
+    "ja": "↑ ↓ 選択 · Enter 開く"
+  },
   "iPhone、iPad 会打开系统分享面板，请选择 QQ，再选择好友发送文章卡片。": {
     "en": "On iPhone or iPad, choose QQ in the share sheet, then choose a friend and send the article card.",
     "ja": "iPhone・iPadでは共有メニューでQQを選び、相手を選んで記事のカードを送信してください。"

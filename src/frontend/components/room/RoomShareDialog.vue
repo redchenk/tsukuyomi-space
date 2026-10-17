@@ -1,5 +1,6 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { useModalDialog } from '../../composables/useModalDialog';
+import { computed, ref, watch } from 'vue';
 import { apiUrl, authFetch, authHeaders, parseResponse } from '../../api/client';
 import { uploadJson } from '../../api/upload-json.mjs';
 import { useUploadProgress } from '../../composables/useUploadProgress';
@@ -25,6 +26,7 @@ const error = ref('');
 const share = ref(null);
 const shareUpload = useUploadProgress();
 const closeButton = ref(null);
+const modal = useModalDialog(() => props.open);
 let renderedTitle = '';
 
 const shareUrl = computed(() => share.value?.path ? new URL(share.value.path, location.origin).href : '');
@@ -134,21 +136,20 @@ watch(() => props.open, async (open) => {
     title.value = defaultTitle();
     await refreshPreview();
   }
-  await nextTick();
-  closeButton.value?.focus();
+
 });
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="room-share-overlay" role="presentation" @click.self="emit('close')" @keydown.esc="emit('close')">
-      <section class="room-share-dialog" data-material="popover" role="dialog" aria-modal="true" aria-labelledby="room-share-title" :aria-busy="generatingPreview || publishing">
+    <dialog v-if="open" ref="modal" class="room-share-overlay ts-modal-overlay" aria-labelledby="room-share-title" @cancel.prevent="emit('close')" @click.self="emit('close')">
+      <section class="room-share-dialog" data-material="popover" aria-labelledby="room-share-title" :aria-busy="generatingPreview || publishing">
         <header>
           <div>
             <span>ROOM MEMORY</span>
             <h2 id="room-share-title">对话分享卡</h2>
           </div>
-          <button ref="closeButton" class="room-share-close" type="button" aria-label="关闭" @click="emit('close')">
+          <button ref="closeButton" data-modal-close class="room-share-close" type="button" aria-label="关闭" @click="emit('close')">
             <TsIcon name="x" :size="18" />
           </button>
         </header>
@@ -188,7 +189,7 @@ watch(() => props.open, async (open) => {
         </div>
         <button v-if="share" class="room-share-revoke" type="button" :disabled="publishing" @click="revokeShare">撤销公开链接</button>
       </section>
-    </div>
+    </dialog>
   </Teleport>
 </template>
 
